@@ -41,6 +41,7 @@ import { isLastWorkDayVerb, lastWorkDayInput } from './devMcpLastWorkDay.ts'
 import { isNoticeByHandVerb, noticeByHandInput } from './devMcpNoticeByHand.ts'
 import { affidavitDraftInput, isAffidavitDraftVerb } from './devMcpAffidavitDraft.ts'
 import { isLienFilingVerb, lienFilingApplyInput, lienFilingPlanInput } from './devMcpLienFiling.ts'
+import { isLienServiceVerb, lienServiceApplyInput, lienServicePlanInput } from './devMcpLienService.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { hasSmallEdits, sectionOpsForRpc } from './devMcpDocEdits.ts'
@@ -229,6 +230,12 @@ export const WRITE_VERBS = {
   // filing or a visit's worth and hashes each on its own; an apply takes one.
   plan_lien_filing: { rpc: null, step: 'plan' },
   apply_lien_filing: { rpc: null, step: 'apply' },
+  // The copies of a filed lien affidavit recorded as mailed, as the Lien window's Record service… and the desk's Mail
+  // the copies window record them: served_at and sends on the filing's own row, through the form's kernel; rpc is null,
+  // the dry run the server's read of the job and its filed affidavit (devMcpLienService.ts). One or several a plan,
+  // each hashed on its own; one an apply.
+  plan_lien_service: { rpc: null, step: 'plan' },
+  apply_lien_service: { rpc: null, step: 'apply' },
   // v2.6792 (punch list #260's seat door): a teammate's account made and worked with until they are signed in — the
   // row made, renamed, its role or address changed (plan_account), a login attached with the sign-in email or a password,
   // or removed (plan_login), the recovery email or a dictated password (plan_password_reset) — through the edge functions
@@ -431,6 +438,17 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const built = jobMarkInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isLienServiceVerb(verb)) {
+    // The shape check is devMcpLienService's. A plan carries its services, each shaped on its own; an apply carries one and its own hash.
+    if (step === 'plan') {
+      const built = lienServicePlanInput(input)
+      if (!built.ok) return built
+      return { ok: true, rpc: null, step, body: { p: { services: built.services } }, dryRunBody: null, target: built.target, planHash }
+    }
+    const built = lienServiceApplyInput(input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash: built.planHash }
   }
   if (isLienFilingVerb(verb)) {
     // v2.7511: the shape check is devMcpLienFiling's. A plan carries its filings, each shaped on its own; an apply carries one and its own hash.

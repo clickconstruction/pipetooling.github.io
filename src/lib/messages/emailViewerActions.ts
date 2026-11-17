@@ -10,19 +10,25 @@
  * is on no job, offers **Start a bid** (the New lane's *Bid it?* door, `start_bid_from_message`) and **Put it on a
  * bid…** (the tie through the Tied to row's own writer, then one line on the bid's log through `bid_log_message_in`,
  * so the bid's history says it came in from another source). **Start a change order** shows only on a line tied to a
- * GC project that is not an invitation. Copy, Print and Share are the window's own and stay on every line. Pure: the
+ * GC project that is not an invitation. An email on a bid that carries a file also offers **Keep its files on the
+ * bid…** (punch list #368), which files them in the bid's Drive folder under Plans and adds a set to the bid; the
+ * press itself reads the files and turns into a *kept* mark once they are in a set (`BidMailSetDoor`). An email on a
+ * Pipeline job that carries a file offers **Keep this mail as a paper** (`MailPaperDoor`), which until now drew only in
+ * My email, on a mail in the reader's own box: a mail someone else tagged had no such press for anyone. Copy, Print and
+ * Share are the window's own and stay on every line. Pure: the
  * hook (`useEmailViewerThreadSlots`) and cut 4b's hook both ask here, so one place decides the row.
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { whoMayDraft } from '../changeOrders/fromMessage'
 import { KIND_WORDS, type InvitationKind } from '../emailIn/invitation'
+import { KEEP_ON_BID_LABEL, KEEP_ON_BID_TIP } from '../bids/bidMailSet'
 import { canOpenMessages } from '../gc/access'
 import { jobRefOf } from './jobKeys'
 import type { MessageChannel, MessageDirection } from './thread'
 
 /** A press the row may offer, in the row's order. */
-export type ViewerPress = 'change_order' | 'start_bid' | 'put_on_bid' | 'open_bid'
+export type ViewerPress = 'change_order' | 'start_bid' | 'put_on_bid' | 'open_bid' | 'keep_on_bid' | 'keep_paper'
 
 export interface ViewerFacts {
   /** The line's tie as the window keys it: `bid:<id>`, `project:<id>`, `pipeline:<id>`, or null on the person. */
@@ -32,6 +38,8 @@ export interface ViewerFacts {
   /** The reader marked the line an invitation to bid (`messages.invitation`), or the kernel reads it as one now. */
   invitation: boolean
   role: UserRole | null | undefined
+  /** How many files the line carries, a link not counted. Absent reads as none. */
+  files?: number
 }
 
 /** The presses the row offers for a line, in order. Empty for someone off the office team, and on a note or an event. */
@@ -39,9 +47,11 @@ export function viewerPresses(f: ViewerFacts): ViewerPress[] {
   if (!canOpenMessages(f.role)) return []
   if (f.channel === 'event' || f.channel === 'note') return []
   const ref = jobRefOf(f.jobId)
-  if (ref?.kind === 'bid') return ['open_bid']
+  if (ref?.kind === 'bid') return f.channel === 'email' && (f.files ?? 0) > 0 ? ['open_bid', 'keep_on_bid'] : ['open_bid']
   const emailIn = f.channel === 'email' && f.direction === 'in'
   if (emailIn && (f.invitation || ref === null)) return ['start_bid', 'put_on_bid']
+  // An email on a Pipeline job that carries a file can be kept as a paper beside the job's plans (punch list #368, PR 4).
+  if (ref?.kind === 'pipeline') return f.channel === 'email' && (f.files ?? 0) > 0 ? ['keep_paper'] : []
   // A line on a GC project takes a change order (cut 4b); a line on a Pipeline job goes on its estimate (R8 · 8).
   if (ref?.kind === 'project' && !f.invitation && whoMayDraft(f.role)) return ['change_order']
   return []
@@ -53,6 +63,8 @@ export const VIEWER_PRESS_WORDS: Readonly<Record<ViewerPress, { label: string; t
   start_bid: { label: 'Start a bid', tip: 'Makes a bid from this email, with the name, the link and the due day. The customer is made if new. Ties this email to the bid and opens it.' },
   put_on_bid: { label: 'Put it on a bid…', tip: 'Ties this email to a bid you already have and writes it on the bid’s history, so the bid says it came in from here too.' },
   open_bid: { label: 'Open the bid', tip: 'Opens the bid this email is tied to.' },
+  keep_on_bid: { label: KEEP_ON_BID_LABEL, tip: KEEP_ON_BID_TIP },
+  keep_paper: { label: 'Keep this mail as a paper', tip: 'Keeps this email as a paper beside the job’s plans, with its files in the job’s Plans folder in Drive.' },
 }
 
 /** The bid's name as the Start a bid field starts: what the reader read from the subject, else the subject itself. */

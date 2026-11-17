@@ -9,7 +9,7 @@
  * The mail tied to those bids and jobs in Messages (v2.7479) is read under the reader's own policies on
  * `messages`, for the roles that open Messages, and fails soft: History stands without it and says why.
  */
-import { HISTORY_HEAD_COLUMNS, TIED_MAIL_COLUMNS, headRowToEntry, rowToEntry, type HistoryEntry, type HistoryHeadRow, type HistoryRow, type TiedMailContact, type TiedMailRow } from './history'
+import { HISTORY_HEAD_COLUMNS, TIED_MAIL_COLUMNS, TIED_MAIL_FILE_COLUMNS, TIED_MAIL_FILE_COLUMNS_WITH_MARK, headRowToEntry, rowToEntry, type HistoryEntry, type HistoryHeadRow, type HistoryRow, type TiedMailContact, type TiedMailFileRow, type TiedMailRow } from './history'
 import { supabase } from '../supabase'
 import { parsePaySpeedsRpc, type PaySpeedData } from '../jobs/billedExpectedPay'
 import { indexPayCalendars, type PayCalendarIndex } from '../jobs/payCalendar'
@@ -81,6 +81,8 @@ export type DevelopmentPageData = {
   mailContacts?: TiedMailContact[]
   /** Why the tied mail did not come, when its read failed: History draws without it and says so. */
   tiedMailError?: string | null
+  /** The files on the bids' tied mail (punch list #368), for the press that keeps them as a set of plans; none when the read fails. */
+  tiedMailFiles?: TiedMailFileRow[]
 }
 
 function fail(label: string, error: { message: string } | null): void {
@@ -99,7 +101,7 @@ type BidScheduleRow = Pick<MemberBid, 'schedule_start' | 'schedule_end' | 'sched
 async function readBidSchedules(developmentId: string): Promise<Map<string, BidScheduleRow>> {
   const out = new Map<string, BidScheduleRow>()
   try {
-    const { data, error } = await supabase.from('bids').select('id, schedule_start, schedule_end, schedule_open_ended' as never).eq('development_id', developmentId).limit(500)
+    const { data, error } = await supabase.from('bids').select('id, schedule_start, schedule_end, schedule_open_ended').eq('development_id', developmentId).limit(500)
     if (error) {
       console.warn('development: bid schedules not read', error.message)
       return out
@@ -200,6 +202,8 @@ export async function readRequestsWhere(lane: 'estimators' | 'dispatch', filter:
 
 /** PostgREST's answer for a relation the schema does not have (the view before its migration is pushed), or Postgres's. */
 const isMissingRelation = (code: string | null | undefined): boolean => code === 'PGRST205' || code === '42P01'
+/** Postgres' and PostgREST's answers for a column the schema does not have yet. */
+const isMissingColumn = (code: string | null | undefined): boolean => code === '42703' || code === 'PGRST204'
 /** PostgREST's answer for a function the schema does not have (the RPC before its migration is pushed), or Postgres's. */
 const isMissingFunction = (code: string | null | undefined): boolean => code === 'PGRST202' || code === '42883'
 
@@ -245,7 +249,7 @@ const TIED_MAIL_MAX = 300
 
 const slices = <T,>(ids: readonly T[], size: number): T[][] => Array.from({ length: Math.ceil(ids.length / size) }, (_, i) => ids.slice(i * size, (i + 1) * size))
 
-export type TiedMailRead = { rows: TiedMailRow[]; contacts: TiedMailContact[]; error: string | null }
+export type TiedMailRead = { rows: TiedMailRow[]; contacts: TiedMailContact[]; files: TiedMailFileRow[]; error: string | null }
 
 /**
  * The emails tied to the site's bids and jobs in Messages (v2.7479): the rows of `messages` on channel
@@ -254,10 +258,12 @@ export type TiedMailRead = { rows: TiedMailRow[]; contacts: TiedMailContact[]; e
  * keeps a candidate's thread to the people who may read candidates), exactly as on the Messages page.
  * A row carries at most one of the two columns, so the two reads never bring the same mail. The read
  * fails soft: a failure hands back no mail and its reason, never a blank History. The people the mail is
- * with are a second read that fails softer still, since a line reads without a name.
+ * with are a second read that fails softer still, since a line reads without a name. The files on the bids'
+ * mail (punch list #368) are a third, as soft: without them a line draws its words and no press. The kept
+ * mark's column lands with that card's migration, so a database without it is read again with the column left out.
  */
 export async function readTiedMail(bidIds: readonly string[], jobIds: readonly string[]): Promise<TiedMailRead> {
-  if (bidIds.length === 0 && jobIds.length === 0) return { rows: [], contacts: [], error: null }
+  if (bidIds.length === 0 && jobIds.length === 0) return { rows: [], contacts: [], files: [], error: null }
   try {
     const reads: Array<Promise<TiedMailRow[]>> = []
     for (const [column, ids] of [
@@ -279,9 +285,27 @@ export async function readTiedMail(bidIds: readonly string[], jobIds: readonly s
     } catch {
       /* the names did not come: a line reads with the words its row kept */
     }
-    return { rows, contacts, error: null }
+    return { rows, contacts, files: await readTiedMailFiles(rows.filter((r) => r.bid_id).map((r) => r.id)), error: null }
   } catch (e) {
-    return { rows: [], contacts: [], error: formatErrorMessage(e, 'The mail could not be read.') }
+    return { rows: [], contacts: [], files: [], error: formatErrorMessage(e, 'The mail could not be read.') }
+  }
+}
+
+/** The files on these mails' lines, or none when the read fails: a courtesy to the line's press, never the line's own. */
+async function readTiedMailFiles(messageIds: readonly string[]): Promise<TiedMailFileRow[]> {
+  if (messageIds.length === 0) return []
+  try {
+    const out: TiedMailFileRow[] = []
+    for (const slice of slices(messageIds, MAIL_ID_SLICE)) {
+      const read = (columns: string) => supabase.from('message_attachments').select(columns as never).in('message_id', slice).limit(1000)
+      let r = await read(TIED_MAIL_FILE_COLUMNS_WITH_MARK)
+      if (r.error && isMissingColumn((r.error as { code?: string }).code)) r = await read(TIED_MAIL_FILE_COLUMNS)
+      if (r.error) return []
+      out.push(...((r.data ?? []) as unknown as TiedMailFileRow[]))
+    }
+    return out
+  } catch {
+    return []
   }
 }
 
@@ -379,7 +403,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   const acceptedP: Promise<ReadonlyMap<string, string> | null> = office ? loadInvoiceAcceptances(supabase).catch(() => null) : Promise.resolve(null)
 
   // The mail tied to the shown bids and jobs (v2.7479) rides the fan-out and never throws.
-  const tiedMailP: Promise<TiedMailRead> = opts.mail ? readTiedMail(bidIds, jobIds) : Promise.resolve({ rows: [], contacts: [], error: null })
+  const tiedMailP: Promise<TiedMailRead> = opts.mail ? readTiedMail(bidIds, jobIds) : Promise.resolve({ rows: [], contacts: [], files: [], error: null })
 
   const [estReq, dispReq, entriesRes, changesRes, eventsRes, invoicesRes, paymentsRes, notesRes, teamRes, customersRes, bidNotesRes, contactsRes, historyRes, tiedMail] = await Promise.all([
     readRequests('estimators', bidIds, jobIds, developmentId),
@@ -485,5 +509,6 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     tiedMail: tiedMail.rows,
     mailContacts: tiedMail.contacts,
     tiedMailError: tiedMail.error,
+    tiedMailFiles: tiedMail.files,
   }
 }

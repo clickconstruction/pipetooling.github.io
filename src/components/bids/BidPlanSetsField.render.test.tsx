@@ -113,6 +113,68 @@ describe('BidPlanSetsField', () => {
     await waitFor(() => expect(screen.getAllByTestId('bid-plan-set-row')).toHaveLength(2))
   })
 
+  it('a set kept from a mail wears From a mail, with the door back to the mail in its thread (punch list #368)', async () => {
+    state.rows = START_ROWS.map((r) => ({ ...r }))
+    const asked: string[][] = []
+    const mailIo = {
+      mailOfSets: async (ids: ReadonlyArray<string>) => {
+        asked.push([...ids])
+        return new Map([['r2', { messageId: 'm-add1', contactId: 'c-dana', contactKind: 'customer' }]])
+      },
+    }
+    renderWithProviders(<BidPlanSetsField bidId="b1" plansLink="https://drive.google.com/drive/folders/issued" onRobotSetChange={() => {}} pricedOnIo={fakePricedOnIo()} mailIo={mailIo} />)
+    await waitFor(() => expect(screen.getAllByTestId('bid-plan-set-row')).toHaveLength(2))
+    expect([...asked[0]!].sort()).toEqual(['r1', 'r2'])
+    const rows = screen.getAllByTestId('bid-plan-set-row')
+    const fromMail = rows.find((r) => r.textContent?.includes('Addendum 1'))!
+    const byHand = rows.find((r) => r.textContent?.includes('Issued set'))!
+    expect(fromMail.querySelector('[data-testid="bid-plan-set-from-mail"]')!.textContent).toBe('From a mail')
+    expect(fromMail.querySelector('[data-testid="bid-plan-set-mail-door"]')!.getAttribute('href')).toBe('/messages?thread=c-dana&at=m-add1')
+    expect(byHand.querySelector('[data-testid="bid-plan-set-from-mail"]')).toBeNull()
+    expect(byHand.querySelector('[data-testid="bid-plan-set-mail-door"]')).toBeNull()
+  })
+
+  it('+ From a mail on this bid lists the bid’s mail that carries a file, each with the press (punch list #368)', async () => {
+    state.rows = START_ROWS.map((r) => ({ ...r }))
+    const mailIo = {
+      mailOfSets: async () => new Map(),
+      mailsOf: vi.fn(async () => [{ id: 'm-add3', at: '2026-11-18T20:12:00.000Z', subject: 'Re: Addendum 3, fixture schedule', who: 'Dana Whitfield to the bids box', files: 1 }]),
+      filesOf: async () => [{ id: 'f1', name: 'fixtures.pdf', mime: 'application/pdf', size: 1000, copied: true, leftWhy: null, setId: null }],
+      setsOf: async () => [],
+      keep: async () => ({ set: { id: 's9', bid_id: 'b1', name: 'x', link: 'https://drive.google.com/drive/folders/x' }, folderUrl: 'https://drive.google.com/drive/folders/x', made: true, reused: false }),
+      saveAttachment: async () => ({ driveFileId: 'd', url: 'u', folderUrl: 'f' }),
+    }
+    renderWithProviders(<BidPlanSetsField bidId="b1" plansLink="https://drive.google.com/drive/folders/issued" onRobotSetChange={() => {}} pricedOnIo={fakePricedOnIo()} mailIo={mailIo} bidLabel="B482" />)
+    await waitFor(() => expect(screen.getAllByTestId('bid-plan-set-row')).toHaveLength(2))
+    fireEvent.click(screen.getByTestId('bid-plan-sets-from-mail'))
+    const mailRow = await screen.findByTestId('bid-plan-sets-mail')
+    expect(mailIo.mailsOf).toHaveBeenCalledWith('b1')
+    expect(mailRow.textContent).toContain('Re: Addendum 3, fixture schedule')
+    expect(mailRow.textContent).toContain('Dana Whitfield · Nov 18 · 1 file')
+    expect(await screen.findByRole('button', { name: 'Keep its files on the bid…' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('bid-plan-sets-mails')).toBeNull()
+  })
+
+  it('an empty list says nothing is waiting, and a read that fails names its reason', async () => {
+    state.rows = START_ROWS.map((r) => ({ ...r }))
+    let fail = true
+    const mailIo = {
+      mailOfSets: async () => new Map(),
+      mailsOf: async () => {
+        if (fail) throw { message: 'the signal was lost', code: '' }
+        return []
+      },
+    }
+    renderWithProviders(<BidPlanSetsField bidId="b1" plansLink="https://drive.google.com/drive/folders/issued" onRobotSetChange={() => {}} pricedOnIo={fakePricedOnIo()} mailIo={mailIo} />)
+    await waitFor(() => expect(screen.getAllByTestId('bid-plan-set-row')).toHaveLength(2))
+    fireEvent.click(screen.getByTestId('bid-plan-sets-from-mail'))
+    expect((await screen.findByRole('alert')).textContent).toContain('the signal was lost')
+    fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Read again' }))
+    await waitFor(() => expect(screen.getByTestId('bid-plan-sets-mails').textContent).toContain('Nothing waiting on this bid’s mail.'))
+  })
+
   it('priced on: with no pin the robot’s set wears the chip and the line says so; Priced on this set pins a row through the io and moves the chip', async () => {
     state.rows = START_ROWS.map((r) => ({ ...r }))
     const io = fakePricedOnIo()

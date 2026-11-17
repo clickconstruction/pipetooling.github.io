@@ -109,6 +109,22 @@ describe('useGcOnNoticeData · ZZ test jobs', () => {
     }
   })
 
+  it('a job a person took off the lien path leaves the run with its bills, and is back once it is put back (v2.7521)', async () => {
+    const jobsLedger = TABLES.jobs_ledger!
+    const answered = (answer: string | null) => jobsLedger.map((j) => ((j as { id: string }).id === 'A' ? { ...(j as object), lien_path_answer: answer } : j))
+    try {
+      TABLES.jobs_ledger = answered('off_path')
+      const off = await read(false)
+      expect(off.rows.map((r) => r.job_id)).toEqual(['Z'])
+      expect(Object.keys(off.workByJob)).toEqual(['Z'])
+      TABLES.jobs_ledger = answered(null)
+      const back = await read(false)
+      expect(back.rows.map((r) => r.job_id).sort()).toEqual(['A', 'Z'])
+    } finally {
+      TABLES.jobs_ledger = jobsLedger
+    }
+  })
+
   it('the run’s desk carries the pieces an approved notice already went out as, by its desk item (v2.5532)', async () => {
     TABLES.job_lien_desk_items = [{ id: 'dA', job_id: 'A', kind: 'notice_53_056', status: 'approved', months: ['2026-08'], fields: {}, created_at: '2026-10-01', voided_at: null }]
     TABLES.mail_pieces = [{ id: 'p1', kind: 'lien_notice_53_056', recipient: 'original_contractor', status: 'sent', source_ids: ['dA'] }]

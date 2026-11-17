@@ -2,7 +2,7 @@
 title: read the Board on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: board, lien desk, to do, bins, chips, hover, point at, card, address, customer, job name, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, row, dollars, notice sent, no notice needed, homestead question, print affidavits, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
+keywords: board, lien desk, to do, bins, off the lien path, not lienable, put it back, chips, hover, point at, card, address, customer, job name, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, row, dollars, notice sent, no notice needed, homestead question, print affidavits, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
 where: /lien-desk
 ---
 The Lien desk opens on its To do view. The Board sits across the top of that view. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
@@ -109,7 +109,7 @@ Each heading says how many papers the bin holds and what their jobs still owe. I
 
 Papers that share one act are one row. Twelve affidavits ready to file read as one row, *12 affidavits approved and ready to file*. Its press is {{button:blue|Print 10 for notarization ›}}. It opens the affidavits list at **Ready to file**. The button of the same name there prints the batch. Press **The 12 jobs** on the row to see each job, its notice and what it owes. Affidavits not yet sent for approval fold the same way, under {{button:blue|Send 3 for approval ›}}.
 
-A paper the office waits on sits in its **Awaiting Master approval** bin. The office cannot approve these papers. It can remind the leader. Press {{button:outline|Remind Malachi of 3 papers}} on that heading. When only a retainage notice waits, the press is on the **Other lien papers** heading. The desk asks first. Then the leader gets the message again, on the phone or by email. Anyone in the office can send it, whoever sent the paper. A notice is one message each. A retainage notice is one message too. The affidavits share one message. An approved notice the leader has yet to sign is in the same press. The notices to sign share one message too. On a day with nothing to approve, the press is on the Board, beside the line that counts them. Nothing on the papers changes. The desk then says how many papers the leader was reminded of. A reminder that did not go is named with its reason, so you can tell the leader another way. After a send the button says when, like *Reminded at 2:14 PM*.
+A paper the office waits on sits in its **Awaiting Master approval** bin. The office cannot approve these papers. It can remind the leader. Press {{button:outline|Remind Malachi of 3 papers}} on that heading. When only a retainage notice waits, the press is on the **Other lien papers** heading. The desk asks first. Then the leader gets the message again, on the phone or by email. A text with the link goes too, from the company number. Anyone in the office can send it, whoever sent the paper. A notice is one message each. A retainage notice is one message too. The affidavits share one message. An approved notice the leader has yet to sign is in the same press. The notices to sign share one message too. On a day with nothing to approve, the press is on the Board, beside the line that counts them. Nothing on the papers changes. The desk then says how many papers the leader was reminded of. A reminder that did not go is named with its reason, so you can tell the leader another way. The desk also says whether the text went. When no text went, it says why, like no mobile number on the leader's account. **Send texts** must be on for the text to go. Read [turn on texts from the company number](/help/turn-on-texts-from-the-company-number). After a send the button says when, like *Reminded at 2:14 PM*.
 
 The leader's own rows stay on top, under **Only you can sign** and **Only you can approve**. **Reminders** keep their own heading. A paper with no bin, like a retainage notice, sits under **Other lien papers**.
 
@@ -148,6 +148,16 @@ A mechanic's lien does not attach to public property. Some owners read as a city
 A property answered public leaves the bins. The property's jobs sit in their own bin under the affidavits, {{chip:gray|Public jobs · bond claim}}. Each row gives the job, its money, the GC and what already went out. {{chip:yellow|get the bond}} shows while nobody knows if there is a payment bond. The row also says whether the job is with the attorney. A job not billed yet cannot go on the attorney's list, and the row says so.
 
 **Put a job back on the lien path…** at the foot of the bin puts a property back. Say why, and its jobs return to the bins. [A public property](/help/file-a-lien-and-never-miss-its-deadlines#a-public-property) has the window's steps.
+
+## A job that is off the lien path
+
+Some money has no lien behind it. A trip charge to pick up a check is one case. The lien office can take that one job off the lien path, with a reason.
+
+Such a job leaves the bins. It sits in its own bin under the affidavits, {{chip:gray|Off the lien path}}. Each row gives the job, its money, the GC, who took it off and the day. The reason sits on its own line.
+
+{{button:outline|Put it back…}} on a row puts that job back. Say why, and the job returns to the bins with its papers.
+
+A lien affidavit that a fact holds has a quiet {{button:outline|Not lienable…}} under its row. [Take a job off the lien path](/help/take-a-job-off-the-lien-path) has the steps.
 
 ## The leader's Board
 

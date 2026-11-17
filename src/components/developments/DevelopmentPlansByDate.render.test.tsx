@@ -138,6 +138,8 @@ describe('DevelopmentPlansByDate', () => {
     fireEvent.click(screen.getByTestId('pbd-name-lane-pA'))
     expect(screen.getByTestId('pbd-card-title').textContent).toBe('ZZ Building A')
     expect(within(screen.getByTestId('pbd-card')).getByRole('button', { name: '+ New set' })).toBeTruthy()
+    // A History line is in the list once the press adds the log.
+    fireEvent.click(screen.getByRole('button', { name: 'Also show the 2 crew and History lines' }))
     fireEvent.click(screen.getByTestId('pbd-row-hist-h1'))
     expect(screen.getByTestId('pbd-card-title').textContent).toBe('Letter')
     expect(screen.getByTestId('pbd-card-words').textContent).toBe('Notice of delay sent to the GC.')
@@ -180,21 +182,38 @@ describe('DevelopmentPlansByDate', () => {
     expect(screen.getByTestId('pbd-card-kicker').textContent).toBe('the GC · dated May 8, 2026 · came May 12 · ZZ Building A builds from it')
   })
 
-  it('lists every mark as a dated line, oldest first, with the bid tinted and today last', () => {
+  it('lists the drawings and the bids, oldest first, with the bid tinted and today last, and adds the log on a press', () => {
     renderWithProviders(<DevelopmentPlansByDate model={buildPlansByDate(site())} phone={false} notes={['1 bid has no sent day, so it is not on the chart: B9050.']} print={print} />)
-    const rows = [...screen.getByTestId('pbd-list').children].map((r) => r.textContent)
-    expect(rows[0]).toBe('May 20, 2025ZZ Building AIssued set · the GC')
-    expect(rows[rows.length - 1]).toBe('Nov 16, 2026Today')
+    const rows = () => [...screen.getByTestId('pbd-list').children].map((r) => r.textContent)
+    expect(rows()[0]).toBe('May 20, 2025ZZ Building AIssued set · the GC')
+    expect(rows()[rows().length - 1]).toBe('Nov 16, 2026Today')
     expect(screen.getByTestId('pbd-row-bid-bid1').textContent).toBe('Jun 12, 2025BidsB9001 sent · priced from plans dated May 20, 2025')
     expect(screen.getByTestId('pbd-row-bid-bid1').style.background).toContain('--bid-mark-wash')
-    expect(screen.getByText(/Every dated line on the chart/).parentElement?.textContent).toContain('6 lines · oldest first')
+    // The drawings and the bids alone: the crew bar and the History line wait behind the press.
+    expect(screen.getByText('The drawings and the bids').parentElement?.textContent).toContain('4 lines · oldest first')
+    expect(screen.queryByTestId('pbd-row-hist-h1')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Also show the 2 crew and History lines' }))
+    expect(screen.getByText('Every dated line on the chart').parentElement?.textContent).toContain('6 lines · oldest first')
+    expect(screen.getByTestId('pbd-row-hist-h1')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show only the drawings and the bids' }))
+    expect(screen.queryByTestId('pbd-row-hist-h1')).toBeNull()
     expect(screen.getByTestId('pbd-note').textContent).toContain('1 bid has no sent day')
   })
 
-  it('opens a long list on its newest lines and shows the older ones on a press', () => {
+  it('lists everything on a site with no drawing or bid yet, with no press to narrow it', () => {
+    renderWithProviders(<DevelopmentPlansByDate model={buildPlansByDate(site({ sets: [], bids: [] }))} phone={false} print={print} />)
+    expect(screen.getByText('Every dated line on the chart')).toBeTruthy()
+    expect(screen.getByTestId('pbd-row-hist-h1')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Also show the/ })).toBeNull()
+  })
+
+  it('folds a long list on its newest lines, and only past sixty lines', () => {
     const history = Array.from({ length: 60 }, (_, i) => ({ id: `h${i}`, happenedAt: `2026-0${1 + (i % 9)}-${String(1 + (i % 27)).padStart(2, '0')}T12:00:00Z`, source: 'email' as const, body: `Line ${i}` }))
     const model = buildPlansByDate(site({ history }))
     renderWithProviders(<DevelopmentPlansByDate model={model} phone={false} print={print} />)
+    // The drawings and the bids are a short list: no fold.
+    expect(screen.queryByRole('button', { name: /older lines?$/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Also show the \d+ crew and History lines/ }))
     const older = model.rows.length - PLANS_BY_DATE_LIST_FOLD
     const press = screen.getByRole('button', { name: `Show the ${older} older lines` })
     // The press and the newest lines.

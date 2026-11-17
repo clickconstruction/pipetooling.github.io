@@ -21,8 +21,9 @@ export const wjCard: CSSProperties = { borderWidth: 1, borderStyle: 'solid', bor
 /** A card that asks to be read first: a run to finish, stickers still waiting for their boxes. */
 export const wjCardFirst: CSSProperties = { borderColor: WJ_BLUE, boxShadow: `inset 0 0 0 1px ${WJ_BLUE}` }
 export const wjAmberBox: CSSProperties = { borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
-export const WJ_CHIP_TONES: Record<'green' | 'blue' | 'gray', CSSProperties> = {
+export const WJ_CHIP_TONES: Record<'green' | 'amber' | 'blue' | 'gray', CSSProperties> = {
   green: { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' },
+  amber: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' },
   blue: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' },
   gray: { background: 'var(--bg-muted)', color: 'var(--text-700)' },
 }
