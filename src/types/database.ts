@@ -28482,6 +28482,7 @@ export type Database = {
       }
       message_attachments: {
         Row: {
+          bid_plan_set_id: string | null
           bucket_path: string | null
           created_at: string
           drive_file_id: string | null
@@ -28504,6 +28505,7 @@ export type Database = {
           url: string | null
         }
         Insert: {
+          bid_plan_set_id?: string | null
           bucket_path?: string | null
           created_at?: string
           drive_file_id?: string | null
@@ -28526,6 +28528,7 @@ export type Database = {
           url?: string | null
         }
         Update: {
+          bid_plan_set_id?: string | null
           bucket_path?: string | null
           created_at?: string
           drive_file_id?: string | null
@@ -28548,6 +28551,13 @@ export type Database = {
           url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "message_attachments_bid_plan_set_fk"
+            columns: ["bid_plan_set_id"]
+            isOneToOne: false
+            referencedRelation: "bid_plan_sets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "message_attachments_drive_link_id_fkey"
             columns: ["drive_link_id"]

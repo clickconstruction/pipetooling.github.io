@@ -9,3 +9,5 @@ It is kept per file because a mail with three files may have two kept, and a lat
 The constraint is added `NOT VALID` and validated in the next statement, so the wait on `message_attachments` is the catalog change's own and the check of the rows runs under the lighter lock. Every row is null on the day it lands. Idempotent. No table is created, so no fence is owed.
 
 **Apply order**: push right after the merge and before `bid-plan-set-files` is deployed, since the function writes the column. No client reads it until PR 2.
+
+**Pushed** 2026-11-16, right after #8440 merged, with `bid-plan-set-files` deployed after it and `dev-mcp` redeployed for its catalog. The generated types took the column in the types PR that followed.
