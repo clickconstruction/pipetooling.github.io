@@ -108,6 +108,8 @@ export const LIEN_MAILED_COPY_WORDS = {
   /** Under a row that is not printed yet. */
   printFirst: 'Print it first.',
   failed: 'The file could not be added. Nothing was saved.',
+  /** Beside the reason of a file that did not go up, where a second try can get past it (v2.7635). */
+  tryAgain: 'Try again',
   /** Beside a listed file (v2.7525): the press that takes it off this notice. */
   takeOff: 'Take off',
   /** The two answers to the ask. The first names the act. */

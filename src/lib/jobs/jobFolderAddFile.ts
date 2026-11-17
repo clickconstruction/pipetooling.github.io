@@ -47,9 +47,48 @@ export const ADD_FILE_WORDS = {
   notNow: 'Not now',
   adding: 'Adding…',
   failed: 'The file was not added.',
+  /** No answer came back at all (v2.7635): the file never reached the app. */
+  lost: 'The file did not reach the app. Check the signal, then try again.',
+  /** The press beside a failure a second try can get past. */
+  tryAgain: 'Try again',
   openInDrive: 'Open in Drive',
   another: 'Add another',
 } as const
+
+/**
+ * A file that did not go up, with whether sending the same file again can help (v2.7635). `retry` is the function's
+ * own answer when it gives one (`drive-link` says so since that version), true when no answer came back, and
+ * otherwise read from the status: a busy or broken server may take a second try, a refusal will not.
+ */
+export class AddFileFailure extends Error {
+  readonly retry: boolean
+  constructor(message: string, retry: boolean) {
+    super(message)
+    this.name = 'AddFileFailure'
+    this.retry = retry
+  }
+}
+
+/** What came back from the function, as the io read it: the body's fields, the status, or neither when nothing answered. */
+export type AddFileAnswer = { error?: unknown; retry?: unknown; status?: number | null }
+
+/**
+ * The failure for one answer, or for no answer (`null`). A bare `failed` is the function's old catch-all: it names
+ * nothing, so the screen says the file was not added and offers the second try.
+ */
+export function addFileFailureOf(answer: AddFileAnswer | null, fallback: string = ADD_FILE_WORDS.failed): AddFileFailure {
+  if (!answer) return new AddFileFailure(ADD_FILE_WORDS.lost, true)
+  const said = typeof answer.error === 'string' ? answer.error.trim() : ''
+  const status = typeof answer.status === 'number' ? answer.status : null
+  if (!said || said === 'failed') return new AddFileFailure(fallback, true)
+  if (typeof answer.retry === 'boolean') return new AddFileFailure(said, answer.retry)
+  return new AddFileFailure(said, status != null && (status === 408 || status === 429 || status >= 500))
+}
+
+/** Whether a thrown upload failure is one a second try can get past. Anything else is a refusal. */
+export function addFileCanRetry(e: unknown): boolean {
+  return e instanceof AddFileFailure && e.retry
+}
 
 /** The confirm press names the act and the folder: never OK. */
 /**
