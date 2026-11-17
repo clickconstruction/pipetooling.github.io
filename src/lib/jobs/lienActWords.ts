@@ -133,6 +133,8 @@ export function lienActFor(input: LienActInput): LienAct | null {
       return act('File the affidavit', 'The affidavit is approved and ready to file.')
     case 'record_service':
       return act('Serve the affidavit', 'The lien affidavit is on file. A copy goes to the owner and the GC within five days.')
+    case 'record_retainage':
+      return act('Record the retainage', 'The bills or the notes on the job say the GC holds retainage, and none is recorded. No retainage clock runs until it is.', { dated: false })
     case 'note_missed':
     case 'letter_two':
     case 'courtesy':

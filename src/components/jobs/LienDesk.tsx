@@ -183,6 +183,7 @@ import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidav
 import { LienAffidavitSheetFlags } from './LienAffidavitSheetFlags'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
 import { LienRetainageUnrecorded } from './LienRetainageUnrecorded'
+import { retainageUnrecordedWhy, type RetainageUnrecordedRow } from '../../lib/ar/retainageSuggested'
 import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
 import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
@@ -346,6 +347,9 @@ function jobNumberOf(j: LienDeskJob | undefined, jobId: string): string {
   if (!j) return jobId.slice(0, 8)
   return effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'
 }
+
+/** One empty list for every render with no such job, so the list's effect stays put. */
+const NO_RETAINAGE_UNRECORDED: ReadonlyArray<RetainageUnrecordedRow> = []
 
 function jobLabel(j: LienDeskJob | undefined, jobId: string): string {
   if (!j) return jobId.slice(0, 8)
@@ -694,6 +698,8 @@ export default function LienDesk({
   const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)
   // The address can name the retainage notice to open on (v2.7478), as it names an affidavit: `/lien-desk?tab=retainage&job=…`.
   const [retSelectedJobId, setRetSelectedJobId] = useState<string | null>(initialKind === 'retainage' ? (initialJobId ?? null) : null)
+  // The job a To do row opened *Looks held · not on the job* for: its row there is ringed.
+  const [retUnrecordedFocus, setRetUnrecordedFocus] = useState<string | null>(null)
   const [retFooterEl, setRetFooterEl] = useState<HTMLDivElement | null>(null)
   // Letter two (v2.3760): the sent footer's two doors — the GC's written okay, and the second letter.
   const [letterTwoMenu, setLetterTwoMenu] = useState(false)
@@ -926,6 +932,7 @@ export default function LienDesk({
       leaderName: (jobId) => leaderNameFor?.(data.jobsById[jobId]?.master_user_id ?? null)?.trim() || null,
       userName: (userId) => leaderNameFor?.(userId)?.trim() || null,
       mailNeedsYou: mailNeedsYouRows(data.filingsByJob, data.mailPiecesByFiling ?? {}, formatYmdMonthDay),
+      retainageUnrecorded: (data.retainageUnrecorded ?? []).map((r) => ({ jobId: r.jobId, title: r.name ? r.label + ' · ' + r.name : r.label, why: retainageUnrecordedWhy(r) })),
       // The months the live notices name, by job (punch list #353, part 2): a To draft row with a notice on record names the owed month beside them.
       noticeMonthsByJob: Object.fromEntries(Object.entries(data.filingsByJob).map(([jobId, fs]) => [jobId, lienNoticeNamedMonths(fs)])),
       // v2.6734 (punch list #150): a leader's own rows are the jobs he is master of; another master's read as the office's.
@@ -956,6 +963,7 @@ export default function LienDesk({
             notices: data.queue.entries,
             affidavits: data.affidavits.entries,
             retainage: data.retainage.entries,
+            retainageUnrecorded: data.retainageUnrecorded?.length ?? 0,
             jobNumber: (jobId) => jobNumberOf(data.jobsById[jobId], jobId),
             jobName: (jobId) => (data.jobsById[jobId]?.job_name ?? '').trim(),
             gcName: (gcId) => data.gcsById[gcId]?.name ?? '',
@@ -1384,6 +1392,12 @@ export default function LienDesk({
       setKind('retainage')
       setRetPile(null)
       setRetSelectedJobId(t.jobId)
+    } else if (t.open === 'retainage_unrecorded') {
+      // Retainage nobody recorded: the Retainage list whole, with nothing typed in the find box, at this job's row above the piles.
+      setKind('retainage')
+      setRetPile(null)
+      setFind('')
+      setRetUnrecordedFocus(t.jobId)
     } else {
       // The pile narrows the list to the row's state; the selection effect keeps this pick.
       doorPickedJobId.current = t.jobId
@@ -2352,7 +2366,7 @@ export default function LienDesk({
   const retVisibleAll = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key)))
   const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retVisibleAll.filter((e) => e.pile === p.key && (!finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [p.label]), findWords).ok)))
   const retSelected = retVisible.find((e) => e.jobId === retSelectedJobId) ?? (!oneColumn ? retVisible[0] : undefined) ?? null
-  const retCount = retEntries.filter((e) => e.pile !== 'sent').length
+  const retCount = retEntries.filter((e) => e.pile !== 'sent').length + (data?.retainageUnrecorded?.length ?? 0)
   const retReady = data?.retainage.counts.ready ?? 0
   /** What the run lists (v2.4568): ready and printed notices, and ready retainage. The buttons that open it count the same. */
   const runCount = (counts?.ready ?? 0) + (counts?.printed ?? 0) + retReady
@@ -3877,7 +3891,7 @@ export default function LienDesk({
   const retList = (
     <div ref={retHeads.listRef} onScroll={retHeads.onScroll} style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }} data-lien-retainage-list>
       {pileStrip(retPileChips)}
-      {finding || retPile ? null : <LienRetainageUnrecorded office={office} onOpenLienContract={(jobId) => onOpenEditJob(jobId, 'lien-contract')} onRecorded={onChanged} />}
+      {finding || retPile ? null : <LienRetainageUnrecorded rows={data?.retainageUnrecorded ?? NO_RETAINAGE_UNRECORDED} failure={data?.retainageUnrecordedFailure ?? null} office={office} focusJobId={retUnrecordedFocus} onOpenLienContract={(jobId) => onOpenEditJob(jobId, 'lien-contract')} onRecorded={onChanged} />}
       {retVisible.length === 0 ? (
         !loading && data != null && (finding || retPile) ? (
           <div data-lien-retainage-empty={finding ? 'find' : retPile ?? 'list'} style={{ fontSize: '0.8125rem' }}>
