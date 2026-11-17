@@ -4316,6 +4316,9 @@ export type Database = {
           robot_opt_out: boolean
           robot_requested_at: string | null
           robot_requested_by: string | null
+          schedule_end: string | null
+          schedule_open_ended: boolean
+          schedule_start: string | null
           selected_bid_version_id: string | null
           selected_labor_book_version_id: string | null
           selected_price_book_version_id: string | null
@@ -4424,6 +4427,9 @@ export type Database = {
           robot_opt_out?: boolean
           robot_requested_at?: string | null
           robot_requested_by?: string | null
+          schedule_end?: string | null
+          schedule_open_ended?: boolean
+          schedule_start?: string | null
           selected_bid_version_id?: string | null
           selected_labor_book_version_id?: string | null
           selected_price_book_version_id?: string | null
@@ -4532,6 +4538,9 @@ export type Database = {
           robot_opt_out?: boolean
           robot_requested_at?: string | null
           robot_requested_by?: string | null
+          schedule_end?: string | null
+          schedule_open_ended?: boolean
+          schedule_start?: string | null
           selected_bid_version_id?: string | null
           selected_labor_book_version_id?: string | null
           selected_price_book_version_id?: string | null
@@ -21563,6 +21572,7 @@ export type Database = {
           id: string
           job_id: string
           kind: string
+          mailed_copies: Json
           months: string[]
           offer_by: string | null
           offer_pct: number
@@ -21607,6 +21617,7 @@ export type Database = {
           id?: string
           job_id: string
           kind?: string
+          mailed_copies?: Json
           months?: string[]
           offer_by?: string | null
           offer_pct?: number
@@ -21651,6 +21662,7 @@ export type Database = {
           id?: string
           job_id?: string
           kind?: string
+          mailed_copies?: Json
           months?: string[]
           offer_by?: string | null
           offer_pct?: number
@@ -21762,6 +21774,10 @@ export type Database = {
       job_lien_filings: {
         Row: {
           amount: number
+          applied_by_name: string
+          applied_from: string | null
+          applied_from_label: string
+          applied_reason: string
           by_hand: boolean
           county: string
           created_at: string
@@ -21785,6 +21801,10 @@ export type Database = {
         }
         Insert: {
           amount: number
+          applied_by_name?: string
+          applied_from?: string | null
+          applied_from_label?: string
+          applied_reason?: string
           by_hand?: boolean
           county?: string
           created_at?: string
@@ -21808,6 +21828,10 @@ export type Database = {
         }
         Update: {
           amount?: number
+          applied_by_name?: string
+          applied_from?: string | null
+          applied_from_label?: string
+          applied_reason?: string
           by_hand?: boolean
           county?: string
           created_at?: string
@@ -21830,6 +21854,13 @@ export type Database = {
           voided_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "job_lien_filings_applied_from_fkey"
+            columns: ["applied_from"]
+            isOneToOne: false
+            referencedRelation: "job_lien_filings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "job_lien_filings_created_by_fkey"
             columns: ["created_by"]
@@ -23406,6 +23437,10 @@ export type Database = {
           lien_month_checked_by: string | null
           lien_month_checked_by_name: string
           lien_month_checked_month: string | null
+          lien_path_answer: string | null
+          lien_path_answered_at: string | null
+          lien_path_answered_by: string | null
+          lien_path_reason: string | null
           lien_payment_bond: string
           lien_retainage_held: number | null
           master_user_id: string
@@ -23489,6 +23524,10 @@ export type Database = {
           lien_month_checked_by?: string | null
           lien_month_checked_by_name?: string
           lien_month_checked_month?: string | null
+          lien_path_answer?: string | null
+          lien_path_answered_at?: string | null
+          lien_path_answered_by?: string | null
+          lien_path_reason?: string | null
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id: string
@@ -23572,6 +23611,10 @@ export type Database = {
           lien_month_checked_by?: string | null
           lien_month_checked_by_name?: string
           lien_month_checked_month?: string | null
+          lien_path_answer?: string | null
+          lien_path_answered_at?: string | null
+          lien_path_answered_by?: string | null
+          lien_path_reason?: string | null
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id?: string
@@ -23679,6 +23722,13 @@ export type Database = {
           {
             foreignKeyName: "jobs_ledger_lien_month_checked_by_fkey"
             columns: ["lien_month_checked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_lien_path_answered_by_fkey"
+            columns: ["lien_path_answered_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -29704,6 +29754,106 @@ export type Database = {
           },
         ]
       }
+      painted_map_link_visits: {
+        Row: {
+          device_id: string
+          device_words: string
+          first_accuracy_m: number | null
+          first_lat: number | null
+          first_lng: number | null
+          first_located_at: string | null
+          first_opened_at: string
+          id: string
+          ip: string
+          language: string
+          last_accuracy_m: number | null
+          last_lat: number | null
+          last_lng: number | null
+          last_located_at: string | null
+          last_opened_at: string
+          link_id: string
+          map_id: string
+          open_count: number
+          screen: string
+          time_zone: string
+          user_agent: string
+          user_id: string | null
+          visitor_name: string
+        }
+        Insert: {
+          device_id: string
+          device_words?: string
+          first_accuracy_m?: number | null
+          first_lat?: number | null
+          first_lng?: number | null
+          first_located_at?: string | null
+          first_opened_at?: string
+          id?: string
+          ip?: string
+          language?: string
+          last_accuracy_m?: number | null
+          last_lat?: number | null
+          last_lng?: number | null
+          last_located_at?: string | null
+          last_opened_at?: string
+          link_id: string
+          map_id: string
+          open_count?: number
+          screen?: string
+          time_zone?: string
+          user_agent?: string
+          user_id?: string | null
+          visitor_name: string
+        }
+        Update: {
+          device_id?: string
+          device_words?: string
+          first_accuracy_m?: number | null
+          first_lat?: number | null
+          first_lng?: number | null
+          first_located_at?: string | null
+          first_opened_at?: string
+          id?: string
+          ip?: string
+          language?: string
+          last_accuracy_m?: number | null
+          last_lat?: number | null
+          last_lng?: number | null
+          last_located_at?: string | null
+          last_opened_at?: string
+          link_id?: string
+          map_id?: string
+          open_count?: number
+          screen?: string
+          time_zone?: string
+          user_agent?: string
+          user_id?: string | null
+          visitor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "painted_map_link_visits_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "painted_map_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "painted_map_link_visits_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "painted_map_link_visits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       painted_map_links: {
         Row: {
           code_hash: string
@@ -32970,6 +33120,7 @@ export type Database = {
           owed: boolean
           part_id: string
           replaces_set_id: string | null
+          sheet_count: number | null
           source: string
           updated_at: string
         }
@@ -32996,6 +33147,7 @@ export type Database = {
           owed?: boolean
           part_id: string
           replaces_set_id?: string | null
+          sheet_count?: number | null
           source?: string
           updated_at?: string
         }
@@ -33022,6 +33174,7 @@ export type Database = {
           owed?: boolean
           part_id?: string
           replaces_set_id?: string | null
+          sheet_count?: number | null
           source?: string
           updated_at?: string
         }
@@ -36899,6 +37052,177 @@ export type Database = {
           },
         ]
       }
+      sub_paper_acks: {
+        Row: {
+          amount: number | null
+          created_at: string
+          id: string
+          kind: string
+          note: string | null
+          paper_id: string
+          revision: number
+          said_by_name: string | null
+          said_from: string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          kind: string
+          note?: string | null
+          paper_id: string
+          revision: number
+          said_by_name?: string | null
+          said_from?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          paper_id?: string
+          revision?: number
+          said_by_name?: string | null
+          said_from?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_paper_acks_paper_id_fkey"
+            columns: ["paper_id"]
+            isOneToOne: false
+            referencedRelation: "sub_papers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sub_paper_job_counters: {
+        Row: {
+          job_key: string
+          last_n: number
+        }
+        Insert: {
+          job_key: string
+          last_n?: number
+        }
+        Update: {
+          job_key?: string
+          last_n?: number
+        }
+        Relationships: []
+      }
+      sub_papers: {
+        Row: {
+          comes_to: number | null
+          fingerprint: string
+          id: string
+          issued_at: string
+          issued_by: string | null
+          issued_by_name: string | null
+          kind: string
+          labor_job_id: string | null
+          number: string
+          payment_id: string | null
+          period_from: string | null
+          period_to: string | null
+          person_id: string | null
+          replaced_by: string | null
+          revision: number
+          sending_id: string | null
+          snapshot: Json
+          still_open: number | null
+          void_reason: string | null
+          voided_at: string | null
+        }
+        Insert: {
+          comes_to?: number | null
+          fingerprint?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          issued_by_name?: string | null
+          kind: string
+          labor_job_id?: string | null
+          number?: string
+          payment_id?: string | null
+          period_from?: string | null
+          period_to?: string | null
+          person_id?: string | null
+          replaced_by?: string | null
+          revision?: number
+          sending_id?: string | null
+          snapshot: Json
+          still_open?: number | null
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Update: {
+          comes_to?: number | null
+          fingerprint?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          issued_by_name?: string | null
+          kind?: string
+          labor_job_id?: string | null
+          number?: string
+          payment_id?: string | null
+          period_from?: string | null
+          period_to?: string | null
+          person_id?: string | null
+          replaced_by?: string | null
+          revision?: number
+          sending_id?: string | null
+          snapshot?: Json
+          still_open?: number | null
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_papers_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_papers_labor_job_id_fkey"
+            columns: ["labor_job_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_papers_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_job_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_papers_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_papers_replaced_by_fkey"
+            columns: ["replaced_by"]
+            isOneToOne: false
+            referencedRelation: "sub_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_papers_sending_id_fkey"
+            columns: ["sending_id"]
+            isOneToOne: false
+            referencedRelation: "sub_payment_sendings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sub_payment_bank_matches: {
         Row: {
           matched_at: string
@@ -37535,6 +37859,7 @@ export type Database = {
       supply_house_invoices: {
         Row: {
           amount: number
+          amount_paid: number
           bill_attachment_id: string | null
           bill_read: Json | null
           created_at: string | null
@@ -37544,7 +37869,9 @@ export type Database = {
           id: string
           invoice_date: string
           invoice_number: string
+          is_interest: boolean
           is_paid: boolean
+          late_invoice_id: string | null
           link: string | null
           on_job_account: boolean
           paid_at: string | null
@@ -37555,6 +37882,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          amount_paid?: number
           bill_attachment_id?: string | null
           bill_read?: Json | null
           created_at?: string | null
@@ -37564,7 +37892,9 @@ export type Database = {
           id?: string
           invoice_date: string
           invoice_number: string
+          is_interest?: boolean
           is_paid?: boolean
+          late_invoice_id?: string | null
           link?: string | null
           on_job_account?: boolean
           paid_at?: string | null
@@ -37575,6 +37905,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_paid?: number
           bill_attachment_id?: string | null
           bill_read?: Json | null
           created_at?: string | null
@@ -37584,7 +37915,9 @@ export type Database = {
           id?: string
           invoice_date?: string
           invoice_number?: string
+          is_interest?: boolean
           is_paid?: boolean
+          late_invoice_id?: string | null
           link?: string | null
           on_job_account?: boolean
           paid_at?: string | null
@@ -37604,6 +37937,13 @@ export type Database = {
           {
             foreignKeyName: "supply_house_invoices_credits_invoice_id_fkey"
             columns: ["credits_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_invoices_late_invoice_id_fkey"
+            columns: ["late_invoice_id"]
             isOneToOne: false
             referencedRelation: "supply_house_invoices"
             referencedColumns: ["id"]
@@ -37681,6 +38021,244 @@ export type Database = {
           },
           {
             foreignKeyName: "supply_house_job_accounts_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_house_payment_events: {
+        Row: {
+          actor_name: string | null
+          actor_user_id: string | null
+          amount: number | null
+          created_at: string
+          from_invoice_id: string | null
+          from_invoice_number: string | null
+          id: string
+          kind: string
+          note: string | null
+          payment_id: string
+          reason: string | null
+          supply_house_id: string
+          to_invoice_id: string | null
+          to_invoice_number: string | null
+          undoes_event_id: string | null
+          undone_by_event_id: string | null
+        }
+        Insert: {
+          actor_name?: string | null
+          actor_user_id?: string | null
+          amount?: number | null
+          created_at?: string
+          from_invoice_id?: string | null
+          from_invoice_number?: string | null
+          id?: string
+          kind: string
+          note?: string | null
+          payment_id: string
+          reason?: string | null
+          supply_house_id: string
+          to_invoice_id?: string | null
+          to_invoice_number?: string | null
+          undoes_event_id?: string | null
+          undone_by_event_id?: string | null
+        }
+        Update: {
+          actor_name?: string | null
+          actor_user_id?: string | null
+          amount?: number | null
+          created_at?: string
+          from_invoice_id?: string | null
+          from_invoice_number?: string | null
+          id?: string
+          kind?: string
+          note?: string | null
+          payment_id?: string
+          reason?: string | null
+          supply_house_id?: string
+          to_invoice_id?: string | null
+          to_invoice_number?: string | null
+          undoes_event_id?: string | null
+          undone_by_event_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_payment_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payment_events_from_invoice_id_fkey"
+            columns: ["from_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payment_events_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payment_events_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payment_events_to_invoice_id_fkey"
+            columns: ["to_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payment_events_undoes_event_id_fkey"
+            columns: ["undoes_event_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_payment_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payment_events_undone_by_event_id_fkey"
+            columns: ["undone_by_event_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_payment_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_house_payment_lines: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          payment_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          payment_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          payment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_payment_lines_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payment_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payment_lines_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_house_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          id: string
+          memo: string | null
+          method: string | null
+          method_ref: string | null
+          paid_on: string
+          receipt_link: string | null
+          removed_at: string | null
+          removed_by: string | null
+          removed_by_name: string | null
+          removed_reason: string | null
+          source: string
+          supply_house_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          memo?: string | null
+          method?: string | null
+          method_ref?: string | null
+          paid_on: string
+          receipt_link?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_by_name?: string | null
+          removed_reason?: string | null
+          source?: string
+          supply_house_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          memo?: string | null
+          method?: string | null
+          method_ref?: string | null
+          paid_on?: string
+          receipt_link?: string | null
+          removed_at?: string | null
+          removed_by?: string | null
+          removed_by_name?: string | null
+          removed_reason?: string | null
+          source?: string
+          supply_house_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payments_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_payments_supply_house_id_fkey"
             columns: ["supply_house_id"]
             isOneToOne: false
             referencedRelation: "supply_houses"
@@ -40708,6 +41286,7 @@ export type Database = {
           charge_standing: string | null
           counttooling_user_id: string | null
           created_at: string | null
+          dashboard_view: string | null
           dispatch_mode_enabled: boolean | null
           email: string | null
           estimator_prospects_access: boolean
@@ -40751,6 +41330,7 @@ export type Database = {
           charge_standing?: string | null
           counttooling_user_id?: string | null
           created_at?: string | null
+          dashboard_view?: string | null
           dispatch_mode_enabled?: boolean | null
           email?: string | null
           estimator_prospects_access?: boolean
@@ -40794,6 +41374,7 @@ export type Database = {
           charge_standing?: string | null
           counttooling_user_id?: string | null
           created_at?: string | null
+          dashboard_view?: string | null
           dispatch_mode_enabled?: boolean | null
           email?: string | null
           estimator_prospects_access?: boolean
@@ -44259,6 +44840,7 @@ export type Database = {
         }
         Returns: string
       }
+      gc_difficulty_can_rate: { Args: never; Returns: boolean }
       gc_difficulty_open_asks: {
         Args: never
         Returns: {
@@ -47525,6 +48107,27 @@ export type Database = {
         }
         Returns: Json
       }
+      mint_sub_paper: {
+        Args: {
+          p_comes_to?: number
+          p_fingerprint: string
+          p_kind: string
+          p_labor_job_id?: string
+          p_payment_id?: string
+          p_period_from?: string
+          p_period_to?: string
+          p_person_id: string
+          p_sending_id?: string
+          p_snapshot: Json
+          p_still_open?: number
+        }
+        Returns: {
+          id: string
+          number: string
+          reused: boolean
+          revision: number
+        }[]
+      }
       mint_sub_portal_link: {
         Args: { p_person_id: string; p_rotate?: boolean }
         Returns: Json
@@ -47554,6 +48157,18 @@ export type Database = {
       }
       move_labor_job_payment: {
         Args: { p_payment_id: string; p_reason?: string; p_to_job_id: string }
+        Returns: string
+      }
+      move_supply_house_payment: {
+        Args: {
+          p_amount: number
+          p_from_invoice_id: string
+          p_note?: string
+          p_payment_id: string
+          p_reason?: string
+          p_to_invoice_id: string
+          p_undoes_event_id?: string
+        }
         Returns: string
       }
       my_away_note: { Args: never; Returns: Json }
@@ -47721,6 +48336,7 @@ export type Database = {
         Args: { p_development_id: string }
         Returns: boolean
       }
+      painted_map_stands: { Args: { p_map_id: string }; Returns: boolean }
       partner_job_cost_buckets: { Args: { p_job_id: string }; Returns: Json }
       partner_job_costing_payload: {
         Args: { p_job_id: string; p_partnership_id: string }
@@ -48235,6 +48851,22 @@ export type Database = {
         }
         Returns: Json
       }
+      record_supply_house_payment: {
+        Args: {
+          p_amount: number
+          p_from_account?: Json
+          p_interest?: Json
+          p_keep_on_account?: boolean
+          p_lines?: Json
+          p_memo?: string
+          p_method?: string
+          p_method_ref?: string
+          p_paid_on: string
+          p_receipt_link?: string
+          p_supply_house_id: string
+        }
+        Returns: Json
+      }
       refresh_jobs_ledger_last_work_date: {
         Args: { p_job_id: string }
         Returns: undefined
@@ -48252,6 +48884,10 @@ export type Database = {
         Returns: string
       }
       remove_quick_reply: { Args: { p_id: string }; Returns: undefined }
+      remove_supply_house_payment: {
+        Args: { p_payment_id: string; p_reason?: string }
+        Returns: string
+      }
       reopen_ar_return_case: {
         Args: { p_mercury_transaction_id: string }
         Returns: Json
@@ -48508,6 +49144,10 @@ export type Database = {
           error_message: string
           restored_count: number
         }[]
+      }
+      restore_supply_house_payment: {
+        Args: { p_payment_id: string }
+        Returns: string
       }
       return_collect_payment_to_dispatch: {
         Args: { p_job_id: string; p_note: string }
@@ -48938,6 +49578,10 @@ export type Database = {
         Args: { p_customer_id: string; p_slug: string }
         Returns: Json
       }
+      set_dashboard_view: {
+        Args: { p_user_id: string; p_view: string }
+        Returns: Json
+      }
       set_default_job: {
         Args: { p_contact_id: string; p_job_id: string; p_job_kind: string }
         Returns: undefined
@@ -48971,6 +49615,15 @@ export type Database = {
           p_why: string
         }
         Returns: string
+      }
+      set_job_lien_path_answer: {
+        Args: {
+          p_answer: string
+          p_attorney_list?: boolean
+          p_job_id: string
+          p_reason?: string
+        }
+        Returns: Json
       }
       set_job_partner_majority: {
         Args: { p_auto_pct?: number; p_job_id: string; p_person_id?: string }
@@ -49356,6 +50009,10 @@ export type Database = {
         Args: { p_month: string; p_subject: string }
         Returns: number
       }
+      supply_house_invoice_sync_paid: {
+        Args: { p_invoice_id: string }
+        Returns: undefined
+      }
       supply_paper_accept: {
         Args: { p_note?: string; p_paper_id: string }
         Returns: undefined
@@ -49494,6 +50151,10 @@ export type Database = {
       typed_hours_rule_applies: {
         Args: { p_subject: string }
         Returns: boolean
+      }
+      undo_supply_house_payment_move: {
+        Args: { p_event_id: string }
+        Returns: string
       }
       unhighlight: { Args: { p_highlight_id: string }; Returns: undefined }
       unmark_notice: { Args: { p_contact_id: string }; Returns: undefined }
@@ -49699,6 +50360,10 @@ export type Database = {
       void_pay_report: {
         Args: { p_reason: string; p_stub: string }
         Returns: Json
+      }
+      void_sub_paper: {
+        Args: { p_paper_id: string; p_reason: string }
+        Returns: undefined
       }
       walk_cleanup: { Args: never; Returns: Json }
       walk_contact_record: {

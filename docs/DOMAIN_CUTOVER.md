@@ -5,7 +5,7 @@ file: DOMAIN_CUTOVER.md
 type: Runbook
 purpose: The exact steps to make clicktooling.com this app's main URL, with pipetooling.com kept forever as a path-preserving redirect so no link in the wild breaks
 audience: Owner + AI agents
-last_updated: 2026-08-31
+last_updated: 2026-11-16
 key_sections:
   - name: "Decision & prep already done"
   - name: "Prerequisites (before cutover day)"
@@ -161,5 +161,5 @@ Prep merged in v2.2440 — all zero-behavior-change:
   protocol contact field sent to push services, never user-visible; sweep
   whenever those functions are next touched.
 - `@twins.pipetooling.local` fleet emails — internal identifiers, not URLs.
-- `my.clickplumbing.com` — the customer-facing short domain (rule target changes only); since v2.6678 its Worker also answers `/e/<code>`, the estimate text's link, with a 301 to `clicktooling.com/e/<code>`, and since v2.6768 `/pay/<bill id or code>`, the bill text's link, with a 301 to `clicktooling.com/pay/…` (`scripts/cloudflare/portal-link-shell.worker.js`). The apex `clickplumbing.com` is GitHub Pages behind DNS-only records, not proxied, so no redirect rule can live there.
+- `my.clickplumbing.com` — the customer-facing short domain (rule target changes only); since v2.6678 its Worker also answers `/e/<code>`, the estimate text's link, with a 301 to `clicktooling.com/e/<code>`, and since v2.6768 `/pay/<bill id or code>`, the bill text's link, with a 301 to `clicktooling.com/pay/…`, and since v2.7286 `/r/<code>`, the receipt text's link, with a 301 to `clicktooling.com/r/<code>` lower-cased (`scripts/cloudflare/portal-link-shell.worker.js`). The apex `clickplumbing.com` is GitHub Pages behind DNS-only records, not proxied, so no redirect rule can live there.
 - Supabase project URLs (`yewfzhbofbbyvkvtaatw.supabase.co`) — endpoints don't move.

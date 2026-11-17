@@ -65,7 +65,7 @@ Owners, controllers and master techs see **Team labor** as the first line of the
 
 The **Costs** tab shows **Subs on this job** under the cost block. It lists each person the job's sub sheets are owed to. Each person's line shows their sheets and what is still open. A green check says the lines add up.
 
-A teammate with a sheet of their own is listed too, with a {{chip:purple|Team · sub labor}} chip. **Open the sheet ›** opens that sheet on Jobs → Subs → Pay. A name opens that person's row on People → Subs. An amber line warns when two sheets of the job carry the same line and amount.
+A teammate with a sheet of their own is listed too, with a {{chip:purple|Team · sub labor}} chip. **Open the sheet ›** opens that sheet on Jobs → Subs → Pay. **What we owe ‹name› ›** opens that person's row on People → Subs. An amber line warns when two sheets of the job carry the same line and amount.
 
 Devs, master techs, assistants and controllers see the block. A job with no sub sheets shows nothing here.
 

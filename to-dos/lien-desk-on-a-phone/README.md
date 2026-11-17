@@ -162,7 +162,7 @@ Every PR was walked on the dev server against live data at 320, 390 and 430 wide
 |---|---|---|---|
 | 0 | v2.7196 | On main | The first view scrolls as one page. The rows were out of reach; they are in reach. No grey band. |
 | 1 | v2.7200 | On main | One header row with More. The header is 114 px on To do and By date (was 181) and 173 px on Notices and Affidavits (was 235 and 207). |
-| 2 | v2.7217 | On main | The lien month is one line, its five cards a sheet; the step rails are one folded row. The first row of work is 408 px down (was 1,526 px and unreachable). |
+| 2 | v2.7217 | On main until v2.7332, when the Board took the month line's and the rails' place: its four tiles show and the bins stand behind **Show the bins · N** | The lien month is one line, its five cards a sheet; the step rails are one folded row. The first row of work is 408 px down (was 1,526 px and unreachable). |
 | 3 | v2.7222 | On main | Rows grouped by the day they are due, with the money. A row is 112 px (was about 225) and says what its job owes. |
 | 4 | v2.7234 | On main | A tap on a row opens the job as its own screen: when the paper is due, the four steps, doors to the paper, the Lien window and the job, and the row's press pinned at the foot. The phone's Back closes it. |
 | 5 | v2.7236 | On main | The Notices list pins one pile title in place of five (room for rows 209 → 308 px; at 320 wide, none → 89). No row of tabs slides sideways. The find box is 44 px with 16 px words. |

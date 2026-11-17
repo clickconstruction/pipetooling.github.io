@@ -6,7 +6,8 @@
  * `affidavits`, `retainage` or `timeline`; To do is the default and never written.
  * `&job=<id>` is the notice the Notices list opens on, `&pile=<pile>` the pile it is narrowed to, and a
  * link that names a job or a pile with no tab lands on Notices, as the old door did. `&records=<job id>`
- * (or `records=1`) opens Records for an owner over the desk, a door the page consumes once.
+ * (or `records=1`) opens Records for an owner over the desk, a door the page consumes once. `&scans=1`
+ * opens Add the stamped scans the same way (punch list #366).
  *
  * The links in the wild keep working: `/jobs?tab=stages&liendesk=1` with `&kind=`, `&liendeskJob=` and
  * `&liendeskPile=` (the Dashboard's cards, the forecast, the guides, the Materials lines, bookmarks)
@@ -52,6 +53,10 @@ export type LienDeskAddress = {
   records: { jobId: string | null } | null
   /** The run, opened over the desk (v2.7328): `&run=<item id>` from the sheet's code, `&mail=1` landing on that notice's Mailed box; a door the page consumes once. */
   run: { itemId: string; mail: boolean } | null
+  /** The property card, opened over the desk (v2.7488): `&property=<property record id>`, every job at that property; a door the page consumes once. */
+  property: string | null
+  /** Add the stamped scans, opened over the desk (punch list #366): `&scans=1`, the door from a job's Record filing; a door the page consumes once. */
+  scans: boolean
 }
 
 /** The view an address word names, or null for a word the desk does not know. */
@@ -69,7 +74,7 @@ function pileFromWord(word: string | null | undefined): LienDeskPile | null {
 }
 
 /** The address of a view, a notice and a pile: `/lien-desk?tab=notices&job=…&pile=…`; the default view is never written. */
-export function lienDeskHref(parts: { kind?: LienDeskKind | null; job?: string | null; pile?: LienDeskPile | null; records?: { jobId: string | null } | null; run?: { itemId: string; mail: boolean } | null } = {}): string {
+export function lienDeskHref(parts: { kind?: LienDeskKind | null; job?: string | null; pile?: LienDeskPile | null; records?: { jobId: string | null } | null; run?: { itemId: string; mail: boolean } | null; property?: string | null; scans?: boolean } = {}): string {
   const q = new URLSearchParams()
   if (parts.kind && parts.kind !== LIEN_DESK_DEFAULT_KIND) q.set('tab', WORD_BY_KIND[parts.kind])
   if (parts.job) q.set('job', parts.job)
@@ -79,6 +84,8 @@ export function lienDeskHref(parts: { kind?: LienDeskKind | null; job?: string |
     q.set('run', parts.run.itemId)
     if (parts.run.mail) q.set('mail', '1')
   }
+  if (parts.property) q.set('property', parts.property)
+  if (parts.scans) q.set('scans', '1')
   const s = q.toString()
   return s ? `${LIEN_DESK_PATH}?${s}` : LIEN_DESK_PATH
 }
@@ -98,6 +105,8 @@ export function lienDeskFromSearch(search: URLSearchParams): LienDeskAddress {
     pile,
     records: records == null || records === '' ? null : { jobId: records === '1' || records === 'true' ? null : records },
     run: run ? { itemId: run, mail: mail === '1' || mail === 'true' } : null,
+    property: (search.get('property') ?? '').trim() || null,
+    scans: search.get('scans') === '1' || search.get('scans') === 'true',
   }
 }
 

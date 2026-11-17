@@ -82,6 +82,32 @@ describe('buildJobAccountsView', () => {
     expect(view.holdingJobs).toBe(2)
   })
 
+  it('counts a bill paid in part for what is left on it, and its paid part as paid (v2.7450 amount_paid)', () => {
+    const view = buildJobAccountsView(
+      [job({ id: 'a', revenue: 1000, payments_made: 1000 })],
+      [invoice({ id: 'i1', amount: 800, amount_paid: 300, due_date: '2026-08-15' }), invoice({ id: 'i2', amount: 90, amount_paid: 40 }), invoice({ id: 'c1', amount: -50, amount_paid: -20 })],
+      [alloc('i1', 'a', 50), alloc('c1', 'a', 100)],
+      HOUSES,
+      [],
+      TODAY,
+    )
+    const row = view.rows.find((r) => r.jobId === 'a')!
+    // Half of the 500 left, not half of the 800 billed. Half of the 300 paid reads as paid.
+    expect(row.suppliersOwed).toBeCloseTo(250)
+    expect(row.owedBuckets.past1_30).toBeCloseTo(250)
+    expect(row.suppliersPaid).toBeCloseTo(150)
+    // A credit memo a payment has used in part has only the rest of it open.
+    expect(row.suppliersCredits).toBeCloseTo(-30)
+    // A bill on no job counts for what is left on it too.
+    expect(view.unallocatedTotal).toBeCloseTo(50)
+  })
+
+  it('does not count interest as a bill missing its job (v2.7467)', () => {
+    const view = buildJobAccountsView([job({ id: 'a' })], [invoice({ id: 'i1', amount: 18.6, is_interest: true }), invoice({ id: 'i2', amount: 40 })], [], HOUSES, [], TODAY)
+    expect(view.unallocatedTotal).toBeCloseTo(40)
+    expect(view.unallocatedCount).toBe(1)
+  })
+
   it('caps held at what the customer actually paid', () => {
     const view = buildJobAccountsView(
       [job({ id: 'a', revenue: 1000, payments_made: 100 })],

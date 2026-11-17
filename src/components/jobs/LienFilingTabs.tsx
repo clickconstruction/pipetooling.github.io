@@ -9,6 +9,10 @@ import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type Li
 import { FilingSheetNote } from './FilingSheetNote'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
 import LienRecordSheet from './LienRecordSheet'
+import { LienFiledScanPress } from './LienFiledScanPress'
+import { LIEN_CLERK_SCAN_NOTE } from '../../lib/jobs/lienScanFile'
+import { LIEN_SCANS_DOOR_FROM_FILING } from '../../lib/jobs/lienScanBatch'
+import { lienDeskHref } from '../../lib/lien/lienDeskRoute'
 import { recordSheetField, recordSheetLabel } from './lienRecordSheetStyles'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
@@ -20,6 +24,8 @@ import {
 } from '../../lib/jobs/lienProperty'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
+import { lienWindowPrintNote } from '../../lib/jobs/lienWindowPrintNote'
+import type { LienTimelineNoticeState } from '../../lib/jobs/lienTimeline'
 import { LIEN_HELP_STYLES, lienHelpCoverSheetHtml, lienHelpGuideCopyHtml, lienHelpNoticeMailBy, lienHelpNoticeSheetHtml, lienHelpPaperFromFields, lienHelpPrintHtml, type LienHelpNotice } from '../../lib/jobs/lienHelpSheet'
 import { LIEN_HELP_SHEET_BOX, LIEN_NOTICE_RECORD_BOX, useLienHelpSheetChoice, useLienNoticeRecordChoice } from './lienHelpSheetChoice'
 import { lienNoticeRecord } from '../../lib/jobs/lienNoticeRecord'
@@ -39,6 +45,7 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { EMPTY_SERVICE_COPY, LIEN_CLERK_PAGE_NOTE, LIEN_SERVICE_PROOF_WORDS, heldServiceWords, serviceCopyDraft, serviceProofLines, serviceSavedWords, serviceSends, type ServiceCopyDraft } from '../../lib/jobs/lienServiceProof'
 import { LienReceiptPhotoPress } from './LienReceiptPhotoPress'
+import { LienServeCopiesPress } from './LienServeCopiesPress'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -115,6 +122,8 @@ export default function LienFilingTabs({
   monthsByHand = null,
   affidavitForm = 'short',
   affidavitFormUnread = false,
+  deskNoticeState = '',
+  onOpenDeskNotice,
   onClose,
 }: {
   job: JobWithDetails
@@ -155,6 +164,10 @@ export default function LienFilingTabs({
   affidavitForm?: LienAffidavitForm
   /** That read failed: the tab draws the earlier form and says to check the desk first. */
   affidavitFormUnread?: boolean
+  /** Where this job's notice stands on the Lien desk, when the opener holds the desk's queue (v2.7516): an approved or printed one draws a note over the tab's presses. */
+  deskNoticeState?: LienTimelineNoticeState
+  /** Opens the desk on this job's notice; absent, the note has no press. */
+  onOpenDeskNotice?: () => void
   /** Closes the Lien window: the × on a phone's record sheet (v2.4422). */
   onClose?: () => void
 }) {
@@ -208,12 +221,17 @@ export default function LienFilingTabs({
     </span>
   ))
   const ownerName = lienPropertyOwnerDisplayName(property.owner)
+  // Where a filed affidavit's copies go today (punch list #366): the property record's owner and the GC's own address, not the ones typed on the paper weeks ago.
+  const serveTo = { owner: { name: ownerName, address: (property.owner.mailingAddress ?? '').trim() }, contractor: { name: originalContractorName, address: originalContractorAddress } }
 
   useEffect(() => {
     setRecordStep(null)
     setVoidPendingId(null)
     setFilingCounty(property.county)
   }, [activeTab, job.id, property.county])
+
+  // The desk holds this job's approved notice (v2.7516): this tab's print is a new, unsigned copy, and the tab says which paper to print.
+  const deskPrintNote = useMemo(() => lienWindowPrintNote(deskNoticeState), [deskNoticeState])
 
   // ---------- documents ----------
 
@@ -342,6 +360,8 @@ export default function LienFilingTabs({
         contactPerson: noticeFields.contactPerson,
         phone: (issuer?.phone ?? '').trim(),
         extras: docExtras,
+        // This window prints no cover letter, so its pay page never names one (v2.7514).
+        coverLetter: false,
       }),
     [payRows, payAssets, originalContractorName, noticeFields.claimantName, noticeFields.contactPerson, issuer, docExtras],
   )
@@ -707,6 +727,20 @@ export default function LienFilingTabs({
       <input type="text" value={docNote} onChange={(e) => setDocNote(e.target.value)} placeholder="note (optional)" aria-label="Saved copy — note" style={{ width: '100%', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
     </div>
   )
+  /** A scan uploaded on a filing already recorded (punch list #366) is its saved copy at once: the file is in Drive, so the link is written with no second press. */
+  const saveFilingScan = async (f: JobLienFilingRow, url: string) => {
+    try {
+      await withSupabaseRetry(
+        () => supabase.from('job_lien_filings').update(filingDocumentPayload({ url, note: LIEN_CLERK_SCAN_NOTE }, { clear: true }) as never).eq('id', f.id),
+        'save lien filing scan',
+      )
+      showToast('Scan saved as the filing’s saved copy.', 'success')
+      setDocEditId(null)
+      onChanged()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The scan is in the job’s Drive folder, but its link was not saved on the filing.'), 'error')
+    }
+  }
   /** Add or change the saved copy on a recorded filing (v2.3763) — the run's link is often typed later, once the scan is in Drive. */
   const saveFilingDocument = async (f: JobLienFilingRow) => {
     if (busy) return
@@ -825,6 +859,12 @@ export default function LienFilingTabs({
                     <input type="text" value={docEdit.note} onChange={(e) => setDocEdit((d) => ({ ...d, note: e.target.value }))} placeholder="note" aria-label="Saved copy — note" style={{ padding: '0.25rem 0.4rem', fontSize: '0.72rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
                     <button type="button" onClick={() => void saveFilingDocument(f)} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>Save</button>
                     <button type="button" onClick={() => setDocEditId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>Cancel</button>
+                    {/* A filed affidavit's scan from this computer (punch list #366), in place of a link typed by hand. */}
+                    {f.kind === 'affidavit' && f.filed_at ? (
+                      <span style={{ gridColumn: '1 / -1' }}>
+                        <LienFiledScanPress jobId={job.id} jobNumber={jobNumber} day={f.filed_at} url="" compact onSaved={(url) => void saveFilingScan(f, url)} />
+                      </span>
+                    ) : null}
                   </span>
                 )
               }
@@ -925,18 +965,36 @@ export default function LienFilingTabs({
   )
   /** A photo of the clerk's stamped page fills the filing's saved copy (punch list #314): the link, and a note that says what it is. */
   const clerkPagePhoto = (compact: boolean) => (
-    <LienReceiptPhotoPress
-      jobId={job.id}
-      jobNumber={jobNumber}
-      of="clerk"
-      day={filingDate}
-      url={docNote.trim() === LIEN_CLERK_PAGE_NOTE ? docUrl : ''}
-      compact={compact}
-      onSaved={(url) => {
-        setDocUrl(url)
-        setDocNote(LIEN_CLERK_PAGE_NOTE)
-      }}
-    />
+    <span data-lien-clerk-copy style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.75rem', alignItems: 'center' }}>
+      <LienReceiptPhotoPress
+        jobId={job.id}
+        jobNumber={jobNumber}
+        of="clerk"
+        day={filingDate}
+        url={docNote.trim() === LIEN_CLERK_PAGE_NOTE ? docUrl : ''}
+        compact={compact}
+        onSaved={(url) => {
+          setDocUrl(url)
+          setDocNote(LIEN_CLERK_PAGE_NOTE)
+        }}
+      />
+      {/* The scanned PDF from this computer (punch list #366): the same saved copy, with a note that says it is the scan. */}
+      <LienFiledScanPress
+        jobId={job.id}
+        jobNumber={jobNumber}
+        day={filingDate}
+        url={docNote.trim() === LIEN_CLERK_SCAN_NOTE ? docUrl : ''}
+        compact={compact}
+        onSaved={(url) => {
+          setDocUrl(url)
+          setDocNote(LIEN_CLERK_SCAN_NOTE)
+        }}
+      />
+      {/* Several liens scanned at once go in on the Lien desk (punch list #366). A new tab, so this form keeps what is typed. */}
+      <a href={lienDeskHref({ scans: true })} target="_blank" rel="noreferrer" data-lien-scans-door style={{ flexBasis: '100%', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)' }}>
+        {LIEN_SCANS_DOOR_FROM_FILING}
+      </a>
+    </span>
   )
   const sheetSavedCopy = (
     <div data-testid="filing-saved-copy" style={{ display: 'grid', gap: '0.5rem' }}>
@@ -1057,6 +1115,19 @@ export default function LienFilingTabs({
                     <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>§ 53.056(a-3) lets the notice include an invoice or billing statement; it prints after the notice and rides the emailed PDF, stamped INVOICE.</span>
                   </span>
                 </label>
+              ) : null}
+              {deskPrintNote ? (
+                <div data-lien-window-desk-note={deskNoticeState} role="note" style={{ border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 8, padding: '0.5rem 0.7rem', fontSize: '0.8125rem', marginBottom: '0.6rem' }}>
+                  <b>{deskPrintNote.lead}</b> {deskPrintNote.words}
+                  {onOpenDeskNotice ? (
+                    <>
+                      {' '}
+                      <button type="button" onClick={onOpenDeskNotice} data-lien-window-desk-note-press style={{ font: 'inherit', fontWeight: 600, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        {deskPrintNote.press}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               ) : null}
               {recordStep === 'notice_sends' && !isMobile ? (
                 <div data-lien-record-box="notice_sends" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
@@ -1265,6 +1336,8 @@ export default function LienFilingTabs({
                       Record service…
                     </button>
                   ) : null}
+                  {/* What goes in the envelope (punch list #366): the copy § 53.055 asks for and its cover letter, printed and filed on the job. */}
+                  {filedAffidavit && !filedAffidavit.served_at ? <LienServeCopiesPress filing={filedAffidavit} jobId={job.id} jobNumber={jobNumber} isSub={isSub} issuer={issuer} to={serveTo} onChanged={onChanged} tall={isMobile} /> : null}
                   {sheetNote}
                   {/* The help sheet (punch list #314): on unless the office turns it off, and the choice is kept on this computer. */}
                   {affidavitFields.form === 'short' ? (
@@ -1302,6 +1375,9 @@ export default function LienFilingTabs({
                     Record service…
                   </button>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>{heldServiceWords(demandDate(filedAffidavit.serve_due ?? ''))}</div>
+                  <div style={{ marginTop: '0.6rem' }}>
+                    <LienServeCopiesPress filing={filedAffidavit} jobId={job.id} jobNumber={jobNumber} isSub={isSub} issuer={issuer} to={serveTo} onChanged={onChanged} tall={isMobile} />
+                  </div>
                 </div>
               ) : null}
               {!anyAffidavit ? (

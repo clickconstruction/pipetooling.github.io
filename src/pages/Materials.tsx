@@ -87,12 +87,12 @@ export default function Materials() {
   const [scanLabelOpen, setScanLabelOpen] = useState(false)
   /** The labels window: null closed, else the job it opens on (null = ask which job). */
   const [printLabels, setPrintLabels] = useState<{ jobId: string | null } | null>(null)
-  /** Print blank stickers (punch list #329, v2.7272): the strip's press asks which job, as Print labels does. */
+  /** Print future stickers (punch list #329, v2.7272): the strip's press asks which job, as Print labels does. */
   const [printStickers, setPrintStickers] = useState(false)
   /** Set when Held for suppliers sends the user to a specific house on the Supply Houses tab. */
   const [supplyHouseToAutoOpen, setSupplyHouseToAutoOpen] = useState<string | null>(null)
   /** The Needs You line's door (v2.5723): `?list=movable` opens the Supply houses tab's worked list — read once, then dropped from the URL. */
-  const [supplyHousesListToOpen, setSupplyHousesListToOpen] = useState<'movable' | null>(null)
+  const [supplyHousesListToOpen, setSupplyHousesListToOpen] = useState<'movable' | 'finish' | null>(null)
   /** The thread's *Record this bill* (punch list #179, v2.6095): `?house=<id>&bill=<attachment id>` opens the house and its Add invoice window on that file — read once, then dropped from the URL. */
   const [billToOpen, setBillToOpen] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -542,8 +542,10 @@ export default function Materials() {
   // The move window's worked list (v2.5723): the Needs You line on the Dashboard and Quickfill
   // lands on /materials?tab=supply-houses&list=movable; the tab opens the modal once its book is read.
   useEffect(() => {
-    if (searchParams.get('list') !== 'movable') return
-    setSupplyHousesListToOpen('movable')
+    // `list=finish` (v2.7469) is the other Needs You door: the payments that still need how they were paid.
+    const list = searchParams.get('list')
+    if (list !== 'movable' && list !== 'finish') return
+    setSupplyHousesListToOpen(list)
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
       next.delete('list')
@@ -1498,6 +1500,9 @@ export default function Materials() {
           jobId={printLabels.jobId}
           onAddFirst={() => { setPrintLabels(null); openTab('on-site') }}
           onClose={() => setPrintLabels(null)}
+          onStickers={stripPresses.includes('print-stickers') ? () => { setPrintLabels(null); setPrintStickers(true) } : undefined}
+          onScan={() => { setPrintLabels(null); setScanLabelOpen(true) }}
+          onReadAgain={onSiteDesk.readAgain}
         />
       ) : null}
       {printStickers ? (
@@ -1508,6 +1513,10 @@ export default function Materials() {
           failure={{ error: onSiteDesk.error, raw: onSiteDesk.raw, retry: onSiteDesk.retry }}
           onAddFirst={() => { setPrintStickers(false); openTab('on-site') }}
           onClose={() => setPrintStickers(false)}
+          onLabels={() => { setPrintStickers(false); setPrintLabels({ jobId: null }) }}
+          onScan={() => { setPrintStickers(false); setScanLabelOpen(true) }}
+          onOpenJob={(jobId) => { setPrintStickers(false); setActiveTab('on-site'); setSearchParams((p) => { const next = new URLSearchParams(p); next.set('tab', 'on-site'); next.set('job', jobId); next.delete('site'); return next }) }}
+          onReadAgain={onSiteDesk.readAgain}
         />
       ) : null}
 

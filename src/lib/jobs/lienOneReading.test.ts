@@ -56,10 +56,10 @@ describe('one job reads one way on the billed row, the AR chip and the Lien wind
     { state: 'needs_owner', action: 'find_owner', sub: 'Needs the owner of record', act: 'Find the owner' },
     { state: 'to_draft', action: 'draft', sub: 'Notice to draft', act: 'Draft the notice' },
     { state: 'awaiting', action: 'approve', sub: 'Waiting on your approval', act: 'Approve the notice' },
-    { state: 'ready', action: 'send', sub: 'Approved · ready to send', act: 'Send the notice' },
+    { state: 'ready', action: 'send', sub: 'Approved · to print', act: 'Print and mail the notice' },
     // v2.7077: a printed notice has its own step on the path, so the header no longer falls back to *Draft*.
-    // The chip keeps the state it always said of a paper that is out (*In the mail*); the row and the header name the act.
-    { state: 'printed', action: 'add_tracking', sub: 'In the mail · tracking owed', act: 'Record the mailing', chipSaysState: true },
+    // The chip keeps the state it always said of a paper that is out (*Approved · to mail*, the desk's name for it since v2.7522); the row and the header name the act.
+    { state: 'printed', action: 'add_tracking', sub: 'Approved · to mail', act: 'Enter mail numbers', chipSaysState: true },
   ]
   for (const step of NOTICE_STEPS) {
     it(`a notice at "${step.state}": ${step.act}`, () => {
@@ -162,6 +162,8 @@ describe('the phone row’s chip names an affidavit’s step as the billed row d
     { action: 'fix_property', state: 'needs_property', sub: 'Affidavit · the general contractor has no address on file', missing: ['contractor'], act: 'Add the GC’s address' },
     { action: 'fix_property', state: 'needs_property', sub: 'Affidavit · public property, no lien attaches. Ask the attorney about the bond', missing: ['public_owner'], act: 'Public property, no lien', dated: false },
     { action: 'review_hold', state: 'held', sub: 'Affidavit held', act: 'Review the hold', headerOpens: 'Held' },
+    // An approved paper a gate closed on (punch list #335): it sits in Held, and the row, the chip and the header all ask the gate's question. They read *File the affidavit*.
+    { action: 'fix_property', state: 'needs_property', sub: 'Affidavit approved, held · is this home the owner’s homestead', missing: ['homestead_answer'], act: 'Answer the homestead question' },
   ]
   for (const step of STEPS) {
     it(`an affidavit at "${step.sub}": ${step.act}`, () => {

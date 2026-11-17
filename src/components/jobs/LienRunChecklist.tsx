@@ -1,9 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { lienRunChecklistWords, lienRunTickDay, type LienRunRow } from '../../lib/jobs/lienRunChecklist'
+import { lienRunTickDay, type LienRunRow } from '../../lib/jobs/lienRunChecklist'
+import { LIEN_RUN_GROUPS, lienRunPartOf, type LienRunPartKey, type LienRunStep } from '../../lib/jobs/lienRunParts'
 import { trackingShape } from '../../lib/jobs/lienDeskRun'
 import { runClosePaidPress, runPaidFoldWords } from '../../lib/jobs/lienRunClosePaid'
 import { lienSignatureWhen } from '../../lib/jobs/lienNoticeSignature'
+import LienRunMailedCopies, { type LienRunMailedCopiesPress } from './LienRunMailedCopies'
 
 /**
  * The run as a checklist (v2.7328): one row per notice, three ticks across — Printed, Signed,
@@ -11,6 +13,13 @@ import { lienSignatureWhen } from '../../lib/jobs/lienNoticeSignature'
  * Printed marks a paper printed elsewhere, Signed opens the pen pane, Mailed is the tracking box
  * for each paper envelope the notice is in. A ticked one says who and when. On a phone the rows
  * stack and the ticks are a row of three presses a thumb tall (`.lienRunCheck*` in index.css).
+ *
+ * Since v2.7477 (punch list #362) the rows are drawn in groups by the part each notice is in
+ * (`lienRunParts`): what is stopped first, each group under a head with its count in notices and its
+ * dollars. A press on a head folds its rows. The ready rows start folded while the run stands on what
+ * stops a notice, and the stopped ones once it is on the mail numbers. The paid rows' fold sits at
+ * the foot of the Held group. The heading that counted ticks (*0 printed · 8 signed · 0 mailed of 15*)
+ * is gone: the window has one count.
  */
 export type LienRunChecklistProps = {
   rows: ReadonlyArray<LienRunRow>
@@ -33,6 +42,18 @@ export type LienRunChecklistProps = {
    * row it leaves. Absent = the paid rows fold, with no press.
    */
   paid?: { readyIds: ReadonlyArray<string>; heldWhy: ReadonlyMap<string, string>; onClose: (itemIds: string[]) => void }
+  /** The part each notice is in (`lienRunParts().partOf`). Absent, each row's own facts say. */
+  partOf?: ReadonlyMap<string, LienRunPartKey>
+  /** Who the waiting notices wait on, for that group's head. */
+  leaderName?: string | null
+  /** The step the run is on: it picks which groups start folded. */
+  step?: LienRunStep | null
+  /**
+   * What was mailed (the owner's ask of 2026-11-16): a printed row takes a scan or a photo of the papers in its
+   * envelope, and lists the ones it has with a way to open each. `addingItemId` is the row a file is going up for.
+   * Absent = the rows show the files they have and no press. Since v2.7525 `onRemove` takes one off (`LienRunMailedCopies.tsx`).
+   */
+  mailedCopies?: LienRunMailedCopiesPress
 }
 
 const tickBtn = (kind: 'open' | 'primary', dead: boolean) =>
@@ -52,7 +73,12 @@ const tickBtn = (kind: 'open' | 'primary', dead: boolean) =>
 
 const field = { font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', width: '100%', minWidth: 0 } as const
 
-export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, onOpenSign, onTracking, paneFor, besideBox, focusMailItemId, paid }: LienRunChecklistProps) {
+export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, onOpenSign, onTracking, paneFor, besideBox, focusMailItemId, paid, mailedCopies, partOf, leaderName, step = null }: LienRunChecklistProps) {
+  // A head pressed by hand: its group stays as the person left it, whatever step the run moves to.
+  const [folds, setFolds] = useState<Partial<Record<LienRunPartKey, boolean>>>({})
+  // While the cursor is in a number box the rows stay in the groups they were in: a row that moved to *Ready to record*
+  // on its first digit would take the box, and the cursor, with it. They regroup when the cursor leaves.
+  const [placed, setPlaced] = useState<ReadonlyMap<string, LienRunPartKey> | null>(null)
   useEffect(() => {
     if (!focusMailItemId) return
     const box = document.querySelector<HTMLInputElement>(`[data-run-mail-box="${focusMailItemId}"]`)
@@ -68,6 +94,16 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
   const foldOpen = paidOpen ?? live.length === 0
   const closeIds = paid ? paidRows.map((r) => r.itemId).filter((id) => paid.readyIds.includes(id)) : []
   const closePress = paid ? runClosePaidPress({ ready: closeIds.length, held: paidRows.length - closeIds.length }) : null
+  const partFor = (r: LienRunRow): LienRunPartKey => partOf?.get(r.itemId) ?? lienRunPartOf(r)
+  const leader = (leaderName ?? '').trim() || 'the leader'
+  // The row's own line, but for the two rows whose group says more than their ticks do: one that waits on the
+  // signature, and one held back by a job it is combined with.
+  const lineOf = (r: LienRunRow): string => {
+    const part = partFor(r)
+    if (part !== lienRunPartOf(r)) return 'prints on one form with a job that is not ready'
+    if (part === 'wait') return `not signed · ${r.leader?.name ? `${r.leader.name} signs from a phone, or here with Signed ▸` : 'the job names no leader to sign it'}`
+    return r.line
+  }
   const drawRow = (r: LienRunRow) => {
     const owner = r.recipients.find((x) => x.key === 'owner')
     const gc = r.recipients.find((x) => x.key === 'original_contractor')
@@ -75,7 +111,8 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
     const printedOk = r.printed != null || r.paperless
     // Nothing to claim (v2.7337): the job owes $0 now, so the row's own Signed and Mailed are closed with it.
     const closed = r.nothingToClaim
-    const canSign = !!viewer && !!r.leader?.name && printedOk && !closed
+    // A row that waits on the signature (v2.7477) offers Signed ▸ before it prints, as its envelope's card does: the packet will not print it unsigned.
+    const canSign = !!viewer && !!r.leader?.name && (printedOk || partFor(r) === 'wait') && !closed
     const boxes = r.recipients.filter((x) => x.needsNumber)
     return (
       <div key={r.itemId} className="lienRunCheckRow" data-testid={`run-check-${r.itemId}`} data-waits={r.waitsOn ?? 'none'} data-held={r.held ? 'yes' : 'no'}>
@@ -86,7 +123,7 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
           {r.held ? (
             <span className="lienRunCheckHeld" data-testid={`run-check-held-${r.itemId}`}>Held · {r.held}</span>
           ) : (
-            <span className="lienRunCheckLine" data-testid={`run-check-line-${r.itemId}`}>{r.line}</span>
+            <span className="lienRunCheckLine" data-testid={`run-check-line-${r.itemId}`}>{lineOf(r)}</span>
           )}
           {closed && paid ? (
             paid.readyIds.includes(r.itemId) ? (
@@ -98,6 +135,10 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
             ) : null
           ) : null}
         </div>
+        {/* What was mailed: the files the notice has, and on a printed paper row the press that adds one. A paid row and an emailed one have nothing in an envelope. */}
+        {!closed && !r.paperless && (r.mailedCopies.length > 0 || (mailedCopies && printedOk)) ? (
+          <LienRunMailedCopies row={r} canAdd={printedOk} busy={busy} press={mailedCopies} />
+        ) : null}
         <div className="lienRunCheckTicks" role="group" aria-label={`${r.label} — the three ticks`}>
           <div className="lienRunCheckTick" data-tick="printed" data-on={printedOk ? 'yes' : 'no'}>
             <span className="lienRunCheckTickName">Printed</span>
@@ -146,6 +187,8 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
                       <input
                         value={x.tracking}
                         onChange={(ev) => onTracking(r, x.key, ev.target.value)}
+                        onFocus={() => setPlaced(new Map(rows.map((row) => [row.itemId, partFor(row)])))}
+                        onBlur={() => setPlaced(null)}
                         disabled={!printedOk || closed}
                         placeholder={closed ? 'nothing to mail' : !printedOk ? 'print first' : x.method === 'hand' ? 'who signed for it' : x.method === 'traceable_courier' ? 'the courier’s number' : '9407 1118 …'}
                         aria-label={`${r.label} — ${short} tracking`}
@@ -174,14 +217,10 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
       </div>
     )
   }
-  return (
-    <div className="lienRunCheck" data-testid="run-check">
-      <h3>
-        The checklist <span>{lienRunChecklistWords(live)}</span>
-      </h3>
-      {live.map(drawRow)}
-      {paidRows.length > 0 ? (
-        <div data-testid="run-paid-fold" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', margin: '0.5rem 0 0.25rem', padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-page)', fontSize: '0.8125rem' }}>
+  const paidFold =
+    paidRows.length > 0 ? (
+      <>
+        <div data-testid="run-paid-fold" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', margin: '0.1rem 0', padding: '0.4rem 0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-page)', fontSize: '0.8125rem' }}>
           <button type="button" onClick={() => setPaidOpen(!foldOpen)} aria-expanded={foldOpen} data-testid="run-paid-fold-toggle" style={{ border: 0, background: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'var(--text-700)', cursor: 'pointer', textAlign: 'left' }}>
             {runPaidFoldWords(paidRows.length)} {foldOpen ? '▴' : '▾'}
           </button>
@@ -192,8 +231,33 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
             </button>
           ) : null}
         </div>
-      ) : null}
-      {foldOpen ? paidRows.map(drawRow) : null}
+        {foldOpen ? paidRows.map(drawRow) : null}
+      </>
+    ) : null
+  return (
+    <div className="lienRunCheck" data-testid="run-check">
+      {LIEN_RUN_GROUPS.map((g) => {
+        const inGroup = rows.filter((r) => (placed?.get(r.itemId) ?? partFor(r)) === g.key)
+        if (inGroup.length === 0) return null
+        const dollars = inGroup.reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
+        // A door landed on a row (a sheet's code): its group opens whatever the step says.
+        const landed = !!focusMailItemId && inGroup.some((r) => r.itemId === focusMailItemId)
+        const startsFolded = g.key === 'ready' ? step === 1 : g.key === 'held' || g.key === 'wait' ? step === 3 : false
+        const open = folds[g.key] ?? (landed || !startsFolded)
+        const liveInGroup = inGroup.filter((r) => !r.nothingToClaim)
+        return (
+          <section key={g.key} className="lienRunGroup" data-testid={`run-group-${g.key}`} data-open={open ? 'yes' : 'no'} aria-label={g.head(inGroup.length, leader)}>
+            <button type="button" className="lienRunGroupHead" data-tone={g.tone} aria-expanded={open} onClick={() => setFolds((f) => ({ ...f, [g.key]: !open }))} data-testid={`run-group-head-${g.key}`}>
+              <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+              <span>{g.head(inGroup.length, leader)}</span>
+              <span className="lienRunGroupTot">{formatUsdNoCents(dollars)}</span>
+            </button>
+            {open ? liveInGroup.map(drawRow) : null}
+            {/* The paid rows' line shows whether or not the head is folded: its Close N press is never two presses away. */}
+            {g.key === 'held' ? paidFold : null}
+          </section>
+        )
+      })}
     </div>
   )
 }

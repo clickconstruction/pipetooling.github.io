@@ -42,8 +42,9 @@ vi.mock('../../hooks/useAddressGeocodeCoords', () => ({ useAddressGeocodeCoords:
 // The site's boxes for the name rule (punch list #351): the test hands none, so the job's own boxes are the check.
 vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: [], siteId: null, loaded: true }) }))
 // The job's stickers (punch list #329, PR 3): none, until a test hands the marks beside a box's name (PR 9).
-const stuck = vi.hoisted(() => ({ marks: new Map<string, Array<{ number: number; boxName?: string | null }>>(), blank: 0 }))
-vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map([...stuck.marks].map(([id, list]) => [id, list.map((m) => m.number)])), marksByBox: stuck.marks, blank: stuck.blank, loaded: true, refresh: () => {} }) }))
+const NONE_RESERVED = vi.hoisted(() => ({ count: 0, runs: 0, span: '', names: [] as string[], anyNamed: false, printedByName: '', printedAt: '' }))
+const stuck = vi.hoisted(() => ({ marks: new Map<string, Array<{ number: number; boxName?: string | null }>>(), blank: 0, reserved: { count: 0, runs: 0, span: '', names: [] as string[], anyNamed: false, printedByName: '', printedAt: '' } }))
+vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map([...stuck.marks].map(([id, list]) => [id, list.map((m) => m.number)])), marksByBox: stuck.marks, blank: stuck.blank, reserved: stuck.reserved, toPrint: [], loaded: true, refresh: () => {} }) }))
 // These are on boxes (PR 10) reads the site's boxes and blank stickers when its sheet opens.
 vi.mock('../../lib/materials/stickerRunsIo', () => ({ fetchSiteStickerNames: vi.fn(async () => ({ boxes: [], blankNames: ['A3', 'A4'] })), fetchStickerRuns: vi.fn(async () => []) }))
 // Every job with a box (punch list #304): the tab asks for it only for Every job or an empty job.
@@ -74,6 +75,7 @@ beforeEach(() => {
   desk.asked = []
   stuck.marks = new Map()
   stuck.blank = 0
+  stuck.reserved = NONE_RESERVED
 })
 afterEach(() => cleanup())
 
@@ -401,6 +403,13 @@ describe('TallyOnSiteTab · These are on boxes (punch list #329, section 10, PR 
     fireEvent.change(screen.getByTestId('on-boxes-names'), { target: { value: 'a3-4' } })
     await waitFor(() => expect(screen.getByTestId('on-boxes-press').textContent).toBe('Put 2 stickers on their boxes'))
     expect(screen.getByTestId('on-boxes-goes-on').textContent).toContain('New boxes go on 972 · ZZ Test')
+  })
+
+  it('the line says the reserved stickers by name when one run holds them (v2.7487)', async () => {
+    stuck.blank = 2
+    stuck.reserved = { count: 2, runs: 1, span: 'A3 and A4', names: ['A3', 'A4'], anyNamed: true, printedByName: 'Dana', printedAt: '2026-11-16T18:00:00Z' }
+    list()
+    expect((await screen.findByTestId('on-site-stickers-blank')).textContent).toBe('2 stickers reserved and not on a box yet, A3 and A4. Scan one to say which box it is on.')
   })
 
   it('a job with no blank sticker has no such press', async () => {

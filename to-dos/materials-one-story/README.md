@@ -2,7 +2,7 @@
 name: "Materials under one story: the whole life of a part on the Materials page"
 number: 304
 group: close
-status: asked 2026-11-10 with a screenshot of the Parts Book and the empty right end of its tab strip circled · four directions drawn the same day, D being the owner's own idea (three named groups) · the owner's go the same day (good enough for a pass with live users, build it all) · built the same day as two client-only PRs on the card's picks, v2.6851 the Materials page (the three groups, On site as a tab with one search across jobs, Print labels, Scan a label) and v2.6852 the phone (This job · Every job, an empty job naming the other jobs, Scan a label, the prints in place) · the labels window's tape choice drawn and built the same day on his yes · left: the owner's word on the third word and the order after his pass with live users, the badges on Plan and Purchase, Jobs → Materials as a door, Where it is now on a Parts Book row
+status: asked 2026-11-10 with a screenshot of the Parts Book and the empty right end of its tab strip circled · four directions drawn the same day, D being the owner's own idea (three named groups) · the owner's go the same day (good enough for a pass with live users, build it all) · built the same day as two client-only PRs on the card's picks, v2.6851 the Materials page (the three groups, On site as a tab with one search across jobs, Print labels, Scan a label) and v2.6852 the phone (This job · Every job, an empty job naming the other jobs, Scan a label, the prints in place) · the labels window's tape choice drawn and built the same day on his yes · left: the owner's word on the third word and the order after his pass with live users, the badges on Plan and Purchase, Jobs → Materials as a door, Where it is now on a Parts Book row · 2026-11-16 the owner's ask for a more informative *Which job?* window on Print labels: the mock-up `print-labels-which-job.html` and his yes the same day, built as v2.7482
 mockup: to-dos/materials-one-story/mockup.html
 summary: >
   The word Materials names three places: the Materials page (price, buy, pay), Jobs → Materials
@@ -19,7 +19,7 @@ summary: >
 next: The owner's pass with live users. The third word reads Track and Plan comes first, both the card's picks and each one line to change. Then the leftovers under Where it stands, one small PR each.
 size: L, shipped as two PRs (M · M); each leftover is S or M
 blocker: none. The owner's pass with live users.
-ver: v2.6851 · 6852
+ver: v2.6851 · 6852 · 7482 · 7492
 opinion: your call — the build is live on the card's picks; say the word on Track against Sort and on the order
 ---
 
@@ -90,6 +90,22 @@ Test job's labels, Scan a label; on the phone an empty job naming three others, 
 a part on another job, and a box's label and manifest opening in the tab. Nothing was written.
 An estimator's, a primary's, a superintendent's and a helper's views were not walked; the render
 smokes hold them.
+
+### Print labels' *Which job?* says what you are about to print (v2.7482)
+
+The owner, 2026-11-16, with a screenshot of the window: *I don't like how this modal looks … How could we
+make this much more informative?* The drawing is [`print-labels-which-job.html`](print-labels-which-job.html):
+today's three rows, the redrawn window at desk and phone width, its other states and five calls. He took
+all five as picked (*Yes, build it*). Built the same day: a band that shows what the computer prints on
+with one label at its printed size, and a card a job with its boxes, places, what changed, a run stopped
+today, the tape it takes and doors into the labels window. The record is `docs/recent-features/v2.7482.md`.
+
+Call 5, the same cards for **Print future stickers**' *Which job?* window, was built on his word (*Yes, after
+rename*) as v2.7492, on top of the rename of that press: a card says the job's runs so far, the stickers
+reserved and not on a box yet and the name a new run opens on (`docs/recent-features/v2.7492.md`).
+
+Left from the five calls: a true *not printed yet* mark on a box, which needs a column and waits on his
+word (call 3).
 
 ## What is there today (read on main at v2.6842, 2026-11-10)
 

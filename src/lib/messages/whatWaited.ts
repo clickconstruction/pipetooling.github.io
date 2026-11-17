@@ -74,6 +74,8 @@ const HELD_KINDS: Readonly<Record<string, string>> = {
   help_feedback: 'help note',
   lien_approval_ask: 'lien notice',
   lien_affidavit_approval_ask: 'lien affidavit',
+  lien_retainage_approval_ask: 'retainage notice',
+  lien_signature_ask: 'lien notice to sign',
   lien_pen_recorded: 'lien signature',
   lien_code_used: 'lien signature',
   lien_waiver_code_used: 'lien waiver',

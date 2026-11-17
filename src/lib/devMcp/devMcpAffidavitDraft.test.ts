@@ -98,7 +98,7 @@ describe('the verbs — in the table, on the server, in the docs', () => {
     expect(isAffidavitDraftVerb('plan_notice_by_hand')).toBe(false)
     expect(planVerbFor('apply_affidavit_draft')).toBe('plan_affidavit_draft')
     expect(Object.keys(WRITE_VERBS)).toHaveLength(109)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.91.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.92.0'")
     expect(SERVER).toContain('Writes are one hundred and nine verbs and nothing else:')
     expect(SERVER).toContain('plan_affidavit_draft → apply_affidavit_draft (a lien affidavit drafted on the Lien desk as its Affidavits pane saves one')
     expect(README).toContain('`plan_affidavit_draft(affidavit)` · `apply_affidavit_draft(affidavit, plan_hash)`')
@@ -265,6 +265,11 @@ describe('affidavitDraftDryRun — the pane’s draft, and what the seat refuses
     expect(gated).toContain('will not draft this yet')
     expect(gated).toContain('County + legal description on the property record')
     expect(gated).toContain('§ 53.056 notice recorded on the job')
+    // Waiting on its notice alone (v2.7457): nothing on a record is missing, so the refusal names the mailing.
+    const noticeAlone = refusal(world({ row: windowRow({ noticed: false }) }))
+    expect(noticeAlone).toContain('will not draft this yet')
+    expect(noticeAlone).toContain('must be mailed and recorded first')
+    expect(noticeAlone).not.toContain('Fill them in')
     expect(refusal(world({ gc: { id: GC, name: 'ZZ Test Builders', address: '', email: '' } }))).toContain('will not draft this yet')
     const item = (status: string) => [{ id: ITEM, job_id: JOB, kind: 'affidavit', status, fields: {}, voided_at: null, created_at: '2026-11-13T00:00:00Z', sent_at: null }]
     expect(refusal(world({ items: item('awaiting_approval') }))).toContain('already sent for approval')

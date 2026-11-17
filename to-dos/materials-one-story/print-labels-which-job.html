@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Print labels: a Which job? window that says what you are about to print</title>
+<style>
+  /* Punch list #304, the owner's ask of 2026-11-16. Every job, site, street, stencil, code and count here is made up:
+     Oak Hollow Apartments Building C (1042), Ridgeway Medical Office (1077), a test walk (1113). Tokens are
+     src/index.css's; the saturated action colours stay literal. The window is 640 wide, as PrintLabelsWindow is, and
+     follows the theme, as it does in the app; a printed strip is always white. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; --mono: ui-monospace, Menlo, monospace; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa; --bg-amber-100: #45390f; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); max-width: 32ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 92ch; }
+  b, strong { color: var(--text-strong); }
+  .stamp { margin-top: 10px; font-family: var(--mono); font-size: 11.5px; color: var(--text-muted); max-width: 96ch; }
+  .controls { display: flex; gap: 6px; align-items: center; margin: 14px 0 0; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  h2 { font-size: 20px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--text-muted); }
+  h2 .num.pick { background: #15803d; color: #fff; }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 100ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.w { flex: 0 1 672px; }
+  .col.ph { flex: 0 1 407px; }
+  .col.notes { flex: 1 1 320px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .frame { background: rgba(0,0,0,.4); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); max-width: 100%; padding: 16px; }
+  .frame.now { border-style: dashed; }
+  /* the window */
+  .win { width: 100%; background: var(--surface); color: var(--text-strong); border-radius: 12px; padding: 16px 20px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.3); }
+  .win h3 { margin: 0; font-size: 17.5px; }
+  .whead { display: flex; align-items: flex-start; gap: 8px; }
+  .whead .t { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+  .whead .x { font-size: 20px; color: var(--text-muted); width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .muted { color: var(--text-muted); font-size: 13px; }
+  .q { color: var(--text-muted); font-size: 14px; }
+  .oldrow { min-height: 48px; display: flex; align-items: center; gap: 12px; padding: 8px 14px; border: 1px solid var(--border-strong); border-radius: 10px; font-weight: 600; }
+  .oldrow .n { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; line-height: 1.25; }
+  .oldrow .c { color: var(--text-muted); font-weight: 500; font-size: 13.5px; white-space: nowrap; }
+  /* the band: what it prints on */
+  .band { border: 1px solid var(--border); border-radius: 10px; background: var(--bg-subtle); padding: 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 14px; align-items: center; }
+  .band.amber { border-color: var(--text-amber-800); background: var(--bg-amber-100); color: var(--text-amber-800); }
+  .band.amber b, .band.amber .muted { color: var(--text-amber-800); }
+  .band .txt { display: grid; gap: 3px; min-width: 0; }
+  .band .l1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 700; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #059669; flex: 0 0 auto; }
+  .dot.amber { background: #d97706; }
+  .link { color: var(--text-link); font-weight: 600; font-size: 13px; white-space: nowrap; }
+  .band.amber .link { color: var(--text-amber-800); text-decoration: underline; }
+  /* a tape strip, at four pixels a millimetre: 42 by 24 */
+  .strip { width: 168px; height: 96px; background: #fff; color: #000; border: 1px solid #aab2bd; border-radius: 3px; padding: 4px; display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 4px; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  .strip svg { width: 86px; height: 86px; display: block; }
+  .strip .nm { font-size: 34px; line-height: 1; font-weight: 900; letter-spacing: -.02em; }
+  .strip .cd { font: 9.5px/1.15 var(--mono); white-space: nowrap; }
+  .strip .cd:first-of-type { margin-top: 5px; }
+  .sample { display: grid; gap: 3px; justify-items: center; }
+  .sample .muted { font-size: 11.5px; }
+  /* a paper sheet, small */
+  .sheet { width: 74px; height: 96px; background: #fff; color: #000; border: 1px solid #aab2bd; border-radius: 2px; padding: 6px; display: grid; gap: 3px; align-content: start; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  .sheet .hd { display: flex; justify-content: space-between; align-items: flex-start; }
+  .sheet .nm { font-size: 17px; font-weight: 900; line-height: 1; }
+  .sheet svg { width: 22px; height: 22px; }
+  .sheet i { display: block; height: 1px; background: #9ca3af; margin-top: 6px; }
+  /* the list's head */
+  .lhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .lhead .q { flex: 1 1 auto; }
+  .find { min-height: 34px; border: 1px solid var(--border-strong); border-radius: 8px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 13px; flex: 0 1 220px; background: var(--surface); }
+  /* a job */
+  .job { border: 1px solid var(--border-strong); border-radius: 12px; padding: 12px 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; background: var(--surface); }
+  .job.first { border-color: #2563eb; box-shadow: inset 0 0 0 1px #2563eb; }
+  .jhead { display: flex; align-items: flex-start; gap: 12px; }
+  .jhead .who { flex: 1 1 auto; min-width: 0; display: grid; gap: 1px; }
+  .jname { font-weight: 700; font-size: 15.5px; line-height: 1.25; overflow-wrap: anywhere; }
+  .jnum { font: 700 12.5px var(--mono); background: var(--bg-muted); color: var(--text-700); border-radius: 6px; padding: 1px 6px; margin-right: 6px; vertical-align: 1px; }
+  .jcount { flex: 0 0 auto; text-align: right; display: grid; line-height: 1.05; }
+  .jcount b { font-size: 26px; font-variant-numeric: tabular-nums; }
+  .jcount span { font-size: 11.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .facts { font-size: 13.5px; color: var(--text-700); }
+  .facts b { font-weight: 700; }
+  .places { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--text-700); }
+  .places span b { font-variant-numeric: tabular-nums; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--bg-muted); color: var(--text-700); white-space: nowrap; }
+  .chip.green { background: var(--bg-green-100); color: var(--text-green-700); }
+  .chip.blue { background: var(--bg-blue-tint); color: var(--text-blue-700); }
+  .resume { border: 1px solid var(--text-amber-800); background: var(--bg-amber-100); color: var(--text-amber-800); border-radius: 8px; padding: 6px 10px; font-size: 13px; font-weight: 600; }
+  .tape { font-size: 12.5px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+  .roll { width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--text-muted); flex: 0 0 auto; }
+  .doors { display: flex; flex-wrap: wrap; gap: 6px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font: 600 13.5px var(--font); white-space: nowrap; }
+  .btn.pri { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .bad { color: var(--text-red-700); font-size: 13px; font-weight: 600; }
+  .wfoot { border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 13px; color: var(--text-muted); }
+  .wfoot .r { margin-left: auto; }
+  /* the numbered marks and their notes */
+  .mk { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #15803d; color: #fff; font: 700 11px var(--font); flex: 0 0 auto; margin-left: 6px; vertical-align: 2px; }
+  .ph .mk { display: none; }
+  .ph .band { grid-template-columns: minmax(0, 1fr); }
+  .ph .sample { justify-items: start; }
+  .notes ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .notes ol li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 4px; color: var(--text-700); }
+  .notes ol li .mk { margin: 2px 0 0; }
+  .src { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border-radius: 4px; padding: 0 5px; margin-left: 4px; background: var(--bg-green-100); color: var(--text-green-700); white-space: nowrap; }
+  .src.dev { background: var(--bg-blue-tint); color: var(--text-blue-700); }
+  .src.read { background: var(--bg-amber-100); color: var(--text-amber-800); }
+  .src.rec { background: var(--bg-muted); color: var(--text-700); }
+  .miss { margin: 6px 0 0; padding-left: 18px; color: var(--text-700); max-width: 60ch; }
+  .miss li { margin: 3px 0; }
+  .calls { display: grid; gap: 10px; margin-top: 12px; max-width: 104ch; }
+  .call { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; display: grid; gap: 3px; }
+  .call .pickline { color: var(--text-green-700); font-weight: 700; }
+  .state { flex: 1 1 300px; max-width: 420px; }
+  .state .frame { padding: 12px; }
+  .state .win { padding: 12px 14px; gap: 8px; }
+  @media (max-width: 520px) { .frame { padding: 8px; } .win { padding: 14px 14px 16px; } .band { grid-template-columns: minmax(0, 1fr); } .sample { justify-items: start; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Punch list #304 · Materials · Print labels</p>
+    <h1>Print labels: a <em>Which job?</em> window that says what you are about to print</h1>
+    <p>The owner's ask of 2026-11-16: he does not like how the window looks when someone presses <b>Print labels</b>, and it should be much more informative. Today it is a list of job names with a count. The drawing below keeps the one question and makes each job answer four more: what is on it, what is new, how much tape it takes, and whether a run was left half done.</p>
+    <p class="stamp">Every job, street, name and count on this page is made up. The window is drawn 640 wide, its size in the app. Nothing here is built.</p>
+    <div class="controls"><span class="lbl">Theme</span><button type="button" data-theme-pick="light" aria-pressed="true">Light</button><button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button></div>
+  </header>
+
+  <h2><span class="num today">Now</span> Today's window</h2>
+  <p class="lede">Three rows. A name, and a count that reads <em>91 labels</em>.</p>
+  <div class="row">
+    <div class="col w">
+      <span class="cap">Materials → Print labels, as it is</span>
+      <div class="frame now">
+        <div class="win">
+          <div class="whead"><div class="t"><h3>Print labels</h3></div><span class="x">×</span></div>
+          <span class="q">Which job?</span>
+          <div class="oldrow"><span class="n">1042 · Oak Hollow Apartments, Building C</span><span class="c">91 labels</span></div>
+          <div class="oldrow"><span class="n">1077 · Ridgeway Medical Office, shell and core</span><span class="c">2 labels</span></div>
+          <div class="oldrow"><span class="n">1113 · ZZ Test Walk</span><span class="c">3 labels</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="col notes">
+      <span class="cap">What it does not say</span>
+      <ul class="miss">
+        <li><b>What the 91 are.</b> Cages or boxes, which names, on which level.</li>
+        <li><b>What is new.</b> Six boxes were added this week. They are the ones that need a label, and nothing points at them.</li>
+        <li><b>What it prints on.</b> Tape or paper is asked one window later. A browser that cannot reach the printer says so one window later too.</li>
+        <li><b>What it costs.</b> 91 strips is close to half a cassette of tape. Nobody knows before the run starts.</li>
+        <li><b>What was left half done.</b> A run that stopped this morning is remembered by the computer, and shows only after the right job is picked.</li>
+        <li><b>Which boxes already carry a code.</b> A box made from a blank sticker needs no label.</li>
+        <li><b>Where the other press is.</b> A box that is not in the app yet takes a blank sticker, and this window never says so.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2><span class="num pick">Pick</span> Each job says what it holds, and the window says what it prints on</h2>
+  <p class="lede">The same one question. A band on top shows the label as it will print on this computer. Each job is a card with its boxes, its places, what changed, the tape it takes and up to three doors. The green numbers are explained on the right, with where each fact comes from.</p>
+  <div class="row">
+    <div class="col w">
+      <span class="cap">On a desk, 640 wide</span>
+      <div class="frame"><div id="pick-desk"></div></div>
+    </div>
+    <div class="col notes">
+      <span class="cap">What each part is, and what it needs</span>
+      <ol>
+        <li><span class="mk">1</span><span><b>What a label is for.</b> One line, so nobody prints labels for boxes that are not in the app. <span class="src">words</span></span></li>
+        <li><span class="mk">2</span><span><b>Prints on.</b> Tape or paper as this computer last used it, the printer's own line once it answers, and one real strip drawn at its printed size. <b>Change</b> switches tape and paper here. <span class="src dev">on this computer</span></span></li>
+        <li><span class="mk">3</span><span><b>The job, and where it is.</b> The number, the name, the site and the street, so two jobs with alike names can be told apart. <span class="src">already loaded</span></span></li>
+        <li><span class="mk">4</span><span><b>What the labels are.</b> Boxes and cages counted apart, the names from first to last, and each place with its count. Six or fewer boxes are named outright. <span class="src">already loaded</span></span></li>
+        <li><span class="mk">5</span><span><b>What changed.</b> Boxes added in the last seven days, and boxes with nothing in them. <span class="src">already loaded</span> Boxes that already wear a sticker. <span class="src read">one small read</span></span></li>
+        <li><span class="mk">6</span><span><b>A run left half done.</b> The run this computer stopped today, with the last box that printed and how many are left. <span class="src dev">on this computer</span></span></li>
+        <li><span class="mk">7</span><span><b>The tape it takes.</b> Strips times the strip's length, against an 8 m cassette. On paper it reads pages. <span class="src">already loaded</span></span></li>
+        <li><span class="mk">8</span><span><b>Doors.</b> Each opens the labels window with those boxes ticked. Nothing prints from this window. A door is drawn only when it has boxes. <span class="src">already loaded</span></span></li>
+        <li><span class="mk">9</span><span><b>The other presses.</b> Blank stickers for boxes not in the app yet, a scan, and the guide. <span class="src">words</span></span></li>
+      </ol>
+      <p class="muted" style="margin:8px 0 0">Jobs are in order of need: a run to finish, then new boxes, then the job number. The search shows past six jobs.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col ph">
+      <span class="cap">On a phone, 375 wide</span>
+      <div class="frame"><div id="pick-phone"></div></div>
+    </div>
+    <div class="col notes">
+      <span class="cap">The other states</span>
+      <div class="row" style="margin-top:0">
+        <div class="col state">
+          <span class="cap">A browser that cannot reach the printer</span>
+          <div class="frame"><div class="win">
+            <div class="band amber" style="grid-template-columns:minmax(0,1fr)"><div class="txt"><div class="l1">This browser cannot print tape</div><span>Tape prints from Chrome or Edge. Paper prints from here.</span><span style="display:flex;gap:14px;flex-wrap:wrap"><span class="link">Copy this page's link</span><span class="link">Print on paper</span></span></div></div>
+          </div></div>
+        </div>
+        <div class="col state">
+          <span class="cap">A computer that prints paper</span>
+          <div class="frame"><div class="win">
+            <div class="band"><div class="txt"><div class="l1">Paper sheet<span class="link">Change</span></div><span class="muted">One Letter page a box, with lines to write on. Any printer.</span></div><div class="sample"><div class="sheet" id="sheet-sample"></div><span class="muted">one page a box</span></div></div>
+            <div class="tape"><span>The card's tape line reads <b>91 pages</b>.</span></div>
+          </div></div>
+        </div>
+        <div class="col state">
+          <span class="cap">A job that did not load</span>
+          <div class="frame"><div class="win">
+            <div class="job"><div class="jhead"><div class="who"><div class="jname"><span class="jnum">1077</span>Ridgeway Medical Office, shell and core</div></div></div><span class="bad">Did not load: the connection dropped.</span><div class="doors"><span class="btn">Read again</span></div></div>
+          </div></div>
+        </div>
+        <div class="col state">
+          <span class="cap">Left as today</span>
+          <ul class="miss" style="margin-top:0">
+            <li>One job with boxes skips the question.</li>
+            <li>No job with a box says so, with <b>On site</b> as its press.</li>
+            <li>The labels window itself does not change.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="num">?</span> Your calls</h2>
+  <p class="lede">Five things to say yes or no to. My pick is under each.</p>
+  <div class="calls">
+    <div class="call"><b>1. Three doors on a job, or one.</b><span>The whole card opens every box, as today. The doors add <em>the rest of a stopped run</em> and <em>the new boxes</em>.</span><span class="pickline">Pick: three doors. They are the two things people come back for.</span></div>
+    <div class="call"><b>2. Say which boxes already wear a sticker.</b><span>It needs one more read of each job's stickers when the window opens. Without it the chip is left out and nothing else changes.</span><span class="pickline">Pick: yes. A box made from a blank sticker already has its code on it.</span></div>
+    <div class="call"><b>3. "Added this week", or a true "not printed yet".</b><span>The app keeps no record of which labels were printed. <em>Added this week</em> is free. <em>Not printed yet</em> needs the app to mark a box when its label goes out, which is a new column and its own change.</span><span class="pickline">Pick: added this week now. The printed mark as its own step, if you want it.</span></div>
+    <div class="call"><b>4. The printer's line in this window.</b><span>Where the browser already has leave to use the P-touch, the window can connect quietly and say what tape is in it before a job is picked.</span><span class="pickline">Pick: yes. A wrong tape is found before the pick and not after.</span></div>
+    <div class="call"><b>5. The same for Print blank stickers.</b><span>Its <em>Which job?</em> window is a twin of this one. Its cards would say how many stickers are still blank and the next free name.</span><span class="pickline">Pick: yes, as the next small change after this one.</span></div>
+  </div>
+  <p class="lede" style="margin-top:14px"><b>Size.</b> The window as drawn is one small to medium change in the app alone: no database change. Call 2 adds a small read. The printed mark of call 3 is a separate change with a migration.</p>
+</div>
+<script>
+  // A QR-looking square: three finder corners and a seeded fill. Not a real code.
+  function qr(seed) {
+    var n = 25, s = seed, d = ''
+    function rnd() { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 }
+    function corner(x, y) { var c = [[0, 0], [n - 7, 0], [0, n - 7]]; for (var i = 0; i < 3; i++) { if (x >= c[i][0] - 1 && x < c[i][0] + 8 && y >= c[i][1] - 1 && y < c[i][1] + 8) return c[i] } return null }
+    for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) {
+      var f = corner(x, y), on
+      if (f) { var lx = x - f[0], ly = y - f[1]; on = lx >= 0 && lx <= 6 && ly >= 0 && ly <= 6 && (lx === 0 || lx === 6 || ly === 0 || ly === 6 || (lx >= 2 && lx <= 4 && ly >= 2 && ly <= 4)) }
+      else on = rnd() > 0.52
+      if (on) d += 'M' + x + ' ' + y + 'h1v1h-1z'
+    }
+    return '<svg viewBox="-2 -2 ' + (n + 4) + ' ' + (n + 4) + '" aria-hidden="true"><rect x="-2" y="-2" width="' + (n + 4) + '" height="' + (n + 4) + '" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>'
+  }
+  function strip(name, code, seed) { return '<div class="strip">' + qr(seed) + '<div><div class="nm">' + name + '</div><div class="cd">PRTS.CO/B/</div><div class="cd">' + code + '</div></div></div>' }
+  var mk = function (n) { return '<span class="mk">' + n + '</span>' }
+  var jobs = [
+    { num: '1042', name: 'Oak Hollow Apartments, Building C', where: 'Oak Hollow · 410 Mill Road', n: 91, facts: '<b>88</b> boxes · <b>3</b> cages · <b>G1</b> to <b>G91</b>', places: [['Level 1', 34], ['Level 2', 41], ['Laydown yard', 16]], chips: [['green', '6 added this week'], ['blue', '23 already wear a sticker'], ['', '12 empty']], resume: 'A run stopped here today after G40. 51 boxes are left.', tape: '91 strips · about 3.8 m of 24 mm tape · close to half a cassette', doors: [['pri', 'The rest, 51 boxes'], ['', 'The 6 new'], ['', 'All 91']], first: true },
+    { num: '1077', name: 'Ridgeway Medical Office, shell and core', where: '88 Quarry Lane', n: 2, facts: '<b>2</b> cages · <b>A1</b> · <b>A2</b>', places: [['Mechanical room', 2]], chips: [], tape: '2 strips · about 9 cm of tape', doors: [['', 'Both labels']] },
+    { num: '1113', name: 'ZZ Test Walk', where: 'No street on the job', n: 3, facts: '<b>2</b> boxes · <b>1</b> loose pile · <b>T1</b> · <b>T2</b> · <b>T3</b>', places: [['No place said yet', 3]], chips: [['green', '3 added this week']], tape: '3 strips · about 13 cm of tape', doors: [['', 'All 3']] },
+  ]
+  function card(j, i) {
+    var m = i === 0
+    return '<div class="job' + (j.first ? ' first' : '') + '">' +
+      '<div class="jhead"><div class="who"><div class="jname"><span class="jnum">' + j.num + '</span>' + j.name + (m ? mk(3) : '') + '</div><span class="muted">' + j.where + '</span></div><div class="jcount"><b>' + j.n + '</b><span>labels</span></div></div>' +
+      '<div class="facts">' + j.facts + (m ? mk(4) : '') + '</div>' +
+      '<div class="places">' + j.places.map(function (p) { return '<span>' + p[0] + ' <b>' + p[1] + '</b></span>' }).join('') + '</div>' +
+      (j.chips.length ? '<div class="chips">' + j.chips.map(function (c) { return '<span class="chip ' + c[0] + '">' + c[1] + '</span>' }).join('') + (m ? mk(5) : '') + '</div>' : '') +
+      (j.resume ? '<div class="resume">' + j.resume + (m ? mk(6) : '') + '</div>' : '') +
+      '<div class="tape"><span class="roll"></span><span>' + j.tape + '</span>' + (m ? mk(7) : '') + '</div>' +
+      '<div class="doors">' + j.doors.map(function (d) { return '<span class="btn ' + d[0] + '">' + d[1] + ' ›</span>' }).join('') + (m ? mk(8) : '') + '</div>' +
+      '</div>'
+  }
+  function win() {
+    return '<div class="win">' +
+      '<div class="whead"><div class="t"><h3>Print labels</h3><span class="muted">A label is for a cage or a box that is already in the app. Pick the job, then the boxes.' + mk(1) + '</span></div><span class="x">×</span></div>' +
+      '<div class="band"><div class="txt"><div class="l1"><span class="dot"></span>Brother tape · 24 mm<span class="link">Change</span>' + mk(2) + '</div><span>PT-D610BT is connected, with 24 mm tape in it.</span><span class="muted">This computer printed tape last on Nov 15. A label is the code, the box\'s name and the link.</span></div><div class="sample">' + strip('G12', '4F2A-9C18', 7) + '<span class="muted">one strip, about 42 mm</span></div></div>' +
+      '<div class="lhead"><span class="q">Which job? <b>3</b> jobs hold a cage or a box.</span><span class="find">⌕ Find a job</span></div>' +
+      jobs.map(card).join('') +
+      '<div class="wfoot"><span>Boxes that are not in the app yet?</span><span class="link">Print blank stickers</span><span class="link">Scan a label</span>' + mk(9) + '<span class="link r">How do I print labels?</span></div>' +
+      '</div>'
+  }
+  document.getElementById('pick-desk').innerHTML = win()
+  document.getElementById('pick-phone').innerHTML = win()
+  document.getElementById('sheet-sample').innerHTML = '<div class="hd"><span class="nm">G12</span>' + qr(11) + '</div><i></i><i></i><i></i><i></i><i></i><i></i><i></i>'
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.documentElement.setAttribute('data-theme', b.getAttribute('data-theme-pick'))
+      document.querySelectorAll('[data-theme-pick]').forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)) })
+    })
+  })
+</script>
+</body>
+</html>

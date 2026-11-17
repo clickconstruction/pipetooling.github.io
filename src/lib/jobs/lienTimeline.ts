@@ -8,6 +8,7 @@ import { DATED_FROM_BILL_WORDS } from './lienBillMonths'
 import { lienActFor } from './lienActWords'
 import { lienNextActFor, type LienNextAct } from './lienNextAct'
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
+import type { LienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 import { LAST_DAY_BY_HAND_LATER_HOURS_WORDS, LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
 import { workMonthShort } from './forecastWorkMonths'
 
@@ -225,6 +226,8 @@ export interface LienTimelineInput {
     state?: LienTimelineAffidavitState
     /** The gates still closed, by key (`affidavitGates`): the header names the one fact that holds the paper, in the act table's words. */
     missingKeys?: ReadonlyArray<LienAffidavitGateKey>
+    /** Where the job's § 53.056 notice stands while the affidavit's notice gate is closed (`lienAffidavitNoticeStanding.ts`); absent, the band's press keeps *Send the notice first ›*. */
+    noticeStanding?: LienAffidavitNoticeStanding | null
     /** A held affidavit asks again on this day; null or absent when the hold names none. */
     holdUntil?: string | null
   } | null
@@ -354,9 +357,10 @@ function noticeStateWords(state: LienTimelineNoticeState, holdUntil: string | nu
     case 'awaiting':
       return 'awaiting approval'
     case 'ready':
-      return 'ready to send'
+      return 'approved to print'
     case 'printed':
-      return 'in the mail · tracking owed'
+      // The desk's name for the step, as *approved to print* is for the one before it (v2.7522; *in the mail · tracking owed* until then).
+      return 'approved to mail'
     case 'held':
       return holdUntil ? `held · re-asks ${lienDateWords(holdUntil, todayYmd)}` : 'held'
     default:
@@ -371,9 +375,9 @@ function noticeVerb(state: LienTimelineNoticeState): string {
     case 'awaiting':
       return 'Approve'
     case 'ready':
-      return 'Send'
+      return 'Print and mail'
     case 'printed':
-      return 'Record the mailing of'
+      return 'Enter mail numbers for'
     case 'held':
       return 'Held —'
     default:
@@ -415,7 +419,7 @@ function affidavitNextWords(a: NonNullable<LienTimelineInput['affidavit']> | nul
       return { words: `Held — the affidavit ${a?.holdUntil ? `re-asks ${lienDateWords(a.holdUntil, todayYmd)}` : 'waits on its hold'}; file by ${lastDayWords}.`, dated: true }
     case 'needs_property': {
       const keys = a?.missingKeys ?? []
-      const act = lienActFor({ paper: 'affidavit', action: 'fix_property', missing: keys })
+      const act = lienActFor({ paper: 'affidavit', action: 'fix_property', missing: keys, noticeStanding: a?.noticeStanding ?? null })
       if (!act) break
       // No lien attaches to public property: the fact, and who to ask.
       if (!act.dated) return { words: `${act.words} — ${act.under.charAt(0).toLowerCase()}${act.under.slice(1)}.`, dated: false }
@@ -717,7 +721,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
 
   const waitingOn = waitingOnFor(steps, next, input, paidBy, todayYmd)
   // The band's press (v2.7321): decided from the same facts as the words, so the two cannot part.
-  const act = lienNextActFor({ next, waitingOn, noticeState: input.noticeState, missingKeys: input.affidavit?.missingKeys ?? [], paid: input.paid })
+  const act = lienNextActFor({ next, waitingOn, noticeState: input.noticeState, missingKeys: input.affidavit?.missingKeys ?? [], noticeStanding: input.affidavit?.noticeStanding ?? null, paid: input.paid })
 
   return { steps: folded, next: { ...next, act }, kindUnknown, lienGone, suitDate, todayIndex, windowsAside, todayYmd, waitingOn }
 }

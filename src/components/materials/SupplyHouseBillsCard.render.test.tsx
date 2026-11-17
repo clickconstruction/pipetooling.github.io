@@ -96,4 +96,75 @@ describe('SupplyHouseBillsCard', () => {
     renderWithProviders(card({ bills: [] }))
     expect(screen.getByText('Nothing here.')).toBeTruthy()
   })
+
+  it('a bill paid in part lists for what is left on it, and money on account has its own number', () => {
+    renderWithProviders(
+      card({
+        bills: [bill('9', { amount: 512.4, partPaid: '$300.00 paid · $512.40 left of $812.40' }), bill('10', { amount: 100 })],
+        onAccount: 187.4,
+      }),
+    )
+    const rows = screen.getAllByTestId('supply-bill-row')
+    expect(within(rows[0] as HTMLElement).getByTestId('supply-bill-part-paid').textContent).toBe('$300.00 paid · $512.40 left of $812.40')
+    expect(within(rows[0] as HTMLElement).getByTestId('supply-bill-amount').textContent).toBe('$512.40')
+    expect(within(rows[1] as HTMLElement).queryByTestId('supply-bill-part-paid')).toBeNull()
+    // The summary and the group count what is left, not what was billed.
+    expect(screen.getByTestId('supply-bills-stat-open').textContent).toContain('$612')
+    expect(screen.getByTestId('supply-bills-stat-account').textContent).toBe('On account$187.40sent past the bills, offered on the next payment')
+  })
+
+  it('a bill says where a payment’s money moved, and a removed payment is one press to put back', () => {
+    const onPutBack = vi.fn()
+    renderWithProviders(
+      card({
+        bills: [bill('11', { trace: ['$1,000.00 moved to S4398120 · Dana · the house applied it differently'] }), bill('12', {})],
+        removedPayments: [{ id: 'p9', words: '$5,000.00 ACH 88213 payment of 11/12 · removed 11/16 · Dana · typed twice' }],
+        onPutBack,
+      }),
+    )
+    const rows = screen.getAllByTestId('supply-bill-row')
+    expect(within(rows[0] as HTMLElement).getByTestId('supply-bill-trace').textContent).toBe('$1,000.00 moved to S4398120 · Dana · the house applied it differently')
+    expect(within(rows[1] as HTMLElement).queryByTestId('supply-bill-trace')).toBeNull()
+    const removed = screen.getByTestId('supply-bills-removed')
+    expect(removed.textContent).toContain('$5,000.00 ACH 88213 payment of 11/12 · removed 11/16 · Dana · typed twice')
+    fireEvent.click(within(removed).getByRole('button', { name: 'Put it back' }))
+    expect(onPutBack).toHaveBeenCalledWith('p9')
+  })
+
+  it('an interest bill leads with what it is, wears its chip, and says it is not a job cost', () => {
+    renderWithProviders(card({ bills: [bill('13', { amount: 18.6, jobs: [], on_job_account: null, interest: 'Interest on S4398120' }), bill('14', {})] }))
+    const rows = screen.getAllByTestId('supply-bill-row')
+    const interestRow = rows.find((r) => r.textContent?.includes('Interest on S4398120')) as HTMLElement
+    expect(within(interestRow).getByTestId('supply-bill-title').textContent).toContain('Interest on S4398120')
+    expect(within(interestRow).getByTestId('supply-bill-interest').textContent).toBe('Interest')
+    expect(interestRow.textContent).toContain('not a job cost')
+    expect(interestRow.textContent).not.toContain('No job on this bill')
+    expect(screen.getAllByTestId('supply-bill-interest')).toHaveLength(1)
+  })
+
+  it('shows no On account number when nothing waits there', () => {
+    renderWithProviders(card())
+    expect(screen.queryByTestId('supply-bills-stat-account')).toBeNull()
+  })
+
+  it('a paid row names its payment, and opens it when a typed payment stands behind it', () => {
+    const onTogglePaid = vi.fn()
+    renderWithProviders(
+      card({
+        bills: [
+          bill('7', { is_paid: true, paidYmd: '2026-03-02', paidBy: 'ACH 88213 · one of 4 bills on $5,000.00', seePayment: true }),
+          bill('8', { is_paid: true, paidYmd: '2026-03-03' }),
+        ],
+        onTogglePaid,
+      }),
+    )
+    const rows = screen.getAllByTestId('supply-bill-row')
+    expect(within(rows[0] as HTMLElement).getByTestId('supply-bill-paid-by').textContent).toBe('ACH 88213 · one of 4 bills on $5,000.00')
+    expect(rows[0]?.textContent).toContain('paid 3/2')
+    fireEvent.click(within(rows[0] as HTMLElement).getByRole('button', { name: 'See the payment: S-7' }))
+    expect(onTogglePaid).toHaveBeenCalledWith('7')
+    // A bill paid before payments were rows reads as it always did, with Mark unpaid.
+    expect(within(rows[1] as HTMLElement).queryByTestId('supply-bill-paid-by')).toBeNull()
+    expect(within(rows[1] as HTMLElement).getByRole('button', { name: 'Mark unpaid: S-8' })).toBeTruthy()
+  })
 })

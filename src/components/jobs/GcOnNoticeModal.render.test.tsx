@@ -116,7 +116,7 @@ function data(owners: OwnerStates = { j994: 'on_file', j1016: 'missing', j1002: 
     rows,
     jobs: folded.jobs,
     summary: folded.summary,
-    desk: { queue, summary: summarizeLienDeskForNeedsYou(queue), rows, items: [], affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } }, affidavitRows: [],
+    desk: { queue, summary: summarizeLienDeskForNeedsYou(queue), rows, items: [], affidavits: { entries: [], piles: { needs_property: [], needs_notice: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, needs_notice: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } }, affidavitRows: [],
     retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
     retainageRows: [], letterTwoByJob: {}, ownerCallByJob: {}, jobsById, gcsById: {}, addressesById: {}, ownerByJob: {}, promisesByJob: {}, gcsWithPriorNotice: new Set(), gcsHeldBefore: new Set() , claimCorrectionsByJob: {}, affidavitMonthsByJob: {}, filingsByJob: {},},
     ownerRowByJob: { j994: ownerRow('j994'), j1016: ownerRow('j1016'), j1002: ownerRow('j1002'), j1031: ownerRow('j1031') },
@@ -390,6 +390,8 @@ describe('GcOnNoticeModal', () => {
     hookState.data = data()
     view.rerender(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
     const strip = await screen.findByTestId('run-undo')
+    // The window is open on the packet to print, under the press's own name (v2.7448; Send the run until then).
+    expect(screen.getByRole('dialog', { name: 'Print and mail' })).toBeTruthy()
     expect(strip.textContent).toContain('You just approved these 2 notices for Harborline Builders. Pressed it by mistake?')
     fireEvent.click(within(strip).getByRole('button', { name: 'Undo the approval…' }))
     const ask = await screen.findByRole('alertdialog', { name: 'Undo the approval for Harborline Builders?' })
@@ -412,7 +414,7 @@ describe('GcOnNoticeModal', () => {
     expect(io.policies.map((p) => p.policy)).toEqual(['send', 'ask'])
     expect(io.policies[1]!.note).toBe('Undone: the run was approved by mistake')
     expect(io.unshared).toEqual([{ jobIds: ['j994'], invoiceIds: ['inv-9'], on: true }])
-    expect(screen.queryByText(/Send the run/)).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Print and mail' })).toBeNull()
   })
 
   it('printing the packet from this window\u2019s run stamps the notices printed, as the Lien desk\u2019s run does (v2.4558)', async () => {
@@ -428,7 +430,8 @@ describe('GcOnNoticeModal', () => {
     renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="assistant" onChanged={onChanged} />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: /Open the run · 1/ }))
-    fireEvent.click(await screen.findByRole('button', { name: /Print the packet/ }))
+    // The run's one press (v2.7477): Print 1 notice.
+    fireEvent.click(await screen.findByRole('button', { name: 'Print 1 notice' }))
     await waitFor(() => expect(io.printed).toEqual([{ ids: ['it-994'], userId: 'u1' }]))
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
     expect(refetch).toHaveBeenCalled()

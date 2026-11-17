@@ -2,7 +2,7 @@
 name: "Sub papers: a work statement per sheet, a payment record per sending and a statement of account, as PDFs that add up"
 number: 350
 group: ready
-status: asked 2026-11-13 · the card and the mock-up the same day · read on the code and on prod through the dev seat, nothing written · the kernels built 2026-11-15 (v2.7401) · step 1, the window, built 2026-11-16 (v2.7453): a statement of account and a work statement to print or save, no numbers · the numbers' migration, the payment record, Send and the portal tab are built on the sub labor spike's snapshot branch and wait to be cut (see *Where it stands*)
+status: asked 2026-11-13 · the card and the mock-up the same day · read on the code and on prod through the dev seat, nothing written · the kernels built 2026-11-15 (v2.7401) · Taunya picked the card 2026-11-15 (*build the entire PR train*) · step 1, the window, live 2026-11-16 (v2.7453): a statement of account and a work statement to print or save, no numbers · step 2, the numbers' migration, on prod 2026-11-16 (v2.7474), its types following · Taunya kept the names 2026-11-16 (call 1) · step 4, the payment record, built 2026-11-16 (v2.7475) · the numbers on the papers, Send and the portal tab are next (see *Where it stands*)
 summary: >
   The owner wants to make part payments to a sub and hand them a paper that shows what is
   outstanding, our last payments and what we still owe, as PDFs: each piece of sub work as a
@@ -13,9 +13,9 @@ summary: >
   sending that says how much went to each sheet and what stays open, and a statement of account
   for a period. It names them for what they are, marks six sentences for counsel, and stands on
   the hours statement's way of making a PDF. It builds on card #347's ledger and payment window.
-next: step 2 under *Where it stands*, the numbers' migration alone, then its push and the types; settle the names (call 1) before step 3 prints a number under one; Send and the portal tab wait on Taunya's go and counsel's words
+next: step 3, the numbers on the papers, now that the register is on prod and the names are kept; then step 5, the function `send-sub-paper-email` alone, deployed only on Taunya's go that names it, and the Send press after it; the portal tab waits on Taunya's go and counsel's words
 size: L as a train of seven (S · S · M · S · M · M · M)
-blocker: none for PR 1 and PR 2; PR 3 is a migration; PR 4 waits on card #347's sending and on PR #7992's push; PR 5 and PR 6 are edge deploys; PR 7 waits on counsel's words
+blocker: none for PR 1, PR 2 and PR 4 (card #347's sendings and PR #7992's method are in prod); PR 3 is a migration; PR 5 and PR 6 are edge deploys; PR 7 waits on counsel's words
 opinion: build PR 1 now, it is the paper he asked for and reads rows the Pay view already holds; settle the names before PR 3 prints a number under one; do not let a paper say invoice, receipt or owed until counsel has read the six marked sentences
 mockup: to-dos/sub-papers-statement-of-account/mockup.html
 ---
@@ -193,9 +193,9 @@ The kernels are on main (v2.7401): `subPapersHtml.ts`, `subPapersInputs.ts` and 
 Cut each PR from fresh `origin/main`, in this order:
 
 1. **The window** (PR 1 and PR 2 above). **Built, v2.7453.** `src/components/jobs/SubPapersWindow.tsx` and `SubPapersWindowConnected.tsx`. *Statement of account…* on People → Subs and on a sub's group in Jobs → Subs. *Work statement…* takes Print's place on the ⋯ menu of a sheet that is one person's. No numbers yet. The view keeps the snapshot's payment record pick, send step and *Since the last statement*, each drawn only when its caller hands it in (`paymentRecords`, `canSend` with `onSend`, `lastStatement`), so steps 3 to 5 turn their part on in `SubPapersWindowConnected.tsx`. The phone's sheet of actions and the opened row keep Print.
-2. **The numbers' migration, alone** (PR 3's database half). The snapshot's `supabase/migrations/20261115060000_sub_papers.sql`: `sub_papers`, `sub_paper_job_counters`, `sub_paper_acks`, `mint_sub_paper` and `void_sub_paper`. Renumber it from `origin/main`'s newest file, claim it, and give it a SQL bed of its own. No client code calls it, so its merge holds no deploy. Push it right after the merge, prove it on prod, then the types PR.
+2. **The numbers' migration, alone** (PR 3's database half). **On prod since 2026-11-16, v2.7474, as `20261117040000_sub_papers.sql`**, with the bed `sub-papers`. It adds to the snapshot's file: both functions refuse a training account, a digital twin and an archived account, the mint locks per sheet and per sending, and the tables are read-only by grant. The snapshot's `supabase/migrations/20261115060000_sub_papers.sql`: `sub_papers`, `sub_paper_job_counters`, `sub_paper_acks`, `mint_sub_paper` and `void_sub_paper`. Renumber it from `origin/main`'s newest file, claim it, and give it a SQL bed of its own. No client code calls it, so its merge holds no deploy. Push it right after the merge, prove it on prod, then the types PR.
 3. **The numbers on the papers** (PR 3's other half). The window calls `mint_sub_paper`, only after that push.
-4. **The payment record** (PR 4). *Payment record…* beside a payment on the sheet, and `AfterRecordPaymentWindow` after Record payment in `src/components/jobs/SubLaborPaymentModals.tsx`. Its tests in `SubLaborPaymentModals.sending.render.test.tsx` are rewritten.
+4. **The payment record** (PR 4). **Built, v2.7475**, ahead of step 3. A payment record prints its sending's own number (`PR-<n>`), since the names are kept. The after-payment window's press reads *Payment record…* and opens the paper; step 5 makes it *Send the payment record…*. *Payment record…* beside a payment on the sheet, and `AfterRecordPaymentWindow` after Record payment in `src/components/jobs/SubLaborPaymentModals.tsx`. Its tests in `SubLaborPaymentModals.sending.render.test.tsx` are rewritten.
 5. **Send** (PR 5). The function `send-sub-paper-email` alone first, deployed only on Taunya's go that names it. Then the press.
 6. **The portal tab** (PR 6, with PR 7's confirm left behind its switch, off). The `sub-portal` function first, then `src/components/subPortal/SubPortalStatementsTab.tsx`.
 
@@ -208,7 +208,7 @@ Hard lines:
 
 ## The owner's calls
 
-1. **The names.** My pick: Work statement, Payment record, Statement of account, and *Still open* for what we owe. Your words go on once counsel has read sentences 1 to 6.
+1. **The names.** My pick: Work statement, Payment record, Statement of account, and *Still open* for what we owe. Your words go on once counsel has read sentences 1 to 6. **Taunya's to answer**, since she picked the card on 2026-11-15. **Answered 2026-11-16: she keeps the names**, relayed by the owner. A number may print under them.
 2. **How is one payment placed on several papers?** My pick: by hand, with Oldest first as the fill, shown before it is saved. **Built as picked** in v2.7404, card #347's *By hand*.
 3. **Do subs confirm their work statement?** My pick: yes, as a press, and never a condition of being paid. What a confirm means is counsel's.
 4. **Do payment records send by themselves?** My pick: no. The window after Record payment offers it. The portal shows the payment at once either way.

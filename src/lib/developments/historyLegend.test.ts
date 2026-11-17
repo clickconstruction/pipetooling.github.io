@@ -4,7 +4,7 @@ import { plainWordsFailures } from '../plainWords'
 import { HISTORY_LEGEND, HISTORY_LEGEND_INTRO, historyMark, legendByChip, legendChipLabel } from './historyLegend'
 import type { ChangeKind, ChangeLine } from './whatChanged'
 
-const KINDS: ChangeKind[] = ['asked', 'answered', 'sent', 'contact', 'won', 'lost', 'plans', 'stage', 'billed', 'paid', 'note', 'new_bid', 'new_job', 'entry']
+const KINDS: ChangeKind[] = ['asked', 'answered', 'sent', 'contact', 'won', 'lost', 'plans', 'stage', 'billed', 'paid', 'note', 'new_bid', 'new_job', 'entry', 'photos', 'mail']
 
 const line = (kind: ChangeKind, source?: ChangeLine['source']): ChangeLine => ({ id: 'x', at: '2026-11-02T15:00:00Z', kind, verb: '', about: { kind: 'site', id: null, label: '' }, detail: null, by: null, waitingDays: null, ...(source ? { source } : {}) })
 
@@ -20,6 +20,8 @@ describe('historyMark: one mark per kind', () => {
     expect(historyMark('entry')).toEqual({ glyph: '✎', tone: 'grey' })
     expect(historyMark('stage')).toEqual({ glyph: '◆', tone: 'blue' })
     expect(historyMark('lost').tone).toBe('red')
+    // A mail tied to a bid or a job is an email either way: it wears the kept email's mark (v2.7479).
+    expect(historyMark('mail')).toEqual(historyMark('entry', 'email'))
   })
 })
 

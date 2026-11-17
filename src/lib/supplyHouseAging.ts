@@ -309,17 +309,18 @@ export function moveStripSummary<T extends { id: string; amount: number | null; 
  */
 export type AgingCellRowDoors = { addDueDate: boolean; pickJob: boolean }
 
-export function agingCellRowDoors(inv: { amount: number | null; due_date: string | null }, allocationCount: number | null): AgingCellRowDoors {
+export function agingCellRowDoors(inv: { amount: number | null; due_date: string | null; is_interest?: boolean | null }, allocationCount: number | null): AgingCellRowDoors {
   const credit = Number(inv.amount ?? 0) < 0
   return {
     addDueDate: !credit && inv.due_date == null,
-    pickJob: !credit && allocationCount === 0,
+    // Interest and late fees are kept off every job's cost, so there is no job to pick.
+    pickJob: !credit && !inv.is_interest && allocationCount === 0,
   }
 }
 
 /**
  * The modal's own footer doors. A house-scoped modal opens the house and makes a payment
- * through the house's existing Apply Payment door; the footer row's modal and the worked
+ * through the house's Record a payment window; the footer row's modal and the worked
  * list span every house, so there is no one house to open or pay. The credits cell holds
  * credit memos, which are applied against invoices, not paid, so it offers no payment.
  */

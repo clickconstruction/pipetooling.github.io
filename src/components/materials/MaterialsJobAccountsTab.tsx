@@ -1,3 +1,4 @@
+import { openAmount } from '../../lib/materials/payments/supplyPayment'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
@@ -98,7 +99,7 @@ export type MaterialsJobAccountsTabProps = {
   /** Render gate — stays mounted across tab switches so loaded data survives. */
   active: boolean
   myRole: UserRole | null
-  /** Opens the Supply Houses tab; with a house id, opens that house's detail (Make Payment lives there). */
+  /** Opens the Supply Houses tab; with a house id, opens that house's detail (Record a payment lives there). */
   onOpenSupplyHouse: (houseId: string | null) => void
   /** The signed-in person's name: kept beside what a house told us (v2.4440). */
   authName?: string
@@ -262,7 +263,9 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                 () =>
                   supabase
                     .from('supply_house_invoices')
-                    .select('id, supply_house_id, amount, is_paid, due_date, invoice_date, invoice_number, on_job_account')
+                    // is_interest comes with 20261117020000 and is read as written here: the generated types learn it
+                    // after the push, and until then this read is refused and the one below stands in.
+                    .select('id, supply_house_id, amount, amount_paid, is_paid, is_interest, due_date, invoice_date, invoice_number, on_job_account' as 'id, supply_house_id, amount, amount_paid, is_paid, due_date, invoice_date, invoice_number, on_job_account')
                     .order('id')
                     .range(from, to),
                 'load supply house invoices',
@@ -378,7 +381,8 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
       setTodayYmd(today)
       // The houses' own notices (v2.4440). Not awaited, like the lien clock below: the statement draws first.
       const raw: HouseFactsRaw = {
-        invoices: invoices.map((i) => ({ id: i.id, supply_house_id: i.supply_house_id, amount: i.amount, is_paid: i.is_paid, invoice_date: i.invoice_date ?? null, paidYmd: null, on_job_account: Boolean(i.on_job_account) })),
+        // An unpaid bill counts for what is left on it (v2.7450 amount_paid): a bill paid in part is not owed whole.
+        invoices: invoices.map((i) => ({ id: i.id, supply_house_id: i.supply_house_id, amount: i.is_paid ? i.amount : openAmount(i), is_paid: i.is_paid, invoice_date: i.invoice_date ?? null, paidYmd: null, on_job_account: Boolean(i.on_job_account) })),
         allocations,
         houses: houses ?? [],
       }
@@ -984,7 +988,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                                 <div style={{ textAlign: 'right' }}>
                                   <button
                                     type="button"
-                                    title="Open this house on the Supply Houses tab — invoices and Make Payment live there"
+                                    title="Open this house on the Supply Houses tab — invoices and Record a payment live there"
                                     onClick={() => onOpenSupplyHouse(group.supplyHouseId)}
                                   >
                                     Open house

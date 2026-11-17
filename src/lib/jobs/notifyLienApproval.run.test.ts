@@ -8,6 +8,7 @@
  * the leader nothing. The other kinds keep the checks that prove whose record or screen it is.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { lienFieldsHash } from '../../../supabase/functions/_shared/lienFieldsHash'
 
 type Handler = (req: Request) => Promise<Response>
 type Row = Record<string, unknown>
@@ -193,9 +194,8 @@ describe('a notice sent for approval: whoever in the office presses (v2.7445)', 
 
   it('a paper that is not on the desk, and a paper that is not a notice, are refused', async () => {
     expect(await post({ item_id: 'nope' })).toEqual({ status: 404, body: { error: 'Paper not found' } })
-    world.items = [affidavit('it1'), notice({ id: 'ret1', kind: 'retainage_53_057' })]
+    world.items = [affidavit('it1')]
     expect(await post({ item_id: 'it1' })).toEqual({ status: 400, body: { error: 'Not a lien notice' } })
-    expect(await post({ item_id: 'ret1' })).toEqual({ status: 400, body: { error: 'Not a lien notice' } })
     expect(await post({})).toEqual({ status: 400, body: { error: 'Missing item_id' } })
     expect(nothingSent()).toBe(true)
   })
@@ -215,6 +215,43 @@ describe('a notice sent for approval: whoever in the office presses (v2.7445)', 
     const res = await post({ item_id: 'it1' })
     expect(res.body).toMatchObject({ success: true, push_sent: 2, leader_name: null })
     expect([...(world.pushes[0]!.userIds as string[])].sort()).toEqual(['u-malachi', 'u-robert'])
+  })
+})
+
+describe('a retainage notice sent for approval: it has a message (v2.7478)', () => {
+  const retainage = (over: Row = {}): Row => notice({ id: 'ret1', kind: 'retainage_53_057', fields: { notice: { claimAmount: 12_400 } }, ...over })
+  beforeEach(() => {
+    world.items = [retainage()]
+  })
+
+  it('the send tells the leader in the retainage notice’s own words, and the tap lands on the Retainage list', async () => {
+    const res = await post({ item_id: 'ret1', due_ymd: '2026-12-15' })
+    expect(res).toEqual({ status: 200, body: { success: true, push_sent: 1, email_sent: false, held: 0, leader_name: 'Malachi Whites' } })
+    expect(world.pushes).toHaveLength(1)
+    expect(world.pushes[0]).toMatchObject({ userIds: ['u-malachi'], title: 'Approve a retainage notice', templateType: 'lien_retainage_approval_ask', url: '/lien-desk?tab=retainage&job=j650', tag: 'lien-retainage-approval-j650' })
+    expect(String(world.pushes[0]!.body)).toContain('650 · Tune 5 Liberty Hill · $12,400 retainage held by Brund & Assoc. · mail by Dec 15')
+    expect(world.history).toEqual([expect.objectContaining({ recipient_user_id: 'u-malachi', template_type: 'lien_retainage_approval_ask', channel: 'push' })])
+  })
+
+  it('with no phone the same words go by email, naming who pressed; a reminder says so', async () => {
+    world.devices = new Set()
+    expect((await post({ item_id: 'ret1' })).body).toMatchObject({ success: true, push_sent: 0, email_sent: true })
+    expect(world.emails[0]!.to).toBe('u-malachi@office.test')
+    expect(world.emails[0]!.text.split('\n')[0]).toBe('Wendi sent a retainage notice for your approval.')
+    expect(world.emails[0]!.text).not.toContain('lien notice')
+    await post({ item_id: 'ret1', remind: true })
+    expect(world.emails[1]!.text.split('\n')[0]).toBe('Wendi is reminding you of a retainage notice that waits for your approval.')
+  })
+
+  it('the gate is the notice’s: the office only, and only while it waits for approval', async () => {
+    world.callerId = 'u-hank'
+    expect(await post({ item_id: 'ret1' })).toEqual({ status: 403, body: { error: 'Not the office' } })
+    world.callerId = 'u-carla'
+    for (const over of [{ status: 'approved' }, { status: 'held' }, { voided_at: '2026-11-10T00:00:00Z' }]) {
+      world.items = [retainage(over)]
+      expect(await post({ item_id: 'ret1', remind: true })).toEqual({ status: 200, body: { success: true, push_sent: 0, email_sent: false, message: 'Not awaiting approval' } })
+    }
+    expect(nothingSent()).toBe(true)
   })
 })
 
@@ -277,6 +314,86 @@ describe('an affidavit: the fifteen minutes stand for the send, and a reminder i
     world.callerId = 'u-hank'
     world.items = [affidavit('a1', { submitted_at: fresh })]
     expect(await post({ kind: 'affidavit', remind: true, items: [{ item_id: 'a1' }] })).toEqual({ status: 403, body: { error: 'Not the office' } })
+    expect(nothingSent()).toBe(true)
+  })
+})
+
+describe('a notice that waits on his signature: the office reminds him, one message for the lot (v2.7491)', () => {
+  const approved = (id: string, jobId: string, over: Row = {}): Row => notice({ id, job_id: jobId, status: 'approved', printed_at: null, signer_printed_name: null, signed_fields_hash: null, ...over })
+  const signedFor = (fields: unknown): Row => ({ signed_at: '2026-11-10T15:00:00Z', signed_by: 'u-malachi', signer_printed_name: 'Malachi Whites', signed_fields_hash: lienFieldsHash(fields) })
+  beforeEach(() => {
+    world.jobs = [
+      { id: 'j650', job_name: 'Tune 5 Liberty Hill', hcp_number: '650', click_number: null, master_user_id: 'u-malachi', gc_customer_id: 'gc1' },
+      { id: 'j651', job_name: 'Elm Street Lofts', hcp_number: '651', click_number: null, master_user_id: 'u-malachi', gc_customer_id: 'gc1' },
+      { id: 'j652', job_name: 'Oak Court', hcp_number: '652', click_number: null, master_user_id: 'u-malachi', gc_customer_id: 'gc1' },
+    ]
+    world.items = [approved('s1', 'j650'), approved('s2', 'j651'), approved('s3', 'j652')]
+  })
+
+  it('three unsigned approved notices are one push that names the count and opens the approved notices', async () => {
+    const res = await post({ kind: 'signature', remind: true, items: [{ item_id: 's1', due_ymd: '2026-12-15' }, { item_id: 's2', due_ymd: '2026-12-01' }, { item_id: 's3' }] })
+    expect(res).toEqual({ status: 200, body: { success: true, push_sent: 1, email_sent: false, held: 0, told: 3, leader_name: 'Malachi Whites' } })
+    expect(world.pushes).toHaveLength(1)
+    expect(world.pushes[0]).toMatchObject({ userIds: ['u-malachi'], title: 'Sign 3 lien notices', templateType: 'lien_signature_ask', url: '/lien-desk?tab=notices&pile=ready' })
+    expect(String(world.pushes[0]!.body)).toContain('3 jobs · first to mail by Dec 1')
+    expect(world.history).toEqual([expect.objectContaining({ recipient_user_id: 'u-malachi', template_type: 'lien_signature_ask', channel: 'push' })])
+  })
+
+  it('one notice opens on its own job, and with no phone the same words go by email and name who pressed', async () => {
+    world.devices = new Set()
+    const res = await post({ kind: 'signature', remind: true, items: [{ item_id: 's1', due_ymd: '2026-12-15' }] })
+    expect(res.body).toMatchObject({ success: true, push_sent: 0, email_sent: true, told: 1 })
+    expect(world.pushes[0]).toMatchObject({ title: 'Sign a lien notice', url: '/lien-desk?tab=notices&job=j650&pile=ready' })
+    expect(world.emails).toHaveLength(1)
+    expect(world.emails[0]!.subject).toBe('Sign a lien notice · 650 · Tune 5 Liberty Hill')
+    expect(world.emails[0]!.text.split('\n')[0]).toBe('Wendi is reminding you of a lien notice that waits for your signature.')
+    expect(world.emails[0]!.text).toContain('It cannot be printed or mailed until you sign it.')
+    expect(world.emails[0]!.text).toContain('http://app.test/lien-desk?tab=notices&job=j650&pile=ready')
+  })
+
+  it('a notice signed, printed, still awaiting approval or voided since the list was drawn is left out, and the count says so', async () => {
+    const fields = { notice: { claimAmount: 27_199 } }
+    world.items = [approved('s1', 'j650'), approved('s2', 'j651', { fields, ...signedFor(fields) }), approved('s3', 'j652', { printed_at: '2026-11-12T15:00:00Z' }), notice({ id: 's4', job_id: 'j650' }), approved('s5', 'j651', { voided_at: '2026-11-12T15:00:00Z' })]
+    const res = await post({ kind: 'signature', remind: true, items: ['s1', 's2', 's3', 's4', 's5'].map((item_id) => ({ item_id })) })
+    expect(res.body).toMatchObject({ success: true, push_sent: 1, told: 1 })
+    expect(world.pushes[0]).toMatchObject({ title: 'Sign a lien notice', url: '/lien-desk?tab=notices&job=j650&pile=ready' })
+  })
+
+  it('a notice changed after he signed waits on his signature again', async () => {
+    world.items = [approved('s1', 'j650', { fields: { notice: { claimAmount: 30_000 } }, ...signedFor({ notice: { claimAmount: 27_199 } }) })]
+    expect((await post({ kind: 'signature', remind: true, items: [{ item_id: 's1' }] })).body).toMatchObject({ success: true, push_sent: 1, told: 1 })
+  })
+
+  it('with nothing left to sign the function answers 200 and sends nothing', async () => {
+    const fields = { notice: { claimAmount: 27_199 } }
+    world.items = [approved('s1', 'j650', { fields, ...signedFor(fields) })]
+    expect((await post({ kind: 'signature', remind: true, items: [{ item_id: 's1' }] })).body).toMatchObject({ success: true, push_sent: 0, told: 0, message: 'Not waiting on a signature' })
+    expect(nothingSent()).toBe(true)
+  })
+
+  it('an affidavit or a retainage notice is never worded as a notice to sign', async () => {
+    world.items = [affidavit('a1', { status: 'approved' }), approved('r1', 'j650', { kind: 'retainage_53_057' })]
+    expect((await post({ kind: 'signature', remind: true, items: [{ item_id: 'a1' }, { item_id: 'r1' }] })).body).toMatchObject({ push_sent: 0, told: 0, message: 'Not waiting on a signature' })
+    expect(nothingSent()).toBe(true)
+  })
+
+  it('each leader gets his own jobs in one message, and a job with no leader asks every leader but the caller', async () => {
+    const OTTO = person('u-otto', 'Otto Hale', 'master_technician')
+    world.users = [...world.users, OTTO]
+    world.devices = new Set(['u-malachi', 'u-otto'])
+    world.jobs = world.jobs.map((j) => (j.id === 'j651' ? { ...j, master_user_id: 'u-otto' } : j.id === 'j652' ? { ...j, master_user_id: null } : j))
+    const res = await post({ kind: 'signature', remind: true, items: [{ item_id: 's1' }, { item_id: 's2' }, { item_id: 's3' }] })
+    expect(res.body).toMatchObject({ success: true, push_sent: 2, told: 3, leader_name: null })
+    const byLeader = Object.fromEntries(world.pushes.map((p) => [(p.userIds as string[])[0], p.title]))
+    expect(byLeader).toEqual({ 'u-malachi': 'Sign 2 lien notices', 'u-otto': 'Sign 2 lien notices' })
+  })
+
+  it('the gate is the office: a helper is refused before a paper is read, and a call with no papers is refused', async () => {
+    world.callerId = 'u-hank'
+    expect(await post({ kind: 'signature', remind: true, items: [{ item_id: 's1' }] })).toEqual({ status: 403, body: { error: 'Not the office' } })
+    expect(world.calls).not.toContain('select job_lien_desk_items')
+    world.callerId = 'u-wendi'
+    expect(await post({ kind: 'signature', remind: true, items: [] })).toEqual({ status: 400, body: { error: 'Missing items' } })
     expect(nothingSent()).toBe(true)
   })
 })

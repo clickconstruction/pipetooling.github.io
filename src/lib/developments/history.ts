@@ -183,6 +183,103 @@ export function entryLine(e: HistoryEntry, labels: { site: string; job: (id: str
   }
 }
 
+// ---- the mail tied to a bid or a job ----------------------------------------------------------
+
+/**
+ * A row of `messages` the page reads for a mail tied to one of the site's bids or jobs (v2.7479): the
+ * conversation someone tagged from My email, the dev seat tagged, or a company box's reader placed. Read
+ * under the reader's own policies, so the page shows no more than Messages shows them.
+ */
+export type TiedMailRow = {
+  id: string
+  contact_id: string
+  bid_id: string | null
+  jobs_ledger_id: string | null
+  /** `in`: from them. `out`: from us. Any other word is not a mail and draws nothing. */
+  direction: string
+  who_user_id: string | null
+  /** The words the writer kept for who: *Dana to the team box*, as the readers and the tag write them. */
+  who_text: string | null
+  at: string
+  subject: string | null
+  body: string | null
+  /** Gmail's id of the mail: one mail is one row, and a second row with the same id draws nothing. */
+  gmail_id?: string | null
+}
+
+/** The columns the page reads for a tied mail. */
+export const TIED_MAIL_COLUMNS = 'id, contact_id, bid_id, jobs_ledger_id, direction, who_user_id, who_text, at, subject, body, gmail_id'
+
+/** The person a tied mail is with, for the name when the row kept no words and for the door. */
+export type TiedMailContact = { id: string; kind: string; name: string | null; goes_by: string | null }
+
+export const MAIL_IN_VERB = 'Email in'
+export const MAIL_OUT_VERB = 'Email out'
+/** The press on a mail line: its thread in Messages, open at the mail. */
+export const MAIL_DOOR_WORDS = 'Open in Messages'
+
+/** Who a mail was from and to: the row's own words, else our person and theirs by name. */
+function mailWho(row: TiedMailRow, contact: TiedMailContact | undefined, names: ReadonlyMap<string, string>): string {
+  const kept = (row.who_text ?? '').trim()
+  if (kept) return kept
+  const them = (contact?.name ?? '').trim() || (contact?.goes_by ?? '').trim() || 'someone'
+  if (row.direction === 'in') return `${them} to us`
+  const ours = row.who_user_id ? (names.get(row.who_user_id) ?? '').trim() : ''
+  return `${ours || 'us'} to ${them}`
+}
+
+/**
+ * The lines the stream draws for the mail tied to the site's bids and jobs: one line a mail, at the
+ * mail's own time, saying which way it went, the piece it is tied to, the subject, the words (the feed
+ * folds a long body behind *more ›* as it folds a long entry), who it was from and to, and the door to
+ * its thread in Messages. One mail draws once: a row seen twice, by its id or by Gmail's, is dropped. A
+ * line someone kept by hand about the same mail (`development_history_entries`, source email) carries
+ * no Gmail id, so nothing here tries to match the two: the kept line stays as it was written and the
+ * tied mail draws beside it, once, from its own row. A mail whose bid or job is not on the page draws
+ * nothing. `threadHref` is null for a reader who cannot open Messages, and the line has no door.
+ */
+export function mailLines(
+  rows: readonly TiedMailRow[],
+  ctx: {
+    job: (id: string) => ChangeAbout | null
+    bid: (id: string) => ChangeAbout | null
+    contacts: readonly TiedMailContact[]
+    names: ReadonlyMap<string, string>
+    threadHref: ((contactKind: string | null, contactId: string, messageId: string) => string) | null
+  },
+): ChangeLine[] {
+  const contactById = new Map(ctx.contacts.map((c) => [c.id, c]))
+  const seenIds = new Set<string>()
+  const seenGmail = new Set<string>()
+  const out: ChangeLine[] = []
+  for (const row of rows) {
+    if (row.direction !== 'in' && row.direction !== 'out') continue
+    const gmailId = (row.gmail_id ?? '').trim()
+    if (seenIds.has(row.id) || (gmailId && seenGmail.has(gmailId))) continue
+    const about = row.bid_id ? ctx.bid(row.bid_id) : row.jobs_ledger_id ? ctx.job(row.jobs_ledger_id) : null
+    if (!about) continue
+    seenIds.add(row.id)
+    if (gmailId) seenGmail.add(gmailId)
+    const contact = contactById.get(row.contact_id)
+    const subject = (row.subject ?? '').trim()
+    const body = (row.body ?? '').trim()
+    out.push({
+      id: `mail:${row.id}`,
+      at: row.at,
+      kind: 'mail',
+      verb: row.direction === 'in' ? MAIL_IN_VERB : MAIL_OUT_VERB,
+      about,
+      subject: subject || null,
+      detail: body || null,
+      by: mailWho(row, contact, ctx.names),
+      waitingDays: null,
+      withTime: true,
+      ...(ctx.threadHref ? { threadHref: ctx.threadHref(contact?.kind ?? null, row.contact_id, row.id) } : {}),
+    })
+  }
+  return out
+}
+
 // ---- the chips that narrow -------------------------------------------------------------------
 
 export type HistoryChip = 'all' | 'wrote' | 'happened' | 'plans' | 'stages' | 'money' | 'questions' | 'photos'
@@ -190,7 +287,7 @@ export type HistoryChip = 'all' | 'wrote' | 'happened' | 'plans' | 'stages' | 'm
 export const HISTORY_CHIPS: ReadonlyArray<{ key: HistoryChip; label: string; title: string }> = [
   { key: 'all', label: 'Everything', title: 'Every line, whoever or whatever wrote it' },
   { key: 'wrote', label: 'What people wrote', title: 'Notes on jobs, bids, the site and the customer' },
-  { key: 'happened', label: 'What happened', title: 'Emails, calls, texts, visits and letters, kept at their time' },
+  { key: 'happened', label: 'What happened', title: 'Emails, calls, texts, visits and letters, kept at their time, and the mail tied to a job or a bid' },
   { key: 'plans', label: 'Plans', title: 'Every plan set filed, newest first: the history of plans' },
   { key: 'stages', label: 'Stages', title: 'Sends, outcomes, stage moves, new jobs and bids' },
   { key: 'money', label: 'Money', title: 'Bills and payments' },
@@ -205,7 +302,7 @@ export function lineMatchesChip(line: ChangeLine, chip: HistoryChip): boolean {
     case 'wrote':
       return line.kind === 'note' || (line.kind === 'entry' && line.source === 'note')
     case 'happened':
-      return line.kind === 'entry' && line.source !== 'note'
+      return line.kind === 'mail' || (line.kind === 'entry' && line.source !== 'note')
     case 'plans':
       return line.kind === 'plans'
     case 'stages':

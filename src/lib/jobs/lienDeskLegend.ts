@@ -4,6 +4,7 @@
  * guide. Held by `deskLegendFailures` in `deskLegends.test.ts`. Pure.
  */
 import type { DeskLegend } from '../help/deskLegend'
+import { LIEN_RUN_ACT } from './lienRunWords'
 
 export const LIEN_DESK_LEGEND: DeskLegend = {
   key: 'lien-desk',
@@ -15,7 +16,7 @@ export const LIEN_DESK_LEGEND: DeskLegend = {
     { key: 'deadlines', label: 'By date', accent: '#7c3aed', note: 'When each deadline falls, on one calendar with the 15ths as columns.' },
     { key: 'all-filings', label: 'By paper', note: 'Every paper by its state, under Monthly notices, Lien affidavits and Retainage notices.' },
     { key: 'by-job', label: 'By job', note: 'Every job with its whole path, the nearest date first.' },
-    { key: 'run', label: 'Record the mailing', accent: '#059669', note: 'The printed notices as one packet. It records what is ready and holds the rest with the reason.' },
+    { key: 'run', label: LIEN_RUN_ACT.print, accent: '#059669', note: `The approved notices as one packet to print. ${LIEN_RUN_ACT.record} then records what is ready and holds the rest with the reason.` },
     { key: 'rules', label: '§ Rules', note: 'The Texas rules the desk follows, with the guide behind each one.' },
   ],
   guide: { slug: 'send-lien-notices-from-the-lien-desk', title: 'send lien notices from the Lien desk' },

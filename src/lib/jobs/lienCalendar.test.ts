@@ -381,7 +381,7 @@ describe('the In the mail mark (v2.5522)', () => {
     expect(cal.totals).toMatchObject({ noticesOwed: 1, inTheMail: 1 })
     // Every notice due in the mail: the GC's move is recording, and the group's tone eases to amber.
     const only = buildLienCalendar([mailed], '')
-    expect(only.groups[0]!.word).toBe('record the mailing · 17 d')
+    expect(only.groups[0]!.word).toBe('enter mail numbers · 17 d')
     expect(only.groups[0]!.sub).toBe('GC · 1 job · 1 in the mail')
     const glyphs = LIEN_CALENDAR_KEY.map((k) => k.glyph)
     expect(glyphs.indexOf('mailed')).toBe(glyphs.indexOf('check') + 1)

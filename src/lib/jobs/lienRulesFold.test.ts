@@ -37,10 +37,11 @@ describe('indexLienRules over the real guide (v2.4826)', () => {
     const ids = new Set(index.rules.map((r) => r.id))
     for (const heading of Object.values(LIEN_RULE_CITES)) expect(ids.has(headingAnchor(heading)), heading).toBe(true)
   })
-  it('the two rules counsel has not read carry their line, and no other rule does', () => {
+  it('the three rules counsel has not read carry their line, and no other rule does', () => {
     const { index } = mount()
     const withCounsel = index.rules.filter((r) => r.counsel).map((r) => r.id)
-    expect(withCounsel).toEqual(['how-soon-the-lien-can-be-filed', 'a-late-notice-can-still-carry-the-affidavit'])
+    // The affidavit's rule carries it since punch list #366: the served copy drawn from the record, and its cover letter.
+    expect(withCounsel).toEqual(['what-the-affidavit-needs-before-it-can-be-filed', 'how-soon-the-lien-can-be-filed', 'a-late-notice-can-still-carry-the-affidavit'])
   })
 })
 

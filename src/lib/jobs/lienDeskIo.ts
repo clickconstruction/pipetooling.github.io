@@ -112,6 +112,17 @@ export async function tellLeaderOfLienAffidavits(papers: ReadonlyArray<{ itemId:
   return askLeaderTell({ kind: 'affidavit', items: papers.map((p) => ({ item_id: p.itemId, due_ymd: p.dueYmd ?? undefined })), ...(opts?.remind ? { remind: true } : {}) })
 }
 
+/**
+ * Remind the leader of approved notices that wait on his signature (v2.7491): one call for every notice of the press,
+ * so eight buzz him once with the count. Until now no press told him of these: Remind covered a paper awaiting
+ * approval alone. Best effort and never thrown. The function as it was refuses a body with no `item_id`, and the
+ * office reads that as the part that tells the leader waiting for its update.
+ */
+export async function tellLeaderOfLienSignatures(papers: ReadonlyArray<{ itemId: string; dueYmd: string | null }>): Promise<LienLeaderTellResult | null> {
+  if (papers.length === 0) return null
+  return askLeaderTell({ kind: 'signature', items: papers.map((p) => ({ item_id: p.itemId, due_ymd: p.dueYmd ?? undefined })), remind: true })
+}
+
 /** "Robert said to send it" — approved on the leader's spoken word, with who / when / how (or, v2.3813, that he is standing here / typing it in). */
 export async function sendLienDeskItemOnWord(itemId: string, word: { note: string; channel: LienWordChannel }): Promise<void> {
   await withSupabaseRetry(

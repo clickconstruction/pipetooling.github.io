@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { EmptyState } from '../EmptyState'
 import { lienBoardBinsShown, lienBoardDoorWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardLeaderView, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
+import type { LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 
 /**
  * The Lien desk's Board (the owner's ask of 2026-11-15): the month as one picture at the top of To do, where The
  * lien month strip and Steps of each paper stood until v2.7332. Four tiles, then two columns of bins — the monthly
  * notices on the left, the lien affidavits on the right — every job a chip in the bin of its stage, coloured by how
- * soon its day is; thin grey arrows down each column and one across from Sent to Needs the property facts, drawn
+ * soon its day is; thin grey arrows down each column and one across from Sent to Waiting on its notice, drawn
  * from the bins' measured places so they stay attached when chips wrap, the crossing one gone when the columns stack;
  * the busiest bin lit; Held and Missed beside a column only while a job is in one; retainage one line under the notices.
  *
  * The picture and the queue are one screen: a bin's head is a press that narrows the list under the Board to that
  * bin's jobs (`onPick`), and a second press, or *Show every row*, puts the list back. A chip is a press to the right
  * place for its stage when the desk hands `onChip` (PR 3); until then it is a plain chip with its hover words. A chip
- * that stands in both columns for one reason lights in both on hover. The words and the rule are `lienBoard.ts`;
+ * that stands in both columns for one reason lights in both on hover: a job with no owner of record, or an affidavit
+ * that waits on its notice alone, beside that notice (v2.7457). The words and the rule are `lienBoard.ts`;
  * nothing here reads or writes.
  *
  * Since v2.7381 a chip pointed at, or reached by the keyboard, shows a card before any press (`cardFor`,
@@ -64,7 +67,7 @@ type Line = { key: string; kind: LienBoardArrow['kind']; d: string }
  * The arrows as SVG paths from the bins' measured boxes, relative to the grid. A down arrow runs from the bottom
  * middle of one bin to the top middle of the next; the crossing one leaves Sent's right edge, runs up the gutter
  * between the two columns (`col:notice` and `col:affidavit` boxes when measured, so a Held or Missed bin beside the
- * notices never has the line behind it) and enters Needs the property facts' left edge. Pure over the measurements.
+ * notices never has the line behind it) and enters Waiting on its notice's left edge. Pure over the measurements.
  */
 export function lienBoardArrowPaths(arrows: ReadonlyArray<LienBoardArrow>, boxes: Readonly<Record<string, { left: number; top: number; width: number; height: number } | undefined>>, stacked: boolean): Line[] {
   const out: Line[] = []
@@ -135,7 +138,10 @@ function Chip({ chip, lit, onChip, onHover, onCard }: { chip: LienBoardChip; lit
   )
 }
 
-function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard }: { bin: LienBoardBin; picked: boolean; isMobile: boolean; onPick?: (key: LienBoardBinKey) => void; onChip?: (chip: LienBoardChip) => void; pairLit: string | null; onHover: (pairKey: string | null) => void; onCard?: (chip: LienBoardChip, el: HTMLElement | null) => void }) {
+/** A press that stands inside one bin, under its chips: its words and what it opens. */
+export type LienBoardBinPress = { label: string; onPress: () => void; title?: string }
+
+function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard, press }: { bin: LienBoardBin; picked: boolean; isMobile: boolean; press?: LienBoardBinPress | null; onPick?: (key: LienBoardBinKey) => void; onChip?: (chip: LienBoardChip) => void; pairLit: string | null; onHover: (pairKey: string | null) => void; onCard?: (chip: LienBoardChip, el: HTMLElement | null) => void }) {
   const n = bin.chips.length
   const head = (
     <>
@@ -155,6 +161,12 @@ function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard }
       <div className="lienBoardChips" data-lien-board-chips={bin.key}>
         {n === 0 ? <span data-lien-board-empty style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>none</span> : bin.chips.map((c) => <Chip key={`${c.kind}:${c.jobId}`} chip={c} lit={Boolean(c.pairKey) && c.pairKey === pairLit} onChip={onChip} onHover={onHover} onCard={onCard} />)}
       </div>
+      {/* The bin's own press (punch list #366): the act every paper in it shares. An outline, so each column's print stays the one filled press. */}
+      {press && n > 0 ? (
+        <button type="button" data-lien-board-bin-press={bin.key} onClick={press.onPress} title={press.title} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, margin: '6px 0 2px', padding: isMobile ? '0 12px' : '4px 12px', minHeight: isMobile ? 44 : undefined, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer', justifySelf: 'start' }}>
+          {press.label}
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -281,9 +293,11 @@ export default function LienBoard({
   foot,
   over,
   underAffidavits,
+  binPress,
   onLayout,
   leader,
   cardFor,
+  prints,
 }: {
   board: LienBoardModel
   isMobile: boolean
@@ -305,6 +319,8 @@ export default function LienBoard({
   over?: ReactNode
   /** A bin of the desk's own under the affidavit column (v2.7443): *Public jobs · bond claim*. */
   underAffidavits?: ReactNode
+  /** A press inside a bin, by the bin's key (punch list #366): *Mail 12 liens’ copies ›* in *Filed · copies to mail*. The leader's own view draws none. */
+  binPress?: Partial<Record<LienBoardBinKey, LienBoardBinPress>>
   /** Told when the columns stack or stand side by side, so the desk can make To do one page while the Board is taller than the screen. */
   onLayout?: (stacked: boolean) => void
   /**
@@ -314,6 +330,26 @@ export default function LienBoard({
   leader?: { view: LienBoardLeaderView; mine: boolean; onToggleMine: () => void; onApprove: () => void; busy?: boolean }
   /** What a chip says when it is pointed at (v2.7381): the job and where its paper stands. Absent, a chip keeps the browser's one-line tip. */
   cardFor?: (chip: LienBoardChip) => LienBoardChipCard | null
+  /**
+   * The two prints (v2.7470, punch list #362; `lienBoardPrints.ts`): the whole run for the notices and the batch print for the
+   * affidavits, each with what it leaves out and the door to it. Since v2.7483 they stand between the tiles and the columns,
+   * each over its own column, so they show on arrival; where the columns stack, and on a phone, they stack. Absent, or on
+   * the leader's own bins, none is drawn.
+   */
+  prints?: {
+    notice: LienBoardPrintSide | null
+    affidavit: LienBoardPrintSide | null
+    onPress: (side: LienBoardPrintSide) => void
+    onLeft: (side: LienBoardPrintSide) => void
+    onNote: (side: LienBoardPrintSide) => void
+    busy?: boolean
+    /**
+     * The office's reminder (v2.7491), beside the line that counts the notices waiting on the leader's signature: the
+     * same press as To do's waiting rows carry, so it stands on a day when no paper waits on an approval. Null with
+     * no notice to sign, or for a viewer who cannot send it.
+     */
+    remind?: { button: string; dead: boolean; busy?: boolean; onPress: () => void } | null
+  } | null
 }) {
   const gridRef = useRef<HTMLDivElement | null>(null)
   const [stacked, setStacked] = useState<boolean>(isMobile)
@@ -401,6 +437,56 @@ export default function LienBoard({
 
   // A phone has no hover: its chips keep their press and draw no card.
   const cardHandler = cardFor && !isMobile ? onCard : undefined
+  // The column's own print (v2.7470): one press that names its count, then what it leaves out with its door.
+  const lineDoor: CSSProperties = { border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', borderRadius: 3 }
+  // It is not one more stage: no arrow leads to it, since the bins are the flow.
+  const drawPrints = Boolean(prints && !mine && (prints.notice || prints.affidavit))
+  const printFoot = (side: LienBoardPrintSide | null | undefined) => {
+    if (!prints || !side || mine) return null
+    const off = side.dead || Boolean(prints.busy)
+    return (
+      <div data-lien-board-print={side.kind} style={{ display: 'grid', gap: 4, justifyItems: 'start', minWidth: 0 }}>
+        <button
+          type="button"
+          data-lien-board-print-press={side.act}
+          disabled={off}
+          onClick={() => prints.onPress(side)}
+          style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: isMobile ? '0 14px' : '6px 14px', minHeight: isMobile ? 44 : undefined, borderRadius: 8, border: 'none', cursor: off ? 'default' : 'pointer', ...(off ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT } : { background: '#2563eb', color: '#fff' }) }}
+        >
+          {side.label}
+        </button>
+        {side.left ? (
+          <div data-lien-board-print-left style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', minWidth: 0 }}>
+            {side.left.words}
+            {' · '}
+            <button type="button" className="lienJobDoor" data-lien-board-print-left-door onClick={() => prints.onLeft(side)} style={lineDoor}>{side.left.door} ›</button>
+            {side.kind === 'notice' && prints.remind ? (
+              <>
+                {' · '}
+                <button
+                  type="button"
+                  className="lienJobDoor"
+                  data-lien-board-remind
+                  disabled={prints.remind.dead || Boolean(prints.remind.busy)}
+                  onClick={prints.remind.onPress}
+                  style={{ ...lineDoor, ...(prints.remind.dead || prints.remind.busy ? { color: 'var(--text-muted)', cursor: 'default' } : null) }}
+                >
+                  {prints.remind.busy ? 'Reminding…' : prints.remind.dead ? prints.remind.button : `${prints.remind.button} ›`}
+                </button>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+        {side.note ? (
+          <div data-lien-board-print-note style={{ fontSize: '0.78rem', color: 'var(--text-muted)', minWidth: 0 }}>
+            {side.note.words}
+            {' · '}
+            <button type="button" className="lienJobDoor" data-lien-board-print-note-door onClick={() => prints.onNote(side)} style={lineDoor}>{side.note.door} ›</button>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
   const column = (kind: 'notice' | 'affidavit', title: string, bins: LienBoardBin[], under: ReactNode) => {
     const flow = bins.filter((b) => !b.beside)
     const beside = bins.filter((b) => b.beside)
@@ -409,7 +495,7 @@ export default function LienBoard({
         <h3 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: kind === 'notice' ? 'var(--text-blue-700)' : 'var(--text-red-700)' }}>{title}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: beside.length && !layout ? 'minmax(0, 1fr) minmax(0, 0.55fr)' : '1fr', gap: '0 12px', alignItems: 'start' }}>
           <div data-lien-board-flow={kind} style={{ display: 'grid', gap: 22 }}>
-            {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} />)}
+            {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} press={mine ? null : binPress?.[b.key]} />)}
           </div>
           {beside.length ? (
             <div data-lien-board-beside={kind} style={{ display: 'grid', gap: 10, alignContent: 'start', marginTop: layout ? 10 : 0 }}>
@@ -428,7 +514,8 @@ export default function LienBoard({
   return (
     <section ref={boardRef} aria-label="The Board" data-lien-board data-lien-board-layout={layout ? 'stacked' : 'columns'} style={{ position: 'relative', display: 'grid', gap: isMobile ? 10 : 12, padding: isMobile ? '0.6rem 0.75rem 0.4rem' : '0.75rem 1.25rem 0.5rem' }}>
       <div data-lien-board-tiles style={{ display: 'grid', gridTemplateColumns: isMobile || layout ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
-        {board.tiles.map((t) => <Tile key={t.key} tile={t} isMobile={isMobile} onTile={onTile} />)}
+        {/* The third tile's press opened the run. With the notices' print drawn right under the tiles it would be the same door twice, so there the tile only reads. */}
+        {board.tiles.map((t) => <Tile key={t.key} tile={t.key === 'in_mail' && drawPrints && prints?.notice ? { ...t, destination: null } : t} isMobile={isMobile} onTile={onTile} />)}
       </div>
       {leader ? (
         <div data-lien-board-leader-bar style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.8125rem', color: 'var(--text-700)' }}>
@@ -436,6 +523,15 @@ export default function LienBoard({
           <button type="button" data-lien-board-mine aria-pressed={mine} onClick={leader.onToggleMine} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', minHeight: isMobile ? 40 : undefined }}>
             {mine ? 'Every bin' : 'Only my bins'}
           </button>
+        </div>
+      ) : null}
+      {/* The two prints, between the tiles and the columns (v2.7483; they stood at each column's foot in v2.7470, 780 px and
+          890 px down a 768 px window). Each stands over its own column, the notices' on the left, so they show on arrival.
+          Where the columns stack, and on a phone, the two stack too. */}
+      {drawPrints ? (
+        <div data-lien-board-prints data-layout={isMobile || layout ? 'stacked' : 'columns'} style={{ display: 'grid', gridTemplateColumns: isMobile || layout ? '1fr' : 'minmax(0, 1fr) minmax(0, 1fr)', columnGap: 56, rowGap: 10, alignItems: 'start' }}>
+          {printFoot(prints?.notice) ?? (isMobile || layout ? null : <span aria-hidden="true" />)}
+          {printFoot(prints?.affidavit)}
         </div>
       ) : null}
       {over}

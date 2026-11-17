@@ -3,6 +3,7 @@
 import type { FilingSignature } from '../../../../../../src/lib/jobsDocuments/filingSignatureType.ts'
 import { signedRecordId } from '../signedRecordId.ts'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils.ts'
+import { lienFieldsHash } from '../../../lienFieldsHash.ts'
 
 /**
  * The leader's electronic signature on a lien notice (v2.5077, lien desk signing PR 1). The
@@ -88,33 +89,9 @@ export function signatureColumnsOf(row: unknown): LienDeskSignatureColumns {
   return out
 }
 
-function canonical(v: unknown): string {
-  if (v === null || typeof v !== 'object') return JSON.stringify(v ?? null)
-  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`
-  const o = v as Record<string, unknown>
-  const keys = Object.keys(o)
-    .filter((k) => o[k] !== undefined)
-    .sort()
-  return `{${keys.map((k) => `${JSON.stringify(k)}:${canonical(o[k])}`).join(',')}}`
-}
-
-function fnv1a(s: string, seed: number): number {
-  let h = seed >>> 0
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 0x01000193) >>> 0
-  }
-  return h >>> 0
-}
-
-/**
- * The draft's `fields` as one short hash: canonical JSON (keys sorted, `undefined` dropped) through
- * two FNV-1a passes, sixteen hex characters. It detects an edit after signing; it is not a secret.
- */
-export function lienFieldsHash(fields: unknown): string {
-  const s = canonical(fields)
-  return fnv1a(s, 0x811c9dc5).toString(16).padStart(8, '0') + fnv1a(s, 0x9747b28c).toString(16).padStart(8, '0')
-}
+// The hash lives beside the function that reads it (v2.7491): `notify-lien-approval` asks the same rule whether a notice
+// waits on a signature, so the desk and the function cannot count differently.
+export { lienFieldsHash }
 
 /** What the row says about a pen signature: who wrote it down, how they know, and whether the leader has confirmed it from his phone. */
 export type LienPenRecord = {
@@ -249,6 +226,15 @@ export function lienChipSigned(row: LienDeskSignatureColumns, fieldsHash: string
   if (!row.signed_at || !(row.signer_printed_name ?? '').trim() || lienSignatureStale(row, fieldsHash)) return 'unsigned'
   const mode = lienSignatureModeOf(row.signer_signature_mode)
   return { at: row.signed_at, mode, recordedBy: mode === 'pen' ? row.signed_recorded_by : null, confirmedAt: mode === 'pen' || mode === 'code' ? row.signed_leader_confirmed_at : null }
+}
+
+/**
+ * An approved notice with no signature on it as it stands (v2.7448): approved by a standing rule or on the leader's
+ * word, or changed since he signed. The run holds it until he signs. One rule for the Board's tile, the run door's
+ * small words and To do's row, so the three cannot count differently. False with no desk item.
+ */
+export function lienItemUnsigned(item: { fields: unknown } | null | undefined): boolean {
+  return item ? lienChipSigned(signatureColumnsOf(item), lienFieldsHash(item.fields)) === 'unsigned' : false
 }
 
 /** A pen record (the pen train, PR 3) or a code signature (v2.5788) the leader has not yet confirmed from his own sign-in: his row on the desk, and nothing waits on it. */

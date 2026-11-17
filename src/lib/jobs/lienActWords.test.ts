@@ -13,9 +13,13 @@ describe('lienActFor (v2.7043, punch list #325): the next act on the lien path',
     expect(lienActFor({ paper: 'affidavit', action: 'draft' })?.words).toBe('Draft the affidavit')
     expect(lienActFor({ paper: 'retainage', action: 'draft' })?.words).toBe('Draft the retainage notice')
     expect(lienActFor({ paper: 'notice', action: 'sign' })?.words).toBe('Sign the notice')
-    expect(lienActFor({ paper: 'notice', action: 'send' })?.words).toBe('Send the notice')
-    expect(lienActFor({ paper: 'notice', action: 'send_run' })?.words).toBe('Send the notice')
-    expect(lienActFor({ paper: 'notice', action: 'add_tracking' })?.words).toBe('Record the mailing')
+    expect(lienActFor({ paper: 'notice', action: 'send' })?.words).toBe('Print and mail the notice')
+    expect(lienActFor({ paper: 'notice', action: 'send_run' })?.words).toBe('Print and mail the notice')
+    expect(lienActFor({ paper: 'notice', action: 'add_tracking' })?.words).toBe('Enter mail numbers')
+    expect(lienActFor({ paper: 'notice', action: 'record_mailing' })?.words).toBe('Enter mail numbers')
+    // v2.7448: the why under each says the step in plain words, with no run in it.
+    expect(lienActFor({ paper: 'notice', action: 'send' })?.why).toBe('The notice is approved. It waits to be printed and mailed.')
+    expect(lienActFor({ paper: 'notice', action: 'add_tracking' })?.why).toBe('The notice is printed. Its certified numbers are not typed in yet.')
     expect(lienActFor({ paper: 'notice', action: 'review_hold' })?.words).toBe('Review the hold')
     expect(lienActFor({ paper: 'affidavit', action: 'file_affidavit' })?.words).toBe('File the affidavit')
     expect(lienActFor({ paper: 'affidavit', action: 'record_service' })?.words).toBe('Serve the affidavit')
@@ -41,6 +45,31 @@ describe('lienActFor (v2.7043, punch list #325): the next act on the lien path',
     expect(gate(['homestead', 'legal'])).toMatchObject({ words: 'Homestead, ask the attorney', dated: true })
     // No lien attaches to public property: no day to race, and a line saying who to ask. It wins over every other gate.
     expect(gate(['public_owner', 'legal'])).toMatchObject({ words: 'Public property, no lien', dated: false, under: 'Ask the attorney about the bond' })
+  })
+
+  it('an affidavit that waits on its notice takes the notice’s own next step as its act, and the late notice only when nothing is started (v2.7527)', () => {
+    const on = (noticeStanding: Parameters<typeof lienActFor>[0]['noticeStanding'], over: Partial<Parameters<typeof lienActFor>[0]> = {}) => lienActFor({ paper: 'affidavit', action: 'send_notice', noticeStanding, ...over })!
+    expect(on('approved')).toMatchObject({ words: 'Print and mail the notice', why: 'The affidavit waits on its notice. The notice is approved and not mailed yet.', dated: true })
+    expect(on('printed')).toMatchObject({ words: 'Enter mail numbers', why: 'The affidavit waits on its notice. The notice is printed. Its certified numbers are not typed in yet.' })
+    expect(on('awaiting', { waitingOn: 'Marisol' })).toMatchObject({ words: 'Waiting on Marisol', why: 'The affidavit waits on its notice. The notice waits on Marisol to approve it.' })
+    expect(on('awaiting').words).toBe('Waiting on the leader')
+    expect(on('to_send').words).toBe('Draft the notice')
+    expect(on('held').words).toBe('Review the hold')
+    expect(on('needs_owner').words).toBe('Find the owner')
+    expect(on('unrecorded').words).toBe('Record the mailing')
+    // Nothing started, a reader that cannot know, and a standing with the gate open: the late notice, as before.
+    for (const standing of ['late', null, undefined, 'on_record', 'not_needed'] as const) expect(on(standing).words).toBe('Send the late notice')
+    // The same act when the notice is the one closed gate of a paper a fact holds.
+    expect(lienActFor({ paper: 'affidavit', action: 'fix_property', missing: ['notice'], noticeStanding: 'approved' })?.words).toBe('Print and mail the notice')
+    expect(lienActFor({ paper: 'affidavit', action: 'fix_property', missing: ['notice'] })?.words).toBe('Send the late notice')
+    // With a fact also missing the fact leads, whatever the notice.
+    expect(lienActFor({ paper: 'affidavit', action: 'fix_property', missing: ['legal', 'notice'], noticeStanding: 'approved' })?.words).toBe('Fix the property record')
+    for (const standing of ['approved', 'printed', 'awaiting', 'to_send', 'held', 'needs_owner', 'unrecorded', 'late'] as const) {
+      const act = on(standing, { waitingOn: 'Marisol' })
+      expect(plainWordsFailures(act.words), act.words).toEqual([])
+      const tip = lienRowTip({ why: act.why, dayWords: 'Nov 16', guess: '' })
+      expect(plainWordsFailures(tip), tip).toEqual([])
+    }
   })
 
   it('a reminder, a closed window and a returned envelope are not steps toward a legal day', () => {

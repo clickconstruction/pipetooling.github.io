@@ -23,7 +23,7 @@ export type LienDeskMoreRow = {
 }
 
 export type LienDeskMoreInput = {
-  /** The run door as the header draws it on a computer: its words and its count. Null when nothing waits or the viewer cannot run. */
+  /** The run door’s words and its count (`runDoorWords`); the title bar drew them on a computer until v2.7490. Null when nothing waits or the viewer cannot run. */
   run: { label: string; count: number; hint: string } | null
   /** Notices is open, the viewer is in the office and a GC has unpaid work to put on notice. */
   gcNotice: boolean

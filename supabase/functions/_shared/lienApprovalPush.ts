@@ -3,6 +3,7 @@
 // thing. One line: the job, the money, the mail-by day. The tap lands on the job in the desk's
 // Awaiting approval pile. Pure: no env reads, no network.
 import { todayYmdInAppTz } from './appTimeZone.ts'
+import { lienRowUnsigned } from './lienFieldsHash.ts'
 
 /**
  * The day he signed, YYYY-MM-DD in the app's zone, from the row's `signed_at` (v2.6006): a stored instant's day is
@@ -78,6 +79,65 @@ export function lienApprovalPush(input: LienApprovalPushInput): LienApprovalPush
     'Open the Lien desk to approve it or hold it.',
   ].filter((l) => l !== null) as string[]
   return { title, body, url: lienApprovalUrl(input.jobId), tag: `lien-approval-${input.jobId}`, subject: `Approve a lien notice · ${input.jobLabel}`, emailText: lines.join('\n') }
+}
+
+// ---------- a retainage notice sent for approval (v2.7478) ----------
+
+export type LienRetainageApprovalPushInput = {
+  /** "891 · Take 5 Liberty Hill" */
+  jobLabel: string
+  jobId: string
+  /** The retainage on the draft, dollars; null when the draft has none. */
+  retainage: number | null
+  /** The GC that holds it; null when unknown. */
+  gcName: string | null
+  /** The day the § 53.057 window closes, YYYY-MM-DD; null when the client did not say. */
+  dueYmd: string | null
+  /** Today in the app's time zone, YYYY-MM-DD. */
+  todayYmd: string
+  /** Who pressed: the caller of the function; null when their row has no name. */
+  senderName: string | null
+  /** The To do view's Remind press: the paper was sent earlier, and the email says a reminder. */
+  reminder?: boolean
+}
+
+/** The door that exists: the desk's Retainage list, opened on the job. */
+export function lienRetainageApprovalUrl(jobId: string): string {
+  return jobId ? `/lien-desk?tab=retainage&job=${encodeURIComponent(jobId)}` : '/lien-desk?tab=retainage'
+}
+
+/**
+ * The words the leader gets when the office sends a § 53.057 retainage notice for approval: the job, the retainage
+ * and who holds it, and the day the notice must be in the mail. A monthly notice's words name a claim owed
+ * (`lienApprovalPush`); these name retainage held, and the tap lands on the Retainage list, where the paper is.
+ * Until v2.7478 a retainage notice sent for approval told nobody, and the Remind press left it out. A day that has
+ * passed is named without a count.
+ */
+export function lienRetainageApprovalPush(input: LienRetainageApprovalPushInput): LienApprovalPush {
+  const who = (input.senderName ?? '').trim().split(/\s+/)[0] || 'The office'
+  const held = input.retainage != null && input.retainage > 0 ? `${money(input.retainage)} retainage${input.gcName ? ` held by ${input.gcName}` : ''}` : null
+  const day = shortDay(input.dueYmd)
+  const days = day ? daysUntil(input.dueYmd, input.todayYmd) : null
+  const count = days != null && days >= 0 ? `${days} ${days === 1 ? 'day' : 'days'}` : null
+  const title = 'Approve a retainage notice'
+  const lines = [
+    input.reminder ? `${who} is reminding you of a retainage notice that waits for your approval.` : `${who} sent a retainage notice for your approval.`,
+    '',
+    input.jobLabel,
+    // A GC's name can end in its own full stop.
+    held ? (held.endsWith('.') ? held : `${held}.`) : null,
+    day ? `Mail by ${day}${count ? `, ${count} from now` : ''}.` : null,
+    '',
+    'Open the Lien desk to approve it or hold it.',
+  ].filter((l) => l !== null) as string[]
+  return {
+    title,
+    body: [input.jobLabel, held, day ? `mail by ${day}${count ? ` · ${count}` : ''}` : null].filter(Boolean).join(' · '),
+    url: lienRetainageApprovalUrl(input.jobId),
+    tag: `lien-retainage-approval-${input.jobId}`,
+    subject: `${title} · ${input.jobLabel}`,
+    emailText: lines.join('\n'),
+  }
 }
 
 export type LienPenRecordedPushInput = {
@@ -359,4 +419,105 @@ export function lienAffidavitAskable(row: { kind?: string | null; status?: strin
   if (opts?.reminder) return true
   const sent = Date.parse(row.submitted_at ?? '')
   return Number.isFinite(sent) && nowMs - sent <= LIEN_AFFIDAVIT_ASK_FRESH_MS && sent - nowMs <= LIEN_AFFIDAVIT_ASK_FRESH_MS
+}
+
+// ---------- a notice that waits on his signature (v2.7491) ----------
+
+export type LienSignaturePaper = {
+  /** "891 · Take 5 Liberty Hill" */
+  jobLabel: string
+  jobId: string
+  /** The day the notice must be in the mail, YYYY-MM-DD; null when the client did not say. */
+  mailByYmd: string | null
+}
+
+export type LienSignatureReminderPushInput = {
+  /** Every notice this leader is reminded to sign in one press. */
+  papers: ReadonlyArray<LienSignaturePaper>
+  /** Today in the app's time zone, YYYY-MM-DD. */
+  todayYmd: string
+  /** Who pressed: the caller of the function; null when unknown. */
+  senderName: string | null
+}
+
+/** The door that exists: the desk's Approved notices, opened on the job when the message is about one paper. */
+export function lienSignatureUrl(jobId: string | null): string {
+  return jobId ? lienPenRecordedUrl(jobId) : '/lien-desk?tab=notices&pile=ready'
+}
+
+/**
+ * The words the leader gets when the office reminds him of notices that wait on his signature (v2.7491). An approved
+ * notice with no signature cannot print, and nothing told him: a standing rule or his spoken word approved it, or the
+ * draft changed after he signed. The office's **Remind** press covered a paper that waits on an approval and left
+ * these out, so the papers that most often wait on him had no message at all.
+ *
+ * The affidavit's batch rule: every notice of one press is one message. Eight notices are one push that names the
+ * count with the soonest day, and the email lists each job beside its own day. Always a reminder: no press sends a
+ * notice *for signature*, so there is no first ask to tell apart.
+ */
+export function lienSignatureReminderPush(input: LienSignatureReminderPushInput): LienApprovalPush {
+  const who = (input.senderName ?? '').trim().split(/\s+/)[0] || 'The office'
+  const byDay = soonestFirst(input.papers.map((p) => ({ jobLabel: p.jobLabel, jobId: p.jobId, fileByYmd: p.mailByYmd })))
+  const head = byDay[0] ?? { jobLabel: 'A job', jobId: '', fileByYmd: null }
+  const day = shortDay(head.fileByYmd)
+  const left = day ? daysUntil(head.fileByYmd, input.todayYmd) : null
+  const short = left == null || left < 0 ? null : left === 0 ? 'today' : `${left} ${left === 1 ? 'day' : 'days'}`
+  const long = left == null || left < 0 ? '.' : left === 0 ? '. That is today.' : `, ${short} from now.`
+  if (byDay.length <= 1) {
+    const title = 'Sign a lien notice'
+    const lines = [
+      `${who} is reminding you of a lien notice that waits for your signature.`,
+      '',
+      head.jobLabel,
+      day ? `Mail by ${day}${long}` : null,
+      'It is approved. It cannot be printed or mailed until you sign it.',
+      '',
+      'Open the Lien desk to sign it.',
+    ].filter((l) => l !== null) as string[]
+    return {
+      title,
+      body: [head.jobLabel, day ? `mail by ${day}` : null, short].filter(Boolean).join(' · '),
+      url: lienSignatureUrl(head.jobId || null),
+      tag: `lien-signature-${head.jobId}`,
+      subject: `${title} · ${head.jobLabel}`,
+      emailText: lines.join('\n'),
+    }
+  }
+  const n = byDay.length
+  const title = `Sign ${n} lien notices`
+  const lines = [
+    `${who} is reminding you of ${n} lien notices that wait for your signature.`,
+    '',
+    ...byDay.map((p) => {
+      const d = shortDay(p.fileByYmd)
+      return d ? `${p.jobLabel} · mail by ${d}` : p.jobLabel
+    }),
+    '',
+    day ? `The first must be in the mail by ${day}${long}` : null,
+    'Each one is approved. None can be printed or mailed until you sign it.',
+    '',
+    'Open the Lien desk to sign each one.',
+  ].filter((l) => l !== null) as string[]
+  return {
+    title,
+    body: [`${n} jobs`, day ? `first to mail by ${day}` : null, short].filter(Boolean).join(' · '),
+    url: lienSignatureUrl(null),
+    // One press, one message: a later press is its own message and never replaces this one.
+    tag: `lien-signature-${n}-${head.jobId}`,
+    subject: title,
+    emailText: lines.join('\n'),
+  }
+}
+
+/**
+ * Whether the leader is reminded to sign this row: a monthly notice, approved, not voided, not yet printed, with no
+ * signature that counts for the draft as it stands (`lienRowUnsigned`, the desk's own rule). That is the desk's
+ * *Approved · to print* bin less the notices already signed, which is what its second tile counts *to sign*. A paper
+ * signed, printed, sent or pulled back since the list was drawn is left out, so a late press cannot nag him of it.
+ */
+export function lienSignatureAskable(
+  row: { kind?: string | null; status?: string | null; voided_at?: string | null; printed_at?: string | null; fields?: unknown; signed_at?: unknown; signer_printed_name?: unknown; signed_fields_hash?: unknown } | null | undefined,
+): boolean {
+  if (!row || row.kind !== 'notice_53_056' || row.status !== 'approved' || row.voided_at || row.printed_at) return false
+  return lienRowUnsigned(row, row.fields)
 }

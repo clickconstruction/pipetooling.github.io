@@ -1,7 +1,9 @@
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import type { RunNotice, RunRecipient } from './lienDeskRun'
+import { runNoticePrintRefusal } from './lienNoticeParted'
 import type { RunEnvelope } from './runEnvelopes'
+import { LIEN_RUN_ACT } from './lienRunWords'
 
 /**
  * The run on paper (v2.4971, the owner's ask on the October 8 packet — 154 pages for 18 envelopes
@@ -21,6 +23,10 @@ export function runEnvelopeHold(env: Pick<RunEnvelope, 'name' | 'address' | 'met
   if (noAddress && nothing) return `${env.method === 'email' ? 'No email on file' : 'No mailing address'}, and the claim is $0. Nothing to send. The notice stays on the desk.`
   if (noAddress) return env.method === 'email' ? 'No email on file. Set it on the customer, then send this one from the run.' : 'No mailing address. Set it on the customer, then print this envelope from the run.'
   if (nothing) return 'Nothing to send: the claim is $0. The notice stays on the desk.'
+  // The paper and the bills have parted (v2.7517): the signed pages would state a claim the pay page contradicts, so the
+  // envelope prints nothing. Named by job, since one envelope can carry several notices. Not held once printed, as below.
+  const parted = env.contents.map((c) => runNoticePrintRefusal(c.notice)).find(Boolean)
+  if (parted) return parted
   // Unsigned (v2.5086): a builder said the leader has not signed it (`signature: null`); a notice the builder said nothing about (undefined) is not held for it.
   // A notice already printed is not held for it either (v2.5533): the paper went out as it was, and the hold would only stop the record.
   if (env.contents.some((c) => c.notice.signature === null && !c.notice.printedAt)) return 'Unsigned: the leader signs it from his phone, or types his code or draws it here with Leader here, sign ▸.'
@@ -163,7 +169,7 @@ export function runSheetHtml(i: RunSheetInput): string {
     certified ? 'Every envelope goes certified mail with a return receipt.' : 'The method is under each name.',
     'Each envelope has a divider page in front of it with the same number as this list.',
     'Write the number from the certified label in the box under its row.',
-    'Back at the desk, type the numbers into Send the run › Record the mailing. The run checks each one as you type.',
+    `Back at the desk, press ${LIEN_RUN_ACT.record} and type the numbers in. The desk checks each one as you type.`,
     mailing.held.length ? `<b>${mailing.held.length} ${mailing.held.length === 1 ? 'envelope is' : 'envelopes are'} held back</b> and marked in red: the run did not print ${mailing.held.length === 1 ? 'it' : 'them'}, and the reason is beside each one.` : '',
   ]
     .filter(Boolean)

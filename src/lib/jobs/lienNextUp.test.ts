@@ -33,8 +33,10 @@ describe('buildLienNextUp — notices', () => {
     // Signed (v2.5087): an unsigned approved notice is the leader's Sign row, and the office's row says it waits.
     const item = { id: 'i-offer', status: 'approved', offer_pct: 10, offer_by: '2026-11-15', fields: {}, signed_at: '2026-10-05T19:14:00Z', signer_printed_name: 'Robert Douglas', signer_signature_mode: 'type' } as unknown as LienDeskEntry['item']
     const r = one({ notices: [notice('j1', 'ready', { item })] })
-    expect(r.sub).toBe('Approved · offer 10% by Nov 15 · ready to send')
-    expect(one({ notices: [notice('j1', 'ready')] }).sub).toBe('Approved · ready to send')
+    // v2.7448: the line is the pile's name, then the offer. A computer's row starts with its bin, so its detail never repeats it.
+    expect([r.sub, r.detail]).toEqual(['Approved · to print · offer 10% by Nov 15', 'not printed · offer 10% by Nov 15'])
+    const plain = one({ notices: [notice('j1', 'ready')] })
+    expect([plain.sub, plain.detail]).toEqual(['Approved · to print', 'not printed'])
   })
   it('each pile names its one move and opens the Notices pane on that job and pile', () => {
     const cases: Array<[LienDeskPile, string, string]> = [
@@ -66,7 +68,13 @@ describe('buildLienNextUp — notices', () => {
     expect(one({ notices: [notice('j1', 'ready', { gcCustomerId: null })] }).target).toEqual({ open: 'notices', jobId: 'j1', pile: 'ready' })
 
     const run = one({ notices: [notice('j1', 'ready', { earliestDeadline: '2026-10-20', daysLeft: 15 }), notice('j2', 'ready', { earliestDeadline: '2026-10-09', daysLeft: 4, severity: 'red' })] })
-    expect([run.key, run.action, run.button, run.title, run.sub]).toEqual(['run:gc1', 'send_run', 'Print and mail 2', 'GC gc1', '2 notices approved · ready to send'])
+    expect([run.key, run.action, run.button, run.title, run.sub]).toEqual(['run:gc1', 'send_run', 'Print and mail 2', 'GC gc1', '2 notices approved · to print'])
+    // A computer's row starts with the bin Approved · to print, so the GC row's detail says only the count and the tick they lack.
+    expect(run.detail).toBe('2 notices · not printed')
+    // One of the two approved on a rule and never signed: the row says how many the leader has yet to sign.
+    const ruled = { id: 'i-rule', status: 'approved', approval_mode: 'rule', fields: {}, signed_at: null } as unknown as LienDeskEntry['item']
+    const held = one({ notices: [notice('j1', 'ready', { item: ruled }), notice('j2', 'ready')] })
+    expect(held.detail).toBe('2 notices · not printed · 1 not signed')
     expect([run.jobId, run.gcId, run.dueOn, run.daysLeft, run.severity, run.group]).toEqual([null, 'gc1', '2026-10-09', 4, 'red', 'now'])
     expect(run.target).toEqual({ open: 'run', gcId: 'gc1' })
 
@@ -76,6 +84,15 @@ describe('buildLienNextUp — notices', () => {
     expect(lienRunEntriesFor(ready, printed, 'gc1').map((e) => e.jobId)).toEqual(['a', 'c'])
     expect(lienRunEntriesFor(ready, printed, 'gc2').map((e) => e.jobId)).toEqual(['b'])
     expect(lienRunEntriesFor(ready, printed, null).map((e) => e.jobId)).toEqual(['a', 'b', 'c', 'p'])
+
+    // Just this one (v2.7512): the run holds one notice by its desk item, found in either pile, whatever GC is passed.
+    const item = (id: string) => ({ id }) as NonNullable<LienDeskEntry['item']>
+    const readyItems = [notice('a', 'ready', { item: item('ia') }), notice('b', 'ready', { item: item('ib') })]
+    const printedItems = [notice('p', 'printed', { item: item('ip') })]
+    expect(lienRunEntriesFor(readyItems, printedItems, null, 'ib').map((e) => e.jobId)).toEqual(['b'])
+    expect(lienRunEntriesFor(readyItems, printedItems, 'gc1', 'ip').map((e) => e.jobId)).toEqual(['p'])
+    expect(lienRunEntriesFor(readyItems, printedItems, null, 'gone')).toEqual([])
+    expect(lienRunEntriesFor(readyItems, printedItems, null, null).map((e) => e.jobId)).toEqual(['a', 'b', 'p'])
 
     // Two GCs with one each are two single rows, not a run.
     expect(build({ notices: [notice('j1', 'ready'), notice('j2', 'ready', { gcCustomerId: 'gc2' })] }).map((r) => r.action)).toEqual(['send', 'send'])
@@ -124,8 +141,17 @@ describe('buildLienNextUp — affidavits and retainage', () => {
 
   it('a lien filed and not served opens the job’s Lien window on the Lien affidavit tab', () => {
     const r = one({ serveDue: [{ jobId: 'j9', serveDue: '2026-10-07' }] })
-    expect([r.key, r.kind, r.action, r.button, r.dueOn, r.daysLeft, r.group]).toEqual(['serve:j9', 'affidavit', 'record_service', 'Record service', '2026-10-07', 2, 'now'])
+    expect([r.key, r.kind, r.action, r.button, r.dueOn, r.daysLeft, r.group]).toEqual(['serve:j9', 'affidavit', 'record_service', 'Mail the copies', '2026-10-07', 2, 'now'])
     expect(r.target).toEqual({ open: 'lien_window', jobId: 'j9', tab: 'affidavit' })
+  })
+
+  it('a filed lien’s row says what is owed and by when, and turns red the day before its day (punch list #366)', () => {
+    const row = (serveDue: string) => one({ serveDue: [{ jobId: 'j9', serveDue }] })
+    // Today is 2026-10-05 in this file's rows.
+    expect([row('2026-10-07').sub, row('2026-10-07').severity]).toEqual(['Lien filed · mail its copies by Oct 7', 'amber'])
+    expect([row('2026-10-06').sub, row('2026-10-06').severity, row('2026-10-06').daysLeft]).toEqual(['Lien filed · mail its copies by Oct 6', 'red', 1])
+    expect([row('2026-10-05').sub, row('2026-10-05').severity]).toEqual(['Lien filed · mail its copies today', 'red'])
+    expect([row('2026-10-01').sub, row('2026-10-01').severity, row('2026-10-01').daysLeft]).toEqual(['Lien filed · its copies were due Oct 1. Mail them today.', 'red', -4])
   })
 
   it('retainage piles: find the owner, draft, approve, send, review; the rest ask nothing', () => {
@@ -139,6 +165,8 @@ describe('buildLienNextUp — affidavits and retainage', () => {
     expect(act('sent')).toEqual([])
     expect(act('missed')).toEqual([])
     expect(one({ retainage: [retainage('j1', 'ready')] }).target).toEqual({ open: 'retainage', jobId: 'j1' })
+    // A retainage notice has no print pile of its own (v2.7448): approved, it waits to mail with the monthly notices.
+    expect(one({ retainage: [retainage('j1', 'ready')] }).sub).toBe('Retainage notice approved · to mail')
   })
 })
 
@@ -187,6 +215,44 @@ describe('buildLienNextUp — the late notice (v2.4708)', () => {
     expect(a.sub).toContain('late is allowed')
     expect(a.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'missed' })
   })
+  it('the affidavit row says where its notice stands, and its press goes to the step that is next', () => {
+    const aff = () => affidavit('j1', 'needs_property', { deadline: '2026-10-15', daysLeft: 10, severity: 'amber', gates: gates(false) })
+    const row = (n: LienDeskEntry, over: Partial<LienNextUpInput> = {}) => build({ notices: [n], affidavits: [aff()], ...over }).find((r) => r.kind === 'affidavit')!
+    // Approved and standing in the run: Print and mail, on the run of its GC, as the notice's own row does.
+    const approved = row(notice('j1', 'ready'))
+    expect([approved.action, approved.button, approved.sub, approved.detail]).toEqual(['send_notice', 'Print and mail', 'Affidavit · its § 53.056 notice is approved and not mailed yet', 'Its § 53.056 notice is approved and not mailed yet.'])
+    expect(approved.target).toEqual({ open: 'run', gcId: 'gc1' })
+    expect(row(notice('j1', 'ready', { gcCustomerId: null })).target).toEqual({ open: 'notices', jobId: 'j1', pile: 'ready' })
+    // A role outside the office reads the row and has no press.
+    expect(row(notice('j1', 'ready'), { role: 'estimator' }).button).toBeNull()
+    expect(row(notice('j1', 'awaiting'), { role: 'estimator' }).button).toBeNull()
+    // Printed: the run waits on the envelope's numbers.
+    const printed = row(notice('j1', 'printed'))
+    expect([printed.button, printed.detail]).toEqual(['Enter mail numbers', 'Its § 53.056 notice is printed and not mailed yet.'])
+    expect(printed.target).toEqual({ open: 'run', gcId: null })
+    // Earlier stages: the notice itself, on its own pile.
+    const cases: Array<[LienDeskPile, string]> = [
+      ['awaiting', 'Its § 53.056 notice waits on the leader’s approval.'],
+      ['to_draft', 'Its § 53.056 notice is not sent for approval yet.'],
+      ['held', 'Its § 53.056 notice is held.'],
+      ['needs_owner', 'Its § 53.056 notice needs the owner of record.'],
+      ['sent', 'Its § 53.056 notice is marked sent with no mailing on record.'],
+    ]
+    for (const [pile, detail] of cases) {
+      const r = row(notice('j1', pile))
+      expect([r.action, r.button, r.detail]).toEqual(['send_notice', 'Open the notice', detail])
+      expect(r.target).toEqual({ open: 'notices', jobId: 'j1', pile })
+    }
+    expect(row(notice('j1', 'awaiting'), { leaderName: () => 'Sam' }).detail).toBe('Its § 53.056 notice waits on Sam’s approval.')
+    // A window closed with a month still open: the notice is still to send, on the pile it stands in.
+    const open = row(notice('j1', 'missed', { dueMonths: ['2026-08'] }))
+    expect([open.button, open.detail]).toEqual(['Open the notice', 'Its § 53.056 notice is not sent for approval yet.'])
+    expect(open.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'missed' })
+    // No notice row on the desk at all: the late notice, as before.
+    const none = build({ affidavits: [aff()] }).find((r) => r.kind === 'affidavit')!
+    expect([none.button, none.detail]).toEqual(['Send the notice first', 'Send the § 53.056 notice first. Late is allowed while this window is open.'])
+    expect(none.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'missed' })
+  })
   it('a public owner: the row says no lien attaches and offers no press (punch list #314)', () => {
     const r = build({ affidavits: [affidavit('j1', 'needs_property', { gates: [...gates(true), { key: 'public_owner' as const, ok: false, label: '' }] })] }).find((x) => x.kind === 'affidavit')!
     expect([r.action, r.button, r.sub]).toEqual(['fix_property', null, 'Affidavit · public property, no lien attaches. Ask the attorney about the bond'])
@@ -221,7 +287,7 @@ describe('buildLienNextUp — the printed run is one row (punch list #101)', () 
     expect(rows.map((r) => r.key).sort()).toEqual(['notice:j4', 'run:printed'])
     const run = rows.find((r) => r.key === 'run:printed')!
     expect([run.kind, run.jobId, run.gcId, run.title, run.dueOn, run.daysLeft, run.severity, run.group]).toEqual(['notice', null, null, '3 notices printed Oct 7', '2026-10-15', 5, 'red', 'now'])
-    expect(run.sub).toBe('The run as a checklist: tick Printed, Signed and Mailed on each. Mailed? Type each envelope’s number. Not mailing them? Take the run back.')
+    expect(run.sub).toBe('A checklist: tick Printed, Signed and Mailed on each. Mailed? Type each envelope’s number. Not mailing them? Take the print back.')
     expect([run.action, run.button]).toEqual(['record_mailing', 'Enter mail numbers'])
     expect(run.target).toEqual({ open: 'run', gcId: null })
     expect(run.secondary).toEqual({ words: 'Take back…', target: { open: 'run', gcId: null, takeBack: true } })
@@ -261,12 +327,12 @@ describe('groupLienNextUp — only you can approve, first (punch list #101 PR 3)
     expect(rows.find((r) => r.jobId === 'j3')!.sub).toBe('Waiting on Sam')
     const groups = groupLienNextUp(rows, { waitingOn: 'Sam' })
     expect(groups.map((g) => [g.group, g.label, g.rows.map((r) => r.jobId), g.part ?? false])).toEqual([
-      ['waiting', 'Waiting on Sam', ['j2', 'j3'], true],
+      ['waiting', 'Waiting on Sam to approve', ['j2', 'j3'], true],
       ['now', 'On track', ['j1'], true],
     ])
-    expect(lienNextUpNowHead(groups)).toEqual({ label: 'Needs you now', count: 1, waiting: '2 waiting on Sam' })
+    expect(lienNextUpNowHead(groups)).toEqual({ label: 'Needs you now', count: 1, waiting: '2 waiting on Sam to approve' })
     const plain = groupLienNextUp(rows)
-    expect(plain[0]!.label).toBe('Waiting on the leader')
+    expect(plain[0]!.label).toBe('Waiting on the leader to approve')
     expect(lienNextUpCount(rows)).toBe(1)
   })
   it('an affidavit or retainage notice waiting on the leader names him too', () => {
@@ -296,7 +362,8 @@ describe('Only you can sign (v2.5087)', () => {
     expect(twoUnsigned.filter((r) => r.action === 'sign')).toHaveLength(2)
     const officeRow = one({ role: 'assistant', notices: [notice('j1', 'ready', { item: unsigned })], leaderName: () => 'Robert' })
     expect(officeRow.action).toBe('send')
-    expect(officeRow.sub).toBe('Approved · ready to send · unsigned, waits on Robert')
+    expect(officeRow.sub).toBe('Approved · to print · not signed, waits on Robert')
+    expect(officeRow.detail).toBe('not printed · not signed, waits on Robert')
   })
 })
 
@@ -346,7 +413,7 @@ describe('another master’s jobs read as the office reads them (v2.6734, punch 
     const groups = groupLienNextUp(rows, { waitingOn: 'Malachi' })
     expect(groups.map((g) => [g.label, g.rows.map((r) => r.jobId)])).toEqual([
       ['Only you can approve', ['j2', 'j3']],
-      ['Waiting on Malachi', ['j1']],
+      ['Waiting on Malachi to approve', ['j1']],
     ])
     expect(lienNextUpCount(rows)).toBe(2)
     // Without a viewer, every leader leads every job, as before.
@@ -362,7 +429,7 @@ describe('another master’s jobs read as the office reads them (v2.6734, punch 
     const code = { id: 'i-code', status: 'approved', approval_mode: 'leader', fields: {}, signed_at: '2026-10-23T19:14:00Z', signer_printed_name: 'Malachi', signer_signature_mode: 'code', signed_on_device_of: 'u-robert', signed_leader_confirmed_at: null } as unknown as LienDeskEntry['item']
     const rows = build({ role: 'dev', viewerUserId: 'u-robert', masterUserId: master, ...names, notices: [notice('j1', 'ready', { item: unsigned }), notice('j2', 'ready', { item: unsigned, gcCustomerId: 'gc2' })] })
     const his = rows.find((r) => r.jobId === 'j1')!
-    expect([his.action, his.button, his.sub]).toEqual(['send', 'Print and mail', 'Approved · ready to send · unsigned, waits on Malachi'])
+    expect([his.action, his.button, his.sub]).toEqual(['send', 'Print and mail', 'Approved · to print · not signed, waits on Malachi'])
     const mine = rows.find((r) => r.jobId === 'j2')!
     expect([mine.action, mine.button, mine.sub]).toEqual(['sign', 'Sign', 'Approved on your word · unsigned'])
     const codeRow = one({ role: 'dev', viewerUserId: 'u-robert', masterUserId: master, ...names, notices: [notice('j1', 'ready', { item: code })] })
@@ -466,11 +533,11 @@ describe('Needs you now in three parts (v2.7371, punch list #362 step 2)', () =>
     expect(groups.map((g) => [g.group, g.label, g.rows.map((r) => r.key), g.part ?? false])).toEqual([
       // Four stages each for the owner and the facts; the day and the kind settle it: the affidavit's key sorts first.
       ['risk', 'Will not make tomorrow as they stand', ['affidavit:facts', 'notice:owner', 'notice:send'], true],
-      ['waiting', 'Waiting on Sam', ['notice:wait'], true],
+      ['waiting', 'Waiting on Sam to approve', ['notice:wait'], true],
       ['now', 'On track', ['affidavit:big', 'affidavit:small'], true],
       ['coming', 'Coming up', ['notice:later'], false],
     ])
-    expect(lienNextUpNowHead(groups)).toEqual({ label: 'Needs you now', count: 5, waiting: '1 waiting on Sam' })
+    expect(lienNextUpNowHead(groups)).toEqual({ label: 'Needs you now', count: 5, waiting: '1 waiting on Sam to approve' })
   })
 
   it('inside a day the kinds stay together and the largest comes first; with no money the desk’s own order stands', () => {
@@ -541,6 +608,43 @@ describe('a row’s one thing to know, once its kind and stage are said beside i
     expect(one({ affidavits: [affidavit('j1', 'to_draft')] }).detail).toBe('')
     expect(one({ notices: [notice('j1', 'held')] }).detail).toBe('')
     expect(one({ retainage: [retainage('j1', 'to_draft')] }).detail).toBeUndefined()
-    expect(one({ notices: [notice('j1', 'ready')] }).detail).toBeUndefined()
+    expect(one({ retainage: [retainage('j1', 'ready')] }).detail).toBeUndefined()
+    // An approved notice stands in Approved · to print (v2.7448): past its bin, the row says the tick it lacks.
+    expect(one({ notices: [notice('j1', 'ready')] }).detail).toBe('not printed')
+  })
+})
+
+describe('an approved affidavit a gate moved to Held (punch list #335)', () => {
+  const closed = (key: 'homestead_answer' | 'notice' | 'contractor' | 'public_owner') => [{ key, ok: false, label: key }]
+  const approved = { id: 'a1', status: 'approved', fields: {} } as unknown as LienAffidavitEntry['item']
+  it('asks the gate’s one question, with its press, and says the approval stands', () => {
+    const r = one({ affidavits: [affidavit('j1', 'held', { item: approved, ready: false, gates: closed('homestead_answer') })] })
+    const plain = one({ affidavits: [affidavit('j1', 'needs_property', { ready: false, gates: closed('homestead_answer') })] })
+    expect(r.action).toBe('fix_property')
+    expect(r.button).toBe(plain.button)
+    expect(r.sub).toBe(plain.sub.replace(/^Affidavit · /, 'Affidavit approved, held · '))
+    expect(r.detail).toBe(`${plain.detail} The approval stands.`)
+    expect(r.target).toEqual({ open: 'affidavits', jobId: 'j1' })
+  })
+  it('a late notice as the one gate left opens the notices; a public owner offers no press', () => {
+    const late = one({ affidavits: [affidavit('j1', 'held', { item: approved, ready: false, gates: closed('notice') })] })
+    expect(late).toMatchObject({ action: 'send_notice', target: { open: 'notices', jobId: 'j1', pile: 'missed' } })
+    expect(late.detail).toBe('Send the § 53.056 notice first. Late is allowed while this window is open. The approval stands.')
+    const pub = one({ affidavits: [affidavit('j1', 'held', { item: approved, ready: false, gates: closed('public_owner') })] })
+    expect(pub).toMatchObject({ action: 'fix_property', button: null, sub: 'Affidavit approved, held · public property, no lien attaches. Ask the attorney about the bond' })
+  })
+  it('held by a notice that is already approved, it says where the notice stands and still says the approval stands (v2.7457)', () => {
+    const rows = build({ notices: [notice('j1', 'ready')], affidavits: [affidavit('j1', 'held', { item: approved, ready: false, gates: closed('notice') })] })
+    const r = rows.find((x) => x.kind === 'affidavit')!
+    expect(r.sub).toBe('Affidavit approved, held · its § 53.056 notice is approved and not mailed yet')
+    expect(r.detail).toBe('Its § 53.056 notice is approved and not mailed yet. The approval stands.')
+    expect(r.action).toBe('send_notice')
+    // The press is the notice's own next step, never the Missed pile.
+    expect(r.target).not.toEqual({ open: 'notices', jobId: 'j1', pile: 'missed' })
+    expect(r.detail).not.toContain('Send the § 53.056 notice first')
+  })
+  it('a paper the leader holds still reads Affidavit held, his hold to review', () => {
+    const r = one({ affidavits: [affidavit('j1', 'held', { item: { id: 'a1', status: 'held', fields: {} } as unknown as LienAffidavitEntry['item'] })] })
+    expect(r).toMatchObject({ sub: 'Affidavit held', action: 'review_hold' })
   })
 })

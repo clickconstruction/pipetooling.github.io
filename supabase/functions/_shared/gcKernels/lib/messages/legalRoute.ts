@@ -91,6 +91,10 @@ const FILING_PAPERS: Readonly<Record<string, LegalPaper>> = {
 // Each row as one alias (punch list #359, v2.7294): the edge copy inlines an alias written this way and holds no table list for it.
 type LienFilingRow = {
   amount: number
+  applied_by_name: string
+  applied_from: string | null
+  applied_from_label: string
+  applied_reason: string
   by_hand: boolean
   county: string
   created_at: string
@@ -128,6 +132,7 @@ type LienDeskItemRow = {
   id: string
   job_id: string
   kind: string
+  mailed_copies: Json
   months: string[]
   offer_by: string | null
   offer_pct: number

@@ -734,6 +734,9 @@ export type Database = {
           robot_opt_out: boolean
           robot_requested_at: string | null
           robot_requested_by: string | null
+          schedule_end: string | null
+          schedule_open_ended: boolean
+          schedule_start: string | null
           selected_bid_version_id: string | null
           selected_labor_book_version_id: string | null
           selected_price_book_version_id: string | null
@@ -842,6 +845,9 @@ export type Database = {
           robot_opt_out?: boolean
           robot_requested_at?: string | null
           robot_requested_by?: string | null
+          schedule_end?: string | null
+          schedule_open_ended?: boolean
+          schedule_start?: string | null
           selected_bid_version_id?: string | null
           selected_labor_book_version_id?: string | null
           selected_price_book_version_id?: string | null
@@ -950,6 +956,9 @@ export type Database = {
           robot_opt_out?: boolean
           robot_requested_at?: string | null
           robot_requested_by?: string | null
+          schedule_end?: string | null
+          schedule_open_ended?: boolean
+          schedule_start?: string | null
           selected_bid_version_id?: string | null
           selected_labor_book_version_id?: string | null
           selected_price_book_version_id?: string | null
@@ -5563,6 +5572,7 @@ export type Database = {
           id: string
           job_id: string
           kind: string
+          mailed_copies: Json
           months: string[]
           offer_by: string | null
           offer_pct: number
@@ -5607,6 +5617,7 @@ export type Database = {
           id?: string
           job_id: string
           kind?: string
+          mailed_copies?: Json
           months?: string[]
           offer_by?: string | null
           offer_pct?: number
@@ -5651,6 +5662,7 @@ export type Database = {
           id?: string
           job_id?: string
           kind?: string
+          mailed_copies?: Json
           months?: string[]
           offer_by?: string | null
           offer_pct?: number
@@ -5762,6 +5774,10 @@ export type Database = {
       job_lien_filings: {
         Row: {
           amount: number
+          applied_by_name: string
+          applied_from: string | null
+          applied_from_label: string
+          applied_reason: string
           by_hand: boolean
           county: string
           created_at: string
@@ -5785,6 +5801,10 @@ export type Database = {
         }
         Insert: {
           amount: number
+          applied_by_name?: string
+          applied_from?: string | null
+          applied_from_label?: string
+          applied_reason?: string
           by_hand?: boolean
           county?: string
           created_at?: string
@@ -5808,6 +5828,10 @@ export type Database = {
         }
         Update: {
           amount?: number
+          applied_by_name?: string
+          applied_from?: string | null
+          applied_from_label?: string
+          applied_reason?: string
           by_hand?: boolean
           county?: string
           created_at?: string
@@ -5830,6 +5854,13 @@ export type Database = {
           voided_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "job_lien_filings_applied_from_fkey"
+            columns: ["applied_from"]
+            isOneToOne: false
+            referencedRelation: "job_lien_filings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "job_lien_filings_created_by_fkey"
             columns: ["created_by"]
@@ -6191,6 +6222,10 @@ export type Database = {
           lien_month_checked_by: string | null
           lien_month_checked_by_name: string
           lien_month_checked_month: string | null
+          lien_path_answer: string | null
+          lien_path_answered_at: string | null
+          lien_path_answered_by: string | null
+          lien_path_reason: string | null
           lien_payment_bond: string
           lien_retainage_held: number | null
           master_user_id: string
@@ -6274,6 +6309,10 @@ export type Database = {
           lien_month_checked_by?: string | null
           lien_month_checked_by_name?: string
           lien_month_checked_month?: string | null
+          lien_path_answer?: string | null
+          lien_path_answered_at?: string | null
+          lien_path_answered_by?: string | null
+          lien_path_reason?: string | null
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id: string
@@ -6357,6 +6396,10 @@ export type Database = {
           lien_month_checked_by?: string | null
           lien_month_checked_by_name?: string
           lien_month_checked_month?: string | null
+          lien_path_answer?: string | null
+          lien_path_answered_at?: string | null
+          lien_path_answered_by?: string | null
+          lien_path_reason?: string | null
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id?: string
@@ -6464,6 +6507,13 @@ export type Database = {
           {
             foreignKeyName: "jobs_ledger_lien_month_checked_by_fkey"
             columns: ["lien_month_checked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_lien_path_answered_by_fkey"
+            columns: ["lien_path_answered_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -9420,6 +9470,7 @@ export type Database = {
       supply_house_invoices: {
         Row: {
           amount: number
+          amount_paid: number
           bill_attachment_id: string | null
           bill_read: Json | null
           created_at: string | null
@@ -9429,7 +9480,9 @@ export type Database = {
           id: string
           invoice_date: string
           invoice_number: string
+          is_interest: boolean
           is_paid: boolean
+          late_invoice_id: string | null
           link: string | null
           on_job_account: boolean
           paid_at: string | null
@@ -9440,6 +9493,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          amount_paid?: number
           bill_attachment_id?: string | null
           bill_read?: Json | null
           created_at?: string | null
@@ -9449,7 +9503,9 @@ export type Database = {
           id?: string
           invoice_date: string
           invoice_number: string
+          is_interest?: boolean
           is_paid?: boolean
+          late_invoice_id?: string | null
           link?: string | null
           on_job_account?: boolean
           paid_at?: string | null
@@ -9460,6 +9516,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_paid?: number
           bill_attachment_id?: string | null
           bill_read?: Json | null
           created_at?: string | null
@@ -9469,7 +9526,9 @@ export type Database = {
           id?: string
           invoice_date?: string
           invoice_number?: string
+          is_interest?: boolean
           is_paid?: boolean
+          late_invoice_id?: string | null
           link?: string | null
           on_job_account?: boolean
           paid_at?: string | null
@@ -9489,6 +9548,13 @@ export type Database = {
           {
             foreignKeyName: "supply_house_invoices_credits_invoice_id_fkey"
             columns: ["credits_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_invoices_late_invoice_id_fkey"
+            columns: ["late_invoice_id"]
             isOneToOne: false
             referencedRelation: "supply_house_invoices"
             referencedColumns: ["id"]
@@ -9851,6 +9917,7 @@ export type Database = {
           charge_standing: string | null
           counttooling_user_id: string | null
           created_at: string | null
+          dashboard_view: string | null
           dispatch_mode_enabled: boolean | null
           email: string | null
           estimator_prospects_access: boolean
@@ -9894,6 +9961,7 @@ export type Database = {
           charge_standing?: string | null
           counttooling_user_id?: string | null
           created_at?: string | null
+          dashboard_view?: string | null
           dispatch_mode_enabled?: boolean | null
           email?: string | null
           estimator_prospects_access?: boolean
@@ -9937,6 +10005,7 @@ export type Database = {
           charge_standing?: string | null
           counttooling_user_id?: string | null
           created_at?: string | null
+          dashboard_view?: string | null
           dispatch_mode_enabled?: boolean | null
           email?: string | null
           estimator_prospects_access?: boolean

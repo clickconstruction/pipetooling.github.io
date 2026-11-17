@@ -34,6 +34,7 @@ import { DevelopmentChipConfirm, type ChipConfirmRow } from '../components/devel
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
 import { DevelopmentPartsCard, type SitePlansWrites } from '../components/developments/DevelopmentPartsCard'
+import { DevelopmentPlansByDate } from '../components/developments/DevelopmentPlansByDate'
 import { JobCardsProvider } from '../components/developments/JobChip'
 import { jobHoverCardLookup } from '../lib/developments/jobHoverCard'
 import { DevelopmentQuestionsLook } from '../components/developments/DevelopmentQuestionsLook'
@@ -58,7 +59,7 @@ import { useSiteLabor } from '../hooks/useSiteLabor'
 import { useSiteOverhead } from '../hooks/useSiteOverhead'
 import { buildSiteMoney, moneyLookWords, MONEY_SORT_LABELS, sortMoneyRows, unbilledTileWords, type MoneySortMode } from '../lib/developments/siteMoney'
 import { countKeysFor, developmentDoorFor, jobDoorClosedWords, OFFICE_READS_MONEY, OFFICE_READS_MONEY_CHIP } from '../lib/developments/readDoor'
-import { isFolded, readFolds, readMoneySort, readMoneyView, readScoreboardCut, readScoreboardWindow, toggleFold, writeFolds, writeMoneySort, writeMoneyView, writeScoreboardCut, writeScoreboardWindow, type MoneyView } from '../lib/developments/devicePrefs'
+import { isFolded, readFolds, readMoneySort, readMoneyView, readPlansView, readScoreboardCut, readScoreboardWindow, toggleFold, writeFolds, writeMoneySort, writeMoneyView, writePlansView, writeScoreboardCut, writeScoreboardWindow, type MoneyView, type PlansView } from '../lib/developments/devicePrefs'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { foldSameDayRuns } from '../lib/developments/historyFolds'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
@@ -73,6 +74,9 @@ import { buildPieceRows } from '../lib/developments/pieces'
 import { buildPlansView, plansAskOnRecord, type PlanCarrier } from '../lib/developments/plans'
 import { buildSitePlansView, sitePlansCountWords, sitePlansNeedWords } from '../lib/plans/sitePlans'
 import { supabaseJobPlansIo, type SitePlansRead } from '../lib/plans/planSetsIo'
+import { buildPlansByDate, plansByDateCrewNote, plansByDateUnsentWords, type PlansByDateClock, type PlansByDateInput } from '../lib/plans/plansByDate'
+import { buildPlansByDateCards, type PbdCardAction } from '../lib/plans/plansByDateCards'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { moveLineForPaper, papersFromRows, type Paper } from '../lib/papers/papers'
 import { canSeeSiteCosts } from '../lib/developments/siteCosts'
 import { useSiteCosts } from '../hooks/useSiteCosts'
@@ -82,7 +86,7 @@ import { markWonConfirm, markedWonBack, pairAllConfirm, pairConfirm, pairedAllBa
 import { markBidsWon, pairJobToBid, pairMany, unmarkBidsWon, unpairJob, unpairMany } from '../lib/developments/pairingWrites'
 import { batchOutcomeWords, countedLabel, pluralNoun } from '../lib/batchWords'
 import { buildWhatChanged, filterChangeLines, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
-import { aboutIsPiece, entryBodyIsHead, entryLine, narrowLines, narrowedWords, onRecordNotes, withBodies, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
+import { aboutIsPiece, entryBodyIsHead, entryLine, mailLines, narrowLines, narrowedWords, onRecordNotes, withBodies, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
 import { keepHistoryEntry } from '../lib/developments/historyWrites'
 import { DevelopmentHistoryChips, DevelopmentHistoryComposer } from '../components/developments/DevelopmentHistoryTools'
 import { aboutGroups, aboutKeyOfPiece, aboutRows, type AboutGroup } from '../lib/developments/aboutPicker'
@@ -95,6 +99,9 @@ import { extractContactFromCustomer } from '../lib/jobs/jobFormCustomerDisplay'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { canOpenMessages } from '../lib/gc/access'
+import { threadHrefByKind } from '../lib/messages/customerThread'
+import type { ContactKind } from '../lib/contacts/kernel'
 import type { Database } from '../types/database'
 import { DevelopmentPhotosLook } from '../components/developments/DevelopmentPhotosLook'
 import SiteMaterialsReportModal from '../components/materials/SiteMaterialsReportModal'
@@ -115,6 +122,12 @@ export default function DevelopmentPage() {
   const setMoneyViewMode = (view: MoneyView) => {
     setMoneyView(view)
     writeMoneyView(developmentId, view)
+  }
+  // The Plans look's view: the parts table, or the sets by date; the device remembers it.
+  const [plansView, setPlansView] = useState<PlansView>(() => readPlansView(developmentId))
+  const setPlansViewMode = (view: PlansView) => {
+    setPlansView(view)
+    writePlansView(developmentId, view)
   }
   const [scoreSort, setScoreSort] = useState<ScoreboardSort>(SCOREBOARD_DEFAULT_SORT)
   // The Scoreboard's cut and window (v2.6558, punch list #250 PR 4): the device remembers both.
@@ -156,6 +169,8 @@ export default function DevelopmentPage() {
   const { user: authUser, role, loading: authLoading, profileName } = useAuth()
   // The reader's door (PR 6): the office reads every table and the money; an estimator reads the pieces through the definer read and sees no dollar and no Job window.
   const door = developmentDoorFor(role)
+  // Who reads the mail tied to the site's bids and jobs, and gets its door: the roles that open Messages (v2.7479).
+  const readsMail = canOpenMessages(role)
   const moneyShown = door === 'office'
   const { showToast, showActionToast } = useToastContext()
 
@@ -233,13 +248,14 @@ export default function DevelopmentPage() {
     setLoading(true)
     setFailure(null)
     try {
-      setData(await fetchDevelopmentPage(developmentId, includeAddress, door))
+      // The tied mail is read for the roles that open Messages, under the rows' own policies (v2.7479).
+      setData(await fetchDevelopmentPage(developmentId, includeAddress, door, { mail: readsMail }))
     } catch (e) {
       setFailure(recoveryFailureFromError(e, 'The development could not be read.'))
     } finally {
       setLoading(false)
     }
-  }, [developmentId, includeAddress, authLoading, door])
+  }, [developmentId, includeAddress, authLoading, door, readsMail])
 
   useEffect(() => {
     void load()
@@ -343,6 +359,7 @@ export default function DevelopmentPage() {
         return true
       },
       writeChanges: (setId, changes) => after('What changed did not save.')(() => siteIo.updateChanges(setId, changes)),
+      changeLink: (setId, link) => after('The link did not save.')(() => siteIo.updateLink(setId, link)),
       // Many jobs onto one part (the Gray Fox spike, 2026-11-02): one write per job, the ones that will not take it named afterwards, the page read again.
       putJobsOnPart: async (partId, jobIds) => {
         const results = await Promise.allSettled(jobIds.map((id) => siteIo.pickPart(id, partId)))
@@ -363,7 +380,50 @@ export default function DevelopmentPage() {
   // The scoreboard's reads (v2.6407): the clock for the office door, the day ledger for the finance seats, both only while that view is open; the Timeline reads the clock too.
   const scoreboardOpen = moneyShown && moneyViewShown === 'scoreboard'
   const timelineOpen = moneyShown && moneyViewShown === 'timeline'
-  const laborRead = useSiteLabor(shownJobIds, scoreboardOpen || timelineOpen)
+  // The Plans look's By date view reads the clock's days too, for its crew lane, in the office door and only while it is open.
+  const plansByDateOpen = plansView === 'date' && !isFolded(lookFolds, 'plans', false)
+  const laborRead = useSiteLabor(shownJobIds, scoreboardOpen || timelineOpen || (moneyShown && plansByDateOpen))
+  // By date: the site's sets, bids, work days and kept History lines against time; no money, so both doors draw it.
+  const plansByDateClock: PlansByDateClock = !moneyShown ? 'closed' : !laborRead || laborRead.state === 'reading' ? 'reading' : laborRead.state === 'failed' ? 'failed' : laborRead.labor.daysKnown ? 'read' : 'closed'
+  const plansByDateInput = useMemo<PlansByDateInput | null>(() => {
+    if (!plansByDateOpen || !counted || !data || !siteRead) return null
+    const labor = laborRead?.state === 'read' ? laborRead.labor : null
+    const aboutWords = (a: { kind: string; id?: string }) => {
+      if (a.kind === 'job') {
+        const j = counted.jobs.find((x) => x.id === a.id)
+        return j ? jobLabel(j) : null
+      }
+      if (a.kind === 'bid') {
+        const b = counted.bids.find((x) => x.id === a.id)
+        return b ? bidLabel(b) : null
+      }
+      return a.kind === 'customer' ? 'the customer' : null
+    }
+    return {
+      parts: siteRead.parts,
+      sets: siteRead.sets,
+      bids: counted.bids.map((b) => ({ id: b.id, label: bidLabel(b), name: b.project_name, sent: b.bid_date_sent, plansDated: b.design_drawing_plan_date, outcome: b.outcome, outcomeAt: b.outcome_at })),
+      jobs: counted.jobs.map((j) => {
+        const days = new Set<string>()
+        for (const person of labor?.byJobId.get(j.id)?.people ?? []) for (const d of person.byWorkDate ?? []) days.add(d.ymd)
+        return { id: j.id, label: jobLabel(j), name: j.job_name?.trim() || j.job_address?.trim() || null, partId: j.plan_part_id ?? null, days: plansByDateClock === 'read' ? [...days] : null, firstWorkDay: j.first_work_date ?? null, lastWorkDay: j.last_work_date }
+      }),
+      history: data.historyEntries.map((h) => ({ id: h.id, happenedAt: h.happenedAt, source: h.source, body: h.body, byName: h.byName ?? h.agentLabel, about: aboutWords(h.about), bodyChars: h.bodyChars })),
+      names: siteRead.names,
+      clock: plansByDateClock,
+      today: todayYmdInAppTz(),
+      toYmd: (raw) => ymdFromDateOnlyOrIso(raw, calendarYmdInAppTzFromIso),
+    }
+  }, [plansByDateOpen, counted, data, siteRead, laborRead, plansByDateClock, bidLabel, jobLabel])
+  const plansByDate = useMemo(() => (plansByDateInput ? buildPlansByDate(plansByDateInput) : null), [plansByDateInput])
+  // Every item's card: its details and the presses this reader has. A job opens for the office door only; anyone on the page can ask and keep a line.
+  const plansByDateCards = useMemo(
+    () => (plansByDateInput && plansByDate ? buildPlansByDateCards(plansByDateInput, plansByDate, { canWritePlans, canOpenJobs: moneyShown, canKeep: true, canAsk: true }) : null),
+    [plansByDateInput, plansByDate, canWritePlans, moneyShown],
+  )
+  // The By date view's *+ New set* lands on the parts table's own form.
+  const [startSetOn, setStartSetOn] = useState<{ partId: string; nonce: number } | null>(null)
+  const confirmDialog = useConfirmDialog()
   const overheadRead = useSiteOverhead(shownJobIds, (scoreboardOpen || timelineOpen) && canSeeSiteCosts(role))
   // Who holds the card each counted charge went on (v2.6457): the card id alone out of each bank record, while the board is open.
   const cardTxIds = useMemo(() => (costsByJobId?.state === 'read' ? [...costsByJobId.byJobId.values()].flatMap((r) => r.breakdown.cardLines.map((l) => l.txId).filter((id): id is string => !!id)) : []), [costsByJobId])
@@ -441,6 +501,27 @@ export default function DevelopmentPage() {
         : [],
     [shown, data, sitePhotos.rows, jobLabel, bidLabel],
   )
+  // The mail tied to the site's bids and jobs in Messages (v2.7479): one line a mail, at its own time, with the door to its thread.
+  const tiedMailLines = useMemo<ChangeLine[]>(
+    () =>
+      shown && data
+        ? mailLines(data.tiedMail ?? [], {
+            job: (id) => {
+              const j = shown.jobs.find((x) => x.id === id)
+              return j ? { kind: 'job', id, label: `${jobLabel(j)} ${(j.job_name ?? '').trim()}`.trim() } : null
+            },
+            bid: (id) => {
+              const b = shown.bids.find((x) => x.id === id)
+              return b ? { kind: 'bid', id, label: `${bidLabel(b)} ${(b.project_name ?? '').trim()}`.trim() } : null
+            },
+            contacts: data.mailContacts ?? [],
+            names: data.names,
+            // Job activity's own door for a tied line: the Messages page, or GC projects' Messages for a trade partner or an architect.
+            threadHref: readsMail ? (kind, contactId, messageId) => threadHrefByKind((kind ?? 'customer') as ContactKind, contactId, messageId) : null,
+          })
+        : [],
+    [shown, data, jobLabel, bidLabel, readsMail],
+  )
   const feed = useMemo<ChangeLine[]>(
     () =>
       shown && data
@@ -469,6 +550,7 @@ export default function DevelopmentPage() {
               }),
             ),
             photoLines,
+            mailLines: tiedMailLines,
             customerContacts: data.customerContacts,
             customerNames: new Map(data.customers.map((c) => [c.id, c.name])),
             names: data.names,
@@ -481,7 +563,7 @@ export default function DevelopmentPage() {
             nowMs,
           })
         : [],
-    [shown, data, entries, photoLines, bidLabel, jobLabel, nowMs],
+    [shown, data, entries, photoLines, tiedMailLines, bidLabel, jobLabel, nowMs],
   )
   const since = useMemo(() => placeSinceLine(feed, lastLooked), [feed, lastLooked])
   // The runs fold (the Gray Fox spike, 2026-11-02): one act's many lines read as one with the count; a search sees every line.
@@ -1092,6 +1174,32 @@ export default function DevelopmentPage() {
     ? `${siteMoney.band.pct != null ? `${siteMoney.band.pct}% done · ` : ''}${money(siteMoney.band.value)} · ${money(siteMoney.band.left)} left${siteMoney.band.pastDue ? ` · ${siteMoney.band.pastDue} past due` : ''}`
     : 'no job yet'
   const goToQuestions = () => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.questions)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // A press on one of the By date view's cards (punch list #367). Every act is one the page already has; the card only reaches it.
+  const showPartRow = (partId: string) => window.setTimeout(() => document.querySelector(`[data-testid="site-part-${partId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
+  const actOnPlansByDate = async (a: PbdCardAction) => {
+    if (a.kind === 'open-bid') openBid(a.bidId)
+    else if (a.kind === 'open-job') openJob(a.jobId)
+    else if (a.kind === 'ask') openAsk({ lane: 'estimators', title: a.title })
+    else if (a.kind === 'show-part') {
+      setPlansViewMode('part')
+      showPartRow(a.partId)
+    } else if (a.kind === 'new-set') {
+      setPlansViewMode('part')
+      setStartSetOn({ partId: a.partId, nonce: Date.now() })
+      showPartRow(a.partId)
+    } else if (a.kind === 'read-line') {
+      const line = feed.find((l) => l.id === `history:${a.entryId}`)
+      if (line) setLineOpen(line)
+    } else if (a.kind === 'keep') {
+      if (isFolded(lookFolds, 'changed', false)) toggleLook('changed')
+      setComposing(true)
+      window.setTimeout(() => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.changed)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+    } else if (a.kind === 'build-from') {
+      if (!siteWrites) return
+      if (!(await confirmDialog({ message: a.message, confirmLabel: a.confirmLabel }))) return
+      if (await siteWrites.buildFrom(a.partId, a.setId)) showToast('The part builds from that set now.', 'success')
+    }
+  }
   const openCountRow = (door: CountDoor) => {
     if (door.kind === 'bid') openBid(door.id)
     else if (door.kind === 'job') openJob(door.id)
@@ -1165,7 +1273,7 @@ export default function DevelopmentPage() {
     <JobCardsProvider cardFor={jobCardFor}>
     <div data-testid="development-page">
       {/* The whole of a long History line (the owner, 2026-10-29: the rest in a modal). */}
-      <DevelopmentLineWindow line={lineOpen} onClose={() => setLineOpen(null)} openAbout={(a) => { setLineOpen(null); openAbout(a) }} readWhole={readHistoryBody} />
+      <DevelopmentLineWindow line={lineOpen} onClose={() => setLineOpen(null)} openAbout={(a) => { setLineOpen(null); openAbout(a) }} readWhole={readHistoryBody} onOpenThread={(href) => navigate(href)} />
       <DevelopmentAskSheet open={ask !== null} preset={ask} options={askOptions} siteName={dev.name} busy={asking} onSend={sendAskDraft} onClose={() => setAsk(null)} />
       <div style={{ marginBottom: '0.4rem', display: 'flex', gap: 12, fontSize: '0.8rem' }}>
         <LinkButton onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(moneyShown ? '/jobs?tab=stages' : '/bids'))}>← Back</LinkButton>
@@ -1379,6 +1487,11 @@ export default function DevelopmentPage() {
                 </div>
               )}
               <DevelopmentHistoryChips chip={histChip} onChip={setHistChip} piece={histPiece} onClearPiece={() => setHistPiece(null)} phone={phone} />
+              {data.tiedMailError ? (
+                <p role="status" data-testid="history-mail-failed" style={{ margin: '0 0 10px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  The mail tied to this site’s jobs and bids did not come: {data.tiedMailError} Every other line is here.
+                </p>
+              ) : null}
               {onRecordShown.length > 0 ? (
                 <div data-testid="history-on-record" style={{ marginBottom: 10, padding: '6px 10px', border: '1px dashed var(--border-strong)', borderRadius: 6, fontSize: '0.8rem' }}>
                   <div style={{ ...capStyle, marginBottom: 2 }} title="Notes the records carry with no date: a bid's notes, a job's collections note, the customer's terms">
@@ -1413,7 +1526,7 @@ export default function DevelopmentPage() {
                   </LinkButton>
                 </div>
               ) : (
-                <DevelopmentFeed lines={feedShown} sinceIndex={sinceShown.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} onMore={setLineOpen} photoIo={sitePhotos.io.photos} onPerson={setFeedQuery} />
+                <DevelopmentFeed lines={feedShown} sinceIndex={sinceShown.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} onMore={setLineOpen} photoIo={sitePhotos.io.photos} onPerson={setFeedQuery} onOpenThread={(href) => navigate(href)} />
               )}
             </>
           ) : null}
@@ -1535,8 +1648,42 @@ export default function DevelopmentPage() {
           </Card>
         )}
 
-        <Card id={DEVELOPMENT_JUMP_ANCHOR.plans} title="Plans" fold={foldFor('plans', lineOf(looks.plans))} meta="what each part of the site builds from">
-          <DevelopmentPartsCard view={siteView} names={siteRead?.names ?? {}} canWrite={canWritePlans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForSitePlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} writes={siteWrites} papers={sitePapers} />
+        <Card
+          id={DEVELOPMENT_JUMP_ANCHOR.plans}
+          title="Plans"
+          fold={foldFor('plans', lineOf(looks.plans))}
+          meta={plansView === 'date' ? 'every set of drawings on the site, by the date on its sheets' : 'what each part of the site builds from'}
+          right={
+            // The look's two views, as Money holds its own: the parts table, and the sets against time.
+            <span role="group" aria-label="Plans views" style={{ display: phone ? 'flex' : 'inline-flex', width: phone ? '100%' : undefined, gap: 2, padding: 2, border: '1px solid var(--border)', borderRadius: 9999, background: 'var(--bg-subtle)' }} data-testid="plans-views">
+              {(['part', 'date'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setPlansViewMode(v)}
+                  aria-pressed={plansView === v}
+                  title={v === 'part' ? 'Each part of the site with the set it builds from' : 'Every set on the date on its sheets, with the bids, the crews’ days and the History lines on one axis'}
+                  data-testid={`plans-view-${v}`}
+                  style={{ border: `1px solid ${plansView === v ? 'var(--border-strong)' : 'transparent'}`, borderRadius: 9999, padding: phone ? '3px 6px' : '1px 10px', font: 'inherit', fontSize: '0.76rem', lineHeight: 1.2, cursor: 'pointer', background: plansView === v ? 'var(--surface)' : 'transparent', color: plansView === v ? 'var(--text-strong)' : 'var(--text-700)', fontWeight: plansView === v ? 700 : 500, flex: phone ? 1 : undefined, textAlign: 'center' }}
+                >
+                  {v === 'part' ? 'By part' : 'By date'}
+                </button>
+              ))}
+            </span>
+          }
+        >
+          {plansView === 'date' ? (
+            <DevelopmentPlansByDate
+              model={plansByDate}
+              phone={phone}
+              notes={[plansByDateCrewNote(plansByDateClock), plansByDate ? plansByDateUnsentWords(plansByDate.unsentBids) : null].filter((n): n is string => !!n)}
+              print={{ siteName: dev.name, customerName: data.customer?.name ?? null, printedBy: profileName ?? null, developmentId: dev.id, customerId: data.customer?.id ?? null }}
+              cards={plansByDateCards}
+              onAct={(a) => void actOnPlansByDate(a)}
+            />
+          ) : (
+          <DevelopmentPartsCard view={siteView} names={siteRead?.names ?? {}} canWrite={canWritePlans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForSitePlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} writes={siteWrites} papers={sitePapers} startSetOn={startSetOn} />
+          )}
         </Card>
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'what a site waits on'}>

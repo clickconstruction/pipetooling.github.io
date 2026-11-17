@@ -60,10 +60,19 @@ export type LienAffidavitRow = {
   month_source?: LienMonthSource | null
 }
 
-export type LienAffidavitPile = 'needs_property' | 'to_draft' | 'awaiting' | 'ready' | 'held' | 'filed' | 'missed'
+/**
+ * `needs_notice` (v2.7457, the owner's pick of 2026-11-16): an affidavit not yet sent whose one closed gate is the
+ * § 53.056 notice. Until then it stood in `needs_property`, a pile named for a fact it did not lack. A paper that
+ * lacks a fact and a notice stays in `needs_property`: the fact is the affidavit's own work, the notice has its row.
+ */
+export type LienAffidavitPile = 'needs_property' | 'needs_notice' | 'to_draft' | 'awaiting' | 'ready' | 'held' | 'filed' | 'missed'
+
+/** The pile's name, and its bin's on the Board. */
+export const LIEN_AFFIDAVIT_NEEDS_NOTICE_LABEL = 'Waiting on its notice'
 
 export const LIEN_AFFIDAVIT_PILES: ReadonlyArray<{ key: LienAffidavitPile; label: string }> = [
   { key: 'needs_property', label: 'Needs the property facts' },
+  { key: 'needs_notice', label: LIEN_AFFIDAVIT_NEEDS_NOTICE_LABEL },
   { key: 'to_draft', label: 'To send for Master approval' },
   { key: 'awaiting', label: 'Awaiting Master approval' },
   { key: 'ready', label: 'Ready to file' },
@@ -135,9 +144,11 @@ export function ownerGate(f: { hasOwner: boolean; publicOwner: boolean | null | 
   return { key: 'owner', ok: f.hasOwner, label: 'Owner of record with a mailing address' }
 }
 
-/** A closed gate in the list row's *missing …* words: the gate's own key, except the contractor's, which is its address, a public owner's, which is a private owner, and the homestead question's, which is its answer. */
+/**
+ * A closed gate in the list row's *missing …* words: the gate's own key, except the contractor's, which is its address, a public owner's, which is a private owner, the homestead question's, which is its answer, and the notice's (v2.7527), which is a mailed notice: the gate is a mailing on record, and a notice drafted or approved is not missing.
+ */
 export function affidavitGateMissingWord(key: LienAffidavitGateKey): string {
-  return key === 'contractor' ? "the GC's address" : key === 'public_owner' ? 'a private owner' : key === 'homestead_answer' ? 'the homestead answer' : key
+  return key === 'contractor' ? "the GC's address" : key === 'public_owner' ? 'a private owner' : key === 'homestead_answer' ? 'the homestead answer' : key === 'notice' ? 'a mailed notice' : key
 }
 
 /**
@@ -187,7 +198,7 @@ export type LienAffidavitQueue = {
   counts: Record<LienAffidavitPile, number>
 }
 
-const EMPTY = (): Record<LienAffidavitPile, LienAffidavitEntry[]> => ({ needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] })
+const EMPTY = (): Record<LienAffidavitPile, LienAffidavitEntry[]> => ({ needs_property: [], needs_notice: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] })
 
 export function affidavitGates(r: Pick<LienAffidavitRow, 'is_sub' | 'noticed' | 'has_owner' | 'has_legal' | 'homestead' | 'has_contractor_address' | 'owner_public'> & Partial<Pick<LienAffidavitRow, 'property_kind' | 'homestead_answered'>>): LienAffidavitGate[] {
   return [
@@ -199,13 +210,32 @@ export function affidavitGates(r: Pick<LienAffidavitRow, 'is_sub' | 'noticed' | 
   ]
 }
 
-function pileFor(item: LienDeskItemRow | null, ready: boolean, filed: boolean, daysLeft: number): LienAffidavitPile {
+/** Whether the § 53.056 notice is the one gate still closed: the paper waits on its notice and on nothing else. */
+export function affidavitWaitsOnNoticeAlone(gates: ReadonlyArray<Pick<LienAffidavitGate, 'key' | 'ok'>>): boolean {
+  const closed = gates.filter((g) => !g.ok)
+  return closed.length > 0 && closed.every((g) => g.key === 'notice')
+}
+
+/** A paper not yet sent: ready to send, waiting on its notice alone, or held by a fact. */
+function unsentPile(ready: boolean, noticeAlone: boolean): LienAffidavitPile {
+  return ready ? 'to_draft' : noticeAlone ? 'needs_notice' : 'needs_property'
+}
+
+/**
+ * The pile a paper is shown in. An approved paper is **Ready to file** only while every gate is clear (punch list
+ * #335, the owner's call of 2026-11-14): when a fact comes to hold it after the approval (the homestead question
+ * unanswered, a homestead, a public owner, an address gone), it moves to **Held** with the gate's reason, as the print
+ * bar already left it out. Only the pile moves. The stored status stays `approved`, so once the gate is answered the
+ * paper is back in Ready to file by itself and the leader's approval stands (his call of 2026-11-16).
+ * `lienAffidavitGateHeld` tells this hold from the leader's own (`status: 'held'`).
+ */
+function pileFor(item: LienDeskItemRow | null, ready: boolean, filed: boolean, daysLeft: number, noticeAlone: boolean): LienAffidavitPile {
   if (item && item.voided_at == null) {
     switch (item.status) {
       case 'awaiting_approval':
         return 'awaiting'
       case 'approved':
-        return 'ready'
+        return ready ? 'ready' : 'held'
       case 'held':
         return 'held'
       case 'sent':
@@ -213,12 +243,26 @@ function pileFor(item: LienDeskItemRow | null, ready: boolean, filed: boolean, d
       case 'missed':
         return 'missed'
       default:
-        return ready ? 'to_draft' : 'needs_property'
+        return unsentPile(ready, noticeAlone)
     }
   }
   if (filed) return 'filed'
   if (daysLeft < 0) return 'missed'
-  return ready ? 'to_draft' : 'needs_property'
+  return unsentPile(ready, noticeAlone)
+}
+
+/**
+ * A paper in Held because a gate closed after it was approved (punch list #335), not because the leader held it. Its
+ * door is the gate's, its approval stands, and nothing asks him again. Read off the pile and the stored status, so any
+ * reader that holds an entry's `pile` and `item` can tell the two holds apart.
+ */
+export function lienAffidavitGateHeld(e: { pile: LienAffidavitPile; item: Pick<LienDeskItemRow, 'status'> | null } | null | undefined): boolean {
+  return e?.pile === 'held' && e.item?.status === 'approved'
+}
+
+/** The first closed gate of a paper a gate holds, or null: the one fact to answer. */
+export function lienAffidavitHoldingGate(e: Pick<LienAffidavitEntry, 'pile' | 'item' | 'gates'> | null | undefined): LienAffidavitGate | null {
+  return e && lienAffidavitGateHeld(e) ? (e.gates.find((g) => !g.ok) ?? null) : null
 }
 
 export function buildLienAffidavitQueue(rows: ReadonlyArray<LienAffidavitRow>, items: ReadonlyArray<LienDeskItemRow>, todayYmd: string): LienAffidavitQueue {
@@ -242,7 +286,7 @@ export function buildLienAffidavitQueue(rows: ReadonlyArray<LienAffidavitRow>, i
     const daysLeft = daysBetweenYmd(todayYmd, r.deadline) ?? 0
     const filed = r.filed || (item?.status === 'sent')
     if (filed && !sent.has(r.job_id) && !live.has(r.job_id) && r.filed) continue // filed long ago, nothing to show
-    const pile = pileFor(item, ready, filed, daysLeft)
+    const pile = pileFor(item, ready, filed, daysLeft, affidavitWaitsOnNoticeAlone(gates))
     entries.push({
       jobId: r.job_id,
       isSub: r.is_sub,

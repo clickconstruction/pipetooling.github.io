@@ -18,7 +18,9 @@
  * test beside this file. Pure.
  */
 import type { LienAffidavitGateKey } from './lienDeskAffidavits'
+import type { LienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 import type { LienNextUpAction } from './lienNextUp'
+import { LIEN_RUN_ACT } from './lienRunWords'
 
 export type LienActPaper = 'notice' | 'affidavit' | 'retainage'
 
@@ -42,6 +44,8 @@ export type LienActInput = {
   waitingOn?: string | null
   /** An affidavit's gates still closed (`affidavitGates`), by key. */
   missing?: ReadonlyArray<LienAffidavitGateKey>
+  /** Where the job's notice stands while the affidavit waits on it (`lienAffidavitNoticeStanding.ts`, v2.7527); absent reads the late notice. */
+  noticeStanding?: LienAffidavitNoticeStanding | null
 }
 
 const act = (words: string, why: string, over: Partial<Pick<LienAct, 'dated' | 'under'>> = {}): LienAct => ({ words, why, dated: true, under: '', ...over })
@@ -49,7 +53,7 @@ const act = (words: string, why: string, over: Partial<Pick<LienAct, 'dated' | '
 const PAPER_NAME: Record<LienActPaper, string> = { notice: 'notice', affidavit: 'affidavit', retainage: 'retainage notice' }
 
 /** The affidavit is held by its property facts: the one fact when one is missing, the record when several are. */
-function gateAct(missing: ReadonlyArray<LienAffidavitGateKey>): LienAct {
+function gateAct(missing: ReadonlyArray<LienAffidavitGateKey>, notice: Pick<LienActInput, 'noticeStanding' | 'waitingOn'> = {}): LienAct {
   if (missing.includes('public_owner')) return act('Public property, no lien', 'The owner of record is a public body. No lien attaches to public property.', { dated: false, under: 'Ask the attorney about the bond' })
   if (missing.includes('homestead')) return act('Homestead, ask the attorney', 'The property is marked as a homestead. A lien there needs a contract signed before the work began.')
   const only = missing.length === 1 ? missing[0] : null
@@ -57,12 +61,40 @@ function gateAct(missing: ReadonlyArray<LienAffidavitGateKey>): LienAct {
   if (only === 'contractor') return act('Add the GC’s address', 'The general contractor has no address on file. The affidavit has to give one.')
   if (only === 'owner') return act('Find the owner', 'The affidavit needs the owner of record with a mailing address.')
   if (only === 'legal') return act('Add the legal description', 'The property record has no county and legal description. The affidavit has to give both.')
-  if (only === 'notice') return LIEN_LATE_NOTICE_ACT
+  if (only === 'notice') return noticeFirstAct(notice)
   return act('Fix the property record', 'The property record is missing facts the affidavit needs.')
 }
 
 /** A notice window closed with none sent while the affidavit can still be filed: the late notice (v2.4708's reading). */
 export const LIEN_LATE_NOTICE_ACT: LienAct = act('Send the late notice', 'The notice window closed with no notice sent. A late notice can still go while the affidavit can be filed.')
+
+/**
+ * The affidavit waits on its notice and on nothing else (v2.7527). The act is the notice's own next step, read from
+ * where the notice stands, so a notice already approved is never *Send the late notice*. The late notice keeps its
+ * act: nothing started, and no month still open.
+ */
+function noticeFirstAct(f: Pick<LienActInput, 'noticeStanding' | 'waitingOn'>): LienAct {
+  const waits = 'The affidavit waits on its notice.'
+  const who = f.waitingOn?.trim() || 'the leader'
+  switch (f.noticeStanding) {
+    case 'approved':
+      return act('Print and mail the notice', `${waits} The notice is approved and not mailed yet.`)
+    case 'printed':
+      return act(LIEN_RUN_ACT.record, `${waits} The notice is printed. Its certified numbers are not typed in yet.`)
+    case 'awaiting':
+      return act(`Waiting on ${who}`, `${waits} The notice waits on ${who} to approve it.`)
+    case 'to_send':
+      return act('Draft the notice', `${waits} The notice is not sent for approval yet.`)
+    case 'held':
+      return act('Review the hold', `${waits} The notice is on hold.`)
+    case 'needs_owner':
+      return act('Find the owner', `${waits} The notice needs the owner of record first.`)
+    case 'unrecorded':
+      return act('Record the mailing', `${waits} The notice is marked sent with no mailing on record.`)
+    default:
+      return LIEN_LATE_NOTICE_ACT
+  }
+}
 
 /** The act for one To do move on one paper; null when the move is not a step toward a legal day. */
 export function lienActFor(input: LienActInput): LienAct | null {
@@ -77,7 +109,7 @@ export function lienActFor(input: LienActInput): LienAct | null {
     case 'draft_late':
       return act('Draft the late notice', LIEN_LATE_NOTICE_ACT.why)
     case 'send_notice':
-      return LIEN_LATE_NOTICE_ACT
+      return noticeFirstAct(input)
     case 'approve': {
       if (input.yours) return act(`Approve the ${name}`, `${The} is drafted and waits on your approval.`)
       const who = input.waitingOn?.trim() || 'the leader'
@@ -89,14 +121,14 @@ export function lienActFor(input: LienActInput): LienAct | null {
       return act('Confirm your signature', `${The} was signed for you. It asks you to confirm the signature is yours.`)
     case 'send':
     case 'send_run':
-      return act(`Send the ${name}`, `${The} is approved and ready to send.`)
+      return act(`Print and mail the ${name}`, `${The} is approved. It waits to be printed and mailed.`)
     case 'add_tracking':
     case 'record_mailing':
-      return act('Record the mailing', `${The} is printed. Its certified number is not typed in yet.`)
+      return act(LIEN_RUN_ACT.record, `${The} is printed. Its certified numbers are not typed in yet.`)
     case 'review_hold':
       return act('Review the hold', `${The} is on hold. The last day does not move while it is held.`)
     case 'fix_property':
-      return gateAct(input.missing ?? [])
+      return gateAct(input.missing ?? [], input)
     case 'file_affidavit':
       return act('File the affidavit', 'The affidavit is approved and ready to file.')
     case 'record_service':
