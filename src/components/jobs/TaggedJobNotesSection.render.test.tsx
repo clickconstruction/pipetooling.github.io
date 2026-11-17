@@ -117,6 +117,23 @@ describe('TaggedJobNotesSection', () => {
     await vi.waitFor(() => expect(io.loadMyTags.mock.calls.length).toBeGreaterThan(1))
   })
 
+  it('offers the person who asked before a letter is typed, and one tap tags them back (punch list #375)', async () => {
+    io.tags = [WAITING[0]!]
+    const { container } = renderWithProviders(<TaggedJobNotesSection variant="pipeline" />)
+    await vi.waitFor(() => expect(container.querySelectorAll('[data-tagged-note]')).toHaveLength(1))
+    const offer = container.querySelector('[data-note-tag-offer] [data-note-tag-press]') as HTMLElement
+    expect(offer.textContent).toBe('@Marcus Haleasked you')
+    fireEvent.pointerDown(offer)
+    const box = screen.getByLabelText('Answer Marcus on Cedar Bluff Lofts') as HTMLInputElement
+    await vi.waitFor(() => expect(box.value).toBe('@Marcus Hale '))
+    // Once tagged, the offer is gone and the name is on the Will tag line.
+    expect(container.querySelector('[data-note-tag-offer]')).toBeNull()
+    expect(screen.getByLabelText('Take Marcus Hale off')).toBeTruthy()
+    fireEvent.change(box, { target: { value: '@Marcus Hale it came Friday', selectionStart: 27 } })
+    fireEvent.keyDown(box, { key: 'Enter' })
+    await vi.waitFor(() => expect(io.postTaggedNote).toHaveBeenCalledWith('job-1', '@Marcus Hale it came Friday', ['u-marcus']))
+  })
+
   it('clears a tag with No reply needed, with no note', async () => {
     io.tags = [WAITING[0]!]
     renderWithProviders(<TaggedJobNotesSection variant="pipeline" />)

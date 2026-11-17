@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   TAG_SECTION_SHOWN,
   askedLineWords,
+  backspaceTag,
+  backspacedTag,
   canTagInJobNotes,
+  draftMarkParts,
   insertPick,
   liveTags,
   mentionIndex,
@@ -17,7 +20,9 @@ import {
   tagAgeDays,
   tagAgeWords,
   tagIsLate,
+  tagNameQueryAtCaret,
   tagQueryAtCaret,
+  tagTypingAtCaret,
   tagsByNote,
   tagsNeed,
   waitingOnWords,
@@ -81,6 +86,58 @@ describe('tagQueryAtCaret', () => {
   })
 })
 
+describe('the @ being typed, through a space (punch list #375)', () => {
+  const NAMES = ['Dana Whitlock', 'Chris Bell', 'Chris Bellamy', 'Will Hart', 'José Peña']
+
+  it('reads one word as it always did', () => {
+    expect(tagNameQueryAtCaret('ask @ch', 7, NAMES)).toEqual({ query: 'ch', start: 4 })
+    expect(tagNameQueryAtCaret('@', 1, NAMES)).toEqual({ query: '', start: 0 })
+    // One word is a query whether or not anyone fits: the row decides what to show.
+    expect(tagNameQueryAtCaret('@home', 5, NAMES)).toEqual({ query: 'home', start: 0 })
+  })
+
+  it('stays open through a space while the words still start a name', () => {
+    expect(tagNameQueryAtCaret('ask @chris b', 12, NAMES)).toEqual({ query: 'chris b', start: 4 })
+    expect(tagNameQueryAtCaret('@chris ', 7, NAMES)).toEqual({ query: 'chris ', start: 0 })
+    expect(tagNameQueryAtCaret('@jose p', 7, NAMES)).toEqual({ query: 'jose p', start: 0 })
+  })
+
+  it('shuts once the words are nobody', () => {
+    expect(tagNameQueryAtCaret('@will call', 10, NAMES)).toBeNull()
+    expect(tagNameQueryAtCaret('@home tomorrow', 14, NAMES)).toBeNull()
+    // A last name alone does not run through a space: only the start of the whole name does.
+    expect(tagNameQueryAtCaret('@bell ', 6, NAMES)).toBeNull()
+    // With no names read yet, a space shuts it.
+    expect(tagNameQueryAtCaret('@chris b', 8, [])).toBeNull()
+  })
+
+  it('opens nothing for an at sign that means at', () => {
+    expect(tagNameQueryAtCaret('arrive @ 8:45', 13, NAMES)).toBeNull()
+    expect(tagNameQueryAtCaret('arrive @ noon', 13, NAMES)).toBeNull()
+    expect(tagNameQueryAtCaret('materials @$300', 15, NAMES)).toBeNull()
+    expect(tagNameQueryAtCaret('mail dana@example.com', 21, NAMES)).toBeNull()
+    expect(tagNameQueryAtCaret('no at here', 10, NAMES)).toBeNull()
+  })
+
+  it('leaves a made tag alone', () => {
+    const text = 'ask @Chris Bell about it'
+    // Right after the name, in the middle of it, and in the words that follow it.
+    expect(tagNameQueryAtCaret(text, 15, NAMES, ['Chris Bell'])).toBeNull()
+    expect(tagNameQueryAtCaret(text, 12, NAMES, ['Chris Bell'])).toBeNull()
+    expect(tagNameQueryAtCaret(text, 24, NAMES, ['Chris Bell'])).toBeNull()
+    // The same letters with no tag made are still a query.
+    expect(tagNameQueryAtCaret('ask @Chris Bell', 15, NAMES)).toEqual({ query: 'Chris Bell', start: 4 })
+    // A second @ after a made tag is its own query.
+    expect(tagNameQueryAtCaret('@Chris Bell and @da', 19, NAMES, ['Chris Bell'])).toEqual({ query: 'da', start: 16 })
+  })
+
+  it('reads the shape alone when it is handed no names', () => {
+    expect(tagTypingAtCaret('@chris b', 8)).toEqual({ query: 'chris b', start: 0 })
+    expect(tagTypingAtCaret('@ noon', 6)).toBeNull()
+    expect(tagTypingAtCaret('x@y', 3)).toBeNull()
+  })
+})
+
 describe('nameMatchesQuery', () => {
   it('matches the start of any word, in any case', () => {
     expect(nameMatchesQuery('Chris Bell', 'ch')).toBe(true)
@@ -96,6 +153,17 @@ describe('nameMatchesQuery', () => {
     expect(nameMatchesQuery('José Peña', 'jose')).toBe(true)
     expect(nameMatchesQuery('José Peña', 'pena')).toBe(true)
     expect(nameMatchesQuery('Mary-Ann Cole', 'ann')).toBe(true)
+  })
+})
+
+describe('nameMatchesQuery past a space (punch list #375)', () => {
+  it('fits only the start of the whole name', () => {
+    expect(nameMatchesQuery('Chris Bell', 'chris b')).toBe(true)
+    expect(nameMatchesQuery('Chris Bellamy', 'chris b')).toBe(true)
+    expect(nameMatchesQuery('Chris Bell', 'chris ')).toBe(true)
+    expect(nameMatchesQuery('Christine Poe', 'chris ')).toBe(false)
+    expect(nameMatchesQuery('Chris Bell', 'bell c')).toBe(false)
+    expect(nameMatchesQuery('José  Peña', 'jose p')).toBe(true)
   })
 })
 
@@ -155,6 +223,70 @@ describe('insertPick', () => {
   it('leaves a query the list can no longer read', () => {
     const next = insertPick('@lu', 3, 'Luis Ortega')
     expect(tagQueryAtCaret(next.text, next.caret)).toBeNull()
+  })
+})
+
+describe('insertPick with the row\'s own @ (punch list #375)', () => {
+  it('replaces a query that ran through a space', () => {
+    expect(insertPick('ask @chris b', 12, 'Chris Bell', 4)).toEqual({ text: 'ask @Chris Bell ', caret: 16 })
+  })
+
+  it('puts a name pressed cold at the caret, whatever was typed before it', () => {
+    expect(insertPick('see @will call', 14, 'Dana Whitlock', null)).toEqual({ text: 'see @will call @Dana Whitlock ', caret: 30 })
+    expect(insertPick('', 0, 'Dana Whitlock', null)).toEqual({ text: '@Dana Whitlock ', caret: 15 })
+  })
+})
+
+describe('one Backspace takes a tag off (punch list #375)', () => {
+  const LIVE = ['Dana Whitlock', 'Chris Bell']
+
+  it('takes the whole name, with the space a pick left', () => {
+    expect(backspaceTag('ask @Dana Whitlock ', 19, LIVE)).toEqual({ text: 'ask ', caret: 4 })
+    expect(backspaceTag('ask @Dana Whitlock', 18, LIVE)).toEqual({ text: 'ask ', caret: 4 })
+    expect(backspaceTag('ask @Dana Whitlock about it', 19, LIVE)).toEqual({ text: 'ask about it', caret: 4 })
+  })
+
+  it('is an ordinary Backspace anywhere else', () => {
+    expect(backspaceTag('ask @Dana Whitlock now', 22, LIVE)).toBeNull()
+    expect(backspaceTag('ask @Dana Whit', 14, LIVE)).toBeNull()
+    // A name that was only typed is plain words.
+    expect(backspaceTag('ask @Luis Ortega ', 17, LIVE)).toBeNull()
+    // Chris Bell is not the start of Chris Bellamy.
+    expect(backspaceTag('@Chris Bellamy', 11, LIVE)).toBeNull()
+    expect(backspaceTag('', 0, LIVE)).toBeNull()
+  })
+
+  it('reads the same from a change the keyboard did not name', () => {
+    expect(backspacedTag('ask @Dana Whitlock ', 'ask @Dana Whitlock', 18, LIVE)).toEqual({ text: 'ask ', caret: 4 })
+    expect(backspacedTag('ask @Dana Whitlock', 'ask @Dana Whitloc', 17, LIVE)).toEqual({ text: 'ask ', caret: 4 })
+    // A letter typed, a letter taken elsewhere, and two letters gone are not it.
+    expect(backspacedTag('ask @Dana Whitlock ', 'ask @Dana Whitlock x', 20, LIVE)).toBeNull()
+    expect(backspacedTag('ask @Dana Whitlock ', 'as @Dana Whitlock ', 2, LIVE)).toBeNull()
+    expect(backspacedTag('ask @Dana Whitlock ', 'ask @Dana Whitloc', 17, LIVE)).toBeNull()
+  })
+})
+
+describe('the mark in the words (punch list #375)', () => {
+  it('cuts the words into runs that join back whole', () => {
+    const text = 'ask @Dana Whitlock and @ch'
+    const parts = draftMarkParts(text, ['Dana Whitlock'], { start: 23, end: 26 })
+    expect(parts).toEqual([
+      { text: 'ask ', mark: null },
+      { text: '@Dana Whitlock', mark: 'tag' },
+      { text: ' and ', mark: null },
+      { text: '@ch', mark: 'typing' },
+    ])
+    expect(parts.map((p) => p.text).join('')).toBe(text)
+  })
+
+  it('marks every place a tagged name is written, and no name only typed', () => {
+    expect(draftMarkParts('@Chris Bell or @Chris Bellamy, @Chris Bell', ['Chris Bell'])).toEqual([
+      { text: '@Chris Bell', mark: 'tag' },
+      { text: ' or @Chris Bellamy, ', mark: null },
+      { text: '@Chris Bell', mark: 'tag' },
+    ])
+    expect(draftMarkParts('plain words', [])).toEqual([{ text: 'plain words', mark: null }])
+    expect(draftMarkParts('', ['Dana Whitlock'])).toEqual([])
   })
 })
 

@@ -2,13 +2,17 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { supabase } from '../../lib/supabase'
 import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { TagMarkLayer } from './NoteTagMarkLayer'
 import {
-  TAG_GROUP_WORDS,
+  backspaceTag,
+  backspacedTag,
+  draftMarkParts,
   insertPick,
   liveTags,
   rankTaggable,
   removePick,
-  tagQueryAtCaret,
+  tagNameQueryAtCaret,
+  tagTypingAtCaret,
   type TagListRow,
   type TaggablePerson,
 } from '../../lib/jobs/noteTags'
@@ -16,12 +20,20 @@ import {
 /**
  * Tagging a teammate in a job note (punch list #363): the pieces a note box needs.
  *
- * `useNoteTagBox` holds the picks, the list under the box and the keys. The box keeps its own
+ * `useNoteTagBox` holds the picks, the row of names at the box and the keys. The box keeps its own
  * input and its own Post, and asks this for the ids to send with the note. `TaggedNoteBody`, in
  * its own file, draws a posted note's words with its name chips and the waiting words after them.
+ *
+ * The easier box (punch list #375): the names are a row of presses a thumb can hit, the row
+ * follows the words through a space, each made tag is tinted in the words by a layer under the
+ * box, and one Backspace right after a tag takes it off whole. A tag is still only a tap or
+ * Enter. A name that was only typed stays plain words.
  */
 
 type Picked = { userId: string; name: string }
+
+/** A person offered before a letter is typed: who they are, and the few words under the name. */
+export type NoteTagOffer = { userId: string; name: string; says: string }
 
 const chipStyle: CSSProperties = {
   display: 'inline-block',
@@ -34,31 +46,59 @@ const chipStyle: CSSProperties = {
   fontSize: '0.92em',
   whiteSpace: 'nowrap',
 }
-const groupStyle: CSSProperties = {
-  fontSize: '0.65rem',
-  fontWeight: 700,
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
+const hintStyle: CSSProperties = {
+  fontSize: '0.75rem',
   color: 'var(--text-muted)',
-  padding: '6px 8px 2px',
+  padding: '6px 8px',
 }
+/** One name as a press: tall enough for a thumb, the name over what the person does. */
+const pressStyle: CSSProperties = {
+  display: 'inline-flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  justifyContent: 'center',
+  gap: 1,
+  minHeight: 44,
+  boxSizing: 'border-box',
+  padding: '4px 12px',
+  borderRadius: 10,
+  border: '1px solid var(--border-strong)',
+  background: 'var(--surface)',
+  color: 'var(--text-strong)',
+  font: 'inherit',
+  textAlign: 'left',
+  cursor: 'pointer',
+  maxWidth: '100%',
+}
+const pressNameStyle: CSSProperties = { fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }
+const pressSaysStyle: CSSProperties = { fontSize: '0.6875rem', color: 'var(--text-muted)' }
 
-/** What the person does, as the list says it beside the name. */
-function roleWords(person: TaggablePerson): string {
+/** The keys a phone keyboard reports when it does not say which key was pressed. */
+const UNNAMED_KEYS: readonly string[] = ['Unidentified', 'Process']
+
+/** What the person does, as the press says it under the name. */
+function roleWords(row: TagListRow): string {
+  if (row.group === 'asked') return 'asked you'
+  const person = row.person
   const role = person.role === 'helpers' ? 'crew' : person.role === 'superintendent' ? 'superintendent' : person.role === 'primary' ? 'crew' : 'office'
   return person.onJob && role !== 'office' ? `${role} · on this job` : role
 }
 
 export type NoteTagBox = {
-  /** The picked names above the box, each with its × (null when none). */
+  /** The line above the box, in the flow: the picked names, each with its ×, and the names offered before a letter is typed (null when neither). */
   chips: ReactNode
-  /** The list, to draw inside a `position: relative` wrapper around the box (null when shut). */
+  /** The row of names, to draw inside a `position: relative` wrapper around the box (null when shut). */
   list: ReactNode
   /** The @ button for the box's row (null when tagging is off). */
   atButton: ReactNode
+  /**
+   * The mark in the words (null when nothing is marked). Draw it right before the input, as its
+   * sibling. The input needs `position: relative` and a see-through background to sit over it.
+   */
+  mark: ReactNode
   /** Call from the input's onChange with the new words and the caret. */
   onText: (value: string, caret: number | null) => void
-  /** Call first from the input's onKeyDown. True means the key was the list's and the box must do nothing with it. */
+  /** Call first from the input's onKeyDown. True means the key was the row's and the box must do nothing with it. */
   onKeyDown: (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => boolean
   /** The ids to send with this body: the picks whose names are still in it. */
   taggedIds: (body: string) => string[]
@@ -71,14 +111,16 @@ export function useNoteTagBox(opts: {
   draft: string
   setDraft: (value: string) => void
   inputRef: RefObject<HTMLInputElement | HTMLTextAreaElement | null>
-  /** False draws no @ button and opens no list: the box is as it was. */
+  /** False draws no @ button and opens no row: the box is as it was. */
   enabled: boolean
   /** An answer box puts the person who asked on top. */
   askerId?: string | null
-  /** A phone opens the list above the box, clear of the keyboard. */
+  /** The names offered as presses before a letter is typed: the person who asked, in an answer box. */
+  offer?: readonly NoteTagOffer[]
+  /** A phone opens the row above the box, clear of the keyboard. */
   place?: 'above' | 'below'
 }): NoteTagBox {
-  const { jobId, draft, setDraft, inputRef, enabled, askerId = null, place = 'below' } = opts
+  const { jobId, draft, setDraft, inputRef, enabled, askerId = null, offer, place = 'below' } = opts
   const [picked, setPicked] = useState<Picked[]>([])
   const [caret, setCaret] = useState<number | null>(null)
   const [dismissed, setDismissed] = useState(false)
@@ -87,19 +129,30 @@ export function useNoteTagBox(opts: {
   const [loadError, setLoadError] = useState<string | null>(null)
   const askedFor = useRef<string | null>(null)
   const nextCaret = useRef<number | null>(null)
+  const lastKey = useRef<string | null>(null)
 
-  const query = enabled && !dismissed && caret != null ? tagQueryAtCaret(draft, caret) : null
-  const open = query != null
+  const live = useMemo(() => (enabled ? liveTags(draft, picked) : []), [enabled, draft, picked])
+  const liveNames = useMemo(() => live.map((p) => p.name), [live])
+  // Everyone the row could still offer, for the rule that runs through a space.
+  const offerable = useMemo(
+    () => (people ? rankTaggable(people, '', { pickedIds: live.map((p) => p.userId), askerId }) : []),
+    [people, live, askerId],
+  )
+  const offerableNames = useMemo(() => offerable.map((r) => r.person.name), [offerable])
 
-  // The list is read once per job, the first time it opens.
+  const typing = enabled && caret != null ? tagTypingAtCaret(draft, caret) : null
+  const wanted = typing != null
+  const query = enabled && !dismissed && caret != null ? tagNameQueryAtCaret(draft, caret, offerableNames, liveNames) : null
+
+  // The names are read once per job, the first time an @ is typed.
   useEffect(() => {
-    if (!open || askedFor.current === jobId) return
+    if (!wanted || askedFor.current === jobId) return
     askedFor.current = jobId
     setPeople(null)
     setLoadError(null)
-    let live = true
+    let alive = true
     void supabase.rpc('job_note_taggable', { p_job_id: jobId }).then(({ data, error }) => {
-      if (!live) return
+      if (!alive) return
       if (error) {
         setLoadError(formatErrorMessage(error, 'The names could not be read'))
         return
@@ -107,15 +160,15 @@ export function useNoteTagBox(opts: {
       setPeople((data ?? []).map((r) => ({ userId: r.user_id, name: r.name, role: r.role, onJob: r.on_job })))
     })
     return () => {
-      live = false
+      alive = false
     }
-  }, [open, jobId])
+  }, [wanted, jobId])
 
-  const rows: TagListRow[] = useMemo(
-    () => (query && people ? rankTaggable(people, query.query, { pickedIds: liveTags(draft, picked).map((p) => p.userId), askerId }) : []),
-    [query, people, draft, picked, askerId],
-  )
+  const rows: TagListRow[] = useMemo(() => (query ? rankTaggable(offerable.map((r) => r.person), query.query, { askerId }) : []), [query, offerable, askerId])
   const active = rows.length === 0 ? 0 : Math.min(sel, rows.length - 1)
+  // The row is up while names fit, while they are being read, and for a bare @ with nobody left
+  // to offer. Letters that are nobody's name, as in `@home`, show no row.
+  const open = query != null && (loadError != null || people == null || rows.length > 0 || query.query === '')
 
   // Put the caret after the name a pick wrote, once the input holds the new words.
   useEffect(() => {
@@ -126,32 +179,76 @@ export function useNoteTagBox(opts: {
     if (!el) return
     el.focus()
     el.setSelectionRange(at, at)
+    // Setting the caret does not slide the words: when the name was written at the end, show the end.
+    if (at >= el.value.length) {
+      el.scrollLeft = el.scrollWidth
+      el.scrollTop = el.scrollHeight
+    }
   }, [draft, inputRef])
 
-  const pick = useCallback(
-    (person: TaggablePerson) => {
-      const next = insertPick(draft, caret ?? draft.length, person.name)
+  const write = useCallback(
+    (next: { text: string; caret: number }) => {
       nextCaret.current = next.caret
-      setPicked((prev) => [...prev.filter((p) => p.userId !== person.userId), { userId: person.userId, name: person.name }])
       setCaret(next.caret)
       setSel(0)
       setDraft(next.text)
     },
-    [draft, caret, setDraft],
+    [setDraft],
+  )
+
+  const pick = useCallback(
+    (person: Picked) => {
+      // The caret may have moved by an arrow key since the last change: ask the box itself.
+      const el = inputRef.current
+      const at = el && typeof document !== 'undefined' && document.activeElement === el ? (el.selectionStart ?? draft.length) : (caret ?? draft.length)
+      const q = dismissed ? null : tagNameQueryAtCaret(draft, at, offerableNames, liveNames)
+      setPicked((prev) => [...prev.filter((p) => p.userId !== person.userId), { userId: person.userId, name: person.name }])
+      setDismissed(false)
+      write(insertPick(draft, at, person.name, q ? q.start : null))
+    },
+    [draft, caret, dismissed, inputRef, offerableNames, liveNames, write],
   )
 
   const onText = useCallback(
     (value: string, at: number | null) => {
-      setDraft(value)
-      setCaret(at ?? value.length)
+      const where = at ?? value.length
+      // A phone keyboard that names no key: read the Backspace from the change itself.
+      const cut = lastKey.current != null && UNNAMED_KEYS.includes(lastKey.current) ? backspacedTag(draft, value, where, liveNames) : null
+      const words = cut ? cut.text : value
+      // A pick whose name is no longer whole in the words is no tag, and typing it back makes none.
+      setPicked((prev) => {
+        const kept = liveTags(words, prev)
+        return kept.length === prev.length ? prev : kept
+      })
       setDismissed(false)
+      if (cut) {
+        write(cut)
+        return
+      }
+      setDraft(value)
+      setCaret(where)
       setSel(0)
     },
-    [setDraft],
+    [draft, liveNames, setDraft, write],
   )
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>): boolean => {
+      lastKey.current = e.key
+      if (!enabled) return false
+      if (e.key === 'Backspace' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+        const el = e.currentTarget
+        const at = el.selectionStart
+        if (at != null && at === el.selectionEnd) {
+          const cut = backspaceTag(draft, at, liveNames)
+          if (cut) {
+            e.preventDefault()
+            setPicked((prev) => liveTags(cut.text, prev))
+            write(cut)
+            return true
+          }
+        }
+      }
       if (!open) return false
       if (e.key === 'Escape') {
         e.stopPropagation()
@@ -159,7 +256,9 @@ export function useNoteTagBox(opts: {
         return true
       }
       if (rows.length === 0) return false
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        // Left and right move the caret in the words, as they always do. Up and down move in the row.
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') return false
         e.preventDefault()
         setSel((active + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length)
         return true
@@ -172,7 +271,7 @@ export function useNoteTagBox(opts: {
       }
       return false
     },
-    [open, rows, active, pick],
+    [enabled, open, rows, active, pick, draft, liveNames, write],
   )
 
   const reset = useCallback(() => {
@@ -189,35 +288,72 @@ export function useNoteTagBox(opts: {
     const at = el?.selectionStart ?? draft.length
     const before = draft.slice(0, at)
     const head = `${before}${before && !/\s$/.test(before) ? ' ' : ''}@`
-    nextCaret.current = head.length
-    setCaret(head.length)
     setDismissed(false)
-    setSel(0)
-    setDraft(head + draft.slice(at))
+    write({ text: head + draft.slice(at), caret: head.length })
   }
 
-  const live = liveTags(draft, picked)
+  /**
+   * A name as a press. pointerdown, not click: the box keeps its focus and its caret, so a
+   * phone's keyboard stays up. The click is for a press made with no pointer, as a screen reader makes it.
+   */
+  const namePress = (person: Picked, says: string, more: { selected?: boolean; option?: boolean } = {}) => (
+    <button
+      key={person.userId}
+      type="button"
+      tabIndex={-1}
+      {...(more.option ? { role: 'option', 'aria-selected': more.selected === true } : {})}
+      data-note-tag-press
+      onPointerDown={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        pick(person)
+      }}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.detail === 0) pick(person)
+      }}
+      style={{ ...pressStyle, ...(more.selected ? { background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)' } : null) }}
+    >
+      <span style={pressNameStyle}>@{person.name}</span>
+      <span style={pressSaysStyle}>{says}</span>
+    </button>
+  )
+
+  // Offered before a letter is typed. Once the names are read, only someone the list holds.
+  const offered = enabled && !open ? (offer ?? []).filter((o) => o.name.trim() && !live.some((p) => p.userId === o.userId) && (people == null || people.some((p) => p.userId === o.userId))) : []
+
   const chips =
-    enabled && live.length > 0 ? (
-      <div data-note-tag-chips style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 4px 6px' }}>
-        Will tag:
-        {live.map((p) => (
-          <span key={p.userId} style={chipStyle}>
-            @{p.name}
-            <button
-              type="button"
-              aria-label={`Take ${p.name} off`}
-              onClick={(e) => {
-                e.stopPropagation()
-                setPicked((prev) => prev.filter((x) => x.userId !== p.userId))
-                setDraft(removePick(draft, p.name))
-              }}
-              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '0 0 0 4px', font: 'inherit' }}
-            >
-              ×
-            </button>
-          </span>
-        ))}
+    enabled && (live.length > 0 || offered.length > 0) ? (
+      <div style={{ display: 'grid', gap: 6, margin: '0 4px 6px' }}>
+        {live.length > 0 ? (
+          <div data-note-tag-chips style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Will tag:
+            {live.map((p) => (
+              <span key={p.userId} style={chipStyle}>
+                @{p.name}
+                <button
+                  type="button"
+                  aria-label={`Take ${p.name} off`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setPicked((prev) => prev.filter((x) => x.userId !== p.userId))
+                    setDraft(removePick(draft, p.name))
+                  }}
+                  style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '0 0 0 4px', font: 'inherit' }}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {offered.length > 0 ? (
+          <div data-note-tag-offer style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Tag:
+            {offered.map((o) => namePress({ userId: o.userId, name: o.name }, o.says))}
+          </div>
+        ) : null}
       </div>
     ) : null
 
@@ -236,7 +372,6 @@ export function useNoteTagBox(opts: {
     </button>
   ) : null
 
-  let lastGroup: string | null = null
   const list = open ? (
     <div
       role="listbox"
@@ -253,54 +388,33 @@ export function useNoteTagBox(opts: {
         border: '1px solid var(--border-strong)',
         borderRadius: 10,
         boxShadow: '0 10px 28px rgba(0,0,0,0.22)',
-        padding: 4,
+        padding: 6,
         maxHeight: 260,
         overflowY: 'auto',
         textAlign: 'left',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 6,
       }}
     >
       {loadError ? (
-        <div style={{ ...groupStyle, textTransform: 'none', letterSpacing: 0, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{loadError}</div>
+        <div style={{ ...hintStyle, color: 'var(--text-red-700)' }}>{loadError}</div>
       ) : people == null ? (
-        <div style={groupStyle}>Reading the names…</div>
+        <div style={hintStyle}>Reading the names…</div>
       ) : rows.length === 0 ? (
-        <EmptyState compact main="Nobody by that name can be tagged on this job" />
+        <EmptyState compact main="Nobody else can be tagged on this job" />
       ) : (
-        rows.map((row, i) => {
-          const head = row.group !== lastGroup ? TAG_GROUP_WORDS[row.group] : null
-          lastGroup = row.group
-          return (
-            <div key={row.person.userId}>
-              {head ? <div style={groupStyle}>{head}</div> : null}
-              <div
-                role="option"
-                aria-selected={i === active}
-                // mousedown, not click: the input must keep its focus and its caret.
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  pick(row.person)
-                }}
-                style={{
-                  display: 'flex',
-                  gap: 8,
-                  alignItems: 'center',
-                  padding: '7px 8px',
-                  borderRadius: 7,
-                  cursor: 'pointer',
-                  minHeight: 40,
-                  boxSizing: 'border-box',
-                  background: i === active ? 'var(--bg-blue-tint)' : 'transparent',
-                }}
-              >
-                <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-strong)' }}>{row.person.name}</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto', textAlign: 'right' }}>{roleWords(row.person)}</span>
-              </div>
-            </div>
-          )
-        })
+        rows.map((row, i) => namePress(row.person, roleWords(row), { option: true, selected: i === active }))
       )}
     </div>
   ) : null
 
-  return { chips, list, atButton, onText, onKeyDown, taggedIds, reset }
+  // The tint under each made tag, and the underline under an @ the row is offering names for.
+  const parts = useMemo(
+    () => (enabled ? draftMarkParts(draft, liveNames, open && rows.length > 0 && query && caret != null ? { start: query.start, end: caret } : null) : []),
+    [enabled, draft, liveNames, open, rows.length, query, caret],
+  )
+  const mark = parts.some((p) => p.mark != null) ? <TagMarkLayer inputRef={inputRef} parts={parts} /> : null
+
+  return { chips, list, atButton, mark, onText, onKeyDown, taggedIds, reset }
 }
