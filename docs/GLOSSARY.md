@@ -4477,7 +4477,7 @@ The window is `SubPapersWindow` (`SubPapersWindowConnected.tsx` over the view in
 It picks the person's sheets by `sheetOwedTo` (`paperSheetsFor`), checks the whole set with `subPapersAddUp` and draws none when it fails, previews the paper as the print page (`subPapersHtml.ts`), and Print and Download draw the PDF in the browser (`_shared/subPapersPdf.ts`) and file a sent copy (`sub_statement_of_account`, `sub_work_statement`, `sub_payment_record`) on the person and each job.
 The letterhead is the bill's issuer block from Settings.
 A month or a year closes on today, never on a day that has not come.
-Since v2.7552 a paper is numbered the moment it is made: Print and Download first register it through `mint_sub_paper` (`subPaperRegister.ts` builds the call and the fingerprint that tells a change from a reprint), then draw it under the number that came back, and a paper the register refuses is not made.
+Since v2.7552 a paper is numbered the moment it is made: Print and Download first register it through `mint_sub_paper` (`subPaperRegister.ts` builds the call, and `_shared/subPaperMarks.ts` the fingerprint that tells a change from a reprint), then draw it under the number that came back, and a paper the register refuses is not made.
 The window sends nothing yet.
 Taunya kept the papers' names on 2026-11-16.
 The register is `sub_papers` (v2.7474), which registers each paper with its number, its revision and the paper as issued, written only by `mint_sub_paper` (`WS-<job>-<n>` per job, `PR-<n>` from the sending, `SA-<n>` across the company, never given out twice;

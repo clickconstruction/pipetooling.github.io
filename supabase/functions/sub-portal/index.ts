@@ -23,6 +23,27 @@ import {
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { grantPlansLink } from '../_shared/viewGrant.ts'
+import {
+  buildSubPortalPapers,
+  planPortalAnswer,
+  portalAnswers,
+  portalPaperSet,
+  portalPaymentKeyOf,
+  PORTAL_WRONG_NOTES_A_DAY,
+  type PapersAckRow,
+  type PapersAssigneeRow,
+  type PapersCreditRow,
+  type PapersItemRow,
+  type PapersPaymentRow,
+  type PapersPersonRow,
+  type PapersRegisterRow,
+  type PapersSendingRow,
+  type PapersSheetRow,
+  type PapersUserRow,
+  type SubPortalPapers,
+  type SubPortalPapersRows,
+} from '../_shared/subPortalPapers.ts'
+import type { PaperCompany } from '../_shared/subPapers.ts'
 
 /**
  * Sub portal payload (sub-portal train): resolves a sub portal link token OR
@@ -35,11 +56,18 @@ import { grantPlansLink } from '../_shared/viewGrant.ts'
  * The customer portal is the architectural template (customer-portal/index.ts)
  * — same token/slug resolution, same no-mint-on-demand rule for slugs, same
  * fire-and-forget view counting.
+ *
+ * Papers (punch list #371, step 1): the read also hands back `papers`, every sheet
+ * that is the person's alone, paid ones too, as the papers' kernel reads a sheet,
+ * with the answers they already gave. A number is read from the register and never
+ * given here. A POST with the same token writes one of two answers to
+ * `sub_paper_acks`: `got_it` on a payment, `something_wrong` on a statement or a
+ * payment. Shaping and the rules live in `_shared/subPortalPapers.ts`.
  */
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
@@ -59,12 +87,144 @@ function jsonResponse(body: unknown, status = 200): Response {
   })
 }
 
+// ── Papers (punch list #371) ─────────────────────────────────────────────────
+
+const ISSUER_KEY = 'physical_invoice_issuer_v1'
+
+// deno-lint-ignore no-explicit-any
+type Admin = any
+
+/**
+ * Every row a filter matches, read a page at a time: a long history must not stop at the API's row cap, since a
+ * payment left off would read as money still open. Ids go in parts so the address stays short. A refused read throws.
+ */
+async function readEvery<T>(admin: Admin, table: string, columns: string, order: readonly string[], filter: { column: string; in: readonly string[] } | { column: string; eq: string }): Promise<T[]> {
+  const parts: Array<readonly string[] | null> = []
+  if ('in' in filter) for (let i = 0; i < filter.in.length; i += 150) parts.push(filter.in.slice(i, i + 150))
+  else parts.push(null)
+  const out: T[] = []
+  for (const part of parts) {
+    for (let from = 0; from < 50000; from += 1000) {
+      let q = admin.from(table).select(columns)
+      q = part ? q.in(filter.column, part) : q.eq(filter.column, (filter as { eq: string }).eq)
+      for (const column of order) q = q.order(column, { ascending: true })
+      const { data, error } = await q.range(from, from + 999)
+      if (error) throw new Error(`${table}: ${(error as { message?: string }).message ?? 'read refused'}`)
+      const rows = (data ?? []) as T[]
+      out.push(...rows)
+      if (rows.length < 1000) break
+    }
+  }
+  return out
+}
+
+/** The rows the papers are built from. Every read is the page's own and throws when refused, the answers aside. */
+async function readPapersRows(admin: Admin, personId: string, laborJobIds: readonly string[]): Promise<SubPortalPapersRows> {
+  const none = { personId, sheets: [], items: [], payments: [], assignees: [], people: [], users: [], jobNames: {}, sendings: [], credits: [], register: [], acks: [] as PapersAckRow[] }
+  // What the sub answered is not a figure: a database the answers' migration has not reached reads as no answer yet.
+  let acks: PapersAckRow[] = []
+  try {
+    acks = await readEvery<PapersAckRow>(admin, 'sub_paper_acks', 'id, kind, paper_id, labor_job_id, sending_id, payment_id, note, created_at', ['id'], { column: 'person_id', eq: personId })
+  } catch (e) {
+    console.error('sub-portal papers: answers not read', e)
+  }
+  if (laborJobIds.length === 0) return { ...none, acks }
+  const sheets = await readEvery<PapersSheetRow>(admin, 'people_labor_jobs', 'id, assigned_to_name, address, job_number, job_ledger_id, job_date, created_at, labor_rate', ['id'], { column: 'id', in: laborJobIds })
+  const items = await readEvery<PapersItemRow>(admin, 'people_labor_job_items', 'job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount, sequence_order', ['job_id', 'sequence_order', 'id'], { column: 'job_id', in: laborJobIds })
+  const payments = await readEvery<PapersPaymentRow>(admin, 'people_labor_job_payments', 'id, job_id, amount, memo, payment_date, created_at, hidden_from_sub, method, method_ref, sending_id', ['id'], { column: 'job_id', in: laborJobIds })
+  // Everyone named on those sheets: who else is on a sheet decides whether it is this person's alone.
+  const assignees = await readEvery<PapersAssigneeRow>(admin, 'people_labor_job_assignees', 'labor_job_id, person_id', ['labor_job_id', 'person_id'], { column: 'labor_job_id', in: laborJobIds })
+  const personIds = [...new Set(assignees.map((a) => a.person_id))]
+  const people = personIds.length > 0 ? await readEvery<PapersPersonRow>(admin, 'people', 'id, name, kind, account_user_id', ['id'], { column: 'id', in: personIds }) : []
+  const userIds = [...new Set(people.map((p) => p.account_user_id ?? '').filter(Boolean))]
+  const users = userIds.length > 0 ? await readEvery<PapersUserRow>(admin, 'users', 'id, role', ['id'], { column: 'id', in: userIds }) : []
+  const ledgerIds = [...new Set(sheets.map((s) => s.job_ledger_id ?? '').filter(Boolean))]
+  const jobNames: Record<string, string> = {}
+  if (ledgerIds.length > 0) {
+    for (const j of await readEvery<{ id: string; job_name: string | null }>(admin, 'jobs_ledger', 'id, job_name', ['id'], { column: 'id', in: ledgerIds })) {
+      const name = (j.job_name ?? '').trim()
+      if (name) jobNames[j.id] = name
+    }
+  }
+  const sendingIds = [...new Set(payments.map((p) => p.sending_id ?? '').filter(Boolean))]
+  const sendings = sendingIds.length > 0 ? await readEvery<PapersSendingRow>(admin, 'sub_payment_sendings', 'id, number', ['id'], { column: 'id', in: sendingIds }) : []
+  const paymentIds = payments.map((p) => p.id)
+  const credits = paymentIds.length > 0 ? await readEvery<PapersCreditRow>(admin, 'sub_credit_entries', 'id, payment_id, amount', ['id'], { column: 'payment_id', in: paymentIds }) : []
+  // The register is read, never written: a number shows only where the office has made the paper.
+  const register = await readEvery<PapersRegisterRow>(admin, 'sub_papers', 'id, kind, number, revision, labor_job_id, sending_id, payment_id, issued_at, replaced_by, voided_at, fingerprint', ['id'], { column: 'person_id', eq: personId })
+  return { personId, sheets, items, payments, assignees, people, users, jobNames, sendings, credits, register, acks }
+}
+
+/** The letterhead the office's papers print (Settings, the bill's own block), and the phone a sub is told to call. */
+async function readPaperCompany(admin: Admin): Promise<{ company: PaperCompany; officePhone: string }> {
+  let issuer: Record<string, unknown> | null = null
+  try {
+    const { data } = await admin.from('app_settings').select('value_text').eq('key', ISSUER_KEY).maybeSingle()
+    const raw = (data as { value_text?: string | null } | null)?.value_text
+    const parsed = raw ? JSON.parse(raw) : null
+    issuer = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null
+  } catch {
+    issuer = null
+  }
+  const s = (k: string) => (issuer && typeof issuer[k] === 'string' ? (issuer[k] as string).trim() : '')
+  const lines = [s('addressText').replace(/\n+/g, ', '), s('phone'), s('email')].filter(Boolean)
+  return { company: { name: s('companyName') || PORTAL_COMPANY.name, lines }, officePhone: s('phone') || PORTAL_COMPANY.phone }
+}
+
+/** One answer from the sub's page: *Got it* on a payment, or *Something is wrong* on a statement or a payment. */
+async function answerFromPage(req: Request, admin: Admin, person: { id: string; name: string }, body: Record<string, unknown>): Promise<Response> {
+  // The office looking at a sub's page is not the sub: an answer is the sub's own word, kept as one.
+  const who = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
+  if (who.viewer !== 'outside') return jsonResponse({ error: 'This is the office looking at the page. Only the sub can answer, from their own link.' }, 403)
+  const { data: junctionRows, error: junctionError } = await admin.from('people_labor_job_assignees').select('labor_job_id').eq('person_id', person.id)
+  if (junctionError) throw junctionError
+  const laborJobIds = [...new Set(((junctionRows ?? []) as Array<{ labor_job_id: string }>).map((r) => r.labor_job_id))]
+  const rows = await readPapersRows(admin, person.id, laborJobIds)
+  const { company } = await readPaperCompany(admin)
+  const set = portalPaperSet(rows, { subName: person.name, company, now: new Date() })
+  const plan = planPortalAnswer(body, rows, set)
+  if (!plan.ok) return jsonResponse({ error: plan.error }, plan.status)
+  const key = portalPaymentKeyOf(plan.row) || plan.row.labor_job_id || ''
+  // A payment is marked received once. A second press changes nothing and reads the first day back.
+  if (plan.row.kind === 'received' && plan.already) return jsonResponse({ ok: true, already: true, received: { [key]: plan.already } })
+  if (plan.row.kind === 'something_wrong') {
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+    const { data: recent } = await admin.from('sub_paper_acks').select('id').eq('person_id', person.id).eq('kind', 'something_wrong').gte('created_at', since).limit(PORTAL_WRONG_NOTES_A_DAY + 1)
+    if (((recent ?? []) as unknown[]).length >= PORTAL_WRONG_NOTES_A_DAY) return jsonResponse({ error: 'You have sent the office several notes today. Please call the office about anything more.' }, 429)
+  }
+  const fwd = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const { data: saved, error } = await admin
+    .from('sub_paper_acks')
+    .insert({ ...plan.row, said_by_name: person.name, said_from: fwd || req.headers.get('cf-connecting-ip') || null })
+    .select('id, kind, paper_id, labor_job_id, sending_id, payment_id, note, created_at')
+    .single()
+  if (error) {
+    // Two presses at the same moment: the table keeps one *received* per payment, and the second reads as done.
+    if ((error as { code?: string }).code === '23505' && plan.row.kind === 'received') {
+      return jsonResponse({ ok: true, already: true, received: portalAnswers([{ kind: 'received', paper_id: null, labor_job_id: null, sending_id: plan.row.sending_id, payment_id: plan.row.payment_id, note: null, created_at: new Date().toISOString() }]).received })
+    }
+    console.error('sub-portal answer not saved', error)
+    return jsonResponse({ error: 'That could not be saved. Please try again, or call the office.' }, 500)
+  }
+  const said = portalAnswers([saved as PapersAckRow])
+  return plan.row.kind === 'received' ? jsonResponse({ ok: true, already: false, received: said.received }) : jsonResponse({ ok: true, wrong: said.wrong[0] ?? null })
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   try {
     const url = new URL(req.url)
-    const rawToken = url.searchParams.get('token')?.trim()
-    const rawSlug = url.searchParams.get('slug')?.trim().toLowerCase()
+    // An answer (punch list #371) is a POST. Its token rides in the body, never in the address.
+    const isAnswer = req.method === 'POST'
+    let answerBody: Record<string, unknown> = {}
+    if (isAnswer) {
+      const parsed = await req.json().catch(() => null)
+      if (!parsed || typeof parsed !== 'object') return jsonResponse({ error: 'Nothing was sent.' }, 400)
+      answerBody = parsed as Record<string, unknown>
+    }
+    const fromBody = (k: string) => (typeof answerBody[k] === 'string' ? (answerBody[k] as string) : null)
+    const rawToken = (isAnswer ? fromBody('token') : url.searchParams.get('token'))?.trim()
+    const rawSlug = (isAnswer ? fromBody('slug') : url.searchParams.get('slug'))?.trim().toLowerCase()
     const sample = sampleStateFromToken(rawToken)
     if (!sample && (!rawToken || rawToken.length < 16 || rawToken.length > 128) && !rawSlug) {
       return jsonResponse({ error: 'Missing token' }, 400)
@@ -76,6 +236,7 @@ serve(async (req) => {
 
     // What customers see (Settings dev tab): the sample token renders Sam's Plumbing's hard-coded
     // statement over the live pay-run settings — no sign-in. No person, no rows.
+    if (sample && isAnswer) return jsonResponse({ error: 'This is a sample page. Nothing is sent from it.' }, 400)
     if (sample) {
       const { data: sampleSettings } = await admin.from('app_settings').select('key, value_text').in('key', ['sub_pay_run_day', 'sub_pay_explainer'])
       const m = new Map(((sampleSettings ?? []) as Array<{ key: string; value_text: string | null }>).map((r) => [r.key, r.value_text]))
@@ -142,6 +303,9 @@ serve(async (req) => {
     if (!person) return jsonResponse({ error: 'Not found' }, 404)
     const personName = ((person as { name: string | null }).name ?? '').trim() || 'Subcontractor'
     const personEmail = ((person as { email?: string | null }).email ?? '').trim() || null
+
+    // An answer writes one row and reads nothing else of the page. It is not a view, so it is not counted as one.
+    if (isAnswer) return await answerFromPage(req, admin, { id: link.person_id, name: personName }, answerBody)
 
     // View counting — fire-and-forget, the statement never fails on measurement. Office
     // previews (`?preview=1`) and verified staff sessions do not count (journey-map #37;
@@ -383,6 +547,18 @@ serve(async (req) => {
     const { data: offRaw } = await admin.from('person_availability').select('day').eq('person_id', link.person_id).eq('kind', 'off').gte('day', addDaysYmd(todayYmd, -7)).limit(200)
     const offDays = ((offRaw ?? []) as Array<{ day: string }>).map((r) => r.day).sort()
 
+    // Papers (punch list #371): the Statements view's block. Its reads are its own, so a failure here leaves the page a
+    // sub knows exactly as it was: `papers` is null and nothing else changes.
+    let papers: SubPortalPapers | null = null
+    try {
+      const paperRows = await readPapersRows(admin, link.person_id, laborJobIds)
+      const { company, officePhone } = await readPaperCompany(admin)
+      papers = buildSubPortalPapers(paperRows, { subName: personName, company, officePhone, now: new Date() })
+    } catch (e) {
+      console.error('sub-portal papers not built', e)
+      papers = null
+    }
+
     return jsonResponse({
       company: PORTAL_COMPANY,
       subName: personName,
@@ -403,6 +579,7 @@ serve(async (req) => {
       requestToken: link.token ?? null,
       slug,
       days: { bookings, offDays },
+      papers,
     })
   } catch (e) {
     console.error('sub-portal error', e)
