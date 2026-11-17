@@ -50127,6 +50127,31 @@ export type Database = {
         }[]
       }
       takeoff_fixture_key: { Args: { p_fixture: string }; Returns: string }
+      task_add_map: {
+        Args: { p_instance_id: string; p_map_id: string }
+        Returns: Json
+      }
+      task_doer_may: {
+        Args: { p_act: string; p_instance_id: string }
+        Returns: undefined
+      }
+      task_hand_on: {
+        Args: {
+          p_from?: string
+          p_instance_id: string
+          p_reason?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      task_move_day: {
+        Args: { p_day: string; p_instance_id: string }
+        Returns: Json
+      }
+      task_no_longer_applies: {
+        Args: { p_instance_id: string; p_reason: string }
+        Returns: Json
+      }
       team_feedback_aggregates_by_manager: {
         Args: never
         Returns: {
