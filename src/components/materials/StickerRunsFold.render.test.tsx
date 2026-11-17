@@ -5,7 +5,7 @@
  * nothing drawn for a job with no run; a read that failed offers Retry.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { StickerRunWithStickers } from '../../lib/materials/stickerRunsIo'
 
@@ -38,10 +38,10 @@ describe('StickerRunsFold', () => {
     expect(rows).toHaveLength(2)
     // runs with no names are said by their counts: no running number anywhere (Taunya's call of 2026-11-16)
     expect(rows[0]!.textContent).toContain('Run of 200 sets')
-    expect(rows[0]!.textContent).toContain('Printed Nov 12 by Dana · 2 of each')
+    expect(rows[0]!.textContent).toContain('Reserved Nov 12 by Dana · 2 of each')
     expect(screen.getAllByTestId('sticker-run-counts')[0]!.textContent).toBe('103 of 200 stickers are on boxes · 96 reserved and not on a box yet · 1 marked lost')
     expect(rows[1]!.textContent).toContain('Run of 100')
-    expect(rows[1]!.textContent).toContain('Printed Oct 30')
+    expect(rows[1]!.textContent).toContain('Reserved Oct 30')
     expect(screen.getAllByTestId('sticker-run-counts')[1]!.textContent).toBe('0 of 100 stickers are on boxes · 100 reserved and not on a box yet')
     expect(screen.getByTestId('sticker-runs-fold').textContent).not.toMatch(/\b0\d{3}\b/)
     // the rest is its own press only where some are on boxes
@@ -99,7 +99,7 @@ describe('StickerRunsFold', () => {
     await screen.findByTestId('sticker-runs-fold')
     const row = screen.getByTestId('sticker-run-row')
     expect(row.textContent).toContain('Run of 4 · G78 to G81')
-    expect(row.textContent).toContain('Printed Nov 15 by Dana')
+    expect(row.textContent).toContain('Reserved Nov 15 by Dana')
     expect(row.textContent).not.toMatch(/\b0\d{3}\b/)
     // the blank ones are said by name (v2.7438)
     expect(screen.getByTestId('sticker-run-counts').textContent).toBe('1 of 4 stickers are on boxes · 3 reserved and not on a box yet, G79 to G81')
@@ -144,5 +144,25 @@ describe('StickerRunsFold', () => {
     renderWithProviders(<StickerRunsFold jobId="job-juniper" onPrint={() => {}} fetch={async () => [blank]} />)
     await screen.findByTestId('sticker-runs-fold')
     expect(screen.queryByTestId('sticker-run-on-boxes')).toBeNull()
+  })
+
+  it('a row says what printed of its reserved stickers, and nothing for a run the app was not watching (punch list #373)', async () => {
+    const names = ['G78', 'G79', 'G80', 'G81', 'G82']
+    /** Made after the mark began and stopped after two: G78 and G79 came out, three did not. */
+    const stopped: StickerRunWithStickers = {
+      run: { id: 'run-5', jobId: 'job-juniper', count: 5, firstNumber: 401, lastNumber: 405, copies: 1, printedByName: 'Dana', printedAt: '2026-11-17T16:00:00Z', names },
+      stickers: names.map((boxName, i) => ({ id: `p-${401 + i}`, number: 401 + i, code: `1D7E3A${String(i).padStart(2, '0')}`, boxName, containerId: null, lostAt: null, ...(i < 2 ? { printedAt: '2026-11-17T16:05:00Z' } : {}) })),
+    }
+    const onPrint = vi.fn()
+    renderWithProviders(<StickerRunsFold jobId="job-juniper" onPrint={onPrint} fetch={async () => [stopped, old]} />)
+    await screen.findByTestId('sticker-runs-fold')
+    const rows = screen.getAllByTestId('sticker-run-row')
+    expect(within(rows[0]!).getByTestId('sticker-run-printed').textContent).toBe('2 printed, 3 not printed yet.')
+    expect(rows[0]!.textContent).toContain('Reserved Nov 17 by Dana')
+    // the older run was never seen to print: its row says nothing of it
+    expect(within(rows[1]!).queryByTestId('sticker-run-printed')).toBeNull()
+    // Reprint hands each sticker's mark on, so the window knows which had one
+    fireEvent.click(within(rows[0]!).getByTestId('sticker-run-reprint'))
+    expect(onPrint.mock.calls[0]![1].map((s: { printedAt?: string | null }) => Boolean(s.printedAt))).toEqual([true, true, false, false, false])
   })
 })

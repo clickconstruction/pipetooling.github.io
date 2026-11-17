@@ -1,7 +1,7 @@
 /**
  * Print future stickers' *Which job?* window (punch list #304 and #329; the owner's call 5 of 2026-11-16, v2.7492): what
  * each job's card says before a job is picked. The window was a list of names with a box count; a card now says what
- * the job holds, the runs printed for it so far, the stickers reserved and not on a box yet with who printed them,
+ * the job holds, the runs printed for it so far, the stickers reserved and not on a box yet with who reserved them, what printed of them (v2.7567),
  * and the name a new run would open on. Pure: the jobs, the runs and the sites' names in, the words out. The window
  * is `PrintStickersWindow.tsx`, the reads `reserveStickersIo.ts`; the labels window's twin is `printLabelsJobs.ts`.
  *
@@ -14,7 +14,7 @@ import { labelPrintName, labelPrintNames } from './labels'
 import { kindCountsWords, nameSpan } from './printLabelsJobs'
 import { newRunBesideReservedWords, reservedRunsToPrint, type ReservedRunPrint } from './reservedPrint'
 import { nextNameToReserve } from './stickerNames'
-import { NO_RESERVED, notYetOnBoxWords, reservedByWords, reservedOfJob, type ReservedOfJob } from './stickerPlace'
+import { NO_RESERVED, reservedLineWords, reservedOfJob, type ReservedOfJob } from './stickerPlace'
 import type { SiteStickerNames, StickerRunWithStickers } from './stickerRunsIo'
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
@@ -68,7 +68,7 @@ export type StickerJobFacts = {
   soFar: RunsSoFar | null
   /** The stickers reserved and not on a box yet; none while unread. */
   reserved: ReservedOfJob
-  /** The sentence for them, with who printed them and when; empty at none. */
+  /** The sentence for them: the count, what printed (punch list #373), then who reserved them and when; empty at none. */
   reservedWords: string
   /** The presses that print them, one for each run that holds some (v2.7523); none while unread. */
   toPrint: ReservedRunPrint[]
@@ -93,8 +93,6 @@ export function stickerJobFacts(job: OnSiteFindJob, input: StickerJobsInput): St
   const printNames = labelPrintNames(job.containers)
   const runs = input.runsOf?.get(job.jobId) ?? (input.runsOf ? [] : null)
   const reserved = runs ? reservedOfJob(runs) : NO_RESERVED
-  const head = notYetOnBoxWords(reserved.count, reserved)
-  const by = reservedByWords(reserved, reserved.printedAt ? input.dayWords(reserved.printedAt) : '')
   const site = input.sitesOf?.get(job.jobId)
   return {
     jobId: job.jobId,
@@ -107,7 +105,7 @@ export function stickerJobFacts(job: OnSiteFindJob, input: StickerJobsInput): St
     names: nameSpan(boxes.map((b) => labelPrintName(printNames, b))),
     soFar: runs ? runsSoFar(runs) : null,
     reserved,
-    reservedWords: head ? `${head}.${by ? ` ${by}` : ''}` : '',
+    reservedWords: reservedLineWords(reserved, reserved.printedAt ? input.dayWords(reserved.printedAt) : ''),
     toPrint: runs ? reservedRunsToPrint(runs) : [],
     nextName: site?.names ? nextNameToReserve(site.names.boxes, site.names.blankNames) : site ? null : undefined,
     failed: job.failed ?? null,

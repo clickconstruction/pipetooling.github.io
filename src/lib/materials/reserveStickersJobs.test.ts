@@ -40,7 +40,7 @@ describe('a job’s card', () => {
     const runsOf = new Map([['j1', [run('r1', ['G3', 'G4', 'G5'], [sticker(1, 'G3', 'g1'), sticker(2, 'G4'), sticker(3, 'G5')])]]])
     const f = stickerJobFacts(job, input({ runsOf }))
     expect(f.reserved.count).toBe(2)
-    expect(f.reservedWords).toBe('2 stickers reserved and not on a box yet, G4 to G5. Printed Nov 16 by Dana.')
+    expect(f.reservedWords).toBe('2 stickers reserved and not on a box yet, G4 to G5. Reserved Nov 16 by Dana.')
     expect(f.soFar).toEqual({ runs: 1, stickers: 3, onBoxes: 1, lost: 0 })
     // and the press that prints them (v2.7523): the two on no box, with the whole run behind it
     expect(f.toPrint.map((r) => r.label)).toEqual(['Print the 2 reserved stickers, G4 to G5'])

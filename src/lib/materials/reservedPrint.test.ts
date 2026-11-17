@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { newRunBesideReservedWords, PRINT_RESERVED_SAME_WORDS, PRINT_RUN_AGAIN_WORDS, printReservedLabel, reservedRunByLine, reservedRunsToPrint, reservedRunTitle, reservedRunToPrint, restKeptWords } from './reservedPrint'
+import { newRunBesideReservedWords, notPrintedRunToPrint, PRINT_RESERVED_SAME_WORDS, PRINT_RUN_AGAIN_WORDS, PRINT_RUN_FIRST_WORDS, printReservedLabel, reservedRunByLine, reservedRunsToPrint, reservedRunTitle, reservedRunToPrint, restKeptWords } from './reservedPrint'
 import type { StickerRowOfRun, StickerRun } from './stickerRun'
 
 const sticker = (number: number, boxName: string | null, containerId: string | null = null, lostAt: string | null = null): StickerRowOfRun => ({ id: `s${number}`, number, code: `AAAA${String(number).padStart(4, '0')}`, boxName, containerId, lostAt })
@@ -63,7 +63,7 @@ describe('a job’s runs that still hold reserved stickers', () => {
     expect(got.map((r) => r.label)).toEqual(['Print the 3 reserved stickers, G1 to G3', 'Print the 3 reserved stickers, G4 to G6'])
     // more than one run: each press says who printed its run and when
     const day = (iso: string) => (iso.startsWith('2026-11-15') ? 'Nov 15' : 'Nov 16')
-    expect(got.map((r) => reservedRunByLine(r, got, day))).toEqual(['Printed Nov 16 by Dana', 'Printed Nov 15 by Marcus'])
+    expect(got.map((r) => reservedRunByLine(r, got, day))).toEqual(['Reserved Nov 16 by Dana', 'Reserved Nov 15 by Marcus'])
     // one run: its line already says it
     expect(reservedRunByLine(got[0]!, [got[0]!], day)).toBe('')
   })
@@ -99,5 +99,56 @@ describe('the words beside the press', () => {
     for (const words of [PRINT_RESERVED_SAME_WORDS, PRINT_RUN_AGAIN_WORDS, restKeptWords(40), restKeptWords(1), newRunBesideReservedWords('G151'), newRunBesideReservedWords(null)]) {
       expect(plainWordsFailures(words)).toEqual([])
     }
+  })
+})
+
+describe('the press that prints only what never came out (punch list #373)', () => {
+  /** A run made after the mark began: G1 to G5, the first `printed` of them seen to print. */
+  const marked = (printed: number, over: Partial<StickerRun> = {}) => run('r1', ['G1', 'G2', 'G3', 'G4', 'G5'], named(1, 5).map((s, i) => (i < printed ? { ...s, printedAt: '2026-11-17T15:05:00Z' } : s)), { printedAt: '2026-11-17T15:00:00Z', ...over })
+
+  it('a run stopped part way has a second press, for the stickers that have not printed yet', () => {
+    const [got] = reservedRunsToPrint([marked(2)])
+    expect(got!.label).toBe('Print the 5 reserved stickers, G1 to G5')
+    expect(got!.waiting.map((s) => s.boxName)).toEqual(['G3', 'G4', 'G5'])
+    expect(got!.waitingLabel).toBe('Print the 3 not printed yet, G3 to G5')
+    expect(got!.waitingTitle).toBe('Not printed yet, G3 to G5')
+    // the window opens on those alone, keeps the whole run within reach, and does not call the print "again"
+    const open = notPrintedRunToPrint(got!)
+    expect(open.printing.map((s) => s.boxName)).toEqual(['G3', 'G4', 'G5'])
+    expect(open.stickers.map((s) => s.boxName)).toEqual(['G1', 'G2', 'G3', 'G4', 'G5'])
+    expect(open.title).toBe('Not printed yet, G3 to G5')
+    expect(open.first).toBe(true)
+    expect(reservedRunToPrint(got!).first).toBeUndefined()
+    // a sticker handed to the window keeps its mark, so a take-back knows which had one before
+    expect(reservedRunToPrint(got!).printing.map((s) => Boolean(s.printedAt))).toEqual([true, true, false, false, false])
+  })
+
+  it('none printed has one press: the reserved press prints the same stickers', () => {
+    const [got] = reservedRunsToPrint([marked(0)])
+    expect(got!.waiting).toEqual([])
+    expect(got!.waitingLabel).toBe('')
+    expect(got!.waitingTitle).toBe('')
+  })
+
+  it('all printed has one press, and so has a run the app was not watching', () => {
+    expect(reservedRunsToPrint([marked(5)])[0]!.waiting).toEqual([])
+    expect(reservedRunsToPrint([run('r1', ['G1', 'G2', 'G3'], named(1, 3))])[0]!.waiting).toEqual([])
+  })
+
+  it('an older run the app has since seen print offers its rest too', () => {
+    const [got] = reservedRunsToPrint([marked(4, { printedAt: '2026-11-16T15:00:00Z' })])
+    expect(got!.waitingLabel).toBe('Print the 1 not printed yet, G5')
+  })
+
+  it('stickers with no names are said by their count, and a sticker on a box is never among them', () => {
+    const stickers = [{ ...sticker(1, null), printedAt: '2026-11-17T15:05:00Z' }, sticker(2, null), sticker(3, null), sticker(4, null, 'box-4')]
+    const [got] = reservedRunsToPrint([run('r1', null, stickers, { printedAt: '2026-11-17T15:00:00Z' })])
+    expect(got!.waitingLabel).toBe('Print the 2 not printed yet')
+    expect(got!.waitingTitle).toBe('2 stickers not printed yet')
+  })
+
+  it('the window’s line for a first print says nothing prints again', () => {
+    expect(PRINT_RUN_FIRST_WORDS).not.toContain('again')
+    expect(PRINT_RUN_AGAIN_WORDS).toContain('again')
   })
 })

@@ -1,20 +1,20 @@
 ---
 name: "Stickers: record that a sticker's strips came out of the printer"
 number: 373
-group: ready
-status: asked 2026-11-16 · designed the same evening · the owner's go 2026-11-17 · PR 1, the column, built as v2.7564 (migration 20261117140000, not pushed yet) · PR 2, the screens, not built
+group: close
+status: asked 2026-11-16 · designed the same evening · the owner's go 2026-11-17 · built the same day as two PRs, v2.7564 the column (migration 20261117140000, pushed) and v2.7567 the screens · the owner's first print on the P-touch is the walk
 summary: >
   The app reserves a run of stickers at the press, before any strip leaves the printer, and keeps no record
   that one did. `sticker_runs.printed_at` is the moment the run was made, so every screen reads *Printed
   Nov 16 by Dana* whether or not anything printed. This card adds one column on a sticker, the time its
   strips last went out, written when the P-touch finishes them. A job's reserved line can then say *None
   printed yet* or *18 not printed yet*, and a press can print only the ones that never came out.
-next: Merge PR 1, push its migration, then build PR 2 (the screens). The two calls below are taken as recommended.
+next: The owner prints a run on the P-touch and stops it part way. The job's line should then offer Print the N not printed yet. Retire the card after that walk.
 size: M as a train of two (S · M)
-blocker: None. PR 2 must not merge before PR 1's migration is pushed.
+blocker: None.
 mockup: not required — it adds one sentence and one press to lines the screens already draw, and the card writes both out
 opinion: build — a run that never printed looks the same as one that did, and the owner met that on his first run
-ver: v2.7564
+ver: v2.7564 · 7567
 ---
 
 # Stickers: record that a sticker's strips came out of the printer (#373)
@@ -126,11 +126,29 @@ mark began, and say nothing about the older ones until they print. The 58 of 202
 
 ## Where it stands
 
-- **PR 1, the column: built 2026-11-17 as v2.7564.** `supabase/migrations/20261117140000_sticker_printed.sql`
-  with its page, as designed above: the column, the column grant, `box_stickers_update` and the stamp trigger
-  `box_stickers_stamp_printed`, which speaks to a direct caller alone as the on-site guards do. A `DO` block
-  fails the migration if the revoke or the grant did not take. The bed is
-  `supabase/tests/sticker_names/40_printed_mark.sql`. Not pushed until it is on `main`.
-- **PR 2, the screens: not built.** It waits for the push.
-- The two calls are taken as recommended: the print window marks when it closes and offers **They did not
-  print**, and nothing is said about the stickers made before the mark.
+Built 2026-11-17 as designed above, in two PRs.
+
+- **PR 1, the column: v2.7564.** `supabase/migrations/20261117140000_sticker_printed.sql` with its page: the
+  column, the column grant, `box_stickers_update` and the stamp trigger `box_stickers_stamp_printed`, which
+  speaks to a direct caller alone as the on-site guards do. A `DO` block fails the migration if the revoke or
+  the grant did not take. The bed is `supabase/tests/sticker_names/40_printed_mark.sql`. Pushed the same day.
+- **PR 2, the screens: v2.7567.** The kernel is `src/lib/materials/stickerMark.ts`, the write
+  `markStickersPrinted` in `stickerRunsIo.ts`. The window marks over USB after every print and through the
+  print window when it closes. The reserved line, the *Which job?* card, the window's ask and the Runs fold
+  say what printed, and a run that printed in part has the press *Print the 18 not printed yet*.
+- **The two calls** were taken as recommended. The print window's take-back reads *Did they not print?* with
+  the press **Take the mark off 58 stickers**, as the labels window words it, since a button names its act
+  with its count.
+
+Two steps past the design, both written up in `docs/recent-features/v2.7567.md`:
+
+- **An older run is watched once it prints.** The design counted a NULL as *not printed yet* only for a
+  sticker made since the mark began. Read that way, the 58 of 2026-11-16 would say *40 printed.* after a stop
+  on their first real print and offer no press for the other 18. So a run also counts once one of its
+  stickers carries a mark: the app has seen that run print. Until then nothing is said of it.
+- **The by-line reads *Reserved* on every run**, not only where the mark applies. The day is the reserving on
+  every run, so the word is true everywhere and says nothing about printing.
+
+Not built: the phone's On site line says nothing of what printed, and who printed is not kept.
+
+**Still owed:** the walk under *How to verify*, Live. It needs the P-touch, so it is the owner's.

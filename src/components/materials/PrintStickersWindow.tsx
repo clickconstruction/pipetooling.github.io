@@ -7,7 +7,7 @@
  * Since v2.7492 (the owner's call 5 of 2026-11-16, after Print labels' window in v2.7482) the question says what a
  * run would add to. A band on top shows the tape, the P-touch's own line where the browser already has leave to use
  * it, and one sticker at its printed size with the name a new run opens on. Each job is a card: its site and street,
- * the boxes it holds, the runs printed for it so far, the stickers reserved and not on a box yet with who printed
+ * the boxes it holds, the runs printed for it so far, the stickers reserved and not on a box yet with who reserved
  * them, and the name a new run opens on. A job whose boxes did not load says so, and the foot points at Print labels
  * and Scan a label. The words are `lib/materials/reserveStickersJobs.ts`, the reads `reserveStickersIo.ts`, the
  * shared pieces `WhichJobParts.tsx`.
@@ -32,7 +32,6 @@ import { ptouchReadyLine, ptouchTapeFits } from '../../lib/materials/ptouchRaste
 import { connectPtouch, ptouchUsbAvailable, type PtouchLink } from '../../lib/materials/ptouchUsb'
 import { fetchSitesOfJobs, fetchStickerRunsOfJobs } from '../../lib/materials/reserveStickersIo'
 import { RESERVE_ALREADY_IN, RESERVE_OPEN_JOB_LABEL, RESERVE_WHICH_JOB, boxCountAside, findStickerJobs, nextNameWords, runsSoFarWords, stickerJobsInOrder, type StickerJobsInput } from '../../lib/materials/reserveStickersJobs'
-import { reservedRunToPrint } from '../../lib/materials/reservedPrint'
 import { STICKER_PREVIEW_CODE_WORDS, previewStrip } from '../../lib/materials/stickerPreview'
 import { PRINT_STICKERS_LABEL, STICKERS_GUIDE, STICKERS_GUIDE_HEADING, STICKERS_GUIDE_QUESTION, stickerReserveWords } from '../../lib/materials/stickerRun'
 import { isTapeWidth, type TapeWidthMm } from '../../lib/materials/tapeLabel'
@@ -183,7 +182,7 @@ export default function PrintStickersWindow({ jobs, role, loading, failure, onAd
                       <div style={{ ...wjAmberBox, borderRadius: 8, padding: '0.35rem 0.6rem', fontSize: '0.82rem', fontWeight: 600, display: 'grid', gridTemplateColumns: WJ_ONE_COLUMN, gap: '0.4rem' }}>
                         <div role="note" data-testid="print-stickers-job-reserved">{f.reservedWords}</div>
                         {/* The press that prints them, right where they are named (v2.7523): the same stickers and links, nothing minted. */}
-                        <ReservedPrintPresses runs={f.toPrint} role={role} onPrint={(r) => open(f.jobId, reservedRunToPrint(r))} tid="print-stickers-reserved" pressStyle={{ ...wjBtn, whiteSpace: 'normal', padding: '0.3rem 0.75rem' }} noteStyle={{ color: 'var(--text-amber-800)' }} />
+                        <ReservedPrintPresses runs={f.toPrint} role={role} onPrint={(run) => open(f.jobId, run)} tid="print-stickers-reserved" pressStyle={{ ...wjBtn, whiteSpace: 'normal', padding: '0.3rem 0.75rem' }} noteStyle={{ color: 'var(--text-amber-800)' }} />
                       </div>
                     ) : null}
                     {next ? <div style={wjMuted} data-testid="print-stickers-job-next">{next}</div> : null}

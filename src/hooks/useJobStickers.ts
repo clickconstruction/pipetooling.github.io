@@ -11,7 +11,7 @@ export type JobStickers = {
   marksByBox: ReadonlyMap<string, StickerMark[]>
   /** The job's stickers still on no box, across its runs. */
   blank: number
-  /** The same stickers as the job's line says them (v2.7487): which names, who printed them and when. */
+  /** The same stickers as the job's line says them (v2.7487): which names, who reserved them and when, and what printed of them (v2.7567). */
   reserved: ReservedOfJob
   /** The presses that print them (v2.7523): one for each run that still holds reserved stickers, minting nothing. */
   toPrint: ReservedRunPrint[]

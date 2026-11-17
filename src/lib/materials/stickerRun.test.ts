@@ -131,6 +131,11 @@ describe('the run read back', () => {
     expect(mintedStickerOf({ id: 's', number: 225, code: '4f2a9c18' })).toEqual({ id: 's', number: 225, code: '4F2A9C18', boxName: null })
   })
 
+  it('reads a sticker’s printed mark when the row carries one, and leaves it out when it does not (punch list #373)', () => {
+    expect(mintedStickerOf({ id: 's', number: 225, code: '4f2a9c18', printed_at: '2026-11-17T15:05:00Z' })).toEqual({ id: 's', number: 225, code: '4F2A9C18', boxName: null, printedAt: '2026-11-17T15:05:00Z' })
+    expect(mintedStickerOf({ id: 's', number: 225, code: '4f2a9c18', printed_at: null })).toEqual({ id: 's', number: 225, code: '4F2A9C18', boxName: null })
+  })
+
   it('is null for a row that is not a numbered run', () => {
     expect(stickerRunOf(null)).toBeNull()
     expect(stickerRunOf({ ...runRow, first_number: null, last_number: null })).toBeNull()
@@ -184,8 +189,8 @@ describe('a run’s words', () => {
   })
 
   it('says who printed and when', () => {
-    expect(stickerRunByLine(run, 'Nov 12')).toBe('Printed Nov 12 by Dana · 2 of each')
-    expect(stickerRunByLine({ ...run, copies: 1, printedByName: '' }, 'Nov 12')).toBe('Printed Nov 12')
+    expect(stickerRunByLine(run, 'Nov 12')).toBe('Reserved Nov 12 by Dana · 2 of each')
+    expect(stickerRunByLine({ ...run, copies: 1, printedByName: '' }, 'Nov 12')).toBe('Reserved Nov 12')
   })
 
   it('folds the runs', () => {
@@ -347,8 +352,8 @@ describe('a run that names its boxes (design section 10, PR 8, v2.7391)', () => 
     const run = { count: 223, copies: 1, names, printedByName: 'Dana' }
     expect(stickerRunTitle(run)).toBe('Run of 223 · G78 to G300')
     expect(stickerRunTitle({ ...run, copies: 2 })).toBe('Run of 223 sets · G78 to G300')
-    expect(stickerRunByLine(run, 'Nov 15')).toBe('Printed Nov 15 by Dana')
-    expect(stickerRunByLine({ ...run, copies: 2 }, 'Nov 15')).toBe('Printed Nov 15 by Dana · 2 of each')
+    expect(stickerRunByLine(run, 'Nov 15')).toBe('Reserved Nov 15 by Dana')
+    expect(stickerRunByLine({ ...run, copies: 2 }, 'Nov 15')).toBe('Reserved Nov 15 by Dana · 2 of each')
     expect(runSpanWords(run)).toBe('G78 to G300')
     expect(runStripsWords(run, 223)).toBe('G78 to G300, one strip each.')
     expect(runStripsWords(run, 8)).toBe('8 of G78 to G300, one strip each.')

@@ -151,6 +151,8 @@ export type MintedSticker = {
   code: string
   /** The name printed large on the sticker, G78 (section 10, v2.7312); null on a sticker that carries its number only. Left out by a reader from before the names. */
   boxName?: string | null
+  /** When the sticker's strips last came out of the printer (punch list #373, `stickerMark.ts`); null or left out while the app has not seen them go. */
+  printedAt?: string | null
 }
 
 export type StickerRun = {
@@ -162,6 +164,7 @@ export type StickerRun = {
   lastNumber: number
   copies: number
   printedByName: string
+  /** When the run was made, the database's own name for it: the reserving, never a strip coming out (that is a sticker's own `printedAt`). */
   printedAt: string
   /** The run's box names in print order (section 10, v2.7312); null for a run of numbers only. Left out by a reader from before the names. */
   names?: string[] | null
@@ -203,7 +206,8 @@ export function mintedStickerOf(raw: unknown): MintedSticker | null {
   const code = text(r.code)
   const number = typeof r.number === 'number' ? r.number : Number.NaN
   if (!id || !code || !Number.isInteger(number) || number < 1) return null
-  return { id, number, code: code.toUpperCase(), boxName: text(r.box_name)?.toUpperCase() ?? null }
+  const printedAt = text(r.printed_at)
+  return { id, number, code: code.toUpperCase(), boxName: text(r.box_name)?.toUpperCase() ?? null, ...(printedAt ? { printedAt } : {}) }
 }
 
 export type MintedRun = { run: StickerRun; stickers: MintedSticker[] }
@@ -303,11 +307,15 @@ export function stickerRunTitle(run: Pick<StickerRun, 'count' | 'copies' | 'name
   return span ? `${of} · ${span}` : of
 }
 
-/** *Printed Nov 12 by Dana · 2 of each*. `day` is the printed day as words; the name is left out when the database kept none. */
+/**
+ * *Reserved Nov 12 by Dana · 2 of each*. `day` is the day the run was made, as words; the name is left out when the
+ * database kept none. It read *Printed* until v2.7567: the day is the reserving, and whether a strip came out is the
+ * stickers' own mark (`stickerMark.ts`).
+ */
 export function stickerRunByLine(run: Pick<StickerRun, 'printedByName' | 'copies'>, day: string): string {
   const who = run.printedByName ? ` by ${run.printedByName}` : ''
   const copies = run.copies > 1 ? ` · ${run.copies} of each` : ''
-  return `Printed ${day}${who}${copies}`
+  return `Reserved ${day}${who}${copies}`
 }
 
 /** The fold's summary: *1 run of stickers*, *3 runs of stickers*. */

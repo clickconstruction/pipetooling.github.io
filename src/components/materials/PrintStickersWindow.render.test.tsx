@@ -19,6 +19,7 @@ vi.mock('../../lib/materials/stickerRunsIo', () => ({
   mintStickerRun: vi.fn(),
   fetchStickerRuns: vi.fn(async () => []),
   fetchSiteStickerNames: vi.fn(async () => ({ boxes: [], blankNames: [] })),
+  markStickersPrinted: vi.fn(async () => undefined),
 }))
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -58,7 +59,7 @@ describe('PrintStickersWindow', () => {
     const onOpenJob = vi.fn()
     renderWithProviders(<PrintStickersWindow jobs={[bare, juniper]} role="assistant" loading={false} failure={quiet} reads={reads({ runs, sites })} onOpenJob={onOpenJob} onClose={() => {}} />)
     // The job with stickers waiting for their boxes comes first once they are read.
-    await waitFor(() => expect(within(screen.getAllByTestId('print-stickers-card')[0]!).getByTestId('print-stickers-job-reserved').textContent).toBe('2 stickers reserved and not on a box yet, R14 to R15. Printed Nov 16 by Dana.'))
+    await waitFor(() => expect(within(screen.getAllByTestId('print-stickers-card')[0]!).getByTestId('print-stickers-job-reserved').textContent).toBe('2 stickers reserved and not on a box yet, R14 to R15. Reserved Nov 16 by Dana.'))
     const first = within(screen.getAllByTestId('print-stickers-card')[0]!)
     expect(first.getByTestId('print-stickers-job-facts').textContent).toBe('1 cage · R12')
     expect(first.getByTestId('print-stickers-job-runs').textContent).toBe('1 run so far · 3 stickers · 1 on boxes')
@@ -171,5 +172,19 @@ describe('PrintStickersWindow', () => {
     expect(screen.getByRole('dialog', { name: 'Print future stickers' }).querySelector('[data-empty-state]')?.textContent).toContain('No job has anything on site yet.')
     fireEvent.click(screen.getByRole('button', { name: 'On site' }))
     expect(onAddFirst).toHaveBeenCalled()
+  })
+
+  it('a card says what printed of the reserved stickers, and offers only what never came out a press of its own (punch list #373)', async () => {
+    /** Made after the mark began and stopped after one: R14 came out, R15 and R16 did not. */
+    const stopped = run('j1', ['R14', 'R15', 'R16'], [{ ...sticker(1, 'R14'), printedAt: '2026-11-17T15:05:00Z' }, sticker(2, 'R15'), sticker(3, 'R16')] as ReturnType<typeof sticker>[])
+    stopped.run.printedAt = '2026-11-17T15:00:00Z'
+    const runs = vi.fn(async (_ids: ReadonlyArray<string>) => new Map([['j1', [stopped]]]))
+    renderWithProviders(<PrintStickersWindow jobs={[bare, juniper]} role="assistant" loading={false} failure={quiet} reads={reads({ runs })} onClose={() => {}} />)
+    await waitFor(() => expect(within(screen.getAllByTestId('print-stickers-card')[0]!).getByTestId('print-stickers-job-reserved').textContent).toBe('3 stickers reserved and not on a box yet, R14 to R16. 1 printed, 2 not printed yet. Reserved Nov 17 by Dana.'))
+    const first = within(screen.getAllByTestId('print-stickers-card')[0]!)
+    expect([...first.getByTestId('print-stickers-reserved').querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Print the 2 not printed yet, R15 to R16', 'Print the 3 reserved stickers, R14 to R16'])
+    fireEvent.click(first.getByTestId('print-stickers-reserved-waiting'))
+    await screen.findByRole('dialog', { name: 'Not printed yet, R15 to R16' })
+    expect(screen.getByTestId('stickers-print').textContent).toBe('Print 2 stickers, R15 to R16')
   })
 })
