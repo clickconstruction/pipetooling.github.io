@@ -227,9 +227,10 @@ describe('what the index carries (v2.7288, punch list #359: only what a function
     const reached = new Set<string>()
     for (const slug of g.IMPORTERS) for (const f of walk(ROOT, `supabase/functions/${slug}/index.ts`, disk).files) reached.add(f)
     expect(offIndexEntries().filter((entry) => !reached.has(`${g.OUT_DIR}/${entry}`))).toEqual([])
-    // The firm's portal reads the Lien desk's paid-in-kind rule and nothing else of the copy (v2.7259).
+    // The firm's portal reads the Lien desk's off-desk rule and nothing else of the copy: paid in kind (v2.7259), and a
+    // job a person took off the lien path (v2.7521), which that rule reads from `lienJobPath.ts`.
     const portal = walk(ROOT, 'supabase/functions/legal-portal/index.ts', disk).files
-    expect(portal.filter((f) => f.startsWith(`${g.OUT_DIR}/`)).sort()).toEqual([`${g.OUT_DIR}/lib/inKind/inKindLedger.ts`, `${g.OUT_DIR}/lib/jobs/lienInKind.ts`])
+    expect(portal.filter((f) => f.startsWith(`${g.OUT_DIR}/`)).sort()).toEqual([`${g.OUT_DIR}/lib/inKind/inKindLedger.ts`, `${g.OUT_DIR}/lib/jobs/lienInKind.ts`, `${g.OUT_DIR}/lib/jobs/lienJobPath.ts`])
   })
 })
 

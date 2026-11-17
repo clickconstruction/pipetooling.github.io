@@ -2,7 +2,7 @@
 name: "Task Mode: the refresh and the doer's tools"
 number: 369
 group: close
-status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · step A1, the top half of Today, built on branch claude/task-mode-refresh-look-3c5d3e (v2.7533) · steps A2 to D to build
+status: design picked by the owner 2026-11-16 ("I like your plan, please build the entire PR train") · steps A1 and A2, the whole of Today, built (v2.7533, v2.7536) · steps B1 to D to build
 summary: >
   The owner sent a screenshot of Task Mode and asked for a visual refresh in the family of the New task
   window, and for tools that let the person doing tasks act without waiting on someone. Checklist → Today
@@ -11,10 +11,10 @@ summary: >
   card: move a task to another day, say you cannot do it, say it no longer applies, go through the old
   ones, add proof as you finish, add your own task or a follow-up, hand a task on, and draw a map or leave
   a point on one.
-next: Step A2, the Outstanding list redrawn as Still open. Then B1 to B3, the tools that need no database change.
-size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S); left: A2 to D (S · S · S · S · M · S · S · M · S · M · M · S · S · S)
+next: B1 to B3, the tools that need no database change. Then C1, the ground migration, pushed right after its merge.
+size: L as a train of fifteen (M · S · S · S · S · M · S · S · M · S · M · M · S · S · S); left: B1 to D (S · S · S · M · S · S · M · S · M · M · S · S · S)
 blocker: none
-ver: v2.7533
+ver: v2.7533 · v2.7536
 opinion: build — the refresh changes no data, each tool is one small press on the card, and the one migration is additive
 ---
 
@@ -97,7 +97,7 @@ One small PR per line, each with its guide, release note and fragment.
 | Step | What lands | Database | Size | State |
 |---|---|---|---|---|
 | A1 | The top half of Today: the head and its sentence, the Today and History bar in Task Mode, Next, Then, Done today, presses with names | none | M | built, v2.7533 |
-| A2 | The lower half: Still open with amber age, *given* in place of *due*, the whole tag, the fold | none | S | |
+| A2 | The lower half: Still open with amber age, *given* in place of *due*, the whole tag, the fold | none | S | built, v2.7536 |
 | B1 | Tool 6: ＋ Add a task for me, and Follow-up on a done task | none | S | |
 | B2 | Tool 5: who hears, and the finish sheet with Photo, Note and Map | none | S | |
 | B3 | Tool 8, first half: Map on a task that has a map opens it at Add to it | none | S | |

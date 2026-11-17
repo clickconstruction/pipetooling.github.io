@@ -5,6 +5,7 @@
  *
  * Every sentence here is read at the top of a phone in the field, so each is held to `plainWords.ts` by the test.
  */
+import { dayLabel, daysBetween } from '../checklistDueDates'
 
 /** The page's head: *Monday, Nov 16*. */
 export function todayHeadDate(now: Date): string {
@@ -83,4 +84,79 @@ export function todayPartLabel(part: 'next' | 'then' | 'done', count: number): s
 export function notePressLabel(notes: number): string {
   if (notes <= 0) return '＋ Note'
   return notes === 1 ? '1 note' : `${notes} notes`
+}
+
+/** How a still-open task's age is drawn: red for a due day that has passed, amber for an old task, grey for a young one. */
+export type StillOpenTone = 'late' | 'old' | 'soft'
+
+export type StillOpenAge = {
+  /** The quiet words on the row: *given Thu, Aug 20*, *due Fri, Nov 6*, *due today*. */
+  words: string
+  /** The pill at the row's end: *88 days*, *10 days late*. None for a task given today or due later. */
+  pill: string | null
+  tone: StillOpenTone
+}
+
+/** A task with no due day turns amber once it has waited this many days. Before that its age is grey. */
+export const STILL_OPEN_OLD_DAYS = 7
+
+/**
+ * A still-open task's age (punch list #369, step A2). The list used to print *due Thu, Aug 20 · 88 days ago* in red on
+ * every row, and the day was only the day the task was given: none of the tasks it stood on had a due day. So a task
+ * with no due day now says *given* and shows its age in amber, and red is kept for a real due day that has passed.
+ */
+export function stillOpenAge(scheduledDate: string, dueDate: string | null | undefined, todayStr: string): StillOpenAge {
+  if (dueDate) {
+    const late = daysBetween(dueDate, todayStr)
+    if (late != null && late > 0) return { words: `due ${dayLabel(dueDate)}`, pill: late === 1 ? '1 day late' : `${late} days late`, tone: 'late' }
+    if (late === 0) return { words: 'due today', pill: null, tone: 'old' }
+    return { words: `due ${dayLabel(dueDate)}`, pill: null, tone: 'soft' }
+  }
+  const days = daysBetween(scheduledDate, todayStr)
+  const words = `given ${dayLabel(scheduledDate)}`
+  if (days == null || days <= 0) return { words, pill: null, tone: 'soft' }
+  return { words, pill: days === 1 ? '1 day' : `${days} days`, tone: days >= STILL_OPEN_OLD_DAYS ? 'old' : 'soft' }
+}
+
+/** True when the task has a due day and it has passed: the one case the list and the map draw in red. */
+export function stillOpenIsLate(dueDate: string | null | undefined, todayStr: string): boolean {
+  if (!dueDate) return false
+  const late = daysBetween(dueDate, todayStr)
+  return late != null && late > 0
+}
+
+/**
+ * The list's order: a task whose due day has passed comes first, then the rest as they arrived, oldest first. Without
+ * this a late task with a recent due day sorts under the old ones and can sit behind the fold, the one red row hidden.
+ */
+export function lateFirst<T extends { checklist_items?: { due_date?: string | null } | null }>(rows: readonly T[], todayStr: string): T[] {
+  const late = rows.filter((r) => stillOpenIsLate(r.checklist_items?.due_date ?? null, todayStr))
+  if (late.length === 0) return [...rows]
+  return [...late, ...rows.filter((r) => !stillOpenIsLate(r.checklist_items?.due_date ?? null, todayStr))]
+}
+
+/** The quiet words beside the list's label, which say its order. */
+export function stillOpenOrderWords(anyLate: boolean): string {
+  return anyLate ? 'late first, then oldest' : 'oldest first'
+}
+
+/** The list shows this many rows before it folds the rest behind one press. */
+export const STILL_OPEN_FOLD = 3
+
+/**
+ * The rows the Still open list draws, and how many wait behind *Show N more*. A list one row past the fold is drawn
+ * whole, since a press that reveals one row costs more than the row. A row opened from the map is never left folded.
+ */
+export function stillOpenShown<T extends { id: string }>(rows: readonly T[], showAll: boolean, pinnedId: string | null = null): { shown: T[]; hidden: number } {
+  const pinnedBelow = pinnedId != null && rows.findIndex((r) => r.id === pinnedId) >= STILL_OPEN_FOLD
+  if (showAll || pinnedBelow || rows.length <= STILL_OPEN_FOLD + 1) return { shown: [...rows], hidden: 0 }
+  return { shown: rows.slice(0, STILL_OPEN_FOLD), hidden: rows.length - STILL_OPEN_FOLD }
+}
+
+export function stillOpenLabel(count: number): string {
+  return `Still open · ${count}`
+}
+
+export function showMoreLabel(hidden: number): string {
+  return `Show ${hidden} more`
 }

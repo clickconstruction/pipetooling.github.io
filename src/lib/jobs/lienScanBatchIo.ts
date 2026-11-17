@@ -3,10 +3,14 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { putJobFolderFile } from './jobFolderAddFileIo'
 import { filingDocumentPayload } from './lienFilingDocumentLink'
 import type { LienScanTarget } from './lienScanBatch'
-import { LIEN_CLERK_SCAN_NOTE, lienFiledScanName } from './lienScanFile'
+import { LIEN_CLERK_SCAN_NOTE, lienFiledScanName, lienScanProblem } from './lienScanFile'
 
-/** One scan to save: the file as it is, and the filed lien it belongs to. */
-export type LienScanSave = { key: string; file: File; target: LienScanTarget }
+/**
+ * One scan to save: the file as it is, and the filed lien it belongs to. A lien's pages of a split stack come as a
+ * function that cuts them (punch list #366, the stack), so a cut that fails is that scan's own failure and the true
+ * size is checked once it is known.
+ */
+export type LienScanSave = { key: string; file: File | (() => Promise<File>); target: LienScanTarget }
 
 export type LienScanSaveResult = { done: LienScanSave[]; failed: Array<{ save: LienScanSave; reason: string }> }
 
@@ -21,7 +25,14 @@ export async function saveLienScans(saves: ReadonlyArray<LienScanSave>, put: typ
   for (const save of saves) {
     let url = ''
     try {
-      const named = new File([save.file], lienFiledScanName(save.target.jobNumber, save.target.filedYmd, save.file), { type: save.file.type || 'application/pdf' })
+      const file = typeof save.file === 'function' ? await save.file() : save.file
+      // A cut piece's size is known only now: the folder's limit is each lien's piece, never the stack's.
+      const problem = lienScanProblem(file, 'affidavit')
+      if (problem) {
+        result.failed.push({ save, reason: problem })
+        continue
+      }
+      const named = new File([file], lienFiledScanName(save.target.jobNumber, save.target.filedYmd, file), { type: file.type || 'application/pdf' })
       url = (await put(save.target.jobId, 'sent', named)).url
     } catch (e) {
       result.failed.push({ save, reason: formatErrorMessage(e, 'the file was not added to the job’s folder') })

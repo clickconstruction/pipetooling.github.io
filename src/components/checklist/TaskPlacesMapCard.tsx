@@ -21,6 +21,8 @@ const HIDDEN_KEY = 'task_places_map_hidden'
 const ME_ID = '__me'
 const DUE = '#2563eb'
 const OVERDUE = '#dc2626'
+/** An older task whose due day has not passed, or that has none: amber, since red is for late. */
+const OLD = '#b45309'
 const ME = '#111827'
 
 function readHidden(): boolean {
@@ -39,7 +41,7 @@ function writeHidden(hidden: boolean): void {
   }
 }
 
-export type TaskPlacesMapTask = { id: string; title: string; place: TaskPlace | null; overdue?: boolean }
+export type TaskPlacesMapTask = { id: string; title: string; place: TaskPlace | null; overdue?: boolean; old?: boolean }
 
 type Props = {
   /** The open tasks of the list under the map, in the list's order. Tasks with no place are counted, never dropped. */
@@ -116,7 +118,7 @@ export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
   if (groups.length === 0) return null
 
   const pins: MapCanvasPin[] = [
-    ...groups.map((g) => ({ id: g.id, lat: g.lat, lng: g.lng, color: g.overdue ? OVERDUE : DUE, title: g.name, label: g.label })),
+    ...groups.map((g) => ({ id: g.id, lat: g.lat, lng: g.lng, color: g.overdue ? OVERDUE : g.old ? OLD : DUE, title: g.name, label: g.label })),
     ...(me ? [{ id: ME_ID, lat: me.lat, lng: me.lng, color: ME, ringColor: '#ffffff', title: 'You' }] : []),
   ]
   const selected = groups.find((g) => g.id === selectedId) ?? null
@@ -198,7 +200,7 @@ export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
               </div>
               {selected.taskIds.map((id, i) => (
                 <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
-                  <span aria-hidden style={{ flex: 'none', display: 'inline-grid', placeItems: 'center', width: 20, height: 20, borderRadius: '50%', background: selected.overdue ? OVERDUE : DUE, color: '#fff', fontSize: '0.6875rem', fontWeight: 800 }}>{selected.numbers[i]}</span>
+                  <span aria-hidden style={{ flex: 'none', display: 'inline-grid', placeItems: 'center', width: 20, height: 20, borderRadius: '50%', background: selected.overdue ? OVERDUE : selected.old ? OLD : DUE, color: '#fff', fontSize: '0.6875rem', fontWeight: 800 }}>{selected.numbers[i]}</span>
                   <span style={{ flex: '1 1 auto', minWidth: 0, fontSize: '0.875rem', lineHeight: 1.3, color: 'var(--text-strong)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{titleById.get(id) ?? 'Task'}</span>
                   <button type="button" style={{ ...press, flex: 'none' }} onClick={() => onShowTask(id)}>
                     Show the task
