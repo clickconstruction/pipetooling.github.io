@@ -304,8 +304,8 @@
   <div class="col"><span class="cap">With it</span><div class="frame" id="passafter"></div><p class="say">The scan drops every file that is already a paper on file, by its Drive id and never by its name. The row offers nothing, and the office sends a contract.</p></div>
 </div>
 
-<h2 id="calls">Your calls: one settled, six open</h2>
-<p class="lede">Call 1 is settled. Calls 2 to 7 each have a pick, and the screens above draw the picks. Nothing is built before you say build.</p>
+<h2 id="calls">Your calls: all seven settled</h2>
+<p class="lede">You settled call 1 in your own words, then took the picks for calls 2 to 7, on 2026-11-17. The screens above draw them. Nothing is built before you say build.</p>
 <div class="calls" id="callgrid"></div>
 
 </div>
@@ -494,12 +494,12 @@ document.getElementById('findest').innerHTML = findFrame(false)
 // ── the calls ───────────────────────────────────────────────────────────────────────────────────────────────────
 const CALLS = [
   ['Who reads it', 'The paper is filed in its job’s folder, and estimators can read it there and in Find a file. Your words: Yes, job’s folder.', 'A drive of its own for contracts, with the office’s four roles as members, as the People folder has.', true],
-  ['Which papers', 'Every signed paper with a file: a contract, a warranty, a scan the office uploaded, a GC’s own paper. A paper already in the drive is tied where it sits.', 'Only papers signed through the link.'],
-  ['The folder and the name', 'Team only › Contracts, made on first use. Named by the signed day, what it is, the job’s number and who signed.', 'Team only › Sent by us, with no new folder, beside the signed hours statements.'],
-  ['A voided paper', 'The app’s copy is renamed VOIDED and kept.', 'Moved to Drive’s trash. Or left as it is.'],
-  ['One paper over several jobs', 'A copy in each covered job’s folder, so each folder is whole.', 'One copy in the customer’s folder, above the jobs.'],
-  ['When, and the old ones', 'The sweep files it within ten minutes and never runs inside the signing. One press files one at once. The old ones are filed by the same sweep.', 'The old ones wait for a press on Where files go.'],
-  ['The link field', 'The link the office typed stays as it is. The Drive copy gets its own Open in Drive door.', 'The app fills the link with the Drive file.'],
+  ['Which papers', 'Every signed paper with a file: a contract, a warranty, a scan the office uploaded, a GC’s own paper. A paper already in the drive is tied where it sits.', 'Only papers signed through the link.', true],
+  ['The folder and the name', 'Team only › Contracts, made on first use. Named by the signed day, what it is, the job’s number and who signed.', 'Team only › Sent by us, with no new folder, beside the signed hours statements.', true],
+  ['A voided paper', 'The app’s copy is renamed VOIDED and kept.', 'Moved to Drive’s trash. Or left as it is.', true],
+  ['One paper over several jobs', 'A copy in each covered job’s folder, so each folder is whole.', 'One copy in the customer’s folder, above the jobs.', true],
+  ['When, and the old ones', 'The sweep files it within ten minutes and never runs inside the signing. One press files one at once. The old ones are filed by the same sweep.', 'The old ones wait for a press on Where files go.', true],
+  ['The link field', 'The link the office typed stays as it is. The Drive copy gets its own Open in Drive door.', 'The app fills the link with the Drive file.', true],
 ]
 document.getElementById('callgrid').innerHTML = CALLS.map(([t, pick, or, done], i) => `<div class="call${done ? ' done' : ''}"><span class="num">Call ${i + 1}${done ? ' · settled Nov 17' : ''}</span><h3>${esc(t)}</h3><div class="pick"><b>${done ? 'Settled' : 'Pick'}:</b> ${esc(pick)}</div><div class="or"><b>${done ? 'Not taken' : 'Or'}:</b> ${esc(or)}</div></div>`).join('')
 </script>

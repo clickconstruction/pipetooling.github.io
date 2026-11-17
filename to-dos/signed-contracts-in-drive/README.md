@@ -2,7 +2,7 @@
 name: "Signed contracts: filed in the job's Drive folder and found by Find a file"
 number: 377
 group: ready
-status: asked 2026-11-17 as call 7 of #376 · looked at, drawn and rendered the same day · seven calls put to the owner · he settled call 1 the same day, the job's folder · six calls open · nothing built, and nothing is built before he says build
+status: asked 2026-11-17 as call 7 of #376 · looked at, drawn and rendered the same day · seven calls put to the owner · he settled call 1 the same day, the job's folder, then took the picks for calls 2 to 7 · all seven settled · nothing built, and nothing is built before he says build
 summary: >
   A signed job contract lives in the app's own storage and nowhere in Google Drive, so Find a file cannot
   find it. This card files each signed paper in its job's Drive folder, under Team only › Contracts, and
@@ -11,9 +11,9 @@ summary: >
   within ten minutes, and a paper it cannot file waits with its reason and its door. The jobs drive and
   Find a file are open to estimators, who cannot read a contract in the app today, so filing there lets
   an estimator read it. The owner was told that first and chose the job's folder.
-next: The owner's six open calls, 2 to 7, and his word to build. Then PR 1, the rules, alone.
+next: The owner's word to build. Then PR 1, the rules, alone.
 size: M as a train of six (S · M · S · M · S · S)
-blocker: The owner's word to build, and calls 2 to 7. Call 1, which drive the file lands in, is settled. Calls 2 to 5 set rules PR 1 writes, the papers, the name, a voided copy and a paper over several jobs, so they come before it.
+blocker: The owner's word to build. The seven calls are settled, so nothing else holds PR 1.
 opinion: build — the folders, the upload, the index and the holds all exist for photos; a contract is one more thing the same sweep pattern files, and most of today's papers are already in the drive waiting to be tied to their record
 ---
 
@@ -39,7 +39,10 @@ card. It is a design. No app code ships from it until he says build.
 
 Shown the card, the mock-up and the seven calls the same day, with call 1 put first, he answered **Yes,
 job's folder**. That settles call 1: a signed contract is filed in its job's folder, and estimators can
-read it there. It is not the word to build, and calls 2 to 7 are still his.
+read it there.
+
+Asked next whether he takes the picks as drawn for calls 2 to 7, he answered **Take the picks**. That
+settles all seven calls. It is not the word to build.
 
 ## What the look found
 
@@ -352,34 +355,28 @@ Each step is one PR, with its release note and fragment. Nothing is built until 
 - **A Drive mark on the Agreements tab's lines.** One line, after both are built.
 - **Reading the key terms out of the PDF.** #173 left that as its own follow-up.
 
-## The owner's calls
+## The owner's calls, settled 2026-11-17
 
-### Settled 2026-11-17
+Call 1 in his own words, **Yes, job's folder**. Calls 2 to 7 as the mock-up draws them: **Take the
+picks**.
 
 1. **Who reads it.** The paper is filed in its job's folder, and estimators can read a signed contract
-   there, in Find a file and in Drive. His words: **Yes, job's folder**. Not taken: a Shared Drive of its
-   own for contracts, as the People folder has, with the office's four roles as members and Find a file
-   answering those hits to the four only.
-
-### Open
-
-Each has a pick. The mock-up draws the picks.
-
-2. **Which papers.** **Pick: every signed paper with a file, of all four kinds, and a paper already in
-   the drive is adopted where it sits.** Or: only papers signed through the link, leaving the office's
-   scans and a GC's paper where they are.
-3. **The folder and the name.** **Pick: Team only › Contracts, a sixth folder made on first use, named
-   by day, kind, job number and signer.** Or: Team only › Sent by us, no new folder, beside the signed
-   hours statements.
-4. **A voided paper.** **Pick: the app's copy is renamed VOIDED and kept.** Or: moved to Drive's trash.
-   Or: left as it is.
-5. **One paper over several jobs.** **Pick: a copy in each covered job's folder.** Or: one copy in the
+   there, in Find a file and in Drive. Not taken: a Shared Drive of its own for contracts, as the People
+   folder has, with the office's four roles as members and Find a file answering those hits to the four
+   only.
+2. **Which papers.** Every signed paper with a file, of all four kinds, and a paper already in the drive
+   is adopted where it sits. Not taken: only papers signed through the link.
+3. **The folder and the name.** Team only › Contracts, a sixth folder made on first use, named by day,
+   kind, job number and signer. Not taken: Team only › Sent by us, with no new folder.
+4. **A voided paper.** The app's copy is renamed VOIDED and kept. Not taken: moved to Drive's trash, or
+   left as it is.
+5. **One paper over several jobs.** A copy in each covered job's folder. Not taken: one copy in the
    customer's folder, above the jobs.
-6. **When, and the backfill.** **Pick: the sweep files it within ten minutes and never runs inside the
-   signing, with a press for one at once. The backfill is the same sweep, with no press of its own.** Or:
-   the backfill waits for a press on Where files go.
-7. **The link field.** **Pick: `signed_document_url` stays what the office typed, and the Drive copy
-   gets its own door.** Or: the app fills the link with the Drive file.
+6. **When, and the backfill.** The sweep files it within ten minutes and never runs inside the signing,
+   with a press for one at once. The backfill is the same sweep, with no press of its own. Not taken: a
+   backfill that waits for a press on Where files go.
+7. **The link field.** `signed_document_url` stays what the office typed, and the Drive copy gets its own
+   door. Not taken: the app fills the link with the Drive file.
 
 ## How to verify, once built
 
