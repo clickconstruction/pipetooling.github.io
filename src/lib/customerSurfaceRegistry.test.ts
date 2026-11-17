@@ -44,7 +44,8 @@ describe('customerSurfaceRegistry — every outside surface has a place on What 
     expect(senders).toContain('legal-notify-dispatch')
     expect(senders.length).toBeGreaterThan(20)
     // Messages cut 5: the functions that text from the company number; since punch list #299 the receipt text's sweep too.
-    expect(textSendersFromSources(realFunctions())).toEqual(['messages-nudge-dispatch', 'quo-send', 'quo-webhook', 'receipt-request'])
+    // Since v2.7495 the lien reminder to the leader too.
+    expect(textSendersFromSources(realFunctions())).toEqual(['messages-nudge-dispatch', 'notify-lien-approval', 'quo-send', 'quo-webhook', 'receipt-request'])
   })
 
   it('the registry, the routes, the senders and the journeys agree', () => {

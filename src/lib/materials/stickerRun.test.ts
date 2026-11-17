@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { mintStickerRunArgs, nameSpanWords, runSpanWords, stickerReadName, stickerSpanWords, stickerStrip as stripOf, stripNameChars } from './stickerRun'
+import { mintStickerRunArgs, nameSpanWords, runSpanWords, stickerReadName, stickerSpanWords, stickerStrip as stripOf, stripNameChars, runCopiesWords } from './stickerRun'
 import {
   blankStickersOf,
   canMintStickers,
@@ -356,5 +356,14 @@ describe('a run that names its boxes (design section 10, PR 8, v2.7391)', () => 
     expect(stickerRunTitle({ count: 200, copies: 1, names: null })).toBe('Run of 200')
     expect(runSpanWords({ names: null })).toBe('')
     expect(runStripsWords({ count: 1, copies: 1, names: null }, 1)).toBe('1 sticker, one strip each.')
+  })
+})
+
+describe('Copies of each on a run already made (v2.7553)', () => {
+  it('says what the run was made with once the count differs, and that every copy opens the same box', () => {
+    expect(runCopiesWords(5, 5)).toBe('Every copy opens the same box.')
+    expect(runCopiesWords(1, 1)).toBe('For a box with more than one side, print each sticker more than once.')
+    expect(runCopiesWords(5, 3)).toBe('The run was made with 5 of each. Every copy opens the same box.')
+    expect(runCopiesWords(1, 5)).toBe('The run was made with 1 of each. Every copy opens the same box.')
   })
 })

@@ -164,6 +164,15 @@ describe('DevelopmentPlansByDate', () => {
     expect(screen.getByTestId('pbd-note').textContent).toContain('Press anything on the chart or in the list for its details.')
   })
 
+  it('on a phone the key folds behind a press', () => {
+    renderWithProviders(<DevelopmentPlansByDate model={buildPlansByDate(site())} phone print={print} />)
+    expect(screen.queryByTestId('pbd-legend')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'What the marks mean' }))
+    expect(screen.getByTestId('pbd-legend').textContent).toContain('the set a part builds from')
+    fireEvent.click(screen.getByRole('button', { name: 'Hide what the marks mean' }))
+    expect(screen.queryByTestId('pbd-legend')).toBeNull()
+  })
+
   it('with no cards handed in, an item still answers with its one line', () => {
     renderWithProviders(<DevelopmentPlansByDate model={buildPlansByDate(site())} phone={false} print={print} />)
     fireEvent.click(screen.getByTestId('pbd-mark-set-a2'))

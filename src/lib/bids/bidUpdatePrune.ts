@@ -1,3 +1,4 @@
+import { sameSchedule, scheduleDraftProblem } from './bidSchedule'
 import type { BidEditFormValues } from './useBidEditForm'
 import { normalizeBidDateInput } from '../bidDateSentDisplay'
 import { isUnfinishedDate } from '../autosaveDateHold'
@@ -31,6 +32,8 @@ const FIELD_GROUPS: readonly FieldGroup[] = [
   { keys: ['bid_submission_link'], dirty: (c, i) => c.bidSubmissionLink !== i.bidSubmissionLink },
   { keys: ['itb_links'], dirty: (c, i) => !sameList(c.itbLinks, i.itbLinks) },
   { keys: ['design_drawing_plan_date'], dirty: (c, i) => c.designDrawingPlanDate !== i.designDrawingPlanDate },
+  // The schedule's three columns are one fact: any of its boxes changed writes all three, so the database's checks see them together.
+  { keys: ['schedule_start', 'schedule_end', 'schedule_open_ended'], dirty: (c, i) => !sameSchedule(c.schedule, i.schedule) },
   // The save payload always sets gc_builder_id: null alongside customer_id; on an
   // untouched GC picker both are pruned so a legacy builder link survives Save.
   { keys: ['customer_id', 'gc_builder_id'], dirty: (c, i) => c.gcCustomerId !== i.gcCustomerId },
@@ -133,5 +136,9 @@ export function holdUnfinishedBidDates<T extends Record<string, unknown>>(
     for (const k of hold.rides) delete next[k]
     if (initial) for (const f of hold.fields) saved[f] = initial[f]
   }
+  // A schedule half said (a start with no end and no tick, an end before its start) is not in the update
+  // (`buildBidSavePayload` leaves its columns out), so it is not recorded as saved either: the next prune
+  // still reads the row as changed and writes it once it is whole. The row says what is missing; no toast.
+  if (initial && scheduleDraftProblem(written.schedule)) saved.schedule = initial.schedule
   return { payload: next as Partial<T>, saved: saved as BidEditFormValues, held }
 }

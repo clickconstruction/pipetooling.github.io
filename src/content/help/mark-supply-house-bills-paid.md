@@ -133,6 +133,29 @@ The house billed interest you have not paid yet? Press {{button:blue|Add Invoice
 
 Accounts payable adds the year up under its total, like *Interest and late fees in 2026: $61.20*, with each house's share.
 
+## Let the bank agree
+
+The app reads the company's bank lines. A card or ACH payment to a supply house shows there with its day and its amount. The app holds your payments against those lines, so a wrong digit shows up.
+
+Press {{button:outline|See the payment}} on a bill. When the bank holds a line for the same money within three days, the window offers it.
+
+1. Read the line. It shows the day, the payee and the amount.
+2. Press **Match** beside the line that is this payment.
+
+The window then reads **Bank agrees ✓** with that line. Press **Take it off** to undo the match.
+
+:::example A payment the bank agrees with
+**$5,000.00 to Pecan Supply** · 11/12 · ACH 88213. {{chip:green|Bank agrees ✓}} 11/12 · PECAN SUPPLY ACH · $5,000.00.
+:::
+
+The finish-later list uses the bank too. A payment that waits there may read *The bank has it*, with **Use this line**. One press fills the day and how it was sent, and the payment leaves the list.
+
+The bank also shows money that went to a house with no payment recorded. Accounts payable counts those in a line, like **2 bank lines to supply houses have no payment recorded**. Press it to open the list. Then press **Say what it paid** on a line. **Record a payment** opens with the amount, the day and the method filled. Tick the bills it paid and press the green button.
+
+A purchase at the counter that the Tally already sorted is not listed there. Neither is a line from before payments were recorded.
+
+Some houses are paid in a way the bank feed does not show. Their payments get no offer. Type how each was sent, as before.
+
 ## See a payment, or remove one
 
 A bill paid by a recorded payment names it on its row. The row reads the paid day, the method with its number, and how many bills the payment covered.

@@ -25,6 +25,7 @@ function formValues(overrides: Partial<BidEditFormValues> = {}): BidEditFormValu
     bidDueTime: '',
     estimatedJobStartDate: '',
     designDrawingPlanDate: '',
+    schedule: { start: '', end: '', noEnd: false },
     submittedTo: '',
     outcome: '',
     lossReason: '',

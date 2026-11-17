@@ -2,7 +2,9 @@ import type { LienMailPieceRow } from '../lib/mail/lienMailPieces'
 import { readMailPiecesBySource } from '../lib/mail/lienMailPiecesIo'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { loadRetainageUnrecorded } from '../lib/ar/retainageHeldIo'
+import type { RetainageUnrecordedRow } from '../lib/ar/retainageSuggested'
 import { chunkIds } from '../lib/supabasePaging'
 import {
   buildLienDeskQueue,
@@ -35,6 +37,7 @@ import type { LienAffidavitMonthsByHand } from '../lib/jobs/lienAffidavitMonthsB
 import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
 import type { JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
 import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
+import { isZzTestJob } from '../lib/jobs/zzTestJobSweep'
 import { lienBilledOpen } from '../lib/jobs/lienBilledOpen'
 import { lienJobIdsOffDesk, withLienOffDeskColumns } from '../lib/jobs/lienInKind'
 import { jobOffLienPath, lienJobPathStanding } from '../lib/jobs/lienJobPath'
@@ -125,6 +128,10 @@ export type LienDeskData = {
   /** The retainage kind (v2.3753): the § 53.057 window per job with recorded retainage. */
   retainage: LienRetainageQueue
   retainageRows: LienRetainageRow[]
+  /** The open jobs under a GC whose bills or notes say retainage is held with none recorded (`retainageSuggested.ts`): the list above the retainage piles, To do's rows and the Board's count. Absent in light mode. */
+  retainageUnrecorded?: RetainageUnrecordedRow[]
+  /** Why that read failed, in words; null or absent when it did not. The rest of the desk stands without it. */
+  retainageUnrecordedFailure?: string | null
   /** Letter two (v2.3760): where the second owner letter stands on every job with a sent notice. */
   letterTwoByJob: Record<string, LetterTwoStatus>
   /** The owner's call per job (v2.3767), from the notice items — the affidavit piles and the grid read it. */
@@ -225,7 +232,7 @@ export function useLienDeskData(
         // The three readers are asked further ahead than the desk's lead (v2.7261, punch list #354), and the rows past the
         // lead are kept only on a job with a started paper of that kind (`lienDeskStarted.ts`), so a drafted, held or
         // approved paper due in six weeks is on the desk and nothing else past thirty days is.
-        const [rowsRaw, itemsRaw, affRaw, retRaw] = await Promise.all([
+        const [rowsRaw, itemsRaw, affRaw, retRaw, unrecordedRead] = await Promise.all([
           withSupabaseRetry(() => supabase.rpc('list_lien_notice_months', { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never), 'lien desk: due months'),
           withSupabaseRetry(
             () => supabase.from('job_lien_desk_items').select('*').is('voided_at', null).order('created_at', { ascending: false }),
@@ -234,6 +241,12 @@ export function useLienDeskData(
           withSupabaseRetry(() => supabase.rpc('list_lien_affidavit_windows', { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never), 'lien desk: affidavit windows').catch(() => []),
           // The retainage reader (v2.3753) — empty until its migration is pushed, so the client can ship first.
           withSupabaseRetry(() => supabase.rpc('list_lien_retainage_windows' as never, { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never), 'lien desk: retainage windows').catch(() => []),
+          // Retainage nobody recorded (fix A of the retainage clock check): the desk's own read, never the Dashboard's light one. A refused read says why on the Retainage list and leaves the desk standing.
+          light
+            ? Promise.resolve({ rows: [] as RetainageUnrecordedRow[], failure: null as string | null })
+            : loadRetainageUnrecorded()
+                .then((read) => ({ rows: read, failure: null as string | null }))
+                .catch((e: unknown) => ({ rows: [] as RetainageUnrecordedRow[], failure: formatErrorMessage(e, 'The check for retainage nobody recorded could not be read.') })),
         ])
         if (cancelled) return
         const itemsRead = (itemsRaw ?? []) as LienDeskItemRow[]
@@ -612,6 +625,7 @@ export function useLienDeskData(
           affidavitRows,
           retainage,
           retainageRows,
+          ...(light ? {} : { retainageUnrecorded: hideZz ? unrecordedRead.rows.filter((r) => !isZzTestJob({ job_name: r.name })) : unrecordedRead.rows, retainageUnrecordedFailure: unrecordedRead.failure }),
           letterTwoByJob,
           ownerCallByJob,
           jobsById,

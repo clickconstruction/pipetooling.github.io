@@ -14,8 +14,10 @@ import type { LienSubmitOutcome } from './lienDesk'
  * What `notify-lien-approval` answered for one press. Since v2.7445 it carries what the function says when it sent
  * nothing: `held` (leaders outside their Push me hours), `said` (its `message`: *Not awaiting approval*, *No leader
  * to tell*) and `told` (the affidavits it told the leader of).
+ * Since v2.7495 a reminder is texted too: `textSent` is how many leaders the text went to, and `textSaid` why none
+ * did. Both are absent for a send for approval, which is not texted, and from the function as it was before.
  */
-export type LienLeaderTold = { pushSent: number; emailSent: boolean; leaderName: string | null; held?: number; said?: string | null; told?: number | null }
+export type LienLeaderTold = { pushSent: number; emailSent: boolean; leaderName: string | null; held?: number; said?: string | null; told?: number | null; textSent?: number; textSaid?: string | null }
 
 /** The tell as the office hears of it: what the function answered, or why it could not be asked. */
 export type LienLeaderTellResult = { ok: true; told: LienLeaderTold } | { ok: false; reason: string }

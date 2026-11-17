@@ -205,6 +205,36 @@ describe('buildPlansByDateCards', () => {
   })
 })
 
+describe('a bid’s schedule', () => {
+  const editor: PbdCaps = { ...office, canEditBids: true }
+  const scheduled = (caps: PbdCaps) => cardsFor(site({ bids: [{ id: 'bid1', label: 'B9001', sent: '2025-06-12', plansDated: null, outcome: 'won', outcomeAt: null, scheduleStart: '2025-07-01', scheduleEnd: '2026-12-31' }] }), caps).cards
+
+  it('gives the bar, its lane’s name and its two lines of the list one card', () => {
+    const cards = scheduled(editor)
+    const c = need(cards, 'sched-bid1')
+    expect(c.title).toBe('B9001’s schedule')
+    expect(c.kicker).toBe('45 days left')
+    expect(c.facts).toEqual([
+      { label: 'Starts', value: 'Jul 1, 2025' },
+      { label: 'Ends', value: 'Dec 31, 2026' },
+      { label: 'Length', value: '18 months' },
+    ])
+    expect(c.actions).toEqual([
+      { kind: 'set-schedule', label: 'Change the schedule', bidId: 'bid1' },
+      { kind: 'open-bid', label: 'Open the bid', bidId: 'bid1' },
+    ])
+    for (const key of ['lane-sched-bid1', 'schedstart-bid1', 'schedend-bid1']) expect(need(cards, key).title).toBe(c.title)
+    expect(need(cards, 'figure-schedule').rows.map((r) => r.to)).toEqual(['schedstart-bid1', 'schedend-bid1'])
+  })
+
+  it('offers Set the schedule on a bid with none, to whoever can edit a bid and to nobody else', () => {
+    const set = need(cardsFor(site(), editor).cards, 'bid-bid1').actions
+    expect(set).toContainEqual({ kind: 'set-schedule', label: 'Set the schedule', bidId: 'bid1' })
+    expect(need(cardsFor(site(), office).cards, 'bid-bid1').actions.some((a) => a.kind === 'set-schedule')).toBe(false)
+    expect(need(scheduled(office), 'sched-bid1').actions).toEqual([{ kind: 'open-bid', label: 'Open the bid', bidId: 'bid1' }])
+  })
+})
+
 describe('plansByDateClusterCard', () => {
   it('lists a burst bar’s sets newest first, each leading to its own card', () => {
     const { model, cards } = cardsFor(site(), office)

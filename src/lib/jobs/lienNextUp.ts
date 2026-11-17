@@ -56,6 +56,8 @@ export type LienNextUpAction =
   | 'record_service'
   /** An envelope mailed through the provider came back, went unclaimed, was refused, or reads a status the fold had not seen (the Docsmit train, 6b). */
   | 'mail_needs_you'
+  /** Retainage the job's own bills or notes show and nobody recorded (fix A of the retainage clock check, PR 2): the office answers with the figure, or with none. */
+  | 'record_retainage'
 
 /** Where a row's button goes — always a screen that exists today. */
 export type LienNextUpTarget =
@@ -64,6 +66,8 @@ export type LienNextUpTarget =
   /** The Affidavits list at one pile (punch list #362, step 4): a folded row's press, where the pile's own batch press stands. */
   | { open: 'affidavit_pile'; pile: 'ready' | 'to_draft' }
   | { open: 'retainage'; jobId: string }
+  /** The Retainage list at *Looks held · not on the job*, on this job's row: where the figure is recorded or answered as none. */
+  | { open: 'retainage_unrecorded'; jobId: string }
   /** The run window: a GC's ready notices, or (punch list #101) every printed notice, `takeBack` opening on its confirm. */
   | { open: 'run'; gcId: string | null; takeBack?: boolean }
   /** The Lien window on a paper's tab; `openLastWork` (punch list #353) opens it with the last day of work ready to change. */
@@ -139,7 +143,11 @@ const BUTTON: Record<LienNextUpAction, string> = {
   // The copies of a filed lien (punch list #366): the press opens where they are printed, mailed and recorded. *Record service* until v2.7497.
   record_service: 'Mail the copies',
   mail_needs_you: 'Open the notice',
+  record_retainage: 'Record the retainage',
 }
+
+/** The To do row's first words for retainage the bills or notes show and nobody recorded; the reason follows them. */
+export const LIEN_RETAINAGE_UNRECORDED_SUB = 'Retainage not on the job'
 
 /**
  * The notices a run holds (v2.7442). Opened from a GC's To do row, or from its one notice, the run holds that GC's
@@ -180,6 +188,8 @@ export type LienNextUpInput = {
   mailNeedsYou?: ReadonlyArray<{ jobId: string; pieceId: string; who: string; words: string }>
   /** The months the live § 53.056 notices name, by job (punch list #353): a To draft row with a notice on record names the owed month beside them. Absent, the row keeps its plain words. */
   noticeMonthsByJob?: Readonly<Record<string, ReadonlyArray<string>>>
+  /** The open jobs under a GC whose bills or notes say retainage is held with none recorded (`retainageSuggested.ts`), each with its row's words. Absent, no such row. */
+  retainageUnrecorded?: ReadonlyArray<{ jobId: string; title: string; why: string }>
 }
 
 function daysBetween(fromYmd: string, toYmd: string): number {
@@ -505,6 +515,13 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       case 'missed':
         break
     }
+  }
+
+  // Retainage nobody recorded: no clock runs and no notice names it until the office answers, so the row stands under
+  // Needs you now with no day of its own. The office's press (a master is office too); any other role reads the row.
+  // A retainage row has no bin on the Board, so its reason rides in the row's own words as well as its detail.
+  for (const u of input.retainageUnrecorded ?? []) {
+    rows.push({ key: `retainage-unrecorded:${u.jobId}`, kind: 'retainage', jobId: u.jobId, gcId: null, title: u.title, sub: u.why ? `${LIEN_RETAINAGE_UNRECORDED_SUB} · ${u.why}` : LIEN_RETAINAGE_UNRECORDED_SUB, detail: u.why, dueOn: null, daysLeft: null, severity: 'amber', group: 'now', action: 'record_retainage', button: office ? BUTTON.record_retainage : null, target: { open: 'retainage_unrecorded', jobId: u.jobId } })
   }
 
   // An envelope the provider mailed that came back or went unclaimed (the Docsmit train, 6b): the office's row, under Needs you now, opening the notice under Sent whose footer has the doors.

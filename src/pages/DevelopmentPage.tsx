@@ -77,6 +77,9 @@ import { supabaseJobPlansIo, type SitePlansRead } from '../lib/plans/planSetsIo'
 import { buildPlansByDate, plansByDateCrewNote, plansByDateUnsentWords, type PlansByDateClock, type PlansByDateInput } from '../lib/plans/plansByDate'
 import { buildPlansByDateCards, type PbdCardAction } from '../lib/plans/plansByDateCards'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { BidScheduleSheet } from '../components/bids/BidScheduleSheet'
+import { scheduleDraftOf, type BidScheduleColumns } from '../lib/bids/bidSchedule'
+import { writeBidSchedule } from '../lib/bids/bidScheduleWrites'
 import { moveLineForPaper, papersFromRows, type Paper } from '../lib/papers/papers'
 import { canSeeSiteCosts } from '../lib/developments/siteCosts'
 import { useSiteCosts } from '../hooks/useSiteCosts'
@@ -402,7 +405,7 @@ export default function DevelopmentPage() {
     return {
       parts: siteRead.parts,
       sets: siteRead.sets,
-      bids: counted.bids.map((b) => ({ id: b.id, label: bidLabel(b), name: b.project_name, sent: b.bid_date_sent, plansDated: b.design_drawing_plan_date, outcome: b.outcome, outcomeAt: b.outcome_at })),
+      bids: counted.bids.map((b) => ({ id: b.id, label: bidLabel(b), name: b.project_name, sent: b.bid_date_sent, plansDated: b.design_drawing_plan_date, outcome: b.outcome, outcomeAt: b.outcome_at, scheduleStart: b.schedule_start ?? null, scheduleEnd: b.schedule_end ?? null, scheduleNoEnd: b.schedule_open_ended === true })),
       jobs: counted.jobs.map((j) => {
         const days = new Set<string>()
         for (const person of labor?.byJobId.get(j.id)?.people ?? []) for (const d of person.byWorkDate ?? []) days.add(d.ymd)
@@ -418,9 +421,11 @@ export default function DevelopmentPage() {
   const plansByDate = useMemo(() => (plansByDateInput ? buildPlansByDate(plansByDateInput) : null), [plansByDateInput])
   // Every item's card: its details and the presses this reader has. A job opens for the office door only; anyone on the page can ask and keep a line.
   const plansByDateCards = useMemo(
-    () => (plansByDateInput && plansByDate ? buildPlansByDateCards(plansByDateInput, plansByDate, { canWritePlans, canOpenJobs: moneyShown, canKeep: true, canAsk: true }) : null),
+    () => (plansByDateInput && plansByDate ? buildPlansByDateCards(plansByDateInput, plansByDate, { canWritePlans, canOpenJobs: moneyShown, canKeep: true, canAsk: true, canEditBids: canWritePlans }) : null),
     [plansByDateInput, plansByDate, canWritePlans, moneyShown],
   )
+  // A bid's schedule, set from its card on the By date view: the bid whose window is open.
+  const [scheduleFor, setScheduleFor] = useState<string | null>(null)
   // The By date view's *+ New set* lands on the parts table's own form.
   const [startSetOn, setStartSetOn] = useState<{ partId: string; nonce: number } | null>(null)
   const confirmDialog = useConfirmDialog()
@@ -1176,6 +1181,20 @@ export default function DevelopmentPage() {
   const goToQuestions = () => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.questions)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // A press on one of the By date view's cards (punch list #367). Every act is one the page already has; the card only reaches it.
   const showPartRow = (partId: string) => window.setTimeout(() => document.querySelector(`[data-testid="site-part-${partId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
+  const scheduleBid = scheduleFor ? (shown.bids.find((b) => b.id === scheduleFor) ?? null) : null
+  const saveSchedule = async (bidId: string, columns: BidScheduleColumns) => {
+    setBusy(true)
+    try {
+      await writeBidSchedule(bidId, columns)
+      setScheduleFor(null)
+      showToast(columns.schedule_start ? 'The schedule is saved.' : 'The schedule is removed.', 'success')
+      await load()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The schedule did not save.'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
   const actOnPlansByDate = async (a: PbdCardAction) => {
     if (a.kind === 'open-bid') openBid(a.bidId)
     else if (a.kind === 'open-job') openJob(a.jobId)
@@ -1194,7 +1213,8 @@ export default function DevelopmentPage() {
       if (isFolded(lookFolds, 'changed', false)) toggleLook('changed')
       setComposing(true)
       window.setTimeout(() => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.changed)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
-    } else if (a.kind === 'build-from') {
+    } else if (a.kind === 'set-schedule') setScheduleFor(a.bidId)
+    else if (a.kind === 'build-from') {
       if (!siteWrites) return
       if (!(await confirmDialog({ message: a.message, confirmLabel: a.confirmLabel }))) return
       if (await siteWrites.buildFrom(a.partId, a.setId)) showToast('The part builds from that set now.', 'success')
@@ -1698,6 +1718,7 @@ export default function DevelopmentPage() {
       {chipConfirm ? (
         <DevelopmentChipConfirm title={chipConfirm.title} rows={chipConfirm.rows} preview={chipConfirm.preview} previewCaption={chipConfirm.previewCaption} confirmLabel={chipConfirm.confirmLabel} busy={busy} onConfirm={chipConfirm.onConfirm} onCancel={() => setChipConfirm(null)} />
       ) : null}
+      {scheduleBid ? <BidScheduleSheet bidLabel={bidLabel(scheduleBid)} current={scheduleDraftOf(scheduleBid)} today={todayYmdInAppTz()} busy={busy} onSave={(columns) => void saveSchedule(scheduleBid.id, columns)} onClose={() => setScheduleFor(null)} /> : null}
       {gcSheet ? (
         <DevelopmentGcContactSheet
           siteName={dev.name}

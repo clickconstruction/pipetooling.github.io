@@ -21,7 +21,7 @@ describe('a notice to sign in the reminder', () => {
     expect(words.button).toBe('Remind Malachi of 3 papers')
     expect(words.dead).toBe(false)
     expect(words.title).toBe('Remind Malachi of 3 papers?')
-    expect(words.message).toBe('650, 651, 652. Malachi gets one message for the 3 notices to sign. It goes to Malachi’s phone, or by email. Nothing on the papers changes.')
+    expect(words.message).toBe('650, 651, 652. Malachi gets one message for the 3 notices to sign. It goes to Malachi’s phone, or by email. A text with the link goes too. Nothing on the papers changes.')
     expect(words.confirmLabel).toBe('Remind Malachi')
     expect(lienReminderWords(lienReminderPlan([paper('signature', '650')]), null).message).toContain('The leader gets one message for the notice to sign.')
   })
