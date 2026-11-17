@@ -35,6 +35,7 @@ import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
 import { DevelopmentPartsCard, type SitePlansWrites } from '../components/developments/DevelopmentPartsCard'
 import { DevelopmentPlansByDate } from '../components/developments/DevelopmentPlansByDate'
+import { PlansViewSwitch } from '../components/developments/PlansViewSwitch'
 import { JobCardsProvider } from '../components/developments/JobChip'
 import { jobHoverCardLookup } from '../lib/developments/jobHoverCard'
 import { DevelopmentQuestionsLook } from '../components/developments/DevelopmentQuestionsLook'
@@ -1730,21 +1731,7 @@ export default function DevelopmentPage() {
           meta={plansView === 'date' ? 'every set of drawings on the site, by the date on its sheets' : 'what each part of the site builds from'}
           right={
             // The look's two views, as Money holds its own: the parts table, and the sets against time.
-            <span role="group" aria-label="Plans views" style={{ display: phone ? 'flex' : 'inline-flex', width: phone ? '100%' : undefined, gap: 2, padding: 2, border: '1px solid var(--border)', borderRadius: 9999, background: 'var(--bg-subtle)' }} data-testid="plans-views">
-              {(['part', 'date'] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setPlansViewMode(v)}
-                  aria-pressed={plansView === v}
-                  title={v === 'part' ? 'Each part of the site with the set it builds from' : 'Every set on the date on its sheets, with the bids, the crews’ days and the History lines on one axis'}
-                  data-testid={`plans-view-${v}`}
-                  style={{ border: `1px solid ${plansView === v ? 'var(--border-strong)' : 'transparent'}`, borderRadius: 9999, padding: phone ? '3px 6px' : '1px 10px', font: 'inherit', fontSize: '0.76rem', lineHeight: 1.2, cursor: 'pointer', background: plansView === v ? 'var(--surface)' : 'transparent', color: plansView === v ? 'var(--text-strong)' : 'var(--text-700)', fontWeight: plansView === v ? 700 : 500, flex: phone ? 1 : undefined, textAlign: 'center' }}
-                >
-                  {v === 'part' ? 'By part' : 'By date'}
-                </button>
-              ))}
-            </span>
+            <PlansViewSwitch view={plansView} onChange={setPlansViewMode} phone={phone} />
           }
         >
           {plansView === 'date' ? (
