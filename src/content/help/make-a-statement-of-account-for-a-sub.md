@@ -86,12 +86,12 @@ No number is ever given out twice.
 
 **A change makes a revision.** A back-charge or a payment after the first copy makes revision 2 under the same number. The foot of the new copy says which copy it replaces. The copy that went out before stays under Sent copies.
 
-Sometimes a paper cannot be numbered. Then it is not made, and a red line says why. An account in training cannot make a paper.
+Sometimes a paper cannot be numbered. A paper with no number is not made, and a red line says why. An account in training cannot make a paper.
 
 ## What the papers do not have yet
 
 - **Draft sentences.** A few sentences are boxed and marked §. The boxed sentences are draft wording until our lawyer has read them.
-- **Sending.** The window does not send a paper yet. That comes in a later change.
+- **Sending.** The window does not send a paper yet. Sending comes in a later change.
 
 ## When the papers do not add up
 
