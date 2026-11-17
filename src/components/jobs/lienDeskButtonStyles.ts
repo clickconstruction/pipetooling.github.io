@@ -16,3 +16,9 @@ export const lienBtnStyle = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'pl
   opacity: disabled ? 0.55 : 1,
   whiteSpace: 'nowrap',
 })
+
+/**
+ * The title bar's doors share § Rules' height (v2.4746, the owner's ask): its 0.78rem line at the root's 1.5, 2px of
+ * padding above and below, and the 1px border. Put a GC on notice…, ☎ and Share (on a computer) take it.
+ */
+export const LIEN_HEAD_DOOR: CSSProperties = { height: 'calc(0.78rem * 1.5 + 6px)', boxSizing: 'border-box', paddingTop: 0, paddingBottom: 0, display: 'inline-flex', alignItems: 'center' }

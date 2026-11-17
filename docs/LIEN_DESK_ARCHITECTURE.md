@@ -1370,6 +1370,26 @@ Done in v2.7583: the Retainage list is [`LienDeskRetainageList.tsx`](../src/comp
 The retainage pick, pile, lit title and footer slot stay in the desk, which is 5,052 lines.
 Done in v2.7585: the Affidavits list is [`LienDeskAffidavitList.tsx`](../src/components/jobs/LienDeskAffidavitList.tsx) over [`useLienDeskAffidavits.ts`](../src/components/jobs/useLienDeskAffidavits.ts), which holds what the list shows and its three batch presses (redraw, send, print).
 The affidavit pick, pile, held-only press and lit title stay in the desk, `btn` and `FILL` are shared from `lienDeskButtonStyles.ts`, and the desk is 4,718 lines.
+Done in v2.7586: the title bar's measured fits are [`useLienDeskTitleBarFit.ts`](../src/components/jobs/useLienDeskTitleBarFit.ts), the Put a GC on notice door and menu are [`LienDeskGcPicker.tsx`](../src/components/jobs/LienDeskGcPicker.tsx), and the view tabs and By paper's tabs are [`LienDeskViewTabs.tsx`](../src/components/jobs/LienDeskViewTabs.tsx).
+The bar's own line stays in the desk, which is 4,622 lines.
+Done in v2.7588: the five window flags the Board raises are [`useLienDeskWindows.ts`](../src/components/jobs/useLienDeskWindows.ts), and the seven windows drawn together in the `return` are [`LienDeskWindows.tsx`](../src/components/jobs/LienDeskWindows.tsx).
+The paper preview, the owner's call, the courtesy notice, the call script and the run's mount stay in the desk, which is 4,544 lines.
+Done in v2.7590 (step 7 of the twelve below): `run`, `busy` and `busyRef` are [`useLienDeskRunner.ts`](../src/components/jobs/useLienDeskRunner.ts), and the desk hands it the autosave timer's clear as `beforeRun`.
+Done in v2.7591 (steps 2 and 8 below): the sent packet's facts are `lienSentPacketFacts` in `lienSentPacket.ts`, the sent footer is [`LienDeskSentFooter.tsx`](../src/components/jobs/LienDeskSentFooter.tsx), and its three forms' state is [`useLienSentFooterForms.ts`](../src/components/jobs/useLienSentFooterForms.ts), called by the desk.
+The three doors a sent notice keeps stay in the desk, which is 4,394 lines.
+Done in v2.7593: the awaiting, ready, printed and held footers are [`LienDeskLeaderFooters.tsx`](../src/components/jobs/LienDeskLeaderFooters.tsx), reading the desk through one `LienNoticeFooterContext`.
+The approval paths and the signature ref stay in the desk, which is 4,133 lines.
+Done in v2.7594 (step 11 below): the draft footer is [`LienDeskDraftFooter.tsx`](../src/components/jobs/LienDeskDraftFooter.tsx) over `LienDraftFooterContext`, and a test pins the order of the leader's Sign and approve from a draft.
+Every footer is out of the desk, which is 3,963 lines.
+A moved file is checked for names that resolve to a browser or Node global (`gc`, `find`), since the typecheck passes them.
+Done in v2.7608: the Monthly notices list is [`LienDeskNoticeList.tsx`](../src/components/jobs/LienDeskNoticeList.tsx), and `deadlineWords` is `lienDeskDeadlineWords` in `lienRowWords.ts`.
+What the list shows is still computed in the desk, which is 3,821 lines.
+Done in v2.7611: his signing code on someone else's screen is [`useLienCodeSigner.ts`](../src/components/jobs/useLienCodeSigner.ts), and the pay page behind a notice is [`useLienDeskPayPage.ts`](../src/components/jobs/useLienDeskPayPage.ts).
+The rest of the selection context (the item, its months, the claim, `noticeFields` and the reset effect) stays in the desk as its substrate, and the desk is 3,717 lines.
+Done in v2.7614: the wording typed in place is [`useLienWordingEditor.ts`](../src/components/jobs/useLienWordingEditor.ts), and the preview window with its message listener is [`useLienNoticePreview.ts`](../src/components/jobs/useLienNoticePreview.ts), whose checks before a write are held by `useLienPaperEditors.render.test.tsx`.
+The paper's JSX stays in the pane, and the desk is 3,597 lines.
+Done in v2.7619 (step 12 below, the last): the notice pane is [`LienDeskNoticePane.tsx`](../src/components/jobs/LienDeskNoticePane.tsx), reading the desk through one `LienNoticePaneContext` whose 117 field types were written from the TypeScript checker.
+The desk is 3,019 lines, down from 5,371, and holds the selection substrate, the write paths, the router between views, the title bar's own line and the `return`.
 
 1. **Stage A: `lienDeskDraftFooterWords` + `lienAskReasonFor`** (1650–1689, 686–692, 733, 1750) — ~60 lines out, pins the rule-to-UI truth under tests.
 2. **Stage A: `sentPacketFacts` + letter-two words/doors/fields** (1861–1931, 2196) — ~45 lines;
