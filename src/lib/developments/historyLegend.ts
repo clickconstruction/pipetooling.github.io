@@ -35,6 +35,8 @@ const KIND_MARK: Record<Exclude<ChangeKind, 'entry'>, HistoryMark> = {
   photos: { glyph: '▣', tone: 'blue' },
   // A mail tied to a bid or a job wears the kept email's own mark (v2.7479): it is an email either way, and the line's verb and its door tell the two apart.
   mail: { glyph: '✉', tone: 'amber' },
+  // A trip leaving for the site and coming back (punch list #379): read from the trip's days, never a kept row.
+  trip: { glyph: '⇄', tone: 'blue' },
 }
 
 /** The mark a line wears: a kept entry wears its source's glyph, grey for a note and amber for what happened; every other kind its own, a tied mail the kept email's. */
@@ -58,6 +60,7 @@ export const HISTORY_LEGEND: ReadonlyArray<HistoryLegendRow> = [
   { key: 'text', mark: historyMark('entry', 'text'), name: 'A text', words: 'A text message, either way.', chip: 'happened' },
   { key: 'on_site', mark: historyMark('entry', 'on_site'), name: 'On site', words: 'Something seen or said on the site.', chip: 'happened' },
   { key: 'letter', mark: historyMark('entry', 'letter'), name: 'A letter', words: 'Paper: a letter, a notice or a form.', chip: 'happened' },
+  { key: 'trip', mark: historyMark('trip'), name: 'A trip', words: 'A trip left for the site, or came back. The line is read from the trip’s days.', chip: 'happened' },
   { key: 'plans', mark: historyMark('plans'), name: 'Plans', words: 'A plan set came in or changed.', chip: 'plans' },
   { key: 'stage', mark: historyMark('stage'), name: 'A move', words: 'A job or a bid moved to a new status or stage, or a new job or bid was made.', chip: 'stages' },
   { key: 'sent', mark: historyMark('sent'), name: 'Sent or reached', words: 'A bid went out, or the customer was reached and the contact was logged.', chip: 'stages' },

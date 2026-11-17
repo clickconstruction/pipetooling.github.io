@@ -3625,6 +3625,22 @@ Since v2.6558 two chip rows above the Scoreboard cut it by job, part of the site
  the inbox's reference line opens the page;
  the office team reads every request that carries a reference.
 
+**Trip** (punch list #379;
+the rules v2.7653, the tables v2.7655, the Trips look v2.7661): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
+A trip is people, and for each person their days, and each day is one of three kinds: **Getting ready**, **On the road** or **At the site**.
+A day off in the middle is a day that is not there.
+Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
+A trip may also say what it was for, who asked for it (us or them), how it went, the jobs its work goes on and its billing (**Inside the price**, **Extra**, **Ours**), and all of that can wait.
+A trip is a reading laid over the clock: saving, changing or deleting one changes no clock row, bill or cost.
+The site's hours fall into five figures (`src/lib/trips/tripHours.ts`): a row on a trip day takes the day's kind, a punch counts **At the site** only when a place it carries is the site, a row with no place is **No place on the punch** and is never added to At the site, and hours on the site's jobs outside every trip the person was on are **At home for the site**.
+The hours are the Scoreboard's own (`siteLabor.ts`), and a day's place comes from the clock's punches on the site's jobs read against the address's point (`tripPlace.ts`, `tripHourRows.ts`).
+The **Trips look** is the Development page's seventh look (`DevelopmentTripsCard.tsx` over `DevelopmentTripsLook.tsx`, `useSiteTrips`, `lib/trips/tripsLook.ts`): a band that says how many of the site's hours were at the site, one bar of the same hours, the year's trips on a strip, and a row a trip that opens in place.
+The look shows only on a site that has a trip or is 150 miles or more from the shop (`tripsLookShows`), and a nearer site has one door to its first trip in the line under its address.
+**+ Trip** opens the sheet (`components/trips/TripSheet.tsx` over `lib/trips/tripSheet.ts`): who went, which days, what for, the days painted and turned by a tap.
+A trip leaving and coming back are two **History** lines read from its days (`lib/trips/tripHistory.ts`), never kept rows.
+Access: `ACCESS_CONTROL.md`, *Trips*.
+Guide: `keep-a-trip-to-a-far-site`.
+
 ### Submittals tab: the road, the strip, the walkthrough and the GC's page beside it (v2.4067–v2.4189)
 Bids → Submittals reads as one **road** of eight steps (v2.4090;
 `RoadSection` in `BidsSubmittalsTab.tsx`): a done step folds to its line, the current step is ringed, a later step is dashed (its pill on the strip opens, scrolls to and rings it — v2.4201;

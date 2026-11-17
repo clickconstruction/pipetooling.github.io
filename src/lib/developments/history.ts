@@ -349,7 +349,7 @@ export type HistoryChip = 'all' | 'wrote' | 'happened' | 'plans' | 'stages' | 'm
 export const HISTORY_CHIPS: ReadonlyArray<{ key: HistoryChip; label: string; title: string }> = [
   { key: 'all', label: 'Everything', title: 'Every line, whoever or whatever wrote it' },
   { key: 'wrote', label: 'What people wrote', title: 'Notes on jobs, bids, the site and the customer' },
-  { key: 'happened', label: 'What happened', title: 'Emails, calls, texts, visits and letters, kept at their time, and the mail tied to a job or a bid' },
+  { key: 'happened', label: 'What happened', title: 'Emails, calls, texts, visits and letters, kept at their time, the mail tied to a job or a bid, and a trip leaving and coming back' },
   { key: 'plans', label: 'Plans', title: 'Every plan set filed, newest first: the history of plans' },
   { key: 'stages', label: 'Stages', title: 'Sends, outcomes, stage moves, new jobs and bids' },
   { key: 'money', label: 'Money', title: 'Bills and payments' },
@@ -364,7 +364,7 @@ export function lineMatchesChip(line: ChangeLine, chip: HistoryChip): boolean {
     case 'wrote':
       return line.kind === 'note' || (line.kind === 'entry' && line.source === 'note')
     case 'happened':
-      return line.kind === 'mail' || (line.kind === 'entry' && line.source !== 'note')
+      return line.kind === 'mail' || line.kind === 'trip' || (line.kind === 'entry' && line.source !== 'note')
     case 'plans':
       return line.kind === 'plans'
     case 'stages':

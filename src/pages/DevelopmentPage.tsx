@@ -110,9 +110,14 @@ import { threadHrefByKind } from '../lib/messages/customerThread'
 import type { ContactKind } from '../lib/contacts/kernel'
 import type { Database } from '../types/database'
 import { DevelopmentPhotosLook } from '../components/developments/DevelopmentPhotosLook'
+import { DevelopmentTripsCard } from '../components/developments/DevelopmentTripsCard'
 import SiteMaterialsReportModal from '../components/materials/SiteMaterialsReportModal'
 import { useSitePhotos } from '../hooks/useSitePhotos'
+import { useSiteTrips } from '../hooks/useSiteTrips'
 import { photosCardMeta, photosLookWords } from '../lib/photos/sitePhotos'
+import { tripHistoryLines } from '../lib/trips/tripHistory'
+import { NO_TRIP_PEOPLE, tripOfRecord } from '../lib/trips/tripRecord'
+import { tripsStripWords } from '../lib/trips/tripsLook'
 import { foldPhotoBatches } from '../lib/developments/photoLines'
 
 
@@ -400,7 +405,12 @@ export default function DevelopmentPage() {
   const timelineOpen = moneyShown && moneyViewShown === 'timeline'
   // The Plans look's By date view reads the clock's days too, for its crew lane, in the office door and only while it is open.
   const plansByDateOpen = plansView === 'date' && !isFolded(lookFolds, 'plans', false)
-  const laborRead = useSiteLabor(shownJobIds, scoreboardOpen || timelineOpen || (moneyShown && plansByDateOpen))
+  // The Trips look (punch list #379): the site's trips, read in the office door. The look shows on a site with a trip or far from the shop, and while it is open it reads the clock's days too.
+  const siteAddress = useMemo(() => (shown ? sharedAddressWords(shown) : null), [shown])
+  const siteTrips = useSiteTrips({ developmentId, jobIds: shownJobIds, address: siteAddress, enabled: !!data && moneyShown })
+  const tripsOpen = siteTrips.shows && !isFolded(lookFolds, 'trips', false)
+  const [tripAddSignal, setTripAddSignal] = useState(0)
+  const laborRead = useSiteLabor(shownJobIds, scoreboardOpen || timelineOpen || (moneyShown && plansByDateOpen) || tripsOpen)
   // By date: the site's sets, bids, work days and kept History lines against time; no money, so both doors draw it.
   const plansByDateClock: PlansByDateClock = !moneyShown ? 'closed' : !laborRead || laborRead.state === 'reading' ? 'reading' : laborRead.state === 'failed' ? 'failed' : laborRead.labor.daysKnown ? 'read' : 'closed'
   const plansByDateInput = useMemo<PlansByDateInput | null>(() => {
@@ -566,6 +576,8 @@ export default function DevelopmentPage() {
         : [],
     [shown, data, bidSetsByBid, bidLabel],
   )
+  // A trip's lines in History (punch list #379): the day it leaves and the day it is back, read from its days.
+  const tripLines = useMemo(() => (data && siteTrips.records ? tripHistoryLines({ trips: siteTrips.records.map((record) => ({ record, trip: tripOfRecord(record, NO_TRIP_PEOPLE) })), siteName: data.development.name, todayYmd: todayYmdInAppTz() }) : []), [data, siteTrips.records])
   const feed = useMemo<ChangeLine[]>(
     () =>
       shown && data
@@ -594,7 +606,7 @@ export default function DevelopmentPage() {
               }),
             ),
             photoLines,
-            mailLines: [...tiedMailLines, ...newSetLines],
+            mailLines: [...tiedMailLines, ...newSetLines, ...tripLines],
             customerContacts: data.customerContacts,
             customerNames: new Map(data.customers.map((c) => [c.id, c.name])),
             names: data.names,
@@ -607,7 +619,7 @@ export default function DevelopmentPage() {
             nowMs,
           })
         : [],
-    [shown, data, entries, photoLines, tiedMailLines, newSetLines, bidLabel, jobLabel, nowMs],
+    [shown, data, entries, photoLines, tiedMailLines, newSetLines, tripLines, bidLabel, jobLabel, nowMs],
   )
   const since = useMemo(() => placeSinceLine(feed, lastLooked), [feed, lastLooked])
   // The runs fold (the Gray Fox spike, 2026-11-02): one act's many lines read as one with the count; a search sees every line.
@@ -1174,7 +1186,7 @@ export default function DevelopmentPage() {
   // The strip's six looks: the plain count with its noun, and in amber what in it needs the leader.
   const activePieces = pieces.filter((r) => !r.done && !r.archived).length
   const archivedPieces = pieces.filter((r) => r.archived).length
-  const looks: Record<DevelopmentJumpKey, DevelopmentLook> = {
+  const looks: Record<DevelopmentJumpKey, DevelopmentLook> & { trips?: DevelopmentLook } = {
     changed: { n: since.newCount, count: `${since.newCount} new`, need: since.newCount > 0 ? `${since.newCount} new` : null },
     pieces: { n: activePieces, count: String(activePieces), need: suggestions.length > 0 ? `${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : null },
     money: moneyShown ? { n: siteMoney.band.jobs, count: moneyWords.count, need: moneyWords.need } : { n: 0, count: OFFICE_READS_MONEY_CHIP, need: null },
@@ -1185,6 +1197,8 @@ export default function DevelopmentPage() {
       need: openQuestions > 0 ? `${openQuestions} waiting` : null,
     },
     photos: photosLookWords(sitePhotos.census, door),
+    // The seventh look, only on a site with a trip or far from the shop.
+    ...(siteTrips.shows ? { trips: tripsStripWords(siteTrips.records ?? [], todayYmdInAppTz()) } : {}),
   }
 
   // The newest bid: where the GC contact and the estimator live when the head has none (the owner, 2026-10-28: *do all 8*, item 4).
@@ -1457,6 +1471,15 @@ export default function DevelopmentPage() {
             <span style={{ color: 'var(--text-faint)' }}>no job working</span>
           )}
         </span>
+        {/* A site with no trip and near the shop has no Trips look: this is the door to its first trip (punch list #379). */}
+        {moneyShown && siteTrips.records && !siteTrips.shows ? (
+          <span data-testid="trips-first-door">
+            <span style={capStyle}>Trips</span>{' '}
+            <LinkButton onClick={() => setTripAddSignal((n) => n + 1)} title="A trip is days at a site away from home, kept apart from the hours on its jobs. Adding one brings the Trips look to this page.">
+              none yet · add one
+            </LinkButton>
+          </span>
+        ) : null}
       </div>
 
       {/* The counts, the waiting one first; each tile holds its card. */}
@@ -1756,6 +1779,22 @@ export default function DevelopmentPage() {
         <Card id={DEVELOPMENT_JUMP_ANCHOR.photos} title="Photos" fold={foldFor('photos', lineOf(looks.photos))} meta={photosCardMeta(sitePhotos.census, door)}>
           <DevelopmentPhotosLook state={sitePhotos} pieces={[...shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j) })), ...shown.bids.map((b) => ({ id: b.id, label: bidLabel(b) }))]} role={role} phone={phone} siteName={dev.name} openJob={openJob} goToPieces={goToPieces} door={door} />
         </Card>
+
+        {/* The seventh look (punch list #379): trips to a site away from home. Mounted for the office door; the card draws only when the look shows. */}
+        {moneyShown ? (
+          <DevelopmentTripsCard
+            anchorId={DEVELOPMENT_JUMP_ANCHOR.trips}
+            developmentId={dev.id}
+            siteName={dev.name}
+            trips={siteTrips}
+            laborRead={laborRead}
+            jobs={shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), name: (j.job_name ?? '').trim() }))}
+            todayYmd={todayYmdInAppTz()}
+            phone={phone}
+            foldFor={(line) => ({ open: !isFolded(lookFolds, 'trips', false), onToggle: () => toggleLook('trips'), line })}
+            addSignal={tripAddSignal}
+          />
+        ) : null}
       </div>
       {chipConfirm ? (
         <DevelopmentChipConfirm title={chipConfirm.title} rows={chipConfirm.rows} preview={chipConfirm.preview} previewCaption={chipConfirm.previewCaption} confirmLabel={chipConfirm.confirmLabel} busy={busy} onConfirm={chipConfirm.onConfirm} onCancel={() => setChipConfirm(null)} />
