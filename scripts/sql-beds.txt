@@ -74,6 +74,7 @@ count-sources
 robot-fixtures
 bid-copies
 helper-on-job
+agreements-on-file
 people-phone
 training
 on-my-way
