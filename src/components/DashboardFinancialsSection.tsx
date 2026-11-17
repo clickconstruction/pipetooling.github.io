@@ -35,7 +35,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { buildUnbilledDispatchTitle, createDispatchRequest } from '../lib/dispatchRequestHelpers'
-import { redactApPayrollItems, redactUpcomingApSection } from '../lib/dashboardFinancials'
+import { apBillPartPaidWords, redactApPayrollItems, redactUpcomingApSection } from '../lib/dashboardFinancials'
 import { daysPastDue } from '../lib/supplyHouseAging'
 import { useIsMobile } from '../hooks/useIsMobile'
 import {
@@ -113,6 +113,7 @@ function ApBillModal({
   const [expanded, setExpanded] = useState(false)
   const embedUrl = bill.link ? googleDrivePreviewEmbedUrl(bill.link) : null
   const pastDue = bill.dueDateYmd ? daysPastDue(bill.dueDateYmd, todayYmdInAppTz()) : null
+  const partPaid = apBillPartPaidWords(bill)
 
   const factRow = (label: string, value: React.ReactNode) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.3rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
@@ -160,7 +161,7 @@ function ApBillModal({
       >
         <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
           <h3 id="dashboard-financials-bill-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, flex: 1 }}>
-            {bill.houseName} — ${formatCurrency(bill.amount)}
+            {bill.houseName} — ${formatCurrency(bill.open)}
           </h3>
           <button
             type="button"
@@ -198,6 +199,7 @@ function ApBillModal({
             </>,
           )}
           {factRow('Amount', <strong>${formatCurrency(bill.amount)}</strong>)}
+          {partPaid ? factRow('Paid so far', partPaid) : null}
           {factRow(
             bill.jobs.length === 1 ? 'Job' : 'Jobs',
             bill.jobs.length === 0 ? (
@@ -1142,6 +1144,9 @@ function ItemsModal({
                               })()}
                               {doneNothingBilledPill(item)}
                             </div>
+                            {apBillPartPaidWords(apBills?.[item.key]) ? (
+                              <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>{apBillPartPaidWords(apBills?.[item.key])}</div>
+                            ) : null}
                             {(() => {
                               const chip = item.jobId ? arLienChips?.get(item.jobId) ?? null : null
                               return chip ? <LienArChipLine chip={chip} onOpen={(c) => navigate(lienArChipHref(c.door))} /> : null
@@ -1558,6 +1563,9 @@ function ItemsModal({
                             {doneNothingBilledPill(item)}
                             {item.address && cardKey === 'ap' ? (
                               <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>{stripTrailingZip(item.address)}</div>
+                            ) : null}
+                            {apBillPartPaidWords(apBills?.[item.key]) ? (
+                              <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>{apBillPartPaidWords(apBills?.[item.key])}</div>
                             ) : null}
                             {(() => {
                               const bill = apBills?.[item.key]

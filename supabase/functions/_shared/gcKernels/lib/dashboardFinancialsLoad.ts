@@ -39,6 +39,7 @@ import type { ArExcluded } from './dashboardFinancials.ts'
 import { LEAN_STATS_ACTIVE_JOB_STATUSES } from './jobs/leanStatsStatuses.ts'
 import { loadUnlinkedMoney } from './billing/loadUnlinkedMoney.ts'
 import { withoutZzTestJobMoney } from './jobs/zzTestJobVisibility.ts'
+import { openAmount } from './materials/payments/supplyPayment.ts'
 
 /** Detail for one unpaid supply-house bill — powers the AP row click-through modal. */
 export type DashboardApBill = {
@@ -51,7 +52,12 @@ export type DashboardApBill = {
   purchaseOrderNumber: string | null
   invoiceDateYmd: string | null
   dueDateYmd: string | null
+  /** The bill's whole amount. */
   amount: number
+  /** What its payments have put on it so far: above zero on a bill paid in part. */
+  amountPaid: number
+  /** What is left on it (`openAmount`): what the card counts and the row shows. */
+  open: number
   /** Attachment URL (Google Drive in practice); null when none recorded. */
   link: string | null
   /** Job allocations for this bill (pct desc); label via financialJobLabel. */
@@ -129,7 +135,7 @@ export async function loadDashboardFinancials(db: SupabaseClient<Database>, opts
         async () =>
           await db
             .from('supply_house_invoices')
-            .select('id, amount, invoice_date, due_date, link, invoice_number, purchase_order_number, supply_house_id, supply_houses(name)')
+            .select('id, amount, amount_paid, invoice_date, due_date, link, invoice_number, purchase_order_number, supply_house_id, supply_houses(name)')
             .eq('is_paid', false),
         'dashboard financials supply invoices',
       ),
@@ -205,6 +211,8 @@ export async function loadDashboardFinancials(db: SupabaseClient<Database>, opts
         invoiceDateYmd: inv.invoice_date,
         dueDateYmd: inv.due_date,
         amount: Number(inv.amount ?? 0),
+        amountPaid: Number(inv.amount_paid ?? 0),
+        open: openAmount(inv),
         link: inv.link?.trim() || null,
         jobs: [],
       }

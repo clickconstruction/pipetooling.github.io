@@ -1043,10 +1043,10 @@ export default function Bridge() {
       // The bills behind the cash moves' ask: the ones that fall due on the day it names, a row for each supply house.
       supplyBills: [
         ...Object.values(fin.data?.apBills ?? {})
-          .filter((b) => b.amount > 0 && supplyDueYmd != null && b.dueDateYmd === supplyDueYmd)
+          .filter((b) => b.open > 0 && supplyDueYmd != null && b.dueDateYmd === supplyDueYmd)
           .reduce((houses, b) => {
             const h = houses.get(b.houseName) ?? { houseId: b.houseId ?? null, name: b.houseName, usd: 0, dueYmd: b.dueDateYmd, bills: 0 }
-            houses.set(b.houseName, { ...h, usd: h.usd + b.amount, bills: h.bills + 1 })
+            houses.set(b.houseName, { ...h, usd: h.usd + b.open, bills: h.bills + 1 })
             return houses
           }, new Map<string, { houseId: string | null; name: string; usd: number; dueYmd: string | null; bills: number }>())
           .values(),

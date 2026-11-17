@@ -10,6 +10,7 @@ import { readOverheadPoolSnapshot, readOverheadPoolSnapshotInputs } from '../ove
 import { buildEarnedRevenue, type EarnedRevenueJob, type EarnedRevenueResult } from './earnedRevenue.ts'
 import { invoiceBilledYmd, type BilledDayRow } from './billedDay.ts'
 import { upcomingFridays } from './cashForecast.ts'
+import { supplyDueByDay, supplyPaidByDayFromLines, type SupplyDueRow, type SupplyPaidByHandRow } from './supplyByDay.ts'
 import { parsePaySpeedsRpc, parsePromisedPayDatesRpc, type PaySpeedData, type PromisedPayDate } from '../jobs/billedExpectedPay.ts'
 import { bridgeCollections, bridgeReadyToBill, withoutZzBridgeBids, withoutZzBridgeMoney, withoutZzFieldSessions, type BridgeZzTestJobIds } from './zzTestJobs.ts'
 
@@ -75,6 +76,7 @@ export type BridgeData = {
   invoicesSentByDay: Map<string, number>
   paymentsReceivedByDay: Map<string, number>
   supplyDatedByDay: Map<string, number>
+  /** What went on supply house bills, by the day of each payment (`supplyPaidByDayFromLines`, punch list #374). */
   supplyPaidByDay: Map<string, number>
   /** Typed cash on hand, rolled forward on the page from its as-of day. Null until someone types it. */
   cashSetting: { usd: number; asOfYmd: string } | null
@@ -359,14 +361,15 @@ export async function loadBridgeData(db: SupabaseClient<Database>, opts: { zzTes
   const invoicesSentByDay = new Map<string, number>()
   const paymentsReceivedByDay = new Map<string, number>()
   const supplyDatedByDay = new Map<string, number>()
-  const supplyPaidByDay = new Map<string, number>()
   for (const inv of invRows) addTo(supplyDatedByDay, inv.invoice_date, Number(inv.amount ?? 0))
   type SentRow = { id: string; job_id: string; amount: number | null } & BilledDayRow
   type PaidRow = { job_id: string | null; invoice_id: string | null; amount: number | null; paid_on: string | null }
-  type SupplyPaidRow = { amount: number | null; paid_at: string | null }
+  // What went on supply house bills: the lines of the live payments, by their payment's day (punch list #374). A bill
+  // paid in parts lands on each part's day; the bill's own paid day would show nothing until the last part.
+  type SupplyPaidLineRow = { amount: number | null; supply_house_payments: { paid_on: string | null; removed_at: string | null } | null }
   // A day before the window start: the company day of a UTC stamp can fall the day before.
   const billedSinceIso = `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`
-  const [sentRead, paidRead, supplyPaidRows, settingRows, paySpeedRaw, promisesRaw] = await Promise.all([
+  const [sentRead, paidRead, supplyPaidLines, supplyCreditsUsed, settingRows, paySpeedRaw, promisesRaw] = await Promise.all([
     fetchAllRows(
       async (from, to) => ({
         data: (await withSupabaseRetry(
@@ -400,16 +403,38 @@ export async function loadBridgeData(db: SupabaseClient<Database>, opts: { zzTes
         data: (await withSupabaseRetry(
           async () =>
             db
-              .from('supply_house_invoices')
-              .select('amount, paid_at')
-              .gte('paid_at', `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`)
+              .from('supply_house_payment_lines')
+              .select('amount, supply_house_payments!inner(paid_on, removed_at)')
+              .is('supply_house_payments.removed_at', null)
+              .gte('supply_house_payments.paid_on', windowStart)
+              .lte('supply_house_payments.paid_on', todayYmd)
               .order('id')
               .range(from, to),
           'bridge supply paid',
-        )) as SupplyPaidRow[] | null,
+        )) as SupplyPaidLineRow[] | null,
         error: null,
       }),
       'bridge supply paid',
+    ),
+    // A credit memo marked used by hand has no payment and so no line: its paid day is still the day it left what is
+    // owed. Only a bill below zero can be paid with no line (a bill above zero marked paid gets a payment).
+    fetchAllRows(
+      async (from, to) => ({
+        data: (await withSupabaseRetry(
+          async () =>
+            db
+              .from('supply_house_invoices')
+              .select('amount, amount_paid, paid_at')
+              .eq('is_paid', true)
+              .lt('amount', 0)
+              .gte('paid_at', `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`)
+              .order('id')
+              .range(from, to),
+          'bridge supply credits used',
+        )) as SupplyPaidByHandRow[] | null,
+        error: null,
+      }),
+      'bridge supply credits used',
     ),
     withSupabaseRetry(async () => db.from('app_settings').select('key, value_text').in('key', [BRIDGE_CASH_SETTING_KEY, BRIDGE_FLOOR_SETTING_KEY]), 'bridge settings') as Promise<Array<{ key: string; value_text: string | null }> | null>,
     (async (): Promise<unknown> => {
@@ -433,11 +458,12 @@ export async function loadBridgeData(db: SupabaseClient<Database>, opts: { zzTes
     if (d && d >= windowStart && d <= todayYmd) addTo(invoicesSentByDay, d, Number(r.amount ?? 0))
   }
   for (const r of paidRows) if (r.paid_on) addTo(paymentsReceivedByDay, r.paid_on, Number(r.amount ?? 0))
-  for (const r of supplyPaidRows ?? []) {
-    if (!r.paid_at) continue
-    const d = calendarYmdInAppTzFromIso(r.paid_at)
-    if (d >= windowStart && d <= todayYmd) addTo(supplyPaidByDay, d, Number(r.amount ?? 0))
-  }
+  const supplyPaidByDay = supplyPaidByDayFromLines({
+    lines: (supplyPaidLines ?? []).map((l) => ({ amount: l.amount, paid_on: l.supply_house_payments?.paid_on ?? null, removed_at: l.supply_house_payments?.removed_at ?? null })),
+    byHand: supplyCreditsUsed ?? [],
+    windowStart,
+    todayYmd,
+  })
   let cashSetting: { usd: number; asOfYmd: string } | null = null
   let floorUsd = BRIDGE_DEFAULT_FLOOR_USD
   for (const r of settingRows ?? []) {
@@ -472,9 +498,9 @@ export async function loadBridgeData(db: SupabaseClient<Database>, opts: { zzTes
       'bridge bids due',
     ) as Promise<Array<{ id: string; project_name: string | null; bid_number: string | null; address: string | null; bid_value: number | null; bid_due_date: string; estimated_job_start_date: string | null }> | null>,
     withSupabaseRetry(
-      async () => db.from('supply_house_invoices').select('amount, due_date').eq('is_paid', false).gte('due_date', todayYmd).lte('due_date', ymdAddDays(todayYmd, BRIDGE_DAYS_AHEAD)),
+      async () => db.from('supply_house_invoices').select('amount, amount_paid, due_date').eq('is_paid', false).gte('due_date', todayYmd).lte('due_date', ymdAddDays(todayYmd, BRIDGE_DAYS_AHEAD)),
       'bridge supply due',
-    ) as Promise<Array<{ amount: number | null; due_date: string }> | null>,
+    ) as Promise<SupplyDueRow[] | null>,
     (async (): Promise<number | null> => {
       try {
         const r = await db.rpc('count_unattributed_noncard_mercury_transactions')
@@ -515,8 +541,8 @@ export async function loadBridgeData(db: SupabaseClient<Database>, opts: { zzTes
   }
   let officeBidHours7d = 0
   for (const l of snap.peopleLines.labor) if (l.workDate >= last7) officeBidHours7d += l.hours
-  const hazardsByDay = new Map<string, number>()
-  for (const r of dueRows ?? []) addTo(hazardsByDay, r.due_date, Number(r.amount ?? 0))
+  // What is left on each unpaid bill, by its due day: a bill paid in part falls due for the rest (punch list #374).
+  const hazardsByDay = supplyDueByDay(dueRows ?? [])
   // Scheduled outflows for the cash forecast.
   let officeLaborWindow = 0
   for (const l of snap.peopleLines.labor) if (l.workDate >= windowStart) officeLaborWindow += l.laborUsd
