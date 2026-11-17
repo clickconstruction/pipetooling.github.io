@@ -174,7 +174,7 @@ Is the box moved, damaged or in the way? Press **Moved, damaged or in the way?**
 
 To see what is in the box, press **Sign in to see what is inside**. The press has an orange outline. After you sign in you land on that box, with its parts and counts. You sign in once in a phone's browser. After that a scan opens the box's own screen.
 
-A label from a retired box says so and offers **Scan another label**. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code.
+A label from a retired box says so and offers **Scan another label**. Signed in, it names the box and the day it left. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code.
 
 A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The manifest window opens right there. Write what you add on the page's ruled lines, and press it in the app too.
 

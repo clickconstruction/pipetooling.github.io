@@ -146,3 +146,18 @@ describe('the on-site store reads past 1,000 rows', () => {
     expect([...ids].sort()).toEqual(['job-big', 'job-small-1'])
   })
 })
+
+describe('what a scanned code opens (resolveBoxCode)', () => {
+  it('a box’s own label on a retired box comes back as that box, and a live box of the code comes first (v2.7630)', async () => {
+    // The read asked for live boxes only, so a retired label read as nothing and the page could not name the box.
+    tables.job_containers = [box('z3', 'job-zz', { code: '89E53496', kind: 'loose', retired_at: '2026-11-14T21:44:15.831Z' })]
+    const store = await freshStore()
+    const gone = await store.resolveBoxCode('89E53496')
+    expect(gone).toMatchObject({ kind: 'retired_label', container: { id: 'z3', label: 'Z3', retiredAt: '2026-11-14T21:44:15.831Z' } })
+    // A live box and a retired one under one code: the live one opens.
+    tables.job_containers = [box('z3', 'job-zz', { code: '89E53496', retired_at: '2026-11-14T21:44:15.831Z' }), box('z4', 'job-zz', { code: '89E53496' })]
+    expect(await (await freshStore()).resolveBoxCode('89E53496')).toMatchObject({ kind: 'box', container: { id: 'z4' } })
+    // A code no box carries is still nothing.
+    expect(await (await freshStore()).resolveBoxCode('00000000')).toEqual({ kind: 'none' })
+  })
+})

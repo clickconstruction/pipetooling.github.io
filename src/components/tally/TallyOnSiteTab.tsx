@@ -26,7 +26,7 @@ import StickersOnBoxes from '../materials/StickersOnBoxes'
 import { ON_BOXES_LABEL } from '../../lib/materials/stickersOnBoxes'
 import { useJobStickers } from '../../hooks/useJobStickers'
 import { notYetOnBoxLine, stickerMarksWords, stickerReadsOtherWords, type PlaceOutcome } from '../../lib/materials/stickerPlace'
-import { LOST_STICKER_TITLE, OUT_OF_REACH_STICKER_TITLE, retiredBoxStickerTitle, type CodeLookup } from '../../lib/materials/stickers'
+import { LOST_STICKER_TITLE, OUT_OF_REACH_STICKER_TITLE, retiredBoxStickerTitle, retiredLabelTitle, type CodeLookup } from '../../lib/materials/stickers'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
@@ -207,7 +207,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       else { pendingContainerRef.current = stickerFound.container.id; onPickJob(stickerFound.container.jobId) }
       return
     }
-    showToast(stickerFound.kind === 'lost' ? `${LOST_STICKER_TITLE}.` : stickerFound.kind === 'retired' ? `${retiredBoxStickerTitle(stickerFound.sticker)}. Bring it back first.` : stickerFound.kind === 'out_of_reach' ? `${OUT_OF_REACH_STICKER_TITLE}.` : 'That code is not a sticker or a box you can open.', 'warning')
+    showToast(stickerFound.kind === 'lost' ? `${LOST_STICKER_TITLE}.` : stickerFound.kind === 'retired' ? `${retiredBoxStickerTitle(stickerFound.sticker)}. Bring it back first.` : stickerFound.kind === 'retired_label' ? `${retiredLabelTitle(stickerFound.container)}. Bring it back first.` : stickerFound.kind === 'out_of_reach' ? `${OUT_OF_REACH_STICKER_TITLE}.` : 'That code is not a sticker or a box you can open.', 'warning')
   }, [stickerFound, jobId, onPickJob, showToast])
   useEffect(() => {
     if (!stickerCode) { setStickerFound(null); return }

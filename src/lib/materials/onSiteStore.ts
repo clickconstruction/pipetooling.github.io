@@ -351,7 +351,8 @@ async function fetchStickerByCode(code: string): Promise<StickerFacts | null> {
  * The one resolver (v2.7072, punch list #329): what a scanned or typed code opens for someone signed in. A sticker's
  * code is asked first and a box's own beside it, in one round trip; `codeLookup` picks. A label printed before stickers
  * never depends on the sticker read: when that read fails and a box carries the code, the box opens, and the failure
- * is thrown only when nothing else answers.
+ * is thrown only when nothing else answers. Since v2.7630 the box's own read keeps a retired box, a live one first,
+ * so a retired label names its box for a reader who may see it (`retired_label`).
  */
 export async function resolveBoxCode(code: string): Promise<CodeLookup> {
   const cachedOwn = ownBoxByCode(code)
@@ -359,7 +360,7 @@ export async function resolveBoxCode(code: string): Promise<CodeLookup> {
     fetchStickerByCode(code),
     cachedOwn
       ? Promise.resolve(cachedOwn)
-      : db.from('job_containers').select(CONTAINER_COLS).eq('code', code).is('retired_at', null).limit(1).then(({ data, error }) => {
+      : db.from('job_containers').select(CONTAINER_COLS).eq('code', code).order('retired_at', { ascending: true, nullsFirst: true }).limit(1).then(({ data, error }) => {
           if (error) throw error
           const row = ((data ?? []) as ContainerRow[])[0]
           return row ? containerOf(row) : null

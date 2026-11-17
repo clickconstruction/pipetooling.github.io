@@ -23,6 +23,16 @@ afterEach(() => {
 })
 
 describe('BoxScan (the bare /b page, v2.6799)', () => {
+  it('names the tab while it is open and gives the tab back when it closes (v2.7630)', () => {
+    document.title = 'ClickTooling'
+    const view = mount()
+    // The tab read the app's name, where a box's own page reads the box and the company.
+    expect(document.title).toBe('Scan a label · Click Plumbing & Electrical')
+    view.unmount()
+    // Nothing else sets the title, so a name left behind stayed on the tab through the sign-in and after it.
+    expect(document.title).toBe('ClickTooling')
+  })
+
   it('puts the dash in as the code is typed and opens the box', async () => {
     mount()
     const input = screen.getByTestId('box-scan-input') as HTMLInputElement
