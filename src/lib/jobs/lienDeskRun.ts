@@ -148,33 +148,6 @@ export function runDoorWords(counts: { ready: number; printed: number; retReady:
 }
 
 
-/**
- * The door on the desk as a pill (Run-5): the run's bar — green for what is printed and to mail,
- * amber for what the leader has yet to sign, grey for what can print now — and the count of each, so
- * nobody opens the run to find out. `ready` includes the unsigned; `waits` is how many of them are
- * (`lienItemUnsigned`, the rule the Board's second tile counts *to sign* by, so the two agree).
- * Since v2.7448 the parts read *4 to mail · 8 to print · 7 for Sam to sign* (*sealed*, *ready* and *wait on* until then).
- */
-export type RunDoorPill = { sealedPct: number; waitPct: number; words: string }
-
-/**
- * The pill's words after the door's own count (v2.6569): *Enter mail numbers · 7*, never *· 7 · 7 to mail*.
- * When the words are only the count the door already says, they go; words that say more stay whole.
- */
-export function runDoorTail(count: number, words: string): string {
-  return words === `${count} to mail` || words === `${count} to print` ? '' : words
-}
-
-export function runDoorPill(counts: { ready: number; printed: number; retReady: number; waits: number }, leaderName?: string | null): RunDoorPill {
-  const total = counts.ready + counts.printed + counts.retReady
-  const waits = Math.min(counts.waits, counts.ready + counts.retReady)
-  const readyNow = counts.ready + counts.retReady - waits
-  const pct = (n: number) => (total === 0 ? 0 : Math.round((n / total) * 100))
-  const leader = (leaderName ?? '').trim() || 'the leader'
-  const parts = [counts.printed ? `${counts.printed} to mail` : null, readyNow ? `${readyNow} to print` : null, waits ? `${waits} for ${leader} to sign` : null].filter(Boolean)
-  return { sealedPct: pct(counts.printed), waitPct: pct(waits), words: parts.join(' · ') }
-}
-
 /** The signature's inputs the run builders take (v2.5077): the drawn inks by item id, and the name of whoever's screen a drawn one was made on. */
 export type RunBuildOpts = {
   inks?: ReadonlyMap<string, string | null>
