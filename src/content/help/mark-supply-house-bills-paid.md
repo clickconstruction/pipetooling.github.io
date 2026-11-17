@@ -42,6 +42,26 @@ Each bill is marked by itself. The card has no tick boxes. To pay several bills 
 
 Mark paid keeps the day and the amount. It does not say how the bill was paid. Use **Record a payment** when you know the method and its number.
 
+## Say how a payment was sent, later
+
+A bill you marked paid still needs how it was paid. Its row says *how it was paid is missing*, with **Finish…** beside it.
+
+1. Press **Finish…** on the row.
+2. Pick how it was sent: **Card**, **ACH**, **Check**, **Cash** or **Other**.
+3. Type the method's number in the box under the chips.
+4. Check **Date sent**. You may paste the **Receipt link**.
+5. Press {{button:green|Save how it was sent}}.
+
+The amount stays as it is. The row then names the payment, and its press becomes **See the payment**.
+
+Every payment that still waits is counted in one place. Accounts payable shows a line over the aging table, like **3 payments need how they were paid**. Press it to open the list, then press **Finish…** on a row. The longest wait is first.
+
+Needs you counts them too, under **Supply houses**. Its **Finish them** press opens the same list.
+
+A payment recorded with **Say later** waits on that list as well. A bill paid before payments were recorded never does.
+
+To change how a recorded payment was sent, press **See the payment** on a bill it paid. Then press **Edit how it was sent**.
+
 ## Record a payment
 
 Pay the house in its portal first, as you always have. The app never moves money. It writes down what you sent.
@@ -112,6 +132,29 @@ Interest is never put on a job. It stays off every job's cost, so the house's la
 The house billed interest you have not paid yet? Press {{button:blue|Add Invoice}} and tick **This is interest or a late fee**. It then waits with the other bills until a payment covers it.
 
 Accounts payable adds the year up under its total, like *Interest and late fees in 2026: $61.20*, with each house's share.
+
+## Let the bank agree
+
+The app reads the company's bank lines. A card or ACH payment to a supply house shows there with its day and its amount. The app holds your payments against those lines, so a wrong digit shows up.
+
+Press {{button:outline|See the payment}} on a bill. When the bank holds a line for the same money within three days, the window offers it.
+
+1. Read the line. It shows the day, the payee and the amount.
+2. Press **Match** beside the line that is this payment.
+
+The window then reads **Bank agrees ✓** with that line. Press **Take it off** to undo the match.
+
+:::example A payment the bank agrees with
+**$5,000.00 to Pecan Supply** · 11/12 · ACH 88213. {{chip:green|Bank agrees ✓}} 11/12 · PECAN SUPPLY ACH · $5,000.00.
+:::
+
+The finish-later list uses the bank too. A payment that waits there may read *The bank has it*, with **Use this line**. One press fills the day and how it was sent, and the payment leaves the list.
+
+The bank also shows money that went to a house with no payment recorded. Accounts payable counts those in a line, like **2 bank lines to supply houses have no payment recorded**. Press it to open the list. Then press **Say what it paid** on a line. **Record a payment** opens with the amount, the day and the method filled. Tick the bills it paid and press the green button.
+
+A purchase at the counter that the Tally already sorted is not listed there. Neither is a line from before payments were recorded.
+
+Some houses are paid in a way the bank feed does not show. Their payments get no offer. Type how each was sent, as before.
 
 ## See a payment, or remove one
 
