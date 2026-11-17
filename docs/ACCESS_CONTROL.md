@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -904,8 +904,8 @@ Its *Copy the firm's link* reads `legal_portal_links` under the existing office 
 **What a supply house told us** (v2.4411, `20261002140000_job_supply_house_words.sql`): `job_supply_house_words` — **read / insert / update / delete** the same set (clearing a word is a delete);
 `noted_by` / `noted_at` are stamped by a trigger.
 `notify-lien-approval` (v2.4872) answers the office (dev · master · assistant · controller, not archived;
-until v2.7445 only the item's drafter, which refused a second office person's send and every reminder) and only while the item is awaiting approval (the To do list's **Remind <leader> of N papers** press of v2.7371 sends through this same call);
-it pushes to the job's master when he holds a leader role, else to every leader but the caller, and emails when there is no device;
+until v2.7445 only the item's drafter, which refused a second office person's send and every reminder) and only while the item is awaiting approval (the To do list's **Remind <leader> of N papers** press of v2.7371 sends through this same call), or, for `kind: 'signature'` since v2.7491, while an approved notice lacks his signature, under the same office gate;
+it pushes to the job's master when he holds a leader role, else to every leader but the caller, emails when there is no device, and since v2.7495 texts him the link on a reminder, held by the same switches as any text the app sends;
 `kind: 'code_used'` (v2.5791) answers only the screen a code signature was typed on and tells the signer alone.
 **`job_lien_affidavit_months`** (v2.7270, `20261114080000`, punch list #356): the months a job's affidavit swears, set by hand with counsel's reason — **read / insert / update / delete** the same office set as `job_lien_claim_corrections` (dev · assistant-like · master);
 read on the Lien desk's affidavit pane, the job's Lien window, the batch help sheet and the dev seat's `plan_affidavit_draft`.
@@ -1243,6 +1243,9 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Each writes its own line in the thread (`moved`, `dropped`, `handed`, `map`), kinds no client may insert by hand;
   `stuck`, `unstuck` and, since v2.7551 (`20261117130000_task_skipped_line.md`), `skipped` are inserted like a note, by whoever reads the row.
   The task's maker and the office keep every right they had.
+  On the screen **⋯ More** is drawn for whoever holds the task, with only the rows that task allows (`taskMoreChoices`);
+  **＋ Add a task for me** and **Follow-up** are drawn for the roles of the header's Task press (`showHeaderTaskChecklistButton`), so never for a superintendent, who may not write a task (v2.7537);
+  the office's **Forward** calls `task_hand_on` too since v2.7548.
 - **Your people's week, the Monday email** (v2.6603, punch list #273 PR 5, `docs/migrations/20261106233000_people_week_email.md`): **`people_week_email_requests`** takes a row only in the caller's own name as its own recipient, and only from the office (`is_dev_or_master_or_assistant()`, primaries included) or with `people_user_ids` equal to exactly the caller;
   **read** requester, recipient or a dev;
   **delete** a pending row's requester or recipient, or a dev;
@@ -1326,6 +1329,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   The tick (`checked_at` / `checked_by` / `checked_by_name` on the payment row, v2.7237, `docs/migrations/20261114030000_sub_payment_checked.md`) adds no policy: `set_sub_payment_checked`, `match_sub_payment` and `unmatch_sub_payment` are `SECURITY INVOKER`, granted to `authenticated` and revoked from `anon`, so the payment row's own policies decide, and a match reads `mercury_transactions` as the caller, so a login that cannot read the bank is refused in words.
   The trigger function `clear_sub_payment_check_on_change` is `SECURITY DEFINER`, so an edit to a ticked payment's amount or Date sent clears the tick and deletes the match whoever makes it.
   `convert_sub_overpayment_to_credit` (v2.7420, `docs/migrations/20261116194500_sub_overpayment_to_credit.md`) is `SECURITY DEFINER` and checks `is_office_staff()` itself (`42501` for anyone else), since one call edits the payment, writes the credit entry and puts the tick and the match back.
+  `gather_sub_payments_into_sending` (v2.7440, `docs/migrations/20261116213000_sub_gather_sendings.md`) is `SECURITY DEFINER` too, checks `is_office_staff()` itself (`42501` for anyone else), and is granted to `authenticated` and revoked from `PUBLIC` and `anon`.
   On Banking the match is drawn on the Ledger tab alone, the controller's and a dev's (v2.7352), and every read there fails soft.
 
 - **`supply_house_payments` · `supply_house_payment_lines`** (`docs/migrations/20261116230000_supply_house_payments.md`, v2.7450): one money movement to a supply house, and the bills it paid.
@@ -1392,6 +1396,8 @@ A tech reads only their own row;
   the three fence appliers run.
   Since v2.6230 a row carries `bid_version_id`, so an adopt moves the retired bid's sets into its version and a locked version's guard (Bid version locks, below) holds its sets too;
   the dev seat's `apply_file_plans` inserts a row as the dev (v2.6185).
+  Since v2.7531 (punch list #368) the `bid-plan-set-files` function keeps a mail's files as a set for the same five roles (`docs/EDGE_FUNCTIONS.md` → bid-plan-set-files): it reads the bid, the mail, the set and the file as the caller, and the set's row is the caller's own insert;
+  `message_attachments.bid_plan_set_id`, the mark that a file was filed into a set, is written by the service role once the file is in the folder (`docs/migrations/20261117113000_mail_file_bid_plan_set.md`).
 - **`bid_photos`** (punch list #306, `docs/migrations/20261110195527_bid_photos.md`, v2.6854: one row per photo on a bid): every policy asks whether the caller can read the bid, with a sub-select on `bids` under the caller's own RLS, so the six roles that read a bid read its photos, a primary only on the bids they estimate, manage or made, and a superintendent, a helper and a subcontractor none;
   `can_access_bid_for_pricing` is not used, since it lets any primary through.
   **Select** by whoever reads the bid;
@@ -1772,6 +1778,7 @@ Both new tables are RLS-enabled and carry the read-only (training mode) blocks.
   `jobs_ledger.development_id` is a nullable FK (ON DELETE SET NULL) covered by existing `jobs_ledger` policies.
 - **`list_development_overview(p_development_id uuid)`** (v2.6053, `20261029170000_list_development_overview.sql`): SECURITY DEFINER for `gc_office_team()` (dev, master_technician, assistant, controller, estimator), anyone else refused.
   One jsonb with the development's bids and jobs (number, name, status, stage, plans state, people), the jobs' stage moves and crews, and **no money column** (never a bid's value, a job's revenue, payments, bill date, percent or collections note).
+  Since v2.7496 it also hands each bid's promised schedule (`schedule_start`, `schedule_end`, `schedule_open_ended`) and each job's `first_work_date`, dates with no money in them, for the Plans look's By date view (`docs/migrations/20261117070000_bid_schedule_and_set_sheets.md`).
   The Development page's read for a role with no `jobs_ledger` SELECT, the estimator;
   the office keeps its direct reads.
   `REVOKE` from PUBLIC/anon, `GRANT EXECUTE` to authenticated.
