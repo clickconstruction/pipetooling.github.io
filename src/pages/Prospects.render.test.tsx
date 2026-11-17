@@ -847,6 +847,68 @@ describe('Prospect List', () => {
   })
 })
 
+describe('Prospect List, the row actions and what it remembers', () => {
+  async function listWithGone() {
+    open('/prospects?tab=prospect-list&prospect_id=cu-4')
+    await waitFor(() => expect(screen.getAllByText('Delta Gone').length).toBeGreaterThan(0))
+    return screen.getAllByText('Delta Gone')[0]?.closest('tr') as HTMLElement
+  }
+
+  it('the search and an opened section are still there after a look at another tab', async () => {
+    open('/prospects?tab=prospect-list')
+    await screen.findByText('Never called (2)')
+    fireEvent.click(screen.getByRole('button', { name: /Going cold — last touch/ }))
+    expect(await screen.findAllByText('Bravo Homes')).not.toHaveLength(0)
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'bravo' } })
+    await waitFor(() => expect(screen.queryByText('Alpha Builders')).toBeNull())
+    press('Follow Up')
+    await screen.findByText('How did the call end?')
+    press('Prospect List')
+    await waitFor(() => expect((screen.getByRole('searchbox') as HTMLInputElement).value).toBe('bravo'))
+    expect(screen.getAllByText('Bravo Homes').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Alpha Builders')).toBeNull()
+  })
+
+  it('a section heading folds and unfolds its rows', async () => {
+    open('/prospects?tab=prospect-list')
+    await screen.findByText('Never called (2)')
+    expect(screen.getAllByText('Alpha Builders').length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: /Never called \(2\)/ }))
+    await waitFor(() => expect(screen.queryByText('Alpha Builders')).toBeNull())
+  })
+
+  it('Edit on a row that left the queue opens the Edit window on that row', async () => {
+    const row = await listWithGone()
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit' }))
+    const dialog = await screen.findByRole('dialog')
+    expect((within(dialog).getByLabelText('Company') as HTMLInputElement).value).toBe('Delta Gone')
+    expect(within(dialog).queryByRole('button', { name: '+' })).toBeNull()
+  })
+
+  it('Not a fit and Delete on such a row write it, and Delete asks first', async () => {
+    const row = await listWithGone()
+    fireEvent.click(within(row).getByRole('button', { name: 'Not a fit' }))
+    await waitFor(() => expect(writesTo('prospects', 'update')).toHaveLength(1))
+    expect(writesTo('prospects', 'update')[0]).toMatchObject({ payload: { prospect_fit_status: 'not_a_fit' }, filters: { id: 'cu-4' } })
+    // The row moved to Not a fit, a section that opens folded.
+    fireEvent.click(await screen.findByRole('button', { name: /No longer a fit \(1\)/ }))
+    await waitFor(() => expect(screen.getAllByText('Delta Gone').length).toBeGreaterThan(0))
+    const again = screen.getAllByText('Delta Gone')[0]?.closest('tr') as HTMLElement
+    fireEvent.click(within(again).getByRole('button', { name: 'Delete' }))
+    const ask = await screen.findByRole('alertdialog')
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(writesTo('prospects', 'delete')).toHaveLength(1))
+    await waitFor(() => expect(screen.queryByText('Delta Gone')).toBeNull())
+  })
+
+  it('shows each row’s timed seconds beside its last touch', async () => {
+    world.timerEvents = [{ id: 't-1', prospect_id: 'cu-1', created_at: '2026-10-01T12:00:00Z', timer_seconds: 125, button_name: 'next_prospect', prospect: null }]
+    open('/prospects?tab=prospect-list')
+    await screen.findByText('Never called (2)')
+    expect((await screen.findAllByText(/02:05/)).length).toBeGreaterThan(0)
+  })
+})
+
 describe('Convert', () => {
   it('a search picks a prospect, and the three steps of the form come up', async () => {
     open('/prospects?tab=convert')

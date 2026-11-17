@@ -5,7 +5,7 @@ import { pageTabStyle } from '../lib/pageTabStyle'
 import { isOwnerOrDev } from '../lib/doorRoles'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { myTimeWindows, sumTimerSeconds, sumTimerSecondsByProspect } from '../lib/prospects/prospectTimerSums'
+import { myTimeWindows, sumTimerSeconds } from '../lib/prospects/prospectTimerSums'
 import {
   indexAfterOtherRowLeft,
   insertColdest,
@@ -15,16 +15,6 @@ import {
   type CallingOrderMode,
 } from '../lib/prospects/callingOrder'
 import { ageChipStyle } from '../lib/ageState'
-import {
-  filterProspectsForList,
-  groupProspectsForList,
-  lastTouchLabel,
-  LIST_SECTION_CHIP_LABELS,
-  LIST_SECTION_LABELS,
-  LIST_SECTION_ORDER,
-  LIST_SECTIONS_DEFAULT_OPEN,
-  type ListSectionKey,
-} from '../lib/prospects/prospectListGrouping'
 import { findRetaggableNote, type CallInteractionType } from '../lib/prospects/callLogState'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -67,6 +57,8 @@ import { permitsLinkCleared } from '../lib/research/permitsLink'
 import { ProspectCallbackModal } from '../components/prospects/ProspectCallbackModal'
 import { ProspectsActivityTab } from '../components/prospects/ProspectsActivityTab'
 import { ProspectsConvertTab } from '../components/prospects/ProspectsConvertTab'
+import { ProspectsListTab } from '../components/prospects/ProspectsListTab'
+import { useProspectListTab } from '../components/prospects/useProspectListTab'
 import { ProspectCopyBlankFieldsModal } from '../components/prospects/ProspectCopyBlankFieldsModal'
 import { ProspectCopyTemplateEditModal } from '../components/prospects/ProspectCopyTemplateEditModal'
 import { ProspectCopyTemplateRow } from '../components/prospects/ProspectCopyTemplateRow'
@@ -82,7 +74,6 @@ import { useSubsBoardData } from '../components/prospects/useSubsBoardData'
 import { ProspectMyTimeModal } from '../components/prospects/ProspectMyTimeModal'
 import { ProspectTimerHistoryModal } from '../components/prospects/ProspectTimerHistoryModal'
 import { SubsBoard } from '../components/prospects/SubsBoard'
-import { SubsLaneList } from '../components/prospects/SubsLaneList'
 import { SubsNeedsPanel } from '../components/prospects/SubsNeedsPanel'
 import { SubsPathStrip } from '../components/prospects/SubsPathStrip'
 import { GcWorkStrip } from '../components/prospects/GcWorkStrip'
@@ -281,7 +272,6 @@ export default function Prospects() {
   // The path onto the bench (v2.5807, punch list #153): every sub row for the strip's counts, who has answered,
   // which bench companies have quoted, the projects a set of plans could be for (the For picker, `?for=`), and
   // which of the list's groups are open.
-  const [subsSectionOpen, setSubsSectionOpen] = useState<Record<string, boolean>>({})
   const plansFor = searchParams.get('for')
   const plansPick = kind === 'sub' && plansFor ? gcPlans.find((c) => c.id === plansFor) ?? null : null
   // The board and the run (v2.5808): the lane's call rows for each sub's record, the lines back on their threads, the
@@ -316,9 +306,6 @@ export default function Prospects() {
   // Callback form state
 
   // Prospect List state
-  const [prospectListSearchQuery, setProspectListSearchQuery] = useState('')
-  const [prospectListSectionOpen, setProspectListSectionOpen] = useState<Partial<Record<ListSectionKey, boolean>>>({})
-  const [selectedProspectForList, setSelectedProspectForList] = useState<Prospect | null>(null)
   const [followUpNotes, setFollowUpNotes] = useState('')
   const [followUpNotesSaving, setFollowUpNotesSaving] = useState(false)
 
@@ -344,7 +331,6 @@ export default function Prospects() {
   const [prospectLedgerSeconds, setProspectLedgerSeconds] = useState(0)
 
   // Total time spent per prospect for Prospect List (prospect_id -> seconds)
-  const [prospectLedgerSecondsMap, setProspectLedgerSecondsMap] = useState<Record<string, number>>({})
 
   // New Prospect modal state
   const [newProspectError, setNewProspectError] = useState<string | null>(null)
@@ -700,26 +686,18 @@ export default function Prospects() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, authUser?.id, kind])
 
-  // When on Prospect List with prospect_id in URL (e.g. from Quickfill Edit), select that prospect
-  useEffect(() => {
-    if (activeTab !== 'prospect-list') return
-    const prospectId = searchParams.get('prospect_id')
-    if (!prospectId || prospectListProspects.length === 0) return
-    const p = prospectListProspects.find((x) => x.id === prospectId)
-    if (p) {
-      setSelectedProspectForList(p)
-      const grouped = groupProspectsForList([p], new Set(Object.keys(prospectLastCallMap)), Date.now())
-      const sectionKey = LIST_SECTION_ORDER.find((k) => grouped[k].length > 0)
-      if (sectionKey && !LIST_SECTIONS_DEFAULT_OPEN.has(sectionKey)) {
-        setProspectListSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
-      }
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev)
-        next.delete('prospect_id')
-        return next
-      }, { replace: true })
-    }
-  }, [activeTab, searchParams, prospectListProspects])
+  // The Prospect List tab's own state. It is called here, not inside the tab, so the search and the open sections
+  // survive a visit to another tab.
+  const list = useProspectListTab({
+    active: activeTab === 'prospect-list',
+    userId: authUser?.id ?? null,
+    searchParams,
+    setSearchParams,
+    prospectListProspects,
+    prospectLastCallMap,
+    showDeck: () => setActiveTab('follow-up'),
+  })
+  const { prospectListSearchQuery, setProspectListSearchQuery } = list
 
   // The Convert tab's engine. It is called here, not inside the tab, so the picked prospect and the typed cards
   // survive a visit to another tab.
@@ -817,23 +795,6 @@ export default function Prospects() {
       setProspectLedgerSeconds(0)
     }
   }, [currentProspect?.id, authUser?.id])
-
-  async function loadProspectLedgerSecondsMap() {
-    if (!authUser?.id) return
-    const { data } = await (supabase as any)
-      .from('prospect_timer_events')
-      .select('prospect_id, timer_seconds')
-      .eq('user_id', authUser.id)
-    setProspectLedgerSecondsMap(sumTimerSecondsByProspect((data ?? []) as Array<{ prospect_id: string | null; timer_seconds: number }>))
-  }
-
-  useEffect(() => {
-    if (activeTab === 'prospect-list' && authUser?.id) {
-      loadProspectLedgerSecondsMap()
-    } else {
-      setProspectLedgerSecondsMap({})
-    }
-  }, [activeTab, authUser?.id])
 
   const loadScheduledCallback = useCallback(async () => {
     if (!currentProspect?.id || !authUser?.id) {
@@ -1590,28 +1551,6 @@ export default function Prospects() {
     updateUrlProspectId(followUpProspects[nextIdx]?.id ?? null)
   }
 
-  function toggleProspectListSection(key: ListSectionKey) {
-    setProspectListSectionOpen((prev) => ({ ...prev, [key]: !(prev[key] ?? LIST_SECTIONS_DEFAULT_OPEN.has(key)) }))
-  }
-
-  function jumpToProspectListSection(key: ListSectionKey) {
-    setProspectListSectionOpen((prev) => ({ ...prev, [key]: true }))
-    requestAnimationFrame(() => {
-      document.getElementById(`plist-sec-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
-
-  function selectProspectForList(p: Prospect) {
-    setSelectedProspectForList(p)
-    setActiveTab('follow-up')
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      next.set('tab', 'follow-up')
-      next.set('prospect_id', p.id)
-      return next
-    })
-  }
-
   async function getEffectiveMasterId(): Promise<string | null> {
     if (!authUser?.id) return null
     // One company (v2.2972): every prospect is stamped with the company owner account.
@@ -1679,8 +1618,6 @@ export default function Prospects() {
   const subsStrip = (rows: readonly Prospect[], calledIds: ReadonlySet<string>) => (
     <SubsPathStrip rows={rows} calledIds={calledIds} answeredIds={answeredProspectIds} quotedCompanyIds={benchQuoted} />
   )
-  /** Which of the Subs list's folds are open stays here, so a fold survives a visit to another tab. */
-  const toggleSubsSection = (key: string, fallback: boolean) => setSubsSectionOpen((prev) => ({ ...prev, [key]: !(prev[key] ?? fallback) }))
 
   const canAccessFollowUp = !!authUser && canAccessProspectPipeline(authRole, estimatorProspectsAccess)
 
@@ -2487,337 +2424,30 @@ export default function Prospects() {
       )}
 
       {topTab === 'customers' && activeTab === 'prospect-list' && (
-        <>
-          {!canAccessFollowUp ? (
-            <p style={{ color: 'var(--text-muted)' }}>You do not have access to Prospect List.</p>
-          ) : prospectListLoading ? (
-            <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
-          ) : (
-            <>
-              <div style={{ width: '100%', marginBottom: '0.25rem' }}>
-                <input
-                  type="search"
-                  placeholder="Search company, contact, phone, or email..."
-                  value={prospectListSearchQuery}
-                  onChange={(e) => setProspectListSearchQuery(e.target.value)}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  style={{ width: '100%', padding: '0.35rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
-                />
-              </div>
-              {(() => {
-            const filtered = filterProspectsForList(prospectListProspects, prospectListSearchQuery)
-            const calledIds = new Set(Object.keys(prospectLastCallMap))
-            const nowMs = Date.now()
-            // The Subs lane's list (v2.5807): the strip, For, and the lane by trade, not the recency buckets.
-            if (kind === 'sub') {
-              return (
-                <SubsLaneList
-                  filtered={filtered}
-                  calledIds={calledIds}
-                  nowMs={nowMs}
-                  answeredIds={answeredProspectIds}
-                  quotedCompanyIds={benchQuoted}
-                  benches={gcBench.benches}
-                  ownTrades={gcBench.ownTrades}
-                  plans={gcPlans}
-                  plansFor={plansFor}
-                  picked={plansPick}
-                  onPick={setPlansFor}
-                  sectionOpen={subsSectionOpen}
-                  onToggleSection={toggleSubsSection}
-                  selectedId={selectedProspectForList?.id ?? null}
-                  lastCalls={prospectLastCallMap}
-                  saving={saving}
-                  kindWords={kindWords}
-                  empty={prospectListEmpty()}
-                  onCall={selectProspectForList}
-                  onBench={openBenchModal}
-                  onEdit={openEditModalForProspect}
-                  onSendBack={handleSendBack}
-                  onDelete={handleDeleteFromList}
-                  onAddSub={openAddSub}
-                />
-              )
-            }
-            const sections = groupProspectsForList(filtered, calledIds, nowMs)
-            const isTerminal = (k: ListSectionKey) => k === 'converted' || k === 'cant_reach' || k === 'not_a_fit'
-            const chipKeys = LIST_SECTION_ORDER.filter((k) => k !== 'cant_reach' && k !== 'not_a_fit')
-            const chipColors: Partial<Record<ListSectionKey, { background: string; color: string }>> = {
-              never_called: { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' },
-              going_cold: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' },
-              converted: { background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' },
-            }
-            return filtered.length === 0 ? (
-              <EmptyState {...prospectListEmpty()} />
-            ) : (
-              <div>
-                <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', margin: '0.75rem 0 0.25rem' }}>
-                  {chipKeys.map((key) => {
-                    const n = sections[key].length
-                    const palette = chipColors[key]
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => jumpToProspectListSection(key)}
-                        disabled={n === 0}
-                        style={{
-                          padding: '0.2rem 0.6rem',
-                          borderRadius: 999,
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          border: '1px solid transparent',
-                          cursor: n === 0 ? 'default' : 'pointer',
-                          opacity: n === 0 ? 0.45 : 1,
-                          background: palette?.background ?? 'var(--bg-subtle)',
-                          color: palette?.color ?? 'var(--text-muted)',
-                          borderColor: palette ? 'transparent' : 'var(--border)',
-                        }}
-                      >
-                        {key === 'converted' ? kindWords.landedChip : LIST_SECTION_CHIP_LABELS[key]} {n}
-                      </button>
-                    )
-                  })}
-                </div>
-                {LIST_SECTION_ORDER.map((sectionKey) => {
-                  const prospects = sections[sectionKey]
-                  if (prospects.length === 0) return null
-                  const isOpen = prospectListSectionOpen[sectionKey] ?? LIST_SECTIONS_DEFAULT_OPEN.has(sectionKey)
-                  return (
-                    <div key={sectionKey} id={`plist-sec-${sectionKey}`}>
-                      <button
-                        type="button"
-                        onClick={() => toggleProspectListSection(sectionKey)}
-                        aria-expanded={isOpen}
-                        style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
-                      >
-                        <span aria-hidden>{isOpen ? '\u25BC' : '\u25B6'}</span>
-                        {`${sectionKey === 'converted' ? kindWords.landed : LIST_SECTION_LABELS[sectionKey]} (${prospects.length})`}
-                        {sectionKey === 'never_called' && (
-                          <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>\u2014 oldest first, matches the calling queue</span>
-                        )}
-                      </button>
-                      {isOpen && (
-                        <div className="prospectListWrapper">
-                          {/* Desktop: table */}
-                          <div className="prospectListDesktop">
-                            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                              <colgroup>
-                                <col style={{ width: '17%' }} />
-                                <col style={{ width: '11%' }} />
-                                <col style={{ width: '11%' }} />
-                                <col style={{ width: '8%' }} />
-                                <col style={{ width: '14%' }} />
-                                <col style={{ width: '22%' }} />
-                                <col style={{ width: isTerminal(sectionKey) ? '17%' : '10%' }} />
-                              </colgroup>
-                              <thead style={{ background: 'var(--bg-subtle)' }}>
-                                <tr>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Company</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contact</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Phone</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Added</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Last touch</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Email / Links</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{isTerminal(sectionKey) ? 'Actions' : ''}</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {prospects.length === 0 ? (
-                                  <tr><td colSpan={7} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No prospects in this group</td></tr>
-                                ) : (
-                                  prospects.map((p) => (
-                                    <tr
-                                      key={p.id}
-                                      onClick={() => selectProspectForList(p)}
-                                      style={{
-                                        borderBottom: '1px solid var(--border)',
-                                        cursor: 'pointer',
-                                        background: selectedProspectForList?.id === p.id ? 'var(--bg-blue-tint)' : undefined,
-                                      }}
-                                    >
-                                      <td style={{ padding: '0.75rem' }}>
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
-                                          {p.company_name || '—'}
-                                          {(p.warmth_count ?? 0) > 0 && (
-                                            <span style={{ padding: '0.05rem 0.4rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, background: 'var(--bg-orange-100)', color: 'var(--text-orange-700)', whiteSpace: 'nowrap' }}>
-                                              🔥 {p.warmth_count}
-                                            </span>
-                                          )}
-                                        </span>
-                                      </td>
-                                      <td style={{ padding: '0.75rem' }}>{p.contact_name || '—'}</td>
-                                      <td style={{ padding: '0.75rem' }}>
-                                        {p.phone_number ? (
-                                          <a href={telHrefFor(p.phone_number)} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
-                                            {p.phone_number}
-                                          </a>
-                                        ) : (
-                                          '—'
-                                        )}
-                                      </td>
-                                      <td style={{ padding: '0.75rem' }}>{p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
-                                      <td style={{ padding: '0.75rem' }} title={p.last_contact ? `Last contact ${formatDateTime(p.last_contact)}` : undefined}>
-                                        {lastTouchLabel(p, prospectLastCallMap[p.id], nowMs)}
-                                        {(prospectLedgerSecondsMap[p.id] ?? 0) > 0 && (
-                                          <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: 'var(--text-green-600)' }}>
-                                            {' · '}{formatTimerSeconds(prospectLedgerSecondsMap[p.id] ?? 0)}
-                                          </span>
-                                        )}
-                                      </td>
-                                      <td style={{ padding: '0.75rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                          <div>
-                                            {p.email ? (
-                                              <a href={`mailto:${encodeURIComponent(p.email)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
-                                                {p.email}
-                                              </a>
-                                            ) : (
-                                              '—'
-                                            )}
-                                          </div>
-                                          <div>
-                                            {p.links_to_website ? (
-                                              <a
-                                                href={getWebsiteHref(p.links_to_website)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}
-                                              >
-                                                {formatWebsiteDisplay(p.links_to_website)}
-                                              </a>
-                                            ) : (
-                                              '—'
-                                            )}
-                                          </div>
-                                        </div>
-                                      </td>
-                                      {isTerminal(sectionKey) ? (
-                                        <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
-                                          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                                            <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
-                                            <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
-                                            <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
-                                            <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-red-600)', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
-                                          </div>
-                                        </td>
-                                      ) : (
-                                        <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
-                                          <button type="button" onClick={() => selectProspectForList(p)} style={{ padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                            Call now →
-                                          </button>
-                                        </td>
-                                      )}
-                                    </tr>
-                                  ))
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-                          {/* Mobile: cards */}
-                          <div className="prospectListMobile">
-                            {prospects.length === 0 ? (
-                              <div className="prospectListMobileEmpty">No prospects in this group</div>
-                            ) : (
-                              prospects.map((p) => (
-                                <div key={p.id} style={{ position: 'relative' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => selectProspectForList(p)}
-                                    className={`prospectListMobileCard ${selectedProspectForList?.id === p.id ? 'prospectListMobileCardSelected' : ''}`}
-                                    style={isTerminal(sectionKey) ? { paddingBottom: '3rem' } : undefined}
-                                  >
-                                    <div className="prospectListMobileCardTitle">{p.company_name || '—'}</div>
-                                    <div className="prospectListMobileCardRow">
-                                      <span className="prospectListMobileCardLabel">Contact</span>
-                                      <span>{p.contact_name || '—'}</span>
-                                    </div>
-                                    <div className="prospectListMobileCardRow">
-                                      <span className="prospectListMobileCardLabel">Address</span>
-                                      <span>{p.address || '—'}</span>
-                                    </div>
-                                    <div className="prospectListMobileCardRow">
-                                      <span className="prospectListMobileCardLabel">Phone</span>
-                                      <span>
-                                        {p.phone_number ? (
-                                          <a href={telHrefFor(p.phone_number)} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
-                                            {p.phone_number}
-                                          </a>
-                                        ) : (
-                                          '—'
-                                        )}
-                                      </span>
-                                    </div>
-                                    <div className="prospectListMobileCardRow">
-                                      <span className="prospectListMobileCardLabel">Last touch</span>
-                                      <span>
-                                        {lastTouchLabel(p, prospectLastCallMap[p.id], nowMs)}
-                                        {(prospectLedgerSecondsMap[p.id] ?? 0) > 0 && (
-                                          <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: 'var(--text-green-600)' }}>
-                                            {' · '}{formatTimerSeconds(prospectLedgerSecondsMap[p.id] ?? 0)}
-                                          </span>
-                                        )}
-                                      </span>
-                                    </div>
-                                    <div className="prospectListMobileCardRow">
-                                      <span className="prospectListMobileCardLabel">Email / Links</span>
-                                      <span style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <span>
-                                          {p.email ? (
-                                            <a href={`mailto:${encodeURIComponent(p.email)}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
-                                              {p.email}
-                                            </a>
-                                          ) : (
-                                            '—'
-                                          )}
-                                        </span>
-                                        <span>
-                                          {p.links_to_website ? (
-                                            <a
-                                              href={getWebsiteHref(p.links_to_website)}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              onClick={(e) => e.stopPropagation()}
-                                              style={{ color: 'var(--text-link)', textDecoration: 'underline' }}
-                                            >
-                                              {formatWebsiteDisplay(p.links_to_website)}
-                                            </a>
-                                          ) : (
-                                            '—'
-                                          )}
-                                        </span>
-                                      </span>
-                                    </div>
-                                    <div className="prospectListMobileCardMeta">
-                                      <span>Warmth {p.warmth_count ?? 0}</span>
-                                    </div>
-                                  </button>
-                                  {isTerminal(sectionKey) && (
-                                    <div style={{ position: 'absolute', bottom: '0.5rem', left: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
-                                      <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
-                                      <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
-                                      <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
-                                      <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-red-600)', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
-                                    </div>
-                                  )}
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })()}
-            </>
-          )}
-        </>
+        <ProspectsListTab
+          list={list}
+          kind={kind}
+          kindWords={kindWords}
+          canAccessFollowUp={canAccessFollowUp}
+          prospectListLoading={prospectListLoading}
+          prospectListProspects={prospectListProspects}
+          prospectLastCallMap={prospectLastCallMap}
+          saving={saving}
+          prospectListEmpty={prospectListEmpty}
+          answeredProspectIds={answeredProspectIds}
+          benchQuoted={benchQuoted}
+          gcBench={gcBench}
+          gcPlans={gcPlans}
+          plansFor={plansFor}
+          plansPick={plansPick}
+          setPlansFor={setPlansFor}
+          openBenchModal={openBenchModal}
+          openEditModalForProspect={openEditModalForProspect}
+          handleSendBack={handleSendBack}
+          handleNotAFitFromList={handleNotAFitFromList}
+          handleDeleteFromList={handleDeleteFromList}
+          openAddSub={openAddSub}
+        />
       )}
 
       {topTab === 'customers' && activeTab === 'convert' && (
