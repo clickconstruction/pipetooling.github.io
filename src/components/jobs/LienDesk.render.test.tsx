@@ -114,9 +114,11 @@ const submitMock = vi.fn(async () => undefined)
 const tellLeaderMock = vi.fn(async (..._args: unknown[]): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null; held?: number; said?: string | null; told?: number | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
 // An affidavit sent for approval tells the leader too (punch list #305, v2.7180): one call for every paper of one press.
 const tellAffMock = vi.fn(async (_papers: Array<{ itemId: string; dueYmd: string | null }>, _opts?: { remind?: boolean }): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null; held?: number; said?: string | null; told?: number | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
+// The notices that wait on his signature (v2.7491): one call for the lot, from the Board's line or To do's waiting head.
+const tellSignMock = vi.fn(async (_papers: Array<{ itemId: string; dueYmd: string | null }>): Promise<{ ok: true; told: { pushSent: number; emailSent: boolean; leaderName: string | null; held?: number; said?: string | null; told?: number | null } } | { ok: false; reason: string }> => ({ ok: true, told: { pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' } }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, approveLienDeskItem: (id: string) => approveLotMock(id), redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>, opts?: { remind?: boolean }) => (opts ? tellAffMock(papers, opts) : tellAffMock(papers)), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args), sendLienDeskItemOnWord: (...args: unknown[]) => wordMock(...(args as [])) }
+  return { ...actual, approveLienDeskItem: (id: string) => approveLotMock(id), redrawLienAffidavitShort: (...args: unknown[]) => redrawOneMock(...args), redrawLienAffidavitsShort: (papers: Array<{ jobId: string }>, userId: unknown) => redrawManyMock(papers, userId), submitLienAffidavits: (papers: Array<{ jobId: string; itemId: string; outcome: { status: string } }>) => submitManyMock(papers), saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), tellLeaderOfLienAffidavits: (papers: Array<{ itemId: string; dueYmd: string | null }>, opts?: { remind?: boolean }) => (opts ? tellAffMock(papers, opts) : tellAffMock(papers)), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args), notePromiseOnNotice: (...args: unknown[]) => promiseMock(...args), sendLienDeskItemOnWord: (...args: unknown[]) => wordMock(...(args as [])), tellLeaderOfLienSignatures: (papers: Array<{ itemId: string; dueYmd: string | null }>) => tellSignMock(papers) }
 })
 // Sign it again (v2.7502): the clear is a seam; its guard has its own tests.
 const signAgainMock = vi.fn(async (..._args: unknown[]): Promise<{ ok: true } | { ok: false; message: string }> => ({ ok: true }))
@@ -566,8 +568,8 @@ describe('LienDesk', () => {
     const footer = document.querySelector('[data-lien-desk-printed-footer]') as HTMLElement
     // v2.4855: the state is a chip with the day; the old sentence is its hover.
     const chip = footer.querySelector('.lienFootChip') as HTMLElement
-    expect(chip.textContent).toContain('Printed Sep 14 · in the mail')
-    expect(chip.title).toContain('Printed September 14, 2026 · in the mail.')
+    expect(chip.textContent).toContain('Printed Sep 14 · to mail')
+    expect(chip.title).toContain('Printed September 14, 2026. It now waits to mail.')
     expect(footer.querySelectorAll('.lienFootLink').length).toBe(2)
     expect(within(footer).getByRole('button', { name: 'Enter mail numbers · 1 ▸' })).toBeTruthy()
     fireEvent.click(within(footer).getByRole('button', { name: 'Back to Approved · to print' }))
@@ -729,6 +731,48 @@ describe('LienDesk', () => {
     await waitFor(() => expect(tellLeaderMock).toHaveBeenCalledTimes(1))
     expect(tellLeaderMock.mock.calls[0]).toEqual(['ret1', '2026-10-05', { remind: true }])
     expect(await screen.findByText('Sam was reminded of 1 paper.')).toBeTruthy()
+  })
+
+  it('a notice that waits on his signature has the reminder on the Board, with no paper awaiting approval: one press, one call for the lot, and what the function did not tell him of is named (v2.7491)', async () => {
+    tellSignMock.mockClear()
+    tellLeaderMock.mockClear()
+    // Approved on his word and never signed: it stands in Approved · to print, and the run holds it until he signs.
+    const unsigned = { id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-07'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z', approved_by: 'u-taunya', approved_at: '2026-09-12T15:00:00Z', approval_mode: 'word', word_note: 'He said to send it', word_channel: 'phone' } as unknown as LienDeskItemRow
+    const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [unsigned], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    // No row waits on an approval, so To do's waiting head has no press. The Board's line carries it.
+    expect(document.querySelector('[data-lien-next-up-remind]')).toBeNull()
+    const press = () => document.querySelector('[data-lien-board-remind]') as HTMLButtonElement
+    expect(document.querySelector('[data-lien-board-print="notice"] [data-lien-board-print-left]')!.contains(press())).toBe(true)
+    expect(press().textContent).toBe('Remind Sam of 1 paper ›')
+    fireEvent.click(press())
+    expect(await screen.findByText('Remind Sam of 1 paper?')).toBeTruthy()
+    expect(screen.getByText(/Sam gets one message for the notice to sign\./)).toBeTruthy()
+    expect(tellSignMock).not.toHaveBeenCalled()
+    const confirms = screen.getAllByRole('button', { name: 'Remind Sam' })
+    fireEvent.click(confirms[confirms.length - 1]!)
+    await waitFor(() => expect(tellSignMock).toHaveBeenCalledTimes(1))
+    expect(tellSignMock.mock.calls[0]![0]).toEqual([{ itemId: 'it1', dueYmd: expect.any(String) }])
+    // Not the notice's approval message: that one is refused for a paper already approved.
+    expect(tellLeaderMock).not.toHaveBeenCalled()
+    expect(await screen.findByText('Sam was reminded of 1 paper.')).toBeTruthy()
+    await waitFor(() => expect(press().textContent).toMatch(/^Reminded at \d{1,2}:\d{2}/))
+    expect(press().disabled).toBe(true)
+    view.unmount()
+    // He signed between the list and the press: the function answers 200 with nothing told, and the desk says so.
+    tellSignMock.mockResolvedValueOnce({ ok: true, told: { pushSent: 0, emailSent: false, leaderName: null, held: 0, said: 'Not waiting on a signature', told: 0 } })
+    const again = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650, [unsigned], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    fireEvent.click(press())
+    const confirmsAgain = await screen.findAllByRole('button', { name: 'Remind Sam' })
+    fireEvent.click(confirmsAgain[confirmsAgain.length - 1]!)
+    expect(await screen.findByText(/^Sam was not reminded\. 1 reminder did not send: .+ \(not waiting on a signature now\)\.$/)).toBeTruthy()
+    expect(press().textContent).toBe('Remind Sam of 1 paper ›')
+    again.unmount()
+    // The leader's own desk has no such press: the notice is his to sign.
+    renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={data(J650, [unsigned], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    expect(document.querySelector('[data-lien-board-remind]')).toBeNull()
   })
 
   it('a chip on the Board, pointed at, says which job it is before any press: its name, address, customer and GC, and where its notice stands (v2.7381)', async () => {
@@ -1903,13 +1947,13 @@ describe('LienDesk affidavits (v2.3412)', () => {
     expect(screen.getByRole('button', { name: 'Needs the property facts · 1' })).toBeTruthy()
     // The row's gates as five marks on its chip line (v2.7335): on a computer the strip stands in for the *missing …* words, which live in its title and the marks' titles.
     const strip = document.querySelector('[data-lien-gate-marks]') as HTMLElement
-    expect(strip.getAttribute('title')).toBe('2 of 5 clear · missing owner, legal, notice')
+    expect(strip.getAttribute('title')).toBe('2 of 5 clear · missing owner, legal, a mailed notice')
     expect(Array.from(strip.querySelectorAll('[data-lien-gate-mark]')).map((m) => `${m.getAttribute('data-lien-gate-mark')}:${m.getAttribute('data-state')}`)).toEqual(['owner:open', 'legal:open', 'contractor:ok', 'notice:open', 'homestead:ok'])
     expect(strip.querySelector('[data-lien-gate-mark="owner"]')?.getAttribute('title')).toBe('owner — Missing owner')
-    expect(screen.queryByText(/missing owner, legal, notice/)).toBeNull()
+    expect(screen.queryByText(/missing owner, legal, a mailed notice/)).toBeNull()
     const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
     // v2.7187: the desk's own timeline names the step the paper is on, as its To do row does (*the property record is not complete*).
-    expect(timeline.textContent).toContain('Fix the property record, then file the affidavit — tomorrow · owner of record, legal description, the notice missing.')
+    expect(timeline.textContent).toContain('Fix the property record, then file the affidavit — tomorrow · owner of record, legal description, a mailed notice missing.')
     // Whose move and for what rides in the band's press (v2.7321), which opens the one gate that holds the paper.
     expect(timeline.querySelector('[data-lien-timeline-act="gate:owner"]')?.getAttribute('title')).toBe('Waiting on us — the property record to be completed')
     expect(timeline.querySelector('[data-lien-timeline-act]')?.textContent).toBe('Find the owner ›')
@@ -1975,8 +2019,8 @@ describe('LienDesk affidavits (v2.3412)', () => {
     try {
       renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
       await settle()
-      expect(document.querySelector('[data-lien-gate-marks]')?.getAttribute('title')).toBe('2 of 5 clear · missing owner, legal, notice')
-      expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
+      expect(document.querySelector('[data-lien-gate-marks]')?.getAttribute('title')).toBe('2 of 5 clear · missing owner, legal, a mailed notice')
+      expect(screen.getByText(/missing owner, legal, a mailed notice/)).toBeTruthy()
     } finally {
       window.matchMedia = before
     }
@@ -4673,7 +4717,7 @@ describe('LienDesk · the affidavit and retainage panes under grey heads (v2.732
     const heads = [...pane.querySelectorAll<HTMLElement>('[data-lien-pane-head]')]
     expect(heads.map((h) => h.getAttribute('data-lien-pane-head'))).toEqual(['path', 'gates', 'owner', 'paper'])
     expect(heads.map((h) => h.querySelector('.lienPaneHeadLabel')?.textContent)).toEqual(['Where this affidavit is', 'Before it can be generated', "The owner's answers", 'The paper'])
-    expect(heads[0]!.querySelector('[data-lien-pane-head-fact]')!.textContent).toBe('Fix the property record, then file the affidavit — tomorrow · owner of record, legal description, the notice missing')
+    expect(heads[0]!.querySelector('[data-lien-pane-head-fact]')!.textContent).toBe('Fix the property record, then file the affidavit — tomorrow · owner of record, legal description, a mailed notice missing')
     expect(heads[1]!.textContent).toBe('Before it can be generated✗ 3 missing · owner of record missing · county or legal description missing · no § 53.056 notice on the job')
     expect(heads[2]!.textContent).toBe("The owner's answersno call yet · bond unknown")
     expect(heads[3]!.textContent).toBe('The papershort form · Robert Douglas, Master Plumber')

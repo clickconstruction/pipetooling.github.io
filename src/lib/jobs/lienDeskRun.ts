@@ -1,6 +1,7 @@
 import { buildLienNoticeBlocks, FILING_PRINT_TIGHT_LEADING, FILING_SIGNATURE_FONT_LINK, filingDocHtml, filingHtmlHasTypedSignature, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienNoticeFields, type LienNoticeInstrument } from '../jobsDocuments/lienFilingDocuments'
 import { filingDocumentPayload } from './lienFilingDocumentLink'
-import { correctedClaim } from './lienClaimCorrection'
+import { claimSplit, claimSplitWords, correctedClaim } from './lienClaimCorrection'
+import { lienNoticeParted, lienNoticePartedHold, runNoticePrintRefusal, type LienNoticeParted } from './lienNoticeParted'
 import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -23,6 +24,8 @@ import { mailPieceForCopy, type LienMailPieceRow } from '../mail/lienMailPieces'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { LIEN_RUN_ACT, lienRunActFor, type LienRunAct } from './lienRunWords'
 import { parseLienMailedCopies, type LienMailedCopy } from './lienMailedCopies'
+
+export { runNoticePrintRefusal }
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
@@ -118,6 +121,12 @@ export type RunNotice = {
   mailBy?: string | null
   /** The scans or photos of what went in the envelope (`job_lien_desk_items.mailed_copies`, `lienMailedCopies.ts`); absent or empty = none added. */
   mailedCopies?: LienMailedCopy[]
+  /**
+   * The stored paper and the bills have parted (v2.7517, `lienNoticeParted.ts`): the claim, its retainage or its split
+   * as the draft keeps them is not what the desk would draw today. The run holds the notice out of the print. Null or
+   * absent = they agree, or the builder had no stored paper to compare.
+   */
+  parted?: LienNoticeParted | null
 }
 
 /** Where the run opens (v2.4823): on printing when any notice has not printed, else on recording the mailing, with the newest print as the day it printed. */
@@ -217,20 +226,24 @@ export function buildLienDeskRun(
     const ownerName = lienPropertyOwnerDisplayName(property.owner)
     const draft = parseLienDeskDraftFields(item.fields)
     const months = item.months.length ? item.months.slice().sort() : e.dueMonths
-    const fields =
-      draft?.notice ??
-      buildLienNoticeFieldsForJob({
-        jobName: job?.job_name,
-        jobAddress: job?.job_address,
-        originalContractorName: gc?.name ?? '',
-        openBalance: correctedClaim(e.openBalance, data.claimCorrectionsByJob[e.jobId] ?? null).claim,
-        contactPerson: signerNameFor(job?.master_user_id ?? null),
-        issuer,
-        todayYmd,
-        homesteadStatement: homesteadStatementApplies(property),
-        retainageHeld: job?.lien_retainage_held ?? null,
-        serviceTypeName: job?.service_type?.name,
-      })
+    // The paper as the desk would draw it today (v2.7517): the claim from the bills less a figure set by hand, its split
+    // and its retainage. A stored draft still prints as stored; this is what it is set beside (`lienNoticeParted`).
+    const correction = data.claimCorrectionsByJob[e.jobId] ?? null
+    const claimNow = correctedClaim(e.openBalance, correction)
+    const jobFields = buildLienNoticeFieldsForJob({
+      jobName: job?.job_name,
+      jobAddress: job?.job_address,
+      originalContractorName: gc?.name ?? '',
+      openBalance: claimNow.claim,
+      claimSplit: claimSplitWords(claimSplit(months, claimNow.claim, correction?.perMonth)) || undefined,
+      contactPerson: signerNameFor(job?.master_user_id ?? null),
+      issuer,
+      todayYmd,
+      homesteadStatement: homesteadStatementApplies(property),
+      retainageHeld: job?.lien_retainage_held ?? null,
+      serviceTypeName: job?.service_type?.name,
+    })
+    const fields = draft?.notice ?? jobFields
     const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
     const name = (job?.job_name ?? '').trim()
     // The owner's email as the property resolves it (v2.6497): the override's, else the property record's.
@@ -249,6 +262,7 @@ export function buildLienDeskRun(
       signature: runNoticeSignature(item, jobNumber, opts),
       leader: opts?.leaderFor?.(job?.master_user_id ?? null) ?? null,
       rowFields: item.fields,
+      parted: draft?.notice ? lienNoticeParted(draft.notice, jobFields, claimNow.corrected ? 'hand' : 'bills') : null,
       label: name ? `${jobNumber} · ${name}` : jobNumber,
       jobNumber,
       months,
@@ -303,19 +317,19 @@ export function buildLienRetainageRun(
     const property = resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null)
     const ownerName = lienPropertyOwnerDisplayName(property.owner)
     const draft = parseLienDeskDraftFields(item.fields)
-    const fields =
-      draft?.notice ??
-      buildLienRetainageNoticeFieldsForJob({
-        jobName: job?.job_name,
-        jobAddress: job?.job_address,
-        originalContractorName: gc?.name ?? '',
-        retainageHeld: e.retainageHeld,
-        contactPerson: signerNameFor(job?.master_user_id ?? null),
-        issuer,
-        todayYmd,
-        homesteadStatement: homesteadStatementApplies(property),
-        serviceTypeName: job?.service_type?.name,
-      })
+    // The § 53.057 form as the desk would draw it today (v2.7517): the retainage on the job is its figure.
+    const jobFields = buildLienRetainageNoticeFieldsForJob({
+      jobName: job?.job_name,
+      jobAddress: job?.job_address,
+      originalContractorName: gc?.name ?? '',
+      retainageHeld: e.retainageHeld,
+      contactPerson: signerNameFor(job?.master_user_id ?? null),
+      issuer,
+      todayYmd,
+      homesteadStatement: homesteadStatementApplies(property),
+      serviceTypeName: job?.service_type?.name,
+    })
+    const fields = draft?.notice ?? jobFields
     const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
     const name = (job?.job_name ?? '').trim()
     // The owner's email as the property resolves it (v2.6497): the override's, else the property record's.
@@ -325,10 +339,14 @@ export function buildLienRetainageRun(
       itemId: item.id,
       jobId: e.jobId,
       kind: 'retainage_53_057',
+      // What was mailed (v2.7525): the retainage notice keeps its scans as the monthly notice does.
+      mailedCopies: parseLienMailedCopies((item as { mailed_copies?: unknown }).mailed_copies),
       mailBy: e.deadline,
       signature: runNoticeSignature(item, jobNumber, opts),
       leader: opts?.leaderFor?.(job?.master_user_id ?? null) ?? null,
       rowFields: item.fields,
+      // The claim alone: a § 53.057 form carries no split and no retainage line of its own.
+      parted: draft?.notice ? lienNoticeParted({ claimAmount: draft.notice.claimAmount }, { claimAmount: jobFields.claimAmount }) : null,
       label: name ? `${jobNumber} · ${name}` : jobNumber,
       jobNumber,
       months: [],
@@ -377,6 +395,10 @@ export const RUN_UNSIGNED_PROBLEM = 'Unsigned: the leader signs it from his phon
 
 export function runNoticeProblems(n: RunNotice): string[] {
   const out: string[] = []
+  // v2.7517: the stored paper and the bills have parted, so the signed pages would state a claim the rest of the packet
+  // contradicts. First, since it is the one hold that is about what the paper says. A notice already printed is not held
+  // for it: the paper is out of the printer as it was, and the row keeps the door that takes it back.
+  if (n.parted && !n.printedAt) out.push(lienNoticePartedHold(n.parted))
   if (n.ownerUnconfirmed) out.push(RUN_OWNER_UNCONFIRMED_PROBLEM)
   // v2.5086: a builder said the leader has not signed it; a notice the builder said nothing about (undefined) is not held for it.
   // v2.5533: nor is one already printed — the paper went out as it was; the run records it as it went, and the row keeps the doors to record a pen signature first.
@@ -459,6 +481,8 @@ export function runPayPageBlocks(n: RunNotice, r: RunRecipient, rows: readonly P
     contactPerson: n.fields.contactPerson,
     phone,
     extras: n.extras,
+    // The page names the cover letter only when this notice prints one (v2.7514).
+    coverLetter: Boolean(n.coverLetter || n.coverNote),
     offer: n.offer ?? null,
     lines: n.payLines ?? null,
   })
@@ -521,11 +545,18 @@ export function runPacketHtml(
   payPagesByJob?: RunPayPages,
   /** The code on the first page that opens the run's guide (punch list #314), as the caller draws it; absent, the page prints none. */
   guideCode?: string,
+  /**
+   * Envelopes that stay out of this packet (v2.7477): the run window prints the ready notices alone, and hands in the
+   * envelopes of the ones it stopped, each with its reason, so the sheet still lists in red what did not print.
+   */
+  alsoHeld?: ReadonlyArray<{ env: RunEnvelope; why: string }>,
 ): string {
   // The run on paper (v2.4971): the checklist sheet, then for each envelope that goes out its divider and
   // its copies, every page with its foot. A held envelope — no mailing address, nothing to claim — prints
   // nothing; the sheet lists it in red with the reason.
-  const mailing = runMailing(runEnvelopes(notices))
+  const own = runMailing(runEnvelopes(notices))
+  const held = [...own.held, ...(alsoHeld ?? [])].map((h, i) => ({ env: { ...h.env, n: own.mailed.length + i + 1 }, why: h.why }))
+  const mailing = { mailed: own.mailed, held, all: [...own.mailed, ...held.map((h) => h.env)] }
   const copyPages = (env: RunEnvelope) => env.contents.flatMap(({ notice: n, recipient: r }) => runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob).map((pg) => ({ n, r, pg })))
   const pages: string[] = [runSheetHtml({ mailing, todayYmd, issuer, docsFor: (env) => copyPages(env).map((x) => x.pg.label), ...(guideCode ? { guideCode } : {}) })]
   for (const env of mailing.mailed) {
@@ -649,59 +680,6 @@ export function trackingShape(method: RunSendMethod, tracking: string): Tracking
 /** An envelope counts as mailed once it carries a number, or goes by email or hand (v2.4119). */
 export function recipientMailed(r: Pick<RunRecipient, 'method' | 'tracking' | 'via' | 'pieceId' | 'pieceStatus'>): boolean {
   return r.method === 'email' || r.method === 'hand' || (r.tracking ?? '').trim().length > 0 || recipientViaDocsmit(r)
-}
-
-/**
- * Recording after the post office (v2.4119): a notice with at least one
- * mailed envelope records now; the rest stay in the printed pile. When no
- * envelope carries a number the run records whole, as it always did — an
- * office that does not track is not stopped.
- */
-export type RunRecordSplit<T> = {
-  /** What records now. */
-  mailed: T[]
-  /** What stays in the pile: the unnumbered, then the held. */
-  waiting: T[]
-  /** Held for a problem in red (v2.5533): unsigned, an owner nobody confirmed, no address. They wait whatever their numbers say. */
-  held: T[]
-  /** Clean, but with no number yet while others have theirs (v2.4119). */
-  unnumbered: T[]
-  /** Something records and something waits. */
-  partial: boolean
-}
-
-/**
- * Back from the post office (v2.4119): the clean notices with a number record now, the rest wait; with no number
- * anywhere every clean notice records (the numbers are typed later). Since v2.5533 a notice with a problem
- * (`problems[i]`, as `runNoticeProblems` lists them) is held: it waits in the pile with its reason whatever its
- * numbers say, and the ready ones record now — the run is never all or nothing.
- */
-export function runRecordSplit<T extends RunNotice>(notices: ReadonlyArray<T>, problems?: ReadonlyArray<ReadonlyArray<string>>): RunRecordSplit<T> {
-  const held: T[] = []
-  const clean: T[] = []
-  notices.forEach((n, i) => ((problems?.[i]?.length ?? 0) > 0 ? held : clean).push(n))
-  const numbered = clean.filter((n) => n.recipients.some(recipientMailed))
-  const mailed = numbered.length === 0 || numbered.length === clean.length ? clean : numbered
-  const unnumbered = clean.filter((n) => !mailed.includes(n))
-  const waiting = [...unnumbered, ...held]
-  return { mailed, waiting, held, unnumbered, partial: mailed.length > 0 && waiting.length > 0 }
-}
-
-/** The foot's words and the button's label for a split that waits on something (v2.5533); null when everything records. */
-export function runRecordWords(split: Pick<RunRecordSplit<unknown>, 'mailed' | 'waiting' | 'held' | 'unnumbered'>): { line1: string; line2: string; button: string } | null {
-  const m = split.mailed.length
-  const h = split.held.length
-  const u = split.unnumbered.length
-  const w = split.waiting.length
-  if (m === 0 && h > 0) return { line1: 'Nothing is ready to record', line2: 'Sign or fix what is marked in red, then record.', button: 'Record the run ▸' }
-  if (w === 0) return null
-  const stays = w === 1 ? 'stays' : 'stay'
-  const line1 = h && u ? `${h} held · ${u} with no number yet` : h ? `${h} ${h === 1 ? 'notice is' : 'notices are'} held` : `${u} ${u === 1 ? 'envelope has' : 'envelopes have'} no number yet`
-  const line2 = h
-    ? `${w === 1 ? 'It stays' : 'They stay'} in the pile with the reason in red. The ${m} ready ${m === 1 ? 'one records' : 'ones record'} now.`
-    : `${w === 1 ? 'It stays' : 'They stay'} in the mail pile; the numbered ones record now.`
-  const button = u ? `Record ${m} mailed · ${w} ${stays} in the pile ▸` : `Record ${m} · ${w} held ${stays} in the pile ▸`
-  return { line1, line2, button }
 }
 
 function esc(s: string): string {

@@ -1,8 +1,7 @@
-import type { LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
-import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
+import type { LienAffidavitFields } from '../jobsDocuments/lienAffidavitFieldsType'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienClaimCorrection } from './lienClaimCorrection'
-import { buildLienAffidavitFieldsForJob } from './lienNoticeDraft'
+import { buildLienAffidavitFieldsForJob, type LienAffidavitIssuer } from './lienAffidavitJobFields'
 import type { LienWorkSpanJob } from './lienWorkSpan'
 import type { LienAffidavitForm } from './lienAffidavitForm'
 import type { LienAffidavitNoticeRow } from './lienAffidavitNotices'
@@ -32,7 +31,7 @@ export type LienDeskAffidavitFacts = {
   correction: Pick<LienClaimCorrection, 'amountOff'> | null | undefined
   /** The signer's name and title. */
   contactPerson: string
-  issuer: PhysicalInvoiceIssuer | null
+  issuer: LienAffidavitIssuer | null
   todayYmd: string
   /** The form the job's paper is on (`lienAffidavitFormForItem` of its desk item); absent, the short form. */
   form?: LienAffidavitForm

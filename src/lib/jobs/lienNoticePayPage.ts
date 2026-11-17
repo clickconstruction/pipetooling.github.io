@@ -80,12 +80,16 @@ export function payPageAppliesTo(copy: PayPageCopy): boolean {
   return copy === 'owner' || PAY_PAGE_ON_GC_COPY
 }
 
-/** The cover letter's rule, repeated on the page so it never contradicts the letter it follows. */
-export function payPageOwnerRule(gcName: string, claimantName: string): string {
+/**
+ * The cover letter's rule, repeated on the page so it never contradicts the letter it follows. The page names the
+ * letter only when one is in the envelope (v2.7514): a notice whose cover letter box is unticked, and every notice
+ * printed from the Lien window, has none, and the page told the owner to do *as the cover letter asks*.
+ */
+export function payPageOwnerRule(gcName: string, claimantName: string, coverLetter: boolean = true): string {
   const gc = gcName.trim()
   const us = claimantName.trim() || 'us'
   if (!gc) return ''
-  return `Please pay these only if ${gc} has told you in writing that you may pay ${us} directly. Otherwise hold the amount back from ${gc}, as the cover letter asks.`
+  return `Please pay these only if ${gc} has told you in writing that you may pay ${us} directly. Otherwise hold the amount back from ${gc}${coverLetter ? ', as the cover letter asks' : ''}.`
 }
 
 /** "5 bills · $28,987.00 still owed" — the desk's label for the page. */
@@ -106,6 +110,8 @@ export type PayPageInput = {
   contactPerson: string
   phone: string
   extras: FilingDocExtras
+  /** A cover letter or note rides in front of the notice in this envelope (v2.7514): only then does the page name it. */
+  coverLetter: boolean
   /** The pay offer (v2.4713): the leader's discount on each payable bill paid in full by a day; null or absent = no offer. */
   offer?: LienPayOffer | null
   /** The office's typed lines (v2.4724), by invoice id; the bills' own lines elsewhere. */
@@ -134,7 +140,7 @@ export function payPageBlocks(i: PayPageInput): FilingDocBlock[] {
     text: "Each code below opens that bill's secure payment page. Scan it with a phone camera to pay by card or bank transfer, or type the address under it. The bill itself is enclosed behind this page.",
   })
   if (i.copy === 'owner') {
-    const rule = payPageOwnerRule(i.gcName, i.claimantName)
+    const rule = payPageOwnerRule(i.gcName, i.claimantName, i.coverLetter)
     if (rule) blocks.push({ kind: 'callout', text: offer ? `${rule} ${lienOfferPayerLine(i.gcName)}` : rule })
   }
   for (const r of applyPayLines(i.rows, i.lines)) {

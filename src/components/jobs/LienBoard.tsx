@@ -336,7 +336,20 @@ export default function LienBoard({
    * each over its own column, so they show on arrival; where the columns stack, and on a phone, they stack. Absent, or on
    * the leader's own bins, none is drawn.
    */
-  prints?: { notice: LienBoardPrintSide | null; affidavit: LienBoardPrintSide | null; onPress: (side: LienBoardPrintSide) => void; onLeft: (side: LienBoardPrintSide) => void; onNote: (side: LienBoardPrintSide) => void; busy?: boolean } | null
+  prints?: {
+    notice: LienBoardPrintSide | null
+    affidavit: LienBoardPrintSide | null
+    onPress: (side: LienBoardPrintSide) => void
+    onLeft: (side: LienBoardPrintSide) => void
+    onNote: (side: LienBoardPrintSide) => void
+    busy?: boolean
+    /**
+     * The office's reminder (v2.7491), beside the line that counts the notices waiting on the leader's signature: the
+     * same press as To do's waiting rows carry, so it stands on a day when no paper waits on an approval. Null with
+     * no notice to sign, or for a viewer who cannot send it.
+     */
+    remind?: { button: string; dead: boolean; busy?: boolean; onPress: () => void } | null
+  } | null
 }) {
   const gridRef = useRef<HTMLDivElement | null>(null)
   const [stacked, setStacked] = useState<boolean>(isMobile)
@@ -447,6 +460,21 @@ export default function LienBoard({
             {side.left.words}
             {' · '}
             <button type="button" className="lienJobDoor" data-lien-board-print-left-door onClick={() => prints.onLeft(side)} style={lineDoor}>{side.left.door} ›</button>
+            {side.kind === 'notice' && prints.remind ? (
+              <>
+                {' · '}
+                <button
+                  type="button"
+                  className="lienJobDoor"
+                  data-lien-board-remind
+                  disabled={prints.remind.dead || Boolean(prints.remind.busy)}
+                  onClick={prints.remind.onPress}
+                  style={{ ...lineDoor, ...(prints.remind.dead || prints.remind.busy ? { color: 'var(--text-muted)', cursor: 'default' } : null) }}
+                >
+                  {prints.remind.busy ? 'Reminding…' : prints.remind.dead ? prints.remind.button : `${prints.remind.button} ›`}
+                </button>
+              </>
+            ) : null}
           </div>
         ) : null}
         {side.note ? (
