@@ -8,6 +8,7 @@ import {
   countDashboardRtbDraftsForJob,
   dashboardBilledInvoiceAmounts,
   dashboardInvoiceToPaymentModal,
+  dashboardJobCardMoney,
   dashboardJobHasCustomerForBilling,
   isDashboardBillingInvoicesRole,
   jobBillingFromDashboardInvoice,
@@ -450,5 +451,33 @@ describe('buildBilledWaitingDashboardUnits', () => {
       { kind: 'invoice', inv: i2 },
       { kind: 'invoice', inv: i3 },
     ])
+  })
+})
+
+describe('dashboardJobCardMoney: the plain job card says what its bills owe (v2.7532)', () => {
+  // One stage of three billed: a $42,300 price, $15,120 paid, a $16,800 bill paid 90% and a $350 bill unpaid.
+  const job = mkJob({ id: 'job-9', revenue: 42_300, payments_made: 15_120 })
+  const big = mkInvoice({ id: 'i-big', job_id: 'job-9', amount: 16_800, invoice_payments: [mkPayment({ amount: 15_120 })] })
+  const small = mkInvoice({ id: 'i-small', job_id: 'job-9', amount: 350 })
+
+  it('a job with billed bills reads their open sum, and names the rest of the price apart', () => {
+    const units = buildBilledWaitingDashboardUnits([job], [big, small])
+    const money = dashboardJobCardMoney(job, units)
+    expect(money.bills).toBe(2)
+    expect(money.billedOpen).toBe(2_030)
+    expect(money.rest).toBe(25_150)
+    expect(money.words).toBe('Billed and still open: $2,030.00 · $25,150.00 of the job is on no open bill')
+  })
+
+  it('a job whose bills carry everything left says the one figure', () => {
+    const whole = mkJob({ id: 'job-9', revenue: 17_150, payments_made: 15_120 })
+    expect(dashboardJobCardMoney(whole, buildBilledWaitingDashboardUnits([whole], [big, small])).words).toBe('Billed and still open: $2,030.00')
+  })
+
+  it('a job with no billed bill, billed as one shell, keeps Remaining; another job’s bills are not counted', () => {
+    const shell = mkJob({ id: 'job-2', revenue: 1_050, payments_made: 50 })
+    const money = dashboardJobCardMoney(shell, buildBilledWaitingDashboardUnits([shell, job], [big, small]))
+    expect(money.bills).toBe(0)
+    expect(money.words).toBe('Remaining: $1,000.00')
   })
 })

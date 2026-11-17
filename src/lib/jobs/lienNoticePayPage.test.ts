@@ -28,6 +28,7 @@ const base = {
   claimantName: 'Click Plumbing and Electrical',
   contactPerson: 'Malachi Whites, Master Plumber (#RMP41130)',
   phone: '(512) 360-0599',
+  coverLetter: true,
   extras: { letterhead: { company: 'Click Plumbing and Electrical', licenseLine: '', contactLines: ['5501 Balcones Dr A141, Austin, TX 78731'] }, refItems: ['Job #273', 'Work months April, June, July and August 2026', 'September 22, 2026'] },
 }
 
@@ -57,6 +58,19 @@ describe("the pay page — the owner's copy", () => {
     const callout = blocks.find((b) => b.kind === 'callout')
     expect(callout).toEqual({ kind: 'callout', text: 'Please pay these only if RLC-Dunmere Mallin has told you in writing that you may pay Click Plumbing and Electrical directly. Otherwise hold the amount back from RLC-Dunmere Mallin, as the cover letter asks.' })
     expect(payPageOwnerRule('', 'Click')).toBe('')
+  })
+
+  it('names the cover letter only when one is in the envelope (v2.7514)', () => {
+    // A made-up builder and a made-up claimant.
+    const withLetter = payPageOwnerRule('Birch Builders LLC', 'Pipe and Wire Co', true)
+    const without = payPageOwnerRule('Birch Builders LLC', 'Pipe and Wire Co', false)
+    expect(withLetter).toBe('Please pay these only if Birch Builders LLC has told you in writing that you may pay Pipe and Wire Co directly. Otherwise hold the amount back from Birch Builders LLC, as the cover letter asks.')
+    expect(without).toBe('Please pay these only if Birch Builders LLC has told you in writing that you may pay Pipe and Wire Co directly. Otherwise hold the amount back from Birch Builders LLC.')
+    // The page with no letter in front of it never points at one; everything else on it is the same.
+    const page = payPageBlocks({ ...base, copy: 'owner', coverLetter: false })
+    expect(JSON.stringify(page)).not.toContain('cover letter')
+    expect(page).toHaveLength(blocks.length)
+    expect(page.filter((b) => b.kind !== 'callout')).toEqual(blocks.filter((b) => b.kind !== 'callout'))
   })
 
   it('a row per bill: the code and the address for a Stripe bill, a note instead for a paper one', () => {
@@ -134,7 +148,7 @@ describe('the pay page lines the office types (v2.4724)', () => {
     expect(payLineInvoiceId('claimAmount')).toBeNull()
   })
   it('prints the typed line plain on paper, and as a box with its note on the desk', () => {
-    const blocks = payPageBlocks({ rows, assets: {}, copy: 'owner', copyLabel: '', gcName: 'RLC- Dunmere Mallin', claimantName: 'Click Plumbing and Electrical', contactPerson: '', phone: '', extras: {}, lines: { a: 'Plumbing for the Linmoor house' } })
+    const blocks = payPageBlocks({ rows, assets: {}, copy: 'owner', copyLabel: '', gcName: 'RLC- Dunmere Mallin', claimantName: 'Click Plumbing and Electrical', contactPerson: '', phone: '', coverLetter: true, extras: {}, lines: { a: 'Plumbing for the Linmoor house' } })
     const printed = filingDocHtml(blocks)
     expect(printed).toContain('Plumbing for the Linmoor house')
     expect(printed).not.toContain('data-field')
@@ -144,7 +158,7 @@ describe('the pay page lines the office types (v2.4724)', () => {
     expect(desk).toContain('data-reset="payLine:a"')
     const locked = filingDocHtml(blocks, { marks: { [payLineField('a')]: { kind: 'locked', changed: true } } })
     expect(locked).not.toContain('data-reset')
-    const empty = filingDocHtml(payPageBlocks({ rows, assets: {}, copy: 'owner', copyLabel: '', gcName: '', claimantName: '', contactPerson: '', phone: '', extras: {} }), { marks: { [payLineField('a')]: { kind: 'typed' } } })
+    const empty = filingDocHtml(payPageBlocks({ rows, assets: {}, copy: 'owner', copyLabel: '', gcName: '', claimantName: '', contactPerson: '', phone: '', coverLetter: true, extras: {} }), { marks: { [payLineField('a')]: { kind: 'typed' } } })
     expect(empty).toContain('no line · click to add one')
   })
 })

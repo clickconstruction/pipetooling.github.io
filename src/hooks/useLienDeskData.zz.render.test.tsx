@@ -49,6 +49,16 @@ vi.mock('../utils/errorHandling', () => ({
     if (r.error) throw r.error
     return r.data
   },
+  formatErrorMessage: (e: unknown, fallback: string) => (e instanceof Error && e.message ? `${fallback} ${e.message}` : fallback),
+}))
+// Retainage nobody recorded (fix A of the retainage clock check, PR 2): the desk's own read, set per test.
+const unrecorded = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>>, fail: null as Error | null, reads: 0 }))
+vi.mock('../lib/ar/retainageHeldIo', () => ({
+  loadRetainageUnrecorded: async () => {
+    unrecorded.reads += 1
+    if (unrecorded.fail) throw unrecorded.fail
+    return unrecorded.rows
+  },
 }))
 
 const { useLienDeskData } = await import('./useLienDeskData')
@@ -181,6 +191,38 @@ describe('useLienDeskData · ZZ test jobs', () => {
     } finally {
       TABLES.job_lien_desk_items = items
       delete TABLES.mail_pieces
+    }
+  })
+
+  it('reads retainage nobody recorded on the open desk alone, without a ZZ job when they are hidden, and stands when that read is refused', async () => {
+    const row = (jobId: string, name: string) => ({ jobId, label: jobId, name, heldBy: 'Kestrin Builders', status: 'billed', suggestion: { held: 250, percent: 10, billCount: 1, billIds: ['b'] }, noteDay: null })
+    unrecorded.rows = [row('H', 'Cedar Hollow Clinic'), row('T', 'ZZ TEST sink')]
+    unrecorded.reads = 0
+    try {
+      // The Dashboard's light read makes no such request.
+      const light = await read(false)
+      expect(light.retainageUnrecorded).toBeUndefined()
+      expect(unrecorded.reads).toBe(0)
+
+      const open = renderHook(() => useLienDeskData(true, '2026-10-09', { light: false, hideZzTestJobs: false }))
+      await waitFor(() => expect(open.result.current.data).not.toBeNull())
+      expect(open.result.current.data!.retainageUnrecorded?.map((r) => r.jobId)).toEqual(['H', 'T'])
+      expect(open.result.current.data!.retainageUnrecordedFailure).toBeNull()
+
+      const hidden = renderHook(() => useLienDeskData(true, '2026-10-09', { light: false, hideZzTestJobs: true }))
+      await waitFor(() => expect(hidden.result.current.data).not.toBeNull())
+      expect(hidden.result.current.data!.retainageUnrecorded?.map((r) => r.jobId)).toEqual(['H'])
+
+      unrecorded.fail = new Error('permission denied for table jobs_ledger_thread_notes')
+      const refused = renderHook(() => useLienDeskData(true, '2026-10-09', { light: false, hideZzTestJobs: false }))
+      await waitFor(() => expect(refused.result.current.data).not.toBeNull())
+      expect(refused.result.current.data!.retainageUnrecorded).toEqual([])
+      expect(refused.result.current.data!.retainageUnrecordedFailure).toBe('The check for retainage nobody recorded could not be read. permission denied for table jobs_ledger_thread_notes')
+      // The rest of the desk is read as before.
+      expect(refused.result.current.data!.queue.entries.map((e) => e.jobId)).toContain('A')
+    } finally {
+      unrecorded.rows = []
+      unrecorded.fail = null
     }
   })
 })

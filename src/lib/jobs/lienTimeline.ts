@@ -359,7 +359,8 @@ function noticeStateWords(state: LienTimelineNoticeState, holdUntil: string | nu
     case 'ready':
       return 'approved to print'
     case 'printed':
-      return 'in the mail · tracking owed'
+      // The desk's name for the step, as *approved to print* is for the one before it (v2.7522; *in the mail · tracking owed* until then).
+      return 'approved to mail'
     case 'held':
       return holdUntil ? `held · re-asks ${lienDateWords(holdUntil, todayYmd)}` : 'held'
     default:
@@ -418,7 +419,7 @@ function affidavitNextWords(a: NonNullable<LienTimelineInput['affidavit']> | nul
       return { words: `Held — the affidavit ${a?.holdUntil ? `re-asks ${lienDateWords(a.holdUntil, todayYmd)}` : 'waits on its hold'}; file by ${lastDayWords}.`, dated: true }
     case 'needs_property': {
       const keys = a?.missingKeys ?? []
-      const act = lienActFor({ paper: 'affidavit', action: 'fix_property', missing: keys })
+      const act = lienActFor({ paper: 'affidavit', action: 'fix_property', missing: keys, noticeStanding: a?.noticeStanding ?? null })
       if (!act) break
       // No lien attaches to public property: the fact, and who to ask.
       if (!act.dated) return { words: `${act.words} — ${act.under.charAt(0).toLowerCase()}${act.under.slice(1)}.`, dated: false }

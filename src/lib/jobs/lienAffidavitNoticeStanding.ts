@@ -65,6 +65,17 @@ export function lienAffidavitNoticeStanding(
   }
 }
 
+/**
+ * The standing from the notice's place on the desk alone, for a reader that holds no desk row: the Lien window is
+ * handed the notice's pile by its opener (`lienWindowDeskNotice`). `''` or nothing is a reader that cannot know, and
+ * gives null, so its words stay the late notice's.
+ */
+export function lienAffidavitNoticeStandingOnDesk(pile: LienDeskPile | '' | null | undefined): LienAffidavitNoticeWaiting | null {
+  if (!pile) return null
+  const standing = lienAffidavitNoticeStanding({ isSub: true, gates: [{ key: 'notice', ok: false }] }, { pile, dueMonths: [] })
+  return lienAffidavitNoticeWaits(standing) ? standing : null
+}
+
 /** Whether the gate is closed in this standing. */
 export function lienAffidavitNoticeWaits(standing: LienAffidavitNoticeStanding | null | undefined): standing is LienAffidavitNoticeWaiting {
   return standing != null && standing !== 'not_needed' && standing !== 'on_record'
