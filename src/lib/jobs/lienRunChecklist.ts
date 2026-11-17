@@ -42,6 +42,8 @@ export type LienRunRow = {
   jobNumber: string
   /** "650 · AXO Schertz" */
   label: string
+  /** The property's street, when the job's name does not say it (v2.7489); '' = none. */
+  street: string
   recipients: LienRunRecipientCell[]
   amount: number
   printed: LienRunTickPrinted | null
@@ -131,6 +133,7 @@ export function lienRunChecklistRows(input: LienRunChecklistInput): LienRunRow[]
       jobId: n.jobId,
       jobNumber: n.jobNumber,
       label: n.label,
+      street: (n.street ?? '').trim(),
       recipients,
       amount: n.amount,
       printed,

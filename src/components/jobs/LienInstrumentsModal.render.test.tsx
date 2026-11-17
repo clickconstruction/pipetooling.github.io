@@ -24,6 +24,8 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 vi.mock('../../lib/fetchJobWithDetailsById', () => ({ fetchJobWithDetailsById: vi.fn(async () => null) }))
+// The lien path window's reads (v2.7526): never answered here, so the window opens on *Reading the job…*.
+vi.mock('../../lib/jobs/lienJobPathIo', () => ({ readLienJobPath: vi.fn(() => new Promise(() => {})), setJobLienPathAnswer: vi.fn() }))
 // The pay codes (v2.4849) are drawn by a canvas the test runner has not got; the rows stand without them.
 vi.mock('../../lib/jobs/lienNoticePayPageAssets', () => ({ buildPayPageAssets: async () => ({}) }))
 vi.mock('../../lib/supabaseAccessTokenForEdge', () => ({ getAccessTokenForEdgeFunctions: async () => null }))
@@ -92,6 +94,27 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     await waitFor(() => expect(document.querySelector('[data-lien-window-timeline]')).toBeTruthy())
     expect(document.querySelector('[data-lien-window-in-kind]')).toBeNull()
+  })
+
+  it('a job a person took off the lien path opens whole, says so with the reason, and offers the office the way back; any other job offers Not lienable… (v2.7521, v2.7526)', async () => {
+    const { unmount } = renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ lien_path_answer: 'off_path', lien_path_reason: 'The bill is for trips to pick up checks.', lien_path_answered_at: '2026-09-10T15:00:00Z' })} />)
+    await waitFor(() => expect(document.querySelector('[data-lien-window-timeline]')).toBeTruthy())
+    const note = document.querySelector('[data-lien-window-off-path]') as HTMLElement
+    expect(note.textContent).toContain('Off the lien path')
+    expect(note.textContent).toContain('Someone took this job off the lien path on Sep 10. The reason given: The bill is for trips to pick up checks.')
+    expect(document.querySelector('[data-lien-window-not-lienable]')).toBeNull()
+    // The window is whole under the note.
+    expect(screen.getByTestId('lien-rules-door')).toBeTruthy()
+    fireEvent.click(document.querySelector('[data-lien-window-put-back]')!)
+    expect(await screen.findByTestId('lien-job-path-window')).toBeTruthy()
+    unmount()
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    await waitFor(() => expect(document.querySelector('[data-lien-window-timeline]')).toBeTruthy())
+    expect(document.querySelector('[data-lien-window-off-path]')).toBeNull()
+    const door = document.querySelector('[data-lien-window-not-lienable]') as HTMLElement
+    expect(door.textContent).toContain('Not lienable…')
+    fireEvent.click(door.querySelector('button')!)
+    expect(await screen.findByTestId('lien-job-path-window')).toBeTruthy()
   })
 
   it('a computer keeps the steps as a row and its doors, has a × that closes (v2.4398), and has no lientooling.com door (v2.4403)', async () => {

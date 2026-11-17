@@ -47,6 +47,11 @@ describe('the bin Off the lien path', () => {
     })
   })
 
+  it('names who took a job off by the name the read found, before asking for one', () => {
+    const bin = buildLienOffPathBin([job({ byName: ' Dana ' })], { userName: () => 'Someone else' })
+    expect(bin?.rows[0]?.line).toBe('ZZ Test Builders · off since Nov 16, by Dana · not on the attorney’s list')
+  })
+
   it('says since when a job is with the attorney, and why one cannot go on the list', () => {
     const bin = buildLienOffPathBin([job({ attorneySince: '2026-11-17T15:00:00Z' }), job({ jobId: 'j2', number: '978', status: 'working', unpaid: 10 })])
     expect(bin?.rows[0]?.line).toBe('ZZ Test Builders · off since Nov 16 · with the attorney since Nov 17')

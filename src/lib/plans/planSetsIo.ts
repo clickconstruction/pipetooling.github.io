@@ -6,6 +6,7 @@
  */
 import { supabase } from '../supabase'
 import type { NewSetDraft, OtherPart, PlanPartRow, PlanSetRow } from './planSets'
+import { sheetCountOf } from './planSets'
 import { PAPER_KINDS, type PaperDraft, type PaperRequest } from '../papers/papers'
 import { askRow, type AskLane } from '../developments/ask'
 import { sendAsk } from '../developments/askWrites'
@@ -70,6 +71,8 @@ export interface JobPlansIo {
   /** A paper onto another part of the site (v2.6632): the set it went with stays behind, so it goes on the new part itself. */
   movePaper(setId: string, partId: string): Promise<void>
   updateMemo(setId: string, memo: string): Promise<void>
+  /** How many sheets a set has, typed by a person; null clears it (punch list #367). */
+  updateSheetCount(setId: string, count: number | null): Promise<void>
   /** What changed from the set before it, written or rewritten on a set already on the part (v2.6356). */
   updateChanges(setId: string, changes: string): Promise<void>
   /** A saved set moved to another Drive link, on its own row (v2.7464); the job's old link follows by the database's mirror. */
@@ -222,6 +225,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
     },
     async addSet({ partId, draft, makeCurrent, replacesSetId, marksUpSetId, jobId, userId }) {
       const changes = (draft.changes ?? '').trim()
+      const sheets = sheetCountOf(draft.sheets)
       const made = taken(
         await supabase
           .from('plan_sets')
@@ -234,6 +238,8 @@ export function supabaseJobPlansIo(): JobPlansIo {
             memo: draft.memo.trim(),
             // Sent only when written, so a set with none still saves while the column's push is minutes behind the deploy.
             ...(changes ? { changes } : {}),
+            // The sheet count rides only when typed, for the same reason.
+            ...(sheets != null ? { sheet_count: sheets } : {}),
             link: draft.link.trim(),
             replaces_set_id: replacesSetId,
             marks_up_set_id: marksUpSetId,
@@ -265,6 +271,11 @@ export function supabaseJobPlansIo(): JobPlansIo {
     async updateMemo(setId, memo) {
       const r = await supabase.from('plan_sets').update({ memo }).eq('id', setId)
       if (r.error) throw r.error
+    },
+    async updateSheetCount(setId, count) {
+      const r = await supabase.from('plan_sets').update({ sheet_count: count }).eq('id', setId).select('id')
+      if (r.error) throw r.error
+      if (!r.data || r.data.length === 0) throw new Error('The sheet count was not saved. The set may have moved, or you may not have the right to change it.')
     },
     async updateChanges(setId, changes) {
       const r = await supabase.from('plan_sets').update({ changes: changes.trim() }).eq('id', setId)

@@ -76,7 +76,8 @@ import { buildSitePlansView, sitePlansCountWords, sitePlansNeedWords } from '../
 import { supabaseJobPlansIo, type SitePlansRead } from '../lib/plans/planSetsIo'
 import { buildPlansByDate, plansByDateCrewNote, plansByDateUnsentWords, type PlansByDateClock, type PlansByDateInput } from '../lib/plans/plansByDate'
 import { buildPlansByDateCards, type PbdCardAction } from '../lib/plans/plansByDateCards'
-import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { useConfirmDialog, usePromptDialog } from '../contexts/ConfirmDialogContext'
+import { SHEET_COUNT_PROBLEM, sheetCountOf } from '../lib/plans/planSets'
 import { BidScheduleSheet } from '../components/bids/BidScheduleSheet'
 import { scheduleDraftOf, type BidScheduleColumns } from '../lib/bids/bidSchedule'
 import { writeBidSchedule } from '../lib/bids/bidScheduleWrites'
@@ -429,6 +430,7 @@ export default function DevelopmentPage() {
   // The By date view's *+ New set* lands on the parts table's own form.
   const [startSetOn, setStartSetOn] = useState<{ partId: string; nonce: number } | null>(null)
   const confirmDialog = useConfirmDialog()
+  const promptDialog = usePromptDialog()
   const overheadRead = useSiteOverhead(shownJobIds, (scoreboardOpen || timelineOpen) && canSeeSiteCosts(role))
   // Who holds the card each counted charge went on (v2.6457): the card id alone out of each bank record, while the board is open.
   const cardTxIds = useMemo(() => (costsByJobId?.state === 'read' ? [...costsByJobId.byJobId.values()].flatMap((r) => r.breakdown.cardLines.map((l) => l.txId).filter((id): id is string => !!id)) : []), [costsByJobId])
@@ -1214,6 +1216,23 @@ export default function DevelopmentPage() {
       setComposing(true)
       window.setTimeout(() => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.changed)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
     } else if (a.kind === 'set-schedule') setScheduleFor(a.bidId)
+    else if (a.kind === 'set-sheets') {
+      // A set's sheet count, typed by a person: an empty answer clears it, Cancel leaves it.
+      const typed = await promptDialog({ title: a.setName, message: 'How many sheets does this set have? Leave it empty if nobody has counted.', confirmLabel: 'Save the sheet count', defaultValue: a.count != null ? String(a.count) : '', placeholder: 'like 64' })
+      if (typed === null) return
+      const count = typed.trim() ? sheetCountOf(typed) : null
+      if (typed.trim() && count === null) {
+        showToast(SHEET_COUNT_PROBLEM, 'error')
+        return
+      }
+      try {
+        await siteIo.updateSheetCount(a.setId, count)
+        setSiteGen((n) => n + 1)
+        showToast(count === null ? 'The sheet count is cleared.' : 'The sheet count is saved.', 'success')
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'The sheet count did not save.'), 'error')
+      }
+    }
     else if (a.kind === 'build-from') {
       if (!siteWrites) return
       if (!(await confirmDialog({ message: a.message, confirmLabel: a.confirmLabel }))) return
