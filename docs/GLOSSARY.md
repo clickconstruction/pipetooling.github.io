@@ -6587,6 +6587,12 @@ The **Tasks folder** (v2.6601, punch list #273 PR 4a, `drive_tasks_folder_id`, t
 a pasted link is checked for the write, `tasks_unwritable`);
 until it is set every filed row reads `NO_TASKS_FOLDER_WORDS`.
 
+**Signed contracts card** (v2.7647, punch list #377): the card on Documents → Where files go that says where each signed job contract's copy in Google Drive stands.
+It counts the papers *in Drive*, *waiting* and *held*, and its press files the waiting ones now.
+**Contracts** (the folder): the sixth folder of a job's tree, inside Team only, made the first time the app files a signed contract on the job.
+**Filed** and **adopted**: a contract's Drive copy is *filed* when the app uploaded it, and *adopted* when the office already kept the file in the jobs drive and the app tied it to the record where it sits.
+**Held** (a contract): a signed paper that could not be filed, with its reason on the record and the door that fixes it.
+
 ### Empty state
 The app's one shape for a list with nothing in it (punch list #184, sweep C): the list says what fills it and offers the press, or, where empty is the good state, says so and names where to look next, so a bare *No bills* or *Nothing here* never leaves the person guessing.
 [`EmptyState`](../src/components/EmptyState.tsx) draws `main`, then `next` as the press (a button, or a Link when the press is a page), `orNext` as a second press after *or* (v2.5986: *Clear the search or Show every bid*, the bid picker while Only my bids is on), then `tail` (*No bids yet.
