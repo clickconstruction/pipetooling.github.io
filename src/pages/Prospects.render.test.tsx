@@ -882,7 +882,7 @@ describe('Prospect List, the row actions and what it remembers', () => {
     fireEvent.click(within(row).getByRole('button', { name: 'Edit' }))
     const dialog = await screen.findByRole('dialog')
     expect((within(dialog).getByLabelText('Company') as HTMLInputElement).value).toBe('Delta Gone')
-    expect(within(dialog).queryByRole('button', { name: '+' })).toBeNull()
+    expect(within(dialog).getByText('Edit Prospect')).toBeTruthy()
   })
 
   it('Not a fit and Delete on such a row write it, and Delete asks first', async () => {
@@ -1284,6 +1284,70 @@ describe('the windows', () => {
     await waitFor(() => expect(writesTo('prospects', 'update')).toHaveLength(1))
     expect(writesTo('prospects', 'update')[0]).toMatchObject({ payload: { company_name: 'Alpha Builders West' }, filters: { id: 'cu-1' } })
     await waitFor(() => expect(onCard()).toContain('Alpha Builders West'))
+  })
+
+  it('New Prospect closes on Escape while untouched, and asks once something is typed', async () => {
+    await deck('/prospects')
+    press('New Prospect')
+    let dialog = await screen.findByRole('dialog')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    press('New Prospect')
+    dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Company'), { target: { value: 'Kilo Masonry' } })
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(await screen.findByText('The new prospect is not saved.')).toBeTruthy()
+    expect(writesTo('prospects')).toHaveLength(0)
+  })
+
+  it('New Prospect with nobody named says what is missing and writes nothing', async () => {
+    await deck('/prospects')
+    press('New Prospect')
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await settle()
+    expect(writesTo('prospects')).toHaveLength(0)
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(dialog.textContent).toMatch(/name|company/i)
+  })
+
+  it('New Prospect picked as another kind saves that kind and moves to its lane', async () => {
+    await deck('/prospects')
+    press('New Prospect')
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('radio', { name: /A sub/ }))
+    fireEvent.change(within(dialog).getByLabelText('Company'), { target: { value: 'Kilo Masonry' } })
+    fireEvent.change(within(dialog).getByPlaceholderText('Concrete, Fire sprinkler'), { target: { value: 'Masonry, Concrete' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(writesTo('prospects', 'insert')).toHaveLength(1))
+    expect(writesTo('prospects', 'insert')[0]?.payload).toMatchObject({ kind: 'sub', company_name: 'Kilo Masonry', trades: ['Masonry', 'Concrete'] })
+    await waitFor(() => expect(where()).toBe('/prospects?tab=follow-up&kind=subs'))
+  })
+
+  it('Edit prospect on the card warms it with +, and Delete asks, deletes it and brings up the next card', async () => {
+    await deck('/prospects')
+    press('Edit prospect')
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: '+1' }))
+    await waitFor(() => expect(writesTo('prospects', 'update')).toHaveLength(1))
+    expect(writesTo('prospects', 'update')[0]).toMatchObject({ payload: { warmth_count: 1 }, filters: { id: 'cu-1' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete prospect' }))
+    const ask = await screen.findByRole('alertdialog')
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(writesTo('prospects', 'delete')).toHaveLength(1))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await waitFor(() => expect(onCard()).toContain('Bravo Homes'))
+    expect(screen.getByText('1 of 2')).toBeTruthy()
+  })
+
+  it('Edit prospect asks before it throws away a change', async () => {
+    await deck('/prospects')
+    press('Edit prospect')
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Company'), { target: { value: 'Alpha Builders West' } })
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(await screen.findByText('The changes to this prospect are not saved.')).toBeTruthy()
+    expect(writesTo('prospects')).toHaveLength(0)
   })
 
   it('Set callback opens its window and saves a callback for the card', async () => {

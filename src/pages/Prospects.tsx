@@ -30,21 +30,17 @@ import {
   sourceProspectOf,
 } from '../lib/prospects/prospectConversion'
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
-import { PROSPECT_COMPANY_ROLES, PROSPECT_KINDS, PROSPECT_KIND_WORDS, PROSPECT_SOURCES, benchDraftFromProspect, kindFieldsPayload, kindFromUrlKey, prospectKindFacts, prospectLandedToast, tradesText, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
+import { PROSPECT_KINDS, PROSPECT_KIND_WORDS, benchDraftFromProspect, kindFromUrlKey, prospectKindFacts, prospectLandedToast, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
 import { addGcCompany, askGcCompanies } from '../lib/gc/gcIo'
 import { cardOnLane, kindFromSearch, laneLoadingWords } from '../lib/prospects/laneLoad'
-import { companyDouble, doubleLaneParams, type CompanyDouble } from '../lib/prospects/companyDouble'
+import { doubleLaneParams, type CompanyDouble } from '../lib/prospects/companyDouble'
 import { stripReads } from '../lib/prospects/stripState'
-import { ProspectPersonForm } from '../components/prospects/ProspectPersonForm'
-import { EMPTY_COMPANY, EMPTY_PERSON, OK_TO_TEXT_CHOICES, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type OkToText, type PersonFields } from '../lib/prospects/personBlock'
-import { BY_NEED_NOTE, stillQueued, tradesLeftToPick, withTrade } from '../lib/prospects/subsLane'
+import { OK_TO_TEXT_CHOICES, callNumbers, okToTextOf, personLineParts, prospectTitle, textAskWords, type OkToText } from '../lib/prospects/personBlock'
+import { BY_NEED_NOTE, stillQueued } from '../lib/prospects/subsLane'
 import { gcNeeds } from '../lib/prospects/gcNeeds'
 import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
 import { EmptyState, type EmptyStateWords } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
-import { useLeaveGuard } from '../hooks/useLeaveGuard'
-import { LeaveQuestion } from '../components/bids/SubmittalLeaveGuard'
-import { anyTyped, editDirty, editSnapshotOf } from '../lib/prospects/windowLeave'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
 import { SOONEST_BID_NOTE, jobToHandOn, newProjectSeedFromLead } from '../lib/prospects/gcLeadLane'
@@ -57,6 +53,10 @@ import { permitsLinkCleared } from '../lib/research/permitsLink'
 import { ProspectCallbackModal } from '../components/prospects/ProspectCallbackModal'
 import { ProspectsActivityTab } from '../components/prospects/ProspectsActivityTab'
 import { ProspectsConvertTab } from '../components/prospects/ProspectsConvertTab'
+import { EditProspectWindow } from '../components/prospects/EditProspectWindow'
+import { NewProspectWindow } from '../components/prospects/NewProspectWindow'
+import { useEditProspectWindow } from '../components/prospects/useEditProspectWindow'
+import { useNewProspectWindow } from '../components/prospects/useNewProspectWindow'
 import { ProspectsListTab } from '../components/prospects/ProspectsListTab'
 import { useProspectListTab } from '../components/prospects/useProspectListTab'
 import { ProspectCopyBlankFieldsModal } from '../components/prospects/ProspectCopyBlankFieldsModal'
@@ -107,84 +107,6 @@ const tabStyle = (active: boolean) => ({
 })
 
 
-/** The boxes a kind adds to New Prospect and Edit prospect (v2.5559): where we found them for every kind; a sub's trades, range and language; a GC lead's role. */
-function renderKindFields(
-  k: ProspectKind,
-  f: {
-    source: string
-    setSource: (v: string) => void
-    trades: string
-    setTrades: (v: string) => void
-    maxMiles: string
-    setMaxMiles: (v: string) => void
-    role: string
-    setRole: (v: string) => void
-    /** The bench's trade names (v2.5560), offered as picks under Trades. */
-    tradeChoices?: readonly string[]
-  },
-) {
-  const inputStyle = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
-  const labelStyle = { display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' } as const
-  return (
-    <>
-      {k === 'gc_lead' && (
-        <div>
-          <span style={labelStyle}>Who they are</span>
-          <div style={{ display: 'flex', gap: '0.5rem 0.9rem', flexWrap: 'wrap', fontSize: '0.875rem' }}>
-            {PROSPECT_COMPANY_ROLES.map((r) => (
-              <label key={r.role} style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
-                <input type="radio" name="prospect-company-role" checked={f.role === r.role} onChange={() => f.setRole(r.role)} />
-                {r.label}
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-      {k === 'sub' && (
-        <>
-          <label>
-            <span style={labelStyle}>
-              Trades <span style={{ color: 'var(--text-muted)' }}>— the bench's names, a comma between two</span>
-            </span>
-            <input type="text" value={f.trades} onChange={(e) => f.setTrades(e.target.value)} style={inputStyle} placeholder="Concrete, Fire sprinkler" />
-          </label>
-          {(() => {
-            const left = tradesLeftToPick(f.tradeChoices ?? [], f.trades)
-            if (left.length === 0) return null
-            return (
-              <div role="group" aria-label="The bench's trades" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '-0.4rem', fontSize: '0.75rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>On the bench:</span>
-                {left.map((trade) => (
-                  <button
-                    key={trade}
-                    type="button"
-                    onClick={() => f.setTrades(withTrade(f.trades, trade))}
-                    style={{ font: 'inherit', fontSize: '0.75rem', padding: '0.05rem 0.5rem', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
-                  >
-                    + {trade}
-                  </button>
-                ))}
-              </div>
-            )
-          })()}
-          <label>
-            <span style={labelStyle}>Goes up to (miles)</span>
-            <input type="number" min={1} value={f.maxMiles} onChange={(e) => f.setMaxMiles(e.target.value)} style={inputStyle} placeholder="not said" />
-          </label>
-        </>
-      )}
-      <label>
-        <span style={labelStyle}>Where we found them</span>
-        <input type="text" list="prospect-sources" value={f.source} onChange={(e) => f.setSource(e.target.value)} style={inputStyle} placeholder={PROSPECT_SOURCES[0]} />
-        <datalist id="prospect-sources">
-          {PROSPECT_SOURCES.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
-      </label>
-    </>
-  )
-}
 
 export default function Prospects() {
   const navigate = useNavigate()
@@ -280,12 +202,9 @@ export default function Prospects() {
   // The Jobs to GC lane (v2.5561): each lead's jobs, how much GC work is in flight (null: not read, or
   // refused), the customers for the double check, and the customer a new lead is linked to.
   const { gcWork, gcBidding, customerDoubles, prospectDoubles } = useProspectDoubles({ kind, newKind, newProspectModalOpen, userId: authUser?.id ?? null })
-  const [newCustomerLink, setNewCustomerLink] = useState<{ id: string; name: string } | null>(null)
 
   // Follow Up state
   const [comments, setComments] = useState<ProspectComment[]>([])
-  const [editModalOpen, setEditModalOpen] = useState(false)
-  const [editingProspect, setEditingProspect] = useState<Prospect | null>(null)
   const [callbackModalOpen, setCallbackModalOpen] = useState(false)
   const [commentInputValue, setCommentInputValue] = useState('')
   const [commentInputRef, setCommentInputRef] = useState<HTMLTextAreaElement | null>(null)
@@ -294,14 +213,7 @@ export default function Prospects() {
   const [followUpTimerSeconds, setFollowUpTimerSeconds] = useState(0)
 
   // Edit form state
-  const [editSource, setEditSource] = useState('')
-  const [editTrades, setEditTrades] = useState('')
-  const [editMaxMiles, setEditMaxMiles] = useState('')
-  const [editRole, setEditRole] = useState('')
   // The person we call and the company under them (v2.5601), the two blocks both windows share.
-  const [editPerson, setEditPerson] = useState<PersonFields>(EMPTY_PERSON)
-  const [editCompany, setEditCompany] = useState<CompanyFields>(EMPTY_COMPANY)
-  const [editOpenedWith, setEditOpenedWith] = useState<Record<string, string>>({})
 
   // Callback form state
 
@@ -333,15 +245,8 @@ export default function Prospects() {
   // Total time spent per prospect for Prospect List (prospect_id -> seconds)
 
   // New Prospect modal state
-  const [newProspectError, setNewProspectError] = useState<string | null>(null)
-  const [newSource, setNewSource] = useState('')
-  const [newTrades, setNewTrades] = useState('')
-  const [newMaxMiles, setNewMaxMiles] = useState('')
-  const [newRole, setNewRole] = useState('')
-  const [newPerson, setNewPerson] = useState<PersonFields>(EMPTY_PERSON)
   /** May we text? on the card (v2.5606): the chip opens the three answers. */
   const [textAskOpen, setTextAskOpen] = useState(false)
-  const [newCompany, setNewCompany] = useState<CompanyFields>(EMPTY_COMPANY)
 
 
   // Activity tab state (dev and assistant) - last 30 days
@@ -449,44 +354,11 @@ export default function Prospects() {
     }
   }, [location.search, setSearchParams])
 
-  // Escape and the backdrop (v2.5582): an untouched window closes at once, a touched one asks (useLeaveGuard, as the
-  // big windows do since v2.5530). Leaving New Prospect clears its boxes; Edit compares its boxes to what it opened with.
-  const newProspectDirty = newProspectModalOpen && anyTyped({ ...newPerson, okToText: newPerson.okToText !== 'not_asked', ...newCompany, newSource, newTrades, newMaxMiles, newRole, linked: !!newCustomerLink })
-  const newGuard = useLeaveGuard({ dirty: newProspectDirty, onClose: closeNewProspect, busy: saving, paused: !newProspectModalOpen })
-  const editFieldsNow: Record<string, string> = { ...editPerson, ...editCompany, source: editSource, trades: editTrades, miles: editMaxMiles, role: editRole }
-  const editGuard = useLeaveGuard({ dirty: editModalOpen && editDirty(editFieldsNow, editOpenedWith), onClose: closeEditProspect, busy: saving, paused: !editModalOpen })
-  function closeNewProspect() {
-    setNewProspectModalOpen(false)
-    resetNewProspectForm()
-  }
-  function closeEditProspect() {
-    setEditModalOpen(false)
-    setEditingProspect(null)
-  }
-  function resetNewProspectForm() {
-    setNewPerson(EMPTY_PERSON)
-    setNewCompany(EMPTY_COMPANY)
-    setNewSource('')
-    setNewTrades('')
-    setNewMaxMiles('')
-    setNewRole('')
-    setNewCustomerLink(null)
-    setNewProspectError(null)
-  }
-
   // The strip counts the lane as it stands: a sub the deck took off (an outcome, a delete) leaves the count with it.
   const deckIds = new Set(followUpProspects.map((p) => p.id))
   const laneQueueNow = kind === 'sub' ? stillQueued(laneQueueAll, deckIds, tradeFilter) : []
   // The panel over the Subs deck (v2.5782): every trade short of quotes or short on the bench, then the book's.
   const gcNeedsNow = kind === 'sub' ? gcNeeds(gcBench.benches, laneQueueNow, gcBench.ownTrades) : null
-  /** New Prospect on this lane's kind, the header's button and the empty Prospect List's press (punch list #184, sweep C). */
-  const openNewProspect = () => {
-    resetNewProspectForm()
-    setNewKind(kind)
-    setNewCustomerLink(null)
-    setNewProspectError(null)
-    setNewProspectModalOpen(true)
-  }
   /** The Prospect List with nothing to list: a search's own Clear the search, else the lane's empty words and New Prospect. */
   const prospectListEmpty = (): EmptyStateWords => {
     if (prospectListSearchQuery.trim()) {
@@ -495,20 +367,6 @@ export default function Prospects() {
     const words = emptyLaneWords(kind, null)
     return { main: words.main, next: { label: words.doorLabel, onPress: openNewProspect }, tail: words.tail }
   }
-  /** Add a sub (v2.5782): New Prospect as a sub with the trade filled in, from a need's row or a book chip. */
-  const openAddSub = (trade: string) => {
-    resetNewProspectForm()
-    setNewKind('sub')
-    setNewTrades(trade)
-    setNewCustomerLink(null)
-    setNewProspectError(null)
-    setNewProspectModalOpen(true)
-  }
-
-  const newProspectTwin = newProspectModalOpen
-    ? companyDouble(newCompany.company || newPerson.name, newPerson.cell || newCompany.officePhone, { kind: newKind, prospects: prospectDoubles, bench: benchCompanies, customers: customerDoubles }, Date.now(), newCompany.mapsUrl)
-    : null
-
   /** Open it on a prospect double (v2.5579): the form closes and the card opens on its own lane. */
   function openDoubleProspect(twin: Extract<CompanyDouble, { door: 'open_prospect' }>) {
     const lane = doubleLaneParams(twin)
@@ -698,6 +556,41 @@ export default function Prospects() {
     showDeck: () => setActiveTab('follow-up'),
   })
   const { prospectListSearchQuery, setProspectListSearchQuery } = list
+  // The Edit Prospect window: its boxes, its leave guard and its writes. It edits the deck's card, or a row from the list or the Board.
+  const editWin = useEditProspectWindow({
+    currentProspect,
+    followUpProspects,
+    currentProspectIndex,
+    saving,
+    setSaving,
+    setFollowUpProspects,
+    setProspectListProspects,
+    setCurrentProspectIndex,
+    setFollowUpTimerSeconds,
+    updateUrlProspectId,
+  })
+  const { editModalOpen, editingProspect, openEditModal, openEditModalForProspect } = editWin
+  // The New Prospect window: its boxes, its leave guard, the double's answer and its save.
+  const newWin = useNewProspectWindow({
+    kind,
+    newKind,
+    setNewKind,
+    newProspectModalOpen,
+    setNewProspectModalOpen,
+    saving,
+    setSaving,
+    userId: authUser?.id ?? null,
+    prospectDoubles,
+    benchCompanies,
+    customerDoubles,
+    getEffectiveMasterId,
+    setKindTab,
+    reloadLane: async () => {
+      await loadFollowUpProspects()
+      await loadProspectListProspects()
+    },
+  })
+  const { openNewProspect, openAddSub } = newWin
 
   // The Convert tab's engine. It is called here, not inside the tab, so the picked prospect and the typed cards
   // survive a visit to another tab.
@@ -948,118 +841,6 @@ export default function Prospects() {
         </button>
       )
     })
-  }
-
-  async function handleWarmthDelta(delta: number) {
-    if (!currentProspect || saving) return
-    setSaving(true)
-    const newVal = (currentProspect.warmth_count ?? 0) + delta
-    const { error } = await supabase.from('prospects').update({ warmth_count: newVal }).eq('id', currentProspect.id)
-    if (!error) {
-      setFollowUpProspects((prev) =>
-        prev.map((p) => (p.id === currentProspect.id ? { ...p, warmth_count: newVal } : p))
-      )
-    }
-    setSaving(false)
-  }
-
-  async function handleWarmthReset() {
-    if (!currentProspect || saving) return
-    setSaving(true)
-    const { error } = await supabase.from('prospects').update({ warmth_count: 0 }).eq('id', currentProspect.id)
-    if (!error) {
-      setFollowUpProspects((prev) =>
-        prev.map((p) => (p.id === currentProspect.id ? { ...p, warmth_count: 0 } : p))
-      )
-    }
-    setSaving(false)
-  }
-
-  function openEditModal() {
-    if (!currentProspect) return
-    setEditingProspect(null)
-    const blocks = blocksFromRow(currentProspect)
-    setEditPerson(blocks.person)
-    setEditCompany(blocks.company)
-    setEditKindFields(currentProspect)
-    setEditOpenedWith(editSnapshotOf(currentProspect))
-    setEditModalOpen(true)
-  }
-
-  function setEditKindFields(p: Prospect) {
-    setEditSource(p.source ?? '')
-    setEditTrades(tradesText(p.trades))
-    setEditMaxMiles(p.max_miles == null ? '' : String(p.max_miles))
-    setEditRole(p.company_role ?? '')
-  }
-
-  function openEditModalForProspect(p: Prospect) {
-    setEditingProspect(p)
-    const blocks = blocksFromRow(p)
-    setEditPerson(blocks.person)
-    setEditCompany(blocks.company)
-    setEditKindFields(p)
-    setEditOpenedWith(editSnapshotOf(p))
-    setEditModalOpen(true)
-  }
-
-  async function handleDeleteProspect() {
-    const prospectToEdit = editingProspect ?? currentProspect
-    if (!prospectToEdit || saving) return
-    if (
-      !(await confirmDialog({
-        message: `Delete prospect "${prospectToEdit.company_name || 'Unknown'}"? This cannot be undone.`,
-        confirmLabel: 'Delete',
-        danger: true,
-      }))
-    )
-      return
-    setSaving(true)
-    const { error } = await supabase.from('prospects').delete().eq('id', prospectToEdit.id)
-    if (!error) {
-      setFollowUpProspects((prev) => prev.filter((p) => p.id !== prospectToEdit.id))
-      setProspectListProspects((prev) => prev.filter((p) => p.id !== prospectToEdit.id))
-      if (currentProspect?.id === prospectToEdit.id) {
-        const left = queueAfterRemoval(followUpProspects, currentProspectIndex, prospectToEdit.id)
-        setCurrentProspectIndex(left.index)
-        setFollowUpTimerSeconds(0)
-        updateUrlProspectId(left.nextId)
-      }
-      setEditModalOpen(false)
-      setEditingProspect(null)
-    }
-    setSaving(false)
-  }
-
-  async function saveEdit() {
-    const prospectToEdit = editingProspect ?? currentProspect
-    if (!prospectToEdit || saving) return
-    setSaving(true)
-    const held = blocksProblem(editPerson, editCompany)
-    if (held) {
-      showToast(held, 'error')
-      setSaving(false)
-      return
-    }
-    const updated = {
-      ...rowFromBlocks(editPerson, editCompany),
-      ...kindFieldsPayload(prospectToEdit.kind, { source: editSource, trades: editTrades, maxMiles: editMaxMiles, role: editRole }),
-    }
-    const { error } = await supabase
-      .from('prospects')
-      .update(updated)
-      .eq('id', prospectToEdit.id)
-    if (!error) {
-      setFollowUpProspects((prev) =>
-        prev.map((p) => (p.id === prospectToEdit.id ? { ...p, ...updated } : p))
-      )
-      setProspectListProspects((prev) =>
-        prev.map((p) => (p.id === prospectToEdit.id ? { ...p, ...updated } : p))
-      )
-      setEditModalOpen(false)
-      setEditingProspect(null)
-    }
-    setSaving(false)
   }
 
   function openCallbackModal() {
@@ -1568,47 +1349,6 @@ export default function Prospects() {
     }
     setFollowUpProspects((prev) => prev.map((p) => (p.id === prospect.id ? { ...p, ok_to_text: value } : p)))
     setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? { ...p, ok_to_text: value } : p)))
-  }
-
-  async function saveNewProspect() {
-    if (!authUser?.id || saving) return
-    const held = blocksProblem(newPerson, newCompany)
-    if (held) {
-      setNewProspectError(held)
-      return
-    }
-    setNewProspectError(null)
-    setSaving(true)
-    const effectiveMasterId = await getEffectiveMasterId()
-    if (!effectiveMasterId) {
-      setNewProspectError('Unable to determine prospect owner.')
-      setSaving(false)
-      return
-    }
-    const payload = {
-      master_user_id: effectiveMasterId,
-      created_by: authUser.id,
-      warmth_count: 0,
-      ...rowFromBlocks(newPerson, newCompany),
-      kind: newKind,
-      ...kindFieldsPayload(newKind, { source: newSource, trades: newTrades, maxMiles: newMaxMiles, role: newRole }),
-      customer_id: newKind === 'gc_lead' && newCustomerLink ? newCustomerLink.id : null,
-    }
-    const { error } = await supabase.from('prospects').insert(payload)
-    setSaving(false)
-    if (error) {
-      setNewProspectError(error.message)
-      return
-    }
-    setNewProspectModalOpen(false)
-    resetNewProspectForm()
-    if (newKind !== kind) {
-      // The new row lives on another lane: go there, and its loaders run on the kind change.
-      setKindTab(newKind)
-      return
-    }
-    await loadFollowUpProspects()
-    await loadProspectListProspects()
   }
 
 
@@ -2458,105 +2198,7 @@ export default function Prospects() {
         <ProspectsActivityTab kind={kind} kindWords={kindWords} hideZz={hideZz} laneRows={prospectListProspects} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
       )}
 
-      {/* Edit modal */}
-      {editModalOpen && (currentProspect || editingProspect) && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-          onClick={editGuard.requestClose}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              maxWidth: 480,
-              width: '90%',
-              // A sub's or a lead's boxes make the window taller than a laptop screen (v2.5574): it scrolls inside.
-              maxHeight: 'min(90vh, 100%)',
-              overflowY: 'auto',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0 }}>Edit Prospect</h3>
-              <button
-                type="button"
-                className="prospectsEditModalDeleteBtn"
-                onClick={handleDeleteProspect}
-                disabled={saving}
-                title="Delete prospect"
-                style={{
-                  padding: '0.375rem',
-                  background: 'none',
-                  border: 'none',
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                  color: 'var(--text-faint)',
-                  opacity: saving ? 0.5 : 1,
-                }}
-                aria-label="Delete prospect"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  <line x1="10" y1="11" x2="10" y2="17" />
-                  <line x1="14" y1="11" x2="14" y2="17" />
-                </svg>
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <ProspectPersonForm person={editPerson} onPerson={setEditPerson} company={editCompany} onCompany={setEditCompany} kind={(editingProspect ?? currentProspect)?.kind ?? kind} onSource={setEditSource} />
-              {renderKindFields((editingProspect ?? currentProspect)?.kind ?? kind, {
-                source: editSource, setSource: setEditSource,
-                trades: editTrades, setTrades: setEditTrades,
-                maxMiles: editMaxMiles, setMaxMiles: setEditMaxMiles,
-                role: editRole, setRole: setEditRole,
-                tradeChoices: (benchTrades ?? []).map((b) => b.trade),
-              })}
-              {(!editingProspect || editingProspect.id === currentProspect?.id) && currentProspect && (
-                <div>
-                  <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
-                    Warmth <span style={{ color: 'var(--text-muted)' }}>— goes up by one every Answered</span>
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 600 }}>🔥 {currentProspect.warmth_count ?? 0}</span>
-                    <button type="button" onClick={() => handleWarmthDelta(-1)} disabled={saving} style={{ padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer', color: 'inherit' }}>−1</button>
-                    <button type="button" onClick={() => handleWarmthDelta(1)} disabled={saving} style={{ padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer', color: 'inherit' }}>+1</button>
-                    <button type="button" onClick={handleWarmthReset} disabled={saving} style={{ padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer', fontSize: '0.8125rem', color: 'inherit' }}>Reset</button>
-                  </div>
-                </div>
-              )}
-            </div>
-            {editGuard.asking && <LeaveQuestion what="The changes to this prospect are not saved." onLeave={closeEditProspect} onKeep={editGuard.keep} />}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-              <button
-                type="button"
-                onClick={saveEdit}
-                disabled={saving}
-                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={editGuard.requestClose}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {editModalOpen && (currentProspect || editingProspect) && <EditProspectWindow win={editWin} kind={kind} currentProspect={currentProspect} saving={saving} benchTrades={benchTrades} />}
 
       {callbackModalOpen && currentProspect && <ProspectCallbackModal saving={saving} onSave={saveCallback} onClose={() => setCallbackModalOpen(false)} />}
 
@@ -2575,148 +2217,7 @@ export default function Prospects() {
         <ProspectBenchModal draft={benchDraft.draft} saving={benchSaving} error={benchError} onSave={handleBenchSave} onCancel={() => !benchSaving && setBenchDraft(null)} ask={benchDraft.ask} />
       )}
 
-      {/* New Prospect modal */}
-      {newProspectModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-          onClick={newGuard.requestClose}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              maxWidth: 520,
-              width: '90%',
-              // The kind cards and a kind's boxes make the window taller than a laptop screen (v2.5574): it scrolls
-              // inside, and it is wide enough that the three cards read in a few lines each.
-              maxHeight: 'min(90vh, 100%)',
-              overflowY: 'auto',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 0.25rem 0' }}>New Prospect</h3>
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Who are we looking for?</p>
-            <div role="radiogroup" aria-label="What kind of prospect" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.5rem', marginBottom: '1rem' }}>
-              {PROSPECT_KINDS.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  role="radio"
-                  aria-checked={newKind === k}
-                  onClick={() => setNewKind(k)}
-                  style={{
-                    textAlign: 'left',
-                    padding: '0.5rem 0.6rem',
-                    borderRadius: 8,
-                    border: newKind === k ? '2px solid #3b82f6' : '1px solid var(--border)',
-                    background: newKind === k ? 'var(--bg-blue-200)' : 'var(--surface)',
-                    cursor: 'pointer',
-                    font: 'inherit',
-                  }}
-                >
-                  <span style={{ display: 'block', fontWeight: 700, fontSize: '0.875rem' }}>{PROSPECT_KIND_WORDS[k].tab === 'Customers' ? 'A customer' : PROSPECT_KIND_WORDS[k].tab === 'Subs' ? 'A sub' : 'A job to GC'}</span>
-                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-700)' }}>{PROSPECT_KIND_WORDS[k].card}</span>
-                </button>
-              ))}
-            </div>
-            {newProspectError && (
-              <p style={{ color: 'var(--text-red-600)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{newProspectError}</p>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <ProspectPersonForm
-                person={newPerson}
-                onPerson={setNewPerson}
-                company={newCompany}
-                onCompany={setNewCompany}
-                kind={newKind}
-                onSource={setNewSource}
-                double={(() => {
-                // One line for every double (v2.5579): this lane, another lane, the bench, the customers, in that order.
-                const linkish = { font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 } as const
-                if (newKind === 'gc_lead' && newCustomerLink) {
-                  return (
-                    <p role="status" style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-green)', background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
-                      Linked to the customer {newCustomerLink.name}. Asked us ✓ will use that record.{' '}
-                      <button type="button" onClick={() => setNewCustomerLink(null)} style={linkish}>
-                        Unlink
-                      </button>
-                    </p>
-                  )
-                }
-                const twin = newProspectTwin
-                if (!twin) return null
-                return (
-                  <p role="status" data-company-double={twin.where} style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-amber-soft)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
-                    {twin.line}{' '}
-                    {twin.door === 'open_prospect' && (
-                      <button type="button" onClick={() => openDoubleProspect(twin)} style={linkish}>
-                        Open it
-                      </button>
-                    )}
-                    {twin.door === 'open_bench' && (
-                      <Link to="/gc?view=partners" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
-                        Open it
-                      </Link>
-                    )}
-                    {twin.door === 'customer' && (
-                      <>
-                        {newKind === 'gc_lead' && (
-                          <>
-                            <button type="button" onClick={() => setNewCustomerLink({ id: twin.id, name: twin.name })} style={linkish}>
-                              Link this lead to them
-                            </button>
-                            {' · '}
-                          </>
-                        )}
-                        <Link to={`/customers/${twin.id}`} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
-                          Open their page
-                        </Link>
-                      </>
-                    )}
-                  </p>
-                )
-              })()}
-              />
-              {renderKindFields(newKind, {
-                source: newSource, setSource: setNewSource,
-                trades: newTrades, setTrades: setNewTrades,
-                maxMiles: newMaxMiles, setMaxMiles: setNewMaxMiles,
-                role: newRole, setRole: setNewRole,
-                tradeChoices: (benchTrades ?? []).map((b) => b.trade),
-              })}
-            </div>
-            {newGuard.asking && <LeaveQuestion what="The new prospect is not saved." onLeave={closeNewProspect} onKeep={newGuard.keep} />}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-              <button
-                type="button"
-                onClick={saveNewProspect}
-                disabled={saving}
-                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
-              >
-                {newProspectTwin ? 'Save anyway' : 'Save'}
-              </button>
-              <button
-                type="button"
-                onClick={newGuard.requestClose}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {newProspectModalOpen && <NewProspectWindow win={newWin} newKind={newKind} setNewKind={setNewKind} saving={saving} benchTrades={benchTrades} openDoubleProspect={openDoubleProspect} />}
     </div>
   )
 }
