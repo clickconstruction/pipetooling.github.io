@@ -1,3 +1,4 @@
+import { EMPTY_SCHEDULE, scheduleDraftOf, type BidScheduleDraft } from './bidSchedule'
 import { useCallback, useMemo, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
@@ -35,6 +36,8 @@ export type BidEditFormValues = {
   bidDueTime: string
   estimatedJobStartDate: string
   designDrawingPlanDate: string
+  /** The bid's promised schedule (punch list #367): a start and an end a person types, or a start with no end date. */
+  schedule: BidScheduleDraft
   submittedTo: string
   outcome: BidEditOutcomeOption
   lossReason: string
@@ -78,6 +81,7 @@ export type BidEditFormSetters = {
   setBidDueTime: Dispatch<SetStateAction<string>>
   setEstimatedJobStartDate: Dispatch<SetStateAction<string>>
   setDesignDrawingPlanDate: Dispatch<SetStateAction<string>>
+  setSchedule: Dispatch<SetStateAction<BidScheduleDraft>>
   setSubmittedTo: Dispatch<SetStateAction<string>>
   setOutcome: Dispatch<SetStateAction<BidEditOutcomeOption>>
   setLossReason: Dispatch<SetStateAction<string>>
@@ -167,6 +171,7 @@ export function bidRowToFormValues(bid: BidWithBuilder, opts: BidEditFormLoadOpt
     bidDueTime: (((bid as { bid_due_time?: string | null }).bid_due_time ?? '')).slice(0, 5),
     estimatedJobStartDate: bid.estimated_job_start_date ?? '',
     designDrawingPlanDate: bid.design_drawing_plan_date ?? '',
+    schedule: scheduleDraftOf(bid as { schedule_start?: string | null; schedule_end?: string | null; schedule_open_ended?: boolean | null }),
     submittedTo: (bid as { submitted_to?: string | null }).submitted_to ?? '',
     outcome: (bid.outcome ?? '') as BidEditOutcomeOption,
     lossReason: (bid as { loss_reason?: string | null }).loss_reason ?? '',
@@ -212,6 +217,7 @@ export function useBidEditForm(): BidEditForm {
   const [bidDueTime, setBidDueTime] = useState('')
   const [estimatedJobStartDate, setEstimatedJobStartDate] = useState('')
   const [designDrawingPlanDate, setDesignDrawingPlanDate] = useState('')
+  const [schedule, setSchedule] = useState<BidScheduleDraft>(EMPTY_SCHEDULE)
   const [submittedTo, setSubmittedTo] = useState('')
   const [outcome, setOutcome] = useState<BidEditOutcomeOption>('')
   const [lossReason, setLossReason] = useState('')
@@ -237,6 +243,7 @@ export function useBidEditForm(): BidEditForm {
     setBidSubmissionLink('')
     setItbLinks([])
     setDesignDrawingPlanDate('')
+    setSchedule(EMPTY_SCHEDULE)
     setGcCustomerId(opts.customer?.id ?? '')
     setGcCustomerSearch(opts.customer?.display ?? '')
     setProjectName(opts.project?.name?.trim() ?? '')
@@ -292,6 +299,7 @@ export function useBidEditForm(): BidEditForm {
     setBidDueTime(v.bidDueTime)
     setEstimatedJobStartDate(v.estimatedJobStartDate)
     setDesignDrawingPlanDate(v.designDrawingPlanDate)
+    setSchedule(v.schedule)
     setSubmittedTo(v.submittedTo)
     setOutcome(v.outcome)
     setLossReason(v.lossReason)
@@ -344,6 +352,7 @@ export function useBidEditForm(): BidEditForm {
     bidDueTime,
     estimatedJobStartDate,
     designDrawingPlanDate,
+    schedule,
     submittedTo,
     outcome,
     lossReason,
@@ -383,6 +392,7 @@ export function useBidEditForm(): BidEditForm {
     setBidDueTime,
     setEstimatedJobStartDate,
     setDesignDrawingPlanDate,
+    setSchedule,
     setSubmittedTo,
     setOutcome,
     setLossReason,

@@ -373,7 +373,7 @@ describe('the In the mail mark (v2.5522)', () => {
     const marks = lienCalendarMarks(mailed, axis).filter((m) => m.kind === 'notice')
     expect(marks.map((m) => [m.done, m.mailed, m.tone])).toEqual([[true, false, 'green'], [false, true, 'amber']])
     const rlc = cal.groups[0]!
-    expect(rlc.sub).toBe('GC · 2 jobs · 1 notice owed · 1 in the mail')
+    expect(rlc.sub).toBe('GC · 2 jobs · 1 notice owed · 1 to mail')
     expect(lienCalendarGroupFlags(rlc, axis).map((f) => [f.ymd, f.notices, f.mailed, f.liens])).toEqual([
       ['2026-10-15', 1, 1, 0],
       ['2026-11-16', 0, 0, 2],
@@ -382,10 +382,10 @@ describe('the In the mail mark (v2.5522)', () => {
     // Every notice due in the mail: the GC's move is recording, and the group's tone eases to amber.
     const only = buildLienCalendar([mailed], '')
     expect(only.groups[0]!.word).toBe('enter mail numbers · 17 d')
-    expect(only.groups[0]!.sub).toBe('GC · 1 job · 1 in the mail')
+    expect(only.groups[0]!.sub).toBe('GC · 1 job · 1 to mail')
     const glyphs = LIEN_CALENDAR_KEY.map((k) => k.glyph)
     expect(glyphs.indexOf('mailed')).toBe(glyphs.indexOf('check') + 1)
-    expect(LIEN_CALENDAR_KEY.find((k) => k.glyph === 'mailed')).toMatchObject({ short: 'In the mail', door: 'record' })
+    expect(LIEN_CALENDAR_KEY.find((k) => k.glyph === 'mailed')).toMatchObject({ short: 'Approved · to mail', door: 'record' })
   })
 })
 
