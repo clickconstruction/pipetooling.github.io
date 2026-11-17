@@ -20,6 +20,7 @@ import { boxCodeWords, normalizeBoxCode } from '../lib/materials/labels'
 import { resolveBoxCode } from '../lib/materials/onSiteStore'
 import { blankStickerPath, lostStickerDetail, LOST_STICKER_TITLE, NO_BOX_DETAIL, noBoxTitle, OUT_OF_REACH_STICKER_TITLE, retiredBoxStickerTitle, type CodeLookup } from '../lib/materials/stickers'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { noteScannedBox } from '../lib/materials/pinAsk'
 
 export default function BoxCode() {
   const { code = '' } = useParams()
@@ -62,7 +63,7 @@ function SignedInBox({ wanted }: { wanted: string }) {
     if (!wanted) return
     let live = true
     resolveBoxCode(wanted)
-      .then((c) => { if (live) setFound(c) })
+      .then((c) => { if (!live) return; /* The person has the label in hand, so the box screen may ask for a pin (punch list #372). */ if (c.kind === 'box') noteScannedBox(c.container.id); setFound(c) })
       .catch((e: unknown) => { if (live) { setFound({ kind: 'none' }); setError(formatErrorMessage(e, 'The box did not read.')) } })
     return () => { live = false }
   }, [wanted])

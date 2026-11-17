@@ -26,7 +26,7 @@ export function CameraGlyph({ size = 14 }: { size?: number }) {
 
 type Toast = (m: string, t: 'success' | 'info' | 'error') => void
 
-export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId, byName, onToast, style }: {
+export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId, byName, onToast, onTaken, style }: {
   jobId: string
   containerId: string
   containerLabel: string
@@ -35,6 +35,8 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
   byUserId: string | null
   byName: string
   onToast: Toast
+  /** A shot was kept, on its way or on this phone: the person stands at the box (the pin ask, punch list #372). */
+  onTaken?: () => void
   style?: CSSProperties
 }) {
   const input = useRef<HTMLInputElement>(null)
@@ -59,6 +61,7 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
       try {
         const sent = await sendBoxPhoto({ id, jobId, containerId, blob: shot.blob, fileName })
         addPhoto({ ...note, storagePath: sent.storagePath })
+        onTaken?.()
         onToast(`Photo of ${containerLabel} is on its way to the job's folder, ${bytesWords(shot.blob.size)}.`, 'success')
       } catch (err) {
         if (err instanceof BoxPhotoNotKeptError) {
@@ -66,6 +69,7 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
           onToast(`${formatErrorMessage(err)} This phone could not keep the photo either. Take it again when there is signal.`, 'error')
         } else {
           addPhoto({ ...note, status: 'on-phone' })
+          onTaken?.()
           onToast(`${formatErrorMessage(err)} The photo is kept on this phone. Press Send now when there is signal.`, 'info')
         }
       }

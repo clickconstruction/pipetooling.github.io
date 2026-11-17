@@ -100,6 +100,8 @@ When you find the box, tap {{button:blue|I found it}}. The app pins the box wher
 
 A box nobody has pinned says so. Stand at it and tap **I found it**. A phone that is not sure within about 150 ft is refused. Step into the open and tap **Try again**. Or tap **Move the pin by hand** and drag the map until the ring sits on the box. Then tap **Put A1 here**.
 
+The app also asks for a pin when you are standing at a box. That is after a count, a photo, a scanned label or a new box. The box's screen then reads **Pin A1 where you stand?** Tap {{button:blue|Pin it here}}, or tap **Not now**. The app asks once a day for a box. A box pinned in the last week is not asked about.
+
 A pin older than 30 days carries a caution, since boxes get moved. Tap **Directions** for the drive to the pin. Tap **Map** on the tab to see every pinned box on the site.
 
 ## Scan a label

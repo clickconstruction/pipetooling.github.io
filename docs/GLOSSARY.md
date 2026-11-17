@@ -6512,6 +6512,8 @@ The dot is drawn on the phone and sent nowhere.
 **I found it** reads the phone once and pins the box where the finder stands, and a reading the phone is not sure of within about 150 ft is refused in words.
 **Move the pin by hand** is the map to drag, with the ring at its centre.
 A pin older than 30 days is an **old pin** and carries a caution.
+The **pin ask** (v2.7579) is the one line a box's screen on the phone draws after a count, a photo, a scanned label or a new box: *Pin A7 where you stand?*, with **Pin it here** and **Not now** (`PinAskStrip.tsx` over `pinAsk.ts`).
+It is asked of a box with no pin or a pin older than seven days, and once a day for a box on a device.
 A task's place has a sheet of the same name, which is a different thing: there the giver says where the task is.
 
 ### A site's materials (punch list #330)
