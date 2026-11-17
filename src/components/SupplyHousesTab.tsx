@@ -47,7 +47,12 @@ import {
   invoicesForAgingCell,
   isMovableAgingInvoice,
   movableCandidates,
+  movableWindowRows,
   moveStripSummary,
+  notNeededInvoiceIds,
+  singleJobPairs,
+  withEmailedAsks,
+  type MoveAsk,
   nextMonthlyPaymentDueYmd,
   type AgingBucketKey,
   type AgingCellKey,
@@ -89,7 +94,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
 import { SupplyHouseJobAccountsRoster } from './materials/SupplyHouseJobAccountsRoster'
 import { MarkJobAccountOpenedModal } from './materials/MarkJobAccountOpenedModal'
-import { openedViaPhrase, type JobAccountRep, type JobSupplyHouseAccountRow } from '../lib/materials/jobSupplyHouseAccounts'
+import { accountsByPair, openedViaPhrase, repsByHouse, type JobAccountRep, type JobSupplyHouseAccountRow } from '../lib/materials/jobSupplyHouseAccounts'
 import { agingCellAccountSplit, agingCellJobStateWords, agingCellJobsLine, groupAgingCellByJob, type AgingCellJobGroup } from '../lib/materials/agingCellByJob'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
@@ -164,7 +169,7 @@ type AgingInvoiceRow = {
 }
 
 /** An open (unconfirmed) job-account move ask (PR 3) — the follow-up the office owes. */
-type MoveAskRow = { id: string; invoice_id: string; requested_at: string; via: string; sent_to: string }
+type MoveAskRow = MoveAsk
 
 /**
  * Format a DATE-only column (YYYY-MM-DD) in the user's locale. `new Date('2026-07-10')` parses
@@ -809,7 +814,7 @@ export function SupplyHousesTab({
     }
     const cellRows =
       agingCellModal.cell === 'movable'
-        ? movableCandidates(agingUnpaidInvoices, todayYmdInAppTz()).filter((r) => (agingMoveData.allocations[r.id]?.length ?? 0) === 1 && !agingMoveData.notNeeded.has(r.id))
+        ? movableWindowRows(agingUnpaidInvoices, todayYmdInAppTz(), agingMoveData)
         : invoicesForAgingCell(agingUnpaidInvoices, agingCellModal.houseId, agingCellModal.cell, todayYmdInAppTz())
     const ids = cellRows.map((r) => r.id)
     if (ids.length === 0) {
@@ -828,11 +833,7 @@ export function SupplyHousesTab({
       const jobIds = [...new Set(Object.values(allocations).flat().map((a) => a.job_id))]
       // PR 2: the chips need the (job, house) account rows — only the single-job pairs can
       // carry the flag — and each involved house's job-accounts reps for the Mark opened sheet.
-      const pairs: Array<{ jobId: string; houseId: string }> = []
-      for (const [invoiceId, list] of Object.entries(allocations)) {
-        const houseId = houseByInvoice.get(invoiceId)
-        if (list.length === 1 && houseId) pairs.push({ jobId: list[0]!.job_id, houseId })
-      }
+      const pairs = singleJobPairs(allocations, houseByInvoice).filter((p) => p.houseId)
       const pairJobIds = [...new Set(pairs.map((p) => p.jobId))]
       const pairHouseIds = [...new Set(pairs.map((p) => p.houseId))]
       const [jobRes, accRes, repRes] = await Promise.all([
@@ -855,15 +856,8 @@ export function SupplyHousesTab({
       ])
       if (cancelled) return
       const jobs = jobsLedgerNames((jobRes.data ?? []) as JobsLedgerNameRow[])
-      const accounts: Record<string, JobSupplyHouseAccountRow | null> = {}
-      for (const p of pairs) accounts[`${p.jobId}:${p.houseId}`] = null
-      for (const row of (accRes.data ?? []) as JobSupplyHouseAccountRow[]) {
-        accounts[`${row.job_id}:${row.supply_house_id}`] = row
-      }
-      const reps: Record<string, JobAccountRep[]> = {}
-      for (const c of (repRes.data ?? []) as Array<JobAccountRep & { supply_house_id: string }>) {
-        ;(reps[c.supply_house_id] ??= []).push(c)
-      }
+      const accounts = accountsByPair(pairs, (accRes.data ?? []) as JobSupplyHouseAccountRow[])
+      const reps: Record<string, JobAccountRep[]> = repsByHouse((repRes.data ?? []) as Array<JobAccountRep & { supply_house_id: string }>)
       setAgingCellJobs({ allocations, jobs })
       setAgingCellAccounts(accounts)
       setAgingCellReps(reps)
@@ -919,8 +913,8 @@ export function SupplyHousesTab({
       for (const r of (askRes.error ? [] : askRes.data ?? []) as MoveAskRow[]) asks[r.invoice_id] = r
       // v2.6086: a single-job candidate whose job's account at the house is marked not needed leaves the window.
       const houseOf = new Map(candidates.map((r) => [r.id, r.supply_house_id]))
-      const pairs = Object.entries(allocations).filter(([, list]) => list.length === 1).map(([invoiceId, list]) => ({ invoiceId, jobId: list[0]!.job_id, houseId: houseOf.get(invoiceId) ?? '' }))
-      const notNeeded = new Set<string>()
+      const pairs = singleJobPairs(allocations, houseOf)
+      let notNeeded = new Set<string>()
       if (pairs.length > 0) {
         const accRes = await supabase
           .from('job_supply_house_accounts')
@@ -929,8 +923,7 @@ export function SupplyHousesTab({
           .in('supply_house_id', [...new Set(pairs.map((p) => p.houseId))])
           .eq('status', 'not_needed')
         if (cancelled) return
-        const marked = new Set(((accRes.data ?? []) as { job_id: string; supply_house_id: string }[]).map((a) => `${a.job_id}:${a.supply_house_id}`))
-        for (const p of pairs) if (marked.has(`${p.jobId}:${p.houseId}`)) notNeeded.add(p.invoiceId)
+        notNeeded = notNeededInvoiceIds(pairs, (accRes.data ?? []) as { job_id: string; supply_house_id: string }[])
       }
       setAgingMoveData({ allocations, asks, notNeeded, loaded: true })
       setAgingMoveDataBook(agingUnpaidInvoices)
@@ -973,13 +966,7 @@ export function SupplyHousesTab({
       return
     }
     const now = new Date().toISOString()
-    setAgingMoveData((prev) => {
-      const asks = { ...prev.asks }
-      for (const id of payload.asked ?? invoiceIds) {
-        asks[id] = { id: asks[id]?.id ?? 'pending', invoice_id: id, requested_at: now, via: 'email', sent_to: payload.sent_to ?? '' }
-      }
-      return { ...prev, asks }
-    })
+    setAgingMoveData((prev) => ({ ...prev, asks: withEmailedAsks(prev.asks, payload.asked ?? invoiceIds, now, payload.sent_to ?? '') }))
   }
 
   /** PR 3: the attested call — the flag flips, and the ask (or a fresh phone row) is confirmed. */
@@ -1057,9 +1044,7 @@ export function SupplyHousesTab({
   // reads exactly as it did before.
   const agingHasCredits = agingMatrix.creditsTotal < -0.005
   /** PR 3: the movable set (current, unflagged, exactly one job) and the strip's numbers. */
-  const agingMovable = movableCandidates(agingUnpaidInvoices, agingTodayYmd).filter(
-    (r) => (agingMoveData.allocations[r.id]?.length ?? 0) === 1 && !agingMoveData.notNeeded.has(r.id),
-  )
+  const agingMovable = movableWindowRows(agingUnpaidInvoices, agingTodayYmd, agingMoveData)
   const agingMoveStrip = moveStripSummary(agingMovable, new Set(Object.keys(agingMoveData.asks)))
   const agingHasCurrentUnpaid = agingUnpaidInvoices.some(
     (inv) => Number(inv.amount ?? 0) > 0 && inv.due_date != null && daysPastDue(inv.due_date, agingTodayYmd) <= 0,

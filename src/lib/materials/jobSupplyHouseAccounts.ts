@@ -278,3 +278,21 @@ export function jobAccountsForJob(
   }
   return out
 }
+
+/**
+ * The (job, house) account rows behind a window's job headings, keyed `${jobId}:${houseId}`. A pair with no row is
+ * null, which reads "checked, none on record"; a key that is absent was never asked about.
+ */
+export function accountsByPair(pairs: ReadonlyArray<{ jobId: string; houseId: string }>, rows: ReadonlyArray<JobSupplyHouseAccountRow>): Record<string, JobSupplyHouseAccountRow | null> {
+  const accounts: Record<string, JobSupplyHouseAccountRow | null> = {}
+  for (const p of pairs) accounts[`${p.jobId}:${p.houseId}`] = null
+  for (const row of rows) accounts[`${row.job_id}:${row.supply_house_id}`] = row
+  return accounts
+}
+
+/** The job-accounts reps by house, in the order they were read. */
+export function repsByHouse<T extends { supply_house_id: string }>(rows: ReadonlyArray<T>): Record<string, T[]> {
+  const reps: Record<string, T[]> = {}
+  for (const c of rows) (reps[c.supply_house_id] ??= []).push(c)
+  return reps
+}

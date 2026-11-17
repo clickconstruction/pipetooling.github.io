@@ -330,3 +330,50 @@ export function agingCellModalDoors(houseId: string | null, cell: AgingCellKey |
   const oneHouse = houseId != null && cell !== 'movable'
   return { openHouse: oneHouse, makePayment: oneHouse && cell !== 'credits' }
 }
+
+// ---------- The move window's composition (lifted out of SupplyHousesTab, where it was written twice) ----------
+
+/** What the move window reads beside the book: each candidate's jobs, and the candidates whose one job's account at the house is on record as not needed. */
+export type MoveWindowReads = {
+  allocations: Readonly<Record<string, ReadonlyArray<{ job_id: string }>>>
+  notNeeded: ReadonlySet<string>
+}
+
+/**
+ * The movable set, as the strip, the worked list and `count_supply_house_move_window()` all read it: a still-current
+ * unflagged charge (`movableCandidates`) on exactly one job, whose account at the house is not marked not needed.
+ */
+export function movableWindowRows<T extends { id: string; amount: number | null; due_date: string | null; on_job_account?: boolean | null }>(
+  unpaidInvoices: readonly T[],
+  todayYmd: string,
+  reads: MoveWindowReads,
+): T[] {
+  return movableCandidates(unpaidInvoices, todayYmd).filter((r) => (reads.allocations[r.id]?.length ?? 0) === 1 && !reads.notNeeded.has(r.id))
+}
+
+export type SingleJobPair = { invoiceId: string; jobId: string; houseId: string }
+
+/** The invoices on exactly one job: only those can sit on a job account. The house is '' when the invoice is not among the rows read. */
+export function singleJobPairs(allocations: Readonly<Record<string, ReadonlyArray<{ job_id: string }>>>, houseOf: ReadonlyMap<string, string>): SingleJobPair[] {
+  return Object.entries(allocations)
+    .filter(([, list]) => list.length === 1)
+    .map(([invoiceId, list]) => ({ invoiceId, jobId: list[0]!.job_id, houseId: houseOf.get(invoiceId) ?? '' }))
+}
+
+/** The invoices whose (job, house) account is among the rows marked not needed (v2.6086): they leave the window. */
+export function notNeededInvoiceIds(pairs: ReadonlyArray<SingleJobPair>, markedAccounts: ReadonlyArray<{ job_id: string; supply_house_id: string }>): Set<string> {
+  const marked = new Set(markedAccounts.map((a) => `${a.job_id}:${a.supply_house_id}`))
+  const notNeeded = new Set<string>()
+  for (const p of pairs) if (marked.has(`${p.jobId}:${p.houseId}`)) notNeeded.add(p.invoiceId)
+  return notNeeded
+}
+
+/** An open (unconfirmed) job-account move ask: the follow-up the office owes. */
+export type MoveAsk = { id: string; invoice_id: string; requested_at: string; via: string; sent_to: string }
+
+/** The asks after an email went: each invoice asked now, by email, keeping the id of an ask it already had. */
+export function withEmailedAsks(asks: Readonly<Record<string, MoveAsk>>, invoiceIds: ReadonlyArray<string>, nowIso: string, sentTo: string): Record<string, MoveAsk> {
+  const next = { ...asks }
+  for (const id of invoiceIds) next[id] = { id: next[id]?.id ?? 'pending', invoice_id: id, requested_at: nowIso, via: 'email', sent_to: sentTo }
+  return next
+}
