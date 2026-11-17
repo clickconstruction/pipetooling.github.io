@@ -13,6 +13,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useJobRetainage } from '../../hooks/useJobRetainage'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { retainageReleaseDraft, retainageReleaseWords } from '../../lib/ar/retainageHeld'
+import { retainageSuggestionWords } from '../../lib/ar/retainageSuggested'
 import { draftRetainageReleaseBill } from '../../lib/ar/retainageHeldIo'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -170,6 +171,13 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
     void saveRef.current({ lien_retainage_held: appFigure.amount }, (l) => ({ ...l, retainage: String(appFigure.amount) }), 'the retainage')
   }, [appFigure, loaded])
   const releaseWords = retainage?.line && loaded?.endedHow && retainage.line.release.state !== 'none' ? retainageReleaseWords(retainage.line.release) : ''
+  // Fix A of the retainage clock check (2026-11-16): on a job with no answer, bills paid at exactly 90% or 95% offer the figure they left behind.
+  const suggested = !appFigure && loaded?.retainage === '' ? (retainage?.suggested ?? null) : null
+  const useSuggested = () => {
+    if (!suggested) return
+    setRetainageDraft(String(suggested.held))
+    void save({ lien_retainage_held: suggested.held }, (l) => ({ ...l, retainage: String(suggested.held) }), 'the retainage')
+  }
   const draftRelease = async () => {
     if (!jobId || !releaseDraft || !retainage) return
     const ok = await confirmDialog({
@@ -268,6 +276,16 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
                   </span>
                 </label>
               </div>
+              {suggested ? (
+                <div data-testid="lien-retainage-suggested" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem 0.6rem', padding: '0.5rem 0.6rem', borderRadius: 4, fontSize: '0.8125rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border)' }}>
+                  <span style={{ flex: '1 1 14rem' }}>
+                    The payments on this job look like {gcName || 'the GC'} holds back ${formatCurrency(suggested.held)}: {retainageSuggestionWords(suggested)}. No retainage is recorded yet.
+                  </span>
+                  <button type="button" disabled={busy} onClick={useSuggested} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', fontWeight: 600, borderRadius: 4, cursor: busy ? 'default' : 'pointer', border: '1px solid currentColor', background: 'none', color: 'inherit', opacity: busy ? 0.6 : 1 }}>
+                    Use ${formatCurrency(suggested.held)}
+                  </button>
+                </div>
+              ) : null}
               {releaseDraft ? (
                 <div data-testid="lien-retainage-release-offer" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem 0.6rem', padding: '0.5rem 0.6rem', borderRadius: 4, fontSize: '0.8125rem', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', border: '1px solid var(--border-green)' }}>
                   <span style={{ flex: '1 1 14rem' }}>

@@ -140,6 +140,8 @@ describe('PrintStickersModal · straight to the P-touch over USB', () => {
     expect(screen.getByTestId('stickers-progress').textContent).toBe('Stopping. One more strip prints, so the printer can cut the tape.')
     go()
     await waitFor(() => expect(screen.getByTestId('stickers-sent').textContent).toBe('2 of 30 stickers printed, then you stopped the run.'))
+    // the rest is not lost with the window (v2.7523): it is still reserved, and the line says where it prints later
+    expect(screen.getByTestId('stickers-rest-kept').textContent).toBe('The 28 stickers left are still reserved. Print them now, or later from the job’s reserved line.')
     // nothing went wrong: the printer stays connected, no red line, and the press is the rest
     expect(usb.close).not.toHaveBeenCalled()
     expect(screen.queryByTestId('stickers-slip')).toBeNull()

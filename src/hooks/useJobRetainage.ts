@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { retainageHeldLine, retainageSourceFigure, type RetainageHeldLine, type RetainageSource } from '../lib/ar/retainageHeld'
 import { loadRetainageHeldRowsForJob } from '../lib/ar/retainageHeldIo'
 import { assembleRetainageHeld, type RetainageJobFacts } from '../lib/ar/retainageHeldRows'
+import { retainageSuggestion, type RetainageSuggestion } from '../lib/ar/retainageSuggested'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { fallbackInvoiceNumber } from '../lib/jobsDocuments/demandLetter'
@@ -15,6 +16,8 @@ export type JobRetainage = {
   jobStatus: string | null
   /** The release bill's number as the job shows it ("#4"), or null while there is none. */
   releaseBillLabel: string | null
+  /** What the bills show held back on a job with no answer (no typed figure, no application); null or absent when they show nothing. */
+  suggested?: RetainageSuggestion | null
 }
 
 /**
@@ -49,6 +52,7 @@ export function useJobRetainage(jobId: string | null): { retainage: JobRetainage
           facts: facts.get(jobId) ?? null,
           jobStatus: rows.jobs[0]?.status ?? null,
           releaseBillLabel: releaseBill ? fallbackInvoiceNumber({ sequence_order: Number(releaseBill.sequence_order ?? 0) }, rows.jobs[0]?.hcp_number ?? null) : null,
+          suggested: input && input.typedHeld == null && input.applications.length === 0 ? retainageSuggestion(input.bills) : null,
         })
         setError(null)
       } catch (e) {

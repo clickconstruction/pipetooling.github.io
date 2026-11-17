@@ -332,6 +332,8 @@ export function buildLienRetainageRun(
       itemId: item.id,
       jobId: e.jobId,
       kind: 'retainage_53_057',
+      // What was mailed (v2.7525): the retainage notice keeps its scans as the monthly notice does.
+      mailedCopies: parseLienMailedCopies((item as { mailed_copies?: unknown }).mailed_copies),
       mailBy: e.deadline,
       propertyId: job?.customer_address_id ?? null,
       street: lienRunStreetBeside(job?.job_name, address?.address),
@@ -468,6 +470,8 @@ export function runPayPageBlocks(n: RunNotice, r: RunRecipient, rows: readonly P
     contactPerson: n.fields.contactPerson,
     phone,
     extras: n.extras,
+    // The page names the cover letter only when this notice prints one (v2.7514).
+    coverLetter: Boolean(n.coverLetter || n.coverNote),
     offer: n.offer ?? null,
     lines: n.payLines ?? null,
   })
