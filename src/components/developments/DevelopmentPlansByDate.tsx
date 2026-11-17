@@ -10,7 +10,10 @@ import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type Re
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { PBD_PAINT, PLANS_BY_DATE_CLUSTER_WORDS, PLANS_BY_DATE_NARROW, dayWords, layoutPlansByDate, plansByDateGlyph, plansByDatePrintHtml, type PbdClass, type PbdGlyph, type PbdInk, type PbdPrim, type PlansByDateModel } from '../../lib/plans/plansByDate'
 import { EmptyState } from '../EmptyState'
+import { plansByDateClusterCard, plansByDateTipCard, type PbdCard, type PbdCardAction } from '../../lib/plans/plansByDateCards'
 import { LinkButton } from './developmentPageBits'
+import { useItemCard } from '../../hooks/usePlansByDateItemCard'
+import { PlansByDateItemCard } from './PlansByDateItemCard'
 
 /** The screen's colours for the kernel's inks: theme tokens, so the chart follows light and dark. */
 const SCREEN_INK: Record<PbdInk, string> = {
@@ -74,8 +77,24 @@ export const PLANS_BY_DATE_LIST_FOLD = 40
 
 export type PlansByDatePrint = { siteName: string; customerName: string | null; printedBy: string | null; /** Where the printed page's copy is filed: a print counts as a send. */ developmentId: string; customerId: string | null }
 
-export function DevelopmentPlansByDate({ model, phone, notes = [], print }: { model: PlansByDateModel | null; phone: boolean; /** Quiet lines under the chart: what is not on it, and why. */ notes?: ReadonlyArray<string>; print: PlansByDatePrint }) {
-  const [tipKey, setTipKey] = useState<string | null>(null)
+export function DevelopmentPlansByDate({
+  model,
+  phone,
+  notes = [],
+  print,
+  cards = null,
+  onAct,
+}: {
+  model: PlansByDateModel | null
+  phone: boolean
+  /** Quiet lines under the chart: what is not on it, and why. */
+  notes?: ReadonlyArray<string>
+  print: PlansByDatePrint
+  /** Every item's card (`buildPlansByDateCards`); without them an item's card is its one line. */
+  cards?: ReadonlyMap<string, PbdCard> | null
+  /** A card's press, done by the page. */
+  onAct?: (action: PbdCardAction) => void
+}) {
   const [allRows, setAllRows] = useState(false)
   const [printNote, setPrintNote] = useState<string | null>(null)
   // The chart is laid out at the width it really has, so its words keep their size on a tablet and a wide screen alike.
@@ -97,6 +116,8 @@ export function DevelopmentPlansByDate({ model, phone, notes = [], print }: { mo
   }, [drawn])
   const narrow = phone || (chartWidth != null && chartWidth < PLANS_BY_DATE_NARROW)
   const layout = useMemo(() => (model && !model.empty ? layoutPlansByDate(model, narrow ? 'phone' : 'desktop', chartWidth ?? undefined) : null), [model, narrow, chartWidth])
+  // One card for the whole view: every item answers the pointer with its details and its presses.
+  const item = useItemCard(narrow)
 
   if (!model) {
     return (
@@ -109,8 +130,21 @@ export function DevelopmentPlansByDate({ model, phone, notes = [], print }: { mo
     return <EmptyState main="Nothing on this site has a date yet." tail="A set lands here on the date on its sheets, and a bid on the day it was sent." compact />
   }
 
-  const tip = tipKey ? (layout.marks.find((m) => m.key === tipKey) ?? null) : null
-  const tipLeft = tip ? (tip.cx / layout.width) * 100 : 0
+  const cardFor = (key: string): PbdCard | null => {
+    const have = cards?.get(key)
+    if (have) return have
+    const shape = layout.marks.find((m) => m.key === key)
+    if (shape?.members && cards) return plansByDateClusterCard(key, shape.members, cards, model)
+    return shape ? plansByDateTipCard(key, shape.tip) : null
+  }
+  const openCard = item.state ? cardFor(item.state.key) : null
+  // The item a card is open on stands out on the chart and in the list at once, so the two read as one thing.
+  const openKey = item.state?.key ?? null
+  const isOpen = (key: string, members?: ReadonlyArray<string>) => openKey != null && (openKey === key || (members?.includes(openKey) ?? false))
+  const act = (action: PbdCardAction) => {
+    item.close()
+    onAct?.(action)
+  }
   const listRows = model.rows.length - 1
   const folded = !allRows && model.rows.length > PLANS_BY_DATE_LIST_FOLD
   const rows = folded ? model.rows.slice(model.rows.length - PLANS_BY_DATE_LIST_FOLD) : model.rows
@@ -134,7 +168,7 @@ export function DevelopmentPlansByDate({ model, phone, notes = [], print }: { mo
     <div data-testid="plans-by-date" style={{ minWidth: 0 }}>
       <div data-testid="pbd-figures" style={{ display: 'grid', gridTemplateColumns: `repeat(${narrow ? 2 : 4}, minmax(0, 1fr))`, gap: 8, marginBottom: 10 }}>
         {model.figures.map((f) => (
-          <div key={f.key} data-testid={`pbd-figure-${f.key}`} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', background: 'var(--bg-subtle)', minWidth: 0 }}>
+          <div key={f.key} role="button" tabIndex={0} {...item.bind(`figure-${f.key}`)} data-testid={`pbd-figure-${f.key}`} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', background: 'var(--bg-subtle)', minWidth: 0, cursor: 'pointer' }}>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</div>
             <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.25 }}>{f.value}</div>
             <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{f.sub}</div>
@@ -157,29 +191,23 @@ export function DevelopmentPlansByDate({ model, phone, notes = [], print }: { mo
         ) : null}
       </p>
 
-      {/* A press on the chart's ground puts the hover line away, so a phone can close what a tap opened. */}
-      <div ref={chartRef} style={{ position: 'relative', minWidth: 0 }} onClick={() => setTipKey(null)} data-testid="pbd-chart">
+      <div ref={chartRef} style={{ position: 'relative', minWidth: 0 }} data-testid="pbd-chart">
         <svg viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label={layout.summary} style={{ display: 'block', width: '100%', height: 'auto', overflow: 'visible', fontFamily: 'inherit' }}>
           {layout.back.map((p, i) => (
             <Prim key={`b${i}`} p={p} />
           ))}
+          {/* A lane's name and today's pill take the pointer too. */}
+          {layout.nameHits.map((h) => (
+            <rect key={h.key} x={h.x} y={h.y} width={h.w} height={h.h} role="button" aria-label={h.label} tabIndex={0} {...item.bind(h.key)} data-testid={`pbd-name-${h.key}`} style={{ fill: 'transparent', cursor: 'pointer', outline: 'none' }} />
+          ))}
           {layout.marks.map((m) => (
-            <g
-              key={m.key}
-              role="img"
-              aria-label={m.tip}
-              tabIndex={0}
-              data-testid={`pbd-mark-${m.key}`}
-              style={{ outline: 'none' }}
-              onMouseEnter={() => setTipKey(m.key)}
-              onMouseLeave={() => setTipKey((k) => (k === m.key ? null : k))}
-              onFocus={() => setTipKey(m.key)}
-              onBlur={() => setTipKey((k) => (k === m.key ? null : k))}
-              onClick={(e) => {
-                e.stopPropagation()
-                setTipKey(m.key)
-              }}
-            >
+            <g key={m.key} role="button" aria-label={m.tip} tabIndex={0} {...item.bind(m.key)} data-testid={`pbd-mark-${m.key}`} style={{ outline: 'none', cursor: 'pointer' }}>
+              {/* The halo under an item whose card is open. */}
+              {m.hit.t === 'circle' ? (
+                <circle cx={m.hit.cx} cy={m.hit.cy} r={m.hit.r} data-testid={isOpen(m.key, m.members) ? 'pbd-mark-open' : undefined} style={{ fill: isOpen(m.key, m.members) ? 'var(--bg-blue-tint)' : 'transparent', fillOpacity: 0.55, stroke: isOpen(m.key, m.members) ? 'var(--text-strong)' : 'none', strokeWidth: 1.5 }} />
+              ) : m.hit.t === 'rect' ? (
+                <rect x={m.hit.x} y={m.hit.y + 5} width={m.hit.w} height={m.hit.h - 10} rx={8} data-testid={isOpen(m.key, m.members) ? 'pbd-mark-open' : undefined} style={{ fill: 'transparent', stroke: isOpen(m.key, m.members) ? 'var(--text-strong)' : 'none', strokeWidth: 1.5 }} />
+              ) : null}
               {m.prims.map((p, i) => (
                 <Prim key={i} p={p} />
               ))}
@@ -190,34 +218,26 @@ export function DevelopmentPlansByDate({ model, phone, notes = [], print }: { mo
             <Prim key={`l${i}`} p={p} />
           ))}
         </svg>
-        {tip ? (
-          <div
-            role="status"
-            data-testid="pbd-tip"
-            style={{
-              position: 'absolute',
-              left: `${tipLeft}%`,
-              top: `${(tip.top / layout.height) * 100}%`,
-              transform: `translate(${tipLeft < 22 ? '0' : tipLeft > 78 ? '-100%' : '-50%'}, calc(-100% - 6px))`,
-              maxWidth: narrow ? 230 : 300,
-              width: 'max-content',
-              background: 'var(--text-strong)',
-              color: 'var(--surface)',
-              borderRadius: 6,
-              padding: '5px 8px',
-              fontSize: '0.76rem',
-              lineHeight: 1.35,
-              pointerEvents: 'none',
-              zIndex: 2,
-            }}
-          >
-            {tip.tip}
-          </div>
-        ) : null}
       </div>
+      {item.state && openCard ? (
+        <PlansByDateItemCard
+          card={openCard}
+          glyph={openCard.glyph ? <Glyph glyph={openCard.glyph} /> : null}
+          anchor={item.anchorRef.current}
+          cardRef={item.cardRef}
+          pinned={item.state.pinned}
+          sheet={narrow}
+          canBack={item.state.trail.length > 0}
+          onBack={item.back}
+          onGo={item.go}
+          onAct={act}
+          onClose={() => item.close(true)}
+          hover={item.cardHover}
+        />
+      ) : null}
 
       <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: '6px 0 0' }} data-testid="pbd-note">
-        {narrow ? 'Press a mark for its line. The chart names the set each part builds from, and the list has the rest.' : 'Rest the pointer on a mark for its line. A name that would not fit stays in the hover and in the list.'}
+        {narrow ? 'Press anything on the chart or in the list for its details. The chart names the set each part builds from.' : 'Rest the pointer on anything for its details and its presses. Press it to keep the card open.'}
         {notes.map((n) => ` ${n}`).join('')}
       </p>
 
@@ -244,7 +264,12 @@ export function DevelopmentPlansByDate({ model, phone, notes = [], print }: { mo
           <div
             key={r.key}
             data-testid={`pbd-row-${r.key}`}
+            role="button"
+            tabIndex={0}
+            {...item.bind(r.key, 'list')}
             style={{
+              cursor: 'pointer',
+              boxShadow: isOpen(r.key) ? 'inset 3px 0 0 var(--text-strong)' : undefined,
               display: 'grid',
               gridTemplateColumns: narrow ? '92px minmax(0, 1fr)' : '100px 170px minmax(0, 1fr)',
               columnGap: 10,

@@ -295,6 +295,10 @@ describe('the pay page in the packet (v2.3758)', () => {
     expect(owner.find((b) => b.kind === 'callout')).toMatchObject({ text: expect.stringContaining('only if Lowbeck Contracting has told you in writing') })
     expect(owner.filter((b) => b.kind === 'payRow')).toHaveLength(1)
     expect(runPayPageBlocks(n, n.recipients[1]!, rows, assets, '')).toEqual([])
+    // The page names the cover letter only when this notice prints one (v2.7514).
+    const calloutOf = (x: typeof n) => (runPayPageBlocks(x, x.recipients[0]!, rows, assets, '').find((b) => b.kind === 'callout') as { text: string }).text
+    expect(calloutOf({ ...n, coverLetter: 'Dear owner,\n\nPlease hold this back.', coverNote: null })).toMatch(/, as the cover letter asks\.$/)
+    expect(calloutOf({ ...n, coverLetter: null, coverNote: null })).toMatch(/hold the amount back from Lowbeck Contracting\.$/)
   })
 
   it('carries the pay offer (v2.4713) from the approved item to the page', () => {

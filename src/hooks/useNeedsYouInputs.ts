@@ -45,6 +45,7 @@ import { useMaterialsOnSiteNeeds } from './useMaterialsOnSiteNeeds'
 import { useCapacityUnderNudge } from './useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from './useJobAccountEvidenceGapsNudge'
 import { useSupplyMoveWindowNudge } from './useSupplyMoveWindowNudge'
+import { useSupplyPaymentsToFinishNudge } from './useSupplyPaymentsToFinishNudge'
 import { useVehicleRecordGapsNudge } from './useVehicleRecordGapsNudge'
 import { usePriceMatrixReadyNudge } from './usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from './usePriceRequestsLateNudge'
@@ -230,6 +231,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { gaps: jobAccountGaps, reload: reloadJobAccountGaps } = useJobAccountEvidenceGapsNudge(jobAccountGapsEnabled)
   const supplyMoveWindowEnabled = on('supplyMoveWindow')
   const { moveWindow: supplyMoveWindow, reload: reloadSupplyMoveWindow } = useSupplyMoveWindowNudge(supplyMoveWindowEnabled)
+  const supplyPaymentsToFinishEnabled = on('supplyPaymentsToFinish')
+  const { toFinish: supplyPaymentsToFinish } = useSupplyPaymentsToFinishNudge(supplyPaymentsToFinishEnabled)
   const vehicleRecordGapsEnabled = on('vehicleRecordGaps')
   const { gaps: vehicleRecordGaps, reload: reloadVehicleRecords } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
   const priceMatrixEnabled = on('priceMatrix')
@@ -344,6 +347,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     jobAccountGaps,
     supplyMoveWindowEnabled,
     supplyMoveWindow,
+    supplyPaymentsToFinishEnabled,
+    supplyPaymentsToFinish,
     vehicleRecordGapsEnabled,
     vehicleRecordGaps,
     priceMatrixEnabled,
