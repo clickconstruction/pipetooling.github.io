@@ -117,7 +117,8 @@ import EstimateCustomerDocument, {
 import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
 import EstimateResendLinkPanel from '../components/estimates/EstimateResendLinkPanel'
 import EstimateOfferedOptions from '../components/estimates/EstimateOfferedOptions'
-import { canResendEstimateLink, estimateLinkResendBlockMessage } from '../../supabase/functions/_shared/estimateLinkResend'
+import { canResendEstimateLink } from '../../supabase/functions/_shared/estimateLinkResend'
+import { postSendEstimate, sendEstimateAnswerFrom } from '../lib/estimates/sendEstimateIo'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_OFFICE_TEAM } from '../lib/gc/access'
 import { formatCurrency } from '../lib/format'
@@ -2220,16 +2221,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
    */
   async function remailCustomerLetter(): Promise<void> {
     if (!row || !user) return
-    const { data: sess } = await supabase.auth.getSession()
-    const jwt = sess.session?.access_token
-    if (!jwt) throw new Error('Not signed in')
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-estimate-to-customer`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string },
-      body: JSON.stringify({ mode: 'remail', estimate_id: row.id, public_origin: typeof window !== 'undefined' ? window.location.origin : undefined }),
-    })
-    const json = (await res.json()) as { ok?: boolean; emailed?: boolean; sent_to?: string; accept_url?: string; error?: string; warning?: string; email_error?: string }
-    if (!res.ok || !json.ok) throw new Error(json.error || 'The letter did not go')
+    const post = await postSendEstimate({ estimateId: row.id, mode: 'remail' })
+    if (post.kind === 'no-session') throw new Error('Not signed in')
+    if (post.kind !== 'reply') throw new Error('The letter did not go')
+    const json = post.json
+    if (!post.httpOk || !json.ok) throw new Error(json.error || 'The letter did not go')
     if (json.accept_url) {
       setLastAcceptUrl(json.accept_url)
       storeEstimateAcceptUrl(row.id, json.accept_url)
@@ -2303,36 +2299,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     if (!row || resending || !user || !resendVerdict.ok) return
     setResending(true)
     try {
-      const { data: sess } = await supabase.auth.getSession()
-      const jwt = sess.session?.access_token
-      if (!jwt) {
+      const post = await postSendEstimate({ estimateId: row.id, mode: 'resend' })
+      if (post.kind === 'no-session') {
         showToast('Not signed in', 'error')
         return
       }
-      const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-estimate-to-customer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${jwt}`,
-          apikey: anon,
-        },
-        body: JSON.stringify({
-          mode: 'resend',
-          estimate_id: row.id,
-          public_origin: typeof window !== 'undefined' ? window.location.origin : undefined,
-        }),
-      })
-      const json = (await res.json()) as {
-        ok?: boolean
-        accept_url?: string
-        emailed?: boolean
-        sent_to?: string
-        email_error?: string
-        warning?: string
-        error?: string
+      if (post.kind !== 'reply') {
+        showToast('Resend failed', 'error')
+        return
       }
-      if (!res.ok || !json.ok || !json.accept_url) {
+      const json = post.json
+      if (!post.httpOk || !json.ok || !json.accept_url) {
         showToast(json.error || 'Resend failed', 'error')
         return
       }
@@ -2881,52 +2858,14 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     try {
       // The pre-send save skips its reload (v2.5695): the refresh after the send re-seeds the editor once, without blanking the page.
       if (mode === 'send') await saveDraft({ skipReload: true })
-      const { data: sess } = await supabase.auth.getSession()
-      const jwt = sess.session?.access_token
-      if (!jwt) return { ok: false, kind: 'refused', why: 'Not signed in. Sign in again and retry.' }
-      const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
-      let res: Response
-      try {
-        res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-estimate-to-customer`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${jwt}`,
-            apikey: anon,
-          },
-          body: JSON.stringify({
-            estimate_id: row.id,
-            public_origin: typeof window !== 'undefined' ? window.location.origin : undefined,
-            ...(mode === 'resend' ? { mode: 'resend' as const } : { customer_email: payloadEmail }),
-          }),
-          signal: typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? AbortSignal.timeout(20_000) : undefined,
-        })
-      } catch (e) {
-        if (e instanceof DOMException && e.name === 'TimeoutError') return { ok: false, kind: 'slow', why: 'No answer after 20 seconds.' }
-        throw e
-      }
-      const json = (await res.json()) as {
-        ok?: boolean
-        accept_url?: string
-        emailed?: boolean
-        email_error?: string
-        warning?: string
-        error?: string
-        code?: string
-        sent_at?: string | null
-        estimate_status?: string
-      }
-      if (!res.ok || !json.ok) {
-        if (json.code === 'already_sent') {
-          const sentAtMs = json.sent_at ? Date.parse(json.sent_at) : NaN
-          return { ok: false, kind: 'already-went', why: json.error || 'This estimate already went to the customer.', sentAtMs: Number.isNaN(sentAtMs) ? null : sentAtMs }
-        }
-        if (json.code === 'not_draft' && json.estimate_status) {
-          const verdict = canResendEstimateLink(json.estimate_status, null)
-          return { ok: false, kind: 'refused', why: verdict.ok ? json.error || 'Send failed' : estimateLinkResendBlockMessage(verdict.reason) }
-        }
-        return { ok: false, kind: 'refused', why: json.error || 'Send failed' }
-      }
+      const post = await postSendEstimate(
+        mode === 'resend' ? { estimateId: row.id, mode: 'resend', timeoutMs: 20_000 } : { estimateId: row.id, mode: 'send', customerEmail: payloadEmail, timeoutMs: 20_000 },
+      )
+      if (post.kind === 'no-session') return { ok: false, kind: 'refused', why: 'Not signed in. Sign in again and retry.' }
+      if (post.kind === 'slow') return { ok: false, kind: 'slow', why: 'No answer after 20 seconds.' }
+      const json = post.json
+      const answer = sendEstimateAnswerFrom(post.httpOk, json)
+      if (!answer.ok) return answer
       if (json.accept_url) {
         setLastAcceptUrl(json.accept_url)
         storeEstimateAcceptUrl(row.id, json.accept_url)
@@ -2939,7 +2878,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       } catch {
         /* the page is stale; the send stands */
       }
-      return { ok: true, acceptUrl: json.accept_url ?? null, emailed: Boolean(json.emailed), warning: json.warning || json.email_error || null }
+      return answer
     } catch (e) {
       return { ok: false, kind: 'refused', why: formatErrorMessage(e, 'Send failed') }
     } finally {

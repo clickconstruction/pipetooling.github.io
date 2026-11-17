@@ -72,7 +72,9 @@ On a phone the number also rides on the menu button.
 
 Your phone also gets a notice, if phone notices are switched on in Settings. A notice outside your **Push me** hours is held until you are back.
 
-If you have no Pipeline, open the Dashboard. The **Needs you** card has a **Tagged job notes** line. Press **Open** and the same list opens.
+If you have no Pipeline, open the Dashboard. The **Needs you** card has a **Tagged notes** line. Press **Open** and one list opens. The list holds your job tags and your task tags.
+
+Tagging in a task note is its own guide: [tag a teammate in a task note](/help/tag-a-teammate-in-a-task-note).
 
 ## Answer a tag
 

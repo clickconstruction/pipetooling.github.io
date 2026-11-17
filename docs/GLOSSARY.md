@@ -4494,6 +4494,9 @@ Taunya kept the papers' names on 2026-11-16.
 The register is `sub_papers` (v2.7474), which registers each paper with its number, its revision and the paper as issued, written only by `mint_sub_paper` (`WS-<job>-<n>` per job, `PR-<n>` from the sending, `SA-<n>` across the company, never given out twice;
 a change is a revision, a reprint makes nothing) and voided only by `void_sub_paper`.
 Guide: `make-a-statement-of-account-for-a-sub`.
+Since v2.7597 (punch list #371) a sub reads the same papers on their own page: a switch under the head, **Today** and **Statements**, opens `SubPortalStatementsView` over the `papers` block of `sub-portal` (`src/lib/subPortal/subPortalStatements.ts`).
+The sub's page never gives out a number: a statement of account saved there reads *Saved from your page*, and a work statement that changed since the office's copy says so and drops its revision.
+Print on the sub's page still prints the Today paper, whichever view shows.
 
 ### Sub payment trace (move / remove / undo)
 
@@ -7020,6 +7023,15 @@ A company truck with no insurance, registration, service or replacement value on
   The person who tagged finds it under **You asked**, where an answer counts above Jobs until it has been on their screen.
   A tag is never read out of the note's words: an `@` typed by hand stays plain words.
   Guide: `/help/tag-a-teammate-in-a-job-note`.
+- **Tagged task notes** (punch list #375;
+  v2.7566 the easier box, v2.7570 the table, v2.7574 the names at a task's note box, v2.7576 where it lands) — a task note that names a teammate picked at the note box, kept as a row of `task_note_tags`.
+  Only people who can already open the task can be tagged: whoever gave it, whoever has that day's row, and the office.
+  It **waits** on that person until they type a note on that task, on any of its days, or press **No reply needed**;
+  a tick, a stuck line and a handed line answer nothing.
+  The person tagged finds it in the **Tagged task notes** section at the top of the Checklist's Today, counted on **Checklist** in the header, and on the Dashboard's **Needs you** card, whose **Tagged notes** line and window hold job tags and task tags together.
+  In Task Mode the section on Today holds job tags too.
+  Review's board says who a task waits on beside its note count.
+  Guide: `/help/tag-a-teammate-in-a-task-note`.
 - **Stage checklist** (punch list #164;
   v2.6072 the rules, v2.6077 the tables and the editor) — a short list of questions the office writes once for each stage kind, Rough In, Top Out and Trim Set (`stage_checklist_templates`: the words, the order, whether a question asks for a photo;
   retired, never deleted), which the crew answers on the phone for each job's stage (`stage_checklist_answers`: Yes, No or Not here, a note, and the photo's waiting-room path until the `photo-save` sweep files it in the customer's Drive folder, or since v2.6219 its `report_photo_id` when a photo taken on a field report answers the question, the report photo's Drive standing mirrored onto the row by trigger).

@@ -5,6 +5,7 @@
  */
 
 import type { SubPortalBooking, SubPortalDays } from './subPortalDays'
+import { parseSubPortalPapers, type SubPortalPapers } from './subPortalPapersPayload'
 export type { SubPortalBooking, SubPortalDays } from './subPortalDays'
 
 export type SubPortalCompany = {
@@ -131,6 +132,8 @@ export type SubPortalPayload = {
   slug: string | null
   /** v2.2930: Your days — dated bookings and days off; empty when the function predates it. */
   days: SubPortalDays
+  /** v2.7597 (punch list #371): the Statements view's block. Null when the function sent none, or one the page cannot read. */
+  papers: SubPortalPapers | null
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
@@ -347,6 +350,7 @@ export function parseSubPortalPayload(raw: unknown): SubPortalPayload | null {
     requestToken: strOrNull(r.requestToken),
     slug: strOrNull(r.slug),
     days: parseDays(r.days),
+    papers: parseSubPortalPapers(r.papers),
   }
 }
 

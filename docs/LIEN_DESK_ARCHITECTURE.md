@@ -1368,6 +1368,8 @@ The window flags the Board opens (`serveOpen`, `scansOpen`, `publicReview`, `pub
 The twelve steps below predate the Board, so this cut is not one of them, and none of the twelve is done.
 Done in v2.7583: the Retainage list is [`LienDeskRetainageList.tsx`](../src/components/jobs/LienDeskRetainageList.tsx), what it lists is `lienRetainageListView` in `lienDeskRetainage.ts`, and the lists' `chip` and `severityColors` are shared from `lienDeskRowStyles.ts`.
 The retainage pick, pile, lit title and footer slot stay in the desk, which is 5,052 lines.
+Done in v2.7585: the Affidavits list is [`LienDeskAffidavitList.tsx`](../src/components/jobs/LienDeskAffidavitList.tsx) over [`useLienDeskAffidavits.ts`](../src/components/jobs/useLienDeskAffidavits.ts), which holds what the list shows and its three batch presses (redraw, send, print).
+The affidavit pick, pile, held-only press and lit title stay in the desk, `btn` and `FILL` are shared from `lienDeskButtonStyles.ts`, and the desk is 4,718 lines.
 
 1. **Stage A: `lienDeskDraftFooterWords` + `lienAskReasonFor`** (1650–1689, 686–692, 733, 1750) — ~60 lines out, pins the rule-to-UI truth under tests.
 2. **Stage A: `sentPacketFacts` + letter-two words/doors/fields** (1861–1931, 2196) — ~45 lines;

@@ -120,8 +120,8 @@ Each lists: anchor (symbol + lines as of `6af60c5bcf`), **owned state** (moves w
 - **Anchor:** `sendToCustomer` 2808–2870 — checks (held date, customer, the customer re-read when missing from the cache, an email by `SEND_EMAIL_RE`), then **routes**: a normal estimate above $0 sent by an office role (`GC_OFFICE_TEAM`) opens **Tell the customer** (`setTellEstimate`); a change order or a $0 total gets one confirm that names the recipient. `sendEstimateEmailAnswer(email, 'send' | 'resend')` 2878–2948 — saves first (skipping its reload), `fetch`es `send-estimate-to-customer` with a 20-second timeout, maps the answer to a `TellSendEmailAnswer` (`slow`, `already-went` with its time, `refused` with the resend verdict's words, or ok with the link), stores the link, copies it when no email went, then `load({ refresh: true })` outside the send's verdict. `sendEstimateEmail` 2951–2959 wraps it in toasts for the confirm path. `tellSheet` 3123–3149 is built above the loading early-return and keyed, so a refresh never unmounts it.
 - **Owned state:** `sending`, `tellEstimate`, `lastAcceptUrl` (shared with the sent side and the CX section), `whatWentRevision` (bumped by the sheet's `onSent`).
 - **Supabase / edge:** `customers` (one re-read), edge `send-estimate-to-customer` by direct `fetch`; the text leg (`quo-send`, the share link) lives inside `TellCustomerSheet`.
-- **Tests:** none on this path. `tellCustomer.test` covers the sheet's side of the contract; `estimateLinkResend.test` the verdict.
-- **Status:** inline, **medium risk and the one path that emails a customer**. Its two pure halves leave first: the routing as a send-plan kernel, the answer mapping with the fetch as one client. The handlers then move with the seam.
+- **Tests:** `sendEstimateIo.test` (v2.7596, 15 cases: the request, the door, the reply's meaning); the routing in `sendToCustomer` has none. `tellCustomer.test` covers the sheet's side of the contract; `estimateLinkResend.test` the verdict.
+- **Status:** inline, **medium risk and the one path that emails a customer**. Its two pure halves leave first: the answer mapping with the fetch as one client — **out, v2.7596** (`postSendEstimate` + `sendEstimateAnswerFrom` in [`lib/estimates/sendEstimateIo.ts`](../src/lib/estimates/sendEstimateIo.ts); the page is 5,362 lines) — and the routing as a send-plan kernel, next. The handlers then move with the seam.
 
 ### `EstimateDetail` — sent-side actions (the cut that needs no seam)
 
@@ -208,7 +208,7 @@ No page-level gate; RLS scopes the rows (a primary sees their own, and the empty
 
 ### Supabase inventory (whole file)
 
-The fact sheet lists no edge functions because all three calls are direct `fetch`es.
+The fact sheet lists no edge functions because the call is a `fetch`, since v2.7596 inside `sendEstimateIo.ts`.
 
 | Table / function | Verbs | Region |
 |---|---|---|
@@ -221,7 +221,7 @@ The fact sheet lists no edge functions because all three calls are direct `fetch
 | RPC `record_estimate_decline`, `extend_estimate_good_through` | both through `(supabase as any).rpc` | detail sent |
 | RPC `publish_co_to_bid_room` | SECURITY DEFINER; draft → sent | detail CO |
 | storage `estimate-acceptor-signatures` | `createSignedUrl(path, 3600)` | detail accepted |
-| edge `send-estimate-to-customer` | direct `fetch` ×3: send / resend from the sheet 2890, `mode: 'resend'` 2313, `mode: 'remail'` 2226 | detail |
+| edge `send-estimate-to-customer` | one `fetch`, in `postSendEstimate` (`lib/estimates/sendEstimateIo.ts`, v2.7596), from three callers: `sendEstimateEmailAnswer` (send, and resend from the sheet), `resendCustomerLink` (`mode: 'resend'`), `remailCustomerLetter` (`mode: 'remail'`) | detail |
 | edge `check-estimate-attachment-url` | via `checkGoogleDriveAttachmentUrl` | detail attachment |
 | through extracted children | `create_job_from_estimate`, `tie_message`, `replace_estimate_catalog_payload`, `share_estimate_link`, `sent_documents`, `quo-send` | modals, sheet, strips |
 
@@ -239,7 +239,7 @@ The first map's inventory is **done** (v2.3866–v2.3868, v2.3870, v2.5864, v2.5
 
 | # | Candidate | Currently | Target | Tests to write |
 |---|---|---|---|---|
-| 1 | **The send client and its answer.** Three hand-written `fetch`es of `send-estimate-to-customer` (session → JWT + anon key → POST → JSON), each reading the reply its own way | 2221–2236, 2306–2338, 2884–2942 | `lib/estimates/sendEstimateIo.ts`: `postSendEstimate(client, { estimateId, mode, customerEmail?, timeoutMs? })` + pure `sendEstimateAnswerFrom(httpOk, json)` → `TellSendEmailAnswer` | `already_sent` → already-went with its time; `not_draft` → the resend verdict's words; a timeout → slow; no JWT → refused; ok with and without `emailed` |
+| 1 | **Done (v2.7596): the send client and its answer.** Three hand-written `fetch`es of `send-estimate-to-customer` (session → JWT + anon key → POST → JSON), each reading the reply its own way | was 2221–2236, 2306–2338, 2884–2942 | `lib/estimates/sendEstimateIo.ts`: `postSendEstimate({ estimateId, mode, customerEmail?, timeoutMs? }, door?)` → no-session / slow / reply, + pure `sendEstimateAnswerFrom(httpOk, json)` → `TellSendEmailAnswer`; the browser is a `SendEstimateDoor` a test stands in for | ✓ 15 tests: the body per mode, the headers, no request with no session, the timeout only when asked, slow, a lost connection still throws; `already_sent` → already-went with its time; `not_draft` → the resend verdict's words; ok with and without `emailed` |
 | 2 | **The send plan** — who gets the Tell sheet, who gets the confirm, and its words | `sendToCustomer` 2843–2867 | `lib/estimates/estimateSendPlan.ts`: `estimateSendPlan({ crmEmail, override, isCO, totalCents, role })` → refuse / sheet / confirm | no email, a bad email, CO → confirm, $0 → *Send anyway* with the note, office role above $0 → sheet, a non-office role → confirm |
 | 3 | **The option editor's transitions** — switch, add, remove, patch, set kind | 1931–1999 | `lib/estimates/estimateOptionsEditor.ts`: pure `(state, …) → state` over `{ options, viewedKey, lines, previewSelected }`, the key maker passed in | first Add makes two with the lines cloned; a copy keeps its source's kind; remove to one collapses to a plain estimate; the star re-seats; an empty target opens on the stub line; the leaving option keeps its live lines |
 | 4 | **The hydration plan** — what a row opens as | `load` 1634–1728, 1747–1755; `hydrateCustomerFieldsFromEstimate` 1572–1588 | `lib/estimates/estimateDetailHydration.ts`: `estimateFormFromRow(row, todayYmd)` and `customerFieldsFromEstimate(row, customers)` | today + 30 with the preset lit; a typed date re-detects its preset; a CO draft opens with no lines; options open on the recommended one; draft vs frozen attachment; the override is dropped when the customer has an email |
@@ -270,7 +270,7 @@ The first map's inventory is **done** (v2.3866–v2.3868, v2.3870, v2.5864, v2.5
 9. **Attachment and CX duality**: a draft edits the live columns; a sent row reads the frozen `customer_attachment_sent` / `customer_experience_sent`.
 10. **`accept_page_footer: ''` is a meaningful override** (hide the footer for this quote); blank does not remove it.
 11. **Send ordering**: the pre-send `saveDraft` skips its reload; exactly one `load({ refresh: true })` follows the edge call, outside the send's verdict, so a page that fails to refresh never reads as a send that failed, and the keyed Tell sheet stays mounted for its receipt. No email but a link → the link is copied. The attachment's Check link never blocks a send.
-12. **Three resend-shaped paths differ on purpose.** The sheet's *Send the link again* (`sendEstimateEmailAnswer(…, 'resend')`) has the 20-second timeout and answers in words; the panel's `resendCustomerLink` has no timeout, needs `accept_url` in the reply and shows the URL once (`resentInfo`); `remailCustomerLetter` throws, keeps the same link and moves nothing on the row. A shared client must keep each caller's handling.
+12. **Three resend-shaped paths differ on purpose.** The sheet's *Send the link again* (`sendEstimateEmailAnswer(…, 'resend')`) has the 20-second timeout and answers in words; the panel's `resendCustomerLink` has no timeout, needs `accept_url` in the reply and shows the URL once (`resentInfo`); `remailCustomerLetter` throws, keeps the same link and moves nothing on the row. The shared client (`postSendEstimate`, v2.7596) keeps each caller's handling: the timeout is the caller's to pass, and each caller still reads the reply itself.
 13. **`record_estimate_decline` and `extend_estimate_good_through` are called through `(supabase as any).rpc`** — the generated types were behind when they shipped. Typing them is its own change, not part of a move.
 14. **Line money**: `updateLine` → `patchDraftLine(…, { allowNegative: isCO })`; a CO credit line renders negative; quantities ≤ 0 coerce to 1 (`estimateDraftLines`).
 15. **An empty estimate draft hydrates to the stub line; an empty CO draft to no lines**, so Impact on cost opens on the guided prompt. With options, `lines` is the recommended option's.
@@ -292,7 +292,7 @@ The first map's inventory is **done** (v2.3866–v2.3868, v2.3870, v2.5864, v2.5
 
 The first pass's steps 1–3 are shipped and are not repeated here. From today's file:
 
-1. **Stage A, one kernel per PR** — rows 1–4 of the [inventory](#stage-a-inventory-pure-logic-to-lib--tests-before-any-component-moves). **First: the send client and its answer (row 1)** — it is the only path that emails a customer, it is written three times, and it has no test. Then the send plan (row 2, with the recipient rule, row 5), the option transitions (row 3), the hydration plan (row 4).
+1. **Stage A, one kernel per PR** — rows 1–4 of the [inventory](#stage-a-inventory-pure-logic-to-lib--tests-before-any-component-moves). **First: the send client and its answer (row 1)** — it is the only path that emails a customer, and it was written three times with no test — **shipped v2.7596**. Then the send plan (row 2, with the recipient rule, row 5), the option transitions (row 3), the hydration plan (row 4).
 2. **`useEstimateSentActions` + `EstimateSentView`** — about 620 lines out (the handlers, the view, the read-only header, the unlink dialog and the two modals), no seam needed, and it takes the region that has grown fastest out of the file. Two PRs if the hook reads cleaner alone.
 3. **The two controlled fieldsets** — `EstimateSupportingDocumentFieldset` (≈175 lines, owns its check) and `EstimateDeliverySection` (≈195 lines, owns the notify and project loaders). Low risk, one PR each.
 4. **`EstimateCustomerExperienceSection`** — ≈450 lines with the override editor and the CX config; `cxOverrideFields` and `previewSelectedOptionKeys` stay controlled.
@@ -317,4 +317,4 @@ Definition of done per region, verification gates and anti-patterns: [`PAGE_DECO
 - **`load()` blanks the tree; `load({ refresh: true })` does not.** A moved caller that swaps one for the other either unmounts the Tell sheet mid-send or leaves a stale editor after a save.
 - **The leave hook judges the old row during a route change.** A seam that re-keys it on `row.id`, or that resets the form before the cleanup runs, deletes the wrong draft or none.
 - **The autosave baseline is the payload's JSON.** Any change to the payload's key order or shape while moving it reads as "dirty" on every open draft and saves at once; `estimateDraftPersist.test` pins the shape — keep it green, unedited.
-- **The fact sheet under-counts the sent side's IO**: it reports no edge functions (the three `fetch`es) and cannot see the two `any`-typed RPC calls' arguments. Grep `functions/v1/` and `.rpc(` before trusting its Data line.
+- **The fact sheet under-counts the sent side's IO**: it reports no edge functions (the `fetch` is in `sendEstimateIo.ts`) and cannot see the two `any`-typed RPC calls' arguments. Grep `functions/v1/` and `.rpc(` before trusting its Data line.
