@@ -1462,6 +1462,8 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 ### drive-link
 
+**Papers before a job opens (v2.7665)**: the office door asks `jobs_shut_to_user` for the caller (`_shared/jobPapersLock.ts`). An estimator who still owes a job a paper gets **403** in words on every ask about that job's folder, and both searches leave that job's files out. Empty for the office, and it fails open.
+
 **Purpose**: Messages, cut 7b (v2.5383, `MESSAGES_PLAN.md` → *Documents, for files going out*, the handler; the mock-up is `to-dos/gc-mode/messages/files-out-mockups.html` on spike/gc-mode). Our own link to one file in a job's Drive folder, `clicktooling.com/f/<link>`, and the office's door to a job's folder. The rules are pure in `_shared/driveLink.ts`, tested by `src/lib/documents/driveLink.test.ts`. Its Drive reads and writes are `_shared/driveJobFolder.ts`, shared with [photo-save](#photo-save) and [messages-email](#messages-email): the job's folder, `halfInside`, the byte read (`driveMedia`, `driveFileBytes`) and our link (`makeDriveLink`). A link is a `drive_links` row (cut 7a, `20261013110000_drive_links.sql`), kept by its SHA-256.
 
 **The open door**, no sign-in: the link is the key.
@@ -1609,6 +1611,8 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Status**: v2.6856, deployed 2026-11-10 with [photo-save](#photo-save) and [drive-intake](#drive-intake) once `20261110195527_bid_photos.sql` and `20261110204006_photo_save_bid_photos.sql` were applied, and again with v2.6860's by-line fix (`adoptedByName`); v2.6922's **Make the project folder** reuses `make`. `npm run check:edge-drift` read it current on 2026-11-11.
 
 ### plan-set-files
+
+**Papers before a job opens (v2.7665)**: the author's team check also asks `job_shut_to_user`, so a caller who still owes the job a paper files nothing into it.
 
 **Purpose**: One Drive subfolder per set of plans, and the files that land in it (punch list #239, PR 5, v2.6345). The folder is **Plans › <set name>** under the Drive folder of the set's job — the job that made the set (an as-built's, a paper kept on a job), else the job that owns the part, else the oldest job on the part with a Drive folder, else the oldest — made as needed (`findOrCreateFolder`). Names are not unique, so a folder of the set's name that another set's link points at belongs to that set, and this one takes *name · 2*. The register is mirrored: a set with no link yet takes its folder's link the moment the folder is made (`plan_sets.link`, and from there the job's `job_plans_link` by the mirror trigger), so Open ↗ on the set, the job's Open plans and the site's Plans look open the same folder. A set whose link already points inside that Plans folder keeps it; a set whose link is elsewhere (the GC's Drive) keeps it too and still gets its own subfolder here for what we file.
 
@@ -3932,6 +3936,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### send-report-notification
 
+**Papers before a job opens (v2.7665)**: for a report on a job, a recipient who still owes that job a paper is left out of the push (`recipientsNotShut`). A report on a project or a bid goes to everyone as before.
+
 > **v2.6260 — the body counts the photos** (punch list #229, PR 5): one `report_photos` count by `report_id`, and the body ends *· 2 photos* (`reportPhotoCountClause`, [`_shared/reportPhotoEmail.ts`](../supabase/functions/_shared/reportPhotoEmail.ts)); nothing added for a report without. **Redeploy required.**
 
 > **v2.6240 — `deno check` passes again**: handing the service-role client to `readReportSubject` ran TypeScript past its instantiation limit (TS2589), since checking supabase-js's client against [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)'s structural chain resolves its `eq` over a plain string column. The read takes anything with a `from` now (`ReportSubjectDb`) and reads it through the chain inside. The emitted JavaScript is the same, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
@@ -4045,6 +4051,8 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 
 ### notify-note-tag
+
+**Papers before a job opens (v2.7665)**: a person who still owes the note's job a paper is left out of the push, and a push with nobody left is not sent.
 
 **Purpose** (v2.7410, punch list #363 PR 5; task notes since v2.7577, punch list #375 PR 4): the phone notice for a teammate tagged in a job note or a task note, and for the person who asked when the answer lands. The client calls it right after a typed note posts on the Pipeline, from a task's note box or from a tagged notes section (`notifyNoteTag` in `src/lib/jobs/noteTagsIo.ts`), and after a **No reply needed** press. A call that fails is dropped: the tag is already on the job or the task and in its count.
 
@@ -4235,6 +4243,8 @@ Both send nothing, and answer `{ "success": true, "off": true, … }`, while the
 
 ### notify-dispatch-request
 
+**Papers before a job opens (v2.7665)**: when the request is on a job, a group member who still owes that job a paper is left out of the new-request push, and `recipients` counts who was sent to. The requester's own closed, reopened and replied push is unchanged.
+
 > **v2.6630 — the cron door** (punch list #253): a POST carrying `X-Cron-Secret` equal to `CRON_SECRET` is an internal caller like the service key, for the `created` fan-out alone (`isCronCaller`, a constant-time compare; an unset secret opens to nobody). The morning license-expiry sweep (`license_expiry_notices_sweep()`, migration [`20261107120000`](./migrations/20261107120000_license_expiry_notices_sweep.md)) files its rows in SQL under pg_cron, where no session exists, and posts each one here so the Dispatch group hears it as it does after a Save. `x-cron-secret` joins the CORS allow-list. **Redeploy required**, before the migration is pushed.
 
 > **v2.6495 — `mode: 'replied'`** (punch list #245 PR 2b): a note Dispatch writes on an open stage check pushes the **requester** *Dispatch replied* with the words first, `<note> — <title>` (220-char cap, mirrored by `composeDispatchClosurePush`), `template_type` `dispatch_request_replied`, `tag: dispatch-<id>-replied`, through their Push me hours like a close; `note` is required (400 without it); the caller is a dispatch group member or a dev. `useDispatchInbox.submitDispatchNote` sends it for a note on an open stage check alone; a note on any other open request pushes nobody, as before. **Redeploy** once merged.
@@ -4346,6 +4356,8 @@ When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friend
 ---
 
 ### notify-team-lead-clock
+
+**Papers before a job opens (v2.7665)**: a leader who still owes the session's job a paper is left out of the push. `leads` still counts every leader owed a verdict.
 
 > **v2.6217 — through each leader's hours** (punch list #141 PR 5): the try-out push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the verdict card is on their Dashboard in the morning. **Redeploy** once merged.
 
@@ -4507,6 +4519,8 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 
 ### schedule-day-email-dispatch
 
+**Papers before a job opens (v2.7665)**: no code change here. Its read, `list_job_schedule_blocks_for_schedule_email`, now blanks a block's job name, address and note for a recipient locked out of that job.
+
 > **v2.4177 — the email is a kernel**: `buildScheduleEmail` and the row type moved verbatim into [`_shared/scheduleDayEmail.ts`](../supabase/functions/_shared/scheduleDayEmail.ts); `index.ts` imports it, so Settings → What the team sees renders the email on sample data (punch list #60, lift 8 of 14). Redeploy after merge.
 
 **Purpose**: pg_cron `*/15` — loads **`schedule_day_email_requests`** rows with **`status = pending`** and **`send_at <= now()`**, calls **`list_job_schedule_blocks_for_schedule_email(p_recipient, p_work_date)`** (Schedule Dispatch hub–parity visibility for that calendar day), builds HTML + plain text, sends to the **recipient**’s **`users.email`** (row **`recipient_user_id`**) via Resend, then sets **`sent`** / **`failed`**.
@@ -4530,6 +4544,8 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 ---
 
 ### schedule-share-dispatch
+
+**Papers before a job opens (v2.7665)**: one board goes to every recipient, so a block of a job that any recipient still owes a paper keeps its number and times and reads *Papers to sign first* (`blankShutShareBlocks`). The recurring path does the same for its one recipient.
 
 > **v2.4178 — rendered in What the team sees**: the email was already a kernel (`_shared/scheduleShareCore.ts` — `buildShareEmail`); Settings → What the team sees now renders it over three sample days (punch list #60, lift 9 of 14). No function change, nothing to redeploy.
 
