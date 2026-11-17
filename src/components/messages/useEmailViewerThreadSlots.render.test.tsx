@@ -216,6 +216,11 @@ describe('useEmailViewerThreadSlots: the email viewer’s row', () => {
     expect(document.querySelector('[data-line="m-files"] [data-bid-door]')!.textContent).toBe('B512|b-oak|m-files|Re: Addendum 2')
     expect(buttonsOf('m-files')).toEqual(['Open the bid'])
     // A link is no file to keep, and a mail with no file is already on the bid's history.
+    cleanup()
+    // Nor is a signature's picture: most mail carries one, and the press would show on all of it (v2.7556).
+    draw(fakeIo(), [line('m-logo', { jobId: 'bid:b-oak', invitation: null, files: [{ ...pdf, id: 'f3', name: 'image001.png', mime: 'image/png', icon: 'image' as const }] }), line('m-link-only', { jobId: 'bid:b-oak', invitation: null, files: [link] }), line('m-no-file', { jobId: 'bid:b-oak', invitation: null })])
+    expect(document.querySelector('[data-line="m-logo"] [data-bid-door]')).toBeNull()
+    expect(buttonsOf('m-logo')).toEqual(['Open the bid'])
     expect(document.querySelector('[data-line="m-link-only"] [data-bid-door]')).toBeNull()
     expect(document.querySelector('[data-line="m-no-file"] [data-bid-door]')).toBeNull()
   })

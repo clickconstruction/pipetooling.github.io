@@ -12,6 +12,7 @@ import { countedLabel } from '../batchWords'
 import { nameFromSubject } from '../papers/papers'
 import { fileAgainLabel } from '../plans/planSetFiles'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { sizeWords } from '../messages/lineFiles'
 import { planSetDateWords, type BidPlanSetRow } from './bidPlanSets'
 
 /** A row of `message_attachments` as the press reads it. The last two columns are optional: a read may leave them out. */
@@ -35,8 +36,18 @@ export function bidMailFiles(rows: ReadonlyArray<BidMailFileRow>): BidMailFile[]
 }
 
 /**
+ * A picture an email program put inside the mail's words, most often the logo in a signature: *image001.png*. It
+ * sits on the line as a file like any other, and it is not a set of plans. A mail that carries nothing else offers
+ * no press, and beside a real file it starts unticked (v2.7556, found on the first look at real mail: most mail
+ * carries one). A person can still tick it.
+ */
+export function isInlinePicture(f: { name: string }): boolean {
+  return /^image\d{0,4}\.(png|jpe?g|gif|bmp)$/i.test(f.name.trim())
+}
+
+/**
  * What the mail offers.
- *  - `none`: the mail carries no file. It is already on the bid's history, and there is nothing to keep.
+ *  - `none`: the mail carries no file, or nothing but a signature's picture. It is already on the bid's history, and there is nothing to keep.
  *  - `keep`: at least one file we hold is in no set yet. The press shows.
  *  - `kept`: every file we hold is in a set. The mail says so, with the door to the set.
  *  - `left`: the mail has files and we hold a copy of none, so nothing can be filed. It says why.
@@ -52,9 +63,9 @@ export function bidMailState(files: ReadonlyArray<BidMailFile>): BidMailState {
   const kept = files.filter((f) => f.setId !== null)
   const ready = files.filter((f) => f.setId === null && f.copied)
   const left = files.filter((f) => f.setId === null && !f.copied)
-  if (ready.length > 0) return { kind: 'keep', ready, kept, left }
+  if (ready.some((f) => !isInlinePicture(f))) return { kind: 'keep', ready, kept, left }
   if (kept.length > 0) return { kind: 'kept', kept, left }
-  return { kind: 'left', left }
+  return left.length > 0 ? { kind: 'left', left } : { kind: 'none' }
 }
 
 /** The press on the mail, wherever the mail is read. */
@@ -71,9 +82,15 @@ export const INTO_NEW = 'new'
 
 export type BidMailDraft = { into: string; name: string; planDate: string; memo: string; picked: string[] }
 
-/** Who wrote the mail, from the line's who words (*Dana Whitfield to the bids box*): the part before *to*. */
+/**
+ * Who wrote the mail, from the line's who words: the part before *to*. The company boxes' reader writes the sender as
+ * the mail's own From, *Dana Whitfield <dana@ridgeway.example> to bids@*, so the address in angle brackets and any
+ * quotes around the name come off (v2.7556, found on the first live look). A From with no name reads as its address.
+ */
 export function mailSender(who: string | null | undefined): string {
-  return (who ?? '').split(/\s+to\s+/)[0]!.split(' · ')[0]!.trim()
+  const from = (who ?? '').split(/\s+to\s+/)[0]!.split(' · ')[0]!.trim()
+  const name = from.replace(/<[^>]*>/g, ' ').replace(/["“”]/g, '').replace(/\s+/g, ' ').trim()
+  return name || (/<([^>]+)>/.exec(from)?.[1] ?? '').trim()
 }
 
 /** The memo a set kept from a mail starts with: *Came by mail from Dana Whitfield, Nov 16.* */
@@ -87,14 +104,14 @@ const sameName = (a: string, b: string): boolean => a.trim().toLowerCase() === b
 
 /**
  * The form as the press opens it: the set's name from the subject, its date the mail's own day, a memo that says it
- * came by mail and from whom, every file we hold ticked. When the bid already has a set of that name the app can
+ * came by mail and from whom, every file we hold ticked but a signature's picture. When the bid already has a set of that name the app can
  * file into, the files go into it, since a later mail of the same conversation carries the same subject.
  */
 export function bidMailDraft(mail: { subject: string | null | undefined; who: string | null | undefined; at: string }, ready: ReadonlyArray<BidMailFile>, sets: ReadonlyArray<Pick<BidPlanSetRow, 'id' | 'name' | 'link'>>): BidMailDraft {
   const planDate = calendarYmdInAppTzFromIso(mail.at)
   const name = nameFromSubject(mail.subject ?? '') || `Mail of ${formatWorkDateYmdMonthDayShort(planDate)}`
   const same = sets.find((s) => sameName(s.name, name) && isDriveFolderLink(s.link))
-  return { into: same ? same.id : INTO_NEW, name, planDate, memo: cameByMailMemo(mail.who, mail.at), picked: ready.map((f) => f.id) }
+  return { into: same ? same.id : INTO_NEW, name, planDate, memo: cameByMailMemo(mail.who, mail.at), picked: ready.filter((f) => !isInlinePicture(f)).map((f) => f.id) }
 }
 
 /** *Put them in*: a new set first, then the bid's sets the app can file into, each with its date. */
@@ -187,15 +204,15 @@ export const FROM_A_MAIL_PRESS = '+ From a mail on this bid'
 export const FROM_A_MAIL_HEAD = 'From a mail on this bid'
 
 /** A mail on the bid as the read embeds its files. */
-export type BidMailLineRow = { id: string; at: string; subject: string | null; who_text: string | null; message_attachments: Array<{ kind: string }> | null }
+export type BidMailLineRow = { id: string; at: string; subject: string | null; who_text: string | null; message_attachments: Array<{ kind: string; name?: string | null }> | null }
 
 /** A mail on the bid that carries at least one file, for the list under Plan sets. */
 export type BidMailLine = { id: string; at: string; subject: string; who: string; files: number }
 
-/** The bid's mail that carries a file, newest first as read; a mail whose only attachment is a link is left out. */
+/** The bid's mail that carries a file, newest first as read; a mail whose only attachment is a link or a signature's picture is left out. */
 export function bidMailLines(rows: ReadonlyArray<BidMailLineRow>): BidMailLine[] {
   return rows
-    .map((r) => ({ id: r.id, at: r.at, subject: (r.subject ?? '').trim() || '(no subject)', who: r.who_text ?? '', files: (r.message_attachments ?? []).filter((a) => a.kind === 'file').length }))
+    .map((r) => ({ id: r.id, at: r.at, subject: (r.subject ?? '').trim() || '(no subject)', who: r.who_text ?? '', files: (r.message_attachments ?? []).filter((a) => a.kind === 'file' && !isInlinePicture({ name: a.name ?? '' })).length }))
     .filter((m) => m.files > 0)
 }
 
@@ -210,10 +227,10 @@ export function nothingToKeepWords(left: number): string {
   return left === 1 ? 'This mail’s file stayed in Gmail, so there is no copy here to keep on the bid.' : `This mail’s ${left} files stayed in Gmail, so there is no copy here to keep on the bid.`
 }
 
-/** A file's size as the form says it, or '' when the row holds none. */
+/**
+ * A file's size as the form says it, or '' when the row holds none: the words the mail's own attachment row uses
+ * (`sizeWords`, a Mac's units), so one file never reads as two sizes on one screen (v2.7556).
+ */
 export function fileSizeWords(bytes: number | null): string {
-  if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) return ''
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
-  const mb = bytes / (1024 * 1024)
-  return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`
+  return bytes != null && bytes > 0 ? sizeWords(bytes) : ''
 }

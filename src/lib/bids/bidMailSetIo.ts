@@ -77,7 +77,7 @@ export const supabaseBidMailSetIo: BidMailSetIo = {
     }
   },
   async mailsOf(bidId) {
-    const r = await supabase.from('messages').select('id, at, subject, who_text, message_attachments(kind)').eq('bid_id', bidId).eq('channel', 'email').order('at', { ascending: false }).limit(100)
+    const r = await supabase.from('messages').select('id, at, subject, who_text, message_attachments(kind, name)').eq('bid_id', bidId).eq('channel', 'email').order('at', { ascending: false }).limit(100)
     checkSupabaseError(r, 'read mail on this bid')
     return bidMailLines((r.data ?? []) as unknown as BidMailLineRow[])
   },
