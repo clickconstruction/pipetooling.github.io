@@ -2495,7 +2495,8 @@ Never a subcontractor, an estimator, an archived person, a digital twin or an ac
 Sample and walk-tester accounts are offered only to a dev or to another such account.
 The client's gate is `canTagInJobNotes` (`src/lib/jobs/noteTags.ts`): the same seven roles see the @ button, the count above Jobs and the Needs you line.
 
-**Tagged task notes** (v2.7570, `20261117160000_task_note_tags.sql`; no screen calls it yet): `task_note_tags` has one read policy and no write policy.
+**Tagged task notes** (v2.7570, `20261117160000_task_note_tags.sql`;
+no screen calls it yet): `task_note_tags` has one read policy and no write policy.
 The tagged person and the tagger read their own rows, and anyone else reads a tag when they can read its note in the task's thread.
 Rows are written only by `task_note_post_tagged` (the note under the writer's own policies, the tags through the definer `task_note_tags_write`), the answering trigger on `checklist_instance_events`, `task_note_tag_done` and `task_note_tags_seen`.
 **Who can be tagged on a task, and who can tag** (`task_note_people`, read for one day row): whoever gave the task and whoever has that day row, whatever their role but subcontractor or estimator, then dev, master technician, assistant and controller.
