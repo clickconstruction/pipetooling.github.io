@@ -1379,6 +1379,9 @@ Done in v2.7591 (steps 2 and 8 below): the sent packet's facts are `lienSentPack
 The three doors a sent notice keeps stay in the desk, which is 4,394 lines.
 Done in v2.7593: the awaiting, ready, printed and held footers are [`LienDeskLeaderFooters.tsx`](../src/components/jobs/LienDeskLeaderFooters.tsx), reading the desk through one `LienNoticeFooterContext`.
 The approval paths and the signature ref stay in the desk, which is 4,133 lines.
+Done in v2.7594 (step 11 below): the draft footer is [`LienDeskDraftFooter.tsx`](../src/components/jobs/LienDeskDraftFooter.tsx) over `LienDraftFooterContext`, and a test pins the order of the leader's Sign and approve from a draft.
+Every footer is out of the desk, which is 3,963 lines.
+A moved file is checked for names that resolve to a browser or Node global (`gc`, `find`), since the typecheck passes them.
 
 1. **Stage A: `lienDeskDraftFooterWords` + `lienAskReasonFor`** (1650–1689, 686–692, 733, 1750) — ~60 lines out, pins the rule-to-UI truth under tests.
 2. **Stage A: `sentPacketFacts` + letter-two words/doors/fields** (1861–1931, 2196) — ~45 lines;
