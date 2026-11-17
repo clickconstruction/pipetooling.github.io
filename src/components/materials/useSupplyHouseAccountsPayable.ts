@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { openSupplyBook, summarizeSupplyHouseBalances } from '../../lib/materials/supplyHousePhone'
 import { supabase } from '../../lib/supabase'
+import { fetchAllRows, fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import type { Database } from '../../types/database'
 import {
   groupAllocationsByInvoice,
@@ -25,16 +26,7 @@ import { supabaseSupplyPaymentsIo, type HousePayments } from '../../lib/material
 import type { SupplyHouse, SupplyHouseInvoice, SupplyHouseInvoiceWithAllocations } from './useSupplyHouseInvoiceForm'
 
 export type InvoiceJobAllocation = { job_id: string; pct: number }
-export type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 export type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
-export type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['Row']
-
-export type POItemWithDetails = PurchaseOrderItem & {
-  part: MaterialPart
-  supply_house?: SupplyHouse
-  source_template?: { id: string; name: string } | null
-}
-export type PurchaseOrderWithItems = PurchaseOrder & { items: POItemWithDetails[] }
 
 export type SupplyHouseSummaryRow = {
   supply_house_id: string
@@ -93,7 +85,7 @@ export function useSupplyHouseAccountsPayable(host: SupplyHouseAccountsPayableHo
 
   const [selectedSupplyHouseForDetail, setSelectedSupplyHouseForDetail] = useState<SupplyHouse | null>(null)
   const [supplyHouseInvoices, setSupplyHouseInvoices] = useState<SupplyHouseInvoiceWithAllocations[]>([])
-  const [supplyHousePOs, setSupplyHousePOs] = useState<PurchaseOrderWithItems[]>([])
+  const [supplyHousePOs, setSupplyHousePOs] = useState<PurchaseOrder[]>([])
   /** Ledger po_code values visible for this supply house (rows for this house + rows with no supply house); null if fetch failed (no warning icons). */
   /** This house's PO Generator rows by code (plus the house-less ones), for the invoice form's PO check and its card (v2.3599). */
   const [poGeneratorEntriesForSelectedHouse, setPoGeneratorEntriesForSelectedHouse] = useState<PoLedgerEntriesByCode | null>(null)
@@ -145,9 +137,11 @@ export function useSupplyHouseAccountsPayable(host: SupplyHouseAccountsPayableHo
     const summaryColumns = 'id, supply_house_id, invoice_number, purchase_order_number, invoice_date, amount, amount_paid, is_paid, updated_at, paid_at, due_date, on_job_account, link, credits_invoice_id'
     // is_interest comes with its own migration (20261117020000). Until that is pushed the read is refused for the
     // column, so it is made again without it: the summary must never go empty over a column that only adds a line.
-    let invoicesRes = await supabase.from('supply_house_invoices').select(`${summaryColumns}, is_interest` as '*')
-    if (invoicesRes.error) invoicesRes = await supabase.from('supply_house_invoices').select(summaryColumns as '*')
-    const invoices = (invoicesRes.data ?? []) as unknown as SummaryInvoice[]
+    // Every bill on the book, a page at a time: a read with no range is cut at the API's row cap with no error, and
+    // the total would then be short without saying so. A read that fails both ways leaves the book empty, as before.
+    const readBook = (columns: string) =>
+      fetchAllRows<SummaryInvoice>((from, to) => supabase.from('supply_house_invoices').select(columns as '*').order('id').range(from, to) as never, 'read the supply house bills')
+    const invoices = await readBook(`${summaryColumns}, is_interest`).catch(() => readBook(summaryColumns).catch((): SummaryInvoice[] => []))
     // An unpaid bill counts for what is left on it (v2.7450 amount_paid): a bill paid in part is not owed whole, here
     // or in the aging table. `billed` keeps the bill's own amount for the row that says so.
     const { book: invoicesList, unpaid } = openSupplyBook(invoices)
@@ -171,10 +165,9 @@ export function useSupplyHouseAccountsPayable(host: SupplyHouseAccountsPayableHo
       ? (await supabase.from('supply_houses').select('id, name, phone, address, notes, website_url, created_at, updated_at').eq('id', sh.id).single()).data
       : shRes.data
     setSelectedSupplyHouseForDetail((shData as SupplyHouse) ?? sh)
-    const [invRes, poRes, allocRes, genRes] = await Promise.all([
+    const [invRes, poRes, genRes] = await Promise.all([
       supabase.from('supply_house_invoices').select('*').eq('supply_house_id', sh.id).order('invoice_date', { ascending: false }),
       supabase.from('purchase_orders').select('*').eq('supply_house_id', sh.id).order('created_at', { ascending: false }),
-      supabase.from('supply_house_invoice_job_allocations').select('invoice_id, job_id, pct'),
       supabase
         .from('material_po_generator_entries')
         .select(
@@ -186,7 +179,13 @@ export function useSupplyHouseAccountsPayable(host: SupplyHouseAccountsPayableHo
         .or(`supply_house_id.eq.${sh.id},supply_house_id.is.null`),
     ])
     const invoices = (invRes.data as SupplyHouseInvoice[]) ?? []
-    const allocations = (allocRes.data as { invoice_id: string; job_id: string; pct: number }[]) ?? []
+    // The jobs on this house's bills alone, read by bill and paged. It was the whole allocations table with no range,
+    // which the API cuts at its row cap with no error. A read that fails leaves the bills on no job, as before.
+    const allocations = await fetchAllRowsChunkedIn<{ invoice_id: string; job_id: string; pct: number }, string>(
+      invoices.map((inv) => inv.id),
+      (chunk, from, to) => supabase.from('supply_house_invoice_job_allocations').select('invoice_id, job_id, pct').in('invoice_id', chunk).order('invoice_id').order('job_id').range(from, to) as never,
+      'read the jobs on the supply house bills',
+    ).catch((): { invoice_id: string; job_id: string; pct: number }[] => [])
     const byInvoice = groupAllocationsByInvoice(allocations)
     const invoicesWithAllocations: SupplyHouseInvoiceWithAllocations[] = invoices.map((inv) => ({
       ...inv,
@@ -203,25 +202,8 @@ export function useSupplyHouseAccountsPayable(host: SupplyHouseAccountsPayableHo
     } else {
       setSupplyHouseJobDetailsMap({})
     }
-    const pos = (poRes.data as PurchaseOrder[]) ?? []
-    const posWithItems: PurchaseOrderWithItems[] = await Promise.all(
-      pos.map(async (po) => {
-        const { data: itemsData } = await supabase
-          .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-          .eq('purchase_order_id', po.id)
-          .order('sequence_order', { ascending: true })
-        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-        const itemsWithDetails: POItemWithDetails[] = items.map((item) => ({
-          ...item,
-          part: item.material_parts,
-          supply_house: item.supply_houses ?? undefined,
-          source_template: item.source_template ?? null,
-        }))
-        return { ...po, items: itemsWithDetails }
-      })
-    )
-    setSupplyHousePOs(posWithItems)
+    // The house's purchase orders by name and status. Their items were read too, one query a PO, and nothing drew them.
+    setSupplyHousePOs((poRes.data as PurchaseOrder[]) ?? [])
     if (genRes.error) {
       setPoGeneratorEntriesForSelectedHouse(null)
     } else {
