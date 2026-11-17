@@ -48,6 +48,16 @@ CREATE TABLE public.supply_house_invoice_bid_allocations (
   pct numeric(5,2) NOT NULL
 );
 
+-- The bank feed, as far as 20261117060000 reads it.
+CREATE TABLE public.mercury_transactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  amount numeric NOT NULL,
+  status text NOT NULL DEFAULT 'sent',
+  kind text NOT NULL DEFAULT 'other',
+  posted_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- The four fences every CREATE TABLE migration ends with: no-ops here.
 CREATE OR REPLACE FUNCTION public.apply_read_only_write_blocks() RETURNS void LANGUAGE sql AS $$ SELECT $$;
 CREATE OR REPLACE FUNCTION public.apply_read_only_stmt_blocks() RETURNS void LANGUAGE sql AS $$ SELECT $$;
@@ -57,4 +67,4 @@ CREATE OR REPLACE FUNCTION public.apply_archived_read_blocks() RETURNS void LANG
 -- The API's role reaches the bills as the office does in prod (their own policies are not this bed's subject).
 GRANT USAGE ON SCHEMA public, auth TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.supply_house_invoices, public.supply_houses TO authenticated;
-GRANT SELECT ON public.users TO authenticated;
+GRANT SELECT ON public.users, public.mercury_transactions TO authenticated;

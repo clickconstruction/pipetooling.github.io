@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { runFilingPayload, type RunNotice } from './lienDeskRun'
-import { LIEN_MAILED_COPY_WORDS, lienMailedCopiesWith, lienMailedCopyAddedWords, lienMailedCopyDocument, lienMailedCopyName, lienMailedCopyProblem, parseLienMailedCopies, type LienMailedCopy } from './lienMailedCopies'
+import { LIEN_MAILED_COPY_WORDS, lienMailedCopiesWith, lienMailedCopiesWithout, lienMailedCopyAddedWords, lienMailedCopyDocument, lienMailedCopyKey, lienMailedCopyName, lienMailedCopyProblem, lienMailedCopyTakeOffAsk, lienMailedCopyTakenOffWords, parseLienMailedCopies, type LienMailedCopy } from './lienMailedCopies'
 
 const copy = (n: number, over: Partial<LienMailedCopy> = {}): LienMailedCopy => ({ url: `https://drive.google.com/file/d/f${n}/view`, driveFileId: `f${n}`, name: `Lien notice as mailed · 650 · 2026-11-16${n > 1 ? ` · ${n}` : ''}.pdf`, at: '2026-11-16T18:00:00.000Z', by: 'u1', ...over })
 
@@ -17,6 +17,17 @@ describe('the mailed copies as the notice remembers them', () => {
     expect(lienMailedCopiesWith([], copy(1))).toEqual([copy(1)])
     expect(lienMailedCopiesWith([copy(1)], copy(2)).map((c) => c.driveFileId)).toEqual(['f1', 'f2'])
     expect(lienMailedCopiesWith([copy(1), copy(2)], copy(1, { at: 'later' })).map((c) => [c.driveFileId, c.at])).toEqual([['f2', '2026-11-16T18:00:00.000Z'], ['f1', 'later']])
+  })
+
+  it('takes one file off and leaves the others in their order (v2.7525); a row with no Drive id is told by its link', () => {
+    expect(lienMailedCopiesWithout([copy(1), copy(2), copy(3)], copy(2)).map((c) => c.driveFileId)).toEqual(['f1', 'f3'])
+    expect(lienMailedCopiesWithout([copy(1)], copy(1))).toEqual([])
+    // A file that is not on the list changes nothing.
+    expect(lienMailedCopiesWithout([copy(1)], copy(9))).toEqual([copy(1)])
+    const bare = { url: 'https://example.test/b', driveFileId: '', name: 'the mailed copy', at: '', by: null }
+    expect(lienMailedCopyKey(bare)).toBe('https://example.test/b')
+    expect(lienMailedCopiesWithout([copy(1), bare], bare)).toEqual([copy(1)])
+    expect(lienMailedCopiesWithout([copy(1), bare], copy(1))).toEqual([bare])
   })
 })
 
@@ -37,6 +48,12 @@ describe('the file a row takes', () => {
     // A photo off a phone with no extension takes one from its type.
     expect(lienMailedCopyName({ jobNumber: ' 651 ', ymd: '2026-11-16', already: 0, file: { type: 'image/png', name: 'image' } })).toBe('Lien notice as mailed · 651 · 2026-11-16.png')
     expect(lienMailedCopyName({ jobNumber: '', ymd: '2026-11-16', already: 0, file: { type: '', name: 'photo' } })).toBe('Lien notice as mailed · 2026-11-16.jpg')
+  })
+
+  it('a retainage notice’s file says so in its name (v2.7525)', () => {
+    expect(lienMailedCopyName({ jobNumber: '650', ymd: '2026-11-16', already: 0, file: { type: 'application/pdf', name: 'SCAN0007.PDF' }, paper: 'retainage' })).toBe('Retainage notice as mailed · 650 · 2026-11-16.pdf')
+    expect(lienMailedCopyName({ jobNumber: '650', ymd: '2026-11-16', already: 1, file: { type: 'image/png', name: 'image' }, paper: 'retainage' })).toBe('Retainage notice as mailed · 650 · 2026-11-16 · 2.png')
+    expect(lienMailedCopyName({ jobNumber: '650', ymd: '2026-11-16', already: 0, file: { type: 'application/pdf', name: 'a.pdf' }, paper: 'notice' })).toBe('Lien notice as mailed · 650 · 2026-11-16.pdf')
   })
 })
 
@@ -65,5 +82,12 @@ describe('the words', () => {
   it('every sentence a person reads keeps to plain words', () => {
     for (const s of [LIEN_MAILED_COPY_WORDS.title, LIEN_MAILED_COPY_WORDS.printFirst, LIEN_MAILED_COPY_WORDS.failed, lienMailedCopyAddedWords('scan.pdf'), lienMailedCopyProblem({ size: 1, type: 'text/plain', name: 'a.txt' })!, lienMailedCopyProblem({ size: 0, type: 'application/pdf', name: 'a.pdf' })!]) expect(plainWordsFailures(s), s).toEqual([])
     expect([LIEN_MAILED_COPY_WORDS.add, LIEN_MAILED_COPY_WORDS.another, LIEN_MAILED_COPY_WORDS.open]).toEqual(['Add what was mailed', 'Add another', 'Open in Drive'])
+  })
+
+  it('taking a file off asks first, names the act on its press, and says the file stays in Drive (v2.7525)', () => {
+    expect(lienMailedCopyTakeOffAsk('scan.pdf')).toBe('Take scan.pdf off this notice? The file stays in the job’s Drive folder.')
+    expect(lienMailedCopyTakenOffWords('scan.pdf')).toBe('Took scan.pdf off this notice. The file is still in the job’s Drive folder.')
+    expect([LIEN_MAILED_COPY_WORDS.takeOff, LIEN_MAILED_COPY_WORDS.takeOffConfirm, LIEN_MAILED_COPY_WORDS.keep]).toEqual(['Take off', 'Take it off', 'Keep it'])
+    for (const s of [lienMailedCopyTakeOffAsk('the scan'), lienMailedCopyTakenOffWords('the scan'), LIEN_MAILED_COPY_WORDS.takeOffFailed]) expect([s, plainWordsFailures(s)]).toEqual([s, []])
   })
 })

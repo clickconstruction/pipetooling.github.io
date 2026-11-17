@@ -19,6 +19,9 @@ import { PlansByDateItemCard } from './PlansByDateItemCard'
 const SCREEN_INK: Record<PbdInk, string> = {
   set: 'var(--house-series-2)',
   bid: 'var(--bid-mark)',
+  bidWash: 'var(--bid-mark-wash-strong)',
+  over: 'var(--text-red-700)',
+  overWash: 'var(--bg-red-100)',
   crew: 'var(--man-hours-field)',
   strong: 'var(--text-strong)',
   text: 'var(--text-700)',
@@ -39,6 +42,7 @@ function paintStyle(cls: PbdClass): CSSProperties {
     opacity: p.opacity,
     fontSize: p.fontSize,
     fontWeight: p.fontWeight,
+    ...(p.halo ? { paintOrder: 'stroke', stroke: SCREEN_INK.surface, strokeWidth: 3, strokeLinejoin: 'round' as const } : {}),
   }
 }
 
@@ -96,6 +100,8 @@ export function DevelopmentPlansByDate({
   onAct?: (action: PbdCardAction) => void
 }) {
   const [allRows, setAllRows] = useState(false)
+  // On a narrow screen the key folds behind a press, so the chart is not pushed six lines down the page.
+  const [keyOpen, setKeyOpen] = useState(false)
   const [printNote, setPrintNote] = useState<string | null>(null)
   // The chart is laid out at the width it really has, so its words keep their size on a tablet and a wide screen alike.
   const chartRef = useRef<HTMLDivElement>(null)
@@ -170,26 +176,35 @@ export function DevelopmentPlansByDate({
         {model.figures.map((f) => (
           <div key={f.key} role="button" tabIndex={0} {...item.bind(`figure-${f.key}`)} data-testid={`pbd-figure-${f.key}`} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', background: 'var(--bg-subtle)', minWidth: 0, cursor: 'pointer' }}>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</div>
-            <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.25 }}>{f.value}</div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 700, color: f.over ? 'var(--text-red-700)' : 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.25 }}>{f.value}</div>
             <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{f.sub}</div>
           </div>
         ))}
       </div>
 
-      <p aria-label="What the marks mean" data-testid="pbd-legend" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0 0 4px' }}>
-        {model.legend.map((l) => (
-          <span key={l.glyph} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
-            <Glyph glyph={l.glyph} />
-            {l.words}
-          </span>
-        ))}
-        {layout.clusters > 0 ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }} data-testid="pbd-legend-cluster">
-            <Glyph glyph="cluster" />
-            {PLANS_BY_DATE_CLUSTER_WORDS}
-          </span>
-        ) : null}
-      </p>
+      {narrow ? (
+        <div style={{ margin: '0 0 4px', fontSize: '0.76rem' }}>
+          <LinkButton onClick={() => setKeyOpen((v) => !v)} title="The key to the chart’s marks">
+            {keyOpen ? 'Hide what the marks mean' : 'What the marks mean'}
+          </LinkButton>
+        </div>
+      ) : null}
+      {!narrow || keyOpen ? (
+        <p aria-label="What the marks mean" data-testid="pbd-legend" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: '0.74rem', color: 'var(--text-muted)', margin: '0 0 4px' }}>
+          {model.legend.map((l) => (
+            <span key={l.glyph} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+              <Glyph glyph={l.glyph} />
+              {l.words}
+            </span>
+          ))}
+          {layout.clusters > 0 ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }} data-testid="pbd-legend-cluster">
+              <Glyph glyph="cluster" />
+              {PLANS_BY_DATE_CLUSTER_WORDS}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
 
       <div ref={chartRef} style={{ position: 'relative', minWidth: 0 }} data-testid="pbd-chart">
         <svg viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label={layout.summary} style={{ display: 'block', width: '100%', height: 'auto', overflow: 'visible', fontFamily: 'inherit' }}>

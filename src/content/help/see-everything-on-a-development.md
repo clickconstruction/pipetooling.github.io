@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, mail tied to a job, email on a bid, tagged email, open in messages, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold, plans by date, drawings over time, sets by date, when did the drawings change, print the plans chart
+keywords: development, site, subdivision, mail tied to a job, email on a bid, tagged email, open in messages, print cost summary, cost summary pdf, print the scoreboard, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold, plans by date, bid schedule, schedule start and end, days left on the schedule, drawings over time, sets by date, when did the drawings change, print the plans chart
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in six looks.
@@ -204,7 +204,7 @@ Questions starts with two presses, {{button:outline|Ask the estimators}} and {{b
 
 Press {{button:outline|By date}} at the top of Plans. The look turns into a chart of the site's drawings over time. Press {{button:outline|By part}} to go back to the table.
 
-Time runs from left to right. A dashed line marks today. Each row of the chart is a lane with its name at the left.
+Time runs from left to right. A dashed line marks today. Each row of the chart is a lane with its name at the left. On a phone, press {{button:outline|What the marks mean}} to see the key.
 
 The Bids lane shows a diamond on the day each bid was sent. A small open diamond marks the date of the plans it was priced from.
 
@@ -214,7 +214,11 @@ The Crews on site lane shows a bar for the days the clock has on the site's jobs
 
 The History lane shows a tick for every line kept on History. A letter gets a flag.
 
-Four figures sit above the chart. The figures are the first drawings, the sets since the bid, the newest set and the days on site. The bid is the first one won. With none won, it is the first one sent.
+A bid with a promised schedule gets its own Schedule lane under Bids. The bar runs from the day the schedule starts to the day it ends. A schedule with no end date runs off the right edge as an arrow. Once today is past the end, a red stretch runs from the end to today.
+
+To set a schedule, press a bid's mark on the chart. Press {{button:outline|Set the schedule}} on its card. Type the day the schedule starts and the day it ends. Tick **No end date** for a schedule that runs on. Press {{button:blue|Save the schedule}}. On a bid that has one, the press reads {{button:outline|Change the schedule}}. Press {{button:outline|Remove the schedule}} in that window to clear it. A person types both dates. Nothing is counted from the day the bid was sent. The same Schedule row is on Edit Bid, under Bid Date Sent.
+
+Four figures sit above the chart. The figures are the first drawings, the sets since the bid, the newest set and the days on site. When a bid has a schedule, the first figure says when it ends and how many days are left. Past the end, that figure turns red and counts the days over. The bid is the first one won. With none won, it is the first one sent.
 
 Rest the pointer on anything in the view. A card opens beside it with its details. The marks, the bars, the lane names, the four figures and the lines of the list all answer. Press the item to keep its card open. Press Escape to close it. On a phone, press the item. The card opens as a sheet from the bottom.
 

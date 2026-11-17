@@ -31,6 +31,10 @@ import { sendsTrackingOwed } from './lienSendTracking.ts'
 
 export type JobLienFilingRow = {
   amount: number
+  applied_by_name: string
+  applied_from: string | null
+  applied_from_label: string
+  applied_reason: string
   by_hand: boolean
   county: string
   created_at: string

@@ -1,0 +1,28 @@
+import type { CSSProperties } from 'react'
+
+/**
+ * The quiet press of a task card (punch list #369): the New task window's Add row, brought to Checklist → Today. A
+ * card's extras wait as grey pills with their names on them, and one that is open or set is lit in the window's blue.
+ * One home, so the card's own note press and the page's extras beside it cannot drift apart.
+ */
+export const TASK_PILL_STYLE: CSSProperties = {
+  font: 'inherit',
+  fontSize: 12.5,
+  minHeight: 32,
+  padding: '4px 11px',
+  borderRadius: 999,
+  border: '1px solid transparent',
+  background: 'var(--bg-muted)',
+  color: 'var(--text-700)',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
+}
+
+/** Laid over `TASK_PILL_STYLE` while the pill's thing is open or set. The whole border, since React clears a longhand it no longer sees. */
+export const TASK_PILL_LIT_STYLE: CSSProperties = {
+  background: 'var(--bg-blue-tint)',
+  border: '1px solid #2563eb',
+  color: 'var(--text-blue-800)',
+  fontWeight: 700,
+}

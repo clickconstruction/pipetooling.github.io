@@ -7,19 +7,19 @@ order: 40
 ---
 The Checklist → Today tab is your task list for the day. Each task is a card.
 
-Tap the big checkbox to mark it done. Use notes to talk about the work right on the card. Anyone who can see the task can join in.
+The top of the page shows the date and one line that says where you stand. It reads like *1 of 3 done today.* Your first open task sits in a card marked **Next**. The rest of today's tasks sit under **Then**. Use notes to talk about the work right on the card. Anyone who can see the task can join in.
 
 :::example A task card
 {{button:outline|☐}} Install sheet metal across the front of the office
 
-{{button:outline|💬 Notes 2}}
+{{button:outline|2 notes}}
 :::
 
 ## Completing a task
 
-Tap the checkbox. That's it. There is no save button. Want to say something about how it went, like "used the scrap ply, looks clean"? Tap **＋ Add a note** and post it. Once a task has notes, the button becomes **💬 Notes**. Open it to read the thread or add another.
+Press {{button:blue|Mark done}} on the **Next** card. On a task under **Then**, tap its checkbox. That's it. There is no save button. Want to say something about how it went, like "used the scrap ply, looks clean"? Tap **＋ Note** and post it. Once a task has notes, the press shows their count, like *2 notes*. Open it to read the thread or add another.
 
-Tapping the checkbox again reopens the task. Every completion and reopen is remembered on the card's history, with who and when.
+A finished task moves under **Done today** as one struck line. Tapping its green check reopens the task. Every completion and reopen is remembered on the card's history, with who and when.
 
 ## Say how far along it is
 
@@ -37,7 +37,7 @@ What is left? Puddy and the glue, Thursday
 {{button:green|✓ Done}}
 :::
 
-Tap **✓ Done** on the same sheet when the work is finished. It takes the same path as the big checkbox. Tap a green ring to reopen the card. A card that repeats keeps its box. A card with lines reads its ring from the ticks.
+Tap **✓ Done** on the same sheet when the work is finished. It takes the same path as the checkbox. Tap a green ring to reopen the card. A card that repeats keeps its box. A card with lines reads its ring from the ticks.
 
 ## Tick the lines
 
@@ -55,7 +55,7 @@ Some cards list what done looks like. The lines sit under the title as boxes. Th
 {{button:outline|☐}} The cart is clear and the floor swept
 :::
 
-Tap the last box and the card is done. It takes the same path as the big checkbox. Tap a ticked box to untick it. Every tick and untick is a line on the card's notes. On a computer the card shows a chip like {{chip:gray|2 of 3 done when…}}. Tap the chip to open the lines. A card that comes back starts its lines over. The notes keep who ticked what.
+Tap the last box and the card is done. It takes the same path as the checkbox. Tap a ticked box to untick it. Every tick and untick is a line on the card's notes. On a computer the card shows a chip like {{chip:gray|2 of 3 done when…}}. Tap the chip to open the lines. A card that comes back starts its lines over. The notes keep who ticked what.
 
 ## Find where a task is
 
@@ -128,7 +128,7 @@ Tap {{button:outline|Show where I am}} to add a dark dot for you. Each task's li
 
 ## Notes are a conversation
 
-Tap the **💬 Notes** button to open the card's thread. The blue badge counts the notes. You'll see every note anyone has left, plus the card's history, in order. The history shows completed, reopened and signed off. Type in the box and hit **Post** to add yours.
+Tap the note press to open the card's thread. The press reads **＋ Note**, or the count once there are notes. You'll see every note anyone has left, plus the card's history, in order. The history shows completed, reopened and signed off. Type in the box and hit **Post** to add yours.
 
 ## When a card comes back
 
@@ -143,7 +143,7 @@ Fix it up, reply on the thread if useful, and check it off again.
 
 ## After you complete
 
-Your finished task may show **waiting on review**. That just means the person who assigned it hasn't looked yet. When they sign off it reads **signed off**. Nothing more is needed from you.
+Under your finished task a line says when you did it and who hears. It reads like *Done 12:22 PM. Imani hears it is done.* When that person signs off, the line reads *Signed off by Imani*. Nothing more is needed from you.
 
 ## Outstanding: overdue work that still needs doing
 

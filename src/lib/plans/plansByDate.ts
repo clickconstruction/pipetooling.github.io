@@ -12,6 +12,7 @@
  * (`DevelopmentPlansByDate.tsx`), so the chart and its print cannot drift.
  */
 import { HISTORY_SOURCE, historyVerb, type HistorySource } from '../developments/history'
+import { scheduleLengthWords, scheduleStanding } from '../bids/bidSchedule'
 import { isDrawingSet, kindLabel, PLAN_SET_KINDS, sourceWords, type PlanPartRow, type PlanSetRow } from './planSets'
 
 const DAY_MS = 86_400_000
@@ -54,7 +55,7 @@ export function jobsWords(labels: ReadonlyArray<string>): string {
 
 export type ToYmd = (raw: string | null | undefined) => string | null
 
-export type PlansByDateBid = { id: string; label: string; sent: string | null; plansDated: string | null; outcome: string | null; outcomeAt: string | null; /** The bid's project name, for its card. */ name?: string | null }
+export type PlansByDateBid = { id: string; label: string; sent: string | null; plansDated: string | null; outcome: string | null; outcomeAt: string | null; /** The bid's project name, for its card. */ name?: string | null; /** The bid's promised schedule (`bidSchedule.ts`): a start a person typed, and an end or no end date. No start, no schedule. */ scheduleStart?: string | null; scheduleEnd?: string | null; scheduleNoEnd?: boolean }
 
 /** A job's days on site: the clock's days when the reader has them, and the job's own first and last work day. */
 export type PlansByDateJob = { id: string; label: string; days: ReadonlyArray<string> | null; firstWorkDay: string | null; lastWorkDay: string | null; /** The job's name and the part it builds from, for the cards. */ name?: string | null; partId?: string | null }
@@ -80,13 +81,13 @@ export type PlansByDateInput = {
 }
 
 /** What a mark is, which is also its shape: identity never rests on colour alone. */
-export type PbdGlyph = 'set' | 'current' | 'undated' | 'ours' | 'bid' | 'bidPlans' | 'crew' | 'crewOpen' | 'tick' | 'letter' | 'today' | 'cluster'
+export type PbdGlyph = 'set' | 'current' | 'undated' | 'ours' | 'bid' | 'bidPlans' | 'schedule' | 'scheduleOver' | 'crew' | 'crewOpen' | 'tick' | 'letter' | 'today' | 'cluster'
 
 export type PbdMark = { key: string; glyph: PbdGlyph; day: number; label: string | null; strong: boolean; priority: number; tip: string }
-export type PbdSpan = { key: string; glyph: 'crew' | 'crewOpen'; from: number; to: number; tip: string }
+export type PbdSpan = { key: string; glyph: 'crew' | 'crewOpen' | 'schedule' | 'scheduleOver'; from: number; to: number; tip: string; /** A schedule with no end date: its bar runs off the chart as an arrow. */ open?: boolean; /** Words inside a schedule's bar, at its start and at its end. */ startWords?: string; endWords?: string }
 export type PbdLane = {
   key: string
-  kind: 'bids' | 'part' | 'crew' | 'history'
+  kind: 'bids' | 'schedule' | 'part' | 'crew' | 'history'
   label: string
   sub: string
   marks: PbdMark[]
@@ -100,7 +101,7 @@ export type PbdLane = {
 /** A line of the dated list under the chart. */
 export type PbdRow = { key: string; day: number; ymd: string; lane: string; glyph: PbdGlyph; text: string; soft: string; bid: boolean; today: boolean }
 
-export type PbdFigure = { key: 'first' | 'since' | 'newest' | 'crew'; label: string; value: string; sub: string }
+export type PbdFigure = { key: 'first' | 'schedule' | 'since' | 'newest' | 'crew'; label: string; value: string; sub: string; /** Past the schedule's end: the one figure drawn in red. */ over?: boolean; /** The bid whose schedule the figure reads. */ bidId?: string }
 
 export type PlansByDateModel = {
   lanes: PbdLane[]
@@ -180,12 +181,14 @@ const GLYPH_WORDS: Record<Exclude<PbdGlyph, 'today' | 'cluster'>, string> = {
   ours: 'ours, an as-built',
   bid: 'a bid sent',
   bidPlans: 'the plans a bid was priced from',
+  schedule: 'a bid’s schedule, start to end',
+  scheduleOver: 'past the schedule’s end',
   crew: 'crews on site',
   crewOpen: 'first to last work day',
   tick: 'a History line',
   letter: 'a letter',
 }
-const LEGEND_ORDER: ReadonlyArray<Exclude<PbdGlyph, 'today' | 'cluster'>> = ['set', 'current', 'undated', 'ours', 'bid', 'bidPlans', 'crew', 'crewOpen', 'tick', 'letter']
+const LEGEND_ORDER: ReadonlyArray<Exclude<PbdGlyph, 'today' | 'cluster'>> = ['set', 'current', 'undated', 'ours', 'bid', 'bidPlans', 'schedule', 'scheduleOver', 'crew', 'crewOpen', 'tick', 'letter']
 
 export function buildPlansByDate(input: PlansByDateInput): PlansByDateModel {
   const today = dayOfYmd(input.today) ?? 0
@@ -222,6 +225,37 @@ export function buildPlansByDate(input: PlansByDateInput): PlansByDateModel {
     if (outcomeWord && outcomeDay != null) row({ key: `bidout-${b.id}`, day: outcomeDay, lane: 'Bids', glyph: 'bid', text: `${b.label} ${outcomeWord}`, soft: '' })
   }
   lanes.push(bidLane)
+
+  // A bid's promised schedule: its own lane, from the start a person typed to the end, or off the chart with no end date.
+  let scheduleFigure: PbdFigure | null = null
+  const byStart = input.bids
+    .map((b) => ({ ...b, startYmd: input.toYmd(b.scheduleStart), startDay: dayOfYmd(input.toYmd(b.scheduleStart)) }))
+    .filter((b): b is typeof b & { startYmd: string; startDay: number } => b.startDay != null)
+    .sort((a, b) => a.startDay - b.startDay)
+  for (const b of byStart) {
+    const endYmd = b.scheduleNoEnd ? null : input.toYmd(b.scheduleEnd)
+    const endDay = dayOfYmd(endYmd)
+    const end = endYmd && endDay != null && endDay >= b.startDay ? { ymd: endYmd, day: endDay } : null
+    const standing = scheduleStanding({ start: b.startYmd, end: end?.ymd ?? null }, input.today)
+    const range = `${dayWords(b.startYmd)} to ${end ? dayWords(end.ymd) : 'no end date'}`
+    const lane: PbdLane = { key: `sched-${b.id}`, kind: 'schedule', label: 'Schedule', sub: `${b.label} · ${standing.words}`, marks: [], spans: [], joins: [], lifeFrom: null }
+    lane.spans.push({ key: `sched-${b.id}`, glyph: 'schedule', from: b.startDay, to: end ? end.day : Math.max(today, b.startDay), open: !end, tip: `${b.label}’s schedule · ${range}${end ? ` · ${standing.words}` : ''}`, startWords: `starts ${dayWords(b.startYmd)}`, endWords: end ? `ends ${dayWords(end.ymd)}` : 'no end date' })
+    used.add('schedule')
+    if (end && standing.over) {
+      lane.spans.push({ key: `schedover-${b.id}`, glyph: 'scheduleOver', from: end.day, to: today, tip: `${b.label}’s schedule ended ${dayWords(end.ymd)} · ${standing.words}`, endWords: standing.words })
+      used.add('scheduleOver')
+    }
+    lanes.push(lane)
+    row({ key: `schedstart-${b.id}`, day: b.startDay, lane: 'Schedule', glyph: 'schedule', text: `${b.label}’s schedule starts`, soft: end ? `ends ${dayWords(end.ymd)}` : 'no end date' })
+    if (end) row({ key: `schedend-${b.id}`, day: end.day, lane: 'Schedule', glyph: standing.over ? 'scheduleOver' : 'schedule', text: `${b.label}’s schedule ends`, soft: `started ${dayWords(b.startYmd)}` })
+    // The figure is the schedule of "the bid" when it has one, else the first to start.
+    if (!scheduleFigure || b.id === anchor?.id) {
+      const length = end ? scheduleLengthWords(b.startYmd, end.ymd) : ''
+      scheduleFigure = end
+        ? { key: 'schedule', label: 'Schedule ends', value: dayWords(end.ymd), sub: [standing.words, length, b.label].filter(Boolean).join(' · '), over: standing.over, bidId: b.id }
+        : { key: 'schedule', label: 'Schedule', value: 'No end date', sub: `started ${dayWords(b.startYmd)} · ${b.label}`, bidId: b.id }
+    }
+  }
   const unsentBids = input.bids.filter((b) => dayOfYmd(input.toYmd(b.sent)) == null).map((b) => b.label)
 
   // One lane a part, in the parts table's order; papers are not drawings and are left out.
@@ -347,7 +381,8 @@ export function buildPlansByDate(input: PlansByDateInput): PlansByDateModel {
   // The four figures.
   const figures: PbdFigure[] = []
   const first = issued[0]
-  figures.push(first ? { key: 'first', label: 'First drawings', value: dayWords(first.ymd), sub: first.dated ? 'the oldest date on any sheet' : 'the day the first set came' } : { key: 'first', label: 'First drawings', value: 'None yet', sub: 'no set on any part' })
+  if (scheduleFigure) figures.push(scheduleFigure)
+  else figures.push(first ? { key: 'first', label: 'First drawings', value: dayWords(first.ymd), sub: first.dated ? 'the oldest date on any sheet' : 'the day the first set came' } : { key: 'first', label: 'First drawings', value: 'None yet', sub: 'no set on any part' })
   if (anchor) {
     const since = issued.filter((s) => s.day > anchor.sentDay).length
     figures.push({ key: 'since', label: 'Sets since the bid', value: String(since), sub: `of ${issued.length}, since ${anchor.label} was sent ${dayWords(anchor.sentYmd)}` })
@@ -429,7 +464,7 @@ export function placePlansByDateLabels<T extends { x: number; label: string; str
 export type PbdClass =
   | 'tickWord' | 'yearWord' | 'laneWord' | 'subWord' | 'markWord' | 'markWordStrong' | 'todayWord'
   | 'grid' | 'gridYear' | 'rule' | 'base' | 'life' | 'link' | 'bidJoin' | 'today' | 'todayPill'
-  | 'set' | 'setOpen' | 'ring' | 'bid' | 'bidOpen' | 'crew' | 'crewOpen' | 'history' | 'letter' | 'letterPole' | 'hit'
+  | 'set' | 'setOpen' | 'ring' | 'bid' | 'bidOpen' | 'schedule' | 'scheduleOver' | 'barWord' | 'crew' | 'crewOpen' | 'history' | 'letter' | 'letterPole' | 'hit'
 
 export type PbdPrim =
   | { t: 'line'; cls: PbdClass; x1: number; y1: number; x2: number; y2: number }
@@ -489,8 +524,9 @@ export function layoutPlansByDate(model: PlansByDateModel, variant: PlansByDateV
   for (const t of plansByDateTicks(model.start, model.end, width - gutter - right)) {
     const tx = x(t.day)
     if (t.labelled || t.month === 1) back.push({ t: 'line', cls: t.month === 1 ? 'gridYear' : 'grid', x1: tx, x2: tx, y1: axisH - 4, y2: height - 6 })
-    if (t.labelled && tx < width - 14) back.push({ t: 'text', cls: 'tickWord', x: tx + 3, y: axisH - 22, anchor: 'start', text: MONTHS[t.month - 1] ?? '' })
-    if ((t.month === 1 || t.first) && tx < width - 30) back.push({ t: 'text', cls: 'yearWord', x: tx + 3, y: axisH - 9, anchor: 'start', text: t.year })
+    // A month's or a year's word is drawn only where the whole of it fits inside the chart.
+    if (t.labelled && tx + 3 + 3 * 6.4 <= width) back.push({ t: 'text', cls: 'tickWord', x: tx + 3, y: axisH - 22, anchor: 'start', text: MONTHS[t.month - 1] ?? '' })
+    if ((t.month === 1 || t.first) && tx + 3 + 4 * 6.6 <= width) back.push({ t: 'text', cls: 'yearWord', x: tx + 3, y: axisH - 9, anchor: 'start', text: t.year })
   }
 
   model.lanes.forEach((lane, i) => {
@@ -507,8 +543,25 @@ export function layoutPlansByDate(model: PlansByDateModel, variant: PlansByDateV
     if (lane.lifeFrom != null) back.push({ t: 'line', cls: 'life', x1: x(lane.lifeFrom), x2: Math.max(x(lane.lifeFrom), x(model.today)), y1: y, y2: y })
     for (const j of lane.joins) back.push({ t: 'line', cls: 'bidJoin', x1: x(j.from), x2: x(j.to), y1: y, y2: y })
     for (const s of lane.spans) {
-      const open = s.glyph === 'crewOpen'
       const x1 = x(s.from)
+      if (s.glyph === 'schedule' || s.glyph === 'scheduleOver') {
+        // A schedule with no end date runs to the chart's right edge and ends in an arrow.
+        const x2 = s.open ? width - right : x(s.to)
+        const w = r1(Math.max(4, x2 - x1))
+        const over = s.glyph === 'scheduleOver'
+        const cls: PbdClass = over ? 'scheduleOver' : 'schedule'
+        const body: PbdPrim = s.open ? { t: 'path', cls, d: `M${x1} ${y - 8} H${r1(x1 + w - 9)} L${r1(x1 + w)} ${y} L${r1(x1 + w - 9)} ${y + 8} H${x1} Z` } : { t: 'rect', cls, x: x1, y: y - 8, w, h: 16, rx: 3 }
+        marks.push({ key: s.key, tip: s.tip, cx: r1(x1 + w / 2), top: y - 10, prims: [body], hit: { t: 'rect', cls: 'hit', x: x1 - 2, y: y - 13, w: w + 4, h: 26, rx: 0 } })
+        // The words inside the bar are drawn only where the bar has room for them; the card and the list have them either way.
+        if (!phone) {
+          const startW = (s.startWords?.length ?? 0) * 6.2 + 12
+          const endW = (s.endWords?.length ?? 0) * 6.2 + (s.open ? 22 : 12)
+          if (s.endWords && w >= endW) labels.push({ t: 'text', cls: 'barWord', x: r1(x1 + w - (s.open ? 15 : 6)), y: y + 3.5, anchor: 'end', text: s.endWords })
+          if (s.startWords && w >= startW + endW + 10) labels.push({ t: 'text', cls: 'barWord', x: x1 + 6, y: y + 3.5, anchor: 'start', text: s.startWords })
+        }
+        continue
+      }
+      const open = s.glyph === 'crewOpen'
       const w = r1(Math.max(open ? 6 : 3, x(s.to) - x1))
       marks.push({ key: s.key, tip: s.tip, cx: r1(x1 + w / 2), top: y - 9, prims: [{ t: 'rect', cls: open ? 'crewOpen' : 'crew', x: x1, y: y - 5, w, h: 10, rx: 4 }], hit: { t: 'rect', cls: 'hit', x: x1 - 2, y: y - 13, w: w + 4, h: 26, rx: 0 } })
     }
@@ -595,18 +648,18 @@ export function layoutPlansByDate(model: PlansByDateModel, variant: PlansByDateV
 // ── The paint ─────────────────────────────────────────────────────────────────
 
 /** The colours a shape can wear, by name: the screen gives each a theme token, the paper a literal. */
-export type PbdInk = 'set' | 'bid' | 'crew' | 'strong' | 'text' | 'muted' | 'surface' | 'border' | 'borderStrong'
+export type PbdInk = 'set' | 'bid' | 'bidWash' | 'over' | 'overWash' | 'crew' | 'strong' | 'text' | 'muted' | 'surface' | 'border' | 'borderStrong'
 
-export type PbdPaint = { fill?: PbdInk | 'none' | 'transparent'; stroke?: PbdInk; strokeWidth?: number; dash?: string; opacity?: number; fontSize?: number; fontWeight?: number; round?: boolean }
+export type PbdPaint = { fill?: PbdInk | 'none' | 'transparent'; stroke?: PbdInk; strokeWidth?: number; dash?: string; opacity?: number; fontSize?: number; fontWeight?: number; round?: boolean; /** A word that can cross a line: it wears a thin edge in the surface's colour, so the line never runs through its letters. */ halo?: boolean }
 
 /** One paint table for the screen and the paper, so a mark means the same on both. */
 export const PBD_PAINT: Record<PbdClass, PbdPaint> = {
   tickWord: { fill: 'muted', fontSize: 10.5 },
   yearWord: { fill: 'text', fontSize: 10.5, fontWeight: 700 },
-  laneWord: { fill: 'strong', fontSize: 12, fontWeight: 600 },
-  subWord: { fill: 'muted', fontSize: 10.5 },
-  markWord: { fill: 'text', fontSize: 10.5 },
-  markWordStrong: { fill: 'strong', fontSize: 10.5, fontWeight: 700 },
+  laneWord: { fill: 'strong', fontSize: 12, fontWeight: 600, halo: true },
+  subWord: { fill: 'muted', fontSize: 10.5, halo: true },
+  markWord: { fill: 'text', fontSize: 10.5, halo: true },
+  markWordStrong: { fill: 'strong', fontSize: 10.5, fontWeight: 700, halo: true },
   todayWord: { fill: 'surface', fontSize: 10.5, fontWeight: 700 },
   grid: { stroke: 'border', strokeWidth: 1, opacity: 0.55 },
   gridYear: { stroke: 'borderStrong', strokeWidth: 1, opacity: 0.9 },
@@ -627,11 +680,14 @@ export const PBD_PAINT: Record<PbdClass, PbdPaint> = {
   history: { stroke: 'muted', strokeWidth: 1.5 },
   letter: { fill: 'strong', stroke: 'surface', strokeWidth: 1.5 },
   letterPole: { stroke: 'strong', strokeWidth: 1.5 },
+  schedule: { fill: 'bidWash', stroke: 'bid', strokeWidth: 1 },
+  scheduleOver: { fill: 'overWash', stroke: 'over', strokeWidth: 1 },
+  barWord: { fill: 'strong', fontSize: 10.5, fontWeight: 600 },
   hit: { fill: 'transparent' },
 }
 
 /** Paper has no theme, so its colours are literal, as on the other print documents. */
-const PAPER_INK: Record<PbdInk, string> = { set: '#eb6834', bid: '#7c3aed', crew: '#0f9a8a', strong: '#111827', text: '#374151', muted: '#6b7280', surface: '#ffffff', border: '#cfd4db', borderStrong: '#aab2bd' }
+const PAPER_INK: Record<PbdInk, string> = { set: '#eb6834', bid: '#7c3aed', bidWash: '#eadffc', over: '#b91c1c', overWash: '#fee2e2', crew: '#0f9a8a', strong: '#111827', text: '#374151', muted: '#6b7280', surface: '#ffffff', border: '#cfd4db', borderStrong: '#aab2bd' }
 
 /** A glyph for a legend entry or a list row, as shapes in a small box centred on 0,0. */
 export function plansByDateGlyph(glyph: PbdGlyph): { width: number; height: number; prims: PbdPrim[] } {
@@ -654,6 +710,10 @@ export function plansByDateGlyph(glyph: PbdGlyph): { width: number; height: numb
       return { width: 22, height: 12, prims: [{ t: 'rect', cls: 'crewOpen', x: -10, y: -4, w: 20, h: 8, rx: 4 }] }
     case 'letter':
       return { width: 14, height: 14, prims: [{ t: 'line', cls: 'letterPole', x1: -4, x2: -4, y1: -6, y2: 6 }, { t: 'path', cls: 'letter', d: 'M-4 -6 l9 3.5 l-9 3.5 z' }] }
+    case 'schedule':
+      return { width: 22, height: 12, prims: [{ t: 'rect', cls: 'schedule', x: -10.5, y: -5, w: 21, h: 10, rx: 3 }] }
+    case 'scheduleOver':
+      return { width: 22, height: 12, prims: [{ t: 'rect', cls: 'scheduleOver', x: -10.5, y: -5, w: 21, h: 10, rx: 3 }] }
     case 'cluster':
       return { width: 22, height: 12, prims: [{ t: 'rect', cls: 'set', x: -10, y: -4.5, w: 20, h: 9, rx: 4.5 }] }
     case 'today':
@@ -678,6 +738,7 @@ function paperAttrs(cls: PbdClass): string {
   if (p.round) a.push('stroke-linecap="round"')
   if (p.fontSize != null) a.push(`font-size="${p.fontSize}"`)
   if (p.fontWeight != null) a.push(`font-weight="${p.fontWeight}"`)
+  if (p.halo) a.push(`paint-order="stroke" stroke="${PAPER_INK.surface}" stroke-width="3" stroke-linejoin="round"`)
   return a.join(' ')
 }
 
@@ -710,7 +771,7 @@ export function plansByDatePrintHtml(input: { siteName: string; customerName: st
   const layout = layoutPlansByDate(model, 'paper')
   const svg = plansByDatePaperSvg(layout)
   const stamp = `Printed ${input.printedAt}${input.printedBy ? ` by ${input.printedBy}` : ''}`
-  const figures = model.figures.map((f) => `<div class="fig"><div class="k">${esc(f.label)}</div><div class="v">${esc(f.value)}</div><div class="s">${esc(f.sub)}</div></div>`).join('')
+  const figures = model.figures.map((f) => `<div class="fig"><div class="k">${esc(f.label)}</div><div class="v"${f.over ? ' style="color:#b91c1c"' : ''}>${esc(f.value)}</div><div class="s">${esc(f.sub)}</div></div>`).join('')
   const keyItems = layout.clusters > 0 ? [...model.legend, { glyph: 'cluster' as const, words: PLANS_BY_DATE_CLUSTER_WORDS }] : model.legend
   const key = keyItems.map((l) => `<span>${paperGlyph(l.glyph)}${esc(l.words)}</span>`).join('')
   const list = model.rows

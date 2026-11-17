@@ -190,6 +190,19 @@ describe('the Lien window’s header names the desk’s step on an affidavit in 
     expect(affidavitStep(t).words).toBe(stepWords)
   })
 
+  it('an affidavit that waits on its notice names the notice’s own next step when the opener says where the notice stands (v2.7527)', () => {
+    const waits = lienWindowDeskAffidavit(entry('needs_notice', ['notice']))
+    expect(waits).toMatchObject({ state: 'needs_property', missing: ['notice'] })
+    const approved = buildLienTimelineFromWindow({ ...src, deskAffidavit: waits, deskNotice: { state: 'ready', holdUntil: null } })
+    expect(approved.next.words).toBe('Print and mail the notice, then file the affidavit — 54 days.')
+    const printed = buildLienTimelineFromWindow({ ...src, deskAffidavit: waits, deskNotice: { state: 'printed', holdUntil: null } })
+    expect(printed.next.words).toBe('Enter mail numbers, then file the affidavit — 54 days.')
+    // With no word on the notice the header keeps the late notice, as before.
+    expect(buildLienTimelineFromWindow({ ...src, deskAffidavit: waits }).next.words).toBe('Send the late notice, then file the affidavit — 54 days.')
+    // The stop under the header says what is missing: a mailing, not a notice.
+    expect(affidavitStep(approved).words).toBe('54 days · a mailed notice missing')
+  })
+
   it('public property has no day to race: the fact, and who to ask', () => {
     const t = buildLienTimelineFromWindow({ ...src, deskAffidavit: lienWindowDeskAffidavit(entry('needs_property', ['public_owner'])) })
     expect(t.next).toMatchObject({ kind: 'affidavit', words: 'Public property, no lien — ask the attorney about the bond.', date: '', daysLeft: null, tone: 'amber' })

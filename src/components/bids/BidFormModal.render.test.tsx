@@ -62,6 +62,7 @@ const values: BidEditFormValues = {
   bidDueTime: '',
   estimatedJobStartDate: '',
   designDrawingPlanDate: '',
+  schedule: { start: '', end: '', noEnd: false },
   submittedTo: '',
   outcome: '',
   lossReason: '',
