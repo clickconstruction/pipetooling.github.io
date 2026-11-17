@@ -212,3 +212,15 @@ export function justDoneWords(hearsName: string | null): string {
   const name = (hearsName ?? '').trim()
   return name ? `Add a photo or a note for ${name} if it helps.` : 'Add a photo or a note if it helps.'
 }
+
+/** The card's map press (punch list #369, tool 8): the task's painted map, where the person may draw a line or leave a place. */
+export const MAP_PRESS_LABEL = '🗺 Map'
+export const MAP_PRESS_TITLE = "Open this task's map. You can draw a line or leave a place on it."
+
+/**
+ * The painted map a task carries, one of two ways: the way in to its place, or a map picked for the task by itself
+ * (v2.7364). The place's way in wins, as it does on the card.
+ */
+export function taskMapIdOf(place: { mapId?: string | null } | null | undefined, mapId: string | null | undefined): string | null {
+  return place?.mapId || mapId || null
+}

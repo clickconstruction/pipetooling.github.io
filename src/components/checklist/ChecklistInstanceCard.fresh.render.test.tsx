@@ -11,6 +11,9 @@ import type { ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { settle } from '../../test/renderSmokeMocks'
 
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
+const openPaintedMap = vi.fn().mockReturnValue(true)
+vi.mock('../../lib/paintedMap/paintedMapDoor', () => ({ openPaintedMap: (...a: unknown[]) => openPaintedMap(...a) }))
+vi.mock('../../hooks/useTaskMapWhole', () => ({ useTaskMapWhole: () => ({ kind: 'none' }) }))
 
 function ev(partial: Partial<ChecklistCardEvent> & { event_type: string; created_at: string }): ChecklistCardEvent {
   return { id: partial.id ?? `${partial.event_type}-${partial.created_at}`, instance_id: 'inst-1', actor_user_id: 'worker-1', body: '', ...partial }
@@ -176,5 +179,26 @@ describe('ChecklistInstanceCard, the fresh look', () => {
     renderFresh({ instance: { id: 'inst-1', completed_at: new Date().toISOString(), reviewed_at: null }, hearsName: 'Imani' })
     await settle()
     expect(document.querySelector('[data-fresh-just-done]')).toBeNull()
+  })
+
+  it('a task that has a map wears a lit 🗺 Map press, which opens that map', async () => {
+    renderFresh({ mapId: 'map-9' })
+    await settle()
+    const map = screen.getByRole('button', { name: '🗺 Map' })
+    expect(map.style.fontWeight).toBe('700')
+    fireEvent.click(map)
+    expect(openPaintedMap).toHaveBeenCalledWith('map-9')
+  })
+
+  it('a place with a way in opens the way in, and a task with no map has no map press', async () => {
+    openPaintedMap.mockClear()
+    const { unmount } = renderFresh({ mapId: 'map-9', place: { lat: 29.55, lng: -98.28, name: 'Shop yard', accuracyM: null, setBy: null, setAt: null, mapId: 'way-1' } })
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: '🗺 Map' }))
+    expect(openPaintedMap).toHaveBeenCalledWith('way-1')
+    unmount()
+    renderFresh()
+    await settle()
+    expect(screen.queryByRole('button', { name: '🗺 Map' })).toBeNull()
   })
 })
