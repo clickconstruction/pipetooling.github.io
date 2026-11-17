@@ -47,6 +47,17 @@ export async function postTaggedNote(jobId: string, body: string, tagged: readon
   return data
 }
 
+/**
+ * A typed task note with the teammates picked in it (punch list #375), in one transaction: the note in the task's
+ * thread and its tags. Returns the note's id. Not retried, so it posts once.
+ */
+export async function postTaggedTaskNote(instanceId: string, body: string, tagged: readonly string[]): Promise<string> {
+  const { data, error } = await supabase.rpc('task_note_post_tagged', { p_instance_id: instanceId, p_body: body, p_tagged: [...tagged] })
+  if (error) throw error
+  if (!data) throw new Error('The note was not posted')
+  return data
+}
+
 /** No reply needed. False when the tag no longer waits. */
 export async function markTagDone(tagId: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('job_note_tag_done', { p_tag_id: tagId })
