@@ -5,7 +5,8 @@ import { LIEN_MAILED_COPY_ACCEPT, LIEN_MAILED_COPY_WORDS, lienMailedCopyKey, lie
 /**
  * What was mailed, on one row of the run's checklist (the owner's ask of 2026-11-16): the files the notice has, each
  * a link that opens it in Drive, and on a printed paper row the press that adds one. Since v2.7525 a listed file has
- * **Take off** beside it. It asks first, under the files, and says the file stays in Drive.
+ * **Take off** beside it. It asks first, under the files, and says the file stays in Drive. Since v2.7635 a file
+ * that did not go up leaves its reason under the row, with **Try again** where the same file can go again.
  *
  * The block lived inside `LienRunChecklist.tsx` until v2.7525. It is its own file so the checklist, which several
  * changes touch at once, holds one line for it.
@@ -18,6 +19,10 @@ export type LienRunMailedCopiesPress = {
   onRemove?: (row: LienRunRow, copy: LienMailedCopy) => void
   /** The row a file is coming off. */
   removingItemId?: string | null
+  /** The file that did not go up, with its reason (v2.7635); `retry` is whether the same file can go again. */
+  failed?: { itemId: string; words: string; retry: boolean } | null
+  /** Send the failed file again. */
+  onRetry?: (row: LienRunRow) => void
 }
 
 /** The press that takes the file: a button over a hidden picker, so the keyboard reaches it as any button. */
@@ -51,6 +56,7 @@ export default function LienRunMailedCopies({ row, canAdd, busy, press }: { row:
   const dead = busy || working
   const removing = press?.removingItemId === row.itemId
   const asked = asking ? row.mailedCopies.find((c) => lienMailedCopyKey(c) === asking) ?? null : null
+  const failed = press?.failed?.itemId === row.itemId ? press.failed : null
   return (
     <div className="lienRunCheckCopies" data-testid={`run-check-copies-${row.itemId}`}>
       {row.mailedCopies.map((c, i) => (
@@ -87,6 +93,16 @@ export default function LienRunMailedCopies({ row, canAdd, busy, press }: { row:
         </div>
       ) : removing ? (
         <span className="lienRunCheckCopyBusy" role="status">{LIEN_MAILED_COPY_WORDS.takingOff}</span>
+      ) : null}
+      {failed && press?.addingItemId !== row.itemId ? (
+        <div className="lienRunCheckCopyAsk" role="alert" data-testid={`run-check-copy-failed-${row.itemId}`}>
+          <span style={{ color: 'var(--text-red-700)' }}>{failed.words}</span>
+          {failed.retry && press?.onRetry ? (
+            <button type="button" onClick={() => press.onRetry?.(row)} disabled={dead} className="lienRunCheckCopyAdd" data-testid={`run-check-copy-retry-${row.itemId}`}>
+              {LIEN_MAILED_COPY_WORDS.tryAgain}
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   )
