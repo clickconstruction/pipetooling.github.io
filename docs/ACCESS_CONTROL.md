@@ -1051,7 +1051,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   only the four roles get the Try again press.
 - **Stickers before boxes** (v2.7072, punch list #329, `docs/migrations/20261113020000_box_stickers.md`): **`box_stickers`** is **read** on a box by whoever may touch the box's job, the gate above, and while reserved (on no box yet, `blank` in the code) by whoever may touch the job its run was printed for;
   nobody else lists a reserved sticker, so nobody collects codes ahead of their boxes, and an orphaned run's stickers are the office's (`is_office_staff()`).
-  **No client inserts, updates or deletes a sticker.**
+  **No client inserts or deletes a sticker, and a client updates one column of it**, `printed_at` (v2.7564, punch list #373, `docs/migrations/20261117140000_sticker_printed.md`): when its strips last came out of the printer.
+  That update is a column grant under `box_stickers_update`, the read's own predicate, so whoever reads a sticker writes its mark, and a trigger replaces a direct caller's time with the server's.
   **`sticker_runs`** is read with its job;
   **insert** by the office, a primary or a superintendent (`sticker_can_mint()`;
   the client draws the press for the same roles through `canMintStickers` in `lib/materials/stickerRun.ts`, v2.7272, and dead with the trigger's words for the rest) on a job they can reach, in their own name, the count and the numbers the database's, and since v2.7312 the names a run carries (`names`, each sticker's `box_name`) held by the stamp trigger to the box rule, as many as the stickers and each once (`docs/migrations/20261115050000_sticker_run_names.md`);
