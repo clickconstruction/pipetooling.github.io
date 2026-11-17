@@ -209,7 +209,7 @@ A file can hold other documents beside the summary and the narrative. A long acc
 3. Give it a title. From a file proposes one from the file's name. Tick **Counsel-only** for a document that never leaves the circle.
 4. Press {{button:blue|Add the document}}. It opens on the file.
 
-Press {{button:outline|Open}} on a document to read it. Long ones have a **Jump to** list of their sections. Press {{button:outline|Edit the document}} to change it. Save works as it does for the summary. Press {{button:outline|Copy as text}} to put the whole text on the clipboard. A counsel-only document has no copy press.
+Press {{button:outline|Open}} on a document to read it. Long ones have a **Jump to** list of their sections. Press {{button:outline|Edit the document}} to change it. Save works as it does for the summary. Press {{button:outline|Copy as text}} to put the whole text on the clipboard. A document with a draft note at its top also shows {{button:outline|Copy the draft letter}}. A document with a section headed INTERNAL shows {{button:outline|Copy the letter}}. That press copies only the part to send, as plain text for an email. Read [copy a letter into an email](/help/review-a-collections-account-before-it-goes-to-your-attorney#copy-a-letter-into-an-email) for what the copy leaves out. A counsel-only document has no copy press.
 
 A file picked off your desk is read in your browser. Nothing leaves it until you press Add. The agent can change a named document too, one section at a time.
 

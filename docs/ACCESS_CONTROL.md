@@ -3777,6 +3777,7 @@ the firm's portal (PR 3) reads them through the service role.
 the portal still serves it to a firm only once released.
 The desk's *Probably a subcontract* note (v2.5840, punch list #166) writes `jobs_ledger` through the same four roles' existing update policy: **Set the GC** sets `gc_customer_id` and lets the `jobs_ledger_customer_gc_distinct` trigger clear the customer slot;
 **Ours with the owner** stamps `owner_contract_confirmed_at / _by` (migration `20261025130000`).
+Since v2.7683 **Read** on a matter's text document carries copy presses (**Copy the letter**, a piece by its heading and **Copy everything as text**, over `src/lib/legal/letterCopyText.ts`) for whoever reads the row, the same four roles, with no new permission and no edit right needed, and a counsel-only paper has none.
 
 | Act | Who | Entry point |
 |---|---|---|

@@ -2,7 +2,7 @@
 title: review a collections account before it goes to your attorney
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: legal, attorney, law firm, collections, packet, sworn account, lien clock, demand letter, worth it, write down, theory, exhibits, contact history, attorney ready, release, held back, ask a dev, timeline, planned step, plan, what happens next, email, eml, messages, from the job's messages
+keywords: legal, attorney, law firm, copy a letter, paste into an email, clipboard, collections, packet, sworn account, lien clock, demand letter, worth it, write down, theory, exhibits, contact history, attorney ready, release, held back, ask a dev, timeline, planned step, plan, what happens next, email, eml, messages, from the job's messages
 where: /legal-desk
 ---
 Before an account that will not pay goes to a law firm, the office should see what the firm sees. The Legal desk in the Pipeline's Collections section is that review, one account at a time.
@@ -90,6 +90,22 @@ The list sits under headings by whose paper each one is. The payer's paper comes
 A draft wears a {{chip:yellow|draft}} chip on the desk and on the firm's portal. The firm sees drafts on purpose, so counsel can read a letter before it goes out. When the letter goes out, pick **Mark sent…** from its row's {{button:outline|⋯}} menu. Pick the day, how it went and who it went to. Pick the mailing receipt under the proof, once it is on the matter. The row's chip then reads {{chip:blue|sent · certified mail}}. The full record sits at the top of the row's {{button:outline|⋯}} menu, with the receipt one press away. **Mark final** is for a draft that is now the paper. **Received…** is for a paper that came in. *Not sent after all* clears a record made by mistake. All four sit in the same menu. **Whose paper…** sits there too and moves the paper under another heading.
 
 The firm sees each document under Evidence on its portal, with a link that opens for 15 minutes. The printed packet lists them as one more exhibit. Each row's actions sit behind its {{button:outline|⋯}} menu. **Hold from the firm…** keeps one back with a reason, such as an internal report. The firm sees only how many were held. **Remove** takes a document off the matter.
+
+## Copy a letter into an email
+
+A letter kept as a .md or .txt file can go straight into an email. Open the **Evidence** tab. Press {{button:outline|Read}} on the letter's row. The copy presses sit over the words. Press {{button:dark|Copy the letter}}. Open your email and paste.
+
+The copy is plain text. It has no stars, pound signs or rule lines. Lists keep their dashes. Line breaks stay where they were written.
+
+The copy leaves two things out. One is a draft note at the top of the document. The other is any section whose heading starts with INTERNAL. A line over the words names what the copy left out.
+
+A blank in square brackets stays as written, such as `[DATE]`. An amber line lists every blank still to fill. The copied message counts them. Fill each one in your email before you send.
+
+A document can hold more than one letter. A large heading starts each one. Each letter gets its own press, named by its heading, such as {{button:outline|Copy “Short version”}}. A draft says so on the press, as in {{button:dark|Copy the draft letter}}.
+
+{{button:outline|Copy everything as text}} takes the whole document. That includes the draft note and the internal sections. A counsel-only paper has no copy press.
+
+A paper filed as a PDF or a picture has no {{button:outline|Read}}. Neither does a text file put on the matter before the desk kept text. Add the file again as a .md or .txt to read and copy it.
 
 ## From the job's messages
 
