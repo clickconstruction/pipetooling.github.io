@@ -32,6 +32,8 @@ const world = vi.hoisted(() => ({
   /** A prospect's Messages thread: the contact that points at it, and that contact's numbers. */
   contacts: [] as Array<Record<string, unknown>>,
   channels: [] as Array<Record<string, unknown>>,
+  /** The Subs Board's pins: one row a company a trade. */
+  ranks: [] as Array<Record<string, unknown>>,
   writes: [] as Array<{ table: string; method: string; payload: unknown; filters: Record<string, unknown> }>,
   invokes: [] as Array<{ name: string; body: unknown }>,
   /** The GC board's read: null refuses it (the lanes then draw without their strips). */
@@ -117,6 +119,8 @@ vi.mock('../lib/supabase', () => {
         if (filters.prospect_id) rows = rows.filter((l) => l.prospect_id === filters.prospect_id)
         return list(rows)
       }
+      case 'prospect_trade_ranks':
+        return list(world.ranks)
       case 'contacts':
         return list(filters.prospect_id ? world.contacts.filter((c) => c.prospect_id === filters.prospect_id) : world.contacts)
       case 'contact_channels':
@@ -270,6 +274,7 @@ function seed() {
   world.locks = []
   world.contacts = []
   world.channels = []
+  world.ranks = []
   world.writes = []
   world.invokes = []
   world.gcBoard = null
@@ -958,6 +963,98 @@ describe('Activity', () => {
     expect(screen.getByText('A referral')).toBeTruthy()
     expect(screen.getByText(/^Subs · This week —/)).toBeTruthy()
     expect(screen.getByText(/0 to the bench/)).toBeTruthy()
+  })
+})
+
+describe('the calling order and the deck’s order', () => {
+  const rail = () => within(document.querySelector('.followUpQueueRail') as HTMLElement)
+  const railOrder = (names: RegExp) => rail().getAllByText(names).map((n) => n.textContent)
+  const remember = (mode: string) => window.localStorage.setItem('prospects_calling_order_v1_smoke-auth-user-1', mode)
+
+  it('a remembered order is the one the deck loads in', async () => {
+    remember('never_called_first')
+    await deck('/prospects')
+    await waitFor(() => expect(railOrder(/^(Alpha Builders|Bravo Homes|Charlie Group)$/)).toEqual(['Alpha Builders', 'Charlie Group', 'Bravo Homes']))
+    expect(rail().getByRole('button', { name: 'Never called' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('the default order is coldest first', async () => {
+    await deck('/prospects')
+    expect(railOrder(/^(Alpha Builders|Bravo Homes|Charlie Group)$/)).toEqual(['Alpha Builders', 'Bravo Homes', 'Charlie Group'])
+    expect(rail().getByRole('button', { name: 'Coldest' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('By rank on a trade leads with that trade’s pins', async () => {
+    remember('by_rank')
+    world.ranks = [{ prospect_id: 'su-2', trade: 'Concrete', rank_order: 1 }]
+    await deck('/prospects?tab=follow-up&kind=subs&trade=Concrete')
+    await waitFor(() => expect(railOrder(/^(Golf Concrete|Hotel Concrete)$/)).toEqual(['Hotel Concrete', 'Golf Concrete']))
+    expect(onCard()).toContain('Hotel Concrete')
+  })
+
+  it('By rank with no pins keeps Call first ahead of Later', async () => {
+    remember('by_rank')
+    world.prospects = world.prospects.map((p) => (p.id === 'su-1' ? { ...p, priority: 3 } : p.id === 'su-3' ? { ...p, priority: 1 } : p))
+    await deck('/prospects?tab=follow-up&kind=subs')
+    await waitFor(() => expect(railOrder(/^(Golf Concrete|Hotel Concrete|India Framing)$/)).toEqual(['India Framing', 'Hotel Concrete', 'Golf Concrete']))
+  })
+
+  it('Soonest bid on Jobs to GC leads with the lead whose bid is due first', async () => {
+    remember('soonest_bid')
+    world.jobs = [{ id: 'j-1', prospect_id: 'gc-2', name: 'Test Clinic', status: 'open', bid_due: '2099-01-05', won_by: null, created_at: '2026-10-01T12:00:00Z', created_by: 'smoke-auth-user-1', location: null, notes: null, plans: null }]
+    await deck('/prospects?tab=follow-up&kind=gc-leads')
+    await waitFor(() => expect(railOrder(/^(Echo Owner|Foxtrot Developer)$/)).toEqual(['Foxtrot Developer', 'Echo Owner']))
+  })
+
+  it('a lane that has no such order falls back to its own rows, and the switch offers only its own orders', async () => {
+    remember('soonest_bid')
+    await deck('/prospects')
+    expect(railOrder(/^(Alpha Builders|Bravo Homes|Charlie Group)$/)).toEqual(['Alpha Builders', 'Bravo Homes', 'Charlie Group'])
+    expect(rail().queryByRole('button', { name: 'Soonest bid' })).toBeNull()
+    expect(rail().queryByRole('button', { name: 'By rank' })).toBeNull()
+  })
+
+  it('a ZZ test company stays off the deck and the list for the office', async () => {
+    world.role = 'assistant'
+    world.prospects = [...world.prospects, prospect('cu-zz', 'customer', 'ZZ Test Company', { last_contact: '2026-08-01T12:00:00Z' })]
+    await deck('/prospects')
+    expect(screen.getByText('1 of 3')).toBeTruthy()
+    expect(screen.queryByText('ZZ Test Company')).toBeNull()
+    press('Prospect List')
+    await screen.findByText('Never called (2)')
+    expect(screen.queryByText('ZZ Test Company')).toBeNull()
+  })
+
+  it('switching lanes reloads the deck for the new lane and leaves no card of the old one', async () => {
+    await deck('/prospects')
+    press('Jobs to GC')
+    await waitFor(() => expect(onCard()).toContain('Echo Owner'))
+    expect(screen.queryByText('Alpha Builders')).toBeNull()
+    expect(screen.getByText('1 of 2')).toBeTruthy()
+  })
+})
+
+describe('the Board’s writes', () => {
+  const card = (id: string) => document.querySelector(`[data-board-card="${id}"]`) as HTMLElement | null
+
+  it('Pass asks first, marks the company not a fit and takes it off the column', async () => {
+    open('/prospects?tab=board&kind=subs')
+    await screen.findByText('Call the 2 here →')
+    fireEvent.click(within(card('su-1') as HTMLElement).getByRole('button', { name: 'Pass' }))
+    const ask = await screen.findByRole('alertdialog')
+    fireEvent.click(within(ask).getByRole('button', { name: 'Pass' }))
+    await waitFor(() => expect(writesTo('prospects', 'update')).toHaveLength(1))
+    expect(writesTo('prospects', 'update')[0]).toMatchObject({ payload: { prospect_fit_status: 'not_a_fit' }, filters: { id: 'su-1' } })
+    await waitFor(() => expect(card('su-1')).toBeNull())
+    expect(card('su-2')).toBeTruthy()
+  })
+
+  it('To the bench opens the bench window filled from the card', async () => {
+    open('/prospects?tab=board&kind=subs')
+    await screen.findByText('Call the 2 here →')
+    fireEvent.click(within(card('su-1') as HTMLElement).getByRole('button', { name: 'To the bench ✓' }))
+    const dialog = await screen.findByRole('dialog')
+    expect((within(dialog).getByDisplayValue('Golf Concrete') as HTMLInputElement).value).toBe('Golf Concrete')
   })
 })
 

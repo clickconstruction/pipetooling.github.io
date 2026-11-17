@@ -7,15 +7,11 @@ import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-do
 import { supabase } from '../lib/supabase'
 import { myTimeWindows, sumTimerSeconds, sumTimerSecondsByProspect } from '../lib/prospects/prospectTimerSums'
 import {
-  CALL_INTERACTION_TYPES,
-  CALLING_ORDER_STORAGE_KEY,
   indexAfterOtherRowLeft,
   insertColdest,
-  orderFollowUpProspects,
   queueAfterRemoval,
   queueAge,
   queueWindowStart,
-  readCallingOrderMode,
   type CallingOrderMode,
 } from '../lib/prospects/callingOrder'
 import { ageChipStyle } from '../lib/ageState'
@@ -28,10 +24,8 @@ import {
   LIST_SECTION_ORDER,
   LIST_SECTIONS_DEFAULT_OPEN,
   type ListSectionKey,
-  type ProspectLastCall,
 } from '../lib/prospects/prospectListGrouping'
-import { findRetaggableNote, lastCallByProspect, withCalledProspect, withLastCall, type CallInteractionType } from '../lib/prospects/callLogState'
-import { callingLockCutoffIso } from '../lib/prospects/callingLock'
+import { findRetaggableNote, type CallInteractionType } from '../lib/prospects/callLogState'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
@@ -48,12 +42,12 @@ import {
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
 import { PROSPECT_COMPANY_ROLES, PROSPECT_KINDS, PROSPECT_KIND_WORDS, PROSPECT_SOURCES, benchDraftFromProspect, kindFieldsPayload, kindFromUrlKey, prospectKindFacts, prospectLandedToast, tradesText, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
 import { addGcCompany, askGcCompanies } from '../lib/gc/gcIo'
-import { cardOnLane, kindFromSearch, laneLoadingWords, makeLatestOnly } from '../lib/prospects/laneLoad'
+import { cardOnLane, kindFromSearch, laneLoadingWords } from '../lib/prospects/laneLoad'
 import { companyDouble, doubleLaneParams, type CompanyDouble } from '../lib/prospects/companyDouble'
 import { stripReads } from '../lib/prospects/stripState'
 import { ProspectPersonForm } from '../components/prospects/ProspectPersonForm'
 import { EMPTY_COMPANY, EMPTY_PERSON, OK_TO_TEXT_CHOICES, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type OkToText, type PersonFields } from '../lib/prospects/personBlock'
-import { BY_NEED_NOTE, benchNeeds, orderSubsByNeed, stillQueued, subsForTrade, tradesLeftToPick, withTrade } from '../lib/prospects/subsLane'
+import { BY_NEED_NOTE, stillQueued, tradesLeftToPick, withTrade } from '../lib/prospects/subsLane'
 import { gcNeeds } from '../lib/prospects/gcNeeds'
 import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
 import { EmptyState, type EmptyStateWords } from '../components/EmptyState'
@@ -62,9 +56,8 @@ import { useLeaveGuard } from '../hooks/useLeaveGuard'
 import { LeaveQuestion } from '../components/bids/SubmittalLeaveGuard'
 import { anyTyped, editDirty, editSnapshotOf } from '../lib/prospects/windowLeave'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
-import { isZzTestProspect, withoutZzProspects } from '../lib/prospects/zzProspects'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
-import { SOONEST_BID_NOTE, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid } from '../lib/prospects/gcLeadLane'
+import { SOONEST_BID_NOTE, jobToHandOn, newProjectSeedFromLead } from '../lib/prospects/gcLeadLane'
 import { setProspectJobStatus } from '../lib/prospects/gcLeadLaneIo'
 import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
@@ -83,7 +76,9 @@ import { useCallingLock } from '../components/prospects/useCallingLock'
 import { useProspectConvert } from '../components/prospects/useProspectConvert'
 import { useProspectDoubles } from '../components/prospects/useProspectDoubles'
 import { useProspectJobs } from '../components/prospects/useProspectJobs'
+import { useProspectsData } from '../components/prospects/useProspectsData'
 import { useSubsBench } from '../components/prospects/useSubsBench'
+import { useSubsBoardData } from '../components/prospects/useSubsBoardData'
 import { ProspectMyTimeModal } from '../components/prospects/ProspectMyTimeModal'
 import { ProspectTimerHistoryModal } from '../components/prospects/ProspectTimerHistoryModal'
 import { SubsBoard } from '../components/prospects/SubsBoard'
@@ -91,11 +86,10 @@ import { SubsLaneList } from '../components/prospects/SubsLaneList'
 import { SubsNeedsPanel } from '../components/prospects/SubsNeedsPanel'
 import { SubsPathStrip } from '../components/prospects/SubsPathStrip'
 import { GcWorkStrip } from '../components/prospects/GcWorkStrip'
-import { inboundProspects, subRecords } from '../lib/prospects/subRecord'
-import { BY_RANK_NOTE, PRIORITY_CHOICES, orderColumn, priorityWord } from '../lib/prospects/subsBoard'
-import { pinAfterDrop, pinnedIds, pinsByTrade, rankWrites, unpin, type RankRow } from '../lib/prospects/subsRanks'
+import { subRecords } from '../lib/prospects/subRecord'
+import { BY_RANK_NOTE, PRIORITY_CHOICES, priorityWord } from '../lib/prospects/subsBoard'
 import { tradeKey } from '../lib/prospects/subsLane'
-import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_SENT, TEXT_THEM, TEXT_THEM_TITLE, boardHref, callbackHourFor, callbackWords, firstCallbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt } from '../lib/prospects/callRun'
+import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_SENT, TEXT_THEM, TEXT_THEM_TITLE, boardHref, callbackHourFor, callbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt } from '../lib/prospects/callRun'
 import { textRefusal } from '../lib/prospects/textingRule'
 import { benchAskFor, benchAskedToast, type BenchAsk } from '../lib/prospects/benchAsk'
 import { ProspectJobsBox } from '../components/prospects/ProspectJobsBox'
@@ -105,7 +99,7 @@ import { todayYmdInAppTz } from '../utils/dateUtils'
 import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { formatDateTime, formatInteractionType, formatTimerSeconds, formatWebsiteDisplay, getWebsiteHref } from '../lib/prospects/prospectFormat'
-import { PROSPECT_COLUMNS, type Prospect, type ProspectComment } from '../lib/prospects/prospectRow'
+import { type Prospect, type ProspectComment } from '../lib/prospects/prospectRow'
 
 type ProspectsTopTab = 'customers' | 'team' | 'research'
 
@@ -225,7 +219,6 @@ export default function Prospects() {
   // The lane from the link before the first load (v2.5578): starting on the customer deck and reading
   // `?kind=` afterwards raced two loads, and a refresh could paint the Customers deck under a lane's tab.
   const [kind, setKind] = useState<ProspectKind>(() => kindFromSearch(location.search))
-  const latestLoad = useRef(makeLatestOnly())
   const kindWords = PROSPECT_KIND_WORDS[kind]
   // Add to the bench ✓ (v2.5559): the sub's card as the bench's Add a company.
   const [benchDraft, setBenchDraft] = useState<{ prospect: Prospect; draft: BenchDraft; ask: BenchAsk | null } | null>(null)
@@ -239,37 +232,68 @@ export default function Prospects() {
   const [newKind, setNewKind] = useState<ProspectKind>('customer')
   // The bench (v2.5560), read by `useSubsBench` when the lane or New Prospect's kind is Subs.
   const { benchTrades, gcBench, benchCompanies, benchQuoted, gcPlans } = useSubsBench(kind, newKind, authUser?.id ?? null)
-  const [laneQueueAll, setLaneQueueAll] = useState<Prospect[]>([])
+  // What the Subs Board reads beside the lane's rows, and its pin writes.
+  const { inboundProspectIds, laneCallbacks, setLaneCallbacks, lanePins, loadLaneRanks, loadLaneExtras, dropOnBoard, unpinOnBoard } = useSubsBoardData({ userId: authUser?.id ?? null })
+  // The lane's data: the deck and the list, the card that is up, the call-history sets, the two loaders, the calling order.
+  // `mergeJobs` is the jobs hook's, called further down; a loader only runs after the render that made both.
+  const data = useProspectsData({
+    kind,
+    userId: authUser?.id ?? null,
+    hideZz,
+    searchParams,
+    setSearchParams,
+    benchTrades,
+    mergeJobs: (ids) => mergeJobs(ids),
+    loadLaneRanks,
+    loadLaneExtras,
+  })
+  const {
+    followUpProspects,
+    setFollowUpProspects,
+    currentProspectIndex,
+    setCurrentProspectIndex,
+    currentProspect,
+    currentProspectId,
+    followUpLoading,
+    prospectListProspects,
+    setProspectListProspects,
+    prospectListLoading,
+    prospectLastCallMap,
+    laneAllRows,
+    setLaneAllRows,
+    laneQueueAll,
+    answeredProspectIds,
+    laneCallRows,
+    calledProspectIds,
+    callingOrderMode,
+    loadFollowUpProspects,
+    loadProspectListProspects,
+    updateUrlProspectId,
+    markCalledLocally,
+  } = data
+  /** The calling order's switch: the data hook reloads the deck in the new order, and the phone's order sheet folds. */
+  const switchCallingOrder = (mode: CallingOrderMode) => {
+    if (data.switchCallingOrder(mode)) setShowCallingOrder(false)
+  }
+  const subRecordMap = useMemo(() => subRecords({ calls: laneCallRows, inbound: inboundProspectIds }), [laneCallRows, inboundProspectIds])
   const [scriptOpen, setScriptOpen] = useState(false)
   const tradeFilter = searchParams.get('trade')
   // The path onto the bench (v2.5807, punch list #153): every sub row for the strip's counts, who has answered,
   // which bench companies have quoted, the projects a set of plans could be for (the For picker, `?for=`), and
   // which of the list's groups are open.
-  const [laneAllRows, setLaneAllRows] = useState<Prospect[]>([])
-  const [answeredProspectIds, setAnsweredProspectIds] = useState<Set<string>>(() => new Set())
   const [subsSectionOpen, setSubsSectionOpen] = useState<Record<string, boolean>>({})
   const plansFor = searchParams.get('for')
   const plansPick = kind === 'sub' && plansFor ? gcPlans.find((c) => c.id === plansFor) ?? null : null
   // The board and the run (v2.5808): the lane's call rows for each sub's record, the lines back on their threads, the
   // upcoming callbacks, the run the link names (`?run=`), what the run did so far, and the text press's state.
-  const [laneCallRows, setLaneCallRows] = useState<{ prospect_id: string; interaction_type: string }[]>([])
-  const [inboundProspectIds, setInboundProspectIds] = useState<Set<string>>(() => new Set())
-  const [laneCallbacks, setLaneCallbacks] = useState<Record<string, string>>({})
   const run = kind === 'sub' ? runFromSearch(location.search) : null
-  const subRecordMap = useMemo(() => subRecords({ calls: laneCallRows, inbound: inboundProspectIds }), [laneCallRows, inboundProspectIds])
-  // The board's pins (v2.5809): one row a company a trade, read with the lane, written on a drop.
-  const [laneRanks, setLaneRanks] = useState<RankRow[]>([])
-  const lanePins = useMemo(() => pinsByTrade(laneRanks), [laneRanks])
   // The Jobs to GC lane (v2.5561): each lead's jobs, how much GC work is in flight (null: not read, or
   // refused), the customers for the double check, and the customer a new lead is linked to.
   const { gcWork, gcBidding, customerDoubles, prospectDoubles } = useProspectDoubles({ kind, newKind, newProspectModalOpen, userId: authUser?.id ?? null })
   const [newCustomerLink, setNewCustomerLink] = useState<{ id: string; name: string } | null>(null)
 
   // Follow Up state
-  const [followUpProspects, setFollowUpProspects] = useState<Prospect[]>([])
-  const [currentProspectIndex, setCurrentProspectIndex] = useState(0)
   const [comments, setComments] = useState<ProspectComment[]>([])
-  const [followUpLoading, setFollowUpLoading] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingProspect, setEditingProspect] = useState<Prospect | null>(null)
   const [callbackModalOpen, setCallbackModalOpen] = useState(false)
@@ -292,11 +316,8 @@ export default function Prospects() {
   // Callback form state
 
   // Prospect List state
-  const [prospectListProspects, setProspectListProspects] = useState<Prospect[]>([])
   const [prospectListSearchQuery, setProspectListSearchQuery] = useState('')
-  const [prospectListLoading, setProspectListLoading] = useState(false)
   const [prospectListSectionOpen, setProspectListSectionOpen] = useState<Partial<Record<ListSectionKey, boolean>>>({})
-  const [prospectLastCallMap, setProspectLastCallMap] = useState<Record<string, ProspectLastCall>>({})
   const [selectedProspectForList, setSelectedProspectForList] = useState<Prospect | null>(null)
   const [followUpNotes, setFollowUpNotes] = useState('')
   const [followUpNotesSaving, setFollowUpNotesSaving] = useState(false)
@@ -307,13 +328,6 @@ export default function Prospects() {
   // Per-user preference: move to next prospect when Didn't Answer is clicked
   const [didntAnswerMoveNext, setDidntAnswerMoveNext] = useState(false)
 
-  // Calling order (v2.2301): 'coldest' (default) or never-called-first, per user.
-  // The ref mirrors state so loadFollowUpProspects reads the current mode
-  // without being recreated. calledProspectIds = prospects with any
-  // didnt_answer/answered on record; drives ordering + the queue badges.
-  const [callingOrderMode, setCallingOrderMode] = useState<CallingOrderMode>('coldest')
-  const callingOrderModeRef = useRef<CallingOrderMode>('coldest')
-  const [calledProspectIds, setCalledProspectIds] = useState<Set<string>>(() => new Set())
   const [showCallingOrder, setShowCallingOrder] = useState(false)
 
   // Ref to ignore stale loadComments responses when prospect changes quickly
@@ -603,114 +617,6 @@ export default function Prospects() {
     })
   }
 
-  async function loadFollowUpProspects() {
-    if (!authUser?.id) return
-    setFollowUpLoading(true)
-    // Only the newest load paints (v2.5578): a kind change mid-load starts another, and the first must not land last.
-    const load = latestLoad.current.start()
-    const [{ data: locks }, { data: callRows }] = await Promise.all([
-      // Only LIVE locks hide a prospect — a row older than the TTL is a closed
-      // tab or a forgotten row, not a colleague on the phone (callingLock.ts).
-      supabase
-        .from('prospect_calling_locks')
-        .select('prospect_id')
-        .neq('user_id', authUser.id)
-        .gte('locked_at', callingLockCutoffIso(Date.now())),
-      supabase.from('prospect_comments').select('prospect_id, interaction_type').in('interaction_type', [...CALL_INTERACTION_TYPES]),
-    ])
-    if (!latestLoad.current.isLatest(load)) return
-    const callList = (callRows ?? []) as { prospect_id: string; interaction_type: string }[]
-    const called = new Set(callList.map((r) => r.prospect_id))
-    setCalledProspectIds(called)
-    setAnsweredProspectIds(new Set(callList.filter((r) => r.interaction_type === 'answered').map((r) => r.prospect_id)))
-    setLaneCallRows(callList)
-    const lockedByOthers = (locks ?? []).map((r) => r.prospect_id)
-    let query = supabase.from('prospects').select(PROSPECT_COLUMNS).eq('kind', kind)
-    // The Subs lane's strip counts every exit too (v2.5807); the other lanes never load Not a fit.
-    if (kind !== 'sub') query = query.or('prospect_fit_status.is.null,prospect_fit_status.neq.not_a_fit')
-    if (lockedByOthers.length > 0) {
-      query = query.not('id', 'in', `(${lockedByOthers.join(',')})`)
-    }
-    const { data, error } = await query
-      .order('last_contact', { ascending: true, nullsFirst: true })
-      .order('created_at', { ascending: true })
-    if (!latestLoad.current.isLatest(load)) return
-    if (error) {
-      setFollowUpProspects([])
-      setFollowUpLoading(false)
-      return
-    }
-    const raw = withoutZzProspects((data ?? []) as Prospect[], hideZz)
-    let prospects = orderFollowUpProspects(
-      raw.filter((p) => p.prospect_fit_status !== 'not_a_fit' && p.prospect_fit_status !== 'cant_reach' && p.prospect_fit_status !== 'converted'),
-      called,
-      callingOrderModeRef.current,
-    )
-    if (kind === 'sub') {
-      // The Subs lane (v2.5560): the whole queue feeds the strip's counts; the deck shows one trade
-      // when the URL names it, and By need puts the biggest gap first.
-      setLaneQueueAll(prospects)
-      setLaneAllRows(raw)
-      const needsNow = benchNeeds(benchTrades ?? [], prospects)
-      const runNow = runFromSearch(`?${searchParams.toString()}`)
-      if (runNow) {
-        // A run (v2.5808): the ids fixed at the press, in the column's order; a card that landed or left is gone.
-        const byId = new Map(prospects.map((p) => [p.id, p]))
-        prospects = runNow.ids.map((id) => byId.get(id)).filter((p): p is Prospect => !!p)
-      } else {
-        prospects = subsForTrade(prospects, searchParams.get('trade'))
-        if (callingOrderModeRef.current === 'by_need') prospects = orderSubsByNeed(prospects, needsNow, called)
-        if (callingOrderModeRef.current === 'by_rank') {
-          const ranks = await loadLaneRanks()
-          if (!latestLoad.current.isLatest(load)) return
-          const trade = searchParams.get('trade')
-          const pins = trade ? pinsByTrade(ranks).get(tradeKey(trade)) : undefined
-          prospects = orderColumn(prospects, { records: subRecords({ calls: callList }), calledIds: called, ...(pins ? { pins } : {}) })
-        }
-      }
-    }
-    if (kind === 'gc_lead') {
-      // The Jobs to GC lane (v2.5561): each lead's jobs ride along, and Soonest bid orders on them.
-      const jobs = await mergeJobs(prospects.map((p) => p.id))
-      if (!latestLoad.current.isLatest(load)) return
-      if (callingOrderModeRef.current === 'soonest_bid') prospects = orderLeadsBySoonestBid(prospects, jobs, called)
-    }
-
-    const prospectId = searchParams.get('prospect_id')
-    let finalProspects = prospects
-    let idx = prospectId ? prospects.findIndex((p) => p.id === prospectId) : -1
-
-    if (prospectId && idx < 0) {
-      const { data: single } = await supabase
-        .from('prospects')
-        .select(PROSPECT_COLUMNS)
-        .eq('id', prospectId)
-        .maybeSingle()
-      if (!latestLoad.current.isLatest(load)) return
-      const otherKind = single ? (single as Prospect).kind : null
-      if (otherKind && otherKind !== kind) {
-        // A link from elsewhere (Calendar's callbacks, v2.5563) to a prospect of another kind: its own lane opens it,
-        // so the card's last press is that kind's.
-        setSearchParams((p) => {
-          const next = new URLSearchParams(p)
-          if (otherKind === 'customer') next.delete('kind')
-          else next.set('kind', urlKeyForKind(otherKind))
-          return next
-        }, { replace: true })
-        setFollowUpLoading(false)
-        return
-      }
-      if (single && !(hideZz && isZzTestProspect(single as Prospect))) {
-        finalProspects = [single as Prospect, ...prospects]
-        idx = 0
-      }
-    }
-
-    setFollowUpProspects(finalProspects)
-    setCurrentProspectIndex(idx >= 0 ? idx : 0)
-    setFollowUpLoading(false)
-  }
-
   async function loadComments(prospectId: string) {
     const { data, error } = await supabase
       .from('prospect_comments')
@@ -738,86 +644,6 @@ export default function Prospects() {
     setMyTimeTodaySeconds(sumTimerSeconds((data ?? []) as { timer_seconds: number }[]))
   }
 
-  async function loadProspectListProspects() {
-    if (!authUser?.id) return
-    setProspectListLoading(true)
-    const [{ data, error }, { data: callRows }] = await Promise.all([
-      supabase
-        .from('prospects')
-        .select(PROSPECT_COLUMNS)
-        .eq('kind', kind),
-      supabase
-        .from('prospect_comments')
-        .select('prospect_id, interaction_type, created_at')
-        .in('interaction_type', [...CALL_INTERACTION_TYPES])
-        .order('created_at', { ascending: false }),
-    ])
-    if (error) {
-      setProspectListProspects([])
-      setProspectListLoading(false)
-      return
-    }
-    // Rows arrive newest-first, so the first row per prospect is its latest call.
-    setProspectLastCallMap(lastCallByProspect((callRows ?? []) as { prospect_id: string; interaction_type: string; created_at: string | null }[]))
-    const callList = (callRows ?? []) as { prospect_id: string; interaction_type: string }[]
-    setAnsweredProspectIds(new Set(callList.filter((r) => r.interaction_type === 'answered').map((r) => r.prospect_id)))
-    setLaneCallRows(callList)
-    const rows = withoutZzProspects((data ?? []) as Prospect[], hideZz)
-    setProspectListProspects(rows)
-    setProspectListLoading(false)
-    if (kind === 'gc_lead') void mergeJobs(rows.map((p) => p.id))
-    if (kind === 'sub') void loadLaneExtras(rows.filter((p) => p.prospect_fit_status == null).map((p) => p.id))
-  }
-
-  /** The board's pins (v2.5809), the whole lane's: a few hundred rows at most. Fail-soft. */
-  async function loadLaneRanks(): Promise<RankRow[]> {
-    try {
-      const { data, error } = await supabase.from('prospect_trade_ranks').select('prospect_id, trade, rank_order')
-      if (error) return []
-      const rows = (data ?? []) as RankRow[]
-      setLaneRanks(rows)
-      return rows
-    } catch {
-      return []
-    }
-  }
-
-  /** A drop on the board (v2.5809): the dragged card pinned where it landed among the column's pins; the rows written dense. */
-  async function dropOnBoard(trade: string, draggedId: string, toIndex: number) {
-    if (!authUser?.id) return
-    const key = tradeKey(trade)
-    const was = lanePins.get(key)
-    const next = pinAfterDrop(pinnedIds(was), draggedId, toIndex)
-    await writePins(trade, next, was)
-  }
-
-  async function unpinOnBoard(trade: string, prospectId: string) {
-    const key = tradeKey(trade)
-    const was = lanePins.get(key)
-    await writePins(trade, unpin(pinnedIds(was), prospectId), was)
-  }
-
-  async function writePins(trade: string, next: string[], was: ReadonlyMap<string, number> | undefined) {
-    if (!authUser?.id) return
-    const { upserts, deletes } = rankWrites(trade, next, was)
-    const key = tradeKey(trade)
-    // Paint first, then write; a refusal reloads the truth.
-    setLaneRanks((prev) => [...prev.filter((r) => tradeKey(r.trade) !== key), ...upserts])
-    const problems: string[] = []
-    if (deletes.length > 0) {
-      const { error } = await supabase.from('prospect_trade_ranks').delete().eq('trade', trade).in('prospect_id', deletes)
-      if (error) problems.push(error.message)
-    }
-    if (upserts.length > 0) {
-      const { error } = await supabase.from('prospect_trade_ranks').upsert(upserts.map((r) => ({ ...r, set_by: authUser.id, set_at: new Date().toISOString() })), { onConflict: 'prospect_id,trade' })
-      if (error) problems.push(error.message)
-    }
-    if (problems.length > 0) {
-      showToast(`The pin did not save: ${problems[0]}`, 'error')
-      void loadLaneRanks()
-    }
-  }
-
   /** Call first · Normal · Later (v2.5809), on a board card or the deck's card. */
   async function savePriority(prospect: Prospect, value: 1 | null | 3) {
     if ((prospect.priority ?? null) === value) return
@@ -830,34 +656,6 @@ export default function Prospects() {
     setFollowUpProspects((prev) => prev.map(patch))
     setProspectListProspects((prev) => prev.map(patch))
     setLaneAllRows((prev) => prev.map(patch))
-  }
-
-  /** The board's extra facts (v2.5808): a text or an email back on a sub's thread, and the upcoming callbacks. Both fail-soft. */
-  async function loadLaneExtras(ids: string[]) {
-    if (ids.length === 0) {
-      setInboundProspectIds(new Set())
-      setLaneCallbacks({})
-      return
-    }
-    try {
-      const { data: contacts } = await supabase.from('contacts').select('id, prospect_id').in('prospect_id', ids)
-      const contactRows = (contacts ?? []) as { id: string; prospect_id: string | null }[]
-      let inbound = new Set<string>()
-      if (contactRows.length > 0) {
-        const { data: lines } = await supabase.from('messages').select('contact_id').eq('direction', 'in').in('contact_id', contactRows.map((c) => c.id))
-        inbound = inboundProspects(contactRows, (lines ?? []) as { contact_id: string }[])
-      }
-      setInboundProspectIds(inbound)
-    } catch {
-      setInboundProspectIds(new Set())
-    }
-    void loadLaneRanks()
-    try {
-      const { data: cbs } = await supabase.from('prospect_callbacks').select('prospect_id, callback_date').gte('callback_date', new Date().toISOString()).in('prospect_id', ids).order('callback_date', { ascending: true })
-      setLaneCallbacks(firstCallbackWords((cbs ?? []) as { prospect_id: string; callback_date: string }[], new Date()))
-    } catch {
-      setLaneCallbacks({})
-    }
   }
 
   async function loadQuickNotes() {
@@ -938,8 +736,6 @@ export default function Prospects() {
     },
   })
 
-  const currentProspect = followUpProspects[currentProspectIndex] ?? null
-  const currentProspectId = currentProspect?.id ?? null
   // The advisory calling lock: taken on intent (a dial, the composer, an outcome, a callback), never on view.
   const { lockHeldBy, takeCallingLock } = useCallingLock({ onDeck: topTab === 'customers' && activeTab === 'follow-up', currentProspectId, userId: authUser?.id ?? null, authRole })
   // What the run has done so far: its notes, its receipt flag, the callback a missed call set, the text press.
@@ -993,14 +789,6 @@ export default function Prospects() {
     authUser?.id && currentProspect
       ? findRetaggableNote(comments.filter((c) => c.prospect_id === currentProspect.id), authUser.id, Date.now())
       : null
-
-  useEffect(() => {
-    const prospectId = searchParams.get('prospect_id')
-    if (prospectId && followUpProspects.length > 0) {
-      const idx = followUpProspects.findIndex((p) => p.id === prospectId)
-      if (idx >= 0) setCurrentProspectIndex(idx)
-    }
-  }, [searchParams.get('prospect_id'), followUpProspects])
 
   useEffect(() => {
     if (currentProspect?.id) {
@@ -1110,42 +898,6 @@ export default function Prospects() {
     setDidntAnswerMoveNext(stored === 'true')
   }, [authUser?.id])
 
-  // Load the calling-order preference; reload the queue if it isn't the default
-  // (the initial load already ran with 'coldest' via the ref).
-  useEffect(() => {
-    if (!authUser?.id) return
-    let stored: string | null = null
-    try {
-      stored = localStorage.getItem(`${CALLING_ORDER_STORAGE_KEY}_${authUser.id}`)
-    } catch {
-      /* private mode */
-    }
-    const mode = readCallingOrderMode(stored)
-    if (mode !== callingOrderModeRef.current) {
-      callingOrderModeRef.current = mode
-      setCallingOrderMode(mode)
-      void loadFollowUpProspects()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authUser?.id])
-
-  function switchCallingOrder(mode: CallingOrderMode) {
-    if (mode === callingOrderModeRef.current) return
-    callingOrderModeRef.current = mode
-    setCallingOrderMode(mode)
-    setShowCallingOrder(false)
-    if (authUser?.id) {
-      try {
-        localStorage.setItem(`${CALLING_ORDER_STORAGE_KEY}_${authUser.id}`, mode)
-      } catch {
-        /* private mode */
-      }
-    }
-    // Re-runs the query with the new order; the URL-synced prospect_id keeps
-    // the current prospect selected across the reshuffle.
-    void loadFollowUpProspects()
-  }
-
   function renderCallingOrderToggle() {
     return (
       <div role="group" aria-label="Calling order" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
@@ -1234,16 +986,6 @@ export default function Prospects() {
           {isCurrent ? <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', flexShrink: 0 }}>← you</span> : null}
         </button>
       )
-    })
-  }
-
-  function updateUrlProspectId(id: string | null) {
-    setSearchParams((p) => {
-      const next = new URLSearchParams(p)
-      next.set('tab', 'follow-up')
-      if (id) next.set('prospect_id', id)
-      else next.delete('prospect_id')
-      return next
     })
   }
 
@@ -1705,14 +1447,6 @@ export default function Prospects() {
       if (delErr) showToast(`Logged the call, but the note it replaced could not be removed: ${delErr.message}`, 'error')
     }
     return true
-  }
-
-  // The called-ids set (never-called chip + queue order) and the Prospect
-  // List's last-call map were only rebuilt on a full reload, so the chip
-  // outlived the call that should have cleared it.
-  function markCalledLocally(prospectId: string, type: CallInteractionType, nowIso: string) {
-    setCalledProspectIds((prev) => withCalledProspect(prev, prospectId))
-    setProspectLastCallMap((prev) => withLastCall<ProspectLastCall>(prev, prospectId, { interaction_type: type, created_at: nowIso }))
   }
 
   /** Pass on a board card (v2.5808): Not a fit, after one question, since the board has no undo of its own. */
