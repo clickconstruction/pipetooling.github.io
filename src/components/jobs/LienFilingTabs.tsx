@@ -8,9 +8,13 @@ import { serveDueForFiling, liveFilings, type JobLienClock, type JobLienFilingRo
 import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type LienFilingDocument } from '../../lib/jobs/lienFilingDocumentLink'
 import { FilingSheetNote } from './FilingSheetNote'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
+import { isLienAppliedRow, lienAppliedRowWords, type LienAppliedRow } from '../../lib/jobs/lienNoticeApply'
+import { undoLienNoticeApply } from '../../lib/jobs/lienNoticeApplyIo'
 import LienRecordSheet from './LienRecordSheet'
 import { LienFiledScanPress } from './LienFiledScanPress'
 import { LIEN_CLERK_SCAN_NOTE } from '../../lib/jobs/lienScanFile'
+import { LIEN_SCANS_DOOR_FROM_FILING } from '../../lib/jobs/lienScanBatch'
+import { lienDeskHref } from '../../lib/lien/lienDeskRoute'
 import { recordSheetField, recordSheetLabel } from './lienRecordSheetStyles'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
@@ -22,6 +26,8 @@ import {
 } from '../../lib/jobs/lienProperty'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
+import { lienWindowPrintNote } from '../../lib/jobs/lienWindowPrintNote'
+import type { LienTimelineNoticeState } from '../../lib/jobs/lienTimeline'
 import { LIEN_HELP_STYLES, lienHelpCoverSheetHtml, lienHelpGuideCopyHtml, lienHelpNoticeMailBy, lienHelpNoticeSheetHtml, lienHelpPaperFromFields, lienHelpPrintHtml, type LienHelpNotice } from '../../lib/jobs/lienHelpSheet'
 import { LIEN_HELP_SHEET_BOX, LIEN_NOTICE_RECORD_BOX, useLienHelpSheetChoice, useLienNoticeRecordChoice } from './lienHelpSheetChoice'
 import { lienNoticeRecord } from '../../lib/jobs/lienNoticeRecord'
@@ -118,6 +124,8 @@ export default function LienFilingTabs({
   monthsByHand = null,
   affidavitForm = 'short',
   affidavitFormUnread = false,
+  deskNoticeState = '',
+  onOpenDeskNotice,
   onClose,
 }: {
   job: JobWithDetails
@@ -158,6 +166,10 @@ export default function LienFilingTabs({
   affidavitForm?: LienAffidavitForm
   /** That read failed: the tab draws the earlier form and says to check the desk first. */
   affidavitFormUnread?: boolean
+  /** Where this job's notice stands on the Lien desk, when the opener holds the desk's queue (v2.7516): an approved or printed one draws a note over the tab's presses. */
+  deskNoticeState?: LienTimelineNoticeState
+  /** Opens the desk on this job's notice; absent, the note has no press. */
+  onOpenDeskNotice?: () => void
   /** Closes the Lien window: the × on a phone's record sheet (v2.4422). */
   onClose?: () => void
 }) {
@@ -219,6 +231,9 @@ export default function LienFilingTabs({
     setVoidPendingId(null)
     setFilingCounty(property.county)
   }, [activeTab, job.id, property.county])
+
+  // The desk holds this job's approved notice (v2.7516): this tab's print is a new, unsigned copy, and the tab says which paper to print.
+  const deskPrintNote = useMemo(() => lienWindowPrintNote(deskNoticeState), [deskNoticeState])
 
   // ---------- documents ----------
 
@@ -347,6 +362,8 @@ export default function LienFilingTabs({
         contactPerson: noticeFields.contactPerson,
         phone: (issuer?.phone ?? '').trim(),
         extras: docExtras,
+        // This window prints no cover letter, so its pay page never names one (v2.7514).
+        coverLetter: false,
       }),
     [payRows, payAssets, originalContractorName, noticeFields.claimantName, noticeFields.contactPerson, issuer, docExtras],
   )
@@ -784,6 +801,14 @@ export default function LienFilingTabs({
 
   const voidFiling = async (f: JobLienFilingRow) => {
     try {
+      // v2.7508: a row that applies a paper already on record is undone, and the notice it set aside goes back on the desk.
+      if (isLienAppliedRow(f as unknown as LienAppliedRow)) {
+        const { restored } = await undoLienNoticeApply({ id: f.id, job_id: f.job_id })
+        showToast(restored ? 'Undone. The notice it set aside is back on the desk.' : 'Undone. The record is voided.', 'success')
+        setVoidPendingId(null)
+        onChanged()
+        return
+      }
       await withSupabaseRetry(
         () => supabase.from('job_lien_filings').update({ voided_at: new Date().toISOString() }).eq('id', f.id),
         'void lien filing',
@@ -833,6 +858,12 @@ export default function LienFilingTabs({
               {f.kind === 'affidavit' && f.filed_at ? `filed ${demandDate(f.filed_at)} · #${f.recording_number || '—'} · ${f.served_at ? `served ${demandDate(f.served_at)}` : `serve by ${demandDate(f.serve_due ?? '')}`}` : ''}
               {f.kind === 'notice_53_056' || f.kind === 'retainage_53_057' ? demandMoney(String(f.amount ?? '')) : ''}
             </span>
+            {isLienAppliedRow(f as unknown as LienAppliedRow) ? (
+              <span style={{ color: 'var(--text-muted)' }} data-lien-applied-row title={(f as unknown as LienAppliedRow).applied_reason || undefined}>
+                {lienAppliedRowWords(f as unknown as LienAppliedRow, calendarYmdInAppTzFromIso(f.created_at ?? ''))}
+                {(f as unknown as LienAppliedRow).applied_reason ? ` · “${(f as unknown as LienAppliedRow).applied_reason}”` : ''}
+              </span>
+            ) : null}
             {(() => {
               const doc = f as unknown as LienFilingDocument
               const url = normalizeDocumentUrl(doc.document_url)
@@ -891,11 +922,11 @@ export default function LienFilingTabs({
               </button>
               {voidPendingId === f.id ? (
                 <button type="button" onClick={() => void voidFiling(f)} style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>
-                  Confirm void
+                  {isLienAppliedRow(f as unknown as LienAppliedRow) ? 'Confirm undo' : 'Confirm void'}
                 </button>
               ) : (
                 <button type="button" onClick={() => setVoidPendingId(f.id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>
-                  Void
+                  {isLienAppliedRow(f as unknown as LienAppliedRow) ? 'Undo' : 'Void'}
                 </button>
               )}
             </span>
@@ -975,6 +1006,10 @@ export default function LienFilingTabs({
           setDocNote(LIEN_CLERK_SCAN_NOTE)
         }}
       />
+      {/* Several liens scanned at once go in on the Lien desk (punch list #366). A new tab, so this form keeps what is typed. */}
+      <a href={lienDeskHref({ scans: true })} target="_blank" rel="noreferrer" data-lien-scans-door style={{ flexBasis: '100%', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)' }}>
+        {LIEN_SCANS_DOOR_FROM_FILING}
+      </a>
     </span>
   )
   const sheetSavedCopy = (
@@ -1096,6 +1131,19 @@ export default function LienFilingTabs({
                     <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>§ 53.056(a-3) lets the notice include an invoice or billing statement; it prints after the notice and rides the emailed PDF, stamped INVOICE.</span>
                   </span>
                 </label>
+              ) : null}
+              {deskPrintNote ? (
+                <div data-lien-window-desk-note={deskNoticeState} role="note" style={{ border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 8, padding: '0.5rem 0.7rem', fontSize: '0.8125rem', marginBottom: '0.6rem' }}>
+                  <b>{deskPrintNote.lead}</b> {deskPrintNote.words}
+                  {onOpenDeskNotice ? (
+                    <>
+                      {' '}
+                      <button type="button" onClick={onOpenDeskNotice} data-lien-window-desk-note-press style={{ font: 'inherit', fontWeight: 600, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        {deskPrintNote.press}
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               ) : null}
               {recordStep === 'notice_sends' && !isMobile ? (
                 <div data-lien-record-box="notice_sends" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>

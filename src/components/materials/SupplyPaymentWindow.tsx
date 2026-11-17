@@ -9,6 +9,7 @@ import { billDateWords } from '../../lib/materials/supplyBillGroups'
 import { paidByBill, paymentView, supplyPayMethodWords, usd, type SupplyPayment, type SupplyPaymentLine } from '../../lib/materials/payments/supplyPayment'
 import { MOVE_REASONS, ON_ACCOUNT, moveTargets, paymentHistory, paymentOnBill, planMove, type MoveBill, type MoveReason, type SupplyPaymentEvent } from '../../lib/materials/payments/supplyPaymentMove'
 import type { MoveSupplyPaymentInput } from '../../lib/materials/payments/supplyPaymentsIo'
+import { supplyBankLineWords, type SupplyBankCandidate, type SupplyBankLine } from '../../lib/materials/payments/supplyPaymentBank'
 
 /**
  * One payment to a supply house, with every bill it touched (the owner's ask of 2026-11-16). A paid row opens it.
@@ -39,6 +40,8 @@ export function SupplyPaymentWindow({
   onRemove,
   onMove,
   onUndoMove,
+  onEditHow,
+  bank,
 }: {
   payment: SupplyPayment
   /** The house's payments, lines and events the host holds: what else sits on the same bills. */
@@ -56,6 +59,17 @@ export function SupplyPaymentWindow({
   /** Moves an amount; resolves when the host has read the house again. */
   onMove: (input: MoveSupplyPaymentInput) => Promise<void>
   onUndoMove: (eventId: string) => Promise<void>
+  /** Opens "how it was sent" for this payment: the method and its number, the day, the receipt link. */
+  onEditHow?: () => void
+  /** The bank side: the line it is matched to, or the lines it could be. Absent for a login that cannot read the bank. */
+  bank?: {
+    matched: SupplyBankLine | null
+    /** It is matched, even when the line itself is not among the ones read. */
+    hasMatch: boolean
+    candidates: ReadonlyArray<SupplyBankCandidate>
+    onMatch: (bankLineId: string) => Promise<void>
+    onUnmatch: () => Promise<void>
+  }
 }) {
   useBodyScrollLock(true)
   const confirm = useConfirmDialog()
@@ -211,6 +225,39 @@ export function SupplyPaymentWindow({
           </>
         ) : null}
       </p>
+      {/* The bank line this money left on: matched, or offered for one press. Nothing is drawn when the feed has none. */}
+      {bank?.matched ? (
+        <div data-testid="supply-payment-window-bank" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 12px', margin: '0 0 0.6rem', padding: '0.45rem 0.75rem', borderRadius: 8, background: 'var(--bg-green-100)', fontSize: '0.8125rem' }}>
+          <span style={{ flex: '1 1 240px', minWidth: 0, overflowWrap: 'anywhere' }}>
+            <b style={{ color: 'var(--text-green-700)' }}>Bank agrees ✓</b> {supplyBankLineWords(bank.matched, dayWords)}
+          </span>
+          <button type="button" style={linkPress} disabled={busy} onClick={() => void run(() => bank.onUnmatch(), 'The match was not taken off.')}>
+            Take it off
+          </button>
+        </div>
+      ) : bank?.hasMatch ? (
+        <p data-testid="supply-payment-window-bank" style={{ ...quiet, margin: '0 0 0.6rem' }}>
+          <b style={{ color: 'var(--text-green-700)' }}>Bank agrees ✓</b> It is matched to a bank line that is older than the lines read here.{' '}
+          <button type="button" style={linkPress} disabled={busy} onClick={() => void run(() => bank.onUnmatch(), 'The match was not taken off.')}>
+            Take it off
+          </button>
+        </p>
+      ) : bank && bank.candidates.length > 0 ? (
+        <div data-testid="supply-payment-window-bank" style={{ margin: '0 0 0.6rem', padding: '0.45rem 0.75rem', borderRadius: 8, border: '1px solid var(--border)', fontSize: '0.8125rem' }}>
+          <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>{bank.candidates.length === 1 ? 'The bank has a line for the same money.' : 'The bank has lines for the same money. Press the one that is this payment.'}</div>
+          {bank.candidates.slice(0, 3).map((c) => (
+            <div key={c.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 12px', lineHeight: 1.6 }}>
+              <span style={{ flex: '1 1 240px', minWidth: 0, overflowWrap: 'anywhere', fontVariantNumeric: 'tabular-nums' }}>
+                {supplyBankLineWords(c, dayWords)}
+                {c.isHouse ? '' : ' · a different name at the bank'}
+              </span>
+              <button type="button" style={linkPress} disabled={busy} onClick={() => void run(() => bank.onMatch(c.id), 'The payment was not matched.')} aria-label={`Match to the bank line of ${dayWords(c.ymd)}`}>
+                Match
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: '0.6rem' }}>
         {view.rows.map((r, i) => (
           <div key={r.billId} data-testid="supply-payment-window-line" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 12px', padding: '0.5rem 0.75rem', borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
@@ -275,6 +322,11 @@ export function SupplyPaymentWindow({
         <button type="button" disabled={busy} onClick={() => void remove()} style={{ ...plainPress(busy), color: 'var(--text-red-700)' }}>
           {busy ? 'Working…' : 'Remove this payment…'}
         </button>
+        {onEditHow ? (
+          <button type="button" disabled={busy} onClick={onEditHow} style={plainPress(busy)}>
+            Edit how it was sent
+          </button>
+        ) : null}
         <button type="button" disabled={busy} onClick={onClose} style={plainPress(busy)}>
           Close
         </button>

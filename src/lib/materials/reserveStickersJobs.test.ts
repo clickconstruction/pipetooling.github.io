@@ -42,6 +42,11 @@ describe('a job’s card', () => {
     expect(f.reserved.count).toBe(2)
     expect(f.reservedWords).toBe('2 stickers reserved and not on a box yet, G4 to G5. Printed Nov 16 by Dana.')
     expect(f.soFar).toEqual({ runs: 1, stickers: 3, onBoxes: 1, lost: 0 })
+    // and the press that prints them (v2.7523): the two on no box, with the whole run behind it
+    expect(f.toPrint.map((r) => r.label)).toEqual(['Print the 2 reserved stickers, G4 to G5'])
+    expect(f.toPrint[0]!.whole).toHaveLength(3)
+    // unread runs offer no press
+    expect(stickerJobFacts(job, input()).toPrint).toEqual([])
   })
 
   it('a job the read answered with no run has none so far, which is not the same as unread', () => {
@@ -60,6 +65,9 @@ describe('a job’s card', () => {
     expect(stickerJobFacts(job, input({ sitesOf: new Map([['j1', { site: 'Oak Hollow', names: null }]]) })).nextName).toBeNull()
     expect(nextNameWords(null)).toBe('')
     expect(nextNameWords(undefined)).toBe('')
+    // beside reserved stickers (v2.7523) the line first says what the other press does
+    expect(nextNameWords('G10', true)).toBe('Print future stickers reserves new ones. A new run opens on G10.')
+    expect(nextNameWords(undefined, true)).toBe('Print future stickers reserves new ones.')
   })
 
   it('a job with no box is a card too, and a read that failed is carried', () => {

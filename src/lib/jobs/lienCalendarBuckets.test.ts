@@ -345,14 +345,14 @@ describe('Enter mail numbers (v2.5522; Record the mailing until v2.7448)', () =>
     ]
     const board = buildLienCalendarBoard(rows, '', TODAY)
     const thisMonth = board.buckets.find((b) => b.key === 'this_month')!
-    expect(thisMonth.facts).toBe('by Oct 15 · in 14 days · 3 notices across 2 GCs · 2 in the mail')
+    expect(thisMonth.facts).toBe('by Oct 15 · in 14 days · 3 notices across 2 GCs · 2 to mail')
     expect(thisMonth.draft).toEqual({ ymd: '2026-10-15', jobIds: ['a'], label: 'Draft the one' })
     expect(thisMonth.record).toEqual({ jobIds: ['p', 'q'], label: 'Enter mail numbers · 2' })
     const sp = thisMonth.groups.find((g) => g.key === 'gc:gc-sp')!
     expect(sp.word).toBe('enter mail numbers · 2')
-    expect(sp.sub).toBe('GC · 2 jobs · 2 in the mail')
+    expect(sp.sub).toBe('GC · 2 jobs · 2 to mail')
     const mixed = buildLienCalendarBoard([...rows, job({ jobId: 'r', name: 'Round Rock', gcId: 'gc-sp', gcName: 'Southern Pine Construction', openBalance: 100 })], '', TODAY)
-    expect(mixed.buckets.find((b) => b.key === 'this_month')!.groups.find((g) => g.key === 'gc:gc-sp')!.word).toBe('send the notice · 2 in the mail')
+    expect(mixed.buckets.find((b) => b.key === 'this_month')!.groups.find((g) => g.key === 'gc:gc-sp')!.word).toBe('send the notice · 2 to mail')
     // One in the mail: the press is the bare act, with no count after it.
     expect(buildLienCalendarBoard([rows[0]!, rows[1]!], '', TODAY).buckets.find((b) => b.key === 'this_month')!.record).toEqual({ jobIds: ['p'], label: 'Enter mail numbers' })
   })

@@ -144,9 +144,11 @@ export function ownerGate(f: { hasOwner: boolean; publicOwner: boolean | null | 
   return { key: 'owner', ok: f.hasOwner, label: 'Owner of record with a mailing address' }
 }
 
-/** A closed gate in the list row's *missing …* words: the gate's own key, except the contractor's, which is its address, a public owner's, which is a private owner, and the homestead question's, which is its answer. */
+/**
+ * A closed gate in the list row's *missing …* words: the gate's own key, except the contractor's, which is its address, a public owner's, which is a private owner, the homestead question's, which is its answer, and the notice's (v2.7527), which is a mailed notice: the gate is a mailing on record, and a notice drafted or approved is not missing.
+ */
 export function affidavitGateMissingWord(key: LienAffidavitGateKey): string {
-  return key === 'contractor' ? "the GC's address" : key === 'public_owner' ? 'a private owner' : key === 'homestead_answer' ? 'the homestead answer' : key
+  return key === 'contractor' ? "the GC's address" : key === 'public_owner' ? 'a private owner' : key === 'homestead_answer' ? 'the homestead answer' : key === 'notice' ? 'a mailed notice' : key
 }
 
 /**

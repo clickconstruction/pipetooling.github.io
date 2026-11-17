@@ -25,6 +25,7 @@ function formValues(overrides: Partial<BidEditFormValues> = {}): BidEditFormValu
     bidDueTime: '14:00',
     estimatedJobStartDate: '',
     designDrawingPlanDate: '',
+    schedule: { start: '', end: '', noEnd: false },
     submittedTo: '',
     outcome: '',
     lossReason: '',
@@ -298,5 +299,26 @@ describe('holdUnfinishedBidDates', () => {
     const payload = { bid_due_date: '0002-09-04', bid_due_time: '14:00' }
     holdUnfinishedBidDates(payload, formValues({ bidDueDate: '0002-09-04' }), initial)
     expect(payload).toEqual({ bid_due_date: '0002-09-04', bid_due_time: '14:00' })
+  })
+})
+
+describe('the promised schedule (punch list #367)', () => {
+  it('writes the three columns together when any of its boxes changed, and none when it did not', () => {
+    const initial = formValues({ schedule: { start: '2025-07-01', end: '2026-12-31', noEnd: false } })
+    const moved = formValues({ schedule: { start: '2025-07-01', end: '2027-01-31', noEnd: false } })
+    const payload = { schedule_start: '2025-07-01', schedule_end: '2027-01-31', schedule_open_ended: false, project_name: 'ZZ' }
+    const changed = pruneUnchangedBidUpdateFields(payload, { current: moved, initial, bidDateSent: { current: '', initial: '' } })
+    expect(changed).toEqual({ schedule_start: '2025-07-01', schedule_end: '2027-01-31', schedule_open_ended: false })
+    const same = pruneUnchangedBidUpdateFields(payload, { current: initial, initial, bidDateSent: { current: '', initial: '' } })
+    expect(same).toEqual({})
+  })
+  it('does not record a schedule half said as saved, so it is written once it is whole', () => {
+    const initial = formValues({ schedule: { start: '', end: '', noEnd: false } })
+    const half = formValues({ schedule: { start: '2025-07-01', end: '', noEnd: false } })
+    const out = holdUnfinishedBidDates({}, half, initial)
+    expect(out.saved.schedule).toEqual({ start: '', end: '', noEnd: false })
+    expect(out.held).toEqual([])
+    const whole = formValues({ schedule: { start: '2025-07-01', end: '2026-12-31', noEnd: false } })
+    expect(holdUnfinishedBidDates({}, whole, initial).saved.schedule).toEqual(whole.schedule)
   })
 })
