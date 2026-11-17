@@ -143,7 +143,7 @@ describe('ChecklistItemActivity, tagging a teammate', () => {
   })
 
   it('is a plain box for a role the @ is not open to yet, and asks for no names', async () => {
-    db.role = 'assistant'
+    db.role = 'subcontractor'
     const { box } = await mount()
     expect(screen.queryByLabelText('Tag a teammate')).toBeNull()
     type(box, 'ask @')

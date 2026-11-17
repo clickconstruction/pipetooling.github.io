@@ -348,11 +348,11 @@ export function useNoteTagBox(opts: {
     </button>
   )
 
-  // Offered before a letter is typed. On a task, its own people, three at most. In an answer box, whoever
-  // the box was handed, and once the names are read only someone the list holds.
+  // Offered before a letter is typed. In an answer box, whoever the box was handed, and once the names are
+  // read only someone the list holds. In a task's own box, its own people, three at most.
   const offered: NoteTagOffer[] = !enabled || open
     ? []
-    : taskInstanceId
+    : taskInstanceId && !offer
       ? taskOffer(people ?? [], live.map((p) => p.userId)).map((r) => ({ userId: r.person.userId, name: r.person.name, says: tagPersonSays(r) }))
       : (offer ?? []).filter((o) => o.name.trim() && !live.some((p) => p.userId === o.userId) && (people == null || people.some((p) => p.userId === o.userId)))
 

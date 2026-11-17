@@ -9,6 +9,9 @@ import { supabase } from '../lib/supabase'
 import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { useAuth } from '../hooks/useAuth'
 import { useTaskModeEnabled } from '../hooks/useTaskModeEnabled'
+import { TaggedJobNotesSection } from '../components/jobs/TaggedJobNotesSection'
+import { waitingOnWords, type TagKinds } from '../lib/jobs/noteTags'
+import { useOpenTaskTagNames } from '../hooks/useOpenTaskTagNames'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
@@ -470,7 +473,7 @@ export default function Checklist() {
 
       {/* Punch list #188 rows 35 and 65 (v2.6758): forwarding and Upcoming are office work; History's edit mode and Review's acts for others are the owner's with a dev. */}
       {activeTab === 'today' && (
-        <ChecklistTodayTab modeBar={taskDayBar} canAddTask={showHeaderTaskChecklistButton(role)} authUserId={authUser?.id ?? null} canForward={isOfficeRole(role)} canOpenVehiclesPage={role === 'dev' || role === 'master_technician' || isAssistantLike(role)} setError={setError} />
+        <ChecklistTodayTab modeBar={taskDayBar} tagKinds={taskModeEnabled ? 'both' : 'task'} canAddTask={showHeaderTaskChecklistButton(role)} authUserId={authUser?.id ?? null} canForward={isOfficeRole(role)} canOpenVehiclesPage={role === 'dev' || role === 'master_technician' || isAssistantLike(role)} setError={setError} />
       )}
       {activeTab === 'history' && (
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={isOwnerOrDev(role)} setError={setError} />
@@ -496,7 +499,7 @@ export default function Checklist() {
   )
 }
 
-function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAddTask = false, setError, modeBar = null }: { authUserId: string | null; canForward: boolean; canOpenVehiclesPage: boolean; /** May this person write a task? The roles the header's Task press shows for. */ canAddTask?: boolean; setError: (s: string | null) => void; /** Task Mode's Today and History bar, which sits in the day's head (punch list #369). */ modeBar?: ReactNode }) {
+function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAddTask = false, setError, modeBar = null, tagKinds = 'task', onOpenTaggedJob }: { authUserId: string | null; canForward: boolean; canOpenVehiclesPage: boolean; /** Which tagged notes the section above the list holds (punch list #375): a task's, and a job's too in Task Mode. */ tagKinds?: TagKinds; /** The door from a tagged job note to its job, where there is one. */ onOpenTaggedJob?: (jobId: string) => void; /** May this person write a task? The roles the header's Task press shows for. */ canAddTask?: boolean; setError: (s: string | null) => void; /** Task Mode's Today and History bar, which sits in the day's head (punch list #369). */ modeBar?: ReactNode }) {
   const addTaskModal = useChecklistAddModal()
   // Step C3: the doer's tools. One More press per task and one set of sheets for the tab. Up here with the tab's other
   // hooks, above the early return a loading day takes.
@@ -582,6 +585,24 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       document.querySelector(`[data-task-instance="${id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }, 60)
   }
+  // Tagged task notes (punch list #375): a tagged note's title is a door only to a task that is on this page.
+  const taskOnPage = (instanceId: string) => todayInstances.some((i) => i.id === instanceId) || outstandingInstances.some((i) => i.id === instanceId)
+  // The Dashboard's window sends a tagged task here as ?task=<day row>: once the day is read, show it and drop the word.
+  const [tagParams, setTagParams] = useSearchParams()
+  const taskParam = tagParams.get('task')
+  useEffect(() => {
+    if (!taskParam || loading) return
+    if (taskOnPage(taskParam)) showTask(taskParam)
+    setTagParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('task')
+        return next
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per ?task and the day's first read
+  }, [taskParam, loading])
   const [eventActorNameById, setEventActorNameById] = useState<Record<string, string>>({})
   // Punch list #369: a done task says who hears. Their names are read beside the names of the people in the threads.
   useEffect(() => {
@@ -1161,6 +1182,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         </div>
         {modeBar}
       </div>
+      {/* Tagged task notes (punch list #375): what waits on this person, above the day's list. It draws nothing while nothing waits. */}
+      <TaggedJobNotesSection variant="today" kinds={tagKinds} onOpenTask={showTask} taskOpens={taskOnPage} onOpenJob={onOpenTaggedJob} />
       <TaskPlacesMapCard tasks={mapTasks} onShowTask={showTask} onMe={setMe} />
       {missed.day && !dayFailure ? (
         <section data-yesterday style={{ marginBottom: '0.9rem' }}>
@@ -1879,6 +1902,7 @@ function OutstandingByPersonSortableRow({
   deletingInstanceId,
   expanded,
   notesCount,
+  waitingOn = '',
   onToggleExpanded,
   onMarkComplete,
   onDeleteInstance,
@@ -1900,6 +1924,8 @@ function OutstandingByPersonSortableRow({
   deletingInstanceId: string | null
   expanded: boolean
   notesCount: number
+  /** `waiting on Dana` (punch list #375): who a tagged note on this task still waits on. Empty when nobody. */
+  waitingOn?: string
   /** Missed view: how many missed copies this row stands for (v2.2272). */
   missedCount?: number
   onToggleExpanded: (instanceId: string) => void
@@ -2098,6 +2124,11 @@ function OutstandingByPersonSortableRow({
                 {'\uD83D\uDCAC'} {notesCount}
               </span>
             ) : null}
+            {waitingOn ? (
+              <span data-row-waiting-on style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.1rem 0.45rem', borderRadius: 7, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                {waitingOn}
+              </span>
+            ) : null}
             <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, todayYmdInAppTz(), inst.checklist_items?.created_at)}</span>
             {missedCount > 1 ? (
               <span
@@ -2202,6 +2233,7 @@ export function OutstandingByPersonSortableList({
   deletingInstanceId,
   expandedInstanceId,
   notesByInstance,
+  waitingByItem,
   missedCountByInstance,
   onToggleExpanded,
   onMarkComplete,
@@ -2230,6 +2262,8 @@ export function OutstandingByPersonSortableList({
   authUserId: string | null
   expandedInstanceId: string | null
   notesByInstance: Map<string, number>
+  /** Who each task's tagged notes still wait on, by task (punch list #375). */
+  waitingByItem?: ReadonlyMap<string, string[]>
   /** Missed view: representative instance id → missed-copy count (v2.2272). */
   missedCountByInstance?: Map<string, number>
   onToggleExpanded: (instanceId: string) => void
@@ -2304,6 +2338,7 @@ export function OutstandingByPersonSortableList({
               deletingInstanceId={deletingInstanceId}
               expanded={expandedInstanceId === inst.id}
               notesCount={notesByInstance.get(inst.id) ?? 0}
+              waitingOn={waitingOnWords(waitingByItem?.get(inst.checklist_item_id) ?? [], [])}
               missedCount={missedCountByInstance?.get(inst.id) ?? 1}
               onToggleExpanded={onToggleExpanded}
               onMarkComplete={onMarkComplete}
@@ -2773,6 +2808,8 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
   }
 
   const outstandingTotal = byUser.reduce((n, u) => n + u.count, 0)
+  // Who each listed task's tagged notes still wait on (punch list #375), beside the note counts.
+  const waitingByItem = useOpenTaskTagNames(useMemo(() => byUser.flatMap((u) => u.instances.map((i) => i.checklist_item_id)), [byUser]))
   // Where the open tasks are (#328, PR 7): the board's own rows with their places, by person and in the board's order.
   const boardPlaces = useTaskPlaces(byUser.flatMap((u) => u.instances.map((i) => i.checklist_item_id)))
   const teamMapPeople = useMemo<TaskPlacesTeamPerson[]>(
@@ -3000,6 +3037,7 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
               const oldest = oldestAgeDays(instances, todayLocal)
               const oldestSeverity = ageSeverity(oldest)
               const notesTotal = instances.reduce((n, i) => n + (notesByInstance.get(i.id) ?? 0), 0)
+              const waitingNames = [...new Set(instances.flatMap((i) => waitingByItem.get(i.checklist_item_id) ?? []))]
               const costTotal = canSeeCosts
                 ? sumEstimateDollars(
                     instances.map(
@@ -3065,6 +3103,7 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
                           </>
                         ) : null}
                         {notesTotal > 0 ? <> · <span style={{ whiteSpace: 'nowrap' }}>💬 {notesTotal} {notesTotal === 1 ? 'note' : 'notes'}</span></> : null}
+                        {waitingNames.length > 0 ? <> · <span data-person-waiting-on style={{ color: 'var(--text-amber-800)' }}>{waitingOnWords(waitingNames, waitingNames)}</span></> : null}
                         {costTotal > 0 ? (
                           <>
                             {' · '}
@@ -3124,6 +3163,7 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
                         deletingInstanceId={deletingInstanceId}
                         expandedInstanceId={expandedInstanceId}
                         notesByInstance={notesByInstance}
+                        waitingByItem={waitingByItem}
                         missedCountByInstance={new Map([...missedGroups.values()].map((g) => [g.representative.id, g.count]))}
                         onToggleExpanded={(instanceId) => setExpandedInstanceId((prev) => (prev === instanceId ? null : instanceId))}
                         onMarkComplete={markComplete}
