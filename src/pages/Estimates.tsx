@@ -120,6 +120,15 @@ import EstimateOfferedOptions from '../components/estimates/EstimateOfferedOptio
 import { canResendEstimateLink } from '../../supabase/functions/_shared/estimateLinkResend'
 import { postSendEstimate, sendEstimateAnswerFrom } from '../lib/estimates/sendEstimateIo'
 import { estimateRecipientEmail, estimateSendPlan } from '../lib/estimates/estimateSendPlan'
+import {
+  addEstimateOptionToEditor,
+  patchEstimateOption,
+  removeViewedEstimateOption,
+  setViewedEstimateOptionKind,
+  switchViewedEstimateOption,
+  syncedEstimateOptionsOf,
+  type EstimateOptionsEditorState,
+} from '../lib/estimates/estimateOptionsEditor'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { formatCurrency } from '../lib/format'
 import { TellCustomerSheet } from '../components/customers/TellCustomerSheet'
@@ -176,11 +185,9 @@ import {
   MAX_ESTIMATE_OPTIONS,
   defaultEstimateSelection,
   estimateOptionTotalCents,
-  newEstimateOptionKey,
   normalizeEstimateOptionsFromJson,
   recommendedEstimateOption,
   setEstimateAddOnPreticked,
-  setEstimateOptionKind,
   setRecommendedEstimateOption,
   toggleEstimateOptionSelection,
   type EstimateOption,
@@ -1924,78 +1931,40 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const totalCents = sumLineItems(lines)
   /** Options with the viewed option's lines kept live — what cards, save, and previews read. */
   const syncedEstimateOptions = useMemo(
-    () => estimateOptions.map((o) => (o.key === viewedOptionKey ? { ...o, line_items: lines } : o)),
+    () => syncedEstimateOptionsOf({ options: estimateOptions, viewedKey: viewedOptionKey, lines }),
     [estimateOptions, viewedOptionKey, lines],
   )
 
+  // The option moves (`lib/estimates/estimateOptionsEditor`, v2.7605) are pure steps over these four pieces;
+  // a piece a move leaves alone comes back as the same reference, so setting it is a no-op.
+  const optionsEditorState: EstimateOptionsEditorState = { options: estimateOptions, viewedKey: viewedOptionKey, lines, previewSelected: previewSelectedOptionKeys }
+  function applyOptionsEditor(next: EstimateOptionsEditorState) {
+    if (next === optionsEditorState) return
+    setEstimateOptions(next.options)
+    setViewedOptionKey(next.viewedKey)
+    setLines(next.lines)
+    setPreviewSelectedOptionKeys(next.previewSelected)
+  }
+
   function switchViewedOption(key: string) {
-    if (key === viewedOptionKey) return
-    const target = estimateOptions.find((o) => o.key === key)
-    if (!target) return
-    // Fold the editor's live lines into the option we're leaving, then load the target's.
-    setEstimateOptions((prev) => prev.map((o) => (o.key === viewedOptionKey ? { ...o, line_items: lines } : o)))
-    setViewedOptionKey(key)
-    setLines(target.line_items.length > 0 ? target.line_items : [defaultDraftFirstLine()])
+    applyOptionsEditor(switchViewedEstimateOption(optionsEditorState, key))
   }
 
   function addEstimateOption() {
-    if (estimateOptions.length >= MAX_ESTIMATE_OPTIONS) return
-    if (estimateOptions.length === 0) {
-      // First press converts the single estimate into two options: the current lines become
-      // Option 1 (recommended), Option 2 starts as a clone to edit from — the Bids move.
-      const a: EstimateOption = { key: newEstimateOptionKey(), name: 'Option 1', description: '', recommended: true, kind: 'choice', line_items: lines }
-      const b: EstimateOption = { key: newEstimateOptionKey(), name: 'Option 2', description: '', recommended: false, kind: 'choice', line_items: lines.map((l) => ({ ...l })) }
-      setEstimateOptions([a, b])
-      setViewedOptionKey(b.key)
-      setPreviewSelectedOptionKeys([a.key])
-      return
-    }
-    const src = syncedEstimateOptions.find((o) => o.key === viewedOptionKey) ?? syncedEstimateOptions[0]
-    const next: EstimateOption = {
-      key: newEstimateOptionKey(),
-      name: `Option ${estimateOptions.length + 1}`,
-      description: '',
-      recommended: false,
-      // A copy is offered the way its source is (v2.3554) — cloning an add-on makes an add-on.
-      kind: src?.kind ?? 'choice',
-      line_items: (src?.line_items ?? []).map((l) => ({ ...l })),
-    }
-    setEstimateOptions((prev) => [...prev.map((o) => (o.key === viewedOptionKey ? { ...o, line_items: lines } : o)), next])
-    setViewedOptionKey(next.key)
-    setLines(next.line_items.length > 0 ? next.line_items : [defaultDraftFirstLine()])
+    applyOptionsEditor(addEstimateOptionToEditor(optionsEditorState))
   }
 
   function removeViewedOption() {
-    const remaining = syncedEstimateOptions.filter((o) => o.key !== viewedOptionKey)
-    if (remaining.length <= 1) {
-      // Down to one option: collapse back to a normal single-option estimate.
-      const only = remaining[0] ?? null
-      setEstimateOptions([])
-      setViewedOptionKey(null)
-      setPreviewSelectedOptionKeys([])
-      if (only) setLines(only.line_items.length > 0 ? only.line_items : [defaultDraftFirstLine()])
-      return
-    }
-    const fixed = remaining.some((o) => o.recommended) ? remaining : remaining.map((o, i) => ({ ...o, recommended: i === 0 }))
-    const nextViewed = recommendedEstimateOption(fixed)
-    setEstimateOptions(fixed)
-    setViewedOptionKey(nextViewed?.key ?? null)
-    setPreviewSelectedOptionKeys(defaultEstimateSelection(fixed))
-    if (nextViewed) setLines(nextViewed.line_items.length > 0 ? nextViewed.line_items : [defaultDraftFirstLine()])
+    applyOptionsEditor(removeViewedEstimateOption(optionsEditorState))
   }
 
   function patchViewedOption(patch: Partial<Pick<EstimateOption, 'name' | 'description'>>) {
-    setEstimateOptions((prev) => prev.map((o) => (o.key === viewedOptionKey ? { ...o, ...patch } : o)))
+    setEstimateOptions((prev) => patchEstimateOption(prev, viewedOptionKey, patch))
   }
 
   /** v2.3556: offer the edited option as a choice or an add-on; the star re-seats itself and the Page preview restarts from the default. */
   function setViewedOptionKind(kind: EstimateOptionKind) {
-    if (!viewedOptionKey) return
-    setEstimateOptions((prev) => {
-      const next = setEstimateOptionKind(prev, viewedOptionKey, kind)
-      setPreviewSelectedOptionKeys(defaultEstimateSelection(next))
-      return next
-    })
+    applyOptionsEditor(setViewedEstimateOptionKind(optionsEditorState, kind))
   }
 
   const viewedOption = estimateOptions.find((o) => o.key === viewedOptionKey) ?? null
