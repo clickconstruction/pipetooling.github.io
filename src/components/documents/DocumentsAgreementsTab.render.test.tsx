@@ -216,7 +216,7 @@ describe('DocumentsAgreementsTab', () => {
     expect((await screen.findByTestId('work-order-window')).textContent).toBe('j1|w1')
   })
 
-  it('under the Search tab draws no box, stays quiet until two letters, then asks for the words it is handed', async () => {
+  it('under the Search tab draws no box and no chips, stays quiet until two letters, then asks every state for the words it is handed', async () => {
     const view = renderWithProviders(<DocumentsAgreementsTab embedSearch="" />)
     expect(screen.getByTestId('documents-agreements-embed-hint').textContent).toBe('Results appear when you type a search above.')
     expect(screen.queryByLabelText('Find an agreement')).toBeNull()
@@ -224,7 +224,11 @@ describe('DocumentsAgreementsTab', () => {
     io.rows = [row({})]
     view.rerender(<DocumentsAgreementsTab embedSearch="pierce" />)
     await lines()
-    expect(lastAsk()).toEqual({ kind: 'all', state: 'live', typed: 'pierce', limit: 100 })
+    // Every kind and every state: a search must find a voided paper too. No chips and no doors line under Search.
+    expect(lastAsk()).toEqual({ kind: 'all', state: 'any', typed: 'pierce', limit: 100 })
+    expect(io.counts).toEqual([])
+    expect(screen.queryByRole('group', { name: 'Kind of agreement' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'State' })).toBeNull()
     expect(screen.queryByTestId('documents-agreements-doors')).toBeNull()
   })
 })
