@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { dayLabel } from '../checklistDueDates'
-import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, FOLLOW_UP_TITLE_MAX, doneLineWords, followUpTellsId, followUpTitle, lateFirst, nextTaskId, notePressLabel, showMoreLabel, splitToday, stillOpenAge, stillOpenIsLate, stillOpenLabel, stillOpenOrderWords, stillOpenShown, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from './todayPage'
+import { ADD_OWN_TASK_LABEL, ADD_PHOTO_PRESS, ADD_PHOTO_SHEET_TITLE, FOLLOW_UP_LABEL, PHOTO_PRESS_LABEL, beforeStartWords, justDoneWords, FOLLOW_UP_TITLE_MAX, doneLineWords, followUpTellsId, followUpTitle, lateFirst, nextTaskId, notePressLabel, showMoreLabel, splitToday, stillOpenAge, stillOpenIsLate, stillOpenLabel, stillOpenOrderWords, stillOpenShown, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from './todayPage'
 
 describe('todayHeadDate', () => {
   it('reads the weekday, the short month and the day', () => {
@@ -178,5 +178,26 @@ describe('a follow-up', () => {
   it('the two presses name what they do', () => {
     expect(ADD_OWN_TASK_LABEL).toBe('＋ Add a task for me')
     expect(FOLLOW_UP_LABEL).toBe('Follow-up')
+  })
+})
+
+describe('proof and who hears (step B2)', () => {
+  it('an open task says who hears and whether a photo is asked for, and nothing when neither', () => {
+    expect(beforeStartWords('Imani', false)).toBe('Imani hears when it is done.')
+    expect(beforeStartWords('Imani', true)).toBe('Imani hears when it is done. It asks for a photo at the finish.')
+    expect(beforeStartWords(null, true)).toBe('It asks for a photo at the finish.')
+    expect(beforeStartWords(' ', false)).toBeNull()
+  })
+  it('a task just finished offers the photo and the note in words', () => {
+    expect(justDoneWords('Imani')).toBe('Add a photo or a note for Imani if it helps.')
+    expect(justDoneWords(null)).toBe('Add a photo or a note if it helps.')
+  })
+  it('every line is plain words', () => {
+    for (const s of [beforeStartWords('Imani', true)!, justDoneWords('Imani'), justDoneWords(null)]) expect(plainWordsFailures(s)).toEqual([])
+  })
+  it('the photo press and its sheet name what they do', () => {
+    expect(PHOTO_PRESS_LABEL).toBe('📷 Photo')
+    expect(ADD_PHOTO_SHEET_TITLE).toBe('Add a photo')
+    expect(ADD_PHOTO_PRESS).toBe('Add the photo')
   })
 })
