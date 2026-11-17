@@ -308,6 +308,9 @@ A person reads their own row and the office reads the desk's;
 no new policy.
 The controller sees the desk's section and presses nothing.
 
+The office's **Waiting on** card (v2.7568, punch list #365, PR 2) is drawn for the assistant and the controller alone (`canSeeWaitingOnLeader`).
+It adds no policy and no function: the waivers, the tagged notes and the line budgets are read under the office's own row-level security, and its **Remind** is `notify-lien-approval`, whose gate is the office roles.
+
 ### GC projects — New project, the plans, the questions and the scope book (door 1, v2.4832, `20261008003000_gc_door_1_new_project_team.sql`)
 
 GC mode's first door.
