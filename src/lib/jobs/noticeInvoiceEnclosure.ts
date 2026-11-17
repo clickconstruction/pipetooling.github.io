@@ -14,6 +14,8 @@ import type { DemandExhibitInput } from '../jobsDocuments/demandLetterPacket'
 import { demandDate, exhibitInvoiceDocument, fallbackInvoiceNumber } from '../jobsDocuments/demandLetter'
 import type { StripeInvoiceFacts } from '../stripeInvoiceFacts'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { portalReturnFooterLine } from '../../../supabase/functions/_shared/stripeInvoiceFooterPortalLink'
+import { PORTAL_RETURN_SHORT_ORIGIN } from '../../../supabase/functions/_shared/customerPortalReturnUrl'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -85,6 +87,31 @@ export function stripeBillNumber(facts: Pick<StripeInvoiceFacts, 'invoiceNumber'
   return n ? `#${n}` : ''
 }
 
+/** How a bill's footer opens the line that sends the customer back to their portal (`create-stripe-invoice` appends it). */
+const PORTAL_RETURN_LEAD = portalReturnFooterLine('').trim()
+/** The customer's short portal address without its scheme: `my.example.com/`. */
+const PORTAL_SHORT_HOST = PORTAL_RETURN_SHORT_ORIGIN.replace(/^https?:\/\//, '')
+
+/** A footer line that carries the bill-to customer's portal address: the return line itself, or any line with a portal link in it. */
+function footerLineHasPortalLink(line: string): boolean {
+  const l = line.trim()
+  return l.startsWith(PORTAL_RETURN_LEAD) || l.includes('/portal?t=') || l.includes(PORTAL_SHORT_HOST)
+}
+
+/**
+ * A bill's footer for a paper that goes to someone else (v2.7513). A Stripe bill's footer ends *See your updated
+ * statement any time at* and the bill-to customer's own portal address, which opens their statement with no sign-in.
+ * A § 53.056 notice is mailed to the property's owner and the original contractor, so the enclosed invoice printed
+ * that address for a third party. The line goes; the rest of the footer (the company's own block) stays as typed.
+ * '' when nothing is left.
+ */
+export function footerWithoutPortalLink(footer: string | null | undefined): string {
+  const raw = footer ?? ''
+  if (!raw.trim()) return ''
+  const kept = raw.split(/\r?\n/).filter((l) => !footerLineHasPortalLink(l))
+  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
 /**
  * The enclosed invoice as the paper prints it (v2.4852): Stripe's own number and due day when
  * the office has them (the app's document knows only the bill's position, "#0" for the first,
@@ -98,7 +125,8 @@ export function enclosedInvoiceDocument(doc: PhysicalInvoiceDocument, inv: Pick<
   const number = shown.invoiceNumberDisplay !== '—' && shown.invoiceNumberDisplay !== '#0' ? shown.invoiceNumberDisplay : fallbackInvoiceNumber(inv, hcp)
   const realLines = (shown.serviceLines ?? []).some((l) => (l.description ?? '').trim() && !payLineIsNotTheWork(l.description ?? ''))
   const scope = payLineIsNotTheWork(shown.narrativeTitle) && realLines ? '' : shown.narrativeTitle
-  return { ...shown, invoiceNumberDisplay: number, narrativeTitle: scope }
+  // The customer's portal address never rides a notice's enclosure (v2.7513): the paper, the PDF and the mailed piece all read this document.
+  return { ...shown, invoiceNumberDisplay: number, narrativeTitle: scope, footer: footerWithoutPortalLink(shown.footer) }
 }
 
 /**
@@ -144,11 +172,14 @@ export function noticeInvoiceExhibitInputs(docs: readonly NoticeInvoiceDoc[], to
   return Promise.all(docs.map(async (d) => ({ label: 'A' as const, stamp: 'INVOICE', title: d.title, blob: await toPdf(d.doc) })))
 }
 
-/** Print pages for the enclosed invoices — one section per invoice, each on its own sheet. */
+/**
+ * Print pages for the enclosed invoices — one section per invoice, each on its own sheet. The body is the invoice's
+ * email body printed as paper (v2.7513): it opened *Please find your invoice attached as a PDF*, on a sheet of paper.
+ */
 export function noticeInvoicePrintSections(docs: readonly NoticeInvoiceDoc[]): string[] {
   return docs.map(
     (d) =>
       `<div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.72rem;color:#8a1c1c;font-weight:700;letter-spacing:0.08em;border:2px solid #8a1c1c;display:inline-block;padding:3px 6px;margin-bottom:0.8rem">INVOICE · enclosed with the § 53.056 notice (Tex. Prop. Code § 53.056(a-3))</div>` +
-      buildPhysicalInvoiceEmailBodies(d.doc).html,
+      buildPhysicalInvoiceEmailBodies(d.doc, { paper: true }).html,
   )
 }

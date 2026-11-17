@@ -127,8 +127,8 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     const held = lienArChipFor(input({ nextUp: [row({ sub: 'Held', action: 'review_hold', severity: 'quiet', group: 'coming' })], entry: entry({ pile: 'held', item: { hold_reason: 'promised', hold_until: '2026-10-12' } as never }) }))!
     expect(held.words).toBe('Held · they promised · asks again Oct 12')
     expect(held.tone).toBe('amber')
-    const printed = lienArChipFor(input({ nextUp: [row({ sub: 'In the mail · tracking owed', action: 'add_tracking', target: { open: 'notices', jobId: 'j273', pile: 'printed' } })], entry: entry({ pile: 'printed', item: { printed_at: '2026-10-09T16:00:00Z' } as never }) }))!
-    expect(printed).toMatchObject({ tone: 'blue', state: 'out', words: 'In the mail · tracking owed' })
+    const printed = lienArChipFor(input({ nextUp: [row({ sub: 'Approved · to mail', action: 'add_tracking', target: { open: 'notices', jobId: 'j273', pile: 'printed' } })], entry: entry({ pile: 'printed', item: { printed_at: '2026-10-09T16:00:00Z' } as never }) }))!
+    expect(printed).toMatchObject({ tone: 'blue', state: 'out', words: 'Approved · to mail' })
     expect(printed.sentence).toContain('printed Oct 9 · press Enter mail numbers on the Lien desk to record it')
     const late = lienArChipFor(input({ nextUp: [row({ sub: 'Late notice to draft · the window closed, the affidavit is still open', action: 'draft_late', dueOn: '2026-11-16', daysLeft: 34, severity: 'amber', group: 'coming' })], entry: entry({ pile: 'missed', dueMonths: [] }) }))!
     expect(late.words).toBe('Draft the late notice · by Nov 16 · 34d')

@@ -1892,6 +1892,9 @@ export default function LienInstrumentsModal({
             affidavitForm={affidavitFormRead.form}
             affidavitFormUnread={affidavitFormRead.failed}
             noticeMonths={noticeMonths ?? null}
+            // v2.7516: an approved notice on the desk is the paper to print; the tab says so and offers the door.
+            deskNoticeState={deskNoticeState}
+            onOpenDeskNotice={onOpenLienDesk && job ? () => onOpenLienDesk(job.id, 'notice') : undefined}
             job={linkedJob ?? job}
             workDays={lastWorkJob}
             workMonths={affidavitWorkMonths}

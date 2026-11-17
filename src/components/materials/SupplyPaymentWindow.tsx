@@ -39,6 +39,7 @@ export function SupplyPaymentWindow({
   onRemove,
   onMove,
   onUndoMove,
+  onEditHow,
 }: {
   payment: SupplyPayment
   /** The house's payments, lines and events the host holds: what else sits on the same bills. */
@@ -56,6 +57,8 @@ export function SupplyPaymentWindow({
   /** Moves an amount; resolves when the host has read the house again. */
   onMove: (input: MoveSupplyPaymentInput) => Promise<void>
   onUndoMove: (eventId: string) => Promise<void>
+  /** Opens "how it was sent" for this payment: the method and its number, the day, the receipt link. */
+  onEditHow?: () => void
 }) {
   useBodyScrollLock(true)
   const confirm = useConfirmDialog()
@@ -275,6 +278,11 @@ export function SupplyPaymentWindow({
         <button type="button" disabled={busy} onClick={() => void remove()} style={{ ...plainPress(busy), color: 'var(--text-red-700)' }}>
           {busy ? 'Working…' : 'Remove this payment…'}
         </button>
+        {onEditHow ? (
+          <button type="button" disabled={busy} onClick={onEditHow} style={plainPress(busy)}>
+            Edit how it was sent
+          </button>
+        ) : null}
         <button type="button" disabled={busy} onClick={onClose} style={plainPress(busy)}>
           Close
         </button>

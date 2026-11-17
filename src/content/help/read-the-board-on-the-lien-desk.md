@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller
 keywords: board, lien desk, to do, bins, off the lien path, not lienable, put it back, chips, hover, point at, card, address, customer, job name, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, row, dollars, notice sent, no notice needed, homestead question, print affidavits, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
 where: /lien-desk
 ---
-The Lien desk's To do tab opens on the Board. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
+The Lien desk opens on its To do view. The Board sits across the top of that view. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
 
 ## The four tiles
 
@@ -75,7 +75,7 @@ The same press sits on the job number of every To do row. It also sits on the nu
 
 Two presses stand between the tiles and the columns. Each stands over its own column, so they show as soon as the desk opens. Only the lien office sees them.
 
-Over the notices the press reads like {{button:blue|Print and mail 8 notices}}. The count is the notices that can print now. Press it and the run opens on every approved notice, for every GC. A line under the press says what it leaves out, like *7 wait on Malachi's signature*. Press **See them ›** to open those notices. Once every approved notice has printed, the press reads {{button:blue|Enter mail numbers · 4}}.
+Over the notices the press reads like {{button:blue|Print and mail 8 notices}}. The count is the notices that can print now. Press it and the run opens on every approved notice, for every GC. A line under the press says what it leaves out, like *7 wait on Malachi's signature*. Press **See them ›** to open those notices. Press {{button:outline|Remind Malachi of 7 papers ›}} beside it to tell the leader they wait. Once every approved notice has printed, the press reads {{button:blue|Enter mail numbers · 4}}.
 
 Over the affidavits the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under it says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. A second line says what prints in front of the stack, like *Prints with the help sheet and the notice records*. Press **Change ›** to tick those pages on the affidavits list.
 
@@ -109,7 +109,7 @@ Each heading says how many papers the bin holds and what their jobs still owe. I
 
 Papers that share one act are one row. Twelve affidavits ready to file read as one row, *12 affidavits approved and ready to file*. Its press is {{button:blue|Print 10 for notarization ›}}. It opens the affidavits list at **Ready to file**. The button of the same name there prints the batch. Press **The 12 jobs** on the row to see each job, its notice and what it owes. Affidavits not yet sent for approval fold the same way, under {{button:blue|Send 3 for approval ›}}.
 
-A paper the office waits on sits in its **Awaiting Master approval** bin. The office cannot approve these papers. It can remind the leader. Press {{button:outline|Remind Malachi of 3 papers}} on that heading. When only a retainage notice waits, the press is on the **Other lien papers** heading. The desk asks first. Then the leader gets the message again, on the phone or by email. Anyone in the office can send it, whoever sent the paper. A notice is one message each. A retainage notice is one message too. The affidavits share one message. Nothing on the papers changes. The desk then says how many papers the leader was reminded of. A reminder that did not go is named with its reason, so you can tell the leader another way. After a send the button says when, like *Reminded at 2:14 PM*.
+A paper the office waits on sits in its **Awaiting Master approval** bin. The office cannot approve these papers. It can remind the leader. Press {{button:outline|Remind Malachi of 3 papers}} on that heading. When only a retainage notice waits, the press is on the **Other lien papers** heading. The desk asks first. Then the leader gets the message again, on the phone or by email. Anyone in the office can send it, whoever sent the paper. A notice is one message each. A retainage notice is one message too. The affidavits share one message. An approved notice the leader has yet to sign is in the same press. The notices to sign share one message too. On a day with nothing to approve, the press is on the Board, beside the line that counts them. Nothing on the papers changes. The desk then says how many papers the leader was reminded of. A reminder that did not go is named with its reason, so you can tell the leader another way. After a send the button says when, like *Reminded at 2:14 PM*.
 
 The leader's own rows stay on top, under **Only you can sign** and **Only you can approve**. **Reminders** keep their own heading. A paper with no bin, like a retainage notice, sits under **Other lien papers**.
 
@@ -171,9 +171,9 @@ Press {{button:outline|Every bin}} to see the whole Board. Press {{button:outlin
 
 The Dashboard's Needs you card carries the Board's four numbers on one line. They are the four tiles as dots. The line reads like *Lien desk · 21 by tomorrow · 3 waiting on Malachi · 7 to print and mail · $202,575 unpaid on the desk*. Press the line and the Lien desk opens at the Board. The line shows for the office while the card has lines.
 
-## The title is a door
+## The first tab is the way back
 
-Press **Lien desk** at the top of the page from any view. The To do tab opens with the Board in view.
+On a computer the first tab carries the desk's name and its count. The tab reads like *⏱ Lien desk · 32 to do*. The number counts the To do rows you can move. Press the tab from any view. To do opens with the Board in view. Press it on To do and the Board comes back up. The tab is blue while To do is the view. On the other views the tab still shows the desk's name. On a phone the title **Lien desk** is the way back, and the first tab reads *To do · 32*.
 
 ## Where the old strips went
 

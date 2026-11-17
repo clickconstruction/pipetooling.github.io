@@ -6,9 +6,9 @@
  * 168 px, and through nothing at 320 wide. The run window's six steps took 175 px in two rows of three.
  *
  * Here: the Lien window's header folds to its title line once the paper is scrolled, and comes back at the top;
- * the run's six steps are one line that unfolds. Pure: when the header folds and what the one line says.
+ * the run's steps (three since v2.7477) are one line that unfolds. Pure: when the header folds and what the one line says.
  */
-import type { RunJourney } from './runJourney'
+import type { LienRunNode } from './lienRunParts'
 
 /** How far the paper is scrolled before the header folds, in px. */
 export const LIEN_WINDOW_FOLD_AT_PX = 48
@@ -48,32 +48,27 @@ export function lienWindowScrollIsPaper(i: { scrollHeight: number; clientHeight:
 }
 
 export type LienRunJourneyLine = {
-  /** *Step 2 of 6 · Signed*. */
+  /** *Step 1 of 3 · Get them right*. */
   head: string
-  /** The step's own count, and its note when it has one: *0 of 7 · 7 wait on the leader*. */
+  /** The step's own count: *8 of 15 are ready*. */
   count: string
-  /** The step blocks the run, so the line is amber. */
+  /** The run stands on what stops a notice, so the line is amber. */
   warn: boolean
-  /** Every step is done. */
+  /** Nothing is left in the run. */
   done: boolean
 }
 
 /**
- * The run's six steps as one line: the step the run stands on, the first that is not done. A blocked step is the
- * one that says why. With every step done the line says so.
+ * The run's three steps as one line: the step the run is on, with its count (v2.7477; six envelope stages until then).
+ * An empty run has no step, and the line says so.
  */
-export function lienRunJourneyLine(journey: Pick<RunJourney, 'nodes'>): LienRunJourneyLine {
-  const nodes = journey.nodes
-  const at = nodes.findIndex((n) => !n.done)
-  if (at < 0) {
-    const last = nodes[nodes.length - 1]
-    return { head: `All ${nodes.length} steps done`, count: last ? last.count : '', warn: false, done: true }
-  }
-  const n = nodes[at]!
-  return { head: `Step ${at + 1} of ${nodes.length} · ${n.label}`, count: n.note ? `${n.count} · ${n.note}` : n.count, warn: Boolean(n.note) || n.state === 'blocked', done: false }
+export function lienRunJourneyLine(nodes: ReadonlyArray<Pick<LienRunNode, 'step' | 'label' | 'count' | 'state'>>): LienRunJourneyLine {
+  const now = nodes.find((n) => n.state === 'now')
+  if (!now) return { head: 'Nothing is in this run', count: '', warn: false, done: true }
+  return { head: `Step ${now.step} of ${nodes.length} · ${now.label}`, count: now.count, warn: now.step === 1, done: false }
 }
 
 /** The fold's words for a screen reader, beside the line. */
 export function lienRunJourneyFoldWords(open: boolean): string {
-  return open ? 'Hide the six steps' : 'Show the six steps'
+  return open ? 'Hide the three steps' : 'Show the three steps'
 }
