@@ -2512,6 +2512,7 @@ guide `use-the-short-dashboard`.
 ### Waiting on card (the office's side of the short Dashboard)
 A card on an assistant's or a controller's Dashboard, under Needs you, named for the leader, like *Waiting on Marcus* (v2.7568, punch list #365, PR 2).
 The card is `DashboardWaitingOnLeaderCard.tsx`, and its rows and words are in `lib/dashboard/waitingOnLeader.ts`.
+The deadline line reads the app's own day since v2.7616: *First window closes* a day ahead, *closes today* on the day, *closed* once it has passed.
 It lists the lines the leader's **Short Dashboard** lists as his alone: lien notices to approve and to sign, lien waivers, tagged job notes and the weekly line budgets.
 A lien row has **Remind**, the Lien desk's own reminder sent through `sendLienReminder`.
 A waiver, a tagged note and the line budgets have no message yet, and the row says so.
@@ -3035,7 +3036,7 @@ The bar's Send is the only one: the second Send at the top of a phone came off i
 Kernel `src/lib/tasks/newTaskWindow.ts`;
 pieces in `src/components/checklist/newTask/`.
 Since v2.7092 the rows (`TaskFormRows`) and the frame (`TaskWindowShell`) are shared, and **Edit task** (Checklist → Manage → ⋮ → Edit;
-the ⋮ is `ManageRowMenu`, pinned to the screen since v2.7185 so a phone reaches Delete on the last row;
+the ⋮ is `ManageRowMenu`, pinned to the screen since v2.7185 so a phone reaches Delete on the last row, its backdrop marked `data-page-scroll="allow"` since v2.7602 so the scroll lock no longer shuts it on a scrolled list;
 `ChecklistItemEditModal`, *Edit checklist item* before) draws the same ones: whoever has the task keeps a face, adding a person never takes the editor off, the bell names the giver when the editor is someone else, and the button reads Save;
 since v2.7189 the line under When, *Saving reshapes the days still to come*, shows only for a task that repeats as saved or is being made to (`editTaskWhenNote`).
 Since v2.7093 the roadmap's **Add task** (`ChecklistTechTreeAddTaskModal`) draws them too, less the day: no When row, an Add row of Done when… and Photo at the finish, nobody picked to start, `roadmapTaskSentence` in the bar (*It joins the stage North fence.
@@ -7120,7 +7121,7 @@ A company truck with no insurance, registration, service or replacement value on
   A tag is never read out of the note's words: an `@` typed by hand stays plain words.
   Guide: `/help/tag-a-teammate-in-a-job-note`.
 - **Tagged task notes** (punch list #375;
-  v2.7566 the easier box, v2.7570 the table, v2.7574 the names at a task's note box, v2.7576 where it lands) — a task note that names a teammate picked at the note box, kept as a row of `task_note_tags`.
+  v2.7566 the easier box, v2.7570 the table, v2.7574 the names at a task's note box, v2.7576 where it lands, v2.7577 the phone notice, v2.7578 History's box and the Roadmap task card's box) — a task note that names a teammate picked at the note box, kept as a row of `task_note_tags`.
   Only people who can already open the task can be tagged: whoever gave it, whoever has that day's row, and the office.
   It **waits** on that person until they type a note on that task, on any of its days, or press **No reply needed**;
   a tick, a stuck line and a handed line answer nothing.
