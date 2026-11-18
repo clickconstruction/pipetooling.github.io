@@ -317,6 +317,16 @@ The controller sees the desk's section and presses nothing.
 The office's **Waiting on** card (v2.7568, punch list #365, PR 2) is drawn for the assistant and the controller alone (`canSeeWaitingOnLeader`).
 It adds no policy and no function: the waivers, the tagged notes and the line budgets are read under the office's own row-level security, and its **Remind** is `notify-lien-approval`, whose gate is the office roles.
 
+### My finish date — a person's word on when a job finishes (v2.7807, `20261118110000_job_finish_calls.sql`, punch list #396)
+
+- **`job_finish_calls`** (`docs/migrations/20261118110000_job_finish_calls.md`): one row a saying, never changed.
+  A person **writes** his own row on a job he can read, and **reads** his own rows.
+  Anyone who can read the job reads what was said on it.
+  Both rules ask `jobs_ledger` under the caller's own row-level security, so the table adds no rule about who is on a job.
+- `authenticated` holds `SELECT` and `INSERT` alone, so nobody signed in changes or deletes a saying, and `anon` holds no grant.
+- It moves neither the planned finish nor the score: no function reads it.
+- The read-only blocks, the twin fence and the archived seal stand on the table.
+
 ### GC projects — New project, the plans, the questions and the scope book (door 1, v2.4832, `20261008003000_gc_door_1_new_project_team.sql`)
 
 GC mode's first door.
