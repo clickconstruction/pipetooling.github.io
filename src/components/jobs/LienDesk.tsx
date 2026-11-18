@@ -88,7 +88,9 @@ import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { useLienPileHeads } from './LienPileHeads'
 import LienBoard, { type LienBoardBinPress } from './LienBoard'
 import { lienScanTargetsFromDesk } from '../../lib/jobs/lienScanBatch'
-import { lienServeJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
+import { lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
+import { lienServeProofMissing } from '../../lib/jobs/lienServeNumbers'
+import { lienDocKnownFromFilings } from '../../lib/jobs/lienDocNumber'
 import { lienServeStage, lienServeStageCounts, lienServeStageDoorWords, type LienServeLanding } from '../../lib/jobs/lienServeStage'
 import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
 import { LienOffPathBinView } from './LienOffPathBoardParts'
@@ -811,6 +813,10 @@ export default function LienDesk({
   )
   // The same filings with where each envelope goes today, for the window that serves them together (punch list #366). No read of its own.
   const serveJobs = useMemo(() => (data ? lienServeJobsFromDesk(data) : []), [data])
+  // The mailed liens that window still shows (v2.7846): its tick saves itself, so a lien ticked on one envelope's number stays until both have a number and a receipt.
+  const serveMailedJobs = useMemo(() => (data ? lienServeMailedJobsFromDesk(data, lienServeProofMissing) : []), [data])
+  // Every filed lien's document number, for the check on one typed in that window (`lienDocNumber.ts`).
+  const docKnown = useMemo(() => (data ? lienDocKnownFromFilings(data.filingsByJob, (jobId) => [(data.jobsById[jobId]?.hcp_number ?? '').trim(), (data.jobsById[jobId]?.job_name ?? '').trim()].filter(Boolean).join(' · ')) : []), [data])
   // Every filed affidavit a scan can go to, for the window that takes several at once (punch list #366). No read of its own.
   const scanTargets = useMemo(() => (data ? lienScanTargetsFromDesk(data) : []), [data])
   // The door to that window, as the Board's bin and the list's folded row say it, named for the stage the copies are at:
@@ -2914,6 +2920,9 @@ export default function LienDesk({
             issuer={issuer}
             windows={windows}
             serveJobs={serveJobs}
+            serveMailedJobs={serveMailedJobs}
+            docKnown={docKnown}
+            servePrinted={servePrinted}
             serveLand={serveLand}
             onServeClosed={() => setServeLand(null)}
             onServePrinted={(ids) => setServePrintedNow((cur) => [...cur, ...ids])}
