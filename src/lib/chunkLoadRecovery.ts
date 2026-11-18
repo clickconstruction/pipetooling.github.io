@@ -13,7 +13,12 @@
  * Two boundaries draw what this decides (`RouteChunkBoundary`): one around every route in
  * `App.tsx` and one around the Layout's outlet. A page outside the Layout, or a provider
  * above it, that loses its chunk is caught by the first, so no route ends on an empty page.
+ *
+ * The reload waits for a write. The page that lost its chunk cannot draw, so the reload has
+ * to come, but a save still on its way out is let finish first (`decideChunkReloadWait`):
+ * a reload inside a write sends the write and never hears its answer.
  */
+import { inFlightWriteCount, subscribeUnsavedWork } from './unsavedWork'
 
 /** sessionStorage key recording the last automatic chunk-recovery reload. */
 export const CHUNK_RECOVERY_KEY = 'pipetooling-chunk-recovery-last'
@@ -77,22 +82,106 @@ export function tryClaimChunkRecoveryReload(
   }
 }
 
+/** A write that came back is often the first of a chain (a row, then its files): stay this long after it. */
+export const CHUNK_RELOAD_SETTLE_MS = 1_500
+/** The page cannot draw, so the wait has an end: after this long the reload goes whatever is in flight. */
+export const CHUNK_RELOAD_WAIT_MAX_MS = 30_000
+
+export type ChunkReloadWaitSnapshot = {
+  /** Non-GET requests through the Supabase client still waiting for a response. */
+  inFlightWrites: number
+  /** Time since the recovery reload was started. */
+  msSinceStarted: number
+  /** Time since the last write seen during the wait came back, null when none was seen. */
+  msSinceWriteSettled: number | null
+}
+
+export type ChunkReloadWait =
+  | { act: 'reload'; reason: string }
+  | { act: 'wait'; reason: string; lookAgainInMs: number }
+
+/**
+ * May the started recovery reload fire now? There is no standing down here, unlike the
+ * update's quiet moment (`autoReload.ts`): the page is already lost, so the answer is only
+ * now or a little later.
+ */
+export function decideChunkReloadWait(s: ChunkReloadWaitSnapshot): ChunkReloadWait {
+  const untilGiveUp = CHUNK_RELOAD_WAIT_MAX_MS - s.msSinceStarted
+  if (untilGiveUp <= 0) return { act: 'reload', reason: 'waited as long as a lost page can' }
+  if (s.inFlightWrites > 0) {
+    return { act: 'wait', reason: `${s.inFlightWrites} write(s) in flight`, lookAgainInMs: untilGiveUp }
+  }
+  if (s.msSinceWriteSettled != null && s.msSinceWriteSettled < CHUNK_RELOAD_SETTLE_MS) {
+    return {
+      act: 'wait',
+      reason: 'a write just came back, another may follow',
+      lookAgainInMs: Math.min(CHUNK_RELOAD_SETTLE_MS - s.msSinceWriteSettled, untilGiveUp),
+    }
+  }
+  return { act: 'reload', reason: 'nothing in flight' }
+}
+
+/** Where the wait reads the writes in flight. The app's own is `unsavedWork.ts`; a test hands in its own. */
+export type WriteWatch = {
+  count: () => number
+  subscribe: (onChange: () => void) => () => void
+}
+
+const appWrites: WriteWatch = { count: inFlightWriteCount, subscribe: subscribeUnsavedWork }
+
+/** Call `reload` as soon as `decideChunkReloadWait` allows it: at once when nothing is in flight. */
+function reloadWhenWritesSettle(reload: () => void, writes: WriteWatch): void {
+  const startedAt = Date.now()
+  let lastCount = writes.count()
+  let settledAt: number | null = null
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let unsubscribe = () => {}
+  let fired = false
+  const look = () => {
+    if (fired) return
+    if (timer !== undefined) clearTimeout(timer)
+    timer = undefined
+    const at = Date.now()
+    const wait = decideChunkReloadWait({
+      inFlightWrites: writes.count(),
+      msSinceStarted: at - startedAt,
+      msSinceWriteSettled: settledAt == null ? null : at - settledAt,
+    })
+    if (wait.act === 'reload') {
+      fired = true
+      unsubscribe()
+      reload()
+      return
+    }
+    timer = setTimeout(look, wait.lookAgainInMs)
+  }
+  unsubscribe = writes.subscribe(() => {
+    const count = writes.count()
+    if (count === 0 && lastCount > 0) settledAt = Date.now()
+    lastCount = count
+    look()
+  })
+  look()
+}
+
 /** True once a recovery reload has been started in this document. The page is leaving. */
 let recoveryReloadStarted = false
 
 /**
  * Start the one guarded recovery reload: claim it, remember that it is on its way and call
- * `reload`. False when the guard refuses (one already ran inside the interval); nothing is
- * started then, and the caller shows the fallback with its Reload press.
+ * `reload`, at once when no write is in flight and otherwise when the write is back. False
+ * when the guard refuses (one already ran inside the interval); nothing is started then, and
+ * the caller shows the fallback with its Reload press.
  */
 export function startChunkRecoveryReload(
   now: number,
   storage: StorageLike | null | undefined,
   reload: () => void,
+  writes: WriteWatch = appWrites,
 ): boolean {
   if (!tryClaimChunkRecoveryReload(now, storage)) return false
   recoveryReloadStarted = true
-  reload()
+  reloadWhenWritesSettle(reload, writes)
   return true
 }
 
