@@ -1,6 +1,6 @@
 /**
  * The row-render context, built once for every Pipeline list (the Stages map's step 13). The four lists used to write
- * these forty lines out by hand, so the test pins what a hand could get wrong: which keys the context holds, where
+ * these lines out by hand, so the test pins what a hand could get wrong: which keys the context holds, where
  * each one comes from, and that nothing else of the bundle rides along.
  */
 import { describe, expect, it } from 'vitest'
@@ -39,6 +39,7 @@ const FROM_PROPS = [
   'propertyLinkByJobId',
   'onPropertyLinked',
   'onOpenJobContract',
+  'legalMatterByJobId',
   'onOpenCustomerDoor',
   'boardDotByJobId',
   'customerLinesByJobId',
@@ -54,9 +55,9 @@ const hooks = marked('hooks', [...FROM_HOOKS, ...FROM_PROPS]) as unknown as Stag
 describe('stagesRowContext', () => {
   const ctx = stagesRowContext(props, hooks) as unknown as Record<string, { from: string }>
 
-  it('holds the forty keys the rows read, and no other', () => {
+  it('holds the forty-one keys the rows read, and no other', () => {
     expect(Object.keys(ctx).sort()).toEqual([...FROM_HOOKS, ...FROM_PROPS].sort())
-    expect(Object.keys(ctx)).toHaveLength(40)
+    expect(Object.keys(ctx)).toHaveLength(41)
   })
 
   it('takes the windows and the router from the list’s own hooks, never from the bundle', () => {
@@ -80,7 +81,7 @@ describe('stagesRowContext', () => {
 
   it('keeps a key the list did not get, as undefined', () => {
     const bare = stagesRowContext({} as StagesRowContextProps, {} as StagesRowContextHooks) as unknown as Record<string, unknown>
-    expect(Object.keys(bare)).toHaveLength(40)
+    expect(Object.keys(bare)).toHaveLength(41)
     expect(bare.openNewReportForJob).toBeUndefined()
     expect(bare.openCustomerProfile).toBeUndefined()
   })

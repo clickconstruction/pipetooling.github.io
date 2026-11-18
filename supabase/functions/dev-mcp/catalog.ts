@@ -1956,6 +1956,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "trial_helpers_i_led_today": [{"args":{"p_include_open?":"boolean"},"returns":"Json"}],
   "trip_crew_on_job": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
   "trip_days_ok": [{"args":{"p_days":"Json"},"returns":"boolean"}],
+  "trip_deleted_list": [{"args":{"p_development_id":"string"},"returns":"Json"}],
   "trip_is_mine": [{"args":{"p_trip_id":"string"},"returns":"boolean"}],
   "trip_phone": [{"args":{"p":"Json"},"returns":"Json"}],
   "trip_phone_state": [{"args":{"p_job_id":"string"},"returns":"Json"}],

@@ -334,6 +334,17 @@ last_updated: 2026-11-18
 > `.lienDeskKindTab` in `index.css` is `2px 8px` where it was `2px 10px`, on the view tabs and on By paper's three (a window from 641 to 1,131 px keeps its 7).
 > Measured on the live desk at 1,440 px: the views 305 px with a two-figure count where they were 373 (316 at three figures, `LIEN_DESK_TITLE_LINE_PARTS.views`), the paper tabs 411 where they were 423 (`LIEN_DESK_PILE_LINE_PARTS.papers`).
 
+> **v2.7789 (By paper's paper tabs ride the title line when it has room, the owner's ask of 2026-11-18):** [`lienDeskTitleBar.ts`](../src/lib/jobs/lienDeskTitleBar.ts) `lienDeskPapersFit(width, parts, papers)` answers `title_line` when the measured line holds the way back, the views, the paper tabs and the four presses with a gap between each pair (`lienDeskTitleLineWithPapersNeeds`), and `second_line` otherwise or when the papers have no width.
+> `useLienDeskTitleBarFit` returns it as `papersFit`, read from the same two readers (`readLienDeskTitleLine` for the line, `readLienDeskPileLine` for the papers' width, the same on either line), and runs again on it, since the tab row is drawn anew when it changes lines.
+> `lienDeskTitleBarLayout` takes `papersFit` and `piles` (whether the view draws pile chips) and answers `papers`: `title_line`, `second_line`, or null off By paper.
+> With the papers up the second line is what is left: the piles on Lien affidavits and Retainage notices, *Put a GC on notice…* alone at the right on Monthly notices, and no second line at all where the view has neither.
+> `lienDeskPileLineFit` takes the papers' place as a third argument and measures the pile line without them once they are up.
+> `LienDesk.tsx` draws `paperTabs` in one of two places, after the views or after the header break, so the order on the page is the order a keyboard walks;
+> `LienDeskPaperTabs` marks its row `data-lien-desk-paper-kinds="title_line"` or `"second_line"`.
+> A phone is never measured and keeps the papers as its second row.
+> Measured on the live desk: the papers are up from 1,176 px of window with two-figure counts, and also from 1,100 to 1,131, where `index.css` draws the bar tighter;
+> from 1,132 to 1,175 and under 1,100 they lead the second line.
+
 > **v2.7311 (the owner-records door ends the pile line, the owner's ask of 2026-11-15):** on a computer *An owner asked for records ›* is the right end of the second line on every view, whatever the title line has room for — on By paper the paper tabs and the piles at the left, *Put a GC on notice…* and the door in the `data-lien-desk-right` span at the right;
 > off By paper the door alone in that span (the owner's answer when asked: yes, every view).
 > A desk with no door keeps the one-line shape of v2.7213.
