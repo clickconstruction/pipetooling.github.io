@@ -3120,6 +3120,7 @@ The job window's Documents tab lists the same maps in a **Painted maps** section
 The Documents page's **Painted maps** tab (`/documents?tab=painted-maps`, since v2.7409, `DocumentsPaintedMapsTab`) lists every map the reader can open, a map on no job among them.
 One host in the Layout opens it (`PaintedMapHost` over `paintedMapDoor`), and the window looks the address up only for a map with nothing on it yet.
 Drawing by hand: a press adds a corner, a drag moves one, and on a phone **the magnifying glass** rides above a dragging finger (a second small map two zoom steps in, `PaintedMapCanvas`).
+Since v2.7814 (punch list #395) the painting window hands the canvas `time` while a saved map is only being read, and the canvas then wears **Time** beside **From above** and **Streets**: it swaps the photograph under the lines, is gone while a line or a place is being drawn, and is never handed by the public `/way` page.
 **A place** is a named dot with a word and one photo (`PaintedPlacePanel`;
 the photo in the private `painted-map-photos` bucket, read by a signed address), numbered in the order it was set, the same word as a task's place.
 A place may carry **a kind** since v2.7776 (`paintedPlaceKind.ts`, over the column `painted_map_places.kind` from v2.7775): gate, parking, door, meter, shutoff, cleanout or hazard, picked by a chip on the place panel.

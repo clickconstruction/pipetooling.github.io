@@ -12,15 +12,27 @@
  * ground or more at the zoom a line is drawn at, and hides the spot it is placing. The glass is a
  * second small map two zoom steps in, centred on that spot. A mouse is already that exact, so a
  * mouse gets no glass.
+ *
+ * **Time** (punch list #395): a caller that is only showing the map may hand `time`, and the canvas
+ * then wears the Time press beside its two views, with the row of dates under the map. Time swaps
+ * the photograph under the lines and moves nothing. It is for reading: the press is gone while a
+ * line or a place is being drawn, and drawing that begins while Time is on puts today's photograph
+ * back first, so no corner is ever set against ground that has since changed. The public page hands
+ * no `time`, so an outside reader never has it.
  */
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Circle, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { legMiddles } from '../../lib/paintedMap/draftLine'
 import { PAINTED_SNAP_METERS, type NumberedPlace, type PaintedLineHow } from '../../lib/paintedMap/paintedMap'
 import { PAINT_COLOR } from './paintedMapLook'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { useMapTime } from '../../hooks/useMapTime'
+import type { MapLayerChoice } from '../../lib/map/googleMapType'
+import { MapTimeRow } from '../map/MapTimeRow'
+import { MapViewControl } from '../map/MapViewControl'
 import { placeMarkHtml, placeMarkSize, placeSaysWords } from '../../lib/paintedMap/paintedPlaceKind'
 import { boundsOfPoints, lineRuns, metersPerPixel, snapTarget, type PaintedPart, type PaintedPoint, type SnapTarget } from '../../lib/paintedMap/paintedLine'
 
@@ -67,6 +79,8 @@ type Props = {
   onPlaceTap?: (id: string) => void
   /** A picture, not a control: no drag, no zoom, no buttons. */
   still?: boolean
+  /** The map is only being read: offer Time, and call the map this in its row. Absent, there is no Time press. */
+  time?: { name: string } | null
   /** No tile came and one failed: the caller says so in words. Called once. */
   onTilesFailed?: () => void
   /** The middle of what the map is showing, each time it settles: where a new dot starts. */
@@ -76,7 +90,7 @@ type Props = {
 }
 
 // The same pictures the box map draws (`OnSiteMap`).
-const SATELLITE = { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics' }
+const SATELLITE = { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Imagery &copy; Esri, Vantor, Earthstar Geographics, and the GIS User Community' }
 const STREETS = { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }
 /** The deepest zoom the pictures are taken at. Past it the map only makes the dots bigger. */
 const NATIVE_ZOOM = 19
@@ -99,7 +113,8 @@ const HOLD_SLOP_PX = 10
 /** A dragged corner catches a target this near on the screen. */
 const SNAP_PX = 14
 
-const toggle: CSSProperties = { minHeight: 32, padding: '0 0.7rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer' }
+/** What the Time row says is not from the photograph's day. */
+const TIME_LINES_WORDS = 'The lines are today’s.'
 
 const ll = (p: PaintedPoint): [number, number] => [p.lat, p.lng]
 
@@ -557,8 +572,9 @@ function GlassSpot({ live, host, children }: { live: Live; host: HTMLElement; ch
   )
 }
 
-export default function PaintedMapCanvas({ lines, places, height, start, draft, dot, flyTo, me, follow, refit, frameMe, onPlaceTap, still, onTilesFailed, onGlass, onView }: Props) {
-  const [layer, setLayer] = useState<'satellite' | 'streets'>('satellite')
+export default function PaintedMapCanvas({ lines, places, height, start, draft, dot, flyTo, me, follow, refit, frameMe, onPlaceTap, still, time: timeAsk, onTilesFailed, onGlass, onView }: Props) {
+  const isMobile = useIsMobile()
+  const [layer, setLayer] = useState<MapLayerChoice>('satellite')
   const [live, setLiveState] = useState<Live | null>(null)
   const [host, setHost] = useState<HTMLDivElement | null>(null)
   const coarse = useRef(false)
@@ -572,8 +588,6 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
     },
     [],
   )
-  const tiles = layer === 'satellite' ? SATELLITE : STREETS
-
   // What the first view frames: everything painted, the draft, the dot and the person, or the start, or the country.
   const framed = useMemo(() => {
     const all = [...lines.flatMap((l) => l.points), ...places, ...(draft?.points ?? []), ...(dot ? [dot.point] : [])]
@@ -586,11 +600,34 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
   const draftShown = draft ? withLive(draft.points, live) : null
   const showGlass = !!live && !!host && coarse.current
 
+  // Time looks at the middle of what the map opened on. Only a map that is being read has it: never a still, never mid-line.
+  const canTime = !!timeAsk && !still && !draft && !dot && !!first
+  const timeName = timeAsk?.name ?? ''
+  const spotLat = canTime ? centre.lat : null
+  const spotLng = canTime ? centre.lng : null
+  const time = useMapTime(useMemo(() => (spotLat == null || spotLng == null ? null : { lat: spotLat, lng: spotLng, name: timeName }), [spotLat, spotLng, timeName]))
+  const { on: timeOn, off: timeOff } = time
+  // Drawing begins while Time is on: today's photograph is back before a corner can be set.
+  useEffect(() => {
+    if (!canTime && timeOn) timeOff()
+  }, [canTime, timeOn, timeOff])
+  const inTime = canTime && timeOn
+  const shownLayer: MapLayerChoice = inTime ? 'satellite' : layer
+  const tiles = inTime && time.imagery ? time.imagery : shownLayer === 'satellite' ? SATELLITE : STREETS
+  const pickLayer = (next: MapLayerChoice) => {
+    timeOff()
+    setLayer(next)
+  }
+  // A height in words fills its parent, so the row takes its room from the map. A height in pixels is the map's own.
+  const fills = typeof height !== 'number'
+
   return (
-    <div ref={setHost} data-painted-map-canvas className={layer === 'satellite' ? 'mapImagery' : undefined} style={{ position: 'relative', height, overflow: 'hidden', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}>
+    <div data-painted-map-frame style={fills ? { height, display: 'flex', flexDirection: 'column' } : undefined}>
+    <div ref={setHost} data-painted-map-canvas data-map-provider={inTime ? 'archive' : 'osm'} className={shownLayer === 'satellite' ? 'mapImagery' : undefined} style={{ position: 'relative', overflow: 'hidden', touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none', ...(fills ? { flex: '1 1 0', minHeight: 0 } : { height }) }}>
       <MapContainer center={ll(centre)} zoom={first ? 18 : 4} maxZoom={MAX_ZOOM} style={{ width: '100%', height: '100%' }} attributionControl zoomControl={!still} dragging={!still} scrollWheelZoom={!still} doubleClickZoom={!still && !draft && !dot} touchZoom={!still} boxZoom={false} keyboard={!still}>
         <TileLayer
-          key={layer}
+          // Keyed by its address: a new date is a new layer, and the old tiles do not linger under it.
+          key={tiles.url}
           url={tiles.url}
           attribution={tiles.attribution}
           maxNativeZoom={NATIVE_ZOOM}
@@ -637,21 +674,14 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
           </GlassSpot>
         ) : null}
       </MapContainer>
-      {still ? null : (
-        <div style={{ position: 'absolute', right: 8, top: 8, zIndex: 500, display: 'flex', gap: 4 }}>
-          <button type="button" aria-pressed={layer === 'satellite'} style={{ ...toggle, ...(layer === 'satellite' ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setLayer('satellite')}>
-            From above
-          </button>
-          <button type="button" aria-pressed={layer === 'streets'} style={{ ...toggle, ...(layer === 'streets' ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setLayer('streets')}>
-            Streets
-          </button>
-        </div>
-      )}
+      {still ? null : <MapViewControl layer={layer} onLayer={pickLayer} time={canTime ? time : null} isMobile={isMobile} satelliteLabel="From above" style={{ zIndex: 500 }} />}
       {live?.caught ? (
         <div role="status" data-painted-caught style={{ position: 'absolute', left: 8, right: 8, top: 48, zIndex: 600, pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
           <span style={{ background: CAUGHT, color: PAPER, fontSize: '0.8rem', fontWeight: 700, padding: '0.3rem 0.7rem', borderRadius: 999 }}>On {live.caught.label}</span>
         </div>
       ) : null}
+    </div>
+    {canTime ? <MapTimeRow time={time} isMobile={isMobile} surface="painted-map" dotsWords={TIME_LINES_WORDS} /> : null}
     </div>
   )
 }
