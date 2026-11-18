@@ -402,6 +402,7 @@ Google Maps overlay*. Honestly:
   of a shared link would count.
 - My pick is the free maps. If the owner wants Google's picture under the line, it is a switch for
   later, on the screens that already choose between the two.
+  The owner asked for that switch on 2026-11-17: it is [#387](../painted-maps-on-google.md).
 - One thing to read at PR 4: the terms of the free picture providers for a page customers open.
 
 **Reused as it stands:** `OnSiteMap`'s layers and its ring, `requestMyFix` and its refusal words,

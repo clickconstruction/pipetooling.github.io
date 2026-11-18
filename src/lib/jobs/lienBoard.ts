@@ -3,7 +3,7 @@
  * columns of bins, one per stage — the monthly notices on the left, the lien affidavits on the
  * right — every job in its bin as a small chip coloured by how soon its day is, thin arrows down
  * each column and one from Sent across to Waiting on its notice (the notice on record is the
- * affidavit's gate; the bin is its own since v2.7457, and Needs the property facts holds a missing fact alone), four tiles over the columns, the busiest bin lit, Held and Missed beside a
+ * affidavit's gate; the bin is its own since v2.7457, and Needs the property facts holds a missing fact alone), four tiles over the columns, Held and Missed beside a
  * column only while a job is in one, and retainage as one line under the notices.
  *
  * Pure. It folds the queues the desk already builds (`buildLienDeskQueue`, `buildLienAffidavitQueue`,
@@ -17,8 +17,16 @@
  * Master approval* for the `to_draft` pile, *Approved · to print* for the `ready` pile and *Approved · to mail* for the
  * `printed` one. From v2.7328 until v2.7448 one bin held both and an unprinted notice read *to mail* on the Board and
  * *to print* on the list. `LIEN_BOARD_WORDS` holds every name.
+ *
+ * Signing has a bin of its own (v2.7712, punch list #383, PR 2): *Approved · to sign*, between *Awaiting Master
+ * approval* and *Approved · to print*. An approved notice the leader has not signed stood in *Approved · to print*,
+ * so that bin read 8 while its press read 1 and nothing on screen said why. Now the print bin holds exactly what the
+ * print takes, and the third tile counts the same papers. A notice to sign has two stages left where it had one.
+ *
+ * No bin is lit as the busiest since v2.7714 (PR 3): the blue border said *most papers*, not *most urgent*, beside
+ * blue presses that mean *act here*. The component draws a blue edge on a bin whose own press is live instead.
  */
-import { batchWords, type BatchWords } from '../batchWords'
+import { batchWords, countedLabel, type BatchWords } from '../batchWords'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
 import { formatUsdNoCents } from './jobFormatting'
 import type { LienDeskEntry, LienDeskPile } from './lienDesk'
@@ -30,7 +38,7 @@ import { lienItemUnsigned } from './lienNoticeSignature'
 export type LienBoardKind = 'notice' | 'affidavit'
 
 /** The notice column's bins in flow order, then the two beside it. */
-export type LienBoardNoticeStage = 'needs_owner' | 'to_send' | 'awaiting' | 'to_print' | 'in_mail' | 'sent' | 'held' | 'missed'
+export type LienBoardNoticeStage = 'needs_owner' | 'to_send' | 'awaiting' | 'to_sign' | 'to_print' | 'in_mail' | 'sent' | 'held' | 'missed'
 /** The affidavit column's bins in flow order, then the two beside it. */
 export type LienBoardAffidavitStage = 'needs_property' | 'needs_notice' | 'to_send' | 'awaiting' | 'ready' | 'filed' | 'served' | 'held' | 'missed'
 
@@ -93,8 +101,6 @@ export type LienBoardBin = {
   chips: LienBoardChip[]
   /** Held and Missed stand beside the column, drawn only while a job is in them. */
   beside: boolean
-  /** The busiest bin on the Board. */
-  lit: boolean
 }
 
 export type LienBoardArrow = { from: LienBoardBinKey; to: LienBoardBinKey; kind: 'down' | 'cross' }
@@ -131,8 +137,6 @@ export type LienBoard = {
   arrows: LienBoardArrow[]
   tiles: LienBoardTile[]
   pairs: LienBoardPair[]
-  /** The busiest bin, or null on an empty Board. */
-  lit: LienBoardBinKey | null
   /** Retainage as one line under the notices, or null when nothing is on its desk. */
   retainageLine: string | null
   /** The day the top tile counts to, as a day: *Monday*, *tomorrow*, *Nov 20*; null with nothing dated. */
@@ -176,6 +180,8 @@ export const LIEN_BOARD_WORDS = {
   needs_notice: LIEN_AFFIDAVIT_NEEDS_NOTICE_LABEL,
   to_send: 'To send for Master approval',
   awaiting: 'Awaiting Master approval',
+  /** Approved on the leader's word and not yet signed: the run holds it until he signs. Its own bin since v2.7712. */
+  to_sign: 'Approved · to sign',
   to_print: 'Approved · to print',
   in_mail: 'Approved · to mail',
   sent: 'Sent',
@@ -187,11 +193,11 @@ export const LIEN_BOARD_WORDS = {
   missed: 'Missed',
 } as const
 
-export const LIEN_BOARD_NOTICE_STAGES: ReadonlyArray<LienBoardNoticeStage> = ['needs_owner', 'to_send', 'awaiting', 'to_print', 'in_mail', 'sent', 'held', 'missed']
+export const LIEN_BOARD_NOTICE_STAGES: ReadonlyArray<LienBoardNoticeStage> = ['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent', 'held', 'missed']
 export const LIEN_BOARD_AFFIDAVIT_STAGES: ReadonlyArray<LienBoardAffidavitStage> = ['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed', 'served', 'held', 'missed']
 
 /** The flow's stages, in order; Held and Missed stand beside. */
-const NOTICE_FLOW: ReadonlyArray<LienBoardNoticeStage> = ['needs_owner', 'to_send', 'awaiting', 'to_print', 'in_mail', 'sent']
+const NOTICE_FLOW: ReadonlyArray<LienBoardNoticeStage> = ['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent']
 const AFFIDAVIT_FLOW: ReadonlyArray<LienBoardAffidavitStage> = ['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed', 'served']
 
 /** A chip inside this many days, or past its day, is red. */
@@ -206,11 +212,15 @@ export const LIEN_BOARD_WEEK_DAYS = 7
  * disagree. A held paper waits on the leader again, so it has what an awaiting one has.
  */
 const NOTICE_TAIL = ['Send it for approval', '{leader} approves and signs it', 'Print it, mail it and enter its mail number'] as const
+/** The one stage an approved notice has before it can print: the leader's signature on it. */
+export const LIEN_BOARD_SIGN_STEP = '{leader} signs it'
 /** The stages still to pass before a notice is mailed with its number on record. */
 const NOTICE_STAGES_LEFT: Record<LienBoardNoticeStage, ReadonlyArray<string>> = {
   needs_owner: ['Name the owner on the property record', ...NOTICE_TAIL],
   to_send: NOTICE_TAIL,
   awaiting: NOTICE_TAIL.slice(1),
+  // Approved on his word, so the approval stands: what is left is his signature, then the print and the mail.
+  to_sign: [LIEN_BOARD_SIGN_STEP, NOTICE_TAIL[2]],
   to_print: NOTICE_TAIL.slice(2),
   // One stage either way: the print and the mail are one sitting, so the day a paper races is the same.
   in_mail: ['Mail it and enter its mail number'],
@@ -265,6 +275,11 @@ function noticeStage(pile: LienDeskPile): LienBoardNoticeStage {
     case 'missed':
       return 'missed'
   }
+}
+
+/** The bin a notice stands in: its pile's, and *Approved · to sign* for an approved one the leader has not signed. */
+function noticeStageOf(e: Pick<LienDeskEntry, 'pile' | 'item'>): LienBoardNoticeStage {
+  return e.pile === 'ready' && lienItemUnsigned(e.item) ? 'to_sign' : noticeStage(e.pile)
 }
 
 function affidavitStage(pile: LienAffidavitPile): LienBoardAffidavitStage {
@@ -383,7 +398,7 @@ function affidavitDestination(e: LienAffidavitEntry, stage: LienBoardAffidavitSt
       // The notice as the one gate left: the door is the notice, as the To do row's is (v2.4708). A notice already
       // approved stands in the run, so the door is its envelope there, as its own chip's is.
       if (failing.length === 1 && failing[0] === 'notice') {
-        const door = notice ? noticeDestination(notice, noticeStage(notice.pile)) : null
+        const door = notice ? noticeDestination(notice, noticeStageOf(notice)) : null
         if (door?.kind === 'run') return door
         return { kind: 'paper', tab: 'notices', jobId: e.jobId }
       }
@@ -462,13 +477,13 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
     if (!affidavitNeedsNotice.has(e.jobId) || pairKeyByJob.has(e.jobId)) continue
     const key = `notice:${e.jobId}`
     pairKeyByJob.set(e.jobId, key)
-    pairs.push({ key, jobId: e.jobId, reason: 'notice', destination: noticeDestination(e, noticeStage(e.pile)) })
+    pairs.push({ key, jobId: e.jobId, reason: 'notice', destination: noticeDestination(e, noticeStageOf(e)) })
   }
   // A job on a property that reads as public and has no answer yet (v2.7443): no paper can be made there, so its chip
   // loses its red day and its *!*, and carries the mark instead.
   const publicJob = (jobId: string) => Boolean(input.publicJobIds?.has(jobId))
   const notices: LienBoardChip[] = input.notices.map((e) => {
-    const stage = noticeStage(e.pile)
+    const stage = noticeStageOf(e)
     const stepsLeft = NOTICE_STAGES_LEFT[stage].length
     const dueYmd = e.earliestDeadline
     const daysLeft = dueYmd ? e.daysLeft : null
@@ -482,7 +497,7 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       dueYmd,
       daysLeft,
       stepsLeft,
-      urgency: stage === 'sent' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
+      urgency: stage === 'sent' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting' || stage === 'to_sign'),
       atRisk: !marked && lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
       ...(marked ? { publicMark: true } : {}),
       ...(e.pile === 'ready' && lienItemUnsigned(e.item) ? { unsigned: true } : {}),
@@ -570,18 +585,8 @@ function binsFor<S extends LienBoardNoticeStage | LienBoardAffidavitStage>(kind:
       label: LIEN_BOARD_WORDS[stage],
       chips: chips.filter((c) => c.bin === key).sort(compareLienBoardChips),
       beside: stage === 'held' || stage === 'missed',
-      lit: false,
     }
   })
-}
-
-/** The busiest bin, the first in column order on a tie; null when every bin is empty. */
-export function lienBoardLitBin(bins: ReadonlyArray<Pick<LienBoardBin, 'key' | 'chips'>>): LienBoardBinKey | null {
-  let best: { key: LienBoardBinKey; n: number } | null = null
-  for (const b of bins) {
-    if (b.chips.length > 0 && (!best || b.chips.length > best.n)) best = { key: b.key, n: b.chips.length }
-  }
-  return best?.key ?? null
 }
 
 /** A chip still to send or file: not sent, not filed, not past its window. */
@@ -628,7 +633,8 @@ function tiles(input: LienBoardInput, notices: ReadonlyArray<LienBoardChip>, aff
   const waits = lienBoardLeaderWaits(notices, affidavits)
   const leader = input.leaderName?.trim() || 'the leader'
   const printed = notices.filter((c) => c.pile === 'printed').length
-  const ready = notices.filter((c) => c.pile === 'ready').length
+  // The notices that can print: an approved one that waits on a signature is the second tile's, in its own bin.
+  const ready = notices.filter((c) => c.stage === 'to_print').length
   const unpaidByJob = new Map<string, number>()
   for (const c of [...notices, ...affidavits]) if (!unpaidByJob.has(c.jobId)) unpaidByJob.set(c.jobId, c.openBalance)
   const unpaid = [...unpaidByJob.values()].reduce((s, n) => s + n, 0)
@@ -681,8 +687,6 @@ export function buildLienBoard(input: LienBoardInput): LienBoard {
   const { notices, affidavits, pairs } = buildChips(input)
   const noticeBins = binsFor('notice', LIEN_BOARD_NOTICE_STAGES, notices)
   const affidavitBins = binsFor('affidavit', LIEN_BOARD_AFFIDAVIT_STAGES, affidavits)
-  const lit = lienBoardLitBin([...noticeBins, ...affidavitBins])
-  for (const b of [...noticeBins, ...affidavitBins]) b.lit = b.key === lit
   const t = tiles(input, notices, affidavits)
   return {
     notices: noticeBins,
@@ -690,7 +694,6 @@ export function buildLienBoard(input: LienBoardInput): LienBoard {
     arrows: lienBoardArrows(),
     tiles: t.tiles,
     pairs,
-    lit,
     retainageLine: lienBoardRetainageLine(input.retainage, input.retainageUnrecorded ?? 0),
     dayWords: t.dayWords,
     atRisk: t.atRisk,
@@ -753,6 +756,21 @@ export function lienBoardForLeader(board: Pick<LienBoard, 'notices' | 'affidavit
   const heldWhy = signatures === held.length ? { one: 'needs your signature', many: 'need your signature' } : signatures === 0 ? { one: 'is past its day', many: 'are past their day' } : { one: 'is held', many: 'are held' }
   const press = batchWords({ verb: 'Approve', ready: chips.length, held: held.length, heldWhy, noun: ['affidavit', 'affidavits'] })
   return { bins, press, chips, held }
+}
+
+/** The leader's press on his *Awaiting Master approval* bin of affidavits: its counted words, and what it leaves where it is. */
+export type LienBoardLeaderBinPress = { label: string; dead: boolean; line: string | null }
+
+/**
+ * The leader's one press, on the title line of the bin it empties (v2.7708; it stood under his own two bins since
+ * v2.7334, behind a switch). It counts the affidavits alone, since the bin holds affidavits alone: a notice that takes
+ * his signature stands in the other column and is told there. Null when no affidavit of a job he leads waits.
+ */
+export function lienBoardLeaderBinPress(view: Pick<LienBoardLeaderView, 'chips' | 'held'>): LienBoardLeaderBinPress | null {
+  const ready = view.chips.filter((c) => c.kind === 'affidavit').length
+  const late = view.held.filter((h) => h.chip.kind === 'affidavit').length
+  if (ready <= 0 && late <= 0) return null
+  return { label: countedLabel('Approve', ready, 'affidavit'), dead: ready <= 0, line: late > 0 ? `${late} ${plural(late, 'is', 'are')} past ${plural(late, 'its', 'their')} day and ${plural(late, 'stays', 'stay')} here.` : null }
 }
 
 /**
@@ -834,7 +852,7 @@ export function lienBoardLeaderPick(board: Pick<LienBoard, 'notices' | 'affidavi
   const chips = [...board.notices, ...board.affidavits].flatMap((b) => b.chips).filter((c) => c.stage === 'awaiting' || c.unsigned)
   const leader = leaderName?.trim() || 'the leader'
   return {
-    bins: lienBoardStageBins(board, 'awaiting'),
+    bins: [...lienBoardStageBins(board, 'awaiting'), ...lienBoardStageBins(board, 'to_sign')],
     label: `waiting on ${leader}`,
     jobIds: new Set(chips.map((c) => c.jobId)),
     // A GC's run row stands for its approved notices, so it is in only when one of them is unsigned. A notice of that
@@ -902,7 +920,14 @@ export function lienBoardRowBin(board: Pick<LienBoard, 'notices' | 'affidavits'>
   const all = [...board.notices, ...board.affidavits]
   const of = (bin: LienBoardBin | undefined) => (bin ? { key: bin.key, label: bin.label, kind: bin.kind, order: all.indexOf(bin) } : null)
   // A run row for the printed notices stands in *Approved · to mail*; a GC's row of approved ones in *Approved · to print* (v2.7448).
-  if (row.key.startsWith('run:')) return of(board.notices.find((b) => b.stage === (row.key === 'run:printed' ? 'in_mail' : 'to_print')))
+  // A GC's row whose notices all wait on a signature can print none of them, so it stands in *Approved · to sign*; with
+  // one that can print, the row is a print and stands with it.
+  if (row.key.startsWith('run:')) {
+    if (row.key === 'run:printed') return of(board.notices.find((b) => b.stage === 'in_mail'))
+    const jobs = new Set((row.jobs ?? []).map((j) => j.jobId))
+    const mine = (stage: LienBoardNoticeStage) => (board.notices.find((b) => b.stage === stage)?.chips ?? []).filter((c) => jobs.has(c.jobId)).length
+    return of(board.notices.find((b) => b.stage === (jobs.size > 0 && mine('to_print') === 0 && mine('to_sign') > 0 ? 'to_sign' : 'to_print')))
+  }
   // A filed lien's copies to mail (punch list #366) stand in their own bin, whether or not the job has an affidavit on the desk.
   if (row.key.startsWith('serve:')) return of(board.affidavits.find((b) => b.stage === 'filed'))
   if (!row.jobId || (row.kind !== 'notice' && row.kind !== 'affidavit') || row.key !== `${row.kind}:${row.jobId}`) return null

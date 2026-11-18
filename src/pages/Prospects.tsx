@@ -5,8 +5,6 @@ import { pageTabStyle } from '../lib/pageTabStyle'
 import { isOwnerOrDev } from '../lib/doorRoles'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { loadProspectTeamActivity, type ProspectTeamRow } from '../lib/prospectTeamActivity'
-import { getOrderedDateKeysLast30Days } from '../lib/prospectTeamActivityChartData'
 import { myTimeWindows, sumTimerSeconds, sumTimerSecondsByProspect } from '../lib/prospects/prospectTimerSums'
 import {
   CALL_INTERACTION_TYPES,
@@ -21,16 +19,6 @@ import {
   type CallingOrderMode,
 } from '../lib/prospects/callingOrder'
 import { ageChipStyle } from '../lib/ageState'
-import { searchConvertProspects, suggestRecentlyAnswered } from '../lib/prospects/convertProspectSearch'
-import {
-  buildProspectWeekReport,
-  formatWeekHours,
-  weekRange,
-  type WeekCallRow,
-  type WeekCallbackRow,
-  type WeekReport,
-  type WeekTimerRow,
-} from '../lib/prospects/prospectWeekReport'
 import {
   filterProspectsForList,
   groupProspectsForList,
@@ -50,15 +38,11 @@ import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
 import { useToastContext } from '../contexts/ToastContext'
 import { useConfirmDialog, usePromptDialog } from '../contexts/ConfirmDialogContext'
-import NewCustomerForm, { type NewCustomerFormPayload } from '../components/NewCustomerForm'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import {
   canAccessProspectPipeline,
-  convertBidRows,
-  convertContactRows,
   customerDraftFromProspect,
   markProspectConverted,
-  recordProspectConverted,
   markProspectOnBench,
   sourceProspectOf,
 } from '../lib/prospects/prospectConversion'
@@ -73,10 +57,10 @@ import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
 import { stripReads, type StripRead } from '../lib/prospects/stripState'
 import { ProspectPersonForm } from '../components/prospects/ProspectPersonForm'
 import { EMPTY_COMPANY, EMPTY_PERSON, OK_TO_TEXT_CHOICES, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type OkToText, type PersonFields } from '../lib/prospects/personBlock'
-import { BY_NEED_NOTE, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade } from '../lib/prospects/subsLane'
+import { BY_NEED_NOTE, benchNeeds, orderSubsByNeed, stillQueued, subsForTrade, tradesLeftToPick, withTrade } from '../lib/prospects/subsLane'
 import { plansChoices, type PlansChoice } from '../lib/prospects/subsStages'
 import { gcBenchInput, gcNeeds, type GcBenchIn } from '../lib/prospects/gcNeeds'
-import { callingWeekEmptyWords, cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
+import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
 import { EmptyState, type EmptyStateWords } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 import { useLeaveGuard } from '../hooks/useLeaveGuard'
@@ -93,6 +77,9 @@ import { ProspectsResearchTab } from '../components/prospects/ProspectsResearchT
 import { canResearchPermits } from '../lib/research/permitResearch'
 import { permitsLinkCleared } from '../lib/research/permitsLink'
 import { ProspectCallbackModal } from '../components/prospects/ProspectCallbackModal'
+import { ProspectsActivityTab } from '../components/prospects/ProspectsActivityTab'
+import { ProspectsConvertTab } from '../components/prospects/ProspectsConvertTab'
+import { useProspectConvert } from '../components/prospects/useProspectConvert'
 import { ProspectMyTimeModal } from '../components/prospects/ProspectMyTimeModal'
 import { ProspectTimerHistoryModal } from '../components/prospects/ProspectTimerHistoryModal'
 import { SubsBoard } from '../components/prospects/SubsBoard'
@@ -113,7 +100,7 @@ import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { ProspectJobsBox } from '../components/prospects/ProspectJobsBox'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 import { useMyHiringShares } from '../hooks/useMyHiringShares'
-import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
 import {
@@ -400,16 +387,6 @@ export default function Prospects() {
   // Total time spent per prospect for Prospect List (prospect_id -> seconds)
   const [prospectLedgerSecondsMap, setProspectLedgerSecondsMap] = useState<Record<string, number>>({})
 
-  // Convert tab state
-  const [convertProspectId, setConvertProspectId] = useState<string | null>(null)
-  const [convertSearchQuery, setConvertSearchQuery] = useState('')
-  const [convertContactPersons, setConvertContactPersons] = useState<{ name: string; phone: string; email: string; note: string }[]>([{ name: '', phone: '', email: '', note: '' }])
-  const [convertBids, setConvertBids] = useState<{ project_name: string; service_type_id: string }[]>([{ project_name: '', service_type_id: '' }])
-  const [convertServiceTypes, setConvertServiceTypes] = useState<{ id: string; name: string }[]>([])
-  const [convertSaving, setConvertSaving] = useState(false)
-  const [convertError, setConvertError] = useState<string | null>(null)
-  const [convertFirstInteractionDate, setConvertFirstInteractionDate] = useState<string>('')
-
   // New Prospect modal state
   const [newProspectModalOpen, setNewProspectModalOpen] = useState(false)
   const [newProspectError, setNewProspectError] = useState<string | null>(null)
@@ -456,11 +433,8 @@ export default function Prospects() {
   const copyTemplateTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Activity tab state (dev and assistant) - last 30 days
-  const [teamDataByDate, setTeamDataByDate] = useState<Record<string, ProspectTeamRow[]>>({})
-  const [teamLoading, setTeamLoading] = useState(false)
+  /** The week the Activity tab's pager is on. It stays here so it survives a visit to another tab. */
   const [weekOffset, setWeekOffset] = useState(0)
-  const [weekReport, setWeekReport] = useState<WeekReport | null>(null)
-  const [weekLoading, setWeekLoading] = useState(false)
   const canAccessActivityTab = authRole === 'dev' || isAssistantLike(authRole)
 
   useEffect(() => {
@@ -1166,6 +1140,21 @@ export default function Prospects() {
     }
   }, [activeTab, searchParams, prospectListProspects])
 
+  // The Convert tab's engine. It is called here, not inside the tab, so the picked prospect and the typed cards
+  // survive a visit to another tab.
+  const convert = useProspectConvert({
+    active: activeTab === 'convert',
+    prospectListProspects,
+    followUpProspects,
+    prospectLastCallMap,
+    authUserId: authUser?.id ?? null,
+    authRole,
+    onConverted: (prospectId) => {
+      setProspectListProspects((prev) => prev.map((p) => (p.id === prospectId ? { ...p, prospect_fit_status: 'converted' } : p)))
+      setFollowUpProspects((prev) => prev.filter((p) => p.id !== prospectId))
+    },
+  })
+
   const currentProspect = followUpProspects[currentProspectIndex] ?? null
   const currentProspectId = currentProspect?.id ?? null
   useEffect(() => {
@@ -1297,57 +1286,6 @@ export default function Prospects() {
     showToast('Template saved', 'success')
   }
 
-  // The Convert tab starts on its search (v2.2879, J34-F6): it used to
-  // pre-select the Follow Up queue head, which hid the tab's own
-  // "recently answered" suggestions and put a never-called company under
-  // "Who are you converting?".
-
-  // Load first interaction date for Convert (earliest prospect_comment)
-  useEffect(() => {
-    if (!convertProspectId) {
-      setConvertFirstInteractionDate('')
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      try {
-        const { data } = await supabase
-          .from('prospect_comments')
-          .select('created_at')
-          .eq('prospect_id', convertProspectId)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .maybeSingle()
-        if (cancelled) return
-        if (data?.created_at) {
-          const d = new Date(data.created_at)
-          setConvertFirstInteractionDate(localCalendarDayKey(d))
-        } else {
-          setConvertFirstInteractionDate('')
-        }
-      } catch {
-        if (!cancelled) setConvertFirstInteractionDate('')
-      }
-    })()
-    return () => { cancelled = true }
-  }, [convertProspectId])
-
-  // Load service types when Convert tab is active
-  useEffect(() => {
-    if (activeTab !== 'convert') return
-    supabase
-      .from('service_types' as any)
-      .select('id, name')
-      .eq('billing_only', false)
-      .order('sequence_order', { ascending: true })
-      .then(({ data }) => setConvertServiceTypes((data as unknown as { id: string; name: string }[]) ?? []))
-  }, [activeTab])
-
-  // Pre-fill first contact person when prospect changes
-  const convertProspect = prospectListProspects.find((p) => p.id === convertProspectId) ?? followUpProspects.find((p) => p.id === convertProspectId)
-  const convertPickerPool = [...prospectListProspects, ...followUpProspects.filter((p) => !prospectListProspects.some((lp) => lp.id === p.id))]
-  const convertSearchResults = searchConvertProspects(convertPickerPool, convertSearchQuery)
-  const convertSuggestions = suggestRecentlyAnswered(convertPickerPool, prospectLastCallMap, Date.now())
   // The caller's own fresh plain note on the current prospect — Didn't Answer /
   // Answered will retag it into the call (see callLogState.ts), and the
   // composer says so while that holds.
@@ -1355,18 +1293,6 @@ export default function Prospects() {
     authUser?.id && currentProspect
       ? findRetaggableNote(comments.filter((c) => c.prospect_id === currentProspect.id), authUser.id, Date.now())
       : null
-
-  function pickConvertProspect(p: Prospect) {
-    setConvertProspectId(p.id)
-    setConvertSearchQuery('')
-  }
-  useEffect(() => {
-    if (!convertProspect) return
-    setConvertContactPersons((prev) => {
-      const first = prev[0]
-      return [{ name: convertProspect.contact_name ?? '', phone: convertProspect.phone_number ?? '', email: first?.email ?? '', note: first?.note ?? '' }, ...prev.slice(1)]
-    })
-  }, [convertProspectId, convertProspect?.id])
 
   useEffect(() => {
     const prospectId = searchParams.get('prospect_id')
@@ -1439,85 +1365,6 @@ export default function Prospects() {
       setProspectLedgerSecondsMap({})
     }
   }, [activeTab, authUser?.id])
-
-  const loadTeamActivity = useCallback(async () => {
-    if (!canAccessActivityTab) return
-    setTeamLoading(true)
-    try {
-      // The lane's own 30 days (v2.5563); Quickfill's team chart keeps every kind.
-      const result = await loadProspectTeamActivity(supabase, kind, { hideZz })
-      setTeamDataByDate(result)
-    } catch {
-      setTeamDataByDate({})
-    } finally {
-      setTeamLoading(false)
-    }
-  }, [canAccessActivityTab, kind, hideZz])
-
-  useEffect(() => {
-    if (activeTab === 'activity' && canAccessActivityTab) {
-      loadTeamActivity()
-    }
-  }, [activeTab, canAccessActivityTab, loadTeamActivity])
-
-  const loadWeekReport = useCallback(async (offset: number) => {
-    if (!canAccessActivityTab) return
-    setWeekLoading(true)
-    try {
-      const range = weekRange(Date.now(), offset)
-      const startIso = new Date(range.startMs).toISOString()
-      const endIso = new Date(range.endMs).toISOString()
-      const [usersRes, callsRes, timersRes, callbacksRes] = await Promise.all([
-        supabase
-          .from('users')
-          .select('id, name, email, role')
-          // Same audience as loadProspectTeamActivity: office roles + estimators with Prospects access.
-          .or('role.in.(dev,master_technician,assistant,controller),and(role.eq.estimator,estimator_prospects_access.eq.true)'),
-        // Each read joins the prospect for its kind (v2.5559), so the report is one kind's week.
-        supabase
-          .from('prospect_comments')
-          .select('created_by, interaction_type, created_at, prospect:prospects!inner(kind)')
-          .in('interaction_type', ['didnt_answer', 'answered', 'converted'])
-          .eq('prospect.kind', kind)
-          .gte('created_at', startIso)
-          .lt('created_at', endIso),
-        (supabase as any)
-          .from('prospect_timer_events')
-          .select('user_id, timer_seconds, created_at, prospect:prospects!inner(kind)')
-          .eq('prospect.kind', kind)
-          .gte('created_at', startIso)
-          .lt('created_at', endIso),
-        supabase
-          .from('prospect_callbacks')
-          .select('user_id, created_at, prospect:prospects!inner(kind)')
-          .eq('prospect.kind', kind)
-          .gte('created_at', startIso)
-          .lt('created_at', endIso),
-      ])
-      const users = ((usersRes.data ?? []) as { id: string; name: string | null; email: string | null }[]).map((u) => ({
-        id: u.id,
-        name: (u.name || u.email || 'Unknown').trim(),
-      }))
-      setWeekReport(
-        buildProspectWeekReport(
-          (callsRes.data ?? []) as WeekCallRow[],
-          (timersRes.data ?? []) as WeekTimerRow[],
-          (callbacksRes.data ?? []) as WeekCallbackRow[],
-          users,
-        ),
-      )
-    } catch {
-      setWeekReport(null)
-    } finally {
-      setWeekLoading(false)
-    }
-  }, [canAccessActivityTab, kind])
-
-  useEffect(() => {
-    if (activeTab === 'activity' && canAccessActivityTab) {
-      void loadWeekReport(weekOffset)
-    }
-  }, [activeTab, canAccessActivityTab, weekOffset, loadWeekReport])
 
   const loadScheduledCallback = useCallback(async () => {
     if (!currentProspect?.id || !authUser?.id) {
@@ -2572,49 +2419,6 @@ export default function Prospects() {
     }
     await loadFollowUpProspects()
     await loadProspectListProspects()
-  }
-
-  async function handleConvertSubmit(payload: NewCustomerFormPayload) {
-    if (!authUser?.id || convertSaving) return
-    setConvertSaving(true)
-    setConvertError(null)
-    try {
-      const { data: customer, error: custErr } = await supabase.from('customers').insert(payload).select().single()
-      if (custErr) throw new Error(custErr.message)
-      if (!customer) throw new Error('Failed to create customer')
-      const customerId = (customer as { id: string }).id
-
-      for (const row of convertContactRows(convertContactPersons, customerId)) {
-        const { error: cpErr } = await supabase.from('customer_contact_persons').insert(row)
-        if (cpErr) throw new Error(`Failed to add contact: ${cpErr.message}`)
-      }
-
-      for (const row of convertBidRows(convertBids, customerId, authUser.id)) {
-        const { error: bidErr } = await supabase.from('bids').insert(row)
-        if (bidErr) throw new Error(`Failed to add bid: ${bidErr.message}`)
-      }
-
-      // Mark the source prospect converted so it leaves the calling queue
-      // (shared tail with Add customer and Follow Up). The customer already
-      // exists at this point, so a failure here must not block navigation.
-      if (convertProspectId) {
-        const marked = await markProspectConverted(convertProspectId, customerId, payload.name, authUser.id)
-        if (!marked.ok) {
-          console.error('[Prospects] failed to mark prospect converted:', marked.error)
-        } else {
-          recordProspectConverted(authUser.id, authRole, 'convert-tab')
-          setProspectListProspects((prev) => prev.map((p) => (p.id === convertProspectId ? { ...p, prospect_fit_status: 'converted' } : p)))
-          setFollowUpProspects((prev) => prev.filter((p) => p.id !== convertProspectId))
-        }
-      }
-
-      navigate(`/customers/${customerId}`)
-    } catch (err) {
-      setConvertError(formatErrorMessage(err, 'Failed to convert'))
-      throw err
-    } finally {
-      setConvertSaving(false)
-    }
   }
 
 
@@ -3821,421 +3625,11 @@ export default function Prospects() {
       )}
 
       {topTab === 'customers' && activeTab === 'convert' && (
-        <div className="prospectsConvert">
-          {!canAccessFollowUp ? (
-            <p style={{ color: 'var(--text-muted)' }}>You do not have access to Convert.</p>
-          ) : (
-            <>
-              {/* Prospect selector */}
-              <div className="convertProspectSelector">
-                <label htmlFor="convert-prospect" className="convertLabel">Who are you converting?</label>
-                <input
-                  id="convert-prospect"
-                  className="convertSelect"
-                  type="search"
-                  placeholder={`Search ${convertPickerPool.filter((p) => p.prospect_fit_status !== 'converted').length} prospects by company, contact, phone, or email…`}
-                  value={convertSearchQuery}
-                  onChange={(e) => setConvertSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      const first = convertSearchResults[0]
-                      if (first) pickConvertProspect(first)
-                    }
-                  }}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                />
-                {convertSearchQuery.trim() !== '' && (
-                  <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', marginTop: '0.375rem', overflow: 'hidden' }}>
-                    {convertSearchResults.length === 0 ? (
-                      <p style={{ margin: 0, padding: '0.625rem 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No prospects match — converted prospects are not listed.</p>
-                    ) : (
-                      convertSearchResults.map((p, i) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => pickConvertProspect(p)}
-                          style={{
-                            display: 'block',
-                            width: '100%',
-                            textAlign: 'left',
-                            padding: '0.5rem 0.75rem',
-                            border: 'none',
-                            borderTop: i === 0 ? 'none' : '1px solid var(--border)',
-                            background: 'none',
-                            cursor: 'pointer',
-                            color: 'inherit',
-                          }}
-                        >
-                          <span style={{ fontWeight: 600 }}>{p.company_name || '—'}</span>
-                          {p.contact_name && <span style={{ color: 'var(--text-muted)' }}> — {p.contact_name}</span>}
-                          <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {lastTouchLabel(p, prospectLastCallMap[p.id], Date.now())}
-                            {p.phone_number ? ` · ${p.phone_number}` : ''}
-                          </span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-                {convertSearchQuery.trim() === '' && !convertProspectId && convertSuggestions.length > 0 && (
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <p style={{ margin: '0 0 0.375rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>Suggested — answered in the last 30 days</p>
-                    <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
-                      {convertSuggestions.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => pickConvertProspect(p)}
-                          style={{ padding: '0.25rem 0.625rem', borderRadius: 999, fontSize: '0.8125rem', fontWeight: 600, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
-                        >
-                          {p.company_name || '—'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {convertProspect && (
-                  <div className="convertProspectSummary">
-                    <div className="convertProspectSummaryRow">
-                      <span className="convertProspectSummaryLabel">Company</span>
-                      <span>{convertProspect.company_name || '—'}</span>
-                    </div>
-                    <div className="convertProspectSummaryRow">
-                      <span className="convertProspectSummaryLabel">Contact</span>
-                      <span>{convertProspect.contact_name || '—'}</span>
-                    </div>
-                    <div className="convertProspectSummaryRow">
-                      <span className="convertProspectSummaryLabel">Phone</span>
-                      <span>{convertProspect.phone_number ? (
-                        <a href={telHrefFor(convertProspect.phone_number)} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{convertProspect.phone_number}</a>
-                      ) : '—'}</span>
-                    </div>
-                    <div className="convertProspectSummaryRow">
-                      <span className="convertProspectSummaryLabel">Email</span>
-                      <span>{convertProspect.email ? (
-                        <a href={`mailto:${encodeURIComponent(convertProspect.email)}`} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{convertProspect.email}</a>
-                      ) : '—'}</span>
-                    </div>
-                    <div className="convertProspectSummaryRow">
-                      <span className="convertProspectSummaryLabel">Address</span>
-                      <span>{convertProspect.address || '—'}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {convertProspectId ? (
-                <div className="convertFormLayout">
-                  {/* New Customer section */}
-                  <section className="convertSection">
-                    <h3 className="convertSectionTitle">1. Customer details</h3>
-                    <p className="convertSectionDesc">Basic info is pre-filled from the prospect.</p>
-                    <NewCustomerForm
-                      mode="page"
-                      showQuickFill={false}
-                      initialValues={{
-                        name: convertProspect?.company_name ?? '',
-                        address: convertProspect?.address ?? '',
-                        phone: convertProspect?.phone_number ?? '',
-                        email: convertProspect?.email ?? '',
-                        dateMet: convertFirstInteractionDate,
-                      }}
-                      onSubmitForConvert={handleConvertSubmit}
-                    />
-                  </section>
-
-                  {/* Contact persons */}
-                  <section className="convertSection">
-                    <h3 className="convertSectionTitle">2. Contact persons</h3>
-                    <p className="convertSectionDesc">Add people who will be associated with this customer.</p>
-                    <div className="convertCardsGrid">
-                      {convertContactPersons.map((cp, i) => (
-                        <div key={i} className="convertCard">
-                          <div className="convertCardHeader">
-                            <span className="convertCardTitle">Contact {i + 1}</span>
-                            {convertContactPersons.length > 1 && (
-                              <button
-                                type="button"
-                                className="convertRemoveBtn"
-                                onClick={() => setConvertContactPersons((prev) => prev.filter((_, j) => j !== i))}
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                          <div className="convertCardFields">
-                            <input
-                              type="text"
-                              className="convertInput"
-                              placeholder="Name"
-                              value={cp.name}
-                              onChange={(e) => setConvertContactPersons((prev) => prev.map((c, j) => (j === i ? { ...c, name: e.target.value } : c)))}
-                            />
-                            <input
-                              type="text"
-                              className="convertInput"
-                              placeholder="Phone"
-                              value={cp.phone}
-                              onChange={(e) => setConvertContactPersons((prev) => prev.map((c, j) => (j === i ? { ...c, phone: e.target.value } : c)))}
-                            />
-                            <input
-                              type="email"
-                              className="convertInput"
-                              placeholder="Email"
-                              value={cp.email}
-                              onChange={(e) => setConvertContactPersons((prev) => prev.map((c, j) => (j === i ? { ...c, email: e.target.value } : c)))}
-                            />
-                            <input
-                              type="text"
-                              className="convertInput"
-                              placeholder="Note"
-                              value={cp.note}
-                              onChange={(e) => setConvertContactPersons((prev) => prev.map((c, j) => (j === i ? { ...c, note: e.target.value } : c)))}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      className="convertAddBtn"
-                      onClick={() => setConvertContactPersons((prev) => [...prev, { name: '', phone: '', email: '', note: '' }])}
-                    >
-                      + Add contact person
-                    </button>
-                  </section>
-
-                  {/* Bids */}
-                  <section className="convertSection">
-                    <h3 className="convertSectionTitle">3. Bids</h3>
-                    <p className="convertSectionDesc">Create initial bids for this customer.</p>
-                    <div className="convertCardsGrid">
-                      {convertBids.map((b, i) => (
-                        <div key={i} className="convertCard">
-                          <div className="convertCardHeader">
-                            <span className="convertCardTitle">Bid {i + 1}</span>
-                            {convertBids.length > 1 && (
-                              <button
-                                type="button"
-                                className="convertRemoveBtn"
-                                onClick={() => setConvertBids((prev) => prev.filter((_, j) => j !== i))}
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                          <div className="convertCardFields">
-                            <input
-                              type="text"
-                              className="convertInput"
-                              placeholder="Project name"
-                              value={b.project_name}
-                              onChange={(e) => setConvertBids((prev) => prev.map((x, j) => (j === i ? { ...x, project_name: e.target.value } : x)))}
-                            />
-                            <select
-                              className="convertSelect"
-                              value={b.service_type_id}
-                              onChange={(e) => setConvertBids((prev) => prev.map((x, j) => (j === i ? { ...x, service_type_id: e.target.value } : x)))}
-                            >
-                              <option value="">Select service type...</option>
-                              {convertServiceTypes.map((st) => (
-                                <option key={st.id} value={st.id}>{st.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      className="convertAddBtn"
-                      onClick={() => setConvertBids((prev) => [...prev, { project_name: '', service_type_id: convertServiceTypes[0]?.id ?? '' }])}
-                    >
-                      + Add bid
-                    </button>
-                  </section>
-
-                  {/* Convert button */}
-                  <div className="convertSubmitRow">
-                    {convertError && <p className="convertError">{convertError}</p>}
-                    <button
-                      type="submit"
-                      form="convert-customer-form"
-                      disabled={convertSaving}
-                      className="convertSubmit"
-                    >
-                      {convertSaving ? 'Converting…' : 'Convert to customer'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="convertEmptyState">
-                  <p className="convertEmptyStateText">Select a prospect above to convert them into a customer.</p>
-                  <p className="convertEmptyStateHint">You can add contact persons and bids during the conversion.</p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <ProspectsConvertTab convert={convert} canAccessFollowUp={canAccessFollowUp} prospectLastCallMap={prospectLastCallMap} />
       )}
 
       {topTab === 'customers' && activeTab === 'activity' && canAccessActivityTab && (
-        <div style={{ padding: '1rem 0' }}>
-          <section style={{ marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700 }}>
-                {kind === 'customer' ? '' : `${kindWords.activity} · `}
-                {weekOffset === 0 ? 'This week' : 'Week of'} — {weekRange(Date.now(), weekOffset).label}
-              </h2>
-              <div style={{ display: 'flex', gap: '0.375rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setWeekOffset((o) => o + 1)}
-                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'inherit' }}
-                >
-                  ‹ previous week
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWeekOffset((o) => Math.max(0, o - 1))}
-                  disabled={weekOffset === 0}
-                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: weekOffset === 0 ? 'default' : 'pointer', opacity: weekOffset === 0 ? 0.5 : 1, color: 'inherit' }}
-                >
-                  next week ›
-                </button>
-              </div>
-            </div>
-            {weekLoading ? (
-              <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
-            ) : !weekReport || weekReport.perUser.length === 0 ? (
-              <EmptyState compact {...callingWeekEmptyWords(weekOffset, () => setWeekOffset((o) => o + 1))} />
-            ) : (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
-                  {[...weekReport.perUser, ...(weekReport.perUser.length > 1 ? [weekReport.team] : [])].map((s) => (
-                    <div key={s.userId} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem 0.875rem', background: 'var(--surface)' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>{s.name}</div>
-                      <div style={{ fontSize: '1.375rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{s.calls} {s.calls === 1 ? 'call' : 'calls'}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {s.answered} answered{s.answerRate != null ? ` · ${Math.round(s.answerRate * 100)}%` : ''}
-                      </div>
-                      <div style={{ height: 6, borderRadius: 3, background: 'var(--bg-subtle)', overflow: 'hidden', marginTop: '0.375rem' }}>
-                        <div style={{ height: '100%', width: `${Math.round((s.answerRate ?? 0) * 100)}%`, background: '#3b82f6' }} />
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.375rem' }}>
-                        {formatWeekHours(s.timerSeconds)} on calls · {s.callbacks} {s.callbacks === 1 ? 'callback' : 'callbacks'} set ·{' '}
-                        <span style={{ color: s.conversions > 0 ? 'var(--text-violet-700)' : undefined, fontWeight: s.conversions > 0 ? 700 : undefined }}>
-                          {s.conversions} {kindWords.landedCount}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                  <div style={{ padding: '0.5rem 1rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>Daily detail</div>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Day</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>User</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Calls</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Answered</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Time</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Callbacks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {weekReport.daily.map((d) => (
-                          <tr key={`${d.dateKey}|${d.userId}`} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
-                              {new Date(d.dateKey + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{d.name}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.calls}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.answered}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.timerSeconds > 0 ? formatWeekHours(d.timerSeconds) : '—'}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.callbacks}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            )}
-          </section>
-          {kind !== 'customer' && (
-            <section style={{ marginBottom: '2rem' }}>
-              <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-muted)' }}>Source success — {kindWords.tab}, every row of the lane</h3>
-              {sourceSuccess(prospectListProspects).length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing added yet.</p>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(8rem, 12rem) minmax(0, 1fr) 5rem', gap: '0.375rem 0.75rem', alignItems: 'center', fontSize: '0.875rem', maxWidth: 560 }}>
-                  {sourceSuccess(prospectListProspects).map((s) => (
-                    <Fragment key={s.source}>
-                      <span>{s.source}</span>
-                      <span style={{ height: 8, borderRadius: 999, background: 'var(--bg-muted)', position: 'relative', overflow: 'hidden' }}>
-                        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${s.total ? Math.round((s.landed / s.total) * 100) : 0}%`, background: '#16a34a', borderRadius: 999 }} />
-                      </span>
-                      <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{s.landed} of {s.total}</span>
-                    </Fragment>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-          <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-muted)' }}>Marked / Updated by day — last 30 days</h3>
-          {teamLoading ? (
-            <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {(() => {
-                // Newest day first; the chart's helper reads the same 30 days oldest first.
-                const dates = [...getOrderedDateKeysLast30Days()].reverse()
-                return dates
-                  .map((dk) => {
-                    const rows = teamDataByDate[dk] ?? []
-                    const visibleRows = rows.filter((r) => r.cards_marked > 0 || r.cards_updated > 0)
-                    if (rows.length === 0 || visibleRows.length === 0) return null
-                    const d = new Date(dk + 'T12:00:00')
-                    const dateLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-                    return (
-                      <section key={dk} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                        <div style={{ padding: '0.5rem 1rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.9375rem' }}>
-                          {dateLabel}
-                        </div>
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                            <thead>
-                              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>User</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Marked</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Updated</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {visibleRows.map((r) => (
-                                <tr key={r.user_id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>{r.name}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.cards_marked}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.cards_updated}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </section>
-                  )
-                })
-              })()}
-            </div>
-          )}
-        </div>
+        <ProspectsActivityTab kind={kind} kindWords={kindWords} hideZz={hideZz} laneRows={prospectListProspects} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
       )}
 
       {/* Edit modal */}

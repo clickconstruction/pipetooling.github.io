@@ -1,6 +1,6 @@
 # 20261117180000_place_painted_way.sql (2026-11-17, v2.7580)
 
-A place on a site can carry the way to it. Punch list #372, step 4 ([`to-dos/find-a-lost-box/README.md`](../../to-dos/find-a-lost-box/README.md)), on the owner's word of 2026-11-17, *Build all the steps*. This is the database half. No screen reads or writes the column yet.
+A place on a site can carry the way to it. Punch list #372, step 4 (*Find a lost box*, closed 2026-11-17; its record is in [`to-dos/README.md`](../../to-dos/README.md)), on the owner's word of 2026-11-17, *Build all the steps*. This is the database half. No screen reads or writes the column yet.
 
 **Where is it?** on a box draws a straight line from the reader to the box's pin. A straight line knows no fence, wall or gate. A painted map (#345) does, because a person drew it. Boxes stand in places, and most of a site's boxes share a few, so one way painted once to a place serves every box in it.
 

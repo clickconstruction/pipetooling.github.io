@@ -189,11 +189,21 @@ describe('a voided paper’s copy', () => {
     expect(await markVoidedCopy(row({ ...voided, drive_file_origin: 'filed' }), d.drive, s.store, NOW)).toEqual({ id: 'c1', did: 'marked' })
     expect(d.renames).toEqual([{ id: FILE_A, name: 'VOIDED · 2026-11-14 Signed contract · 1042 · Dana Whitfield.pdf' }])
     expect(s.saved).toEqual([{ id: 'c1', patch: { drive_void_marked_at: NOW.toISOString() } }])
+    // The index is told at once, so Find a file reads the VOIDED name the same minute.
+    expect(d.indexed).toEqual([FILE_A])
+  })
+  it('is still marked when the index hand-off fails after the rename: the index sweep is the net', async () => {
+    const d = fakeDrive({ index: async () => { throw new Error('index down') } })
+    const s = fakeStore()
+    expect(await markVoidedCopy(row({ ...voided, drive_file_origin: 'filed' }), d.drive, s.store, NOW)).toEqual({ id: 'c1', did: 'marked' })
+    expect(d.renames).toHaveLength(1)
+    expect(s.saved).toEqual([{ id: 'c1', patch: { drive_void_marked_at: NOW.toISOString() } }])
   })
   it('is not renamed again when it already carries the mark, and is marked done when Drive no longer holds it', async () => {
     const already = fakeDrive({ fileName: async () => 'VOIDED · 2026-11-14 Signed contract · 1042 · Dana Whitfield.pdf' })
     expect(await markVoidedCopy(row({ ...voided, drive_file_origin: 'filed' }), already.drive, fakeStore().store, NOW)).toMatchObject({ did: 'marked' })
     expect(already.renames).toEqual([])
+    expect(already.indexed).toEqual([])
     const gone = fakeDrive({ fileName: async () => null })
     expect(await markVoidedCopy(row({ ...voided, drive_file_origin: 'filed' }), gone.drive, fakeStore().store, NOW)).toMatchObject({ did: 'marked' })
     expect(gone.renames).toEqual([])

@@ -4,8 +4,8 @@
  * the same as one a lost connection dropped, and the reason stayed in the function's log.
  *
  * Pure: it reads the thrown error's own words, which the Drive helpers write in a few fixed shapes
- * (`Upload failed (403): …`, `Folder create failed (500): …`, `Google token exchange failed (400): …`,
- * `Drive answered 503`), and says who refused, in whose words, and whether sending the same file again can help.
+ * (`Upload failed (403): …`, `Folder create failed (500): …`, `Trash failed (403): …`,
+ * `Google token exchange failed (400): …`, `Drive answered 503`), and says who refused, in whose words, and whether sending the same file again can help.
  * `retry` is true for a busy or broken Drive (408, 429, 5xx, a rate limit, a web page where an answer should be) and
  * for a Drive the app could not reach, and false for a refusal the same file would meet again.
  */
@@ -28,6 +28,8 @@ export const DRIVE_FAILURE_REASON_MAX = 200
 const SHAPES: ReadonlyArray<{ re: RegExp; why: DriveFailureWhy; lead: string; said?: string }> = [
   { re: /^Upload(?: start| piece| status)? failed \((\d{3})\):\s*(.*)$/s, why: 'drive', lead: 'Drive did not take the file.', said: 'Drive said' },
   { re: /^Folder create failed \((\d{3})\):\s*(.*)$/s, why: 'drive', lead: 'Drive did not make the folder.', said: 'Drive said' },
+  { re: /^Trash failed \((\d{3})\):\s*(.*)$/s, why: 'drive', lead: 'Drive did not move the file to its trash.', said: 'Drive said' },
+  { re: /^Untrash failed \((\d{3})\):\s*(.*)$/s, why: 'drive', lead: 'Drive did not put the file back.', said: 'Drive said' },
   { re: /^Google token exchange failed \((\d{3})\):\s*(.*)$/s, why: 'google', lead: 'Google did not let the app in to Drive.', said: 'Google said' },
   { re: /^Drive source fetch failed \((\d{3})\)(.*)$/s, why: 'drive', lead: 'Drive did not hand the file over.' },
   { re: /^Drive answered (\d{3})(.*)$/s, why: 'drive', lead: 'Drive did not answer as it should.' },

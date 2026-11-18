@@ -34,6 +34,8 @@ import { useNoteTagBox } from './jobs/NoteTagBox'
 import { TaggedNoteBody } from './jobs/TaggedNoteBody'
 import { ReportPhotoCount } from './reports/ReportPhotoCount'
 import { useReportPhotoCounts } from '../hooks/useReportPhotoCounts'
+import type { ClockTripTag } from '../lib/trips/jobTrips'
+import { TripClockTag } from './trips/TripClockTag'
 
 export type JobThreadNoteRow = {
   id: string
@@ -62,6 +64,8 @@ type JobThreadNotesPanelProps = {
   activity?: JobThreadActivityItem[]
   /** Note-only (e.g. Job detail modal). Used when `activity` is omitted. */
   notes?: JobThreadNoteRow[]
+  /** What each clock line wears on a job whose site has trips (punch list #379), by the line's key. Left out, no line changes. */
+  clockTripTags?: ReadonlyMap<string, ClockTripTag>
   loading: boolean
   canPost: boolean
   draft: string
@@ -175,6 +179,7 @@ function JobThreadStampButtons({
 export function JobThreadNotesPanel({
   activity: activityProp,
   notes,
+  clockTripTags,
   loading,
   canPost,
   draft,
@@ -551,6 +556,8 @@ export function JobThreadNotesPanel({
                   const inLabel = c.clockedInAt ? formatDispatchNoteTimeChicago(c.clockedInAt) : '—'
                   const outLabel = c.clockedOutAt ? formatDispatchNoteTimeChicago(c.clockedOutAt) : null
                   const durLabel = c.durationHours != null ? formatDecimalWorkHoursToHhMm(c.durationHours) : null
+                  // On a job whose site has trips (punch list #379): the trip's tag, or the quiet chip for a day at home for the site.
+                  const tripTag = clockTripTags?.get(c.dedupeKey)
                   return (
                     <li
                       key={c.dedupeKey}
@@ -580,6 +587,7 @@ export function JobThreadNotesPanel({
                         <span style={{ marginLeft: '0.5rem' }}>
                           {weekdayTimeChicago} · {daysAgoLabel}
                         </span>
+                        {tripTag ? <TripClockTag tag={tripTag} /> : null}
                       </div>
                       <div style={{ color: 'var(--text-600)', fontSize: '0.8125rem' }}>
                         {outLabel

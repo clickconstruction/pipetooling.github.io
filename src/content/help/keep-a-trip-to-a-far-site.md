@@ -2,7 +2,7 @@
 title: keep a trip to a site away from home
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: trip, trips, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps
+keywords: trip, trips, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane
 order: 76
 ---
 A trip is one going out to a site away from home and coming back. You keep it on the site's Development page, apart from the hours on its jobs.
@@ -161,6 +161,56 @@ A message then offers **Undo** for one minute. Deleting a trip changes no clock 
 ## See a trip in History
 
 The History look shows a line the day a trip leaves. It shows a second line the day the trip is back. The lines come from the trip's days, so they move when the days change.
+
+## See a job's trips in its window
+
+A trip can name the jobs its work goes on. Each of those jobs then says its trips.
+
+1. Open the job.
+2. Find **Trips on this job** under the address.
+3. Read the line. The line counts the trips that went out, names the last one and names the next one planned.
+
+The bar under the line shows this job's hours. The bar uses the same five figures as the band.
+
+Press **Open the site's trips** to go to the site's Trips look.
+
+Press {{button:outline|+ Trip}} to add a trip with this job already picked. Press {{button:blue|Save the trip}} to keep the new trip.
+
+A job that no trip names has no such line. A job with no development has no such line either.
+
+## Read the tag on a clock line
+
+A job's window lists its clock lines under **Crew**. On a site with trips, each clock line wears a tag.
+
+{{chip:green|TRIP · AT THE SITE}} {{chip:blue|TRIP · ON THE ROAD}} {{chip:yellow|TRIP · GETTING READY}}
+
+The tag says the person's trip day and where their punches were that day. Every punch a person made that day wears the same tag.
+
+A person with a punch at the site that day reads At the site. A person whose punches were all away from the site reads On the road.
+
+{{chip:gray|TRIP · NO PLACE ON THE PUNCH}}
+
+The grey tag means no punch that day carries a place. The punches do not say where the person was.
+
+{{chip:gray|at home for the site}}
+
+The quiet chip means the person was on no trip that day.
+
+A job on a site with no trip shows no tag. A tag changes nothing on the clock.
+
+## See the trips on Plans by date
+
+1. Open the site's Development page.
+2. Press {{button:outline|By date}} at the top of Plans.
+3. Find the **Trips** lane under the sets of drawings.
+
+Each trip is a bar over its days. Each day wears the colour of its kind. A planned trip is drawn faint.
+
+Press a bar to see its trip on a card. Press {{button:outline|Open the Trips look}} on the card to jump to the look.
+
+The lane prints with the chart.
+
+The lane shows only on a site that has a trip.
 
 ## Who can do this
 

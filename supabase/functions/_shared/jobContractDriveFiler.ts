@@ -180,7 +180,11 @@ export async function markVoidedCopy(row: ContractDriveRow, drive: FilerDrive, s
   if (!isVoided(row) || !fileId || row.drive_file_origin !== 'filed' || row.drive_void_marked_at) return { id: row.id, did: 'nothing' }
   try {
     const name = await drive.fileName(fileId)
-    if (name != null && voidedDriveName(name) !== name) await drive.rename(fileId, voidedDriveName(name))
+    if (name != null && voidedDriveName(name) !== name) {
+      await drive.rename(fileId, voidedDriveName(name))
+      // Find a file reads the new name the same minute; the index sweep is the net when this fails.
+      await drive.index(fileId).catch(() => {})
+    }
     await store.save(row.id, { drive_void_marked_at: now.toISOString() })
     return { id: row.id, did: 'marked' }
   } catch {

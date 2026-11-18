@@ -214,6 +214,8 @@ Each part of the site has its own lane. A dot is a set of drawings, placed on th
 
 The Crews on site lane shows a bar for the days the clock has on the site's jobs. A week with nobody on site ends a bar. A dashed open bar stands for a job with no clock days. The open bar runs from the job's first work day to its last.
 
+A site with a trip has a Trips lane under the sets and over the crews. Each trip is a bar coloured by its days, and a planned trip is faint. Press a bar to see its trip on a card. See [the trips on Plans by date](/help/keep-a-trip-to-a-far-site#see-the-trips-on-plans-by-date).
+
 The History lane shows a tick for every line kept on History. A letter gets a flag.
 
 A bid with a promised schedule gets its own Schedule lane under Bids. The bar runs from the day the schedule starts to the day it ends. A schedule with no end date runs off the right edge as an arrow. Once today is past the end, a red stretch runs from the end to today.

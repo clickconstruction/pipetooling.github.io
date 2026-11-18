@@ -7,9 +7,11 @@
  * this holds the page's wiring. Every name here is made up.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import DevelopmentPage from './DevelopmentPage'
+import { LAND_ON_LOOK_MS } from '../hooks/useLandOnLook'
 import type { SiteTripsState } from '../hooks/useSiteTrips'
+import { writeFolds, writePlansView } from '../lib/developments/devicePrefs'
 import type { DevelopmentPageData } from '../lib/developments/fetchDevelopmentPage'
 import type { MemberJob } from '../lib/developments/overview'
 import { newTripRecord, type TripRecord } from '../lib/trips/tripRecord'
@@ -135,5 +137,76 @@ describe('DevelopmentPage: the Trips look', () => {
     expect(screen.queryByTestId('trips-offers')).toBeNull()
     fireEvent.click(screen.getByTestId('trip-row-press'))
     expect(screen.getByTestId('trip-shows-lines').textContent).toBe('1 line in History')
+  })
+})
+
+describe('DevelopmentPage: landing on the Trips look, and the Trips lane on Plans by date (PR 6)', () => {
+  const landings = () => {
+    const seen: string[] = []
+    const spy = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(function (this: Element) {
+      seen.push(this.id)
+    })
+    return { seen, spy }
+  }
+  const beat = () => act(async () => void (await new Promise((r) => setTimeout(r, LAND_ON_LOOK_MS + 40))))
+
+  it('`?look=trips` opens the Trips look when it is folded and scrolls to it, once', async () => {
+    authState.current = { role: 'dev' }
+    tripsState.current = trips({ records: [lifts], shows: true, miles: 1180 })
+    writeFolds('dev-zz', 'looks', new Set(['trips']))
+    const { seen, spy } = landings()
+    renderWithProviders(<DevelopmentPage />, { route: '/developments/dev-zz?look=trips' })
+    await settle()
+    await screen.findByTestId('development-counts')
+    await beat()
+    // The folded look is open again, and the page went to it.
+    expect(screen.getByTestId('trips-look')).toBeTruthy()
+    expect(seen).toEqual(['development-trips'])
+    spy.mockRestore()
+  })
+
+  it('a plain link lands nowhere, and a folded look stays folded', async () => {
+    authState.current = { role: 'dev' }
+    tripsState.current = trips({ records: [lifts], shows: true, miles: 1180 })
+    writeFolds('dev-zz', 'looks', new Set(['trips']))
+    const { seen, spy } = landings()
+    renderWithProviders(<DevelopmentPage />, { route: '/developments/dev-zz' })
+    await settle()
+    await screen.findByTestId('development-counts')
+    await beat()
+    expect(screen.queryByTestId('trips-look')).toBeNull()
+    expect(seen).toEqual([])
+    spy.mockRestore()
+  })
+
+  it('Plans by date gains a Trips lane on a site with a trip, and the card of a bar opens the Trips look', async () => {
+    authState.current = { role: 'dev' }
+    tripsState.current = trips({ records: [lifts], shows: true, miles: 1180 })
+    writePlansView('dev-zz', 'date')
+    const { seen, spy } = landings()
+    renderWithProviders(<DevelopmentPage />)
+    await settle()
+    const bar = await screen.findByTestId('pbd-mark-trip-t5')
+    expect(bar.getAttribute('aria-label')).toBe('Trip Oct 30 to Nov 1 · Back · 1 day at the site · Luis · Lift stations before the pour')
+    // A press on the bar pins its card, like every other mark; the page goes nowhere yet.
+    fireEvent.click(bar)
+    await beat()
+    expect(seen).toEqual([])
+    fireEvent.click(within(screen.getByTestId('pbd-card')).getByRole('button', { name: 'Open the Trips look' }))
+    await beat()
+    expect(seen).toEqual(['development-trips'])
+    spy.mockRestore()
+  })
+
+  it('Plans by date has no Trips lane on a site with no trip', async () => {
+    authState.current = { role: 'dev' }
+    tripsState.current = trips({ records: [], shows: false, miles: 12 })
+    writePlansView('dev-zz', 'date')
+    renderWithProviders(<DevelopmentPage />)
+    await settle()
+    await screen.findByTestId('development-counts')
+    await settle()
+    expect(screen.queryByTestId('pbd-mark-trip-t5')).toBeNull()
+    expect(screen.queryByTestId('pbd-name-lane-trips')).toBeNull()
   })
 })

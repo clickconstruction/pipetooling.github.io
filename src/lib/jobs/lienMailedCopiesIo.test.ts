@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addLienMailedCopy, removeLienMailedCopy, type LienMailedCopiesIo } from './lienMailedCopiesIo'
+import { addLienMailedCopy, removeLienMailedCopy, type LienMailedCopiesIo, restoreLienMailedCopy } from './lienMailedCopiesIo'
 import type { LienMailedCopy } from './lienMailedCopies'
 
 function fakeIo(start: LienMailedCopy[] = [], opts: { putFails?: string; meanwhile?: LienMailedCopy } = {}) {
@@ -88,5 +88,24 @@ describe('removeLienMailedCopy (v2.7525)', () => {
     const { io } = fakeIo([kept(1)])
     const failing = { ...io, write: async () => { throw new Error('new row violates row-level security policy') } }
     await expect(removeLienMailedCopy({ itemId: 'it1', copy: kept(1) }, failing)).rejects.toThrow('row-level security')
+  })
+})
+
+describe('restoreLienMailedCopy (v2.7699, Put it back)', () => {
+  const kept = (n: number): LienMailedCopy => ({ url: `https://drive.google.com/file/d/f${n}/view`, driveFileId: `f${n}`, name: `scan ${n}.pdf`, at: '2026-11-16T18:00:00.000Z', by: 'u1' })
+
+  it('lists the taken-off file again beside what the notice has now, and puts nothing in Drive', async () => {
+    // Someone added a file after the take-off: it stays, and the file put back joins it.
+    const { io, puts, writes } = fakeIo([kept(3)])
+    const list = await restoreLienMailedCopy({ itemId: 'it1', copy: kept(2) }, io)
+    expect(list.map((c) => c.driveFileId).sort()).toEqual(['f2', 'f3'])
+    expect(writes).toHaveLength(1)
+    expect(puts).toEqual([])
+  })
+
+  it('never lists a file twice', async () => {
+    const { io } = fakeIo([kept(2)])
+    const list = await restoreLienMailedCopy({ itemId: 'it1', copy: kept(2) }, io)
+    expect(list.map((c) => c.driveFileId)).toEqual(['f2'])
   })
 })

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
 
 const sendDevNote = vi.hoisted(() => vi.fn(async (_args: Record<string, unknown>) => ({ id: 'note-1' })))
+const loadMyNotes = vi.hoisted(() => vi.fn(async (_userId: string): Promise<Record<string, unknown>[]> => []))
 
 vi.mock('../../hooks/useAuth', async () => {
   const { makeUseAuthValue } = await import('../../test/renderSmokeMocks')
@@ -11,6 +12,7 @@ vi.mock('../../hooks/useAuth', async () => {
 })
 vi.mock('../../hooks/useIsDigitalTwin', () => ({ useIsDigitalTwin: () => false }))
 vi.mock('../../lib/tellTheDev/sendNote', () => ({ sendDevNote }))
+vi.mock('../../lib/tellTheDev/myNotesIo', () => ({ loadMyNotes }))
 vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
 vi.mock('../../content/releaseNotes', () => ({ RELEASE_NOTES: [{ version: 'v2.0001' }] }))
 
@@ -36,6 +38,8 @@ function phoneWidth(on: boolean) {
 
 beforeEach(() => {
   sendDevNote.mockClear()
+  loadMyNotes.mockReset()
+  loadMyNotes.mockResolvedValue([])
   window.localStorage.clear()
   troubleMemory.clear()
   phoneWidth(false)

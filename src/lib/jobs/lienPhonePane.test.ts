@@ -21,8 +21,15 @@ describe('lienPhonePaneOpen', () => {
 
 describe('lienPhoneFootFold', () => {
   it('says what the press will do', () => {
-    expect(lienPhoneFootFold(false)).toEqual({ words: 'Hide the next step', mark: '▾', expanded: true })
-    expect(lienPhoneFootFold(true)).toEqual({ words: 'Show the next step', mark: '▴', expanded: false })
+    expect(lienPhoneFootFold(false)).toEqual({ words: 'Hide the next step', mark: '▾', expanded: true, chip: null })
+    expect(lienPhoneFootFold(true)).toEqual({ words: 'Show the next step', mark: '▴', expanded: false, chip: null })
+  })
+
+  it('names a sent paper’s mail proof on the folded bar, and not over the open footer that already shows it', () => {
+    const proof = { chip: 'Mail proof: 1 of 3 on file', complete: false }
+    expect(lienPhoneFootFold(true, proof).chip).toEqual(proof)
+    expect(lienPhoneFootFold(false, proof).chip).toBeNull()
+    expect(lienPhoneFootFold(true, null).chip).toBeNull()
   })
 })
 

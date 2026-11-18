@@ -152,9 +152,8 @@ export function useLienDeskBoard({ data, todayYmd, authRole, authUserId, leaderN
   // their own, and the job whose window is open, to take it off or to put it back.
   const offPathBin = useMemo(() => buildLienOffPathBin(data?.offPathJobs ?? []), [data])
   const [boardBins, setBoardBins] = useState<LienBoardBinKey[] | null>(null)
-  // The leader's Board (v2.7334): a master opens on his two Awaiting Master approval bins alone, the jobs he leads, with one
-  // counted press for the lot; a dev, who reads every job, opens on every bin. Session-only; the bar's press switches.
-  const [boardMine, setBoardMine] = useState<boolean>(() => authRole === 'master_technician')
+  // The leader's press (v2.7334): one counted press for the affidavits that wait on him, on the jobs he leads. Since v2.7708
+  // every viewer reads every bin, and the press stands on his Awaiting Master approval bin's title line.
   const leaderView = useMemo(() => (board && leader ? lienBoardForLeader(board, { leads: (jobId) => lienViewerLeadsJob({ role: authRole, viewerUserId: authUserId, masterUserId: (id) => data?.jobsById[id]?.master_user_id ?? null }, jobId) }) : null), [board, leader, authRole, authUserId, data])
   const [approvingLot, setApprovingLot] = useState(false)
   /**
@@ -374,7 +373,6 @@ export function useLienDeskBoard({ data, todayYmd, authRole, authUserId, leaderN
   }
   // The title is a door (v2.7332): the desk's press counts here, and the Board comes into view once By date is shown.
   const bringBoard = useCallback(() => setBoardBring((n) => n + 1), [])
-  const toggleBoardMine = useCallback(() => setBoardMine((v) => !v), [])
   return {
     nextUpRows,
     leadsRow,
@@ -382,8 +380,6 @@ export function useLienDeskBoard({ data, todayYmd, authRole, authUserId, leaderN
     publicLine,
     publicBin,
     offPathBin,
-    boardMine,
-    toggleBoardMine,
     leaderView,
     approvingLot,
     approveTheLot,

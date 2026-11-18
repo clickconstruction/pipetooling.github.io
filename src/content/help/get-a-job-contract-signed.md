@@ -255,7 +255,7 @@ Open the Contract window on a signed job to see where the copy is. The **Drive**
 
 **A paper already in Drive stays where it is.** When the record's link names a file in the jobs shared drive, the app ties that file to the record. It does not copy, move or rename it. The line reads *In Drive, where the office put it*.
 
-**When it cannot be filed, the line says why.** The paper stays safe in the app. A job whose Drive folder is held shows the job's own reason. Fix the folder and the paper files itself within the hour. A record with no scan and no link reads *Nothing to file*. Press **Add the scan** and pick the file. The app never files a contract in a folder that anyone with the link can open. Close the link in Drive, then press {{button:outline|Try again}}.
+**When it cannot be filed, the line says why.** The paper stays safe in the app. A job whose Drive folder is held shows the job's own reason. Fix the folder and the paper files itself within the hour. A job whose folder is gone from Drive says so. Put the right link on the job's **Edit** tab. A record with no scan and no link reads *Nothing to file*. Press **Add the scan** and pick the file. The app never files a contract in a folder that anyone with the link can open. Close the link in Drive, then press {{button:outline|Try again}}.
 
 **A voided contract keeps its copy.** The app renames the copy so its name starts with VOIDED. Nobody reads it as a paper in force.
 

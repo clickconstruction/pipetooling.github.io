@@ -2,7 +2,7 @@
 name: "Documents: an Agreements tab, every agreement the app makes in one list"
 number: 376
 group: ready
-status: asked 2026-11-17 · looked at, drawn and rendered the same day · the owner took all seven picks and said build the whole train the same day · PR 1, the rules, shipped (v2.7604) · PR 2, the view and the read, shipped (v2.7612) and its migration pushed · PR 3, the tab, shipped (v2.7617), checked against the live list before it was armed · PR 4, Search finds agreements too, shipped (v2.7620) · PR 5 built, opened as PR 4 lands
+status: asked 2026-11-17 · looked at, drawn and rendered the same day · the owner took all seven picks and said build the whole train the same day · PR 1, the rules, shipped (v2.7604) · PR 2, the view and the read, shipped (v2.7612) and its migration pushed · PR 3, the tab, shipped (v2.7617), checked against the live list before it was armed · PR 4, Search finds agreements too, shipped (v2.7620) · PR 5, GC mode’s three kinds, shipped (v2.7625), its migration to push after the merge
 summary: >
   The owner looked for agreements on the Documents page and found none. The page has ten tabs and
   none lists agreements. A job's signed paper shows only as a line under its job on the Jobs tab,
@@ -12,10 +12,10 @@ summary: >
   press opens the window that kind already has. The list is one database view over the tables that
   hold agreements, so each table's own row security decides what a reader sees, and nobody reads a
   paper here that they cannot read today. It renames nothing: Contract under a job stays.
-next: PR 5, GC mode’s three kinds, with its own migration to push after the merge. Then the walk on the live app. Call 7’s card is #377.
+next: Push `20261117210000_agreements_on_file_gc.sql` after PR 5 merges. Then the walk on the live app, and the card retires. Call 7’s card is #377.
 size: M as a train of five (S · M · M · S · S)
-blocker: None.
-ver: v2.7604 · v2.7612 · v2.7617 · v2.7620
+blocker: None. A GC line shows once PR 5’s migration is pushed.
+ver: v2.7604 · v2.7612 · v2.7617 · v2.7620 · v2.7625
 opinion: build — the papers exist and the office already reads them in four places; the tab is a read over what is there, with no new table and no change to who can see what
 ---
 

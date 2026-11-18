@@ -1,13 +1,17 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   CHUNK_RECOVERY_KEY,
   CHUNK_RECOVERY_MIN_INTERVAL_MS,
+  CHUNK_RELOAD_SETTLE_MS,
+  CHUNK_RELOAD_WAIT_MAX_MS,
   chunkBoundaryView,
   chunkRecoveryReloadStarted,
+  decideChunkReloadWait,
   forgetChunkRecoveryReload,
   isChunkLoadError,
   startChunkRecoveryReload,
   tryClaimChunkRecoveryReload,
+  type WriteWatch,
 } from './chunkLoadRecovery'
 
 function fakeStorage(initial: Record<string, string> = {}) {
@@ -123,6 +127,118 @@ describe('startChunkRecoveryReload', () => {
     expect(startChunkRecoveryReload(1_000_000 + 5_000, storage, () => reloads++)).toBe(false)
     expect(reloads).toBe(0)
     expect(chunkRecoveryReloadStarted()).toBe(false)
+  })
+})
+
+describe('decideChunkReloadWait: the reload waits for a write', () => {
+  const idle = { inFlightWrites: 0, msSinceStarted: 0, msSinceWriteSettled: null }
+
+  it('reloads at once when nothing is in flight', () => {
+    expect(decideChunkReloadWait(idle)).toEqual({ act: 'reload', reason: 'nothing in flight' })
+  })
+  it('waits for a write in flight, and looks again no later than the give-up', () => {
+    expect(decideChunkReloadWait({ ...idle, inFlightWrites: 2, msSinceStarted: 4_000 })).toEqual({
+      act: 'wait',
+      reason: '2 write(s) in flight',
+      lookAgainInMs: CHUNK_RELOAD_WAIT_MAX_MS - 4_000,
+    })
+  })
+  it('stays a beat after a write comes back: the next one of a chain may follow', () => {
+    expect(decideChunkReloadWait({ ...idle, msSinceStarted: 2_000, msSinceWriteSettled: 500 })).toEqual({
+      act: 'wait',
+      reason: 'a write just came back, another may follow',
+      lookAgainInMs: CHUNK_RELOAD_SETTLE_MS - 500,
+    })
+    expect(decideChunkReloadWait({ ...idle, msSinceStarted: 3_000, msSinceWriteSettled: CHUNK_RELOAD_SETTLE_MS }).act).toBe('reload')
+  })
+  it('a lost page does not wait for ever: at the give-up it reloads whatever is in flight', () => {
+    expect(decideChunkReloadWait({ ...idle, inFlightWrites: 1, msSinceStarted: CHUNK_RELOAD_WAIT_MAX_MS }).act).toBe('reload')
+    // The beat never runs past the give-up either.
+    const nearEnd = decideChunkReloadWait({ ...idle, msSinceStarted: CHUNK_RELOAD_WAIT_MAX_MS - 200, msSinceWriteSettled: 0 })
+    expect(nearEnd).toMatchObject({ act: 'wait', lookAgainInMs: 200 })
+  })
+})
+
+describe('startChunkRecoveryReload with a write in flight', () => {
+  /** A stand-in for unsavedWork.ts: a count a test moves, and the listeners it tells. */
+  function fakeWrites(start = 0) {
+    let count = start
+    const listeners = new Set<() => void>()
+    const watch: WriteWatch = {
+      count: () => count,
+      subscribe: (cb) => {
+        listeners.add(cb)
+        return () => void listeners.delete(cb)
+      },
+    }
+    return {
+      watch,
+      set(next: number) {
+        count = next
+        for (const cb of [...listeners]) cb()
+      },
+      listeners: () => listeners.size,
+    }
+  }
+
+  beforeEach(() => {
+    forgetChunkRecoveryReload()
+    vi.useFakeTimers()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('is started and on its way at once, but reloads only after the write is back and the beat has passed', () => {
+    const writes = fakeWrites(1)
+    let reloads = 0
+    expect(startChunkRecoveryReload(Date.now(), fakeStorage(), () => reloads++, writes.watch)).toBe(true)
+    // "Updating app…" draws from this, while the save finishes behind it.
+    expect(chunkRecoveryReloadStarted()).toBe(true)
+    vi.advanceTimersByTime(5_000)
+    expect(reloads).toBe(0)
+    writes.set(0)
+    expect(reloads).toBe(0)
+    vi.advanceTimersByTime(CHUNK_RELOAD_SETTLE_MS - 1)
+    expect(reloads).toBe(0)
+    vi.advanceTimersByTime(1)
+    expect(reloads).toBe(1)
+    expect(writes.listeners()).toBe(0)
+  })
+
+  it('a second write behind the first holds it too, and it reloads once', () => {
+    const writes = fakeWrites(1)
+    let reloads = 0
+    startChunkRecoveryReload(Date.now(), fakeStorage(), () => reloads++, writes.watch)
+    writes.set(0)
+    vi.advanceTimersByTime(1_000)
+    writes.set(1)
+    vi.advanceTimersByTime(4_000)
+    expect(reloads).toBe(0)
+    writes.set(0)
+    vi.advanceTimersByTime(CHUNK_RELOAD_SETTLE_MS)
+    expect(reloads).toBe(1)
+    vi.advanceTimersByTime(60_000)
+    expect(reloads).toBe(1)
+  })
+
+  it('a write that never comes back does not hold a lost page past the give-up', () => {
+    const writes = fakeWrites(1)
+    let reloads = 0
+    startChunkRecoveryReload(Date.now(), fakeStorage(), () => reloads++, writes.watch)
+    vi.advanceTimersByTime(CHUNK_RELOAD_WAIT_MAX_MS - 1)
+    expect(reloads).toBe(0)
+    vi.advanceTimersByTime(1)
+    expect(reloads).toBe(1)
+  })
+
+  it('a write that begins after the start does not matter once the reload has gone', () => {
+    const writes = fakeWrites(0)
+    let reloads = 0
+    startChunkRecoveryReload(Date.now(), fakeStorage(), () => reloads++, writes.watch)
+    expect(reloads).toBe(1)
+    writes.set(1)
+    writes.set(0)
+    vi.advanceTimersByTime(60_000)
+    expect(reloads).toBe(1)
   })
 })
 

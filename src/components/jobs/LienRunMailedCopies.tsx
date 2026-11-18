@@ -1,12 +1,15 @@
 import { useRef, useState } from 'react'
 import type { LienRunRow } from '../../lib/jobs/lienRunChecklist'
 import { LIEN_MAILED_COPY_ACCEPT, LIEN_MAILED_COPY_WORDS, lienMailedCopyKey, lienMailedCopyTakeOffAsk, type LienMailedCopy } from '../../lib/jobs/lienMailedCopies'
+import { TAKE_OFF_FILE_WORDS } from '../../lib/jobs/jobFolderTrash'
 
 /**
  * What was mailed, on one row of the run's checklist (the owner's ask of 2026-11-16): the files the notice has, each
  * a link that opens it in Drive, and on a printed paper row the press that adds one. Since v2.7525 a listed file has
  * **Take off** beside it. It asks first, under the files, and says the file stays in Drive. Since v2.7635 a file
  * that did not go up leaves its reason under the row, with **Try again** where the same file can go again.
+ * Since v2.7699 a file taken off goes to Drive's trash: the ask says so, and the line under the row says where the
+ * file is now, with **Put it back**.
  *
  * The block lived inside `LienRunChecklist.tsx` until v2.7525. It is its own file so the checklist, which several
  * changes touch at once, holds one line for it.
@@ -23,6 +26,15 @@ export type LienRunMailedCopiesPress = {
   failed?: { itemId: string; words: string; retry: boolean } | null
   /** Send the failed file again. */
   onRetry?: (row: LienRunRow) => void
+  /**
+   * The file just taken off this row, with where it is now (v2.7699): in Drive's trash, or still in Drive with the
+   * reason. `canRetry` offers the trash a second try. `working` names what is under way.
+   */
+  off?: { itemId: string; words: string; canRetry: boolean; working: 'trash' | 'back' | null } | null
+  /** Send the taken-off file to Drive's trash again. */
+  onTrashAgain?: (row: LienRunRow) => void
+  /** List the taken-off file on the notice again, out of the trash. */
+  onPutBack?: (row: LienRunRow) => void
 }
 
 /** The press that takes the file: a button over a hidden picker, so the keyboard reaches it as any button. */
@@ -57,6 +69,7 @@ export default function LienRunMailedCopies({ row, canAdd, busy, press }: { row:
   const removing = press?.removingItemId === row.itemId
   const asked = asking ? row.mailedCopies.find((c) => lienMailedCopyKey(c) === asking) ?? null : null
   const failed = press?.failed?.itemId === row.itemId ? press.failed : null
+  const off = press?.off?.itemId === row.itemId ? press.off : null
   return (
     <div className="lienRunCheckCopies" data-testid={`run-check-copies-${row.itemId}`}>
       {row.mailedCopies.map((c, i) => (
@@ -93,6 +106,21 @@ export default function LienRunMailedCopies({ row, canAdd, busy, press }: { row:
         </div>
       ) : removing ? (
         <span className="lienRunCheckCopyBusy" role="status">{LIEN_MAILED_COPY_WORDS.takingOff}</span>
+      ) : null}
+      {off && !asked ? (
+        <div className="lienRunCheckCopyAsk" role="status" data-testid={`run-check-copy-off-line-${row.itemId}`}>
+          <span>{off.working === 'trash' ? TAKE_OFF_FILE_WORDS.moving : off.working === 'back' ? TAKE_OFF_FILE_WORDS.puttingBack : off.words}</span>
+          {off.canRetry && press?.onTrashAgain && !off.working ? (
+            <button type="button" onClick={() => press.onTrashAgain?.(row)} disabled={dead} className="lienRunCheckCopyAdd" data-testid={`run-check-copy-trash-again-${row.itemId}`}>
+              {TAKE_OFF_FILE_WORDS.tryAgain}
+            </button>
+          ) : null}
+          {press?.onPutBack && !off.working ? (
+            <button type="button" onClick={() => press.onPutBack?.(row)} disabled={dead} className="lienRunCheckCopyAdd" data-testid={`run-check-copy-put-back-${row.itemId}`}>
+              {TAKE_OFF_FILE_WORDS.putBack}
+            </button>
+          ) : null}
+        </div>
       ) : null}
       {failed && press?.addingItemId !== row.itemId ? (
         <div className="lienRunCheckCopyAsk" role="alert" data-testid={`run-check-copy-failed-${row.itemId}`}>

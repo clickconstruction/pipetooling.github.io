@@ -96,7 +96,7 @@ Start at [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) â€
 | [`MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md`](./MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md) | `DashboardMyTimeDayEditorModal` (shared clock-day editor) |
 | [`CLOCK_SURFACES_ARCHITECTURE.md`](./CLOCK_SURFACES_ARCHITECTURE.md) | `DashboardTeamActiveClockStrip` + `ClockInOutButton` |
 | [`CALENDAR_PAGE_ARCHITECTURE.md`](./CALENDAR_PAGE_ARCHITECTURE.md) | `src/pages/Calendar.tsx` |
-| [`ESTIMATES_TABS_ARCHITECTURE.md`](./ESTIMATES_TABS_ARCHITECTURE.md) | `src/pages/Estimates.tsx` (EstimateList + EstimateDetail) |
+| [`ESTIMATES_TABS_ARCHITECTURE.md`](./ESTIMATES_TABS_ARCHITECTURE.md) | `src/pages/Estimates.tsx` (the router and the detail page's wiring) + its engine `useEstimateDetailData` + the list `EstimatesListPage` |
 | [`DOCUMENTS_PAGE_ARCHITECTURE.md`](./DOCUMENTS_PAGE_ARCHITECTURE.md) | `src/pages/Documents.tsx` (the four ledgers + Search) |
 | [`SENT_COPIES.md`](./SENT_COPIES.md) | Sent copies: the record of every send with the copy as it went (`sent_documents`, `src/lib/sent/`), the plan and what is wired |
 | [`WORKFLOW_PAGE_ARCHITECTURE.md`](./WORKFLOW_PAGE_ARCHITECTURE.md) | `src/pages/Workflow.tsx` (region-based) |

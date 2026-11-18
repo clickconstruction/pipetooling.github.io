@@ -140,7 +140,7 @@ export function stateUppercased(spelling: string): string {
  * members of the most common key, so the head reads *Gray Fox Trail, Neeses, SC* and not a key;
  * the state in capitals whatever the rows typed (`stateUppercased`).
  */
-export function sharedAddressWords(members: Members): string | null {
+export function sharedAddressWords(members: { bids: ReadonlyArray<Pick<MemberBid, 'address'>>; jobs: ReadonlyArray<Pick<MemberJob, 'job_address'>> }): string | null {
   const tally = new Map<string, Map<string, number>>()
   const add = (raw: string | null | undefined) => {
     const key = normalizeAddressKey(raw)

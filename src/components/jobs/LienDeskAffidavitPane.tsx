@@ -207,6 +207,7 @@ export default function LienDeskAffidavitPane({
     isSub: entry.isSub,
     propertyKind: entry.propertyKind,
     lastWorkDate: job?.last_work_date ?? null,
+    job: job ?? null,
     openBalance: entry.openBalance,
     todayYmd,
     demandLetters: data.demandLettersByJob?.[entry.jobId] ?? null,
