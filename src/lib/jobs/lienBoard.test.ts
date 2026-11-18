@@ -27,6 +27,7 @@ import {
   lienBoardLeaderPick,
   lienBoardLeaderWaits,
   lienBoardPick,
+  lienBoardSignSplit,
   lienBoardPileWords,
   lienBoardPickWords,
   lienBoardRetainageLine,
@@ -461,6 +462,31 @@ describe('the arrows, the day words, the retainage line, the dots and the leader
     expect(none.press.dead).toBe(true)
     expect(none.chips).toEqual([])
     for (const v of [view, mine, notices]) if (v.press.foot) expect(plainWordsFailures(v.press.foot)).toEqual([])
+  })
+  it('Approved · to sign splits by whose signature each notice waits on: the viewer’s own are the jobs he leads, the rest another leader’s (v2.7853)', () => {
+    const board = build({
+      notices: [
+        notice('1', 'ready', { item: item('i1', 'approved') }),
+        notice('2', 'ready', { item: item('i2', 'approved') }),
+        notice('3', 'ready', { item: item('i3', 'approved') }),
+        // Signed: it stands in Approved · to print and is nobody's to sign.
+        notice('4', 'ready', { item: signedItem('i4') }),
+        // Awaiting approval: not yet a notice to sign.
+        notice('5', 'awaiting'),
+      ],
+    })
+    const split = lienBoardSignSplit(board, (jobId) => jobId === '1' || jobId === '3' || jobId === '4' || jobId === '5')
+    expect(split.mine.map((c) => c.label)).toEqual(['JP1', 'JP3'])
+    expect(split.others.map((c) => c.label)).toEqual(['JP2'])
+    // The two parts are the bin's own count, so the press and its line add up to the number beside the bin's name.
+    expect(split.mine.length + split.others.length).toBe(lienBoardBinCount(bin(board, 'notice:to_sign')))
+    // A leader who leads none of them has none to sign: the press that read *Sign 3 notices* for him is gone.
+    const none = lienBoardSignSplit(board, () => false)
+    expect(none.mine).toEqual([])
+    expect(none.others).toHaveLength(3)
+    // Every job his: nothing waits on another leader.
+    expect(lienBoardSignSplit(board, () => true).others).toEqual([])
+    expect(lienBoardSignSplit(build({}), () => true)).toEqual({ mine: [], others: [] })
   })
   it('a pressed bin narrows the list to its jobs, a run row for one of their GCs, and the words say what shows (the picture and the queue)', () => {
     const board = build({ notices: [notice('1', 'to_draft'), notice('2', 'to_draft', { gcCustomerId: 'gc9' }), notice('3', 'awaiting')], affidavits: [affidavit('4', 'awaiting'), affidavit('5', 'ready')] })

@@ -820,6 +820,21 @@ export function lienBoardLeaderBinPress(view: Pick<LienBoardLeaderView, 'chips' 
   return { label: countedLabel('Approve', ready, 'affidavit'), dead: ready <= 0, line: late > 0 ? `${late} ${plural(late, 'is', 'are')} past ${plural(late, 'its', 'their')} day and ${plural(late, 'stays', 'stay')} here.` : null }
 }
 
+/** The notices in *Approved · to sign*, by whose signature each waits on: the viewer's own, and another leader's. */
+export type LienBoardSignSplit = { mine: LienBoardChip[]; others: LienBoardChip[] }
+
+/**
+ * Whose the notices in *Approved · to sign* are (v2.7853, found on the live look at punch list #383). A notice takes
+ * the signature of the leader of its job, so the viewer's own are the ones on the jobs he leads (`leads`, the rule his
+ * *Approve N affidavits* counts by). His *Sign N notices ›* counts `mine`, and its door opens those alone. Until then
+ * the press counted every unsigned notice: a master who led none of the jobs read *Sign 7 notices ›*. A held paper
+ * never stands in this bin, and is left out as the bin's own count leaves it out.
+ */
+export function lienBoardSignSplit(board: Pick<LienBoard, 'notices'>, leads: (jobId: string) => boolean): LienBoardSignSplit {
+  const chips = board.notices.filter((b) => b.stage === 'to_sign').flatMap((b) => b.chips).filter((c) => !c.held)
+  return { mine: chips.filter((c) => leads(c.jobId)), others: chips.filter((c) => !leads(c.jobId)) }
+}
+
 /**
  * The papers that will not make their day as they stand (v2.7371): the chips the day tile's red line counts, by
  * `kind:jobId`, each with the stages it still has to pass. The To do list reads the same map, so the tile, the
