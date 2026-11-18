@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { buildLienTimelineFromDesk, buildLienTimelineFromWindow, lienTimelineMonthsFromDesk, lienWindowDeskAffidavit, lienWindowDeskNotice } from './lienTimelineDesk'
 import type { LienAffidavitEntry, LienAffidavitGateKey } from './lienDeskAffidavits'
-import type { LienDeskItemRow, LienNoticeMonthRow } from './lienDesk'
-import type { JobLienFilingRow } from './lienDeadlines'
+import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
+import { filingDeadlineForMonth, type JobLienFilingRow } from './lienDeadlines'
+import { lienLastWorkDay } from './lienLastWorkDay'
 import type { JobWorkMonths } from './forecastWorkMonths'
 
 const TODAY = '2026-09-23'
@@ -301,5 +302,61 @@ describe('the day set by hand counts in the Lien window (v2.7193, punch list #33
     expect(lastWork.date).toBe('2026-06-01')
     expect(lastWork.words).toBe('last day set by hand · later hours do not move it')
     expect(t.steps.find((s) => s.key === 'affidavit')!.date).toBe('2026-10-15')
+  })
+})
+
+describe('the month that dates a job on the desk’s strip (v2.7711)', () => {
+  const NOW = '2026-11-17'
+  const row = (work_month: string, deadline: string, month_source: string, over: Record<string, unknown> = {}) =>
+    ({ job_id: 'j1', work_month, approved_hours: month_source === 'hours' ? 20 : 0, deadline, noticed: false, open_balance: 4_100, customer_id: 'c', gc_customer_id: 'gc', property_kind: 'residential', has_owner: true, desk_item_id: null, desk_status: null, desk_months: null, month_source, ...over }) as unknown as LienNoticeMonthRow
+  const sentFor = (months: string[], sent_at: string) => ({ id: `i-${months.join('-')}`, job_id: 'j1', kind: 'notice_53_056', status: 'sent', months, created_at: sent_at, updated_at: sent_at, sent_at, voided_at: null, fields: {}, hold_until: null }) as unknown as LienDeskItemRow
+  const strip = (rows: LienNoticeMonthRow[], items: LienDeskItemRow[], over: Partial<Parameters<typeof buildLienTimelineFromDesk>[1]> = {}) => {
+    const entry = buildLienDeskQueue(rows, items, {}, NOW).entries.find((e) => e.jobId === 'j1') ?? null
+    return buildLienTimelineFromDesk('j1', { rows, items, filings: [], entry, affidavit: null, isSub: true, propertyKind: 'residential', openBalance: 4_100, todayYmd: NOW, ...over })
+  }
+  const lastWork = (t: ReturnType<typeof strip>) => t.steps.find((s) => s.kind === 'last_work')!
+  // Made in August, billed in July: until the bill rule its month was August, and a notice naming August went out.
+  const movedJob = { created_at: '2026-08-18T06:00:00Z', lien_last_work_on: null, invoices: [{ status: 'billed', billed_at: '2026-08-18T06:01:00Z', sent_to_customer_at: '2026-07-24T17:00:00Z' }] }
+
+  it('dates a job nobody clocked on from the reader’s month, not from the month a sent notice named', () => {
+    const t = strip([row('2026-07', '2026-09-15', 'bill')], [sentFor(['2026-08'], '2026-10-14T20:00:00Z')])
+    expect(lastWork(t).dateWords).toBe('Jul 2026')
+    expect(lastWork(t).words).toBe('dated from the bill · no clock hours')
+    // The affidavit's last day counts from July, as the SQL readers count it, and the notice that went out still shows as a stop.
+    expect(t.steps.find((s) => s.key === 'affidavit')!.date).toBe(filingDeadlineForMonth('2026-07-01', 'residential'))
+    expect(t.steps.find((s) => s.key === 'notice:2026-08')).toMatchObject({ state: 'done', words: 'sent Oct 14' })
+    expect(t.steps.find((s) => s.key === 'notice:2026-07')!.state).toBe('missed')
+  })
+
+  it('names the month the months’ line names when the caller hands the job', () => {
+    const t = strip([row('2026-07', '2026-09-15', 'bill')], [sentFor(['2026-08'], '2026-10-14T20:00:00Z')], { job: movedJob })
+    const line = lienLastWorkDay({ ...movedJob, last_work_date: null })
+    expect(line).toMatchObject({ day: '2026-07-24', source: 'bill' })
+    expect(lastWork(t).date.slice(0, 7)).toBe(line.day!.slice(0, 7))
+    expect(lastWork(t).words).toBe('dated from the bill · no clock hours')
+    // A job with no dated unpaid bill reads its creation month, with the reader's row or with none.
+    const created = { created_at: '2026-08-18T06:00:00Z', lien_last_work_on: null, invoices: [] }
+    expect(lastWork(strip([row('2026-08', '2026-10-15', 'job_created')], [], { job: created }))).toMatchObject({ dateWords: 'Aug 2026', words: 'dated from the job’s creation · no clock hours' })
+    expect(lastWork(strip([], [sentFor(['2026-09'], '2026-10-14T20:00:00Z')], { job: created })).dateWords).toBe('Aug 2026')
+  })
+
+  it('takes the later bill month from the job when the reader returns only an earlier one', () => {
+    // Two unpaid bills: July's window closed with nothing noted (the reader returns it), September's notice went and its window closed (the reader does not).
+    const twoBills = { created_at: '2026-06-02T15:00:00Z', lien_last_work_on: null, invoices: [{ status: 'billed', billed_at: '2026-07-10T15:00:00Z', sent_to_customer_at: null }, { status: 'billed', billed_at: '2026-09-04T15:00:00Z', sent_to_customer_at: null }] }
+    const t = strip([row('2026-07', '2026-09-15', 'bill')], [sentFor(['2026-09'], '2026-10-20T20:00:00Z')], { job: twoBills })
+    expect(lastWork(t)).toMatchObject({ dateWords: 'Sep 2026', words: 'dated from the bill · no clock hours' })
+  })
+
+  it('a day set by hand dates the job when the reader no longer returns its month', () => {
+    const t = strip([], [sentFor(['2026-06'], '2026-07-20T20:00:00Z')], { job: { created_at: '2026-05-02T15:00:00Z', lien_last_work_on: '2026-06-18', invoices: [] }, lastWorkDate: '2026-08-20' })
+    expect(lastWork(t)).toMatchObject({ dateWords: 'Jun 2026', words: 'last day set by hand · later hours do not move it' })
+    // A hand day outranks a bill too: the stand-in stands only until a person sets the day.
+    expect(lastWork(strip([], [], { job: { ...movedJob, lien_last_work_on: '2026-06-18' } })).words).toBe('last day set by hand')
+  })
+
+  it('keeps a worked month the reader no longer returns on a job with clock hours', () => {
+    // July closed with nothing noted, August's notice went and its window closed: August is still the last month of work.
+    const t = strip([row('2026-07', '2026-09-15', 'hours')], [sentFor(['2026-08'], '2026-10-01T20:00:00Z')], { job: { created_at: '2026-06-02T15:00:00Z', lien_last_work_on: null, invoices: [] } })
+    expect(lastWork(t)).toMatchObject({ dateWords: 'Aug 2026', words: 'clock hours' })
   })
 })

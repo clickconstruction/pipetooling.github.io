@@ -1,10 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { DRIVE, driveFolderIdFromUrl, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { DRIVE, driveAnswerOf, driveAnswerWords, driveFolderIdFromUrl, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
 import { driveFailureOf } from '../_shared/driveFailure.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { DRIVE_TRASH_WORDS, isTrashAction, lienRowsUse, parseTrashAsk, trashNote, type TrashAsk } from '../_shared/driveTrash.ts'
 import { NO_COMPANY_FOLDER_WORDS } from '../_shared/whereFilesGo.ts'
-import { driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half, type JobFolder } from '../_shared/driveJobFolder.ts'
+import { childFolder, driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half, type JobFolder } from '../_shared/driveJobFolder.ts'
 import { photoDriveName, photoNameInputOf, type PhotoAttachmentRow } from '../_shared/gcKernels/index.ts'
 import { driveFolderMeta, jobsRootFolderId, NO_ROOT_WORDS } from '../_shared/driveSettings.ts'
 import { JOB_FOLDER_TREE } from '../_shared/whereFilesGo.ts'
@@ -299,6 +301,47 @@ async function searchFiles(admin: SupabaseClient, google: string, words: string)
   return { hits, more: Boolean(page.nextPageToken), noRoot: false }
 }
 
+/**
+ * Move one of a job's Sent by us files to Drive's trash, or put it back (v2.7699, `_shared/driveTrash.ts`). The file
+ * must sit in the job's Team only → Sent by us folder, found and never made here. A file one of the job's lien
+ * records still names is left alone. Drive's refusal is thrown in the shape `driveFailureOf` reads.
+ */
+async function trashDoor(admin: SupabaseClient, ask: TrashAsk, userId: string): Promise<Response> {
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 500)
+  const google = await googleAccessToken(saJson)
+  const folder = await jobFolder(admin, google, ask.job)
+  if (!folder) return json({ error: 'That job has no Drive folder yet.' }, 409)
+  let sent: string | null = folder.folderId
+  for (const name of landingPath('sent')) sent = sent ? await childFolder(google, sent, name) : null
+  const fileUrl = `${DRIVE}/files/${encodeURIComponent(ask.driveFileId)}`
+  const meta = await driveGet<{ name?: string; parents?: string[]; trashed?: boolean }>(google, `${fileUrl}?fields=name,parents,trashed&supportsAllDrives=true`)
+  if (!sent || meta.parents?.[0] !== sent) return json({ error: DRIVE_TRASH_WORDS.notSent, why: 'not_sent', retry: false }, 403)
+  const name = meta.name ?? ''
+  const trash = ask.action === 'trash'
+  if (trash === !!meta.trashed) return json({ trashed: trash, name, url: driveViewUrl(ask.driveFileId) })
+  let note: string | null = null
+  if (trash) {
+    const jobId = ask.job.jobs_ledger_id
+    const [filings, items, person] = await Promise.all([
+      admin.from('job_lien_filings').select('*').eq('job_id', jobId),
+      admin.from('job_lien_desk_items').select('*').eq('job_id', jobId),
+      admin.from('users').select('name').eq('id', userId).maybeSingle(),
+    ])
+    if (filings.error || items.error) return json({ error: DRIVE_TRASH_WORDS.recordsUnread, why: 'records_unread', retry: true }, 500)
+    if (lienRowsUse([...(filings.data ?? []), ...(items.data ?? [])], ask.driveFileId)) return json({ error: DRIVE_TRASH_WORDS.inUse, why: 'in_use', retry: false }, 409)
+    note = trashNote((person.data as { name?: string | null } | null)?.name, todayYmdInAppTz())
+  }
+  const res = await fetch(`${fileUrl}?supportsAllDrives=true&fields=id,trashed`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${google}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(trash ? { trashed: true, description: note } : { trashed: false }),
+  })
+  const answer = driveAnswerOf(await res.text().catch(() => ''))
+  if (!res.ok) throw new Error(`${trash ? 'Trash' : 'Untrash'} failed (${res.status}): ${driveAnswerWords(answer)}`)
+  return json({ trashed: trash, name, url: driveViewUrl(ask.driveFileId) })
+}
+
 async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const auth = req.headers.get('Authorization') ?? ''
@@ -313,6 +356,14 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
   // A twin is refused whatever it asks, in words true to the ask (v2.6488): a search is not a change.
   if (who.is_digital_twin) return json({ error: twinRefusalWords(body?.action) }, 403)
+  // A wrong file into Drive's trash, or back out of it (v2.7699): a door of its own, read here so the shared ask
+  // parser, which other functions hold, stays as it is.
+  if (isTrashAction(body)) {
+    if (who.read_only) return json({ error: 'A training account cannot change Drive.' }, 403)
+    const trashAsk = parseTrashAsk(body)
+    if (!trashAsk) return json({ error: DRIVE_TRASH_WORDS.notAnAsk }, 400)
+    return await trashDoor(admin, trashAsk, u.user.id)
+  }
   const ask = parseOfficeAsk(body)
   if (!ask) return json({ error: 'That is not an ask this door takes.' }, 400)
   // Training mode reads everything and writes nothing: a list and an open are reads.

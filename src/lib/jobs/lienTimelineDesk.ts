@@ -1,7 +1,7 @@
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { LienDeskEntry, LienDeskItemRow, LienDeskMonth, LienNoticeMonthRow } from './lienDesk'
 import { monthFromBill, monthIsStandIn } from './lienDesk'
-import { lienStandInMonth, type LienBill } from './lienBillMonths'
+import { lienStandInMonth, type LienBill, type LienStandIn } from './lienBillMonths'
 import { lienAffidavitGateHeld, type LienAffidavitEntry, type LienAffidavitGateKey } from './lienDeskAffidavits'
 import { lienAffidavitNoticeStanding, lienAffidavitNoticeStandingOnDesk } from './lienAffidavitNoticeStanding'
 import { buildLienMonthHistory } from './lienMonthHistory'
@@ -38,6 +38,12 @@ export interface LienTimelineDeskSource {
   propertyKind: string
   /** 'YYYY-MM-DD' from jobs_ledger, when known. */
   lastWorkDate?: string | null
+  /**
+   * The job's own dating facts, when the caller holds them (v2.7711): the day set by hand, and the bills and creation day a
+   * job nobody clocked on is dated from. With them the last month is the months' line's (`lienLastWorkDay`), whatever a
+   * past paper named. `invoices` must be the job's read bills: undefined means the caller did not read them.
+   */
+  job?: { created_at?: string | null; lien_last_work_on?: string | null; invoices?: ReadonlyArray<LienBill> | null } | null
   openBalance: number
   todayYmd: string
   /** The job's demand letters (v2.3877), when the caller loaded them; the strip draws none otherwise. */
@@ -145,18 +151,49 @@ export function lienTimelineMonthsFromDesk(jobId: string, rows: ReadonlyArray<Li
   return [...byKey.values()].sort((a, b) => a.key.localeCompare(b.key))
 }
 
+/**
+ * What dates a job on the desk's strip (v2.7711): the month LAST WORK names, which the affidavit's last day and the year to
+ * sue count from. The strip's months are the clock's months and every month a past notice named, so the notice stops can
+ * say what went out. Until v2.7711 the last of that whole list was the last month of work. A job nobody clocked on is
+ * dated from a stand-in, and a stand-in moves: a job made in August and billed in July read *August* until the bill
+ * rule (v2.7224), a notice naming August went out, and the strip went on dating the job from August while the months'
+ * line, the Lien window and the SQL readers dated it from July.
+ *
+ * - A day set by hand dates the job: the reader's `hand` row, else the job's own column, which still counts when the
+ *   reader no longer returns its month.
+ * - A job with no hand day and no approved hours is dated from its stand-in (`lienStandInMonth`), the months' line's own
+ *   rule, when the caller hands the job with its bills.
+ * - Without the job, a job whose every reader month is a stand-in is dated from the last month the reader returns. A
+ *   month only a past paper names stays a notice stop and dates nothing.
+ * - Any other job keeps the last of the whole list: a worked month the reader no longer returns, noticed and closed, is
+ *   still a month of work.
+ */
+function lienDeskDatingMonth(jobId: string, months: ReadonlyArray<LienTimelineMonth>, src: Pick<LienTimelineDeskSource, 'rows' | 'job' | 'lastWorkDate'>): { fromRows: LienTimelineMonth | null; handMonth: string; standIn: LienStandIn | null } {
+  const jobRows = src.rows.filter((r) => r.job_id === jobId)
+  const handMonth = jobRows.find((r) => r.month_source === 'hand')?.work_month ?? (src.job?.lien_last_work_on ?? '').slice(0, 7)
+  const standInRows = jobRows.length > 0 && jobRows.every(monthIsStandIn)
+  const keys = new Set(jobRows.map((r) => r.work_month))
+  const counted = standInRows ? months.filter((m) => keys.has(m.key)) : months
+  const fromRows = counted.length ? counted[counted.length - 1]! : null
+  const nobodyClocked = !handMonth && !(src.lastWorkDate ?? '').slice(0, 7) && (jobRows.length === 0 || standInRows)
+  const found = nobodyClocked && src.job && Array.isArray(src.job.invoices) ? lienStandInMonth({ bills: src.job.invoices, createdAt: src.job.created_at }) : null
+  return { fromRows, handMonth, standIn: found?.month ? found : null }
+}
+
 export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSource): LienTimeline {
   const months = lienTimelineMonthsFromDesk(jobId, src.rows, src.items, src.todayYmd, src.propertyKind)
-  const fromRows = months.length ? months[months.length - 1] : null
+  const dating = lienDeskDatingMonth(jobId, months, src)
+  const fromRows = dating.fromRows
   const fromLedger = (src.lastWorkDate ?? '').slice(0, 7)
   // The day set by hand counts (v2.7193, punch list #335, row 1): the desk's RPC marks its month, and the ledger's later hours do not move it.
-  const handMonth = src.rows.find((r) => r.job_id === jobId && r.month_source === 'hand')?.work_month ?? ''
-  const lastMonth = src.affidavit?.lastMonth || handMonth || (fromRows && fromLedger ? (fromRows.key > fromLedger ? fromRows.key : fromLedger) : fromRows?.key || fromLedger || '')
-  const lastMonthFromCreation = src.affidavit ? src.affidavit.lastMonthFromCreation : Boolean(fromRows && fromRows.key === lastMonth && fromRows.fromCreation) || Boolean(src.entry?.datedFromCreation && (!fromRows || fromRows.key === lastMonth))
-  // The stand-in month came from a bill (v2.7224): the affidavit entry says so, else the desk row for the last month.
-  const lastMonthFromBill = lastMonthFromCreation && (src.affidavit ? src.affidavit.lastMonthFromBill === true : Boolean(fromRows && fromRows.key === lastMonth ? fromRows.fromBill : src.entry?.datedFromBill))
-  // The last day of work set by hand (v2.4676): the affidavit entry says so, else the desk row for the last month.
-  const lastMonthByHand = src.affidavit ? src.affidavit.lastMonthByHand : src.rows.some((r) => r.job_id === jobId && r.work_month === lastMonth && r.month_source === 'hand')
+  const handMonth = dating.handMonth
+  const standIn = dating.standIn
+  const lastMonth = src.affidavit?.lastMonth || handMonth || standIn?.month || (fromRows && fromLedger ? (fromRows.key > fromLedger ? fromRows.key : fromLedger) : fromRows?.key || fromLedger || '')
+  const lastMonthFromCreation = src.affidavit ? src.affidavit.lastMonthFromCreation : standIn ? true : Boolean(fromRows && fromRows.key === lastMonth && fromRows.fromCreation) || Boolean(src.entry?.datedFromCreation && (!fromRows || fromRows.key === lastMonth))
+  // The stand-in month came from a bill (v2.7224): the affidavit entry says so, else the job's own bills, else the desk row for the last month.
+  const lastMonthFromBill = lastMonthFromCreation && (src.affidavit ? src.affidavit.lastMonthFromBill === true : standIn ? standIn.source === 'bill' : Boolean(fromRows && fromRows.key === lastMonth ? fromRows.fromBill : src.entry?.datedFromBill))
+  // The last day of work set by hand (v2.4676): the affidavit entry says so, else the month is the hand day's own.
+  const lastMonthByHand = src.affidavit ? src.affidavit.lastMonthByHand : Boolean(handMonth) && handMonth === lastMonth
 
   const live = src.filings.filter((f) => f.job_id === jobId && f.voided_at == null)
   const affidavitFiling = live.filter((f) => f.kind === 'affidavit' && f.filed_at).sort((a, b) => (b.filed_at ?? '').localeCompare(a.filed_at ?? ''))[0] ?? null

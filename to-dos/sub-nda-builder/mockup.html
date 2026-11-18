@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sub NDA builder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@700&display=swap">
+<style>
+  [hidden] { display: none !important; }
+  img { max-width: 100%; }
+  /* Layout: a short header, then two drawn screens side by side (stacked when narrow), then the sample page.
+     One state object (S) drives all three, so the GC's summary and the sample are computed from the office's choices.
+     Counts come from the PEOPLE rows drawn. Drawn 2026-11-17. Nothing is built. Every name is made up.
+     No clause wording is on this page: the sample shows section titles and grey bars only. */
+  :root {
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --green: #15803d; --green-tint: #f0fdf4; --amber: #92400e; --amber-tint: #fffbeb; --amber-line: #f0c36d;
+    --blue: #1d4ed8; --blue-tint: #eff6ff; --violet: #6d28d9; --violet-tint: #f5f3ff; --violet-line: #c4b5fd;
+    --press: #2563eb; --press-ink: #ffffff; --bar: #d9dde3; --warn: #d97706;
+    --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --display: "Space Grotesk", Inter, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+      --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+      --border: #374151; --border-strong: #4b5563;
+      --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+      --green: #4ade80; --green-tint: #12301f; --amber: #fcd34d; --amber-tint: #3a2f11; --amber-line: #7a5d14;
+      --blue: #93c5fd; --blue-tint: #1e3358; --violet: #c4b5fd; --violet-tint: #2c2350; --violet-line: #5b4bb0;
+      --press: #2563eb; --press-ink: #ffffff; --bar: #4b5563; --warn: #f59e0b;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --green: #4ade80; --green-tint: #12301f; --amber: #fcd34d; --amber-tint: #3a2f11; --amber-line: #7a5d14;
+    --blue: #93c5fd; --blue-tint: #1e3358; --violet: #c4b5fd; --violet-tint: #2c2350; --violet-line: #5b4bb0;
+    --press: #2563eb; --press-ink: #ffffff; --bar: #4b5563; --warn: #f59e0b;
+  }
+  /* A customer-facing page and a printed page stay light in the app, so these two wrappers pin the light values. */
+  .light {
+    color-scheme: light;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --green: #15803d; --green-tint: #f0fdf4; --amber: #92400e; --amber-tint: #fffbeb; --amber-line: #f0c36d;
+    --blue: #1d4ed8; --blue-tint: #eff6ff; --violet: #6d28d9; --violet-tint: #f5f3ff; --violet-line: #c4b5fd; --bar: #d9dde3; --warn: #d97706;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding-block: 0 72px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 26px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font: 700 28px/1.15 var(--display); color: var(--text-strong); text-wrap: balance; }
+  header.top p { margin: 8px 0 0; max-width: 76ch; }
+  h2 { font: 700 19px/1.2 var(--display); margin: 0; color: var(--text-strong); text-wrap: balance; }
+  p { margin: 0; }
+  b { color: var(--text-strong); }
+  button { font: inherit; cursor: pointer; }
+  button:focus-visible, textarea:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; }
+
+  .screens { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 26px; margin-top: 26px; align-items: start; }
+  @media (max-width: 980px) { .screens { grid-template-columns: minmax(0, 1fr); } }
+  .col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+  .say { font-size: 13px; max-width: 62ch; }
+  .frame { border: 1px solid var(--border-strong); border-radius: 12px; background: var(--bg-page); color: var(--text-base); overflow: hidden; min-width: 0; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 9px 14px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; }
+  .bar .where { color: var(--text-muted); }
+  .bar .job { font-weight: 700; color: var(--text-strong); }
+  .page { padding: 14px; display: grid; gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: grid; gap: 10px; min-width: 0; }
+  .card h3 { margin: 0; font-size: 14px; color: var(--text-strong); }
+  .muted { color: var(--text-muted); font-size: 12.5px; }
+
+  .chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .chip.q { background: var(--bg-muted); color: var(--text-700); }
+  .chip.level { background: var(--blue-tint); color: var(--blue); font-size: 12.5px; padding: 2px 10px; }
+  .chip.stricter { background: var(--amber-tint); color: var(--amber); }
+  .chip.ok { background: var(--green-tint); color: var(--green); }
+  .chip.wait { background: var(--bg-muted); color: var(--text-700); }
+  .chip.gc { background: var(--violet-tint); color: var(--violet); }
+
+  .levels { display: flex; flex-wrap: wrap; gap: 8px; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .opt { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); border-radius: 8px; padding: 5px 10px; font-size: 13px; min-height: 32px; }
+  .opt[aria-pressed="true"] { background: var(--press); border-color: var(--press); color: var(--press-ink); font-weight: 600; }
+  .opt:disabled { color: var(--text-muted); background: var(--bg-muted); border-style: dashed; cursor: not-allowed; }
+  .row { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--border); min-width: 0; }
+  .row:first-of-type { border-top: 0; padding-top: 0; }
+  .row .lab { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-weight: 600; color: var(--text-strong); }
+  .asks { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; font-size: 12.5px; color: var(--violet); }
+  .take { border: 1px solid var(--violet-line); background: var(--violet-tint); color: var(--violet); border-radius: 8px; padding: 2px 9px; font-size: 12.5px; font-weight: 600; min-height: 28px; }
+  .ticks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 4px 14px; }
+  .ticks label { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; padding: 3px 0; }
+  .ticks input { margin-top: 3px; }
+  textarea { width: 100%; min-height: 62px; font: inherit; color: var(--text-base); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 9px; resize: vertical; }
+  .warn { border: 1px solid var(--amber-line); background: var(--amber-tint); color: var(--amber); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; }
+  .propose { border: 1px solid var(--violet-line); background: var(--violet-tint); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; font-size: 13px; }
+  .propose .who { font-weight: 700; color: var(--violet); }
+  .quote { border-left: 3px solid var(--violet-line); padding: 2px 0 2px 9px; color: var(--text-700); font-size: 13px; }
+  .foot { display: grid; gap: 8px; }
+  .primary { border: 0; background: var(--press); color: var(--press-ink); border-radius: 9px; padding: 10px 14px; font-weight: 700; font-size: 14px; text-align: center; min-height: 42px; }
+  .second { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); border-radius: 9px; padding: 8px 12px; font-weight: 600; min-height: 38px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  select { font: inherit; color: var(--text-base); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: 5px 8px; max-width: 100%; }
+
+  /* The GC's page */
+  .gc-head { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px; display: grid; gap: 2px; }
+  .gc-head .co { font: 700 17px/1.2 var(--display); color: var(--text-strong); }
+  .sum { list-style: none; margin: 0; padding: 0; display: grid; }
+  .sum li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--border); }
+  .sum li:first-child { border-top: 0; padding-top: 0; }
+  .sum .k { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+  .sum .v { color: var(--text-base); }
+  .signed { display: grid; gap: 6px; }
+  .meter { height: 8px; border-radius: 999px; background: var(--bg-muted); overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--green); }
+  .biz { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 13px; }
+  .biz .names { grid-column: 1 / -1; color: var(--text-muted); font-size: 12.5px; }
+  .fine { font-size: 12px; color: var(--text-muted); }
+  .gcp { display: grid; gap: 8px; }
+  .gcp .line { display: grid; gap: 4px; }
+  .gcp .line span { font-size: 12.5px; font-weight: 600; color: var(--text-700); }
+
+  /* The sample page */
+  .sample-wrap { margin-top: 34px; display: grid; gap: 8px; }
+  .sheet-scroll { overflow-x: auto; }
+  .sheet { position: relative; background: var(--surface); color: var(--text-base); border: 1px solid var(--border-strong); border-radius: 4px; max-width: 760px; padding: 30px 34px 24px; display: grid; gap: 14px; overflow: hidden; }
+  @media (max-width: 560px) { .sheet { padding: 20px 16px; } }
+  .sheet .mark { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; font: 700 clamp(56px, 16vw, 120px)/1 var(--display); color: var(--text-strong); opacity: .06; transform: rotate(-24deg); letter-spacing: .08em; }
+  .sheet h3 { margin: 0; font: 700 18px/1.2 var(--display); color: var(--text-strong); letter-spacing: .02em; }
+  .block { border: 1px solid var(--border); border-radius: 6px; display: grid; }
+  .block div { display: grid; grid-template-columns: minmax(0, 11em) minmax(0, 1fr); gap: 2px 12px; padding: 5px 10px; border-top: 1px solid var(--border); font-size: 13px; }
+  .block div:first-child { border-top: 0; }
+  @media (max-width: 560px) { .block div { grid-template-columns: minmax(0, 1fr); } }
+  .block dt { color: var(--text-muted); }
+  .block dd { margin: 0; font-weight: 600; color: var(--text-strong); }
+  .secs { display: grid; gap: 9px; }
+  .sec { display: grid; gap: 4px; }
+  .sec .t { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-weight: 600; font-size: 13px; color: var(--text-strong); }
+  .lines { display: grid; gap: 4px; }
+  .lines i { display: block; height: 6px; border-radius: 3px; background: var(--bar); }
+  .tag { border-radius: 4px; padding: 0 6px; font-size: 11px; font-weight: 600; }
+  .tag.fixed { background: var(--bg-muted); color: var(--text-700); }
+  .tag.picked { background: var(--violet-tint); color: var(--violet); }
+  .tag.filled { background: var(--blue-tint); color: var(--blue); }
+  /* A stepped slider: a scale's choices as stops, lighter on the left. Each stop is also a press. */
+  .sl { display: grid; gap: 0; min-width: 0; }
+  .sl input[type="range"] { width: 100%; margin: 6px 0 0; accent-color: var(--press); }
+  .stops { display: flex; gap: 6px; }
+  .stop { flex: 1 1 0; min-width: 0; border: 0; background: none; color: var(--text-muted); font-size: 12.5px; padding: 3px 0; min-height: 30px; text-align: center; }
+  .stop:first-child { text-align: left; }
+  .stop:last-child { text-align: right; }
+  .stop[aria-current="true"] { color: var(--text-strong); font-weight: 700; }
+  .stop:disabled { opacity: .5; cursor: not-allowed; }
+  /* The whole-job slider. On a custom mix the handle leaves the named stops and carries its own tag. */
+  .master { position: relative; padding-top: 22px; }
+  .bubble { position: absolute; top: 0; transform: translateX(-50%); background: var(--text-700); color: var(--surface); font-size: 11.5px; font-weight: 700; border-radius: 6px; padding: 1px 8px; white-space: nowrap; }
+  .mean { font-size: 13px; color: var(--text-700); }
+  .ends { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  /* The Contract Book */
+  .book { margin-top: 26px; display: grid; gap: 8px; }
+  .book .screens { margin-top: 6px; }
+  .brow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; align-items: start; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13px; }
+  .brow:first-child { border-top: 0; padding-top: 0; }
+  .brow .name { font-weight: 600; color: var(--text-strong); }
+  .brow .how { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 2px; }
+  .pvset { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 8px 12px; }
+  .pvset label { display: grid; gap: 2px; font-size: 12.5px; font-weight: 600; color: var(--text-700); min-width: 0; }
+  .pvset select { width: 100%; }
+  .editwin { border: 1px dashed var(--border-strong); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; background: var(--bg-subtle); }
+  .onlywhen { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; font-size: 13px; }
+  .pv-sum { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; display: grid; gap: 8px; color: var(--text-base); }
+  .steps { display: flex; flex-wrap: wrap; gap: 6px 8px; }
+  .rulebox { border: 1.5px dashed var(--border-strong); border-radius: 6px; padding: 8px 10px; font-size: 13px; display: grid; gap: 4px; }
+  .stamp { font-size: 11.5px; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 8px; }
+  .key { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; align-items: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Mock-up · a first drawing, not the final look · nothing is built · every name is made up</p>
+    <h1>Sub NDA builder</h1>
+    <p>The Contract Book comes first, then the office's page, the GC's page and the sample. One set of settings drives every view: change one anywhere and the rest follow. Presses work. No clause wording is shown anywhere here.</p>
+  </header>
+
+  <section class="book" aria-labelledby="cap-book">
+    <div class="cap" id="cap-book">A · The Contract Book, built first (steps 1 and 2)</div>
+    <p class="say">A clause can be tied to one choice of one setting, or hold a blank. The preview puts the paper together for any mix. This part does not wait on the gate.</p>
+    <div class="screens">
+      <div class="col">
+        <div class="frame">
+          <div class="bar"><span class="job">Settings</span><span class="where">Contracts and clauses › Job Secrecy Agreement (test)</span></div>
+          <div class="page">
+            <div class="card">
+              <div style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center">
+                <h3>Job Secrecy Agreement (test)</h3>
+                <span class="chip stricter">Revision 4 · not read by an attorney</span>
+              </div>
+              <div class="btns">
+                <button class="second" type="button">Settings list</button>
+                <button class="second" type="button">Mark revision 4 as read by an attorney</button>
+              </div>
+              <p class="muted">A job that is not a ZZ Test job can only require a revision an attorney has read.</p>
+            </div>
+            <div class="card">
+              <h3>Clauses, by what puts them in the paper</h3>
+              <div id="book-rows"></div>
+              <p class="chip ok" style="justify-self:start">Every choice has its wording</p>
+              <p class="muted">A gap would read here in words, and the paper would not go: <i>Photos and video has no wording for Strict.</i></p>
+            </div>
+            <div class="card">
+              <h3>A clause's window gains one line</h3>
+              <div class="editwin">
+                <b>Clause 5B</b>
+                <div class="lines"><i style="width:100%"></i><i style="width:100%"></i><i style="width:58%"></i></div>
+                <div class="onlywhen"><span>Only when</span>
+                  <select aria-label="Setting" id="ow-setting"><option>Photos and video</option><option>Phones and devices</option><option>Getting on site</option><option>Talking on site</option><option>Direct enforcement</option><option>In every paper</option></select>
+                  <span>is</span>
+                  <select aria-label="Choice" id="ow-choice"><option>Strict</option><option>Light</option></select>
+                </div>
+                <div class="btns"><button class="second" type="button">Publish clause</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="frame">
+          <div class="bar"><span class="job">Preview</span><span class="where">Job Secrecy Agreement (test), put together with settings</span></div>
+          <div class="page">
+            <div class="card">
+              <div class="levels" id="pv-levels"></div>
+              <div class="pvset" id="pv-set"></div>
+            </div>
+            <div class="card">
+              <div class="btns" id="pv-tabs"></div>
+              <div id="pv-body"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="screens">
+    <section class="col" aria-labelledby="cap-office">
+      <div class="cap" id="cap-office">1 · The office, before anyone is asked to sign</div>
+      <p class="say">On the job, inside <b>Papers before this job opens</b>. One slider sets the whole job. Under it, every topic has the same slider: <b>Off, Light, Strict</b>. The words under a slider say what that stop means. The GC's proposal waits in violet until the office takes it.</p>
+      <div class="frame">
+        <div class="bar"><span class="job">J2391</span><span class="where">Papers before this job opens › Secrecy on this job</span></div>
+        <div class="page">
+          <div class="card">
+            <h3>From the upstream NDA</h3>
+            <div class="row">
+              <div class="lab">May subs be brought onto this job? <span class="chip q">Q1</span></div>
+              <div class="seg" id="seg-share"></div>
+            </div>
+            <div class="row">
+              <div class="lab">Whose paper? <span class="chip q">Q2</span></div>
+              <div class="seg" id="seg-whose"></div>
+              <p class="muted" id="whose-note"></p>
+            </div>
+            <div class="row">
+              <div class="lab">May Northgate Builders enforce against a sub directly? <span class="chip q">Q11</span></div>
+              <div class="seg" id="seg-enforce"></div>
+            </div>
+          </div>
+
+          <div id="builder" class="page" style="padding:0">
+            <div class="propose" id="proposal"></div>
+
+            <div class="card">
+              <h3>How strict is this job?</h3>
+              <div id="levels"></div>
+              <p class="muted" id="level-note"></p>
+            </div>
+
+            <div class="card" id="settings"></div>
+
+            <div class="card" id="card-other">
+              <div class="lab" style="font-weight:600;color:var(--text-strong);display:flex;gap:8px;flex-wrap:wrap;align-items:center">Other rules for this job <span class="chip q">Q5 · Q6 · Q12</span></div>
+              <div id="other-ask"></div>
+              <textarea id="other" maxlength="600" aria-label="Other rules for this job"></textarea>
+              <div class="warn">No attorney read these words. They print in a marked box. They cannot take away what the paper never stops. <span id="other-count"></span></div>
+            </div>
+
+            <div class="card" id="card-roster">
+              <div class="lab" style="font-weight:600;color:var(--text-strong);display:flex;gap:8px;flex-wrap:wrap;align-items:center">What the GC sees of who signed <span class="chip q">Q3</span></div>
+              <select id="roster" aria-label="What the GC sees of who signed">
+                <option value="count">Count only</option>
+                <option value="biz">Count and each sub business</option>
+                <option value="all">Every signer by name</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card foot">
+            <div id="hold"></div>
+            <button class="primary" id="confirm" type="button"></button>
+            <p class="muted" id="confirm-note"></p>
+            <div class="btns">
+              <button class="second" type="button" id="see-sample">See the sample</button>
+              <button class="second" type="button" id="copy-link">Copy the GC's link</button>
+            </div>
+            <p class="muted" id="copied" hidden>Copied. The link opens the GC's page for this job only.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="col" aria-labelledby="cap-gc">
+      <div class="cap" id="cap-gc">2 · The GC's page, once signing is under way</div>
+      <p class="say">A section of the page a GC already opens by private link. No login. It stays light, like every customer page.</p>
+      <div class="frame light">
+        <div class="gc-head">
+          <div class="co">Acme Plumbing</div>
+          <div class="muted">For Northgate Builders · Job J2391 · Secrecy</div>
+        </div>
+        <div class="page" id="gc"></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="sample-wrap" id="sample" aria-labelledby="cap-sample">
+    <div class="cap" id="cap-sample">3 · The sample the GC downloads</div>
+    <p class="say">The real paper for this job's settings, assembled by the same code as a signer's copy, with made-up names and a mark across it. Here the wording is drawn as grey bars.</p>
+    <div class="key">
+      <span><span class="tag fixed">fixed</span> the same in every paper</span>
+      <span><span class="tag picked">picked</span> a setting chose this wording</span>
+      <span><span class="tag filled">filled</span> a number or a name from a setting</span>
+    </div>
+    <div class="sheet-scroll"><div class="sheet light" id="sheet"></div></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  // One made-up job. Every topic is one slider with the same three stops: Off, Light, Strict.
+  // A stop is one approved wording, or the clause left out. `lock` marks a topic that is in every paper, so it has no Off.
+  var GC = 'Northgate Builders', CO = 'Acme Plumbing', JOB = 'J2391';
+  var LV = ['off', 'light', 'strict'], WORD = { off: 'Off', light: 'Light', strict: 'Strict' };
+  var TOPICS = [
+    { key: 'photos', q: 'Q6', label: 'Photos and video', says: {
+      off: 'This paper sets no photo rule. Your usual photo rules apply.',
+      light: 'Work photos only, into ' + CO + '\'s system, then deleted from the phone.',
+      strict: 'No photos or video at all.' } },
+    { key: 'devices', q: 'Q6', label: 'Phones and devices', rule: true, says: {
+      off: 'This paper sets no phone rule.',
+      light: 'Phones stay put away in marked areas.',
+      strict: 'Phones stay outside the work area.' } },
+    { key: 'access', q: 'Q6', label: 'Getting on site', rule: true, says: {
+      off: 'No site rules beyond the paper.',
+      light: 'Badge worn on site. Sign in and out each day.',
+      strict: 'Badge, sign in and out, a background check before the first day, and an escort in marked areas.' } },
+    { key: 'talk', q: 'Q5', label: 'Talking on site', rule: true, says: {
+      off: 'No rule about who you talk to on site.',
+      light: 'Talk with the owner\'s staff or tenants only about the work in front of you.',
+      strict: 'No talk about the job with the owner\'s staff or tenants. Questions go to the site lead.' } },
+    { key: 'term', q: 'Q8', label: 'How long secrecy lasts', lock: true, blank: { light: '5 years', strict: '10 years' }, says: {
+      light: '5 years after each person\'s last day on the job.',
+      strict: '10 years after each person\'s last day on the job.' } },
+    { key: 'files', q: 'Q9', label: 'Files at the end', lock: true, blank: { light: '10 days', strict: '5 days' }, says: {
+      light: 'Returned or destroyed within 10 days, confirmed in writing.',
+      strict: 'Returned or destroyed within 5 days, confirmed in writing.' } },
+    { key: 'report', q: 'Q10', label: 'Reporting a leak or a legal demand', lock: true, blank: { light: '24 hours', strict: 'the same day' }, says: {
+      light: 'Reported to ' + CO + ' within 24 hours.',
+      strict: 'Reported to ' + CO + ' the same day.' } }
+  ];
+  // The paper's sections. `topic` ties a section to a slider. `enforce` ties it to the yes-or-no question.
+  var SECS = [
+    { n: 1, t: 'Purpose', lines: 2 }, { n: 2, t: 'What is covered', lines: 3 }, { n: 3, t: 'What is not covered', lines: 2 },
+    { n: 4, t: 'The promise', lines: 3 }, { n: 5, t: 'Photos and video', lines: 2, topic: 'photos' },
+    { n: 6, t: 'A business and its people', lines: 2 }, { n: 7, t: 'Which rule governs', lines: 1 }, { n: 8, t: 'Disclosure the law requires', lines: 2 },
+    { n: 9, t: 'Rights the paper keeps', lines: 3 }, { n: 10, t: 'Trade skill', lines: 1 },
+    { n: 11, t: 'How long', lines: 1, topic: 'term' }, { n: 12, t: 'Files at the end', lines: 1, topic: 'files' },
+    { n: 13, t: 'Reporting a leak', lines: 1, topic: 'report' }, { n: 14, t: 'Remedies', lines: 2 },
+    { n: 15, t: 'The protected party', lines: 2, enforce: true }, { n: 16, t: 'Other papers', lines: 1 }, { n: 17, t: 'General', lines: 2 }
+  ];
+  // Who is on the job. A sub business counts as signed when its owner has signed.
+  var PEOPLE = [
+    { group: CO + ' office', sub: false, people: ['R. Ortiz', 'D. Vance', 'K. Lam'], signed: 3, date: '' },
+    { group: CO + ' crew', sub: false, people: ['T. Boone', 'S. Reyes', 'M. Hart', 'J. Cole'], signed: 2, date: '' },
+    { group: 'Cedar Fork Drain', sub: true, people: ['A. Pruitt (owner)', 'L. Dunn', 'E. Soto'], signed: 3, date: 'Nov 12' },
+    { group: 'Lone Mesa Excavation', sub: true, people: ['B. Winters (owner)', 'C. Yates'], signed: 1, date: 'Nov 14' },
+    { group: 'Pecos Insulation', sub: true, people: ['G. Marsh (owner)', 'N. Abbott'], signed: 0, date: '' }
+  ];
+  var TOTAL = PEOPLE.reduce(function (n, g) { return n + g.people.length; }, 0);
+  var SIGNED = PEOPLE.reduce(function (n, g) { return n + g.signed; }, 0);
+
+  var S = { off: false, share: 'yes', whose: 'ours', enforce: 'yes', t: {}, other: '', roster: 'biz' };
+  TOPICS.forEach(function (x) { S.t[x.key] = 'light'; });
+  // What the GC sent from their page. Each part leaves this list when the office takes it.
+  var ASK = { t: { photos: 'strict', access: 'strict', report: 'strict' }, other: 'No work in Building C unless the site lead is present.' };
+  var gcOpen = false, gcDraft = null, gcSent = 0, pv = 'paper';
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function rk(v) { return LV.indexOf(v); }
+  function topic(key) { return TOPICS.filter(function (x) { return x.key === key; })[0]; }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+  function count(v) { return TOPICS.filter(function (x) { return S.t[x.key] === v; }).length; }
+  function level() { return count('light') === TOPICS.length ? 'Light' : count('strict') === TOPICS.length ? 'Strict' : 'Custom'; }
+  function mixWords() {
+    return ['strict', 'light', 'off'].filter(function (v) { return count(v) > 0; }).map(function (v) { return count(v) + ' ' + WORD[v]; }).join(', ');
+  }
+  function levelChip() { return level() === 'Custom' ? 'Custom mix: ' + mixWords() : level(); }
+  function asksLeft() {
+    var n = Object.keys(ASK.t).filter(function (k) { return rk(ASK.t[k]) > rk(S.t[k]); }).length;
+    return n + (ASK.other ? 1 : 0);
+  }
+  function usePreset(v) { TOPICS.forEach(function (x) { S.t[x.key] = v; }); S.off = false; }
+  // Where the whole job sits on the track: Off 0, Light 50, Strict 100. A custom mix sits at its average, never on a stop.
+  function place() {
+    if (S.off) return 0;
+    if (level() === 'Light') return 50;
+    if (level() === 'Strict') return 100;
+    var avg = TOPICS.reduce(function (n, x) { return n + rk(S.t[x.key]); }, 0) / TOPICS.length;
+    var at = avg * 50;
+    if (Math.abs(at - 50) < 6) at = avg < 1 ? 44 : 56;
+    return Math.max(6, Math.min(94, Math.round(at)));
+  }
+  function tone(v) { return v === 'strict' ? 'var(--warn)' : v === 'off' ? 'var(--text-muted)' : 'var(--press)'; }
+
+  function seg(host, opts, value, onPick) {
+    host.textContent = '';
+    opts.forEach(function (o) {
+      var b = el('button', 'opt', o[1]); b.type = 'button';
+      b.setAttribute('aria-pressed', String(o[0] === value));
+      b.addEventListener('click', function () { onPick(o[0]); });
+      host.appendChild(b);
+    });
+  }
+
+  // One topic's slider: Off, Light, Strict. A stop left of `floor` cannot be picked, and `why` says so.
+  function slider(host, value, onPick, floor, name, why) {
+    host.textContent = '';
+    var at = rk(value), wrap = el('div', 'sl');
+    var r = el('input'); r.type = 'range'; r.min = 0; r.max = 2; r.step = 1; r.value = at;
+    r.style.accentColor = tone(value);
+    r.setAttribute('aria-label', name); r.setAttribute('aria-valuetext', WORD[value]);
+    r.addEventListener('change', function () { onPick(LV[Math.max(+r.value, floor)]); });
+    wrap.appendChild(r);
+    var stops = el('div', 'stops');
+    LV.forEach(function (v, i) {
+      var b = el('button', 'stop', WORD[v]); b.type = 'button';
+      if (i === at) b.setAttribute('aria-current', 'true');
+      if (i < floor) { b.disabled = true; b.title = why; }
+      b.addEventListener('click', function () { onPick(v); });
+      stops.appendChild(b);
+    });
+    wrap.appendChild(stops); host.appendChild(wrap);
+  }
+
+  // The whole-job slider. On a custom mix the handle leaves the named stops and carries its own tag.
+  function masterSlider(host) {
+    host.textContent = '';
+    var custom = !S.off && level() === 'Custom', at = place();
+    var wrap = el('div', 'sl master');
+    if (custom) { var bub = el('span', 'bubble', 'Custom mix'); bub.style.left = 'calc(' + at + '% + ' + (8 - at * 0.16) + 'px)'; wrap.appendChild(bub); }
+    var r = el('input'); r.type = 'range'; r.min = 0; r.max = 100; r.step = 1; r.value = at;
+    r.setAttribute('aria-label', 'How strict is this job?'); r.setAttribute('aria-valuetext', S.off ? 'Off' : level());
+    r.style.accentColor = custom ? 'var(--text-700)' : S.off ? 'var(--text-muted)' : level() === 'Strict' ? 'var(--warn)' : 'var(--press)';
+    function pick(v) { if (v === 'off') S.off = true; else usePreset(v); draw(); }
+    r.addEventListener('change', function () { var v = +r.value; pick(v < 25 ? 'off' : v < 75 ? 'light' : 'strict'); });
+    wrap.appendChild(r);
+    var stops = el('div', 'stops');
+    LV.forEach(function (v) {
+      var b = el('button', 'stop', WORD[v]); b.type = 'button';
+      if (!custom && (S.off ? v === 'off' : WORD[v] === level())) b.setAttribute('aria-current', 'true');
+      b.addEventListener('click', function () { pick(v); });
+      stops.appendChild(b);
+    });
+    wrap.appendChild(stops); host.appendChild(wrap);
+  }
+
+  function levelButtons(lv) {
+    lv.textContent = '';
+    ['light', 'strict'].forEach(function (v) {
+      var b = el('button', 'opt', WORD[v]); b.type = 'button';
+      b.setAttribute('aria-pressed', String(level() === WORD[v]));
+      b.addEventListener('click', function () { usePreset(v); draw(); });
+      lv.appendChild(b);
+    });
+    var c = el('button', 'opt', 'Custom mix'); c.type = 'button'; c.disabled = level() !== 'Custom'; c.setAttribute('aria-pressed', String(level() === 'Custom'));
+    lv.appendChild(c);
+  }
+
+  function bookRow(name, how, kind, inPaper) {
+    var r = el('div', 'brow'); var left = el('div');
+    left.appendChild(el('div', 'name', name));
+    var h = el('div', 'how'); h.appendChild(el('span', 'tag ' + kind, how)); left.appendChild(h);
+    r.appendChild(left);
+    r.appendChild(inPaper ? el('span', 'chip ok', 'In this paper') : el('span', 'chip wait', 'Left out'));
+    return r;
+  }
+
+  function sumList(host) {
+    var ul = el('ul', 'sum');
+    function row(k, v, chip) {
+      var li = el('li'); var d = el('div'); d.appendChild(el('div', 'k', k)); d.appendChild(el('div', 'v', v)); li.appendChild(d);
+      li.appendChild(chip); ul.appendChild(li);
+    }
+    row('Who is protected', GC + (S.enforce === 'yes' ? '. You can enforce the paper against a sub directly.' : '. Only ' + CO + ' enforces the paper.'), el('span', 'chip wait', 'From your NDA'));
+    TOPICS.forEach(function (x) {
+      var v = S.t[x.key];
+      row(x.label, x.says[v], el('span', 'chip ' + (v === 'strict' ? 'stricter' : v === 'light' ? 'level' : 'wait'), WORD[v]));
+    });
+    if (S.other.trim()) row('Other rules for this job', S.other.trim(), el('span', 'chip stricter', 'Typed for this job'));
+    host.appendChild(ul);
+  }
+
+  function drawBook() {
+    var rows = $('book-rows'); rows.textContent = '';
+    var fixed = SECS.filter(function (s) { return !s.topic && !s.enforce; }).length;
+    rows.appendChild(bookRow(fixed + ' clauses with no condition', 'fixed · in every paper', 'fixed', true));
+    SECS.forEach(function (s) {
+      if (s.enforce) [['yes', 'A'], ['no', 'B']].forEach(function (w) {
+        rows.appendChild(bookRow(s.n + w[1] + ' · ' + s.t, 'only when Direct enforcement is ' + (w[0] === 'yes' ? 'Yes' : 'No'), 'picked', S.enforce === w[0]));
+      });
+      if (!s.topic) return;
+      var x = topic(s.topic);
+      if (x.blank) rows.appendChild(bookRow(s.n + ' · ' + s.t, 'blank filled from ' + x.label + ': ' + x.blank[S.t[x.key]], 'filled', true));
+      else [['light', 'A'], ['strict', 'B']].forEach(function (w) {
+        rows.appendChild(bookRow(s.n + w[1] + ' · ' + s.t, 'only when ' + x.label + ' is ' + WORD[w[0]], 'picked', S.t[x.key] === w[0]));
+      });
+    });
+    TOPICS.filter(function (x) { return x.rule; }).forEach(function (x) {
+      rows.appendChild(bookRow('Rule · ' + x.label, 'two wordings, Light and Strict · left out when Off · now ' + WORD[S.t[x.key]], 'picked', S.t[x.key] !== 'off'));
+    });
+    rows.appendChild(bookRow('Other rules for this job', 'only when the office typed some · blank filled with those words', 'filled', !!S.other.trim()));
+
+    levelButtons($('pv-levels'));
+    var ps = $('pv-set'); ps.textContent = '';
+    TOPICS.forEach(function (x) {
+      var l = el('label', null, x.label); var sel = el('select'); sel.id = 'pv-' + x.key;
+      LV.forEach(function (v) { if (x.lock && v === 'off') return; var op = el('option', null, WORD[v]); op.value = v; sel.appendChild(op); });
+      sel.value = S.t[x.key];
+      sel.addEventListener('change', function () { S.t[x.key] = sel.value; draw(); });
+      l.appendChild(sel); ps.appendChild(l);
+    });
+
+    var tabs = $('pv-tabs'); tabs.textContent = '';
+    [['paper', 'Paper'], ['summary', 'Summary']].forEach(function (t) {
+      var b = el('button', 'opt', t[1]); b.type = 'button'; b.setAttribute('aria-pressed', String(pv === t[0]));
+      b.addEventListener('click', function () { pv = t[0]; draw(); }); tabs.appendChild(b);
+    });
+    var pr = el('button', 'second', 'Print the sample'); pr.type = 'button'; pr.style.marginLeft = 'auto';
+    pr.addEventListener('click', function () { $('sample').scrollIntoView({ behavior: 'smooth', block: 'start' }); }); tabs.appendChild(pr);
+
+    var body = $('pv-body'); body.textContent = '';
+    if (pv === 'paper') {
+      var sc = el('div', 'sheet-scroll'); var sh = el('div', 'sheet light'); sh.id = 'pv-sheet'; sh.style.padding = '18px 18px 14px'; sc.appendChild(sh); body.appendChild(sc);
+      drawSheet('pv-sheet', false);
+    } else {
+      var box = el('div', 'pv-sum light');
+      box.appendChild(el('span', 'chip level', levelChip())).style.justifySelf = 'start';
+      sumList(box);
+      box.appendChild(el('p', 'fine', 'The summary is made from the same settings as the paper, so the two cannot disagree. It is not the contract.'));
+      body.appendChild(box);
+    }
+  }
+
+  function drawOffice() {
+    seg($('seg-share'), [['yes', 'Yes'], ['consent', 'Only with the GC\'s written consent'], ['no', 'No']], S.share, function (v) { S.share = v; draw(); });
+    seg($('seg-whose'), [['ours', 'Ours, built from these settings'], ['theirs', 'Theirs, their PDF made a form']], S.whose, function (v) { S.whose = v; draw(); });
+    seg($('seg-enforce'), [['yes', 'Yes'], ['no', 'No']], S.enforce, function (v) { S.enforce = v; draw(); });
+    $('whose-note').textContent = S.whose === 'theirs'
+      ? 'The job requires their form. The settings below are set aside, and the GC\'s page says the subs sign the GC\'s own form.'
+      : 'The app assembles the paper from approved wordings, one per setting.';
+    $('builder').hidden = S.whose === 'theirs' || S.share === 'no';
+
+    var p = $('proposal'), left = asksLeft();
+    p.hidden = left === 0 || S.off; p.textContent = '';
+    ['settings', 'card-other', 'card-roster'].forEach(function (id) { $(id).hidden = S.off; });
+    if (left) {
+      p.appendChild(el('div', 'who', GC + ' proposed ' + plural(left, 'change', 'changes') + ' on Nov 17'));
+      p.appendChild(el('div', null, 'Each one is stricter than what you have. Nothing changes until you take it.'));
+    }
+
+    masterSlider($('levels'));
+    $('level-note').textContent = S.off ? 'Off: this job requires no secrecy paper.'
+      : level() === 'Custom' ? 'Custom mix: ' + mixWords() + '. Sliding back to Light or Strict resets every topic.'
+      : level() === 'Strict' ? 'Strict: every topic on its strict setting.' : 'Light: every topic on its light setting.';
+
+    var host = $('settings'); host.textContent = '';
+    TOPICS.forEach(function (x) {
+      var v = S.t[x.key], row = el('div', 'row');
+      var lab = el('div', 'lab', x.label + ' '); lab.appendChild(el('span', 'chip q', x.q));
+      if (x.lock) lab.appendChild(el('span', 'chip wait', 'In every paper'));
+      row.appendChild(lab);
+      var sg = el('div'); row.appendChild(sg);
+      slider(sg, v, function (nv) { S.t[x.key] = nv; draw(); }, x.lock ? 1 : 0, x.label, 'This topic is in every paper');
+      var m = el('p', 'mean'); m.appendChild(el('b', null, WORD[v] + '. ')); m.appendChild(document.createTextNode(x.says[v])); row.appendChild(m);
+      if (ASK.t[x.key] && rk(ASK.t[x.key]) > rk(v)) {
+        var a = el('div', 'asks', 'GC proposes: ' + WORD[ASK.t[x.key]] + ' ');
+        var t = el('button', 'take', 'Take'); t.type = 'button';
+        t.addEventListener('click', function () { S.t[x.key] = ASK.t[x.key]; draw(); });
+        a.appendChild(t); row.appendChild(a);
+      }
+      host.appendChild(row);
+    });
+
+    var oa = $('other-ask'); oa.textContent = '';
+    if (ASK.other) {
+      var box = el('div', 'propose');
+      box.appendChild(el('div', 'who', GC + ' proposes these words'));
+      box.appendChild(el('div', 'quote', ASK.other));
+      var use = el('button', 'take', 'Use these words'); use.type = 'button'; use.style.justifySelf = 'start';
+      use.addEventListener('click', function () { S.other = ASK.other; $('other').value = S.other; ASK.other = ''; draw(); });
+      box.appendChild(use); oa.appendChild(box);
+    }
+    $('other-count').textContent = S.other.length + ' of 600 characters.';
+    $('roster').value = S.roster;
+
+    var hold = $('hold'); hold.textContent = '';
+    var btn = $('confirm'), note = $('confirm-note');
+    btn.disabled = false; btn.style.opacity = '';
+    if (S.share === 'no') {
+      hold.appendChild(el('div', 'warn', 'The upstream NDA does not allow subs on this job. No paper fixes that. Ask ' + GC + ' for written consent first.'));
+      btn.textContent = 'Nothing to require'; btn.disabled = true; btn.style.opacity = '.5';
+      note.textContent = '';
+    } else if (S.off && S.whose !== 'theirs') {
+      btn.textContent = 'Nothing to require'; btn.disabled = true; btn.style.opacity = '.5';
+      note.textContent = 'Secrecy is off on ' + JOB + '. Nobody is asked to sign.';
+    } else if (S.whose === 'theirs') {
+      btn.textContent = 'Require their form on ' + JOB;
+      note.textContent = plural(TOTAL, 'person', 'people') + ' must sign the GC\'s own form before ' + JOB + ' opens.';
+    } else {
+      if (S.share === 'consent') hold.appendChild(el('div', 'warn', 'Held until the GC\'s written consent is filed on this job.'));
+      btn.textContent = 'Confirm and require this paper';
+      if (S.share === 'consent') { btn.disabled = true; btn.style.opacity = '.5'; }
+      note.textContent = plural(TOTAL, 'person', 'people') + ' must sign before ' + JOB + ' opens: your office, your crew and ' + plural(PEOPLE.filter(function (g) { return g.sub; }).length, 'sub business', 'sub businesses') + '.';
+    }
+  }
+
+  function drawGc() {
+    var g = $('gc'); g.textContent = '';
+    if (S.share === 'no') { g.appendChild(el('div', 'card', 'No subs work on this job for ' + CO + '.')); return; }
+    if (S.off && S.whose !== 'theirs') { g.appendChild(el('div', 'card', CO + ' requires no secrecy paper on this job.')); return; }
+    if (S.whose === 'theirs') {
+      var t = el('div', 'card'); t.appendChild(el('h3', null, 'Subs sign your own form'));
+      t.appendChild(el('p', null, 'Every person ' + CO + ' brings onto this job signs the form you gave us, before they see the job.'));
+      g.appendChild(t); g.appendChild(signedCard()); return;
+    }
+    var c = el('div', 'card');
+    var head = el('div', null); head.style.display = 'flex'; head.style.flexWrap = 'wrap'; head.style.gap = '6px 10px'; head.style.alignItems = 'center';
+    head.appendChild(el('h3', null, 'How we bind everyone we bring onto this job'));
+    head.appendChild(el('span', 'chip level', levelChip()));
+    c.appendChild(head);
+    sumList(c);
+    c.appendChild(el('p', 'fine', 'In every paper: everything about the job is secret, including that it exists. No publicity. A sub\'s business answers for its people. The paper never stops disclosure the law requires, lien and bond notices, or permits and inspections.'));
+    g.appendChild(c);
+
+    g.appendChild(signedCard());
+
+    var a = el('div', 'card');
+    var bt = el('div', 'btns');
+    var dl = el('button', 'primary', 'Download a sample (PDF)'); dl.type = 'button'; dl.addEventListener('click', function () { $('sample').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    var pr = el('button', 'second', gcOpen ? 'Close' : 'Propose a stricter setting'); pr.type = 'button';
+    pr.addEventListener('click', function () { gcOpen = !gcOpen; gcDraft = null; if (gcOpen) { gcDraft = {}; TOPICS.forEach(function (x) { gcDraft[x.key] = S.t[x.key]; }); } draw(); });
+    bt.appendChild(dl); bt.appendChild(pr); a.appendChild(bt);
+    if (gcSent) a.appendChild(el('p', 'chip ok', 'Sent ' + plural(gcSent, 'change', 'changes') + ' to ' + CO)).style.justifySelf = 'start';
+    if (gcOpen) {
+      var gp = el('div', 'gcp');
+      TOPICS.forEach(function (x) {
+        var line = el('div', 'line'); line.appendChild(el('span', null, x.label));
+        var sg = el('div'); line.appendChild(sg);
+        slider(sg, gcDraft[x.key], function (v) { gcDraft[x.key] = v; draw(); }, rk(S.t[x.key]), x.label, 'Only ' + CO + '\'s office can loosen this');
+        line.appendChild(el('p', 'fine', x.says[gcDraft[x.key]]));
+        gp.appendChild(line);
+      });
+      var changed = TOPICS.filter(function (x) { return gcDraft[x.key] !== S.t[x.key]; });
+      var n = changed.length;
+      var send = el('button', 'primary', n ? 'Send ' + plural(n, 'change', 'changes') + ' to ' + CO : 'Slide a topic to the right to send'); send.type = 'button';
+      send.disabled = !n; if (!n) send.style.opacity = '.5';
+      send.addEventListener('click', function () { changed.forEach(function (x) { ASK.t[x.key] = gcDraft[x.key]; }); gcSent = n; gcOpen = false; gcDraft = null; draw(); });
+      gp.appendChild(send);
+      gp.appendChild(el('p', 'fine', 'A greyed stop is looser than today. Only ' + CO + '\'s office can loosen. ' + CO + ' confirms before anything changes. A change now makes a new revision, and ' + plural(SIGNED, 'person signs', 'people sign') + ' again.'));
+      a.appendChild(gp);
+    }
+    a.appendChild(el('p', 'fine', 'This is ' + CO + '\'s paper for the people it brings onto your job. It does not change the agreement between ' + CO + ' and ' + GC + '. Have your own attorney read the sample.'));
+    g.appendChild(a);
+  }
+
+  function signedCard() {
+    var c = el('div', 'card signed');
+    c.appendChild(el('h3', null, SIGNED + ' of ' + TOTAL + ' people have signed'));
+    var m = el('div', 'meter'); var i = el('i'); i.style.width = Math.round(SIGNED / TOTAL * 100) + '%'; m.appendChild(i); c.appendChild(m);
+    c.appendChild(el('p', 'fine', 'Nobody opens this job in ' + CO + '\'s system until they sign.'));
+    if (S.roster === 'count') return c;
+    PEOPLE.filter(function (g) { return g.sub; }).forEach(function (gp) {
+      var b = el('div', 'biz'); b.appendChild(el('b', null, gp.group));
+      b.appendChild(gp.date ? el('span', 'chip ok', 'Signed ' + gp.date) : el('span', 'chip wait', 'Not yet'));
+      b.appendChild(el('div', 'names', S.roster === 'all' ? gp.people.join(' · ') + ' · ' + gp.signed + ' of ' + gp.people.length + ' signed' : gp.signed + ' of ' + plural(gp.people.length, 'person', 'people') + ' signed'));
+      c.appendChild(b);
+    });
+    return c;
+  }
+
+  function drawSheet(hostId, sample) {
+    var sh = $(hostId); sh.textContent = '';
+    if (sample && (S.whose === 'theirs' || S.share === 'no' || S.off)) { sh.appendChild(el('p', null, S.share === 'no' ? 'No paper: subs are not allowed on this job.' : S.whose === 'theirs' ? 'No sample from the builder: this job uses the GC\'s own form.' : 'No paper: secrecy is off on this job.')); return; }
+    if (sample) sh.appendChild(el('div', 'mark', 'SAMPLE'));
+    sh.appendChild(el('h3', null, 'JOB SECRECY AGREEMENT'));
+    var dl = el('dl', 'block'); dl.style.margin = '0';
+    [['The Company', CO], ['The job', sample ? 'Job J0000 (sample)' : 'Job ' + JOB], ['Our part on this job', 'Subcontractor to a general contractor'], ['The Protected Party', GC],
+     ['May it enforce directly?', S.enforce === 'yes' ? 'Yes' : 'No'], ['Secrecy lasts', topic('term').blank[S.t.term] + ' after your last day'],
+     ['Signer', sample ? 'Jordan Sample, Sample Sub LLC' : 'Each person, in their own name']
+    ].forEach(function (r) { var d = el('div'); d.appendChild(el('dt', null, r[0])); d.appendChild(el('dd', null, r[1])); dl.appendChild(d); });
+    sh.appendChild(dl);
+
+    var wrap = el('div', 'secs');
+    SECS.forEach(function (s, idx) {
+      var kind = 'fixed', how = '', out = false;
+      if (s.enforce) { kind = 'picked'; how = S.enforce === 'yes' ? 'wording A: may enforce directly' : 'wording B: only the Company enforces'; }
+      if (s.topic) {
+        var x = topic(s.topic), v = S.t[x.key];
+        if (x.blank) { kind = 'filled'; how = x.blank[v]; }
+        else if (v === 'off') { out = true; }
+        else { kind = 'picked'; how = 'wording ' + (v === 'light' ? 'A' : 'B') + ': ' + WORD[v]; }
+      }
+      var sec = el('div', 'sec'); var t = el('div', 't', s.n + '. ' + s.t + ' ');
+      if (out) { t.style.opacity = '.55'; t.appendChild(el('span', 'tag fixed', 'left out · Off')); sec.appendChild(t); wrap.appendChild(sec); return; }
+      t.appendChild(el('span', 'tag ' + kind, kind + (how ? ' · ' + how : ''))); sec.appendChild(t);
+      var ln = el('div', 'lines'); for (var i = 0; i < s.lines; i++) { var b = el('i'); b.style.width = (i === s.lines - 1 ? 46 + (idx * 7) % 40 : 100) + '%'; ln.appendChild(b); }
+      sec.appendChild(ln); wrap.appendChild(sec);
+    });
+    sh.appendChild(wrap);
+    var rules = TOPICS.filter(function (x) { return x.rule && S.t[x.key] !== 'off'; });
+    if (rules.length || S.other.trim()) {
+      var rb = el('div', 'rulebox'); rb.appendChild(el('b', null, 'Rules for this job'));
+      rules.forEach(function (x) { var d = el('div', null, x.label + ' '); d.appendChild(el('span', 'tag picked', 'picked · ' + WORD[S.t[x.key]])); rb.appendChild(d); });
+      if (S.other.trim()) { var o = el('div', null, S.other.trim() + ' '); o.appendChild(el('span', 'tag filled', 'typed by the office')); rb.appendChild(o); }
+      sh.appendChild(rb);
+    }
+    sh.appendChild(el('div', 'stamp', (sample ? 'SAMPLE, not for signature' : 'As it would go today') + ' · ' + levelChip() + ' · template revision 4 · each signed copy keeps these settings and the version of every clause'));
+  }
+
+  function draw() { drawBook(); drawOffice(); drawGc(); drawSheet('sheet', true); }
+
+  $('other').addEventListener('input', function () { S.other = $('other').value; draw(); });
+  $('roster').addEventListener('change', function () { S.roster = $('roster').value; drawGc(); });
+  $('see-sample').addEventListener('click', function () { $('sample').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  $('copy-link').addEventListener('click', function () { $('copied').hidden = false; });
+  $('confirm').addEventListener('click', function () {
+    $('confirm-note').textContent = 'Required. ' + plural(TOTAL, 'person', 'people') + ' asked to sign. You are first.';
+  });
+  draw();
+})();
+</script>
+</body>
+</html>

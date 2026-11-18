@@ -27,7 +27,11 @@ import { sendDevNote } from '../../lib/tellTheDev/sendNote'
 import { troubleMemory } from '../../lib/tellTheDev/trouble'
 import type { NoteKind } from '../../lib/tellTheDev/starts'
 import { TellTheDevBox } from './TellTheDevBox'
-import { TellTheDevButton } from './TellTheDevButton'
+import { AnswerDot, TellTheDevButton } from './TellTheDevButton'
+import { myNoteLine, readNotesKnown, readNotesSeenAt, unreadAnswerCount, writeNotesKnown, writeNotesSeenAt, type MyNote } from '../../lib/tellTheDev/myNotes'
+import { loadMyNotes } from '../../lib/tellTheDev/myNotesIo'
+import { setUnreadDevAnswers } from '../../lib/tellTheDev/answerDot'
+import { useUnreadDevAnswers } from '../../hooks/useUnreadDevAnswers'
 
 /** Above every window, so a note can be written about the one that is open; below toasts and the update prompt. */
 const WRENCH_Z = 8990
@@ -56,6 +60,10 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
   const [error, setError] = useState<string | null>(null)
   const [appVersion, setAppVersion] = useState<string | null>(null)
   const [openedOnce, setOpenedOnce] = useState<boolean>(() => readWrenchOpened(localStorageOrNull(), userId))
+  // The answer coming back: this person's last notes, and when the box last listed them.
+  const [myNotes, setMyNotes] = useState<MyNote[]>([])
+  const [notesSeenAt, setNotesSeenAt] = useState<string | null>(() => readNotesSeenAt(localStorageOrNull(), userId))
+  const unreadAnswers = useUnreadDevAnswers()
 
   const lastUserId = useRef(userId)
   useEffect(() => {
@@ -66,7 +74,39 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
     troubleMemory.clear()
     setSnapshot(null)
     setTyped('')
+    setMyNotes([])
+    setNotesSeenAt(readNotesSeenAt(localStorageOrNull(), userId))
+    setUnreadDevAnswers(0)
   }, [userId])
+
+  /** Read this person's notes. `listed` is true when the box is showing them, which is when an answer counts as read. */
+  const readMyNotes = useCallback(
+    async (listed: boolean) => {
+      if (!userId) return
+      try {
+        const notes = await loadMyNotes(userId)
+        setMyNotes(notes)
+        if (notes.length > 0) writeNotesKnown(localStorageOrNull(), userId)
+        if (listed) {
+          // The lines keep the old mark for this showing, so a new answer stands out once; the dot goes now.
+          writeNotesSeenAt(localStorageOrNull(), userId, new Date().toISOString())
+          setUnreadDevAnswers(0)
+        } else {
+          setUnreadDevAnswers(unreadAnswerCount(notes, readNotesSeenAt(localStorageOrNull(), userId)))
+        }
+      } catch {
+        // The notes are a courtesy under the box. A read that fails leaves the box as it was.
+      }
+    },
+    [userId],
+  )
+
+  // A device that has sent a note, or listed some, looks for an answer when the shell comes up. Any other asks nothing.
+  useEffect(() => {
+    if (!fixMode || !userId) return
+    if (!readNotesKnown(localStorageOrNull(), userId)) return
+    void readMyNotes(false)
+  }, [fixMode, userId, readMyNotes])
 
   // The press reads these, so they are kept where a listener can see the latest.
   const live = useRef({ location, role, readOnly, isTwin, isMobile, modes, appVersion })
@@ -97,6 +137,8 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
         now,
       )
       setSnapshot({ pageKey, pagePath: notePagePath(at.location.pathname, at.location.search), context })
+      setNotesSeenAt(readNotesSeenAt(localStorageOrNull(), userId))
+      void readMyNotes(true)
       if (request.kind) setKind(request.kind)
       setSent(false)
       setError(null)
@@ -106,7 +148,7 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
         setOpenedOnce(true)
       }
     },
-    [userId],
+    [userId, readMyNotes],
   )
 
   useEffect(() => {
@@ -150,12 +192,16 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
       recordNavClick(userId, role ?? null, TELL_THE_DEV_SENT_CONTROL, `/${kind}`)
       setTyped('')
       setSent(true)
+      writeNotesKnown(localStorageOrNull(), userId)
+      void readMyNotes(true)
     } catch (err) {
       setError(formatErrorMessage(err, 'Could not send the note.'))
     } finally {
       setSending(false)
     }
-  }, [userId, snapshot, context, sending, kind, typed, role])
+  }, [userId, snapshot, context, sending, kind, typed, role, readMyNotes])
+
+  const noteLines = useMemo(() => myNotes.map((n) => myNoteLine(n, notesSeenAt)), [myNotes, notesSeenAt])
 
   if (!fixMode || !userId) return null
 
@@ -174,6 +220,7 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
       }}
       error={error}
       onSend={() => void send()}
+      notes={noteLines}
     />
   )
 
@@ -186,8 +233,8 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
         <button
           {...mark}
           type="button"
-          title="Tell the dev about this page"
-          aria-label="Tell the dev"
+          title={unreadAnswers > 0 ? 'The dev answered your note' : 'Tell the dev about this page'}
+          aria-label={unreadAnswers > 0 ? 'Tell the dev. An answer is waiting.' : 'Tell the dev'}
           aria-expanded={boxOpen}
           onClick={() => (boxOpen ? close() : requestTellTheDev({ door: 'wrench' }))}
           style={{
@@ -214,6 +261,7 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
         >
           <Wrench size={20} strokeWidth={2.25} aria-hidden />
           {!openedOnce && <span>Tell the dev</span>}
+          {unreadAnswers > 0 ? <AnswerDot ring="var(--text-strong)" /> : null}
         </button>
       )}
       {boxOpen && !isMobile && (
@@ -269,5 +317,5 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
 
 /** The phone's door: a wrench in the header, beside Search. It asks; the root draws the sheet. */
 export function TellTheDevHeaderButton({ door = 'header' }: { door?: NoteDoor }) {
-  return <TellTheDevButton door={door} />
+  return <TellTheDevButton door={door} withDot />
 }

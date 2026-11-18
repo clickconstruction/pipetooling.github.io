@@ -244,7 +244,8 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and twenty-one verbs, fifty-one of them POSTing one of twenty-one named dev-gated RPCs as the dev (one hundred and twenty-one since v2.7687, whose notice numbers are the Lien desk's own update of `sends` on the notice's `job_lien_filings` row under the dev's RLS, no new role and no new policy;
+The one write path (v2.3722) is one hundred and twenty-three verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-three since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
+one hundred and twenty-one since v2.7687, whose notice numbers are the Lien desk's own update of `sends` on the notice's `job_lien_filings` row under the dev's RLS, no new role and no new policy;
 one hundred and nineteen since v2.7592, whose photo of the spot is the Edit window's own two writes, the picture into the private `task-spot-photos` bucket under `can_write_task_spot_photo` and the task's `spot_photo_path` under the dev's RLS, the file staged first in the dev's own folder of `dev-seat-staging`, no new role and no new policy;
 one hundred and seventeen since v2.7589, whose task place is the Edit window's own update of the place columns on `checklist_items`, or on `checklist_tech_tree_group_tasks` for a task from a roadmap, under the dev's RLS, with the address read from `address_geocodes` and never written, no new role and no new policy;
 one hundred and fifteen since v2.7584, whose given task is the New task window's own rows on `checklist_items`, its assignee tables, `checklist_instances` and `task_criteria` under the dev's RLS, no new role and no new policy;
@@ -871,6 +872,7 @@ Pay stubs are never filed here.
 
 **Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office (`canSeeAgreements`: dev · master · assistant · controller).
 The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
+Since v2.7625 GC mode's papers are in it under the same rule: `gc_owner_contract_sends` answers a dev, `gc_sows` a dev, the owner and the controller, and a trade company's agreement the office, so under the **GC projects** chip an assistant sees a company's agreement alone.
 No policy changed for it, and nobody reads a paper through it that they could not read before.
 `estimator`, `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
 
@@ -909,7 +911,7 @@ every other role gets an empty result.
 The Dashboard's `lien-notice-approve` card shows to master / dev;
 `lien-notice-draft` to the office set.
 The Board at the top of To do (v2.7332) is drawn for everyone who opens the desk;
-its leader view (v2.7334: **Only my bins** and the one counted press that approves the affidavits waiting on him) shows to master / dev in the client (`isLienLeader`), on for a master and off for a dev, holds only the jobs the viewer leads (`lienViewerLeadsJob`) and approves row by row through `approveLienDeskItem` under the same guard, with no new RPC;
+its leader's press (v2.7334: the one counted press that approves the affidavits waiting on him, on his Awaiting Master approval bin's title line since v2.7708, when his own two bins and their switch were retired) shows to master / dev in the client (`isLienLeader`), counts only the jobs the viewer leads (`lienViewerLeadsJob`) and approves row by row through `approveLienDeskItem` under the same guard, with no new RPC;
 a notice is left out of that press, since only his signature approves it.
 The Dashboard's Needs you card draws the Board's four numbers for the office set (`isLienOffice`).
 Since v2.4160 the Pipeline's **property kind badge** (C / R / ? at the end of every address) opens the same Residential | Commercial switch for dev · master · assistant-like (`PropertyKindBadge`, saving `customer_addresses.property_kind`);
@@ -1177,6 +1179,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   It writes the caller's own `trip_people` row, the server's own today and the trip's job link, and no other person's day.
   **`trip_phone_state(job)`** tells that same caller the job's site, their own open trip there, and crewmates' open trips by first name and first day, since a crew member reads no trip row they are not on.
   A training account, a digital twin and an archived caller are refused by the functions themselves, because a definer stands behind the tables' fences.
+- **The trip's number** (v2.7703, `docs/migrations/20261118040000_trip_numbers.md`): `trips.trip_number` is handed out by the `trips_take_number` trigger, a SECURITY DEFINER, and held through every update, so no role sets or changes it.
+  **`trip_number_counters`** has row security on, no policy and no grant: nobody reads or writes it but that trigger.
 
 ### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
 

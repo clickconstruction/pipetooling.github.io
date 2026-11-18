@@ -1,6 +1,7 @@
--- Documents → Agreements' one list (migration *_agreements_on_file, punch list #376): the view answers a job's contract,
--- a warranty, a GC's own paper, a signed paper over several jobs, a person's agreement and a sub work order as one shape,
--- under each table's own row security. The scenario, inside one transaction that rolls back: the office reads every row
+-- Documents → Agreements' one list (migrations *_agreements_on_file and *_agreements_on_file_gc, punch list #376): the
+-- view answers a job's contract, a warranty, a GC's own paper, a signed paper over several jobs, a person's agreement,
+-- a sub work order and GC mode's three (our contract with the owner, a trade's statement of work, a trade company's
+-- agreement) as one shape, under each table's own row security. The scenario, inside one transaction that rolls back: the office reads every row
 -- in the order the page draws them, with the right state, name, party, job and day; a paper filed over three jobs is one
 -- line that a covered job's number still finds; drafts, unsent papers and papers that are not agreements are absent; the
 -- facts carry each kind's own columns and no amount; and each role reads only what its tables allow, so an estimator
@@ -88,6 +89,31 @@ INSERT INTO public.step_commitments (id, job_id, person_id, display_name, amount
   ('00000000-0000-0000-0000-0000003760f5', '00000000-0000-0000-0000-0000000376b4', '00000000-0000-0000-0000-000000037604', 'Tall Pine Excavating', NULL, 'draft', NULL, NULL, NULL, NULL, NULL, '2026-10-09T15:00:00Z'),
   ('00000000-0000-0000-0000-0000003760f6', '00000000-0000-0000-0000-0000000376b5', '00000000-0000-0000-0000-000000037604', 'Tall Pine Excavating', 100, 'cancelled', 'WO-2379-01', '2026-08-20T15:00:00Z', NULL, NULL, NULL, '2026-09-01T15:00:00Z');
 
+-- GC mode. Westfield Clinic is a GC project: our contract went to its owner twice (the second send, a new price, is the
+-- one they signed), Electrical's statement of work is out to Brightline Electric, Plumbing's is still a draft, and
+-- Brightline signed our master agreement.
+INSERT INTO public.customers (id, name, master_user_id) VALUES
+  ('00000000-0000-0000-0000-0000000376c4', 'Westfield Clinic Partners', '00000000-0000-0000-0000-0000000376d2');
+INSERT INTO public.projects (id, name, customer_id) VALUES ('00000000-0000-0000-0000-00000376a0a0', 'Westfield Clinic', '00000000-0000-0000-0000-0000000376c4');
+INSERT INTO public.gc_projects (project_id, stage) VALUES ('00000000-0000-0000-0000-00000376a0a0', 'building');
+INSERT INTO public.gc_trade_packages (id, project_id, trade, position, budget, ours) VALUES
+  ('00000000-0000-0000-0000-00000376a0b1', '00000000-0000-0000-0000-00000376a0a0', 'Electrical', 0, 100, false),
+  ('00000000-0000-0000-0000-00000376a0b2', '00000000-0000-0000-0000-00000376a0a0', 'Plumbing', 1, 100, false);
+INSERT INTO public.gc_companies (id, name, trades) VALUES
+  ('00000000-0000-0000-0000-00000376a0c1', 'Brightline Electric', '{Electrical}'),
+  ('00000000-0000-0000-0000-00000376a0c2', 'Draft Only Plumbing', '{Plumbing}');
+INSERT INTO public.gc_invites (id, package_id, company_id, status) VALUES
+  ('00000000-0000-0000-0000-00000376a0d1', '00000000-0000-0000-0000-00000376a0b1', '00000000-0000-0000-0000-00000376a0c1', 'bid'),
+  ('00000000-0000-0000-0000-00000376a0d2', '00000000-0000-0000-0000-00000376a0b2', '00000000-0000-0000-0000-00000376a0c2', 'bid');
+INSERT INTO public.gc_sows (id, package_id, invite_id, company_id, status, price, sent_on, signed_on) VALUES
+  ('00000000-0000-0000-0000-00000376a0e1', '00000000-0000-0000-0000-00000376a0b1', '00000000-0000-0000-0000-00000376a0d1', '00000000-0000-0000-0000-00000376a0c1', 'sent', 100, DATE '2026-09-24', NULL),
+  ('00000000-0000-0000-0000-00000376a0e2', '00000000-0000-0000-0000-00000376a0b2', '00000000-0000-0000-0000-00000376a0d2', '00000000-0000-0000-0000-00000376a0c2', 'draft', 100, NULL, NULL);
+INSERT INTO public.person_contract_documents (id, person_name, document_name, contract_lineage_id, lineage_version, status, doc_type, signed_at) VALUES
+  ('00000000-0000-0000-0000-00000376a0f1', 'gc-company:00000000-0000-0000-0000-00000376a0c1', 'Master Services Agreement', gen_random_uuid(), 1, 'signed', 'agreement', '2026-09-18');
+INSERT INTO public.gc_owner_contract_sends (id, project_id, customer_id, first, sent_on, sign_by, worth, file_path, file_name, file_sha256, signed_on, signer_printed_name, signer_consented_at, created_at) VALUES
+  ('00000000-0000-0000-0000-00000376a071', '00000000-0000-0000-0000-00000376a0a0', '00000000-0000-0000-0000-0000000376c4', true, DATE '2026-09-20', DATE '2026-09-27', '{"gc": 100}'::jsonb, '376/contract-1.pdf', 'contract-1.pdf', repeat('ab', 32), NULL, NULL, NULL, '2026-09-20T15:00:00Z'),
+  ('00000000-0000-0000-0000-00000376a072', '00000000-0000-0000-0000-00000376a0a0', '00000000-0000-0000-0000-0000000376c4', false, DATE '2026-09-25', DATE '2026-10-02', '{"gc": 200}'::jsonb, '376/contract-2.pdf', 'contract-2.pdf', repeat('ab', 32), DATE '2026-09-30', 'W. Clinic', '2026-09-30T15:00:00Z', '2026-09-25T15:00:00Z');
+
 CREATE SCHEMA aof;
 CREATE FUNCTION aof.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
@@ -104,6 +130,13 @@ END $$;
 CREATE FUNCTION aof.list() RETURNS text LANGUAGE sql AS $$
   SELECT coalesce(string_agg(concat_ws('|', a.kind, a.state, nullif(a.paper_name, ''), a.with_name, coalesce(a.job_hcp_number, '-'), a.more_jobs::text, coalesce(a.person_kind, '-'), a.at_day::text), E'\n' ORDER BY a.at DESC, a.id DESC), '')
   FROM public.agreements_on_file a
+  WHERE a.kind NOT IN ('owner_contract', 'sow', 'company_agreement')
+$$;
+-- GC mode's lines, newest first: kind, state, name, party, project, day.
+CREATE FUNCTION aof.gc_list() RETURNS text LANGUAGE sql AS $$
+  SELECT coalesce(string_agg(concat_ws('|', a.kind, a.state, coalesce(nullif(a.paper_name, ''), '-'), a.with_name, coalesce(a.job_name, '-'), a.at_day::text), E'\n' ORDER BY a.at DESC, a.id DESC), '')
+  FROM public.agreements_on_file a
+  WHERE a.kind IN ('owner_contract', 'sow', 'company_agreement')
 $$;
 CREATE FUNCTION aof.kinds() RETURNS text LANGUAGE sql AS $$
   SELECT coalesce(string_agg(x.kind || ' ' || x.n::text, ', ' ORDER BY x.kind), 'none')
@@ -118,7 +151,7 @@ SELECT aof.same('the view is security_invoker', (SELECT reloptions::text FROM pg
 -- 2 · The office reads every agreement, newest first.
 SELECT aof.as_user('00000000-0000-0000-0000-0000000376d3');
 SET LOCAL ROLE authenticated;
-SELECT aof.same('the assistant reads the whole list', aof.list(), concat_ws(E'\n',
+SELECT aof.same('the assistant reads the whole list of the first six kinds', aof.list(), concat_ws(E'\n',
   'job_contract|waiting|Residential plumbing contract|Harlan Pierce|2418|0|-|2026-11-16',
   'work_order|signed|WO-2391-01|Ortega Mechanical|2391|0|-|2026-11-14',
   'job_warranty|signed|One-year workmanship warranty|Harlan Pierce|2418|0|-|2026-11-13',
@@ -158,6 +191,8 @@ SELECT aof.same('an opened paper carries when', (SELECT (facts ? 'signer_last_vi
 SELECT aof.same('a work order carries its offer', (SELECT concat_ws('|', facts->>'status', (facts ? 'offer_expires_at')::text, (facts ? 'offered_at')::text) FROM public.agreements_on_file WHERE source_id = '00000000-0000-0000-0000-0000003760f3'), 'offered|true|true');
 SELECT aof.same('no row carries an amount', (SELECT bool_or(facts ? 'amount' OR facts ? 'revenue' OR facts ? 'price')::text FROM public.agreements_on_file), 'false');
 
+SELECT aof.same('the assistant reads a trade company''s agreement and none of GC mode''s money papers', aof.kinds(), 'company_agreement 1, job_contract 3, job_warranty 1, partner_agreement 1, person_agreement 3, their_paper 1, work_order 5');
+
 -- 6 · The chips ask by state: an offer that ran out is ended, one with days left waits.
 SELECT aof.same('three wait on a signature', (SELECT string_agg(source_id::text, ',' ORDER BY at DESC) FROM public.agreements_on_file WHERE state = 'waiting'),
   '00000000-0000-0000-0000-0000000376a1,00000000-0000-0000-0000-0000003760e1,00000000-0000-0000-0000-0000003760f2');
@@ -166,15 +201,27 @@ RESET ROLE;
 -- 7 · Each role reads what its tables allow.
 SELECT aof.as_user('00000000-0000-0000-0000-0000000376d1');
 SET LOCAL ROLE authenticated;
-SELECT aof.same('a dev reads every kind', aof.kinds(), 'job_contract 3, job_warranty 1, partner_agreement 1, person_agreement 3, their_paper 1, work_order 5');
+SELECT aof.same('a dev reads every kind', aof.kinds(), 'company_agreement 1, job_contract 3, job_warranty 1, owner_contract 1, partner_agreement 1, person_agreement 3, sow 1, their_paper 1, work_order 5');
+-- GC mode's three. The owner contract is one line, its newest send; a draft statement of work is no line; a company's
+-- paper is named by the company, never by the name it is filed under.
+SELECT aof.same('a dev reads GC mode''s three lines', aof.gc_list(), concat_ws(E'\n',
+  'owner_contract|signed|-|Westfield Clinic Partners|Westfield Clinic|2026-09-30',
+  'sow|waiting|Statement of work · Electrical|Brightline Electric|Westfield Clinic|2026-09-24',
+  'company_agreement|signed|Master Services Agreement|Brightline Electric|-|2026-09-18'));
+SELECT aof.same('the owner contract''s line is its newest send', (SELECT string_agg(source_id::text, ',') FROM public.agreements_on_file WHERE kind = 'owner_contract'), '00000000-0000-0000-0000-00000376a072');
+SELECT aof.same('a draft statement of work is absent', (SELECT count(*)::text FROM public.agreements_on_file WHERE source_id = '00000000-0000-0000-0000-00000376a0e2'), '0');
+SELECT aof.same('the find box reaches a GC project by its name', (SELECT string_agg(kind, ',' ORDER BY kind) FROM public.agreements_on_file WHERE find_text ILIKE '%westfield%'), 'owner_contract,sow');
+SELECT aof.same('the find box reaches a trade company', (SELECT string_agg(kind, ',' ORDER BY kind) FROM public.agreements_on_file WHERE find_text ILIKE '%brightline%'), 'company_agreement,sow');
+SELECT aof.same('the name a company''s paper is filed under is never shown or searched', (SELECT bool_or(find_text LIKE '%gc-company%' OR with_name LIKE 'gc-company%')::text FROM public.agreements_on_file), 'false');
+SELECT aof.same('GC mode''s facts carry dates and no price', (SELECT string_agg(kind || ' ' || (SELECT string_agg(k, ',' ORDER BY k) FROM jsonb_object_keys(facts) k), ' | ' ORDER BY kind) FROM public.agreements_on_file WHERE kind IN ('owner_contract', 'sow')), 'owner_contract sent_on,sign_by,signed_on | sow sent_on,status');
 RESET ROLE;
 SELECT aof.as_user('00000000-0000-0000-0000-0000000376d2');
 SET LOCAL ROLE authenticated;
-SELECT aof.same('the owner reads every kind', aof.kinds(), 'job_contract 3, job_warranty 1, partner_agreement 1, person_agreement 3, their_paper 1, work_order 5');
+SELECT aof.same('the owner reads every kind but the owner contract, a dev''s', aof.kinds(), 'company_agreement 1, job_contract 3, job_warranty 1, partner_agreement 1, person_agreement 3, sow 1, their_paper 1, work_order 5');
 RESET ROLE;
 SELECT aof.as_user('00000000-0000-0000-0000-0000000376d4');
 SET LOCAL ROLE authenticated;
-SELECT aof.same('the controller reads every kind', aof.kinds(), 'job_contract 3, job_warranty 1, partner_agreement 1, person_agreement 3, their_paper 1, work_order 5');
+SELECT aof.same('the controller reads what the owner reads', aof.kinds(), 'company_agreement 1, job_contract 3, job_warranty 1, partner_agreement 1, person_agreement 3, sow 1, their_paper 1, work_order 5');
 RESET ROLE;
 
 SELECT aof.as_user('00000000-0000-0000-0000-0000000376d5');

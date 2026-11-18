@@ -2,16 +2,16 @@
 name: "See a person's Task Mode from Review"
 number: 381
 group: ready
-status: asked 2026-11-17 · looked at, designed, drawn and rendered the same day · seven calls put to the owner, each with a pick · nothing built yet
+status: asked 2026-11-17 · looked at, designed, drawn and rendered the same day · the owner said *Build my picks* · built and live the same evening as v2.7692, v2.7697 and v2.7698 (PR #8599) · walked on the live site as the dev, read only, on the dev's own window and one teammate's
 summary: >
   On Checklist → Review the owner opens a person's card and sees their open tasks as a list. He asked for a
   press there that opens a window showing what that person's phone shows in Task Mode, with their current
   tasks and what is coming up. This card adds that press and that window. The window is a look: he stays
   signed in as himself, it reads with the read the office already has, and no press inside it works. It
   draws Today with the same code the person's phone runs, so the two cannot drift apart.
-next: The owner's word on the seven calls, then step 1, Today's reads taking the person as a value.
-size: M as a train of five (M · M · M · S · XS)
-blocker: The owner's picks. Each call has a default.
+next: The owner's own look, from his account and on his phone. Then his word on call 7's link to View as, and retire the card.
+size: M as a train of five (M · M · M · S · XS), all five done
+blocker: None.
 opinion: build — the office can already read every row Today draws, so this is a new look over reads that exist, with no change to the database
 ---
 
@@ -84,6 +84,13 @@ does not use the word *imitate*.
 | 6 | History | Not in the window | Checklist → History already has a person picker for the office. The bar's History is drawn and dead. |
 | 7 | A door to View as | Only where View as is today | A dev sees one quiet link in the side column. Giving the owner that door is a new permission and waits for his word. |
 
+**The owner's word, 2026-11-17:** *Build my picks*, all seven as picked. Six are built. Call 7's link is
+not: a dev still reaches View as from Settings, and the window has no door to it.
+
+Call 3 as built: Coming up lists the person's open tasks dated in the next 7 days, one day a line. A
+repeating task is already a dated row for 35 days ahead, so the list is a read of rows and no rule is
+worked out. Waiting For is not in that list. It is on their screen, where their phone has it.
+
 ## Where it plugs in
 
 | Piece | Exists | New |
@@ -98,15 +105,16 @@ does not use the word *imitate*.
 ## The plan
 
 One small PR per line, each with its release note and fragment. Step 3 carries the guide, the Glossary
-line and the access line.
+line and the access line. The merge queue was nineteen deep that evening, so steps 1 to 4 landed together
+as PR #8599, one commit a version.
 
 | Step | What lands | Database | Size | State |
 |---|---|---|---|---|
-| 1 | Today's reads take the person as a value, in one tested place under `src/lib/tasks/`. Today draws the same. | none | M | not started |
-| 2 | Today's look-only mode: every act dead, a card still opens. The page's render tests prove the doer's Today is unchanged. | none | M | not started |
-| 3 | The window and the press on Review. Guide, Glossary, `ACCESS_CONTROL.md`. | none | M | not started |
-| 4 | Coming up: the next 7 days from dated tasks and repeat rules. | none | S | not started |
-| 5 | The walk: the window beside the real Task Mode for one test account. | none | XS | not started |
+| 1 | Today's reads take the person as a value, in one tested place under `src/lib/tasks/`. Today draws the same. | none | M | live, v2.7692 |
+| 2 | Today's look-only mode: every act dead, a card still opens. The page's render tests prove the doer's Today is unchanged. | none | M | live, v2.7697 |
+| 3 | The window and the press on Review. Guide, Glossary, `ACCESS_CONTROL.md`. | none | M | live, v2.7697 |
+| 4 | Coming up: the next 7 days from dated tasks and repeat rules. | none | S | live, v2.7698 |
+| 5 | The walk: the window beside the real Task Mode for one test account. | none | XS | walked 2026-11-17, below |
 
 ## How to verify
 
@@ -120,4 +128,47 @@ line and the access line.
 
 ## Where it stands
 
-Designed and drawn. The calls are with the owner. Nothing is built.
+Built and live. The guide is `/help/see-a-persons-task-mode`.
+
+**How a look is held to looking.** Three stops, each enough alone. A gate around the screen lets a press
+through only when it shows more or folds something away. Today is given nobody to act as, so every write's
+guard fails. The windows that act are not drawn at all. The page's render test presses every control
+twice and counts the writes.
+
+**Walked on the dev server over live data, before the merge, 2026-11-17.** Signed in as the dev, with every
+write stopped at the browser and counted.
+
+- The dev's own window listed the same tasks, in the same order, under the same sentence as the same
+  account's real Task Mode at a phone's width. The one difference was Tagged notes, which the window says
+  it does not show.
+- Every press on the screen was pressed twice. No write was tried and no other window opened. A fold
+  showed more rows.
+- The window was seen at a desk and at a phone's width, in light and in dark. Coming up sat beside the
+  phone at a desk and behind the **Coming up** press on a phone. Nothing ran off the side.
+
+**Walked on the live site, after the deploy, 2026-11-17.** Signed in as the dev in a throwaway browser, with
+the owner's word for a read-only look. Every write to the database was stopped at the browser for the
+whole run. Nobody signed in as anyone else.
+
+- **A teammate's window.** Every read the window made named that person and none named the dev. Every
+  task it listed was one of that person's open rows by a separate plain read. It listed the same tasks as
+  their card on Review. Every press was pressed twice: no write was tried and no other window opened.
+  **Read again** drew the same day and **Close** shut it. Coming up listed a day.
+- **The dev's own window** beside the dev's real Task Mode at a phone's width, both on the live site: the
+  same tasks, the same order, the same sentence.
+- **A phone's width, in dark:** the teammate's window filled the screen, **Coming up** swapped the screen
+  for the list, and nothing ran off the side.
+
+**Not walked.**
+
+- A real phone. Every phone-size look was a desktop browser at a phone's width.
+- A teammate's window beside that teammate's own Task Mode. That needs a sign-in as them, which nobody
+  asked for. The side-by-side was the dev's own account.
+- The owner's account. The press was pressed as a dev. That an assistant is not offered it is held by the
+  render test, not by a walk.
+- A day with tasks dated today. Neither person had one that evening, so Next and Still open were seen on
+  the live site, and Then and Done today were not.
+- The empty week's **Add a task** press on the live site, since it opens a window that writes.
+- The live site in light. The window was seen in light on the dev server.
+
+**Left.** The owner's own look. Call 7's quiet link to View as for a dev, which is not built.

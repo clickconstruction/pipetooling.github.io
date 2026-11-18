@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { CHUNK_RECOVERY_KEY, forgetChunkRecoveryReload, startChunkRecoveryReload } from '../lib/chunkLoadRecovery'
+import { __resetUnsavedWorkForTests, wrapFetchCountingWrites } from '../lib/unsavedWork'
 import { RouteChunkBoundary } from './RouteChunkBoundary'
 
 const hardReloadFromRoot = vi.hoisted(() => vi.fn())
@@ -18,6 +19,7 @@ function Throws({ error }: { error: Error }): never {
 describe('RouteChunkBoundary', () => {
   beforeEach(() => {
     forgetChunkRecoveryReload()
+    __resetUnsavedWorkForTests()
     sessionStorage.clear()
     hardReloadFromRoot.mockClear()
     // React logs every caught render error, and the boundary logs what it caught.
@@ -46,6 +48,36 @@ describe('RouteChunkBoundary', () => {
     expect(screen.getByText('Updating app…')).toBeTruthy()
     expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
     expect(sessionStorage.getItem(CHUNK_RECOVERY_KEY)).not.toBeNull()
+  })
+
+  it('a save still on its way out is let finish: Updating app… draws at once, the reload comes after it', async () => {
+    vi.useFakeTimers()
+    try {
+      let answer: (r: Response) => void = () => undefined
+      const counting = wrapFetchCountingWrites(() => new Promise<Response>((r) => (answer = r)))
+      const save = counting('https://x/rest/v1/clock_sessions', { method: 'POST' })
+      render(
+        <RouteChunkBoundary>
+          <Throws error={lostChunk()} />
+        </RouteChunkBoundary>,
+      )
+      expect(screen.getByText('Updating app…')).toBeTruthy()
+      act(() => {
+        vi.advanceTimersByTime(5_000)
+      })
+      expect(hardReloadFromRoot).not.toHaveBeenCalled()
+      await act(async () => {
+        answer(new Response('{}'))
+        await save
+      })
+      expect(hardReloadFromRoot).not.toHaveBeenCalled()
+      act(() => {
+        vi.advanceTimersByTime(1_500)
+      })
+      expect(hardReloadFromRoot).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('offers Reload, and does not reload again, when a recovery already ran inside the last minute', () => {

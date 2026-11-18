@@ -11,15 +11,15 @@ The Lien desk opens on its To do view. The Board sits across the top of that vie
 
 The first tile counts what is due by the next day. It reads like *21 by Monday*, then how many are to file and how many are to send. A red line under it says how many will not make that day as they stand. A paper will not make its day when it has more stages left than working days. Press the red line and the list shows only those papers.
 
-The second tile counts everything waiting on the leader, by name. Its small line names the two parts, like *1 to approve · 7 to sign*. **To approve** is a paper the office sent for approval. **To sign** is an approved notice with no signature on it yet. Press the tile and the list shows only those rows.
+The second tile counts everything waiting on the leader, by name. Its small line names the two parts, like *1 to approve · 7 to sign*. **To approve** is a paper the office sent for approval. **To sign** is an approved notice with no signature on it yet. Those notices stand in their own bin, *Approved · to sign*. Press the tile and the list shows only those rows.
 
-The third tile counts the approved notices still to print and mail. Its small line says how many are to print and how many are to mail. The press that opens the run stands right under the tiles. Read [the two prints under the tiles](#the-two-prints-under-the-tiles).
+The third tile counts the approved notices that can print, and the printed ones still to mail. Its small line says how many are to print and how many are to mail. A notice that waits on a signature is on the second tile, not this one. Press the tile and the run opens. The same press stands in the bin under it. Read [a press beside the bin name](#a-press-beside-the-bin-name).
 
 The fourth tile is the money still unpaid on the desk. Each job counts once.
 
 ## The two columns
 
-The left column is the monthly notices. Its bins run down in order. They are **Needs the owner**, **To send for Master approval**, **Awaiting Master approval**, *Approved · to print*, *Approved · to mail* and **Sent**. An approved notice stands in *Approved · to print* until its packet prints. Then it stands in *Approved · to mail* until its mail numbers are typed in. The Monthly notices list uses the same two names. A thin grey arrow joins each bin to the next.
+The left column is the monthly notices. Its bins run down in order. They are **Needs the owner**, **To send for Master approval**, **Awaiting Master approval**, *Approved · to sign*, *Approved · to print*, *Approved · to mail* and **Sent**. An approved notice with no signature on it stands in *Approved · to sign*. This happens when the leader said to send it and has not signed yet. Once it is signed it stands in *Approved · to print* until its packet prints. Then it stands in *Approved · to mail* until its mail numbers are typed in. The Monthly notices list uses the same two names. A thin grey arrow joins each bin to the next.
 
 The right column is the lien affidavits. Its first two bins are **Needs the property facts** and **Waiting on its notice**. Then come **To send for Master approval**, **Awaiting Master approval** and **Ready to file**. Its last two are *Filed · copies to mail* and *Served*. A filed lien owes a copy of its affidavit to the owner within five days. It stands in *Filed · copies to mail* until the copies are mailed and the day is recorded. Then it stands in *Served*. Its chip there is coloured by the day the copies must be mailed by. That bin has a press of its own, like **Mail 12 liens’ copies ›**. The press opens one window that prints the copies and takes their mail numbers.
 
@@ -27,7 +27,7 @@ The right column is the lien affidavits. Its first two bins are **Needs the prop
 
 One arrow crosses from Sent on the left to Waiting on its notice on the right. The notice on record is the affidavit's gate. When the notice is mailed and recorded, the affidavit moves down to **To send for Master approval**. On a phone the columns stand one over the other and that arrow is not drawn.
 
-The busiest bin has a blue border. Each bin's count sits at its right.
+A bin with a blue left edge has something to do now. Its press is beside its name. Each bin's count sits at its right. A bin with no paper is one quiet line with a zero.
 
 ## What a chip's colour means
 
@@ -63,6 +63,7 @@ Every chip is a press to the right place for its stage. Point at a chip to read 
 - A chip in **Needs the owner** or **Needs the property facts** opens the property record at the missing line.
 - A chip in **Waiting on its notice** opens the job's notice. When the notice is approved, the chip opens the run on that envelope.
 - A chip in **To send for Master approval** or **Awaiting Master approval** opens that job's paper on **By paper**.
+- A chip in *Approved · to sign* opens the notice, where it is signed.
 - A chip in *Approved · to print* or *Approved · to mail* opens the run on that envelope.
 - A chip in **Ready to file** opens the affidavit.
 - A chip in *Filed · copies to mail* or *Served* opens the job's Lien window.
@@ -71,17 +72,25 @@ A paper opened from a chip is a step of its own in the browser. Press Back and t
 
 The same press sits on the job number of every To do row. It also sits on the number of every notice and affidavit row on **By paper**. Every row on **By date** has it too. A number is a zoom everywhere on the desk. On a To do row the job's name still opens the job itself.
 
-## The two prints under the tiles
+## A press beside the bin name
 
-Two presses stand between the tiles and the columns. Each stands over its own column, so they show as soon as the desk opens. Only the lien office sees them.
+Some bins carry a press on the same line as the bin's name. The press acts on the papers in that bin. Nothing stands between the tiles and the bins. Only the lien office sees these presses.
 
-Over the notices the press reads like {{button:blue|Print and mail 8 notices}}. The count is the notices that can print now. Press it and the run opens on every approved notice, for every GC. A line under the press says what it leaves out, like *7 wait on Malachi's signature*. Press **See them ›** to open those notices. Press {{button:outline|Remind Malachi of 7 papers ›}} beside it to tell the leader they wait. Once every approved notice has printed, the press reads {{button:blue|Enter mail numbers · 4}}.
+On *Approved · to sign* the office's press reads like {{button:outline|Remind Malachi of 7 papers ›}}. It tells the leader they wait. The desk asks first. The leader's own press there reads like {{button:blue|Sign 7 notices ›}}. It opens the approved notices, and he signs each on its own pane.
 
-Over the affidavits the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under it says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. A second line says what prints in front of the stack, like *Prints with the help sheet and the notice records*. Press **Change ›** to tick those pages on the affidavits list.
+On *Approved · to print* the press reads like {{button:blue|Print and mail 8 notices}}. The count is the bin's own count. Press it and the run opens on every approved notice, for every GC.
 
-A press with nothing ready is grey. The line under it still says what waits. A column with no approved paper has no press.
+On *Approved · to mail* the press reads like {{button:outline|Enter mail numbers · 6}}. It opens the same run, where you type each envelope's number. Once every approved notice has printed, this press turns blue.
 
-Scroll down and the same two presses stand beside the find box, in fewer words. The notices' press is on the left, as its column is. On a phone the two presses stand one over the other, above the bins.
+On **Ready to file** the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under the bin's name says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. A second line says what prints in front of the stack, like *Prints with the help sheet and the notice records*. Press **Change ›** to tick those pages on the affidavits list.
+
+On the affidavits' **To send for Master approval** the press reads like {{button:outline|Send 5 for approval ›}}. It opens the affidavits list at that pile. One press there sends every paper someone has read.
+
+On *Filed · copies to mail* the press reads like {{button:outline|Mail 10 liens' copies ›}}. It opens the window that prints each lien's copies.
+
+A press with nothing ready is grey. The line under it still says what waits. A bin with no paper and nothing ready has no press. On a narrow window the press drops to its own line, under the bin's name.
+
+Scroll down and the two prints stand beside the find box, in fewer words. The notices' press is on the left, as its column is. On a phone the bins are folded, so the two prints stand side by side above them.
 
 ## Press a bin
 
@@ -133,7 +142,7 @@ A heading carries the day when every row under it shares that day. Then no row r
 
 ## Held, Missed and retainage
 
-A **Held** bin and a **Missed** bin stand beside a column only while a job is in one. A dashed border marks them. When they are empty they are not drawn.
+**Held** and **Missed** stand on a column's heading line, at its right. Each shows only while a job is in it. A dashed border marks them. Press the name and the list shows only those rows.
 
 Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. It also counts jobs where retainage looks held and none is recorded, like *2 look held, not on the job*. The retainage list on **By paper** has the rows.
 
@@ -159,13 +168,15 @@ Such a job leaves the bins. It sits in its own bin under the affidavits, {{chip:
 
 A lien affidavit that a fact holds has a quiet {{button:outline|Not lienable…}} under its row. [Take a job off the lien path](/help/take-a-job-off-the-lien-path) has the steps.
 
-## The leader's Board
+## The leader's press
 
-A master opens the desk on his own Board. Only the two **Awaiting Master approval** bins stand under the tiles. They hold the jobs he leads. One press under them acts on the lot. The press reads like *Approve 2 affidavits*. It approves every affidavit that waits inside its window, one by one. Each moves to **Ready to file**. The desk asks once before it starts, with the count.
+A master reads every bin, as the office does. His press stands on the **Awaiting Master approval** bin of the lien affidavits, beside the bin's name. It reads like {{button:blue|Approve 2 affidavits}}. It counts the jobs he leads. It approves every affidavit that waits inside its window, one by one. Each moves to **Ready to file**. The desk asks once before it starts, with the count.
 
-A notice stays out of the press. Its reason reads *needs your signature*. The law wants the leader's signature on each notice, and the notice's own pane signs it. A paper past its day stays out too, as *is past its day*. Each held paper keeps its chip. Press the chip to open it.
+A paper past its day stays out of the press. A line under the bin's name says so, like *1 is past its day and stays here*. Press its chip to open it.
 
-Press {{button:outline|Every bin}} to see the whole Board. Press {{button:outline|Only my bins}} to come back. A dev opens on every bin with the same switch. The office sees neither the switch nor the press.
+A notice is never in this press. The law wants the leader's signature on each notice, and the notice's own pane signs it. Press the second tile to see every paper that waits on the leader.
+
+The office sees no press to approve. A dev sees one only on the jobs he leads. The old switch between **Every bin** and **Only my bins** is gone.
 
 ## On the Dashboard
 

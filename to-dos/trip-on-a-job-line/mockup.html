@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A trip on a job's lines</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Drawn 2026-11-17 for punch list #391. Nothing here is built. Every site, customer, person, job, date and figure is made up; no live row is on this page.
+   Layout: one shared starting press, then four steps drawn twice, A on the left and B on the right, then one table of what each changes. */
+:root {
+  --bg: #f1f3f7; --surface: #ffffff; --surface-2: #f6f7fa; --border: #dde2ea; --border-strong: #c3cad5;
+  --text: #172130; --muted: #5a6577; --blue: #2563eb; --blue-soft: #e7eeff; --blue-text: #1d4ed8;
+  --green-text: #166534; --green-soft: #e2f3e7; --amber-text: #92500a; --amber-soft: #fcefd6; --red-text: #b42318;
+  --a: #0f766e; --a-soft: #dff3f0; --b: #9a3a8c; --b-soft: #f6e4f3;
+  --paper: #ffffff; --paper-text: #1b1f27; --paper-muted: #5c6370; --paper-rule: #d9dde4;
+  --shadow: 0 10px 30px rgba(20, 30, 50, .14);
+  --display: 'Space Grotesk', 'Inter', system-ui, sans-serif; --body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #10151d; --surface: #19202b; --surface-2: #202836; --border: #2d3746; --border-strong: #3d495b;
+  --text: #e7ecf3; --muted: #9aa6b8; --blue: #2563eb; --blue-soft: #1c2c50; --blue-text: #8fb2ff;
+  --green-text: #7fd69a; --green-soft: #173324; --amber-text: #f0b75e; --amber-soft: #3a2b12; --red-text: #ff9a8f;
+  --a: #4fc7bb; --a-soft: #123330; --b: #e08fd3; --b-soft: #3a1c36;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #10151d; --surface: #19202b; --surface-2: #202836; --border: #2d3746; --border-strong: #3d495b;
+  --text: #e7ecf3; --muted: #9aa6b8; --blue: #2563eb; --blue-soft: #1c2c50; --blue-text: #8fb2ff;
+  --green-text: #7fd69a; --green-soft: #173324; --amber-text: #f0b75e; --amber-soft: #3a2b12; --red-text: #ff9a8f;
+  --a: #4fc7bb; --a-soft: #123330; --b: #e08fd3; --b-soft: #3a1c36;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark }
+
+body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 14px; line-height: 1.5; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 34px; }
+h1 { font-family: var(--display); font-size: 30px; line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-size: 19px; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 68ch; }
+.lede { color: var(--muted); font-size: 15px; }
+.cap { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.note { color: var(--muted); font-size: 13px; }
+.num { font-variant-numeric: tabular-nums; }
+.head { display: grid; gap: 10px; }
+.step { display: grid; gap: 12px; }
+.step > header { display: grid; gap: 4px; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.col { display: grid; gap: 10px; min-width: 0; }
+.tag { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
+.tag i { font-style: normal; font-family: var(--display); font-weight: 700; width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font-size: 13px; }
+.tag.a i { background: var(--a-soft); color: var(--a); } .tag.b i { background: var(--b-soft); color: var(--b); }
+.says { font-size: 13px; color: var(--muted); }
+.says b { color: var(--text); font-weight: 600; }
+
+/* The app, drawn small */
+.win { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); min-width: 0; overflow: hidden; }
+.win .bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.win .bar b { font-size: 15px; }
+.win .x { color: var(--muted); font-size: 18px; line-height: 1; }
+.win .body { padding: 14px; display: grid; gap: 12px; }
+.win .foot { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--border); background: var(--surface-2); }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-weight: 500; font-size: 13px; }
+.input { border: 1px solid var(--border-strong); border-radius: 6px; padding: 7px 10px; background: var(--surface); min-width: 0; }
+.input.tall { min-height: 58px; }
+.hint { font-size: 12px; color: var(--muted); }
+.btn { display: inline-flex; align-items: center; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); border-radius: 6px; padding: 7px 12px; font-weight: 500; font-size: 13px; white-space: nowrap; }
+.btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+.btn.quiet { border-color: transparent; color: var(--muted); background: transparent; }
+.btn.hot { outline: 2px solid var(--blue); outline-offset: 2px; }
+.chip { display: inline-flex; align-items: center; border: 1px solid var(--border-strong); border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.chip.amber { background: var(--amber-soft); color: var(--amber-text); border-color: transparent; }
+.chip.green { background: var(--green-soft); color: var(--green-text); border-color: transparent; }
+.chip.blue { background: var(--blue-soft); color: var(--blue-text); border-color: transparent; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.spread { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; }
+.link { color: var(--blue-text); text-decoration: underline; text-underline-offset: 2px; }
+.fresh { background: var(--blue-soft); border-radius: 8px; box-shadow: 0 0 0 1px var(--blue) inset; }
+.tabs { display: flex; gap: 16px; padding: 0 14px; border-bottom: 1px solid var(--border); color: var(--muted); font-weight: 500; font-size: 13px; overflow-x: auto; }
+.tabs span { padding: 8px 0; white-space: nowrap; } .tabs .on { color: var(--blue-text); box-shadow: 0 -2px 0 var(--blue) inset; }
+.sec { text-decoration: underline; text-underline-offset: 3px; font-weight: 500; }
+.line { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 6px; }
+.line .sub { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.total { text-align: right; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.box { border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: grid; gap: 8px; }
+.pick { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.tick { width: 15px; height: 15px; border: 1.5px solid var(--border-strong); border-radius: 3px; display: grid; place-items: center; font-size: 11px; line-height: 1; }
+.tick.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+.was { color: var(--muted); text-decoration: line-through; }
+
+/* The trip, as the Trips look draws it */
+.trip { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.days { display: flex; gap: 3px; }
+.days span { width: 22px; height: 22px; border-radius: 4px; display: grid; place-items: center; font-size: 10px; font-weight: 600; color: #fff; }
+.d-g { background: #8a6d1f; } .d-r { background: #2563eb; } .d-s { background: #15803d; }
+dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; margin: 0; }
+dt { color: var(--muted); } dd { margin: 0; min-width: 0; }
+
+/* The customer's paper stays light, as it does in the app */
+.paper { background: var(--paper); color: var(--paper-text); border: 1px solid var(--paper-rule); border-radius: 4px; padding: 16px; display: grid; gap: 10px; box-shadow: var(--shadow); min-width: 0; }
+.paper .ph { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-bottom: 2px solid var(--paper-text); padding-bottom: 8px; }
+.paper .ph b { font-family: var(--display); font-size: 16px; }
+.paper small { color: var(--paper-muted); font-size: 12px; }
+.paper .pr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--paper-rule); }
+.paper .pt { display: flex; justify-content: space-between; font-weight: 700; font-size: 15px; }
+
+.scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 720px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: 0; }
+thead th { font-size: 12px; background: var(--surface-2); }
+tbody th { font-weight: 600; width: 19%; }
+td { width: 40.5%; }
+.same { color: var(--muted); }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; align-items: start; }
+.call { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: grid; gap: 10px; }
+.call ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 72ch; }
+
+@media (max-width: 820px) {
+  .pair { grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 24px; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<div class="head">
+  <span class="cap">Punch list 391 · the last step of the trip record, 379</span>
+  <h1>Put a trip on a bill: a line on the job</h1>
+  <p class="lede">The owner picked B on 2026-11-17: the trip becomes a line on the job. A, a bill of its own, is drawn beside it as the way not taken. Both start from the same press on an open trip marked Extra. Every name and figure here is made up.</p>
+</div>
+
+<section class="step">
+  <header><h2>Where both start</h2><p class="note">An open trip on the Development page, Trips look. The trip is Extra and on no bill yet.</p></header>
+  <div class="trip">
+    <div class="spread">
+      <div class="row"><b>Trip 14</b><span class="chip">Back</span><span class="note">Nov 2 to Nov 8 · Heron Point</span></div>
+      <span class="chip amber">Extra · not billed yet</span>
+    </div>
+    <div class="row"><div class="days"><span class="d-g">M</span><span class="d-r">T</span><span class="d-r">W</span><span class="d-s">T</span><span class="d-s">F</span><span class="d-r">S</span><span class="d-r">S</span></div><span class="note">Dana, Luis, Omar and Priya</span></div>
+    <dl>
+      <dt>What for</dt><dd>Reset the riser the framers moved</dd>
+      <dt>Asked by</dt><dd>Walt at Larkfield Builders, by phone</dd>
+      <dt>Job</dt><dd>J2101 Heron Point Clubhouse</dd>
+      <dt>What it cost</dt><dd class="num">$4,910 · 212 hours</dd>
+    </dl>
+    <div class="row"><span class="btn">Change</span><span class="btn hot">Put on a bill</span><span class="btn quiet">Print</span><span class="btn quiet">Delete this trip</span></div>
+  </div>
+</section>
+
+<section class="step">
+  <header><h2>1. The window you confirm in</h2><p class="note">The same three things to check either way: the job, the amount, the words. B keeps the line's name and the words under it apart, the way a line is stored.</p></header>
+  <div class="pair">
+    <div class="col">
+      <span class="tag a"><i>A</i>A bill of its own · not built</span>
+      <div class="win">
+        <div class="bar"><b>Put Trip 14 on a bill</b><span class="x">×</span></div>
+        <div class="body">
+          <div class="field"><label>Job</label><div class="input">J2101 Heron Point Clubhouse</div></div>
+          <div class="field"><label>Amount</label><div class="input num">$ 6,800.00</div><span class="hint num">What it cost: $4,910</span></div>
+          <div class="field"><label>Words on the bill</label><div class="input tall">Trip 14, crew of 4, Nov 2 to Nov 8. Reset the riser the framers moved. Asked by Walt, by phone.</div></div>
+          <span class="hint">Makes a bill of its own in Ready to Bill. The job's line items stay as they are.</span>
+        </div>
+        <div class="foot"><span class="btn">Cancel</span><span class="btn primary num">Make the bill · $6,800</span></div>
+      </div>
+    </div>
+    <div class="col">
+      <span class="tag b"><i>B</i>A line on the job · build this</span>
+      <div class="win">
+        <div class="bar"><b>Put Trip 14 on J2101's lines</b><span class="x">×</span></div>
+        <div class="body">
+          <div class="field"><label>Job</label><div class="input">J2101 Heron Point Clubhouse</div></div>
+          <div class="field"><label>Amount</label><div class="input num">$ 6,800.00</div><span class="hint num">What it cost: $4,910 · shown to a dev or a controller only</span></div>
+          <div class="field"><label>Line</label><div class="input">Trip 14, crew of 4, Nov 2 to Nov 8</div></div>
+          <div class="field"><label>Words under it</label><div class="input tall">Reset the riser the framers moved. Asked by Walt, by phone.</div></div>
+          <div class="spread"><span class="hint">Job total</span><span class="num"><span class="was">$184,000</span> → <b>$190,800</b></span></div>
+          <span class="hint">Adds one line to the job. It goes out when a bill takes it.</span>
+        </div>
+        <div class="foot"><span class="btn">Cancel</span><span class="btn primary num">Add the line · $6,800</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="step">
+  <header><h2>2. The job's Bill tab afterwards</h2><p class="note">The Job window, cut down to the two parts that change. What is new is tinted.</p></header>
+  <div class="pair">
+    <div class="col">
+      <span class="tag a"><i>A</i>The lines are untouched. A bill appears.</span>
+      <div class="win">
+        <div class="bar"><b>J2101 Heron Point Clubhouse</b><span class="chip">Working</span></div>
+        <div class="tabs"><span>Job</span><span>Edit</span><span class="on">Bill</span><span>Costs</span><span>History</span><span>Documents</span></div>
+        <div class="body">
+          <span class="sec">Line Items</span>
+          <div class="line"><div class="input">Bid price</div><div class="input num">× 1</div><div class="input num">$ 184,000.00</div></div>
+          <div class="total num">Job Total: $190,800.00</div>
+          <span class="hint">The total counts the trip's bill, the way it counts a turnaway trip charge today.</span>
+          <span class="sec">Bills and payments</span>
+          <div class="box fresh">
+            <div class="spread"><b>Trip 14 · Nov 2 to Nov 8</b><b class="num">$6,800</b></div>
+            <div class="row"><span class="chip blue">Ready to bill</span><span class="note">its own bill, not part of the job's next one</span></div>
+            <div class="row"><span class="btn primary">Send</span><span class="btn">Open Trip 14</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <span class="tag b"><i>B</i>A line appears. No bill yet.</span>
+      <div class="win">
+        <div class="bar"><b>J2101 Heron Point Clubhouse</b><span class="chip">Working</span></div>
+        <div class="tabs"><span>Job</span><span>Edit</span><span class="on">Bill</span><span>Costs</span><span>History</span><span>Documents</span></div>
+        <div class="body">
+          <span class="sec">Line Items</span>
+          <div class="line"><div class="input">Bid price</div><div class="input num">× 1</div><div class="input num">$ 184,000.00</div></div>
+          <div class="line fresh"><div class="input">Trip 14, crew of 4, Nov 2 to Nov 8</div><div class="input num">× 1</div><div class="input num">$ 6,800.00</div><span class="sub">Reset the riser the framers moved. Asked by Walt, by phone. <span class="link">Open Trip 14</span></span></div>
+          <div class="total num">Job Total: $190,800.00</div>
+          <span class="sec">Bills and payments</span>
+          <div class="box">
+            <div class="pick"><span class="tick"></span><span>◆ Bid price</span><span class="note num">not billed · <b>$184,000</b></span></div>
+            <div class="pick fresh" style="padding:6px"><span class="tick on">✓</span><span>◆ Trip 14</span><span class="note num">not billed · <b>$6,800</b></span></div>
+            <div class="row"><span class="btn primary num">Bill the 1 picked · $6,800</span><span class="note">or leave it for the next bill</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="says">The window opens here after the press. <b>Bill the 1 picked</b> is the Bill tab's own press, already in the app. One more press and B has sent the trip by itself, as A does.</p>
+    </div>
+  </div>
+</section>
+
+<section class="step">
+  <header><h2>3. What the customer gets</h2></header>
+  <div class="pair">
+    <div class="col">
+      <span class="tag a"><i>A</i>Always a bill for the trip alone</span>
+      <div class="paper">
+        <div class="ph"><b>Invoice</b><small>Larkfield Builders · J2101 Heron Point Clubhouse</small></div>
+        <div class="pr"><span>Trip 14, crew of 4, Nov 2 to Nov 8. Reset the riser the framers moved. Asked by Walt, by phone.</span><span class="num">$6,800.00</span></div>
+        <div class="pt"><span>Due</span><span class="num">$6,800.00</span></div>
+      </div>
+      <p class="says">Its own paper and its own pay link. It never rides with a progress bill.</p>
+    </div>
+    <div class="col">
+      <span class="tag b"><i>B</i>A row on a job bill, alone or with the rest</span>
+      <div class="paper">
+        <div class="ph"><b>Invoice</b><small>Larkfield Builders · J2101 Heron Point Clubhouse</small></div>
+        <div class="pr"><span>Bid price, progress to 25%</span><span class="num">$46,000.00</span></div>
+        <div class="pr"><span>Trip 14, crew of 4, Nov 2 to Nov 8. Reset the riser the framers moved. Asked by Walt, by phone.</span><span class="num">$6,800.00</span></div>
+        <div class="pt"><span>Due</span><span class="num">$52,800.00</span></div>
+      </div>
+      <p class="says">Drawn here riding with the next progress bill. Picked alone, the paper is the same as A's.</p>
+    </div>
+  </div>
+</section>
+
+<section class="step">
+  <header><h2>4. How the trip reads afterwards</h2><p class="note">The chip on the trip, in the Trips look and on the Job window's trip line.</p></header>
+  <div class="pair">
+    <div class="col">
+      <span class="tag a"><i>A</i>One trip, one bill</span>
+      <div class="trip">
+        <div class="spread"><div class="row"><b>Trip 14</b><span class="note">Nov 2 to Nov 8</span></div><span class="chip blue">Extra · on a bill, not sent</span></div>
+        <div class="row"><span class="link">Open the bill</span><span class="note num">$6,800 · Ready to bill</span></div>
+        <div class="row note">Then:<span class="chip green">Extra · billed</span><span class="chip green">Extra · paid</span></div>
+      </div>
+      <p class="says">The trip holds its bill, so its standing is always one read.</p>
+    </div>
+    <div class="col">
+      <span class="tag b"><i>B</i>One trip, one line, and whatever bill takes it</span>
+      <div class="trip">
+        <div class="spread"><div class="row"><b>Trip 14</b><span class="note">Nov 2 to Nov 8</span></div><span class="chip amber">Extra · on J2101's lines, on no bill yet</span></div>
+        <div class="row"><span class="link">Open J2101 on Bill</span><span class="note num">$6,800 · line</span></div>
+        <div class="row note">Then:<span class="chip green">Extra · billed</span><span class="chip green">Extra · paid</span></div>
+      </div>
+      <p class="says">The trip holds its line. Billed and paid are read through the line to the bill that took it.</p>
+    </div>
+  </div>
+</section>
+
+<section class="step">
+  <header><h2>What each one changes in the app</h2></header>
+  <div class="scroll">
+    <table>
+      <thead><tr><th></th><th><span class="tag a"><i>A</i>A bill of its own</span></th><th><span class="tag b"><i>B</i>A line on the job</span></th></tr></thead>
+      <tbody>
+        <tr><th>What the press makes</th><td>A bill in Ready to Bill, at once. No line.</td><td>A line among the job's lines. No bill until one takes it.</td></tr>
+        <tr><th>Job total</th><td class="same" colspan="2">The same either way. It rises by the amount, and percent done is read over the larger total.</td></tr>
+        <tr><th>When it can go out</th><td>Now. It is already a bill.</td><td>When the office picks it. Alone with one more press, or with the next bill.</td></tr>
+        <tr><th>The job's own next bill</th><td>Unchanged. The trip sits beside it.</td><td>Carries the trip unless the trip was billed alone first.</td></tr>
+        <tr><th>Changing it later</th><td>The words and amount change on the bill, as on any draft bill.</td><td>The line is renamed, repriced or removed in the Job window, like any line.</td></tr>
+        <tr><th>Taking it back</th><td>Delete the draft bill. The trip reads not billed again.</td><td>Delete the line before a bill takes it. The trip reads not billed again.</td></tr>
+        <tr><th>A second press</th><td class="same" colspan="2">Refused either way. The trip already holds its bill or its line, and says where.</td></tr>
+        <tr><th>Where else it shows</th><td>The job's bills, Ready to Bill, Accounts Receivable.</td><td>All of those once billed. Before that, in the job's lines and its left to bill.</td></tr>
+        <tr><th>What gets built</th><td>One function shaped like the turnaway trip charge's. A trip mark on the bill. The Job window is not touched.</td><td>One checked function that adds one line. A trip mark on the line. The trip's chip read through the line to its bill.</td></tr>
+        <tr><th>The sharp edge</th><td>The app would hold two things a person calls a trip charge: the turnaway's and this. And a trip can never ride a progress bill.</td><td>A Job window left open on another screen saves its own older list of lines and can drop the new one. A change order's Apply to job has this edge today. The build has to close it for the trip's line.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="step">
+  <header><h2>B's other states</h2><p class="note">What the build has to draw besides the straight path.</p></header>
+  <div class="grid3">
+    <div class="trip">
+      <span class="cap">Already on the lines</span>
+      <div class="spread"><b>Trip 14</b><span class="chip amber">Extra · on J2101's lines, on no bill yet</span></div>
+      <div class="row"><span class="btn">Change</span><span class="btn hot">Open J2101 on Bill</span><span class="btn quiet">Print</span></div>
+      <p class="says">The press is gone. Its place is the door to the line. A second line is refused by the function too.</p>
+    </div>
+    <div class="trip">
+      <span class="cap">A trip on two jobs</span>
+      <div class="field"><label>Job</label><div class="input">J2101 Heron Point Clubhouse ▾</div></div>
+      <div class="box"><span>J2101 Heron Point Clubhouse</span><span>J2140 Heron Point Pool House</span></div>
+      <p class="says">One trip makes one line on one job. The office picks which.</p>
+    </div>
+    <div class="trip">
+      <span class="cap">A trip with no job named</span>
+      <div class="field"><label>Job</label><div class="input">Pick one of Heron Point's jobs ▾</div></div>
+      <p class="says">The window lists the site's jobs. <b>Add the line</b> stays dead until one is picked, and says so.</p>
+    </div>
+    <div class="trip">
+      <span class="cap">The line was removed in the Job window</span>
+      <div class="spread"><b>Trip 14</b><span class="chip amber">Extra · not billed yet</span></div>
+      <div class="row"><span class="btn">Change</span><span class="btn">Put on a bill</span></div>
+      <p class="says">The mark lives on the line, so a deleted line leaves nothing behind. The trip reads as it did before.</p>
+    </div>
+    <div class="trip">
+      <span class="cap">The trip is deleted, the line stays</span>
+      <div class="line"><div class="input">Trip 14, crew of 4, Nov 2 to Nov 8</div><div class="input num">× 1</div><div class="input num">$ 6,800.00</div></div>
+      <p class="says">Deleting a trip changes no bill. The line keeps its words and loses only its door to the trip.</p>
+    </div>
+    <div class="trip">
+      <span class="cap">Not Extra, or still planned</span>
+      <div class="spread"><b>Trip 9</b><span class="chip">Inside the price</span></div>
+      <div class="row"><span class="btn">Change</span><span class="btn quiet">Print</span></div>
+      <p class="says">No press. It shows only on an Extra trip that has gone out, to the office roles that can change a job's lines.</p>
+    </div>
+  </div>
+</section>
+
+<section class="call">
+  <h2>Why B</h2>
+  <ul>
+    <li><b>B covers what A is for.</b> A's one real gain is a trip billed by itself, now. B gets there with <i>Bill the 1 picked</i>, a press the Bill tab already has.</li>
+    <li><b>B keeps a job's money in one place.</b> Every dollar asked of the customer is a line. A puts some of it on bills with no line under them.</li>
+    <li><b>A was the smaller build.</b> It follows a function that already runs. B has one sharp edge to close: a Job window open elsewhere must not write the new line away.</li>
+  </ul>
+</section>
+
+</div>
+</body>
+</html>

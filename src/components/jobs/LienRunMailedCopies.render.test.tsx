@@ -41,7 +41,7 @@ describe('LienRunMailedCopies · take a file off the list (v2.7525)', () => {
     expect([off.textContent, off.getAttribute('aria-label')]).toEqual(['Take off', `Take off: ${copy(2).name}`])
     fireEvent.click(off)
     const ask = screen.getByTestId('run-check-copy-ask-it1')
-    expect(ask.textContent).toContain(`Take ${copy(2).name} off this notice? The file stays in the job’s Drive folder.`)
+    expect(ask.textContent).toContain(`Take ${copy(2).name} off this notice? The file goes to Drive’s trash. Drive keeps it there 30 days.`)
     expect([screen.getByTestId('run-check-copy-off-yes-it1').textContent, screen.getByTestId('run-check-copy-off-no-it1').textContent]).toEqual(['Take it off', 'Keep it'])
     // While the ask is open no other file can be asked about, and no file can be added.
     expect((screen.getByTestId('run-check-copy-off-it1-0') as HTMLButtonElement).disabled).toBe(true)
@@ -106,5 +106,36 @@ describe('LienRunMailedCopies · a file that did not go up (v2.7635)', () => {
     expect(screen.queryByTestId('run-check-copy-failed-it1')).toBeNull()
     rerender(<LienRunMailedCopies row={row([])} canAdd busy={false} press={{ onAdd: () => {}, addingItemId: 'it1', failed: { itemId: 'it1', words: 'x', retry: true } }} />)
     expect(screen.queryByTestId('run-check-copy-failed-it1')).toBeNull()
+  })
+})
+
+describe('LienRunMailedCopies · where a taken-off file went (v2.7699)', () => {
+  it('says the file is in Drive’s trash and offers Put it back, with no second try', () => {
+    const onPutBack = vi.fn()
+    render(<LienRunMailedCopies row={row([])} canAdd busy={false} press={{ onAdd: () => {}, addingItemId: null, off: { itemId: 'it1', words: 'Taken off. The file is in Drive’s trash.', canRetry: false, working: null }, onPutBack, onTrashAgain: () => {} }} />)
+    const line = screen.getByTestId('run-check-copy-off-line-it1')
+    expect(line.getAttribute('role')).toBe('status')
+    expect(line.textContent).toContain('Taken off. The file is in Drive’s trash.')
+    expect(screen.queryByTestId('run-check-copy-trash-again-it1')).toBeNull()
+    fireEvent.click(screen.getByTestId('run-check-copy-put-back-it1'))
+    expect(onPutBack).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'it1' }))
+  })
+
+  it('says why a file stays in Drive, and offers the trash a second try where one can help', () => {
+    const onTrashAgain = vi.fn()
+    render(<LienRunMailedCopies row={row([])} canAdd busy={false} press={{ onAdd: () => {}, addingItemId: null, off: { itemId: 'it1', words: 'Taken off. The file stays in Drive. Drive did not move the file to its trash. Drive said: Error 503 (Service Unavailable)', canRetry: true, working: null }, onPutBack: () => {}, onTrashAgain }} />)
+    expect(screen.getByTestId('run-check-copy-off-line-it1').textContent).toContain('The file stays in Drive.')
+    fireEvent.click(screen.getByTestId('run-check-copy-trash-again-it1'))
+    expect(onTrashAgain).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('run-check-copy-put-back-it1').textContent).toBe('Put it back')
+  })
+
+  it('shows what is under way with no press, and draws nothing for another row', () => {
+    const { rerender } = render(<LienRunMailedCopies row={row([])} canAdd busy={false} press={{ onAdd: () => {}, addingItemId: null, off: { itemId: 'it1', words: 'x', canRetry: true, working: 'back' }, onPutBack: () => {}, onTrashAgain: () => {} }} />)
+    expect(screen.getByTestId('run-check-copy-off-line-it1').textContent).toBe('Putting it back…')
+    expect(screen.queryByTestId('run-check-copy-put-back-it1')).toBeNull()
+    expect(screen.queryByTestId('run-check-copy-trash-again-it1')).toBeNull()
+    rerender(<LienRunMailedCopies row={row([])} canAdd busy={false} press={{ onAdd: () => {}, addingItemId: null, off: { itemId: 'other', words: 'x', canRetry: false, working: null }, onPutBack: () => {} }} />)
+    expect(screen.queryByTestId('run-check-copy-off-line-it1')).toBeNull()
   })
 })

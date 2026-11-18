@@ -216,6 +216,20 @@ describe('DocumentsAgreementsTab', () => {
     expect((await screen.findByTestId('work-order-window')).textContent).toBe('j1|w1')
   })
 
+  it('a GC project’s paper names its project and is a link to GC mode', async () => {
+    io.rows = [
+      row({ id: 'sow:s1', kind: 'sow', source_id: 's1', state: 'waiting', paper_name: 'Statement of work · Electrical', with_name: 'Brightline Electric', job_id: null, job_hcp_number: null, job_click_number: null, job_name: 'Westfield Clinic', job_address: null, at_day: '2026-09-24', facts: { status: 'sent', sent_on: '2026-09-24' } }),
+    ]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    const rows = await lines()
+    expect(rows[0]?.textContent).toBe('Statement of workStatement of work · ElectricalWith Brightline Electric · Westfield Clinicwaiting on their signatureSent Sep 24')
+    expect(screen.getByRole('link', { name: 'Statement of work · Electrical' }).getAttribute('href')).toBe('/gc')
+    // The project is not a job, so its name is words and not a link to a job.
+    expect(screen.queryByRole('link', { name: 'Westfield Clinic' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'GC projects' }))
+    await waitFor(() => expect(lastAsk()).toEqual({ kind: 'gc', state: 'live', typed: '', limit: 100 }))
+  })
+
   it('under the Search tab draws no box and no chips, stays quiet until two letters, then asks every state for the words it is handed', async () => {
     const view = renderWithProviders(<DocumentsAgreementsTab embedSearch="" />)
     expect(screen.getByTestId('documents-agreements-embed-hint').textContent).toBe('Results appear when you type a search above.')
