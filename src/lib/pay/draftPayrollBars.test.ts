@@ -163,3 +163,13 @@ describe('paidDayWords', () => {
     expect(paidDayWords('2026-10-23T15:00:00Z')).toBe('')
   })
 })
+
+describe('the salaried chip', () => {
+  it('names the day when every paid day is that long, and the week when the days differ', async () => {
+    const { salaryFlatHoursShortChip } = await import('./draftPayrollBars')
+    expect(salaryFlatHoursShortChip()).toBe('salary 8h')
+    expect(salaryFlatHoursShortChip([0, 6, 6, 6, 6, 6, 0])).toBe('salary 6h')
+    expect(salaryFlatHoursShortChip([0, 10, 10, 10, 10, 0, 0])).toBe('salary 10h')
+    expect(salaryFlatHoursShortChip([0, 8, 8, 8, 8, 4, 0])).toBe('salary 36h wk')
+  })
+})

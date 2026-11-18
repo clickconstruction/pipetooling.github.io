@@ -41,6 +41,33 @@ describe('pay report day rows', () => {
     ])
   })
 
+  it('salaried on a 6-hour day: five weekdays at $10 come to $300, and the weekend to nothing', () => {
+    // 2026-09-13 is a Sunday, 2026-09-19 a Saturday.
+    const rows = buildPayStubDayRows({
+      daysInRange: payStubDaysInRange('2026-09-13', '2026-09-19'),
+      hoursByDate: new Map([['2026-09-14', 9.75]]),
+      wage: 10,
+      officeWage: null,
+      salaryWindow: { ...EMPTY_SALARIED_PAYROLL_WINDOW, week: [0, 6, 6, 6, 6, 6, 0] },
+      splitByDate: null,
+    })
+    expect(rows.map((r) => r.hours)).toEqual([0, 6, 6, 6, 6, 6, 0])
+    expect(payStubTotals(rows)).toEqual({ hoursTotal: 30, grossPay: 300 })
+  })
+
+  it('salaried on a short Friday and a Saturday: each day is its own hours at the wage', () => {
+    const rows = buildPayStubDayRows({
+      daysInRange: payStubDaysInRange('2026-09-13', '2026-09-19'),
+      hoursByDate: new Map(),
+      wage: 25,
+      officeWage: null,
+      salaryWindow: { ...EMPTY_SALARIED_PAYROLL_WINDOW, week: [0, 8, 8, 8, 8, 4, 2] },
+      splitByDate: null,
+    })
+    expect(rows.map((r) => [r.hours, r.paid_amount])).toEqual([[0, 0], [8, 200], [8, 200], [8, 200], [8, 200], [4, 100], [2, 50]])
+    expect(payStubTotals(rows)).toEqual({ hoursTotal: 38, grossPay: 950 })
+  })
+
   it('dual rate: a split day carries both buckets and the blended rate; an unsplit day stays single-rate', () => {
     const rows = buildPayStubDayRows({
       daysInRange: ['2026-09-14', '2026-09-15'],

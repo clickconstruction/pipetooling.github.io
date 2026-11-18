@@ -168,6 +168,8 @@ export type DraftPayrollModalProps = {
   pendingByPerson?: Readonly<Record<string, number>>
   /** Punch list #217: who is salaried, for the *salary 8h* chip. */
   isSalaryPerson?: (person: string) => boolean
+  /** A salaried person's week, Sunday first, for the chip's figure; 8 h Mon–Fri when left out. */
+  salaryWeek?: (person: string) => readonly number[]
 }
 
 export function DraftPayrollModal({
@@ -212,6 +214,7 @@ export function DraftPayrollModal({
   onOpenCatchUp,
   pendingByPerson,
   isSalaryPerson,
+  salaryWeek,
 }: DraftPayrollModalProps) {
   const [reviewDaysDetail, setReviewDaysDetail] = useState<{
     personName: string
@@ -633,7 +636,7 @@ export function DraftPayrollModal({
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {/* No est. chip (the owner, 2026-10-30: "drop it"): the no-report-yet pill says it; the hover keeps the words. */}
                             <DraftPayrollMoney amount={draftPayrollRowCashDue(stub?.gross_pay, estGross)} title={rowBar.estimated ? ESTIMATE_CHIP_TITLE : undefined} />
-                            {rowBar.salaryFlat ? <DraftPayrollSalaryChip /> : null}
+                            {rowBar.salaryFlat ? <DraftPayrollSalaryChip week={salaryWeek?.(person)} /> : null}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {stub ? (

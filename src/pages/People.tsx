@@ -18,7 +18,7 @@ import {
   type PeopleTab,
   type PeopleTabGroupId,
 } from '../lib/people/peopleTabGroups'
-import { effectiveHoursForDisplay, canEditRecordedHours } from '../lib/salariedEffectiveHours'
+import { effectiveHoursForDisplay, canEditRecordedHours, salariedWeekOf } from '../lib/salariedEffectiveHours'
 import { type TeamSummaryInlineHandle } from '../components/people/teamSummary/TeamSummaryInline'
 import type { TeamSummaryRow } from '../components/people/teamSummary/types'
 import { WriteupsContractsSubTab } from '../components/writeups/WriteupsContractsSubTab'
@@ -2257,6 +2257,7 @@ export default function People() {
           onOpenCatchUp={() => setCatchUpModalOpen(true)}
           pendingByPerson={draftPayrollPendingByPerson}
           isSalaryPerson={(person) => payConfig[person]?.is_salary ?? false}
+          salaryWeek={(person) => salariedWeekOf(payConfig[person])}
         />
       )}
 

@@ -6,6 +6,7 @@ import { withSupabaseRetry, formatErrorMessage } from '../../../utils/errorHandl
 import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../../../lib/salaryScheduleSync'
 import { loadPayConfigFacts, type PayConfigFacts } from '../../../lib/people/personDeskFacts'
 import { stintRange, stintRows, type Stint } from '../../../lib/people/employmentStints'
+import { salariedWeekLine } from '../../../lib/people/salariedWeekLine'
 import type { PersonDeskViewer } from '../../../lib/people/personDeskGates'
 import type { PersonKey } from '../../../lib/people/personKey'
 import { PersonOffsetFormModal } from '../../pay/PersonOffsetFormModal'
@@ -206,6 +207,8 @@ export function PersonDeskPaySection({
   }
 
   const lock = canEdit ? null : <LockTag label={viewer.readOnly ? 'training mode' : 'pay roles'} />
+  /** What a salaried wage comes to: the week's days and the week's pay. Null for an hourly person. */
+  const weekLine = pay ? salariedWeekLine({ isSalary: pay.isSalary, hourlyWage: pay.hourlyWage, week: pay.salariedWeek }) : null
 
   return (
     <DeskSection id="pay" title="Pay & schedule" who="pay roles">
@@ -253,6 +256,11 @@ export function PersonDeskPaySection({
               <>
                 <span style={{ fontWeight: 600 }}>{pay.hourlyWage != null ? `${money(pay.hourlyWage)} / h` : pay.isSalary ? 'Salaried' : 'no wage'}</span>
                 {pay.officeWage != null ? <span style={{ color: 'var(--text-muted)' }}>office {money(pay.officeWage)} / h</span> : null}
+                {weekLine ? (
+                  <span data-salaried-week style={{ color: 'var(--text-muted)' }}>
+                    {weekLine}
+                  </span>
+                ) : null}
               </>
             )}
           </DeskRow>
