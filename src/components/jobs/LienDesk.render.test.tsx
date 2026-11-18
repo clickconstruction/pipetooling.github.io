@@ -5222,7 +5222,7 @@ describe('LienDesk · serve the filed liens together (punch list #366)', () => {
     d.filingsByJob = Object.fromEntries(jobs.map((id) => [id, [filed(`f-${id}`, id)]])) as unknown as LienDeskData['filingsByJob']
     return d
   }
-  const serveRows = () => screen.getAllByRole('button', { name: 'Mail the copies' })
+  const serveRows = () => screen.getAllByRole('button', { name: 'Print the copies to mail' })
 
   it('two filed liens: the list folds them into one row whose press opens one window that prints both and takes their mail numbers', async () => {
     const onOpenLienInstruments = vi.fn()
@@ -5232,10 +5232,10 @@ describe('LienDesk · serve the filed liens together (punch list #366)', () => {
     const bin = document.querySelector('[data-lien-board-bin="affidavit:filed"]') as HTMLElement
     expect(bin.querySelector('[data-lien-board-count]')!.textContent).toBe('2')
     expect(document.querySelector('[data-lien-board-bin="affidavit:served"] [data-lien-board-count]')!.textContent).toBe('0')
-    expect(bin.querySelector('[data-lien-board-bin-press]')!.textContent).toBe('Mail 2 liens’ copies ›')
+    expect(bin.querySelector('[data-lien-board-bin-press]')!.textContent).toBe('Print 2 liens’ copies ›')
     // The list: one row for the two, under the bin's own name.
     expect(screen.getByText('2 filed liens owe their copies')).toBeTruthy()
-    const presses = screen.getAllByRole('button', { name: 'Mail 2 liens’ copies ›' })
+    const presses = screen.getAllByRole('button', { name: 'Print 2 liens’ copies ›' })
     expect(presses).toHaveLength(2)
     fireEvent.click(presses[presses.length - 1]!)
     const win = within(screen.getByTestId('lien-serve-window'))
@@ -5243,6 +5243,50 @@ describe('LienDesk · serve the filed liens together (punch list #366)', () => {
     expect(win.getByRole('button', { name: 'Print 2 liens’ copies' })).toBeTruthy()
     expect(win.getByRole('textbox', { name: 'Job 650, owner, certified mail number' })).toBeTruthy()
     expect(onOpenLienInstruments).not.toHaveBeenCalled()
+    // The door said Print, so the window lands on its print half.
+    expect(document.querySelector('[data-landed="yes"]')?.hasAttribute('data-lien-serve-print-part')).toBe(true)
+  })
+
+  // The owner's word of 2026-11-18: a door reads the stage the copies are at, and lands on that half (`lienServeStage.ts`).
+  it('once both liens’ copies are printed, the bin’s press reads Enter mail numbers and opens the window on the numbers', async () => {
+    const d = desk(['j650', 'j651'])
+    d.servePrintedFilingIds = ['f-j650', 'f-j651']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
+    await settle()
+    const press = document.querySelector('[data-lien-board-bin-press="affidavit:filed"]') as HTMLElement
+    expect(press.textContent).toBe('Enter mail numbers · 2 ›')
+    expect(screen.queryByRole('button', { name: /^Print 2 liens’ copies ›$/ })).toBeNull()
+    fireEvent.click(press)
+    const lit = document.querySelector('[data-landed="yes"]') as HTMLElement
+    expect(lit.textContent).toBe('2 · After the post office: enter mail numbers')
+  })
+
+  it('one printed, one not: the bin’s press names both halves with their counts and opens the window at its top', async () => {
+    const d = desk(['j650', 'j651'])
+    d.servePrintedFilingIds = ['f-j650']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
+    await settle()
+    const press = document.querySelector('[data-lien-board-bin-press="affidavit:filed"]') as HTMLElement
+    expect(press.textContent).toBe('Print 1 · Enter mail numbers 1 ›')
+    fireEvent.click(press)
+    expect(screen.getByTestId('lien-serve-window')).toBeTruthy()
+    expect(document.querySelectorAll('[data-landed="yes"]')).toHaveLength(0)
+  })
+
+  it('one filed lien whose copies are printed: its row reads Enter mail numbers and opens the copies window at its own line', async () => {
+    const onOpenLienInstruments = vi.fn()
+    const d = desk(['j650'])
+    d.servePrintedFilingIds = ['f-j650']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} />)
+    await settle()
+    expect(screen.queryByRole('button', { name: 'Print the copies to mail' })).toBeNull()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Enter mail numbers' })[0]!)
+    expect(screen.getByTestId('lien-serve-window')).toBeTruthy()
+    expect(onOpenLienInstruments).not.toHaveBeenCalled()
+    const lit = document.querySelector('[data-landed="yes"]') as HTMLElement
+    expect(lit.getAttribute('data-lien-serve-envelope')).toBe('owner')
+    expect(lit.closest('[data-lien-serve-job]')?.getAttribute('data-lien-serve-job')).toBe('j650')
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Job 650, owner, certified mail number')
   })
 
   it('the bin’s own press on the Board opens the same window', async () => {

@@ -45,7 +45,9 @@ describe('lienNextActFor — what pressing the band does (v2.7321)', () => {
     expect(aff('ready')).toEqual({ kind: 'footer', label: 'File it ›' })
     expect(aff('held')).toEqual({ kind: 'footer', label: 'Lift the hold ›' })
     expect(aff('')).toEqual({ kind: 'footer', label: 'Send for approval ›' })
-    expect(lienNextActFor(facts({ next: { kind: 'serve' } }))).toEqual({ kind: 'serve', label: 'Record the service ›' })
+    // A filed lien's copies: the band's press reads its stage's name (`lienServeStage.ts`).
+    expect(lienNextActFor(facts({ next: { kind: 'serve' } }))).toEqual({ kind: 'serve', label: 'Print the copies to mail ›' })
+    expect(lienNextActFor(facts({ next: { kind: 'serve' }, serveStage: 'record' }))).toEqual({ kind: 'serve', label: 'Enter mail numbers ›' })
     expect(lienNextActFor(facts({ next: { kind: 'release' } }))).toEqual({ kind: 'release', label: 'File the release ›' })
     expect(lienNextActFor(facts({ next: { kind: 'late_notice' } }))).toEqual({ kind: 'gate:notice', label: 'Send the late notice ›' })
     expect(lienNextActFor(facts({ next: { kind: 'retainage' } }))).toEqual({ kind: 'retainage', label: 'Send the retainage notice ›' })

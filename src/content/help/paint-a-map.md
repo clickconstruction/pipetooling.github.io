@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -184,6 +184,45 @@ To change a place you set, press **Change this place** beside it. Drag its dot, 
 
 Press a photo in the list to see it large.
 
+## Send one place to someone
+
+Each place has a press of its own for this. You do not share the whole map.
+
+On a phone, press **Text this place…** beside the place. Messages opens with the words already written. You pick who gets it.
+
+The text says what the place is and the word you left on it. It ends with a map link to the exact spot.
+
+Whoever gets it presses the link. A map app opens with a dot on the spot. They need no sign-in and give no name.
+
+They see that one spot. They do not see the painted map or its other places.
+
+At a desk the press reads **Copy this place**. It copies the same words. Paste them into a text or an email.
+
+Anyone who can see a place can send it. To send the whole map, press {{button:outline|Share}}.
+
+## Keep a place on the job
+
+Some spots matter on every map of a job. The gate is one. The meter is another. Keep those on the job itself.
+
+1. Open the job. Under its address, press {{button:outline|＋ Place on this job}}.
+2. Drag the blue dot onto the spot.
+3. Press what it is, such as {{chip:gray|Gate}}.
+4. Press {{button:blue|Add this place}}.
+
+You do not paint a map first. The job now has a line named **Places on this job**. Press it to see them all.
+
+A place on the job wears a letter. A place on one map wears a number.
+
+Every painted map of the job shows the job's places. They have a dashed ring and sit under **On this job**. To change one, press **Open Places on this job**.
+
+A link or a copy of a painted map does not carry the job's places. To send them, open **Places on this job** and press {{button:outline|Share}}.
+
+Anyone can change or remove a place they set. Only the office can throw the whole list away.
+
+:::example What is where on Lot 14
+＋ Place on this job → {{chip:gray|Gate}} → **Add this place**. Then {{chip:gray|Meter}}, then {{chip:gray|Hazard}} for the open trench.
+:::
+
 ## Read a length
 
 A length is always *about*. It comes with a give or take, such as *About 830 ft, give or take 10 ft*.
@@ -275,18 +314,31 @@ Open the map and press {{button:outline|Share}}. The press shows for whoever pai
 
 :::steps
 
-1. Press {{button:blue|Make a link}}.
-2. Press {{button:outline|Copy the link}} and paste it into a text or an email.
-3. Or press **Send it another way…** to hand it to your phone's own share sheet.
-4. Or press **Show a code to scan** when the person is standing next to you.
+1. Press {{button:blue|Text it from my phone…}}. Your phone's Messages opens with the words and the link written.
+2. Pick who gets it, and send it.
 
 :::
+
+The first press makes the link. You do not make one first.
+
+Your phone may not open Messages by itself. The sheet then says the link is ready. Press {{button:blue|Open Messages}}.
+
+At a desk there is no **Text it from my phone…**. {{button:blue|Copy the link}} leads there.
+
+### Other ways to send it
+
+Four more presses sit under the blue one. Any of the four makes the link if none is out.
+
+- Press **Show a code to scan** when the person is standing next to you. A phone's camera opens the map from the code.
+- Press **Copy the link** and paste it into a text or an email.
+- Press **Send it another way…** for mail, a group chat or a phone nearby. Your phone's own share sheet opens.
+- Press **Make a picture** for someone who will not open a link.
 
 Anyone who has the link can open the map. Send it only to people who should have it.
 
 ### Text it to the job's customer
 
-The office can text the link from the company's number. Press **Text it…** under the link.
+The office can text the link from the company's number. Press **Text the customer…** on the sheet.
 
 The customer's text box opens with the map's name and the link in it. Change the words if you like.
 
@@ -294,7 +346,7 @@ Press **Send text…** and look it over before it goes. Nothing is sent until yo
 
 The text lands in the customer's thread on the job. Their answer comes back to Messages.
 
-**Text it…** shows only on a map that is on a job. A map on no job has no customer to text.
+On a map with no job the press is grey. The grey press says the map is on no job, since there is no customer to text.
 
 ### They give their name first
 
@@ -314,6 +366,8 @@ A place with a kind shows its mark to them too. A gate looks like a gate on thei
 
 They do not see who painted it or when. They see nothing else about the job.
 
+The sheet says this too. Press **What they see** at the foot of the sheet.
+
 Never put a gate code on a painted map. A link shows everything on the map to whoever holds it.
 
 ### Where they are
@@ -326,7 +380,7 @@ A reader who does not press it shares no place. The map still works for them.
 
 ### See who opened it
 
-Open **Share** on the map again. Under the link, **Who opened it** lists each reader.
+Open **Share** on the map again. Under the presses, **Who opened it** lists each reader.
 
 A row says the name they gave, their phone or computer, when they opened it and how many times. A teammate's row says **signed in**.
 
@@ -340,15 +394,17 @@ A link ends by itself after 90 days. The sheet says the day.
 
 Press **End this link now** to end it sooner. Anyone who opens it after that reads that the map is no longer shared.
 
-The sheet says how many times a link was opened. It does not say who opened it.
+The sheet says how many times a link was opened.
 
-A link can be read only on the device that made it. On another device, press {{button:blue|Make a link}} to make a new one.
+A link can be sent again only from the device that made it. On another device, your first press makes a new link for that device.
 
 ## Hand over a copy
 
 Some people will not open a link. Some places need paper. The Share sheet makes a copy for them.
 
 A copy cannot be taken back. It goes out of date when the map changes. Send the link when you can.
+
+A copy makes the link if none is out. So every copy carries a way back to the map as it is today.
 
 ### A picture
 
@@ -360,19 +416,21 @@ A picture shows in a text thread without a press. The word Start marks where the
 
 A place with a kind keeps its mark in the picture and on the printed page.
 
+Press **Every way to share** to go back to the other presses.
+
 ### A page to print
 
-Press **Print, or save as a PDF**. One page opens with the map, the places and their photos.
+Press **Print or a file**, then **Print, or save as a PDF**. One page opens with the map, the places and their photos.
 
 Pick your printer, or pick Save as PDF in the print window.
 
-Make a link first, and the page carries a code to scan. The code opens the map as it is today.
+The page carries a code to scan. The code opens the map as it is today.
 
 The app keeps a copy of every page you print. The office finds it on the job's **Documents** tab.
 
 ### A file for another map
 
-An engineer or a surveyor may keep a map of their own. Two presses make a file for it.
+An engineer or a surveyor may keep a map of their own. Press **Print or a file** to find two presses that make a file for it.
 
 - **A .kml file** opens in Google Earth and Google My Maps.
 - **A .gpx file** opens in a hiking app or a handheld.

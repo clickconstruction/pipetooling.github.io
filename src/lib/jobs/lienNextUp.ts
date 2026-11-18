@@ -9,6 +9,7 @@
  * (`isLienOffice` / `isLienLeader`); a role that is neither sees the list and no buttons.
  */
 import { lienServeClock, lienServeRowWords } from './lienServeClock'
+import { LIEN_SERVE_STAGE_WORDS, type LienServeStage } from './lienServeStage'
 import { isLienLeader, isLienOffice, type LienDeskEntry, type LienDeskPile, type LienDeskSeverity } from './lienDesk'
 import { lienOtherScreen } from './lienCodeSigner'
 import { lienAffidavitGateHeld, type LienAffidavitEntry } from './lienDeskAffidavits'
@@ -106,6 +107,8 @@ export type LienNextUpRow = {
   action: LienNextUpAction
   /** The button's words; null when this viewer has no move on the row (it still opens on a press of the row). */
   button: string | null
+  /** A filed lien's row: where its copies stand (`lienServeStage.ts`), which names the press and picks where it lands. */
+  serveStage?: LienServeStage
   target: LienNextUpTarget
   /** A second, quieter button (punch list #101: the run row's *Take back…*); null or absent for most rows. */
   secondary?: { words: string; target: LienNextUpTarget } | null
@@ -140,8 +143,9 @@ const BUTTON: Record<LienNextUpAction, string> = {
   send_notice: 'Send the notice first',
   draft_late: 'Draft it late',
   file_affidavit: 'File the affidavit',
-  // The copies of a filed lien (punch list #366): the press opens where they are printed, mailed and recorded. *Record service* until v2.7497.
-  record_service: 'Mail the copies',
+  // The copies of a filed lien (punch list #366). *Record service* until v2.7497, *Mail the copies* until v2.7798: a row reads its
+  // stage's name (`lienServeStage.ts`), and this one stands for a row with no stage handed in, which has printed nothing.
+  record_service: LIEN_SERVE_STAGE_WORDS.print,
   mail_needs_you: 'Open the notice',
   record_retainage: 'Record the retainage',
 }
@@ -171,7 +175,7 @@ export type LienNextUpInput = {
   /** The courtesy notice per job with a sent notice (punch list #231); absent on readers that do not build it. */
   courtesyByJob?: Readonly<Record<string, CourtesyStatus>>
   /** Filed affidavits not yet served (`LienWatchResult.serveDue`). */
-  serveDue?: ReadonlyArray<{ jobId: string; serveDue: string }>
+  serveDue?: ReadonlyArray<{ jobId: string; serveDue: string; /** Where the copies stand; absent reads as still to print. */ stage?: LienServeStage }>
   role: string | null | undefined
   todayYmd: string
   jobTitle: (jobId: string) => string
@@ -485,7 +489,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
   for (const s of input.serveDue ?? []) {
     const clock = lienServeClock(s.serveDue, input.todayYmd)
     const daysLeft = clock.serveDue ? clock.daysLeft : daysBetween(input.todayYmd, s.serveDue)
-    push({ kind: 'affidavit', key: `serve:${s.jobId}`, jobId: s.jobId, gcId: null, title: input.jobTitle(s.jobId), sub: lienServeRowWords(clock), dueOn: s.serveDue, daysLeft, severity: clock.late || daysLeft <= 1 ? 'red' : 'amber', action: 'record_service', button: office ? BUTTON.record_service : null, target: { open: 'lien_window', jobId: s.jobId, tab: 'affidavit' } })
+    push({ kind: 'affidavit', key: `serve:${s.jobId}`, jobId: s.jobId, gcId: null, title: input.jobTitle(s.jobId), sub: lienServeRowWords(clock), dueOn: s.serveDue, daysLeft, severity: clock.late || daysLeft <= 1 ? 'red' : 'amber', action: 'record_service', serveStage: s.stage ?? 'print', button: office ? LIEN_SERVE_STAGE_WORDS[s.stage ?? 'print'] : null, target: { open: 'lien_window', jobId: s.jobId, tab: 'affidavit' } })
   }
 
   // ---- § 53.057 retainage ----

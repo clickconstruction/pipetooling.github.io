@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { JobLienFilingRow } from './lienDeadlines'
-import { lienServeBatchPrint, lienServeClock, lienServeDoorWords, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailSheetHtml, lienServePlan, lienServePlanWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
+import { lienServeBatchPrint, lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailSheetHtml, lienServePlan, lienServePlanWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
+import { lienServeStageCounts, lienServeStageDoorWords } from './lienServeStage'
 
 // Every name, address and figure here is made up.
 const FIELDS = {
@@ -107,10 +108,18 @@ describe('lienServePlanWords', () => {
     expect(words([job('1', { serve_due: '2026-11-11' })]).late).toBe('1 is past its day. Mail it today.')
   })
 
-  it('names the door to the window by every lien that owes its copies, held ones too', () => {
-    const door = (jobs: LienServeJob[]) => lienServeDoorWords(lienServePlan(jobs, CTX))
-    expect(door([job('1'), job('2'), job('3', { recording_number: '' })])).toBe('Mail 3 liens’ copies ›')
-    expect(door([job('1')])).toBe('Mail 1 lien’s copies ›')
+  it('names the door to the window by the stage the copies are at (`lienServeStage.ts`)', () => {
+    const door = (jobs: LienServeJob[], printed: string[] = []) => lienServeStageDoorWords(lienServeStageCounts(lienServePlan(jobs, CTX), printed))?.label ?? ''
+    // Nothing printed: the print, counting the liens that can print. A held one cannot.
+    expect(door([job('1'), job('2'), job('3', { recording_number: '' })])).toBe('Print 2 · Enter mail numbers 1 ›')
+    expect(door([job('1'), job('2')])).toBe('Print 2 liens’ copies ›')
+    expect(door([job('1')])).toBe('Print 1 lien’s copies ›')
+    // Every lien that can print has: the numbers, counting every lien still owed its day, the held one too.
+    const ids = (jobs: LienServeJob[]) => jobs.map((j) => j.filing.id)
+    const three = [job('1'), job('2'), job('3', { recording_number: '' })]
+    expect(door(three, ids(three).slice(0, 2))).toBe('Enter mail numbers · 3 ›')
+    // One still to print: the door names both halves.
+    expect(door(three, ids(three).slice(0, 1))).toBe('Print 1 · Enter mail numbers 2 ›')
     expect(door([])).toBe('')
   })
 

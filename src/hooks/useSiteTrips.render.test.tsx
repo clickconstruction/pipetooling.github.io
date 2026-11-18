@@ -6,6 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
+import type { DeletedTrip } from '../lib/trips/tripDeleted'
 import type { PunchRow } from '../lib/trips/tripHourRows'
 import type { TripDismissalInsert, TripDismissalRow } from '../lib/trips/tripOffers'
 import { newTripRecord, type TripRecord } from '../lib/trips/tripRecord'
@@ -131,5 +132,87 @@ describe('useSiteTrips: Not a trip, and the names behind an offer', () => {
     await waitFor(() => expect(result.current.dismissals).toEqual([kept]))
     await expect(result.current.dismiss([asked])).rejects.toThrow('Not a trip is said by the office or a leader.')
     expect(result.current.dismissals).toEqual([kept])
+  })
+})
+
+describe('useSiteTrips: the site’s deleted trips', () => {
+  const gone = (id: string, tripNumber: number): DeletedTrip => ({
+    record: { ...newTripRecord({ id, developmentId: 'd1' }), tripNumber, people: [{ personId: null, userId: null, name: 'Priya', days: { '2026-11-09': 'site' } }] },
+    deletedAt: '2026-11-18T16:20:00.000Z',
+    deletedByName: 'Dana Office',
+    jobsGone: 0,
+  })
+
+  it('reads them beside the trips, and a site whose only trip was deleted still shows its look', async () => {
+    const io = makeIo({ readTrips: vi.fn(async () => []), readDeleted: vi.fn(async () => [gone('t3', 3)]) })
+    const { result } = draw(io)
+    expect(result.current.deletedKnown).toBe(false)
+    await waitFor(() => expect(result.current.deleted.map((d) => d.record.id)).toEqual(['t3']))
+    expect(io.readDeleted).toHaveBeenCalledWith('d1')
+    expect(result.current.deletedKnown).toBe(true)
+    expect(result.current.deletedFailed).toBe(false)
+    await waitFor(() => expect(result.current.shows).toBe(true))
+  })
+
+  it('a near site with no trip, kept or deleted, shows no look', async () => {
+    const io = makeIo({ readTrips: vi.fn(async () => []), readDeleted: vi.fn(async () => []) })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.deletedKnown).toBe(true))
+    await waitFor(() => expect(result.current.records).toEqual([]))
+    expect(result.current.shows).toBe(false)
+  })
+
+  it('reads none for a reader outside the door, and knows it at once when no read is handed in', async () => {
+    const closed = makeIo({ readDeleted: vi.fn(async () => [gone('t3', 3)]) })
+    const { result } = draw(closed, false)
+    expect(closed.readDeleted).not.toHaveBeenCalled()
+    expect(result.current.deleted).toEqual([])
+    expect(result.current.deletedKnown).toBe(true)
+    const { result: bare } = draw(makeIo())
+    expect(bare.current.deletedKnown).toBe(true)
+    expect(bare.current.deleted).toEqual([])
+  })
+
+  it('says so when they will not read, and the trips still stand', async () => {
+    const io = makeIo({ readDeleted: vi.fn(async () => Promise.reject(new Error('lost signal'))) })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.deletedFailed).toBe(true))
+    expect(result.current.deletedKnown).toBe(true)
+    expect(result.current.deleted).toEqual([])
+    await waitFor(() => expect(result.current.records).toHaveLength(1))
+    expect(result.current.failure).toBeNull()
+  })
+
+  it('does not list a trip the site holds again, as after an Undo', async () => {
+    const io = makeIo({ readDeleted: vi.fn(async () => [gone('t5', 5), gone('t3', 3)]) })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.records).toHaveLength(1))
+    await waitFor(() => expect(result.current.deleted.map((d) => d.record.id)).toEqual(['t3']))
+  })
+
+  it('reads them again after a delete, and a put back leaves the list at once', async () => {
+    const readDeleted = vi.fn<NonNullable<SiteTripsIo['readDeleted']>>().mockResolvedValueOnce([]).mockResolvedValueOnce([gone('t5', 5)]).mockImplementation(() => new Promise<DeletedTrip[]>(() => undefined))
+    // The trips read answers with the trip, then without it once it is deleted, then not at all, so what the hook
+    // holds after the put back is what the save gave it.
+    const readTrips = vi.fn<SiteTripsIo['readTrips']>().mockResolvedValueOnce([lifts]).mockResolvedValueOnce([]).mockImplementation(() => new Promise<TripRecord[]>(() => undefined))
+    const io = makeIo({ readTrips, readDeleted })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.deletedKnown).toBe(true))
+    await waitFor(() => expect(result.current.records).toHaveLength(1))
+    await act(async () => {
+      await result.current.remove('t5')
+    })
+    expect(io.remove).toHaveBeenCalledWith('t5')
+    await waitFor(() => expect(result.current.deleted.map((d) => d.record.id)).toEqual(['t5']))
+    expect(readDeleted).toHaveBeenCalledTimes(2)
+    // Put back is the trip's own save: the trip is held again, so it is not listed, before the next read answers.
+    const back = result.current.deleted[0]?.record
+    if (!back) throw new Error('no deleted trip')
+    await act(async () => {
+      await result.current.save(back)
+    })
+    expect(io.save).toHaveBeenCalledWith(back)
+    expect(result.current.deleted).toEqual([])
+    expect(result.current.records?.map((r) => r.id)).toContain('t5')
   })
 })

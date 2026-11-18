@@ -44,6 +44,7 @@ import { canSeeGcMoney } from '../../lib/gc/access'
 import { ymdFromDateOnlyOrIso } from '../../lib/jobChargesTimeline'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { TRIP_GONE_WORDS, tripHref } from '../../lib/trips/jobTrips'
+import { deletedTripLines, TRIP_DELETE_KEPT_WORDS } from '../../lib/trips/tripDeleted'
 import { tripAlreadyOnLinesWords, tripDeleteLineWords, tripOnLinesWords, tripSheetLineNote, type TripBillLine, type TripBillLineReply } from '../../lib/trips/tripBillLine'
 import { putTripOnJobLine, TripBillLineRefusal, type TripBillLinePress } from '../../lib/trips/tripBillLineIo'
 import { siteCardCharges, tripCostLines, tripCostsOfTrips, type TripCardsState, type TripLaborState } from '../../lib/trips/tripCost'
@@ -62,7 +63,7 @@ import { TripSheet, type TripSheetJob } from '../trips/TripSheet'
 import { Card, type CardFold } from './developmentPageBits'
 import { DevelopmentTripsLook, type TripOpenSignal, type TripsCosts, type TripsHoursState } from './DevelopmentTripsLook'
 
-/** How long a deleted trip can be put back, and a Not a trip taken back. */
+/** How long the toast of a deleted trip offers its Undo, and a Not a trip can be taken back. A deleted trip waits under Deleted trips after that. */
 export const TRIP_UNDO_MS = 60_000
 
 const NO_OFFERS: TripSuggestion[] = []
@@ -274,6 +275,22 @@ export function DevelopmentTripsCard({
     setSheet({ record: newTripRecord({ id: crypto.randomUUID(), developmentId }), isNew: true })
   }, [addSignal, developmentId])
 
+  // Deleted trips, said for the fold. Put back is the trip's own save under its own id, as the Undo of a delete is.
+  const deletedLines = useMemo(() => deletedTripLines(trips.deleted, { todayYmd, toYmd: calendarYmdInAppTzFromIso }), [trips.deleted, todayYmd])
+  const putBack = async (id: string) => {
+    const found = trips.deleted.find((d) => d.record.id === id)
+    if (!found) return
+    setBusy(true)
+    try {
+      await trips.save(found.record)
+      showToast(tripBackWords(found.record, todayYmd), 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The trip could not be put back.'), 'error', 6000)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const save = async (record: TripRecord): Promise<boolean> => {
     setBusy(true)
     try {
@@ -424,6 +441,10 @@ export function DevelopmentTripsCard({
             jobShort={jobShort}
             onPutOnBill={setBilling}
             onOpenBillLine={onOpenJobOnBill ? openBillLine : undefined}
+            deleted={deletedLines}
+            deletedFailed={trips.deletedFailed}
+            putBackBusy={busy}
+            onPutBack={(id) => void putBack(id)}
           />
         </Card>
       ) : null}
@@ -432,7 +453,7 @@ export function DevelopmentTripsCard({
       {asking ? (
         <ConfirmDialog
           title={`Delete ${tripNameWords(asking, todayYmd)}?`}
-          body={`${asking.purpose.trim() ? `${asking.purpose.trim()}. ` : ''}The trip goes, with who went and its days. No clock row, bill or cost changes. You can undo it for a minute.${askingLineWords ? ` ${askingLineWords}` : ''}`}
+          body={`${asking.purpose.trim() ? `${asking.purpose.trim()}. ` : ''}The trip goes, with who went and its days. No clock row, bill or cost changes. You can undo it for a minute. ${TRIP_DELETE_KEPT_WORDS}${askingLineWords ? ` ${askingLineWords}` : ''}`}
           confirmLabel="Delete this trip"
           onConfirm={() => void remove(asking)}
           onCancel={() => setAsking(null)}

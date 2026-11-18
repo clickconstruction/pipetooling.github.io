@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { lienMailProof, type LienMailProofEnvelope } from './lienMailProof'
-import { lienMailProofDoor, lienMailProofDoorPress, lienMailProofLack, lienMailProofLandingFocus, lienMailProofOwnerGap, lienMailProofPlaces, lienMailProofSelectors, lienMailProofWindowSpot, lienMailProofWindowTab, type LienMailProofDoorFacts } from './lienMailProofDoor'
+import { lienMailProofDoor, lienMailProofDoorPress, lienMailProofLack, lienMailProofLandingFocus, lienMailProofOwnerGap, lienMailProofPlaces, lienMailProofSelectors, lienMailProofServeLanding, lienMailProofWindowSpot, lienMailProofWindowTab, type LienMailProofDoorFacts } from './lienMailProofDoor'
 
 const everywhere: LienMailProofDoorFacts = { ownerGap: null, served: false, can: { property: true, serve: true, lien_window: true } }
 const send = (recipient: string, over: Record<string, unknown> = {}) => ({ recipient, method: 'certified_mail', tracking: '', sent_on: '2026-11-17', ...over })
@@ -13,11 +13,13 @@ describe('the press on a recipient’s card', () => {
     const blank = affidavit([])
     const noOwner = { ...everywhere, ownerGap: 'owner' as const }
     expect(lienMailProofDoor('affidavit', copy(blank.envelopes, 'owner'), noOwner)).toEqual({ recipient: 'owner', lack: 'owner', place: 'property', label: 'Enter the owner of record ›' })
-    expect(lienMailProofDoor('affidavit', copy(blank.envelopes, 'original_contractor'), noOwner)).toMatchObject({ lack: 'mailing', place: 'serve' })
+    expect(lienMailProofDoor('affidavit', copy(blank.envelopes, 'original_contractor'), noOwner)).toMatchObject({ lack: 'print', place: 'serve' })
     // The name is there and the address is not: the press names the address.
     expect(lienMailProofDoor('affidavit', copy(blank.envelopes, 'owner'), { ...everywhere, ownerGap: 'owner_address' })).toEqual({ recipient: 'owner', lack: 'owner_address', place: 'property', label: 'Enter the owner’s mailing address ›' })
-    // Owner on file, not mailed: the copies window, where the copy prints and its number goes.
-    expect(lienMailProofDoor('affidavit', copy(blank.envelopes, 'owner'), everywhere)).toEqual({ recipient: 'owner', lack: 'mailing', place: 'serve', label: 'Mail this copy ›' })
+    // Owner on file, nothing printed: the print, named as the press it lands on. It read Mail this copy › for a day.
+    expect(lienMailProofDoor('affidavit', copy(blank.envelopes, 'owner'), everywhere)).toEqual({ recipient: 'owner', lack: 'print', place: 'serve', label: 'Print the copies to mail ›' })
+    // The copies are printed and no number is typed: the same card reads the other half (`lienServeStage.ts`).
+    expect(lienMailProofDoor('affidavit', copy(blank.envelopes, 'owner'), { ...everywhere, printed: true })).toEqual({ recipient: 'owner', lack: 'number', place: 'serve', label: 'Enter the mail number ›' })
     // The day is on record with no number: the number, in the Lien window, since a served lien has left the copies window.
     const served = affidavit([], '2026-11-18')
     expect(copy(served.envelopes, 'owner').line).toBe('Mailed, no number yet')
@@ -56,23 +58,26 @@ describe('the press on a recipient’s card', () => {
     const owner = copy(blank.envelopes, 'owner')
     expect(lienMailProofDoor('affidavit', owner, { ...everywhere, can: {} })).toBeNull()
     expect(lienMailProofDoor('affidavit', owner, { ...everywhere, ownerGap: 'owner', can: { serve: true, lien_window: true } })).toBeNull()
-    // No copies window on this screen (the job's own Lien window): its service step takes the mailing.
-    expect(lienMailProofDoor('affidavit', owner, { ...everywhere, can: { lien_window: true } })).toMatchObject({ lack: 'mailing', place: 'lien_window' })
+    // No copies window on this screen (the job's own Lien window): its own print press takes the print.
+    expect(lienMailProofDoor('affidavit', owner, { ...everywhere, can: { lien_window: true } })).toMatchObject({ lack: 'print', place: 'lien_window' })
   })
 
   it('names the places in order and the spot the Lien window lands on', () => {
     expect(lienMailProofPlaces('affidavit', 'owner', false)).toEqual(['property'])
-    expect(lienMailProofPlaces('affidavit', 'mailing', false)).toEqual(['serve', 'lien_window'])
+    expect(lienMailProofPlaces('affidavit', 'print', false)).toEqual(['serve', 'lien_window'])
     expect(lienMailProofPlaces('affidavit', 'receipt', true)).toEqual(['lien_window'])
     expect(lienMailProofPlaces('notice', 'number', false)).toEqual(['lien_window'])
-    expect(lienMailProofWindowSpot({ paper: 'affidavit', lack: 'mailing' })).toBe('service')
+    expect(lienMailProofWindowSpot({ paper: 'affidavit', lack: 'print' })).toBe('print')
     expect(lienMailProofWindowSpot({ paper: 'affidavit', lack: 'number' })).toBe('service')
     expect(lienMailProofWindowSpot({ paper: 'affidavit', lack: 'receipt' })).toBe('copy')
     expect(lienMailProofWindowSpot({ paper: 'notice', lack: 'number' })).toBe('row')
     expect(lienMailProofWindowSpot({ paper: 'retainage', lack: 'receipt' })).toBe('copy')
-    expect(lienMailProofSelectors.serveCopy('j1', 'owner')).toBe('[data-lien-serve-job="j1"] [data-lien-serve-envelope="owner"]')
+    // In the copies window a print lands on the print half, and anything else on the copy's own line.
+    expect(lienMailProofServeLanding({ jobId: 'j1', recipient: 'owner', lack: 'print' })).toEqual({ part: 'print' })
+    expect(lienMailProofServeLanding({ jobId: 'j1', recipient: 'owner', lack: 'number' })).toEqual({ part: 'numbers', jobId: 'j1', recipient: 'owner', cursor: true })
+    expect(lienMailProofServeLanding({ jobId: 'j1', recipient: 'original_contractor', lack: 'receipt' })).toEqual({ part: 'numbers', jobId: 'j1', recipient: 'original_contractor', cursor: false })
     expect(lienMailProofSelectors.filingCopy('f1', 'original_contractor')).toBe('[data-lien-filing-row="f1"] [data-lien-mail-proof-envelope="original_contractor"]')
-    expect([lienMailProofLandingFocus('number'), lienMailProofLandingFocus('receipt'), lienMailProofLandingFocus('mailing')]).toEqual(['input[type="text"]', 'button', null])
+    expect([lienMailProofLandingFocus('number'), lienMailProofLandingFocus('receipt'), lienMailProofLandingFocus('print')]).toEqual(['input[type="text"]', 'button', null])
     expect([lienMailProofWindowTab('affidavit'), lienMailProofWindowTab('notice'), lienMailProofWindowTab('retainage')]).toEqual(['affidavit', 'notice', 'notice'])
   })
 
@@ -90,10 +95,10 @@ describe('the press on a recipient’s card', () => {
     const pressFor = lienMailProofDoorPress(facts, { serve, lien_window: lienWindow }, () => order.push('close'))
     const blank = affidavit([])
     const press = pressFor(copy(blank.envelopes, 'original_contractor'))!
-    expect(press.label).toBe('Mail this copy ›')
+    expect(press.label).toBe('Print the copies to mail ›')
     press.onPress()
     expect(order).toEqual(['close', 'serve'])
-    expect(serve).toHaveBeenCalledWith({ jobId: 'j1', filingId: 'f1', paper: 'affidavit', recipient: 'original_contractor', lack: 'mailing' })
+    expect(serve).toHaveBeenCalledWith({ jobId: 'j1', filingId: 'f1', paper: 'affidavit', recipient: 'original_contractor', lack: 'print' })
     // No opener for the property record on this screen: the owner's gap gets no press, and nothing else is offered in its place.
     expect(lienMailProofDoorPress({ ...facts, ownerGap: 'owner' }, { serve, lien_window: lienWindow })(copy(blank.envelopes, 'owner'))).toBeNull()
     // No openers at all: a reader, with no press on any card.

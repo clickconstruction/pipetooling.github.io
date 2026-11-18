@@ -317,6 +317,16 @@ The controller sees the desk's section and presses nothing.
 The office's **Waiting on** card (v2.7568, punch list #365, PR 2) is drawn for the assistant and the controller alone (`canSeeWaitingOnLeader`).
 It adds no policy and no function: the waivers, the tagged notes and the line budgets are read under the office's own row-level security, and its **Remind** is `notify-lien-approval`, whose gate is the office roles.
 
+### My finish date — a person's word on when a job finishes (v2.7807, `20261118110000_job_finish_calls.sql`, punch list #396)
+
+- **`job_finish_calls`** (`docs/migrations/20261118110000_job_finish_calls.md`): one row a saying, never changed.
+  A person **writes** his own row on a job he can read, and **reads** his own rows.
+  Anyone who can read the job reads what was said on it.
+  Both rules ask `jobs_ledger` under the caller's own row-level security, so the table adds no rule about who is on a job.
+- `authenticated` holds `SELECT` and `INSERT` alone, so nobody signed in changes or deletes a saying, and `anon` holds no grant.
+- It moves neither the planned finish nor the score: no function reads it.
+- The read-only blocks, the twin fence and the archived seal stand on the table.
+
 ### GC projects — New project, the plans, the questions and the scope book (door 1, v2.4832, `20261008003000_gc_door_1_new_project_team.sql`)
 
 GC mode's first door.
@@ -917,7 +927,7 @@ The Board at the top of To do (v2.7332) is drawn for everyone who opens the desk
 its leader's press (v2.7334: the one counted press that approves the affidavits waiting on him, on his Awaiting Master approval bin's title line since v2.7708, when his own two bins and their switch were retired) shows to master / dev in the client (`isLienLeader`), counts only the jobs the viewer leads (`lienViewerLeadsJob`) and approves row by row through `approveLienDeskItem` under the same guard, with no new RPC;
 a notice is left out of that press, since only his signature approves it.
 The Dashboard's Needs you card draws the Board's four numbers for the office set (`isLienOffice`).
-Since v2.7785 a stop window's card in *What went out* carries its press (**Mail this copy ›**, **Enter the mail number ›**, **Add the receipt ›**, **Enter the owner of record ›**) for the office set alone (`isLienOffice`, through `proofOpeners` in `LienDesk.tsx` and the same check in `LienInstrumentsModal`).
+Since v2.7785 a stop window's card in *What went out* carries its press (**Print the copies to mail ›**, **Enter the mail number ›**, **Add the receipt ›**, **Enter the owner of record ›**) for the office set alone (`isLienOffice`, through `proofOpeners` in `LienDesk.tsx` and the same check in `LienInstrumentsModal`).
 Anyone else reads that card with no press.
 Since v2.4160 the Pipeline's **property kind badge** (C / R / ? at the end of every address) opens the same Residential | Commercial switch for dev · master · assistant-like (`PropertyKindBadge`, saving `customer_addresses.property_kind`);
 every other role sees the badge alone.
@@ -1130,6 +1140,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - **Who changes what**: anyone who reads a map may add a stroke or a place, signed as themselves (`made_by`, `set_by` must be the caller).
   Changing or removing a stroke or a place is its maker's and the office's.
   Renaming a map, moving it to another home and deleting it are its maker's and the office's, and they must pass the gate for the new home too.
+  **A job's own list of places** (v2.7792 the column `painted_maps.job_list`, v2.7795 the screens, punch list #393) is a painted map and has no rule of its own in the database: whoever may paint a map for the job may start its list, and its maker and the office may rename, unmark or delete it.
+  The app is narrower than the table on one press: it offers **Throw this list away** to the office team alone (`isOfficeRole`) and offers no rename, since the list holds other people's places.
   **Put it on a job…** (v2.7227) is that move, from no job to a job the mover can open.
 - **The bucket `painted-map-photos`** is private.
   Objects are named `<map id>/<file>`, and the policies read the map from `objects.name`, so whoever reads the map reads and adds its photos;
@@ -1161,7 +1173,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   It has no role check of its own: a caller the gate turns away gets an empty list and sees only **＋ Paint a map**, and a save they may not make is refused by the database in words.
   In the window, the presses that change a line or the map, and **Share**, show for its maker and for the office (`isOfficeRole`);
   the database holds the same line.
-  On the Share sheet, **Text it…** (v2.7338) shows for the office team alone (`jobBoxOffered`, the roles that write to a customer in Messages) and only on a map that is on a job;
+  On the Share sheet, **Text the customer…** (v2.7338, named **Text it…** until v2.7790) shows for the office team alone (`jobBoxOffered`, the roles that write to a customer in Messages) and only on a map that is on a job;
   the text is the customer's box's own send through `quo-send`, so its holds and its roles are that box's.
   The Map page's **Painted maps** chip and Materials on site's map (v2.7228), and the *Painted maps* group in the header's search (v2.7227), read every map the caller can open under this same gate, and a read it refuses is an empty layer or list.
   The **Painted maps** section of a job's Documents tab (v2.7393) and the Documents page's **Painted maps** tab (v2.7409, drawn for everyone who opens the page) have no role check of their own either: row security decides the rows.

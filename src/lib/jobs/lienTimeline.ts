@@ -1,5 +1,6 @@
 import { daysBetweenYmd } from './billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import type { LienServeStage } from './lienServeStage'
 import { filingDeadlineForMonth, LIEN_SUIT_COUNSEL_LEAD_DAYS, serveDueForFiling, suitDeadlineFor } from './lienDeadlines'
 
 export { LIEN_SUIT_COUNSEL_LEAD_DAYS, suitDeadlineFor }
@@ -220,6 +221,8 @@ export interface LienTimelineInput {
     county: string
     servedAt: string | null
     serveDue: string | null
+    /** Where a filed lien's copies stand (`lienServeStage.ts`): the band's press reads its name. Absent reads as still to print. */
+    serveStage?: LienServeStage | null
     /** Gate labels still failing, short — `legal description`. */
     missingGates: string[]
     /** Where the affidavit stands on the desk (v2.7187, punch list #335, row 2); absent or '' reads *File the affidavit*. */
@@ -730,7 +733,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
 
   const waitingOn = waitingOnFor(steps, next, input, paidBy, todayYmd)
   // The band's press (v2.7321): decided from the same facts as the words, so the two cannot part.
-  const act = lienNextActFor({ next, waitingOn, noticeState: input.noticeState, missingKeys: input.affidavit?.missingKeys ?? [], noticeStanding: input.affidavit?.noticeStanding ?? null, paid: input.paid })
+  const act = lienNextActFor({ next, waitingOn, noticeState: input.noticeState, missingKeys: input.affidavit?.missingKeys ?? [], noticeStanding: input.affidavit?.noticeStanding ?? null, serveStage: input.affidavit?.serveStage ?? null, paid: input.paid })
 
   return { steps: folded, next: { ...next, act }, kindUnknown, lienGone, suitDate, todayIndex, windowsAside, todayYmd, waitingOn }
 }

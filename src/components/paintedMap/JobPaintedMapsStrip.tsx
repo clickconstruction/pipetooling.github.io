@@ -5,13 +5,21 @@
  *
  * A job with no painted map looks as it did, plus one quiet press for whoever wants to paint one.
  * A map painted for the job's development shows here too, since it is every lot's way in.
+ *
+ * The job's own list of places sits here too (punch list #393, `paintedJobList.ts`): one line when
+ * it holds a place, and a press that sets one with no map to paint first.
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { mapSummaryWords, mapsForDevelopment, mapsForJob } from '../../lib/paintedMap/paintedMap'
-import { onPaintedMapsChanged, openPaintedMap, startPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
+import { JOB_LIST_WORDS, jobListCountWords, jobListPlaces, jobListsOf } from '../../lib/paintedMap/paintedJobList'
+import { onPaintedMapsChanged, openPaintedMap, paintPaintedMap, startPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { loadPaintedMapsFor, type PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
 import { useTakenDown } from '../../hooks/useTakenDown'
+import { PaintedPlaceMark } from './PaintedPlaceMark'
 import { PAINT_SWATCH } from './paintedMapLook'
+
+/** An id for a list not yet saved, as the start sheet makes one for a map. */
+const newId = (): string => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`)
 
 type Props = {
   jobId: string
@@ -60,10 +68,21 @@ export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = nu
 
   const maps = useMemo(() => {
     const byId = new Map(wholes.map((w) => [w.map.id, w]))
-    return mapsForJob(wholes.map((w) => w.map), jobId, developmentId).map((m) => ({ ...m, whole: byId.get(m.id)! }))
+    // The job's own list of places is not a map somebody painted: it has a line of its own, below.
+    return mapsForJob(wholes.map((w) => w.map).filter((m) => m.jobList !== true), jobId, developmentId).map((m) => ({ ...m, whole: byId.get(m.id)! }))
   }, [wholes, jobId, developmentId])
+  // The job's lists, the oldest first, and every place on them as one list.
+  const lists = useMemo(() => jobListsOf(wholes.map((w) => w.map), jobId), [wholes, jobId])
+  const listPlaces = useMemo(() => jobListPlaces(lists.map((l) => wholes.find((w) => w.map.id === l.id)!)), [lists, wholes])
+  const firstList = lists[0] ?? null
 
-  if (only === 'maps' && maps.length === 0) return null
+  /** ＋ Place on this job: onto the list the job has, or onto a new one that is saved with this first place. */
+  const addJobPlace = () => {
+    if (firstList) openPaintedMap(firstList.id, address, 'place')
+    else paintPaintedMap({ id: newId(), name: JOB_LIST_WORDS.name, words: '', home: { jobId, developmentId: null, label: jobLabel, address }, first: 'place', jobList: true })
+  }
+
+  if (only === 'maps' && maps.length === 0 && listPlaces.length === 0) return null
 
   return (
     <div data-job-painted-maps style={{ display: 'grid', gap: '0.35rem' }}>
@@ -81,6 +100,13 @@ export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = nu
           </button>
         )
       })}
+      {firstList && listPlaces.length > 0 ? (
+        <button type="button" data-job-places-line style={row} onClick={(e) => { e.stopPropagation(); openPaintedMap(firstList.id, address) }}>
+          <PaintedPlaceMark number={listPlaces[0]!.letter} kind={listPlaces[0]!.kind} size={22} />
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{JOB_LIST_WORDS.name}</span>
+          <span style={{ marginLeft: 'auto', flex: 'none', color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.8125rem' }}>{jobListCountWords(listPlaces.length)} ›</span>
+        </button>
+      ) : null}
       {failed && only !== 'maps' ? (
         <p role="status" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           The painted maps did not load: {failed}{' '}
@@ -90,9 +116,14 @@ export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = nu
         </p>
       ) : null}
       {only === 'maps' ? null : (
-        <button type="button" data-paint-a-map style={addCentred ? addWords : add} onClick={(e) => { e.stopPropagation(); startPaintedMap({ jobId, developmentId, label: jobLabel, developmentLabel, address }) }}>
-          ＋ Paint a map
-        </button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.5rem' }}>
+          <button type="button" data-paint-a-map style={addCentred ? { ...addWords, width: 'auto', flex: '1 1 0' } : add} onClick={(e) => { e.stopPropagation(); startPaintedMap({ jobId, developmentId, label: jobLabel, developmentLabel, address }) }}>
+            ＋ Paint a map
+          </button>
+          <button type="button" data-job-place-add style={addCentred ? { ...addWords, width: 'auto', flex: '1 1 0' } : add} onClick={(e) => { e.stopPropagation(); addJobPlace() }}>
+            {JOB_LIST_WORDS.add}
+          </button>
+        </div>
       )}
     </div>
   )
