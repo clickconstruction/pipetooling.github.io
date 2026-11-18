@@ -232,6 +232,23 @@ describe('the window', () => {
   })
 })
 
+describe('the window, putting a number on a row already here', () => {
+  const value = (over: Partial<PercentWindowValue> = {}): PercentWindowValue => ({ name: '', kind: 'fitting', pct: '', basis: 'revenue', sourceKey: 'kind:pipe', follow: false, rowId: null, ...over })
+
+  it('holds the press until a row is picked, then sets that row to the number sent', () => {
+    expect(percentWindowPreview({ rows: BID, self: null, value: value(), fixedRevenue: 900, pickRow: true })).toMatchObject({ hold: 'Pick the row first.', target: null })
+    const p = percentWindowPreview({ rows: BID, self: null, value: value({ rowId: 'lav' }), fixedRevenue: 900, pickRow: true })
+    expect(p).toMatchObject({ hold: null, label: 'Set LAV to $900.00', ruleToSave: null, bidRevenueBefore: 15200, bidRevenueAfter: 12100 })
+    // $900.00 over two lavatories.
+    expect(p.answer).toMatchObject({ revenue: 900, unitPrice: 450 })
+    expect(p.target?.id).toBe('lav')
+  })
+
+  it('opens with no name and no row, and Keep following off for a plain number', () => {
+    expect(percentWindowStart({ rows: BID, self: null, last: null, from: { pct: null, basis: null, sourceKey: null }, pickRow: true })).toEqual({ name: '', kind: 'fitting', pct: '', basis: 'revenue', sourceKey: 'kind:pipe', follow: false, rowId: null })
+  })
+})
+
 describe('what the window opens on', () => {
   it('suggests no percent the first time: Connections, Pipe, Revenue, the percent empty', () => {
     expect(percentWindowStart({ rows: BID, self: null, last: null })).toEqual({ name: 'Connections', kind: 'fitting', pct: '', basis: 'revenue', sourceKey: 'kind:pipe', follow: true })

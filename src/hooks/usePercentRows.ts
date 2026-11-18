@@ -47,7 +47,7 @@ export type PercentDerivedRow = {
 /** A calculator answer sent to the window: the number, and the rule behind it when there is one. */
 export type PercentWindowFrom = { revenue: number; pct: number | null; basis: PercentBasis | null; sourceKey: string | null; words: string }
 
-export type PercentWindowTarget = { rowId: string | null; from: PercentWindowFrom | null }
+export type PercentWindowTarget = { rowId: string | null; from: PercentWindowFrom | null; /** The window picks a row already on the bid: the calculator's Put on a row…. */ pickRow?: boolean }
 
 /** The grid's rows as the rule reads them: each with its kind, its tags and its own rule. Pure. */
 export function percentGridRows(rows: ReadonlyArray<PercentDerivedRow>, marks: RowMarksByRowId, rules: Readonly<Record<string, PercentRule | null>>): PercentGridRow[] {
@@ -177,6 +177,7 @@ export function usePercentRows(args: PercentRowsArgs) {
 
   const openNew = useCallback((from: PercentWindowFrom | null = null) => setWindowTarget({ rowId: null, from }), [])
   const openForRow = useCallback((rowId: string, from: PercentWindowFrom | null = null) => setWindowTarget({ rowId, from }), [])
+  const openPickRow = useCallback((from: PercentWindowFrom) => setWindowTarget({ rowId: null, from, pickRow: true }), [])
   const closeWindow = useCallback(() => setWindowTarget(null), [])
 
   const last: PercentRowLast | null = windowTarget ? readPercentRowLast(deviceStorage()) : null
@@ -238,5 +239,5 @@ export function usePercentRows(args: PercentRowsArgs) {
     [rules, showToast],
   )
 
-  return { rules, ruleRowIds, gridRows, drift, followed, busy, last, windowTarget, openNew, openForRow, closeWindow, submit, dropRuleForTypedPrice }
+  return { rules, ruleRowIds, gridRows, drift, followed, busy, last, windowTarget, openNew, openForRow, openPickRow, closeWindow, submit, dropRuleForTypedPrice }
 }
