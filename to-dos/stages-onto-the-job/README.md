@@ -11,7 +11,7 @@ summary: >
   This card fills the lines at the win by an offer the office accepts, makes the same offer on a job
   still on one clean line, opens the superintendent's doors to the stages, and tidies three small things
   found on the way. Seven small PRs, no new table and no database change.
-next: The owner's go on one live write, a ZZ job saved with stage lines, then PR 1 and PR 6's page of the lines it re-reads.
+next: Arm PR 3 when PR 2 lands and PR 4 after it. Then PR 6 on the owner's pick, and PR 5 once punch list #396's PRs land.
 size: M as a train of seven (S · S · M · S · S · S · S)
 blocker: None. PR 5 waits for punch list #396's four open PRs. PR 6 waits for the owner's look at the lines it re-reads. PR 7 is held until crews mark stages on real jobs.
 opinion: build — the owner picked this direction over doing nothing and over one shared stage system, and took every default
@@ -162,4 +162,4 @@ PR 3's walk, 2026-11-18, on the dev server with the ZZ bid, reading only: the wi
 
 PR 4 is on `claude/stages-existing-job`, stacked on PR 3. Its walk, the same day, on the ZZ job's Bill tab, reading only: the link read *Bring B398's stages*, the window opened on the stages in place of the one line, and **Keep one line** closed it with the job unchanged.
 
-Not walked yet: a saved job, new or split, which writes a ZZ row.
+Walked with a write, on the owner's *Yes, on ZZ rows*, the same day: a new ZZ job, *ZZ Test Stages Walk 2026-11-18*, was opened from the ZZ bid with **Bring 4 stages** and saved with **Create Job**. It was then brought down to one line by the form's own presses and split again through the Bill tab's link. The rows read back right both times, and the Projects board drew the job's strip cut at each stage's end. The job stays as a ZZ fixture with four stage lines, for PR 5's walk. New Job made its Drive folders, as it does for every job.
