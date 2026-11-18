@@ -41,6 +41,8 @@ export type PinsMapCanvasProps = {
   anchor?: MapCanvasAnchor | null
   /** Override what fit-to-all frames (the pins + anchor by default); every pin still draws. */
   fitPoints?: readonly MapPoint[] | null
+  /** Leaflet only (v2.7693): how close fit-to-all may zoom. 15 unless the caller says; the archive view frames one spot at 17. */
+  fitMaxZoom?: number
   /** v2.3213: group pins that overlap at the current zoom into count discs; click a disc to zoom to its members. */
   cluster?: boolean
   /** Ring colors most-urgent first — a cluster wears the first one any member has. */
@@ -112,16 +114,16 @@ function ClusterMarker({ cluster, noun }: { cluster: PinCluster<MapCanvasPin>; n
   )
 }
 
-function FitToPoints({ points, fitSignal }: { points: MapPoint[]; fitSignal: number }) {
+function FitToPoints({ points, fitSignal, maxZoom }: { points: MapPoint[]; fitSignal: number; maxZoom: number }) {
   const map = useMap()
   const b = mapPointsBounds(points)
   const key = b ? `${b.south},${b.west},${b.north},${b.east}` : ''
   useEffect(() => {
     if (!b) return
-    map.fitBounds(L.latLngBounds([b.south, b.west], [b.north, b.east]), { padding: [28, 28], maxZoom: 15 })
-    // key captures the bounds; fitSignal re-fits on demand
+    map.fitBounds(L.latLngBounds([b.south, b.west], [b.north, b.east]), { padding: [28, 28], maxZoom })
+    // key captures the bounds; fitSignal re-fits on demand, and so does a new cap
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, key, fitSignal])
+  }, [map, key, fitSignal, maxZoom])
   return null
 }
 
@@ -150,7 +152,7 @@ function labelledPinIcon(p: MapCanvasPin, selected: boolean, isMobile: boolean):
   return icon
 }
 
-export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false, children, clusterNoun = 'bids' }: PinsMapCanvasProps) {
+export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, fitMaxZoom = 15, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false, children, clusterNoun = 'bids' }: PinsMapCanvasProps) {
   const first = pins[0] ?? anchor ?? null
   const [zoom, setZoom] = useState(12)
   const [mapClicked, setMapClicked] = useState(false)
@@ -168,7 +170,7 @@ export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup,
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {scrollZoomAfterClick && !isMobile ? <ScrollZoomGate wheelZooms={wheelZooms} onMapClick={markMapClicked} /> : null}
-      <FitToPoints points={mapCanvasFitPoints(pins, anchor, fitPoints)} fitSignal={fitSignal} />
+      <FitToPoints points={mapCanvasFitPoints(pins, anchor, fitPoints)} fitSignal={fitSignal} maxZoom={fitMaxZoom} />
       {cluster ? <ZoomTracker onZoom={setZoom} /> : null}
       {anchor ? <LeafletOfficeAnchor anchor={anchor} /> : null}
       {pulse ? (
