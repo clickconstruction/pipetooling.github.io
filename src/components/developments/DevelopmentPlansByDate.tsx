@@ -8,12 +8,13 @@
  */
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
-import { PBD_PAINT, PLANS_BY_DATE_CLUSTER_WORDS, PLANS_BY_DATE_NARROW, dayWords, plansByDateListHead, plansByDateListRows, layoutPlansByDate, plansByDateGlyph, plansByDatePrintHtml, type PbdClass, type PbdGlyph, type PbdInk, type PbdPrim, type PlansByDateModel } from '../../lib/plans/plansByDate'
+import { PBD_PAINT, PLANS_BY_DATE_CLUSTER_WORDS, PLANS_BY_DATE_FAINT, PLANS_BY_DATE_NARROW, dayWords, plansByDateListHead, plansByDateListRows, plansByDateLogTitle, plansByDateLogWords, layoutPlansByDate, plansByDateGlyph, plansByDatePrintHtml, type PbdClass, type PbdGlyph, type PbdInk, type PbdPrim, type PlansByDateModel } from '../../lib/plans/plansByDate'
 import { EmptyState } from '../EmptyState'
 import { plansByDateClusterCard, plansByDateTipCard, type PbdCard, type PbdCardAction } from '../../lib/plans/plansByDateCards'
 import { LinkButton } from './developmentPageBits'
 import { useItemCard } from '../../hooks/usePlansByDateItemCard'
 import { PlansByDateItemCard } from './PlansByDateItemCard'
+import { TRIP_KIND_COLOR } from '../trips/TripDayBits'
 
 /** The screen's colours for the kernel's inks: theme tokens, so the chart follows light and dark. */
 const SCREEN_INK: Record<PbdInk, string> = {
@@ -23,6 +24,10 @@ const SCREEN_INK: Record<PbdInk, string> = {
   over: 'var(--text-red-700)',
   overWash: 'var(--bg-red-100)',
   crew: 'var(--man-hours-field)',
+  // A trip day wears its kind's colour, the one the Trips look draws (punch list #379).
+  tripSite: TRIP_KIND_COLOR.site,
+  tripRoad: TRIP_KIND_COLOR.road,
+  tripReady: TRIP_KIND_COLOR.ready,
   strong: 'var(--text-strong)',
   text: 'var(--text-700)',
   muted: 'var(--text-muted)',
@@ -51,7 +56,7 @@ function Prim({ p }: { p: PbdPrim }): ReactNode {
   if (p.t === 'line') return <line x1={p.x1} y1={p.y1} x2={p.x2} y2={p.y2} style={style} />
   if (p.t === 'circle') return <circle cx={p.cx} cy={p.cy} r={p.r} style={style} />
   if (p.t === 'path') return <path d={p.d} style={style} />
-  if (p.t === 'rect') return <rect x={p.x} y={p.y} width={p.w} height={p.h} rx={p.rx} transform={p.turn ? `rotate(45 ${p.x + p.w / 2} ${p.y + p.h / 2})` : undefined} style={style} />
+  if (p.t === 'rect') return <rect x={p.x} y={p.y} width={p.w} height={p.h} rx={p.rx} transform={p.turn ? `rotate(45 ${p.x + p.w / 2} ${p.y + p.h / 2})` : undefined} style={p.faint ? { ...style, opacity: PLANS_BY_DATE_FAINT } : style} />
   return (
     <text x={p.x} y={p.y} textAnchor={p.anchor} style={style}>
       {p.text}
@@ -268,8 +273,8 @@ export function DevelopmentPlansByDate({
           {list.hidden > 0 ? (
             <>
               {' · '}
-              <LinkButton onClick={() => setWithLog(true)} title="Lists the crews' days and the lines kept on History too">
-                Also show the {list.hidden} crew and History {list.hidden === 1 ? 'line' : 'lines'}
+              <LinkButton onClick={() => setWithLog(true)} title={plansByDateLogTitle(model)}>
+                Also show the {list.hidden} {plansByDateLogWords(model)} {list.hidden === 1 ? 'line' : 'lines'}
               </LinkButton>
             </>
           ) : withLog && list.issues > 0 ? (

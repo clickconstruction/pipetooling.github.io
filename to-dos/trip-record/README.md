@@ -2,7 +2,7 @@
 name: "A trip record: days at a site away from home, apart from the hours on its jobs"
 number: 379
 group: ready
-status: asked 2026-11-17 · designed, drawn and rendered the same day · the owner said build · the train starts in its own session · nothing built yet
+status: building since 2026-11-17 in its own session · on main are the rules (v2.7653), the tables (v2.7655), the Trips look (v2.7661), Looks like a trip (v2.7676) and the phone's ground (v2.7700) · the dev seat, the Job window line and the trip number are open PRs · the phone's screen, the Scoreboard cut and the number on screen are built and wait their turn
 summary: >
   On a job out of state the clock's hours do not say what the owner needs to know. Some hours are a crew
   at the site, some are a truck on the road, some are a person at home loading what the trip needs. All of
@@ -11,8 +11,8 @@ summary: >
   days, each day one of three kinds, what it was for, who asked for it and how it went. The hours, card
   charges, photos and History inside its days read as the trip's by themselves, and a trip never changes a
   clock row, a bill or a cost.
-next: PR 1, the rules alone, then the table, then the Trips look. The owner's six calls take their defaults unless he says otherwise.
-size: L as a train of nine (S · S · M · S · S · S · M · S · S)
+next: Land the open PRs, then the phone's screen, the Scoreboard cut with the trip log, and the trip's number and link on screen. Put on a bill left this train for its own card, #391.
+size: L as a train of nine (S · S · M · S · S · S · M · S · S); left: PRs 4, 6, 7 and 8 and the trip's number (S · S · M · S · S)
 blocker: None. The six calls each have a default.
 opinion: build — the clock already stamps a place on a punch and the drive to a job, and the Development page already rolls a site's hours by person, so a trip is a reading laid over rows that exist
 ---
@@ -115,7 +115,7 @@ Nine small pull requests, each alone, each with its release note, fragment and g
 | 6 | The Job window line, the clock tag, the By date lane | Job window, Plans by date | Nothing |
 | 7 | The phone: Start a trip, Join, Heading home, End the trip | Job Mode, the clock-in sheet | Nothing |
 | 8 | Scoreboard cut by trip, and Print the trip log | Scoreboard cuts, a print page | Nothing |
-| 9 | Put on a bill: an Extra trip becomes a line on a job, with who asked | The Bill tab's line maker | Nothing |
+| 9 | Put on a bill: an Extra trip becomes a line on a job, with who asked. Moved to its own card, [#391](../trip-on-a-job-line/README.md), once the owner picked a line over a bill of its own | See that card | See that card |
 
 The first three give a working Trips look. PR 4 lets trips already known from a ledger be filed on the
 owner's word, through the dev seat.
@@ -141,4 +141,16 @@ owner's word, through the dev seat.
 
 ## Where it stands
 
-Designed and drawn. Nothing is built. The build runs in its own session from PR 1.
+Building since 2026-11-17, in its own session.
+
+- **On main:** the rules, the tables, the Trips look, Looks like a trip, and the phone's ground. Both
+  migrations are pushed.
+- **Open:** the dev seat's three verbs (PR 4), the Job window line with the clock tag and the By date lane
+  (PR 6), and a migration that gives each trip a number on its site.
+- **Built, not yet opened:** the phone's screen (PR 7), What it cost with the Scoreboard cut and the printed
+  trip log (PR 8), and the trip's number and link on screen.
+- **Moved out:** Put on a bill is [#391](../trip-on-a-job-line/README.md).
+- **Added past the plan, on the owner's word:** every trip has a number on its site (*Trip 14*), and a link
+  that opens it.
+- **Owed, not in a PR yet:** a setting for the 150 miles, Split in two, a combine that carries a trip's job
+  link, and the trip's number in the dev seat's read.

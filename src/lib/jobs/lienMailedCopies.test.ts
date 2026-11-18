@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { runFilingPayload, type RunNotice } from './lienDeskRun'
-import { LIEN_MAILED_COPY_WORDS, lienMailedCopiesWith, lienMailedCopiesWithout, lienMailedCopyAddedWords, lienMailedCopyDocument, lienMailedCopyKey, lienMailedCopyName, lienMailedCopyProblem, lienMailedCopyTakeOffAsk, lienMailedCopyTakenOffWords, parseLienMailedCopies, type LienMailedCopy } from './lienMailedCopies'
+import { LIEN_MAILED_COPY_WORDS, lienMailedCopiesWith, lienMailedCopiesWithout, lienMailedCopyAddedWords, lienMailedCopyDocument, lienMailedCopyKey, lienMailedCopyName, lienMailedCopyProblem, lienMailedCopyTakeOffAsk, lienMailedCopyTakenOffWords, parseLienMailedCopies, type LienMailedCopy, lienMailedCopyPutBackWords } from './lienMailedCopies'
 
 const copy = (n: number, over: Partial<LienMailedCopy> = {}): LienMailedCopy => ({ url: `https://drive.google.com/file/d/f${n}/view`, driveFileId: `f${n}`, name: `Lien notice as mailed · 650 · 2026-11-16${n > 1 ? ` · ${n}` : ''}.pdf`, at: '2026-11-16T18:00:00.000Z', by: 'u1', ...over })
 
@@ -84,10 +84,14 @@ describe('the words', () => {
     expect([LIEN_MAILED_COPY_WORDS.add, LIEN_MAILED_COPY_WORDS.another, LIEN_MAILED_COPY_WORDS.open]).toEqual(['Add what was mailed', 'Add another', 'Open in Drive'])
   })
 
-  it('taking a file off asks first, names the act on its press, and says the file stays in Drive (v2.7525)', () => {
-    expect(lienMailedCopyTakeOffAsk('scan.pdf')).toBe('Take scan.pdf off this notice? The file stays in the job’s Drive folder.')
-    expect(lienMailedCopyTakenOffWords('scan.pdf')).toBe('Took scan.pdf off this notice. The file is still in the job’s Drive folder.')
+  it('taking a file off asks first, names the act on its press, and says the file goes to Drive’s trash (v2.7525, v2.7699)', () => {
+    expect(lienMailedCopyTakeOffAsk('scan.pdf')).toBe('Take scan.pdf off this notice? The file goes to Drive’s trash. Drive keeps it there 30 days.')
+    expect(lienMailedCopyTakenOffWords('scan.pdf', { where: 'trash' })).toBe('Took scan.pdf off this notice. The file is in Drive’s trash.')
+    expect(lienMailedCopyTakenOffWords('scan.pdf', { where: 'drive', why: 'A lien record still uses it.', retry: false })).toBe('Took scan.pdf off this notice. The file stays in Drive. A lien record still uses it.')
+    // A link that is not a Drive file's: nothing was asked of Drive, so nothing is said of it.
+    expect(lienMailedCopyTakenOffWords('scan.pdf')).toBe('Took scan.pdf off this notice.')
+    expect(lienMailedCopyPutBackWords('scan.pdf')).toBe('Put scan.pdf back on this notice.')
     expect([LIEN_MAILED_COPY_WORDS.takeOff, LIEN_MAILED_COPY_WORDS.takeOffConfirm, LIEN_MAILED_COPY_WORDS.keep]).toEqual(['Take off', 'Take it off', 'Keep it'])
-    for (const s of [lienMailedCopyTakeOffAsk('the scan'), lienMailedCopyTakenOffWords('the scan'), LIEN_MAILED_COPY_WORDS.takeOffFailed]) expect([s, plainWordsFailures(s)]).toEqual([s, []])
+    for (const s of [lienMailedCopyTakeOffAsk('the scan'), lienMailedCopyTakenOffWords('the scan', { where: 'trash' }), lienMailedCopyPutBackWords('the scan'), LIEN_MAILED_COPY_WORDS.takeOffFailed]) expect([s, plainWordsFailures(s)]).toEqual([s, []])
   })
 })

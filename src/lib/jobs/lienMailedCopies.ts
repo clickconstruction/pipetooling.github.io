@@ -13,6 +13,7 @@
  * copy, and every word a person reads. The upload and the write are `lienMailedCopiesIo.ts`.
  */
 import { LIEN_SCAN_ACCEPT, lienScanExtension, lienScanProblem } from './lienScanFile'
+import { TAKE_OFF_FILE_WORDS, type FileTakenOff } from './jobFolderTrash'
 
 /** One file in the job's Drive folder, as the notice remembers it. */
 export type LienMailedCopy = {
@@ -121,12 +122,22 @@ export const LIEN_MAILED_COPY_WORDS = {
 
 /** The ask under the row before a file is taken off. It says what stays. */
 export function lienMailedCopyTakeOffAsk(name: string): string {
-  return `Take ${name} off this notice? The file stays in the job’s Drive folder.`
+  return `Take ${name} off this notice? ${TAKE_OFF_FILE_WORDS.askTail}`
 }
 
-/** After the press: what changed, and what did not. */
-export function lienMailedCopyTakenOffWords(name: string): string {
-  return `Took ${name} off this notice. The file is still in the job’s Drive folder.`
+/**
+ * After the press: what changed, and where the file is now (v2.7699). With no outcome the link was not a Drive
+ * file's, so nothing was asked of Drive and the words say only what the notice forgot.
+ */
+export function lienMailedCopyTakenOffWords(name: string, outcome?: FileTakenOff | null): string {
+  const lead = `Took ${name} off this notice.`
+  if (!outcome) return lead
+  return outcome.where === 'trash' ? `${lead} The file is in Drive’s trash.` : `${lead} The file stays in Drive. ${outcome.why}`.trim()
+}
+
+/** After Put it back: the notice lists the file again. */
+export function lienMailedCopyPutBackWords(name: string): string {
+  return `Put ${name} back on this notice.`
 }
 
 /** After the press: where the file went. */

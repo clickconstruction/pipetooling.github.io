@@ -8,6 +8,7 @@ import { useId } from 'react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { NOTE_BODY_MAX, NOTE_STARTS, canSendNote, noteStart, type NoteKind } from '../../lib/tellTheDev/starts'
 import type { NoteContextLine } from '../../lib/tellTheDev/noteContext'
+import type { MyNoteLine } from '../../lib/tellTheDev/myNotes'
 
 export type TellTheDevBoxProps = {
   kind: NoteKind
@@ -22,9 +23,51 @@ export type TellTheDevBoxProps = {
   /** The reason a send failed, in words. The typed words are still in the box. */
   error: string | null
   onSend: () => void
+  /** The person's own last notes, each with where it stands and its answer when there is one. */
+  notes?: MyNoteLine[]
 }
 
-export function TellTheDevBox({ kind, onKind, typed, onTyped, lines, sending, sent, onSendAnother, error, onSend }: TellTheDevBoxProps) {
+/** *Your notes*: the loop closing. An answer the person has not seen yet is ringed. */
+function YourNotes({ notes }: { notes: MyNoteLine[] }) {
+  if (notes.length === 0) return null
+  return (
+    <section aria-label="Your notes" style={{ marginTop: '0.75rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
+      <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-faint)', marginBottom: 4 }}>Your notes</div>
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        {notes.map((n) => (
+          <li key={n.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}>
+            <div style={{ color: n.wordless ? 'var(--text-muted)' : 'var(--text-base)', fontStyle: n.wordless ? 'italic' : undefined, overflowWrap: 'anywhere' }}>
+              {n.words}{' '}
+              <span
+                style={{
+                  display: 'inline-block',
+                  fontSize: '0.6875rem',
+                  fontWeight: 700,
+                  fontStyle: 'normal',
+                  padding: '0.05rem 0.45rem',
+                  borderRadius: 999,
+                  whiteSpace: 'nowrap',
+                  color: n.state === 'answered' ? 'var(--text-green-800)' : 'var(--text-muted)',
+                  background: n.state === 'answered' ? 'var(--bg-green-tint)' : 'var(--surface)',
+                  border: `1px solid ${n.state === 'answered' ? 'var(--border-green)' : 'var(--border)'}`,
+                }}
+              >
+                {n.chip}
+              </span>
+            </div>
+            {n.answer ? (
+              <div style={{ marginTop: 3, paddingLeft: 9, borderLeft: `2px solid ${n.fresh ? '#16a34a' : 'var(--border-green)'}`, color: 'var(--text-base)', fontWeight: n.fresh ? 600 : 400, overflowWrap: 'anywhere' }}>
+                {n.answer}
+              </div>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+export function TellTheDevBox({ kind, onKind, typed, onTyped, lines, sending, sent, onSendAnother, error, onSend, notes = [] }: TellTheDevBoxProps) {
   const groupId = useId()
   const fieldId = useId()
   const start = noteStart(kind)
@@ -44,6 +87,7 @@ export function TellTheDevBox({ kind, onKind, typed, onTyped, lines, sending, se
         >
           Send another note
         </button>
+        <YourNotes notes={notes} />
       </div>
     )
   }
@@ -138,6 +182,7 @@ export function TellTheDevBox({ kind, onKind, typed, onTyped, lines, sending, se
           {error} Your words are still here.
         </p>
       )}
+      <YourNotes notes={notes} />
     </form>
   )
 }

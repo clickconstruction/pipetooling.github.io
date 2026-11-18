@@ -70,6 +70,22 @@ export async function readSitePunches(jobIds: ReadonlyArray<string>): Promise<Pu
   )
 }
 
+/** The addresses on a development's jobs and bids, and nothing else of them: what the site's shared address is read from. */
+export type SiteAddresses = { jobs: Array<{ job_address: string | null }>; bids: Array<{ address: string | null }> }
+
+/**
+ * The addresses of a development's jobs and of its bids, by `development_id` (PR 6): the Job window reads the
+ * site's point from the address they share (`sharedAddressWords`), as the Trips look does, so a job's bar and
+ * the look's figures stand on one point. Two small reads of one column each.
+ */
+export async function readSiteAddresses(developmentId: string): Promise<SiteAddresses> {
+  const [jobs, bids] = await Promise.all([
+    fetchAllRows<{ job_address: string | null }>((from, to) => db.from('jobs_ledger').select('job_address').eq('development_id', developmentId).order('id').range(from, to) as unknown as Paged<{ job_address: string | null }>, 'read the addresses of the site’s jobs'),
+    fetchAllRows<{ address: string | null }>((from, to) => db.from('bids').select('address').eq('development_id', developmentId).order('id').range(from, to) as unknown as Paged<{ address: string | null }>, 'read the addresses of the site’s bids'),
+  ])
+  return { jobs, bids }
+}
+
 /** The days on this site somebody said were not a trip, so Looks like a trip does not offer them again. */
 export async function readSiteDismissals(developmentId: string): Promise<TripDismissalRow[]> {
   return fetchAllRows<TripDismissalRow>((from, to) => db.from('trip_dismissals').select(TRIP_DISMISSAL_SELECT).eq('development_id', developmentId).order('created_at').order('id').range(from, to) as unknown as Paged<TripDismissalRow>, 'read the days said to be not a trip')

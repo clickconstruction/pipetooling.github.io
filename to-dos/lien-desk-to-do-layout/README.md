@@ -1,20 +1,23 @@
 ---
 name: "Lien desk To do: the band under the tiles, and where each press lives"
 number: 383
-group: gated
-status: asked 2026-11-17 · read, measured on the real Board, drawn as three whole-page options and rendered the same day · the owner has not picked · nothing built
+group: close
+status: asked 2026-11-17 · three whole-page options drawn and measured the same day · the owner picked B with each press on its bin's title line · all three parts shipped in one PR as v2.7708, v2.7712 and v2.7714 · two small parts of the drawing left · the live desk not walked
 summary: >
   The owner boxed the band between the Board's four tiles and its two columns of bins: the sentence
   "Every bin." with its switch a page width away, and the two batch prints, one over each column. It
   draws the eye off the flow chart, its switch shows him nothing, and its buttons sit far apart on a
   computer. The mock-up draws today's desk and three whole-page answers for a dev, the office and the
   leader, at a computer's width and a phone's. A folds the band into the column headings. B puts every
-  press in the bin it empties and gives signing a bin. C is B with the chart turned on its side.
-next: The owner's pick of A, B or C. Then B's PR 1, the presses into their bins and the band gone, if B is the pick.
-size: M for B as a train of three (S · M · S); A alone is S; C is L, B's three and one large redraw
-blocker: The owner's pick.
-opinion: build — B, since it removes the band and makes a bin's count and its press the same number
-ver: v2.7311 · v2.7332 · v2.7334 · v2.7448 · v2.7470 · v2.7483 · v2.7490 · v2.7491 · v2.7497
+  press in the bin it empties and gives signing a bin. C is B with the chart turned on its side. He picked
+  B, with each press on the same line as its bin's name. PR 1 took the band away and moved the presses.
+  PR 2 gave signing its own bin, so a bin's count and its press are one number. PR 3 marked the bins
+  with something to do, folded the empty ones and moved Held and Missed to the heading line.
+next: The owner's look at the live desk. Then the two parts left, if he wants them, the Public jobs box folded and the records door on the tools row.
+size: S for the two parts left; the three built parts are done
+blocker: The owner's look at the live desk.
+opinion: close — after the owner's look, since the band is gone and each bin's count and press agree
+ver: v2.7311 · v2.7332 · v2.7334 · v2.7448 · v2.7470 · v2.7483 · v2.7490 · v2.7491 · v2.7497 · v2.7708 · v2.7712 · v2.7714
 ---
 
 # Lien desk To do: the band under the tiles (#383)
@@ -42,6 +45,60 @@ and the bins:
 Earlier the same day: *"I don't like how these buttons and this title works"*, and whether the affidavit
 print block *"may be redundant to the section below it"*. After the three options were shown: *"build
 mockups"*. This card is those mock-ups saved.
+
+Then his pick, the same day: *"Build B but with the action button in the same line as the title of the
+card it is in instead of at the bottom."* The mock-up's B is redrawn that way.
+
+## What is built
+
+The three parts below were drawn as three PRs and shipped as one, each with its own version.
+
+**PR 1, v2.7708.** Nothing stands between the tiles and the chart.
+
+- Each press stands on its bin's title line, right of the bin's name and count: *Print and mail N
+  notices* on *Approved · to print*, *Enter mail numbers · N* on *Approved · to mail*, *Print N for
+  notarization* on *Ready to file*, *Mail N liens' copies ›* on *Filed · copies to mail*.
+- What a print leaves out is one line under the bin's name, with its doors: *See them ›*, *Remind … ›*,
+  *Change ›*.
+- **Every bin / Only my bins** is retired, and with it the leader's own view. Every viewer reads every
+  bin. The leader's *Approve N affidavits* stands on his *Awaiting Master approval* bin's title line. It
+  counts the jobs he leads, so a dev who leads none sees no press. This was drawn as PR 3 and moved up,
+  since taking the switch away alone would have left a master on two bins with no way out.
+- A master's line carries no *Remind*. The notice is his own to sign.
+- The third tile opens the run again.
+- A phone keeps its bins folded, so its two prints stand side by side over the fold.
+
+Measured on the built Board, with the same made-up jobs: the first bin's top edge moved from 404 px to
+279 px. The notices' print sits 544 px down and the affidavits' 630 px, both above a 720 px fold. Where a
+column is narrow, as at 1,024 px wide, a press wraps under its bin's name.
+
+**PR 2, v2.7712.** Signing has its own bin, *Approved · to sign*, between *Awaiting Master approval* and
+*Approved · to print*.
+
+- An approved notice the leader has not signed stands there, violet. Its chip opens the notice, where it
+  is signed.
+- *Approved · to print* holds exactly what its press takes. With the made-up jobs of the measurement it
+  reads 1 beside *Print and mail 1 notice*, and the new bin reads 7.
+- The third tile counts the two bins under it. A notice to sign is the second tile's alone.
+- The office's *Remind … ›* stands on the new bin's title line. On a master's desk the press there is
+  *Sign N notices ›*.
+- A notice to sign has two stages left where it had one, so it reads as at risk a working day sooner.
+- A GC's run row on the list stands in *Approved · to sign* while every one of its notices waits on a
+  signature, and in *Approved · to print* once one can print.
+
+**PR 3, v2.7714.** The quiet parts.
+
+- A blue left edge on a bin with something to do now, in place of the blue border on the busiest bin.
+- An empty bin folds to one line.
+- **Held** and **Missed** stand on the heading line, so every bin has the column's full width.
+- *Send N for approval ›* on the affidavits' *To send for Master approval* bin, the door to the list where
+  the batch send stands.
+
+Measured after PR 3: the Board is 972 px tall where it was about 1,080, and the flow's last bin ends above
+a 900 px fold at 1,440 wide.
+
+**Left of the drawing.** The Public jobs box still has its full height, where the drawing folds it to one
+line. *An owner asked for records* is still on the title bar's second row. Neither is built.
 
 ## What the band is
 
@@ -144,7 +201,8 @@ Every press sits inside the bin it empties. Nothing stands between the tiles and
 - At 1,280 × 720 both prints stay above the fold, the affidavits' by about 20 px. *Enter mail numbers*
   and *Mail N liens' copies* fall under 720 and above 900.
 
-Three PRs:
+Three PRs, as first drawn. PR 1 shipped with PR 3's switch folded in, and the list under **What is built**
+is the one to build from.
 
 1. **The presses into the bins** (S). `binPress` takes more keys, the band and the leader's row leave
    `LienBoard.tsx`, the third tile keeps its press, the pinned find box keeps its pair. No kernel change.
@@ -197,5 +255,6 @@ Small things the look found. Each stands by itself, whichever option is picked.
 
 ## Where it stands
 
-Three options are drawn. The owner has not picked one. Nothing in the app changed. The live desk was not
-opened: every figure here is from made-up jobs.
+The owner picked B with each press on its bin's title line. The three parts are shipped together in v2.7708, v2.7712
+and v2.7714. Two small parts of the drawing are left and named under **What is built**. The live desk was not opened: every figure here is from
+made-up jobs.

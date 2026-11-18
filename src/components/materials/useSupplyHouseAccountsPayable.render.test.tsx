@@ -19,15 +19,21 @@ const db = vi.hoisted(() => {
   function table(name: string) {
     let columns = '*'
     const filters: [string, unknown][] = []
+    const among: [string, unknown[]][] = []
     let single = false
+    let range: [number, number] | null = null
     const run = () => {
       state.reads.push({ table: name, columns })
       if (state.refuse.some((r) => r.table === name && (r.column === '*' ? columns === '*' : columns.includes(r.column)))) return { data: null, error: { message: `no column on ${name}` } }
-      const rows = (state.rows[name] ?? []).filter((r) => filters.every(([c, v]) => r[c] === v)).map((r) => ({ ...r }))
+      let rows = (state.rows[name] ?? []).filter((r) => filters.every(([c, v]) => r[c] === v) && among.every(([c, vs]) => vs.includes(r[c]))).map((r) => ({ ...r }))
+      // A read with no range is cut at the API's row cap, as the real one is.
+      rows = range ? rows.slice(range[0], range[1] + 1) : rows.slice(0, 1000)
       return { data: single ? (rows[0] ?? null) : rows, error: null }
     }
     const b: Record<string, unknown> = {}
-    for (const m of ['order', 'or', 'range', 'is', 'in', 'limit']) b[m] = () => b
+    for (const m of ['order', 'or', 'is', 'limit']) b[m] = () => b
+    b.range = (from: number, to: number) => ((range = [from, to]), b)
+    b.in = (c: string, vs: unknown[]) => (among.push([c, vs]), b)
     b.select = (c?: string) => ((columns = c ?? '*'), b)
     b.eq = (c: string, v: unknown) => (filters.push([c, v]), b)
     b.single = () => ((single = true), b)
@@ -141,5 +147,43 @@ describe('useSupplyHouseAccountsPayable', () => {
     await waitFor(() => expect(result.current.selectedSupplyHouseForDetail?.id).toBe('h-canal'))
     expect(handled).toHaveBeenCalledTimes(1)
     expect(result.current.supplyHouseInvoices.map((i) => i.id)).toEqual(['canal'])
+  })
+
+  it('reads every bill on the book, past the row cap a read with no range is cut at', async () => {
+    db.state.rows.supply_house_invoices = Array.from({ length: 1200 }, (_, i) => bill(`b${i}`, 'h-ridge', { amount: 1 }))
+    const host = hostWith()
+    const { result } = renderHook(() => useSupplyHouseAccountsPayable(host))
+    await waitFor(() => expect(result.current.agingBookLoaded).toBe(true))
+    expect(result.current.agingUnpaidInvoices).toHaveLength(1200)
+    expect(result.current.supplyHouseSummary.find((r) => r.name === 'Ridge Supply')?.outstanding).toBe(1200)
+    // Two pages: the first full, the second short.
+    expect(db.state.reads.filter((r) => r.table === 'supply_house_invoices')).toHaveLength(2)
+  })
+
+  it('opening a house reads the jobs on its own bills only, and never its purchase orders’ items', async () => {
+    db.state.rows.supply_house_invoice_job_allocations!.push({ invoice_id: 'canal', job_id: 'j-far', pct: 100 })
+    db.state.rows.jobs_ledger!.push({ id: 'j-far', hcp_number: '2000', click_number: null, job_name: 'Far Road' })
+    db.state.rows.purchase_orders = [{ id: 'po-1', supply_house_id: 'h-ridge', name: 'PO: Ridge Supply', status: 'draft' }]
+    const host = hostWith()
+    const { result } = renderHook(() => useSupplyHouseAccountsPayable(host))
+    await waitFor(() => expect(result.current.agingBookLoaded).toBe(true))
+    await act(async () => {
+      await result.current.loadSupplyHouseDetail(RIDGE)
+    })
+    await waitFor(() => expect(Object.keys(result.current.supplyHouseJobDetailsMap)).toEqual(['j-elm']))
+    expect(result.current.supplyHousePOs.map((po) => [po.name, po.status])).toEqual([['PO: Ridge Supply', 'draft']])
+    expect(db.state.reads.some((r) => r.table === 'purchase_order_items')).toBe(false)
+  })
+
+  it('a house with no bills asks for no jobs at all', async () => {
+    db.state.rows.supply_house_invoices = []
+    const host = hostWith()
+    const { result } = renderHook(() => useSupplyHouseAccountsPayable(host))
+    await waitFor(() => expect(result.current.agingBookLoaded).toBe(true))
+    await act(async () => {
+      await result.current.loadSupplyHouseDetail(RIDGE)
+    })
+    expect(db.state.reads.some((r) => r.table === 'supply_house_invoice_job_allocations')).toBe(false)
+    expect(result.current.supplyHouseJobDetailsMap).toEqual({})
   })
 })

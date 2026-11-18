@@ -12,6 +12,7 @@ import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel } from '../_shar
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { webPushSender } from '../_shared/webPushSend.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { recipientsNotShut } from '../_shared/jobPapersLock.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -379,10 +380,17 @@ serve(async (req) => {
 
     const tag = `dispatch-${dispatchRow.id}`
 
+    // Papers before a job opens: the push names the job, so a member who still owes that job a paper is left out of it
+    // (the app's Papers to sign line tells them instead). A request on a bid or on nothing goes to everyone as before.
+    const toPush = await recipientsNotShut(adminClient, dispatchRow.job_ledger_id, recipientIds)
+    if (toPush.length === 0) {
+      return json(200, { success: true, message: 'Dispatch notifications processed', push_sent: 0, recipients: 0, held: 0 })
+    }
+
     // Through each member's hours (#141 PR 5): the dispatchers on are pushed, one off is held with a row and no push.
     const result = await sendPushHonouringHours(
       adminClient,
-      { userIds: recipientIds, title: pushTitle, body: pushBody, url: '/dashboard', tag, templateType: 'dispatch_request' },
+      { userIds: toPush, title: pushTitle, body: pushBody, url: '/dashboard', tag, templateType: 'dispatch_request' },
       webPushSender(adminClient, 'notify-dispatch-request'),
     )
 
@@ -391,7 +399,7 @@ serve(async (req) => {
         success: true,
         message: 'Dispatch notifications processed',
         push_sent: result.devices,
-        recipients: recipientIds.length,
+        recipients: toPush.length,
         held: result.held.length,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

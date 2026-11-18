@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { letterBlanks, letterBlanksWords, letterCopiedWords, letterCopyText, letterLeavesWordsOut, letterLeftOutWords, letterPieceLabel, markdownToPlainText } from './letterCopyText'
+import { letterBlanks, letterBlanksWords, letterCopiedWords, letterCopyText, letterLeavesWordsOut, letterLeftOutWords, letterMarks, letterPieceLabel, letterStillSaysWords, markdownToPlainText } from './letterCopyText'
 
 /** A made-up letter: a draft banner, the letter, a variant under its own heading and internal notes. */
 const LETTER = [
@@ -74,7 +74,7 @@ describe('letterCopyText · the part of a text document to paste into an email',
   it('a paragraph banner goes with the italic notes under it; the words under it are the letter', () => {
     const copy = letterCopyText('**DRAFT, not sent**\n\n_For review._\n\n*Second note.*\n\nDear [NAME],\n\nThank you.')
     expect(copy.draftBanner).toBe('DRAFT, not sent')
-    expect(copy.pieces).toEqual([{ heading: null, text: 'Dear [NAME],\n\nThank you.', blanks: [{ text: '[NAME]', times: 1 }], blankCount: 1 }])
+    expect(copy.pieces).toEqual([{ heading: null, text: 'Dear [NAME],\n\nThank you.', blanks: [{ text: '[NAME]', times: 1 }], blankCount: 1, stillSays: [] }])
   })
 
   it('a document with no banner and no internal section leaves nothing out', () => {
@@ -137,5 +137,38 @@ describe('the press and its toast', () => {
     expect(letterBlanksWords(copy, 0)).toBeNull()
     expect(letterBlanksWords(copy, 1)).toBe('Still to fill in “Short version”: [NAME] · [DATE]')
     expect(letterBlanksWords(letterCopyText('On [DATE] and [DATE], [NAME].'), 0)).toBe('Still to fill: [DATE] ×2 · [NAME]')
+  })
+})
+
+describe('a tag in capitals (v2.7716)', () => {
+  it('a title tagged INTERNAL at its end makes the whole paper internal: no piece, and the words say what was left out', () => {
+    const copy = letterCopyText(['# Review of the supplier account (INTERNAL, 2026-01-05)', '', 'Opening words.', '', '## What we found', '', 'Finding one.', '', '## What we do next', '', 'Call Lee Example.'].join('\n'))
+    expect(copy.pieces).toEqual([])
+    expect(copy.internalHeadings).toEqual(['Review of the supplier account (INTERNAL, 2026-01-05)'])
+    expect(letterLeavesWordsOut(copy)).toBe(true)
+    expect(letterLeftOutWords(copy)).toBe('The copy leaves out the section “Review of the supplier account (INTERNAL, 2026-01-05)”.')
+    // The whole paper is still one press away.
+    expect(copy.everything).toContain('Finding one.')
+  })
+  it('a section tagged in capitals anywhere in its heading drops; the word in small letters is an ordinary word', () => {
+    const copy = letterCopyText(['## Letter', '', 'Dear Pat,', '', '## Notes for the office (INTERNAL)', '', 'Hidden.', '', '## Our internal records', '', 'They show two visits.'].join('\n'))
+    expect(copy.internalHeadings).toEqual(['Notes for the office (INTERNAL)'])
+    expect(copy.pieces.map((p) => p.heading)).toEqual(['Letter', 'Our internal records'])
+    expect(copy.pieces.map((p) => p.text).join('\n')).not.toContain('Hidden.')
+  })
+  it('a piece that still says DRAFT or INTERNAL in capitals says so, and the toast warns', () => {
+    const copy = letterCopyText(['# Service terms', '', '- **Status**: house paper (INTERNAL), version 2 (DRAFT for review)', '', 'The terms.', '', '## Letter', '', 'Dear Pat, here is the first draft of our internal review.'].join('\n'))
+    expect(copy.pieces.map((p) => p.stillSays)).toEqual([['DRAFT', 'INTERNAL'], []])
+    expect(letterStillSaysWords(copy, 0)).toBe('The copy of “Service terms” still says DRAFT and INTERNAL. Read it before you paste.')
+    expect(letterStillSaysWords(copy, 1)).toBeNull()
+    expect(letterCopiedWords(copy, 0, false)).toEqual({ words: 'Copied “Service terms”. The copy still says DRAFT and INTERNAL.', warn: true })
+    expect(letterCopiedWords(copy, 1, false)).toEqual({ words: 'Copied “Letter”.', warn: false })
+    const one = letterCopyText('Dear [NAME],\n\nThis DRAFT is yours.')
+    expect(letterStillSaysWords(one, 0)).toBe('The copy still says DRAFT. Read it before you paste.')
+    expect(letterCopiedWords(one, 0, false)).toEqual({ words: 'Copied the letter. 1 blank is still open in it. The copy still says DRAFT.', warn: true })
+  })
+  it('reads the marks as whole words in capitals only', () => {
+    expect(letterMarks('DRAFT, then INTERNAL.')).toEqual(['DRAFT', 'INTERNAL'])
+    expect(letterMarks('a draft of the internal note, DRAFTED and INTERNALLY')).toEqual([])
   })
 })

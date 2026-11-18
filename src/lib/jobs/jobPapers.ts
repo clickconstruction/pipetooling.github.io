@@ -67,7 +67,7 @@ export interface MyJobPapers {
  * job is the only lock), `database` (the database refuses the job's rows to the crew and subs as well).
  */
 export type JobPapersLockStage = 'none' | 'prompt' | 'database'
-export const JOB_PAPERS_LOCK_STAGE: JobPapersLockStage = 'prompt'
+export const JOB_PAPERS_LOCK_STAGE: JobPapersLockStage = 'database'
 
 /** Told to the job's head when the papers a job requires change, so its chip counts again. The detail is the job's id. */
 export const JOB_PAPERS_CHANGED_EVENT = 'job-papers-changed'

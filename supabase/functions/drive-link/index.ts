@@ -1,10 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { DRIVE, driveFolderIdFromUrl, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { DRIVE, driveAnswerOf, driveAnswerWords, driveFolderIdFromUrl, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
 import { driveFailureOf } from '../_shared/driveFailure.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { DRIVE_TRASH_WORDS, isTrashAction, lienRowsUse, parseTrashAsk, trashNote, type TrashAsk } from '../_shared/driveTrash.ts'
 import { NO_COMPANY_FOLDER_WORDS } from '../_shared/whereFilesGo.ts'
-import { driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half, type JobFolder } from '../_shared/driveJobFolder.ts'
+import { childFolder, driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half, type JobFolder } from '../_shared/driveJobFolder.ts'
 import { photoDriveName, photoNameInputOf, type PhotoAttachmentRow } from '../_shared/gcKernels/index.ts'
 import { driveFolderMeta, jobsRootFolderId, NO_ROOT_WORDS } from '../_shared/driveSettings.ts'
 import { JOB_FOLDER_TREE } from '../_shared/whereFilesGo.ts'
@@ -40,6 +42,7 @@ import {
 } from '../_shared/driveLink.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 import { papersAmong, withPaperMark } from '../_shared/driveLinkPapers.ts'
+import { JOB_PAPERS_LOCK_WORDS, jobsShutToUser } from '../_shared/jobPapersLock.ts'
 
 /**
  * Messages, cut 7b (v2.5383): our own link to one Drive file of one job, and the office's door to a job's Drive folder.
@@ -269,7 +272,7 @@ async function excerptFor(google: string, f: SearchListed, words: string, spend:
  * over the jobs root's Shared Drive (the whole of every Shared Drive when the root is not in one), folders left out.
  * Each hit is walked up to the job or bid whose folder holds it, in parallel over one shared cache of folder lookups.
  */
-async function searchFiles(admin: SupabaseClient, google: string, words: string): Promise<Record<string, unknown>> {
+async function searchFiles(admin: SupabaseClient, google: string, words: string, shut: ReadonlySet<string>): Promise<Record<string, unknown>> {
   const rootId = await jobsRootFolderId(admin)
   if (!rootId) return { hits: [], more: false, noRoot: true }
   const root = await driveFolderMeta(google, rootId)
@@ -296,7 +299,50 @@ async function searchFiles(admin: SupabaseClient, google: string, words: string)
       return { id: f.id, name: f.name, mime: f.mimeType, bytes: f.size == null ? null : Number(f.size), modified: f.modifiedTime ?? null, url: f.webViewLink ?? driveViewUrl(f.id, f.mimeType), home, path, ...ex }
     }),
   )
-  return { hits, more: Boolean(page.nextPageToken), noRoot: false }
+  // Papers before a job opens: a file of a job the caller is locked out of does not come back.
+  const open = shut.size === 0 ? hits : hits.filter((h) => !(h.home?.kind === 'job' && shut.has(String(h.home.id))))
+  return { hits: open, more: Boolean(page.nextPageToken), noRoot: false }
+}
+
+/**
+ * Move one of a job's Sent by us files to Drive's trash, or put it back (v2.7699, `_shared/driveTrash.ts`). The file
+ * must sit in the job's Team only → Sent by us folder, found and never made here. A file one of the job's lien
+ * records still names is left alone. Drive's refusal is thrown in the shape `driveFailureOf` reads.
+ */
+async function trashDoor(admin: SupabaseClient, ask: TrashAsk, userId: string): Promise<Response> {
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 500)
+  const google = await googleAccessToken(saJson)
+  const folder = await jobFolder(admin, google, ask.job)
+  if (!folder) return json({ error: 'That job has no Drive folder yet.' }, 409)
+  let sent: string | null = folder.folderId
+  for (const name of landingPath('sent')) sent = sent ? await childFolder(google, sent, name) : null
+  const fileUrl = `${DRIVE}/files/${encodeURIComponent(ask.driveFileId)}`
+  const meta = await driveGet<{ name?: string; parents?: string[]; trashed?: boolean }>(google, `${fileUrl}?fields=name,parents,trashed&supportsAllDrives=true`)
+  if (!sent || meta.parents?.[0] !== sent) return json({ error: DRIVE_TRASH_WORDS.notSent, why: 'not_sent', retry: false }, 403)
+  const name = meta.name ?? ''
+  const trash = ask.action === 'trash'
+  if (trash === !!meta.trashed) return json({ trashed: trash, name, url: driveViewUrl(ask.driveFileId) })
+  let note: string | null = null
+  if (trash) {
+    const jobId = ask.job.jobs_ledger_id
+    const [filings, items, person] = await Promise.all([
+      admin.from('job_lien_filings').select('*').eq('job_id', jobId),
+      admin.from('job_lien_desk_items').select('*').eq('job_id', jobId),
+      admin.from('users').select('name').eq('id', userId).maybeSingle(),
+    ])
+    if (filings.error || items.error) return json({ error: DRIVE_TRASH_WORDS.recordsUnread, why: 'records_unread', retry: true }, 500)
+    if (lienRowsUse([...(filings.data ?? []), ...(items.data ?? [])], ask.driveFileId)) return json({ error: DRIVE_TRASH_WORDS.inUse, why: 'in_use', retry: false }, 409)
+    note = trashNote((person.data as { name?: string | null } | null)?.name, todayYmdInAppTz())
+  }
+  const res = await fetch(`${fileUrl}?supportsAllDrives=true&fields=id,trashed`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${google}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(trash ? { trashed: true, description: note } : { trashed: false }),
+  })
+  const answer = driveAnswerOf(await res.text().catch(() => ''))
+  if (!res.ok) throw new Error(`${trash ? 'Trash' : 'Untrash'} failed (${res.status}): ${driveAnswerWords(answer)}`)
+  return json({ trashed: trash, name, url: driveViewUrl(ask.driveFileId) })
 }
 
 async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response> {
@@ -309,10 +355,21 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   if (!u?.user) return json({ error: 'Sign in first.' }, 401)
   const { data: who } = await admin.from('users').select('role, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
   if (!who || !OFFICE_ROLES.includes(String(who.role))) return json({ error: 'Office only.' }, 403)
+  // Papers before a job opens: an estimator can owe a job a paper, and this door reads as the service role, so it asks
+  // which jobs the caller is locked out of. Empty for the office, and while no job requires a paper.
+  const shut = await jobsShutToUser(admin, u.user.id)
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
   // A twin is refused whatever it asks, in words true to the ask (v2.6488): a search is not a change.
   if (who.is_digital_twin) return json({ error: twinRefusalWords(body?.action) }, 403)
+  // A wrong file into Drive's trash, or back out of it (v2.7699): a door of its own, read here so the shared ask
+  // parser, which other functions hold, stays as it is.
+  if (isTrashAction(body)) {
+    if (who.read_only) return json({ error: 'A training account cannot change Drive.' }, 403)
+    const trashAsk = parseTrashAsk(body)
+    if (!trashAsk) return json({ error: DRIVE_TRASH_WORDS.notAnAsk }, 400)
+    return await trashDoor(admin, trashAsk, u.user.id)
+  }
   const ask = parseOfficeAsk(body)
   if (!ask) return json({ error: 'That is not an ask this door takes.' }, 400)
   // Training mode reads everything and writes nothing: a list and an open are reads.
@@ -341,9 +398,11 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
       if (r.error) return json({ error: `The index did not answer: ${r.error.message}` }, 500)
       rows = r.data
     }
+    // Papers before a job opens: a row of a job the caller is locked out of does not come back.
+    const found = (Array.isArray(rows) ? rows : []) as Array<Record<string, unknown> & { jobs_ledger_id?: string | null }>
+    const list = shut.size === 0 ? found : found.filter((r) => !(r?.jobs_ledger_id && shut.has(r.jobs_ledger_id)))
     // Punch list #377: a row that is a signed job contract's Drive copy says so (`paper`), and for the four roles that read
     // the record, which one (`contract_id`, `contract_job_id`).
-    const list = (Array.isArray(rows) ? rows : []) as Record<string, unknown>[]
     const papers = await papersAmong(admin, list.map((r) => String(r.drive_file_id ?? '')))
     return json({ rows: list.map((r) => withPaperMark(r, papers.get(String(r.drive_file_id ?? '')), who.role)), meaning, note: error })
   }
@@ -372,6 +431,8 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
     const m = a.messages
     const job: JobRef | null = m?.project_id ? { project_id: m.project_id } : m?.bid_id ? { bid_id: m.bid_id } : m?.jobs_ledger_id ? { jobs_ledger_id: m.jobs_ledger_id } : null
     if (!job) return json({ error: 'Tie the message to a job first.' }, 409)
+    // Papers before a job opens: a caller locked out of the job saves nothing into its folder.
+    if ('jobs_ledger_id' in job && shut.has(job.jobs_ledger_id)) return json({ error: JOB_PAPERS_LOCK_WORDS }, 403)
     // A photo goes to the job's photos (Team only › Photos, or a Pipeline job's own Customer Pictures folder), named by
     // day, sender and caption, the way the photo-save sweep files it (Messages, cut 10).
     const photo = isImageFile(a) ? photoNameInputOf(a) : null
@@ -394,7 +455,7 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   }
 
   if (ask.action === 'search') {
-    const found = await searchFiles(admin, google, ask.words)
+    const found = await searchFiles(admin, google, ask.words, shut)
     // The same mark on Drive's own finds (#377): the box draws one chip whichever search named the file.
     const hits = (Array.isArray(found.hits) ? found.hits : []) as Record<string, unknown>[]
     const papers = await papersAmong(admin, hits.map((h) => String(h.id ?? '')))
@@ -459,6 +520,8 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
     return json({ indexed: pass.indexed, held: pass.held, remaining: pass.remaining })
   }
 
+  // Papers before a job opens: every ask from here on is about one job, and a caller locked out of it reads none of its folder.
+  if ('jobs_ledger_id' in ask.job && shut.has(ask.job.jobs_ledger_id)) return json({ error: JOB_PAPERS_LOCK_WORDS }, 403)
   const folder = await jobFolder(admin, google, ask.job)
   if (!folder) return json({ error: 'That job has no Drive folder yet.' }, 409)
 
