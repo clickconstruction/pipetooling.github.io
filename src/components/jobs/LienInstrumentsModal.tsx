@@ -77,6 +77,7 @@ import LienFilingTabs from './LienFilingTabs'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage } from '../../lib/jobs/lienStopPaperPages'
+import { lienMailProof } from '../../lib/jobs/lienMailProof'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
@@ -906,7 +907,7 @@ export default function LienInstrumentsModal({
     const when = (ymd: string | null, iso: string) => formatYmdMonthDay(ymd ?? calendarYmdInAppTzFromIso(iso))
     const asSent = (f: JobLienFilingRow, words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
       const page = filingSnapshotPage(f, { issuer, jobNumber })
-      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
+      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof: lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, servedAt: f.served_at }) }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
     }
     const tab = (t: 'notice' | 'affidavit' | 'release_record', label: string) => ({ label, onPress: () => { setStopOpen(null); setActiveTab(t) } })
     const kind = lienStopPaperKind(step)

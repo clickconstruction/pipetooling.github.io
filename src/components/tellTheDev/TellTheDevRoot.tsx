@@ -21,12 +21,13 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { buildNoteContext, noteContextLines, notePagePath, type NoteContext, type NoteDoor } from '../../lib/tellTheDev/noteContext'
 import { readWrenchOpened, writeWrenchOpened } from '../../lib/tellTheDev/fixMode'
-import { TELL_THE_DEV_OPEN_CONTROL, TELL_THE_DEV_OPEN_EVENT, TELL_THE_DEV_SENT_CONTROL, requestTellTheDev, type TellTheDevOpenRequest } from '../../lib/tellTheDev/openBox'
+import { TELL_THE_DEV_OPEN_CONTROL, TELL_THE_DEV_OPEN_EVENT, TELL_THE_DEV_SENT_CONTROL, requestTellTheDev, setTellTheDevListening, type TellTheDevOpenRequest } from '../../lib/tellTheDev/openBox'
 import { TELL_THE_DEV_MARK, openWindowTitle } from '../../lib/tellTheDev/readPage'
 import { sendDevNote } from '../../lib/tellTheDev/sendNote'
 import { troubleMemory } from '../../lib/tellTheDev/trouble'
 import type { NoteKind } from '../../lib/tellTheDev/starts'
 import { TellTheDevBox } from './TellTheDevBox'
+import { TellTheDevButton } from './TellTheDevButton'
 
 /** Above every window, so a note can be written about the one that is open; below toasts and the update prompt. */
 const WRENCH_Z = 8990
@@ -112,7 +113,12 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
     if (!fixMode || !userId) return
     const onRequest = (e: Event) => open((e as CustomEvent<TellTheDevOpenRequest>).detail ?? { door: 'wrench' })
     window.addEventListener(TELL_THE_DEV_OPEN_EVENT, onRequest)
-    return () => window.removeEventListener(TELL_THE_DEV_OPEN_EVENT, onRequest)
+    // The doors drawn outside the shell show only while a box is here to answer them.
+    setTellTheDevListening(true)
+    return () => {
+      setTellTheDevListening(false)
+      window.removeEventListener(TELL_THE_DEV_OPEN_EVENT, onRequest)
+    }
   }, [fixMode, userId, open])
 
   // The version is the newest release note's. It is read when the box first opens, never at boot.
@@ -252,7 +258,7 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
       )}
       {boxOpen && isMobile && (
         <div {...mark}>
-          <ResponsiveModalShell title="Tell the dev" onRequestClose={close} zIndex={WRENCH_Z + 1} maxWidthDesktop={420}>
+          <ResponsiveModalShell title="Tell the dev" onRequestClose={close} zIndex={WRENCH_Z + 1} maxWidthDesktop={420} tellTheDevDoor={false}>
             {box}
           </ResponsiveModalShell>
         </div>
@@ -263,16 +269,5 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
 
 /** The phone's door: a wrench in the header, beside Search. It asks; the root draws the sheet. */
 export function TellTheDevHeaderButton({ door = 'header' }: { door?: NoteDoor }) {
-  return (
-    <button
-      type="button"
-      title="Tell the dev about this page"
-      aria-label="Tell the dev"
-      aria-haspopup="dialog"
-      onClick={() => requestTellTheDev({ door })}
-      style={{ display: 'inline-flex', alignItems: 'center', padding: '0.5rem', color: 'inherit', background: 'none', border: 'none', cursor: 'pointer' }}
-    >
-      <Wrench size={20} strokeWidth={2.25} aria-hidden />
-    </button>
-  )
+  return <TellTheDevButton door={door} />
 }

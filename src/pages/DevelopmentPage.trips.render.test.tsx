@@ -2,8 +2,9 @@
 /**
  * The Development page's seventh look (punch list #379, PR 3): Trips shows only on a site that has a trip or is
  * far from the shop. A site with neither keeps its six looks and one quiet door to its first trip, and a reader
- * outside the office door reads no trip at all. The fetch and the trips hook are mocked at their seams, so this
- * holds the page's wiring. Every name here is made up.
+ * outside the office door reads no trip at all. PR 5: the strip says when punches look like a trip, and an open
+ * trip counts the page's History lines on its days. The fetch and the trips hook are mocked at their seams, so
+ * this holds the page's wiring. Every name here is made up.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
@@ -48,7 +49,7 @@ vi.mock('../hooks/useSiteLabor', () => ({
 
 const lifts: TripRecord = { ...newTripRecord({ id: 't5', developmentId: 'dev-zz' }), purpose: 'Lift stations before the pour', people: [{ personId: null, userId: null, name: 'Luis', days: { '2026-10-30': 'road', '2026-10-31': 'site', '2026-11-01': 'road' } }] }
 function trips(over: Partial<SiteTripsState>): SiteTripsState {
-  return { records: [], failure: null, miles: null, sitePoint: null, sitePointKnown: true, shows: false, roster: [], punches: [], punchesFailed: false, askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), ...over }
+  return { records: [], failure: null, miles: null, sitePoint: null, sitePointKnown: true, shows: false, roster: [], punches: [], punchesFailed: false, dismissals: [], names: new Map(), askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), dismiss: vi.fn(async () => []), undismiss: vi.fn(async () => undefined), ...over }
 }
 function job(over: Partial<MemberJob> & { id: string }): MemberJob {
   return {
@@ -118,5 +119,21 @@ describe('DevelopmentPage: the Trips look', () => {
     expect(screen.getAllByTestId('development-jump')).toHaveLength(6)
     expect(document.getElementById('development-trips')).toBeNull()
     expect(screen.queryByTestId('trips-first-door')).toBeNull()
+  })
+
+  it('says on the strip when punches look like a trip, and an open trip counts the History lines on its days', async () => {
+    authState.current = { role: 'dev' }
+    const at = (work_date: string) => ({ user_id: 'u-omar', work_date, clock_in_lat: 35.001, clock_in_lng: -76.601, clock_in_location_source: 'gps', arrived_lat: null, arrived_lng: null, arrived_location_source: null, clock_out_lat: null, clock_out_lng: null, clock_out_location_source: null, travel_started_at: null, arrived_at: null })
+    tripsState.current = trips({ records: [lifts], shows: true, miles: 1180, sitePoint: { lat: 35, lng: -76.6 }, roster: [{ id: 'p-omar', name: 'Omar', userId: 'u-omar' }], punches: ['2026-09-08', '2026-09-09'].map(at) })
+    // One line of the site's own on a day of the trip, beside the trip's two.
+    served.data = { ...data(), inIt: { bids: [], jobs: [job({ id: 'j1', created_at: '2026-10-31T15:00:00Z' })] } }
+    renderWithProviders(<DevelopmentPage />)
+    await settle()
+    await screen.findByTestId('development-counts')
+    expect(screen.getAllByTestId('development-jump')[6]!.textContent).toContain('1 looks like a trip')
+    // The hours are not read here, so the offer itself waits; the strip already counts it.
+    expect(screen.queryByTestId('trips-offers')).toBeNull()
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    expect(screen.getByTestId('trip-shows-lines').textContent).toBe('1 line in History')
   })
 })

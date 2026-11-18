@@ -226,3 +226,13 @@ describe('the day the item says it went (punch list #243, PR 2)', () => {
     expect(db.events.some((e) => e.startsWith('sent it1 on'))).toBe(false)
   })
 })
+
+describe('recordLienDeskRun · an envelope’s receipt (v2.7695)', () => {
+  it('writes each paper copy’s receipt with its send, and none for a copy that has none', async () => {
+    const n = notice()
+    await recordLienDeskRun([{ ...n, recipients: n.recipients.map((r) => (r.key === 'owner' ? { ...r, receiptUrl: ' https://drive.google.com/file/d/r1/view ' } : r)) }], OPTS)
+    const sends = (db.inserts[0] as { sends: Array<Record<string, string>> }).sends
+    expect(sends[0]).toMatchObject({ recipient: 'owner', receipt_url: 'https://drive.google.com/file/d/r1/view' })
+    expect('receipt_url' in sends[1]!).toBe(false)
+  })
+})

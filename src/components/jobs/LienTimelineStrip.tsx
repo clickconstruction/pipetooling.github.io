@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { LIEN_KIND_UNKNOWN_WORDS, keepDatesWhole, lienDateWords, lienFirmNext, lienFirmWaitingOn, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep, type LienTimelineStepKind } from '../../lib/jobs/lienTimeline'
+import { LIEN_KIND_UNKNOWN_WORDS, keepDatesWhole, lienDateWords, lienFirmNext, lienFirmWaitingOn, lienLastWorkStepIsStandIn, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep, type LienTimelineStepKind } from '../../lib/jobs/lienTimeline'
 import type { LienNextAct, LienNextActDoor } from '../../lib/jobs/lienNextAct'
+import { lienLastWorkDoorWords } from '../../lib/jobs/lienLastWorkDoor'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { windowsAxis } from '../../lib/jobs/lienWindowsAxis'
 import { setLienTimelineView, useLienTimelineView, type LienTimelineView, type LienTimelineViewScope } from '../../hooks/useLienTimelineView'
@@ -252,7 +253,11 @@ export type LienTimelineStripProps = {
   switchOutside?: boolean
   /** The one door to the next step (v2.4693): the Lien window's button, drawn at the verdict band's right so the step is said once. */
   nextDoor?: ReactNode
-  /** The last day of work's door (v2.4735): *change ›* under the LAST WORK stop; the Lien window opens its last-day line. */
+  /**
+   * The last day of work's door (v2.4735), on its own line under the LAST WORK stop since v2.7684: *change ›*, or *set the day ›* over a
+   * stand-in month (`lienLastWorkDoorWords`). The Lien window opens its last-day line; the Lien desk's panes open the window that sets the day
+   * (`LienLastWorkDayWindow`). Handed only to a person who may change the day (`lienLastWorkDoorOffered`).
+   */
   onChangeLastWork?: () => void
   /** A stop's paper (v2.4793): with it, every stop's title is a door, and a press hands the step over — the host opens `LienStopPaperWindow`. */
   onOpenStep?: (step: LienTimelineStep) => void
@@ -301,6 +306,13 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
       <span data-lien-timeline-blocked style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 3, padding: '1px 7px', borderRadius: 999, background: 'var(--bg-red-tint)', border: '1px solid var(--border-red)', color: 'var(--text-red-700)', fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', textTransform: 'none', letterSpacing: 0 }}>
         ✗ {blocked.words}
       </span>
+    ) : null
+  // The last day's press (v2.7684): its own line under the LAST WORK stop, in the strip's link type; a phone's pane grows it a thumb tall (the stylesheet).
+  const lastWorkDoor = (s: LienTimelineStep) =>
+    s.kind === 'last_work' && onChangeLastWork ? (
+      <button type="button" data-lien-timeline-last-work-door onClick={onChangeLastWork} title="Set the last day of work, with a reason" style={{ border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0, whiteSpace: 'nowrap' }}>
+        {lienLastWorkDoorWords(lienLastWorkStepIsStandIn(s))}
+      </button>
     ) : null
   const foldDoor = (s: LienTimelineStep) =>
     s.fold ? (
@@ -419,11 +431,7 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
                     set the date ›
                   </button>
                 ) : null}
-                {s.kind === 'last_work' && onChangeLastWork ? (
-                  <button type="button" data-lien-timeline-last-work-door onClick={onChangeLastWork} style={{ marginLeft: '0.4rem', border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-                    change ›
-                  </button>
-                ) : null}
+                {lastWorkDoor(s) ? <div style={{ fontSize: '0.75rem' }}>{lastWorkDoor(s)}</div> : null}
               </div>
             </div>
           ))}
@@ -470,16 +478,9 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
                       </button>
                     </>
                   ) : null}
-                  {s.kind === 'last_work' && onChangeLastWork ? (
-                    <>
-                      {' '}
-                      <button type="button" data-lien-timeline-last-work-door onClick={onChangeLastWork} style={{ border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-                        change ›
-                      </button>
-                    </>
-                  ) : null}
                 </span>
               )}
+              {mini ? null : lastWorkDoor(s)}
               {!mini && s.move ? <MovePill move={s.move} voice={voice} style={{ marginTop: 'auto', position: 'relative', top: 4 }} /> : null}
               {mini ? null : blockedChip(s)}
             </div>

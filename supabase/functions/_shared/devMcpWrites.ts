@@ -42,6 +42,7 @@ import { isNoticeByHandVerb, noticeByHandInput } from './devMcpNoticeByHand.ts'
 import { affidavitDraftInput, isAffidavitDraftVerb } from './devMcpAffidavitDraft.ts'
 import { isLienFilingVerb, lienFilingApplyInput, lienFilingPlanInput } from './devMcpLienFiling.ts'
 import { isLienServiceVerb, lienServiceApplyInput, lienServicePlanInput } from './devMcpLienService.ts'
+import { isNoticeNumbersVerb, noticeNumbersApplyInput, noticeNumbersPlanInput } from './devMcpNoticeNumbers.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { isTaskVerb, taskInput } from './devMcpTasks.ts'
@@ -338,6 +339,12 @@ export const WRITE_VERBS = {
   // (devMcpTaskPhoto.ts). The file is a staged upload: the plan commits to its size and sha256.
   plan_task_photo: { rpc: null, step: 'plan' },
   apply_task_photo: { rpc: null, step: 'apply' },
+  // v2.7687 / 0.99.0: the mail number of each envelope of a lien notice already on record, as the desk's add the
+  // number › writes it — `sends` on the filing's own row through withTracking, and a number already there replaced or
+  // taken off; rpc is null, the dry run the server's read of the job and its notices (devMcpNoticeNumbers.ts). One or
+  // several a plan, each hashed on its own; one an apply. The day mailed is never moved and nobody is told.
+  plan_notice_numbers: { rpc: null, step: 'plan' },
+  apply_notice_numbers: { rpc: null, step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -459,6 +466,17 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const built = jobMarkInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isNoticeNumbersVerb(verb)) {
+    // v2.7687: the shape check is devMcpNoticeNumbers'. A plan carries its notices, each shaped on its own; an apply carries one and its own hash.
+    if (step === 'plan') {
+      const built = noticeNumbersPlanInput(input)
+      if (!built.ok) return built
+      return { ok: true, rpc: null, step, body: { p: { notices: built.notices } }, dryRunBody: null, target: built.target, planHash }
+    }
+    const built = noticeNumbersApplyInput(input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash: built.planHash }
   }
   if (isLienServiceVerb(verb)) {
     // The shape check is devMcpLienService's. A plan carries its services, each shaped on its own; an apply carries one and its own hash.

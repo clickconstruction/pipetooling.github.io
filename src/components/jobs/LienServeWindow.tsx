@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
@@ -12,6 +12,9 @@ import { LIEN_SERVE_NUMBERS_WORDS, lienServeDraftFor, lienServeDraftWith, lienSe
 import { recordLienServices, type LienServeRecordResult } from '../../lib/jobs/lienServeNumbersIo'
 import { LIEN_SERVICE_PROOF_WORDS, type ServiceCopy, type ServiceCopyDraft } from '../../lib/jobs/lienServiceProof'
 import { LienReceiptPhotoPress } from './LienReceiptPhotoPress'
+import { LIEN_RECEIPT_WORDS, lienCopyProofChanged, lienReceiptNotKeptWords } from '../../lib/jobs/lienReceiptFile'
+import { keepLienCopyProof } from '../../lib/jobs/lienReceiptKeepIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { LIEN_SCAN_BATCH_WORDS } from '../../lib/jobs/lienScanBatch'
 import { useLienServeLetterChoice } from './lienHelpSheetChoice'
 
@@ -30,6 +33,8 @@ type Props = {
   onClose: () => void
   /** The write, handed in by a test. */
   record?: typeof recordLienServices
+  /** One copy's proof kept on its filing the moment it is added; a test hands its own. */
+  keep?: typeof keepLienCopyProof
   zIndex?: number
 }
 
@@ -60,8 +65,11 @@ function chipStyle(late: boolean, today: boolean): CSSProperties {
  * mailed and each certified mail number, and one press records every ticked lien as **Record service…** would.
  *
  * Each print is filed on its own job. Nothing here mails anything: the office does, and says so by ticking *Mailed*.
+ *
+ * A receipt or a number is kept on its filing the moment it is added (`lienReceiptFile.ts`), so a window closed before
+ * **Record** loses nothing. **Record** still sets the day, which is what clears the serve-by watch.
  */
-export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOpenJob, onChanged, onAddScans, onClose, record = recordLienServices, zIndex = 1200 }: Props) {
+export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOpenJob, onChanged, onAddScans, onClose: onCloseProp, record = recordLienServices, keep = keepLienCopyProof, zIndex = 1200 }: Props) {
   const isTopmost = useModalStackEntry()
   const { showToast } = useToastContext()
   const [letterOn, setLetterOn] = useLienServeLetterChoice()
@@ -70,6 +78,17 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState<LienServeRecordResult['failed']>([])
   const numberRefs = useRef<Array<HTMLInputElement | null>>([])
+  // Kept as you go: each copy's last word from its filing, `''` for kept and a sentence for a write that failed.
+  const [kept, setKept] = useState<Record<string, string>>({})
+  // The `sends` this window last wrote on a filing, so a second blur with nothing new writes nothing.
+  const writtenSends = useRef<Record<string, unknown>>({})
+  const keptAny = useRef(false)
+  // The desk reads again once on the way out when anything was kept, so its rows show the proof.
+  const onClose = useCallback(() => {
+    if (keptAny.current) onChanged()
+    keptAny.current = false
+    onCloseProp()
+  }, [onChanged, onCloseProp])
 
   const plan = useMemo(() => lienServePlan(jobs, { todayYmd, phone: issuer?.phone ?? '' }), [jobs, todayYmd, issuer?.phone])
   const words = lienServePlanWords(plan, todayYmd)
@@ -113,6 +132,7 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
         const took = new Set(result.done.map((w) => w.filingId))
         setDrafts((cur) => Object.fromEntries(Object.entries(cur).filter(([id]) => !took.has(id))))
         onChanged()
+        keptAny.current = false
       }
       if (result.failed.length === 0 && result.done.length === rows.length) onClose()
     } finally {
@@ -121,6 +141,19 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
   }
 
   const setCopy = (job: LienServeJob, copy: ServiceCopy, next: ServiceCopyDraft) => setDrafts((cur) => ({ ...cur, [job.filing.id]: lienServeDraftWith(cur[job.filing.id] ?? lienServeDraftFor(job), copy, next) }))
+  /** Keep one copy's number and receipt on its filing now. A write that fails says why under the envelope; Record still writes it. */
+  const keepCopy = async (job: LienServeJob, copy: ServiceCopy, draft: ServiceCopyDraft) => {
+    const id = job.filing.id
+    if (!lienCopyProofChanged(writtenSends.current[id] ?? job.filing.sends, copy, draft)) return
+    const key = `${id}:${copy}`
+    try {
+      writtenSends.current[id] = await keep({ filingId: id, recipient: copy, proof: { tracking: draft.tracking, receiptUrl: draft.receiptUrl } })
+      keptAny.current = true
+      setKept((cur) => ({ ...cur, [key]: '' }))
+    } catch (e) {
+      setKept((cur) => ({ ...cur, [key]: lienReceiptNotKeptWords(formatErrorMessage(e, 'the lien did not take it')) }))
+    }
+  }
   const setMailed = (job: LienServeJob, mailed: boolean) => setDrafts((cur) => ({ ...cur, [job.filing.id]: { ...(cur[job.filing.id] ?? lienServeDraftFor(job)), mailed } }))
 
   let slot = -1
@@ -128,7 +161,7 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
     slot += 1
     const at = slot
     return (
-      <div key={copy} data-lien-serve-envelope={copy} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) minmax(0, 14rem) auto', gap: '0.35rem 0.6rem', alignItems: 'center', padding: '0.25rem 0' }}>
+      <div key={copy} data-lien-serve-envelope={copy} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) minmax(0, 16rem)', gap: '0.35rem 0.6rem', alignItems: 'center', padding: '0.25rem 0' }}>
         <div style={{ fontSize: '0.78rem', minWidth: 0 }}>
           <span style={{ fontWeight: 700 }}>{TO[copy]}</span>
           {name ? <span style={{ color: 'var(--text-muted)' }}> · {name}</span> : null}
@@ -141,6 +174,7 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
           inputMode="numeric"
           value={draft.tracking}
           onChange={(e) => setCopy(job, copy, { ...draft, tracking: e.target.value })}
+          onBlur={() => void keepCopy(job, copy, draft)}
           onKeyDown={(e) => {
             // A scanner ends its number with Enter: the next envelope takes the next scan.
             if (e.key !== 'Enter') return
@@ -152,7 +186,32 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
           autoComplete="off"
           style={{ ...field, ...(isMobile ? { minHeight: 44 } : {}) }}
         />
-        <LienReceiptPhotoPress jobId={job.jobId} jobNumber={job.jobNumber} of={copy} day={servedOn} url={draft.receiptUrl} compact={!isMobile} onSaved={(url) => setCopy(job, copy, { ...draft, receiptUrl: url })} />
+        <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'center', minWidth: 0 }}>
+          <LienReceiptPhotoPress
+            jobId={job.jobId}
+            jobNumber={job.jobNumber}
+            of={copy}
+            day={servedOn}
+            url={draft.receiptUrl}
+            compact={!isMobile}
+            onSaved={(url) => {
+              const next = { ...draft, receiptUrl: url }
+              setCopy(job, copy, next)
+              void keepCopy(job, copy, next)
+            }}
+            onTakeOff={() => {
+              const next = { ...draft, receiptUrl: '' }
+              setCopy(job, copy, next)
+              void keepCopy(job, copy, next)
+            }}
+          />
+          {!draft.receiptUrl ? <span style={small}>{LIEN_RECEIPT_WORDS.hint}</span> : null}
+          {kept[`${job.filing.id}:${copy}`] === '' ? (
+            <span data-lien-serve-kept={copy} role="status" style={{ ...small, color: 'var(--text-green-800)', fontWeight: 600 }}>{LIEN_RECEIPT_WORDS.kept}</span>
+          ) : kept[`${job.filing.id}:${copy}`] ? (
+            <span data-lien-serve-not-kept={copy} role="alert" style={{ ...small, color: 'var(--text-red-700)', fontWeight: 600 }}>{kept[`${job.filing.id}:${copy}`]}</span>
+          ) : null}
+        </div>
       </div>
     )
   }
@@ -182,7 +241,7 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
               </div>
             ) : null}
           </div>
-          <button type="button" onClick={onClose} disabled={busy} aria-label="Close" style={{ ...btn, padding: '0.25rem 0.6rem' }}>
+          <button type="button" onClick={onClose} disabled={busy} aria-label="Close" style={{ ...btn, padding: '0.25rem 0.6rem', ...(isMobile ? { minHeight: 44, minWidth: 44 } : {}) }}>
             ×
           </button>
         </div>
@@ -202,7 +261,7 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
                     <span style={{ fontWeight: 700 }}>{h.job.jobLabel}</span>
                     <span style={{ color: 'var(--text-red-700)', fontWeight: 600 }}>{h.holds.map((x) => x.words).join(', ')}.</span>
                     <span style={{ color: 'var(--text-muted)' }}>{[...new Set(h.holds.map((x) => x.act))].join(' ')}</span>
-                    <button type="button" onClick={() => onOpenJob(h.job.jobId)} style={{ ...btn, marginLeft: 'auto', padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>
+                    <button type="button" onClick={() => onOpenJob(h.job.jobId)} style={{ ...btn, marginLeft: 'auto', padding: '0.2rem 0.6rem', fontSize: '0.75rem', ...(isMobile ? { minHeight: 44 } : {}) }}>
                       Open the Lien window
                     </button>
                   </li>
@@ -228,6 +287,11 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
               <input type="date" value={servedOn} onChange={(e) => setServedOn(e.target.value)} aria-label={LIEN_SERVE_NUMBERS_WORDS.day} style={{ ...field, ...(isMobile ? { minHeight: 44 } : {}) }} />
             </label>
             <div style={small}>{LIEN_SERVE_NUMBERS_WORDS.hint}</div>
+            {rows.length > 0 ? (
+              <div data-lien-serve-kept-lead style={{ fontSize: '0.78rem', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', borderRadius: 6, padding: '0.35rem 0.6rem' }}>
+                <strong>{LIEN_RECEIPT_WORDS.keptLead}</strong> {LIEN_RECEIPT_WORDS.keptRest}
+              </div>
+            ) : null}
             {rows.map((r) => {
               const d = draftOf(r.job)
               const why = failed.find((f) => f.write.filingId === r.job.filing.id)?.reason
@@ -268,7 +332,7 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center', justifyContent: 'flex-end', padding: '0.7rem 1.1rem', borderTop: '1px solid var(--border)' }}>
           {recordWords.dead && rows.length > 0 ? <span style={{ ...small, marginRight: 'auto' }}>{recordWords.why}</span> : null}
-          <button type="button" onClick={onClose} disabled={busy} style={btn}>
+          <button type="button" onClick={onClose} disabled={busy} style={{ ...btn, ...(isMobile ? { minHeight: 44 } : {}) }}>
             Close
           </button>
           <button type="button" onClick={() => void recordNow()} disabled={recordWords.dead || busy} data-lien-serve-record style={{ ...(recordWords.dead ? dead : press), ...(busy ? { cursor: 'wait' } : {}), ...(isMobile ? { minHeight: 44 } : {}) }}>

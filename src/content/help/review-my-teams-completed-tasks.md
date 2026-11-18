@@ -40,6 +40,8 @@ If it's not done right, you type a comment. The comment is required, so the pers
 
 ## See where the open tasks are
 
+The owner can also open a person's own screen from an open card under **Outstanding by person**. [See what a person's Task Mode shows](/help/see-a-persons-task-mode) covers it.
+
 Above **Outstanding by person** sits a map called **Where the open tasks are**. It shows up when an open task on the board has a place.
 
 - Each person has a colour. Tap a name to see that person's tasks alone. Tap the name again to see everyone.

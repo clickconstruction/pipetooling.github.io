@@ -4462,6 +4462,8 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 /* …and every press under 40 px inside the open paper gets a thumb's square (punch list #352, the leftovers): the pad `watchSmallPresses` marks, drawn unseen over the press, so nothing moves. */
 [data-lien-pane-phone] [data-press-pad] { position: relative; }
 [data-lien-pane-phone] [data-press-pad]::after { content: ''; position: absolute; top: calc(-1 * var(--press-pad-y, 0px)); bottom: calc(-1 * var(--press-pad-y, 0px)); left: calc(-1 * var(--press-pad-x, 0px)); right: calc(-1 * var(--press-pad-x, 0px)); }
+/* The last day's press under the LAST WORK stop (v2.7684): a thumb tall inside a phone's open paper, on its own line, so the row above keeps its height. */
+[data-lien-pane-phone] [data-lien-timeline-last-work-door] { min-height: 44px; display: inline-flex; align-items: center; padding: 0 10px 0 0 !important; font-size: 0.8125rem !important; }
 /* Steps | Windows inside a phone's open paper (v2.7392): the switch clips its overflow for its round corners, and a pad with it, so its two presses are grown to a thumb's height instead of padded. */
 [data-lien-pane-phone] [data-lien-timeline-switch] button { min-height: 40px; padding: 0 12px !important; font-size: 0.8125rem !important; }
 /* The notary's print box over the Affidavits list on a phone (punch list #352, the leftovers): folded, the bar hides what follows it in the box without unmounting it. */
@@ -4681,10 +4683,12 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunCheck { display: grid; gap: 0.45rem; padding: 0.4rem 0 0.3rem; }
 .lienRunCheck h3 { margin: 0; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
 .lienRunCheck h3 span { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 0.5rem; }
-.lienRunCheckRow { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr); gap: 0.5rem 0.9rem; align-items: start; border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.75rem; background: var(--surface); font-size: 0.8125rem; }
+.lienRunCheckRow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.45rem 0.9rem; align-items: start; border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.75rem; background: var(--surface); font-size: 0.8125rem; }
 .lienRunCheckRow[data-waits='none'] { border-color: var(--text-green-700); }
 .lienRunCheckRow[data-held='yes'] { border-color: var(--border-amber); background: var(--bg-amber-tint); }
-.lienRunCheckHead { display: grid; gap: 1px; min-width: 0; }
+.lienRunCheckHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 0.8rem; min-width: 0; }
+/* The one thing to do next on a run row (v2.7695). */
+.lienRunCheckNext { justify-self: start; max-width: 100%; font-size: 0.75rem; background: var(--bg-blue-tint); color: var(--text-blue-800); border-radius: 6px; padding: 3px 8px; }
 .lienRunCheckHead b { color: var(--text-strong); }
 .lienRunCheckAmt { font-weight: 700; font-variant-numeric: tabular-nums; }
 /* The property's street beside a job's name (v2.7489), on a row and on an envelope's copy line: quieter than the name. */
@@ -4707,7 +4711,7 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunCheckCopyBusy { color: var(--text-muted); }
 /* A thumb's height on a phone for the presses beside a file and under the ask (v2.7525). */
 @media (max-width: 700px) { .lienRunCheckCopyOff { padding: 9px 6px; font-size: 0.78rem; } .lienRunCheckCopyAsk .lienRunCheckCopyAdd { padding: 9px 14px; font-size: 0.8rem; } }
-.lienRunCheckTicks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; align-items: start; min-width: 0; }
+.lienRunCheckTicks { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 2.4fr); gap: 0.5rem; align-items: start; min-width: 0; }
 .lienRunCheckTick { display: grid; gap: 3px; min-width: 0; padding: 0.3rem 0.45rem; border-radius: 8px; background: var(--bg-subtle); border: 1px solid var(--border); }
 .lienRunCheckTick[data-on='yes'] { border-color: var(--text-green-700); background: var(--bg-green-tint); }
 .lienRunCheckTickName { font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
@@ -4720,6 +4724,8 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunCheckBoxes { display: grid; gap: 0.3rem; }
 .lienRunCheckBox { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.2rem 0.35rem; align-items: center; }
 .lienRunCheckBox .lienRunCheckShape { grid-column: 2 / -1; }
+/* The envelope's receipt press and its saved state, under the number box (v2.7695). */
+.lienRunCheckBox .lienRunCheckReceipt { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; min-width: 0; }
 .lienRunCheckBoxWho { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; min-width: 2.6em; }
 .lienRunCheckShape { font-size: 0.68rem; color: var(--text-red-600); }
 .lienRunCheckShape[data-ok='yes'] { color: var(--text-green-700); }
@@ -4729,9 +4735,15 @@ button.lienCalNoHours:hover { text-decoration: underline; }
 .lienRunHeldList b { color: var(--text-700); font-weight: 600; }
 @media (max-width: 700px) {
   .lienRunCheckRow { grid-template-columns: 1fr; }
-  .lienRunCheckTicks { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.35rem; }
+  .lienRunCheckTicks { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.35rem; }
   .lienRunCheckTick { padding: 0.35rem 0.4rem; }
-  .lienRunCheckTick[data-tick='mailed'] { grid-column: 1 / -1; }
+  .lienRunCheckTick[data-tick='envelope'], .lienRunCheckTick[data-tick='mailed'] { grid-column: 1 / -1; }
+  /* A thumb's height for the file press and each file's name (v2.7695): the press was 20 px tall on a phone. */
+  .lienRunCheckCopies { font-size: 0.8125rem; }
+  .lienRunCheckCopies a { display: inline-flex; align-items: center; min-height: 44px; }
+  .lienRunCheckCopyAdd { min-height: 44px; padding: 0 14px; font-size: 0.875rem; }
+  .lienRunCheckCopyOff { min-height: 44px; }
+  .lienRunCheckTick > button { min-height: 44px; }
   .lienRunCheckBox { grid-template-columns: auto minmax(0, 1fr) auto; }
 }
 /* Lien desk → the run's live checklist, lanes and the desk's door pill (Run-5, the run shown not told). */
