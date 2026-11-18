@@ -2022,6 +2022,7 @@ export default function LienDesk({
           isSub: Boolean(selected.gcCustomerId),
           propertyKind: property.propertyKind,
           lastWorkDate: job?.last_work_date ?? null,
+          job: job ?? null,
           openBalance,
           todayYmd,
           demandLetters: data.demandLettersByJob?.[selected.jobId] ?? null,
