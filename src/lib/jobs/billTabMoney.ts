@@ -212,6 +212,17 @@ export function billTabLines(args: {
   })
 }
 
+/**
+ * The lines to tick when the Job window is opened with lines already picked (punch list #391: a trip put on a
+ * bill opens its job on Bill with the trip's line picked). Only a line that can be ticked by hand is ticked: one
+ * that is gone, already on a bill or covered to the cent is skipped without a word, since Bill the N picked
+ * could not take it. In the list's own order, each once.
+ */
+export function pickedLineIdsToSeed(asked: ReadonlyArray<string>, lines: ReadonlyArray<Pick<BillTabLine, 'key' | 'selectable'>>): string[] {
+  const want = new Set(asked)
+  return lines.filter((l) => l.selectable && want.has(l.key)).map((l) => l.key)
+}
+
 /** A one-line job with nothing to tick or bill needs no line list: the figures already say it all. */
 export function showBillTabLines(lines: ReadonlyArray<BillTabLine>): boolean {
   return lines.length >= 2 || lines.some((l) => l.selectable || l.billIt)

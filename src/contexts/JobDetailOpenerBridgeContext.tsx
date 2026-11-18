@@ -25,6 +25,7 @@ export type JobWindowEditOpenOptions = {
   initialTab?: 'edit' | 'bill' | 'costs' | 'documents'
   propertyRecordFocus?: boolean
   focusRow?: JobFormFocusRow | null
+  pickLineIds?: ReadonlyArray<string>
 }
 
 type JobDetailOpenerBridgeContextValue = {

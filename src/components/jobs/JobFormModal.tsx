@@ -108,7 +108,7 @@ import { useJobMigrate } from './useJobMigrate'
 import { JobFormInvoiceList } from './JobFormInvoiceList'
 import { JobFormMoneyCard } from './JobFormMoneyCard'
 import { JobFormMakeABill } from './JobFormMakeABill'
-import { billTabFigures, billTabLines, wholeRestAction } from '../../lib/jobs/billTabMoney'
+import { billTabFigures, billTabLines, pickedLineIdsToSeed, wholeRestAction } from '../../lib/jobs/billTabMoney'
 import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
 import { drawLabelsByInvoiceId, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import { fixtureRowsFromDb } from '../../lib/jobs/jobFormFixtureHydrate'
@@ -258,6 +258,8 @@ export type JobFormModalProps = {
   propertyRecordFocusInitial?: boolean
   /** Open on this fact row, expanded and ringed — the Lien desk's plain-value doors (v2.3697). */
   focusRowInitial?: JobFormFocusRow | null
+  /** Lines to tick for Bill the N picked once the job has loaded (punch list #391: a trip's line, picked). */
+  pickLineIdsInitial?: ReadonlyArray<string> | null
   alsoOpenCreateCustomerModal: boolean
   onClose: () => void
   onSaved: (() => void) | null
@@ -314,6 +316,7 @@ export default function JobFormModal({
   jobPicturesLinkHighlightInitial,
   propertyRecordFocusInitial = false,
   focusRowInitial = null,
+  pickLineIdsInitial = null,
   alsoOpenCreateCustomerModal,
   onClose,
   onSaved,
@@ -807,6 +810,26 @@ export default function JobFormModal({
   // ② Invoices segment bar (v2.1070): which unbilled line items are picked
   // for the next "create invoice from selected segments" action.
   const [selectedSegmentIds, setSelectedSegmentIds] = useState<Set<string>>(new Set())
+  // Opened with lines already picked (punch list #391): once the job is in, tick the ones that can be ticked
+  // by hand, one time. `applyEditJob` clears the ticks on load, so this waits for `initDone`.
+  const pickLinesSeededRef = useRef(false)
+  useEffect(() => {
+    if (pickLinesSeededRef.current || !initDone || !pickLineIdsInitial?.length) return
+    pickLinesSeededRef.current = true
+    const ids = pickedLineIdsToSeed(pickLineIdsInitial, billTabLineRows)
+    if (ids.length === 0) return
+    setSelectedSegmentIds(new Set(ids))
+    // Land on the press that takes the picked lines, Bill the N picked, once the Bill tab has drawn it.
+    let tries = 0
+    const tick = window.setInterval(() => {
+      const el = document.querySelector<HTMLElement>('.jobMoneyPickedBtn')
+      tries += 1
+      if (el && el.getBoundingClientRect().height > 0) {
+        window.clearInterval(tick)
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } else if (tries >= 50) window.clearInterval(tick)
+    }, 100)
+  }, [initDone, pickLineIdsInitial, billTabLineRows])
 
   const [segmentGeneratorOpen, setSegmentGeneratorOpen] = useState(false)
 

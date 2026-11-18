@@ -251,6 +251,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
             jobPicturesLinkHighlightInitial={openState.editOptions?.jobPicturesLinkHighlight ?? false}
             propertyRecordFocusInitial={openState.editOptions?.propertyRecordFocus ?? false}
             focusRowInitial={openState.editOptions?.focusRow ?? null}
+            pickLineIdsInitial={openState.editOptions?.pickLineIds ?? null}
             alsoOpenCreateCustomerModal={openState.editOptions?.alsoOpenCreateCustomerModal ?? false}
             onSaved={handleSaved}
           />

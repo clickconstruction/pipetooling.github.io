@@ -20,6 +20,11 @@
  * on the strip (`tripName` in `lib/trips/tripsLook.ts`). `openSignal` opens one trip's row and turns the strip
  * to its year: a link to the trip, or a press on its name elsewhere on the page. **Copy link** on an open
  * trip is there for everyone who sees the look. The number is words only: nothing here lets a person type it.
+ *
+ * Put on a bill (punch list #391): an open trip marked Extra that has gone out shows **Put on a bill** beside
+ * **Change**, to the roles that may change a job's lines. A trip that holds a line shows the door to it in the
+ * press's place, and its billing chip says where its money stands, read from the line and the bill that took
+ * it (`lib/trips/tripBillLine.ts`). The look is handed the lines; with none handed, a trip says its own word.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
@@ -29,6 +34,7 @@ import { TRIP_COST_CAP, TRIP_COST_WHO, tripCostLines, type TripCardsState, type 
 import { tripEvidenceChips, type TripEvidence, type TripEvidenceChip } from '../../lib/trips/tripEvidence'
 import { TRIP_HOUR_BUCKET_LABEL, type TripHourBucket } from '../../lib/trips/tripHours'
 import { tripRowAnchor } from '../../lib/trips/jobTrips'
+import { TRIP_PUT_ON_BILL_LABEL, tripBillStanding, tripPutOnBillShows, type TripBillLine, type TripBillStanding } from '../../lib/trips/tripBillLine'
 import { TRIP_BILLING_WORDS, type TripRecord } from '../../lib/trips/tripRecord'
 import { atSitePercentWords, buildTripStrip, daysWords, filterTripRows, hoursWords, monthDay, tripStripStartYear, tripStripYearOf, TRIPS_FILTERS, type TripLookRow, type TripsFilter, type TripsLookModel } from '../../lib/trips/tripsLook'
 import { EmptyState } from '../EmptyState'
@@ -51,9 +57,14 @@ const tile = { border: '1px solid var(--border)', borderRadius: 10, padding: '8p
 const tileValue = { font: 'inherit', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 } as const
 const tileSub = { fontSize: '0.74rem', color: 'var(--text-muted)' } as const
 
-function billingChipStyle(row: TripLookRow) {
-  const amber = row.billing === 'extra'
-  return { display: 'inline-flex', alignItems: 'center', border: `1px solid ${amber ? 'var(--text-amber-800)' : 'var(--border)'}`, borderRadius: 999, padding: '1px 9px', fontSize: '0.74rem', background: amber ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', color: amber ? 'var(--text-amber-800)' : 'var(--text-700)', whiteSpace: 'nowrap' } as const
+/** The billing chip. A trip whose line is billed or paid reads green; an Extra trip still owed a bill reads amber. A standing's words may wrap. */
+function billingChipStyle(row: TripLookRow, standing: TripBillStanding | null = null) {
+  const green = standing?.kind === 'billed' || standing?.kind === 'paid'
+  const amber = !green && (row.billing === 'extra' || !!standing)
+  const edge = green ? 'var(--border-green)' : amber ? 'var(--text-amber-800)' : 'var(--border)'
+  const fill = green ? 'var(--bg-green-tint)' : amber ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)'
+  const ink = green ? 'var(--text-green-700)' : amber ? 'var(--text-amber-800)' : 'var(--text-700)'
+  return { display: 'inline-flex', alignItems: 'center', border: `1px solid ${edge}`, borderRadius: standing ? 10 : 999, padding: '1px 9px', fontSize: '0.74rem', background: fill, color: ink, whiteSpace: standing ? 'normal' : 'nowrap' } as const
 }
 
 /** What each trip cost, for a dev or a controller, and where the two reads behind it stand. */
@@ -95,6 +106,11 @@ export function DevelopmentTripsLook({
   openSignal = null,
   onOpened,
   onCopyLink,
+  billLines = null,
+  billRole = null,
+  jobShort,
+  onPutOnBill,
+  onOpenBillLine,
 }: {
   model: TripsLookModel
   hoursState: TripsHoursState
@@ -133,6 +149,16 @@ export function DevelopmentTripsLook({
   onOpened?: () => void
   /** **Copy link** on an open trip: the link that opens this trip. Absent, the press is not drawn. */
   onCopyLink?: (record: TripRecord) => void
+  /** The lines the site's trips hold, by trip (punch list #391). Null while they are not read, or closed to this reader: a trip then says its own billing word. */
+  billLines?: ReadonlyMap<string, TripBillLine> | null
+  /** The reader's role, for **Put on a bill**: it shows to the roles that may change a job's lines. */
+  billRole?: string | null
+  /** A job by its label alone, as *J2101*, for the standing's words; null for a job no longer on the site. */
+  jobShort?: (jobId: string) => string | null
+  /** **Put on a bill**: open the window on this trip. Absent, the press is not drawn. */
+  onPutOnBill?: (record: TripRecord) => void
+  /** The door to a trip's line: open its job on Bill with the line picked. Absent, the door is not drawn. */
+  onOpenBillLine?: (record: TripRecord, line: TripBillLine) => void
 }) {
   const [filter, setFilter] = useState<TripsFilter>('all')
   const [openId, setOpenId] = useState<string | null>(null)
@@ -348,6 +374,9 @@ export function DevelopmentTripsLook({
           )}
           {rows.map((row, i) => {
             const open = openId === row.id
+            const billLine = billLines?.get(row.id) ?? null
+            const billStanding = tripBillStanding({ billing: row.billing, line: billLine, linesRead: billLines != null, jobShort: billLine ? (jobShort?.(billLine.jobId) ?? null) : null })
+            const showsPutOnBill = !!onPutOnBill && tripPutOnBillShows({ billing: row.billing, standing: row.standing, role: billRole, line: billLine, linesRead: billLines != null })
             return (
               // The row wears an id and the cards' own margin under the pinned strip, so a link to the trip lands on it.
               <div key={row.id} id={tripRowAnchor(row.id)} style={{ borderTop: i === 0 && phone ? 'none' : '1px solid var(--border)', background: 'var(--surface)', scrollMarginTop: 'var(--development-jump-offset, 72px)' }} data-testid="trip-row" data-standing={row.standing}>
@@ -381,9 +410,19 @@ export function DevelopmentTripsLook({
                       <span style={{ color: 'var(--text-muted)' }}>{hoursState === 'reading' ? '…' : '—'}</span>
                     )}
                   </div>
-                  <div>{row.billingLabel ? <span style={billingChipStyle(row)}>{row.billingLabel}</span> : null}</div>
+                  <div>
+                    {billStanding ? (
+                      <span style={billingChipStyle(row, billStanding)} data-testid="trip-row-billing" data-standing={billStanding.kind}>
+                        {billStanding.words}
+                      </span>
+                    ) : row.billingLabel ? (
+                      <span style={billingChipStyle(row)} data-testid="trip-row-billing">
+                        {row.billingLabel}
+                      </span>
+                    ) : null}
+                  </div>
                 </button>
-                {open ? <OpenTrip row={row} evidence={evidence?.get(row.id) ?? null} costLines={costs && row.standing !== 'planned' ? tripCostLines(costs.byTrip.get(row.id), costs) : null} phone={phone} jobLabel={jobLabel} canWrite={canWrite} hoursState={hoursState} onChange={() => onChange(row.record)} onDelete={() => onDelete(row.record)} onCopyLink={onCopyLink ? () => onCopyLink(row.record) : undefined} /> : null}
+                {open ? <OpenTrip row={row} billStanding={billStanding} onPutOnBill={showsPutOnBill ? () => onPutOnBill?.(row.record) : undefined} onOpenBillLine={billLine && onOpenBillLine ? () => onOpenBillLine(row.record, billLine) : undefined} evidence={evidence?.get(row.id) ?? null} costLines={costs && row.standing !== 'planned' ? tripCostLines(costs.byTrip.get(row.id), costs) : null} phone={phone} jobLabel={jobLabel} canWrite={canWrite} hoursState={hoursState} onChange={() => onChange(row.record)} onDelete={() => onDelete(row.record)} onCopyLink={onCopyLink ? () => onCopyLink(row.record) : undefined} /> : null}
               </div>
             )
           })}
@@ -410,7 +449,7 @@ const KIND_ROWS: ReadonlyArray<{ bucket: Exclude<TripHourBucket, 'home' | 'noPla
 ]
 
 /** One trip, open in place: what was typed on the left, what is counted from the clock on the right. */
-function OpenTrip({ row, evidence, costLines, phone, jobLabel, canWrite, hoursState, onChange, onDelete, onCopyLink }: { row: TripLookRow; evidence: TripEvidence | null; /** What it cost, for a dev or a controller; null for everyone else and for a trip that has not gone out. */ costLines: ReadonlyArray<TripCostLine> | null; phone: boolean; jobLabel: (jobId: string) => string | null; canWrite: boolean; hoursState: TripsHoursState; onChange: () => void; onDelete: () => void; /** Copies the link that opens this trip; shown to everyone who sees the look. */ onCopyLink?: () => void }) {
+function OpenTrip({ row, billStanding, onPutOnBill, onOpenBillLine, evidence, costLines, phone, jobLabel, canWrite, hoursState, onChange, onDelete, onCopyLink }: { row: TripLookRow; /** Where the trip's money stands, read from its line; null when its own billing word says everything. */ billStanding: TripBillStanding | null; /** **Put on a bill**; absent when the press does not show on this trip. */ onPutOnBill?: () => void; /** The door to the trip's line; absent when it holds none. */ onOpenBillLine?: () => void; evidence: TripEvidence | null; /** What it cost, for a dev or a controller; null for everyone else and for a trip that has not gone out. */ costLines: ReadonlyArray<TripCostLine> | null; phone: boolean; jobLabel: (jobId: string) => string | null; canWrite: boolean; hoursState: TripsHoursState; onChange: () => void; onDelete: () => void; /** Copies the link that opens this trip; shown to everyone who sees the look. */ onCopyLink?: () => void }) {
   const r = row.record
   const h = row.hours
   const cell = { padding: '5px 8px', borderTop: '1px solid var(--border)', verticalAlign: 'top' } as const
@@ -425,12 +464,26 @@ function OpenTrip({ row, evidence, costLines, phone, jobLabel, canWrite, hoursSt
             {row.name.full} · {row.why}
           </div>
         </div>
-        {canWrite || onCopyLink ? (
+        {canWrite || onCopyLink || onPutOnBill || onOpenBillLine ? (
           <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             {canWrite ? (
               <SmallButton onClick={onChange} title="Change who went, the days, what for and the rest">
                 Change
               </SmallButton>
+            ) : null}
+            {/* One trip, one line: the press shows until the trip holds a line, and the door to the line takes its place. */}
+            {onPutOnBill ? (
+              <span data-testid="trip-put-on-bill">
+                <SmallButton onClick={onPutOnBill} title="Add this trip to a job’s lines, with an amount. A bill takes the line later.">
+                  {TRIP_PUT_ON_BILL_LABEL}
+                </SmallButton>
+              </span>
+            ) : onOpenBillLine && billStanding?.door ? (
+              <span data-testid="trip-bill-door">
+                <SmallButton onClick={onOpenBillLine} title="Open the job on Bill, with this trip’s line picked">
+                  {billStanding.door}
+                </SmallButton>
+              </span>
             ) : null}
             {onCopyLink ? (
               <span style={{ fontSize: '0.78rem' }} data-testid="trip-copy-link">
@@ -501,7 +554,12 @@ function OpenTrip({ row, evidence, costLines, phone, jobLabel, canWrite, hoursSt
             </dd>
             <dt style={label}>Billing</dt>
             <dd style={{ margin: 0 }}>
-              {row.billing && row.billingLabel ? (
+              {billStanding ? (
+                <span data-testid="trip-open-billing" data-standing={billStanding.kind}>
+                  <span style={billingChipStyle(row, billStanding)}>{billStanding.words}</span>
+                  {billStanding.figure ? <span style={label}> {billStanding.figure}</span> : null}
+                </span>
+              ) : row.billing && row.billingLabel ? (
                 <>
                   <span style={billingChipStyle(row)}>{row.billingLabel}</span> <span style={label}>{TRIP_BILLING_WORDS[row.billing]}</span>
                 </>

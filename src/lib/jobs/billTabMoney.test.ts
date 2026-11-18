@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { FixtureRow } from './jobFormTypes'
 import { buildJobSegmentsBar, type JobDollarCoverage } from './jobSegmentsCoverage'
 import { stagePlanFromForm } from './stagePlanForm'
-import { billTabFigures, billTabLines, dollarWords, makeABillHeading, showBillTabLines, wholeRestAction } from './billTabMoney'
+import { billTabFigures, billTabLines, dollarWords, makeABillHeading, showBillTabLines, wholeRestAction, pickedLineIdsToSeed } from './billTabMoney'
 
 const row = (over: Partial<FixtureRow> & { id: string; name: string }): FixtureRow => ({
   count: 1,
@@ -201,5 +201,28 @@ describe('billTabLines', () => {
     const fixtures = [row({ id: 'a', name: 'Repipe', line_unit_price: 3600 })]
     const segments = buildJobSegmentsBar({ fixtures, riderFeesDollars: 0, invoiceStatusById: {} })
     expect(showBillTabLines(billTabLines({ segments }))).toBe(true)
+  })
+})
+
+describe('pickedLineIdsToSeed: the Job window opened with lines already picked', () => {
+  const lines = [
+    { key: 'bid', selectable: true },
+    { key: 'billed', selectable: false },
+    { key: 'trip', selectable: true },
+    { key: 'riders', selectable: false },
+  ]
+
+  it('ticks the asked lines that can be ticked by hand, in the list’s order', () => {
+    expect(pickedLineIdsToSeed(['trip', 'bid'], lines)).toEqual(['bid', 'trip'])
+    expect(pickedLineIdsToSeed(['trip'], lines)).toEqual(['trip'])
+  })
+
+  it('skips a line that is on a bill or covered, one that is gone, and one asked twice', () => {
+    expect(pickedLineIdsToSeed(['billed', 'trip', 'gone', 'trip'], lines)).toEqual(['trip'])
+    expect(pickedLineIdsToSeed(['billed', 'gone'], lines)).toEqual([])
+  })
+
+  it('ticks nothing when nothing is asked', () => {
+    expect(pickedLineIdsToSeed([], lines)).toEqual([])
   })
 })

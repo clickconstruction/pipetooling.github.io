@@ -52,6 +52,7 @@ export type JobActivityEventType =
   | 'discount_added'
   | 'discount_changed'
   | 'discount_removed'
+  | 'trip_line_added'
   | 'payment_promise'
   | 'running_late'
   | 'hazmat_fee_edited'
@@ -166,6 +167,9 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   discount_added: { tag: 'Discount', ...MONEY_GREEN, bucket: 'billing' },
   discount_changed: { tag: 'Discount', ...STATUS_AMBER, bucket: 'billing' },
   discount_removed: { tag: 'Discount', ...DANGER_RED, bucket: 'billing' },
+  // Put a trip on a bill (punch list #391): trip_put_on_job_line logs one row when an Extra trip becomes a
+  // line on the job; financial. The line table's own trigger logs the line itself as Work, as for any line.
+  trip_line_added: { tag: 'Trip', ...MONEY_GREEN, bucket: 'billing' },
   // A payment promise (v2.4103) — read-side: the thread hook maps the live rows of
   // job_payment_promises ("They said…", the GC's word on a statement round) into the feed; financial.
   payment_promise: { tag: 'They said', ...MONEY_GREEN, bucket: 'billing' },

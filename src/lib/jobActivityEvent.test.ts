@@ -52,6 +52,7 @@ const ALL_TYPES: JobActivityEventType[] = [
   'discount_added',
   'discount_changed',
   'discount_removed',
+  'trip_line_added',
   'payment_promise',
   'running_late',
   'hazmat_fee_edited',

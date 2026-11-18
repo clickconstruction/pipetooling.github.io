@@ -25,17 +25,26 @@
  * its toast and the Undo's). `askedTripId` is the trip a link named (`?trip=`): once the trips are read the card
  * opens its row, one time a link, or says **That trip is no longer here.** `openTrip` is the same ask from a
  * press on the page (a History line, a Plans by date card, a Scoreboard row). **Copy link** copies the link.
+ *
+ * Put on a bill (punch list #391): the card reads the lines the site's trips hold (`useTripBillLines`) and hands
+ * them to the look, which says where each trip's money stands. **Put on a bill** opens the small window
+ * (`TripBillLineWindow`); its press adds one line to the job through `trip_put_on_job_line`, and the page then
+ * opens that job on Bill with the line picked. Nothing is billed here, and a trip still changes no clock row,
+ * bill or cost: the press is its own, and it writes one line.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { SiteTripsState } from '../../hooks/useSiteTrips'
+import { useTripBillLines } from '../../hooks/useTripBillLines'
 import type { SiteCostsRead } from '../../lib/developments/siteCosts'
 import type { SiteLaborRead } from '../../lib/developments/siteLabor'
 import { appUrl } from '../../lib/appOrigin'
 import { ymdFromDateOnlyOrIso } from '../../lib/jobChargesTimeline'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { TRIP_GONE_WORDS, tripHref } from '../../lib/trips/jobTrips'
-import { siteCardCharges, tripCostsOfTrips, type TripCardsState, type TripLaborState } from '../../lib/trips/tripCost'
+import { tripAlreadyOnLinesWords, tripOnLinesWords, type TripBillLine, type TripBillLineReply } from '../../lib/trips/tripBillLine'
+import { putTripOnJobLine, TripBillLineRefusal, type TripBillLinePress } from '../../lib/trips/tripBillLineIo'
+import { siteCardCharges, tripCostLines, tripCostsOfTrips, type TripCardsState, type TripLaborState } from '../../lib/trips/tripCost'
 import { tripEvidence, type TripEvidence } from '../../lib/trips/tripEvidence'
 import type { TripSuggestion } from '../../lib/trips/tripFinder'
 import { placesByPersonDay, tripHourRowsFromLabor } from '../../lib/trips/tripHourRows'
@@ -46,6 +55,7 @@ import { buildTripsLook, tripNameOfRecord, tripsLookWords } from '../../lib/trip
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import ConfirmDialog from '../ConfirmDialog'
+import { TripBillLineWindow } from '../trips/TripBillLineWindow'
 import { TripSheet, type TripSheetJob } from '../trips/TripSheet'
 import { Card, type CardFold } from './developmentPageBits'
 import { DevelopmentTripsLook, type TripOpenSignal, type TripsCosts, type TripsHoursState } from './DevelopmentTripsLook'
@@ -90,6 +100,9 @@ export function DevelopmentTripsCard({
   print,
   askedTripId = null,
   openTrip = null,
+  billRole = null,
+  onOpenJobOnBill,
+  billIo = putTripOnJobLine,
 }: {
   anchorId: string
   developmentId: string
@@ -118,11 +131,23 @@ export function DevelopmentTripsCard({
   askedTripId?: string | null
   /** The same ask from a press on the page; `n` changes with each press. */
   openTrip?: TripOpenSignal | null
+  /** The reader's role, for **Put on a bill** (punch list #391): it shows to the roles that may change a job's lines. */
+  billRole?: string | null
+  /**
+   * Open a job's window on Bill with these lines picked. `onJobSaved` is the card's to call when that window
+   * saves, so a line renamed, billed or removed there is read again here. Absent, a trip's line has no door
+   * and the press opens nothing after it.
+   */
+  onOpenJobOnBill?: (jobId: string, lineIds: ReadonlyArray<string>, onJobSaved: () => void) => void
+  /** The press and its dry run. Injectable for tests. */
+  billIo?: (press: TripBillLinePress) => Promise<TripBillLineReply>
 }) {
   const { showToast, showActionToast } = useToastContext()
   const [sheet, setSheet] = useState<{ record: TripRecord; isNew: boolean } | null>(null)
   const [asking, setAsking] = useState<TripRecord | null>(null)
   const [busy, setBusy] = useState(false)
+  /** The trip whose Put on a bill window is open. */
+  const [billing, setBilling] = useState<TripRecord | null>(null)
 
   // One trip asked for, by a link or a press: handed to the look, which opens its row. It waits here while the
   // look is folded, and is dropped once the look has opened it.
@@ -156,6 +181,14 @@ export function DevelopmentTripsCard({
       showToast(`Copy this link: ${url}`, 'info')
     }
   }
+
+  // The lines the site's trips hold, read once the look shows: each trip's billing standing is read from them.
+  const tripIds = useMemo(() => (records ?? []).map((r) => r.id), [records])
+  const billLines = useTripBillLines(tripIds, trips.shows && !!records)
+  const jobShort = useMemo(() => {
+    const byId = new Map(jobs.map((j) => [j.id, j.label.trim() || j.name.trim()]))
+    return (id: string) => byId.get(id) || null
+  }, [jobs])
 
   const index = useMemo(() => tripPeopleIndex(trips.roster ?? []), [trips.roster])
   const places = useMemo(() => placesByPersonDay(trips.punches ?? [], trips.sitePoint, index), [trips.punches, trips.sitePoint, index])
@@ -270,6 +303,39 @@ export function DevelopmentTripsCard({
     }
   }
 
+  // Put on a bill: one line on the job, then the job's window on Bill with that line picked. The function's own
+  // refusal is said in its words. A trip that already holds a line is told so, and its door is read again.
+  const reloadTrips = trips.reload
+  const reloadBillLines = billLines.reload
+  const putOnBill = async (press: Omit<TripBillLinePress, 'dryRun'>): Promise<boolean> => {
+    const record = (records ?? []).find((r) => r.id === press.tripId)
+    const short = record ? tripNameOfRecord(record, todayYmd).short : 'The trip'
+    setBusy(true)
+    try {
+      const reply = await billIo({ ...press, dryRun: false })
+      const job = jobs.find((j) => j.id === (reply.jobId ?? press.jobId)) ?? null
+      reloadBillLines()
+      // The picked job joined the trip's jobs, so the trips are read again too.
+      reloadTrips()
+      if (reply.duplicate) showToast(tripAlreadyOnLinesWords(short, job), 'info', 6000)
+      else showToast(tripOnLinesWords(short, job), 'success')
+      if (reply.fixtureId && reply.jobId) onOpenJobOnBill?.(reply.jobId, [reply.fixtureId], reloadBillLines)
+      return true
+    } catch (e) {
+      showToast(e instanceof TripBillLineRefusal ? e.message : formatErrorMessage(e, 'The line was not added.'), 'error', 8000)
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+  const openBillLine = (_record: TripRecord, line: TripBillLine) => onOpenJobOnBill?.(line.jobId, [line.fixtureId], reloadBillLines)
+  // What the trip cost, in the window's hint, for a dev or a controller alone and only when the figure stands.
+  const billingCost = useMemo(() => {
+    if (!billing || !costs) return null
+    const total = tripCostLines(costs.byTrip.get(billing.id), costs).find((l) => l.key === 'total')
+    return total?.stands ? total.value : null
+  }, [billing, costs])
+
   // Make it a trip: the sheet opens on a new trip filled from the punches. Nothing is saved until Save.
   const makeFromOffer = (key: string) => {
     const offer = offers.find((o) => o.key === key)
@@ -330,10 +396,16 @@ export function DevelopmentTripsCard({
             openSignal={signal}
             onOpened={signalDone}
             onCopyLink={(record) => void copyLink(record)}
+            billLines={billLines.lines}
+            billRole={billRole}
+            jobShort={jobShort}
+            onPutOnBill={setBilling}
+            onOpenBillLine={onOpenJobOnBill ? openBillLine : undefined}
           />
         </Card>
       ) : null}
       {sheet ? <TripSheet key={sheet.record.id} record={sheet.record} isNew={sheet.isNew} siteName={siteName} roster={trips.roster} jobs={jobs} todayYmd={todayYmd} busy={busy} onSave={save} onClose={() => setSheet(null)} /> : null}
+      {billing ? <TripBillLineWindow key={billing.id} record={billing} siteName={siteName} jobs={jobs} todayYmd={todayYmd} costWords={billingCost} busy={busy} preview={billIo} onAdd={putOnBill} onClose={() => setBilling(null)} /> : null}
       {asking ? (
         <ConfirmDialog
           title={`Delete ${tripNameWords(asking, todayYmd)}?`}
