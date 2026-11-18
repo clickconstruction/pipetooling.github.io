@@ -2755,7 +2755,7 @@ export default function LienDesk({
         }}
       >
         <Share size={isMobile ? 19 : 15} aria-hidden />
-        {/* A desk narrower than 1,100 px shows the icon alone; the word stays the button's name. */}
+        {/* A window under 1,280 px shows the icon alone (under 1,132 until v2.7874, `LIEN_DESK_TIGHT_BAR_MAX_PX`); the word stays the button's name. */}
         {isMobile ? null : <span className="lienDeskShareWord">Share</span>}
       </button>
       {shareOpen && data ? (
