@@ -2,7 +2,7 @@
 name: "Put a trip on a bill: an Extra trip becomes a line on its job"
 number: 391
 group: ready
-status: asked and decided 2026-11-17 · the owner saw both ways drawn side by side and picked the line over a bill of its own · designed, drawn and rendered the same day · nothing built yet
+status: asked and decided 2026-11-17 · the owner saw both ways drawn side by side and picked the line over a bill of its own · building since 2026-11-18 · PR 1 of 4 is built (v2.7746, the Job window's billing save refuses to write over a line added elsewhere) · PRs 2 to 4 are not built yet
 summary: >
   A trip marked Extra is work past the job's price, and today nothing takes it to a bill. This card adds
   one press on an open trip, Put on a bill. The office checks the job, the amount and the words in a small
@@ -10,9 +10,9 @@ summary: >
   line picked, so the tab's own Bill the 1 picked sends it alone or the next bill carries it. The trip reads
   where its money stands from then on. A first step makes the Job window's billing save safe against a line
   added on another screen, which Apply to job and Add discount need today as well.
-next: PR 1, the Job window's billing save refuses to write over lines that changed on another screen. It ships alone and needs nothing from the trip train.
+next: PR 2, the ground. The `trip_id` column on a job's line with its unique index, the function shaped like `apply_job_discount`, a scenario in the trips bed, then the push and the types.
 size: M as a train of four (M · S · M · S)
-blocker: PR 1 has none. PRs 2 to 4 need the trip's number on main and pushed (the trip record's number migration, #379), and PR 3 reads best once that card's What it cost and its trip link are on main.
+blocker: None. The trip's number is on main and pushed (checked 2026-11-18), and the trip record's What it cost and its trip link are on main. PR 3 merges only after PR 2's migration is pushed.
 opinion: build — the owner's pick. Every dollar asked of a customer stays a line, and the Bill tab already has the press that bills one line by itself
 ---
 
@@ -262,4 +262,13 @@ Four small pull requests, each with its release note, fragment and docs. PR 1 st
 
 ## Where it stands
 
-Decided and drawn on 2026-11-17. Nothing is built.
+Decided and drawn on 2026-11-17. Building since 2026-11-18.
+
+- **PR 1, built (v2.7746):** the Job window's billing save reads the job's line ids before it writes.
+  When the job holds a line the window's form never held, it writes nothing, reads the lines again and
+  says so. It does not merge. A payment typed with the refused change is saved by the save that follows
+  the re-read. The words say *somewhere else*, because a writer on the same screen is refused the same
+  way. Left as they were: a line added between the save's read and its delete (one save long), and a
+  line deleted elsewhere, which a stale window still writes back.
+- **PR 2, next:** the ground.
+- **PRs 3 and 4:** not built.
