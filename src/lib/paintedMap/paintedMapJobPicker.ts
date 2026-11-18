@@ -11,6 +11,9 @@
  * The app's job search finds more than that, so a search hit a person may not paint on is listed
  * and says why, and cannot be pressed.
  */
+import { normalizeAddressForGeocodeKey } from '../map/normalizeAddressForGeocode'
+import { haversineMeters } from '../jobTravelEstimate'
+import { aboutLengthWords } from './paintedMap'
 import type { PaintedMapHome } from './paintedMapDoor'
 import { paintPressJobLabel, type PaintPressJob, type PaintPressStop } from './paintedMapPress'
 
@@ -56,6 +59,13 @@ export const PICKER_WORDS = {
   /** The one way onto no job that is left: a person with no signal must still be able to paint. */
   later: 'Paint now and pick the job later',
   laterNote: 'The map stays yours and the office’s until it is put on a job.',
+  /** Find the jobs near me (step 5): the press, what the phone will ask, and what the list can and cannot hold. */
+  nearPress: 'Find the jobs near me',
+  nearNote: 'Your phone will ask to share where you are. It is read once, for this list.',
+  nearFinding: 'Finding you…',
+  nearOnly: 'Only jobs with an address the app has placed on the map are listed. Search finds the rest.',
+  nearNone: 'No job the app has placed on the map is near you. Search for the job.',
+  nearFailed: 'The jobs near you could not be read.',
   changeHead: 'Change the job',
   changeLead: 'Press the job the map is for.',
   moveHead: 'Move it to another job',
@@ -135,4 +145,78 @@ export function pickerPaintable(visibleIds: Iterable<string>, teamIds: Iterable<
 /** What the start sheet opens on once a job is pressed. The job stays changeable: a press can be a slip. */
 export function pickerHome(job: PickerJob): PaintedMapHome {
   return { jobId: job.id, developmentId: job.developmentId ?? null, label: paintPressJobLabel(job) ?? 'This job', developmentLabel: '', address: job.address?.trim() || null, center: null, canChangeJob: true }
+}
+
+// ---------------------------------------------------------------- Find the jobs near me (step 5)
+
+export type PickerPoint = { lat: number; lng: number }
+
+/** An address the app has placed on the map (`address_geocodes`): its key and its point. */
+export type PickerPlaced = { key: string; lat: number; lng: number }
+
+/** How far the list looks, in metres: about five miles. Past that a job is not near. */
+export const PICKER_NEAR_MAX_M = 8000
+/** How many placed addresses are matched to jobs. */
+export const PICKER_NEAR_ADDRESSES = 30
+/** How many jobs the Near you list holds. */
+export const PICKER_NEAR_MAX = 6
+
+/** Why the phone gave no place, in words a person can act on. The search is always the way on. */
+export const PICKER_NEAR_NO_FIX: Record<'none' | 'refused' | 'failed', string> = {
+  none: 'This device gives no location. Search for the job.',
+  refused: 'Location is off for this app. Allow it in the phone’s settings, or search for the job.',
+  failed: 'Your phone could not find you. Try again outside, or search for the job.',
+}
+
+/** The square of ground the placed addresses are read from, a little wider than the list looks. */
+export function pickerNearBox(me: PickerPoint): { latMin: number; latMax: number; lngMin: number; lngMax: number } {
+  const dLat = (PICKER_NEAR_MAX_M * 1.1) / 111_320
+  const dLng = dLat / Math.max(0.2, Math.cos((me.lat * Math.PI) / 180))
+  return { latMin: me.lat - dLat, latMax: me.lat + dLat, lngMin: me.lng - dLng, lngMax: me.lng + dLng }
+}
+
+/** The placed addresses within reach, nearest first, held to `PICKER_NEAR_ADDRESSES`. An address said twice is kept once. */
+export function pickerNearestPlaced(me: PickerPoint, placed: ReadonlyArray<PickerPlaced>): Array<{ key: string; meters: number }> {
+  const seen = new Set<string>()
+  const out: Array<{ key: string; meters: number }> = []
+  for (const p of placed) {
+    if (!p.key || seen.has(p.key) || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue
+    seen.add(p.key)
+    const meters = haversineMeters(me, p)
+    if (meters <= PICKER_NEAR_MAX_M) out.push({ key: p.key, meters })
+  }
+  return out.sort((a, b) => a.meters - b.meters).slice(0, PICKER_NEAR_ADDRESSES)
+}
+
+/**
+ * The Near you list: the jobs at those addresses, nearest first, each with how far, held to
+ * `PICKER_NEAR_MAX`. It never picks for the person. A job is matched by its address as the app keys
+ * it, so a job whose address the app has not placed is not here. Jobs at one address keep the order
+ * they were read in, newest first.
+ */
+export function pickerNearRows(nearest: ReadonlyArray<{ key: string; meters: number }>, jobs: ReadonlyArray<PickerJob>, paintable: ReadonlySet<string>): PickerRow[] {
+  const far = new Map(nearest.map((n) => [n.key, n.meters] as const))
+  const rows: Array<{ row: PickerRow; meters: number; i: number }> = []
+  jobs.forEach((job, i) => {
+    if (!job.id || job.billingOnly || !paintable.has(job.id) || !job.address) return
+    const meters = far.get(normalizeAddressForGeocodeKey(job.address))
+    if (meters == null) return
+    rows.push({ row: rowOf(job, aboutLengthWords(meters), true), meters, i })
+  })
+  return rows
+    .sort((a, b) => a.meters - b.meters || a.i - b.i)
+    .slice(0, PICKER_NEAR_MAX)
+    .map((r) => r.row)
+}
+
+/**
+ * The jobs filter that finds the jobs at those addresses: one clause an address, the address
+ * matched whole with no regard to capitals. An address is quoted, so its commas stay its own, and a
+ * character the filter would read as a wildcard is escaped or, for `*`, the address is left out.
+ */
+export function pickerNearJobsFilter(keys: ReadonlyArray<string>): string | null {
+  const clauses = keys
+    .filter((k) => !!k && !k.includes('*'))
+    .map((k) => `job_address.ilike."${k.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[%_]/g, (c) => `\\${c}`)}"`)
+  return clauses.length > 0 ? clauses.join(',') : null
 }

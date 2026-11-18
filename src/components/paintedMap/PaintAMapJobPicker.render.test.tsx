@@ -4,7 +4,7 @@
  * search with the jobs a person may not paint on marked, and a read that fails. Every job here is
  * made up.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', () => ({ supabase: {} }))
@@ -21,12 +21,19 @@ vi.mock('../OfflineRetryPanel', () => ({
 }))
 
 import type { PickerJob } from '../../lib/paintedMap/paintedMapJobPicker'
-import type { PickerLists } from '../../lib/paintedMap/paintedMapJobPickerIo'
+import { PickerNoFix, type PickerLists } from '../../lib/paintedMap/paintedMapJobPickerIo'
 import { PaintAMapJobPicker, type PaintAMapJobPickerIo } from './PaintAMapJobPicker'
 
+// jsdom has no geolocation. A phone has, and the picker offers Find the jobs near me only where there is one.
+const withLocation = (on: boolean) => {
+  if (on) Object.defineProperty(navigator, 'geolocation', { value: {}, configurable: true })
+  else delete (navigator as unknown as { geolocation?: unknown }).geolocation
+}
+beforeEach(() => withLocation(true))
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
+  withLocation(false)
 })
 
 const job = (id: string, number: string, name: string): PickerJob => ({ id, number, name, address: `${number} Made Up Road` })
@@ -54,6 +61,8 @@ function makeIo(over: Partial<PaintAMapJobPickerIo> = {}): PaintAMapJobPickerIo 
   return {
     lists: vi.fn(async () => LISTS),
     search: vi.fn(async () => ({ hits: [pinto, tavish], paintable: new Set([pinto.id]) })),
+    locate: vi.fn(async () => ({ lat: 30, lng: -97 })),
+    near: vi.fn(async () => ({ nearest: [{ key: 'j2417 made up road', meters: 90 }, { key: 'j2402 made up road', meters: 3200 }], jobs: [tavish, cedar], paintable: new Set([tavish.id, cedar.id]) })),
     ...over,
   }
 }
@@ -165,5 +174,67 @@ describe('PaintAMapJobPicker', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(closed).toHaveBeenCalledTimes(2)
+  })
+
+  it('Find the jobs near me reads the phone once and lists the jobs nearest first, each once', async () => {
+    const io = makeIo()
+    const picked: PickerJob[] = []
+    render(<PaintAMapJobPicker userId="me" io={io} onPick={(j) => picked.push(j)} onClose={() => {}} />)
+    await settle()
+    expect(screen.getByText('Your phone will ask to share where you are. It is read once, for this list.')).toBeTruthy()
+    expect(io.locate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Find the jobs near me' }))
+    await settle()
+    expect(io.locate).toHaveBeenCalledTimes(1)
+    expect(io.near).toHaveBeenCalledWith({ lat: 30, lng: -97 })
+    const rows = [...document.querySelectorAll('[data-picker-near] [data-picker-row]')]
+    expect(rows.map((r) => r.textContent)).toEqual([expect.stringContaining('Cedar Hollow 12'), expect.stringContaining('Tavish repipe')])
+    expect(rows[0]!.textContent).toContain('about 300 ft')
+    expect(rows[1]!.textContent).toContain('about 2.0 mi')
+    expect(document.querySelector('[data-picker-near-only]')?.textContent).toBe('Only jobs with an address the app has placed on the map are listed. Search finds the rest.')
+    // Cedar Hollow is under Near you now, so Today does not say it again.
+    expect(document.querySelector('[data-picker-today]')).toBeNull()
+    expect(document.querySelector('[data-picker-lately]')?.textContent).toContain('Marlowe Dental')
+    // The press is answered: it is not offered twice.
+    expect(screen.queryByRole('button', { name: 'Find the jobs near me' })).toBeNull()
+    fireEvent.click(rows[1]!)
+    expect(picked).toEqual([tavish])
+  })
+
+  it('says why when the phone gives no place, and the press can be tried again', async () => {
+    let refuse = true
+    const io = makeIo({
+      locate: vi.fn(async () => {
+        if (refuse) throw new PickerNoFix('refused')
+        return { lat: 30, lng: -97 }
+      }),
+    })
+    render(<PaintAMapJobPicker userId="me" io={io} onPick={() => {}} onClose={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Find the jobs near me' }))
+    await settle()
+    expect(screen.getByRole('alert').textContent).toBe('Location is off for this app. Allow it in the phone’s settings, or search for the job.')
+    expect(io.near).not.toHaveBeenCalled()
+    refuse = false
+    fireEvent.click(screen.getByRole('button', { name: 'Find the jobs near me' }))
+    await settle()
+    expect(document.querySelector('[data-picker-near]')).not.toBeNull()
+  })
+
+  it('with nothing placed nearby, says so and points at the search', async () => {
+    const io = makeIo({ near: vi.fn(async () => ({ nearest: [], jobs: [], paintable: new Set<string>() })) })
+    render(<PaintAMapJobPicker userId="me" io={io} onPick={() => {}} onClose={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Find the jobs near me' }))
+    await settle()
+    expect(document.querySelector('[data-picker-near]')).toBeNull()
+    expect(screen.getByText('No job the app has placed on the map is near you. Search for the job.')).toBeTruthy()
+  })
+
+  it('offers no such press on a device that gives no location', async () => {
+    withLocation(false)
+    render(<PaintAMapJobPicker userId="me" io={makeIo()} onPick={() => {}} onClose={() => {}} />)
+    await settle()
+    expect(screen.queryByRole('button', { name: 'Find the jobs near me' })).toBeNull()
   })
 })

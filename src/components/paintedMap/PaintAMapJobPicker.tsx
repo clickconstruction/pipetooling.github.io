@@ -11,12 +11,12 @@
  * with no signal must still be able to paint: where the caller allows it, the failed read offers
  * **Paint now and pick the job later**.
  */
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { useTakenDown } from '../../hooks/useTakenDown'
-import { PICKER_WORDS as W, pickerSearchRows, pickerSections, type PickerJob, type PickerRow, type PickerSections } from '../../lib/paintedMap/paintedMapJobPicker'
-import { loadPickerLists, searchPickerJobs, type PickerLists } from '../../lib/paintedMap/paintedMapJobPickerIo'
+import { PICKER_NEAR_NO_FIX, PICKER_WORDS as W, pickerNearRows, pickerSearchRows, pickerSections, type PickerJob, type PickerPoint, type PickerRow, type PickerSections } from '../../lib/paintedMap/paintedMapJobPicker'
+import { PickerNoFix, loadPickerLists, loadPickerNear, locateForPicker, searchPickerJobs, type PickerLists } from '../../lib/paintedMap/paintedMapJobPickerIo'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { PAINTED_MAP_SHEET_Z } from '../../lib/windowLayers'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -28,8 +28,11 @@ const SEARCH_DEBOUNCE_MS = 250
 export type PaintAMapJobPickerIo = {
   lists: (userId: string) => Promise<PickerLists>
   search: (query: string, userId: string) => Promise<{ hits: PickerJob[]; paintable: Set<string> }>
+  /** Find the jobs near me: where the phone is, read once, and the jobs at the placed addresses around it. */
+  locate: () => Promise<PickerPoint>
+  near: (me: PickerPoint) => Promise<{ nearest: Array<{ key: string; meters: number }>; jobs: PickerJob[]; paintable: Set<string> }>
 }
-const realIo: PaintAMapJobPickerIo = { lists: loadPickerLists, search: searchPickerJobs }
+const realIo: PaintAMapJobPickerIo = { lists: loadPickerLists, search: searchPickerJobs, locate: locateForPicker, near: loadPickerNear }
 
 type Props = {
   userId: string
@@ -41,8 +44,6 @@ type Props = {
   onClose: () => void
   /** Offered only when the lists could not be read: paint with no job, and pick it later. */
   onLater?: () => void
-  /** A slot under the lists and over the search: Find the jobs near me (step 5). */
-  near?: (pick: (job: PickerJob) => void, paintable: ReadonlySet<string>) => ReactNode
   /** For a smoke. */
   io?: PaintAMapJobPickerIo
 }
@@ -66,7 +67,7 @@ export function PaintAMapJobRow({ row, onPick }: { row: PickerRow; onPick: (job:
   )
 }
 
-export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null, onPick, onClose, onLater, near, io = realIo }: Props) {
+export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null, onPick, onClose, onLater, io = realIo }: Props) {
   const isTopmost = useModalStackEntry()
   const [lists, setLists] = useState<PickerLists | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
@@ -75,6 +76,9 @@ export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null,
   const [found, setFound] = useState<PickerRow[] | null>(null)
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
+  /** Find the jobs near me: not asked, finding, the rows found, or why not. */
+  const [near, setNear] = useState<{ kind: 'idle' } | { kind: 'finding' } | { kind: 'found'; rows: PickerRow[] } | { kind: 'failed'; words: string }>({ kind: 'idle' })
+  const canLocate = typeof navigator !== 'undefined' && 'geolocation' in navigator
   const gen = useRef(0)
   const seq = useRef(0)
   // A read that lands after the sheet is taken down sets nothing.
@@ -141,9 +145,26 @@ export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null,
     return () => window.clearTimeout(t)
   }, [q, io, userId, excludeJobId])
 
+  /** One reading of the phone, on this press, and the jobs at the placed addresses around it. Nothing is kept. */
+  const findNear = async () => {
+    if (near.kind === 'finding') return
+    setNear({ kind: 'finding' })
+    try {
+      const me = await io.locate()
+      const got = await io.near(me)
+      if (takenDown()) return
+      setNear({ kind: 'found', rows: pickerNearRows(got.nearest, got.jobs, got.paintable).filter((r) => r.job.id !== excludeJobId) })
+    } catch (e) {
+      if (takenDown()) return
+      setNear({ kind: 'failed', words: e instanceof PickerNoFix ? PICKER_NEAR_NO_FIX[e.why] : formatErrorMessage(e, W.nearFailed) })
+    }
+  }
+
   const sections: PickerSections | null = lists ? pickerSections({ todayStops: lists.todayStops, lately: lists.lately, todayYmd: lists.todayYmd, paintable: lists.paintable }) : null
-  const today = (sections?.today ?? []).filter((r) => r.job.id !== excludeJobId)
-  const lately = (sections?.lately ?? []).filter((r) => r.job.id !== excludeJobId)
+  // A job already under Near you is not said again under Today or Lately.
+  const nearIds = new Set(near.kind === 'found' ? near.rows.map((r) => r.job.id) : [])
+  const today = (sections?.today ?? []).filter((r) => r.job.id !== excludeJobId && !nearIds.has(r.job.id))
+  const lately = (sections?.lately ?? []).filter((r) => r.job.id !== excludeJobId && !nearIds.has(r.job.id))
   const head = mode === 'move' ? W.moveHead : mode === 'change' ? W.changeHead : W.head
   const lead = mode === 'move' ? W.moveLead : mode === 'change' ? W.changeLead : W.lead
 
@@ -166,6 +187,22 @@ export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null,
         </div>
         <div style={{ display: 'grid', gap: '0.7rem', padding: '0.85rem 1rem calc(0.95rem + env(safe-area-inset-bottom, 0px))' }}>
           <p style={{ margin: 0, fontSize: '0.9375rem' }}>{lead}</p>
+
+          {near.kind === 'found' ? (
+            <>
+              <div style={secHead}>{W.near}</div>
+              {near.rows.length > 0 ? (
+                <div data-picker-near style={{ display: 'grid', gap: '0.35rem' }}>
+                  {near.rows.map((r) => (
+                    <PaintAMapJobRow key={r.job.id} row={r} onPick={onPick} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState compact main={W.nearNone} />
+              )}
+              <span data-picker-near-only style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.nearOnly}</span>
+            </>
+          ) : null}
 
           {failure ? (
             <div data-picker-failed style={{ display: 'grid', gap: '0.4rem' }}>
@@ -203,11 +240,22 @@ export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null,
                   </div>
                 </>
               ) : null}
-              {today.length === 0 && lately.length === 0 ? <EmptyState compact main={W.none} /> : null}
+              {today.length === 0 && lately.length === 0 && near.kind !== 'found' ? <EmptyState compact main={W.none} /> : null}
             </>
           )}
 
-          {near && lists ? near(onPick, lists.paintable) : null}
+          {canLocate && near.kind !== 'found' ? (
+            <div data-picker-near-ask style={{ display: 'grid', gap: '0.15rem' }}>
+              <button type="button" data-picker-near-press style={{ ...quietPress, justifySelf: 'start' }} disabled={near.kind === 'finding'} onClick={() => void findNear()}>
+                {near.kind === 'finding' ? W.nearFinding : W.nearPress}
+              </button>
+              {near.kind === 'failed' ? (
+                <span role="alert" style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>{near.words}</span>
+              ) : (
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.nearNote}</span>
+              )}
+            </div>
+          ) : null}
 
           <label style={{ display: 'grid', gap: '0.3rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
             {W.search}

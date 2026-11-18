@@ -9,7 +9,8 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
-import { pickerPaintable, type PickerJob, type PickerLately } from './paintedMapJobPicker'
+import { requestMyFix, type MyFixFailure } from '../materials/myLocation'
+import { pickerNearBox, pickerNearJobsFilter, pickerNearestPlaced, pickerPaintable, type PickerJob, type PickerLately, type PickerPlaced, type PickerPoint } from './paintedMapJobPicker'
 import type { PaintPressStop } from './paintedMapPress'
 import { loadPaintPressDay } from './paintedMapPressIo'
 
@@ -87,4 +88,46 @@ export async function searchPickerJobs(query: string, userId: string): Promise<{
   // The search reads past the person's own access. A hit keeps the search's words, and gains its development when the person can read the job.
   const hits = found.map((r) => visible.get(r.id) ?? jobOf(r))
   return { hits, paintable: pickerPaintable(visible.keys(), team) }
+}
+
+/** Where the phone is, read once on the press. Rejects with why it gave no place. */
+export function locateForPicker(): Promise<PickerPoint> {
+  return new Promise((resolve, reject) => {
+    requestMyFix(
+      (p) => resolve({ lat: p.lat, lng: p.lng }),
+      (why: MyFixFailure) => reject(new PickerNoFix(why)),
+    )
+  })
+}
+
+/** The phone gave no place. `why` picks the words. */
+export class PickerNoFix extends Error {
+  constructor(readonly why: MyFixFailure) {
+    super(why)
+    this.name = 'PickerNoFix'
+  }
+}
+
+/**
+ * The jobs near a point: the addresses the app has placed within reach (`address_geocodes`), then
+ * the jobs at those addresses that the person can read. The point itself is sent nowhere but into
+ * the two filters, and nothing is kept.
+ */
+export async function loadPickerNear(me: PickerPoint): Promise<{ nearest: Array<{ key: string; meters: number }>; jobs: PickerJob[]; paintable: Set<string> }> {
+  const box = pickerNearBox(me)
+  const placedRows = await withSupabaseRetry(
+    async () => supabase.from('address_geocodes').select('address_normalized, lat, lng').is('geocode_error', null).gte('lat', box.latMin).lte('lat', box.latMax).gte('lng', box.lngMin).lte('lng', box.lngMax).limit(800),
+    'load placed addresses near me',
+  )
+  const placed: PickerPlaced[] = ((placedRows ?? []) as Array<{ address_normalized: string; lat: number; lng: number }>).map((r) => ({ key: r.address_normalized, lat: r.lat, lng: r.lng }))
+  const nearest = pickerNearestPlaced(me, placed)
+  const filter = pickerNearJobsFilter(nearest.map((n) => n.key))
+  if (!filter) return { nearest, jobs: [], paintable: new Set() }
+  const rows = await withSupabaseRetry(
+    async () => supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, billing_only, development_id').or(filter).eq('billing_only', false).order('created_at', { ascending: false }).limit(120),
+    'load jobs near me',
+  )
+  const jobs = ((rows ?? []) as JobRow[]).filter((r) => !!r?.id).map(jobOf)
+  // Every job here was read under the person's own access, so each is theirs to paint on.
+  return { nearest, jobs, paintable: new Set(jobs.map((j) => j.id)) }
 }

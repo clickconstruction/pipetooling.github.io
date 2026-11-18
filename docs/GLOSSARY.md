@@ -3123,6 +3123,7 @@ While the band carries that press **Draw a line** is plain, so the screen has on
 It opens first when a map is started with no job, from the start sheet's **Change the job**, and from a map's **Put it on a job…** and **Move it to another job…**.
 A job the person may not paint on, by `on_site_can_touch_job`, is left out of the two lists and is listed grey in the search with its reason.
 The one map that still starts on no job is one painted with no signal: when the lists cannot be read the sheet offers **Paint now and pick the job later**.
+**Find the jobs near me** (v2.7869) reads the phone once on its press and lists **Near you** the jobs at the placed addresses within about five miles, nearest first with how far (`pickerNearRows`), from `address_geocodes`, so a job whose address the app has not placed is not listed.
 Since v2.7228 painted maps are also a layer on other maps (`PaintedMapsLayer` over `paintedMapLayer.ts`): the **Painted maps** chip on the Map page draws every map the reader can open, and a job's own maps sit under the boxes on Materials on site's map;
 a press on a line opens its map.
 In the job window's top band and on a tech's Job Mode card (`JobPaintedMapsStrip`), on the On my way sheet (the same strip, the maps alone), and under a development's address (`DevelopmentPaintedMapsStrip`, the site's own maps and each lot's).

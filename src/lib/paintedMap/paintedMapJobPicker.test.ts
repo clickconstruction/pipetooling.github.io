@@ -3,7 +3,7 @@
  * which jobs a person may paint on. Every job here is made up.
  */
 import { describe, expect, it } from 'vitest'
-import { PICKER_LATELY_MAX, pickerHome, pickerLatelyWords, pickerPaintable, pickerSearchRows, pickerSections, pickerStopWords, type PickerJob } from './paintedMapJobPicker'
+import { PICKER_LATELY_MAX, PICKER_NEAR_ADDRESSES, PICKER_NEAR_MAX, PICKER_NEAR_MAX_M, pickerHome, pickerLatelyWords, pickerNearBox, pickerNearJobsFilter, pickerNearRows, pickerNearestPlaced, pickerPaintable, pickerSearchRows, pickerSections, pickerStopWords, type PickerJob } from './paintedMapJobPicker'
 
 const job = (id: string, number: string, name: string, over: Partial<PickerJob> = {}): PickerJob => ({ id, number, name, address: `${number} Made Up Road`, ...over })
 const cedar = job('j-cedar', 'J2417', 'Cedar Hollow 12')
@@ -117,5 +117,74 @@ describe('pickerHome', () => {
     expect(pickerHome(cedar)).toMatchObject({ jobId: 'j-cedar', developmentId: null, label: 'J2417 · Cedar Hollow 12', address: 'J2417 Made Up Road', canChangeJob: true })
     expect(pickerHome({ ...cedar, developmentId: 'd1' }).developmentId).toBe('d1')
     expect(pickerHome({ id: 'x', number: null, name: null, address: '  ' })).toMatchObject({ label: 'This job', address: null })
+  })
+})
+
+describe('Find the jobs near me (step 5)', () => {
+  // A made-up spot. One degree of latitude is about 111 km, so 0.001 is about 111 m.
+  const me = { lat: 30.0, lng: -97.0 }
+  const placed = [
+    { key: '9 pinto ridge ct', lat: 30.02, lng: -97.0 },
+    { key: '1208 wrenfield loop', lat: 30.001, lng: -97.0 },
+    { key: '1216 wrenfield loop', lat: 30.0014, lng: -97.0 },
+    { key: 'across town', lat: 30.2, lng: -97.0 },
+    { key: '1208 wrenfield loop', lat: 30.001, lng: -97.0 },
+  ]
+
+  it('reads a square of ground a little wider than the list looks', () => {
+    const box = pickerNearBox(me)
+    expect(box.latMin).toBeLessThan(me.lat)
+    expect(box.latMax).toBeGreaterThan(me.lat)
+    // The square reaches past the list's limit on every side.
+    expect((box.latMax - me.lat) * 111_320).toBeGreaterThan(PICKER_NEAR_MAX_M)
+    // A degree of longitude is shorter away from the equator, so the square is wider in degrees there.
+    expect(box.lngMax - me.lng).toBeGreaterThan(box.latMax - me.lat)
+  })
+
+  it('keeps the placed addresses within reach, nearest first, each once', () => {
+    const got = pickerNearestPlaced(me, placed)
+    expect(got.map((g) => g.key)).toEqual(['1208 wrenfield loop', '1216 wrenfield loop', '9 pinto ridge ct'])
+    expect(got[0]!.meters).toBeGreaterThan(100)
+    expect(got[0]!.meters).toBeLessThan(120)
+  })
+
+  it('holds the addresses to its cap', () => {
+    const many = Array.from({ length: PICKER_NEAR_ADDRESSES + 10 }, (_, i) => ({ key: `a${i}`, lat: 30 + i * 0.0001, lng: -97 }))
+    expect(pickerNearestPlaced(me, many)).toHaveLength(PICKER_NEAR_ADDRESSES)
+  })
+
+  it('lists the jobs at those addresses nearest first, with how far, and never one the app has not placed', () => {
+    const nearest = pickerNearestPlaced(me, placed)
+    const jobs: PickerJob[] = [
+      job('j-pinto', 'J2431', 'Pinto Ridge 3', { address: '9 Pinto Ridge Ct' }),
+      job('j-cedar', 'J2417', 'Cedar Hollow 12', { address: ' 1208  Wrenfield Loop ' }),
+      job('j-14', 'J2420', 'Cedar Hollow 14', { address: '1216 Wrenfield Loop' }),
+      job('j-unplaced', 'J2500', 'Somewhere else', { address: '5 Unplaced Way' }),
+      job('j-bill', 'J2000', 'Billing only', { address: '1208 Wrenfield Loop', billingOnly: true }),
+    ]
+    const rows = pickerNearRows(nearest, jobs, new Set(jobs.map((j) => j.id)))
+    expect(rows.map((r) => r.job.id)).toEqual(['j-cedar', 'j-14', 'j-pinto'])
+    expect(rows[0]!.tag).toBe('about 360 ft')
+    expect(rows[2]!.tag).toBe('about 1.4 mi')
+    expect(rows.every((r) => r.paintable)).toBe(true)
+  })
+
+  it('holds the list to its cap, and leaves out a job the person may not paint on', () => {
+    const nearest = [{ key: '1 made up road', meters: 50 }]
+    const jobs = Array.from({ length: PICKER_NEAR_MAX + 3 }, (_, i) => job(`j${i}`, `J${i}`, `Lot ${i}`, { address: '1 Made Up Road' }))
+    const rows = pickerNearRows(nearest, jobs, new Set(jobs.slice(1).map((j) => j.id)))
+    expect(rows).toHaveLength(PICKER_NEAR_MAX)
+    // Jobs at one address keep the order they were read in, and the one that is not paintable is gone.
+    expect(rows[0]!.job.id).toBe('j1')
+  })
+
+  it('writes the jobs filter with each address quoted, so its commas stay its own', () => {
+    expect(pickerNearJobsFilter(['1208 wrenfield loop, austin, tx', '9 pinto ridge ct'])).toBe('job_address.ilike."1208 wrenfield loop, austin, tx",job_address.ilike."9 pinto ridge ct"')
+  })
+
+  it('escapes what the filter would read as its own, and leaves out an address with a star', () => {
+    expect(pickerNearJobsFilter(['lot 5_a "rear" 100%'])).toBe('job_address.ilike."lot 5\\_a \\"rear\\" 100\\%"')
+    expect(pickerNearJobsFilter(['unit *'])).toBeNull()
+    expect(pickerNearJobsFilter([])).toBeNull()
   })
 })
