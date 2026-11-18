@@ -2,14 +2,14 @@
 name: "Lien desk To do: fold the Public jobs box, and put the records door on the tools row"
 number: 390
 group: ready
-status: drawn 2026-11-17 in #383's option B · saved as a card the same day · the two choices of part 2 drawn for the owner · his answer on By paper not given yet · nothing built
+status: drawn 2026-11-17 in #383's option B · saved as a card the same day · the two choices of part 2 drawn for the owner · he picked choice 1, the door on the title line on every view · nothing built
 summary: >
   The last two parts of the drawing the owner picked for the Lien desk's To do page (#383, option B). The
   Public jobs box under the lien affidavits is as tall as its rows, 244 px with two jobs, and the drawing
   folds it to one line with a press that opens it. The press An owner asked for records sits alone on a
   second line of the title bar, and the drawing puts it on the tools row beside § Rules where the line has
   room. The rest of option B is built in PR #8628.
-next: Build after PR #8628 merges. Part 1 first, the fold. Then part 2, the door, which needs one answer from the owner on By paper.
+next: Build after PR #8628 merges. Part 1 first, the fold. Then part 2, the door on the title line on every view, as the owner picked.
 size: S (two small PRs, or one)
 blocker: PR #8628 on main first, since both parts touch the desk it changes.
 opinion: build — part 1 gives back about 200 px under the chart, and part 2 a whole line over it
@@ -117,13 +117,16 @@ The title line with all five tools needs 1,038 px of window by the file's own me
   `readLienDeskTitleLine` reads the door's width wherever it sits.
 - Rewrite the file's header comment for the new rule, as an amendment. The history stays.
 
-### The one answer the owner owes
+### The owner's answer: choice 1
+
+2026-11-17, after the mock-up drew the two: *"Choice 1, title line"*. Build choice 1. Choice 2 is kept
+here as what was offered.
 
 **By paper.** Its second line is there anyway, for the paper tabs and the piles. Two ways:
 
 1. **The door on the title line on every view where it fits.** This keeps the file's standing rule that
    the tools never change lines between To do, By date, By paper and By job. It also puts the door back
-   where the owner's v2.7311 screenshot had it, on a line that is now 463 px shorter. Recommended.
+   where the owner's v2.7311 screenshot had it, on a line that is now 463 px shorter. **The owner's pick.**
 2. **The door on the title line off By paper, and at the second line's right on By paper**, beside *Put a
    GC on notice…*. This keeps v2.7311 on the view it was asked for, and the door then moves when the view
    changes.
@@ -140,7 +143,8 @@ By paper is drawn on Lien affidavits, the widest line the desk draws. At 1,280 w
 hold the piles beside *Put a GC on notice…* and the door, so the two fall under the piles as a third line.
 With the door on the title line, *Put a GC on notice…* alone fits beside the piles.
 
-Ask before building part 2. Part 1 needs no answer.
+So on By paper the second line's right span holds *Put a GC on notice…* alone, and the door is with the
+tools on the title line, wherever the title line has room for all five.
 
 ### Files
 
@@ -171,5 +175,5 @@ Ask before building part 2. Part 1 needs no answer.
 
 ## Where it stands
 
-Nothing is built. Both parts are drawn. Part 1 can start once PR #8628 is on main. Part 2 waits on the
-owner's answer for By paper.
+Nothing is built. Both parts are drawn. Both can start once PR #8628 is on main. The owner picked choice 1
+for part 2: the door on the title line on every view.
