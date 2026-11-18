@@ -53,8 +53,10 @@ const LS_KEY = 'pipetooling-bill-customer-memo-presets'
 const SETTINGS_KEY = 'bill_customer_memo_presets_v1'
 
 import {
+  BILL_CUSTOMER_LINE_ON_BILL_SUMMARY_MAX,
   BILL_CUSTOMER_MEMO_CUSTOM_PRESET_MAX,
   BILL_CUSTOMER_MEMO_MAX_CHARS,
+  billCustomerLineOnBillSummaryLine,
   billCustomerMemoActivePresetId,
   billCustomerMemoSummaryLine,
   fetchBillCustomerMemoPresetsFromAppSettings,
@@ -300,5 +302,23 @@ describe('resetBillCustomerMemoPresetsToBuiltins', () => {
     expect(step('delete')).toBeTruthy()
     expect(store.has(LS_KEY)).toBe(false)
     expect(listBillCustomerMemoPresets()[0]!.body).toBe('')
+  })
+})
+
+describe('billCustomerLineOnBillSummaryLine', () => {
+  it('shows a dash for no line, and for spaces and line breaks alone', () => {
+    expect(billCustomerLineOnBillSummaryLine('')).toBe('—')
+    expect(billCustomerLineOnBillSummaryLine('  \n\t ')).toBe('—')
+  })
+
+  it('puts the typed line on one row: runs of spaces and line breaks become one space, the ends trimmed', () => {
+    expect(billCustomerLineOnBillSummaryLine('  Rough-in,\n  phase   two ')).toBe('Rough-in, phase two')
+  })
+
+  it('keeps a line of exactly the max whole and cuts a longer one there, with an ellipsis', () => {
+    const atMax = 'a'.repeat(BILL_CUSTOMER_LINE_ON_BILL_SUMMARY_MAX)
+    expect(BILL_CUSTOMER_LINE_ON_BILL_SUMMARY_MAX).toBe(48)
+    expect(billCustomerLineOnBillSummaryLine(atMax)).toBe(atMax)
+    expect(billCustomerLineOnBillSummaryLine(`${atMax}b`)).toBe(`${atMax}…`)
   })
 })

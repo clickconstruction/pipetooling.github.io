@@ -229,3 +229,14 @@ export function stripeInvoiceFooterActivePreset(footer: string): StripeInvoiceFo
   if (footer === getStripeInvoiceFooterPresetElectrical()) return 'electrical'
   return null
 }
+
+/** The word beside Bill Customer's Footer disclosure: an empty footer leaves Stripe's own, a preset says its trade. */
+export function stripeInvoiceFooterSummaryLine(
+  footer: string,
+  activePreset: ReturnType<typeof stripeInvoiceFooterActivePreset>,
+): string {
+  if (footer === '') return 'Stripe default'
+  if (activePreset === 'plumbing') return 'Plumbing'
+  if (activePreset === 'electrical') return 'Electrical'
+  return 'Custom'
+}
