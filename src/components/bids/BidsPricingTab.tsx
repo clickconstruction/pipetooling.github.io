@@ -16,9 +16,8 @@ import { KindBreakdownCard } from './KindBreakdownCard'
 import { RowKindChip } from './RowKindChip'
 import { MarkupToolPopover } from './MarkupToolPopover'
 import { TaxToolPopover } from './TaxToolPopover'
-import { cleanTag, rowKindOf, type RowMarks, type RowMarksByRowId } from '../../lib/bids/rowKinds'
-import { rowMarksFromDbRow, saveRowMarks, type RowMarksDbRow } from '../../lib/bids/rowMarksIo'
-import { effectiveSovFactor, loadSovMaterialFactorDefault } from '../../lib/bids/materialsByStageIo'
+import { cleanTag, rowKindOf } from '../../lib/bids/rowKinds'
+import { usePricingRowMarks } from '../../hooks/usePricingRowMarks'
 import { costEstimateLaborRowHours } from '../../lib/bidPricingRowCalculations'
 import { parseSplitDollars, rowPriceSplit } from '../../lib/bids/rowPriceSplit'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
@@ -524,183 +523,38 @@ export function BidsPricingTab({
   }
   const [pricingAssignmentDropdownOpen, setPricingAssignmentDropdownOpen] = useState<string | null>(null)
   const [pricingBreakdownRow, setPricingBreakdownRow] = useState<PricingBreakdownRow | null>(null)
-  // What the price is made of (punch list #128, PR 3): the material markup is the schedule-of-values
-  // factor — one company number (D1) with the bid's own in `bids.sov_material_factor` — set from the
-  // Traditional card's chip; a row may carry its own (`split_markup_pct`).
-  const [sovFactorDefault, setSovFactorDefault] = useState<number>(1.5)
-  const [bidSovFactor, setBidSovFactor] = useState<number | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    void loadSovMaterialFactorDefault(supabase).then((f) => {
-      if (!cancelled) setSovFactorDefault(f)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-  const savedBidSovFactor = selectedBidForPricing?.sov_material_factor != null ? Number(selectedBidForPricing.sov_material_factor) : null
-  useEffect(() => {
-    setBidSovFactor(savedBidSovFactor)
-  }, [selectedBidForPricing?.id, savedBidSovFactor])
-  const materialMarkup = effectiveSovFactor(bidSovFactor, sovFactorDefault) - 1
-  /** The chip's text as it is typed: the screen follows at once, nothing is written until the chip is left. */
-  const previewBidMarkup = (markup: number | null) => {
-    if (pricingLock === 'locked') return
-    setBidSovFactor(markup == null ? null : Math.round((1 + markup) * 10000) / 10000)
-  }
-  /** The chip is left: the bid's own markup is written (null = back to the company number), behind the sent-bid lock. */
-  const commitBidMarkup = async (markup: number | null) => {
-    const bid = selectedBidForPricing
-    if (!bid) return
-    const next = markup == null ? null : Math.round((1 + markup) * 10000) / 10000
-    if (next === savedBidSovFactor) return
-    if (!guardPricingWrite()) {
-      setBidSovFactor(savedBidSovFactor)
-      return
-    }
-    setBidSovFactor(next)
-    const { error } = await supabase.from('bids').update({ sov_material_factor: next }).eq('id', bid.id)
-    if (error) {
-      showToast(`Could not save the markup: ${error.message}`, 'error')
-      setBidSovFactor(savedBidSovFactor)
-      return
-    }
-    onPatchBid?.(bid.id, { sov_material_factor: next })
-  }
-
-  // A row's kind, tags and split live on the row (`bids_count_rows`, migration 20261020020000): the
-  // engine reads the rows with `select('*')`, so the marks are seeded from them; an edit shows at once
-  // and is written to its row. Kind and split change the number, so they wait behind the sent-bid lock;
-  // tags never print and are always free.
-  const [rowMarks, setRowMarks] = useState<RowMarksByRowId>({})
-  useEffect(() => {
-    const next: RowMarksByRowId = {}
-    for (const cr of pricingCountRows) next[cr.id] = rowMarksFromDbRow(cr as unknown as RowMarksDbRow)
-    setRowMarks(next)
-  }, [pricingCountRows])
-  const marksNotThereToast = useRef(false)
-  const persistRowMarks = async (rowIds: string[], next: RowMarksByRowId, before: RowMarksByRowId) => {
-    const results = await Promise.all(rowIds.map((id) => saveRowMarks(supabase, id, next[id] ?? {})))
-    const failed = results.find((r) => r.error)
-    if (!failed) return
-    setRowMarks((cur) => {
-      const back = { ...cur }
-      rowIds.forEach((id, i) => {
-        if (results[i]?.error) back[id] = before[id] ?? {}
-      })
-      return back
-    })
-    if (failed.missing) {
-      if (!marksNotThereToast.current) showToast('Kinds, tags and the split save once the database update is in. They show on this screen until then.', 'warning')
-      marksNotThereToast.current = true
-      return
-    }
-    showToast(`Could not save the row: ${failed.error}`, 'error')
-  }
-  /** One row's marks: shown at once, written to the row. `free` skips the sent-bid lock (tags). */
-  const updateRowMarks = (rowId: string, patch: (m: RowMarks) => RowMarks, opts: { free?: boolean } = {}) => {
-    if (!opts.free && !guardPricingWrite()) return
-    const before = rowMarks
-    const next = { ...rowMarks, [rowId]: patch(rowMarks[rowId] ?? {}) }
-    setRowMarks(next)
-    void persistRowMarks([rowId], next, before)
-  }
-  /** Many rows at once (the Markup and Tax tools and their Undo). */
-  const updateManyRowMarks = (rowIds: string[], patch: (m: RowMarks, rowId: string) => RowMarks) => {
-    if (rowIds.length === 0 || !guardPricingWrite()) return false
-    const before = rowMarks
-    const next = { ...rowMarks }
-    for (const id of rowIds) next[id] = patch(next[id] ?? {}, id)
-    setRowMarks(next)
-    void persistRowMarks(rowIds, next, before)
-    return true
-  }
-
-  // The Markup tool — the margin brush's sibling: one number over a scope of rows, one Undo.
-  const [markupToolOpen, setMarkupToolOpen] = useState(false)
-  const [markupUndo, setMarkupUndo] = useState<{ rowId: string; markup: number | null | undefined }[] | null>(null)
-  const applyMarkupTool = (rowIds: string[], markup: number) => {
-    const undo = rowIds.map((rowId) => ({ rowId, markup: rowMarks[rowId]?.split?.markup }))
-    if (!updateManyRowMarks(rowIds, (m) => ({ ...m, split: { ...(m.split ?? {}), markup } }))) return
-    setMarkupUndo(undo)
-    setMarkupToolOpen(false)
-  }
-  const undoMarkupTool = () => {
-    if (!markupUndo) return
-    const back = new Map(markupUndo.map((u) => [u.rowId, u.markup ?? null] as const))
-    if (!updateManyRowMarks([...back.keys()], (m, id) => ({ ...m, split: { ...(m.split ?? {}), markup: back.get(id) ?? null } }))) return
-    setMarkupUndo(null)
-    setMarkupToolOpen(false)
-  }
-  // The Tax tool — the Markup tool's twin: tax-free or taxed over a scope of rows, one Undo; its rate cell is the bid's rate.
-  const [taxToolOpen, setTaxToolOpen] = useState(false)
-  const [taxUndo, setTaxUndo] = useState<{ rowId: string; taxable: boolean | null | undefined }[] | null>(null)
-  const applyTaxTool = (rowIds: string[], taxable: boolean) => {
-    const undo = rowIds.map((rowId) => ({ rowId, taxable: rowMarks[rowId]?.split?.taxable }))
-    if (!updateManyRowMarks(rowIds, (m) => ({ ...m, split: { ...(m.split ?? {}), taxable } }))) return
-    setTaxUndo(undo)
-    setTaxToolOpen(false)
-  }
-  const undoTaxTool = () => {
-    if (!taxUndo) return
-    const back = new Map(taxUndo.map((u) => [u.rowId, u.taxable ?? null] as const))
-    if (!updateManyRowMarks([...back.keys()], (m, id) => ({ ...m, split: { ...(m.split ?? {}), taxable: back.get(id) ?? null } }))) return
-    setTaxUndo(null)
-    setTaxToolOpen(false)
-  }
-  // The row whose + opened a tag box (one at a time); Enter adds, Escape or leaving closes it.
-  const [tagEditRowId, setTagEditRowId] = useState<string | null>(null)
-  // A row's own markup, typed on its Material child row: the text while typing, per row; written when the cell is left.
-  const [wbMarkupDraft, setWbMarkupDraft] = useState<{ rowId: string; text: string } | null>(null)
-  /** The markup a row shows while its cell is typed in (the labor moves at once); written when the cell is left. */
-  const rowMarkupPreview = (() => {
-    if (!wbMarkupDraft) return null
-    const s = wbMarkupDraft.text.replace(/[%\s]/g, '')
-    if (s === '') return { rowId: wbMarkupDraft.rowId, markup: null as number | null }
-    const v = Number(s)
-    return Number.isFinite(v) && v >= 0 ? { rowId: wbMarkupDraft.rowId, markup: Math.round(v * 10) / 1000 } : null
-  })()
-  const commitRowMarkupText = (rowId: string, raw: string) => {
-    const s = raw.replace(/[%\s]/g, '')
-    const current = rowMarks[rowId]?.split?.markup ?? null
-    if (s === '') {
-      if (current != null) updateRowMarks(rowId, (m) => ({ ...m, split: { ...(m.split ?? {}), markup: null } }))
-      return
-    }
-    const v = Number(s)
-    if (!Number.isFinite(v) || v < 0) return
-    const markup = Math.round(v * 10) / 1000
-    if (current != null && Math.abs(current - markup) < 1e-9) return
-    updateRowMarks(rowId, (m) => ({ ...m, split: { ...(m.split ?? {}), markup } }))
-  }
-
-  // The split under a row — Material · Sales tax · Labor as child rows the chevron opens. The open rows
-  // are remembered per bid on this device; Expand all / Collapse all fill or clear the set, and each
-  // chevron still works on its own row afterwards.
-  const splitOpenKey = `pt.pricing.split.open.${selectedBidForPricing?.id ?? ''}`
-  const [wbSplitOpen, setWbSplitOpen] = useState<ReadonlySet<string>>(() => new Set())
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(splitOpenKey)
-      setWbSplitOpen(new Set(raw ? (JSON.parse(raw) as string[]) : []))
-    } catch {
-      setWbSplitOpen(new Set())
-    }
-  }, [splitOpenKey])
-  const writeSplitOpen = (next: ReadonlySet<string>) => {
-    setWbSplitOpen(next)
-    try {
-      localStorage.setItem(splitOpenKey, JSON.stringify([...next]))
-    } catch {
-      /* per-device */
-    }
-  }
-  const toggleSplitRow = (rowId: string) => {
-    const next = new Set(wbSplitOpen)
-    if (next.has(rowId)) next.delete(rowId)
-    else next.add(rowId)
-    writeSplitOpen(next)
-  }
+  // What the price is made of (punch list #128): the bid's material markup, each row's kind, tags and
+  // split, the Markup and Tax tools with their Undo, the tag box, the markup cell and the open splits.
+  // The state, its four effects and its writes are `usePricingRowMarks`, called where the block stood so
+  // the effects keep their place; the numbers are `lib/bids/rowMarksEdits.ts`. Kind and split change the
+  // number, so they wait behind the sent-bid lock; tags never print and are always free.
+  const {
+    sovFactorDefault,
+    materialMarkup,
+    previewBidMarkup,
+    commitBidMarkup,
+    rowMarks,
+    updateRowMarks,
+    markupToolOpen,
+    setMarkupToolOpen,
+    markupUndo,
+    applyMarkupTool,
+    undoMarkupTool,
+    taxToolOpen,
+    setTaxToolOpen,
+    taxUndo,
+    applyTaxTool,
+    undoTaxTool,
+    tagEditRowId,
+    setTagEditRowId,
+    wbMarkupDraft,
+    setWbMarkupDraft,
+    rowMarkupPreview,
+    commitRowMarkupText,
+    wbSplitOpen,
+    writeSplitOpen,
+    toggleSplitRow,
+  } = usePricingRowMarks({ bid: selectedBidForPricing, pricingCountRows, locked: pricingLock === 'locked', guardPricingWrite, onPatchBid })
   // Workbench (New view) state: solver PREVIEW prices (never written until Apply),
   // session-local locks, and the solver controls.
   const [wbPreview, setWbPreview] = useState<Record<string, number> | null>(null)
