@@ -18,7 +18,8 @@ import { PhoneSheet } from '../PhoneSheet'
  */
 
 const CHIP: CSSProperties = { minHeight: PHONE_PRESS_MIN_HEIGHT, padding: '0 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', font: 'inherit', fontSize: '0.9rem', cursor: 'pointer' }
-const CHIP_ON: CSSProperties = { ...CHIP, borderColor: '#2563eb', background: 'var(--bg-blue-tint)', fontWeight: 700 }
+// The whole border is restated. A chip that only added a border colour would lose its edge's colour when it is unpicked.
+const CHIP_ON: CSSProperties = { ...CHIP, border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', fontWeight: 700 }
 const FIELD: CSSProperties = { width: '100%', boxSizing: 'border-box', minHeight: PHONE_PRESS_MIN_HEIGHT, padding: '0.5rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', font: 'inherit', fontSize: '1rem' }
 const LABEL: CSSProperties = { display: 'grid', gap: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }
 
