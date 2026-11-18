@@ -13,6 +13,8 @@ At a desk the wrench floats at the bottom left of every page. It says **Tell the
 
 On a phone the wrench is in the header at the top of the page. Nothing floats on a phone, so no button is covered.
 
+A small phone has no room for the wrench in the header. There it is **Tell the dev**, the first row under the gear at the top right. It opens the same box.
+
 A window on a phone has its own wrench in its title row. Use that one when the window is what confuses you.
 
 ## From an error
@@ -61,6 +63,8 @@ The owner and the dev read every note. Your name is on it, so they can answer yo
 ## Read the answer
 
 The wrench shows a green dot when a note of yours has an answer. Press the wrench. The answer is under **Your notes**, below the box.
+
+On a small phone the gear shows the dot. Press the gear, then press **Tell the dev**.
 
 Each note there says where it stands. **Sent** means it is waiting to be read. **Answered** means the dev wrote back.
 
