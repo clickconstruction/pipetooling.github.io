@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DashboardJobsMapCard } from './DashboardJobsMapCard'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
-import type { DashboardJobsMapCanvasProps } from './DashboardJobsMapCanvas'
+import type { PinsMapCanvasProps } from '../map/PinsMapCanvas'
 import { settle } from '../../test/renderSmokeMocks'
 
 const cacheRows = vi.fn<() => { address_normalized: string; lat: number; lng: number }[]>(() => [])
@@ -29,10 +29,12 @@ vi.mock('../../utils/errorHandling', () => ({
   withSupabaseRetry: async <T,>(op: () => PromiseLike<{ data: T; error: null }>) => (await op()).data,
 }))
 const openExternal = vi.fn()
+vi.mock('../../lib/map/olderPhotosIo', () => ({ walkOlderPhotos: async () => [] }))
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (u: string) => openExternal(u) }))
-// The Google canvas (v2.3145) stands in the same way, plus a button that reports the API as unavailable.
-vi.mock('./DashboardJobsMapGoogleCanvas', () => ({
-  default: (p: DashboardJobsMapCanvasProps & { apiKey: string; onUnavailable: (r: string) => void }) => (
+// The card draws in the shared frame (punch list #395), which loads the two canvases. Both stand in here.
+// The Google canvas (v2.3145) carries a button that reports the API as unavailable.
+vi.mock('../map/PinsMapGoogleCanvas', () => ({
+  default: (p: PinsMapCanvasProps & { apiKey: string; onUnavailable: (r: string) => void }) => (
     <div data-testid="google-canvas" data-key={p.apiKey} data-scroll-gate={String(p.scrollZoomAfterClick ?? false)}>
       <button type="button" onClick={() => p.onUnavailable('load: test')}>
         google failed
@@ -41,14 +43,16 @@ vi.mock('./DashboardJobsMapGoogleCanvas', () => ({
   ),
 }))
 // The Leaflet canvas is lazy + heavy; stand in with a list of pin buttons that drive the same callbacks.
-vi.mock('./DashboardJobsMapCanvas', () => ({
-  default: (p: DashboardJobsMapCanvasProps) => (
-    <div data-testid="canvas" data-scroll-gate={String(p.scrollZoomAfterClick ?? false)}>
+vi.mock('../map/PinsMapImageryCanvas', () => ({
+  default: (p: PinsMapCanvasProps & { layer: string }) => (
+    <div data-testid="canvas" data-layer={p.layer} data-scroll-gate={String(p.scrollZoomAfterClick ?? false)}>
       {p.pins.map((pin) => (
         <button key={pin.id} type="button" onClick={() => p.onSelect(pin.id)}>
-          pin {pin.label}
+          pin {pin.title}
         </button>
       ))}
+      {/* A phone gets no popup: the card draws the selected job as a bar under the map. */}
+      {!p.isMobile && p.selectedId && p.renderPopup ? <div data-testid="popup">{p.renderPopup(p.selectedId)}</div> : null}
     </div>
   ),
 }))
@@ -135,6 +139,32 @@ describe('DashboardJobsMapCard', () => {
     expect(openExternal).toHaveBeenCalledWith('https://www.google.com/maps/search/?api=1&query=1400%20Oak%20Hollow%20Rd')
     fireEvent.click(screen.getByText('Open job'))
     expect(openJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }))
+  })
+
+  it('on a computer a pin opens its popup, with Open job and Directions', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.5, lng: -97.7 }])
+    render(<DashboardJobsMapCard role="dev" assignedJobs={[row({ id: 'a' })]} superintendentJobs={[]} loading={false} isMobile={false} openJobDetailFromDashboardJobRow={openJob} />)
+    fireEvent.click(await screen.findByText('pin J1021 · Bexley Park Bldg C'))
+    const popup = screen.getByTestId('popup')
+    expect(popup.textContent).toContain('1400 Oak Hollow Rd')
+    fireEvent.click(screen.getByText('Open job'))
+    expect(openJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }))
+    fireEvent.click(screen.getByText('Directions'))
+    expect(openExternal).toHaveBeenCalledWith('https://www.google.com/maps/search/?api=1&query=1400%20Oak%20Hollow%20Rd')
+  })
+
+  it('opens on Streets as it always has, with Satellite and Time beside it (punch list #395)', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.5, lng: -97.7 }])
+    render(<DashboardJobsMapCard role="dev" assignedJobs={[row({ id: 'a' })]} superintendentJobs={[]} loading={false} isMobile={false} openJobDetailFromDashboardJobRow={openJob} />)
+    const canvas = await screen.findByTestId('canvas')
+    expect(canvas.getAttribute('data-layer')).toBe('streets')
+    expect(screen.getByRole('button', { name: 'Streets' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Satellite' }))
+    expect(canvas.getAttribute('data-layer')).toBe('satellite')
+    // One job is one dot, so Time needs no press on it: the row opens on that job.
+    fireEvent.click(document.querySelector('[data-map-time-press]') as HTMLButtonElement)
+    await waitFor(() => expect(document.querySelector('[data-map-time-caption]')?.textContent).toContain('Today’s photo of J1021 · Bexley Park Bldg C'))
+    expect(document.querySelector('[data-map-provider]')?.getAttribute('data-map-provider')).toBe('archive')
   })
 
   it('draws with OpenStreetMap when no Google browser key is configured', async () => {
