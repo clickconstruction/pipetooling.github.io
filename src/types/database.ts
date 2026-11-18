@@ -40567,6 +40567,39 @@ export type Database = {
           },
         ]
       }
+      trip_number_counters: {
+        Row: {
+          development_id: string | null
+          job_id: string | null
+          last_number: number
+        }
+        Insert: {
+          development_id?: string | null
+          job_id?: string | null
+          last_number?: number
+        }
+        Update: {
+          development_id?: string | null
+          job_id?: string | null
+          last_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_number_counters_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_number_counters_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_people: {
         Row: {
           created_at: string
@@ -40629,10 +40662,12 @@ export type Database = {
           created_at: string
           created_by: string | null
           development_id: string | null
+          ended_at: string | null
           id: string
           job_id: string | null
           outcome: string
           purpose: string
+          trip_number: number | null
           updated_at: string
           updated_by: string | null
           via: string
@@ -40646,10 +40681,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           development_id?: string | null
+          ended_at?: string | null
           id?: string
           job_id?: string | null
           outcome?: string
           purpose?: string
+          trip_number?: number | null
           updated_at?: string
           updated_by?: string | null
           via?: string
@@ -40663,10 +40700,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           development_id?: string | null
+          ended_at?: string | null
           id?: string
           job_id?: string | null
           outcome?: string
           purpose?: string
+          trip_number?: number | null
           updated_at?: string
           updated_by?: string | null
           via?: string
@@ -46842,12 +46881,14 @@ export type Database = {
       }
       job_papers_mine: { Args: { p_job_id: string }; Returns: Json }
       job_papers_needing_me: { Args: never; Returns: Json }
+      job_papers_prompt_only: { Args: never; Returns: boolean }
       job_papers_require: {
         Args: { p_book_document_ids: string[]; p_job_id: string }
         Returns: number
       }
       job_papers_roster: { Args: { p_job_id: string }; Returns: Json }
       job_rider_fees: { Args: { p_job_id: string }; Returns: number }
+      job_shut_to_me: { Args: { p_job_id: string }; Returns: boolean }
       jobs_closed_to_me: { Args: never; Returns: string[] }
       jobs_ledger_row_visible_for_tally_assign: {
         Args: { p_job_id: string; p_user_id: string }
@@ -46868,6 +46909,7 @@ export type Database = {
           report_count: number
         }[]
       }
+      jobs_shut_to_me: { Args: never; Returns: string[] }
       journey_health_counts: { Args: never; Returns: Json }
       keep_job_baseline: {
         Args: { p_job_id: string; p_kept_by: string; p_kept_on: string }
@@ -50916,8 +50958,11 @@ export type Database = {
         Args: { p_include_open?: boolean }
         Returns: Json
       }
+      trip_crew_on_job: { Args: { p_job_id: string }; Returns: boolean }
       trip_days_ok: { Args: { p_days: Json }; Returns: boolean }
       trip_is_mine: { Args: { p_trip_id: string }; Returns: boolean }
+      trip_phone: { Args: { p: Json }; Returns: Json }
+      trip_phone_state: { Args: { p_job_id: string }; Returns: Json }
       trip_save: { Args: { p: Json; p_dry_run?: boolean }; Returns: Json }
       trips_office: { Args: never; Returns: boolean }
       typed_hours_rule_applies: {
