@@ -3645,6 +3645,22 @@ Since v2.6558 two chip rows above the Scoreboard cut it by job, part of the site
  the inbox's reference line opens the page;
  the office team reads every request that carries a reference.
 
+**Trip** (punch list #379;
+the rules v2.7653, the tables v2.7655, the Trips look v2.7661): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
+A trip is people, and for each person their days, and each day is one of three kinds: **Getting ready**, **On the road** or **At the site**.
+A day off in the middle is a day that is not there.
+Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
+A trip may also say what it was for, who asked for it (us or them), how it went, the jobs its work goes on and its billing (**Inside the price**, **Extra**, **Ours**), and all of that can wait.
+A trip is a reading laid over the clock: saving, changing or deleting one changes no clock row, bill or cost.
+The site's hours fall into five figures (`src/lib/trips/tripHours.ts`): a row on a trip day takes the day's kind, a punch counts **At the site** only when a place it carries is the site, a row with no place is **No place on the punch** and is never added to At the site, and hours on the site's jobs outside every trip the person was on are **At home for the site**.
+The hours are the Scoreboard's own (`siteLabor.ts`), and a day's place comes from the clock's punches on the site's jobs read against the address's point (`tripPlace.ts`, `tripHourRows.ts`).
+The **Trips look** is the Development page's seventh look (`DevelopmentTripsCard.tsx` over `DevelopmentTripsLook.tsx`, `useSiteTrips`, `lib/trips/tripsLook.ts`): a band that says how many of the site's hours were at the site, one bar of the same hours, the year's trips on a strip, and a row a trip that opens in place.
+The look shows only on a site that has a trip or is 150 miles or more from the shop (`tripsLookShows`), and a nearer site has one door to its first trip in the line under its address.
+**+ Trip** opens the sheet (`components/trips/TripSheet.tsx` over `lib/trips/tripSheet.ts`): who went, which days, what for, the days painted and turned by a tap.
+A trip leaving and coming back are two **History** lines read from its days (`lib/trips/tripHistory.ts`), never kept rows.
+Access: `ACCESS_CONTROL.md`, *Trips*.
+Guide: `keep-a-trip-to-a-far-site`.
+
 ### Submittals tab: the road, the strip, the walkthrough and the GC's page beside it (v2.4067–v2.4189)
 Bids → Submittals reads as one **road** of eight steps (v2.4090;
 `RoadSection` in `BidsSubmittalsTab.tsx`): a done step folds to its line, the current step is ringed, a later step is dashed (its pill on the strip opens, scrolls to and rings it — v2.4201;
@@ -6629,6 +6645,12 @@ The **People folder** (v2.6393, `drive_people_folder_id`, the fifth card) is whe
 The **Tasks folder** (v2.6601, punch list #273 PR 4a, `drive_tasks_folder_id`, the card after the Fleet one) is where the photo sweep files a task card's photos, one folder per card under *PipeTooling Tasks*, which **Make the Tasks folder** finds or makes beside the Jobs folder in the app's Shared Drive (`job-drive-folders` `make: 'tasks'`, `tasks_needs_shared_drive` for a My Drive root;
 a pasted link is checked for the write, `tasks_unwritable`);
 until it is set every filed row reads `NO_TASKS_FOLDER_WORDS`.
+
+**Signed contracts card** (v2.7647, punch list #377): the card on Documents → Where files go that says where each signed job contract's copy in Google Drive stands.
+It counts the papers *in Drive*, *waiting* and *held*, and its press files the waiting ones now.
+**Contracts** (the folder): the sixth folder of a job's tree, inside Team only, made the first time the app files a signed contract on the job.
+**Filed** and **adopted**: a contract's Drive copy is *filed* when the app uploaded it, and *adopted* when the office already kept the file in the jobs drive and the app tied it to the record where it sits.
+**Held** (a contract): a signed paper that could not be filed, with its reason on the record and the door that fixes it.
 
 ### Empty state
 The app's one shape for a list with nothing in it (punch list #184, sweep C): the list says what fills it and offers the press, or, where empty is the good state, says so and names where to look next, so a bare *No bills* or *Nothing here* never leaves the person guessing.

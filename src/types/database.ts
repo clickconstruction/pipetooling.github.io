@@ -19208,10 +19208,14 @@ export type Database = {
           closed_at: string | null
           closed_by_user_id: string | null
           closed_note: string | null
+          context: Json
           created_at: string
           from_user_id: string
-          guide_slug: string
+          guide_slug: string | null
           id: string
+          kind: string
+          page_key: string | null
+          page_path: string | null
           status: string
         }
         Insert: {
@@ -19219,10 +19223,14 @@ export type Database = {
           closed_at?: string | null
           closed_by_user_id?: string | null
           closed_note?: string | null
+          context?: Json
           created_at?: string
           from_user_id: string
-          guide_slug: string
+          guide_slug?: string | null
           id?: string
+          kind?: string
+          page_key?: string | null
+          page_path?: string | null
           status?: string
         }
         Update: {
@@ -19230,10 +19238,14 @@ export type Database = {
           closed_at?: string | null
           closed_by_user_id?: string | null
           closed_note?: string | null
+          context?: Json
           created_at?: string
           from_user_id?: string
-          guide_slug?: string
+          guide_slug?: string | null
           id?: string
+          kind?: string
+          page_key?: string | null
+          page_path?: string | null
           status?: string
         }
         Relationships: [
@@ -20925,6 +20937,13 @@ export type Database = {
           covers_group_id: string | null
           created_at: string
           created_by: string | null
+          drive_file_hold: string | null
+          drive_file_hold_words: string | null
+          drive_file_id: string | null
+          drive_file_origin: string | null
+          drive_file_tried_at: string | null
+          drive_filed_at: string | null
+          drive_void_marked_at: string | null
           fields: Json
           first_viewed_at: string | null
           id: string
@@ -20994,6 +21013,13 @@ export type Database = {
           covers_group_id?: string | null
           created_at?: string
           created_by?: string | null
+          drive_file_hold?: string | null
+          drive_file_hold_words?: string | null
+          drive_file_id?: string | null
+          drive_file_origin?: string | null
+          drive_file_tried_at?: string | null
+          drive_filed_at?: string | null
+          drive_void_marked_at?: string | null
           fields?: Json
           first_viewed_at?: string | null
           id?: string
@@ -21063,6 +21089,13 @@ export type Database = {
           covers_group_id?: string | null
           created_at?: string
           created_by?: string | null
+          drive_file_hold?: string | null
+          drive_file_hold_words?: string | null
+          drive_file_id?: string | null
+          drive_file_origin?: string | null
+          drive_file_tried_at?: string | null
+          drive_filed_at?: string | null
+          drive_void_marked_at?: string | null
           fields?: Json
           first_viewed_at?: string | null
           id?: string
