@@ -33,13 +33,17 @@
  * approval*, each with `held` so the component draws a hold mark on it. Its colour is still its day's. A bin's count
  * is what can move (`lienBoardBinCount`), so the count and the bin's press stay one number. No bin is named Held; the
  * pile keeps the name on By paper.
+ *
+ * The same rule for the affidavits' *To send for Master approval* (v2.7852, found on the live look at punch list #383: the
+ * bin read 5 beside *Send 1 for approval*). The batch send takes the papers someone has read. One nobody has opened
+ * stands in the bin after them with `unread`, a dashed edge and a ○ mark, and the count leaves it out.
  */
 import { batchWords, countedLabel, type BatchWords } from '../batchWords'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
 import { formatUsdNoCents } from './jobFormatting'
 import type { LienDeskEntry, LienDeskPile } from './lienDesk'
 import { LIEN_CLOSED_BIN_WORDS, lienLateNoticeStillCounts, lienNoticeWindowClosed } from './lienClosedEnd'
-import { LIEN_AFFIDAVIT_NEEDS_NOTICE_LABEL, lienAffidavitGateHeld, type LienAffidavitEntry, type LienAffidavitGateKey, type LienAffidavitPile } from './lienDeskAffidavits'
+import { LIEN_AFFIDAVIT_NEEDS_NOTICE_LABEL, lienAffidavitGateHeld, lienAffidavitSendReady, type LienAffidavitEntry, type LienAffidavitGateKey, type LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { lienItemUnsigned } from './lienNoticeSignature'
 
@@ -101,6 +105,8 @@ export type LienBoardChip = {
   gateHeld?: true
   /** Held where it stands (v2.7783): its `stage` is *held* and its `bin` is the stage it is stopped at. The component draws a hold mark, and the bin's count leaves it out. */
   held?: true
+  /** In the affidavits' *To send for Master approval* with no row a person made (v2.7852, `lienAffidavitSendReady`): the batch send leaves it, so it stands after the papers the press takes, with a ○ mark, and the bin's count leaves it out. */
+  unread?: true
   /** An approved notice the leader has not signed as it stands (v2.7448, `lienItemUnsigned`): the run holds it, so it waits on him too. */
   unsigned?: boolean
   /** A closed month a late notice can still save, since the job's lien day is ahead: the one chip at a closed end with something left to send. */
@@ -224,9 +230,14 @@ export function lienBoardHeldBin(kind: LienBoardKind, gateHeld: boolean): LienBo
   return kind === 'notice' ? 'notice:awaiting' : gateHeld ? 'affidavit:ready' : 'affidavit:awaiting'
 }
 
-/** What a bin's count says (v2.7783): the papers in it that can move. A held one stands in the bin with its mark and is not counted, so the count is the number the bin's press takes. */
+/** What a bin's count says (v2.7783): the papers in it that can move. A held one stands in the bin with its mark and is not counted, and neither is an affidavit nobody has read (v2.7852), so the count is the number the bin's press takes. */
 export function lienBoardBinCount(bin: Pick<LienBoardBin, 'chips'>): number {
-  return bin.chips.filter((c) => !c.held).length
+  return bin.chips.filter((c) => !c.held && !c.unread).length
+}
+
+/** Where a chip stands in its bin: what can move first, then what waits to be read, then what is held. */
+function lienBoardChipRank(c: Pick<LienBoardChip, 'held' | 'unread'>): number {
+  return c.held ? 2 : c.unread ? 1 : 0
 }
 
 /** The flow's stages, in order; the closed end stands at the foot. */
@@ -571,6 +582,7 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       stage,
       bin: stage === 'held' ? lienBoardHeldBin('affidavit', gateHeld) : `affidavit:${stage}`,
       ...(stage === 'held' ? { held: true as const } : {}),
+      ...(stage === 'to_send' && !lienAffidavitSendReady(e) ? { unread: true as const } : {}),
       dueYmd,
       daysLeft,
       stepsLeft,
@@ -622,8 +634,8 @@ function binsFor<S extends Exclude<LienBoardNoticeStage | LienBoardAffidavitStag
       kind,
       stage,
       label: lienBoardStageWords(kind, stage),
-      // What can move first, by day, then what is held here, by day.
-      chips: chips.filter((c) => c.bin === key).sort((a, b) => Number(Boolean(a.held)) - Number(Boolean(b.held)) || compareLienBoardChips(a, b)),
+      // What can move first, by day, then what waits to be read, then what is held here, each by day.
+      chips: chips.filter((c) => c.bin === key).sort((a, b) => lienBoardChipRank(a) - lienBoardChipRank(b) || compareLienBoardChips(a, b)),
       closed: stage === 'missed',
     }
   })
@@ -958,6 +970,16 @@ export function lienBoardRowStage(board: Pick<LienBoard, 'notices' | 'affidavits
 /** What a held chip says of its hold, for its hover and a screen reader; '' for a chip that is not held. */
 export function lienBoardHoldWords(chip: Pick<LienBoardChip, 'held' | 'gateHeld'>): string {
   return chip.held ? (chip.gateHeld ? 'held on a property fact' : 'held by the leader') : ''
+}
+
+/** What an unread chip says, for its hover, its card and a screen reader (v2.7852); '' for any other chip. */
+export function lienBoardUnreadWords(chip: Pick<LienBoardChip, 'unread'>): string {
+  return chip.unread ? 'nobody has read it yet' : ''
+}
+
+/** A bin's name as an unread paper's card says it (v2.7852): *To send for Master approval · not read yet*. */
+export function lienBoardUnreadBinWords(binLabel: string): string {
+  return `${binLabel} · not read yet`
 }
 
 /** A bin's name as a held paper's card and row say it (v2.7783): *Ready to file · held*. */

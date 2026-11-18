@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { lienBoardBinCount, lienBoardBinsShown, lienBoardDoorWords, lienBoardHoldWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
+import { lienBoardBinCount, lienBoardBinsShown, lienBoardDoorWords, lienBoardHoldWords, lienBoardUnreadWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
 import type { LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
@@ -122,11 +122,11 @@ function Chip({ chip, lit, apart, onChip, onHover, onCard }: { chip: LienBoardCh
   // A chip at a closed end is quiet, dashed and grey. One a late notice can still save is amber.
   const closed = chip.stage === 'missed'
   // The hover: the job's name, its GC and its money, how soon its day is, the risk, and where the press goes (v2.7333).
-  const title = [chip.tip, lienBoardHoldWords(chip), closed ? (chip.lateNotice ? 'the notice window closed, a late notice can still go' : chip.kind === 'notice' ? 'the notice window closed' : 'the lien day passed') : chip.publicMark ? 'public property, no paper until the property is answered' : lienBoardUrgencyWords(chip.urgency), chip.atRisk ? 'will not make its day as it stands' : '', onChip ? lienBoardDoorWords(chip.destination) : ''].filter(Boolean).join(' · ')
-  // A held chip keeps its day's colour: the hold is its dashed edge and its mark, never a colour of its own. A closed chip is grey with no fill.
+  const title = [chip.tip, lienBoardHoldWords(chip), lienBoardUnreadWords(chip), closed ? (chip.lateNotice ? 'the notice window closed, a late notice can still go' : chip.kind === 'notice' ? 'the notice window closed' : 'the lien day passed') : chip.publicMark ? 'public property, no paper until the property is answered' : lienBoardUrgencyWords(chip.urgency), chip.atRisk ? 'will not make its day as it stands' : '', onChip ? lienBoardDoorWords(chip.destination) : ''].filter(Boolean).join(' · ')
+  // A held chip keeps its day's colour: the hold is its dashed edge and its mark, never a colour of its own. An affidavit nobody has read (v2.7852) is drawn the same way with its own mark. A closed chip is grey with no fill.
   const style: CSSProperties = closed
     ? { color: chip.lateNotice ? 'var(--text-amber-800)' : 'var(--text-muted)', background: 'transparent', borderColor: chip.lateNotice ? 'var(--text-amber-800)' : 'var(--border-strong)', borderStyle: 'dashed', ...(apart ? { marginLeft: 8 } : null) }
-    : { color: tone.fg, background: tone.bg, borderColor: tone.border, ...(chip.held ? { borderStyle: 'dashed' } : null), ...(apart ? { marginLeft: 8 } : null) }
+    : { color: tone.fg, background: tone.bg, borderColor: tone.border, ...(chip.held || chip.unread ? { borderStyle: 'dashed' } : null), ...(apart ? { marginLeft: 8 } : null) }
   // Pointed at or focused: the pair lights (a job in both columns), and the card shows when the desk hands one.
   const enter = (el: HTMLElement) => {
     if (chip.pairKey) onHover(chip.pairKey)
@@ -145,9 +145,10 @@ function Chip({ chip, lit, apart, onChip, onHover, onCard }: { chip: LienBoardCh
       {chip.atRisk ? <span aria-hidden="true" data-lien-board-risk style={{ marginLeft: 3, fontWeight: 800 }}>!</span> : null}
       {chip.publicMark ? <span aria-hidden="true" data-lien-board-public-mark style={{ marginLeft: 4, color: 'var(--text-amber-800)', fontWeight: 700 }}>⊘</span> : null}
       {chip.held ? <span aria-hidden="true" data-lien-board-held-mark style={{ marginLeft: 4, fontWeight: 800 }}>‖</span> : null}
+      {chip.unread ? <span aria-hidden="true" data-lien-board-unread-mark style={{ marginLeft: 4, fontWeight: 800 }}>○</span> : null}
     </>
   )
-  const marks = { 'data-lien-board-chip': chip.jobId, 'data-kind': chip.kind, 'data-urgency': chip.urgency, 'data-closed': closed ? 'yes' : undefined, 'data-late-notice': chip.lateNotice ? 'yes' : undefined, 'data-at-risk': chip.atRisk ? 'yes' : undefined, 'data-public': chip.publicMark ? 'yes' : undefined, 'data-held': chip.held ? 'yes' : undefined, 'data-pair': chip.pairKey ?? undefined, 'data-pair-lit': lit ? 'yes' : undefined }
+  const marks = { 'data-lien-board-chip': chip.jobId, 'data-kind': chip.kind, 'data-urgency': chip.urgency, 'data-closed': closed ? 'yes' : undefined, 'data-late-notice': chip.lateNotice ? 'yes' : undefined, 'data-at-risk': chip.atRisk ? 'yes' : undefined, 'data-public': chip.publicMark ? 'yes' : undefined, 'data-held': chip.held ? 'yes' : undefined, 'data-unread': chip.unread ? 'yes' : undefined, 'data-pair': chip.pairKey ?? undefined, 'data-pair-lit': lit ? 'yes' : undefined }
   if (onChip) {
     return (
       <button type="button" className="lienBoardChip" title={tip} aria-label={`${chip.label}: ${title}`} onClick={() => onChip(chip)} style={style} {...marks} {...hover}>
@@ -199,7 +200,7 @@ function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard, 
   const edge = Boolean(act && !act.dead && !act.quiet)
   // A bin with no paper and no press folds to one quiet line.
   const folded = all === 0 && !act
-  const chips = bin.chips.map((c, i) => <Chip key={`${c.kind}:${c.jobId}`} chip={c} apart={Boolean(c.held) && i === n && n > 0} lit={Boolean(c.pairKey) && c.pairKey === pairLit} onChip={onChip} onHover={onHover} onCard={onCard} />)
+  const chips = bin.chips.map((c, i) => <Chip key={`${c.kind}:${c.jobId}`} chip={c} apart={Boolean(c.held || c.unread) && i === n && n > 0} lit={Boolean(c.pairKey) && c.pairKey === pairLit} onChip={onChip} onHover={onHover} onCard={onCard} />)
   return (
     <div className="lienBoardBin" data-lien-board-bin={bin.key} data-stage={bin.stage} data-act={edge ? 'yes' : undefined} data-folded={folded ? 'yes' : undefined} data-picked={picked ? 'yes' : undefined} data-closed={bin.closed ? 'yes' : undefined} style={{ ...(edge ? { borderLeft: `3px solid ${LIT}`, paddingLeft: 7 } : null), ...(folded ? { borderStyle: 'dashed', background: 'transparent', padding: isMobile ? '2px 9px' : '4px 9px' } : null) }}>
       <div data-lien-board-bin-title={bin.key} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px', minWidth: 0 }}>

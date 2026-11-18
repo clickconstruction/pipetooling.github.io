@@ -484,6 +484,39 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
     expect(h.onLeft.mock.calls[0]![0].kind).toBe('affidavit')
   })
 
+  it('an affidavit nobody has read stands in To send for Master approval after the ones the send takes, with a ○ mark, and the bin counts what its press takes (v2.7852)', () => {
+    const b = board({
+      affidavits: [
+        // Nobody has opened these two: no row, so the batch send leaves them.
+        affidavit('21', 'to_draft', { deadline: '2026-11-18', daysLeft: 3 }),
+        affidavit('22', 'to_draft'),
+        // Someone read this one, so the send takes it.
+        affidavit('23', 'to_draft', { item: item('a23', { status: 'drafted' }) }),
+      ],
+    })
+    const onPress = vi.fn()
+    render(<LienBoard board={b} isMobile={false} columnsOnly binPress={{ 'affidavit:to_send': { label: lienBoardSendDoor(1)!.label, onPress, marks: { 'data-lien-board-send': 'yes' } } }} />)
+    const toSend = bin('affidavit:to_send')
+    // One number: the bin reads 1 beside Send 1 for approval. Until v2.7852 it read 3.
+    expect(toSend.querySelector('[data-lien-board-count]')!.textContent).toBe('1')
+    expect((toSend.querySelector('[data-lien-board-send]') as HTMLButtonElement).textContent).toBe('Send 1 for approval ›')
+    const chips = Array.from(toSend.querySelectorAll('[data-lien-board-chip]')) as HTMLElement[]
+    // The read one first, then the two nobody has read, the sooner day first.
+    expect(chips.map((c) => c.getAttribute('data-lien-board-chip'))).toEqual(['23', '21', '22'])
+    expect(chips.map((c) => c.getAttribute('data-unread'))).toEqual([null, 'yes', 'yes'])
+    expect(chips[0]!.querySelector('[data-lien-board-unread-mark]')).toBeNull()
+    expect(chips[1]!.querySelector('[data-lien-board-unread-mark]')!.textContent).toBe('○')
+    expect(chips[1]!.querySelector('[data-lien-board-unread-mark]')!.getAttribute('aria-hidden')).toBe('true')
+    expect(chips[1]!.style.borderStyle).toBe('dashed')
+    // A little air before the first of them, as before a held chip, and the hover says what the mark means.
+    expect(chips[1]!.style.marginLeft).toBe('8px')
+    expect(chips[2]!.style.marginLeft).toBe('')
+    expect(chips[1]!.getAttribute('title')).toContain('nobody has read it yet')
+    expect(chips[0]!.getAttribute('title')).not.toContain('nobody has read it yet')
+    // No mark is a hold mark: an unread paper is not held.
+    expect(toSend.querySelector('[data-lien-board-held-mark]')).toBeNull()
+  })
+
   it('a held paper stands in the bin of its stage with a hold mark, after the chips that can move, in its day’s colour, and the bin counts what its press takes (v2.7783)', () => {
     const closed = [gate('owner', true), gate('legal', true), gate('homestead_answer', false)]
     const b = board({
@@ -646,7 +679,7 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
   })
 
   it('a bin whose own press is live has the blue edge, something to do now; a dead press, the office’s reminder and a bin with no press have none (v2.7714)', () => {
-    const b = board({ notices: [notice('9', 'ready', { item: item('i9') }), notice('10', 'ready', { item: item('i10', SIGNED) })], affidavits: [affidavit('3', 'to_draft'), affidavit('8', 'ready')] })
+    const b = board({ notices: [notice('9', 'ready', { item: item('i9') }), notice('10', 'ready', { item: item('i10', SIGNED) })], affidavits: [affidavit('3', 'to_draft', { item: item('a3', { status: 'drafted' }) }), affidavit('8', 'ready')] })
     const onPress = vi.fn()
     const binPress = { 'notice:to_sign': { label: 'Remind Malachi of 1 paper ›', onPress, quiet: true }, 'affidavit:to_send': { label: lienBoardSendDoor(1)!.label, onPress, marks: { 'data-lien-board-send': 'yes' } } }
     render(<LienBoard board={b} isMobile={false} columnsOnly binPress={binPress} prints={{ notice: lienBoardNoticePrint({ toPrint: 2, waits: 1, printed: 0 }), affidavit: lienBoardAffidavitPrint({ ready: 0, held: 1, earlierForm: 0, stack: LIEN_BOARD_USUAL_STACK }), ...handlers() }} />)
