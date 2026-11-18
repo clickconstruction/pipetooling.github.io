@@ -18,6 +18,10 @@
  * signature: that bin holds those notices and carries the office's reminder, or the leader's door to sign them
  * (`lienBoardSignDoor`). The pair beside the find box still says *7 wait*.
  *
+ * Since v2.7783 the affidavits' press says nothing of what a property fact holds (the owner's pick of 2026-11-18): each
+ * held paper stands in *Ready to file* as a chip with a hold mark, one press from the fact. The line *1 held on a
+ * property fact · See it* repeated a chip already on the Board. The pair beside the find box still says *1 held*.
+ *
  * Pure: counts in, words out. The counts are the desk's own, the ones the run's door and By paper's print bar count
  * with, so the three cannot disagree. Every press names its act and its count (`countedLabel`), and is dead only when
  * nothing is ready. The notice press reads *Enter mail numbers* once every approved notice has printed, as the run's
@@ -115,18 +119,19 @@ export function lienBoardSendDoor(ready: number): { label: string } | null {
 }
 
 /**
- * Under the affidavits' column. `ready` is what the batch print takes (the desk's print plan: approved, on the short
- * form, every gate clear), `held` the approved papers a gate holds, `earlierForm` the approved papers on the earlier
- * form, which the batch leaves for their own Lien window. `stack` is the pages that print in front of the stack, as
- * the office ticked them on By paper's print bar: the usual stack draws no line (`lienBoardStackNote`). Null when no
- * approved affidavit is on the desk.
+ * The affidavits' print, on *Ready to file*. `ready` is what the batch print takes (the desk's print plan: approved, on
+ * the short form, every gate clear), `held` the approved papers a gate holds, `earlierForm` the papers in Ready to file
+ * on the earlier form, which the batch leaves for their own Lien window. A held paper has no line (v2.7783): it stands
+ * in the bin with its mark, and the bin's count leaves it out. A paper on the earlier form keeps its line, since its
+ * chip stands in the bin unmarked and the line is why the count is more than the press. `stack` is the pages that print
+ * in front of the stack, as the office ticked them on By paper's print bar: the usual stack draws no line
+ * (`lienBoardStackNote`). Null when no approved affidavit is on the desk.
  */
 export function lienBoardAffidavitPrint(c: { ready: number; held: number; earlierForm: number; stack: LienBoardPrintStack; shown?: boolean }): LienBoardPrintSide | null {
   const out = c.held + c.earlierForm
   if (c.ready <= 0 && out <= 0) return null
   // The print's own name, as By paper's bar says it (*Print 10 for notarization*): one act, one name.
   const label = `${countedLabel('Print', c.ready)}${c.shown && c.ready > 0 ? ' shown' : ''} for notarization`
-  const parts = [c.held > 0 ? `${c.held} held on a property fact` : '', c.earlierForm > 0 ? `${c.earlierForm} on the earlier form` : ''].filter(Boolean)
-  const left = parts.length ? { words: parts.join(' · '), door: plural(out, 'See it', 'See them') } : null
+  const left = c.earlierForm > 0 ? { words: `${c.earlierForm} on the earlier form`, door: plural(c.earlierForm, 'See it', 'See them') } : null
   return { kind: 'affidavit', bin: 'affidavit:ready', act: 'print_affidavits', label, dead: c.ready <= 0, short: { label, left: out > 0 ? `${out} held` : null }, left, note: c.ready > 0 ? lienBoardStackNote(c.stack) : null }
 }

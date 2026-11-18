@@ -2648,6 +2648,28 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(foot.querySelector('[data-lien-board-print-note]')).toBeNull()
   })
 
+  it('an approved affidavit a fact holds stands in Ready to file as a held chip, with no line and no Held bin, and the bin counts what the print takes (v2.7783)', async () => {
+    window.localStorage.removeItem('pt.lienHelpSheet.v1')
+    window.localStorage.removeItem('pt.lienNoticeRecord.v1')
+    window.localStorage.removeItem('pt.lienNoticeCopiesBatch.v1')
+    const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
+    const items = [ready('aff1', 'j650'), ready('aff2', 'j651'), ready('aff3', 'j652')]
+    const d = three(items)
+    // The legal description went missing on one job after its paper was approved: the approval stands, and the print leaves it.
+    const rows = d.affidavitRows.map((r) => (r.job_id === 'j652' ? { ...r, has_legal: false } : r))
+    d.affidavitRows = rows
+    d.affidavits = buildLienAffidavitQueue(rows, items, TODAY)
+    expect(d.affidavits.entries.find((e) => e.jobId === 'j652')!.pile).toBe('held')
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
+    await settle()
+    expect(document.querySelector('[data-lien-board-bin$=":held"]')).toBeNull()
+    const bin = document.querySelector('[data-lien-board-bin="affidavit:ready"]') as HTMLElement
+    expect(bin.querySelector('[data-lien-board-count]')!.textContent).toBe('2')
+    expect(within(bin).getByRole('button', { name: 'Print 2 for notarization' })).toBeTruthy()
+    expect(bin.querySelector('[data-lien-board-bin-line]')).toBeNull()
+    expect(Array.from(bin.querySelectorAll('[data-lien-board-chip]')).map((el) => [el.textContent, el.getAttribute('data-held')])).toEqual([['650', null], ['651', null], ['652‖', 'yes']])
+  })
+
   it('a reader who is not the lien office gets no print on the Board’s bins', async () => {
     const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
     renderWithProviders(<LienDesk {...baseProps} authRole="estimator" data={three([ready('aff1', 'j650'), ready('aff2', 'j651')])} initialKind="next" />)

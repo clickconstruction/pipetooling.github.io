@@ -1683,7 +1683,7 @@ export default function LienDesk({
   const counts = data?.queue.counts
   // By paper → Lien affidavits (v2.7585): what the list shows and its three batch presses live in `useLienDeskAffidavits`.
   const aff = useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, signerNameFor, onChanged, finding, findWords, findFactsFor, oneColumn, affPile, setAffPile, affHeldOnlyPicked, setAffHeldOnlyPicked, affSelectedJobId, openNone: offList?.kind === 'affidavit' })
-  const { affPrintPlanAll, affHeldOnly, affVisible, affSelected, affShown, affPrintPlan, affCount, affPilesShown, affSendPlanAll, affHelpSheet, affNoticeRecord, affNoticeCopies, affNoticeCopyCount, showHeldAffidavits, printReadyAffidavits } = aff
+  const { affPrintPlanAll, affHeldOnly, affVisible, affSelected, affShown, affPrintPlan, affCount, affPilesShown, affSendPlanAll, affHelpSheet, affNoticeRecord, affNoticeCopies, affNoticeCopyCount, printReadyAffidavits } = aff
   const retEntries = data?.retainage.entries ?? []
   // What the Retainage list shows and which row is open (`lienRetainageListView`, v2.7583).
   const { visible: retVisible, selected: retSelected, pilesShown: retPilesShown } = lienRetainageListView({ entries: retEntries, pile: retPile, finding, matches: (e, pileLabel) => lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [pileLabel]), findWords).ok, selectedJobId: retSelectedJobId, oneColumn, openNone: offList?.kind === 'retainage' })
@@ -1702,7 +1702,8 @@ export default function LienDesk({
     office && data
       ? {
           notice: lienBoardNoticePrint({ toPrint: (counts?.ready ?? 0) + retReady, waits: readyWaits, printed: counts?.printed ?? 0 }),
-          affidavit: lienBoardAffidavitPrint({ ready: affPrintPlan.ready.length, held: affPrintPlan.gated.length, earlierForm: affPrintPlan.held.length, stack: { helpSheet: affHelpSheet, noticeRecord: affNoticeRecord, noticeCopies: affNoticeCopies && affNoticeCopyCount > 0 }, shown: Boolean(affShown) }),
+          // A held paper stands in Ready to file as a marked chip (v2.7783), so the line under the bin counts only the papers in that pile on the earlier form.
+          affidavit: lienBoardAffidavitPrint({ ready: affPrintPlan.ready.length, held: affPrintPlan.gated.length, earlierForm: affPrintPlan.held.filter((e) => e.pile === 'ready').length, stack: { helpSheet: affHelpSheet, noticeRecord: affNoticeRecord, noticeCopies: affNoticeCopies && affNoticeCopyCount > 0 }, shown: Boolean(affShown) }),
         }
       : null
   const openWholeRun = () => {
@@ -1756,16 +1757,14 @@ export default function LienDesk({
     ...(office && serveDoor ? { 'affidavit:filed': { label: serveDoor, onPress: () => setServeOpen(true), title: 'Print the copies each filed lien owes, then enter their mail numbers' } } : null),
     ...(leaderBinPress ? { 'affidavit:awaiting': { label: approvingLot ? 'Approving…' : leaderBinPress.label, onPress: () => void approveTheLot(), filled: true, dead: leaderBinPress.dead || approvingLot, lines: leaderBinPress.line ? [{ key: 'late', words: leaderBinPress.line }] : [], marks: { 'data-lien-board-approve': 'yes' } } } : null),
   }
-  // What a print leaves out, by its door: the approved notices on By paper, where a row says it is unsigned; the held affidavits, narrowed to them.
+  // What a print leaves out, by its door: the approved notices on By paper, where a row says it is unsigned; the affidavits in
+  // Ready to file, where a row on the earlier form says so. A held affidavit has no line since v2.7783: its chip is its door.
   const onBoardPrintLeft = (side: LienBoardPrintSide) => {
     if (side.kind === 'notice') return showUnsignedNotices()
     setMobileListShown(false)
     setKind('affidavit')
-    if (affPrintPlan.gated.length > 0) showHeldAffidavits(true)
-    else {
-      setAffHeldOnlyPicked(false)
-      setAffPile('ready')
-    }
+    setAffHeldOnlyPicked(false)
+    setAffPile('ready')
   }
   // The affidavits' stack is not the usual one (the owner's call of 2026-11-18): the line's press puts the usual pages
   // back where it stands, the three ticks of By paper's print bar set as they start. The usual stack draws no line.
