@@ -5,6 +5,7 @@
  * Pure except the two obvious factories (`crypto.randomUUID` / today's date).
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { isDiscountRow } from './discountLine'
 import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
 
 export function materialRowHasUserContent(row: MaterialRow): boolean {
@@ -148,4 +149,43 @@ export function paymentRowsFromJob(job: JobWithDetails): PaymentRow[] {
     }))
   }
   return [newEmptyPaymentRow()]
+}
+
+// ---- What a row press leaves behind (the Job form map's second pass, cut 4) ----
+// The form's three row lists treat their last row differently, on purpose (map quirk #17): a charge is cleared in
+// place, a line item refuses to go, and an emptied payments list gets one fresh row (`paymentRowsAfterRemove`,
+// in `jobFormPaymentActions.ts`). The two adds each replace a lone blank placeholder, by two different tests.
+
+/** Remove an "Other job charges" row. The last row is never removed: it is cleared in place, keeping its id. */
+export function materialRowsAfterRemove(prev: MaterialRow[], id: string): MaterialRow[] {
+  if (prev.length > 1) return prev.filter((r) => r.id !== id)
+  if (prev.length === 1 && prev[0]?.id === id) {
+    const r = prev[0]
+    return [{ ...r, description: '', amount: 0, charged_on: null, memo: null }]
+  }
+  return prev
+}
+
+/** Remove a line item. The last line is never removed, whatever it holds. */
+export function fixtureRowsAfterRemove(prev: FixtureRow[], id: string): FixtureRow[] {
+  return prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)
+}
+
+/**
+ * Add a discount row. When the only row is a blank placeholder (no name, no price, not itself a discount) the
+ * discount takes its place; a count or a scope note typed on that row does not save it.
+ */
+export function fixtureRowsWithDiscountRow(prev: FixtureRow[], row: FixtureRow): FixtureRow[] {
+  const only = prev.length === 1 ? prev[0] : undefined
+  if (only && !(only.name ?? '').trim() && only.line_unit_price == null && !isDiscountRow(only)) return [row]
+  return [...prev, row]
+}
+
+/**
+ * Add the segment generator's lines. A lone row nobody touched (`fixtureRowHasUserContent`: no name, no price,
+ * no scope note, a count of 1) is replaced instead of kept above them.
+ */
+export function fixtureRowsWithGeneratedLines(prev: FixtureRow[], rows: FixtureRow[]): FixtureRow[] {
+  const base = prev.length === 1 && prev[0] && !fixtureRowHasUserContent(prev[0]) ? [] : prev
+  return [...base, ...rows]
 }

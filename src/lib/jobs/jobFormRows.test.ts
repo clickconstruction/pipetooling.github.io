@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   fixtureRowHasUserContent,
+  fixtureRowsAfterRemove,
+  fixtureRowsWithDiscountRow,
+  fixtureRowsWithGeneratedLines,
   materialRowHasUserContent,
+  materialRowsAfterRemove,
   newEmptyPaymentRow,
   newJobFormHasBlockingContent,
   newJobImportButtonState,
@@ -89,5 +93,136 @@ describe('newJobImportButtonState', () => {
   it('never renders on Edit Job', () => {
     expect(newJobImportButtonState({ mode: 'edit', isEditing: true, blocked: false }).visible).toBe(false)
     expect(newJobImportButtonState({ mode: 'new', isEditing: true, blocked: false }).visible).toBe(false)
+  })
+})
+
+describe('materialRowsAfterRemove: an Other job charges row', () => {
+  it('with more than one row, the pressed row goes and the rest keep their order', () => {
+    const rows = [material({ id: 'a', description: 'Permit', amount: 125 }), material({ id: 'b', description: 'Dump fee', amount: 60 }), material({ id: 'c' })]
+    expect(materialRowsAfterRemove(rows, 'b').map((r) => r.id)).toEqual(['a', 'c'])
+  })
+
+  it('the last row is cleared in place, never removed: it keeps its id and loses its words, amount, date and memo', () => {
+    const only = material({ id: 'a', description: 'Permit', amount: 125, charged_on: '2026-11-03', memo: 'city hall' })
+    expect(materialRowsAfterRemove([only], 'a')).toEqual([{ id: 'a', description: '', amount: 0, charged_on: null, memo: null }])
+  })
+
+  it('an id that is not the last row leaves the last row as it is, the same list handed back', () => {
+    const rows = [material({ id: 'a', description: 'Permit', amount: 125 })]
+    expect(materialRowsAfterRemove(rows, 'zz')).toBe(rows)
+  })
+
+  it('an id that is not on a longer list removes nothing', () => {
+    const rows = [material({ id: 'a' }), material({ id: 'b' })]
+    expect(materialRowsAfterRemove(rows, 'zz').map((r) => r.id)).toEqual(['a', 'b'])
+  })
+
+  it('an empty list stays empty', () => {
+    const rows: MaterialRow[] = []
+    expect(materialRowsAfterRemove(rows, 'a')).toBe(rows)
+  })
+
+  it('two rows down to one, then the one cleared: the list never drops below a row', () => {
+    const two = [material({ id: 'a', description: 'Permit', amount: 125 }), material({ id: 'b', description: 'Dump fee', amount: 60 })]
+    const one = materialRowsAfterRemove(two, 'a')
+    expect(one.map((r) => r.id)).toEqual(['b'])
+    const cleared = materialRowsAfterRemove(one, 'b')
+    expect(cleared).toHaveLength(1)
+    expect(materialRowHasUserContent(cleared[0]!)).toBe(false)
+  })
+})
+
+describe('fixtureRowsAfterRemove: a line item', () => {
+  it('with more than one line, the pressed line goes', () => {
+    const rows = [fixture({ id: 'a', name: 'Rough-in' }), fixture({ id: 'b', name: 'Final' })]
+    expect(fixtureRowsAfterRemove(rows, 'a').map((r) => r.id)).toEqual(['b'])
+  })
+
+  it('the last line is never removed, whatever it holds: the same list handed back', () => {
+    const rows = [fixture({ id: 'a', name: 'Rough-in', line_unit_price: 1200 })]
+    expect(fixtureRowsAfterRemove(rows, 'a')).toBe(rows)
+    const blank = [fixture({ id: 'a' })]
+    expect(fixtureRowsAfterRemove(blank, 'a')).toBe(blank)
+  })
+
+  it('unlike a charge, the last line is not cleared either', () => {
+    const rows = [fixture({ id: 'a', name: 'Rough-in', line_unit_price: 1200 })]
+    expect(fixtureRowsAfterRemove(rows, 'a')[0]).toMatchObject({ name: 'Rough-in', line_unit_price: 1200 })
+  })
+
+  it('an id that is not on the list removes nothing', () => {
+    const rows = [fixture({ id: 'a' }), fixture({ id: 'b' })]
+    expect(fixtureRowsAfterRemove(rows, 'zz').map((r) => r.id)).toEqual(['a', 'b'])
+  })
+})
+
+describe('fixtureRowsWithDiscountRow: − Add discount', () => {
+  const discount = fixture({ id: 'd', line_kind: 'discount' })
+
+  it('takes the place of a lone blank placeholder', () => {
+    expect(fixtureRowsWithDiscountRow([fixture({ id: 'a' })], discount)).toEqual([discount])
+  })
+
+  it('goes under the lines when the only line has a name or a price', () => {
+    const named = fixture({ id: 'a', name: 'Rough-in' })
+    expect(fixtureRowsWithDiscountRow([named], discount).map((r) => r.id)).toEqual(['a', 'd'])
+    const priced = fixture({ id: 'a', line_unit_price: 0 })
+    expect(fixtureRowsWithDiscountRow([priced], discount).map((r) => r.id)).toEqual(['a', 'd'])
+  })
+
+  it('a name of spaces is still a blank placeholder', () => {
+    expect(fixtureRowsWithDiscountRow([fixture({ id: 'a', name: '   ' })], discount)).toEqual([discount])
+  })
+
+  it('a count or a scope note alone does not save the placeholder: this test reads name and price only', () => {
+    expect(fixtureRowsWithDiscountRow([fixture({ id: 'a', count: 3 })], discount)).toEqual([discount])
+    expect(fixtureRowsWithDiscountRow([fixture({ id: 'a', line_description: 'second floor' })], discount)).toEqual([discount])
+  })
+
+  it('a lone discount is not a placeholder: a second discount goes under it', () => {
+    const first = fixture({ id: 'd1', line_kind: 'discount' })
+    expect(fixtureRowsWithDiscountRow([first], discount).map((r) => r.id)).toEqual(['d1', 'd'])
+  })
+
+  it('with several lines it goes last, blank ones included', () => {
+    const rows = [fixture({ id: 'a' }), fixture({ id: 'b' })]
+    expect(fixtureRowsWithDiscountRow(rows, discount).map((r) => r.id)).toEqual(['a', 'b', 'd'])
+  })
+
+  it('on an empty list it is the only row', () => {
+    expect(fixtureRowsWithDiscountRow([], discount)).toEqual([discount])
+  })
+})
+
+describe('fixtureRowsWithGeneratedLines: the segment generator’s Add to job', () => {
+  const made = [fixture({ id: 'g1', name: 'Rough-in', line_unit_price: 1200 }), fixture({ id: 'g2', name: 'Final', line_unit_price: 800 })]
+
+  it('replaces a lone row nobody touched', () => {
+    expect(fixtureRowsWithGeneratedLines([fixture({ id: 'a' })], made).map((r) => r.id)).toEqual(['g1', 'g2'])
+  })
+
+  it('keeps a lone row that holds anything: a name, a price, a scope note or a count other than 1', () => {
+    for (const touched of [fixture({ id: 'a', name: 'Rough-in' }), fixture({ id: 'a', line_unit_price: 0 }), fixture({ id: 'a', line_description: 'second floor' }), fixture({ id: 'a', count: 3 })]) {
+      expect(fixtureRowsWithGeneratedLines([touched], made).map((r) => r.id)).toEqual(['a', 'g1', 'g2'])
+    }
+  })
+
+  it('its placeholder test is wider than the discount’s: a count of 3 keeps the row here and loses it there', () => {
+    const counted = fixture({ id: 'a', count: 3 })
+    expect(fixtureRowsWithGeneratedLines([counted], made)).toHaveLength(3)
+    expect(fixtureRowsWithDiscountRow([counted], fixture({ id: 'd', line_kind: 'discount' }))).toHaveLength(1)
+  })
+
+  it('a lone blank discount row has no content of its own, so the generator replaces it', () => {
+    expect(fixtureRowsWithGeneratedLines([fixture({ id: 'd', line_kind: 'discount' })], made).map((r) => r.id)).toEqual(['g1', 'g2'])
+  })
+
+  it('with several rows the lines go under them, blank ones kept', () => {
+    const rows = [fixture({ id: 'a' }), fixture({ id: 'b' })]
+    expect(fixtureRowsWithGeneratedLines(rows, made).map((r) => r.id)).toEqual(['a', 'b', 'g1', 'g2'])
+  })
+
+  it('on an empty list the lines are the list', () => {
+    expect(fixtureRowsWithGeneratedLines([], made)).toEqual(made)
   })
 })

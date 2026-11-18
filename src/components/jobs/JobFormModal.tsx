@@ -151,7 +151,10 @@ import type {
 import { pickDefaultServiceTypeId, visibleServiceTypesForJobForm } from '../../lib/jobs/jobFormServiceTypes'
 import { pickableServiceTypes } from '../../lib/serviceTypePickers'
 import {
-  fixtureRowHasUserContent,
+  fixtureRowsAfterRemove,
+  fixtureRowsWithDiscountRow,
+  fixtureRowsWithGeneratedLines,
+  materialRowsAfterRemove,
   newEmptyPaymentRow,
   newJobFormHasBlockingContent,
   paymentRowsFromJob,
@@ -773,12 +776,8 @@ export default function JobFormModal({
 
   function addGeneratedSegmentsToJob(lines: SegmentGeneratorPayloadLine[]) {
     if (lines.length > 0) {
-      setFixtures((prev) => {
-        const rows = lines.map((l) => ({ id: crypto.randomUUID(), ...l, line_description: '' }))
-        // A lone untouched placeholder row is replaced instead of kept above the result.
-        const base = prev.length === 1 && prev[0] && !fixtureRowHasUserContent(prev[0]) ? [] : prev
-        return [...base, ...rows]
-      })
+      // A lone untouched placeholder row is replaced instead of kept above the result (`fixtureRowsWithGeneratedLines`).
+      setFixtures((prev) => fixtureRowsWithGeneratedLines(prev, lines.map((l) => ({ id: crypto.randomUUID(), ...l, line_description: '' }))))
     }
     setSegmentGeneratorOpen(false)
   }
@@ -2089,16 +2088,8 @@ export default function JobFormModal({
   }
 
   function removeMaterialRow(id: string) {
-    setMaterials((prev) => {
-      if (prev.length > 1) {
-        return prev.filter((r) => r.id !== id)
-      }
-      if (prev.length === 1 && prev[0]?.id === id) {
-        const r = prev[0]
-        return [{ ...r, description: '', amount: 0, charged_on: null, memo: null }]
-      }
-      return prev
-    })
+    // The last charge row is cleared in place, never removed (`materialRowsAfterRemove`).
+    setMaterials((prev) => materialRowsAfterRemove(prev, id))
   }
 
   function addFixtureRow() {
@@ -2135,12 +2126,7 @@ export default function JobFormModal({
 
   /** Discount rows (v2.3252+): a typed row that reduces the work above it; the placeholder row is reused when it is the only, empty one. */
   function addDiscountRow() {
-    setFixtures((prev) => {
-      const row = newDiscountFixtureRow(crypto.randomUUID())
-      const only = prev.length === 1 ? prev[0] : undefined
-      if (only && !(only.name ?? '').trim() && only.line_unit_price == null && !isDiscountRow(only)) return [row]
-      return [...prev, row]
-    })
+    setFixtures((prev) => fixtureRowsWithDiscountRow(prev, newDiscountFixtureRow(crypto.randomUUID())))
   }
 
   function moveFixtureRowInList(id: string, direction: 'up' | 'down') {
@@ -2153,7 +2139,8 @@ export default function JobFormModal({
       delete next[id]
       return next
     })
-    setFixtures((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)))
+    // The last line item is never removed (`fixtureRowsAfterRemove`).
+    setFixtures((prev) => fixtureRowsAfterRemove(prev, id))
   }
 
   async function handleCreateCustomerFromJob(customerType: 'residential' | 'commercial') {
