@@ -47,6 +47,10 @@ Above **Outstanding by person** sits a map called **Where the open tasks are**. 
 - Tap a dot to read who has what there. {{button:blue|Directions}} takes you to the place.
 - A line under the map counts the open tasks with no place. They are still on the board below.
 
+The map is a Google map. **Satellite** shows the ground from above with the street names on it. **Streets** shows the road map.
+
+Tap **Hide map** to fold the map away. Your device remembers, and **Show map** brings it back.
+
 The map shows where the tasks are. It does not show where a person is, and it asks no phone for its location.
 
 Use it before you hand out the day. Two people sent to the same corner show up as one navy dot.
