@@ -185,7 +185,7 @@ describe('the open thread on a Pipeline card (Mobile cards)', () => {
     const toggle = vi.fn()
     const job = makeJob({ job_name: 'Ellison kitchen' })
     renderWithProviders(
-      <JobsStagesCardList {...makeStagesCardListProps({ jobList: [job], expandedJobThreadId: job.id, jobThreadFullscreen: fullscreen, toggleStagesJobThreadExpanded: toggle })} />,
+      <JobsStagesCardList {...makeStagesCardListProps({ jobList: [job] }, { expandedJobThreadId: job.id, jobThreadFullscreen: fullscreen, toggleStagesJobThreadExpanded: toggle })} />,
     )
     await settle()
     return toggle

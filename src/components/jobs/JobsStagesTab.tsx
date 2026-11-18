@@ -135,6 +135,7 @@ import { stripWeekStartYmd } from '../../lib/jobs/stagesScheduleStrip'
 import { phoneBillWords } from '../../lib/jobs/phoneBillWords'
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import JobsStagesTable from './JobsStagesTable'
+import type { StagesTableShared, StagesUnifiedTableShared } from './stagesTableShared'
 import JobsStagesUnifiedTable from './JobsStagesUnifiedTable'
 import JobsStagesCardList, { JobsStagesUnifiedCardList } from './JobsStagesCardList'
 import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
@@ -2664,11 +2665,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    * page's search/exclusion filters so a filtered-out job still gets its row.
    */
   /**
-   * The props every section table shares (the prop-bundle seam, v2.3538): built once here,
-   * spread into the six section call sites and the follow-ups deck's rows. Per-section props
-   * (rows, action labels, section flags) stay at each call site and win over the spread.
+   * What every section list shares (the prop-bundle seam, v2.3538): built once here and handed
+   * whole, as the one prop `shared` (the map's step 10), to the section call sites and the follow-ups
+   * deck's rows. Per-section props (rows, action labels, section flags) stay at each call site.
    */
-  const stagesTableShared = {
+  const stagesTableShared: StagesTableShared = {
     stagesSortMode,
     stagesJobFlashId,
     stagesEditMode: stagesEditModeActive,
@@ -2724,7 +2725,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     loadJobs,
     jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
     onOpenJobContract: openContractChip,
-    legalMatterByJobId: legalMatters.byJobId,
     propertyKindByJobId: propertyKinds.byJobId,
     onPropertyKindSaved: propertyKinds.setKind,
     propertyLinkByJobId: propertyKinds.linkByJobId,
@@ -2828,7 +2828,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     onClearSearch: () => setStagesSearchQuery(''),
   })
   /** The unified (job + invoice row) tables' extras on top of `stagesTableShared`. */
-  const stagesUnifiedTableShared = {
+  const stagesUnifiedTableShared: StagesUnifiedTableShared = {
     ...stagesTableShared,
     onOpenLienRelease: openLienReleaseFromRow,
     lienReleaseJobIds,
@@ -3056,7 +3056,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           hideHeader
           jobList={[job]}
           {...stagesSectionActionProps.waiting}
-          {...stagesTableShared}
+          shared={stagesTableShared}
         />
       ) }
     }
@@ -3066,7 +3066,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           hideHeader
           jobList={[job]}
           {...stagesSectionActionProps.working}
-          {...stagesTableShared}
+          shared={stagesTableShared}
         />
       ) }
     }
@@ -3078,7 +3078,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           hideHeader
           rows={rows}
           {...stagesSectionActionProps.readyToBill}
-          {...stagesUnifiedTableShared}
+          shared={stagesUnifiedTableShared}
         />
       ) }
     }
@@ -3090,7 +3090,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           hideHeader
           rows={rows}
           {...stagesSectionActionProps.collections}
-          {...stagesUnifiedTableShared}
+          shared={stagesUnifiedTableShared}
         />
       ) }
     }
@@ -3102,7 +3102,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           hideHeader
           rows={rows}
           {...stagesSectionActionProps.billed}
-          {...stagesUnifiedTableShared}
+          shared={stagesUnifiedTableShared}
         />
       ) }
     }
@@ -3902,7 +3902,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 {sectionShown('waiting') && !stagesSearchActive && !sectionMerged('waiting') && sectionBodyLoading('Waiting jobs')}
                 {sectionShown('waiting') && (stagesSearchActive || sectionMerged('waiting')) && (
                   <StagesSectionList
-                    {...stagesTableShared}
+                    shared={stagesTableShared}
                     jobList={waiting}
                     phoneRows={phoneRowsFor('waiting')}
                     onToggleProgressSort={onToggleProgressSort}
@@ -3964,7 +3964,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 {sectionShown('working') && !stagesSearchActive && !sectionMerged('working') && sectionBodyLoading('Working jobs')}
                 {sectionShown('working') && (stagesSearchActive || sectionMerged('working')) && (
                   <StagesSectionList
-                    {...stagesTableShared}
+                    shared={stagesTableShared}
                     jobList={workingShown}
                     phoneRows={phoneRowsFor('working')}
                     onToggleProgressSort={onToggleProgressSort}
@@ -4016,7 +4016,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 {sectionShown('readyToBill') && !stagesSearchActive && !sectionMerged('readyToBill') && sectionBodyLoading('Ready to Bill')}
                 {sectionShown('readyToBill') && (stagesSearchActive || sectionMerged('readyToBill')) && (
                   <StagesUnifiedSectionList
-                    {...stagesUnifiedTableShared}
+                    shared={stagesUnifiedTableShared}
                     rows={readyToBillRows}
                     phoneRows={phoneRowsFor('ready_to_bill')}
                     onToggleProgressSort={onToggleProgressSort}
@@ -4247,7 +4247,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                                 {sectionShown('billed') && !stagesSearchActive && !sectionMerged('billed') && sectionBodyLoading('Billed Awaiting Payment')}
                 {sectionShown('billed') && (stagesSearchActive || sectionMerged('billed')) && (
                   <StagesUnifiedSectionList
-                    {...stagesUnifiedTableShared}
+                    shared={stagesUnifiedTableShared}
                     rows={billedListRows}
                     phoneRows={phoneRowsFor('billed')}
                     onToggleProgressSort={onToggleProgressSort}
@@ -4326,7 +4326,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       </p>
                     ) : (
                       <StagesUnifiedSectionList
-                        {...stagesUnifiedTableShared}
+                        shared={stagesUnifiedTableShared}
                         rows={collectionsRows}
                         phoneRows={phoneRowsFor('collections')}
                         onToggleProgressSort={onToggleProgressSort}
@@ -4351,7 +4351,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                           <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>given up on — in no total, on no lien clock, still on the books</span>
                         </div>
                         <StagesUnifiedSectionList
-                          {...stagesUnifiedTableShared}
+                          shared={stagesUnifiedTableShared}
                           rows={uncollectibleRows}
                           phoneRows={phoneRowsFor('collections')}
                           onToggleProgressSort={onToggleProgressSort}
@@ -4441,7 +4441,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       </p>
                     ) : null}
                     <StagesSectionList
-                      {...stagesTableShared}
+                      shared={stagesTableShared}
                       jobList={paid}
                       offerHazmatFee={stageOffersHazmatFee('paid')}
                       onToggleProgressSort={onToggleProgressSort}
