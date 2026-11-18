@@ -10,7 +10,7 @@ covers:
   - src/components/estimates/EstimatesListPage.tsx
 mapped_at: e21d65161b
 audience: Developers, AI Agents
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 ---
 
 > **Line numbers are exact as of `e21d65161b`** (from the `npm run map -- src/pages/Estimates.tsx` fact sheet) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map` before trusting a range.
@@ -59,7 +59,7 @@ Each lists: the file and its anchor (as of `e21d65161b`), what it **owns**, what
 |---|---|---|---|---|---|
 | Router | `Estimates()` 1778–1782 | 5 | no | the page smoke | nothing |
 | List (Pipeline + Ledger) | `EstimatesListPage.tsx` | 739 | yes — all 14 of its states | page smoke (2 cases), `estimatePipelineRefresh`, `estimateListRows`, `EstimateListTable.render` | `useEstimateThreadNotes` has no test |
-| Detail: the engine | `useEstimateDetailData.ts` | 721 | yes — the row, the form cluster, the reads, `saving` / `sending`, `lastAcceptUrl` | page smoke (8 engine cases), `estimateDetailHydration`, `estimateDraftPersist`, `useJobFormAutosaveSlice.*` | a quiet reload (the owner's call) |
+| Detail: the engine | `useEstimateDetailData.ts` | 833 | yes — the row, the form cluster, the reads, `saving` / `sending`, `lastAcceptUrl` | page smoke (8 engine cases, 9 on a save's read-back), `estimateDetailHydration`, `estimateQuietReload`, `estimateDraftPersist`, `useJobFormAutosaveSlice.*` | nothing on the order; a save's reload is quiet since v2.7748 |
 | Detail: wiring | `EstimateDetail` 226–1089 | 864 | 15 window and screen states | page smoke | the send flow's handlers could join a hook of their own |
 | Detail: step rail + customer view | `railData` 538–565 · `handleRailStepClick` 567–580 · `railStepDot` 583–591 · render 1098–1109, 1206–1252 | ~110 | `railFlashStep`, `customerViewOn` | `estimateDraftSteps` | stays |
 | Detail: send flow | `sendToCustomer` 830–889 · `sendEstimateEmailAnswer` 897–929 · `sendEstimateEmail` 932–940 · `tellSheet` 1053–1079 | ~130 | `tellEstimate` | `sendEstimateIo` (15), `estimateSendPlan` (12), page smoke (a change order's send) | the Tell sheet's path has no page case |
@@ -72,7 +72,7 @@ Each lists: the file and its anchor (as of `e21d65161b`), what it **owns**, what
 | ↳ delivery | `EstimateDeliverySection.tsx` | 177 | no (two memos) | its render test (5) | — |
 | Detail: sent side | `EstimateSentHeader.tsx` + `EstimateSentView.tsx` (mounted 1644–1672) + `EstimateCustomerActivitySection.tsx` over `useEstimateSentActions` | 103 + 521 + 118 + 264 | the hook owns six busy and window states | page smoke (7 cases), each control's render test | — |
 | Detail: customer experience | `EstimateCustomerExperienceSection.tsx` + `EstimateCxOverrideFields.tsx`; memos 594–605, 702–722, 756–798 stay | 356 + 120 | no | `estimateCxOverrideSections` (14), `EstimateCxOverrideFields.render` (5), page smoke (3) | — |
-| Detail: windows | create customer 1709–1751, Create job, the customer snapshot | ~70 | their open state is the page's | `CreateJobFromEstimateModal.render` | move with a quiet reload |
+| Detail: windows | create customer 1709–1751, Create job, the customer snapshot | ~70 | their open state is the page's | `CreateJobFromEstimateModal.render` | may move now: a save no longer unmounts them |
 
 ---
 
@@ -89,10 +89,11 @@ Each lists: the file and its anchor (as of `e21d65161b`), what it **owns**, what
 
 - **What it is:** every statement of `EstimateDetail` that loads or saves, moved whole and in the page's own order (v2.7627), so the effects fire as they did. The page calls it first and destructures 72 names.
 - **Owns:** `row`, `loading`; the draft form cluster (`title`, `terms`, `lines`, `estimateOptions` / `viewedOptionKey` / `previewSelectedOptionKeys`, `coFields`, `customerId`, `customerSearch`, `sendEmailOverride`, `validUntil` + preset, `forAddress`, `linkedProjectId`, `internalNotes`, the attachment pair with Check link's answer, `acceptHeaderBrand`, `cxOverrideFields`, `acceptNotifyUserIds`); the `customers` cache; `catalogLineItems`, `notifyUserOptions`, `acceptNotifyResolvedUsers`, `projectsForPicker`, `appCxSettings`, the customer's events, the signature's signed URL; `saving`, `sending`, `lastAcceptUrl`.
-- **The loader:** `load({ refresh? })` 268 — reads `estimates` (`*, jobs_ledger(hcp_number)`) by `id` or `estimate_number`; invalid or missing → toast + `/estimates`; UUID → number redirect; stamps `freshDraftRowIdRef`; sets the form from `estimateFormFromRow` (`lib/estimates/estimateDetailHydration.ts`); reads the master technicians for a draft that never had a notify list, the locked list's names on a sent row, then the **whole `customers` table**. `{ refresh: true }` skips the `loading` flag, so the page and the Tell sheet stay mounted.
-- **The save:** `buildDraftPersistPayload` 467 (the hand-off to the tested `buildEstimateDraftPersistPayload`), the held dates, `saveDraft({ quiet?, skipReload? })` 503, the customer-change autosave 544, `useJobFormAutosaveSlice` 566, the fresh-draft leave rule 581, the flush when the tab hides 626.
+- **The loader:** `load({ refresh? })` 286 — reads `estimates` (`*, jobs_ledger(hcp_number)`) by `id` or `estimate_number`; invalid or missing → toast + `/estimates`; UUID → number redirect; stamps `freshDraftRowIdRef`; sets the form from `estimateFormFromRow` (`lib/estimates/estimateDetailHydration.ts`); reads the master technicians for a draft that never had a notify list, the locked list's names on a sent row, then the **whole `customers` table**. `{ refresh: true }` skips the `loading` flag, so the page and the Tell sheet stay mounted.
+- **A save's read-back:** `reloadAfterSave(sent, rowId)` 543 (v2.7748) — reads the same row by `id` and the same `customers` with the page up, builds the row's form (`estimateServerFormFromRow`), and sets only the fields `reseedEstimateFormAfterSave` moved (`applyEditorForm` 507): the row's value where nothing was typed since the save, the typing where something was, a half-typed date kept, the edited option and the customer box's text kept. Then it hands the autosave its baseline: `savedBaselineJson` is the slice's JSON for one commit, a layout effect (681) calls the slice's own `markSavedNow`, and the screen's JSON is back before the slice compares. A row no longer a draft takes `load({ refresh: true })`; a missing row goes to the list; a read that fails leaves the editor as typed and says the save landed. A read that lands after the address bar moved to another estimate is dropped (`routeSegmentRef`).
+- **The save:** `screenForm` 473 (the form cluster as one value), `buildDraftPersistPayload(form)` 503 (the hand-off to the tested `estimateDraftPayloadOfForm`, over `buildEstimateDraftPersistPayload`), the held dates, `saveDraft({ quiet?, skipReload? })` 605, the customer-change autosave 647, `useJobFormAutosaveSlice` 671, the fresh-draft leave rule 693, the flush when the tab hides 735.
 - **Supabase:** `estimates` (SELECT; UPDATE and the leave rule's DELETE, both `.eq('status','draft')`), `users` (five reads), `customers`, `projects`, `app_settings`, `estimate_customer_events`, `estimate_catalog_items` (via `fetchEstimateCatalogLive`), storage `estimate-acceptor-signatures`; edge `check-estimate-attachment-url` (via `checkGoogleDriveAttachmentUrl`).
-- **Must keep:** the three things in its header comment — one payload for the save and the autosave's baseline; `saveDraft`'s reload and the autosave's skip of it; the leave rule keyed on the route. And the statement order: a reordered effect is a behaviour change.
+- **Must keep:** the three things in its header comment — one payload for the save, the autosave's dirty check and the baseline a save hands it; `saveDraft`'s read-back and the autosave's skip of it; the leave rule keyed on the route. And the statement order: a reordered effect is a behaviour change.
 
 ### The page's wiring — `EstimateDetail` 226–1089
 
@@ -100,7 +101,7 @@ Each lists: the file and its anchor (as of `e21d65161b`), what it **owns**, what
 - **Effects (9):** `?createJob=1` 312–319; the two resets on a customer change 351, 379; the page's half of the reset on a new estimate 356–359; the `#estimate-job` / `#extend-good-through` scroll 361–377; the title editor's focus 383; the recents 388; the catalog icon 396; the gate's highlight 461.
 - **Memos that stay because several pieces read them:** `customerAttachmentPreview` 470, `syncedEstimateOptions` 485, `railData` 538, `previewEmailTo` 594, `customerAcceptUrl` 611, `acceptancePreviewForLine` 619, `rowOfferedOptions` 631, `acceptanceDocHeaderBrand` 635, `staffResolvedExperience` 702, `buildEstimatePdf` / `estimatePdfFiling` 730–753, `customerEmailPreview` 756, `cxTemplateDefaults` 795.
 - **Handlers:** the customer's (`openDraftCustomerForEdit` 400, `requestCustomerFirst` 440, `handleSelectCustomer` 800, `handleCustomerSearchChange` 814); the option moves 493–520, which apply `lib/estimates/estimateOptionsEditor.ts`; the rail's; the send flow's; `publishCoToBidRoom` 952–992 (`pickBidRoomForChangeOrder`, save, RPC `publish_co_to_bid_room`); `deleteDraft` 994; `updateLine` 1010; `applyFromCatalogEntry` 1028.
-- **The loading return** 1081–1089 draws only the keyed `tellSheet` and *Loading…*: it unmounts everything else.
+- **The loading return** 1081–1089 draws only the keyed `tellSheet` and *Loading…*: it unmounts everything else. Only `load()` reaches it: the first open, the sent side's four presses, the read after Publish to bid room and after Create job.
 
 ### The send flow — `sendToCustomer` 830–889
 
@@ -138,7 +139,7 @@ Each lists: the file and its anchor (as of `e21d65161b`), what it **owns**, what
 
 **Within the detail page** the substrate is the engine hook's return. The draft form cluster is a draft-only substrate: the sent side reads `row` and never the cluster.
 
-**The page blanks on reload, and that shapes every piece.** `EstimateDetail` returns *Loading…* while `load()` runs, and Save draft runs `load()`. Everything under it unmounts on every save. So no moved piece owns state or a read it must keep: the state is the page's or the hook's, handed in. See [What is left](#what-is-left).
+**A save keeps the page up (v2.7748); two things still unmount the editor.** `EstimateDetail` returns *Loading…* while `load()` runs, and until v2.7748 Save draft ran `load()`, so no moved piece owns state or a read it must keep: the state is the page's or the hook's, handed in. A save now reads the row back without the flag (`reloadAfterSave`), so a piece may own what only it uses across a save. What still unmounts: `load()` itself, which no draft press but Publish to bid room reaches, and `EstimateDraftCustomerGate`, which returns its children bare with a customer and inside two wrappers without one, so everything inside it is new when a draft gains or loses its customer. The customer section sits outside the gate. See [What is left](#what-is-left).
 
 ### Route and URL state
 
@@ -186,6 +187,7 @@ The pure logic the surface stands on, all with tests. The five marked 2026-11-17
 | `lib/estimates/estimateOptionsEditor.ts` (2026-11-17) | switch, add, remove, patch and set-kind over the editor's option state |
 | `lib/estimates/estimateDetailHydration.ts` (2026-11-17) | the form a row opens as, the notify default, the customer and Send to boxes, the opening title |
 | `lib/estimates/estimateCxOverrideSections.ts` (2026-11-17) | the override editor's fields and its three rules |
+| `lib/estimates/estimateQuietReload.ts` (2026-11-18) | the editor's form as one value, the form a row opens as, the payload of a form, and what the editor holds after a save reads the row back |
 | `lib/estimates/estimateDraftPersist.ts` | the draft's save payload and the held dates |
 | `lib/estimates/estimateDraftLines.ts` | a line's math, the stub line, a catalog pick |
 | `lib/estimates/estimateOptions.ts` | options: the default selection, the star, kinds, the freeze on acceptance |
@@ -211,7 +213,7 @@ Still with no test of their own: `addCalendarDaysYmd`, `formatEstimateListUpdate
 3. **The accept URL is session-scoped by design**: `lastAcceptUrl` + sessionStorage, never the database. `customerAcceptUrl` is null in another session and for any status but sent or accepted.
 4. **A draft's accept-notify default is self + every master technician**, only when the column is `NULL`; a failed read falls back to self alone. A sent row shows the locked list.
 5. **Title auto-derivation is conditional** (`shouldReplaceTitleOnCustomerChange`): a customer pick overwrites only a generic title or the previous customer's default; `load()` applies the same to a generic-titled draft with a customer. The payload persists `title.trim()` or the kind's fallback.
-6. **Two autosave paths.** (a) A customer-link change: `prevCustomerIdForAutosave` with an `undefined` first-run sentinel, `saveDraft({ quiet: true })` **with** a reload, deps deliberately short. (b) The debounced slice: 1500 ms over the payload's JSON, `saveDraft({ quiet: true, skipReload: true })`, `jobId` gated on `!loading` so the baseline is post-hydration, off while saving, sending or the attachment URL is invalid, flushed when the tab hides.
+6. **Two autosave paths.** (a) A customer-link change: `prevCustomerIdForAutosave` with an `undefined` first-run sentinel, `saveDraft({ quiet: true })` **with** its read-back, deps deliberately short. (b) The debounced slice: 1500 ms over the payload's JSON, `saveDraft({ quiet: true, skipReload: true })`, `jobId` gated on `!loading` so the baseline is post-hydration, off while saving, sending or the attachment URL is invalid, flushed when the tab hides.
 7. **A half-typed date is held, not saved** (v2.4246): the payload leaves it out, Save draft says so every time and the autosave once per box (`toldHeldDraftDatesRef`), and neither Send nor Publish goes out past one.
 8. **A draft's `valid_until` defaults to today + 30** with that preset lit; a non-draft never shows presets.
 9. **Attachment and CX duality**: a draft edits the live columns; a sent row reads the frozen `customer_attachment_sent` / `customer_experience_sent`.
@@ -234,7 +236,8 @@ Still with no test of their own: `addCalendarDaysYmd`, `formatEstimateListUpdate
 26. **The events refresh on window focus** runs only while sent or accepted; the loader itself also runs for declined.
 27. **The reset on a new estimate is two effects**: the engine clears the form's pieces, and the page's own effect (356–359) closes its title editor and customer window. Both key on `routeSegment`.
 28. **Two empty lines on a sent estimate are `EmptyState`** (v2.7613): *No staff email recipients were set for this quote.* and *No link views or acceptance events recorded yet.* `check:empty-words` reads a moved line as a written one.
-29. **Check link's answer outlives a Save draft**: its state is the engine's, not the fieldset's, because the save's reload unmounts the fieldset.
+29. **Check link's answer outlives a Save draft**: its state is the engine's, not the fieldset's, because until v2.7748 the save's reload unmounted the fieldset. It still outlives a customer cleared or picked, which remounts the fieldset through the gate.
+30. **A save's read-back never moves a field typed since the save** (v2.7748), and it keeps three things `load()` resets: the option being edited, the Page preview's ticks, and a date caught half typed (with a change order's four lines). `estimateQuietReload.test` holds each.
 
 ---
 
@@ -242,7 +245,7 @@ Still with no test of their own: `addCalendarDaysYmd`, `formatEstimateListUpdate
 
 Nothing on this map's 2026-11-17 order is unbuilt. What a later pass could take, in the order of what it would buy:
 
-1. **A quiet reload — the owner's call.** `load()` blanks the editor, which is why every piece is handed its state. If a save's reload kept the page up (as `load({ refresh: true })` already does after a send), each section could own what only it uses: the customer section its notes and its open boxes (it takes 33 props today), the fieldset its check, the delivery section its two reads, the line items the catalog's open state. It changes what the office sees during a save, so it is a decision before it is a cut.
+1. **The sections own what only they use.** The quiet reload this waited on is built (v2.7748, the owner's go-ahead of 2026-11-18): a save reads the row back with the page up, so a piece keeps its own state across a save. The customer section, which sits outside the gate, can take its notes and its open boxes now (it is handed 33 props today). The fieldset its check, the delivery section its two reads and the line items the catalog's open state sit inside `EstimateDraftCustomerGate`, which remounts them when a draft gains or loses its customer: give the gate one shape first (the same wrapper, `inert` and the overlay switched on it), with a look at the screen, or keep that state where it is.
 2. **`useEstimateSendFlow`** — `sendToCustomer`, `sendEstimateEmailAnswer`, `sendEstimateEmail` and `tellEstimate` (≈130 lines) over the two tested kernels. Add a page-smoke case for the Tell sheet's path first.
 3. **`useEstimateRail`** — `railData`, the flash, the dot and `customerViewOn` (≈80 lines); five sections take its dot.
 4. **The create-customer overlay and the Unlink job window as the app's own windows** — both are hand-built `role="dialog"` overlays; the house `confirmDialog` and window shell would replace ~100 lines, with a look at the screen.
@@ -256,9 +259,10 @@ Definition of done per region, verification gates and anti-patterns: [`PAGE_DECO
 
 ## Hazards
 
-- **The page's render smoke is the proof of a move.** `Estimates.render.test.tsx` (24 cases) mounts the list, a draft, and a sent, an accepted and a declined row against a stateful Supabase stand-in, with `postSendEstimate` replaced by a recorder. A cut keeps it green unedited; a cut that moves a press the smoke does not reach adds its case first, against the unmoved page.
+- **The page's render smoke is the proof of a move.** `Estimates.render.test.tsx` (33 cases) mounts the list, a draft, and a sent, an accepted and a declined row against a stateful Supabase stand-in, with `postSendEstimate` replaced by a recorder. A cut keeps it green unedited; a cut that moves a press the smoke does not reach adds its case first, against the unmoved page.
 - **The send path cannot be walked on prod without emailing someone.** The smoke presses Resend link, Extend and a change order's send against the recorder; a live walk needs a ZZ test customer whose email is the sender's own.
-- **`load()` blanks the tree; `load({ refresh: true })` does not.** A caller that swaps one for the other either unmounts the Tell sheet mid-send or leaves a stale editor after a save.
+- **`load()` blanks the tree and seeds everything; `load({ refresh: true })` seeds everything with the page up; a save's `reloadAfterSave` keeps the page up and seeds only what was not typed since.** A caller that swaps one for another unmounts the Tell sheet mid-send, or writes the row's older value over a box somebody is typing in.
+- **After a save the autosave's baseline is the settled form, not the screen.** `settledEstimateFormAfterSave` is the editor as the read-back leaves it with nothing typed; its payload goes to the slice through `markSavedNow`. Take the hand-off out and every Save draft is followed by a second write, and a box typed back to its old value during a save is never saved. The shared slice itself is not to be changed for this: Edit Job and Edit Bid stand on it.
 - **The leave rule judges the old row during a route change.** Re-keying it on `row.id`, or resetting the form before its cleanup runs, deletes the wrong draft or none.
 - **The autosave's baseline is the payload's JSON.** A change to the payload's key order or shape reads as "dirty" on every open draft and saves at once; `estimateDraftPersist.test` pins the shape.
 - **The engine's statement order is its contract.** It was moved in the page's order so the effects fire as they did; a tidy-up that regroups them is a behaviour change.
