@@ -9,7 +9,7 @@
  * The stack is in envelope order behind one mail sheet: the sheet stays in the office, lists every envelope in the
  * order it comes off the printer, and has a blank for each certified mail number. Pure; the caller prints and files.
  */
-import { batchWords, countedLabel, type BatchWords } from '../batchWords'
+import { batchWords, type BatchWords } from '../batchWords'
 import { demandDate } from '../jobsDocuments/demandLetter'
 import { filingDocsPrintHtml, prependToFilingPrintHtml, type FilingDocExtras } from '../jobsDocuments/lienFilingDocuments'
 import { lienServeHolds, lienServePapers, lienServeRecipients, lienServedCopySentTitle, type LienServeFacts, type LienServeHold, type LienServePaper, type LienServeRecipient } from '../jobsDocuments/lienServedCopy'
@@ -133,16 +133,6 @@ export function lienServePlanWords(plan: Pick<LienServePlan, 'ready' | 'held' | 
   }
 }
 
-/**
- * The door to the window from the Board's bin and from the list's folded row: *Mail 12 liens’ copies ›*. It counts
- * every filed lien that owes its copies, held ones too, since the window is where a held one is fixed and where each
- * is recorded. '' with none.
- */
-export function lienServeDoorWords(plan: Pick<LienServePlan, 'ready' | 'held'>): string {
-  const n = plan.ready.length + plan.held.length
-  return n === 0 ? '' : `${countedLabel('Mail', n, ['lien’s copies', 'liens’ copies'])} ›`
-}
-
 /** One held filing as a line: "2340 · Ortega Residence: no recording number yet." */
 export function lienServeHeldLine(h: LienServeHeld): string {
   return `${h.job.jobLabel}: ${h.holds.map((x) => x.words).join(', ')}.`
@@ -155,7 +145,7 @@ export const LIEN_SERVE_SHEET_WORDS = {
   steps: [
     'Each envelope takes its letter and the copy behind it. They come off the printer in the order below.',
     'Mail each envelope by certified mail. Write its number in the last column.',
-    'In the app, open the Lien desk and press Enter mail numbers. Type the day mailed and each number.',
+    'In the app, open the Lien desk. Press Enter mail numbers on Filed · copies to mail, or on the job’s own line. Type the day mailed and each number.',
   ],
   held: 'Not in this print',
 } as const

@@ -167,11 +167,24 @@ describe('LienFilingTabs · the mail receipts on Record service…', () => {
   })
 
   // A stop window's card lands here (`lienMailProofDoor.ts`): each lack on the spot where it is entered.
-  it('landed for a copy still to mail, the service step opens with that copy’s fields lit', async () => {
-    renderWithProviders(<LienFilingTabs {...props({ land: { jobId: 'j1', filingId: 'a1', paper: 'affidavit', recipient: 'owner', lack: 'mailing', at: 1 } })} />)
+  it('landed for a mail number on a lien not yet served, the service step opens with that copy’s fields lit', async () => {
+    renderWithProviders(<LienFilingTabs {...props({ land: { jobId: 'j1', filingId: 'a1', paper: 'affidavit', recipient: 'owner', lack: 'number', at: 1 } })} />)
     await waitFor(() => expect(box()).toBeTruthy())
     await waitFor(() => expect(document.querySelectorAll('[data-landed="yes"]')).toHaveLength(1))
     expect(document.querySelector('[data-landed="yes"]')!.getAttribute('data-lien-service-copy')).toBe('owner')
+    expect(updates).toEqual([])
+  })
+
+  it('landed for the print, Print the copies to mail is lit and no form opens', async () => {
+    const onServePrinted = vi.fn()
+    // A lien the app drew keeps its paper, which is what a copy prints from. Every name here is made up.
+    const drawn = { ...filed, fields: { county: 'Alder', claimantPersonName: 'Pat Marlow', claimantCompany: 'Sample Plumbing LLC', claimantAddress: 'PO Box 100, Marlow, TX 78000', legalDescription: 'LOT 1 BLK 2 ALDER SUBD', propertyAddress: '12 Alder St, Marlow, TX 78000', contractedWithName: 'Alder Holdings LLC', workDescription: 'Plumbing labor and materials', workStart: '2026-08-01', workEnd: '2026-08-28', ownerName: 'Alder Holdings LLC', ownerAddress: '1 Owner Way, Marlow, TX 78000', originalContractorName: '', originalContractorAddress: '', contractAmount: '9000.00', paidAmount: '0.00', unpaidAmount: '9000.00', includeNoticesSworn: true, form: 'short', isSub: false } }
+    renderWithProviders(<LienFilingTabs {...props({ filings: [notice, drawn] as never, onServePrinted, land: { jobId: 'j1', filingId: 'a1', paper: 'affidavit', recipient: 'owner', lack: 'print', at: 3 } })} />)
+    await waitFor(() => expect(document.querySelectorAll('[data-landed="yes"]')).toHaveLength(1))
+    const lit = document.querySelector('[data-landed="yes"]') as HTMLElement
+    expect(lit.hasAttribute('data-lien-serve-copies')).toBe(true)
+    expect(within(lit).getByRole('button', { name: 'Print the copies to mail' })).toBeTruthy()
+    expect(box()).toBeNull()
     expect(updates).toEqual([])
   })
 

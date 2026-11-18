@@ -172,9 +172,9 @@ The print is kept on the job. Find it on the job's Documents tab under *Sent fro
 
 ### Several liens filed together
 
-Open the Lien desk's To do. On the Board, find the bin *Filed · copies to mail*. It holds every filed lien whose copies are not mailed yet. Press the bin's own press, like **Mail 12 liens’ copies ›**. The list under the Board has the same press, on one row for all of them. One window opens. It is named **Filed liens: copies to mail**.
+Open the Lien desk's To do. On the Board, find the bin *Filed · copies to mail*. It holds every filed lien whose copies are not mailed yet. Press the bin's own press. It reads by where the copies stand. While any lien waits to print, it reads like {{button:outline|Print 12 liens’ copies ›}}. Once they are printed, it reads like {{button:outline|Enter mail numbers · 12 ›}}. With some of each it names both, like {{button:outline|Print 1 · Enter mail numbers 10 ›}}. The list under the Board has the same press, on one row for all of them. One window opens, on the half the press named. It is named **Filed liens: copies to mail**.
 
-One filed lien alone has a row of its own. The row reads *Lien filed · mail its copies by* and the day. Press {{button:outline|Mail the copies}} on it to open that job's Lien window. A row turns red the day before its day. A row past its day says the day the copies were due. Mail them that day and record it.
+One filed lien alone has a row of its own. The row reads *Lien filed · mail its copies by* and the day. Its press reads the same two ways. {{button:outline|Print the copies to mail}} opens that job's Lien window at the press of that name. After the print the row reads {{button:outline|Enter mail numbers}}. That press opens **Filed liens: copies to mail** at the job's own line. A lien the app did not draw has no copy to print. Its row reads {{button:outline|Enter mail numbers}} from the start. A row turns red the day before its day. A row past its day says the day the copies were due. Mail them that day and record it.
 
 The top half prints. Its press counts the liens, like **Print 11 liens’ copies**. A mail sheet prints first. It lists every envelope in order, with a blank for its certified mail number. Keep the mail sheet in the office. A lien that cannot print is listed under the press with its reason. Press **Open the Lien window** beside it to fix it.
 

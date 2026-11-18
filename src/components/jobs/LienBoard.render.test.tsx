@@ -563,10 +563,10 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
   it('a bin’s own press stands on its title line, an outline when it is a door to a window (punch list #366; under the chips until v2.7708)', () => {
     const onPress = vi.fn()
     const b = board({ affidavits: [affidavit('8', 'filed'), affidavit('9', 'filed')], serve: [{ jobId: '8', serveDue: '2026-11-16' }] })
-    const binPress = { 'affidavit:filed': { label: 'Mail 1 lien’s copies ›', onPress }, 'affidavit:ready': { label: 'never drawn', onPress } } as const
+    const binPress = { 'affidavit:filed': { label: 'Print 1 lien’s copies ›', onPress }, 'affidavit:ready': { label: 'never drawn', onPress } } as const
     render(<LienBoard board={b} isMobile={false} binPress={binPress} />)
     const press = document.querySelector('[data-lien-board-bin-press="affidavit:filed"]') as HTMLButtonElement
-    expect(press.textContent).toBe('Mail 1 lien’s copies ›')
+    expect(press.textContent).toBe('Print 1 lien’s copies ›')
     expect(press.parentElement!.getAttribute('data-lien-board-bin-title')).toBe('affidavit:filed')
     expect(press.style.background).toBe('var(--surface)')
     fireEvent.click(press)
