@@ -87,6 +87,12 @@ A signed paper filed for several jobs is one line. It names the first job and sa
 
 You can still find it by any of those jobs. Type one of their numbers in the box.
 
+## A paper a job requires
+
+A job can require papers before it opens, such as an NDA or site rules. Each person's copy is a line here once it goes out to sign. It shows as **Staff** or **Sub**, with the paper's own name and the job beside it.
+
+Type the job's number to see every paper signed for that job. The job's own **Papers before this job opens** section shows who has not signed yet.
+
 ## What is not on this tab
 
 - A draft. A draft stays in the window that made it until it is sent.
