@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { scenarioIsCustomerFacing, versionStarringScenario } from './starredScenarioGuard'
+import { priceDeleteBlock, scenarioIsCustomerFacing, versionStarringScenario } from './starredScenarioGuard'
 
 const v = (id: string, star: string | null) => ({ id, starred_price_book_version_id: star })
 
@@ -52,5 +52,33 @@ describe('scenarioIsCustomerFacing', () => {
         viewedCustomerFacingId: 'scen-a',
       }),
     ).toBe(false)
+  })
+})
+
+describe('priceDeleteBlock', () => {
+  const gcNameOf = (versionId: string) => ({ pkA: 'North Builders', pkB: 'South Builders' })[versionId] ?? 'this GC'
+  const versions = [v('pkA', 'scen-a-star'), v('pkB', 'scen-b-star')]
+
+  it('a price no letter is built on can be deleted', () => {
+    expect(priceDeleteBlock({ bidVersions: versions, pricingId: 'scen-compare', customerFacingPricingId: 'scen-a-star', selectedBidVersionId: 'pkA', gcNameOf })).toBeNull()
+  })
+
+  it("the viewed packet's ★ is held with the plain sentence", () => {
+    expect(priceDeleteBlock({ bidVersions: versions, pricingId: 'scen-a-star', customerFacingPricingId: 'scen-a-star', selectedBidVersionId: 'pkA', gcNameOf })).toBe(
+      "The GC's letter is built on this price — make another price the base first.",
+    )
+  })
+
+  it("another packet's ★ is held by name (the card row can show it)", () => {
+    expect(priceDeleteBlock({ bidVersions: versions, pricingId: 'scen-b-star', customerFacingPricingId: 'scen-a-star', selectedBidVersionId: 'pkA', gcNameOf })).toBe(
+      "South Builders's letter is built on this price — star another price for that packet first.",
+    )
+  })
+
+  it('an unsplit bid with no packets holds its bid-level ★ with the plain sentence', () => {
+    expect(priceDeleteBlock({ bidVersions: [], pricingId: 'base', customerFacingPricingId: 'base', selectedBidVersionId: null, gcNameOf })).toBe(
+      "The GC's letter is built on this price — make another price the base first.",
+    )
+    expect(priceDeleteBlock({ bidVersions: [], pricingId: 'alt', customerFacingPricingId: 'base', selectedBidVersionId: null, gcNameOf })).toBeNull()
   })
 })

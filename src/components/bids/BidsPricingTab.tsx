@@ -49,7 +49,9 @@ import { gcNameForVersion as gcNameForVersionOf } from '../../lib/bids/pricingCa
 import { sameGcAlternateVersions, sameGcBaseVersions } from '../../lib/bids/ownTakeoffAlternates'
 import { savedTickWords, versionOnScreen } from '../../lib/bids/versionOnScreen'
 import { nextSortOrder } from '../../lib/bids/pickActivePricing'
-import { versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
+import { priceDeleteBlock, versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
+import { AddPriceOptionWindow, PricingEditWindow } from './PricingPriceWindows'
+import { defaultPriceOptionName, priceOptionsOnVersion } from '../../lib/bids/addPriceOption'
 import { afterOpenPriceDeleted, resolvedStarPricingId } from '../../lib/bids/versionStar'
 import { useMarginBrush } from '../../hooks/useMarginBrush'
 import { resolveCurrentPriceBookTemplateId, resolvePriceBookTemplateRoot } from '../../lib/bids/resolveCurrentPriceBookTemplateId'
@@ -4199,50 +4201,22 @@ export function BidsPricingTab({
             onDelete={openDeletePricingVersionModal}
           />
         )}
-        {pricingEdit && (() => {
-          // The card row can show ANOTHER packet's ★ (unscoped legacy-pointer fallback),
-          // so the guard asks whether any packet stars this scenario — not just the viewed one.
-          const starringVersion = versionStarringScenario(bidVersions, pricingEdit.id)
-          const isBase = starringVersion != null || pricingEdit.id === customerFacingPricingId
-          const baseMsg = starringVersion && starringVersion.id !== selectedBidVersionId
-            ? `${gcNameForVersion(starringVersion.id)}'s letter is built on this price — star another price for that packet first.`
-            : "The GC's letter is built on this price — make another price the base first."
-          const close = () => setPricingEdit(null)
-          return (
-            <div role="presentation" onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 750, paddingTop: 'var(--app-top-chrome, 0px)' }}>
-              <div role="dialog" aria-label="Price" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); close() } }} style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.25rem 1.4rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
-                <h3 style={{ margin: '0 0 1rem' }}>Price</h3>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }} htmlFor="pricing-edit-name">Name</label>
-                <input
-                  id="pricing-edit-name"
-                  autoFocus
-                  value={pricingEdit.name}
-                  onChange={(e) => setPricingEdit({ id: pricingEdit.id, name: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void savePricingEdit() } }}
-                  style={{ width: '100%', padding: '0.5rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box' }}
-                />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.1rem' }}>
-                  <button
-                    type="button"
-                    disabled={isBase}
-                    title={isBase ? baseMsg : 'Delete this price'}
-                    onClick={() => {
-                      const target = priceBookVersions.find((pv) => pv.id === pricingEdit.id)
-                      close()
-                      if (target) { setPricingVersionToDelete(target); setDeletePricingVersionModalOpen(true) }
-                    }}
-                    style={{ font: 'inherit', fontSize: '0.9rem', padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-red)', background: 'var(--surface)', color: isBase ? 'var(--text-faint)' : 'var(--text-red-700)', cursor: isBase ? 'not-allowed' : 'pointer' }}
-                  >
-                    Delete
-                  </button>
-                  <span style={{ flex: 1 }} />
-                  <button type="button" onClick={close} style={{ font: 'inherit', fontSize: '0.9rem', padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Cancel</button>
-                  <button type="button" onClick={() => void savePricingEdit()} style={{ font: 'inherit', fontSize: '0.9rem', padding: '0.45rem 1.1rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Save</button>
-                </div>
-              </div>
-            </div>
-          )
-        })()}
+        {pricingEdit && (
+          <PricingEditWindow
+            name={pricingEdit.name}
+            // The card row can show ANOTHER packet's ★ (unscoped legacy-pointer fallback),
+            // so the guard asks whether any packet stars this scenario — not just the viewed one.
+            deleteBlocked={priceDeleteBlock({ bidVersions, pricingId: pricingEdit.id, customerFacingPricingId, selectedBidVersionId, gcNameOf: gcNameForVersion })}
+            onNameChange={(name) => setPricingEdit({ id: pricingEdit.id, name })}
+            onDelete={() => {
+              const target = priceBookVersions.find((pv) => pv.id === pricingEdit.id)
+              setPricingEdit(null)
+              if (target) { setPricingVersionToDelete(target); setDeletePricingVersionModalOpen(true) }
+            }}
+            onClose={() => setPricingEdit(null)}
+            onSave={() => void savePricingEdit()}
+          />
+        )}
         {deletePricingVersionModalOpen && pricingVersionToDelete && (
           <DeletePricingVersionModal
             version={pricingVersionToDelete}
@@ -4288,28 +4262,19 @@ export function BidsPricingTab({
 
       {addPriceOpen && selectedBidForPricing ? (() => {
         const gc = gcNameForVersion(selectedBidVersionId)
-        const mine = priceBookVersions.filter((p) => (selectedBidVersionId ? p.bid_version_id === selectedBidVersionId : p.bid_version_id == null))
-        const defaultName = `Alternate ${Math.max(1, mine.length)}`
+        const options = priceOptionsOnVersion(priceBookVersions, selectedBidVersionId, customerFacingPricingId)
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={() => !wbCloning && setAddPriceOpen(null)}>
-            <div role="dialog" aria-label={`Another price for ${gc}`} style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 460, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
-              <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>Another price for {gc}</h3>
-              <p style={{ margin: '0 0 0.7rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>Same counts, same takeoff — a second price this GC can pick. Different materials? use “+ version” in the picker instead.</p>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.2rem' }}>Name this price option</label>
-              <input type="text" autoFocus value={addPriceOpen.name} onChange={(e) => setAddPriceOpen((st) => st && { ...st, name: e.target.value })} placeholder={defaultName} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void createPriceOption(addPriceOpen.name.trim() || defaultName, addPriceOpen.fromId, addPriceOpen.offer) } }} style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-strong)', font: 'inherit', boxSizing: 'border-box' }} />
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, margin: '0.6rem 0 0.2rem' }}>Start from</label>
-              <select value={addPriceOpen.fromId ?? ''} onChange={(e) => setAddPriceOpen((st) => st && { ...st, fromId: e.target.value || null })} style={{ width: '100%', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-strong)', font: 'inherit' }}>
-                {mine.map((p) => <option key={p.id} value={p.id}>{p.name}{p.id === customerFacingPricingId ? ' · ★ base' : ''}</option>)}
-              </select>
-              <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.82rem', marginTop: '0.6rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={addPriceOpen.offer} onChange={(e) => setAddPriceOpen((st) => st && { ...st, offer: e.target.checked })} /> Offer it to {shortGc(gc)} as an alternate right away
-              </label>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.8rem' }}>
-                <button type="button" onClick={() => setAddPriceOpen(null)} disabled={wbCloning} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Cancel</button>
-                <button type="button" onClick={() => void createPriceOption(addPriceOpen.name.trim() || defaultName, addPriceOpen.fromId, addPriceOpen.offer)} disabled={wbCloning || mine.length === 0} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: wbCloning ? 'wait' : 'pointer' }}>{wbCloning ? 'Creating…' : 'Create'}</button>
-              </div>
-            </div>
-          </div>
+          <AddPriceOptionWindow
+            gc={gc}
+            gcShort={shortGc(gc)}
+            options={options}
+            value={addPriceOpen}
+            defaultName={defaultPriceOptionName(options.length)}
+            busy={wbCloning}
+            onChange={(patch) => setAddPriceOpen((st) => st && { ...st, ...patch })}
+            onClose={() => setAddPriceOpen(null)}
+            onCreate={(name, fromId, offer) => void createPriceOption(name, fromId, offer)}
+          />
         )
       })() : null}
       {adoptOpen && selectedBidForPricing ? (
