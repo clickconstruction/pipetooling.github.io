@@ -44,6 +44,8 @@ export type PaintedMapRow = {
   words: string
   job_id: string | null
   development_id: string | null
+  /** True for a job's own list of places (#393, `paintedJobList.ts`). */
+  job_list?: boolean | null
   created_by: string | null
   created_at: string
 }
@@ -79,7 +81,7 @@ export type PaintedMapPlaceRow = {
   set_at: string
 }
 
-export const PAINTED_MAP_SELECT = 'id,name,words,job_id,development_id,created_by,created_at'
+export const PAINTED_MAP_SELECT = 'id,name,words,job_id,development_id,job_list,created_by,created_at'
 export const PAINTED_MAP_LINE_SELECT = 'id,map_id,label,how,points,poor_parts,fixed_by_hand,length_m,margin_m,measured_ft,measured_how,made_by,made_at'
 export const PAINTED_MAP_PLACE_SELECT = 'id,map_id,name,words,lat,lng,accuracy_m,photo_path,kind,set_by,set_at'
 
@@ -89,6 +91,8 @@ export type PaintedMap = {
   words: string
   jobId: string | null
   developmentId: string | null
+  /** This map is its job's own list of places: it holds places only, and every painted map of the job draws them. */
+  jobList?: boolean
   createdBy: string | null
   createdAt: string
 }
@@ -137,6 +141,7 @@ export function paintedMapFromRow(row: PaintedMapRow): PaintedMap {
     words: cleanPaintedText(row.words, PAINTED_MAP_WORDS_MAX),
     jobId: row.job_id ?? null,
     developmentId: row.development_id ?? null,
+    jobList: row.job_list === true,
     createdBy: row.created_by ?? null,
     createdAt: row.created_at,
   }

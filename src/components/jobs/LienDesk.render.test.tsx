@@ -507,6 +507,118 @@ describe('LienDesk', () => {
     }
   })
 
+  it('By paper’s three paper tabs ride the title line, between the views and the tools, when the measured line holds them (v2.7789); a line too narrow keeps them leading the second, and the piles and Put a GC on notice stay on the line under', async () => {
+    const rect = Element.prototype.getBoundingClientRect
+    // The bar as drawn on 2026-11-18: ← Back 90, the views 305, the three paper tabs 411, the four presses 231, the pile chips and the GC door at the widths given.
+    // The line needs 90 + 305 + 411 + 231 and three 14.4 px gaps, 1,080.2 px: a 1,121 px bar's line (1,081) holds it and a 1,120 px one (1,080) does not.
+    const drawn = (barWidth: number, o: { papers?: number; piles?: number; right?: number } = {}) =>
+      function (this: Element): DOMRect {
+        const w = this.classList.contains('lienDeskTitleBar') ? barWidth : this.hasAttribute('data-lien-desk-way-back') ? 90 : this.tagName === 'H2' ? 1 : this.hasAttribute('data-lien-desk-kinds') ? 305 : this.hasAttribute('data-lien-desk-presses') ? 231 : this.hasAttribute('data-lien-desk-paper-kinds') ? (o.papers ?? 411) : this.hasAttribute('data-lien-desk-piles') ? (o.piles ?? 0) : this.hasAttribute('data-lien-desk-right') ? (o.right ?? 0) : 0
+        return { width: w, height: 0, x: 0, y: 0, top: 0, left: 0, right: w, bottom: 0, toJSON: () => ({}) } as DOMRect
+      }
+    const back = <button type="button" data-lien-desk-way-back>← Back</button>
+    const shape = () => {
+      const bar = document.querySelector('.lienDeskTitleBar') as HTMLElement
+      return Array.from(bar.children).map((el) => (el.hasAttribute('data-lien-desk-kinds') ? 'views' : el.hasAttribute('data-lien-desk-tools') ? 'tools' : el.hasAttribute('data-lien-desk-header-break') ? 'break' : el.hasAttribute('data-lien-desk-paper-kinds') ? 'papers' : el.hasAttribute('data-lien-desk-piles') ? 'piles' : el.hasAttribute('data-lien-desk-pile-break') ? 'pile-break' : el.hasAttribute('data-lien-desk-right') ? 'right' : null)).filter(Boolean)
+    }
+    const papersLine = () => (document.querySelector('[data-lien-desk-paper-kinds]') as HTMLElement).getAttribute('data-lien-desk-paper-kinds')
+    const plain = data(J650)
+    // Two affidavits to draft: Lien affidavits draws a pile chip in the header.
+    const withPiles = { ...plain, affidavits: { ...plain.affidavits, counts: { ...plain.affidavits.counts, to_draft: 2 } } }
+    try {
+      // Lien affidavits in a 1,300 px window, no pile to show: the papers are up and the bar is one line.
+      Element.prototype.getBoundingClientRect = drawn(1252)
+      const oneLine = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={plain} initialKind="affidavit" backDoor={back} />)
+      await settle()
+      expect(shape()).toEqual(['views', 'papers', 'tools'])
+      expect(papersLine()).toBe('title_line')
+      expect(document.querySelector('[data-lien-desk-header-break]')).toBeNull()
+      // On the title line the tabs keep the bar's own block margin, not the second line's 2 px.
+      expect((document.querySelector('[data-lien-desk-paper-kinds]') as HTMLElement).style.marginBlock).toBe('')
+      // The tabs still pick a paper from up there, and still read in their order.
+      const paper = within(screen.getByRole('tablist', { name: 'Kind of paper' }))
+      expect(paper.getAllByRole('tab').map((t) => t.textContent?.replace(/ · \d+$/, ''))).toEqual(['Monthly notices', 'Lien affidavits', 'Retainage notices'])
+      fireEvent.click(paper.getByRole('tab', { name: /^Retainage notices/ }))
+      await settle()
+      expect(within(screen.getByRole('tablist', { name: 'Kind of paper' })).getByRole('tab', { name: /^Retainage notices/ }).getAttribute('aria-selected')).toBe('true')
+      expect(shape()).toEqual(['views', 'papers', 'tools'])
+      // Off By paper the papers go and the bar is the views and the tools.
+      fireEvent.click(screen.getByRole('tab', { name: 'By date' }))
+      await settle()
+      expect(shape()).toEqual(['views', 'tools'])
+      oneLine.unmount()
+
+      // Lien affidavits with a pile: the papers up, the piles alone on the line under, no span at its end.
+      Element.prototype.getBoundingClientRect = drawn(1252, { piles: 427 })
+      const piles = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPiles} initialKind="affidavit" backDoor={back} />)
+      await settle()
+      expect(shape()).toEqual(['views', 'papers', 'tools', 'break', 'piles'])
+      expect(document.querySelector('[data-lien-desk-right]')).toBeNull()
+      piles.unmount()
+
+      // Monthly notices with a GC to put on notice: the papers up, the GC door alone at the right of the line under.
+      Element.prototype.getBoundingClientRect = drawn(1252, { right: 166 })
+      const notices = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={plain} initialKind="notice" backDoor={back} onPutGcOnNotice={vi.fn()} />)
+      await settle()
+      expect(shape()).toEqual(['views', 'papers', 'tools', 'break', 'right'])
+      expect((document.querySelector('[data-lien-desk-right]') as HTMLElement).style.marginLeft).toBe('auto')
+      expect(document.querySelector('[data-lien-desk-right] button[aria-haspopup="menu"]')).not.toBeNull()
+      notices.unmount()
+
+      // The edge: a 1,121 px bar holds the line and a 1,120 px one does not. Under it the papers lead the second line, as before, with the presses still up.
+      Element.prototype.getBoundingClientRect = drawn(1121, { piles: 427 })
+      const justFits = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPiles} initialKind="affidavit" backDoor={back} />)
+      await settle()
+      expect(shape()).toEqual(['views', 'papers', 'tools', 'break', 'piles'])
+      justFits.unmount()
+      Element.prototype.getBoundingClientRect = drawn(1120, { piles: 427 })
+      const justShort = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withPiles} initialKind="affidavit" backDoor={back} />)
+      await settle()
+      expect(shape()).toEqual(['views', 'tools', 'break', 'papers', 'piles'])
+      expect(papersLine()).toBe('second_line')
+      expect((document.querySelector('[data-lien-desk-paper-kinds]') as HTMLElement).style.marginBlock).toBe('2px')
+      justShort.unmount()
+
+      // Longer counts are measured, not assumed: 451 px of paper tabs do not fit the bar that held 411.
+      Element.prototype.getBoundingClientRect = drawn(1121, { papers: 451 })
+      const longCounts = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={plain} initialKind="affidavit" backDoor={back} />)
+      await settle()
+      expect(shape()).toEqual(['views', 'tools', 'break', 'papers'])
+      longCounts.unmount()
+
+      // A 738 px window has no room for the presses either (654.8 px of the way back, the views, the presses and two gaps in a 650 px line): the two steady lines, the papers leading the second and the tool row at its end.
+      Element.prototype.getBoundingClientRect = drawn(690, { papers: 393, right: 231 })
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={plain} initialKind="affidavit" backDoor={back} />)
+      await settle()
+      expect(shape()).toEqual(['views', 'break', 'papers', 'right'])
+      expect(papersLine()).toBe('second_line')
+    } finally {
+      Element.prototype.getBoundingClientRect = rect
+    }
+  })
+
+  it('a phone keeps the paper tabs as its second row whatever the bar would measure (v2.7789)', async () => {
+    const rect = Element.prototype.getBoundingClientRect
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      // Widths that would take the papers up on a computer: a phone is never measured.
+      Element.prototype.getBoundingClientRect = function (this: Element): DOMRect {
+        const w = this.classList.contains('lienDeskTitleBar') ? 1952 : this.hasAttribute('data-lien-desk-paper-kinds') ? 200 : 50
+        return { width: w, height: 0, x: 0, y: 0, top: 0, left: 0, right: w, bottom: 0, toJSON: () => ({}) } as DOMRect
+      }
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="affidavit" />)
+      await settle()
+      expect(document.querySelector('[data-lien-desk-more="door"]')).not.toBeNull()
+      const papers = document.querySelector('[data-lien-desk-paper-kinds]') as HTMLElement
+      expect(papers.getAttribute('data-lien-desk-paper-kinds')).toBe('second_line')
+      expect(document.querySelector('[data-lien-desk-header-break]')!.nextElementSibling).toBe(papers)
+    } finally {
+      Element.prototype.getBoundingClientRect = rect
+      window.matchMedia = before
+    }
+  })
+
   it("a stop's title on the timeline opens the window on what that stop sends; Esc closes it alone (v2.4793)", async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" />)
     await settle()
@@ -5222,7 +5334,7 @@ describe('LienDesk · serve the filed liens together (punch list #366)', () => {
     d.filingsByJob = Object.fromEntries(jobs.map((id) => [id, [filed(`f-${id}`, id)]])) as unknown as LienDeskData['filingsByJob']
     return d
   }
-  const serveRows = () => screen.getAllByRole('button', { name: 'Mail the copies' })
+  const serveRows = () => screen.getAllByRole('button', { name: 'Print the copies to mail' })
 
   it('two filed liens: the list folds them into one row whose press opens one window that prints both and takes their mail numbers', async () => {
     const onOpenLienInstruments = vi.fn()
@@ -5232,10 +5344,10 @@ describe('LienDesk · serve the filed liens together (punch list #366)', () => {
     const bin = document.querySelector('[data-lien-board-bin="affidavit:filed"]') as HTMLElement
     expect(bin.querySelector('[data-lien-board-count]')!.textContent).toBe('2')
     expect(document.querySelector('[data-lien-board-bin="affidavit:served"] [data-lien-board-count]')!.textContent).toBe('0')
-    expect(bin.querySelector('[data-lien-board-bin-press]')!.textContent).toBe('Mail 2 liens’ copies ›')
+    expect(bin.querySelector('[data-lien-board-bin-press]')!.textContent).toBe('Print 2 liens’ copies ›')
     // The list: one row for the two, under the bin's own name.
     expect(screen.getByText('2 filed liens owe their copies')).toBeTruthy()
-    const presses = screen.getAllByRole('button', { name: 'Mail 2 liens’ copies ›' })
+    const presses = screen.getAllByRole('button', { name: 'Print 2 liens’ copies ›' })
     expect(presses).toHaveLength(2)
     fireEvent.click(presses[presses.length - 1]!)
     const win = within(screen.getByTestId('lien-serve-window'))
@@ -5243,6 +5355,50 @@ describe('LienDesk · serve the filed liens together (punch list #366)', () => {
     expect(win.getByRole('button', { name: 'Print 2 liens’ copies' })).toBeTruthy()
     expect(win.getByRole('textbox', { name: 'Job 650, owner, certified mail number' })).toBeTruthy()
     expect(onOpenLienInstruments).not.toHaveBeenCalled()
+    // The door said Print, so the window lands on its print half.
+    expect(document.querySelector('[data-landed="yes"]')?.hasAttribute('data-lien-serve-print-part')).toBe(true)
+  })
+
+  // The owner's word of 2026-11-18: a door reads the stage the copies are at, and lands on that half (`lienServeStage.ts`).
+  it('once both liens’ copies are printed, the bin’s press reads Enter mail numbers and opens the window on the numbers', async () => {
+    const d = desk(['j650', 'j651'])
+    d.servePrintedFilingIds = ['f-j650', 'f-j651']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
+    await settle()
+    const press = document.querySelector('[data-lien-board-bin-press="affidavit:filed"]') as HTMLElement
+    expect(press.textContent).toBe('Enter mail numbers · 2 ›')
+    expect(screen.queryByRole('button', { name: /^Print 2 liens’ copies ›$/ })).toBeNull()
+    fireEvent.click(press)
+    const lit = document.querySelector('[data-landed="yes"]') as HTMLElement
+    expect(lit.textContent).toBe('2 · After the post office: enter mail numbers')
+  })
+
+  it('one printed, one not: the bin’s press names both halves with their counts and opens the window at its top', async () => {
+    const d = desk(['j650', 'j651'])
+    d.servePrintedFilingIds = ['f-j650']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
+    await settle()
+    const press = document.querySelector('[data-lien-board-bin-press="affidavit:filed"]') as HTMLElement
+    expect(press.textContent).toBe('Print 1 · Enter mail numbers 1 ›')
+    fireEvent.click(press)
+    expect(screen.getByTestId('lien-serve-window')).toBeTruthy()
+    expect(document.querySelectorAll('[data-landed="yes"]')).toHaveLength(0)
+  })
+
+  it('one filed lien whose copies are printed: its row reads Enter mail numbers and opens the copies window at its own line', async () => {
+    const onOpenLienInstruments = vi.fn()
+    const d = desk(['j650'])
+    d.servePrintedFilingIds = ['f-j650']
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" onOpenLienInstruments={onOpenLienInstruments} />)
+    await settle()
+    expect(screen.queryByRole('button', { name: 'Print the copies to mail' })).toBeNull()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Enter mail numbers' })[0]!)
+    expect(screen.getByTestId('lien-serve-window')).toBeTruthy()
+    expect(onOpenLienInstruments).not.toHaveBeenCalled()
+    const lit = document.querySelector('[data-landed="yes"]') as HTMLElement
+    expect(lit.getAttribute('data-lien-serve-envelope')).toBe('owner')
+    expect(lit.closest('[data-lien-serve-job]')?.getAttribute('data-lien-serve-job')).toBe('j650')
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Job 650, owner, certified mail number')
   })
 
   it('the bin’s own press on the Board opens the same window', async () => {

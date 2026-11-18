@@ -37,6 +37,17 @@ vi.mock('../../hooks/useOfficeAnchor', () => ({
   useOfficeAnchor: (enabled: boolean) => (enabled ? { lat: 29.653, lng: -97.797, source: 'map_default_view', label: '12921 FM 20, Kingsbury' } : null),
 }))
 const openExternal = vi.fn()
+// Time (punch list #395): the photo archive's walk, answered here with today's photograph and one older.
+vi.mock('../../lib/map/olderPhotosIo', () => ({
+  walkOlderPhotos: async (_spot: unknown, opts: { onChange: (found: unknown[]) => void }) => {
+    const found = [
+      { release: 900, publishedYmd: '2026-10-29', size: 5, takenYmd: '2025-02-09' },
+      { release: 700, publishedYmd: '2022-03-01', size: 3, takenYmd: '2021-03-20' },
+    ]
+    opts.onChange(found)
+    return found
+  },
+}))
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (u: string) => openExternal(u) }))
 // v2.3398: the As-of history — a small world with one job that did not exist yet on the rewound day.
 const historyMock = vi.fn(async () => ({
@@ -360,6 +371,30 @@ describe('JobsMapCard', () => {
     fireEvent.click(screen.getByText(/^pin 1019 · Vasquez pretest$/))
     expect(screen.getByTestId('popup').textContent).toContain('2 people clocked in here today')
     expect(localStorage.getItem('pipetooling_jobs_map_crews')).toBe('1')
+  })
+
+  it('punch list #395: two clocks on one card — Time moves the photograph, As of moves the pins, and the row names the pins’ own day', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
+    renderCard([job({ id: 'a', status: 'billed' })])
+    await screen.findByText(/^pin 1019 · Vasquez pretest$/)
+    expect(screen.getByRole('button', { name: 'Streets' }).getAttribute('aria-pressed')).toBe('true')
+    // One job is one pin, so Time needs no press on it.
+    fireEvent.click(document.querySelector('[data-map-time-press]') as HTMLButtonElement)
+    const caption = () => document.querySelector('[data-map-time-caption]')?.textContent
+    await waitFor(() => expect(caption()).toBe('Today’s photo of 1019 · Vasquez pretest, taken February 9, 2025. 1 older photo.'))
+    expect(document.querySelector('[data-map-provider]')?.getAttribute('data-map-provider')).toBe('archive')
+    fireEvent.click(screen.getByRole('button', { name: 'Mar 2021' }))
+    expect(caption()).toBe('Photo taken March 20, 2021. The pins are today’s.')
+
+    // As of rewinds the pins under the same photograph, and the row follows the pins' day.
+    fireEvent.click(screen.getByRole('button', { name: '⏮ As of' }))
+    await waitFor(() => expect(historyMock).toHaveBeenCalled())
+    const slider = screen.getByLabelText(/As-of day/) as HTMLInputElement
+    fireEvent.change(slider, { target: { value: String(Number(slider.max) - 30) } })
+    await waitFor(() => expect(caption()).toMatch(/^Photo taken March 20, 2021\. The pins are as of \w{3} \w{3} \d{1,2}\.$/))
+    expect(screen.getByText('30 d ago')).toBeTruthy()
+    // The photograph did not move with the pins.
+    expect((document.querySelector('[data-map-time-press]') as HTMLButtonElement).textContent).toBe('Time · Mar 2021')
   })
 
   it('uses the Google canvas when a browser key is configured', async () => {

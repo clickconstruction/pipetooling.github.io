@@ -1,20 +1,18 @@
 /**
  * Where they drive in from, found on the map (the owner's ask of 2026-10-23): a search box over the app's own map. The
  * words go through `geocode-one`, the same function the office address and the map's default view use, and the place
- * it finds draws as one pin on the Google canvas, or OpenStreetMap when the key is missing or Google fails on this
- * page (`resolveDashboardMapProvider`). Use this place hands the found words and the pin back; the window keeps nothing.
+ * it finds draws as one pin in the shared `PinsMapFrame` (punch list #395): the Google canvas, or OpenStreetMap when the
+ * key is missing or Google fails on this page, with the Satellite and Streets switch and the Time press. Use this place
+ * hands the found words and the pin back; the window keeps nothing.
  */
-import { lazy, Suspense, useState } from 'react'
-import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
+import { useState } from 'react'
 import { mapGeocodeErrorMessage } from '../../lib/map/geocodeErrorMessage'
 import type { GeocodeOneResponse } from '../../lib/map/invokeGeocodeOneRefreshGoogleOnly'
 import { MAP_CANVAS_SELECTED_COLOR, type MapCanvasPin } from '../../lib/map/mapCanvasTypes'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { Btn, input } from '../gc/gcUi'
-
-const PinsMapCanvas = lazy(() => import('../map/PinsMapCanvas'))
-const PinsMapGoogleCanvas = lazy(() => import('../map/PinsMapGoogleCanvas'))
+import { PinsMapFrame } from '../map/PinsMapFrame'
 
 export type HomePick = { words: string; pin: { lat: number; lng: number } }
 
@@ -40,9 +38,7 @@ export function HomeMapWindow({ start, onPick, onClose }: { start: { words: stri
   const [found, setFound] = useState<HomePick | null>(start.pin ? { words: start.words, pin: start.pin } : null)
   const [looking, setLooking] = useState(false)
   const [why, setWhy] = useState<string | null>(null)
-  const [googleFailed, setGoogleFailed] = useState(false)
   const [fitSignal, setFitSignal] = useState(0)
-  const provider = resolveDashboardMapProvider({ key: googleMapsBrowserKey(), googleFailed })
   const pins: MapCanvasPin[] = found ? [{ id: 'home', lat: found.pin.lat, lng: found.pin.lng, color: MAP_CANVAS_SELECTED_COLOR, title: found.words }] : []
 
   const look = async () => {
@@ -81,21 +77,15 @@ export function HomeMapWindow({ start, onPick, onClose }: { start: { words: stri
             {why}
           </p>
         ) : null}
-        <div style={{ position: 'relative', height: MAP_HEIGHT, overflow: 'hidden', isolation: 'isolate', background: 'var(--bg-muted)', borderRadius: 8 }}>
-          {found ? (
-            <Suspense fallback={<div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading map…</div>}>
-              {provider === 'google' ? (
-                <PinsMapGoogleCanvas apiKey={googleMapsBrowserKey()} onUnavailable={() => setGoogleFailed(true)} pins={pins} selectedId="home" onSelect={() => undefined} fitSignal={fitSignal} height={MAP_HEIGHT} isMobile={false} />
-              ) : (
-                <PinsMapCanvas pins={pins} selectedId="home" onSelect={() => undefined} fitSignal={fitSignal} height={MAP_HEIGHT} isMobile={false} />
-              )}
-            </Suspense>
-          ) : (
+        {found ? (
+          <PinsMapFrame surface="home-map" style={{ borderRadius: 8, overflow: 'hidden' }} pins={pins} selectedId="home" onSelect={() => undefined} fitSignal={fitSignal} height={MAP_HEIGHT} isMobile={false} timeDotsWords="" />
+        ) : (
+          <div style={{ position: 'relative', height: MAP_HEIGHT, overflow: 'hidden', background: 'var(--bg-muted)', borderRadius: 8 }}>
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               The map shows the place once it is found.
             </div>
-          )}
-        </div>
+          </div>
+        )}
         {found ? (
           <div data-home-found="" style={{ fontSize: '0.85rem' }}>
             Found: <strong>{found.words}</strong>

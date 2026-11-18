@@ -2,6 +2,7 @@ import type { LienMailPieceRow } from '../lib/mail/lienMailPieces'
 import { readMailPiecesBySource } from '../lib/mail/lienMailPiecesIo'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { readLienCopyPrints } from '../lib/jobs/lienServePrintsIo'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { loadRetainageUnrecorded } from '../lib/ar/retainageHeldIo'
 import type { RetainageUnrecordedRow } from '../lib/ar/retainageSuggested'
@@ -174,6 +175,8 @@ export type LienDeskData = {
   demandLettersByJob?: Record<string, JobDemandLetterRow[]>
   /** The mail pieces behind the filings (the Docsmit train, 6b), by filing id; absent in light mode, and empty until a notice mails through Docsmit. */
   mailPiecesByFiling?: Record<string, LienMailPieceRow[]>
+  /** The filed liens whose copies were printed here, by filing id (`lienServeStage.ts`): a door to those copies reads *Enter mail numbers*, not *Print the copies to mail*. Absent in light mode. */
+  servePrintedFilingIds?: string[]
   /** The pieces behind each approved desk item (v2.5532), from prepare on: the run builds a copy that already went through Docsmit as mailed. Absent in light mode. */
   mailPiecesByItem?: Record<string, LienMailPieceRow[]>
   /** The newest inbound Messages line after each job's last courtesy, ISO (punch list #249, row 3), for the jobs one came back on — `courtesyByJobFrom` closes on it. Read in light mode too, so the Dashboard's lien month and the desk agree; absent when the read failed. */
@@ -511,6 +514,7 @@ export function useLienDeskData(
         let filingsByJob: Record<string, JobLienFilingRow[]> = {}
         let mailPiecesByFiling: Record<string, LienMailPieceRow[]> = {}
         let mailPiecesByItem: Record<string, LienMailPieceRow[]> = {}
+        let servePrintedFilingIds: string[] = []
         let demandLettersByJob: Record<string, JobDemandLetterRow[]> = {}
         if (!light) {
           const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
@@ -554,6 +558,8 @@ export function useLienDeskData(
           ])
           mailPiecesByFiling = byFiling
           mailPiecesByItem = byItem
+          // Which filed liens' copies were printed (`lienServeStage.ts`): asked only of the liens that still owe their day.
+          servePrintedFilingIds = await readLienCopyPrints(Object.values(filingsByJob).flat().filter((f) => f.kind === 'affidavit' && f.filed_at && !f.served_at).map((f) => f.id))
           // The demand letters on the desk's jobs (v2.3880): one read, so every pane's strip carries the letter the Lien window draws.
           demandLettersByJob = {}
           for (const chunk of chunkIds(jobIds)) {
@@ -645,6 +651,7 @@ export function useLienDeskData(
           demandLettersByJob,
           mailPiecesByFiling,
           mailPiecesByItem,
+          servePrintedFilingIds,
           courtesyRepliedAtByJob,
         })
       } catch {

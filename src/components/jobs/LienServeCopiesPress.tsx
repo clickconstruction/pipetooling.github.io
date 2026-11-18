@@ -36,7 +36,7 @@ const small: CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)' }
  * recording number is held, and the number is typed right here: until now a filing recorded without one had no place
  * to take it. A missing address is fixed on its own record, and the line under the press says which.
  */
-export function LienServeCopiesPress({ filing, jobId, jobNumber, isSub, issuer, to, onChanged, tall }: { filing: JobLienFilingRow; jobId: string; jobNumber: string; isSub: boolean; issuer: PhysicalInvoiceIssuer | null; to?: LienServeFacts['to']; onChanged?: () => void; tall?: boolean }) {
+export function LienServeCopiesPress({ filing, jobId, jobNumber, isSub, issuer, to, onChanged, onPrinted, tall }: { filing: JobLienFilingRow; jobId: string; jobNumber: string; isSub: boolean; issuer: PhysicalInvoiceIssuer | null; to?: LienServeFacts['to']; onChanged?: () => void; /** The copies went to the printer: the doors to them read *Enter mail numbers* from now on (`lienServeStage.ts`). */ onPrinted?: (filingId: string) => void; tall?: boolean }) {
   const { showToast } = useToastContext()
   const [letterOn, setLetterOn] = useLienServeLetterChoice()
   const [number, setNumber] = useState('')
@@ -62,6 +62,7 @@ export function LienServeCopiesPress({ filing, jobId, jobNumber, isSub, issuer, 
     // A print counts as a send: the packet is filed on the job as it printed, against the filing it copies.
     const ok = printAndFile(html, { kind: LIEN_SERVED_COPY_SENT_KIND, title, jobIds: [jobId], recipientName: lienServeRecipients(facts)[0]?.name ?? '', source: { table: 'job_lien_filings', id: filing.id } })
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
+    else onPrinted?.(filing.id)
   }
 
   const saveNumber = async () => {

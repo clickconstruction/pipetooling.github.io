@@ -138,6 +138,7 @@ export default function LienFilingTabs({
   deskNoticeState = '',
   onOpenDeskNotice,
   land = null,
+  onServePrinted,
   onClose,
 }: {
   job: JobWithDetails
@@ -164,6 +165,8 @@ export default function LienFilingTabs({
   noticeMonths?: string[] | null
   /** A stop window's card (`lienMailProofDoor.ts`): the copy to land on, scrolled to and lit for a moment. `at` tells one press from the next. */
   land?: (LienMailProofLanding & { at: number }) | null
+  /** The filed lien's copies went to the printer from this window's press. */
+  onServePrinted?: (filingId: string) => void
   /** The unpaid bills as documents (v2.3437) — enclosed behind the § 53.056 notice (§ 53.056(a-3)). */
   invoiceDocs?: NoticeInvoiceDoc[]
   /** The job's work days for the period the affidavit's paragraph 5 swears (v2.6061): the Lien window's fresh last-day read, so a day set by hand reaches the paper the moment it is saved; absent, the job row's own. */
@@ -276,9 +279,9 @@ export default function LienFilingTabs({
     setFilingCounty(property.county)
   }, [activeTab, job.id, property.county])
 
-  // A stop window's card lands here (`lienMailProofDoor.ts`). An affidavit's mailing and its mail number open the service
-  // step at that copy's fields. Anything else lands on the paper's row under Filings on this job, at the copy's line for a
-  // receipt. Each press lands once, when its tab and its filing are drawn. It stands after the effect above, which closes
+  // A stop window's card, or a desk door, lands here (`lienMailProofDoor.ts`). An affidavit's print lands on **Print the
+  // copies to mail**. Its mail number opens the service step at that copy's fields. Anything else lands on the paper's
+  // row under Filings on this job, at the copy's line for a receipt. Each press lands once, when its tab and its filing are drawn. It stands after the effect above, which closes
   // any open step when the tab or the property's county arrives: a county read late closes the step again, so within a
   // few seconds of the landing the step is opened and lit once more.
   const landedAt = useRef(0)
@@ -309,6 +312,13 @@ export default function LienFilingTabs({
       return
     }
     if (again) return
+    if (spot === 'print') {
+      if (filedAffidavitId !== land.filingId || activeTab !== 'affidavit') return
+      landedAt.current = land.at
+      landUndo.current?.()
+      landUndo.current = landOnWhenThere(() => document.querySelector<HTMLElement>(lienMailProofSelectors.servePress()))
+      return
+    }
     landedAt.current = land.at
     landUndo.current?.()
     landUndo.current = landOnWhenThere(() => (spot === 'copy' ? document.querySelector<HTMLElement>(lienMailProofSelectors.filingCopy(land.filingId, land.recipient)) : null) ?? document.querySelector<HTMLElement>(lienMailProofSelectors.filingRow(land.filingId)), { focus })
@@ -1554,7 +1564,7 @@ export default function LienFilingTabs({
                     </button>
                   ) : null}
                   {/* What goes in the envelope (punch list #366): the copy § 53.055 asks for and its cover letter, printed and filed on the job. */}
-                  {filedAffidavit && !filedAffidavit.served_at ? <LienServeCopiesPress filing={filedAffidavit} jobId={job.id} jobNumber={jobNumber} isSub={isSub} issuer={issuer} to={serveTo} onChanged={onChanged} tall={isMobile} /> : null}
+                  {filedAffidavit && !filedAffidavit.served_at ? <LienServeCopiesPress filing={filedAffidavit} jobId={job.id} jobNumber={jobNumber} isSub={isSub} issuer={issuer} to={serveTo} onChanged={onChanged} onPrinted={onServePrinted} tall={isMobile} /> : null}
                   {sheetNote}
                   {/* The help sheet (punch list #314): on unless the office turns it off, and the choice is kept on this computer. */}
                   {affidavitFields.form === 'short' ? (
@@ -1593,7 +1603,7 @@ export default function LienFilingTabs({
                   </button>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>{heldServiceWords(demandDate(filedAffidavit.serve_due ?? ''))}</div>
                   <div style={{ marginTop: '0.6rem' }}>
-                    <LienServeCopiesPress filing={filedAffidavit} jobId={job.id} jobNumber={jobNumber} isSub={isSub} issuer={issuer} to={serveTo} onChanged={onChanged} tall={isMobile} />
+                    <LienServeCopiesPress filing={filedAffidavit} jobId={job.id} jobNumber={jobNumber} isSub={isSub} issuer={issuer} to={serveTo} onChanged={onChanged} onPrinted={onServePrinted} tall={isMobile} />
                   </div>
                 </div>
               ) : null}
