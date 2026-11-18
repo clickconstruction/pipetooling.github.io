@@ -569,12 +569,13 @@ export default function LienBoard({
         {board.tiles.map((t) => <Tile key={t.key} tile={t.key === 'in_mail' && phonePrints && prints?.notice ? { ...t, destination: null } : t} isMobile={isMobile} onTile={onTile} />)}
       </div>
       {/* A phone keeps its bins folded, so its two prints stand here in one row (v2.7708; stacked, with their lines, since v2.7483). */}
+      {/* The row is a grid of equal columns, one a press, so the two share it on every phone: as a wrapping flex row they needed 337 px of a 375 px phone's 335 and the second fell under the first. A press too narrow for its words wraps them inside itself. */}
       {phonePrints ? (
-        <div data-lien-board-prints data-layout="row" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        <div data-lien-board-prints data-layout="row" style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, printSides.length)}, minmax(0, 1fr))`, gap: 8, alignItems: 'stretch' }}>
           {printSides.map((side) => {
             const off = side.dead || Boolean(prints?.busy)
             return (
-              <button key={side.kind} type="button" data-lien-board-print-press={side.act} disabled={off} onClick={() => prints?.onPress(side)} style={{ flex: '1 1 auto', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0 12px', minHeight: 44, borderRadius: 8, border: 'none', cursor: off ? 'default' : 'pointer', ...(off ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT } : { background: '#2563eb', color: '#fff' }) }}>
+              <button key={side.kind} type="button" data-lien-board-print-press={side.act} disabled={off} onClick={() => prints?.onPress(side)} style={{ minWidth: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, lineHeight: 1.2, padding: '4px 6px', minHeight: 44, borderRadius: 8, border: 'none', cursor: off ? 'default' : 'pointer', ...(off ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT } : { background: '#2563eb', color: '#fff' }) }}>
                 {side.short.label}
               </button>
             )
