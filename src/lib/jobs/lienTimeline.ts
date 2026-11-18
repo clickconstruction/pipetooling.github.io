@@ -439,6 +439,15 @@ function monthsPhrase(keys: ReadonlyArray<string>): string {
   return keys.map(workMonthShort).join(' + ')
 }
 
+/**
+ * The LAST WORK stop stands in for a day no one has said (v2.7684): its month came from a bill or from the job's
+ * creation. The strip's press under the stop reads *set the day ›* there, and *change ›* over hours or a hand day
+ * (`lienLastWorkDoorWords` in `lienLastWorkDoor.ts`).
+ */
+export function lienLastWorkStepIsStandIn(step: Pick<LienTimelineStep, 'kind' | 'words'>): boolean {
+  return step.kind === 'last_work' && (step.words === DATED_FROM_BILL_WORDS || step.words === DATED_FROM_CREATION_WORDS)
+}
+
 export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
   const { todayYmd } = input
   const kindUnknown = !(input.propertyKind ?? '').trim()

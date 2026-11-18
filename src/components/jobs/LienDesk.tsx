@@ -2314,6 +2314,7 @@ export default function LienDesk({
           setRetSelectedJobId(jobId)
         }}
         onOpenLastWork={office ? onOpenCalendarLastWork : undefined}
+        onLastWorkChanged={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())}
         footerEl={affFooterEl}
       />
     ) : (

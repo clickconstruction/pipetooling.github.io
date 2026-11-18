@@ -27,7 +27,8 @@ import { lienLastWorkPreview } from '../jobs/lienLastWorkDayPreview'
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const README = readFileSync('docs/dev-mcp/README.md', 'utf8')
 const EDGE = readFileSync('docs/EDGE_FUNCTIONS.md', 'utf8')
-const WINDOW_LINE = readFileSync('src/components/jobs/LienLastWorkDayLine.tsx', 'utf8')
+// The window's write lives in `LienLastWorkDayWindow.tsx` and its hook since v2.7684 (the line's editor and the timeline's press both save through them).
+const WINDOW_LINE = readFileSync('src/components/jobs/LienLastWorkDayWindow.tsx', 'utf8') + readFileSync('src/components/jobs/useLienLastWorkDayWrite.ts', 'utf8')
 const WINDOW_CONFIRM = readFileSync('src/components/jobs/LienLastWorkDayConfirm.tsx', 'utf8')
 const MIGRATION = readFileSync('supabase/migrations/20261006120000_lien_last_work_day.sql', 'utf8')
 const KERNELS = readFileSync('scripts/edge-kernels.mjs', 'utf8')
@@ -80,7 +81,7 @@ describe('the verbs — in the table, on the server, in the docs', () => {
       expect(LAST_WORK_JOB_COLS).toContain(col)
     }
     expect(WINDOW_LINE).toContain("supabase.from('jobs_ledger').update(patch as never).eq('id', jobId)")
-    expect(WINDOW_LINE).toContain('lienLastWorkDayPatch(dayDraft, noteDraft, userId, new Date().toISOString())')
+    expect(WINDOW_LINE).toContain('lienLastWorkDayPatch(day, note, userId, new Date().toISOString())')
     expect(SERVER).toContain("await restRows(session, 'PATCH', 'jobs_ledger', `id=eq.${p.job_id}`, patch)")
     expect(lastWorkDayPatch(day(), { userId: DEV }, '2026-11-13T22:00:00.000Z')).toEqual(lienLastWorkDayPatch('2026-09-11', 'Certified the gas line.', DEV, '2026-11-13T22:00:00.000Z'))
     expect(lastWorkDayPatch(clear, { userId: DEV }, 'now')).toEqual(LIEN_LAST_WORK_CLEAR)
