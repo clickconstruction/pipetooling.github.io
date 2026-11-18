@@ -6,7 +6,7 @@ keywords: short dashboard, dashboard view, short, full, waiting on you, leader, 
 where: /dashboard
 order: 14
 ---
-The short Dashboard is a shorter home page for a leader or a superintendent. It shows only what waits on you, then your day, then one door to everything else.
+The short Dashboard is a shorter home page for a leader or a superintendent. The page shows only what waits on you, then your day, then one door to everything else.
 
 The full Dashboard holds every section the company has. The short one holds a list you can finish. The office keeps working the rest, and the page says how much that is.
 
