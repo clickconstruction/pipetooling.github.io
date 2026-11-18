@@ -62,7 +62,7 @@ Did you take a part the list does not show? Tap **Something not on the list…**
 
 Then tap the press at the bottom. It reads your count, like **Take 3 from G12**. The take is saved at once. The camera opens again. Take a photo of the box after and tap Use Photo. You are done.
 
-You can skip a photo. Close the camera with no shot and the app goes on. The screen reads **No photo of G12 as found.** Tap **Take the photo** to try again. After the take, tap **Finish without it** to leave the second photo out. The office sees which photo is missing.
+You can skip a photo. Close the camera with no shot and the app goes on. The screen reads **G12 has no photo as found.** Tap **Take the photo** to try again. After the take, tap **Finish without it** to leave the second photo out. The office sees which photo is missing.
 
 If you walk away, the box keeps your take for twelve hours. It reads *You started a take from G12 at 2:14 PM.* Tap **Finish it** to go on. Tap **Nothing taken** to put it away.
 

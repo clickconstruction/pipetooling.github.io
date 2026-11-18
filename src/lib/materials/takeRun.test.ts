@@ -124,7 +124,7 @@ describe('a run left half done', () => {
     expect([open.sub, open.go, open.drop]).toEqual(['Nothing is taken yet.', 'Finish it', 'Nothing taken'])
     const saved = takeLeftWords(takeSaved(takeMark(start(mixed), 'text:elbow', 3), NOW), 'G12')
     expect(saved.main.startsWith('You took 3 from G12 at ')).toBe(true)
-    expect([saved.sub, saved.go, saved.drop]).toEqual(['No photo of G12 after yet. The take is saved.', 'Take the photo', 'Finish without it'])
+    expect([saved.sub, saved.go, saved.drop]).toEqual(['G12 has no photo after yet. The take is saved.', 'Take the photo', 'Finish without it'])
   })
 })
 

@@ -1042,7 +1042,7 @@ function TakeScreen({ container, lines, run, before, busy, narrow, onBack, onDro
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.25rem' }} aria-hidden>
-        <span style={step(before ? 'done' : 'miss')}>{before ? '✓ As found' : 'No photo'}</span>
+        <span style={step(before ? 'done' : 'miss')}>{before ? '✓ As found' : 'Photo missing'}</span>
         <span style={step('now')}>{one ? 'How many' : 'Tap what you take'}</span>
         <span style={step('next')}>Photo after</span>
       </div>
@@ -1051,8 +1051,8 @@ function TakeScreen({ container, lines, run, before, busy, narrow, onBack, onDro
       ) : busy ? (
         <p style={{ ...muted, margin: 0 }} role="status">{busy}</p>
       ) : (
-        <div role="group" aria-label={`No photo of ${label} as found`} style={leftStrip}>
-          <span><b>No photo of {label} as found.</b> You can go on without it.</span>
+        <div role="group" aria-label={`${label} has no photo as found`} style={leftStrip}>
+          <span><b>{label} has no photo as found.</b> You can go on without it.</span>
           <button type="button" style={{ ...btn, justifySelf: 'start' }} onClick={onShootBefore}><CameraGlyph size={16} />Take the photo</button>
         </div>
       )}
@@ -1128,8 +1128,8 @@ function TakeAfterScreen({ container, run, busy, onShoot, onFinish }: { containe
       {busy ? (
         <p style={{ ...muted, margin: 0 }} role="status">{busy}</p>
       ) : (
-        <div role="group" aria-label={`No photo of ${label} after`} style={leftStrip}>
-          <span><b>No photo of {label} after.</b> Take it now, or finish without it.</span>
+        <div role="group" aria-label={`${label} has no photo after`} style={leftStrip}>
+          <span><b>{label} has no photo after.</b> Take it now, or finish without it.</span>
           <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 56, fontSize: '1.05rem' }} onClick={onShoot}><CameraGlyph size={18} />Take the photo</button>
           <button type="button" style={{ ...btn, ...btnBlock }} onClick={onFinish}>Finish without it</button>
         </div>

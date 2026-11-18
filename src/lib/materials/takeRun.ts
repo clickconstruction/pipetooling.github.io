@@ -168,7 +168,7 @@ function clock(iso: string): string {
 /** The strip over a box whose run was left: started and not saved, or saved with no photo after. */
 export function takeLeftWords(run: TakeRun, containerLabel: string): { main: string; sub: string; go: string; drop: string } {
   if (run.savedAt) {
-    return { main: `You took ${run.savedCount} from ${containerLabel} at ${clock(run.savedAt)}.`, sub: `No photo of ${containerLabel} after yet. The take is saved.`, go: 'Take the photo', drop: 'Finish without it' }
+    return { main: `You took ${run.savedCount} from ${containerLabel} at ${clock(run.savedAt)}.`, sub: `${containerLabel} has no photo after yet. The take is saved.`, go: 'Take the photo', drop: 'Finish without it' }
   }
   return { main: `You started a take from ${containerLabel} at ${clock(run.startedAt)}.`, sub: 'Nothing is taken yet.', go: 'Finish it', drop: 'Nothing taken' }
 }

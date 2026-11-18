@@ -102,7 +102,7 @@ describe('TallyOnSiteTab · Take from a box', () => {
     expect(screen.getByText('ZZ test elbow. A2 has 8.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Take 1 from A2' })).toBeTruthy()
     // No photo came back yet: the run says so and goes on.
-    expect(screen.getByRole('group', { name: 'No photo of A2 as found' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'A2 has no photo as found' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '2' }))
     expect(screen.getByTestId('on-site-take-hint').textContent).toBe('Taking 2. A2 will have 6 left.')
     fireEvent.click(screen.getByRole('button', { name: 'Take 2 from A2' }))
