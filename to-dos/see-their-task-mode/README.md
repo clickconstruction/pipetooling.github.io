@@ -2,14 +2,14 @@
 name: "See a person's Task Mode from Review"
 number: 381
 group: ready
-status: asked 2026-11-17 · looked at, designed, drawn and rendered the same day · the owner said *Build my picks* · built and live the same evening as v2.7692, v2.7697 and v2.7698 (PR #8599) · walked on the live site as the dev, read only, on the dev's own window and one teammate's
+status: asked 2026-11-17 · looked at, designed, drawn and rendered the same day · the owner said *Build my picks* · built and live the same evening as v2.7692, v2.7697 and v2.7698 (PR #8599) · walked on the live site as the dev, read only, on the dev's own window and one teammate's · the look shown as screenshots on 2026-11-18
 summary: >
   On Checklist → Review the owner opens a person's card and sees their open tasks as a list. He asked for a
   press there that opens a window showing what that person's phone shows in Task Mode, with their current
   tasks and what is coming up. This card adds that press and that window. The window is a look: he stays
   signed in as himself, it reads with the read the office already has, and no press inside it works. It
   draws Today with the same code the person's phone runs, so the two cannot drift apart.
-next: The owner's own look, from his account and on his phone. Then his word on call 7's link to View as, and retire the card.
+next: The owner's word on call 7's link to View as, asked on 2026-11-18 with the screenshots. Then retire the card.
 size: M as a train of five (M · M · M · S · XS), all five done
 blocker: None.
 opinion: build — the office can already read every row Today draws, so this is a new look over reads that exist, with no change to the database
@@ -171,4 +171,25 @@ whole run. Nobody signed in as anyone else.
 - The empty week's **Add a task** press on the live site, since it opens a window that writes.
 - The live site in light. The window was seen in light on the dev server.
 
-**Left.** The owner's own look. Call 7's quiet link to View as for a dev, which is not built.
+**Shown as screenshots, 2026-11-18.** Taken as the dev in a headless browser, on a dev server over live data.
+Every write to a table was stopped at the browser. The pictures hold real tasks, so they were shown in the
+session and are kept nowhere.
+
+- The door on a person's opened card, at a desk and at a phone's width.
+- A teammate with a task today, top to bottom: the head, the look line, the date, the green sentence, Next,
+  Still open, Waiting For and the Upcoming fold, with Coming up and the list of what a look does not show.
+- A second teammate with a day not ticked and a full week: *Tomorrow*, *repeats* and *1 repeating task again*.
+- The dev's own row.
+- A person with nothing today, whose screen reads *Nothing due today.*
+- An empty week, with the **Add task for** press drawn and not pressed.
+- A card opened by its fold. Then **Mark done** pressed twice, with Note, More, Photo and Add a task for me.
+  The task stayed under Next and the sentence did not change. No write was tried and no other window opened.
+  **Read again** moved the time in the head and Escape closed the window.
+- A phone's width of 375, with the bar swapped to **Coming up**. The page measured 375 wide.
+- A desk's width in dark.
+
+Not shown, because no person had them that morning: **Then** and **Done today**. They need two tasks dated
+today, or one already ticked.
+
+**Left.** The owner's word on call 7. The card's pick is one quiet link to View as for a dev, which is not
+built. Then retire the card.
