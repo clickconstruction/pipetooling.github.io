@@ -1089,7 +1089,9 @@ describe('LienDesk', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
     const views = () => within(screen.getByRole('tablist', { name: 'View' })).getAllByRole('tab').map((t) => t.textContent)
-    expect(views()).toEqual(['⏱ Lien desk · 1 to do', 'By date', 'By paper', 'By job'])
+    // On a computer the three after the title read one word each (v2.7784) and keep the view's name as the tab's own.
+    expect(views()).toEqual(['⏱ Lien desk · 1 to do', 'Date', 'Paper', 'Job'])
+    expect(within(screen.getByRole('tablist', { name: 'View' })).getAllByRole('tab').slice(1).map((t) => t.getAttribute('aria-label'))).toEqual(['By date', 'By paper', 'By job'])
     // On To do and on By date the three papers' tabs are not drawn.
     expect(screen.queryByRole('tablist', { name: 'Kind of paper' })).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'By paper' }))

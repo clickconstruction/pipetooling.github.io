@@ -320,8 +320,14 @@ last_updated: 2026-11-18
 
 > **v2.7780 (the owner-records door leaves the title bar for the call window, the owner's ask of 2026-11-18):** *An owner asked for records ›* is the last row of `LienCallScriptModal`, the window ☎ opens (`onOwnerRecords`, words `CALL_SCRIPT_RECORDS_ASK` and `CALL_SCRIPT_RECORDS_DOOR` in `lienCallScript.ts`), and `onOpenOwnerRecords` is handed the job under the reader so the packet opens on its property.
 > The bar's tools are the four presses alone: `lienDeskTitleLineFit` answers `all` or `none`, `LienDeskTitleLineParts` and `LienDeskTitleBarLayout` have no door, `lienDeskTitleBarLayout` takes no `recordsDoor`, and off By paper a bar that holds the presses is one line.
-> The longest title line needs 829 px of window, where the door on it would have needed 1,038.
+> The longest title line needed 829 px of window until v2.7784 and needs 762 since, where the door on it would have needed 1,038.
 > A phone keeps the door as a row of More.
+
+> **v2.7784 (the view tabs read Date, Paper and Job on a computer, the owner's ask of 2026-11-18 and his pick of three drawn, *Build A*):** [`lienDeskTitleBar.ts`](../src/lib/jobs/lienDeskTitleBar.ts) `lienDeskViewTab(view, { isMobile })` words the three tabs after the title: `words` *Date*, *Paper* and *Job* on a computer, `name` the view's own name (`LIEN_DESK_VIEW_NAMES`: *By date*, *By paper*, *By job*) and `hint` the name and what the view holds.
+> `LienDeskViewTabs` draws the words, carries the name as the tab's `aria-label` where the two differ and the hint as its `title`, so a test, a screen reader and a guide still find the tab by *By paper*.
+> A phone's tabs read the names whole, with no label.
+> `.lienDeskKindTab` in `index.css` is `2px 8px` where it was `2px 10px`, on the view tabs and on By paper's three (a window from 641 to 1,131 px keeps its 7).
+> Measured on the live desk at 1,440 px: the views 305 px with a two-figure count where they were 373 (316 at three figures, `LIEN_DESK_TITLE_LINE_PARTS.views`), the paper tabs 411 where they were 423 (`LIEN_DESK_PILE_LINE_PARTS.papers`).
 
 > **v2.7311 (the owner-records door ends the pile line, the owner's ask of 2026-11-15):** on a computer *An owner asked for records ›* is the right end of the second line on every view, whatever the title line has room for — on By paper the paper tabs and the piles at the left, *Put a GC on notice…* and the door in the `data-lien-desk-right` span at the right;
 > off By paper the door alone in that span (the owner's answer when asked: yes, every view).

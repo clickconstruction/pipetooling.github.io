@@ -39,7 +39,7 @@ Two related papers point the other way. First come the four Texas **lien waivers
 
 | You want to | Go to |
 |---|---|
-| See which unpaid months are closing and get the notices out. | **The Lien desk**. The desk opens on *To do*, the papers that ask for an act. The desk's other three views are *By date*, *By paper* and *By job*. The desk opens from Dashboard → Needs you, the card that names the next lien deadline. The desk also opens from Jobs → Pipeline → Collections header {{button:outline|Lien desk}}, the button with the orange gavel. |
+| See which unpaid months are closing and get the notices out. | **The Lien desk**. The desk opens on *To do*, the papers that ask for an act. The desk's other three views are *By date*, *By paper* and *By job*. On a computer their tabs read *Date*, *Paper* and *Job*. The desk opens from Dashboard → Needs you, the card that names the next lien deadline. The desk also opens from Jobs → Pipeline → Collections header {{button:outline|Lien desk}}, the button with the orange gavel. |
 | See the months and hours behind one bill. | **Jobs → Pipeline → Forecast**, the chevron on the row. |
 | Send one notice or a demand letter by hand. File the affidavit. Record the filing and the service. | The job's Lien window, titled *Liens on job* and its number. Press the orange lien icon on a Billed or Collections row. Its top card names your next step. |
 | Give a customer a release when they pay. | The blue release button on the row, or **Bill Customer → Lien releases**. |

@@ -31,6 +31,11 @@
  * row of the window ☎ opens (`LienCallScriptModal`), so the tools are the four presses alone: the title line holds
  * them or the second line does, and off By paper a bar that holds them is one line. A phone keeps the door as a row of
  * More.
+ *
+ * Since v2.7784 (the owner's ask of 2026-11-18: *"shorten this header line a lot by removing the repeating By's and
+ * tightening up the buttons"*, and his pick of three drawn, *"Build A"*) the three views after the title read *Date*,
+ * *Paper* and *Job* on a computer (`lienDeskViewTab`) and a tab's side padding is 8 px where it was 10
+ * (`.lienDeskKindTab`, By paper's three tabs with it), so the views are 68 px shorter and the paper tabs 12.
  */
 
 /**
@@ -44,8 +49,13 @@
  * 182.8), 372.4 with that day's *32 to do* and 302.6 with the name alone. Until then the line held the title (100) and
  * the views with *To do · 888* (290, 289.6 measured the same way that day): 404 px with the gap between them, so the
  * line is 21 px shorter.
+ *
+ * And again on 2026-11-18 (v2.7784), the same way, as *Date*, *Paper* and *Job* with 8 px of side padding: 316 px as
+ * *⏱ Lien desk · 888 to do* (315.5; the tab itself 178.8), 304.9 with that day's *35 to do* and 234.8 with the name
+ * alone. Until then the three read *By date*, *By paper* and *By job* at 10 px, 383 px with the three-figure count, so
+ * the line is 67 px shorter. A window from 641 to 1,131 px draws the tabs at 7 px (`index.css`), 296.9 with *35 to do*.
  */
-export const LIEN_DESK_TITLE_LINE_PARTS = { back: 98, views: 383, presses: 231, tools: 231, gap: 14.4, chrome: 88 } as const
+export const LIEN_DESK_TITLE_LINE_PARTS = { back: 98, views: 316, presses: 231, tools: 231, gap: 14.4, chrome: 88 } as const
 
 /**
  * The room between the bar's lines on a computer, in px (v2.7322, the owner's three boxes of 2026-11-15: the band under
@@ -90,6 +100,42 @@ export function lienDeskFirstTab(o: { isMobile: boolean; count: number | null })
   const n = o.count != null && Number.isFinite(o.count) ? Math.max(0, Math.floor(o.count)) : null
   if (o.isMobile) return { words: n == null ? 'To do' : `To do · ${n}`, titled: false }
   return { words: n == null ? LIEN_DESK_NAME : `${LIEN_DESK_NAME} · ${n} to do`, titled: true }
+}
+
+/** The three views after the first tab, by the key the tab row draws them under. */
+export type LienDeskLaterView = 'calendar' | 'paper' | 'timeline'
+
+/** The views' names: what the guides, the ? card and a screen reader call them, and what a phone's tab reads. */
+export const LIEN_DESK_VIEW_NAMES: Record<LienDeskLaterView, string> = { calendar: 'By date', paper: 'By paper', timeline: 'By job' }
+
+/** A view's tab as drawn: the words on it, and its accessible name. */
+export type LienDeskViewTab = {
+  /** The words on the tab. */
+  words: string
+  /** The tab's accessible name, the view's own name. Where it differs from `words` the tab carries it as its `aria-label`, and it holds the words, so a spoken *Paper* still finds the tab. */
+  name: string
+  /** The hover hint: the view's name and what it holds. */
+  hint: string
+}
+
+const LIEN_DESK_VIEW_SHORT: Record<LienDeskLaterView, string> = { calendar: 'Date', paper: 'Paper', timeline: 'Job' }
+const LIEN_DESK_VIEW_HOLDS: Record<LienDeskLaterView, string> = {
+  calendar: 'when each deadline falls, on one calendar',
+  paper: 'every monthly notice, lien affidavit and retainage notice by its state',
+  timeline: 'every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel',
+}
+
+/**
+ * A view tab's words (v2.7784, the owner's ask of 2026-11-18: *"shorten this header line a lot by removing the
+ * repeating By's and tightening up the buttons"*, and his pick, *"Build A"*). On a computer the three tabs after the
+ * title read *Date*, *Paper* and *Job*: the By said three times took 57 px of the title line. The views keep their
+ * names, *By date*, *By paper* and *By job*, as each tab's accessible name and the first words of its hover hint, so the
+ * guides, the ? card and a screen reader still say one name. A phone's tabs read the names whole: its four tabs fill
+ * the row either way, and it has no hover to say the name.
+ */
+export function lienDeskViewTab(view: LienDeskLaterView, o: { isMobile: boolean }): LienDeskViewTab {
+  const name = LIEN_DESK_VIEW_NAMES[view]
+  return { words: o.isMobile ? name : LIEN_DESK_VIEW_SHORT[view], name, hint: `${name}: ${LIEN_DESK_VIEW_HOLDS[view]}` }
 }
 
 /** The parts of one title line as drawn, in px: a part that is not there is 0 (a bar with no way back). The line has no title part since v2.7465: the first of the views carries the page's name. The run's door was a part until v2.7490 and the owner-records door until v2.7780, when each left the title bar. */
@@ -147,9 +193,11 @@ function readLienDeskBarLine(bar: HTMLElement): { width: number; cs: CSSStyleDec
  * piles (*Needs the property facts · 7 · To draft · 3 · Ready to file · 12*, with the bar's gap between), and the right
  * span at its fullest — *⚠ Put a GC on notice…* (166) and the four presses (231) with the span's 0.6rem gap, and
  * until v2.7780 the owner-records door (199) between them — which Monthly notices draws in a window whose title line
- * has no room for the presses. `gap` is the bar's column gap, as on the title line.
+ * has no room for the presses. `gap` is the bar's column gap, as on the title line. The paper tabs were measured again
+ * on 2026-11-18 (v2.7784) at 8 px of side padding, with the same three counts written in: 411 px (410.9), where 10 px
+ * drew 423.
  */
-export const LIEN_DESK_PILE_LINE_PARTS = { papers: 423, piles: 427, gcDoor: 166, presses: 231, rightGap: 9.6, right: 406.6, gap: 14.4 } as const
+export const LIEN_DESK_PILE_LINE_PARTS = { papers: 411, piles: 427, gcDoor: 166, presses: 231, rightGap: 9.6, right: 406.6, gap: 14.4 } as const
 
 /** The parts of the pile line as drawn, in px: a part that is not there is 0 (Monthly notices has no piles; the leader's line has no right span). */
 export type LienDeskPileLineParts = { papers: number; piles: number; right: number; gap: number }
