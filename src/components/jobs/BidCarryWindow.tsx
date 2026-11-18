@@ -37,6 +37,13 @@ export type BidCarryAsk = {
   /** The customer's kind, which picks the chip that starts lit. */
   customerType: string | null
   settings: LineBudgetSettings
+  /**
+   * `split` = a job that already exists on one line (PR 4): the stages take that line's place, so
+   * the window offers the stages or nothing, and says the job saves with them.
+   */
+  mode?: 'new' | 'split'
+  /** In `split` mode: the name of the line the stages take the place of. */
+  lineName?: string
 }
 
 type Choice = 'stages' | 'one' | 'zero'
@@ -64,13 +71,14 @@ export function BidCarryWindow({ ask, onAnswer }: { ask: BidCarryAsk; onAnswer: 
   const [splitKey, setSplitKey] = useState<BidStageSplitKey | null>(() => defaultBidStageSplitKey(splits, ask.customerType))
   const split = splits.find((s) => s.key === splitKey) ?? splits[0] ?? null
   const result = useMemo(
-    () => (split ? bidStageLines({ priceUsd: ask.carryValue, split, breakdown: ask.breakdown, settings: ask.settings, bid: ask.bid, agreed: ask.agreedValue != null }) : null),
-    [split, ask.carryValue, ask.breakdown, ask.settings, ask.bid, ask.agreedValue],
+    () => (split ? bidStageLines({ priceUsd: ask.carryValue, split, breakdown: ask.breakdown, settings: ask.settings, bid: ask.bid, agreed: ask.agreedValue != null, figure: ask.mode === 'split' ? BID_CARRY_WORDS.splitFigure : undefined }) : null),
+    [split, ask.carryValue, ask.breakdown, ask.settings, ask.bid, ask.agreedValue, ask.mode],
   )
   // Stages can be offered only when a split gives two or more lines; a price too small to split keeps the old two answers.
   const canStage = !!result && result.lines.length >= 2
   const [choice, setChoice] = useState<Choice>(canStage ? 'stages' : 'one')
   const bidLabel = bidImportLabel(ask.bid, 'the bid')
+  const splitting = ask.mode === 'split'
 
   // On the modal stack, so the job form under it leaves Escape to this window.
   const isTopmost = useModalStackEntry()
@@ -86,6 +94,7 @@ export function BidCarryWindow({ ask, onAnswer }: { ask: BidCarryAsk; onAnswer: 
 
   const confirm = () => {
     if (choice === 'stages' && result && canStage) onAnswer({ choice: 'stages', lines: result.lines })
+    else if (splitting) onAnswer({ choice: 'cancel' })
     else onAnswer({ choice: choice === 'zero' ? 'zero' : 'one' })
   }
   const pick = (c: Choice) => () => setChoice(c)
@@ -106,8 +115,8 @@ export function BidCarryWindow({ ask, onAnswer }: { ask: BidCarryAsk; onAnswer: 
     >
       <div style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: 10, padding: '1.1rem 1.25rem', width: 'min(34rem, 94vw)', maxHeight: 'min(88vh, 100%)', overflowY: 'auto', boxShadow: '0 18px 50px rgba(0,0,0,0.35)', display: 'grid', gap: '0.6rem' }}>
         <div>
-          <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>{BID_CARRY_WORDS.title(ask.carryValue)}</h3>
-          <p style={{ margin: 0, ...note }}>{BID_CARRY_WORDS.whose(bidImportWhoseFigure({ agreedValue: ask.agreedValue, bid: ask.bid, gcName: ask.gcName }))}</p>
+          <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>{splitting ? BID_CARRY_WORDS.splitTitle(ask.bid.bid_number ? `B${String(ask.bid.bid_number).trim()}` : 'the bid') : BID_CARRY_WORDS.title(ask.carryValue)}</h3>
+          <p style={{ margin: 0, ...note }}>{splitting ? BID_CARRY_WORDS.splitSub(ask.lineName ?? '', ask.carryValue) : BID_CARRY_WORDS.whose(bidImportWhoseFigure({ agreedValue: ask.agreedValue, bid: ask.bid, gcName: ask.gcName }))}</p>
         </div>
 
         {canStage && result && split ? (
@@ -148,28 +157,31 @@ export function BidCarryWindow({ ask, onAnswer }: { ask: BidCarryAsk; onAnswer: 
           </div>
         ) : null}
 
-        <button type="button" role="radio" aria-checked={choice === 'one'} data-testid="bid-carry-one" onClick={pick('one')} style={{ ...option(choice === 'one'), cursor: 'pointer' }}>
-          {head('one', BID_CARRY_WORDS.asOneLine)}
-          <span style={note}>{BID_CARRY_WORDS.oneLineNote(ask.carryValue)}</span>
-        </button>
+        {splitting ? null : (
+          <>
+            <button type="button" role="radio" aria-checked={choice === 'one'} data-testid="bid-carry-one" onClick={pick('one')} style={{ ...option(choice === 'one'), cursor: 'pointer' }}>
+              {head('one', BID_CARRY_WORDS.asOneLine)}
+              <span style={note}>{BID_CARRY_WORDS.oneLineNote(ask.carryValue)}</span>
+            </button>
 
-        <button type="button" role="radio" aria-checked={choice === 'zero'} data-testid="bid-carry-zero" onClick={pick('zero')} style={{ ...option(choice === 'zero'), cursor: 'pointer' }}>
-          {head('zero', BID_CARRY_WORDS.startAtZero)}
-          <span style={note}>{BID_CARRY_WORDS.startAtZeroNote}</span>
-        </button>
+            <button type="button" role="radio" aria-checked={choice === 'zero'} data-testid="bid-carry-zero" onClick={pick('zero')} style={{ ...option(choice === 'zero'), cursor: 'pointer' }}>
+              {head('zero', BID_CARRY_WORDS.startAtZero)}
+              <span style={note}>{BID_CARRY_WORDS.startAtZeroNote}</span>
+            </button>
+          </>
+        )}
 
         <p style={{ margin: 0, ...note }}>
-          {choice === 'zero' ? null : ask.agreedValue == null ? `${BID_CARRY_WORDS.recordsAgreed} ` : null}
-          {BID_CARRY_WORDS.changeLater}
+          {splitting ? BID_CARRY_WORDS.splitSaves : `${choice !== 'zero' && ask.agreedValue == null ? `${BID_CARRY_WORDS.recordsAgreed} ` : ''}${BID_CARRY_WORDS.changeLater}`}
         </p>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button type="button" onClick={() => onAnswer({ choice: 'cancel' })} style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.45rem 0.9rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}>
-            {BID_CARRY_WORDS.cancel}
+            {splitting ? BID_CARRY_WORDS.splitKeep : BID_CARRY_WORDS.cancel}
           </button>
-          <button type="button" data-testid="bid-carry-confirm" onClick={confirm} style={{ font: 'inherit', fontSize: '0.875rem', fontWeight: 600, padding: '0.45rem 0.95rem', border: 'none', borderRadius: 6, background: BLUE, color: '#fff', cursor: 'pointer' }}>
+          {splitting && !canStage ? null : <button type="button" data-testid="bid-carry-confirm" onClick={confirm} style={{ font: 'inherit', fontSize: '0.875rem', fontWeight: 600, padding: '0.45rem 0.95rem', border: 'none', borderRadius: 6, background: BLUE, color: '#fff', cursor: 'pointer' }}>
             {BID_CARRY_WORDS.confirm(choice, ask.carryValue, result?.lines.length ?? 0)}
-          </button>
+          </button>}
         </div>
       </div>
     </div>

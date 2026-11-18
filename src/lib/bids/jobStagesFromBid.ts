@@ -149,13 +149,15 @@ export function bidStageLines(args: {
   bid: { bid_number: string | null; project_name: string | null }
   /** True when the price is the bid's agreed value, false when it is what the GC was sent. */
   agreed: boolean
+  /** What the price is, when it is neither: *the line it took the place of*, on a job that already exists. */
+  figure?: string
 }): BidStageLines {
   const { priceUsd, split, breakdown, settings } = args
   const dollars = dollarsOf(split, priceUsd)
   const rows = split.rows.map((r, i) => ({ ...r, priceUsd: dollars[i] ?? 0 })).filter((r) => r.priceUsd > 0)
   const totalWeight = split.rows.reduce((s, r) => s + Math.max(0, r.weight), 0)
   const bidLabel = bidImportLabel(args.bid, 'the bid')
-  const figure = args.agreed ? 'the agreed value' : 'what was sent'
+  const figure = args.figure ?? (args.agreed ? 'the agreed value' : 'what was sent')
 
   const usable = bidBaselineUsable(breakdown, settings.rateUsd)
   // The rate the hours are valued and read at: the company's, the one `calcLineBudget` divides by.
@@ -223,6 +225,12 @@ export const BID_CARRY_WORDS = {
   /** Said when the bid has no agreed value yet and the answer carries the figure. */
   recordsAgreed: 'Bringing it over also records it on the bid as the agreed value.',
   ariaLabel: 'How the bid’s price comes onto the job',
+  /** On a job that already exists (PR 4): the stages take the place of its one line. */
+  splitTitle: (bidLabel: string): string => `Bring ${bidLabel}’s stages onto this job?`,
+  splitSub: (lineName: string, priceUsd: number): string => `They take the place of the one line, ${lineName.trim() || 'the line'}, at $${formatCurrency(priceUsd)}.`,
+  splitSaves: 'The job saves its lines as you change them, so this is saved with it.',
+  splitKeep: 'Keep one line',
+  splitFigure: 'the line it took the place of',
   oneLineNote: (carryUsd: number): string => `Bid price · $${formatCurrency(carryUsd)}.`,
   /** Under the rows: where the dollars came from. */
   dollarsFrom: (split: BidStageSplit, bidLabel: string): string => (split.key === 'bid' ? `Dollars: ${bidLabel}’s schedule of values.` : `Dollars: the company’s ${split.label.replace(/^\S+\s+/, '')}.`),
@@ -319,4 +327,25 @@ export function bringBidStagesStanding(input: {
 /** The link beside Multiple Segment Generator: *Bring B398’s stages*. */
 export function bringBidStagesLabel(bid: { bid_number: string | null }): string {
   return bid.bid_number ? `Bring B${String(bid.bid_number).trim()}’s stages` : 'Bring the bid’s stages'
+}
+
+/** As much of a form row as swapping the one line needs. */
+type SwappableRow = { id: string; line_kind?: 'work' | 'discount'; discount_basis_ids?: string[] | null }
+
+/**
+ * The form's rows after the stages take the place of the one line: the stage lines stand where
+ * it stood, every other row keeps its place, and a discount that named the old line now names
+ * the stages (a discount on every work row, `null`, needs nothing). `withId` gives each new line
+ * its id. Untouched (the same array) when the line is not there.
+ */
+export function rowsWithBidStages<T extends SwappableRow>(rows: ReadonlyArray<T>, lineId: string, stageRows: ReadonlyArray<T>): ReadonlyArray<T> {
+  if (!rows.some((r) => r.id === lineId) || stageRows.length === 0) return rows
+  const newIds = stageRows.map((r) => r.id)
+  const out: T[] = []
+  for (const r of rows) {
+    if (r.id === lineId) out.push(...stageRows)
+    else if (r.line_kind === 'discount' && r.discount_basis_ids?.includes(lineId)) out.push({ ...r, discount_basis_ids: r.discount_basis_ids.flatMap((id) => (id === lineId ? newIds : [id])) })
+    else out.push(r)
+  }
+  return out
 }

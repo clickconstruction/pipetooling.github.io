@@ -40,6 +40,7 @@ import { useStandingDiscountOffer } from '../../hooks/useStandingDiscountOffer'
 import { useJobFormInvoiceActions } from '../../hooks/useJobFormInvoiceActions'
 import { useJobFormImport, type JobImportWinningGcPick } from '../../hooks/useJobFormImport'
 import { BidCarryWindow } from './BidCarryWindow'
+import { useBringBidStages } from '../../hooks/useBringBidStages'
 import { useDevelopmentAddressSuggestion } from '../../hooks/useDevelopmentAddressSuggestion'
 import { DevelopmentAddressSuggestionLine } from '../developments/DevelopmentAddressSuggestionLine'
 import { useJobFormPaymentActions } from '../../hooks/useJobFormPaymentActions'
@@ -813,6 +814,9 @@ export default function JobFormModal({
     registerRequestClose(() => closeFormRef.current?.() ?? Promise.resolve(true))
     return () => registerRequestClose(null)
   }, [registerRequestClose])
+
+  // A job from a bid still on one clean line is offered the bid's stages in its place (punch list #397, PR 4).
+  const bringStages = useBringBidStages({ jobId: editing?.id ?? null, bidId, status: editing?.status, bidNumber: linkedBidSummary?.bid_number, fixtures, setFixtures })
 
   function addGeneratedSegmentsToJob(lines: SegmentGeneratorPayloadLine[]) {
     if (lines.length > 0) {
@@ -2957,6 +2961,8 @@ export default function JobFormModal({
             moveFixtureRow={moveFixtureRowInList}
             invoiceStatusById={fixtureInvoiceStatusById}
             onOpenSegmentGenerator={() => setSegmentGeneratorOpen(true)}
+            bringStages={bringStages.link}
+            bringStagesHeld={bringStages.heldWords}
             onOpenStripeFixturePreview={() => setStripeFixturePreviewOpen(true)}
             jobTotalDollars={jobTotalBidDollars}
             plan={stagePlan}
@@ -3392,6 +3398,7 @@ export default function JobFormModal({
         />
       )}
       {bidCarryAsk && <BidCarryWindow ask={bidCarryAsk} onAnswer={answerBidCarry} />}
+      {bringStages.ask && <BidCarryWindow ask={bringStages.ask} onAnswer={bringStages.answer} />}
       {segmentGeneratorOpen && (
         <MultipleSegmentGeneratorModal
           open={segmentGeneratorOpen}

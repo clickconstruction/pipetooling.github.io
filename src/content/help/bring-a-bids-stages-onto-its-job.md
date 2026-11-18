@@ -2,7 +2,7 @@
 title: bring a bid's stages onto its job
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: stages, stage lines, bid price, rough in, top out, trim set, final, line items, new job, won bid, carry over, as stages, as one line, start at $0, 30/30/30/10, 40/40/20, any time, in order, schedule of values, labor tab, hours, pace card, projects board, stage checklist
+keywords: stages, stage lines, bring the bid's stages, existing job, keep one line, bid price, rough in, top out, trim set, final, line items, new job, won bid, carry over, as stages, as one line, start at $0, 30/30/30/10, 40/40/20, any time, in order, schedule of values, labor tab, hours, pace card, projects board, stage checklist
 order: 73
 ---
 When you open a job from a won bid, the app asks how the price comes onto the job. You can bring it as stages, as one line, or not at all. Stages give the pace card, the Projects board and the stage checklists something to read.
@@ -61,5 +61,18 @@ Sometimes the bid cannot give hours. The window then says why, such as hours on 
 - The superintendent's pace card draws the stages.
 - Every line arrives **Any time**, so nothing about billing changes. Tap a line's badge to make it **In order**.
 - The hours frozen at award stay as they are. See [give a project its hours baseline at award](/help/give-a-project-its-hours-baseline).
+
+## On a job that already exists
+
+A job opened before this, or opened as one line, can still take its stages.
+
+1. Open the job and press **Bill**.
+2. Beside **Multiple Segment Generator**, press the link that names the bid, such as **Bring B482's stages**.
+3. Pick the split with the chips.
+4. Press the blue button.
+
+The stages take the place of the one line. The job saves its lines as you change them, so this is saved with it. **Keep one line** closes the window and changes nothing.
+
+The link shows only on a job from a bid that is Waiting or Working and still has one line. It also needs nothing to hang on that line. When something does, a short line under **Line Items** says what. It can be a bill, a pay application or the crew's percent. It can be a checklist answer, stage dates, a trip or a tuned budget. Use **+ Add line item** to add a stage on those jobs.
 
 For the rest of the win, see [turn a won bid into a job](/help/turn-a-won-bid-into-a-job).
