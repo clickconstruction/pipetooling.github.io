@@ -1,6 +1,7 @@
 import { StagesCrewLine } from './StagesCrewLine'
 import type { StagesPhoneRowsMode } from './stagesPhoneRowsMode'
 import { stagesTableFlatProps, type StagesTableShared } from './stagesTableShared'
+import { stagesRowContext } from './stagesRowContext'
 import { Fragment, useState, type ReactNode } from 'react'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
@@ -135,43 +136,17 @@ export default function JobsStagesTable(tableProps: JobsStagesTableProps) {
     submitJobThreadNoteWithBody,
     loadJobThreadNotesForJob,
     authUser,
-    showToast,
-    customers,
-    openEditJobAndCreateCustomerFlow,
-    stagesManHoursByJobId,
-    stagesManHoursLoading,
-    crewByJobId,
     checklistMarksFor,
     openChecklistDoor,
-    stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,
-    jobThreadStatsByJobId,
     jobThreadActivityByJobId,
-    openJobThreadFullscreen,
-    openJobActivityExpand,
-    openNewReportForJob,
-    openJobCalendar,
     stagesUpcomingByJobId,
     stagesWorkedByJobId,
     jobThreadFullscreen,
     setJobThreadFullscreen,
-    applyStagesInvoiceFocus,
-    canOpenJobScheduleModal,
-    setScheduleModalJob,
-    openQuickAssignForJob,
     sendBackLabel,
     authRole,
-    loadJobs,
-    jobContractCoverageByJobId,
-    propertyKindByJobId,
-    onPropertyKindSaved,
-    propertyLinkByJobId,
-    onPropertyLinked,
-    onOpenJobContract,
-    onOpenCustomerDoor,
-    boardDotByJobId,
-    customerLinesByJobId,
   } = props
   // The job's plans (punch list #239, PR 6): one read for every row that names a part; the icon opens the one set or
   // the picker, and a job with no part keeps opening its old plans link.
@@ -190,48 +165,14 @@ export default function JobsStagesTable(tableProps: JobsStagesTableProps) {
   const customerProfileModal = useCustomerProfileModal()
   const jobHoursStoryModal = useJobHoursStoryModal()
   const sessionNotesOpener = useSessionNotesOpener()
-  const stagesRowSharedCtx: StagesRowRenderContext = {
+  const stagesRowSharedCtx = stagesRowContext(props, {
     openSessionNotesForJob: sessionNotesOpener,
     openCustomerProfile: customerProfileModal?.openCustomerProfile,
     openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
-    showToast,
-    customers,
-    openEditJobAndCreateCustomerFlow,
-    stagesManHoursByJobId,
-    stagesManHoursLoading,
-    crewByJobId,
-    checklistMarksFor,
-    openChecklistDoor,
-    stagesLaborBreakdownByJobId,
-    expandedJobThreadId,
-    toggleStagesJobThreadExpanded,
-    jobThreadStatsByJobId,
-    jobThreadActivityByJobId,
-    openJobThreadFullscreen,
-    openJobActivityExpand,
-    openNewReportForJob,
-    openJobCalendar,
-    stagesUpcomingByJobId,
-    stagesWorkedByJobId,
-    applyStagesInvoiceFocus,
-    canOpenJobScheduleModal,
-    setScheduleModalJob,
-    openQuickAssignForJob,
     navigate,
-    authRole,
     dispatchTaskModal,
     checklistAddModal,
-    loadJobs,
-    jobContractCoverageByJobId,
-    propertyKindByJobId,
-    onPropertyKindSaved,
-    propertyLinkByJobId,
-    onPropertyLinked,
-    onOpenJobContract,
-    onOpenCustomerDoor,
-    boardDotByJobId,
-    customerLinesByJobId,
-  }
+  })
   const renderStagesFieldAndBillingLines = (job: JobWithDetails) => <StagesFieldAndBillingLines ctx={stagesRowSharedCtx} job={job} />
   const renderJobCustomerLine = (job: JobWithDetails) => renderJobCustomerLineWithCtx(stagesRowSharedCtx, job)
   const renderStagesJobCellActivityFooter = (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null, opts?: { hideSeeAllButton?: boolean }) => (
