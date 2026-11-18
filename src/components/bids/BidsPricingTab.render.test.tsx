@@ -284,6 +284,28 @@ describe('BidsPricingTab render smoke', () => {
     for (const name of [/Margin ›/, /Markup ›/, /Tax ›/, /Solver ›/]) expect(within(strip()).getByRole('button', { name })).toBeTruthy()
   })
 
+  it('a price being typed moves the bar before it is saved', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps()} />)
+    await settle()
+    // $1,000 on six water closets, with the lavatories still at $500: $8,000, less the same $2,732.
+    fireEvent.change(screen.getByLabelText('Sale price per unit for Water closet'), { target: { value: '$1,000' } })
+    const text = strip().textContent ?? ''
+    expect(text).toContain('Revenue$8,000.00')
+    expect(text).toContain('Profit$5,268.00')
+  })
+
+  it("a stashed solve comes back as proposals: the bar follows it, and a clicked-off row holds its saved price", async () => {
+    // $900 on the water closets and $250 on the floor drains count; the lavatories' $650 was clicked off, so their $500 stands.
+    window.localStorage.setItem('bids_wb_preview_v2:price-base', JSON.stringify({ prices: { 'cr-wc': 900, 'cr-lav': 650, 'cr-fd': 250 }, at: 1790000000000, vetoed: ['cr-lav'] }))
+    renderWithProviders(<BidsPricingTab {...pricedProps()} />)
+    await settle()
+    const text = strip().textContent ?? ''
+    expect(text).toContain('Revenue$8,150.00')
+    expect(text).toContain('Profit$5,418.00')
+    // The rows' own cells keep the saved prices until Apply.
+    expect((screen.getByLabelText('Sale price per unit for Water closet') as HTMLInputElement).value).toBe('$800.00')
+  })
+
   it('the grid draws a row per counted fixture with its cost, its price cell and its kind', async () => {
     renderWithProviders(<BidsPricingTab {...pricedProps()} />)
     await settle()
