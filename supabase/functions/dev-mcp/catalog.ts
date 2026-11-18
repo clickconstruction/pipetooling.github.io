@@ -2224,6 +2224,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "update-collect-payment-stripe-customer-email",
   "void-stripe-invoice-for-revert",
   "walk",
+  "watch-notify-dispatch",
   "weekly-money-email-dispatch",
   "weekly-movement-email-dispatch",
   "your-week-email",
