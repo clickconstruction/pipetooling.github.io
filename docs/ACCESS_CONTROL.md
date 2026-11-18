@@ -1202,6 +1202,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - **Put on a bill** (v2.7756, punch list #391, `docs/migrations/20261118060000_trip_bill_line.md`): `jobs_ledger_fixtures.trip_id` is the trip a line came from, and one function sets it.
   **`trip_put_on_job_line(trip, job, amount, name, words, dry_run)`**, a SECURITY DEFINER, writes one work line for a trip marked Extra, the job's total and one History row, for the four roles that may add a discount to a job: dev, master_technician, assistant and controller.
   A primary reads every trip and may not press, and a crew member on the trip may not either.
+  Since v2.7867 the same press sits on a job's Bill tab, in the strip **Extra trips not on a bill**: the strip draws for the five roles that read every trip, on a job in a development, and its press for the same four.
   The caller must read the trip (`trips_office()` or `trip_is_mine`) and the job (`can_read_job_activity`), and the job must be one of the trip's jobs, the job that holds the trip or a job of its site.
   It refuses the GC desk's billing job, whose total is not its lines.
   Since v2.7769 the window leaves that job out, read from `gc_projects` under the GC office door, which the four roles all hold.
