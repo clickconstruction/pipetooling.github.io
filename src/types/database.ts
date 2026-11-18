@@ -40567,6 +40567,39 @@ export type Database = {
           },
         ]
       }
+      trip_number_counters: {
+        Row: {
+          development_id: string | null
+          job_id: string | null
+          last_number: number
+        }
+        Insert: {
+          development_id?: string | null
+          job_id?: string | null
+          last_number?: number
+        }
+        Update: {
+          development_id?: string | null
+          job_id?: string | null
+          last_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_number_counters_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_number_counters_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_people: {
         Row: {
           created_at: string
@@ -40634,6 +40667,7 @@ export type Database = {
           job_id: string | null
           outcome: string
           purpose: string
+          trip_number: number | null
           updated_at: string
           updated_by: string | null
           via: string
@@ -40652,6 +40686,7 @@ export type Database = {
           job_id?: string | null
           outcome?: string
           purpose?: string
+          trip_number?: number | null
           updated_at?: string
           updated_by?: string | null
           via?: string
@@ -40670,6 +40705,7 @@ export type Database = {
           job_id?: string | null
           outcome?: string
           purpose?: string
+          trip_number?: number | null
           updated_at?: string
           updated_by?: string | null
           via?: string
@@ -46853,6 +46889,10 @@ export type Database = {
       job_papers_roster: { Args: { p_job_id: string }; Returns: Json }
       job_rider_fees: { Args: { p_job_id: string }; Returns: number }
       job_shut_to_me: { Args: { p_job_id: string }; Returns: boolean }
+      job_shut_to_user: {
+        Args: { p_job_id: string; p_user_id: string }
+        Returns: boolean
+      }
       jobs_closed_to_me: { Args: never; Returns: string[] }
       jobs_ledger_row_visible_for_tally_assign: {
         Args: { p_job_id: string; p_user_id: string }
@@ -46874,6 +46914,7 @@ export type Database = {
         }[]
       }
       jobs_shut_to_me: { Args: never; Returns: string[] }
+      jobs_shut_to_user: { Args: { p_user_id: string }; Returns: string[] }
       journey_health_counts: { Args: never; Returns: Json }
       keep_job_baseline: {
         Args: { p_job_id: string; p_kept_by: string; p_kept_on: string }
