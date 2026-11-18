@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { DRIVE, driveAnswerOf, driveAnswerWords, driveFolderIdFromUrl, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
 import { driveFailureOf } from '../_shared/driveFailure.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { DRIVE_TRASH_WORDS, isTrashAction, lienRowsUse, parseTrashAsk, trashNote, type TrashAsk } from '../_shared/driveTrash.ts'
 import { NO_COMPANY_FOLDER_WORDS } from '../_shared/whereFilesGo.ts'
 import { childFolder, driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half, type JobFolder } from '../_shared/driveJobFolder.ts'
@@ -329,7 +330,7 @@ async function trashDoor(admin: SupabaseClient, ask: TrashAsk, userId: string): 
     ])
     if (filings.error || items.error) return json({ error: DRIVE_TRASH_WORDS.recordsUnread, why: 'records_unread', retry: true }, 500)
     if (lienRowsUse([...(filings.data ?? []), ...(items.data ?? [])], ask.driveFileId)) return json({ error: DRIVE_TRASH_WORDS.inUse, why: 'in_use', retry: false }, 409)
-    note = trashNote((person.data as { name?: string | null } | null)?.name, new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' }))
+    note = trashNote((person.data as { name?: string | null } | null)?.name, todayYmdInAppTz())
   }
   const res = await fetch(`${fileUrl}?supportsAllDrives=true&fields=id,trashed`, {
     method: 'PATCH',
