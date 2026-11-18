@@ -46,6 +46,7 @@ Each section lists: render location (state gate + line range **as of the mapped 
 
 - Regenerate the fact sheet (`npm run map -- src/components/jobs/SendRecordInvoiceModal.tsx`), re-anchor the ranges, bump `mapped_at`.
 - Flip a region's Status and point at the new file whenever it is extracted; note what stayed in the parent and why.
+- Run every CI check script on the cut before it is pushed: `check:empty-words` reads a moved sentence that opens on No or Nothing as a new empty state, and one that is not an empty list is named in a kernel (`billCustomerMissingEmailLead`, v2.7747).
 
 ---
 
@@ -283,7 +284,7 @@ Already-extracted (tests listed in [Test coverage](#test-coverage); don't re-ext
 | The Send to block | v2.7733 (2026-11-18) | 75 (3,522 → 3,447, measured) | `sendToBlock` (90 lines of JSX) → `BillCustomerSendTo`, with the three lines under it; the parent keeps `sendWords` and hands both tabs one `sendToProps` bundle | the whole window's HTML, field values and dead presses byte-identical before and after in 62 states across 12 scenarios (the tabs, the dates dialog, a GC as the other party with contacts, a GC payer, a missing email, a typed bill-to, a paid job, the three made-bill screens); 9 new tests; the six older smokes green |
 | The press box and the made-email line | v2.7737 (2026-11-18) | 38 (3,447 → 3,409, measured) | `pressBox` → `BillCustomerPressBox`, `madeEmailLine` → `BillCustomerMadeEmailLine`; the parent still reads `sendWords`, the paid-job hold and the role | the same 62-state dump, byte-identical; 7 new tests; the six older smokes green |
 | The edit-dates dialog | v2.7740 (2026-11-18) | 81 (3,409 → 3,328, measured) | the dialog's 88 lines of JSX → `BillCustomerEditDatesDialog`; the date-box style joins `billCustomerStyles.ts` as `BILL_CUSTOMER_DATE_INPUT_STYLE`; the parent keeps the mount, the open flag and both drafts | the same 62-state dump, byte-identical, with the dialog opened from each tab, typed, saved, cancelled and closed by its backdrop; 4 new tests; the six older smokes green |
-| The two banners | v2.7747 (2026-11-18) | 80 (3,328 → 3,248, measured) | the yellow missing-email box → `BillCustomerMissingEmailBanner`; the bill-to / GC-payer note → `BillCustomerPayerBanner`; the parent keeps the missing-email gate, the `emailFix*` state and `saveMissingCustomerEmail` | the same 62-state dump, byte-identical, with a customer with no email (typed and saved), a GC payer with and without a billing email, and a typed bill-to; 10 new tests; the six older smokes green |
+| The two banners | v2.7747 (2026-11-18) | 80 (3,328 → 3,248, measured) | the yellow missing-email box → `BillCustomerMissingEmailBanner`, its first line named in `lib/billing/billCustomerMissingEmail.ts`; the bill-to / GC-payer note → `BillCustomerPayerBanner`; the parent keeps the missing-email gate, the `emailFix*` state and `saveMissingCustomerEmail` | the same 62-state dump, byte-identical, with a customer with no email (typed and saved), a GC payer with and without a billing email, and a typed bill-to; 10 new render tests and 3 kernel tests; the six older smokes green |
 
 No submit path, effect, state or edge call was touched. The state the cards read stays in the parent under its own names (structural fact 3), so the tab moves in steps 6 and 7 still thread it.
 

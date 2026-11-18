@@ -1,3 +1,4 @@
+import { billCustomerMissingEmailLead } from '../../lib/billing/billCustomerMissingEmail'
 import type { EffectiveBillParty, PayerRecipient } from '../../lib/jobs/billToParty'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
@@ -48,9 +49,7 @@ export function BillCustomerMissingEmailBanner({
       }}
     >
       <p style={{ margin: '0 0 0.4rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>
-        {payerParty === 'gc'
-          ? `${payerRecipient?.name || 'The GC'} pays this job and has no billing email yet — Stripe and emailed invoices need one.`
-          : 'No customer email on this job — Stripe and emailed invoices need one.'}
+        {billCustomerMissingEmailLead(payerParty, payerRecipient?.name)}
       </p>
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
         <input
