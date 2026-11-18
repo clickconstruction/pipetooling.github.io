@@ -17,6 +17,8 @@ import { keepLienCopyProof } from '../../lib/jobs/lienReceiptKeepIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { LIEN_SCAN_BATCH_WORDS } from '../../lib/jobs/lienScanBatch'
 import { useLienServeLetterChoice } from './lienHelpSheetChoice'
+import { landOnWhenThere } from '../../lib/landOn'
+import { lienMailProofLandingFocus, lienMailProofSelectors, type LienMailProofLanding } from '../../lib/jobs/lienMailProofDoor'
 
 type Props = {
   /** Every filed lien that owes its copies (`lienServeJobsFromDesk`). */
@@ -36,6 +38,8 @@ type Props = {
   /** One copy's proof kept on its filing the moment it is added; a test hands its own. */
   keep?: typeof keepLienCopyProof
   zIndex?: number
+  /** Open on one copy's line, scrolled to and lit for a moment (`landOn.ts`): the press on a stop window's card. */
+  land?: Pick<LienMailProofLanding, 'jobId' | 'recipient' | 'lack'> | null
 }
 
 const head: CSSProperties = { margin: 0, fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -69,8 +73,17 @@ function chipStyle(late: boolean, today: boolean): CSSProperties {
  * A receipt or a number is kept on its filing the moment it is added (`lienReceiptFile.ts`), so a window closed before
  * **Record** loses nothing. **Record** still sets the day, which is what clears the serve-by watch.
  */
-export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOpenJob, onChanged, onAddScans, onClose: onCloseProp, record = recordLienServices, keep = keepLienCopyProof, zIndex = 1200 }: Props) {
+export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOpenJob, onChanged, onAddScans, onClose: onCloseProp, record = recordLienServices, keep = keepLienCopyProof, zIndex = 1200, land = null }: Props) {
   const isTopmost = useModalStackEntry()
+  const scopeRef = useRef<HTMLDivElement | null>(null)
+  // The copy a stop window's card sent the reader to: in view and lit once its line is drawn.
+  const landJob = land?.jobId
+  const landCopy = land?.recipient
+  const landLack = land?.lack
+  useEffect(() => {
+    if (!landJob || !landCopy) return
+    return landOnWhenThere(() => scopeRef.current?.querySelector<HTMLElement>(lienMailProofSelectors.serveCopy(landJob, landCopy)), { focus: landLack ? lienMailProofLandingFocus(landLack) : null })
+  }, [landJob, landCopy, landLack])
   const { showToast } = useToastContext()
   const [letterOn, setLetterOn] = useLienServeLetterChoice()
   const [servedOn, setServedOn] = useState(todayYmd)
@@ -228,6 +241,7 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
       aria-modal="true"
       aria-label="Filed liens: copies to mail"
       data-testid="lien-serve-window"
+      ref={scopeRef}
       onClick={(e) => {
         e.stopPropagation()
         if (e.target === e.currentTarget && !busy) onClose()
@@ -304,7 +318,7 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
               // A held lien's envelopes are not known to the plan: the paper's own two readers are asked for.
               const envelopes: Array<{ recipient: ServiceCopy; name: string }> = r.envelopes.length > 0 ? r.envelopes : [{ recipient: 'owner', name: r.job.to?.owner?.name ?? '' }, ...(d.contractor ? [{ recipient: 'original_contractor' as const, name: r.job.to?.contractor?.name ?? '' }] : [])]
               return (
-                <div key={r.job.filing.id} data-lien-serve-row={r.job.jobNumber} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem' }}>
+                <div key={r.job.filing.id} data-lien-serve-row={r.job.jobNumber} data-lien-serve-job={r.job.jobId} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem' }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.6rem', alignItems: 'center', marginBottom: '0.2rem' }}>
                     <span style={{ fontWeight: 700, fontSize: '0.8125rem' }}>{r.job.jobLabel}</span>
                     {r.clock.chip ? <span style={chipStyle(r.clock.late, r.clock.daysLeft === 0)}>{r.clock.chip}</span> : null}

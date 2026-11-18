@@ -9,6 +9,8 @@ import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders as render } from '../../test/renderSmokeMocks'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { buildLienTimeline } from '../../lib/jobs/lienTimeline'
+import { lienMailProof } from '../../lib/jobs/lienMailProof'
+import { lienMailProofDoorPress } from '../../lib/jobs/lienMailProofDoor'
 
 const timeline = buildLienTimeline({
   todayYmd: '2026-10-07',
@@ -75,6 +77,35 @@ describe('LienStopPaperWindow', () => {
     render(<LienStopPaperWindow steps={timeline.steps} index={jul} onIndex={() => {}} onClose={() => {}} jobLabel="891" paperFor={sent} />)
     expect(screen.getByTestId('lien-stop-paper-empty').textContent).toContain('Mailed Oct 3')
     expect(screen.getByRole('link', { name: 'Open the mailed packet ↗' }).getAttribute('href')).toBe('https://example.test/packet.pdf')
+    cleanup()
+  })
+
+  // The press on a recipient's card (the owner's ask of 2026-11-18). Every name here is made up.
+  it('a card that lacks something carries the press for it, which closes the window and opens the place with the copy to land on', () => {
+    const jul = timeline.steps.findIndex((s) => s.key === 'notice:2026-07')
+    const order: string[] = []
+    const serve = vi.fn(() => order.push('serve'))
+    const lienWindow = vi.fn(() => order.push('lien_window'))
+    // A filed affidavit: the owner's copy has its number and no receipt, the contractor's is whole.
+    const proof = lienMailProof({ kind: 'affidavit', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9507 01', sent_on: '2026-11-17' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '9507 02', sent_on: '2026-11-17', receipt_url: 'https://drive.example/r2' }], documentUrl: 'https://drive.example/scan', servedAt: null, hasContractor: true })!
+    const withDoors = (openers: Parameters<typeof lienMailProofDoorPress>[1]) => (): LienStopPaper => ({ pages: [], envelope: null, before: [], act: null, record: { words: 'Filed Nov 16', href: null, proof, proofDoor: lienMailProofDoorPress({ jobId: 'job-1', filingId: 'f-1', paper: 'affidavit', served: false, ownerGap: null }, openers, () => order.push('close')) } })
+    render(<LienStopPaperWindow steps={timeline.steps} index={jul} onIndex={() => {}} onClose={() => {}} jobLabel="2291 · Sample Job" paperFor={withDoors({ serve, lien_window: lienWindow })} />)
+    const press = screen.getByRole('button', { name: 'Owner of record: Add the receipt' })
+    expect(press.textContent).toBe('Add the receipt ›')
+    // It stands on the owner's card, on the line that says what is missing.
+    expect(press.closest('[data-lien-mail-proof-envelope]')?.getAttribute('data-lien-mail-proof-envelope')).toBe('owner')
+    expect(press.parentElement?.textContent).toContain('No receipt yet')
+    // The contractor's copy lacks nothing, so its card has no press.
+    expect(document.querySelectorAll('[data-lien-mail-proof-door]')).toHaveLength(1)
+    fireEvent.click(press)
+    expect(order).toEqual(['close', 'serve'])
+    expect(serve).toHaveBeenCalledWith({ jobId: 'job-1', filingId: 'f-1', paper: 'affidavit', recipient: 'owner', lack: 'receipt' })
+    expect(lienWindow).not.toHaveBeenCalled()
+    cleanup()
+    // A viewer with no place open has no press at all, never a dead one.
+    render(<LienStopPaperWindow steps={timeline.steps} index={jul} onIndex={() => {}} onClose={() => {}} jobLabel="2291 · Sample Job" paperFor={withDoors({})} />)
+    expect(document.querySelector('[data-lien-mail-proof-envelope="owner"]')?.textContent).toContain('No receipt yet')
+    expect(document.querySelectorAll('[data-lien-mail-proof-door]')).toHaveLength(0)
     cleanup()
   })
 

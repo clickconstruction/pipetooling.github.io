@@ -4483,6 +4483,17 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .legalDocLanded { background: var(--bg-amber-100); box-shadow: 0 0 0 2px var(--border-amber); border-radius: 4px; scroll-margin-top: 4rem; animation: legalDocLanded 4s ease-out forwards; }
 @keyframes legalDocLanded { 0%, 45% { background: var(--bg-amber-100); box-shadow: 0 0 0 2px var(--border-amber); } 100% { background: transparent; box-shadow: 0 0 0 2px transparent; } }
 @media (prefers-reduced-motion: reduce) { .legalDocLanded { animation: none; } }
+/* Landed here (`src/lib/landOn.ts`): the place a press brought the reader to holds an amber tint and a ring for a second and a
+   half, then lets them go. The one shared light for it. Under reduced motion nothing fades: a steady outline stands until
+   the script takes the mark off. */
+[data-landed='yes'] { border-radius: 6px; scroll-margin: 4rem 0; animation: landedHere 2.1s ease-out both; }
+@keyframes landedHere {
+  0%, 71% { background-color: var(--bg-amber-tint); box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--border-amber); }
+  100% { background-color: transparent; box-shadow: 0 0 0 2px transparent, 0 0 0 4px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-landed='yes'] { animation: none; background-color: var(--bg-amber-tint); outline: 2px solid var(--border-amber); outline-offset: 2px; }
+}
 .lienPaperGap b { background: #dc2626; color: #fff; border-radius: 999px; width: 1.35em; height: 1.35em; display: inline-grid; place-items: center; font-size: 0.8em; }
 .lienCalDraft { border: none; border-radius: 7px; padding: 4px 11px; background: #92400e; color: #fff; font: inherit; font-size: 0.75rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .lienCalDraft:hover { opacity: 0.9; }

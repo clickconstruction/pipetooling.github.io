@@ -23,6 +23,7 @@ import { lienAffidavitPaneSections, lienAffidavitWindowWords } from '../../lib/j
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
 import { lienMailProof } from '../../lib/jobs/lienMailProof'
+import { lienMailProofDoorPress, lienMailProofOwnerGap, type LienMailProofOpeners } from '../../lib/jobs/lienMailProofDoor'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import { lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords } from '../../lib/jobs/lienDeskGates'
 import { lienAffidavitNoticeStanding } from '../../lib/jobs/lienAffidavitNoticeStanding'
@@ -111,6 +112,7 @@ export default function LienDeskAffidavitPane({
   onFixContractor,
   onOpenJob,
   onOpenLienAffidavit,
+  proofOpeners,
   onOpenLegalDesk,
   onShowNotices,
   onShowRetainage,
@@ -144,6 +146,8 @@ export default function LienDeskAffidavitPane({
   onOpenJob?: (jobId: string) => void
   /** The Lien window on its affidavit tab — print for notarization, file, record. */
   onOpenLienAffidavit: (jobId: string) => void
+  /** A stop window's card (`lienMailProofDoor.ts`): how the desk opens each place a copy's lack is entered, for one filing. Absent, a card has no press. */
+  proofOpeners?: (filingId: string) => LienMailProofOpeners
   onOpenLegalDesk?: () => void
   /** Switch the desk to the notices kind on this job (the notice gate's door). */
   onShowNotices: (jobId: string) => void
@@ -283,7 +287,9 @@ export default function LienDeskAffidavitPane({
     const when = (ymd: string | null, iso: string) => formatYmdMonthDay(ymd ?? calendarYmdInAppTzFromIso(iso))
     const asSent = (f: (typeof filings)[number], words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
       const page = filingSnapshotPage(f, { issuer, jobNumber: jobNo })
-      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof: lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, servedAt: f.served_at }) }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
+      const proof = lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, servedAt: f.served_at })
+      const proofDoor = proof && proofOpeners ? lienMailProofDoorPress({ jobId: entry.jobId, filingId: f.id, paper: proof.paper, served: Boolean(f.served_at), ownerGap: lienMailProofOwnerGap({ name: ownerName, mailingAddress: property.owner.mailingAddress }) }, proofOpeners(f.id), () => setStopOpen(null)) : null
+      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof, proofDoor }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
     }
     const envelope = `To ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'} by certified mail`
     const copyEnvelope = `A copy of the filed affidavit to ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'}, within five days of filing`

@@ -50,6 +50,7 @@ import { LEGAL_DESK_PATH, PIPELINE_HREF } from '../lib/legal/legalDeskRoute'
 import { LIEN_DESK_DEFAULT_KIND, lienDeskFromSearch, lienDeskHref, type LienDeskKind } from '../lib/lien/lienDeskRoute'
 import LienDesk from '../components/jobs/LienDesk'
 import LienInstrumentsModal from '../components/jobs/LienInstrumentsModal'
+import { lienMailProofWindowTab, type LienMailProofLanding } from '../lib/jobs/lienMailProofDoor'
 import LienOwnerRecordsModal from '../components/jobs/LienOwnerRecordsModal'
 import GcOnNoticeModal from '../components/jobs/GcOnNoticeModal'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -64,7 +65,7 @@ const BACK_DOOR: CSSProperties = { display: 'inline-flex', alignItems: 'center',
 /** The room under the page's top edge, so the desk's lists and panes scroll inside the screen and the page itself never does. */
 const PAGE_BOTTOM_GAP_PX = 8
 
-type LienWindow = { job: JobWithDetails; initialTab?: 'demand' | 'notice' | 'affidavit' | 'release_record'; noticeMonths?: string[] | null; openLastWork?: boolean }
+type LienWindow = { job: JobWithDetails; initialTab?: 'demand' | 'notice' | 'affidavit' | 'release_record'; noticeMonths?: string[] | null; openLastWork?: boolean; /** The copy to land on, from a stop window's card. */ land?: LienMailProofLanding | null }
 
 export default function LienDeskPage() {
   const { user, role, loading: authLoading, profileName } = useAuth()
@@ -354,6 +355,8 @@ export default function LienDeskPage() {
         onOpenLegalDesk={() => navigate(LEGAL_DESK_PATH)}
         legalSignoff={legalSignoff}
         onOpenLienAffidavit={(jobId) => withJob(jobId, (job) => setLienWindow({ job, initialTab: 'affidavit' }))}
+        // A stop window's card: the Lien window on the paper's tab, landed on the copy that lacks its number or receipt.
+        onOpenLienProof={(land) => withJob(land.jobId, (job) => setLienWindow({ job, initialTab: lienMailProofWindowTab(land.paper), land }))}
         onChanged={refetch}
         onOpenEditJob={openEditJob}
         onOpenCompanySettings={(field) => navigate(`/settings?tab=settings-jobs&focus=issuer.${field}`)}
@@ -371,6 +374,7 @@ export default function LienDeskPage() {
         job={lienWindow?.job ?? null}
         invoice={null}
         initialTab={lienWindow?.initialTab}
+        land={lienWindow?.land ?? null}
         noticeMonths={lienWindow?.noticeMonths ?? null}
         // v2.7077: the window's header names the step the desk's row names.
         deskNotice={lienWindowDeskNotice(lienWindow ? data?.queue.entries.find((e) => e.jobId === lienWindow.job.id) : null)}
