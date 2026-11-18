@@ -2,7 +2,7 @@
 title: see the pipeline on a map
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent
-keywords: map, pipeline, jobs, pins, where is the job, distance, miles from the office, collections, directions, hide map, cluster, paid jobs, fit all, zoom, scroll wheel, mouse wheel, zooms out, to collect, ask for money, oldest bill, rail, hover, as of, rewind, scroll back in time, history, play, slider, crews, who is where, clocked in, violet ring
+keywords: map, pipeline, jobs, pins, satellite, streets, time, older photos, where is the job, distance, miles from the office, collections, directions, hide map, cluster, paid jobs, fit all, zoom, scroll wheel, mouse wheel, zooms out, to collect, ask for money, oldest bill, rail, hover, as of, rewind, scroll back in time, history, play, slider, crews, who is where, clocked in, violet ring
 order: 32
 ---
 The Pipeline has a Jobs on a map card under the toolbar. It plots the jobs the board is showing as pins.
@@ -68,6 +68,14 @@ History starts on **Feb 22, 2026**, the day the Pipeline began recording moves. 
 :::example Was June as busy as it felt?
 Tap **3 mo** and count the blue pins, then press Play and watch the orange spread as the summer's bills go out. The since-then line gives the tally without counting.
 :::
+
+## See a job site on an earlier day
+
+**Scroll back in time** moves the pins. **Time** moves the photo under them. The two are separate.
+
+Tap a pin, then tap **Time** on the map. A row of dates opens under the map. Tap a date to see that site on that day.
+
+The line over the dates says which day the pins are from. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) has the rest.
 
 ## Crews on the day
 
