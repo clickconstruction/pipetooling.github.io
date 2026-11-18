@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   LIEN_PUBLIC_BIN_TITLE,
+  lienBoxFoldWords,
+  lienPublicNeedsWords,
   buildLienPublicBin,
   buildLienPublicWindow,
   lienJobIdsAskingPublic,
@@ -116,6 +118,14 @@ describe('the bin: Public jobs · bond claim', () => {
     expect(bin.title).toBe(LIEN_PUBLIC_BIN_TITLE)
     expect(bin.count).toBe(2)
     expect(bin.totalWords).toBe('$32,241 unpaid')
+    // Folded to one line (v2.7854): the count in words, and the rows that still wear the bond chip, so the fold never hides what needs a person.
+    expect(bin.foldWords).toBe('2 jobs · $32,241 unpaid')
+    expect(bin.needs).toBe('2 to get the bond')
+    expect(buildLienPublicBin([job({ bond: 'yes' })])!.needs).toBeNull()
+    expect(buildLienPublicBin([job({ bond: 'yes', unpaid: 100 })])!.foldWords).toBe('1 job · $100 unpaid')
+    expect(lienBoxFoldWords(3, 1750)).toBe('3 jobs · $1,750 unpaid')
+    expect(lienPublicNeedsWords(1)).toBe('1 to get the bond')
+    expect(lienPublicNeedsWords(0)).toBeNull()
     expect(bin.rows.map((r) => r.jobId)).toEqual(['big', 'small'])
     expect(bin.rows[0]).toMatchObject({ label: 'ZZ523 · ZZ Test Hills', unpaidWords: '$29,323', chip: 'get the bond', line: 'ZZ Test Builders · bond not known yet · with the attorney since Nov 16' })
     expect(bin.rows[1]!.line).toBe('ZZ Test Builders · a lien notice went out Oct 8 · with the attorney since Nov 16')

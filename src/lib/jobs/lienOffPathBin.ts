@@ -2,7 +2,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { formatUsdNoCents } from './jobFormatting'
 import { lienJobPathStanding, type LienJobPathRow } from './lienJobPath'
-import { lienPublicNotListedWhy, type LienPublicPaper } from './lienPublicProperty'
+import { lienBoxFoldWords, lienPublicNotListedWhy, type LienPublicPaper } from './lienPublicProperty'
 
 /**
  * The bin *Off the lien path* (v2.7521 the read, the bin's screen after it): the jobs a person took off the lien path
@@ -47,7 +47,15 @@ export type LienOffPathBinRow = {
   reason: string
 }
 
-export type LienOffPathBin = { title: string; count: number; totalWords: string; rows: LienOffPathBinRow[]; backLabel: string }
+export type LienOffPathBin = {
+  title: string
+  count: number
+  totalWords: string
+  /** The box folded to one line (v2.7854, punch list #390): *2 jobs · $1,400 unpaid*. */
+  foldWords: string
+  rows: LienOffPathBinRow[]
+  backLabel: string
+}
 
 export const LIEN_OFF_PATH_BIN_TITLE = 'Off the lien path'
 export const LIEN_OFF_PATH_BACK_LABEL = 'Put it back…'
@@ -77,6 +85,7 @@ export function buildLienOffPathBin(jobs: ReadonlyArray<LienOffPathJob>, opts: {
     title: LIEN_OFF_PATH_BIN_TITLE,
     count: sorted.length,
     totalWords: `${formatUsdNoCents(sorted.reduce((s, j) => s + Math.round(j.unpaid), 0))} unpaid`,
+    foldWords: lienBoxFoldWords(sorted.length, sorted.reduce((s, j) => s + Math.round(j.unpaid), 0)),
     rows: sorted.map((j) => ({
       jobId: j.jobId,
       label: j.name ? `${j.number} · ${j.name}` : j.number,

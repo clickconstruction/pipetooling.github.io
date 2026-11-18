@@ -740,6 +740,9 @@ describe('LienDesk', () => {
     expect(lineEl.textContent).toContain('1 job sits on public property and is still on the lien path')
     const bin = document.querySelector('[data-lien-public-bin]') as HTMLElement
     expect(bin.textContent).toContain('Public jobs · bond claim')
+    // The box is folded until pressed (v2.7854, punch list #390): one line under the bins, then its rows.
+    expect(bin.getAttribute('data-folded')).toBe('yes')
+    fireEvent.click(bin.querySelector('[data-lien-board-box-fold]') as HTMLButtonElement)
     expect(bin.textContent).toContain('not on the attorney’s list, the job is still being worked')
     expect((document.querySelector('[data-lien-board-column="affidavit"]') as HTMLElement).contains(bin)).toBe(true)
     fireEvent.click(within(lineEl).getByRole('button', { name: 'Review it ›' }))
@@ -754,6 +757,9 @@ describe('LienDesk', () => {
     await settle()
     const bin = document.querySelector('[data-lien-off-path-bin]') as HTMLElement
     expect(bin.textContent).toContain('Off the lien path')
+    expect(bin.textContent).toContain('1 job · $1,050 unpaid')
+    expect(bin.textContent).not.toContain('977 · ZZ Test Trip Charges')
+    fireEvent.click(bin.querySelector('[data-lien-board-box-fold]') as HTMLButtonElement)
     expect(bin.textContent).toContain('977 · ZZ Test Trip Charges')
     expect(bin.textContent).toContain('Lowbeck Contracting · off since Sep 10, by Dana · not on the attorney’s list')
     expect(bin.textContent).toContain('The bill is for trips to pick up checks.')
@@ -770,6 +776,8 @@ describe('LienDesk', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="estimator" data={{ ...data(J650, [], true), offPathJobs: [off] }} initialKind="next" />)
     await settle()
     expect(document.querySelector('[data-lien-off-path-bin]')).toBeTruthy()
+    fireEvent.click(document.querySelector('[data-lien-off-path-bin] [data-lien-board-box-fold]') as HTMLButtonElement)
+    expect(document.querySelectorAll('[data-lien-off-path-bin-row]')).toHaveLength(1)
     expect(document.querySelector('[data-lien-off-path-bin-back]')).toBeNull()
   })
 

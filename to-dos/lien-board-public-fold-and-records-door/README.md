@@ -2,7 +2,7 @@
 name: "Lien desk To do: fold the Public jobs box (the records door is built another way)"
 number: 390
 group: ready
-status: drawn 2026-11-17 in #383's option B · saved as a card the same day · part 2 replaced 2026-11-18 by the owner's new ask and built as v2.7780, the records door a row of the call window · part 1, the fold, not built
+status: drawn 2026-11-17 in #383's option B · saved as a card the same day · part 2 replaced 2026-11-18 by the owner's new ask and built as v2.7780, the records door a row of the call window · part 1, the fold, built 2026-11-18 as v2.7854 on the owner's word *Yes, build them* · not yet looked at on the live desk by him
 summary: >
   The last two parts of the drawing the owner picked for the Lien desk's To do page (#383, option B). The
   Public jobs box under the lien affidavits is as tall as its rows, 244 px with two jobs, and the drawing
@@ -10,10 +10,10 @@ summary: >
   second line of the title bar, and the drawing put it on the tools row beside § Rules. The owner then
   asked for it inside the call press, and v2.7780 built that, so only the fold is left here. The rest of
   option B is built in PR #8628.
-next: Build part 1, the fold. Part 2 needs nothing more.
-size: S (one small PR)
-blocker: none. PR #8628 merged 2026-11-18.
-opinion: build — part 1 gives back about 200 px under the chart
+next: The owner's look at the folded boxes on the live desk, then retire the card. Nothing is left to build.
+size: none left
+blocker: The owner's look at the live desk.
+opinion: close — after the owner's look, since both parts are built
 ver: v2.7277 · v2.7311 · v2.7443 · v2.7490 · v2.7526
 ---
 

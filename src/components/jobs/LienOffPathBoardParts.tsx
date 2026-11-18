@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { LienOffPathBin } from '../../lib/jobs/lienOffPathBin'
+import { LienBoardFoldBox } from './LienBoardFoldBox'
 
 /**
  * The Board's bin for the jobs a person took off the lien path (the *not lienable* train, PR 3; the owner's pick of
@@ -7,19 +8,14 @@ import type { LienOffPathBin } from '../../lib/jobs/lienOffPathBin'
  *
  * The bin is the state of things for these jobs: each row says the job, what it still owes, who took it off, the day,
  * where it stands with the attorney, and the reason in the person's own words. *Put it back…* is on every row, since
- * each job left for a reason of its own.
+ * each job left for a reason of its own. Since v2.7854 the box is folded to one line until pressed (`LienBoardFoldBox`).
  */
 
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8125rem' }
 
 export function LienOffPathBinView({ bin, isMobile, onOpenJob, onPutBack }: { bin: LienOffPathBin; isMobile: boolean; onOpenJob?: ((jobId: string) => void) | null; onPutBack: ((jobId: string) => void) | null }) {
   return (
-    <section data-lien-off-path-bin aria-label={bin.title} style={{ display: 'grid', gap: 0, padding: isMobile ? '0.55rem 0.7rem' : '0.6rem 0.85rem', border: '1px dashed var(--border-strong)', borderRadius: 9, background: 'var(--surface)' }}>
-      <header style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', paddingBottom: '0.4rem' }}>
-        <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-strong)' }}>{bin.title}</h4>
-        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{bin.totalWords}</span>
-        <span data-lien-off-path-bin-count style={{ marginLeft: 'auto', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>{bin.count}</span>
-      </header>
+    <LienBoardFoldBox marks={{ 'data-lien-off-path-bin': '' }} countMarks={{ 'data-lien-off-path-bin-count': '' }} title={bin.title} foldWords={bin.foldWords} totalWords={bin.totalWords} needs={null} count={bin.count} isMobile={isMobile}>
       {bin.rows.map((r) => (
         <div key={r.jobId} data-lien-off-path-bin-row={r.jobId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '2px 0.75rem', padding: '0.45rem 0', borderTop: '1px solid var(--border)' }}>
           {onOpenJob ? (
@@ -41,6 +37,6 @@ export function LienOffPathBinView({ bin, isMobile, onOpenJob, onPutBack }: { bi
           ) : null}
         </div>
       ))}
-    </section>
+    </LienBoardFoldBox>
   )
 }

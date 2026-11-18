@@ -34,6 +34,7 @@ describe('the bin Off the lien path', () => {
       title: 'Off the lien path',
       count: 1,
       totalWords: '$1,050 unpaid',
+      foldWords: '1 job · $1,050 unpaid',
       backLabel: 'Put it back…',
       rows: [
         {
@@ -63,6 +64,7 @@ describe('the bin Off the lien path', () => {
     expect(bin?.rows.map((r) => r.jobId)).toEqual(['b', 'c', 'a'])
     expect(bin?.count).toBe(3)
     expect(bin?.totalWords).toBe('$1,750 unpaid')
+    expect(bin?.foldWords).toBe('3 jobs · $1,750 unpaid')
   })
 
   it('keeps a row readable when a name, a GC or the reason is missing', () => {

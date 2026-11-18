@@ -181,9 +181,29 @@ export type LienPublicBinRow = {
   line: string
 }
 
-export type LienPublicBin = { title: string; count: number; totalWords: string; rows: LienPublicBinRow[]; backLabel: string }
+export type LienPublicBin = {
+  title: string
+  count: number
+  totalWords: string
+  /** The box folded to one line (v2.7854, punch list #390): how many jobs and what they owe, *2 jobs · $32,241 unpaid*. */
+  foldWords: string
+  /** What the folded line must not hide (v2.7854): the rows whose bond nobody knows, *1 to get the bond*; null with none. */
+  needs: string | null
+  rows: LienPublicBinRow[]
+  backLabel: string
+}
 
 export const LIEN_PUBLIC_BIN_TITLE = 'Public jobs · bond claim'
+
+/** A folded box's line (v2.7854): how many jobs it holds and what they still owe. One rule for *Public jobs* and *Off the lien path*. */
+export function lienBoxFoldWords(jobs: number, unpaid: number): string {
+  return `${jobs} ${jobs === 1 ? 'job' : 'jobs'} · ${formatUsdNoCents(unpaid)} unpaid`
+}
+
+/** The folded *Public jobs* line's amber words: how many rows still wear *get the bond*. Null with none. */
+export function lienPublicNeedsWords(unknownBonds: number): string | null {
+  return unknownBonds > 0 ? `${unknownBonds} to get the bond` : null
+}
 export const LIEN_PUBLIC_BACK_LABEL = 'Put a job back on the lien path…'
 
 /** The bond, as a row says it. */
@@ -215,6 +235,8 @@ export function buildLienPublicBin(jobs: ReadonlyArray<LienPublicJob>): LienPubl
     title: LIEN_PUBLIC_BIN_TITLE,
     count: sorted.length,
     totalWords: `${formatUsdNoCents(sorted.reduce((s, j) => s + Math.round(j.unpaid), 0))} unpaid`,
+    foldWords: lienBoxFoldWords(sorted.length, sorted.reduce((s, j) => s + Math.round(j.unpaid), 0)),
+    needs: lienPublicNeedsWords(sorted.filter((j) => j.bond === 'unknown').length),
     rows: sorted.map((j) => ({
       jobId: j.jobId,
       addressId: j.addressId,

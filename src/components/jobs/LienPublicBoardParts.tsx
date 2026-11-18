@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import type { LienPublicBin, LienPublicBoardLine } from '../../lib/jobs/lienPublicProperty'
+import { LienBoardFoldBox } from './LienBoardFoldBox'
 
 /**
  * The Board's two parts for public property (v2.7443, Taunya's ask of 2026-11-16, the second drawing, parts 2 and 4).
@@ -30,6 +31,7 @@ export function LienPublicBoardLineView({ line, isMobile, onReview }: { line: Li
  * Afterwards: the bin is named for what to do next. *Public jobs · bond claim* with the money still owed, each job with
  * its GC, what went out and where it stands with the attorney, and *get the bond* while nobody knows if there is one.
  * *Put a job back on the lien path…* asks which job when the bin holds more than one property.
+ * Since v2.7854 the box is folded to one line until pressed (`LienBoardFoldBox`), and that line counts the rows that still wear *get the bond*.
  */
 export function LienPublicBinView({ bin, isMobile, onPutBack }: { bin: LienPublicBin; isMobile: boolean; onPutBack: ((addressId: string) => void) | null }) {
   const [choosing, setChoosing] = useState(false)
@@ -40,12 +42,7 @@ export function LienPublicBinView({ bin, isMobile, onPutBack }: { bin: LienPubli
     else setChoosing((v) => !v)
   }
   return (
-    <section data-lien-public-bin aria-label={bin.title} style={{ display: 'grid', gap: 0, padding: isMobile ? '0.55rem 0.7rem' : '0.6rem 0.85rem', border: '1px dashed var(--border-strong)', borderRadius: 9, background: 'var(--surface)' }}>
-      <header style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', paddingBottom: '0.4rem' }}>
-        <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-strong)' }}>{bin.title}</h4>
-        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{bin.totalWords}</span>
-        <span data-lien-public-bin-count style={{ marginLeft: 'auto', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>{bin.count}</span>
-      </header>
+    <LienBoardFoldBox marks={{ 'data-lien-public-bin': '' }} countMarks={{ 'data-lien-public-bin-count': '' }} title={bin.title} foldWords={bin.foldWords} totalWords={bin.totalWords} needs={bin.needs} count={bin.count} isMobile={isMobile}>
       {bin.rows.map((r) => (
         <div key={r.jobId} data-lien-public-bin-row={r.jobId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '2px 0.75rem', padding: '0.45rem 0', borderTop: '1px solid var(--border)' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flexWrap: 'wrap' }}>
@@ -74,6 +71,6 @@ export function LienPublicBinView({ bin, isMobile, onPutBack }: { bin: LienPubli
           </button>
         </div>
       ) : null}
-    </section>
+    </LienBoardFoldBox>
   )
 }

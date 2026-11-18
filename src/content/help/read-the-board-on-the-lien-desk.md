@@ -184,7 +184,7 @@ A mechanic's lien does not attach to public property. Some owners read as a city
 - One amber line sits over the bins, like *2 jobs sit on public property and are still on the lien path*. The line gives the money those jobs owe.
 - {{button:outline|Review them ›}} opens one window for each property in turn. The window asks whether to take the property off the lien path.
 
-A property answered public leaves the bins. The property's jobs sit in their own bin under the affidavits, {{chip:gray|Public jobs · bond claim}}. Each row gives the job, its money, the GC and what already went out. {{chip:yellow|get the bond}} shows while nobody knows if there is a payment bond. The row also says whether the job is with the attorney. A job not billed yet cannot go on the attorney's list, and the row says so.
+A property answered public leaves the bins. The property's jobs sit in their own bin under the affidavits, {{chip:gray|Public jobs · bond claim}}. The bin is folded to one line. The line says how many jobs it holds and what they owe. It also counts the jobs whose bond nobody knows, like *1 to get the bond*. Press the line to open the bin, and press it again to fold it. Each row gives the job, its money, the GC and what already went out. {{chip:yellow|get the bond}} shows while nobody knows if there is a payment bond. The row also says whether the job is with the attorney. A job not billed yet cannot go on the attorney's list, and the row says so.
 
 **Put a job back on the lien path…** at the foot of the bin puts a property back. Say why, and its jobs return to the bins. [A public property](/help/file-a-lien-and-never-miss-its-deadlines#a-public-property) has the window's steps.
 
@@ -192,7 +192,7 @@ A property answered public leaves the bins. The property's jobs sit in their own
 
 Some money has no lien behind it. A trip charge to pick up a check is one case. The lien office can take that one job off the lien path, with a reason.
 
-Such a job leaves the bins. It sits in its own bin under the affidavits, {{chip:gray|Off the lien path}}. Each row gives the job, its money, the GC, who took it off and the day. The reason sits on its own line.
+Such a job leaves the bins. It sits in its own bin under the affidavits, {{chip:gray|Off the lien path}}. This bin is folded to one line too. Press the line to open it. Each row gives the job, its money, the GC, who took it off and the day. The reason sits on its own line.
 
 {{button:outline|Put it back…}} on a row puts that job back. Say why, and the job returns to the bins with its papers.
 

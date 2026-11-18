@@ -32,6 +32,12 @@ describe('LienOffPathBinView', () => {
     render(<LienOffPathBinView bin={BIN} isMobile={false} onPutBack={vi.fn()} />)
     const bin = document.querySelector('[data-lien-off-path-bin]') as HTMLElement
     expect(bin.getAttribute('aria-label')).toBe('Off the lien path')
+    // Folded until pressed (v2.7854, punch list #390), as the Public jobs box is: one line, and no row.
+    const fold = document.querySelector('[data-lien-board-box-fold]') as HTMLButtonElement
+    expect(fold.textContent).toBe('Off the lien path2 jobs · $1,400 unpaidShow ▾')
+    expect(fold.getAttribute('aria-expanded')).toBe('false')
+    expect(document.querySelector('[data-lien-off-path-bin-row]')).toBeNull()
+    fireEvent.click(fold)
     expect(bin.textContent).toContain('$1,400 unpaid')
     expect(document.querySelector('[data-lien-off-path-bin-count]')!.textContent).toBe('2')
     const rows = [...document.querySelectorAll('[data-lien-off-path-bin-row]')] as HTMLElement[]
@@ -46,6 +52,7 @@ describe('LienOffPathBinView', () => {
   it('each row’s Put it back… hands the desk that job', () => {
     const onPutBack = vi.fn()
     render(<LienOffPathBinView bin={BIN} isMobile={false} onPutBack={onPutBack} />)
+    fireEvent.click(document.querySelector('[data-lien-board-box-fold]') as HTMLButtonElement)
     const presses = [...document.querySelectorAll('[data-lien-off-path-bin-back]')] as HTMLButtonElement[]
     expect(presses.map((p) => p.textContent)).toEqual(['Put it back…', 'Put it back…'])
     fireEvent.click(presses[1]!)
@@ -54,6 +61,7 @@ describe('LienOffPathBinView', () => {
 
   it('a reader who is not the lien office sees the rows and no press', () => {
     render(<LienOffPathBinView bin={BIN} isMobile={false} onPutBack={null} />)
+    fireEvent.click(document.querySelector('[data-lien-board-box-fold]') as HTMLButtonElement)
     expect(document.querySelectorAll('[data-lien-off-path-bin-row]')).toHaveLength(2)
     expect(document.querySelector('[data-lien-off-path-bin-back]')).toBeNull()
   })
@@ -61,6 +69,7 @@ describe('LienOffPathBinView', () => {
   it('a row’s name opens the job when the desk hands a door, with a phone’s tap height', () => {
     const onOpenJob = vi.fn()
     render(<LienOffPathBinView bin={BIN} isMobile onOpenJob={onOpenJob} onPutBack={vi.fn()} />)
+    fireEvent.click(document.querySelector('[data-lien-board-box-fold]') as HTMLButtonElement)
     const open = document.querySelector('[data-lien-off-path-bin-open="j977"]') as HTMLButtonElement
     expect(open.style.minHeight).toBe('40px')
     fireEvent.click(open)
