@@ -122,7 +122,7 @@ Test rows: the test sub and a ZZ TEST job. Never a real sub's page.
 2026-11-18. **Steps 1 and 2 are built.** Step 3, the usual pay time, is not.
 
 - **Step 1, the tie** (v2.7835, migration `20261118180000_sub_sheet_draw_invoice.sql`): `docs/recent-features/v2.7835.md`.
-- **Step 2, customer paid on the page** (v2.7843): `docs/recent-features/v2.7843.md`. The owner read its Spanish before it merged.
+- **Step 2, customer paid on the page** (v2.7843): `docs/recent-features/v2.7843.md`. The owner read its Spanish, side by side with the English, on 2026-11-18 before it merged: *Reads right*.
 - **`sub-portal` is not deployed with step 2 yet.** Until it is, the page reads as it did: the client draws the new state only from a day the function sends. The deploy waits on a go that names it.
 
 **What the two steps settled that this card left open.** Step 3 builds on them.
@@ -138,7 +138,7 @@ Test rows: the test sub and a ZZ TEST job. Never a real sub's page.
 **Next.**
 
 - **Deploy `sub-portal`** on a go that names it, then walk the page on the test sub as *How to verify* says: a bill on a ZZ TEST job, the move, a part payment, the rest, a hold, a pay day, each state in both languages. Put everything back.
-- **Step 3, the usual pay time.** The weeks rule with its floor of five payments goes beside `customerPaidOn` in `supabase/functions/_shared/subPortalCustomerPaid.ts`. `paymentReliability.ts` is not in the edge copy, so restate the spread there with a parity test. The function calls `get_billed_customer_pay_speeds` as the service role. The payer is `paySpeedPayer` in `billToParty.ts`, which the copy holds already. Its one line needs the owner's read in Spanish too, and `sub-portal` is deployed again on a named go.
+- **Step 3, the usual pay time.** The weeks rule with its floor of five payments goes beside `customerPaidOn` in `supabase/functions/_shared/subPortalCustomerPaid.ts`. `paymentReliability.ts` is not in the edge copy, so restate the spread there with a parity test. The function calls `get_billed_customer_pay_speeds` as the service role. The payer is `paySpeedPayer` in `billToParty.ts`, which the copy holds already. Its line was on the page the owner read on 2026-11-18, in three forms: a range, one figure (*unas 4 semanas*) and under a week (*en menos de una semana*). Words that differ from those three need a new read. `sub-portal` is deployed again on a named go.
 - **Counsel.** The new sentences sit beside the one already with counsel. They are listed, English and Spanish, on the page the owner read.
 
 **Three gotchas met on #371,** the Statements view built on the same page and function. Its paragraph under *Closed* in `to-dos/README.md` tells how the walk was done on the test sub.
