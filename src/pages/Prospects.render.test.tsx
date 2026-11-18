@@ -766,6 +766,61 @@ describe('Convert', () => {
   })
 })
 
+describe('Convert, the form', () => {
+  async function pick(company: string) {
+    open('/prospects?tab=convert')
+    const search = await screen.findByLabelText('Who are you converting?')
+    await settle()
+    fireEvent.change(search, { target: { value: company } })
+    fireEvent.keyDown(search, { key: 'Enter' })
+    await screen.findByText('1. Customer details')
+    await settle()
+  }
+
+  it('Convert to customer makes the customer, its contact and its first bid, marks the prospect and opens the customer', async () => {
+    await pick('bravo')
+    fireEvent.change(screen.getByPlaceholderText('Project name'), { target: { value: ' Test Office Shell ' } })
+    const serviceType = (screen.getByPlaceholderText('Project name').closest('.convertCard') as HTMLElement).querySelector('select') as HTMLSelectElement
+    await waitFor(() => expect(within(serviceType).getByRole('option', { name: 'Plumbing' })).toBeTruthy())
+    fireEvent.change(serviceType, { target: { value: 'st-1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Convert to customer' }))
+    await waitFor(() => expect(where().startsWith('/customers/cust-new')).toBe(true))
+    expect(writesTo('customers', 'insert')).toHaveLength(1)
+    expect(writesTo('customer_contact_persons', 'insert').map((w) => w.payload)).toEqual([{ customer_id: 'cust-new', name: 'Pat Sample', phone: '555-0100', email: null, note: null }])
+    expect(writesTo('bids', 'insert').map((w) => w.payload)).toEqual([{ customer_id: 'cust-new', created_by: 'smoke-auth-user-1', service_type_id: 'st-1', project_name: 'Test Office Shell', materials_model: 'rough' }])
+    expect(writesTo('prospects', 'update')[0]).toMatchObject({ payload: { prospect_fit_status: 'converted' }, filters: { id: 'cu-2' } })
+    expect((writesTo('prospect_comments', 'insert')[0]?.payload as Row).interaction_type).toBe('converted')
+  })
+
+  it('a bid card with no service type is left out', async () => {
+    await pick('bravo')
+    fireEvent.change(screen.getByPlaceholderText('Project name'), { target: { value: 'Test Office Shell' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Convert to customer' }))
+    await waitFor(() => expect(where().startsWith('/customers/cust-new')).toBe(true))
+    expect(writesTo('bids')).toHaveLength(0)
+  })
+
+  it('the picked prospect and a typed card are still there after a look at another tab', async () => {
+    await pick('charlie')
+    fireEvent.change(screen.getByPlaceholderText('Project name'), { target: { value: 'Test Office Shell' } })
+    press('Prospect List')
+    await screen.findByText('Never called (2)')
+    press('Convert')
+    expect(await screen.findByText('1. Customer details')).toBeTruthy()
+    expect((screen.getByPlaceholderText('Project name') as HTMLInputElement).value).toBe('Test Office Shell')
+    expect(document.querySelector('.convertProspectSummary')?.textContent).toContain('Charlie Group')
+  })
+
+  it('a prospect answered in the last 30 days is offered as a suggestion, and a press picks it', async () => {
+    world.comments = [{ id: 'c-r', prospect_id: 'cu-3', created_by: 'smoke-auth-user-1', created_at: new Date(Date.now() - 2 * 86400000).toISOString(), comment_text: 'Talked', interaction_type: 'answered' }]
+    open('/prospects?tab=convert')
+    await screen.findByLabelText('Who are you converting?')
+    fireEvent.click(await screen.findByRole('button', { name: /Charlie Group/ }))
+    expect(await screen.findByText('1. Customer details')).toBeTruthy()
+    expect(document.querySelector('.convertProspectSummary')?.textContent).toContain('Charlie Group')
+  })
+})
+
 describe('Activity', () => {
   it('pages back a week and will not page past this one', async () => {
     open('/prospects?tab=activity')
@@ -774,6 +829,45 @@ describe('Activity', () => {
     expect((screen.getByRole('button', { name: /next week/ }) as HTMLButtonElement).disabled).toBe(true)
     press(/previous week/)
     expect(await screen.findByText(/^Week of —/)).toBeTruthy()
+  })
+
+  it('the week it is paged to survives a visit to another tab', async () => {
+    open('/prospects?tab=activity')
+    await screen.findByText('Marked / Updated by day — last 30 days')
+    press(/previous week/)
+    await screen.findByText(/^Week of —/)
+    press('Follow Up')
+    await screen.findByText('How did the call end?')
+    press('Activity')
+    expect(await screen.findByText(/^Week of —/)).toBeTruthy()
+  })
+
+  it('draws a caller’s week from the calls on record, and counts landings in the lane’s words', async () => {
+    open('/prospects?tab=activity')
+    expect(await screen.findByText('1 call')).toBeTruthy()
+    expect(screen.getByText(/1 answered · 100%/)).toBeTruthy()
+    expect(screen.getByText(/0 converted/)).toBeTruthy()
+    expect(screen.getByText('Daily detail')).toBeTruthy()
+    expect(screen.queryByText(/^Source success/)).toBeNull()
+  })
+
+  it('a week with no calls says so and offers the week before', async () => {
+    world.comments = []
+    open('/prospects?tab=activity')
+    expect(await screen.findByText('No calling activity this week yet.')).toBeTruthy()
+    press('Previous week')
+    expect(await screen.findByText('No calling activity that week.')).toBeTruthy()
+  })
+
+  it('on a lane, heads the week with the lane and adds Source success from the lane’s rows', async () => {
+    world.prospects = world.prospects.map((p) => (p.kind === 'sub' ? { ...p, source: p.id === 'su-3' ? 'A referral' : 'Google Maps', prospect_fit_status: p.id === 'su-1' ? 'converted' : null } : p))
+    open('/prospects?tab=activity&kind=subs')
+    expect(await screen.findByText('Source success — Subs, every row of the lane')).toBeTruthy()
+    expect(await screen.findByText('Google Maps')).toBeTruthy()
+    expect(screen.getByText('1 of 2')).toBeTruthy()
+    expect(screen.getByText('A referral')).toBeTruthy()
+    expect(screen.getByText(/^Subs · This week —/)).toBeTruthy()
+    expect(screen.getByText(/0 to the bench/)).toBeTruthy()
   })
 })
 
