@@ -1,5 +1,6 @@
 import { useMemo, type CSSProperties } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
+import { useFinishCallsForJobs } from '../hooks/useFinishCallsForJobs'
 import { useAuth } from '../hooks/useAuth'
 import { pageGate } from '../lib/roleGate'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
@@ -28,6 +29,9 @@ export default function ProjectsBoard() {
   const focusJob = params.get('job')
   const board = useProjectsBoard()
   const { rows, cards, targets, loading, failure, reload } = board
+  // What the crew said about each job's finish, for the cards (punch list #396).
+  const finishIds = useMemo(() => cards.map((c) => c.row.id), [cards])
+  const finishByJob = useFinishCallsForJobs(finishIds)
 
   const gate = pageGate({ loading: authLoading, user, role }, canSeeProjectsBoard)
   const canEdit = canSetExpectedHours(role)
@@ -79,6 +83,7 @@ export default function ProjectsBoard() {
               initiallyOpen={c.row.id === focusJob}
               onSetTarget={(hours, from, why) => targets.setTarget(c.row.id, hours, from, why)}
               onClearTarget={() => targets.clearTarget(c.row.id)}
+              says={finishByJob.get(c.row.id)}
             />
           ))}
         </div>
