@@ -1830,7 +1830,7 @@ A **GC project** (GC mode, `/gc`) is a `projects` row too, so it shows here for 
 ### 3. Workflow Management
 `Workflow.tsx` (~4.4k lines) at `/workflows/:projectId` — the stage-by-stage project interface: step cards with status actions (Set Start / Complete / Approve / Send Back / Re-open), roster-autocomplete assignment, expected dates + `%` complete (feeds Projects → Forecast), tech/office notes, line items with PO and supply-house-invoice links, projections-vs-ledger financials, per-step action ledger, and notification subscriptions. Tables: `project_workflow_steps`, `workflow_step_line_items`, `workflow_projections`, `project_workflow_step_actions`, `step_subscriptions`. Depth: [WORKFLOW_PAGE_ARCHITECTURE.md](./WORKFLOW_PAGE_ARCHITECTURE.md), [WORKFLOW_FEATURES.md](./WORKFLOW_FEATURES.md); per-role behavior: ACCESS_CONTROL.md.
 
-A GC project gets no plumbing workflow: `ensureWorkflow` (`useWorkflowStepsEngine.ts`) reads `gc_projects` with the workflows and, for a GC project, makes none and the page says where it lives (v2.4846). Before, any door into `/workflows/<id>` filed a GC project as a draft plumbing workflow on load.
+Opening the page only reads (v2.7838): a project with no workflow draws an empty state, *No workflow on this project yet.*, and **Start a workflow** is the press that makes it, shown to the roles the insert policy admits, dev, master, assistant and controller (`workflowFindStep` and `canStartWorkflow`, `src/lib/workflow/workflowStart.ts`). A GC project gets no plumbing workflow: the finder (`findWorkflow` on the open, `ensureWorkflow` on a press, `useWorkflowStepsEngine.ts`) reads `gc_projects` with the workflows and, for a GC project, makes none and the page says where it lives (v2.4846). Before, any door into `/workflows/<id>` filed a GC project as a draft plumbing workflow on load.
 
 ### 4. Template System
 `Templates.tsx` (the owner or a dev since v2.6763) — CRUD for workflow templates and their ordered steps; templates seed workflows at project creation. Tables: `workflow_templates`, `workflow_template_steps`.
@@ -2828,7 +2828,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - **Issue**: Projections and workflow steps (cards) not persisting when navigating away and back to a project
   - Symptoms: Added projections/steps disappear on first navigation back, but appear on subsequent visits
   - Root Cause: Race condition where `workflow?.id` from React state was `null` during immediate save operations
-- **Solution**: Modified `saveProjection`, `deleteProjection`, `saveStep`, `refreshSteps`, `createFromTemplate`, and `copyStep` to always obtain a valid `workflowId` by calling `ensureWorkflow(projectId)` if state is null
+- **Solution**: Modified `saveProjection`, `deleteProjection`, `saveStep`, `refreshSteps`, `createFromTemplate`, and `copyStep` to always obtain a valid `workflowId` by calling `ensureWorkflow(projectId)` if state is null (since v2.7838 `refreshSteps` reads through `findWorkflow`, which never makes one)
 - **Implementation**: All save/delete operations now check for `workflow?.id` and fall back to `ensureWorkflow(projectId)` if needed
 - **Files Modified**: `src/pages/Workflow.tsx`
 - **Result**: Projections and steps now persist correctly on first navigation back
