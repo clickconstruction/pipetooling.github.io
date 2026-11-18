@@ -3,6 +3,8 @@
  * The run row's four steps (v2.7695): Printed, Signed, In the envelope and Mailed, each a cell with its own press, a
  * Next line that names the one thing to do, and a receipt press beside each mail number.
  */
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -93,5 +95,15 @@ describe('LienRunChecklist · the four steps (v2.7695)', () => {
     expect(screen.queryByTestId('run-check-receipt-it1-owner')).toBeNull()
     expect(screen.getByTestId('run-check-envelope-it1').textContent).toBe('print first')
     expect(screen.getByTestId('run-check-next-it1').textContent).toBe('Next: Print the notice.')
+  })
+
+  it('keeps the file press a thumb tall inside the run window on a phone (v2.7715)', () => {
+    // The run window gives every button a 40 px floor on a phone (`.lienRunWindow button`, a class and an element).
+    // A bare class loses to it, which drew this press 40 px tall on the live site, so the rule names the element too.
+    const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(css).toMatch(/\.lienRunWindow button \{ min-height: 40px; \}/)
+    expect(css).toMatch(/\n\s*button\.lienRunCheckCopyAdd \{ min-height: 44px;/)
+    expect(css).toMatch(/\n\s*button\.lienRunCheckCopyOff \{ min-height: 44px;/)
+    expect(css.indexOf('button.lienRunCheckCopyAdd { min-height: 44px')).toBeGreaterThan(css.indexOf('.lienRunWindow button { min-height: 40px'))
   })
 })

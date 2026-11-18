@@ -8,6 +8,7 @@ import { readReportSubject, reportSendSkip } from '../_shared/reportSubject.ts'
 import { webPushSender } from '../_shared/webPushSend.ts'
 import { reportPhotoCountClause } from '../_shared/reportPhotoEmail.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { recipientsNotShut } from '../_shared/jobPapersLock.ts'
 
 /** Matches client `reportTemplateDisplayName` legacy alias for notification copy. */
 const LEGACY_SUPERINTENDENT_REPORT_TEMPLATE_NAME = 'Superintendent Report'
@@ -168,10 +169,20 @@ serve(async (req) => {
       )
     }
 
+    // Papers before a job opens: the push names the job, so a person who still owes that job a paper is left out of it
+    // (the app's Papers to sign line tells them instead). A report on a project or a bid goes to everyone as before.
+    const toPush = await recipientsNotShut(adminClient, subject.kind === 'job' ? (reportRow.job_ledger_id as string | null) : null, recipientIds)
+    if (toPush.length === 0) {
+      return new Response(
+        JSON.stringify({ success: true, message: 'No recipients', push_sent: 0 }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Through each person's hours (#141 PR 5): the people on are pushed, a person off is held with a row and no push.
     const result = await sendPushHonouringHours(
       adminClient,
-      { userIds: recipientIds, title: pushTitle, body: pushBody, url: pushUrl, tag, templateType: 'report_submitted' },
+      { userIds: toPush, title: pushTitle, body: pushBody, url: pushUrl, tag, templateType: 'report_submitted' },
       webPushSender(adminClient, 'send-report-notification'),
     )
 

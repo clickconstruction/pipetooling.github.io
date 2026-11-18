@@ -1,6 +1,7 @@
 /**
  * Plans by date: the Development page's Plans look as a chart over time, beside the parts table. One lane
  * for the site's bids, one for each part with a mark for every set on the date printed on its sheets, one
+ * for the site's trips when it has any (punch list #379: each trip a bar over its days, coloured day by day), one
  * for the days crews were on site and one for the lines kept on History, with today's line across them all
  * and every mark again as a dated line under the chart. It reads only what the page already holds: the
  * parts and sets (`sitePlans.ts`), the bids' sent days, the clock's days on the site's jobs and the kept
@@ -62,6 +63,28 @@ export type PlansByDateJob = { id: string; label: string; days: ReadonlyArray<st
 
 export type PlansByDateHistory = { id: string; happenedAt: string; source: HistorySource; body: string; /** Who kept it, what it is about and the whole body's length when `body` is only its head, for its card. */ byName?: string | null; about?: string | null; bodyChars?: number }
 
+/** A trip day's kind, as `lib/trips/tripDays.ts` names it. */
+export type PbdTripKind = 'site' | 'road' | 'ready'
+
+/**
+ * A trip to the site (punch list #379), as `lib/trips/tripLane.ts` makes it from a kept trip: its days in
+ * order with the trip's kind on each (null on a day nobody was on it), whether it is still ahead, and its words.
+ */
+export type PlansByDateTrip = {
+  id: string
+  days: ReadonlyArray<{ ymd: string; kind: PbdTripKind | null }>
+  /** A trip whose first day is ahead: drawn faint, with a dashed edge. */
+  planned: boolean
+  /** *Oct 23 to Nov 4*. */
+  when: string
+  /** *Back · 8 days at the site*, or *Planned*. */
+  standing: string
+  /** *Luis, Priya*. */
+  who: string
+  /** What the trip was for; empty when nobody wrote it. */
+  why: string
+}
+
 /** How the clock's days came: read, still reading, failed, or closed to this reader (an estimator, a leader without payroll). */
 export type PlansByDateClock = 'read' | 'reading' | 'failed' | 'closed'
 
@@ -71,6 +94,8 @@ export type PlansByDateInput = {
   bids: ReadonlyArray<PlansByDateBid>
   jobs: ReadonlyArray<PlansByDateJob>
   history: ReadonlyArray<PlansByDateHistory>
+  /** The site's trips. Left out or empty, the chart has no Trips lane, so a site with no trip is unchanged. */
+  trips?: ReadonlyArray<PlansByDateTrip>
   /** The people's names by user id, for *Added by* on a set's card. */
   names?: Readonly<Record<string, string>>
   clock: PlansByDateClock
@@ -81,13 +106,16 @@ export type PlansByDateInput = {
 }
 
 /** What a mark is, which is also its shape: identity never rests on colour alone. */
-export type PbdGlyph = 'set' | 'current' | 'undated' | 'ours' | 'bid' | 'bidPlans' | 'schedule' | 'scheduleOver' | 'crew' | 'crewOpen' | 'tick' | 'letter' | 'today' | 'cluster'
+export type PbdGlyph = 'set' | 'current' | 'undated' | 'ours' | 'bid' | 'bidPlans' | 'schedule' | 'scheduleOver' | 'trip' | 'crew' | 'crewOpen' | 'tick' | 'letter' | 'today' | 'cluster'
 
 export type PbdMark = { key: string; glyph: PbdGlyph; day: number; label: string | null; strong: boolean; priority: number; tip: string }
-export type PbdSpan = { key: string; glyph: 'crew' | 'crewOpen' | 'schedule' | 'scheduleOver'; from: number; to: number; tip: string; /** A schedule with no end date: its bar runs off the chart as an arrow. */ open?: boolean; /** Words inside a schedule's bar, at its start and at its end. */ startWords?: string; endWords?: string }
+/** A run of a trip's days of one kind, both ends in; `off` is a day in the trip's middle nobody was on it. */
+export type PbdTripRun = { from: number; to: number; kind: PbdTripKind | 'off' }
+
+export type PbdSpan = { key: string; glyph: 'crew' | 'crewOpen' | 'schedule' | 'scheduleOver' | 'trip'; from: number; to: number; tip: string; /** A schedule with no end date: its bar runs off the chart as an arrow. */ open?: boolean; /** Words inside a schedule's bar, at its start and at its end. */ startWords?: string; endWords?: string; /** A trip's bar, day by day: its runs of one kind. */ runs?: PbdTripRun[]; /** A planned trip: drawn faint. */ faint?: boolean }
 export type PbdLane = {
   key: string
-  kind: 'bids' | 'schedule' | 'part' | 'crew' | 'history'
+  kind: 'bids' | 'schedule' | 'part' | 'trips' | 'crew' | 'history'
   label: string
   sub: string
   marks: PbdMark[]
@@ -157,6 +185,28 @@ export function crewRuns(jobs: ReadonlyArray<{ label: string; days: ReadonlyArra
   return runs
 }
 
+/**
+ * A trip's days as runs of one kind, for its bar (punch list #379): consecutive days of the same kind join,
+ * a day in the middle nobody was on is `off`, and a day that is not a day is dropped. Days are read in date
+ * order whatever order they come in; a hole in the days starts a new run and is not drawn.
+ */
+export function tripRuns(days: ReadonlyArray<{ ymd: string; kind: PbdTripKind | null }>): PbdTripRun[] {
+  const dated = days
+    .map((d) => ({ day: dayOfYmd(d.ymd), kind: d.kind ?? ('off' as const) }))
+    .filter((d): d is { day: number; kind: PbdTripKind | 'off' } => d.day != null)
+    .sort((a, b) => a.day - b.day)
+  const runs: PbdTripRun[] = []
+  for (const d of dated) {
+    const last = runs[runs.length - 1]
+    if (last && last.kind === d.kind && d.day === last.to + 1) last.to = d.day
+    else if (!last || d.day > last.to) runs.push({ from: d.day, to: d.day, kind: d.kind })
+  }
+  // A trip begins and ends on a day somebody was on it.
+  while (runs.length && runs[0]?.kind === 'off') runs.shift()
+  while (runs.length && runs[runs.length - 1]?.kind === 'off') runs.pop()
+  return runs
+}
+
 /** A set we made ourselves: an as-built or an assembled set. It is not something we were issued, so the counts leave it out. */
 export function isOurs(s: Pick<PlanSetRow, 'kind' | 'source'>): boolean {
   return s.source === 'ours' || PLAN_SET_KINDS.some((k) => k.kind === s.kind && k.ours)
@@ -183,12 +233,13 @@ const GLYPH_WORDS: Record<Exclude<PbdGlyph, 'today' | 'cluster'>, string> = {
   bidPlans: 'the plans a bid was priced from',
   schedule: 'a bid’s schedule, start to end',
   scheduleOver: 'past the schedule’s end',
+  trip: 'a trip by day: ready, road, site, faint when planned',
   crew: 'crews on site',
   crewOpen: 'first to last work day',
   tick: 'a History line',
   letter: 'a letter',
 }
-const LEGEND_ORDER: ReadonlyArray<Exclude<PbdGlyph, 'today' | 'cluster'>> = ['set', 'current', 'undated', 'ours', 'bid', 'bidPlans', 'schedule', 'scheduleOver', 'crew', 'crewOpen', 'tick', 'letter']
+const LEGEND_ORDER: ReadonlyArray<Exclude<PbdGlyph, 'today' | 'cluster'>> = ['set', 'current', 'undated', 'ours', 'bid', 'bidPlans', 'schedule', 'scheduleOver', 'trip', 'crew', 'crewOpen', 'tick', 'letter']
 
 export function buildPlansByDate(input: PlansByDateInput): PlansByDateModel {
   const today = dayOfYmd(input.today) ?? 0
@@ -302,6 +353,26 @@ export function buildPlansByDate(input: PlansByDateInput): PlansByDateModel {
     lanes.push(lane)
   }
   issued.sort((a, b) => a.day - b.day)
+
+  // Trips (punch list #379), under the sets: each trip a bar over its days, coloured day by day by its kind, a planned
+  // one faint. The lane is here only when the site has a trip, so every other site's chart is unchanged.
+  const tripBars = (input.trips ?? [])
+    .map((t) => ({ trip: t, runs: tripRuns(t.days) }))
+    .filter((t) => t.runs.length > 0)
+    .sort((a, b) => (a.runs[0]?.from ?? 0) - (b.runs[0]?.from ?? 0) || a.trip.id.localeCompare(b.trip.id))
+  if (tripBars.length) {
+    const plannedCount = tripBars.filter((t) => t.trip.planned).length
+    const goneCount = tripBars.length - plannedCount
+    const tripLane: PbdLane = { key: 'trips', kind: 'trips', label: 'Trips', sub: [goneCount ? plural(goneCount, 'trip', 'trips') : '', plannedCount ? `${plannedCount} planned` : ''].filter(Boolean).join(' · '), marks: [], spans: [], joins: [], lifeFrom: null }
+    for (const { trip: t, runs } of tripBars) {
+      const from = runs[0]?.from ?? 0
+      const to = runs[runs.length - 1]?.to ?? from
+      tripLane.spans.push({ key: `trip-${t.id}`, glyph: 'trip', from, to, runs, faint: t.planned, tip: [`Trip ${t.when}`, t.standing, t.who, t.why].filter(Boolean).join(' · ') })
+      used.add('trip')
+      row({ key: `trip-${t.id}`, day: from, lane: 'Trips', glyph: 'trip', text: `${t.planned ? 'Planned trip' : 'Trip'} ${from === to ? 'for the day' : `until ${dayWords(ymdOfDay(to), false)}`}`, soft: [t.who, t.why].filter(Boolean).join(' · ') })
+    }
+    lanes.push(tripLane)
+  }
 
   // Crews on site: the clock's days joined into bars; a job the clock has no day for draws its first work day to its last.
   const clockJobs = input.clock === 'read' ? input.jobs.filter((j) => (j.days ?? []).length > 0) : []
@@ -469,6 +540,18 @@ export function plansByDateListHead(list: Pick<PlansByDateList, 'rows' | 'issues
 
 /** The print's line under the list when it leaves the log out. */
 export const PLANS_BY_DATE_PRINT_LIST_NOTE = 'The list shows the drawings and the bids. The crews’ days and the History lines are on the chart.'
+/** The same line on a site with a Trips lane. */
+export const PLANS_BY_DATE_PRINT_LIST_NOTE_TRIPS = 'The list shows the drawings and the bids. The trips, the crews’ days and the History lines are on the chart.'
+
+/** What the list leaves out until asked, in the press's words: *crew and History*, or *trip, crew and History* on a site with trips. */
+export function plansByDateLogWords(model: Pick<PlansByDateModel, 'lanes'>): string {
+  return model.lanes.some((l) => l.kind === 'trips') ? 'trip, crew and History' : 'crew and History'
+}
+
+/** The same press's hover line: what it adds to the list, the trips named on a site that has them. */
+export function plansByDateLogTitle(model: Pick<PlansByDateModel, 'lanes'>): string {
+  return model.lanes.some((l) => l.kind === 'trips') ? 'Lists the trips, the crews’ days and the lines kept on History too' : 'Lists the crews’ days and the lines kept on History too'
+}
 
 /** *2 bids have no sent day, so they are not on the chart: B12, B14.* Null when every bid has one. */
 export function plansByDateUnsentWords(labels: ReadonlyArray<string>): string | null {
@@ -541,10 +624,11 @@ export type PbdClass =
   | 'tickWord' | 'yearWord' | 'laneWord' | 'subWord' | 'markWord' | 'markWordStrong' | 'todayWord'
   | 'grid' | 'gridYear' | 'rule' | 'base' | 'life' | 'link' | 'bidJoin' | 'today' | 'todayPill'
   | 'set' | 'setOpen' | 'ring' | 'bid' | 'bidOpen' | 'schedule' | 'scheduleOver' | 'barWord' | 'crew' | 'crewOpen' | 'history' | 'letter' | 'letterPole' | 'hit'
+  | 'tripSite' | 'tripRoad' | 'tripReady' | 'tripOff' | 'tripPlanned'
 
 export type PbdPrim =
   | { t: 'line'; cls: PbdClass; x1: number; y1: number; x2: number; y2: number }
-  | { t: 'rect'; cls: PbdClass; x: number; y: number; w: number; h: number; rx: number; turn?: boolean }
+  | { t: 'rect'; cls: PbdClass; x: number; y: number; w: number; h: number; rx: number; turn?: boolean; /** Drawn faint: a planned trip's days. */ faint?: boolean }
   | { t: 'circle'; cls: PbdClass; cx: number; cy: number; r: number }
   | { t: 'path'; cls: PbdClass; d: string }
   | { t: 'text'; cls: PbdClass; x: number; y: number; anchor: 'start' | 'middle' | 'end'; text: string; tail?: string }
@@ -610,6 +694,36 @@ export function plansByDateChartName(name: string, ymd: string, max: number): st
 /** The key's words for a burst of sets drawn as one bar. */
 export const PLANS_BY_DATE_CLUSTER_WORDS = 'several sets close together'
 
+/** How faint a planned trip's days are drawn, on the screen and on paper. */
+export const PLANS_BY_DATE_FAINT = 0.45
+/** The narrowest a trip's bar is drawn, so a one-day trip on a long axis is still a mark. */
+export const PLANS_BY_DATE_TRIP_MIN_WIDTH = 5
+
+const TRIP_CLASS: Record<PbdTripRun['kind'], PbdClass> = { site: 'tripSite', road: 'tripRoad', ready: 'tripReady', off: 'tripOff' }
+
+/**
+ * A trip's bar (punch list #379): one rectangle for each run of days of one kind, a day wide for each day,
+ * so the bar is coloured day by day on the chart's own axis. A bar too narrow to split is one rectangle in
+ * the kind that leads the trip: At the site when any day was, else On the road, else Getting ready. A
+ * planned trip is drawn faint inside a dashed edge, so it never rests on faintness alone.
+ */
+export function tripBarShape(s: Pick<PbdSpan, 'key' | 'tip' | 'from' | 'to' | 'runs' | 'faint'>, x: (day: number) => number, y: number): PbdMarkShape {
+  const x1 = x(s.from)
+  const natural = x(s.to + 1) - x1
+  const w = r1(Math.max(PLANS_BY_DATE_TRIP_MIN_WIDTH, natural))
+  const runs = s.runs ?? []
+  const lead = (['site', 'road', 'ready'] as const).find((k) => runs.some((r) => r.kind === k)) ?? 'off'
+  const prims: PbdPrim[] =
+    natural >= PLANS_BY_DATE_TRIP_MIN_WIDTH && runs.length > 1
+      ? runs.map((r): PbdPrim => {
+          const rx1 = x(r.from)
+          return { t: 'rect', cls: TRIP_CLASS[r.kind], x: rx1, y: y - 6, w: r1(Math.max(1, x(r.to + 1) - rx1)), h: 12, rx: 0, faint: s.faint }
+        })
+      : [{ t: 'rect', cls: TRIP_CLASS[runs.length === 1 ? (runs[0]?.kind ?? lead) : lead], x: x1, y: y - 6, w, h: 12, rx: 2, faint: s.faint }]
+  if (s.faint) prims.push({ t: 'rect', cls: 'tripPlanned', x: r1(x1 - 1), y: y - 7, w: r1(w + 2), h: 14, rx: 2 })
+  return { key: s.key, tip: s.tip, cx: r1(x1 + w / 2), top: y - 10, prims, hit: { t: 'rect', cls: 'hit', x: r1(x1 - 2), y: y - 13, w: r1(w + 4), h: 26, rx: 0 } }
+}
+
 /**
  * The chart as shapes at a width. On a desktop and on paper the lanes are named in a gutter at the left; on a
  * phone each lane's name sits over it and only the bids, the letters and the set each part builds from keep
@@ -673,6 +787,10 @@ export function layoutPlansByDate(model: PlansByDateModel, variant: PlansByDateV
           if (s.endWords && w >= endW) labels.push({ t: 'text', cls: 'barWord', x: r1(x1 + w - (s.open ? 15 : 6)), y: y + 3.5, anchor: 'end', text: s.endWords })
           if (s.startWords && w >= startW + endW + 10) labels.push({ t: 'text', cls: 'barWord', x: x1 + 6, y: y + 3.5, anchor: 'start', text: s.startWords })
         }
+        continue
+      }
+      if (s.glyph === 'trip') {
+        marks.push(tripBarShape(s, x, y))
         continue
       }
       const open = s.glyph === 'crewOpen'
@@ -767,7 +885,7 @@ export function layoutPlansByDate(model: PlansByDateModel, variant: PlansByDateV
 // ── The paint ─────────────────────────────────────────────────────────────────
 
 /** The colours a shape can wear, by name: the screen gives each a theme token, the paper a literal. */
-export type PbdInk = 'set' | 'bid' | 'bidWash' | 'over' | 'overWash' | 'crew' | 'strong' | 'text' | 'muted' | 'surface' | 'border' | 'borderStrong'
+export type PbdInk = 'set' | 'bid' | 'bidWash' | 'over' | 'overWash' | 'crew' | 'tripSite' | 'tripRoad' | 'tripReady' | 'strong' | 'text' | 'muted' | 'surface' | 'border' | 'borderStrong'
 
 export type PbdPaint = { fill?: PbdInk | 'none' | 'transparent'; stroke?: PbdInk; strokeWidth?: number; dash?: string; opacity?: number; fontSize?: number; fontWeight?: number; round?: boolean; /** A word that can cross a line: it wears a thin edge in the surface's colour, so the line never runs through its letters. */ halo?: boolean }
 
@@ -802,11 +920,18 @@ export const PBD_PAINT: Record<PbdClass, PbdPaint> = {
   schedule: { fill: 'bidWash', stroke: 'bid', strokeWidth: 1 },
   scheduleOver: { fill: 'overWash', stroke: 'over', strokeWidth: 1 },
   barWord: { fill: 'strong', fontSize: 10.5, fontWeight: 600 },
+  tripSite: { fill: 'tripSite' },
+  tripRoad: { fill: 'tripRoad' },
+  tripReady: { fill: 'tripReady' },
+  tripOff: { fill: 'borderStrong' },
+  tripPlanned: { fill: 'none', stroke: 'text', strokeWidth: 1, dash: '3 2' },
   hit: { fill: 'transparent' },
 }
 
 /** Paper has no theme, so its colours are literal, as on the other print documents. */
-const PAPER_INK: Record<PbdInk, string> = { set: '#eb6834', bid: '#7c3aed', bidWash: '#eadffc', over: '#b91c1c', overWash: '#fee2e2', crew: '#0f9a8a', strong: '#111827', text: '#374151', muted: '#6b7280', surface: '#ffffff', border: '#cfd4db', borderStrong: '#aab2bd' }
+/** A trip day's colour by its kind on paper: the hexes of `TRIP_KIND_COLOR` (`components/trips/TripDayBits.tsx`), which the screen draws; a test holds the two together. */
+export const PBD_TRIP_INK: Readonly<Record<PbdTripKind, string>> = { site: '#16a34a', road: '#2563eb', ready: '#d97706' }
+const PAPER_INK: Record<PbdInk, string> = { set: '#eb6834', bid: '#7c3aed', bidWash: '#eadffc', over: '#b91c1c', overWash: '#fee2e2', crew: '#0f9a8a', tripSite: PBD_TRIP_INK.site, tripRoad: PBD_TRIP_INK.road, tripReady: PBD_TRIP_INK.ready, strong: '#111827', text: '#374151', muted: '#6b7280', surface: '#ffffff', border: '#cfd4db', borderStrong: '#aab2bd' }
 
 /** A glyph for a legend entry or a list row, as shapes in a small box centred on 0,0. */
 export function plansByDateGlyph(glyph: PbdGlyph): { width: number; height: number; prims: PbdPrim[] } {
@@ -833,6 +958,8 @@ export function plansByDateGlyph(glyph: PbdGlyph): { width: number; height: numb
       return { width: 22, height: 12, prims: [{ t: 'rect', cls: 'schedule', x: -10.5, y: -5, w: 21, h: 10, rx: 3 }] }
     case 'scheduleOver':
       return { width: 22, height: 12, prims: [{ t: 'rect', cls: 'scheduleOver', x: -10.5, y: -5, w: 21, h: 10, rx: 3 }] }
+    case 'trip':
+      return { width: 24, height: 12, prims: [{ t: 'rect', cls: 'tripReady', x: -11, y: -4, w: 5, h: 8, rx: 0 }, { t: 'rect', cls: 'tripRoad', x: -6, y: -4, w: 5, h: 8, rx: 0 }, { t: 'rect', cls: 'tripSite', x: -1, y: -4, w: 12, h: 8, rx: 0 }] }
     case 'cluster':
       return { width: 22, height: 12, prims: [{ t: 'rect', cls: 'set', x: -10, y: -4.5, w: 20, h: 9, rx: 4.5 }] }
     case 'today':
@@ -866,7 +993,7 @@ function paperPrim(p: PbdPrim): string {
   if (p.t === 'line') return `<line ${a} x1="${p.x1}" y1="${p.y1}" x2="${p.x2}" y2="${p.y2}"/>`
   if (p.t === 'circle') return `<circle ${a} cx="${p.cx}" cy="${p.cy}" r="${p.r}"/>`
   if (p.t === 'path') return `<path ${a} d="${p.d}"/>`
-  if (p.t === 'rect') return `<rect ${a} x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="${p.rx}"${p.turn ? ` transform="rotate(45 ${r1(p.x + p.w / 2)} ${r1(p.y + p.h / 2)})"` : ''}/>`
+  if (p.t === 'rect') return `<rect ${a} x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="${p.rx}"${p.faint ? ` opacity="${PLANS_BY_DATE_FAINT}"` : ''}${p.turn ? ` transform="rotate(45 ${r1(p.x + p.w / 2)} ${r1(p.y + p.h / 2)})"` : ''}/>`
   return `<text ${a} x="${p.x}" y="${p.y}" text-anchor="${p.anchor}">${esc(p.text)}${p.tail ? `<tspan ${paperAttrs('subWord')} font-weight="400" dx="6">${esc(p.tail)}</tspan>` : ''}</text>`
 }
 
@@ -894,7 +1021,7 @@ export function plansByDatePrintHtml(input: { siteName: string; customerName: st
   const keyItems = layout.clusters > 0 ? [...model.legend, { glyph: 'cluster' as const, words: PLANS_BY_DATE_CLUSTER_WORDS }] : model.legend
   const key = keyItems.map((l) => `<span>${paperGlyph(l.glyph)}${esc(l.words)}</span>`).join('')
   const listed = plansByDateListRows(model.rows, input.withLog === true)
-  const notes = listed.hidden > 0 ? [...input.notes, PLANS_BY_DATE_PRINT_LIST_NOTE] : input.notes
+  const notes = listed.hidden > 0 ? [...input.notes, model.lanes.some((l) => l.kind === 'trips') ? PLANS_BY_DATE_PRINT_LIST_NOTE_TRIPS : PLANS_BY_DATE_PRINT_LIST_NOTE] : input.notes
   const list = listed.rows
     .filter((r) => !r.today)
     .map((r) => `<div><span class="d">${esc(dayWords(r.ymd))}</span><span>${r.lane ? `${esc(r.lane)}: ` : ''}${esc(r.text)}${r.soft ? ` <em>· ${esc(r.soft)}</em>` : ''}</span></div>`)

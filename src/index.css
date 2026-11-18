@@ -4741,8 +4741,9 @@ button.lienCalNoHours:hover { text-decoration: underline; }
   /* A thumb's height for the file press and each file's name (v2.7695): the press was 20 px tall on a phone. */
   .lienRunCheckCopies { font-size: 0.8125rem; }
   .lienRunCheckCopies a { display: inline-flex; align-items: center; min-height: 44px; }
-  .lienRunCheckCopyAdd { min-height: 44px; padding: 0 14px; font-size: 0.875rem; }
-  .lienRunCheckCopyOff { min-height: 44px; }
+  /* `button.` so the rule outranks the run window's own 40 px floor for every button (v2.7715: the press drew 40 px on the live site). */
+  button.lienRunCheckCopyAdd { min-height: 44px; padding: 0 14px; font-size: 0.875rem; }
+  button.lienRunCheckCopyOff { min-height: 44px; }
   .lienRunCheckTick > button { min-height: 44px; }
   .lienRunCheckBox { grid-template-columns: auto minmax(0, 1fr) auto; }
 }

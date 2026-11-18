@@ -35,9 +35,18 @@ export function lienPhonePaneOpen(i: { oneColumn: boolean; listShown: boolean; k
   return { kind: i.kind, ...BACK[i.kind] }
 }
 
-/** The bar over the footer: what it says and whether the footer under it shows. */
-export function lienPhoneFootFold(folded: boolean): { words: string; mark: string; expanded: boolean } {
-  return folded ? { words: 'Show the next step', mark: '▴', expanded: false } : { words: 'Hide the next step', mark: '▾', expanded: true }
+/** A sent paper's mail proof, as the fold's bar names it: the block's own chip words and whether the proof is whole. */
+export type LienPhoneFootProof = { chip: string; complete: boolean }
+
+/**
+ * The bar over the footer: what it says and whether the footer under it shows.
+ *
+ * A sent paper's footer holds **What went out** (v2.7691), and a tall footer starts folded. Folded, the bar carries the
+ * block's own chip (*Mail proof: 1 of 3 on file*), so the proof is named on the one row a phone shows (v2.7715, the
+ * live walk of 2026-11-17). Open, the block is on the screen under the bar and the chip would say it twice.
+ */
+export function lienPhoneFootFold(folded: boolean, proof?: LienPhoneFootProof | null): { words: string; mark: string; expanded: boolean; chip: LienPhoneFootProof | null } {
+  return folded ? { words: 'Show the next step', mark: '▴', expanded: false, chip: proof ?? null } : { words: 'Hide the next step', mark: '▾', expanded: true, chip: null }
 }
 
 /**
