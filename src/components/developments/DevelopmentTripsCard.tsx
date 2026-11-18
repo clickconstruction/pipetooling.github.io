@@ -42,7 +42,7 @@ import { appUrl } from '../../lib/appOrigin'
 import { ymdFromDateOnlyOrIso } from '../../lib/jobChargesTimeline'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { TRIP_GONE_WORDS, tripHref } from '../../lib/trips/jobTrips'
-import { tripAlreadyOnLinesWords, tripOnLinesWords, type TripBillLine, type TripBillLineReply } from '../../lib/trips/tripBillLine'
+import { tripAlreadyOnLinesWords, tripDeleteLineWords, tripOnLinesWords, tripSheetLineNote, type TripBillLine, type TripBillLineReply } from '../../lib/trips/tripBillLine'
 import { putTripOnJobLine, TripBillLineRefusal, type TripBillLinePress } from '../../lib/trips/tripBillLineIo'
 import { siteCardCharges, tripCostLines, tripCostsOfTrips, type TripCardsState, type TripLaborState } from '../../lib/trips/tripCost'
 import { tripEvidence, type TripEvidence } from '../../lib/trips/tripEvidence'
@@ -336,6 +336,13 @@ export function DevelopmentTripsCard({
     return total?.stands ? total.value : null
   }, [billing, costs])
 
+  // PR 4: a trip that holds a line says so where it is deleted and where its billing is changed. The line stays.
+  const lineOf = (record: TripRecord | null | undefined) => (record ? (billLines.lines?.get(record.id) ?? null) : null)
+  const askingLine = lineOf(asking)
+  const askingLineWords = tripDeleteLineWords(askingLine, askingLine ? jobShort(askingLine.jobId) : null)
+  const sheetLine = sheet && !sheet.isNew ? lineOf(sheet.record) : null
+  const sheetLineNote = tripSheetLineNote(sheetLine, sheetLine ? jobShort(sheetLine.jobId) : null)
+
   // Make it a trip: the sheet opens on a new trip filled from the punches. Nothing is saved until Save.
   const makeFromOffer = (key: string) => {
     const offer = offers.find((o) => o.key === key)
@@ -404,12 +411,12 @@ export function DevelopmentTripsCard({
           />
         </Card>
       ) : null}
-      {sheet ? <TripSheet key={sheet.record.id} record={sheet.record} isNew={sheet.isNew} siteName={siteName} roster={trips.roster} jobs={jobs} todayYmd={todayYmd} busy={busy} onSave={save} onClose={() => setSheet(null)} /> : null}
+      {sheet ? <TripSheet key={sheet.record.id} record={sheet.record} isNew={sheet.isNew} siteName={siteName} roster={trips.roster} jobs={jobs} todayYmd={todayYmd} busy={busy} lineStaysNote={sheetLineNote} onSave={save} onClose={() => setSheet(null)} /> : null}
       {billing ? <TripBillLineWindow key={billing.id} record={billing} siteName={siteName} jobs={jobs} todayYmd={todayYmd} costWords={billingCost} busy={busy} preview={billIo} onAdd={putOnBill} onClose={() => setBilling(null)} /> : null}
       {asking ? (
         <ConfirmDialog
           title={`Delete ${tripNameWords(asking, todayYmd)}?`}
-          body={`${asking.purpose.trim() ? `${asking.purpose.trim()}. ` : ''}The trip goes, with who went and its days. No clock row, bill or cost changes. You can undo it for a minute.`}
+          body={`${asking.purpose.trim() ? `${asking.purpose.trim()}. ` : ''}The trip goes, with who went and its days. No clock row, bill or cost changes. You can undo it for a minute.${askingLineWords ? ` ${askingLineWords}` : ''}`}
           confirmLabel="Delete this trip"
           onConfirm={() => void remove(asking)}
           onCancel={() => setAsking(null)}

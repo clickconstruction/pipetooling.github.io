@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   canPutTripOnBill,
+  lineTripDoors,
+  lineTripIds,
+  tripDeleteLineWords,
+  tripSheetLineNote,
   parseTripBillLineReply,
   parseTripLineAmount,
   tripAlreadyOnLinesWords,
@@ -282,5 +286,54 @@ describe('the press’s reply', () => {
   it('the totals strip says before and after, or nothing while either is unknown', () => {
     expect(tripBillTotalsWords({ revenueBefore: 184000, revenueAfter: 190800 })).toEqual({ before: '$184,000', after: '$190,800' })
     expect(tripBillTotalsWords({ revenueBefore: null, revenueAfter: 190800 })).toBeNull()
+  })
+})
+
+describe('the door back from a line to its trip', () => {
+  const lines = [
+    { id: 'fx-bid', trip_id: null },
+    { id: 'fx-trip', trip_id: 't-14' },
+    { id: 'fx-old', trip_id: 't-9' },
+    { id: 'fx-far', trip_id: 't-far' },
+    { id: 'fx-closed', trip_id: 't-closed' },
+    { id: 'fx-plain' },
+  ]
+  const trips = [
+    { id: 't-14', tripNumber: 14, developmentId: 'dev-1' },
+    { id: 't-9', tripNumber: null, developmentId: 'dev-1' },
+    { id: 't-far', tripNumber: 2, developmentId: null },
+  ]
+
+  it('names the trips a job’s lines came from, each once', () => {
+    expect(lineTripIds([...lines, { id: 'fx-again', trip_id: 't-14' }])).toEqual(['t-14', 't-9', 't-far', 't-closed'])
+    expect(lineTripIds([{ trip_id: null }, {}])).toEqual([])
+  })
+
+  it('gives a line its trip’s door, by the trip’s number, on the trip’s site', () => {
+    const doors = lineTripDoors({ lines, trips })
+    expect(doors.get('fx-trip')).toEqual({ tripId: 't-14', developmentId: 'dev-1', label: 'Open Trip 14' })
+    expect(doors.get('fx-old')).toEqual({ tripId: 't-9', developmentId: 'dev-1', label: 'Open this trip' })
+  })
+
+  it('gives no door to a plain line, a line whose trip is kept on a job with no site, or a trip the reader cannot read', () => {
+    const doors = lineTripDoors({ lines, trips })
+    expect([...doors.keys()]).toEqual(['fx-trip', 'fx-old'])
+  })
+})
+
+describe('what a trip that holds a line says when it is deleted or its billing is changed', () => {
+  it('the delete says the line stays, and that Undo does not tie it back', () => {
+    expect(tripDeleteLineWords(line(), 'J2101')).toBe('Its line stays on J2101’s lines, with its words and its price. Undo puts the trip back, but the line is no longer tied to it.')
+    expect(tripDeleteLineWords(line(), null)).toBe('Its line stays on the job’s lines, with its words and its price. Undo puts the trip back, but the line is no longer tied to it.')
+  })
+
+  it('the sheet says the line stays where it is', () => {
+    expect(tripSheetLineNote(line(), 'J2101')).toBe('This trip is on J2101’s lines. Changing the billing leaves the line where it is.')
+    expect(tripSheetLineNote(line(), ' ')).toBe('This trip is on a job’s lines. Changing the billing leaves the line where it is.')
+  })
+
+  it('a trip with no line adds nothing to either', () => {
+    expect(tripDeleteLineWords(null, 'J2101')).toBeNull()
+    expect(tripSheetLineNote(null, 'J2101')).toBeNull()
   })
 })

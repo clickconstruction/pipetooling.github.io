@@ -13,7 +13,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
-import { parseTripBillLineReply, TRIP_BILL_LINE_SELECT, tripBillLinesByTrip, type TripBillLine, type TripBillLineReply, type TripBillLineRow } from './tripBillLine'
+import { parseTripBillLineReply, TRIP_BILL_LINE_SELECT, tripBillLinesByTrip, type LineTrip, type TripBillLine, type TripBillLineReply, type TripBillLineRow } from './tripBillLine'
+import { tripNumberOf } from './tripRecord'
 
 // The column and the function are younger than the generated types; the next types PR removes this cast.
 const db = supabase as unknown as SupabaseClient
@@ -55,4 +56,19 @@ export async function putTripOnJobLine(press: TripBillLinePress): Promise<TripBi
     throw error
   }
   return parseTripBillLineReply(data)
+}
+
+/**
+ * The trips a job's lines name, for the door under each (PR 4): the number and the site, and nothing else.
+ * Read under the trips' own row security, so a reader outside the office door gets none and sees no door.
+ */
+export async function readLineTrips(tripIds: ReadonlyArray<string>): Promise<LineTrip[]> {
+  if (tripIds.length === 0) return []
+  type Row = { id: string; trip_number: number | null; development_id: string | null }
+  const rows = await fetchAllRowsChunkedIn<Row, string>(
+    [...tripIds],
+    (chunk, from, to) => db.from('trips').select('id, trip_number, development_id').in('id', chunk).order('id').range(from, to) as unknown as Paged<Row>,
+    'read the trips the job’s lines name',
+  )
+  return rows.map((r) => ({ id: r.id, tripNumber: tripNumberOf(r.trip_number), developmentId: r.development_id }))
 }

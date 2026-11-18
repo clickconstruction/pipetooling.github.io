@@ -167,6 +167,32 @@ describe('DevelopmentTripsCard — Put on a bill', () => {
     expect(within(openTrip()).queryByTestId('trip-put-on-bill')).toBeNull()
   })
 
+  it('deleting a trip that holds a line says the line stays, and that Undo does not tie it back', async () => {
+    read.lines = new Map([['t14', LINE]])
+    draw()
+    await waitFor(() => expect(screen.getByTestId('trip-row-billing').textContent).toContain('on J2101’s lines'))
+    fireEvent.click(within(openTrip()).getByTestId('trip-delete'))
+    expect(screen.getByRole('alertdialog').textContent).toContain('No clock row, bill or cost changes. You can undo it for a minute. Its line stays on J2101’s lines, with its words and its price. Undo puts the trip back, but the line is no longer tied to it.')
+  })
+
+  it('deleting a trip that holds no line asks as it did', async () => {
+    draw()
+    await waitFor(() => expect(screen.getByTestId('trip-row-billing').textContent).toBe('Extra · not billed yet'))
+    fireEvent.click(within(openTrip()).getByTestId('trip-delete'))
+    expect(screen.getByRole('alertdialog').textContent).toContain('You can undo it for a minute.')
+    expect(screen.getByRole('alertdialog').textContent).not.toContain('Its line stays')
+  })
+
+  it('changing a trip that holds a line: the sheet says the line stays once the billing is moved off Extra', async () => {
+    read.lines = new Map([['t14', LINE]])
+    draw()
+    await waitFor(() => expect(screen.getByTestId('trip-row-billing').textContent).toContain('on J2101’s lines'))
+    fireEvent.click(within(openTrip()).getByRole('button', { name: 'Change' }))
+    expect(screen.queryByTestId('trip-sheet-line-stays')).toBeNull()
+    fireEvent.click(within(screen.getByTestId('trip-sheet')).getByRole('radio', { name: 'Ours' }))
+    expect(screen.getByTestId('trip-sheet-line-stays').textContent).toBe('This trip is on J2101’s lines. Changing the billing leaves the line where it is.')
+  })
+
   it('reads no line on a site whose look does not show', () => {
     draw({ trips: state({ shows: false }) })
     expect(read.calls).toBe(0)

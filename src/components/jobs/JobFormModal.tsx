@@ -43,6 +43,8 @@ import { useDevelopmentAddressSuggestion } from '../../hooks/useDevelopmentAddre
 import { DevelopmentAddressSuggestionLine } from '../developments/DevelopmentAddressSuggestionLine'
 import { useJobFormPaymentActions } from '../../hooks/useJobFormPaymentActions'
 import { useJobFormAutosaveEngine } from '../../hooks/useJobFormAutosaveEngine'
+import { useLineTrips } from '../../hooks/useLineTrips'
+import { tripHref } from '../../lib/trips/jobTrips'
 import { JobFormBillJobAccountNote } from './JobFormBillJobAccountNote'
 import { sumHazmatRiderFees } from '../../lib/hazmatIncidents'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -300,6 +302,9 @@ export type JobFormModalProps = {
 function placeJobFolderSoon(jobId: string): void {
   void makeJobDriveFolders(jobId).catch((e: unknown) => console.warn('JobFormModal: the job’s Drive folder waits for the sweep', e))
 }
+
+/** No line of a job that is not open: the trips read behind the lines' doors asks for nothing. */
+const NO_LINE_TRIP_ROWS: ReadonlyArray<{ id: string; trip_id?: string | null }> = []
 
 export default function JobFormModal({
   mode,
@@ -779,6 +784,24 @@ export default function JobFormModal({
       } else if (tries >= 50) window.clearInterval(tick)
     }, 100)
   }, [initDone, pickLineIdsInitial, billTabLineRows])
+  // The door back from a trip's line to its trip (punch list #391, PR 4): the job's lines as the database
+  // gave them say which came from a trip. The door closes this window as any close does, then opens the trip.
+  const lineTripDoorTargets = useLineTrips(editing?.fixtures ?? NO_LINE_TRIP_ROWS, mode === 'edit' && !!editing)
+  const lineTripDoors = useMemo(() => {
+    if (lineTripDoorTargets.size === 0) return null
+    const out = new Map<string, { label: string; onOpen: () => void }>()
+    for (const [lineId, door] of lineTripDoorTargets) {
+      out.set(lineId, {
+        label: door.label,
+        onOpen: () => {
+          void closeFormRef.current?.().then((closed) => {
+            if (closed) navigate(tripHref(door.developmentId, door.tripId))
+          })
+        },
+      })
+    }
+    return out
+  }, [lineTripDoorTargets, navigate])
 
   const [segmentGeneratorOpen, setSegmentGeneratorOpen] = useState(false)
 
@@ -3041,6 +3064,7 @@ export default function JobFormModal({
             plan={stagePlan}
             payerTags={billToParty === 'split' ? { customerName: customerName.trim() || null, gcName: gcNameForPayerTags } : null}
             isProject={kindRead.kind === 'project'}
+            tripDoors={lineTripDoors}
           />
           </div>
           {/* Job window (v2.1687): no divider and no "Billing" title — the Bill
