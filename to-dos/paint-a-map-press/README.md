@@ -75,7 +75,9 @@ already.
    the job or every lot.
 4. **After Save.** The map says *Saved on* the job, and offers **Text it from my phone…** at once.
    That press makes the link and opens the phone's own Messages with the words written. The Share
-   sheet loses its *Make a link* step: the first press there makes the link.
+   sheet loses its *Make a link* step: the first press there makes the link. The Share sheet is
+   drawn whole on [#394](../painted-map-share-sheet/README.md), which replaces this mock-up's
+   `share` state.
 5. **A wrong job.** **Move it to another job…** joins *Rename this map* and *Throw this map away*,
    for the painter and the office. The database already allows the move.
 
@@ -159,7 +161,8 @@ the job, **Draw it by hand**, then **Text it from my phone…**.
 3. **The picker** (L). *For* at the top with **Change the job**, *Leave it on no job* retired from
    the doors, and **Move it to another job…**.
 4. **The share step** (M). The Saved band, **Text it from my phone…**, and the Share sheet with no
-   *Make a link* step. Walked on a real iPhone and a real Android phone before it merges.
+   *Make a link* step, as [#394](../painted-map-share-sheet/README.md) draws it. Walked on a real
+   iPhone and a real Android phone before it merges.
 5. **Find the jobs near me** (S), if the owner wants it.
 
 ## How to verify

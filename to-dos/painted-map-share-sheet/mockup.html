@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Share this map, fewer words</title>
+<style>
+  /* The app's own tokens (src/index.css), light and dark. */
+  :root, [data-theme='light'] {
+    --surface: #ffffff; --bg-page: #f0f2f5; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb;
+    --text-strong: #111827; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-700: #1d4ed8; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --border: #cfd4db; --border-strong: #aab2bd; --border-amber: #fcd34d; --border-green: #bbf7d0;
+    --bg-green-tint: #f0fdf4; --bg-amber-tint: #fffbeb;
+  }
+  [data-theme='dark'] {
+    --surface: #1f2937; --bg-page: #111827; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563;
+    --text-strong: #f9fafb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3;
+    --text-link: #60a5fa; --text-blue-700: #93c5fd; --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --border: #374151; --border-strong: #4b5563; --border-amber: #92400e; --border-green: #166534;
+    --bg-green-tint: #12301f; --bg-amber-tint: #3a2f11;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #dfe3e8; color: #111827; font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  button { font-family: inherit; cursor: pointer; }
+  svg { display: block; }
+
+  /* The board: one row a state, today on the left. */
+  .top { padding: 20px 24px 0; max-width: 1180px; }
+  .top h1 { margin: 0 0 4px; font-size: 20px; }
+  .top p { margin: 0; font-size: 14px; color: #374151; }
+  .row { padding: 22px 24px 6px; }
+  .row > h2 { margin: 0 0 2px; font-size: 16px; }
+  .row > p { margin: 0 0 12px; font-size: 13px; color: #4b5563; max-width: 900px; }
+  .cells { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .cell { display: grid; gap: 8px; justify-items: start; }
+  .cap { font-size: 13px; font-weight: 700; color: #1f2937; max-width: 375px; }
+  .cap small { display: block; font-weight: 500; color: #4b5563; }
+  .cell.wide .cap { max-width: 1180px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-right: 6px; vertical-align: 1px; }
+  .tag.today { background: #e5e7eb; color: #374151; }
+  .tag.pick { background: #7c3aed; color: #fff; }
+  .tag.other { background: #fff; color: #7c3aed; border: 1px solid #7c3aed; }
+  .count { font-size: 13px; color: #1f2937; max-width: 375px; }
+  .count b { font-size: 15px; }
+
+  /* A phone's screen, 375 x 812, and a desk. What is fixed in the app is absolute in here. */
+  .phone { position: relative; width: 375px; height: 812px; overflow: hidden; background: #374151; color: var(--text-strong); }
+  .phone.tall { height: auto; min-height: 812px; }
+  .phone.tall .scrim { position: relative; min-height: 812px; }
+  .phone.tall .sheet { border-radius: 0; }
+  .ends { position: absolute; left: 0; right: 0; top: 812px; border-top: 2px dashed #dc2626; z-index: 20; pointer-events: none; }
+  .ends span { position: absolute; right: 6px; top: -22px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+  .desk { position: relative; width: 1180px; height: 720px; overflow: hidden; background: var(--bg-page); color: var(--text-strong); }
+  .desk .sheet { max-width: 520px; }
+  .desk .tiles { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; }
+  .deskPage { position: absolute; inset: 0; padding: 18px 28px; display: grid; gap: 12px; align-content: start; }
+  .deskPage div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; height: 110px; }
+  .deskPage div:first-child { height: 44px; }
+
+  /* The map's window behind the sheet (PaintedMapWindow), made up. */
+  .win { position: absolute; inset: 0; background: var(--surface); display: flex; flex-direction: column; }
+  .winHead { flex: none; display: flex; align-items: center; padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); }
+  .winHead b { font-size: 1.05rem; }
+  .winHead span { margin-left: auto; color: var(--text-muted); font-size: 0.9375rem; }
+  .aerial { flex: 1; min-height: 0; }
+  .aerial svg { width: 100%; height: 100%; }
+
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+  .sheet { background: var(--surface); color: var(--text-strong); width: 100%; max-height: 100%; overflow: hidden; border-top-left-radius: 14px; border-top-right-radius: 14px; }
+  .sheetHead { display: flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); }
+  .sheetHead h3 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+  .sheetHead button { margin-left: auto; background: none; border: none; color: var(--text-muted); font-size: 0.9375rem; min-height: 44px; padding: 0 0.25rem; }
+
+  /* Today's sheet, as PaintedMapShareSheet.tsx and PaintedMapCopies.tsx draw it. */
+  .tBody { display: grid; gap: 0.7rem; padding: 0.85rem 1rem 0.95rem; }
+  .tBody p { margin: 0; }
+  .tOpen { font-size: 0.9375rem; }
+  .tLink { font: 600 0.875rem/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg-muted); border: 1px solid var(--border); border-radius: 8px; padding: 0.55rem 0.65rem; overflow-wrap: anywhere; }
+  .tPress { min-height: 48px; padding: 0 0.9rem; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 700; font-size: 0.9375rem; }
+  .tBlue { min-height: 52px; background: #2563eb; border-color: #2563eb; color: #fff; }
+  .tRow { display: grid; gap: 0.1rem; width: 100%; text-align: left; padding: 0.55rem 0.7rem; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text-strong); font-size: 0.9375rem; font-weight: 700; }
+  .tRow span, .tSub { font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); }
+  .tRow.strong { border-color: var(--border-strong); min-height: 52px; }
+  .tGrey { font-size: 0.875rem; color: var(--text-700); background: var(--bg-muted); border-radius: 8px; padding: 0.5rem 0.65rem; display: grid; gap: 0.2rem; }
+  .tState { display: grid; gap: 0.35rem; font-size: 0.875rem; color: var(--text-700); }
+  .tCopies { display: grid; gap: 0.6rem; border-top: 1px solid var(--border); padding-top: 0.75rem; }
+  .tCopies .h { display: grid; gap: 0.15rem; }
+  .tCopies .h b { font-size: 0.9375rem; }
+  .tCopies .h span, .tFiles > span { font-size: 0.8125rem; color: var(--text-700); }
+  .tFiles { display: grid; gap: 0.4rem; }
+  .tFiles .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.5rem; }
+
+  /* Who opened it: the same rows in both sheets. */
+  .visits { display: grid; gap: 0.35rem; }
+  .visits .vh { font-size: 0.8125rem; font-weight: 700; color: var(--text-700); }
+  .visit { font-size: 0.875rem; padding: 0.4rem 0.6rem; border-radius: 8px; border: 1px solid var(--border); display: grid; gap: 0.1rem; }
+  .visit .d { color: var(--text-muted); font-size: 0.8125rem; }
+  .visit .w { font-size: 0.8125rem; }
+  .visit .muted { color: var(--text-muted); }
+  .visit button { background: none; border: none; padding: 0; color: var(--text-blue-700); font-weight: 600; font-size: 0.8125rem; }
+  /* A 44 px target that takes a line's room: the press reaches past its words. */
+  .nBody .visit .w { display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.4rem; }
+  .nBody .visit button { min-height: 44px; margin: -12px 0; padding: 0 0.2rem 0 0; }
+
+  /* The new sheet. */
+  .nBody { display: grid; gap: 0.6rem; padding: 0.85rem 1rem 0.8rem; }
+  .nBody p { margin: 0; }
+  .nBig { display: flex; align-items: center; justify-content: center; gap: 0.6rem; width: 100%; min-height: 56px; border-radius: 10px; border: 1px solid #2563eb; background: #2563eb; color: #fff; font-weight: 700; font-size: 1.0625rem; }
+  .nBig.dead { background: var(--bg-200); border-color: var(--border); color: var(--text-700); cursor: default; }
+  .nWide { display: flex; align-items: center; gap: 0.7rem; width: 100%; min-height: 56px; padding: 0.4rem 0.8rem; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); text-align: left; font-weight: 700; font-size: 0.9375rem; }
+  .nWide .w { display: grid; gap: 1px; }
+  .nWide .w span { font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); }
+  .nWide.dead { background: var(--bg-200); border-color: var(--border); color: var(--text-700); cursor: default; }
+  .nWide.dead .w span { color: var(--text-700); }
+  .nWide.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .nWide.blue .w span { color: #dbeafe; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .tile { display: flex; align-items: center; gap: 0.6rem; min-height: 60px; padding: 0.4rem 0.7rem; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); text-align: left; font-weight: 700; font-size: 0.9375rem; line-height: 1.2; }
+  .tile svg, .nWide svg, .lRow svg { flex: none; color: var(--text-link); }
+  .nWide.blue svg { color: #fff; }
+  .nWide.dead svg { color: var(--text-700); }
+  .tile.ok { border-color: #16a34a; }
+  .tile.ok svg { color: var(--text-green-700); }
+  .fold { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 48px; padding: 0 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-subtle); color: var(--text-strong); font-weight: 700; font-size: 0.9375rem; text-align: left; }
+  .fold .ch { margin-left: auto; color: var(--text-muted); font-weight: 700; }
+  .foldIn { display: grid; gap: 0.5rem; padding: 0.1rem 0 0.2rem; }
+  .rule { font-size: 0.8125rem; color: var(--text-700); }
+  .lRow { display: flex; align-items: center; gap: 0.7rem; width: 100%; min-height: 48px; padding: 0.3rem 0.8rem; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 700; font-size: 0.9375rem; text-align: left; }
+  .lRow .w { display: grid; gap: 1px; }
+  .lRow .w span { font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); }
+  .lRow .for { margin-left: auto; font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); text-align: right; }
+  .said { font-size: 0.875rem; color: var(--text-green-700); font-weight: 600; }
+  .note { font-size: 0.875rem; color: var(--text-amber-800); background: var(--bg-amber-tint); border: 1px solid var(--border-amber); border-radius: 8px; padding: 0.45rem 0.6rem; }
+  .out { display: grid; gap: 0.3rem; font-size: 0.875rem; color: var(--text-700); border-top: 1px solid var(--border); padding-top: 0.6rem; }
+  .endBtn { justify-self: start; margin: 0.15rem 0 0.2rem; min-height: 44px; padding: 0 0.8rem; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 700; font-size: 0.875rem; }
+  .see { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8125rem; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 0.2rem; }
+  .see span { flex: 1; min-width: 0; }
+  .seeBtn { flex: none; min-height: 44px; padding: 0 0.2rem; background: none; border: none; color: var(--text-link); font-weight: 700; font-size: 0.8125rem; text-decoration: underline; text-underline-offset: 3px; }
+  .codeBox { display: grid; justify-items: center; gap: 0.4rem; padding: 0.9rem; border-radius: 10px; background: var(--surface); color: var(--text-strong); }
+  .codeBox span { font-size: 0.8125rem; color: var(--text-700); }
+  .codeBox .addr { font: 600 0.8125rem/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-strong); }
+  .plainBtn { min-height: 48px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 700; font-size: 0.9375rem; }
+  .backBtn { justify-self: start; min-height: 44px; padding: 0 0.2rem; background: none; border: none; color: var(--text-link); font-weight: 700; font-size: 0.875rem; }
+  .pic { width: 100%; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; }
+  .copyLabel { font-size: 0.8125rem; color: var(--text-700); padding-top: 0.15rem; }
+
+  /* The phone's own Messages, drawn plain. */
+  .msgs { position: absolute; inset: 0; background: #fff; color: #111827; display: flex; flex-direction: column; font-family: -apple-system, system-ui, Helvetica, Arial, sans-serif; }
+  .msgs .t { padding: 14px 16px 10px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; }
+  .msgs .t b { margin: 0 auto; font-size: 16px; }
+  .msgs .t span { color: #2563eb; font-size: 16px; }
+  .msgs .to { padding: 10px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 15px; }
+  .msgs .space { flex: 1; }
+  .msgs .compose { margin: 0 12px 14px; border: 1px solid #d1d5db; border-radius: 18px; padding: 9px 44px 9px 14px; font-size: 16px; line-height: 1.35; position: relative; }
+  .msgs .compose u { color: #2563eb; }
+  .msgs .send { position: absolute; right: 6px; bottom: 6px; width: 30px; height: 30px; border-radius: 50%; background: #22c55e; color: #fff; display: grid; place-items: center; font-weight: 800; }
+  .msgs .kb { height: 250px; background: #d1d5db; display: grid; place-items: center; color: #6b7280; font-size: 13px; }
+
+  /* One row or one cell alone, for a screenshot: ?s=<id>. Add &cap=1 to keep the captions and counts. */
+  body.single { background: #dfe3e8; }
+  body.single .top, body.single .row > h2, body.single .row > p { display: none; }
+  body.single .row { display: none; padding: 0; }
+  body.single .row.show { display: block; }
+  body.single .row.show.hasCell .cell { display: none; }
+  body.single .row.show.hasCell .cell.show { display: grid; }
+  body.single:not(.caps) .cap, body.single:not(.caps) .count { display: none; }
+  body.single:not(.caps) .cells { gap: 0; }
+  body.single.caps .row.show { padding: 16px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- The view from above with a painted line and two places. Invented. -->
+    <g id="ground">
+      <rect width="375" height="330" fill="#6f8f5a"/>
+      <rect x="0" y="248" width="375" height="46" fill="#8b8f93"/>
+      <path d="M0 271h375" stroke="#e8e2c2" stroke-width="2" stroke-dasharray="14 12"/>
+      <rect x="0" y="294" width="375" height="36" fill="#7c9a66"/>
+      <rect x="40" y="120" width="120" height="86" rx="3" fill="#b7a58f"/><path d="M40 163h120" stroke="#9a8973" stroke-width="2"/>
+      <rect x="228" y="96" width="108" height="92" rx="3" fill="#a9a9a4"/><path d="M282 96v92" stroke="#8e8e88" stroke-width="2"/>
+      <rect x="172" y="150" width="34" height="98" fill="#b9b6ae"/>
+      <rect x="250" y="20" width="60" height="42" rx="3" fill="#8f7d68"/>
+      <circle cx="30" cy="60" r="20" fill="#56784a"/><circle cx="70" cy="36" r="15" fill="#5c8050"/><circle cx="352" cy="220" r="17" fill="#56784a"/><circle cx="196" cy="48" r="16" fill="#5c8050"/>
+      <path d="M12 262 L172 262 L190 236 L190 160 L214 138 L214 84 L262 70" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+      <path d="M12 262 L172 262 L190 236 L190 160 L214 138 L214 84 L262 70" fill="none" stroke="#ff5a1f" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <g font-family="system-ui, sans-serif" font-size="12" font-weight="800" text-anchor="middle">
+        <circle cx="172" cy="262" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="172" y="266.5" fill="#111827">1</text>
+        <circle cx="262" cy="70" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="262" y="74.5" fill="#111827">2</text>
+      </g>
+    </g>
+  </defs>
+</svg>
+
+<div class="top">
+  <h1>Share this map, with fewer words (#394)</h1>
+  <p>Today's sheet on the left of each row, the new one beside it. The words and the presses under each are counted from the sheet as drawn. Every job, name and link code is made up. Add <code>?s=&lt;id&gt;</code> for one row or one sheet alone, <code>&amp;cap=1</code> to keep its caption, and <code>&amp;theme=dark</code> for the dark theme.</p>
+</div>
+<div id="board"></div>
+
+<script>
+// ---- Small parts ----------------------------------------------------------------------------------------------------
+const I = {
+  msg: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+  qr: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14h1M20 20h1M17 20h.5M20 17h1"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  pic: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m21 16-5-5-8 8"/>',
+  share: '<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
+  print: '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
+  office: '<path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h2a2 2 0 0 1 2 2v10M3 21h18M8 7h4M8 11h4M8 15h4"/>',
+  file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  check: '<path d="m5 12 5 5 9-10"/>',
+}
+const ic = (n, size = 24) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`
+const LINK = 'clicktooling.com/way/k7m2x9qd4t'
+const SEE = {
+  open: 'Anyone who has the link can open the map. No sign-in.',
+  asks: 'They give their name first. We keep the name, the phone or computer and the time.',
+  see: 'They see the name, the lines, and the places with their words and photos.',
+  notSee: 'They do not see who painted it, when, or anything else about the job.',
+}
+const RULE = 'A copy cannot be taken back, and it goes out of date. Send the link when you can.'
+const FILES = '<b>A file for another map.</b> The lines and the places with their words. No photos.'
+
+/** A made-up code to scan: the three corner squares and a scatter. It opens nothing. */
+function fakeCode(size) {
+  const n = 25, c = size / n
+  let s = 7, out = ''
+  const corner = (x, y) => `<rect x="${x * c}" y="${y * c}" width="${7 * c}" height="${7 * c}" fill="#111"/><rect x="${(x + 1) * c}" y="${(y + 1) * c}" width="${5 * c}" height="${5 * c}" fill="#fff"/><rect x="${(x + 2) * c}" y="${(y + 2) * c}" width="${3 * c}" height="${3 * c}" fill="#111"/>`
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    s = (s * 1103515245 + 12345) % 2147483648
+    const inCorner = (x < 8 && y < 8) || (x > 16 && y < 8) || (x < 8 && y > 16)
+    if (!inCorner && s % 100 < 46) out += `<rect x="${x * c}" y="${y * c}" width="${c + 0.3}" height="${c + 0.3}" fill="#111"/>`
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="background:#fff" role="img" aria-label="A made-up code">${out}${corner(0, 0)}${corner(18, 0)}${corner(0, 18)}</svg>`
+}
+
+function visits(list, newSheet) {
+  if (!list || !list.length) return ''
+  return `<div class="visits"><div class="vh">Who opened it</div>${list.map((v) => `<div class="visit"><span><b>${v.name}</b>${v.team ? '<span class="muted"> · signed in</span>' : ''}</span><span class="d">${v.detail}</span>${v.where ? `<span class="w">${v.where} <button>See that place</button></span>` : ''}</div>`).join('')}</div>`
+}
+const TWO = [
+  { name: 'Dana Reyes', detail: 'iPhone · Safari · opened Nov 18, 3:02 PM · 2 times', where: 'Showed where they were, Nov 18, 3:05 PM.' },
+  { name: 'Marcus Bell', team: true, detail: 'Android · Chrome · opened Nov 18, 4:40 PM' },
+]
+const outWords = (o) => `One link is out, since Nov 18. ${o.opened ? `Opened ${o.opened} times` : 'Not opened yet'}.`
+
+// ---- Today's sheet: PaintedMapShareSheet.tsx and PaintedMapCopies.tsx, word for word --------------------------------
+function today(o) {
+  const head = `<div class="sheetHead"><h3>Share this map</h3><button>Close</button></div>`
+  let b = `<p class="tOpen">${SEE.open}</p>`
+  if (o.link) {
+    b += `<div class="tLink">${LINK}</div><button class="tPress tBlue">Copy the link</button>`
+    if (o.office && o.job) b += `<button class="tRow">Text it…<span>To the job’s customer, from the company’s number</span></button>`
+    if (o.office && !o.job) b += `<p class="tSub">A text goes to a job’s customer. This map is on no job, so copy the link or send it another way.</p>`
+    if (!o.desk) b += `<button class="tRow">Send it another way…<span>A text, mail, a group chat or a phone nearby</span></button>`
+    b += `<button class="tRow">Show a code to scan<span>For someone standing beside you</span></button>`
+  } else {
+    b += `<button class="tPress tBlue">Make a link</button>`
+  }
+  b += `<div class="tGrey"><span>${SEE.asks}</span><span>${SEE.see}</span><span>${SEE.notSee}</span></div>`
+  if (o.link) b += `<div class="tState"><span>${outWords(o)}</span><span>The link ends by itself on Feb 16.</span><button class="tPress">End this link now</button></div>${visits(o.visits)}`
+  b += `<div class="tCopies"><div class="h"><b>Or hand over a copy</b><span>${RULE}</span></div>
+    <button class="tRow strong">Make a picture<span>The map, its places and the day, as one image. It shows in a text without a press.</span></button>
+    <button class="tRow strong">Print, or save as a PDF<span>${o.link ? 'One page with the map, the places and a code to scan. A copy is kept with the job.' : 'One page with the map and the places. Make a link first and the page carries its code.'}</span></button>
+    <div class="tFiles"><span>${FILES}</span><div class="two"><button class="tRow strong">A .kml file<span>Google Earth and Google My Maps</span></button><button class="tRow strong">A .gpx file<span>A hiking app or a handheld</span></button></div></div></div>`
+  return `<div class="sheet">${head}<div class="tBody">${b}</div></div>`
+}
+
+// ---- The new sheet -------------------------------------------------------------------------------------------------
+const seeLine = (o) => `<div class="see"><span>Anyone with the link can open it. They give their name first.</span><button class="seeBtn" aria-expanded="${!!o.seeOpen}">${o.seeOpen ? 'Hide this' : 'What they see'}</button></div>${o.seeOpen ? `<div class="tGrey"><span>${SEE.open}</span><span>${SEE.asks}</span><span>${SEE.see}</span><span>${SEE.notSee}</span></div>` : ''}`
+const outBox = (o) => (o.link ? `<div class="out"><span>${outWords(o)}</span><span>The link ends by itself on Feb 16.</span><button class="endBtn">End this link now</button>${visits(o.visits, true)}</div>` : '')
+const customerRow = (o, blue) => {
+  if (!o.office) return ''
+  if (!o.job) return `<button class="nWide dead" disabled>${ic('office')}<span class="w">Text the customer…<span>This map is on no job.</span></span></button>`
+  return `<button class="nWide${blue ? ' blue' : ''}">${ic('office')}<span class="w">Text the customer…<span>From the company’s number</span></span></button>`
+}
+const head = `<div class="sheetHead"><h3>Share this map</h3><button>Close</button></div>`
+
+/** The pick: one blue press, four tiles, one fold for paper and files, one line for what a reader meets. */
+function pick(o) {
+  let b = ''
+  if (o.view === 'code') {
+    b = `<div data-theme="light" class="codeBox">${fakeCode(230)}<b>Point a phone’s camera here</b><span>It opens the map. No app, no sign-in.</span><span class="addr">${LINK}</span></div><button class="plainBtn">Hide the code</button>`
+    return `<div class="sheet">${head}<div class="nBody">${b}</div></div>`
+  }
+  if (o.view === 'picture') {
+    b = `<div class="pic"><svg viewBox="0 0 375 300" width="100%"><use href="#ground"/><rect y="244" width="375" height="56" fill="#fff"/><text x="12" y="263" font-family="system-ui,sans-serif" font-size="14" font-weight="800" fill="#111827">The way in</text><text x="12" y="281" font-family="system-ui,sans-serif" font-size="10.5" fill="#374151">About 640 ft · 2 places · Made Nov 18, 2026</text><text x="12" y="294" font-family="ui-monospace,Menlo,monospace" font-size="10" fill="#374151">${LINK}</text></svg></div>
+      <p class="rule">${RULE}</p><button class="nBig">${ic('share')}Share the picture</button><button class="plainBtn">Make it again</button><button class="backBtn">‹ Every way to share</button>`
+    return `<div class="sheet">${head}<div class="nBody">${b}</div></div>`
+  }
+  if (o.said) b += `<p class="said" role="status">${o.said}</p>`
+  if (o.noteWords) b += `<p class="note" role="alert">${o.noteWords}</p>`
+  // On a phone the person's own text leads. At a desk there is no Messages to open, so the next way leads.
+  if (!o.desk) b += o.state === 'making' ? `<button class="nBig dead" disabled>Making the link…</button>` : `<button class="nBig">${ic('msg')}${o.state === 'refused' ? 'Open Messages' : 'Text it from my phone…'}</button>`
+  b += customerRow(o, o.desk)
+  if (o.desk && !(o.office && o.job)) b += `<button class="nBig">${ic('link')}Copy the link</button>`
+  const copyTile = o.desk && !(o.office && o.job) ? '' : `<button class="tile${o.copied ? ' ok' : ''}">${ic(o.copied ? 'check' : 'link')}${o.copied ? 'Copied' : 'Copy the link'}</button>`
+  b += `<div class="tiles"><button class="tile">${ic('qr')}Show a code to scan</button>${copyTile}<button class="tile">${ic('pic')}Make a picture</button>${o.desk ? '' : `<button class="tile">${ic('share')}Send it another way…</button>`}</div>`
+  b += `<button class="fold" aria-expanded="${!!o.moreOpen}">${ic('print', 22)}Print or a file<span class="ch">${o.moreOpen ? '▴' : '▾'}</span></button>`
+  if (o.moreOpen) b += `<div class="foldIn"><p class="rule">${RULE}</p><button class="lRow">${ic('print', 22)}Print, or save as a PDF</button><p class="rule">${FILES}</p><button class="lRow">${ic('file', 22)}<span class="w">A .kml file<span>Google Earth and Google My Maps</span></span></button><button class="lRow">${ic('file', 22)}<span class="w">A .gpx file<span>A hiking app or a handheld</span></span></button></div>`
+  b += outBox(o) + seeLine(o)
+  return `<div class="sheet">${head}<div class="nBody">${b}</div></div>`
+}
+
+/** The other direction: every way as one row in one list, nothing folded but what a reader meets. */
+function list(o) {
+  let b = `<button class="nBig">${ic('msg')}Text it from my phone…</button>` + customerRow(o, false)
+  const row = (icon, name, extra = '') => `<button class="lRow">${ic(icon, 22)}${name}${extra}</button>`
+  b += row('qr', 'Show a code to scan') + row('link', 'Copy the link') + row('share', 'Send it another way…')
+  b += `<p class="copyLabel">A copy cannot be taken back, and it goes out of date.</p>`
+  b += row('pic', 'Make a picture') + row('print', 'Print, or save as a PDF') + row('file', 'A .kml file', '<span class="for">Google Earth</span>') + row('file', 'A .gpx file', '<span class="for">A hiking app</span>')
+  b += outBox(o) + seeLine(o)
+  return `<div class="sheet">${head}<div class="nBody" style="gap:0.45rem">${b}</div></div>`
+}
+
+const behind = `<div class="win"><div class="winHead"><b>The way in</b><span>Close</span></div><div class="aerial"><svg viewBox="0 0 375 330" preserveAspectRatio="xMidYMid slice"><use href="#ground"/></svg></div></div>`
+const phone = (sheet, tall) => `<div class="phone${tall ? ' tall' : ''}">${behind}<div class="scrim">${sheet}</div>${tall ? '<div class="ends"><span>a phone’s screen ends here</span></div>' : ''}</div>`
+const desk = (sheet) => `<div class="desk"><div class="deskPage"><div></div><div></div><div></div><div></div></div><div class="scrim">${sheet}</div></div>`
+const messages = `<div class="phone"><div class="msgs"><div class="t"><span>Cancel</span><b>New Message</b><span style="visibility:hidden">Cancel</span></div><div class="to">To: the person picks who</div><div class="space"></div><div class="compose">Here is a map for you, The way in. Open it here: <u>${LINK}</u><span class="send">↑</span></div><div class="kb">the phone’s keyboard</div></div></div>`
+
+// ---- The rows ------------------------------------------------------------------------------------------------------
+const T = '<span class="tag today">today</span>', P = '<span class="tag pick">the pick</span>', O = '<span class="tag other">the other way</span>'
+const cell = (id, cap, small, html, opts = {}) => `<div class="cell${opts.wide ? ' wide' : ''}" id="${id}"><div class="cap">${cap}<small>${small}</small></div>${html}${opts.noCount ? '' : '<div class="count"></div>'}</div>`
+const tech = { link: true }, officeJob = { link: true, office: true, job: true, opened: 3, visits: TWO }, officeNoJob = { link: true, office: true, job: false }
+const rows = [
+  { id: 'before', h: '1 · Before a link is out', p: 'What a tech or a leader meets on Share, on a phone. Today one press is live and it sends nothing. The new sheet has no Make a link step: the first press makes the link and does its own work.',
+    cells: [
+      cell('before-today', `${T}Read it all, then Make a link`, 'Three more presses reach a text: Make a link, Send it another way…, then Messages.', phone(today({}))),
+      cell('before-pick', `${P}One press to a text`, 'Text it from my phone… makes the link and opens the phone’s Messages. The map still shows behind.', phone(pick({}))),
+      cell('before-list', `${O}Every way in one list`, 'Nothing is folded but what a reader meets. More to scan, and the rare ways weigh as much as the first.', phone(list({}))),
+    ] },
+  { id: 'after-tech', h: '2 · A link is out, a tech on a phone, nobody has opened it', p: 'The same presses sit in the same places as before the link. One quiet block is added under them.',
+    cells: [
+      cell('after-tech-today', `${T}Longer than the screen`, 'The blue press copies. End this link now and the copies are a scroll away.', phone(today(tech), true)),
+      cell('after-tech-pick', `${P}The same sheet, plus the link’s line`, 'What is out, when it ends, and the press that ends it. Nothing else changes.', phone(pick(tech))),
+    ] },
+  { id: 'after-office-job', h: '3 · A link is out, the office on a job, on a phone, opened by two people', p: 'The office has two texts. Each says whose number it goes from, so they cannot be confused.',
+    cells: [
+      cell('after-office-job-today', `${T}Text it… is the third thing`, 'Its second line carries who gets it and whose number. Who opened it is under the grey box.', phone(today(officeJob), true)),
+      cell('after-office-job-pick', `${P}Text the customer… right under the phone’s own text`, 'Who opened it keeps today’s rows, under the link’s line.', phone(pick(officeJob))),
+      cell('after-office-job-list', `${O}The list with everything out`, 'The fullest state of the other way. It no longer fits one screen.', phone(list(officeJob), true)),
+    ] },
+  { id: 'after-office-nojob', h: '4 · A link is out, the office on a map with no job', p: 'Today a 21-word sentence says why there is no text. The new sheet keeps the press where it always is, grey, with six words.',
+    cells: [
+      cell('after-office-nojob-today', `${T}A sentence in place of the press`, '', phone(today(officeNoJob), true)),
+      cell('after-office-nojob-pick', `${P}The press is there, grey, and says why`, '', phone(pick(officeNoJob))),
+    ] },
+  { id: 'refused', h: '5 · When the phone will not open Messages after the wait', p: 'Making the link took 1.3 seconds at a desk. A phone may refuse to open Messages that long after the press. This has not been tried on a real phone. The sheet is right either way.',
+    cells: [
+      cell('refused-making', `${P}The press, while the link is made`, 'About a second. The other presses wait.', phone(pick({ state: 'making' }))),
+      cell('refused-opens', `${P}If the phone allows it`, 'The phone’s own Messages, with the words written. The person picks who gets it.', messages, { noCount: true }),
+      cell('refused-fallback', `${P}If the phone refuses`, 'The link is made and the same press now opens Messages at once. One more press, and the sheet says so.', phone(pick({ link: true, state: 'refused', said: 'The link is ready. Press Open Messages.' }))),
+      cell('refused-copy', `${P}If the browser will not copy`, 'Today’s words, with the link to press and hold.', phone(pick({ link: true, noteWords: `This browser would not copy the link. Press and hold the link to copy it.<br><b style="font-family:ui-monospace,Menlo,monospace">${LINK}</b>` }))),
+    ] },
+  { id: 'folds', h: '6 · What moved, and where it opens', p: 'No sentence the owner or Taunya asked for is gone. Each is one press away, or said at the moment it matters.',
+    cells: [
+      cell('fold-see', `${P}What they see, open`, 'Today’s four sentences, word for word.', phone(pick({ link: true, seeOpen: true }))),
+      cell('fold-more', `${P}Print or a file, open`, 'The copy’s warning leads. The files keep today’s words.', phone(pick({ link: true, moreOpen: true }))),
+      cell('fold-code', `${P}Show a code to scan`, 'The code alone, large, for someone standing beside you. It stays light in the dark theme so a camera reads it.', phone(pick({ link: true, view: 'code' }))),
+      cell('fold-picture', `${P}Make a picture`, 'The picture alone, the copy’s warning, then one blue press.', phone(pick({ link: true, view: 'picture' }))),
+    ] },
+  { id: 'desk', h: '7 · At a desk', p: 'A desk has no Messages to open, so the phone’s own text is not drawn. The office’s text leads on a job. For everyone else Copy the link leads.',
+    cells: [
+      cell('desk-today', `${T}The office on a job, at a desk`, 'The sheet is taller than the window and scrolls.', desk(today({ ...officeJob, desk: true })), { wide: true }),
+      cell('desk-pick', `${P}The office on a job, at a desk`, 'Text the customer… is the blue press. Everything fits.', desk(pick({ ...officeJob, desk: true })), { wide: true }),
+      cell('desk-pick-tech', `${P}Anyone else at a desk, before a link`, 'Copy the link is the blue press and makes the link.', desk(pick({ desk: true })), { wide: true }),
+    ] },
+]
+document.getElementById('board').innerHTML = rows.map((r) => `<section class="row" id="${r.id}"><h2>${r.h}</h2><p>${r.p}</p><div class="cells">${r.cells.join('')}</div></section>`).join('')
+
+// ---- Counts, read from what is drawn ---------------------------------------------------------------------------------
+document.querySelectorAll('.cell').forEach((c) => {
+  const sheet = c.querySelector('.sheet'), out = c.querySelector('.count')
+  if (!sheet || !out) return
+  const words = sheet.innerText.split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).length
+  const presses = sheet.querySelectorAll('button:not([disabled])').length
+  c.dataset.words = words
+  c.dataset.presses = presses
+  out.innerHTML = `<b>${words} words</b> · ${presses} ${presses === 1 ? 'press' : 'presses'}`
+})
+
+// ---- One alone, and the dark theme ---------------------------------------------------------------------------------
+const q = new URLSearchParams(location.search)
+if (q.get('theme') === 'dark') document.querySelectorAll('.phone, .desk').forEach((e) => e.setAttribute('data-theme', 'dark'))
+const s = q.get('s')
+if (s) {
+  document.body.classList.add('single')
+  if (q.get('cap')) document.body.classList.add('caps')
+  const el = document.getElementById(s)
+  if (el && el.classList.contains('row')) el.classList.add('show')
+  else if (el) { el.classList.add('show'); el.closest('.row').classList.add('show', 'hasCell') }
+}
+</script>
+</body>
+</html>
