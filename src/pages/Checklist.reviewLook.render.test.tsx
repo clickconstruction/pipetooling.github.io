@@ -23,6 +23,10 @@ const H = vi.hoisted(() => ({
   dayReadsFor: [] as string[],
   /** Every write of any kind, as `table.method`. */
   writes: [] as string[],
+  /** The person the look draws, as the look's read of `users` answers. */
+  person: { role: 'helpers', email: null, login_attached_at: null } as { role: string; email: string | null; login_attached_at: string | null },
+  /** Every sign-in as someone that was asked for, by email. */
+  signIns: [] as string[],
 }))
 
 vi.mock('../hooks/useAuth', async () => {
@@ -68,7 +72,7 @@ vi.mock('../lib/supabase', async () => {
     const b = stub.from() as Record<string, unknown>
     // The page reads the signed-in person's role, and the look reads the role of the person it draws.
     b.single = () => Promise.resolve({ data: { role: H.role }, error: null })
-    b.maybeSingle = () => Promise.resolve({ data: { role: 'helpers' }, error: null })
+    b.maybeSingle = () => Promise.resolve({ data: H.person, error: null })
     return b
   }
   return {
@@ -82,6 +86,7 @@ vi.mock('../lib/supabase', async () => {
   }
 })
 vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: () => {} }))
+vi.mock('../lib/loginAsUser', () => ({ loginAsUser: (u: { email: string | null }) => (H.signIns.push(u.email ?? ''), Promise.resolve()) }))
 
 const { default: Checklist } = await import('./Checklist')
 const { ChecklistAddModalProvider, useChecklistAddModal } = await import('../contexts/ChecklistAddModalContext')
@@ -136,6 +141,8 @@ beforeEach(() => {
   H.ahead = []
   H.dayReadsFor = []
   H.writes = []
+  H.person = { role: 'helpers', email: null, login_attached_at: null }
+  H.signIns = []
   localStorage.clear()
 })
 
@@ -254,5 +261,52 @@ describe('Checklist → Review, see a person’s Task Mode', () => {
     await screen.findByText('Return the borrowed pipe threader')
     expect(screen.queryByRole('button', { name: 'See Dana’s Task Mode' })).toBeNull()
     expect(document.querySelector('[data-see-task-mode]')).toBeNull()
+  })
+
+  it('offers a dev the line to View as the person, and signs in only after the question', async () => {
+    H.role = 'dev'
+    H.person = { role: 'helpers', email: 'dana@example.com', login_attached_at: '2026-01-05T12:00:00Z' }
+    await openDanasCard()
+    fireEvent.click(await screen.findByRole('button', { name: 'See Dana’s Task Mode' }))
+    const win = await screen.findByRole('dialog', { name: 'Dana Whitlow’s Task Mode' })
+    const line = await waitFor(() => {
+      const p = win.querySelector('[data-look-view-as]')
+      if (!p) throw new Error('the line has not been drawn yet')
+      return p as HTMLElement
+    })
+    expect(line.textContent).toBe('To press something as Dana, View as Dana. That signs you in as Dana, and the app records it.')
+    // it is the viewer's own press, so it sits outside their screen's gate
+    expect(line.closest('[data-task-look]')).toBeNull()
+    fireEvent.click(within(line).getByRole('button', { name: 'View as Dana' }))
+    const ask = await screen.findByRole('alertdialog')
+    expect(ask.textContent).toContain('Sign in as Dana Whitlow? The app records it. Exit brings you back to this page.')
+    expect(H.signIns).toEqual([])
+    fireEvent.click(within(ask).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(H.signIns).toEqual([])
+    fireEvent.click(within(line).getByRole('button', { name: 'View as Dana' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'View as Dana' }))
+    await waitFor(() => expect(H.signIns).toEqual(['dana@example.com']))
+    expect(H.writes).toEqual([])
+  })
+
+  it('does not offer the owner that line', async () => {
+    H.person = { role: 'helpers', email: 'dana@example.com', login_attached_at: '2026-01-05T12:00:00Z' }
+    await openDanasCard()
+    fireEvent.click(await screen.findByRole('button', { name: 'See Dana’s Task Mode' }))
+    const win = await screen.findByRole('dialog', { name: 'Dana Whitlow’s Task Mode' })
+    await within(win).findByText('Restock van 4 with fittings')
+    expect(within(win).getByText('What this look does not show')).toBeTruthy()
+    expect(win.querySelector('[data-look-view-as]')).toBeNull()
+    expect(within(win).queryByRole('button', { name: 'View as Dana' })).toBeNull()
+  })
+
+  it('does not offer a dev that line for a person with no login', async () => {
+    H.role = 'dev'
+    await openDanasCard()
+    fireEvent.click(await screen.findByRole('button', { name: 'See Dana’s Task Mode' }))
+    const win = await screen.findByRole('dialog', { name: 'Dana Whitlow’s Task Mode' })
+    await within(win).findByText('Restock van 4 with fittings')
+    expect(win.querySelector('[data-look-view-as]')).toBeNull()
   })
 })

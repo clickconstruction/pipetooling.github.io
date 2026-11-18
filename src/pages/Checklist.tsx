@@ -78,8 +78,9 @@ import { forwardTakers } from '../lib/tasks/taskDoerActs'
 import { TaskForwardWindow } from '../components/checklist/TaskForwardWindow'
 import { TaskLookGate } from '../components/checklist/TaskLookGate'
 import { TaskModeLookWindow } from '../components/checklist/TaskModeLookWindow'
+import { TaskLookViewAs } from '../components/checklist/TaskLookViewAs'
 import { TaskLookComingUp } from '../components/checklist/TaskLookComingUp'
-import { lookPressLabel, lookPressTitle } from '../lib/tasks/taskLook'
+import { lookOffersViewAs, lookPressLabel, lookPressTitle } from '../lib/tasks/taskLook'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
 import type { MyFix } from '../lib/materials/myLocation'
 
@@ -357,7 +358,7 @@ export default function Checklist() {
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={isOwnerOrDev(role)} setError={setError} />
       )}
       {activeTab === 'review' && canManageChecklists && (
-        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} canActForOthers={isOwnerOrDev(role)} canSeeCosts={canSeeTaskCosts(role)} canManageChecklists={canManageChecklists} canEditRoadmapTasks={canEditTechTree} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
+        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} canActForOthers={isOwnerOrDev(role)} canViewAs={role === 'dev'} canSeeCosts={canSeeTaskCosts(role)} canManageChecklists={canManageChecklists} canEditRoadmapTasks={canEditTechTree} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
       )}
       {activeTab === 'manage' && canManageChecklists && (
         <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
@@ -1304,7 +1305,7 @@ function ChecklistTodayTab({ authUserId, look = null, canForward, canOpenVehicle
   return isLook ? <TaskLookGate>{day}</TaskLookGate> : day
 }
 
-function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, canManageChecklists, canEditRoadmapTasks, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; canActForOthers: boolean; /** Cost lens (dev, controller or the owner — mirrors checklist_item_costs RLS). */ canSeeCosts: boolean; canManageChecklists: boolean; /** Roadmap structure editors (v2.2182) — may edit tasks from the Where-this-fits sheet. */ canEditRoadmapTasks: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
+function ChecklistOutstandingTab({ authUserId, canActForOthers, canViewAs, canSeeCosts, canManageChecklists, canEditRoadmapTasks, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; canActForOthers: boolean; /** A dev: the look's line to View as the person (punch list #381, call 7). */ canViewAs: boolean; /** Cost lens (dev, controller or the owner — mirrors checklist_item_costs RLS). */ canSeeCosts: boolean; canManageChecklists: boolean; /** Roadmap structure editors (v2.2182) — may edit tasks from the Where-this-fits sheet. */ canEditRoadmapTasks: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
@@ -1313,18 +1314,19 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
    * See a person's Task Mode (punch list #381): whose screen the window draws, when it was read, and the person's role
    * once it is read. The role decides what their phone offers, such as the office's Upcoming fold.
    */
-  const [lookPerson, setLookPerson] = useState<{ userId: string; name: string; readAt: Date; n: number; role?: UserRole | null } | null>(null)
+  const [lookPerson, setLookPerson] = useState<{ userId: string; name: string; readAt: Date; n: number; role?: UserRole | null; email?: string | null; loginAttached?: boolean } | null>(null)
   const openLook = (userId: string, name: string) => {
     setLookPerson({ userId, name, readAt: new Date(), n: 0 })
     void supabase
       .from('users')
-      .select('role')
+      .select('role, email, login_attached_at')
       .eq('id', userId)
       .maybeSingle()
       .then(({ data }) => {
-        const role = ((data as { role?: string | null } | null)?.role ?? null) as UserRole | null
+        const row = data as { role?: string | null; email?: string | null; login_attached_at?: string | null } | null
+        const role = (row?.role ?? null) as UserRole | null
         // A role that does not read draws the plain screen, the one a crew phone shows.
-        setLookPerson((cur) => (cur && cur.userId === userId ? { ...cur, role } : cur))
+        setLookPerson((cur) => (cur && cur.userId === userId ? { ...cur, role, email: row?.email ?? null, loginAttached: row?.login_attached_at != null } : cur))
       })
   }
   const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating' | 'missed'>('non_repeating')
@@ -2103,6 +2105,11 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
           onReadAgain={() => setLookPerson((cur) => (cur ? { ...cur, readAt: new Date(), n: cur.n + 1 } : cur))}
           onClose={() => setLookPerson(null)}
           side={<TaskLookComingUp key={`${lookPerson.userId}-${lookPerson.n}`} personId={lookPerson.userId} personName={lookPerson.name} onAddTask={() => checklistAddModal?.openAddModal(lookPerson.userId)} />}
+          door={
+            lookPerson.email && lookOffersViewAs({ viewerIsDev: canViewAs, viewerId: authUserId, personId: lookPerson.userId, personRole: lookPerson.role, personEmail: lookPerson.email, loginAttached: lookPerson.loginAttached === true }) ? (
+              <TaskLookViewAs personName={lookPerson.name} email={lookPerson.email} role={lookPerson.role ?? null} />
+            ) : undefined
+          }
         >
           {lookPerson.role === undefined ? (
             <p>Loading…</p>

@@ -85,4 +85,14 @@ The window also leaves out **Tagged notes**. Those are read only for the person 
 
 **View as** in Settings signs you in as the person, and the app records it. Every page then works as them. This window is smaller than that. It reads their tasks and draws one screen.
 
+A dev sees one more line beside the phone, under **What this look does not show**.
+
+:::example The line a dev sees
+To press something as Dana, {{button:outline|View as Dana}}. That signs you in as Dana, and the app records it.
+:::
+
+Press {{button:outline|View as Dana}} and the app asks first. Say yes and you are signed in as Dana on this page. Press **Exit** at the top to come back as yourself.
+
+The line does not show on your own card. It does not show for another dev, or for a person with no login.
+
 [Use Task Mode to see only my checklist](/help/task-mode) explains the screen itself.

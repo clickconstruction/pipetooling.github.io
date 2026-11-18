@@ -2,14 +2,14 @@
 name: "See a person's Task Mode from Review"
 number: 381
 group: ready
-status: asked 2026-11-17 · looked at, designed, drawn and rendered the same day · the owner said *Build my picks* · built and live the same evening as v2.7692, v2.7697 and v2.7698 (PR #8599) · walked on the live site as the dev, read only, on the dev's own window and one teammate's · the look shown as screenshots on 2026-11-18
+status: asked 2026-11-17 · looked at, designed, drawn and rendered the same day · the owner said *Build my picks* · built and live the same evening as v2.7692, v2.7697 and v2.7698 (PR #8599) · walked on the live site as the dev, read only, on the dev's own window and one teammate's · the look shown as screenshots on 2026-11-18 · call 7's link to View as built the same day as v2.7786 on the owner's word, *Build dev link*
 summary: >
   On Checklist → Review the owner opens a person's card and sees their open tasks as a list. He asked for a
   press there that opens a window showing what that person's phone shows in Task Mode, with their current
   tasks and what is coming up. This card adds that press and that window. The window is a look: he stays
   signed in as himself, it reads with the read the office already has, and no press inside it works. It
   draws Today with the same code the person's phone runs, so the two cannot drift apart.
-next: The owner's word on call 7's link to View as, asked on 2026-11-18 with the screenshots. Then retire the card.
+next: Retire the card. Call 7's link to View as was built on the owner's word of 2026-11-18, as v2.7786.
 size: M as a train of five (M · M · M · S · XS), all five done
 blocker: None.
 opinion: build — the office can already read every row Today draws, so this is a new look over reads that exist, with no change to the database
@@ -84,8 +84,11 @@ does not use the word *imitate*.
 | 6 | History | Not in the window | Checklist → History already has a person picker for the office. The bar's History is drawn and dead. |
 | 7 | A door to View as | Only where View as is today | A dev sees one quiet link in the side column. Giving the owner that door is a new permission and waits for his word. |
 
-**The owner's word, 2026-11-17:** *Build my picks*, all seven as picked. Six are built. Call 7's link is
-not: a dev still reaches View as from Settings, and the window has no door to it.
+**The owner's word, 2026-11-17:** *Build my picks*, all seven as picked. Six were built that day.
+
+**The owner's word, 2026-11-18,** after the look was shown, on call 7: *Build dev link*. It is built as
+v2.7786. A dev sees one quiet line under *What this look does not show*, it asks first, and the owner's
+window is unchanged.
 
 Call 3 as built: Coming up lists the person's open tasks dated in the next 7 days, one day a line. A
 repeating task is already a dated row for 35 days ahead, so the list is a read of rows and no rule is
@@ -191,5 +194,4 @@ session and are kept nowhere.
 Not shown, because no person had them that morning: **Then** and **Done today**. They need two tasks dated
 today, or one already ticked.
 
-**Left.** The owner's word on call 7. The card's pick is one quiet link to View as for a dev, which is not
-built. Then retire the card.
+**Left.** Retiring the card.
