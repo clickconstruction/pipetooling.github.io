@@ -85,6 +85,8 @@ Typed the name wrong? Ask for `plan_account` with the person and the right name.
 
 Locked out? Ask for `plan_password_reset`. The app's own Forgot password email goes. One send per address per ten minutes. You can dictate a password instead. The seat never prints it back and never writes it to the log.
 
+Need to change someone's pay? Ask for `plan_pay_setup` with the person and a reason. It changes the wage, Salaried, the employment dates and the workday start. The app holds a salary as an hourly wage, so divide a weekly amount by 40. A salaried day is always 8 hours. The plan counts the past weeks and crew days the change will price again. Read that count before you apply it.
+
 :::example What the seat will not do here
 It never resets your own password. It never touches a sample, a twin or an archived teammate. A returner comes back from Bring back on their desk, never as a second row.
 :::

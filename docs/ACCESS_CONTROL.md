@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -244,7 +244,7 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and twenty-three verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-three since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
+The one write path (v2.3722) is one hundred and twenty-five verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-three since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
 one hundred and twenty-one since v2.7687, whose notice numbers are the Lien desk's own update of `sends` on the notice's `job_lien_filings` row under the dev's RLS, no new role and no new policy;
 one hundred and nineteen since v2.7592, whose photo of the spot is the Edit window's own two writes, the picture into the private `task-spot-photos` bucket under `can_write_task_spot_photo` and the task's `spot_photo_path` under the dev's RLS, the file staged first in the dev's own folder of `dev-seat-staging`, no new role and no new policy;
 one hundred and seventeen since v2.7589, whose task place is the Edit window's own update of the place columns on `checklist_items`, or on `checklist_tech_tree_group_tasks` for a task from a roadmap, under the dev's RLS, with the address read from `address_geocodes` and never written, no new role and no new policy;
@@ -282,6 +282,8 @@ never through `view_as`, and training mode blocks them inside the definer.
 Since v2.6792 (punch list #260's seat door) six of the verbs reach the account functions themselves, as the dev's own session, so each function's dev gate decides as it does for the desk: `plan_account` / `apply_account` call `add_worker` (the roster's own RPC — a dev, a master, an assistant or the controller), `invite-user` and `create-user` (dev only: *Create users*), patch `users.name` / `role` / `title` / `phone` under `users_guard_privileged_columns` (a role change is a dev's) and `change-user-email` (dev only);
 `plan_login` / `apply_login` call `create-user` with `user_id`, `send-sign-in-email` and `detach-login` (dev only, the attach and detach doors' own refusals: never a sample, a twin, an archived person or the caller's own login);
 `plan_password_reset` / `apply_password_reset` call `set-user-password` (dev only) or the sign-in page's own `resetPasswordForEmail` with the anon client, one send per address per ten minutes, never on the caller's own account.
+Since v2.7821 two more make one hundred and twenty-five: `plan_pay_setup` / `apply_pay_setup` call `set_pay_config` (payroll access or the service role, which a dev has;
+the function writes its own `pay_admin_events` line), patch `people.start_date` / `end_date`, write `salary_work_schedule_templates` and one more `pay_admin_events` line under the pay desk's own RLS, and call `sync_salary_clock_sessions_for_user_day` and `pay_staff_clear_salary_schedule_by_person_name` as the sheet's Pay & schedule does, with the server's own dev check before all of it and no new gate, role or policy.
 `get_login_state` is a dev's alone (refused through `view_as`): the users and people rows are read under the dev's RLS, and the auth account's stamps — `invited_at`, `confirmation_sent_at`, `email_confirmed_at`, `recovery_sent_at`, `last_sign_in_at`, `banned_until` — are read by id as the service role, picked by name and never a hash: the fourth thing the seat uses the service role for.
 A password an ask carries is never printed back and reaches `dev_mcp_calls` as `(set, not logged)`.
 One verb sits outside that grammar (v2.6187): `mint_twin_setup_code` POSTs `twin-setup` as the dev for a ten-minute, single-use setup code (the function's dev-for-any-twin rule and ten codes per ten minutes;
