@@ -14,17 +14,21 @@ import {
   LIEN_FILING_WINDOW_DAYS,
   LIEN_SCAN_LANDING,
   LIEN_SCAN_STAGING_BUCKET,
+  daysInWords,
   isLienFilingVerb,
   lienFilingAppliedWords,
   lienFilingApplyInput,
   lienFilingBatchClashes,
   lienFilingDryRun,
   lienFilingPlanInput,
+  lienFilingPlanReply,
+  lienFilingRecordCheck,
   lienFilingShape,
   lienScanStagePath,
   lienScanUploadHow,
   readLienFilingWorld,
   sameWords,
+  savedCopyFileWords,
   scanMime,
   stagedScanProblem,
   streetLine,
@@ -69,7 +73,7 @@ const windowRow = (over: Partial<LienAffidavitRow> = {}): LienAffidavitRow => ({
   property_kind: 'commercial', has_owner: true, has_legal: true, homestead: false, desk_item_id: ITEM, desk_status: 'approved', month_source: 'hand',
   ...over,
 })
-const NOTICE = { id: 'n1', job_id: JOB, kind: 'notice_53_056', months_covered: ['2026-09'], sends: [{ recipient: 'owner', method: 'certified_mail', sent_on: '2026-10-09', tracking: '9507 0000 0000 0000 0000 22' }], filed_at: null, recording_number: '', county: '', document_url: '', serve_due: null, served_at: null }
+const NOTICE = { id: 'n1', job_id: JOB, kind: 'notice_53_056', months_covered: ['2026-09'], sends: [{ recipient: 'owner', method: 'certified_mail', sent_on: '2026-10-09', tracking: '9507 0000 0000 0000 0000 22' }], filed_at: null, recording_number: '', county: '', document_url: '', serve_due: null, served_at: null, amount: 0, fields: null }
 const APPROVED = { id: ITEM, job_id: JOB, kind: 'affidavit', status: 'approved', months: ['2026-09'], fields: { notice: { claimAmount: '4180.00' }, ...LIEN_AFFIDAVIT_SHORT_FORM_MARK }, approved_at: '2026-11-10T15:00:00Z', created_at: '2026-11-09T15:00:00Z' }
 
 const world = (over: Partial<LienFilingWorld> = {}): LienFilingWorld => ({
@@ -136,7 +140,7 @@ describe('the pair and what it stands on', () => {
     expect(isLienFilingVerb('plan_affidavit_draft')).toBe(false)
     expect(planVerbFor('apply_lien_filing')).toBe('plan_lien_filing')
     expect(Object.keys(WRITE_VERBS)).toHaveLength(125)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.102.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.103.0'")
     expect(SERVER).toContain('Writes are one hundred and twenty-five verbs and nothing else:')
     expect(SERVER).toContain("plan_lien_filing → apply_lien_filing (a filed lien affidavit recorded as the job's Lien window records it once the clerk has stamped it")
     expect(README).toContain('`plan_lien_filing(filing \\| filings)` · `apply_lien_filing(filing, plan_hash)`')
@@ -153,7 +157,10 @@ describe('the pair and what it stands on', () => {
     expect(SERVER).toContain("windows: (days) => (windowsRead ??= rowsOf('rpc/list_lien_affidavit_windows', `p_within_days=${days}`))")
     expect(SERVER).toContain("await invokeAsDev(session, 'drive-link', { action: 'put', job: { jobs_ledger_id: p.job_id }, name: scan.name, mime: scan.mime, where: LIEN_SCAN_LANDING, base64: bytesToBase64(scanBytes) })")
     expect(SERVER).toContain("await restRows(session, 'POST', 'job_lien_filings', 'select=id', write.row)")
-    expect(SERVER).toContain("await restRows(session, 'PATCH', 'job_lien_filings', `id=eq.${filingId}&document_url=eq.&select=id`, filingDocumentPayload({ url, note }, { clear: true }), 'return=representation')")
+    expect(SERVER).toContain("await restRows(session, 'PATCH', 'job_lien_filings', `id=eq.${filingId}&document_url=eq.${replaces ? encodeURIComponent(replaces) : ''}&select=id`, filingDocumentPayload({ url, note }, { clear: true }), 'return=representation')")
+    // A replaced copy's old file goes through drive-link's own trash door, once the filing carries the new one.
+    expect(SERVER).toContain("await invokeAsDev(session, 'drive-link', { action: 'trash', job: { jobs_ledger_id: p.job_id }, driveFileId: oldId })")
+    expect(SERVER).toContain("if (dry.status === 'on_record') return refused(")
     expect(SERVER).toContain("await restRows(session, 'PATCH', 'job_lien_desk_items', `id=eq.${write.item.id}&kind=eq.affidavit&status=eq.${write.item.from}&select=id`, { ...write.item.patch, sent_filing_id: filingId }, 'return=representation')")
     expect(SERVER).toContain('await stagedUploadUrl(session, lienScanStagePath(who.userId, f.p.scan), LIEN_SCAN_STAGING_BUCKET)')
   })
@@ -472,13 +479,14 @@ describe('lienFilingDryRun — what it refuses', () => {
 
   it('a second filing on the job, and a recording number that is already on another job', () => {
     const onFile = { ...NOTICE, id: FILING, kind: 'affidavit', filed_at: '2026-11-10', recording_number: '555', county: 'Marlow', document_url: 'https://example.test/copy', serve_due: '2026-11-16' }
-    expect(refusal(shaped(), world({ filings: [NOTICE, onFile] }))).toContain('an affidavit is already on file for this job (instrument 555, filed 2026-11-10, with its saved copy)')
+    expect(refusal(shaped(), world({ filings: [NOTICE, onFile] }))).toContain('an affidavit is already on file for this job (instrument 555, filed 2026-11-10, with its saved copy), and it is not instrument 2026 0222921')
+    expect(refusal(shaped({ replace_saved_copy: true, replace_because: 'The copy on record is the whole stack.' }), world())).toContain('replace_saved_copy is for a filing already on record')
     expect(refusal(shaped(), world({ sameNumber: [{ id: FILING, job_id: JOB_B, county: 'Marlow', filed_at: '2026-11-16', job_label: 'JP2304' }] }))).toContain('instrument 2026 0222921 is already on JP2304')
   })
 })
 
 describe('lienFilingDryRun — a filing already on record with no saved copy', () => {
-  const onFile = { ...NOTICE, id: FILING, kind: 'affidavit', filed_at: '2026-11-16', recording_number: '20260222921', county: 'Marlow', document_url: '', serve_due: '2026-11-23' }
+  const onFile = { ...NOTICE, id: FILING, kind: 'affidavit', filed_at: '2026-11-16', recording_number: '20260222921', county: 'Marlow', document_url: '', serve_due: '2026-11-23', amount: 4180, fields: null }
 
   it('takes the scan alone', () => {
     const dry = ready(shaped(), world({ filings: [NOTICE, onFile], items: [{ ...APPROVED, status: 'sent' }] }))
@@ -494,7 +502,97 @@ describe('lienFilingDryRun — a filing already on record with no saved copy', (
 
   it('refuses when the day or the county is not the record’s, and when no scan is sent', () => {
     expect(refusal(shaped({ filed_on: '2026-11-13' }), world({ filings: [onFile] }))).toContain('is on record for this job as filed 2026-11-16')
-    expect(refusal(shaped({ scan: null }), world({ filings: [onFile] }))).toContain('with no saved copy: send scan or saved_copy to add it')
+    // No scan and no link: a check of the record, which says how to add the copy.
+    const dry = lienFilingDryRun(shaped({ scan: null }), world({ filings: [onFile] }), WHO, TODAY)
+    expect(dry).toMatchObject({ ok: true, status: 'on_record' })
+    expect(String((dry as { reply: Record<string, unknown> }).reply.next)).toContain('plan again with scan (the file) or saved_copy (a link) to add it')
+  })
+})
+
+describe('lienFilingDryRun — a paper already on record (v2.7837)', () => {
+  const FIELDS = { isSub: true, workMonthsWords: 'September 2026', noticesSentWords: 'certified mail on October 9, 2026', propertyAddress: '14 Maple Ct, Marlow, TX 78000', legalDescription: 'LOT 4 BLK 7 MAPLE ADDITION', ownerName: 'Pat Sample', unpaidAmount: '4180.00' }
+  const COPY = 'https://drive.google.com/file/d/1oldOldOldOldOldOldOldOldOld/view'
+  const onFile = { ...NOTICE, id: FILING, kind: 'affidavit', filed_at: '2026-11-16', recording_number: '20260222921', county: 'Marlow', document_url: COPY, serve_due: '2026-11-23', amount: 4180, fields: FIELDS }
+  const w = (over: Record<string, unknown> = {}) => world({ filings: [NOTICE, { ...onFile, ...over }], items: [{ ...APPROVED, status: 'sent' }] })
+  const check = (p: LienFilingPayload, wd: LienFilingWorld) => {
+    const dry = lienFilingDryRun(p, wd, WHO, TODAY)
+    if (!dry.ok || dry.status !== 'on_record') throw new Error('expected a check')
+    return dry.reply as { agrees: boolean; differences: Array<{ what: string; paper: string; record: string }>; says: string; next: string; copy_to_mail?: string; not_checked?: string; writes: string }
+  }
+
+  it('answers on_record, with nothing to write, when the record says what the paper says', () => {
+    const reply = check(shaped(), w())
+    expect(reply).toMatchObject({ agrees: true, differences: [], writes: 'nothing: a check alone, with no plan_hash' })
+    expect(reply.says).toBe('JP2291: instrument 20260222921 is on record, filed 2026-11-16 in Marlow County, and its record says what the paper says.')
+    expect(reply.next).toContain('replace_saved_copy: true and replace_because')
+    expect(reply).not.toHaveProperty('copy_to_mail')
+    expect(reply).not.toHaveProperty('plan_hash')
+  })
+
+  it('names each thing the record says that the paper does not, and what that does to the copy to mail', () => {
+    // The record was drawn after the job's last day moved: it names another month than the paper that was filed.
+    const reply = check(shaped({ paper_states: { claim: 4180, months: ['2026-08'], notice_sent_on: ['2026-10-09'], property_address: '14 Maple Ct', legal_description: 'Lot 4, Blk 7, Maple Addition', owner: 'Pat Sample' } }), w())
+    expect(reply.agrees).toBe(false)
+    expect(reply.differences).toEqual([{ what: 'months', paper: 'August 2026', record: 'September 2026' }])
+    expect(reply.says).toContain('The record and the paper differ on months.')
+    expect(reply.copy_to_mail).toContain('mail a photocopy of the stamped scan')
+    const many = check(shaped({ county: 'Elm', filed_on: '2026-11-13', paper_states: { claim: 4500, months: ['2026-09'], notice_sent_on: ['2026-10-01', '2026-10-09'], property_address: '9 Other St', legal_description: 'LOT 9', owner: 'Someone Else' } }), w())
+    expect(many.differences.map((d) => d.what)).toEqual(['claim', 'months', 'notice_day', 'property_address', 'legal_description', 'owner', 'county', 'filed_on'].filter((x) => x !== 'months'))
+    // A day or a county that is not the record's changes no word of the copy.
+    expect(check(shaped({ filed_on: '2026-11-13' }), w())).not.toHaveProperty('copy_to_mail')
+  })
+
+  it('says what it did not compare: a fact not sent, and a fact the record’s paper does not hold', () => {
+    expect(check(shaped({ paper_states: { claim: 4180 } }), w()).not_checked).toBe('Not compared: months, notice_sent_on, property_address, legal_description, owner.')
+    expect(check(shaped(), w({ fields: { ...FIELDS, workMonthsWords: '', noticesSentWords: '' } })).not_checked).toBe('Not compared: months (the record’s paper names none), notice_sent_on (the record’s paper names no notice).')
+    expect(lienFilingRecordCheck(shaped(), { ...onFile, sends: [], fields: null }).differences.map((d) => d.what)).toEqual(['property_address', 'legal_description', 'owner'])
+  })
+
+  it('reads the days a paper writes out', () => {
+    expect(daysInWords('certified mail on September 22, 2026 and October 14, 2026')).toEqual(['2026-09-22', '2026-10-14'])
+    expect(daysInWords('certified mail on October 9, 2026, and by email on October 9, 2026')).toEqual(['2026-10-09'])
+    expect(daysInWords('no day here')).toEqual([])
+  })
+
+  it('a saved copy gives way only to a call that says so, with its reason', () => {
+    // The same scan with no word to replace: a check, never a write.
+    expect(lienFilingDryRun(shaped(), w(), WHO, TODAY)).toMatchObject({ ok: true, status: 'on_record' })
+    expect(lienFilingShape(filing({ replace_saved_copy: true }))).toMatchObject({ ok: false, error: expect.stringContaining('needs replace_because') })
+    expect(lienFilingShape(filing({ replace_saved_copy: true, replace_because: 'The copy on record is the whole stack.', scan: undefined }))).toMatchObject({ ok: false, error: expect.stringContaining('send scan') })
+    expect(lienFilingShape(filing({ replace_because: 'The copy on record is the whole stack.' }))).toMatchObject({ ok: false, error: expect.stringContaining('goes with replace_saved_copy: true') })
+    const dry = ready(shaped({ replace_saved_copy: true, replace_because: 'The copy on record is the whole stack.' }), w())
+    expect(dry.write).toEqual({ kind: 'attach_scan', filingId: FILING, replaces: COPY, scan: { name: `Lien affidavit, Job 2291, ${LIEN_CLERK_SCAN_NOTE}, 2026-11-16.pdf`, mime: 'application/pdf', size_bytes: 485026, sha256: SHA } })
+    expect(dry.reply).toMatchObject({ mode: 'replace_scan', replaces: COPY, replace_because: 'The copy on record is the whole stack.', agrees: true, filing_on_record: { saved_copy: COPY } })
+    expect(String((dry.reply as Record<string, unknown>).says)).toContain('carries a saved copy that this call replaces')
+    expect(String((dry.reply as Record<string, unknown>).old_copy)).toContain('goes to Drive’s trash')
+    const link = ready(shaped({ scan: undefined, saved_copy: { link: 'https://drive.google.com/file/d/1newNewNewNewNewNewNewNewNew/view' }, replace_saved_copy: true, replace_because: 'The copy on record is the whole stack.' }), w())
+    expect(link.write).toMatchObject({ kind: 'attach_link', filingId: FILING, replaces: COPY })
+    expect(refusal(shaped({ scan: undefined, saved_copy: { link: COPY }, replace_saved_copy: true, replace_because: 'The copy on record is the whole stack.' }), w())).toContain('already carries that link')
+    expect(refusal(shaped({ filed_on: '2026-11-13', replace_saved_copy: true, replace_because: 'The copy on record is the whole stack.' }), w())).toContain('is on record for this job as filed 2026-11-16')
+  })
+
+  it('the plan counts what is on record, and the apply says where the old file went', () => {
+    const reply = lienFilingPlanReply([{ status: 'on_record', agrees: true }, { status: 'on_record', agrees: false }, { status: 'ready' }])
+    expect(reply.filings).toBe('3 filings: 1 ready, 2 already on record (1 whose record and paper differ).')
+    expect(String(reply.next)).toContain('An entry already on record writes nothing and carries no plan_hash')
+    const p = shaped({ replace_saved_copy: true, replace_because: 'The copy on record is the whole stack.' })
+    const dry = ready(p, w())
+    const NEW = 'https://drive.google.com/file/d/1newNewNewNewNewNewNewNewNew/view'
+    const done = lienFilingAppliedWords(p, 'JP2291', dry.write, { file: { url: NEW, driveFileId: '1newNewNewNewNewNewNewNewNew' }, filing: { id: FILING, serve_due: '2026-11-23', document_url: NEW }, item: 'none', stagedRemoved: true, oldCopy: 'trashed' })
+    expect(done).toMatchObject({ ok: true, wrote: 'the scan, in place of the saved copy the filing carried', saved_copy: NEW, old_copy: { was: COPY, now: 'in Drive’s trash, where Drive keeps it 30 days' } })
+    expect(String(done.next)).toContain('the filing has its new saved copy')
+    const left = lienFilingAppliedWords(p, 'JP2291', dry.write, { file: { url: NEW, driveFileId: 'x' }, filing: { id: FILING, serve_due: '2026-11-23', document_url: NEW }, item: 'none', stagedRemoved: true, oldCopy: { left: 'That file is not in the job’s Sent by us folder, so the app leaves it alone.' } })
+    expect((left.old_copy as { now: string }).now).toBe('left where it is: That file is not in the job’s Sent by us folder, so the app leaves it alone.')
+    const failed = lienFilingAppliedWords(p, 'JP2291', dry.write, { file: { url: NEW, driveFileId: 'x' }, filing: { id: FILING, serve_due: '2026-11-23', document_url: COPY }, item: 'none', stagedRemoved: true, scanFailed: 'the filing no longer carried the copy the plan read, so it was left as it is' })
+    expect(failed).not.toHaveProperty('old_copy')
+    expect(String(failed.saved_copy_not_added)).toContain(`Plan again with replace_saved_copy: true and saved_copy: { link: "${NEW}" }`)
+  })
+
+  it('sets the saved copy’s file beside the scan that was sent', () => {
+    const scan = { name: 'x.pdf', size_bytes: 472378, sha256: SHA }
+    expect(savedCopyFileWords({ name: 'stack.pdf', size_bytes: 4048441, sha256: 'd'.repeat(64), trashed: false, path: ['Drive', 'Jobs', 'A customer', 'A job', 'Team only', 'Sent by us'] }, scan)).toEqual({ name: 'stack.pdf', size_bytes: 4048441, in: 'A job › Team only › Sent by us', against_your_scan: 'not the bytes you sent: 4048441 bytes on record against your 472378. A split of the same pages differs by a few hundred bytes. A file several times the size holds more than this lien’s pages.' })
+    expect(savedCopyFileWords({ name: 'x.pdf', size_bytes: 472378, sha256: SHA.toUpperCase(), trashed: true, path: [] }, scan)).toEqual({ name: 'x.pdf', size_bytes: 472378, in: null, trashed: 'This file is in Drive’s trash.', against_your_scan: 'the same bytes as the file you sent' })
+    expect(savedCopyFileWords({ name: 'x.pdf', size_bytes: 1, sha256: null, trashed: false, path: [] }, null)).toEqual({ name: 'x.pdf', size_bytes: 1, in: null })
   })
 })
 
