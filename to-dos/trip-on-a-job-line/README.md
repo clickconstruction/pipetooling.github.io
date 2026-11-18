@@ -2,7 +2,7 @@
 name: "Put a trip on a bill: an Extra trip becomes a line on its job"
 number: 391
 group: ready
-status: asked and decided 2026-11-17 · the owner saw both ways drawn side by side and picked the line over a bill of its own · building since 2026-11-18 · PR 1 of 4 is built (v2.7746, the Job window's billing save refuses to write over a line added elsewhere) · PRs 2 to 4 are not built yet
+status: asked and decided 2026-11-17 · the owner saw both ways drawn side by side and picked the line over a bill of its own · building since 2026-11-18 · PRs 1 and 2 of 4 are built (v2.7746, the Job window's billing save refuses to write over a line added elsewhere; v2.7756, the mark on a line and the function that writes it) · PRs 3 and 4 are not built yet
 summary: >
   A trip marked Extra is work past the job's price, and today nothing takes it to a bill. This card adds
   one press on an open trip, Put on a bill. The office checks the job, the amount and the words in a small
@@ -10,7 +10,7 @@ summary: >
   line picked, so the tab's own Bill the 1 picked sends it alone or the next bill carries it. The trip reads
   where its money stands from then on. A first step makes the Job window's billing save safe against a line
   added on another screen, which Apply to job and Add discount need today as well.
-next: PR 2, the ground. The `trip_id` column on a job's line with its unique index, the function shaped like `apply_job_discount`, a scenario in the trips bed, then the push and the types.
+next: PR 3, the press and the window. The kernel, Put on a bill on an open Extra trip, the small window with Add the line and its figure, the chip's standing words, and the Job window opening on Bill with the line picked. It merges only after PR 2's migration is pushed.
 size: M as a train of four (M · S · M · S)
 blocker: None. The trip's number is on main and pushed (checked 2026-11-18), and the trip record's What it cost and its trip link are on main. PR 3 merges only after PR 2's migration is pushed.
 opinion: build — the owner's pick. Every dollar asked of a customer stays a line, and the Bill tab already has the press that bills one line by itself
@@ -270,5 +270,9 @@ Decided and drawn on 2026-11-17. Building since 2026-11-18.
   the re-read. The words say *somewhere else*, because a writer on the same screen is refused the same
   way. Left as they were: a line added between the save's read and its delete (one save long), and a
   line deleted elsewhere, which a stale window still writes back.
-- **PR 2, next:** the ground.
-- **PRs 3 and 4:** not built.
+- **PR 2, built (v2.7756):** `jobs_ledger_fixtures.trip_id` with its unique index, and
+  `trip_put_on_job_line`, with a fourth scenario in the trips bed. Default 7: `apply_job_discount` has no
+  case for the GC desk's billing job, so the function refuses that job in words. A planned trip is held
+  back by the press alone, not by the function. Owed after the merge: the push, then the types.
+- **PR 3, next:** the press and the window.
+- **PR 4:** not built.

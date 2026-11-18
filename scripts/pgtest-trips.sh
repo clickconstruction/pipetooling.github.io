@@ -16,6 +16,8 @@
 # A second scenario, 30_phone.sql, holds the phone's ground (*_trips_phone): the gate, what the phone is told, start,
 # join, day and end on the caller's own row, who is refused, and the stamp trip_save names.
 # A third, 40_numbers.sql, holds the trip numbers (*_trip_numbers).
+# A fourth, 50_bill_line.sql, holds Put on a bill (*_trip_bill_line, punch list #391): the mark on a job's line and
+# the one function that writes it.
 # Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration.
 # Never touches prod.
 set -euo pipefail
@@ -24,7 +26,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55829}"
 NAME="pgtest-trips"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_trips.sql supabase/migrations/*_trips_phone.sql supabase/migrations/*_trip_numbers.sql)"
+WRITES="$(ls supabase/migrations/*_trips.sql supabase/migrations/*_trips_phone.sql supabase/migrations/*_trip_numbers.sql supabase/migrations/*_trip_bill_line.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -56,5 +58,10 @@ grep -o "ok: .*" <<<"$out"
 # The numbers (*_trip_numbers): 1, 2, 3 on a site, never given twice, and given back to a deleted trip put back.
 out="$(psql_as postgres -f - < supabase/tests/trips/40_numbers.sql 2>&1 || true)"
 if ! grep -q "trips numbers PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+# Put on a bill (*_trip_bill_line): who may press, what it refuses, the line and the total, one trip one line, and
+# what a deleted line and a deleted trip leave behind.
+out="$(psql_as postgres -f - < supabase/tests/trips/50_bill_line.sql 2>&1 || true)"
+if ! grep -q "trips bill line PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "trips bed ok"
