@@ -986,6 +986,104 @@ describe('LienDesk', () => {
     expect(screen.getByRole('tab', { name: 'By date' }).getAttribute('aria-selected')).toBe('true')
   })
 
+  // v2.7744: the address names a job its list does not hold. Each list answered with its own first row, the address lost the job, and nothing said so.
+  const offListData = (): LienDeskData => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-08', deadline: '2026-09-30', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null }
+    const retRow: LienRetainageRow = { job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: true, payment_bond: 'unknown', desk_item_id: null, desk_status: null }
+    const d = data(J650, [], true)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    d.retainageRows = [retRow]
+    d.retainage = buildLienRetainageQueue([retRow], [], TODAY)
+    return d
+  }
+  const offListNote = () => document.querySelector('[data-lien-desk-off-list]') as HTMLElement | null
+  const PANE: Record<'notice' | 'affidavit' | 'retainage', string> = { notice: '[data-lien-desk-pane]', affidavit: '[data-lien-affidavit-pane]', retainage: '[data-lien-retainage-pane]' }
+
+  it('an address that names a job its list does not hold opens no other job on any of the three lists: the note says so, offers the Lien window and the address keeps the job until a row is picked (v2.7744)', async () => {
+    for (const [kind, listName] of [['notice', 'Monthly notices'], ['affidavit', 'Lien affidavits'], ['retainage', 'Retainage notices']] as const) {
+      const onAddressChange = vi.fn()
+      const onOpenLienInstruments = vi.fn()
+      const onOpenLienAffidavit = vi.fn()
+      const onOpenCalendarJob = vi.fn()
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={offListData()} initialKind={kind} initialJobId="gone" onAddressChange={onAddressChange} onOpenLienInstruments={onOpenLienInstruments} onOpenLienAffidavit={onOpenLienAffidavit} onOpenCalendarJob={onOpenCalendarJob} />)
+      await settle()
+      // The list still holds its one job, and its pane is not open.
+      expect(screen.getAllByRole('button', { name: /AXO Schertz/ }).length).toBeGreaterThan(0)
+      expect(document.querySelector(PANE[kind])).toBeNull()
+      const note = offListNote()!
+      expect(note.getAttribute('data-lien-desk-off-list')).toBe(kind)
+      expect(note.textContent).toBe(`The job this link names is not on the ${listName} list. Open its Lien window › shows where it stands.`)
+      await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ kind, job: 'gone', pile: null }))
+      // The Lien window is the job's, on the tab its list names.
+      fireEvent.click(within(note).getByRole('button', { name: 'Open its Lien window ›' }))
+      const door = kind === 'affidavit' ? onOpenLienAffidavit : kind === 'retainage' ? onOpenCalendarJob : onOpenLienInstruments
+      expect(door).toHaveBeenCalledWith('gone')
+      // A picked row is the reader's: its pane opens, the note goes, and the address is the list's own again.
+      fireEvent.click(screen.getAllByRole('button', { name: /AXO Schertz/ })[0]!)
+      await waitFor(() => expect(document.querySelector(PANE[kind])).not.toBeNull())
+      expect(offListNote()).toBeNull()
+      await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ kind, job: kind === 'notice' ? 'j650' : null, pile: null }))
+      cleanup()
+    }
+  })
+
+  it('a job off its list that another list holds: the note offers that list first, and the press opens the job there (v2.7744)', async () => {
+    const d = offListData()
+    // Off Monthly notices, on Lien affidavits.
+    d.rows = []
+    d.queue = buildLienDeskQueue([], [], { lowbeck: 'ask' }, TODAY)
+    const onAddressChange = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="notice" initialJobId="j650" onAddressChange={onAddressChange} />)
+    await settle()
+    expect(document.querySelector(PANE.notice)).toBeNull()
+    const note = offListNote()!
+    expect(note.textContent).toBe('650 · AXO Schertz is not on the Monthly notices list. Open it on Lien affidavits › or Open its Lien window ›')
+    await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ kind: 'notice', job: 'j650', pile: null }))
+    fireEvent.click(within(note).getByRole('button', { name: 'Open it on Lien affidavits ›' }))
+    await waitFor(() => expect(document.querySelector(PANE.affidavit)).not.toBeNull())
+    expect(within(screen.getByRole('tablist', { name: 'Kind of paper' })).getByRole('tab', { name: /^Lien affidavits/ }).getAttribute('aria-selected')).toBe('true')
+    expect(offListNote()).toBeNull()
+    await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ kind: 'affidavit', job: null, pile: null }))
+  })
+
+  it('a door that re-aims an open desk at a job its list does not hold closes the open pane; a job the list holds opens as before, and leaving the list drops the note for good (v2.7744)', async () => {
+    const onAddressChange = vi.fn()
+    const d = offListData()
+    const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="affidavit" initialJobId="j650" onAddressChange={onAddressChange} />)
+    await settle()
+    // On its list: the pane, no note, and the address spends the job as it always did.
+    await waitFor(() => expect(document.querySelector(PANE.affidavit)).not.toBeNull())
+    expect(offListNote()).toBeNull()
+    await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ kind: 'affidavit', job: null, pile: null }))
+    for (const kind of ['affidavit', 'retainage', 'notice'] as const) {
+      view.rerender(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind={kind} initialJobId={`gone-${kind}`} onAddressChange={onAddressChange} />)
+      await settle()
+      await waitFor(() => expect(offListNote()?.getAttribute('data-lien-desk-off-list')).toBe(kind))
+      expect(document.querySelector(PANE[kind])).toBeNull()
+      await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ kind, job: `gone-${kind}`, pile: null }))
+    }
+    // Another list, then back: the note is gone and Monthly notices opens its own first row.
+    fireEvent.click(within(screen.getByRole('tablist', { name: 'Kind of paper' })).getByRole('tab', { name: /^Retainage notices/ }))
+    await settle()
+    expect(offListNote()).toBeNull()
+    fireEvent.click(within(screen.getByRole('tablist', { name: 'Kind of paper' })).getByRole('tab', { name: /^Monthly notices/ }))
+    await settle()
+    expect(offListNote()).toBeNull()
+    await waitFor(() => expect(document.querySelector(PANE.notice)).not.toBeNull())
+  })
+
+  it('on one column the note tops the list, since no pane is open to hold it (v2.7744)', async () => {
+    const onAddressChange = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={offListData()} layout="stacked" initialKind="affidavit" initialJobId="gone" onAddressChange={onAddressChange} />)
+    await settle()
+    const column = document.querySelector('[data-lien-desk-find-column]') as HTMLElement
+    expect(column.querySelector('[data-lien-desk-off-list="affidavit"]')).not.toBeNull()
+    expect(within(column).getAllByRole('button', { name: /AXO Schertz/ }).length).toBeGreaterThan(0)
+    expect(document.querySelector(PANE.affidavit)).toBeNull()
+    await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ kind: 'affidavit', job: 'gone', pile: null }))
+  })
+
   it('four views (three from punch list #82, PR 5; By job since v2.7219): To do, By date, By paper, By job; By paper holds the three papers and reopens on the last one', async () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()

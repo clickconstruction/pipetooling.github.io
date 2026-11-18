@@ -276,11 +276,13 @@ export function lienRetainageListView(input: {
   matches: (entry: LienRetainageEntry, pileLabel: string) => boolean
   selectedJobId: string | null
   oneColumn: boolean
+  /** The address named a job this list does not hold (v2.7744, `lienDeskAim.ts`): no row opens in its place. */
+  openNone?: boolean
 }): { visibleAll: LienRetainageEntry[]; visible: LienRetainageEntry[]; selected: LienRetainageEntry | null; pilesShown: LienRetainagePileShown[] } {
-  const { entries, pile, finding, matches, selectedJobId, oneColumn } = input
+  const { entries, pile, finding, matches, selectedJobId, oneColumn, openNone = false } = input
   const visibleAll = LIEN_RETAINAGE_PILES.flatMap((p) => entries.filter((e) => e.pile === p.key && (pile == null || pile === p.key)))
   const visible = LIEN_RETAINAGE_PILES.flatMap((p) => visibleAll.filter((e) => e.pile === p.key && (!finding || matches(e, p.label))))
-  const selected = visible.find((e) => e.jobId === selectedJobId) ?? (!oneColumn ? visible[0] : undefined) ?? null
+  const selected = openNone ? null : (visible.find((e) => e.jobId === selectedJobId) ?? (!oneColumn ? visible[0] : undefined) ?? null)
   const pilesShown = LIEN_RETAINAGE_PILES.map((p) => ({ p: p.key, label: p.label, rows: visible.filter((e) => e.pile === p.key), total: visibleAll.filter((e) => e.pile === p.key).length })).filter((x) => (finding ? x.total > 0 : x.rows.length > 0))
   return { visibleAll, visible, selected, pilesShown }
 }
