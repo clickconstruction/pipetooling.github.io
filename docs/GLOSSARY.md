@@ -3080,7 +3080,7 @@ It shows where tasks are and never where a person is.
 Since v2.7686 it draws on Google Maps through the shared `PinsMapGoogleCanvas`, **Satellite** as Google's `hybrid` and **Streets** as its `roadmap` (`googleMapTypeForLayer` in `lib/map/googleMapType.ts`), and falls back to the Leaflet canvas with no browser key or once Google fails on the page.
 Since v2.7794 (punch list #395) the card draws in the shared frame `PinsMapFrame`, which holds the provider rule, the **Satellite** and **Streets** switch (`MapViewControl`) and **Time**.
 **Time** (v2.7794, which began as **Older photos**, v2.7693) is the press on a map that frames one spot on the photo archive and opens a row of dates under the map (`MapTimeRow`), from Esri's World Imagery Wayback (`lib/map/olderPhotos.ts`, `walkOlderPhotos`).
-The spot is the open dot, or the only dot, and with several dots and none open the row says *Press a dot to pick the spot.* (`mapTimeSpotFromPins` in `lib/map/mapTime.ts`).
+The spot is the open dot, or the only dot, and with several dots and none open the row asks for a press on a dot (`mapTimeSpotFromPins` and `MAP_TIME_NO_SPOT_WORDS` in `lib/map/mapTime.ts`).
 **Today** is the right end of that row and is today's photograph of the same ground, so a date and Today are one tile layer apart and the map does not move between them.
 A photograph is named by the day it was taken, and **Before** its publishing month until that day is known.
 The Google map is down for as long as Time is on, since Google's terms keep another provider's map off and away from its own, and **Time** again, **Satellite** or **Streets** returns to it.
