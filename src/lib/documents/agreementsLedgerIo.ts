@@ -23,7 +23,8 @@ function applyFilters<T extends Narrowable<T>>(q: T, query: Pick<AgreementsQuery
   let out = q
   const kinds = kindsOfPick(query.kind)
   if (kinds) out = out.in('kind', kinds)
-  out = out.in('state', statesOfPick(query.state))
+  const states = statesOfPick(query.state)
+  if (states) out = out.in('state', states)
   for (const word of agreementFindWords(query.typed)) out = out.ilike('find_text', `*${word}*`)
   return out
 }

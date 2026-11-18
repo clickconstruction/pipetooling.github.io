@@ -1,10 +1,10 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { supabase } from '../../lib/supabase'
-import { useToastContext } from '../../contexts/ToastContext'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
-import { lienHoursAfterHandDay, lienHoursAfterHandDayWords, LIEN_LAST_WORK_CLEAR, lienLastWorkDay, lienLastWorkDayPatch, lienLastWorkDayProblem, lienLastWorkSourceLine, type LienLastWorkJob } from '../../lib/jobs/lienLastWorkDay'
+import { lienHoursAfterHandDay, lienHoursAfterHandDayWords, LIEN_LAST_WORK_CLEAR, lienLastWorkDay, lienLastWorkSourceLine, type LienLastWorkJob } from '../../lib/jobs/lienLastWorkDay'
+import { lienLastWorkClearedWords } from '../../lib/jobs/lienLastWorkDoor'
 import { FinishedDateInput } from '../FinishedDateInput'
-import { LienLastWorkDayConfirm } from './LienLastWorkDayConfirm'
+import { LienLastWorkDayWindow } from './LienLastWorkDayWindow'
+import { useLienLastWorkDayWrite } from './useLienLastWorkDayWrite'
 
 /**
  * The last day of work, on one line (v2.4676): the day, a chip saying where it came from (clock
@@ -14,7 +14,8 @@ import { LienLastWorkDayConfirm } from './LienLastWorkDayConfirm'
  * lien row; the caller re-reads after a save. Since v2.7447 (punch list #335) the day may be earlier
  * than the clock hours, and the window says what that takes off the lien clock. Since v2.4717 *Save the day* opens a window first
  * (`LienLastWorkDayConfirm`): how far the day moves from the hours, the dates that move with it,
- * and the reason, asked there; the write happens on its *Set the day*.
+ * and the reason, asked there; the write happens on its *Set the day*. Since v2.7684 that window and
+ * its write are `LienLastWorkDayWindow`, which the timeline's press under LAST WORK opens too.
  */
 const chip = (tone: 'hand' | 'hours' | 'bill' | 'created'): CSSProperties => ({
   display: 'inline-block',
@@ -68,44 +69,27 @@ export function LienLastWorkDayLine({
   /** Cancel pressed: the Lien window folds the line away again. */
   onCancel?: () => void
 }) {
-  const { showToast } = useToastContext()
   const d = lienLastWorkDay(job)
   const laterHoursDay = lienHoursAfterHandDay(job)
   const [editing, setEditing] = useState(startEditing)
   const [dayDraft, setDayDraft] = useState(d.day ?? '')
-  const [noteDraft, setNoteDraft] = useState(d.note)
-  const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  // Back to the clock hours writes through the same door as the window's Set the day (`useLienLastWorkDayWrite`).
+  const { busy, write } = useLienLastWorkDayWrite(jobId, onSaved)
   useEffect(() => {
     // Back to how the line opened (the Lien window opens it editing) whenever the job or its day changes.
     setEditing(startEditing)
     setConfirming(false)
     setDayDraft(d.day ?? '')
-    setNoteDraft(d.note)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId, job?.lien_last_work_on, job?.last_work_date])
 
-  const write = async (patch: Record<string, unknown>, done: string) => {
-    setBusy(true)
-    const { error } = await supabase.from('jobs_ledger').update(patch as never).eq('id', jobId)
-    setBusy(false)
-    if (error) {
-      showToast(`Could not save the last day of work: ${error.message}`, 'error')
-      return
-    }
-    showToast(done, 'success')
-    setConfirming(false)
-    setEditing(false)
-    onSaved()
-  }
   // Save the day opens the window (v2.4717); the write is its Set the day, after the day and the reason stand.
   const save = () => setConfirming(true)
-  const confirm = () => {
-    const problem = lienLastWorkDayProblem(dayDraft, todayYmd)
-    if (problem || !noteDraft.trim()) return
-    void write(lienLastWorkDayPatch(dayDraft, noteDraft, userId, new Date().toISOString()), `Last day of work set to ${formatYmdMonthDay(dayDraft)}. The lien months follow it; clock hours are untouched.`)
-  }
-  const clear = () => void write(LIEN_LAST_WORK_CLEAR, job?.last_work_date ? 'Back to the clock hours.' : "Back to the job's creation day.")
+  const clear = () =>
+    void write(LIEN_LAST_WORK_CLEAR, lienLastWorkClearedWords(Boolean(job?.last_work_date))).then((saved) => {
+      if (saved) setEditing(false)
+    })
 
   return (
     <div data-testid="lien-last-work" data-source={d.source} style={{ display: 'grid', gap: 6 }}>
@@ -156,16 +140,23 @@ export function LienLastWorkDayLine({
         </div>
       ) : null}
       {confirming ? (
-        <LienLastWorkDayConfirm
-          jobLabel={jobLabel ?? ''}
-          input={{ currentDay: d.day, currentSource: d.source, lastSessionDay: job?.last_work_date ?? null, clockMonths: clockMonths ?? [], noticedMonths: noticedMonths ?? [], affidavitMonths: affidavitMonths ?? [], propertyKind: propertyKind ?? '', todayYmd }}
+        <LienLastWorkDayWindow
+          jobId={jobId}
+          job={job}
+          todayYmd={todayYmd}
+          userId={userId}
+          onSaved={() => {
+            setEditing(false)
+            onSaved()
+          }}
+          onClose={() => setConfirming(false)}
+          jobLabel={jobLabel}
+          clockMonths={clockMonths}
+          noticedMonths={noticedMonths}
+          affidavitMonths={affidavitMonths}
+          propertyKind={propertyKind}
           day={dayDraft}
           onDay={setDayDraft}
-          note={noteDraft}
-          onNote={setNoteDraft}
-          onConfirm={confirm}
-          onCancel={() => setConfirming(false)}
-          busy={busy}
         />
       ) : null}
     </div>

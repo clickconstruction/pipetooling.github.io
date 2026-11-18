@@ -410,6 +410,8 @@ export default function DevelopmentPage() {
   const siteTrips = useSiteTrips({ developmentId, jobIds: shownJobIds, address: siteAddress, enabled: !!data && moneyShown })
   const tripsOpen = siteTrips.shows && !isFolded(lookFolds, 'trips', false)
   const [tripAddSignal, setTripAddSignal] = useState(0)
+  // How many runs of punches the Trips card says look like a trip (PR 5), for the strip's amber words.
+  const [tripOffers, setTripOffers] = useState(0)
   const laborRead = useSiteLabor(shownJobIds, scoreboardOpen || timelineOpen || (moneyShown && plansByDateOpen) || tripsOpen)
   // By date: the site's sets, bids, work days and kept History lines against time; no money, so both doors draw it.
   const plansByDateClock: PlansByDateClock = !moneyShown ? 'closed' : !laborRead || laborRead.state === 'reading' ? 'reading' : laborRead.state === 'failed' ? 'failed' : laborRead.labor.daysKnown ? 'read' : 'closed'
@@ -622,6 +624,8 @@ export default function DevelopmentPage() {
     [shown, data, entries, photoLines, tiedMailLines, newSetLines, tripLines, bidLabel, jobLabel, nowMs],
   )
   const since = useMemo(() => placeSinceLine(feed, lastLooked), [feed, lastLooked])
+  // What shows a trip (punch list #379, PR 5): the day of each History line that is not a trip's own.
+  const tripHistoryDays = useMemo(() => feed.filter((l) => l.kind !== 'trip').map((l) => calendarYmdInAppTzFromIso(l.at)), [feed])
   // The runs fold (the Gray Fox spike, 2026-11-02): one act's many lines read as one with the count; a search sees every line.
   const feedShown = useMemo(() => {
     const narrowed = narrowLines(feed, histChip, histPiece)
@@ -1198,7 +1202,7 @@ export default function DevelopmentPage() {
     },
     photos: photosLookWords(sitePhotos.census, door),
     // The seventh look, only on a site with a trip or far from the shop.
-    ...(siteTrips.shows ? { trips: tripsStripWords(siteTrips.records ?? [], todayYmdInAppTz()) } : {}),
+    ...(siteTrips.shows ? { trips: tripsStripWords(siteTrips.records ?? [], todayYmdInAppTz(), tripOffers) } : {}),
   }
 
   // The newest bid: where the GC contact and the estimator live when the head has none (the owner, 2026-10-28: *do all 8*, item 4).
@@ -1793,6 +1797,8 @@ export default function DevelopmentPage() {
             phone={phone}
             foldFor={(line) => ({ open: !isFolded(lookFolds, 'trips', false), onToggle: () => toggleLook('trips'), line })}
             addSignal={tripAddSignal}
+            historyDays={tripHistoryDays}
+            onOffers={setTripOffers}
           />
         ) : null}
       </div>

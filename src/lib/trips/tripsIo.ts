@@ -1,13 +1,16 @@
 /**
- * The reads and the two writes behind a site's trips (punch list #379, PR 3; migration 20261117234500).
+ * The reads and the writes behind a site's trips (punch list #379, PR 3; migration 20261117234500).
  * A site's trips are few, so one read holds them whole, each with its people and its jobs. A trip saves
  * through the one door, `trip_save`, whole or not at all, and a delete takes its people and jobs with it.
- * Nothing here reads or writes a clock row for change: the punches are read, never written.
+ * The days somebody said were **Not a trip** (PR 5) are read by the site, kept one row a person, and
+ * deleted by their ids, which is the undo. Nothing here reads or writes a clock row for change: the
+ * punches are read, never written.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { PUNCH_COLUMNS, type PunchRow } from './tripHourRows'
+import { TRIP_DISMISSAL_SELECT, type TripDismissalInsert, type TripDismissalRow } from './tripOffers'
 import { tripFromRow, tripSavePayload, TRIP_SELECT, type TripRecord, type TripRosterPerson, type TripRow } from './tripRecord'
 
 // The tables are younger than the generated types; the next types PR removes this cast.
@@ -65,4 +68,30 @@ export async function readSitePunches(jobIds: ReadonlyArray<string>): Promise<Pu
     (chunk, from, to) => db.from('clock_sessions').select(PUNCH_COLUMNS).in('job_ledger_id', chunk).is('rejected_at', null).is('revoked_at', null).order('id').range(from, to) as unknown as Paged<PunchRow>,
     'read the punches on the site’s jobs',
   )
+}
+
+/** The days on this site somebody said were not a trip, so Looks like a trip does not offer them again. */
+export async function readSiteDismissals(developmentId: string): Promise<TripDismissalRow[]> {
+  return fetchAllRows<TripDismissalRow>((from, to) => db.from('trip_dismissals').select(TRIP_DISMISSAL_SELECT).eq('development_id', developmentId).order('created_at').order('id').range(from, to) as unknown as Paged<TripDismissalRow>, 'read the days said to be not a trip')
+}
+
+/** Remember Not a trip, one row a person, said by the signed-in user. The rows come back with their ids, for the undo. */
+export async function insertTripDismissals(rows: ReadonlyArray<TripDismissalInsert>): Promise<TripDismissalRow[]> {
+  if (rows.length === 0) return []
+  const { data: auth } = await supabase.auth.getSession()
+  const userId = auth.session?.user.id
+  if (!userId) throw new Error('Sign in first.')
+  const { data, error } = await db
+    .from('trip_dismissals')
+    .insert(rows.map((r) => ({ ...r, dismissed_by: userId })))
+    .select(TRIP_DISMISSAL_SELECT)
+  if (error) throw error
+  return (data ?? []) as unknown as TripDismissalRow[]
+}
+
+/** Take a Not a trip back: the rows go, and the days are offered again. */
+export async function deleteTripDismissals(ids: ReadonlyArray<string>): Promise<void> {
+  if (ids.length === 0) return
+  const { error } = await db.from('trip_dismissals').delete().in('id', [...ids])
+  if (error) throw error
 }

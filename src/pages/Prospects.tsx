@@ -92,6 +92,9 @@ import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
 import { ProspectsResearchTab } from '../components/prospects/ProspectsResearchTab'
 import { canResearchPermits } from '../lib/research/permitResearch'
 import { permitsLinkCleared } from '../lib/research/permitsLink'
+import { ProspectCallbackModal } from '../components/prospects/ProspectCallbackModal'
+import { ProspectMyTimeModal } from '../components/prospects/ProspectMyTimeModal'
+import { ProspectTimerHistoryModal } from '../components/prospects/ProspectTimerHistoryModal'
 import { SubsBoard } from '../components/prospects/SubsBoard'
 import { SubsLaneList } from '../components/prospects/SubsLaneList'
 import { SubsNeedsPanel } from '../components/prospects/SubsNeedsPanel'
@@ -125,7 +128,7 @@ import {
   substituteCopyPlaceholders,
   type CopyTemplateKey,
 } from '../lib/prospects/prospectCopyTemplates'
-import { formatDateTime, formatInteractionType, formatTimerButtonName, formatTimerSeconds, formatWebsiteDisplay, getWebsiteHref } from '../lib/prospects/prospectFormat'
+import { formatDateTime, formatInteractionType, formatTimerSeconds, formatWebsiteDisplay, getWebsiteHref } from '../lib/prospects/prospectFormat'
 import { PROSPECT_COLUMNS, type Prospect, type ProspectComment } from '../lib/prospects/prospectRow'
 
 const EnvelopeIcon = () => (
@@ -355,9 +358,6 @@ export default function Prospects() {
   const [editOpenedWith, setEditOpenedWith] = useState<Record<string, string>>({})
 
   // Callback form state
-  const [callbackDate, setCallbackDate] = useState('')
-  const [callbackTime, setCallbackTime] = useState('12:00')
-  const [callbackNote, setCallbackNote] = useState('')
 
   // Prospect List state
   const [prospectListProspects, setProspectListProspects] = useState<Prospect[]>([])
@@ -389,13 +389,9 @@ export default function Prospects() {
 
   // Timer history modal
   const [timerHistoryModalOpen, setTimerHistoryModalOpen] = useState(false)
-  const [timerEvents, setTimerEvents] = useState<Array<{ id: string; created_at: string | null; timer_seconds: number; button_name: string; prospect: { company_name: string | null } | null }>>([])
-  const [timerEventsLoading, setTimerEventsLoading] = useState(false)
 
   // My time modal
   const [myTimeModalOpen, setMyTimeModalOpen] = useState(false)
-  const [myTimeStats, setMyTimeStats] = useState<{ today: number; yesterday: number; last7Days: number; lifetime: number } | null>(null)
-  const [myTimeStatsLoading, setMyTimeStatsLoading] = useState(false)
   const [myTimeTodaySeconds, setMyTimeTodaySeconds] = useState(0)
 
   // Total time spent on current prospect (sum of past timer events for this prospect)
@@ -931,53 +927,6 @@ export default function Prospects() {
     }
     if (loadCommentsForProspectRef.current !== prospectId) return
     setComments((data ?? []) as ProspectComment[])
-  }
-
-  async function loadTimerEvents() {
-    if (!authUser?.id) return
-    setTimerEventsLoading(true)
-    const { data, error } = await (supabase as any)
-      .from('prospect_timer_events')
-      .select('id, created_at, timer_seconds, button_name, prospect:prospects(company_name)')
-      .eq('user_id', authUser.id)
-      .order('created_at', { ascending: false })
-      .limit(100)
-    if (error) {
-      setTimerEvents([])
-    } else {
-      const raw = (data ?? []) as Array<{ id: string; created_at: string | null; timer_seconds: number; button_name: string; prospect: { company_name: string | null } | { company_name: string | null }[] | null }>
-      const rows = raw.map((r) => ({
-        id: r.id,
-        created_at: r.created_at,
-        timer_seconds: r.timer_seconds,
-        button_name: r.button_name,
-        prospect: Array.isArray(r.prospect) ? r.prospect[0] ?? null : r.prospect,
-      }))
-      setTimerEvents(rows)
-    }
-    setTimerEventsLoading(false)
-  }
-
-  async function loadMyTimeStats() {
-    if (!authUser?.id) return
-    setMyTimeStatsLoading(true)
-    const { startOfToday, endOfToday, startOfYesterday, sevenDaysAgo } = myTimeWindows(new Date())
-    const sum = sumTimerSeconds
-
-    const [todayRes, yesterdayRes, last7Res, lifetimeRes] = await Promise.all([
-      (supabase as any).from('prospect_timer_events').select('timer_seconds').eq('user_id', authUser.id).gte('created_at', startOfToday.toISOString()).lte('created_at', endOfToday.toISOString()),
-      (supabase as any).from('prospect_timer_events').select('timer_seconds').eq('user_id', authUser.id).gte('created_at', startOfYesterday.toISOString()).lt('created_at', startOfToday.toISOString()),
-      (supabase as any).from('prospect_timer_events').select('timer_seconds').eq('user_id', authUser.id).gte('created_at', sevenDaysAgo.toISOString()),
-      (supabase as any).from('prospect_timer_events').select('timer_seconds').eq('user_id', authUser.id),
-    ])
-
-    setMyTimeStats({
-      today: sum((todayRes.data ?? []) as { timer_seconds: number }[]),
-      yesterday: sum((yesterdayRes.data ?? []) as { timer_seconds: number }[]),
-      last7Days: sum((last7Res.data ?? []) as { timer_seconds: number }[]),
-      lifetime: sum((lifetimeRes.data ?? []) as { timer_seconds: number }[]),
-    })
-    setMyTimeStatsLoading(false)
   }
 
   async function loadMyTimeToday() {
@@ -1944,14 +1893,10 @@ export default function Prospects() {
 
   function openCallbackModal() {
     takeCallingLock('callback')
-    const now = new Date()
-    setCallbackDate(localCalendarDayKey(now))
-    setCallbackTime(now.toTimeString().slice(0, 5))
-    setCallbackNote('')
     setCallbackModalOpen(true)
   }
 
-  async function saveCallback() {
+  async function saveCallback(callbackDate: string, callbackTime: string, callbackNote: string) {
     if (!currentProspect || !authUser?.id || saving) return
     const dateTime = new Date(`${callbackDate}T${callbackTime}`).toISOString()
     const title = runCallbackTitle(currentProspect.company_name, currentProspect.contact_name)
@@ -3152,7 +3097,6 @@ export default function Prospects() {
                           type="button"
                           onClick={() => {
                             setTimerHistoryModalOpen(true)
-                            loadTimerEvents()
                           }}
                           style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem', color: 'var(--text-muted)', fontFamily: 'ui-monospace, monospace', background: 'none', border: '1px solid transparent', borderRadius: 4, cursor: 'pointer', padding: '0.125rem 0.25rem' }}
                           title="Time on this prospect this session (resets when you leave and return). Click to view history."
@@ -3486,7 +3430,6 @@ export default function Prospects() {
                 type="button"
                 onClick={() => {
                   setMyTimeModalOpen(true)
-                  loadMyTimeStats()
                 }}
                 style={{
                   padding: 0,
@@ -4395,83 +4338,7 @@ export default function Prospects() {
         </div>
       )}
 
-      {/* Callback modal */}
-      {callbackModalOpen && currentProspect && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-          onClick={() => !saving && setCallbackModalOpen(false)}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              maxWidth: 400,
-              width: '90%',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem 0' }}>Set Call back date and time</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Date</span>
-                <input
-                  type="date"
-                  value={callbackDate}
-                  onChange={(e) => setCallbackDate(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Time</span>
-                <input
-                  type="time"
-                  value={callbackTime}
-                  onChange={(e) => setCallbackTime(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Note</span>
-                <input
-                  type="text"
-                  value={callbackNote}
-                  onChange={(e) => setCallbackNote(e.target.value)}
-                  placeholder="Optional note (e.g. discuss pricing)"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                />
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-              <button
-                type="button"
-                onClick={saveCallback}
-                disabled={saving}
-                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={() => !saving && setCallbackModalOpen(false)}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {callbackModalOpen && currentProspect && <ProspectCallbackModal saving={saving} onSave={saveCallback} onClose={() => setCallbackModalOpen(false)} />}
 
       {/* Copy template edit modal */}
       {editingCopyTemplateKey && (
@@ -4656,159 +4523,10 @@ export default function Prospects() {
         </div>
       )}
 
-      {/* Timer history modal */}
-      {timerHistoryModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-          onClick={() => setTimerHistoryModalOpen(false)}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              maxWidth: 480,
-              maxHeight: 'min(80vh, 100%)',
-              width: '90%',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem 0' }}>Timer history</h3>
-            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              Past instances when you clicked No Longer a Fit, Next Prospect, or Can&apos;t reach.
-            </p>
-            {timerEventsLoading ? (
-              <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
-            ) : timerEvents.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)' }}>No events yet.</p>
-            ) : (
-              <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Date & time</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Timer</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Button</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Prospect</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {timerEvents.map((e) => (
-                      <tr key={e.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '0.5rem 0.75rem' }}>{formatDateTime(e.created_at)}</td>
-                        <td style={{ padding: '0.5rem 0.75rem', fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace' }}>{formatTimerSeconds(e.timer_seconds)}</td>
-                        <td style={{ padding: '0.5rem 0.75rem' }}>{formatTimerButtonName(e.button_name)}</td>
-                        <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)' }}>{e.prospect?.company_name ?? '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            <div style={{ marginTop: '1rem' }}>
-              <button
-                type="button"
-                onClick={() => setTimerHistoryModalOpen(false)}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {timerHistoryModalOpen && <ProspectTimerHistoryModal userId={authUser?.id ?? null} onClose={() => setTimerHistoryModalOpen(false)} />}
 
-      {/* My time modal */}
       {myTimeModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-          onClick={() => setMyTimeModalOpen(false)}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              maxWidth: 360,
-              width: '90%',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem 0' }}>My time prospecting</h3>
-            {myTimeStatsLoading ? (
-              <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
-            ) : myTimeStats ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9375rem' }}>
-                {(() => {
-                  const sessionBonus = activeTab === 'follow-up' ? followUpTimerSeconds : 0
-                  const today = myTimeStats.today + sessionBonus
-                  const last7 = myTimeStats.last7Days + sessionBonus
-                  const lifetime = myTimeStats.lifetime + sessionBonus
-                  return (
-                    <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Today</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500, color: 'var(--text-green-600)' }}>
-                          {today === 0 ? '—' : formatTimerSeconds(today)}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Yesterday</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500 }}>
-                          {myTimeStats.yesterday === 0 ? '—' : formatTimerSeconds(myTimeStats.yesterday)}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Last 7 days</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500, color: 'var(--text-green-600)' }}>
-                          {last7 === 0 ? '—' : formatTimerSeconds(last7)}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Lifetime</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500, color: 'var(--text-green-600)' }}>
-                          {lifetime === 0 ? '—' : formatTimerSeconds(lifetime)}
-                        </span>
-                      </div>
-                    </>
-                  )
-                })()}
-              </div>
-            ) : null}
-            <div style={{ marginTop: '1rem' }}>
-              <button
-                type="button"
-                onClick={() => setMyTimeModalOpen(false)}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <ProspectMyTimeModal userId={authUser?.id ?? null} liveSeconds={activeTab === 'follow-up' ? followUpTimerSeconds : 0} onClose={() => setMyTimeModalOpen(false)} />
       )}
 
       {scriptOpen && <GcCallScriptWindow onClose={() => setScriptOpen(false)} job={run ? { trade: run.trade, project: plansPick?.name ?? null } : null} />}

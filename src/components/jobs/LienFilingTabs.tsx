@@ -50,6 +50,9 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { EMPTY_SERVICE_COPY, LIEN_CLERK_PAGE_NOTE, LIEN_SERVICE_PROOF_WORDS, heldServiceWords, noticeSendsWithReceipts, serviceCopyDraft, serviceProofLines, serviceSavedWords, serviceSends, type ServiceCopyDraft } from '../../lib/jobs/lienServiceProof'
 import { LienReceiptPhotoPress } from './LienReceiptPhotoPress'
+import LienFilingMailProof from './LienFilingMailProof'
+import { readJobMailedCopies, type JobMailedCopies } from '../../lib/jobs/lienMailProofIo'
+import { lienServeHasContractor } from '../../lib/jobs/lienServeNumbers'
 import { LienServeCopiesPress } from './LienServeCopiesPress'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -206,6 +209,18 @@ export default function LienFilingTabs({
 
   const property = useMemo(() => resolveLienProperty(linkedAddress, jobOwnerRow), [linkedAddress, jobOwnerRow])
   const live = useMemo(() => liveFilings(filings), [filings])
+  // What went out (`lienMailProof.ts`): each recorded notice's mailed files, read off its desk item. A read that fails leaves the saved copy alone to show.
+  const [jobCopies, setJobCopies] = useState<JobMailedCopies>({})
+  useEffect(() => {
+    let on = true
+    readJobMailedCopies(job.id).then(
+      (rows) => on && setJobCopies(rows),
+      () => undefined,
+    )
+    return () => {
+      on = false
+    }
+  }, [job.id, filings])
   const liveNotices = live.filter((f) => f.kind === 'notice_53_056')
   const filedAffidavit = live.find((f) => f.kind === 'affidavit' && f.filed_at) ?? null
   /** Open the service step on what the filing already holds, so a day recorded alone can take its receipts later. */
@@ -909,6 +924,7 @@ export default function LienFilingTabs({
         url={draft.receiptUrl}
         compact={compact}
         onSaved={(url) => update((d) => ({ ...d, receiptUrl: url }))}
+        onTakeOff={() => update((d) => ({ ...d, receiptUrl: '' }))}
         onRead={(tracking) => update((d) => ({ ...d, tracking }))}
       />
     )
@@ -976,42 +992,17 @@ export default function LienFilingTabs({
               }
               return (
                 <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }} data-testid="filing-document">
-                  {url ? <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>{words} ›</a> : words ? <span style={{ color: 'var(--text-muted)' }}>{words}</span> : null}
+                  {!url && words ? <span style={{ color: 'var(--text-muted)' }}>{words}</span> : null}
                   <button type="button" onClick={() => { setDocEditId(f.id); setDocEdit({ url: doc.document_url ?? '', note: doc.document_note ?? '' }) }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem', textDecoration: 'underline dotted' }}>
-                    {url || words ? 'change' : 'link the saved copy'}
+                    {url ? 'change the saved copy' : words ? 'change' : 'link the saved copy'}
                   </button>
                 </span>
               )
             })()}
             {(f.kind === 'notice_53_056' || f.kind === 'retainage_53_057') && sendsTrackingOwed(f.sends).length ? <LienTrackingOwedEditor filing={f} onSaved={onChanged} compact /> : null}
-            {/* A recorded notice's receipt photos (v2.7557), each beside whose copy it is. */}
-            {f.kind === 'notice_53_056' && serviceProofLines(f.sends).some((l) => l.receiptUrl) ? (
-              <span data-lien-notice-receipts style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.6rem', alignItems: 'center', color: 'var(--text-muted)' }}>
-                {serviceProofLines(f.sends)
-                  .filter((l) => l.receiptUrl)
-                  .map((l) => (
-                    <span key={l.recipient}>
-                      {l.who}{' '}
-                      <a href={l.receiptUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>receipt ›</a>
-                    </span>
-                  ))}
-              </span>
-            ) : null}
-            {/* The mail receipts of a filed affidavit's copies (punch list #314), and the door to add them once the day is recorded. */}
+            {/* The door to a served affidavit's mail numbers (punch list #314). The numbers and receipts themselves show in What went out, under the row. */}
             {f.kind === 'affidavit' && f.filed_at ? (
               <span data-lien-service-proof style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.6rem', alignItems: 'center', color: 'var(--text-muted)' }}>
-                {serviceProofLines(f.sends).map((l) => (
-                  <span key={l.recipient}>
-                    {l.who}
-                    {l.tracking ? ` ${l.tracking}` : ''}
-                    {l.receiptUrl ? (
-                      <>
-                        {' '}
-                        <a href={l.receiptUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>receipt ›</a>
-                      </>
-                    ) : null}
-                  </span>
-                ))}
                 {f.served_at && activeTab === 'affidavit' && filedAffidavit?.id === f.id && recordStep !== 'affidavit_service' ? (
                   <button type="button" onClick={openServiceStep} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem', textDecoration: 'underline dotted' }}>
                     {serviceProofLines(f.sends).length > 0 ? LIEN_SERVICE_PROOF_WORDS.change : LIEN_SERVICE_PROOF_WORDS.addLater}
@@ -1033,6 +1024,21 @@ export default function LienFilingTabs({
                 </button>
               )}
             </span>
+            {/* What went out (`lienMailProof.ts`): every mailed file with its own link, each envelope's number and receipt, and the receipt press. */}
+            <div style={{ flexBasis: '100%', minWidth: 0 }}>
+              <LienFilingMailProof
+                filing={f}
+                item={jobCopies[f.id] ?? null}
+                jobId={job.id}
+                jobNumber={jobNumber}
+                hasContractor={f.kind === 'affidavit' ? lienServeHasContractor({ isSub, filing: f }) : undefined}
+                isMobile={isMobile}
+                canEdit
+                userId={authUser?.id ?? null}
+                todayYmd={todayYmd()}
+                onChanged={onChanged}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -1138,7 +1144,7 @@ export default function LienFilingTabs({
         <span style={recordSheetLabel}>{LIEN_SERVICE_PROOF_WORDS.number}</span>
         <input type="text" inputMode="numeric" value={draft.tracking} onChange={(e) => set({ ...draft, tracking: e.target.value })} placeholder={LIEN_SERVICE_PROOF_WORDS.numberPlaceholder} aria-label={`${label}, certified mail number`} autoComplete="off" style={recordSheetField} />
       </label>
-      <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} onSaved={(url) => set({ ...draft, receiptUrl: url })} />
+      <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} onSaved={(url) => set({ ...draft, receiptUrl: url })} onTakeOff={() => set({ ...draft, receiptUrl: '' })} />
     </fieldset>
   )
   const recordSheet = !isMobile ? null : activeTab === 'notice' && isSub && recordStep === 'notice_sends' ? (
@@ -1378,7 +1384,7 @@ export default function LienFilingTabs({
       <div data-lien-service-copy={of} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.5rem', alignItems: 'center', fontSize: '0.75rem', margin: '0.35rem 0' }}>
         <span style={{ fontWeight: 700, minWidth: '11.5rem' }}>{label}</span>
         <input type="text" inputMode="numeric" value={draft.tracking} onChange={(e) => set({ ...draft, tracking: e.target.value })} placeholder={LIEN_SERVICE_PROOF_WORDS.number.toLowerCase()} aria-label={`${label}, certified mail number`} autoComplete="off" style={{ flex: '1 1 11rem', minWidth: 0, padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
-        <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} compact onSaved={(url) => set({ ...draft, receiptUrl: url })} />
+        <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} compact onSaved={(url) => set({ ...draft, receiptUrl: url })} onTakeOff={() => set({ ...draft, receiptUrl: '' })} />
       </div>
     )
     const serviceRecordBox = filedAffidavit ? (

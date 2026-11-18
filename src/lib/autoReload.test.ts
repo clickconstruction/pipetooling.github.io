@@ -2,13 +2,18 @@
 import { describe, expect, it } from 'vitest'
 import {
   AUTO_RELOAD_KEY,
+  LANDING_SETTLE_MS,
+  LANDING_WAIT_MAX_MS,
+  RELOAD_FALLBACK_MS,
   decideAutoReload,
+  decideReloadLanding,
   isDialogOpen,
   isEditableFocused,
   msSinceLastAutoReload,
   recordAutoReload,
   routeMoveKey,
   type AutoReloadSnapshot,
+  type ReloadLandingSnapshot,
 } from './autoReload'
 
 const quiet: AutoReloadSnapshot = {
@@ -61,6 +66,82 @@ describe('decideAutoReload', () => {
     expect(decideAutoReload({ ...idle, idleForMs: 10 * 60_000 }).reload).toBe(false)
     expect(decideAutoReload({ ...idle, idleForMs: 31 * 60_000 }).reload).toBe(true)
     expect(decideAutoReload({ ...idle, idleForMs: 31 * 60_000, unsavedHolds: 1 }).reload).toBe(false)
+  })
+})
+
+describe('decideReloadLanding, the second look when the reload would fire', () => {
+  /** An automatic reload whose new worker has just taken over, with the page as quiet as it was. */
+  const landing: ReloadLandingSnapshot = {
+    asked: false,
+    workerTookOver: true,
+    msSinceDecision: 600,
+    touchedSinceDecision: false,
+    editableFocused: false,
+    dialogOpen: false,
+    unsavedHolds: 0,
+    inFlightWrites: 0,
+    msSinceWriteSettled: null,
+  }
+
+  it('still quiet: it reloads the moment the new worker takes over', () => {
+    expect(decideReloadLanding(landing)).toEqual({ act: 'reload', reason: 'still quiet' })
+  })
+  it('waits for the worker, and no longer than the fallback', () => {
+    expect(decideReloadLanding({ ...landing, workerTookOver: false, msSinceDecision: 1_000 })).toEqual({
+      act: 'wait',
+      reason: 'the new worker has not taken over yet',
+      lookAgainInMs: RELOAD_FALLBACK_MS - 1_000,
+    })
+    expect(decideReloadLanding({ ...landing, workerTookOver: false, msSinceDecision: RELOAD_FALLBACK_MS }).act).toBe('reload')
+  })
+  it('a write that began after the decision is waited out, never cut', () => {
+    const midWrite = decideReloadLanding({ ...landing, inFlightWrites: 1, msSinceDecision: 2_000 })
+    expect(midWrite).toEqual({ act: 'wait', reason: '1 write(s) in flight', lookAgainInMs: LANDING_WAIT_MAX_MS - 2_000 })
+    // The fallback running out does not fire over it either.
+    expect(decideReloadLanding({ ...landing, workerTookOver: false, inFlightWrites: 1, msSinceDecision: RELOAD_FALLBACK_MS }).act).toBe('wait')
+  })
+  it('a write that just came back holds the reload a beat: the next one of a chain may follow', () => {
+    expect(decideReloadLanding({ ...landing, msSinceWriteSettled: 400 })).toEqual({
+      act: 'wait',
+      reason: 'a write just came back, another may follow',
+      lookAgainInMs: LANDING_SETTLE_MS - 400,
+    })
+    expect(decideReloadLanding({ ...landing, msSinceWriteSettled: LANDING_SETTLE_MS }).act).toBe('reload')
+  })
+  it('a write still in flight half a minute on is not waited out: the pill takes over', () => {
+    expect(decideReloadLanding({ ...landing, inFlightWrites: 2, msSinceDecision: LANDING_WAIT_MAX_MS })).toEqual({
+      act: 'stand-down',
+      reason: '2 write(s) still in flight',
+    })
+  })
+  it('a touch, a dialog, a focused field or an unsaved hold stands it down to the pill', () => {
+    expect(decideReloadLanding({ ...landing, touchedSinceDecision: true }).act).toBe('stand-down')
+    expect(decideReloadLanding({ ...landing, dialogOpen: true }).act).toBe('stand-down')
+    expect(decideReloadLanding({ ...landing, editableFocused: true }).act).toBe('stand-down')
+    expect(decideReloadLanding({ ...landing, unsavedHolds: 1 }).act).toBe('stand-down')
+  })
+  it('stands down at once, before the worker takes over, and a touch outranks a write in flight', () => {
+    expect(decideReloadLanding({ ...landing, workerTookOver: false, msSinceDecision: 50, touchedSinceDecision: true }).act).toBe('stand-down')
+    expect(decideReloadLanding({ ...landing, touchedSinceDecision: true, inFlightWrites: 1 }).act).toBe('stand-down')
+  })
+  it('the pill’s own Reload press is held by nothing but the worker', () => {
+    const busy: ReloadLandingSnapshot = {
+      ...landing,
+      asked: true,
+      touchedSinceDecision: true,
+      dialogOpen: true,
+      editableFocused: true,
+      unsavedHolds: 1,
+      inFlightWrites: 1,
+      msSinceWriteSettled: 0,
+    }
+    expect(decideReloadLanding(busy)).toEqual({ act: 'reload', reason: 'they pressed Reload' })
+    expect(decideReloadLanding({ ...busy, workerTookOver: false, msSinceDecision: 100 })).toEqual({
+      act: 'wait',
+      reason: 'the new worker has not taken over yet',
+      lookAgainInMs: RELOAD_FALLBACK_MS - 100,
+    })
+    expect(decideReloadLanding({ ...busy, workerTookOver: false, msSinceDecision: RELOAD_FALLBACK_MS }).act).toBe('reload')
   })
 })
 

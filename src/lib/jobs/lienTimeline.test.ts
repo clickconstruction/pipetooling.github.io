@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienTimeline, keepDatesWhole, LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienFirmMoveWords, lienFirmNext, lienFirmWaitingOn, lienTimelineFoldSummary, lienNoticeOpensOn, lienOpensWords, lienWindowSpan, suitDeadlineFor, type LienTimelineInput } from './lienTimeline'
+import { buildLienTimeline, keepDatesWhole, LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienFirmMoveWords, lienFirmNext, lienFirmWaitingOn, lienLastWorkStepIsStandIn, lienTimelineFoldSummary, lienNoticeOpensOn, lienOpensWords, lienWindowSpan, suitDeadlineFor, type LienTimelineInput } from './lienTimeline'
 
 const TODAY = '2026-09-23'
 
@@ -505,5 +505,20 @@ describe('the last day of work set by hand (v2.4676)', () => {
     expect(t.steps[0]!.words).toBe('last day set by hand')
     const c = buildLienTimeline(base({ lastMonth: '2026-08', lastMonthFromCreation: true }))
     expect(c.steps[0]!.words).toBe('dated from the job’s creation · no clock hours')
+  })
+})
+
+describe('lienLastWorkStepIsStandIn (v2.7684) — the LAST WORK stop whose day no one has said', () => {
+  const lastWork = (over: Partial<LienTimelineInput>) => buildLienTimeline(base(over)).steps.find((s) => s.kind === 'last_work')!
+  it('a month from the job’s creation or from a bill is a stand-in; clock hours and a hand day are not', () => {
+    expect(lienLastWorkStepIsStandIn(lastWork({ lastMonthFromCreation: true }))).toBe(true)
+    expect(lienLastWorkStepIsStandIn(lastWork({ lastMonthFromCreation: true, lastMonthFromBill: true }))).toBe(true)
+    expect(lienLastWorkStepIsStandIn(lastWork({}))).toBe(false)
+    expect(lienLastWorkStepIsStandIn(lastWork({ lastMonthByHand: true }))).toBe(false)
+    expect(lienLastWorkStepIsStandIn(lastWork({ lastMonthByHand: true, laterHoursDay: '2026-09-02' }))).toBe(false)
+  })
+  it('only the LAST WORK stop is asked: a notice month dated from creation is not one', () => {
+    const t = buildLienTimeline(base({ lastMonthFromCreation: true, months: [{ key: '2026-08', deadline: '2026-11-16', fromCreation: true, outcome: 'open', at: '' }] }))
+    expect(t.steps.filter(lienLastWorkStepIsStandIn).map((s) => s.key)).toEqual(['last_work'])
   })
 })

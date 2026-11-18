@@ -141,6 +141,8 @@ import { LienDeskPaperTabs, LienDeskViewTabs } from './LienDeskViewTabs'
 import { LienDeskDraftFooter, type LienDraftFooterContext } from './LienDeskDraftFooter'
 import { LienDeskAwaitingFooter, LienDeskHeldFooter, LienDeskPrintedFooter, LienDeskReadyFooter, type LienNoticeFooterContext } from './LienDeskLeaderFooters'
 import { LienDeskSentFooter } from './LienDeskSentFooter'
+import LienFilingMailProof from './LienFilingMailProof'
+import { lienMailProof } from '../../lib/jobs/lienMailProof'
 import { useLienCodeSigner } from './useLienCodeSigner'
 import { useLienDeskPayPage } from './useLienDeskPayPage'
 import { useLienDeskRunner } from './useLienDeskRunner'
@@ -2041,7 +2043,9 @@ export default function LienDesk({
     // A stop that went out shows the paper as it went out — the filing's own snapshot — and its stored document.
     const asSent = (f: JobLienFilingRow, words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
       const page = filingSnapshotPage(f, { issuer, jobNumber: jobNo })
-      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
+      // What went out (`lienMailProof.ts`): the mailed files off the notice's own item, and each envelope's receipt.
+      const proof = lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, mailedCopies: data.items.find((it) => it.sent_filing_id === f.id)?.mailed_copies, servedAt: f.served_at, hasContractor: Boolean(selected.gcCustomerId) })
+      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
     }
     const kind = lienStopPaperKind(step)
     if (kind === 'notice') {
@@ -2314,6 +2318,7 @@ export default function LienDesk({
           setRetSelectedJobId(jobId)
         }}
         onOpenLastWork={office ? onOpenCalendarLastWork : undefined}
+        onLastWorkChanged={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())}
         footerEl={affFooterEl}
       />
     ) : (
@@ -2559,7 +2564,7 @@ export default function LienDesk({
       footer = <LienDeskHeldFooter ctx={footCtx} />
     } else if (state === 'sent') {
       footer = (
-        <LienDeskSentFooter forms={sentForms} facts={sentFacts} signoff={signoff} signoffLine={signoffLine} legalSignoff={legalSignoff} data={data} jobId={selected.jobId} job={job} gc={gc} office={office} busy={busy} run={run} authName={authName} onChanged={onChanged} onOpenOwnerCall={() => setOwnerCallOpen(true)} doors={<>{courtesyUnrecordedBand}{courtesyDoor}{letterTwoDoor}</>} />
+        <LienDeskSentFooter forms={sentForms} facts={sentFacts} signoff={signoff} signoffLine={signoffLine} legalSignoff={legalSignoff} data={data} jobId={selected.jobId} job={job} gc={gc} office={office} busy={busy} run={run} authName={authName} onChanged={onChanged} onOpenOwnerCall={() => setOwnerCallOpen(true)} doors={<>{courtesyUnrecordedBand}{courtesyDoor}{letterTwoDoor}</>} proof={sentFacts.sentFiling ? <LienFilingMailProof filing={sentFacts.sentFiling} item={sentFacts.first ? { itemId: sentFacts.first.id, copies: sentFacts.first.mailed_copies } : null} jobId={selected.jobId} jobNumber={job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''} isMobile={isMobile} canEdit={office} userId={authUserId} todayYmd={todayYmd} onChanged={onChanged} /> : null} />
       )
     } else if (state === 'missed') {
       footer = (

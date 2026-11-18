@@ -23,6 +23,9 @@ export const STATED_NEED_LABEL = 'What they said they need'
 /** The ledger column header (desktop table) and the inline label (phone list). */
 export const STATED_NEED_COLUMN = 'Said they need'
 
+/** A minted code's card on a bill, when nobody wrote down what the code was for: a value's fallback, not an empty list. */
+export const STATED_NEED_NONE_WRITTEN = 'Nothing written down when the code was minted.'
+
 /** The placeholder on both doors — concrete, so the box asks for the material and not for "notes". */
 export const STATED_NEED_PLACEHOLDER = 'e.g. 40 ft of ¾" PEX and two stop valves · a 2" drain machine · "just fittings"'
 

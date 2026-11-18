@@ -125,6 +125,7 @@ sticker-names
 job-account-not-needed-stamp
 job-note-tags
 task-note-tags
+tell-the-dev
 sub-over-to-credit
 sub-gather-sendings
 property-lien-public-answer

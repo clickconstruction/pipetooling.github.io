@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { agingCellAccountSplit, agingCellJobStateWords, agingCellJobsLine, groupAgingCellByJob, type AgingCellRowLike } from './agingCellByJob'
+import { AGING_CELL_NO_JOB_HEADING, AGING_MOVE_EMAIL_NO_ACCOUNT, agingCellAccountSplit, agingCellJobStateWords, agingCellJobsLine, agingMoveNoAccountLine, agingMoveNoRepLine, formatYmdLocal, groupAgingCellByJob, type AgingCellRowLike } from './agingCellByJob'
 import type { JobSupplyHouseAccountRow } from './jobSupplyHouseAccounts'
 
 const HOUSE = 'house-moore'
@@ -115,5 +115,32 @@ describe('agingCellJobsLine', () => {
     expect(agingCellJobsLine([on, open, none, none], 'Reece')).toBe('4 jobs: 1 all on a job account, 1 with an account open, 2 with no job account at Reece yet.')
     expect(agingCellJobsLine([none, open], null)).toBe('2 jobs: 1 with an account open, 1 with no job account at the house yet.')
     expect(agingCellJobsLine([], 'Reece')).toBe('')
+  })
+})
+
+describe('the window\'s standing words', () => {
+  it('keeps the words the window always drew', () => {
+    expect(AGING_CELL_NO_JOB_HEADING).toBe('No job yet')
+    expect(AGING_MOVE_EMAIL_NO_ACCOUNT).toBe('No account on this job yet — please open one with it.')
+    expect(agingMoveNoRepLine('Ridge Supply')).toBe('No job-accounts rep with an email on file for Ridge Supply — add one on the house, or call.')
+  })
+
+  it('names the rep to ask, or the house when there is no rep or no name', () => {
+    expect(agingMoveNoAccountLine(' Dana ')).toBe('No job account on record for this job — ask Dana to open one on the same call.')
+    expect(agingMoveNoAccountLine(null)).toBe('No job account on record for this job — ask the house to open one on the same call.')
+    expect(agingMoveNoAccountLine('  ')).toBe('No job account on record for this job — ask the house to open one on the same call.')
+  })
+})
+
+describe('formatYmdLocal', () => {
+  it('writes a date-only day as that day, not the day before', () => {
+    const noon = new Date('2026-07-10T12:00:00')
+    expect(formatYmdLocal('2026-07-10')).toBe(noon.toLocaleDateString())
+    expect(new Date('2026-07-10T12:00:00').getDate()).toBe(10)
+  })
+
+  it('hands back words that are no date as they came', () => {
+    expect(formatYmdLocal('soon')).toBe('soon')
+    expect(formatYmdLocal('')).toBe('')
   })
 })

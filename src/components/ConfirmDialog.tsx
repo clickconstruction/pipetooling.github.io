@@ -5,6 +5,10 @@ import { useEffect, useId, useRef } from 'react'
  * styled, theme-aware prompt should stack above a modal (leaf-dialog layer,
  * above ResponsiveModalShell's 1100). The cancel button takes focus on open —
  * safe default for destructive confirms. Escape and backdrop-click cancel.
+ *
+ * `keep` (v2.7690) is a second way to go ahead that loses nothing, for a question with two ways
+ * out: it is drawn in blue over the red press, and the three presses stack, each the width of
+ * the window, so no label is cut on a phone.
  */
 export default function ConfirmDialog({
   title,
@@ -14,6 +18,7 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
   zIndex = 1300,
+  keep,
 }: {
   title: string
   body?: string
@@ -22,6 +27,8 @@ export default function ConfirmDialog({
   onConfirm: () => void
   onCancel: () => void
   zIndex?: number
+  /** A second way to go ahead, the one that loses nothing. The window then stacks its presses: this, the red one, the cancel. */
+  keep?: { label: string; onPress: () => void }
 }) {
   const titleId = useId()
   const cancelRef = useRef<HTMLButtonElement>(null)
@@ -66,19 +73,29 @@ export default function ConfirmDialog({
       >
         <h3 id={titleId} style={{ margin: '0 0 0.5rem', fontSize: '1.0625rem' }}>{title}</h3>
         {body && <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{body}</p>}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={keep ? { display: 'flex', flexDirection: 'column', gap: 8 } : { display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          {keep ? (
+            <button
+              type="button"
+              data-confirm-keep
+              onClick={keep.onPress}
+              style={{ order: 1, minHeight: 44, padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            >
+              {keep.label}
+            </button>
+          ) : null}
           <button
             ref={cancelRef}
             type="button"
             onClick={onCancel}
-            style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer', ...(keep ? { order: 3, minHeight: 44 } : null) }}
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            style={{ padding: '0.5rem 1rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '0.5rem 1rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', ...(keep ? { order: 2, minHeight: 44 } : null) }}
           >
             {confirmLabel}
           </button>

@@ -70,6 +70,8 @@ export function canSeeAgreements(role: string | null | undefined): boolean {
 export type AgreementGroup = 'jobs' | 'warranty' | 'people' | 'partners' | 'orders'
 export type KindPick = 'all' | AgreementGroup
 export type StatePick = 'live' | AgreementState
+/** What a read asks for: a state chip's pick, or `any` under the Search tab, where a voided paper must be findable too. */
+export type StateAsk = StatePick | 'any'
 
 /** Which kinds each chip asks the database for. */
 export const AGREEMENT_GROUP_KINDS: Readonly<Record<AgreementGroup, ReadonlyArray<AgreementKind>>> = {
@@ -102,8 +104,9 @@ export function kindsOfPick(pick: KindPick): ReadonlyArray<string> | null {
   return pick === 'all' ? null : AGREEMENT_GROUP_KINDS[pick]
 }
 
-/** The states a state chip asks for. */
-export function statesOfPick(pick: StatePick): ReadonlyArray<AgreementState> {
+/** The states a read asks for, or null for every state. */
+export function statesOfPick(pick: StateAsk): ReadonlyArray<AgreementState> | null {
+  if (pick === 'any') return null
   return pick === 'live' ? ['waiting', 'signed'] : [pick]
 }
 
@@ -140,7 +143,7 @@ export function waitingChipLabel(label: string, waiting: number | null): string 
 
 export interface AgreementsQuery {
   kind: KindPick
-  state: StatePick
+  state: StateAsk
   typed: string
   limit: number
 }
