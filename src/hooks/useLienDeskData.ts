@@ -98,8 +98,8 @@ export type LienDeskJob = {
   lien_path_reason?: string | null
 }
 
-/** The columns the desk reads from jobs_ledger. */
-export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, status, master_user_id, last_work_date, lien_last_work_on, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, collections_at, lien_path_answered_at, lien_path_answered_by, lien_path_reason, service_type:service_types(name), created_at, invoices:jobs_ledger_invoices(status, billed_at, sent_to_customer_at)'
+/** The columns the desk reads from jobs_ledger. A day set by hand comes with its reason, its time and who set it (v2.7741), as the Lien window reads it: the last-day line and the window under LAST WORK show them. */
+export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, status, master_user_id, last_work_date, lien_last_work_on, lien_last_work_note, lien_last_work_set_at, lien_last_work_set_by, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, collections_at, lien_path_answered_at, lien_path_answered_by, lien_path_reason, service_type:service_types(name), created_at, invoices:jobs_ledger_invoices(status, billed_at, sent_to_customer_at)'
 
 /** The desk's columns with the first work day (v2.6061): read first, and the list above when the column is not on prod yet. */
 export const LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY = `${LIEN_DESK_JOB_COLUMNS}, first_work_date`

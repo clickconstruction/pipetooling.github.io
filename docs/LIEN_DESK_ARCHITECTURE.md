@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDesk.tsx
 mapped_at: bc5f56a52b
 audience: Developers, AI Agents
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 ---
 
 > **Line numbers are as of `bc5f56a52b`** (the `mapped_at` commit), where the file is 3,019 lines.
@@ -827,6 +827,9 @@ last_updated: 2026-11-17
 > A job with clock hours keeps a worked month the reader no longer returns.
 > The two panes hand `job`.
 > The By job book and the firm's grid hand none, since their job read (`LIEN_BOOK_JOB_COLUMNS`) carries no bills.
+> **v2.7741 (the reason comes with the day):** the desk's job read (`LIEN_DESK_JOB_COLUMNS` in `useLienDeskData.ts`) names `lien_last_work_note`, `lien_last_work_set_at` and `lien_last_work_set_by` beside the day, as the Lien window's job carries them.
+> On the desk `LienLastWorkDayLine` then draws the reason and the day it was set, and `LienLastWorkDayWindow` opens from the press on the stored reason.
+> `useGcOnNoticeData` builds its job read on the same list.
 > **v2.4632 (the chip as a door to the paper):** `LienDeskNextUp` draws the Notice / Affidavit chip as a `lienPaperDoor` button when the desk passes `onOpenPaper` (`gapsFor` puts a red count or a tick on it);
 > the desk builds `paperEntries` on open — for each row with a job, the notice (`buildLienNoticeFieldsForJob`, the stored draft's fields when there is one, `buildLienNoticeBlocks`) or the affidavit (`buildLienAffidavitFieldsForJob`, `buildLienAffidavitBlocks`) with every statutory blank replaced by a token (`withGapTokens`) that `paintGaps` turns into the numbered red `.lienPaperGap` mark after `filingDocHtml`;
 > the gaps themselves come from `lienPaperGaps` (`lib/jobs/lienPaperGaps.ts`) over the resolved property, the owner, the GC, the signer, the issuer's address and, for an affidavit, the entry's gates.
@@ -1031,7 +1034,7 @@ Out means the code is in the named file and the desk keeps a mount or a hook cal
 | M. Windows and dialogs | `paneFix` 841, `propertyCard` 543; the mounts 2743, 2892–2980 (the owner's call, the courtesy notice, the call script, the practice call) | `useLienDeskWindows`, `LienDeskWindows` and the seven windows it draws; `LienOwnerCallDialog`, `LienCourtesyWindow`, `LienCallScriptModal` | low for the Board's windows; the four dialogs read the sent footer's state and `run` | the Board's windows are out; the four dialogs stay | `LienDeskWindows.render.test.tsx` 6, each window's own |
 | N. The papers behind To do | `paperOpen` 834, `stopOpen` 836, `paperFix` 839, `paperFilledFrom` 842; the effect 844–848; `paperFactsFor` 862, `paperGapCount` 881, `paperEntries` 886; the mounts 2720, 2763 | `LienPaperPreviewOverlay`, `LienPaperPropertyWindow`, `LienPaperGcWindow`; kernels `lienPaperGaps`, `lienStopPaperPages` | medium: `paperFactsFor` builds each paper from the desk's data | inline: the next clean cut | the overlay's own render 4 |
 
-Render test: [`LienDesk.render.test.tsx`](../src/components/jobs/LienDesk.render.test.tsx) (5,220 lines, 207 tests).
+Render test: [`LienDesk.render.test.tsx`](../src/components/jobs/LienDesk.render.test.tsx) (5,377 lines, 212 tests).
 It mounts the desk by view: Lien affidavits 56 times, To do 55, Monthly notices 20, the calendar 7, Retainage 7, By job once.
 It passed with no edit through all thirteen cuts of 2026-11-17, which makes it the regression net for any further move.
 No Playwright spec names the desk.
