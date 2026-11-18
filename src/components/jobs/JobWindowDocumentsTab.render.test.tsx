@@ -5,14 +5,24 @@
  * application handing it none, the list reloading when the window closes, and the job's folders.
  * Since v2.4495 the tab also lists the job's bills and test reports, and since v2.4496 its
  * contract and lien paper.
+ *
+ * No read here leaves the test. Every section that reads on mount has its read faked below, and the
+ * run's `fetch` is a spy that refuses: a call that still goes out fails the test that made it.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { TestReportDocumentRow } from '../../lib/jobsDocuments/testReportDocumentRow'
 import type { JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import type { JobLienPaper } from '../../lib/jobs/jobLienPaperRows'
 import type { SentCopy } from '../../lib/sent/sentCopies'
+import type { ChargeStatementRow } from '../../lib/charges/chargeStatementsIo'
+import type { MaterialLineInput } from '../../lib/charges/materialsCharged'
+import { type JobPapersRoster, parseJobPapersRoster } from '../../lib/jobs/jobPapers'
+import type { JobPlansRead } from '../../lib/plans/planSetsIo'
+import type { PlanPartRow, PlanSetRow } from '../../lib/plans/planSets'
+import type { JobFolderFilesRead } from '../../lib/jobs/jobFolderFiles'
+import type { JobPhotosRead } from '../../lib/photos/jobPhotos'
 import { payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
 import { PAINTED_MAP_DOCUMENT_WORDS } from '../../lib/paintedMap/paintedMapDocuments'
 import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
@@ -138,6 +148,61 @@ vi.mock('../../lib/paintedMap/paintedMapIo', async (importOriginal) => ({
   loadPainterNames: () => Promise.resolve(new Map<string, string>()),
 }))
 
+// Five more sections read on mount, each with its own render test: Plans, the papers before the job opens,
+// Statements of charges, In the folders and Photos. Their reads went to the run's dead address too, eight of
+// them, and two tried again for seconds after the test had moved on. Here each read is faked, and a job with
+// none of them is what every test sees unless it says otherwise.
+const NO_PLANS: JobPlansRead = { job: { id: 'job-1', plan_part_id: null, development_id: null, development_name: null, job_plans_link: null }, part: null, sets: [], developmentParts: [], names: {} }
+let plans: JobPlansRead = NO_PLANS
+const plansReadSpy = vi.fn((_jobId: string) => Promise.resolve(plans))
+vi.mock('../../lib/plans/planSetsIo', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../lib/plans/planSetsIo')>()
+  // A job with a set also reads the papers that came with it; none did.
+  return { ...real, supabaseJobPlansIo: () => ({ ...real.supabaseJobPlansIo(), read: (jobId: string) => plansReadSpy(jobId), readPapers: () => Promise.resolve({ rows: [], requests: [] }) }) }
+})
+
+const NO_PAPERS: JobPapersRoster = parseJobPapersRoster({ job_number: 'J1042', papers: [], people: [] })
+let papers: JobPapersRoster = NO_PAPERS
+const papersReadSpy = vi.fn((_jobId: string) => Promise.resolve(papers))
+vi.mock('../../lib/jobs/jobPapersIo', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../lib/jobs/jobPapersIo')>()
+  return { ...real, supabaseJobPapersIo: { ...real.supabaseJobPapersIo, readRoster: (jobId: string) => papersReadSpy(jobId) } }
+})
+
+let chargeStatements: ChargeStatementRow[] = []
+const chargeStatementsReadSpy = vi.fn((_jobId: string) => Promise.resolve(chargeStatements))
+vi.mock('../../lib/charges/chargeStatementsIo', () => ({
+  listChargeStatementsForJob: (jobId: string) => chargeStatementsReadSpy(jobId),
+  saveChargeStatement: () => Promise.reject(new Error('not here')),
+}))
+let materialLines: MaterialLineInput[] = []
+const materialLinesReadSpy = vi.fn((_jobId: string) => Promise.resolve(materialLines))
+vi.mock('../../lib/charges/jobChargesRead', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/charges/jobChargesRead')>()),
+  loadMaterialLines: (jobId: string) => materialLinesReadSpy(jobId),
+}))
+
+const NO_FOLDER_FILES: JobFolderFilesRead = { job: { folderId: null, url: null, hold: null }, sections: [] }
+let folderFiles: JobFolderFilesRead = NO_FOLDER_FILES
+const folderFilesReadSpy = vi.fn((_jobId: string) => Promise.resolve(folderFiles))
+vi.mock('../../lib/jobs/jobFolderFilesIo', () => ({ supabaseJobFolderFilesIo: () => ({ list: (jobId: string) => folderFilesReadSpy(jobId) }) }))
+
+const NO_PHOTOS: JobPhotosRead = { folder: { kind: 'pictures', url: 'https://drive.google.com/drive/folders/abc' }, photos: [], capped: false, waiting: 0 }
+let photos: JobPhotosRead = NO_PHOTOS
+const photosReadSpy = vi.fn((_jobId: string) => Promise.resolve(photos))
+vi.mock('../../lib/photos/jobPhotosIo', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../lib/photos/jobPhotosIo')>()
+  return { ...real, supabaseJobPhotosIo: () => ({ ...real.supabaseJobPhotosIo(), list: (jobId: string) => photosReadSpy(jobId) }) }
+})
+
+// The guard: the run's `fetch` refuses and keeps the address. Nothing above should ever reach it.
+const fetchSpy = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
+  const address = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+  return Promise.reject<Response>(new Error(`A read that is not faked went out: ${address}`))
+})
+vi.stubGlobal('fetch', fetchSpy)
+const wentOut = () => fetchSpy.mock.calls.map(([input]) => (typeof input === 'string' ? input : input instanceof URL ? input.href : input.url))
+
 // The AIA window has its own render test; here it is a stub that says what it was handed.
 vi.mock('./AiaG702G703Modal', () => ({
   default: ({ open, onClose, initialApplicationNumber, startOn, zIndex }: { open: boolean; onClose: () => void; initialApplicationNumber?: number | null; startOn?: string; zIndex?: number }) =>
@@ -192,6 +257,28 @@ beforeEach(() => {
   openTestReportSpy.mockClear()
   pdfSpy.mockClear()
   mapsReadSpy.mockClear()
+  plans = NO_PLANS
+  papers = NO_PAPERS
+  chargeStatements = []
+  materialLines = []
+  folderFiles = NO_FOLDER_FILES
+  photos = NO_PHOTOS
+  plansReadSpy.mockClear()
+  folderFilesReadSpy.mockClear()
+  papersReadSpy.mockClear()
+  chargeStatementsReadSpy.mockClear()
+  materialLinesReadSpy.mockClear()
+  photosReadSpy.mockClear()
+})
+
+// No test sends a read to the network. One that does fails here, with the address it asked for. Hooks run
+// last one first, so this one runs after the wait below. A hook that throws stops the hooks after it, so the
+// page is taken down here first: the next test starts clean and the failure stays on the test that made the call.
+afterEach(() => {
+  const addresses = wentOut()
+  fetchSpy.mockClear()
+  cleanup()
+  expect(addresses).toEqual([])
 })
 
 // No test ends with the maps' read still out. A read that landed after the page was gone once failed a
@@ -626,5 +713,58 @@ describe('the Plans section sits first (v2.6791)', () => {
     expect(payApps).toBeTruthy()
     // DOCUMENT_POSITION_FOLLOWING: pay apps comes after plans.
     expect(plansEl!.compareDocumentPosition(payApps!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
+
+// Every name, job and number below is made up.
+describe('the five sections with a read of their own draw what the fake answers', () => {
+  const FOLDER = 'https://drive.google.com/drive/folders/1AAAAAAAAAAAAAAAAAAAAAAAAAAA'
+  const linked = makeJob({ id: 'job-7', hcp_number: '1042', google_drive_link: FOLDER, job_plans_link: '', job_pictures_link: null })
+
+  it('reads each one once for the job on screen, and each draws its row', async () => {
+    const part: PlanPartRow = { id: 'part-1', development_id: null, job_id: 'job-7', name: 'Ridgeway Lofts', position: 0, current_set_id: 'set-1', current_set_by: 'u1', current_set_at: '2026-10-20T15:00:00Z', created_by: 'u1', created_at: '2026-10-01T12:00:00Z', updated_at: '2026-10-20T15:00:00Z' }
+    const set: PlanSetRow = { id: 'set-1', part_id: 'part-1', name: 'Zebra permit set', kind: 'permit', source: 'gc', dated: '2026-10-18', came_at: '2026-10-20T15:00:00Z', memo: '', link: 'https://drive.google.com/drive/folders/1ZZZZZZZZZZZZZZZZZZZZZZZZZZZ', replaces_set_id: null, marks_up_set_id: null, job_id: null, file_name: null, file_size: null, file_count: null, checked_at: null, check_note: null, owed: false, ask_lane: null, ask_request_id: null, created_by: 'u1', created_at: '2026-10-20T15:00:00Z', updated_at: '2026-10-20T15:00:00Z' }
+    plans = { job: { id: 'job-7', plan_part_id: 'part-1', development_id: null, development_name: null, job_plans_link: null }, part, sets: [set], developmentParts: [], names: { u1: 'Dana Office' } }
+    papers = parseJobPapersRoster({
+      job_number: 'J1042',
+      papers: [{ id: 'nda', paper_name: 'Quillfeather site NDA', is_form: false, book_document_id: 'book-nda' }],
+      people: [
+        { key: 'p1', person_id: 'p1', user_id: 'u-1', name: 'Pat Sample', role: 'assistant', ways: ['office'], has_login: true, linked: true, papers: [{ required_paper_id: 'nda', document_id: 'd1', status: 'signed', signed_at: '2026-11-16' }] },
+        { key: 'p2', person_id: 'p2', user_id: 'u-2', name: 'Lee Sample', role: 'helpers', ways: ['crew'], has_login: true, linked: true, papers: [] },
+      ],
+    })
+    chargeStatements = [{ id: 'sc-1', record_id: 'SC-1042-0007', job_ledger_id: 'job-7', period_start: '2026-04-01', period_end: '2026-04-30', snapshot: null, labor_usd: 4970, materials_usd: 1778.85, charges_usd: 6748.85, premium_usd: 3251.15, state: 'printed', prepared_by: 'u1', prepared_at: '2026-11-03T15:00:00Z', created_at: '2026-11-03T15:00:00Z', updated_at: '2026-11-03T15:00:00Z', prepared_by_user: { name: 'Dana Office' } }]
+    materialLines = [
+      { id: 'm1', kind: 'typed_charge', label: 'Zebra fittings', dateKey: '2026-04-10', cost: 120 },
+      { id: 'm2', kind: 'tally_part', label: 'Quill valve × 2', dateKey: null, cost: 64 },
+    ]
+    folderFiles = { job: { folderId: '1job', url: FOLDER, hold: null }, sections: [{ key: 'job', name: 'Job folder', folderId: '1job', url: FOLDER, files: [{ id: 'f1', name: 'zebra-permit.pdf', mime: 'application/pdf', bytes: 2_200_000, modified: '2026-11-01T20:00:00Z', by: 'Dana Office', url: 'https://drive.google.com/file/d/f1/view', from: null }], more: false }] }
+    photos = { folder: { kind: 'pictures', url: FOLDER }, photos: [{ id: '1axxxxxxxxxxx', name: 'a.jpg', mime: 'image/jpeg', bytes: 300000, modified: '2026-11-01T20:00:00Z', from: 'pictures' }, { id: '1bxxxxxxxxxxx', name: 'b.jpg', mime: 'image/jpeg', bytes: 300000, modified: '2026-10-24T19:00:00Z', from: 'pictures' }], capped: false, waiting: 1 }
+
+    renderWithProviders(<JobWindowDocumentsTab job={linked} />)
+
+    // Plans: the set the job builds from.
+    await waitFor(() => expect(document.querySelector('[data-job-documents-plans]')?.getAttribute('data-job-documents-plans')).toBe('current'))
+    expect(document.querySelector('[data-job-documents-plans]')?.textContent).toContain('Zebra permit set')
+    // The papers before the job opens: who has signed.
+    expect((await screen.findByTestId('job-papers-summary')).textContent).toBe('1 of 2 have signed. 1 still owes a paper.')
+    // Statements of charges: the saved row, and the press counting the material lines.
+    expect((await screen.findByTestId('soc-row')).textContent).toContain('SC-1042-0007')
+    await waitFor(() => expect(screen.getByTestId('soc-press').textContent).toBe('Statement of charges… · 1 person, 2 material lines'))
+    // In the folders: the file in the job folder.
+    expect(await screen.findByText('zebra-permit.pdf')).toBeTruthy()
+    // Photos: the count line.
+    expect(await screen.findByRole('button', { name: '2 in Drive · 1 on its way · the newest Nov 1: open the job’s photos' })).toBeTruthy()
+
+    for (const spy of [plansReadSpy, papersReadSpy, chargeStatementsReadSpy, materialLinesReadSpy, folderFilesReadSpy, photosReadSpy]) {
+      expect(spy).toHaveBeenCalledTimes(1)
+      expect(spy).toHaveBeenCalledWith('job-7')
+    }
+  })
+
+  it('refuses a read that is not faked and names its address', async () => {
+    await expect(fetch('https://example.supabase.co/rest/v1/not_faked')).rejects.toThrow('A read that is not faked went out: https://example.supabase.co/rest/v1/not_faked')
+    expect(wentOut()).toEqual(['https://example.supabase.co/rest/v1/not_faked'])
+    fetchSpy.mockClear()
   })
 })
