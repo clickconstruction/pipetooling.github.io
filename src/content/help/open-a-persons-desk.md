@@ -22,7 +22,7 @@ Or you open the **People → Person** tab. It is the same desk as a page, with a
 - **Identity dots.** A person can be three things at once. A **login** is their account. A **roster row** is what the HR file, portal and paperwork hang off. A **pay name** is what wages and hours key on. A green dot means that piece exists. A hollow amber one means it does not. The Desk keeps working either way. Sections that need the missing piece say so.
 - **Gaps become buttons.** When something is missing or out of step, an amber line says what and offers the one fix. {{button:amber|Create roster row}} asks for the kind and does nothing else. {{button:amber|Link account}} shows when a roster row shares their email but is not linked. {{button:amber|Reconcile to "Name"}} shows when the roster name drifted from the account name. Pay tables key on the account name, so drift silently splits their hours. The Desk never links or creates anything on its own.
 - **State chips**: {{chip:green|On the clock · JP878}}, {{chip:yellow|23 sessions waiting · 136.6h}}, {{chip:gray|Archived}}.
-- ***Day · week · month*** opens their schedule review. **Imitate** signs in as them after a confirm. Only devs see Imitate.
+- ***Day · week · month*** opens their schedule review. **Imitate** signs in as them after a confirm. Only devs see Imitate. Imitate is left off a person whose login is not attached yet. The **⋯** menu sits at the right end of the row.
 
 ## What each section does
 

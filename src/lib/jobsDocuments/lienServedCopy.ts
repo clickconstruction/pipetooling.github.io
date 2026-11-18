@@ -154,7 +154,7 @@ export function lienServeLetterParagraphs(f: LienServeFacts, to: ServiceCopy): s
 
 export const LIEN_SERVE_LETTER_TITLE = ['Copy of lien affidavit', 'Texas Property Code § 53.055'] as const
 export const LIEN_SERVE_LETTER_ENCLOSED = 'Enclosed: a copy of the lien affidavit.'
-/** How the envelope goes, on the strip under the letterhead. The help sheet and Record service… name no other way. */
+/** How the envelope goes, on the strip under the letterhead. The help sheet and Enter mail numbers… name no other way. */
 export const LIEN_SERVE_LETTER_METHOD = 'By certified mail'
 
 /** The cover letter to one reader: the letterhead, the day, who it is to, the filing's facts, three paragraphs, the signature. */
@@ -237,7 +237,7 @@ export const LIEN_SERVE_WORDS = {
   numberLabel: 'Recording number',
   numberSave: 'Save the number',
   /** Under the press: how many envelopes, and what to do next. */
-  then: 'Mail each envelope by certified mail. Then press Record service… and type each number.',
+  then: 'Mail each envelope by certified mail. Then press Enter mail numbers… and type each number.',
 } as const
 
 /** "Two envelopes: the owner and the original contractor." */

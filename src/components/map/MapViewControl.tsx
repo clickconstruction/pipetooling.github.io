@@ -24,7 +24,7 @@ function ClockIcon() {
  * for that view. With a date on show the Time press reads it: `Time · Mar 2019`, and the date alone
  * on a phone, where the three sit beside the map's own zoom buttons.
  */
-export function MapViewControl({ layer, onLayer, time, isMobile, style }: { layer: MapLayerChoice; onLayer: (layer: MapLayerChoice) => void; time?: MapTime | null; isMobile: boolean; style?: CSSProperties }) {
+export function MapViewControl({ layer, onLayer, time, isMobile, satelliteLabel = 'Satellite', style }: { layer: MapLayerChoice; onLayer: (layer: MapLayerChoice) => void; time?: MapTime | null; isMobile: boolean; /** What this map calls its photograph: a painted map says *From above*. */ satelliteLabel?: string; style?: CSSProperties }) {
   const inTime = time?.on === true
   // A phone's presses are a finger tall: these sit on maps a crew reads on site.
   const tall: CSSProperties = isMobile ? { minHeight: 34 } : {}
@@ -34,7 +34,7 @@ export function MapViewControl({ layer, onLayer, time, isMobile, style }: { laye
       <div role="group" aria-label="Map view" style={box}>
         {(['satellite', 'streets'] as const).map((l) => (
           <button key={l} type="button" aria-pressed={!inTime && layer === l} onClick={() => onLayer(l)} style={{ ...(!inTime && layer === l ? pressOn : press), ...tall }}>
-            {l === 'satellite' ? 'Satellite' : 'Streets'}
+            {l === 'satellite' ? satelliteLabel : 'Streets'}
           </button>
         ))}
       </div>

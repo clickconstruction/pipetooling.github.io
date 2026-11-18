@@ -1051,6 +1051,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   **Print labels** opens for all of them from the rows this gate lets them read, since a label shows a stencil and a code;
   since v2.6852 the phone's box screen prints a box's label and manifest in the tab for every role on the job, where its two presses used to open `/jobs?tab=materials`, which only the office may open.
 - **A site's materials on one screen** (v2.7074, punch list #330): `?site=<development id>` on the On site tab and on Jobs → Materials draws every part across the site's jobs from the rows the desk already read, so the gate above decides it and a job the reader may not touch adds nothing.
+  Since v2.7818 the screen's **By person** look, every press and box move on the site by who made it, is offered at the desk's mount to dev, master_technician, assistant and controller alone (`isOfficeRole`), a client gate over rows those roles already read, and the crew's mount never offers it.
   The office and a primary reach it through the desk's site row and read the week's missing money, as on the desk;
   a primary and a superintendent get a site row over their jobs on Materials → On site, with no money and the phone screen as each box's door;
   an estimator gets no site row.

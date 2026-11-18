@@ -39,12 +39,13 @@ export function LienDeskViewTabs({ kindTabs, isMobile, kind, paperShown, firstTa
 }
 
 /**
- * By paper's second row: Monthly notices, Lien affidavits, Retainage notices, each with its count once the desk
- * has data (v2.3817; out of `LienDesk.tsx` as it stood). A count is null until then.
+ * By paper's three paper tabs: Monthly notices, Lien affidavits, Retainage notices, each with its count once the desk
+ * has data (v2.3817; out of `LienDesk.tsx` as it stood). A count is null until then. They lead the bar's second line,
+ * or ride the title line between the views and the tools where it has room (v2.7789, `lienDeskPapersFit`).
  */
-export function LienDeskPaperTabs({ isMobile, kind, toolsOnTitleLine, noticeCount, affCount, retCount, onPick }: { isMobile: boolean; kind: LienDeskKind; /** The tools end the title line (v2.7213): this row keeps the line's height. */ toolsOnTitleLine: boolean; noticeCount: number | null; affCount: number | null; retCount: number | null; onPick: (kind: 'notice' | 'affidavit' | 'retainage') => void }) {
+export function LienDeskPaperTabs({ isMobile, kind, toolsOnTitleLine, onTitleLine = false, noticeCount, affCount, retCount, onPick }: { isMobile: boolean; kind: LienDeskKind; /** The tools end the title line (v2.7213): this row keeps the line's height. */ toolsOnTitleLine: boolean; /** The row rides the title line, between the views and the tools (v2.7789): it keeps the bar's own block margin. */ onTitleLine?: boolean; noticeCount: number | null; affCount: number | null; retCount: number | null; onPick: (kind: 'notice' | 'affidavit' | 'retainage') => void }) {
   return (
-    <div role="tablist" aria-label="Kind of paper" data-lien-desk-paper-kinds style={{ display: isMobile ? 'flex' : 'inline-flex', ...(isMobile ? { width: '100%' } : null), ...(toolsOnTitleLine ? { marginBlock: 2 } : null), maxWidth: '100%', minWidth: 0, border: '1px solid var(--border)', borderRadius: isMobile ? 9 : 7, overflowX: 'auto', overflowY: 'hidden' }}>
+    <div role="tablist" aria-label="Kind of paper" data-lien-desk-paper-kinds={onTitleLine ? 'title_line' : 'second_line'} style={{ display: isMobile ? 'flex' : 'inline-flex', ...(isMobile ? { width: '100%' } : null), ...(toolsOnTitleLine && !onTitleLine ? { marginBlock: 2 } : null), maxWidth: '100%', minWidth: 0, border: '1px solid var(--border)', borderRadius: isMobile ? 9 : 7, overflowX: 'auto', overflowY: 'hidden' }}>
       {(['notice', 'affidavit', 'retainage'] as const).map((k) => (
         <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => onPick(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? 'var(--bg-blue-tint)' : 'var(--surface)', color: kind === k ? 'var(--text-blue-700)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={k === 'notice' ? 'The § 53.056 notice — one for every unpaid month of work on a job with a GC' : k === 'affidavit' ? 'The § 53.052 affidavit, which is the lien itself — one per job' : 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends'}>
           {k === 'notice' ? `Monthly notices${noticeCount != null ? ` · ${noticeCount}` : ''}` : k === 'affidavit' ? `Lien affidavits${affCount != null ? ` · ${affCount}` : ''}` : `Retainage notices${retCount != null ? ` · ${retCount}` : ''}`}

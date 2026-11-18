@@ -37,7 +37,7 @@ describe('lienPropertyNoticeLine: where one job’s notice stands', () => {
     expect(lienPropertyNoticeLine(sub({ pile: 'to_draft' }))).toMatchObject({ state: 'waits', words: 'To send for Master approval', aside: '' })
     expect(lienPropertyNoticeLine(sub({ pile: 'needs_owner' }))).toMatchObject({ state: 'waits', words: 'Needs the owner' })
     expect(lienPropertyNoticeLine(sub({ pile: 'held', holdUntil: '2026-11-20' }))).toMatchObject({ state: 'waits', words: 'Held', aside: 'until Nov 20' })
-    expect(lienPropertyNoticeLine(sub({ pile: 'missed' }))).toMatchObject({ state: 'missed', words: 'Missed' })
+    expect(lienPropertyNoticeLine(sub({ pile: 'missed' }))).toMatchObject({ state: 'missed', words: 'Window closed · no notice' })
   })
   it('a new month’s paper leads, and the earlier notice that went rides under it', () => {
     expect(lienPropertyNoticeLine(sub({ pile: 'to_draft', dueOn: '2026-12-15', noticed: true, sentOn: ['2026-10-14'] }))).toMatchObject({ state: 'waits', words: 'To send for Master approval', aside: 'last day Dec 15 · earlier: Notice sent Oct 14' })
@@ -64,7 +64,7 @@ describe('lienPropertyAffidavitLine: where one job’s affidavit stands', () => 
   })
   it('a blocked lien and a closed window keep the timeline’s words', () => {
     expect(lienPropertyAffidavitLine({ ...none, affidavitStep: { state: 'blocked', dateWords: '—', words: 'blocked · no notice on record' } })).toMatchObject({ state: 'blocked', words: 'Blocked · no notice on record' })
-    expect(lienPropertyAffidavitLine({ ...none, affidavitStep: { state: 'missed', dateWords: 'Jul 15', words: 'window closed with nothing filed' } })).toMatchObject({ state: 'missed', words: 'Missed', aside: 'window closed with nothing filed' })
+    expect(lienPropertyAffidavitLine({ ...none, affidavitStep: { state: 'missed', dateWords: 'Jul 15', words: 'window closed with nothing filed' } })).toMatchObject({ state: 'missed', words: 'Lien day passed · not filed', aside: 'window closed with nothing filed' })
   })
   it('no paper and no step is no line', () => {
     expect(lienPropertyAffidavitLine(none)).toEqual({ state: 'none', words: '', aside: '', pile: null })

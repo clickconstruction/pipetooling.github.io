@@ -66,6 +66,8 @@ Type the part's name. **Already on this job** lists the names the job has, with 
 
 On a box, tap {{button:outline|Photo}}. For ten minutes after a count, an added part or a put away the button is blue. A put away lights the box the parts went into. The picture is named for what it followed. Shoot and tap Use Photo. The phone shrinks the picture and files it in the job's Drive folder by itself.
 
+The picture shows on the box for everyone on the job. Tap a picture to open it whole. Tap **Close the photo** to go back. A dashed square means the picture is still on the phone that took it.
+
 With no signal the photo stays on the phone. Tap **Send now** when you have signal again, or **Share instead** to send it another way.
 
 ## With no signal
@@ -107,6 +109,8 @@ A straight line can cross a fence. A painted way knows the gate, because a perso
 To have someone else find the box, tap {{button:outline|Send someone to it}}. The New task window opens with the words Find A1 and where the box stands. The task carries the box's pin as its place. The task carries the painted way too, when the box's place has one. Pick the person and send it. The person reads the place and the way on the task. That works even for a person who is not on the job's crew.
 
 A pin older than 30 days carries a caution, since boxes get moved. Tap **Directions** for the drive to the pin. Tap **Map** on the tab to see every pinned box on the site.
+
+The site map has **Satellite**, **Streets** and **Time**. Tap **Time** to see the site on earlier days. The press is not there while you drag a pin into place. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) shows how.
 
 ## Scan a label
 
