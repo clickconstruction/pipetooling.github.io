@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Short Job Mode</title>
+<style>
+  :root { --bg:#eef0f4; --surface:#fff; --text:#111827; --muted:#6b7280; --faint:#9ca3af; --border:#d8dce3; --green:#16a34a; --green-tint:#ecfdf3; --blue:#2563eb; --amber:#b45309; --amber-tint:#fff7ed; --red:#b91c1c; --red-tint:#fee2e2; --gone:#f3f4f6; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.4 -apple-system, "Inter", "Segoe UI", sans-serif; }
+  .wrap { max-width:980px; margin:0 auto; padding:16px; }
+  h1 { font-size:20px; margin:4px 0 2px; }
+  .lede { color:var(--muted); margin:0 0 14px; font-size:14px; }
+  .note { font-size:12px; color:var(--muted); margin:0 0 16px; }
+  .cols { display:grid; grid-template-columns:1fr; gap:22px; }
+  @media (min-width:860px) { .cols { grid-template-columns:400px 1fr; align-items:start; } }
+  h2 { font-size:15px; margin:0 0 8px; }
+  h2 small { font-weight:500; color:var(--muted); margin-left:6px; }
+
+  /* the phone */
+  .phone { background:var(--bg); border:1px solid var(--border); border-radius:22px; overflow:hidden; max-width:390px; margin:0 auto; }
+  .bar { display:flex; align-items:center; gap:18px; padding:12px 16px; background:#fafafa; border-bottom:1px solid var(--border); font-size:18px; }
+  .bar .sp { flex:1; }
+  .bar .call { background:var(--green); color:#fff; border-radius:8px; padding:3px 9px; font-size:14px; }
+  .body { padding:10px 8px 6px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px; }
+  .eyebrow { text-align:center; color:var(--muted); font-size:12px; }
+  .job { text-align:center; font-size:19px; font-weight:800; margin:2px 0; }
+  .job span { font-weight:500; }
+  .addr { text-align:center; font-size:13px; color:#374151; }
+  .railt { font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:700; margin:14px 0 4px; }
+  .row { display:flex; align-items:center; gap:10px; padding:7px 6px; font-size:14px; border-radius:8px; }
+  .row.now { background:var(--green-tint); outline:1.5px solid var(--green); font-weight:700; }
+  .row.done { color:var(--muted); }
+  .dot { width:18px; height:18px; border-radius:50%; flex:none; display:grid; place-items:center; font-size:11px; color:#fff; }
+  .dot.ok { background:var(--green); }
+  .dot.open { border:2px solid var(--faint); }
+  .row .t { width:62px; flex:none; font-variant-numeric:tabular-nums; }
+  .door { display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid var(--border); border-radius:10px; padding:11px 12px; margin-top:10px; font-weight:700; background:var(--surface); }
+  .door small { display:block; font-weight:400; color:var(--muted); font-size:12px; }
+  .door b { color:var(--blue); font-size:18px; }
+  .pace { margin-top:10px; font-size:13px; color:#166534; background:var(--green-tint); border-radius:8px; padding:7px 10px; display:flex; justify-content:space-between; }
+  .wt { display:flex; align-items:baseline; gap:8px; margin-bottom:8px; }
+  .wt b { font-size:16px; }
+  .wt span { color:var(--muted); font-size:12px; }
+  .owe { display:flex; align-items:center; gap:10px; border-left:4px solid #f59e0b; padding:6px 0 6px 10px; margin-top:8px; }
+  .owe div { flex:1; font-size:14px; font-weight:700; }
+  .owe div small { display:block; font-weight:400; color:var(--muted); font-size:12px; }
+  .owe button { background:var(--amber); color:#fff; border:0; border-radius:8px; padding:8px 12px; font-weight:700; font-size:13px; }
+  .act { display:flex; gap:8px; padding:8px; background:var(--surface); border-top:1px solid var(--border); }
+  .act button { flex:1; border-radius:10px; padding:13px 6px; font-size:15px; font-weight:800; border:1px solid var(--border); background:#e5e7eb; color:#111; }
+  .act .go { background:var(--green); color:#fff; border-color:var(--green); flex:1.6; }
+  .act .ta { flex:.9; background:var(--surface); color:var(--muted); font-weight:600; }
+  .dock { display:flex; justify-content:space-around; padding:9px 4px 12px; background:var(--surface); border-top:1px solid var(--border); font-size:11px; color:var(--muted); font-weight:600; }
+  .dock .on { color:var(--blue); }
+  .count { text-align:center; font-size:12px; color:var(--muted); margin:10px 0 0; }
+
+  /* the before strip */
+  .strip { display:grid; grid-template-columns:120px 1fr; gap:0 12px; }
+  .blk { border:1px solid var(--border); background:var(--surface); border-radius:6px; margin-bottom:4px; font-size:10px; color:var(--muted); padding:4px 6px; overflow:hidden; display:flex; align-items:flex-start; }
+  .blk.keep { border-color:var(--green); background:var(--green-tint); color:#166534; }
+  .blk.up { border-color:#f59e0b; background:var(--amber-tint); color:var(--amber); }
+  .blk.gone { background:var(--gone); text-decoration:line-through; }
+  .why { font-size:13px; margin-bottom:4px; display:flex; flex-direction:column; justify-content:center; }
+  .why b { font-size:13px; }
+  .why span { color:var(--muted); font-size:12px; }
+  .tag { display:inline-block; font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; border-radius:99px; padding:1px 7px; margin-right:6px; }
+  .tag.k { background:var(--green-tint); color:#166534; }
+  .tag.u { background:var(--amber-tint); color:var(--amber); }
+  .tag.j { background:#e0e7ff; color:#3730a3; }
+  .tag.d { background:#e5e7eb; color:#374151; }
+  .tag.x { background:var(--red-tint); color:var(--red); }
+  .fold { grid-column:1 / -1; border-top:1.5px dashed var(--faint); margin:3px 0 7px; font-size:10px; color:var(--faint); text-align:right; }
+  .legend { font-size:12px; color:var(--muted); margin:10px 0 0; line-height:1.9; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Job Mode, short</h1>
+  <p class="lede">A superintendent's phone home, before and after. The page ends where his day ends.</p>
+  <p class="note">Mock-up. Every name, job, address and figure here is made up.</p>
+
+  <div class="cols">
+    <section>
+      <h2>After <small>about 1 screen · about 10 presses</small></h2>
+      <div class="phone">
+        <div class="bar"><span>☰</span><span>⌂</span><span>⌕</span><span class="sp"></span><span class="call">✆</span><span>⚙</span></div>
+        <div class="body">
+          <div class="card">
+            <div class="eyebrow">Next stop · 1:00 PM</div>
+            <div class="job">PLUM 2050 <span>| Calloway bath rough</span></div>
+            <div class="addr">412 Juniper Ct, Selma, TX</div>
+            <div class="railt">Today · 3 of 4 done</div>
+            <div class="row done"><span class="dot ok">✓</span><span class="t">8:00 AM</span><span>PLUM 2041 · Harlan repipe</span></div>
+            <div class="row done"><span class="dot ok">✓</span><span class="t">9:30 AM</span><span>PLUM 2044 · Oakmont drain</span></div>
+            <div class="row done"><span class="dot ok">✓</span><span class="t">11:00 AM</span><span>PLUM 2038 · Ridgeway heater</span></div>
+            <div class="row now"><span class="dot open"></span><span class="t">1:00 PM</span><span>PLUM 2050 · Calloway bath</span></div>
+            <div class="door"><span>Open this job<small>Customer, photos, notes, checklists, materials</small></span><b>›</b></div>
+            <div class="pace"><span><b>12 days ahead</b> at this pace</span><span>›</span></div>
+          </div>
+          <div class="card">
+            <div class="wt"><b>Waiting on you</b><span>2 things only you can fix</span></div>
+            <div class="owe"><div>2041 Harlan has no % complete<small>You clocked 1.0 h there today.</small></div><button>Set %</button></div>
+            <div class="owe"><div>No report on 2041 Harlan<small>You worked it this morning.</small></div><button>Report</button></div>
+          </div>
+          <div class="door" style="margin:0 0 10px"><span>Tomorrow · 3 stops<small>First at 8:00 AM, Linden vanity faucet</small></span><b>›</b></div>
+          <div class="door" style="margin:0 0 10px"><span>Everything else<small>Your time, your truck, training and the full Dashboard. 2 courses to do.</small></span><b>›</b></div>
+        </div>
+        <div class="act"><button class="ta">Turnaway</button><button>Leave report</button><button class="go">On my way</button></div>
+        <div class="dock"><span class="on">Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+      </div>
+      <p class="count">Nothing is removed from the app. Each cut is one press away.</p>
+    </section>
+
+    <section>
+      <h2>Before <small>about 6 screens · about 80 presses · drawn to scale</small></h2>
+      <div class="strip">
+        <div class="blk keep" style="height:62px">Next stop, today's stops</div>
+        <div class="why"><div><span class="tag k">stays</span><b>The job card's top</b></div><span>The one thing he opens the app for. It is already first.</span></div>
+
+        <div class="blk" style="height:20px">Materials on site</div>
+        <div class="why"><div><span class="tag j">into the job</span><b>Materials on site</b></div></div>
+
+        <div class="blk keep" style="height:44px">Pace card: bar, three percents, fine print</div>
+        <div class="why"><div><span class="tag k">one line</span><b>The pace line</b></div><span>Ahead or behind in one line. The bar and the fine print open on a press.</span></div>
+        <div class="fold">end of screen 1</div>
+
+        <div class="blk gone" style="height:40px">Stage checklists, all empty</div>
+        <div class="why"><div><span class="tag x">hidden while empty</span><b>Empty checklists</b></div><span>Each says no questions yet. They show in the job once a job has questions.</span></div>
+
+        <div class="blk" style="height:20px">Photos, Ticket</div>
+        <div class="why"><div><span class="tag j">into the job</span><b>Photos and the ticket photo</b></div></div>
+
+        <div class="blk" style="height:52px">Customer, phone, email, street picture</div>
+        <div class="why"><div><span class="tag j">into the job</span><b>Customer and the street picture</b></div><span>The job window already holds Where and Who.</span></div>
+        <div class="fold">end of screen 2</div>
+
+        <div class="blk" style="height:100px">Job updates feed, six filters, note box</div>
+        <div class="why"><div><span class="tag j">into the job</span><b>Job updates and the note box</b></div><span>The job window shows the last note and has a Note press.</span></div>
+
+        <div class="blk up" style="height:40px">Your record</div>
+        <div class="why"><div><span class="tag u">moves up</span><b>What only he can fix</b></div><span>Today it sits more than two screens down. It becomes Waiting on you, under the card.</span></div>
+        <div class="fold">end of screen 3</div>
+
+        <div class="blk" style="height:28px">Hours chart</div>
+        <div class="why"><div><span class="tag d">behind the door</span><b>His hours chart</b></div></div>
+
+        <div class="blk gone" style="height:168px">My Schedule, today: the same stops again, each a full card with supply house chips, call, pictures, percent bar, two presses</div>
+        <div class="why"><div><span class="tag x">gone from this page</span><b>Today's stops, a second time</b></div><span>About half the page's presses repeat the list at the top. The cards stay on the Schedule tab and the full Dashboard.</span></div>
+        <div class="fold">end of screen 4</div>
+
+        <div class="blk keep" style="height:138px">My Schedule, tomorrow: a full card per stop</div>
+        <div class="why"><div><span class="tag k">one line</span><b>Tomorrow</b></div><span>How many stops and when the first is. A press opens the cards.</span></div>
+        <div class="fold">end of screen 5</div>
+
+        <div class="blk" style="height:62px">Training: a course in red, and the rest</div>
+        <div class="why"><div><span class="tag d">behind the door</span><b>Training</b></div><span>The door says how many courses are owed.</span></div>
+
+        <div class="blk keep" style="height:20px">Show full dashboard</div>
+        <div class="why"><div><span class="tag k">renamed</span><b>Everything else</b></div></div>
+      </div>
+      <p class="legend"><span class="tag k">stays</span> on the short page &nbsp; <span class="tag u">moves up</span> &nbsp; <span class="tag j">into the job</span> one press, the job window &nbsp; <span class="tag d">behind the door</span> Everything else &nbsp; <span class="tag x">gone</span> from this page only</p>
+    </section>
+  </div>
+</div>
+</body>
+</html>
