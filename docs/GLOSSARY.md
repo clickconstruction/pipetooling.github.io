@@ -3114,6 +3114,7 @@ the photo in the private `painted-map-photos` bucket, read by a signed address),
 A place may carry **a kind** since v2.7776 (`paintedPlaceKind.ts`, over the column `painted_map_places.kind` from v2.7775): gate, parking, door, meter, shutoff, cleanout or hazard, picked by a chip on the place panel.
 A kind gives the dot **a mark** of its own with the number on its shoulder, on the map and beside the place in every list (`PaintedPlaceMark`), a hazard alone in red, and a kind the app does not know draws the plain numbered dot.
 The mark is drawn in the picture and on the printed page since v2.7777 (`pictureKindMark` in `paintedMapPicture.ts`, `placeMarkHtml`), and a file for another map says the kind in the place's name (`placeSaysWords`: *Hazard: Open trench*).
+A reader of a shared link sees the mark since v2.7778: `painted-map-link` hands on each place's `kind` as the table keeps it, and the page draws it.
 **Walking a line** (since v2.7220, `usePaintedWalk` over `paintedWalk.ts`): the phone is read only while a red bar says *Painting*, and only with the page on the screen, since no browser hands a hidden page its position.
 A lock leaves a gap the painter chooses what to do with;
 painting pauses after five minutes standing still and ends after an hour;

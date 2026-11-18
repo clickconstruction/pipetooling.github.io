@@ -213,12 +213,21 @@ export type SharedPlace = {
   lng: number
   /** There is a photo to ask for. */
   photo: boolean
+  /**
+   * What kind of thing the place is, as stored (punch list #393): a short lowercase word, or none. The page holds
+   * the list of kinds and their marks, and draws a word it does not know as the plain dot, so a new kind needs no
+   * deploy of this function. Left out by a function from before the column.
+   */
+  kind?: string | null
 }
 export type SharedPaintedMap = { name: string; words: string; lines: SharedLine[]; places: SharedPlace[] }
 
 type MapRowIn = { name?: unknown; words?: unknown }
 type LineRowIn = { how?: unknown; points?: unknown; poor_parts?: unknown; fixed_by_hand?: unknown; length_m?: unknown; margin_m?: unknown; measured_ft?: unknown; measured_how?: unknown; made_at?: unknown }
-type PlaceRowIn = { id?: unknown; name?: unknown; words?: unknown; lat?: unknown; lng?: unknown; photo_path?: unknown; set_at?: unknown }
+type PlaceRowIn = { id?: unknown; name?: unknown; words?: unknown; lat?: unknown; lng?: unknown; photo_path?: unknown; kind?: unknown; set_at?: unknown }
+
+/** A kind as the table's own check keeps it. Anything else is no kind. */
+const kindWord = (v: unknown): string | null => (typeof v === 'string' && /^[a-z][a-z_]{1,23}$/.test(v) ? v : null)
 
 const text = (v: unknown, max: number): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '')
 const num = (v: unknown): number | null => {
@@ -288,7 +297,7 @@ export function sharedPaintedMap(map: MapRowIn, lineRows: ReadonlyArray<LineRowI
     const lat = num(row.lat)
     const lng = num(row.lng)
     if (typeof row.id !== 'string' || !onGlobe(lat, lng)) continue
-    places.push({ id: row.id, number, name: text(row.name, 80) || 'A place', words: text(row.words, 200), lat: lat as number, lng: lng as number, photo: typeof row.photo_path === 'string' && row.photo_path.length > 0 })
+    places.push({ id: row.id, number, name: text(row.name, 80) || 'A place', words: text(row.words, 200), lat: lat as number, lng: lng as number, photo: typeof row.photo_path === 'string' && row.photo_path.length > 0, kind: kindWord(row.kind) })
   }
   return { name: text(map.name, 80) || 'A painted map', words: text(map.words, 200), lines, places }
 }

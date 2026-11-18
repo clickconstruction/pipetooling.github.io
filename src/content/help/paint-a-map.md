@@ -310,6 +310,8 @@ A teammate who is signed in types nothing. The page uses the name on their accou
 
 They see the map's name, its lines, and its places with their words and photos. They can press **Directions to the start**.
 
+A place with a kind shows its mark to them too. A gate looks like a gate on their map.
+
 They do not see who painted it or when. They see nothing else about the job.
 
 Never put a gate code on a painted map. A link shows everything on the map to whoever holds it.

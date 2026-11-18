@@ -2,7 +2,7 @@
 name: "Pins on a painted map: points of interest"
 number: 393
 group: ready
-status: answered 2026-11-18, the owner ticked all three readings · A in its PR · B's column in its PR · B's marks on the map built on `claude/393-pins-kinds`, held for the push · B's picture, print and file built on `claude/393-pins-copies`, stacked on it · B's shared page not started · C not started
+status: answered 2026-11-18, the owner ticked all three readings · A in its PR · B's column in its PR · B's marks on the map built on `claude/393-pins-kinds`, held for the push · B's picture, print and file built on `claude/393-pins-copies`, stacked on it · B's shared page built on `claude/393-pins-way`, stacked on that, its function to deploy after the merge · C not started
 summary: >
   The owner wants to set pins, points of interest, on a painted map, and not only lines. A painted
   map can already hold a place: a numbered dot with a name, a few words and a photo. Look it over,
@@ -11,8 +11,8 @@ summary: >
   three readings to the owner. A is ＋ Place on Look it over. B is kinds of pins, each with its own
   mark. C is a job's own pins, with no painted map. He ticked all three on 2026-11-18, so it is a
   train of three in that order.
-next: Push B's column once it merges, then merge B's marks and the picture and print after them. Then the marks on the shared page. C opens with one call from the owner on Materials on site's places.
-size: L as a train of three (S · M · L); left: the shared page (S) and C (L)
+next: Push B's column once it merges, then merge B's three screen PRs in order and deploy `painted-map-link`. Then walk the marks on the live app. C opens with one call from the owner on Materials on site's places.
+size: L as a train of three (S · M · L); left: B's push, merges and deploy (XS) and C (L)
 blocker: None for A or B. C waits on the owner's call, whether Materials on site's places get a point and become the pins.
 opinion: build — the owner picked all three; A answers his screenshot, B follows, and C opens with his call on Materials on site's places
 ---
@@ -54,9 +54,11 @@ Taken as a train in that order. Each step is its own PR.
      panel's chips pick one. The dot wears the mark on the map and in the lists, with its number on
      its shoulder, and a hazard is red. It names the column in every read, so it merges after the
      push.
-  3. **The shared page: not started.** `/way/<code>` reads through the `painted-map-link` function,
-     which names its columns, so it shows plain dots until that function reads the kind and is
-     deployed.
+  3. **The shared page: built**, on `claude/393-pins-way`, stacked on step 4. `painted-map-link`
+     reads the kind and hands it on as the table keeps it, and `/way/<code>` draws the mark on its
+     map and beside each place. The page holds the list, so a new kind needs no deploy. The
+     function is deployed after the merge and after the push. Until then a link shows plain dots,
+     and nothing breaks either way round.
   4. **The picture, the printed page and the file: built**, on `claude/393-pins-copies`, stacked on
      step 2. The picture draws each mark on the map and in its key. The printed page gives a place
      with a kind its mark in the list. A file draws nothing, so it says the kind in the place's
