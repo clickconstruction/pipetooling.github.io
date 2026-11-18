@@ -37,7 +37,8 @@ const newestBodies = (() => {
 const rewritesRevenueFromLines = (body: string): boolean => /jobs_ledger_fixtures/i.test(body) && /\bset\s+revenue\s*=\s*v_\w+/i.test(body)
 
 /** The rewriters that add the riders. */
-const KEEP_THE_RIDERS = ['add_collect_payment_fixture_from_job_book', 'apply_job_discount', 'record_job_tip_from_deposit']
+// trip_put_on_job_line (punch list #391) writes the total whole after it adds a trip's line, with the riders in it.
+const KEEP_THE_RIDERS = ['add_collect_payment_fixture_from_job_book', 'apply_job_discount', 'record_job_tip_from_deposit', 'trip_put_on_job_line']
 /** Rewriters with no rider to keep, and why. */
 const NO_RIDER_YET: Record<string, string> = {
   create_job_from_estimate: 'it sums the lines of a job it has just made, which has no bill and no hazmat fee yet',
