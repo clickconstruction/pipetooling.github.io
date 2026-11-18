@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { lienRunTickDay, type LienRunRow } from '../../lib/jobs/lienRunChecklist'
+import { LIEN_RUN_STEP_WORDS, lienRunRowNext, lienRunTickDay, type LienRunRow } from '../../lib/jobs/lienRunChecklist'
 import { LIEN_RUN_GROUPS, lienRunPartOf, type LienRunPartKey, type LienRunStep } from '../../lib/jobs/lienRunParts'
 import { trackingShape } from '../../lib/jobs/lienDeskRun'
 import { runClosePaidPress, runPaidFoldWords } from '../../lib/jobs/lienRunClosePaid'
 import { lienSignatureWhen } from '../../lib/jobs/lienNoticeSignature'
 import LienRunMailedCopies, { type LienRunMailedCopiesPress } from './LienRunMailedCopies'
+import { LienReceiptPhotoPress } from './LienReceiptPhotoPress'
 
 /**
  * The run as a checklist (v2.7328): one row per notice, three ticks across — Printed, Signed,
@@ -59,6 +60,11 @@ export type LienRunChecklistProps = {
    * Absent = the rows show the files they have and no press. Since v2.7525 `onRemove` takes one off (`LienRunMailedCopies.tsx`).
    */
   mailedCopies?: LienRunMailedCopiesPress
+  /**
+   * A receipt beside each mail number (v2.7695): the press that adds one for an envelope, a photo or a PDF, and takes
+   * it off. A photo's barcode fills an empty number box. `phone` draws the press a thumb tall. Absent = no press.
+   */
+  receipts?: { onSet: (row: LienRunRow, recipientKey: LienRunRow['recipients'][number]['key'], url: string) => void; todayYmd: string; phone?: boolean }
 }
 
 const tickBtn = (kind: 'open' | 'primary', dead: boolean) =>
@@ -78,7 +84,7 @@ const tickBtn = (kind: 'open' | 'primary', dead: boolean) =>
 
 const field = { font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', width: '100%', minWidth: 0 } as const
 
-export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, onOpenSign, onTracking, paneFor, besideBox, focusMailItemId, paid, mailedCopies, unprint, partOf, leaderName, step = null }: LienRunChecklistProps) {
+export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, onOpenSign, onTracking, paneFor, besideBox, focusMailItemId, paid, mailedCopies, receipts, unprint, partOf, leaderName, step = null }: LienRunChecklistProps) {
   // A head pressed by hand: its group stays as the person left it, whatever step the run moves to.
   const [folds, setFolds] = useState<Partial<Record<LienRunPartKey, boolean>>>({})
   // While the cursor is in a number box the rows stay in the groups they were in: a row that moved to *Ready to record*
@@ -119,6 +125,9 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
     // A row that waits on the signature (v2.7477) offers Signed ▸ before it prints, as its envelope's card does: the packet will not print it unsigned.
     const canSign = !!viewer && !!r.leader?.name && (printedOk || partFor(r) === 'wait') && !closed
     const boxes = r.recipients.filter((x) => x.needsNumber)
+    // A paid row and an emailed one have nothing in an envelope; a row not printed yet shows the files it has and no press.
+    const copiesShown = !closed && !r.paperless && (r.mailedCopies.length > 0 || (!!mailedCopies && printedOk))
+    const next = closed ? null : lienRunRowNext(r, { canAddCopy: !!mailedCopies, canAddReceipt: !!receipts })
     return (
       <div key={r.itemId} className="lienRunCheckRow" data-testid={`run-check-${r.itemId}`} data-waits={r.waitsOn ?? 'none'} data-held={r.held ? 'yes' : 'no'}>
         <div className="lienRunCheckHead">
@@ -144,13 +153,15 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
             ) : null
           ) : null}
         </div>
-        {/* What was mailed: the files the notice has, and on a printed paper row the press that adds one. A paid row and an emailed one have nothing in an envelope. */}
-        {!closed && !r.paperless && (r.mailedCopies.length > 0 || (mailedCopies && printedOk)) ? (
-          <LienRunMailedCopies row={r} canAdd={printedOk} busy={busy} press={mailedCopies} />
+        {/* The one thing to do next (v2.7695), from the row's own facts. A held row and a paid one say why on their own line. */}
+        {next ? (
+          <div className="lienRunCheckNext" data-testid={`run-check-next-${r.itemId}`}>
+            <b>{LIEN_RUN_STEP_WORDS.next}</b> {next}
+          </div>
         ) : null}
-        <div className="lienRunCheckTicks" role="group" aria-label={`${r.label} — the three ticks`}>
+        <div className="lienRunCheckTicks" role="group" aria-label={`${r.label} — the four steps`}>
           <div className="lienRunCheckTick" data-tick="printed" data-on={printedOk ? 'yes' : 'no'}>
-            <span className="lienRunCheckTickName">Printed</span>
+            <span className="lienRunCheckTickName">{LIEN_RUN_STEP_WORDS.printed}</span>
             {r.printed && unprint?.ids.includes(r.itemId) ? (
               // The tick is a press (v2.7481): a row marked printed by mistake goes back on its own, after a confirm.
               <button
@@ -182,7 +193,7 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
             )}
           </div>
           <div className="lienRunCheckTick" data-tick="signed" data-on={r.signed ? 'yes' : 'no'}>
-            <span className="lienRunCheckTickName">Signed</span>
+            <span className="lienRunCheckTickName">{LIEN_RUN_STEP_WORDS.signed}</span>
             {r.signed === 'not_needed' ? (
               <span className="lienRunCheckDone" data-testid={`run-check-signed-${r.itemId}`}>—</span>
             ) : r.signed ? (
@@ -198,8 +209,17 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
               <span className="lienRunCheckWait" data-testid={`run-check-sign-${r.itemId}`}>{closed ? 'nothing to sign' : !printedOk ? 'print first' : r.leader?.name ? `waits on ${r.leader.name}` : 'no leader named'}</span>
             )}
           </div>
+          {/* What goes in the envelope (the owner's ask of 2026-11-16), a step of its own since v2.7695: the files the notice has, and on a printed paper row the press that adds one. */}
+          <div className="lienRunCheckTick" data-tick="envelope" data-on={r.mailedCopies.length > 0 ? 'yes' : 'no'}>
+            <span className="lienRunCheckTickName">{LIEN_RUN_STEP_WORDS.envelope}</span>
+            {copiesShown ? (
+              <LienRunMailedCopies row={r} canAdd={printedOk} busy={busy} press={mailedCopies} />
+            ) : (
+              <span className="lienRunCheckWait" data-testid={`run-check-envelope-${r.itemId}`}>{closed ? 'nothing to mail' : r.paperless ? '— by email' : !printedOk ? 'print first' : 'no file added'}</span>
+            )}
+          </div>
           <div className="lienRunCheckTick" data-tick="mailed" data-on={r.mailed ? 'yes' : 'no'}>
-            <span className="lienRunCheckTickName">Mailed</span>
+            <span className="lienRunCheckTickName">{LIEN_RUN_STEP_WORDS.mailed}</span>
             {r.mailed && boxes.length === 0 ? (
               <span className="lienRunCheckDone" data-testid={`run-check-mailed-${r.itemId}`}>✓ {r.mailed.tracking}</span>
             ) : (
@@ -231,6 +251,25 @@ export default function LienRunChecklist({ rows, busy, viewer, onMarkPrinted, on
                         </span>
                       ) : x.mailed && x.tracking.trim() ? (
                         <span className="lienRunCheckShape" data-ok="yes">✓</span>
+                      ) : null}
+                      {/* The envelope's receipt (v2.7695): a photo or a PDF. A photo's barcode fills a number box nobody has typed in. */}
+                      {receipts && printedOk && !closed ? (
+                        <span className="lienRunCheckReceipt" data-testid={`run-check-receipt-${r.itemId}-${x.key}`}>
+                          <LienReceiptPhotoPress
+                            jobId={r.jobId}
+                            jobNumber={r.jobNumber}
+                            of={x.key}
+                            paper="notice"
+                            day={receipts.todayYmd}
+                            url={x.receiptUrl}
+                            compact={!receipts.phone}
+                            onSaved={(url) => receipts.onSet(r, x.key, url)}
+                            onTakeOff={() => receipts.onSet(r, x.key, '')}
+                            onRead={(tracking) => {
+                              if (!x.tracking.trim()) onTracking(r, x.key, tracking)
+                            }}
+                          />
+                        </span>
                       ) : null}
                     </div>
                   )

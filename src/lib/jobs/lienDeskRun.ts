@@ -69,6 +69,8 @@ export type RunRecipient = {
   pieceProblem?: string | null
   /** The day USPS accepted this copy (v2.5532), from the piece once the poll has it: the day the notice was given, so the record writes it as sent. */
   pieceMailedOn?: string | null
+  /** The certified receipt of this copy's envelope, a file in the job's Drive folder (v2.7695): added on the run's row, written with the send as `receipt_url`. */
+  receiptUrl?: string
 }
 
 export { recipientViaDocsmit }
@@ -599,7 +601,7 @@ export function noticesFullyPrinted<T extends Pick<RunNotice, 'itemId' | 'recipi
   return notices.filter((n) => n.recipients.length > 0 && n.recipients.every((r) => printed.has(runCopyKey(n.itemId, r.key)) || recipientViaDocsmit(r)))
 }
 
-export type RunSendRecord = { recipient: 'owner' | 'original_contractor'; method: RunSendMethod; tracking: string; sent_on: string; via?: string; piece_id?: string }
+export type RunSendRecord = { recipient: 'owner' | 'original_contractor'; method: RunSendMethod; tracking: string; sent_on: string; via?: string; piece_id?: string; receipt_url?: string }
 
 /**
  * The courtesy PDFs a recorded notice owes (punch list #87 B): every copy still ticked, with an

@@ -34,7 +34,7 @@ import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { groupEventsByInstance, lastTransitionIsReopen, stuckReason, type ChecklistCardEvent } from '../lib/checklistCardEvents'
 import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActivity'
 import { completeChecklistInstance, createNextChecklistRepeat } from '../lib/checklistCompleteInstance'
-import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
+import { weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import {
@@ -74,6 +74,8 @@ import { useChecklistCostEstimates } from '../hooks/useChecklistCostEstimates'
 import { ACCURACY_MIN_COUNT, canSeeTaskCosts, estimateAccuracy, estimateAccuracyByPerson, formatMultiplier, formatWholeDollars, sumEstimateDollars } from '../lib/checklistCostEstimate'
 import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import { useTaskLines } from '../hooks/useTaskLines'
+import type { PersonDayRow, RoadmapTaskEmbed } from '../lib/tasks/personDay'
+import { readPersonAhead, readPersonDay } from '../lib/tasks/personDayIo'
 import { cardAsksForPhoto, takesRing } from '../lib/taskProgress'
 import { setTaskPercent } from '../lib/taskProgressIo'
 import { useTaskPhotos } from '../hooks/useTaskPhotos'
@@ -81,7 +83,7 @@ import { useTaskPlaces } from '../hooks/useTaskPlaces'
 import { useTaskSpotPhotos } from '../hooks/useTaskSpotPhotos'
 import { TaskPlacesMapCard, type TaskPlacesMapTask } from '../components/checklist/TaskPlacesMapCard'
 import { taskPlaceDots, taskPlaceDraft, taskPlaceFarShort, taskTitlePlain } from '../lib/tasks/taskPlace'
-import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, lateFirst, nextTaskId, splitToday, stillOpenIsLate, stillOpenMeta, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
+import { ADD_OWN_TASK_LABEL, FOLLOW_UP_LABEL, followUpTellsId, followUpTitle, nextTaskId, splitToday, stillOpenIsLate, stillOpenMeta, taskHearsId, todayHeadDate, todayPartLabel, todaySentence } from '../lib/tasks/todayPage'
 import { showHeaderTaskChecklistButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { TASK_PILL_STYLE } from '../lib/tasks/taskPillStyle'
 import { DO_FIRST_MARK, doFirstId, readDoFirst, writeDoFirst } from '../lib/tasks/doFirst'
@@ -94,6 +96,10 @@ import { useTaskDoerActs, type TaskDoerActsTarget } from '../hooks/useTaskDoerAc
 import { handOnTask, tellForwardTaker } from '../lib/tasks/taskDoerActsIo'
 import { forwardTakers } from '../lib/tasks/taskDoerActs'
 import { TaskForwardWindow } from '../components/checklist/TaskForwardWindow'
+import { TaskLookGate } from '../components/checklist/TaskLookGate'
+import { TaskModeLookWindow } from '../components/checklist/TaskModeLookWindow'
+import { TaskLookComingUp } from '../components/checklist/TaskLookComingUp'
+import { lookPressLabel, lookPressTitle } from '../lib/tasks/taskLook'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
 import type { MyFix } from '../lib/materials/myLocation'
 
@@ -109,45 +115,8 @@ type UserRole =
 /** The daily list's tabs. The Roadmap moved to its own page (`/roadmap`, Tier-2 #41); `?tab=roadmap` links redirect there. */
 type ChecklistTab = 'today' | 'history' | 'review' | 'manage'
 
-type ChecklistInstance = {
-  id: string
-  checklist_item_id: string
-  scheduled_date: string
-  completed_at: string | null
-  /** Task cards (#273): the day row's percent; a done row reads 100 whatever is stored. */
-  percent_complete?: number | null
-  notes: string | null
-  completed_by_user_id: string | null
-  created_at: string | null
-  reviewed_at: string | null
-  reviewed_by: string | null
-  checklist_items?: {
-    title: string
-    links?: string[] | null
-    notify_on_complete_user_id?: string | null
-    notify_creator_on_complete?: boolean
-    created_at?: string | null
-    created_by_user_id?: string | null
-    show_until_completed?: boolean | null
-    due_date?: string | null
-    repeat_type?: string | null
-    roadmap_group_task_id?: string | null
-    /** Task cards (#273): the writer's switch; the finish holds for a photo. */
-    asks_for_photo?: boolean | null
-    checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null
-  } | null
-}
-
-type RoadmapTaskEmbed = {
-  group_id?: string
-  /** Task cards (#273): the roadmap task's own switch; a card made from it reads it too. */
-  asks_for_photo?: boolean | null
-  checklist_tech_tree_groups?: {
-    title?: string | null
-    roadmap_id?: string
-    checklist_tech_tree_roadmaps?: { title?: string | null } | null
-  } | null
-}
+/** One task on one day. The shape is the day's read, kept with it (punch list #381). */
+type ChecklistInstance = PersonDayRow
 
 /**
  * Stage-name chip for roadmap-born items: JUST the stage title (owner call,
@@ -499,16 +468,24 @@ export default function Checklist() {
   )
 }
 
-function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAddTask = false, setError, modeBar = null, tagKinds = 'task', onOpenTaggedJob }: { authUserId: string | null; canForward: boolean; canOpenVehiclesPage: boolean; /** Which tagged notes the section above the list holds (punch list #375): a task's, and a job's too in Task Mode. */ tagKinds?: TagKinds; /** The door from a tagged job note to its job, where there is one. */ onOpenTaggedJob?: (jobId: string) => void; /** May this person write a task? The roles the header's Task press shows for. */ canAddTask?: boolean; setError: (s: string | null) => void; /** Task Mode's Today and History bar, which sits in the day's head (punch list #369). */ modeBar?: ReactNode }) {
+/** A look at another person's day (punch list #381): whose it is. */
+type TodayLook = { personId: string }
+
+function ChecklistTodayTab({ authUserId, look = null, canForward, canOpenVehiclesPage, canAddTask = false, setError, modeBar = null, tagKinds = 'task', onOpenTaggedJob }: { authUserId: string | null; /** Set, the tab is a look at this person's day (punch list #381): it reads them and nothing in it acts. */ look?: TodayLook | null; canForward: boolean; canOpenVehiclesPage: boolean; /** Which tagged notes the section above the list holds (punch list #375): a task's, and a job's too in Task Mode. */ tagKinds?: TagKinds; /** The door from a tagged job note to its job, where there is one. */ onOpenTaggedJob?: (jobId: string) => void; /** May this person write a task? The roles the header's Task press shows for. */ canAddTask?: boolean; setError: (s: string | null) => void; /** Task Mode's Today and History bar, which sits in the day's head (punch list #369). */ modeBar?: ReactNode }) {
   const addTaskModal = useChecklistAddModal()
+  // Whose day this is, and who acts on it. They are the signed-in person, except in a look at someone else's day
+  // (punch list #381): the reads then key on that person and nobody acts, so every write below finds no one to act.
+  const personId = look ? look.personId : authUserId
+  const actorId = look ? null : authUserId
+  const isLook = !!look
   // Step C3: the doer's tools. One More press per task and one set of sheets for the tab. Up here with the tab's other
   // hooks, above the early return a loading day takes.
   const doer = useTaskDoerActs({
-    authUserId,
+    authUserId: actorId,
     todayYmd: todayYmdInAppTz(),
     onChanged: () => rereadDay(),
     onDoFirst: (instanceId) => {
-      writeDoFirst(authUserId, instanceId)
+      writeDoFirst(actorId, instanceId)
       setDoFirstPick(instanceId)
     },
     // The pass's Done answer is the tick's own path, by the day row's id.
@@ -527,7 +504,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   const [missedSkippedIds, setMissedSkippedIds] = useState<ReadonlySet<string>>(new Set())
   const [missedBusyId, setMissedBusyId] = useState<string | null>(null)
   /** Do first (step D1): the task this person lifted into Next on this device. */
-  const [doFirstPick, setDoFirstPick] = useState<string | null>(() => readDoFirst(authUserId))
+  const [doFirstPick, setDoFirstPick] = useState<string | null>(() => readDoFirst(actorId))
   /** Tasks finished in this visit (punch list #369, step B2): each one's done line offers the photo and the note once. */
   const [doneHere, setDoneHere] = useState<ReadonlySet<string>>(new Set())
   const [vehicleCtxInstanceId, setVehicleCtxInstanceId] = useState<string | null>(null)
@@ -549,7 +526,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       itemId: i.checklist_item_id,
       roadmapTaskId: i.checklist_items?.roadmap_group_task_id ?? null,
     })),
-    authUserId,
+    actorId,
   )
   // PR 4b: the cards' photos, one read for the day's cards and the outstanding ones.
   const taskPhotos = useTaskPhotos([...todayInstances, ...outstandingInstances].map((i) => i.id))
@@ -591,7 +568,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   const [tagParams, setTagParams] = useSearchParams()
   const taskParam = tagParams.get('task')
   useEffect(() => {
-    if (!taskParam || loading) return
+    if (!taskParam || loading || isLook) return
     if (taskOnPage(taskParam)) showTask(taskParam)
     setTagParams(
       (prev) => {
@@ -608,7 +585,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   useEffect(() => {
     const rows = [...todayInstances, ...outstandingInstances]
     // The givers too (step C3): a tool's sheet says who is told.
-    const ids = [...new Set([...rows.map((i) => taskHearsId(i.checklist_items, authUserId)), ...rows.map((i) => i.checklist_items?.created_by_user_id ?? null)].filter((v): v is string => !!v))].filter((id) => !(id in eventActorNameById))
+    const ids = [...new Set([...rows.map((i) => taskHearsId(i.checklist_items, personId)), ...rows.map((i) => i.checklist_items?.created_by_user_id ?? null)].filter((v): v is string => !!v))].filter((id) => !(id in eventActorNameById))
     if (ids.length === 0) return
     let off = false
     void supabase
@@ -627,7 +604,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       off = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the names read when the lists change, never when a name lands
-  }, [todayInstances, outstandingInstances, authUserId])
+  }, [todayInstances, outstandingInstances, personId])
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
   const [fwdSaving, setFwdSaving] = useState(false)
   /** Why the last Forward did not take, shown in the window in the database's words. */
@@ -655,96 +632,39 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   }
 
   useEffect(() => {
-    if (!authUserId) {
+    if (!personId) {
       setLoading(false)
       return
     }
     void loadDay()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the day reads once per person, as before
-  }, [authUserId])
+  }, [personId])
 
   useEffect(() => {
-    if (canForward) {
+    if (canForward && !isLook) {
       // Tier-2 #19 (J30-2): person pickers = active people (no twins); dev rows stay.
       activeUsersQuery('id, name, email', { includeDev: true, withLogin: true })
         .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
     }
-  }, [canForward])
+  }, [canForward, isLook])
 
   async function loadToday() {
-    if (!authUserId) return
-    const today = toLocalDateString(new Date())
-    const { data: todayData, error: e1 } = await supabase
-      .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, asks_for_photo, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, asks_for_photo, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
-      .eq('checklist_instance_assignees.user_id', authUserId)
-      .eq('scheduled_date', today)
-      .order('created_at', { ascending: true })
-    if (e1) {
-      setDayFailure(recoveryFailureFromError(e1, "Couldn't load today's checklist"))
+    if (!personId) return
+    const r = await readPersonDay(personId, toLocalDateString(new Date()))
+    if ('failure' in r) {
+      setDayFailure(recoveryFailureFromError(r.failure, "Couldn't load today's checklist"))
       return
     }
     setDayFailure(null)
-    // Outstanding (v2.1864, widened v2.1869): overdue instances whose work is
-    // still wanted — one-off tasks, show-until-completed items, OR anything a
-    // human deliberately reopened (last transition = reopened outranks the
-    // recurrings-don't-carry-over rule). One capped query, qualified
-    // client-side so the reopened check can share the same rows.
-    const { data: pastData } = await supabase
-      .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, asks_for_photo, show_until_completed, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, asks_for_photo, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
-      .eq('checklist_instance_assignees.user_id', authUserId)
-      .is('completed_at', null)
-      .lt('scheduled_date', today)
-      .order('scheduled_date', { ascending: false })
-      .limit(300)
-    // The percent column is younger than the generated types (#273); the types PR after the push removes the unknown step.
-    const pastIncomplete = (pastData ?? []) as unknown as ChecklistInstance[]
-    const qualifying = pastIncomplete.filter((i) => qualifiesOutstanding(i.checklist_items))
-    const rest = pastIncomplete.filter((i) => !qualifiesOutstanding(i.checklist_items))
-    let reopenedOnes: ChecklistInstance[] = []
-    let skippedIds = new Set<string>()
-    if (rest.length > 0) {
-      const { data: transData } = await supabase
-        .from('checklist_instance_events')
-        .select('id, instance_id, event_type, actor_user_id, body, created_at, percent')
-        .in('instance_id', rest.map((r) => r.id))
-        .in('event_type', ['completed', 'reopened', 'skipped'])
-        .order('created_at', { ascending: true })
-      const grouped = groupEventsByInstance((transData ?? []) as unknown as ChecklistCardEvent[])
-      reopenedOnes = rest.filter((i) => lastTransitionIsReopen(grouped.get(i.id) ?? []))
-      // Step D3: the repeating days that went unticked, and which of them the person already answered as skipped.
-      skippedIds = new Set(rest.filter((i) => (grouped.get(i.id) ?? []).some((e) => e.event_type === 'skipped')).map((i) => i.id))
-    }
-    const reopenedIds = new Set(reopenedOnes.map((i) => i.id))
-    setMissedRows(rest.filter((i) => !reopenedIds.has(i.id)))
-    setMissedSkippedIds(skippedIds)
-    const overdueData = [...qualifying, ...reopenedOnes]
-    // Punch list #369: a task whose due day has passed leads the list, so the one red row is never behind the fold.
-    setOutstandingInstances(lateFirst(sortOutstanding(overdueData), today))
-    const merged = [...(todayData ?? [])] as unknown as ChecklistInstance[]
-    const mergedItemIds = [...new Set(merged.map((r) => r.checklist_item_id))]
-    const orderMap = new Map<string, number>()
-    if (mergedItemIds.length > 0) {
-      const { data: orderData } = await supabase
-        .from('checklist_item_assignees')
-        .select('checklist_item_id, display_order')
-        .eq('user_id', authUserId)
-        .in('checklist_item_id', mergedItemIds)
-      for (const row of (orderData ?? []) as Array<{ checklist_item_id: string; display_order: number | null }>) {
-        orderMap.set(row.checklist_item_id, row.display_order ?? 999999)
-      }
-    }
-    merged.sort((a, b) => {
-      const orderA = orderMap.get(a.checklist_item_id) ?? 999999
-      const orderB = orderMap.get(b.checklist_item_id) ?? 999999
-      if (orderA !== orderB) return orderA - orderB
-      return a.scheduled_date.localeCompare(b.scheduled_date)
-    })
-    setTodayInstances(merged)
-    void loadCardEvents([...merged.map((r) => r.id), ...overdueData.map((r) => r.id)])
+    // Outstanding (v2.1864, widened v2.1869): older tasks whose work is still wanted. The repeating days that went
+    // unticked are step D3's, with the ones already answered as skipped. `personDay.ts` holds the rule.
+    setMissedRows(r.day.missed)
+    setMissedSkippedIds(r.day.skippedIds)
+    setOutstandingInstances(r.day.stillOpen)
+    setTodayInstances(r.day.today)
+    void loadCardEvents([...r.day.today.map((row) => row.id), ...r.day.stillOpen.map((row) => row.id)])
   }
 
   /** Fetch the card history for the visible instances + names for its actors. */
@@ -780,7 +700,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   /** Post a comment event; returns true on success (card clears its draft). */
   /** After the activity panel posts a note, keep the card badges honest. */
   function appendLocalCardComment(instanceId: string, body: string) {
-    if (!authUserId) return
+    if (!actorId) return
     setEventsByInstance((prev) => {
       const next = new Map(prev)
       const list = [...(next.get(instanceId) ?? [])]
@@ -788,7 +708,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         id: `local-${Date.now()}`,
         instance_id: instanceId,
         event_type: 'comment',
-        actor_user_id: authUserId,
+        actor_user_id: actorId,
         body,
         created_at: new Date().toISOString(),
       })
@@ -798,11 +718,11 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   }
 
   async function postCardComment(inst: ChecklistInstance, body: string): Promise<boolean> {
-    if (!authUserId) return false
+    if (!actorId) return false
     const { error: e } = await supabase.from('checklist_instance_events').insert({
       instance_id: inst.id,
       event_type: 'comment',
-      actor_user_id: authUserId,
+      actor_user_id: actorId,
       body,
     })
     if (e) {
@@ -816,29 +736,21 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   async function loadUpcoming() {
     // Upcoming (future-dated instances) is dev-only since v2.2269 — it was
     // empty for nearly everyone and its name collided with the waiting list.
-    if (!authUserId || !canForward) return
-    const today = toLocalDateString(new Date())
-    const { data, error: e } = await supabase
-      .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, percent_complete, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
-      .eq('checklist_instance_assignees.user_id', authUserId)
-      .gt('scheduled_date', today)
-      .order('scheduled_date', { ascending: true })
-      .limit(30)
-    if (e) return
-    setUpcomingInstances((data ?? []) as unknown as ChecklistInstance[])
+    if (!personId || !canForward) return
+    const ahead = await readPersonAhead(personId, toLocalDateString(new Date()))
+    if (ahead) setUpcomingInstances(ahead)
   }
 
   /** Resolves true once the change is saved, false when it was refused or did not run (step D2 counts them). */
   async function toggleComplete(inst: ChecklistInstance): Promise<boolean> {
-    if (!authUserId) return false
+    if (!actorId) return false
     if (toggleCompleteInFlightRef.current.has(inst.id)) return false
     toggleCompleteInFlightRef.current.add(inst.id)
 
     setError(null)
     const isCompleted = !!inst.completed_at
     const nextCompletedAt = isCompleted ? null : new Date().toISOString()
-    const nextCompletedBy = isCompleted ? null : authUserId
+    const nextCompletedBy = isCompleted ? null : actorId
     const previous = inst
 
     setTodayInstances((prev) =>
@@ -918,15 +830,15 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   }
 
   function isNotificationRecipient(inst: ChecklistInstance): boolean {
-    if (!authUserId) return false
+    if (!personId) return false
     const item = inst.checklist_items as {
       notify_on_complete_user_id?: string | null
       notify_creator_on_complete?: boolean
       created_by_user_id?: string | null
     } | null
     if (!item) return false
-    if (item.notify_on_complete_user_id === authUserId) return true
-    if (item.notify_creator_on_complete && item.created_by_user_id === authUserId) return true
+    if (item.notify_on_complete_user_id === personId) return true
+    if (item.notify_creator_on_complete && item.created_by_user_id === personId) return true
     return false
   }
 
@@ -942,7 +854,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   }
 
   async function saveFwd(toUserId: string) {
-    if (!fwdInstance || !authUserId || !toUserId || fwdSaving) return
+    if (!fwdInstance || !actorId || !toUserId || fwdSaving) return
     setFwdSaving(true)
     setFwdRefusal(null)
     try {
@@ -953,7 +865,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         setFwdRefusal(refused)
         return
       }
-      void tellForwardTaker({ byUserId: authUserId, toUserId, instanceId: fwdInstance.id, taskTitle: taskTitlePlain((fwdInstance.checklist_items as { title?: string } | null)?.title ?? 'Untitled') })
+      void tellForwardTaker({ byUserId: actorId, toUserId, instanceId: fwdInstance.id, taskTitle: taskTitlePlain((fwdInstance.checklist_items as { title?: string } | null)?.title ?? 'Untitled') })
       setFwdInstance(null)
       await loadToday()
       await loadUpcoming()
@@ -984,23 +896,27 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   const olderRows = outstandingInstances.filter((i) => i.id !== nextId)
   const showSentence = !loading && !dayFailure && (todayInstances.length > 0 || outstandingInstances.length > 0)
   const hearsNameFor = (inst: ChecklistInstance): string | null => {
-    const id = taskHearsId(inst.checklist_items, authUserId)
+    const id = taskHearsId(inst.checklist_items, personId)
     return id ? (eventActorNameById[id] ?? null) : null
   }
   // Punch list #369, step B1: the person's own task, and a follow-up from a task they finished. Both open the New task
   // window that exists, so nothing new is saved here. The day reads again once the window has sent.
-  const canWriteTask = canAddTask && !!addTaskModal && !!authUserId
-  const addOwnTask = () => addTaskModal?.openAddModal({ assigneeUserId: authUserId, onSaved: () => void rereadDay() })
+  // In a look the two presses are drawn, as the person's phone draws them, and neither opens the window.
+  const canWriteTask = canAddTask && !!addTaskModal && !!personId
+  const addOwnTask = () => {
+    if (actorId) addTaskModal?.openAddModal({ assigneeUserId: actorId, onSaved: () => void rereadDay() })
+  }
   const addFollowUp = (inst: ChecklistInstance) => {
+    if (!actorId) return
     const place = taskPlaceDraft(taskPlaces.placeFor(inst.checklist_item_id))
     addTaskModal?.openAddModal({
-      assigneeUserId: authUserId,
+      assigneeUserId: actorId,
       preset: {
         title: followUpTitle(taskTitlePlain(inst.checklist_items?.title)),
         links: [],
         // The place alone: a way in painted for the first task stays with that task.
         place: place ? { lat: place.lat, lng: place.lng, name: place.name, accuracyM: place.accuracyM } : null,
-        tellUserId: followUpTellsId(inst.checklist_items?.created_by_user_id, authUserId),
+        tellUserId: followUpTellsId(inst.checklist_items?.created_by_user_id, actorId),
       },
       onSaved: () => void rereadDay(),
     })
@@ -1036,7 +952,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   const roundIds = roundTaskIds(roundTasks)
   const roundHeld = roundHeldWords(roundHeldCount(roundTasks))
   const markRound = async () => {
-    if (roundBusy || roundIds.length < ROUND_MIN) return
+    if (roundBusy || !actorId || roundIds.length < ROUND_MIN) return
     if (!(await confirmRound({ message: roundConfirmMessage(roundIds.length), confirmLabel: roundPressLabel(roundIds.length) }))) return
     setRoundBusy(true)
     try {
@@ -1060,7 +976,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
   // Step D3: Yesterday. A repeating task that went unticked asks once whether it was done or skipped.
   const missed = yesterdayMissed(missedRows, toLocalDateString(new Date()), missedSkippedIds)
   const answerMissed = async (inst: ChecklistInstance, did: boolean) => {
-    if (missedBusyId || !authUserId) return
+    if (missedBusyId || !actorId) return
     setMissedBusyId(inst.id)
     try {
       if (did) {
@@ -1068,7 +984,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         if (await toggleComplete(inst)) setMissedRows((prev) => prev.filter((r) => r.id !== inst.id))
         return
       }
-      const refused = await sayTaskStuck({ instanceId: inst.id, userId: authUserId, kind: 'skipped', words: '' })
+      const refused = await sayTaskStuck({ instanceId: inst.id, userId: actorId, kind: 'skipped', words: '' })
       if (refused) setError(refused)
       else setMissedSkippedIds((prev) => new Set(prev).add(inst.id))
     } finally {
@@ -1092,14 +1008,16 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
           title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleTaskChip(inst.id, setVehicleCtxInstanceId)}</> : null}{inst.checklist_items?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(inst.checklist_items, undefined, { wrap: true })}</div> : null}{dueCardChip(inst.checklist_items?.due_date)}</>}
           events={eventsByInstance.get(inst.id) ?? []}
           nameById={eventActorNameById}
-          currentUserId={authUserId}
+          currentUserId={personId}
           onToggleComplete={() => {
+            if (!actorId) return
             if (!inst.completed_at) setDoneHere((prev) => new Set(prev).add(inst.id))
             void toggleComplete(inst)
           }}
           onPostComment={(body) => postCardComment(inst, body)}
           lines={taskLines.linesFor(inst.id)}
           onTickLine={async (criterionId, ticked) => {
+            if (!actorId) return
             const r = await taskLines.tick(inst.id, criterionId, ticked)
             if (!r.ok && r.error) setError(r.error)
             // The last tick closes the card in the database; read the day again so the box and the queue agree.
@@ -1120,8 +1038,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
           onPlaceAdded={() => void taskPlaces.reload()}
           onMapAdded={() => void taskPlaces.reload()}
           onSetPercent={async (percent, words) => {
-            if (!authUserId) return false
-            const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
+            if (!actorId) return false
+            const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId: actorId })
             if (!r.ok) {
               setError(r.error ?? null)
               return false
@@ -1152,7 +1070,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
                   Mute alerts
                 </button>
               )}
-              {canForward && (
+              {canForward && !isLook && (
                 <button type="button" className="fwd-btn-desktop" onClick={() => openFwd(inst)} style={TASK_PILL_STYLE} title="Give this task to someone else">
                   Forward
                 </button>
@@ -1169,7 +1087,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       )
   }
 
-  return (
+  const day = (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
       <div data-today-head style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '0.6rem', margin: '0.6rem 0 0.9rem' }}>
         <div style={{ minWidth: 0 }}>
@@ -1183,8 +1101,9 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         {modeBar}
       </div>
       {/* Tagged task notes (punch list #375): what waits on this person, above the day's list. It draws nothing while nothing waits. */}
-      <TaggedJobNotesSection variant="today" kinds={tagKinds} onOpenTask={showTask} taskOpens={taskOnPage} onOpenJob={onOpenTaggedJob} />
-      <TaskPlacesMapCard tasks={mapTasks} onShowTask={showTask} onMe={setMe} />
+      {/* The tags are read for the signed-in person alone, so a look at someone else's day leaves the section out. */}
+      {isLook ? null : <TaggedJobNotesSection variant="today" kinds={tagKinds} onOpenTask={showTask} taskOpens={taskOnPage} onOpenJob={onOpenTaggedJob} />}
+      <TaskPlacesMapCard tasks={mapTasks} onShowTask={showTask} onMe={isLook ? () => {} : setMe} />
       {missed.day && !dayFailure ? (
         <section data-yesterday style={{ marginBottom: '0.9rem' }}>
           <h3 style={{ ...TODAY_PART_LABEL, marginTop: 0 }}>{missedLabel(missed.day, toLocalDateString(new Date()), missed.rows.length)}</h3>
@@ -1213,7 +1132,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
           // A read is safe to repeat: when the signal returns the day reads again by itself.
           <OfflineRetryPanel failure={dayFailure} onRetry={loadDay} surface="checklist-today" idempotent busy={loading} />
         ) : !nextInst && todayInstances.length === 0 ? (
-          <EmptyState {...checklistTodayEmptyWords(canForward ? () => setUpcomingExpanded(true) : null)} />
+          <EmptyState {...checklistTodayEmptyWords(canForward && !isLook ? () => setUpcomingExpanded(true) : null)} />
         ) : (
           <>
             {nextInst ? (
@@ -1275,9 +1194,11 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       <ChecklistOutstandingSection
         instances={olderRows}
         extrasFor={(inst) => doer.morePress(doerTargetOf(inst as ChecklistInstance))}
-        onGoThrough={() => doer.startPass(olderRows.map(doerTargetOf))}
+        onGoThrough={() => {
+          if (actorId) doer.startPass(olderRows.map(doerTargetOf))
+        }}
         eventsByInstance={eventsByInstance}
-        currentUserId={authUserId}
+        currentUserId={personId}
         nameById={eventActorNameById}
         takesRingFor={(inst) => {
           const it = (inst as ChecklistInstance).checklist_items
@@ -1299,13 +1220,14 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         onPlaceAdded={() => void taskPlaces.reload()}
         onPostComment={(inst, body) => postCardComment(inst as ChecklistInstance, body)}
         onTickLine={async (inst, criterionId, ticked) => {
+          if (!actorId) return
           const r = await taskLines.tick(inst.id, criterionId, ticked)
           if (!r.ok && r.error) setError(r.error)
           if (r.allTicked) await loadToday()
         }}
         onSetPercent={async (inst, percent, words) => {
-          if (!authUserId) return false
-          const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId })
+          if (!actorId) return false
+          const r = await setTaskPercent({ instanceId: inst.id, percent, words, authUserId: actorId })
           if (!r.ok) {
             setError(r.error ?? null)
             return false
@@ -1346,13 +1268,14 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         setError={setError}
       />
 
-      <ChecklistComingUpSection authUserId={authUserId} />
+      <ChecklistComingUpSection authUserId={personId} />
 
       {canForward ? (
       <section>
         <button
           type="button"
           onClick={() => setUpcomingExpanded(!upcomingExpanded)}
+          aria-expanded={upcomingExpanded}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -1409,7 +1332,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
                             🔕
                           </button>
                         )}
-                        {canForward && (
+                        {canForward && !isLook && (
                           <button
                             type="button"
                             className="fwd-btn-desktop"
@@ -1439,7 +1362,7 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       </section>
       ) : null}
 
-      {fwdInstance && (
+      {fwdInstance && !isLook && (
         <TaskForwardWindow
           title={taskTitlePlain((fwdInstance.checklist_items as { title?: string } | null)?.title ?? 'Untitled')}
           people={forwardTakers(users, authUserId ?? null)}
@@ -1450,16 +1373,16 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
         />
       )}
 
-      {doer.sheets}
+      {isLook ? null : doer.sheets}
       <ChecklistItemMuteModal
-        open={!!muteModalItemId}
+        open={!!muteModalItemId && !isLook}
         checklistItemId={muteModalItemId}
         taskTitle={muteModalTitle}
         authUserId={authUserId}
         onClose={() => setMuteModalItemId(null)}
         onSaved={() => {}}
       />
-      {vehicleCtxInstanceId && (
+      {vehicleCtxInstanceId && !isLook && (
         <VehicleTaskContextModal
           instanceId={vehicleCtxInstanceId}
           canOpenVehiclesPage={canOpenVehiclesPage}
@@ -1468,6 +1391,8 @@ function ChecklistTodayTab({ authUserId, canForward, canOpenVehiclesPage, canAdd
       )}
     </div>
   )
+  // A look is drawn as the person's phone draws it, inside the box that stops every press that would change a task.
+  return isLook ? <TaskLookGate>{day}</TaskLookGate> : day
 }
 
 function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setError }: { authUserId: string | null; canViewOthers: boolean; canEditHistory: boolean; setError: (s: string | null) => void }) {
@@ -2361,6 +2286,24 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+  /**
+   * See a person's Task Mode (punch list #381): whose screen the window draws, when it was read, and the person's role
+   * once it is read. The role decides what their phone offers, such as the office's Upcoming fold.
+   */
+  const [lookPerson, setLookPerson] = useState<{ userId: string; name: string; readAt: Date; n: number; role?: UserRole | null } | null>(null)
+  const openLook = (userId: string, name: string) => {
+    setLookPerson({ userId, name, readAt: new Date(), n: 0 })
+    void supabase
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        const role = ((data as { role?: string | null } | null)?.role ?? null) as UserRole | null
+        // A role that does not read draws the plain screen, the one a crew phone shows.
+        setLookPerson((cur) => (cur && cur.userId === userId ? { ...cur, role } : cur))
+      })
+  }
   const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating' | 'missed'>('non_repeating')
   /** Missed view: representative instance id → its whole missed group (collapse, v2.2272). */
   const [missedGroups, setMissedGroups] = useState<Map<string, MissedGroup<OutstandingInstance>>>(new Map())
@@ -3175,24 +3118,45 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
                         setError={setError}
                       />
                       {canActForOthers && (
-                        <button
-                          type="button"
-                          onClick={() => checklistAddModal?.openAddModal(userId)}
-                          style={{
-                            marginTop: '0.4rem',
-                            minHeight: 36,
-                            padding: '0 0.8rem',
-                            fontSize: '0.8125rem',
-                            fontWeight: 600,
-                            border: '1px dashed var(--border-strong)',
-                            borderRadius: 8,
-                            background: 'none',
-                            color: 'var(--text-link)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          ＋ Add task for {name.split(' ')[0]}
-                        </button>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.4rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => checklistAddModal?.openAddModal(userId)}
+                            style={{
+                              minHeight: 36,
+                              padding: '0 0.8rem',
+                              fontSize: '0.8125rem',
+                              fontWeight: 600,
+                              border: '1px dashed var(--border-strong)',
+                              borderRadius: 8,
+                              background: 'none',
+                              color: 'var(--text-link)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ＋ Add task for {name.split(' ')[0]}
+                          </button>
+                          {/* Punch list #381: this person's Task Mode screen in a window, as a look. */}
+                          <button
+                            type="button"
+                            data-see-task-mode={userId}
+                            onClick={() => openLook(userId, name)}
+                            title={lookPressTitle(name)}
+                            style={{
+                              minHeight: 36,
+                              padding: '0 0.8rem',
+                              fontSize: '0.8125rem',
+                              fontWeight: 600,
+                              border: '1px solid var(--border-strong)',
+                              borderRadius: 8,
+                              background: 'var(--surface)',
+                              color: 'var(--text-strong)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {lookPressLabel(name)}
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -3202,6 +3166,32 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
           </div>
         )}
       </div>
+      {lookPerson && (
+        <TaskModeLookWindow
+          personName={lookPerson.name}
+          readAt={lookPerson.readAt}
+          onReadAgain={() => setLookPerson((cur) => (cur ? { ...cur, readAt: new Date(), n: cur.n + 1 } : cur))}
+          onClose={() => setLookPerson(null)}
+          side={<TaskLookComingUp key={`${lookPerson.userId}-${lookPerson.n}`} personId={lookPerson.userId} personName={lookPerson.name} onAddTask={() => checklistAddModal?.openAddModal(lookPerson.userId)} />}
+        >
+          {lookPerson.role === undefined ? (
+            <p>Loading…</p>
+          ) : (
+            // Today itself, reading this person. Read again mounts it anew, so the day is read from the start.
+            <ChecklistTodayTab
+              key={`${lookPerson.userId}-${lookPerson.n}`}
+              look={{ personId: lookPerson.userId }}
+              authUserId={authUserId}
+              canForward={isOfficeRole(lookPerson.role)}
+              canOpenVehiclesPage={false}
+              canAddTask={showHeaderTaskChecklistButton(lookPerson.role)}
+              tagKinds="both"
+              setError={() => {}}
+              modeBar={<TaskDayBar tab="today" onPick={() => {}} />}
+            />
+          )}
+        </TaskModeLookWindow>
+      )}
       {roadmapContextTaskId && (
         <RoadmapTaskContextModal
           roadmapGroupTaskId={roadmapContextTaskId}

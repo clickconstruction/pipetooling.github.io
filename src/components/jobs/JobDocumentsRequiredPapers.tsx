@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useConfirmDialog, usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
-import { useAuth } from '../../hooks/useAuth'
+import { jobPapersChanged } from '../../hooks/useJobsClosedToMe'
 import { batchOutcomeWords } from '../../lib/batchWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import {
@@ -9,7 +9,6 @@ import {
   type JobPaperPerson,
   type JobPapersRoster,
   type PickablePaper,
-  JOB_PAPERS_CHANGED_EVENT,
   NO_PAPERS_WORDS,
   cellFor,
   cellWords,
@@ -23,7 +22,6 @@ import {
   requireFoot,
   requiredToast,
   rosterSummary,
-  signYourOwnWords,
   signingLinksText,
 } from '../../lib/jobs/jobPapers'
 import { supabaseJobPapersIo, type JobPapersIo } from '../../lib/jobs/jobPapersIo'
@@ -41,17 +39,16 @@ const deadPress: CSSProperties = { background: DEAD_PRESS_FILL, color: DEAD_PRES
 const stateChip: CSSProperties = { display: 'inline-block', fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.5rem', borderRadius: 999, whiteSpace: 'nowrap' }
 const note: CSSProperties = { ...muted, padding: '0.45rem 0.6rem', borderLeft: '3px solid var(--text-amber-800)', background: 'var(--bg-amber-tint)', color: 'var(--text-700)', borderRadius: '0 6px 6px 0' }
 
-type Busy = 'save' | 'own' | `remove:${string}` | `links:${string}` | null
+type Busy = 'save' | `remove:${string}` | `links:${string}` | null
 
 /**
  * Papers before this job opens (step 2 of seven): on the job window's Documents tab the office picks papers from
  * the Contract Book and saves, and everyone signs each one, the office too. The save button names its count and the
  * line under it says how many people it reaches. Below, the roster: each person against each paper, with a press
- * that copies their signing links to text them. Whoever saves is asked to sign their own at once. Taking a paper off
- * keeps every signature. Office only: the caller draws it for an office role.
+ * that copies their signing links to text them. Whoever saves owes the papers too: the job's prompt asks them at once
+ * (`JobPapersGateModal`). Taking a paper off keeps every signature. Office only: the caller draws it for an office role.
  */
 export function JobDocumentsRequiredPapers({ job, io = supabaseJobPapersIo, onOverlayOpenChange }: { job: { id: string }; io?: JobPapersIo; onOverlayOpenChange?: (open: boolean) => void }) {
-  const { user } = useAuth()
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const promptDialog = usePromptDialog()
@@ -121,9 +118,8 @@ export function JobDocumentsRequiredPapers({ job, io = supabaseJobPapersIo, onOv
 
   const pickable = useMemo(() => (book && roster ? pickablePapers(book, roster.papers, pending.map((p) => p.bookDocumentId)) : []), [book, roster, pending])
   const summary = useMemo(() => (roster && roster.papers.length > 0 ? rosterSummary(roster) : null), [roster])
-  const own = useMemo(() => (roster && roster.papers.length > 0 ? signYourOwnWords(roster, user?.id) : null), [roster, user?.id])
 
-  const told = () => window.dispatchEvent(new CustomEvent(JOB_PAPERS_CHANGED_EVENT, { detail: job.id }))
+  const told = () => jobPapersChanged(job.id)
 
   const save = async () => {
     if (pending.length === 0 || busy) return
@@ -204,29 +200,6 @@ export function JobDocumentsRequiredPapers({ job, io = supabaseJobPapersIo, onOv
     if (outcome.head) setHeld({ head: outcome.head, lines: failed })
     setBusy(null)
     await reload()
-  }
-
-  /** Whoever saved signs their own: the signing page opens in a new tab, and this one reads again on the way back. */
-  const signOwn = async () => {
-    if (busy || !roster || !own?.next) return
-    const me = roster.people.find((p) => p.userId === user?.id)
-    if (!me?.personId) return
-    setBusy('own')
-    setError(null)
-    try {
-      const url = await io.signingLink(own.next.id, me.personId)
-      if (!live.current) return
-      const opened = window.open(url, '_blank', 'noopener')
-      if (!opened) {
-        onOverlayOpenChange?.(true)
-        await promptDialog({ title: 'Open the signing page', message: 'The window was blocked. Open this link to read and sign.', defaultValue: url, confirmLabel: 'I opened it' })
-        onOverlayOpenChange?.(false)
-      }
-    } catch (e) {
-      if (live.current) setError(formatErrorMessage(e, 'The signing page could not be opened.'))
-    } finally {
-      if (live.current) setBusy(null)
-    }
   }
 
   const stage = lockStageNote()
@@ -349,17 +322,6 @@ export function JobDocumentsRequiredPapers({ job, io = supabaseJobPapersIo, onOv
             </div>
           ) : null}
 
-          {own ? (
-            <div data-testid="job-papers-own" style={{ ...paperRow, background: 'var(--bg-blue-tint)', border: '1px solid transparent' }}>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', flex: 1, minWidth: '12rem' }}>{own.blocked ? `${own.line} ${own.blocked}` : own.line}</span>
-              {own.next ? (
-                <button type="button" style={{ ...bluePress, ...(busy != null ? deadPress : {}) }} disabled={busy != null} onClick={() => void signOwn()}>
-                  {busy === 'own' ? 'Opening…' : `Read and sign: ${own.next.paperName}`}
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-
           {papers.length > 0 ? (
             <>
               <style>{`@media (max-width: 600px) {
@@ -388,7 +350,7 @@ export function JobDocumentsRequiredPapers({ job, io = supabaseJobPapersIo, onOv
                     return (
                       <tr key={person.key} data-job-papers-person={person.key}>
                         <td style={documentsTd}>
-                          <b style={{ display: 'block', color: 'var(--text-strong)', fontWeight: 600 }}>{person.name}</b>
+                          <b style={{ display: 'block', color: 'var(--text-strong)', fontWeight: 600, whiteSpace: 'nowrap' }}>{person.name}</b>
                           <small style={{ color: 'var(--text-muted)' }}>{personRoleLabel(person)}</small>
                         </td>
                         {papers.map((p) => {

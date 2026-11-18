@@ -3,6 +3,7 @@ import type { Database } from '../types/database'
 import { makeConsoleRowCapReporter, wrapFetchWithRowCapTripwire } from './supabaseRowCapTripwire'
 import { wrapFetchCountingWrites } from './unsavedWork'
 import { bindAppHealthToWindow, wrapFetchReportingHealth } from './appHealth'
+import { wrapFetchRememberingRefusals } from './tellTheDev/trouble'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -21,12 +22,16 @@ if (!url || !anonKey) {
 // request is counted while in flight so the auto-reload never lands mid-save (v2.3741,
 // src/lib/unsavedWork.ts). Outermost, every database and auth request reports its start and
 // its end to the app-health kernel (#183 PR 1, v2.6009, src/lib/appHealth.ts), which the strip
-// at the top of every screen and the auth gate read.
+// at the top of every screen and the auth gate read. Innermost but one, a call the server
+// refuses is remembered for a few minutes in this tab alone, so a note to the dev can say what was
+// refused (punch list #380, src/lib/tellTheDev/trouble.ts); a call with no answer never is.
 export const supabase = createClient<Database>(url, anonKey, {
   db: { schema: 'public' },
   global: {
     fetch: wrapFetchReportingHealth(
-      wrapFetchCountingWrites(wrapFetchWithRowCapTripwire((input, init) => fetch(input, init), makeConsoleRowCapReporter())),
+      wrapFetchCountingWrites(
+        wrapFetchRememberingRefusals(wrapFetchWithRowCapTripwire((input, init) => fetch(input, init), makeConsoleRowCapReporter())),
+      ),
     ),
   },
 })

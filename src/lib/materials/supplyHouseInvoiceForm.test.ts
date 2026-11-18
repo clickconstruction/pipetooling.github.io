@@ -5,7 +5,10 @@ import {
   creditableInvoices,
   creditsInvoicePatch,
   allocationTotal,
+  blankInvoiceForm,
   dueDateHint,
+  groupAllocationsByInvoice,
+  invoiceFormFromRow,
   invoiceSaveLabel,
   ordinalDay,
   paidAtIsoFromYmd,
@@ -14,6 +17,7 @@ import {
   poCodeHint,
   poCodeHintText,
   poLedgerCodes,
+  poLedgerEntriesFromRows,
   poLedgerEntryCard,
   poLedgerEntryJobMismatch,
   poLedgerJobMatches,
@@ -26,6 +30,7 @@ import {
   documentKindFromRow,
   documentWords,
   signedAmountForSave,
+  typedAmountCents,
   typedAmountFromStored,
 } from './supplyHouseInvoiceForm'
 
@@ -408,5 +413,101 @@ describe('a credit pairs to the invoice it credits (v2.5035)', () => {
     expect(creditsInvoicePatch('credit', '', { credits_invoice_id: 'i1' })).toEqual({ credits_invoice_id: null })
     expect(creditsInvoicePatch('invoice', 'i1', { credits_invoice_id: 'i1' })).toEqual({ credits_invoice_id: null })
     expect(creditsInvoicePatch('invoice', 'i1', {})).toEqual({})
+  })
+})
+
+describe('groupAllocationsByInvoice', () => {
+  it('groups the rows by invoice, in the order they came, each share a number', () => {
+    const grouped = groupAllocationsByInvoice([
+      { invoice_id: 'a', job_id: 'j1', pct: 60 },
+      { invoice_id: 'b', job_id: 'j2', pct: '100' },
+      { invoice_id: 'a', job_id: 'j3', pct: '40' },
+    ])
+    expect(grouped).toEqual({ a: [{ job_id: 'j1', pct: 60 }, { job_id: 'j3', pct: 40 }], b: [{ job_id: 'j2', pct: 100 }] })
+  })
+
+  it('an invoice with no rows has no entry', () => {
+    expect(groupAllocationsByInvoice([])).toEqual({})
+    expect(groupAllocationsByInvoice([{ invoice_id: 'a', job_id: 'j1', pct: 100 }]).b).toBeUndefined()
+  })
+})
+
+describe('poLedgerEntriesFromRows', () => {
+  // Made-up ledger rows.
+  const row = (po_code: number | string, over: Partial<Parameters<typeof poLedgerEntriesFromRows>[0][number]> = {}) => ({
+    po_code,
+    notes: 'two water heaters',
+    created_at: '2026-03-02T15:00:00Z',
+    job_ledger_id: 'job-1',
+    jobs_ledger: { hcp_number: '964', click_number: null, job_name: ' Oak Ridge townhomes ' },
+    for_user: { name: ' Dana ', email: 'dana@example.test' },
+    created_by_user: { name: null, email: 'office@example.test' },
+    ...over,
+  })
+
+  it('reads a row into its entry: the job with its prefix, who it was for, who made it, the stated need', () => {
+    expect(poLedgerEntriesFromRows([row(10410)]).get(10410)).toEqual({
+      code: 10410,
+      jobLabel: 'J964 · Oak Ridge townhomes',
+      jobLedgerId: 'job-1',
+      personName: 'Dana',
+      createdAt: '2026-03-02T15:00:00Z',
+      createdBy: 'office@example.test',
+      statedNeed: 'two water heaters',
+    })
+  })
+
+  it('a row with no job, no person and no maker reads as dashes and nulls', () => {
+    const entry = poLedgerEntriesFromRows([row('10420', { job_ledger_id: null, jobs_ledger: null, for_user: null, created_by_user: null, notes: null })]).get(10420)
+    expect(entry).toMatchObject({ code: 10420, jobLabel: 'J— · —', jobLedgerId: null, personName: '—', createdBy: null, statedNeed: null })
+  })
+
+  it('falls back to the Click number, and to the email when the name is blank', () => {
+    const entry = poLedgerEntriesFromRows([row(10430, { jobs_ledger: { hcp_number: ' ', click_number: '77', job_name: 'Elm' }, for_user: { name: ' ', email: 'sam@example.test' } })]).get(10430)
+    expect(entry).toMatchObject({ jobLabel: 'J77 · Elm', personName: 'sam@example.test' })
+  })
+
+  it('keeps one entry a code, the later row winning, and the codes check reads them', () => {
+    const entries = poLedgerEntriesFromRows([row(10410), row(10410, { notes: 'the later one' }), row(10440)])
+    expect(entries.size).toBe(2)
+    expect(entries.get(10410)?.statedNeed).toBe('the later one')
+    expect([...(poLedgerCodes(entries) ?? [])].sort()).toEqual([10410, 10440])
+  })
+})
+
+describe('the form\'s fields', () => {
+  it('a new bill is dated today, due on the house\'s next pay day, and blank everywhere else', () => {
+    expect(blankInvoiceForm(10, '2026-10-29')).toEqual({
+      number: '', dateYmd: '2026-10-29', dueDateYmd: '2026-11-10', amountTyped: '', kind: 'invoice', isInterest: false, lateInvoiceId: '', creditsInvoiceId: '',
+      link: '', isPaid: false, paidOnYmd: '', onJobAccount: false, purchaseOrderNumber: '', allocations: [],
+    })
+  })
+
+  it('a house with no pay day leaves the due day blank', () => {
+    expect(blankInvoiceForm(null, '2026-10-29').dueDateYmd).toBe('')
+    expect(blankInvoiceForm(undefined, '2026-10-29').dueDateYmd).toBe('')
+  })
+
+  // A made-up stored row.
+  const row = { invoice_number: 'S-1', invoice_date: '2026-10-22', due_date: null, amount: -138.99, document_kind: 'credit', credits_invoice_id: 'inv-1', link: null, is_paid: true, is_interest: false, late_invoice_id: null, paid_at: '2026-10-25T18:00:00Z', on_job_account: true, purchase_order_number: null, job_allocations: [{ job_id: 'j1', pct: 100 }] }
+
+  it('reads a stored row: the amount unsigned, the kind from the row, the paid day in company time', () => {
+    expect(invoiceFormFromRow(row)).toEqual({
+      number: 'S-1', dateYmd: '2026-10-22', dueDateYmd: '', amountTyped: '138.99', kind: 'credit', isInterest: false, lateInvoiceId: '', creditsInvoiceId: 'inv-1',
+      link: '', isPaid: true, paidOnYmd: '2026-10-25', onJobAccount: true, purchaseOrderNumber: '', allocations: [{ job_id: 'j1', pct: 100 }],
+    })
+  })
+
+  it('an unpaid row has no paid day, and a row read before a column existed reads it as off', () => {
+    const old = invoiceFormFromRow({ invoice_number: 'S-2', invoice_date: '2026-10-22', due_date: '2026-11-21', amount: 40, link: 'https://example.test/scan', is_paid: false, paid_at: '2026-10-25T18:00:00Z', purchase_order_number: '10410' })
+    expect(old).toMatchObject({ kind: 'invoice', amountTyped: '40', paidOnYmd: '', onJobAccount: false, isInterest: false, lateInvoiceId: '', creditsInvoiceId: '', allocations: [], dueDateYmd: '2026-11-21', link: 'https://example.test/scan', purchaseOrderNumber: '10410' })
+  })
+
+  it('reads the amount box as cents, digits and the point only', () => {
+    expect(typedAmountCents('952.28')).toBe(95228)
+    expect(typedAmountCents('$1,952.28')).toBe(195228)
+    expect(typedAmountCents('19.999')).toBe(2000)
+    expect(typedAmountCents('')).toBe(0)
+    expect(typedAmountCents('1.2.3')).toBe(0)
   })
 })

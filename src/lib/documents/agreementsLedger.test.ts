@@ -92,6 +92,8 @@ describe('the chips', () => {
     expect(statesOfPick('waiting')).toEqual(['waiting'])
     expect(statesOfPick('signed')).toEqual(['signed'])
     expect(statesOfPick('ended')).toEqual(['ended'])
+    // Under the Search tab every state is asked for, so a voided paper is found too.
+    expect(statesOfPick('any')).toBeNull()
   })
 
   it('groups a kind for its colours, an unknown kind with the job contracts', () => {
@@ -138,6 +140,7 @@ describe('the find box', () => {
     expect(agreementsNarrowed({ kind: 'people', state: 'live', typed: '' })).toBe(true)
     expect(agreementsNarrowed({ kind: 'all', state: 'ended', typed: '' })).toBe(true)
     expect(agreementsNarrowed({ kind: 'all', state: 'live', typed: 'cedar' })).toBe(true)
+    expect(agreementsNarrowed({ kind: 'all', state: 'any', typed: 'cedar' })).toBe(true)
   })
 })
 

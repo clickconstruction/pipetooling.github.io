@@ -213,6 +213,7 @@ export function ComingUpWaitingGroupList({ groups, groupBackground }: { groups: 
       {hiddenCount > 0 || expanded ? (
         <button
           type="button"
+          aria-expanded={expanded}
           onClick={() => setExpanded((o) => !o)}
           style={{
             width: '100%',

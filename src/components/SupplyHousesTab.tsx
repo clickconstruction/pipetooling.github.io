@@ -1,20 +1,20 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
-import { summarizeSupplyHouseBalances, supplyHouseCardMoney, ordinalDay } from '../lib/materials/supplyHousePhone'
+import { openSupplyBook, summarizeSupplyHouseBalances, supplyBookTotal, supplyHouseCardMoney, ordinalDay } from '../lib/materials/supplyHousePhone'
 import { SupplyHousePhoneScreen } from './materials/SupplyHousePhoneScreen'
 import { CreditPairPick } from './materials/CreditPairPick'
 import { telHrefFor } from '../lib/phoneContact'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { saveSupplyInvoice, supabaseSupplyInvoiceDb } from '../lib/materials/supplyInvoiceWrite'
+import { saveSupplyInvoice, supabaseSupplyInvoiceDb, supplyInvoiceDraftFromForm } from '../lib/materials/supplyInvoiceWrite'
 import { useBillReadSwitch } from '../hooks/useBillReadSwitch'
 import { fileHref, fileUrl } from '../lib/files/fileRoute'
-import { applyPlan, billTint, emptyFields, fillCounts, planBillFill, settle, type BillFillPlan } from '../lib/materials/bills/billFill'
-import { billRowRead, field as billField, type BillFieldKey, type BillFields, type BillRead } from '../lib/materials/bills/billRead'
+import { billTint, emptyFields, fillCounts, noPdfPatch, planBillFill, planIntoForm, settle, type BillFillPlan, type BillFormPatch } from '../lib/materials/bills/billFill'
+import { billRowRead, type BillFieldKey, type BillFields, type BillRead } from '../lib/materials/bills/billRead'
 import { billCountsByHouse, billsForHouse, type BillCandidate } from '../lib/materials/bills/billsToRecord'
 import { fileToUpload, supabaseBillsIo, type BillReadAnswer, type BillsIo } from '../lib/materials/bills/billsToRecordIo'
 import { supabasePaperIo, type PaperIo } from '../lib/materials/lines/paperIo'
-import { paperSaveFromBillRead, rowLinesWords, type PaperRow } from '../lib/materials/lines/paperRows'
+import { paperSaveFromBillRead, type PaperRow } from '../lib/materials/lines/paperRows'
 import { PaperLookModal } from './materials/PaperLookModal'
 import { BillLinesHeld } from './materials/BillLinesHeld'
 import { supabaseHeldBillsIo, type HeldBillsIo } from '../lib/materials/lines/heldBillsIo'
@@ -27,7 +27,6 @@ import { useAuth } from '../hooks/useAuth'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatCurrency } from '../lib/format'
-import { parsePoGeneratorCodeFromPurchaseOrderName } from '../lib/parsePoGeneratorCodeFromPurchaseOrderName'
 import { STATED_NEED_COLUMN } from '../lib/materials/poCodeStatedNeed'
 import { DEFAULT_JOB_LEDGER_PREFIX, effectiveJobLedgerNumber, formatJobLedgerNumberLabel } from '../lib/ledgerDisplayPrefixes'
 import { stripTrailingZip } from '../lib/displayAddress'
@@ -48,8 +47,12 @@ import {
   invoicesForAgingCell,
   isMovableAgingInvoice,
   movableCandidates,
+  movableWindowRows,
   moveStripSummary,
-  nextMonthlyPaymentDueYmd,
+  notNeededInvoiceIds,
+  singleJobPairs,
+  withEmailedAsks,
+  type MoveAsk,
   type AgingBucketKey,
   type AgingCellKey,
 } from '../lib/supplyHouseAging'
@@ -64,11 +67,15 @@ import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPan
 import {
   addAllocation,
   allocationTotal,
+  blankInvoiceForm,
   dueDateHint,
+  groupAllocationsByInvoice,
+  invoiceFormFromRow,
   paidOnYmdFromIso,
   poCodeHint,
   poCodeHintText,
   poLedgerCodes,
+  poLedgerEntriesFromRows,
   poLedgerEntryCard,
   poLedgerEntryJobMismatch,
   poLedgerJobMatches,
@@ -78,9 +85,10 @@ import {
   creditPairingLine,
   documentKindFromRow,
   documentWords,
-  typedAmountFromStored,
+  typedAmountCents,
+  type InvoiceFormValues,
+  type PoGeneratorLedgerRow,
   type PoLedgerEntriesByCode,
-  type PoLedgerEntry,
   type SupplyDocumentKind,
 } from '../lib/materials/supplyHouseInvoiceForm'
 import { ariaSortFor, nextSupplyHouseSummarySort, parseSupplyHouseSummarySort, serializeSupplyHouseSummarySort, sortSupplyHouseSummary, type SupplyHouseSummarySort, type SupplyHouseSummarySortKey } from '../lib/materials/supplyHouseSummarySort'
@@ -88,7 +96,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
 import { SupplyHouseJobAccountsRoster } from './materials/SupplyHouseJobAccountsRoster'
 import { MarkJobAccountOpenedModal } from './materials/MarkJobAccountOpenedModal'
-import { openedViaPhrase, type JobAccountRep, type JobSupplyHouseAccountRow } from '../lib/materials/jobSupplyHouseAccounts'
+import { accountsByPair, openedViaPhrase, repsByHouse, type JobAccountRep, type JobSupplyHouseAccountRow } from '../lib/materials/jobSupplyHouseAccounts'
 import { agingCellAccountSplit, agingCellJobStateWords, agingCellJobsLine, groupAgingCellByJob, type AgingCellJobGroup } from '../lib/materials/agingCellByJob'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
@@ -96,8 +104,8 @@ import { supplyHousesNextLine } from '../lib/quickfill/nextLine'
 import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { isSupplyCredit } from '../lib/supplyHouseDocument'
 import { billDateWords, dueGroupKey } from '../lib/materials/supplyBillGroups'
-import { billMoveTrace, removedLately } from '../lib/materials/payments/supplyPaymentMove'
-import { interestByHouse, interestTitle } from '../lib/materials/payments/supplyInterest'
+import { removedLately } from '../lib/materials/payments/supplyPaymentMove'
+import { interestByHouse } from '../lib/materials/payments/supplyInterest'
 import { supabaseSupplyFinishIo } from '../lib/materials/payments/supplyPaymentsFinishIo'
 import { SupplyPaymentsToFinish } from './materials/SupplyPaymentsToFinish'
 import { SupplyPaymentHowEditor } from './materials/SupplyPaymentHowEditor'
@@ -106,10 +114,11 @@ import { useSupplyHouseBank } from '../hooks/useSupplyHouseBank'
 import { supabaseSupplyBankIo } from '../lib/materials/payments/supplyPaymentBankIo'
 import { bankCandidatesFor, supplyBankLineWords } from '../lib/materials/payments/supplyPaymentBank'
 import type { SupplyPayChip } from '../lib/materials/payments/supplyPayment'
-import { SupplyHouseBillsCard, type SupplyBillCardRow } from './materials/SupplyHouseBillsCard'
+import { SupplyHouseBillsCard } from './materials/SupplyHouseBillsCard'
+import { houseOnAccountTotal, jobsLedgerNames, jobsLedgerNamesWithAddress, paymentWindowBills, recordPaymentBills, supplyBillCardRows, supplyBillsToList, supplyPhoneBills, typedPaidBillIds, type JobsLedgerNameRow } from '../lib/materials/supplyHouseBillRows'
 import { RecordSupplyPaymentModal } from './materials/RecordSupplyPaymentModal'
 import { supabaseSupplyPaymentsIo, type HousePayments } from '../lib/materials/payments/supplyPaymentsIo'
-import { billPaidBy, houseOnAccount, lastMethodUsed, openAmount, paidByBill, partPaidWords, supplyBillOpen } from '../lib/materials/payments/supplyPayment'
+import { billPaidBy, lastMethodUsed } from '../lib/materials/payments/supplyPayment'
 import { SupplyPaymentWindow } from './materials/SupplyPaymentWindow'
 import { EmptyState } from './EmptyState'
 import { SUPPLY_HOUSE_AGING_EMPTY, supplyHouseInvoicesEmptyWords, supplyHousePosEmptyWords } from '../lib/materials/materialsEmptyWords'
@@ -162,7 +171,7 @@ type AgingInvoiceRow = {
 }
 
 /** An open (unconfirmed) job-account move ask (PR 3) — the follow-up the office owes. */
-type MoveAskRow = { id: string; invoice_id: string; requested_at: string; via: string; sent_to: string }
+type MoveAskRow = MoveAsk
 
 /**
  * Format a DATE-only column (YYYY-MM-DD) in the user's locale. `new Date('2026-07-10')` parses
@@ -596,13 +605,6 @@ export function SupplyHousesTab({
     setFirstServiceTypeId(first?.id ?? null)
   }
 
-  function formatOrdinal(n: number): string {
-    const s = ['th', 'st', 'nd', 'rd'] as const
-    const v = n % 100
-    const ord = v >= 11 && v <= 13 ? 'th' : (s[v % 10] ?? 'th')
-    return n + ord
-  }
-
   async function loadSupplyHouseSummary() {
     setSupplyHouseSummaryLoading(true)
     let housesList: { id: string; name: string; monthly_payment_day: number | null }[]
@@ -623,12 +625,10 @@ export function SupplyHousesTab({
     const invoices = (invoicesRes.data ?? []) as unknown as SummaryInvoice[]
     // An unpaid bill counts for what is left on it (v2.7450 amount_paid): a bill paid in part is not owed whole, here
     // or in the aging table. `billed` keeps the bill's own amount for the row that says so.
-    const invoicesList = invoices.map((inv) =>
-      inv.is_paid ? inv : { ...inv, amount: openAmount(inv), billed: Number(inv.amount) },
-    )
+    const { book: invoicesList, unpaid } = openSupplyBook(invoices)
     // What paying late cost this year, by house: every interest bill billed in it, paid or not.
     setInterestYearWords(interestByHouse(invoices, housesList, todayYmdInAppTz().slice(0, 4)).words)
-    setAgingUnpaidInvoices(invoicesList.filter((inv) => !inv.is_paid))
+    setAgingUnpaidInvoices(unpaid)
     setAgingBookLoaded(true)
     // The balance per house is a tested kernel since v2.3888 (it was inline here, untested).
     const rows: SupplyHouseSummaryRow[] = summarizeSupplyHouseBalances(housesList, invoicesList)
@@ -662,15 +662,10 @@ export function SupplyHousesTab({
     ])
     const invoices = (invRes.data as SupplyHouseInvoice[]) ?? []
     const allocations = (allocRes.data as { invoice_id: string; job_id: string; pct: number }[]) ?? []
-    const byInvoice = new Map<string, InvoiceJobAllocation[]>()
-    for (const a of allocations) {
-      const list = byInvoice.get(a.invoice_id) ?? []
-      list.push({ job_id: a.job_id, pct: Number(a.pct) })
-      byInvoice.set(a.invoice_id, list)
-    }
+    const byInvoice = groupAllocationsByInvoice(allocations)
     const invoicesWithAllocations: SupplyHouseInvoiceWithAllocations[] = invoices.map((inv) => ({
       ...inv,
-      job_allocations: byInvoice.get(inv.id) ?? [],
+      job_allocations: byInvoice[inv.id] ?? [],
     }))
     setSupplyHouseInvoices(invoicesWithAllocations)
     void loadPapersFor(invoicesWithAllocations)
@@ -678,11 +673,7 @@ export function SupplyHousesTab({
     const jobIds = [...new Set(allocations.map((a) => a.job_id))]
     if (jobIds.length > 0) {
       supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds }).then(({ data }) => {
-        const map: Record<string, { hcp_number: string; click_number?: string; job_name: string }> = {}
-        for (const r of (data ?? []) as { id: string; hcp_number: string; click_number: string; job_name: string }[]) {
-          map[r.id] = { hcp_number: r.hcp_number ?? '', click_number: r.click_number ?? '', job_name: r.job_name ?? '' }
-        }
-        setSupplyHouseJobDetailsMap(map)
+        setSupplyHouseJobDetailsMap(jobsLedgerNames((data ?? []) as JobsLedgerNameRow[]))
       })
     } else {
       setSupplyHouseJobDetailsMap({})
@@ -709,31 +700,7 @@ export function SupplyHousesTab({
     if (genRes.error) {
       setPoGeneratorEntriesForSelectedHouse(null)
     } else {
-      type GenRow = {
-        po_code: number
-        notes: string | null
-        created_at: string | null
-        job_ledger_id: string | null
-        jobs_ledger: { hcp_number: string | null; click_number: string | null; job_name: string | null } | null
-        for_user: { name: string | null; email: string | null } | null
-        created_by_user: { name: string | null; email: string | null } | null
-      }
-      const genRows = (genRes.data ?? []) as unknown as GenRow[]
-      const byCode = new Map<number, PoLedgerEntry>()
-      for (const r of genRows) {
-        const code = Number(r.po_code)
-        const jl = r.jobs_ledger
-        byCode.set(code, {
-          code,
-          jobLabel: `${DEFAULT_JOB_LEDGER_PREFIX}${effectiveJobLedgerNumber(jl?.hcp_number, jl?.click_number) || '—'} · ${jl?.job_name?.trim() || '—'}`,
-          jobLedgerId: r.job_ledger_id ?? null,
-          personName: r.for_user?.name?.trim() || r.for_user?.email?.trim() || '—',
-          createdAt: r.created_at,
-          createdBy: r.created_by_user?.name?.trim() || r.created_by_user?.email?.trim() || null,
-          statedNeed: r.notes,
-        })
-      }
-      setPoGeneratorEntriesForSelectedHouse(byCode)
+      setPoGeneratorEntriesForSelectedHouse(poLedgerEntriesFromRows((genRes.data ?? []) as unknown as PoGeneratorLedgerRow[]))
     }
     setSupplyHouseDetailLoading(false)
     return invoicesWithAllocations
@@ -849,7 +816,7 @@ export function SupplyHousesTab({
     }
     const cellRows =
       agingCellModal.cell === 'movable'
-        ? movableCandidates(agingUnpaidInvoices, todayYmdInAppTz()).filter((r) => (agingMoveData.allocations[r.id]?.length ?? 0) === 1 && !agingMoveData.notNeeded.has(r.id))
+        ? movableWindowRows(agingUnpaidInvoices, todayYmdInAppTz(), agingMoveData)
         : invoicesForAgingCell(agingUnpaidInvoices, agingCellModal.houseId, agingCellModal.cell, todayYmdInAppTz())
     const ids = cellRows.map((r) => r.id)
     if (ids.length === 0) {
@@ -864,18 +831,11 @@ export function SupplyHousesTab({
         .select('invoice_id, job_id, pct')
         .in('invoice_id', ids)
       if (cancelled) return
-      const allocations: Record<string, InvoiceJobAllocation[]> = {}
-      for (const a of (data ?? []) as { invoice_id: string; job_id: string; pct: number }[]) {
-        ;(allocations[a.invoice_id] ??= []).push({ job_id: a.job_id, pct: Number(a.pct) })
-      }
+      const allocations = groupAllocationsByInvoice((data ?? []) as { invoice_id: string; job_id: string; pct: number }[])
       const jobIds = [...new Set(Object.values(allocations).flat().map((a) => a.job_id))]
       // PR 2: the chips need the (job, house) account rows — only the single-job pairs can
       // carry the flag — and each involved house's job-accounts reps for the Mark opened sheet.
-      const pairs: Array<{ jobId: string; houseId: string }> = []
-      for (const [invoiceId, list] of Object.entries(allocations)) {
-        const houseId = houseByInvoice.get(invoiceId)
-        if (list.length === 1 && houseId) pairs.push({ jobId: list[0]!.job_id, houseId })
-      }
+      const pairs = singleJobPairs(allocations, houseByInvoice).filter((p) => p.houseId)
       const pairJobIds = [...new Set(pairs.map((p) => p.jobId))]
       const pairHouseIds = [...new Set(pairs.map((p) => p.houseId))]
       const [jobRes, accRes, repRes] = await Promise.all([
@@ -897,19 +857,9 @@ export function SupplyHousesTab({
           : Promise.resolve({ data: [] }),
       ])
       if (cancelled) return
-      const jobs: Record<string, { hcp_number: string; click_number?: string; job_name: string }> = {}
-      for (const r of (jobRes.data ?? []) as { id: string; hcp_number: string; click_number: string; job_name: string }[]) {
-        jobs[r.id] = { hcp_number: r.hcp_number ?? '', click_number: r.click_number ?? '', job_name: r.job_name ?? '' }
-      }
-      const accounts: Record<string, JobSupplyHouseAccountRow | null> = {}
-      for (const p of pairs) accounts[`${p.jobId}:${p.houseId}`] = null
-      for (const row of (accRes.data ?? []) as JobSupplyHouseAccountRow[]) {
-        accounts[`${row.job_id}:${row.supply_house_id}`] = row
-      }
-      const reps: Record<string, JobAccountRep[]> = {}
-      for (const c of (repRes.data ?? []) as Array<JobAccountRep & { supply_house_id: string }>) {
-        ;(reps[c.supply_house_id] ??= []).push(c)
-      }
+      const jobs = jobsLedgerNames((jobRes.data ?? []) as JobsLedgerNameRow[])
+      const accounts = accountsByPair(pairs, (accRes.data ?? []) as JobSupplyHouseAccountRow[])
+      const reps: Record<string, JobAccountRep[]> = repsByHouse((repRes.data ?? []) as Array<JobAccountRep & { supply_house_id: string }>)
       setAgingCellJobs({ allocations, jobs })
       setAgingCellAccounts(accounts)
       setAgingCellReps(reps)
@@ -959,17 +909,14 @@ export function SupplyHousesTab({
           .is('confirmed_at', null),
       ])
       if (cancelled) return
-      const allocations: Record<string, InvoiceJobAllocation[]> = {}
-      for (const a of (allocRes.data ?? []) as { invoice_id: string; job_id: string; pct: number }[]) {
-        ;(allocations[a.invoice_id] ??= []).push({ job_id: a.job_id, pct: Number(a.pct) })
-      }
+      const allocations = groupAllocationsByInvoice((allocRes.data ?? []) as { invoice_id: string; job_id: string; pct: number }[])
       const asks: Record<string, MoveAskRow> = {}
       // askRes.error: the table may not be pushed yet — the strip still works, with no asks.
       for (const r of (askRes.error ? [] : askRes.data ?? []) as MoveAskRow[]) asks[r.invoice_id] = r
       // v2.6086: a single-job candidate whose job's account at the house is marked not needed leaves the window.
       const houseOf = new Map(candidates.map((r) => [r.id, r.supply_house_id]))
-      const pairs = Object.entries(allocations).filter(([, list]) => list.length === 1).map(([invoiceId, list]) => ({ invoiceId, jobId: list[0]!.job_id, houseId: houseOf.get(invoiceId) ?? '' }))
-      const notNeeded = new Set<string>()
+      const pairs = singleJobPairs(allocations, houseOf)
+      let notNeeded = new Set<string>()
       if (pairs.length > 0) {
         const accRes = await supabase
           .from('job_supply_house_accounts')
@@ -978,8 +925,7 @@ export function SupplyHousesTab({
           .in('supply_house_id', [...new Set(pairs.map((p) => p.houseId))])
           .eq('status', 'not_needed')
         if (cancelled) return
-        const marked = new Set(((accRes.data ?? []) as { job_id: string; supply_house_id: string }[]).map((a) => `${a.job_id}:${a.supply_house_id}`))
-        for (const p of pairs) if (marked.has(`${p.jobId}:${p.houseId}`)) notNeeded.add(p.invoiceId)
+        notNeeded = notNeededInvoiceIds(pairs, (accRes.data ?? []) as { job_id: string; supply_house_id: string }[])
       }
       setAgingMoveData({ allocations, asks, notNeeded, loaded: true })
       setAgingMoveDataBook(agingUnpaidInvoices)
@@ -1022,13 +968,7 @@ export function SupplyHousesTab({
       return
     }
     const now = new Date().toISOString()
-    setAgingMoveData((prev) => {
-      const asks = { ...prev.asks }
-      for (const id of payload.asked ?? invoiceIds) {
-        asks[id] = { id: asks[id]?.id ?? 'pending', invoice_id: id, requested_at: now, via: 'email', sent_to: payload.sent_to ?? '' }
-      }
-      return { ...prev, asks }
-    })
+    setAgingMoveData((prev) => ({ ...prev, asks: withEmailedAsks(prev.asks, payload.asked ?? invoiceIds, now, payload.sent_to ?? '') }))
   }
 
   /** PR 3: the attested call — the flag flips, and the ask (or a fresh phone row) is confirmed. */
@@ -1090,10 +1030,7 @@ export function SupplyHousesTab({
     const jobIds = invoiceJobAllocations.map((a) => a.job_id).filter((id) => !invoiceJobDetailsMap[id])
     if (jobIds.length === 0) return
     supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds }).then(({ data }) => {
-      const map: Record<string, { hcp_number: string; click_number?: string; job_name: string; job_address: string }> = {}
-      for (const r of (data ?? []) as { id: string; hcp_number: string; click_number: string; job_name: string; job_address: string }[]) {
-        map[r.id] = { hcp_number: r.hcp_number ?? '', click_number: r.click_number ?? '', job_name: r.job_name ?? '', job_address: r.job_address ?? '' }
-      }
+      const map = jobsLedgerNamesWithAddress((data ?? []) as JobsLedgerNameRow[])
       setInvoiceJobDetailsMap((prev) => ({ ...prev, ...map }))
     })
   }, [invoiceJobAllocations, invoiceJobDetailsMap])
@@ -1109,9 +1046,7 @@ export function SupplyHousesTab({
   // reads exactly as it did before.
   const agingHasCredits = agingMatrix.creditsTotal < -0.005
   /** PR 3: the movable set (current, unflagged, exactly one job) and the strip's numbers. */
-  const agingMovable = movableCandidates(agingUnpaidInvoices, agingTodayYmd).filter(
-    (r) => (agingMoveData.allocations[r.id]?.length ?? 0) === 1 && !agingMoveData.notNeeded.has(r.id),
-  )
+  const agingMovable = movableWindowRows(agingUnpaidInvoices, agingTodayYmd, agingMoveData)
   const agingMoveStrip = moveStripSummary(agingMovable, new Set(Object.keys(agingMoveData.asks)))
   const agingHasCurrentUnpaid = agingUnpaidInvoices.some(
     (inv) => Number(inv.amount ?? 0) > 0 && inv.due_date != null && daysPastDue(inv.due_date, agingTodayYmd) <= 0,
@@ -1196,29 +1131,46 @@ export function SupplyHousesTab({
     if (poData?.id) handleNavigateToPO(poData.id)
   }
 
+  /** The form's fields into its state: a new bill's blanks, or a stored row's. */
+  function setInvoiceFormValues(v: InvoiceFormValues) {
+    setInvoiceNumber(v.number)
+    setInvoiceDate(v.dateYmd)
+    setInvoiceDueDate(v.dueDateYmd)
+    setInvoiceAmount(v.amountTyped)
+    setInvoiceDocumentKind(v.kind)
+    setInvoiceIsInterest(v.isInterest)
+    setInvoiceLateInvoiceId(v.lateInvoiceId)
+    setInvoiceCreditsInvoiceId(v.creditsInvoiceId)
+    setInvoiceLink(v.link)
+    setInvoiceIsPaid(v.isPaid)
+    setInvoicePaidOn(v.paidOnYmd)
+    setInvoiceOnJobAccount(v.onJobAccount)
+    setInvoicePurchaseOrderNumber(v.purchaseOrderNumber)
+    setInvoiceJobAllocations(v.allocations)
+  }
+
+  /** What a fill, or No PDF, may write into the form: only the keys the patch carries. */
+  function applyBillFormPatch(patch: BillFormPatch) {
+    if (patch.kind !== undefined) setInvoiceDocumentKind(patch.kind)
+    if (patch.number !== undefined) setInvoiceNumber(patch.number)
+    if (patch.dateYmd !== undefined) setInvoiceDate(patch.dateYmd)
+    if (patch.amountTyped !== undefined) setInvoiceAmount(patch.amountTyped)
+    if (patch.purchaseOrder !== undefined) setInvoicePurchaseOrderNumber(patch.purchaseOrder)
+    if (patch.dueYmd !== undefined) setInvoiceDueDate(patch.dueYmd)
+    if (patch.creditsInvoiceId !== undefined) setInvoiceCreditsInvoiceId(patch.creditsInvoiceId)
+    if (patch.link !== undefined) setInvoiceLink(patch.link)
+    if (patch.allocations !== undefined) setInvoiceJobAllocations(patch.allocations)
+    if (patch.onJobAccount !== undefined) setInvoiceOnJobAccount(patch.onJobAccount)
+  }
+
   function openAddInvoice() {
     resetBill()
     billInvoiceIdRef.current = crypto.randomUUID()
     invoiceOnJobAccountTouchedRef.current = false
     setInvoiceJobAccountKey(null)
     setEditingInvoice(null)
-    setInvoiceNumber('')
-    const todayYmd = todayYmdInAppTz()
-    setInvoiceDate(todayYmd)
-    // Prefill from the house's monthly payment day (next occurrence) — editable, just a default.
-    const paymentDay = selectedSupplyHouseForDetail?.monthly_payment_day
-    setInvoiceDueDate(paymentDay ? nextMonthlyPaymentDueYmd(paymentDay, todayYmd) : '')
-    setInvoiceAmount('')
-    setInvoiceDocumentKind('invoice')
-    setInvoiceIsInterest(false)
-    setInvoiceLateInvoiceId('')
-    setInvoiceCreditsInvoiceId('')
-    setInvoiceLink('')
-    setInvoiceIsPaid(false)
-    setInvoicePaidOn('')
-    setInvoiceOnJobAccount(false)
-    setInvoicePurchaseOrderNumber('')
-    setInvoiceJobAllocations([])
+    // The due day is prefilled from the house's monthly payment day (its next occurrence): editable, just a default.
+    setInvoiceFormValues(blankInvoiceForm(selectedSupplyHouseForDetail?.monthly_payment_day, todayYmdInAppTz()))
     setInvoiceJobSearchText('')
     setInvoiceFormOpen(true)
   }
@@ -1227,21 +1179,7 @@ export function SupplyHousesTab({
     invoiceOnJobAccountTouchedRef.current = true
     setInvoiceJobAccountKey(null)
     setEditingInvoice(inv)
-    setInvoiceNumber(inv.invoice_number)
-    setInvoiceDate(inv.invoice_date)
-    setInvoiceDueDate(inv.due_date ?? '')
-    setInvoiceAmount(typedAmountFromStored(inv.amount))
-    setInvoiceDocumentKind(documentKindFromRow(inv))
-    setInvoiceCreditsInvoiceId((inv as { credits_invoice_id?: string | null }).credits_invoice_id ?? '')
-    setInvoiceLink(inv.link ?? '')
-    setInvoiceIsPaid(inv.is_paid)
-    setInvoiceIsInterest(inv.is_interest === true)
-    setInvoiceLateInvoiceId(inv.late_invoice_id ?? '')
-    setInvoicePaidOn(inv.is_paid ? paidOnYmdFromIso(inv.paid_at) : '')
-    // === true: pre-migration rows fetched before the column existed read as undefined.
-    setInvoiceOnJobAccount(inv.on_job_account === true)
-    setInvoicePurchaseOrderNumber(inv.purchase_order_number ?? '')
-    setInvoiceJobAllocations((inv as SupplyHouseInvoiceWithAllocations).job_allocations ?? [])
+    setInvoiceFormValues(invoiceFormFromRow(inv))
     setInvoiceJobSearchText('')
     setInvoiceFormOpen(true)
   }
@@ -1285,29 +1223,11 @@ export function SupplyHousesTab({
 
   /** The plan into the form's state, every field the person typed left as it is. */
   function applyPlanToForm(plan: BillFillPlan): BillFields {
-    const typed = billTypedRef.current
-    if (!typed.has('kind')) setInvoiceDocumentKind(plan.kind)
-    if (!typed.has('number')) setInvoiceNumber(plan.number)
-    if (!typed.has('date') && plan.dateYmd) setInvoiceDate(plan.dateYmd)
-    if (!typed.has('amount')) setInvoiceAmount(plan.amountTyped)
-    if (!typed.has('purchaseOrder')) setInvoicePurchaseOrderNumber(plan.purchaseOrder)
-    if (!typed.has('dueDate')) setInvoiceDueDate(plan.dueYmd)
-    if (!typed.has('creditsInvoice')) setInvoiceCreditsInvoiceId(plan.creditsInvoiceId)
-    if (!typed.has('link') && !billDriveInstead) setInvoiceLink(plan.fields.link.value)
-    let fields = applyPlan(billFields, plan, typed)
-    if (!typed.has('job')) {
-      // A credit's job is the one on the invoice it credits, not a guess.
-      const paired = plan.kind === 'credit' && plan.pair ? supplyHouseInvoices.find((r) => r.id === plan.pair!.invoiceId) : null
-      const pairedJobs = (paired as SupplyHouseInvoiceWithAllocations | null | undefined)?.job_allocations ?? []
-      if (pairedJobs.length > 0) {
-        setInvoiceJobAllocations(pairedJobs.map((a) => ({ job_id: a.job_id, pct: a.pct })))
-        fields = { ...fields, job: billField(pairedJobs[0]!.job_id, 'read', 'from the invoice it credits') }
-      } else setInvoiceJobAllocations(plan.job ? [{ job_id: plan.job.jobId, pct: 100 }] : [])
-    }
-    if (!typed.has('onJobAccount')) {
-      invoiceOnJobAccountTouchedRef.current = false
-      setInvoiceOnJobAccount(plan.onJobAccount)
-    }
+    // The rules (never over a field the person typed, a credit's job from the invoice it credits) are `planIntoForm`.
+    const { patch, fields } = planIntoForm(billFields, plan, billTypedRef.current, { driveInstead: billDriveInstead, rows: supplyHouseInvoices })
+    // The fill set the job-account flag, so the open-account default may set it again.
+    if (patch.onJobAccount !== undefined) invoiceOnJobAccountTouchedRef.current = false
+    applyBillFormPatch(patch)
     setBillFields(fields)
     return fields
   }
@@ -1396,19 +1316,7 @@ export function SupplyHousesTab({
 
   /** No PDF, I will type it: the fields the fill wrote go back to blank; the ones the person typed stay. */
   function pickNoPdf() {
-    const typed = billTypedRef.current
-    const todayYmd = todayYmdInAppTz()
-    const paymentDay = selectedSupplyHouseForDetail?.monthly_payment_day
-    if (!typed.has('kind')) setInvoiceDocumentKind('invoice')
-    if (!typed.has('number')) setInvoiceNumber('')
-    if (!typed.has('date')) setInvoiceDate(todayYmd)
-    if (!typed.has('amount')) setInvoiceAmount('')
-    if (!typed.has('purchaseOrder')) setInvoicePurchaseOrderNumber('')
-    if (!typed.has('dueDate')) setInvoiceDueDate(paymentDay ? nextMonthlyPaymentDueYmd(paymentDay, todayYmd) : '')
-    if (!typed.has('creditsInvoice')) setInvoiceCreditsInvoiceId('')
-    if (!typed.has('link')) setInvoiceLink('')
-    if (!typed.has('job')) setInvoiceJobAllocations([])
-    if (!typed.has('onJobAccount')) setInvoiceOnJobAccount(false)
+    applyBillFormPatch(noPdfPatch(billTypedRef.current, { todayYmd: todayYmdInAppTz(), paymentDay: selectedSupplyHouseForDetail?.monthly_payment_day }))
     setBillRead(null)
     setBillPlan(null)
     setBillPane(null)
@@ -1495,34 +1403,32 @@ export function SupplyHousesTab({
     setError(null)
     // The one write (punch list #179, v2.6088): the payload rules and the three writes live in supplyInvoiceWrite.ts,
     // so a bill typed here and a bill filled from its PDF save through the same path.
-    const saved = await saveSupplyInvoice(
-      supabaseSupplyInvoiceDb,
-      {
-        supplyHouseId: selectedSupplyHouseForDetail.id,
-        kind: invoiceDocumentKind,
-        number: invoiceNumber,
-        dateYmd: invoiceDate,
-        dueDateYmd: invoiceDueDate,
-        amountTyped: invoiceAmount,
-        purchaseOrderNumber: invoicePurchaseOrderNumber,
-        link: invoiceLink,
-        isPaid: invoiceIsPaid,
-        paidOnYmd: invoicePaidOn,
-        onJobAccount: invoiceOnJobAccount,
-        allocations: invoiceJobAllocations,
-        creditsInvoiceId: invoiceCreditsInvoiceId,
-        interest: { on: invoiceIsInterest, lateInvoiceId: invoiceLateInvoiceId },
-        // Supply-house bill capture (punch list #179): the read the row keeps when the bill was filled from its PDF.
-        ...(billRead && billPlan
-          ? {
-              id: billRead.file.attachmentId ? undefined : billInvoiceIdRef.current,
-              billRead: billRowRead({ read: billRead.read, model: billRead.model, readAt: billRead.readAt, readId: billRead.readId, file: { path: billRead.file.path, name: billRead.file.name, mime: billRead.file.mime, attachmentId: billRead.file.attachmentId }, fields: billFields, checks: billPlan.checks }),
-              billAttachmentId: billRead.file.attachmentId,
-            }
-          : {}),
-      },
-      editingInvoice,
-    )
+    const form: InvoiceFormValues = {
+      number: invoiceNumber,
+      dateYmd: invoiceDate,
+      dueDateYmd: invoiceDueDate,
+      amountTyped: invoiceAmount,
+      kind: invoiceDocumentKind,
+      isInterest: invoiceIsInterest,
+      lateInvoiceId: invoiceLateInvoiceId,
+      creditsInvoiceId: invoiceCreditsInvoiceId,
+      link: invoiceLink,
+      isPaid: invoiceIsPaid,
+      paidOnYmd: invoicePaidOn,
+      onJobAccount: invoiceOnJobAccount,
+      purchaseOrderNumber: invoicePurchaseOrderNumber,
+      allocations: invoiceJobAllocations,
+    }
+    // Supply-house bill capture (punch list #179): the read the row keeps when the bill was filled from its PDF.
+    const bill =
+      billRead && billPlan
+        ? {
+            rowRead: billRowRead({ read: billRead.read, model: billRead.model, readAt: billRead.readAt, readId: billRead.readId, file: { path: billRead.file.path, name: billRead.file.name, mime: billRead.file.mime, attachmentId: billRead.file.attachmentId }, fields: billFields, checks: billPlan.checks }),
+            attachmentId: billRead.file.attachmentId,
+            newRowId: billInvoiceIdRef.current,
+          }
+        : null
+    const saved = await saveSupplyInvoice(supabaseSupplyInvoiceDb, supplyInvoiceDraftFromForm(selectedSupplyHouseForDetail.id, form, bill), editingInvoice)
     if (!saved.ok) {
       setError(saved.problem)
       setSavingInvoice(false)
@@ -1532,8 +1438,7 @@ export function SupplyHousesTab({
     if (billRead && billPlan && !editingInvoice) {
       // Supply house bill lines (punch list #298 PR 1b): the paper and its lines, checked against the amount just
       // saved, written beside the row. A refusal here never undoes the save; the row then reads *No lines yet*.
-      const amount = Number(invoiceAmount.replace(/[^0-9.]/g, ''))
-      const out = paperSaveFromBillRead({ read: billRead.read, rowAmountCents: Number.isFinite(amount) ? Math.round(amount * 100) : 0, filePath: billRead.file.path, readId: billRead.readId, readAt: billRead.readAt, model: billRead.model })
+      const out = paperSaveFromBillRead({ read: billRead.read, rowAmountCents: typedAmountCents(invoiceAmount), filePath: billRead.file.path, readId: billRead.readId, readAt: billRead.readAt, model: billRead.model })
       await paperIo.save(saved.id, out.paper, out.lines).catch((e) => showToast(formatErrorMessage(e, 'The bill saved, but its lines were not kept.'), 'error'))
     }
     if (billTicketRef.current) {
@@ -1765,7 +1670,7 @@ export function SupplyHousesTab({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'start', marginBottom: '0.75rem' }}>
               <span aria-hidden="true" />
               <div style={{ fontSize: '1rem', fontWeight: 600, textAlign: 'center', alignSelf: 'center' }}>
-                Supply Houses: ${formatCurrency(supplyHouseSummary.reduce((sum, row) => sum + row.outstanding, 0))}
+                Supply Houses: ${formatCurrency(supplyBookTotal(supplyHouseSummary))}
                 {interestYearWords ? (
                   <div style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-muted)' }} data-testid="supply-interest-year">
                     {interestYearWords}
@@ -2093,7 +1998,7 @@ export function SupplyHousesTab({
                           ${formatCurrency(row.outstanding)}
                         </td>
                         <td style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
-                          {row.monthlyPaymentDay ? formatOrdinal(row.monthlyPaymentDay) : '—'}
+                          {row.monthlyPaymentDay ? ordinalDay(row.monthlyPaymentDay) : '—'}
                         </td>
                         <td style={{ padding: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                           {row.lastInvoiceUpdatedAt ? longTimeAgoPhrase(row.lastInvoiceUpdatedAt) : '—'}
@@ -2174,46 +2079,14 @@ export function SupplyHousesTab({
                                     {(() => {
                                       // A bill marked paid on this visit stays listed, so the rows under it do not move.
                                       const billToday = todayYmdInAppTz()
-                                      const paidOnBills = paidByBill(housePayments.payments, housePayments.lines)
-                                      const invoicesToShow = showPaidInvoices
-                                        ? supplyHouseInvoices
-                                        : supplyHouseInvoices.filter((inv) => !inv.is_paid || paidThisVisit.has(inv.id))
-                                      const rows: SupplyBillCardRow[] = invoicesToShow.map((inv) => {
-                                        const poGenCode = parsePoGeneratorCodeFromPurchaseOrderName(inv.purchase_order_number ?? '')
-                                        // Supply house bill lines (punch list #298 PR 1b): what was read off the PDF, and Look when there is a paper.
-                                        const paper = papersByInvoice.get(inv.id) ?? null
-                                        // What paid it: the payment's method and number, and how many bills it covered.
-                                        const paidBy = billPaidBy(inv.id, housePayments.payments, housePayments.lines, { sayMissing: true })
-                                        // A bill paid in part lists for what is left on it, and says what was paid.
-                                        const paidOnIt = paidOnBills.get(inv.id) ?? 0
-                                        return {
-                                          id: inv.id,
-                                          invoice_number: inv.invoice_number,
-                                          purchase_order_number: inv.purchase_order_number,
-                                          invoice_date: inv.invoice_date,
-                                          due_date: inv.due_date,
-                                          amount: inv.is_paid ? inv.amount : supplyBillOpen(inv, paidOnIt),
-                                          partPaid: partPaidWords(inv, paidOnIt),
-                                          is_paid: inv.is_paid,
-                                          paidYmd: inv.paid_at ? calendarYmdInAppTzFromIso(inv.paid_at) : null,
-                                          paidBy: inv.is_paid ? paidBy.words : '',
-                                          seePayment: inv.is_paid && paidBy.typed.length > 0,
-                                          needsHow: inv.is_paid && paidBy.needsHowId != null,
-                                          link: inv.link,
-                                          payment_link: inv.payment_link ?? paidBy.receiptLink,
-                                          on_job_account: inv.on_job_account,
-                                          jobs: (inv.job_allocations ?? []).map((a) => {
-                                            const d = supplyHouseJobDetailsMap[a.job_id]
-                                            return { label: d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name}` : a.job_id.slice(0, 8), pct: a.pct }
-                                          }),
-                                          poMismatch: poGenCode != null && poGeneratorCodesForSelectedHouse != null && !poGeneratorCodesForSelectedHouse.has(poGenCode),
-                                          // v2.5035 · a credit and the invoice it credits name each other; read against every row, paid ones too.
-                                          pairLine: creditPairingLine(inv, supplyHouseInvoices),
-                                          interest: interestTitle(inv, supplyHouseInvoices),
-                                          // Where a payment's money moved to or from this bill, and who moved it.
-                                          trace: billMoveTrace(inv.id, housePayments.events ?? []),
-                                          lines: rowLinesWords(paper, { link: inv.link, hasFile: !!inv.bill_read }, paper?.acceptedBy ? paperNames.get(paper.acceptedBy) : null),
-                                        }
+                                      const rows = supplyBillCardRows({
+                                        shown: supplyBillsToList(supplyHouseInvoices, showPaidInvoices, paidThisVisit),
+                                        all: supplyHouseInvoices,
+                                        payments: housePayments,
+                                        jobs: supplyHouseJobDetailsMap,
+                                        ledgerCodes: poGeneratorCodesForSelectedHouse,
+                                        papers: papersByInvoice,
+                                        paperNames,
                                       })
                                       const byId = (id: string) => supplyHouseInvoices.find((x) => x.id === id) ?? null
                                       return (
@@ -2223,7 +2096,7 @@ export function SupplyHousesTab({
                                           jobAccountsInUse={!!selectedSupplyHouseForDetail.job_accounts?.trim() || supplyHouseInvoices.some((inv) => inv.on_job_account === true)}
                                           paidThisVisit={paidThisVisit}
                                           payingId={payingInvoiceId}
-                                          onAccount={houseOnAccount(housePayments.payments, housePayments.lines).reduce((sum, x) => sum + x.amount, 0)}
+                                          onAccount={houseOnAccountTotal(housePayments)}
                                           empty={
                                             <EmptyState
                                               compact
@@ -2375,14 +2248,7 @@ export function SupplyHousesTab({
           house={selectedSupplyHouseForDetail}
           money={supplyHouseCardMoney(supplyHouseSummary, agingMatrix.rows)[selectedSupplyHouseForDetail.id] ?? null}
           loading={supplyHouseDetailLoading}
-          invoices={(() => {
-            // An unpaid bill lists for what is left on it, and says what was paid.
-            const paidOnBills = paidByBill(housePayments.payments, housePayments.lines)
-            return supplyHouseInvoices.map((inv) => {
-              const paidOnIt = paidOnBills.get(inv.id) ?? 0
-              return inv.is_paid || paidOnIt === 0 ? inv : { ...inv, amount: supplyBillOpen(inv, paidOnIt), partPaid: partPaidWords(inv, paidOnIt) }
-            })
-          })()}
+          invoices={supplyPhoneBills(supplyHouseInvoices, housePayments)}
           jobLabel={(jobId) => {
             const d = supplyHouseJobDetailsMap[jobId]
             return d ? effectiveJobLedgerNumber(d.hcp_number, d.click_number) : jobId.slice(0, 8)
@@ -2396,7 +2262,7 @@ export function SupplyHousesTab({
           onEditHouse={() => houseEditor.openEdit(selectedSupplyHouseForDetail)}
           onAddInvoice={openAddInvoice}
           onMakePayment={openRecordPayment}
-          typedPaidIds={new Set(supplyHouseInvoices.filter((inv) => inv.is_paid && billPaidBy(inv.id, housePayments.payments, housePayments.lines).typed.length > 0).map((inv) => inv.id))}
+          typedPaidIds={typedPaidBillIds(supplyHouseInvoices, housePayments)}
           onTogglePaid={(id) => {
             const inv = supplyHouseInvoices.find((x) => x.id === id)
             if (inv) void toggleInvoicePaid(inv)
@@ -3550,13 +3416,7 @@ export function SupplyHousesTab({
             name: selectedSupplyHouseForDetail.name,
             monthlyPaymentDay: selectedSupplyHouseForDetail.monthly_payment_day ?? null,
           }}
-          bills={supplyHouseInvoices.map((inv) => {
-            const jobs = (inv.job_allocations ?? []).map((a) => {
-              const d = supplyHouseJobDetailsMap[a.job_id]
-              return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name}` : a.job_id.slice(0, 8)
-            })
-            return { id: inv.id, invoice_number: inv.invoice_number, due_date: inv.due_date, amount: inv.amount, is_paid: inv.is_paid, is_interest: inv.is_interest, title: interestTitle(inv, supplyHouseInvoices) ?? (jobs.join(', ') || inv.purchase_order_number?.trim() || 'No job on this bill') }
-          })}
+          bills={recordPaymentBills(supplyHouseInvoices, supplyHouseJobDetailsMap)}
           io={supabaseSupplyPaymentsIo}
           todayYmd={todayYmdInAppTz()}
           parts
@@ -3590,13 +3450,7 @@ export function SupplyHousesTab({
             payment={viewed}
             payments={housePayments.payments}
             lines={housePayments.lines}
-            bills={supplyHouseInvoices.map((inv) => {
-              const jobs = (inv.job_allocations ?? []).map((a) => {
-                const d = supplyHouseJobDetailsMap[a.job_id]
-                return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name}` : a.job_id.slice(0, 8)
-              })
-              return { id: inv.id, invoice_number: inv.invoice_number, title: interestTitle(inv, supplyHouseInvoices) ?? jobs.join(', '), amount: inv.amount, is_paid: inv.is_paid, due_date: inv.due_date }
-            })}
+            bills={paymentWindowBills(supplyHouseInvoices, supplyHouseJobDetailsMap)}
             events={housePayments.events}
             houseName={house.name.trim() || 'this house'}
             todayYmd={todayYmdInAppTz()}

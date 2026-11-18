@@ -341,7 +341,7 @@ export default function LienDeskRunModal({
   const [explainerOpen, setExplainerOpen] = useState(false)
 
   // One method and one tracking number per envelope — every recipient inside it takes the patch, so the record writes the same send on each notice.
-  const setEnvelope = (env: RunEnvelope, patch: Partial<Pick<RunRecipient, 'method' | 'tracking' | 'via' | 'pieceId' | 'pieceStatus' | 'pieceProblem'>>) => {
+  const setEnvelope = (env: RunEnvelope, patch: Partial<Pick<RunRecipient, 'method' | 'tracking' | 'via' | 'pieceId' | 'pieceStatus' | 'pieceProblem' | 'receiptUrl'>>) => {
     // Keyed by item and recipient, not by index: a combined notice stands for several items, and every one takes the patch.
     const inside = new Set(env.contents.flatMap((c) => (partsOf(c.notice as CombinedRunNotice) ?? [{ itemId: c.notice.itemId }]).map((p) => `${p.itemId}:${c.recipient.key}`)))
     setNotices((prev) => prev.map((n) => ({ ...n, recipients: n.recipients.map((r) => (inside.has(`${n.itemId}:${r.key}`) ? { ...r, ...patch } : r)) })))
@@ -702,6 +702,11 @@ export default function LienDeskRunModal({
   const trackingFor = (row: LienRunRow, recipientKey: RunRecipient['key'], value: string) => {
     const env = envelopes.find((e) => e.contents.some((c) => c.recipient.key === recipientKey && partsIds(c.notice as CombinedRunNotice).some((p) => p.itemId === row.itemId)))
     if (env) setEnvelope(env, { tracking: value })
+  }
+  // A receipt added on a row (v2.7695) rides with its envelope, as the number does: every notice inside takes it, and the record writes it with the send.
+  const receiptFor = (row: LienRunRow, recipientKey: RunRecipient['key'], url: string) => {
+    const env = envelopes.find((e) => e.contents.some((c) => c.recipient.key === recipientKey && partsIds(c.notice as CombinedRunNotice).some((p) => p.itemId === row.itemId)))
+    if (env) setEnvelope(env, { receiptUrl: url })
   }
   // The pen pane under a checklist row or the batch: the notices it writes for, and the leader it names.
   const penTargets = (key: string | null): RunNotice[] => {
@@ -1156,6 +1161,7 @@ export default function LienDeskRunModal({
             focusMailItemId={focusMailItemId}
             // Close… (v2.7353): a paid row's own press and the fold's ask for the confirm above; nothing is written until it is pressed.
             paid={onClosePaid ? { readyIds: paidSplit.ready, heldWhy: paidHeldWhy, onClose: (ids) => { setClosedPaid(null); setTakeBackOpen(false); setTakeBackOne(null); setClosePaidIds(ids) } } : undefined}
+            receipts={{ onSet: receiptFor, todayYmd, phone: isMobile }}
             mailedCopies={{
               onAdd: (row, file) => void addCopy(row, file),
               addingItemId: addingCopy,

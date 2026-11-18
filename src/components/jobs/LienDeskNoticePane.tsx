@@ -1,4 +1,5 @@
 import type React from 'react'
+import { useEffect, useState } from 'react'
 import { type LienDeskData, type LienDeskGc, type LienDeskJob } from '../../hooks/useLienDeskData'
 import { type NoticePayPage } from '../../hooks/useNoticePayPage'
 import { formatYmdMonthDay, type PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
@@ -13,6 +14,7 @@ import { LIEN_APPROVE_NO_MAIL_BY, LIEN_GC_GATE_NO_ADDRESS, lienFootBlockedSenten
 import { shortDay as footShortDay } from '../../lib/jobs/lienFootChip'
 import { lienDeskJobLabel as jobLabel } from '../../lib/jobs/lienJobLabel'
 import { LIEN_HOUSES_PARAGRAPH_READ_BY_COUNSEL, type LienSupplierJob } from '../../lib/jobs/lienJobSuppliers'
+import { lienLastWorkDoorOffered } from '../../lib/jobs/lienLastWorkDoor'
 import { lienLastWorkAffidavitMonths } from '../../lib/jobs/lienLastWorkDayPreview'
 import { letterTwoKindLabel } from '../../lib/jobs/lienLetterTwo'
 import { type LienMonthGrid } from '../../lib/jobs/lienMonthGrid'
@@ -44,6 +46,7 @@ import { LienEnvelopeCard } from './LienEnvelopeCard'
 import { LienJobHeading } from './LienJobNumber'
 import { LienJobSuppliersCard } from './LienJobSuppliers'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
+import { LienLastWorkDayWindow } from './LienLastWorkDayWindow'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import LienTimelineStrip, { LienTimelineViewSwitch } from './LienTimelineStrip'
 import PropertyKindSwitch from './PropertyKindSwitch'
@@ -190,6 +193,19 @@ export type LienNoticePaneContext = {
  */
 export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
   const { data, todayYmd, authUserId, authName, onChanged, onOpenEditJob, onOpenJob, onCalendarChanged, isMobile, leader, office, setCheckedMonths, coverNote, setCoverNote, housesInLetter, setHousesInLetter, releaseId, setByHandOpen, rulePick, setRulePick, detailsOpen, setDetailsOpen, busy, run, touchDraft, editing, setEditing, paperRef, editInputRef, payEditing, setPayEditing, payPaperRef, payInputRef, claimOpenSignal, paneScrolled, setPaneScrolled, stripRef, paneRef, activeGate, pickGate, kindOpen, setKindOpen, kindBusy, setNoticeFootHome, entries, suppliers, selected, job, gc, address, property, ownerName, stopOpen, setStopOpen, pickKind, promise, gcHasPriorNotice, wm, item, storedDraft, months, monthsList, openBalance, supplierJob, correction, lastSentAt, claimed, wordingDiff, wordingEditedBy, wordingLocked, paneSignature, signClearedLine, docHtml, onPaperClick, commitEdit, claimNumber, noticeRelease, releaseHtml, coverHtml, payPage, claimBills, unbilled, billFromHere, billWhy, payChangedCount, payHtml, onPayPaperClick, commitPayEdit, pageTotal, noticePageNumber, noteMissed, gcOpenTotal, toggleRelease, partedBandNode, saveRule, openPreview, counts, relightPages, pageLabel, monthCards, monthGrid, gates, gateVerdict, gateByKey, gatesFold, timeline, stopPaperFor, footInPane, stripChips, pressStripChip, stripChipStyle, simpleApprove, bandAct, onBandAct, paneHead, goToSection, relightPane } = ctx
+  // The last day's window, opened from under the timeline's LAST WORK stop (v2.7684). It closes when another job is picked.
+  const [lastWorkOpen, setLastWorkOpen] = useState(false)
+  const selectedJobId = selected?.jobId ?? null
+  useEffect(() => setLastWorkOpen(false), [selectedJobId])
+  const lastWorkSaved = () => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())
+  // What the window weighs a typed day against: the job's label, its months with hours, the months a notice or the affidavit already names.
+  const lastWorkFacts = {
+    jobLabel: `${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''} · ${(job?.job_name ?? '').trim()}`,
+    clockMonths: (selected?.months ?? []).filter((m) => !m.fromCreation && !m.byHand).map((m) => m.key),
+    noticedMonths: (selected?.months ?? []).filter((m) => m.noticed).map((m) => m.key),
+    affidavitMonths: lienLastWorkAffidavitMonths(data?.affidavits.entries.find((a) => a.jobId === selectedJobId)),
+    propertyKind: selected?.propertyKind ?? '',
+  }
   return selected ? (
     <div
       ref={paneRef}
@@ -282,9 +298,11 @@ export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
       <div data-lien-pane-body="path" style={{ display: 'grid', gap: '0.6rem' }}>
       {timeline ? (
         <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
-          <LienTimelineStrip timeline={timeline} switchOutside={!isMobile} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(selected.jobId) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} onAct={onBandAct} act={bandAct} />
+          <LienTimelineStrip timeline={timeline} switchOutside={!isMobile} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(selected.jobId) : undefined} onChangeLastWork={lienLastWorkDoorOffered({ office, hasJob: Boolean(job) }) ? () => setLastWorkOpen(true) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} onAct={onBandAct} act={bandAct} />
         </div>
       ) : null}
+      {/* The press under LAST WORK (v2.7684): the same window the months' Change › line saves through, opened here on the job's day. */}
+      {lastWorkOpen && job ? <LienLastWorkDayWindow jobId={selected.jobId} job={job} todayYmd={todayYmd} userId={authUserId} onSaved={lastWorkSaved} onClose={() => setLastWorkOpen(false)} {...lastWorkFacts} /> : null}
       {timeline && stopOpen != null ? (
         <LienStopPaperWindow
           steps={timeline.steps}
@@ -569,7 +587,7 @@ export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
       <LienDeskMonths
         headless
         grid={monthGrid!}
-        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())} jobLabel={`${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''} · ${(job?.job_name ?? '').trim()}`} clockMonths={selected.months.filter((m) => !m.fromCreation && !m.byHand).map((m) => m.key)} noticedMonths={selected.months.filter((m) => m.noticed).map((m) => m.key)} affidavitMonths={lienLastWorkAffidavitMonths(data?.affidavits.entries.find((a) => a.jobId === selected.jobId))} propertyKind={selected.propertyKind} />}
+        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={lastWorkSaved} {...lastWorkFacts} />}
         claimNode={
           <LienClaimBox
             openSignal={claimOpenSignal}

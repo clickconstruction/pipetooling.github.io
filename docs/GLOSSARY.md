@@ -214,7 +214,10 @@ A person's signed copy is a `person_contract_documents` row with its `job_id`, n
 **Take off** removes a paper from the job and keeps every signature.
 The roster in the section lists each person who can open the job against each paper, and **Copy the signing link** puts a person's links on the clipboard.
 The chip *2 papers to sign* in the job window's head counts them.
-The lock itself lands in later steps: until then the section says the job does not lock yet.
+**The prompt** (v2.7652, `JobPapersGate.tsx`): opening a job you owe a paper on draws **Before you open J…** in place of the job, with **Read and sign** on the first paper not signed and **Open the job** when nothing is left.
+A locked job in a list shows its number and a lock, never its name, for everyone but the office.
+The Needs you line **Papers to sign** leads to the prompt.
+Until the database lock lands the prompt is the only lock, and the section says so.
 
 ### E chip (the estimate's author on a job)
 A small red square with a white **E** beside a person's name wherever a job's people are listed — the people line over Job activity, the Assigned Team on the Job window, **Everyone on the job** from the Pipeline's crew line (v2.6694, punch list #129, the owner's call of 2026-11-08).
@@ -1562,6 +1565,28 @@ The farm itself is not the mode: a partnership's farm rate and farm job, a roadm
 Display-only — RLS and role permissions are unchanged.
 
 **See also** — **`RECENT_FEATURES.md`** **v2.1837**, fragment `v2.7050`, help guide `task-mode.md` (its old address `farm-mode` still opens it, `helpGuideFormerSlugs.ts`).
+
+### Tell the dev and Fix Mode (app-wide)
+**Tell the dev** is the wrench: a note to the dev from the page a person is on, with the page and its state (punch list #380).
+It is the guides' feedback box moved to every page: the same `help_feedback` table, the same row security and the same inbox.
+At a desk the wrench floats bottom left;
+on a phone it sits in the header beside Search, because Job Mode's bars own the bottom of a phone and toasts the top right.
+The box opens three **starts**, *I want…*, *This page is confusing because…* and *Something went wrong when I…*;
+the start is the note's `kind` (`want`, `confusing`, `broken`), and the last two may be sent with no words.
+**Goes with your note** lists everything a note carries before the press: the page, the open window, the role, the screen, the modes on, the version, the last error line shown and the calls the server refused.
+A note never carries a picture of the screen.
+A lost signal is never part of a note: the outbox keeps that press, so the no-connection line and a call with no answer are left out (`isLostSignalLine`).
+Two more doors open the same box since v2.7660: a **Tell the dev** press on every error toast, which opens on *Something went wrong* with the error attached and is never drawn for a lost signal (`errorLineOffersNote`), and a wrench in the title row of the shared window on a phone (`ResponsiveModalShell`, `tellTheDevDoor`).
+A door outside the shell shows only while a box is there to answer it (`isTellTheDevListening`: a signed-in person with Fix Mode on).
+**Fix Mode** is the gear menu's switch for the wrench, per person per device, on until switched off (`fixMode.ts`, `useFixMode`);
+the phone dock's More sheet lists it with the other modes.
+**Notes to the dev** is the inbox, called Help feedback until v2.7658: the Dashboard's Teams inbox card and the Checklist's review, for the owner or a dev.
+Each note there shows its kind, page and state, with **Open that page** and **Copy as a brief** (`noteBrief`: the note by role, never by name).
+Opens and sends are counted in `ui_nav_clicks` as `tell_the_dev_open` (target the door) and `tell_the_dev_sent` (target the kind).
+Kernels in **[`src/lib/tellTheDev/`](../src/lib/tellTheDev/)**;
+the wrench and its box in **[`TellTheDevRoot.tsx`](../src/components/tellTheDev/TellTheDevRoot.tsx)**.
+
+**See also** — fragments `v2.7650` and `v2.7658`, help guide `tell-the-dev-about-a-page.md`, `to-dos/tell-the-dev/`.
 
 ### User Review modal
 A global, full-screen modal (**[`UserReviewModal`](../src/components/UserReviewModal.tsx)** + **[`UserReviewModalContext`](../src/contexts/UserReviewModalContext.tsx)**) opened by clicking a person's **name** on the Dashboard's **`DashboardTeamActiveClockStrip`** (the "Currently In" / "Clocked in today" strip).
@@ -2972,6 +2997,10 @@ A task handed on is the same task, with its thread, place and photos, and the of
 **Go through them** beside Still open asks about the old tasks one at a time (v2.7547), **Mark N done** finishes a round of plain repeating tasks behind one confirm (v2.7550), and the **Yesterday** strip asks once about a repeating task left unticked in the last three days, **Did it** or **Skipped** (v2.7551, and History then reads **Skipped** where it read *Missed*).
 **＋ Add a task for me** and **Follow-up** on a done task open the *New task window* (v2.7537).
 For the office, Review opens on a **Stuck** list with **Sorted** while anyone is stuck.
+**See <first name>'s Task Mode** (v2.7697, punch list #381) is a press on a person's opened card on Review, for the owner or a dev, and it opens the *Task Mode look window* (`TaskModeLookWindow.tsx`).
+The window draws that person's Today as their phone draws it, at a phone's width at a desk, with **Read again** and **Close** in its head and a list of what a look does not show beside it.
+**Coming up** (v2.7698, `TaskLookComingUp.tsx` over `lib/tasks/comingUp.ts`) sits beside the screen: the person's open tasks for the next seven days, a repeating task named on its first day and counted after, and on a phone a bar switches between **Their screen** and **Coming up**.
+It is a look and not *View as*: the viewer stays signed in as themself, the day is read for the person on the card, and `TaskLookGate` stops every press on the screen that does not only open or fold something (`lookAllowsPress` in `lib/tasks/taskLook.ts`).
 Components, kernels and calls: `CHECKLIST_TABS_ARCHITECTURE.md` → *Today = two lists*;
 who may do each: `ACCESS_CONTROL.md` → *Task Mode tools*;
 guide `check-off-my-daily-tasks`.
@@ -3026,6 +3055,7 @@ Beside the place the giver may add one **Photo of the spot** (`TaskSpotPhotoFiel
 `spot_photo_path` on the task or the roadmap task, the picture in the private `task-spot-photos` bucket as `item/<id>/…` or `roadmap/<id>/…`, gated by `can_write_task_spot_photo`): the doer sees it beside the picture from above, and it is kept apart from `task_photos` on purpose, so it never counts as the finishing photo a task asks for and is never read as proof of work.
 **Where the open tasks are** (`TaskPlacesTeamMapCard.tsx`) is the leader's map on the Review tab, over Outstanding by person: the board's own rows with their places, a colour a person (`taskPlacePersonColor`), a press on a name for that person alone, a navy dot with its count where people share a place (`taskPlaceTeamDots`).
 It shows where tasks are and never where a person is.
+Since v2.7686 it draws on Google Maps through the shared `PinsMapGoogleCanvas`, **Satellite** as Google's `hybrid` and **Streets** as its `roadmap` (`googleMapTypeForLayer` in `lib/map/googleMapType.ts`), and falls back to the Leaflet canvas with no browser key or once Google fails on the page.
 The person doing a task may add a place it lacks from where they stand (`TaskPlaceAddHere.tsx`, one quiet line in an open task with no place): `add_task_place_from_the_spot(instance, lat, lng, accuracy_m, name)` is that one write, for the office or an assignee, a reading within 46 m, never over a place already there, landing on the roadmap task when there is one.
 **The way in** (punch list #345 step 5, since v2.7342): a place may carry the painted map that leads to it (`painted_map_id` on the task or the roadmap task, written with the place by `taskPlaceColumns`).
 The giver adds it on **Where is it?** with **＋ Add the way in**, from the painted maps that come within a mile of the ring (`waysNearPlace` in `taskPlaceWay.ts`), a place chip that has one wears the paint's stroke and brings it along, and the doer sees the line on the place's picture with **Directions to the start** and **Open the map**;
@@ -3061,6 +3091,7 @@ A lock leaves a gap the painter chooses what to do with;
 painting pauses after five minutes standing still and ends after an hour;
 a stretch the phone was not sure of is drawn faint and left out of the length.
 Done opens **Look it over**, where nothing has left the phone, and a walk closed unsaved is kept on the phone for a day and offered back.
+Closing the window on an unsaved walk asks **Close the map?** with three presses since v2.7690: **Close, and keep the walk on this phone**, **Close, and throw the walk away**, and **Stay** (`ConfirmDialog`'s `keep`, the blue press over the red one).
 **A shared link** (since v2.7223): **Share** on a map makes a link, `/way/<code>`, that anyone can open with no sign-in until it is ended or ninety days pass (`PaintedMapShareSheet`, the page `PaintedWay`, the `painted-map-link` function, table `painted_map_links`).
 The reader sees the map and nothing else from the app, and **Show where I am** stays on their phone.
 On that page a line's length stands alone on its row, and one sentence under it says how the line was made and, unless the length was measured, that it is a guide for how far and not a measurement (since v2.7408, `wayLineUnderWords` in `paintedWay.ts`: *Drawn by hand, so the length is a guide for how far, not a measurement.*;
@@ -3624,6 +3655,22 @@ Since v2.6558 two chip rows above the Scoreboard cut it by job, part of the site
  **Ask a question** (v2.6047): the page writes the lane's own request (`estimator_requests` / `dispatch_requests`) with one reference, the site (`development_id`) or a piece;
  the inbox's reference line opens the page;
  the office team reads every request that carries a reference.
+
+**Trip** (punch list #379;
+the rules v2.7653, the tables v2.7655, the Trips look v2.7661): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
+A trip is people, and for each person their days, and each day is one of three kinds: **Getting ready**, **On the road** or **At the site**.
+A day off in the middle is a day that is not there.
+Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
+A trip may also say what it was for, who asked for it (us or them), how it went, the jobs its work goes on and its billing (**Inside the price**, **Extra**, **Ours**), and all of that can wait.
+A trip is a reading laid over the clock: saving, changing or deleting one changes no clock row, bill or cost.
+The site's hours fall into five figures (`src/lib/trips/tripHours.ts`): a row on a trip day takes the day's kind, a punch counts **At the site** only when a place it carries is the site, a row with no place is **No place on the punch** and is never added to At the site, and hours on the site's jobs outside every trip the person was on are **At home for the site**.
+The hours are the Scoreboard's own (`siteLabor.ts`), and a day's place comes from the clock's punches on the site's jobs read against the address's point (`tripPlace.ts`, `tripHourRows.ts`).
+The **Trips look** is the Development page's seventh look (`DevelopmentTripsCard.tsx` over `DevelopmentTripsLook.tsx`, `useSiteTrips`, `lib/trips/tripsLook.ts`): a band that says how many of the site's hours were at the site, one bar of the same hours, the year's trips on a strip, and a row a trip that opens in place.
+The look shows only on a site that has a trip or is 150 miles or more from the shop (`tripsLookShows`), and a nearer site has one door to its first trip in the line under its address.
+**+ Trip** opens the sheet (`components/trips/TripSheet.tsx` over `lib/trips/tripSheet.ts`): who went, which days, what for, the days painted and turned by a tap.
+A trip leaving and coming back are two **History** lines read from its days (`lib/trips/tripHistory.ts`), never kept rows.
+Access: `ACCESS_CONTROL.md`, *Trips*.
+Guide: `keep-a-trip-to-a-far-site`.
 
 ### Submittals tab: the road, the strip, the walkthrough and the GC's page beside it (v2.4067–v2.4189)
 Bids → Submittals reads as one **road** of eight steps (v2.4090;
@@ -5084,8 +5131,8 @@ The MCP server a **dev's** coding agent reads the app through, at `https://mcp.c
 A **Dev MCP key** (`ptd_…`, Settings → Your account, one per machine) resolves to a person;
 the server reads **as that person**, GET-only, so RLS applies and the database refuses writes;
 secrets are redacted and every call lands in `dev_mcp_calls`.
-Writes are a second path, one hundred and seventeen plan → apply verbs since v2.7589 — fifty-one over twenty-one dev-gated RPCs, four over the Plans section's own rows (a plan set, a paper), four over a surface's own RPC (a waiting field report, a matter opened on a person), ten over the job's own doors (a job, v2.6790, its update, v2.6793, an activity note, v2.6822, and a payment and a combine, v2.6940), ten over a bid's own rows (a bid changed, v2.6945, its count rows, v2.6967, its takeoff, v2.6968, its labor, v2.6976, and its prices, v2.6992), two over a bid's sent paper (filed from Drive into Team only › Sent by us and linked, v2.7154;
-the link is the Sent by us folder once it holds several papers, v2.7186), two over a property record's lien facts (v2.6950), ten over the Lien desk's own rows (a job's last day of work, v2.7206, a notice already mailed, v2.7229, an affidavit drafted, v2.7247, a filed affidavit recorded with its scan, v2.7511, its copies recorded as mailed, v2.7515), four over the Sub Labor screens' own rows (a sheet and what was paid against it, v2.6944), six over the People page's own doors (an account, a login, a password reset, v2.6792), four over the submittal log's own rows (the rows and a log line, v2.6804), two over a bill (v2.6794), four over the Checklist's own rows (a task given as the New task window gives it, through the window's own send kernel, v2.7584, and a task's place set, moved or taken off as the Edit window writes it, v2.7589) and four over a job's marks (the Collections flag and the contract's end, v2.6795): a cost batch, an HR entry, a legal matter's narrative, planned steps, statements, documents and gap answers, a development's History line, a bid and its plan set, and since v2.6367 Materials on site's presses — a cage or box, a delivery, a movement, a count — through the one `SECURITY INVOKER` wrapper, so the screens' own RLS and fences hold, and since v2.6808 a whole job's on-site rows moved to another job through a definer of its own, since the ledger takes no update under anyone's RLS, and since v2.7241 a box's name, kind and where line and a typed part's name through a second invoker wrapper, `dev_on_site_rename` (`docs/dev-mcp/README.md`).
+Writes are a second path, one hundred and nineteen plan → apply verbs since v2.7592 — fifty-one over twenty-one dev-gated RPCs, four over the Plans section's own rows (a plan set, a paper), four over a surface's own RPC (a waiting field report, a matter opened on a person), ten over the job's own doors (a job, v2.6790, its update, v2.6793, an activity note, v2.6822, and a payment and a combine, v2.6940), ten over a bid's own rows (a bid changed, v2.6945, its count rows, v2.6967, its takeoff, v2.6968, its labor, v2.6976, and its prices, v2.6992), two over a bid's sent paper (filed from Drive into Team only › Sent by us and linked, v2.7154;
+the link is the Sent by us folder once it holds several papers, v2.7186), two over a property record's lien facts (v2.6950), ten over the Lien desk's own rows (a job's last day of work, v2.7206, a notice already mailed, v2.7229, an affidavit drafted, v2.7247, a filed affidavit recorded with its scan, v2.7511, its copies recorded as mailed, v2.7515), four over the Sub Labor screens' own rows (a sheet and what was paid against it, v2.6944), six over the People page's own doors (an account, a login, a password reset, v2.6792), four over the submittal log's own rows (the rows and a log line, v2.6804), two over a bill (v2.6794), six over the Checklist's own rows (a task given as the New task window gives it, through the window's own send kernel, v2.7584, a task's place set, moved or taken off as the Edit window writes it, v2.7589, and the giver's photo of the spot put on, replaced or taken off, v2.7592) and four over a job's marks (the Collections flag and the contract's end, v2.6795): a cost batch, an HR entry, a legal matter's narrative, planned steps, statements, documents and gap answers, a development's History line, a bid and its plan set, and since v2.6367 Materials on site's presses — a cage or box, a delivery, a movement, a count — through the one `SECURITY INVOKER` wrapper, so the screens' own RLS and fences hold, and since v2.6808 a whole job's on-site rows moved to another job through a definer of its own, since the ledger takes no update under anyone's RLS, and since v2.7241 a box's name, kind and where line and a typed part's name through a second invoker wrapper, `dev_on_site_rename` (`docs/dev-mcp/README.md`).
 Since v2.6565 the seat also searches **the company's own Gmail** (`search_mail` / `read_mail`): every login of the Workspace read as that person under the service account's domain-wide delegation with the read-only scope alone, so the token cannot label, move or delete;
 and since v2.6568 it files what it finds — a file off a mail onto a job's folder, a person's HR file or a matter (`plan_mail_file` / `apply_mail_file`), and a whole conversation onto a job's Activity and notes through gmail-mine's own tag as that login, or since v2.6715 onto a person's HR file as one dated entry a mail, written as the dev (`plan_mail_tag` / `apply_mail_tag`), and since v2.7022 back off its job again when the seat's own tag put it there (`plan_mail_untag` / `apply_mail_untag`), each plan first, then apply quoting the hash.
 Since v2.7154 it also reads **a Drive folder** or one file's facts through the intake service account on a read-only token (`read_drive_folder`, a dev's own key alone, never through View as).
@@ -6010,6 +6057,12 @@ nothing is filed, the labels the service prints are the record), **Take back…*
 `lib/jobs/lienRunTakeBack.ts`), and *add the number* on a sent notice whose certified send has no tracking number (`lib/jobs/lienSendTracking.ts`, `LienTrackingOwedEditor`).
 The certified-mail door through Docsmit is planned in [`DOCSMIT_LIEN_RUN_PLAN.md`](./DOCSMIT_LIEN_RUN_PLAN.md);
 its kernels (`src/lib/mail/`, v2.5375) carry the run's **Mail through Docsmit** (v2.5454, below), and since v2.5455 the desk reads the `mail_pieces` behind its sent notices (`mail/lienMailPieces.ts`): the Sent row says *mailed through Docsmit · in transit, mailed Oct 13* in place of *tracking owed*, and the notice's footer carries each envelope's state and number.
+**What went out** (v2.7691, the owner's yes of 2026-11-17): the block a recorded lien paper shows on the desk's Sent row, in the stop's window and under each row of the Lien window's *Filings on this job* (`lienMailProof.ts`, `LienMailProofBlock.tsx`, `LienFilingMailProof.tsx`).
+It lists every mailed file with its own link, then each envelope with its number and its receipt.
+**Mail proof** is its count: the files count as one piece and each posted copy's receipt as one, so *Mail proof: 2 of 3 on file* names one thing missing and the **Next:** line says which.
+A copy sent by email, handed over or carried by a mail provider owes no receipt.
+Since v2.7695 the row reads as four numbered steps, Printed, Signed, In the envelope and Mailed: the file that goes in the envelope has a step of its own, and each envelope's number has **Add the receipt** under it.
+A **Next:** line under the row's name says the one thing to do now.
 
 **Signed with a pen** (the pen train, v2.5366–v2.5368): the third way a notice is signed — on the paper as printed, with a pen, written down by the office.
 *He signed the paper ▸* on a held envelope in the run, or *He signed the paper ›* on a ready notice's footer, or since **v2.7297** *He signed the paper…* on a draft notice (a row of the footer's *He already okayed it ▾* since v2.7324;
@@ -6217,6 +6270,16 @@ and it reads the record back above the button before the press, *The record will
 **Did not arrive** (v2.7053) is a send the mail service bounced, or a text that failed, on a bill not paid with no later send that arrived.
 **No send on record** (v2.7052) is a bill the app made that has no email, text or print on any record: it sits in a strip above the days, never on a day.
 Readers are the sent copies' own: dev, master, assistant, controller.
+
+### Agreements tab
+
+v2.7617 (punch list #376).
+The Documents page's list of every agreement on file, for the office: a job's contract, a warranty, a GC's own paper, a signed paper the office filed, a staff, sub or partner agreement and a sub work order, one line each, newest first under a band per month.
+A line is a kind tag (*Contract · Warranty · Their paper · Staff · Sub · Partner · Work order*), the paper's name, who it is with, the job, where it stands in that kind's own words, and the day it was signed, sent or ended.
+Every kind shares three states, *waiting*, *signed* and *ended*, which the second row of chips asks for: **Sent and signed** (where the tab opens), **Waiting on a signature** with its count, **Signed**, **Voided or ended**.
+A draft is never on it, and a signed paper filed over several jobs is one line that names the first job and counts the rest.
+It reads the `agreements_on_file` view, where each table's own row security decides what the reader sees ([`agreementsLedger.ts`](../src/lib/documents/agreementsLedger.ts), [`DocumentsAgreementsTab.tsx`](../src/components/documents/DocumentsAgreementsTab.tsx)).
+It adds a view and renames nothing: *Contract* under a job on the Jobs tab and in the job window, the Customer page's **Agreements** card, People → Contracts and Partnerships → Agreements keep their names.
 
 ### Sent copies
 
@@ -6599,6 +6662,12 @@ The **People folder** (v2.6393, `drive_people_folder_id`, the fifth card) is whe
 The **Tasks folder** (v2.6601, punch list #273 PR 4a, `drive_tasks_folder_id`, the card after the Fleet one) is where the photo sweep files a task card's photos, one folder per card under *PipeTooling Tasks*, which **Make the Tasks folder** finds or makes beside the Jobs folder in the app's Shared Drive (`job-drive-folders` `make: 'tasks'`, `tasks_needs_shared_drive` for a My Drive root;
 a pasted link is checked for the write, `tasks_unwritable`);
 until it is set every filed row reads `NO_TASKS_FOLDER_WORDS`.
+
+**Signed contracts card** (v2.7647, punch list #377): the card on Documents → Where files go that says where each signed job contract's copy in Google Drive stands.
+It counts the papers *in Drive*, *waiting* and *held*, and its press files the waiting ones now.
+**Contracts** (the folder): the sixth folder of a job's tree, inside Team only, made the first time the app files a signed contract on the job.
+**Filed** and **adopted**: a contract's Drive copy is *filed* when the app uploaded it, and *adopted* when the office already kept the file in the jobs drive and the app tied it to the record where it sits.
+**Held** (a contract): a signed paper that could not be filed, with its reason on the record and the door that fixes it.
 
 ### Empty state
 The app's one shape for a list with nothing in it (punch list #184, sweep C): the list says what fills it and offers the press, or, where empty is the good state, says so and names where to look next, so a bare *No bills* or *Nothing here* never leaves the person guessing.
@@ -7282,6 +7351,7 @@ Five sections the firm's portal mirrors: **Account · Paper · Record of contact
 Fees & steps ends with **What goes to the firm** (v2.5761, `src/lib/legal/exhibitDetail.ts`): a fold per exhibit, lettered by the firm's own section rule (`exhibitHome`, exported from `legalFirmPacketPrint.ts`) and sorted by that letter, each opening to a few lines of what is inside and a door to the tab that holds the rows;
 led since v2.4812 by the **Narrative**, the office's own account of the matter in markdown, which the firm reads first on its portal and in its printed packet, labelled as the office's with who saved it and when (Evidence also carries the office's **documents for the firm** since v2.4810: a title, one line on what each shows, a 15-minute link on the portal, held back with a reason or removed, never deleted;
 since v2.6716 a `.md` or `.txt` is kept as a text document, its words drawn by **Read** on the desk and **Read here** on the portal, and since v2.6720 one marked **Counsel-only** wears a lock on the portal and stays out of the printed packet ([ACCESS_CONTROL.md](./ACCESS_CONTROL.md));
+since v2.7683 **Read** carries copy presses over the words, one per piece to send (**Copy the letter**, a piece by its heading, a draft named as one) and a quiet **Copy everything as text**, each piece plain email text without the draft note at the top or a section headed *INTERNAL*, the bracketed blanks still to fill listed and counted (`src/lib/legal/letterCopyText.ts`), never on a counsel-only paper;
 since v2.6549 **Evidence by theme** stands above them on the portal's Evidence tab and a block a theme joins Section D of the printed packet — the kept marks on the documents and entries that travel, grouped and counted, never a why or a who, `portalThemesForMatter`;
 the firm reads, it does not mark) — the portal calls the third **Record of contact** and speaks the firm's words throughout (v2.4625, `src/lib/legal/legalFirmWords.ts`: stages *referred · demand sent · suit filed · judgment entered*, entries by whose act they are, never the office's *Needs You*).
 Above them: the **theory** an attorney could plead today — *signed contract* · *sworn account* (a bill the customer received, field evidence with GPS on the property, no dispute on record) · *lien only* · *none yet* — the firm's portal never shows the theory, only the facts behind it per job (v2.4634, `firmJobRecord`: *signed agreement 2026-04-22 by Pat Sample, bill sent, crew on site with GPS, no dispute logged*) — what Click **keeps** after the firm's cut and a filing cost (facts, no odds), and the **gaps** an attorney asks for first, each with a door to the surface that owns the record or, since v2.5920, **Answer…** (see *Gap answer*).

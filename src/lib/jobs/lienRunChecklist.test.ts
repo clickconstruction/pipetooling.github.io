@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_RUN_SHEET_CSS, lienRunBatchPlans, lienRunChecklistRows, lienRunMailLink, lienRunNothingToClaim, lienRunRowLine, lienRunSheetHtml, lienRunTickDay } from './lienRunChecklist'
+import { LIEN_RUN_SHEET_CSS, lienRunBatchPlans, lienRunChecklistRows, lienRunMailLink, lienRunNothingToClaim, lienRunRowLine, lienRunRowNext, lienRunSheetHtml, lienRunTickDay } from './lienRunChecklist'
 import type { RunNotice, RunRecipient } from './lienDeskRun'
 import type { LienNoticeSignature } from './lienNoticeSignature'
 
@@ -257,3 +257,31 @@ describe('a parted notice is the row’s hold (v2.7517)', () => {
   })
 })
 
+describe('lienRunRowNext · the one thing to do next on a row (v2.7695)', () => {
+  const printed = { printedAt: '2026-10-08T16:00:00Z', printedBy: 'Taunya' }
+  const copy = { url: 'https://drive.google.com/file/d/f1/view', driveFileId: 'f1', name: 'Lien notice as mailed · 650 · 2026-10-08.pdf', at: '', by: null }
+  const next = (n: Parameters<typeof notice>[0]) => lienRunRowNext(lienRunChecklistRows({ notices: [notice(n)] })[0]!)
+
+  it('walks the four steps in order: print, sign, the file in the envelope, then each number and receipt', () => {
+    expect(next({ signature: null })).toBe('Get Robert Douglas’s signature, or print it for a pen.')
+    expect(next({})).toBe('Print the notice.')
+    expect(next({ ...printed, signature: null })).toBe('Get Robert Douglas’s signature.')
+    expect(next({ ...printed })).toBe('Scan what goes in the envelope and add the file.')
+    expect(next({ ...printed, mailedCopies: [copy] })).toBe('Add the owner’s receipt. The number fills in from a photo.')
+    expect(next({ ...printed, mailedCopies: [copy], recipients: [{ ...owner(), receiptUrl: 'https://d/r' }, gc()] })).toBe('Type the owner’s mail number.')
+    expect(next({ ...printed, mailedCopies: [copy], recipients: [{ ...owner('9407 1'), receiptUrl: 'https://d/r' }, gc('9407 2')] })).toBe('Add the GC’s receipt.')
+    expect(next({ ...printed, mailedCopies: [copy], recipients: [{ ...owner('9407 1'), receiptUrl: 'https://d/r1' }, { ...gc('9407 2'), receiptUrl: 'https://d/r2' }] })).toBe('Ready to record.')
+  })
+
+  it('carries each copy’s receipt on its cell', () => {
+    const [r] = lienRunChecklistRows({ notices: [notice({ recipients: [{ ...owner('9407 1'), receiptUrl: ' https://d/r1 ' }, gc()] })] })
+    expect(r!.recipients.map((x) => x.receiptUrl)).toEqual(['https://d/r1', ''])
+  })
+
+  it('asks for nothing the screen has no press for, and says nothing on a held row', () => {
+    const row = lienRunChecklistRows({ notices: [notice({ ...printed, recipients: [owner('9407 1'), gc('9407 2')] })] })[0]!
+    expect(lienRunRowNext(row, { canAddCopy: false, canAddReceipt: false })).toBe('Ready to record.')
+    expect(lienRunRowNext({ ...row, held: 'no mailing address' })).toBeNull()
+    expect(lienRunRowNext({ ...row, nothingToClaim: true })).toBeNull()
+  })
+})

@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useJobsLockedInLists } from '../hooks/useJobsClosedToMe'
+import { LOCKED_ROW_NAME } from '../lib/jobs/jobPapers'
+import { LockedJobText } from '../components/jobs/JobPapersGate'
 import { Link } from 'react-router-dom'
 import './Calendar.css'
 import { supabase } from '../lib/supabase'
@@ -270,7 +273,18 @@ export default function Calendar() {
     Record<string, { hours: number; openCount: number }>
   >({})
   const [sessionsByWorkDate, setSessionsByWorkDate] = useState<Record<string, ClockSessionRow[]>>({})
-  const [plannedByWorkDate, setPlannedByWorkDate] = useState<Record<string, PlannedBlockRow[]>>({})
+  const [plannedByWorkDateRead, setPlannedByWorkDate] = useState<Record<string, PlannedBlockRow[]>>({})
+  // Papers before a job opens (step 3): for the crew and subs, a job they still owe a paper on keeps its number here
+  // and loses its name and note. A press opens the job, which opens as its prompt. The office keeps the names (call 8).
+  const jobsLockedInLists = useJobsLockedInLists(authRole)
+  const plannedByWorkDate = useMemo(() => {
+    if (jobsLockedInLists.size === 0) return plannedByWorkDateRead
+    const out: Record<string, PlannedBlockRow[]> = {}
+    for (const [day, rows] of Object.entries(plannedByWorkDateRead)) {
+      out[day] = rows.map((p) => (jobsLockedInLists.has(p.job_id) ? { ...p, note: null, jobs_ledger: { hcp_number: p.jobs_ledger?.hcp_number ?? '', job_name: LOCKED_ROW_NAME } } : p))
+    }
+    return out
+  }, [plannedByWorkDateRead, jobsLockedInLists])
   const [previewJobModal, setPreviewJobModal] = useState<{
     projectId: string
     stepId: string
@@ -893,7 +907,7 @@ export default function Calendar() {
           } as const
           const chipBody = (
             <>
-              <strong>{label}</strong>
+              <strong>{jobsLockedInLists.has(p.job_id) ? <LockedJobText jobId={p.job_id} /> : label}</strong>
               <div style={{ marginTop: 4 }}>{scheduleFormatWindow(p.time_start, p.time_end)} Central</div>
               {noteText ? (
                 <div
@@ -1501,7 +1515,7 @@ export default function Calendar() {
                                     whiteSpace: 'nowrap',
                                   }}
                                 >
-                                  {label}
+                                  {jobsLockedInLists.has(p.job_id) ? <LockedJobText jobId={p.job_id} /> : label}
                                 </span>
                                 <span style={{ display: 'block', color: '#4f46e5' }}>
                                   {timeWindow}
