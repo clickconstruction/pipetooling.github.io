@@ -2,14 +2,19 @@
  * A place on a painted map, being added or changed (punch list #345): what it is, a word for
  * whoever comes next, and a photo. The dot itself is on the map above this panel, dragged under
  * the magnifying glass or set by one reading of where the painter stands.
+ *
+ * The chips are kinds (punch list #393): each gives the dot its own mark, and a name to a place
+ * that has none yet. A name somebody typed is theirs, and a chip never changes it.
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useTaskShot } from '../../hooks/useTaskShot'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { PAINTED_PLACE_CHIPS, PAINTED_PLACE_NAME_MAX, PAINTED_PLACE_WORDS_MAX, type PaintedPlace } from '../../lib/paintedMap/paintedMap'
+import { PAINTED_PLACE_NAME_MAX, PAINTED_PLACE_WORDS_MAX, type PaintedPlace } from '../../lib/paintedMap/paintedMap'
+import { PAINTED_PLACE_KINDS, PLACE_KIND_HINT_WORDS, PLACE_WARN_COLOR, pressPlaceKindChip, type PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
 import { PAINTED_PLACE_NO_CODES_WORDS } from '../../lib/paintedMap/paintedPlacePhoto'
 import { isPoorFix } from '../../lib/paintedMap/paintedTrack'
 import { taskPlaceAccuracyWords } from '../../lib/tasks/taskPlace'
+import { PlaceGlyphDrawing } from './PaintedPlaceMark'
 
 /** The photo as the panel hands it over: a new picture, the one the place already has, or none. */
 export type PaintedPlacePhotoChoice = { kind: 'new'; id: string; blob: Blob } | { kind: 'keep' } | { kind: 'none' }
@@ -28,14 +33,14 @@ type Props = {
   /** The place is the caller's to remove. */
   canRemove: boolean
   onUseWhereIAm: () => void
-  onSave: (input: { name: string; words: string; photo: PaintedPlacePhotoChoice }) => void
+  onSave: (input: { name: string; words: string; kind: PaintedPlaceKind | null; photo: PaintedPlacePhotoChoice }) => void
   onRemove: () => void
   onCancel: () => void
 }
 
 const press: CSSProperties = { minHeight: 44, padding: '0 0.9rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.9375rem', cursor: 'pointer' }
 const deadPress: CSSProperties = { ...press, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'var(--border)', cursor: 'default' }
-const chip: CSSProperties = { minHeight: 36, padding: '0 0.8rem', borderRadius: 999, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }
+const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', minHeight: 36, padding: '0 0.8rem', borderRadius: 999, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }
 const chipOn: CSSProperties = { ...chip, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }
 const field: CSSProperties = { minHeight: 44, padding: '0.5rem 0.6rem', fontSize: '1rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', boxSizing: 'border-box', width: '100%' }
 const label: CSSProperties = { display: 'grid', gap: '0.3rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }
@@ -52,6 +57,7 @@ function handHeld(): boolean {
 
 export function PaintedPlacePanel({ place, photoUrl, accuracyM, movedOffReading, finding, busy, canRemove, onUseWhereIAm, onSave, onRemove, onCancel }: Props) {
   const [name, setName] = useState(place?.name ?? '')
+  const [kind, setKind] = useState<PaintedPlaceKind | null>(place?.kind ?? null)
   const [words, setWords] = useState(place?.words ?? '')
   // The saved photo stays until the painter takes it off or takes another.
   const [keepSaved, setKeepSaved] = useState(Boolean(place?.photoPath))
@@ -70,7 +76,7 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, movedOffReading,
 
   const save = () => {
     if (waiting) return
-    onSave({ name, words, photo: shot ? { kind: 'new', id: shot.id, blob: shot.blob } : keepSaved ? { kind: 'keep' } : { kind: 'none' } })
+    onSave({ name, words, kind, photo: shot ? { kind: 'new', id: shot.id, blob: shot.blob } : keepSaved ? { kind: 'keep' } : { kind: 'none' } })
   }
 
   return (
@@ -78,12 +84,28 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, movedOffReading,
       <div style={{ display: 'grid', gap: '0.4rem' }}>
         <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>What is here?</span>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-          {PAINTED_PLACE_CHIPS.map((c) => (
-            <button key={c} type="button" aria-pressed={name === c} style={name === c ? chipOn : chip} onClick={() => setName(c)}>
-              {c}
-            </button>
-          ))}
+          {PAINTED_PLACE_KINDS.map((k) => {
+            const on = kind === k.kind
+            return (
+              <button
+                key={k.kind}
+                type="button"
+                data-place-kind={k.kind}
+                aria-pressed={on}
+                style={on ? chipOn : chip}
+                onClick={() => {
+                  const next = pressPlaceKindChip({ name, kind }, k.kind)
+                  setName(next.name)
+                  setKind(next.kind)
+                }}
+              >
+                <PlaceGlyphDrawing glyph={k.glyph} size={16} color={k.warns && !on ? PLACE_WARN_COLOR : 'currentColor'} />
+                {k.name}
+              </button>
+            )
+          })}
         </div>
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{PLACE_KIND_HINT_WORDS}</span>
         <label style={label}>
           Name
           <input type="text" value={name} maxLength={PAINTED_PLACE_NAME_MAX} onChange={(e) => setName(e.target.value)} placeholder="Truck gate" style={field} />

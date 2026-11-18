@@ -78,6 +78,7 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage } from '../../lib/jobs/lienStopPaperPages'
 import { lienMailProof } from '../../lib/jobs/lienMailProof'
+import { lienMailProofDoorPress, lienMailProofWindowTab, type LienMailProofLanding } from '../../lib/jobs/lienMailProofDoor'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
@@ -147,6 +148,7 @@ export default function LienInstrumentsModal({
   authEmail,
   onRecorded,
   initialTab,
+  land: landOnOpen = null,
   noticeMonths,
   onOpenLienDesk,
   onOpenRelease,
@@ -167,6 +169,8 @@ export default function LienInstrumentsModal({
   onRecorded?: () => void
   /** Land on this tab when the window opens (the forecast's Send notice… door opens on 'notice'). */
   initialTab?: 'demand' | 'notice' | 'affidavit' | 'release_record'
+  /** Open landed on one copy of one filing (`lienMailProofDoor.ts`): the press on a stop window's card on the Lien desk. The opener sets `initialTab` to the paper's tab. */
+  land?: LienMailProofLanding | null
   /** The Lien desk's months for the § 53.056 notice (v2.3405) — recorded as months_covered instead of the last work month alone. */
   noticeMonths?: string[] | null
   /** The next step's door to the Lien desk on this job (punch list #82): notices and retainage are drafted, approved and sent there. Absent, the card has no desk button. */
@@ -195,6 +199,11 @@ export default function LienInstrumentsModal({
   useEffect(() => {
     if (!open) setStopOpen(null)
   }, [open])
+  // The copy a stop window's card sent the reader to: from the desk as the window opens, or from this window's own stop window.
+  const [land, setLand] = useState<(LienMailProofLanding & { at: number }) | null>(null)
+  useEffect(() => {
+    setLand(open && landOnOpen ? { ...landOnOpen, at: Date.now() } : null)
+  }, [open, landOnOpen])
   // The job's property: the record its own row names, read at open on its own; null while the read is out.
   const [property, setProperty] = useState<JobPropertyRead | null>(null)
   const linkedAddress = property?.record ?? null
@@ -907,7 +916,18 @@ export default function LienInstrumentsModal({
     const when = (ymd: string | null, iso: string) => formatYmdMonthDay(ymd ?? calendarYmdInAppTzFromIso(iso))
     const asSent = (f: JobLienFilingRow, words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
       const page = filingSnapshotPage(f, { issuer, jobNumber })
-      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof: lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, servedAt: f.served_at }) }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
+      const proof = lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, servedAt: f.served_at })
+      // The press on a recipient's card (`lienMailProofDoor.ts`). This window is itself where a copy's lack is entered, so the
+      // press closes the stop window and lands on the copy here, for the office alone. The owner's gap is not read: this
+      // window has no property record of its own, and its service step names a missing address under its press.
+      const proofDoor = proof
+        ? lienMailProofDoorPress(
+            { jobId: job.id, filingId: f.id, paper: proof.paper, served: Boolean(f.served_at), ownerGap: null },
+            isLienOffice(authRole) ? { lien_window: (l) => { setActiveTab(lienMailProofWindowTab(l.paper)); setLand({ ...l, at: Date.now() }) } } : {},
+            () => setStopOpen(null),
+          )
+        : null
+      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof, proofDoor }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
     }
     const tab = (t: 'notice' | 'affidavit' | 'release_record', label: string) => ({ label, onPress: () => { setStopOpen(null); setActiveTab(t) } })
     const kind = lienStopPaperKind(step)
@@ -1897,6 +1917,7 @@ export default function LienInstrumentsModal({
             affidavitForm={affidavitFormRead.form}
             affidavitFormUnread={affidavitFormRead.failed}
             noticeMonths={noticeMonths ?? null}
+            land={land}
             // v2.7516: an approved notice on the desk is the paper to print; the tab says so and offers the door.
             deskNoticeState={deskNoticeState}
             onOpenDeskNotice={onOpenLienDesk && job ? () => onOpenLienDesk(job.id, 'notice') : undefined}

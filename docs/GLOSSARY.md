@@ -3113,6 +3113,10 @@ One host in the Layout opens it (`PaintedMapHost` over `paintedMapDoor`), and th
 Drawing by hand: a press adds a corner, a drag moves one, and on a phone **the magnifying glass** rides above a dragging finger (a second small map two zoom steps in, `PaintedMapCanvas`).
 **A place** is a named dot with a word and one photo (`PaintedPlacePanel`;
 the photo in the private `painted-map-photos` bucket, read by a signed address), numbered in the order it was set, the same word as a task's place.
+A place may carry **a kind** since v2.7776 (`paintedPlaceKind.ts`, over the column `painted_map_places.kind` from v2.7775): gate, parking, door, meter, shutoff, cleanout or hazard, picked by a chip on the place panel.
+A kind gives the dot **a mark** of its own with the number on its shoulder, on the map and beside the place in every list (`PaintedPlaceMark`), a hazard alone in red, and a kind the app does not know draws the plain numbered dot.
+The mark is drawn in the picture and on the printed page since v2.7777 (`pictureKindMark` in `paintedMapPicture.ts`, `placeMarkHtml`), and a file for another map says the kind in the place's name (`placeSaysWords`: *Hazard: Open trench*).
+A reader of a shared link sees the mark since v2.7778: `painted-map-link` hands on each place's `kind` as the table keeps it, and the page draws it.
 **Walking a line** (since v2.7220, `usePaintedWalk` over `paintedWalk.ts`): the phone is read only while a red bar says *Painting*, and only with the page on the screen, since no browser hands a hidden page its position.
 A lock leaves a gap the painter chooses what to do with;
 painting pauses after five minutes standing still and ends after an hour;
@@ -6125,6 +6129,9 @@ its kernels (`src/lib/mail/`, v2.5375) carry the run's **Mail through Docsmit** 
 It lists every mailed file with its own link, then each envelope with its number and its receipt.
 **Mail proof** is its count: the files count as one piece and each posted copy's receipt as one, so *Mail proof: 2 of 3 on file* names one thing missing and the **Next:** line says which.
 A copy sent by email, handed over or carried by a mail provider owes no receipt.
+Since v2.7785 a recipient's card in the stop's window carries the press for the one thing its copy lacks (`lienMailProofDoor.ts`): **Enter the owner of record ›**, **Mail this copy ›**, **Enter the mail number ›** or **Add the receipt ›**.
+The press closes the stop's window and opens the place where that is entered, for the office alone: the property record, *Filed liens: copies to mail* at the job's line, or the job's Lien window at the paper's row.
+**Landed here** is the light on that place (`landOn.ts`, `[data-landed]`): it is scrolled into view, tinted and ringed for a second and a half, then fades, and under reduced motion a steady outline stands instead.
 Since v2.7695 the row reads as four numbered steps, Printed, Signed, In the envelope and Mailed: the file that goes in the envelope has a step of its own, and each envelope's number has **Add the receipt** under it.
 A **Next:** line under the row's name says the one thing to do now.
 

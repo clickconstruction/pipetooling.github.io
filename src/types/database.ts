@@ -30091,6 +30091,7 @@ export type Database = {
         Row: {
           accuracy_m: number | null
           id: string
+          kind: string | null
           lat: number
           lng: number
           map_id: string
@@ -30103,6 +30104,7 @@ export type Database = {
         Insert: {
           accuracy_m?: number | null
           id?: string
+          kind?: string | null
           lat: number
           lng: number
           map_id: string
@@ -30115,6 +30117,7 @@ export type Database = {
         Update: {
           accuracy_m?: number | null
           id?: string
+          kind?: string | null
           lat?: number
           lng?: number
           map_id?: string

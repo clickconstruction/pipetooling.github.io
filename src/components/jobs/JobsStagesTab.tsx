@@ -2378,7 +2378,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       setStagesInvoiceFlashId(raw)
       return true
     },
-    [jobs, stagesSearchQuery, stagesSearchExtraJobIds, showToast],
+    [jobs, stagesSearchQuery, stagesCombinedExtraJobIds, showToast],
   )
 
   useEffect(() => {

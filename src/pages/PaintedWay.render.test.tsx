@@ -13,8 +13,8 @@ import type { PaintedWayAsk, PaintedWayIo, PaintedWayView } from '../lib/painted
 import type { SharedPaintedMap } from '../lib/paintedMap/paintedMapLink'
 
 vi.mock('../components/paintedMap/PaintedMapCanvas', () => ({
-  default: function CanvasStub(props: { lines: Array<{ id: string }>; places: Array<{ number: number }>; me?: { lat: number } | null; frameMe?: boolean }) {
-    return <div data-testid="canvas">lines:{props.lines.length} dots:{props.places.map((p) => p.number).join(',')} me:{props.me ? 'yes' : 'no'} frame:{props.frameMe ? 'yes' : 'no'}</div>
+  default: function CanvasStub(props: { lines: Array<{ id: string }>; places: Array<{ number: number; kind?: string | null }>; me?: { lat: number } | null; frameMe?: boolean }) {
+    return <div data-testid="canvas" data-kinds={props.places.map((p) => p.kind ?? 'plain').join(',')}>lines:{props.lines.length} dots:{props.places.map((p) => p.number).join(',')} me:{props.me ? 'yes' : 'no'} frame:{props.frameMe ? 'yes' : 'no'}</div>
   },
 }))
 
@@ -105,6 +105,27 @@ describe('PaintedWay', () => {
     expect(document.querySelector('[data-way-lines]')?.textContent).toBe('About 1,050 ft, give or take 40 ftWalked, so the length is a guide for how far, not a measurement.')
     expect(screen.getByText(/Made Up Plumbing shared this map with you\. The link ends by itself on Feb 11\./)).toBeTruthy()
     expect(document.querySelector('[data-theme="light"]')).not.toBeNull()
+  })
+
+  it('draws a place\'s kind as its mark, beside its name and on the map, and a kind it does not know as the plain dot (#393)', async () => {
+    const map: SharedPaintedMap = {
+      ...MAP,
+      places: [
+        { id: 'p1', number: 1, name: 'Open trench', words: 'Keep the truck off it.', lat: 29.5, lng: -98.2, photo: false, kind: 'hazard' },
+        { id: 'p2', number: 2, name: 'Meter', words: '', lat: 29.5005, lng: -98.199, photo: false },
+        { id: 'p3', number: 3, name: 'Hydrant', words: '', lat: 29.5006, lng: -98.199, photo: false, kind: 'fire_hydrant' },
+      ],
+    }
+    open(fakeIo([{ ...OPEN, map } as PaintedWayView]))
+    await screen.findByRole('heading', { name: 'The way in for deliveries' })
+    const rows = [...document.querySelectorAll('[data-way-place]')]
+    expect(rows.map((r) => r.querySelector('[data-place-mark]')?.getAttribute('data-place-mark'))).toEqual(['hazard', 'plain', 'plain'])
+    expect(rows[0]!.querySelector('[data-place-mark]')?.getAttribute('aria-label')).toBe('Hazard, place 1')
+    expect(rows[0]!.querySelector('[data-place-mark-number]')?.textContent).toBe('1')
+    // The row still reads number, name, words, as it did.
+    expect(rows[0]!.textContent).toContain('1Open trenchKeep the truck off it.')
+    expect(rows[1]!.textContent).toContain('2Meter')
+    expect((await screen.findByTestId('canvas')).getAttribute('data-kinds')).toBe('hazard,plain,plain')
   })
 
   it('points Directions at the start of the first line', async () => {
@@ -210,6 +231,8 @@ describe('PaintedWay', () => {
     expect(io.reads).toEqual([])
     expect(screen.getByText(/Sample — this is what a customer sees/)).toBeTruthy()
     await waitFor(() => expect(screen.getByTestId('canvas').textContent).toContain('lines:2 dots:1,2,3'))
+    // The sample's gate wears a gate's mark, so the office sees what a kind looks like to a reader.
+    expect(screen.getByTestId('canvas').getAttribute('data-kinds')).toBe('gate,plain,plain')
   })
 
   it('the sample sends no place and says it stays on the phone', async () => {

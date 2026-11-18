@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
-import type { LienMailProof } from '../../lib/jobs/lienMailProof'
-import LienMailProofBlock from './LienMailProofBlock'
+import type { LienMailProof, LienMailProofEnvelope } from '../../lib/jobs/lienMailProof'
+import LienMailProofBlock, { type LienMailProofDoorPress } from './LienMailProofBlock'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { stepRunPreview } from '../../lib/jobs/lienDeskRun'
 import { LIEN_RULE_CITES } from '../../lib/jobs/lienRuleCites'
@@ -19,7 +19,8 @@ const LienRulesModal = lazy(() => import('./LienRulesModal'))
  * timeline. Left, the paper that stop sends as it would print today — or, for a stop that sends
  * nothing of ours (last work, the owner's hold, counsel's suit), the words that stand in for the
  * page. Right, the stop's facts, who the envelope goes to, what must be true first, the rule, and
- * the stop's one act. ‹ › and the arrow keys walk the stops of the same job; Esc closes this alone.
+ * the stop's one act. A recipient's card that lacks something carries the press that opens the place it is entered.
+ * ‹ › and the arrow keys walk the stops of the same job; Esc closes this alone.
  * The host builds the pages (`paperFor`), from the same builders that print them.
  */
 export interface LienStopPaper {
@@ -30,7 +31,7 @@ export interface LienStopPaper {
   /** What must be true before the paper can go — the gates not yet clear. */
   before: ReadonlyArray<{ key: string; words: string }>
   /** The paper as it went out, when the stop is done: the words and the stored document, if any. */
-  record: { words: string; href: string | null; /** What went out (`lienMailProof.ts`): the files and each envelope's receipt, read-only here. */ proof?: LienMailProof | null } | null
+  record: { words: string; href: string | null; /** What went out (`lienMailProof.ts`): the files and each envelope's receipt, read-only here. */ proof?: LienMailProof | null; /** The press on a recipient's card for what its copy lacks (`lienMailProofDoor.ts`): the host closes this window and opens the place. Null, or absent, draws none. */ proofDoor?: ((envelope: LienMailProofEnvelope) => LienMailProofDoorPress | null) | null } | null
   /** The stop's one act. */
   act: { label: string; onPress: () => void } | null
   /** The months the stop's notice carries, when known — the title names them all. */
@@ -267,7 +268,7 @@ export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jo
                 {step.words ? <div style={{ color: 'var(--text-700)' }}>{step.words}</div> : null}
                 {paper.record ? <div style={{ color: 'var(--text-700)', marginTop: 4 }}>{paper.record.words}</div> : null}
                 {/* The mailed files and the receipts show whether or not the paper is redrawn beside them: until now the saved copy's link drew only where no page did. */}
-                {paper.record?.proof && !counsel ? <div style={{ marginTop: 8 }}><LienMailProofBlock proof={paper.record.proof} isMobile /></div> : null}
+                {paper.record?.proof && !counsel ? <div style={{ marginTop: 8 }}><LienMailProofBlock proof={paper.record.proof} isMobile doorFor={paper.record.proofDoor ?? undefined} tallDoor={isMobile} /></div> : null}
                 {paper.moveWords ? <div style={{ marginTop: 6 }}><span data-testid="lien-stop-paper-move" style={{ display: 'inline-block', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', borderRadius: 999, padding: '3px 10px', color: paper.moveWords.startsWith('COUNSEL') ? 'var(--text-700)' : 'var(--text-link)', background: paper.moveWords.startsWith('COUNSEL') ? 'var(--surface)' : 'var(--bg-blue-tint)', border: paper.moveWords.startsWith('COUNSEL') ? '1px solid var(--border-strong)' : 'none' }}>{paper.moveWords}</span></div> : null}
               </div>
             </div>

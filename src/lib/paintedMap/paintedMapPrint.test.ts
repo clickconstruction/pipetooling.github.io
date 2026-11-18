@@ -17,6 +17,20 @@ const base: PaintedMapPrintInput = {
 }
 
 describe('a painted map on paper', () => {
+  it('gives a place with a kind the mark its dot wears, and leaves a plain place its numbered ring (#393)', () => {
+    const html = buildPaintedMapPrintHtml({ ...base, places: [{ number: 1, name: 'Open trench', words: '', photo: null, kind: 'hazard' }, { number: 2, name: 'Meter', words: '', photo: null }, { number: 3, name: 'Hydrant', words: '', photo: null, kind: 'fire_hydrant' }] })
+    // The hazard's row: its drawing in red, its number on the shoulder, and no plain ring.
+    const hazard = html.slice(html.indexOf('<td class="k">'), html.indexOf('<b>Open trench</b>'))
+    expect(hazard).toContain('<path d="M12 4L21 19.5H3zM12 10v4.5"/>')
+    expect(hazard).toContain('stroke="#dc2626"')
+    expect(hazard).toContain('>1</span>')
+    expect(html.match(/<td class="k">/g)).toHaveLength(1)
+    // A plain place, and a kind this app does not know, keep the ring they always had.
+    expect(html).toContain('<td class="n"><span>2</span></td><td><b>Meter</b>')
+    expect(html).toContain('<td class="n"><span>3</span></td><td><b>Hydrant</b>')
+    // The number's dark disc must print as drawn, or its white figures vanish on white paper.
+    expect(html).toContain('print-color-adjust: exact')
+  })
   it('carries the company, the map, its places, its lengths, the code and the day', () => {
     const html = buildPaintedMapPrintHtml(base)
     expect(html).toContain('<b>Made Up Plumbing</b>')
