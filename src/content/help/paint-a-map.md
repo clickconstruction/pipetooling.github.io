@@ -274,9 +274,9 @@ At a desk there is no **Text it from my phone…**. {{button:blue|Copy the link}
 
 ### Other ways to send it
 
-Four more presses sit under the blue one. Each makes the link if none is out.
+Four more presses sit under the blue one. Any of the four makes the link if none is out.
 
-- Press **Show a code to scan** when the person is standing next to you. Their camera opens the map.
+- Press **Show a code to scan** when the person is standing next to you. A phone's camera opens the map from the code.
 - Press **Copy the link** and paste it into a text or an email.
 - Press **Send it another way…** for mail, a group chat or a phone nearby. Your phone's own share sheet opens.
 - Press **Make a picture** for someone who will not open a link.
@@ -293,7 +293,7 @@ Press **Send text…** and look it over before it goes. Nothing is sent until yo
 
 The text lands in the customer's thread on the job. Their answer comes back to Messages.
 
-On a map with no job the press is grey. It says the map is on no job, since there is no customer to text.
+On a map with no job the press is grey. The grey press says the map is on no job, since there is no customer to text.
 
 ### They give their name first
 

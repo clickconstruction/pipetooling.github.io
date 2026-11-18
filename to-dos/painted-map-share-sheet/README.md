@@ -1,8 +1,8 @@
 ---
 name: "Share this map: a sheet a person on site can use almost without reading"
 number: 394
-group: gated
-status: asked 2026-11-18 with a phone screenshot of the sheet · designed, drawn and rendered the same day (seven rows of sheets at a phone's width and a desk's, light and dark) · shown to the owner with seven calls, each with a pick · nothing built
+group: close
+status: asked 2026-11-18 with a phone screenshot of the sheet · designed, drawn and rendered the same day (seven rows of sheets at a phone's width and a desk's, light and dark) · shown to the owner with seven calls, each with a pick · the owner's word the same day (*Build it*), every call at the pick · the kernel built (v2.7788) and the sheet over it (v2.7790) the same day · walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark, with a stand-in for the link's calls · not yet tried on a real phone or with a real link
 summary: >
   The owner asked how to offer a painted map's Share sheet with fewer words, so a person does not
   have to read so much. Today the sheet shows 163 words before a link exists and its one live press,
@@ -12,10 +12,11 @@ summary: >
   Copy the link, Make a picture and Send it another way…. Print and the two files fold behind one
   press. What a reader meets is one line with a press that opens today's four sentences, word for
   word. The same sheet is 43 words before a link and 65 after, and the map still shows behind it.
-next: The owner's word to build, and a different pick on any of the seven calls. Then step 1, the kernel.
-size: M as a train of two (S · M), with a third (S) only if a real phone refuses to open Messages
-blocker: The owner's word, and Taunya's on call 4, since the name sentence is hers.
-opinion: build — the sheet is where the flow review's second worst snag lives, and every piece it needs is already in the app
+next: Walk it on a real iPhone and a real Android phone, on the live app with a made-up map. Press Text it from my phone… before a link is out and see whether Messages opens by itself or the sheet falls back to Open Messages. Try Send it another way… and Copy the link the same way. End the link and throw the map away after. If a phone refuses, build step 3. Then delete this card.
+size: M as a train of two (S · M), both built; left: the walk on two real phones (XS), and step 3 (S) only if a phone refuses to open Messages
+blocker: A real phone in a hand. Call 4 was taken at the pick on the owner's word, and the name sentence was Taunya's ask, so she should see the one line that stands for it.
+ver: v2.7788 · 7790
+opinion: built as carded — the phone walk is what is left, and the sheet is right whichever way a phone answers
 ---
 
 # Share this map, with fewer words (#394)
@@ -231,12 +232,12 @@ nothing from the Dashboard press.
 
 ## The plan, once the owner says build
 
-1. **The kernel** (S), no screen. Which presses the sheet draws and which is blue, from who is
+1. **The kernel** (S), no screen. **Built, v2.7788.** Which presses the sheet draws and which is blue, from who is
    looking, whether the map is on a job, whether this is a phone, whether the browser has a share
    sheet and whether a link is out. The link's line and the words. Tests for every state drawn in
    the mock-up, and one that holds the sheet's standing words under a count so they do not grow
    back.
-2. **The sheet** (M). The new layout over the kernel, the link made by the first press, the two
+2. **The sheet** (M). **Built, v2.7790, and walked in a headless Chrome with a stand-in for the link's calls. The two real phones are still to do.** The new layout over the kernel, the link made by the first press, the two
    views for the code and the picture, the fall backs above. The guide's two sections rewritten, a
    release note and a fragment. Walked on a real iPhone and a real Android phone before it merges.
 3. **The phone picks the code** (S), only if step 2's walk shows a phone refusing. The function
