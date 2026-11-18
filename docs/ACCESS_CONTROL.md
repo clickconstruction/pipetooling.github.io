@@ -1210,6 +1210,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   A primary reads every trip and may not press, and a crew member on the trip may not either.
   The caller must read the trip (`trips_office()` or `trip_is_mine`) and the job (`can_read_job_activity`), and the job must be one of the trip's jobs, the job that holds the trip or a job of its site.
   It refuses the GC desk's billing job, whose total is not its lines.
+  Since v2.7862 (`docs/migrations/20261118223000_discount_refuses_gc_billing_job.md`) `apply_job_discount` refuses that job too, for every role, and Bill Customer says why in the press's place.
   Since v2.7769 the window leaves that job out, read from `gc_projects` under the GC office door, which the four roles all hold.
   **Open Change orders** on a job held that way is drawn for the GC money team alone (dev, master_technician, controller: `canSeeGcMoney`), since Change orders are theirs, and an assistant is told who writes the change order.
   A training account, a digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.

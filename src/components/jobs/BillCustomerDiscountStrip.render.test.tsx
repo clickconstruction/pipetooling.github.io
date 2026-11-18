@@ -20,6 +20,16 @@ const rows: BillCustomerDiscountStripRow[] = [
 ]
 
 describe('BillCustomerDiscountStrip', () => {
+  it('a job that takes no discount says why in the press\'s place, and offers no press (v2.7862)', () => {
+    const onApply = vi.fn<(plan: BillDiscountPlan) => Promise<void>>(async () => {})
+    renderWithProviders(<BillCustomerDiscountStrip rows={rows} scopedIds={null} billAmount={15098} onApply={onApply} heldWords="This job is billed from Owner Billing on the GC desk." />)
+    expect(screen.getByTestId('bill-discount-held').textContent).toBe('This job is billed from Owner Billing on the GC desk.')
+    expect(screen.queryByText('− Add discount')).toBeNull()
+    cleanup()
+    renderWithProviders(<BillCustomerDiscountStrip rows={rows} scopedIds={null} billAmount={15098} onApply={onApply} heldWords={null} />)
+    expect(screen.queryByTestId('bill-discount-held')).toBeNull()
+    expect(screen.getByText('− Add discount')).toBeTruthy()
+  })
   it('opens from the button; "take off 10%" on a draw discounts that draw only and Apply hands over the plan', async () => {
     const onApply = vi.fn<(plan: BillDiscountPlan) => Promise<void>>(async () => {})
     renderWithProviders(<BillCustomerDiscountStrip rows={rows} scopedIds={['a']} billAmount={15098} onApply={onApply} />)
