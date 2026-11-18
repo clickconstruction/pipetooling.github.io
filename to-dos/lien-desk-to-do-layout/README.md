@@ -2,7 +2,7 @@
 name: "Lien desk To do: the band under the tiles, and where each press lives"
 number: 383
 group: close
-status: asked 2026-11-17 · three whole-page options drawn and measured the same day · the owner picked B with each press on its bin's title line · all three parts shipped in one PR as v2.7708, v2.7712 and v2.7714 · two small parts of the drawing left · the live desk not walked
+status: asked 2026-11-17 · three whole-page options drawn and measured the same day · the owner picked B with each press on its bin's title line · all three parts shipped in one PR as v2.7708, v2.7712 and v2.7714 · the two small parts of the drawing left are card #390 · the live desk shown to the owner as screenshots 2026-11-18 · his word on retiring awaited
 summary: >
   The owner boxed the band between the Board's four tiles and its two columns of bins: the sentence
   "Every bin." with its switch a page width away, and the two batch prints, one over each column. It
@@ -13,10 +13,10 @@ summary: >
   B, with each press on the same line as its bin's name. PR 1 took the band away and moved the presses.
   PR 2 gave signing its own bin, so a bin's count and its press are one number. PR 3 marked the bins
   with something to do, folded the empty ones and moved Held and Missed to the heading line.
-next: The owner's look at the live desk. Then the two parts left, if he wants them, the Public jobs box folded and the records door on the tools row.
-size: S for the two parts left; the three built parts are done
-blocker: The owner's look at the live desk.
-opinion: close — after the owner's look, since the band is gone and each bin's count and press agree
+next: The owner's word after the look of 2026-11-18, retire the card or name what should change. The two parts left are card #390's to build.
+size: none left here; the three built parts are done and the two parts left are sized on #390
+blocker: The owner's word. The look was shown 2026-11-18.
+opinion: close — the look is shown, the band is gone and the print bin's count and its press agree on the live desk
 ver: v2.7311 · v2.7332 · v2.7334 · v2.7448 · v2.7470 · v2.7483 · v2.7490 · v2.7491 · v2.7497 · v2.7708 · v2.7712 · v2.7714
 ---
 
@@ -256,5 +256,36 @@ Small things the look found. Each stands by itself, whichever option is picked.
 ## Where it stands
 
 The owner picked B with each press on its bin's title line. The three parts are shipped together in v2.7708, v2.7712
-and v2.7714. Two small parts of the drawing are left and named under **What is built**. The live desk was not opened: every figure here is from
-made-up jobs.
+and v2.7714. Two small parts of the drawing are left and named under **What is built**. They are card #390,
+[`lien-board-public-fold-and-records-door`](../lien-board-public-fold-and-records-door/README.md).
+
+## The look at the live desk, 2026-11-18
+
+The live desk was opened read only on 2026-11-18 and shown to the owner as screenshots: a computer's width in
+light and in dark, a phone 375 wide, a master through View as, and the mock-up of B beside it. Nothing on the
+desk was pressed. The pictures hold real jobs, so they stayed in the session and are in no file here.
+
+Every state was on the desk that day but one. No affidavit awaited approval, so the master's *Approve N
+affidavits* was shown as a drawing of the real Board over made-up jobs.
+
+What the live Board showed:
+
+- Nothing stands between the tiles and the two columns. The first bin's top edge is 283 px down a 1,440 × 900
+  window, and the Board is 922 px tall.
+- *Approved · to print* read 1 beside *Print and mail 1 notice*. The third tile read 7 over *1 to print · 6 to
+  mail*. *Approved · to sign* read 7 beside the office's **Remind**, and 7 beside *Sign 7 notices ›* for a master.
+- The blue left edge stood on the bins with a live press of the viewer's own, and on no other. Four empty bins
+  were folded to one line. **Missed** and **Held** each stood on a heading line.
+- No sideways scroll at 1,440 or at 375, in light or in dark.
+
+What the look found that the owner may want changed. None of it is built or decided:
+
+- **A phone 375 wide stacks the two prints.** The row is 335 px and the two presses need 337, so the second
+  wraps under the first. They share a row from 390 wide, the width the build was checked at.
+- **A master's *Sign N notices ›* counts every notice that waits on a signature**, not only the jobs he leads.
+  The Sample leader leads none and read *Sign 7 notices ›* under a tile that named another leader.
+- **The affidavits' *To send for Master approval* read 5 beside *Send 1 for approval ›*.** The press counts the
+  papers someone has read, as v2.7714 built it, so this bin's count and its press are two numbers.
+- **Against the drawing:** the tiles carry no *Show them ›* or *Open the run ›* words, the two headings are
+  blue and red where the drawing has grey, the Retainage line has no door, and *Enter mail numbers · N* is an
+  outline while a notice still waits to print.
