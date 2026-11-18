@@ -171,9 +171,32 @@ export function tripPutOnBillShows(args: { billing: TripBilling | null; standing
 
 export type TripBillJob = { id: string; label: string; name: string }
 
+/** A job that is a GC project's billing job (`gc_projects.billing_job_id`), with the project it bills. */
+export type TripBillGcJob = { jobId: string; projectId: string; projectName: string | null }
+
+/** A job the window holds back because it is billed from the GC desk: why, and where its amount goes instead. */
+export type TripBillHeldJob = { job: TripBillJob; projectId: string; words: string }
+
+/** The press that opens a GC project's Change orders, in the control's own words. */
+export const TRIP_BILL_CHANGE_ORDERS_LABEL = 'Open Change orders'
+/** What stands in for that press for a reader who is not on the GC money team. */
+export const TRIP_BILL_CHANGE_ORDERS_WHO = 'A leader or the controller writes the change order in Change orders on the GC desk.'
+
+/**
+ * Why a GC billing job takes no trip's line (the owner's answer of 2026-11-18): on a job we build as the GC the
+ * customer's price is the contract, and it grows only by a signed change order. So an Extra trip there is a change
+ * order, and its amount goes on one.
+ */
+export function tripBillHeldWords(job: TripBillJob): string {
+  const name = tripBillJobShort(job) ?? 'This job'
+  return `${name} is billed from Owner Billing on the GC desk. Its price grows only by a signed change order. Put this trip’s amount on a change order there.`
+}
+
 export type TripBillJobChoices = {
   /** The jobs the window lists. */
   jobs: TripBillJob[]
+  /** The jobs left out because they are billed from the GC desk, each with its reason. */
+  held: TripBillHeldJob[]
   /** The job picked when the window opens: the only one there is; null when the office has to pick. */
   picked: string | null
   /** What the pick's empty line says: *Pick one of Heron Point’s jobs*. */
@@ -186,17 +209,28 @@ export type TripBillJobChoices = {
  * The jobs the window offers. A trip that names its jobs offers those: one trip makes one line on one job, and
  * the office picks which. A trip with no job named offers the site's jobs, and the picked job joins the
  * trip's jobs. A job that is no longer on the site is left out.
+ *
+ * A GC project's billing job is never offered (`gcJobs`, default 7 of the card): its total is the contract, not its
+ * lines, and the function refuses it. It is held with its reason instead, so the office sees where the amount goes.
+ * With every job held, nothing can be picked and the window says why.
  */
-export function tripBillJobChoices(args: { tripJobIds: ReadonlyArray<string>; siteJobs: ReadonlyArray<TripBillJob>; siteName: string }): TripBillJobChoices {
+export function tripBillJobChoices(args: { tripJobIds: ReadonlyArray<string>; siteJobs: ReadonlyArray<TripBillJob>; siteName: string; gcJobs?: ReadonlyArray<TripBillGcJob> }): TripBillJobChoices {
   const onSite = new Map(args.siteJobs.map((j) => [j.id, j]))
   const named = [...new Set(args.tripJobIds)].map((id) => onSite.get(id)).filter((j): j is TripBillJob => !!j)
-  const jobs = named.length > 0 ? named : [...args.siteJobs]
+  const offered = named.length > 0 ? named : [...args.siteJobs]
+  const gcByJob = new Map((args.gcJobs ?? []).map((g) => [g.jobId, g]))
+  const jobs = offered.filter((j) => !gcByJob.has(j.id))
+  const held = offered.flatMap((j) => {
+    const gc = gcByJob.get(j.id)
+    return gc ? [{ job: j, projectId: gc.projectId, words: tripBillHeldWords(j) }] : []
+  })
   const site = args.siteName.trim()
   return {
     jobs,
+    held,
     picked: jobs.length === 1 ? (jobs[0]?.id ?? null) : null,
     askWords: named.length > 0 ? 'Pick one of the trip’s jobs' : `Pick one of ${site ? possessive(site) : 'the site’s'} jobs`,
-    noneWords: jobs.length === 0 ? 'This site has no job yet. Add a job first, then put the trip on its lines.' : null,
+    noneWords: jobs.length > 0 ? null : held.length > 0 ? 'No job here can take a trip’s line.' : 'This site has no job yet. Add a job first, then put the trip on its lines.',
   }
 }
 
@@ -233,12 +267,13 @@ export type TripBillWindowState = {
  * is dead until a job is picked, the amount is a plain amount above nothing and under the cap, and the line
  * has a name, and it says which of those is missing.
  */
-export function tripBillWindowState(args: { jobId: string | null; amountTyped: string; name: string; askWords: string }): TripBillWindowState {
+export function tripBillWindowState(args: { jobId: string | null; amountTyped: string; name: string; askWords: string; /** Why no job can be picked at all, when none can. */ noneWords?: string | null }): TripBillWindowState {
   const amount = parseTripLineAmount(args.amountTyped)
   const good = amount != null && amount > 0 && amount <= TRIP_LINE_AMOUNT_MAX
   const confirmLabel = good ? `Add the line · ${tripDollars(amount)}` : 'Add the line'
   let problem: string | null = null
-  if (!args.jobId) problem = `${args.askWords}.`
+  if (args.noneWords) problem = args.noneWords
+  else if (!args.jobId) problem = `${args.askWords}.`
   else if (!args.amountTyped.trim()) problem = 'Type the amount.'
   else if (amount == null) problem = 'The amount is dollars and cents, such as 6,800.00.'
   else if (amount <= 0) problem = 'The amount has to be more than nothing.'

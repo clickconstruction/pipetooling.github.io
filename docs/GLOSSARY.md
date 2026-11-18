@@ -3728,6 +3728,7 @@ A trip's **billing chip** says where its money stands, read from its line and th
 A trip that holds a line shows **Open J2101 on Bill** in the press's place, and a trip moved off Extra after its line was made still reads the line.
 The line has its door back since v2.7768: **Open Trip 14 ›** under a trip's line in the Job window's ① Line Items closes the window and opens the trip on its site's page (`useLineTrips`, `lineTripDoors`).
 Deleting a trip that holds a line says the line stays and that Undo does not tie it back, and the trip sheet says the line stays once the billing is moved off Extra (`tripDeleteLineWords`, `tripSheetLineNote`).
+A job billed from the GC desk (a GC project's billing job) is never offered in that window since v2.7769, the owner's answer of 2026-11-18: its price grows only by a signed change order, so the window says so and **Open Change orders** opens that project's Change orders for the GC money team (`tripBillJobChoices`'s `held`, `changeOrdersHref`).
 Access: `ACCESS_CONTROL.md`, *Trips*.
 Guides: `keep-a-trip-to-a-far-site`, `start-a-trip-from-your-phone`.
 

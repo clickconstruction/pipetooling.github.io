@@ -2,7 +2,7 @@
 name: "Put a trip on a bill: an Extra trip becomes a line on its job"
 number: 391
 group: ready
-status: asked and decided 2026-11-17 · the owner saw both ways drawn side by side and picked the line over a bill of its own · built 2026-11-18 as four PRs, all walked live on the ZZ Test development · v2.7746, the Job window's billing save refuses to write over a line added elsewhere · v2.7756, the mark on a line and the function that writes it, pushed · v2.7763, the press, the window and the chip · v2.7768, the door back, the words on a trip's delete and the note in the sheet
+status: asked and decided 2026-11-17 · the owner saw both ways drawn side by side and picked the line over a bill of its own · built 2026-11-18 as four PRs, all walked live on the ZZ Test development · v2.7746, the Job window's billing save refuses to write over a line added elsewhere · v2.7756, the mark on a line and the function that writes it, pushed · v2.7763, the press, the window and the chip · v2.7768, the door back, the words on a trip's delete and the note in the sheet · v2.7769, a job billed from the GC desk is not offered and points to Change orders (the owner's answer on default 7)
 summary: >
   A trip marked Extra is work past the job's price, and today nothing takes it to a bill. This card adds
   one press on an open trip, Put on a bill. The office checks the job, the amount and the words in a small
@@ -227,7 +227,7 @@ Four small pull requests, each with its release note, fragment and docs. PR 1 st
 | 4 | A trip with no job named? | The window lists the site's jobs, and the picked job joins the trip's jobs. |
 | 5 | The trip's billing is changed off Extra while a line exists? | Allowed. The sheet says the line stays. The chip still reads the line. |
 | 6 | A stale Job window meets a changed job? | It refuses, re-reads and says so. No merge. |
-| 7 | A job whose total is not its lines (a GC billing job)? | Check what `apply_job_discount` does there and do the same. Refuse in words if it has no answer. |
+| 7 | A job whose total is not its lines (a GC billing job)? | Check what `apply_job_discount` does there and do the same. Refuse in words if it has no answer. **Answered by the owner on 2026-11-18: refuse**, because on a job we build as the GC the customer's price is the contract and grows only by a signed change order. |
 
 ## Things to check while building
 
@@ -288,10 +288,16 @@ Decided and drawn on 2026-11-17. Building since 2026-11-18.
   holds a line says the line stays and that Undo does not tie it back. The sheet says the line stays once
   the billing is moved off Extra. Walked live with PR 3's trip.
 
+- **After the four, built (v2.7769):** the owner answered default 7 on 2026-11-18, *refuse it*. The
+  function already refused. The window now leaves a GC billing job out of its jobs, says why under Job,
+  and gives the GC money team **Open Change orders**, which opens that project's change orders on the GC
+  desk. An assistant is told who writes the change order. No GC project has a billing job on prod yet, so
+  that state was walked with its one read stood in for.
+
 **What is left for a later card, none of it owed here:**
 
-- A GC billing job is refused by the function (default 7). `apply_job_discount` still rewrites that job's
-  total from its lines, which is its own edge and was not touched.
+- `apply_job_discount` still rewrites a GC billing job's total from its lines. That is the discount
+  press's own edge, written up in the v2.7769 fragment, and was not touched.
 - After the Undo of a deleted trip, the trip is back with no tie to its old line, and could be put on a
   bill a second time. The delete's question says so first.
 - The dev seat has no verb for this press, as the plan said.

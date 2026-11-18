@@ -264,6 +264,7 @@ import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
 import type { DailyLog, GcProject, GcState, ScopeBookStore, TradeChangeRequest } from '../lib/gc/types'
 import { partnerById } from '../lib/gc/lookups'
+import { changeOrdersFromSearch } from '../lib/gc/changeOrdersLink'
 import { billDayFromSearch, billDayHref, GC_WAITING_ON_THEM_ID, gcBoardByFromSearch, gcFocusFromSearch, gcViewFromSearch, templateFromSearch, type BoardBy, type GcView, GC_MESSAGES_PAGE_HREF } from '../lib/gc/links'
 import { GcMessages } from '../components/gc/GcMessages'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
@@ -1068,7 +1069,7 @@ export default function GcProjects() {
 
   // Change orders to the customer (Owner Billing's O3-ui): read beside the board for a dev, laid over
   // the board's projects (boardProjectFromView maps the rest), and opened at `changes=<projectId>`.
-  const changesProjectId = params.get('changes')
+  const changesProjectId = changeOrdersFromSearch(params)
   const [changeOrderRows, setChangeOrderRows] = useState<ChangeOrderRow[]>([])
   const [changeEmails, setChangeEmails] = useState<{ source_id: string; recipient_name: string | null; sent_at: string }[]>([])
   // The trades' asks for a change (O3b), and the day each email about one went to its company, by key.

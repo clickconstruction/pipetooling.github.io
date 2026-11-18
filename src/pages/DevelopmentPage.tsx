@@ -105,6 +105,7 @@ import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/
 import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { canOpenMessages } from '../lib/gc/access'
+import { changeOrdersHref } from '../lib/gc/changeOrdersLink'
 import { useBidPlanSetsByBid } from '../hooks/useBidPlanSetsByBid'
 import { threadHrefByKind } from '../lib/messages/customerThread'
 import type { ContactKind } from '../lib/contacts/kernel'
@@ -1826,6 +1827,7 @@ export default function DevelopmentPage() {
             askedTripId={tripIdAsked(searchParams)}
             openTrip={tripOpen}
             billRole={role}
+            onOpenGcChangeOrders={(projectId) => navigate(changeOrdersHref(projectId))}
             onOpenJobOnBill={(jobId, lineIds, onJobSaved) =>
               jobForm?.openEditJob(jobId, {
                 initialTab: 'bill',
