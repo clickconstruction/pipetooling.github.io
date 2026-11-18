@@ -13,9 +13,9 @@ import {
   physicalInvoiceFooterSummaryLine,
   type PhysicalInvoiceFooterPreset,
 } from '../../lib/physicalInvoiceFooter'
+import { BillCustomerDisclosure } from './BillCustomerDisclosure'
 import { BillCustomerMemoPresetRow } from './BillCustomerMemoPresetRow'
 import {
-  BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
   BILL_CUSTOMER_FIELD_LABEL_STYLE,
   BILL_CUSTOMER_INVOICE_MODIFICATIONS_SHELL_STYLE,
   BILL_CUSTOMER_INVOICE_MODIFICATIONS_TITLE_STYLE,
@@ -78,47 +78,13 @@ export function BillCustomerPhysicalModifications({
         Invoice Modifications (optional)
       </div>
       <div style={BILL_CUSTOMER_MODIFICATIONS_STACK_STYLE}>
-    <button
-      type="button"
-      aria-expanded={lineOnBillSectionOpen}
-      aria-controls="bill-customer-physical-line-on-bill-section-panel"
-      onClick={() => setLineOnBillSectionOpen((v) => !v)}
-      style={{
-        ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-        marginBottom: 0,
-      }}
-    >
-      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
-        <span style={{ fontSize: '0.75rem', flexShrink: 0 }} aria-hidden>
-          {lineOnBillSectionOpen ? '▼' : '\u25b6'}
-        </span>
-        <span
-          id="bill-customer-physical-line-on-bill-disclosure-heading"
-          style={{
-            fontWeight: 500,
-            fontSize: '0.875rem',
-            color: 'var(--text-700)',
-          }}
-        >
-          Line item override
-        </span>
-      </span>
-      <span
-        style={{
-          fontSize: '0.75rem',
-          color: 'var(--text-muted)',
-          flexShrink: 0,
-        }}
-      >
-        {billCustomerLineOnBillSummaryLine(stripeLineDescription)}
-      </span>
-    </button>
-    <div
-      id="bill-customer-physical-line-on-bill-section-panel"
-      role="region"
-      aria-labelledby="bill-customer-physical-line-on-bill-disclosure-heading"
-      hidden={!lineOnBillSectionOpen}
-      style={{ marginBottom: 0 }}
+    <BillCustomerDisclosure
+      panelId="bill-customer-physical-line-on-bill-section-panel"
+      headingId="bill-customer-physical-line-on-bill-disclosure-heading"
+      title="Line item override"
+      summary={billCustomerLineOnBillSummaryLine(stripeLineDescription)}
+      open={lineOnBillSectionOpen}
+      onToggle={() => setLineOnBillSectionOpen((v) => !v)}
     >
       <div
         style={{
@@ -178,48 +144,14 @@ export function BillCustomerPhysicalModifications({
           minHeight: '3.5rem',
         }}
       />
-    </div>
-    <button
-      type="button"
-      aria-expanded={memoSectionOpen}
-      aria-controls="bill-customer-physical-memo-section-panel"
-      onClick={() => setMemoSectionOpen((v) => !v)}
-      style={{
-        ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-        marginBottom: 0,
-      }}
-    >
-      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
-        <span style={{ fontSize: '0.75rem', flexShrink: 0 }} aria-hidden>
-          {memoSectionOpen ? '▼' : '\u25b6'}
-        </span>
-        <span
-          id="bill-customer-physical-memo-disclosure-heading"
-          style={{
-            fontWeight: 500,
-            fontSize: '0.875rem',
-            color: 'var(--text-700)',
-          }}
-        >
-          Memo
-        </span>
-      </span>
-      <span
-        style={{
-          fontSize: '0.75rem',
-          color: 'var(--text-muted)',
-          flexShrink: 0,
-        }}
-      >
-        {billCustomerMemoSummaryLine(externalNote)}
-      </span>
-    </button>
-    <div
-      id="bill-customer-physical-memo-section-panel"
-      role="region"
-      aria-labelledby="bill-customer-physical-memo-disclosure-heading"
-      hidden={!memoSectionOpen}
-      style={{ marginBottom: 0 }}
+    </BillCustomerDisclosure>
+    <BillCustomerDisclosure
+      panelId="bill-customer-physical-memo-section-panel"
+      headingId="bill-customer-physical-memo-disclosure-heading"
+      title="Memo"
+      summary={billCustomerMemoSummaryLine(externalNote)}
+      open={memoSectionOpen}
+      onToggle={() => setMemoSectionOpen((v) => !v)}
     >
       <span style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>
         ({externalNote.length} / {BILL_CUSTOMER_MEMO_MAX_CHARS})
@@ -235,48 +167,14 @@ export function BillCustomerPhysicalModifications({
         rows={2}
         style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: 0, minHeight: '3.5rem' }}
       />
-    </div>
-    <button
-      type="button"
-      aria-expanded={physicalFooterSectionOpen}
-      aria-controls="bill-customer-physical-footer-section-panel"
-      onClick={() => setPhysicalFooterSectionOpen((v) => !v)}
-      style={{
-        ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-        marginBottom: 0,
-      }}
-    >
-      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
-        <span style={{ fontSize: '0.75rem', flexShrink: 0 }} aria-hidden>
-          {physicalFooterSectionOpen ? '▼' : '\u25b6'}
-        </span>
-        <span
-          id="bill-customer-physical-footer-disclosure-heading"
-          style={{
-            fontWeight: 500,
-            fontSize: '0.875rem',
-            color: 'var(--text-700)',
-          }}
-        >
-          Footer
-        </span>
-      </span>
-      <span
-        style={{
-          fontSize: '0.75rem',
-          color: 'var(--text-muted)',
-          flexShrink: 0,
-        }}
-      >
-        {physicalInvoiceFooterSummaryLine(physicalInvoiceFooter)}
-      </span>
-    </button>
-    <div
-      id="bill-customer-physical-footer-section-panel"
-      role="region"
-      aria-labelledby="bill-customer-physical-footer-disclosure-heading"
-      hidden={!physicalFooterSectionOpen}
-      style={{ marginBottom: 0 }}
+    </BillCustomerDisclosure>
+    <BillCustomerDisclosure
+      panelId="bill-customer-physical-footer-section-panel"
+      headingId="bill-customer-physical-footer-disclosure-heading"
+      title="Footer"
+      summary={physicalInvoiceFooterSummaryLine(physicalInvoiceFooter)}
+      open={physicalFooterSectionOpen}
+      onToggle={() => setPhysicalFooterSectionOpen((v) => !v)}
     >
       <div
         style={{
@@ -353,7 +251,7 @@ export function BillCustomerPhysicalModifications({
         rows={3}
         style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: 0, minHeight: '4.5rem' }}
       />
-    </div>
+    </BillCustomerDisclosure>
       </div>
     </div>
   )
