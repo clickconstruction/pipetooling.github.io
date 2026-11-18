@@ -6219,6 +6219,10 @@ a phone keeps the run as the first row of **More**.
 **Filed liens: copies to mail** (v2.7476, punch list #366, `LienServeWindow.tsx`): the window behind *Mail N liens' copies ›* on the Filed · copies to mail bin and its To do rows.
 Its top half prints every filed lien's cover letter and copies by serve-by day and lists what it holds with the reason;
 its bottom half takes the day mailed and, for each envelope, the certified mail number and a receipt photo, written as the Lien window's *Enter mail numbers…* form writes them.
+Since v2.7846 everything on it saves by itself and it has no Record press: a tick writes the *Mailed on* day to that lien at once, an untick takes it back, a mail number ticks *Mailed* and a file alone does not (`lienServeNumbers.ts`, `lienServeMailedIo.ts`).
+Since v2.7846 each lien's card shows its **Document number** (the filing's `recording_number`), the county, the day filed and the stamped lien, with **Change** and a check on a typed number (`lienDocNumber.ts`).
+Since v2.7846 its receipt press reads **Add the mail receipt**, and a file that looks like the lien or repeats the other envelope's file is asked about before it is kept (`lienReceiptDoubt`).
+A mailed lien that still lacks a number or a receipt stays in the window under **Mailed** (`lienServeMailedJobsFromDesk`).
 Its third part, **Add the stamped scans** (v2.7524, `LienScanBatchWindow.tsx`, also `/lien-desk?scans=1`), takes the clerk's stamped scans for every filed lien with no saved copy, one file a lien matched by recording number or job number;
 since v2.7528 a PDF of a whole stack is split in the browser into one PDF a lien, a page at a time (*It holds several liens: split it ›*, `lienScanStack.ts`).
 Since v2.7372 a computer's row is two lines: the job, what it owes and its press, then its bin in the Board's words (the door to the step card the four dots opened), the one thing to know and, on an affidavit, where its notice stands (`lienRowWords.ts`);

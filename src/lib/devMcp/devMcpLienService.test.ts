@@ -35,7 +35,7 @@ import { WRITE_VERBS, isWriteVerb } from '../../../supabase/functions/_shared/de
 import { serviceSends } from '../jobs/lienServiceProof'
 
 const WINDOW = readFileSync('src/components/jobs/LienFilingTabs.tsx', 'utf8')
-const BATCH_IO = readFileSync('src/lib/jobs/lienServeNumbersIo.ts', 'utf8')
+const BATCH_IO = readFileSync('src/lib/jobs/lienServeMailedIo.ts', 'utf8')
 const BATCH = readFileSync('src/lib/jobs/lienServeNumbers.ts', 'utf8')
 const KERNELS = readFileSync('scripts/edge-kernels.mjs', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
@@ -100,7 +100,8 @@ describe('the pair and what it stands on', () => {
     // The window and the batch: the same two columns, through the same kernel.
     expect(WINDOW).toContain("supabase.from('job_lien_filings').update({ served_at: serviceDate || null, sends: JSON.parse(JSON.stringify(sends)) }).eq('id', filedAffidavit.id)")
     expect(WINDOW).toContain('const sends = serviceSends({ servedOn: serviceDate, owner: ownerProof, contractor: isSub ? ocProof : null })')
-    expect(BATCH_IO).toContain("supabase.from('job_lien_filings').update({ served_at: write.servedOn, sends: JSON.parse(JSON.stringify(write.sends)) }).eq('id', write.filingId)")
+    // The copies window's tick (v2.7846) writes the same two columns, one lien at a time.
+    expect(BATCH_IO).toContain("supabase.from('job_lien_filings').update({ served_at: servedOn, sends: JSON.parse(JSON.stringify(sends)) }).eq('id', filingId)")
     // The batch's rule for who gets a copy: the filing's own answer, then the job's.
     expect(BATCH).toContain("return typeof kept === 'boolean' ? kept : job.isSub")
     expect(KERNELS).toContain("'lib/jobs/lienServiceProof.ts': { values: [], types: [] },")

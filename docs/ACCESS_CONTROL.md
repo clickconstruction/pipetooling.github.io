@@ -949,6 +949,7 @@ a pen signature recorded from a draft or an awaiting notice approves it in mode 
 the run's **Close N paid notices…** sets `voided_at` and `fields.runClosedPaid` on a live `notice_53_056` item row by row through the items' own update policy;
 the job's History line for a close (`lien_notice_closed_paid`) is written by the SECURITY DEFINER trigger `job_lien_desk_items_closed_paid_to_activity` (`20261115233000`), since `job_activity_events` takes no client insert, and EXECUTE on both of its functions is revoked from clients;
 and `sign_lien_desk_item_with_code` stamps the signer's full name since `20261116110000` (a leader's *Full name and title* up to the first comma, a dev's account name), its callers, its lock and its grant to `authenticated` unchanged.
+The copies window's writes add none either (v2.7846): a *Mailed* tick is one UPDATE of `served_at` and `sends`, and a changed document number is one UPDATE of `recording_number`, each on the filing's own `job_lien_filings` row under that table's update policy, for the office set that already records a mailing.
 
 **Certified mail pieces** (v2.5379, `20261013120000_mail_pieces.sql`, the Docsmit train — [`DOCSMIT_LIEN_RUN_PLAN.md`](./DOCSMIT_LIEN_RUN_PLAN.md)): `mail_pieces` — **read / insert / update** the office (`is_office_staff() OR is_dev() OR is_assistant()`) or the master of the piece's job (`jobs_ledger.master_user_id`);
 **delete** nobody signed in (revoked from `authenticated`);

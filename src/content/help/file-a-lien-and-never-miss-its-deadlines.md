@@ -176,11 +176,23 @@ Open the Lien desk's To do. On the Board, find the bin *Filed · copies to mail*
 
 One filed lien alone has a row of its own. The row reads *Lien filed · mail its copies by* and the day. Its press reads the same two ways. {{button:outline|Print the copies to mail}} opens that job's Lien window at the press of that name. After the print the row reads {{button:outline|Enter mail numbers}}. That press opens **Filed liens: copies to mail** at the job's own line. A lien the app did not draw has no copy to print. Its row reads {{button:outline|Enter mail numbers}} from the start. A row turns red the day before its day. A row past its day says the day the copies were due. Mail them that day and record it.
 
-The top half prints. Its press counts the liens, like **Print 11 liens’ copies**. A mail sheet prints first. It lists every envelope in order, with a blank for its certified mail number. Keep the mail sheet in the office. A lien that cannot print is listed under the press with its reason. Press **Open the Lien window** beside it to fix it.
+The top half prints. Its press counts the liens, like **Print 11 liens’ copies**. A mail sheet prints first. It lists every envelope in order, with a blank for its certified mail number. Keep the mail sheet in the office. A lien that cannot print is listed under the press with its reason. A lien with no document number has {{button:outline|Type it on its card ›}}. Any other has **Open the Lien window**.
 
-The bottom half records. Set **Mailed on** to the day the copies went out. Type or scan each certified mail number. Enter moves to the next envelope. Typing a number ticks **Mailed** on its lien. Did a lien go out with no number yet? Tick **Mailed** yourself. Then press the record press, like **Record 11 liens served**. Only ticked liens are recorded. A lien that did not record stays in the list with its reason.
+The bottom half takes the mailing. Everything on it saves by itself. There is no record press. A green line over the list says so.
 
-Each envelope has {{button:outline|Add the receipt}}. It takes a photo or a PDF. A receipt and a number are kept on the lien the moment you add them. A line under the envelope reads *Kept on this lien.* Close the window and they are still there. The day mailed is kept when you press the record press.
+Each lien has a card. Under its name the card says what the clerk gave back. It reads **Document no.** and the number, then the county and the day filed. **Stamped lien** opens the clerk's stamped copy. That copy is already kept on the lien. Do not add it again as a receipt.
+
+Is the number wrong? Press **Change** beside it. Type the number from the clerk's stamp and leave the box. It saves at once. A number another lien already holds is not saved. The line says which lien holds it. A number that is not the county's usual length gets a question. Check it against the stamp. Press **Save it anyway** when it is right. A lien with no number shows the box open. Its copies cannot print without it.
+
+Set **Mailed on** to the day the copies went out. Type or scan each certified mail number. Enter moves to the next envelope. A number is kept when you leave its box. The first number on a lien ticks **Mailed**. The tick writes the **Mailed on** day to that lien at once. The line beside the box reads like *Mailed Nov 18. Saved.*
+
+Did a lien go out with no number yet? Tick **Mailed** yourself. Is a lien ticked that has not gone out? Untick it. The day comes off at once and the numbers and receipts stay. After you tick or untick a box by hand, a number does not change it.
+
+Each envelope has {{button:outline|Add the mail receipt}}. It takes a photo or a PDF of the post office's slip. A receipt alone does not tick **Mailed**. A line under the envelope reads *Kept on this lien.* Close the window and it is still there.
+
+The press asks first when a file does not look like a receipt. A file named with the lien's document number is the lien. So is a file whose name says lien or affidavit. The same file on both envelopes gets the question too. Press **Leave it out** to drop it. Press **It is the mail receipt** when it truly is. Nothing is saved until you answer.
+
+A mailed lien stays in the window while an envelope lacks its number or its receipt. It moves under the heading **Mailed**. Finish it there on a later day.
 
 ### Several scans at once
 
