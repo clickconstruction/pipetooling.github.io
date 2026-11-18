@@ -2,10 +2,10 @@
 // "help me enter these numbers into the lien desk, and if there are not dev verbs to make it easy, add dev verbs").
 //
 // A recorded § 53.056 or § 53.057 notice keeps one send for each recipient in `job_lien_filings.sends`, and each
-// envelope carries its own certified mail number. The desk's Already mailed? Record it… has one number box and writes
-// it on every recipient's send, and a run can be recorded before the post office hands the numbers back. The app's
-// door for the number is add the number › (src/components/jobs/LienTrackingOwedEditor.tsx): one update of the
-// filing's `sends` through `withTracking`, offered only on a send whose number is blank.
+// envelope carries its own certified mail number. The desk's Already mailed? Record it… had one number box until
+// v2.7705 and wrote it on every recipient's send, and a run can be recorded before the post office hands the numbers
+// back. The app's door for the number is add the number › (src/components/jobs/LienTrackingOwedEditor.tsx): one
+// update of the filing's `sends` through `withTracking`, offered only on a send whose number is blank.
 //
 // plan_notice_numbers → apply_notice_numbers is that door, for the owner's copy, the original contractor's or both,
 // and it also replaces a number already there or takes one off, which the app's door does not. The write is the

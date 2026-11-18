@@ -207,7 +207,7 @@ describe('devMcpBidSubmission — the verbs on the server', () => {
     expect(SERVER.match(/^ {4}name: '/gm)?.length).toBe(170)
   })
   it('the server, its instructions, the README and the function docs name all three; 0.83.0 says which link', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.99.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.100.0'")
     expect(SERVER).toContain('since 0.83.0, the Sent by us folder once the folder holds more')
     expect(SERVER).toContain('WHICH LINK (since 0.83.0)')
     expect(README).toContain('**Which link** (v2.7186 / 0.83.0')

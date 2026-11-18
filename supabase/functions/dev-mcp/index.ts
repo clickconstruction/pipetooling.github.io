@@ -411,7 +411,12 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // number › writes it — `sends` on the filing's own row through withTracking — and also replace a number already there
 // or take one off, which that door does not (the by-hand form has one number box and writes it on both envelopes).
 // The day mailed is checked and never moved. No wrapper RPC, no migration (_shared/devMcpNoticeNumbers.ts).
-const SERVER_VERSION = '0.99.0'
+// 0.100.0 (v2.7705): plan_notice_by_hand takes tracking_by, a mail number for each envelope — { owner?,
+// original_contractor? } — beside tracking, which stays one number for every recipient. The Lien desk's form now has a
+// number box for each recipient when a carrier took the paper, so the seat records what the form records. The
+// already-recorded check reads either form, and the plan lists what the numbers deserve a second look for under
+// check_the_numbers (_shared/devMcpNoticeByHand.ts). No new verb, no migration.
+const SERVER_VERSION = '0.100.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
