@@ -2,7 +2,7 @@
 name: "Documents: an Agreements tab, every agreement the app makes in one list"
 number: 376
 group: ready
-status: asked 2026-11-17 · looked at, drawn and rendered the same day · the owner took all seven picks and said build the whole train the same day · PR 1, the rules, shipped (v2.7604) · PR 2, the view and the read, shipped (v2.7612), its migration to push after the merge · PR 3 to PR 5 built, each opened as the one before lands
+status: asked 2026-11-17 · looked at, drawn and rendered the same day · the owner took all seven picks and said build the whole train the same day · PR 1, the rules, shipped (v2.7604) · PR 2, the view and the read, shipped (v2.7612) and its migration pushed · PR 3, the tab, shipped (v2.7617), checked against the live list before it was armed · PR 4 and PR 5 built, each opened as the one before lands
 summary: >
   The owner looked for agreements on the Documents page and found none. The page has ten tabs and
   none lists agreements. A job's signed paper shows only as a line under its job on the Jobs tab,
@@ -12,10 +12,10 @@ summary: >
   press opens the window that kind already has. The list is one database view over the tables that
   hold agreements, so each table's own row security decides what a reader sees, and nobody reads a
   paper here that they cannot read today. It renames nothing: Contract under a job stays.
-next: Push `20261117200000_agreements_on_file.sql` after PR 2 merges. Then PR 3, the tab, armed only once the view is on prod. Call 7's card is #377.
+next: PR 4, Search finds agreements too. Then PR 5, GC mode’s three kinds, with its own migration to push. Then the walk on the live app. Call 7’s card is #377.
 size: M as a train of five (S · M · M · S · S)
-blocker: None. PR 3 reads the view PR 2 creates, so it waits on that push.
-ver: v2.7604 · v2.7612
+blocker: None.
+ver: v2.7604 · v2.7612 · v2.7617
 opinion: build — the papers exist and the office already reads them in four places; the tab is a read over what is there, with no new table and no change to who can see what
 ---
 

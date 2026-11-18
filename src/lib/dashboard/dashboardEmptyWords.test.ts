@@ -50,7 +50,7 @@ describe('dashboardEmptyWords: the good states', () => {
   it('the inboxes name who they wait on and the press that fills them', () => {
     expect(read(DISPATCH_INBOX_EMPTY)).toBe('Nothing waiting on dispatch. A request lands here when someone presses Send to Dispatch.')
     expect(read(ESTIMATOR_INBOX_EMPTY)).toBe('Nothing waiting on an estimator. A request lands here when someone presses Send to Estimator Inbox.')
-    expect(read(HELP_FEEDBACK_EMPTY)).toBe('Nothing waiting on you. Feedback lands here when someone presses Send feedback on a help guide.')
+    expect(read(HELP_FEEDBACK_EMPTY)).toBe('Nothing waiting on you. A note lands here when someone presses Send to the dev.')
     expect(DISPATCH_CLOSED_EMPTY.main).toBe('Nothing closed yet.')
   })
 

@@ -21,8 +21,10 @@ import DocumentsAddDriveLinkModal, {
   type DocumentsBidLinkColumn,
 } from '../components/documents/DocumentsAddDriveLinkModal'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
-import { type DocumentsPageTab, parseDocumentsPageTabFromSearch } from '../lib/documentsPageTab'
+import { type DocumentsPageTab, parseDocumentsPageTabFromSearch, shownDocumentsPageTab } from '../lib/documentsPageTab'
 import { canReadSentCopies } from '../lib/sent/sentCopies'
+import { DocumentsAgreementsTab } from '../components/documents/DocumentsAgreementsTab'
+import { canSeeAgreements } from '../lib/documents/agreementsLedger'
 import { DocumentsSentLedger } from '../components/documents/DocumentsSentLedger'
 import { DocumentsPhotosTab } from '../components/documents/DocumentsPhotosTab'
 import { DocumentsPaintedMapsTab } from '../components/documents/DocumentsPaintedMapsTab'
@@ -1795,7 +1797,9 @@ export default function Documents() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { role: documentsAuthRole } = useAuth()
-  const documentsTab = parseDocumentsPageTabFromSearch(location.search)
+  /** Agreements (punch list #376) is the office's to read, as the tables' own row security has it: hide the tab for other roles. */
+  const agreementsTabVisible = canSeeAgreements(documentsAuthRole)
+  const documentsTab = shownDocumentsPageTab(parseDocumentsPageTabFromSearch(location.search), { agreements: agreementsTabVisible })
   /** Company docs are office-only (matches company_documents RLS) — hide the tab for other roles. */
   const companyTabVisible =
     documentsAuthRole === 'dev' ||
@@ -1847,6 +1851,11 @@ export default function Documents() {
             Sent copies
           </button>
         ) : null}
+        {agreementsTabVisible ? (
+          <button type="button" style={pageTabStyle(documentsTab === 'agreements')} onClick={() => setDocumentsTab('agreements')}>
+            Agreements
+          </button>
+        ) : null}
         <button type="button" style={pageTabStyle(documentsTab === 'photos')} onClick={() => setDocumentsTab('photos')}>
           Photos
         </button>
@@ -1884,6 +1893,7 @@ export default function Documents() {
       {documentsTab === 'jobs' ? <DocumentsJobsLedger /> : null}
       {documentsTab === 'supply-invoices' ? <DocumentsSupplyHouseInvoicesLedger /> : null}
       {documentsTab === 'sent' && sentTabVisible ? <DocumentsSentLedger /> : null}
+      {documentsTab === 'agreements' && agreementsTabVisible ? <DocumentsAgreementsTab /> : null}
       {documentsTab === 'where-files-go' && whereFilesGoVisible ? <DocumentsWhereFilesGo /> : null}
       {documentsTab === 'photos' ? <DocumentsPhotosTab /> : null}
       {documentsTab === 'painted-maps' ? <DocumentsPaintedMapsTab /> : null}

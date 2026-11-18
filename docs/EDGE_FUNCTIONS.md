@@ -651,6 +651,8 @@ interface MergeUsersRequest {
 
 ### notify-help-feedback
 
+> **v2.7679 — a went wrong note from the wrench (punch list #380)**: the row read gains `kind`, `page_key` and `context`. A note from a page has no guide: its push is titled *Tell the dev: something went wrong*, names the page from `context.page_label` (else `page_key`), says *Something went wrong. No words.* for a note with none, and opens `/dashboard`, where the inbox is. Only a guide's feedback and a `broken` note push; `want` and `confusing` answer 200 with `push_sent: 0` and wait for the day's read. It reads columns `20261117235000_help_feedback_page_notes.sql` adds, which is pushed. **Redeploy** once merged, before the client that calls it for a page note is live.
+
 > **v2.6217 — through each dev's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the inbox is on Help. The answer gains `held`. **Redeploy** once merged.
 
 **Purpose**: Push + inbox notification to devs when a user submits feedback on a /help guide (`help_feedback` table, migration `20260709150000`).
@@ -1450,7 +1452,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `CRON_SECRET`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** and the jobs root (the office's setting, `DRIVE_JOBS_FOLDER_ID` while it is empty), as [job-drive-folders](#job-drive-folders); the OCR and embeddings secrets the index reads, when set. Nothing new to set up.
 
-**Status**: v2.7643. Deploy after `20261117213000_job_contracts_drive_file.sql` is pushed, since every call reads the new columns. No cron yet and no screen calls it: the sweep is switched on by a later migration, once [drive-contract-scan](#drive-contract-scan) leaves a filed copy alone.
+**Status**: v2.7643. Deploy after `20261117213000_job_contracts_drive_file.sql` is pushed, since every call reads the new columns. Since v2.7645 the cron `job-contract-drive-sweep` (`6,16,26,36,46,56 * * * *`, migration `20261117233000`) calls the sweep only while a paper is due, and the Contract window calls the press (**File it in Drive now**, **Try again**, **Add the scan**), as do the office's own paper filings right after their write (`src/lib/jobs/jobContractDriveIo.ts`, `jobContractDriveQuiet.ts`).
 
 ---
 
