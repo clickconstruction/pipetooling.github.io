@@ -2,7 +2,7 @@
 name: "Put a trip on a bill: an Extra trip becomes a line on its job"
 number: 391
 group: ready
-status: asked and decided 2026-11-17 · the owner saw both ways drawn side by side and picked the line over a bill of its own · built 2026-11-18 as four PRs, all walked live on the ZZ Test development · v2.7746, the Job window's billing save refuses to write over a line added elsewhere · v2.7756, the mark on a line and the function that writes it, pushed · v2.7763, the press, the window and the chip · v2.7768, the door back, the words on a trip's delete and the note in the sheet · v2.7769, a job billed from the GC desk is not offered and points to Change orders (the owner's answer on default 7)
+status: asked and decided 2026-11-17 · the owner saw both ways drawn side by side and picked the line over a bill of its own · built 2026-11-18 as four PRs, all walked live on the ZZ Test development · v2.7746, the Job window's billing save refuses to write over a line added elsewhere · v2.7756, the mark on a line and the function that writes it, pushed · v2.7763, the press, the window and the chip · v2.7768, the door back, the words on a trip's delete and the note in the sheet · v2.7769, a job billed from the GC desk is not offered and points to Change orders (the owner's answer on default 7) · the look was shown to the owner 2026-11-18 as pictures of every state, from a fresh walk on the ZZ Test development · it waits on his word
 summary: >
   A trip marked Extra is work past the job's price, and today nothing takes it to a bill. This card adds
   one press on an open trip, Put on a bill. The office checks the job, the amount and the words in a small
@@ -10,9 +10,9 @@ summary: >
   line picked, so the tab's own Bill the 1 picked sends it alone or the next bill carries it. The trip reads
   where its money stands from then on. A first step makes the Job window's billing save safe against a line
   added on another screen, which Apply to job and Add discount need today as well.
-next: The owner's look. Put a real Extra trip on a bill when one comes up, and say whether the window, the line's words and the chip read right. The card retires on his word.
+next: The owner's word. He was shown pictures of every state on 2026-11-18, at desk and phone width, in light and dark. Retire the card on his word, or change what he names and show it again.
 size: M as a train of four (M · S · M · S)
-blocker: None. It waits on the owner's look.
+blocker: None. It waits on the owner's word after the look of 2026-11-18.
 opinion: build — the owner's pick. Every dollar asked of a customer stays a line, and the Bill tab already has the press that bills one line by itself
 ---
 
@@ -293,6 +293,21 @@ Decided and drawn on 2026-11-17. Building since 2026-11-18.
   and gives the GC money team **Open Change orders**, which opens that project's change orders on the GC
   desk. An assistant is told who writes the change order. No GC project has a billing job on prod yet, so
   that state was walked with its one read stood in for.
+
+- **The look, shown 2026-11-18:** every state was walked again as a dev on the ZZ Test development and its ZZ
+  job, from a local dev server against the live database, and photographed for the owner on a private page.
+  - Shown at desk and phone width in the light theme: the open Extra trip with **Put on a bill** and
+    *Extra · not billed yet*, the window before and after a typed $6,800, the Job window on Bill with the line
+    picked, the trip with its line and its door, the trip while a draft holds the line
+    (*Extra · on a bill, not sent*), *Open Trip 3 ›* under the line, the question of **Delete this trip**, the
+    sheet's note, and the held window of a GC billing job.
+  - Shown in the dark theme: the open trip, the window at both widths, and the chip in each standing reached.
+  - The held window was shown with its one read stood in for, as in v2.7769, because no GC project has a
+    billing job yet.
+  - Not reached: *Extra · billed* and *Extra · paid*, which need a bill that was sent, and any role but dev.
+  - Put back the same hour: the draft bill deleted, the line removed in the Job window, the trip deleted. The
+    ZZ job is at its one line and its old total, with no bill. Its History keeps the rows of the walk, which
+    the app does not delete.
 
 **What is left for a later card, none of it owed here:**
 
