@@ -12,6 +12,11 @@ import { EmptyState } from '../EmptyState'
 import type { Container, ContainerMove, Movement, Place } from '../../lib/materials/onSite'
 import { fetchSiteTrail, type SiteTrail, type SiteTrailReader } from '../../lib/materials/sitePeopleTrailIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { fetchSiteAnswers, giveAnswer, withdrawAnswer, type SiteAnswers, type SiteAnswersReader } from '../../lib/materials/pressAnswersIo'
+import { isAnswerable } from '../../lib/materials/pressAnswers'
+import { useToastContext } from '../../contexts/ToastContext'
+import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
+import PressAnswerWindow, { AnswerWithdrawWindow, type AnswerOutcome } from './PressAnswerWindow'
 import { ACT_KINDS, LOOK_WORDS, actDays, actPeople, actTiles, countWords, filterActs, sitePersonActs, type ActKind } from '../../lib/materials/sitePersonActs'
 
 type Props = {
@@ -28,6 +33,14 @@ type Props = {
   loading?: boolean
   /** The read of the changes that are not ledger rows; a test hands in its own. */
   readTrail?: SiteTrailReader
+  /** The viewer answers presses: a dev. Everyone else reads the answers the office may read and gives none. */
+  canAnswer?: boolean
+  /** The read of the answers and the rows taken back, and the two writes; a test hands in its own. */
+  readAnswers?: SiteAnswersReader
+  give?: typeof giveAnswer
+  withdraw?: typeof withdrawAnswer
+  /** A take-back or its withdrawal changed these jobs' ledgers: the desk reads them again. */
+  onLedgerChanged?: (jobIds: string[]) => void
 }
 
 /** How many acts the list draws before it asks: a long site stays quick to open. */
@@ -43,6 +56,10 @@ const tileBig: CSSProperties = { fontSize: '1.15rem', fontWeight: 800, lineHeigh
 const th: CSSProperties = { textAlign: 'left', padding: '0.4rem 0.6rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
 const td: CSSProperties = { padding: '0.35rem 0.6rem', fontSize: '0.85rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top', color: 'var(--text-strong)' }
 const num: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
+const struck: CSSProperties = { textDecoration: 'line-through', color: 'var(--text-muted)' }
+const chipGrey: CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 0.45rem', marginRight: 4, borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, borderWidth: 1, borderStyle: 'solid', whiteSpace: 'nowrap', background: 'var(--bg-subtle)', color: 'var(--text-muted)', borderColor: 'var(--border)' }
+const chipRed: CSSProperties = { ...chipGrey, background: 'var(--surface)', color: 'var(--text-red-700)', borderColor: 'var(--text-red-700)' }
+const linkPress: CSSProperties = { marginLeft: 6, padding: 0, border: 'none', background: 'none', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }
 const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 0.45rem', marginRight: 4, borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, borderWidth: 1, borderStyle: 'solid', whiteSpace: 'nowrap', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderColor: 'var(--text-amber-800)' }
 
 function dayWords(iso: string): string {
@@ -55,7 +72,7 @@ function stampWords(iso: string): string {
   return `${new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}, ${timeWords(iso)}`
 }
 
-export default function SitePeopleView({ siteId, jobs, movements, containerMoves, containers, places, boxHref, loading, readTrail = fetchSiteTrail }: Props) {
+export default function SitePeopleView({ siteId, jobs, movements, containerMoves, containers, places, boxHref, loading, readTrail = fetchSiteTrail, canAnswer = false, readAnswers = fetchSiteAnswers, give = giveAnswer, withdraw = withdrawAnswer, onLedgerChanged }: Props) {
   const [person, setPerson] = useState('')
   const [kind, setKind] = useState<ActKind | ''>('')
   const [lookOnly, setLookOnly] = useState(false)
@@ -82,9 +99,34 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
     }
   }, [siteId, jobKey, boxKey, readTrail, attempt])
 
+  /** The answers to presses and the rows taken back. The office reads them; anyone else gets none. */
+  const [answers, setAnswers] = useState<SiteAnswers | null>(null)
+  const [answersError, setAnswersError] = useState<string | null>(null)
+  const [answersAttempt, setAnswersAttempt] = useState(0)
+  useEffect(() => {
+    let live = true
+    setAnswersError(null)
+    readAnswers(jobKey ? jobKey.split(',') : [])
+      .then((a) => {
+        if (live) setAnswers(a)
+      })
+      .catch((e: unknown) => {
+        if (live) setAnswersError(formatErrorMessage(e, 'The answers to presses did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [jobKey, readAnswers, answersAttempt])
+  /** The presses a dev picked to answer, the window that answers them, and the answer being withdrawn. */
+  const [pickedIds, setPickedIds] = useState<ReadonlySet<string>>(new Set())
+  const [answering, setAnswering] = useState(false)
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null)
+  const { showToast } = useToastContext()
+  const addTask = useChecklistAddModal()
+
   const acts = useMemo(
-    () => sitePersonActs({ jobs, movements, containerMoves, containers, places, boxChanges: trail?.boxChanges, boxRenames: trail?.boxRenames, removedAnswers: trail?.removedAnswers }),
-    [jobs, movements, containerMoves, containers, places, trail],
+    () => sitePersonActs({ jobs, movements, containerMoves, containers, places, boxChanges: trail?.boxChanges, boxRenames: trail?.boxRenames, removedAnswers: trail?.removedAnswers, answers: answers?.answers, takenBack: answers?.takenBack }),
+    [jobs, movements, containerMoves, containers, places, trail, answers],
   )
   const people = useMemo(() => actPeople(acts), [acts])
   const picked = people.find((p) => p.key === person) ?? null
@@ -99,6 +141,36 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
     setLookOnly(false)
   }
   const manyJobs = jobs.length > 1
+  const canPick = (a: (typeof acts)[number]) => canAnswer && isAnswerable(a.kind) && !a.answer
+  const pickedActs = acts.filter((a) => pickedIds.has(a.id) && canPick(a))
+  const togglePick = (id: string) =>
+    setPickedIds((cur) => {
+      const next = new Set(cur)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const withdrawing = withdrawingId ? acts.find((a) => a.id === withdrawingId) ?? null : null
+  const boxLabel = (id: string) => containers.find((c) => c.id === id)?.label ?? 'a box no longer listed'
+  const askCount = addTask
+    ? (a: (typeof acts)[number]) => addTask.openAddModal({ preset: { title: `Count ${a.boxId ? boxLabel(a.boxId) : 'the box'} again: ${a.part ?? ''}`.trim(), links: [] } })
+    : undefined
+  const afterAnswers = (o: AnswerOutcome) => {
+    setAnswering(false)
+    const counted = o.countAsked ? 1 : 0
+    const kept = new Set<string>([...o.failed.map((f) => f.act.id)])
+    // What was answered leaves the pick. A press that failed, or a count still to ask for, stays picked.
+    setPickedIds((cur) => new Set([...cur].filter((id) => kept.has(id) || (o.countsLeft > 0 && pickedActs.some((a) => a.id === id && a.kind === 'counted' && a.id !== o.countAsked?.id)))))
+    const said: string[] = []
+    if (o.tookBack > 0) said.push(`Took back ${o.tookBack.toLocaleString('en-US')}.`)
+    if (o.marked > 0) said.push(`Marked ${o.marked.toLocaleString('en-US')}.`)
+    if (counted > 0) said.push('The count is in the New task window.')
+    if (o.countsLeft > 0) said.push(`${countWords(o.countsLeft, 'count is', 'counts are')} still to ask for.`)
+    if (o.failed.length > 0) said.push(`${countWords(o.failed.length, 'press was', 'presses were')} not answered: ${o.failed[0]?.reason ?? ''}`)
+    if (said.length > 0) showToast(said.join(' '), o.failed.length > 0 ? 'error' : 'success')
+    if (o.tookBack + o.marked > 0) setAnswersAttempt((n) => n + 1)
+    if (o.jobIds.length > 0) onLedgerChanged?.(o.jobIds)
+  }
 
   return (
     <div style={sec} data-testid="site-people">
@@ -124,9 +196,16 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
         </div>
       ) : null}
 
+      {answersError ? (
+        <div role="status" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.75rem', fontSize: '0.8rem', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderBottom: '1px solid var(--border)' }} data-testid="site-people-answers-error">
+          <span>Answers to presses are not in this list. {answersError}</span>
+          <button type="button" style={btn} onClick={() => setAnswersAttempt((n) => n + 1)}>Try again</button>
+        </div>
+      ) : null}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 1, background: 'var(--border)', borderBottom: '1px solid var(--border)' }} data-testid="site-people-tiles">
         <div style={tile}><span style={tileBig}>{tiles.presses.toLocaleString('en-US')}</span><span style={muted}>{tiles.presses === 1 ? 'press' : 'presses'} over {countWords(tiles.days, 'day', 'days')}</span></div>
-        <div style={tile}><span style={tileBig}>{tiles.pieces.toLocaleString('en-US')}</span><span style={muted}>{tiles.pieces === 1 ? 'piece' : 'pieces'} taken or used</span></div>
+        <div style={tile}><span style={tileBig}>{tiles.pieces.toLocaleString('en-US')}</span><span style={muted}>{tiles.pieces === 1 ? 'piece' : 'pieces'} taken or used{tiles.markedPieces > 0 ? ` · ${tiles.markedPieces.toLocaleString('en-US')} marked not allowed` : ''}</span></div>
         <div style={tile}><span style={tileBig}>{tiles.boxes.toLocaleString('en-US')}</span><span style={muted}>{tiles.boxes === 1 ? 'box' : 'boxes'} pressed on</span></div>
         <div style={tile}><span style={{ ...tileBig, ...(tiles.look > 0 ? { color: 'var(--text-amber-800)' } : {}) }}>{tiles.look.toLocaleString('en-US')}</span><span style={muted}>worth a look</span></div>
       </div>
@@ -142,6 +221,7 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
           <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 640 }}>
             <thead>
               <tr>
+                {canAnswer ? <th style={th}><span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Pick</span></th> : null}
                 <th style={th}>When</th>
                 <th style={th}>What</th>
                 <th style={th}>Part</th>
@@ -154,16 +234,17 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
             <tbody>
               {days.map((d) => [
                 <tr key={`day-${d.day}`}>
-                  <td colSpan={picked ? 6 : 7} style={{ ...td, background: 'var(--bg-subtle)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                  <td colSpan={(picked ? 6 : 7) + (canAnswer ? 1 : 0)} style={{ ...td, background: 'var(--bg-subtle)', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>
                     {d.acts[0] ? dayWords(d.acts[0].at) : d.day} · {countWords(d.acts.length, 'press', 'presses')}
                   </td>
                 </tr>,
                 ...d.acts.map((a) => (
-                  <tr key={a.id} data-look={a.looks.length > 0 ? 'yes' : undefined}>
+                  <tr key={a.id} data-look={a.looks.length > 0 ? 'yes' : undefined} data-answer={a.answer?.answer}>
+                    {canAnswer ? <td style={td}>{canPick(a) ? <input type="checkbox" aria-label={`Pick ${a.what} ${a.part ?? ''}`.trim()} checked={pickedIds.has(a.id)} onChange={() => togglePick(a.id)} /> : null}</td> : null}
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>{timeWords(a.at)}</td>
-                    <td style={{ ...td, whiteSpace: 'nowrap' }}>{a.what}</td>
-                    <td style={td}>{a.part ?? ''}</td>
-                    <td style={{ ...td, ...num }}>{a.qty}</td>
+                    <td style={{ ...td, whiteSpace: 'nowrap', ...(a.answer?.answer === 'taken_back' ? struck : {}) }}>{a.what}</td>
+                    <td style={{ ...td, ...(a.answer?.answer === 'taken_back' ? struck : {}) }}>{a.part ?? ''}</td>
+                    <td style={{ ...td, ...num, ...(a.answer?.answer === 'taken_back' ? struck : {}) }}>{a.qty}</td>
                     <td style={td}>
                       {a.boxId ? <Link to={boxHref(a.jobId, a.boxId)} style={{ color: 'var(--text-link)', textDecoration: 'none', fontWeight: 600 }}>{a.where}</Link> : a.where}
                       {manyJobs && a.jobLabel ? <span style={{ ...muted, display: 'block', fontSize: '0.72rem' }}>{a.jobLabel}</span> : null}
@@ -172,6 +253,13 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
                     <td style={td}>
                       {a.looks.map((l) => <span key={l} style={chip} title={LOOK_WORDS[l].why}>{LOOK_WORDS[l].chip}</span>)}
                       {a.note}
+                      {a.answer ? (
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          <span style={a.answer.answer === 'marked' ? chipRed : chipGrey}>{a.answer.answer === 'marked' ? 'marked not allowed' : 'taken back'} by {a.answer.byName || 'a dev'}</span>
+                          {a.answer.why}
+                          {canAnswer ? <button type="button" style={linkPress} onClick={() => setWithdrawingId(a.id)}>{a.answer.answer === 'marked' ? 'Take the mark off…' : 'Let it stand…'}</button> : null}
+                        </span>
+                      ) : null}
                     </td>
                   </tr>
                 )),
@@ -180,6 +268,29 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
           </table>
         </div>
       )}
+      {canAnswer && pickedActs.length > 0 ? (
+        <div style={{ padding: '0.5rem 0.75rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--border)' }} data-testid="site-people-answer-bar">
+          <button type="button" style={{ ...btn, background: '#2563eb', borderColor: '#2563eb', color: '#ffffff' }} onClick={() => setAnswering(true)}>Answer {countWords(pickedActs.length, 'press', 'presses')}…</button>
+          <button type="button" style={btn} onClick={() => setPickedIds(new Set())}>Clear the pick</button>
+          <span style={muted}>Every press stays in the list, whatever the answer.</span>
+        </div>
+      ) : null}
+      {answering && pickedActs.length > 0 ? (
+        <PressAnswerWindow acts={pickedActs} movementsOf={(jobId) => movements.filter((m) => m.jobId === jobId)} boxLabel={boxLabel} give={give} askCount={askCount} onClose={() => setAnswering(false)} onDone={afterAnswers} />
+      ) : null}
+      {withdrawing?.answer ? (
+        <AnswerWithdrawWindow
+          act={withdrawing}
+          withdraw={withdraw}
+          onClose={() => setWithdrawingId(null)}
+          onDone={(jobId) => {
+            setWithdrawingId(null)
+            showToast(jobId ? 'The press stands again.' : 'The mark is off.', 'success')
+            setAnswersAttempt((n) => n + 1)
+            if (jobId) onLedgerChanged?.([jobId])
+          }}
+        />
+      ) : null}
       {shown.length > drawn.length ? (
         <div style={{ padding: '0.5rem 0.75rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="button" style={btn} onClick={() => setAll(true)}>Show all {shown.length.toLocaleString('en-US')} presses</button>

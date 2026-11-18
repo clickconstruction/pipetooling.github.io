@@ -15,6 +15,7 @@ import SiteMaterialsView from './SiteMaterialsView'
 
 // The By person look's own read: nothing on the trail here, and no call to the database.
 vi.mock('../../lib/materials/sitePeopleTrailIo', () => ({ fetchSiteTrail: async () => ({ boxChanges: [], boxRenames: [], removedAnswers: [] }) }))
+vi.mock('../../lib/materials/pressAnswersIo', () => ({ fetchSiteAnswers: async () => ({ answers: [], takenBack: [] }), giveAnswer: async () => {}, withdrawAnswer: async () => {} }))
 
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => makeUseAuthValue({ role: 'dev' }),
@@ -40,6 +41,7 @@ vi.mock('../../lib/materials/onSiteStore', async () => {
     listPlaces: (id: string) => store.places[id] ?? [],
     listMovements: (id: string) => store.movements[id] ?? [],
     listContainerMoves: () => [],
+    loadJob: async () => {},
     serverSummary: () => null,
     priceOf: (key: string) => (key === 'text:1/2" pex drop ear' ? 4 : null),
     priceOfJob: (_jobId: string, key: string) => (key === 'text:1/2" pex drop ear' ? 4 : null),

@@ -1061,6 +1061,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   `on_site_note_box_open(uuid)` is granted to every signed-in caller, writes only for a caller with a live watch and answers nothing either way, so no caller learns from it whether they are watched.
 - **An answer to a press** (v2.7827, `20261118170000_on_site_press_answers.sql`): `job_movement_answers` is read by the office (`on_site_reads_answers()`: dev, master_technician, assistant, controller), a dev inserts one and withdraws one, and nobody deletes one.
   A row with a live taken-back answer is closed to every signed-in read of `job_material_movements` by the RESTRICTIVE policy `job_material_movements_not_taken_back`, a dev's own read included, and `on_site_taken_back_rows(uuid[])` answers those rows to the office alone.
+  Since v2.7834 the By person look offers the tick boxes, **Answer N presses…** and the two withdrawals to a dev alone (`canAnswerPresses`), and draws the answers for the office.
   The office and a primary reach it through the desk's site row and read the week's missing money, as on the desk;
   a primary and a superintendent get a site row over their jobs on Materials → On site, with no money and the phone screen as each box's door;
   an estimator gets no site row.
