@@ -7,13 +7,15 @@ order: 76
 ---
 A job can require papers. An NDA, site rules or a GC's own form are common ones. Everyone signs each paper, the office too. You set them on the job's **Documents** tab.
 
-## What locks today
+## What locks
 
 A person who owes a paper meets a prompt when they open the job. The prompt shows the job's number and the papers. It shows nothing else of the job until they sign. Nobody can clock in to the job before signing.
 
-The prompt is the only lock for now. The lock in the database arrives with the next update. The section says so in a yellow note until then.
+For the crew and subs the database holds the lock too. A helper, a sub, a superintendent or an estimator who owes a paper cannot read the job at all. That covers its notes, photos, plans, files and texts. Their lists show the job by its number and a lock. They get no push about that job until they sign.
 
-The crew and subs see a locked job by its number alone in their lists. Your own lists keep showing the job. So do a primary's. For the office and a primary the prompt at the job is the lock.
+Your own lists keep showing the job. So do a primary's. For the office and a primary the prompt at the job is the lock.
+
+One place the app cannot close is Google Drive. A person the job's Drive folder is shared with can still read it there.
 
 ## Put a paper on a job
 

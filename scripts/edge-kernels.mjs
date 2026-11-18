@@ -265,6 +265,9 @@ export const ENTRIES = {
   'lib/tasks/taskSpotPhoto.ts': { values: [], types: [] },
   // Who the New task window offers: the roster's own predicate, which plan_task holds each person to.
   'lib/people/activeRoster.ts': { values: [], types: [] },
+  // The dev seat's read_trips and plan_trip (v2.7670, punch list #379): a trip's days, where it stands and its counts by
+  // kind, by the one set of rules the Trips look reads.
+  'lib/trips/tripDays.ts': { values: [], types: [] },
   // The firm's lien grid (legal-portal, through _shared/legalLienBookShape.ts): a job paid in kind is off the book, by
   // the Lien desk's own rule and its own column helper.
   'lib/jobs/lienInKind.ts': { values: [], types: [] },

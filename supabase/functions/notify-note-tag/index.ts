@@ -20,6 +20,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { webPushSender } from '../_shared/webPushSend.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { recipientsNotShut } from '../_shared/jobPapersLock.ts'
 import { donePush, notePushes, taskDonePush, taskNotePushes, type PushPerson, type TagPush } from './words.ts'
 
 const corsHeaders = {
@@ -72,6 +73,8 @@ serve(async (req) => {
     }
 
     let pushes: TagPush[] = []
+    // The job the note sits on, for the papers lock below.
+    let jobId: string | null = null
 
     // The task a day row belongs to, by its title as kept.
     const taskTitleOf = async (instanceId: string): Promise<string | null> => {
@@ -117,6 +120,7 @@ serve(async (req) => {
       const { data: note } = await admin.from('jobs_ledger_thread_notes').select('id, job_id, author_user_id, body, created_at').eq('id', note_id).maybeSingle()
       if (!note || note.author_user_id !== user.id) return json({ error: 'Not your note' }, 403)
       if (!fresh(note.created_at)) return json({ success: true, push_sent: 0, message: 'The note is not new' })
+      jobId = note.job_id ?? null
       const [{ data: tags }, { data: answered }, { data: author }, { data: job }] = await Promise.all([
         admin.from('jobs_ledger_note_tags').select('tagged_user_id').eq('note_id', note.id).is('cleared_at', null),
         admin.from('jobs_ledger_note_tags').select('tagger_user_id').eq('answer_note_id', note.id),
@@ -139,6 +143,7 @@ serve(async (req) => {
         .maybeSingle()
       if (!tag || tag.tagged_user_id !== user.id) return json({ error: 'Not your tag' }, 403)
       if (tag.cleared_how !== 'done' || !fresh(tag.cleared_at)) return json({ success: true, push_sent: 0, message: 'Nothing new to say' })
+      jobId = tag.job_id ?? null
       const [{ data: note }, { data: job }, [asker]] = await Promise.all([
         admin.from('jobs_ledger_thread_notes').select('body').eq('id', tag.note_id).maybeSingle(),
         admin.from('jobs_ledger').select('job_name').eq('id', tag.job_id).maybeSingle(),
@@ -153,8 +158,12 @@ serve(async (req) => {
     let devices = 0
     let held = 0
     for (const push of pushes) {
+      // Papers before a job opens: the push names the job, so a person who still owes that job a paper is left out of
+      // it (the app's Papers to sign line tells them instead); a push with nobody left is not sent.
+      const userIds = await recipientsNotShut(admin, jobId, push.userIds)
+      if (userIds.length === 0) continue
       // Through the person's hours: pushed now, or held with a row and no push.
-      const result = await sendPushHonouringHours(admin, push, sender)
+      const result = await sendPushHonouringHours(admin, { ...push, userIds }, sender)
       devices += result.devices
       held += result.held.length
     }

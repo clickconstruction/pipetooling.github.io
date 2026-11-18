@@ -12,7 +12,8 @@
 // ledger's presses (punch list #209: a container, a delivery, a movement, a count), SECURITY INVOKER so every row lands
 // under the dev's own RLS, since v2.6808 dev_on_site_move_job, a whole job's on-site rows moved to another job, and since v2.7241 dev_on_site_rename, a box's name, kind and where line and a typed part's name job wide; since v2.6426 dev_person_evidence_write, a piece of evidence
 // on a person's HR file, whose apply stages the files in the hr-files bucket before the rows and asks hr-evidence-drive
-// after them. The verb grammar is plan_ (a dry run, its own call) →
+// after them; since v2.7670 trip_save, the app's own door for a trip to a site away from home (punch list #379), SECURITY
+// INVOKER and gated by trips_office(), not a dev wrapper: the seat's own dev check stands before it. The verb grammar is plan_ (a dry run, its own call) →
 // apply_ (the real write, which must quote the plan). Pure: no env reads, no network; the
 // hash uses the platform's crypto.subtle, which Deno and Node both have.
 //
@@ -48,6 +49,7 @@ import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { isTaskVerb, taskInput } from './devMcpTasks.ts'
 import { isTaskPlaceVerb, taskPlaceInput } from './devMcpTaskPlace.ts'
 import { isTaskPhotoVerb, taskPhotoInput } from './devMcpTaskPhoto.ts'
+import { isTripVerb, tripInput } from './devMcpTrips.ts'
 import { hasSmallEdits, sectionOpsForRpc } from './devMcpDocEdits.ts'
 import { isJobPaymentVerb, jobPaymentInput } from './devMcpJobPayment.ts'
 import { isJobCombineVerb, jobCombineInput } from './devMcpJobCombine.ts'
@@ -122,6 +124,13 @@ export const WRITE_VERBS = {
   // (dev_history_entry_write inserts development_history_entries with via = mcp).
   plan_history_entry: { rpc: 'dev_history_entry_write', step: 'plan' },
   apply_history_entry: { rpc: 'dev_history_entry_write', step: 'apply' },
+  // v2.7670 / 0.100.0 (punch list #379 PR 4): a trip to a site away from home, kept on its development or on a job with
+  // none — who went and each person's days, saved whole through the app's own trip_save (SECURITY INVOKER, gated by
+  // trips_office(), so the rows land under the dev's own RLS) with via = mcp and the robot's name. The server makes
+  // the id of a trip that has none and ties each name to the roster before the dry run (devMcpTrips.ts). It changes
+  // no clock row, bill or cost, and there is no delete verb.
+  plan_trip: { rpc: 'trip_save', step: 'plan' },
+  apply_trip: { rpc: 'trip_save', step: 'apply' },
   // v2.6183: a new bid as the New Bid form makes it (dev_bid_write, action create), numbered by the
   // database at apply — the first press of setting a bid up for the robots from a dev's agent.
   plan_bid: { rpc: 'dev_bid_write', step: 'plan' },
@@ -564,6 +573,13 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const built = taskInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isTripVerb(verb)) {
+    // v2.7670: the shape check is devMcpTrips'; the RPC is the app's own trip_save, which takes (p, p_dry_run) as the
+    // dev wrappers do. The server prepares the trip first (its id, the roster), and a prepared trip shapes to itself.
+    const built = tripInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc, step, body: { p: built.p, p_dry_run: step === 'plan' }, dryRunBody: { p: built.p, p_dry_run: true }, target: built.target, planHash }
   }
   if (isActivityNoteVerb(verb)) {
     // v2.6822: the shape check is devMcpActivityNote's; the dry run is the server's read of the job or the bid and its latest lines.
@@ -1504,9 +1520,13 @@ export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
  * off and set again, or a task given, deleted in the app and given again, is a second act the log would turn away. So
  * is a photo put on, taken off and put on again (v2.7592): a task that has one refuses another, and a replace commits
  * to the picture it replaces.
+ * A trip (v2.7670) is saved whole under one id: a new trip's plan says add, and once it lands the same plan's dry run
+ * says change, so the hash refuses the replay; a change applied twice saves the same trip over itself and makes no
+ * second thing. The log's rule would only refuse a trip deleted in the app and filed again, or one put back the way it
+ * read before.
  */
 export function stateGuarded(verb: string): boolean {
-  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count' || verb === 'apply_materials_move' || verb === 'apply_container_edit' || verb === 'apply_part_rename' || verb === 'apply_task' || verb === 'apply_task_place' || verb === 'apply_task_photo'
+  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count' || verb === 'apply_materials_move' || verb === 'apply_container_edit' || verb === 'apply_part_rename' || verb === 'apply_task' || verb === 'apply_task_place' || verb === 'apply_task_photo' || verb === 'apply_trip'
 }
 
 /**

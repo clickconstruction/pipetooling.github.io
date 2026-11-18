@@ -46889,6 +46889,10 @@ export type Database = {
       job_papers_roster: { Args: { p_job_id: string }; Returns: Json }
       job_rider_fees: { Args: { p_job_id: string }; Returns: number }
       job_shut_to_me: { Args: { p_job_id: string }; Returns: boolean }
+      job_shut_to_user: {
+        Args: { p_job_id: string; p_user_id: string }
+        Returns: boolean
+      }
       jobs_closed_to_me: { Args: never; Returns: string[] }
       jobs_ledger_row_visible_for_tally_assign: {
         Args: { p_job_id: string; p_user_id: string }
@@ -46910,6 +46914,7 @@ export type Database = {
         }[]
       }
       jobs_shut_to_me: { Args: never; Returns: string[] }
+      jobs_shut_to_user: { Args: { p_user_id: string }; Returns: string[] }
       journey_health_counts: { Args: never; Returns: Json }
       keep_job_baseline: {
         Args: { p_job_id: string; p_kept_by: string; p_kept_on: string }

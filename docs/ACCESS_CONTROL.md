@@ -244,7 +244,8 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and twenty-one verbs, fifty-one of them POSTing one of twenty-one named dev-gated RPCs as the dev (one hundred and twenty-one since v2.7687, whose notice numbers are the Lien desk's own update of `sends` on the notice's `job_lien_filings` row under the dev's RLS, no new role and no new policy;
+The one write path (v2.3722) is one hundred and twenty-three verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-three since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
+one hundred and twenty-one since v2.7687, whose notice numbers are the Lien desk's own update of `sends` on the notice's `job_lien_filings` row under the dev's RLS, no new role and no new policy;
 one hundred and nineteen since v2.7592, whose photo of the spot is the Edit window's own two writes, the picture into the private `task-spot-photos` bucket under `can_write_task_spot_photo` and the task's `spot_photo_path` under the dev's RLS, the file staged first in the dev's own folder of `dev-seat-staging`, no new role and no new policy;
 one hundred and seventeen since v2.7589, whose task place is the Edit window's own update of the place columns on `checklist_items`, or on `checklist_tech_tree_group_tasks` for a task from a roadmap, under the dev's RLS, with the address read from `address_geocodes` and never written, no new role and no new policy;
 one hundred and fifteen since v2.7584, whose given task is the New task window's own rows on `checklist_items`, its assignee tables, `checklist_instances` and `task_criteria` under the dev's RLS, no new role and no new policy;
@@ -1857,14 +1858,19 @@ Opening the scan goes through `open-contract-form-pdf` with `which: 'scan'` — 
 The signer never sees office boxes;
 `office_values` stores only non-sensitive office answers.
 
-### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`; the office's section v2.7646; the prompt v2.7652; the database lock v2.7659, `20261118010000_job_papers_lock.sql`)
+### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`; the office's section v2.7646; the prompt v2.7652; the database lock v2.7659, `20261118010000_job_papers_lock.sql`; the lists v2.7665)
 
 **The database lock** closes a job to a helper, a subcontractor, a superintendent or an estimator who still owes it a paper.
 `job_shut_to_me(job)` is true for them and false for the prompt-only roles (`job_papers_prompt_only()`: dev, master technician, assistant, controller, primary), who meet the prompt alone.
 The restrictive policy `job_papers_fence` (`TO authenticated`, every command) sits on `jobs_ledger`, `jobs_ledger_thread_notes`, `jobs_tally_parts`, `job_stage_windows`, `file_index`, `messages`, `painted_maps` and `step_commitments`.
 `helper_on_job`, `subcontractor_can_read_jobs_ledger_row`, `can_report_stage_progress`, `on_site_can_touch_job`, `superintendent_report_job_anchor_allowed` and `superintendent_can_touch_job_thread` answer false for a job shut to the caller.
 `job_schedule_blocks` and `jobs_ledger_team_members` stay readable, so a locked person's list can show the job's number and a lock.
-The list functions that skip row security and the edge functions that read with the service key are closed in the step after this one.
+**The lists and the service key** (v2.7665, `20261118020000_job_papers_lists.sql`): `search_jobs_ledger`, `list_assigned_jobs_for_dashboard`, `list_superintendent_jobs_for_dashboard` and `list_jobs_for_tally` answer a job shut to the caller with its number alone, and `list_reports_with_job_info` leaves its reports out.
+A locked job is found by its number and never by its name, its address or its development.
+`job_shut_to_user(job, user)` and `jobs_shut_to_user(user)` ask the lock about a named person and run for the service role alone.
+The edge functions that read a job with the service key ask them through `_shared/jobPapersLock.ts`: `plan-set-files`, `drive-link`, the four push functions and `schedule-share-dispatch`.
+A person locked out of a job gets no push that names it, and their schedule email shows its number and time only.
+The guard fails open: a read that fails reads as not locked, so a notice on a job that requires nothing is never stopped.
 **The prompt** (`JobPapersGateModal` over `useJobsClosedToMe`) is drawn in place of the job window for anyone who owes a paper, every role, the office too.
 It shows the job's number and the papers' names and nothing else of the job.
 No clock starts on a job the caller owes a paper on: the picker, Job Mode's On my way and the job change all open the prompt instead.
