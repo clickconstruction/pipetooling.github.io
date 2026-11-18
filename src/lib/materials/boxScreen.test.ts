@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { ASK_MORE_PRESS, PART_HINT, PART_PRESS_WORDS, addTileFact, boxTiles, countTileFact, countTileTitle, moreRows, moreTitle, noneLeftWords, partPresses, partRowNote, partsCaption, partsOpenByThemselves, photoTileFact, whereTileFact } from './boxScreen'
+import { ASK_MORE_PRESS, PART_HINT, PART_PRESS_WORDS, addTileFact, boxPhotoDayWords, boxTiles, countTileFact, countTileTitle, moreRows, moreTitle, noneLeftWords, partPresses, partRowNote, partsCaption, partsOpenByThemselves, photoTileFact, whereTileFact } from './boxScreen'
 
 // Noon on the company's calendar, Wednesday Nov 18 2026. Every name, part and box here is made up.
 const NOW = new Date('2026-11-18T18:00:00Z')
@@ -49,6 +49,13 @@ describe('the Photo tile', () => {
     expect(photoTileFact({ label: 'G12', photos: [], after: 'Add a part', now: NOW }).words).toBe('Of G12 with the part you added')
     expect(photoTileFact({ label: 'G12', photos: [], after: 'Put in', now: NOW }).words).toBe('Of G12 with what went in')
     expect(photoTileFact({ label: 'G12', photos: [], after: 'Move', now: NOW }).words).toBe('Of G12 with what went in')
+  })
+})
+
+describe('a filed photo', () => {
+  it('says its day and no more', () => {
+    expect(boxPhotoDayWords({ at: '2026-11-17T16:00:00Z' }, NOW)).toBe('Nov 17')
+    expect(boxPhotoDayWords({ at: '2026-11-18T15:00:00Z' }, NOW)).toBe('Today')
   })
 })
 

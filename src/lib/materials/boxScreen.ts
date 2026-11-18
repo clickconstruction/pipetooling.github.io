@@ -81,6 +81,12 @@ export function photoTileFact(input: { label: string; photos: ReadonlyArray<{ at
   return { words: `${n} so far, ${day}`, fresh: false }
 }
 
+/** A filed photo's day under its thumbnail: `Nov 17`, or `today`. A filed photo says no more than its day and who took it. */
+export function boxPhotoDayWords(p: { at: string }, now: Date = new Date()): string {
+  const ymd = calendarYmdInAppTzFromIso(p.at)
+  return ymd === todayYmdInAppTz(now) ? 'Today' : formatWorkDateYmdMonthDayShort(ymd)
+}
+
 /** The Add a part tile's fact: how many kinds of part the box holds now. */
 export function addTileFact(label: string, kinds: number): string {
   if (kinds <= 0) return `The first part in ${label}`
