@@ -1,8 +1,8 @@
 ---
 name: "The sub's page: the customer paid, and how long this customer usually takes"
 number: 388
-group: gated
-status: asked 2026-11-17 · nothing built · five calls open
+group: ready
+status: asked 2026-11-17 · the owner took the card's pick on all five calls the same day · nothing built
 summary: >
   A sub's sheet waits at Draw requested until the customer pays. The page tells the sub that the
   customer's payment is the last thing between them and their money. It then says nothing when the
@@ -11,9 +11,9 @@ summary: >
   records it. While it waits, the page says how long this customer usually takes, as a range in
   weeks. The office's row for the sheet shows the same words, so the office reads what the sub
   reads.
-next: the owner's five calls; calls 1 and 2 open steps 1 and 2, calls 3 and 4 open step 3
+next: build step 1, the tie, then step 2; start from *Where it stands*
 size: M as a train of three (S · M · S)
-blocker: the owner's calls. Call 3 is the big one, whether a customer's pay pace may show on a page with no sign-in
+blocker: none for step 1. Step 2 ships after the owner reads its Spanish, and each deploy of `sub-portal` waits on a go that names it
 opinion: build — show the customer's payment first, tied to one bill so the page never says paid on a guess; show the pay time as a range in weeks with a floor of five payments, never as the office's raw figure
 mockup: to-dos/sub-page-customer-paid/mockup.html
 ---
@@ -66,15 +66,19 @@ Mock-up: `to-dos/sub-page-customer-paid/mockup.html` (on the dev server at `/to-
 
 ## The calls
 
-Each has a pick. None is answered yet.
+The owner took the card's pick on all five, 2026-11-17:
 
-1. **Does the sub's page say the customer paid?** Pick: yes, with the day and no amount. The page already tells the sub this payment is the last thing in the way.
+> Take all 5 picks, and add it to the punchlist
+
+Each call is kept below with its answer.
+
+1. **Does the sub's page say the customer paid?** **Answered: yes**, with the day and no amount. The page already tells the sub this payment is the last thing in the way.
 2. **Which payment speaks for a sheet?**
    - **a.** Any payment recorded on the job after the draw was requested. Nothing for the office to do. On a job with several draws it can say paid for the wrong one.
-   - **b.** The sheet is tied to one bill when the office requests the draw. The tie is made by itself when the job has one open bill, and the office picks when it has more. A sheet with no tie says nothing. **Pick: b.** It costs one pick on some sheets and never says paid wrongly.
-3. **May a customer's usual pay time show on a page with no sign-in?** Anyone holding the link can read it, and it is the office's read on a third party. Pick: yes, as a range in weeks, never the days figure, never the payer's name.
-4. **How much history before the line shows?** The office's figure shows from one payment. Pick: five payments in the last 12 months, and blank below that. No falling back to the company's pace, which says nothing about this customer.
-5. **Does the office's row flag a sheet whose customer paid and which has no pay day?** Pick: yes, amber after two days. The sub can see the day now, so the office should see the same clock.
+   - **b.** The sheet is tied to one bill when the office requests the draw. The tie is made by itself when the job has one open bill, and the office picks when it has more. A sheet with no tie says nothing. **Answered: b.** It costs one pick on some sheets and never says paid wrongly.
+3. **May a customer's usual pay time show on a page with no sign-in?** Anyone holding the link can read it, and it is the office's read on a third party. **Answered: yes**, as a range in weeks, never the days figure, never the payer's name.
+4. **How much history before the line shows?** The office's figure shows from one payment. **Answered: five payments** in the last 12 months, and blank below that. No falling back to the company's pace, which says nothing about this customer.
+5. **Does the office's row flag a sheet whose customer paid and which has no pay day?** **Answered: yes**, amber after two days. The sub can see the day now, so the office should see the same clock.
 
 ## Two things to hand on
 
@@ -97,7 +101,7 @@ A train of three. Each step ships on its own.
 2. **Customer paid on the page (M).** The rule, the function's read, the chip and the sentence in both languages, the hold beside it, and the office's row. `sub-portal` is deployed on a go that names it. Needs calls 1 and 5.
 3. **The usual pay time (S).** The weeks rule with its floor, the function's read and the one line. `sub-portal` is deployed again on a named go. Needs calls 3 and 4.
 
-Steps 1 and 2 can ship while call 3 is still open.
+All five calls are answered, so nothing holds the order: 1, then 2, then 3.
 
 ## How to verify
 
@@ -112,3 +116,16 @@ Test rows: the test sub and a ZZ TEST job. Never a real sub's page.
 - Check the Spanish page for every state.
 - The usual-time line needs a payer with five payments. Prove the rule in unit tests with made-up payments, and check on the live page only that a real payer's line matches the office's own figure for them.
 - Remove the payments, then the bill, then the sheet. Name in the card what the walk leaves behind.
+
+## Where it stands
+
+2026-11-17. The card and its mock-up are written and the five calls are answered. Nothing is built, and no branch holds work. The owner stopped here for the night, and another session picks it up.
+
+- **Start with step 1, the tie.** It changes no sub's page and needs no deploy of `sub-portal`. It carries a migration, so it needs a `supabase db push` after its merge.
+- **Card #371 was built on the same page and the same function the same day.** Its card, `to-dos/sub-portal-statements/README.md`, tells how the walk was done on the test sub and what a walk leaves behind.
+- **Three gotchas met on #371:**
+  - A `src/lib` file that `supabase/functions/_shared/gcKernels/` holds a copy of must not be moved or edited. The copy changes, and about thirty functions then read as owing a redeploy. Run `npm run gen:edge-kernels` and expect no change under `gcKernels/`.
+  - A SQL bed scenario that makes a helper schema grants the service role its use, or the bed fails in CI. The beds run in CI only.
+  - New words for the sub's page go in `subPortalI18n.ts`, never in `src/lib/gc/portalI18n.ts`, which the copy holds.
+- **Still owed before step 2 ships:** the owner's read of the Spanish, and the new sentences handed to counsel with the one already there.
+- **Each deploy of `sub-portal`** is staged, described, and goes out only on a go that names it.
