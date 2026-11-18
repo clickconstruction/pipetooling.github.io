@@ -191,7 +191,7 @@ export function runSheetHtml(i: RunSheetInput): string {
       `<td class="in">${why ? `<b>Held</b><br>${esc(inside)}` : `<b>${esc(docs!.words.replace(/ · .*$/, ''))}</b> · ${esc(docs!.words.replace(/^[^·]*· /, ''))}<br>${env.contents.length > 1 ? `<b>${env.contents.length} notices</b> · ` : ''}${esc(inside)}`}</td>` +
       `<td class="done">${why ? '—' : '<span>☐ stuffed</span><span>☐ label on</span><span>☐ mailed</span>'}</td>` +
       `</tr>` +
-      (why ? '' : `<tr class="runtrk"><td colspan="4"><div><span class="lab">Tracking number</span><span class="box"><small>${env.method === 'certified_mail' ? '20 digits from the certified label' : env.method === 'hand' ? 'who signed for it' : 'the carrier’s number'}</small></span></div></td></tr>`)
+      (why ? '' : `<tr class="runtrk"><td colspan="4"><div><span class="lab">Tracking number</span><span class="box"><small>${env.method === 'certified_mail' ? '20 or 22 digits from the certified label' : env.method === 'hand' ? 'who signed for it' : 'the carrier’s number'}</small></span></div></td></tr>`)
     )
   }
   return (
@@ -236,7 +236,7 @@ export function runDividerHtml(env: RunEnvelope, mailedCount: number, issuer: Ph
     `<div class="meta"><div><b>${docs.count} ${docs.count === 1 ? 'document follows' : 'documents follow'} this page</b> · ${esc(docs.words.replace(/^[^·]*· /, ''))}. ${env.n === mailedCount ? 'This is the last envelope.' : `The next divider is envelope ${env.n + 1}.`}</div>` +
     `<div>Inside: ${env.contents.length > 1 ? `<b>${env.contents.length} notices</b> · ` : ''}${esc(inside)}</div></div>` +
     `<div class="ticks"><span>☐ ${docs.count} ${docs.count === 1 ? 'document' : 'documents'} counted</span><span>☐ sealed · label on</span><span>☐ mailed</span></div>` +
-    `<div class="trkline"><span class="lab">Tracking number</span><span class="box"><small>${env.method === 'certified_mail' ? '20 digits from the certified label' : env.method === 'hand' ? 'who signed for it' : 'the carrier’s number'}</small></span></div>` +
+    `<div class="trkline"><span class="lab">Tracking number</span><span class="box"><small>${env.method === 'certified_mail' ? '20 or 22 digits from the certified label' : env.method === 'hand' ? 'who signed for it' : 'the carrier’s number'}</small></span></div>` +
     `<div class="divfoot">Pull this page out before you seal. The face above is the envelope as the printer prints it, so you match them by eye. Pin this page to the sheet when the number is on it.</div>` +
     `<div class="runfoot"><span>Divider · envelope ${env.n} of ${mailedCount} · ${esc(env.name)}</span><span>stays on the desk</span></div>` +
     `</div>`

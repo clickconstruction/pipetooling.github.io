@@ -80,7 +80,7 @@ describe('the account verbs are on the allowlist with no wrapper RPC', () => {
     expect(planVerbFor('apply_password_reset')).toBe('plan_password_reset')
     expect(SERVER).toContain("name: 'get_login_state'")
     expect(SERVER).toContain("case 'get_login_state': {")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.100.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.101.0'")
     expect(SERVER).toContain('plan_account → apply_account')
     expect(SERVER).toContain('one hundred and twenty-three verbs')
     expect(README).toContain('`plan_account(account)`')

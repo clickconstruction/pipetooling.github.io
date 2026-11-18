@@ -346,10 +346,10 @@ describe('the pay page in the packet (v2.3758)', () => {
 })
 
 describe('the mailing (v2.4119): the number\u2019s shape, what records, the envelope faces', () => {
-  it('trackingShape: certified wants 20 digits (22 with the prefix); courier any text; email and hand none', () => {
+  it('trackingShape: certified wants 20 digits or 22, by the label; courier any text; email and hand none', () => {
     expect(trackingShape('certified_mail', '9407 1118 9876 5432 1098')).toEqual({ ok: true, hint: '20 digits · certified', digits: 20 })
     expect(trackingShape('certified_mail', '9407111898765432109812')).toEqual({ ok: true, hint: '22 digits · certified', digits: 22 })
-    expect(trackingShape('certified_mail', '9407 1118 9876 5432 10')).toEqual({ ok: false, hint: '18 digits — a certified number has 20', digits: 18 })
+    expect(trackingShape('certified_mail', '9407 1118 9876 5432 10')).toEqual({ ok: false, hint: '18 digits — a certified number has 20 or 22', digits: 18 })
     expect(trackingShape('certified_mail', '')).toEqual({ ok: false, hint: '', digits: 0 })
     expect(trackingShape('traceable_courier', 'FX123')).toEqual({ ok: true, hint: '', digits: 3 })
     expect(trackingShape('email', '')).toEqual({ ok: true, hint: '', digits: 0 })

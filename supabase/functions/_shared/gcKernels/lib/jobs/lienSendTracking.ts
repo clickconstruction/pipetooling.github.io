@@ -11,7 +11,8 @@
 /** A send; `via` and `piece_id` ride on a send a mail provider carries (the Docsmit train, PR 1), so its number is the provider's to fill. */
 export type LienSendLike = { recipient: string; method: string; tracking: string; sent_on?: string; via?: string; piece_id?: string; /** A photo of the mail receipt in the job's Drive folder (punch list #314): a filed affidavit's copies carry one. */ receipt_url?: string }
 
-function trackedMethod(method: string): boolean {
+/** A carrier that hands back a number for each envelope: certified mail and a traceable courier. */
+export function trackedMethod(method: string): boolean {
   return method === 'certified_mail' || method === 'traceable_courier'
 }
 
@@ -48,6 +49,29 @@ export function sendsTrackingOwed(raw: unknown): LienSendLike[] {
 /** The sends whose number a provider will bring: shown as "coming", never nagged for. */
 export function sendsTrackingComing(raw: unknown): LienSendLike[] {
   return parseLienSends(raw).filter(sendTrackingComing)
+}
+
+/** The lengths a certified mail number comes in, as words: the hint under a number box. */
+export const CERTIFIED_DIGITS_WORDS = '20 or 22'
+
+export type TrackingShape = { ok: boolean; hint: string; digits: number }
+
+/**
+ * The shape of a mail number for the way the paper went (v2.4119). A certified mail label carries 20 digits or 22, by
+ * the label: the ones the office buys at the counter carry 22. A courier number is any non-empty string, and email and
+ * hand delivery need none. Here since v2.7705, out of the run's kernel, so the run window, the desk's *add the number*
+ * and the record of a notice already mailed check a number with one rule, and the dev seat's copy carries it.
+ */
+export function trackingShape(method: string, tracking: string): TrackingShape {
+  const raw = (tracking ?? '').trim()
+  if (method === 'email' || method === 'hand') return { ok: true, hint: '', digits: 0 }
+  if (!raw) return { ok: false, hint: '', digits: 0 }
+  const digits = raw.replace(/\D/g, '').length
+  if (method === 'certified_mail') {
+    if (digits === 20 || digits === 22) return { ok: true, hint: `${digits} digits · certified`, digits }
+    return { ok: false, hint: `${digits} digits — a certified number has ${CERTIFIED_DIGITS_WORDS}`, digits }
+  }
+  return { ok: true, hint: '', digits }
 }
 
 /** The same sends with one recipient's number filled in — what the "add the number" door writes back. */

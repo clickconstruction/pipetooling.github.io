@@ -91,7 +91,7 @@ describe('the verbs — in the table, on the server, in the docs', () => {
     expect(isNoticeByHandVerb('plan_last_work_day')).toBe(false)
     expect(planVerbFor('apply_notice_by_hand')).toBe('plan_notice_by_hand')
     expect(Object.keys(WRITE_VERBS)).toHaveLength(123)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.100.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.101.0'")
     expect(SERVER).toContain('Writes are one hundred and twenty-three verbs and nothing else:')
     expect(SERVER).toContain('plan_notice_by_hand → apply_notice_by_hand (a § 53.056 lien notice that already went out')
     expect(SERVER).toContain("if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)")
@@ -242,6 +242,103 @@ describe('noticeByHandDryRun — the form’s rows, and what the seat refuses', 
     expect(await planHash('plan_notice_by_hand', notice({ to: ['owner', 'original_contractor'] }), planned(notice({ to: ['owner', 'original_contractor'] }), world()).reply)).not.toBe(base)
     expect(await planHash('plan_notice_by_hand', notice(), planned(notice(), world({ primaryBilledOpen: 1100 })).reply)).not.toBe(base)
     expect(await planHash('plan_notice_by_hand', notice(), planned(notice(), world({ items: [{ id: 'item-b', job_id: B, status: 'approved', months: ['2026-09'] }] })).reply)).not.toBe(base)
+  })
+})
+
+describe('a number for each envelope (v2.7705) — tracking_by', () => {
+  // Made-up label numbers, 22 digits each.
+  const OWNER_NO = '9507 0000 0000 0000 0000 28'
+  const GC_NO = '9507 0000 0000 0000 0000 35'
+  const BOTH = { to: ['owner', 'original_contractor'], tracking: undefined }
+  const shaped = (over: Record<string, unknown>) => noticeByHandInput('plan_notice_by_hand', { notice: { job_id: A, sent_on: '2026-09-22', method: 'certified_mail', to: ['owner', 'original_contractor'], claim_as_printed: 100, months_as_printed: ['2026-08'], ...over } })
+
+  it('takes each envelope’s own number, in the statute’s order, and leaves the key off a notice that gives none', () => {
+    expect(notice({ ...BOTH, tracking_by: { original_contractor: ` ${GC_NO} `, owner: OWNER_NO } }).tracking_by).toEqual({ owner: OWNER_NO, original_contractor: GC_NO })
+    expect(Object.keys(notice({ ...BOTH, tracking_by: { original_contractor: GC_NO, owner: OWNER_NO } }).tracking_by ?? {})).toEqual(['owner', 'original_contractor'])
+    // One the post office has not handed back is left out, or blank.
+    expect(notice({ ...BOTH, tracking_by: { owner: OWNER_NO, original_contractor: '' } }).tracking_by).toEqual({ owner: OWNER_NO })
+    expect(notice({ ...BOTH, tracking_by: { owner: '', original_contractor: ' ' } })).not.toHaveProperty('tracking_by')
+    expect(notice()).not.toHaveProperty('tracking_by')
+  })
+
+  it('refuses a shape the form’s two boxes could not hold, in words', () => {
+    expect(shaped({ tracking_by: 'both' })).toMatchObject({ ok: false, error: expect.stringContaining('tracking_by is { owner?, original_contractor? }') })
+    expect(shaped({ tracking_by: {} })).toMatchObject({ ok: false, error: expect.stringContaining('tracking_by is { owner?, original_contractor? }') })
+    expect(shaped({ tracking_by: { gc: GC_NO } })).toMatchObject({ ok: false, error: expect.stringContaining('tracking_by is { owner?, original_contractor? }') })
+    expect(shaped({ tracking_by: { owner: 9507 } })).toMatchObject({ ok: false, error: expect.stringContaining('tracking_by is { owner?, original_contractor? }') })
+    expect(shaped({ method: 'email', tracking_by: { owner: 'office@example.test' } })).toMatchObject({ ok: false, error: expect.stringContaining('tracking_by is for certified_mail or traceable_courier') })
+    expect(shaped({ method: 'mail', tracking_by: { owner: OWNER_NO } })).toMatchObject({ ok: false, error: expect.stringContaining('tracking_by is for certified_mail or traceable_courier') })
+    expect(shaped({ tracking: OWNER_NO, tracking_by: { original_contractor: GC_NO } })).toMatchObject({ ok: false, error: expect.stringContaining('not both') })
+    expect(shaped({ to: ['owner'], tracking_by: { owner: OWNER_NO, original_contractor: GC_NO } })).toMatchObject({ ok: false, error: expect.stringContaining('tracking_by names the original contractor, and to does not') })
+    expect(shaped({ tracking_by: { owner: '9'.repeat(201) } })).toMatchObject({ ok: false, error: expect.stringContaining('tracking_by.owner is the mail number') })
+    expect(shaped({ method: 'traceable_courier', tracking_by: { owner: 'ZZ-1', original_contractor: 'ZZ-2' } })).toMatchObject({ ok: true })
+  })
+
+  it('writes each send its own number on every covered job, through the form’s kernel', () => {
+    const p = notice({ ...BOTH, tracking_by: { owner: OWNER_NO, original_contractor: GC_NO } })
+    const d = planned(p, world())
+    expect(byHandInputOf(p, world())).toMatchObject({ tracking: '', trackingBy: { owner: OWNER_NO, original_contractor: GC_NO } })
+    const rows = noticeByHandRows(d, { userId: DEV }, 'packet-2')
+    expect(rows).toHaveLength(3)
+    for (const row of rows) {
+      expect(row.sends).toEqual([
+        { recipient: 'owner', method: 'certified_mail', tracking: OWNER_NO, sent_on: '2026-09-22' },
+        { recipient: 'original_contractor', method: 'certified_mail', tracking: GC_NO, sent_on: '2026-09-22' },
+      ])
+    }
+    const reply = d.reply as { paper: { tracking: string | null; tracking_by?: Record<string, string | null> }; check_the_numbers?: string[] }
+    expect(reply.paper).toMatchObject({ tracking: null, tracking_by: { owner: OWNER_NO, original_contractor: GC_NO } })
+    expect(reply.check_the_numbers).toBeUndefined()
+    // One number known: the other send stays blank, and reads tracking owed on the desk.
+    const one = planned(notice({ ...BOTH, tracking_by: { owner: OWNER_NO } }), world())
+    expect((noticeByHandRows(one, { userId: DEV }, 'packet-3')[0]!.sends as Array<{ tracking: string }>).map((s) => s.tracking)).toEqual([OWNER_NO, ''])
+    expect((one.reply as { paper: { tracking_by?: Record<string, string | null> } }).paper.tracking_by).toEqual({ owner: OWNER_NO, original_contractor: null })
+  })
+
+  it('says what the form says about the numbers, and plans all the same', () => {
+    // One number for two carrier envelopes: kept, written on both sends, and said.
+    const oneForBoth = planned(notice({ to: ['owner', 'original_contractor'] }), world())
+    const said = (oneForBoth.reply as { check_the_numbers?: string[] }).check_the_numbers ?? []
+    expect(said[0]).toContain('Both envelopes carry the same number')
+    expect(said[1]).toContain('tracking_by: { owner, original_contractor } takes each envelope’s own')
+    expect((noticeByHandRows(oneForBoth, { userId: DEV }, 'packet-4')[0]!.sends as Array<{ tracking: string }>).map((s) => s.tracking)).toEqual(['9507 0000 0000 0000 0000 11', '9507 0000 0000 0000 0000 11'])
+    // The same number given twice by hand is said without the pointer, and a short certified number names its recipient.
+    expect((planned(notice({ ...BOTH, tracking_by: { owner: OWNER_NO, original_contractor: OWNER_NO } }), world()).reply as { check_the_numbers?: string[] }).check_the_numbers).toEqual(['Both envelopes carry the same number. Each envelope has its own label, so check the second one.'])
+    expect((planned(notice({ ...BOTH, tracking_by: { owner: OWNER_NO, original_contractor: '9507 0000' } }), world()).reply as { check_the_numbers?: string[] }).check_the_numbers).toEqual(['original contractor: 8 digits — a certified number has 20 or 22'])
+    // One recipient and one number: nothing to say.
+    expect((planned(notice(), world()).reply as { check_the_numbers?: string[] }).check_the_numbers).toBeUndefined()
+  })
+
+  it('reads either form when it asks whether this mailing is already on record', () => {
+    const refusal = (p: NoticeByHandPayload, w: NoticeByHandWorld) => {
+      const d = noticeByHandDryRun(p, w, WHO, TODAY)
+      return d.ok ? '' : d.refused
+    }
+    const onRecord = (trackings: string[], byHand = true) => world({ notices: [{ id: 'f9', job_id: B, first_sent_on: '2026-09-22', trackings, months: ['2026-08'], by_hand: byHand, amount: 900, printed_claim: 4180.5 }] })
+    const two = notice({ ...BOTH, tracking_by: { owner: OWNER_NO, original_contractor: GC_NO } })
+    // Either envelope's number on a notice of that day is the same mailing, however it was spaced.
+    expect(refusal(two, onRecord([GC_NO.replace(/ /g, '')]))).toContain('Already on record: JP790 holds a notice mailed 2026-09-22 with one of those numbers')
+    expect(refusal(two, onRecord([OWNER_NO, OWNER_NO]))).toContain('Already on record')
+    expect(refusal(notice({ ...BOTH, tracking_by: { original_contractor: GC_NO } }), onRecord([GC_NO]))).toContain('with that number')
+    // Another number on the same day is another paper.
+    expect(refusal(two, onRecord(['9507 0000 0000 0000 0000 42']))).toBe('')
+    // No number from either form: a notice recorded by hand on that day is the bar, as before.
+    expect(refusal(notice({ ...BOTH }), onRecord([]))).toContain('by hand')
+    expect(refusal(notice({ ...BOTH }), onRecord([], false))).toBe('')
+  })
+
+  it('the hash moves with the numbers, and a notice with one number hashes as it did', async () => {
+    const two = notice({ ...BOTH, tracking_by: { owner: OWNER_NO, original_contractor: GC_NO } })
+    const swapped = notice({ ...BOTH, tracking_by: { owner: GC_NO, original_contractor: OWNER_NO } })
+    expect(await planHash('plan_notice_by_hand', two, planned(two, world()).reply)).not.toBe(await planHash('plan_notice_by_hand', swapped, planned(swapped, world()).reply))
+    expect(Object.keys(notice())).toEqual(['action', 'job_id', 'also_covers', 'sent_on', 'method', 'tracking', 'to', 'claim_as_printed', 'months_as_printed', 'saved_copy_link', 'saved_copy_note'])
+  })
+
+  it('the server and the docs say it', () => {
+    expect(SERVER).toContain('tracking_by: { owner, original_contractor }')
+    expect(SERVER).toContain('tracking_by?: { owner?, original_contractor? } (each envelope’s own, certified mail or a courier)')
+    expect(README).toContain('tracking_by')
+    expect(EDGE).toContain('**v2.7705 (server ')
   })
 })
 

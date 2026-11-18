@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { BY_HAND_METHODS, byHandClaimWords, byHandProblems, parsePrintedMonths, type ByHandInput, type ByHandJob, type ByHandMethod } from '../../lib/jobs/lienNoticeByHand'
+import { BY_HAND_METHODS, BY_HAND_RECIPIENTS, BY_HAND_SAME_NUMBER_WORDS, byHandClaimWords, byHandMethodNumbersEnvelopes, byHandNumberBoxes, byHandNumberShape, byHandProblems, byHandSameNumberTwice, parsePrintedMonths, type ByHandInput, type ByHandJob, type ByHandMethod, type ByHandRecipient } from '../../lib/jobs/lienNoticeByHand'
 import { loadJobsAtProperty, recordLienNoticeByHand, type PropertyJobCandidate } from '../../lib/jobs/lienNoticeByHandIo'
 import { workMonthShort } from '../../lib/jobs/forecastWorkMonths'
 import LienRecordSheet from './LienRecordSheet'
@@ -20,6 +20,14 @@ import { recordSheetField, recordSheetLabel, recordSheetTick } from './lienRecor
  * `layout: 'sheet'` (v2.4423) is the same step on the Lien window's record sheet, for a
  * phone: as a box its 120 px fields cut off their own values and the second recipient ran
  * off the edge. One component, one state, so the values hold if the layout changes.
+ *
+ * A number for each envelope (v2.7705): the owner's copy and the original contractor's go in
+ * two envelopes, each with its own certified label, and the one Tracking box wrote one
+ * envelope's number on both sends. Certified mail and a courier now draw a box for each
+ * recipient ticked, each kept under its own recipient so unticking one never moves a number
+ * to the other. A certified number's length is checked as it is typed, as the run window
+ * checks it, and one number in both boxes is said. Neither stops the record: the post office
+ * may hand a number back later. Mail, email and hand delivery keep the one box.
  */
 export type ByHandPrimaryJob = {
   id: string
@@ -69,6 +77,7 @@ export default function LienNoticeByHandPane({
   const [sentOn, setSentOn] = useState(todayYmd)
   const [method, setMethod] = useState<ByHandMethod>('certified_mail')
   const [tracking, setTracking] = useState('')
+  const [numbers, setNumbers] = useState<Record<ByHandRecipient, string>>({ owner: '', original_contractor: '' })
   const [toOwner, setToOwner] = useState(true)
   const [toGc, setToGc] = useState(true)
   const [claimText, setClaimText] = useState(appClaim > 0 ? String(Math.round(appClaim * 100) / 100) : '')
@@ -99,7 +108,11 @@ export default function LienNoticeByHandPane({
     return list
   }, [job, others, ticked])
   const coveredTotal = jobs.reduce((s, j) => s + j.amount, 0)
-  const byHand: ByHandInput = { sentOn, method, tracking, recipients: [...(toOwner ? ['owner' as const] : []), ...(toGc ? ['original_contractor' as const] : [])], printedClaim, printedMonths, documentUrl: docUrl, documentNote: docNote, jobs }
+  const numbered = byHandMethodNumbersEnvelopes(method)
+  const byHand: ByHandInput = { sentOn, method, tracking: numbered ? '' : tracking, trackingBy: numbered ? numbers : undefined, recipients: [...(toOwner ? ['owner' as const] : []), ...(toGc ? ['original_contractor' as const] : [])], printedClaim, printedMonths, documentUrl: docUrl, documentNote: docNote, jobs }
+  /** The recipients with a number box of their own. Empty: the one box (mail, email, hand, or nobody ticked yet). */
+  const boxes = byHandNumberBoxes(byHand)
+  const sameNumber = byHandSameNumberTwice(byHand)
   const problems = byHandProblems(byHand, todayYmd)
   const diff = byHandClaimWords(printedClaim, jobs.length > 1 ? coveredTotal : appClaim, { timely: jobs.length <= 1 && appClaimIsTimely })
 
@@ -118,6 +131,20 @@ export default function LienNoticeByHandPane({
   }
 
   const trackingHint = method === 'email' ? 'the address it went to' : method === 'hand' ? 'who signed for it' : '9407 1118 … (optional)'
+  const recipientWords = (r: ByHandRecipient) => BY_HAND_RECIPIENTS.find((x) => x.key === r)?.label ?? r
+  /** One box alone keeps the name Tracking; two are told apart by who the envelope went to. */
+  const numberName = (r: ByHandRecipient) => (boxes.length > 1 ? `Tracking — ${recipientWords(r)}` : 'Tracking')
+  const setNumber = (r: ByHandRecipient, v: string) => setNumbers((prev) => ({ ...prev, [r]: v }))
+  const numberHint = (r: ByHandRecipient, fontSize: string) => {
+    const shape = byHandNumberShape(byHand, r)
+    return numbers[r].trim() && shape.hint ? (
+      <span data-testid={`by-hand-number-shape-${r}`} style={{ display: 'block', fontSize, color: shape.ok ? 'var(--text-green-700)' : 'var(--text-red-600)', marginTop: 2 }}>
+        {shape.ok ? '✓ ' : ''}
+        {shape.hint}
+      </span>
+    ) : null
+  }
+  const sameNumberLine = (fontSize: string) => (sameNumber ? <div data-testid="by-hand-same-number" style={{ fontSize, color: 'var(--text-amber-800)' }}>{BY_HAND_SAME_NUMBER_WORDS}</div> : null)
   const toggleOther = (id: string, on: boolean) => setTicked((prev) => { const next = new Set(prev); if (on) next.add(id); else next.delete(id); return next })
 
   if (layout === 'sheet') {
@@ -142,15 +169,26 @@ export default function LienNoticeByHandPane({
               {BY_HAND_METHODS.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
             </select>
           </label>
-          <label style={{ display: 'block' }}>
-            <span style={recordSheetLabel}>Tracking</span>
-            <input type="text" value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder={trackingHint} aria-label="Tracking" autoComplete="off" style={recordSheetField} />
-          </label>
           <div role="group" aria-label="Who it went to" style={{ display: 'grid', gap: 8 }}>
             <span style={{ ...recordSheetLabel, marginBottom: 0 }}>Who it went to</span>
             <label style={recordSheetTick}><input type="checkbox" checked={toOwner} onChange={(e) => setToOwner(e.target.checked)} style={{ width: 20, height: 20, flexShrink: 0 }} /> owner of record</label>
             <label style={recordSheetTick}><input type="checkbox" checked={toGc} onChange={(e) => setToGc(e.target.checked)} style={{ width: 20, height: 20, flexShrink: 0 }} /> original contractor</label>
           </div>
+          {boxes.length === 0 ? (
+            <label style={{ display: 'block' }}>
+              <span style={recordSheetLabel}>Tracking</span>
+              <input type="text" value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder={trackingHint} aria-label="Tracking" autoComplete="off" style={recordSheetField} />
+            </label>
+          ) : (
+            boxes.map((r) => (
+              <label key={r} style={{ display: 'block' }}>
+                <span style={recordSheetLabel}>{boxes.length > 1 ? `Tracking, ${recipientWords(r)}` : 'Tracking'}</span>
+                <input type="text" inputMode={method === 'certified_mail' ? 'numeric' : 'text'} value={numbers[r]} onChange={(e) => setNumber(r, e.target.value)} placeholder={trackingHint} aria-label={numberName(r)} autoComplete="off" style={recordSheetField} />
+                {numberHint(r, '0.75rem')}
+              </label>
+            ))
+          )}
+          {sameNumberLine('0.8125rem')}
           <label style={{ display: 'block' }}>
             <span style={recordSheetLabel}>The claim, as printed</span>
             <input type="text" inputMode="decimal" value={claimText} onChange={(e) => setClaimText(e.target.value)} placeholder="the claim on the form" aria-label="Claim as printed" autoComplete="off" style={recordSheetField} />
@@ -201,12 +239,36 @@ export default function LienNoticeByHandPane({
         <select value={method} onChange={(e) => setMethod(e.target.value as ByHandMethod)} aria-label="How it went" style={input}>
           {BY_HAND_METHODS.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
         </select>
-        <span style={lbl}>Tracking</span>
-        <input type="text" value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder={trackingHint} aria-label="Tracking" style={input} />
-        <span style={{ display: 'flex', gap: '0.7rem', fontSize: '0.75rem' }}>
+        <span style={lbl}>Went to</span>
+        <span style={{ gridColumn: 'span 2', display: 'flex', gap: '0.7rem', flexWrap: 'wrap', fontSize: '0.75rem' }}>
           <label style={{ display: 'flex', gap: 4, alignItems: 'center' }}><input type="checkbox" checked={toOwner} onChange={(e) => setToOwner(e.target.checked)} /> owner of record</label>
           <label style={{ display: 'flex', gap: 4, alignItems: 'center' }}><input type="checkbox" checked={toGc} onChange={(e) => setToGc(e.target.checked)} /> original contractor</label>
         </span>
+        {boxes.length === 0 ? (
+          <>
+            <span style={lbl}>Tracking</span>
+            <input type="text" value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder={trackingHint} aria-label="Tracking" style={{ ...input, gridColumn: 'span 2' }} />
+          </>
+        ) : (
+          // One row for each envelope, the whole width: a label's 22 digits do not fit half of it.
+          boxes.map((r, i) => (
+            <Fragment key={r}>
+              <span style={lbl}>{i === 0 ? 'Tracking' : ''}</span>
+              {/* A div, not a label: the caption repeats the tick's own words, and the box carries its name itself. */}
+              <div style={{ gridColumn: 'span 2', minWidth: 0 }}>
+                {boxes.length > 1 ? <span aria-hidden="true" style={{ ...lbl, display: 'block' }}>{recipientWords(r)}</span> : null}
+                <input type="text" inputMode={method === 'certified_mail' ? 'numeric' : 'text'} value={numbers[r]} onChange={(e) => setNumber(r, e.target.value)} placeholder={trackingHint} aria-label={numberName(r)} style={input} />
+                {numberHint(r, '0.7rem')}
+              </div>
+            </Fragment>
+          ))
+        )}
+        {sameNumber ? (
+          <>
+            <span />
+            <div style={{ gridColumn: 'span 2' }}>{sameNumberLine('0.72rem')}</div>
+          </>
+        ) : null}
         <span style={lbl}>As printed</span>
         <input type="text" inputMode="decimal" value={claimText} onChange={(e) => setClaimText(e.target.value)} placeholder="the claim on the form" aria-label="Claim as printed" style={input} />
         <input type="text" value={monthsText} onChange={(e) => setMonthsText(e.target.value)} placeholder="the months, e.g. Apr, Jun, Jul, Aug 2026" aria-label="Months as printed" style={input} />

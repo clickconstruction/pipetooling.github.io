@@ -29,7 +29,7 @@ describe('LienTrackingOwedEditor', () => {
     const save = screen.getByRole('button', { name: /add the number/ }) as HTMLButtonElement
     expect(save.disabled).toBe(true)
     fireEvent.change(input, { target: { value: '9407 1118 9876' } })
-    expect(screen.getByText('12 digits — a certified number has 20')).toBeTruthy()
+    expect(screen.getByText('12 digits — a certified number has 20 or 22')).toBeTruthy()
     fireEvent.change(input, { target: { value: '9407 1118 9876 5432 1098' } })
     expect(screen.getByText(/20 digits · certified/)).toBeTruthy()
     expect(save.disabled).toBe(false)

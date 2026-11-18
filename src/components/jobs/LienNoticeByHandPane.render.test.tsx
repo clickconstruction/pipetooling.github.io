@@ -78,7 +78,7 @@ describe('LienNoticeByHandPane', () => {
     // the prefill and the fields, in 16 px type
     expect((screen.getByLabelText('Claim as printed') as HTMLInputElement).value).toBe('17585')
     expect((screen.getByLabelText('Months as printed') as HTMLInputElement).value).toBe('2026-08')
-    for (const name of ['Sent on', 'How it went', 'Tracking', 'Claim as printed', 'Months as printed', 'Saved copy — link', 'Saved copy — note']) {
+    for (const name of ['Sent on', 'How it went', 'Tracking — owner of record', 'Tracking — original contractor', 'Claim as printed', 'Months as printed', 'Saved copy — link', 'Saved copy — note']) {
       expect((screen.getByLabelText(name) as HTMLElement).style.fontSize).toBe('1rem')
     }
     // what is missing greys the one button, and says so above it
@@ -100,5 +100,73 @@ describe('LienNoticeByHandPane', () => {
     expect(recordMock).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+  describe('a number for each envelope (v2.7705)', () => {
+    // Made-up label numbers: 22 digits each, as a counter label prints them.
+    const OWNER_NO = '9407 1000 0000 0000 0000 11'
+    const GC_NO = '9407 1000 0000 0000 0000 28'
+    const pane = (layout?: 'sheet') => <LienNoticeByHandPane layout={layout} job={job} fields={fields} appClaim={17_585} appClaimIsTimely={false} defaultMonths={['2026-08']} todayYmd="2026-09-23" userId="u1" onClose={() => {}} onRecorded={() => {}} />
+    const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } })
+
+    it('certified mail to both recipients draws a box for each, checks each number as typed, and records each send its own', async () => {
+      recordMock.mockClear()
+      renderWithProviders(pane())
+      await settle()
+      // Certified mail to both is how the form opens: two boxes, and no one box.
+      expect(screen.queryByLabelText('Tracking')).toBeNull()
+      type('Tracking — owner of record', '9407 1000')
+      expect(screen.getByTestId('by-hand-number-shape-owner').textContent).toBe('8 digits — a certified number has 20 or 22')
+      type('Tracking — owner of record', OWNER_NO)
+      expect(screen.getByTestId('by-hand-number-shape-owner').textContent).toBe('✓ 22 digits · certified')
+      expect(screen.queryByTestId('by-hand-number-shape-original_contractor')).toBeNull()
+      // The same number in the second box is said, and does not stop the record.
+      type('Tracking — original contractor', OWNER_NO.replace(/ /g, ''))
+      expect(screen.getByTestId('by-hand-same-number').textContent).toContain('Each envelope has its own label')
+      expect((screen.getByTestId('by-hand-record') as HTMLButtonElement).disabled).toBe(false)
+      type('Tracking — original contractor', GC_NO)
+      expect(screen.queryByTestId('by-hand-same-number')).toBeNull()
+      fireEvent.click(screen.getByTestId('by-hand-record'))
+      await waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
+      const [input] = recordMock.mock.calls[0] as unknown as [{ method: string; tracking: string; trackingBy: Record<string, string>; recipients: string[] }]
+      expect(input).toMatchObject({ method: 'certified_mail', tracking: '', recipients: ['owner', 'original_contractor'], trackingBy: { owner: OWNER_NO, original_contractor: GC_NO } })
+    })
+
+    it('one recipient keeps one box, holding that recipient’s own number; email keeps the one box for everyone', async () => {
+      recordMock.mockClear()
+      renderWithProviders(pane())
+      await settle()
+      type('Tracking — owner of record', OWNER_NO)
+      type('Tracking — original contractor', GC_NO)
+      // The owner's copy did not go: the one box left is the original contractor's, with the contractor's number.
+      fireEvent.click(screen.getByLabelText('owner of record'))
+      expect((screen.getByLabelText('Tracking') as HTMLInputElement).value).toBe(GC_NO)
+      expect(screen.queryByLabelText('Tracking — owner of record')).toBeNull()
+      fireEvent.click(screen.getByLabelText('owner of record'))
+      expect((screen.getByLabelText('Tracking — owner of record') as HTMLInputElement).value).toBe(OWNER_NO)
+      // Email: one box, the address, on both sends. The numbers typed above are not read.
+      type('How it went', 'email')
+      expect(screen.queryByLabelText('Tracking — owner of record')).toBeNull()
+      type('Tracking', 'office@example.test')
+      fireEvent.click(screen.getByTestId('by-hand-record'))
+      await waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
+      const [input] = recordMock.mock.calls[0] as unknown as [{ method: string; tracking: string; trackingBy?: unknown }]
+      expect(input).toMatchObject({ method: 'email', tracking: 'office@example.test' })
+      expect(input.trackingBy).toBeUndefined()
+    })
+
+    it('a courier to both draws the two boxes with no length check; the sheet draws them full width', async () => {
+      renderWithProviders(pane('sheet'))
+      await settle()
+      type('How it went', 'traceable_courier')
+      type('Tracking — owner of record', 'ZZ-123')
+      type('Tracking — original contractor', 'ZZ-123')
+      expect(screen.queryByTestId('by-hand-number-shape-owner')).toBeNull()
+      expect(screen.getByTestId('by-hand-same-number')).toBeTruthy()
+      for (const name of ['Tracking — owner of record', 'Tracking — original contractor']) expect((screen.getByLabelText(name) as HTMLElement).style.fontSize).toBe('1rem')
+      // Hand delivery: back to the one box, who signed for it.
+      type('How it went', 'hand')
+      expect((screen.getByLabelText('Tracking') as HTMLInputElement).placeholder).toBe('who signed for it')
+      expect(screen.queryByTestId('by-hand-same-number')).toBeNull()
+    })
   })
 })

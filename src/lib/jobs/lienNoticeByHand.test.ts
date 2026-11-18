@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { byHandClaimWords, byHandFilingPayloads, byHandProblems, byHandSends, otherJobsAtProperty, parsePrintedMonths, type ByHandInput } from './lienNoticeByHand'
+import { BY_HAND_SAME_NUMBER_WORDS, byHandClaimWords, byHandFilingPayloads, byHandNumberBoxes, byHandNumberNotes, byHandNumberShape, byHandProblems, byHandSameNumberTwice, byHandSends, byHandTrackingFor, otherJobsAtProperty, parsePrintedMonths, type ByHandInput } from './lienNoticeByHand'
 
 const TODAY = '2026-09-23'
 const notice = { noticeDate: '2026-09-22', projectDescription: 'Dunmere (Linmoor) — 9703 Linmor Hl', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'RLC-Dunmere Mallin', contractedWithIfDifferent: '', claimAmount: '28987.00', contactPerson: 'Malachi Whites, Master Plumber', claimantAddress: '5501 Balcones Dr A141' }
@@ -68,5 +68,75 @@ describe('a notice sent by hand (#35 PR 2)', () => {
     expect(parsePrintedMonths('Jul + Aug', 2026)).toEqual(['2026-07', '2026-08'])
     expect(parsePrintedMonths('2026-06 2026-6', 2026)).toEqual(['2026-06'])
     expect(parsePrintedMonths('', 2026)).toEqual([])
+  })
+})
+
+// Made-up label numbers: 22 digits each, as a counter label prints them, and one of 20.
+const OWNER_NO = '9407 1000 0000 0000 0000 11'
+const GC_NO = '9407 1000 0000 0000 0000 28'
+const TWENTY = '7000 1000 0000 0000 0035'
+
+describe('a number for each envelope (v2.7705)', () => {
+  const both = { sentOn: '2026-09-22', method: 'certified_mail' as const, tracking: '', recipients: ['owner' as const, 'original_contractor' as const] }
+
+  it('a carrier gives each recipient a box of its own, in the statute’s order; mail, email and hand keep the one box', () => {
+    expect(byHandNumberBoxes(both)).toEqual(['owner', 'original_contractor'])
+    expect(byHandNumberBoxes({ method: 'traceable_courier', recipients: ['original_contractor', 'owner'] })).toEqual(['owner', 'original_contractor'])
+    expect(byHandNumberBoxes({ method: 'certified_mail', recipients: ['original_contractor'] })).toEqual(['original_contractor'])
+    for (const method of ['mail', 'email', 'hand'] as const) expect(byHandNumberBoxes({ method, recipients: ['owner', 'original_contractor'] })).toEqual([])
+  })
+
+  it('each send carries its own envelope’s number', () => {
+    expect(byHandSends({ ...both, trackingBy: { owner: ` ${OWNER_NO} `, original_contractor: GC_NO } })).toEqual([
+      { recipient: 'owner', method: 'certified_mail', tracking: OWNER_NO, sent_on: '2026-09-22' },
+      { recipient: 'original_contractor', method: 'certified_mail', tracking: GC_NO, sent_on: '2026-09-22' },
+    ])
+    // A number the post office has not handed back yet stays blank on its own send: the other's never fills it.
+    expect(byHandSends({ ...both, tracking: 'stale text from the one box', trackingBy: { owner: OWNER_NO } }).map((s) => s.tracking)).toEqual([OWNER_NO, ''])
+    // One recipient: the one number, from either door.
+    expect(byHandSends({ ...both, recipients: ['original_contractor'], trackingBy: { owner: OWNER_NO, original_contractor: GC_NO } }).map((s) => [s.recipient, s.tracking])).toEqual([['original_contractor', GC_NO]])
+    expect(byHandSends({ ...both, recipients: ['owner'], tracking: OWNER_NO }).map((s) => s.tracking)).toEqual([OWNER_NO])
+  })
+
+  it('email and hand delivery read the one box for everyone, whatever the number boxes held', () => {
+    expect(byHandSends({ ...both, method: 'email', tracking: 'office@example.test', trackingBy: { owner: OWNER_NO, original_contractor: GC_NO } }).map((s) => s.tracking)).toEqual(['office@example.test', 'office@example.test'])
+    expect(byHandTrackingFor({ method: 'hand', tracking: 'the site super', trackingBy: { owner: OWNER_NO } }, 'owner')).toBe('the site super')
+  })
+
+  it('the rows every covered job keeps carry the two numbers', () => {
+    const rows = byHandFilingPayloads({ ...linmor, ...both, trackingBy: { owner: OWNER_NO, original_contractor: GC_NO } }, { userId: 'u1', packetId: 'p1', fieldsFor: () => notice })
+    expect(rows).toHaveLength(3)
+    for (const row of rows) expect((row.sends as Array<{ recipient: string; tracking: string }>).map((s) => [s.recipient, s.tracking])).toEqual([['owner', OWNER_NO], ['original_contractor', GC_NO]])
+  })
+
+  it('checks a certified number’s length as the run window does: 20 or 22 digits', () => {
+    expect(byHandNumberShape({ ...both, trackingBy: { owner: OWNER_NO } }, 'owner')).toEqual({ ok: true, hint: '22 digits · certified', digits: 22 })
+    expect(byHandNumberShape({ ...both, trackingBy: { owner: TWENTY } }, 'owner')).toEqual({ ok: true, hint: '20 digits · certified', digits: 20 })
+    expect(byHandNumberShape({ ...both, trackingBy: { owner: '9407 1000' } }, 'owner')).toEqual({ ok: false, hint: '8 digits — a certified number has 20 or 22', digits: 8 })
+    // A courier's number is any text, and a blank box says nothing.
+    expect(byHandNumberShape({ ...both, method: 'traceable_courier', trackingBy: { owner: 'ZZ-123' } }, 'owner').hint).toBe('')
+    expect(byHandNumberShape({ ...both, trackingBy: {} }, 'owner').hint).toBe('')
+  })
+
+  it('says when both envelopes carry the same number, however it was spaced', () => {
+    expect(byHandSameNumberTwice({ ...both, trackingBy: { owner: OWNER_NO, original_contractor: OWNER_NO.replace(/ /g, '') } })).toBe(true)
+    expect(byHandSameNumberTwice({ ...both, trackingBy: { owner: OWNER_NO, original_contractor: GC_NO } })).toBe(false)
+    // One number typed for every envelope is the same number twice.
+    expect(byHandSameNumberTwice({ ...both, tracking: OWNER_NO })).toBe(true)
+    // Blank boxes, one recipient, or a method with one box: nothing to say.
+    expect(byHandSameNumberTwice({ ...both, trackingBy: {} })).toBe(false)
+    expect(byHandSameNumberTwice({ ...both, recipients: ['owner'], tracking: OWNER_NO })).toBe(false)
+    expect(byHandSameNumberTwice({ ...both, method: 'email', tracking: 'office@example.test' })).toBe(false)
+  })
+
+  it('the notes name the recipient and never stop the record', () => {
+    const short = { ...linmor, ...both, trackingBy: { owner: '9407 1000', original_contractor: GC_NO } }
+    expect(byHandNumberNotes(short)).toEqual(['owner of record: 8 digits — a certified number has 20 or 22'])
+    expect(byHandProblems(short, TODAY)).toEqual([])
+    const twice = { ...linmor, ...both, trackingBy: { owner: OWNER_NO, original_contractor: OWNER_NO } }
+    expect(byHandNumberNotes(twice)).toEqual([BY_HAND_SAME_NUMBER_WORDS])
+    expect(byHandProblems(twice, TODAY)).toEqual([])
+    expect(byHandNumberNotes({ ...both, trackingBy: { owner: OWNER_NO, original_contractor: GC_NO } })).toEqual([])
+    expect(byHandNumberNotes({ ...both, method: 'hand', tracking: 'x' })).toEqual([])
   })
 })
