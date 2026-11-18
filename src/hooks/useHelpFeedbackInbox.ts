@@ -21,13 +21,20 @@ import {
 } from '../lib/helpFeedbackHelpers'
 
 const HELP_FEEDBACK_SELECT =
-  'id, guide_slug, body, status, created_at, closed_at, closed_note, from_user_id, ' +
+  'id, guide_slug, kind, page_key, page_path, context, body, status, created_at, closed_at, closed_note, from_user_id, ' +
   'sender:users!help_feedback_from_user_id_fkey(name, email), ' +
   'closed_by:users!help_feedback_closed_by_user_id_fkey(name)'
 
 export type HelpFeedbackInboxRow = {
   id: string
-  guide_slug: string
+  /** Null for a note written from a page (punch list #380). */
+  guide_slug: string | null
+  /** `guide`, or the start picked in the wrench's box: `want`, `confusing`, `broken`. */
+  kind: string
+  page_key: string | null
+  page_path: string | null
+  /** What the box listed before the press; read with `parseNoteContext`. */
+  context: unknown
   body: string
   status: 'open' | 'closed'
   created_at: string | null

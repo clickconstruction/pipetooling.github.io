@@ -9,6 +9,33 @@ import { useHelpFeedbackInbox, type HelpFeedbackInboxRow } from '../hooks/useHel
 import { ageChipStyle, describeAge, HELP_FEEDBACK_AGE } from '../lib/ageState'
 import { EmptyState } from './EmptyState'
 import { HELP_FEEDBACK_EMPTY } from '../lib/dashboard/dashboardEmptyWords'
+import { noteContextChips, openThatPagePath, parseNoteContext, type NoteContextChip } from '../lib/tellTheDev/noteContext'
+import { noteKindChip, wordlessNoteLine } from '../lib/tellTheDev/starts'
+import { noteBrief } from '../lib/tellTheDev/brief'
+import { useToastContext } from '../contexts/ToastContext'
+
+/** The kind's chip: a fault reads red, confusion amber, a want blue, a guide's note plain. */
+function kindChipStyle(kind: string): React.CSSProperties {
+  const tone =
+    kind === 'broken'
+      ? { color: 'var(--text-red-700)', background: 'var(--bg-red-tint)', border: '1px solid var(--border-red)' }
+      : kind === 'confusing'
+        ? { color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)' }
+        : kind === 'want'
+          ? { color: 'var(--text-blue-700)', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)' }
+          : { color: 'var(--text-muted)', background: 'var(--bg-muted)', border: '1px solid var(--border)' }
+  return { ...tone, fontSize: '0.72rem', fontWeight: 700, padding: '0.08rem 0.5rem', borderRadius: 999, whiteSpace: 'nowrap', marginRight: 6 }
+}
+
+function contextChipStyle(chip: NoteContextChip): React.CSSProperties {
+  const tone =
+    chip.tone === 'trouble'
+      ? { color: 'var(--text-red-700)', background: 'var(--bg-red-tint)', border: '1px solid var(--border-red)' }
+      : chip.tone === 'page'
+        ? { color: 'var(--text-blue-700)', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)' }
+        : { color: 'var(--text-muted)', background: 'var(--surface)', border: '1px solid var(--border)' }
+  return { ...tone, fontSize: '0.72rem', fontWeight: 600, padding: '0.08rem 0.5rem', borderRadius: 999, overflowWrap: 'anywhere' }
+}
 
 function formatDatetime(iso: string | null): string {
   if (!iso) return 'unknown'
@@ -30,6 +57,7 @@ export function HelpFeedbackInboxSection() {
   const [sectionOpen, setSectionOpen] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [closeNoteDraft, setCloseNoteDraft] = useState('')
+  const { showToast } = useToastContext()
 
   if (!helpFeedbackEligible) return null
 
@@ -52,7 +80,7 @@ export function HelpFeedbackInboxSection() {
           fontSize: '0.8125rem',
         }}
       >
-        <span style={{ fontWeight: 600 }}>Help feedback</span>
+        <span style={{ fontWeight: 600 }}>Notes to the dev</span>
         <span>{HELP_FEEDBACK_EMPTY.main}</span>
       </div>
     )
@@ -65,6 +93,10 @@ export function HelpFeedbackInboxSection() {
     const busy = closingId === row.id
     // Age chip on OPEN rows (punch list #184 sweep B): HELP_FEEDBACK_AGE, a week amber, two red.
     const openAge = isClosed ? null : describeAge(row.created_at, undefined, HELP_FEEDBACK_AGE)
+    // A note from a page (punch list #380) carries its page and state; a guide's note carries neither.
+    const noteContext = parseNoteContext(row.context)
+    const pagePath = openThatPagePath(row.page_path)
+    const words = row.body?.trim() ?? ''
     return (
       <li
         key={row.id}
@@ -89,6 +121,7 @@ export function HelpFeedbackInboxSection() {
         >
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 4 }}>
             <span aria-hidden style={{ marginRight: 6 }}>{expanded ? '▼' : '▶'}</span>
+            <span style={kindChipStyle(row.kind)}>{noteKindChip(row.kind)}</span>
             From {fromLabel}
             {row.created_at ? <span style={{ marginLeft: '0.5rem' }}>· {formatDatetime(row.created_at)}</span> : null}
             {openAge ? (
@@ -99,6 +132,7 @@ export function HelpFeedbackInboxSection() {
                 {openAge.label}
               </span>
             ) : null}
+            {row.guide_slug ? (
             <Link
               to={`/help?g=${encodeURIComponent(row.guide_slug)}`}
               onClick={(e) => e.stopPropagation()}
@@ -116,8 +150,22 @@ export function HelpFeedbackInboxSection() {
             >
               {row.guide_slug}
             </Link>
+            ) : null}
           </div>
-          <div style={{ fontWeight: 500, whiteSpace: 'pre-wrap' }}>{row.body}</div>
+          {words ? (
+            <div style={{ fontWeight: 500, whiteSpace: 'pre-wrap' }}>{row.body}</div>
+          ) : (
+            <div style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>{wordlessNoteLine(row.kind)}</div>
+          )}
+          {noteContext ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+              {noteContextChips(noteContext).map((chip, i) => (
+                <span key={`${chip.text}-${i}`} style={contextChipStyle(chip)}>
+                  {chip.text}
+                </span>
+              ))}
+            </div>
+          ) : null}
           {isClosed && row.closed_note?.trim() ? (
             <div style={{ marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Closed{row.closed_by?.name?.trim() ? ` by ${row.closed_by.name}` : ''}: {row.closed_note}
@@ -126,13 +174,34 @@ export function HelpFeedbackInboxSection() {
         </div>
         {expanded && (
           <div style={{ marginTop: '0.6rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            {pagePath ? (
+              <Link
+                to={pagePath}
+                style={{ padding: '0.35rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-base)', textDecoration: 'none', background: 'var(--surface)' }}
+              >
+                Open that page
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                const brief = noteBrief({ kind: row.kind, body: row.body, page_path: row.page_path, created_at: row.created_at, context: noteContext })
+                void navigator.clipboard
+                  .writeText(brief)
+                  .then(() => showToast('Copied. Paste it into a coding session.', 'success'))
+                  .catch(() => showToast('The browser would not copy it. Select the note and copy it by hand.', 'warning'))
+              }}
+              style={{ padding: '0.35rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-base)', background: 'var(--surface)', cursor: 'pointer' }}
+            >
+              Copy as a brief
+            </button>
             {!isClosed ? (
               <>
                 <input
                   type="text"
                   value={closeNoteDraft}
                   onChange={(e) => setCloseNoteDraft(e.target.value)}
-                  placeholder="Optional close note…"
+                  placeholder="Answer, one line. The sender reads it."
                   style={{ flex: 1, minWidth: 180, padding: '0.4rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                 />
                 <button
@@ -144,7 +213,7 @@ export function HelpFeedbackInboxSection() {
                   }}
                   style={{ padding: '0.4rem 0.85rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: 500 }}
                 >
-                  {busy ? 'Closing…' : 'Close'}
+                  {busy ? 'Closing…' : 'Answer and close'}
                 </button>
               </>
             ) : (
@@ -184,7 +253,7 @@ export function HelpFeedbackInboxSection() {
         }}
       >
         <span style={{ fontSize: '0.75rem' }} aria-hidden>{sectionOpen ? '▼' : '▶'}</span>
-        Help feedback
+        Notes to the dev
         <span
           style={{
             fontSize: '0.75rem',

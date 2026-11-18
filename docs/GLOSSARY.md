@@ -1563,6 +1563,26 @@ Display-only — RLS and role permissions are unchanged.
 
 **See also** — **`RECENT_FEATURES.md`** **v2.1837**, fragment `v2.7050`, help guide `task-mode.md` (its old address `farm-mode` still opens it, `helpGuideFormerSlugs.ts`).
 
+### Tell the dev and Fix Mode (app-wide)
+**Tell the dev** is the wrench: a note to the dev from the page a person is on, with the page and its state (punch list #380).
+It is the guides' feedback box moved to every page: the same `help_feedback` table, the same row security and the same inbox.
+At a desk the wrench floats bottom left;
+on a phone it sits in the header beside Search, because Job Mode's bars own the bottom of a phone and toasts the top right.
+The box opens three **starts**, *I want…*, *This page is confusing because…* and *Something went wrong when I…*;
+the start is the note's `kind` (`want`, `confusing`, `broken`), and the last two may be sent with no words.
+**Goes with your note** lists everything a note carries before the press: the page, the open window, the role, the screen, the modes on, the version, the last error line shown and the calls the server refused.
+A note never carries a picture of the screen.
+A lost signal is never part of a note: the outbox keeps that press, so the no-connection line and a call with no answer are left out (`isLostSignalLine`).
+**Fix Mode** is the gear menu's switch for the wrench, per person per device, on until switched off (`fixMode.ts`, `useFixMode`);
+the phone dock's More sheet lists it with the other modes.
+**Notes to the dev** is the inbox, called Help feedback until v2.7658: the Dashboard's Teams inbox card and the Checklist's review, for the owner or a dev.
+Each note there shows its kind, page and state, with **Open that page** and **Copy as a brief** (`noteBrief`: the note by role, never by name).
+Opens and sends are counted in `ui_nav_clicks` as `tell_the_dev_open` (target the door) and `tell_the_dev_sent` (target the kind).
+Kernels in **[`src/lib/tellTheDev/`](../src/lib/tellTheDev/)**;
+the wrench and its box in **[`TellTheDevRoot.tsx`](../src/components/tellTheDev/TellTheDevRoot.tsx)**.
+
+**See also** — fragments `v2.7650` and `v2.7658`, help guide `tell-the-dev-about-a-page.md`, `to-dos/tell-the-dev/`.
+
 ### User Review modal
 A global, full-screen modal (**[`UserReviewModal`](../src/components/UserReviewModal.tsx)** + **[`UserReviewModalContext`](../src/contexts/UserReviewModalContext.tsx)**) opened by clicking a person's **name** on the Dashboard's **`DashboardTeamActiveClockStrip`** (the "Currently In" / "Clocked in today" strip).
 It pairs a read-only **schedule view** with an optional **Mercury transaction summary** for the same date window, all keyed to one subject user.
@@ -6240,6 +6260,16 @@ and it reads the record back above the button before the press, *The record will
 **No send on record** (v2.7052) is a bill the app made that has no email, text or print on any record: it sits in a strip above the days, never on a day.
 Readers are the sent copies' own: dev, master, assistant, controller.
 
+### Agreements tab
+
+v2.7617 (punch list #376).
+The Documents page's list of every agreement on file, for the office: a job's contract, a warranty, a GC's own paper, a signed paper the office filed, a staff, sub or partner agreement and a sub work order, one line each, newest first under a band per month.
+A line is a kind tag (*Contract · Warranty · Their paper · Staff · Sub · Partner · Work order*), the paper's name, who it is with, the job, where it stands in that kind's own words, and the day it was signed, sent or ended.
+Every kind shares three states, *waiting*, *signed* and *ended*, which the second row of chips asks for: **Sent and signed** (where the tab opens), **Waiting on a signature** with its count, **Signed**, **Voided or ended**.
+A draft is never on it, and a signed paper filed over several jobs is one line that names the first job and counts the rest.
+It reads the `agreements_on_file` view, where each table's own row security decides what the reader sees ([`agreementsLedger.ts`](../src/lib/documents/agreementsLedger.ts), [`DocumentsAgreementsTab.tsx`](../src/components/documents/DocumentsAgreementsTab.tsx)).
+It adds a view and renames nothing: *Contract* under a job on the Jobs tab and in the job window, the Customer page's **Agreements** card, People → Contracts and Partnerships → Agreements keep their names.
+
 ### Sent copies
 
 v2.4554.
@@ -6557,6 +6587,7 @@ It is asked of a box with no pin or a pin older than seven days, and once a day 
 **The way to a place** (v2.7580 the column, v2.7581 the screens) is one painted map a place on a site can carry, `job_places.painted_map_id`, painted once so it serves every box that stands there.
 **＋ Paint the way here** under a place opens the painting window on a new map on the job named *The way to Level 2*, and the saved map goes onto the place (`placeWayPaint.ts` over `placeWay.ts`).
 A box's **Where is it?** then reads *The way to Level 2 is painted.* with **Open the way**.
+**Send someone to it** (v2.7582) on that sheet opens the New task window on *Find A7*, with the box's pin as the task's place and the place's way as the place's map (`findBoxTask` in `whereIsBox.ts`), so a person who is not on the job's crew reads both through the task.
 A task's place has a sheet of the same name, which is a different thing: there the giver says where the task is.
 
 ### A site's materials (punch list #330)
@@ -6620,6 +6651,12 @@ The **People folder** (v2.6393, `drive_people_folder_id`, the fifth card) is whe
 The **Tasks folder** (v2.6601, punch list #273 PR 4a, `drive_tasks_folder_id`, the card after the Fleet one) is where the photo sweep files a task card's photos, one folder per card under *PipeTooling Tasks*, which **Make the Tasks folder** finds or makes beside the Jobs folder in the app's Shared Drive (`job-drive-folders` `make: 'tasks'`, `tasks_needs_shared_drive` for a My Drive root;
 a pasted link is checked for the write, `tasks_unwritable`);
 until it is set every filed row reads `NO_TASKS_FOLDER_WORDS`.
+
+**Signed contracts card** (v2.7647, punch list #377): the card on Documents → Where files go that says where each signed job contract's copy in Google Drive stands.
+It counts the papers *in Drive*, *waiting* and *held*, and its press files the waiting ones now.
+**Contracts** (the folder): the sixth folder of a job's tree, inside Team only, made the first time the app files a signed contract on the job.
+**Filed** and **adopted**: a contract's Drive copy is *filed* when the app uploaded it, and *adopted* when the office already kept the file in the jobs drive and the app tied it to the record where it sits.
+**Held** (a contract): a signed paper that could not be filed, with its reason on the record and the door that fixes it.
 
 ### Empty state
 The app's one shape for a list with nothing in it (punch list #184, sweep C): the list says what fills it and offers the press, or, where empty is the good state, says so and names where to look next, so a bare *No bills* or *Nothing here* never leaves the person guessing.

@@ -52,4 +52,6 @@ The list says *Nothing in the job folders says* your words. Try fewer words, or 
 
 The search looks through the PipeTooling Jobs shared drive, where every job's folder lives. A file outside it is not found here. Search in Drive itself for those.
 
+A signed job contract is in the search too. The app files each one in its job's folder, under **Team only**, in **Contracts**. Type a few words from its terms, or the signer's name. The hit wears {{chip:green|Signed contract}}. A voided one wears {{chip:red|Voided contract}}. The office also sees **Open the contract** under the hit. See [get a job contract signed](/help/get-a-job-contract-signed#the-signed-copy-in-google-drive).
+
 A file under no job shows under **Not under a job**, with the folders it sits in. Move it into the job's folder in Drive and it shows under the job next time.

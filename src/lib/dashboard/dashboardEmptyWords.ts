@@ -51,10 +51,10 @@ export const ESTIMATOR_INBOX_EMPTY: EmptyStateWords = {
   tail: 'A request lands here when someone presses Send to Estimator Inbox.',
 }
 
-/** The dev's Help feedback inbox with no feedback. */
+/** The dev's Notes to the dev inbox with no notes (the guides' feedback and, since punch list #380, the wrench's). */
 export const HELP_FEEDBACK_EMPTY: EmptyStateWords = {
   main: emptyWords({ kind: 'waiting', who: 'you' }).main,
-  tail: 'Feedback lands here when someone presses Send feedback on a help guide.',
+  tail: 'A note lands here when someone presses Send to the dev.',
 }
 
 /** Ready to bill with nothing ready: the jobs still in progress are on Jobs → Stages. */

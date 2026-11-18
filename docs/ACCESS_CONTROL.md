@@ -704,6 +704,9 @@ closed to twins since v2.6396), written by the service role alone — `drive-lin
 
 **The file index** (`file_index`, v2.6319, the words inside the Shared Drive's files;
 closed to twins in v2.6396, `20261102215000`): the office and the estimators read it through `file_index_select`, `(SELECT is_office_or_estimator()) AND NOT (SELECT is_digital_twin())`, and `search_file_index` is SECURITY INVOKER, so the policy decides.
+Since v2.7645 (punch list #377) a signed job contract is filed in its job's Drive folder, so an estimator, who cannot read `job_contracts`, reads a filed contract through this index, Find a file and the jobs Shared Drive.
+The owner settled that on 2026-11-17 as the card's call 1.
+The table `job_contracts` itself stays the four office roles'.
 A subcontractor, helper, primary or superintendent reads nothing, a digital twin reads nothing though it is an estimator, and anon is refused.
 Only the service role writes (`drive-link`'s `index` and `index_job`, the `file-index-sweep` cron, and since v2.6714 `hr-evidence-drive` and `dev-mcp` through the records pass).
 Since v2.6714 (`20261108200000`, punch list #285) the index also holds the words of the files on a person's HR file and a matter's Evidence tab (`source` `hr_attachment` · `matter_document`): `file_index_select` opens those rows to a dev alone (`source = 'drive' OR is_dev()`), the restrictive `file_index_counsel_only_seat` refused the dev seat a counsel-only one until v2.6986, when it began to ask `counsel_only_held_from_seat()`, which answers false, and Find a file's two searches read Drive rows alone.
@@ -862,6 +865,11 @@ The Documents tab's *Sent from this job* and the Documents page's **Sent copies*
 *Sent* until v2.6308) show to the office (`canReadSentCopies`);
 `primary` and `estimator` open both places without them.
 Pay stubs are never filed here.
+
+**Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office (`canSeeAgreements`: dev · master · assistant · controller).
+The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
+No policy changed for it, and nobody reads a paper through it that they could not read before.
+`estimator`, `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
 
 **Hours statements** (v2.6097, `20261030030000_hours_statements.sql`, punch list #212): `hours_statements` — **read / insert / update / delete** through `can_touch_hours_statement(with_pay)`: a dev or the controller (`is_dev() OR is_controller()`, since v2.6450's `20261103063000_hours_statement_payroll_roles.sql` — the paper is payroll data, Diane's call of 2026-11-02;
 until then a pay-approved master took any row and an assistant one with the pay left off) for any row, and no one else;
@@ -3037,7 +3045,7 @@ Imitate lands on `roleHomePath(role)`.
 | **Money in** bar under the Financials cards (punch list #191, v2.5955, [`DashboardMoneyInStrip`](../src/components/DashboardMoneyInStrip.tsx)): the cards' own gate (`showFinancials`; the assistant column includes controller); its reads are RPCs and tables these roles already read (`list_unlinked_payments_for_bank_payments`, `list_mercury_transactions_for_bank_payments`, `list_ar_return_cases`, `mercury_transactions` SELECT via `is_assistant()`), plus the edge function `get-stripe-payouts`, whose own gate admits dev · master_technician · assistant · controller — not Banking's `is_banking_staff()`; a chip's Banking door shows only to `canAccessBanking` roles | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **My Bids** (Dashboard collapsible; **My Bids (`n`)** after load) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | Rejected clock sessions (org-wide, review/delete; the Dashboard notice is the pay-approved owner's too since v2.6758, punch list #188 row 33) | ✅ | ✅ If Pay Approved | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Help feedback inbox** on the Teams inbox card and the Checklist review inboxes (`useHelpFeedbackInbox`; the owner or a dev since v2.6758, punch list #188 row 34; `help_feedback` SELECT and UPDATE for `is_master_or_dev()`, `20261109003000_dev_gates_dashboard_checklist.sql`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Notes to the dev inbox** (Help feedback until v2.7658; it also lists the wrench's notes, punch list #380) on the Teams inbox card and the Checklist review inboxes (`useHelpFeedbackInbox`; the owner or a dev since v2.6758, punch list #188 row 34; `help_feedback` SELECT and UPDATE for `is_master_or_dev()`, `20261109003000_dev_gates_dashboard_checklist.sql`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **My inbox → Forward** and **Recently completed**, and Checklist → Today's **Forward** and **Upcoming** (office work since v2.6758, punch list #188 row 35, `isOfficeRole`; a dev's alone before) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 **Header vs Dashboard inbox**: **Subcontractor** and **helpers** share the **header** buttons with office roles via [`headerTaskDispatchEstimatorEligible.ts`](../src/lib/headerTaskDispatchEstimatorEligible.ts) but they **do not** see Dashboard inbox cards unless they have a row in **`dispatch_group_members`** / **`estimator_group_members`** (unusual).

@@ -1,5 +1,6 @@
 import { AGING_BUCKETS, daysPastDue, type AgingBucketKey, type SupplyHouseAgingRow } from '../supplyHouseAging'
 import { isSupplyCredit } from '../supplyHouseDocument'
+import { openAmount } from './payments/supplyPayment'
 import { creditPairingLine } from './supplyHouseInvoiceForm'
 
 /**
@@ -40,6 +41,30 @@ export function summarizeSupplyHouseBalances(houses: ReadonlyArray<{ id: string;
   return houses
     .map((h) => ({ supply_house_id: h.id, name: h.name, outstanding: owed.get(h.id) ?? 0, monthlyPaymentDay: h.monthly_payment_day, lastInvoiceUpdatedAt: updated.get(h.id) ?? null, lastInvoicePaidAt: paid.get(h.id) ?? null }))
     .sort((a, b) => b.outstanding - a.outstanding)
+}
+
+/**
+ * The book as Accounts payable holds it (lifted out of the tab's loader, where it had no test). An unpaid bill counts
+ * for what is left on it (v2.7450, `amount_paid`): a bill paid in part is not owed whole, in the balances or in the
+ * aging table. `billed` keeps the bill's own amount for the row that says *left of*. A paid bill comes back as it was.
+ */
+export function openSupplyBook<T extends { amount: number | null; is_paid: boolean; amount_paid?: number | null; billed?: number }>(invoices: ReadonlyArray<T>): { book: T[]; unpaid: T[] } {
+  const book = invoices.map((inv) => (inv.is_paid ? inv : { ...inv, amount: openAmount(inv), billed: Number(inv.amount) }))
+  return { book, unpaid: book.filter((inv) => !inv.is_paid) }
+}
+
+/** The header's total: what every listed house is owed, added up. */
+export function supplyBookTotal(rows: ReadonlyArray<{ outstanding: number }>): number {
+  return rows.reduce((sum, row) => sum + row.outstanding, 0)
+}
+
+/**
+ * The pins' total (Dashboard, Settings): what is left on every unpaid bill, whatever house it is on. It equals
+ * `supplyBookTotal` whenever every bill's house is listed; a bill on a house that is not listed is in this sum and
+ * not in the tab's (`summarizeSupplyHouseBalances` ignores it).
+ */
+export function sumOpenSupplyBills(bills: ReadonlyArray<{ amount: number | null; is_paid?: boolean | null; amount_paid?: number | null }>): number {
+  return bills.reduce((sum, bill) => sum + openAmount(bill), 0)
 }
 
 export function ordinalDay(n: number): string {
