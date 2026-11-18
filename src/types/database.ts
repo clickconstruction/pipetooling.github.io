@@ -50981,6 +50981,7 @@ export type Database = {
       }
       trip_crew_on_job: { Args: { p_job_id: string }; Returns: boolean }
       trip_days_ok: { Args: { p_days: Json }; Returns: boolean }
+      trip_deleted_list: { Args: { p_development_id: string }; Returns: Json }
       trip_is_mine: { Args: { p_trip_id: string }; Returns: boolean }
       trip_phone: { Args: { p: Json }; Returns: Json }
       trip_phone_state: { Args: { p_job_id: string }; Returns: Json }
