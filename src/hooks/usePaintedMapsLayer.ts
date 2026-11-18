@@ -7,17 +7,22 @@ import { useCallback, useEffect, useState } from 'react'
 import { onPaintedMapsChanged } from '../lib/paintedMap/paintedMapDoor'
 import { loadPaintedMapsEvery, loadPaintedMapsFor } from '../lib/paintedMap/paintedMapIo'
 import { paintedLayerMaps, type PaintedLayerMap } from '../lib/paintedMap/paintedMapLayer'
+import { useTakenDown } from './useTakenDown'
 
 export function usePaintedMapsLayer(scope: { jobId: string } | 'every' | null, enabled: boolean): { maps: PaintedLayerMap[]; loaded: boolean; error: string | null } {
   const jobId = scope && scope !== 'every' ? scope.jobId : null
   const every = scope === 'every'
   const [state, setState] = useState<{ maps: PaintedLayerMap[]; loaded: boolean; error: string | null }>({ maps: [], loaded: false, error: null })
 
+  // A read that lands after the map it sits on is taken down sets nothing.
+  const takenDown = useTakenDown()
+
   const read = useCallback(async () => {
     if (!enabled || (!every && !jobId)) return
     const res = every ? await loadPaintedMapsEvery() : await loadPaintedMapsFor({ jobId })
+    if (takenDown()) return
     setState(res.ok ? { maps: paintedLayerMaps(res.value), loaded: true, error: null } : { maps: [], loaded: true, error: res.error })
-  }, [enabled, every, jobId])
+  }, [enabled, every, jobId, takenDown])
 
   useEffect(() => {
     if (!enabled) return

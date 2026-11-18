@@ -9,6 +9,7 @@ import {
 } from '../../lib/paintedMap/paintedMapDocuments'
 import { PAINTED_MAP_LAYER_MAX, loadPaintedMapsEvery, loadPaintedMapsForSearch, loadPainterNames, type Landed, type PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
 import type { PaintedMapSearchRow } from '../../lib/paintedMap/paintedMapSearch'
+import { useTakenDown } from '../../hooks/useTakenDown'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { PAINT_SWATCH } from '../paintedMap/paintedMapLook'
@@ -48,8 +49,12 @@ export function DocumentsPaintedMapsTab({ loadMaps = loadPaintedMapsEvery, loadH
   /** Share on a row (v2.7415): the map's Share sheet, without opening the map. */
   const [sharing, setSharing] = useState<{ id: string; name: string } | null>(null)
 
+  // A read that lands after the tab is taken down sets nothing: there is no screen left to draw on.
+  const takenDown = useTakenDown()
+
   const load = useCallback(async () => {
     const res = await loadMaps()
+    if (takenDown()) return
     if (!res.ok) {
       setRead({ kind: 'failed', words: res.error })
       return
@@ -59,8 +64,9 @@ export function DocumentsPaintedMapsTab({ loadMaps = loadPaintedMapsEvery, loadH
       loadHomes().catch(() => [] as PaintedMapSearchRow[]),
       loadNames(res.value.map((w) => w.map.createdBy)).catch(() => new Map<string, string>()),
     ])
+    if (takenDown()) return
     setRead({ kind: 'read', wholes: res.value, homes, names })
-  }, [loadMaps, loadHomes, loadNames])
+  }, [loadMaps, loadHomes, loadNames, takenDown])
 
   useEffect(() => {
     void load()
