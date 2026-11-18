@@ -1174,6 +1174,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   It writes the caller's own `trip_people` row, the server's own today and the trip's job link, and no other person's day.
   **`trip_phone_state(job)`** tells that same caller the job's site, their own open trip there, and crewmates' open trips by first name and first day, since a crew member reads no trip row they are not on.
   A training account, a digital twin and an archived caller are refused by the functions themselves, because a definer stands behind the tables' fences.
+- **The trip's number** (v2.7703, `docs/migrations/20261118040000_trip_numbers.md`): `trips.trip_number` is handed out by the `trips_take_number` trigger, a SECURITY DEFINER, and held through every update, so no role sets or changes it.
+  **`trip_number_counters`** has row security on, no policy and no grant: nobody reads or writes it but that trigger.
 
 ### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
 

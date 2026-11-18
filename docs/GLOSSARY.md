@@ -3650,6 +3650,7 @@ the rules v2.7653, the tables v2.7655, the Trips look v2.7661): one going-out to
 A trip is people, and for each person their days, and each day is one of three kinds: **Getting ready**, **On the road** or **At the site**.
 A day off in the middle is a day that is not there.
 Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
+Each trip also has a short number on its site, **Trip 5**, handed out by the database when the trip is made (v2.7703, `trips.trip_number`): never typed, never changed, and never given to another trip, so a bill that cites it means one trip for good.
 A trip may also say what it was for, who asked for it (us or them), how it went, the jobs its work goes on and its billing (**Inside the price**, **Extra**, **Ours**), and all of that can wait.
 A trip is a reading laid over the clock: saving, changing or deleting one changes no clock row, bill or cost.
 The site's hours fall into five figures (`src/lib/trips/tripHours.ts`): a row on a trip day takes the day's kind, a punch counts **At the site** only when a place it carries is the site, a row with no place is **No place on the punch** and is never added to At the site, and hours on the site's jobs outside every trip the person was on are **At home for the site**.
