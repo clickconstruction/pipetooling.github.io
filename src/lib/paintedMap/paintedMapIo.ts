@@ -28,6 +28,7 @@ import {
   type PaintedPlace,
 } from './paintedMap'
 import type { PaintedPoint } from './paintedLine'
+import { paintedPlaceKindFrom, type PaintedPlaceKind } from './paintedPlaceKind'
 import type { PaintedMapSearchRow } from './paintedMapSearch'
 import { PAINTED_MAP_PHOTOS_BUCKET, isPaintedPlacePhotoPath, paintedPlacePhotoPath } from './paintedPlacePhoto'
 
@@ -335,7 +336,7 @@ export async function deletePaintedLine(lineId: string): Promise<Landed<boolean>
 /** Adds a place to a map. */
 export async function addPaintedPlace(
   mapId: string,
-  place: PaintedPoint & { id?: string; name?: string | null; words?: string | null; accuracyM?: number | null; photoPath?: string | null },
+  place: PaintedPoint & { id?: string; name?: string | null; words?: string | null; accuracyM?: number | null; photoPath?: string | null; kind?: PaintedPlaceKind | null },
   by: string,
 ): Promise<Landed<PaintedPlace>> {
   const columns = paintedPlaceColumns(place, mapId, by)
@@ -354,10 +355,10 @@ export async function addPaintedPlace(
   }
 }
 
-/** Changes a place: its name, its words, its dot or its photo. A dot moved by hand loses the phone's margin. */
+/** Changes a place: its name, its words, its kind, its dot or its photo. A dot moved by hand loses the phone's margin. */
 export async function savePaintedPlace(
   placeId: string,
-  change: Partial<{ name: string; words: string; lat: number; lng: number; accuracyM: number | null; photoPath: string | null }>,
+  change: Partial<{ name: string; words: string; lat: number; lng: number; accuracyM: number | null; photoPath: string | null; kind: PaintedPlaceKind | null }>,
 ): Promise<Landed<PaintedPlace>> {
   const cols: Record<string, unknown> = {}
   if (change.name !== undefined) cols.name = change.name
@@ -368,6 +369,8 @@ export async function savePaintedPlace(
     cols.accuracy_m = change.accuracyM ?? null
   }
   if (change.photoPath !== undefined) cols.photo_path = change.photoPath
+  // Only a kind this app knows is written, so a place never carries a word no mark answers to.
+  if (change.kind !== undefined) cols.kind = paintedPlaceKindFrom(change.kind)
   try {
     const res = (await supabase.from(PLACES).update(cols as never).eq('id' as never, placeId).select(PAINTED_MAP_PLACE_SELECT as '*').single()) as unknown as OneRow<PaintedMapPlaceRow>
     const saved = res.data ? paintedPlaceFromRow(res.data) : null

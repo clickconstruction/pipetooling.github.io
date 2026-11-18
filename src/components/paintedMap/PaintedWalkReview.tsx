@@ -11,6 +11,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { aboutLengthWords, giveOrTakeWords, lineHowWords } from '../../lib/paintedMap/paintedMap'
 import type { WalkStroke } from '../../lib/paintedMap/paintedWalk'
 import { WALK_REVIEW_PLACE_WORDS, walkNothingLeftWords } from '../../lib/paintedMap/paintedWalkWords'
+import { PaintedPlaceMark } from './PaintedPlaceMark'
 import { PAINT_SWATCH } from './paintedMapLook'
 
 type Props = {
@@ -19,7 +20,7 @@ type Props = {
   /** The map is already saved: these lines are added to it. */
   mapSaved: boolean
   /** The places the map already has, each with its number: saved when they were added, not on Save. */
-  places: ReadonlyArray<{ id: string; number: number; name: string }>
+  places: ReadonlyArray<{ id: string; number: number; name: string; kind?: string | null }>
   onPlace: () => void
   onFix: (index: number) => void
   onRemove: (index: number) => void
@@ -77,7 +78,7 @@ export function PaintedWalkReview({ strokes, busy, mapSaved, places, onFix, onRe
           <button type="button" data-painted-review-place style={busy ? { ...press, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'var(--border)', cursor: 'default' } : press} disabled={busy} onClick={onPlace}>＋ Place</button>
           {places.map((p) => (
             <span key={p.id} data-painted-review-place-set style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', minWidth: 0 }}>
-              <span aria-hidden style={{ width: 22, height: 22, borderRadius: '50%', borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--text-strong)', display: 'grid', placeItems: 'center', fontSize: '0.6875rem', fontWeight: 800, flex: 'none' }}>{p.number}</span>
+              <PaintedPlaceMark number={p.number} kind={p.kind} size={26} />
               <b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</b>
             </span>
           ))}

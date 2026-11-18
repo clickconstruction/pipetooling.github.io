@@ -24,6 +24,7 @@ import {
   type PaintedPart,
   type PaintedPoint,
 } from './paintedLine'
+import { paintedPlaceKindFrom, type PaintedPlaceKind } from './paintedPlaceKind'
 
 export type PaintedLineHow = 'walked' | 'driven' | 'drawn'
 export type PaintedMeasuredHow = 'wheel' | 'tape' | 'other'
@@ -35,9 +36,6 @@ export const PAINTED_PLACE_WORDS_MAX = 160
 /** A map with no name of its own. A name is asked for, and this stands in when nobody gave one. */
 export const PAINTED_MAP_UNNAMED = 'A painted map'
 export const PAINTED_PLACE_UNNAMED = 'A place'
-
-/** The names offered as chips when a place is added: the things a crew and a driver ask about. */
-export const PAINTED_PLACE_CHIPS = ['Gate', 'Park here', 'Door', 'Meter', 'Shutoff', 'Cleanout'] as const
 
 /** `painted_maps` as stored. */
 export type PaintedMapRow = {
@@ -75,13 +73,15 @@ export type PaintedMapPlaceRow = {
   lng: number
   accuracy_m: number | null
   photo_path: string | null
+  /** What kind of thing the place is (#393), as stored: any short lowercase word, or none. */
+  kind?: string | null
   set_by: string | null
   set_at: string
 }
 
 export const PAINTED_MAP_SELECT = 'id,name,words,job_id,development_id,created_by,created_at'
 export const PAINTED_MAP_LINE_SELECT = 'id,map_id,label,how,points,poor_parts,fixed_by_hand,length_m,margin_m,measured_ft,measured_how,made_by,made_at'
-export const PAINTED_MAP_PLACE_SELECT = 'id,map_id,name,words,lat,lng,accuracy_m,photo_path,set_by,set_at'
+export const PAINTED_MAP_PLACE_SELECT = 'id,map_id,name,words,lat,lng,accuracy_m,photo_path,kind,set_by,set_at'
 
 export type PaintedMap = {
   id: string
@@ -115,6 +115,8 @@ export type PaintedPlace = PaintedPoint & {
   /** The phone's margin in metres when the place was set from where the painter stood; null when placed by hand. */
   accuracyM: number | null
   photoPath: string | null
+  /** What kind of thing it is, which gives its dot a mark of its own (`paintedPlaceKind.ts`). None for a plain numbered dot. */
+  kind?: PaintedPlaceKind | null
   setBy: string | null
   setAt: string
 }
@@ -178,6 +180,7 @@ export function paintedPlaceFromRow(row: PaintedMapPlaceRow): PaintedPlace | nul
     lng: row.lng,
     accuracyM: finite(row.accuracy_m) && row.accuracy_m >= 0 ? row.accuracy_m : null,
     photoPath: row.photo_path || null,
+    kind: paintedPlaceKindFrom(row.kind),
     setBy: row.set_by ?? null,
     setAt: row.set_at,
   }
@@ -217,7 +220,7 @@ export function paintedLineColumns(draft: PaintedLineDraft, mapId: string, by: s
 
 /** The columns a new place writes, or null when the point is not on the globe. */
 export function paintedPlaceColumns(
-  place: PaintedPoint & { name?: string | null; words?: string | null; accuracyM?: number | null; photoPath?: string | null },
+  place: PaintedPoint & { name?: string | null; words?: string | null; accuracyM?: number | null; photoPath?: string | null; kind?: PaintedPlaceKind | null },
   mapId: string,
   by: string,
 ) {
@@ -230,6 +233,7 @@ export function paintedPlaceColumns(
     lng: place.lng,
     accuracy_m: finite(place.accuracyM) && place.accuracyM >= 0 ? Math.round(place.accuracyM) : null,
     photo_path: place.photoPath || null,
+    kind: paintedPlaceKindFrom(place.kind),
     set_by: by,
   }
 }

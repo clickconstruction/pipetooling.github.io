@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -149,7 +149,7 @@ A place is a named dot on the map. It says what is there, such as the gate, the 
 
 1. Open the map and press {{button:outline|＋ Place}}. A blue dot appears in the middle of the map.
 2. Drag the blue dot onto the spot. On a phone the magnifying glass opens as you drag.
-3. Press a name such as {{chip:gray|Gate}}, or type your own.
+3. Press what it is, such as {{chip:gray|Gate}}. Type a name of your own if you want one.
 4. Type a word for whoever comes next, such as *Close it behind you*.
 5. Press **＋ Add a photo** to show what the spot looks like. On a phone the camera opens.
 6. Press {{button:blue|Add this place}}.
@@ -157,6 +157,20 @@ A place is a named dot on the map. It says what is there, such as the gate, the 
 The place gets a number. The same number is on its dot and beside its name.
 
 On a walk, {{button:outline|＋ Place}} is under the red bar. It is on **Look it over** too.
+
+### A mark for each kind
+
+Each chip is a kind of place. A kind gives the dot its own mark, such as a gate or a valve. The place's number moves to the corner of the mark.
+
+There are seven kinds. They are {{chip:gray|Gate}}, {{chip:gray|Park here}}, {{chip:gray|Door}}, {{chip:gray|Meter}}, {{chip:gray|Shutoff}}, {{chip:gray|Cleanout}} and {{chip:gray|Hazard}}.
+
+{{chip:gray|Hazard}} is drawn in red. Use it for an open trench or a live wire.
+
+A chip names a place that has no name yet. It never changes a name you typed.
+
+Press a chip a second time to take the kind off. The dot goes back to its plain number.
+
+Type a name and press no chip, and the dot keeps its plain number.
 
 Standing on the spot? Press {{button:outline|Put the dot where I am}}. The dot moves to you and the window says how sure your phone is. Your phone is read once, on that press. It is not followed.
 
