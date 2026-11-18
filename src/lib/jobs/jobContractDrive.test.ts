@@ -3,6 +3,9 @@ import {
   CONTRACT_DRIVE_HOLD_KINDS,
   CONTRACT_DRIVE_WORDS,
   CONTRACT_HOLD_WORDS,
+  JOB_FOLDER_GONE_WORDS,
+  JOB_FOLDER_TRASHED_WORDS,
+  keptJobFolderWhy,
   canAdoptLinkedFile,
   contractDriveCounts,
   contractDriveDue,
@@ -141,6 +144,15 @@ describe('the holds', () => {
   it('carries the job’s own reason, or Drive’s, when one is given', () => {
     expect(contractHold('job_folder', 'This job’s Drive link is not a folder.')).toEqual({ kind: 'job_folder', words: 'This job’s Drive link is not a folder.' })
     expect(contractHold('no_file').words).toBe(CONTRACT_HOLD_WORDS.no_file)
+  })
+  it('holds a job whose Drive folder is gone or in the trash, in plain words, and lets a live one through', () => {
+    expect(keptJobFolderWhy(null)).toBe(JOB_FOLDER_GONE_WORDS)
+    expect(keptJobFolderWhy({ trashed: true })).toBe(JOB_FOLDER_TRASHED_WORDS)
+    expect(keptJobFolderWhy({ trashed: false })).toBeNull()
+    for (const words of [JOB_FOLDER_GONE_WORDS, JOB_FOLDER_TRASHED_WORDS]) expect(plainWordsFailures(words)).toEqual([])
+    // The hold carries the reason and the job's own door.
+    expect(contractHold('job_folder', keptJobFolderWhy(null))).toEqual({ kind: 'job_folder', words: JOB_FOLDER_GONE_WORDS })
+    expect(contractHoldDoor('job_folder')?.to).toBe('job_edit')
   })
   it('gives each hold its door, and offers Try again only where trying can help', () => {
     expect(contractHoldDoor('no_drive')).toEqual({ label: 'Open Where files go', to: 'where_files_go' })
