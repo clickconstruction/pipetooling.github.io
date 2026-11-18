@@ -31,12 +31,12 @@ vi.mock('./JobsFollowupModal', async (original) => {
   const actual = await original<typeof import('./JobsFollowupModal')>()
   return {
     ...actual,
-    JobsFollowupModal: ({ renderStageRow }: { renderStageRow?: (jobId: string) => { node: React.ReactNode; stage: string } | null }) => (
+    JobsFollowupModal: ({ renderStageRow }: { renderStageRow?: (jobId: string) => { node: React.ReactNode; stage: string; lineItems: unknown[]; jobTotalDollars: number; bidDollars: number } | null }) => (
       <div data-testid="deck-probe">
         {deck.ids.map((id) => {
           const row = renderStageRow?.(id) ?? null
           return (
-            <div key={id} data-testid={`deck-row-${id}`} data-stage={row?.stage ?? 'none'}>
+            <div key={id} data-testid={`deck-row-${id}`} data-stage={row?.stage ?? 'none'} data-lines={row ? JSON.stringify(row.lineItems) : ''} data-total={row?.jobTotalDollars ?? ''} data-bid={row?.bidDollars ?? ''}>
               {row?.node ?? null}
             </div>
           )
@@ -174,6 +174,21 @@ describe('JobsStagesTab — the follow-up deck’s rows take the one shared bund
     expect(within(deckRow('deck-rtb')).getAllByRole('button', { name: 'Bill Customer' }).length).toBeGreaterThan(0)
     expect(within(deckRow('deck-billed')).getAllByRole('button', { name: 'Mark Paid' }).length).toBeGreaterThan(0)
     expect(within(deckRow('deck-collections')).getAllByRole('button', { name: 'Mark Paid' }).length).toBeGreaterThan(0)
+    // Collections' own way back, and none of it on the Billed row.
+    expect(within(deckRow('deck-collections')).getAllByRole('button', { name: 'Send back to Billed' }).length).toBeGreaterThan(0)
+    expect(within(deckRow('deck-billed')).queryAllByRole('button', { name: 'Send back to Billed' })).toHaveLength(0)
+  })
+
+  it('a job with no row in its stage’s list gets no deck row: one the office gave up on is out of Collections’ chased rows', async () => {
+    const givenUp = billedJob('deck-given-up', 'Deck Given Up Shop', { collections_at: `${ymdAddDays(todayYmdInAppTz(), -40)}T18:00:00.000Z`, uncollectible_at: `${ymdAddDays(todayYmdInAppTz(), -3)}T18:00:00.000Z` })
+    deck.ids = ['deck-given-up', 'deck-collections']
+    renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: [...deckJobs(), givenUp] })} />)
+    await settle()
+    openDeck()
+    await settle()
+    expect(deckRow('deck-given-up').getAttribute('data-stage')).toBe('none')
+    expect(deckRow('deck-given-up').children).toHaveLength(0)
+    expect(deckRow('deck-collections').getAttribute('data-stage')).toBe('collections')
   })
 
   it('a job the tab does not hold gets no row', async () => {
@@ -184,6 +199,32 @@ describe('JobsStagesTab — the follow-up deck’s rows take the one shared bund
     await settle()
     expect(deckRow('deck-gone').getAttribute('data-stage')).toBe('none')
     expect(deckRow('deck-gone').children).toHaveLength(0)
+  })
+
+  it('the card’s bill detail rides with the row: the named lines in order, their total and the bid (map step 17)', async () => {
+    const line = (name: string, sequence_order: number, count: number, line_unit_price: number | null) => ({ id: `fx-${sequence_order}`, name, sequence_order, count, line_unit_price })
+    const priced = makeJob({
+      id: 'deck-priced',
+      job_name: 'Deck Priced Annex',
+      status: 'working',
+      revenue: 4000,
+      fixtures: [line('Rough in', 2, 1, 1500), line('', 9, 1, 999), line('Underground', 1, 2, 600)] as never,
+    })
+    deck.ids = ['deck-priced', 'deck-waiting']
+    renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: [...deckJobs(), priced] })} />)
+    await settle()
+    openDeck()
+    await settle()
+    const row = deckRow('deck-priced')
+    expect(JSON.parse(row.getAttribute('data-lines')!)).toEqual([
+      { name: 'Underground', count: 2, unitPrice: 600 },
+      { name: 'Rough in', count: 1, unitPrice: 1500 },
+    ])
+    expect(row.getAttribute('data-total')).toBe('2700')
+    expect(row.getAttribute('data-bid')).toBe('4000')
+    // A job with no lines carries an empty list and a zero total.
+    expect(deckRow('deck-waiting').getAttribute('data-lines')).toBe('[]')
+    expect(deckRow('deck-waiting').getAttribute('data-total')).toBe('0')
   })
 
   it('Edit mode reaches a deck row through the bundle: the EDIT rail opens that job', async () => {

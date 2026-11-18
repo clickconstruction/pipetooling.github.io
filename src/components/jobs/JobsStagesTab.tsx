@@ -326,7 +326,7 @@ import {
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
 import { JobsFollowupModal, type JobsFollowupStageRowResult } from './JobsFollowupModal'
 import { followupStagesCoveredByScopes } from '../../lib/jobs/jobFollowupQueue'
-import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
+import { followupRowBillDetail, followupRowsForJob, followupStageForJob } from '../../lib/jobs/followupStageRow'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
 import { useOwnerConfirmRows } from '../../hooks/useOwnerConfirmRows'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
@@ -2969,82 +2969,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       rowStamp: uncollectibleFactsFor,
     } satisfies Partial<ComponentProps<typeof JobsStagesUnifiedTable>>,
   }
+  // The deck card's row (`lib/jobs/followupStageRow`, the map's step 17): which section draws the job, its rows there and
+  // the bill detail are kernels; the row itself is the board's own list, with the same moves and the same bundle.
   const renderFollowupStageRow = (jobId: string): JobsFollowupStageRowResult | null => {
     const job = jobs.find((x) => x.id === jobId)
     if (!job) return null
-    // Bill detail for the card's line-items footer (v2.1744) — same math as the Bill tab's Job Total.
-    const namedFixtures = [...(job.fixtures ?? [])]
-      .filter((f) => (f.name ?? '').trim())
-      .sort((a, b) => a.sequence_order - b.sequence_order)
-    const rowExtras = {
-      lineItems: namedFixtures.map((f) => ({
-        name: f.name,
-        count: Number(f.count ?? 1),
-        unitPrice: f.line_unit_price != null ? Number(f.line_unit_price) : null,
-      })),
-      jobTotalDollars: revenueDollarsFromFixtures(
-        namedFixtures.map((f) => ({ name: f.name, count: Number(f.count ?? 1), line_unit_price: f.line_unit_price != null ? Number(f.line_unit_price) : null })),
-      ),
-      bidDollars: Number(job.revenue ?? 0),
+    const stage = followupStageForJob(job)
+    if (!stage) return null
+    const detail = followupRowBillDetail(job)
+    if (stage === 'waiting' || stage === 'working') {
+      return { stage, ...detail, node: <StagesSectionList hideHeader jobList={[job]} {...stagesSectionActionProps[stage]} shared={stagesTableShared} /> }
     }
-    const status = (job.status ?? 'working') as string
-    if (status === 'waiting') {
-      return { stage: 'waiting', ...rowExtras, node: (
-        <StagesSectionList
-          hideHeader
-          jobList={[job]}
-          {...stagesSectionActionProps.waiting}
-          shared={stagesTableShared}
-        />
-      ) }
-    }
-    if (status === 'working') {
-      return { stage: 'working', ...rowExtras, node: (
-        <StagesSectionList
-          hideHeader
-          jobList={[job]}
-          {...stagesSectionActionProps.working}
-          shared={stagesTableShared}
-        />
-      ) }
-    }
-    if (status === 'ready_to_bill') {
-      const rows = unfilteredBoardLists.readyToBillRows.filter((r) => r.job.id === jobId)
-      if (rows.length === 0) return null
-      return { stage: 'ready_to_bill', ...rowExtras, node: (
-        <StagesUnifiedSectionList
-          hideHeader
-          rows={rows}
-          {...stagesSectionActionProps.readyToBill}
-          shared={stagesUnifiedTableShared}
-        />
-      ) }
-    }
-    if (status === 'billed' && jobInCollections(job)) {
-      const rows = unfilteredBoardLists.collectionsRows.filter((r) => r.job.id === jobId)
-      if (rows.length === 0) return null
-      return { stage: 'collections', ...rowExtras, node: (
-        <StagesUnifiedSectionList
-          hideHeader
-          rows={rows}
-          {...stagesSectionActionProps.collections}
-          shared={stagesUnifiedTableShared}
-        />
-      ) }
-    }
-    if (status === 'billed') {
-      const rows = unfilteredBoardLists.billedActiveRows.filter((r) => r.job.id === jobId)
-      if (rows.length === 0) return null
-      return { stage: 'billed', ...rowExtras, node: (
-        <StagesUnifiedSectionList
-          hideHeader
-          rows={rows}
-          {...stagesSectionActionProps.billed}
-          shared={stagesUnifiedTableShared}
-        />
-      ) }
-    }
-    return null
+    const rows = followupRowsForJob(stage, unfilteredBoardLists, jobId)
+    if (rows.length === 0) return null
+    const moves = stagesSectionActionProps[stage === 'ready_to_bill' ? 'readyToBill' : stage]
+    return { stage, ...detail, node: <StagesUnifiedSectionList hideHeader rows={rows} {...moves} shared={stagesUnifiedTableShared} /> }
   }
 
   /** Deck label click-through (v2.1742): close the deck, open the row's section, scroll to + flash the row. */
