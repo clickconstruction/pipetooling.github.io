@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { isMovableAgingInvoice, movableCandidates, moveStripSummary } from './supplyHouseAging'
+import { isMovableAgingInvoice, movableWindowRows, moveStripSummary } from './supplyHouseAging'
 
 /**
  * The move window's two readers held to one answer (punch list #132, the Needs You line):
  * count_supply_house_move_window() on the database (20261021220000) and the tab's kernel —
- * movableCandidates + isMovableAgingInvoice + moveStripSummary, composed as SupplyHousesTab
- * composes them — read the SAME rows, the $rows$ block of the SQL bed's scenario file, and must
+ * movableWindowRows + moveStripSummary, the two calls SupplyHousesTab makes, with
+ * isMovableAgingInvoice for a row — read the SAME rows, the $rows$ block of the SQL bed's scenario file, and must
  * give the $expect$ block's four numbers. The bed asserts the function (npm run
  * test:pg:supply-house-move-window; CI's sql-beds); this test asserts the kernel. Change the
  * rows or the expectation in one place and both readers are re-tried.
@@ -56,14 +56,17 @@ describe('the move window: the kernel over the SQL bed’s rows', () => {
   })
 
   it('gives the $expect$ numbers the bed asserts of count_supply_house_move_window()', () => {
-    // The tab: the unpaid book → movableCandidates → exactly one job → moveStripSummary over the open asks.
+    // The tab: the unpaid book → movableWindowRows (still current, exactly one job, account not marked not needed) → moveStripSummary over the open asks.
     const unpaid = rows
       .filter((r) => !r.is_paid)
       .map((r) => ({ id: r.id, amount: r.amount, due_date: r.due_in_days == null ? null : ymdPlus(r.due_in_days), on_job_account: r.on_job_account }))
     const allocationCount = new Map(rows.map((r) => [r.id, r.jobs]))
     // The pair's account status, as the tab reads it for the single-job pairs (v2.6086).
     const accountStatus = new Map(rows.map((r) => [r.id, r.account_not_needed ? 'not_needed' : null]))
-    const movable = movableCandidates(unpaid, TODAY).filter((r) => allocationCount.get(r.id) === 1 && accountStatus.get(r.id) !== 'not_needed')
+    // What the tab reads beside the book: each candidate's jobs, and the invoices whose pair's account is marked not needed.
+    const allocations = Object.fromEntries(rows.map((r) => [r.id, Array.from({ length: r.jobs }, (_, i) => ({ job_id: `job-${r.id}-${i}` }))]))
+    const notNeeded = new Set(rows.filter((r) => r.account_not_needed).map((r) => r.id))
+    const movable = movableWindowRows(unpaid, TODAY, { allocations, notNeeded })
     const asked = new Set(rows.filter((r) => r.open_ask).map((r) => r.id))
     const s = moveStripSummary(movable, asked)
     expect(s.count).toBe(expected.count)

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  accountsByPair,
   buildHouseJobAccountRoster,
   contactRoleOf,
   countHouseRoster,
@@ -8,6 +9,7 @@ import {
   jobAccountRepOf,
   jobAccountsForJob,
   openedViaPhrase,
+  repsByHouse,
   type JobSupplyHouseAccountRow,
 } from './jobSupplyHouseAccounts'
 
@@ -138,5 +140,27 @@ describe('jobAccountsForJob', () => {
   it('reads not_needed as its own state', () => {
     const views = jobAccountsForJob('j1', houses, [account({ job_id: 'j1', supply_house_id: 'ferguson', status: 'not_needed' })])
     expect(views[0]?.state).toBe('not_needed')
+  })
+})
+
+describe('accountsByPair and repsByHouse', () => {
+  const account = (job_id: string, supply_house_id: string): JobSupplyHouseAccountRow => ({ id: `${job_id}-${supply_house_id}`, job_id, supply_house_id, status: 'open', account_ref: '', opened_via: null, rep_contact_id: null, requested_by: null, requested_at: null, requested_from_counter: false, opened_by: null, opened_at: null, note: '' })
+
+  it('a pair with no row is null (checked, none on record), and a pair never asked about is absent', () => {
+    const accounts = accountsByPair([{ jobId: 'j1', houseId: 'h1' }, { jobId: 'j2', houseId: 'h1' }], [account('j1', 'h1')])
+    expect(accounts['j1:h1']?.id).toBe('j1-h1')
+    expect(accounts['j2:h1']).toBeNull()
+    expect('j3:h1' in accounts).toBe(false)
+  })
+
+  it('keeps a row the read returned for a job and a house that were not asked as a pair', () => {
+    expect(accountsByPair([{ jobId: 'j1', houseId: 'h1' }], [account('j1', 'h2')])['j1:h2']?.id).toBe('j1-h2')
+  })
+
+  it('lists each house\'s reps in the order they were read', () => {
+    const reps = repsByHouse([{ id: 'r1', supply_house_id: 'h1' }, { id: 'r2', supply_house_id: 'h2' }, { id: 'r3', supply_house_id: 'h1' }])
+    expect(reps.h1?.map((r) => r.id)).toEqual(['r1', 'r3'])
+    expect(reps.h2?.map((r) => r.id)).toEqual(['r2'])
+    expect(reps.h3).toBeUndefined()
   })
 })

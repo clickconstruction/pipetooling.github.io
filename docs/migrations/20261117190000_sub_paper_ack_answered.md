@@ -28,3 +28,5 @@ Starts with `SET lock_timeout = '3s';`. No new table, so no fence calls. Idempot
 
 - A read of `sub_paper_acks` that names `answered_at, answered_by_name` answers.
 - `select proname from pg_proc where proname = 'answer_sub_paper_ack'` returns one row.
+
+**Applied** to prod on 2026-11-17 by `supabase db push --include-all` from a checkout at `origin/main` (c244a15e93, after the merge of #8550). The dry run named this one file. `check:migration-drift` reads 1,352 versions on both sides. A read naming `answered_at` and `answered_by_name` answers. The function was called once on prod, from Jobs → Subs → Pay on a ZZ TEST note: the note read as answered with the name and the day, and its flag went away. The types follow in #8567.

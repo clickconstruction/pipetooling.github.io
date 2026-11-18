@@ -47,13 +47,23 @@ A new name applies to every job's folder the next time the sweep looks at it. Th
 
 ## Choose when the folders are made
 
-The third card draws the tree inside a job's folder. The five names inside stay fixed, because the photo and plan sweeps file by them.
+The third card draws the tree inside a job's folder. The five names inside stay fixed, because the photo and plan sweeps file by them. **Contracts** is a sixth folder, inside Team only. The app makes it the first time it files a signed contract on the job.
 
 The job's folder sits under its customer's folder. The customer's folder is named by the customer. A job with no customer yet sits under **No customer yet** and moves when you set one.
 
 Under the tree, pick one. **Make all of it when the job is made** makes every folder at once. **Make each folder when something first lands in it** makes the job's folder alone. Customer Pictures is made the first time a photo lands, and the photo files there. The choice saves when you press it.
 
 A bid's folder is named by the bid pattern the same way. A bid that already has a folder keeps it.
+
+## See where the signed contracts are
+
+The **Signed contracts** card sits after the tree. The app files each signed job contract in its job's folder, under **Team only**, in **Contracts**. It does this by itself every ten minutes.
+
+The card counts the signed contracts. It says how many are in Drive, how many are waiting and how many are held. Press {{button:blue|File 2 signed contracts}} to file the waiting ones now. The button names its own count. It is grey when nothing is waiting.
+
+A held contract is listed under the button with its reason. Press **Open the job** beside it. The Contract window on that job has the press that fixes it. One held contract never stops the rest.
+
+Everyone on the jobs shared drive can open a filed contract. The office and estimators can also find it with Find a file. See [get a job contract signed](/help/get-a-job-contract-signed).
 
 ## Let the sweep keep the tree
 

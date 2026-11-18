@@ -78,6 +78,7 @@
     "test:pg:gc-portal-p5b": "bash scripts/pgtest-gc-portal-p5b.sh",
     "test:pg:gc-customer-contacts": "bash scripts/pgtest-gc-customer-contacts.sh",
     "test:pg:quick-replies": "bash scripts/pgtest-quick-replies.sh",
+    "test:pg:tell-the-dev": "bash scripts/pgtest-tell-the-dev.sh",
     "test:pg:quick-replies-phone-tech": "bash scripts/pgtest-quick-replies-phone-tech.sh",
     "test:pg:quick-replies-shortcut": "bash scripts/pgtest-quick-replies-shortcut.sh",
     "test:pg:quick-replies-starter": "bash scripts/pgtest-quick-replies-starter.sh",

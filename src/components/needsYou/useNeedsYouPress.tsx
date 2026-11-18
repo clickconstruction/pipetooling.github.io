@@ -14,6 +14,7 @@ import { DashboardLienWaiversToSignModal } from '../dashboard/DashboardLienWaive
 import { DashboardArDepositsModal } from '../dashboard/DashboardArDepositsModal'
 
 // Today's sends (v2.5595): the window behind the Needs you line, loaded when it opens so the hosts' chunks stay as they were.
+const JobPapersWaitingWindow = lazy(() => import('../jobs/JobPapersWaitingWindow').then((m) => ({ default: m.JobPapersWaitingWindow })))
 const TaggedJobNotesWindow = lazy(() => import('../dashboard/TaggedJobNotesWindow').then((m) => ({ default: m.TaggedJobNotesWindow })))
 const TodaysSendsWindow = lazy(() => import('../dashboard/TodaysSendsWindow').then((m) => ({ default: m.TodaysSendsWindow })))
 // The statement round (v2.6096, punch list #178): GC Review over the card, loaded when it opens for the same reason.
@@ -119,6 +120,11 @@ export function useNeedsYouPress({
       {open?.window === 'todays-sends' ? (
         <Suspense fallback={null}>
           <TodaysSendsWindow onClose={close} onChanged={() => handles.reloadTodaysSends()} />
+        </Suspense>
+      ) : null}
+      {open?.window === 'job-papers' ? (
+        <Suspense fallback={null}>
+          <JobPapersWaitingWindow onClose={close} />
         </Suspense>
       ) : null}
       {open?.window === 'tagged-notes' ? (

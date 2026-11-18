@@ -10,6 +10,7 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { JOB_CONTRACT_BUCKET, paperUploadPath } from './jobContractFileWrite'
+import { fileContractInDriveQuietly } from './jobContractDriveQuiet'
 import type { JobContractRow } from './jobContractLifecycle'
 import { THEIR_PAPER_KIND, theirPaperColumnsFromDraft, type TheirPaperColumns, type TheirPaperDraft } from './theirPaper'
 
@@ -61,5 +62,7 @@ export async function saveTheirPaper(input: {
     metadata: { their_paper: true, relied_on: cols.relied_on_on, terms: cols.key_terms.length, file: !!input.file },
     actor_user_id: input.authUserId,
   })
+  // Punch list #377: a GC's own paper is filed in the job's Drive folder as any signed paper is. Never awaited.
+  fileContractInDriveQuietly(row.id)
   return { row, uploadError }
 }

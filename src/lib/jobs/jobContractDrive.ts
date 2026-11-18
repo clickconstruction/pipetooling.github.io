@@ -22,6 +22,10 @@ export function fileContractsOutcome(done: number, failed: number): BatchOutcome
 
 /** The card's good empty state: nothing waits and nothing is held. */
 export const CONTRACTS_ALL_FILED_WORDS = 'Nothing waiting on Drive. Every signed contract is filed.'
+/** The same before the first contract is signed. */
+export const CONTRACTS_NONE_SIGNED_WORDS = 'Nothing waiting on Drive. A signed contract is filed here by itself.'
+/** The tree card's line for the sixth folder. */
+export const CONTRACTS_FOLDER_WORDS = 'Contracts is made inside Team only the first time a signed contract is filed.'
 /** The card's two lines: where a paper goes, and who can open it there. */
 export const CONTRACTS_CARD_WORDS = {
   title: 'Signed contracts',

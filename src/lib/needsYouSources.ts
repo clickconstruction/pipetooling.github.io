@@ -87,6 +87,8 @@ export type NeedsYouSource =
   | 'mailSaved'
   // Tagged job notes (punch list #363): the job notes that tagged the viewer, whoever they are.
   | 'taggedNotes'
+  // Papers before a job opens: the jobs that wait on the viewer's signature, whoever they are.
+  | 'jobPapers'
 
 export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'tally',
@@ -146,6 +148,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'todaysSends',
   'mailSaved',
   'taggedNotes',
+  'jobPapers',
 ]
 
 /** The office set: the owner, the assistant and the controller. Most company lines are theirs. */
@@ -239,6 +242,9 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'taggedNotes':
       // Tagged job notes (punch list #363): every role the list of names can hold; a sub and an estimator are never tagged.
       return canTagInJobNotes(role)
+    case 'jobPapers':
+      // Papers before a job opens: everyone signs, the office too, so the line is anyone's who owes a paper.
+      return role != null
     case 'mailSaved':
       // The owner is told (v2.7068): whoever's mail it was, a field role too; each person reads only their own notices.
       return role != null

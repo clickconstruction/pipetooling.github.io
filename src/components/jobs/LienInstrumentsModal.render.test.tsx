@@ -279,7 +279,8 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     // pressed (a flake on a loaded CI runner, 2026-10-27). Let the reads settle, then press the door that is there now.
     await settle()
     const door = document.querySelector('[data-lien-timeline-last-work-door]') as HTMLButtonElement
-    expect(door.textContent).toBe('change ›')
+    // The job has no clock hours, so its month is a stand-in: the press reads set the day › since v2.7684 (change › over hours or a hand day).
+    expect(door.textContent).toBe('set the day ›')
     expect(document.querySelector('[data-lien-window-last-work]')).toBeNull()
     fireEvent.click(door)
     expect(await screen.findByTestId('lien-last-work-editor')).toBeTruthy()

@@ -434,8 +434,8 @@ export function taskDryRun(p: TaskPayload, world: TaskWorld, me: { userId: strin
       ...(tell ? [`${tell.name} is told when it is done.`] : []),
       ...(draft.notifyCreatorOnComplete ? ['You are told when it is done.'] : []),
     ],
-    does_not: ['put a photo of the spot on the task', 'tie the task to a job (the window\'s job bar)', 'put a painted map on the task'],
-    after: 'plan_task_place moves or takes off the place of a task already given.',
+    does_not: ['tie the task to a job (the window\'s job bar)', 'put a painted map on the task'],
+    after: 'plan_task_photo puts the giver\'s photo of the spot on the task once it is given; plan_task_place moves or takes off its place.',
     ...(place ? { stamped_at_apply: ['place_set_at'] } : {}),
     ...(clash.length ? { already_given: clash.map((a) => ({ id: a.id, given_at: a.created_at })) } : {}),
   }
@@ -464,7 +464,7 @@ export function taskAppliedWords(a: { id: string; reads: string; steps: TaskStep
       ? { not_landed: `The task was given, but ${failed.map((s) => `${s.step} did not land (${s.why ?? 'no reason given'})`).join('; ')}. Open it in Checklist → Manage → Edit to put that right; giving it again would make a second task.` }
       : {}),
     shows: 'On each person\'s Checklist → Today on its day, and in Checklist → Manage for you.',
-    next: `get_task with task: "${a.id}" reads it back whole.`,
+    next: `get_task with task: "${a.id}" reads it back whole. plan_task_photo with task: "${a.id}" puts a photo of the spot on it.`,
   }
 }
 

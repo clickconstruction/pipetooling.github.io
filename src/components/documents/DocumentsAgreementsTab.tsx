@@ -1,0 +1,398 @@
+import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
+import { useToastContext } from '../../contexts/ToastContext'
+import {
+  AGREEMENTS_EMPTY_PAGE,
+  AGREEMENTS_PAGE,
+  AGREEMENT_GROUP_COLORS,
+  AGREEMENT_KIND_CHIPS,
+  AGREEMENT_STATE_CHIPS,
+  AGREEMENT_STATE_COLORS,
+  agreementCountWords,
+  agreementDayWords,
+  agreementDoor,
+  agreementFindWords,
+  agreementJobTail,
+  agreementJobTitle,
+  agreementMonthGroups,
+  agreementName,
+  agreementStateChip,
+  agreementTag,
+  agreementsEmptyWords,
+  agreementsNarrowed,
+  waitingChipLabel,
+  type AgreementRow,
+  type KindPick,
+  type StatePick,
+} from '../../lib/documents/agreementsLedger'
+import { countAgreementsWaiting, readAgreements } from '../../lib/documents/agreementsLedgerIo'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import { emptyWordsWithPress } from '../../lib/emptyWords'
+import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { loadJobContractRows } from '../../lib/jobs/jobLienPaperIo'
+import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import type { JobWithDetails } from '../../types/jobWithDetails'
+import OfflineRetryPanel from '../OfflineRetryPanel'
+import { EmptyState } from '../EmptyState'
+import JobContractModal from '../jobs/JobContractModal'
+import { buildJobContractRecordHtml } from '../jobs/JobContractRecordModal'
+import { documentsLinkButton, documentsQuietButton } from '../jobs/jobDocumentsStyles'
+
+/**
+ * Documents → Agreements (punch list #376): every agreement the app makes, sends, signs or stores, one list, newest
+ * first. A job's contract, a warranty, a GC's own paper, a signed paper the office filed, a staff, sub or partner
+ * agreement and a sub work order each keep their own window; this tab lists them side by side, a line each: its kind,
+ * its name, who it is with and the job, where it stands in that kind's own words, and its day. A chip picks a kind or a
+ * state, the box finds by customer, job number, person or paper, and a press opens the window that kind already has.
+ * The read is the `agreements_on_file` view, where each table's own row security decides what the reader sees; a read
+ * that fails says so with Retry and never reads as an empty ledger. The rules are `lib/documents/agreementsLedger.ts`.
+ *
+ * With `embedSearch` (the Search tab) the box is the page's own: the tab draws no box, asks for the words it is handed,
+ * and stays quiet until there are two letters.
+ */
+
+const WorkOrderAssemblerModal = lazy(() => import('../jobs/WorkOrderAssemblerModal').then((m) => ({ default: m.WorkOrderAssemblerModal })))
+const PersonContractSignedRecordModal = lazy(() => import('../contracts/PersonContractSignedRecordModal').then((m) => ({ default: m.PersonContractSignedRecordModal })))
+
+const band: CSSProperties = {
+  position: 'sticky',
+  top: 0,
+  zIndex: 1,
+  margin: '0.5rem 0 0',
+  padding: '0.4rem 0.6rem',
+  borderRadius: 6,
+  background: 'var(--bg-subtle)',
+  borderLeft: '3px solid var(--text-blue-700)',
+  color: 'var(--text-strong)',
+  fontSize: '0.875rem',
+  fontWeight: 800,
+}
+const bandCount: CSSProperties = { marginLeft: '0.5rem', color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.8125rem' }
+const line: CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '0.25rem 0.9rem',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  padding: '0.55rem 0.6rem',
+  borderBottom: '1px solid var(--border)',
+  background: 'var(--surface)',
+}
+const lineLeft: CSSProperties = { minWidth: 0, flex: '1 1 20rem' }
+const lineRight: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }
+const tag: CSSProperties = { display: 'inline-block', verticalAlign: 'text-bottom', marginRight: '0.45rem', padding: '0.08rem 0.45rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, whiteSpace: 'nowrap' }
+const subLine: CSSProperties = { display: 'block', color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: '0.1rem', overflowWrap: 'anywhere' }
+const jobLink: CSSProperties = { fontWeight: 600, color: 'var(--text-green-700)', textDecoration: 'none' }
+const stateChip: CSSProperties = { padding: '0.08rem 0.5rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, whiteSpace: 'nowrap' }
+const day: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', whiteSpace: 'nowrap' }
+const quiet: CSSProperties = { margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }
+const doorLink: CSSProperties = { color: 'var(--text-link)', fontWeight: 600 }
+const nameText: CSSProperties = { fontWeight: 600, color: 'var(--text-strong)' }
+
+function pickChipStyle(pressed: boolean): CSSProperties {
+  const base: CSSProperties = { ...documentsQuietButton, borderRadius: 999, fontWeight: pressed ? 700 : 500 }
+  return pressed ? { ...base, background: 'var(--bg-blue-tint)', border: '1px solid #3b82f6', color: 'var(--text-blue-700)' } : base
+}
+
+export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { embedSearch?: string; onClearEmbedSearch?: () => void } = {}) {
+  const embedded = embedSearch !== undefined
+  const { user } = useAuth()
+  const { showToast } = useToastContext()
+  const [kind, setKind] = useState<KindPick>('all')
+  const [state, setState] = useState<StatePick>('live')
+  const [typed, setTyped] = useState('')
+  const [asked, setAsked] = useState('')
+  const [limit, setLimit] = useState(AGREEMENTS_PAGE)
+  const [rows, setRows] = useState<AgreementRow[] | null>(null)
+  const [more, setMore] = useState(false)
+  const [waiting, setWaiting] = useState<number | null>(null)
+  const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
+  const [reading, setReading] = useState(false)
+  const [tries, setTries] = useState(0)
+  const [contractWindow, setContractWindow] = useState<{ job: JobWithDetails; recordId: string } | null>(null)
+  const [signedDocId, setSignedDocId] = useState<string | null>(null)
+  const [workOrder, setWorkOrder] = useState<{ job: JobWithDetails; commitmentId: string } | null>(null)
+
+  // What was typed is asked for once the typing rests, so each key is not a read. The Search tab hands its own words.
+  useEffect(() => {
+    if (embedded) {
+      setAsked(embedSearch ?? '')
+      return
+    }
+    const t = window.setTimeout(() => setAsked(typed), 300)
+    return () => window.clearTimeout(t)
+  }, [typed, embedded, embedSearch])
+
+  const findWords = useMemo(() => agreementFindWords(asked), [asked])
+  // Under the Search tab nothing is asked until there are two letters to ask for.
+  const quietEmbed = embedded && findWords.length === 0
+
+  useEffect(() => {
+    if (quietEmbed) {
+      setRows(null)
+      setFailure(null)
+      return
+    }
+    let cancelled = false
+    setReading(true)
+    void readAgreements({ kind, state, typed: asked, limit })
+      .then((read) => {
+        if (cancelled) return
+        setRows(read.rows)
+        setMore(read.more)
+        setFailure(null)
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return
+        setFailure(recoveryFailureFromError(e, 'The agreements did not read.'))
+      })
+      .finally(() => {
+        if (!cancelled) setReading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [kind, state, asked, limit, tries, quietEmbed])
+
+  // The count on Waiting on a signature, under the kind picked; a count that cannot be read leaves the chip's words alone.
+  useEffect(() => {
+    if (quietEmbed) return
+    let cancelled = false
+    void countAgreementsWaiting(kind).then((n) => {
+      if (!cancelled) setWaiting(n)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [kind, tries, quietEmbed])
+
+  const retry = useCallback(() => setTries((n) => n + 1), [])
+
+  // The Contract window says when a contract changed; the list reads again so its line follows.
+  useEffect(() => {
+    window.addEventListener('job-contract-changed', retry)
+    return () => window.removeEventListener('job-contract-changed', retry)
+  }, [retry])
+
+  const today = todayYmdInAppTz()
+  const groups = useMemo(() => agreementMonthGroups(rows ?? []), [rows])
+  const query = { kind, state, typed: asked }
+  const narrowed = agreementsNarrowed(query)
+  const clear = () => {
+    setTyped('')
+    setKind('all')
+    setState('live')
+    setLimit(AGREEMENTS_PAGE)
+    if (embedded) onClearEmbedSearch?.()
+  }
+
+  const open = async (row: AgreementRow) => {
+    const door = agreementDoor(row)
+    if (door.kind === 'person-signed') {
+      setSignedDocId(door.documentId)
+      return
+    }
+    if (door.kind === 'contract' && !door.signed) {
+      // An unsigned contract opens as the same preview its line on the Jobs tab opens. The window opens inside the
+      // press, so a popup blocker allows it, and takes the page once the job and the contract are read.
+      const ok = await openHtmlWindowWhenReady(async () => {
+        const [job, contracts] = await Promise.all([fetchJobWithDetailsById(door.jobId), loadJobContractRows(door.jobId)])
+        const contract = contracts.find((c) => c.id === door.recordId)
+        if (!job || !contract) throw new Error('not read')
+        return buildJobContractRecordHtml(contract, job, null)
+      })
+      if (!ok) showToast('The contract did not open. Allow popups for this page, then press it again.', 'error')
+      return
+    }
+    if (door.kind === 'contract' || door.kind === 'work-order') {
+      const job = await fetchJobWithDetailsById(door.jobId)
+      if (!job) {
+        showToast(door.kind === 'contract' ? 'Could not load the job for this contract' : 'Could not load the job for this work order', 'error')
+        return
+      }
+      if (door.kind === 'contract') setContractWindow({ job, recordId: door.recordId })
+      else setWorkOrder({ job, commitmentId: door.commitmentId })
+    }
+  }
+
+  const empty = agreementsEmptyWords(query)
+
+  return (
+    <section aria-label="Agreements" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+      {!embedded ? (
+        <input
+          type="search"
+          value={typed}
+          onChange={(ev) => {
+            setTyped(ev.target.value)
+            setLimit(AGREEMENTS_PAGE)
+          }}
+          placeholder="Find an agreement: a customer, a job number, a person, a paper"
+          aria-label="Find an agreement"
+          style={{ width: '100%', padding: '0.5rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', boxSizing: 'border-box' }}
+        />
+      ) : null}
+      {quietEmbed ? (
+        <p style={quiet} data-testid="documents-agreements-embed-hint">
+          Results appear when you type a search above.
+        </p>
+      ) : (
+        <>
+          <div role="group" aria-label="Kind of agreement" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+            {AGREEMENT_KIND_CHIPS.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                aria-pressed={kind === c.key}
+                onClick={() => {
+                  setKind(c.key)
+                  setLimit(AGREEMENTS_PAGE)
+                }}
+                style={pickChipStyle(kind === c.key)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <div role="group" aria-label="State" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+            {AGREEMENT_STATE_CHIPS.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                aria-pressed={state === c.key}
+                onClick={() => {
+                  setState(c.key)
+                  setLimit(AGREEMENTS_PAGE)
+                }}
+                style={pickChipStyle(state === c.key)}
+              >
+                {c.key === 'waiting' ? waitingChipLabel(c.label, waiting) : c.label}
+              </button>
+            ))}
+          </div>
+          {failure ? <OfflineRetryPanel failure={failure} onRetry={retry} surface="documents-agreements" idempotent busy={reading} /> : null}
+          {rows == null && !failure ? (
+            <p style={quiet}>Loading…</p>
+          ) : rows != null && rows.length === 0 ? (
+            <div data-testid="documents-agreements-empty">
+              <EmptyState {...emptyWordsWithPress(empty, narrowed ? { onPress: clear } : { to: AGREEMENTS_EMPTY_PAGE.to })} />
+            </div>
+          ) : rows != null ? (
+            <>
+              <p style={quiet} data-testid="documents-agreements-count">
+                {more ? `The newest ${agreementCountWords(rows.length)}` : agreementCountWords(rows.length)}
+              </p>
+              {groups.map((g) => (
+                <Fragment key={g.ym || 'no-date'}>
+                  <h3 style={band} data-testid="documents-agreements-month">
+                    {g.label}
+                    <span style={bandCount}>{agreementCountWords(g.rows.length)}</span>
+                  </h3>
+                  <div>
+                    {g.rows.map((row) => {
+                      const t = agreementTag(row)
+                      const colors = AGREEMENT_GROUP_COLORS[t.group]
+                      const name = agreementName(row)
+                      const door = agreementDoor(row)
+                      const chip = agreementStateChip(row, today)
+                      const chipColors = AGREEMENT_STATE_COLORS[chip.tone]
+                      const jobTitle = agreementJobTitle(row)
+                      const tail = agreementJobTail(row)
+                      const dayWords = agreementDayWords(row, today)
+                      return (
+                        <div key={row.id} style={line} data-testid="documents-agreements-row">
+                          <div style={lineLeft}>
+                            <span style={{ ...tag, background: colors.background, color: colors.color }}>{t.words}</span>
+                            {door.kind === 'people-contracts' ? (
+                              <Link to={door.to} style={{ ...documentsLinkButton, display: 'inline' }}>
+                                {name}
+                              </Link>
+                            ) : door.kind === 'none' ? (
+                              <span style={nameText}>{name}</span>
+                            ) : (
+                              <button type="button" style={documentsLinkButton} onClick={() => void open(row)}>
+                                {name}
+                              </button>
+                            )}
+                            <span style={subLine}>
+                              With <strong style={{ color: 'var(--text-700)', fontWeight: 600 }}>{row.with_name || 'no name on file'}</strong>
+                              {jobTitle ? (
+                                <>
+                                  {' · '}
+                                  {row.job_id ? (
+                                    <Link to={`/jobs?edit=${row.job_id}`} style={jobLink}>
+                                      {jobTitle}
+                                    </Link>
+                                  ) : (
+                                    jobTitle
+                                  )}
+                                </>
+                              ) : null}
+                              {jobTitle && tail ? ` · ${tail}` : null}
+                            </span>
+                          </div>
+                          <div style={lineRight}>
+                            <span style={{ ...stateChip, background: chipColors.background, color: chipColors.color }}>{chip.words}</span>
+                            {dayWords ? <span style={day}>{dayWords}</span> : null}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </Fragment>
+              ))}
+              {more ? (
+                <div>
+                  <button type="button" style={documentsQuietButton} onClick={() => setLimit((n) => n + AGREEMENTS_PAGE)}>
+                    Show more
+                  </button>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+          {!embedded ? (
+            <p style={quiet} data-testid="documents-agreements-doors">
+              A job with no contract is in the Contract sweep, under Tools on the{' '}
+              <Link to={AGREEMENTS_EMPTY_PAGE.to} style={doorLink}>
+                Pipeline
+              </Link>
+              . An accepted estimate is on the{' '}
+              <Link to="/documents?tab=estimates" style={doorLink}>
+                Estimates
+              </Link>{' '}
+              tab.
+            </p>
+          ) : null}
+        </>
+      )}
+      <JobContractModal
+        open={contractWindow != null}
+        onClose={() => setContractWindow(null)}
+        job={contractWindow?.job ?? null}
+        initialRecordId={contractWindow?.recordId ?? null}
+        onChanged={retry}
+      />
+      {signedDocId != null ? (
+        <Suspense fallback={null}>
+          <PersonContractSignedRecordModal open onClose={() => setSignedDocId(null)} documentId={signedDocId} />
+        </Suspense>
+      ) : null}
+      {workOrder != null ? (
+        <Suspense fallback={null}>
+          <WorkOrderAssemblerModal
+            open
+            onClose={() => setWorkOrder(null)}
+            jobs={[workOrder.job]}
+            initial={{ commitmentId: workOrder.commitmentId, jobId: workOrder.job.id }}
+            authUserId={user?.id}
+            onChanged={retry}
+          />
+        </Suspense>
+      ) : null}
+    </section>
+  )
+}
+
+export default DocumentsAgreementsTab

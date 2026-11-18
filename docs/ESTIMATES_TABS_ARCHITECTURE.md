@@ -8,12 +8,12 @@ covers:
   - src/pages/Estimates.tsx
   - src/hooks/useEstimateDetailData.ts
   - src/components/estimates/EstimatesListPage.tsx
-mapped_at: b32a7beb25
+mapped_at: e21d65161b
 audience: Developers, AI Agents
 last_updated: 2026-11-17
 ---
 
-> **Line numbers are exact as of `b32a7beb25`** (from the `npm run map -- src/pages/Estimates.tsx` fact sheet) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map` before trusting a range.
+> **Line numbers are exact as of `e21d65161b`** (from the `npm run map -- src/pages/Estimates.tsx` fact sheet) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map` before trusting a range.
 
 ## What this surface is
 
@@ -49,7 +49,7 @@ export default function Estimates() {
 
 ### How to read a dossier
 
-Each lists: the file and its anchor (as of `b32a7beb25`), what it **owns**, what it is **handed**, its supabase surface, its tests, and what a change there must keep.
+Each lists: the file and its anchor (as of `e21d65161b`), what it **owns**, what it is **handed**, its supabase surface, its tests, and what a change there must keep.
 
 ---
 

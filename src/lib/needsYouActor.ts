@@ -30,6 +30,8 @@ export const NEEDS_YOU_ITEM_ACTOR: Record<NeedsYouItem['key'], NeedsYouActor> = 
   'mail-saved': 'anyone',
   // Tagged job notes (punch list #363): the viewer's own tags; nobody else's line.
   'tagged-notes': 'anyone',
+  // Papers before a job opens: the viewer's own signature, whoever they are.
+  'job-papers': 'anyone',
   // The review ask (v2.5946): whoever reads it calls; the owner may want the call himself.
   'rating-low': 'anyone',
   'gc-review-weekly': 'assistant',

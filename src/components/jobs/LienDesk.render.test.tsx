@@ -5218,3 +5218,97 @@ describe('LienDesk · a notice whose stored paper and bills have parted (v2.7520
     expect(redrawNoticeMock).not.toHaveBeenCalled()
   })
 })
+
+describe('LienDesk — the last day of work, set from under the timeline’s LAST WORK stop (v2.7684)', () => {
+  // A job with no clock hours: its months stand in from the job's creation, as the owner's screen read on 2026-11-17.
+  const STAND_IN = [row('j650', '2026-07', '2026-10-15', { month_source: 'job_created' }), row('j650', '2026-08', '2026-11-16', { month_source: 'job_created' })]
+  const standInData = (job: Record<string, unknown> = {}) => {
+    const d = data(STAND_IN, [], true)
+    d.jobsById.j650 = { ...d.jobsById.j650!, created_at: '2026-08-03T15:00:00Z', ...job } as LienDeskData['jobsById'][string]
+    return d
+  }
+
+  it('the office presses set the day › under the stop, the window that sets the day opens in place, and the strip takes the new day', async () => {
+    const onCalendarChanged = vi.fn()
+    const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={standInData()} initialKind="notice" initialJobId="j650" onCalendarChanged={onCalendarChanged} />)
+    await settle()
+    const stop = () => document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-step="last_work"]') as HTMLElement
+    await waitFor(() => expect(stop()).toBeTruthy())
+    expect(stop().textContent).toContain('Aug 2026')
+    expect(stop().textContent).toContain('dated from the job’s creation · no clock hours')
+    const door = stop().querySelector('[data-lien-timeline-last-work-door]') as HTMLButtonElement
+    expect(door.textContent).toBe('set the day ›')
+    expect(screen.queryByTestId('lien-last-work-confirm')).toBeNull()
+    fireEvent.click(door)
+    // The same window the months' Change › line saves through. A stand-in is no day anyone said, so the window opens empty and asks for one, the day field in hand.
+    const win = screen.getByTestId('lien-last-work-confirm')
+    expect(win.textContent).toContain('650 · AXO Schertz')
+    expect(win.getAttribute('data-verdict')).toBe('refused')
+    expect(screen.getByTestId('lien-last-work-shift').textContent).toBe('Type a day.')
+    expect(document.activeElement).toBe(within(win).getByLabelText('Last day of work'))
+    expect((screen.getByTestId('lien-last-work-confirm-set') as HTMLButtonElement).disabled).toBe(true)
+    // The line's own editor stayed shut: the press opened the window, not the line a screen below.
+    expect(screen.queryByTestId('lien-last-work-editor')).toBeNull()
+    const day = within(win).getByLabelText('Last day of work')
+    fireEvent.change(day, { target: { value: '2026-07-24' } })
+    fireEvent.blur(day)
+    expect(screen.getByTestId('lien-last-work-confirm').getAttribute('data-verdict')).not.toBe('refused')
+    // The reason is asked, as everywhere the day is set: no reason, no save.
+    expect((screen.getByTestId('lien-last-work-confirm-set') as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Why the last day is set by hand'), { target: { value: 'The crew’s last trip, by the daily log' } })
+    fireEvent.click(screen.getByTestId('lien-last-work-confirm-set'))
+    await waitFor(() => expect(onCalendarChanged).toHaveBeenCalledWith('last_work'))
+    await waitFor(() => expect(screen.queryByTestId('lien-last-work-confirm')).toBeNull())
+    // The page re-reads: the job carries the hand day and its month is the month of that day.
+    view.rerender(<LienDesk {...baseProps} authRole="assistant" data={(() => { const d = data([row('j650', '2026-07', '2026-10-15', { month_source: 'hand' })], [], true); d.jobsById.j650 = { ...d.jobsById.j650!, created_at: '2026-08-03T15:00:00Z', lien_last_work_on: '2026-07-24' } as LienDeskData['jobsById'][string]; return d })()} initialKind="notice" initialJobId="j650" onCalendarChanged={onCalendarChanged} />)
+    await settle()
+    await waitFor(() => expect(stop().textContent).toContain('Jul 2026'))
+    expect(stop().textContent).toContain('last day set by hand')
+    expect(stop().querySelector('[data-lien-timeline-last-work-door]')?.textContent).toBe('change ›')
+    expect(screen.getByTestId('lien-last-work-day').textContent).toBe('Jul 24')
+  })
+
+  it('closing the window writes nothing, and a person who cannot change the day sees the stop’s words and no press', async () => {
+    const onCalendarChanged = vi.fn()
+    const view = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={standInData()} initialKind="notice" initialJobId="j650" onCalendarChanged={onCalendarChanged} />)
+    await settle()
+    await waitFor(() => expect(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-last-work-door]')).toBeTruthy())
+    fireEvent.click(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-last-work-door]') as HTMLButtonElement)
+    fireEvent.click(within(screen.getByTestId('lien-last-work-confirm')).getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByTestId('lien-last-work-confirm')).toBeNull()
+    expect(onCalendarChanged).not.toHaveBeenCalled()
+    view.unmount()
+    renderWithProviders(<LienDesk {...baseProps} authRole="estimator" data={standInData()} initialKind="notice" initialJobId="j650" />)
+    await settle()
+    await waitFor(() => expect(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-step="last_work"]')).toBeTruthy())
+    expect(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-step="last_work"]')?.textContent).toContain('dated from the job’s creation')
+    expect(document.querySelector('[data-lien-timeline-last-work-door]')).toBeNull()
+  })
+
+  it('the affidavit pane’s strip carries the press too, and a save re-reads the lien clocks', async () => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-08', deadline: '2026-11-16', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: 'non_residential', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null }
+    const d = data([], [], true)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    d.jobsById.j650 = { ...d.jobsById.j650!, last_work_date: '2026-08-20' } as LienDeskData['jobsById'][string]
+    const onCalendarChanged = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} authRole="controller" data={d} initialKind="affidavit" onCalendarChanged={onCalendarChanged} />)
+    await settle()
+    await waitFor(() => expect(document.querySelector('[data-lien-affidavit-pane] [data-lien-timeline-last-work-door]')).toBeTruthy())
+    const door = document.querySelector('[data-lien-affidavit-pane] [data-lien-timeline-last-work-door]') as HTMLButtonElement
+    // Clock hours behind the month: the day is there to change.
+    expect(door.textContent).toBe('change ›')
+    fireEvent.click(door)
+    const win = screen.getByTestId('lien-last-work-confirm')
+    expect(win.textContent).toContain('650 · AXO Schertz')
+    const day = within(win).getByLabelText('Last day of work')
+    // Over clock hours the window opens on the day the job reads.
+    expect((day as HTMLInputElement).value).toBe('2026-08-20')
+    fireEvent.change(day, { target: { value: '2026-09-02' } })
+    fireEvent.blur(day)
+    fireEvent.change(screen.getByLabelText('Why the last day is set by hand'), { target: { value: 'Final walk with the superintendent' } })
+    fireEvent.click(screen.getByTestId('lien-last-work-confirm-set'))
+    await waitFor(() => expect(onCalendarChanged).toHaveBeenCalledWith('last_work'))
+    await waitFor(() => expect(screen.queryByTestId('lien-last-work-confirm')).toBeNull())
+  })
+})
