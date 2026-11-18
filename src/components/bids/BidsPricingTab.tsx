@@ -26,6 +26,7 @@ import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
 import { pricingLockChipText, pricingLockState, pricingLockedMessage, readRevisedBids, writeRevisedBid } from '../../lib/bids/pricingLock'
 import { quoteToShow, sentTagWords } from '../../lib/bids/lockedQuote'
 import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
+import { rekeyClonedPricingToVersion as rekeyClonedPricing } from '../../lib/bids/rekeyClonedPricing'
 import { sumByAlternate } from '../../lib/bids/alternateScope'
 import { sameSolveScope, scopeWorkbenchRows, solveScopeLabel, type WorkbenchSolveScope } from '../../lib/bids/workbenchSolveScope'
 import { alternateScopeKey, isAlternateRow } from '../../lib/bids/countSheet'
@@ -1743,12 +1744,9 @@ export function BidsPricingTab({
   }
 
   /**
-   * Re-key a just-cloned pricing's count-row children (custom prices, assignments,
-   * submission hides) from the SOURCE version's rows onto the TARGET version's rows,
-   * matched by fixture name (v2.2405). Without this the clone points at rows the
-   * target packet's grid never shows and the copy lands as "No prices yet" (Wendi's
-   * BP384). Children whose row has no unique same-named counterpart are deleted —
-   * a price for a row this packet doesn't carry belongs to nobody.
+   * Re-key a just-cloned pricing's count-row children (custom prices, assignments, submission hides)
+   * from the SOURCE version's rows onto the TARGET version's rows, matched by fixture name (v2.2405).
+   * The reads, the plan and the writes are `lib/bids/rekeyClonedPricing.ts`; a failure is said here.
    */
   async function rekeyClonedPricingToVersion(
     bidId: string,
@@ -1756,63 +1754,12 @@ export function BidsPricingTab({
     sourceBidVersionId: string,
     targetBidVersionId: string,
   ): Promise<{ matched: number; dropped: number } | null> {
-    const loadRows = async (versionId: string) => {
-      const { data, error: err } = await supabase
-        .from('bids_count_rows')
-        .select('id, fixture, group_tag')
-        .eq('bid_id', bidId)
-        .eq('bid_version_id', versionId)
-      if (err) {
-        setError(err.message)
-        return null
-      }
-      return (data ?? []) as Array<{ id: string; fixture: string | null; group_tag: string | null }>
+    const res = await rekeyClonedPricing(supabase, { bidId, pricingId, sourceBidVersionId, targetBidVersionId, alternateGroupTags: selectedBidForPricing?.alternate_group_tags ?? [] })
+    if (!res.ok) {
+      setError(res.error)
+      return null
     }
-    const sourceRows = await loadRows(sourceBidVersionId)
-    const targetRows = await loadRows(targetBidVersionId)
-    if (!sourceRows || !targetRows) return null
-    // v2.4194: a fixture that sits in the base and in an alternate pairs within its scope.
-    const scopeTags = selectedBidForPricing?.alternate_group_tags ?? []
-    const rowMap = mapCountRowsByFixture(sourceRows, targetRows, (r) => alternateScopeKey({ group_tag: r.group_tag ?? null }, scopeTags))
-    let matched = 0
-    let dropped = 0
-    for (const table of ['bid_count_row_custom_prices', 'bid_pricing_assignments', 'bid_count_row_submission_hides'] as const) {
-      const { data, error: err } = await supabase
-        .from(table)
-        .select('count_row_id')
-        .eq('price_book_version_id', pricingId)
-      if (err) {
-        setError(err.message)
-        return null
-      }
-      for (const child of (data ?? []) as Array<{ count_row_id: string }>) {
-        const targetRowId = rowMap.get(child.count_row_id)
-        if (targetRowId) {
-          const { error: upErr } = await supabase
-            .from(table)
-            .update({ count_row_id: targetRowId })
-            .eq('price_book_version_id', pricingId)
-            .eq('count_row_id', child.count_row_id)
-          if (upErr) {
-            setError(upErr.message)
-            return null
-          }
-          if (table === 'bid_count_row_custom_prices') matched++
-        } else {
-          const { error: delErr } = await supabase
-            .from(table)
-            .delete()
-            .eq('price_book_version_id', pricingId)
-            .eq('count_row_id', child.count_row_id)
-          if (delErr) {
-            setError(delErr.message)
-            return null
-          }
-          if (table === 'bid_count_row_custom_prices') dropped++
-        }
-      }
-    }
-    return { matched, dropped }
+    return { matched: res.matched, dropped: res.dropped }
   }
 
   /** G1: a GC with no prices yet starts from another GC's base price (clone of that version's ★). */
