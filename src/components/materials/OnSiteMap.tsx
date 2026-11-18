@@ -4,13 +4,24 @@
  * alone, with no Google canvas: the pins are few and the imagery is the same. The buttons live
  * with the caller (a sheet's footer), so they stay on screen whatever the map does with a drag or
  * a wheel.
+ *
+ * **Time** (punch list #395): a map that is being looked at has the Time press beside Satellite and
+ * Streets, and its row of dates under the map. The map is already close on the site, so Time moves
+ * nothing: it swaps the photograph. It is never offered while a pin is being placed, since a pin
+ * dropped on an older photograph lands where the ground no longer is, and never on a still.
  */
 import 'leaflet/dist/leaflet.css'
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Circle, CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import type { PaintedLayerMap } from '../../lib/paintedMap/paintedMapLayer'
 import { PaintedMapsLayer } from '../paintedMap/PaintedMapsLayer'
 import type { LatLng } from '../../lib/materials/myLocation'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { useMapTime } from '../../hooks/useMapTime'
+import type { MapLayerChoice } from '../../lib/map/googleMapType'
+import { MAP_TIME_PINS_WORDS, MAP_TIME_SITE_NAME } from '../../lib/map/mapTime'
+import { MapTimeRow } from '../map/MapTimeRow'
+import { MapViewControl } from '../map/MapViewControl'
 
 /**
  * `me` is where the person stands, when they asked (a task's place, punch list #328). `target` is the one box a
@@ -50,10 +61,9 @@ type Props = {
   lineTo?: LatLng | null
 }
 
-const SATELLITE = { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics' }
+const SATELLITE = { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Imagery &copy; Esri, Vantor, Earthstar Geographics, and the GIS User Community' }
 const STREETS = { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }
 const TONE: Record<NonNullable<OnSiteMapPin['tone']>, string> = { ok: '#2563eb', amber: '#d97706', dim: '#6b7280', me: '#111827', target: '#dc2626', 'target-old': '#d97706' }
-const toggle: CSSProperties = { minHeight: 32, padding: '0 0.7rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer' }
 
 /** Leaflet measures its box once; inside a sheet that opens later, or a flex box that settles, it needs telling. */
 function SizeFix() {
@@ -102,14 +112,33 @@ function CenterTracker({ onMove }: { onMove: (c: LatLng) => void }) {
 }
 
 export default function OnSiteMap({ center, pins, height, onPinTap, placing, flyTo, onCenterChange, focusId, emptyWords, startZoom, still, onTilesFailed, painted, onPaintedTap, me, lineTo }: Props) {
-  const [layer, setLayer] = useState<'satellite' | 'streets'>('satellite')
+  const isMobile = useIsMobile()
+  const [layer, setLayer] = useState<MapLayerChoice>('satellite')
   const tilesSeen = useRef({ loaded: false, told: false })
   const focus = pins.find((p) => p.id === focusId) ?? null
   const first = focus ?? pins[0] ?? null
   // With no pin and no address on the map, a painted line still says where the job is.
   const paintedStart = painted?.[0]?.lines[0]?.points[0] ?? painted?.[0]?.places[0] ?? null
   const start = first ? { lat: first.lat, lng: first.lng } : (center ?? flyTo ?? (paintedStart ? { lat: paintedStart.lat, lng: paintedStart.lng } : null))
-  const tiles = layer === 'satellite' ? SATELLITE : STREETS
+  // Time looks at the site: the pin the map opened on, or else where the map opened. Only a map that is being looked at has it.
+  const canTime = !still && !placing
+  const spotLat = canTime ? (start?.lat ?? null) : null
+  const spotLng = canTime ? (start?.lng ?? null) : null
+  const time = useMapTime(useMemo(() => (spotLat == null || spotLng == null ? null : { lat: spotLat, lng: spotLng, name: MAP_TIME_SITE_NAME }), [spotLat, spotLng]))
+  const { on: timeOn, off: timeOff } = time
+  // Placing begins while Time is on: the map goes back to today before a pin can be dropped.
+  useEffect(() => {
+    if (!canTime && timeOn) timeOff()
+  }, [canTime, timeOn, timeOff])
+  const inTime = canTime && timeOn
+  const shownLayer: MapLayerChoice = inTime ? 'satellite' : layer
+  const tiles = inTime && time.imagery ? time.imagery : shownLayer === 'satellite' ? SATELLITE : STREETS
+  const pickLayer = (next: MapLayerChoice) => {
+    timeOff()
+    setLayer(next)
+  }
+  // A height in words fills its parent, so the row takes its room from the map. A height in pixels is the map's own, and the row adds to it.
+  const fills = typeof height !== 'number'
   if (!start) {
     return (
       <div style={{ height, display: 'grid', placeItems: 'center', borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--border-strong)', borderRadius: 10, color: 'var(--text-muted)', fontSize: '0.9rem', padding: '1rem', textAlign: 'center' }}>
@@ -118,10 +147,12 @@ export default function OnSiteMap({ center, pins, height, onPinTap, placing, fly
     )
   }
   return (
-    <div className={layer === 'satellite' ? 'mapImagery' : undefined} style={{ position: 'relative', height, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)' }}>
+    <div data-on-site-map style={{ borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', ...(fills ? { height, display: 'flex', flexDirection: 'column' } : {}) }}>
+    <div data-map-provider={inTime ? 'archive' : 'osm'} className={shownLayer === 'satellite' ? 'mapImagery' : undefined} style={{ position: 'relative', isolation: 'isolate', overflow: 'hidden', ...(fills ? { flex: '1 1 0', minHeight: 0 } : { height }) }}>
       <MapContainer center={[start.lat, start.lng]} zoom={first ? 19 : (startZoom ?? 18)} maxZoom={21} style={{ width: '100%', height: '100%' }} attributionControl zoomControl={!still} dragging={!still} scrollWheelZoom={!still} doubleClickZoom={!still} touchZoom={!still} boxZoom={!still} keyboard={!still}>
         <TileLayer
-          key={layer}
+          // Keyed by its address: a new date is a new layer, and the old tiles do not linger under it.
+          key={tiles.url}
           url={tiles.url}
           attribution={tiles.attribution}
           maxNativeZoom={19}
@@ -161,12 +192,9 @@ export default function OnSiteMap({ center, pins, height, onPinTap, placing, fly
           </div>
         </>
       ) : null}
-      {still ? null : (
-      <div style={{ position: 'absolute', right: 8, top: 8, zIndex: 500, display: 'flex', gap: 4 }}>
-        <button type="button" style={{ ...toggle, ...(layer === 'satellite' ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setLayer('satellite')}>Satellite</button>
-        <button type="button" style={{ ...toggle, ...(layer === 'streets' ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) }} onClick={() => setLayer('streets')}>Streets</button>
-      </div>
-      )}
+      {still ? null : <MapViewControl layer={layer} onLayer={pickLayer} time={canTime ? time : null} isMobile={isMobile} />}
+    </div>
+    {canTime ? <MapTimeRow time={time} isMobile={isMobile} surface="on-site-map" dotsWords={MAP_TIME_PINS_WORDS} /> : null}
     </div>
   )
 }

@@ -108,6 +108,8 @@ To have someone else find the box, tap {{button:outline|Send someone to it}}. Th
 
 A pin older than 30 days carries a caution, since boxes get moved. Tap **Directions** for the drive to the pin. Tap **Map** on the tab to see every pinned box on the site.
 
+The site map has **Satellite**, **Streets** and **Time**. Tap **Time** to see the site on earlier days. The press is not there while you drag a pin into place. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) shows how.
+
 ## Scan a label
 
 A printed label carries a code. Point your camera at it and the box opens. A label prints on a sheet of paper or on a strip of tape.
