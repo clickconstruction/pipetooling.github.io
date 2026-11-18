@@ -27,7 +27,7 @@ The right column is the lien affidavits. Its first two bins are **Needs the prop
 
 One arrow crosses from Sent on the left to Waiting on its notice on the right. The notice on record is the affidavit's gate. When the notice is mailed and recorded, the affidavit moves down to **To send for Master approval**. On a phone the columns stand one over the other and that arrow is not drawn.
 
-A bin with a blue left edge has something to do now. Its press is beside its name. Each bin's count sits at its right. A bin with no paper is one quiet line with a zero.
+A bin with a blue left edge has something to do now. Its press is beside its name. Each bin's count sits at its right. A bin with no paper is one quiet line with a zero. An empty bin's name and zero are grey.
 
 ## What a chip's colour means
 
