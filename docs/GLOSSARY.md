@@ -3757,6 +3757,7 @@ Deleting a trip that holds a line says the line stays and that neither Undo nor 
 **Deleted trips** is the fold under the Trips look's rows since v2.7804, on the ground of v2.7800 (`lib/trips/tripDeleted.ts`, `trip_deleted_list`): a deleted trip is kept 90 days in the deleted-records archive, and its line says who deleted it and until when it is kept.
 **Put back** saves a deleted trip again under its own id through the trip's own save, so it returns with who went, its days and its number, and a job deleted since is left out and said.
 A site whose only trip was deleted still shows its look, and the delete's question says the trip waits under Deleted trips after its minute of Undo.
+Since v2.7861 a job combine carries a trip's job links to the job that is kept (`migrate_job_ledger_costs_and_delete`), where before they went with the job that was deleted.
 A job billed from the GC desk (a GC project's billing job) is never offered in that window since v2.7769, the owner's answer of 2026-11-18: its price grows only by a signed change order, so the window says so and **Open Change orders** opens that project's Change orders for the GC money team (`tripBillJobChoices`'s `held`, `changeOrdersHref`).
 Access: `ACCESS_CONTROL.md`, *Trips*.
 Guides: `keep-a-trip-to-a-far-site`, `start-a-trip-from-your-phone`.
