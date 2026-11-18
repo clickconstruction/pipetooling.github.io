@@ -18,7 +18,7 @@
  * `printed` one. From v2.7328 until v2.7448 one bin held both and an unprinted notice read *to mail* on the Board and
  * *to print* on the list. `LIEN_BOARD_WORDS` holds every name.
  */
-import { batchWords, type BatchWords } from '../batchWords'
+import { batchWords, countedLabel, type BatchWords } from '../batchWords'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
 import { formatUsdNoCents } from './jobFormatting'
 import type { LienDeskEntry, LienDeskPile } from './lienDesk'
@@ -753,6 +753,21 @@ export function lienBoardForLeader(board: Pick<LienBoard, 'notices' | 'affidavit
   const heldWhy = signatures === held.length ? { one: 'needs your signature', many: 'need your signature' } : signatures === 0 ? { one: 'is past its day', many: 'are past their day' } : { one: 'is held', many: 'are held' }
   const press = batchWords({ verb: 'Approve', ready: chips.length, held: held.length, heldWhy, noun: ['affidavit', 'affidavits'] })
   return { bins, press, chips, held }
+}
+
+/** The leader's press on his *Awaiting Master approval* bin of affidavits: its counted words, and what it leaves where it is. */
+export type LienBoardLeaderBinPress = { label: string; dead: boolean; line: string | null }
+
+/**
+ * The leader's one press, on the title line of the bin it empties (v2.7708; it stood under his own two bins since
+ * v2.7334, behind a switch). It counts the affidavits alone, since the bin holds affidavits alone: a notice that takes
+ * his signature stands in the other column and is told there. Null when no affidavit of a job he leads waits.
+ */
+export function lienBoardLeaderBinPress(view: Pick<LienBoardLeaderView, 'chips' | 'held'>): LienBoardLeaderBinPress | null {
+  const ready = view.chips.filter((c) => c.kind === 'affidavit').length
+  const late = view.held.filter((h) => h.chip.kind === 'affidavit').length
+  if (ready <= 0 && late <= 0) return null
+  return { label: countedLabel('Approve', ready, 'affidavit'), dead: ready <= 0, line: late > 0 ? `${late} ${plural(late, 'is', 'are')} past ${plural(late, 'its', 'their')} day and ${plural(late, 'stays', 'stay')} here.` : null }
 }
 
 /**

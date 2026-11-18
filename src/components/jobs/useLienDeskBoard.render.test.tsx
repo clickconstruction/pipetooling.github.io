@@ -83,14 +83,13 @@ describe('useLienDeskBoard', () => {
     expect(onOpenRun).toHaveBeenCalledTimes(1)
   })
 
-  it('a master opens on his own Board and the switch turns it off; the office opens on every bin', () => {
+  it('no switch narrows the Board to a leader’s own bins: a master and the office read the same bins (v2.7708)', () => {
     const master = renderHook(() => useLienDeskBoard(input({ authRole: 'master_technician', leader: true, office: false })))
-    expect(master.result.current.boardMine).toBe(true)
-    act(() => master.result.current.toggleBoardMine())
-    expect(master.result.current.boardMine).toBe(false)
+    expect('boardMine' in master.result.current).toBe(false)
+    expect('toggleBoardMine' in master.result.current).toBe(false)
 
     const office = renderHook(() => useLienDeskBoard(input()))
-    expect(office.result.current.boardMine).toBe(false)
+    expect(office.result.current.leaderView).toBeNull()
   })
 
   it('with nothing waiting, the leader’s press and the reminder ask nothing and write nothing', async () => {

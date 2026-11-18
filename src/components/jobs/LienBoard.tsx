@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { EmptyState } from '../EmptyState'
-import { lienBoardBinsShown, lienBoardDoorWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardLeaderView, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
+import { lienBoardBinsShown, lienBoardDoorWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
 import type { LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
@@ -12,6 +11,12 @@ import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type
  * soon its day is; thin grey arrows down each column and one across from Sent to Waiting on its notice, drawn
  * from the bins' measured places so they stay attached when chips wrap, the crossing one gone when the columns stack;
  * the busiest bin lit; Held and Missed beside a column only while a job is in one; retainage one line under the notices.
+ *
+ * Nothing stands between the tiles and the chart (v2.7708, the owner's pick of 2026-11-17: *Build B but with the action
+ * button in the same line as the title of the card it is in instead of at the bottom*). Every batch press stands on
+ * the title line of the bin it empties, right of the bin's name and count, with what it leaves out on one line under
+ * that. The band that stood there since v2.7334 and v2.7483, the leader's switch and the two prints, is gone, and so
+ * is the leader's own view: every viewer reads every bin, and the leader's press stands on his bin's title line.
  *
  * The picture and the queue are one screen: a bin's head is a press that narrows the list under the Board to that
  * bin's jobs (`onPick`), and a second press, or *Show every row*, puts the list back. A chip is a press to the right
@@ -138,8 +143,22 @@ function Chip({ chip, lit, onChip, onHover, onCard }: { chip: LienBoardChip; lit
   )
 }
 
-/** A press that stands inside one bin, under its chips: its words and what it opens. */
-export type LienBoardBinPress = { label: string; onPress: () => void; title?: string }
+/** A door on a bin's line: its words and what it opens. `marks` are data attributes for the tests. */
+export type LienBoardBinDoor = { key: string; label: string; onPress: () => void; dead?: boolean; marks?: Record<string, string> }
+
+/** One line under a bin's title: what its press leaves out, or what it prints with, and the doors to it. */
+export type LienBoardBinLine = { key: string; words: string; tone?: 'amber' | 'muted'; doors?: ReadonlyArray<LienBoardBinDoor>; marks?: Record<string, string> }
+
+/**
+ * A bin's own press: the act every paper in it shares, on the bin's title line, right of its name and count (v2.7708;
+ * it stood under the chips since v2.7497). `filled` is the bin's main act, a print or an approval; without it the press
+ * is an outline, a door to a window. `dead` greys it. `whenEmpty` draws a live press in a bin with no chip, for a
+ * retainage notice that rides the run and has no chip. `linesOnly` draws the lines without the press, for a phone,
+ * where the print stands over the folded bins.
+ */
+export type LienBoardBinPress = { label: string; onPress: () => void; title?: string; filled?: boolean; dead?: boolean; whenEmpty?: boolean; linesOnly?: boolean; lines?: ReadonlyArray<LienBoardBinLine>; marks?: Record<string, string> }
+
+const LINE_DOOR: CSSProperties = { border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', borderRadius: 3 }
 
 function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard, press }: { bin: LienBoardBin; picked: boolean; isMobile: boolean; press?: LienBoardBinPress | null; onPick?: (key: LienBoardBinKey) => void; onChip?: (chip: LienBoardChip) => void; pairLit: string | null; onHover: (pairKey: string | null) => void; onCard?: (chip: LienBoardChip, el: HTMLElement | null) => void }) {
   const n = bin.chips.length
@@ -149,24 +168,63 @@ function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard, 
       <span data-lien-board-count style={{ fontVariantNumeric: 'tabular-nums', color: n ? 'var(--text-strong)' : 'var(--text-muted)', fontWeight: 700 }}>{n}</span>
     </>
   )
+  // The press shows while the bin holds a paper, or in an empty bin when it is live and says so (`whenEmpty`).
+  const act = press && (n > 0 || (press.whenEmpty && !press.dead)) ? press : null
+  const lines = act?.lines ?? []
+  // The head keeps its name whole: where the press has no room beside it, the press wraps under the name.
+  const headStyle: CSSProperties = { flex: '1 1 auto', width: 'auto', minHeight: isMobile ? 40 : undefined }
   return (
     <div className="lienBoardBin" data-lien-board-bin={bin.key} data-stage={bin.stage} data-lit={bin.lit ? 'yes' : undefined} data-picked={picked ? 'yes' : undefined} data-beside={bin.beside ? 'yes' : undefined} style={{ borderColor: bin.lit ? LIT : 'var(--border)', boxShadow: bin.lit ? `inset 0 0 0 1px ${LIT}` : undefined }}>
-      {onPick ? (
-        <button type="button" className="lienBoardBinHead" aria-pressed={picked} data-lien-board-bin-head={bin.key} onClick={() => onPick(bin.key)} title={picked ? 'Show every row again' : `Show only the ${n === 1 ? 'row' : 'rows'} in ${bin.label}`} style={{ minHeight: isMobile ? 40 : undefined }}>
-          {head}
-        </button>
-      ) : (
-        <div className="lienBoardBinHead" data-lien-board-bin-head={bin.key}>{head}</div>
-      )}
+      <div data-lien-board-bin-title={bin.key} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px', minWidth: 0 }}>
+        {onPick ? (
+          <button type="button" className="lienBoardBinHead" aria-pressed={picked} data-lien-board-bin-head={bin.key} onClick={() => onPick(bin.key)} title={picked ? 'Show every row again' : `Show only the ${n === 1 ? 'row' : 'rows'} in ${bin.label}`} style={headStyle}>
+            {head}
+          </button>
+        ) : (
+          <div className="lienBoardBinHead" data-lien-board-bin-head={bin.key} style={headStyle}>{head}</div>
+        )}
+        {/* The bin's own press, on its title line (punch list #383): the act every paper in it shares. */}
+        {act && !act.linesOnly ? (
+          <button
+            type="button"
+            data-lien-board-bin-press={bin.key}
+            {...act.marks}
+            disabled={Boolean(act.dead)}
+            onClick={act.onPress}
+            title={act.title}
+            style={{
+              flex: '0 0 auto',
+              font: 'inherit',
+              fontSize: '0.76rem',
+              fontWeight: 600,
+              lineHeight: 1.3,
+              padding: isMobile ? '0 12px' : '3px 10px',
+              minHeight: isMobile ? 44 : undefined,
+              borderRadius: 7,
+              cursor: act.dead ? 'default' : 'pointer',
+              ...(act.dead ? { border: '1px solid transparent', background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT } : act.filled ? { border: '1px solid #2563eb', background: '#2563eb', color: '#fff' } : { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)' }),
+            }}
+          >
+            {act.label}
+          </button>
+        ) : null}
+      </div>
+      {lines.map((line) => (
+        <div key={line.key} data-lien-board-bin-line={line.key} {...line.marks} style={{ fontSize: '0.76rem', lineHeight: 1.35, color: line.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)', minWidth: 0 }}>
+          {line.words}
+          {(line.doors ?? []).map((door) => (
+            <span key={door.key}>
+              {' · '}
+              <button type="button" className="lienJobDoor" data-lien-board-bin-door={door.key} {...door.marks} disabled={Boolean(door.dead)} onClick={door.onPress} style={{ ...LINE_DOOR, ...(door.dead ? { color: 'var(--text-muted)', cursor: 'default' } : null), minHeight: isMobile ? 32 : undefined }}>
+                {door.label}
+              </button>
+            </span>
+          ))}
+        </div>
+      ))}
       <div className="lienBoardChips" data-lien-board-chips={bin.key}>
         {n === 0 ? <span data-lien-board-empty style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>none</span> : bin.chips.map((c) => <Chip key={`${c.kind}:${c.jobId}`} chip={c} lit={Boolean(c.pairKey) && c.pairKey === pairLit} onChip={onChip} onHover={onHover} onCard={onCard} />)}
       </div>
-      {/* The bin's own press (punch list #366): the act every paper in it shares. An outline, so each column's print stays the one filled press. */}
-      {press && n > 0 ? (
-        <button type="button" data-lien-board-bin-press={bin.key} onClick={press.onPress} title={press.title} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, margin: '6px 0 2px', padding: isMobile ? '0 12px' : '4px 12px', minHeight: isMobile ? 44 : undefined, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer', justifySelf: 'start' }}>
-          {press.label}
-        </button>
-      ) : null}
     </div>
   )
 }
@@ -295,7 +353,6 @@ export default function LienBoard({
   underAffidavits,
   binPress,
   onLayout,
-  leader,
   cardFor,
   prints,
 }: {
@@ -319,22 +376,17 @@ export default function LienBoard({
   over?: ReactNode
   /** A bin of the desk's own under the affidavit column (v2.7443): *Public jobs · bond claim*. */
   underAffidavits?: ReactNode
-  /** A press inside a bin, by the bin's key (punch list #366): *Mail 12 liens’ copies ›* in *Filed · copies to mail*. The leader's own view draws none. */
+  /** A press on a bin's title line, by the bin's key: *Mail 12 liens’ copies ›* on *Filed · copies to mail* (punch list #366), *Enter mail numbers · 6* on *Approved · to mail*, the leader's *Approve 2 affidavits* on his *Awaiting Master approval*. */
   binPress?: Partial<Record<LienBoardBinKey, LienBoardBinPress>>
   /** Told when the columns stack or stand side by side, so the desk can make To do one page while the Board is taller than the screen. */
   onLayout?: (stacked: boolean) => void
-  /**
-   * The leader's Board (v2.7334): with `mine` on, only his two Awaiting Master approval bins stand under the tiles, with one
-   * counted press for the lot and what it holds, each held paper a chip to its own door; a toggle shows every bin.
-   */
-  leader?: { view: LienBoardLeaderView; mine: boolean; onToggleMine: () => void; onApprove: () => void; busy?: boolean }
   /** What a chip says when it is pointed at (v2.7381): the job and where its paper stands. Absent, a chip keeps the browser's one-line tip. */
   cardFor?: (chip: LienBoardChip) => LienBoardChipCard | null
   /**
    * The two prints (v2.7470, punch list #362; `lienBoardPrints.ts`): the whole run for the notices and the batch print for the
-   * affidavits, each with what it leaves out and the door to it. Since v2.7483 they stand between the tiles and the columns,
-   * each over its own column, so they show on arrival; where the columns stack, and on a phone, they stack. Absent, or on
-   * the leader's own bins, none is drawn.
+   * affidavits, each with what it leaves out and the door to it. Since v2.7708 each stands on the title line of the bin it
+   * empties (`side.bin`), its lines under that. A phone keeps its bins folded, so there the two stand in one row over the
+   * fold, in their short words, and an opened bin draws the lines alone. Absent, none is drawn.
    */
   prints?: {
     notice: LienBoardPrintSide | null
@@ -396,9 +448,8 @@ export default function LienBoard({
   // On a phone the bins stand behind one press (2026-11-15): stacked they run a screen and a half, and the tiles
   // already say the day; a pressed bin keeps them open. Session-only.
   const [binsShown, setBinsShown] = useState(false)
-  const mine = Boolean(leader?.mine)
-  const notices = mine && leader ? leader.view.bins.filter((b) => b.kind === 'notice') : lienBoardBinsShown(board.notices)
-  const affidavits = mine && leader ? leader.view.bins.filter((b) => b.kind === 'affidavit') : lienBoardBinsShown(board.affidavits)
+  const notices = lienBoardBinsShown(board.notices)
+  const affidavits = lienBoardBinsShown(board.affidavits)
   const chipCount = [...board.notices, ...board.affidavits].reduce((n, b) => n + b.chips.length, 0)
   const binsOpen = !isMobile || binsShown || Boolean(pick)
   const layout = columnsOnly ? false : stacked
@@ -433,60 +484,34 @@ export default function LienBoard({
     const ro = new ResizeObserver(() => measure())
     ro.observe(grid)
     return () => ro.disconnect()
-  }, [board, isMobile, columnsOnly, notices.length, affidavits.length, binsOpen, mine])
+  }, [board, isMobile, columnsOnly, notices.length, affidavits.length, binsOpen])
 
   // A phone has no hover: its chips keep their press and draw no card.
   const cardHandler = cardFor && !isMobile ? onCard : undefined
-  // The column's own print (v2.7470): one press that names its count, then what it leaves out with its door.
-  const lineDoor: CSSProperties = { border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', borderRadius: 3 }
-  // It is not one more stage: no arrow leads to it, since the bins are the flow.
-  const drawPrints = Boolean(prints && !mine && (prints.notice || prints.affidavit))
-  const printFoot = (side: LienBoardPrintSide | null | undefined) => {
-    if (!prints || !side || mine) return null
-    const off = side.dead || Boolean(prints.busy)
-    return (
-      <div data-lien-board-print={side.kind} style={{ display: 'grid', gap: 4, justifyItems: 'start', minWidth: 0 }}>
-        <button
-          type="button"
-          data-lien-board-print-press={side.act}
-          disabled={off}
-          onClick={() => prints.onPress(side)}
-          style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: isMobile ? '0 14px' : '6px 14px', minHeight: isMobile ? 44 : undefined, borderRadius: 8, border: 'none', cursor: off ? 'default' : 'pointer', ...(off ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT } : { background: '#2563eb', color: '#fff' }) }}
-        >
-          {side.label}
-        </button>
-        {side.left ? (
-          <div data-lien-board-print-left style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', minWidth: 0 }}>
-            {side.left.words}
-            {' · '}
-            <button type="button" className="lienJobDoor" data-lien-board-print-left-door onClick={() => prints.onLeft(side)} style={lineDoor}>{side.left.door} ›</button>
-            {side.kind === 'notice' && prints.remind ? (
-              <>
-                {' · '}
-                <button
-                  type="button"
-                  className="lienJobDoor"
-                  data-lien-board-remind
-                  disabled={prints.remind.dead || Boolean(prints.remind.busy)}
-                  onClick={prints.remind.onPress}
-                  style={{ ...lineDoor, ...(prints.remind.dead || prints.remind.busy ? { color: 'var(--text-muted)', cursor: 'default' } : null) }}
-                >
-                  {prints.remind.busy ? 'Reminding…' : prints.remind.dead ? prints.remind.button : `${prints.remind.button} ›`}
-                </button>
-              </>
-            ) : null}
-          </div>
-        ) : null}
-        {side.note ? (
-          <div data-lien-board-print-note style={{ fontSize: '0.78rem', color: 'var(--text-muted)', minWidth: 0 }}>
-            {side.note.words}
-            {' · '}
-            <button type="button" className="lienJobDoor" data-lien-board-print-note-door onClick={() => prints.onNote(side)} style={lineDoor}>{side.note.door} ›</button>
-          </div>
-        ) : null}
-      </div>
-    )
+  // Each print as its bin's press (v2.7470; on the bin's title line since v2.7708): one press that names its count, then
+  // what it leaves out with its door. A phone draws the press over the folded bins and the lines in the bin.
+  const printSides = prints ? [prints.notice, prints.affidavit].filter((side): side is LienBoardPrintSide => Boolean(side)) : []
+  const printPress = (side: LienBoardPrintSide): LienBoardBinPress => {
+    const remind = side.kind === 'notice' ? prints?.remind : null
+    const lines: LienBoardBinLine[] = []
+    if (side.left)
+      lines.push({
+        key: 'left',
+        words: side.left.words,
+        tone: 'amber',
+        marks: { 'data-lien-board-print-left': side.kind },
+        doors: [
+          { key: 'left', label: `${side.left.door} ›`, onPress: () => prints?.onLeft(side), marks: { 'data-lien-board-print-left-door': side.kind } },
+          ...(remind ? [{ key: 'remind', label: remind.busy ? 'Reminding…' : remind.dead ? remind.button : `${remind.button} ›`, dead: remind.dead || Boolean(remind.busy), onPress: remind.onPress, marks: { 'data-lien-board-remind': 'yes' } }] : []),
+        ],
+      })
+    if (side.note) lines.push({ key: 'note', words: side.note.words, tone: 'muted', marks: { 'data-lien-board-print-note': side.kind }, doors: [{ key: 'note', label: `${side.note.door} ›`, onPress: () => prints?.onNote(side), marks: { 'data-lien-board-print-note-door': side.kind } }] })
+    return { label: side.label, onPress: () => prints?.onPress(side), filled: true, dead: side.dead || Boolean(prints?.busy), whenEmpty: true, linesOnly: isMobile, lines, marks: { 'data-lien-board-print-press': side.act } }
   }
+  const presses: Partial<Record<LienBoardBinKey, LienBoardBinPress>> = { ...binPress }
+  for (const side of printSides) presses[side.bin] = printPress(side)
+  // A phone's row over the fold: the two prints in their short words, side by side.
+  const phonePrints = isMobile && printSides.length > 0
   const column = (kind: 'notice' | 'affidavit', title: string, bins: LienBoardBin[], under: ReactNode) => {
     const flow = bins.filter((b) => !b.beside)
     const beside = bins.filter((b) => b.beside)
@@ -495,7 +520,7 @@ export default function LienBoard({
         <h3 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: kind === 'notice' ? 'var(--text-blue-700)' : 'var(--text-red-700)' }}>{title}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: beside.length && !layout ? 'minmax(0, 1fr) minmax(0, 0.55fr)' : '1fr', gap: '0 12px', alignItems: 'start' }}>
           <div data-lien-board-flow={kind} style={{ display: 'grid', gap: 22 }}>
-            {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} press={mine ? null : binPress?.[b.key]} />)}
+            {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} press={presses[b.key]} />)}
           </div>
           {beside.length ? (
             <div data-lien-board-beside={kind} style={{ display: 'grid', gap: 10, alignContent: 'start', marginTop: layout ? 10 : 0 }}>
@@ -514,24 +539,20 @@ export default function LienBoard({
   return (
     <section ref={boardRef} aria-label="The Board" data-lien-board data-lien-board-layout={layout ? 'stacked' : 'columns'} style={{ position: 'relative', display: 'grid', gap: isMobile ? 10 : 12, padding: isMobile ? '0.6rem 0.75rem 0.4rem' : '0.75rem 1.25rem 0.5rem' }}>
       <div data-lien-board-tiles style={{ display: 'grid', gridTemplateColumns: isMobile || layout ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
-        {/* The third tile's press opened the run. With the notices' print drawn right under the tiles it would be the same door twice, so there the tile only reads. */}
-        {board.tiles.map((t) => <Tile key={t.key} tile={t.key === 'in_mail' && drawPrints && prints?.notice ? { ...t, destination: null } : t} isMobile={isMobile} onTile={onTile} />)}
+        {/* The third tile's press opens the run. On a phone the notices' print stands right under the tiles, the same door twice, so there the tile only reads. */}
+        {board.tiles.map((t) => <Tile key={t.key} tile={t.key === 'in_mail' && phonePrints && prints?.notice ? { ...t, destination: null } : t} isMobile={isMobile} onTile={onTile} />)}
       </div>
-      {leader ? (
-        <div data-lien-board-leader-bar style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-          <span style={{ flex: 1, minWidth: 0, fontWeight: 600 }}>{mine ? 'Only the bins that wait on you.' : 'Every bin.'}</span>
-          <button type="button" data-lien-board-mine aria-pressed={mine} onClick={leader.onToggleMine} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', minHeight: isMobile ? 40 : undefined }}>
-            {mine ? 'Every bin' : 'Only my bins'}
-          </button>
-        </div>
-      ) : null}
-      {/* The two prints, between the tiles and the columns (v2.7483; they stood at each column's foot in v2.7470, 780 px and
-          890 px down a 768 px window). Each stands over its own column, the notices' on the left, so they show on arrival.
-          Where the columns stack, and on a phone, the two stack too. */}
-      {drawPrints ? (
-        <div data-lien-board-prints data-layout={isMobile || layout ? 'stacked' : 'columns'} style={{ display: 'grid', gridTemplateColumns: isMobile || layout ? '1fr' : 'minmax(0, 1fr) minmax(0, 1fr)', columnGap: 56, rowGap: 10, alignItems: 'start' }}>
-          {printFoot(prints?.notice) ?? (isMobile || layout ? null : <span aria-hidden="true" />)}
-          {printFoot(prints?.affidavit)}
+      {/* A phone keeps its bins folded, so its two prints stand here in one row (v2.7708; stacked, with their lines, since v2.7483). */}
+      {phonePrints ? (
+        <div data-lien-board-prints data-layout="row" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          {printSides.map((side) => {
+            const off = side.dead || Boolean(prints?.busy)
+            return (
+              <button key={side.kind} type="button" data-lien-board-print-press={side.act} disabled={off} onClick={() => prints?.onPress(side)} style={{ flex: '1 1 auto', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0 12px', minHeight: 44, borderRadius: 8, border: 'none', cursor: off ? 'default' : 'pointer', ...(off ? { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT } : { background: '#2563eb', color: '#fff' }) }}>
+                {side.short.label}
+              </button>
+            )
+          })}
         </div>
       ) : null}
       {over}
@@ -558,27 +579,6 @@ export default function LienBoard({
         {column('notice', 'Monthly notices', notices, retainage)}
         {column('affidavit', 'Lien affidavits', affidavits, underAffidavits ?? null)}
       </div>
-      {leader && mine ? (
-        <div data-lien-board-leader style={{ display: 'grid', gap: 6, padding: '2px 0' }}>
-          {leader.view.chips.length === 0 && leader.view.held.length === 0 ? <EmptyState compact main="Nothing waits on you." /> : null}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <button type="button" data-lien-board-approve disabled={leader.view.press.dead || leader.busy} onClick={leader.onApprove} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '6px 14px', borderRadius: 7, border: 'none', background: leader.view.press.dead || leader.busy ? 'var(--bg-muted)' : LIT, color: leader.view.press.dead || leader.busy ? 'var(--text-muted)' : '#fff', cursor: leader.view.press.dead || leader.busy ? 'default' : 'pointer', minHeight: isMobile ? 40 : undefined }}>
-              {leader.busy ? 'Approving…' : leader.view.press.button}
-            </button>
-            {leader.view.press.foot ? <span data-lien-board-approve-foot style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{leader.view.press.foot}</span> : null}
-          </div>
-          {leader.view.held.length ? (
-            <div data-lien-board-held style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              {leader.view.held.map((h) => (
-                <span key={`${h.chip.kind}:${h.chip.jobId}`} data-lien-board-held-row={h.chip.jobId} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                  <Chip chip={h.chip} lit={false} onChip={onChip} onHover={setPairLit} onCard={cardHandler} />
-                  {h.reason}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
       {pickWords && onPick ? (
         <div data-lien-board-pick style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.8125rem', color: 'var(--text-700)', padding: '2px 0' }}>
           <span data-lien-board-pick-words style={{ fontWeight: 600 }}>{pickWords.head}</span>

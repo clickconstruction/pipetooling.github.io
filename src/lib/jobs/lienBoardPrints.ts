@@ -1,5 +1,5 @@
 /**
- * The print at the foot of each Board column (v2.7470, punch list #362; the owner's ask of 2026-11-16: *"Do you think
+ * The print of each Board column (v2.7470, punch list #362; the owner's ask of 2026-11-16: *"Do you think
  * on the to do page we do a good enough job offering the user the tools to print batches?"*, and on the third drawing,
  * a print under each column: *"Yes, build this"*).
  *
@@ -10,6 +10,10 @@
  * itself. One line under each says what the print leaves out, with the door to it. Scrolled into the list, the same
  * pair stands in short form beside the find box, left and right as the columns are.
  *
+ * Since v2.7708 (the owner's pick of 2026-11-17: *Build B but with the action button in the same line as the title of
+ * the card it is in*) each press stands on the title line of the bin it empties, and nothing stands between the tiles
+ * and the chart. `bin` names that bin. A phone keeps its bins folded, so there the pair stands in one row over them.
+ *
  * Pure: counts in, words out. The counts are the desk's own, the ones the run's door and By paper's print bar count
  * with, so the three cannot disagree. Every press names its act and its count (`countedLabel`), and is dead only when
  * nothing is ready. The notice press reads *Enter mail numbers* once every approved notice has printed, as the run's
@@ -17,8 +21,13 @@
  */
 import { countedLabel } from '../batchWords'
 
+/** The bin a print empties, by the Board's own key: on a computer the press stands on that bin's title line. */
+export type LienBoardPrintBin = 'notice:to_print' | 'notice:in_mail' | 'affidavit:ready'
+
 export type LienBoardPrintSide = {
   kind: 'notice' | 'affidavit'
+  /** The bin the press empties (the owner's pick of 2026-11-17): *Approved · to print*, *Approved · to mail* once every notice has printed, *Ready to file*. */
+  bin: LienBoardPrintBin
   /** What the press does: opens the run on the packet, opens it on the mail numbers, or prints the affidavits here. */
   act: 'print_run' | 'record_run' | 'print_affidavits'
   /** The press's words, with its count: *Print and mail 8 notices*. */
@@ -47,9 +56,18 @@ export function lienBoardNoticePrint(c: { toPrint: number; waits: number; printe
   const leader = (c.leaderName ?? '').trim() || 'the leader'
   const left = waits > 0 ? { words: `${waits} ${plural(waits, 'waits', 'wait')} on ${leader}’s signature`, door: plural(waits, 'See it', 'See them') } : null
   // Every approved notice has printed: the run is open on its mail numbers, as its own door says.
-  if (c.toPrint <= 0) return { kind: 'notice', act: 'record_run', label: `Enter mail numbers · ${c.printed}`, dead: false, short: { label: `Enter mail numbers · ${c.printed}`, left: null }, left: null, note: null }
+  if (c.toPrint <= 0) return { kind: 'notice', bin: 'notice:in_mail', act: 'record_run', label: `Enter mail numbers · ${c.printed}`, dead: false, short: { label: `Enter mail numbers · ${c.printed}`, left: null }, left: null, note: null }
   const label = countedLabel('Print and mail', ready, 'notice')
-  return { kind: 'notice', act: 'print_run', label, dead: ready <= 0, short: { label, left: waits > 0 ? `${waits} ${plural(waits, 'waits', 'wait')}` : null }, left, note: null }
+  return { kind: 'notice', bin: 'notice:to_print', act: 'print_run', label, dead: ready <= 0, short: { label, left: waits > 0 ? `${waits} ${plural(waits, 'waits', 'wait')}` : null }, left, note: null }
+}
+
+/**
+ * The press on *Approved · to mail*'s title line while notices still wait to print: the run again, named for what that
+ * bin owes. Null with nothing printed, and null once every notice has printed, when the notices' own press says it.
+ */
+export function lienBoardMailNumbersPress(c: { toPrint: number; printed: number }): { label: string } | null {
+  if (c.printed <= 0 || c.toPrint <= 0) return null
+  return { label: `Enter mail numbers · ${c.printed}` }
 }
 
 /**
@@ -66,5 +84,5 @@ export function lienBoardAffidavitPrint(c: { ready: number; held: number; earlie
   const parts = [c.held > 0 ? `${c.held} held on a property fact` : '', c.earlierForm > 0 ? `${c.earlierForm} on the earlier form` : ''].filter(Boolean)
   const left = parts.length ? { words: parts.join(' · '), door: plural(out, 'See it', 'See them') } : null
   const withWords = c.with.length === 0 ? 'Prints the affidavits alone' : `Prints with ${c.with.length <= 2 ? c.with.join(' and ') : `${c.with.slice(0, -1).join(', ')} and ${c.with[c.with.length - 1]}`}`
-  return { kind: 'affidavit', act: 'print_affidavits', label, dead: c.ready <= 0, short: { label, left: out > 0 ? `${out} held` : null }, left, note: c.ready > 0 ? { words: withWords, door: 'Change' } : null }
+  return { kind: 'affidavit', bin: 'affidavit:ready', act: 'print_affidavits', label, dead: c.ready <= 0, short: { label, left: out > 0 ? `${out} held` : null }, left, note: c.ready > 0 ? { words: withWords, door: 'Change' } : null }
 }
