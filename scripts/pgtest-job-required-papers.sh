@@ -20,7 +20,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PORT="${PGTEST_PORT:-55814}"
+PORT="${PGTEST_PORT:-55848}"
 NAME="pgtest-job-required-papers"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 WRITES="$(ls supabase/migrations/*_job_required_papers.sql)"
