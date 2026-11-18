@@ -115,7 +115,7 @@ Nine small pull requests, each alone, each with its release note, fragment and g
 | 6 | The Job window line, the clock tag, the By date lane | Job window, Plans by date | Nothing |
 | 7 | The phone: Start a trip, Join, Heading home, End the trip | Job Mode, the clock-in sheet | Nothing |
 | 8 | Scoreboard cut by trip, and Print the trip log | Scoreboard cuts, a print page | Nothing |
-| 9 | Put on a bill: an Extra trip becomes a line on a job, with who asked. Moved to its own card, [#391](../trip-on-a-job-line/README.md), once the owner picked a line over a bill of its own | See that card | See that card |
+| 9 | Put on a bill: an Extra trip becomes a line on a job, with who asked. Moved to its own card, #391 (closed 2026-11-18, in [the Closed lines](../README.md)), once the owner picked a line over a bill of its own | See that card | See that card |
 
 The first three give a working Trips look. PR 4 lets trips already known from a ledger be filed on the
 owner's word, through the dev seat.
@@ -148,7 +148,7 @@ Built 2026-11-17 and 2026-11-18, in its own session. Read on 2026-11-18.
   its screen (PR 7, v2.7701), What it cost with the Scoreboard cut and the printed trip log (PR 8, v2.7702),
   the trip's number (v2.7703) and the number and the link on screen (v2.7707).
 - **Pushed and deployed:** the three migrations (the tables, the phone's ground, the numbers) and dev-mcp.
-- **Moved out:** Put on a bill is [#391](../trip-on-a-job-line/README.md).
+- **Moved out:** Put on a bill is #391 (closed 2026-11-18, in [the Closed lines](../README.md)).
 - **Added past the plan, on the owner's word:** every trip has a number on its site (*Trip 14*), and a link
   that opens it.
 - **Owed, not in a PR yet:** a setting for the 150 miles, Split in two, a combine that carries a trip's job
