@@ -186,7 +186,7 @@ export async function loadPaintedMap(mapId: string): Promise<Landed<PaintedMapWh
 }
 
 /** Makes a map. Its id is the caller's, so a line drawn before the save can be written straight after it. */
-export async function createPaintedMap(input: { id: string; name: string; words?: string; jobId?: string | null; developmentId?: string | null; by: string }): Promise<Landed<PaintedMap>> {
+export async function createPaintedMap(input: { id: string; name: string; words?: string; jobId?: string | null; developmentId?: string | null; /** The job's own list of places. Only a map on a job can be one. */ jobList?: boolean; by: string }): Promise<Landed<PaintedMap>> {
   try {
     const res = (await supabase
       .from(MAPS)
@@ -197,6 +197,7 @@ export async function createPaintedMap(input: { id: string; name: string; words?
         job_id: input.jobId ?? null,
         // A map has one home. A job's own map names the job, and the development shows it through its jobs.
         development_id: input.jobId ? null : (input.developmentId ?? null),
+        job_list: input.jobList === true && !!input.jobId,
         created_by: input.by,
       } as never)
       .select(PAINTED_MAP_SELECT as '*')

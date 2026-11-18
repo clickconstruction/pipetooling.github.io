@@ -37,6 +37,11 @@ import { placeMarkHtml, placeMarkSize, placeSaysWords } from '../../lib/paintedM
 import { boundsOfPoints, lineRuns, metersPerPixel, snapTarget, type PaintedPart, type PaintedPoint, type SnapTarget } from '../../lib/paintedMap/paintedLine'
 
 export type PaintedCanvasLine = { id: string; points: PaintedPoint[]; poorParts: ReadonlyArray<PaintedPart>; how: PaintedLineHow }
+/**
+ * A place as the map draws it. A place kept on the job (punch list #393, `paintedJobList.ts`) wears its letter in
+ * place of a number, and a dashed ring on a map that is not the job's own list.
+ */
+export type PaintedCanvasPlace = NumberedPlace & { letter?: string; fromJob?: boolean }
 
 /** The line being drawn or reshaped by hand. The canvas reports each move; the caller keeps the corners. */
 export type PaintedCanvasDraft = {
@@ -60,7 +65,7 @@ export type PaintedCanvasDot = {
 
 type Props = {
   lines: ReadonlyArray<PaintedCanvasLine>
-  places: ReadonlyArray<NumberedPlace>
+  places: ReadonlyArray<PaintedCanvasPlace>
   height: number | string
   /** Where the map opens when nothing is on it yet: the job's address, placed. */
   start?: PaintedPoint | null
@@ -137,22 +142,22 @@ const MIDDLE_ICON = L.divIcon({
   html: `<span style="display:block;width:10px;height:10px;margin:13px;border-radius:50%;background:${PAPER};opacity:.75;border:2px solid ${INK}"></span>`,
 })
 const placeIcons = new Map<string, L.DivIcon>()
-/** A place's dot: its number, or its kind's mark with the number on its shoulder (`paintedPlaceKind.ts`). */
-function placeIcon(number: number, kind: string | null | undefined, size = 26): L.DivIcon {
-  const key = `${number}:${kind ?? ''}:${size}`
+/** A place's dot: its number or its letter, or its kind's mark with that on its shoulder (`paintedPlaceKind.ts`). */
+function placeIcon(number: number | string, kind: string | null | undefined, size = 26, dashed = false): L.DivIcon {
+  const key = `${number}:${kind ?? ''}:${size}:${dashed ? 'd' : ''}`
   const kept = placeIcons.get(key)
   if (kept) return kept
-  const icon = makePlaceIcon(number, kind, size)
+  const icon = makePlaceIcon(number, kind, size, dashed)
   placeIcons.set(key, icon)
   return icon
 }
-function makePlaceIcon(number: number, kind: string | null | undefined, size: number): L.DivIcon {
+function makePlaceIcon(number: number | string, kind: string | null | undefined, size: number, dashed: boolean): L.DivIcon {
   const box = placeMarkSize(kind, size)
   return L.divIcon({
     className: 'painted-map-icon',
     iconSize: [box, box],
     iconAnchor: [box / 2, box / 2],
-    html: placeMarkHtml({ number, kind }, { size, ink: INK, paper: PAPER, shadow: true }),
+    html: placeMarkHtml({ number, kind }, { size, ink: INK, paper: PAPER, shadow: true, dashed }),
   })
 }
 const DOT_ICON = L.divIcon({
@@ -279,7 +284,7 @@ function FitOnce({ points }: { points: ReadonlyArray<PaintedPoint> }) {
 }
 
 /** The lines and the places, drawn the same on the map and in the glass. */
-function Shapes({ lines, places, draftPoints, onPlaceTap, placeSize }: { lines: ReadonlyArray<PaintedCanvasLine>; places: ReadonlyArray<NumberedPlace>; draftPoints: ReadonlyArray<PaintedPoint> | null; onPlaceTap?: (id: string) => void; placeSize?: number }) {
+function Shapes({ lines, places, draftPoints, onPlaceTap, placeSize }: { lines: ReadonlyArray<PaintedCanvasLine>; places: ReadonlyArray<PaintedCanvasPlace>; draftPoints: ReadonlyArray<PaintedPoint> | null; onPlaceTap?: (id: string) => void; placeSize?: number }) {
   return (
     <>
       {lines.map((line) => {
@@ -306,7 +311,7 @@ function Shapes({ lines, places, draftPoints, onPlaceTap, placeSize }: { lines: 
         </>
       ) : null}
       {places.map((p) => (
-        <Marker key={p.id} position={ll(p)} icon={placeIcon(p.number, p.kind, placeSize)} interactive={!!onPlaceTap} eventHandlers={onPlaceTap ? { click: () => onPlaceTap(p.id) } : undefined} title={placeSaysWords(p)} />
+        <Marker key={p.id} position={ll(p)} icon={placeIcon(p.letter ?? p.number, p.kind, placeSize, p.fromJob === true)} interactive={!!onPlaceTap} eventHandlers={onPlaceTap ? { click: () => onPlaceTap(p.id) } : undefined} title={placeSaysWords(p)} />
       ))}
     </>
   )

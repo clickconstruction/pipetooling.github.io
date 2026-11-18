@@ -130,6 +130,8 @@ export type PlaceMarkLook = {
   paper: string
   /** A soft shadow under the disc, for a mark that floats over a photo of the ground. */
   shadow?: boolean
+  /** A dashed ring: a place kept on the job, drawn on one of the job's painted maps (`paintedJobList.ts`). */
+  dashed?: boolean
 }
 
 /**
@@ -137,12 +139,13 @@ export type PlaceMarkLook = {
  * dot a place always was, to the letter. With a kind it is the kind's drawing in a disc, and the
  * number rides on its shoulder, so the dot still answers to its row in the list.
  */
-export function placeMarkHtml(place: { number: number; kind?: string | null }, look: PlaceMarkLook): string {
+export function placeMarkHtml(place: { number: number | string; kind?: string | null }, look: PlaceMarkLook): string {
   const info = placeKindInfo(place.kind)
   const shadow = look.shadow ? ';box-shadow:0 1px 4px rgba(0,0,0,.5)' : ''
+  const ring = look.dashed ? 'dashed' : 'solid'
   if (!info) {
     const s = look.size
-    return `<span style="display:grid;place-items:center;width:${s}px;height:${s}px;box-sizing:border-box;border-radius:50%;background:${look.paper};color:${look.ink};border:2px solid ${look.ink};font:800 ${Math.round(s * 0.46)}px/1 system-ui,sans-serif${shadow}">${place.number}</span>`
+    return `<span style="display:grid;place-items:center;width:${s}px;height:${s}px;box-sizing:border-box;border-radius:50%;background:${look.paper};color:${look.ink};border:2px ${ring} ${look.ink};font:800 ${Math.round(s * 0.46)}px/1 system-ui,sans-serif${shadow}">${place.number}</span>`
   }
   const d = placeMarkSize(info.kind, look.size)
   const color = info.warns ? PLACE_WARN_COLOR : look.ink
@@ -150,7 +153,7 @@ export function placeMarkHtml(place: { number: number; kind?: string | null }, l
   const lift = Math.round(badge.size * 0.36)
   return (
     `<span style="position:relative;display:block;width:${d}px;height:${d}px">` +
-    `<span style="display:grid;place-items:center;width:${d}px;height:${d}px;box-sizing:border-box;border-radius:50%;background:${look.paper};border:2px solid ${color}${shadow}">${placeGlyphSvg(info.glyph, Math.round(d * PLACE_GLYPH_SHARE), color)}</span>` +
+    `<span style="display:grid;place-items:center;width:${d}px;height:${d}px;box-sizing:border-box;border-radius:50%;background:${look.paper};border:2px ${ring} ${color}${shadow}">${placeGlyphSvg(info.glyph, Math.round(d * PLACE_GLYPH_SHARE), color)}</span>` +
     `<span style="position:absolute;top:-${lift}px;right:-${lift}px;display:grid;place-items:center;min-width:${badge.size}px;height:${badge.size}px;box-sizing:border-box;padding:0 2px;border-radius:999px;background:${look.ink};color:${look.paper};border:1.5px solid ${look.paper};font:800 ${badge.font}px/1 system-ui,sans-serif">${place.number}</span>` +
     `</span>`
   )
