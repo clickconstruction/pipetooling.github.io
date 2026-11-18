@@ -794,7 +794,9 @@ describe('LienDesk', () => {
     const lineEl = document.querySelector('[data-lien-public-board-line]') as HTMLElement
     expect(lineEl.textContent).toContain('1 job sits on public property and is still on the lien path')
     const bin = document.querySelector('[data-lien-public-bin]') as HTMLElement
-    expect(bin.textContent).toContain('Public jobs · bond claim')
+    // The box opens folded to one line that still counts the job whose bond nobody knows (punch list #390).
+    expect(bin.textContent).toBe('Public jobs · bond claim1 job · $2,918 unpaid1 to get the bondShow ▾')
+    fireEvent.click(within(bin).getByRole('button', { expanded: false }))
     expect(bin.textContent).toContain('not on the attorney’s list, the job is still being worked')
     expect((document.querySelector('[data-lien-board-column="affidavit"]') as HTMLElement).contains(bin)).toBe(true)
     fireEvent.click(within(lineEl).getByRole('button', { name: 'Review it ›' }))
@@ -808,7 +810,9 @@ describe('LienDesk', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={{ ...data(J650, [], true), offPathJobs: [off] }} initialKind="next" />)
     await settle()
     const bin = document.querySelector('[data-lien-off-path-bin]') as HTMLElement
-    expect(bin.textContent).toContain('Off the lien path')
+    // Folded as the public box is (punch list #390): one line, then a press on it opens the rows.
+    expect(bin.textContent).toBe('Off the lien path1 job · $1,050 unpaidShow ▾')
+    fireEvent.click(within(bin).getByRole('button', { expanded: false }))
     expect(bin.textContent).toContain('977 · ZZ Test Trip Charges')
     expect(bin.textContent).toContain('Lowbeck Contracting · off since Sep 10, by Dana · not on the attorney’s list')
     expect(bin.textContent).toContain('The bill is for trips to pick up checks.')
@@ -824,7 +828,9 @@ describe('LienDesk', () => {
     const off = { jobId: 'j977', number: '977', name: 'ZZ Test Trip Charges', gcName: '', unpaid: 1050, reason: 'Not for work on the property.', since: null, byUserId: null, attorneySince: null, status: 'billed', papers: [] }
     renderWithProviders(<LienDesk {...baseProps} authRole="estimator" data={{ ...data(J650, [], true), offPathJobs: [off] }} initialKind="next" />)
     await settle()
-    expect(document.querySelector('[data-lien-off-path-bin]')).toBeTruthy()
+    const bin = document.querySelector('[data-lien-off-path-bin]') as HTMLElement
+    fireEvent.click(within(bin).getByRole('button', { expanded: false }))
+    expect(document.querySelectorAll('[data-lien-off-path-bin-row]')).toHaveLength(1)
     expect(document.querySelector('[data-lien-off-path-bin-back]')).toBeNull()
   })
 
