@@ -71,6 +71,8 @@ export type LienDeskAffidavitsInput = {
   affHeldOnlyPicked: boolean
   setAffHeldOnlyPicked: (on: boolean) => void
   affSelectedJobId: string | null
+  /** The address named a job this list does not hold (v2.7744, `lienDeskAim.ts`): no row opens in its place. */
+  openNone?: boolean
 }
 
 /** What `useLienDeskAffidavits` returns: the list's rows and its three batch boxes, read by `LienDeskAffidavitList` and by the desk. */
@@ -83,7 +85,7 @@ export type LienDeskAffidavitsView = ReturnType<typeof useLienDeskAffidavits>
  * and notice records (v2.6918). Each rule is the kernel it was (`lienAffidavitBatch.ts`, `lienAffidavitRedraw.ts`,
  * `lienAffidavitPrintBar.ts`). No read of its own.
  */
-export function useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, signerNameFor, onChanged, finding, findWords, findFactsFor, oneColumn, affPile, setAffPile, affHeldOnlyPicked, setAffHeldOnlyPicked, affSelectedJobId }: LienDeskAffidavitsInput) {
+export function useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, signerNameFor, onChanged, finding, findWords, findFactsFor, oneColumn, affPile, setAffPile, affHeldOnlyPicked, setAffHeldOnlyPicked, affSelectedJobId, openNone = false }: LienDeskAffidavitsInput) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   // Redraw on the short form, for every ready paper at once (punch list #305): the press in flight, and the papers that did not take with their reasons.
@@ -102,7 +104,7 @@ export function useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, sign
   const affHeldOnly = affHeldOnlyPicked && affHeldJobIds.size > 0
   const affVisibleAll = LIEN_AFFIDAVIT_PILES.flatMap((p) => affEntries.filter((e) => e.pile === p.key && (affHeldOnly ? affHeldJobIds.has(e.jobId) : affPile == null || affPile === p.key)))
   const affVisible = affVisibleAll.filter((e) => !finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [workMonthShort(e.lastMonth), e.pile]), findWords).ok)
-  const affSelected = affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!oneColumn ? affVisible[0] : undefined) ?? null
+  const affSelected = openNone ? null : (affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!oneColumn ? affVisible[0] : undefined) ?? null)
   // While a find is typed (punch list #353, part 1) both batch presses take only the rows the list shows, and say so; with nothing typed they take every paper as before.
   const affShownKey = finding ? affVisible.map((e) => e.jobId).join('\n') : null
   const affShown = useMemo((): LienAffidavitShown | null => (affShownKey == null ? null : { jobIds: new Set(affShownKey.split('\n').filter(Boolean)) }), [affShownKey])

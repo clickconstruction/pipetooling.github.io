@@ -560,6 +560,14 @@ last_updated: 2026-11-18
 > The by-hand sheet's × closes the sheet (it closed the window).
 > The Affidavits and Retainage lists keep their own one-column switch (`mobileListShown`), since the address carries only the Notices selection.
 
+> **v2.7744 (an address that names a job its list does not hold):** [`lib/lien/lienDeskAim.ts`](../src/lib/lien/lienDeskAim.ts) reads `initialKind` and `initialJobId` as an aim, a paper list and a job (`lienDeskAimFrom`), and `readLienDeskAim` answers `none`, `waiting`, `on_list` or `off_list`.
+> Until then each list answered a job it did not hold with its own first row, the address lost `job`, and another job's pane opened with no word.
+> While the read is `off_list` the desk opens no job on that list: the Monthly notices selection effect returns before its first-row pick, and `useLienDeskAffidavits` and `lienRetainageListView` take `openNone`.
+> The note (`data-lien-desk-off-list`, `lienDeskOffListWords` through `EmptyState`) stands in the pane's place, and on one column it tops the list.
+> Its presses are the list that holds the job, when one does, and the job's Lien window.
+> The address keeps `job` on any of the three lists while the note stands (`lienDeskAimAddressJob`), and the aim is forgotten once its list holds the job, the reader picks another row or leaves the list (`lienDeskAimSpent`).
+> The re-aim effect hands the named job to all three selections, so a row picked before never stays open under an address that names another job.
+
 > **v2.6777 · v2.6780 (the desk is a page, punch list #182):** `/lien-desk` ([`pages/LienDeskPage.tsx`](../src/pages/LienDeskPage.tsx), the address in [`lib/lien/lienDeskRoute.ts`](../src/lib/lien/lienDeskRoute.ts): `?tab=deadlines|notices|affidavits|retainage|timeline`, `&job=`, `&pile=`, the one-shot `&records=`).
 > `LienDeskModal` takes `frame: 'page' | 'window'` — on the page no overlay, no ✕, no `useModalFullScreen` key, the page's `backDoor` before the title, `data-lien-desk-panel="page"`, a named region, and `onAddressChange` told every change of `kind`, the Notices selection and `pile` once `data` is in (the job a door named counts before the selection catches up);
 > the address is the truth there (`initialKind` re-applies on change).

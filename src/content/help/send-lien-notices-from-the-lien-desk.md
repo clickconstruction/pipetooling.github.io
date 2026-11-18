@@ -102,6 +102,14 @@ Press a job to open its Lien window. The desk stays open behind it. Close the Li
 
 The button left of the × on Put a GC on notice makes that window full screen. The window opens the way you left it. Press the button again to go back to the window.
 
+## A link to a job that is not on the list
+
+A link to the desk can name one job. A bookmark does, and so does a link a teammate sends you. Sometimes that job is not on the list the link opens. Its day may be more than 30 days away with no paper started. It may be paid, or off the lien path.
+
+The desk then opens no job. A line where the paper would be says so. It reads like *1204 · Elm Street Duplex is not on the Lien affidavits list*. The list beside it is whole. No other job is open.
+
+Two presses follow the line. **Open its Lien window ›** shows where the job stands. When another list holds the job, a press like **Open it on Monthly notices ›** opens it there. You can also pick any row on the list, and the line goes away.
+
 ## A job paid in kind is off the desk
 
 Some customers pay with something other than money, like a rent credit each month. That is an in kind arrangement. The desk treats a job on an open arrangement as paid.

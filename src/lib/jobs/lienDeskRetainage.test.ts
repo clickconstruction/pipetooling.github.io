@@ -145,6 +145,13 @@ describe('lienRetainageListView (out of LienDesk.tsx, v2.7583)', () => {
     expect(view({ oneColumn: true }).selected).toBeNull()
     expect(view({ oneColumn: true, selectedJobId: 'ready-1' }).selected?.jobId).toBe('ready-1')
   })
+  it('opens no row while the address names a job the list does not hold, and still lists every row (v2.7744)', () => {
+    const v = view({ openNone: true, selectedJobId: 'gone' })
+    expect(v.selected).toBeNull()
+    expect(v.visible).toHaveLength(4)
+    // Not even a row the list does hold: the note stands until the reader picks one.
+    expect(view({ openNone: true, selectedJobId: 'held-1' }).selected).toBeNull()
+  })
   it('an empty list opens nothing and draws no pile', () => {
     const v = view({ entries: [] })
     expect(v.selected).toBeNull()
