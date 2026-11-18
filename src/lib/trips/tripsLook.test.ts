@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { addDays, type TripDayKind } from './tripDays'
 import type { TripHourRow } from './tripHours'
 import { newTripRecord, NO_TRIP_PEOPLE, type TripRecord } from './tripRecord'
-import { askedByWords, atSitePercentWords, buildTripStrip, buildTripsLook, daysWords, filterTripRows, hoursWords, monthDay, namesWords, tripSpanWords, tripOffersNeedWords, tripStripStartYear, tripsLookWords, tripsStripWords } from './tripsLook'
+import { askedByWords, atSitePercentWords, buildTripStrip, buildTripsLook, daysWords, filterTripRows, hoursWords, monthDay, namesWords, tripName, tripNameOfRecord, tripNumberWords, tripRecordSpan, tripSpanWords, tripOffersNeedWords, tripStripStartYear, tripStripYearOf, tripsLookWords, tripsStripWords } from './tripsLook'
 
 // Every name, day and hour here is made up.
 const TODAY = '2026-11-17'
@@ -63,8 +63,74 @@ describe('words', () => {
   })
 })
 
+describe('a trip by name', () => {
+  const span = { first: '2026-10-23', last: '2026-11-04' }
+
+  it('leads with the number when the trip has one, in each form a screen needs', () => {
+    expect(tripName({ tripNumber: 5, span, todayYmd: TODAY })).toEqual({
+      number: 'Trip 5',
+      days: 'Oct 23 to Nov 4',
+      full: 'Trip 5 · Oct 23 to Nov 4',
+      short: 'Trip 5',
+      said: 'Trip 5, Oct 23 to Nov 4',
+      theTrip: 'Trip 5, Oct 23 to Nov 4',
+      door: 'Open Trip 5',
+      titled: 'Trip 5 · Oct 23 to Nov 4',
+    })
+  })
+
+  it('is told by its days alone when the trip was made before numbers', () => {
+    expect(tripName({ tripNumber: null, span, todayYmd: TODAY })).toEqual({
+      number: null,
+      days: 'Oct 23 to Nov 4',
+      full: 'Oct 23 to Nov 4',
+      short: 'Oct 23 to Nov 4',
+      said: 'Oct 23 to Nov 4',
+      theTrip: 'the trip of Oct 23 to Nov 4',
+      door: 'Open this trip',
+      titled: 'Trip Oct 23 to Nov 4',
+    })
+  })
+
+  it('says the year across a year end, and for a trip in another year, with the number and without', () => {
+    const yearEnd = { first: '2026-12-29', last: '2027-01-03' }
+    expect(tripName({ tripNumber: 7, span: yearEnd, todayYmd: TODAY }).full).toBe('Trip 7 · Dec 29, 2026 to Jan 3, 2027')
+    expect(tripName({ tripNumber: 7, span: yearEnd, todayYmd: TODAY }).said).toBe('Trip 7, Dec 29, 2026 to Jan 3, 2027')
+    expect(tripName({ tripNumber: 7, span: yearEnd, todayYmd: TODAY }).short).toBe('Trip 7')
+    expect(tripName({ tripNumber: null, span: yearEnd, todayYmd: TODAY }).full).toBe('Dec 29, 2026 to Jan 3, 2027')
+    expect(tripName({ tripNumber: null, span: yearEnd, todayYmd: TODAY }).short).toBe('Dec 29, 2026 to Jan 3, 2027')
+    expect(tripName({ tripNumber: 2, span: { first: '2025-03-06', last: '2025-03-20' }, todayYmd: TODAY }).full).toBe('Trip 2 · Mar 6 to 20, 2025')
+  })
+
+  it('names a trip with no day yet by its number, or as this trip', () => {
+    expect(tripName({ tripNumber: 8, span: null, todayYmd: TODAY })).toMatchObject({ full: 'Trip 8', short: 'Trip 8', said: 'Trip 8', theTrip: 'Trip 8', titled: 'Trip 8', days: null })
+    expect(tripName({ tripNumber: null, span: null, todayYmd: TODAY })).toMatchObject({ full: 'No day yet', short: 'No day yet', theTrip: 'this trip', door: 'Open this trip', number: null })
+  })
+
+  it('reads a number only from a positive whole number', () => {
+    expect([tripNumberWords(1), tripNumberWords(42), tripNumberWords(0), tripNumberWords(-1), tripNumberWords(2.5), tripNumberWords(null), tripNumberWords(undefined)]).toEqual(['Trip 1', 'Trip 42', null, null, null, null, null])
+  })
+
+  it('names a kept trip from its own days, over everyone on it', () => {
+    const numbered = { ...lifts, tripNumber: 5 }
+    expect(tripRecordSpan(numbered)).toEqual({ first: '2026-10-29', last: '2026-11-04' })
+    expect(tripNameOfRecord(numbered, TODAY).full).toBe('Trip 5 · Oct 29 to Nov 4')
+    expect(tripNameOfRecord(lifts, TODAY).full).toBe('Oct 29 to Nov 4')
+    expect(tripRecordSpan(newTripRecord({ id: 'e', developmentId: 'd1' }))).toBeNull()
+  })
+})
+
 describe('the look', () => {
   const model = buildTripsLook({ records, index: NO_TRIP_PEOPLE, hours, todayYmd: TODAY })
+
+  it('names each row with its number when it has one, and by its days when it was made before numbers', () => {
+    const mixed = buildTripsLook({ records: [{ ...lifts, tripNumber: 5 }, { ...trim, tripNumber: 6 }, firstTry], index: NO_TRIP_PEOPLE, hours: null, todayYmd: TODAY })
+    expect(mixed.rows.map((r) => [r.id, r.name.number, r.name.full, r.when])).toEqual([
+      ['t6', 'Trip 6', 'Trip 6 · Dec 1 to 5', 'Dec 1 to 5'],
+      ['t5', 'Trip 5', 'Trip 5 · Oct 29 to Nov 4', 'Oct 29 to Nov 4'],
+      ['t1', null, 'Feb 13 to 19', 'Feb 13 to 19'],
+    ])
+  })
 
   it('lists the trips newest first, each with its days, its words and where it stands', () => {
     expect(model.rows.map((r) => [r.id, r.when, r.standingWords, r.why, r.who])).toEqual([
@@ -147,6 +213,25 @@ describe('the year strip', () => {
     expect(strip.todayPct).toBeCloseTo((320 / 365) * 100)
     expect(strip.years).toEqual([2025, 2026])
     expect(strip.months).toHaveLength(12)
+  })
+
+  it('says each bar by the trip’s name on a hover and to a screen reader, the number first', () => {
+    const numbered = buildTripsLook({ records: [{ ...lifts, tripNumber: 5 }, { ...trim, tripNumber: 6 }, firstTry], index: NO_TRIP_PEOPLE, hours: null, todayYmd: TODAY })
+    expect(buildTripStrip(numbered.rows, 2026, TODAY).bars.map((b) => [b.id, b.title, b.aria])).toEqual([
+      ['t1', 'Feb 13 to 19: open this trip', 'The trip of Feb 13 to 19. Open it.'],
+      ['t5', 'Trip 5 · Oct 29 to Nov 4: open this trip', 'Trip 5, Oct 29 to Nov 4. Open it.'],
+      ['t6', 'Trip 6 · Dec 1 to 5: open this trip', 'Trip 6, Dec 1 to 5, planned. Open it.'],
+    ])
+  })
+
+  it('shows the year of one trip when a link opens it: this year when the trip touches it, else its last year', () => {
+    const byId = new Map(model.rows.map((r) => [r.id, r]))
+    expect(tripStripYearOf(byId.get('t5')!, TODAY)).toBe(2026)
+    expect(tripStripYearOf(byId.get('old')!, TODAY)).toBe(2026)
+    expect(tripStripYearOf(byId.get('old')!, '2028-03-01')).toBe(2026)
+    expect(tripStripYearOf(byId.get('t5')!, '2028-03-01')).toBe(2026)
+    expect(tripStripYearOf({ span: { first: '2024-05-01', last: '2024-05-03' } }, TODAY)).toBe(2024)
+    expect(tripStripYearOf({ span: null }, TODAY)).toBe(2026)
   })
 
   it('shows the part of a trip that falls in another year there, with no today', () => {

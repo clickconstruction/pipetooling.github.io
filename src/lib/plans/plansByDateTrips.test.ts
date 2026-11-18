@@ -39,9 +39,10 @@ function days(first: string, letters: string): PlansByDateTrip['days'] {
   const kind: Record<string, PbdTripKind> = { g: 'ready', r: 'road', s: 'site' }
   return [...letters].map((c, i) => ({ ymd: addDays(first, i), kind: kind[c] ?? null }))
 }
-const lifts: PlansByDateTrip = { id: 't5', days: days('2026-10-23', 'gxxrssssssssr'), planned: false, when: 'Oct 23 to Nov 4', standing: 'Back · 8 days at the site', who: 'Luis, Priya', why: 'Lift stations before the pour' }
-const trim: PlansByDateTrip = { id: 't6', days: days('2026-12-01', 'rsssr'), planned: true, when: 'Dec 1 to 5', standing: 'Planned', who: 'Dana, Luis', why: '' }
-const meeting: PlansByDateTrip = { id: 't4', days: days('2026-06-22', 's'), planned: false, when: 'Jun 22', standing: 'Back · 1 day at the site', who: 'Dana', why: 'Site meeting' }
+// Two trips with their numbers, and one made before numbers, which is told by its days alone.
+const lifts: PlansByDateTrip = { id: 't5', days: days('2026-10-23', 'gxxrssssssssr'), planned: false, when: 'Oct 23 to Nov 4', title: 'Trip 5 · Oct 23 to Nov 4', number: 'Trip 5', door: 'Open Trip 5', standing: 'Back · 8 days at the site', who: 'Luis, Priya', why: 'Lift stations before the pour' }
+const trim: PlansByDateTrip = { id: 't6', days: days('2026-12-01', 'rsssr'), planned: true, when: 'Dec 1 to 5', title: 'Trip 6 · Dec 1 to 5', number: 'Trip 6', door: 'Open Trip 6', standing: 'Planned', who: 'Dana, Luis', why: '' }
+const meeting: PlansByDateTrip = { id: 't4', days: days('2026-06-22', 's'), planned: false, when: 'Jun 22', title: 'Trip Jun 22', number: null, door: 'Open this trip', standing: 'Back · 1 day at the site', who: 'Dana', why: 'Site meeting' }
 
 function site(over: Partial<PlansByDateInput> = {}): PlansByDateInput {
   return {
@@ -99,8 +100,8 @@ describe('the Trips lane', () => {
     const lane = model.lanes.find((l) => l.kind === 'trips')
     expect(lane).toMatchObject({ key: 'trips', label: 'Trips', sub: '2 trips · 1 planned' })
     expect(lane?.spans.map((s) => s.key)).toEqual(['trip-t4', 'trip-t5', 'trip-t6'])
-    expect(lane?.spans[1]).toMatchObject({ glyph: 'trip', from: day('2026-10-23'), to: day('2026-11-04'), faint: false, tip: 'Trip Oct 23 to Nov 4 · Back · 8 days at the site · Luis, Priya · Lift stations before the pour' })
-    expect(lane?.spans[2]).toMatchObject({ faint: true, tip: 'Trip Dec 1 to 5 · Planned · Dana, Luis' })
+    expect(lane?.spans[1]).toMatchObject({ glyph: 'trip', from: day('2026-10-23'), to: day('2026-11-04'), faint: false, tip: 'Trip 5 · Oct 23 to Nov 4 · Back · 8 days at the site · Luis, Priya · Lift stations before the pour' })
+    expect(lane?.spans[2]).toMatchObject({ faint: true, tip: 'Trip 6 · Dec 1 to 5 · Planned · Dana, Luis' })
     expect(plansByDateLogWords(model)).toBe('trip, crew and History')
     expect(plansByDateLogTitle(model)).toBe('Lists the trips, the crews’ days and the lines kept on History too')
   })
@@ -120,8 +121,8 @@ describe('the Trips lane', () => {
   it('lists each trip as a dated line, kept with the log and out of the drawings and the bids', () => {
     const model = buildPlansByDate(site({ trips: [lifts, trim, meeting] }))
     const line = (key: string) => model.rows.find((r) => r.key === key)
-    expect(line('trip-t5')).toMatchObject({ ymd: '2026-10-23', lane: 'Trips', glyph: 'trip', text: 'Trip until Nov 4', soft: 'Luis, Priya · Lift stations before the pour' })
-    expect(line('trip-t6')).toMatchObject({ text: 'Planned trip until Dec 5', soft: 'Dana, Luis' })
+    expect(line('trip-t5')).toMatchObject({ ymd: '2026-10-23', lane: 'Trips', glyph: 'trip', text: 'Trip 5 until Nov 4', soft: 'Luis, Priya · Lift stations before the pour' })
+    expect(line('trip-t6')).toMatchObject({ text: 'Planned Trip 6 until Dec 5', soft: 'Dana, Luis' })
     expect(line('trip-t4')).toMatchObject({ text: 'Trip for the day' })
     expect(plansByDateListRows(model.rows, false).rows.some((r) => r.glyph === 'trip')).toBe(false)
     expect(plansByDateListRows(model.rows, true).rows.filter((r) => r.glyph === 'trip')).toHaveLength(3)
@@ -193,7 +194,7 @@ describe('the print', () => {
     expect(html).toContain(PLANS_BY_DATE_PRINT_LIST_NOTE_TRIPS)
     expect(html).not.toContain(PLANS_BY_DATE_PRINT_LIST_NOTE)
     const all = plansByDatePrintHtml({ siteName: 'ZZ Test Heron Point', customerName: null, model, notes: [], printedAt: 'now', printedBy: null, withLog: true })
-    expect(all).toContain('Trips: Trip until Nov 4')
+    expect(all).toContain('Trips: Trip 5 until Nov 4')
   })
 })
 
@@ -202,20 +203,27 @@ describe('a trip’s card', () => {
   const model = buildPlansByDate(input)
   const cards = buildPlansByDateCards(input, model, { canWritePlans: false, canOpenJobs: true, canKeep: true, canAsk: true })
 
-  it('says the trip, and its one press opens the Trips look', () => {
+  it('says the trip by its number, and its one press opens that trip', () => {
     const card = cards.get('trip-t5')
-    expect(card).toMatchObject({ glyph: 'trip', title: 'Trip Oct 23 to Nov 4', kicker: 'Back · 8 days at the site', facts: [{ label: 'Who went', value: 'Luis, Priya' }, { label: 'What for', value: 'Lift stations before the pour' }] })
-    expect(card?.actions).toEqual([{ kind: 'open-trips', label: PBD_PRESS.openTrips }])
+    expect(card).toMatchObject({ glyph: 'trip', title: 'Trip 5 · Oct 23 to Nov 4', kicker: 'Back · 8 days at the site', facts: [{ label: 'Who went', value: 'Luis, Priya' }, { label: 'What for', value: 'Lift stations before the pour' }] })
+    expect(card?.actions).toEqual([{ kind: 'open-trip', label: 'Open Trip 5', tripId: 't5' }])
     expect(PBD_PRESS.openTrips).toBe('Open the Trips look')
     expect(cards.get('trip-t6')?.facts).toEqual([{ label: 'Who went', value: 'Dana, Luis' }])
+    expect(cards.get('trip-t6')?.actions).toEqual([{ kind: 'open-trip', label: 'Open Trip 6', tripId: 't6' }])
+  })
+
+  it('says a trip made before numbers by its days, and its press still opens that trip', () => {
+    const old = site({ trips: [meeting] })
+    const oldCards = buildPlansByDateCards(old, buildPlansByDate(old), { canWritePlans: false, canOpenJobs: true, canKeep: true, canAsk: true })
+    expect(oldCards.get('trip-t4')).toMatchObject({ title: 'Trip Jun 22', actions: [{ kind: 'open-trip', label: 'Open this trip', tripId: 't4' }] })
   })
 
   it('names the lane with its trips, newest first', () => {
     const lane = cards.get('lane-trips')
     expect(lane).toMatchObject({ title: 'Trips', kicker: '1 trip · 1 planned', rowsTitle: 'Newest first' })
     expect(lane?.rows.map((r) => [r.key, r.text, r.to])).toEqual([
-      ['trip-t6', 'Planned trip until Dec 5', 'trip-t6'],
-      ['trip-t5', 'Trip until Nov 4', 'trip-t5'],
+      ['trip-t6', 'Planned Trip 6 until Dec 5', 'trip-t6'],
+      ['trip-t5', 'Trip 5 until Nov 4', 'trip-t5'],
     ])
     expect(lane?.actions).toEqual([{ kind: 'open-trips', label: 'Open the Trips look' }])
   })

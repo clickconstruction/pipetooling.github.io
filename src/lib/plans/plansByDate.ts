@@ -77,6 +77,12 @@ export type PlansByDateTrip = {
   planned: boolean
   /** *Oct 23 to Nov 4*. */
   when: string
+  /** The trip by name, as its card's title and its bar's tip lead with it: *Trip 5 · Oct 23 to Nov 4*, or *Trip Oct 23 to Nov 4* for a trip made before numbers. */
+  title: string
+  /** *Trip 5*, for the dated list's line; null for a trip made before numbers. */
+  number: string | null
+  /** The press on its card that opens it in the Trips look: *Open Trip 5*, or *Open this trip*. */
+  door: string
   /** *Back · 8 days at the site*, or *Planned*. */
   standing: string
   /** *Luis, Priya*. */
@@ -367,9 +373,9 @@ export function buildPlansByDate(input: PlansByDateInput): PlansByDateModel {
     for (const { trip: t, runs } of tripBars) {
       const from = runs[0]?.from ?? 0
       const to = runs[runs.length - 1]?.to ?? from
-      tripLane.spans.push({ key: `trip-${t.id}`, glyph: 'trip', from, to, runs, faint: t.planned, tip: [`Trip ${t.when}`, t.standing, t.who, t.why].filter(Boolean).join(' · ') })
+      tripLane.spans.push({ key: `trip-${t.id}`, glyph: 'trip', from, to, runs, faint: t.planned, tip: [t.title, t.standing, t.who, t.why].filter(Boolean).join(' · ') })
       used.add('trip')
-      row({ key: `trip-${t.id}`, day: from, lane: 'Trips', glyph: 'trip', text: `${t.planned ? 'Planned trip' : 'Trip'} ${from === to ? 'for the day' : `until ${dayWords(ymdOfDay(to), false)}`}`, soft: [t.who, t.why].filter(Boolean).join(' · ') })
+      row({ key: `trip-${t.id}`, day: from, lane: 'Trips', glyph: 'trip', text: `${t.planned ? `Planned ${t.number ?? 'trip'}` : (t.number ?? 'Trip')} ${from === to ? 'for the day' : `until ${dayWords(ymdOfDay(to), false)}`}`, soft: [t.who, t.why].filter(Boolean).join(' · ') })
     }
     lanes.push(tripLane)
   }

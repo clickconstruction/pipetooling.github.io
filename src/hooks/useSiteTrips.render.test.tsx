@@ -99,6 +99,32 @@ describe('useSiteTrips: Not a trip, and the names behind an offer', () => {
     expect(result.current.dismissals).toEqual([kept])
   })
 
+  it('gives a saved trip the number the database handed out, at once, before the read that follows', async () => {
+    // The second read never answers here, so what the hook holds is what the save's reply gave it.
+    const readTrips = vi.fn<SiteTripsIo['readTrips']>().mockResolvedValueOnce([lifts]).mockImplementation(() => new Promise<TripRecord[]>(() => undefined))
+    const io = makeIo({ readTrips, save: vi.fn(async () => 6) })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.records).toHaveLength(1))
+    const next: TripRecord = { ...newTripRecord({ id: 't6', developmentId: 'd1' }), people: [{ personId: null, userId: null, name: 'Dana', days: { '2026-12-01': 'road' } }] }
+    await act(async () => {
+      await result.current.save(next)
+    })
+    expect(io.save).toHaveBeenCalledWith(next)
+    expect(result.current.records?.map((r) => [r.id, r.tripNumber])).toEqual([['t5', null], ['t6', 6]])
+    expect(readTrips).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps a saved trip as it was sent when the reply names no number', async () => {
+    const readTrips = vi.fn<SiteTripsIo['readTrips']>().mockResolvedValueOnce([lifts]).mockImplementation(() => new Promise<TripRecord[]>(() => undefined))
+    const io = makeIo({ readTrips })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.records).toHaveLength(1))
+    await act(async () => {
+      await result.current.save({ ...lifts, tripNumber: 5, purpose: 'Lift stations' })
+    })
+    expect(result.current.records).toEqual([{ ...lifts, tripNumber: 5, purpose: 'Lift stations' }])
+  })
+
   it('keeps what it holds when Not a trip fails, and passes the reason on', async () => {
     const io = makeIo({ dismiss: vi.fn(async () => Promise.reject(new Error('Not a trip is said by the office or a leader.'))) })
     const { result } = draw(io)

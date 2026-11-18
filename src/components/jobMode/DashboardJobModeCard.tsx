@@ -72,6 +72,7 @@ import {
   type JobModeKeptRow,
 } from '../../lib/jobMode/keptDay'
 import { RailMachineStops } from '../machines/MachineStops'
+import { JobModeTrip } from '../trips/JobModeTrip'
 
 type LeaveReportJobPick = {
   id: string
@@ -1111,6 +1112,13 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             navigate(scheduleDispatchWeekUrl(jobCalendarTarget.id, week))
           }}
         />
+      ) : null}
+      {/* The trip (punch list #379, PR 7b). Clocked in on a job, with the session landed: the question and the banner, after the clock in.
+          Ready to start a job: the banner alone (no session, so nothing is asked). No job, no trip. */}
+      {held || sessionPending ? null : openSession?.jobLedgerId && leaveReportTarget?.id === openSession.jobLedgerId ? (
+        <JobModeTrip key={openSession.jobLedgerId} jobId={openSession.jobLedgerId} sessionId={openSession.id} travel={loading ? undefined : travelFacts} jobLabel={leavingLabel ?? leaveReportTarget.jobName} jobAddress={leaveReportTarget.jobAddress === '—' ? null : leaveReportTarget.jobAddress} />
+      ) : !openSession && picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock ? (
+        <JobModeTrip key={picked.nextBlock.job_id} jobId={picked.nextBlock.job_id} sessionId={null} travel={null} jobLabel={safeTrim(picked.nextBlock.job_name) || '—'} jobAddress={safeTrim(picked.nextBlock.job_address) || null} />
       ) : null}
       {error && !held ? (
         // A read is safe to repeat: when the signal returns the card reads the day again by itself.

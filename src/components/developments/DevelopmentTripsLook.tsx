@@ -11,15 +11,26 @@
  * PR 5: a run of punches at the site that no trip covers is offered above the rows, **Looks like a trip**,
  * with **Make it a trip** and **Not a trip** (`lib/trips/tripOffers.ts`). The app never makes the trip.
  * An open trip says **What shows it**: counts of what the page already reads (`lib/trips/tripEvidence.ts`).
+ *
+ * PR 8: an open trip that has gone out says **What it cost** to a dev or a controller, the wages of its hours
+ * and the card and bank charges in its days (`lib/trips/tripCost.ts`); the look is handed no costs for anyone else.
+ * **Print the trip log** sits beside **+ Trip** for everyone who sees the look.
+ *
+ * The number and the link: a trip leads with its number, **Trip 5**, on its row, its open heading and its bar
+ * on the strip (`tripName` in `lib/trips/tripsLook.ts`). `openSignal` opens one trip's row and turns the strip
+ * to its year: a link to the trip, or a press on its name elsewhere on the page. **Copy link** on an open
+ * trip is there for everyone who sees the look. The number is words only: nothing here lets a person type it.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { TRIP_DAY_LABEL, TRIP_STANDING_LABEL, type TripDayKind } from '../../lib/trips/tripDays'
+import { TRIP_COST_CAP, TRIP_COST_WHO, tripCostLines, type TripCardsState, type TripCost, type TripCostLine, type TripLaborState } from '../../lib/trips/tripCost'
 import { tripEvidenceChips, type TripEvidence, type TripEvidenceChip } from '../../lib/trips/tripEvidence'
 import { TRIP_HOUR_BUCKET_LABEL, type TripHourBucket } from '../../lib/trips/tripHours'
+import { tripRowAnchor } from '../../lib/trips/jobTrips'
 import { TRIP_BILLING_WORDS, type TripRecord } from '../../lib/trips/tripRecord'
-import { atSitePercentWords, buildTripStrip, daysWords, filterTripRows, hoursWords, monthDay, tripStripStartYear, TRIPS_FILTERS, type TripLookRow, type TripsFilter, type TripsLookModel } from '../../lib/trips/tripsLook'
+import { atSitePercentWords, buildTripStrip, daysWords, filterTripRows, hoursWords, monthDay, tripStripStartYear, tripStripYearOf, TRIPS_FILTERS, type TripLookRow, type TripsFilter, type TripsLookModel } from '../../lib/trips/tripsLook'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { TripDayDots, TripHoursBar, TripLegend, TripPaintDays, TRIP_KIND_COLOR, BucketDot, bucketBackground } from '../trips/TripDayBits'
@@ -44,6 +55,12 @@ function billingChipStyle(row: TripLookRow) {
   const amber = row.billing === 'extra'
   return { display: 'inline-flex', alignItems: 'center', border: `1px solid ${amber ? 'var(--text-amber-800)' : 'var(--border)'}`, borderRadius: 999, padding: '1px 9px', fontSize: '0.74rem', background: amber ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', color: amber ? 'var(--text-amber-800)' : 'var(--text-700)', whiteSpace: 'nowrap' } as const
 }
+
+/** What each trip cost, for a dev or a controller, and where the two reads behind it stand. */
+export type TripsCosts = { byTrip: ReadonlyMap<string, TripCost>; labor: TripLaborState; cards: TripCardsState }
+
+/** One trip to open: its id, and a count that changes with each ask, so the same trip can be asked for twice. */
+export type TripOpenSignal = { id: string; n: number }
 
 /** One offer as the look draws it: the finder's key and its sentence. */
 export type TripOfferLine = { key: string; words: string }
@@ -72,6 +89,12 @@ export function DevelopmentTripsLook({
   onOfferMake,
   onOfferDismiss,
   evidence,
+  costs = null,
+  onPrint,
+  printNote = null,
+  openSignal = null,
+  onOpened,
+  onCopyLink,
 }: {
   model: TripsLookModel
   hoursState: TripsHoursState
@@ -98,6 +121,18 @@ export function DevelopmentTripsLook({
   onOfferDismiss?: (key: string) => void
   /** What shows each trip, by its id; a trip with none yet draws no block. */
   evidence?: ReadonlyMap<string, TripEvidence>
+  /** What each trip cost. Null for a reader who may not see the site's costs: no table is drawn. */
+  costs?: TripsCosts | null
+  /** **Print the trip log**: every trip on one paper, with no dollars on it. */
+  onPrint?: () => void
+  /** What the last press of the print left to say, such as a blocked window. */
+  printNote?: string | null
+  /** Open this trip's row and turn the strip to its year: a link to the trip, or a press on its name elsewhere on the page. */
+  openSignal?: TripOpenSignal | null
+  /** Told once the look has opened the trip the signal named, so a look that is folded and opened again does not jump back to it. */
+  onOpened?: () => void
+  /** **Copy link** on an open trip: the link that opens this trip. Absent, the press is not drawn. */
+  onCopyLink?: (record: TripRecord) => void
 }) {
   const [filter, setFilter] = useState<TripsFilter>('all')
   const [openId, setOpenId] = useState<string | null>(null)
@@ -111,6 +146,19 @@ export function DevelopmentTripsLook({
   const num = (n: number | undefined) => (n == null ? (hoursState === 'reading' ? '…' : '—') : hoursWords(n))
   const yearAt = strip.years.indexOf(year)
   const offersShown = canWrite && hoursState === 'read' && !noSitePoint ? offers : []
+
+  // A link or a press asked for one trip: every trip is listed, its row opens, and the strip shows its year.
+  const openedSignal = useRef<number | null>(null)
+  useEffect(() => {
+    if (!openSignal || openSignal.n === openedSignal.current) return
+    const asked = model.rows.find((r) => r.id === openSignal.id)
+    if (!asked) return
+    openedSignal.current = openSignal.n
+    setFilter('all')
+    setOpenId(asked.id)
+    setYearPick(tripStripYearOf(asked, todayYmd))
+    onOpened?.()
+  }, [openSignal, model.rows, todayYmd, onOpened])
 
   if (failure) return <OfflineRetryPanel failure={failure} onRetry={onReload} surface="development-trips" idempotent />
 
@@ -185,8 +233,8 @@ export function DevelopmentTripsLook({
                 key={b.id}
                 type="button"
                 onClick={() => setOpenId(b.id)}
-                title={`${b.label}: open this trip`}
-                aria-label={`The trip of ${b.label}${b.planned ? ', planned' : ''}. Open it.`}
+                title={b.title}
+                aria-label={b.aria}
                 data-testid="trips-strip-bar"
                 style={{ position: 'absolute', top: 4, left: `${b.leftPct}%`, width: `max(8px, ${b.widthPct}%)`, height: 18, display: 'flex', borderRadius: 5, overflow: 'hidden', border: 'none', padding: 0, cursor: 'pointer', opacity: b.planned ? 0.55 : 1, outline: b.planned ? '1px dashed var(--text-700)' : '1px solid var(--surface)', background: 'var(--bg-muted)' }}
               >
@@ -262,11 +310,25 @@ export function DevelopmentTripsLook({
               ))
             : null}
         </span>
-        {canWrite ? (
-          <SmallButton onClick={onAdd} primary title="Add a trip to this site: who went, which days, what for">
-            + Trip
-          </SmallButton>
-        ) : null}
+        <span style={{ display: 'inline-flex', gap: '6px 14px', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+          {printNote ? (
+            <span style={{ color: 'var(--text-muted)' }} data-testid="trips-print-note">
+              {printNote}
+            </span>
+          ) : null}
+          {onPrint && model.rows.length > 0 ? (
+            <span data-testid="trips-print">
+              <LinkButton onClick={onPrint} title="Opens every trip of this site on one page in a print window. The print window saves it as a PDF too. The page carries no dollars." nowrap>
+                Print the trip log
+              </LinkButton>
+            </span>
+          ) : null}
+          {canWrite ? (
+            <SmallButton onClick={onAdd} primary title="Add a trip to this site: who went, which days, what for">
+              + Trip
+            </SmallButton>
+          ) : null}
+        </span>
       </div>
 
       {model.rows.length === 0 ? (
@@ -287,9 +349,16 @@ export function DevelopmentTripsLook({
           {rows.map((row, i) => {
             const open = openId === row.id
             return (
-              <div key={row.id} style={{ borderTop: i === 0 && phone ? 'none' : '1px solid var(--border)', background: 'var(--surface)' }} data-testid="trip-row" data-standing={row.standing}>
+              // The row wears an id and the cards' own margin under the pinned strip, so a link to the trip lands on it.
+              <div key={row.id} id={tripRowAnchor(row.id)} style={{ borderTop: i === 0 && phone ? 'none' : '1px solid var(--border)', background: 'var(--surface)', scrollMarginTop: 'var(--development-jump-offset, 72px)' }} data-testid="trip-row" data-standing={row.standing}>
                 <button type="button" onClick={() => setOpenId(open ? null : row.id)} aria-expanded={open} title={open ? 'Close this trip' : 'Open this trip'} data-testid="trip-row-press" style={{ ...rowGrid(phone), width: '100%', textAlign: 'left', border: 'none', background: 'none', font: 'inherit', color: 'inherit', cursor: 'pointer', padding: '9px 12px' }}>
                   <div>
+                    {/* The trip's number leads: the short thing to say in a text or cite on a bill. */}
+                    {row.name.number ? (
+                      <span style={{ ...capStyle, display: 'block', color: 'var(--text-700)' }} data-testid="trip-row-number">
+                        {row.name.number}
+                      </span>
+                    ) : null}
                     <strong style={{ display: 'block', color: 'var(--text-strong)' }}>{row.when}</strong>
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{row.standingWords}</span>
                   </div>
@@ -314,7 +383,7 @@ export function DevelopmentTripsLook({
                   </div>
                   <div>{row.billingLabel ? <span style={billingChipStyle(row)}>{row.billingLabel}</span> : null}</div>
                 </button>
-                {open ? <OpenTrip row={row} evidence={evidence?.get(row.id) ?? null} phone={phone} jobLabel={jobLabel} canWrite={canWrite} hoursState={hoursState} onChange={() => onChange(row.record)} onDelete={() => onDelete(row.record)} /> : null}
+                {open ? <OpenTrip row={row} evidence={evidence?.get(row.id) ?? null} costLines={costs && row.standing !== 'planned' ? tripCostLines(costs.byTrip.get(row.id), costs) : null} phone={phone} jobLabel={jobLabel} canWrite={canWrite} hoursState={hoursState} onChange={() => onChange(row.record)} onDelete={() => onDelete(row.record)} onCopyLink={onCopyLink ? () => onCopyLink(row.record) : undefined} /> : null}
               </div>
             )
           })}
@@ -341,7 +410,7 @@ const KIND_ROWS: ReadonlyArray<{ bucket: Exclude<TripHourBucket, 'home' | 'noPla
 ]
 
 /** One trip, open in place: what was typed on the left, what is counted from the clock on the right. */
-function OpenTrip({ row, evidence, phone, jobLabel, canWrite, hoursState, onChange, onDelete }: { row: TripLookRow; evidence: TripEvidence | null; phone: boolean; jobLabel: (jobId: string) => string | null; canWrite: boolean; hoursState: TripsHoursState; onChange: () => void; onDelete: () => void }) {
+function OpenTrip({ row, evidence, costLines, phone, jobLabel, canWrite, hoursState, onChange, onDelete, onCopyLink }: { row: TripLookRow; evidence: TripEvidence | null; /** What it cost, for a dev or a controller; null for everyone else and for a trip that has not gone out. */ costLines: ReadonlyArray<TripCostLine> | null; phone: boolean; jobLabel: (jobId: string) => string | null; canWrite: boolean; hoursState: TripsHoursState; onChange: () => void; onDelete: () => void; /** Copies the link that opens this trip; shown to everyone who sees the look. */ onCopyLink?: () => void }) {
   const r = row.record
   const h = row.hours
   const cell = { padding: '5px 8px', borderTop: '1px solid var(--border)', verticalAlign: 'top' } as const
@@ -352,18 +421,29 @@ function OpenTrip({ row, evidence, phone, jobLabel, canWrite, hoursState, onChan
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={capStyle}>{TRIP_STANDING_LABEL[row.standing]}</div>
-          <div style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-strong)' }}>
-            {row.when} · {row.why}
+          <div style={{ fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-strong)' }} data-testid="trip-open-heading">
+            {row.name.full} · {row.why}
           </div>
         </div>
-        {canWrite ? (
+        {canWrite || onCopyLink ? (
           <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <SmallButton onClick={onChange} title="Change who went, the days, what for and the rest">
-              Change
-            </SmallButton>
-            <button type="button" onClick={onDelete} title="Delete this trip. No clock row, bill or cost changes." data-testid="trip-delete" style={{ border: 'none', background: 'none', padding: '0 4px', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-red-700)', cursor: 'pointer' }}>
-              Delete this trip
-            </button>
+            {canWrite ? (
+              <SmallButton onClick={onChange} title="Change who went, the days, what for and the rest">
+                Change
+              </SmallButton>
+            ) : null}
+            {onCopyLink ? (
+              <span style={{ fontSize: '0.78rem' }} data-testid="trip-copy-link">
+                <LinkButton onClick={onCopyLink} title="Copies a link that opens this trip on this page, to paste in a text or an email" strong nowrap>
+                  Copy link
+                </LinkButton>
+              </span>
+            ) : null}
+            {canWrite ? (
+              <button type="button" onClick={onDelete} title="Delete this trip. No clock row, bill or cost changes." data-testid="trip-delete" style={{ border: 'none', background: 'none', padding: '0 4px', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-red-700)', cursor: 'pointer' }}>
+                Delete this trip
+              </button>
+            ) : null}
           </span>
         ) : null}
       </div>
@@ -494,6 +574,26 @@ function OpenTrip({ row, evidence, phone, jobLabel, canWrite, hoursState, onChan
                   </span>
                 ))}
               </div>
+            </div>
+          ) : null}
+          {costLines ? (
+            <div data-testid="trip-open-cost">
+              <div style={{ ...capStyle, marginTop: 12 }}>
+                {TRIP_COST_CAP} <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>· {TRIP_COST_WHO}</span>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', marginTop: 6 }}>
+                <tbody>
+                  {costLines.map((l, i) => (
+                    <tr key={l.key} data-testid={`trip-cost-${l.key}`}>
+                      <td style={{ ...cell, borderTop: i === 0 ? 'none' : cell.borderTop, fontWeight: l.key === 'total' ? 700 : 400 }}>
+                        {l.label}
+                        {l.small ? <span style={label}> · {l.small}</span> : null}
+                      </td>
+                      <td style={{ ...right, borderTop: i === 0 ? 'none' : right.borderTop, fontWeight: l.key === 'total' && l.stands ? 700 : 400, color: l.stands ? undefined : 'var(--text-muted)' }}>{l.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : null}
         </div>

@@ -11,8 +11,11 @@ import { installDomShims, renderWithProviders } from '../../test/renderSmokeMock
 import { buildScoreboard, scoreboardColumnsFor, scoreboardMembers, SCOREBOARD_DEFAULT_SORT } from '../../lib/developments/scoreboard'
 import { scoreboardPartGroups, scoreboardPeopleCut, type ScoreboardCut, type ScoreboardWindowKey } from '../../lib/developments/scoreboardCuts'
 import type { MemberJob } from '../../lib/developments/overview'
-import type { SiteCostsRead } from '../../lib/developments/siteCosts'
+import { jobCostsFromRows, type SiteCostRows, type SiteCostsRead } from '../../lib/developments/siteCosts'
 import type { SiteLaborRead } from '../../lib/developments/siteLabor'
+import { newTripRecord, type TripRecord } from '../../lib/trips/tripRecord'
+import { scoreboardTripCut, SCOREBOARD_TRIP_LEAD_NOTE, SCOREBOARD_TRIP_NOTE } from '../../lib/trips/tripScoreboardCut'
+import { EMPTY_CARD_CHARGE_EXCLUSIONS } from '../../../supabase/functions/_shared/cardChargeAllocationFilter'
 import { DevelopmentScoreboard } from './DevelopmentScoreboard'
 
 vi.mock('../../lib/supabase', async () => {
@@ -431,5 +434,152 @@ describe('DevelopmentScoreboard · the cuts and the window (v2.6558, punch list 
     expect(card.textContent).toContain('≈ $')
     fireEvent.click(screen.getByTestId('scoreboard-open-person-p1'))
     expect(screen.getByTestId('scoreboard-person-lines-p1').textContent).toContain('JP612')
+  })
+})
+
+describe('DevelopmentScoreboard · the cut by trip (punch list #379, PR 8)', () => {
+  // Made-up days and round dollars: Luis went out Oct 30 to Nov 1, and worked at home for the site on Oct 12. Dana never went.
+  const day = (ymd: string, hours: number, costUsd: number) => ({ ymd, hours, costUsd })
+  const clock: SiteLaborRead = {
+    state: 'read',
+    labor: {
+      byJobId: new Map([
+        ['j1', { jobId: 'j1', hours: 28, costUsd: 1400, days: 3, people: [{ personName: 'Luis', personId: 'p-luis', userId: 'u-luis', hours: 28, costUsd: 1400, days: 3, leadDays: 0, byWorkDate: [day('2026-10-12', 8, 400), day('2026-10-30', 10, 500), day('2026-10-31', 10, 500)] }] }],
+        ['j2', { jobId: 'j2', hours: 5, costUsd: 350, days: 1, people: [{ personName: 'Dana', personId: 'p-dana', userId: null, hours: 5, costUsd: 350, days: 1, leadDays: 0, byWorkDate: [day('2026-10-31', 5, 350)] }] }],
+      ]),
+      siteDays: 3,
+      people: 2,
+      daysKnown: true,
+    },
+  }
+  const tx = (posted_at: string, amount: number) => ({ posted_at, counterparty_name: 'A made-up fuel stop', amount })
+  const rows: SiteCostRows = {
+    jobIds: ['j1', 'j2', 'j3'],
+    invoiceAmounts: [],
+    cardAlloc: [
+      { job_id: 'j1', id: 'a0', mercury_transaction_id: 'tx0', amount: -90, mercury_transactions: tx('2026-10-29', -90) },
+      { job_id: 'j1', id: 'a1', mercury_transaction_id: 'tx1', amount: -120, mercury_transactions: tx('2026-10-30', -120) },
+    ],
+    cardExclusions: EMPTY_CARD_CHARGE_EXCLUSIONS,
+    tally: [],
+    otherCharges: [{ job_id: 'j1', amount: 40 }],
+    sheets: [],
+    items: [],
+    settings: [],
+  }
+  const tripCosts: SiteCostsRead = { state: 'read', byJobId: jobCostsFromRows(rows), rows }
+  const lifts: TripRecord = { ...newTripRecord({ id: 't5', developmentId: 'd1' }), purpose: 'Lift stations before the pour', people: [{ personId: 'p-luis', userId: 'u-luis', name: 'Luis', days: { '2026-10-30': 'road', '2026-10-31': 'site', '2026-11-01': 'road' } }] }
+  const roster = [{ id: 'p-luis', name: 'Luis', userId: 'u-luis' }, { id: 'p-dana', name: 'Dana', userId: null }]
+  const usd = (n: number) => '$' + n.toLocaleString('en-US')
+
+  function mountTrips(over: { cut?: ScoreboardCut; phone?: boolean; seesCosts?: boolean; tripOffered?: boolean; records?: TripRecord[] | null; onOpenTrip?: (tripId: string) => void } = {}) {
+    const onCut = vi.fn()
+    const seesCosts = over.seesCosts ?? true
+    const model = buildScoreboard({ jobs, invoices: [], jobLabel: label, labor: clock, costs: seesCosts ? tripCosts : undefined, overhead: seesCosts ? overhead : undefined })
+    const cut = over.cut ?? 'trip'
+    const cuts = {
+      cut,
+      onCut,
+      window: 'all' as const,
+      onWindow: vi.fn(),
+      windowOffered: true,
+      parts: null,
+      people: null,
+      tripOffered: over.tripOffered ?? true,
+      onOpenTrip: over.onOpenTrip,
+      trips: cut === 'trip' ? scoreboardTripCut({ model, labor: clock, records: over.records === undefined ? [lifts] : over.records, roster, costs: seesCosts ? tripCosts : undefined, seesCosts, todayYmd: '2026-11-17', toYmd: (raw) => raw }) : null,
+    }
+    const r = renderWithProviders(<DevelopmentScoreboard model={model} columns={scoreboardColumnsFor(seesCosts)} phone={over.phone ?? false} onSort={vi.fn()} openJob={vi.fn()} head={head} print={null} cuts={cuts} />)
+    return { ...r, onCut, model }
+  }
+  const cellOf = (row: string, col: string) => screen.getByTestId(`scoreboard-trip-${row}-${col}`).textContent
+
+  it('offers the trip chip only on a site with a trip; a press asks for the cut', () => {
+    const { onCut } = mountTrips({ cut: 'job' })
+    expect(screen.getByTestId('scoreboard-cut-trip').textContent).toBe('trip')
+    fireEvent.click(screen.getByTestId('scoreboard-cut-trip'))
+    expect(onCut).toHaveBeenCalledWith('trip')
+    cleanup()
+    mountTrips({ cut: 'job', tripOffered: false })
+    expect(screen.queryByTestId('scoreboard-cut-trip')).toBeNull()
+    expect(screen.getByTestId('scoreboard-cut-person')).toBeTruthy()
+  })
+
+  it('draws a row a trip and At home for the site last, in place of the job rows, under the same tiles and foot', () => {
+    const { model } = mountTrips()
+    expect(screen.getByTestId('scoreboard-cut-trip').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByTestId('scoreboard-row-j1')).toBeNull()
+    expect(screen.queryByTestId('scoreboard-fold-row')).toBeNull()
+    const body = [...screen.getByTestId('scoreboard-table').querySelectorAll('tbody tr')].map((tr) => tr.getAttribute('data-testid'))
+    expect(body).toEqual(['scoreboard-trip-t5', 'scoreboard-trip-home'])
+    expect(screen.getByTestId('scoreboard-trip-t5').textContent).toContain('Oct 30 to Nov 1')
+    expect(screen.getByTestId('scoreboard-trip-t5').textContent).toContain('Lift stations before the pour')
+    expect(screen.getByTestId('scoreboard-trip-home').textContent).toContain('At home for the site')
+    // The tiles still head the board with the site's own totals.
+    expect(screen.getByTestId('scoreboard-tile-hours').textContent).toContain(`${model.site.hours} h`)
+  })
+
+  it('a trip’s row fills hours, days, labor, the card and bank charges in its days as parts, and cost; the rest is blank', () => {
+    mountTrips()
+    expect(['hours', 'days', 'labor', 'subs', 'parts', 'overhead', 'earned', 'cost', 'profit'].map((c) => cellOf('t5', c))).toEqual(['20 h', '2 d', '$1,000', '', '$120', '', '', '$1,120', ''])
+    expect(screen.getByTestId('scoreboard-trip-t5-days').getAttribute('title')).toBe('Days with clocked work inside the trip. The trip itself ran 3 days.')
+    expect(screen.getByTestId('scoreboard-trip-t5-parts').getAttribute('title')).toBe('Card and bank charges in the days: 1 charge dated on a day someone was on the trip')
+  })
+
+  it('the last row carries the rest of the hours, the labor and the parts; its subs, overhead and cost cells are empty', () => {
+    const { model } = mountTrips()
+    // Luis at home on Oct 12 and Dana: 13 hours over two days.
+    expect(['hours', 'days', 'labor', 'subs', 'parts', 'overhead', 'earned', 'cost', 'profit'].map((c) => cellOf('home', c))).toEqual(['13 h', '2 d', '$750', '', '$130', '', '', '', ''])
+    // Hours, labor and parts add up to the tiles over them; the site's overhead is on its tile and on no row.
+    expect([model.site.hours, model.site.labor, model.site.parts]).toEqual([20 + 13, 1000 + 750, 120 + 130])
+    expect(model.site.overhead).toBeGreaterThan(0)
+    expect(screen.getByTestId('scoreboard-tile-overhead').textContent).toContain(usd(model.site.overhead))
+    expect(screen.getByTestId('scoreboard-trip-note').textContent).toBe(SCOREBOARD_TRIP_NOTE)
+  })
+
+  it('the leader’s board cuts hours and days by trip and shows no dollar in the rows', () => {
+    mountTrips({ seesCosts: false })
+    expect(['hours', 'days', 'earned'].map((c) => cellOf('t5', c))).toEqual(['20 h', '2 d', ''])
+    expect(screen.queryByTestId('scoreboard-trip-t5-labor')).toBeNull()
+    expect(screen.getByTestId('scoreboard-trip-t5').textContent).not.toContain('$')
+    expect(screen.getByTestId('scoreboard-trip-home').textContent).not.toContain('$')
+    expect(screen.getByTestId('scoreboard-trip-note').textContent).toBe(SCOREBOARD_TRIP_LEAD_NOTE)
+  })
+
+  it('on a phone a trip is a card with its hours, labor and cost', () => {
+    mountTrips({ phone: true })
+    expect(screen.getByTestId('scoreboard-phone')).toBeTruthy()
+    expect(screen.queryByTestId('scoreboard-card-j1')).toBeNull()
+    expect(screen.getByTestId('scoreboard-trip-t5').textContent).toBe('Oct 30 to Nov 1Lift stations before the pourHours20 hLabor$1,000Cost$1,120')
+    expect(cellOf('home', 'hours')).toBe('13 h')
+    expect(screen.getByTestId('scoreboard-trip-note')).toBeTruthy()
+  })
+
+  it('names a trip’s row by its number, and the name opens that trip, on a desk and on a phone', () => {
+    for (const phone of [false, true]) {
+      const onOpenTrip = vi.fn()
+      mountTrips({ records: [{ ...lifts, tripNumber: 5 }], onOpenTrip, phone })
+      const door = screen.getByTestId('scoreboard-trip-door-t5')
+      expect(door.textContent).toBe('Trip 5')
+      expect(door.getAttribute('title')).toBe('Open Trip 5 in the Trips look')
+      expect(screen.getByTestId('scoreboard-trip-t5').textContent).toContain('Trip 5Oct 30 to Nov 1 · Lift stations before the pour')
+      fireEvent.click(door)
+      expect(onOpenTrip).toHaveBeenCalledWith('t5')
+      // The last row is no trip: its name is plain words.
+      expect(screen.queryByTestId('scoreboard-trip-door-home')).toBeNull()
+      cleanup()
+    }
+  })
+
+  it('leaves a trip’s name as plain words when the page hands no door', () => {
+    mountTrips({ records: [{ ...lifts, tripNumber: 5 }] })
+    expect(screen.queryByTestId('scoreboard-trip-door-t5')).toBeNull()
+    expect(screen.getByTestId('scoreboard-trip-t5').textContent).toContain('Trip 5')
+  })
+
+  it('says why there are no rows while the trips are still reading', () => {
+    mountTrips({ records: null })
+    expect(screen.getByTestId('scoreboard-trip-pending').textContent).toBe('Reading the trips…')
+    expect(screen.queryByTestId('scoreboard-trip-home')).toBeNull()
   })
 })

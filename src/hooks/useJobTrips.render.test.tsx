@@ -201,4 +201,16 @@ describe('useJobTrips', () => {
     await waitFor(() => expect(io.readTrips).toHaveBeenCalledTimes(2))
     expect(result.current.line?.words).toBe('1 trip · last Oct 26 to 28, Luis · next Dec 1 to 2')
   })
+
+  it('names a saved trip by the number the database handed out, on the line at once', async () => {
+    const readTrips = vi.fn<JobTripsIo['readTrips']>().mockResolvedValueOnce([{ ...lifts, tripNumber: 5 }]).mockImplementation(() => new Promise<TripRecord[]>(() => undefined))
+    const io = makeIo({ readTrips, save: vi.fn(async () => 6) })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.line?.gone).toBe(1))
+    const next: TripRecord = { ...newTripRecord({ id: 't6', developmentId: 'd-heron' }), people: [{ ...person, days: { '2026-12-01': 'road', '2026-12-02': 'site' } }], jobIds: [JOB] }
+    await act(async () => {
+      await result.current.save(next)
+    })
+    expect(result.current.line).toMatchObject({ words: '1 trip · last Trip 5, Oct 26 to 28, Luis · next Trip 6, Dec 1 to 2', lastTripId: 't5', nextTripId: 't6' })
+  })
 })

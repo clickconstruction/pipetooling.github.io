@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SiteLabor } from '../developments/siteLabor'
 import { clockSessionsToActivityItems } from '../jobThreadClockActivity'
-import { asksForTripsLook, clockLineKey, clockTripTag, CLOCK_TRIP_TAG_WORDS, jobClockTags, jobTripHours, jobTripsLine, tripsLookHref, tripsOnJob, type JobPunchRow } from './jobTrips'
+import { asksForTripsLook, clockLineKey, clockTripTag, CLOCK_TRIP_TAG_WORDS, jobClockTags, jobTripHours, jobTripsLine, TRIP_GONE_WORDS, tripHref, tripIdAsked, tripRowAnchor, tripRowAsked, tripsLookHref, tripsOnJob, type JobPunchRow } from './jobTrips'
 import { addDays, sortTrips, type TripDayKind } from './tripDays'
 import { newTripRecord, tripOfRecord, tripPeopleIndex, type TripRecord } from './tripRecord'
 
@@ -47,6 +47,19 @@ describe('the line a job says about its trips', () => {
     const line = jobTripsLine({ records, jobId: JOB, todayYmd: TODAY })
     expect(line?.words).toBe('2 trips · last Oct 23 to Nov 4, Luis, Priya · next Dec 1 to 5')
     expect(line).toMatchObject({ gone: 2, count: '2 trips', last: 'last Oct 23 to Nov 4, Luis, Priya', next: 'next Dec 1 to 5' })
+  })
+
+  it('names the newest and the next by their numbers, and hands over each one’s trip for its door', () => {
+    const numbered = [{ ...trim, tripNumber: 6 }, { ...lifts, tripNumber: 5 }, meeting, { ...roughIn, tripNumber: 2 }, { ...later, tripNumber: 7 }]
+    const line = jobTripsLine({ records: numbered, jobId: JOB, todayYmd: TODAY })
+    expect(line?.words).toBe('2 trips · last Trip 5, Oct 23 to Nov 4, Luis, Priya · next Trip 6, Dec 1 to 5')
+    expect(line).toMatchObject({ last: 'last Trip 5, Oct 23 to Nov 4, Luis, Priya', lastTripId: 't5', lastDoor: 'Open Trip 5', next: 'next Trip 6, Dec 1 to 5', nextTripId: 't6', nextDoor: 'Open Trip 6' })
+  })
+
+  it('hands over the trips of a line made before numbers too, by their days', () => {
+    expect(jobTripsLine({ records, jobId: JOB, todayYmd: TODAY })).toMatchObject({ lastTripId: 't5', lastDoor: 'Open this trip', nextTripId: 't6', nextDoor: 'Open this trip' })
+    expect(jobTripsLine({ records: [trim], jobId: JOB, todayYmd: TODAY })).toMatchObject({ lastTripId: null, lastDoor: null, nextTripId: 't6' })
+    expect(jobTripsLine({ records: [roughIn], jobId: JOB, todayYmd: TODAY })).toMatchObject({ lastTripId: 't2', nextTripId: null, nextDoor: null })
   })
 
   it('says one trip in the singular', () => {
@@ -202,5 +215,23 @@ describe('the door to the site’s trips', () => {
     expect(asksForTripsLook(new URLSearchParams('look=trips'))).toBe(true)
     expect(asksForTripsLook(new URLSearchParams('look=plans'))).toBe(false)
     expect(asksForTripsLook(new URLSearchParams(''))).toBe(false)
+  })
+
+  it('opens one trip on the Development page, which is the Trips look too', () => {
+    expect(tripHref('d-heron', 't5')).toBe('/developments/d-heron?trip=t5')
+    expect(tripHref('d heron', 't/5')).toBe('/developments/d%20heron?trip=t%2F5')
+    expect(tripIdAsked(new URLSearchParams('trip=t5'))).toBe('t5')
+    expect(tripIdAsked(new URLSearchParams(tripHref('d-heron', 't/5').split('?')[1]))).toBe('t/5')
+    expect(tripIdAsked(new URLSearchParams('trip='))).toBeNull()
+    expect(tripIdAsked(new URLSearchParams('look=trips'))).toBeNull()
+    expect(asksForTripsLook(new URLSearchParams('trip=t5'))).toBe(true)
+    expect(asksForTripsLook(new URLSearchParams('trip='))).toBe(false)
+    expect(TRIP_GONE_WORDS).toBe('That trip is no longer here.')
+  })
+
+  it('names the row a link lands on', () => {
+    expect(tripRowAnchor('t5')).toBe('development-trip-t5')
+    expect(tripRowAsked(new URLSearchParams('trip=t5'))).toBe('development-trip-t5')
+    expect(tripRowAsked(new URLSearchParams('look=trips'))).toBeNull()
   })
 })

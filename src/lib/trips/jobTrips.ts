@@ -5,8 +5,8 @@
  * job's hours in the five figures, and a tag on each clock line in the feed.
  *
  * Three readings, all pure:
- * - `jobTripsLine`: *3 trips · last Oct 23 to Nov 4, Luis, Priya · next Dec 1 to 5*, from the trips whose
- *   work goes on the job.
+ * - `jobTripsLine`: *3 trips · last Trip 5, Oct 23 to Nov 4, Luis, Priya · next Trip 6, Dec 1 to 5*, from the
+ *   trips whose work goes on the job. *last* and *next* each name their trip, so the line can open it.
  * - `clockTripTag`: what one clock line wears. It is the figure the bar and the Trips look give that
  *   day's hours, `tripHourBucket(the day's kind for that person, the place of that person's day on the
  *   job)`, so two punches by one person on one day wear one tag, and a tag never disagrees with the bar.
@@ -21,7 +21,7 @@ import { placeKey, placesByPersonDay, tripHourRowsFromLabor, type PunchRow } fro
 import { splitTripHours, tripHourBucket, type SiteTripHours, type TripHourBucket } from './tripHours'
 import type { TripPlace } from './tripPlace'
 import { NO_TRIP_PEOPLE, tripOfRecord, tripPersonKey, type TripPeopleIndex, type TripRecord } from './tripRecord'
-import { tripSpanWords } from './tripsLook'
+import { tripName } from './tripsLook'
 
 /** The trips whose work goes on a job: the ones that name it under *Work goes on*. */
 export function tripsOnJob(records: ReadonlyArray<TripRecord>, jobId: string): TripRecord[] {
@@ -33,11 +33,18 @@ export type JobTripsLine = {
   gone: number
   /** *3 trips*; null when none has gone out yet. */
   count: string | null
-  /** *last Oct 23 to Nov 4, Luis, Priya*, or *out now …* for a trip that is out today; null when none has gone out. */
+  /** *last Trip 5, Oct 23 to Nov 4, Luis, Priya*, or *out now …* for a trip that is out today; null when none has gone out. */
   last: string | null
-  /** *next Dec 1 to 5*: the first planned trip; null when none is planned. */
+  /** The trip *last* names, for its door; null when none has gone out. */
+  lastTripId: string | null
+  /** What the door on *last* says on a hover: *Open Trip 5*. */
+  lastDoor: string | null
+  /** *next Trip 6, Dec 1 to 5*: the first planned trip; null when none is planned. */
   next: string | null
-  /** The parts that exist, joined: *3 trips · last Oct 23 to Nov 4, Luis, Priya · next Dec 1 to 5*. */
+  /** The trip *next* names, for its door; null when none is planned. */
+  nextTripId: string | null
+  nextDoor: string | null
+  /** The parts that exist, joined: *3 trips · last Trip 5, Oct 23 to Nov 4, Luis, Priya · next Trip 6, Dec 1 to 5*. */
   words: string
 }
 
@@ -53,17 +60,25 @@ export function jobTripsLine(args: { records: ReadonlyArray<TripRecord>; jobId: 
   const inOrder = sortTrips(mine.map((r) => tripOfRecord(r, NO_TRIP_PEOPLE)))
   const gone = inOrder.filter((t) => tripStanding(t, args.todayYmd) !== 'planned')
   const planned = inOrder.filter((t) => tripStanding(t, args.todayYmd) === 'planned' && tripSpan(t))
-  const when = (t: Trip): string => {
-    const span = tripSpan(t)
-    return span ? tripSpanWords(span.first, span.last, args.todayYmd) : ''
-  }
+  // A trip by name inside the sentence: *Trip 5, Oct 23 to Nov 4*, or its days alone when it has no number.
+  const nameOf = (t: Trip) => tripName({ tripNumber: recordById.get(t.id)?.tripNumber ?? null, span: tripSpan(t), todayYmd: args.todayYmd })
   const newest = gone[gone.length - 1]
   const first = planned[0]
   const count = gone.length ? `${gone.length} ${gone.length === 1 ? 'trip' : 'trips'}` : null
   const names = newest ? (recordById.get(newest.id)?.people ?? []).map((p) => p.name.trim()).filter(Boolean).join(', ') : ''
-  const last = newest ? [`${tripStanding(newest, args.todayYmd) === 'out' ? 'out now' : 'last'} ${when(newest)}`, names].filter(Boolean).join(', ') : null
-  const next = first ? `next ${when(first)}` : null
-  return { gone: gone.length, count, last, next, words: [count, last, next].filter(Boolean).join(' · ') }
+  const last = newest ? [`${tripStanding(newest, args.todayYmd) === 'out' ? 'out now' : 'last'} ${nameOf(newest).said}`, names].filter(Boolean).join(', ') : null
+  const next = first ? `next ${nameOf(first).said}` : null
+  return {
+    gone: gone.length,
+    count,
+    last,
+    lastTripId: newest?.id ?? null,
+    lastDoor: newest ? nameOf(newest).door : null,
+    next,
+    nextTripId: first?.id ?? null,
+    nextDoor: first ? nameOf(first).door : null,
+    words: [count, last, next].filter(Boolean).join(' · '),
+  }
 }
 
 // ---- the tag on a clock line --------------------------------------------------------------------
@@ -162,7 +177,34 @@ export function tripsLookHref(developmentId: string): string {
   return `/developments/${encodeURIComponent(developmentId)}?${DEVELOPMENT_LOOK_PARAM}=trips`
 }
 
-/** Whether a link asked for the Trips look. */
-export function asksForTripsLook(search: URLSearchParams): boolean {
-  return search.get(DEVELOPMENT_LOOK_PARAM) === 'trips'
+/** The query that opens one trip on the Development page: `?trip=<trip id>`. */
+export const DEVELOPMENT_TRIP_PARAM = 'trip'
+
+/** The Development page with one trip open in its Trips look: the link a person copies, and the door behind a trip's name. */
+export function tripHref(developmentId: string, tripId: string): string {
+  return `/developments/${encodeURIComponent(developmentId)}?${DEVELOPMENT_TRIP_PARAM}=${encodeURIComponent(tripId)}`
 }
+
+/** The trip a link asked for; null when it asked for none. */
+export function tripIdAsked(search: URLSearchParams): string | null {
+  return (search.get(DEVELOPMENT_TRIP_PARAM) ?? '').trim() || null
+}
+
+/** Whether a link asked for the Trips look: by name, or by naming one of its trips. */
+export function asksForTripsLook(search: URLSearchParams): boolean {
+  return search.get(DEVELOPMENT_LOOK_PARAM) === 'trips' || tripIdAsked(search) != null
+}
+
+/** The id a trip's row wears in the Trips look, so a link or a press can bring that row into view. */
+export function tripRowAnchor(tripId: string): string {
+  return `development-trip-${tripId}`
+}
+
+/** The row of the trip a link asked for; null when it asked for none. */
+export function tripRowAsked(search: URLSearchParams): string | null {
+  const id = tripIdAsked(search)
+  return id ? tripRowAnchor(id) : null
+}
+
+/** What a link to a trip that is gone says, once: the trip was deleted, or it is another site's. */
+export const TRIP_GONE_WORDS = 'That trip is no longer here.'

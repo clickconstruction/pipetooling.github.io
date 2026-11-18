@@ -5,8 +5,9 @@
  *
  * It draws only on a job that a trip names under *Work goes on*, for the office door, so every other Job
  * window is unchanged. It says how many trips have gone out, the newest with who went and the next one
- * planned; under the sentence the job's hours stand in the five figures. **Open the site's trips** goes to
- * the Development page at its Trips look. **+ Trip** opens the sheet on a new trip kept on the site with
+ * planned, each by its number (*last Trip 5, Oct 23 to Nov 4*); under the sentence the job's hours stand in
+ * the five figures. *last* and *next* are doors: each opens its own trip on the Development page.
+ * **Open the site's trips** goes to the Development page at its Trips look. **+ Trip** opens the sheet on a new trip kept on the site with
  * this job already picked. Saving a trip changes no clock row, bill or cost.
  *
  * The reads and the sentence are `hooks/useJobTrips.ts` and `lib/trips/jobTrips.ts`; this file draws them.
@@ -15,7 +16,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { JobTripsState } from '../../hooks/useJobTrips'
-import { JOB_TRIPS_HOURS_WORDS, JOB_TRIPS_NO_POINT_WORDS, tripsLookHref } from '../../lib/trips/jobTrips'
+import { JOB_TRIPS_HOURS_WORDS, JOB_TRIPS_NO_POINT_WORDS, tripHref, tripsLookHref } from '../../lib/trips/jobTrips'
 import { TRIP_HOUR_BUCKET_LABEL } from '../../lib/trips/tripHours'
 import { newTripRecord, type TripRecord } from '../../lib/trips/tripRecord'
 import { hoursWords } from '../../lib/trips/tripsLook'
@@ -65,7 +66,24 @@ export function JobTripsLine({
       setBusy(false)
     }
   }
-  const rest = [line.last, line.next].filter(Boolean).join(' · ')
+  // *last* and *next* each open their own trip on the site's page.
+  const door = (words: string, tripId: string | null, title: string | null, testId: string) =>
+    tripId ? (
+      <button
+        type="button"
+        style={{ ...linkButtonStyle(false, false), overflowWrap: 'anywhere' }}
+        title={`${title ?? 'Open this trip'} on ${siteName || 'the site'}’s page`}
+        onClick={() => {
+          onLeave()
+          navigate(tripHref(developmentId, tripId))
+        }}
+        data-testid={testId}
+      >
+        {words}
+      </button>
+    ) : (
+      words
+    )
 
   return (
     <div data-testid="job-trips-line" style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-subtle)', padding: '0.55rem 0.75rem', minWidth: 0 }}>
@@ -74,8 +92,10 @@ export function JobTripsLine({
           <div style={capStyle}>Trips on this job</div>
           <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', overflowWrap: 'anywhere' }} data-testid="job-trips-words">
             {line.count ? <strong style={{ color: 'var(--text-strong)' }}>{line.count}</strong> : null}
-            {line.count && rest ? ' · ' : null}
-            {rest}
+            {line.count && (line.last || line.next) ? ' · ' : null}
+            {line.last ? door(line.last, line.lastTripId, line.lastDoor, 'job-trips-last') : null}
+            {line.last && line.next ? ' · ' : null}
+            {line.next ? door(line.next, line.nextTripId, line.nextDoor, 'job-trips-next') : null}
           </div>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem 0.75rem' }}>

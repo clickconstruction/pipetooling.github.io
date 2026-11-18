@@ -44,7 +44,7 @@ afterEach(() => {
 const none: JobTripsState = { records: [], line: null, hours: null, hoursState: 'reading', noSitePoint: false, clockTags: new Map(), roster: null, save: async () => undefined }
 const withTrips: JobTripsState = {
   ...none,
-  line: { gone: 3, count: '3 trips', last: 'last Oct 23 to Nov 4, Luis, Priya', next: 'next Dec 1 to 5', words: '3 trips · last Oct 23 to Nov 4, Luis, Priya · next Dec 1 to 5' },
+  line: { gone: 3, count: '3 trips', last: 'last Trip 5, Oct 23 to Nov 4, Luis, Priya', lastTripId: 't5', lastDoor: 'Open Trip 5', next: 'next Trip 6, Dec 1 to 5', nextTripId: 't6', nextDoor: 'Open Trip 6', words: '3 trips · last Trip 5, Oct 23 to Nov 4, Luis, Priya · next Trip 6, Dec 1 to 5' },
   hours: { site: 84, road: 18, ready: 6, noPlace: 9, home: 42, all: 159, notAtSite: 75 },
   hoursState: 'read',
   clockTags: new Map([['cs:cs-1', { bucket: 'site', words: 'TRIP · AT THE SITE', quiet: false }]]),
@@ -95,7 +95,7 @@ describe('DetailJobModal · trips on this job', () => {
     renderWithProviders(pane())
     await settle()
     const line = await screen.findByTestId('job-trips-line')
-    expect(within(line).getByTestId('job-trips-words').textContent).toBe('3 trips · last Oct 23 to Nov 4, Luis, Priya · next Dec 1 to 5')
+    expect(within(line).getByTestId('job-trips-words').textContent).toBe('3 trips · last Trip 5, Oct 23 to Nov 4, Luis, Priya · next Trip 6, Dec 1 to 5')
     expect(within(line).getByTestId('job-trips-hours-site').textContent).toBe('At the site 84 h')
     expect(within(line).getByRole('button', { name: 'Open the site’s trips' })).toBeTruthy()
     expect(within(line).getByRole('button', { name: '+ Trip' })).toBeTruthy()

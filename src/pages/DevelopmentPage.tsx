@@ -111,11 +111,12 @@ import type { ContactKind } from '../lib/contacts/kernel'
 import type { Database } from '../types/database'
 import { DevelopmentPhotosLook } from '../components/developments/DevelopmentPhotosLook'
 import { DevelopmentTripsCard } from '../components/developments/DevelopmentTripsCard'
+import { scoreboardTripCut } from '../lib/trips/tripScoreboardCut'
 import SiteMaterialsReportModal from '../components/materials/SiteMaterialsReportModal'
 import { useSitePhotos } from '../hooks/useSitePhotos'
 import { useSiteTrips } from '../hooks/useSiteTrips'
 import { useLandOnLook } from '../hooks/useLandOnLook'
-import { asksForTripsLook } from '../lib/trips/jobTrips'
+import { asksForTripsLook, tripIdAsked, tripRowAnchor, tripRowAsked } from '../lib/trips/jobTrips'
 import { plansByDateTrips } from '../lib/trips/tripLane'
 import { photosCardMeta, photosLookWords } from '../lib/photos/sitePhotos'
 import { tripHistoryLines } from '../lib/trips/tripHistory'
@@ -413,7 +414,13 @@ export default function DevelopmentPage() {
   const siteTrips = useSiteTrips({ developmentId, jobIds: shownJobIds, address: siteAddress, enabled: !!data && moneyShown })
   const tripsOpen = siteTrips.shows && !isFolded(lookFolds, 'trips', false)
   // `?look=trips` (punch list #379, PR 6): the Job window's line links here, and the page lands on its Trips look once it shows. The card of a trip's bar on Plans by date makes the same move.
-  const goToTrips = useLandOnLook({ asked: asksForTripsLook(searchParams) && siteTrips.shows, anchorId: DEVELOPMENT_JUMP_ANCHOR.trips, unfold: () => (isFolded(lookFolds, 'trips', false) ? toggleLook('trips') : undefined) })
+  const goToTrips = useLandOnLook({ asked: asksForTripsLook(searchParams) && siteTrips.shows, askKey: tripIdAsked(searchParams) ?? 'look', targetId: tripRowAsked(searchParams), anchorId: DEVELOPMENT_JUMP_ANCHOR.trips, unfold: () => (isFolded(lookFolds, 'trips', false) ? toggleLook('trips') : undefined) })
+  // One trip, opened from its name on this page (a History line, a Plans by date card, a Scoreboard row): the look opens, the card opens the trip's row and the page lands on that row. `?trip=` asks the same from a link.
+  const [tripOpen, setTripOpen] = useState<{ id: string; n: number } | null>(null)
+  const openTrip = (id: string) => {
+    setTripOpen({ id, n: Date.now() })
+    goToTrips(tripRowAnchor(id))
+  }
   const [tripAddSignal, setTripAddSignal] = useState(0)
   // How many runs of punches the Trips card says look like a trip (PR 5), for the strip's amber words.
   const [tripOffers, setTripOffers] = useState(0)
@@ -1143,14 +1150,19 @@ export default function DevelopmentPage() {
   const scoreboardWhole = buildScoreboard({ jobs: counted.jobs, invoices: data.invoices, jobLabel, labor: laborRead, costs: costsByJobId, overhead: overheadRead, sort: scoreSort })
   // With a window on (v2.6558) the board is cut to its days; the print keeps the whole life, as its heading says.
   const scoreboard = scoreWindowApplied ? buildScoreboard({ jobs: counted.jobs, invoices: data.invoices, jobLabel, labor: laborRead, costs: costsByJobId, overhead: overheadRead, sort: scoreSort, window: scoreWindowApplied, chargeEvents: scoreEvents }) : scoreboardWhole
+  // The cut by trip (punch list #379, PR 8) is offered only on a site with a trip; a device that remembered it elsewhere reads by job.
+  const tripCutOffered = (siteTrips.records?.length ?? 0) > 0
   const scoreboardCuts = {
-    cut: scoreCut,
+    cut: scoreCut === 'trip' && !tripCutOffered ? 'job' : scoreCut,
     onCut: setScoreCutMode,
     window: scoreWindow,
     onWindow: setScoreWindowMode,
     windowOffered: scoreWindowOffered,
     parts: scoreCut === 'part' ? scoreboardPartGroups(scoreboard, new Map(counted.jobs.map((j) => [j.id, j.plan_part_id ?? null])), siteRead?.parts ?? []) : null,
     people: scoreCut === 'person' ? scoreboardPeopleCut({ model: scoreboard, labor: laborRead, seesCosts: canSeeSiteCosts(role), viewer: { userId: authUser?.id ?? null, name: profileName ?? null }, sort: scoreSort }) : null,
+    tripOffered: tripCutOffered,
+    onOpenTrip: openTrip,
+    trips: scoreCut === 'trip' && tripCutOffered ? scoreboardTripCut({ model: scoreboard, labor: laborRead, records: siteTrips.records, roster: siteTrips.roster, costs: costsByJobId, seesCosts: canSeeSiteCosts(role), todayYmd: todayYmdInAppTz(), toYmd: (raw) => ymdFromDateOnlyOrIso(raw, calendarYmdInAppTzFromIso) }) : null,
   }
   // The head's bid count leaves a robot's shadow bid out, as the tiles do (v2.6378).
   const scoreboardHead = {
@@ -1279,6 +1291,7 @@ export default function DevelopmentPage() {
       window.setTimeout(() => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.changed)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
     } else if (a.kind === 'set-schedule') setScheduleFor(a.bidId)
     else if (a.kind === 'open-trips') goToTrips()
+    else if (a.kind === 'open-trip') openTrip(a.tripId)
     else if (a.kind === 'set-sheets') {
       // A set's sheet count, typed by a person: an empty answer clears it, Cancel leaves it.
       const typed = await promptDialog({ title: a.setName, message: 'How many sheets does this set have? Leave it empty if nobody has counted.', confirmLabel: 'Save the sheet count', defaultValue: a.count != null ? String(a.count) : '', placeholder: 'like 64' })
@@ -1637,7 +1650,7 @@ export default function DevelopmentPage() {
                   </LinkButton>
                 </div>
               ) : (
-                <DevelopmentFeed lines={feedShown} sinceIndex={sinceShown.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} onMore={setLineOpen} photoIo={sitePhotos.io.photos} onPerson={setFeedQuery} onOpenThread={(href) => navigate(href)} />
+                <DevelopmentFeed lines={feedShown} sinceIndex={sinceShown.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} onMore={setLineOpen} photoIo={sitePhotos.io.photos} onPerson={setFeedQuery} onOpenThread={(href) => navigate(href)} onOpenTrip={openTrip} />
               )}
             </>
           ) : null}
@@ -1807,6 +1820,11 @@ export default function DevelopmentPage() {
             addSignal={tripAddSignal}
             historyDays={tripHistoryDays}
             onOffers={setTripOffers}
+            seesCosts={canSeeSiteCosts(role)}
+            costsRead={costsByJobId}
+            print={{ customerName: data.customer?.name ?? null, customerId: data.customer?.id ?? null, printedBy: profileName ?? null }}
+            askedTripId={tripIdAsked(searchParams)}
+            openTrip={tripOpen}
           />
         ) : null}
       </div>

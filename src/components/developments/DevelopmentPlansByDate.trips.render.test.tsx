@@ -33,11 +33,14 @@ const lifts: PlansByDateTrip = {
   ],
   planned: false,
   when: 'Oct 26 to 29',
+  title: 'Trip 5 · Oct 26 to 29',
+  number: 'Trip 5',
+  door: 'Open Trip 5',
   standing: 'Back · 2 days at the site',
   who: 'Luis, Priya',
   why: 'Lift stations before the pour',
 }
-const trim: PlansByDateTrip = { id: 't6', days: [{ ymd: '2026-12-01', kind: 'road' }, { ymd: '2026-12-02', kind: 'site' }], planned: true, when: 'Dec 1 to 2', standing: 'Planned', who: 'Dana', why: '' }
+const trim: PlansByDateTrip = { id: 't6', days: [{ ymd: '2026-12-01', kind: 'road' }, { ymd: '2026-12-02', kind: 'site' }], planned: true, when: 'Dec 1 to 2', title: 'Trip Dec 1 to 2', number: null, door: 'Open this trip', standing: 'Planned', who: 'Dana', why: '' }
 
 function site(over: Partial<PlansByDateInput> = {}): PlansByDateInput {
   return {
@@ -72,7 +75,7 @@ describe('DevelopmentPlansByDate: the Trips lane', () => {
     expect(within(chart).getByText('1 trip · 1 planned')).toBeTruthy()
     expect(screen.getByTestId('pbd-legend').textContent).toContain('a trip by day: ready, road, site, faint when planned')
     const bar = screen.getByTestId('pbd-mark-trip-t5')
-    expect(bar.getAttribute('aria-label')).toBe('Trip Oct 26 to 29 · Back · 2 days at the site · Luis, Priya · Lift stations before the pour')
+    expect(bar.getAttribute('aria-label')).toBe('Trip 5 · Oct 26 to 29 · Back · 2 days at the site · Luis, Priya · Lift stations before the pour')
     const fills = [...bar.querySelectorAll('rect')].map((r) => r.style.fill).filter((f) => f && f !== 'transparent')
     // On the road, At the site, On the road.
     expect(fills).toEqual([TRIP_KIND_COLOR.road, TRIP_KIND_COLOR.site, TRIP_KIND_COLOR.road])
@@ -87,7 +90,7 @@ describe('DevelopmentPlansByDate: the Trips lane', () => {
     expect(screen.queryByTestId('pbd-mark-trip-t5')).toBeNull()
   })
 
-  it('a press on a bar pins its card, like every other mark, and the card’s press opens the Trips look, on a desk and on a phone', () => {
+  it('a press on a bar pins its card, like every other mark, and the card’s press opens that trip, on a desk and on a phone', () => {
     for (const phone of [false, true]) {
       const { acted } = draw(site({ trips: [lifts] }), phone)
       fireEvent.click(screen.getByTestId('pbd-mark-trip-t5'))
@@ -96,10 +99,10 @@ describe('DevelopmentPlansByDate: the Trips lane', () => {
       // A desk pins the card beside the bar; a phone opens it as a sheet.
       const card = screen.getByTestId(phone ? 'pbd-sheet' : 'pbd-card')
       if (!phone) expect(card.getAttribute('data-pinned')).toBe('true')
-      expect(within(card).getByTestId('pbd-card-title').textContent).toBe('Trip Oct 26 to 29')
+      expect(within(card).getByTestId('pbd-card-title').textContent).toBe('Trip 5 · Oct 26 to 29')
       expect(within(card).getByTestId('pbd-card-facts').textContent).toContain('What forLift stations before the pour')
-      fireEvent.click(within(card).getByRole('button', { name: 'Open the Trips look' }))
-      expect(acted).toEqual([{ kind: 'open-trips', label: 'Open the Trips look' }])
+      fireEvent.click(within(card).getByRole('button', { name: 'Open Trip 5' }))
+      expect(acted).toEqual([{ kind: 'open-trip', label: 'Open Trip 5', tripId: 't5' }])
       expect(screen.queryByTestId(phone ? 'pbd-sheet' : 'pbd-card')).toBeNull()
       cleanup()
     }
@@ -119,11 +122,11 @@ describe('DevelopmentPlansByDate: the Trips lane', () => {
       fireEvent.mouseEnter(screen.getByTestId('pbd-mark-trip-t5'))
       act(() => void vi.advanceTimersByTime(PBD_CARD_ENTER_MS + 5))
       const card = screen.getByTestId('pbd-card')
-      expect(within(card).getByTestId('pbd-card-title').textContent).toBe('Trip Oct 26 to 29')
+      expect(within(card).getByTestId('pbd-card-title').textContent).toBe('Trip 5 · Oct 26 to 29')
       expect(within(card).getByTestId('pbd-card-kicker').textContent).toBe('Back · 2 days at the site')
       expect(within(card).getByTestId('pbd-card-facts').textContent).toContain('Who wentLuis, Priya')
-      fireEvent.click(within(card).getByRole('button', { name: 'Open the Trips look' }))
-      expect(acted).toEqual([{ kind: 'open-trips', label: 'Open the Trips look' }])
+      fireEvent.click(within(card).getByRole('button', { name: 'Open Trip 5' }))
+      expect(acted).toEqual([{ kind: 'open-trip', label: 'Open Trip 5', tripId: 't5' }])
     } finally {
       vi.useRealTimers()
     }

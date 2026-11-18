@@ -22,7 +22,7 @@ afterEach(cleanup)
 
 const TODAY = '2026-11-17'
 const JOB = { id: 'j2101', label: 'J2101', name: 'Rough-in: lodge and bunkhouse' }
-const line = { gone: 3, count: '3 trips', last: 'last Oct 23 to Nov 4, Luis, Priya', next: 'next Dec 1 to 5', words: '3 trips · last Oct 23 to Nov 4, Luis, Priya · next Dec 1 to 5' }
+const line = { gone: 3, count: '3 trips', last: 'last Trip 5, Oct 23 to Nov 4, Luis, Priya', lastTripId: 't5', lastDoor: 'Open Trip 5', next: 'next Trip 6, Dec 1 to 5', nextTripId: 't6', nextDoor: 'Open Trip 6', words: '3 trips · last Trip 5, Oct 23 to Nov 4, Luis, Priya · next Trip 6, Dec 1 to 5' }
 const hours = { site: 840, road: 96, ready: 12, noPlace: 31.5, home: 42, all: 1021.5, notAtSite: 181.5 }
 function state(over: Partial<JobTripsState> = {}): JobTripsState {
   return { records: [], line, hours, hoursState: 'read', noSitePoint: false, clockTags: new Map(), roster: [{ id: 'p-dana', name: 'Dana', userId: 'u-dana' }], save: vi.fn(async () => undefined), ...over }
@@ -48,13 +48,38 @@ describe('JobTripsLine', () => {
     draw(state())
     expect(screen.getByTestId('job-trips-line').textContent).toContain('Trips on this job')
     const words = screen.getByTestId('job-trips-words')
-    expect(words.textContent).toBe('3 trips · last Oct 23 to Nov 4, Luis, Priya · next Dec 1 to 5')
+    expect(words.textContent).toBe('3 trips · last Trip 5, Oct 23 to Nov 4, Luis, Priya · next Trip 6, Dec 1 to 5')
     expect(words.querySelector('strong')?.textContent).toBe('3 trips')
   })
 
+  it('last and next are doors: each closes the Job window and opens its own trip on the site’s page', () => {
+    const { onLeave } = draw(state())
+    const last = screen.getByTestId('job-trips-last')
+    expect(last.textContent).toBe('last Trip 5, Oct 23 to Nov 4, Luis, Priya')
+    expect(last.getAttribute('title')).toBe('Open Trip 5 on Heron Point’s page')
+    fireEvent.click(last)
+    expect(onLeave).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('where').textContent).toBe('/developments/d-heron?trip=t5')
+    cleanup()
+    draw(state())
+    const next = screen.getByTestId('job-trips-next')
+    expect(next.textContent).toBe('next Trip 6, Dec 1 to 5')
+    fireEvent.click(next)
+    expect(screen.getByTestId('where').textContent).toBe('/developments/d-heron?trip=t6')
+  })
+
+  it('a trip made before numbers is a door too, told by its days', () => {
+    draw(state({ line: { ...line, last: 'last Oct 23 to Nov 4, Luis, Priya', lastDoor: 'Open this trip', next: null, nextTripId: null, nextDoor: null, words: '3 trips · last Oct 23 to Nov 4, Luis, Priya' } }))
+    expect(screen.getByTestId('job-trips-words').textContent).toBe('3 trips · last Oct 23 to Nov 4, Luis, Priya')
+    expect(screen.queryByTestId('job-trips-next')).toBeNull()
+    fireEvent.click(screen.getByTestId('job-trips-last'))
+    expect(screen.getByTestId('where').textContent).toBe('/developments/d-heron?trip=t5')
+  })
+
   it('leaves out the count when no trip has gone out yet', () => {
-    draw(state({ line: { gone: 0, count: null, last: null, next: 'next Dec 1 to 5', words: 'next Dec 1 to 5' } }))
-    expect(screen.getByTestId('job-trips-words').textContent).toBe('next Dec 1 to 5')
+    draw(state({ line: { gone: 0, count: null, last: null, lastTripId: null, lastDoor: null, next: 'next Trip 6, Dec 1 to 5', nextTripId: 't6', nextDoor: 'Open Trip 6', words: 'next Trip 6, Dec 1 to 5' } }))
+    expect(screen.getByTestId('job-trips-words').textContent).toBe('next Trip 6, Dec 1 to 5')
+    expect(screen.queryByTestId('job-trips-last')).toBeNull()
   })
 
   it('draws the job’s hours in the five figures, each with its hours', () => {

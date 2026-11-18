@@ -28,6 +28,7 @@ export type PbdCardAction =
   | { kind: 'set-schedule'; label: string; bidId: string }
   | { kind: 'set-sheets'; label: string; setId: string; setName: string; count: number | null }
   | { kind: 'open-trips'; label: string }
+  | { kind: 'open-trip'; label: string; tripId: string }
 
 /** A line of a card; `to` is the card it leads to, null when it is only words. */
 export type PbdCardRow = { key: string; glyph: PbdGlyph; day: string; text: string; soft: string; to: string | null }
@@ -223,14 +224,15 @@ export function buildPlansByDateCards(input: PlansByDateInput, model: PlansByDat
     add({ ...c, key: `bidout-${b.id}` })
   }
 
-  // The trips (punch list #379): a bar's card says the trip, and its one press opens the Trips look.
+  // The trips (punch list #379): a bar's card says the trip by name, and its one press opens that trip in the Trips look.
+  // The lane's own card keeps the look's door.
   const openTrips: PbdCardAction = { kind: 'open-trips', label: PBD_PRESS.openTrips }
   for (const t of input.trips ?? []) {
     if (!rowOf.has(`trip-${t.id}`)) continue
     const facts: PbdCard['facts'] = []
     if (t.who) facts.push({ label: 'Who went', value: t.who })
     if (t.why) facts.push({ label: 'What for', value: clip(t.why, 240) })
-    add(card({ key: `trip-${t.id}`, glyph: 'trip', title: `Trip ${t.when}`, kicker: t.standing, facts, actions: [openTrips] }))
+    add(card({ key: `trip-${t.id}`, glyph: 'trip', title: t.title, kicker: t.standing, facts, actions: [{ kind: 'open-trip', label: t.door, tripId: t.id }] }))
   }
 
   // The crews

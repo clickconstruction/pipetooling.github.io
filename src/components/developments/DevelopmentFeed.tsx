@@ -90,6 +90,7 @@ export function DevelopmentFeed({
   photoIo,
   onPerson,
   onOpenThread,
+  onOpenTrip,
 }: {
   lines: ChangeLine[]
   /** Where the *You last looked* line sits, or null with no stamp yet. */
@@ -109,6 +110,8 @@ export function DevelopmentFeed({
   onPerson?: (name: string) => void
   /** A mail line's door (v2.7479): the page goes to the mail's thread in Messages; with none the line draws its words alone. */
   onOpenThread?: (href: string) => void
+  /** A trip line's door (punch list #379): the page opens that trip in its Trips look; with none the line draws its words alone. */
+  onOpenTrip?: (tripId: string) => void
 }) {
   const [shown, setShown] = useState(PAGE)
   // The viewer opened from a photos line: that line's batch, at the tile pressed.
@@ -122,6 +125,7 @@ export function DevelopmentFeed({
   const row = (line: ChangeLine, isNew: boolean) => {
     const b = badge(line)
     const entry = line.kind === 'entry'
+    const trip = line.trip
     return (
       <div key={line.id} style={{ ...rowStyle, ...(entry ? { background: 'var(--bg-subtle)', margin: '0 -8px', padding: '6px 8px', borderRadius: 6 } : {}), background: line.waitingDays != null ? 'var(--bg-amber-tint)' : entry ? 'var(--bg-subtle)' : undefined }} data-testid={entry ? 'history-entry-line' : line.kind === 'mail' ? 'history-mail-line' : 'changed-line'}>
         <span style={{ color: isNew ? 'var(--text-strong)' : 'var(--text-faint)', fontWeight: isNew ? 700 : 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }} title={line.dayOnly ? 'The source keeps the day, not the time' : new Date(line.at).toLocaleString()}>
@@ -213,6 +217,15 @@ export function DevelopmentFeed({
                 {MAIL_DOOR_WORDS} ›
               </LinkButton>
             </>
+          ) : null}
+          {/* A trip line's door: that trip, open in the Trips look on this page (punch list #379). */}
+          {trip && onOpenTrip ? (
+            <span data-testid="history-trip-door">
+              {' · '}
+              <LinkButton onClick={() => onOpenTrip(trip.id)} title="This trip, open in the Trips look on this page" nowrap>
+                {trip.door} ›
+              </LinkButton>
+            </span>
           ) : null}
         </span>
         {/* A photos line's thumbnails under its words (punch list #247): up to four, or three and a + N tile; a tap opens the viewer on that photo. */}
