@@ -54,6 +54,7 @@ export function stagesRowContext(props: StagesRowContextProps, hooks: StagesRowC
     propertyLinkByJobId: props.propertyLinkByJobId,
     onPropertyLinked: props.onPropertyLinked,
     onOpenJobContract: props.onOpenJobContract,
+    legalMatterByJobId: props.legalMatterByJobId,
     onOpenCustomerDoor: props.onOpenCustomerDoor,
     boardDotByJobId: props.boardDotByJobId,
     customerLinesByJobId: props.customerLinesByJobId,
