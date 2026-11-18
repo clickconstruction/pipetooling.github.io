@@ -87,12 +87,12 @@ vi.mock('./PaintedMapCanvas', async () => {
   }
 })
 
-/** The job search, stood in for: one press picks a made-up job. */
-vi.mock('../costBatches/CostBatchJobPicker', () => ({
-  CostBatchJobPicker: (props: { title: string; onPick: (job: { id: string }) => void }) => (
-    <div data-testid="job-picker">
-      {props.title}
+/** The picker, stood in for: it says how it was opened, and one press picks a made-up job. */
+vi.mock('./PaintAMapJobPicker', () => ({
+  PaintAMapJobPicker: (props: { mode?: string; excludeJobId?: string | null; onPick: (job: { id: string }) => void; onClose: () => void }) => (
+    <div data-testid="job-picker" data-mode={props.mode} data-exclude={props.excludeJobId ?? ''}>
       <button type="button" onClick={() => props.onPick({ id: 'j9' })}>pick J900</button>
+      <button type="button" onClick={props.onClose}>cancel the picker</button>
     </div>
   ),
 }))
@@ -408,6 +408,54 @@ describe('a map on no job', () => {
     render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
     await screen.findByRole('heading', { name: 'The way in for deliveries' })
     expect(document.querySelector('[data-painted-no-home]')).toBeNull()
+  })
+
+  it('asks which job in the picker, as a first pick', async () => {
+    io.whole = { map: LOOSE, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Put it on a job…' }))
+    expect(screen.getByTestId('job-picker').getAttribute('data-mode')).toBe('pick')
+    fireEvent.click(screen.getByRole('button', { name: 'cancel the picker' }))
+    expect(screen.queryByTestId('job-picker')).toBeNull()
+    expect(names()).not.toContain('putPaintedMapOnJob')
+  })
+})
+
+describe('a map on the wrong job (punch list #392)', () => {
+  it('is moved to another job by whoever painted it, and the picker leaves its own job out', async () => {
+    io.whole = { map: { ...MAP, createdBy: 'me' }, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Move it to another job…' }))
+    const picker = screen.getByTestId('job-picker')
+    expect(picker.getAttribute('data-mode')).toBe('move')
+    expect(picker.getAttribute('data-exclude')).toBe('j1')
+    fireEvent.click(screen.getByRole('button', { name: 'pick J900' }))
+    await waitFor(() => expect(io.calls.find((c) => c.fn === 'putPaintedMapOnJob')?.args).toEqual(['m1', 'j9']))
+    await waitFor(() => expect(screen.queryByTestId('job-picker')).toBeNull())
+  })
+
+  it('says why a move was refused, on the map and not under the picker', async () => {
+    io.whole = { map: { ...MAP, createdBy: 'me' }, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Move it to another job…' }))
+    io.refuse = 'The map was not put on the job.'
+    fireEvent.click(screen.getByRole('button', { name: 'pick J900' }))
+    expect(await screen.findByText('The map was not put on the job.')).toBeTruthy()
+    expect(screen.queryByTestId('job-picker')).toBeNull()
+  })
+
+  it('is not offered on someone else\'s map to a teammate who is not the office', async () => {
+    io.whole = { map: MAP, lines: [LINE()], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'The way in for deliveries' })
+    expect(screen.queryByRole('button', { name: 'Move it to another job…' })).toBeNull()
+  })
+
+  it('is not offered on a map that is for every lot', async () => {
+    io.whole = { map: { ...MAP, jobId: null, developmentId: 'd1', createdBy: 'me' }, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'The way in for deliveries' })
+    expect(screen.queryByRole('button', { name: 'Move it to another job…' })).toBeNull()
   })
 })
 

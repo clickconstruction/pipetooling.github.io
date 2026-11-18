@@ -82,7 +82,7 @@ import { walkThrowAwayWords } from '../../lib/paintedMap/paintedWalkWords'
 import { PAINTED_MAP_SHEET_Z, PAINTED_MAP_WINDOW_Z } from '../../lib/windowLayers'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { PaintedCanvasDot, PaintedCanvasDraft, PaintedCanvasPlace } from './PaintedMapCanvas'
-import { CostBatchJobPicker } from '../costBatches/CostBatchJobPicker'
+import { PaintAMapJobPicker } from './PaintAMapJobPicker'
 import { PaintedMapShareSheet } from './PaintedMapShareSheet'
 import { PaintedMapSavedBand } from './PaintedMapSavedBand'
 import { paintedMapSavedOffersText, paintedMapSavedWords } from '../../lib/paintedMap/paintedMapSaved'
@@ -662,12 +662,13 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     setError(null)
     const res = await putPaintedMapOnJob(map.id, jobId)
     setBusy(false)
+    // The picker closes either way: a refusal is said on the map's own panel, which the picker covers.
+    setHoming(false)
     if (!res.ok) {
       setError(res.error)
       return
     }
     setWhole((w) => (w ? { ...w, map: res.value } : w))
-    setHoming(false)
     paintedMapsChanged()
   }
 
@@ -1153,14 +1154,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                   {canChangeMap && saved && !map.jobId && !map.developmentId ? (
                     <div data-painted-no-home style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem', color: 'var(--text-700)', background: 'var(--bg-muted)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
                       <span>This map is on no job. Only you and the office can open it.</span>
-                      {homing ? (
-                        <>
-                          <CostBatchJobPicker title="Which job is it for?" autoFocus onPick={(job) => void putOnJob(job.id)} />
-                          <button type="button" style={quiet} onClick={() => setHoming(false)}>Leave it on no job</button>
-                        </>
-                      ) : (
-                        <button type="button" data-painted-put-on-job style={{ ...quiet, justifySelf: 'start' }} disabled={busy} onClick={() => setHoming(true)}>Put it on a job…</button>
-                      )}
+                      <button type="button" data-painted-put-on-job style={{ ...quiet, justifySelf: 'start' }} disabled={busy} onClick={() => setHoming(true)}>Put it on a job…</button>
                     </div>
                   ) : null}
 
@@ -1174,6 +1168,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                   ) : canChangeMap && saved && !renaming ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.9rem', paddingTop: '0.25rem', borderTop: '1px solid var(--border)' }}>
                       <button type="button" style={quiet} onClick={() => setRenaming({ name: map.name, words: map.words })}>Rename this map</button>
+                      {/* A map painted on the wrong job (punch list #392): its maker or the office moves it. A map for every lot stays the site's. */}
+                      {map.jobId ? <button type="button" data-painted-move-job style={quiet} disabled={busy} onClick={() => setHoming(true)}>Move it to another job…</button> : null}
                       <button type="button" style={quiet} onClick={() => setConfirm({ kind: 'map' })}>Throw this map away</button>
                     </div>
                   ) : null}
@@ -1197,6 +1193,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
         onCancel={() => setConfirm(null)}
       />
     ) : null}
+    {homing && map && user?.id ? <PaintAMapJobPicker userId={user.id} mode={map.jobId ? 'move' : 'pick'} excludeJobId={map.jobId} onPick={(job) => void putOnJob(job.id)} onClose={() => setHoming(false)} /> : null}
     {sharing && map ? <PaintedMapShareSheet mapId={map.id} mapName={map.name} whole={{ map: { id: map.id, name: map.name, words: map.words, jobId: map.jobId }, lines, places }} mayText={jobBoxOffered(role)} jobId={map.jobId} onClose={() => setSharing(false)} /> : null}
     {viewing ? (
       <div role="dialog" aria-modal="true" aria-label="The photo of the place" data-painted-photo-view style={{ position: 'fixed', inset: 0, zIndex: PAINTED_MAP_SHEET_Z, background: 'rgba(0,0,0,0.88)', display: 'grid', placeItems: 'center', padding: 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }} onClick={() => setViewing(null)}>

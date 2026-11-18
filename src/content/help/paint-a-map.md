@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, dashboard, press, change the job, saved, saved band, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, lately, move it to another job, wrong job, saved, saved band, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -24,6 +24,18 @@ The app sets the job when it knows it. Clocked in, that is the job you are clock
 
 The sheet names the job under **For**. Press **Change the job** if the app picked the wrong one.
 
+### When the app does not know the job
+
+Every painted map is on a job. With no clock and no stop today, **Which job is it for?** opens first.
+
+- **Today** lists the jobs on your schedule today.
+- **Lately** lists the jobs you clocked onto in the last few weeks.
+- **Or search every job** finds any other job by its number, name or address.
+
+Press a job. The **Paint a map** sheet opens on it.
+
+A job you are not on shows grey. You cannot paint a map for it. Ask the office to put you on the job.
+
 ### From a job
 
 A painted map also sits wherever the app shows an address.
@@ -36,9 +48,10 @@ Press {{button:outline|＋ Paint a map}}. The same sheet opens, on that job.
 
 ### The sheet
 
-1. Type what the map is, or press a name such as {{chip:gray|The way in}}.
-2. Type a line for whoever opens it, if a line would help.
-3. Pick how to start.
+1. Check the job under **For**.
+2. Type what the map is, or press a name such as {{chip:gray|The way in}}.
+3. Type a line for whoever opens it, if a line would help.
+4. Pick how to start.
 
 - {{button:red|Walk or drive it}} paints the line as you move.
 - {{button:blue|Draw it by hand}} lets you press the line out on the map.
@@ -50,17 +63,25 @@ A job in a development has two choices under **For**. Press the job's name to pa
 
 A map started on a development's page is for every lot. It shows on each job in the development.
 
-### With no job open
+### From the search
 
-The Dashboard's press opens the sheet on no job when you have no clock and no stop today.
+Press the search button at the top of the app and type **paint**. Press **Paint a map**.
 
-The search does the same. Press the search button at the top of the app and type **paint**. Press **Paint a map**.
+**Which job is it for?** opens, as it does from the Dashboard.
 
-On the sheet, press **Pick the job it is for** and search for the job.
+### Picking a job with no signal
 
-You can also leave it on no job and paint first. Only you and the office can open a map on no job.
+The list of jobs cannot be read with no signal. The app says so and tries again by itself.
+
+Press **Paint now and pick the job later** to paint anyway. Only you and the office can open a map on no job.
 
 Open that map later and press **Put it on a job…** to give it one.
+
+### A map on the wrong job
+
+Open the map and press **Move it to another job…**. Press the job it belongs on.
+
+The press shows for whoever painted the map, and for the office.
 
 ## Walk or drive the line
 

@@ -7,15 +7,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
-/** The job search, stood in for: one press picks a made-up job. */
-vi.mock('../costBatches/CostBatchJobPicker', () => ({
-  CostBatchJobPicker: (props: { title: string; onPick: (job: { id: string; hcp_number: string; job_name: string; job_address: string }) => void }) => (
-    <div data-testid="job-picker">
-      {props.title}
-      <button type="button" onClick={() => props.onPick({ id: 'j9', hcp_number: 'J900', job_name: 'Made Up Lot', job_address: '9 Made Up Road' })}>pick J900</button>
+/** The picker, stood in for: it says how it was opened, one press picks a made-up job, one says paint now. */
+vi.mock('./PaintAMapJobPicker', () => ({
+  PaintAMapJobPicker: (props: { mode?: string; excludeJobId?: string | null; onPick: (job: { id: string; number: string; name: string; address: string; developmentId?: string | null }) => void; onClose: () => void; onLater?: () => void }) => (
+    <div data-testid="job-picker" data-mode={props.mode} data-exclude={props.excludeJobId ?? ''}>
+      <button type="button" onClick={() => props.onPick({ id: 'j9', number: 'J900', name: 'Made Up Lot', address: '9 Made Up Road' })}>pick J900</button>
+      <button type="button" onClick={() => props.onPick({ id: 'j7', number: 'J700', name: 'Site Lot 7', address: '7 Site Road', developmentId: 'd1' })}>pick J700</button>
+      <button type="button" onClick={props.onClose}>cancel the picker</button>
+      {props.onLater ? <button type="button" onClick={props.onLater}>paint now</button> : null}
     </div>
   ),
 }))
+vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'me' }, role: 'helpers' }) }))
+vi.mock('../../hooks/useModalStackEntry', () => ({ useModalStackEntry: () => () => true }))
 
 import { PaintAMapStartSheet } from './PaintAMapStartSheet'
 import type { PaintedMapToStart } from './PaintedMapWindow'
@@ -32,42 +36,79 @@ afterEach(() => {
 })
 
 describe('PaintAMapStartSheet', () => {
-  it('opened with no job, says so, and starts a map on no job', () => {
+  it('opened with no job, asks which job first and draws no sheet behind the question (punch list #392)', () => {
+    const closed = vi.fn()
+    render(<PaintAMapStartSheet home={{ jobId: null, developmentId: null }} onStart={() => {}} onClose={closed} />)
+    expect(screen.getByTestId('job-picker').getAttribute('data-mode')).toBe('pick')
+    expect(document.querySelector('[data-paint-a-map-start]')).toBeNull()
+    // Cancel on the question closes everything: there is no sheet to go back to.
+    fireEvent.click(screen.getByRole('button', { name: 'cancel the picker' }))
+    expect(closed).toHaveBeenCalledTimes(1)
+  })
+
+  it('a job pressed opens the sheet on it, with For at the top, and starts the map there', () => {
     const started: PaintedMapToStart[] = []
     render(<PaintAMapStartSheet home={{ jobId: null, developmentId: null }} onStart={(s) => started.push(s)} onClose={() => {}} />)
-    expect(screen.getByText('It is on no job yet. It stays yours and the office’s until it is put on one.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'pick J900' }))
     expect(screen.queryByTestId('job-picker')).toBeNull()
+    const forBlock = document.querySelector('[data-paint-a-map-for]') as HTMLElement
+    expect(forBlock.textContent).toContain('J900 · Made Up Lot')
+    expect(forBlock.textContent).toContain('9 Made Up Road')
+    // For leads the sheet: it comes before the name.
+    const body = forBlock.parentElement as HTMLElement
+    expect(body.firstElementChild).toBe(forBlock)
+    expect(screen.queryByText(/It is on no job yet/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Leave it on no job' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand' }))
+    expect(started[0]!.home).toMatchObject({ jobId: 'j9', label: 'J900 · Made Up Lot', address: '9 Made Up Road', canChangeJob: true })
+  })
+
+  it('a job the painter picked can be changed, and the picker leaves that job out', () => {
+    const started: PaintedMapToStart[] = []
+    render(<PaintAMapStartSheet home={{ jobId: null, developmentId: null }} onStart={(s) => started.push(s)} onClose={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'pick J900' }))
+    fireEvent.change(screen.getByLabelText('What is it?'), { target: { value: 'The back gate' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Change the job' }))
+    const picker = screen.getByTestId('job-picker')
+    expect(picker.getAttribute('data-mode')).toBe('change')
+    expect(picker.getAttribute('data-exclude')).toBe('j9')
+    // The sheet stays behind the picker, so what was typed is kept.
+    fireEvent.click(screen.getByRole('button', { name: 'cancel the picker' }))
+    expect((screen.getByLabelText('What is it?') as HTMLInputElement).value).toBe('The back gate')
+    expect((document.querySelector('[data-paint-a-map-for]') as HTMLElement).textContent).toContain('J900 · Made Up Lot')
+  })
+
+  it('a lot picked from the list keeps its two chips, the job or every lot', () => {
+    const started: PaintedMapToStart[] = []
+    render(<PaintAMapStartSheet home={{ jobId: null, developmentId: null }} onStart={(s) => started.push(s)} onClose={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'pick J700' }))
+    expect(screen.getByRole('group', { name: 'For' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'The whole development' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand' }))
+    expect(started[0]!.home).toMatchObject({ jobId: null, developmentId: 'd1' })
+  })
+
+  it('with the lists unread, paints now on no job and can still pick the job', () => {
+    const started: PaintedMapToStart[] = []
+    render(<PaintAMapStartSheet home={{ jobId: null, developmentId: null }} onStart={(s) => started.push(s)} onClose={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'paint now' }))
+    expect(screen.getByText('It is on no job yet. It stays yours and the office’s until it is put on one.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Pick the job it is for' }))
+    // The second ask offers no paint-now: that answer was already given.
+    expect(screen.queryByRole('button', { name: 'paint now' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'cancel the picker' }))
     fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand' }))
     expect(started[0]!.home.jobId ?? null).toBeNull()
   })
 
-  it('opened with no job, lets the painter pick the job it is for, and starts the map there', () => {
-    const started: PaintedMapToStart[] = []
-    render(<PaintAMapStartSheet home={{ jobId: null, developmentId: null }} onStart={(s) => started.push(s)} onClose={() => {}} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Pick the job it is for' }))
-    expect(screen.getByTestId('job-picker').textContent).toContain('Which job is it for?')
-    fireEvent.click(screen.getByRole('button', { name: 'pick J900' }))
-    expect(screen.getByText('J900 · Made Up Lot')).toBeTruthy()
-    expect(screen.queryByText(/It is on no job yet/)).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand' }))
-    expect(started[0]!.home).toMatchObject({ jobId: 'j9', label: 'J900 · Made Up Lot', address: '9 Made Up Road' })
-  })
-
-  it('opened by the Dashboard press on a job the app picked, offers Change the job (punch list #392)', () => {
+  it('opened by the Dashboard press on a job the app picked, offers Change the job', () => {
     const started: PaintedMapToStart[] = []
     render(<PaintAMapStartSheet home={{ jobId: 'j1', developmentId: null, label: 'J100 · First Lot', address: '1 First Road', canChangeJob: true }} onStart={(s) => started.push(s)} onClose={() => {}} />)
-    expect(screen.getByText('J100 · First Lot')).toBeTruthy()
-    // No way onto no job from here: the app picked a job, and the person changes it or keeps it.
-    expect(screen.queryByRole('button', { name: 'Leave it on no job' })).toBeNull()
+    expect((document.querySelector('[data-paint-a-map-for]') as HTMLElement).textContent).toContain('J100 · First Lot')
     fireEvent.click(screen.getByRole('button', { name: 'Change the job' }))
-    expect(screen.getByTestId('job-picker').textContent).toContain('Which job is it for?')
-    fireEvent.click(screen.getByRole('button', { name: 'Keep this job' }))
-    expect(screen.queryByTestId('job-picker')).toBeNull()
-    expect(screen.getByText('J100 · First Lot')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Change the job' }))
+    expect(screen.getByTestId('job-picker').getAttribute('data-exclude')).toBe('j1')
     fireEvent.click(screen.getByRole('button', { name: 'pick J900' }))
-    expect(screen.getByText('J900 · Made Up Lot')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Change the job' })).toBeTruthy()
+    expect(screen.queryByTestId('job-picker')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand' }))
     expect(started[0]!.home).toMatchObject({ jobId: 'j9', label: 'J900 · Made Up Lot', address: '9 Made Up Road' })
   })
@@ -76,15 +117,14 @@ describe('PaintAMapStartSheet', () => {
     render(<PaintAMapStartSheet home={{ jobId: 'j1', developmentId: null, label: 'J100 · First Lot' }} onStart={() => {}} onClose={() => {}} />)
     expect(screen.queryByRole('button', { name: 'Change the job' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Pick the job it is for' })).toBeNull()
+    expect(screen.queryByTestId('job-picker')).toBeNull()
   })
 
-  it('lets a picked job be taken back', () => {
-    render(<PaintAMapStartSheet home={{ jobId: null, developmentId: null }} onStart={() => {}} onClose={() => {}} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Pick the job it is for' }))
-    fireEvent.click(screen.getByRole('button', { name: 'pick J900' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Leave it on no job' }))
-    expect(screen.getByText(/It is on no job yet/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Pick the job it is for' })).toBeTruthy()
+  it('has no paragraph between the walk box and Draw it by hand, so both presses sit near the fold', () => {
+    render(<PaintAMapStartSheet home={{ jobId: 'j1', label: 'Lot 14' }} onStart={() => {}} onClose={() => {}} />)
+    const draw = screen.getByRole('button', { name: 'Draw it by hand' })
+    expect(draw.previousElementSibling?.getAttribute('data-paint-a-map-walk-box')).not.toBeNull()
+    expect(screen.queryByText(/Or draw the line by hand/)).toBeNull()
   })
 
   it('offers no job search on a sheet opened for a job', () => {
@@ -150,10 +190,9 @@ describe('PaintAMapStartSheet', () => {
     expect(started[0]!.home).toMatchObject({ jobId: 'j1', developmentId: null })
   })
 
-  it('says a map with no home is the painter\'s and the office\'s, and closes on Cancel', () => {
+  it('closes on Cancel', () => {
     let closed = 0
-    render(<PaintAMapStartSheet home={{}} onStart={() => {}} onClose={() => (closed += 1)} />)
-    expect(screen.getByText(/It is on no job yet/)).toBeTruthy()
+    render(<PaintAMapStartSheet home={{ jobId: 'j1', label: 'Lot 14' }} onStart={() => {}} onClose={() => (closed += 1)} />)
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(closed).toBe(1)
   })

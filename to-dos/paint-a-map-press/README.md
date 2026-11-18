@@ -2,7 +2,7 @@
 name: "Paint a map from the Dashboard: a press that is always there, and every map on a job"
 number: 392
 group: ready
-status: asked 2026-11-17 · designed, drawn and rendered the same day (ten states at a phone's width and one at a desk) · shown to the owner with nine calls, each with a pick · nothing built · carded the same evening at the owner's word · the Share sheet was built apart as #394 on 2026-11-18 (v2.7788 · 7790) · walked the same day as a leader on a phone, and the missing Dashboard press was the walk's worst snag · a leader's phone drawn the same day (three states), a tenth call added with a pick, and the plan's order changed so the Saved band comes before the picker · the owner's word the same day (*Yes, build it*) · the kernel and the press built the same day (v2.7859), walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark · the Saved band built the same day (v2.7866), walked the same way on a made-up map on no job, thrown away after · not yet tried on a real phone
+status: asked 2026-11-17 · designed, drawn and rendered the same day (ten states at a phone's width and one at a desk) · shown to the owner with nine calls, each with a pick · nothing built · carded the same evening at the owner's word · the Share sheet was built apart as #394 on 2026-11-18 (v2.7788 · 7790) · walked the same day as a leader on a phone, and the missing Dashboard press was the walk's worst snag · a leader's phone drawn the same day (three states), a tenth call added with a pick, and the plan's order changed so the Saved band comes before the picker · the owner's word the same day (*Yes, build it*) · the kernel and the press built the same day (v2.7859), walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark · the Saved band built the same day (v2.7866), walked the same way on a made-up map on no job, thrown away after · the picker built the same day (v2.7868), walked with made-up jobs answered to its reads and nothing saved · not yet tried on a real phone
 summary: >
   The owner wants anyone to make a one-off map and text it from the Dashboard, clocked in or not,
   with a job today or not. Every map must be tied to a job, and picking the job must be easy.
@@ -13,10 +13,10 @@ summary: >
   today's jobs and the jobs they were on lately. After Save, one press opens the phone's own
   Messages with the link written. A map that takes seven presses and two bouts of typing today
   takes four.
-next: Step 4, the picker, then step 5. One call is the owner's, call 11: the two short pages do not draw the top row, so the press is behind Everything else there. The Saved band's text press wants one press on a real iPhone and a real Android phone, with #394's.
-size: L as a train of five (S · M · S · L · S), the first three built; left: L · S
-blocker: None for step 4. Call 11 is the owner's, and so is a real phone for the text press.
-ver: v2.7859 · 7866
+next: Step 5, Find the jobs near me. One call is the owner's, call 11: the two short pages do not draw the top row, so the press is behind Everything else there. The text press wants one press on a real iPhone and a real Android phone, with #394's.
+size: L as a train of five (S · M · S · L · S), the first four built; left: S
+blocker: None for step 5. Call 11 is the owner's, and so is a real phone for the text press.
+ver: v2.7859 · 7866 · 7868
 opinion: keep building — the press is in, so what is left is the Saved band, which is small, and the picker, which is the owner's second rule
 ---
 
@@ -216,9 +216,15 @@ Drawn in three states, rendered at 375 wide with nothing off the side of the scr
    is left of the old share step. The press is the Share sheet's own, with its fall back to
    **Open Messages**. Built on the owner's word to build every step, so the walk on a real iPhone
    and a real Android phone is still to do, together with #394's.
-4. **The picker** (L). *For* at the top with **Change the job**, *Leave it on no job* retired from
-   the doors, **Move it to another job…**, and **Draw it by hand** above the fold as the `start`
-   state draws it.
+4. **The picker** (L). **Built, v2.7868.** **Which job is it for?** opens first when a map is started
+   with no job: today's stops, the jobs clocked onto in the last 45 days, then a search of every
+   job, with a job the person may not paint on listed grey with its reason. *For* leads the start
+   sheet with **Change the job**. *Leave it on no job* is gone from every door. **Move it to another
+   job…** joins *Rename this map*, and **Put it on a job…** opens the same picker. **Draw it by hand**
+   and **Start with a place** are above the fold at 812: the sheet is 775 tall.
+   One way onto no job is kept, and it is not in call 3: with no signal the lists cannot be read,
+   and a person on site must still be able to paint. The picker then offers **Paint now and pick
+   the job later**, and the map waits for **Put it on a job…**.
 5. **Find the jobs near me** (S), if the owner wants it.
 
 The Saved band was fourth and the picker third until 2026-11-18. The band is small and is where a
@@ -226,8 +232,7 @@ saved map still loses people, so it goes first. That puts the rule that every ma
 one small step later: until step 4, the press opens today's sheet with the job set when the app
 knows it and **Pick the job it is for** when it does not. The owner may swap 3 and 4 back.
 
-Step 4 takes over **Change the job**: today it opens the sheet's job search, and the picker's
-list of today's and recent jobs replaces that.
+Step 4 took over **Change the job**: it opens the picker.
 
 ## How to verify
 
