@@ -19,6 +19,12 @@ declare module 'virtual:punch-list' {
   export default data
 }
 
+/** The running app's version, the newest release note in its build, by `appVersionPlugin` (vite.config.ts, punch list #380). */
+declare module 'virtual:app-version' {
+  const version: string | null
+  export default version
+}
+
 /** The lens's schema map, read from src/types/database.ts at build time by `lensSchemaPlugin` (vite.config.ts, punch list #194). */
 declare module 'virtual:lens-schema' {
   import type { LensSchema } from './lib/lens/answer/lensSchemaTypes'

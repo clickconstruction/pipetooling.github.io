@@ -14,7 +14,7 @@ vi.mock('../../hooks/useIsDigitalTwin', () => ({ useIsDigitalTwin: () => false }
 vi.mock('../../lib/tellTheDev/sendNote', () => ({ sendDevNote }))
 vi.mock('../../lib/tellTheDev/myNotesIo', () => ({ loadMyNotes }))
 vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick }))
-vi.mock('../../content/releaseNotes', () => ({ RELEASE_NOTES: [{ version: 'v2.0001' }] }))
+vi.mock('../../lib/appVersion', () => ({ APP_VERSION: 'v2.0001' }))
 
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { troubleMemory } from '../../lib/tellTheDev/trouble'
@@ -59,7 +59,9 @@ describe('TellTheDevRoot', () => {
     expect(screen.getByText('Jobs · Stages')).toBeTruthy()
     expect(screen.getByText('Dana Whitfield, Assistant')).toBeTruthy()
     expect(screen.getByText('A picture of your screen is never sent.')).toBeTruthy()
-    await waitFor(() => expect(screen.getByText('v2.0001')).toBeTruthy())
+    // The version is listed as the box opens, so a note sent at once carries it too (the live walk of 2026-11-18).
+    expect(screen.getByText('App version')).toBeTruthy()
+    expect(screen.getByText('v2.0001')).toBeTruthy()
     expect(recordNavClick).toHaveBeenCalledWith(expect.any(String), 'assistant', 'tell_the_dev_open', '/wrench')
 
     // I want needs words, and says so.
