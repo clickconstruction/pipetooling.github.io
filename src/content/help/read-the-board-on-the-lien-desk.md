@@ -140,11 +140,35 @@ Point at a bin's name on a row to read where that paper stands. It opens the car
 
 A heading carries the day when every row under it shares that day. Then no row repeats it. A row with another day says its own.
 
-## Held, Missed and retainage
+## Held and retainage
 
-**Held** and **Missed** stand on a column's heading line, at its right. Each shows only while a job is in it. A dashed border marks them. Press the name and the list shows only those rows.
+**Held** stands on a column's heading line, at its right. It shows only while a job is in it. A dashed border marks it. Press the name and the list shows only those rows.
 
 Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. It also counts jobs where retainage looks held and none is recorded, like *2 look held, not on the job*. The retainage list on **By paper** has the rows.
+
+## A window that has closed
+
+A closed window has its own bin at the foot of each column. It shows only while a job is in it. No arrow runs into it. The bin is dashed and its chips are grey, because nothing there can be rushed.
+
+:::cards
+
+:::card Window closed · no notice
+
+This bin sits under **Sent**. Every month of the job passed its notice day and no notice went. An amber chip can still be saved. A late notice counts while the job's lien day is ahead.
+
+:::
+
+:::card Lien day passed · not filed
+
+This bin sits under **Served**. The last day to file the lien passed and no filing is on record. A paper stands here whatever stage it had reached. An approved affidavit past its day leaves **Ready to file**, so the print no longer counts it.
+
+:::
+
+:::
+
+A paper leaves the closed bin by itself when its dates change. Record a filing that was made in time and the paper moves to *Filed · copies to mail*. Set a later last day of work and the paper goes back into the flow. A notice also leaves once someone records its months closed.
+
+The app counts the days. It does not judge the law. Ask the attorney when a date is not clear.
 
 ## Public property
 

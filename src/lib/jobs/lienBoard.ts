@@ -3,7 +3,7 @@
  * columns of bins, one per stage — the monthly notices on the left, the lien affidavits on the
  * right — every job in its bin as a small chip coloured by how soon its day is, thin arrows down
  * each column and one from Sent across to Waiting on its notice (the notice on record is the
- * affidavit's gate; the bin is its own since v2.7457, and Needs the property facts holds a missing fact alone), four tiles over the columns, Held and Missed beside a
+ * affidavit's gate; the bin is its own since v2.7457, and Needs the property facts holds a missing fact alone), four tiles over the columns, Held beside a column and a closed end at its foot (`lienClosedEnd.ts`), beside a
  * column only while a job is in one, and retainage as one line under the notices.
  *
  * Pure. It folds the queues the desk already builds (`buildLienDeskQueue`, `buildLienAffidavitQueue`,
@@ -30,6 +30,7 @@ import { batchWords, countedLabel, type BatchWords } from '../batchWords'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
 import { formatUsdNoCents } from './jobFormatting'
 import type { LienDeskEntry, LienDeskPile } from './lienDesk'
+import { LIEN_CLOSED_BIN_WORDS, lienLateNoticeStillCounts, lienNoticeWindowClosed } from './lienClosedEnd'
 import { LIEN_AFFIDAVIT_NEEDS_NOTICE_LABEL, lienAffidavitGateHeld, type LienAffidavitEntry, type LienAffidavitGateKey, type LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { lienItemUnsigned } from './lienNoticeSignature'
@@ -37,9 +38,9 @@ import { lienItemUnsigned } from './lienNoticeSignature'
 /** The two kinds of paper the Board draws; retainage is a line, not a column. */
 export type LienBoardKind = 'notice' | 'affidavit'
 
-/** The notice column's bins in flow order, then the two beside it. */
+/** The notice column's bins in flow order, then Held beside it and the closed end at its foot (`missed`). */
 export type LienBoardNoticeStage = 'needs_owner' | 'to_send' | 'awaiting' | 'to_sign' | 'to_print' | 'in_mail' | 'sent' | 'held' | 'missed'
-/** The affidavit column's bins in flow order, then the two beside it. */
+/** The affidavit column's bins in flow order, then Held beside it and the closed end at its foot (`missed`). */
 export type LienBoardAffidavitStage = 'needs_property' | 'needs_notice' | 'to_send' | 'awaiting' | 'ready' | 'filed' | 'served' | 'held' | 'missed'
 
 export type LienBoardBinKey = `notice:${LienBoardNoticeStage}` | `affidavit:${LienBoardAffidavitStage}`
@@ -91,6 +92,8 @@ export type LienBoardChip = {
   gateHeld?: true
   /** An approved notice the leader has not signed as it stands (v2.7448, `lienItemUnsigned`): the run holds it, so it waits on him too. */
   unsigned?: boolean
+  /** A closed month a late notice can still save, since the job's lien day is ahead: the one chip at a closed end with something left to send. */
+  lateNotice?: true
 }
 
 export type LienBoardBin = {
@@ -99,8 +102,10 @@ export type LienBoardBin = {
   stage: LienBoardNoticeStage | LienBoardAffidavitStage
   label: string
   chips: LienBoardChip[]
-  /** Held and Missed stand beside the column, drawn only while a job is in them. */
+  /** Held stands beside the column, drawn only while a job is in it. */
   beside: boolean
+  /** The column's closed end, at its foot and apart from the flow: a window closed and nothing can be rushed. Drawn only while a job is in it. */
+  closed: boolean
 }
 
 export type LienBoardArrow = { from: LienBoardBinKey; to: LienBoardBinKey; kind: 'down' | 'cross' }
@@ -190,13 +195,17 @@ export const LIEN_BOARD_WORDS = {
   filed: 'Filed · copies to mail',
   served: 'Served',
   held: 'Held',
-  missed: 'Missed',
 } as const
+
+/** A bin's name: its stage's, and for the closed end the words for what closed in that column. */
+export function lienBoardStageWords(kind: LienBoardKind, stage: LienBoardNoticeStage | LienBoardAffidavitStage): string {
+  return stage === 'missed' ? LIEN_CLOSED_BIN_WORDS[kind] : LIEN_BOARD_WORDS[stage]
+}
 
 export const LIEN_BOARD_NOTICE_STAGES: ReadonlyArray<LienBoardNoticeStage> = ['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent', 'held', 'missed']
 export const LIEN_BOARD_AFFIDAVIT_STAGES: ReadonlyArray<LienBoardAffidavitStage> = ['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed', 'served', 'held', 'missed']
 
-/** The flow's stages, in order; Held and Missed stand beside. */
+/** The flow's stages, in order; Held stands beside and the closed end at the foot. */
 const NOTICE_FLOW: ReadonlyArray<LienBoardNoticeStage> = ['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent']
 const AFFIDAVIT_FLOW: ReadonlyArray<LienBoardAffidavitStage> = ['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed', 'served']
 
@@ -310,7 +319,7 @@ function affidavitStage(pile: LienAffidavitPile): LienBoardAffidavitStage {
 export function lienBoardPileWords(kind: 'notice', pile: LienDeskPile): string
 export function lienBoardPileWords(kind: 'affidavit', pile: LienAffidavitPile): string
 export function lienBoardPileWords(kind: LienBoardKind, pile: LienDeskPile | LienAffidavitPile): string {
-  return LIEN_BOARD_WORDS[kind === 'notice' ? noticeStage(pile as LienDeskPile) : affidavitStage(pile as LienAffidavitPile)]
+  return lienBoardStageWords(kind, kind === 'notice' ? noticeStage(pile as LienDeskPile) : affidavitStage(pile as LienAffidavitPile))
 }
 
 function utcDay(ymd: string): number {
@@ -482,7 +491,9 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
   // A job on a property that reads as public and has no answer yet (v2.7443): no paper can be made there, so its chip
   // loses its red day and its *!*, and carries the mark instead.
   const publicJob = (jobId: string) => Boolean(input.publicJobIds?.has(jobId))
-  const notices: LienBoardChip[] = input.notices.map((e) => {
+  // A job whose every month closed stands at the closed end until someone records the months (`lienNoticeWindowClosed`).
+  // Recorded, it has its answer and no chip: By paper's Missed lens still lists it.
+  const notices: LienBoardChip[] = input.notices.filter((e) => e.pile !== 'missed' || lienNoticeWindowClosed(e)).map((e) => {
     const stage = noticeStageOf(e)
     const stepsLeft = NOTICE_STAGES_LEFT[stage].length
     const dueYmd = e.earliestDeadline
@@ -497,10 +508,12 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       dueYmd,
       daysLeft,
       stepsLeft,
-      urgency: stage === 'sent' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting' || stage === 'to_sign'),
+      // A closed end is quiet: nothing there can be rushed.
+      urgency: stage === 'sent' || stage === 'missed' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting' || stage === 'to_sign'),
       atRisk: !marked && lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
       ...(marked ? { publicMark: true } : {}),
       ...(e.pile === 'ready' && lienItemUnsigned(e.item) ? { unsigned: true } : {}),
+      ...(stage === 'missed' && lienLateNoticeStillCounts(e) ? { lateNotice: true as const } : {}),
       destination: noticeDestination(e, stage),
       tip: tipFor(e.jobId, e.gcCustomerId, e.openBalance),
       pairKey: pairKeyByJob.get(e.jobId) ?? null,
@@ -535,7 +548,7 @@ function buildChips(input: LienBoardInput): { notices: LienBoardChip[]; affidavi
       dueYmd,
       daysLeft,
       stepsLeft,
-      urgency: stage === 'served' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
+      urgency: stage === 'served' || stage === 'missed' || marked ? 'later' : lienBoardUrgency(daysLeft, stage === 'awaiting'),
       // The tiles count papers still to send or file; a filed one is in neither, so it is never *at risk* there.
       atRisk: stage !== 'filed' && stage !== 'served' && !marked && lienBoardAtRisk(stepsLeft, input.todayYmd, dueYmd),
       ...(marked ? { publicMark: true } : {}),
@@ -582,9 +595,10 @@ function binsFor<S extends LienBoardNoticeStage | LienBoardAffidavitStage>(kind:
       key,
       kind,
       stage,
-      label: LIEN_BOARD_WORDS[stage],
+      label: lienBoardStageWords(kind, stage),
       chips: chips.filter((c) => c.bin === key).sort(compareLienBoardChips),
-      beside: stage === 'held' || stage === 'missed',
+      beside: stage === 'held',
+      closed: stage === 'missed',
     }
   })
 }
@@ -701,9 +715,9 @@ export function buildLienBoard(input: LienBoardInput): LienBoard {
   }
 }
 
-/** The bins the Board draws: the flow's, and Held or Missed only while a job is in it. */
+/** The bins the Board draws: the flow's, and Held or the closed end only while a job is in it. */
 export function lienBoardBinsShown(bins: ReadonlyArray<LienBoardBin>): LienBoardBin[] {
-  return bins.filter((b) => !b.beside || b.chips.length > 0)
+  return bins.filter((b) => (!b.beside && !b.closed) || b.chips.length > 0)
 }
 
 /** The four dots for the Dashboard's Needs you card: the tiles' figures and a word each. */
