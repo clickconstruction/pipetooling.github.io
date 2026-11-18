@@ -176,7 +176,7 @@ describe('DevelopmentTripsCard — Put on a bill', () => {
     draw()
     await waitFor(() => expect(screen.getByTestId('trip-row-billing').textContent).toContain('on J2101’s lines'))
     fireEvent.click(within(openTrip()).getByTestId('trip-delete'))
-    expect(screen.getByRole('alertdialog').textContent).toContain('No clock row, bill or cost changes. You can undo it for a minute. After that it waits under Deleted trips for 90 days. Its line stays on J2101’s lines, with its words and its price. Undo or Put back brings the trip back, but the line is no longer tied to it.')
+    expect(screen.getByRole('alertdialog').textContent).toContain('No clock row, bill or cost changes. You can undo it for a minute. After that it waits under Deleted trips for 90 days. Its line stays on J2101’s lines, with its words and its price. Undo or Put back ties the trip to it again.')
   })
 
   it('deleting a trip that holds no line asks as it did', async () => {
