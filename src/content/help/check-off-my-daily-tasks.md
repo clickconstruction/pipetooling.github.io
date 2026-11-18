@@ -150,6 +150,8 @@ When an open task of yours has a place, the Today tab opens on a map. The map is
 
 Tap {{button:outline|Show where I am}} to add a dark dot for you. Each task's line then says how far away its place is, like *250 ft north-east*. Your location stays on your phone.
 
+Tap a dot, then tap **Time** on the map to see that place on earlier days. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) shows how.
+
 **Satellite** shows the ground from above. **Streets** shows roads. Tap **Hide map** to fold the map away. Your phone remembers, and **Show map** brings it back.
 
 ## Notes are a conversation

@@ -2,7 +2,7 @@
 title: see where everyone clocked in is right now
 category: Office
 roles: dev, master_technician, assistant, controller, superintendent, primary
-keywords: map, clocked in, currently in, where is everyone, who is where, crew locations, job map, dispatch, directions, travel time, drive time, distance to office
+keywords: map, clocked in, currently in, satellite, streets, time, older photos, where is everyone, who is where, crew locations, job map, dispatch, directions, travel time, drive time, distance to office
 ---
 The Currently In bar has a Map button. You press it to see everyone clocked in right now, placed on a map by their job or bid.
 
@@ -28,6 +28,12 @@ The list on the right is the same people regrouped by place, most people first. 
 ## Travel times to the office
 
 The miles beside each stop are straight-line at first, so opening the map costs nothing. You press {{button:outline-blue|Travel times}} in the header. On a phone, it sits on the line under the title. Every stop on the map is then routed to the office. The line becomes ***20 mi · 32 min to the office***. It reads that way in the list, in the pin's card and on the phone bar. It is one lookup per job, not per person. The answers are kept for the page, so pressing again only routes stops that are new. A stop the router cannot answer shows an estimate marked ≈. The estimate is the straight line × 1.3 at 35 mph. The footer says how many were routed and how many estimated.
+
+## Satellite, Streets and Time
+
+Three presses sit on the map. **Streets** is the road map it opens on. **Satellite** is a photo from above.
+
+Tap a stop, then tap **Time** to see that site on earlier days. The pins still show who is there now. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) shows how.
 
 ## It moves on its own
 
