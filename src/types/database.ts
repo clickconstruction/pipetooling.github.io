@@ -21333,6 +21333,51 @@ export type Database = {
           },
         ]
       }
+      job_finish_calls: {
+        Row: {
+          created_at: string
+          finish_on: string
+          id: string
+          job_id: string
+          plan_was: string | null
+          user_id: string
+          why: string | null
+        }
+        Insert: {
+          created_at?: string
+          finish_on: string
+          id?: string
+          job_id: string
+          plan_was?: string | null
+          user_id?: string
+          why?: string | null
+        }
+        Update: {
+          created_at?: string
+          finish_on?: string
+          id?: string
+          job_id?: string
+          plan_was?: string | null
+          user_id?: string
+          why?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_finish_calls_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_finish_calls_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_followup_reviews: {
         Row: {
           id: string
