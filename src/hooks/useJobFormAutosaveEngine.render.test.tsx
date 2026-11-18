@@ -23,6 +23,9 @@ const db = vi.hoisted(() => ({
   bidReads: [] as Array<{ outcome: unknown; bid_number: string | null; project_name: string | null } | null>,
   closedRequests: [] as Array<{ id: string; from_user_id: string; title: string }>,
   found: null as unknown,
+  /** What the billing slice's read of the job's line ids answers, and how often it ran. Counted apart from `steps`, so the sequences pinned below stay the writes they were. */
+  lines: [] as string[],
+  lineReads: 0,
 }))
 const ui = vi.hoisted(() => ({ showToast: vi.fn(), dispatchChanged: vi.fn(), dispatchClosure: vi.fn() }))
 
@@ -48,6 +51,10 @@ vi.mock('../lib/supabase', () => {
         return Promise.resolve({ data: table === 'bids' ? (db.bidReads.shift() ?? null) : null, error: null })
       }
       b.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) => {
+        if (reads === 'select' && table === 'jobs_ledger_fixtures') {
+          db.lineReads += 1
+          return Promise.resolve({ data: db.lines.map((id) => ({ id })), ...answer(op, table) }).then(onFulfilled, onRejected)
+        }
         db.steps.push({ op, table, payload, filters })
         const base = answer(op, table)
         const res = reads === 'select' ? { data: db.team.map((user_id) => ({ user_id })), ...base } : reads === 'update+select' ? { data: db.closedRequests, ...base } : base
@@ -147,6 +154,8 @@ afterEach(() => {
   db.bidReads = []
   db.closedRequests = []
   db.found = null
+  db.lines = []
+  db.lineReads = 0
 })
 
 describe('useJobFormAutosaveEngine — opening a job', () => {
@@ -512,6 +521,142 @@ describe('useJobFormAutosaveEngine — re-reading the line items', () => {
     await act(() => result.current.rehydrateFixturesFromDb('job-1'))
     expect(spies.setEditing).not.toHaveBeenCalled()
     expect(spies.setFixtures).not.toHaveBeenCalled()
+  })
+})
+
+describe('useJobFormAutosaveEngine — a line added somewhere else while the window was open', () => {
+  const dbRow = (id: string, name: string, price: number, sequence_order: number, extra: Record<string, unknown> = {}) => ({ id, name, count: 1, line_unit_price: price, line_description: '', invoice_id: null, sequence_order, ...extra })
+  const WORDS = "This job's lines changed somewhere else while this window was open. The lines were read again. Your last change to the lines was not saved, so make it once more."
+
+  /** The form holds its rows in state, as the Job window does, so a re-read lands in the form. */
+  function mountHoldingRows() {
+    const base = mount().args
+    cleanup()
+    const setEditing = vi.fn()
+    const onSaved = vi.fn()
+    const hook = renderHook(() => {
+      const [fixtures, setFixtures] = useState(base.fixtures)
+      const [payments, setPayments] = useState(base.payments)
+      return { engine: useJobFormAutosaveEngine({ ...base, setEditing, onSavedRef: { current: onSaved }, fixtures, setFixtures, payments }), fixtures, setFixtures, setPayments }
+    })
+    return { ...hook, setEditing, onSaved }
+  }
+
+  it('writes nothing over it, reads the lines again and says so; the form then holds the line', async () => {
+    db.lines = ['f1', 'x-elsewhere']
+    db.found = { id: 'job-1', master_user_id: 'master-1', fixtures: [dbRow('f1', 'Rough-in', 1_000, 0), dbRow('x-elsewhere', 'Added elsewhere', 400, 1)] }
+    const { result, setEditing, onSaved } = mountHoldingRows()
+    act(() => result.current.setFixtures([fixture('f1', 'Rough-in', 1_500)]))
+    await tick(1_200)
+    expect(db.lineReads).toBe(1)
+    expect(db.steps).toEqual([])
+    expect(ui.showToast).toHaveBeenCalledTimes(1)
+    expect(ui.showToast).toHaveBeenCalledWith(WORDS, 'warning', 15_000)
+    expect(setEditing).toHaveBeenCalledWith(db.found)
+    // The person's change is gone with the re-read: the form holds what the database holds.
+    expect(result.current.fixtures.map((r) => [r.id, r.line_unit_price])).toEqual([
+      ['f1', 1_000],
+      ['x-elsewhere', 400],
+    ])
+    expect(result.current.engine.billingAutosaveStatus).toBe('error')
+    expect(onSaved).not.toHaveBeenCalled()
+  })
+
+  it('the save after the re-read keeps the line: it is upserted with the rest, kept by the delete and counted in the total', async () => {
+    db.lines = ['f1', 'x-elsewhere']
+    db.found = { id: 'job-1', master_user_id: 'master-1', fixtures: [dbRow('f1', 'Rough-in', 1_000, 0), dbRow('x-elsewhere', 'Added elsewhere', 400, 1)] }
+    const { result } = mountHoldingRows()
+    act(() => result.current.setFixtures([fixture('f1', 'Rough-in', 1_500)]))
+    await tick(1_200)
+    expect(db.steps).toEqual([])
+    // The person makes the change once more, over the rows that were read again.
+    act(() => result.current.setFixtures((rows) => rows.map((r) => (r.id === 'f1' ? { ...r, line_unit_price: 1_500 } : r))))
+    await tick(1_200)
+    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'upsert:jobs_ledger_fixtures', 'delete:jobs_ledger_fixtures'])
+    expect(db.steps[0]?.payload).toEqual({ revenue: 1_900 })
+    expect((db.steps[2]?.payload as Array<{ id: string }>).map((r) => r.id)).toEqual(['f1', 'x-elsewhere'])
+    expect(db.steps[3]?.filters).toEqual(['eq', 'job_id', 'job-1', 'not', 'id', 'in', '(f1,x-elsewhere)'])
+    expect(ui.showToast).toHaveBeenCalledTimes(1)
+    expect(result.current.engine.billingAutosaveStatus).toBe('saved')
+  })
+
+  it('a payment typed with the refused change is still saved, by the save the re-read starts', async () => {
+    db.lines = ['f1', 'x-elsewhere']
+    db.found = { id: 'job-1', master_user_id: 'master-1', fixtures: [dbRow('f1', 'Rough-in', 1_000, 0), dbRow('x-elsewhere', 'Added elsewhere', 400, 1)] }
+    const { result } = mountHoldingRows()
+    act(() => result.current.setPayments([pay('p1', 300), pay('p2', 50)]))
+    await tick(1_200)
+    expect(db.steps).toEqual([])
+    await tick(1_200)
+    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'upsert:jobs_ledger_fixtures', 'delete:jobs_ledger_fixtures'])
+    expect(db.steps[0]?.payload).toEqual({ revenue: 1_400 })
+    expect((db.steps[1]?.payload as Array<{ id: string }>).map((r) => r.id)).toEqual(['p1', 'p2'])
+    expect(ui.showToast).toHaveBeenCalledTimes(1)
+  })
+
+  it('a line the form read and the person deleted is not a line added elsewhere: it saves as before', async () => {
+    db.lines = ['f1', 'f2']
+    const { result, rerender, args } = mount({ fixtures: [fixture('f1', 'Rough-in', 1_000), fixture('f2', 'Top-out', 500)] })
+    rerender({ ...args, fixtures: [fixture('f1', 'Rough-in', 1_000)] })
+    await tick(1_200)
+    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'upsert:jobs_ledger_fixtures', 'delete:jobs_ledger_fixtures'])
+    expect(db.steps[3]?.filters).toEqual(['eq', 'job_id', 'job-1', 'not', 'id', 'in', '(f1)'])
+    expect(ui.showToast).not.toHaveBeenCalled()
+    expect(result.current.billingAutosaveStatus).toBe('saved')
+  })
+
+  it('a re-read that set the job alone has not put its lines in the form: the save is still refused', async () => {
+    db.lines = ['f1', 'x-elsewhere']
+    const { rerender, args } = mount()
+    // Another re-read (a payment's, say) replaced `editing` with a job that carries the new line; the form's rows did not change.
+    rerender({ ...args, editing: { ...job, fixtures: [dbRow('f1', 'Rough-in', 1_000, 0), dbRow('x-elsewhere', 'Added elsewhere', 400, 1)] } as unknown as JobWithDetails })
+    rerender({ ...args, fixtures: [fixture('f1', 'Rough-in', 1_500)] })
+    await tick(1_200)
+    expect(db.steps).toEqual([])
+    expect(ui.showToast).toHaveBeenCalledTimes(1)
+  })
+
+  it('when the lines cannot be read again it says to open the job again, and the next edit is refused and said again', async () => {
+    db.lines = ['f1', 'x-elsewhere']
+    const { result, rerender, args, spies } = mount()
+    rerender({ ...args, fixtures: [fixture('f1', 'Rough-in', 1_500)] })
+    await tick(1_200)
+    expect(db.steps).toEqual([])
+    expect(spies.setFixtures).not.toHaveBeenCalled()
+    expect(ui.showToast).toHaveBeenCalledWith("This job's lines changed somewhere else while this window was open. Nothing was saved over them. Close this job and open it again to see them.", 'warning', 15_000)
+    expect(result.current.billingAutosave.isDirty()).toBe(true)
+    rerender({ ...args, fixtures: [fixture('f1', 'Rough-in', 1_600)] })
+    await tick(1_200)
+    expect(db.steps).toEqual([])
+    expect(ui.showToast).toHaveBeenCalledTimes(2)
+  })
+
+  it('a save queued behind the refused one is refused without a second read of the job or a second telling', async () => {
+    db.lines = ['f1', 'x-elsewhere']
+    db.found = { id: 'job-1', master_user_id: 'master-1', fixtures: [dbRow('f1', 'Rough-in', 1_000, 0), dbRow('x-elsewhere', 'Added elsewhere', 400, 1)] }
+    const { result, setEditing } = mountHoldingRows()
+    act(() => result.current.setFixtures([fixture('f1', 'Rough-in', 1_500)]))
+    await act(async () => {
+      const first = result.current.engine.flushBillingAutosave()
+      // Pressed again while the first is in flight: it queues, and runs the moment the first ends.
+      const second = result.current.engine.billingAutosave.flush()
+      await Promise.all([first, second])
+    })
+    await tick(0)
+    expect(db.steps).toEqual([])
+    expect(setEditing).toHaveBeenCalledTimes(1)
+    expect(ui.showToast).toHaveBeenCalledTimes(1)
+  })
+
+  it('the other three slices save as before while the billing save is refused', async () => {
+    db.lines = ['f1', 'x-elsewhere']
+    db.team = ['u-1']
+    const { result, rerender, args } = mount()
+    rerender({ ...args, fixtures: [fixture('f1', 'Rough-in', 1_500)], identityFields: identity({ jobName: 'Oak Ridge II' }), materials: [{ id: 'm1', description: 'Copper', amount: 150 }], teamMemberIds: ['u-1', 'u-2'] })
+    await tick(1_200)
+    expect(seq()).toEqual(['select:jobs_ledger_team_members', 'insert:jobs_ledger_team_members', 'update:jobs_ledger', 'upsert:jobs_ledger_materials', 'delete:jobs_ledger_materials'])
+    expect(db.steps[2]?.payload).toMatchObject({ job_name: 'Oak Ridge II' })
+    expect(statuses(result)).toEqual(['error', 'saved', 'saved', 'saved'])
   })
 })
 
