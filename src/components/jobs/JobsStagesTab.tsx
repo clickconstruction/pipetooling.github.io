@@ -42,7 +42,7 @@ import { JobsStagesPhoneStrip, PHONE_STAGE_ORDER, type PhoneStageKey } from './J
 import type { StagesPhoneRowsMode } from './stagesPhoneRowsMode'
 import { useJobFollowupQueueCount } from '../../hooks/useJobFollowupQueueCount'
 import { JobsGcReviewModal } from './JobsGcReviewModal'
-import { ensureRemainderResyncOutcome } from '../../lib/jobs/ensureRtbRemainderResult'
+import { draftInvoiceErrorMessage, writeDraftInvoice } from '../../lib/jobs/draftInvoiceWrite'
 import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
 import {
   sendBackJobBillingContext,
@@ -2471,33 +2471,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     setCreatingPartialInvoiceFromModal(true)
     setError(null)
     try {
-      const { error: err } = await supabase
-        .from('jobs_ledger_invoices')
-        .insert({
-          job_id: createPartialInvoiceJob.id,
-          amount: plan.amountDollars,
-          status: 'ready_to_bill',
-          sequence_order: plan.nextSequenceOrder,
-          estimated_bill_date: null,
-          is_primary_rtb_bundle: false,
-        })
-        .select('id')
-        .single()
-      if (err) throw err
-      // Invoice already written — fully-allocated envelopes from the resync
-      // are success; only a real failure is surfaced (after the board reload).
-      let ensureFailure: string | null = null
-      if (plan.ensureRemainder) {
-        const raw = await withSupabaseRetry(
-          () =>
-            supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', {
-              p_job_id: createPartialInvoiceJob.id,
-            }),
-          'ensure RTB remainder after partial invoice'
-        )
-        const outcome = ensureRemainderResyncOutcome(raw)
-        if (!outcome.ok) ensureFailure = outcome.error
-      }
+      // The draft's one tested order (`lib/jobs/draftInvoiceWrite`, the job form's since v2.3926; the map's step 19): the
+      // line, then the remainder's re-sync on a Ready to Bill job. The line is never rolled back.
+      const { ensureFailure } = await writeDraftInvoice(supabase, {
+        jobId: createPartialInvoiceJob.id,
+        amount: plan.amountDollars,
+        sequenceOrder: plan.nextSequenceOrder,
+        jobStatus: createPartialInvoiceJob.status,
+        resyncLabel: 'ensure RTB remainder after partial invoice',
+      })
       setCreatePartialInvoiceJob(null)
       setCreatePartialInvoiceAmount('')
       setError(
@@ -2505,10 +2487,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       )
       await loadJobs()
     } catch (e: unknown) {
-      const err = e as { message?: string; details?: string; hint?: string }
-      const msg = err?.message || 'Failed to create invoice'
-      const extra = [err?.details, err?.hint].filter(Boolean).join(' ')
-      setError(extra ? `${msg}. ${extra}` : msg)
+      setError(draftInvoiceErrorMessage(e, 'Failed to create invoice'))
     } finally {
       setCreatingPartialInvoiceFromModal(false)
     }
