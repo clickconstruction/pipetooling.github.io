@@ -625,6 +625,85 @@ export const stagesInvoiceRowAccentRailStyle: CSSProperties = {
 }
 
 /**
+ * What both customer lines end with (the Stages map's step 12): the GC and development row, the Account-Man chip and
+ * the Not in Customers badge. The desktop row adds the GC's portal globe; the card leaves it out.
+ */
+function renderJobCustomerLineTail(
+  ctx: StagesRowRenderContext,
+  job: JobWithDetails,
+  { gcName, developmentName, accountMan, showNotInCustomersBadge, gcPortalGlobe }: { gcName: string; developmentName: string; accountMan: AccountManDisplay | null; showNotInCustomersBadge: boolean; gcPortalGlobe: boolean },
+) {
+  return (
+    <>
+      {gcName || developmentName ? (
+        // GC and development share one muted row — they're the same "who/where
+        // does this roll up to" fact; wraps on narrow columns. The icons keep
+        // the pair scannable on their own, so a wider gap (no separator glyph)
+        // splits them.
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {gcName ? (
+            <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+              <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
+              {renderGcTimelineDoor(job, gcName, ctx)}
+              {gcPortalGlobe && job.gcCustomer?.id ? (
+                <CustomerPortalGlobeButton customerId={job.gcCustomer.id} customerName={gcName} size={13} />
+              ) : null}
+            </span>
+          ) : null}
+          {developmentName ? (
+            job.development?.id ? (
+              // The name is a door to the development's page (v2.6201, the owner's ask after his walk of
+              // the Gray Fox page); the board's filter by development lives in the house dropdown by the search.
+              <Link
+                to={`/developments/${job.development.id}`}
+                onClick={(e) => e.stopPropagation()}
+                title="Open the development's page"
+                aria-label="Open the development's page"
+                data-nav="development-page"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'inherit', textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}
+              >
+                <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
+                <span><StagesSearchMark text={developmentName} /></span>
+              </Link>
+            ) : (
+              <span title="Development for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
+                <span><StagesSearchMark text={developmentName} /></span>
+              </span>
+            )
+          ) : null}
+        </span>
+      ) : null}
+      {accountMan ? renderAccountManChip(accountMan) : null}
+      {showNotInCustomersBadge ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            ctx.openEditJobAndCreateCustomerFlow(job)
+          }}
+          aria-label="Open Edit Job and create customer from job"
+          style={{
+            padding: '0.1rem 0.3rem',
+            fontSize: '0.6875rem',
+            fontWeight: 500,
+            fontFamily: 'inherit',
+            background: 'var(--bg-amber-100)',
+            color: 'var(--text-amber-800)',
+            border: 'none',
+            borderRadius: 4,
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          Not in Customers
+        </button>
+      ) : null}
+    </>
+  )
+}
+
+/**
  * The GC's name on a row (punch list #97, PR 3): a door to the GC's timeline, where every job
  * they are the GC on sits on one spine. Plain text where the window cannot open.
  */
@@ -712,70 +791,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
         </span>
       ) : null}
       </span>
-      {gcName || developmentName ? (
-        // GC and development share one muted row — they're the same "who/where
-        // does this roll up to" fact; wraps on narrow columns. The icons keep
-        // the pair scannable on their own, so a wider gap (no separator glyph)
-        // splits them.
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-          {gcName ? (
-            <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-              <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
-              {renderGcTimelineDoor(job, gcName, ctx)}
-              {job.gcCustomer?.id ? (
-                <CustomerPortalGlobeButton customerId={job.gcCustomer.id} customerName={gcName} size={13} />
-              ) : null}
-            </span>
-          ) : null}
-          {developmentName ? (
-            job.development?.id ? (
-              // The name is a door to the development's page (v2.6201, the owner's ask after his walk of
-              // the Gray Fox page); the board's filter by development lives in the house dropdown by the search.
-              <Link
-                to={`/developments/${job.development.id}`}
-                onClick={(e) => e.stopPropagation()}
-                title="Open the development's page"
-                aria-label="Open the development's page"
-                data-nav="development-page"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'inherit', textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}
-              >
-                <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
-                <span><StagesSearchMark text={developmentName} /></span>
-              </Link>
-            ) : (
-              <span title="Development for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
-                <span><StagesSearchMark text={developmentName} /></span>
-              </span>
-            )
-          ) : null}
-        </span>
-      ) : null}
-      {accountMan ? renderAccountManChip(accountMan) : null}
-      {showNotInCustomersBadge ? (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            openEditJobAndCreateCustomerFlow(job)
-          }}
-          aria-label="Open Edit Job and create customer from job"
-          style={{
-            padding: '0.1rem 0.3rem',
-            fontSize: '0.6875rem',
-            fontWeight: 500,
-            fontFamily: 'inherit',
-            background: 'var(--bg-amber-100)',
-            color: 'var(--text-amber-800)',
-            border: 'none',
-            borderRadius: 4,
-            cursor: 'pointer',
-            textAlign: 'left',
-          }}
-        >
-          Not in Customers
-        </button>
-      ) : null}
+      {renderJobCustomerLineTail(ctx, job, { gcName, developmentName, accountMan, showNotInCustomersBadge, gcPortalGlobe: true })}
     </div>
   )
 }
@@ -864,63 +880,7 @@ export function renderJobCustomerAndAddressLine(ctx: StagesRowRenderContext, job
           </a>
         ) : null}
       </span>
-      {gcName || developmentName ? (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-          {gcName ? (
-            <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-              <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
-              {renderGcTimelineDoor(job, gcName, ctx)}
-            </span>
-          ) : null}
-          {developmentName ? (
-            job.development?.id ? (
-              // The name is a door to the development's page (v2.6201, the owner's ask after his walk of
-              // the Gray Fox page); the board's filter by development lives in the house dropdown by the search.
-              <Link
-                to={`/developments/${job.development.id}`}
-                onClick={(e) => e.stopPropagation()}
-                title="Open the development's page"
-                aria-label="Open the development's page"
-                data-nav="development-page"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'inherit', textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}
-              >
-                <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
-                <span><StagesSearchMark text={developmentName} /></span>
-              </Link>
-            ) : (
-              <span title="Development for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
-                <span><StagesSearchMark text={developmentName} /></span>
-              </span>
-            )
-          ) : null}
-        </span>
-      ) : null}
-      {accountMan ? renderAccountManChip(accountMan) : null}
-      {showNotInCustomersBadge ? (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            openEditJobAndCreateCustomerFlow(job)
-          }}
-          aria-label="Open Edit Job and create customer from job"
-          style={{
-            padding: '0.1rem 0.3rem',
-            fontSize: '0.6875rem',
-            fontWeight: 500,
-            fontFamily: 'inherit',
-            background: 'var(--bg-amber-100)',
-            color: 'var(--text-amber-800)',
-            border: 'none',
-            borderRadius: 4,
-            cursor: 'pointer',
-            textAlign: 'left',
-          }}
-        >
-          Not in Customers
-        </button>
-      ) : null}
+      {renderJobCustomerLineTail(ctx, job, { gcName, developmentName, accountMan, showNotInCustomersBadge, gcPortalGlobe: false })}
     </div>
   )
 }
