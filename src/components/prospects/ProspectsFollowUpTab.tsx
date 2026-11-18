@@ -82,7 +82,8 @@ export type ProspectsFollowUpTabProps = {
   setScriptOpen: Dispatch<SetStateAction<boolean>>
   setTimerHistoryModalOpen: Dispatch<SetStateAction<boolean>>
   setMyTimeModalOpen: Dispatch<SetStateAction<boolean>>
-  setNewProspectModalOpen: Dispatch<SetStateAction<boolean>>
+  /** New Prospect on this lane's kind, with clean boxes: the header's button and the empty lane's press open it the same way. */
+  openNewProspect: () => void
   subsStrip: (rows: readonly Prospect[], calledIds: ReadonlySet<string>) => ReactNode
   setTradeFilter: (trade: string | null) => void
   openAddSub: (trade: string) => void
@@ -177,7 +178,7 @@ export function ProspectsFollowUpTab(props: ProspectsFollowUpTabProps) {
     setScriptOpen,
     setTimerHistoryModalOpen,
     setMyTimeModalOpen,
-    setNewProspectModalOpen,
+    openNewProspect,
     subsStrip,
     setTradeFilter,
     openAddSub,
@@ -341,7 +342,7 @@ export function ProspectsFollowUpTab(props: ProspectsFollowUpTabProps) {
         (() => {
           // The empty lane names the control that fills it (v2.5581): New Prospect, or All subs on a trade filter.
           const words = emptyLaneWords(kind, kind === 'sub' ? tradeFilter : null)
-          return <EmptyState main={words.main} next={{ label: words.doorLabel, onPress: () => (words.door === 'all_subs' ? setTradeFilter(null) : setNewProspectModalOpen(true)) }} tail={words.tail} />
+          return <EmptyState main={words.main} next={{ label: words.doorLabel, onPress: () => (words.door === 'all_subs' ? setTradeFilter(null) : openNewProspect()) }} tail={words.tail} />
         })()
       ) : currentProspect && !cardOnLane(currentProspect, kind) ? (
         // A card of another kind never wears this lane's press (v2.5578): the lane's own load is still coming.
