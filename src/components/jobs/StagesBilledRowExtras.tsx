@@ -1,6 +1,6 @@
 import { bankReturnedBadgeTitle, bankReturnedBadgeWords, type BankReturnedOnJob } from '../../lib/jobs/bankReturnedDeposits'
 import type { PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
-import { stageRowBilledAgeDays, stageRowBilledAgeReference } from '../../lib/jobs/invoiceBilling'
+import { BILLED_SHELL_NO_BILL_LINE, stageRowBilledAgeDays, stageRowBilledAgeReference } from '../../lib/jobs/invoiceBilling'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -72,7 +72,7 @@ export function StagesBilledRowExtras({
           title="This billed job's open money is on no bill line, so it can't age, be chased, or be forecast — Bill Customer or Edit Job creates the line"
           style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 9px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}
         >
-          No bill line
+          {BILLED_SHELL_NO_BILL_LINE}
         </span>
       ) : null}
       {shell && canMarkPromisedPay ? (
