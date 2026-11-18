@@ -32,7 +32,7 @@ import { PAINTED_MAP_SHARE_WORDS, linkEndsWords, linkMadeDayWords, paintedMapLin
 import { formatDenverDateTimeShort } from '../../utils/dateUtils'
 import { endPaintedMapLinks, loadPaintedMapLinks, loadPaintedMapVisits, mintPaintedMapLink, rememberPaintedMapLink, rememberedPaintedMapLink } from '../../lib/paintedMap/paintedMapLinkIo'
 import { PAINTED_MAP_SHARE_SHEET_WORDS as W, paintedMapEndWords, paintedMapLinksOutWords, paintedMapOwnTextHref, paintedMapShareTileName, paintedMapShareWays, type PaintedMapShareTile } from '../../lib/paintedMap/paintedMapShare'
-import { copyWhenMade, openPhoneMessages } from '../../lib/paintedMap/paintedMapShareIo'
+import { PAINTED_MAP_MESSAGES_LATE_MS, copyWhenMade, onPageLeft, openPhoneMessages } from '../../lib/paintedMap/paintedMapShareIo'
 import { PAINTED_MAP_TEXT_WORDS, paintedMapTextWords, type PaintedMapTextJob } from '../../lib/paintedMap/paintedMapText'
 import { loadPaintedMapTextJob } from '../../lib/paintedMap/paintedMapTextIo'
 import { isPhoneDevice } from '../../lib/quo/dial'
@@ -112,6 +112,8 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
   /** Text the customer…: closed, reading the job, or the customer's box open on it. */
   const [texting, setTexting] = useState<{ kind: 'closed' } | { kind: 'opening' } | { kind: 'open'; job: PaintedMapTextJob }>({ kind: 'closed' })
   const minting = useRef<Promise<{ url: string; endsOn: string | null } | null> | null>(null)
+  /** When the phone was last handed the Messages address, for a page that is left later than the wait. */
+  const handedAt = useRef(0)
   const [onPhone] = useState(() => phone ?? isPhoneHere())
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
   const ways = paintedMapShareWays({ office: mayText, jobId: jobId === undefined ? (whole?.map.jobId ?? null) : jobId, phone: onPhone, canShare, copies: !!whole })
@@ -146,6 +148,19 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
   const live = mine && (links === null || open.length > 0) ? mine : null
   const url = live ? paintedMapLinkUrl(origin, live.code) : null
   const opened = open.reduce((sum, l) => sum + (l.open_count ?? 0), 0)
+
+  // The wait for Messages can end before a slow phone has switched apps. A page that is left after
+  // a hand-off did open Messages, so what the sheet said about it not opening is taken back.
+  useEffect(
+    () =>
+      onPageLeft(() => {
+        if (Date.now() - handedAt.current > PAINTED_MAP_MESSAGES_LATE_MS) return
+        setMessagesWait(false)
+        setError((words) => (words === W.noMessages ? null : words))
+        setSaid((words) => (words === W.ready ? null : words))
+      }),
+    [],
+  )
 
   useEffect(() => {
     if (mine && links !== null && open.length === 0) {
@@ -202,6 +217,7 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
     const had = url
     const link = had ? { url: had } : await ensureLink('own-text')
     if (!link) return
+    handedAt.current = Date.now()
     const went = await openMessages(paintedMapOwnTextHref(mapName, link.url))
     if (went) {
       setMessagesWait(false)

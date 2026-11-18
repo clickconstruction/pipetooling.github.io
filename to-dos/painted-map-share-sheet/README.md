@@ -2,7 +2,7 @@
 name: "Share this map: a sheet a person on site can use almost without reading"
 number: 394
 group: close
-status: asked 2026-11-18 with a phone screenshot of the sheet · designed, drawn and rendered the same day (seven rows of sheets at a phone's width and a desk's, light and dark) · shown to the owner with seven calls, each with a pick · the owner's word the same day (*Build it*), every call at the pick · the kernel built (v2.7788) and the sheet over it (v2.7790) the same day · walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark, with a stand-in for the link's calls · not yet tried on a real phone or with a real link
+status: asked 2026-11-18 with a phone screenshot of the sheet · designed, drawn and rendered the same day (seven rows of sheets at a phone's width and a desk's, light and dark) · shown to the owner with seven calls, each with a pick · the owner's word the same day (*Build it*), every call at the pick · the kernel built (v2.7788) and the sheet over it (v2.7790) the same day · walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark, with a stand-in for the link's calls · not yet tried on a real phone or with a real link · walked 2026-11-18 on an iPhone simulator (iOS 26.4, Safari) against a local server signed in as the dev, with real links on a made-up map on no job, thrown away after: all three presses work after the wait for the link, and the walk found the sheet saying Messages had not opened when it had, fixed in v2.7863
 summary: >
   The owner asked how to offer a painted map's Share sheet with fewer words, so a person does not
   have to read so much. Today the sheet shows 163 words before a link exists and its one live press,
@@ -12,11 +12,11 @@ summary: >
   Copy the link, Make a picture and Send it another way…. Print and the two files fold behind one
   press. What a reader meets is one line with a press that opens today's four sentences, word for
   word. The same sheet is 43 words before a link and 65 after, and the map still shows behind it.
-next: Walk it on a real iPhone and a real Android phone, on the live app with a made-up map. Press Text it from my phone… before a link is out and see whether Messages opens by itself or the sheet falls back to Open Messages. Try Send it another way… and Copy the link the same way. End the link and throw the map away after. If a phone refuses, build step 3. Then delete this card.
-size: M as a train of two (S · M), both built; left: the walk on two real phones (XS), and step 3 (S) only if a phone refuses to open Messages
-blocker: A real phone in a hand. Call 4 was taken at the pick on the owner's word, and the name sentence was Taunya's ask, so she should see the one line that stands for it.
-ver: v2.7788 · 7790
-opinion: built as carded — the phone walk is what is left, and the sheet is right whichever way a phone answers
+next: Two things, then delete this card. An Android phone has not been tried at all, so press Text it from my phone…, Send it another way… and Copy the link on one, each before a link is out, on the live app with a made-up map. And the owner decides step 3: on an iPhone the first press makes the link and Safari then asks *Open this page in “Messages”?*, so a text is the press and Safari's Open. Step 3 takes that question away.
+size: M as a train of two (S · M), both built, and the fix the walk found (XS); left: an Android phone (XS), and step 3 (S) if the owner wants Safari's question gone
+blocker: An Android phone in a hand, and the owner's word on step 3. Call 4 was taken at the pick on the owner's word, and the name sentence was Taunya's ask, so she should see the one line that stands for it.
+ver: v2.7788 · 7790 · 7863
+opinion: built as carded, and it works on iOS Safari — step 3 is worth building only if Safari's own question bothers people on site
 ---
 
 # Share this map, with fewer words (#394)
@@ -179,12 +179,41 @@ and kept in the guide.
 A gate code never goes on a painted map. That sentence is on the place sheet and in the guide, not
 on this sheet, and neither changes.
 
+## What an iPhone does (walked 2026-11-18)
+
+Walked on an iPhone 17 Pro simulator, iOS 26.4, in Safari, against a local server signed in as the
+dev. The links were real ones from the live function, on a made-up map on no job in a public park.
+Every link was ended and the map was thrown away after. No text was sent.
+
+- **Text it from my phone…, before a link is out.** The link is made, then Safari asks *Open this
+  page in “Messages”?* with **Cancel** and **Open**. **Open** opens a New Message with nobody
+  picked and the words written. So it is the press and Safari's own **Open**. Safari did not refuse.
+- **Text it from my phone…, with the link out.** Messages opens at once, with no question.
+- **Send it another way…, before a link is out.** The phone's own share sheet opens after the wait,
+  titled with the map's name.
+- **Copy the link, before a link is out.** The clipboard holds the link and the tile reads
+  **Copied**.
+- **End this link now** and **Throw this map away** did what they say, and the sheet says the link
+  is ended.
+
+**The walk found one bug, fixed in v2.7863.** With the link out, Messages opened and the sheet
+still said *This phone would not open Messages. Copy the link and paste it into a text.* The sheet
+waits 1.5 seconds to see the page left, and the simulator took longer than that to switch apps.
+The sheet now also listens for the page being left at any time in the minute after the press, and
+takes those words back. The same press on the same simulator then came back clean.
+
+Not walked: an Android phone, a real iPhone in a hand, and the app saved to a Home Screen.
+
+**Step 3 is now a choice, not a repair.** Safari asks its question only when the address is handed
+over after a wait. If the phone picked the link's code, the press would open Messages at once on
+the first press too, as it does once a link is out.
+
 ## When the phone refuses
 
 Making the link took 1.3 seconds at a desk. A phone's browser may refuse to open another app that
-long after the press. **This has not been tried on a real iPhone or Android phone.** The sheet is
-right either way, because after the first press it is always the sheet with a link out, and there
-the same press works at once.
+long after the press. An iPhone's Safari does not refuse, as above. **An Android phone has not been
+tried.** The sheet is right either way, because after the first press it is always the sheet with
+a link out, and there the same press works at once.
 
 - **Text it from my phone…** If Messages has not opened a moment after the link is made, the sheet
   says *The link is ready. Press Open Messages.* and the blue press reads **Open Messages**. One
@@ -240,8 +269,10 @@ nothing from the Dashboard press.
 2. **The sheet** (M). **Built, v2.7790, and walked in a headless Chrome with a stand-in for the link's calls. The two real phones are still to do.** The new layout over the kernel, the link made by the first press, the two
    views for the code and the picture, the fall backs above. The guide's two sections rewritten, a
    release note and a fragment. Walked on a real iPhone and a real Android phone before it merges.
-3. **The phone picks the code** (S), only if step 2's walk shows a phone refusing. The function
-   takes a code's hash from the painter's phone, so the address is known at the press. A deploy.
+3. **The phone picks the code** (S), the owner's call. No phone refused on the walk, so this is no
+   longer a repair. It takes away Safari's *Open this page in “Messages”?* on the first press. The
+   function takes a code's hash from the painter's phone, so the address is known at the press. A
+   deploy.
 
 ## How to verify
 

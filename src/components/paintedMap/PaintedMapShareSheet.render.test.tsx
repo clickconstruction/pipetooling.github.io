@@ -174,6 +174,37 @@ describe('PaintedMapShareSheet, Text it from my phone…', () => {
     expect(screen.queryByRole('status')).toBeNull()
   })
 
+  it('takes back that Messages would not open when the page is left after the wait: a slow phone did open it', async () => {
+    held()
+    phone.opens = false
+    sheet()
+    fireEvent.click(await screen.findByRole('button', { name: 'Text it from my phone…' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('This phone would not open Messages. Copy the link and paste it into a text.')
+    fireEvent(document, new Event('visibilitychange'))
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+    expect(screen.getByRole('button', { name: 'Text it from my phone…' })).toBeTruthy()
+  })
+
+  it('takes back The link is ready the same way, and the press gets its own name again', async () => {
+    phone.opens = false
+    sheet()
+    fireEvent.click(await screen.findByRole('button', { name: 'Text it from my phone…' }))
+    await screen.findByRole('button', { name: 'Open Messages' })
+    fireEvent(window, new Event('blur'))
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
+    expect(screen.getByRole('button', { name: 'Text it from my phone…' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Open Messages' })).toBeNull()
+  })
+
+  it('leaves other words alone when the page is left, and says nothing new with no hand-off', async () => {
+    io.refuse = 'Only whoever painted a map, or the office, may share it.'
+    sheet()
+    fireEvent.click(await screen.findByRole('button', { name: 'Show a code to scan' }))
+    await screen.findByRole('alert')
+    fireEvent(document, new Event('visibilitychange'))
+    expect(screen.getByRole('alert').textContent).toBe('Only whoever painted a map, or the office, may share it.')
+  })
+
   it('gives the press its own name back once another way is pressed', async () => {
     phone.opens = false
     sheet()
