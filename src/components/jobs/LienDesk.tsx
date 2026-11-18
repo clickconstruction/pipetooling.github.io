@@ -126,7 +126,7 @@ import { createNoticeReleaseDraft, refreshNoticeReleaseDraft, voidNoticeReleaseD
 import { useNoticeReleases } from '../../hooks/useNoticeReleases'
 import { LIEN_PANE_HEAD_H, LIEN_PANE_HEAD_H_PHONE, lienNoticeFootHead, lienPaneHeadsOverPages, lienPaneSections } from '../../lib/jobs/lienPaneSections'
 import { useLienPaneHeads } from './useLienPaneHeads'
-import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen } from '../../lib/jobs/lienPhonePane'
+import { lienPhoneFootFold, lienPhoneFootStartsFolded, lienPhonePaneOpen, type LienPhoneFootProof } from '../../lib/jobs/lienPhonePane'
 import { lienDeskFooterHome } from '../../lib/jobs/lienDeskFooterHome'
 import LienDeskAffidavitPane from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
@@ -2452,6 +2452,8 @@ export default function LienDesk({
 
   // ---------- footer by state / role ----------
   let footer: React.ReactNode = null
+  // The sent notice's mail proof, for the phone's fold bar (v2.7715): the bar names it while the footer is folded.
+  let footProof: LienPhoneFootProof | null = null
   if (selected) {
     const state = selected.pile
     const monthsWord = monthsList.length ? describeNoticeMonths(monthsList) : 'no months'
@@ -2563,6 +2565,8 @@ export default function LienDesk({
     } else if (state === 'held') {
       footer = <LienDeskHeldFooter ctx={footCtx} />
     } else if (state === 'sent') {
+      const sentProof = sentFacts.sentFiling ? lienMailProof({ kind: sentFacts.sentFiling.kind, sends: sentFacts.sentFiling.sends, documentUrl: sentFacts.sentFiling.document_url, documentNote: sentFacts.sentFiling.document_note, mailedCopies: sentFacts.first?.mailed_copies }) : null
+      footProof = sentProof ? { chip: sentProof.chip, complete: sentProof.complete } : null
       footer = (
         <LienDeskSentFooter forms={sentForms} facts={sentFacts} signoff={signoff} signoffLine={signoffLine} legalSignoff={legalSignoff} data={data} jobId={selected.jobId} job={job} gc={gc} office={office} busy={busy} run={run} authName={authName} onChanged={onChanged} onOpenOwnerCall={() => setOwnerCallOpen(true)} doors={<>{courtesyUnrecordedBand}{courtesyDoor}{letterTwoDoor}</>} proof={sentFacts.sentFiling ? <LienFilingMailProof filing={sentFacts.sentFiling} item={sentFacts.first ? { itemId: sentFacts.first.id, copies: sentFacts.first.mailed_copies } : null} jobId={selected.jobId} jobNumber={job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''} isMobile={isMobile} canEdit={office} userId={authUserId} todayYmd={todayYmd} onChanged={onChanged} /> : null} />
       )
@@ -2624,7 +2628,7 @@ export default function LienDesk({
   const noticeOpenStacked = stacked && kind === 'notice' && !mobileListShown && selected != null
   // On a phone an open paper is the whole desk (punch list #352, PR 6): the header is one row with the way back to its list, and the footer folds.
   const paneOpenPhone = lienPhonePaneOpen({ oneColumn, listShown: mobileListShown, kind, picked: { notice: selected != null, affidavit: affSelected != null, retainage: retSelected != null } })
-  const footFold = paneOpenPhone && !(simpleApprove && !detailsOpen) && (paneOpenPhone.kind !== 'notice' || Boolean(footer)) ? lienPhoneFootFold(footFolded) : null
+  const footFold = paneOpenPhone && !(simpleApprove && !detailsOpen) && (paneOpenPhone.kind !== 'notice' || Boolean(footer)) ? lienPhoneFootFold(footFolded, paneOpenPhone.kind === 'notice' ? footProof : null) : null
   // The footer strip (the owner's ask of 2026-11-15, `lienDeskFooterHome`): on a computer it is the pane's own bottom bar, so the
   // list runs to the desk's bottom; on a phone it stays the desk's, right after the fold bar whose sibling rule folds it.
   // The affidavit's and the retainage notice's panes portal their footer into the slot (v2.3753). The notice's is drawn here on a phone;
@@ -2859,8 +2863,11 @@ export default function LienDesk({
         </div>
         {/* A phone's open paper (punch list #352, PR 6): one bar folds the footer away so the paper has the screen; the footer stays mounted, so what was typed in it is kept (`index.css`). */}
         {footFold ? (
-          <button ref={footFoldRef} type="button" data-lien-desk-foot-fold aria-expanded={footFold.expanded} onClick={() => setFootFolded((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%', minHeight: 40, padding: '0 1.1rem', border: 'none', borderRadius: 0, borderTop: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
-            <span>{footFold.words}</span>
+          <button ref={footFoldRef} type="button" data-lien-desk-foot-fold aria-expanded={footFold.expanded} onClick={() => setFootFolded((v) => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%', minHeight: 44, padding: '0 1.1rem', border: 'none', borderRadius: 0, borderTop: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
+            <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.2rem 0.6rem', minWidth: 0 }}>
+              <span>{footFold.words}</span>
+              {footFold.chip ? <span data-lien-desk-foot-fold-proof={footFold.chip.complete ? 'complete' : 'owed'} style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.1rem 0.5rem', borderRadius: 999, whiteSpace: 'nowrap', background: footFold.chip.complete ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)', color: footFold.chip.complete ? 'var(--text-green-800)' : 'var(--text-amber-800)' }}>{footFold.chip.chip}</span> : null}
+            </span>
             <span aria-hidden="true">{footFold.mark}</span>
           </button>
         ) : null}

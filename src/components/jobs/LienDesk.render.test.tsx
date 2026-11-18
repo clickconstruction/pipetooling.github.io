@@ -1894,6 +1894,37 @@ describe('LienDesk · an open paper on a phone (punch list #352, PR 6)', () => {
     }
   })
 
+  it('a sent notice’s folded footer names its mail proof on the bar, and drops the chip once the footer is open (v2.7715)', async () => {
+    const sent = { id: 'r2', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'sent', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: 'f1', sent_at: '2026-09-14T16:00:00Z', printed_at: null, pulled_back_by: null, pulled_back_at: null, mailed_copies: [], created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T16:00:00Z', voided_at: null } as unknown as LienDeskItemRow
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sent], true)
+    d.filingsByJob = { j650: [{ id: 'f1', job_id: 'j650', kind: 'notice_53_056', filed_on: '2026-09-14', document_url: null, document_note: null, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 0001', sent_on: '2026-09-14' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 0002', sent_on: '2026-09-14' }], voided_at: null } as never] }
+    const before = window.matchMedia
+    window.matchMedia = phone
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} layout="stacked" initialKind="notice" initialJobId="j650" initialPile="sent" onOpenNotice={() => {}} backDoor={<button type="button">← Pipeline</button>} />)
+      await settle()
+      await waitFor(() => expect(document.querySelector('[data-lien-desk-foot-fold]')).not.toBeNull())
+      const fold = document.querySelector<HTMLButtonElement>('[data-lien-desk-foot-fold]')!
+      // Open, the block itself is on the screen under the bar, so the bar does not say it twice.
+      expect(fold.getAttribute('aria-expanded')).toBe('true')
+      expect((fold.nextElementSibling as HTMLElement).querySelector('[data-lien-mail-proof="notice"] [data-lien-mail-proof-chip]')!.textContent).toBe('Mail proof: 0 of 3 on file')
+      expect(fold.querySelector('[data-lien-desk-foot-fold-proof]')).toBeNull()
+      // Folded, the one row a phone shows names the proof with the block's own words.
+      fireEvent.click(fold)
+      expect(fold.getAttribute('aria-expanded')).toBe('false')
+      const chip = fold.querySelector<HTMLElement>('[data-lien-desk-foot-fold-proof]')!
+      expect(chip.getAttribute('data-lien-desk-foot-fold-proof')).toBe('owed')
+      expect(chip.textContent).toBe('Mail proof: 0 of 3 on file')
+      expect(fold.textContent).toContain('Show the next step')
+      // The bar is a press, so it is a thumb tall.
+      expect(fold.style.minHeight).toBe('44px')
+      fireEvent.click(fold)
+      expect(fold.querySelector('[data-lien-desk-foot-fold-proof]')).toBeNull()
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
   it('an open affidavit has a way back to its list in the header, where it had none', async () => {
     const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
     const d = data([])
