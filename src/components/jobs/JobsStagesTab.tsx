@@ -83,9 +83,7 @@ import { paceContextFor, paceInputFor, sentFromHereOf } from '../../lib/jobs/pay
 import { buildBilledDatesLedger } from '../../lib/jobs/billedDatesLedger'
 import BilledDatesLedger from './BilledDatesLedger'
 import type { BilledRowBillLine } from './JobsStagesUnifiedTable'
-import JobContractModal from './JobContractModal'
-import AddJobContractSheet from './AddJobContractSheet'
-import { jobNumberLabel, streetOf } from '../../lib/jobs/jobContractCovers'
+import { jobNumberLabel } from '../../lib/jobs/jobContractCovers'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useJobCrewPositions } from '../../hooks/useJobCrewPositions'
 import { useStageChecklistStates } from '../../hooks/useStageChecklistStates'
@@ -93,7 +91,6 @@ import { stageChecklistMarks, type MarkFixture } from '../../lib/jobs/stageCheck
 import { countJobsWithChecklistLeft, doorJobLabel, filterJobsByChecklistLeft } from '../../lib/jobs/pipelineChecklistDoor'
 import { PipelineChecklistSheet } from '../stageChecklists/PipelineChecklistSheet'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
-import JobsContractSweepModal from './JobsContractSweepModal'
 import {
   filterJobsByContractCoverage,
   isContractGap,
@@ -186,6 +183,7 @@ import type { UserRow } from '../../pages/Jobs'
 import type { OpenEditJobOptions } from '../../contexts/JobFormModalContext'
 import { StagesReturnEditBanner } from './StagesReturnEditBanner'
 import { StagesBilledRowExtras } from './StagesBilledRowExtras'
+import { StagesContractWindows } from './StagesContractWindows'
 import { DELETE_DRAFT_BILL_LABEL } from '../../lib/deleteDraftBillLabel'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildLienNextUp } from '../../lib/jobs/lienNextUp'
@@ -4685,48 +4683,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         signerNameFallback={lienDeskSignerFor(lienReleaseModal?.job?.master_user_id ?? null)}
         onIssued={() => void loadLienReleaseJobIds()}
       />
-      <JobContractModal
-        open={jobContractModalJob != null}
-        onClose={() => setJobContractModalJob(null)}
-        job={jobContractModalJob}
-        onChanged={() => void loadJobContractCoverage()}
-        onJobChanged={() => void loadJobs()}
-        onEditJob={(j) => openEdit(j)}
-        coverage={jobContractModalJob ? jobContractCoverageByJobId.get(jobContractModalJob.id) ?? null : null}
-      />
-      {gcPaperSheetJob ? (
-        <AddJobContractSheet
-          open
-          mode="add"
-          onClose={() => setGcPaperSheetJob(null)}
-          onDone={() => {
-            void loadJobContractCoverage()
-            window.dispatchEvent(new Event('job-contract-changed'))
-          }}
-          anchorJob={{ id: gcPaperSheetJob.id, num: jobNumberLabel(gcPaperSheetJob), where: streetOf(gcPaperSheetJob.job_address) }}
-          partyIds={[gcPaperSheetJob.gc_customer_id].filter((x): x is string => Boolean(x))}
-          signerName={(gcPaperSheetJob.gcCustomer?.name ?? '').trim()}
-          subtitle={`Job ${jobNumberLabel(gcPaperSheetJob)} · ${(gcPaperSheetJob.gcCustomer?.name ?? '').trim() || 'the GC'}'s subcontract`}
-          onOpenContractWindow={() => {
-            const j = gcPaperSheetJob
-            setGcPaperSheetJob(null)
-            setJobContractModalJob(j)
-          }}
-        />
-      ) : null}
-      <JobsContractSweepModal
-        open={contractSweepOpen}
-        onClose={() => setContractSweepOpen(false)}
+      {/* The three contract windows (`StagesContractWindows`, the map's step 24); their open states stay here. */}
+      <StagesContractWindows
+        jobContractModalJob={jobContractModalJob}
+        setJobContractModalJob={setJobContractModalJob}
+        gcPaperSheetJob={gcPaperSheetJob}
+        setGcPaperSheetJob={setGcPaperSheetJob}
+        contractSweepOpen={contractSweepOpen}
+        setContractSweepOpen={setContractSweepOpen}
         jobs={jobs}
-        coverage={jobContractCoverageByJobId}
-        floorCents={contractFloorCents}
-        onEditJob={(j) => openEdit(j)}
-        onSent={() => void loadJobContractCoverage()}
-        onJobChanged={() => void loadJobs()}
-        onFilterBoard={() => {
-          setContractSweepOpen(false)
-          setStagesContractFilter('missing')
-        }}
+        jobContractCoverageByJobId={jobContractCoverageByJobId}
+        contractFloorCents={contractFloorCents}
+        loadJobContractCoverage={loadJobContractCoverage}
+        loadJobs={loadJobs}
+        openEdit={openEdit}
+        setStagesContractFilter={setStagesContractFilter}
       />
       {checklistDoorJob ? (
         <PipelineChecklistSheet
