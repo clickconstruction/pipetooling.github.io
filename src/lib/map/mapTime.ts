@@ -16,10 +16,15 @@ export const MAP_TIME_PRESS = 'Time'
 export const MAP_TIME_TODAY_PRESS = 'Today'
 export const MAP_TIME_NO_SPOT_WORDS = 'Press a dot to pick the spot.'
 export const MAP_TIME_DOTS_WORDS = 'The dots are today’s.'
+/** The same, for a card that calls its marks pins. */
+export const MAP_TIME_PINS_WORDS = 'The pins are today’s.'
 export const MAP_TIME_NO_OLDER_WORDS = 'The archive has no older photo of this spot.'
 export const MAP_TIME_OLDER_PRESS = 'An older photo'
 export const MAP_TIME_NEWER_PRESS = 'A newer photo'
 export const MAP_TIME_EARTH_PRESS = 'Older in Google Earth'
+
+/** What the row calls a job site whose map has no one dot to name. */
+export const MAP_TIME_SITE_NAME = 'this site'
 
 /** The place Time looks at, with the name the row says. */
 export type MapTimeSpot = MapSpot & { name: string }

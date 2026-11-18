@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useState, type CSSProperties } from 'react'
+import { Suspense, lazy, useCallback, useState, type CSSProperties, type ReactNode } from 'react'
 import { useMapTime } from '../../hooks/useMapTime'
 import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
 import { googleMapTypeForLayer, type MapLayerChoice } from '../../lib/map/googleMapType'
@@ -24,6 +24,8 @@ export type PinsMapFrameProps = PinsMapCanvasProps & {
   timeSpot?: MapTimeSpot | null
   /** What on the map is not from the photograph's day, said beside a date: `The pins are today’s.` */
   timeDotsWords?: string
+  /** A card's own press on the map, laid in the map's box beside the frame's: My tasks' Show where I am. */
+  overlay?: ReactNode
   /** More styles for the map's own box: its corners, its border. */
   boxStyle?: CSSProperties
   style?: CSSProperties
@@ -41,12 +43,13 @@ export type PinsMapFrameProps = PinsMapCanvasProps & {
  * - **Time.** The archive is Esri's, and Google's terms keep another provider's map off and away
  *   from a Google map. So while Time is on the Google canvas is down and the map is the Leaflet
  *   canvas, framed close on one spot, with today's photograph or an older one. Flipping between
- *   Today and a date changes one tile layer and nothing else.
+ *   Today and a date changes one tile layer and nothing else. A pin opens no popup while Time is
+ *   on: the popup would cover the ground the person came to see.
  *
  * Time's state lives in `useMapTime`, here, so it ends when the map leaves the screen: another tab,
  * a closed window, a card's own Hide map.
  */
-export function PinsMapFrame({ surface, defaultLayer = 'streets', leafletOnly = false, noTime = false, timeSpot, timeDotsWords, boxStyle, style, children, ...canvas }: PinsMapFrameProps) {
+export function PinsMapFrame({ surface, defaultLayer = 'streets', leafletOnly = false, noTime = false, timeSpot, timeDotsWords, overlay, boxStyle, style, children, ...canvas }: PinsMapFrameProps) {
   const { pins, selectedId, height, isMobile } = canvas
   const [layerPick, setLayerPick] = useState<MapLayerChoice | null>(null)
   const [googleFailed, setGoogleFailed] = useState(false)
@@ -81,13 +84,15 @@ export function PinsMapFrame({ surface, defaultLayer = 'streets', leafletOnly = 
         className={onLeaflet && shownLayer === 'satellite' ? 'mapImagery' : undefined}
         style={{ position: 'relative', isolation: 'isolate', overflow: 'hidden', background: 'var(--bg-muted)', height, ...boxStyle }}
       >
-        <Suspense fallback={null}>
+        <Suspense fallback={<div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading map…</div>}>
           {onLeaflet ? (
             <PinsMapImageryCanvasLazy
               key={isMobile ? 'phone' : 'desk'}
               {...canvas}
               layer={shownLayer}
               imagery={inTime ? time.imagery : null}
+              // The photograph is what Time is for, and a pin's popup would sit on the middle of it. The row names the place.
+              renderPopup={inTime ? undefined : canvas.renderPopup}
               fitPoints={inTime ? time.frame : canvas.fitPoints}
               fitMaxZoom={inTime ? OLDER_PHOTOS_VIEW_ZOOM : canvas.fitMaxZoom}
             >
@@ -98,6 +103,7 @@ export function PinsMapFrame({ surface, defaultLayer = 'streets', leafletOnly = 
           )}
         </Suspense>
         <MapViewControl layer={layer} onLayer={pickLayer} time={noTime ? null : time} isMobile={isMobile} />
+        {overlay}
       </div>
       {noTime ? null : <MapTimeRow time={time} isMobile={isMobile} surface={surface} dotsWords={timeDotsWords} />}
     </div>

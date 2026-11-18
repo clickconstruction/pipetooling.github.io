@@ -26,19 +26,21 @@ function ClockIcon() {
  */
 export function MapViewControl({ layer, onLayer, time, isMobile, style }: { layer: MapLayerChoice; onLayer: (layer: MapLayerChoice) => void; time?: MapTime | null; isMobile: boolean; style?: CSSProperties }) {
   const inTime = time?.on === true
+  // A phone's presses are a finger tall: these sit on maps a crew reads on site.
+  const tall: CSSProperties = isMobile ? { minHeight: 34 } : {}
   return (
     // Over the map's own controls (Leaflet's sit at 800 to 1000, Google's far lower), inside the map's own stacking box.
     <div data-map-view-control style={{ position: 'absolute', zIndex: 1001, right: 8, top: 8, display: 'flex', gap: 6, ...style }}>
       <div role="group" aria-label="Map view" style={box}>
         {(['satellite', 'streets'] as const).map((l) => (
-          <button key={l} type="button" aria-pressed={!inTime && layer === l} onClick={() => onLayer(l)} style={!inTime && layer === l ? pressOn : press}>
+          <button key={l} type="button" aria-pressed={!inTime && layer === l} onClick={() => onLayer(l)} style={{ ...(!inTime && layer === l ? pressOn : press), ...tall }}>
             {l === 'satellite' ? 'Satellite' : 'Streets'}
           </button>
         ))}
       </div>
       {time ? (
         <div style={box}>
-          <button type="button" data-map-time-press aria-pressed={inTime} aria-expanded={inTime} onClick={time.toggle} style={inTime ? pressOn : press}>
+          <button type="button" data-map-time-press aria-pressed={inTime} aria-expanded={inTime} onClick={time.toggle} style={{ ...(inTime ? pressOn : press), ...tall }}>
             <ClockIcon />
             {mapTimeButtonLabel(time.shown, isMobile)}
           </button>

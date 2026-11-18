@@ -14,13 +14,14 @@ vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url:
 
 type StubPin = { id: string; title: string }
 vi.mock('./PinsMapImageryCanvas', () => ({
-  default: function CanvasStub(props: { pins: StubPin[]; onSelect: (id: string | null) => void; layer: string; imagery?: { url: string } | null; fitPoints?: Array<{ lat: number; lng: number }> | null; fitMaxZoom?: number; children?: React.ReactNode }) {
+  default: function CanvasStub(props: { pins: StubPin[]; onSelect: (id: string | null) => void; selectedId: string | null; renderPopup?: (id: string) => React.ReactNode; layer: string; imagery?: { url: string } | null; fitPoints?: Array<{ lat: number; lng: number }> | null; fitMaxZoom?: number; children?: React.ReactNode }) {
     return (
       <div data-testid="canvas" data-layer={props.layer} data-imagery={props.imagery?.url ?? ''} data-fit={props.fitPoints ? props.fitPoints.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join(' ') : ''} data-fit-max={props.fitMaxZoom ?? ''}>
         {props.pins.map((p) => (
           <button key={p.id} type="button" onClick={() => props.onSelect(p.id)}>{`dot ${p.title}`}</button>
         ))}
         <button type="button" onClick={() => props.onSelect(null)}>press the map</button>
+        {props.selectedId && props.renderPopup ? <div data-testid="popup">{props.renderPopup(props.selectedId)}</div> : null}
         {props.children}
       </div>
     )
@@ -226,6 +227,18 @@ describe('Time', () => {
     fireEvent.click(newer)
     fireEvent.click(newer)
     expect(canvas.getAttribute('data-imagery')).toBe('')
+  })
+
+  it('a pin opens its popup on the map of today and none while Time is on, where it would cover the photograph', async () => {
+    walk.fn = answers(FOUND)
+    render(<Card open="pump" renderPopup={(id) => <span>{`popup of ${id}`}</span>} />)
+    await screen.findByTestId('canvas')
+    expect(screen.getByTestId('popup').textContent).toBe('popup of pump')
+    fireEvent.click(time())
+    await waitFor(() => expect(dates()).toHaveLength(2))
+    expect(screen.queryByTestId('popup')).toBeNull()
+    fireEvent.click(time())
+    expect(screen.getByTestId('popup').textContent).toBe('popup of pump')
   })
 
   it('a card says what on its map is not from that day', async () => {

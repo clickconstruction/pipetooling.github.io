@@ -1,7 +1,7 @@
 ---
 title: see a place on a map on an earlier day
 category: Office
-roles: dev, master_technician, assistant, controller
+roles: all
 keywords: time, older photos, earlier, past, history, satellite, photo archive, then and now, before, today, google earth, map, dates, wayback
 order: 42
 ---
@@ -21,6 +21,8 @@ A map with a **Time** press can show a place as it looked on earlier days. You u
 
 The map moves in close on that place. A map with one dot needs no tap on it. With several dots and none open, the row asks you to press a dot.
 
+A map that is already close on one site stays where it is. There you tap **Time** and only the photo changes.
+
 ## Flip between then and now
 
 - Tap a date to see the place on that day. The oldest date is on the left.
@@ -35,7 +37,9 @@ A date reads **Before** a month while the archive finds the day the photo was ta
 
 ## What does not change
 
-The dots on the map are today's dots. A photo from 2019 still shows this week's tasks on it.
+The dots and pins on the map are today's. A photo from 2019 still shows this week's tasks or jobs on it.
+
+A pin opens no card while Time is on. The card would cover the photo. Turn Time off to open it.
 
 ## Turn Time off
 
@@ -51,4 +55,6 @@ Google shows its own older photos only in Google Earth. Tap **Older in Google Ea
 
 ## Which maps have it
 
-- [Where the open tasks are](/help/review-my-teams-completed-tasks#see-where-the-open-tasks-are), on Checklist → Review.
+Every map with a **Time** press beside **Satellite** and **Streets** works this way. The map of open tasks on Checklist → Review was the first. [Review my team's completed tasks](/help/review-my-teams-completed-tasks#see-where-the-open-tasks-are) shows that map.
+
+A map where you are dragging a pin into place has no **Time** press. A pin placed on an old photo would land in the wrong spot.
