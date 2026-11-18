@@ -3718,6 +3718,14 @@ The **phone's trip** is Job Mode's offer on the job somebody is clocked in on (`
 While the person's own trip is open the card shows a banner under the trip's number (*Trip 5 · day 3 at Heron Point*, the number the database hands out, left out on a trip made before numbers), before and after the clock in, with **Heading home**, which paints today On the road, and **End the trip**, which stamps the trip ended and keeps how it went.
 A person with an open trip who is clocked in on a job of its site has today painted by itself, the kind read from the open clock session (`tripKindOfSession`, `tripQuietPaint`): On the road while it is an On my way drive that has not arrived, At the site otherwise and from the moment of **I'm here**, never a site day turned into a road day, a Getting ready day left as painted, and nothing after **Heading home** in the same session.
 The question and that paint need a clock session that already exists, and nothing in the clock's path waits on a trip read or act, so none can hold up a clock in or a clock out.
+**Put on a bill** is the press on an open trip marked **Extra** that has gone out, beside **Change** (punch list #391, v2.7763, `lib/trips/tripBillLine.ts`, `components/trips/TripBillLineWindow.tsx`): it opens a small window with the job, a typed amount, the line's name and the words under it, and the job total before and after.
+**Add the line · $amount** in that window adds one line to the job through `trip_put_on_job_line` and opens the job's window on **Bill** with the line picked, so **Bill the 1 picked** bills the trip alone or the job's next bill carries it.
+The press shows to dev, master_technician, assistant and controller, the roles that may add a discount to a job, and a primary sees the look without it.
+**A trip's line** is that line: an ordinary line among the job's lines whose `jobs_ledger_fixtures.trip_id` names its trip, one line a trip.
+It is never a *trip charge*, which is the turnaway's fee on a bill of its own.
+The mark lives on the line: remove the line and the trip reads not billed again, delete the trip and the line stays with its words.
+A trip's **billing chip** says where its money stands, read from its line and the bill that took it (`tripBillStanding`): *Extra · not billed yet*, *Extra · on J2101's lines, on no bill yet*, *Extra · on a bill, not sent*, *Extra · billed*, *Extra · paid*.
+A trip that holds a line shows **Open J2101 on Bill** in the press's place, and a trip moved off Extra after its line was made still reads the line.
 Access: `ACCESS_CONTROL.md`, *Trips*.
 Guides: `keep-a-trip-to-a-far-site`, `start-a-trip-from-your-phone`.
 

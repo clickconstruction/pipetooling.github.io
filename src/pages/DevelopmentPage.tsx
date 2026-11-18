@@ -1825,6 +1825,17 @@ export default function DevelopmentPage() {
             print={{ customerName: data.customer?.name ?? null, customerId: data.customer?.id ?? null, printedBy: profileName ?? null }}
             askedTripId={tripIdAsked(searchParams)}
             openTrip={tripOpen}
+            billRole={role}
+            onOpenJobOnBill={(jobId, lineIds, onJobSaved) =>
+              jobForm?.openEditJob(jobId, {
+                initialTab: 'bill',
+                pickLineIds: lineIds,
+                onSaved: () => {
+                  onJobSaved()
+                  void load()
+                },
+              })
+            }
           />
         ) : null}
       </div>

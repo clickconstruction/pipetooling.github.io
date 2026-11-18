@@ -175,6 +175,8 @@ type Props = {
   jobPicturesLinkHighlightInitial: boolean
   propertyRecordFocusInitial?: boolean
   focusRowInitial?: JobFormFocusRow | null
+  /** Lines to tick on Bill once the job has loaded (punch list #391). */
+  pickLineIdsInitial?: ReadonlyArray<string> | null
   alsoOpenCreateCustomerModal: boolean
   /** Fires after form saves (also refreshes the Job pane via externalRefreshKey). */
   onSaved: (() => void) | null
@@ -198,6 +200,7 @@ export function JobWindowModal({
   jobPicturesLinkHighlightInitial,
   propertyRecordFocusInitial = false,
   focusRowInitial = null,
+  pickLineIdsInitial = null,
   alsoOpenCreateCustomerModal,
   onSaved,
 }: Props) {
@@ -673,6 +676,7 @@ export function JobWindowModal({
               jobPicturesLinkHighlightInitial={jobPicturesLinkHighlightInitial}
               propertyRecordFocusInitial={propertyRecordFocusInitial}
               focusRowInitial={focusRowInitial}
+              pickLineIdsInitial={pickLineIdsInitial}
               alsoOpenCreateCustomerModal={alsoOpenCreateCustomerModal}
               onClose={onClose}
               onSaved={() => {

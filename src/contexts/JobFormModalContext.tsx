@@ -27,6 +27,11 @@ export type OpenEditJobOptions = {
   propertyRecordFocus?: boolean
   /** Open on this fact row, expanded and ringed for a moment (v2.3697: the Lien desk's plain-value doors — 'gc'). */
   focusRow?: JobFormFocusRow | null
+  /**
+   * Lines to tick for Bill the N picked once the job has loaded (punch list #391: a trip put on a bill opens
+   * its job on Bill with the trip's line picked). A line that cannot be ticked is skipped without a word.
+   */
+  pickLineIds?: ReadonlyArray<string>
 }
 
 export type OpenNewJobOptions = {
@@ -65,6 +70,7 @@ type InternalOpenState =
       jobPicturesLinkHighlight: boolean
       propertyRecordFocus: boolean
       focusRow: JobFormFocusRow | null
+      pickLineIds: ReadonlyArray<string> | null
       alsoOpenCreateCustomerModal: boolean
       onSaved: (() => void) | null
     }
@@ -112,6 +118,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
         ...(options?.initialTab ? { initialTab: options.initialTab } : {}),
         ...(options?.propertyRecordFocus ? { propertyRecordFocus: true } : {}),
         ...(options?.focusRow ? { focusRow: options.focusRow } : {}),
+        ...(options?.pickLineIds?.length ? { pickLineIds: options.pickLineIds } : {}),
       })
       if (delegated) return
       jobFormModalInstanceSeed += 1
@@ -126,6 +133,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
         jobPicturesLinkHighlight: options?.jobPicturesLinkHighlight ?? false,
         propertyRecordFocus: options?.propertyRecordFocus ?? false,
         focusRow: options?.focusRow ?? null,
+        pickLineIds: options?.pickLineIds?.length ? options.pickLineIds : null,
         alsoOpenCreateCustomerModal: options?.alsoOpenCreateCustomerModal ?? false,
         onSaved: options?.onSaved ?? null,
       })
@@ -175,6 +183,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           jobPicturesLinkHighlightInitial={openState.jobPicturesLinkHighlight}
           propertyRecordFocusInitial={openState.propertyRecordFocus}
           focusRowInitial={openState.focusRow}
+          pickLineIdsInitial={openState.pickLineIds}
           alsoOpenCreateCustomerModal={openState.alsoOpenCreateCustomerModal}
           onClose={closeJobForm}
           onSaved={openState.onSaved}

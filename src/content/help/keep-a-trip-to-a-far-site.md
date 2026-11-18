@@ -2,7 +2,7 @@
 title: keep a trip to a site away from home
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: trip, trips, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log, trip number, number, trip 1, trip 5, copy link, link to a trip, open a trip
+keywords: trip, trips, put on a bill, bill a trip, a trip's line, extra trip, bill the 1 picked, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log, trip number, number, trip 1, trip 5, copy link, link to a trip, open a trip
 order: 76
 ---
 A trip is one going out to a site away from home and coming back. You keep it on the site's Development page, apart from the hours on its jobs.
@@ -200,6 +200,59 @@ A message then offers **Undo** for one minute. **Undo** puts the trip back with 
 
 Deleting a trip changes no clock row, no bill and no cost.
 
+## Put a trip on a bill
+
+A trip marked **Extra** is work past the job's price. You can put the trip on a job as one line. A bill takes the line later.
+
+The press shows on an open trip that is **Extra** and has gone out. A planned trip shows no press.
+
+1. Open the trip.
+2. Press {{button:outline|Put on a bill}} beside {{button:outline|Change}}.
+3. Check **Job**. A trip on two jobs asks you to pick one.
+4. Type the **Amount**. A trip holds no price, so you type one.
+5. Check **Line** and **Words under it**. The line and the words go on the customer's bill. You can change both.
+6. Read **Job total**. The box shows the total now and the total with the line.
+7. Press {{button:blue|Add the line · $6,800}}. The button shows your own amount.
+
+The job's window opens on **Bill** with the new line picked.
+
+- Press **Bill the 1 picked** to make a bill for the trip alone.
+- Close the window to leave the line for the job's next bill.
+
+This press sends nothing to the customer. A bill goes out only when you send it.
+
+A trip with no job named lists the site's jobs. The job you pick joins the trip's jobs.
+
+A dev or a controller sees **What it cost** under the amount. Nobody else sees a cost.
+
+## Read where a trip's money stands
+
+The billing chip on a trip says where its money stands.
+
+An amber chip means the trip is still owed a bill.
+
+{{chip:yellow|Extra · not billed yet}} {{chip:yellow|Extra · on J2101's lines, on no bill yet}}
+
+{{chip:yellow|Extra · on a bill, not sent}}
+
+A green chip means a bill went out.
+
+{{chip:green|Extra · billed}} {{chip:green|Extra · paid}}
+
+One trip makes one line. Once a trip is on a job's lines, the press is gone.
+
+**Open J2101 on Bill** takes its place. That press opens the job with the line picked.
+
+The line is a line like any other. Rename it, change its price or remove it in the job's window.
+
+Remove the line before a bill takes it. The trip then reads *not billed yet* again, and you can put it on a bill again.
+
+Delete the trip and the line stays on the job with its words.
+
+You can change a trip's billing after its line is made. The line stays, and the chip still reads the line.
+
+A trip's line is not a trip charge. A trip charge is the fee for a turnaway.
+
 ## See a trip in History
 
 The History look shows a line the day a trip leaves. The look shows a second line the day the trip is back.
@@ -342,4 +395,4 @@ A browser can block the print window. The look then says so beside the link. All
 
 ## Who can do this
 
-The office, the leaders and the controller read and change every trip. The crew starts its own trip in Job Mode, as [start a trip from your phone](/help/start-a-trip-from-your-phone) shows. The related guide is [see everything on a development in one place](/help/see-everything-on-a-development).
+The office, the leaders and the controller read and change every trip. The same people can put a trip on a bill. A primary reads every trip and cannot put one on a bill. The crew starts its own trip in Job Mode, as [start a trip from your phone](/help/start-a-trip-from-your-phone) shows. The related guide is [see everything on a development in one place](/help/see-everything-on-a-development).
