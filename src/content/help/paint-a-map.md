@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, dashboard, press, change the job, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -12,15 +12,29 @@ Anyone who can open a job can paint a map for it.
 
 ## Start a map
 
-A painted map sits wherever the app shows an address.
+The Dashboard has a {{button:outline|Paint a map}} press near the top. You do not have to be clocked in to see it.
+
+- In Job Mode the press sits beside the tally button. It says which job the map is for.
+- On the office's phone the press is a link under the clock.
+- Everywhere else the press is a square after **Job Report**.
+
+Press {{button:outline|Paint a map}}. The **Paint a map** sheet opens.
+
+The app sets the job when it knows it. Clocked in, that is the job you are clocked onto. Otherwise it is the stop you are at today, or the next one.
+
+The sheet names the job under **For**. Press **Change the job** if the app picked the wrong one.
+
+### From a job
+
+A painted map also sits wherever the app shows an address.
 
 - On a job's window, look under the address at the top.
 - On your own job card in Job Mode, look above the customer's lines.
 - On a development's page, look under its address.
 
-Press {{button:outline|＋ Paint a map}}.
+Press {{button:outline|＋ Paint a map}}. The same sheet opens, on that job.
 
-The **Paint a map** sheet opens.
+### The sheet
 
 1. Type what the map is, or press a name such as {{chip:gray|The way in}}.
 2. Type a line for whoever opens it, if a line would help.
@@ -38,9 +52,11 @@ A map started on a development's page is for every lot. It shows on each job in 
 
 ### With no job open
 
-Press the search button at the top of the app and type **paint**. Press **Paint a map**.
+The Dashboard's press opens the sheet on no job when you have no clock and no stop today.
 
-The sheet opens on no job. Press **Pick the job it is for** and search for the job.
+The search does the same. Press the search button at the top of the app and type **paint**. Press **Paint a map**.
+
+On the sheet, press **Pick the job it is for** and search for the job.
 
 You can also leave it on no job and paint first. Only you and the office can open a map on no job.
 

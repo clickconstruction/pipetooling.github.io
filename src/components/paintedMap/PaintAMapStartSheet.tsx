@@ -32,9 +32,12 @@ const newId = (): string => (typeof crypto !== 'undefined' && 'randomUUID' in cr
 export function PaintAMapStartSheet({ home: given, onStart, onClose }: Props) {
   // Opened from the header's search there is no job yet: the painter may pick one here, or paint first and put it on a job later.
   const homeless = !given.jobId && !given.developmentId
+  // Opened by the Dashboard's press on a job the app picked (punch list #392): the pick is a guess once the painter is
+  // not clocked onto it, so the job can be changed here. A press under a job's own address has no such doubt.
+  const changeable = !!given.jobId && !!given.canChangeJob
   const [picked, setPicked] = useState<{ jobId: string; label: string; address: string | null } | null>(null)
   const [picking, setPicking] = useState(false)
-  const home: PaintedMapHome = picked ? { ...given, jobId: picked.jobId, label: picked.label, address: picked.address } : given
+  const home: PaintedMapHome = picked ? { ...given, jobId: picked.jobId, developmentId: changeable ? null : given.developmentId, label: picked.label, address: picked.address } : given
   const [name, setName] = useState('')
   const [words, setWords] = useState('')
   // A job in a development: the map is for the job unless the painter says it is for the whole site.
@@ -115,7 +118,7 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose }: Props) {
             ) : (
               <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>It is on no job yet. It stays yours and the office’s until it is put on one.</span>
             )}
-            {homeless ? (
+            {homeless || changeable ? (
               picking ? (
                 <div data-paint-a-map-job-pick style={{ display: 'grid', gap: '0.4rem' }}>
                   <CostBatchJobPicker
@@ -127,15 +130,15 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose }: Props) {
                     }}
                   />
                   <button type="button" style={quietPress} onClick={() => setPicking(false)}>
-                    Leave it on no job
+                    {changeable ? 'Keep this job' : 'Leave it on no job'}
                   </button>
                 </div>
               ) : (
                 <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.9rem' }}>
                   <button type="button" data-paint-a-map-pick-job style={quietPress} onClick={() => setPicking(true)}>
-                    {picked ? 'Pick another job' : 'Pick the job it is for'}
+                    {changeable ? 'Change the job' : picked ? 'Pick another job' : 'Pick the job it is for'}
                   </button>
-                  {picked ? (
+                  {picked && !changeable ? (
                     <button type="button" style={quietPress} onClick={() => setPicked(null)}>
                       Leave it on no job
                     </button>

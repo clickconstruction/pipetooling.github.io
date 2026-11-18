@@ -70,7 +70,38 @@ describe('DashboardPinnedQuickRow · Needs You', () => {
     await settle()
     const quiet = document.querySelector('[data-quiet-squares]') as HTMLElement
     expect(quiet.querySelector('[data-testid="clock"]')).toBeTruthy()
-    expect([...quiet.querySelectorAll('button, a')].map((x) => x.textContent?.trim().replace(/ · \d+$/, ''))).toEqual(['Job report', 'Tally'])
+    expect([...quiet.querySelectorAll('button, a')].map((x) => x.textContent?.trim().replace(/ · \d+$/, ''))).toEqual(['Job report', 'Tally', 'Paint a map'])
+    expect(quiet.querySelector('[data-paint-a-map-press="link"]')).toBeTruthy()
+  })
+})
+
+describe('DashboardPinnedQuickRow · Paint a map (punch list #392)', () => {
+  it('beside the clock, a square after Job Report: a desk and a leader on a phone', async () => {
+    renderWithProviders(<DashboardPinnedQuickRow {...props} role="master_technician" bannersOnly={false} jobReportFirst clockSlot={<div data-testid="clock">clock</div>} />)
+    await settle()
+    const square = document.querySelector('[data-paint-a-map-press="square"]') as HTMLElement
+    expect(square).toBeTruthy()
+    // The row reads Tally, the clock, Job Report, Paint a map.
+    const row = square.parentElement as HTMLElement
+    expect(row.lastElementChild).toBe(square)
+    expect(square.previousElementSibling?.getAttribute('aria-label')).toBe('Job Report')
+    expect(document.querySelector('[data-paint-a-map-press="link"], [data-paint-a-map-press="wide"]')).toBeNull()
+  })
+
+  it('in Job Mode, wide beside the Tally square, in the slot the Job Report button left', async () => {
+    renderWithProviders(<DashboardPinnedQuickRow {...props} role="subcontractor" bannersOnly={false} hideBanners hideJobReport />)
+    await settle()
+    const wide = document.querySelector('[data-paint-a-map-press="wide"]') as HTMLElement
+    expect(wide).toBeTruthy()
+    // The stub's day is empty, so the second line says the person picks.
+    expect(wide.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('You pick the job it is for')
+    expect(document.querySelector('[data-paint-a-map-press="square"]')).toBeNull()
+  })
+
+  it('is not drawn where the row is not: the banners alone', async () => {
+    renderWithProviders(<DashboardPinnedQuickRow {...props} />)
+    await settle()
+    expect(document.querySelector('[data-paint-a-map-press]')).toBeNull()
   })
 })
 

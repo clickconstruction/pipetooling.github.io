@@ -3115,6 +3115,8 @@ never *pin*, *location*, *track* or *route*.
 It has no page of its own and no header button: it is one line wherever the app shows an address.
 The header's search is its door with no job open (since v2.7227): **Paint a map** starts one, on a job picked in the sheet or on no job, and every map the reader can open is found by its name under *Painted maps* (`paintedMapSearch.ts`).
 A map on no job is its maker's and the office's until **Put it on a job…**.
+Since v2.7859 (punch list #392) the Dashboard's top row carries **Paint a map** for every role, clocked in or not: wide beside the Tally square in Job Mode with the job it lands on, a quiet link on the office's phone, a square after Job Report at a desk and on a leader's phone (`PaintAMapPress` over `paintedMapPress.ts`).
+The press lands on the job the person is clocked onto, else the stop under way or next today, else the person picks, and a job the press picked can be changed on the start sheet with **Change the job**.
 Since v2.7228 painted maps are also a layer on other maps (`PaintedMapsLayer` over `paintedMapLayer.ts`): the **Painted maps** chip on the Map page draws every map the reader can open, and a job's own maps sit under the boxes on Materials on site's map;
 a press on a line opens its map.
 In the job window's top band and on a tech's Job Mode card (`JobPaintedMapsStrip`), on the On my way sheet (the same strip, the maps alone), and under a development's address (`DevelopmentPaintedMapsStrip`, the site's own maps and each lot's).

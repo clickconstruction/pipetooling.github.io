@@ -53,6 +53,31 @@ describe('PaintAMapStartSheet', () => {
     expect(started[0]!.home).toMatchObject({ jobId: 'j9', label: 'J900 · Made Up Lot', address: '9 Made Up Road' })
   })
 
+  it('opened by the Dashboard press on a job the app picked, offers Change the job (punch list #392)', () => {
+    const started: PaintedMapToStart[] = []
+    render(<PaintAMapStartSheet home={{ jobId: 'j1', developmentId: null, label: 'J100 · First Lot', address: '1 First Road', canChangeJob: true }} onStart={(s) => started.push(s)} onClose={() => {}} />)
+    expect(screen.getByText('J100 · First Lot')).toBeTruthy()
+    // No way onto no job from here: the app picked a job, and the person changes it or keeps it.
+    expect(screen.queryByRole('button', { name: 'Leave it on no job' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Change the job' }))
+    expect(screen.getByTestId('job-picker').textContent).toContain('Which job is it for?')
+    fireEvent.click(screen.getByRole('button', { name: 'Keep this job' }))
+    expect(screen.queryByTestId('job-picker')).toBeNull()
+    expect(screen.getByText('J100 · First Lot')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Change the job' }))
+    fireEvent.click(screen.getByRole('button', { name: 'pick J900' }))
+    expect(screen.getByText('J900 · Made Up Lot')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Change the job' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Draw it by hand' }))
+    expect(started[0]!.home).toMatchObject({ jobId: 'j9', label: 'J900 · Made Up Lot', address: '9 Made Up Road' })
+  })
+
+  it('a job the sheet was opened on from its own address cannot be changed', () => {
+    render(<PaintAMapStartSheet home={{ jobId: 'j1', developmentId: null, label: 'J100 · First Lot' }} onStart={() => {}} onClose={() => {}} />)
+    expect(screen.queryByRole('button', { name: 'Change the job' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Pick the job it is for' })).toBeNull()
+  })
+
   it('lets a picked job be taken back', () => {
     render(<PaintAMapStartSheet home={{ jobId: null, developmentId: null }} onStart={() => {}} onClose={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: 'Pick the job it is for' }))

@@ -152,6 +152,17 @@ export function UpdateFocusOpenerBridgeProvider({ children }: { children: ReactN
   )
 }
 
+const NO_SESSION_NEWS = () => () => {}
+
+/**
+ * The clock's changes alone, for a press that only wants to read again when the person clocks in or
+ * out (the Dashboard's Paint a map, punch list #392). With no provider above it there is no news,
+ * and it does not throw: the Dashboard's top row is drawn in smokes with no bridge.
+ */
+export function useSessionChanges(): UpdateFocusOpenerBridgeContextValue['subscribeSessionChanges'] {
+  return useContext(UpdateFocusOpenerBridgeContext)?.subscribeSessionChanges ?? NO_SESSION_NEWS
+}
+
 export function useUpdateFocusOpenerBridge(): UpdateFocusOpenerBridgeContextValue {
   const ctx = useContext(UpdateFocusOpenerBridgeContext)
   if (!ctx) {
