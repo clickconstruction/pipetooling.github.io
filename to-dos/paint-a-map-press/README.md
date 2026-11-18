@@ -2,7 +2,7 @@
 name: "Paint a map from the Dashboard: a press that is always there, and every map on a job"
 number: 392
 group: ready
-status: asked 2026-11-17 · designed, drawn and rendered the same day (ten states at a phone's width and one at a desk) · shown to the owner with nine calls, each with a pick · nothing built · carded the same evening at the owner's word · the Share sheet was built apart as #394 on 2026-11-18 (v2.7788 · 7790) · walked the same day as a leader on a phone, and the missing Dashboard press was the walk's worst snag · a leader's phone drawn the same day (three states), a tenth call added with a pick, and the plan's order changed so the Saved band comes before the picker · the owner's word the same day (*Yes, build it*) · the kernel and the press built the same day (v2.7859), walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark · not yet tried on a real phone
+status: asked 2026-11-17 · designed, drawn and rendered the same day (ten states at a phone's width and one at a desk) · shown to the owner with nine calls, each with a pick · nothing built · carded the same evening at the owner's word · the Share sheet was built apart as #394 on 2026-11-18 (v2.7788 · 7790) · walked the same day as a leader on a phone, and the missing Dashboard press was the walk's worst snag · a leader's phone drawn the same day (three states), a tenth call added with a pick, and the plan's order changed so the Saved band comes before the picker · the owner's word the same day (*Yes, build it*) · the kernel and the press built the same day (v2.7859), walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark · the Saved band built the same day (v2.7866), walked the same way on a made-up map on no job, thrown away after · not yet tried on a real phone
 summary: >
   The owner wants anyone to make a one-off map and text it from the Dashboard, clocked in or not,
   with a job today or not. Every map must be tied to a job, and picking the job must be easy.
@@ -13,10 +13,10 @@ summary: >
   today's jobs and the jobs they were on lately. After Save, one press opens the phone's own
   Messages with the link written. A map that takes seven presses and two bouts of typing today
   takes four.
-next: Step 3, the Saved band, then step 4, the picker. One new call is the owner's, call 11: the two short pages do not draw the top row, so the press is behind Everything else there.
-size: L as a train of five (S · M · S · L · S), the first two built; left: S · L · S
-blocker: None for step 3. Call 11 is the owner's, and so is a real phone for the walk step 3 needs.
-ver: v2.7859
+next: Step 4, the picker, then step 5. One call is the owner's, call 11: the two short pages do not draw the top row, so the press is behind Everything else there. The Saved band's text press wants one press on a real iPhone and a real Android phone, with #394's.
+size: L as a train of five (S · M · S · L · S), the first three built; left: L · S
+blocker: None for step 4. Call 11 is the owner's, and so is a real phone for the text press.
+ver: v2.7859 · 7866
 opinion: keep building — the press is in, so what is left is the Saved band, which is small, and the picker, which is the owner's second rule
 ---
 
@@ -210,11 +210,12 @@ Drawn in three states, rendered at 375 wide with nothing off the side of the scr
    the day on the press and wait at most 2.5 seconds. The guide `paint-a-map`, a release note, a
    fragment and the Glossary's entry amended. The header's search was left alone: it lists
    matching jobs above pages for every word, so **Paint a map** stays third for *paint*.
-3. **The Saved band** (S). The map says *Saved on* the job and offers **Text it from my phone…**
+3. **The Saved band** (S). **Built, v2.7866.** The map says *Saved on* the job and offers **Text it from my phone…**
    at once, with one blue press on the screen and the press back in view after a place is added.
    The Share sheet itself is built ([#394](../painted-map-share-sheet/README.md)), so this is what
-   is left of the old share step. Walked on a real iPhone and a real Android phone before it
-   merges.
+   is left of the old share step. The press is the Share sheet's own, with its fall back to
+   **Open Messages**. Built on the owner's word to build every step, so the walk on a real iPhone
+   and a real Android phone is still to do, together with #394's.
 4. **The picker** (L). *For* at the top with **Change the job**, *Leave it on no job* retired from
    the doors, **Move it to another job…**, and **Draw it by hand** above the fold as the `start`
    state draws it.

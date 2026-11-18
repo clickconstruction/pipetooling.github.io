@@ -3117,6 +3117,8 @@ The header's search is its door with no job open (since v2.7227): **Paint a map*
 A map on no job is its maker's and the office's until **Put it on a job…**.
 Since v2.7859 (punch list #392) the Dashboard's top row carries **Paint a map** for every role, clocked in or not: wide beside the Tally square in Job Mode with the job it lands on, a quiet link on the office's phone, a square after Job Report at a desk and on a leader's phone (`PaintAMapPress` over `paintedMapPress.ts`).
 The press lands on the job the person is clocked onto, else the stop under way or next today, else the person picks, and a job the press picked can be changed on the start sheet with **Change the job**.
+**The Saved band** (v2.7866, punch list #392) is the green band a painted map's window draws once a save lands in it: *Saved on* the job, what is on the map and who can open it, and on a phone one blue **Text it from my phone…** for whoever may share the map (`PaintedMapSavedBand` over `paintedMapSaved.ts`).
+While the band carries that press **Draw a line** is plain, so the screen has one blue press.
 Since v2.7228 painted maps are also a layer on other maps (`PaintedMapsLayer` over `paintedMapLayer.ts`): the **Painted maps** chip on the Map page draws every map the reader can open, and a job's own maps sit under the boxes on Materials on site's map;
 a press on a line opens its map.
 In the job window's top band and on a tech's Job Mode card (`JobPaintedMapsStrip`), on the On my way sheet (the same strip, the maps alone), and under a development's address (`DevelopmentPaintedMapsStrip`, the site's own maps and each lot's).
