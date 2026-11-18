@@ -21,7 +21,6 @@ import { useNavigate } from 'react-router-dom'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
-import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 import { supabase } from '../../lib/supabase'
 import { fetchActiveUsers } from '../../lib/people/fetchActiveUsers'
 import { fetchTwinUserIds } from '../../lib/fetchTwinUserIds'
@@ -102,7 +101,7 @@ import { mergePaymentRowUpdate, paymentRowsAfterRemove } from '../../lib/jobs/jo
 import { NEW_JOB_CHILD_ROW_FAILURE_TOAST_MS, newJobChildRowFailureWords, writeNewJobChildRows } from '../../lib/jobs/jobFormSliceWrites'
 import { closeDateMetBackfillNeeded, closeDemoteToBilledNeeded } from '../../lib/jobs/jobFormCloseSideEffects'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
-import { MoneyLifecycleBar, PAID_COLOR, BILLED_COLOR, DRAFT_COLOR } from './MoneyLifecycleBar'
+import { JobFormBillingHeader } from './JobFormBillingHeader'
 import { useBreakOffSlider } from './useBreakOffSlider'
 import { useJobCostSnapshot } from './useJobCostSnapshot'
 import { useJobMigrate } from './useJobMigrate'
@@ -3078,108 +3077,16 @@ export default function JobFormModal({
           {!embedded && (
             <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
           )}
-          {/* Embedded: the negative margin cancels the region's flex gap plus
-              the residual line-box air so "% done" sits flush under the Job
-              Total (owner call, v2.1707). */}
-          <div style={{ marginBottom: '1rem', ...(embedded ? { marginTop: '-1.15rem' } : {}) }}>
-            {!embedded ? (
-              <div
-                style={{
-                  ...JOB_FORM_SECTION_HEADER_STYLE,
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'space-between',
-                  gap: '0.5rem',
-                  flexWrap: 'wrap',
-                  marginBottom: '0.75rem',
-                }}
-              >
-                <span>Billing</span>
-                {/* v2.1144: the steady-state "Saved" is noise — only in-flight and
-                    failure states earn header space. */}
-                {editing?.id && (billingAutosaveStatus === 'saving' || billingAutosaveStatus === 'error') && (
-                  <span
-                    aria-live="polite"
-                    style={{
-                      fontSize: '0.75rem',
-                      color: billingAutosaveStatus === 'error' ? 'var(--text-red-600)' : 'var(--text-muted)',
-                    }}
-                  >
-                    {billingAutosaveStatus === 'saving' ? 'Saving…' : 'Autosave failed — edit again to retry'}
-                  </span>
-                )}
-              </div>
-            ) : (
-              /* Titleless Bill tab still surfaces autosave trouble — the status
-                 line renders only while saving or failed. */
-              editing?.id && (billingAutosaveStatus === 'saving' || billingAutosaveStatus === 'error') ? (
-                <div
-                  aria-live="polite"
-                  style={{
-                    textAlign: 'right',
-                    fontSize: '0.75rem',
-                    marginBottom: '0.5rem',
-                    color: billingAutosaveStatus === 'error' ? 'var(--text-red-600)' : 'var(--text-muted)',
-                  }}
-                >
-                  {billingAutosaveStatus === 'saving' ? 'Saving…' : 'Autosave failed — edit again to retry'}
-                </div>
-              ) : null
-            )}
-            {/* v2.4307: an open job's money is the ② money card (Done · Paid · Billed · Left, the % done box,
-                a block per line); the New Job form, with no bills yet, keeps this bar. */}
-            {!editing ? (
-            <div>
-            <MoneyLifecycleBar
-              hasBar={billingBar.hasBar}
-              barTitle={`Job total ${'$'}${formatCurrency(billingBar.total)} — paid ${'$'}${formatCurrency(billingBar.paid)}, billed unpaid ${'$'}${formatCurrency(billingBar.billedUnpaid)}, draft ${'$'}${formatCurrency(billingBar.draft)}`}
-              pctComplete={null}
-              pctSaving={pctSaving}
-              marks={billingBarMarks}
-              segments={[
-                { key: 'paid', frac: billingBar.paidFrac, color: PAID_COLOR },
-                { key: 'billed', frac: billingBar.billedFrac, color: BILLED_COLOR },
-                { key: 'draft', frac: billingBar.draftFrac, color: DRAFT_COLOR },
-              ]}
-              rows={[
-                // Labels lead with each slice's OWN share of the job total (slices +
-                // the unbilled remainder sum to 100%), matching the Stages legend.
-                {
-                  key: 'paid',
-                  label: billingBar.hasBar ? `${Math.round(billingBar.paidFrac * 100)}% Paid` : 'Paid',
-                  value: billingBar.paid,
-                  dot: PAID_COLOR,
-                },
-                {
-                  key: 'billed',
-                  label: billingBar.hasBar
-                    ? `${Math.round(billingBar.billedFrac * 100)}% Billed`
-                    : 'Billed',
-                  value: billingBar.billedUnpaid,
-                  dot: BILLED_COLOR,
-                },
-                ...(billingBar.draft > 0
-                  ? [
-                      {
-                        key: 'draft',
-                        label: billingBar.hasBar
-                          ? `${Math.round(billingBar.draftFrac * 100)}% Draft (not sent)`
-                          : 'Draft (not sent)',
-                        value: billingBar.draft,
-                        dot: DRAFT_COLOR,
-                      },
-                    ]
-                  : []),
-              ]}
-              bottomRow={{
-                label: 'Remaining to bill',
-                value: billingBar.remaining,
-                title: 'Job Total minus payments and every draft or sent bill',
-              }}
-            />
-            </div>
-            ) : null}
-          </div>
+          {/* The "Billing" title with the billing slice's autosave line, and on New Job the money bar (the map's second pass, cut 2). */}
+          <JobFormBillingHeader
+            embedded={embedded}
+            editingId={editing?.id ?? null}
+            isEditing={!!editing}
+            billingAutosaveStatus={billingAutosaveStatus}
+            billingBar={billingBar}
+            billingBarMarks={billingBarMarks}
+            pctSaving={pctSaving}
+          />
           {/* Job-account note (v2.3257): job window only — the standalone New
               Job form has no job yet. Renders nothing without a packet on record. */}
           {embedded && editing?.id ? (
