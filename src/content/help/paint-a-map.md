@@ -356,6 +356,8 @@ Then press {{button:blue|Share the picture}} to send it from your phone. On a co
 
 A picture shows in a text thread without a press. The word Start marks where the first line begins.
 
+A place with a kind keeps its mark in the picture and on the printed page.
+
 ### A page to print
 
 Press **Print, or save as a PDF**. One page opens with the map, the places and their photos.
@@ -374,6 +376,8 @@ An engineer or a surveyor may keep a map of their own. Two presses make a file f
 - **A .gpx file** opens in a hiking app or a handheld.
 
 A file holds the lines and the places with their words. It holds no photos.
+
+A file draws no mark. A place's kind is written in its name, such as *Hazard: Open trench*.
 
 ## When the picture is old
 

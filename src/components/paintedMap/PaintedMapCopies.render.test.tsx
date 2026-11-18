@@ -72,7 +72,7 @@ describe('PaintedMapCopies', () => {
     expect(band.foot[0]).toMatch(/ · Made Nov 13, 2026$/)
     expect(band.foot[1]).toBe('example.test/way/q7m2kd4x9p')
     expect(band.foot[2]).toBe('A length here is a guide for how far. It is not a measurement.')
-    expect(io.drew[0]!.places).toEqual([{ number: 1, name: 'Truck gate', words: 'Close it behind you.', lat: 29.5, lng: -98.2 }])
+    expect(io.drew[0]!.places).toEqual([{ number: 1, name: 'Truck gate', words: 'Close it behind you.', lat: 29.5, lng: -98.2, kind: null }])
     expect(io.shared).toEqual([])
     expect(io.downloaded).toEqual([])
   })
@@ -137,6 +137,29 @@ describe('PaintedMapCopies', () => {
     expect(html).toContain('The link ends by itself on Feb 11.')
     expect(html).toContain('Made Nov 13, 2026.')
     expect((await screen.findByRole('status')).textContent).toBe('The page opened to print. A copy is kept with the job.')
+  })
+
+  it('carries a place\'s kind into the picture, the printed page and the file (#393)', async () => {
+    const io = fake()
+    const files: File[] = []
+    io.download = (file) => void files.push(file)
+    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[PLACE({ name: 'Open trench', kind: 'hazard' }), PLACE({ id: 'p2', number: 2, name: 'Meter', words: '', photoPath: null })]} link={LINK} io={io} />)
+    fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
+    await waitFor(() => expect(io.drew).toHaveLength(1))
+    expect(io.drew[0]!.places.map((p) => [p.number, p.kind])).toEqual([[1, 'hazard'], [2, null]])
+    fireEvent.click(screen.getByRole('button', { name: /Print, or save as a PDF/ }))
+    await waitFor(() => expect(io.printed).toHaveLength(1))
+    expect(io.printed[0]!.html).toContain('<td class="k">')
+    expect(io.printed[0]!.html).toContain('<td class="n"><span>2</span></td>')
+    fireEvent.click(screen.getByRole('button', { name: /A \.kml file/ }))
+    await waitFor(() => expect(files).toHaveLength(1))
+    const text = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.readAsText(files[0]!)
+    })
+    expect(text).toContain('<name>1. Hazard: Open trench</name>')
+    expect(text).toContain('<name>2. Meter</name>')
   })
 
   it('prints with no code when no link is out, and says how to get one on the page', async () => {

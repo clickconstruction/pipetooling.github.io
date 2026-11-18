@@ -7,8 +7,9 @@
  * back to the map as it is today.
  */
 import { PAINTED_MAP_COPY_WORDS } from './paintedMapPicture'
+import { placeKindInfo, placeMarkHtml } from './paintedPlaceKind'
 
-export type PrintPlace = { number: number; name: string; words: string; photo: string | null }
+export type PrintPlace = { number: number; name: string; words: string; photo: string | null; /** Its kind, which gives its row the mark its dot wears (#393). */ kind?: string | null }
 export type PaintedMapPrintInput = {
   company: { name: string; phone: string }
   name: string
@@ -24,6 +25,10 @@ export type PaintedMapPrintInput = {
   madeWords: string
 }
 
+/** The page's ink and paper, for a mark drawn as markup. A printed page is always light. */
+const PRINT_INK = '#111827'
+const PRINT_PAPER = '#ffffff'
+
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 /** A `data:` picture address and nothing else: a page that is filed must not reach out for a picture. */
 const dataPicture = (src: string | null): string | null => (src && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(src) ? src : null)
@@ -33,7 +38,9 @@ export function buildPaintedMapPrintHtml(i: PaintedMapPrintInput): string {
   const places = i.places
     .map((p) => {
       const photo = dataPicture(p.photo)
-      return `<tr><td class="n"><span>${p.number}</span></td><td><b>${esc(p.name)}</b>${p.words.trim() ? `<div class="w">${esc(p.words)}</div>` : ''}</td><td class="ph">${photo ? `<img src="${photo}" alt="">` : ''}</td></tr>`
+      // A place with a kind wears its mark here as on the map. A plain place keeps its numbered ring.
+      const mark = placeKindInfo(p.kind) ? `<td class="k">${placeMarkHtml(p, { size: 22, ink: PRINT_INK, paper: PRINT_PAPER })}</td>` : `<td class="n"><span>${p.number}</span></td>`
+      return `<tr>${mark}<td><b>${esc(p.name)}</b>${p.words.trim() ? `<div class="w">${esc(p.words)}</div>` : ''}</td><td class="ph">${photo ? `<img src="${photo}" alt="">` : ''}</td></tr>`
     })
     .join('')
   const lines = i.lines.map((l) => `<div class="len">${esc(l)}</div>`).join('')
@@ -56,6 +63,8 @@ tr { break-inside: avoid; }
 td { vertical-align: top; padding: 6px 4px; border-bottom: 1px solid #d1d5db; }
 td.n { width: 34px; }
 td.n span { display: inline-block; width: 24px; height: 24px; line-height: 21px; text-align: center; border: 2px solid #111827; border-radius: 50%; font-weight: 700; font-size: 10.5pt; }
+td.k { width: 34px; padding-top: 9px; }
+td.k span { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 td.ph { width: 1.5in; text-align: right; }
 td.ph img { max-width: 1.4in; max-height: 1.05in; border-radius: 4px; border: 1px solid #d1d5db; }
 .w { color: #374151; font-size: 10.5pt; }

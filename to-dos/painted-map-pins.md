@@ -2,7 +2,7 @@
 name: "Pins on a painted map: points of interest"
 number: 393
 group: ready
-status: answered 2026-11-18, the owner ticked all three readings · A in its PR · B's column in its PR · B's marks on the map built on `claude/393-pins-kinds`, held for the push · B's shared page, picture and print not started · C not started
+status: answered 2026-11-18, the owner ticked all three readings · A in its PR · B's column in its PR · B's marks on the map built on `claude/393-pins-kinds`, held for the push · B's picture, print and file built on `claude/393-pins-copies`, stacked on it · B's shared page not started · C not started
 summary: >
   The owner wants to set pins, points of interest, on a painted map, and not only lines. A painted
   map can already hold a place: a numbered dot with a name, a few words and a photo. Look it over,
@@ -11,8 +11,8 @@ summary: >
   three readings to the owner. A is ＋ Place on Look it over. B is kinds of pins, each with its own
   mark. C is a job's own pins, with no painted map. He ticked all three on 2026-11-18, so it is a
   train of three in that order.
-next: Push B's column once it merges, then merge B's marks. Then the marks on the shared page, in the picture and on paper. C opens with one call from the owner on Materials on site's places.
-size: L as a train of three (S · M · L); left: the rest of B (S · S) and C (L)
+next: Push B's column once it merges, then merge B's marks and the picture and print after them. Then the marks on the shared page. C opens with one call from the owner on Materials on site's places.
+size: L as a train of three (S · M · L); left: the shared page (S) and C (L)
 blocker: None for A or B. C waits on the owner's call, whether Materials on site's places get a point and become the pins.
 opinion: build — the owner picked all three; A answers his screenshot, B follows, and C opens with his call on Materials on site's places
 ---
@@ -57,7 +57,10 @@ Taken as a train in that order. Each step is its own PR.
   3. **The shared page: not started.** `/way/<code>` reads through the `painted-map-link` function,
      which names its columns, so it shows plain dots until that function reads the kind and is
      deployed.
-  4. **The picture, the printed page and the file: not started.**
+  4. **The picture, the printed page and the file: built**, on `claude/393-pins-copies`, stacked on
+     step 2. The picture draws each mark on the map and in its key. The printed page gives a place
+     with a kind its mark in the list. A file draws nothing, so it says the kind in the place's
+     name, as in *Hazard: Open trench*.
 
   **The list of kinds is a first list.** The card's pick was to wait until places were in use and
   learn the kinds from what people mark. Read on 2026-11-18, prod held no place on any painted map,
