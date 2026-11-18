@@ -42,6 +42,12 @@ export type TripRecordPerson = {
 
 export type TripRecord = {
   id: string
+  /**
+   * The trip's short number on its site: Trip 1, Trip 2 (migration 20261118040000). The database hands it out
+   * when the trip is made, it never changes, and nobody types it. Null on a new trip that is not saved yet,
+   * and on a trip made before numbers.
+   */
+  tripNumber: number | null
   developmentId: string | null
   /** The job that holds the trip when no development does. */
   jobId: string | null
@@ -61,6 +67,7 @@ export type TripRecord = {
 /** The row as the read asks for it, its people and jobs embedded. */
 export type TripRow = {
   id: string
+  trip_number: number | null
   development_id: string | null
   job_id: string | null
   purpose: string | null
@@ -75,14 +82,20 @@ export type TripRow = {
   trip_jobs: Array<{ job_id: string }> | null
 }
 
-export const TRIP_SELECT = 'id, development_id, job_id, purpose, asked_by, asked_who, asked_how, outcome, billing, via, created_at, trip_people(person_id, user_id, person_name, days), trip_jobs(job_id)'
+export const TRIP_SELECT = 'id, trip_number, development_id, job_id, purpose, asked_by, asked_who, asked_how, outcome, billing, via, created_at, trip_people(person_id, user_id, person_name, days), trip_jobs(job_id)'
 
 const isAskedBy = (v: unknown): v is TripAskedBy => v === 'us' || v === 'them'
 const isBilling = (v: unknown): v is TripBilling => v === 'inside' || v === 'extra' || v === 'ours'
 
+/** A trip's number as it is kept: a positive whole number. Anything else is no number. */
+export function tripNumberOf(v: unknown): number | null {
+  return typeof v === 'number' && Number.isInteger(v) && v > 0 ? v : null
+}
+
 export function tripFromRow(row: TripRow): TripRecord {
   return {
     id: row.id,
+    tripNumber: tripNumberOf(row.trip_number),
     developmentId: row.development_id,
     jobId: row.job_id,
     purpose: row.purpose ?? '',
@@ -100,10 +113,16 @@ export function tripFromRow(row: TripRow): TripRecord {
   }
 }
 
-/** What `trip_save` takes: the trip whole. An id is always sent, so a save and its undo name the same trip. */
+/**
+ * What `trip_save` takes: the trip whole. An id is always sent, so a save and its undo name the same trip.
+ * The number goes along when the record has one. The database alone decides: it keeps a kept trip's number
+ * whatever is sent, and gives a deleted trip made again under its own id the number it had. A new trip sends none.
+ */
 export function tripSavePayload(t: TripRecord): Record<string, unknown> {
+  const number = tripNumberOf(t.tripNumber)
   return {
     id: t.id,
+    ...(number != null ? { trip_number: number } : {}),
     development_id: t.developmentId,
     job_id: t.jobId,
     purpose: t.purpose.trim().slice(0, TRIP_PURPOSE_MAX),
@@ -187,7 +206,7 @@ export function tripOfRecord(record: TripRecord, index: TripPeopleIndex): Trip {
   }
 }
 
-/** A new trip with nobody on it yet, for the sheet. The id is made here so a save can be undone by its id. */
+/** A new trip with nobody on it yet, for the sheet. The id is made here so a save can be undone by its id. It has no number: the database hands one out when the trip is made. */
 export function newTripRecord(args: { id: string; developmentId: string | null; jobId?: string | null }): TripRecord {
-  return { id: args.id, developmentId: args.developmentId, jobId: args.jobId ?? null, purpose: '', askedBy: null, askedWho: '', askedHow: '', outcome: '', billing: null, via: 'app', people: [], jobIds: [], createdAt: null }
+  return { id: args.id, tripNumber: null, developmentId: args.developmentId, jobId: args.jobId ?? null, purpose: '', askedBy: null, askedWho: '', askedHow: '', outcome: '', billing: null, via: 'app', people: [], jobIds: [], createdAt: null }
 }

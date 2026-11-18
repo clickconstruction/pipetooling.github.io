@@ -8,7 +8,7 @@
  */
 import { daysBetween, sortTrips, tripDayCounts, tripDayList, tripSpan, tripStanding, TRIP_STANDING_LABEL, type Trip, type TripDayCounts, type TripDayKind, type TripStanding } from './tripDays'
 import { splitTripHours, type SiteTripHours, type TripHourRow, type TripHours, type TripHoursOfTrip } from './tripHours'
-import { NO_TRIP_PEOPLE, tripOfRecord, tripPersonKey, TRIP_BILLING_LABEL, type TripBilling, type TripPeopleIndex, type TripRecord } from './tripRecord'
+import { NO_TRIP_PEOPLE, tripNumberOf, tripOfRecord, tripPersonKey, TRIP_BILLING_LABEL, type TripBilling, type TripPeopleIndex, type TripRecord } from './tripRecord'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
 
@@ -32,6 +32,70 @@ export function tripSpanWords(first: string, last: string, todayYmd: string): st
   if (first === last) return `${monthDay(first)}${year}`
   if (monthOf(first) === monthOf(last)) return `${monthDay(first)} to ${dayOf(last)}${year}`
   return `${monthDay(first)} to ${monthDay(last)}${year}`
+}
+
+// ---- a trip by name ---------------------------------------------------------------------------
+
+/**
+ * A trip's name, in each form a screen needs (the trip's number, migration 20261118040000). One place builds
+ * them, so the look, History, the Job window, Plans by date, the Scoreboard and the printed log say one trip
+ * the same way. A trip made before numbers, or one not saved yet, is told by its days alone, as before.
+ */
+export type TripName = {
+  /** *Trip 5*; null when the trip has no number. */
+  number: string | null
+  /** *Oct 23 to Nov 4*; null when the trip has no day yet. */
+  days: string | null
+  /** A heading: *Trip 5 · Oct 23 to Nov 4*, or the days alone. */
+  full: string
+  /** A tight place: *Trip 5*, or the days alone. */
+  short: string
+  /** Inside a sentence: *Trip 5, Oct 23 to Nov 4*, or the days alone. */
+  said: string
+  /** After a verb, as in *Delete …?*: *Trip 5, Oct 23 to Nov 4*, *the trip of Oct 23 to Nov 4*, or *this trip*. */
+  theTrip: string
+  /** The press that opens it: *Open Trip 5*, or *Open this trip*. */
+  door: string
+  /** A title that must itself say it is a trip, as a card's on Plans by date: *Trip 5 · Oct 23 to Nov 4*, or *Trip Oct 23 to Nov 4*. */
+  titled: string
+}
+
+/** What stands in for a trip's days while it has none. */
+export const TRIP_NO_DAY_WORDS = 'No day yet'
+
+/** *Trip 5*; null for anything that is not a positive whole number. */
+export function tripNumberWords(tripNumber: number | null | undefined): string | null {
+  const n = tripNumberOf(tripNumber)
+  return n != null ? `Trip ${n}` : null
+}
+
+/** Name a trip from its number and its first and last day. The year is said as `tripSpanWords` says it. */
+export function tripName(args: { tripNumber: number | null | undefined; span: { first: string; last: string } | null; todayYmd: string }): TripName {
+  const number = tripNumberWords(args.tripNumber)
+  const days = args.span ? tripSpanWords(args.span.first, args.span.last, args.todayYmd) : null
+  return {
+    number,
+    days,
+    full: number && days ? `${number} · ${days}` : (number ?? days ?? TRIP_NO_DAY_WORDS),
+    short: number ?? days ?? TRIP_NO_DAY_WORDS,
+    said: number && days ? `${number}, ${days}` : (number ?? days ?? TRIP_NO_DAY_WORDS),
+    theTrip: number ? (days ? `${number}, ${days}` : number) : days ? `the trip of ${days}` : 'this trip',
+    door: number ? `Open ${number}` : 'Open this trip',
+    titled: number ? (days ? `${number} · ${days}` : number) : days ? `Trip ${days}` : 'Trip',
+  }
+}
+
+/** A kept trip's first and last day, over everyone on it; null with no day yet. */
+export function tripRecordSpan(record: Pick<TripRecord, 'people'>): { first: string; last: string } | null {
+  const days = record.people.flatMap((p) => Object.keys(p.days)).sort()
+  const first = days[0]
+  const last = days[days.length - 1]
+  return first && last ? { first, last } : null
+}
+
+/** Name a kept trip. */
+export function tripNameOfRecord(record: Pick<TripRecord, 'tripNumber' | 'people'>, todayYmd: string): TripName {
+  return tripName({ tripNumber: record.tripNumber, span: tripRecordSpan(record), todayYmd })
 }
 
 export const daysWords = (n: number): string => `${n} ${n === 1 ? 'day' : 'days'}`
@@ -79,6 +143,8 @@ export type TripLookRow = {
   span: { first: string; last: string } | null
   /** *Oct 23 to Nov 4*. */
   when: string
+  /** The trip by name, with its number when it has one: *Trip 5 · Oct 23 to Nov 4*. */
+  name: TripName
   /** *Back · 8 days at the site*, or *Planned*. */
   standingWords: string
   /** What for, or a plain stand-in when nobody wrote it. */
@@ -136,13 +202,15 @@ export function buildTripsLook(args: { records: ReadonlyArray<TripRecord>; index
     }
     const asked = askedByWords(record)
     const names = record.people.map((p) => p.name)
+    const name = tripName({ tripNumber: record.tripNumber, span, todayYmd: args.todayYmd })
     rows.push({
       id: trip.id,
       record,
       trip,
       standing,
       span,
-      when: span ? tripSpanWords(span.first, span.last, args.todayYmd) : 'No day yet',
+      when: name.days ?? TRIP_NO_DAY_WORDS,
+      name,
       standingWords: standing === 'planned' ? TRIP_STANDING_LABEL.planned : `${TRIP_STANDING_LABEL[standing]} · ${daysWords(dayCounts.site)} at the site`,
       why: record.purpose.trim() || 'A trip',
       who: [names.join(', '), asked ? `asked by ${asked}` : null].filter(Boolean).join(' · '),
@@ -212,6 +280,10 @@ export type TripStripBar = {
   kinds: Array<TripDayKind | null>
   planned: boolean
   label: string
+  /** What the bar says on a hover: *Trip 5 · Oct 23 to Nov 4: open this trip*. */
+  title: string
+  /** What a screen reader says: *Trip 5, Oct 23 to Nov 4, planned. Open it.* */
+  aria: string
 }
 
 export type TripStrip = {
@@ -240,7 +312,18 @@ export function buildTripStrip(rows: ReadonlyArray<TripLookRow>, year: number, t
     const inYear = r.days.filter((d) => d.ymd >= jan1 && d.ymd <= dec31)
     const first = inYear[0]?.ymd
     if (!first) continue
-    bars.push({ id: r.id, leftPct: pct(first), widthPct: (inYear.length / yearDays) * 100, kinds: inYear.map((d) => d.kind), planned: r.standing === 'planned', label: monthDay(first) })
+    const planned = r.standing === 'planned'
+    const said = r.name.theTrip
+    bars.push({
+      id: r.id,
+      leftPct: pct(first),
+      widthPct: (inYear.length / yearDays) * 100,
+      kinds: inYear.map((d) => d.kind),
+      planned,
+      label: monthDay(first),
+      title: `${r.name.full}: open this trip`,
+      aria: `${said.charAt(0).toUpperCase()}${said.slice(1)}${planned ? ', planned' : ''}. Open it.`,
+    })
   }
   bars.sort((a, b) => a.leftPct - b.leftPct)
   return { year, years: [...years].sort((a, b) => a - b), months: MONTHS, bars, todayPct: yearOf(todayYmd) === year ? pct(todayYmd) : null }
@@ -252,4 +335,11 @@ export function tripStripStartYear(rows: ReadonlyArray<TripLookRow>, todayYmd: s
   const spans = rows.map((r) => r.span).filter((s): s is { first: string; last: string } => !!s)
   if (spans.length === 0 || spans.some((s) => yearOf(s.first) <= thisYear && yearOf(s.last) >= thisYear)) return thisYear
   return Math.max(...spans.map((s) => yearOf(s.last)))
+}
+
+/** The year the strip shows for one trip, when a link or a press opens it: this year when the trip touches it, else the year of its last day. */
+export function tripStripYearOf(row: Pick<TripLookRow, 'span'>, todayYmd: string): number {
+  const thisYear = yearOf(todayYmd)
+  if (!row.span || (yearOf(row.span.first) <= thisYear && yearOf(row.span.last) >= thisYear)) return thisYear
+  return yearOf(row.span.last)
 }

@@ -10,13 +10,13 @@
 import { personDayCounts, TRIP_STANDING_LABEL, type TripDayCounts } from './tripDays'
 import { TRIP_HOUR_BUCKET_LABEL, type SiteTripHours, type TripHours } from './tripHours'
 import { TRIP_BILLING_LABEL, TRIP_BILLING_WORDS } from './tripRecord'
-import { daysWords, hoursWords, tripSpanWords, type TripLookRow, type TripsLookModel } from './tripsLook'
+import { daysWords, hoursWords, tripName, tripSpanWords, type TripLookRow, type TripsLookModel } from './tripsLook'
 
 export type TripLogLine = { label: string; words: string }
 
 export type TripLogBlock = {
   id: string
-  /** *Oct 29 to Nov 4, 2026 · Back*. */
+  /** *Trip 5 · Oct 29 to Nov 4, 2026 · Back*; a trip made before numbers leads with its days. */
   heading: string
   lines: TripLogLine[]
   /** Each person with their days by kind: *Luis: 4 days at the site, 2 on the road, 1 getting ready*. */
@@ -42,10 +42,12 @@ export const TRIP_LOG_HOURS_NOTE: Readonly<Record<'reading' | 'closed' | 'failed
   failed: 'The clock would not read, so the hours are not on this page.',
 }
 
+/** A year no trip is in: against it the look's own words always say the year. */
+const PAPER_TODAY = '0000-01-01'
+
 /** A trip's days on paper, always with the year: paper is read in a later year than it was printed. */
 export function tripSpanOnPaper(first: string, last: string): string {
-  // Against a year no trip is in, the look's own words always say the year.
-  return tripSpanWords(first, last, '0000-01-01')
+  return tripSpanWords(first, last, PAPER_TODAY)
 }
 
 /** A person's days by kind: *8 days at the site, 2 on the road, 1 getting ready*. */
@@ -77,7 +79,8 @@ function askedWords(row: TripLookRow): string {
 
 function blockOf(row: TripLookRow, jobLabel: (jobId: string) => string | null): TripLogBlock {
   const r = row.record
-  const when = row.span ? tripSpanOnPaper(row.span.first, row.span.last) : 'No day yet'
+  // The trip by name, its number first and its days with the year.
+  const named = tripName({ tripNumber: r.tripNumber, span: row.span, todayYmd: PAPER_TODAY }).full
   const lines: TripLogLine[] = [
     { label: 'What for', words: r.purpose.trim() || 'Nobody has said' },
     { label: 'The days', words: row.dayCounts.days ? `${daysWords(row.dayCounts.days)}: ${dayKindsWords(row.dayCounts)}` : 'No day yet' },
@@ -90,7 +93,7 @@ function blockOf(row: TripLookRow, jobLabel: (jobId: string) => string | null): 
   if (row.hours && row.standing !== 'planned') lines.push({ label: 'Hours', words: tripHoursWords(row.hours) })
   return {
     id: row.id,
-    heading: `${when} · ${TRIP_STANDING_LABEL[row.standing]}`,
+    heading: `${named} · ${TRIP_STANDING_LABEL[row.standing]}`,
     lines,
     people: r.people.map((p) => `${p.name}: ${dayKindsWords(personDayCounts(p.days))}`),
   }

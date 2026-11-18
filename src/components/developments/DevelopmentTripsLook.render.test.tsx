@@ -3,7 +3,9 @@
  * The Trips look (punch list #379, PR 3): the band, the bar, the year strip, a row a trip that opens in place,
  * the chips, and what it says while the hours are not read. PR 5: the offers above the rows with their two
  * presses, and What shows it on an open trip. PR 8: What it cost on an open trip for a reader handed costs, and
- * Print the trip log beside + Trip. Heron Point's made-up trips and round dollars.
+ * Print the trip log beside + Trip. The number and the link: a trip leads with its number on its row, its
+ * open heading and its bar; a signal opens one trip's row on its year; Copy link is there for every reader.
+ * Heron Point's made-up trips and round dollars.
  */
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -13,7 +15,7 @@ import type { TripHourRow } from '../../lib/trips/tripHours'
 import { newTripRecord, NO_TRIP_PEOPLE, type TripRecord } from '../../lib/trips/tripRecord'
 import { buildTripsLook } from '../../lib/trips/tripsLook'
 import type { TripEvidence } from '../../lib/trips/tripEvidence'
-import { DevelopmentTripsLook, TRIPS_HOURS_WORDS, TRIPS_NO_POINT_WORDS, type TripOfferLine, type TripsCosts, type TripsHoursState } from './DevelopmentTripsLook'
+import { DevelopmentTripsLook, TRIPS_HOURS_WORDS, TRIPS_NO_POINT_WORDS, type TripOfferLine, type TripOpenSignal, type TripsCosts, type TripsHoursState } from './DevelopmentTripsLook'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -48,12 +50,12 @@ const OFFERS: TripOfferLine[] = [
   { key: 'b', words: 'Walt punched in at Heron Point on 1 day, Sep 21. No trip covers that day.' },
 ]
 
-function draw(over: { records?: TripRecord[]; hours?: TripHourRow[] | null; hoursState?: TripsHoursState; noSitePoint?: boolean; phone?: boolean; canWrite?: boolean; offers?: TripOfferLine[]; moreOffersWords?: string | null; offerBusy?: boolean; evidence?: Map<string, TripEvidence>; costs?: TripsCosts | null; print?: boolean; printNote?: string | null } = {}) {
-  const presses = { onAdd: vi.fn(), onChange: vi.fn(), onDelete: vi.fn(), onReload: vi.fn(), onOfferMake: vi.fn(), onOfferDismiss: vi.fn(), onPrint: vi.fn() }
+function draw(over: { records?: TripRecord[]; hours?: TripHourRow[] | null; hoursState?: TripsHoursState; noSitePoint?: boolean; phone?: boolean; canWrite?: boolean; offers?: TripOfferLine[]; moreOffersWords?: string | null; offerBusy?: boolean; evidence?: Map<string, TripEvidence>; costs?: TripsCosts | null; print?: boolean; printNote?: string | null; openSignal?: TripOpenSignal | null; copy?: boolean } = {}) {
+  const presses = { onAdd: vi.fn(), onChange: vi.fn(), onDelete: vi.fn(), onReload: vi.fn(), onOfferMake: vi.fn(), onOfferDismiss: vi.fn(), onPrint: vi.fn(), onOpened: vi.fn(), onCopyLink: vi.fn() }
   const hours = over.hours === undefined ? HOURS : over.hours
   const model = buildTripsLook({ records: over.records ?? RECORDS, index: NO_TRIP_PEOPLE, hours, todayYmd: TODAY })
   renderWithProviders(
-    <DevelopmentTripsLook model={model} hoursState={over.hoursState ?? (hours ? 'read' : 'reading')} noSitePoint={over.noSitePoint ?? false} failure={null} todayYmd={TODAY} phone={over.phone ?? false} jobLabel={(id) => (id === 'j1' ? 'J2101 Rough-in: lodge and bunkhouse' : null)} canWrite={over.canWrite ?? true} offers={over.offers} moreOffersWords={over.moreOffersWords} offerBusy={over.offerBusy} evidence={over.evidence} costs={over.costs} printNote={over.printNote} {...presses} onPrint={over.print === false ? undefined : presses.onPrint} />,
+    <DevelopmentTripsLook model={model} hoursState={over.hoursState ?? (hours ? 'read' : 'reading')} noSitePoint={over.noSitePoint ?? false} failure={null} todayYmd={TODAY} phone={over.phone ?? false} jobLabel={(id) => (id === 'j1' ? 'J2101 Rough-in: lodge and bunkhouse' : null)} canWrite={over.canWrite ?? true} offers={over.offers} moreOffersWords={over.moreOffersWords} offerBusy={over.offerBusy} evidence={over.evidence} costs={over.costs} printNote={over.printNote} openSignal={over.openSignal} {...presses} onPrint={over.print === false ? undefined : presses.onPrint} onCopyLink={over.copy === false ? undefined : presses.onCopyLink} />,
   )
   return presses
 }
@@ -278,6 +280,73 @@ describe('DevelopmentTripsLook', () => {
     fireEvent.click(screen.getAllByTestId('trip-row-press')[1]!)
     expect(screen.getByTestId('trip-cost-total').textContent).toBe('The trip$2,440')
     expect(screen.getByTestId('trip-open-counted').compareDocumentPosition(screen.getByTestId('trip-open-cost')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  // The same trips with their numbers; the first try was made before numbers.
+  const NUMBERED = RECORDS.map((r) => (r.id === 't5' ? { ...r, tripNumber: 5 } : r.id === 't6' ? { ...r, tripNumber: 6 } : r))
+
+  it('leads a row with the trip’s number, on a desk and on a phone, and leaves a trip made before numbers as it was', () => {
+    for (const phone of [false, true]) {
+      draw({ records: NUMBERED, phone })
+      const rows = screen.getAllByTestId('trip-row')
+      expect(rows.map((r) => within(r).queryByTestId('trip-row-number')?.textContent ?? null)).toEqual(['Trip 6', 'Trip 5', null])
+      expect(rows[1]!.textContent).toContain('Trip 5Oct 29 to Nov 4Back · 4 days at the site')
+      expect(rows[2]!.textContent).toContain('Feb 13 to 19Back · 2 days at the site')
+      cleanup()
+    }
+  })
+
+  it('heads an open trip with its number, and says the number on its bar', () => {
+    draw({ records: NUMBERED })
+    const bars = screen.getAllByTestId('trips-strip-bar')
+    expect(bars.map((b) => [b.getAttribute('title'), b.getAttribute('aria-label')])).toEqual([
+      ['Feb 13 to 19: open this trip', 'The trip of Feb 13 to 19. Open it.'],
+      ['Trip 5 · Oct 29 to Nov 4: open this trip', 'Trip 5, Oct 29 to Nov 4. Open it.'],
+      ['Trip 6 · Dec 1 to 5: open this trip', 'Trip 6, Dec 1 to 5, planned. Open it.'],
+    ])
+    fireEvent.click(bars[1]!)
+    expect(screen.getByTestId('trip-open-heading').textContent).toBe('Trip 5 · Oct 29 to Nov 4 · Lift stations before the pour')
+  })
+
+  it('gives nobody a place to type the number', () => {
+    draw({ records: NUMBERED })
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[1]!)
+    expect(screen.getByTestId('trips-look').querySelectorAll('input, textarea, select')).toHaveLength(0)
+  })
+
+  it('opens the trip a signal names, with every trip listed and the strip on the trip’s year, and says it did', () => {
+    const old = trip('t0', '2024-05-06', [['Dana', 'rsr']], { purpose: 'A look at the site', askedBy: 'us', tripNumber: 1 })
+    const presses = draw({ records: [...NUMBERED, old], openSignal: { id: 't0', n: 1 } })
+    expect(screen.getByTestId('trip-open-heading').textContent).toBe('Trip 1 · May 6 to 8, 2024 · A look at the site')
+    expect(screen.getByTestId('trips-strip-year').textContent).toBe('2024')
+    expect(presses.onOpened).toHaveBeenCalledTimes(1)
+    // The reader closes it; the same signal does not open it again.
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[3]!)
+    expect(screen.queryByTestId('trip-open')).toBeNull()
+  })
+
+  it('opens nothing for a signal that names no trip here', () => {
+    const presses = draw({ records: NUMBERED, openSignal: { id: 't-gone', n: 1 } })
+    expect(screen.queryByTestId('trip-open')).toBeNull()
+    expect(presses.onOpened).not.toHaveBeenCalled()
+  })
+
+  it('offers Copy link on an open trip beside Change, and to a reader who cannot write too', () => {
+    const presses = draw({ records: NUMBERED })
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[1]!)
+    expect(screen.getByTestId('trip-open').textContent).toContain('ChangeCopy linkDelete this trip')
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+    expect(presses.onCopyLink).toHaveBeenCalledWith(NUMBERED[1])
+    cleanup()
+    draw({ records: NUMBERED, canWrite: false })
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[1]!)
+    expect(screen.getByTestId('trip-copy-link')).toBeTruthy()
+    expect(screen.queryByText('Change')).toBeNull()
+    expect(screen.queryByTestId('trip-delete')).toBeNull()
+    cleanup()
+    draw({ records: NUMBERED, copy: false })
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[1]!)
+    expect(screen.queryByTestId('trip-copy-link')).toBeNull()
   })
 
   it('offers Print the trip log beside + Trip, to a reader who cannot write too', () => {

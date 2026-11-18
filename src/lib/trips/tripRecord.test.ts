@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { newTripRecord, NO_TRIP_PEOPLE, tripFromRow, tripOfRecord, tripPeopleIndex, tripPersonKey, tripProblem, tripSavePayload, type TripRecord, type TripRow } from './tripRecord'
+import { newTripRecord, NO_TRIP_PEOPLE, tripFromRow, tripNumberOf, tripOfRecord, tripPeopleIndex, tripPersonKey, tripProblem, tripSavePayload, TRIP_SELECT, type TripRecord, type TripRow } from './tripRecord'
 
 // Every name here is made up.
 const row: TripRow = {
-  id: 't1', development_id: 'd1', job_id: null, purpose: 'Lift stations before the pour', asked_by: 'them', asked_who: 'Ray, the site super', asked_how: 'by phone, Oct 20',
+  id: 't1', trip_number: 5, development_id: 'd1', job_id: null, purpose: 'Lift stations before the pour', asked_by: 'them', asked_who: 'Ray, the site super', asked_how: 'by phone, Oct 20',
   outcome: '', billing: 'inside', via: 'app', created_at: '2026-10-20T15:00:00Z',
   trip_people: [
     { person_id: null, user_id: null, person_name: 'Walt (sub)', days: { '2026-10-31': 'site', '2026-11-01': 'site' } },
@@ -24,6 +24,17 @@ describe('a kept trip, read back', () => {
     expect(t.people[0]?.days).toEqual({ '2026-10-30': 'road', '2026-10-31': 'site' })
   })
 
+  it('reads the number the database handed out, and asks for it in the read', () => {
+    expect(t.tripNumber).toBe(5)
+    expect(TRIP_SELECT.split(', ')).toContain('trip_number')
+  })
+
+  it('reads a trip made before numbers, or a number that is not one, as no number', () => {
+    expect(tripFromRow({ ...row, trip_number: null }).tripNumber).toBeNull()
+    expect([0, -2, 1.5, '5', null, undefined, Number.NaN].map((v) => tripNumberOf(v))).toEqual([null, null, null, null, null, null, null])
+    expect(tripNumberOf(12)).toBe(12)
+  })
+
   it('reads words it does not know as nobody having said', () => {
     const odd = tripFromRow({ ...row, asked_by: 'someone', billing: 'free', trip_people: null, trip_jobs: null, purpose: null })
     expect(odd).toMatchObject({ askedBy: null, billing: null, people: [], jobIds: [], purpose: '' })
@@ -39,6 +50,16 @@ describe('what the save takes', () => {
       people: [{ person_id: 'p1', user_id: 'u1', name: 'Dana', days: { '2026-12-01': 'road' } }],
       job_ids: ['j1'],
     })
+  })
+
+  it('sends no number for a new trip: the database hands it out', () => {
+    expect(newTripRecord({ id: 't9', developmentId: 'd1' }).tripNumber).toBeNull()
+    expect('trip_number' in tripSavePayload(base)).toBe(false)
+  })
+
+  it('sends the number a kept trip has, so a deleted trip saved again under its own id gets it back', () => {
+    expect(tripSavePayload({ ...base, tripNumber: 5 })).toMatchObject({ id: 't9', trip_number: 5 })
+    expect('trip_number' in tripSavePayload({ ...base, tripNumber: 0 })).toBe(false)
   })
 
   it('keeps who and how only when they asked', () => {

@@ -32,7 +32,8 @@ export type SiteTripsIo = {
   readDismissals: (developmentId: string) => Promise<TripDismissalRow[]>
   /** The names of logins, by user id. */
   readNames: (userIds: ReadonlyArray<string>) => Promise<Map<string, string>>
-  save: (record: TripRecord) => Promise<void>
+  /** Saves the trip whole; hands back the number the database gave it, when the reply names one. */
+  save: (record: TripRecord) => Promise<number | null | void>
   remove: (id: string) => Promise<void>
   dismiss: (rows: ReadonlyArray<TripDismissalInsert>) => Promise<TripDismissalRow[]>
   undismiss: (ids: ReadonlyArray<string>) => Promise<void>
@@ -200,8 +201,10 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
   const askRoster = useCallback(() => setRosterWanted(true), [])
   const save = useCallback(
     async (record: TripRecord) => {
-      await io.save(record)
-      setRead((prev) => (prev ? { key: prev.key, records: [...prev.records.filter((r) => r.id !== record.id), record] } : prev))
+      const number = await io.save(record)
+      // The database hands out the number: a new trip wears it at once, and the read that follows agrees.
+      const kept = typeof number === 'number' ? { ...record, tripNumber: number } : record
+      setRead((prev) => (prev ? { key: prev.key, records: [...prev.records.filter((r) => r.id !== record.id), kept] } : prev))
       reload()
     },
     [io, reload],

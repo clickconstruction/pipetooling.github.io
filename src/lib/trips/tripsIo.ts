@@ -11,7 +11,7 @@ import { supabase } from '../supabase'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { PUNCH_COLUMNS, type PunchRow } from './tripHourRows'
 import { TRIP_DISMISSAL_SELECT, type TripDismissalInsert, type TripDismissalRow } from './tripOffers'
-import { tripFromRow, tripSavePayload, TRIP_SELECT, type TripRecord, type TripRosterPerson, type TripRow } from './tripRecord'
+import { tripFromRow, tripNumberOf, tripSavePayload, TRIP_SELECT, type TripRecord, type TripRosterPerson, type TripRow } from './tripRecord'
 
 // The tables are younger than the generated types; the next types PR removes this cast.
 const db = supabase as unknown as SupabaseClient
@@ -41,10 +41,15 @@ export async function readSiteTrips(developmentId: string, jobIds: ReadonlyArray
   return out
 }
 
-/** Save a trip whole through `trip_save`. The record's own id is sent, so the same call makes a deleted trip again. */
-export async function saveTrip(record: TripRecord): Promise<void> {
-  const { error } = await db.rpc('trip_save', { p: tripSavePayload(record), p_dry_run: false })
+/**
+ * Save a trip whole through `trip_save`. The record's own id is sent, so the same call makes a deleted trip again,
+ * and the number it had goes with it, so the database can give it back. The reply names the trip's number, which
+ * the database hands out: it comes back here, null from a reply that names none.
+ */
+export async function saveTrip(record: TripRecord): Promise<number | null> {
+  const { data, error } = await db.rpc('trip_save', { p: tripSavePayload(record), p_dry_run: false })
   if (error) throw error
+  return tripNumberOf((data as { trip_number?: unknown } | null)?.trip_number)
 }
 
 /** Delete a trip with its people and its jobs. No clock row, bill or cost hangs on a trip. */

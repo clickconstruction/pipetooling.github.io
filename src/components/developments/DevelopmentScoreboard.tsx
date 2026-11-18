@@ -88,6 +88,8 @@ export type DevelopmentScoreboardProps = {
     /** The trips as rows, when the cut is by trip (punch list #379, PR 8); the chip shows only on a site with a trip (`tripOffered`). */
     trips?: ScoreboardTripCut | null
     tripOffered?: boolean
+    /** A trip row's name opens that trip in the Trips look. */
+    onOpenTrip?: (tripId: string) => void
   }
 }
 
@@ -695,7 +697,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
           </div>
           {head.small ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6 }}>{head.small}</div> : null}
         </div>
-        {trips ? <ScoreboardTripCards cut={trips} columns={columns} reads={model.reads} /> : (personCards ?? partSections ?? model.rows.map(card))}
+        {trips ? <ScoreboardTripCards cut={trips} columns={columns} reads={model.reads} onOpenTrip={cuts?.onOpenTrip} /> : (personCards ?? partSections ?? model.rows.map(card))}
         {trips ? <ScoreboardTripNote seesCosts={seesCosts} phone /> : null}
         {personCards ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', padding: '0 2px' }}>{SCOREBOARD_PERSON_NOTE}</div> : null}
         {!personCards && !trips && model.empties.length ? <div style={{ textAlign: 'center', fontSize: '0.78rem', padding: 4 }}>{emptiesLine}</div> : null}
@@ -836,7 +838,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
               </td>
             </tr>
           ) : null}
-          {trips ? <ScoreboardTripRows cut={trips} columns={columns} reads={model.reads} fmt={fmt} narrow={narrow} /> : people ? people.map(personRow) : partGroups ? partGroups.map(partRow) : model.rows.map(row)}
+          {trips ? <ScoreboardTripRows cut={trips} columns={columns} reads={model.reads} fmt={fmt} narrow={narrow} onOpenTrip={cuts?.onOpenTrip} /> : people ? people.map(personRow) : partGroups ? partGroups.map(partRow) : model.rows.map(row)}
           {!people && !trips && model.empties.length ? (
             <tr data-testid="scoreboard-fold-row">
               <td style={{ ...cellPad, textAlign: 'left', paddingLeft: 10 }}>{emptiesLine}</td>

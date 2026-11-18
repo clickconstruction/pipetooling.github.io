@@ -59,6 +59,8 @@ export type ChangeLine = {
    * ready to keep as a set of plans and how many already are. The feed draws the press or the kept mark from it.
    */
   mail?: { messageId: string; bidId: string; bidLabel: string; ready: number; kept: number }
+  /** A `trip` line's trip (punch list #379): its id, and the words of the press that opens it in the Trips look, *Open Trip 5*. */
+  trip?: { id: string; door: string }
 }
 
 export type ChangeInputs = {

@@ -103,6 +103,17 @@ describe('the cut by trip', () => {
     ])
   })
 
+  it('names a trip’s row by its number, its days leading the small words, and hands over the trip for the door on its name', () => {
+    const numbered = records.map((r) => (r.id === 't5' ? { ...r, tripNumber: 5 } : r))
+    const cut = cutOf(whole(), { records: numbered })
+    expect(cut.rows.map((r) => [r.key, r.name, r.kit, r.tripId, r.door])).toEqual([
+      ['t5', 'Trip 5', 'Oct 29 to Nov 4 · Lift stations before the pour', 't5', 'Open Trip 5'],
+      // Made before numbers: told by its days, as before.
+      ['t1', 'Feb 13 to 19', 'Rough-in, first try', 't1', 'Open this trip'],
+      ['home', SCOREBOARD_TRIP_HOME_WORDS, 'everything outside a trip', null, null],
+    ])
+  })
+
   it('a trip’s row holds its people’s hours and wages on their trip days, the days with that work, the card and bank charges in its days, and the two together as its cost', () => {
     const lifts = cutOf(whole()).rows[0]!
     // Luis Oct 29 and Oct 31, Priya Oct 31 and Nov 4. Luis's day off on Nov 2 and Dana, who never went, stay out.

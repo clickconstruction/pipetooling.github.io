@@ -4,7 +4,9 @@
  * the site's first trip from the page's own door, saves through the hook, and deletes with a question and an
  * undo. PR 5: it offers a run of punches no trip covers as Looks like a trip, opens the sheet filled from them,
  * remembers Not a trip with an undo, and counts What shows it. PR 8: What it cost for a dev or a controller from
- * the reads the page already makes, and Print the trip log, which files the page that printed. Every name and
+ * the reads the page already makes, and Print the trip log, which files the page that printed. The number
+ * and the link: a trip is deleted and put back by its number, a link opens one trip's row once the trips are
+ * read, a link to a trip that is gone says so once, and Copy link copies the trip's address. Every name and
  * every dollar here is made up.
  */
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -15,7 +17,8 @@ import type { SiteTripsState } from '../../hooks/useSiteTrips'
 import { jobCostsFromRows, type SiteCostRows, type SiteCostsRead } from '../../lib/developments/siteCosts'
 import type { SiteLaborRead } from '../../lib/developments/siteLabor'
 import { newTripRecord, type TripRecord } from '../../lib/trips/tripRecord'
-import { DevelopmentTripsCard, tripNameWords, type TripLogPrint } from './DevelopmentTripsCard'
+import { DevelopmentTripsCard, tripBackWords, tripNameWords, type TripLogPrint } from './DevelopmentTripsCard'
+import type { TripOpenSignal } from './DevelopmentTripsLook'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -61,21 +64,22 @@ function state(over: Partial<SiteTripsState> = {}): SiteTripsState {
   }
 }
 const NO_DAYS: string[] = []
-function draw(trips: SiteTripsState, addSignal = 0, laborRead: SiteLaborRead | undefined = LABOR, more: { historyDays?: string[]; onOffers?: (count: number) => void; seesCosts?: boolean; costsRead?: SiteCostsRead; print?: TripLogPrint } = {}) {
+type Asked = { askedTripId?: string | null; openTrip?: TripOpenSignal | null }
+function draw(trips: SiteTripsState, addSignal = 0, laborRead: SiteLaborRead | undefined = LABOR, more: { historyDays?: string[]; onOffers?: (count: number) => void; seesCosts?: boolean; costsRead?: SiteCostsRead; print?: TripLogPrint; open?: boolean } & Asked = {}) {
   const lines: string[] = []
-  const ui = (signal: number) => (
+  const ui = (signal: number, now: SiteTripsState = trips, asked: Asked = more, open = more.open ?? true) => (
     <DevelopmentTripsCard
       anchorId="development-trips"
       developmentId="d1"
       siteName="Heron Point"
-      trips={trips}
+      trips={now}
       laborRead={laborRead}
       jobs={[{ id: 'j1', label: 'J2101', name: 'Rough-in' }]}
       todayYmd={TODAY}
       phone={false}
       foldFor={(line) => {
         lines.push(line)
-        return { open: true, onToggle: () => {}, line }
+        return { open, onToggle: () => {}, line }
       }}
       addSignal={signal}
       historyDays={more.historyDays ?? NO_DAYS}
@@ -83,10 +87,12 @@ function draw(trips: SiteTripsState, addSignal = 0, laborRead: SiteLaborRead | u
       seesCosts={more.seesCosts}
       costsRead={more.costsRead}
       print={more.print}
+      askedTripId={asked.askedTripId}
+      openTrip={asked.openTrip}
     />
   )
   const view = renderWithProviders(ui(addSignal))
-  return { bump: (signal: number) => view.rerender(ui(signal)), lines }
+  return { bump: (signal: number) => view.rerender(ui(signal)), again: (now: SiteTripsState, asked: Asked = more, open = true) => view.rerender(ui(addSignal, now, asked, open)), lines }
 }
 
 // Omar punched in at the site on four days in September, and no trip covers them.
@@ -162,9 +168,95 @@ describe('DevelopmentTripsCard', () => {
     await waitFor(() => expect(trips.save).toHaveBeenCalledWith(lifts))
   })
 
-  it('names a trip by its days', () => {
+  it('names a trip by its days when it was made before numbers', () => {
     expect(tripNameWords(lifts, TODAY)).toBe('the trip of Oct 30 to Nov 1')
     expect(tripNameWords(newTripRecord({ id: 'e', developmentId: 'd1' }), TODAY)).toBe('this trip')
+    expect(tripBackWords(lifts, TODAY)).toBe('The trip is back.')
+  })
+
+  it('names a trip by its number, in the delete’s question, its toast and the Undo’s', async () => {
+    const trip5: TripRecord = { ...lifts, tripNumber: 5 }
+    expect(tripNameWords(trip5, TODAY)).toBe('Trip 5, Oct 30 to Nov 1')
+    expect(tripBackWords(trip5, TODAY)).toBe('Trip 5 is back.')
+    const trips = state({ records: [trip5] })
+    draw(trips)
+    expect(screen.getByTestId('trip-row-number').textContent).toBe('Trip 5')
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    expect(screen.getByTestId('trip-open-heading').textContent).toBe('Trip 5 · Oct 30 to Nov 1 · Lift stations before the pour')
+    fireEvent.click(screen.getByTestId('trip-delete'))
+    expect(screen.getByRole('alertdialog').textContent).toContain('Delete Trip 5, Oct 30 to Nov 1?')
+    fireEvent.click(screen.getByText('Delete this trip', { selector: '[role="alertdialog"] button' }))
+    expect(await screen.findByText('Deleted Trip 5, Oct 30 to Nov 1. No clock row changed.')).toBeTruthy()
+    fireEvent.click(await screen.findByText('Undo'))
+    // The same record goes back, its number with it, so the database can give the number back.
+    await waitFor(() => expect(trips.save).toHaveBeenCalledWith(trip5))
+    expect(await screen.findByText('Trip 5 is back.')).toBeTruthy()
+  })
+
+  it('opens the trip a link named, once the trips are read, and only once a link', () => {
+    const { again } = draw(state({ records: null }), 0, LABOR, { askedTripId: 't5' })
+    expect(screen.queryByTestId('trip-open')).toBeNull()
+    again(state())
+    expect(screen.getByTestId('trip-open')).toBeTruthy()
+    expect(screen.getByTestId('trips-strip-year').textContent).toBe('2026')
+    // The reader closes the row; a later read of the trips does not open it again.
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    expect(screen.queryByTestId('trip-open')).toBeNull()
+    again(state())
+    expect(screen.queryByTestId('trip-open')).toBeNull()
+    expect(screen.queryByText('That trip is no longer here.')).toBeNull()
+  })
+
+  it('keeps the trip a link named until a folded look is opened', () => {
+    const { again } = draw(state(), 0, LABOR, { askedTripId: 't5', open: false })
+    expect(screen.queryByTestId('trips-look')).toBeNull()
+    again(state(), { askedTripId: 't5' }, true)
+    expect(screen.getByTestId('trip-open')).toBeTruthy()
+  })
+
+  it('says once, quietly, that a linked trip is no longer here, and opens no row', async () => {
+    const { again } = draw(state(), 0, LABOR, { askedTripId: 't-gone' })
+    expect(await screen.findByText('That trip is no longer here.')).toBeTruthy()
+    expect(screen.queryByTestId('trip-open')).toBeNull()
+    expect(screen.getByTestId('trips-look')).toBeTruthy()
+    again(state())
+    expect(screen.getAllByText('That trip is no longer here.')).toHaveLength(1)
+  })
+
+  it('says a linked trip is no longer here on a site with no Trips look too', async () => {
+    draw(state({ records: [], shows: false }), 0, LABOR, { askedTripId: 't-gone' })
+    expect(await screen.findByText('That trip is no longer here.')).toBeTruthy()
+    expect(document.getElementById('development-trips')).toBeNull()
+  })
+
+  it('opens a trip from a press on the page, and again on the next press', () => {
+    const { again } = draw(state())
+    expect(screen.queryByTestId('trip-open')).toBeNull()
+    again(state(), { openTrip: { id: 't5', n: 1 } })
+    expect(screen.getByTestId('trip-open')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    again(state(), { openTrip: { id: 't5', n: 1 } })
+    expect(screen.queryByTestId('trip-open')).toBeNull()
+    again(state(), { openTrip: { id: 't5', n: 2 } })
+    expect(screen.getByTestId('trip-open')).toBeTruthy()
+  })
+
+  it('copies the link that opens one trip, and says so', async () => {
+    const writeText = vi.fn(async () => undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    draw(state())
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://clicktooling.com/developments/d1?trip=t5'))
+    expect(await screen.findByText('Link copied.')).toBeTruthy()
+  })
+
+  it('shows the link to copy by hand when the clipboard is closed', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn(async () => Promise.reject(new Error('denied'))) }, configurable: true })
+    draw(state())
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+    expect(await screen.findByText('Copy this link: https://clicktooling.com/developments/d1?trip=t5')).toBeTruthy()
   })
 
   it('offers a run of punches at the site that no trip covers, says so in its one line, and tells the page how many', () => {

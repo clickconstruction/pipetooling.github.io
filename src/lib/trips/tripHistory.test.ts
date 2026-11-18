@@ -27,6 +27,21 @@ describe('a trip’s lines in History', () => {
     expect(lines[0]?.about).toEqual({ kind: 'site', id: null, label: 'Heron Point' })
   })
 
+  it('leads each line with the trip’s number, and names the trip so the feed can open it', () => {
+    const lines = tripHistoryLines({ trips: [pair({ ...lifts, tripNumber: 5 })], siteName: 'Heron Point', todayYmd: '2026-11-17' })
+    expect(lines.map((l) => [l.verb, l.trip, l.detail])).toEqual([
+      ['Trip 5 out', { id: 't1', door: 'Open Trip 5' }, 'Luis and Priya left for Heron Point · Lift stations before the pour'],
+      ['Trip 5 back', { id: 't1', door: 'Open Trip 5' }, 'Luis and Priya are back · 1 day at the site · Did the work.'],
+    ])
+  })
+
+  it('names the trip on a line made before numbers too, with a door that says no number', () => {
+    expect(tripHistoryLines({ trips: [pair(lifts)], siteName: 'Heron Point', todayYmd: '2026-11-17' }).map((l) => l.trip)).toEqual([
+      { id: 't1', door: 'Open this trip' },
+      { id: 't1', door: 'Open this trip' },
+    ])
+  })
+
   it('writes only the first line while the trip is out, its last day included', () => {
     expect(tripHistoryLines({ trips: [pair(lifts)], siteName: 'Heron Point', todayYmd: '2026-10-28' }).map((l) => l.verb)).toEqual(['Trip out'])
   })

@@ -472,7 +472,7 @@ describe('DevelopmentScoreboard · the cut by trip (punch list #379, PR 8)', () 
   const roster = [{ id: 'p-luis', name: 'Luis', userId: 'u-luis' }, { id: 'p-dana', name: 'Dana', userId: null }]
   const usd = (n: number) => '$' + n.toLocaleString('en-US')
 
-  function mountTrips(over: { cut?: ScoreboardCut; phone?: boolean; seesCosts?: boolean; tripOffered?: boolean; records?: TripRecord[] | null } = {}) {
+  function mountTrips(over: { cut?: ScoreboardCut; phone?: boolean; seesCosts?: boolean; tripOffered?: boolean; records?: TripRecord[] | null; onOpenTrip?: (tripId: string) => void } = {}) {
     const onCut = vi.fn()
     const seesCosts = over.seesCosts ?? true
     const model = buildScoreboard({ jobs, invoices: [], jobLabel: label, labor: clock, costs: seesCosts ? tripCosts : undefined, overhead: seesCosts ? overhead : undefined })
@@ -486,6 +486,7 @@ describe('DevelopmentScoreboard · the cut by trip (punch list #379, PR 8)', () 
       parts: null,
       people: null,
       tripOffered: over.tripOffered ?? true,
+      onOpenTrip: over.onOpenTrip,
       trips: cut === 'trip' ? scoreboardTripCut({ model, labor: clock, records: over.records === undefined ? [lifts] : over.records, roster, costs: seesCosts ? tripCosts : undefined, seesCosts, todayYmd: '2026-11-17', toYmd: (raw) => raw }) : null,
     }
     const r = renderWithProviders(<DevelopmentScoreboard model={model} columns={scoreboardColumnsFor(seesCosts)} phone={over.phone ?? false} onSort={vi.fn()} openJob={vi.fn()} head={head} print={null} cuts={cuts} />)
@@ -552,6 +553,28 @@ describe('DevelopmentScoreboard · the cut by trip (punch list #379, PR 8)', () 
     expect(screen.getByTestId('scoreboard-trip-t5').textContent).toBe('Oct 30 to Nov 1Lift stations before the pourHours20 hLabor$1,000Cost$1,120')
     expect(cellOf('home', 'hours')).toBe('13 h')
     expect(screen.getByTestId('scoreboard-trip-note')).toBeTruthy()
+  })
+
+  it('names a trip’s row by its number, and the name opens that trip, on a desk and on a phone', () => {
+    for (const phone of [false, true]) {
+      const onOpenTrip = vi.fn()
+      mountTrips({ records: [{ ...lifts, tripNumber: 5 }], onOpenTrip, phone })
+      const door = screen.getByTestId('scoreboard-trip-door-t5')
+      expect(door.textContent).toBe('Trip 5')
+      expect(door.getAttribute('title')).toBe('Open Trip 5 in the Trips look')
+      expect(screen.getByTestId('scoreboard-trip-t5').textContent).toContain('Trip 5Oct 30 to Nov 1 · Lift stations before the pour')
+      fireEvent.click(door)
+      expect(onOpenTrip).toHaveBeenCalledWith('t5')
+      // The last row is no trip: its name is plain words.
+      expect(screen.queryByTestId('scoreboard-trip-door-home')).toBeNull()
+      cleanup()
+    }
+  })
+
+  it('leaves a trip’s name as plain words when the page hands no door', () => {
+    mountTrips({ records: [{ ...lifts, tripNumber: 5 }] })
+    expect(screen.queryByTestId('scoreboard-trip-door-t5')).toBeNull()
+    expect(screen.getByTestId('scoreboard-trip-t5').textContent).toContain('Trip 5')
   })
 
   it('says why there are no rows while the trips are still reading', () => {

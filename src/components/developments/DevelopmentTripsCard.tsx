@@ -20,14 +20,21 @@
  * makes no read of its own, and a reader who may not see costs is handed none. **Print the trip log** builds
  * one paper from the look's own model (`lib/trips/tripLog.ts`) and opens it through `printAndFile`, so the
  * page that printed is filed under the site, as the Plans by date print is (`docs/SENT_COPIES.md`).
+ *
+ * The number and the link: a trip is named with its number wherever the card names one (the delete's question,
+ * its toast and the Undo's). `askedTripId` is the trip a link named (`?trip=`): once the trips are read the card
+ * opens its row, one time a link, or says **That trip is no longer here.** `openTrip` is the same ask from a
+ * press on the page (a History line, a Plans by date card, a Scoreboard row). **Copy link** copies the link.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { SiteTripsState } from '../../hooks/useSiteTrips'
 import type { SiteCostsRead } from '../../lib/developments/siteCosts'
 import type { SiteLaborRead } from '../../lib/developments/siteLabor'
+import { appUrl } from '../../lib/appOrigin'
 import { ymdFromDateOnlyOrIso } from '../../lib/jobChargesTimeline'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
+import { TRIP_GONE_WORDS, tripHref } from '../../lib/trips/jobTrips'
 import { siteCardCharges, tripCostsOfTrips, type TripCardsState, type TripLaborState } from '../../lib/trips/tripCost'
 import { tripEvidence, type TripEvidence } from '../../lib/trips/tripEvidence'
 import type { TripSuggestion } from '../../lib/trips/tripFinder'
@@ -35,13 +42,13 @@ import { placesByPersonDay, tripHourRowsFromLabor } from '../../lib/trips/tripHo
 import { buildTripLog, TRIP_LOG_HOURS_NOTE, tripLogPrintHtml } from '../../lib/trips/tripLog'
 import { buildTripOffers, dismissalRowsForOffer, moreTripOffersWords, notATripWords, tripOfferWords, tripOffersShown, tripRecordFromOffer } from '../../lib/trips/tripOffers'
 import { newTripRecord, tripPeopleIndex, type TripRecord } from '../../lib/trips/tripRecord'
-import { buildTripsLook, tripSpanWords, tripsLookWords } from '../../lib/trips/tripsLook'
+import { buildTripsLook, tripNameOfRecord, tripsLookWords } from '../../lib/trips/tripsLook'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import ConfirmDialog from '../ConfirmDialog'
 import { TripSheet, type TripSheetJob } from '../trips/TripSheet'
 import { Card, type CardFold } from './developmentPageBits'
-import { DevelopmentTripsLook, type TripsCosts, type TripsHoursState } from './DevelopmentTripsLook'
+import { DevelopmentTripsLook, type TripOpenSignal, type TripsCosts, type TripsHoursState } from './DevelopmentTripsLook'
 
 /** How long a deleted trip can be put back, and a Not a trip taken back. */
 export const TRIP_UNDO_MS = 60_000
@@ -54,14 +61,15 @@ const cardDay = (raw: string | null): string | null => ymdFromDateOnlyOrIso(raw,
 /** What the trip log needs that the look does not: who the site is for, and who printed. */
 export type TripLogPrint = { customerName: string | null; customerId: string | null; printedBy: string | null }
 
-const firstDay = (r: TripRecord): string | null => r.people.flatMap((p) => Object.keys(p.days)).sort()[0] ?? null
-const lastDay = (r: TripRecord): string | null => r.people.flatMap((p) => Object.keys(p.days)).sort().pop() ?? null
-
-/** A trip by name, for the delete's question and its toast: *the trip of Oct 23 to Nov 4*. */
+/** A trip by name, for the delete's question and its toast: *Trip 5, Oct 23 to Nov 4*, or *the trip of Oct 23 to Nov 4* for a trip made before numbers. */
 export function tripNameWords(r: TripRecord, todayYmd: string): string {
-  const first = firstDay(r)
-  const last = lastDay(r)
-  return first && last ? `the trip of ${tripSpanWords(first, last, todayYmd)}` : 'this trip'
+  return tripNameOfRecord(r, todayYmd).theTrip
+}
+
+/** What the Undo of a delete says once the trip is saved again: *Trip 5 is back.* */
+export function tripBackWords(r: TripRecord, todayYmd: string): string {
+  const number = tripNameOfRecord(r, todayYmd).number
+  return number ? `${number} is back.` : 'The trip is back.'
 }
 
 export function DevelopmentTripsCard({
@@ -80,6 +88,8 @@ export function DevelopmentTripsCard({
   seesCosts = false,
   costsRead,
   print,
+  askedTripId = null,
+  openTrip = null,
 }: {
   anchorId: string
   developmentId: string
@@ -104,11 +114,48 @@ export function DevelopmentTripsCard({
   costsRead?: SiteCostsRead
   /** The trip log's head and where its copy is filed. Absent, the look has no print. */
   print?: TripLogPrint
+  /** The trip a link named (`?trip=`): its row opens once the trips are read, one time a link. */
+  askedTripId?: string | null
+  /** The same ask from a press on the page; `n` changes with each press. */
+  openTrip?: TripOpenSignal | null
 }) {
   const { showToast, showActionToast } = useToastContext()
   const [sheet, setSheet] = useState<{ record: TripRecord; isNew: boolean } | null>(null)
   const [asking, setAsking] = useState<TripRecord | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // One trip asked for, by a link or a press: handed to the look, which opens its row. It waits here while the
+  // look is folded, and is dropped once the look has opened it.
+  const [signal, setSignal] = useState<TripOpenSignal | null>(null)
+  const records = trips.records
+  const landedFor = useRef<string | null>(null)
+  useEffect(() => {
+    if (!askedTripId || !records) return
+    const key = `${developmentId}|${askedTripId}`
+    if (landedFor.current === key) return
+    landedFor.current = key
+    // A trip that was deleted, or another site's: said once, quietly, with nothing to retry.
+    if (records.some((r) => r.id === askedTripId)) setSignal({ id: askedTripId, n: Date.now() })
+    else showToast(TRIP_GONE_WORDS, 'info')
+  }, [askedTripId, records, developmentId, showToast])
+  const seenOpen = useRef<number | null>(openTrip?.n ?? null)
+  useEffect(() => {
+    if (!openTrip || openTrip.n === seenOpen.current) return
+    seenOpen.current = openTrip.n
+    if ((records ?? []).some((r) => r.id === openTrip.id)) setSignal(openTrip)
+    else showToast(TRIP_GONE_WORDS, 'info')
+  }, [openTrip, records, showToast])
+  const signalDone = useCallback(() => setSignal(null), [])
+  // Copy link: the app's address with this page and this trip, as the app copies a link elsewhere.
+  const copyLink = async (record: TripRecord) => {
+    const url = appUrl(tripHref(developmentId, record.id))
+    try {
+      await navigator.clipboard.writeText(url)
+      showToast('Link copied.', 'success')
+    } catch {
+      showToast(`Copy this link: ${url}`, 'info')
+    }
+  }
 
   const index = useMemo(() => tripPeopleIndex(trips.roster ?? []), [trips.roster])
   const places = useMemo(() => placesByPersonDay(trips.punches ?? [], trips.sitePoint, index), [trips.punches, trips.sitePoint, index])
@@ -210,7 +257,7 @@ export function DevelopmentTripsCard({
           label: 'Undo',
           onClick: () =>
             void trips.save(record).then(
-              () => showToast('The trip is back.', 'success'),
+              () => showToast(tripBackWords(record, todayYmd), 'success'),
               (e: unknown) => showToast(formatErrorMessage(e, 'The trip could not be put back.'), 'error', 6000),
             ),
         },
@@ -280,6 +327,9 @@ export function DevelopmentTripsCard({
             costs={costs}
             onPrint={print ? printLog : undefined}
             printNote={printNote}
+            openSignal={signal}
+            onOpened={signalDone}
+            onCopyLink={(record) => void copyLink(record)}
           />
         </Card>
       ) : null}

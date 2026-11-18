@@ -4,6 +4,7 @@
  * keeps its head, its tiles and its foot and mounts these in place of its job rows; the rows themselves are
  * `lib/trips/tripScoreboardCut.ts`. A measure that cannot be cut by trip is an empty cell, as the cut by
  * person leaves the cells a person does not fill. The rows do not fold: a trip has no rows under it.
+ * A trip's row leads with its number, **Trip 5**, and the name is a door: it opens that trip in the Trips look.
  */
 import type { CSSProperties } from 'react'
 import { scoreboardCellStands, scoreboardCellWords, type ScoreboardColumn, type ScoreboardColumnKey, type ScoreboardReads } from '../../lib/developments/scoreboard'
@@ -29,10 +30,21 @@ function cellWords(row: ScoreboardTripRow, key: ScoreboardColumnKey, reads: Scor
   return { words, title: [words !== exact ? exact : null, about].filter(Boolean).join(' · ') || undefined, faint: false }
 }
 
-function TripName({ row }: { row: ScoreboardTripRow }) {
+/** A trip's name as a door to the trip; the last row's name, and a name with no door to open, is plain words. */
+function TripDoor({ row, onOpenTrip }: { row: ScoreboardTripRow; onOpenTrip?: (tripId: string) => void }) {
+  const tripId = row.tripId
+  if (!tripId || !onOpenTrip) return <span style={{ fontWeight: 700, color: 'var(--text-strong)', whiteSpace: 'nowrap', fontStyle: row.home ? 'italic' : undefined }}>{row.name}</span>
+  return (
+    <button type="button" onClick={() => onOpenTrip(tripId)} title={`${row.door ?? 'Open this trip'} in the Trips look`} data-testid={`scoreboard-trip-door-${row.key}`} style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap', textAlign: 'left' }}>
+      {row.name}
+    </button>
+  )
+}
+
+function TripName({ row, onOpenTrip }: { row: ScoreboardTripRow; onOpenTrip?: (tripId: string) => void }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 7, maxWidth: '100%', minWidth: 0 }}>
-      <span style={{ fontWeight: 700, color: 'var(--text-strong)', whiteSpace: 'nowrap', fontStyle: row.home ? 'italic' : undefined }}>{row.name}</span>
+      <TripDoor row={row} onOpenTrip={onOpenTrip} />
       <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }} title={row.kit}>
         {row.kit}
       </span>
@@ -41,7 +53,7 @@ function TripName({ row }: { row: ScoreboardTripRow }) {
 }
 
 /** The desk's rows, inside the Scoreboard's own table body. */
-export function ScoreboardTripRows({ cut, columns, reads, fmt, narrow }: { cut: ScoreboardTripCut; columns: ReadonlyArray<ScoreboardColumn>; reads: ScoreboardReads; fmt: Fmt; narrow: boolean }) {
+export function ScoreboardTripRows({ cut, columns, reads, fmt, narrow, onOpenTrip }: { cut: ScoreboardTripCut; columns: ReadonlyArray<ScoreboardColumn>; reads: ScoreboardReads; fmt: Fmt; narrow: boolean; /** Opens a trip in the Trips look, from its name. */ onOpenTrip?: (tripId: string) => void }) {
   if (cut.pending)
     return (
       <tr data-testid="scoreboard-trip-pending">
@@ -55,7 +67,7 @@ export function ScoreboardTripRows({ cut, columns, reads, fmt, narrow }: { cut: 
       {cut.rows.map((row) => (
         <tr key={row.key} data-testid={`scoreboard-trip-${row.key}`} style={{ background: row.home ? 'var(--bg-subtle)' : undefined }}>
           <td style={{ ...cellStyle, textAlign: 'left', paddingLeft: 10, overflow: 'hidden', fontVariantNumeric: undefined }}>
-            <TripName row={row} />
+            <TripName row={row} onOpenTrip={onOpenTrip} />
           </td>
           {columns.map((c) => {
             const cell = cellWords(row, c.key, reads, fmt)
@@ -74,7 +86,7 @@ export function ScoreboardTripRows({ cut, columns, reads, fmt, narrow }: { cut: 
 }
 
 /** The phone's cards: a trip is a card with the three figures that say it. */
-export function ScoreboardTripCards({ cut, columns, reads }: { cut: ScoreboardTripCut; columns: ReadonlyArray<ScoreboardColumn>; reads: ScoreboardReads }) {
+export function ScoreboardTripCards({ cut, columns, reads, onOpenTrip }: { cut: ScoreboardTripCut; columns: ReadonlyArray<ScoreboardColumn>; reads: ScoreboardReads; onOpenTrip?: (tripId: string) => void }) {
   if (cut.pending)
     return (
       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', padding: '4px 2px' }} data-testid="scoreboard-trip-pending">
@@ -88,7 +100,9 @@ export function ScoreboardTripCards({ cut, columns, reads }: { cut: ScoreboardTr
     <>
       {cut.rows.map((row) => (
         <div key={row.key} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', background: row.home ? 'var(--bg-subtle)' : 'var(--surface)' }} data-testid={`scoreboard-trip-${row.key}`}>
-          <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontStyle: row.home ? 'italic' : undefined }}>{row.name}</div>
+          <div>
+            <TripDoor row={row} onOpenTrip={onOpenTrip} />
+          </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.kit}</div>
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))`, gap: 4, marginTop: 8 }}>
             {shown.map((c) => {

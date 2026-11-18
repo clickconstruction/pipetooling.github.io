@@ -68,6 +68,12 @@ describe('the trip log', () => {
     ])
   })
 
+  it('heads a block with the trip’s number first, its days with the year, and where it stands', () => {
+    const numbered = buildTripLog({ model: buildTripsLook({ records: [{ ...lifts, tripNumber: 5 }, { ...trim, tripNumber: 6 }, firstTry], index: NO_TRIP_PEOPLE, hours: null, todayYmd: TODAY }), siteName: 'Heron Point', customerName: null, printedAt: 'Nov 17, 2026, 3:10 PM', printedBy: null, jobLabel })
+    expect(numbered.blocks.map((b) => b.heading)).toEqual(['Feb 13 to 19, 2026 · Back', 'Trip 5 · Oct 29 to Nov 4, 2026 · Back', 'Trip 6 · Dec 1 to 5, 2026 · Planned'])
+    expect(tripLogPrintHtml(numbered)).toContain('<h2>Trip 5 · Oct 29 to Nov 4, 2026 · Back</h2>')
+  })
+
   it('says what a trip was for, its days, who asked and how, how it went, its jobs, its billing and its hours', () => {
     expect(log.blocks[0]!.lines).toEqual([
       { label: 'What for', words: 'Rough-in, first try' },

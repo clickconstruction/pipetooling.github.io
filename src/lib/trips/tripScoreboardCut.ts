@@ -32,10 +32,14 @@ export type ScoreboardTripRow = {
   key: string
   /** The last row: everything outside every trip. */
   home: boolean
-  /** A trip's days in words, *Oct 29 to Nov 4*; the last row's name. */
+  /** A trip by its short name, *Trip 5*, or its days for a trip made before numbers; the last row's name. */
   name: string
-  /** What the trip was for; the last row's small words. */
+  /** The trip's days and what it was for, *Oct 29 to Nov 4 · Lift stations*; the last row's small words. */
   kit: string
+  /** The trip the row is, for the door on its name; null on the last row. */
+  tripId: string | null
+  /** What the door on the name says on a hover: *Open Trip 5*. */
+  door: string | null
   m: ScoreboardTripMeasures
   /** The days with clocked work in the row, so the rows' days can be counted once across them. */
   dayKeys: ReadonlySet<string>
@@ -103,8 +107,11 @@ export function scoreboardTripCut(args: {
     rows.push({
       key: row.id,
       home: false,
-      name: row.when,
-      kit: row.why,
+      // The name column is tight: the number alone names the trip, and its days lead the small words.
+      name: row.name.short,
+      kit: row.name.number ? `${row.when} · ${row.why}` : row.why,
+      tripId: row.id,
+      door: row.name.door,
       m,
       dayKeys: f.workDays,
       daysTitle: `Days with clocked work inside the trip. The trip itself ran ${daysWords(row.dayCounts.days)}.`,
@@ -121,6 +128,8 @@ export function scoreboardTripCut(args: {
     home: true,
     name: SCOREBOARD_TRIP_HOME_WORDS,
     kit: 'everything outside a trip',
+    tripId: null,
+    door: null,
     m: home,
     dayKeys: split.home.workDays,
     daysTitle: 'Days with clocked work outside every trip',

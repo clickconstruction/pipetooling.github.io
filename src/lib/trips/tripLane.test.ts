@@ -44,6 +44,18 @@ describe('a site’s trips for the Plans look’s By date view', () => {
     expect(out[1]).toMatchObject({ planned: true, when: 'Dec 1 to 3', standing: 'Planned', who: 'Dana', why: '' })
   })
 
+  it('names a trip made before numbers by its days, with a door that says no number', () => {
+    expect(out[0]).toMatchObject({ title: 'Trip Oct 23 to 29', number: null, door: 'Open this trip' })
+  })
+
+  it('names a trip by its number first, for its card, its line in the list and its door', () => {
+    const numbered = plansByDateTrips([{ ...trim, tripNumber: 6 }, { ...lifts, tripNumber: 5 }], TODAY)
+    expect(numbered.map((t) => [t.id, t.title, t.number, t.door, t.when])).toEqual([
+      ['t5', 'Trip 5 · Oct 23 to 29', 'Trip 5', 'Open Trip 5', 'Oct 23 to 29'],
+      ['t6', 'Trip 6 · Dec 1 to 3', 'Trip 6', 'Open Trip 6', 'Dec 1 to 3'],
+    ])
+  })
+
   it('says a trip that is out today is out now', () => {
     expect(plansByDateTrips([lifts], '2026-10-27')[0]).toMatchObject({ planned: false, standing: 'Out now · 2 days at the site' })
   })

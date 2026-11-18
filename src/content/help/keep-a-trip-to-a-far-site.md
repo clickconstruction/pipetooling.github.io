@@ -2,7 +2,7 @@
 title: keep a trip to a site away from home
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: trip, trips, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log
+keywords: trip, trips, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log, trip number, number, trip 1, trip 5, copy link, link to a trip, open a trip
 order: 76
 ---
 A trip is one going out to a site away from home and coming back. You keep it on the site's Development page, apart from the hours on its jobs.
@@ -31,6 +31,24 @@ A nearer site with no trip has no look. Its page has one door instead. Find **Tr
 6. Press {{button:blue|Save the trip}}.
 
 One person and one day is a whole trip. Everything else can wait.
+
+The app gives the new trip its number when you save it.
+
+## Say a trip by its number
+
+Every trip has a number on its site. The first trip is Trip 1. The next trip is Trip 2.
+
+The app hands out the number when you save a new trip. Nobody types the number, and nobody can change it.
+
+A trip keeps its number for good. You can change its days, its people and its words, and the number stays.
+
+A number is never given to another trip. Delete Trip 5 and the next trip is still Trip 6.
+
+The numbers follow the order the trips were made. A trip you file late from an old record takes the next number.
+
+Say a trip by its number and its site. *Trip 5 at Heron Point* is short enough for a text. A bill can cite the same words.
+
+The number leads the trip everywhere the app names it. You see *Trip 5* on its row, in History and on a job. You see it on Plans by date, on the Scoreboard and on the printed log.
 
 ## Paint the days
 
@@ -127,8 +145,9 @@ No line shows while the clock is being read. No line shows on a site whose addre
 ## Open a trip
 
 1. Press a trip's row.
-2. Read the left side for what was typed. It shows the days, who went, who asked and how it went.
-3. Read the right side for what was counted from the clock.
+2. Read the heading. The heading says the trip's number, its days and what it was for.
+3. Read the left side for what was typed. The left side shows the days, who went, who asked and how it went.
+4. Read the right side for what was counted from the clock.
 
 A trip with no punch at the site says so in amber. The trip still stands as painted.
 
@@ -148,19 +167,48 @@ A day a person was off is not their trip day. A punch on that day shows nothing 
 
 The counts change nothing. They only say what stands behind the painted days.
 
+## Copy a link to one trip
+
+1. Open the trip.
+2. Press **Copy link** beside {{button:outline|Change}}.
+3. Paste the link in a text or an email.
+
+The app says *Link copied.* The link opens the site's page with that trip open.
+
+The person who opens the link signs in as themselves. The trip opens for the office, the leaders and the controller.
+
+A link to a deleted trip still opens the Trips look. A message says *That trip is no longer here.*
+
+A trip's name opens the trip in other places too.
+
+- In History, press **Open Trip 5 ›** at the end of the trip's line.
+- In a job's window, press the words for the last trip or the next trip.
+- On Plans by date, press {{button:outline|Open Trip 5}} on the trip's card.
+- On the Scoreboard cut by trip, press the trip's number.
+
+The search at the top of the app does not find trips yet.
+
 ## Change or delete a trip
 
 1. Open the trip.
 2. Press {{button:outline|Change}}, or tap one of its days.
 3. Change what you need and press {{button:blue|Save the trip}}.
 
-To delete, press **Delete this trip** on the open trip. The page asks once, by the trip's days. Press {{button:red|Delete this trip}} to confirm.
+To delete, press **Delete this trip** on the open trip. The page asks once, by the trip's number and its days. Press {{button:red|Delete this trip}} to confirm.
 
-A message then offers **Undo** for one minute. Deleting a trip changes no clock row, no bill and no cost.
+A message then offers **Undo** for one minute. **Undo** puts the trip back with the number it had.
+
+Deleting a trip changes no clock row, no bill and no cost.
 
 ## See a trip in History
 
-The History look shows a line the day a trip leaves. It shows a second line the day the trip is back. The lines come from the trip's days, so they move when the days change.
+The History look shows a line the day a trip leaves. The look shows a second line the day the trip is back.
+
+Each line leads with the trip's number. Trip 5 writes *Trip 5 out* and then *Trip 5 back*.
+
+The lines come from the trip's days, so they move when the days change.
+
+Press **Open Trip 5 ›** at the end of a line to open that trip in the Trips look.
 
 ## See a job's trips in its window
 
@@ -168,7 +216,11 @@ A trip can name the jobs its work goes on. Each of those jobs then says its trip
 
 1. Open the job.
 2. Find **Trips on this job** under the address.
-3. Read the line. The line counts the trips that went out, names the last one and names the next one planned.
+3. Read the line. The line counts the trips that went out. The line then names the last trip and the next one planned.
+
+The line reads like *3 trips · last Trip 5, Oct 23 to Nov 4, Luis, Priya · next Trip 6, Dec 1 to 5*.
+
+Press the words for the last trip to open that trip on the site's page. Press the words for the next trip to open that one.
 
 The bar under the line shows this job's hours. The bar uses the same five figures as the band.
 
@@ -206,7 +258,9 @@ A job on a site with no trip shows no tag. A tag changes nothing on the clock.
 
 Each trip is a bar over its days. Each day wears the colour of its kind. A planned trip is drawn faint.
 
-Press a bar to see its trip on a card. Press {{button:outline|Open the Trips look}} on the card to jump to the look.
+Press a bar to see its trip on a card. The card is headed by the trip's number and its days, like *Trip 5 · Oct 23 to Nov 4*.
+
+Press {{button:outline|Open Trip 5}} on the card to open that trip in the Trips look.
 
 The lane prints with the chart.
 
@@ -248,6 +302,8 @@ The figures change nothing. No clock row moves, and no bill or cost changes.
 
 Each trip that has gone out is a row. The newest trip comes first.
 
+A row leads with the trip's number. Press the number to open that trip in the Trips look.
+
 The last row is **At home for the site**. The last row holds everything outside every trip.
 
 A trip's row shows its hours and its days with work. A dev or a controller also sees dollars on the row.
@@ -272,7 +328,9 @@ The {{chip:gray|trip}} chip shows only on a site that has a trip.
 2. Press **Print the trip log** beside {{button:blue|+ Trip}}.
 3. Print the page, or save it as a PDF from the print window.
 
-The page lists every trip, oldest first. Each trip shows its days, who went, what it was for and who asked. Each trip also shows how it went, its jobs, its billing and its hours.
+The page lists every trip, oldest first. Each trip is headed by its number and its days.
+
+Each trip shows who went, what it was for and who asked. Each trip also shows how it went, its jobs, its billing and its hours.
 
 The last line counts the trips and the days at the site. The last line adds the site's hours in the five figures.
 

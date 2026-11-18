@@ -34,7 +34,8 @@ export type JobTripsIo = {
   /** The addresses on the development's jobs and bids, for the address they share. */
   readSiteAddresses: (developmentId: string) => Promise<SiteAddresses>
   readLabor: (jobIds: ReadonlyArray<string>) => Promise<SiteLabor>
-  save: (record: TripRecord) => Promise<void>
+  /** Saves the trip whole; hands back the number the database gave it, when the reply names one. */
+  save: (record: TripRecord) => Promise<number | null | void>
 }
 
 export const supabaseJobTripsIo: JobTripsIo = {
@@ -187,8 +188,9 @@ export function useJobTrips({
 
   const save = useCallback(
     async (record: TripRecord) => {
-      await io.save(record)
-      setRead((prev) => (prev ? { key: prev.key, records: [...prev.records.filter((r) => r.id !== record.id), record] } : prev))
+      const number = await io.save(record)
+      const kept = typeof number === 'number' ? { ...record, tripNumber: number } : record
+      setRead((prev) => (prev ? { key: prev.key, records: [...prev.records.filter((r) => r.id !== record.id), kept] } : prev))
       setGen((g) => g + 1)
     },
     [io],
