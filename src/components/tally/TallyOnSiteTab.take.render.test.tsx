@@ -47,7 +47,6 @@ vi.mock('../../hooks/useAddressGeocodeCoords', () => ({ useAddressGeocodeCoords:
 // The site's boxes for the name rule (punch list #351): the test hands none, so the job's own boxes are the check.
 vi.mock('../../hooks/useSiteBoxNames', () => ({ useSiteBoxNames: () => ({ rows: [], siteId: null, loaded: true }) }))
 // The job's stickers (punch list #329, PR 3): none, until a test hands the marks beside a box's name (PR 9).
-const NONE_RESERVED = vi.hoisted(() => ({ count: 0, runs: 0, span: '', names: [] as string[], anyNamed: false, printedByName: '', printedAt: '' }))
 const stuck = vi.hoisted(() => ({ marks: new Map<string, Array<{ number: number; boxName?: string | null }>>(), blank: 0, reserved: { count: 0, runs: 0, span: '', names: [] as string[], anyNamed: false, printedByName: '', printedAt: '' } }))
 vi.mock('../../hooks/useJobStickers', () => ({ useJobStickers: () => ({ byBox: new Map([...stuck.marks].map(([id, list]) => [id, list.map((m) => m.number)])), marksByBox: stuck.marks, blank: stuck.blank, reserved: stuck.reserved, toPrint: [], loaded: true, refresh: () => {} }) }))
 // These are on boxes (PR 10) reads the site's boxes and blank stickers when its sheet opens.
