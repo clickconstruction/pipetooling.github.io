@@ -16,3 +16,5 @@ Not in it yet: a trade company's paper (`company_id`), GC mode's owner contract 
 **The bed**: `agreements-on-file` (`scripts/pgtest-agreements-on-file.sh`, `supabase/tests/agreements_on_file/20_scenario.sql`, `npm run test:pg:agreements-on-file`). On the whole schema it proves the office's list in order with each row's state, name, party, job and day; the paper over three jobs as one line; drafts, an unsent paper and a W-9 absent; the facts without an amount; and each role's reach: an estimator work orders alone, a primary and a superintendent nothing, a sub their own work order, a caller not signed in nothing.
 
 Apply order: no screen reads the view in this PR, so nothing waits on the push. Push after the merge, before the tab's PR is armed. The view is new, so the generated types gain it at the next regen; the client casts once in `agreementsLedgerIo.ts` until then.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

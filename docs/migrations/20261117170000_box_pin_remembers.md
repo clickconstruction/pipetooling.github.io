@@ -40,3 +40,5 @@ No live box had a pin when this was written, so there is nothing to backfill. A 
 ## Order
 
 Additive and idempotent: four nullable columns with no default are a catalog change alone, and no row is rewritten. No `CREATE TABLE`, so no fence calls. The push can come any time after the merge. **The client that follows must not merge before the push**: it names the columns in the read of every box, and PostgREST refuses a select that names a column it does not have.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

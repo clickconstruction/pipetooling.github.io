@@ -28,3 +28,5 @@ A narrow carve-out on one table, `help_feedback`, on the pattern of the clock pu
 ## Verify after the push
 
 `npm run check:migration-drift`. Then sign in as a training account, press the wrench and send a note. It lands in Notes to the dev.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

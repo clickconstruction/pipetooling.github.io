@@ -2,7 +2,7 @@
 name: "A trip record: days at a site away from home, apart from the hours on its jobs"
 number: 379
 group: ready
-status: building since 2026-11-17 in its own session · on main are the rules (v2.7653), the tables (v2.7655), the Trips look (v2.7661), Looks like a trip (v2.7676) and the phone's ground (v2.7700) · the dev seat, the Job window line and the trip number are open PRs · the phone's screen, the Scoreboard cut and the number on screen are built and wait their turn
+status: built 2026-11-17 and 2026-11-18 in its own session, all of it on main · the rules (v2.7653), the tables (v2.7655), the Trips look (v2.7661), the dev seat (v2.7670), Looks like a trip (v2.7676), the Job window line with the clock tag and the By date lane (v2.7685), the phone's ground (v2.7700) and its screen (v2.7701), What it cost with the Scoreboard cut and the trip log (v2.7702), the trip's number (v2.7703) and the number and the link on screen (v2.7707) · every migration pushed and dev-mcp deployed, read 2026-11-18 · Put on a bill is built on its own card, #391
 summary: >
   On a job out of state the clock's hours do not say what the owner needs to know. Some hours are a crew
   at the site, some are a truck on the road, some are a person at home loading what the trip needs. All of
@@ -11,8 +11,8 @@ summary: >
   days, each day one of three kinds, what it was for, who asked for it and how it went. The hours, card
   charges, photos and History inside its days read as the trip's by themselves, and a trip never changes a
   clock row, a bill or a cost.
-next: Land the open PRs, then the phone's screen, the Scoreboard cut with the trip log, and the trip's number and link on screen. Put on a bill left this train for its own card, #391.
-size: L as a train of nine (S · S · M · S · S · S · M · S · S); left: PRs 4, 6, 7 and 8 and the trip's number (S · S · M · S · S)
+next: The parts owed and in no PR yet: a setting for the 150 miles, Split in two, a combine that carries a trip's job link, and the trip's number in the dev seat's read. Put on a bill left this train for its own card, #391.
+size: L as a train of nine (S · S · M · S · S · S · M · S · S), eight built and the ninth moved to #391; left: the four owed parts, not sized yet
 blocker: None. The six calls each have a default.
 opinion: build — the clock already stamps a place on a punch and the drive to a job, and the Development page already rolls a site's hours by person, so a trip is a reading laid over rows that exist
 ---
@@ -141,14 +141,13 @@ owner's word, through the dev seat.
 
 ## Where it stands
 
-Building since 2026-11-17, in its own session.
+Built 2026-11-17 and 2026-11-18, in its own session. Read on 2026-11-18.
 
-- **On main:** the rules, the tables, the Trips look, Looks like a trip, and the phone's ground. Both
-  migrations are pushed.
-- **Open:** the dev seat's three verbs (PR 4), the Job window line with the clock tag and the By date lane
-  (PR 6), and a migration that gives each trip a number on its site.
-- **Built, not yet opened:** the phone's screen (PR 7), What it cost with the Scoreboard cut and the printed
-  trip log (PR 8), and the trip's number and link on screen.
+- **On main:** the rules, the tables, the Trips look, the dev seat's three verbs (PR 4, v2.7670), Looks like
+  a trip, the Job window line with the clock tag and the By date lane (PR 6, v2.7685), the phone's ground and
+  its screen (PR 7, v2.7701), What it cost with the Scoreboard cut and the printed trip log (PR 8, v2.7702),
+  the trip's number (v2.7703) and the number and the link on screen (v2.7707).
+- **Pushed and deployed:** the three migrations (the tables, the phone's ground, the numbers) and dev-mcp.
 - **Moved out:** Put on a bill is [#391](../trip-on-a-job-line/README.md).
 - **Added past the plan, on the owner's word:** every trip has a number on its site (*Trip 14*), and a link
   that opens it.

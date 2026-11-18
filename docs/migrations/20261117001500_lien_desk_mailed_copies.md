@@ -17,3 +17,5 @@ It is a list so one notice can hold the owner's envelope and the GC's apart. The
 - No new table, so no read-only, twin or archived fences to re-apply. RLS on the table already covers the column: the office roles write it, as they write `printed_at`.
 
 Additive and idempotent: `ADD COLUMN IF NOT EXISTS` with a constant default (no table rewrite) and a guarded `ADD CONSTRAINT`. Opens with `SET lock_timeout = '3s'`. Apply with `supabase db push` after the merge; then `npm run gen-types:linked` as a `chore(types)` PR.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

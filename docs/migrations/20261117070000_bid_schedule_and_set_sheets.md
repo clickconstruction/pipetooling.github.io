@@ -9,3 +9,5 @@ Punch list #367, PR 3: the columns behind the Development page's By date view, a
 No new table, no policy change: the columns ride the tables' existing policies, so whoever can edit a bid or a set can set them.
 
 **Apply order**: additive, and nothing reads the columns until the PRs after this one, so push it at any quiet moment after the merge. Those PRs (the schedule on screen, sheets in hand) read columns only this file creates, so they wait for the push.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).
