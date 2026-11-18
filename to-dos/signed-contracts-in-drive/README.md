@@ -2,7 +2,7 @@
 name: "Signed contracts: filed in the job's Drive folder and found by Find a file"
 number: 377
 group: close
-status: asked 2026-11-17 as call 7 of #376 · the owner settled all seven calls the same day and said build · built 2026-11-17 as a train of six, every migration pushed and every function deployed · walked on prod on a ZZ Test contract · the sweep's first run tied six papers to their Drive files and held one · left: the owner's look
+status: asked 2026-11-17 as call 7 of #376 · the owner settled all seven calls the same day and said build · built 2026-11-17 as a train of six, every migration pushed and every function deployed · walked on prod on a ZZ Test contract · the sweep's first run tied six papers to their Drive files and held one · the walk's two small finds fixed and walked in v2.7704 · left: the owner's look
 summary: >
   A signed job contract lives in the app's own storage and nowhere in Google Drive, so Find a file cannot
   find it. This card files each signed paper in its job's Drive folder, under Team only › Contracts, and
@@ -12,10 +12,10 @@ summary: >
   Find a file are open to estimators, who cannot read a contract in the app today, so filing there lets
   an estimator read it. The owner was told that first and chose the job's folder.
 next: The owner's look at a signed contract's Drive line and at the card on Where files go. Then his word to retire the card.
-size: M as a train of six (S · M · S · M · S · S); shipped: PR 1 to 6; left: the owner's look (XS)
-blocker: None. All six PRs are merged and live.
+size: M as a train of six (S · M · S · M · S · S); shipped: PR 1 to 6 and one fix; left: the owner's look (XS)
+blocker: None. All six PRs and the fix are merged and live.
 opinion: your call — the code is done and walked; the look is yours
-ver: v2.7640 · 7643 · 7644 · 7645 · 7647 · 7649
+ver: v2.7640 · 7643 · 7644 · 7645 · 7647 · 7649 · 7704
 ---
 
 # Signed contracts in Google Drive (#377)
@@ -29,7 +29,7 @@ papers. This one puts the signed file where the office looks for files.
 
 ## Where it stands
 
-Built 2026-11-17, the day the owner said build, as six PRs. All six are merged and live.
+Built 2026-11-17, the day the owner said build, as six PRs, with one fix after the walk. All seven are merged and live.
 
 | PR | Version | What |
 |---|---|---|
@@ -39,6 +39,7 @@ Built 2026-11-17, the day the owner said build, as six PRs. All six are merged a
 | 4 | v2.7645 | The sweep's cron, the Drive line on the Contract window, the office's filings ask at once |
 | 5 | v2.7647 | The Signed contracts card on Documents → Where files go |
 | 6 | v2.7649 | Find a file's chip and **Open the contract** |
+| fix | v2.7704 | A job whose Drive folder is gone says so, and a voided copy's new name is in the index at once |
 
 Both migrations are pushed and the three functions are deployed from `main`.
 
@@ -47,14 +48,15 @@ Both migrations are pushed and the three functions are deployed from `main`.
 - As it stood, with a typed link that is no Drive file: held, *The signed paper is a link outside the jobs
   drive*, written on the record.
 - With a scan added and the job's link pointed at a folder that does not exist: held with Drive's own
-  words. The link was put back and checked.
+  words then. Since v2.7704 it is held with *This job's Drive folder is gone* and the job's **Edit** tab
+  as its door. The link was put back and checked.
 - Pressed again: filed. The copy sits in the ZZ job's folder under Team only › Contracts, named by day,
   kind, job number and signer. The file index had it the same minute, with its text and its job. A second
   press did nothing.
 - The Contract sweep's Drive pass, run fresh: it dropped four files that are papers on file, and did not
   offer the copy.
 - Voided, then pressed: the copy's name starts `VOIDED · ` in Drive. The index had the new name on its
-  next run.
+  next run then. Since v2.7704 it has it at once: about four seconds after the press on the second walk.
 - Find a file, both searches, by a word from the paper's text: the hit is marked as a voided contract
   and carries its record.
 
@@ -77,15 +79,20 @@ the office put it*, and one is held with *Nothing to file*. No file was uploaded
 - The open-link guard against a real open link. Drive does list inherited sharing on a job's subfolders,
   which is what the guard reads. The proof takes one share press on a ZZ folder in Drive.
 - A contract signed through the customer's link, and a paper over several jobs. Tests hold both.
+- A job's folder that sits in Drive's trash, which has its own words since v2.7704. A unit test holds it.
 
-**Left on prod by the walk:** the ZZ Test job's contract is now voided, with its test scan in storage, its
-`VOIDED · ` copy in Drive and one row in the file index.
+**Left on prod by the two walks:** two contracts of the ZZ Test job, both voided, each with its test scan
+in storage, its `VOIDED · ` copy in Drive and one row in the file index. The first was signed before its
+walk. The second was voided before and is voided again with its own first values.
 
-**Small, found and not built:**
+**Small, found on the first walk and fixed in v2.7704**, on the owner's word, then walked on prod on a
+second ZZ Test contract:
 
-- Drive's words for a folder that is gone are technical (*Folder create failed (404)*). The hold could
-  say *The job's Drive folder is gone* and offer the job's door.
-- A voided copy's new name reaches the file index on the index's next run, not the same minute.
+- Drive's words for a folder that is gone were technical (*Folder create failed (404)*). The function
+  now reads the job's folder before it writes, and the hold says the folder is gone and offers the job's
+  door.
+- A voided copy's new name reached the file index on the index's next run. The rename is now handed to
+  the index the same minute.
 
 ## The ask, in the owner's words
 
