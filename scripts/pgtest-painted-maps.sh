@@ -26,8 +26,11 @@
 # and the office and read by nobody else, with a map the caller cannot read never taken for one that is gone; it ends
 # with "painted_map_photos_after PASSED". A sixth, 70_place_kind.sql (v2.7775, punch list #393, migration
 # *_painted_place_kind), holds a place's kind: a short lowercase word or nothing, set and changed by whoever may set
-# and change the place and by nobody else; it ends with "painted_place_kind PASSED". PGTEST_KEEP=1 leaves the
-# container up. Needs docker;
+# and change the place and by nobody else; it ends with "painted_place_kind PASSED". A seventh, 80_job_list.sql
+# (v2.7792, punch list #393, migration *_painted_map_job_list), holds a job's own list of places: started by whoever
+# may paint a map for the job, added to by its crew, renamed, unmarked and thrown away by its maker and the office
+# alone, never held to one a job, and left standing when its job goes; it ends with "painted_map_job_list PASSED".
+# PGTEST_KEEP=1 leaves the container up. Needs docker;
 # the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -35,7 +38,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55619}"
 NAME="pgtest-painted-maps"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_painted_maps.sql supabase/migrations/*_painted_map_links.sql supabase/migrations/*_task_painted_maps.sql supabase/migrations/*_painted_map_link_visits.sql supabase/migrations/*_painted_map_photos_after_the_map.sql supabase/migrations/*_painted_place_kind.sql)"
+WRITES="$(ls supabase/migrations/*_painted_maps.sql supabase/migrations/*_painted_map_links.sql supabase/migrations/*_task_painted_maps.sql supabase/migrations/*_painted_map_link_visits.sql supabase/migrations/*_painted_map_photos_after_the_map.sql supabase/migrations/*_painted_place_kind.sql supabase/migrations/*_painted_map_job_list.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -73,5 +76,8 @@ if ! grep -q "painted_map_photos_after PASSED" <<<"$out"; then echo "$out" | tai
 grep -o "ok: .*" <<<"$out"
 out="$(psql_as postgres -f - < supabase/tests/painted_maps/70_place_kind.sql 2>&1 || true)"
 if ! grep -q "painted_place_kind PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/painted_maps/80_job_list.sql 2>&1 || true)"
+if ! grep -q "painted_map_job_list PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "painted-maps bed ok"
