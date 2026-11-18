@@ -139,6 +139,9 @@ import { JobPlansSection, type JobPlansSectionState } from './JobPlansSection'
 import { JobStageChecklistStrip, type OpenStageChecklistAsk } from '../stageChecklists/JobStageChecklistStrip'
 import { JobPhotosStrip } from '../photos/JobPhotosStrip'
 import { JobPaintedMapsStrip } from '../paintedMap/JobPaintedMapsStrip'
+import { JobTripsLine } from '../trips/JobTripsLine'
+import { useJobTrips } from '../../hooks/useJobTrips'
+import { developmentDoorFor } from '../../lib/developments/readDoor'
 
 export type DetailJobScheduleContext = {
   workDate: string
@@ -1065,6 +1068,8 @@ export default function DetailJobModal({
     if (loading || error) return null
     return (fullJob ?? limitedJob) ?? null
   }, [loading, error, fullJob, limitedJob])
+  // Trips on this job (punch list #379, PR 6): for the office door, on a job in a development. A job with no development reads nothing.
+  const jobTrips = useJobTrips({ jobId: open ? (jobId ?? null) : null, developmentId: detailJob?.development_id ?? null, address: mapsAddressLine || null, enabled: developmentDoorFor(authRole as UserRole | null) === 'office' })
 
   const showMaterialsCostSection = useMemo(
     () =>
@@ -2542,6 +2547,13 @@ export default function DetailJobModal({
           </div>
         ) : null}
 
+        {/* Trips on this job (punch list #379, PR 6): one line under the address on a job a trip names, on the Job tab. Every other job draws nothing here. */}
+        {jobTrips.line && jobId && detailJob ? (
+          <div style={paneBodyHidden ? { display: 'none' } : { marginTop: '0.6rem' }}>
+            <JobTripsLine trips={jobTrips} job={{ id: jobId, label: ledgerJobLabel, name: (detailJob.job_name ?? '').trim() }} developmentId={detailJob.development_id ?? null} siteName={('development_name' in detailJob ? detailJob.development_name : (detailJob.development?.name ?? null))?.trim() ?? ''} todayYmd={todayYmdInAppTz()} onLeave={onClose} />
+          </div>
+        ) : null}
+
         {/* Painted maps (punch list #345): the way in and what is where, as lines under the address. A painted map is the
             address, continued, so it sits in this band and shows on every tab. */}
         {open && jobId ? (
@@ -2918,6 +2930,7 @@ export default function DetailJobModal({
           {notesFold(
           <JobThreadNotesPanel
             activity={threadNotes.activity}
+            clockTripTags={jobTrips.clockTags}
             loading={threadNotes.loading}
             canPost={threadNotes.canPost}
             draft={threadNotes.draft}
