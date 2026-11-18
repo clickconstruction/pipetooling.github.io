@@ -35,6 +35,7 @@ Built 2026-11-17 and live. The test started that evening, when PR 3's deploy lan
 | #8629 | v2.7663 | Your notes and the dot |
 | #8644 | v2.7668 | A went wrong note calls the push |
 | #8576 | v2.7666 | Training accounts: `20261118001000_read_only_may_tell_the_dev.sql`, pushed, with its SQL bed |
+| #8661 | v2.7742 | A note always carries the app's version, the live walk's one find |
 
 Checked before the merge, on a local server as the dev, read only: the wrench and the box at a desk, the sheet on a phone, the Fix Mode row, and Fix Mode off taking every wrench away. After the deploys, the site's bundle was read for the wrench and Fix Mode.
 
