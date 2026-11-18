@@ -83,6 +83,10 @@ deleting the key). Never wire a human Google password into anything.
   Shared Drive, and the sweep adopts it within a week, or at once on **Tidy the folders**. Since v2.6056
   the folder is named by the office's pattern (Documents → Where files go, `_shared/whereFilesGo.ts`),
   `<job number> · <job name>` as it ships.
+- **A signed job contract (punch list #377, v2.7643)**: `job-contract-drive` files each signed paper under its job's
+  folder in **Team only › Contracts**, a sixth folder found or made the first time a paper is filed there, with the same SA
+  and secrets. A paper the office already keeps inside the Shared Drive is adopted where it sits. A folder open to anyone
+  with its link takes no contract: the paper is held with that reason until the link is closed.
 
 ## The upload leg: RESOLVED — Shared Drive (live since 2026-08-29)
 
@@ -94,8 +98,10 @@ byte-upload + both stamps through the deployed function):
 
 - Shared Drive **"PipeTooling Jobs"** (`0ANSfYqm0sENHUk9PVA`) in the **clickplumbing.com** Workspace, created
   2026-11-01 by `robert@clickplumbing.com` (v2.6293; the first drive of that name, `0AI1sqwYSeegpUk9PVA` in
-  douglasmining.com, is renamed *PipeTooling Jobs (old, Douglas Mining)* and emptied). Members: the owner and the
-  office manager as Manager, the SA as Content manager. The dev seat's bid-plans filing names the drive by this id
+  douglasmining.com, is renamed *PipeTooling Jobs (old, Douglas Mining)* and emptied). Members, read on 2026-11-17: five people's
+  addresses and the SA. Three of the five hold the assistant role in the app, one is an estimator and one address has no
+  app account under it; three are Managers and two, with the SA, Content managers. Every member reads every file in the
+  drive, a signed contract filed under a job included (punch list #377). The dev seat's bid-plans filing names the drive by this id
   (`ROBOT_PLANS_SHARED_DRIVE` in `_shared/bidPlansFolders.ts`), so a new drive is a code change too. The SA, its
   key and the Maps key did not move: an SA is a GCP identity and sits in any organization's drive as a member.
   Left for another day: the GCP project `pipetooling-drive` into clickplumbing.com's Cloud organization, and the

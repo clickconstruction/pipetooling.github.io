@@ -1,7 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { readDriveSettings } from '../_shared/driveSettings.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { CONTRACT_FILE_MARK, knownContractFileIds, withoutKnownContracts } from '../_shared/jobContractDrive.ts'
 
 // drive-contract-scan — the Contract sweep's Drive pass (v2.3390). Lists the
 // contract-looking files in the jobs Shared Drive so the office can file the
@@ -28,6 +29,14 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 // while it is younger than SCAN_FRESH_MS — one scan for the whole office, not
 // one per browser tab. `{ force: true }` scans again now. The folder walk runs
 // eight files at a time; a folder looked up once is never looked up twice.
+//
+// v2.7644 (punch list #377, PR 3): a file that is already a paper on file is nobody's find. The pass never checked a
+// file against the papers the office holds, so a signed contract sitting under one job was offered, as a find to check,
+// to the same customer's next job with none. Now every answer, kept or fresh, drops the files a signed record already
+// names: by Drive id, never by name (`knownContractFileIds`: a record's Drive copy, the file inside its typed link, and
+// every copy the app itself filed). The filter runs when the list is served, so a paper filed after the hourly scan was
+// kept is gone on the next read. A fresh scan also leaves out any file that carries the app's own mark
+// (`appProperties.pt_job_contract`), the net for a copy whose row write was lost. `on_file` counts what was dropped.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -93,7 +102,29 @@ async function mapPool<T, R>(items: readonly T[], width: number, fn: (item: T) =
   return out
 }
 
-type DriveFile = { id: string; name: string; mimeType: string; modifiedTime?: string; webViewLink?: string; size?: string; parents?: string[] }
+type DriveFile = { id: string; name: string; mimeType: string; modifiedTime?: string; webViewLink?: string; size?: string; parents?: string[]; appProperties?: Record<string, string> }
+
+/**
+ * The Drive ids that are already a paper on file, read from every contract row a page at a time. A database from before
+ * the Drive columns (migration 20261117213000) refuses them by name; then the typed links alone answer, as they always
+ * could have. A read that fails altogether drops nothing: the pass offers what it offered before.
+ */
+async function papersOnFile(admin: SupabaseClient): Promise<Set<string>> {
+  type Row = { status: string; voided_at: string | null; drive_file_id: string | null; drive_file_origin: string | null; signed_document_url: string | null }
+  const read = async (columns: string): Promise<Row[] | null> => {
+    const rows: Row[] = []
+    for (let from = 0; from < 20_000; from += 1000) {
+      const { data, error } = await admin.from('job_contracts').select(columns).order('id').range(from, from + 999)
+      if (error) return null
+      const page = (data ?? []) as unknown as Partial<Row>[]
+      rows.push(...page.map((r) => ({ status: String(r.status ?? ''), voided_at: r.voided_at ?? null, drive_file_id: r.drive_file_id ?? null, drive_file_origin: r.drive_file_origin ?? null, signed_document_url: r.signed_document_url ?? null })))
+      if (page.length < 1000) break
+    }
+    return rows
+  }
+  const rows = (await read('status, voided_at, drive_file_id, drive_file_origin, signed_document_url')) ?? (await read('status, voided_at, signed_document_url')) ?? []
+  return knownContractFileIds(rows)
+}
 
 async function listAll(token: string, q: string, fields: string, extra = ''): Promise<DriveFile[]> {
   const out: DriveFile[] = []
@@ -141,7 +172,10 @@ serve(async (req) => {
       const { data: kept } = await admin.from('drive_contract_scans').select('files, stats, scanned_at').eq('scope', SCAN_SCOPE).maybeSingle()
       const age = kept ? Date.now() - new Date(kept.scanned_at as string).getTime() : Number.POSITIVE_INFINITY
       if (kept && age >= 0 && age < SCAN_FRESH_MS) {
-        return json({ ok: true, files: kept.files, ...(kept.stats as Record<string, unknown>), cached: true, scanned_at: kept.scanned_at })
+        // The kept list is from up to an hour ago: a paper filed since is dropped here, at the read.
+        const keptFiles = (Array.isArray(kept.files) ? kept.files : []) as { id: string }[]
+        const offered = withoutKnownContracts(keptFiles, await papersOnFile(admin))
+        return json({ ok: true, files: offered, ...(kept.stats as Record<string, unknown>), on_file: keptFiles.length - offered.length, cached: true, scanned_at: kept.scanned_at })
       }
     }
     const startedAt = Date.now()
@@ -150,7 +184,9 @@ serve(async (req) => {
 
     // 1. Every non-folder file whose name carries a contract word (one paged query).
     const nameQ = CONTRACT_WORDS.map((w) => `name contains '${w}'`).join(' or ')
-    const files = await listAll(token, `(${nameQ}) and mimeType != '${FOLDER}' and trashed = false`, 'id,name,mimeType,modifiedTime,webViewLink,size,parents')
+    const listed = await listAll(token, `(${nameQ}) and mimeType != '${FOLDER}' and trashed = false`, 'id,name,mimeType,modifiedTime,webViewLink,size,parents,appProperties')
+    // A copy the app itself filed carries its mark: never walked, never kept, never offered.
+    const files = listed.filter((f) => !f.appProperties?.[CONTRACT_FILE_MARK])
 
     // 2. The job folders: each root's direct child folders.
     const jobFolders: DriveFile[] = []
@@ -226,7 +262,9 @@ serve(async (req) => {
     // Remembered for everyone; a write that fails still answers this caller.
     const { error: keepErr } = await admin.from('drive_contract_scans').upsert({ scope: SCAN_SCOPE, files: out, stats, scanned_at: scannedAt, scanned_by: u.user.id }, { onConflict: 'scope' })
     if (keepErr) console.error('drive-contract-scan: could not keep the scan', keepErr.message)
-    return json({ ok: true, files: out, ...stats, cached: false, scanned_at: scannedAt })
+    // The whole scan is kept, and the papers on file are dropped at every read, this one too.
+    const offered = withoutKnownContracts(out, await papersOnFile(admin))
+    return json({ ok: true, files: offered, ...stats, on_file: out.length - offered.length, cached: false, scanned_at: scannedAt })
   } catch (e) {
     return json({ error: String(e instanceof Error ? e.message : e) }, 500)
   }

@@ -13,10 +13,12 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { type SentCopy, canReadSentCopies } from '../../lib/sent/sentCopies'
 import { loadSentCopiesForJob, openSentFile } from '../../lib/sent/sentCopiesIo'
 import { useAuth } from '../../hooks/useAuth'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { useToastContext } from '../../contexts/ToastContext'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { JobDocumentsBills } from './JobDocumentsBills'
 import { JobDocumentsContract } from './JobDocumentsContract'
+import { JobDocumentsRequiredPapers } from './JobDocumentsRequiredPapers'
 import { JobDocumentsLienPaper } from './JobDocumentsLienPaper'
 import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
@@ -351,6 +353,9 @@ export function JobWindowDocumentsTab({
       <JobDocumentsBills job={job} onOverlayOpenChange={onOverlayOpenChange} onOpenBill={onRequestTab ? () => onRequestTab('bill') : undefined} />
 
       <JobDocumentsContract job={job} onOverlayOpenChange={onOverlayOpenChange} />
+
+      {/* Papers before this job opens (step 2 of seven): the papers everyone signs before the job opens to them. The office's to set. */}
+      {isOfficeRole(role) ? <JobDocumentsRequiredPapers job={job} onOverlayOpenChange={onOverlayOpenChange} /> : null}
 
       <JobDocumentsTestReports job={job} />
 
