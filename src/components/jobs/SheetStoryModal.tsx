@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { offerNextStageAfterPass } from '../../lib/subs/offerNextStage'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useDrawBillPick, type DrawBillAnswer } from '../../hooks/useDrawBillPick'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
@@ -96,6 +97,8 @@ const money = (n: number) => `$${formatCurrency(n)}`
 
 export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenSheet, onSheetChanged }: SheetStoryModalProps) {
   const { showToast } = useToastContext()
+  // v2.7835: which bill the sheet rides on, asked on the move to Waiting on customer.
+  const drawBill = useDrawBillPick()
   const { roster } = useRosterSubKinds(sheetId != null)
   const desk = useOptionalPersonDesk()
   const [visitsOpen, setVisitsOpen] = useState(false)
@@ -262,10 +265,13 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
 
   async function setStage(stage: SubSheetStage) {
     if (!sheetId) return
+    const answer: DrawBillAnswer = stage === 'customer_pay' ? await drawBill.askOnArrival(sheetId, data?.sheet.assigned_to_name ?? '') : { go: true }
+    if (!answer.go) return
     setBusy(true)
     try {
       const { error: err } = await supabase.rpc('set_sub_sheet_stage' as never, { p_labor_job_id: sheetId, p_stage: stage, p_note: null } as never)
       if (err) throw err
+      if (stage === 'customer_pay') await drawBill.tieAfterMove(sheetId, answer)
       await load()
       onSheetChanged?.()
       // v2.2933: passed inspection → offer the next stage to the GC, or ask the office to.
@@ -535,6 +541,7 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
           </div>
         ) : null}
       </div>
+      {drawBill.host}
       <SubPortalVisitsModal personId={visitsOpen && story?.personId ? story.personId : null} personName={data?.sheet.assigned_to_name ?? ''} onClose={() => { setVisitsOpen(false); visits.reload() }} />
       <WorkOrderAssemblerModal
         open={assembler != null}

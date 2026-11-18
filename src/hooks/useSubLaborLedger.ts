@@ -7,6 +7,8 @@ import { buildLaborJobNamesById } from '../lib/subLaborLedgerNames'
 import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
 import type { SubSheetStage } from '../lib/subSheetStage'
 import type { SetSubSheetStageResult } from '../types/database-functions'
+import type { DrawBillAnswer } from './useDrawBillPick'
+import { loadDrawTieSheet, loadDrawTies } from '../lib/subWorkOrders/drawTieIo'
 
 /**
  * Sub Labor ledger + payments engine (Jobs.tsx decomposition seam — see
@@ -24,6 +26,7 @@ export function useSubLaborLedger({
   authUserName,
   setError,
   onLaborJobsReloaded,
+  drawBill,
 }: {
   authUserId: string | undefined
   /** Stamped onto a locally patched row after a stage move (display only). */
@@ -32,6 +35,12 @@ export function useSubLaborLedger({
   setError: (msg: string | null) => void
   /** Called with the freshly mapped list after each successful reload (the page syncs its open Edit Sub Labor modal). */
   onLaborJobsReloaded?: (jobs: LaborJob[]) => void
+  /**
+   * The sheet's tie to one bill (v2.7835, punch list #388): `useDrawBillPick()` from the screen that also renders
+   * its `host`. With it, a move to Waiting on customer asks which bill when the job has several open ones.
+   * Without it the move goes on as before and the database ties the job's one open bill when it has exactly one.
+   */
+  drawBill?: { askOnArrival: (sheetId: string, subName: string) => Promise<DrawBillAnswer>; tieAfterMove: (sheetId: string, answer: DrawBillAnswer) => Promise<void> }
 }) {
   const confirmDialog = useConfirmDialog()
   const [laborJobs, setLaborJobs] = useState<LaborJob[]>([])
@@ -249,8 +258,12 @@ export function useSubLaborLedger({
           if (u.name) moverNamesById.set(u.id, u.name)
         }
       }
+      // v2.7835: each sheet's tie to one bill. The column comes from migration 20261118180000, so it is read by
+      // itself: a refused read is no ties, and every sheet still loads.
+      const drawTies = await loadDrawTies(supabase)
       const mappedJobs = (jobs as LaborJob[]).map((j) => ({
         ...j,
+        draw_invoice_id: drawTies.get(j.id) ?? null,
         items: itemsByJob.get(j.id) ?? [],
         payments: paymentsByJob.get(j.id) ?? [],
         payment_events: eventsByJob.get(j.id) ?? [],
@@ -289,6 +302,10 @@ export function useSubLaborLedger({
    */
   async function setLaborJobStage(jobId: string, stage: SubSheetStage) {
     setError(null)
+    // v2.7835: a move to Waiting on customer asks which bill the sheet rides on, when the job has several open.
+    const answer: DrawBillAnswer =
+      stage === 'customer_pay' && drawBill ? await drawBill.askOnArrival(jobId, laborJobs.find((j) => j.id === jobId)?.assigned_to_name ?? '') : { go: true }
+    if (!answer.go) return false
     const { data, error: err } = await supabase.rpc('set_sub_sheet_stage' as never, { p_labor_job_id: jobId, p_stage: stage, p_note: null } as never)
     const res = (data ?? null) as SetSubSheetStageResult | null
     const msg = err?.message ?? res?.error
@@ -296,10 +313,16 @@ export function useSubLaborLedger({
       setError(msg)
       return false
     }
+    // The tie as the database holds it now: the office's pick, or the job's one open bill tied by the move itself.
+    let drawInvoiceId: string | null = null
+    if (stage === 'customer_pay') {
+      await drawBill?.tieAfterMove(jobId, answer)
+      drawInvoiceId = (await loadDrawTieSheet(supabase, jobId).catch(() => null))?.drawInvoiceId ?? null
+    }
     setLaborJobs((prev) =>
       prev.map((j) =>
         j.id === jobId
-          ? { ...j, stage, stage_changed_at: new Date().toISOString(), stage_changed_by: authUserId ?? null, stage_source: 'office', stage_note: null, stage_changed_by_name: authUserName ?? null }
+          ? { ...j, stage, stage_changed_at: new Date().toISOString(), stage_changed_by: authUserId ?? null, stage_source: 'office', stage_note: null, stage_changed_by_name: authUserName ?? null, draw_invoice_id: drawInvoiceId }
           : j,
       ),
     )

@@ -83,6 +83,8 @@ export type LaborJob = {
   payable_after?: string | null
   /** Why the office is holding this sheet's pay (shown on the portal and the pay-run view). */
   pay_hold_reason?: string | null
+  /** The bill this sheet rides on while it waits on the customer (v2.7835, punch list #388); null for no tie. */
+  draw_invoice_id?: string | null
   /** Resolved display name of stage_changed_by (office moves only). */
   stage_changed_by_name?: string | null
   /** The sub's own percent from the portal (v2.2931) — evidence for the derived stage (v2.3064). */
