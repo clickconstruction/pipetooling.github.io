@@ -24,7 +24,7 @@ import { BID_MARK_HOLD_MS, bidMarkHoldHandlers, resetBidMarkHoldsForTests } from
 import { BidGcNotesPopover } from './bids/BidGcNotesPopover'
 import { BidBoardJobAccountChips } from './bids/BidBoardJobAccountChips'
 import type { BidJobAccountRow } from '../hooks/useBidJobAccountStrip'
-import { OutstandingByPersonSortableList } from '../pages/Checklist'
+import { OutstandingByPersonSortableList } from './checklist/OutstandingByPersonList'
 
 const inserts = vi.hoisted(() => [] as { table: string; row: unknown }[])
 
