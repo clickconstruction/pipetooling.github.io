@@ -330,6 +330,9 @@ describe('BidsPricingTab render smoke', () => {
     await settle()
     fireEvent.click(button(/Markup ›/))
     expect(strip().textContent).toContain('Material markup')
+    // Two rows have takeoff material, both on the bid's 50%.
+    expect(strip().textContent).toContain("the bid's number is +50% · the rows are at +50%")
+    expect(strip().textContent).toContain('Every row with material2')
     expect(button(/Markup ›/).getAttribute('aria-expanded')).toBe('true')
     fireEvent.click(button(/Markup ›/))
     expect(button(/Markup ›/).getAttribute('aria-expanded')).toBe('false')
@@ -385,6 +388,8 @@ describe('BidsPricingTab render smoke', () => {
     const chip = screen.getByTestId('pricing-lock-chip')
     expect(chip.textContent).toContain('🔒')
     expect(screen.getByTestId('pricing-sent-vs-today').textContent).toContain('$6,500')
+    // Sent at $6,500 and $6,800 today: the line reads amber.
+    expect(screen.getByTestId('pricing-sent-vs-today').style.color).toBe('var(--text-amber-700)')
     fireEvent.click(within(chip).getByRole('button', { name: 'Revise…' }))
     await settle()
     expect(screen.getByTestId('pricing-lock-chip').textContent).toContain('✎')
