@@ -144,7 +144,7 @@ function PrinterGlyph() {
 /** Take from a box: a run left on a box, offered again. */
 const leftStrip: CSSProperties = { display: 'grid', gap: '0.5rem', padding: '0.6rem 0.75rem', borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', color: 'var(--text-strong)' }
 /** The press that stays at the bottom of a box's screen and of the run's, above the app's own bottom bar. */
-const takeBar: CSSProperties = { position: 'sticky', bottom: 'calc(var(--app-bottom-chrome, 0px) + 0.25rem)', zIndex: 5, display: 'grid', gap: '0.25rem', padding: '0.5rem 0 0.35rem', background: 'var(--bg-page)', borderTop: '1px solid var(--border)' }
+const takeBar: CSSProperties = { position: 'sticky', bottom: 'var(--app-bottom-chrome, 0px)', zIndex: 5, display: 'grid', gap: '0.25rem', padding: '0.5rem 0 0.6rem', margin: '0 0 -1rem', background: 'var(--bg-page)', borderTop: '1px solid var(--border)' }
 /** Inline styles have no :disabled, so a dead press fades by hand. */
 const dis = (off: boolean): CSSProperties => (off ? { opacity: 0.45, cursor: 'default' } : {})
 
@@ -995,7 +995,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       {!unsorted && !leftRun ? (
         <div style={takeBar} data-testid="on-site-take-bar">
           <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 56, fontSize: '1.05rem' }} onClick={() => startTake(container)}><CameraGlyph size={18} />{takeStartLabel(container.label)}</button>
-          <span style={{ ...muted, textAlign: 'center' }}>The camera opens. Take a photo of {container.label} as you found it.</span>
+          <span style={{ ...muted, textAlign: 'center' }}>The camera opens for a photo of {container.label} as found.</span>
         </div>
       ) : null}
       {touched ? <p style={{ ...muted, fontSize: '0.75rem', margin: 0 }}>Last touched {new Date(touched.at).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })} by {touched.by}.</p> : null}
