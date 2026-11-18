@@ -67,6 +67,8 @@ export type LienBoardDestination =
   | { kind: 'run'; itemId: string; jobId: string }
   /** The job's Lien window on its affidavit tab. */
   | { kind: 'lienWindow'; jobId: string }
+  /** The window that says what closed and asks what to do (`lienClosedEnd.ts`): a chip at a closed end. */
+  | { kind: 'closed'; jobId: string }
 
 export type LienBoardChip = {
   jobId: string
@@ -412,6 +414,8 @@ function propertyFocus(gates: ReadonlyArray<{ key: LienAffidavitGateKey; ok: boo
 
 function noticeDestination(e: LienDeskEntry, stage: LienBoardNoticeStage): LienBoardDestination {
   switch (stage) {
+    case 'missed':
+      return { kind: 'closed', jobId: e.jobId }
     case 'needs_owner':
       return { kind: 'property', jobId: e.jobId, focus: 'owner' }
     case 'to_print':
@@ -441,6 +445,8 @@ function affidavitDestination(e: LienAffidavitEntry, stage: LienBoardAffidavitSt
     case 'filed':
     case 'served':
       return { kind: 'lienWindow', jobId: e.jobId }
+    case 'missed':
+      return { kind: 'closed', jobId: e.jobId }
     default:
       return { kind: 'paper', tab: 'affidavits', jobId: e.jobId }
   }
@@ -1002,5 +1008,7 @@ export function lienBoardDoorWords(d: LienBoardDestination): string {
       return 'Open the run on this envelope'
     case 'lienWindow':
       return 'Open the job’s Lien window'
+    case 'closed':
+      return 'See what closed and answer it'
   }
 }

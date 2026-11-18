@@ -4,7 +4,10 @@ import {
   LIEN_CLOSED_COUNT_NOTE,
   buildLienClosedWindow,
   lienAffidavitDayPassed,
+  lienClosedAnswerPress,
   lienClosedDates,
+  lienClosedFacts,
+  lienClosedLetGoConfirm,
   lienClosedDayWords,
   lienClosedKeepToast,
   lienClosedKind,
@@ -167,7 +170,11 @@ describe('what is kept and said after an answer', () => {
   })
 
   it('words the other two toasts and the walk', () => {
-    expect(lienClosedLetGoToast('4127')).toBe('4127 is marked Uncollectible. It is off the Lien desk.')
+    expect(lienClosedLetGoToast('4127')).toEqual({ words: '4127 is marked Uncollectible. It is off the Lien desk.', tone: 'success' })
+    // The mark stands when Stripe could not be marked, and the toast says so.
+    expect(lienClosedLetGoToast('4127', ['No such invoice'])).toEqual({ words: '4127 is marked Uncollectible. It is off the Lien desk. Stripe could not be marked: No such invoice.', tone: 'warning' })
+    expect(lienClosedLetGoConfirm('4127')).toEqual({ ask: 'Mark 4127 Uncollectible? It leaves every total. The Pipeline can put it back in Collections.', yes: 'Yes, mark 4127 Uncollectible', no: 'Not yet' })
+    expect(lienClosedAnswerPress(2)).toBe('Answer 2 ›')
     expect(lienClosedRecordToast('4093', ['2026-08'])).toBe('Recorded. No notice goes for August 2026 on 4093.')
     expect(lienClosedWalkWords(0, 3)).toBe('1 of 3')
     expect(lienClosedWalkWords(0, 1)).toBe('')
@@ -189,5 +196,14 @@ describe('the dates off the desk’s entries', () => {
     expect(d).toMatchObject({ lienDay: '2026-11-16', lienDaysLeft: -2, lastMonth: '2026-08', source: 'hand', commercial: false, hasPaper: true })
     expect(lienClosedDates(null, affidavitEntry()).months).toEqual([])
     expect(lienClosedDates(null, affidavitEntry({ item: { status: 'draft', voided_at: null } as never })).hasPaper).toBe(false)
+  })
+
+  it('builds the window’s facts for the viewer: the lien office answers, and the date door needs the desk’s door too', () => {
+    const base = { number: '4127', name: ' Cedar Park Dental ', gcName: 'Ridgeway Builders', unpaid: 2918, notice: null, affidavit: affidavitEntry(), collectionsSince: undefined, status: 'billed' }
+    const office = lienClosedFacts({ ...base, role: 'assistant', lastWorkDoor: true })
+    expect(office).toMatchObject({ number: '4127', name: 'Cedar Park Dental', lienDay: '2026-11-16', lienDaysLeft: -2, collectionsSince: null, status: 'billed', canAnswer: true, canSetLastWork: true })
+    expect(buildLienClosedWindow(office)!.kind).toBe('gone')
+    expect(lienClosedFacts({ ...base, role: 'assistant', lastWorkDoor: false }).canSetLastWork).toBe(false)
+    expect(lienClosedFacts({ ...base, role: 'estimator', lastWorkDoor: true })).toMatchObject({ canAnswer: false, canSetLastWork: false })
   })
 })
