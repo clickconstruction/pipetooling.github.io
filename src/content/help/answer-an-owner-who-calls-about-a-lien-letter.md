@@ -53,6 +53,8 @@ If **nothing matches**:
 
 ## Practice before a real call
 
+The last row of the words is for an owner who wants our records. Press **An owner asked for records ›** to open the packet for their property. The guide [give an owner our records for their property](/help/give-an-owner-our-records-for-their-property) has the four checks.
+
 At the bottom of the words, **Take a practice call ›** opens the same call sheet on a made-up letter. The letter went to Pat Sample, a homeowner. The builder is Sample Builders. Every card, chip and reply works, and the sentence at the bottom builds as you tap. There is no Save and nothing is written anywhere, so tap freely. **Start over ↺** goes back to the first card. {{button:blue|Done practicing}} closes it.
 
 ## Read the sheet

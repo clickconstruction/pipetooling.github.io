@@ -46,6 +46,8 @@ A Leader or Assistant can select **Notify** on a step. That step then shows up i
 
 The header is your map. On a phone, most of these live behind the {{icon:gear}} gear menu in the top-right.
 
+The header stays on one line. On a small phone, **Tell the dev**, **People** and **Customers** move under the gear too.
+
 :::example Header icons (top-right)
 {{icon:gear}} **Gear menu** — Job Mode toggle, Dark Mode toggle, Calendar, Help (this page), Settings, Sign out
 :::
