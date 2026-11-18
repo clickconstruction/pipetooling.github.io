@@ -5,6 +5,7 @@ import { loadJobTestReportRows, testReportPdfSignedUrl } from '../../lib/jobs/te
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useTakenDown } from '../../hooks/useTakenDown'
 import { documentsHeading, documentsLinkButton, documentsQuietButton, documentsTd } from './jobDocumentsStyles'
 import { EmptyState } from '../EmptyState'
 
@@ -16,16 +17,19 @@ export function JobDocumentsTestReports({ job }: { job: JobWithDetails }) {
   const { showToast } = useToastContext()
   const testReportModal = useTestReportModalOptional()
   const [rows, setRows] = useState<TestReportDocumentRow[] | null>(null)
+  // A change in the Test report window reads again and keeps nothing to stop that read: one that lands after the
+  // section is taken down sets nothing (v2.7771).
+  const takenDown = useTakenDown()
 
   const reload = useCallback(() => {
     let cancelled = false
     void loadJobTestReportRows(job.id).then((list) => {
-      if (!cancelled) setRows(list)
+      if (!cancelled && !takenDown()) setRows(list)
     })
     return () => {
       cancelled = true
     }
-  }, [job.id])
+  }, [job.id, takenDown])
 
   useEffect(() => reload(), [reload])
 

@@ -3,6 +3,7 @@ import { CameraGlyph } from '../materials/PhotoPress'
 import { TicketSheet } from './TicketSheet'
 import { useLedgerDisplayPrefixes } from '../../contexts/LedgerDisplayPrefixContext'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useTakenDown } from '../../hooks/useTakenDown'
 import { useTicketCapture, type TicketCaptureIo } from '../../hooks/useTicketCapture'
 import { ticketSavedWords } from '../../lib/tickets/ticketRowWords'
 import { EMPTY_TICKET_SHEET_FACTS, type TicketSheetFacts } from '../../lib/tickets/ticketSheetIo'
@@ -55,18 +56,21 @@ export function TicketPress({
     }
   }, [io, jobId, prefixMap])
 
+  // Each open reads the day's jobs again and keeps nothing to stop that read: one that lands after the press is taken
+  // down sets nothing (v2.7771).
+  const takenDown = useTakenDown()
   const loadFacts = useCallback(() => {
     let live = true
     void io
       .sheetFacts(userId, prefixMap)
       .then((read) => {
-        if (live) setFacts(read.facts)
+        if (live && !takenDown()) setFacts(read.facts)
       })
       .catch(() => undefined)
     return () => {
       live = false
     }
-  }, [io, userId, prefixMap])
+  }, [io, userId, prefixMap, takenDown])
 
   // The Tally press reads the day's jobs as it is drawn, so a counter with no signal still gets them; the Job Mode line
   // knows its job already and reads the rest on the press, since the card is drawn on every dashboard.

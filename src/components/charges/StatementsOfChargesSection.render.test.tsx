@@ -2,29 +2,38 @@
 /**
  * Render smoke for the Statements of charges section (punch list #254, PR 2): the saved rows with their record id,
  * state, period, figures and who saved them; the press with its counts, dead with nothing to make one from; Print
- * again from a row's snapshot; Open handing the window the row; the empty section naming the press; who sees it.
+ * again from a row's snapshot; Open handing the window the row; the empty section naming the press; who sees it; and
+ * the reads closing the window starts, which set nothing once the section is taken down.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { ChargeStatementRow } from '../../lib/charges/chargeStatementsIo'
 import { statementOfChargesPressWords } from '../../lib/charges/statementOfCharges'
 import { StatementsOfChargesSection } from './StatementsOfChargesSection'
 
 // Every name, job and number here is made up.
+// A read can be held: while `held` is a list, each read waits in it until the test lands or fails it.
+type HeldRead = { land: () => void; fail: () => void }
+let held: HeldRead[] | null = null
+function answer<T>(value: () => T): Promise<T> {
+  const into = held
+  if (into == null) return Promise.resolve(value())
+  return new Promise<T>((resolve, reject) => into.push({ land: () => resolve(value()), fail: () => reject(new Error('no signal')) }))
+}
 let authRole = 'dev'
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u-office', email: 'office@example.com' }, role: authRole, profileName: 'Dana Office' }) }))
 let payAccess = true
 vi.mock('../../hooks/usePeopleAccess', () => ({ usePeopleAccess: () => ({ canAccessPay: payAccess, accessResolved: true }) }))
 let rows: ChargeStatementRow[] = []
-vi.mock('../../lib/charges/chargeStatementsIo', () => ({ listChargeStatementsForJob: () => Promise.resolve(rows), saveChargeStatement: () => Promise.reject(new Error('not here')) }))
+vi.mock('../../lib/charges/chargeStatementsIo', () => ({ listChargeStatementsForJob: () => answer(() => rows), saveChargeStatement: () => Promise.reject(new Error('not here')) }))
 let peopleCount = 2
 vi.mock('../../lib/people/hoursStatementRead', () => ({
-  listHoursStatementPeople: () => Promise.resolve(Array.from({ length: peopleCount }, (_, i) => ({ userId: `u${i}`, name: `Person ${i}` }))),
+  listHoursStatementPeople: () => answer(() => Array.from({ length: peopleCount }, (_, i) => ({ userId: `u${i}`, name: `Person ${i}` }))),
   hoursStatementJobNumber: (j: { id: string; hcp_number: string | null; click_number: string | null }) => (j.hcp_number ?? '').trim() || (j.click_number ?? '').trim() || j.id.slice(0, 8),
 }))
 let linesCount = 3
-vi.mock('../../lib/charges/jobChargesRead', () => ({ loadMaterialLines: () => Promise.resolve(Array.from({ length: linesCount }, (_, i) => ({ id: `l${i}` }))) }))
+vi.mock('../../lib/charges/jobChargesRead', () => ({ loadMaterialLines: () => answer(() => Array.from({ length: linesCount }, (_, i) => ({ id: `l${i}` }))) }))
 const printSpy = vi.fn((build: () => Promise<string>) => build().then(() => true))
 vi.mock('../../lib/jobsDocuments/printWindow', () => ({ openHtmlWindowWhenReady: (build: () => Promise<string>) => printSpy(build) }))
 const buildSpy = vi.fn((args: { recordId: string | null; copy: string }) => `<p>paper ${args.recordId} ${args.copy}</p>`)
@@ -121,5 +130,36 @@ describe('StatementsOfChargesSection', () => {
     expect(container.querySelector('[data-testid="statements-of-charges-section"]')).toBeNull()
     authRole = 'dev'
     payAccess = true
+  })
+
+  // A build once failed on `window is not defined` (v2.7709): a read set state after its test's page was gone. Closing
+  // the window reads again, so here the section is taken down while those reads are out, and the page is taken away.
+  describe('the reads closing the window starts, after the section is taken down', () => {
+    for (const kind of ['fail', 'land'] as const) {
+      it(`set nothing when they ${kind} late`, async () => {
+        held = null
+        rows = [row({})]
+        renderWithProviders(<StatementsOfChargesSection job={job} />)
+        await waitFor(() => expect(screen.getByTestId('soc-press').textContent).toBe('Statement of charges… · 2 people, 3 material lines'))
+        fireEvent.click(screen.getByLabelText('Open SC-1042-0001'))
+        const out: HeldRead[] = []
+        held = out
+        fireEvent.click(screen.getByText('close window'))
+        // The statements, the people and the material lines, each read again and each still out.
+        expect(out).toHaveLength(3)
+        cleanup()
+        const page = globalThis as { window?: unknown }
+        const kept = page.window
+        delete page.window
+        try {
+          for (const read of out) read[kind]()
+          // Past the three reads. A state set in here throws, and the run reports it against this test.
+          await new Promise((r) => setTimeout(r, 0))
+        } finally {
+          page.window = kept
+          held = null
+        }
+      })
+    }
   })
 })

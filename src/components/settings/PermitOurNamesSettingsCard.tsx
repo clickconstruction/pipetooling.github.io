@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useTakenDown } from '../../hooks/useTakenDown'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { OUR_NAMES_ADD_LABEL, OUR_NAMES_CARD, OUR_NAMES_INTRO, OUR_NAMES_TAB, OUR_NAME_MAX_LENGTH, companyNameLine, ourNamesValueLine, type OurNames } from '../../lib/research/ourNames'
@@ -28,21 +29,24 @@ export function PermitOurNamesSettingsCard() {
   const [busy, setBusy] = useState(false)
   const [why, setWhy] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  // Try again reads again and keeps nothing to stop that read: one that lands after the card is taken down sets nothing
+  // (v2.7771).
+  const takenDown = useTakenDown()
 
   const read = useCallback(() => {
     let live = true
     setLoaded({ state: 'loading' })
     loadOurNames()
       .then((ours) => {
-        if (live) setLoaded({ state: 'done', ours })
+        if (live && !takenDown()) setLoaded({ state: 'done', ours })
       })
       .catch((e) => {
-        if (live) setLoaded({ state: 'failed', message: formatErrorMessage(e, 'Could not read the names.') })
+        if (live && !takenDown()) setLoaded({ state: 'failed', message: formatErrorMessage(e, 'Could not read the names.') })
       })
     return () => {
       live = false
     }
-  }, [])
+  }, [takenDown])
   useEffect(() => read(), [read])
 
   const change = async (what: { add: string } | { remove: string }) => {

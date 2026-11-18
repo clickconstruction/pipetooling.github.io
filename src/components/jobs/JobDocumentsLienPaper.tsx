@@ -11,6 +11,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatAiaMoney } from '../../lib/aiaG702G703Preview'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { useAuth } from '../../hooks/useAuth'
+import { useTakenDown } from '../../hooks/useTakenDown'
 import { useToastContext } from '../../contexts/ToastContext'
 import LienInstrumentsModal from './LienInstrumentsModal'
 import { documentsChip, documentsHeading, documentsLinkButton, documentsNum, documentsQuietButton, documentsTd } from './jobDocumentsStyles'
@@ -29,16 +30,19 @@ export function JobDocumentsLienPaper({ job, onOverlayOpenChange }: { job: JobWi
   const { user, profileName } = useAuth()
   const [paper, setPaper] = useState<JobLienPaper | null>(null)
   const [lienTab, setLienTab] = useState<LienPaperTab | null>(null)
+  // Recording in the Lien window reads again and keeps nothing to stop that read: one that lands after the section is
+  // taken down sets nothing (v2.7771).
+  const takenDown = useTakenDown()
 
   const reload = useCallback(() => {
     let cancelled = false
     void loadJobLienPaper(job.id).then((p) => {
-      if (!cancelled) setPaper(p)
+      if (!cancelled && !takenDown()) setPaper(p)
     })
     return () => {
       cancelled = true
     }
-  }, [job.id])
+  }, [job.id, takenDown])
 
   useEffect(() => reload(), [reload])
 

@@ -5,15 +5,24 @@
  * press with its count; Print again from a row's snapshot; Open handing the window the row; the empty section naming
  * the press, or saying why there is no one to make a statement for; who sees it. Since PR 3 (v2.6411) a signed row's
  * Open the signed PDF through the gate, first in the card's press group, and the link in a dialog when the browser blocks
- * the window. The window is lazy-loaded, so the stub is awaited.
+ * the window. The window is lazy-loaded, so the stub is awaited. The reads closing the window starts set nothing once
+ * the section is taken down.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { HoursStatementRecordRow, HoursStatementSnapshot } from '../../lib/people/hoursStatementsIo'
 import { HoursStatementsSection } from './HoursStatementsSection'
 
 // Every name, job and number here is made up.
+// A read can be held: while `held` is a list, each read waits in it until the test lands or fails it.
+type HeldRead = { land: () => void; fail: () => void }
+let held: HeldRead[] | null = null
+function answer<T>(value: () => T): Promise<T> {
+  const into = held
+  if (into == null) return Promise.resolve(value())
+  return new Promise<T>((resolve, reject) => into.push({ land: () => resolve(value()), fail: () => reject(new Error('no signal')) }))
+}
 let authRole = 'dev'
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u-office', email: 'office@example.com' }, role: authRole, profileName: 'Dana Office' }) }))
 let payAccess = true
@@ -21,16 +30,16 @@ vi.mock('../../hooks/usePeopleAccess', () => ({ usePeopleAccess: () => ({ canAcc
 
 let rows: HoursStatementRecordRow[] = []
 vi.mock('../../lib/people/hoursStatementsIo', () => ({
-  listHoursStatementsForJob: () => Promise.resolve(rows),
-  listHoursStatementsForUser: () => Promise.resolve(rows),
+  listHoursStatementsForJob: () => answer(() => rows),
+  listHoursStatementsForUser: () => answer(() => rows),
   saveHoursStatement: () => Promise.reject(new Error('not here')),
   setHoursStatementDriveCopy: () => Promise.reject(new Error('not here')),
 }))
 let peopleCount = 2
 let jobsCount = 3
 vi.mock('../../lib/people/hoursStatementRead', () => ({
-  listHoursStatementPeople: () => Promise.resolve(Array.from({ length: peopleCount }, (_, i) => ({ userId: `u${i}`, name: `Person ${i}`, role: 'helpers', firstDay: '2026-06-01', lastDay: '2026-06-02', sessions: 1 }))),
-  listHoursStatementJobs: () => Promise.resolve(Array.from({ length: jobsCount }, (_, i) => ({ jobId: `j${i}`, number: `${1040 + i}`, name: `Job ${i}`, customer: null, site: '', firstDay: '2026-06-01', lastDay: '2026-06-02', sessions: 1 }))),
+  listHoursStatementPeople: () => answer(() => Array.from({ length: peopleCount }, (_, i) => ({ userId: `u${i}`, name: `Person ${i}`, role: 'helpers', firstDay: '2026-06-01', lastDay: '2026-06-02', sessions: 1 }))),
+  listHoursStatementJobs: () => answer(() => Array.from({ length: jobsCount }, (_, i) => ({ jobId: `j${i}`, number: `${1040 + i}`, name: `Job ${i}`, customer: null, site: '', firstDay: '2026-06-01', lastDay: '2026-06-02', sessions: 1 }))),
   hoursStatementJobNumber: (j: { id: string; hcp_number: string | null; click_number: string | null }) => (j.hcp_number ?? '').trim() || (j.click_number ?? '').trim() || j.id.slice(0, 8),
 }))
 const printSpy = vi.fn((build: () => Promise<string>) => build().then(() => true))
@@ -95,6 +104,7 @@ const jobScope = { kind: 'job' as const, job: { id: job.id, hcp_number: job.hcp_
 
 describe('the Hours statements section (punch list #212, PR 2)', () => {
   beforeEach(() => {
+    held = null
     authRole = 'dev'
     payAccess = true
     rows = []
@@ -240,5 +250,36 @@ describe('the Hours statements section (punch list #212, PR 2)', () => {
     expect(screen.getByText('Controllers and devs only')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button', { name: 'Hours statement… · 2 people clocked here' })[0]!)
     expect((await screen.findByTestId('window-stub')).textContent).toContain('for controller pay true')
+  })
+
+  // A build once failed on `window is not defined` (v2.7709): a read set state after its test's page was gone. Closing
+  // the window reads again, so here the section is taken down while those reads are out, and the page is taken away.
+  describe('the reads closing the window starts, after the section is taken down', () => {
+    for (const kind of ['fail', 'land'] as const) {
+      it(`set nothing when they ${kind} late`, async () => {
+        rows = [row()]
+        renderWithProviders(<HoursStatementsSection scope={jobScope} />)
+        const list = await screen.findAllByTestId('hours-statement-row')
+        fireEvent.click(within(list[0]!).getByRole('button', { name: 'Open HS-1042-0001' }))
+        await screen.findByTestId('window-stub')
+        const out: HeldRead[] = []
+        held = out
+        fireEvent.click(screen.getByRole('button', { name: 'close window' }))
+        // The statements and the people who clocked here, each read again and each still out.
+        expect(out).toHaveLength(2)
+        cleanup()
+        const page = globalThis as { window?: unknown }
+        const kept = page.window
+        delete page.window
+        try {
+          for (const read of out) read[kind]()
+          // Past both reads. A state set in here throws, and the run reports it against this test.
+          await new Promise((r) => setTimeout(r, 0))
+        } finally {
+          page.window = kept
+          held = null
+        }
+      })
+    }
   })
 })

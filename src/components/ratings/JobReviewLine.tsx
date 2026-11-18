@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useTakenDown } from '../../hooks/useTakenDown'
 import { canOpenGcProjects } from '../../lib/gc/access'
 import { jobReviewLine, newestRating, starsGlyphs, type OfficeRating } from '../../lib/ratings/ratingsOffice'
 import { supabaseRatingsOfficeIo, type RatingsOfficeIo } from '../../lib/ratings/ratingsOfficeIo'
@@ -27,18 +28,21 @@ export function JobReviewLine({ jobId, io: ioIn }: { jobId: string; io?: Ratings
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  // Recording a call reads again and keeps nothing to stop that read: one that lands after the line is taken down sets
+  // nothing (v2.7771).
+  const takenDown = useTakenDown()
 
   const load = useCallback(() => {
     let live = true
     io.forJob(jobId)
-      .then((r) => live && setRows(r))
-      .catch(() => live && setRows([]))
+      .then((r) => live && !takenDown() && setRows(r))
+      .catch(() => live && !takenDown() && setRows([]))
     // v2.6584 (punch list #255): who was on the job, so the office reads whose work the words praise.
-    void io.techsOnJobs?.([jobId]).then((m) => live && setTechs(m.get(jobId) ?? []), () => live && setTechs([]))
+    void io.techsOnJobs?.([jobId]).then((m) => live && !takenDown() && setTechs(m.get(jobId) ?? []), () => live && !takenDown() && setTechs([]))
     return () => {
       live = false
     }
-  }, [io, jobId])
+  }, [io, jobId, takenDown])
   useEffect(() => (office ? load() : undefined), [office, load])
 
   const line = rows ? jobReviewLine(rows) : null

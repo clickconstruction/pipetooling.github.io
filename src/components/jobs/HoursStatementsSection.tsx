@@ -16,6 +16,7 @@
 import { Suspense, lazy, useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { usePeopleAccess } from '../../hooks/usePeopleAccess'
+import { useTakenDown } from '../../hooks/useTakenDown'
 import { useToastContext } from '../../contexts/ToastContext'
 import { usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -86,6 +87,9 @@ export function HoursStatementsSection({
   const [opening, setOpening] = useState<HoursStatementRecordRow | null>(null)
   const [pdfBusy, setPdfBusy] = useState<string | null>(null)
   const [driveBusy, setDriveBusy] = useState<string | null>(null)
+  // Closing the window reads again and keeps nothing to stop that read, so every answer also asks whether the section
+  // is still up: one that lands after it is taken down sets nothing (v2.7771).
+  const takenDown = useTakenDown()
   const allowed = canMakeHoursStatement(maker)
   const scopeKey = scope.kind === 'job' ? `job:${scope.job.id}` : `person:${scope.userId}`
 
@@ -95,23 +99,23 @@ export function HoursStatementsSection({
     // Two reads, each on its own: a list that cannot be read shows its reason, and the press still counts who clocked.
     void (scope.kind === 'job' ? listHoursStatementsForJob(scope.job.id) : listHoursStatementsForUser(scope.userId))
       .then((list) => {
-        if (cancelled) return
+        if (cancelled || takenDown()) return
         setRows(list)
         setError(null)
       })
       .catch((e: unknown) => {
-        if (cancelled) return
+        if (cancelled || takenDown()) return
         setRows([])
         setError(formatErrorMessage(e, 'The hours statements could not be read.'))
       })
     void (scope.kind === 'job' ? listHoursStatementPeople(scope.job.id).then((p) => ({ count: p.length, onSheets: p.filter((x) => x.kind === 'sheet').length })) : listHoursStatementJobs(scope.userId).then((j) => ({ count: j.length, onSheets: j.filter((x) => x.kind === 'sheet').length })))
       .then((who) => {
-        if (cancelled) return
+        if (cancelled || takenDown()) return
         setCount(who.count)
         setOnSheets(who.onSheets)
       })
       .catch((e: unknown) => {
-        if (cancelled) return
+        if (cancelled || takenDown()) return
         setCount(0)
         setError((cur) => cur ?? formatErrorMessage(e, scope.kind === 'job' ? 'The people who clocked here could not be read.' : 'The jobs could not be read.'))
       })
@@ -119,7 +123,7 @@ export function HoursStatementsSection({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the scope's key stands for the scope
-  }, [scopeKey, allowed])
+  }, [scopeKey, allowed, takenDown])
 
   useEffect(() => reload(), [reload])
 
