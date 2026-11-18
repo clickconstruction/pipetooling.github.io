@@ -25,12 +25,13 @@ asked to see the two choices of part 2 before deciding. Each title bar is drawn 
 The picker switches the window between 1,440 and 1,280 wide, and to dark. `#1280` and `#1440-dark` open on
 a state. Part 1's fold is drawn under it, closed and open. Made-up counts, jobs, names and figures only.
 
-Both parts were first drawn in [#383's mock-up](../lien-desk-to-do-layout/mockup.html), option B.
+Both parts were first drawn in #383's mock-up, option B. That card closed on 2026-11-18 and its folder,
+`to-dos/lien-desk-to-do-layout/`, is in git history at the commit that deleted it.
 
 ## The ask, in the owner's words
 
 2026-11-17, on the Lien desk's To do page, after three whole-page options were drawn
-([`lien-desk-to-do-layout`](../lien-desk-to-do-layout/README.md), #383):
+(`lien-desk-to-do-layout`, #383, closed 2026-11-18):
 
 > Build B but with the action button in the same line as the title of the card it is in instead of at
 > the bottom.
@@ -158,8 +159,9 @@ tools on the title line, wherever the title line has room for all five.
 
 - **The Board alone.** A throwaway page that mounts `LienBoard` over `buildLienBoard` with made-up
   entries and a real `LienPublicBinView` as `underAffidavits`, built with `vite build` and opened by
-  Playwright through `page.route`, with no server and no sign-in. #383's card has the recipe and its
-  numbers. Measure the Board's height with the box folded and open, at 1,440 × 900 and 1,280 × 720.
+  Playwright through `page.route`, with no server and no sign-in. #383 measured the Board that way
+  before the fold: 972 px tall with 149 px of nav and title bar above it, and the table is in
+  `docs/recent-features/v2.7714.md`. On the live desk on 2026-11-18 it was 922 px tall. Measure the Board's height with the box folded and open, at 1,440 × 900 and 1,280 × 720.
 - **The title bar** is measured from the bar it drew, so it needs the desk itself. Walk it on the live
   desk as a dev after the merge, at 1,440 and 1,280 wide and at a width under 1,038, on To do and on By
   paper. Read where the door sits and whether the bar is one line.
@@ -167,8 +169,8 @@ tools on the title line, wherever the title line has room for all five.
 
 ## Related
 
-- [`lien-desk-to-do-layout`](../lien-desk-to-do-layout/README.md) (#383) is the look, the three options and
-  what shipped of B.
+- `lien-desk-to-do-layout` (#383, closed 2026-11-18) was the look, the three options and what shipped of B.
+  Its closing line is in [`to-dos/README.md`](../README.md).
 - [`lien-to-do-one-run`](../lien-to-do-one-run/README.md) (#362) owns the run and the list under the Board.
 - [`lien-desk-on-a-phone`](../lien-desk-on-a-phone/README.md) (#352) owns the phone's More, where the records
   door is a row and does not change.
