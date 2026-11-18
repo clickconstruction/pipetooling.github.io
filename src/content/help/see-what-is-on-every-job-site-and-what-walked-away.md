@@ -135,6 +135,22 @@ The table holds one row per part. It reads what was bought and what was added on
 
 The money uses the parts book's price. Beside each figure a small chip reads {{chip:gray|parts book · checked Oct 3}}, the day someone last checked that price. The chip turns amber when the check is older than 90 days. Then the price typed off the invoice that landed the part stands in, and the chip reads {{chip:gray|invoice price}}. A part typed in by name on site has no page in the book, so it keeps the invoice price. A part with no price at all shows its count alone.
 
+## See what was taken, with its photos
+
+On the phone a person takes parts out with **Take from G12**. The run asks for a photo of the box as found and a photo after. Read [keep track of the material in the cages and boxes on site](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#take-parts-out-of-a-box) for the crew's side.
+
+Press the {{chip:gray|used}} figure to open History. **Takes** sits at the top. Each take is one card. It reads the box, who took the parts, how many and when. Under that it lists the parts.
+
+The pictures sit side by side. The first is the box as the person before left it. The second is the box as this person found it. The third is the box after. Press a picture to open it whole.
+
+A chip says what is missing. {{chip:green|Both photos}} is a whole take. {{chip:yellow|No photo after}} means the person skipped that photo. {{chip:yellow|Nothing marked}} means a photo was taken and no part was marked.
+
+Press **A photo missing** to see only those takes. Press **All takes** to see every one again.
+
+If the first two pictures differ, someone went into the box between the two takes. No press recorded it. The app does not compare the pictures. You look.
+
+A short count leads here too. On **Missing**, a short count reads a press like **3 takes before this count**. Press it. History opens on that box's takes alone, with their pictures. Press **Show every box** to see the rest.
+
 ## Land a delivery
 
 Open **Deliveries**. Press **Add the invoice to the job’s Drive folder** and drop the invoice there. That keeps the invoice with the job. The app does not read the file yet, so its lines land from pasted text.

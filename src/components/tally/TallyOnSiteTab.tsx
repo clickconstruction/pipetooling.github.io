@@ -62,6 +62,8 @@ import { shootBoxPhoto } from '../../lib/materials/boxPhotoShoot'
 import { TAKE_MAX, newTakeRun, takeAddExtra, takeDoneWords, takeIsOnePart, takeLeftWords, takeLineHint, takeMark, takePhotoWords, takeQuicks, takeRemoveExtra, takeRows, takeSaveLabel, takeSaved, takeStartLabel, takeTotal, type TakePhotoKind, type TakeRun } from '../../lib/materials/takeRun'
 import { forgetTakeRun, keepTakeRun, readTakeRun, readTakeRuns } from '../../lib/materials/takeRunMemory'
 import type { PhotoNote } from '../../lib/materials/photo'
+import { takesOf } from '../../lib/materials/takes'
+import TakesPanel from '../materials/TakesPanel'
 import { FlowRow } from '../materials/FlowRow'
 import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { countWalkAt, countWalkCantFindWords, countWalkKeys } from '../../lib/materials/countWalk'
@@ -835,6 +837,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const touched = ls.reduce<{ at: string; by: string } | null>((best, l) => (l.lastTouchedAt && (!best || l.lastTouchedAt > best.at) ? { at: l.lastTouchedAt, by: l.lastTouchedBy ?? '' } : best), null)
   const boxLineNow = boxLineOf(container, lines)
   const leftRun = unsorted ? null : readTakeRun(jobId, container.id, Date.now())
+  const loosePhotos = photos.filter((p) => !p.takeId)
+  const boxTakes = takesOf(movements, listPhotos(jobId)).filter((t) => t.containerId === container.id)
   const leftRunWords = leftRun ? takeLeftWords(leftRun, container.label) : { main: '', sub: '', go: '', drop: '' }
   return (
     <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -873,7 +877,9 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
           </div>
         </div>
       ) : null}
-      {photos.length > 0 ? <BoxPhotos photos={photos} canAct onToast={showToast} /> : null}
+      {/* A take's two photos are drawn with their take (v2.7828); the box's other photos stay here. */}
+      {loosePhotos.length > 0 ? <BoxPhotos photos={loosePhotos} canAct onToast={showToast} /> : null}
+      {boxTakes.length > 0 ? <TakesPanel heading={`Taken from ${container.label}`} takes={boxTakes} labelOf={() => container.label} limit={2} /> : null}
       {countWalkKeys(ls).length > 0 && container.kind !== 'unsorted' ? <button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setView({ kind: 'count', id: container.id, keys: countWalkKeys(ls), index: 0, corrected: 0 })}>Count this box</button> : null}
       {ls.length === 0 ? <EmptyState compact main={`Nothing in ${container.label} yet.`} next={{ label: `Add a part to ${container.label}`, onPress: () => setSheet({ kind: 'add-part', container }) }} tail="adds the first, or move one in from another container." /> : null}
       {ls.map((l) => (
