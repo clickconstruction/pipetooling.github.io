@@ -14,16 +14,17 @@
  * tours the section views — one section alone for two seconds each, that
  * chip lit — and **Pause** holds the view that is up. The office anchor and
  * its 25 / 50 mile rings come from the same setting the bid form's Distance
- * to Office auto-fill uses (`resolveOfficeAnchor`). Google Maps when a
- * browser key is configured and loads, OpenStreetMap otherwise — the
- * Dashboard card's provider rule.
+ * to Office auto-fill uses (`resolveOfficeAnchor`). It draws in the shared
+ * `PinsMapFrame` (punch list #395): Google Maps when a browser key is
+ * configured and loads, OpenStreetMap otherwise, with the Satellite and
+ * Streets switch and the Time press.
  */
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidBoardHoverStore } from '../../lib/bids/bidBoardHoverStore'
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { useAddressGeocodeCoords, type AddressToGeocode } from '../../hooks/useAddressGeocodeCoords'
-import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
+import { MAP_TIME_PINS_WORDS } from '../../lib/map/mapTime'
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { supabase } from '../../lib/supabase'
@@ -33,6 +34,7 @@ import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
 import { bidUpdateRefused, BID_UPDATE_NOT_APPLIED_MESSAGE } from '../../lib/bids/updateGuard'
 import { composeMissingAddressRows } from '../../lib/bids/bidBoardMissingAddresses'
 import { BidBoardMissingAddressesModal } from './BidBoardMissingAddressesModal'
+import { PinsMapFrame } from '../map/PinsMapFrame'
 import { BidBoardMapRail } from './BidBoardMapRail'
 import { bidBoardMapRail, DEFAULT_DISTANCE_BUCKETS, pinsInBuckets, type DistanceBucketKey, type DistanceBucketVisibility } from '../../lib/bids/bidBoardMapRail'
 import { formatAddressWithoutZip } from '../../lib/bids/bidContactInfo'
@@ -66,8 +68,6 @@ import {
 import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import type { MapCanvasAnchor, MapCanvasPin } from '../../lib/map/mapCanvasTypes'
 
-const PinsMapCanvas = lazy(() => import('../map/PinsMapCanvas'))
-const PinsMapGoogleCanvas = lazy(() => import('../map/PinsMapGoogleCanvas'))
 
 const OUTLINE_BUTTON_STYLE: React.CSSProperties = {
   padding: '0.35rem 0.75rem',
@@ -356,14 +356,6 @@ export function BidBoardMapCard({
   const [fitSignal, setFitSignal] = useState(0)
   // The map opens on the office's region (pins within BID_BOARD_MAP_HOME_FIT_MILES); Fit all widens to every pin.
   const [fitAll, setFitAll] = useState(false)
-  // Google Maps when a browser key is configured and the API loads; OpenStreetMap otherwise.
-  // A failure is sticky for this page so a bad key never flickers (v2.3145).
-  const [googleFailed, setGoogleFailed] = useState(false)
-  const provider = resolveDashboardMapProvider({ key: googleMapsBrowserKey(), googleFailed })
-  const googleUnavailable = useCallback((reason: string) => {
-    console.warn(`[bids map] Google Maps unavailable, using OpenStreetMap — ${reason}`)
-    setGoogleFailed(true)
-  }, [])
 
   const anchor = useOfficeAnchor(!hidden)
   const canvasAnchor = useMemo<MapCanvasAnchor | null>(
@@ -598,55 +590,28 @@ export function BidBoardMapCard({
 
           {/* v2.3206: map on the left, the rail on the right — the empty land becomes numbers. Phones stack. */}
           <div style={isMobile ? { display: 'flex', flexDirection: 'column', gap: '0.5rem' } : { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: '0.6rem', alignItems: 'stretch' }}>
-          <div
-            // isolation contains Leaflet's internal z-indexes (panes 200–700, controls 1000) so they can't paint over the sticky pill row
-            style={{ position: 'relative', height: mapHeight, borderRadius: 4, overflow: 'hidden', isolation: 'isolate', background: 'var(--bg-muted)' }}
-          >
-            {canvasPins.length > 0 ? (
-              <Suspense fallback={<div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading map…</div>}>
-                {provider === 'google' ? (
-                  <PinsMapGoogleCanvas
-                    apiKey={googleMapsBrowserKey()}
-                    onUnavailable={googleUnavailable}
-                    pins={canvasPins}
-                    selectedId={selectedId}
-                    onSelect={select}
-                    renderPopup={renderPopup}
-                    fitSignal={fitSignal}
-                    height={mapHeight}
-                    isMobile={isMobile}
-                    anchor={canvasAnchor}
-                    fitPoints={fitPoints}
-                    cluster={clustered}
-                    clusterRingPriority={CLUSTER_RING_PRIORITY}
-                    pulseId={isMobile ? null : hoverId}
-                    // The card sits in the board's scroll: the wheel scrolls the page until the map is clicked
-                    scrollZoomAfterClick
-                    // Leaflet / Google ignore a height change after mount — remount when the form flips
-                    key={isMobile ? 'phone' : 'desktop'}
-                  />
-                ) : (
-                  <PinsMapCanvas
-                    pins={canvasPins}
-                    selectedId={selectedId}
-                    onSelect={select}
-                    renderPopup={renderPopup}
-                    fitSignal={fitSignal}
-                    height={mapHeight}
-                    isMobile={isMobile}
-                    anchor={canvasAnchor}
-                    fitPoints={fitPoints}
-                    cluster={clustered}
-                    clusterRingPriority={CLUSTER_RING_PRIORITY}
-                    pulseId={isMobile ? null : hoverId}
-                    // The card sits in the board's scroll: the wheel scrolls the page until the map is clicked
-                    scrollZoomAfterClick
-                    // Leaflet / Google ignore a height change after mount — remount when the form flips
-                    key={isMobile ? 'phone' : 'desktop'}
-                  />
-                )}
-              </Suspense>
-            ) : (
+          {canvasPins.length > 0 ? (
+            <PinsMapFrame
+              surface="bid-board-map"
+              style={{ borderRadius: 4, overflow: 'hidden' }}
+              pins={canvasPins}
+              selectedId={selectedId}
+              onSelect={select}
+              renderPopup={renderPopup}
+              fitSignal={fitSignal}
+              height={mapHeight}
+              isMobile={isMobile}
+              anchor={canvasAnchor}
+              fitPoints={fitPoints}
+              cluster={clustered}
+              clusterRingPriority={CLUSTER_RING_PRIORITY}
+              pulseId={isMobile ? null : hoverId}
+              timeDotsWords={MAP_TIME_PINS_WORDS}
+              // The card sits in the board's scroll: the wheel scrolls the page until the map is clicked
+              scrollZoomAfterClick
+            />
+          ) : (
+            <div style={{ position: 'relative', height: mapHeight, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-muted)' }}>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 {hiddenSectionsWithPins
                   ? 'Every section is turned off — tap a section above to show its pins.'
@@ -654,8 +619,8 @@ export function BidBoardMapCard({
                     ? 'Placing bids on the map…'
                     : 'None of these bids has a map location yet.'}
               </div>
-            )}
-          </div>
+            </div>
+          )}
           <BidBoardMapRail
             rail={rail}
             bucketsOn={bucketsOn}
