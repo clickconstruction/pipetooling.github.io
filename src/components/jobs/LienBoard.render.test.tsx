@@ -614,6 +614,10 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
     const row = document.querySelector('[data-lien-board-prints]') as HTMLElement
     expect(row.getAttribute('data-layout')).toBe('row')
     expect(Array.from(row.children).map((el) => el.textContent)).toEqual(['Print and mail 8 notices', 'Print 10 for notarization'])
+    // One row on every phone (v2.7847): a grid of equal columns, a column a press, so the second can never fall under the first. A press may narrow to nothing and wraps its own words.
+    expect(row.style.display).toBe('grid')
+    expect(row.style.gridTemplateColumns).toBe('repeat(2, minmax(0, 1fr))')
+    expect(Array.from(row.children).map((el) => (el as HTMLElement).style.minWidth)).toEqual(['0', '0'])
     expect((document.querySelector('[data-lien-board-grid]') as HTMLElement).style.display).toBe('none')
     fireEvent.click(row.children[1] as HTMLButtonElement)
     expect(h.onPress.mock.calls[0]![0]).toMatchObject({ kind: 'affidavit' })
