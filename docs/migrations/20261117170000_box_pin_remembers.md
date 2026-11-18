@@ -1,6 +1,6 @@
 # 20261117170000_box_pin_remembers.sql (2026-11-17, v2.7573)
 
-A box's pin remembers who set it, when, and how sure the phone was. Punch list #372, step 1 ([`to-dos/find-a-lost-box/README.md`](../../to-dos/find-a-lost-box/README.md)), on the owner's word of 2026-11-17, *Build all the steps*. This is the database half. No screen reads or writes the columns yet.
+A box's pin remembers who set it, when, and how sure the phone was. Punch list #372, step 1 (*Find a lost box*, closed 2026-11-17; its record is in [`to-dos/README.md`](../../to-dos/README.md)), on the owner's word of 2026-11-17, *Build all the steps*. This is the database half. No screen reads or writes the columns yet.
 
 Until now a pin was two numbers on the box, `lat` and `lng`, and nothing else. A move between places is kept with who and when (`job_container_moves`). A pin was not, so the app could not say *pinned three weeks ago*, and for a box somebody is looking for that is the fact that matters.
 
