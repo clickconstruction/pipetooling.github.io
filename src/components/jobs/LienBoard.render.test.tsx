@@ -568,12 +568,34 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
     expect((document.querySelector('[data-lien-board-remind]') as HTMLButtonElement).disabled).toBe(true)
     sent.unmount()
     // The leader's own desk: the door to the notices that take his signature, filled, since the act is his.
-    const door = lienBoardSignDoor(1)!
+    const door = lienBoardSignDoor({ mine: 1 })!
     render(<LienBoard board={b} isMobile={false} columnsOnly binPress={{ 'notice:to_sign': { label: door.label, onPress, filled: true, marks: { 'data-lien-board-sign': 'yes' } } }} />)
     const sign = document.querySelector('[data-lien-board-sign]') as HTMLButtonElement
     expect(sign.textContent).toBe('Sign 1 notice ›')
     expect(sign.style.background).toBe('rgb(37, 99, 235)')
     expect(document.querySelector('[data-lien-board-remind]')).toBeNull()
+  })
+
+  it('a leader’s Sign press counts his own notices, the line under the bin’s name says what waits on another leader, and the blue edge is on the bin only when the act is his (v2.7853)', () => {
+    const onPress = vi.fn()
+    const b = board({ notices: [notice('9', 'ready', { item: item('i9') }), notice('11', 'ready', { item: item('i11') }), notice('12', 'ready', { item: item('i12') })] })
+    const toSign = () => document.querySelector('[data-lien-board-bin="notice:to_sign"]') as HTMLElement
+    // He leads two of the three: the bin reads 3, the press takes 2 and the line names the other 1.
+    const door = lienBoardSignDoor({ mine: 2, others: 1, othersLeader: 'Malachi' })!
+    const mixed = render(<LienBoard board={b} isMobile={false} columnsOnly binPress={{ 'notice:to_sign': { label: door.label, onPress, filled: true, lines: [{ key: 'others', words: door.line!, marks: { 'data-lien-board-sign-others': 'yes' } }], marks: { 'data-lien-board-sign': 'yes' } } }} />)
+    expect(toSign().querySelector('[data-lien-board-count]')!.textContent).toBe('3')
+    expect((document.querySelector('[data-lien-board-sign]') as HTMLButtonElement).textContent).toBe('Sign 2 notices ›')
+    expect(document.querySelector('[data-lien-board-sign-others]')!.textContent).toBe('1 waits on Malachi.')
+    expect(toSign().getAttribute('data-act')).toBe('yes')
+    fireEvent.click(document.querySelector('[data-lien-board-sign]') as HTMLButtonElement)
+    expect(onPress).toHaveBeenCalledTimes(1)
+    mixed.unmount()
+    // He leads none of them: the kernel hands no door, the desk draws the office's reminder, and the bin has no blue edge.
+    expect(lienBoardSignDoor({ mine: 0, others: 3, othersLeader: 'Malachi' })).toBeNull()
+    render(<LienBoard board={b} isMobile={false} columnsOnly binPress={{ 'notice:to_sign': { label: 'Remind Malachi of 3 papers ›', onPress, quiet: true, marks: { 'data-lien-board-remind': 'yes' } } }} />)
+    expect(document.querySelector('[data-lien-board-sign]')).toBeNull()
+    expect(toSign().getAttribute('data-act')).toBeNull()
+    expect(toSign().style.borderLeft).toBe('')
   })
 
   it('a press with nothing ready is dead while its bin holds a paper; in an empty bin it is not drawn; a column with no approved paper has no press', () => {

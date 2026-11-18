@@ -78,7 +78,7 @@ The same press sits on the job number of every To do row. It also sits on the nu
 
 Some bins carry a press on the same line as the bin's name. The press acts on the papers in that bin. Nothing stands between the tiles and the bins. Only the lien office sees these presses.
 
-On *Approved · to sign* the office's press reads like {{button:outline|Remind Malachi of 7 papers ›}}. It tells the leader they wait. The desk asks first. The leader's own press there reads like {{button:blue|Sign 7 notices ›}}. It opens the approved notices, and he signs each on its own pane.
+On *Approved · to sign* the office's press reads like {{button:outline|Remind Malachi of 7 papers ›}}. It tells the leader they wait. The desk asks first. The leader's own press there reads like {{button:blue|Sign 3 notices ›}}. It counts only the notices on the jobs he leads. It opens those notices, and he signs each on its own pane. A line under the bin's name says how many wait on another leader. A leader who leads none of them sees the office's press.
 
 On *Approved · to print* the press reads like {{button:blue|Print and mail 8 notices}}. The count is the bin's own count. Press it and the run opens on every approved notice, for every GC.
 

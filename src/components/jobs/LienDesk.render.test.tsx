@@ -922,6 +922,56 @@ describe('LienDesk', () => {
     expect(document.querySelector('[data-lien-board-remind]')).toBeNull()
   })
 
+  it('a leader’s Sign N notices counts the notices on the jobs he leads and opens By paper on those alone; a leader who leads none of them reads the office’s reminder (v2.7853)', async () => {
+    const unsigned = (id: string, job: string) => ({ id, job_id: job, kind: 'notice_53_056', months: ['2026-07'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z', approved_by: 'u-taunya', approved_at: '2026-09-12T15:00:00Z', approval_mode: 'word', word_note: 'He said to send it', word_channel: 'phone' }) as unknown as LienDeskItemRow
+    // Three approved notices nobody has signed, each at its own GC so each keeps a row: Sam leads two of the jobs and Lee the third.
+    const make = () => {
+      const d = data([row('j650', '2026-07', '2026-10-15'), row('j651', '2026-07', '2026-10-15', { gc_customer_id: 'zzb' }), row('j652', '2026-07', '2026-10-15', { gc_customer_id: 'zzc' })], [unsigned('it1', 'j650'), unsigned('it2', 'j651'), unsigned('it3', 'j652')], true)
+      d.jobsById.j650 = { ...d.jobsById.j650!, master_user_id: 'u-sam' } as NonNullable<typeof d.jobsById.j650>
+      d.jobsById.j651 = { ...d.jobsById.j650!, id: 'j651', hcp_number: '651', job_name: 'Palomino Trail', gc_customer_id: 'zzb' }
+      d.jobsById.j652 = { ...d.jobsById.j650!, id: 'j652', hcp_number: '652', job_name: 'Quarry Bend', gc_customer_id: 'zzc', master_user_id: 'u-lee' } as NonNullable<typeof d.jobsById.j650>
+      d.gcsById = { ...d.gcsById, zzb: { ...d.gcsById.lowbeck!, id: 'zzb', name: 'ZZ Builders' }, zzc: { ...d.gcsById.lowbeck!, id: 'zzc', name: 'ZZ Concrete' } }
+      return d
+    }
+    const nameFor = (id: string | null) => (id === 'u-lee' ? 'Lee' : 'Sam')
+    const toSign = () => document.querySelector('[data-lien-board-bin="notice:to_sign"]') as HTMLElement
+    // Sam's own desk: the bin reads 3, his press takes the 2 he leads, and the line names the 1 that waits on Lee.
+    const sam = renderWithProviders(<LienDesk {...baseProps} authUserId="u-sam" authRole="master_technician" data={make()} initialKind="next" leaderNameFor={nameFor} />)
+    await settle()
+    expect(toSign().querySelector('[data-lien-board-count]')!.textContent).toBe('3')
+    const sign = document.querySelector('[data-lien-board-sign]') as HTMLButtonElement
+    expect(sign.textContent).toBe('Sign 2 notices ›')
+    expect(document.querySelector('[data-lien-board-sign-others]')!.textContent).toBe('1 waits on Lee.')
+    expect(toSign().getAttribute('data-act')).toBe('yes')
+    expect(document.querySelector('[data-lien-board-remind]')).toBeNull()
+    // The door opens By paper's approved notices narrowed to his two: the press said 2 and the list shows 2.
+    fireEvent.click(sign)
+    await settle()
+    expect(document.querySelector('[data-testid="lien-desk-calendar-filter"]')!.textContent).toContain('Only the notices that take your signature')
+    const rows = document.querySelector('[data-lien-pile-rows="ready"]') as HTMLElement
+    expect(rows.children).toHaveLength(2)
+    expect(rows.textContent).not.toContain('Quarry Bend')
+    sam.unmount()
+    // A master who leads none of the three: no Sign press, no blue edge, and the office's reminder in its place. Until v2.7853 he read *Sign 3 notices ›*.
+    const other = renderWithProviders(<LienDesk {...baseProps} authUserId="u-pat" authRole="master_technician" data={make()} initialKind="next" leaderNameFor={nameFor} />)
+    await settle()
+    expect(document.querySelector('[data-lien-board-sign]')).toBeNull()
+    expect(toSign().getAttribute('data-act')).toBeNull()
+    expect((document.querySelector('[data-lien-board-bin-title="notice:to_sign"] [data-lien-board-remind]') as HTMLButtonElement).textContent).toBe('Remind the leader of 3 papers ›')
+    other.unmount()
+    // A dev is a leader by role and leads only a job with no master or his own: here none, so he reads the reminder as the office does.
+    const dev = renderWithProviders(<LienDesk {...baseProps} authUserId="u-dev" authRole="dev" data={make()} initialKind="next" leaderNameFor={nameFor} />)
+    await settle()
+    expect(document.querySelector('[data-lien-board-sign]')).toBeNull()
+    expect(document.querySelector('[data-lien-board-bin-title="notice:to_sign"] [data-lien-board-remind]')).not.toBeNull()
+    dev.unmount()
+    // The office reads the reminder, as before.
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={make()} initialKind="next" leaderNameFor={nameFor} />)
+    await settle()
+    expect(document.querySelector('[data-lien-board-sign]')).toBeNull()
+    expect(document.querySelector('[data-lien-board-bin-title="notice:to_sign"] [data-lien-board-remind]')).not.toBeNull()
+  })
+
   it('a reminder says whether its text went: *A text went too.*, or in amber why none did, with the leader still reminded (v2.7495)', async () => {
     const unsigned = { id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-07'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z', approved_by: 'u-taunya', approved_at: '2026-09-12T15:00:00Z', approval_mode: 'word', word_note: 'He said to send it', word_channel: 'phone' } as unknown as LienDeskItemRow
     const remind = async () => {

@@ -682,7 +682,7 @@ export default function LienDesk({
     [data, supplierMarks],
   )
   // The Calendar's "Draft the N" (v2.4153): the notice list narrows to those jobs until the chip is cleared.
-  const [calendarJobFilter, setCalendarJobFilter] = useState<{ ymd: string; jobIds: ReadonlySet<string> } | null>(null)
+  const [calendarJobFilter, setCalendarJobFilter] = useState<{ ymd: string; jobIds: ReadonlySet<string>; words?: string } | null>(null)
   // Deliveries (the Docsmit train, 6b): the Sent pile narrowed to the notices mailed through the provider, each row's tail saying where its envelopes are.
   const [deliveriesOnly, setDeliveriesOnly] = useState(false)
   const mailedJobIds = useMemo(() => jobsWithMailPieces(entries, data?.mailPiecesByFiling ?? {}), [entries, data?.mailPiecesByFiling])
@@ -824,6 +824,7 @@ export default function LienDesk({
     publicBin,
     offPathBin,
     leaderView,
+    signSplit,
     approvingLot,
     approveTheLot,
     boardPick,
@@ -1758,9 +1759,15 @@ export default function LienDesk({
     setPile('ready')
   }
   // Approved · to sign's press (v2.7712): the office's reminder to the leader, the same press as To do's waiting rows carry
-  // (v2.7491), or for a master, whose own the signature is, the door to the approved notices where he signs each.
-  const signDoor = office && authRole === 'master_technician' ? lienBoardSignDoor(readyWaits) : null
-  const signRemind = office && authRole !== 'master_technician' && reminderWords && reminderPlan && reminderPlan.signatures.length > 0 ? reminderWords : null
+  // (v2.7491), or for a leader, whose own the signature is, the door to the approved notices where he signs each.
+  // The door counts the notices on the jobs he leads (v2.7853), and By paper opens narrowed to those, so the press and
+  // the list are one number. A leader who leads none of them, a master or a dev, reads the office's reminder.
+  const signDoor = office && signSplit ? lienBoardSignDoor({ mine: signSplit.mine.length, others: signSplit.others, othersLeader: signSplit.othersLeader }) : null
+  const showNoticesToSign = () => {
+    showUnsignedNotices()
+    if (signDoor && signSplit) setCalendarJobFilter({ ymd: todayYmd, jobIds: new Set(signSplit.mine), words: signDoor.list })
+  }
+  const signRemind = office && !signDoor && reminderWords && reminderPlan && reminderPlan.signatures.length > 0 ? reminderWords : null
   // The presses that stand on a bin's title line beside the two prints (v2.7708): the run again on Approved · to mail while
   // notices still wait to print, the liens' copies on Filed · copies to mail (punch list #366), and the leader's one press
   // on his Awaiting Master approval bin, which stood under his own two bins until the switch to them was retired.
@@ -1775,7 +1782,7 @@ export default function LienDesk({
   const mailNumbersPress = office ? lienBoardMailNumbersPress({ toPrint: (counts?.ready ?? 0) + retReady, printed: counts?.printed ?? 0 }) : null
   const leaderBinPress = leaderView ? lienBoardLeaderBinPress(leaderView) : null
   const boardBinPress: Partial<Record<LienBoardBinKey, LienBoardBinPress>> = {
-    ...(signDoor ? { 'notice:to_sign': { label: signDoor.label, onPress: showUnsignedNotices, filled: true, title: 'Open the approved notices. Each takes your signature on its own pane.', marks: { 'data-lien-board-sign': 'yes' } } } : null),
+    ...(signDoor ? { 'notice:to_sign': { label: signDoor.label, onPress: showNoticesToSign, filled: true, title: 'Open the approved notices on the jobs you lead. Each takes your signature on its own pane.', lines: signDoor.line ? [{ key: 'others', words: signDoor.line, marks: { 'data-lien-board-sign-others': 'yes' } }] : [], marks: { 'data-lien-board-sign': 'yes' } } } : null),
     ...(signRemind ? { 'notice:to_sign': { label: reminding ? 'Reminding…' : signRemind.dead ? signRemind.button : `${signRemind.button} ›`, onPress: () => void remindLeader(), dead: signRemind.dead || reminding, quiet: true, marks: { 'data-lien-board-remind': 'yes' } } } : null),
     ...(sendDoor ? { 'affidavit:to_send': { label: sendDoor.label, onPress: showAffidavitsToSend, title: 'Open the affidavits to send, where one press sends every paper someone has read', marks: { 'data-lien-board-send': 'yes' } } } : null),
     ...(mailNumbersPress ? { 'notice:in_mail': { label: mailNumbersPress.label, onPress: openWholeRun, title: 'Open the run to type each printed notice’s mail number' } } : null),
