@@ -16,6 +16,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useIsDigitalTwin } from '../../hooks/useIsDigitalTwin'
 import { isImpersonationSessionActive } from '../../lib/impersonationSession'
 import { appActivityPageKey, formatAppActivityPageLabel } from '../../lib/appActivityPage'
+import { APP_VERSION } from '../../lib/appVersion'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import ResponsiveModalShell from '../ResponsiveModalShell'
@@ -58,7 +59,6 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [appVersion, setAppVersion] = useState<string | null>(null)
   const [openedOnce, setOpenedOnce] = useState<boolean>(() => readWrenchOpened(localStorageOrNull(), userId))
   // The answer coming back: this person's last notes, and when the box last listed them.
   const [myNotes, setMyNotes] = useState<MyNote[]>([])
@@ -109,8 +109,8 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
   }, [fixMode, userId, readMyNotes])
 
   // The press reads these, so they are kept where a listener can see the latest.
-  const live = useRef({ location, role, readOnly, isTwin, isMobile, modes, appVersion })
-  live.current = { location, role, readOnly, isTwin, isMobile, modes, appVersion }
+  const live = useRef({ location, role, readOnly, isTwin, isMobile, modes })
+  live.current = { location, role, readOnly, isTwin, isMobile, modes }
 
   const open = useCallback(
     (request: TellTheDevOpenRequest) => {
@@ -130,7 +130,8 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
           width: window.innerWidth,
           height: window.innerHeight,
           modes: at.modes,
-          appVersion: at.appVersion,
+          // Built into the app, so a note sent at once carries it too, and so does one from a tab on an old build.
+          appVersion: APP_VERSION,
           door: request.door,
           trouble: troubleMemory.recent(now),
         },
@@ -163,22 +164,8 @@ export function TellTheDevRoot({ isMobile, modes, fixMode }: { isMobile: boolean
     }
   }, [fixMode, userId, open])
 
-  // The version is the newest release note's. It is read when the box first opens, never at boot.
   const boxOpen = snapshot != null
-  useEffect(() => {
-    if (!boxOpen || appVersion) return
-    let alive = true
-    void import('../../content/releaseNotes')
-      .then((m) => {
-        if (alive) setAppVersion(m.RELEASE_NOTES[0]?.version ?? null)
-      })
-      .catch(() => undefined)
-    return () => {
-      alive = false
-    }
-  }, [boxOpen, appVersion])
-
-  const context = useMemo(() => (snapshot ? { ...snapshot.context, app_version: snapshot.context.app_version ?? appVersion } : null), [snapshot, appVersion])
+  const context = snapshot?.context ?? null
   const lines = useMemo(() => (context ? noteContextLines(context, profileName ?? null) : []), [context, profileName])
 
   const close = useCallback(() => setSnapshot(null), [])

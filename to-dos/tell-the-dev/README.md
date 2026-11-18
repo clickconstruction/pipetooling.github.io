@@ -2,7 +2,7 @@
 name: "Tell the dev: a wrench on every page that sends a note with the page it was written on"
 number: 380
 group: waiting
-status: asked 2026-11-17 · read against the app, drawn and rendered the same day · the owner asked *is this the best we can do?*, took the revised version, added Fix Mode and the no-signal rule, and said build · built the same day as a train of seven, both migrations pushed and the function deployed · the test started 2026-11-17, when PR 3 went live · no note has been sent yet
+status: asked 2026-11-17 · read against the app, drawn and rendered the same day · the owner asked *is this the best we can do?*, took the revised version, added Fix Mode and the no-signal rule, and said build · built the same day as a train of seven, both migrations pushed and the function deployed · the test started 2026-11-17, when PR 3 went live · one test note walked on the live app 2026-11-18 on the owner's yes, and its one find fixed in v2.7742
 summary: >
   The owner's idea: a small floating wrench on every page. A press opens a box that starts a
   sentence, *I want* or *This page is confusing because*, and the note goes to the dev with the
@@ -13,7 +13,7 @@ summary: >
   wrench floats at a desk and sits in the header on a phone, where both bottom corners belong to
   Job Mode. An error line carries its own press, a window's title row carries one on a phone, and
   the answer comes back to the sender with a dot. No picture of the screen is taken.
-next: The read on 2026-12-01, two weeks after PR 3 went live, on Settings → Usage and Notes to the dev. Before then, every note gets an answer within two work days. The first note sent is also the live walk.
+next: The read on 2026-12-01, two weeks after PR 3 went live, on Settings → Usage and Notes to the dev. Before then, every note gets an answer within two work days. The dev's test note of 2026-11-18 does not count.
 size: M as a train of seven (S · M · S · S · S · S · S), the push's function sent ahead of its client call
 blocker: None. The read waits on its date.
 opinion: build as a test with a rule for taking it off — the pipe exists, so the cost is small, and the risk is on the reading side
@@ -38,10 +38,17 @@ Built 2026-11-17 and live. The test started that evening, when PR 3's deploy lan
 
 Checked before the merge, on a local server as the dev, read only: the wrench and the box at a desk, the sheet on a phone, the Fix Mode row, and Fix Mode off taking every wrench away. After the deploys, the site's bundle was read for the wrench and Fix Mode.
 
+Walked on the live app on 2026-11-18, on the owner's yes, as the dev at a desk, with every other write the app tried held:
+
+- One *Something went wrong* note from the Dashboard's wrench. The row saved with its page and its state. Its push reached two devices, and none was held for anyone's hours.
+- It showed under Notes to the dev with its chip, its page and its screen. *Answer and close* saved.
+- The next load put the dot on the wrench. Opening the box listed the answer and took the dot away, and a reload kept it away.
+- The note was sent at once and went without the app's version. The box loaded the version after it opened, which took about half a second. Fixed in v2.7742: the version is built into the app.
+- The test note is closed, and it stays in the inbox.
+
 Not done:
 
-- No note has been sent on the live app. The first one a person sends is the walk: it should land under Notes to the dev on the Dashboard, and a went wrong note should push the dev.
-- The four checks under *How to verify* have not been walked on the live app.
+- On the live app only one went wrong note was sent, at a desk, as the dev. The other two kinds, a phone width, a sample account, the error line's press and Fix Mode off were not walked there.
 - Nobody has pressed the wrench on a real phone.
 
 ## The ask
