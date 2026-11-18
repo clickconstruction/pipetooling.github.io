@@ -62,8 +62,7 @@ import { shootBoxPhoto } from '../../lib/materials/boxPhotoShoot'
 import { TAKE_MAX, newTakeRun, takeAddExtra, takeDoneWords, takeIsOnePart, takeLeftWords, takeLineHint, takeMark, takePhotoWords, takeQuicks, takeRemoveExtra, takeRows, takeSaveLabel, takeSaved, takeStartLabel, takeTotal, type TakePhotoKind, type TakeRun } from '../../lib/materials/takeRun'
 import { forgetTakeRun, keepTakeRun, readTakeRun, readTakeRuns } from '../../lib/materials/takeRunMemory'
 import type { PhotoNote } from '../../lib/materials/photo'
-import { takesOf } from '../../lib/materials/takes'
-import TakesPanel from '../materials/TakesPanel'
+import BoxTakes from '../materials/BoxTakes'
 import { FlowRow } from '../materials/FlowRow'
 import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { countWalkAt, countWalkCantFindWords, countWalkKeys } from '../../lib/materials/countWalk'
@@ -838,7 +837,6 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const boxLineNow = boxLineOf(container, lines)
   const leftRun = unsorted ? null : readTakeRun(jobId, container.id, Date.now())
   const loosePhotos = photos.filter((p) => !p.takeId)
-  const boxTakes = takesOf(movements, listPhotos(jobId)).filter((t) => t.containerId === container.id)
   const leftRunWords = leftRun ? takeLeftWords(leftRun, container.label) : { main: '', sub: '', go: '', drop: '' }
   return (
     <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -914,7 +912,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       ))}
       <button type="button" style={{ ...btn, ...btnBlock }} onClick={() => setSheet({ kind: 'add-part', container })}>Add a part to {container.label}</button>
       {/* What was taken from this box, with its pictures (v2.7828): under the parts, which a person at the box reads first. */}
-      {boxTakes.length > 0 ? <TakesPanel heading={`Taken from ${container.label}`} takes={boxTakes} labelOf={() => container.label} limit={2} /> : null}
+      <BoxTakes jobId={jobId} containerId={container.id} containerLabel={container.label} />
       {container.kind !== 'unsorted' ? (
         /* The box's paper and its retirement (v2.6366): the two prints are a pair of pill presses with the printer glyph, one row under a caption, and Retire sits apart on its own line so a thumb reaching for a print never lands on it. Both print here since punch list #304: the office page they used to open is not every role's. */
         <div style={{ display: 'grid', gap: '0.5rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
