@@ -39,6 +39,7 @@ Five tables, one migration ([`20261029010000_materials_on_site.sql`](./migration
 | **Container change** | `job_container_changes` | A box retired, brought back, or its kind, where line or words changed (v2.7825): what, the old value, the new one, who and when, written by a trigger on `job_containers`, so every client is covered at once. | insert only |
 | **Removed answer** | `on_site_removed_answers` | A part tie or a site price deleted (v2.7825): which, its scope, the row as it stood and who took it off, written by a trigger on `on_site_part_ties` and `on_site_prices`. | insert only |
 | **Part rename** | `job_part_renames` | A typed part's name fixed on the whole job (v2.7212): the old name, the new one, the ledger rows it changed (`movement_ids`), `undo_of` for the row that puts it back, who and when. **Inserting the row is the act**: a BEFORE trigger finds the job's typed rows by the old name and an AFTER trigger sets `part_name` on exactly those. | insert only; the triggers write the ledger; `job_id` follows the ledger rows through `on_site_carry_job` |
+| **Answer to a press** | `job_movement_answers` | A dev's answer to a ledger row (v2.7827): `taken_back` or `marked`, why, who and when, one live answer a press. A taken-back answer sets `job_material_movements.taken_back_at`, and the RESTRICTIVE policy `job_material_movements_not_taken_back` then closes the row to every ordinary read, so every sum skips it; `on_site_taken_back_rows` reads the closed rows for History. A marked press changes no number. | withdrawn with a reason, never deleted |
 
 Which rows a reason writes (`reasonSides` in `onSite.ts`):
 
@@ -56,6 +57,8 @@ Which rows a reason writes (`reasonSides` in `onSite.ts`):
 ## The arithmetic
 
 One pure kernel, [`src/lib/materials/onSite.ts`](../src/lib/materials/onSite.ts) (tests beside it), everything else reads it:
+
+**A press taken back is in no sum** (v2.7827). No sum knows about it: the ledger's own SELECT policy closes the row, and the kernel, `on_site_job_summary`, `on_site_line_on_hand` and the dev seat each read under the caller's RLS. A new sum written as its owner (`SECURITY DEFINER`) must add `taken_back_at IS NULL` itself.
 
 - **`partKey`** — a part's one identity on a job: `id:<part_id>`, or `text:<name folded>` for a typed name (trimmed, lower-cased, spaces collapsed).
 - **`containerLines(movements)`** — the lines of every container, from the rows in `(at, id)` order: a `counted` row sets the line to the number counted and records `lastCountDiff = counted − on hand`; every other row adds to its `to` side and takes from its `from` side; `cannotFindSinceCount` sums Can't find presses since the last count. **On hand is the sum. Expected at a count is the sum before it. Missing is a negative difference; found a positive one.**
