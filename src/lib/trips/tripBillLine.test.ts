@@ -324,8 +324,8 @@ describe('the door back from a line to its trip', () => {
 
 describe('what a trip that holds a line says when it is deleted or its billing is changed', () => {
   it('the delete says the line stays, and that Undo does not tie it back', () => {
-    expect(tripDeleteLineWords(line(), 'J2101')).toBe('Its line stays on J2101’s lines, with its words and its price. Undo puts the trip back, but the line is no longer tied to it.')
-    expect(tripDeleteLineWords(line(), null)).toBe('Its line stays on the job’s lines, with its words and its price. Undo puts the trip back, but the line is no longer tied to it.')
+    expect(tripDeleteLineWords(line(), 'J2101')).toBe('Its line stays on J2101’s lines, with its words and its price. Undo or Put back brings the trip back, but the line is no longer tied to it.')
+    expect(tripDeleteLineWords(line(), null)).toBe('Its line stays on the job’s lines, with its words and its price. Undo or Put back brings the trip back, but the line is no longer tied to it.')
   })
 
   it('the sheet says the line stays where it is', () => {
