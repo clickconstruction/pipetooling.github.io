@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  defaultOlderPhotoRelease,
   googleEarthUrl,
   isNewPhoto,
   nextWalkIndex,
@@ -11,7 +10,6 @@ import {
   readKeptOlderPhotos,
   readTakenYmd,
   readTilemapAnswer,
-  shownOlderPhoto,
   tileCentre,
   tileForSpot,
   waybackMetadataLayerId,
@@ -190,21 +188,6 @@ describe('olderPhotoChoices', () => {
       { release: 1, publishedYmd: '2018-06-06', size: 1 },
     ]
     expect(olderPhotoChoices(two).map((c) => c.label)).toEqual(['Before Jun 6, 2018', 'Before Jun 20, 2018'])
-  })
-
-  it('opens on the walk’s second stop, and on the only one when there is one', () => {
-    expect(defaultOlderPhotoRelease(found)).toBe(800)
-    expect(defaultOlderPhotoRelease(found.slice(0, 1))).toBe(900)
-    expect(defaultOlderPhotoRelease([])).toBeNull()
-  })
-
-  it('shows the pick while it is on the list, else the default, and follows a pick into the photograph it joined', () => {
-    const choices = olderPhotoChoices(found)
-    expect(shownOlderPhoto(choices, 500, 800)?.release).toBe(500)
-    expect(shownOlderPhoto(choices, 650, 800)?.release).toBe(700)
-    expect(shownOlderPhoto(choices, 12345, 800)?.release).toBe(800)
-    expect(shownOlderPhoto(choices, null, null)?.release).toBe(800)
-    expect(shownOlderPhoto([], 500, 800)).toBeNull()
   })
 })
 

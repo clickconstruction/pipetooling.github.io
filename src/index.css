@@ -2836,6 +2836,23 @@ body.my-time-boundary-dragging {
 .pins-map-pulse-halo { animation: pins-map-pulse-halo 1.1s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { .pins-map-pulse-halo { animation: none; stroke-width: 5; stroke-opacity: 0.75; } }
 
+/* Time on a map (punch list #395): the row of dates under a map. The sentence sits beside the dates
+   where the row is wide and over them where it is narrow, measured on the row and not the window:
+   a map can be one column of a wide card. The dates are one line that slides sideways, with no bar
+   of its own and a fade at each end to show there is more. */
+.mapTimeRow { container-type: inline-size; border-top: 1px solid var(--border); background: var(--surface); min-width: 0; }
+.mapTimeRowBody { padding: 0.45rem 0.6rem 0.5rem; display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
+.mapTimeRowWords { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.mapTimeRowLine { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.mapTimeScroll { position: relative; flex: 1 1 0; min-width: 0; display: flex; gap: 6px; overflow-x: auto; padding: 1px 12px; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, black 12px, black calc(100% - 12px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, black 12px, black calc(100% - 12px), transparent 100%); }
+.mapTimeScroll::-webkit-scrollbar { display: none; }
+@container (min-width: 680px) {
+  .mapTimeRowBody { flex-direction: row; align-items: center; gap: 0.75rem; }
+  .mapTimeRowWords { flex: 0 1 auto; max-width: 40%; }
+  .mapTimeRowLine { flex: 1 1 0; }
+}
+
 /* Bid flow landing (v2.3216): a step on the strip opened its door — ring the field it lands on, then fade. */
 @keyframes bid-flow-landing-fade {
   0% { outline-color: #2563eb; box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.22); }
