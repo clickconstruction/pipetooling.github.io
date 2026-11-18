@@ -14,7 +14,7 @@ audience: Developers, AI Agents
 last_updated: 2026-11-17
 ---
 
-> **Line numbers are as of v2.7731** (2026-11-17). They were carried forward from `58caa94ee` at v2.7719 by the diff's hunks, each checked against its line's text, and every cut since re-stamps them the same way. The per-cluster hook counts in §1 are still the `58caa94ee` census. This is the hottest surface in the repo (260 commits in 90 days on the tab, 52 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
+> **Line numbers are as of v2.7736** (2026-11-18). They were carried forward from `58caa94ee` at v2.7719 by the diff's hunks, each checked against its line's text, and every cut since re-stamps them the same way. The per-cluster hook counts in §1 are still the `58caa94ee` census. This is the hottest surface in the repo (260 commits in 90 days on the tab, 52 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
 
 ## What this surface is
 
@@ -395,7 +395,7 @@ Already-extracted lib (add tests only where missing): `buildJobsStagesBoardLists
 11. **Dead header export** — **shipped v2.7723:** `renderStagesTwoLineHeader` and its private style left `jobsStagesRowShared.tsx` (12 lines; no importer since the tables drew their own headers).
 12. **Customer-line dedupe** — **shipped v2.7727:** `renderJobCustomerLineTail` draws what `renderJobCustomerLine` and `renderJobCustomerAndAddressLine` each ended with, cut by a script that first proved the two copies differed by one comment and the GC's portal globe. 11 render cases (nine mutants killed); `jobsStagesRowShared` 1,073 → 1,033 lines.
 13. **Row context built once** — **shipped v2.7731:** [`stagesRowContext`](../src/components/jobs/stagesRowContext.ts) builds the forty-key `StagesRowRenderContext` from a list's flat props and its own hooks, where the two tables and the two card lists each wrote it out (42 and 38 lines). The card lists' copies had left out the four property-badge keys; they carry them now, and nothing on a card reads them (`renderJobAddressWithMap` is their one reader, and no card calls it). 6 kernel cases and 4 wiring cases, one per list (seven mutants killed). `JobsStagesTable` 531 → 472 lines, `JobsStagesUnifiedTable` 429 → 366, `JobsStagesCardList` 1,470 → 1,411.
-14. **One bundle helper for the lists' render tests** — `JobsStagesTable.render.test.tsx`, `JobsStagesUnifiedTable.render.test.tsx` and `src/test/stagesCardListProps.tsx` each build the same bundle; about 110 lines of tests.
+14. **One bundle helper for the lists' render tests** — **shipped v2.7736:** `src/test/stagesTableShared.tsx` builds the bundle for a test (`makeStagesTableShared`, and `makeStagesUnifiedTableShared` with what a bill row reads); `JobsStagesTable.render.test.tsx`, `JobsStagesUnifiedTable.render.test.tsx`, `src/test/stagesCardListProps.tsx` and the row-context wiring test call it. Tests only: 168 lines out, 75 in, the same 81 cases.
 15. **Man-hours → `useStagesManHours`** (cluster F) — the two states, the load-once loader and the 80 ms effect; about 40 lines out of the tab.
 16. **The Back to Edit Job banner → a component** (§6's last row) — 70 lines out of the tab.
 17. **The deck's row renderer → a component** (§4b) — `renderFollowupStageRow`, about 100 lines out of the tab; its five sites have tests since v2.7719.

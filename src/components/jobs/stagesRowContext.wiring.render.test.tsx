@@ -57,6 +57,7 @@ import JobsStagesTable from './JobsStagesTable'
 import JobsStagesUnifiedTable, { type JobsStagesUnifiedTableProps } from './JobsStagesUnifiedTable'
 import JobsStagesCardList, { JobsStagesUnifiedCardList } from './JobsStagesCardList'
 import { makeStagesCardListProps } from '../../test/stagesCardListProps'
+import { makeStagesUnifiedTableShared } from '../../test/stagesTableShared'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
 const openNewReportForJob = vi.fn()
@@ -69,15 +70,7 @@ function unifiedProps(): JobsStagesUnifiedTableProps {
     onInvoiceAction: vi.fn(),
     onInvoiceSendBack: vi.fn(),
     openNewReportForJob,
-    shared: {
-      ...makeStagesCardListProps().shared,
-      stagesHamMode: false,
-      stagesInvoiceUpdatingId: null,
-      invoiceEstimatedBillDateSavingId: null,
-      bumpInvoiceEstimatedBillDate: vi.fn(async () => {}),
-      setWhenInvoiceBillModal: vi.fn(),
-      setWhenInvoiceBillModalDate: vi.fn(),
-    },
+    shared: makeStagesUnifiedTableShared(),
   }
 }
 
