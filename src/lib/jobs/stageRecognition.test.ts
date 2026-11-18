@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { applyRecognizedStages, recognizeStages, stageRank } from './stageRecognition'
+import { readFileSync } from 'node:fs'
+import { applyRecognizedStages, recognizeStages, stageGroupOfRank, stageRank } from './stageRecognition'
+import { STAGE_NAME_TABLE, stageKindOfRank, stageNameScenarioLine } from './stageNameTable'
 
 const row = (id: string, name: string, price: number | null = 1000, over: Partial<{ stage_kind: string | null; sequence_order: number; count: number | null }> = {}) => ({
   id,
@@ -79,5 +81,39 @@ describe('recognizeStages', () => {
   it('applyRecognizedStages returns the same array when nothing changes', () => {
     const rows = [row('1', 'Diagnostic'), row('2', 'Parts')]
     expect(applyRecognizedStages(rows).fixtures).toBe(rows)
+  })
+})
+
+describe('the one rule for a stage’s name (punch list #397, PR 6)', () => {
+  it('reads every name in the table as the table says', () => {
+    for (const [name, rank] of STAGE_NAME_TABLE) expect([name, stageRank(name)]).toEqual([name, rank])
+  })
+
+  it('lets a second stage’s word take the stage away, and words of the same bid stage sit together', () => {
+    expect(stageRank('Rough in, top out and trim')).toBeNull()
+    expect(stageRank('Top out and rough in')).toBeNull()
+    expect(stageRank('Trim, then final walk')).toBe(3)
+    expect(stageRank('Underground and rough in')).toBe(0)
+  })
+
+  it('reads "Set trim" as the trim stage, and only at the start of the name', () => {
+    expect(stageRank('Set trim')).toBe(3)
+    expect(stageRank('SET  TRIM, master bath')).toBe(3)
+    expect(stageRank('Reset trim plate')).toBeNull()
+    expect(stageRank('Settle up')).toBeNull()
+  })
+
+  it('groups a rank into the bid’s three stages', () => {
+    expect(([0, 1, 2, 3, 4] as const).map(stageGroupOfRank)).toEqual(['rough', 'rough', 'top', 'trim', 'trim'])
+    expect(([0, 1, 2, 3, 4, null] as const).map(stageKindOfRank)).toEqual([null, 'rough_in', 'top_out', 'trim_set', null, null])
+  })
+
+  it('holds the database’s copy to the same table: every row has its line in the SQL scenario', () => {
+    const scenario = readFileSync('supabase/tests/stage_kind/20_scenario.sql', 'utf8')
+    const missing = STAGE_NAME_TABLE.map(([name, rank]) => stageNameScenarioLine(name, rank)).filter((line) => !scenario.includes(line))
+    expect(missing).toEqual([])
+    // And the scenario asserts no name the table does not hold, bar the two it adds for whitespace and no name.
+    const asserted = scenario.split('\n').filter((l) => l.startsWith('SELECT sk.same(')).length
+    expect(asserted).toBe(STAGE_NAME_TABLE.length + 2)
   })
 })
