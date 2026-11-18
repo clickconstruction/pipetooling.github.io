@@ -61,3 +61,13 @@ export async function removeLienMailedCopy(args: { itemId: string; copy: Pick<Li
   await io.write(args.itemId, list)
   return list
 }
+
+/**
+ * Put a file that was taken off back on the notice's list (v2.7699, **Put it back**). The list is read fresh and
+ * written whole, and a file already listed is not listed twice. Returns the list as written.
+ */
+export async function restoreLienMailedCopy(args: { itemId: string; copy: LienMailedCopy }, io: Pick<LienMailedCopiesIo, 'read' | 'write'> = supabaseLienMailedCopiesIo): Promise<LienMailedCopy[]> {
+  const list = lienMailedCopiesWith(await io.read(args.itemId), args.copy)
+  await io.write(args.itemId, list)
+  return list
+}

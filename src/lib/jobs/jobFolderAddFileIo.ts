@@ -31,17 +31,18 @@ export async function putJobFolderFile(jobId: string, where: AddFileWhere, file:
 
 /**
  * The failure in one `invoke` result, or null when it went through. The function answers a refusal with its own
- * sentence in the body; an error with no body to read is a call nothing answered.
+ * sentence in the body; an error with no body to read is a call nothing answered. `fallback` is what a failure with
+ * no reason says, for a caller that is not adding a file.
  */
-export async function addFileFailureFrom(r: FnResult): Promise<AddFileFailure | null> {
+export async function addFileFailureFrom(r: FnResult, fallback?: string): Promise<AddFileFailure | null> {
   const data = r.data as AddFileAnswer | null
-  if (data?.error) return addFileFailureOf({ ...data, status: null })
+  if (data?.error) return addFileFailureOf({ ...data, status: null }, fallback)
   if (!r.error) return null
   const context = r.error.context as { json?: () => Promise<unknown>; status?: unknown } | undefined
   if (typeof context?.json !== 'function') return addFileFailureOf(null)
   const body = (await context.json().catch(() => null)) as AddFileAnswer | null
   const status = typeof context.status === 'number' ? context.status : null
-  return addFileFailureOf({ error: body?.error, retry: body?.retry, status })
+  return addFileFailureOf({ error: body?.error, retry: body?.retry, status }, fallback)
 }
 
 export const supabaseJobFolderAddFileIo: JobFolderAddFileIo = { put: putJobFolderFile }
