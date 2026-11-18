@@ -166,10 +166,8 @@ export function reseedEstimateFormAfterSave(input: { sent: EstimateEditorForm; n
   const typed = (key: EstimateEditorFormKey) => !same(now[key], sent[key])
   const held = estimateDraftUnfinishedDates({ isChangeOrder: input.isChangeOrder, validUntil: sent.validUntil, changeOrderFields: sent.coFields })
   const next: EstimateEditorForm = { ...now }
-  const take = <K extends (typeof PLAIN_KEYS)[number]>(key: K) => {
-    if (!typed(key)) next[key] = server[key]
-  }
-  for (const key of PLAIN_KEYS) take(key)
+  // None of these is nullable on the row's form, so the row's value is the editor's type as it stands.
+  for (const key of PLAIN_KEYS) if (!typed(key)) Object.assign(next, { [key]: server[key] })
 
   if (!typed('acceptNotifyUserIds') && server.acceptNotifyUserIds !== null) next.acceptNotifyUserIds = server.acceptNotifyUserIds
 
