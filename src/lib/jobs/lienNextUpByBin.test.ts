@@ -154,8 +154,8 @@ describe('lienBinFolds — the folds the desk has a press for', () => {
     expect(rules[1]!.title(4)).toBe('4 affidavits to send for approval')
   })
   it('folds the filed liens that owe their copies under the press that mails them together (punch list #366)', () => {
-    const rules = lienBinFolds({ office: true, printReady: 0, printButton: '', sendReady: 0, serveOwed: 12, serveButton: 'Mail 12 liens’ copies ›' })
-    expect(rules.map((r) => [r.bin, r.action, r.button, r.target, r.sub])).toEqual([['affidavit:filed', 'record_service', 'Mail 12 liens’ copies ›', { open: 'serve_copies' }, 'One stack for the mail, then each mail number.']])
+    const rules = lienBinFolds({ office: true, printReady: 0, printButton: '', sendReady: 0, serveOwed: 12, serveButton: 'Print 12 liens’ copies ›' })
+    expect(rules.map((r) => [r.bin, r.action, r.button, r.target, r.sub])).toEqual([['affidavit:filed', 'record_service', 'Print 12 liens’ copies ›', { open: 'serve_copies' }, 'One stack for the mail, then each mail number.']])
     expect(rules[0]!.title(12)).toBe('12 filed liens owe their copies')
     // One alone keeps its own row and its own Lien window.
     expect(lienBinFolds({ office: true, printReady: 0, printButton: '', sendReady: 0, serveOwed: 1, serveButton: 'x' })).toEqual([])

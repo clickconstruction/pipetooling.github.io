@@ -223,7 +223,7 @@ last_updated: 2026-11-18
 > `lienBoardRowBin` gives `serve:` rows that bin;
 > `lienBinFolds` folds two or more into one row (`serve_copies`, a new `LienNextUpTarget`);
 > the row's line and its red day are [`lienServeClock.ts`](../src/lib/jobs/lienServeClock.ts) (`lienServeRowWords`).
-> `LienBoard` takes `binPress`, a press inside a bin under its chips, and the desk hands it *Mail N liens' copies ›* (`lienServeDoorWords`), which opens `LienServeWindow`.
+> `LienBoard` takes `binPress`, a press inside a bin under its chips, and the desk hands it the copies' press by stage, *Print N liens' copies ›* or *Enter mail numbers · N ›* (`lienServeStageDoorWords` since v2.7798, *Mail N liens' copies ›* before it), which opens `LienServeWindow`.
 
 > **v2.7446 (an open paper fits its pane, the owner's ask of 2026-11-16):** the three panes (`[data-lien-desk-pane]`, `[data-lien-affidavit-pane]`, `[data-lien-retainage-pane]`) are one-column grids whose column is `minmax(0, 1fr)` on every screen, and so is each section body (`[data-lien-pane-body]`) and `.lienDeskFooterSlot`.
 > **The rule: a grid a paper is drawn in never has an `auto` column.**
@@ -1138,6 +1138,9 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
 - **Since v2.7785:** in a stop's window a recipient's card in **What went out** carries the press for what its copy lacks, ruled by [`lienMailProofDoor.ts`](../src/lib/jobs/lienMailProofDoor.ts) and handed in as `record.proofDoor` on `LienStopPaper`.
 - The desk's openers are `proofOpeners` in `LienDesk.tsx`, for the office alone: the property record (`paneFix`), *Filed liens: copies to mail* at the job's line (`serveLand` through `LienDeskWindows`), and the job's Lien window (`onOpenLienProof`, then `land` on `LienInstrumentsModal` and `LienFilingTabs`).
 - The place is scrolled to and lit by [`landOn.ts`](../src/lib/landOn.ts) and the `[data-landed]` rule in `index.css`, the one shared light, which `LienPaperPropertyWindow` uses for its focused field too.
+- **Since v2.7798:** every door to a filed lien's copies reads the stage they are at and lands on that half, ruled by [`lienServeStage.ts`](../src/lib/jobs/lienServeStage.ts): **Print the copies to mail**, then **Enter mail numbers**.
+- The stage reads `data.servePrintedFilingIds`, the desk's one read of the prints filed against each unserved lien ([`lienServePrintsIo.ts`](../src/lib/jobs/lienServePrintsIo.ts), `sent_documents` of kind `lien_affidavit_copy`), plus what the copies window printed since (`servePrintedNow`).
+- `openServeFor` and `openServeAll` in `LienDesk.tsx` are the two doors: one job's (the To do row, the band, the pane's footer) and the bin's, each setting `serveLand` to the half its name says.
 - **Next:** the three doors (the courtesy record, the courtesy notice, the attorney's letter) are one component, since a draft footer and the sent footer both draw them.
   With them out, the owner's call, the courtesy window and the call script (2892–2980) can follow the sent footer.
 

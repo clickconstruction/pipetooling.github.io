@@ -1,7 +1,7 @@
 /**
  * The dev seat's served copies and its read of the filed liens, the pure half: plan_lien_service → apply_lien_service
  * and read_lien_filings. The kernel runs here against plain fixtures; the pins hold it to the Lien window's own
- * Record service… and the Mail the copies window's batch.
+ * Record service… and the copies window's batch.
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
