@@ -1,38 +1,18 @@
 /**
- * The Leaflet half of the Dashboard "Your jobs on a map" card (v2.3131).
+ * The popup body of the Dashboard "Your jobs on a map" card (v2.3131): label, status chip, address,
+ * stage / last report, Open job / Directions. On a phone the popup is skipped and the card shows the
+ * selected job as a bar under the map.
  *
- * Since v2.3162 the drawing lives in the shared `PinsMapCanvas` (the Bid Board
- * map uses the same one); this file turns job pins into canvas pins in the
- * Jobs status colors and renders the popup body — label, status chip, address,
- * stage / last report, Open job / Directions. On a phone the popup is skipped:
- * the card shows the selected job as a bar under the map.
- *
- * Lazy-loaded by `DashboardJobsMapCard` so Leaflet stays out of the Dashboard bundle.
+ * It was the body inside the card's two canvas adapters. Since punch list #395 the card draws in
+ * the shared `PinsMapFrame`, which holds both canvases, so the adapters are gone and this is what
+ * the card hands the frame for a pin.
  */
-import { useCallback, useMemo } from 'react'
-import PinsMapCanvas from '../map/PinsMapCanvas'
 import {
   DASHBOARD_JOBS_MAP_STATUS_COLOR,
   DASHBOARD_JOBS_MAP_STATUS_LABEL,
-  dashboardJobsMapCanvasPins,
   dashboardJobsMapDetailLine,
   type DashboardJobsMapPin,
 } from '../../lib/dashboardJobsMap'
-
-export type DashboardJobsMapCanvasProps = {
-  pins: DashboardJobsMapPin[]
-  selectedId: string | null
-  onSelect: (id: string | null) => void
-  onOpenJob: (pin: DashboardJobsMapPin) => void
-  onDirections: (pin: DashboardJobsMapPin) => void
-  /** Bumped by the card's Fit all button. */
-  fitSignal: number
-  height: number
-  /** Phone form: no popup; the card renders the selected bar. */
-  isMobile: boolean
-  /** Passed to the shared canvas: the wheel scrolls the page until the map is clicked once. */
-  scrollZoomAfterClick?: boolean
-}
 
 const POPUP_BUTTON_STYLE: React.CSSProperties = {
   flex: 1,
@@ -46,7 +26,6 @@ const POPUP_BUTTON_STYLE: React.CSSProperties = {
   fontFamily: 'inherit',
 }
 
-/** The popup / info-window body — shared by the Leaflet and Google adapters. */
 export function DashboardJobsMapPopupBody({
   pin,
   onOpenJob,
@@ -99,17 +78,4 @@ export function DashboardJobsMapPopupBody({
       </div>
     </div>
   )
-}
-
-export default function DashboardJobsMapCanvas({ pins, selectedId, onSelect, onOpenJob, onDirections, fitSignal, height, isMobile, scrollZoomAfterClick }: DashboardJobsMapCanvasProps) {
-  const canvasPins = useMemo(() => dashboardJobsMapCanvasPins(pins), [pins])
-  const byId = useMemo(() => new Map(pins.map((p) => [p.id, p])), [pins])
-  const renderPopup = useCallback(
-    (id: string) => {
-      const p = byId.get(id)
-      return p ? <DashboardJobsMapPopupBody pin={p} onOpenJob={onOpenJob} onDirections={onDirections} /> : null
-    },
-    [byId, onOpenJob, onDirections],
-  )
-  return <PinsMapCanvas pins={canvasPins} selectedId={selectedId} onSelect={onSelect} renderPopup={renderPopup} fitSignal={fitSignal} height={height} isMobile={isMobile} scrollZoomAfterClick={scrollZoomAfterClick} />
 }

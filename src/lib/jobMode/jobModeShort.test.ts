@@ -27,6 +27,8 @@ describe('jobModeShort · a superintendent’s one-screen home (punch list #384)
     ).toBe('3 stops. First at 7:30 AM, 2058 Harlan repipe.')
     // A block with no label still says when.
     expect(jobModeShortTomorrow([{ timeStart: '10:00:00', label: ' ' }]).note).toBe('1 stop. First at 10:00 AM.')
+    // A date typed into the job's name reads as the day and the month and day, as on the card.
+    expect(jobModeShortTomorrow([{ timeStart: '07:00:00', label: '1113 · ZZ Test Walk Project 2026-11-08' }]).note).toBe('1 stop. First at 7:00 AM, 1113 ZZ Test Walk Project Sun, Nov 8.')
   })
 
   it('says so when tomorrow holds no stop, and never mutates the blocks', () => {

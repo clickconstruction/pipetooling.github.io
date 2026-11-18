@@ -5,6 +5,7 @@ import {
   jobsMapAsOfMaxBack,
   jobsMapAsOfYmd,
   jobsMapDaysBackLabel,
+  jobsMapTimePinsWords,
   jobsMapJobsAsOf,
   jobsMapSinceThen,
   jobsMapSinceThenLine,
@@ -134,5 +135,12 @@ describe('the slider', () => {
     expect(jobsMapDaysBackLabel(0)).toBe('')
     expect(jobsMapDaysBackLabel(7)).toBe('1 wk ago')
     expect(jobsMapDaysBackLabel(104)).toBe('104 d ago')
+  })
+})
+
+describe('the Time row on a card with two clocks (punch list #395)', () => {
+  it('names the pins’ own day beside an older photograph', () => {
+    expect(jobsMapTimePinsWords(null)).toBe('The pins are today’s.')
+    expect(jobsMapTimePinsWords('Tue Sep 1')).toBe('The pins are as of Tue Sep 1.')
   })
 })

@@ -2,7 +2,7 @@
 title: see your bids on a map
 category: Office
 roles: dev, master_technician, assistant, controller, estimator, primary, superintendent
-keywords: map, bids, bid board, pins, distance, miles from the office, due, directions, where is the bid, site walk, hide map, zoom, scroll wheel, mouse wheel, zooms out, play, tour, pause, sections one at a time
+keywords: map, bids, bid board, pins, satellite, streets, time, older photos, distance, miles from the office, due, directions, where is the bid, site walk, hide map, zoom, scroll wheel, mouse wheel, zooms out, play, tour, pause, sections one at a time
 order: 67
 ---
 The Bid Board has a **Bids on a map** card between the section pills and the sections. The card plots the bids the board is showing.
@@ -20,6 +20,12 @@ An unsent bid that is due within the next few days wears an **amber ring**. Once
 :::example Planning a site-walk day
 Two amber-ringed pins sit north of the 50 mile ring, an hour apart. Turn off Pending and Won, and what's left is the unsent work you could walk on the same trip.
 :::
+
+## Satellite, Streets and Time
+
+Three presses sit on the map. **Streets** is the road map the card opens on. **Satellite** is a photo from above.
+
+Tap a pin, then tap **Time** to see that site on earlier days. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) shows how.
 
 ## Play: the sections one at a time
 

@@ -86,23 +86,23 @@ function props(over: Partial<Props>): Props {
 
 const box = () => document.querySelector('[data-lien-record-box="affidavit_service"]') as HTMLElement
 
-describe('LienFilingTabs · the mail receipts on Record service…', () => {
+describe('LienFilingTabs · the mail receipts on Enter mail numbers… (Record service… until v2.7816)', () => {
   it('the day records alone, as before, and writes no send', async () => {
     renderWithProviders(<LienFilingTabs {...props({})} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Record service…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Enter mail numbers…' }))
     expect(within(box()).getByLabelText('Copy to the owner, certified mail number')).toBeTruthy()
     // A job contracted with the owner mails one copy.
     expect(within(box()).queryByLabelText('Copy to the original contractor, certified mail number')).toBeNull()
-    fireEvent.change(within(box()).getByLabelText('Served on'), { target: { value: '2026-11-18' } })
-    fireEvent.click(within(box()).getByRole('button', { name: 'Record service' }))
+    fireEvent.change(within(box()).getByLabelText('Mailed on'), { target: { value: '2026-11-18' } })
+    fireEvent.click(within(box()).getByRole('button', { name: 'Record the mailing' }))
     await waitFor(() => expect(updates.length).toBe(1))
     expect(updates[0]).toEqual({ id: 'a1', row: { served_at: '2026-11-18', sends: [] } })
   })
 
   it('a number and a receipt photo for each copy ride on the filing, and the photo goes to Sent by us', async () => {
     renderWithProviders(<LienFilingTabs {...props({ isSub: true, originalContractorName: 'Birch Builders', originalContractorAddress: '9 Birch Rd, Marlow, TX 78000', originalContractorAddressRead: true })} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Record service…' }))
-    fireEvent.change(within(box()).getByLabelText('Served on'), { target: { value: '2026-11-18' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enter mail numbers…' }))
+    fireEvent.change(within(box()).getByLabelText('Mailed on'), { target: { value: '2026-11-18' } })
     fireEvent.change(within(box()).getByLabelText('Copy to the owner, certified mail number'), { target: { value: '0000 0000 0001' } })
     fireEvent.change(within(box()).getByLabelText('Copy to the original contractor, certified mail number'), { target: { value: '0000 0000 0002' } })
     const ownerCopy = box().querySelector('[data-lien-service-copy="owner"]') as HTMLElement
@@ -110,7 +110,7 @@ describe('LienFilingTabs · the mail receipts on Record service…', () => {
     fireEvent.change(within(ownerCopy).getByLabelText('Add the receipt'), { target: { files: [shot] } })
     expect(await within(ownerCopy).findByRole('link', { name: 'Open the receipt' })).toBeTruthy()
     expect(puts).toEqual([{ jobId: 'job-77', where: 'sent', name: 'Lien affidavit, Job 77, mail receipt, owner, 2026-11-18.jpg' }])
-    fireEvent.click(within(box()).getByRole('button', { name: 'Record service' }))
+    fireEvent.click(within(box()).getByRole('button', { name: 'Record the mailing' }))
     await waitFor(() => expect(updates.length).toBe(1))
     expect(updates[0]!.row).toEqual({
       served_at: '2026-11-18',
@@ -129,9 +129,9 @@ describe('LienFilingTabs · the mail receipts on Record service…', () => {
     expect(went.textContent).toContain('Owner of record')
     expect(went.textContent).toContain('Certified mail 0000 0000 0001')
     const proof = document.querySelector('[data-lien-service-proof]') as HTMLElement
-    expect(screen.queryByRole('button', { name: 'Record service…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Enter mail numbers…' })).toBeNull()
     fireEvent.click(within(proof).getByRole('button', { name: 'mail receipts' }))
-    expect((within(box()).getByLabelText('Served on') as HTMLInputElement).value).toBe('2026-11-18')
+    expect((within(box()).getByLabelText('Mailed on') as HTMLInputElement).value).toBe('2026-11-18')
     expect((within(box()).getByLabelText('Copy to the owner, certified mail number') as HTMLInputElement).value).toBe('0000 0000 0001')
     fireEvent.click(within(box()).getByRole('button', { name: 'Save the mail receipts' }))
     await waitFor(() => expect(updates.length).toBe(1))
@@ -156,7 +156,7 @@ describe('LienFilingTabs · the mail receipts on Record service…', () => {
 
   it('a receipt added in the form alone is taken off with no write, and its file still goes to the trash', async () => {
     renderWithProviders(<LienFilingTabs {...props({})} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Record service…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Enter mail numbers…' }))
     const ownerCopy = box().querySelector('[data-lien-service-copy="owner"]') as HTMLElement
     fireEvent.change(within(ownerCopy).getByLabelText('Add the receipt'), { target: { files: [new File(['not really a picture'], 'IMG_0001.jpg', { type: 'image/jpeg' })] } })
     expect(await within(ownerCopy).findByRole('link', { name: 'Open the receipt' })).toBeTruthy()
@@ -210,9 +210,9 @@ describe('LienFilingTabs · the mail receipts on Record service…', () => {
     // The county is gone from the property record, so the affidavit's gate is closed. The paper is on file and its five days are running.
     renderWithProviders(<LienFilingTabs {...props({ linkedAddress: { ...address, county: '' } as never })} />)
     const press = document.querySelector('[data-lien-held-service]') as HTMLElement
-    expect(press.textContent).toBe('Record service…')
+    expect(press.textContent).toBe('Enter mail numbers…')
     expect(screen.getByText(/This affidavit is already on file\. Mail its copies by /)).toBeTruthy()
     fireEvent.click(press)
-    expect(within(box()).getByLabelText('Served on')).toBeTruthy()
+    expect(within(box()).getByLabelText('Mailed on')).toBeTruthy()
   })
 })

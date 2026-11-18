@@ -72,5 +72,8 @@ describe('buildYourRecordItems', () => {
     expect(items[2]).toMatchObject({ jobId: 'r2', hours: 6 })
     const r1 = buildYourRecordItems({ ...base, sessions: [s({ id: 'b', jobId: 'r1', hours: 5, workDate: '2026-09-09' })], jobsById: new Map([['r1', job({ id: 'r1', hcpNumber: '878', jobName: 'Tune 5 Seguin' })]]) })
     expect(yourRecordItemCopy(r1[0]!)).toEqual({ title: 'No report on 878 Tune 5 Seguin', detail: 'You worked it Wednesday (5.0h this week); no field report from you yet.', action: 'Report' })
+    // A date typed into the job's name reads as the day and the month and day, as on the Job Mode card.
+    const dated = buildYourRecordItems({ ...base, sessions: [s({ id: 'b', jobId: 'r1', hours: 5, workDate: '2026-09-09' })], jobsById: new Map([['r1', job({ id: 'r1', hcpNumber: '1113', jobName: 'ZZ Test Walk Project 2026-11-08' })]]) })
+    expect(yourRecordItemCopy(dated[0]!).title).toBe('No report on 1113 ZZ Test Walk Project Sun, Nov 8')
   })
 })

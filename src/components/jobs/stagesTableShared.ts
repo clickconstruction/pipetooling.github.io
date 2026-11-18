@@ -81,6 +81,8 @@ export type StagesTableShared = {
   propertyLinkByJobId?: StagesRowRenderContext['propertyLinkByJobId']
   onPropertyLinked?: StagesRowRenderContext['onPropertyLinked']
   onOpenJobContract?: StagesRowRenderContext['onOpenJobContract']
+  /** The legal matter each job sits in, for the row's ⚖ chip beside the contract chip (v2.3313; reaching the rows since step 21). */
+  legalMatterByJobId?: StagesRowRenderContext['legalMatterByJobId']
   onOpenCustomerDoor?: StagesRowRenderContext['onOpenCustomerDoor']
   boardDotByJobId?: StagesRowRenderContext['boardDotByJobId']
   customerLinesByJobId?: StagesRowRenderContext['customerLinesByJobId']

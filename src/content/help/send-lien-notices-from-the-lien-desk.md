@@ -48,7 +48,7 @@ The top of the desk has four tabs. The first is **To do**, the work. On a comput
 
 - **To do** is the list of what to do now.
 - **By date** sorts the jobs by when each deadline falls.
-- **By paper** sorts them by the kind of paper. Each paper shows its state. A second row of tabs appears under it. They are **Monthly notices**, **Lien affidavits** and **Retainage notices**.
+- **By paper** sorts them by the kind of paper. Each paper shows its state. Three more tabs appear. They are **Monthly notices**, **Lien affidavits** and **Retainage notices**. In a wide window they sit beside the four tabs. In a narrower window, and on a phone, they sit in a row under them.
 - **By job** lists every job with its whole path. The job with the nearest date comes first.
 
 **By paper** reopens on the tab you last used there. This guide names those three tabs often. Each one sits under **By paper**.

@@ -122,7 +122,7 @@ export function lienMailProofWindowTab(paper: LienMailProofPaper): 'affidavit' |
 
 /**
  * Where the Lien window lands. An affidavit's print is its own press, **Print the copies to mail**. Its mail number
- * is entered on the service step (**Record service…**, or **Save the mail receipts** once the day is on record).
+ * is entered on the service step (**Enter mail numbers…**, or **Save the mail receipts** once the day is on record).
  * Everything else is on the paper's own row under *Filings on this job*: a notice's number on the row, a receipt on
  * the copy's line in *What went out*.
  */

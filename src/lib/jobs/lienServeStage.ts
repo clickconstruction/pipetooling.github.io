@@ -48,6 +48,35 @@ export function lienServeStage(filing: { id: string; sends?: unknown; fields?: u
   return parseLienSends(filing.sends).some((s) => (s.tracking ?? '').trim() || (s.receipt_url ?? '').trim()) ? 'record' : 'print'
 }
 
+/**
+ * The Lien window's own form for the second half (v2.7816). It read **Record service…** and saved with **Record
+ * service**, the statute's word, while every door on the desk read *Enter mail numbers*. The opener now reads as the
+ * doors do, the day is *Mailed on* as in the copies window, and the save names its act as the notices' run does.
+ */
+export const LIEN_SERVE_FORM_WORDS = {
+  /** The press that opens the form, on the affidavit tab. */
+  opener: `${LIEN_SERVE_STAGE_WORDS.record}…`,
+  /** The form's title on a phone's sheet. */
+  title: LIEN_SERVE_STAGE_WORDS.record,
+  /** The day's label. */
+  day: 'Mailed on',
+  /** The save, while the day is not on record. Once it is, the save reads *Save the mail receipts*. */
+  save: 'Record the mailing',
+  failed: 'Could not record the mailing.',
+} as const
+
+/** The form's heading on a computer: *Enter mail numbers for the filed copies (mail by November 23, 2026)*. */
+export function lienServeFormHead(mailBy: string): string {
+  const by = mailBy.trim()
+  return `${LIEN_SERVE_STAGE_WORDS.record} for the filed copies${by ? ` (mail by ${by})` : ''}`
+}
+
+/** The toast once the form is saved, by how many receipts are still to add. */
+export function lienMailingSavedWords(receiptsMissing: number): string {
+  if (receiptsMissing <= 0) return 'Mailing recorded with its mail receipts. The serve-by watch is cleared.'
+  return 'Mailing recorded. The serve-by watch is cleared. Add the mail receipts when you have them.'
+}
+
 /** A door's words for one lien, with the chevron of a press that opens a window. */
 export function lienServeStageDoor(stage: LienServeStage): string {
   return `${LIEN_SERVE_STAGE_WORDS[stage]} ›`

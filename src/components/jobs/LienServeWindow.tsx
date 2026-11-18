@@ -68,7 +68,7 @@ function chipStyle(late: boolean, today: boolean): CSSProperties {
  * Serve the filed liens (punch list #366, steps 3 and 4): one window for every filed lien that owes its copies. The
  * top half prints the stack, the mail sheet first and then each envelope's letter and copy; a lien with no recording
  * number or no address is left out with its reason and its door. The bottom half takes the day the copies were
- * mailed and each certified mail number, and one press records every ticked lien as **Record service…** would.
+ * mailed and each certified mail number, and one press records every ticked lien as the Lien window's **Enter mail numbers…** form would.
  *
  * Each print is filed on its own job. Nothing here mails anything: the office does, and says so by ticking *Mailed*.
  *

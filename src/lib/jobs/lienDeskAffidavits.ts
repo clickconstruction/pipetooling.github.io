@@ -226,8 +226,15 @@ function unsentPile(ready: boolean, noticeAlone: boolean): LienAffidavitPile {
  * bar already left it out. Only the pile moves. The stored status stays `approved`, so once the gate is answered the
  * paper is back in Ready to file by itself and the leader's approval stands (his call of 2026-11-16).
  * `lienAffidavitGateHeld` tells this hold from the leader's own (`status: 'held'`).
+ *
+ * A paper not filed whose day has passed is **Missed** whatever its status (the owner's pick of 2026-11-18, the
+ * closed end on the Board; `lienAffidavitDayPassed` in `lienClosedEnd.ts` is the same rule over an entry). Until then
+ * only a paper nobody had drafted went there, so one sent, approved or held kept its pile past its day: an approved
+ * one stood red in **Ready to file** and the batch print counted it. Nothing is stored or voided by the move. A
+ * filing recorded on the job, or a corrected last day of work, puts the paper back where it belongs by itself.
  */
 function pileFor(item: LienDeskItemRow | null, ready: boolean, filed: boolean, daysLeft: number, noticeAlone: boolean): LienAffidavitPile {
+  if (!filed && daysLeft < 0) return 'missed'
   if (item && item.voided_at == null) {
     switch (item.status) {
       case 'awaiting_approval':
@@ -245,7 +252,6 @@ function pileFor(item: LienDeskItemRow | null, ready: boolean, filed: boolean, d
     }
   }
   if (filed) return 'filed'
-  if (daysLeft < 0) return 'missed'
   return unsentPile(ready, noticeAlone)
 }
 
