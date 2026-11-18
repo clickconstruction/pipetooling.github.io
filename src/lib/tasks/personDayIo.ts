@@ -92,3 +92,25 @@ export async function readPersonAhead(personId: string, todayYmd: string): Promi
   if (error) return null
   return (data ?? []) as unknown as PersonDayRow[]
 }
+
+/** How many coming tasks one read brings: a week of a long daily round fits. */
+export const COMING_UP_LIMIT = 300
+
+/**
+ * The person's open tasks dated after today and no later than `lastYmd`, soonest first, with what Coming up needs of
+ * each. Null when the read failed.
+ */
+export async function readPersonComingUp(personId: string, todayYmd: string, lastYmd: string): Promise<Array<{ id: string; checklist_item_id: string; scheduled_date: string; completed_at: string | null; checklist_items: { title: string | null; repeat_type: string | null } | null }> | null> {
+  const { data, error } = await supabase
+    .from('checklist_instances')
+    .select('id, checklist_item_id, scheduled_date, completed_at, checklist_items(title, repeat_type), checklist_instance_assignees!inner(user_id)')
+    .eq('checklist_instance_assignees.user_id', personId)
+    .is('completed_at', null)
+    .gt('scheduled_date', todayYmd)
+    .lte('scheduled_date', lastYmd)
+    .order('scheduled_date', { ascending: true })
+    .order('created_at', { ascending: true })
+    .limit(COMING_UP_LIMIT)
+  if (error) return null
+  return (data ?? []) as unknown as Array<{ id: string; checklist_item_id: string; scheduled_date: string; completed_at: string | null; checklist_items: { title: string | null; repeat_type: string | null } | null }>
+}

@@ -39,6 +39,28 @@ Roadmap steps that wait on an earlier step. They show under the older tasks.
 
 :::
 
+## Coming up
+
+Beside their screen the window lists **Coming up**. These are the person's open tasks for the next seven days.
+
+:::example Coming up
+**Tomorrow, Wed, Nov 18**
+Check the shop compressor oil {{chip:gray|repeats}}
+**Thu, Nov 19**
+Meet the inspector at the duplex
+1 repeating task again
+:::
+
+A repeating task is named on the first day it comes up. After that the day only counts it.
+
+A task is not on a phone before its day. So the person does not see this list yet.
+
+On a phone, press {{button:outline|Coming up}} in the bar under the amber line. Press {{button:outline|Their screen}} to go back.
+
+A week with nothing dated says so. It offers {{button:outline|＋ Add task for Dana}}, which opens the New task window for that person.
+
+## Reading it again
+
 The top of the window says when it read the day. The window does not move after that. Press {{button:outline|Read again}} to read the day again.
 
 ## It is a look

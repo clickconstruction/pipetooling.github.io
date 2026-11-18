@@ -12,7 +12,7 @@ vi.mock('../supabase', () => ({
       const call = { table, filters: [] as Array<[string, string, unknown]> }
       H.calls.push(call)
       const b: Record<string, unknown> = {}
-      for (const m of ['eq', 'lt', 'gt', 'is', 'in', 'limit']) b[m] = (col: unknown, val?: unknown) => (call.filters.push([m, String(col), val]), b)
+      for (const m of ['eq', 'lt', 'lte', 'gt', 'is', 'in', 'limit']) b[m] = (col: unknown, val?: unknown) => (call.filters.push([m, String(col), val]), b)
       for (const m of ['select', 'order']) b[m] = () => b
       b.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise.resolve(H.answers.shift() ?? { data: [], error: null }).then(ok, bad)
       return b
@@ -20,7 +20,7 @@ vi.mock('../supabase', () => ({
   },
 }))
 
-const { OLDER_OPEN_LIMIT, readPersonAhead, readPersonDay } = await import('./personDayIo')
+const { OLDER_OPEN_LIMIT, readPersonAhead, readPersonComingUp, readPersonDay } = await import('./personDayIo')
 
 const TODAY = '2026-11-17'
 const row = (id: string, scheduled: string, item: Record<string, unknown> = {}) => ({ id, checklist_item_id: `item-${id}`, scheduled_date: scheduled, completed_at: null, checklist_items: { title: id, repeat_type: 'day_of_week', ...item } })
@@ -86,5 +86,23 @@ describe('readPersonAhead', () => {
   it('answers null when the read fails', async () => {
     H.answers = [{ data: null, error: { message: 'offline' } }]
     expect(await readPersonAhead('u-june', TODAY)).toBeNull()
+  })
+})
+
+describe('readPersonComingUp', () => {
+  it('reads the open tasks of the person it was given, after today and up to the last day', async () => {
+    H.answers = [{ data: [row('next', '2026-11-23')], error: null }]
+    const rows = await readPersonComingUp('u-june', TODAY, '2026-11-24')
+    expect(H.calls[0]?.table).toBe('checklist_instances')
+    expect(filter(0, 'eq', 'checklist_instance_assignees.user_id')).toBe('u-june')
+    expect(filter(0, 'gt', 'scheduled_date')).toBe(TODAY)
+    expect(filter(0, 'lte', 'scheduled_date')).toBe('2026-11-24')
+    expect(filter(0, 'is', 'completed_at')).toBeNull()
+    expect(rows?.map((x) => x.id)).toEqual(['next'])
+  })
+
+  it('answers null when the read fails', async () => {
+    H.answers = [{ data: null, error: { message: 'offline' } }]
+    expect(await readPersonComingUp('u-june', TODAY, '2026-11-24')).toBeNull()
   })
 })

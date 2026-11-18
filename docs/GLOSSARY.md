@@ -2974,6 +2974,7 @@ A task handed on is the same task, with its thread, place and photos, and the of
 For the office, Review opens on a **Stuck** list with **Sorted** while anyone is stuck.
 **See <first name>'s Task Mode** (v2.7697, punch list #381) is a press on a person's opened card on Review, for the owner or a dev, and it opens the *Task Mode look window* (`TaskModeLookWindow.tsx`).
 The window draws that person's Today as their phone draws it, at a phone's width at a desk, with **Read again** and **Close** in its head and a list of what a look does not show beside it.
+**Coming up** (v2.7698, `TaskLookComingUp.tsx` over `lib/tasks/comingUp.ts`) sits beside the screen: the person's open tasks for the next seven days, a repeating task named on its first day and counted after, and on a phone a bar switches between **Their screen** and **Coming up**.
 It is a look and not *View as*: the viewer stays signed in as themself, the day is read for the person on the card, and `TaskLookGate` stops every press on the screen that does not only open or fold something (`lookAllowsPress` in `lib/tasks/taskLook.ts`).
 Components, kernels and calls: `CHECKLIST_TABS_ARCHITECTURE.md` → *Today = two lists*;
 who may do each: `ACCESS_CONTROL.md` → *Task Mode tools*;

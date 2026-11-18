@@ -98,6 +98,7 @@ import { forwardTakers } from '../lib/tasks/taskDoerActs'
 import { TaskForwardWindow } from '../components/checklist/TaskForwardWindow'
 import { TaskLookGate } from '../components/checklist/TaskLookGate'
 import { TaskModeLookWindow } from '../components/checklist/TaskModeLookWindow'
+import { TaskLookComingUp } from '../components/checklist/TaskLookComingUp'
 import { lookPressLabel, lookPressTitle } from '../lib/tasks/taskLook'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
 import type { MyFix } from '../lib/materials/myLocation'
@@ -3171,6 +3172,7 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
           readAt={lookPerson.readAt}
           onReadAgain={() => setLookPerson((cur) => (cur ? { ...cur, readAt: new Date(), n: cur.n + 1 } : cur))}
           onClose={() => setLookPerson(null)}
+          side={<TaskLookComingUp key={`${lookPerson.userId}-${lookPerson.n}`} personId={lookPerson.userId} personName={lookPerson.name} onAddTask={() => checklistAddModal?.openAddModal(lookPerson.userId)} />}
         >
           {lookPerson.role === undefined ? (
             <p>Loading…</p>

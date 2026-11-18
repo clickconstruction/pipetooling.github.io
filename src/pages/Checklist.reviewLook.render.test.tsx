@@ -17,6 +17,8 @@ const H = vi.hoisted(() => ({
   board: [] as Record<string, unknown>[],
   today: [] as Record<string, unknown>[],
   older: [] as Record<string, unknown>[],
+  /** The person's tasks dated ahead, which Coming up reads. */
+  ahead: [] as Record<string, unknown>[],
   /** The person each of the day's reads named. */
   dayReadsFor: [] as string[],
   /** Every write of any kind, as `table.method`. */
@@ -43,9 +45,11 @@ vi.mock('../lib/supabase', async () => {
   const instances = (): Record<string, unknown> => {
     let person: string | null = null
     let older = false
+    let ahead = false
     let count = false
     const b: Record<string, unknown> = {}
-    for (const m of ['is', 'gt', 'gte', 'lte', 'order', 'limit', 'in', 'not']) b[m] = () => b
+    for (const m of ['is', 'gte', 'lte', 'order', 'limit', 'in', 'not']) b[m] = () => b
+    b.gt = () => ((ahead = true), b)
     for (const m of WRITES) b[m] = () => (H.writes.push(`checklist_instances.${m}`), b)
     b.select = (cols: string) => ((count = cols === 'scheduled_date'), b)
     b.eq = (col: string, val: string) => {
@@ -57,7 +61,7 @@ vi.mock('../lib/supabase', async () => {
     }
     b.lt = () => ((older = true), b)
     b.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) =>
-      Promise.resolve(count ? { data: [], count: 0, error: null } : person ? { data: older ? H.older : H.today, error: null } : { data: H.board, error: null }).then(ok, bad)
+      Promise.resolve(count ? { data: [], count: 0, error: null } : person ? { data: ahead ? H.ahead : older ? H.older : H.today, error: null } : { data: H.board, error: null }).then(ok, bad)
     return b
   }
   const users = (): Record<string, unknown> => {
@@ -80,6 +84,14 @@ vi.mock('../lib/supabase', async () => {
 vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: () => {} }))
 
 const { default: Checklist } = await import('./Checklist')
+const { ChecklistAddModalProvider, useChecklistAddModal } = await import('../contexts/ChecklistAddModalContext')
+const { ymdAddDays } = await import('../utils/dateUtils')
+
+/** Who the New task window was opened for, read off the page. The window itself is mounted by the app shell. */
+function AddModalProbe() {
+  const m = useChecklistAddModal()
+  return <output data-probe-open={m?.isOpen ? '1' : '0'} data-probe-assignee={m?.initialAssigneeUserId ?? ''} />
+}
 
 const TODAY = localCalendarDayKey(new Date())
 
@@ -121,6 +133,7 @@ beforeEach(() => {
   H.board = [boardRow('b1', 'Return the borrowed pipe threader', 'u-dana', 'Dana Whitlow')]
   H.today = [dayRow('a', 'Restock van 4 with fittings'), dayRow('b', 'Check the shop compressor oil')]
   H.older = [dayRow('old', 'Return the borrowed pipe threader', { scheduled_date: '2026-10-28' }, { repeat_type: 'once' })]
+  H.ahead = []
   H.dayReadsFor = []
   H.writes = []
   localStorage.clear()
@@ -190,6 +203,49 @@ describe('Checklist → Review, see a person’s Task Mode', () => {
     expect(H.dayReadsFor.length).toBeGreaterThan(before)
     fireEvent.click(within(win).getByRole('button', { name: 'Close' }))
     expect(screen.queryByRole('dialog', { name: 'Dana Whitlow’s Task Mode' })).toBeNull()
+  })
+
+  it('lists what is coming up for that person, a repeating task named once', async () => {
+    const day1 = ymdAddDays(TODAY, 1)
+    const day2 = ymdAddDays(TODAY, 2)
+    H.ahead = [
+      dayRow('n1', 'Check the shop compressor oil', { scheduled_date: day1, checklist_item_id: 'item-oil' }),
+      dayRow('n2', 'Check the shop compressor oil', { scheduled_date: day2, checklist_item_id: 'item-oil' }),
+      dayRow('n3', 'Meet the inspector at the duplex', { scheduled_date: day2 }, { repeat_type: 'once' }),
+    ]
+    await openDanasCard()
+    fireEvent.click(await screen.findByRole('button', { name: 'See Dana\u2019s Task Mode' }))
+    const win = await screen.findByRole('dialog', { name: 'Dana Whitlow\u2019s Task Mode' })
+    const panel = await waitFor(() => {
+      const p = win.querySelector('[data-look-coming-up] [data-coming-up-day]')?.closest('[data-look-coming-up]') as HTMLElement | null
+      if (!p) throw new Error('Coming up has not read yet')
+      return p
+    })
+    expect(within(panel).getByText('The next 7 days. A task shows on Dana\u2019s phone on its day.')).toBeTruthy()
+    const days = Array.from(panel.querySelectorAll('[data-coming-up-day]'))
+    expect(days.map((d) => d.getAttribute('data-coming-up-day'))).toEqual([day1, day2])
+    expect(days[0]?.textContent).toMatch(/^Tomorrow, /)
+    expect(days[0]?.textContent).toContain('Check the shop compressor oil')
+    expect(days[1]?.textContent).toContain('Meet the inspector at the duplex')
+    expect(days[1]?.textContent).toContain('1 repeating task again')
+    expect(new Set(H.dayReadsFor)).toEqual(new Set(['u-dana']))
+  })
+
+  it('offers a task for the person when their week is empty, as the viewer’s own act', async () => {
+    renderWithProviders(
+      <ChecklistAddModalProvider>
+        <Checklist />
+        <AddModalProbe />
+      </ChecklistAddModalProvider>,
+      { route: '/checklist?tab=review' },
+    )
+    fireEvent.click(await screen.findByText('Dana Whitlow'))
+    fireEvent.click(await screen.findByRole('button', { name: 'See Dana\u2019s Task Mode' }))
+    const win = await screen.findByRole('dialog', { name: 'Dana Whitlow\u2019s Task Mode' })
+    await within(win).findByText('Nothing is dated in the next 7 days.')
+    fireEvent.click(within(win).getByRole('button', { name: '\uFF0B Add task for Dana' }))
+    expect(document.querySelector('[data-probe-open]')?.getAttribute('data-probe-open')).toBe('1')
+    expect(document.querySelector('[data-probe-assignee]')?.getAttribute('data-probe-assignee')).toBe('u-dana')
   })
 
   it('is not offered to an office role that may not act for others', async () => {
