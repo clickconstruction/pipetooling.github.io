@@ -180,5 +180,6 @@ the job, **Draw it by hand**, then **Text it from my phone…**.
 
 The marking tools. The `/way` page and *Who opened it*. A tech texting from the company's number.
 Who may make a link. Task Mode's own screens. A header button or a dock slot. Any change to who can
-open a map. Pins on a painted map are [#393](../painted-map-pins.md), and Google's map under a
-painted map is [#387](../painted-maps-on-google.md).
+open a map. Pins on a painted map were #393 (closed 2026-11-18, in
+[the Closed lines](../README.md)), and Google's map under a painted map is
+[#387](../painted-maps-on-google.md).

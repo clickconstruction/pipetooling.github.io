@@ -68,7 +68,7 @@ const canvas = vi.hoisted(() => ({ draft: null as null | PaintedCanvasDraft }))
 vi.mock('./PaintedMapCanvas', async () => {
   const { useEffect } = await import('react')
   return {
-    default: function CanvasStub(props: { lines: Array<{ id: string }>; places: Array<{ id: string; number: number; kind?: string | null; letter?: string; fromJob?: boolean }>; draft?: PaintedCanvasDraft | null; dot?: { point: { lat: number; lng: number }; onMove: (p: { lat: number; lng: number }) => void } | null; onView?: (c: { lat: number; lng: number }) => void; onPlaceTap?: (id: string) => void }) {
+    default: function CanvasStub(props: { lines: Array<{ id: string }>; places: Array<{ id: string; number: number; kind?: string | null; letter?: string; fromJob?: boolean }>; draft?: PaintedCanvasDraft | null; dot?: { point: { lat: number; lng: number }; onMove: (p: { lat: number; lng: number }) => void } | null; onView?: (c: { lat: number; lng: number }) => void; onPlaceTap?: (id: string) => void; time?: { name: string } | null }) {
       canvas.draft = props.draft ?? null
       const { onView } = props
       // The map says where it is looking once it has settled, as the real one does.
@@ -76,7 +76,7 @@ vi.mock('./PaintedMapCanvas', async () => {
         onView?.({ lat: 29.55, lng: -98.25 })
       }, [onView])
       return (
-        <div data-testid="canvas">
+        <div data-testid="canvas" data-time={props.time?.name ?? ''}>
           lines:{props.lines.map((l) => l.id).join(',')} corners:{props.draft ? props.draft.points.length : 'none'} dots:{props.places.map((p) => p.number).join(',')} dot:{props.dot ? `${props.dot.point.lat},${props.dot.point.lng}` : 'none'}
           {props.draft ? <button type="button" onClick={() => props.draft!.onAdd({ lat: 29.5 + props.draft!.points.length * 0.001, lng: -98.2 })}>add a corner</button> : null}
           {props.dot ? <button type="button" onClick={() => props.dot!.onMove({ lat: 29.7, lng: -98.4 })}>drag the dot</button> : null}
@@ -249,6 +249,18 @@ describe('a saved map', () => {
     expect(lines[1]).toContain('About 410 ft, give or take 40 ft')
     expect(lines[1]).toContain('walked, a part drawn by hand by Marcus Hale')
     expect(screen.getByText('Painted by Dana Whitlock on Nov 13.')).toBeTruthy()
+  })
+
+  it('hands the canvas Time while the map is only being read, and takes it back when a line is being drawn (punch list #395)', async () => {
+    auth.value = { user: { id: 'me' }, role: 'assistant' }
+    io.whole = { map: MAP, lines: [LINE()], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'The way in for deliveries' })
+    // The row calls the spot by the map's own name.
+    expect(screen.getByTestId('canvas').getAttribute('data-time')).toBe('The way in for deliveries')
+    fireEvent.click(screen.getByRole('button', { name: 'Draw a line' }))
+    await screen.findByRole('heading', { name: 'Draw it by hand' })
+    expect(screen.getByTestId('canvas').getAttribute('data-time')).toBe('')
   })
 
   it('offers change presses on my own line only, when I am not the office', async () => {

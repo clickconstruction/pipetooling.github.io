@@ -72,7 +72,7 @@ const issuer = { companyName: 'Sample Plumbing LLC', addressText: 'PO Box 100\nM
 describe('LienServeCopiesPress', () => {
   it('prints each reader’s letter and copy, and files the packet on the job against the filing', () => {
     renderWithProviders(<LienServeCopiesPress filing={filing()} jobId="job-77" jobNumber="77" isSub issuer={issuer} />)
-    expect(screen.getByText('Two envelopes: the owner and the original contractor. Mail each envelope by certified mail. Then press Record service… and type each number.')).toBeTruthy()
+    expect(screen.getByText('Two envelopes: the owner and the original contractor. Mail each envelope by certified mail. Then press Enter mail numbers… and type each number.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Print the copies to mail' }))
     expect(prints).toHaveLength(1)
     const { html, filing: filed } = prints[0]!
