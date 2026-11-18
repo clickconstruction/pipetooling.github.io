@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { LOOK_CANT_TITLE, LOOK_LINE_LEAD, lookAllowsPress, lookCantLines, lookFirstName, lookIsField, lookKeyPresses, lookLine, lookPressLabel, lookPressTitle, lookReadAtWords, lookWindowTitle } from './taskLook'
+import { LOOK_CANT_TITLE, LOOK_LINE_LEAD, lookAllowsPress, lookCantLines, lookFirstName, lookIsField, lookKeyPresses, lookLine, lookOffersViewAs, lookPressLabel, lookPressTitle, lookReadAtWords, lookViewAsConfirm, lookViewAsFailed, lookViewAsLabel, lookViewAsLead, lookViewAsTail, lookWindowTitle, type LookViewAsAsk } from './taskLook'
 
 describe('the words of a look', () => {
   it('names the person by their first name on the press', () => {
@@ -25,6 +25,42 @@ describe('the words of a look', () => {
 
   it('every line is plain words', () => {
     const lines = [LOOK_LINE_LEAD, lookLine('Dana Whitlow'), lookPressTitle('Dana Whitlow'), LOOK_CANT_TITLE, ...lookCantLines('Dana Whitlow')]
+    for (const s of lines) expect(plainWordsFailures(s)).toEqual([])
+  })
+})
+
+describe('the door from a look to View as', () => {
+  const dana: LookViewAsAsk = { viewerIsDev: true, viewerId: 'u-dev', personId: 'u-dana', personRole: 'helpers', personEmail: 'dana@example.com', loginAttached: true }
+
+  it('is offered to a dev for a person with a login', () => {
+    expect(lookOffersViewAs(dana)).toBe(true)
+    expect(lookOffersViewAs({ ...dana, personRole: 'master_technician' })).toBe(true)
+  })
+
+  it('is not offered to the owner or any other role', () => {
+    expect(lookOffersViewAs({ ...dana, viewerIsDev: false })).toBe(false)
+  })
+
+  it('is not offered on the dev’s own row or for another dev', () => {
+    expect(lookOffersViewAs({ ...dana, personId: 'u-dev' })).toBe(false)
+    expect(lookOffersViewAs({ ...dana, personRole: 'dev' })).toBe(false)
+  })
+
+  it('is not offered for a person with no login to sign in to', () => {
+    expect(lookOffersViewAs({ ...dana, personEmail: null })).toBe(false)
+    expect(lookOffersViewAs({ ...dana, personEmail: '   ' })).toBe(false)
+    expect(lookOffersViewAs({ ...dana, loginAttached: false })).toBe(false)
+  })
+
+  it('names the person, and says the sign-in is recorded', () => {
+    expect(`${lookViewAsLead('Dana Whitlow')} ${lookViewAsLabel('Dana Whitlow')}. ${lookViewAsTail('Dana Whitlow')}`).toBe('To press something as Dana, View as Dana. That signs you in as Dana, and the app records it.')
+    expect(lookViewAsConfirm('Dana Whitlow')).toEqual({ message: 'Sign in as Dana Whitlow? The app records it. Exit brings you back to this page.', confirmLabel: 'View as Dana' })
+    expect(lookViewAsConfirm('').message).toBe('Sign in as them? The app records it. Exit brings you back to this page.')
+    expect(lookViewAsFailed('Dana Whitlow')).toBe('Could not sign in as Dana')
+  })
+
+  it('every line is plain words', () => {
+    const lines = [`${lookViewAsLead('Dana Whitlow')} ${lookViewAsLabel('Dana Whitlow')}.`, lookViewAsTail('Dana Whitlow'), lookViewAsConfirm('Dana Whitlow').message]
     for (const s of lines) expect(plainWordsFailures(s)).toEqual([])
   })
 })

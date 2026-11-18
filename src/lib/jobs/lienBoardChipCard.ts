@@ -16,7 +16,7 @@
 import { formatUsdNoCents } from './jobFormatting'
 import { lienMonthDayWords } from './lienMonthLine'
 import { lienDayLeftWords } from './lienRowWords'
-import { lienBoardDoorWords, lienBoardStagesLeft, lienBoardWorkingDaysLeft, type LienBoard, type LienBoardChip, type LienBoardKind, type LienBoardUrgency } from './lienBoard'
+import { lienBoardDoorWords, lienBoardHeldWords, lienBoardStagesLeft, lienBoardWorkingDaysLeft, type LienBoard, type LienBoardChip, type LienBoardKind, type LienBoardUrgency } from './lienBoard'
 
 export type LienBoardChipFacts = {
   todayYmd: string
@@ -40,7 +40,7 @@ export type LienBoardChipCard = {
   gc: string | null
   /** The paper the chip stands for: *Monthly notice* or *Lien affidavit*. */
   paper: string
-  /** The bin it stands in, by the bin's name. */
+  /** The bin it stands in, by the bin's name; a held paper says so after it (v2.7783): *Ready to file · held*. */
   stage: string
   detail: string | null
   /** *Due Mon Nov 16 · 1 day left*; null for a paper with no day of its own. */
@@ -86,14 +86,14 @@ export function lienBoardChipCard(chip: LienBoardChip, board: Pick<LienBoard, 'n
     customer: customer || null,
     gc: gc && gc.toLowerCase() !== customer.toLowerCase() ? gc : null,
     paper: PAPER[chip.kind],
-    stage: binLabel(board, chip),
+    stage: chip.held ? lienBoardHeldWords(binLabel(board, chip)) : binLabel(board, chip),
     detail: detail || null,
     day,
     urgency: chip.urgency,
     risk,
     left: chip.atRisk ? lienBoardStagesLeft(chip, facts.leader) : [],
     owes: chip.openBalance > 0 ? `${formatUsdNoCents(chip.openBalance)} unpaid` : null,
-    other: otherChip && otherStage ? `Its ${PAPER[otherKind].toLowerCase()} is in ${otherStage}.` : null,
+    other: otherChip && otherStage ? `Its ${PAPER[otherKind].toLowerCase()} is ${otherChip.held ? 'held in' : 'in'} ${otherStage}.` : null,
     door: `Press to ${door.charAt(0).toLowerCase()}${door.slice(1)}.`,
   }
 }

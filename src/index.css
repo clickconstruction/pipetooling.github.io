@@ -4384,7 +4384,7 @@ body.my-time-boundary-dragging {
 [data-lien-desk-panel]:has([data-lien-record-sheet]) { height: 100%; }
 /* The Lien desk's title bar (v2.4355): the title, the tabs and the doors are spaced by the column gap. On a desk narrower than 1,100 px (a window under 1,132 px; a phone keeps its own layout) the gaps close up, the tabs narrow and Share shows its icon, its word still the button's name, so the bar keeps one line. A viewport query on purpose: a container query on the bar would trap the fixed Share sheet inside it. */
 .lienDeskTitleBar { gap: 0.4rem 0.9rem; }
-.lienDeskKindTab { padding: 2px 10px; }
+.lienDeskKindTab { padding: 2px 8px; }
 /* On a computer the bar's lines sit 6 px apart by each item's 3 px block margins and not the row gap, which the bar sets to 0 (v2.7322, the owner's three boxes of 2026-11-15): a 0-height break on a line of its own took the row gap on each side, 14.4 px between the title line and the pile line. The breaks carry no margin, so a break between two lines is the same 6 px as a line that wraps by itself (the run under the title at the 768 px tablet). The half is `LIEN_DESK_TITLE_BAR_ROW_GAP_PX` in `lienDeskTitleBar.ts`. */
 @media (min-width: 641px) {
   .lienDeskTitleBar > * { margin-block: 3px; }
@@ -7337,7 +7337,6 @@ button.developmentCountChip:focus-visible {
 
 /* The Lien desk's Board (v2.7332, the owner's ask of 2026-11-15): two columns of bins at the top of To do, every job a chip in the bin of its stage. */
 .lienBoardBin { display: grid; gap: 6px; padding: 7px 9px 8px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); min-width: 0; }
-.lienBoardBin[data-beside='yes'] { border-style: dashed; }
 .lienBoardBin[data-closed='yes'] { border-style: dashed; border-color: var(--border-strong); background: transparent; }
 .lienBoardBinHead { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 0; border: none; background: none; font: inherit; font-size: 0.78rem; font-weight: 700; color: var(--text-700); text-align: left; min-width: 0; }
 button.lienBoardBinHead { cursor: pointer; border-radius: 5px; }

@@ -17,6 +17,8 @@ type Props = {
   children: ReactNode
   /** Coming up, for the side column, above the list of what a look does not show. */
   side?: ReactNode
+  /** A dev's line to View as the person, under that list. The viewer's own press, so it sits outside the gate. */
+  door?: ReactNode
 }
 
 const PANEL: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.75rem 0.9rem' }
@@ -28,7 +30,7 @@ const HEAD_PRESS: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', font
  * their screen and the side column, so Coming up is one press away and not under a long day. The Task Mode strip and the day are drawn inside `TaskLookGate`, so nothing in them can be pressed to change
  * a task. The head's own presses are the viewer's and work.
  */
-export function TaskModeLookWindow({ personName, readAt, onReadAgain, onClose, children, side }: Props) {
+export function TaskModeLookWindow({ personName, readAt, onReadAgain, onClose, children, side, door }: Props) {
   const phone = useIsNarrowScreen()
   const titleId = useId()
   /** On a phone, which of the two is showing. Both stay drawn, so the day keeps its place and what was opened. */
@@ -58,6 +60,7 @@ export function TaskModeLookWindow({ personName, readAt, onReadAgain, onClose, c
             <li key={line}>{line}</li>
           ))}
         </ul>
+        {door}
       </section>
     </div>
   )

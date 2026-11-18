@@ -2,7 +2,7 @@
 title: read the Board on the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: board, lien desk, to do, bins, off the lien path, not lienable, put it back, chips, hover, point at, card, address, customer, job name, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, row, dollars, notice sent, no notice needed, homestead question, print affidavits, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, missed, retainage, reminders, ladder, step
+keywords: board, lien desk, to do, bins, off the lien path, not lienable, put it back, chips, hover, point at, card, address, customer, job name, scroll, list, find box, the board, needs you now, on track, will not make, remind, reminder, row, dollars, notice sent, no notice needed, homestead question, print affidavits, zoom, job number, back, tiles, dashboard, needs you, leader, approve, only my bins, every bin, monday, waiting on, in the run, unpaid, needs the owner, to send, awaiting approval, ready to file, filed, held, hold mark, dashed, missed, retainage, reminders, ladder, step
 where: /lien-desk
 ---
 The Lien desk opens on its To do view. The Board sits across the top of that view. The Board is the whole lien month as one picture. Four tiles sit above two columns of bins. Every job is a small chip in the bin of its stage. The list of rows sits under the Board. This guide says what each part means and what a press does.
@@ -39,6 +39,8 @@ A chip is a job's number. Its colour says how soon its day is.
 - Grey means the day is later.
 
 A chip with a red mark after its number will not make its day as it stands. It has more stages to pass than working days left.
+
+A chip with a dashed edge and a ‖ mark is held. Its colour still says how soon its day is. [Held papers](#held-papers-and-retainage) says where it stands.
 
 A job that needs its owner stands in both columns. Point at either chip and both light up. One press on the owner clears both.
 
@@ -83,7 +85,7 @@ On *Approved · to print* the press reads like {{button:blue|Print and mail 8 no
 
 On *Approved · to mail* the press reads like {{button:outline|Enter mail numbers · 6}}. It opens the same run, where you type each envelope's number. Once every approved notice has printed, this press turns blue.
 
-On **Ready to file** the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under the bin's name says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. The help sheet and the notice records print in front of the stack. The bin says nothing of that while it is so. If someone changed those pages on this computer, a second line says so, like *Prints without the help sheet*. Press **Put it back ›** and the usual pages print again. You tick those pages on the affidavits list, over its rows.
+On **Ready to file** the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. An approved paper that a fact holds stands in the bin too, after the ones that print. It has a dashed edge and a ‖ mark. The print leaves it out, and so does the bin's count. A paper on the earlier form has no mark, and the print leaves it out too. A line under the bin's name counts those, like *1 on the earlier form*. Press **See it ›** to open them. The help sheet and the notice records print in front of the stack. The bin says nothing of that while it is so. If someone changed those pages on this computer, a second line says so, like *Prints without the help sheet*. Press **Put it back ›** and the usual pages print again. You tick those pages on the affidavits list, over its rows.
 
 On the affidavits' **To send for Master approval** the press reads like {{button:outline|Send 5 for approval ›}}. It opens the affidavits list at that pile. One press there sends every paper someone has read.
 
@@ -141,9 +143,13 @@ Point at a bin's name on a row to read where that paper stands. It opens the car
 
 A heading carries the day when every row under it shares that day. Then no row repeats it. A row with another day says its own.
 
-## Held and retainage
+## Held papers and retainage
 
-**Held** stands on a column's heading line, at its right. It shows only while a job is in it. A dashed border marks it. Press the name and the list shows only those rows.
+A held paper stands in the bin of the stage it is stopped at. Its chip has a dashed edge and a ‖ mark after its number. It stands after the chips that can move. No bin is named Held.
+
+An approved affidavit that a property fact holds stands in **Ready to file**. For the lien office, a press on its chip opens the property record at the missing fact. A paper the leader held stands in **Awaiting Master approval**. It waits on the leader again.
+
+A bin's count leaves a held paper out. So the count is the number the bin's press takes. A bin can read 0 and still show a held chip. In the list, a held paper's row starts with the bin's name and *held*.
 
 Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. It also counts jobs where retainage looks held and none is recorded, like *2 look held, not on the job*. The retainage list on **By paper** has the rows.
 

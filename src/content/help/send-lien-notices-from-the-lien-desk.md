@@ -44,7 +44,7 @@ Press the first tab from any view. On a computer it carries the desk's name. To 
 
 ## The four views
 
-The top of the desk has four tabs. The first is **To do**, the work. On a computer it carries the desk's name and reads like *⏱ Lien desk · 32 to do*. On a phone it reads *To do · 32*. The other three show the same jobs sorted three ways.
+The top of the desk has four tabs. The first is **To do**, the work. On a computer it carries the desk's name and reads like *⏱ Lien desk · 32 to do*. On a phone it reads *To do · 32*. The other three show the same jobs sorted three ways. On a computer their tabs read **Date**, **Paper** and **Job**. A phone's tabs read **By date**, **By paper** and **By job**. This guide uses those longer names.
 
 - **To do** is the list of what to do now.
 - **By date** sorts the jobs by when each deadline falls.

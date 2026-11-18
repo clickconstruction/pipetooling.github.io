@@ -79,8 +79,9 @@ describe('LienBoard — the closed end at the foot of each column', () => {
       expect(column.querySelector(`[data-lien-board-heading="${kind}"] [data-stage="missed"]`)).toBeNull()
       expect(flow.compareDocumentPosition(foot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     }
-    // Held keeps its place on the heading line.
-    expect(section.querySelector('[data-lien-board-heading="notice"] [data-lien-board-bin="notice:held"]')).toBeTruthy()
+    // No bin stands on a heading line: a held paper is drawn in the bin where it stopped (v2.7783), with its mark.
+    expect(section.querySelector('[data-lien-board-heading] [data-lien-board-bin]')).toBeNull()
+    expect(section.querySelector('[data-lien-board-chips="notice:awaiting"] [data-lien-board-chip="7"]')!.getAttribute('data-held')).toBe('yes')
   })
 
   it('draws a closed chip quiet and dashed, never red, and marks the one a late notice can still save', () => {
@@ -119,19 +120,19 @@ describe('LienBoard — the closed end at the foot of each column', () => {
 })
 
 describe('LienBoard', () => {
-  it('draws the two columns of bins in flow order, Held beside only while a job is in it, each chip in its bin sorted by day and coloured by urgency', () => {
+  it('draws the two columns of bins in flow order, a held paper in the bin of its stage and no bin named Held, each chip in its bin sorted by day and coloured by urgency', () => {
     render(<LienBoard board={board()} isMobile={false} />)
     const section = screen.getByRole('region', { name: 'The Board' })
     expect(section.getAttribute('data-lien-board-layout')).toBe('columns')
     const stages = (kind: string) => Array.from(section.querySelectorAll(`[data-lien-board-flow="${kind}"] [data-lien-board-bin]`)).map((el) => el.getAttribute('data-stage'))
     expect(stages('notice')).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent'])
     expect(stages('affidavit')).toEqual(['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed', 'served'])
-    // Held stands on the notices' heading line (v2.7714), its name, its count and its chip in one row, so every bin of the flow has the column's full width.
-    const held = section.querySelector('[data-lien-board-bin="notice:held"]') as HTMLElement
-    expect(held.getAttribute('data-beside')).toBe('yes')
-    expect(held.getAttribute('data-inline')).toBe('yes')
-    expect(held.parentElement!.getAttribute('data-lien-board-heading')).toBe('notice')
-    expect(held.textContent).toBe('Held1JP7!')
+    // No bin is named Held (v2.7783): the held notice stands in Awaiting Master approval, after the one that waits, with its mark. The bin counts the one that can move.
+    expect(section.querySelector('[data-lien-board-bin$=":held"]')).toBeNull()
+    expect(section.querySelector('[data-lien-board-heading="notice"] [data-lien-board-bin]')).toBeNull()
+    const awaiting = section.querySelector('[data-lien-board-bin="notice:awaiting"]') as HTMLElement
+    expect(awaiting.querySelector('[data-lien-board-count]')!.textContent).toBe('1')
+    expect(Array.from(awaiting.querySelectorAll('[data-lien-board-chip]')).map((el) => [el.textContent, el.getAttribute('data-held')])).toEqual([['JP4', null], ['JP7!‖', 'yes']])
     expect(section.querySelector('[data-lien-board-heading="affidavit"] [data-lien-board-bin]')).toBeNull()
     expect(section.querySelector('[data-lien-board-bin="notice:missed"]')).toBeNull()
     // To send: the one due in five days before the one due next month; amber then grey.
@@ -140,7 +141,8 @@ describe('LienBoard', () => {
     expect(toSend.map((el) => el.getAttribute('data-urgency'))).toEqual(['week', 'later'])
     const urgency = (bin: string) => Array.from(section.querySelectorAll(`[data-lien-board-chips="${bin}"] [data-lien-board-chip]`)).map((el) => el.getAttribute('data-urgency'))
     expect(urgency('notice:needs_owner')).toEqual(['day'])
-    expect(urgency('notice:awaiting')).toEqual(['waiting'])
+    // The one that waits is purple. The held one beside it keeps its day's colour: due tomorrow, so red.
+    expect(urgency('notice:awaiting')).toEqual(['waiting', 'day'])
     expect(urgency('notice:sent')).toEqual(['later'])
     // Needs the owner from a Sunday for Monday: four stages left, one working day, so it carries the risk mark.
     const atRisk = section.querySelector('[data-lien-board-chips="notice:needs_owner"] [data-lien-board-chip]') as HTMLElement
@@ -293,7 +295,7 @@ describe('LienBoard', () => {
     const withColumns = { ...boxes, 'col:notice': { left: 0, top: 0, width: 240, height: 600 }, 'col:affidavit': { left: 300, top: 0, width: 240, height: 600 } }
     expect(lienBoardArrowPaths(b.arrows, withColumns, false)[12]!.d).toBe('M 200 630 H 270 V 130 L 299 130')
     // A bin not drawn (Missed while empty) has no box and so no arrow; nothing throws.
-    expect(lienBoardArrowPaths([{ from: 'notice:held', to: 'notice:missed', kind: 'down' }], boxes, false)).toEqual([])
+    expect(lienBoardArrowPaths([{ from: 'notice:missed', to: 'affidavit:missed', kind: 'down' }], boxes, false)).toEqual([])
   })
   it('the leader’s press stands on his bin’s title line, among every bin (v2.7708; his own two bins and their switch are retired)', () => {
     const b = board({ notices: [notice('1', 'awaiting'), notice('2', 'to_draft')], affidavits: [affidavit('3', 'awaiting'), affidavit('4', 'awaiting', { deadline: '2026-11-10', daysLeft: -5 }), affidavit('5', 'ready')] })
@@ -431,7 +433,7 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
   const handlers = () => ({ onPress: vi.fn(), onLeft: vi.fn(), onNote: vi.fn() })
   const bin = (key: string) => document.querySelector(`[data-lien-board-bin="${key}"]`) as HTMLElement
 
-  it('each print stands on the title line of the bin it empties: the press with its count, then what it leaves out with its door, and what the affidavits print with', () => {
+  it('each print stands on the title line of the bin it empties: the press with its count, and what the affidavits print with when that is not the usual stack', () => {
     const h = handlers()
     render(<LienBoard board={board()} isMobile={false} columnsOnly prints={{ ...sides(), ...h }} />)
     // Nothing stands between the tiles and the chart.
@@ -445,32 +447,91 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
     const title = left.querySelector('[data-lien-board-bin-title]') as HTMLElement
     expect(Array.from(title.children).map((el) => el.textContent)).toEqual(['Approved · to print0', 'Print and mail 8 notices'])
     const parts = (el: HTMLElement) => Array.from(el.children).map((c) => (c.hasAttribute('data-lien-board-bin-title') ? 'title' : c.hasAttribute('data-lien-board-bin-line') ? 'line' : 'chips'))
-    expect(parts(right)).toEqual(['title', 'line', 'line', 'chips'])
+    expect(parts(right)).toEqual(['title', 'line', 'chips'])
     expect(within(left).getByRole('button', { name: 'Print and mail 8 notices' }).style.background).toBe('rgb(37, 99, 235)')
     // The notices' print has no line (v2.7712): what waits on a signature stands in its own bin, Approved · to sign.
     expect(parts(left)).toEqual(['title', 'chips'])
     expect(left.querySelector('[data-lien-board-print-left]')).toBeNull()
     expect(left.querySelector('[data-lien-board-print-note]')).toBeNull()
-    expect(right.querySelector('[data-lien-board-print-left]')!.textContent).toBe('2 held on a property fact · See them ›')
+    // A held affidavit has no line (v2.7783): its chip stands in the bin with a hold mark.
+    expect(right.querySelector('[data-lien-board-print-left]')).toBeNull()
     // The stack is not the usual one here, so the bin says so, and its press is the way back to the usual pages.
     expect(right.querySelector('[data-lien-board-print-note]')!.textContent).toBe('Prints without the notice records · Put them back ›')
     fireEvent.click(within(left).getByRole('button', { name: 'Print and mail 8 notices' }))
     expect(h.onPress.mock.calls[0]![0]).toMatchObject({ kind: 'notice', act: 'print_run', bin: 'notice:to_print' })
     fireEvent.click(within(right).getByRole('button', { name: 'Print 10 for notarization' }))
     expect(h.onPress.mock.calls[1]![0]).toMatchObject({ kind: 'affidavit', act: 'print_affidavits', bin: 'affidavit:ready' })
-    fireEvent.click(within(right).getByRole('button', { name: 'See them ›' }))
-    expect(h.onLeft.mock.calls[0]![0].kind).toBe('affidavit')
     fireEvent.click(within(right).getByRole('button', { name: 'Put them back ›' }))
     expect(h.onNote).toHaveBeenCalledTimes(1)
   })
 
-  it('the usual stack draws no line under Ready to file: the bin is its name, its count, its press and what it leaves out', () => {
+  it('the usual stack draws no line under Ready to file, and neither does a held paper: the bin is its name, its count, its press and its chips', () => {
     const b = board({ affidavits: [affidavit('8', 'ready')] })
     render(<LienBoard board={b} isMobile={false} columnsOnly prints={{ notice: null, affidavit: lienBoardAffidavitPrint({ ready: 10, held: 2, earlierForm: 0, stack: LIEN_BOARD_USUAL_STACK }), ...handlers() }} />)
     const ready = document.querySelector('[data-lien-board-bin="affidavit:ready"]') as HTMLElement
-    expect(ready.querySelector('[data-lien-board-print-note]')).toBeNull()
-    expect(ready.querySelector('[data-lien-board-print-left]')!.textContent).toBe('2 held on a property fact · See them ›')
+    expect(ready.querySelector('[data-lien-board-bin-line]')).toBeNull()
+    expect(Array.from(ready.children).map((c) => (c.hasAttribute('data-lien-board-bin-title') ? 'title' : 'chips'))).toEqual(['title', 'chips'])
     expect(within(ready).getByRole('button', { name: 'Print 10 for notarization' })).toBeTruthy()
+  })
+
+  it('a paper on the earlier form keeps its line and its door, since its chip stands in the bin unmarked', () => {
+    const h = handlers()
+    const b = board({ affidavits: [affidavit('8', 'ready'), affidavit('9', 'ready')] })
+    render(<LienBoard board={b} isMobile={false} columnsOnly prints={{ notice: null, affidavit: lienBoardAffidavitPrint({ ready: 1, held: 0, earlierForm: 1, stack: LIEN_BOARD_USUAL_STACK }), ...h }} />)
+    const ready = document.querySelector('[data-lien-board-bin="affidavit:ready"]') as HTMLElement
+    expect(ready.querySelector('[data-lien-board-print-left]')!.textContent).toBe('1 on the earlier form · See it ›')
+    fireEvent.click(within(ready).getByRole('button', { name: 'See it ›' }))
+    expect(h.onLeft.mock.calls[0]![0].kind).toBe('affidavit')
+  })
+
+  it('a held paper stands in the bin of its stage with a hold mark, after the chips that can move, in its day’s colour, and the bin counts what its press takes (v2.7783)', () => {
+    const closed = [gate('owner', true), gate('legal', true), gate('homestead_answer', false)]
+    const b = board({
+      affidavits: [
+        affidavit('8', 'ready', { item: item('a8') }),
+        // Approved, then a fact came to hold it: one past its day, one with a month left.
+        affidavit('11', 'held', { item: item('a11'), ready: false, gates: closed, deadline: '2026-11-13', daysLeft: -2 }),
+        affidavit('13', 'held', { item: item('a13'), ready: false, gates: closed }),
+        // The leader held this one: it waits on him again.
+        affidavit('12', 'held', { item: item('a12', { status: 'held' }) }),
+      ],
+    })
+    const onChip = vi.fn()
+    render(<LienBoard board={b} isMobile={false} columnsOnly onChip={onChip} prints={{ notice: null, affidavit: lienBoardAffidavitPrint({ ready: 1, held: 2, earlierForm: 0, stack: LIEN_BOARD_USUAL_STACK }), ...handlers() }} />)
+    expect(document.querySelector('[data-lien-board-bin$=":held"]')).toBeNull()
+    expect(document.querySelector('[data-lien-board-heading="affidavit"] [data-lien-board-bin]')).toBeNull()
+    const ready = bin('affidavit:ready')
+    // One number: the count beside the press that takes as many. The two held chips stand after the one that prints.
+    expect(Array.from(ready.querySelector('[data-lien-board-bin-title]')!.children).map((el) => el.textContent)).toEqual(['Ready to file1', 'Print 1 for notarization'])
+    expect(ready.querySelector('[data-lien-board-bin-line]')).toBeNull()
+    const chips = Array.from(ready.querySelectorAll('[data-lien-board-chip]')) as HTMLElement[]
+    expect(chips.map((el) => [el.textContent, el.getAttribute('data-held'), el.getAttribute('data-urgency')])).toEqual([['JP8', null, 'later'], ['JP11‖', 'yes', 'day'], ['JP13‖', 'yes', 'later']])
+    // The hold is the dashed edge and the mark. The colour is still the day's: red for the late one, grey for the other.
+    expect(chips.map((el) => el.style.borderStyle)).toEqual(['', 'dashed', 'dashed'])
+    expect(chips.map((el) => el.style.marginLeft)).toEqual(['', '8px', ''])
+    expect(chips[1]!.querySelector('[data-lien-board-held-mark]')!.getAttribute('aria-hidden')).toBe('true')
+    expect(chips[1]!.getAttribute('aria-label')).toContain('held on a property fact')
+    // The held chip's press is the door to the fact that holds it.
+    fireEvent.click(chips[1]!)
+    expect(onChip.mock.calls[0]![0]).toMatchObject({ jobId: '11', held: true, destination: { kind: 'property', focus: 'homestead_answer' } })
+    // The leader's hold stands in his bin. Nothing there can move, so the bin reads 0 and still shows its chip.
+    const awaiting = bin('affidavit:awaiting')
+    expect(awaiting.getAttribute('data-folded')).toBeNull()
+    expect(awaiting.querySelector('[data-lien-board-count]')!.textContent).toBe('0')
+    const leaderHeld = awaiting.querySelector('[data-lien-board-chip]') as HTMLElement
+    expect([leaderHeld.textContent, leaderHeld.getAttribute('data-held'), leaderHeld.style.marginLeft]).toEqual(['JP12‖', 'yes', ''])
+    expect(leaderHeld.getAttribute('aria-label')).toContain('held by the leader')
+  })
+
+  it('a bin that holds only held papers shows no press: nothing in it can print', () => {
+    const closed = [gate('owner', true), gate('legal', true), gate('homestead_answer', false)]
+    const b = board({ affidavits: [affidavit('11', 'held', { item: item('a11'), ready: false, gates: closed })] })
+    render(<LienBoard board={b} isMobile={false} columnsOnly prints={{ notice: null, affidavit: lienBoardAffidavitPrint({ ready: 0, held: 1, earlierForm: 0, stack: LIEN_BOARD_USUAL_STACK }), ...handlers() }} />)
+    const ready = bin('affidavit:ready')
+    expect(ready.querySelector('[data-lien-board-bin-press]')).toBeNull()
+    expect(ready.querySelector('[data-lien-board-count]')!.textContent).toBe('0')
+    expect(ready.querySelector('[data-lien-board-chip]')!.textContent).toBe('JP11‖')
+    expect(ready.getAttribute('data-act')).toBeNull()
   })
 
   it('once every notice has printed the notices’ press stands on Approved · to mail, named for the mail numbers', () => {

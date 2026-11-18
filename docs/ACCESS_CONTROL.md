@@ -1195,6 +1195,13 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   **Open Change orders** on a job held that way is drawn for the GC money team alone (dev, master_technician, controller: `canSeeGcMoney`), since Change orders are theirs, and an assistant is told who writes the change order.
   A training account, a digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
   The line is read and changed under the line table's own policies, like any line, and deleting the trip clears the mark and leaves the line.
+- **Deleted trips** (v2.7800, `docs/migrations/20261118100000_trips_deleted.md`): a deleted trip is kept in `deleted_records_archive`, its row, its people and its jobs under the trip's id.
+  The people and the jobs are kept only when the trip itself went, so a save that rewrites them and a deleted job that takes its link leave nothing.
+  **`trip_deleted_list(site)`**, a SECURITY DEFINER, reads a site's deleted trips that nothing has put back, for the trips office alone: dev, master_technician, assistant, controller and primary.
+  A person who was on the trip reads no deleted one, and the archive table itself stays dev-only.
+  A digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
+  Putting a trip back is `trip_save` under the trip's own id, under the trips tables' own policies, so no new write exists.
+  A trip made again settles its archive rows (`trips_settle_archive`), so the dev's Recently deleted never offers a living trip.
 
 ### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
 
@@ -2056,6 +2063,7 @@ A training-mode account cannot sign, since starting a paper is a write.
   Fires for all delete paths (direct `.delete()`, delete RPCs, cascade);
   guarded so it never blocks a delete.
   Rows auto-purge after 90 days (`pg_cron`).
+  Since v2.7800 a trip is kept too, and the trips office reads a site's own deleted trips through a function of its own (see *Trips*, **Deleted trips**).
 - **Access**: The archive table is **dev-only** — RLS `SELECT USING (public.is_dev())`, and **no** INSERT/UPDATE/DELETE policy (only the `SECURITY DEFINER` trigger, owned by postgres, writes it).
   Not in the realtime publication.
 - **Restore (v2.698, `20260716180000_deleted_records_restore.sql`)**: two **dev-only** RPCs — `list_deleted_records(p_limit)` (restorable bundles;
@@ -3768,7 +3776,7 @@ The Dev doors card (`src/lib/settings/devDoors.ts`) lists each with its link.
 | 103 | People → **Day book**; Bids → **Day book**; the Crew Day line · `/people?tab=day_book` | dev and controller | the owner's decision 2 of 2026-09-22 stands until he says otherwise |
 | 104 | People → **Payroll**, **Offsets**, **Employment**, **Housing** · `/people?tab=pay_stubs` | dev, controller, pay-approved owner | already a role (pay approval); the Tally pay bar reads the same gate |
 | 105 | People → Users → **Invite as user**; Hire → **Send the invite** | dev | makes a login; the edge function holds the line |
-| 106 | People → **Imitate**; the person desk's **account rows** (role, sign-in email, password, access flags) and **Merge a duplicate…** | dev | a role change or a merge is not undone by a confirm |
+| 106 | People → **Imitate**, and since v2.7786 the **View as <first name>** line in the Task Mode look window on Review (`lookOffersViewAs`, punch list #381); the person desk's **account rows** (role, sign-in email, password, access flags) and **Merge a duplicate…** | dev | a role change or a merge is not undone by a confirm |
 | 107 | Person desk → **CountTooling** row | dev | the takeoff tool's seat is a dev's to issue |
 | 108 | Legal desk → **Mark attorney-ready**, **Pull back** · `/jobs?tab=stages&legal=1` | dev | his own call of 2026-09-11; if he reopens it, a typed confirm for himself is the shape |
 | 109 | Lien desk → the **leader's acts** (Sign and approve, Hold, Standing rule, the affidavit and retainage panes, GC on notice) | owner or dev | already the owner's; the leader approves what the office wrote |
