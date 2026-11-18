@@ -6,7 +6,7 @@ import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { DEFAULT_BID_LEDGER_PREFIX } from '../lib/ledgerDisplayPrefixes'
 import { useAuth } from '../hooks/useAuth'
 import { useDashboardView } from '../hooks/useDashboardView'
-import { canHaveShortDashboard } from '../lib/dashboard/shortDashboard'
+import { canHaveShortDashboard, shortPageFor } from '../lib/dashboard/shortDashboard'
 import { useIsDigitalTwin } from '../hooks/useIsDigitalTwin'
 import type { UserRole } from '../hooks/useAuth'
 import { EasterEggHost } from './FloatingEasterEgg'
@@ -288,7 +288,10 @@ export default function Layout() {
   const phoneDockSlots = useMemo(() => resolveDockSlots(role, phoneDockRaw), [role, phoneDockRaw])
   const phoneDockActive = dispatchModeActive && isMobile && phoneDockSlots != null
   // A person on Short (punch list #365, PR 4): the bar's Dashboard tab opens the short page, whichever mode is on.
-  const shortDashboardHome = useDashboardView(authUser?.id ?? null, role) === 'short' && canHaveShortDashboard(role)
+  const dashboardViewForBar = useDashboardView(authUser?.id ?? null, role)
+  const shortDashboardHome = dashboardViewForBar === 'short' && canHaveShortDashboard(role)
+  // Job Mode, short (punch list #384): for a superintendent on Short, Job Mode's Dashboard tab is the way home too.
+  const jobModeShortHome = dashboardViewForBar === 'short' && shortPageFor(role, true) === 'job_mode'
   const [phoneDockSheet, setPhoneDockSheet] = useState<{ open: boolean; swapIndex: number | null }>({ open: false, swapIndex: null })
   const closePhoneDockSheet = useCallback(() => setPhoneDockSheet({ open: false, swapIndex: null }), [])
   useEffect(() => {
@@ -2357,7 +2360,7 @@ export default function Layout() {
           ownLogbookShown={ownLogbookShown}
         />
       ) : null}
-      {jobModeFooterActive ? <DispatchModeFooter variant="job" /> : null}
+      {jobModeFooterActive ? <DispatchModeFooter variant="job" shortHome={jobModeShortHome} /> : null}
       <TellTheDevRoot isMobile={isMobile} modes={tellTheDevModes} fixMode={fixModeEnabled} />
       <ChecklistAddModal />
       {/* Painted maps (punch list #345): the one host that answers a line under an address, whatever window it sits in. */}

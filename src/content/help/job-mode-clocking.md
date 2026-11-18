@@ -2,7 +2,7 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
+keywords: short job mode, short page, open this job, everything else, too much, overwhelmed, write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
 where: /dashboard
 order: 10
 ---
@@ -102,6 +102,24 @@ On a computer neither window has a bar. Arrived, Leaving and Post note sit under
 ## Training under the card
 
 Under My Schedule, a Training card lists the courses your role must take. It is the same card the full Dashboard shows. One press opens the course. See [take a training course](/help/take-a-training-course).
+
+## The short Job Mode page
+
+The office can set a superintendent's **Dashboard view** to **Short**. With Job Mode on, the Dashboard is then about one screen.
+
+- The job card's top stays as it is. Your next stop, today's stops and the buttons at the bottom do not move.
+- **Open this job** opens the rest of the card in place. You get the customer, photos, the ticket, checklists, materials on site and job updates.
+- Tap **This job** to fold it away again.
+- The pace line says ahead or behind in one line. Tap it for the full pace card. **Fold the pace card** closes it.
+- **Waiting on you** lists what only you can fix. The list shows only when something waits.
+- **Tomorrow** says how many stops you have and when the first is. Tap it to open the **Schedule** tab.
+- **Everything else** opens the full Dashboard for this visit. The second line of the row says how many courses you still have to do.
+
+Press **Back to the short page** at the top to return. The **Dashboard** tab at the bottom returns too.
+
+Nothing is removed from the app. Each thing is one press from the short page.
+
+To turn the short page on or off, see [see only what waits on me on the dashboard](/help/use-the-short-dashboard#turn-it-on-or-off).
 
 ## Clocking in and out
 

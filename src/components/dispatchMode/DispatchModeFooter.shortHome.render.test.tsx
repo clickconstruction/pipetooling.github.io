@@ -60,3 +60,37 @@ describe('the bar\'s Dashboard tab', () => {
     expect(where().getAttribute('data-home')).toBe('false')
   })
 })
+
+describe('Job Mode\'s Dashboard tab (punch list #384)', () => {
+  function drawJob(at: string, shortHome: boolean) {
+    render(
+      <MemoryRouter initialEntries={[at]}>
+        <Where />
+        <DispatchModeFooter variant="job" shortHome={shortHome} />
+      </MemoryRouter>,
+    )
+    return { tab: screen.getByRole('button', { name: 'Dashboard' }), where: () => document.querySelector('[data-where]') as HTMLElement }
+  }
+
+  it('on the short Job Mode page the tab is the way home: the same page, with the mark that leaves Everything else', () => {
+    const { tab, where } = drawJob('/dashboard', true)
+    expect(tab.getAttribute('aria-current')).toBe('page')
+    fireEvent.click(tab)
+    expect(where().textContent).toBe('/dashboard')
+    expect(where().getAttribute('data-home')).toBe('true')
+  })
+
+  it('for everyone else in Job Mode the tab opens the Dashboard with no mark, as before', () => {
+    const { tab, where } = drawJob('/job-mode/schedule', false)
+    fireEvent.click(tab)
+    expect(where().textContent).toBe('/dashboard')
+    expect(where().getAttribute('data-home')).toBe('false')
+  })
+
+  it('the short page\'s other tabs are Job Mode\'s own', () => {
+    const { where } = drawJob('/dashboard', true)
+    fireEvent.click(screen.getByRole('button', { name: 'Schedule' }))
+    expect(where().textContent).toBe('/job-mode/schedule')
+    expect(where().getAttribute('data-home')).toBe('false')
+  })
+})

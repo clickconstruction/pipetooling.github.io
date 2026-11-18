@@ -14,6 +14,8 @@ import type { JobStageChecklist } from '../../lib/jobs/stageChecklist'
 import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { PaceStrip } from './PaceStrip'
+import { JobModeShortRow } from './JobModeShortRow'
+import { JOB_MODE_SHORT_WORDS } from '../../lib/jobMode/jobModeShort'
 import { DayDetailsModal } from './DayDetailsModal'
 import { StageChecklistSheet } from '../stageChecklists/StageChecklistSheet'
 
@@ -26,12 +28,15 @@ import { StageChecklistSheet } from '../stageChecklists/StageChecklistSheet'
  * and *Open the checklist* (the next stage with questions left). A tap on a day opens the day as
  * a window, in hours: a superintendent's read carries no wages (`list_project_board`). Drawn only
  * for a job that is a project; otherwise the card says nothing.
+ *
+ * `short` (punch list #384, the short Job Mode page): the card sits behind its own headline as one
+ * row, ahead or behind in one line. A press opens the card as it is, with a press to fold it again.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem' }
 
 export type SuperintendentPctJob = { id: string; hcpNumber: string; jobName: string; label: string }
 
-export function SuperintendentCard({ jobId, onSetPct, rev = 0 }: { jobId: string; onSetPct: (job: SuperintendentPctJob) => void; rev?: number }) {
+export function SuperintendentCard({ jobId, onSetPct, rev = 0, short = false }: { jobId: string; onSetPct: (job: SuperintendentPctJob) => void; rev?: number; short?: boolean }) {
   const [job, setJob] = useState<ProjectBoardJob | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [busy, setBusy] = useState(false)
@@ -58,10 +63,11 @@ export function SuperintendentCard({ jobId, onSetPct, rev = 0 }: { jobId: string
   }, [jobId, rev, tick])
   if (failure && !job) return <OfflineRetryPanel failure={failure} onRetry={retry} surface="superintendent-line" idempotent busy={busy} />
   if (!job || job.id !== jobId || !isWorkingProject(job)) return null
-  return <SuperintendentLineCard key={job.id} job={job} onSetPct={onSetPct} rev={rev} />
+  return <SuperintendentLineCard key={job.id} job={job} onSetPct={onSetPct} rev={rev} short={short} />
 }
 
-function SuperintendentLineCard({ job, onSetPct, rev }: { job: ProjectBoardJob; onSetPct: (job: SuperintendentPctJob) => void; rev: number }) {
+function SuperintendentLineCard({ job, onSetPct, rev, short }: { job: ProjectBoardJob; onSetPct: (job: SuperintendentPctJob) => void; rev: number; short: boolean }) {
+  const [paceOpen, setPaceOpen] = useState(false)
   const { user, profileName } = useAuth()
   const checklists = useJobStageChecklists(job.id, undefined, rev)
   const ids = useMemo(() => [job.id], [job.id])
@@ -88,10 +94,19 @@ function SuperintendentLineCard({ job, onSetPct, rev }: { job: ProjectBoardJob; 
   const border = line.tone === 'ahead' ? '#16a34a' : line.tone === 'behind' ? '#dc2626' : 'var(--border-strong)'
   const headColor = line.tone === 'ahead' ? 'var(--text-green-700)' : line.tone === 'behind' ? 'var(--text-red-700)' : 'var(--text-700)'
   const label = projectLabel(job)
+  // The short page: the headline alone, as a row. The hooks above still read, so the open card draws at once.
+  if (short && !paceOpen) {
+    return <JobModeShortRow testId="superintendent-line-short" title={line.headline} note={JOB_MODE_SHORT_WORDS.pace.open} tone={line.tone === 'ahead' || line.tone === 'behind' ? line.tone : undefined} expanded={false} onPress={() => setPaceOpen(true)} />
+  }
   return (
     <div data-testid="superintendent-line" data-tone={line.tone} style={{ border: `2px solid ${border}`, borderRadius: 12, padding: '0.7rem 0.8rem', display: 'grid', gap: 8, background: 'var(--surface)', minWidth: 0 }}>
       <div style={muted}>{label} · {line.hoursWords}</div>
       <div style={{ fontSize: '1.1rem', fontWeight: 700, color: headColor }}>{line.headline}</div>
+      {short ? (
+        <button type="button" data-testid="superintendent-line-fold" aria-expanded onClick={() => setPaceOpen(false)} style={{ justifySelf: 'start', minHeight: PHONE_PRESS_MIN_HEIGHT, padding: '0 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-link)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+          {JOB_MODE_SHORT_WORDS.pace.fold}
+        </button>
+      ) : null}
       <PaceStrip line={line} hoursBudget={Math.max(pace.budgetEdge, used)} targetHours={pace.input.hoursBudget} days={pace.input.laborDays ?? []} stages={pace.stages} stageWords={pace.stages.length <= 4} onDay={setDay} />
       {/* The strip's legend carries the money; the words stay for a plan that exists, a target that was set, and money that leads. */}
       {line.finishWords.startsWith('Planned') ? <div style={{ fontSize: '0.8rem' }}>{line.finishWords}</div> : null}

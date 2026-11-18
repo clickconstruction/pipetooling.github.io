@@ -1533,6 +1533,16 @@ The picker is fully unit-tested (14 cases) so adding new state branches is safe.
 
 **See also** — **`RECENT_FEATURES.md`** **v2.545**, **`PROJECT_DOCUMENTATION.md`** Dashboard **Job Mode**.
 
+### Job Mode, short (a superintendent's one-screen home)
+What a superintendent whose **Dashboard view** is **Short** sees with **Job Mode** on, in place of the long Job Mode page (v2.7752, punch list #384;
+`JobModeShortPage.tsx`, the rule and every word in `lib/jobMode/jobModeShort.ts`, `jobModeShortOn` over `shortPageFor`).
+Top to bottom: the job card's top as it is (next stop, today's stops, the press bar), **Open this job**, a fold in place over the card's lower half (`DashboardJobModeCard`'s `short` prop: the Materials on site link and `JobModeDetailsSection`), the pace line (`SuperintendentCard`'s `short`: the project's headline as one row, a press opens the card as it is), **Waiting on you** (Your record under that name), **Tomorrow** in one line (how many stops and when the first is, a press opens the Schedule tab) and one door, **Everything else**.
+The door opens the full Dashboard for the visit, folded on a phone, with **Back to the short page** on top, and the Job Mode bar's **Dashboard** tab returns too.
+Behind the door: the pinned quick row, Your week, the hours block, My Schedule's cards and Training, whose owed courses the door's second line counts (`useTrainingCoursesOwed`).
+The hidden clock mount, the trial verdict and the customer's words strip stay on the page.
+A leader or a dev in Job Mode keeps the full card, and field crew take no view. → *Short Dashboard*, *Job Mode (Dashboard)*;
+guide `job-mode-clocking`.
+
 ### Dispatch Mode (app-wide)
 The office-side companion to Job Mode: a per-user, per-device gear-menu toggle (**[`Layout.tsx`](../src/components/Layout.tsx)**, cohort = dev, master and assistant-like, `dispatchModeMenuEligible`, so not superintendents) that mounts a fixed bottom tab bar (**[`DispatchModeFooter`](../src/components/dispatchMode/DispatchModeFooter.tsx)**) on every page: **Dashboard** (clock in/out + compact Job Stages list), **Schedule** (month mini-calendar + all-people day agenda + Task Dispatch bell), **Inbox** (My + Dispatch + Estimator inboxes stacked;
 live badge = open requests only, v2.2880;
@@ -2514,7 +2524,8 @@ It never says *Nothing waiting on you* while the Lien desk is being read or afte
 For a person on Short the bottom bar's **Dashboard** tab opens the short page whichever mode is on, and one press on it leaves **Everything else** (v2.7572, `shortHome` on `DispatchModeFooter`).
 The view is `users.dashboard_view` through `set_dashboard_view`, pressed in Settings → Your dashboard by the person or on the People desk's **Dashboard view** section by the office;
 a leader's, a dev's and, since v2.7749 (punch list #384), a superintendent's account takes one, and every account reads as **Full** until someone presses.
-A superintendent on Short with Job Mode off opens onto this page, where his list holds only a job note that tagged him and the door's second line names Clock In, his hours and his crew (`shortPageFor` says which short page a role gets). → *Needs You card*;
+A superintendent on Short with Job Mode off opens onto this page, where his list holds only a job note that tagged him and the door's second line names Clock In, his hours and his crew (`shortPageFor` says which short page a role gets).
+With Job Mode on he opens onto **Job Mode, short** (v2.7752). → *Needs You card*, *Job Mode, short*;
 guide `use-the-short-dashboard`.
 
 ### Waiting on card (the office's side of the short Dashboard)

@@ -126,6 +126,28 @@ describe('SuperintendentCard', () => {
     expect(screen.getByTestId('checklist-sheet').textContent).toBe('Top Out')
   })
 
+  it('short: the card sits behind its headline, one line, and a press opens it as it is (punch list #384)', async () => {
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} short />)
+    const row = await screen.findByTestId('superintendent-line-short')
+    // Ahead or behind in one line: the project's own headline, and nothing of the card under it.
+    expect(row.textContent).toContain('Spending 65 points ahead of the work.')
+    expect(row.textContent).toContain('Tap for the pace card.')
+    expect(row.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByTestId('superintendent-line')).toBeNull()
+    expect(screen.queryByTestId('pace-strip')).toBeNull()
+    fireEvent.click(row)
+    // The card as it is today: the strip, the money, the proof, the two presses.
+    const card = await screen.findByTestId('superintendent-line')
+    expect(card.dataset.tone).toBe('behind')
+    expect(screen.getByTestId('pace-strip')).toBeTruthy()
+    expect(screen.getByTestId('superintendent-money')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Set the %' })).toBeTruthy()
+    // And it folds again.
+    fireEvent.click(screen.getByRole('button', { name: 'Fold the pace card' }))
+    expect(screen.queryByTestId('superintendent-line')).toBeNull()
+    expect(screen.getByTestId('superintendent-line-short')).toBeTruthy()
+  })
+
   it('reads the target the office set as its budget, in words', async () => {
     target = { id: 't1', jobId: 'job-1', hours: 200, from: 260, by: 'Robert', at: '2026-11-01T20:00:00Z', why: 'framed in a week' }
     renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)

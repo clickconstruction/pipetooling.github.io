@@ -52,7 +52,7 @@ With Job Mode off you open onto this page. **Waiting on you** lists a job note t
 
 **Clock In** sits behind **Everything else**. The door's second line says so.
 
-With Job Mode on you keep the Job Mode page. That page comes first. See [clock in and out with Job Mode](/help/job-mode-clocking).
+With Job Mode on you get the short Job Mode page. The short page keeps your job card on top and folds the rest. See [the short Job Mode page](/help/job-mode-clocking#the-short-job-mode-page).
 
 ## Turn it on or off
 

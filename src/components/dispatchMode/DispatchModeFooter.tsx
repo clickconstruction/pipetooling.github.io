@@ -171,7 +171,8 @@ export function DispatchModeFooter({
   onOpenMore?: (swapIndex: number | null) => void
   /**
    * The viewer's Dashboard view is Short (punch list #365, PR 4): the fixed bar's Dashboard tab opens the short
-   * page, not the Dispatch home. Dispatch variant only; Job Mode's tab is `/dashboard` already.
+   * page, not the Dispatch home. On the Job Mode bar (punch list #384, a superintendent on the short Job Mode
+   * page) the tab is `/dashboard` already, and the press carries the mark that leaves Everything else.
    */
   shortHome?: boolean
 }) {
@@ -257,7 +258,8 @@ export function DispatchModeFooter({
               aria-current={isActive ? 'page' : undefined}
               onClick={() => {
                 // On Short the Dashboard tab is the way home: the short page, and back out of Everything else.
-                const home = variant === 'dispatch' && shortHome && tab.key === 'dashboard'
+                // Job Mode's tab is /dashboard already, so there the press only carries the mark (punch list #384).
+                const home = shortHome && tab.key === 'dashboard'
                 const to = home ? SHORT_DASHBOARD_PATH : tab.to
                 recordNavClick(authUser?.id, role, 'bottom-tab', to)
                 navigate(to, home ? { state: SHORT_DASHBOARD_HOME_STATE } : undefined)
