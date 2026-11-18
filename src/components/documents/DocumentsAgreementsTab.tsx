@@ -312,7 +312,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                         <div key={row.id} style={line} data-testid="documents-agreements-row">
                           <div style={lineLeft}>
                             <span style={{ ...tag, background: colors.background, color: colors.color }}>{t.words}</span>
-                            {door.kind === 'people-contracts' ? (
+                            {door.kind === 'people-contracts' || door.kind === 'gc' ? (
                               <Link to={door.to} style={{ ...documentsLinkButton, display: 'inline' }}>
                                 {name}
                               </Link>

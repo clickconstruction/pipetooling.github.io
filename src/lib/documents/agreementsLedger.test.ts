@@ -67,7 +67,7 @@ describe('who sees the tab', () => {
 
 describe('the chips', () => {
   it('opens on every kind and on sent and signed', () => {
-    expect(AGREEMENT_KIND_CHIPS.map((c) => c.label)).toEqual(['All', 'Job contracts', 'Warranties', 'Staff and subs', 'Partners', 'Work orders'])
+    expect(AGREEMENT_KIND_CHIPS.map((c) => c.label)).toEqual(['All', 'Job contracts', 'Warranties', 'Staff and subs', 'Partners', 'Work orders', 'GC projects'])
     expect(AGREEMENT_STATE_CHIPS.map((c) => c.label)).toEqual(['Sent and signed', 'Waiting on a signature', 'Signed', 'Voided or ended'])
     expect(AGREEMENT_KIND_CHIPS[0]?.key).toBe('all')
     expect(AGREEMENT_STATE_CHIPS[0]?.key).toBe('live')
@@ -80,6 +80,7 @@ describe('the chips', () => {
     expect(kindsOfPick('people')).toEqual(['person_agreement'])
     expect(kindsOfPick('partners')).toEqual(['partner_agreement'])
     expect(kindsOfPick('orders')).toEqual(['work_order'])
+    expect(kindsOfPick('gc')).toEqual(['owner_contract', 'sow', 'company_agreement'])
   })
 
   it('no kind sits under two chips', () => {
@@ -103,6 +104,7 @@ describe('the chips', () => {
     expect(agreementGroup('person_agreement')).toBe('people')
     expect(agreementGroup('partner_agreement')).toBe('partners')
     expect(agreementGroup('work_order')).toBe('orders')
+    for (const kind of ['owner_contract', 'sow', 'company_agreement']) expect(agreementGroup(kind), kind).toBe('gc')
     expect(agreementGroup('something_new')).toBe('jobs')
   })
 
@@ -190,6 +192,9 @@ describe('a line', () => {
     expect(agreementTag(row({ kind: 'person_agreement', person_kind: null }))).toEqual({ words: 'Staff', group: 'people' })
     expect(agreementTag(row({ kind: 'partner_agreement' }))).toEqual({ words: 'Partner', group: 'partners' })
     expect(agreementTag(row({ kind: 'work_order' }))).toEqual({ words: 'Work order', group: 'orders' })
+    expect(agreementTag(row({ kind: 'owner_contract' }))).toEqual({ words: 'Owner contract', group: 'gc' })
+    expect(agreementTag(row({ kind: 'sow' }))).toEqual({ words: 'Statement of work', group: 'gc' })
+    expect(agreementTag(row({ kind: 'company_agreement' }))).toEqual({ words: 'Trade company', group: 'gc' })
     expect(agreementTag(row({ kind: 'something_new' }))).toEqual({ words: 'Agreement', group: 'jobs' })
   })
 
@@ -206,6 +211,9 @@ describe('a line', () => {
     expect(agreementName(row({ kind: 'job_warranty', paper_name: '', facts: null }))).toBe('Warranty')
     expect(agreementName(row({ kind: 'their_paper', paper_name: '', facts: { signer_mode: 'paper' } }))).toBe('Their paper')
     expect(agreementName(row({ kind: 'work_order', paper_name: '', facts: null }))).toBe('Work order')
+    expect(agreementName(row({ kind: 'owner_contract', paper_name: '', facts: null }))).toBe('Our contract with the owner')
+    expect(agreementName(row({ kind: 'sow', paper_name: '', facts: null }))).toBe('Statement of work')
+    expect(agreementName(row({ kind: 'sow', paper_name: 'Statement of work · Electrical', facts: null }))).toBe('Statement of work · Electrical')
     expect(agreementName(row({ kind: 'person_agreement', paper_name: '', facts: null }))).toBe('Agreement')
   })
 
@@ -214,6 +222,8 @@ describe('a line', () => {
     expect(agreementJobTitle(row({ job_hcp_number: ' ', job_click_number: '77' }))).toBe('J77 · Pierce kitchen repipe')
     expect(agreementJobTitle(row({ job_name: '' }))).toBe('J2418')
     expect(agreementJobTitle(row({ job_hcp_number: null, job_click_number: null }))).toBe('Pierce kitchen repipe')
+    // A GC project's paper has no job: its project's name rides where the job's would.
+    expect(agreementJobTitle(row({ kind: 'sow', job_id: null, job_hcp_number: null, job_click_number: null, job_name: 'Westfield Clinic' }))).toBe('Westfield Clinic')
     expect(agreementJobTitle(row({ job_id: null, job_hcp_number: null, job_click_number: null, job_name: null }))).toBeNull()
   })
 
@@ -321,6 +331,24 @@ describe('the state chip says what the kind’s own window says', () => {
     expect(order('ended', { status: 'cancelled' })).toEqual({ words: 'Cancelled', tone: 'ended' })
   })
 
+  it('GC mode’s papers, in GC mode’s words', () => {
+    const owner = (state: string, facts: Record<string, unknown>) => agreementStateChip(row({ kind: 'owner_contract', state, facts }), TODAY)
+    expect(owner('signed', { sent_on: '2026-09-25', sign_by: '2026-10-02', signed_on: '2026-09-30' })).toEqual({ words: 'signed ✓', tone: 'signed' })
+    expect(owner('waiting', { sent_on: '2026-11-14', sign_by: '2026-11-21' })).toEqual({ words: 'waiting on their signature', tone: 'waiting' })
+    // Asked to sign by today is not late yet; the day after, it is.
+    expect(owner('waiting', { sent_on: '2026-11-10', sign_by: TODAY }).words).toBe('waiting on their signature')
+    expect(owner('waiting', { sent_on: '2026-10-30', sign_by: '2026-11-06' })).toEqual({ words: 'late, asked to sign by Fri Nov 6', tone: 'waiting' })
+    const sow = (state: string, status: string) => agreementStateChip(row({ kind: 'sow', state, facts: { status } }), TODAY)
+    expect(sow('waiting', 'sent')).toEqual({ words: 'waiting on their signature', tone: 'waiting' })
+    expect(sow('signed', 'signed')).toEqual({ words: 'signed ✓', tone: 'signed' })
+    expect(sow('ended', 'cancelled')).toEqual({ words: 'cancelled', tone: 'ended' })
+    // A trade company's agreement is a person's paper filed for a company: the same words.
+    const company = (state: string, facts: Record<string, unknown>) => agreementStateChip(row({ kind: 'company_agreement', state, facts }), TODAY)
+    expect(company('signed', { status: 'signed' }).words).toBe('signed ✓')
+    expect(company('waiting', { status: 'sent' }).words).toBe('never opened')
+    expect(company('ended', { status: 'signed', replaced: true }).words).toBe('replaced by a newer one')
+  })
+
   it('a kind it does not know still reads, and a state it does not know reads as ended', () => {
     expect(agreementStateChip(row({ kind: 'something_new', state: 'waiting', facts: null }), TODAY)).toEqual({ words: 'waiting on a signature', tone: 'waiting' })
     expect(agreementStateChip(row({ kind: 'something_new', state: 'signed', facts: null }), TODAY)).toEqual({ words: 'signed ✓', tone: 'signed' })
@@ -337,6 +365,9 @@ describe('the day', () => {
     expect(agreementDayWords(row({ kind: 'work_order', state: 'ended', at_day: '2026-10-09', facts: { status: 'cancelled' } }), TODAY)).toBe('Cancelled Oct 9')
     expect(agreementDayWords(row({ kind: 'work_order', state: 'ended', at_day: '2026-11-10', facts: { status: 'offered' } }), TODAY)).toBe('Expired Nov 10')
     expect(agreementDayWords(row({ kind: 'person_agreement', state: 'ended', at_day: '2026-03-02', facts: { status: 'signed', replaced: true } }), TODAY)).toBe('Signed Mar 2')
+    // A cancelled statement of work keeps no cancel day, so its line shows the day it was sent.
+    expect(agreementDayWords(row({ kind: 'sow', state: 'ended', at_day: '2026-09-24', facts: { status: 'cancelled' } }), TODAY)).toBe('Sent Sep 24')
+    expect(agreementDayWords(row({ kind: 'owner_contract', state: 'waiting', at_day: '2026-09-25', facts: { sign_by: '2026-10-02' } }), TODAY)).toBe('Sent Sep 25')
   })
 
   it('carries the year once it is not this one, and says nothing with no day', () => {
@@ -388,5 +419,12 @@ describe('what a press opens', () => {
     expect(agreementDoor(row({ kind: 'work_order', source_id: 'w1', facts: { status: 'offered' } }))).toEqual({ kind: 'work-order', jobId: 'j1', commitmentId: 'w1' })
     expect(agreementDoor(row({ kind: 'work_order', source_id: 'w1', job_id: null }))).toEqual({ kind: 'none' })
     expect(agreementDoor(row({ kind: 'something_new' }))).toEqual({ kind: 'none' })
+  })
+
+  it('a GC project’s paper opens GC mode, and a trade company’s signed agreement opens its record', () => {
+    expect(agreementDoor(row({ kind: 'owner_contract', source_id: 'o1', job_id: null, facts: {} }))).toEqual({ kind: 'gc', to: '/gc' })
+    expect(agreementDoor(row({ kind: 'sow', source_id: 's1', job_id: null, facts: { status: 'sent' } }))).toEqual({ kind: 'gc', to: '/gc' })
+    expect(agreementDoor(row({ kind: 'company_agreement', source_id: 'm1', job_id: null, facts: { status: 'signed' } }))).toEqual({ kind: 'person-signed', documentId: 'm1' })
+    expect(agreementDoor(row({ kind: 'company_agreement', source_id: 'm2', state: 'waiting', job_id: null, facts: { status: 'sent' } }))).toEqual({ kind: 'gc', to: '/gc' })
   })
 })

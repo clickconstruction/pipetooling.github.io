@@ -2,7 +2,8 @@
  * Documents → Agreements (punch list #376): the rules that turn any kind of agreement into one line of one list.
  *
  * The app makes agreements in several places: a job's contract, a warranty in place of one, a GC's own paper, a signed
- * paper the office filed, a person's agreement (staff, a sub, a partner) and a sub work order. Each keeps its own table,
+ * paper the office filed, a person's agreement (staff, a sub, a partner), a sub work order, and in GC mode our contract
+ * with the owner, a trade's statement of work and a trade company's agreement. Each keeps its own table,
  * its own window and its own words for where it stands. This kernel reads one row shape, the `agreements_on_file` view's
  * (one branch per table, `security_invoker`, so each table's own row security decides what a reader sees), and answers
  * what a line says: its tag, its name, who it is with, the job, its state in that kind's own words, and its day. The
@@ -19,9 +20,10 @@ import { isGoogleDocsUrl } from '../jobs/jobContractDocument'
 import { jobContractChips } from '../jobs/jobContractLifecycle'
 import { theirPaperFromRow, theirPaperLine } from '../jobs/theirPaper'
 import { buildJobWorkOrderCoverage, workOrderChipLabel } from '../subWorkOrders/workOrderCoverage'
+import { weekdayDate } from '../gc/words'
 
 /** The kinds the view answers. A kind the kernel does not know still draws, as a plain agreement. */
-export type AgreementKind = 'job_contract' | 'job_warranty' | 'their_paper' | 'person_agreement' | 'partner_agreement' | 'work_order'
+export type AgreementKind = 'job_contract' | 'job_warranty' | 'their_paper' | 'person_agreement' | 'partner_agreement' | 'work_order' | 'owner_contract' | 'sow' | 'company_agreement'
 
 /** Where an agreement stands, the same three for every kind: out to be signed, signed, or over. */
 export type AgreementState = 'waiting' | 'signed' | 'ended'
@@ -40,6 +42,7 @@ export interface AgreementRow {
   job_id: string | null
   job_hcp_number: string | null
   job_click_number: string | null
+  /** The job's name. A GC project's paper has no job: its project's name rides here, with `job_id` and the numbers null. */
   job_name: string | null
   job_address: string | null
   /** A signed paper filed over several jobs is one line: how many jobs it covers beyond the one named. */
@@ -67,7 +70,7 @@ export function canSeeAgreements(role: string | null | undefined): boolean {
 
 // ── The chips ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export type AgreementGroup = 'jobs' | 'warranty' | 'people' | 'partners' | 'orders'
+export type AgreementGroup = 'jobs' | 'warranty' | 'people' | 'partners' | 'orders' | 'gc'
 export type KindPick = 'all' | AgreementGroup
 export type StatePick = 'live' | AgreementState
 /** What a read asks for: a state chip's pick, or `any` under the Search tab, where a voided paper must be findable too. */
@@ -80,6 +83,7 @@ export const AGREEMENT_GROUP_KINDS: Readonly<Record<AgreementGroup, ReadonlyArra
   people: ['person_agreement'],
   partners: ['partner_agreement'],
   orders: ['work_order'],
+  gc: ['owner_contract', 'sow', 'company_agreement'],
 }
 
 export const AGREEMENT_KIND_CHIPS: ReadonlyArray<{ key: KindPick; label: string }> = [
@@ -89,6 +93,9 @@ export const AGREEMENT_KIND_CHIPS: ReadonlyArray<{ key: KindPick; label: string 
   { key: 'people', label: 'Staff and subs' },
   { key: 'partners', label: 'Partners' },
   { key: 'orders', label: 'Work orders' },
+  // GC mode's papers. The chip shows to everyone with the tab; the rows are each table's own to open, so an assistant
+  // sees a trade company's agreement under it and none of the owner contracts or statements of work.
+  { key: 'gc', label: 'GC projects' },
 ]
 
 /** The tab opens on `live`: sent and signed, so a voided paper stays out of the way until its chip is pressed. */
@@ -125,6 +132,7 @@ export const AGREEMENT_GROUP_COLORS: Readonly<Record<AgreementGroup, { backgroun
   people: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
   partners: { background: 'var(--bg-violet-tint)', color: 'var(--text-violet-700)' },
   orders: { background: 'var(--bg-muted)', color: 'var(--text-muted)' },
+  gc: { background: 'var(--bg-subtle)', color: 'var(--text-700)' },
 }
 
 /** A state chip's pair per tone: the contract chips' own colours (`jobContractChipColors`). */
@@ -216,6 +224,12 @@ export function agreementTag(row: Pick<AgreementRow, 'kind' | 'person_kind'>): {
       return { words: 'Partner', group }
     case 'work_order':
       return { words: 'Work order', group }
+    case 'owner_contract':
+      return { words: 'Owner contract', group }
+    case 'sow':
+      return { words: 'Statement of work', group }
+    case 'company_agreement':
+      return { words: 'Trade company', group }
     default:
       return { words: 'Agreement', group }
   }
@@ -247,6 +261,10 @@ export function agreementName(row: Pick<AgreementRow, 'kind' | 'paper_name' | 'f
       return 'Their paper'
     case 'work_order':
       return 'Work order'
+    case 'owner_contract':
+      return 'Our contract with the owner'
+    case 'sow':
+      return 'Statement of work'
     default:
       return 'Agreement'
   }
@@ -293,7 +311,7 @@ export function agreementStateChip(row: Pick<AgreementRow, 'kind' | 'state' | 'f
     })[0]
     return { words: chip?.label ?? status, tone }
   }
-  if (row.kind === 'person_agreement' || row.kind === 'partner_agreement') {
+  if (row.kind === 'person_agreement' || row.kind === 'partner_agreement' || row.kind === 'company_agreement') {
     if (fact(row, 'replaced') === true) return { words: 'replaced by a newer one', tone }
     if (tone === 'signed') return { words: 'signed ✓', tone }
     return { words: fact(row, 'signer_last_viewed_at') != null ? 'viewed, not signed' : 'never opened', tone }
@@ -325,6 +343,17 @@ export function agreementStateChip(row: Pick<AgreementRow, 'kind' | 'state' | 'f
     )
     return { words: workOrderChipLabel(coverage), tone }
   }
+  if (row.kind === 'owner_contract') {
+    // GC mode's own words for our contract with the owner (`gc/customerContract.ts`): late once the sign-by day passed.
+    if (tone === 'signed') return { words: 'signed ✓', tone }
+    const by = str(fact(row, 'sign_by'))
+    return { words: by && by < todayYmd ? `late, asked to sign by ${weekdayDate(by)}` : 'waiting on their signature', tone }
+  }
+  if (row.kind === 'sow') {
+    // A trade's statement of work, as its card says it (`GcTradeSow.tsx`).
+    if (tone === 'signed') return { words: 'signed ✓', tone }
+    return { words: tone === 'waiting' ? 'waiting on their signature' : 'cancelled', tone }
+  }
   return { words: tone === 'waiting' ? 'waiting on a signature' : tone === 'signed' ? 'signed ✓' : 'ended', tone }
 }
 
@@ -335,6 +364,8 @@ function dayVerb(row: Pick<AgreementRow, 'kind' | 'state' | 'facts'>): string {
   if (tone === 'waiting') return 'Sent'
   const status = str(fact(row, 'status'))
   if (row.kind === 'work_order') return status === 'declined' ? 'Declined' : status === 'cancelled' ? 'Cancelled' : 'Expired'
+  // A cancelled statement of work keeps no cancel day: the day on its line is the day it was sent.
+  if (row.kind === 'sow') return 'Sent'
   if (fact(row, 'replaced') === true) return 'Signed'
   return 'Voided'
 }
@@ -377,6 +408,9 @@ export function agreementMonthGroups<T extends Pick<AgreementRow, 'at_day'>>(row
 
 // ── What a press opens ────────────────────────────────────────────────────────────────────────────────────────────────
 
+/** GC mode's page. */
+export const AGREEMENTS_GC_PAGE = '/gc'
+
 /** Each kind keeps the window it has: the tab builds no viewer of its own. */
 export type AgreementDoor =
   /** The Contract window on that record, or its preview while it is unsigned: what the Jobs tab's line opens. */
@@ -385,6 +419,8 @@ export type AgreementDoor =
   | { kind: 'person-signed'; documentId: string }
   /** People → Contracts on that paper, where it is sent again. */
   | { kind: 'people-contracts'; to: string }
+  /** GC mode's page, for a paper of a GC project: it has no address of its own to open one project on. */
+  | { kind: 'gc'; to: string }
   /** The work order window on that job. */
   | { kind: 'work-order'; jobId: string; commitmentId: string }
   | { kind: 'none' }
@@ -401,5 +437,7 @@ export function agreementDoor(row: Pick<AgreementRow, 'kind' | 'source_id' | 'st
   if (row.kind === 'work_order') {
     return row.job_id ? { kind: 'work-order', jobId: row.job_id, commitmentId: row.source_id } : { kind: 'none' }
   }
+  if (row.kind === 'company_agreement' && str(fact(row, 'status')) === 'signed') return { kind: 'person-signed', documentId: row.source_id }
+  if (row.kind === 'owner_contract' || row.kind === 'sow' || row.kind === 'company_agreement') return { kind: 'gc', to: AGREEMENTS_GC_PAGE }
   return { kind: 'none' }
 }
