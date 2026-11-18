@@ -2,7 +2,7 @@
 name: "SupplyHousesTab's twelve cuts: land the last two pieces"
 number: 386
 group: close
-status: asked 2026-11-17 · the map re-drawn the same day (#8547) with a twelve-step order · cuts 1 to 5 built and merged the same evening (#8568) · cuts 6 to 12's first half built and in the merge queue (#8607) · cut 12's second half and the map's re-read built on local branches, no PR · the owner stopped the build for the night and put what is left here
+status: asked 2026-11-17 · the map re-drawn the same day (#8547) with a twelve-step order · cuts 1 to 5 built and merged the same evening (#8568) · cuts 6 to 12's first half built and in the merge queue (#8607) · cut 12's second half and the map's re-read built on branches pushed to GitHub, no PR · the owner stopped the build for the night and put what is left here
 summary: >
   The office's Supply houses tab was one file of 3,678 lines, the eleventh largest in the app, with
   no test of its own. The owner asked how close it was to needing a split. The Materials map was
@@ -11,7 +11,7 @@ summary: >
   the aging table are their own files. The tab itself falls to 768 lines once the queued PR lands.
   Two pieces are built and not opened: the one cut that changes what the page asks the database
   for, and the map's re-read after the cuts.
-next: "See #8607 to its merge. Then open cut 12's second half from `claude/supply-cut-12-small-pieces` as its own PR, rebased on main. Then the map's re-read from `claude/supply-map-reread`, regenerated against main, last. Then the owner's look at the tab on the live site, and the card retires."
+next: "See #8607 to its merge. Then open cut 12's second half from `claude/supply-cut-12-small-pieces` as its own PR, rebased with the `--onto` command the card gives. Then the map's re-read from `claude/supply-map-reread`, regenerated against main, last. Then the owner's look at the tab on the live site, and the card retires."
 size: L as a train of twelve cuts; left: the queued PR, the paged reads (S) and the map's re-read (S)
 blocker: None. Cut 12's second half must not open before #8607 merges, since it is stacked on it.
 mockup: not required — a refactor; the first eleven and a half cuts move code and change no screen, and the last changes what is read, not what is shown
@@ -55,7 +55,7 @@ After cuts 1 to 5 the file is 3,532 lines on `main`. #8607 takes it to 768. Ever
 
 ### 1. See #8607 to its merge
 
-[#8607](https://github.com/clickconstruction/pipetooling.github.io/pull/8607) was in the merge queue when this card was written. If the queue kicks it out, rebase `claude/supply-moves` on `main`, run the tab's render test and the five hook tests, and arm it again.
+[#8607](https://github.com/clickconstruction/pipetooling.github.io/pull/8607) was in the merge queue when this card was written. If the queue kicks it out, rebase `claude/supply-moves` on `main`, run the tab's render test and the four hook tests under `src/components/materials/` (`useSupplyHouse*.render.test.tsx`), and arm it again.
 
 ### 2. Cut 12's second half: the paged reads (S)
 
@@ -67,11 +67,23 @@ Built as one commit on `claude/supply-cut-12-small-pieces`, stacked on `claude/s
 
 Neither table is near the cap today, so nothing is being cut on the live site. Three new cases in `useSupplyHouseAccountsPayable.render.test.tsx` hold it: a book of 1,200 bills read whole in two pages, a house reading the jobs on its own bills only, and a house with no bills asking for no jobs.
 
-To land it: after #8607 merges, rebase the branch on `main` so it is one commit, run that hook's test, the tab's render test and the Materials and Quickfill suites, open the PR and arm it. Its release note and fragment (`v2.7682`) are on the branch. If the claim on v2.7682 has been given back or taken, claim again and rename the two files.
+To land it: after #8607 merges, move the one commit onto `main`. A plain rebase replays the seven moves commits the queue squashed and conflicts, so name the old base:
+
+```
+git rebase --onto origin/main 1df647f7ef claude/supply-cut-12-small-pieces
+```
+
+Then run that hook's test, the tab's render test and the Materials and Quickfill suites, open the PR and arm it. Its release note and fragment (`v2.7682`) are on the branch. The claim on v2.7682 is no longer held on GitHub, though the number was unused when this card was written: claim again, and rename the two files if the number has gone.
 
 ### 3. The map's re-read (S, docs only)
 
-Drafted on `claude/supply-map-reread`: `docs/MATERIALS_TABS_ARCHITECTURE.md` with the tab's regions and ranges after the cuts, and one line each in the playbook and `docs/QUICKFILL_ARCHITECTURE.md`. Its `mapped_at` is left pending on purpose. It goes last: regenerate the fact sheet against `main` once the paged reads have landed (`npm run map -- src/components/SupplyHousesTab.tsx`), check every range against the file, set `mapped_at`, then open it.
+Drafted on `claude/supply-map-reread`: `docs/MATERIALS_TABS_ARCHITECTURE.md` with the tab's regions and ranges after the cuts, and one line each in the playbook and `docs/QUICKFILL_ARCHITECTURE.md`. Its `mapped_at` is left pending on purpose, as the placeholder `PENDING0000`, four times in the map and once in the playbook's row. It goes last, once the paged reads have landed. It is stacked on the paged reads' commit, so move it the same way:
+
+```
+git rebase --onto origin/main eec3bda2eb claude/supply-map-reread
+```
+
+Then regenerate the fact sheet against `main` (`npm run map -- src/components/SupplyHousesTab.tsx`), check every range against the file, put the commit in place of every `PENDING0000`, and open it. The scripts that regenerated and checked the draft are not in the repo. They are on the office Mac, in the sessions' notes folder under `supply-map-reread-tools/`.
 
 ### 4. The owner's look
 
@@ -79,7 +91,7 @@ No cut was looked at in a browser; the proof is the tests. After #8607 deploys, 
 
 ## Where the branches are
 
-At the time of writing `claude/supply-moves` is on GitHub. `claude/supply-cut-12-small-pieces` and `claude/supply-map-reread` are local to the checkout on the office Mac. Check with `git ls-remote --heads origin 'claude/supply-*'`, and push them before picking this up from another machine.
+All three are on GitHub: `claude/supply-moves` at `1df647f7ef` (the head of #8607), `claude/supply-cut-12-small-pieces` at `eec3bda2eb` and `claude/supply-map-reread` at `f2d97ec87d`. The last two have no PR. Check with `git ls-remote --heads origin 'claude/supply-*'`.
 
 ## Not on this card
 
