@@ -89,6 +89,28 @@ Nothing on this screen changes a count. A count and a correction stay on the job
 
 Press **Print the material location report** at the top to print the site. The [report](/help/print-the-material-location-report) opens on the site's Development page. The report's **By part** chip prints this same list.
 
+## See what one person did on a site
+
+Open a site and press **By person**. The list turns into every press on the site, newest first, a day at a time.
+
+Pick a name under **Person** to read one person's presses alone. A line beside the name says when that person last pressed.
+
+Each row says when, what, the part, how many, where and the note. A count reads what the app expected against what was found, like *40 → 12*. Press the box's name to open that box.
+
+Four figures sit over the list. They count the presses, the pieces taken or used, the boxes pressed on and the presses worth a look.
+
+A press worth a look wears an amber chip. A first count of a line wears none. The first part added to a line wears none. A count that found what the app expected wears none.
+
+- **count changed the number** is a count that changed a number the app already had.
+- **added by hand** is a part added to a line that already had a number, with no invoice or PO.
+- **no note** is a take or a use that does not say where the material went.
+
+Press **Worth a look only** to read those rows alone. Pick a kind under **Kind of press** to read one kind, like *Taken*.
+
+A box moved from one place to another is in the list too. It reads *Moved a box*.
+
+**By person** is for the office. Nothing on it changes a count.
+
 ## Read the row
 
 The job's number sits at the top of the page, before its name. Press the number to open the job window.

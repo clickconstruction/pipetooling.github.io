@@ -64,6 +64,7 @@ import StickersOnBoxes from '../materials/StickersOnBoxes'
 import { ON_BOXES_LABEL, onBoxesPrefill, onBoxesToast } from '../../lib/materials/stickersOnBoxes'
 import OnSiteMoveJobModal from '../materials/OnSiteMoveJobModal'
 import { canMoveOnSite, MOVE_JOB_LABEL, MOVE_JOB_WHO, type MoveJobChoice } from '../../lib/materials/onSiteMoveJob'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { canMintStickers, PRINT_STICKERS_LABEL, STICKER_MINT_WHO } from '../../lib/materials/stickerRun'
 import { BoxWindow } from '../materials/BoxTabs'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
@@ -260,6 +261,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
           boxHref={jobHref}
           developmentHref={`/developments/${siteId}`}
           canTie
+          canSeePeople={isOfficeRole(role)}
           byName={byName}
           loading={(desk.loading && !desk.loaded) || !sites.loaded}
         />

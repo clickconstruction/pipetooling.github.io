@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import LienBoard, { lienBoardArrowPaths } from './LienBoard'
+import LienBoard, { LIEN_BOARD_QUIET_HEAD, lienBoardArrowPaths } from './LienBoard'
 import { buildLienBoard, lienBoardForLeader, lienBoardLeaderBinPress, lienBoardPick, type LienBoardInput } from '../../lib/jobs/lienBoard'
 import { lienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 import { LIEN_BOARD_USUAL_STACK, lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor } from '../../lib/jobs/lienBoardPrints'
@@ -662,5 +662,61 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
     expect(send.parentElement!.getAttribute('data-lien-board-bin-title')).toBe('affidavit:to_send')
     fireEvent.click(send)
     expect(onPress).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('LienBoard · a bin with no paper has a quiet name (v2.7845, the owner’s ask of 2026-11-18)', () => {
+  /** Each bin as the page draws it: is it folded, its dashed edge, and the style its name and its count carry. */
+  const read = () =>
+    Array.from(document.querySelectorAll<HTMLElement>('[data-lien-board-bin]')).map((el) => {
+      const head = el.querySelector<HTMLElement>('[data-lien-board-bin-head]')!
+      const count = el.querySelector<HTMLElement>('[data-lien-board-count]')!
+      return { key: el.getAttribute('data-lien-board-bin')!, chips: el.querySelectorAll('[data-lien-board-chip]').length, folded: el.getAttribute('data-folded') === 'yes', dashed: el.style.borderStyle === 'dashed', name: [head.style.color, head.style.fontWeight], count: [count.style.color, count.style.fontWeight] }
+    })
+  const QUIET = [LIEN_BOARD_QUIET_HEAD.color, String(LIEN_BOARD_QUIET_HEAD.fontWeight)]
+
+  it('greys the name and the count of every bin that holds no chip, lighter than bold, and leaves a bin with a chip as it was', () => {
+    render(<LienBoard board={board()} isMobile={false} columnsOnly />)
+    const bins = read()
+    // The token and the weight themselves: a muted grey that still reads, never a raw hex.
+    expect(QUIET).toEqual(['var(--text-muted)', '600'])
+    const by = (key: string) => bins.find((b) => b.key === key)!
+    // Empty: the dashed edge and the quiet name together.
+    expect(by('affidavit:filed')).toMatchObject({ chips: 0, folded: true, dashed: true, name: QUIET, count: QUIET })
+    expect(by('affidavit:served')).toMatchObject({ chips: 0, folded: true, dashed: true, name: QUIET, count: QUIET })
+    // With a chip: the name keeps the sheet's own colour and bold, the count its strong figure.
+    expect(by('notice:to_send')).toMatchObject({ chips: 2, folded: false, dashed: false, name: ['', ''], count: ['var(--text-strong)', '700'] })
+    expect(by('affidavit:ready')).toMatchObject({ chips: 1, folded: false, name: ['', ''] })
+    // One flag for both: on every bin the dashed edge, the quiet name and the quiet count agree, and each is there only with no chip.
+    expect(bins.length).toBe(14)
+    for (const b of bins) {
+      expect([b.key, b.dashed, b.name[0] === QUIET[0], b.count[1] === QUIET[1]]).toEqual([b.key, b.folded, b.folded, b.folded])
+      expect([b.key, b.folded]).toEqual([b.key, b.chips === 0])
+    }
+    expect(bins.filter((b) => b.folded).length).toBeGreaterThan(0)
+    expect(bins.filter((b) => !b.folded).length).toBeGreaterThan(0)
+  })
+
+  it('keeps the rule when a bin’s head is a press, and on a phone with the bins opened', () => {
+    render(<LienBoard board={board()} isMobile onPick={vi.fn()} />)
+    fireEvent.click(document.querySelector('[data-lien-board-fold]') as HTMLElement)
+    const bins = read()
+    expect(document.querySelector('[data-lien-board-bin="affidavit:filed"] [data-lien-board-bin-head]')!.tagName).toBe('BUTTON')
+    expect(bins.find((b) => b.key === 'affidavit:filed')).toMatchObject({ folded: true, dashed: true, name: QUIET, count: QUIET })
+    expect(bins.find((b) => b.key === 'notice:to_send')).toMatchObject({ folded: false, dashed: false, name: ['', ''] })
+    for (const b of bins) expect([b.key, b.name[0] === QUIET[0]]).toEqual([b.key, b.folded])
+  })
+
+  it('an empty bin that offers a live press is not quiet: its name and its press stay at full strength', () => {
+    render(<LienBoard board={board()} isMobile={false} columnsOnly binPress={{ 'affidavit:filed': { label: 'Mail the copies ›', onPress: vi.fn(), filled: true, whenEmpty: true } }} />)
+    const live = read().find((b) => b.key === 'affidavit:filed')!
+    expect(live).toMatchObject({ chips: 0, folded: false, dashed: false, name: ['', ''] })
+    const press = document.querySelector('[data-lien-board-bin-press="affidavit:filed"]') as HTMLButtonElement
+    expect([press.disabled, press.style.color, press.style.background]).toEqual([false, 'rgb(255, 255, 255)', 'rgb(37, 99, 235)'])
+    // A dead press in an empty bin is not drawn, so that bin folds and goes quiet like any other.
+    cleanup()
+    render(<LienBoard board={board()} isMobile={false} columnsOnly binPress={{ 'affidavit:filed': { label: 'Mail the copies ›', onPress: vi.fn(), filled: true, whenEmpty: true, dead: true } }} />)
+    expect(read().find((b) => b.key === 'affidavit:filed')).toMatchObject({ folded: true, dashed: true, name: QUIET, count: QUIET })
+    expect(document.querySelector('[data-lien-board-bin-press="affidavit:filed"]')).toBeNull()
   })
 })

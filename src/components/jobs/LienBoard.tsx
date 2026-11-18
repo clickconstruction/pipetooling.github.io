@@ -19,7 +19,8 @@ import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type
  *
  * The quiet parts (v2.7714, punch list #383, PR 3). A bin whose own press is live has a blue left edge: *act here*.
  * The blue border on the busiest bin is gone, since it said *most papers* and read as *most urgent*. A bin with no
- * paper folds to one quiet line. No bin stands beside a column, so every bin has the column's full width.
+ * paper folds to one quiet line, its name and count in the muted grey since v2.7845 (`LIEN_BOARD_QUIET_HEAD`). No bin
+ * stands beside a column, so every bin has the column's full width.
  *
  * A held paper stands in the bin of the stage it is stopped at (v2.7783, the owner's pick of 2026-11-18). Its chip has
  * a dashed edge and a hold mark, stands after the chips that can move, and keeps its day's colour, so red still means
@@ -62,6 +63,12 @@ const TILE_TONE: Record<LienBoardTile['tone'], string> = {
 /** The desk's own blue, a saturated action colour kept literal: the edge of a bin with something to do now, and the pick's clear press. */
 const LIT = '#2563eb'
 const ARROW = 'var(--border-strong)'
+
+/**
+ * The name and the count of a bin that holds no paper and offers no press: the muted grey and a step lighter than a
+ * bin's bold, so the bin reads as there and not active. 4.83 to 1 on the light surface and 5.78 to 1 on the dark one.
+ */
+export const LIEN_BOARD_QUIET_HEAD: CSSProperties = { color: 'var(--text-muted)', fontWeight: 600 }
 
 /** The columns stand side by side from this width; under it they stack and the crossing arrow is not drawn. */
 export const LIEN_BOARD_STACK_UNDER_PX = 760
@@ -184,21 +191,23 @@ function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard, 
   // What the bin counts is what can move (v2.7783): a held paper stands here with its mark and is left out, so the count is the press's own number.
   const n = lienBoardBinCount(bin)
   const all = bin.chips.length
-  const head = (
-    <>
-      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bin.label}</span>
-      <span data-lien-board-count style={{ fontVariantNumeric: 'tabular-nums', color: n ? 'var(--text-strong)' : 'var(--text-muted)', fontWeight: 700 }}>{n}</span>
-    </>
-  )
   // The press shows while the bin holds a paper that can move, or in an empty bin when it is live and says so (`whenEmpty`).
   const act = press && (n > 0 || (press.whenEmpty && !press.dead)) ? press : null
   const lines = act?.lines ?? []
-  // The head keeps its name whole: where the press has no room beside it, the press wraps under the name.
-  const headStyle: CSSProperties = { flex: '1 1 auto', width: 'auto', minHeight: isMobile ? 40 : undefined }
   // Something to do now (v2.7714): the bin's own press is live, and the act is the viewer's.
   const edge = Boolean(act && !act.dead && !act.quiet)
   // A bin with no paper and no press folds to one quiet line.
   const folded = all === 0 && !act
+  // A folded bin's name and count go quiet with its edge (v2.7845), from the one flag, so the dashed edge and the grey name cannot disagree.
+  const quiet = folded ? LIEN_BOARD_QUIET_HEAD : null
+  const head = (
+    <>
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bin.label}</span>
+      <span data-lien-board-count style={{ fontVariantNumeric: 'tabular-nums', color: n ? 'var(--text-strong)' : 'var(--text-muted)', fontWeight: 700, ...quiet }}>{n}</span>
+    </>
+  )
+  // The head keeps its name whole: where the press has no room beside it, the press wraps under the name.
+  const headStyle: CSSProperties = { flex: '1 1 auto', width: 'auto', minHeight: isMobile ? 40 : undefined, ...quiet }
   const chips = bin.chips.map((c, i) => <Chip key={`${c.kind}:${c.jobId}`} chip={c} apart={Boolean(c.held) && i === n && n > 0} lit={Boolean(c.pairKey) && c.pairKey === pairLit} onChip={onChip} onHover={onHover} onCard={onCard} />)
   return (
     <div className="lienBoardBin" data-lien-board-bin={bin.key} data-stage={bin.stage} data-act={edge ? 'yes' : undefined} data-folded={folded ? 'yes' : undefined} data-picked={picked ? 'yes' : undefined} data-closed={bin.closed ? 'yes' : undefined} style={{ ...(edge ? { borderLeft: `3px solid ${LIT}`, paddingLeft: 7 } : null), ...(folded ? { borderStyle: 'dashed', background: 'transparent', padding: isMobile ? '2px 9px' : '4px 9px' } : null) }}>
@@ -405,7 +414,7 @@ export default function LienBoard({
   over?: ReactNode
   /** A bin of the desk's own under the affidavit column (v2.7443): *Public jobs · bond claim*. */
   underAffidavits?: ReactNode
-  /** A press on a bin's title line, by the bin's key: *Mail 12 liens’ copies ›* on *Filed · copies to mail* (punch list #366), *Enter mail numbers · 6* on *Approved · to mail*, the leader's *Approve 2 affidavits* on his *Awaiting Master approval*, on *Approved · to sign* (v2.7712) the office's reminder or the leader's *Sign 7 notices ›*, and *Send 5 for approval ›* on the affidavits' *To send for Master approval* (v2.7714). */
+  /** A press on a bin's title line, by the bin's key: *Print 12 liens’ copies ›* or *Enter mail numbers · 12 ›* on *Filed · copies to mail* (punch list #366, by stage since v2.7798), *Enter mail numbers · 6* on *Approved · to mail*, the leader's *Approve 2 affidavits* on his *Awaiting Master approval*, on *Approved · to sign* (v2.7712) the office's reminder or the leader's *Sign 7 notices ›*, and *Send 5 for approval ›* on the affidavits' *To send for Master approval* (v2.7714). */
   binPress?: Partial<Record<LienBoardBinKey, LienBoardBinPress>>
   /** Told when the columns stack or stand side by side, so the desk can make To do one page while the Board is taller than the screen. */
   onLayout?: (stacked: boolean) => void

@@ -73,6 +73,7 @@ between the two and nothing above them changes. It has to carry everything the L
 - the first view, refit and fly to a place.
 
 The Leaflet canvas stays as the fall back, as on every other map in the app.
+Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the photo archive is Esri's and cannot sit on a Google map, so the Leaflet canvas must stay whole, and a Google painting canvas goes down while Time is on.
 
 ## The calls, each with a pick
 

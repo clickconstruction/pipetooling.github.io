@@ -27,13 +27,36 @@ const BIN = buildLienOffPathBin([job({}), job({ jobId: 'j978', number: '978', na
 
 afterEach(cleanup)
 
+/** The box opens folded (punch list #390): press its header to read the rows. */
+const openBin = () => fireEvent.click(document.querySelector('[data-lien-off-path-bin] [data-lien-bin-fold]') as HTMLButtonElement)
+
 describe('LienOffPathBinView', () => {
+  it('opens folded to one line, the name, the jobs, the money and Show, and a press on it opens the rows (punch list #390)', () => {
+    render(<LienOffPathBinView bin={BIN} isMobile={false} onPutBack={vi.fn()} />)
+    const press = document.querySelector('[data-lien-bin-fold]') as HTMLButtonElement
+    expect(press.getAttribute('aria-expanded')).toBe('false')
+    expect(press.textContent).toBe('Off the lien path2 jobs · $1,400 unpaidShow ▾')
+    expect(document.querySelector('[data-lien-off-path-bin-row]')).toBeNull()
+    expect(document.querySelector('[data-lien-off-path-bin-back]')).toBeNull()
+    openBin()
+    expect(press.getAttribute('aria-expanded')).toBe('true')
+    expect(press.textContent).toBe('Off the lien path2 jobs · $1,400 unpaidHide ▴')
+    expect(document.getElementById(press.getAttribute('aria-controls')!)!.querySelectorAll('[data-lien-off-path-bin-row]')).toHaveLength(2)
+    openBin()
+    expect(document.querySelector('[data-lien-off-path-bin-row]')).toBeNull()
+  })
+
+  it('a phone’s fold press is 44 px tall', () => {
+    render(<LienOffPathBinView bin={BIN} isMobile onPutBack={null} />)
+    expect((document.querySelector('[data-lien-bin-fold]') as HTMLButtonElement).style.minHeight).toBe('44px')
+  })
+
   it('draws the bin’s name, its money and its count, and a row per job with who, the day, the attorney and the reason', () => {
     render(<LienOffPathBinView bin={BIN} isMobile={false} onPutBack={vi.fn()} />)
     const bin = document.querySelector('[data-lien-off-path-bin]') as HTMLElement
     expect(bin.getAttribute('aria-label')).toBe('Off the lien path')
-    expect(bin.textContent).toContain('$1,400 unpaid')
-    expect(document.querySelector('[data-lien-off-path-bin-count]')!.textContent).toBe('2')
+    expect(document.querySelector('[data-lien-bin-fold-words]')!.textContent).toBe('2 jobs · $1,400 unpaid')
+    openBin()
     const rows = [...document.querySelectorAll('[data-lien-off-path-bin-row]')] as HTMLElement[]
     expect(rows.map((r) => r.getAttribute('data-lien-off-path-bin-row'))).toEqual(['j977', 'j978'])
     expect(rows[0]!.textContent).toContain('977 · ZZ Test Trip Charges')
@@ -46,6 +69,7 @@ describe('LienOffPathBinView', () => {
   it('each row’s Put it back… hands the desk that job', () => {
     const onPutBack = vi.fn()
     render(<LienOffPathBinView bin={BIN} isMobile={false} onPutBack={onPutBack} />)
+    openBin()
     const presses = [...document.querySelectorAll('[data-lien-off-path-bin-back]')] as HTMLButtonElement[]
     expect(presses.map((p) => p.textContent)).toEqual(['Put it back…', 'Put it back…'])
     fireEvent.click(presses[1]!)
@@ -54,6 +78,7 @@ describe('LienOffPathBinView', () => {
 
   it('a reader who is not the lien office sees the rows and no press', () => {
     render(<LienOffPathBinView bin={BIN} isMobile={false} onPutBack={null} />)
+    openBin()
     expect(document.querySelectorAll('[data-lien-off-path-bin-row]')).toHaveLength(2)
     expect(document.querySelector('[data-lien-off-path-bin-back]')).toBeNull()
   })
@@ -61,6 +86,7 @@ describe('LienOffPathBinView', () => {
   it('a row’s name opens the job when the desk hands a door, with a phone’s tap height', () => {
     const onOpenJob = vi.fn()
     render(<LienOffPathBinView bin={BIN} isMobile onOpenJob={onOpenJob} onPutBack={vi.fn()} />)
+    openBin()
     const open = document.querySelector('[data-lien-off-path-bin-open="j977"]') as HTMLButtonElement
     expect(open.style.minHeight).toBe('40px')
     fireEvent.click(open)

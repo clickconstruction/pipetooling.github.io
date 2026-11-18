@@ -1,7 +1,8 @@
 import type { LienDeskEntry, LienNoticePolicy } from './lienDesk'
 
 /**
- * The picker behind the Lien desk's ⚠ Put a GC on notice… (v2.3470; rows rebuilt v2.3817).
+ * The picker behind the Lien desk's ⚠ Put a GC on notice… (v2.3470; rows rebuilt v2.3817; a phone's alone since
+ * v2.7806, when a computer's door left the title bar for the job's own notice, `lienGcNoticePress`).
  * One row per GC with an unsent desk entry: the money the desk has due, how soon the
  * earliest open window closes, and what is stuck — owners missing, notices awaiting
  * approval, months already missed. A GC whose every entry has no open window is "nothing
@@ -18,6 +19,26 @@ export const LIEN_GC_PICKER_URGENT_DAYS = 7
  * straight into markup as an empty state.
  */
 export const LIEN_GC_PICKER_NOTHING_LEFT = 'Nothing left to claim'
+
+/** What a run on a GC does, the hover hint on a door to it. */
+export const LIEN_GC_NOTICE_HINT = 'Every owner on every job with this GC gets the § 53.056 notice for every unnoticed month, in one approved run'
+
+/** The press beside the GC's name on a job's own notice: the GC it opens the run for, its words, its accessible name and its hint. */
+export type LienGcNoticePress = { gcId: string; words: string; name: string; hint: string }
+
+/**
+ * The press on a job's own notice (v2.7806, the owner's pick of 2026-11-18, *"Build 2"*, after *"I don't think I wanna
+ * see it in the header"*): on a computer *⚠ Put a GC on notice…* left the Lien desk's title bar, and a job with a GC
+ * draws *⚠ Put on notice…* beside the GC's name on its notice. It opens the run for that GC with no picker, since the
+ * GC is the one on the job. Null for a reader who is not the office, a desk handed no run window, a job with no GC,
+ * and a phone, which keeps the picker as a row of More. The words leave the GC out because its name is beside them;
+ * the accessible name says it.
+ */
+export function lienGcNoticePress(o: { office: boolean; handed: boolean; isMobile: boolean; gcId: string | null | undefined; gcName: string | null | undefined }): LienGcNoticePress | null {
+  if (!o.office || !o.handed || o.isMobile || !o.gcId) return null
+  const who = (o.gcName ?? '').trim() || 'this GC'
+  return { gcId: o.gcId, words: 'Put on notice…', name: `Put ${who} on notice…`, hint: LIEN_GC_NOTICE_HINT }
+}
 
 export type LienGcPickerOption = {
   id: string
