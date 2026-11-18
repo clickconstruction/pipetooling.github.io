@@ -207,7 +207,7 @@ describe('devMcpBidSubmission — the verbs on the server', () => {
     expect(SERVER.match(/^ {4}name: '/gm)?.length).toBe(175)
   })
   it('the server, its instructions, the README and the function docs name all three; 0.83.0 says which link', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.102.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.103.0'")
     expect(SERVER).toContain('since 0.83.0, the Sent by us folder once the folder holds more')
     expect(SERVER).toContain('WHICH LINK (since 0.83.0)')
     expect(README).toContain('**Which link** (v2.7186 / 0.83.0')
@@ -231,8 +231,9 @@ describe('devMcpBidSubmission — the verbs on the server', () => {
   })
   it('the read runs on a read-only token as the dev alone, and the plan reads on the same token', () => {
     expect(DRIVE_READONLY_SCOPE).toBe('https://www.googleapis.com/auth/drive.readonly')
-    // Two mints of the read-only token: the read verb's and the pair's dry run. The full token is minted in the copy alone.
-    expect(SERVER.match(/googleServiceToken\(saJson, \[DRIVE_READONLY_SCOPE\]\)/g)?.length).toBe(2)
+    // Three mints of the read-only token: the read verb's, the pair's dry run, and the lien filing plan's read of a
+    // saved copy's file (v2.7837). The full token is minted in the copy alone.
+    expect(SERVER.match(/googleServiceToken\(saJson, \[DRIVE_READONLY_SCOPE\]\)/g)?.length).toBe(3)
     const branch = SERVER.slice(SERVER.indexOf("case 'plan_bid_submission':"), SERVER.indexOf("    case 'plan_submittal_rows':"))
     expect(branch.indexOf('googleAccessToken(saJson)')).toBeGreaterThan(branch.indexOf('planMismatch(name'))
     expect(branch.match(/googleAccessToken\(/g)?.length).toBe(1)

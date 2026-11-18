@@ -89,7 +89,7 @@ describe('the pair and what it stands on', () => {
     expect(SERVER).toContain("case 'read_lien_filings': {")
     expect(SERVER).toContain("name: 'read_lien_filings',")
     expect(Object.keys(WRITE_VERBS)).toHaveLength(125)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.102.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.103.0'")
     expect(SERVER).toContain('Writes are one hundred and twenty-five verbs and nothing else:')
     expect(SERVER).toContain("await restRows(session, 'PATCH', 'job_lien_filings', target, { served_at: write.servedOn, sends: lienServiceSends(write) }, 'return=representation')")
     expect(README).toContain('`plan_lien_service(service \\| services)` · `apply_lien_service(service, plan_hash)`')
