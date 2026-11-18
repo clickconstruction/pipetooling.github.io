@@ -56,3 +56,66 @@ describe('LienReceiptPhotoPress · a photo that did not go up (v2.7635)', () => 
     expect(document.querySelector('[data-lien-receipt-retry]')).toBeNull()
   })
 })
+
+describe('LienReceiptPhotoPress · a receipt is a photo or a PDF', () => {
+  it('sends a PDF as it is under the receipt’s name, and says a PDF is not read for its number', async () => {
+    const onSaved = vi.fn()
+    const onRead = vi.fn()
+    const put = vi.fn().mockResolvedValueOnce({ driveFileId: 'f2', url: 'https://drive.google.com/file/d/f2/view' })
+    renderWithProviders(<LienReceiptPhotoPress jobId="job-1" jobNumber="77" of="original_contractor" paper="notice" day="2026-11-17" url="" compact onSaved={onSaved} onRead={onRead} put={put} />)
+    expect((document.querySelector('input[type="file"]') as HTMLInputElement).accept).toBe('application/pdf,image/*')
+    expect(screen.getByRole('button', { name: 'Add the receipt' })).toBeTruthy()
+    pick(new File([new Uint8Array([1, 2, 3])], 'SCAN0007.PDF', { type: '' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('https://drive.google.com/file/d/f2/view'))
+    const sent = put.mock.calls[0]![2] as File
+    expect(sent.name).toBe('Lien notice, Job 77, mail receipt, original contractor, 2026-11-17.pdf')
+    expect(sent.type).toBe('application/pdf')
+    expect(onRead).not.toHaveBeenCalled()
+    expect(document.querySelector('[data-lien-receipt-read]')?.textContent).toBe('A PDF is not read for its number. Type the number in the box.')
+  })
+
+  it('refuses a file that is not a receipt, and nothing goes up', async () => {
+    const put = vi.fn()
+    renderWithProviders(<LienReceiptPhotoPress jobId="job-1" jobNumber="77" of="owner" day="2026-11-17" url="" compact onSaved={() => {}} put={put} />)
+    pick(new File(['a,b'], 'numbers.csv', { type: 'text/csv' }))
+    await waitFor(() => expect(document.querySelector('[data-lien-receipt-failed]')?.textContent).toContain('That file is not a receipt. Add a photo or a PDF.'))
+    expect(put).not.toHaveBeenCalled()
+  })
+
+  it('shows a saved receipt with Open, Replace and Take off, and asks before it takes one off', () => {
+    const onTakeOff = vi.fn()
+    renderWithProviders(<LienReceiptPhotoPress jobId="job-1" jobNumber="77" of="owner" day="2026-11-17" url="https://drive.google.com/file/d/f1/view" compact onSaved={() => {}} onTakeOff={onTakeOff} />)
+    expect(document.querySelector('[data-lien-receipt-saved]')?.textContent).toBe('✓ Receipt saved')
+    expect((screen.getByRole('link', { name: 'Open the receipt' }) as HTMLAnchorElement).href).toBe('https://drive.google.com/file/d/f1/view')
+    expect(screen.getByRole('button', { name: 'Replace' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Take off' }))
+    expect(screen.getByText('Take this receipt off? The file stays in the job’s Drive folder.')).toBeTruthy()
+    expect(onTakeOff).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+    expect(document.querySelector('[data-lien-receipt-ask]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Take off' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Take it off' }))
+    expect(onTakeOff).toHaveBeenCalledTimes(1)
+  })
+
+  it('on a phone opens a sheet with the camera and the picker', () => {
+    renderWithProviders(<LienReceiptPhotoPress jobId="job-1" jobNumber="77" of="owner" day="2026-11-17" url="" onSaved={() => {}} />)
+    expect(document.querySelector('[data-lien-receipt-sheet]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Add the receipt' }))
+    const sheet = document.querySelector('[data-lien-receipt-sheet]') as HTMLElement
+    expect(sheet.textContent).toContain('Take a photo')
+    expect(sheet.textContent).toContain('Choose a photo or a PDF')
+    const inputs = [...document.querySelectorAll('input[type="file"]')] as HTMLInputElement[]
+    expect(inputs.map((i) => [i.accept, i.getAttribute('capture')])).toEqual([
+      ['application/pdf,image/*', null],
+      ['image/*', 'environment'],
+    ])
+  })
+
+  it('leaves the clerk’s stamped page a photo', () => {
+    renderWithProviders(<LienReceiptPhotoPress jobId="job-1" jobNumber="77" of="clerk" day="2026-11-17" url="" compact onSaved={() => {}} />)
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    expect([input.accept, input.getAttribute('capture')]).toEqual(['image/*', 'environment'])
+    expect(screen.getByRole('button', { name: 'Take a photo of the stamped page' })).toBeTruthy()
+  })
+})
