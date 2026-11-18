@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { mapSummaryWords, mapsForDevelopment, mapsForJob } from '../../lib/paintedMap/paintedMap'
 import { onPaintedMapsChanged, openPaintedMap, startPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { loadPaintedMapsFor, type PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
+import { useTakenDown } from '../../hooks/useTakenDown'
 import { PAINT_SWATCH } from './paintedMapLook'
 
 type Props = {
@@ -38,16 +39,19 @@ const addWords: CSSProperties = { ...add, width: '100%', justifySelf: 'stretch',
 export function JobPaintedMapsStrip({ jobId, developmentId = null, jobLabel = null, developmentLabel = null, address = null, only, addCentred = false }: Props) {
   const [wholes, setWholes] = useState<PaintedMapWhole[]>([])
   const [failed, setFailed] = useState<string | null>(null)
+  // A read that lands after the strip is taken down sets nothing: there is no screen left to draw on.
+  const takenDown = useTakenDown()
 
   const load = useCallback(async () => {
     const res = await loadPaintedMapsFor({ jobId, developmentId })
+    if (takenDown()) return
     if (res.ok) {
       setWholes(res.value)
       setFailed(null)
     } else {
       setFailed(res.error)
     }
-  }, [jobId, developmentId])
+  }, [jobId, developmentId, takenDown])
 
   useEffect(() => {
     void load()
@@ -112,16 +116,19 @@ export function DevelopmentPaintedMapsStrip({ developmentId, developmentLabel = 
   const [wholes, setWholes] = useState<PaintedMapWhole[]>([])
   const [failed, setFailed] = useState<string | null>(null)
   const jobKey = jobs.map((j) => j.id).join(',')
+  // As on a job's strip: a read that lands after the strip is taken down sets nothing.
+  const takenDown = useTakenDown()
 
   const load = useCallback(async () => {
     const res = await loadPaintedMapsFor({ developmentId, jobIds: jobKey ? jobKey.split(',') : [] })
+    if (takenDown()) return
     if (res.ok) {
       setWholes(res.value)
       setFailed(null)
     } else {
       setFailed(res.error)
     }
-  }, [developmentId, jobKey])
+  }, [developmentId, jobKey, takenDown])
 
   useEffect(() => {
     void load()

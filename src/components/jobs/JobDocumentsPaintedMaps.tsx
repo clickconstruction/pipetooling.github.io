@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { onPaintedMapsChanged, openPaintedMap, startPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import { PAINTED_MAP_DOCUMENT_WORDS, paintedMapDocumentRows } from '../../lib/paintedMap/paintedMapDocuments'
 import { loadPaintedMapsFor, loadPainterNames, type Landed, type PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
+import { useTakenDown } from '../../hooks/useTakenDown'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { PAINT_SWATCH } from '../paintedMap/paintedMapLook'
@@ -44,17 +45,21 @@ export function JobDocumentsPaintedMaps({ job, sentCopiesShown = false, mayText 
   const [sharing, setSharing] = useState<{ id: string; name: string } | null>(null)
   const developmentId = job.development_id ?? job.development?.id ?? null
   const developmentLabel = job.development?.name ?? null
+  // A read that lands after the section is taken down sets nothing: there is no screen left to draw on.
+  const takenDown = useTakenDown()
 
   const load = useCallback(async () => {
     const res = await loadMaps({ jobId: job.id, developmentId })
+    if (takenDown()) return
     if (!res.ok) {
       setRead({ kind: 'failed', words: res.error })
       return
     }
     // The names are words beside each map. A read of them that fails costs the words and never the list.
     const names = await loadNames(res.value.map((w) => w.map.createdBy)).catch(() => new Map<string, string>())
+    if (takenDown()) return
     setRead({ kind: 'read', wholes: res.value, names })
-  }, [job.id, developmentId, loadMaps, loadNames])
+  }, [job.id, developmentId, loadMaps, loadNames, takenDown])
 
   useEffect(() => {
     void load()

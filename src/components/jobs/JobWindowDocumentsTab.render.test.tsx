@@ -6,7 +6,7 @@
  * Since v2.4495 the tab also lists the job's bills and test reports, and since v2.4496 its
  * contract and lien paper.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { TestReportDocumentRow } from '../../lib/jobsDocuments/testReportDocumentRow'
@@ -14,6 +14,7 @@ import type { JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import type { JobLienPaper } from '../../lib/jobs/jobLienPaperRows'
 import type { SentCopy } from '../../lib/sent/sentCopies'
 import { payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
+import { PAINTED_MAP_DOCUMENT_WORDS } from '../../lib/paintedMap/paintedMapDocuments'
 import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
 import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplicationRow, type SavedPayApplication } from '../../lib/aiaPayApplications'
 
@@ -128,6 +129,15 @@ vi.mock('../../lib/sent/sentCopiesIo', () => ({
   openSentFile: (path: string) => openFileSpy(path),
 }))
 
+// Painted maps (punch list #345): the section reads on mount, and it has its own render test. Here its read
+// is faked, so no test looks up the run's dead address, and a job with no map is what every test sees.
+const mapsReadSpy = vi.fn((_home: { jobId?: string | null }) => Promise.resolve({ ok: true as const, value: [] }))
+vi.mock('../../lib/paintedMap/paintedMapIo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/paintedMap/paintedMapIo')>()),
+  loadPaintedMapsFor: (home: { jobId?: string | null }) => mapsReadSpy(home),
+  loadPainterNames: () => Promise.resolve(new Map<string, string>()),
+}))
+
 // The AIA window has its own render test; here it is a stub that says what it was handed.
 vi.mock('./AiaG702G703Modal', () => ({
   default: ({ open, onClose, initialApplicationNumber, startOn, zIndex }: { open: boolean; onClose: () => void; initialApplicationNumber?: number | null; startOn?: string; zIndex?: number }) =>
@@ -181,6 +191,14 @@ beforeEach(() => {
   externalSpy.mockClear()
   openTestReportSpy.mockClear()
   pdfSpy.mockClear()
+  mapsReadSpy.mockClear()
+})
+
+// No test ends with the maps' read still out. A read that landed after the page was gone once failed a
+// whole build with `window is not defined`. This runs before the tab is taken down, and a test that
+// mounted no tab has nothing to wait for.
+afterEach(async () => {
+  await waitFor(() => expect(document.querySelector('[data-job-documents-painted-maps]')?.textContent ?? '').not.toContain(PAINTED_MAP_DOCUMENT_WORDS.loading))
 })
 
 describe('JobWindowDocumentsTab', () => {

@@ -131,3 +131,27 @@ describe('JobDocumentsPaintedMaps', () => {
     expect(screen.queryByTestId('share-sheet')).toBeNull()
   })
 })
+
+// A build once failed on `window is not defined`: the section's read landed after the test that mounted it
+// had ended, and it set state with no page left under it. Here the page is taken away on purpose.
+describe('a read that lands after the section is taken down', () => {
+  for (const kind of ['fails', 'lands'] as const) {
+    it(`sets nothing when the read ${kind} late`, async () => {
+      let land: (res: Landed<PaintedMapWhole[]>) => void = () => {}
+      const namesAsked = vi.fn(names)
+      render(<JobDocumentsPaintedMaps job={JOB} loadNames={namesAsked} loadMaps={() => new Promise<Landed<PaintedMapWhole[]>>((r) => (land = r))} />)
+      cleanup()
+      const page = globalThis as { window?: unknown }
+      const held = page.window
+      delete page.window
+      try {
+        land(kind === 'fails' ? { ok: false, error: 'no signal' } : { ok: true, value: [WAY] })
+        // Past the read and the names after it. A state set in here throws, and the run reports it against this test.
+        await new Promise((r) => setTimeout(r, 0))
+      } finally {
+        page.window = held
+      }
+      expect(namesAsked).not.toHaveBeenCalled()
+    })
+  }
+})
