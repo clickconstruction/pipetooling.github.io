@@ -826,6 +826,9 @@ Taunya took all five at the pick on 2026-11-15.
 - **A screen lock for a pocket.** A dark, touch-proof screen that stays on. Worth trying only if
   the try in step 0 shows people want it.
 - **Map pictures kept on the phone** for sites with no signal.
+- **Asked on 2026-11-17, each on its own card:** Google's map under a painted map
+  ([#387](../painted-maps-on-google.md)), a Paint a map press on the Dashboard with every map on a
+  job ([#392](../paint-a-map-press/README.md)), and pins ([#393](../painted-map-pins.md)).
 
 ## How to verify
 
