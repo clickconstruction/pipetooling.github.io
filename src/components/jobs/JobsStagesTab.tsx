@@ -38,9 +38,6 @@ import { usePropertyKinds } from '../../hooks/usePropertyKinds'
 import { useBilledMoneyData } from '../../hooks/useBilledMoneyData'
 import { useDemandOutJobIds, useHazmatAndReleaseJobIds, useJobContractCoverage } from '../../hooks/useStagesRowFlags'
 import { useStagesDeepLinkParams, useStagesRtbFocus, type StagesDeepLinkDoors } from '../../hooks/useStagesDeepLinkParams'
-import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
-import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
-import { deriveStagesBillingActivityDetail } from '../../lib/stagesJobReferenceDates'
 import { JobsStagesPhoneStrip, PHONE_STAGE_ORDER, type PhoneStageKey } from './JobsStagesPhoneStrip'
 import type { StagesPhoneRowsMode } from './stagesPhoneRowsMode'
 import { useJobFollowupQueueCount } from '../../hooks/useJobFollowupQueueCount'
@@ -74,7 +71,7 @@ import {
   billedRowsRemainingTotal,
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
-import { billedPayModel, payClockFor, payClockShort, payClockWords } from '../../lib/jobs/billedDuePay'
+import { payClockFor, payClockShort, payClockWords } from '../../lib/jobs/billedDuePay'
 import type { BillOwnDue, PayCalendar } from '../../lib/jobs/payCalendar'
 import PayerAcceptedModal from './PayerAcceptedModal'
 import BillDueDayModal from './BillDueDayModal'
@@ -91,7 +88,6 @@ import type { BilledRowBillLine } from './JobsStagesUnifiedTable'
 import JobContractModal from './JobContractModal'
 import AddJobContractSheet from './AddJobContractSheet'
 import { jobNumberLabel, streetOf } from '../../lib/jobs/jobContractCovers'
-import { contractRowChipForJob } from '../../lib/jobs/contractRowChip'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useJobCrewPositions } from '../../hooks/useJobCrewPositions'
 import { useStageChecklistStates } from '../../hooks/useStageChecklistStates'
@@ -132,7 +128,7 @@ import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefault
 import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { fetchStagesWeekSoFarForJobs, type StagesWeekSoFar } from '../../lib/stagesWorkedDays'
 import { stripWeekStartYmd } from '../../lib/jobs/stagesScheduleStrip'
-import { phoneBillWords } from '../../lib/jobs/phoneBillWords'
+import { phoneNextLineInput } from '../../lib/jobs/phoneNextInput'
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import JobsStagesTable from './JobsStagesTable'
 import type { StagesTableShared, StagesUnifiedTableShared } from './stagesTableShared'
@@ -315,7 +311,7 @@ import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDispla
 import { setJobCollectionsFlag } from '../../lib/setJobCollectionsFlag'
 import { setJobUncollectible } from '../../lib/setJobUncollectible'
 import { invokeMarkStripeInvoiceUncollectible } from '../../lib/markStripeInvoiceUncollectible'
-import { uncollectibleFactsFor, uncollectiblePhoneLine } from '../../lib/jobs/uncollectible'
+import { uncollectibleFactsFor } from '../../lib/jobs/uncollectible'
 import {
   fetchJobIdsMatchingScheduleOrClockSessions,
   parseStagesIncludeScheduleTimePref,
@@ -2673,64 +2669,25 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   /** The phone rows' kernel input for a job, from the same side maps the cards read. */
   const phoneTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
-  const phoneNextInput = (job: JobWithDetails, row: StageRow | null, stage: JobNextStage): JobNextLineInput => {
-    const crew = crewByJobId.get(job.id) ?? null
-    const { model, view } = progressPaymentForJob(job, crew)
-    const inv = row && row.kind !== 'job' ? row.inv : null
-    const payer = inv ? paySpeedPayer(job, inv) : null
-    const expectedPay =
-      (stage === 'billed' || stage === 'collections') && inv && payer && !jobIsScheduledInKind(job)
-        ? billedPayModel(
-            { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name, acceptedYmd: acceptedByInvoice?.get(inv.id) ?? null },
-            billedPaySpeeds,
-            phoneTodayYmd,
-            promisedPayDates?.[job.id] ?? null,
-            paceInputFor(billedPaceContext, { payerId: payer.id, jobId: job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds),
-            calendarSourceFor(payCalendars, { payerId: payer.id, jobId: job.id, invoiceId: inv.id }),
-          )
-        : null
-    const bDetail = deriveStagesBillingActivityDetail(job)
-    return {
-      stage,
-      view,
-      money: model,
-      billSentAlert: stagesBillSentPctAlert(job),
-      quietDays: followupQuietByJobId.get(job.id) ?? null,
-      expectedPay,
-      bankReturned: bankReturnedByJobId.get(job.id) ?? null,
-      contract: canSeeJobContracts ? (jobContractCoverageByJobId.get(job.id) ?? null) : undefined,
-      contractAsk: canSeeJobContracts
-        ? (() => {
-            // v2.4342: the phone chip asks when the desktop row's chip does (`contractRowChip`).
-            const chip = contractRowChipForJob(job, {
-              coverage: jobContractCoverageByJobId.get(job.id),
-              upcoming: stagesUpcomingByJobId[job.id] ?? null,
-              weekSoFar: stagesWorkedByJobId[job.id] ?? null,
-              todayYmd: phoneTodayYmd,
-            })
-            return chip.show && chip.tone === 'ask' && chip.phoneLabel ? { label: chip.phoneLabel, title: chip.title } : null
-          })()
-        : null,
-      upcoming: stagesUpcomingByJobId[job.id] ?? null,
-      crew,
-      // v2.4760: a Billed / Collections bill row reads the bill's own day, not the latest event.
-      billDisplay: phoneBillWords({ stage, inv, detail: bDetail, todayYmd: phoneTodayYmd }),
-      // v2.4792: a job the office gave up on reads its reason and wears the UNCOLLECTIBLE chip.
-      uncollectible: (() => {
-        const facts = stage === 'collections' ? uncollectibleFactsFor(job) : null
-        return facts ? { line: uncollectiblePhoneLine(facts) } : null
-      })(),
-      createdAt: job.created_at ?? null,
+  const phoneNextInput = (job: JobWithDetails, row: StageRow | null, stage: JobNextStage): JobNextLineInput =>
+    phoneNextLineInput(job, row, stage, {
       todayYmd: phoneTodayYmd,
-      lienRunway: stage === 'billed' || stage === 'collections' ? lienRunwayFor(job, inv) : null,
-      // Punch list #335, row 5: the desk's next act for the job, so the chip names the step the billed row names.
-      lienDesk: (() => {
-        if (stage !== 'billed' && stage !== 'collections') return null
-        const chip = lienStateFor(job.id)
-        return chip ? { act: chip.act, paper: chip.paper, dueOn: chip.dueOn } : null
-      })(),
-    }
-  }
+      crewByJobId,
+      billedPaySpeeds,
+      promisedPayDates,
+      billedPaceContext,
+      payCalendars,
+      acceptedByInvoice,
+      followupQuietByJobId,
+      bankReturnedByJobId,
+      canSeeJobContracts,
+      jobContractCoverageByJobId,
+      stagesUpcomingByJobId,
+      stagesWorkedByJobId,
+      uncollectibleFactsFor,
+      lienRunwayFor,
+      lienStateFor,
+    })
   const phoneRowsFor = (stage: JobNextStage): StagesPhoneRowsMode | undefined => {
     if (!phoneBoard) return undefined
     return {
