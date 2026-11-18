@@ -3774,7 +3774,7 @@ The Dev doors card (`src/lib/settings/devDoors.ts`) lists each with its link.
 | 103 | People → **Day book**; Bids → **Day book**; the Crew Day line · `/people?tab=day_book` | dev and controller | the owner's decision 2 of 2026-09-22 stands until he says otherwise |
 | 104 | People → **Payroll**, **Offsets**, **Employment**, **Housing** · `/people?tab=pay_stubs` | dev, controller, pay-approved owner | already a role (pay approval); the Tally pay bar reads the same gate |
 | 105 | People → Users → **Invite as user**; Hire → **Send the invite** | dev | makes a login; the edge function holds the line |
-| 106 | People → **Imitate**; the person desk's **account rows** (role, sign-in email, password, access flags) and **Merge a duplicate…** | dev | a role change or a merge is not undone by a confirm |
+| 106 | People → **Imitate**, and since v2.7786 the **View as <first name>** line in the Task Mode look window on Review (`lookOffersViewAs`, punch list #381); the person desk's **account rows** (role, sign-in email, password, access flags) and **Merge a duplicate…** | dev | a role change or a merge is not undone by a confirm |
 | 107 | Person desk → **CountTooling** row | dev | the takeoff tool's seat is a dev's to issue |
 | 108 | Legal desk → **Mark attorney-ready**, **Pull back** · `/jobs?tab=stages&legal=1` | dev | his own call of 2026-09-11; if he reopens it, a typed confirm for himself is the shape |
 | 109 | Lien desk → the **leader's acts** (Sign and approve, Hold, Standing rule, the affidavit and retainage panes, GC on notice) | owner or dev | already the owner's; the leader approves what the office wrote |

@@ -64,6 +64,47 @@ export function lookCantLines(name: string | null | undefined): string[] {
   ]
 }
 
+/**
+ * The one door out of a look (punch list #381, call 7): a quiet line under that list, where a dev may View as the
+ * person. View as signs the dev in as them and the app records it, so the line says both. It is offered where a dev
+ * may sign in as someone today and nowhere else: never to the owner, never on the dev's own row, never for another dev
+ * (`login-as-user` refuses one), and never for a person with no login to sign in to.
+ */
+export type LookViewAsAsk = {
+  viewerIsDev: boolean
+  viewerId: string | null
+  personId: string
+  personRole: string | null | undefined
+  personEmail: string | null | undefined
+  /** `users.login_attached_at` is set: the person has a login. */
+  loginAttached: boolean
+}
+export function lookOffersViewAs(a: LookViewAsAsk): boolean {
+  if (!a.viewerIsDev) return false
+  if (a.viewerId === a.personId) return false
+  if (a.personRole === 'dev') return false
+  return a.loginAttached && !!a.personEmail?.trim()
+}
+
+/** The line reads *To press something as Dana, **View as Dana**. That signs you in as Dana, and the app records it.* */
+export function lookViewAsLead(name: string | null | undefined): string {
+  return `To press something as ${lookFirstName(name)},`
+}
+export function lookViewAsLabel(name: string | null | undefined): string {
+  return `View as ${lookFirstName(name)}`
+}
+export function lookViewAsTail(name: string | null | undefined): string {
+  return `That signs you in as ${lookFirstName(name)}, and the app records it.`
+}
+/** The question before the sign-in. Its button names the act. */
+export function lookViewAsConfirm(name: string | null | undefined): { message: string; confirmLabel: string } {
+  const whole = (name ?? '').trim() || 'them'
+  return { message: `Sign in as ${whole}? The app records it. Exit brings you back to this page.`, confirmLabel: lookViewAsLabel(name) }
+}
+export function lookViewAsFailed(name: string | null | undefined): string {
+  return `Could not sign in as ${lookFirstName(name)}`
+}
+
 /** What a press is, for the rule below: the nearest thing a person can press or type in. */
 const PRESSABLE = 'button, [role="button"], a, summary, label, input, select, textarea, [contenteditable="true"]'
 const FIELD = 'input, select, textarea, [contenteditable="true"]'
