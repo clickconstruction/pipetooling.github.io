@@ -125,6 +125,7 @@
   .chip.wait { color: var(--violet); background: var(--violet-bg); border-color: var(--violet); }
   .bin.empty { padding: 5px 9px; gap: 0; background: transparent; border-style: dashed; }
   .bin.empty .bh { font-weight: 600; color: var(--muted); }
+  .bh .btn { padding: 3px 10px; font-size: 0.76rem; line-height: 1.3; border-radius: 7px; }
   .bp { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 2px 0 1px; }
   .ret { font-size: 0.78rem; color: var(--muted); padding: 2px 4px; }
   .pub { border: 1px dashed var(--border-strong); border-radius: 9px; padding: 10px 14px; background: var(--surface); display: grid; gap: 8px; font-size: 0.8125rem; }
@@ -266,7 +267,9 @@ const toSign = unsigned.map((c) => [c[0], c[1] === 'day' ? 'day' : 'wait'])
 function bin(label, list, o = {}) {
   const n = list.length
   if (o.fold && n === 0) return `<div class="bin empty"><div class="bh"><span>${label}</span><span class="n z">0</span></div></div>`
-  return `<div class="bin ${o.cls || ''}"><div class="bh"><span>${label}</span><span class="n ${n ? '' : 'z'}">${n}</span></div><div class="chips">${chips(list)}</div>${o.press ? `<div class="bp">${o.press}</div>` : ''}</div>`
+  // The owner's pick (2026-11-17): B's press stands on the bin's title line, right of its name and count, and its note on a line under that.
+  const top = o.top && o.press
+  return `<div class="bin ${o.cls || ''}"><div class="bh"><span>${label}</span><span class="n ${n ? '' : 'z'}">${n}</span>${top ? o.press : ''}</div>${top && o.note ? `<div class="pn">${o.note}</div>` : ''}<div class="chips">${chips(list)}</div>${!top && o.press ? `<div class="bp">${o.press}</div>` : ''}</div>`
 }
 const nav = (phone) => `<div class="nav"><span>♥</span>${phone ? '' : '<span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Projects</span><span>Bids</span><span>Prospects</span><span>Messages</span>'}<span class="sp"></span><i>⌕</i><i>⚙</i></div>`
 function titlebar(opt, viewer) {
@@ -327,18 +330,18 @@ function binsB(viewer) {
       bin('Needs the owner', N.needs_owner, { fold: 1 }),
       bin('To send for Master approval', N.to_send),
       bin('Awaiting Master approval', N.awaiting, { fold: 1 }),
-      bin('Approved · to sign', toSign, { press: sign, cls: lead ? 'act' : '' }),
-      bin('Approved · to print', signed, { press: '<span class="btn sm">Print and mail 1 notice</span>', cls: 'act' }),
-      bin('Approved · to mail', N.to_mail, { press: '<span class="btn sm">Enter mail numbers · 6</span>', cls: 'act' }),
+      bin('Approved · to sign', toSign, { top: 1, press: sign, cls: lead ? 'act' : '' }),
+      bin('Approved · to print', signed, { top: 1, press: '<span class="btn sm">Print and mail 1 notice</span>', cls: 'act' }),
+      bin('Approved · to mail', N.to_mail, { top: 1, press: '<span class="btn sm">Enter mail numbers · 6</span>', cls: 'act' }),
       bin('Sent', N.sent, { cls: 'sent' }),
     ],
     a: [
       bin('Needs the property facts', A.needs_property),
       bin('Waiting on its notice', A.needs_notice, { cls: 'wn' }),
-      bin('To send for Master approval', A.to_send, { press: '<span class="btn sm out">Send 5 for approval ›</span>' }),
+      bin('To send for Master approval', A.to_send, { top: 1, press: '<span class="btn sm out">Send 5 for approval ›</span>' }),
       bin('Awaiting Master approval', A.awaiting, { fold: 1 }),
-      bin('Ready to file', A.ready, { press: '<span class="btn sm">Print 1 for notarization</span><span class="pn">with the help sheet and the notice records · <span class="a">Change ›</span></span>', cls: 'act' }),
-      bin('Filed · copies to mail', A.filed, { press: '<span class="btn sm">Mail 10 liens’ copies ›</span>', cls: 'act' }),
+      bin('Ready to file', A.ready, { top: 1, press: '<span class="btn sm">Print 1 for notarization</span>', note: 'Prints with the help sheet and the notice records · <span class="a">Change ›</span>', cls: 'act' }),
+      bin('Filed · copies to mail', A.filed, { top: 1, press: '<span class="btn sm">Mail 10 liens’ copies ›</span>', cls: 'act' }),
       bin('Served', A.served, { fold: 1 }),
     ],
   }
@@ -424,7 +427,7 @@ function fit(host) {
 
 const WHAT = {
   a: `<b>A · Tightened.</b> The same parts, with the band folded into the two column headings.<ul><li>Each print stands beside its column's name, so the name, the press and what it leaves out read as one line. The band's 126 px go back to the chart.</li><li><b>Every bin / Only my bins</b> is gone. The second tile is the one way to see what waits on the leader, and the leader's desk opens with it on.</li><li><b>Remind</b> moves to the second tile, which already counts those papers.</li><li>An empty bin is one quiet line. Both column headings are grey, so red only ever means late.</li></ul>`,
-  b: `<b>B · Acts in the bins.</b> Every press sits inside the bin it empties, as <i>Mail 10 liens' copies</i> already does. Nothing stands between the tiles and the chart.<ul><li>Signing gets a bin, <b>Approved · to sign</b>. The bin under it holds exactly what the print takes, so the bin says 1 and the press says 1.</li><li>The tiles are the doors above the fold: the second shows what waits on Sam, the third opens the run.</li><li>A bin with something to do now has a blue edge. The blue border on the busiest bin goes.</li><li>Held and Missed sit on the heading line, so every bin gets the column's full width. The Public jobs box folds to one line. <i>An owner asked for records</i> joins the tools row.</li></ul>`,
+  b: `<b>B · Acts in the bins.</b> Every press sits inside the bin it empties. Nothing stands between the tiles and the chart. <b>The owner picked B on 2026-11-17, with each press on the same line as its bin's name</b>, drawn here that way.<ul><li>Signing gets a bin, <b>Approved · to sign</b>. The bin under it holds exactly what the print takes, so the bin says 1 and the press says 1.</li><li>The tiles are the doors above the fold: the second shows what waits on Sam, the third opens the run.</li><li>A bin with something to do now has a blue edge. The blue border on the busiest bin goes.</li><li>Held and Missed sit on the heading line, so every bin gets the column's full width. The Public jobs box folds to one line. <i>An owner asked for records</i> joins the tools row.</li></ul>`,
   c: `<b>C · Two lanes.</b> B's bins, with the chart turned on its side: notices on top, liens under, each step a column.<ul><li>The Board is about 550 px tall where it is about 1,080 today, so the tiles, the whole chart and the first rows of the list fit one 1,440 × 900 screen.</li><li>The shared steps line up: To send, Awaiting, print, mail, done.</li><li>It gives up notices on the left and liens on the right, and the arrow from Sent to Waiting on its notice.</li></ul>`,
 }
 const CALL = {
