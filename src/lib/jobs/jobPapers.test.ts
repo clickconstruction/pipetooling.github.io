@@ -108,7 +108,7 @@ describe('the words', () => {
     expect(requireButton(0)).toEqual({ label: 'Require papers', dead: true })
   })
   it('the foot counts who the save reaches and never claims a lock that is not live', () => {
-    expect(JOB_PAPERS_LOCK_STAGE).toBe('prompt')
+    expect(JOB_PAPERS_LOCK_STAGE).toBe('database')
     expect(requireFoot(8, 'none')).toBe('8 people can open this job today. Each one is asked to sign, the office and you included.')
     expect(requireFoot(8, 'prompt')).toBe('8 people can open this job today. Each one is locked out of it until they sign, the office and you included.')
     expect(requireFoot(1, 'database')).toBe('1 person can open this job today. Each one is locked out of it until they sign, the office and you included.')

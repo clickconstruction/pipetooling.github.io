@@ -24,6 +24,19 @@ export interface ShareBlockRow {
   job_address: string | null
 }
 
+/** What a block of a job the reader is locked out of says in place of its name; the schedule emails' SQL reads say the same. */
+export const SHARE_PAPERS_FIRST_WORDS = 'Papers to sign first'
+
+/**
+ * Papers before a job opens: one board is mailed to every recipient, so a block of a job that any recipient still owes
+ * a paper keeps its number and its times and loses its name, address and note. `shut` holds those jobs' ids; with none
+ * the board is handed back as it came.
+ */
+export function blankShutShareBlocks(blocks: ShareBlockRow[], shut: ReadonlySet<string>): ShareBlockRow[] {
+  if (shut.size === 0) return blocks
+  return blocks.map((b) => (b.job_id && shut.has(b.job_id) ? { ...b, job_name: SHARE_PAPERS_FIRST_WORDS, job_address: null, note: null } : b))
+}
+
 /** 0=Sun … 6=Sat for a pure `YYYY-MM-DD` (timezone-agnostic). Returns 0 on parse failure. */
 export function dowSun0FromYmd(ymd: string): number {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())

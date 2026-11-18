@@ -7,6 +7,7 @@ import { driveQueryTerm } from '../_shared/fileIndexKernel.ts'
 import { JOB_FOLDER_TREE } from '../_shared/whereFilesGo.ts'
 import { parsePlanSetFilesAsk, runPlanSetFiles, type MailAttachmentRow, type PlanSetFileRow, type PlanSetFilesDrive } from '../_shared/planSetFilesRun.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
+import { jobShutToUser } from '../_shared/jobPapersLock.ts'
 
 /**
  * Plan set files (punch list #239, PR 5). One Drive subfolder per set of plans, under the job's Plans folder, and the
@@ -104,7 +105,10 @@ serve(async (req) => {
         return rowOf<boolean>(r, 'Who may write this part') === true
       },
       readMe: async () => rowOf(await admin.from('users').select('read_only, is_digital_twin').eq('id', callerId).maybeSingle(), 'Your account'),
-      isOnJobTeam: async (jobId) => (rowOf<unknown[]>(await admin.from('jobs_ledger_team_members').select('job_id').eq('job_id', jobId).eq('user_id', callerId).limit(1), 'The job’s team') ?? []).length > 0,
+      // Papers before a job opens: a caller who still owes the job a paper is not on its team for filing, whatever the team's rows say.
+      isOnJobTeam: async (jobId) =>
+        (rowOf<unknown[]>(await admin.from('jobs_ledger_team_members').select('job_id').eq('job_id', jobId).eq('user_id', callerId).limit(1), 'The job’s team') ?? []).length > 0 &&
+        !(await jobShutToUser(admin, jobId, callerId)),
       partOfJob: async (jobId) => rowOf<{ plan_part_id: string | null }>(await admin.from('jobs_ledger').select('plan_part_id').eq('id', jobId).maybeSingle(), 'The job')?.plan_part_id ?? null,
       ownerJobOfPart: async (partId) => rowOf<{ job_id: string | null }>(await admin.from('plan_parts').select('job_id').eq('id', partId).maybeSingle(), 'The part')?.job_id ?? null,
       jobsOnPart: async (partId) => rowOf<Array<{ id: string; google_drive_link: string | null }>>(await admin.from('jobs_ledger').select('id, google_drive_link').eq('plan_part_id', partId).order('created_at').limit(100), 'The part’s jobs') ?? [],
