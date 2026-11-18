@@ -81,7 +81,7 @@ import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { lienRunEntriesFor, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { lienBoardChipFor, lienBoardDoorWords, lienBoardLeaderBinPress, lienBoardPickWords, lienBoardRowInPick, type LienBoardBinKey, type LienBoardChip, type LienBoardKind } from '../../lib/jobs/lienBoard'
 import { lienBinFolds } from '../../lib/jobs/lienNextUpByBin'
-import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor, type LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
+import { LIEN_BOARD_USUAL_STACK, lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor, type LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { useLienPileHeads } from './LienPileHeads'
 import LienBoard, { type LienBoardBinPress } from './LienBoard'
@@ -1702,7 +1702,7 @@ export default function LienDesk({
     office && data
       ? {
           notice: lienBoardNoticePrint({ toPrint: (counts?.ready ?? 0) + retReady, waits: readyWaits, printed: counts?.printed ?? 0 }),
-          affidavit: lienBoardAffidavitPrint({ ready: affPrintPlan.ready.length, held: affPrintPlan.gated.length, earlierForm: affPrintPlan.held.length, with: [affHelpSheet ? 'the help sheet' : '', affNoticeRecord ? 'the notice records' : '', affNoticeCopies && affNoticeCopyCount > 0 ? 'copies of the notices' : ''].filter(Boolean), shown: Boolean(affShown) }),
+          affidavit: lienBoardAffidavitPrint({ ready: affPrintPlan.ready.length, held: affPrintPlan.gated.length, earlierForm: affPrintPlan.held.length, stack: { helpSheet: affHelpSheet, noticeRecord: affNoticeRecord, noticeCopies: affNoticeCopies && affNoticeCopyCount > 0 }, shown: Boolean(affShown) }),
         }
       : null
   const openWholeRun = () => {
@@ -1767,11 +1767,13 @@ export default function LienDesk({
       setAffPile('ready')
     }
   }
-  // The pages that print in front of the stack are ticked on By paper's print bar, at Ready to file.
+  // The affidavits' stack is not the usual one (the owner's call of 2026-11-18): the line's press puts the usual pages
+  // back where it stands, the three ticks of By paper's print bar set as they start. The usual stack draws no line.
   const onBoardPrintNote = () => {
-    setAffHeldOnlyPicked(false)
-    setAffPile('ready')
-    setKind('affidavit')
+    aff.setAffHelpSheet(LIEN_BOARD_USUAL_STACK.helpSheet)
+    aff.setAffNoticeRecord(LIEN_BOARD_USUAL_STACK.noticeRecord)
+    aff.setAffNoticeCopies(LIEN_BOARD_USUAL_STACK.noticeCopies)
+    showToast('The affidavits print with the help sheet and the notice records again.', 'success')
   }
   // The title bar's run door is retired (v2.7490, the owner's call of 2026-11-16: *Retire it everywhere*). On a computer the run opens from the Board's notices' print on To do and from By paper's pile and footers. On a phone it is still the first row of More, off Affidavits, and the More button wears its count (punch list #352, PR 1).
   const runDoorShown = kind !== 'affidavit' && office && runCount > 0
