@@ -86,6 +86,20 @@ function open(over: Partial<Parameters<typeof LienServeWindow>[0]> = {}) {
 }
 
 describe('LienServeWindow', () => {
+  it('opened from a stop window’s card, lands on that job’s copy: its line is lit and the cursor is in its number', () => {
+    open({ land: { jobId: 'job-2104', recipient: 'original_contractor', lack: 'number' } })
+    const lit = document.querySelectorAll('[data-landed="yes"]')
+    expect(lit).toHaveLength(1)
+    expect(lit[0]!.getAttribute('data-lien-serve-envelope')).toBe('original_contractor')
+    expect(lit[0]!.closest('[data-lien-serve-job]')?.getAttribute('data-lien-serve-job')).toBe('job-2104')
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Job 2104, original contractor, certified mail number')
+  })
+
+  it('opened from its own press, lights nothing', () => {
+    open()
+    expect(document.querySelectorAll('[data-landed="yes"]')).toHaveLength(0)
+  })
+
   it('says how many filed liens owe their copies, the soonest day, and what is late', () => {
     open()
     expect(screen.getByText('3 filed liens owe their copies. The soonest was due Nov 11.')).toBeTruthy()

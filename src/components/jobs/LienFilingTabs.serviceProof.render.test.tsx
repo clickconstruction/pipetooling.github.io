@@ -166,6 +166,33 @@ describe('LienFilingTabs · the mail receipts on Record service…', () => {
     expect(order).toEqual(['trash:job-77:made-up-file'])
   })
 
+  // A stop window's card lands here (`lienMailProofDoor.ts`): each lack on the spot where it is entered.
+  it('landed for a copy still to mail, the service step opens with that copy’s fields lit', async () => {
+    renderWithProviders(<LienFilingTabs {...props({ land: { jobId: 'j1', filingId: 'a1', paper: 'affidavit', recipient: 'owner', lack: 'mailing', at: 1 } })} />)
+    await waitFor(() => expect(box()).toBeTruthy())
+    await waitFor(() => expect(document.querySelectorAll('[data-landed="yes"]')).toHaveLength(1))
+    expect(document.querySelector('[data-landed="yes"]')!.getAttribute('data-lien-service-copy')).toBe('owner')
+    expect(updates).toEqual([])
+  })
+
+  it('landed for a receipt, the paper’s own row is lit at that copy’s line and the cursor is on Add the receipt', async () => {
+    const served = { ...filed, served_at: '2026-11-18', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '0000 0000 0001', sent_on: '2026-11-18' }] }
+    renderWithProviders(<LienFilingTabs {...props({ filings: [notice, served] as never, land: { jobId: 'j1', filingId: 'a1', paper: 'affidavit', recipient: 'owner', lack: 'receipt', at: 2 } })} />)
+    await waitFor(() => expect(document.querySelectorAll('[data-landed="yes"]')).toHaveLength(1))
+    const lit = document.querySelector('[data-landed="yes"]') as HTMLElement
+    expect(lit.getAttribute('data-lien-mail-proof-envelope')).toBe('owner')
+    expect(lit.closest('[data-lien-filing-row]')?.getAttribute('data-lien-filing-row')).toBe('a1')
+    expect(document.activeElement?.textContent).toBe('Add the receipt')
+    // Landing opens no form and writes nothing.
+    expect(box()).toBeNull()
+    expect(updates).toEqual([])
+  })
+
+  it('with nothing to land on, lights nothing', () => {
+    renderWithProviders(<LienFilingTabs {...props({})} />)
+    expect(document.querySelectorAll('[data-landed="yes"]')).toHaveLength(0)
+  })
+
   it('a hold closed after the filing does not take the press away', () => {
     // The county is gone from the property record, so the affidavit's gate is closed. The paper is on file and its five days are running.
     renderWithProviders(<LienFilingTabs {...props({ linkedAddress: { ...address, county: '' } as never })} />)

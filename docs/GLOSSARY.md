@@ -6129,6 +6129,9 @@ its kernels (`src/lib/mail/`, v2.5375) carry the run's **Mail through Docsmit** 
 It lists every mailed file with its own link, then each envelope with its number and its receipt.
 **Mail proof** is its count: the files count as one piece and each posted copy's receipt as one, so *Mail proof: 2 of 3 on file* names one thing missing and the **Next:** line says which.
 A copy sent by email, handed over or carried by a mail provider owes no receipt.
+Since v2.7785 a recipient's card in the stop's window carries the press for the one thing its copy lacks (`lienMailProofDoor.ts`): **Enter the owner of record ›**, **Mail this copy ›**, **Enter the mail number ›** or **Add the receipt ›**.
+The press closes the stop's window and opens the place where that is entered, for the office alone: the property record, *Filed liens: copies to mail* at the job's line, or the job's Lien window at the paper's row.
+**Landed here** is the light on that place (`landOn.ts`, `[data-landed]`): it is scrolled into view, tinted and ringed for a second and a half, then fades, and under reduced motion a steady outline stands instead.
 Since v2.7695 the row reads as four numbered steps, Printed, Signed, In the envelope and Mailed: the file that goes in the envelope has a step of its own, and each envelope's number has **Add the receipt** under it.
 A **Next:** line under the row's name says the one thing to do now.
 

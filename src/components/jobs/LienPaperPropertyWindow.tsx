@@ -9,6 +9,7 @@ import { cleanStoredAddress } from '../../lib/displayAddress'
 import type { CustomerAddressRow } from '../../lib/jobs/lienProperty'
 import type { LienPaperGap } from '../../lib/jobs/lienPaperGaps'
 import type { LienDeskJob } from '../../hooks/useLienDeskData'
+import { landOn } from '../../lib/landOn'
 
 /**
  * Fix it from the paper (v2.4719, Taunya's ask): the property record in a window stacked over
@@ -102,12 +103,14 @@ export default function LienPaperPropertyWindow({ job, address: givenAddress, lo
     }
   }, [address, job.id])
 
-  // The pressed blank's field, focused once the panel is drawn.
+  // The pressed blank's field, focused once the panel is drawn, with its line scrolled into view and lit for a moment (`landOn.ts`).
   useEffect(() => {
     if (loading) return
     const label = FOCUS_LABEL[focus]
     const el = label ? bodyRef.current?.querySelector<HTMLElement>(`[aria-label="${label}"]`) : null
-    el?.focus()
+    if (!el) return
+    el.focus({ preventScroll: true })
+    return landOn(el.parentElement ?? el)
   }, [focus, loading])
 
   const save = async (): Promise<CustomerAddressRow | null> => {

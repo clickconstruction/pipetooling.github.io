@@ -145,6 +145,7 @@ import { LienDeskAwaitingFooter, LienDeskHeldFooter, LienDeskPrintedFooter, Lien
 import { LienDeskSentFooter } from './LienDeskSentFooter'
 import LienFilingMailProof from './LienFilingMailProof'
 import { lienMailProof } from '../../lib/jobs/lienMailProof'
+import { lienMailProofDoorPress, lienMailProofOwnerGap, type LienMailProofLanding, type LienMailProofOpeners } from '../../lib/jobs/lienMailProofDoor'
 import { useLienCodeSigner } from './useLienCodeSigner'
 import { useLienDeskPayPage } from './useLienDeskPayPage'
 import { useLienDeskRunner } from './useLienDeskRunner'
@@ -239,6 +240,8 @@ export type LienDeskProps = {
   onOpenLienInstruments: (jobId: string) => void
   /** Affidavits (v2.3412): the Lien window on its affidavit tab — print for notarization, file, record. */
   onOpenLienAffidavit?: (jobId: string) => void
+  /** A stop window's card (`lienMailProofDoor.ts`): the job's Lien window, landed on the copy that lacks its number or receipt. Absent, a card has no press for those. */
+  onOpenLienProof?: (landing: LienMailProofLanding) => void
   /** A filed affidavit still unpaid → the Legal desk. */
   onOpenLegalDesk?: () => void
   /** Counsel's sign-off on a sent notice (#41 PR 3): the job's state on the firm's matter, and the ask. Absent when the board has no legal matters. */
@@ -323,6 +326,7 @@ export default function LienDesk({
   onOpenEditJob,
   onOpenLienInstruments,
   onOpenLienAffidavit,
+  onOpenLienProof,
   onOpenLegalDesk,
   legalSignoff,
   initialKind,
@@ -865,7 +869,9 @@ export default function LienDesk({
   // Fix it from the paper (v2.4719): the window stacked over the paper, and the blanks the row had when it opened.
   const [paperFix, setPaperFix] = useState<{ index: number; window: LienPaperFixWindow; gap: LienPaperGap } | null>(null)
   // The affidavit pane's gate doors open the same window over the desk (v2.4724).
-  const [paneFix, setPaneFix] = useState<{ jobId: string; focus: 'owner' | 'legal' | 'homestead_answer' } | null>(null)
+  const [paneFix, setPaneFix] = useState<{ jobId: string; focus: 'owner' | 'owner_address' | 'legal' | 'homestead_answer' } | null>(null)
+  // The copy a stop window's card opened the copies window on (`lienMailProofDoor.ts`); forgotten when that window closes.
+  const [serveLand, setServeLand] = useState<LienMailProofLanding | null>(null)
   const [paperFilledFrom, setPaperFilledFrom] = useState<{ key: string; gaps: ReadonlyArray<LienPaperGap> } | null>(null)
   // A fix can move the row (a whole property turns "Fix the property" into "Draft affidavit"): the paper stays on it by key.
   useEffect(() => {
@@ -2069,6 +2075,16 @@ export default function LienDesk({
         })
       : null
 
+  // The press on a recipient's card in a stop's window (`lienMailProofDoor.ts`): how this desk opens each place a copy's lack is
+  // entered. The office alone does those acts, so anyone else has no opener and no press. The copies window is offered for a lien in it.
+  const proofOpeners = (filingId: string): LienMailProofOpeners =>
+    !office
+      ? {}
+      : {
+          property: (l) => setPaneFix({ jobId: l.jobId, focus: l.lack === 'owner_address' ? 'owner_address' : 'owner' }),
+          ...(serveJobs.some((j) => j.filing.id === filingId) ? { serve: (l: LienMailProofLanding) => { setServeLand(l); setServeOpen(true) } } : null),
+          ...(onOpenLienProof ? { lien_window: onOpenLienProof } : null),
+        }
   // A stop's paper (v2.4793): what the window shows for each stop of the selected job's timeline. The notice's pages are the pane's
   // own (the draft as it stands); the affidavit's and the retainage notice's come from the same builders their panes print with.
   const stopPaperFor = (step: LienTimelineStep): LienStopPaper => {
@@ -2086,7 +2102,8 @@ export default function LienDesk({
       const page = filingSnapshotPage(f, { issuer, jobNumber: jobNo })
       // What went out (`lienMailProof.ts`): the mailed files off the notice's own item, and each envelope's receipt.
       const proof = lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, mailedCopies: data.items.find((it) => it.sent_filing_id === f.id)?.mailed_copies, servedAt: f.served_at, hasContractor: Boolean(selected.gcCustomerId) })
-      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
+      const proofDoor = proof ? lienMailProofDoorPress({ jobId, filingId: f.id, paper: proof.paper, served: Boolean(f.served_at), ownerGap: lienMailProofOwnerGap({ name: ownerName, mailingAddress: property.owner.mailingAddress }) }, proofOpeners(f.id), () => setStopOpen(null)) : null
+      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof, proofDoor }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
     }
     const kind = lienStopPaperKind(step)
     if (kind === 'notice') {
@@ -2369,6 +2386,7 @@ export default function LienDesk({
         bond={parsePaymentBond(data.jobsById[affSelected.jobId]?.lien_payment_bond)}
         onOpenLienContract={(jobId) => onOpenEditJob(jobId, 'lien-contract')}
         onOpenLienAffidavit={(jobId) => (onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)}
+        proofOpeners={proofOpeners}
         onOpenLegalDesk={onOpenLegalDesk}
         onShowNotices={(jobId) => {
           setKind('notice')
@@ -2815,6 +2833,8 @@ export default function LienDesk({
             issuer={issuer}
             windows={windows}
             serveJobs={serveJobs}
+            serveLand={serveLand}
+            onServeClosed={() => setServeLand(null)}
             scanTargets={scanTargets}
             paneFix={paneFix}
             onClosePaneFix={() => setPaneFix(null)}
