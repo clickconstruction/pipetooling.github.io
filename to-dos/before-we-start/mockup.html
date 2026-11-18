@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Before we start</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@700&display=swap">
+<style>
+  /* Layout: one column of sections. Every drawn screen is made by one script from one list of made-up stages (STAGES
+     below), so a count on the band, the chart, a row and an open stage are counted from the same bullets and cannot
+     disagree. Drawn 2026-11-17. Nothing here is built.
+     Every site, customer, person, job, street, date and figure on a drawn screen is made up. No live row is on this page. */
+  :root {
+    --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --text-blue-700: #1d4ed8; --text-green-700: #15803d; --text-amber-800: #92400e; --text-red-700: #b91c1c;
+    --bg-blue-tint: #eff6ff; --bg-green-tint: #f0fdf4; --bg-amber-tint: #fffbeb; --bg-amber-100: #fef3c7; --bg-red-tint: #fef2f2;
+    --new: #7c3aed; --new-tint: #f5f3ff;
+    --k-ready: #f59e0b; --k-road: #3b82f6; --k-site: #16a34a; --k-none: #9ca3af; --k-home: #a78bfa;
+    --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --display: "Space Grotesk", Inter, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+      --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+      --border: #374151; --border-strong: #4b5563;
+      --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+      --text-blue-700: #93c5fd; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-red-700: #f87171;
+      --bg-blue-tint: #1e3358; --bg-green-tint: #12301f; --bg-amber-tint: #3a2f11; --bg-amber-100: #45390f; --bg-red-tint: #3b1a1a;
+      --new: #c4b5fd; --new-tint: #2a2350;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #0b1220; --ink: #d1d5db; --copper: #e0a36b;
+    --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151;
+    --border: #374151; --border-strong: #4b5563;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --text-blue-700: #93c5fd; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-red-700: #f87171;
+    --bg-blue-tint: #1e3358; --bg-green-tint: #12301f; --bg-amber-tint: #3a2f11; --bg-amber-100: #45390f; --bg-red-tint: #3b1a1a;
+    --new: #c4b5fd; --new-tint: #2a2350;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding-block: 0 80px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font: 700 28px/1.15 var(--display); color: var(--text-strong); text-wrap: balance; }
+  header.top p { margin: 8px 0 0; max-width: 78ch; }
+  nav.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 12px 0 0; font-size: 13px; }
+  nav.jump a { color: var(--text-link); text-decoration: none; }
+  h2 { font: 700 20px/1.2 var(--display); margin: 46px 0 4px; color: var(--text-strong); text-wrap: balance; }
+  h3 { font-size: 14px; margin: 0 0 4px; color: var(--text-strong); }
+  p { margin: 0; }
+  .lede { max-width: 80ch; margin: 0 0 6px; }
+  .note { margin: 14px 0 0; padding: 10px 12px; border-left: 3px solid var(--copper); background: var(--surface); max-width: 90ch; border-radius: 0 8px 8px 0; }
+  .note b, .lede b, li b, td b { color: var(--text-strong); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 18px; margin-top: 14px; align-items: start; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .card.new { border-color: var(--new); box-shadow: 0 0 0 2px var(--new-tint); }
+  ul.plain { margin: 6px 0 0; padding-left: 18px; } ul.plain li { margin: 3px 0; }
+  .tag-new { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--new); border: 1px solid var(--new); border-radius: 4px; padding: 0 5px; vertical-align: 1px; margin-left: 4px; }
+
+  /* A drawn screen */
+  .frame { margin-top: 14px; background: var(--bg-page); border: 1px solid var(--border-strong); border-radius: 12px; overflow: hidden; }
+  .frame-bar { display: flex; gap: 8px; align-items: center; padding: 7px 12px; font-size: 12px; color: var(--text-muted); background: var(--bg-muted); border-bottom: 1px solid var(--border); }
+  .frame-bar b { color: var(--text-700); }
+  .screen { padding: 16px; }
+  .app { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; color: var(--text-base); }
+  .app + .app { margin-top: 12px; }
+  .site-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+  .site-head .name { font: 700 22px/1.2 var(--font); color: var(--text-strong); }
+  .muted { color: var(--text-muted); }
+  .looks { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 2px; }
+  .look { border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; font-size: 13px; background: var(--surface); color: var(--text-700); white-space: nowrap; }
+  .look.on { background: var(--text-blue-700); border-color: var(--text-blue-700); color: #fff; font-weight: 600; }
+  .look small { opacity: .8; margin-left: 4px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); border-radius: 8px; padding: 6px 12px; font: 600 13px var(--font); white-space: nowrap; }
+  .btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.green { background: #15803d; border-color: #15803d; color: #fff; }
+  .btn.quiet { border-color: transparent; color: var(--text-link); background: none; padding-inline: 4px; }
+  .btn.danger { color: var(--text-red-700); }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border); border-radius: 999px; padding: 1px 9px; font-size: 12px; background: var(--bg-subtle); color: var(--text-700); white-space: nowrap; }
+  .chip.on { background: var(--bg-blue-tint); border-color: var(--text-blue-700); color: var(--text-blue-700); font-weight: 600; }
+  .chip.green { background: var(--bg-green-tint); border-color: var(--text-green-700); color: var(--text-green-700); }
+  .chip.amber { background: var(--bg-amber-tint); border-color: var(--text-amber-800); color: var(--text-amber-800); }
+  .chip.dash { border-style: dashed; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+  .spread { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+
+  /* Day kinds */
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+  .k-g { background: var(--k-ready); } .k-r { background: var(--k-road); } .k-s { background: var(--k-site); }
+  .k-n { background: repeating-linear-gradient(45deg, var(--k-none), var(--k-none) 3px, transparent 3px, transparent 6px); border: 1px solid var(--k-none); }
+  .k-h { background: var(--k-home); }
+  .days { display: inline-flex; gap: 2px; vertical-align: middle; }
+  .days i { width: 12px; height: 16px; border-radius: 3px; display: block; }
+  .days i.k-x { background: var(--bg-muted); }
+  .trip .days i { width: 9px; }
+  .days.big i { width: 34px; height: 40px; border-radius: 6px; position: relative; }
+  .days.big i span { position: absolute; inset: 0; display: grid; place-items: center; font: 600 11px/1.1 var(--font); color: #fff; font-style: normal; text-align: center; }
+  .days.big i.k-x span { color: var(--text-muted); }
+  .hbar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--bg-muted); min-width: 120px; }
+  .hbar i { display: block; height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-700); margin-top: 6px; }
+
+  /* Band and strip */
+  .band { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 12px; }
+  .tile { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--bg-subtle); }
+  .tile .v { font: 700 20px/1.2 var(--font); color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .tile .s { font-size: 12px; color: var(--text-muted); }
+  .strip { position: relative; margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-subtle); padding: 22px 10px 10px; }
+  .strip .months { position: absolute; left: 10px; right: 10px; top: 4px; display: grid; grid-template-columns: repeat(12, 1fr); font-size: 11px; color: var(--text-muted); }
+  .strip .months span { border-left: 1px solid var(--border); padding-left: 4px; }
+  .strip .lane { position: relative; height: 26px; }
+  .strip .bar { position: absolute; top: 4px; height: 18px; display: flex; border-radius: 5px; overflow: hidden; min-width: 8px; outline: 1px solid var(--surface); }
+  .strip .bar i { display: block; height: 100%; }
+  .strip .bar.planned { opacity: .55; outline: 1px dashed var(--text-700); }
+  .strip .lbl { position: absolute; top: 24px; font-size: 10.5px; color: var(--text-700); white-space: nowrap; transform: translateX(-2px); }
+  .strip .today { position: absolute; top: 18px; bottom: 6px; width: 0; border-left: 2px solid var(--text-red-700); }
+  .strip .today span { position: absolute; top: -15px; left: -16px; font-size: 10px; font-weight: 700; color: var(--text-red-700); }
+
+  /* Trip rows */
+  .trips { margin-top: 12px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .trip { display: grid; grid-template-columns: 190px minmax(0, 1.4fr) 176px 176px 150px; gap: 10px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--border); background: var(--surface); }
+  .trip:first-child { border-top: 0; }
+  .trip.head { background: var(--bg-muted); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); padding-block: 6px; }
+  .trip .when b { display: block; color: var(--text-strong); }
+  .trip .why b { color: var(--text-strong); }
+  .trip .num { font-variant-numeric: tabular-nums; }
+  .suggest { margin-top: 12px; border: 1px dashed var(--text-amber-800); background: var(--bg-amber-tint); border-radius: 10px; padding: 10px 12px; }
+
+  /* Open trip */
+  .two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .kv { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 6px 10px; margin-top: 8px; }
+  .kv dt { color: var(--text-muted); } .kv dd { margin: 0; }
+  .person { display: grid; grid-template-columns: 96px minmax(0, 1fr) 64px; gap: 8px; align-items: center; padding: 5px 0; border-top: 1px solid var(--border); }
+  .person:first-of-type { border-top: 0; }
+  .shows { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 6px; }
+  table.t th, table.t td { text-align: left; padding: 5px 8px; border-top: 1px solid var(--border); vertical-align: top; }
+  table.t th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); border-top: 0; }
+  table.t td.r, table.t th.r { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Sheet */
+  .sheet { max-width: 560px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.12); }
+  .q { margin-top: 14px; } .q > .cap { display: block; margin-bottom: 5px; }
+  .input { border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 10px; background: var(--surface); color: var(--text-base); min-height: 34px; }
+  .fold { margin-top: 14px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg-subtle); }
+  .fold summary { cursor: pointer; font-weight: 600; color: var(--text-700); }
+
+  /* Job window */
+  .jobwin { max-width: 760px; }
+  .jobhead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .jobno { background: var(--bg-blue-tint); color: var(--text-blue-700); font-weight: 700; border-radius: 6px; padding: 1px 8px; }
+  .tabs { display: flex; gap: 18px; border-bottom: 1px solid var(--border); margin-top: 10px; color: var(--text-muted); font-weight: 600; }
+  .tabs span { padding: 6px 0; } .tabs .on { color: var(--text-blue-700); border-bottom: 2px solid var(--text-blue-700); }
+  .feed { margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 4px 12px; }
+  .line { border-left: 3px solid #8b9bd9; padding: 6px 0 6px 10px; margin: 8px 0; }
+  .line .who b { color: var(--text-strong); }
+  .triptag { display: inline-block; white-space: nowrap; font-size: 10px; font-weight: 700; letter-spacing: .05em; border-radius: 4px; padding: 0 5px; color: #fff; background: var(--k-site); margin-left: 6px; vertical-align: 1px; }
+  .triptag.r { background: var(--k-road); } .triptag.g { background: var(--k-ready); }
+
+  /* Phones */
+  .phones { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 14px; }
+  .phone { width: 300px; border: 2px solid var(--text-700); border-radius: 26px; padding: 12px 10px 14px; background: var(--bg-page); }
+  .phone .cap { text-align: center; margin-bottom: 8px; }
+  .phone .app { padding: 12px; }
+  .phone .btn { width: 100%; justify-content: center; padding: 11px 12px; font-size: 15px; margin-top: 8px; white-space: normal; text-align: center; }
+  .banner { border-radius: 10px; padding: 9px 11px; background: var(--bg-green-tint); border: 1px solid var(--text-green-700); color: var(--text-green-700); font-weight: 600; }
+  .banner small { display: block; font-weight: 400; color: var(--text-700); }
+
+  /* Doors */
+  .doors { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 12px; margin-top: 14px; }
+  .door { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .door .n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--text-strong); color: var(--surface); font: 700 12px var(--font); margin-right: 6px; }
+  .door .pr { float: right; }
+  .door .mini { margin-top: 8px; border: 1px dashed var(--border-strong); border-radius: 8px; padding: 7px 8px; font-size: 12.5px; background: var(--bg-subtle); }
+  .vs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 18px; margin-top: 14px; }
+  @media (max-width: 760px) {
+    .trip { grid-template-columns: 1fr; gap: 4px; } .trip.head { display: none; }
+    .two { grid-template-columns: 1fr; }
+  }
+  /* --- Added for this page --- */
+  .st { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 600; white-space: nowrap; border: 1px solid transparent; }
+  .st.open { background: var(--bg-amber-tint); border-color: var(--text-amber-800); color: var(--text-amber-800); }
+  .st.told { background: var(--bg-blue-tint); border-color: var(--text-blue-700); color: var(--text-blue-700); }
+  .st.seen, .st.done { background: var(--bg-green-tint); border-color: var(--text-green-700); color: var(--text-green-700); }
+  .st.later { background: var(--bg-muted); color: var(--text-700); }
+  .st.now { background: var(--bg-red-tint); border-color: var(--text-red-700); color: var(--text-red-700); }
+  .bul { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 28px; gap: 8px 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--border); }
+  .bul:first-of-type { border-top: 0; }
+  .bul .box { width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--border-strong); margin-top: 2px; display: grid; place-items: center; font-size: 12px; color: #fff; }
+  .bul .box.told { background: #2563eb; border-color: #2563eb; } .bul .box.seen, .bul .box.done { background: #15803d; border-color: #15803d; }
+  .bul .w { color: var(--text-strong); }
+  .bul .sub { font-size: 12.5px; color: var(--text-muted); }
+  .eye { font-size: 13px; text-align: center; opacity: .9; } .eye.off { opacity: .28; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
+  .fact { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--bg-subtle); }
+  .fact .v { font: 700 15px/1.3 var(--font); color: var(--text-strong); } .fact .s { font-size: 12px; color: var(--text-muted); }
+  .sched { margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-subtle); padding: 24px 10px 8px 190px; position: relative; }
+  .sched .months { position: absolute; left: 190px; right: 10px; top: 4px; height: 16px; font-size: 11px; color: var(--text-muted); }
+  .sched .months span { position: absolute; top: 0; border-left: 1px solid var(--border); padding-left: 4px; height: 100vh; max-height: 16px; }
+  .sched .r { position: relative; height: 30px; border-top: 1px dashed var(--border); }
+  .sched .r .name { position: absolute; left: -180px; top: 6px; width: 174px; font-size: 12.5px; color: var(--text-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sched .r .name b { color: var(--text-strong); }
+  .sched .w { position: absolute; top: 7px; height: 16px; border-radius: 5px; min-width: 6px; }
+  .sched .w.clear { background: #16a34a; } .sched .w.now { background: #dc2626; } .sched .w.soon { background: #f59e0b; } .sched .w.later { background: #9ca3af; } .sched .w.done { background: var(--border-strong); }
+  .sched .w.trip { background: repeating-linear-gradient(90deg, #3b82f6, #3b82f6 5px, #93c5fd 5px, #93c5fd 10px); height: 10px; top: 10px; }
+  .sched .dia { position: absolute; top: 9px; width: 11px; height: 11px; transform: translateX(-5px) rotate(45deg); background: var(--text-strong); border: 2px solid var(--surface); }
+  .sched .dia.old { background: transparent; border: 2px solid var(--text-muted); }
+  .sched .go { position: absolute; top: 3px; height: 24px; width: 0; border-left: 2px dotted var(--text-700); }
+  .sched .today { position: absolute; top: 18px; bottom: 6px; width: 0; border-left: 2px solid var(--text-red-700); }
+  .sched .today span { position: absolute; top: -15px; left: -16px; font-size: 10px; font-weight: 700; color: var(--text-red-700); }
+  .todo { display: grid; grid-template-columns: 170px minmax(0, 1fr) 190px auto; gap: 10px; align-items: center; padding: 9px 12px; border-top: 1px solid var(--border); background: var(--surface); }
+  .todo:first-child { border-top: 0; }
+  .msg { border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 12px; background: var(--surface); white-space: pre-wrap; font-size: 13.5px; line-height: 1.5; color: var(--text-base); }
+  .portal { background: #fff; color: #1f2937; border-radius: 14px; padding: 14px; border: 1px solid #d1d5db; }
+  .portal .cap2 { font-size: 10.5px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
+  .portal .step { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; padding: 6px 0; }
+  .portal .num { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 700 12px var(--font); background: #e5e7eb; color: #374151; }
+  .portal .num.done { background: #15803d; color: #fff; } .portal .num.next { background: #2563eb; color: #fff; }
+  .portal .need { margin: 8px 0 4px; border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 10px; padding: 10px; }
+  .portal .pb { display: flex; gap: 6px; margin-top: 6px; }
+  .portal .pb span { flex: 1; text-align: center; border-radius: 8px; padding: 8px 6px; font: 600 13px var(--font); border: 1px solid #9ca3af; background: #fff; color: #111827; }
+  .portal .pb span.y { background: #15803d; border-color: #15803d; color: #fff; }
+  .portal .ok { color: #15803d; font-weight: 600; }
+  .cols2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  @media (max-width: 760px) { .todo { grid-template-columns: 1fr; gap: 4px; } .sched { padding-left: 10px; } .sched .months { left: 10px; } .sched .r { height: 44px; } .sched .r .name { position: static; width: auto; padding-top: 2px; } .sched .w, .sched .dia, .sched .go { top: 24px; } .sched .w.trip { top: 27px; } .bul { grid-template-columns: 22px minmax(0, 1fr) 28px; } .bul .stc { grid-column: 2; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Design · first draft, to refine together · nothing built · every name and figure made up</p>
+  <h1>Before we start: what has to be true before a stage begins, and who said so</h1>
+  <p>For each stage the office writes a short list of things that must be true before the crew goes. The office follows up with the customer until each one has a yes. A stage with every yes reads Clear to start. The site's stages sit on one line of time, and any bullet can be shown on the GC's own page for them to confirm.</p>
+  <nav class="jump"><a href="#why">The gap</a><a href="#sheet">One stage</a><a href="#look">The site's schedule</a><a href="#ask">Ask them</a><a href="#portal">The GC's page</a><a href="#phone">On arrival</a><a href="#list">The company's lists</a><a href="#doors">Every door</a><a href="#rules">The rules</a><a href="#plan">The train</a><a href="#pass">The second pass</a><a href="#calls">Your calls</a></nav>
+</header>
+
+<h2 id="why">The gap, in one picture</h2>
+<p class="lede">Today a stage has a window of dates and nothing that says the site will be ready for it. A crew can be sent on a phone call, find the slab not ready, and come home with no record of who said to come.</p>
+<div class="vs">
+  <div class="card"><h3>Today</h3><ul class="plain">
+    <li>A stage has <b>our window</b>. The GC's page can show it and ask for other dates.</li>
+    <li>What must be true first lives in someone's head.</li>
+    <li>The day they say the site will be ready lives in mail and calls. When it moves, the old day is gone.</li>
+    <li>Nothing tells the office which stage to call about this week.</li>
+  </ul></div>
+  <div class="card new"><h3>With Before we start <span class="tag-new">new</span></h3><ul class="plain">
+    <li>Each stage has a <b>Before we start</b> list, written in plain bullets.</li>
+    <li>Each bullet says who it waits on and where it stands: <span class="st open">Open</span> <span class="st told">Told yes</span> <span class="st seen">Seen</span>.</li>
+    <li>Every day they give for ready is kept, with who said it and how.</li>
+    <li>A <b>go or no-go day</b> tells the office when to have every yes in hand.</li>
+    <li>Any bullet can show on the GC's page, where they press <b>Yes, ready</b> themselves.</li>
+  </ul></div>
+</div>
+
+<h2 id="sheet">1. One stage: the Before we start list</h2>
+<p class="lede">It opens from the stage, in the Job window and on the site's schedule. The four facts on top are the dates. The bullets below are the list. The eye on each bullet decides whether the GC's page shows it.</p>
+<div class="frame"><div class="frame-bar"><b>Job window</b> · a stage · Before we start</div><div class="screen" id="screen-sheet"></div></div>
+
+<h2 id="look">2. The site's schedule, on the Development page</h2>
+<p class="lede">Every stage across the site's jobs on one line of time. A bar is our window. A diamond is the day they say it will be ready, and a hollow diamond is a day they gave before and moved. The dotted line is the go or no-go day. Under the chart, the stages to confirm are in the order the office should call.</p>
+<div class="frame"><div class="frame-bar"><b>Development page</b> · /developments/:id · the Schedule look · desk</div><div class="screen" id="screen-look"></div></div>
+
+<h2 id="ask">3. Ask them: the follow-up, written for the office</h2>
+<p class="lede">One press writes the ask from the open bullets. The office reads it, changes it, and sends it as a text or an email. Nothing goes out by itself. Their answer is recorded on each bullet with who said it and how.</p>
+<div class="frame"><div class="frame-bar"><b>Ask them</b> · from a stage or the To confirm list</div><div class="screen" id="screen-ask"></div></div>
+
+<h2 id="portal">4. The GC's page: the option to show it</h2>
+<p class="lede">The GC's page already shows where the job is, when the job's sharing switch is on. With this, the next stage can carry its shared bullets. The GC ticks them, or says not yet and gives a day. Their press is a Told yes with their name, the time and the words on the portal.</p>
+<div class="frame"><div class="frame-bar"><b>The GC's page</b> · /portal · what they see, and what they never see</div><div class="screen" id="screen-portal"></div></div>
+
+<h2 id="phone">5. On arrival: is it as told?</h2>
+<p class="lede">The first clock-in on the stage asks the crew to look. Yes turns a Told yes into Seen. No is the record that the site was not as told, with a photo, and it reaches Dispatch at once.</p>
+<div class="phones" id="screen-phone"></div>
+
+<h2 id="list">6. The company's lists: written once, beside the stage checklist</h2>
+<p class="lede">The stage checklist already holds the questions the crew answers at a stage. Before we start is a second list on the same editor: the company's bullets per stage kind, more added for one job, and a bullet skipped on one job with a reason.</p>
+<div class="frame"><div class="frame-bar"><b>Job window</b> · Documents · Stage checklists</div><div class="screen" id="screen-list"></div></div>
+
+<h2 id="doors">7. Every door</h2>
+<p class="lede">Twelve doors. The chip says which pull request brings each.</p>
+<div class="doors" id="screen-doors"></div>
+
+<h2 id="rules">The rules, in plain words</h2>
+<div class="grid">
+  <div class="card"><h3>A bullet</h3><ul class="plain">
+    <li>Words, and who it waits on: <b>them</b> or <b>us</b>.</li>
+    <li>A bullet on them is <b>Open</b>, <b>Told yes</b> or <b>Seen</b>. A bullet on us is <b>Open</b> or <b>Done</b>.</li>
+    <li>Told yes keeps who said it, how, and the day. Seen keeps who saw it, the day, and a photo when there is one.</li>
+    <li>A bullet can go back to Open. Every change is kept.</li>
+  </ul></div>
+  <div class="card"><h3>A stage</h3><ul class="plain">
+    <li><b>Clear to start</b> when no bullet is Open. It says whether that is on their word or seen.</li>
+    <li>A stage with no list reads as it does today.</li>
+    <li>The <b>go or no-go day</b> is our window's first day, less the notice we need.</li>
+    <li>A stage that is not clear can still be scheduled. The app warns. It never blocks.</li>
+  </ul></div>
+  <div class="card"><h3>Their days</h3><ul class="plain">
+    <li>Each day they give for ready is a line: the day, who said it, how, and when.</li>
+    <li>A new day does not erase the old one. The chart shows both.</li>
+    <li>When their day is after our window's first day, the stage says so and offers to move our window.</li>
+  </ul></div>
+  <div class="card"><h3>What the GC's page shows</h3><ul class="plain">
+    <li>Only on a job whose sharing switch is on, and only the bullets with the eye on.</li>
+    <li>Our window, the notice we need and the day we need the answers by.</li>
+    <li>Never: a bullet on us without the eye, what we saw, a note, a name, a trip, a cost.</li>
+    <li>The office can read the page as the GC before turning anything on.</li>
+  </ul></div>
+</div>
+
+<h2 id="plan">The train</h2>
+<p class="lede">Eight small pull requests. The first four give the office the list, the dates and the site's schedule. The GC's page comes sixth, behind a switch that starts off.</p>
+<div class="app" style="margin-top:12px"><table class="t" id="screen-plan"></table></div>
+
+<h2 id="pass">The second pass: is this the best we can do?</h2>
+<p class="lede">The first sketch was a yes or no per bullet on a new chart. Asked whether the office could use it untaught, and whether it left the office in charge, seven things changed.</p>
+<div class="app" style="margin-top:12px"><table class="t" id="screen-pass"></table></div>
+
+<h2 id="calls">Your calls</h2>
+<p class="lede">This draft is for refining. Each call has the default the drawing uses.</p>
+<div class="app" style="margin-top:12px"><table class="t" id="screen-calls"></table></div>
+</div>
+
+<script>
+// ---------- One list of made-up stages. Every screen is drawn from it. ----------
+const TODAY = '2026-11-17'
+const SITE = { name: 'Heron Point', customer: 'Northgate Builders', where: 'Marsh Road, Tidewater, NC', notice: 10, gc: 'Ray' }
+// A check: w words · on them|us · eye shown on the GC's page · st open|told|seen|done · who/how/day of the newest mark.
+const C = (w, on, eye, st, who, how, day, extra) => ({ w, on, eye, st, who, how, day, ...(extra || {}) })
+const STAGES = [
+  { id: 's1', part: 'Lodge', job: 'J2101', name: 'Rough In', win: ['2026-03-09', '2026-03-20'], finished: true, ready: [], checks: [] },
+  { id: 's2', part: 'Lodge', job: 'J2101', name: 'Top Out', win: ['2026-12-01', '2026-12-12'], trip: ['2026-11-30', '2026-12-13'],
+    ready: [{ day: '2026-11-24', said: '2026-11-03', who: 'Ray', how: 'email' }, { day: '2026-11-28', said: '2026-11-12', who: 'Ray', how: 'email' }],
+    checks: [
+      C('Framing is done and the roof is dried in.', 'them', true, 'told', 'Ray', 'by email', '2026-11-12'),
+      C('The framing inspection has passed.', 'them', true, 'open', '', '', '', { by: '2026-11-26' }),
+      C('The other trades are out of the walls we work in.', 'them', true, 'told', 'Ray', 'by phone', '2026-11-14'),
+      C('Power is on for our tools.', 'them', true, 'seen', 'Luis', 'on site, with a photo', '2026-11-03'),
+      C('Our material is on site, or lands before day one.', 'us', false, 'open', '', '', '', { note: 'Two lines on order, due Nov 25' }),
+      C('The crew and the trip are set.', 'us', false, 'done', 'Dana', '', '2026-11-12'),
+    ] },
+  { id: 's3', part: 'Site', job: 'J2102', name: 'Gas line tie-in', win: ['2026-12-08', '2026-12-09'],
+    ready: [{ day: '2026-12-05', said: '2026-11-10', who: 'Northgate office', how: 'text' }],
+    checks: [
+      C('The gas company has set the meter.', 'them', true, 'seen', 'Luis', 'on site, with a photo', '2026-11-03'),
+      C('The trench to the building is open.', 'them', true, 'told', 'Ray', 'by text', '2026-11-10'),
+      C('The permit is in hand.', 'us', false, 'done', 'Dana', '', '2026-10-30'),
+    ] },
+  { id: 's4', part: 'Bunkhouse', job: 'J2101', name: 'Underground', win: ['2026-12-08', '2026-12-12'],
+    ready: [{ day: '2026-12-01', said: '2026-10-28', who: 'Ray', how: 'phone' }, { day: '2026-12-12', said: '2026-11-16', who: 'Ray', how: 'phone' }],
+    checks: [
+      C('The pad is graded and the corners are staked.', 'them', true, 'told', 'Ray', 'by phone', '2026-11-16'),
+      C('The foundation plan we build from is the final one.', 'them', true, 'open'),
+      C('Forms are set where our pipe passes.', 'them', true, 'open'),
+      C('Water is on site.', 'them', true, 'open'),
+      C('The inspector can come within two days of our call.', 'them', true, 'open'),
+      C('Our material is on site, or lands before day one.', 'us', false, 'open'),
+    ] },
+  { id: 's5', part: 'Bunkhouse', job: 'J2101', name: 'Rough In', win: ['2027-01-12', '2027-01-23'], ready: [],
+    checks: [
+      C('The slab is poured and cured enough to walk.', 'them', true, 'open'),
+      C('Framing is done where we run pipe.', 'them', true, 'open'),
+      C('Power is on for our tools.', 'them', true, 'open'),
+      C('Our material is on site, or lands before day one.', 'us', false, 'open'),
+    ] },
+  { id: 's6', part: 'Lodge', job: 'J2101', name: 'Trim Set', win: ['2027-02-08', '2027-02-12'], ready: [], checks: [] },
+]
+
+// ---------- The rules the screens share ----------
+const D = (ymd) => new Date(ymd + 'T12:00:00')
+const add = (ymd, n) => { const d = D(ymd); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10) }
+const diff = (a, b) => Math.round((D(b) - D(a)) / 864e5)
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const md = (ymd) => `${MON[D(ymd).getMonth()]} ${D(ymd).getDate()}`
+const dmd = (ymd) => `${DOW[D(ymd).getDay()]} ${md(ymd)}`
+const span = (a, b) => D(a).getMonth() === D(b).getMonth() ? `${md(a)} to ${D(b).getDate()}` : `${md(a)} to ${md(b)}`
+const isOpen = (c) => c.st === 'open'
+const openOf = (s) => s.checks.filter(isOpen)
+const goDay = (s) => add(s.win[0], -SITE.notice)
+const theirDay = (s) => s.ready.length ? s.ready[s.ready.length - 1] : null
+const clash = (s) => { const t = theirDay(s); return !!t && t.day > s.win[0] }
+function standing(s) {
+  if (s.finished) return { k: 'done', word: 'Done', cls: 'later' }
+  if (!s.checks.length) return { k: 'none', word: 'No list yet', cls: 'later' }
+  const open = openOf(s).length
+  if (!open) { const seen = s.checks.filter((c) => c.on === 'them').every((c) => c.st === 'seen'); return { k: 'clear', word: `Clear to start · ${seen ? 'seen' : 'on their word'}`, cls: 'seen' } }
+  const days = diff(TODAY, goDay(s))
+  if (days <= 0) return { k: 'now', word: `Needs a yes now · ${open} open`, cls: 'now' }
+  if (days <= 14) return { k: 'soon', word: `Needs a yes · ${open} open`, cls: 'open' }
+  return { k: 'later', word: `Later · ${open} open`, cls: 'later' }
+}
+const inDays = (ymd) => { const n = diff(TODAY, ymd); return n === 0 ? 'today' : n > 0 ? `in ${n} ${n === 1 ? 'day' : 'days'}` : `${-n} ${n === -1 ? 'day' : 'days'} ago` }
+const ahead = STAGES.filter((s) => !s.finished)
+const withList = ahead.filter((s) => s.checks.length)
+const toConfirm = withList.filter((s) => openOf(s).length).sort((a, b) => goDay(a).localeCompare(goDay(b)))
+const ST = { open: 'Open', told: 'Told yes', seen: 'Seen', done: 'Done' }
+const mark = (c) => c.st === 'open' ? (c.by ? `They say by ${md(c.by)}` : c.note || 'No answer yet') : c.st === 'done' ? `${c.who}, ${md(c.day)}` : `${c.who}, ${c.how}, ${md(c.day)}`
+const eye = (on) => `<span class="eye${on ? '' : ' off'}" title="${on ? 'Shown on the GC’s page' : 'Not shown'}">👁</span>`
+const bullet = (c) => `<div class="bul"><span class="box ${c.st}">${c.st === 'open' ? '' : '✓'}</span><div><div class="w">${c.w}</div><div class="sub">${mark(c)}</div></div><span class="stc"><span class="st ${c.st}">${ST[c.st]}</span></span>${eye(c.eye)}</div>`
+const $ = (id) => document.getElementById(id)
+const label = (s) => `<b>${s.part}</b> · ${s.name}`
+
+// ---------- 1. One stage ----------
+function sheet(s) {
+  const st = standing(s), t = theirDay(s)
+  const them = s.checks.filter((c) => c.on === 'them'), us = s.checks.filter((c) => c.on === 'us')
+  return `<div class="app" style="max-width:860px"><div class="spread"><div><div class="cap">${SITE.name} · ${s.job} · ${s.part}</div><div style="font:700 18px/1.3 var(--font);color:var(--text-strong)">${s.name} · Before we start</div></div><span class="st ${st.cls}">${st.word}</span></div>
+    <div class="facts">
+      <div class="fact"><div class="cap">Our window</div><div class="v">${span(s.win[0], s.win[1])}</div><div class="s">typed by the office</div></div>
+      <div class="fact"><div class="cap">They say ready</div><div class="v">${t ? md(t.day) : 'no day yet'}</div><div class="s">${t ? `${t.who}, ${t.how}, ${md(t.said)}${s.ready.length > 1 ? ` · was ${md(s.ready[0].day)}` : ''}` : 'ask them for one'}</div></div>
+      <div class="fact"><div class="cap">Notice we need</div><div class="v">${SITE.notice} days</div><div class="s">the site's own, change it here</div></div>
+      <div class="fact"><div class="cap">Go or no-go by</div><div class="v">${dmd(goDay(s))}</div><div class="s">${inDays(goDay(s))}</div></div>
+    </div>
+    <div class="cap" style="margin-top:14px">Waits on them · ${them.filter((c) => !isOpen(c)).length} of ${them.length}</div>${them.map(bullet).join('')}
+    <div class="cap" style="margin-top:14px">Waits on us · ${us.filter((c) => !isOpen(c)).length} of ${us.length}</div>${us.map(bullet).join('')}
+    <div class="spread" style="margin-top:12px"><div class="row"><span class="btn">+ A bullet</span><span class="btn quiet">Their days · ${s.ready.length}</span><span class="btn quiet">See it as the GC</span></div><div class="row"><span class="btn">They gave a new day</span><span class="btn primary">Ask them about ${openOf(s).filter((c) => c.on === 'them').length} open</span></div></div>
+    <p class="muted" style="margin-top:8px;font-size:12.5px">Tap a bullet to say where it stands: who told you, how, and the day. The eye turns it on or off for the GC's page.</p></div>`
+}
+$('screen-sheet').innerHTML = sheet(STAGES[1])
+
+// ---------- 2. The site's schedule ----------
+const A0 = '2026-11-01', A1 = '2027-03-01', ALEN = diff(A0, A1)
+const x = (ymd) => (Math.max(0, Math.min(ALEN, diff(A0, ymd))) / ALEN) * 100
+function sched() {
+  const months = ['2026-11-01', '2026-12-01', '2027-01-01', '2027-02-01'].map((m) => `<span style="left:${x(m)}%">${MON[D(m).getMonth()]}</span>`).join('')
+  const rows = ahead.map((s) => { const st = standing(s)
+    const cls = st.k === 'clear' ? 'clear' : st.k === 'now' ? 'now' : st.k === 'soon' ? 'soon' : 'later'
+    const dias = s.ready.map((r, i) => `<span class="dia${i < s.ready.length - 1 ? ' old' : ''}" style="left:${x(r.day)}%"></span>`).join('')
+    return `<div class="r"><span class="name">${label(s)}</span><span class="w ${cls}" style="left:${x(s.win[0])}%;width:${x(add(s.win[1], 1)) - x(s.win[0])}%"></span>${s.checks.length ? `<span class="go" style="left:${x(goDay(s))}%"></span>` : ''}${dias}</div>` }).join('')
+  const trips = ahead.filter((s) => s.trip).map((s) => `<span class="w trip" style="left:${x(s.trip[0])}%;width:${x(add(s.trip[1], 1)) - x(s.trip[0])}%"></span>`).join('')
+  return `<div class="sched"><div class="months">${months}</div>${rows}<div class="r"><span class="name">Trips planned</span>${trips}</div><div class="today" style="left:calc(190px + (100% - 200px) * ${x(TODAY) / 100})"><span>today</span></div></div>
+    <div class="legend"><span><span class="dot" style="background:#16a34a"></span>Clear to start</span><span><span class="dot" style="background:#f59e0b"></span>Needs a yes</span><span><span class="dot" style="background:#dc2626"></span>Needs a yes now</span><span><span class="dot" style="background:#9ca3af"></span>Later, or no list</span><span>◆ they say ready</span><span>◇ a day they gave before</span><span>⋮ go or no-go</span></div>`
+}
+const nextGo = toConfirm[0]
+const moved = ahead.filter((s) => s.ready.length > 1).length
+$('screen-look').innerHTML = `<div class="app">
+  <div class="site-head"><span class="name">${SITE.name}</span><span class="muted">${SITE.customer} · ${SITE.where}</span></div>
+  <div class="looks">${['History', 'Jobs & bids', 'Money', 'Plans', 'Questions', 'Photos', 'Trips', 'Schedule'].map((l) => `<span class="look${l === 'Schedule' ? ' on' : ''}">${l}</span>`).join('')}</div>
+  <div class="band">
+    <div class="tile"><div class="cap">Stages ahead</div><div class="v">${ahead.length}</div><div class="s">${withList.length} with a list</div></div>
+    <div class="tile"><div class="cap">Clear to start</div><div class="v">${ahead.filter((s) => standing(s).k === 'clear').length}</div><div class="s">every bullet has a yes</div></div>
+    <div class="tile"><div class="cap">Need a yes</div><div class="v">${toConfirm.filter((s) => ['now', 'soon'].includes(standing(s).k)).length}</div><div class="s">go or no-go inside 14 days</div></div>
+    <div class="tile"><div class="cap">Next go or no-go</div><div class="v">${md(goDay(nextGo))}</div><div class="s">${nextGo.part} · ${nextGo.name}, ${inDays(goDay(nextGo))}</div></div>
+    <div class="tile"><div class="cap">They moved a day</div><div class="v">${moved}</div><div class="s">${moved === 1 ? 'stage' : 'stages'}, each move kept</div></div>
+  </div>
+  ${sched()}
+  <div class="spread" style="margin-top:14px"><div><span class="cap">To confirm, in the order to call</span></div><div class="row"><span class="btn quiet">See it as the GC</span><span class="btn quiet">Print the schedule</span></div></div>
+  <div class="trips">${toConfirm.map((s) => { const st = standing(s), t = theirDay(s), o = openOf(s)
+    return `<div class="todo"><div><b style="color:var(--text-strong)">${s.part} · ${s.name}</b><br><span class="muted">ours ${span(s.win[0], s.win[1])}</span></div>
+      <div><span class="st ${st.cls}">${st.word}</span> <span class="muted">first open:</span> ${o[0].w}${clash(s) ? `<br><span class="st now">They say ready ${md(t.day)}, after our first day</span> <span class="btn quiet">Move our window</span>` : ''}</div>
+      <div class="muted">go or no-go <b style="color:var(--text-strong)">${dmd(goDay(s))}</b><br>${inDays(goDay(s))}${t ? ` · they say ${md(t.day)}` : ' · no day from them'}</div>
+      <div><span class="btn primary">Ask them</span></div></div>` }).join('')}</div>
+</div>`
+
+// ---------- 3. Ask them ----------
+const s4 = STAGES[3], o4 = openOf(s4).filter((c) => c.on === 'them')
+$('screen-ask').innerHTML = `<div class="cols2"><div class="app">
+  <div class="spread"><b style="font-size:16px;color:var(--text-strong)">Ask ${SITE.gc} · ${s4.part} ${s4.name}</b><span class="muted">✕</span></div>
+  <div class="row" style="margin-top:8px"><span class="chip on">Text</span><span class="chip">Email</span><span class="muted">to ${SITE.gc}, the site super · from the site's GC contact</span></div>
+  <div class="msg" style="margin-top:10px">${SITE.gc}, we plan to start the ${s4.part.toLowerCase()} ${s4.name.toLowerCase()} on ${dmd(s4.win[0])}. We need ${SITE.notice} days to get a crew there, so we decide by ${dmd(goDay(s4))}.
+
+Can you tell us yes or not yet on each?
+${o4.map((c, i) => `${i + 1}. ${c.w}`).join('\n')}
+
+You said the pad would be ready ${md(theirDay(s4).day)}. If that still holds we will move our start to match.</div>
+  <div class="spread" style="margin-top:10px"><span class="muted">Nothing is sent until you press. You can change every word.</span><div class="row"><span class="btn">Copy</span><span class="btn primary">Text ${SITE.gc}</span></div></div>
+</div>
+<div class="app"><div class="cap">When they answer</div>
+  <p style="margin-top:6px">Their reply lands on the job's thread as today. One press on each bullet records it.</p>
+  <div class="bul" style="margin-top:6px"><span class="box"></span><div><div class="w">${o4[1].w}</div><div class="sub">Who told you, how, and the day</div></div><span class="stc"><span class="st open">Open</span></span>${eye(true)}</div>
+  <div class="row" style="margin:4px 0 8px 30px"><span class="chip on">Told yes</span><span class="chip">Not yet, they gave a day</span><span class="chip">We saw it</span><span class="input">${SITE.gc}</span><span class="input">by text</span><span class="input">Nov 18</span></div>
+  <p class="muted" style="font-size:12.5px">A Not yet with a day adds a line to Their days and keeps the bullet Open. The stage's go or no-go day does not move by itself. The office decides whether to move our window.</p>
+</div></div>`
+
+// ---------- 4. The GC's page ----------
+const s2 = STAGES[1], shared = s2.checks.filter((c) => c.eye)
+$('screen-portal').innerHTML = `<div class="cols2"><div style="max-width:380px"><div class="portal">
+  <div class="cap2">Where the job is</div>
+  <div class="step"><span class="num done">✓</span><div><b>Rough In</b><br><span style="color:#6b7280">Done in March</span></div></div>
+  <div class="step"><span class="num next">2</span><div><b>Top Out</b> · next<br><span style="color:#6b7280">We plan ${span(s2.win[0], s2.win[1])}</span></div></div>
+  <div class="need"><b>Before we can start Top Out</b><br><span style="color:#374151;font-size:12.5px">We need ${SITE.notice} days' notice to get a crew there. Please answer by ${dmd(goDay(s2))}.</span>
+    ${shared.map((c) => c.st === 'open'
+      ? `<div style="margin-top:10px">${c.w}<div class="pb"><span class="y">Yes, ready</span><span>Not yet</span></div></div>`
+      : `<div style="margin-top:10px">${c.w}<br><span class="ok">✓ ${c.st === 'seen' ? 'We saw this on site' : `You told us ${md(c.day)}`}</span></div>`).join('')}
+  </div>
+  <div class="step"><span class="num">3</span><div><b>Trim Set</b><br><span style="color:#6b7280">Later</span></div></div>
+  <div class="pb"><span>Ask for other dates</span></div>
+  <div style="font-size:11.5px;color:#9ca3af;margin-top:10px">Dates are the plan as it stands; we'll update this page as the work moves.</div>
+</div></div>
+<div><div class="card new"><h3>What turns it on <span class="tag-new">new</span></h3><ul class="plain">
+    <li>The job's sharing switch, which exists today, must be on.</li>
+    <li>A second switch on the job: <b>Show what we need before each stage</b>. It starts off.</li>
+    <li>Then each bullet's eye. A bullet on them starts with the eye on. A bullet on us starts with it off.</li>
+    <li><b>See it as the GC</b> draws this page for the office first.</li>
+  </ul></div>
+  <div class="card" style="margin-top:14px"><h3>What their press does</h3><ul class="plain">
+    <li><b>Yes, ready</b> marks the bullet Told yes, by their name, on the portal, with the time. The office sees it at once.</li>
+    <li><b>Not yet</b> asks for a day. It adds a line to Their days.</li>
+    <li>They can take a yes back. The first yes is kept on the record.</li>
+  </ul></div>
+  <div class="card" style="margin-top:14px"><h3>What this page never shows</h3><ul class="plain">
+    <li>A bullet without the eye, such as our material and our crew.</li>
+    <li>Who we are sending, a trip, an hour or a dollar.</li>
+    <li>Our notes, and which bullets we doubt.</li>
+    <li>The days they gave before. Those stay on our side.</li>
+  </ul></div></div></div>`
+
+// ---------- 5. On arrival ----------
+const themOn = s2.checks.filter((c) => c.on === 'them')
+$('screen-phone').innerHTML = `
+  <div class="phone"><div class="cap">First clock-in on the stage</div><div class="app">
+    <b style="font-size:16px;color:var(--text-strong)">${s2.part} · ${s2.name}</b><div class="muted">${SITE.name}</div>
+    <p style="margin-top:10px"><b style="color:var(--text-strong)">Is it as told?</b> Take a look before you unload.</p>
+    ${themOn.slice(0, 3).map((c, i) => `<div style="margin-top:10px">${c.w}<div class="row" style="margin-top:4px"><span class="chip ${i === 1 ? '' : 'green'}">Yes</span><span class="chip ${i === 1 ? 'amber' : ''}">No</span><span class="chip dash">+ photo</span></div></div>`).join('')}
+    <span class="btn green">Save and clock in</span></div></div>
+  <div class="phone"><div class="cap">One bullet is No</div><div class="app">
+    <div class="banner" style="background:var(--bg-amber-tint);border-color:var(--text-amber-800);color:var(--text-amber-800)">Not as told<small>${themOn[1].w}</small></div>
+    <p style="margin-top:10px">Take a photo. Dispatch is told now, with who said it was ready and when.</p>
+    <span class="btn">Take a photo</span><span class="btn green">Tell Dispatch</span><span class="btn quiet">Start anyway</span>
+    <p class="muted" style="margin-top:8px;font-size:12px">You are still clocked in. Nothing stops you from working.</p></div></div>
+  <div class="phone"><div class="cap">What the office gets</div><div class="app">
+    <div class="cap">Dispatch · high</div>
+    <p style="margin-top:6px"><b style="color:var(--text-strong)">Not as told at ${SITE.name}</b><br>${s2.part} · ${s2.name}</p>
+    <p style="margin-top:8px">${themOn[1].w}</p>
+    <p class="muted" style="margin-top:6px">They said by ${md(themOn[1].by)}. Luis says No, Dec 1, with a photo.</p>
+    <span class="btn">Open the stage</span><span class="btn">Mark the trip turned around</span>
+    <p class="muted" style="margin-top:8px;font-size:12px">The trip record then carries which bullet was not true, for the bill.</p></div></div>`
+
+// ---------- 6. The company's lists ----------
+$('screen-list').innerHTML = `<div class="cols2"><div class="app"><div class="spread"><div><div class="cap">Top Out · every Top Out in the company</div><b style="color:var(--text-strong)">Before we start</b> <span class="tag-new">new</span></div><span class="btn">+ A bullet</span></div>
+  ${[['Framing is done and the roof is dried in.', 'them'], ['The framing inspection has passed.', 'them'], ['The other trades are out of the walls we work in.', 'them'], ['Power is on for our tools.', 'them'], ['Our material is on site, or lands before day one.', 'us'], ['The crew and the trip are set.', 'us']].map(([w, on]) => `<div class="bul" style="grid-template-columns:minmax(0,1fr) auto 28px"><div class="w">${w}</div><span class="chip">waits on ${on}</span>${eye(on === 'them')}</div>`).join('')}
+  <p class="muted" style="margin-top:8px;font-size:12.5px">▲ ▼ set the order. Take off the company's list keeps the reason, as the stage checklist does.</p></div>
+<div class="app"><div class="cap">Top Out · every Top Out in the company</div><b style="color:var(--text-strong)">At the stage</b> <span class="muted">· the stage checklist, as today</span>
+  ${['Every stub-out is capped and tested.', 'The test gauge is photographed.', 'Nail plates are on every stud we drilled.'].map((w) => `<div class="bul" style="grid-template-columns:minmax(0,1fr) auto"><div class="w">${w}</div><span class="chip">the crew answers</span></div>`).join('')}
+  <div class="note" style="margin-top:12px">Same editor, two lists. <b>Before we start</b> is answered by their word and what we see. <b>At the stage</b> is answered by the crew when the work is done.</div></div></div>`
+
+// ---------- 7. Every door ----------
+const DOORS = [
+  ['The stage’s chip', 'Job window, on each stage', 'PR 3', `<b>Top Out</b> <span class="st open">Before we start · 4 of 6</span>`],
+  ['The Before we start list', 'opens from the chip and the schedule', 'PR 3', `<span class="st told">Told yes</span> Ray, by email, Nov 12 ${eye(true)}`],
+  ['The Schedule look', 'Development page', 'PR 4', `<div class="looks" style="margin:0"><span class="look">Trips</span><span class="look on">Schedule</span></div>`],
+  ['To confirm', 'the Schedule look and the Dashboard’s Needs you', 'PR 5', `<b>2 stages need a yes this week</b> <span class="btn quiet">Open</span>`],
+  ['Ask them', 'a stage, and each To confirm row', 'PR 5', `<span class="btn primary" style="padding:3px 10px">Ask them</span> writes the text from the open bullets`],
+  ['The Stage Plan', 'Jobs, Subs: the window row', 'PR 3', `Top Out · Dec 1 to 12 · <span class="st open">2 open</span> · they say Nov 28`],
+  ['The Pipeline row', 'a mark beside the stage, as the checklist has', 'PR 4', `☐ Top Out <span class="muted">start not clear</span>`],
+  ['Dispatch and trips', 'a warning when scheduling a stage that is not clear', 'PR 7', `<span class="st open">2 bullets have no yes</span> <span class="chip">Schedule anyway</span>`],
+  ['The GC’s page', '/portal, behind the job’s switches', 'PR 6', `<span class="st seen">Yes, ready</span> <span class="chip">Not yet</span> on each shared bullet`],
+  ['Is it as told?', 'the phone, first clock-in on the stage', 'PR 7', `<span class="chip green">Yes</span> <span class="chip amber">No</span> <span class="chip dash">+ photo</span>`],
+  ['The company’s lists', 'Documents, beside the stage checklist', 'PR 3', `<b>Before we start</b> · <b>At the stage</b>, one editor`],
+  ['The dev seat and print', 'read_stage_start, plan and apply; a sheet to send with a bid', 'PR 8', `What we need before each stage, one page`],
+]
+$('screen-doors').innerHTML = DOORS.map((d, i) => `<div class="door"><span class="chip pr">${d[2]}</span><span class="n">${i + 1}</span><b>${d[0]}</b><div class="muted">${d[1]}</div><div class="mini">${d[3]}</div></div>`).join('')
+
+// ---------- The train, the second pass, the calls ----------
+const rows = (head, list) => `<tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr>` + list.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')
+$('screen-plan').innerHTML = rows(['PR', 'What it brings', 'What it touches', 'Owed after'], [
+  ['1', '<b>The rules alone.</b> A bullet’s standing, Clear to start, the go or no-go day, what is to confirm, what the GC’s page may show.', 'A pure kernel and its tests. No screen.', 'Nothing'],
+  ['2', '<b>The table.</b> The bullets, their marks, their days, the notice.', 'One migration with the four fences, its doc, the types.', 'db push'],
+  ['3', '<b>The list on a stage.</b> The chip, the sheet, the company’s lists, the Stage Plan row.', 'Job window, Documents, Jobs → Subs, a guide.', 'Nothing'],
+  ['4', '<b>The Schedule look.</b> The band, the chart, the Pipeline mark.', 'Development page.', 'Nothing'],
+  ['5', '<b>To confirm and Ask them.</b> The office’s list, the written ask, the Needs you line.', 'The look, Messages’ composer, the Dashboard.', 'Nothing'],
+  ['6', '<b>The GC’s page.</b> The shared bullets, Yes ready and Not yet, See it as the GC.', 'The portal, two edge functions, a switch on the job.', 'Function deploy'],
+  ['7', '<b>On arrival and the warnings.</b> Is it as told, Not as told to Dispatch, the tie to a trip.', 'Job Mode, Dispatch, trips.', 'Nothing'],
+  ['8', '<b>The dev seat and the printed sheet.</b>', 'dev-mcp, a print page.', 'Function deploy'],
+])
+$('screen-pass').innerHTML = rows(['The first sketch', 'What was wrong with it', 'This draft'], [
+  ['A yes or no on each bullet.', 'It could not tell their word from what we saw. That gap is where a wasted trip comes from.', '<b>Open, Told yes, Seen</b>, each with who, how and when.'],
+  ['A stage that is not clear cannot be scheduled.', 'One open bullet would stop the team, and the office would tick bullets just to move.', 'It warns and never blocks.'],
+  ['One field for the day they say it is ready.', 'A moved day erased the old one, and the moves are the record.', '<b>Their days</b>, every one kept, drawn as diamonds.'],
+  ['The whole list shows on the GC’s page.', 'Our own material and crew are not theirs to read.', 'An eye on each bullet, behind two switches on the job.'],
+  ['A chart of bars and links, like GC mode’s.', 'We do not run the site. Our stages follow theirs in order.', 'A line of time and a list in the order to call.'],
+  ['The office types every answer.', 'The GC and the crew know first.', 'The GC ticks on their page. The crew confirms on arrival.'],
+  ['A new editor for the lists.', 'A second place to learn beside the stage checklist.', 'The same editor, a second list.'],
+])
+$('screen-calls').innerHTML = rows(['#', 'The call', 'The default in this draft'], [
+  ['1', 'Is their word enough to read Clear to start, or must we see it?', 'Their word clears it. The stage says which: on their word, or seen.'],
+  ['2', 'How much notice do we need?', 'One number per site, 10 days on a far site and 2 near home. A stage can have its own.'],
+  ['3', 'Does the Schedule look stand beside Trips, or hold it?', 'Its own look. Planned trips draw as a lane on it.'],
+  ['4', 'Which stages take a list?', 'Any stage line. The company’s lists are for Rough In, Top Out and Trim Set.'],
+  ['5', 'On the GC’s page, does their press count as Told yes?', 'Yes, with their name and the time. The office can still mark what we saw.'],
+  ['6', 'Does the GC’s page show the notice we need and the answer-by day?', 'Yes. It is the reason they should answer.'],
+  ['7', 'Who writes bullets?', 'Whoever writes stage checklist items today: the office, the job’s superintendent, the estimator who priced it.'],
+])
+</script>
+</body>
+</html>
