@@ -13,6 +13,8 @@
 # who left; what the save refuses, in words; a trip replaced whole, deleted with its people and jobs, and made again
 # under its own id; Not a trip kept by the office as itself; and a trip going with its site or the job that holds
 # it. It raises on its first failed assertion and ends with "trips PASSED". PGTEST_KEEP=1 leaves the container up.
+# A second scenario, 30_phone.sql, holds the phone's ground (*_trips_phone): the gate, what the phone is told, start,
+# join, day and end on the caller's own row, who is refused, and the stamp trip_save names.
 # Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration.
 # Never touches prod.
 set -euo pipefail
@@ -21,7 +23,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55829}"
 NAME="pgtest-trips"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_trips.sql)"
+WRITES="$(ls supabase/migrations/*_trips.sql supabase/migrations/*_trips_phone.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -45,5 +47,9 @@ for w in $WRITES; do
 done
 out="$(psql_as postgres -f - < supabase/tests/trips/20_scenario.sql 2>&1 || true)"
 if ! grep -q "trips PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+# The phone's ground (*_trips_phone): who may start, join, mark a day and end a trip from a job they are working.
+out="$(psql_as postgres -f - < supabase/tests/trips/30_phone.sql 2>&1 || true)"
+if ! grep -q "trips phone PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "trips bed ok"

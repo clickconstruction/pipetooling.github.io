@@ -1171,6 +1171,11 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - The read-only blocks, the twin fence and the archived seal stand on all four tables.
 - **The Trips look** (v2.7661) is drawn for the Development page's office door alone, the same five roles, so whoever sees the look reads its rows.
   An estimator's page has no Trips look and no door to a first trip, and the page never asks for a trip on that door.
+- **The phone's acts** (v2.7700, `docs/migrations/20261118030000_trips_phone.md`): the crew gets no write policy on the trip tables.
+  **`trip_phone(p)`**, a SECURITY DEFINER, starts a trip, joins one, paints the caller's own today and ends a trip, for a caller that **`trip_crew_on_job(job)`** says is working the job: on its crew or schedule (`helper_on_job`), or clocked in on it today or yesterday.
+  It writes the caller's own `trip_people` row, the server's own today and the trip's job link, and no other person's day.
+  **`trip_phone_state(job)`** tells that same caller the job's site, their own open trip there, and crewmates' open trips by first name and first day, since a crew member reads no trip row they are not on.
+  A training account, a digital twin and an archived caller are refused by the functions themselves, because a definer stands behind the tables' fences.
 
 ### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
 
