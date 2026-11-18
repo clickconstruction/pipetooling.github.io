@@ -4068,6 +4068,16 @@ an Equipment row is one item, never split) and **tags** (the estimator's own wor
 Kernels `rowPriceSplit.ts`, `priceBreakdown.ts`;
 map: `BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md` Region P8.
 
+**Percent row** (v2.7855): a Pricing row priced as a percent of other rows, such as Connections at 40% of what the pipe rows sell for.
+The rule is on the count row (`bids_count_rows.percent_rule`, v2.7848): a percent, a basis (**Revenue** or **Cost**) and the rows it reads, by kind or by tag, never by row id.
+**＋ Percent row** above the grid opens the window, whose top is the row drawn live as the grid will show it, with the bid's revenue before and after.
+The row's price is an ordinary saved price that the Workbench re-writes from the rule while the bid is unsent, so every reader of a bid's prices is unchanged.
+A sent bid keeps the price it went out with, and the row's chip reads *kept as sent*.
+A price typed over the row drops its rule, and the solver holds the row as it holds a pinned one.
+A rule never reads its own row or a row with a rule, so rules cannot chain.
+Kernel `lib/bids/percentRow.ts`, hook `usePercentRows.ts`, window `PercentRowWindow.tsx`;
+guide `price-a-bid-with-the-workbench`.
+
 **Priced margin** (v2.5043): the Workbench strip's margin kept on the bid (`bids.priced_*`, with the revenue, our cost, the revenue on rows with no cost and whether a labor rate was set;
 since v2.7301 the difficulty lines' cost apart, `priced_difficulty_usd`;
 since v2.7370 the count of the bid's labor rows that are not a sub's and of those with hours, `priced_labor_rows_total` and `priced_labor_rows_with_hours`, by which the *Scores* judge a sent bid).

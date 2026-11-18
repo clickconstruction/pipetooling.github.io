@@ -38,6 +38,8 @@ export const BID_ACTIONS = {
   priceBrush: 'price-brush',
   /** The price book drawer's Use on this bid (PR 5): the copy of the book it makes and the bid's pick of it. A person's press. */
   bookSwitch: 'book-switch',
+  /** The Pricing tab's Percent row: the row it adds, a rule set or cleared, and each price the Workbench re-writes so a rule row follows its rows. */
+  percentRow: 'percent-row',
 } as const
 
 export type BidAction = (typeof BID_ACTIONS)[keyof typeof BID_ACTIONS]
