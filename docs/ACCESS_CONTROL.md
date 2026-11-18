@@ -1138,6 +1138,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - **Who changes what**: anyone who reads a map may add a stroke or a place, signed as themselves (`made_by`, `set_by` must be the caller).
   Changing or removing a stroke or a place is its maker's and the office's.
   Renaming a map, moving it to another home and deleting it are its maker's and the office's, and they must pass the gate for the new home too.
+  **A job's own list of places** (v2.7792 the column `painted_maps.job_list`, v2.7795 the screens, punch list #393) is a painted map and has no rule of its own in the database: whoever may paint a map for the job may start its list, and its maker and the office may rename, unmark or delete it.
+  The app is narrower than the table on one press: it offers **Throw this list away** to the office team alone (`isOfficeRole`) and offers no rename, since the list holds other people's places.
   **Put it on a job…** (v2.7227) is that move, from no job to a job the mover can open.
 - **The bucket `painted-map-photos`** is private.
   Objects are named `<map id>/<file>`, and the policies read the map from `objects.name`, so whoever reads the map reads and adds its photos;
