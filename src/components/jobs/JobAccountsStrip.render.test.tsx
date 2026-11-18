@@ -122,3 +122,29 @@ describe('JobAccountsStrip, the not-needed sheet', () => {
     expect(screen.queryByTestId('job-account-take-mark-off')).toBeNull()
   })
 })
+
+describe('JobAccountsStrip — foldNone (punch list #384)', () => {
+  const none = (houseId: string, houseName: string) => entry({ houseId, houseName, state: 'none', accountId: null, note: undefined })
+
+  it('folds houses that all read none yet to one line, and a press opens the chips as they were', () => {
+    renderWithProviders(<JobAccountsStrip jobId="j1" jobLabel="9302 · ZZ Test job" jobAddress={null} entries={[none('moore', 'ZZ Moore'), none('reece', 'ZZ Reece'), none('ferg', 'ZZ Ferguson')]} foldNone />)
+    const fold = screen.getByRole('button', { name: /none yet at 3 houses/ })
+    expect(fold.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('button', { name: /ZZ Moore/ })).toBeNull()
+    fireEvent.click(fold)
+    expect(screen.queryByRole('button', { name: /none yet at 3 houses/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /ZZ Moore/ }).getAttribute('data-job-account-state')).toBe('none')
+    expect(screen.getByRole('button', { name: /ZZ Reece/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /ZZ Ferguson/ })).toBeTruthy()
+  })
+
+  it('keeps every chip when a house is open, and without the prop', () => {
+    const first = renderWithProviders(<JobAccountsStrip jobId="j1" jobLabel="9302 · ZZ Test job" jobAddress={null} entries={[none('moore', 'ZZ Moore'), entry({ houseId: 'reece', houseName: 'ZZ Reece', state: 'open', note: undefined })]} foldNone />)
+    expect(screen.queryByRole('button', { name: /none yet at/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /ZZ Moore/ })).toBeTruthy()
+    first.unmount()
+    renderWithProviders(<JobAccountsStrip jobId="j1" jobLabel="9302 · ZZ Test job" jobAddress={null} entries={[none('moore', 'ZZ Moore'), none('reece', 'ZZ Reece')]} />)
+    expect(screen.queryByRole('button', { name: /none yet at/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /ZZ Moore/ })).toBeTruthy()
+  })
+})

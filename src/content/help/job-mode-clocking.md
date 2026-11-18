@@ -52,6 +52,7 @@ On a phone the day's presses sit in a bar at the bottom of the screen, above the
 - You tap {{button:outline|% done}} to move the job's percent. The stepper is the same one My Schedule's {{button:outline|Update % done}} opens. The button shows for subs, helpers and superintendents while a job is clocked in.
 - {{button:outline|Clock out}} is for lunch, a parts run, or leaving early. See Clocking out below.
 - On a computer or a tablet the same buttons sit inside the card, under the day's list.
+- Under the card, each stage with a checklist is a press. A job whose stages have no questions shows no checklist rows there. The job window still lists them.
 
 ## Your day on the card
 

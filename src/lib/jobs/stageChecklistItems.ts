@@ -61,6 +61,15 @@ export function stripListsEmptyStage(role: UserRole | null | undefined, mayAutho
   return isFieldAuthorRole(role) && mayAuthor === true
 }
 
+/**
+ * True when a host that hides the strip while it is empty draws nothing (punch list #384): every listed stage has
+ * no question to answer. Job Mode's details ask for it, so a job whose stages hold no questions adds no row to the
+ * card. The job window still lists them for whoever authors, so the first check keeps its door one press away.
+ */
+export function stripHiddenWhileEmpty(listed: ReadonlyArray<{ state: { standing: 'ready' | 'not_ready' | 'none' } }>): boolean {
+  return listed.every((r) => r.state.standing === 'none')
+}
+
 /** The strip's line under a stage with nothing to answer: a stage whose every question is skipped says so. */
 export function stripEmptyStageWords(skippedCount: number): string {
   return skippedCount > 0 ? 'Every question is skipped on this job. Add a check if this job needs one.' : 'No questions yet. Add a check for this job.'

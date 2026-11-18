@@ -20,6 +20,8 @@ Every job card you open carries a **Job accounts** line. That is the Dashboard s
 
 Only houses that expect job accounts appear. So most jobs show one to three chips.
 
+On the Dashboard schedule, houses that all read none yet fold to one line. The line reads *none yet at 3 houses*. Tap the line to see each house.
+
 ## At the counter: tap the ✓
 
 The sheet gives you the three things the counter asks for:

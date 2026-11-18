@@ -548,6 +548,7 @@ export function DashboardMyScheduleSection({
                               jobAddress={stripAddressZip(jobMeta.job_address ?? '')}
                               entries={jobAccountStrips.byJob.get(b.job_id)}
                               onChanged={jobAccountStrips.reload}
+                              foldNone
                             />
                           ) : null}
                           {/* Office send-back line (v2.2065): why this finished job is back. */}

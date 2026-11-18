@@ -10,6 +10,8 @@ import { openedViaPhrase } from '../../lib/materials/jobSupplyHouseAccounts'
 import {
   askableEntries,
   counterSentence,
+  stripFoldedWords,
+  stripFoldsToOneLine,
   stripStateWord,
   telHref,
   type JobAccountStripEntry,
@@ -62,7 +64,8 @@ function chipStyle(state: JobAccountStripState): CSSProperties {
  * what to say at the counter and who to call; tap "none yet" to ask the office
  * in one tap. A not-needed chip says why, and gives the office *Change this…* (the
  * Mark opened window) and *Take the mark off* (back to none yet). Renders nothing
- * when the strip is empty or not loaded.
+ * when the strip is empty or not loaded. `foldNone` (punch list #384, My Schedule's cards): while every house reads
+ * none yet the chips fold to one line, *none yet at 3 houses*, and a press opens them.
  */
 export function JobAccountsStrip({
   jobId,
@@ -72,6 +75,7 @@ export function JobAccountsStrip({
   onChanged,
   compact = false,
   onSheetOpenChange,
+  foldNone = false,
 }: {
   jobId: string
   jobLabel: string
@@ -82,7 +86,10 @@ export function JobAccountsStrip({
   compact?: boolean
   /** Fires when a sheet opens/closes, so a host with Escape-to-close (Job Detail) pauses it (v2.3839). */
   onSheetOpenChange?: (open: boolean) => void
+  /** Fold the chips to one line while every house reads none yet (punch list #384). A press opens them. */
+  foldNone?: boolean
 }) {
+  const [unfolded, setUnfolded] = useState(false)
   const [sheet, setSheet] = useState<{ entry: JobAccountStripEntry } | null>(null)
   /** *Change this…* on a not-needed sheet: the Mark opened window takes the sheet's place. */
   const [change, setChange] = useState<JobAccountStripEntry | null>(null)
@@ -92,6 +99,7 @@ export function JobAccountsStrip({
     return () => onSheetOpenChange?.(false)
   }, [sheetOpen, onSheetOpenChange])
   if (!entries || entries.length === 0) return null
+  const folded = foldNone && !unfolded && !sheetOpen && stripFoldsToOneLine(entries)
 
   const stop = (e: MouseEvent) => {
     e.stopPropagation()
@@ -110,7 +118,23 @@ export function JobAccountsStrip({
           Job accounts
         </span>
       ) : null}
-      {entries.map((e) => (
+      {folded ? (
+        <button
+          type="button"
+          onClick={(ev) => {
+            stop(ev)
+            setUnfolded(true)
+          }}
+          aria-expanded={false}
+          title="No job account at these supply houses yet. Tap to see each one and ask the office."
+          data-job-account-fold
+          style={chipStyle('none')}
+        >
+          {stripFoldedWords(entries.length)}
+          <span aria-hidden>▾</span>
+        </button>
+      ) : null}
+      {(folded ? [] : entries).map((e) => (
         <button
           key={e.houseId}
           type="button"

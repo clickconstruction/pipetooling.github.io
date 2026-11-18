@@ -1,8 +1,8 @@
 ---
 name: "Job Mode, short: a superintendent's one-screen home"
 number: 384
-group: ready
-status: the owner picked this direction on 2026-11-17 · PR 1 live 2026-11-18 (v2.7749, the setting opened to a superintendent, migration 20261118070000 pushed) · PR 2 built 2026-11-18 (v2.7752, the short page) · PR 3 not merged
+group: close
+status: built 2026-11-18 as three PRs · v2.7749 the setting opened to a superintendent (migration 20261118070000 pushed) · v2.7752 the short page · v2.7753 the trims · walked on the sample superintendent · no real person is on Short yet
 summary: >
   A superintendent says there is too much on his screen and it overwhelms him. His daily page is the Job Mode
   Dashboard on his phone: about six screens and about eighty presses, of which he uses the first screen. The
@@ -10,9 +10,9 @@ summary: >
   holds. The owner picked a short Job Mode page: the card's top, what waits on him, tomorrow in one line and
   one door to everything else, about one screen. It reuses the per-person Short setting from the leader's
   short Dashboard (#365), opened to a superintendent, so only the person the office sets changes.
-next: Merge PR 3, the trims. Then the office sets one superintendent to Short on his People desk and walks the page with him on his phone.
+next: The office sets one superintendent to Short on his People desk. The owner walks the page with him on his own phone and puts the three questions below to him.
 size: M as a train of three (S · M · S)
-blocker: None in the code. Setting a person to Short is the office's press, and the three questions below are the owner's to put to him.
+blocker: None in the code. Setting a person to Short is the office's press, and the walk and the three questions below are the owner's.
 opinion: build — nobody's page changes until the office presses Short for one person, so the risk is only in what the short page tucks away, and every cut stays one press from the page
 ---
 
@@ -205,6 +205,19 @@ Each is small and stands alone. Split them if one grows.
   (`DashboardRecentReportsSection.tsx`, `reportRowState`).
 - **Supply house chips** on a schedule card fold to one line while every chip reads none yet
   (`useJobAccountStrips`, the Job Accounts train).
+
+**Built 2026-11-18 as v2.7753, the three in one PR.** What moved from the plan:
+
+- **Empty stage checklists.** The rows in question are the ones a superintendent or an estimator sees for a
+  stage with no question yet (punch list #237), so the trim is a prop, `hideWhileEmpty`, that Job Mode's
+  details pass. The job window still lists the empty stage, so the first check keeps its door.
+- **Recent Reports.** Nothing is written. The viewer's own reports are added to the read ids on the page
+  (`readIdsWithOwnReports`), so they read as opened. Walked as the dev: 8 listed, one his own, 7 new.
+- **Supply house chips.** The fold is `foldNone` on My Schedule's cards alone, for two or more houses that all
+  read none yet: *none yet at 3 houses*. A press opens the chips. Assigned Jobs, Dispatch Mode and the job
+  window are untouched.
+- The first and third trims are held by tests only: no sample account has an empty stage listed or a
+  schedule card with chips to show them live.
 
 ## How to verify
 

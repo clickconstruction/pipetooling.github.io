@@ -8,6 +8,8 @@ import {
   openJobAccountRequestTitle,
   parseOpenJobAccountPayload,
   poMomentLine,
+  stripFoldedWords,
+  stripFoldsToOneLine,
   stripHasOpen,
   stripSummary,
   telHref,
@@ -71,6 +73,25 @@ describe('groupJobAccountStrip', () => {
     expect(stripSummary(entries)).toBe('Ferguson ✓ · Reece none yet')
     expect(stripHasOpen(entries)).toBe(true)
     expect(askableEntries(entries).map((e) => e.houseName)).toEqual(['Reece'])
+  })
+})
+
+describe('stripFoldsToOneLine (punch list #384)', () => {
+  const e = (state: 'open' | 'requested' | 'none' | 'not_needed') => ({ state })
+
+  it('folds two or more houses that all read none yet, and says how many', () => {
+    expect(stripFoldsToOneLine([e('none'), e('none')])).toBe(true)
+    expect(stripFoldsToOneLine([e('none'), e('none'), e('none')])).toBe(true)
+    expect(stripFoldedWords(3)).toBe('none yet at 3 houses')
+    expect(stripFoldedWords(2)).toBe('none yet at 2 houses')
+  })
+
+  it('keeps every chip when one house is open, asked or not needed, and for one house alone', () => {
+    expect(stripFoldsToOneLine([e('none'), e('open')])).toBe(false)
+    expect(stripFoldsToOneLine([e('none'), e('requested')])).toBe(false)
+    expect(stripFoldsToOneLine([e('none'), e('not_needed')])).toBe(false)
+    expect(stripFoldsToOneLine([e('none')])).toBe(false)
+    expect(stripFoldsToOneLine([])).toBe(false)
   })
 })
 

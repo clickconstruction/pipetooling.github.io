@@ -270,7 +270,8 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 - **What moved:** all ~11 state vars (incl. `pipetooling_dashboard_hide_on_refresh_ids`), the `report_enabled_users` check, the loader + `loadRecentReportsRef`, the `dashboard-reports-changes` realtime channel, the unread→all auto-switch and persist effects, the render (with the `dash-reports` anchor), and the **dead `ReportEditModal` wiring, moved wholesale unchanged** (quirk #6).
 - **What stayed in the parent:** `showRecent` 1060 (the dock reads it). `NewReportModal` lives in the pinned row since v2.723.
 - **Supabase / realtime:** RPC `list_reports_with_job_info` (also fetched by the parent's report-count engine — §20), `report_reads`, `report_enabled_users`; realtime `dashboard-reports-changes` on `reports`.
-- **Tests:** `dashboardRecentReports` 14; `DashboardRecentReportsSection.primary` smoke.
+- **The viewer's own reports are never new to them (v2.7753, punch list #384):** `readIdsWithOwnReports` adds them to the read ids from `created_by_user_id`, so they neither count in the badge nor open the section; nothing is written.
+- **Tests:** `dashboardRecentReports` 17; `DashboardRecentReportsSection.primary` smoke.
 - **Photos (v2.6256, v2.6273; punch list #229 PR 3):** the *📷 N* badge beside the author and the day on every row (`reports/ReportPhotoCount.tsx`, green on a row not yet opened) from one count read a list (`hooks/useReportPhotoCounts.ts` over `lib/photos/reportPhotoCounts.ts`, keyed on the sorted set of ids so a list that re-orders under the read keeps its answer), and `ReportPhotosStrip` under every expanded row; the dead `ReportEditModal` wiring stays dead (v2.6263 sets its state only to null).
 
 ### 12. Team Ready to Bill (assigned RTB jobs, field roles)

@@ -11,6 +11,7 @@ import {
   isDashboardRecentReportsRole,
   openedNotShownCount,
   recentReportsNewCount,
+  readIdsWithOwnReports,
   reportRowState,
   visibleRecentReports,
   type RecentReportRow,
@@ -121,12 +122,13 @@ export function DashboardRecentReportsSection({
           supabase.from('report_reads').select('report_id, done_at').eq('user_id', authUserId),
         ])
         const arr = Array.isArray(reportsData) ? reportsData : []
-        const list = arr.slice(0, 8).map((r: { id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: unknown; reported_at_lat?: number | null; reported_at_lng?: number | null; job_ledger_id?: string | null; job_hcp_number?: string; job_job_pictures_link?: string | null; job_address?: string | null }) => ({
+        const list = arr.slice(0, 8).map((r: { id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; created_by_user_id?: string | null; field_values?: unknown; reported_at_lat?: number | null; reported_at_lng?: number | null; job_ledger_id?: string | null; job_hcp_number?: string; job_job_pictures_link?: string | null; job_address?: string | null }) => ({
           id: r.id,
           template_name: r.template_name,
           job_display_name: r.job_display_name,
           created_at: r.created_at,
           created_by_name: r.created_by_name,
+          created_by_user_id: r.created_by_user_id ?? null,
           field_values: r.field_values as Record<string, string> | undefined,
           reported_at_lat: r.reported_at_lat ?? null,
           reported_at_lng: r.reported_at_lng ?? null,
@@ -165,9 +167,11 @@ export function DashboardRecentReportsSection({
         } catch {
           /* ignore legacy migration failures */
         }
-        setReadReportIds(readIds)
+        // The viewer's own reports are never new to them (punch list #384): no row is written, they only read as opened.
+        const readWithOwn = readIdsWithOwnReports(readIds, list, authUserId)
+        setReadReportIds(readWithOwn)
         setDoneReportIds(doneIds)
-        if (role !== 'primary' && list.some((r) => !readIds.has(r.id))) {
+        if (role !== 'primary' && list.some((r) => !readWithOwn.has(r.id))) {
           setRecentReportsExpanded(true)
         }
       } finally {

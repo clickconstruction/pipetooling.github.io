@@ -7,13 +7,14 @@
  * superintendent on their own job, an estimator on a job they priced (PR 1b). Those last two have no Documents tab, so
  * on those jobs they also see a stage with no question yet, and the first check has a door. The Dispatch inbox's **Open
  * the check** (punch list #245) hands the window `openStage`, and the strip opens that stage's sheet with that row open
- * once the read lands.
+ * once the read lands. `hideWhileEmpty` (punch list #384) is Job Mode's: the strip draws nothing while every listed
+ * stage has no question to answer, and the job window still lists them.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobStageChecklists } from '../../hooks/useJobStageChecklists'
 import { skippedFor, stageChecklistLine, standingWords, type JobStageChecklist } from '../../lib/jobs/stageChecklist'
-import { asksMayAuthor, canAuthorOnJob, stripEmptyStageWords, stripListsEmptyStage } from '../../lib/jobs/stageChecklistItems'
+import { asksMayAuthor, canAuthorOnJob, stripEmptyStageWords, stripHiddenWhileEmpty, stripListsEmptyStage } from '../../lib/jobs/stageChecklistItems'
 import type { StageChecklistSheetIo } from '../../lib/jobs/stageChecklistSheetIo'
 import { StageChecklistSheet } from './StageChecklistSheet'
 
@@ -46,7 +47,7 @@ export interface OpenStageChecklistAsk {
   questionId?: string | null
 }
 
-export function JobStageChecklistStrip({ jobId, io, rev = 0, plansUrl = null, openStage = null, label: showLabel = true }: { jobId: string | null | undefined; io?: StageChecklistSheetIo; rev?: number; plansUrl?: string | null; openStage?: OpenStageChecklistAsk | null; /** False under a section that already names it: Today's work on the crew's window (punch list #355). */ label?: boolean }) {
+export function JobStageChecklistStrip({ jobId, io, rev = 0, plansUrl = null, openStage = null, label: showLabel = true, hideWhileEmpty = false }: { jobId: string | null | undefined; io?: StageChecklistSheetIo; rev?: number; plansUrl?: string | null; openStage?: OpenStageChecklistAsk | null; /** False under a section that already names it: Today's work on the crew's window (punch list #355). */ label?: boolean; /** Draw nothing while no listed stage has a question to answer (punch list #384): Job Mode's details. */ hideWhileEmpty?: boolean }) {
   const { user, profileName, role } = useAuth()
   const read = useJobStageChecklists(jobId, io, rev, asksMayAuthor(role))
   const [open, setOpen] = useState<JobStageChecklist | null>(null)
@@ -67,6 +68,8 @@ export function JobStageChecklistStrip({ jobId, io, rev = 0, plansUrl = null, op
   const skippedCount = (r: JobStageChecklist) => (r.state.kind ? skippedFor(read.questions, r.state.kind, r.fixtureId).length : 0)
   const emptyWords = (r: JobStageChecklist) => stripEmptyStageWords(skippedCount(r))
   if (!jobId || !rows || listed.length === 0) return null
+  // Job Mode's details (punch list #384): rows that only say "No questions yet" add nothing to the card.
+  if (hideWhileEmpty && !open && stripHiddenWhileEmpty(listed)) return null
   const current = open ? rows.find((r) => r.fixtureId === open.fixtureId) ?? open : null
   return (
     <div data-job-stage-checklists style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: 0 }}>

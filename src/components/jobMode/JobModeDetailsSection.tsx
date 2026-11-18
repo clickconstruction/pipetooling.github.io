@@ -289,8 +289,9 @@ export default function JobModeDetailsSection({
       <JobPaintedMapsStrip jobId={jobId} developmentId={contact?.development_id ?? null} jobLabel={[hcpNumber, jobName].filter(Boolean).join(' · ') || null} address={jobAddress} />
       {/* What the customer sent before the visit (punch list #319 PR 6): a First look's photos, video and words. Nothing for a job with none. */}
       <JobFirstLookStrip jobId={jobId} />
-      {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, each opening its sheet. */}
-      <JobStageChecklistStrip jobId={jobId} rev={updatesRev} plansUrl={contact?.job_plans_link} />
+      {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, each opening its sheet.
+          Nothing while no stage has a question to answer (punch list #384): the job window keeps the empty rows. */}
+      <JobStageChecklistStrip jobId={jobId} rev={updatesRev} plansUrl={contact?.job_plans_link} hideWhileEmpty />
       {/* Equipment pre-use check (punch list #270): a line per machine on the job, under the stage checklists */}
       <JobModeMachinesLine jobId={jobId} jobWords={[hcpNumber, jobName].filter(Boolean).join(' · ')} />
       {/* The field's door to the job's photos (punch list #244, PR 4): the same window the Pipeline row's camera opens. */}

@@ -23,6 +23,7 @@ import {
   skippedToastWords,
   stageStandingChip,
   stripEmptyStageWords,
+  stripHiddenWhileEmpty,
   withOrder,
 } from './stageChecklistItems'
 
@@ -82,6 +83,12 @@ describe('a skip leaves a company question off one stage and nowhere else', () =
     expect(stageStandingChip(state)).toEqual({ words: 'No questions yet', tone: 'muted' })
     expect(stripEmptyStageWords(2)).toBe('Every question is skipped on this job. Add a check if this job needs one.')
     expect(stripEmptyStageWords(0)).toBe('No questions yet. Add a check for this job.')
+  })
+  it('a host that hides the strip while empty draws nothing until a stage has a question (punch list #384)', () => {
+    const row = (standing: 'ready' | 'not_ready' | 'none') => ({ state: { standing } })
+    expect(stripHiddenWhileEmpty([row('none'), row('none')])).toBe(true)
+    expect(stripHiddenWhileEmpty([row('none'), row('not_ready')])).toBe(false)
+    expect(stripHiddenWhileEmpty([row('ready')])).toBe(false)
   })
   it('lands and lifts one stage’s skip at a time', () => {
     const on = addSkip(q1, skip(STAGE, 'q1'))

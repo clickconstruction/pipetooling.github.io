@@ -16,6 +16,8 @@ export type RecentReportRow = {
   job_display_name: string
   created_at: string
   created_by_name: string
+  /** Who wrote it. The viewer's own report is never new to them (punch list #384). */
+  created_by_user_id?: string | null
   field_values?: Record<string, string>
   reported_at_lat?: number | null
   reported_at_lng?: number | null
@@ -53,6 +55,19 @@ export function reportRowState(
   if (doneIds.has(id)) return 'done'
   if (readIds.has(id)) return 'opened'
   return 'new'
+}
+
+/**
+ * The read ids with the viewer's own reports added (punch list #384). The count reads `report_reads`, and nothing
+ * writes a row when a person saves their own report, so each one counted as new and opened the section on them.
+ * A person has read what they wrote: their own reports sit with the opened ones, behind *Show opened*. Nothing is
+ * written, and a report they marked done stays done. Pure: a new set out, the one given untouched.
+ */
+export function readIdsWithOwnReports(readIds: ReadonlySet<string>, reports: ReadonlyArray<Pick<RecentReportRow, 'id' | 'created_by_user_id'>>, viewerUserId: string | null | undefined): Set<string> {
+  const out = new Set(readIds)
+  if (!viewerUserId) return out
+  for (const r of reports) if (r.created_by_user_id === viewerUserId) out.add(r.id)
+  return out
 }
 
 /** Blue "N new" badge count: not read and not done. */

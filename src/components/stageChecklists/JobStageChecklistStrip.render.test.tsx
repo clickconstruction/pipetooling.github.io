@@ -271,6 +271,19 @@ describe('JobStageChecklistStrip', () => {
     expect(screen.queryByRole('button', { name: 'Done' })).toBeNull()
   })
 
+  it('hideWhileEmpty (Job Mode, punch list #384): a superintendent’s empty stage draws nothing, and a stage with a question still shows', async () => {
+    authRole = 'superintendent'
+    const empty = fakeIo({}, [], [])
+    const first = renderWithProviders(<JobStageChecklistStrip jobId={JOB} io={empty} hideWhileEmpty />)
+    await waitFor(() => expect(empty.answers).toHaveBeenCalled())
+    await waitFor(() => expect(document.querySelector('[data-job-stage-checklists]')).toBeNull())
+    expect(screen.queryByRole('button', { name: 'Rough In checklist: No questions yet. Add a check for this job.' })).toBeNull()
+    first.unmount()
+    // Once the stage has questions the strip is back, on the same prop.
+    renderWithProviders(<JobStageChecklistStrip jobId={JOB} io={fakeIo()} hideWhileEmpty />)
+    expect(await screen.findByRole('button', { name: 'Rough In checklist: 0 of 2 answered, not ready' })).toBeTruthy()
+  })
+
   it('leaves a stage with no question off the office’s strip, whose door is the Documents tab', async () => {
     authRole = 'assistant'
     const io = fakeIo({}, [], [])

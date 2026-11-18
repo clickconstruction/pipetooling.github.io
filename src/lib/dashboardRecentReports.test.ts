@@ -3,6 +3,7 @@ import {
   formatReportRowTime,
   isDashboardRecentReportsRole,
   openedNotShownCount,
+  readIdsWithOwnReports,
   recentReportsNewCount,
   reportRowState,
   visibleRecentReports,
@@ -33,6 +34,36 @@ describe('recentReportsNewCount', () => {
   it('counts only rows with no read state', () => {
     expect(recentReportsNewCount(reports, new Set(['a']), new Set(['b']))).toBe(2)
     expect(recentReportsNewCount(reports, none, none)).toBe(4)
+  })
+})
+
+describe('readIdsWithOwnReports (punch list #384)', () => {
+  const mine = { ...row('a'), created_by_user_id: 'me' }
+  const theirs = { ...row('b'), created_by_user_id: 'them' }
+  const unknown = row('c')
+
+  it('the viewer’s own report is never new to them, and nobody else’s changes', () => {
+    const read = readIdsWithOwnReports(new Set(), [mine, theirs, unknown], 'me')
+    expect([...read]).toEqual(['a'])
+    expect(recentReportsNewCount([mine, theirs, unknown], read, new Set())).toBe(2)
+    // It reads as opened, so it sits behind Show opened with the rest.
+    expect(reportRowState('a', read, new Set())).toBe('opened')
+    expect(visibleRecentReports([mine, theirs, unknown], read, new Set(), new Set(), false).map((r) => r.id)).toEqual(['b', 'c'])
+    expect(openedNotShownCount([mine, theirs, unknown], read, new Set(), new Set())).toBe(1)
+  })
+
+  it('keeps what was read already, leaves the set it was given alone, and a done report stays done', () => {
+    const given = new Set(['b'])
+    const read = readIdsWithOwnReports(given, [mine, theirs], 'me')
+    expect([...read].sort()).toEqual(['a', 'b'])
+    expect([...given]).toEqual(['b'])
+    expect(reportRowState('a', read, new Set(['a']))).toBe('done')
+  })
+
+  it('with no viewer, or a report with no author on the row, nothing is added', () => {
+    expect(readIdsWithOwnReports(new Set(), [mine, unknown], null).size).toBe(0)
+    expect(readIdsWithOwnReports(new Set(), [mine, unknown], undefined).size).toBe(0)
+    expect([...readIdsWithOwnReports(new Set(), [unknown], 'me')]).toEqual([])
   })
 })
 
