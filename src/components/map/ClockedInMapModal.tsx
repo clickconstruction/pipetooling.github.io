@@ -8,9 +8,10 @@
  * the office sessions sit on the office anchor diamond; a person with no job
  * is named under the list with the strip's own Assign door, never guessed
  * onto the map. Live from the strip's `sessions` prop (it ticks and refreshes
- * over realtime) — no new query, no new subscription. Google Maps when the
- * browser key loads, OpenStreetMap otherwise (the same one-way fallback as
- * the jobs map). On a phone: a full-screen sheet, the selected stop as a bar
+ * over realtime) — no new query, no new subscription. It draws in the shared
+ * `PinsMapFrame` (punch list #395): Google Maps when the browser key loads,
+ * OpenStreetMap otherwise, with the Satellite and Streets switch and the Time
+ * press, whose row says the pins are people there now. On a phone: a full-screen sheet, the selected stop as a bar
  * under the map with two 44 px buttons, the rest listed beneath.
  *
  * v2.3764: a "Travel times" button routes each placed stop to the office on
@@ -18,7 +19,7 @@
  * and the rail, popup and phone bar then read "20 mi · 32 min to the office";
  * a stop the router will not answer reads the ≈ estimate instead.
  */
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { ClockSessionRow, DashboardStripSession } from '../../types/clockSessions'
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
@@ -26,7 +27,6 @@ import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
 import { useOverheadOfficeJobId } from '../../hooks/useOverheadOfficeJobId'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
 import type { MapCanvasAnchor } from '../../lib/map/mapCanvasTypes'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -52,8 +52,10 @@ import type { DrivingDistanceResponse } from '../../lib/bidDistanceToOffice'
 import { computeTravelForStops, formatTravelLine, travelSummaryLine, type StopTravel, type TravelInvoke, type TravelStopInput } from '../../lib/clockedInMapTravel'
 import { EmptyState } from '../EmptyState'
 
-const PinsMapCanvas = lazy(() => import('./PinsMapCanvas'))
-const PinsMapGoogleCanvas = lazy(() => import('./PinsMapGoogleCanvas'))
+import { PinsMapFrame } from './PinsMapFrame'
+
+/** What the Time row says beside an older photograph: this map's pins are people clocked in now. */
+const TIME_PINS_WORDS = 'The pins show who is there now.'
 
 /** Above the strip's popovers (1100) and the Bids modals (1000); the Assign door opens above this. */
 export const CLOCKED_IN_MAP_Z = 1200
@@ -218,12 +220,6 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
   // v2.3764: drive to the office per stop, on demand.
   const [travel, setTravel] = useState<Map<string, StopTravel>>(() => new Map())
   const [travelBusy, setTravelBusy] = useState(false)
-  const [googleFailed, setGoogleFailed] = useState(false)
-  const provider = resolveDashboardMapProvider({ key: googleMapsBrowserKey(), googleFailed })
-  const googleUnavailable = useCallback((reason: string) => {
-    console.warn(`[clocked-in map] Google Maps unavailable, using OpenStreetMap — ${reason}`)
-    setGoogleFailed(true)
-  }, [])
 
   useEffect(() => {
     if (selectedId && !placed.pins.some((p) => p.id === selectedId)) setSelectedId(null)
@@ -330,6 +326,9 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
   )
 
   const selected = selectedId ? (stopById.get(selectedId) ?? null) : null
+  // Time looks at the open stop, or the only one, and calls it by its own name: a pin's title carries the head count too.
+  const timePin = placed.pins.find((p) => p.id === selectedId) ?? (placed.pins.length === 1 ? placed.pins[0] : undefined)
+  const timeSpot = timePin ? { lat: timePin.lat, lng: timePin.lng, name: stopById.get(timePin.id)?.label ?? timePin.title } : null
   const unmappedAll = [...placed.unmapped, ...placed.noAddress]
   const unmappedLine = clockedInMapUnmappedLine(unmappedAll)
   const mapHeight = isMobile ? 240 : 460
@@ -441,39 +440,35 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
     </div>
   )
 
-  const mapNode = (
-    <div style={{ position: 'relative', height: mapHeight, overflow: 'hidden', isolation: 'isolate', background: 'var(--bg-muted)' }}>
-      {placed.pins.length > 0 || canvasAnchor ? (
-        <Suspense fallback={<div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading map…</div>}>
-          {provider === 'google' ? (
-            <PinsMapGoogleCanvas
-              apiKey={googleMapsBrowserKey()}
-              onUnavailable={googleUnavailable}
-              pins={placed.pins}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              renderPopup={renderPopup}
-              fitSignal={fitSignal}
-              height={mapHeight}
-              isMobile={isMobile}
-              anchor={canvasAnchor}
-            />
-          ) : (
-            <PinsMapCanvas pins={placed.pins} selectedId={selectedId} onSelect={setSelectedId} renderPopup={renderPopup} fitSignal={fitSignal} height={mapHeight} isMobile={isMobile} anchor={canvasAnchor} />
-          )}
-        </Suspense>
-      ) : (
+  const mapNode =
+    placed.pins.length > 0 || canvasAnchor ? (
+      <PinsMapFrame
+        surface="clocked-in-map"
+        pins={placed.pins}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+        renderPopup={renderPopup}
+        fitSignal={fitSignal}
+        height={mapHeight}
+        isMobile={isMobile}
+        anchor={canvasAnchor}
+        timeSpot={timeSpot}
+        timeDotsWords={TIME_PINS_WORDS}
+        overlay={
+          placed.pins.length === 0 && model.stops.length === 0 ? (
+            <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', zIndex: 1001 }}>
+              <EmptyState compact main={NOBODY_CLOCKED_ON_A_JOB} />
+            </div>
+          ) : null
+        }
+      />
+    ) : (
+      <div style={{ position: 'relative', height: mapHeight, overflow: 'hidden', background: 'var(--bg-muted)' }}>
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           {resolving ? 'Finding the jobs on the map…' : <EmptyState compact main={model.stops.length > 0 ? 'None of these jobs has a map location yet.' : NOBODY_CLOCKED_ON_A_JOB} />}
         </div>
-      )}
-      {placed.pins.length === 0 && canvasAnchor && model.stops.length === 0 ? (
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', zIndex: 1 }}>
-          <EmptyState compact main={NOBODY_CLOCKED_ON_A_JOB} />
-        </div>
-      ) : null}
-    </div>
-  )
+      </div>
+    )
 
   const footerNode = (
     <div style={{ display: 'flex', gap: '0.5rem 1rem', flexWrap: 'wrap', alignItems: 'baseline', padding: '0.5rem 0.9rem', borderTop: '1px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
