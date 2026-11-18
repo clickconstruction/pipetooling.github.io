@@ -189,6 +189,7 @@ export function ChecklistOutstandingSection({
             <button
               type="button"
               data-still-open-more
+              aria-expanded={false}
               onClick={() => setShowAll(true)}
               style={{ display: 'block', width: '100%', minHeight: 44, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, background: 'none', border: 'none', color: 'var(--text-blue-700)', cursor: 'pointer' }}
             >
