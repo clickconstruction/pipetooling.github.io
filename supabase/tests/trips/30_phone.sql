@@ -116,7 +116,9 @@ SELECT tph.same('start says what it did', (SELECT (r->>'did') || ' ' || (r->>'ki
 SELECT tph.same('he reads his own trip', (SELECT count(*)::text || ' ' || min(via) || ' ' || (min(created_by::text) = '00000000-0000-0000-0000-0000003791a3')::text FROM public.trips), '1 phone true');
 SELECT tph.same('he is on it under his roster name, today At the site', (SELECT person_name || ' / ' || (person_id = '00000000-0000-0000-0000-0000003791c3')::text || ' / ' || (days ->> tph.today()) FROM public.trip_people), 'Luis Ortega / true / site');
 SELECT tph.same('the job is named under Work goes on', (SELECT count(*)::text FROM public.trip_jobs WHERE job_id = '00000000-0000-0000-0000-0000003791b1'), '1');
-SELECT tph.same('starting again is the same trip, today painted', (SELECT (r->>'did') FROM tph.act('start', '00000000-0000-0000-0000-0000003791b1', NULL, 'road') AS r) || ' ' || (SELECT count(*)::text FROM public.trips) || ' ' || (SELECT days ->> tph.today() FROM public.trip_people), 'day 1 road');
+-- An act and the read of what it changed are two statements: one statement reads the rows as they stood when it began.
+SELECT tph.same('starting again says it painted a day', (SELECT (r->>'did') FROM tph.act('start', '00000000-0000-0000-0000-0000003791b1', NULL, 'road') AS r), 'day');
+SELECT tph.same('and it is the same trip, today painted', (SELECT count(*)::text FROM public.trips) || ' ' || (SELECT days ->> tph.today() FROM public.trip_people), '1 road');
 SELECT tph.refused('a trip from a job on no site', $q$SELECT tph.act('start', '00000000-0000-0000-0000-0000003791b2')$q$, 'not in a development yet');
 SELECT tph.refused('a trip row written straight to the table', $q$INSERT INTO public.trips (development_id) VALUES ('00000000-0000-0000-0000-0000003791d1')$q$, 'row-level security');
 SELECT tph.refused('a day that is not one of the three', $q$SELECT tph.act('day', '00000000-0000-0000-0000-0000003791b1', (SELECT id FROM public.trips LIMIT 1), 'home')$q$, 'ready, road or site');
@@ -133,7 +135,8 @@ SELECT tph.refused('a day on a trip he is not on', $q$SELECT tph.act('day', '000
 SELECT tph.same('join says what it did', (SELECT (r->>'did') || ' ' || (r->>'kind') FROM tph.act('join', '00000000-0000-0000-0000-0000003791b1', (SELECT id FROM tph_trip), 'road') AS r), 'joined road');
 SELECT tph.same('he is on it under his login''s name, with no roster row', (SELECT person_name || ' / ' || (person_id IS NULL)::text || ' / ' || (days ->> tph.today()) FROM public.trip_people WHERE user_id = '00000000-0000-0000-0000-0000003791a4'), 'Hector Helper / true / road');
 SELECT tph.same('he now reads the trip and who else is on it', (SELECT count(*)::text FROM public.trips) || ' ' || (SELECT count(*)::text FROM public.trip_people), '1 2');
-SELECT tph.same('Clock in paints his today At the site', (SELECT (r->>'did') FROM tph.act('day', '00000000-0000-0000-0000-0000003791b1', (SELECT id FROM tph_trip), 'site') AS r) || ' ' || (SELECT days ->> tph.today() FROM public.trip_people WHERE user_id = '00000000-0000-0000-0000-0000003791a4'), 'day site');
+SELECT tph.same('Clock in says it painted a day', (SELECT (r->>'did') FROM tph.act('day', '00000000-0000-0000-0000-0000003791b1', (SELECT id FROM tph_trip), 'site') AS r), 'day');
+SELECT tph.same('and his today is At the site', (SELECT days ->> tph.today() FROM public.trip_people WHERE user_id = '00000000-0000-0000-0000-0000003791a4'), 'site');
 SELECT tph.same('the state names his trip and who he is with', (SELECT ((s->'mine'->>'trip_id') = (SELECT id::text FROM tph_trip))::text || ' ' || (s->'mine'->'with')::text || ' ' || (s->'open')::text FROM public.trip_phone_state('00000000-0000-0000-0000-0000003791b1') AS s), 'true ["Luis"] []');
 UPDATE public.trip_people SET days = '{}'::jsonb WHERE user_id = '00000000-0000-0000-0000-0000003791a4';
 DELETE FROM public.trips;
@@ -176,13 +179,16 @@ SELECT tph.same('the trip is stamped and keeps how it went', (SELECT (ended_at I
 SELECT tph.refused('a day on an ended trip', $q$SELECT tph.act('day', '00000000-0000-0000-0000-0000003791b1', (SELECT id FROM tph_trip))$q$, 'has ended');
 RESET ROLE;
 SELECT tph.as_user('00000000-0000-0000-0000-0000003791a3'); SET LOCAL ROLE authenticated;
-SELECT tph.same('ending again changes nothing, and a second outcome does not replace the first', (SELECT (r->>'already') FROM tph.act('end', '00000000-0000-0000-0000-0000003791b1', (SELECT id FROM tph_trip), NULL, 'Something else.') AS r) || ' / ' || (SELECT outcome FROM public.trips WHERE id = (SELECT id FROM tph_trip)), 'true / Did the work. Counted 98 boxes.');
-SELECT tph.same('an ended trip is no longer his open trip, and a new start makes a new one', (SELECT coalesce(s->>'mine', 'none') FROM public.trip_phone_state('00000000-0000-0000-0000-0000003791b1') AS s) || ' ' || (SELECT (r->>'did') FROM tph.act('start', '00000000-0000-0000-0000-0000003791b1') AS r), 'none started');
+SELECT tph.same('ending again says it was already ended', (SELECT (r->>'already') FROM tph.act('end', '00000000-0000-0000-0000-0000003791b1', (SELECT id FROM tph_trip), NULL, 'Something else.') AS r), 'true');
+SELECT tph.same('and a second outcome does not replace the first', (SELECT outcome FROM public.trips WHERE id = (SELECT id FROM tph_trip)), 'Did the work. Counted 98 boxes.');
+SELECT tph.same('an ended trip is no longer his open trip', (SELECT coalesce(s->>'mine', 'none') FROM public.trip_phone_state('00000000-0000-0000-0000-0000003791b1') AS s), 'none');
+SELECT tph.same('and a new start makes a new one', (SELECT (r->>'did') FROM tph.act('start', '00000000-0000-0000-0000-0000003791b1') AS r), 'started');
 RESET ROLE;
 
 -- 8 · The office still changes and deletes a phone trip like any other, and no clock row was written by any of it.
 SELECT tph.as_user('00000000-0000-0000-0000-0000003791a1'); SET LOCAL ROLE authenticated;
-SELECT tph.same('the office changes a phone trip', (SELECT (r->>'did') FROM public.trip_save(jsonb_build_object('id', (SELECT id FROM tph_trip), 'development_id', '00000000-0000-0000-0000-0000003791d1', 'purpose', 'Lift stations before the pour', 'people', jsonb_build_array(jsonb_build_object('name', 'Luis Ortega', 'user_id', '00000000-0000-0000-0000-0000003791a3', 'days', jsonb_build_object(tph.today(), 'site'))))) AS r) || ' ' || (SELECT via || ' ' || (ended_at IS NOT NULL)::text FROM public.trips WHERE id = (SELECT id FROM tph_trip)), 'changed phone true');
+SELECT tph.same('the office changes a phone trip', (SELECT (r->>'did') FROM public.trip_save(jsonb_build_object('id', (SELECT id FROM tph_trip), 'development_id', '00000000-0000-0000-0000-0000003791d1', 'purpose', 'Lift stations before the pour', 'people', jsonb_build_array(jsonb_build_object('name', 'Luis Ortega', 'user_id', '00000000-0000-0000-0000-0000003791a3', 'days', jsonb_build_object(tph.today(), 'site'))))) AS r), 'changed');
+SELECT tph.same('it keeps where it came from and that it ended, and takes the office''s words and people', (SELECT via || ' ' || (ended_at IS NOT NULL)::text || ' ' || purpose FROM public.trips WHERE id = (SELECT id FROM tph_trip)) || ' ' || (SELECT count(*)::text FROM public.trip_people WHERE trip_id = (SELECT id FROM tph_trip)), 'phone true Lift stations before the pour 1');
 DELETE FROM public.trips WHERE id = (SELECT id FROM tph_trip);
 SELECT tph.same('and deletes it', (SELECT count(*)::text FROM public.trips WHERE id = (SELECT id FROM tph_trip)), '0');
 RESET ROLE;
