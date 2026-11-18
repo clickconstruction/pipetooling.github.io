@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-/** The five windows the Lien desk's Board raises, each with its setter (`useLienDeskWindows`). */
+/** The six windows the Lien desk's Board raises, each with its setter (`useLienDeskWindows`). */
 export type LienDeskWindowFlags = ReturnType<typeof useLienDeskWindows>
 
 /**
@@ -20,5 +20,7 @@ export function useLienDeskWindows(openScansDoor: { key: number } | null | undef
     if (openScansDoor) setScansOpen(true)
   }, [openScansDoor])
   const [publicPutBack, setPublicPutBack] = useState<string | null>(null)
-  return { jobPath, setJobPath, publicReview, setPublicReview, serveOpen, setServeOpen, scansOpen, setScansOpen, publicPutBack, setPublicPutBack }
+  // Back from the clerk (v2.7856): the liens in Ready to file, each recorded as filed as its document number is typed.
+  const [filingsOpen, setFilingsOpen] = useState(false)
+  return { jobPath, setJobPath, publicReview, setPublicReview, serveOpen, setServeOpen, scansOpen, setScansOpen, publicPutBack, setPublicPutBack, filingsOpen, setFilingsOpen }
 }

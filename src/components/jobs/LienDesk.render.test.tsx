@@ -2894,7 +2894,9 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     const bin = document.querySelector('[data-lien-board-bin="affidavit:ready"]') as HTMLElement
     expect(bin.querySelector('[data-lien-board-count]')!.textContent).toBe('2')
     expect(within(bin).getByRole('button', { name: 'Print 2 for notarization' })).toBeTruthy()
-    expect(bin.querySelector('[data-lien-board-bin-line]')).toBeNull()
+    // No line for the held paper. The one line the bin draws is the door to Back from the clerk (v2.7856), for the liens that can be filed.
+    expect(Array.from(bin.querySelectorAll('[data-lien-board-bin-line]')).map((el) => el.getAttribute('data-lien-board-bin-line'))).toEqual(['filings'])
+    expect(bin.querySelector('[data-lien-board-filings-line]')?.textContent).toMatch(/^Back from the clerk\? · Enter document numbers · \d+ ›$/)
     expect(Array.from(bin.querySelectorAll('[data-lien-board-chip]')).map((el) => [el.textContent, el.getAttribute('data-held')])).toEqual([['650', null], ['651', null], ['652‖', 'yes']])
   })
 

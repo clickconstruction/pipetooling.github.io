@@ -68,6 +68,7 @@ Every chip is a press to the right place for its stage. Point at a chip to read 
 - A chip in *Approved · to sign* opens the notice, where it is signed.
 - A chip in *Approved · to print* or *Approved · to mail* opens the run on that envelope.
 - A chip in **Ready to file** opens the affidavit.
+- A line under the bin's print reads *Back from the clerk?* Its press reads like {{button:outline|Enter document numbers · 3 ›}}. It opens one window that records every filed lien. See [Several liens back from the clerk](/help/file-a-lien-and-never-miss-its-deadlines#several-liens-back-from-the-clerk).
 - A chip in *Filed · copies to mail* or *Served* opens the job's Lien window.
 - A chip in a closed bin opens the window that asks what to do. See [A window that has closed](#a-window-that-has-closed).
 
