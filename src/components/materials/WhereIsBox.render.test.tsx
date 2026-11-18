@@ -142,6 +142,16 @@ describe('WhereIsBox', () => {
     expect(onOpenWay).toHaveBeenCalledWith('way-1')
   })
 
+  it('Send someone to it hands the host a task for the box, and is not drawn with no host for it (step 5)', () => {
+    const onSendSomeone = vi.fn()
+    renderWithProviders(<WhereIsBox touch container={pinned} containers={[pinned]} places={[{ ...places[0]!, wayMapId: 'way-1' }]} moves={moves} movements={movements} photos={[]} jobCenter={PIN} jobAddress="100 Made-up Way" byName="Priya Nair" onMoveBox={onMoveBox} onSendSomeone={onSendSomeone} now={NOW} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Send someone to it' }))
+    expect(onSendSomeone).toHaveBeenCalledWith({ title: 'Find A7 at Laydown yard, by the north fence', links: [], place: { ...PIN, name: 'A7 at Laydown yard', accuracyM: 5.5, mapId: 'way-1', mapName: 'The way to Laydown yard' } })
+    cleanup()
+    draw(pinned)
+    expect(screen.queryByRole('button', { name: 'Send someone to it' })).toBeNull()
+  })
+
   it('a place with no way draws no way line', () => {
     draw(pinned)
     expect(screen.queryByTestId('where-is-box-way')).toBeNull()

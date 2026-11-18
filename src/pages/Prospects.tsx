@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, Fragment, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { prospectsPagePadding } from '../lib/prospects/pagePadding'
 import { pageTabStyle } from '../lib/pageTabStyle'
@@ -74,9 +74,8 @@ import { stripReads, type StripRead } from '../lib/prospects/stripState'
 import { ProspectPersonForm } from '../components/prospects/ProspectPersonForm'
 import { EMPTY_COMPANY, EMPTY_PERSON, OK_TO_TEXT_CHOICES, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type OkToText, type PersonFields } from '../lib/prospects/personBlock'
 import { BY_NEED_NOTE, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade } from '../lib/prospects/subsLane'
-import { NO_TRADE_GROUP, PLANS_PICKER_HINT, PLANS_PICKER_LABEL, PLANS_PICKER_NONE, SUB_STAGE_WORDS, SUB_STRIP_SENTENCE, TRADE_PARTNERS_HREF, callForTradeHref, groupHeadWords, groupSubsByTrade, plansChoiceWords, plansChoices, rowPress, stageCounts, stageHref, stageTone, stageWords, subStage, type PlansChoice, type StageIn, type StageTone } from '../lib/prospects/subsStages'
-import { NEEDS_GROUP_WORDS, NEEDS_RULE, benchLineParts, bestDoor, bookChipWords, dueWords, gcBenchInput, gcNeeds, needsHeadWords, quotesWords, tradePartnersHref, type GcBenchIn, type NeedTone } from '../lib/prospects/gcNeeds'
-import { gcProjectHref } from '../lib/gc/links'
+import { plansChoices, type PlansChoice } from '../lib/prospects/subsStages'
+import { gcBenchInput, gcNeeds, type GcBenchIn } from '../lib/prospects/gcNeeds'
 import { callingWeekEmptyWords, cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
 import { EmptyState, type EmptyStateWords } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
@@ -86,7 +85,7 @@ import { anyTyped, editDirty, editSnapshotOf } from '../lib/prospects/windowLeav
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { isZzTestProspect, withoutZzProspects } from '../lib/prospects/zzProspects'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
-import { GC_WORK_LABELS, NOTHING_BIDDING, SOONEST_BID_NOTE, biddingDueWords, deckBidWords, gcBiddingLines, gcWorkCounts, jobToHandOn, leadsWithOpenBid, newProjectSeedFromLead, orderLeadsBySoonestBid, type BiddingLine, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
+import { SOONEST_BID_NOTE, gcBiddingLines, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type BiddingLine, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
 import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus, updateProspectJob } from '../lib/prospects/gcLeadLaneIo'
 import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
@@ -94,6 +93,10 @@ import { ProspectsResearchTab } from '../components/prospects/ProspectsResearchT
 import { canResearchPermits } from '../lib/research/permitResearch'
 import { permitsLinkCleared } from '../lib/research/permitsLink'
 import { SubsBoard } from '../components/prospects/SubsBoard'
+import { SubsLaneList } from '../components/prospects/SubsLaneList'
+import { SubsNeedsPanel } from '../components/prospects/SubsNeedsPanel'
+import { SubsPathStrip } from '../components/prospects/SubsPathStrip'
+import { GcWorkStrip } from '../components/prospects/GcWorkStrip'
 import { inboundProspects, subRecords } from '../lib/prospects/subRecord'
 import { BY_RANK_NOTE, PRIORITY_CHOICES, orderColumn, priorityWord } from '../lib/prospects/subsBoard'
 import { pinAfterDrop, pinnedIds, pinsByTrade, rankWrites, unpin, type RankRow } from '../lib/prospects/subsRanks'
@@ -148,18 +151,6 @@ type ProspectsTopTab = 'customers' | 'team' | 'research'
 type ProspectsTab = 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity'
 
 const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'board', 'prospect-list', 'convert', 'activity']
-
-/** The needs panel's tones (v2.5782): the theme's text tokens, so dark mode lightens them. */
-const NEED_TONE_COLOR: Record<NeedTone, string> = { red: 'var(--text-red-700)', amber: 'var(--text-amber-700)', green: 'var(--text-green-700)', quiet: 'var(--text-600)' }
-
-/** The stage chip on a sub's row (v2.5807): green until called, amber once called, blue once talked, violet on the bench. */
-const STAGE_TONE_STYLE: Record<StageTone, { background: string; color: string }> = {
-  green: { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' },
-  amber: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' },
-  blue: { background: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' },
-  violet: { background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' },
-  grey: { background: 'var(--bg-subtle)', color: 'var(--text-muted)' },
-}
 
 const DIDNT_ANSWER_MOVE_NEXT_KEY = (userId: string) => `prospects_didnt_answer_move_next_${userId}`
 
@@ -2684,207 +2675,12 @@ export default function Prospects() {
 
   // ---------- The path onto the bench (v2.5807, punch list #153, PR 1) ----------
 
-  /** The strip over the Subs lane: To call → Called → Talked → On the bench → Quoted, the last two doors to Trade partners, the exits folded. */
-  function renderSubsStrip(rows: readonly Prospect[], calledIds: ReadonlySet<string>) {
-    const inp: StageIn = { calledIds, answeredIds: answeredProspectIds, quotedCompanyIds: benchQuoted }
-    const counts = stageCounts(rows, inp)
-    const exits = counts.exits.filter((x) => x.n > 0)
-    const box: CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '0.35rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-subtle)', minWidth: '5.25rem', textDecoration: 'none', color: 'inherit' }
-    return (
-      <div role="group" aria-label="The path onto the bench" style={{ marginBottom: '0.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-          {counts.stages.map((st, i) => {
-            const href = stageHref(st.stage)
-            const inner = (
-              <>
-                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{SUB_STAGE_WORDS[st.stage]}</span>
-                <span style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: st.n === 0 ? 'var(--text-faint)' : 'var(--text-strong)' }}>{st.n}</span>
-              </>
-            )
-            return (
-              <span key={st.stage} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                {href ? (
-                  <Link to={href} data-stage={st.stage} title="On Trade partners. Press to open it." style={{ ...box, borderColor: 'var(--border-violet)', background: 'var(--bg-violet-100)' }}>
-                    {inner}
-                  </Link>
-                ) : (
-                  <span data-stage={st.stage} style={box}>{inner}</span>
-                )}
-                {i < counts.stages.length - 1 && <span aria-hidden style={{ color: 'var(--text-faint)' }}>→</span>}
-              </span>
-            )
-          })}
-          {exits.length > 0 && (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>
-              {exits.map((x) => `${stageWords(x.exit)} ${x.n}`).join(' · ')} folded under the list
-            </span>
-          )}
-        </div>
-        <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {SUB_STRIP_SENTENCE} The last two boxes open Trade partners.
-        </p>
-      </div>
-    )
-  }
-
-  /** For: the project a set of plans is for (v2.5807). Its trades come first on the list and light up. */
-  function renderPlansPicker() {
-    if (gcPlans.length === 0) return null
-    return (
-      <div role="group" aria-label={PLANS_PICKER_LABEL} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.75rem', fontSize: '0.8125rem' }}>
-        <label style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', fontWeight: 700, color: 'var(--text-700)' }}>
-          {PLANS_PICKER_LABEL}
-          <select
-            value={plansFor ?? ''}
-            onChange={(e) => setPlansFor(e.target.value || null)}
-            style={{ font: 'inherit', fontWeight: 400, padding: '0.25rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', maxWidth: '100%' }}
-          >
-            <option value="">{PLANS_PICKER_NONE}</option>
-            {gcPlans.map((c) => (
-              <option key={c.id} value={c.id}>
-                {plansChoiceWords(c)}
-              </option>
-            ))}
-          </select>
-        </label>
-        {plansPick ? (
-          <span style={{ color: 'var(--text-600)' }}>
-            {plansPick.trades.length === 0 ? (
-              'every trade on this one is ours'
-            ) : (
-              <>
-                needs <b style={{ color: 'var(--text-strong)' }}>{plansPick.trades.join(', ')}</b>
-              </>
-            )}
-          </span>
-        ) : (
-          <span style={{ color: 'var(--text-muted)' }}>{PLANS_PICKER_HINT}</span>
-        )}
-      </div>
-    )
-  }
-
-  /** The Subs lane's Prospect List (v2.5807): the strip, the For picker, then the lane by trade in the needs panel's order, each row with its stage and its press. */
-  function renderSubsList(filtered: Prospect[], calledIds: ReadonlySet<string>, nowMs: number) {
-    const inp: StageIn = { calledIds, answeredIds: answeredProspectIds, quotedCompanyIds: benchQuoted }
-    const needsForList = gcNeeds(gcBench.benches, filtered, gcBench.ownTrades)
-    const live = filtered.filter((p) => p.prospect_fit_status == null)
-    const landed = filtered.filter((p) => p.prospect_fit_status === 'converted')
-    const exits = filtered.filter((p) => p.prospect_fit_status === 'cant_reach' || p.prospect_fit_status === 'not_a_fit')
-    const { groups, noTrade } = groupSubsByTrade(live, needsForList, plansPick?.trades ?? null)
-    const chip: CSSProperties = { padding: '0.05rem 0.5rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap' }
-    const smallBtn = (primary: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 6, border: `1px solid ${primary ? '#2563eb' : 'var(--border-strong)'}`, background: primary ? '#2563eb' : 'var(--surface)', color: primary ? 'white' : 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none' })
-    const isOpen = (key: string, fallback: boolean) => subsSectionOpen[key] ?? fallback
-    const toggle = (key: string, fallback: boolean) => setSubsSectionOpen((prev) => ({ ...prev, [key]: !(prev[key] ?? fallback) }))
-    const row = (p: Prospect) => {
-      const stage = subStage(p, inp)
-      const press = rowPress(stage)
-      const tone = STAGE_TONE_STYLE[stageTone(stage)]
-      const landedRow = stage === 'on_bench' || stage === 'quoted'
-      const exitRow = stage === 'cant_reach' || stage === 'not_a_fit'
-      const nums = callNumbers(p)
-      return (
-        <div key={p.id} data-sub-row={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem 0.75rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', background: selectedProspectForList?.id === p.id ? 'var(--bg-blue-tint)' : undefined }}>
-          <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
-            <div style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{prospectTitle(p)}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.375rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              {!p.is_person && p.contact_name?.trim() ? <span>{p.contact_name.trim()}</span> : null}
-              {nums.call ? (
-                <a href={telHrefFor(nums.call)} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)' }}>
-                  {nums.call}
-                </a>
-              ) : (
-                <span>no phone</span>
-              )}
-              {(p.trades ?? []).map((trade) => (
-                <span key={trade} style={{ ...chip, fontWeight: 600, background: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' }}>
-                  {trade}
-                </span>
-              ))}
-            </div>
-          </div>
-          <span data-stage-chip style={{ ...chip, ...tone }}>{stageWords(stage)}</span>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }} title={p.last_contact ? `Last contact ${formatDateTime(p.last_contact)}` : undefined}>
-            {lastTouchLabel(p, prospectLastCallMap[p.id], nowMs)}
-          </span>
-          <span style={{ display: 'flex', gap: '0.4rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
-            {press && (
-              <button type="button" onClick={() => selectProspectForList(p)} style={smallBtn(press === 'call')}>
-                Call now →
-              </button>
-            )}
-            {press === 'call_or_bench' && (
-              <button type="button" onClick={() => openBenchModal(p)} disabled={saving} title={kindWords.lastPressTitle} style={{ ...smallBtn(false), background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)', borderColor: '#8b5cf6' }}>
-                {kindWords.lastPress}
-              </button>
-            )}
-            {landedRow && (
-              <Link to={TRADE_PARTNERS_HREF} style={smallBtn(false)}>
-                On Trade partners →
-              </Link>
-            )}
-            {(landedRow || exitRow) && (
-              <>
-                <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={smallBtn(false)}>Edit</button>
-                <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={smallBtn(false)}>Send back</button>
-                <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ ...smallBtn(false), borderColor: '#dc2626', color: 'var(--text-red-600)' }}>Delete</button>
-              </>
-            )}
-          </span>
-        </div>
-      )
-    }
-    const section = (key: string, title: string, head: string | null, subs: Prospect[], openByDefault: boolean, door?: { label: string; to?: string; onPress?: () => void; primary: boolean }) => {
-      const open = isOpen(key, openByDefault)
-      return (
-        <div key={key} id={`subs-sec-${key}`} data-subs-section={key} style={{ marginTop: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
-            <button type="button" onClick={() => toggle(key, openByDefault)} aria-expanded={open} style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}>
-              <span aria-hidden>{open ? '▼' : '▶'}</span>
-              {title}
-            </button>
-            {head && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{head}</span>}
-            {door &&
-              (door.to ? (
-                <Link to={door.to} style={{ ...smallBtn(door.primary), marginLeft: 'auto' }}>
-                  {door.label}
-                </Link>
-              ) : (
-                <button type="button" onClick={door.onPress} style={{ ...smallBtn(door.primary), marginLeft: 'auto' }}>
-                  {door.label}
-                </button>
-              ))}
-          </div>
-          {open && <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>{subs.map(row)}</div>}
-        </div>
-      )
-    }
-    return (
-      <div>
-        {renderSubsStrip(filtered, calledIds)}
-        {renderPlansPicker()}
-        {filtered.length === 0 ? (
-          <EmptyState {...prospectListEmpty()} />
-        ) : (
-          <>
-            {groups.map((g) =>
-              section(
-                `trade-${g.trade.toLowerCase()}`,
-                `${g.trade}${g.lit ? ' ★' : ''} (${g.subs.length})`,
-                groupHeadWords(g, plansPick?.name ?? null),
-                g.subs,
-                plansPick ? g.lit : true,
-                g.subs.length > 0 ? { label: `Call for ${g.trade} →`, to: callForTradeHref(g.trade, plansFor), primary: g.lit } : { label: 'Add a sub', onPress: () => openAddSub(g.trade), primary: g.lit },
-              ),
-            )}
-            {noTrade.length > 0 && section('no-trade', `${NO_TRADE_GROUP} (${noTrade.length})`, 'Edit prospect names the trade', noTrade, true)}
-            {landed.length > 0 && section('landed', `${kindWords.landed} (${landed.length})`, 'on Trade partners now', landed, false, { label: 'Trade partners →', to: TRADE_PARTNERS_HREF, primary: false })}
-            {exits.length > 0 && section('exits', `Can't reach and Not a fit (${exits.length})`, 'out of the queue; Send back returns one', exits, false)}
-          </>
-        )}
-      </div>
-    )
-  }
+  /** The strip over the Subs lane, drawn by `SubsPathStrip` over the deck, the list and the Board. */
+  const subsStrip = (rows: readonly Prospect[], calledIds: ReadonlySet<string>) => (
+    <SubsPathStrip rows={rows} calledIds={calledIds} answeredIds={answeredProspectIds} quotedCompanyIds={benchQuoted} />
+  )
+  /** Which of the Subs list's folds are open stays here, so a fold survives a visit to another tab. */
+  const toggleSubsSection = (key: string, fallback: boolean) => setSubsSectionOpen((prev) => ({ ...prev, [key]: !(prev[key] ?? fallback) }))
 
   const canAccessFollowUp = !!authUser && canAccessProspectPipeline(authRole, estimatorProspectsAccess)
 
@@ -3004,158 +2800,12 @@ export default function Prospects() {
 
       {topTab === 'customers' && activeTab === 'follow-up' && (
         <>
-          {kind === 'sub' && canAccessFollowUp && laneAllRows.length > 0 && renderSubsStrip(laneAllRows, calledProspectIds)}
+          {kind === 'sub' && canAccessFollowUp && laneAllRows.length > 0 && subsStrip(laneAllRows, calledProspectIds)}
           {kind === 'sub' && canAccessFollowUp && stripReads(benchTrades) !== 'loading' && gcNeedsNow && (
-            // What GC mode needs right now (v2.5782, punch list #148): one row a trade, worst first, each row
-            // leading to the companies to call in the owner's order: the bench, then the subs here, then Add a sub.
-            <section
-              role="group"
-              aria-label="What GC mode needs right now"
-              style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.8125rem' }}
-            >
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.2rem' }}>
-                <span style={{ fontWeight: 700, color: 'var(--text-700)', fontSize: '0.875rem' }}>What GC mode needs right now</span>
-                <span style={{ color: 'var(--text-muted)' }}>{stripReads(benchTrades) === 'failed' ? 'the bench could not be read' : `${needsHeadWords(gcNeedsNow)} · ${NEEDS_RULE}`}</span>
-                {tradeFilter && (
-                  <button type="button" onClick={() => setTradeFilter(null)} style={{ marginLeft: 'auto', font: 'inherit', fontSize: '0.75rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
-                    All subs
-                  </button>
-                )}
-              </div>
-              {gcNeedsNow.rows.map((need, i) => {
-                const heading = gcNeedsNow.rows[i - 1]?.why !== need.why ? NEEDS_GROUP_WORDS[need.why] : null
-                const on = (tradeFilter ?? '').trim().toLowerCase() === need.trade.trim().toLowerCase()
-                const deep = need.why === 'bench' && need.benchShort === 0
-                const best = bestDoor(need)
-                const door = (primary: boolean): CSSProperties => ({
-                  font: 'inherit',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  border: `1px solid ${primary ? '#2563eb' : 'var(--border)'}`,
-                  background: primary ? '#2563eb' : 'var(--surface)',
-                  color: primary ? 'white' : 'var(--text-700)',
-                  borderRadius: 6,
-                  padding: '0.2rem 0.55rem',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  textDecoration: 'none',
-                })
-                return (
-                  <div key={need.trade}>
-                    {heading && <div style={{ fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '0.5rem 0 0.15rem' }}>{heading}</div>}
-                    <div className="gcNeedRow" aria-current={on ? 'true' : undefined} style={{ background: on ? 'var(--bg-blue-200)' : i % 2 ? 'var(--bg-subtle)' : 'transparent', color: deep ? 'var(--text-muted)' : 'var(--text-strong)' }}>
-                      <span style={{ fontWeight: 700 }}>{need.trade}</span>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: 0 }}>
-                        {need.asks.map((ask) => {
-                          const quotes = quotesWords(ask)
-                          const due = dueWords(ask.bidDue, ask.daysLeft)
-                          return (
-                            <span key={ask.projectId}>
-                              <Link to={gcProjectHref(ask.projectId)} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
-                                {ask.projectName}
-                              </Link>{' '}
-                              · <span style={{ color: NEED_TONE_COLOR[quotes.tone], fontWeight: quotes.tone === 'quiet' ? 400 : 600 }}>{quotes.text}</span> ·{' '}
-                              <span style={{ color: NEED_TONE_COLOR[due.tone], fontWeight: due.tone === 'quiet' ? 400 : 600 }}>{due.text}</span>
-                            </span>
-                          )
-                        })}
-                        <span style={{ color: deep ? 'var(--text-muted)' : 'var(--text-600)' }}>{benchLineParts(need).join(' · ')}</span>
-                      </div>
-                      <div className="gcNeedDoors">
-                        {need.asks.length > 0 && need.unasked > 0 && (
-                          <Link to={tradePartnersHref(need.trade)} style={door(best === 'ask')}>
-                            Ask them →
-                          </Link>
-                        )}
-                        {need.toCall > 0 && (
-                          <button type="button" aria-pressed={on} onClick={() => setTradeFilter(on ? null : need.trade)} style={door(best === 'call' && !on)}>
-                            {on ? 'All subs' : `Call for ${need.trade}`}
-                          </button>
-                        )}
-                        <button type="button" onClick={() => openAddSub(need.trade)} style={door(best === 'add')}>
-                          Add a sub
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-              {gcNeedsNow.book.length > 0 && (
-                <>
-                  <div style={{ fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '0.5rem 0 0.15rem' }}>
-                    {NEEDS_GROUP_WORDS.book} <span style={{ textTransform: 'none', letterSpacing: 0 }}>· the scope book's trades</span>
-                  </div>
-                  <div role="group" aria-label="Trades nobody does yet" style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.2rem 0.5rem 0.3rem' }}>
-                    {gcNeedsNow.book.map((t) => {
-                      const on = t.toCall > 0 && (tradeFilter ?? '').trim().toLowerCase() === t.trade.trim().toLowerCase()
-                      return (
-                        <button
-                          key={t.trade}
-                          type="button"
-                          aria-pressed={t.toCall > 0 ? on : undefined}
-                          onClick={() => (t.toCall > 0 ? setTradeFilter(on ? null : t.trade) : openAddSub(t.trade))}
-                          title={t.toCall > 0 ? `${t.toCall} to call here: press to call for ${t.trade} alone` : `Add a sub that does ${t.trade}`}
-                          style={{ font: 'inherit', fontSize: '0.8125rem', border: `1px solid ${on ? '#3b82f6' : 'var(--border)'}`, background: on ? 'var(--bg-blue-200)' : 'var(--surface)', color: 'var(--text-strong)', borderRadius: 999, padding: '0.1rem 0.6rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                          {bookChipWords(t)} {t.toCall === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>+</span>}
-                        </button>
-                      )
-                    })}
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Press a chip to add a sub for that trade.</span>
-                  </div>
-                </>
-              )}
-            </section>
+            <SubsNeedsPanel needs={gcNeedsNow} benchFailed={stripReads(benchTrades) === 'failed'} tradeFilter={tradeFilter} onTradeFilter={setTradeFilter} onAddSub={openAddSub} />
           )}
           {kind === 'gc_lead' && canAccessFollowUp && stripReads(gcWork) !== 'loading' && (
-            <div
-              role="group"
-              aria-label="GC work in flight"
-              style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.8125rem' }}
-            >
-              <span style={{ fontWeight: 700, color: 'var(--text-700)' }}>GC work in flight</span>
-              {gcWork == null ? (
-                // Only a failed read lands here: the strip draws nothing while loading (v2.5585).
-                <span style={{ color: 'var(--text-muted)' }}>the Project Board could not be read</span>
-              ) : (
-                GC_WORK_LABELS.map((w) => (
-                  <span key={w.key} style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'baseline', border: '1px solid var(--border)', borderRadius: 999, padding: '0.1rem 0.6rem', color: gcWork[w.key] === 0 ? 'var(--text-muted)' : 'var(--text-strong)' }}>
-                    <b>{w.label}</b> {gcWork[w.key]}
-                    {w.key === 'lost' && gcWork.lost > 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>· each owner can come back here</span>}
-                  </span>
-                ))
-              )}
-              <Link to="/gc" style={{ marginLeft: 'auto', color: 'var(--text-link)', fontSize: '0.75rem' }}>
-                from the Project Board
-              </Link>
-              {gcWork != null && (
-                // The honesty under the counts (v2.5785): which projects are bidding and by when, and how many
-                // leads on this deck carry a job with a bid day, so the strip never reads as more than it is.
-                <div style={{ flexBasis: '100%', display: 'flex', flexDirection: 'column', gap: '0.2rem', color: 'var(--text-600)' }}>
-                  <span>
-                    <b style={{ color: 'var(--text-700)' }}>Bidding now:</b>{' '}
-                    {gcBidding.length === 0
-                      ? NOTHING_BIDDING
-                      : gcBidding.map((line, i) => {
-                          const due = biddingDueWords(line)
-                          return (
-                            <span key={line.id}>
-                              {i > 0 && ' · '}
-                              <Link to={gcProjectHref(line.id)} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
-                                {line.name}
-                              </Link>
-                              , <span style={{ color: due.tone === 'red' ? 'var(--text-red-700)' : 'inherit', fontWeight: due.tone === 'red' ? 600 : 400 }}>{due.text}</span>
-                            </span>
-                          )
-                        })}
-                  </span>
-                  <span>
-                    <b style={{ color: 'var(--text-700)' }}>On this deck:</b> {deckBidWords(leadsWithOpenBid(followUpProspects.map((p) => p.id), jobsByProspect), followUpProspects.length)}
-                    {followUpProspects.length > 0 && <span style={{ color: 'var(--text-muted)' }}> · a bid day goes in the lead’s Jobs box</span>}
-                  </span>
-                </div>
-              )}
-            </div>
+            <GcWorkStrip work={gcWork ?? null} bidding={gcBidding} deckIds={followUpProspects.map((p) => p.id)} jobsByProspect={jobsByProspect} />
           )}
           {run && canAccessFollowUp && !followUpLoading && (
             // The run's head (v2.5808): the trade, the project a set of plans is for, and where the caller stands in it.
@@ -3877,7 +3527,7 @@ export default function Prospects() {
                 lastCalls={prospectLastCallMap}
                 callbacks={laneCallbacks}
                 busy={saving}
-                strip={renderSubsStrip(prospectListProspects, calledIds)}
+                strip={subsStrip(prospectListProspects, calledIds)}
                 onCall={(ids, trade, packageId) => navigate(runHref(ids, trade, plansFor, packageId))}
                 onBench={(p) => openBenchModal(p)}
                 onPass={(p) => void passFromBoard(p)}
@@ -3919,7 +3569,36 @@ export default function Prospects() {
             const calledIds = new Set(Object.keys(prospectLastCallMap))
             const nowMs = Date.now()
             // The Subs lane's list (v2.5807): the strip, For, and the lane by trade, not the recency buckets.
-            if (kind === 'sub') return renderSubsList(filtered, calledIds, nowMs)
+            if (kind === 'sub') {
+              return (
+                <SubsLaneList
+                  filtered={filtered}
+                  calledIds={calledIds}
+                  nowMs={nowMs}
+                  answeredIds={answeredProspectIds}
+                  quotedCompanyIds={benchQuoted}
+                  benches={gcBench.benches}
+                  ownTrades={gcBench.ownTrades}
+                  plans={gcPlans}
+                  plansFor={plansFor}
+                  picked={plansPick}
+                  onPick={setPlansFor}
+                  sectionOpen={subsSectionOpen}
+                  onToggleSection={toggleSubsSection}
+                  selectedId={selectedProspectForList?.id ?? null}
+                  lastCalls={prospectLastCallMap}
+                  saving={saving}
+                  kindWords={kindWords}
+                  empty={prospectListEmpty()}
+                  onCall={selectProspectForList}
+                  onBench={openBenchModal}
+                  onEdit={openEditModalForProspect}
+                  onSendBack={handleSendBack}
+                  onDelete={handleDeleteFromList}
+                  onAddSub={openAddSub}
+                />
+              )
+            }
             const sections = groupProspectsForList(filtered, calledIds, nowMs)
             const isTerminal = (k: ListSectionKey) => k === 'converted' || k === 'cant_reach' || k === 'not_a_fit'
             const chipKeys = LIST_SECTION_ORDER.filter((k) => k !== 'cant_reach' && k !== 'not_a_fit')

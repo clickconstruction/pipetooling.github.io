@@ -243,7 +243,9 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and nineteen verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and nineteen since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy, and one hundred and seventeen since v2.7589, whose task place is the Edit window's own update of the place columns on `checklist_items`, or on `checklist_tech_tree_group_tasks` for a task from a roadmap, under the dev's RLS, with the address read from `address_geocodes` and never written, no new role and no new policy;
+The one write path (v2.3722) is one hundred and twenty-one verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-one since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
+one hundred and nineteen since v2.7592, whose photo of the spot is the Edit window's own two writes, the picture into the private `task-spot-photos` bucket under `can_write_task_spot_photo` and the task's `spot_photo_path` under the dev's RLS, the file staged first in the dev's own folder of `dev-seat-staging`, no new role and no new policy;
+one hundred and seventeen since v2.7589, whose task place is the Edit window's own update of the place columns on `checklist_items`, or on `checklist_tech_tree_group_tasks` for a task from a roadmap, under the dev's RLS, with the address read from `address_geocodes` and never written, no new role and no new policy;
 one hundred and fifteen since v2.7584, whose given task is the New task window's own rows on `checklist_items`, its assignee tables, `checklist_instances` and `task_criteria` under the dev's RLS, no new role and no new policy;
 one hundred and thirteen since v2.7515, whose served copies are the Lien window's own `served_at` and `sends` on the filing's row under the dev's RLS, no new role and no new policy;
 one hundred and eleven since v2.7511, whose recorded lien filing is the Lien window's own `job_lien_filings` row and the desk item's mark under the dev's RLS, with its scan staged in the private `dev-seat-staging` bucket a dev reaches only inside their own folder, `docs/migrations/20261117100000_dev_seat_staging_bucket.md`, no new role;
@@ -704,6 +706,9 @@ closed to twins since v2.6396), written by the service role alone — `drive-lin
 
 **The file index** (`file_index`, v2.6319, the words inside the Shared Drive's files;
 closed to twins in v2.6396, `20261102215000`): the office and the estimators read it through `file_index_select`, `(SELECT is_office_or_estimator()) AND NOT (SELECT is_digital_twin())`, and `search_file_index` is SECURITY INVOKER, so the policy decides.
+Since v2.7645 (punch list #377) a signed job contract is filed in its job's Drive folder, so an estimator, who cannot read `job_contracts`, reads a filed contract through this index, Find a file and the jobs Shared Drive.
+The owner settled that on 2026-11-17 as the card's call 1.
+The table `job_contracts` itself stays the four office roles'.
 A subcontractor, helper, primary or superintendent reads nothing, a digital twin reads nothing though it is an estimator, and anon is refused.
 Only the service role writes (`drive-link`'s `index` and `index_job`, the `file-index-sweep` cron, and since v2.6714 `hr-evidence-drive` and `dev-mcp` through the records pass).
 Since v2.6714 (`20261108200000`, punch list #285) the index also holds the words of the files on a person's HR file and a matter's Evidence tab (`source` `hr_attachment` · `matter_document`): `file_index_select` opens those rows to a dev alone (`source = 'drive' OR is_dev()`), the restrictive `file_index_counsel_only_seat` refused the dev seat a counsel-only one until v2.6986, when it began to ask `counsel_only_held_from_seat()`, which answers false, and Find a file's two searches read Drive rows alone.
@@ -862,6 +867,11 @@ The Documents tab's *Sent from this job* and the Documents page's **Sent copies*
 *Sent* until v2.6308) show to the office (`canReadSentCopies`);
 `primary` and `estimator` open both places without them.
 Pay stubs are never filed here.
+
+**Agreements** (v2.7617, the Documents page's **Agreements** tab over the `agreements_on_file` view, punch list #376): the tab shows to the office (`canSeeAgreements`: dev · master · assistant · controller).
+The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
+No policy changed for it, and nobody reads a paper through it that they could not read before.
+`estimator`, `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
 
 **Hours statements** (v2.6097, `20261030030000_hours_statements.sql`, punch list #212): `hours_statements` — **read / insert / update / delete** through `can_touch_hours_statement(with_pay)`: a dev or the controller (`is_dev() OR is_controller()`, since v2.6450's `20261103063000_hours_statement_payroll_roles.sql` — the paper is payroll data, Diane's call of 2026-11-02;
 until then a pay-approved master took any row and an assistant one with the pay left off) for any row, and no one else;
@@ -1159,6 +1169,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - **`trip_save(p, p_dry_run)`** is the one write door, SECURITY INVOKER, so the policies above decide who: a trip saved whole (its fields, its people, its jobs) or not at all, and a dry run that writes nothing.
   It touches the trip's own three tables and no other: no clock row, bill or cost.
 - The read-only blocks, the twin fence and the archived seal stand on all four tables.
+- **The Trips look** (v2.7661) is drawn for the Development page's office door alone, the same five roles, so whoever sees the look reads its rows.
+  An estimator's page has no Trips look and no door to a first trip, and the page never asks for a trip on that door.
 
 ### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
 
@@ -3035,7 +3047,7 @@ Imitate lands on `roleHomePath(role)`.
 | **Money in** bar under the Financials cards (punch list #191, v2.5955, [`DashboardMoneyInStrip`](../src/components/DashboardMoneyInStrip.tsx)): the cards' own gate (`showFinancials`; the assistant column includes controller); its reads are RPCs and tables these roles already read (`list_unlinked_payments_for_bank_payments`, `list_mercury_transactions_for_bank_payments`, `list_ar_return_cases`, `mercury_transactions` SELECT via `is_assistant()`), plus the edge function `get-stripe-payouts`, whose own gate admits dev · master_technician · assistant · controller — not Banking's `is_banking_staff()`; a chip's Banking door shows only to `canAccessBanking` roles | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **My Bids** (Dashboard collapsible; **My Bids (`n`)** after load) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | Rejected clock sessions (org-wide, review/delete; the Dashboard notice is the pay-approved owner's too since v2.6758, punch list #188 row 33) | ✅ | ✅ If Pay Approved | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Help feedback inbox** on the Teams inbox card and the Checklist review inboxes (`useHelpFeedbackInbox`; the owner or a dev since v2.6758, punch list #188 row 34; `help_feedback` SELECT and UPDATE for `is_master_or_dev()`, `20261109003000_dev_gates_dashboard_checklist.sql`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Notes to the dev inbox** (Help feedback until v2.7658; it also lists the wrench's notes, punch list #380) on the Teams inbox card and the Checklist review inboxes (`useHelpFeedbackInbox`; the owner or a dev since v2.6758, punch list #188 row 34; `help_feedback` SELECT and UPDATE for `is_master_or_dev()`, `20261109003000_dev_gates_dashboard_checklist.sql`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **My inbox → Forward** and **Recently completed**, and Checklist → Today's **Forward** and **Upcoming** (office work since v2.6758, punch list #188 row 35, `isOfficeRole`; a dev's alone before) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 **Header vs Dashboard inbox**: **Subcontractor** and **helpers** share the **header** buttons with office roles via [`headerTaskDispatchEstimatorEligible.ts`](../src/lib/headerTaskDispatchEstimatorEligible.ts) but they **do not** see Dashboard inbox cards unless they have a row in **`dispatch_group_members`** / **`estimator_group_members`** (unusual).
@@ -3790,6 +3802,7 @@ the firm's portal (PR 3) reads them through the service role.
 the portal still serves it to a firm only once released.
 The desk's *Probably a subcontract* note (v2.5840, punch list #166) writes `jobs_ledger` through the same four roles' existing update policy: **Set the GC** sets `gc_customer_id` and lets the `jobs_ledger_customer_gc_distinct` trigger clear the customer slot;
 **Ours with the owner** stamps `owner_contract_confirmed_at / _by` (migration `20261025130000`).
+Since v2.7683 **Read** on a matter's text document carries copy presses (**Copy the letter**, a piece by its heading and **Copy everything as text**, over `src/lib/legal/letterCopyText.ts`) for whoever reads the row, the same four roles, with no new permission and no edit right needed, and a counsel-only paper has none.
 
 | Act | Who | Entry point |
 |---|---|---|

@@ -26,7 +26,7 @@ Want it gone for a while? Click the **>** at the bar's right edge. The bar colla
 | --- | --- |
 | Notifications | Financial cards and alerts at the top |
 | ClockedIn | Team clock activity strip |
-| Teams Inbox | The **Teams Inbox** card. Help feedback, Dispatch and Estimator inboxes grouped together |
+| Teams Inbox | The **Teams Inbox** card. Notes to the dev, Dispatch and Estimator inboxes grouped together |
 | My Inbox | My Inbox card. Due Today, Overdue and Recently Completed Tasks |
 | My Schedule | My Schedule card. Today and tomorrow blocks |
 | Bids | My Bids |

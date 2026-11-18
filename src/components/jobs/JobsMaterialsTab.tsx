@@ -64,6 +64,7 @@ import OnSiteMoveJobModal from '../materials/OnSiteMoveJobModal'
 import { canMoveOnSite, MOVE_JOB_LABEL, MOVE_JOB_WHO, type MoveJobChoice } from '../../lib/materials/onSiteMoveJob'
 import { canMintStickers, PRINT_STICKERS_LABEL, STICKER_MINT_WHO } from '../../lib/materials/stickerRun'
 import { BoxWindow } from '../materials/BoxTabs'
+import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { WHERE_IS_IT_PRESS, whereIsBoxTitle } from '../../lib/materials/whereIsBox'
 import { PLACE_WAY_OPEN_PRESS, PLACE_WAY_PAINT_PRESS, PLACE_WAY_TAKE_OFF_PRESS } from '../../lib/materials/placeWay'
 import { openPlaceWay, paintPlaceWay, takeOffPlaceWay } from '../materials/placeWayPaint'
@@ -508,6 +509,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [landing, setLanding] = useState(false)
   const confirmDialog = useConfirmDialog()
   const { showActionToast } = useToastContext()
+  // Send someone to it (punch list #372, step 5): the New task window, where the app has one mounted.
+  const addTask = useChecklistAddModal()
   /**
    * Retire every box on this job (v2.7303, the owner's ask of 2026-11-14): the empty boxes go, each box with parts stays
    * with its reason, the press keeps going past a box that fails, and the toast carries Undo for a minute as the phone's
@@ -1155,7 +1158,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       {moveOpen ? <OnSiteMoveJobModal sourceJobId={jobId} jobs={moveJobs} siteOfJob={siteOfJob} role={role} onClose={() => setMoveOpen(false)} onMoved={(_from, _to, words) => { showToast(words, 'success'); /* The runs fold and the sticker numbers keep their own reads (v2.7329): the run went with the boxes. */ setRunsKey((k) => k + 1) }} /> : null}
       {onBoxesOpen ? <StickersOnBoxes jobId={jobId} jobLabel={jobLabel(job, jobId)} places={places} initialNames={onBoxesOpen.initial} onClose={() => setOnBoxesOpen(null)} onPlaced={(_answer, outcome) => { showToast(onBoxesToast(outcome), outcome.tone === 'success' ? 'success' : 'warning'); /* The new boxes, the fold's counts and the names beside each box are read again. */ void loadJob(jobId, { force: true }); setRunsKey((k) => k + 1) }} /> : null}
       {stickersOpen ? <PrintStickersModal jobId={jobId} jobLabel={jobLabel(job, jobId)} role={role} run={stickersOpen.run} onClose={() => setStickersOpen(null)} onMinted={() => setRunsKey((k) => k + 1)} onPrinted={() => setRunsKey((k) => k + 1)} /> : null}
-      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow key={`${box.id}:${whereBoxId === box.id ? 'where' : 'cage'}`} container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} where={{ jobCenter, jobAddress: addr, photos, painted: painted.maps, onOpenWay: (id) => { setEditingBoxId(null); setWhereBoxId(null); openPaintedMap(id, addr || null) } }} startTab={whereBoxId === box.id ? 'where' : 'cage'} onClose={() => { setEditingBoxId(null); setWhereBoxId(null) }} onSaved={(words) => { setEditingBoxId(null); setWhereBoxId(null); showToast(words, 'success') }} /> : null })()}
+      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow key={`${box.id}:${whereBoxId === box.id ? 'where' : 'cage'}`} container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} where={{ jobCenter, jobAddress: addr, photos, painted: painted.maps, onOpenWay: (id) => { setEditingBoxId(null); setWhereBoxId(null); openPaintedMap(id, addr || null) }, onSendSomeone: addTask ? (task) => { setEditingBoxId(null); setWhereBoxId(null); addTask.openAddModal({ preset: task }) } : undefined }} startTab={whereBoxId === box.id ? 'where' : 'cage'} onClose={() => { setEditingBoxId(null); setWhereBoxId(null) }} onSaved={(words) => { setEditingBoxId(null); setWhereBoxId(null); showToast(words, 'success') }} /> : null })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}
     </div>
   )

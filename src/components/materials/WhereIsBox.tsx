@@ -24,10 +24,13 @@ import {
   WHERE_MOVE_PIN_PRESS,
   WHERE_PRIVACY_WORDS,
   WHERE_SAME_PLACE_PRESS,
+  WHERE_SEND_SOMEONE_PRESS,
   WHERE_SHOW_ME_PRESS,
   WHERE_SITE_DIRECTIONS_PRESS,
   WHERE_TRY_AGAIN_PRESS,
   boxIsPinned,
+  findBoxTask,
+  type FindBoxTask,
   foundNoFixWords,
   foundVerdict,
   lastPutOf,
@@ -42,7 +45,7 @@ import {
   whereNoPinWords,
 } from '../../lib/materials/whereIsBox'
 import { BoxPhotos } from './PhotoPress'
-import { PLACE_WAY_OPEN_PRESS, placeWaySentence } from '../../lib/materials/placeWay'
+import { PLACE_WAY_OPEN_PRESS, placeWayName, placeWaySentence } from '../../lib/materials/placeWay'
 import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 
 const OnSiteMapLazy = lazy(() => import('./OnSiteMap'))
@@ -76,12 +79,17 @@ type Props = {
   onMoveBox: () => void
   /** Opens the painted way to the box's place (v2.7581). A host with a sheet of its own closes it first; by default the map opens over this one. */
   onOpenWay?: (mapId: string) => void
+  /**
+   * Send someone to it (v2.7582): the host opens the New task window on this, *Find A7* with the pin as the task's
+   * place and the place's way as its map. With no host for it the press is not drawn.
+   */
+  onSendSomeone?: (task: FindBoxTask) => void
   /** Thumb-sized presses, for the phone. */
   touch?: boolean
   now?: Date
 }
 
-export default function WhereIsBox({ container, containers, places, moves, movements, photos, jobCenter, jobAddress, painted, byName, onMoveBox, onOpenWay, touch = false, now }: Props) {
+export default function WhereIsBox({ container, containers, places, moves, movements, photos, jobCenter, jobAddress, painted, byName, onMoveBox, onOpenWay, onSendSomeone, touch = false, now }: Props) {
   const today = useMemo(() => now ?? new Date(), [now])
   const h = touch ? 48 : 40
   const btn: CSSProperties = { minHeight: h, padding: '0 0.9rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.95rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: '100%' }
@@ -198,6 +206,11 @@ export default function WhereIsBox({ container, containers, places, moves, movem
   // The way to the box's place, painted once by someone who knows the site (v2.7581): it knows the gate and the fence.
   const place = places.find((p) => p.id === container.locationId) ?? null
   const wayId = place?.wayMapId ?? null
+  // The way's name as its painter left it, when the job's maps are read; else the name it was made with.
+  const sendSomeone = onSendSomeone
+    ? () => onSendSomeone(findBoxTask({ box: container, places, way: place && wayId ? { id: wayId, name: painted?.find((m) => m.id === wayId)?.name ?? placeWayName(place.name) } : null }))
+    : null
+  const sendPress = sendSomeone && !placing ? <button type="button" style={btn} onClick={sendSomeone}>{WHERE_SEND_SOMEONE_PRESS}</button> : null
 
   return (
     <div style={{ display: 'grid', gap: '0.75rem' }} data-testid="where-is-box">
@@ -275,6 +288,7 @@ export default function WhereIsBox({ container, containers, places, moves, movem
             {foundPress(showMe && !found)}
           </div>
           {showMe ? <p style={muted}>{WHERE_PRIVACY_WORDS}</p> : null}
+          {sendPress}
           <button type="button" style={quiet} onClick={startPlacing}>{WHERE_MOVE_PIN_PRESS}</button>
         </>
       ) : (
@@ -282,6 +296,7 @@ export default function WhereIsBox({ container, containers, places, moves, movem
           <p style={waitBox}>{whereNoPinWords(label)}</p>
           {foundPress(true)}
           {directionsPress}
+          {sendPress}
           <button type="button" style={quiet} onClick={startPlacing}>{WHERE_MOVE_PIN_PRESS}</button>
         </>
       )}

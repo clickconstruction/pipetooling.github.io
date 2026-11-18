@@ -47,6 +47,8 @@ On a phone, tap the count. The card opens as a sheet under the counts.
 
 A strip under the counts names six looks: History, Jobs & bids, Money, Plans, Questions and Photos. Each look shows its count and what in it waits on you.
 
+A site far from the shop, or a site with a trip, has a seventh look named Trips. The guide [keep a trip to a site away from home](/help/keep-a-trip-to-a-far-site) covers it.
+
 1. Press a look's name to jump to it.
 2. Press the chevron on a look's card to fold it. The page remembers your folds on this device.
 

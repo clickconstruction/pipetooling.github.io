@@ -1,5 +1,7 @@
 import { parsePoGeneratorCodeFromPurchaseOrderName } from '../parsePoGeneratorCodeFromPurchaseOrderName'
 import { calendarYmdInAppTzFromIso, startOfYmdInAppTzMs } from '../../utils/dateUtils'
+import { DEFAULT_JOB_LEDGER_PREFIX, effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { nextMonthlyPaymentDueYmd } from '../supplyHouseAging'
 
 /**
  * Pure logic behind the Materials → Supply Houses Add / Edit Invoice form
@@ -51,6 +53,39 @@ export type PoLedgerEntriesByCode = ReadonlyMap<number, PoLedgerEntry>
 /** The codes alone, for the checks that only need to know whether a code exists. */
 export function poLedgerCodes(entries: PoLedgerEntriesByCode | null): ReadonlySet<number> | null {
   return entries == null ? null : new Set(entries.keys())
+}
+
+/** A `material_po_generator_entries` row with its job and its two people, as the house's detail read selects it. */
+export type PoGeneratorLedgerRow = {
+  po_code: number | string
+  notes: string | null
+  created_at: string | null
+  job_ledger_id: string | null
+  jobs_ledger: { hcp_number: string | null; click_number: string | null; job_name: string | null } | null
+  for_user: { name: string | null; email: string | null } | null
+  created_by_user: { name: string | null; email: string | null } | null
+}
+
+/**
+ * The house's ledger rows by code (lifted out of the tab's detail loader, where it had no test). A row with no job
+ * or no number reads `—`; the person is their name, else their email, else `—`; a later row for the same code wins.
+ */
+export function poLedgerEntriesFromRows(rows: ReadonlyArray<PoGeneratorLedgerRow>): Map<number, PoLedgerEntry> {
+  const byCode = new Map<number, PoLedgerEntry>()
+  for (const r of rows) {
+    const code = Number(r.po_code)
+    const jl = r.jobs_ledger
+    byCode.set(code, {
+      code,
+      jobLabel: `${DEFAULT_JOB_LEDGER_PREFIX}${effectiveJobLedgerNumber(jl?.hcp_number, jl?.click_number) || '—'} · ${jl?.job_name?.trim() || '—'}`,
+      jobLedgerId: r.job_ledger_id ?? null,
+      personName: r.for_user?.name?.trim() || r.for_user?.email?.trim() || '—',
+      createdAt: r.created_at,
+      createdBy: r.created_by_user?.name?.trim() || r.created_by_user?.email?.trim() || null,
+      statedNeed: r.notes,
+    })
+  }
+  return byCode
 }
 
 export type PoLedgerEntryCard = {
@@ -279,6 +314,13 @@ function round1(n: number): number {
 }
 
 /** Even split across n jobs; the last one absorbs the rounding remainder so the total is exactly 100. */
+/** `supply_house_invoice_job_allocations` rows by invoice, each share a number (the column comes back as text or a number). */
+export function groupAllocationsByInvoice(rows: ReadonlyArray<{ invoice_id: string; job_id: string; pct: number | string }>): Record<string, InvoiceJobAllocation[]> {
+  const byInvoice: Record<string, InvoiceJobAllocation[]> = {}
+  for (const a of rows) (byInvoice[a.invoice_id] ??= []).push({ job_id: a.job_id, pct: Number(a.pct) })
+  return byInvoice
+}
+
 function evenSplit(jobIds: string[]): InvoiceJobAllocation[] {
   const n = jobIds.length
   if (n === 0) return []
@@ -498,4 +540,90 @@ export function creditsInvoicePatch(kind: SupplyDocumentKind, choice: string, be
   const next = kind === 'credit' ? choice || null : null
   const prior = before?.credits_invoice_id ?? null
   return next === prior ? {} : { credits_invoice_id: next }
+}
+
+// ---------- The form's fields ----------
+
+/** The Add / Edit invoice form's fields, as the form holds them: the boxes' text, never the stored row. */
+export type InvoiceFormValues = {
+  number: string
+  dateYmd: string
+  dueDateYmd: string
+  /** The amount box's positive digits; the kind applies the sign at Save. */
+  amountTyped: string
+  kind: SupplyDocumentKind
+  isInterest: boolean
+  /** The bill that ran late, '' for none. */
+  lateInvoiceId: string
+  /** The invoice a credit credits, '' for none. */
+  creditsInvoiceId: string
+  link: string
+  isPaid: boolean
+  /** The Paid on day, '' to let the database stamp now. */
+  paidOnYmd: string
+  onJobAccount: boolean
+  purchaseOrderNumber: string
+  allocations: InvoiceJobAllocation[]
+}
+
+/** A new bill's form: dated today, due on the house's next pay day when the house has one, everything else blank. */
+export function blankInvoiceForm(monthlyPaymentDay: number | null | undefined, todayYmd: string): InvoiceFormValues {
+  return {
+    number: '',
+    dateYmd: todayYmd,
+    dueDateYmd: monthlyPaymentDay ? nextMonthlyPaymentDueYmd(monthlyPaymentDay, todayYmd) : '',
+    amountTyped: '',
+    kind: 'invoice',
+    isInterest: false,
+    lateInvoiceId: '',
+    creditsInvoiceId: '',
+    link: '',
+    isPaid: false,
+    paidOnYmd: '',
+    onJobAccount: false,
+    purchaseOrderNumber: '',
+    allocations: [],
+  }
+}
+
+/** A stored row as the form's fields: the amount unsigned, the kind from the row, the Paid on day only on a paid row. */
+export function invoiceFormFromRow(row: {
+  invoice_number: string
+  invoice_date: string
+  due_date: string | null
+  amount: number | null
+  document_kind?: string | null
+  credits_invoice_id?: string | null
+  link: string | null
+  is_paid: boolean
+  is_interest?: boolean | null
+  late_invoice_id?: string | null
+  paid_at?: string | null
+  on_job_account?: boolean | null
+  purchase_order_number: string | null
+  job_allocations?: InvoiceJobAllocation[]
+}): InvoiceFormValues {
+  return {
+    number: row.invoice_number,
+    dateYmd: row.invoice_date,
+    dueDateYmd: row.due_date ?? '',
+    amountTyped: typedAmountFromStored(row.amount),
+    kind: documentKindFromRow(row),
+    isInterest: row.is_interest === true,
+    lateInvoiceId: row.late_invoice_id ?? '',
+    creditsInvoiceId: row.credits_invoice_id ?? '',
+    link: row.link ?? '',
+    isPaid: row.is_paid,
+    paidOnYmd: row.is_paid ? paidOnYmdFromIso(row.paid_at) : '',
+    // === true: a row fetched before the column existed reads as undefined.
+    onJobAccount: row.on_job_account === true,
+    purchaseOrderNumber: row.purchase_order_number ?? '',
+    allocations: row.job_allocations ?? [],
+  }
+}
+
+/** The amount box's text as cents, for the check of a bill's lines against it: digits and the point only, 0 when it is not a number. */
+export function typedAmountCents(typed: string): number {
+  const amount = Number(typed.replace(/[^0-9.]/g, ''))
+  return Number.isFinite(amount) ? Math.round(amount * 100) : 0
 }

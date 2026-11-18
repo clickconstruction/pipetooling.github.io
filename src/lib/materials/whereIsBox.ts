@@ -15,7 +15,7 @@
  */
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, todayYmdInAppTz, ymdDaysBetween } from '../../utils/dateUtils'
 import { haversineMeters } from '../jobTravelEstimate'
-import { TASK_PLACE_HERE_METERS, TASK_PLACE_POOR_FIX_METERS, isPoorTaskPlaceFix, taskPlaceAccuracyWords, taskPlaceDirection, taskPlaceDistanceWords } from '../tasks/taskPlace'
+import { TASK_PLACE_HERE_METERS, TASK_PLACE_POOR_FIX_METERS, cleanTaskPlaceName, isPoorTaskPlaceFix, taskPlaceAccuracyWords, taskPlaceDirection, taskPlaceDistanceWords, type TaskPlaceDraft } from '../tasks/taskPlace'
 import { lastCountedAt, type Container, type ContainerMove, type Movement, type Place } from './onSite'
 
 /** The press on a box, and the sheet's own presses, each by its exact name. */
@@ -27,6 +27,7 @@ export const WHERE_SITE_DIRECTIONS_PRESS = 'Directions to the site'
 export const WHERE_MOVE_PIN_PRESS = 'Move the pin by hand'
 export const WHERE_TRY_AGAIN_PRESS = 'Try again'
 export const WHERE_SAME_PLACE_PRESS = 'Yes, same place'
+export const WHERE_SEND_SOMEONE_PRESS = 'Send someone to it'
 /** Said under Show where I am: the reader's dot is drawn on this phone and sent nowhere. */
 export const WHERE_PRIVACY_WORDS = 'Your location stays on this phone. The dot moves while this sheet is open and the screen is on.'
 
@@ -272,4 +273,32 @@ export function whereMapPins(box: WhereBox, containers: ReadonlyArray<Container>
   }
   if (boxIsPinned(box)) out.push({ id: box.id, label: box.label, lat: box.lat, lng: box.lng, tone: boxPinIsOld(box, now) ? 'target-old' : 'target' })
   return out
+}
+
+/** What the New task window opens with when a box's sheet sends someone to it (punch list #372, step 5). */
+export type FindBoxTask = { title: string; links: string[]; place?: TaskPlaceDraft }
+
+/**
+ * Send someone to it: a task, *Find A7*, with the box's pin as the task's place and the way to the box's place as the
+ * place's map. The person given the task reads the place and the map through the task, so they need not be on the
+ * job's crew: a task may point at a map its giver can open (v2.7340), and the giver reads the box's job. A box nobody
+ * pinned still makes a task, with its words and no dot.
+ */
+export function findBoxTask(input: { box: WhereBox; places: ReadonlyArray<Place>; /** The way to the box's place, when it has one the giver can name. */ way?: { id: string; name: string } | null }): FindBoxTask {
+  const { box, places, way } = input
+  const place = places.find((p) => p.id === box.locationId)?.name ?? null
+  const where = box.where.trim().replace(/[.\s]+$/, '')
+  const title = place ? `Find ${box.label} at ${place}${where ? `, ${where}` : ''}` : where ? `Find ${box.label}, ${where}` : `Find ${box.label}`
+  if (!boxIsPinned(box)) return { title, links: [] }
+  return {
+    title,
+    links: [],
+    place: {
+      lat: box.lat,
+      lng: box.lng,
+      name: cleanTaskPlaceName(place ? `${box.label} at ${place}` : box.label),
+      accuracyM: typeof box.pinAccuracyM === 'number' ? box.pinAccuracyM : null,
+      ...(way ? { mapId: way.id, mapName: way.name } : {}),
+    },
+  }
 }

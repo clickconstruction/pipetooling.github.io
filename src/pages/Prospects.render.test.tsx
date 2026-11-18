@@ -32,6 +32,8 @@ const world = vi.hoisted(() => ({
   /** The GC board's read: null refuses it (the lanes then draw without their strips). */
   gcBoard: null as null | Record<string, unknown>,
   gcProjects: [] as Array<Record<string, unknown>>,
+  /** The Project Board's read fails (the Jobs to GC strip says so). */
+  gcProjectsRefused: false,
   nextId: 1,
 }))
 
@@ -163,7 +165,10 @@ vi.mock('../lib/gc/gcIo', async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>()
   return {
     ...real,
-    loadGcProjects: async () => world.gcProjects,
+    loadGcProjects: async () => {
+      if (world.gcProjectsRefused) throw new Error('refused')
+      return world.gcProjects
+    },
     loadGcBoardRows: async () => {
       if (!world.gcBoard) throw new Error('refused')
       return world.gcBoard
@@ -238,6 +243,7 @@ function seed() {
   world.invokes = []
   world.gcBoard = null
   world.gcProjects = []
+  world.gcProjectsRefused = false
   world.nextId = 1
 }
 
@@ -593,6 +599,108 @@ describe('the Subs lane', () => {
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('New Prospect')).toBeTruthy()
     expect((within(dialog).getByPlaceholderText('Concrete, Fire sprinkler') as HTMLInputElement).value).toBe('Masonry')
+  })
+})
+
+/** A GC board the lanes can read: one project out for a bid that buys out Concrete, and one company on the bench. */
+function seedGcBoard() {
+  world.gcProjects = [
+    { id: 'gp-1', name: 'Test Office Shell', stage: 'bidding', bidDue: '2099-12-01', lostOn: null, customerId: null, architectId: null, trades: [{ id: 'pk-1', trade: 'Concrete', ours: false }] },
+  ]
+  world.gcBoard = {
+    today: '2026-11-17',
+    projects: [],
+    boardDates: {},
+    customers: [],
+    companies: [
+      { id: 'co-1', name: 'Lima Concrete', trades: ['Concrete'], contact_name: 'Sam Sample', phone: '555-0150', email: '', address: '', max_miles: null, license: '', lang: 'en', vetting_status: 'approved', vetting_limit: null, vetting_decided_on: null, vetting_decided_by: null, vetting_note: '' },
+    ],
+    invites: [],
+    quotes: [],
+    contacts: [],
+    promises: [],
+    promiseMoves: [],
+  }
+}
+
+describe('the lanes with the GC board read', () => {
+  const pathStrip = () => screen.getByRole('group', { name: 'The path onto the bench' }).textContent ?? ''
+  const needsPanel = () => screen.getByRole('group', { name: 'What GC mode needs right now' })
+
+  it('a refused read still draws the Subs lane, and the panel says so', async () => {
+    await deck('/prospects?tab=follow-up&kind=subs')
+    expect(needsPanel().textContent).toContain('the bench could not be read')
+    expect(pathStrip()).toContain('To call3')
+  })
+
+  it('the needs panel lists a trade short on the bench, and Call for it filters the deck', async () => {
+    seedGcBoard()
+    await deck('/prospects?tab=follow-up&kind=subs')
+    const panel = needsPanel()
+    await waitFor(() => expect(panel.textContent).toContain('1 on the bench · wants 2 more · 2 to call here'))
+    fireEvent.click(within(panel).getByRole('button', { name: 'Call for Concrete' }))
+    await waitFor(() => expect(where()).toBe('/prospects?tab=follow-up&kind=subs&trade=Concrete'))
+    await waitFor(() => expect(screen.getByText('1 of 2')).toBeTruthy())
+    const all = within(needsPanel()).getAllByRole('button', { name: 'All subs' })
+    expect(all.length).toBe(2)
+    fireEvent.click(all[0] as HTMLElement)
+    await waitFor(() => expect(where()).toBe('/prospects?tab=follow-up&kind=subs'))
+  })
+
+  it('Add a sub on a need opens New Prospect as a sub with that trade', async () => {
+    seedGcBoard()
+    await deck('/prospects?tab=follow-up&kind=subs')
+    await waitFor(() => expect(needsPanel().textContent).toContain('wants 2 more'))
+    fireEvent.click(within(needsPanel()).getByRole('button', { name: 'Add a sub' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('radio', { name: /A sub/ }).getAttribute('aria-checked')).toBe('true')
+    expect((within(dialog).getByPlaceholderText('Concrete, Fire sprinkler') as HTMLInputElement).value).toBe('Concrete')
+  })
+
+  it('a book chip with subs to call filters the deck, and one with none opens Add a sub', async () => {
+    await deck('/prospects?tab=follow-up&kind=subs')
+    const chips = screen.getByRole('group', { name: 'Trades nobody does yet' })
+    fireEvent.click(within(chips).getByRole('button', { name: /^Framing · 1 to call/ }))
+    await waitFor(() => expect(onCard()).toContain('India Framing'))
+    expect(where()).toBe('/prospects?tab=follow-up&kind=subs&trade=Framing')
+    fireEvent.click(within(screen.getByRole('group', { name: 'Trades nobody does yet' })).getByRole('button', { name: /^Sitework/ }))
+    const dialog = await screen.findByRole('dialog')
+    expect((within(dialog).getByPlaceholderText('Concrete, Fire sprinkler') as HTMLInputElement).value).toBe('Sitework')
+  })
+
+  it('the path strip counts a company as called once its call is logged', async () => {
+    await deck('/prospects?tab=follow-up&kind=subs')
+    expect(pathStrip()).toContain('To call3')
+    press('Didn\'t Answer')
+    await waitFor(() => expect(pathStrip()).toContain('To call2'))
+    expect(pathStrip()).toContain('Called1')
+  })
+
+  it('the list’s For picker names the project, lights its trades and carries it in the address', async () => {
+    seedGcBoard()
+    open('/prospects?tab=prospect-list&kind=subs')
+    const picker = await screen.findByRole('group', { name: /^For/ })
+    expect(picker.textContent).toContain('Pick the project a set of plans is for')
+    fireEvent.change(within(picker).getByRole('combobox'), { target: { value: 'gp-1' } })
+    await waitFor(() => expect(where()).toBe('/prospects?tab=prospect-list&kind=subs&for=gp-1'))
+    expect(screen.getByRole('group', { name: /^For/ }).textContent).toContain('needs Concrete')
+    expect(screen.getByText('Concrete ★ (2)')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Call for Concrete →' }).getAttribute('href')).toContain('for=gp-1')
+  })
+
+  it('the work strip counts the projects in flight and names the one bidding', async () => {
+    seedGcBoard()
+    await deck('/prospects?tab=follow-up&kind=gc-leads')
+    const strip = screen.getByRole('group', { name: 'GC work in flight' })
+    await waitFor(() => expect(strip.textContent).toContain('Bidding 1'))
+    expect(within(strip).getByRole('link', { name: 'Test Office Shell' }).getAttribute('href')).toContain('gp-1')
+    expect(strip.textContent).toContain('On this deck: 0 of 2 leads carry a job with a bid day')
+  })
+
+  it('a refused read of the Project Board says so on the work strip', async () => {
+    world.gcProjectsRefused = true
+    await deck('/prospects?tab=follow-up&kind=gc-leads')
+    expect(screen.getByRole('group', { name: 'GC work in flight' }).textContent).toContain('the Project Board could not be read')
   })
 })
 

@@ -1,7 +1,8 @@
 /**
  * The Contract window's signed rail (v2.4183): who signed, when and how, the record's facts, then
- * the doors in three rows — Share (the customer's page to copy or text, a copy by email), Keep
- * (the PDF, the uploaded copy, print, the filed document) and Later (a new agreement, the job, the
+ * the doors in rows — Share (the customer's page to copy or text, a copy by email), Keep
+ * (the PDF, the uploaded copy, print, the filed document), Drive (where the paper's copy in Google
+ * Drive is, punch list #377) and Later (a new agreement, the job, the
  * estimate the acceptance lives on) — and the last copy that went out. The Signed agreement view
  * (v2.2709) folded into the window; the acts are the same ones (share-job-contract for the copy
  * and the PDF, the job's activity ledger for the last share). Owns its own I/O; the window owns
@@ -23,6 +24,7 @@ import { acceptedEstimateOptionKeys, describeAcceptedEstimateRecord } from '../.
 import { buildJobContractRecordHtml, type JobContractRecordJob } from './JobContractRecordModal'
 import JobContractShareSheet, { type ShareTarget } from './JobContractShareSheet'
 import { RailGroup } from './ContractRailGroup'
+import ContractDriveBlock from './ContractDriveBlock'
 import { signerNamesLine } from '../../lib/jobs/jobContractSigners'
 import { ContractTextDoor } from './ContractTextDoor'
 import { contractSignedTextWords } from '../../lib/jobs/contractTextDoor'
@@ -45,6 +47,8 @@ export type JobContractSignedRailProps = {
   /** Set while a history row is shown instead of the current agreement. */
   onBack: (() => void) | null
   onClose: () => void
+  /** After the record itself changed from the rail (a scan added to it), so the window reads its rows again. */
+  onRowChanged?: () => void
 }
 
 const formatUsd = (cents: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
@@ -70,7 +74,7 @@ const kv: React.CSSProperties = { display: 'grid', gridTemplateColumns: '78px mi
 const k: React.CSSProperties = { color: 'var(--text-muted)' }
 const link: React.CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.78rem', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }
 
-export default function JobContractSignedRail({ job, jobNumber, source, row, estimate, estimateRow, urls, onStartNew, onOpenJob, onBack, onClose }: JobContractSignedRailProps) {
+export default function JobContractSignedRail({ job, jobNumber, source, row, estimate, estimateRow, urls, onStartNew, onOpenJob, onBack, onClose, onRowChanged }: JobContractSignedRailProps) {
   const { showToast } = useToastContext()
   const promptDialog = usePromptDialog()
   const navigate = useNavigate()
@@ -329,6 +333,9 @@ export default function JobContractSignedRail({ job, jobNumber, source, row, est
           ) : null}
         </RailGroup>
       ) : null}
+
+      {/* Punch list #377: where the signed paper's copy in Google Drive is. A signed estimate is not a contract row and has none. */}
+      {isContract && row ? <ContractDriveBlock row={row} jobId={job.id} onClose={onClose} onRowChanged={onRowChanged} /> : null}
 
       {onStartNew || onOpenJob || doors.openEstimate ? (
         <RailGroup label="Later">

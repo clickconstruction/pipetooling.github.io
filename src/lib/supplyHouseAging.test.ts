@@ -12,8 +12,12 @@ import {
   invoicesForAgingCell,
   isMovableAgingInvoice,
   movableCandidates,
+  movableWindowRows,
   moveStripSummary,
   nextMonthlyPaymentDueYmd,
+  notNeededInvoiceIds,
+  singleJobPairs,
+  withEmailedAsks,
 } from './supplyHouseAging'
 
 const TODAY = '2026-07-03'
@@ -379,5 +383,64 @@ describe('agingCellModalDoors (punch list #132 PR 4)', () => {
     expect(agingCellModalDoors(null, 'past30_60')).toEqual({ openHouse: false, makePayment: false })
     expect(agingCellModalDoors(null, 'owed')).toEqual({ openHouse: false, makePayment: false })
     expect(agingCellModalDoors(null, 'movable')).toEqual({ openHouse: false, makePayment: false })
+  })
+})
+
+describe('the move window\'s composition', () => {
+  // Made-up charges: all unpaid, positive, due after today unless said.
+  const charge = (id: string, over: { due_date?: string | null; on_job_account?: boolean; amount?: number } = {}) => ({ id, amount: 100, due_date: '2026-07-20', on_job_account: false, ...over })
+  const unpaid = [charge('one'), charge('two'), charge('none'), charge('marked'), charge('late', { due_date: '2026-07-01' }), charge('on', { on_job_account: true }), charge('credit', { amount: -10 })]
+  const allocations = {
+    one: [{ job_id: 'j1' }],
+    two: [{ job_id: 'j1' }, { job_id: 'j2' }],
+    marked: [{ job_id: 'j3' }],
+    late: [{ job_id: 'j1' }],
+    on: [{ job_id: 'j1' }],
+    credit: [{ job_id: 'j1' }],
+  }
+
+  it('keeps a still-current unflagged charge on exactly one job whose account is not marked not needed', () => {
+    expect(movableWindowRows(unpaid, TODAY, { allocations, notNeeded: new Set(['marked']) }).map((r) => r.id)).toEqual(['one'])
+    expect(movableWindowRows(unpaid, TODAY, { allocations, notNeeded: new Set() }).map((r) => r.id)).toEqual(['one', 'marked'])
+  })
+
+  it('agrees with the per-row test the window\'s rows use', () => {
+    const notNeeded = new Set(['marked'])
+    const byRow = unpaid.filter((r) => isMovableAgingInvoice(r, (allocations as Record<string, unknown[]>)[r.id]?.length ?? 0, TODAY, notNeeded.has(r.id) ? 'not_needed' : null)).map((r) => r.id)
+    expect(byRow).toEqual(movableWindowRows(unpaid, TODAY, { allocations, notNeeded }).map((r) => r.id))
+  })
+
+  it('before the jobs have read, nothing is movable', () => {
+    expect(movableWindowRows(unpaid, TODAY, { allocations: {}, notNeeded: new Set() })).toEqual([])
+  })
+
+  it('pairs each single-job invoice with its job and house, the house empty when the invoice is not among the rows', () => {
+    const houseOf = new Map([['one', 'h1'], ['marked', 'h2']])
+    expect(singleJobPairs({ one: [{ job_id: 'j1' }], two: [{ job_id: 'j1' }, { job_id: 'j2' }], marked: [{ job_id: 'j3' }], stray: [{ job_id: 'j9' }], empty: [] }, houseOf)).toEqual([
+      { invoiceId: 'one', jobId: 'j1', houseId: 'h1' },
+      { invoiceId: 'marked', jobId: 'j3', houseId: 'h2' },
+      { invoiceId: 'stray', jobId: 'j9', houseId: '' },
+    ])
+  })
+
+  it('names the invoices whose job and house are both on a not-needed account', () => {
+    const pairs = [
+      { invoiceId: 'a', jobId: 'j1', houseId: 'h1' },
+      { invoiceId: 'b', jobId: 'j1', houseId: 'h2' },
+      { invoiceId: 'c', jobId: 'j2', houseId: 'h1' },
+    ]
+    // The read asks for the jobs and the houses separately, so a (j1, h2) row can come back for a (j1, h1) pair's question.
+    expect([...notNeededInvoiceIds(pairs, [{ job_id: 'j1', supply_house_id: 'h2' }])]).toEqual(['b'])
+    expect(notNeededInvoiceIds(pairs, []).size).toBe(0)
+  })
+
+  it('marks the emailed invoices asked now, and keeps the id of an ask already on record', () => {
+    const before = { a: { id: 'ask-1', invoice_id: 'a', requested_at: '2026-07-01T00:00:00Z', via: 'phone', sent_to: '' } }
+    const after = withEmailedAsks(before, ['a', 'b'], '2026-07-03T15:00:00Z', 'rep@example.test')
+    expect(after).toEqual({
+      a: { id: 'ask-1', invoice_id: 'a', requested_at: '2026-07-03T15:00:00Z', via: 'email', sent_to: 'rep@example.test' },
+      b: { id: 'pending', invoice_id: 'b', requested_at: '2026-07-03T15:00:00Z', via: 'email', sent_to: 'rep@example.test' },
+    })
+    expect(before.a.via).toBe('phone')
   })
 })
