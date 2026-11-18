@@ -818,7 +818,7 @@ export function HeaderGlobalSearchNavLayer() {
           minHeight: HEADER_ROW_MIN_HEIGHT,
           // Mirror .appNav's vertical padding (incl. the iOS safe-area clamp) so the input
           // lands on the header row it replaces instead of centering up into the notch zone.
-          padding: 'max(var(--app-nav-pad-y), env(safe-area-inset-top, 0px)) 0.25rem var(--app-nav-pad-y)',
+          padding: 'max(var(--app-nav-pad-y), var(--app-nav-safe-top, env(safe-area-inset-top, 0px))) 0.25rem var(--app-nav-pad-y)',
           background: ctx.navOverlayBackground,
           boxSizing: 'border-box',
         }}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   impersonationExitDisplayLabel,
+  impersonationExitPlacement,
   impersonationExitTitle,
   impersonationSignedInAsDescription,
 } from './impersonationUiLabels'
@@ -20,6 +21,21 @@ describe('impersonationExitDisplayLabel', () => {
   it('compact form keeps the verb for narrow headers', () => {
     expect(impersonationExitDisplayLabel('Bryan', null, { compact: true })).toBe('Exit (Bryan)')
     expect(impersonationExitDisplayLabel(null, null, { compact: true })).toBe('Exit')
+  })
+})
+
+describe('impersonationExitPlacement', () => {
+  it('is nowhere while nobody is being viewed as, at either width', () => {
+    expect(impersonationExitPlacement(false, true)).toBeNull()
+    expect(impersonationExitPlacement(false, false)).toBeNull()
+  })
+
+  it('is the strip above the header at a phone width (v2.7782)', () => {
+    expect(impersonationExitPlacement(true, true)).toBe('strip')
+  })
+
+  it('stays in the header row at a desk width', () => {
+    expect(impersonationExitPlacement(true, false)).toBe('header')
   })
 })
 

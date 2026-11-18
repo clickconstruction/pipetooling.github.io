@@ -87,7 +87,8 @@ import {
   showHeaderTaskChecklistButton,
   showTaskDispatchButton,
 } from '../lib/headerTaskDispatchEstimatorEligible'
-import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/impersonationUiLabels'
+import { impersonationExitDisplayLabel, impersonationExitPlacement, impersonationExitTitle } from '../lib/impersonationUiLabels'
+import { ViewAsExitStrip } from './layout/ViewAsExitStrip'
 import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import {
@@ -539,6 +540,9 @@ export default function Layout() {
     () => impersonationExitDisplayLabel(profileName, authUser?.email ?? null, { compact: isMobile }),
     [profileName, authUser?.email, isMobile],
   )
+  // On a phone the way back has a line of its own above the header; at a desk it stays in the row (v2.7782).
+  // `viewportNarrow`, not `isMobile`: a desk header that collapsed for want of room still has room for it.
+  const impersonationExitWhere = impersonationExitPlacement(impersonating, viewportNarrow)
   const impersonationTooltipTitle = useMemo(
     () => impersonationExitTitle(profileName, authUser?.email ?? null),
     [profileName, authUser?.email],
@@ -929,6 +933,10 @@ export default function Layout() {
       )}
       {/* Customer Waiting (v2.3248): a portal request is open and high — follows inbox members on every page. */}
       <CustomerWaitingBanner />
+      {/* The way back from View as, on a phone (v2.7782): its own line above the header, never a press of the icon row. */}
+      {impersonationExitWhere === 'strip' && (
+        <ViewAsExitStrip label={impersonationExitLabel} title={impersonationTooltipTitle} onExit={handleBackToMyAccount} />
+      )}
       <div className="appNavChrome">
       {/* The app-health strip (#183 PR 1, v2.6009): the chrome's first row, in flow above the nav; the slow line, Retry, No signal; since #163 PR 2 the queue's bar too. */}
       <AppHealthStrip onTryNow={outboxReplay.tryNow} />
@@ -2077,7 +2085,7 @@ export default function Layout() {
           </div>
             )}
           </span>
-          {impersonating && (
+          {impersonationExitWhere === 'header' && (
             <button
               type="button"
               onClick={handleBackToMyAccount}
