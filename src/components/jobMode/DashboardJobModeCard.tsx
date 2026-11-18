@@ -1377,7 +1377,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         }
         if (!detailsTarget) return null
         // The superintendent's line (punch list #242, PR 4): his project's pace from the same kernel as the office's Projects board.
-        const paceCard = role === 'superintendent' ? <SuperintendentCard key={`line-${detailsTarget.id}`} jobId={detailsTarget.id} rev={jobUpdatesRev} onSetPct={setPctJob} short={short} /> : null
+        const paceCard = role === 'superintendent' ? <SuperintendentCard key={`line-${detailsTarget.id}`} jobId={detailsTarget.id} rev={jobUpdatesRev} onSetPct={setPctJob} short={short} onAsked={() => setJobUpdatesRev((n) => n + 1)} /> : null
         const details = (
           <JobModeDetailsSection
             key={detailsTarget.id}

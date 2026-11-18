@@ -1494,6 +1494,7 @@ My Schedule and My day the same through `withKnownScheduledJobMeta`), and the Cu
 
 Since v2.7797 (punch list #396) the card's face is shown, not told: the job's stages top to bottom as a rail that ends in the finish day ([`PaceRail`](../src/components/jobMode/PaceRail.tsx)), the hours as one bar and **Set the %** on the stage in hand, with everything the card used to say behind **How this is figured** (`lib/jobMode/paceCard.ts`).
 The short page's folded pace line carries two thin bars and the finish day.
+**Ask a master** on the card (v2.7803, [`AskMasterSheet`](../src/components/jobMode/AskMasterSheet.tsx), `lib/jobMode/askMaster.ts`) posts a tagged job note to the master on the job with the card's numbers attached, and the card says who the question waits on. → *Tagged job notes*.
 
 **Behavior** — clock-driven advance through today's `job_schedule_blocks`:
 

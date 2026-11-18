@@ -2,7 +2,7 @@
 name: "The pace card, shown: stages as a rail, fewer words, and presses of its own"
 number: 396
 group: ready
-status: asked 2026-11-18 at the look for #384 · drawn four times with the owner the same day (two bars, three additions, then the stages stood up as a rail) · his word *Build the entire PR train* · PR 1 built as v2.7797, the card's new face
+status: asked 2026-11-18 at the look for #384 · drawn four times with the owner the same day (two bars, three additions, then the stages stood up as a rail) · his word *Build the entire PR train* · PR 1 built as v2.7797, the card's new face · PR 2 built as v2.7803, Ask a master
 summary: >
   The owner looked at the superintendent's pace card on the short Job Mode page and did not like it:
   too many words, not enough showing instead of telling, and nothing to do when the job is on pace.
@@ -13,7 +13,7 @@ summary: >
   never opened. Two presses are new: Ask a master, a question to the master on the job that carries
   the numbers with it, and My finish date, his own word on when the job finishes, which the card
   also asks for two days before the plan's day and when the job falls behind.
-next: PR 2, Ask a master. Then PR 3, My finish date, with its migration and the push.
+next: PR 3, My finish date, with its migration and the push.
 size: M as a train of three (M · S · M)
 blocker: None in the code. PR 3's migration is pushed by hand right after its merge.
 opinion: build — the card's numbers do not change, only how they are shown, and each new press rides something the app already does or one small table
@@ -104,10 +104,26 @@ Is this the best we can do? Asked of this step:
 - A tap on a stage that marks it done in one press was drawn and not built. It would need its own write
   beside the window that already files a status report. The window is one press further and says more.
 
-### PR 2 · Ask a master (S)
+### PR 2 · Ask a master (S) · built as v2.7803
 
 A press on the card opens a small window: quick questions as chips, a line to type, and the numbers that go
 with it. It posts a job note that tags the job's master through the tagged job notes of #363.
+
+What building it found:
+
+- **The server already knows the job's master.** The list of who can be tagged on a job holds him, marked as
+  on the job. The window offers the masters on the job and falls back to the office's masters.
+- **A send notifies.** The note box's own call sends the tag's notice, and the window makes the same call.
+- **The card can close the loop.** The job's tags are already read for the note feed, so the card says
+  *Waiting on* the name, and for three days that an answer landed.
+
+Is this the best we can do? Asked of this step:
+
+- The quick question about a stage now names the stage in hand, *What counts as done on Rough-in?* The first
+  build said *this stage*, and the master would have had to work out which.
+- The answer is read by opening the job, under **Open this job**. The card says so. Showing the answer's words
+  on the card itself would need the note's text beside its tag, which the tag read does not carry.
+- A real send was not made at the build. It posts to a real person.
 
 ### PR 3 · My finish date (M)
 

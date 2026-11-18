@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 
 import SuperintendentCard from './SuperintendentCard'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 import type { ProjectBoardJob } from '../../lib/jobs/projectBoardRead'
 
 const fixtures = [
@@ -75,6 +75,10 @@ vi.mock('../../hooks/useJobStageChecklists', () => ({
 vi.mock('../../hooks/useExpectedHours', () => ({
   useExpectedHours: () => ({ byJob: target ? new Map([['job-1', target]]) : new Map(), history: [], undo: null, loading: false, error: null, setTarget: vi.fn(), clearTarget: vi.fn(), undoLatest: vi.fn(), reload: () => {} }),
 }))
+// His own question on the job (punch list #396 PR 2): the job's tags, by note.
+let noteTags: Map<string, unknown[]> = new Map()
+vi.mock('../../hooks/useJobNoteTags', () => ({ useJobNoteTags: () => noteTags }))
+vi.mock('./AskMasterSheet', () => ({ AskMasterSheet: ({ facts }: { facts: { pct: number | null; hoursWords: string | null; finishWords: string | null; stage?: string | null } }) => <div data-testid="ask-master-sheet">{`${facts.pct}|${facts.hoursWords}|${facts.finishWords}|${facts.stage}`}</div> }))
 vi.mock('../stageChecklists/StageChecklistSheet', () => ({ StageChecklistSheet: ({ stage }: { stage: { name: string } }) => <div data-testid="checklist-sheet">{stage.name}</div> }))
 // The Scoreboard's read: the office's sign-off and the subs' sheet hours ride it onto the card's line (the second walk's slips 3 and 4).
 let scoreRead: unknown = null
@@ -86,6 +90,7 @@ describe('SuperintendentCard', () => {
     answer = async () => ({ readsWages: false, jobs: [project()] })
     target = null
     scoreRead = null
+    noteTags = new Map()
     asked.length = 0
   })
 
@@ -200,6 +205,22 @@ describe('SuperintendentCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Fold the pace card' }))
     expect(screen.queryByTestId('superintendent-line')).toBeNull()
     expect(screen.getByTestId('superintendent-line-short')).toBeTruthy()
+  })
+
+  it('Ask a master opens the window with the card’s numbers, and the card says who his question waits on (punch list #396 PR 2)', async () => {
+    answer = async () => ({ readsWages: false, jobs: [project({ plannedFinish: '2026-11-20' })] })
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    await screen.findByTestId('superintendent-line')
+    // Nothing asked yet: the press, and no line under it.
+    expect(screen.getByTestId('pace-ask-master').textContent).toBe('Ask a master')
+    expect(screen.queryByTestId('pace-asked')).toBeNull()
+    fireEvent.click(screen.getByTestId('pace-ask-master'))
+    expect(screen.getByTestId('ask-master-sheet').textContent).toBe('30|170 of 260 h|Fri, Nov 20|Top Out')
+    cleanup()
+    // His question is on the job and not yet answered.
+    noteTags = new Map([['n1', [{ noteId: 'n1', taggedUserId: 'm1', taggedName: 'Dana Whitfield', taggerUserId: SMOKE_AUTH_USER_ID, createdAt: new Date().toISOString(), clearedAt: null, clearedHow: null }]]])
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    expect((await screen.findByTestId('pace-asked')).textContent).toBe('Waiting on Dana.')
   })
 
   it('reads the target the office set as its budget, in words', async () => {
