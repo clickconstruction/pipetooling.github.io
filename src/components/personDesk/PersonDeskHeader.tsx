@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -10,6 +10,7 @@ import { loginAsUser } from '../../lib/loginAsUser'
 import { describeLastSeen, describePersonGap, type PersonGap, type PersonKey } from '../../lib/people/personKey'
 import { canArchiveAccount, canImitate, type PersonDeskViewer } from '../../lib/people/personDeskGates'
 import { loadAwayNote } from '../../lib/people/awayNoteIo'
+import { deskHeadPresses } from '../../lib/people/personDeskHeadRow'
 import { buildApprovalsQueue } from '../../lib/people/approvalsQueue'
 import { fetchAllPendingClockSessions } from '../../lib/people/fetchAllPendingClockSessions'
 import { formatHoursShort } from '../../lib/myTeamApprovals'
@@ -21,6 +22,9 @@ import type { PersonKeyPersonRow } from '../../lib/people/personKey'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 type OpenSession = { id: string; clocked_in_at: string; label: string | null }
+
+/** Every press on the head row: the desk's plain press, one line height so the Email link sits level with the buttons. */
+const HEAD_PRESS: CSSProperties = { ...BTN, lineHeight: 1.5 }
 
 const ROLE_LABEL: Record<string, string> = {
   dev: 'Dev',
@@ -244,6 +248,14 @@ export function PersonDeskHeader({
     }
   }
 
+  const presses = deskHeadPresses({
+    hasAccount: Boolean(personKey?.userId),
+    email: user?.email,
+    loginAttached: user != null && user.login_attached_at !== null,
+    mayImitate: canImitate(viewer),
+    mayOpenFlow: Boolean(onOpenFlow && viewer.canAccessPay && personKey),
+  })
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr)', gap: '0.7rem 0.85rem', padding: '0.85rem 1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
       <div
@@ -335,45 +347,49 @@ export function PersonDeskHeader({
             {personKey?.archived ? <Chip tone="gray" title={awayNoteOn ? 'Archived, with an Away note on: their sign-in opens to the note and nothing else.' : undefined}>{awayNoteOn ? 'Away' : 'Archived'}</Chip> : null}
           </div>
         ) : null}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-          {personKey?.userId ? (
-            <button type="button" style={BTN} onClick={() => userReview?.open({ userId: personKey.userId!, displayName: name })}>
-              Day · week · month
-            </button>
-          ) : null}
-          {user?.email ? (
-            <a href={`mailto:${user.email}`} style={{ ...BTN, textDecoration: 'none' }}>
-              Email
-            </a>
-          ) : null}
-          {canImitate(viewer) && user?.email ? (
-            <button type="button" style={BTN_QUIET} onClick={() => void imitate()} title="Sign in as this person (dev only)">
-              Imitate
-            </button>
-          ) : null}
-          {onOpenFlow && viewer.canAccessPay && personKey ? (
-            <span style={{ position: 'relative' }}>
-              <button type="button" style={BTN_QUIET} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} title="Start or end employment">
-                ⋯
+        {/* v2.7813: one weight for every press on the row. Imitate and the menu drew in the quiet grey and read as
+            switched off beside their neighbours. The menu sits at the row's right edge and opens under it. */}
+        {presses.length > 0 ? (
+          <div data-desk-head-presses style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'stretch', gap: '0.4rem' }}>
+            {presses.includes('review') ? (
+              <button type="button" style={HEAD_PRESS} onClick={() => { if (personKey?.userId) userReview?.open({ userId: personKey.userId, displayName: name }) }}>
+                Day · week · month
               </button>
-              {menuOpen ? (
-                <div role="menu" style={{ position: 'absolute', top: '110%', left: 0, zIndex: 5, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', minWidth: 190, padding: '0.25rem', display: 'flex', flexDirection: 'column' }}>
-                  {onBringBack ? (
-                    <button type="button" role="menuitem" style={{ ...BTN_QUIET, border: 'none', justifyContent: 'flex-start', color: 'var(--text-link)', fontWeight: 600 }} onClick={() => { setMenuOpen(false); onBringBack() }}>
-                      Bring back…
+            ) : null}
+            {presses.includes('email') ? (
+              <a href={`mailto:${user?.email ?? ''}`} style={{ ...HEAD_PRESS, textDecoration: 'none' }}>
+                Email
+              </a>
+            ) : null}
+            {presses.includes('imitate') ? (
+              <button type="button" style={HEAD_PRESS} onClick={() => void imitate()} title="Sign in as this person (dev only)">
+                Imitate
+              </button>
+            ) : null}
+            {presses.includes('more') ? (
+              <span style={{ position: 'relative', display: 'inline-flex', marginLeft: 'auto' }}>
+                <button type="button" style={HEAD_PRESS} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} title="Start or end employment">
+                  ⋯
+                </button>
+                {menuOpen ? (
+                  <div role="menu" style={{ position: 'absolute', top: '110%', right: 0, zIndex: 5, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', minWidth: 190, padding: '0.25rem', display: 'flex', flexDirection: 'column' }}>
+                    {onBringBack ? (
+                      <button type="button" role="menuitem" style={{ ...BTN_QUIET, border: 'none', justifyContent: 'flex-start', color: 'var(--text-link)', fontWeight: 600 }} onClick={() => { setMenuOpen(false); onBringBack() }}>
+                        Bring back…
+                      </button>
+                    ) : null}
+                    <button type="button" role="menuitem" style={{ ...BTN_QUIET, border: 'none', justifyContent: 'flex-start', color: 'var(--text-700)' }} onClick={() => { setMenuOpen(false); onOpenFlow?.('start') }}>
+                      Start employment…
                     </button>
-                  ) : null}
-                  <button type="button" role="menuitem" style={{ ...BTN_QUIET, border: 'none', justifyContent: 'flex-start', color: 'var(--text-700)' }} onClick={() => { setMenuOpen(false); onOpenFlow('start') }}>
-                    Start employment…
-                  </button>
-                  <button type="button" role="menuitem" style={{ ...BTN_QUIET, border: 'none', justifyContent: 'flex-start', color: 'var(--text-red-600)' }} onClick={() => { setMenuOpen(false); onOpenFlow('end') }}>
-                    End employment…
-                  </button>
-                </div>
-              ) : null}
-            </span>
-          ) : null}
-        </div>
+                    <button type="button" role="menuitem" style={{ ...BTN_QUIET, border: 'none', justifyContent: 'flex-start', color: 'var(--text-red-600)' }} onClick={() => { setMenuOpen(false); onOpenFlow?.('end') }}>
+                      End employment…
+                    </button>
+                  </div>
+                ) : null}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   )
