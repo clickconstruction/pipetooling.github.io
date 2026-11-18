@@ -23,6 +23,12 @@ export type ActKind = MovementReason | 'box_moved' | 'box_retired' | 'box_brough
 export type BoxChange = { id: string; containerId: string; what: 'retired' | 'brought_back' | 'kind' | 'where' | 'said'; oldValue: string; newValue: string; byName: string; at: string }
 /** A box renamed (`job_container_names`). */
 export type BoxRename = { id: string; containerId: string; oldLabel: string; newLabel: string; byName: string; at: string }
+/**
+ * The way back from a box change: what to write, and the words of its press. Offered only while the box
+ * still reads as the change left it, so a put-back never walks over a later change.
+ */
+export type PutBack = { containerId: string; act: 'unretire' | 'retire' | 'patch'; patch?: { label?: string; kind?: 'cage' | 'box' | 'loose'; where?: string; said?: string | null }; words: string }
+
 /** A dev's live answer to a press (`job_movement_answers`): taken back, or marked as not allowed. */
 export type PressAnswer = { id: string; movementId: string; answer: 'taken_back' | 'marked'; why: string; byName: string; at: string }
 /** A part tie or a site price someone took off (`on_site_removed_answers`), with the words of the row as it stood. */
@@ -62,6 +68,8 @@ export type PersonAct = {
   outside: string | null
   /** The live answer on the press, or null. A press taken back is in no sum and is drawn struck through. */
   answer: PressAnswer | null
+  /** The way back from a box change, or null: not a box change, or the box has changed again since. */
+  putBack: PutBack | null
 }
 
 export type ActPerson = { key: string; name: string; acts: number; lastAt: string; userIds: string[] }
@@ -221,6 +229,7 @@ export function sitePersonActs(input: SiteActsInput, dayOf: (iso: string) => str
       looks,
       outside: null,
       answer: answerOf.get(m.id) ?? null,
+      putBack: null,
     })
   }
   for (const mv of input.containerMoves) {
@@ -249,10 +258,11 @@ export function sitePersonActs(input: SiteActsInput, dayOf: (iso: string) => str
       looks: [],
       outside: null,
       answer: null,
+      putBack: null,
     })
   }
   // The trail: changes to a box that are not ledger rows, and answers taken off.
-  const blank = { part: null, qty: '', pieces: 0, note: '', looks: [] as ActLook[], answer: null, byUserId: null, outside: null }
+  const blank = { part: null, qty: '', pieces: 0, note: '', looks: [] as ActLook[], answer: null, byUserId: null, outside: null, putBack: null as PutBack | null }
   const boxAct = (id: string, at: string, byName: string, containerId: string, kind: ActKind, what: string, note: string): PersonAct => {
     const who = byName.trim() || NO_NAME
     const c = box.get(containerId)
@@ -260,11 +270,29 @@ export function sitePersonActs(input: SiteActsInput, dayOf: (iso: string) => str
   }
   const said = (v: string) => (v.trim() ? v.trim() : 'nothing')
   for (const ch of input.boxChanges ?? []) {
-    if (ch.what === 'retired') acts.push(boxAct(ch.id, ch.at, ch.byName, ch.containerId, 'box_retired', BOX_ACT_WORDS.box_retired, ''))
-    else if (ch.what === 'brought_back') acts.push(boxAct(ch.id, ch.at, ch.byName, ch.containerId, 'box_brought_back', BOX_ACT_WORDS.box_brought_back, ''))
-    else acts.push(boxAct(ch.id, ch.at, ch.byName, ch.containerId, 'box_changed', BOX_ACT_WORDS.box_changed, `${CHANGE_FIELD[ch.what]}: ${said(ch.oldValue)} \u2192 ${said(ch.newValue)}`))
+    const c = box.get(ch.containerId)
+    if (ch.what === 'retired') acts.push({ ...boxAct(ch.id, ch.at, ch.byName, ch.containerId, 'box_retired', BOX_ACT_WORDS.box_retired, ''), putBack: c && c.retiredAt ? { containerId: c.id, act: 'unretire', words: `Bring ${c.label} back` } : null })
+    else if (ch.what === 'brought_back') acts.push({ ...boxAct(ch.id, ch.at, ch.byName, ch.containerId, 'box_brought_back', BOX_ACT_WORDS.box_brought_back, ''), putBack: c && !c.retiredAt ? { containerId: c.id, act: 'retire', words: `Retire ${c.label} again` } : null })
+    else {
+      // The box must still read as this change left it, and must be live: a retired box takes no edit.
+      const stands = Boolean(c) && !c?.retiredAt && (ch.what === 'kind' ? c?.kind === ch.newValue : ch.what === 'where' ? (c?.where ?? '') === ch.newValue : (c?.said ?? '') === ch.newValue)
+      const back: PutBack | null = !c || !stands
+        ? null
+        : ch.what === 'kind'
+          ? ch.oldValue === 'cage' || ch.oldValue === 'box' || ch.oldValue === 'loose'
+            ? { containerId: c.id, act: 'patch', patch: { kind: ch.oldValue }, words: `Make ${c.label} a ${ch.oldValue} again` }
+            : null
+          : ch.what === 'where'
+            ? { containerId: c.id, act: 'patch', patch: { where: ch.oldValue }, words: `Put the where line of ${c.label} back` }
+            : { containerId: c.id, act: 'patch', patch: { said: ch.oldValue || null }, words: `Put the words on ${c.label} back` }
+      acts.push({ ...boxAct(ch.id, ch.at, ch.byName, ch.containerId, 'box_changed', BOX_ACT_WORDS.box_changed, `${CHANGE_FIELD[ch.what]}: ${said(ch.oldValue)} \u2192 ${said(ch.newValue)}`), putBack: back })
+    }
   }
-  for (const r of input.boxRenames ?? []) acts.push(boxAct(r.id, r.at, r.byName, r.containerId, 'box_renamed', BOX_ACT_WORDS.box_renamed, `${r.oldLabel} \u2192 ${r.newLabel}`))
+  for (const r of input.boxRenames ?? []) {
+    const c = box.get(r.containerId)
+    const stands = Boolean(c) && !c?.retiredAt && c?.label === r.newLabel
+    acts.push({ ...boxAct(r.id, r.at, r.byName, r.containerId, 'box_renamed', BOX_ACT_WORDS.box_renamed, `${r.oldLabel} \u2192 ${r.newLabel}`), putBack: c && stands ? { containerId: c.id, act: 'patch', patch: { label: r.oldLabel }, words: `Rename ${r.newLabel} back to ${r.oldLabel}` } : null })
+  }
   for (const r of input.removedAnswers ?? []) {
     const who = r.byName.trim() || NO_NAME
     acts.push({ ...blank, id: r.id, at: r.at, day: dayOf(r.at), kind: 'answer_removed', what: r.answer === 'tie' ? BOX_ACT_WORDS.answer_removed_tie : BOX_ACT_WORDS.answer_removed_price, part: r.words, boxIds: [], boxId: null, where: '', jobId: r.jobId ?? '', jobLabel: r.jobId ? jobLabel.get(r.jobId) ?? '' : '', who, personKey: personKeyOf(who) })
