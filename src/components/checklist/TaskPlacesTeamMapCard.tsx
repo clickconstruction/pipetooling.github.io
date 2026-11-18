@@ -1,6 +1,8 @@
-import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
 import { directionsUrlForPoint } from '../../lib/directionsUrl'
+import { googleMapTypeForLayer } from '../../lib/map/googleMapType'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { MapCanvasPin } from '../../lib/map/mapCanvasTypes'
 import {
@@ -14,6 +16,7 @@ import {
 } from '../../lib/tasks/taskPlace'
 
 const TaskPlacesMapCanvasLazy = lazy(() => import('./TaskPlacesMapCanvas'))
+const PinsMapGoogleCanvasLazy = lazy(() => import('../map/PinsMapGoogleCanvas'))
 
 const HIDDEN_KEY = 'task_places_team_map_hidden'
 
@@ -35,11 +38,11 @@ function writeHidden(hidden: boolean): void {
 
 export type TaskPlacesTeamPerson = { userId: string; name: string; tasks: Array<{ id: string; title: string; place: TaskPlace | null }> }
 
-/** Over the map's own controls (Leaflet's sit at 800 to 1000), inside the card's own stacking box. */
+/** Over the map's own controls (Leaflet's sit at 800 to 1000, Google's far lower), inside the card's own stacking box. */
 const overlay: CSSProperties = { position: 'absolute', zIndex: 1001, font: 'inherit', fontSize: '0.75rem', fontWeight: 700 }
 const linkPress: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', textDecoration: 'underline', fontSize: '0.8125rem', fontFamily: 'inherit' }
 const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', fontWeight: 600, borderRadius: 999, padding: '4px 11px', minHeight: 30, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)' }
-const chipOn: CSSProperties = { ...chip, background: 'var(--text-strong)', color: 'var(--surface)', borderColor: 'var(--text-strong)' }
+const chipOn: CSSProperties = { ...chip, background: 'var(--text-strong)', color: 'var(--surface)', border: '1px solid var(--text-strong)' }
 
 /**
  * Where the open tasks are (punch list #328, PR 7): the leader's map on the Review tab, over
@@ -48,6 +51,10 @@ const chipOn: CSSProperties = { ...chip, background: 'var(--text-strong)', color
  *
  * It shows where the tasks are, so two people sent to one corner on one morning can be seen before
  * they are sent. It never shows where a person is, and it asks no phone for anything.
+ *
+ * Since v2.7686 it draws on Google Maps, Satellite as Google's photograph with street names, under
+ * the app's one provider rule: with no browser key, or once Google fails on this page, the card
+ * draws as it did before, on the shared Leaflet canvas with the view from above over its streets.
  */
 export function TaskPlacesTeamMapCard({ people }: { people: ReadonlyArray<TaskPlacesTeamPerson> }) {
   const isMobile = useIsMobile()
@@ -56,6 +63,13 @@ export function TaskPlacesTeamMapCard({ people }: { people: ReadonlyArray<TaskPl
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [layerPick, setLayerPick] = useState<'satellite' | 'streets' | null>(null)
   const [fitSignal, setFitSignal] = useState(0)
+  // A failure is kept for this page, so a rejected key never flickers between the two maps.
+  const [googleFailed, setGoogleFailed] = useState(false)
+  const provider = resolveDashboardMapProvider({ key: googleMapsBrowserKey(), googleFailed })
+  const googleUnavailable = useCallback((reason: string) => {
+    console.warn(`[team tasks map] Google Maps unavailable, using OpenStreetMap: ${reason}`)
+    setGoogleFailed(true)
+  }, [])
 
   // The people with a place on some task, in the board's own order: that order is each person's colour.
   const placed = useMemo(
@@ -129,9 +143,13 @@ export function TaskPlacesTeamMapCard({ people }: { people: ReadonlyArray<TaskPl
               </button>
             ))}
           </div>
-          <div className={layer === 'satellite' ? 'mapImagery' : undefined} style={{ position: 'relative', isolation: 'isolate', background: 'var(--bg-muted)', height }}>
+          <div data-map-provider={provider} className={layer === 'satellite' ? 'mapImagery' : undefined} style={{ position: 'relative', isolation: 'isolate', background: 'var(--bg-muted)', height }}>
             <Suspense fallback={null}>
-              <TaskPlacesMapCanvasLazy key={isMobile ? 'phone' : 'desk'} layer={layer} pins={pins} selectedId={selectedId} onSelect={setSelectedId} fitSignal={fitSignal} height={height} isMobile={isMobile} scrollZoomAfterClick />
+              {provider === 'google' ? (
+                <PinsMapGoogleCanvasLazy key={isMobile ? 'phone' : 'desk'} apiKey={googleMapsBrowserKey()} onUnavailable={googleUnavailable} mapTypeId={googleMapTypeForLayer(layer)} pins={pins} selectedId={selectedId} onSelect={setSelectedId} fitSignal={fitSignal} height={height} isMobile={isMobile} scrollZoomAfterClick />
+              ) : (
+                <TaskPlacesMapCanvasLazy key={isMobile ? 'phone' : 'desk'} layer={layer} pins={pins} selectedId={selectedId} onSelect={setSelectedId} fitSignal={fitSignal} height={height} isMobile={isMobile} scrollZoomAfterClick />
+              )}
             </Suspense>
             <div role="group" aria-label="Map view" style={{ ...overlay, right: 8, top: 8, display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-strong)' }}>
               {(['satellite', 'streets'] as const).map((l) => (

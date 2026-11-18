@@ -43,6 +43,7 @@ export function LienDeskSentFooter({
   onChanged,
   onOpenOwnerCall,
   doors,
+  proof,
 }: {
   /** The three inline forms' state, kept by the desk. */
   forms: LienSentFooterForms
@@ -66,6 +67,8 @@ export function LienDeskSentFooter({
   onOpenOwnerCall: () => void
   /** The doors a sent notice keeps, drawn last: the courtesy record, the courtesy notice and the attorney's letter. */
   doors: ReactNode
+  /** What went out (`LienFilingMailProof`): the mailed files and each envelope's receipt, under the facts. */
+  proof?: ReactNode
 }) {
   const { first, lt, call, courtesy, courtesyClaim, sentFiling, trackingOwed, jobBalance } = facts
   const { gcOkayOpen, setGcOkayOpen, gcOkayNote, setGcOkayNote, signoffOpen, setSignoffOpen, signoffText, setSignoffText, promiseOpen, setPromiseOpen, promiseYmd, setPromiseYmd, promiseAmount, setPromiseAmount, promiseNote, setPromiseNote } = forms
@@ -127,6 +130,7 @@ export function LienDeskSentFooter({
         {courtesy && courtesy.state !== 'none' ? <span data-lien-courtesy-state={courtesy.state}>Courtesy notice: <strong style={{ color: courtesy.state === 'held' ? 'var(--text-red-600)' : 'var(--text-700)' }}>{courtesy.state === 'due' ? (courtesy.lastSentAt ? courtesy.words : 'not yet') : courtesy.state === 'waiting' ? `from day ${COURTESY_FROM_DAY}` : courtesy.state === 'held' ? courtesy.reason : courtesy.words}</strong></span> : null}
         {courtesy?.paying?.promise ? <span data-lien-promise>They promised: <strong style={{ color: 'var(--text-700)' }}>{[courtesy.paying.promise.amount ? formatUsdNoCents(courtesy.paying.promise.amount) : '', courtesy.paying.promise.ymd ? `by ${formatYmdMonthDay(courtesy.paying.promise.ymd)}` : '', courtesy.paying.promise.note ? `“${courtesy.paying.promise.note}”` : ''].filter(Boolean).join(' · ') || 'recorded'}{courtesy.paying.promise.by ? ` · ${courtesy.paying.promise.by}` : ''}</strong></span> : null}
       </div>
+      {proof}
       {promiseOpen && courtesy?.state === 'paying' ? (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }} data-lien-promise-form>
           <span>What they promised for the rest ({formatUsdNoCents(courtesy.paying?.stillOwed ?? jobBalance)} still owed):</span>

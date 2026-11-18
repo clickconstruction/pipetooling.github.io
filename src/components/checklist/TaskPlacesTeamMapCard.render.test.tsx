@@ -4,7 +4,7 @@
  * colour a person, a press on a name shows that person alone, a dot several people share wears its
  * count, the tasks with no place are counted, and no phone is asked for anything.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { TASK_PLACE_PERSON_COLORS, TASK_PLACE_SHARED_COLOR, type TaskPlace } from '../../lib/tasks/taskPlace'
 
@@ -27,6 +27,22 @@ vi.mock('./TaskPlacesMapCanvas', () => ({
   },
 }))
 
+// The Google canvas (v2.7686): the same dots, plus the map type the card asks for and a press that fails it.
+vi.mock('../map/PinsMapGoogleCanvas', () => ({
+  default: function GoogleCanvasStub(props: { apiKey: string; mapTypeId?: string; onUnavailable: (reason: string) => void; pins: Array<{ id: string; label?: string; title: string; color: string }>; onSelect: (id: string | null) => void; scrollZoomAfterClick?: boolean }) {
+    return (
+      <div data-testid="google-canvas" data-key={props.apiKey} data-map-type={props.mapTypeId} data-scroll-gate={String(props.scrollZoomAfterClick ?? false)}>
+        {props.pins.map((p) => (
+          <button key={p.id} type="button" data-color={p.color} onClick={() => props.onSelect(p.id)}>
+            {`dot ${p.title}${p.label ? ` ×${p.label}` : ''}`}
+          </button>
+        ))}
+        <button type="button" onClick={() => props.onUnavailable('auth: test')}>fail google</button>
+      </div>
+    )
+  },
+}))
+
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from './TaskPlacesTeamMapCard'
 
 const place = (name: string, lat: number): TaskPlace => ({ name, lat, lng: -98.3, accuracyM: null, setBy: null, setAt: null })
@@ -36,11 +52,17 @@ const PEOPLE: TaskPlacesTeamPerson[] = [
   { userId: 'imani', name: 'Imani', tasks: [{ id: 'e', title: 'Swap the pump valve', place: place('Pump house', 29.55) }] },
 ]
 
+beforeEach(() => {
+  vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', '')
+})
+
 afterEach(() => {
   cleanup()
   localStorage.clear()
   opened.length = 0
   asked.n = 0
+  vi.unstubAllEnvs()
+  vi.restoreAllMocks()
 })
 
 describe('TaskPlacesTeamMapCard', () => {
@@ -85,6 +107,69 @@ describe('TaskPlacesTeamMapCard', () => {
     expect(bar.textContent).toContain('ImaniSwap the pump valve')
     fireEvent.click(screen.getByRole('button', { name: 'Directions' }))
     expect(opened).toEqual(['https://www.google.com/maps/dir/?api=1&destination=29.550000,-98.300000'])
+  })
+
+  it('with no Google key the card draws on the Leaflet canvas, as before', async () => {
+    render(<TaskPlacesTeamMapCard people={PEOPLE} />)
+    await screen.findByTestId('canvas')
+    expect(screen.queryByTestId('google-canvas')).toBeNull()
+    expect(document.querySelector('[data-map-provider]')?.getAttribute('data-map-provider')).toBe('osm')
+  })
+
+  describe('on Google Maps (v2.7686)', () => {
+    beforeEach(() => {
+      vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
+    })
+
+    it('draws the same dots on the Google canvas, and keeps the wheel for the page until the map is pressed', async () => {
+      render(<TaskPlacesTeamMapCard people={PEOPLE} />)
+      const canvas = await screen.findByTestId('google-canvas')
+      expect(screen.queryByTestId('canvas')).toBeNull()
+      expect(canvas.getAttribute('data-key')).toBe('test-key')
+      expect(canvas.getAttribute('data-scroll-gate')).toBe('true')
+      expect([...canvas.querySelectorAll('button[data-color]')].map((d) => [d.textContent, d.getAttribute('data-color')])).toEqual([
+        ['dot Pump house ×2', TASK_PLACE_SHARED_COLOR],
+        ['dot North gate', TASK_PLACE_PERSON_COLORS[0]],
+      ])
+      expect(document.querySelector('[data-task-places-team-without]')?.textContent).toBe('2 more open tasks have no place.')
+    })
+
+    it('Satellite is Google\'s photograph with street names and Streets its road map', async () => {
+      render(<TaskPlacesTeamMapCard people={PEOPLE} />)
+      const canvas = await screen.findByTestId('google-canvas')
+      // The two places sit close together, so the card opens on the view from above.
+      expect(screen.getByRole('button', { name: 'Satellite' }).getAttribute('aria-pressed')).toBe('true')
+      expect(canvas.getAttribute('data-map-type')).toBe('hybrid')
+      fireEvent.click(screen.getByRole('button', { name: 'Streets' }))
+      expect(canvas.getAttribute('data-map-type')).toBe('roadmap')
+      fireEvent.click(screen.getByRole('button', { name: 'Satellite' }))
+      expect(canvas.getAttribute('data-map-type')).toBe('hybrid')
+    })
+
+    it('a name, a dot and Hide map work as they do on the other canvas', async () => {
+      render(<TaskPlacesTeamMapCard people={PEOPLE} />)
+      const canvas = await screen.findByTestId('google-canvas')
+      fireEvent.click(screen.getByRole('button', { name: 'Imani · 1' }))
+      expect([...canvas.querySelectorAll('button[data-color]')].map((d) => d.textContent)).toEqual(['dot Pump house'])
+      fireEvent.click(screen.getByRole('button', { name: 'Everyone · 3' }))
+      fireEvent.click(screen.getByRole('button', { name: 'dot Pump house ×2' }))
+      expect(document.querySelector('[data-task-places-team-selected]')?.textContent).toContain('ImaniSwap the pump valve')
+      fireEvent.click(screen.getByRole('button', { name: 'Hide map' }))
+      expect(screen.queryByTestId('google-canvas')).toBeNull()
+    })
+
+    it('when Google fails on this page the card falls back to the Leaflet canvas and keeps the view', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      render(<TaskPlacesTeamMapCard people={PEOPLE} />)
+      await screen.findByTestId('google-canvas')
+      fireEvent.click(screen.getByRole('button', { name: 'Streets' }))
+      fireEvent.click(screen.getByRole('button', { name: 'fail google' }))
+      const canvas = await screen.findByTestId('canvas')
+      expect(screen.queryByTestId('google-canvas')).toBeNull()
+      expect(canvas.querySelectorAll('button')).toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'Streets' }).getAttribute('aria-pressed')).toBe('true')
+      expect(warn).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('Hide map folds it to one line and the device remembers', async () => {

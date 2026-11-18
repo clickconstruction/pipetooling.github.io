@@ -13,6 +13,14 @@ At a desk the wrench floats at the bottom left of every page. It says **Tell the
 
 On a phone the wrench is in the header at the top of the page. Nothing floats on a phone, so no button is covered.
 
+A window on a phone has its own wrench in its title row. Use that one when the window is what confuses you.
+
+## From an error
+
+A red error line has a **Tell the dev** button on it. Press it to send the error with one more press. You do not need to type what went wrong.
+
+An error that only says the signal dropped has no button. See [A lost signal is not a fault](#a-lost-signal-is-not-a-fault).
+
 ## Write the note
 
 1. Press the wrench.

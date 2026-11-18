@@ -327,4 +327,45 @@ describe('LienTimelineStrip — the late notice (v2.4708): job 890 read Oct 6, t
     render(<LienTimelineStrip timeline={timeline} layout="row" />)
     expect(document.querySelector('[data-lien-timeline-stop-door]')).toBeNull()
   })
+
+  it('the last day’s press sits on its own line under the LAST WORK stop, in both layouts, and says what it does (v2.7684)', () => {
+    setLienTimelineView('steps')
+    const onChangeLastWork = vi.fn()
+    for (const layout of ['row', 'list'] as const) {
+      const { container, unmount } = render(<LienTimelineStrip timeline={timeline} layout={layout} onChangeLastWork={onChangeLastWork} />)
+      const stop = container.querySelector('[data-lien-timeline-step="last_work"]') as HTMLElement
+      const door = stop.querySelector('[data-lien-timeline-last-work-door]') as HTMLButtonElement
+      // Clock hours behind the month: the day is there to change.
+      expect(door.textContent).toBe('change ›')
+      // Its own line: a block under the stop's words, where it trailed them inside their span until now.
+      expect(stop.textContent).toContain('clock hours')
+      expect(door.parentElement?.tagName).toBe('DIV')
+      expect([...container.querySelectorAll('[data-lien-timeline-last-work-door]')].length).toBe(1)
+      fireEvent.click(door)
+      unmount()
+    }
+    expect(onChangeLastWork).toHaveBeenCalledTimes(2)
+  })
+
+  it('over a stand-in month the press reads set the day ›; with no door handed, and in the mini row, there is none (v2.7684)', () => {
+    setLienTimelineView('steps')
+    const standIn = buildLienTimeline({ todayYmd: '2026-09-24', isSub: true, propertyKind: 'non_residential', lastMonth: '2026-08', lastMonthFromCreation: true, months: [{ key: '2026-08', deadline: '2026-11-16', fromCreation: true, outcome: 'open', at: '' }], noticeState: 'needs_owner', retainage: null, affidavit: null, originalContractCompletedOn: null, releasedAt: null, paid: false })
+    const view = render(<LienTimelineStrip timeline={standIn} layout="row" onChangeLastWork={() => {}} />)
+    expect(view.container.querySelector('[data-lien-timeline-step="last_work"]')?.textContent).toContain('dated from the job’s creation · no clock hours')
+    expect(view.container.querySelector('[data-lien-timeline-last-work-door]')?.textContent).toBe('set the day ›')
+    view.unmount()
+    // A reader's strip: the stop's words alone.
+    const reader = render(<LienTimelineStrip timeline={standIn} layout="row" />)
+    expect(reader.container.querySelector('[data-lien-timeline-last-work-door]')).toBeNull()
+    reader.unmount()
+    const mini = render(<LienTimelineStrip timeline={standIn} layout="mini" withNext={false} onChangeLastWork={() => {}} />)
+    expect(mini.container.querySelector('[data-lien-timeline-last-work-door]')).toBeNull()
+  })
+
+  it('inside a phone’s open paper the press is a thumb tall: the stylesheet grows it (v2.7684)', () => {
+    const css = readFileSync(join(process.cwd(), 'src/index.css'), 'utf8')
+    const rule = css.split('\n').find((l) => l.startsWith('[data-lien-pane-phone] [data-lien-timeline-last-work-door]')) ?? ''
+    expect(rule).toContain('min-height: 44px')
+    expect(rule).toContain('display: inline-flex')
+  })
 })

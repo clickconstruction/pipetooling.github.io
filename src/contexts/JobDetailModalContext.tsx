@@ -1,3 +1,6 @@
+import { JobPapersGateModal } from '../components/jobs/JobPapersGateModal'
+import { jobPapersChanged, rereadJobsClosedToMe, useJobsClosedToMe } from '../hooks/useJobsClosedToMe'
+import { takeJobPapersBack } from '../lib/jobs/jobPapersReturnIo'
 import {
   createContext,
   useCallback,
@@ -156,6 +159,19 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
     return () => openerBridge.registerJobWindowEditOpener(null)
   }, [openerBridge, openJobWindowEdit])
 
+  // Papers before a job opens (step 3): a job this person still owes a paper on opens as the prompt, never as the job.
+  const closedJobs = useJobsClosedToMe(!!authUser)
+  // The job a person came back to from the signing page: its prompt says what is left, or offers Open the job.
+  const [backFromSigning, setBackFromSigning] = useState<string | null>(null)
+  useEffect(() => {
+    if (!authUser) return
+    const jobId = takeJobPapersBack()
+    if (!jobId) return
+    jobPapersChanged(jobId)
+    setBackFromSigning(jobId)
+    openJobDetail({ jobId })
+  }, [authUser, openJobDetail])
+
   const value = useMemo(
     (): JobDetailModalContextValue => ({
       openJobDetail,
@@ -202,7 +218,20 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
     <JobDetailModalContext.Provider value={value}>
       {children}
       {openState.kind === 'open' ? (
-        windowMode === 'window' ? (
+        !closedJobs.ready ? null : closedJobs.closed.has(openState.jobId) || backFromSigning === openState.jobId ? (
+          <JobPapersGateModal
+            key={`papers-${openState.instanceKey}`}
+            jobId={openState.jobId}
+            role={authRole}
+            onClose={() => {
+              setBackFromSigning(null)
+              closeJobDetail()
+            }}
+            onOpenJob={() => {
+              void rereadJobsClosedToMe().then(() => setBackFromSigning(null))
+            }}
+          />
+        ) : windowMode === 'window' ? (
           <JobWindowModal
             key={openState.instanceKey}
             jobId={openState.jobId}

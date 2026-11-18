@@ -67,7 +67,7 @@ export interface MyJobPapers {
  * job is the only lock), `database` (the database refuses the job's rows to the crew and subs as well).
  */
 export type JobPapersLockStage = 'none' | 'prompt' | 'database'
-export const JOB_PAPERS_LOCK_STAGE: JobPapersLockStage = 'none'
+export const JOB_PAPERS_LOCK_STAGE: JobPapersLockStage = 'prompt'
 
 /** Told to the job's head when the papers a job requires change, so its chip counts again. The detail is the job's id. */
 export const JOB_PAPERS_CHANGED_EVENT = 'job-papers-changed'
@@ -245,7 +245,11 @@ export interface PickablePaper {
 export function pickablePapers(book: readonly BookPaperRow[], live: readonly JobRequiredPaper[], pending: readonly string[] = []): PickablePaper[] {
   const taken = new Set<string>([...live.map((p) => p.bookDocumentId ?? ''), ...pending])
   const takenNames = new Set(live.map((p) => p.paperName.trim().toLowerCase()))
-  const offered = book.filter((d) => d.audience !== 'customer' && !d.flow_kind)
+  const hasWordsRow = (d: BookPaperRow) => Boolean(d.form_template_id) || Boolean(d.book_body_html?.trim()) || Boolean(d.canonical_document_url?.trim())
+  const all = book.filter((d) => d.audience !== 'customer' && !d.flow_kind)
+  // A paper can sit in two packets, one copy a form and the other an empty shell. The copy with words is the one to offer.
+  const namesWithWords = new Set(all.filter(hasWordsRow).map((d) => d.document_name))
+  const offered = all.filter((d) => hasWordsRow(d) || !namesWithWords.has(d.document_name))
   return listQuickAddBookDocuments(offered)
     .filter(({ row, documentName }) => !taken.has(row.id) && !takenNames.has(documentName.trim().toLowerCase()))
     .map(({ row, documentName }) => {
@@ -261,19 +265,142 @@ export function pickablePapers(book: readonly BookPaperRow[], live: readonly Job
     })
 }
 
-/** The roster row that is the person signed in, if they are on it. */
-export function myRosterRow(roster: JobPapersRoster, userId: string | null | undefined): JobPaperPerson | null {
-  if (!userId) return null
-  return roster.people.find((p) => p.userId === userId) ?? null
+/** A job that waits on the caller's signature, from `job_papers_needing_me()`. */
+export interface JobNeedingMe {
+  jobId: string
+  jobNumber: string
+  owed: number
+  total: number
 }
 
-/** The line asking whoever saved to sign their own, or null when they owe nothing or are not on the roster. */
-export function signYourOwnWords(roster: JobPapersRoster, userId: string | null | undefined): { line: string; next: JobRequiredPaper | null; blocked: string | null } | null {
-  const me = myRosterRow(roster, userId)
-  if (!me) return null
-  const owed = owedPapers(me, roster.papers)
-  if (owed.length === 0) return null
-  const line = `You have not signed ${owed.length === 1 ? 'this paper' : `these ${owed.length} papers`} yourself.`
-  const blocked = noLinkReason(me)
-  return { line, next: blocked ? null : owed[0]!, blocked: blocked ? 'No file is linked to your login. Link it on People, then you can sign.' : null }
+/** `job_papers_needing_me()` as the Needs you line reads it. */
+export function parseJobsNeedingMe(raw: unknown): JobNeedingMe[] {
+  return list(raw)
+    .map((j) => record(j))
+    .filter((j) => text(j.job_id))
+    .map((j) => ({ jobId: text(j.job_id), jobNumber: text(j.job_number), owed: Number(j.owed) || 0, total: Number(j.total) || 0 }))
+    .filter((j) => j.owed > 0)
+}
+
+/** `jobs_closed_to_me()` as a list of job ids. */
+export function parseClosedJobIds(raw: unknown): string[] {
+  return list(raw).filter((v): v is string => typeof v === 'string' && v.length > 0)
+}
+
+/** The papers of a job the caller has not signed, in the job's order. */
+export function myOwedPapers(mine: MyJobPapers): MyJobPaper[] {
+  return mine.papers.filter((p) => p.status !== 'signed')
+}
+
+export interface JobPapersGateView {
+  title: string
+  lead: string
+  rows: { id: string; paperName: string; done: boolean; sub: string }[]
+  /** The paper Read and sign opens: the first one not signed. Null when nothing is owed or the login has no file. */
+  next: MyJobPaper | null
+  nextLabel: string | null
+  /** True when the job requires papers and every one is signed: the gate offers Open the job. */
+  allSigned: boolean
+  /** What stays shut until the papers are signed. Null when nothing is owed. */
+  hidden: string | null
+  /** Why the caller cannot sign yet, or null. */
+  blocked: string | null
+}
+
+/**
+ * The prompt drawn in place of a job: its number, its papers and which are signed. Before signing a person sees the
+ * job's number and the papers' names and nothing else (the owner's call 2). `today` is the company's day, so a paper
+ * signed today says so.
+ */
+export function jobPapersGateView(mine: MyJobPapers, today: string | null = null): JobPapersGateView {
+  const total = mine.papers.length
+  const owed = myOwedPapers(mine)
+  const left = owed.length
+  const signed = total - left
+  const count = `${total} ${pluralNoun(PAPER_NOUN, total)}`
+  const lead =
+    left === 0
+      ? 'Nothing is left to sign.'
+      : signed > 0
+        ? `This job has ${count} to sign first. ${left} ${left === 1 ? 'paper is' : 'papers are'} left.`
+        : `This job has ${count} to sign first. It opens when ${total === 1 ? 'it is' : total === 2 ? 'both are' : 'all are'} signed.`
+  const blocked = left > 0 && !mine.linked ? 'Your login is not tied to your file yet. Ask the office to link it on People. Then you can sign.' : null
+  const next = left > 0 && !blocked ? owed[0]! : null
+  return {
+    title: `Before you open ${mine.jobNumber || 'this job'}`,
+    lead,
+    rows: mine.papers.map((p) => {
+      const done = p.status === 'signed'
+      const day = shortDay(p.signedAt)
+      return { id: p.id, paperName: p.paperName, done, sub: !done ? 'Not signed yet' : today && p.signedAt?.slice(0, 10) === today ? 'Signed today' : day ? `Signed ${day}` : 'Signed' }
+    }),
+    next,
+    nextLabel: next ? `Read and sign: ${next.paperName}` : null,
+    allSigned: total > 0 && left === 0,
+    hidden: left > 0 ? 'Until then the job’s name, address, customer, notes, photos and materials stay shut.' : null,
+    blocked,
+  }
+}
+
+/** A locked job in a list: its number and how many papers it waits on. Never its name, address or customer. */
+export function lockedJobWords(mine: MyJobPapers | null, where: 'list' | 'clock' = 'list'): { number: string; line: string } {
+  const left = mine ? myOwedPapers(mine).length : 0
+  const number = mine?.jobNumber || 'A job'
+  if (where === 'clock') return { number, line: left > 0 ? `Sign ${left} ${pluralNoun(PAPER_NOUN, left)} to clock in here` : 'Sign its papers to clock in here' }
+  return { number, line: left > 0 ? `${left} ${pluralNoun(PAPER_NOUN, left)} to sign before this job opens` : 'Papers to sign before this job opens' }
+}
+
+/** The Needs you line for jobs that wait on the caller's signature. Null when none do. */
+export function jobPapersNeedsYou(jobs: readonly JobNeedingMe[]): { title: string; detail: string; figure: string; jobId: string } | null {
+  if (jobs.length === 0) return null
+  const first = jobs[0]!
+  const papers = jobs.reduce((n, j) => n + j.owed, 0)
+  const label = first.jobNumber || 'A job'
+  const title = jobs.length === 1 ? `${label} opens after you sign ${first.owed} ${pluralNoun(PAPER_NOUN, first.owed)}` : `${jobs.length} jobs open after you sign their papers`
+  const detail = jobs.length === 1 ? 'Read and sign, then the job opens.' : `${label} is first. Read and sign, then each job opens.`
+  return { title, detail, figure: String(papers), jobId: first.jobId }
+}
+
+/** Where the signing page sends a signed-in person back to: the page they left and the job they were opening. */
+export const JOB_PAPERS_RETURN_KEY = 'job-papers-return'
+export interface JobPapersReturn {
+  jobId: string
+  path: string
+}
+export function parseJobPapersReturn(raw: string | null): JobPapersReturn | null {
+  if (!raw) return null
+  try {
+    const r = record(JSON.parse(raw))
+    const jobId = text(r.jobId)
+    const path = text(r.path)
+    // An in-app path only: never a full address someone could plant.
+    if (!jobId || !path.startsWith('/') || path.startsWith('//')) return null
+    return { jobId, path }
+  } catch {
+    return null
+  }
+}
+
+/** What a locked job reads as in the clock-in picker, in place of its name. */
+export const LOCKED_PICK_NAME = '🔒 Sign its papers to clock in here'
+
+/**
+ * A job pick as the clock-in picker may show it: a job the caller still owes a paper on keeps its number and loses
+ * its name and address. Anything else passes through untouched.
+ */
+export function maskLockedPick<T extends { source: string; id: string }>(pick: T, closed: ReadonlySet<string>): T {
+  if (pick.source !== 'job' || !closed.has(pick.id)) return pick
+  return { ...pick, job_name: LOCKED_PICK_NAME, job_address: '' }
+}
+
+/** What a locked job reads as in a schedule or calendar row, in place of its name. */
+export const LOCKED_ROW_NAME = '🔒 Papers to sign first'
+
+/**
+ * The roles the database lock leaves alone: for them the prompt at the job is the lock (the owner's call 8), since
+ * hiding the job would take it out of their Pipeline and money totals. The same set as `job_papers_prompt_only()`:
+ * dev, master technician, assistant, controller and primary. Their lists keep a closed job's name.
+ */
+export function jobPapersPromptOnlyRole(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller' || role === 'primary'
 }

@@ -40459,6 +40459,249 @@ export type Database = {
           },
         ]
       }
+      trip_dismissals: {
+        Row: {
+          created_at: string
+          development_id: string | null
+          dismissed_by: string | null
+          first_day: string
+          id: string
+          job_id: string | null
+          last_day: string
+          person_id: string | null
+          person_name: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          development_id?: string | null
+          dismissed_by?: string | null
+          first_day: string
+          id?: string
+          job_id?: string | null
+          last_day: string
+          person_id?: string | null
+          person_name: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          development_id?: string | null
+          dismissed_by?: string | null
+          first_day?: string
+          id?: string
+          job_id?: string | null
+          last_day?: string
+          person_id?: string | null
+          person_name?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_dismissals_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_dismissals_dismissed_by_fkey"
+            columns: ["dismissed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_dismissals_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_dismissals_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_dismissals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_jobs: {
+        Row: {
+          created_at: string
+          job_id: string
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          job_id: string
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          job_id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_jobs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_jobs_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_people: {
+        Row: {
+          created_at: string
+          days: Json
+          id: string
+          person_id: string | null
+          person_name: string
+          trip_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          days?: Json
+          id?: string
+          person_id?: string | null
+          person_name: string
+          trip_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          days?: Json
+          id?: string
+          person_id?: string | null
+          person_name?: string
+          trip_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_people_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_people_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_people_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trips: {
+        Row: {
+          agent_label: string | null
+          asked_by: string | null
+          asked_how: string
+          asked_who: string
+          billing: string | null
+          created_at: string
+          created_by: string | null
+          development_id: string | null
+          id: string
+          job_id: string | null
+          outcome: string
+          purpose: string
+          updated_at: string
+          updated_by: string | null
+          via: string
+        }
+        Insert: {
+          agent_label?: string | null
+          asked_by?: string | null
+          asked_how?: string
+          asked_who?: string
+          billing?: string | null
+          created_at?: string
+          created_by?: string | null
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          outcome?: string
+          purpose?: string
+          updated_at?: string
+          updated_by?: string | null
+          via?: string
+        }
+        Update: {
+          agent_label?: string | null
+          asked_by?: string | null
+          asked_how?: string
+          asked_who?: string
+          billing?: string | null
+          created_at?: string
+          created_by?: string | null
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          outcome?: string
+          purpose?: string
+          updated_at?: string
+          updated_by?: string | null
+          via?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       twin_credentials: {
         Row: {
           created_at: string
@@ -50673,6 +50916,10 @@ export type Database = {
         Args: { p_include_open?: boolean }
         Returns: Json
       }
+      trip_days_ok: { Args: { p_days: Json }; Returns: boolean }
+      trip_is_mine: { Args: { p_trip_id: string }; Returns: boolean }
+      trip_save: { Args: { p: Json; p_dry_run?: boolean }; Returns: Json }
+      trips_office: { Args: never; Returns: boolean }
       typed_hours_rule_applies: {
         Args: { p_subject: string }
         Returns: boolean
