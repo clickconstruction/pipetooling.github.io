@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paint a map press</title>
+<style>
+  :root {
+    --surface: #ffffff; --bg-page: #f0f2f5; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --chrome-bg: #fafafa;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-gray-800: #1f2937; --text-green-700: #15803d; --text-amber-800: #92400e;
+    --border: #cfd4db; --border-strong: #aab2bd; --border-amber: #fcd34d; --border-green: #bbf7d0;
+    --bg-green-tint: #f0fdf4; --bg-amber-tint: #fffbeb;
+    --paint: #ff5a1f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #dfe3e8; color: var(--text-strong); font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  button { font-family: inherit; }
+  .board { display: flex; flex-wrap: wrap; gap: 28px 24px; padding: 24px; align-items: flex-start; }
+  .cell { display: grid; gap: 8px; }
+  .cap { font-size: 13px; font-weight: 700; color: #1f2937; max-width: 375px; }
+  .cap small { display: block; font-weight: 500; color: #4b5563; }
+  .cell.wide .cap { max-width: 1180px; }
+
+  /* A phone's screen, 375 x 812. Everything "fixed" in the app is absolute in here. */
+  .phone { position: relative; width: 375px; height: 812px; overflow: hidden; background: var(--bg-page); border-radius: 0; }
+  .desk { position: relative; width: 1180px; height: 560px; overflow: hidden; background: var(--bg-page); }
+  .chrome { height: 50px; display: flex; align-items: center; gap: 12px; padding: 0 14px; background: var(--chrome-bg); border-bottom: 1px solid var(--border); color: var(--text-700); }
+  .chrome b { font-size: 15px; color: var(--text-strong); }
+  .chrome .sp { margin-left: auto; display: flex; gap: 16px; align-items: center; }
+  .chrome svg { display: block; }
+  .chrome .nav { display: flex; gap: 18px; font-size: 14px; color: var(--text-600); margin-left: 18px; }
+  .page { padding: 12px 14px 0; }
+
+  /* The Dashboard's top action row (DashboardPinnedQuickRow). */
+  .actionRow { display: flex; align-items: stretch; gap: 0.5rem; margin-bottom: 1rem; }
+  .tally { width: 48px; min-height: 48px; flex: none; background: #2563eb; color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .jobReportSq { width: 64px; min-height: 48px; flex: none; background: #2563eb; color: #fff; border-radius: 8px; border: none; font-size: 0.8125rem; font-weight: 600; line-height: 1.25; text-align: center; padding: 0.35rem 0.25rem; }
+  .clockIn { flex: 1; min-width: 0; min-height: 48px; border: none; border-radius: 8px; background: #c75000; color: #fff; font-weight: 700; font-size: 1.05rem; }
+  /* NEW: the press. Surface and a border, so it does not outshout the day's press; the paint's bar is its mark. */
+  .paintPress { flex: 1; min-width: 0; min-height: 48px; display: flex; align-items: center; gap: 0.6rem; padding: 0.3rem 0.75rem; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); text-align: left; cursor: pointer; }
+  .paintPress .w { min-width: 0; display: grid; gap: 1px; }
+  .paintPress .w b { font-size: 0.9375rem; line-height: 1.2; }
+  .paintPress .w span { font-size: 0.75rem; color: var(--text-muted); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .paintPress .chev { margin-left: auto; color: var(--text-faint); font-weight: 700; flex: none; }
+  .paintSq { width: 72px; flex: none; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-size: 0.8125rem; font-weight: 700; line-height: 1.2; text-align: center; }
+  .swatch { width: 20px; height: 5px; border-radius: 3px; background: var(--paint); flex: none; display: inline-block; }
+  .new { outline: 2px dashed #7c3aed; outline-offset: 3px; }
+  .newTag { position: absolute; background: #7c3aed; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; z-index: 5; }
+
+  /* The Job Mode card (DashboardJobModeCard). */
+  .card { width: 100%; margin: 0 auto 0.75rem; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.04); display: flex; flex-direction: column; gap: 0.85rem; }
+  .hdr { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; text-align: center; }
+  .hNum { font-size: 1.4rem; font-weight: 800; color: var(--text-gray-800); line-height: 1.1; }
+  .hNum .sep { margin: 0 0.45rem; font-weight: 400; color: var(--text-faint); }
+  .hName { font-size: 1.05rem; font-weight: 600; color: var(--text-gray-800); line-height: 1.2; }
+  .hAddr { font-size: 0.875rem; color: var(--text-600); line-height: 1.2; }
+  .hStatus { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.15rem; }
+  .rail { display: flex; flex-direction: column; gap: 2px; }
+  .railTitle { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 0.15rem; }
+  .railRow { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.4rem 0.45rem; border-radius: 8px; color: var(--text-gray-800); font-size: 0.86rem; }
+  .railRow .t { color: var(--text-muted); font-size: 0.78rem; font-variant-numeric: tabular-nums; flex: none; width: 58px; }
+  .railRow .n { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .railRow .f { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.04em; flex: none; color: #16a34a; }
+  .dot { width: 16px; height: 16px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; line-height: 1; }
+  .quiet { align-self: center; border: none; background: none; color: var(--text-link); font-size: 0.8125rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; padding: 0.1rem 0.4rem; min-height: 44px; display: inline-flex; align-items: center; gap: 0.3rem; }
+  .details { border-top: 1px solid var(--border); padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .strip { display: grid; gap: 0.35rem; }
+  .mapRow { display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: 40px; padding: 0.35rem 0.6rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-subtle); color: var(--text-strong); font-size: 0.875rem; font-weight: 600; text-align: left; }
+  .mapRow .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mapRow .sum { margin-left: auto; flex: none; color: var(--text-muted); font-weight: 500; font-size: 0.8125rem; }
+  .stripAdd { justify-self: start; min-height: 34px; padding: 0.3rem 0.75rem; font-size: 0.8125rem; font-weight: 600; border-radius: 8px; border: 1px solid var(--border-strong); background: transparent; color: var(--text-link); }
+  .ghost { border-radius: 8px; background: var(--bg-muted); color: var(--text-muted); font-size: 0.75rem; padding: 0.55rem 0.7rem; }
+
+  /* The press bar (JobModePressBar), pinned to the foot. */
+  .bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px; display: grid; gap: 8px; background: var(--surface); border-top: 1px solid var(--border); z-index: 2; }
+  .bar .small { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+  .bar .big { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; }
+  .sBtn { min-height: 44px; padding: 0 6px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-size: 13px; font-weight: 700; line-height: 1.15; }
+  .sBtn.turn { color: var(--text-amber-800); border-color: var(--border-amber); background: var(--bg-amber-tint); }
+  .sBtn.dead { color: var(--text-faint); border-color: var(--border); background: var(--surface); }
+  .bBtn { min-height: 56px; padding: 0 8px; border-radius: 12px; border: none; color: #fff; font-size: 16px; font-weight: 700; line-height: 1.15; text-align: center; }
+  .bBtn.dead { background: var(--bg-200); color: var(--text-700); }
+
+  /* Sheets (PaintAMapStartSheet, PaintedMapShareSheet) and the new picker. */
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+  .sheet { background: var(--surface); color: var(--text-strong); width: 100%; max-height: 100%; overflow: hidden; border-top-left-radius: 14px; border-top-right-radius: 14px; }
+  .sheetHead { display: flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); }
+  .sheetHead h2 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+  .sheetHead .x { margin-left: auto; color: var(--text-muted); font-size: 0.9375rem; }
+  .sheetBody { display: grid; gap: 0.8rem; padding: 0.85rem 1rem 0.95rem; }
+  .lbl { display: grid; gap: 0.3rem; font-size: 0.8125rem; font-weight: 600; color: var(--text-700); }
+  .field { min-height: 44px; padding: 0.5rem 0.6rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-base); width: 100%; display: flex; align-items: center; }
+  .field.ph { color: var(--text-faint); }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .chip { min-height: 36px; padding: 0 0.8rem; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 600; font-size: 0.875rem; display: inline-flex; align-items: center; }
+  .chip.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .link { background: none; border: none; padding: 0; color: var(--text-link); font-size: 0.875rem; text-decoration: underline; text-underline-offset: 2px; min-height: 32px; text-align: left; display: inline-flex; align-items: center; }
+  .forBox { display: flex; align-items: center; gap: 0.6rem; border: 1px solid var(--border); background: var(--bg-subtle); border-radius: 10px; padding: 0.5rem 0.7rem; }
+  .forBox .who { min-width: 0; display: grid; gap: 1px; }
+  .forBox .who b { font-size: 0.9375rem; line-height: 1.25; }
+  .forBox .who span { font-size: 0.8125rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .forBox .link { margin-left: auto; flex: none; font-weight: 600; }
+  .walkBox { display: grid; gap: 0.45rem; border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.7rem; }
+  .walkBox ul { margin: 0; padding-left: 1.1rem; font-size: 0.8125rem; color: var(--text-700); display: grid; gap: 0.15rem; }
+  .red { min-height: 52px; border-radius: 8px; border: 1px solid #dc2626; background: #dc2626; color: #fff; font-weight: 700; font-size: 1rem; }
+  .blue { min-height: 52px; border-radius: 8px; border: 1px solid #2563eb; background: #2563eb; color: #fff; font-weight: 700; font-size: 1rem; }
+  .plain { min-height: 48px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 700; font-size: 1rem; }
+  .note { margin: 0; font-size: 0.875rem; color: var(--text-700); background: var(--bg-muted); border-radius: 8px; padding: 0.5rem 0.65rem; }
+  .muted { font-size: 0.8125rem; color: var(--text-muted); margin: 0; }
+
+  /* Picker rows. */
+  .secHead { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin: 0.1rem 0 -0.35rem; }
+  .jobRow { display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 52px; padding: 0.45rem 0.7rem; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text-strong); text-align: left; }
+  .jobRow .w { min-width: 0; display: grid; gap: 1px; flex: 1; }
+  .jobRow .w b { font-size: 0.9375rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .jobRow .w span { font-size: 0.8125rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .jobRow .tag { flex: none; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-align: right; line-height: 1.2; }
+  .jobRow.now { background: var(--bg-green-tint); border-color: #16a34a; }
+  .jobRow.now .tag { color: #16a34a; }
+  .rows { display: grid; gap: 0.35rem; }
+
+  /* The map's window (PaintedMapWindow) on a phone. */
+  .win { position: absolute; inset: 0; background: var(--surface); display: flex; flex-direction: column; z-index: 8; border-radius: 14px 14px 0 0; overflow: hidden; }
+  .winHead { flex: none; display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); }
+  .winHead h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+  .winHead .x { margin-left: auto; color: var(--text-muted); font-size: 0.9375rem; }
+  .aerial { flex: 1 1 40%; min-height: 240px; position: relative; overflow: hidden; }
+  .aerial svg { width: 100%; height: 100%; display: block; }
+  .panel { flex: 0 1 auto; border-top: 1px solid var(--border); padding: 0.75rem 1rem 0.85rem; display: grid; gap: 0.65rem; align-content: start; }
+  .savedBand { display: grid; gap: 0.15rem; background: var(--bg-green-tint); border: 1px solid var(--border-green); border-radius: 10px; padding: 0.5rem 0.7rem; font-size: 0.875rem; color: var(--text-700); }
+  .savedBand b { color: var(--text-green-700); font-size: 0.9375rem; }
+  .pressRow { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .press { min-height: 44px; padding: 0 0.9rem; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 700; font-size: 0.9375rem; display: inline-flex; align-items: center; }
+  .rowPress { display: grid; gap: 0.1rem; width: 100%; text-align: left; padding: 0.55rem 0.7rem; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text-strong); font-size: 0.9375rem; font-weight: 700; }
+  .rowPress span { font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); }
+  .rowPress.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .rowPress.primary span { color: #dbeafe; }
+  .foot { display: flex; flex-wrap: wrap; gap: 0.2rem 0.9rem; padding-top: 0.25rem; border-top: 1px solid var(--border); }
+
+  /* The phone's own Messages, drawn plain: it is the phone's screen, not the app's. */
+  .msgs { position: absolute; inset: 0; background: #fff; display: flex; flex-direction: column; z-index: 12; font-family: -apple-system, system-ui, Helvetica, Arial, sans-serif; }
+  .msgs .top { padding: 14px 16px 10px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; }
+  .msgs .top b { margin: 0 auto; font-size: 16px; }
+  .msgs .top span { color: #2563eb; font-size: 16px; }
+  .msgs .to { padding: 10px 16px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 15px; display: flex; gap: 8px; align-items: center; }
+  .msgs .to i { font-style: normal; color: #9ca3af; }
+  .msgs .space { flex: 1; }
+  .msgs .compose { margin: 0 12px 14px; border: 1px solid #d1d5db; border-radius: 18px; padding: 9px 44px 9px 14px; font-size: 16px; line-height: 1.35; position: relative; color: #111827; }
+  .msgs .compose u { color: #2563eb; text-decoration: underline; }
+  .msgs .send { position: absolute; right: 6px; bottom: 6px; width: 30px; height: 30px; border-radius: 50%; background: #22c55e; color: #fff; display: grid; place-items: center; font-weight: 800; }
+  .msgs .kb { height: 250px; background: #d1d5db; display: grid; place-items: center; color: #6b7280; font-size: 13px; }
+
+  /* Office placeholders. */
+  .fold { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 0.85rem; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.9375rem; }
+  .fold span { margin-left: auto; font-weight: 500; font-size: 0.8125rem; color: var(--text-muted); }
+  .quietLinks { display: flex; gap: 1rem; font-size: 0.8125rem; align-items: center; min-height: 36px; }
+  .quietLinks a { color: var(--text-link); text-decoration: underline; }
+  .quick { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+  .quick a { padding: 0.75rem 1.25rem; background: #2563eb; color: #fff; border-radius: 8px; font-weight: 600; font-size: 1rem; text-decoration: none; }
+
+  /* One state alone, for a screenshot: ?s=<id>. */
+  body.single { background: var(--bg-page); }
+  body.single .board { padding: 0; gap: 0; }
+  body.single .cell { display: none; }
+  body.single .cell.show { display: block; }
+  body.single .cap { display: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <g id="receipt"><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16l-3-2-2 2-2-2-2 2-2-2-3 2" /><path d="M9 8h6M9 12h6" /></g>
+    <!-- The view from above: lawns, a street, a drive, roofs. Invented. -->
+    <g id="ground">
+      <rect width="375" height="330" fill="#6f8f5a"/>
+      <rect x="0" y="248" width="375" height="46" fill="#8b8f93"/>
+      <path d="M0 271h375" stroke="#e8e2c2" stroke-width="2" stroke-dasharray="14 12"/>
+      <rect x="0" y="294" width="375" height="36" fill="#7c9a66"/>
+      <rect x="40" y="120" width="120" height="86" rx="3" fill="#b7a58f"/><path d="M40 163h120" stroke="#9a8973" stroke-width="2"/>
+      <rect x="228" y="96" width="108" height="92" rx="3" fill="#a9a9a4"/><path d="M282 96v92" stroke="#8e8e88" stroke-width="2"/>
+      <rect x="172" y="150" width="34" height="98" fill="#b9b6ae"/>
+      <rect x="250" y="20" width="60" height="42" rx="3" fill="#8f7d68"/>
+      <circle cx="30" cy="60" r="20" fill="#56784a"/><circle cx="70" cy="36" r="15" fill="#5c8050"/><circle cx="352" cy="220" r="17" fill="#56784a"/><circle cx="196" cy="48" r="16" fill="#5c8050"/>
+      <rect x="0" y="0" width="375" height="330" fill="rgba(20,30,20,0.06)"/>
+    </g>
+  </defs>
+</svg>
+
+<div class="board">
+
+  <!-- 1. Job Mode, clocked onto a job -->
+  <div class="cell" id="tech-job">
+    <div class="cap">1 · A tech's Dashboard, on a job<small>The press sits beside Tally, in the slot the Job Report button left. It says which job the map will land on.</small></div>
+    <div class="phone">
+      <div class="chrome"><b>PipeTooling</b><div class="sp"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></div></div>
+      <div class="page">
+        <div class="actionRow" style="position:relative">
+          <div class="tally"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#receipt"/></svg></div>
+          <button class="paintPress new"><span class="swatch"></span><span class="w"><b>Paint a map</b><span>On J2417 · Cedar Hollow 12</span></span><span class="chev">›</span></button>
+          <span class="newTag" style="right:6px; top:-11px">new</span>
+        </div>
+        <div class="card">
+          <div class="hdr">
+            <div class="hNum">J2417<span class="sep">|</span><span class="hName">Cedar Hollow 12</span></div>
+            <div class="hAddr">1208 Wrenfield Loop</div>
+          </div>
+          <div class="rail">
+            <div class="railTitle">Today · 1 of 3 done</div>
+            <div class="railRow" style="color:var(--text-muted)"><span class="dot" style="background:#16a34a;color:#fff">✓</span><span class="t">7:00 AM</span><span class="n">J2398 · Marlowe Dental</span></div>
+            <div class="railRow" style="background:var(--bg-green-tint); outline:1.5px solid #16a34a"><span class="dot" style="border:5px solid #16a34a;background:var(--surface)"></span><span class="t">9:30 AM</span><span class="n">J2417 · Cedar Hollow 12</span><span class="f">NOW</span></div>
+            <div class="railRow"><span class="dot" style="border:2px solid var(--text-faint)"></span><span class="t">1:00 PM</span><span class="n">J2431 · Pinto Ridge 3</span></div>
+          </div>
+          <button class="quiet"><span>▦</span>Materials on site</button>
+          <div class="details">
+            <div class="strip">
+              <div class="mapRow"><span class="swatch"></span><span class="nm">The way in</span><span class="sum">about 640 ft · 2 places ›</span></div>
+              <button class="stripAdd">＋ Paint a map</button>
+            </div>
+            <div class="ghost">The job's checklists, photos and notes, as today</div>
+          </div>
+        </div>
+      </div>
+      <div class="bar">
+        <div class="small"><button class="sBtn turn">Turnaway</button><button class="sBtn">Clock out</button></div>
+        <div class="big"><button class="bBtn" style="background:#2563eb">Leave report</button><button class="bBtn" style="background:#16a34a">On my way</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Job Mode, no schedule, not clocked in -->
+  <div class="cell" id="tech-nojob">
+    <div class="cap">2 · The same Dashboard with no job today<small>Same press, same place. It says the person picks the job.</small></div>
+    <div class="phone">
+      <div class="chrome"><b>PipeTooling</b><div class="sp"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></div></div>
+      <div class="page">
+        <div class="actionRow" style="position:relative">
+          <div class="tally"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#receipt"/></svg></div>
+          <button class="paintPress new"><span class="swatch"></span><span class="w"><b>Paint a map</b><span>You pick the job it is for</span></span><span class="chev">›</span></button>
+          <span class="newTag" style="right:6px; top:-11px">new</span>
+        </div>
+        <div class="card">
+          <div class="hdr">
+            <div class="hName">No schedule for today</div>
+            <div class="hStatus">Use Clock In to choose a job manually.</div>
+          </div>
+          <button class="quiet"><span>▦</span>Materials on site</button>
+        </div>
+        <div class="ghost">Your week, your record and your hours, as today</div>
+      </div>
+      <div class="bar">
+        <div class="small"><button class="sBtn dead">Turnaway</button></div>
+        <div class="big"><button class="bBtn dead">Leave report</button><button class="bBtn" style="background:#c75000">Clock In</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. The office's Dashboard on a phone -->
+  <div class="cell" id="office-phone">
+    <div class="cap">3 · The office's Dashboard on a phone<small>The office's phone has two quiet links under the clock today. Paint a map is the third.</small></div>
+    <div class="phone">
+      <div class="chrome"><b>PipeTooling</b><div class="sp"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></div></div>
+      <div class="page">
+        <div style="margin-bottom:1rem; display:grid; gap:0.35rem; position:relative">
+          <button class="clockIn" style="width:100%">Clock In</button>
+          <div class="quietLinks"><a>Job report</a><a>Tally</a><a class="new" style="display:inline-flex;align-items:center;gap:0.35rem;padding:2px 4px;border-radius:4px"><span class="swatch" style="width:16px"></span>Paint a map</a></div>
+          <span class="newTag" style="left:236px; top:62px">new</span>
+        </div>
+        <div class="fold">Needs you<span>3 things</span></div>
+        <div class="fold">My Inbox<span>›</span></div>
+        <div class="fold">Your people<span>›</span></div>
+        <div class="fold">My Schedule<span>›</span></div>
+        <div class="ghost">The rest of the Dashboard, as today</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. The job picker -->
+  <div class="cell" id="picker">
+    <div class="cap">4 · Which job is it for?<small>Opens only when the app does not know the job. The jobs the person was on lately, then the ones near them, then a search. Today's jobs lead the list when there are any.</small></div>
+    <div class="phone">
+      <div class="chrome"><b>PipeTooling</b></div>
+      <div class="scrim">
+        <div class="sheet">
+          <div class="sheetHead"><h2>Which job is it for?</h2><span class="x">Cancel</span></div>
+          <div class="sheetBody">
+            <p class="muted" style="margin-top:-0.2rem">Every painted map is on a job. Press the job and the map opens.</p>
+            <div class="secHead">Lately</div>
+            <div class="rows">
+              <div class="jobRow"><span class="w"><b>J2417 · Cedar Hollow 12</b><span>1208 Wrenfield Loop</span></span><span class="tag">yesterday</span></div>
+              <div class="jobRow"><span class="w"><b>J2398 · Marlowe Dental</b><span>77 Quarry Glass Blvd, Suite 4</span></span><span class="tag">Friday</span></div>
+              <div class="jobRow"><span class="w"><b>J2431 · Pinto Ridge 3</b><span>9 Pinto Ridge Ct</span></span><span class="tag">Nov 12</span></div>
+            </div>
+            <button class="rowPress">Find the jobs near me<span>Your phone will ask to share where you are. It is read once, for this list.</span></button>
+            <label class="lbl" style="margin-top:0.1rem">Or search every job
+              <span class="field ph">Search by number, name or address</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. The picker, after Find the jobs near me -->
+  <div class="cell" id="picker-near">
+    <div class="cap">5 · The picker after "Find the jobs near me"<small>Nearest first, with how far. It never picks for the person. A job whose address the app has not placed is left out, and the sheet says so.</small></div>
+    <div class="phone">
+      <div class="chrome"><b>PipeTooling</b></div>
+      <div class="scrim">
+        <div class="sheet">
+          <div class="sheetHead"><h2>Which job is it for?</h2><span class="x">Cancel</span></div>
+          <div class="sheetBody">
+            <div class="secHead" style="margin-top:0">Near you</div>
+            <div class="rows">
+              <div class="jobRow now"><span class="w"><b>J2417 · Cedar Hollow 12</b><span>1208 Wrenfield Loop</span></span><span class="tag">about<br>300 ft</span></div>
+              <div class="jobRow"><span class="w"><b>J2420 · Cedar Hollow 14</b><span>1216 Wrenfield Loop</span></span><span class="tag">about<br>450 ft</span></div>
+              <div class="jobRow"><span class="w"><b>J2402 · Tavish repipe</b><span>3310 Old Kiln Rd</span></span><span class="tag">about<br>2 mi</span></div>
+            </div>
+            <p class="muted">Only jobs with an address the app has placed on the map are listed. Search finds the rest.</p>
+            <div class="secHead">Lately</div>
+            <div class="rows">
+              <div class="jobRow"><span class="w"><b>J2398 · Marlowe Dental</b><span>77 Quarry Glass Blvd, Suite 4</span></span><span class="tag">Friday</span></div>
+            </div>
+            <label class="lbl" style="margin-top:0.1rem">Or search every job
+              <span class="field ph">Search by number, name or address</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. The start sheet, job set -->
+  <div class="cell" id="start">
+    <div class="cap">6 · The start sheet, with the job already set<small>For moves to the top and always names a job. Change the job opens the picker. The rest is today's sheet, with two of its small paragraphs left out here to fit one screen.</small></div>
+    <div class="phone">
+      <div class="chrome"><b>PipeTooling</b></div>
+      <div class="scrim">
+        <div class="sheet">
+          <div class="sheetHead"><h2>Paint a map</h2><span class="x">Cancel</span></div>
+          <div class="sheetBody" style="gap:0.7rem">
+            <div style="display:grid; gap:0.3rem; position:relative">
+              <span style="font-size:0.8125rem; font-weight:600; color:var(--text-700)">For</span>
+              <div class="forBox new"><span class="swatch"></span><span class="who"><b>J2417 · Cedar Hollow 12</b><span>1208 Wrenfield Loop</span></span><button class="link">Change the job</button></div>
+              <span class="newTag" style="right:4px; top:-4px">new</span>
+            </div>
+            <div style="display:grid; gap:0.4rem">
+              <label class="lbl">What is it?<span class="field">The way in</span></label>
+              <div class="chips"><span class="chip on">The way in</span><span class="chip">Where to park</span><span class="chip">What is where</span></div>
+            </div>
+            <label class="lbl">A line for whoever opens it<span class="field ph">Start at the truck gate, not the sales entrance.</span></label>
+            <div class="walkBox">
+              <button class="red">Walk or drive it</button>
+              <ul><li>Keep this screen on and in your hand. The line stops if the phone locks.</li><li>The line stays on this phone until you press Save.</li><li>Painting pauses by itself after 5 minutes standing still, and ends after an hour.</li></ul>
+            </div>
+            <button class="blue">Draw it by hand</button>
+            <button class="plain">Start with a place</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Saved: the map's window with the share step -->
+  <div class="cell" id="saved">
+    <div class="cap">7 · The map, the moment it is saved<small>The text is offered at once, in one press. The marking presses under it are today's, untouched.</small></div>
+    <div class="phone" style="background:#374151">
+      <div class="win">
+        <div class="winHead"><h2>The way in</h2><span class="x">Close</span></div>
+        <div class="aerial">
+          <svg viewBox="0 0 375 330" preserveAspectRatio="xMidYMid slice">
+            <use href="#ground"/>
+            <path d="M12 262 L172 262 L190 236 L190 160 L214 138 L214 84 L262 70" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+            <path d="M12 262 L172 262 L190 236 L190 160 L214 138 L214 84 L262 70" fill="none" stroke="#ff5a1f" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+            <g font-family="system-ui, sans-serif" font-size="12" font-weight="800" text-anchor="middle">
+              <circle cx="172" cy="262" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="172" y="266.5" fill="#111827">1</text>
+              <circle cx="262" cy="70" r="11" fill="#fff" stroke="#111827" stroke-width="2"/><text x="262" y="74.5" fill="#111827">2</text>
+            </g>
+          </svg>
+        </div>
+        <div class="panel">
+          <div class="savedBand new" style="position:relative"><b>✓ Saved on J2417 · Cedar Hollow 12</b><span>About 640 ft · 2 places. Anyone on the job can open it.</span></div>
+          <button class="rowPress primary new">Text it from my phone…<span>Opens your Messages with the link written. You pick who gets it.</span></button>
+          <div class="pressRow">
+            <span class="press" style="background:#2563eb;border-color:#2563eb;color:#fff">Draw a line</span><span class="press">Walk or drive a line</span><span class="press">＋ Place</span><span class="press">Directions to the start</span><span class="press">Share</span>
+          </div>
+          <div class="foot">
+            <button class="link">Rename this map</button><button class="link new">Move it to another job…</button><button class="link">Throw this map away</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. The Share sheet -->
+  <div class="cell" id="share">
+    <div class="cap">8 · The Share sheet, with no "Make a link" step<small>The first press makes the link. Text it… to the customer stays the office's and is drawn here as the office sees it.</small></div>
+    <div class="phone" style="background:#374151">
+      <div class="scrim">
+        <div class="sheet">
+          <div class="sheetHead"><h2>Share this map</h2><span class="x">Close</span></div>
+          <div class="sheetBody" style="gap:0.6rem">
+            <p style="margin:0; font-size:0.9375rem">Anyone who has the link can open the map. No sign-in.</p>
+            <button class="rowPress primary new">Text it from my phone…<span>Opens your Messages with the link written. You pick who gets it.</span></button>
+            <button class="rowPress">Text it…<span>To the job’s customer, from the company’s number</span></button>
+            <button class="rowPress">Send it another way…<span>Mail, a group chat or a phone nearby</span></button>
+            <button class="rowPress">Copy the link<span>To paste it anywhere</span></button>
+            <button class="rowPress">Show a code to scan<span>For someone standing beside you</span></button>
+            <p class="muted new" style="padding:2px 0">No link is out yet. The first press here makes one. It ends by itself after ninety days, or when you end it.</p>
+            <div class="note" style="display:grid; gap:0.2rem">
+              <span>They give their name first. We keep the name, the phone or computer and the time.</span>
+              <span>They see the name, the lines, and the places with their words and photos.</span>
+              <span>They do not see who painted it, when, or anything else about the job.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. The phone's Messages -->
+  <div class="cell" id="messages">
+    <div class="cap">9 · What "Text it from my phone…" opens<small>The phone's own Messages, from the person's own number. The words are the ones the office's text already uses. The app sends nothing itself.</small></div>
+    <div class="phone">
+      <div class="msgs">
+        <div class="top"><span>Cancel</span><b>New Message</b><span style="visibility:hidden">Cancel</span></div>
+        <div class="to">To: <i>the person picks who</i></div>
+        <div class="space"></div>
+        <div class="compose">Here is a map for you, The way in. Open it here: <u>clicktooling.com/way/k7m2x9qd4t</u><span class="send">↑</span></div>
+        <div class="kb">the phone's keyboard</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. The office's Dashboard at a desk -->
+  <div class="cell wide" id="office-desk">
+    <div class="cap">10 · The office's Dashboard at a desk<small>The same row: Tally, the clock, Job Report, then Paint a map. The header and the cards under the row are stand-ins.</small></div>
+    <div class="desk">
+      <div class="chrome"><b>PipeTooling</b><div class="nav"><span>Dashboard</span><span>Jobs</span><span>Bids</span><span>Schedule</span><span>Materials</span><span>People</span></div><div class="sp"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div></div>
+      <div class="page" style="padding:20px 28px 0; max-width:1180px">
+        <div class="actionRow" style="position:relative">
+          <div class="tally"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#receipt"/></svg></div>
+          <button class="clockIn">Clock In</button>
+          <button class="jobReportSq">Job<br>Report</button>
+          <button class="paintSq new"><span class="swatch"></span>Paint<br>a map</button>
+          <span class="newTag" style="right:18px; top:54px">new</span>
+        </div>
+        <div class="quick"><a>Job</a><a>Job Labor</a><a>Bid</a><a>Project</a><a>Part</a><a>Assembly</a><a>Prospect</a><a>Inspections</a></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px">
+          <div class="fold" style="height:120px; align-items:flex-start">My Inbox</div>
+          <div class="fold" style="height:120px; align-items:flex-start">My Schedule</div>
+          <div class="fold" style="height:120px; align-items:flex-start">Your people</div>
+          <div class="fold" style="height:120px; align-items:flex-start">Projects</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+  const s = new URLSearchParams(location.search).get('s');
+  if (s) { document.body.classList.add('single'); const el = document.getElementById(s); if (el) el.classList.add('show'); }
+  if (new URLSearchParams(location.search).get('plain')) document.querySelectorAll('.new').forEach((e) => e.classList.remove('new')), document.querySelectorAll('.newTag').forEach((e) => e.remove());
+</script>
+</body>
+</html>
