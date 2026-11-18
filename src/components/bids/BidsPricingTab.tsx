@@ -15,8 +15,8 @@ import { TagBreakdownCard } from './TagBreakdownCard'
 import { KindBreakdownCard } from './KindBreakdownCard'
 import { RowKindChip } from './RowKindChip'
 import { PricingResolvePanel, PricingRfqChip } from './PricingHeaderPieces'
-import { MarkupToolPopover } from './MarkupToolPopover'
-import { TaxToolPopover } from './TaxToolPopover'
+import { PricingLockChip, PricingMarkupTool, PricingRobotRowsDoor, PricingSentLine, PricingTaxTool } from './PricingBarPieces'
+import { markupToolRows, taxToolRows, weightedMarkupOf } from '../../lib/bids/rowMarkToolRows'
 import { cleanTag, rowKindOf } from '../../lib/bids/rowKinds'
 import { usePricingRowMarks } from '../../hooks/usePricingRowMarks'
 import { costEstimateLaborRowHours } from '../../lib/bidPricingRowCalculations'
@@ -71,7 +71,6 @@ import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { filterBidsForPicker } from '../../lib/bids/filterBidsForPicker'
 import { resolvePricingEntry } from '../../lib/bids/resolvePricingEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { countedLabel } from '../../lib/batchWords'
 import { useRobotFixtures } from '../../hooks/useRobotFixtures'
 import { moneyWords, numberOf } from '../../lib/bids/robotFixtures'
 import { decoratePricingRows } from '../../lib/bids/decoratePricingRows'
@@ -2827,69 +2826,38 @@ export function BidsPricingTab({
                             Margin ›
                           </button>
                         )
-                        // #128: the markup tool beside the brush — a popover with the number, a scope and one Undo.
-                        const markupRows = eff.map((r) => {
-                          const s = splitOf(r)
-                          return { id: r.countRow.id, name: r.countRow.fixture ?? '', kind: rowKindOf(r.countRow.fixture ?? '', rowMarks[r.countRow.id]?.kind).kind, tags: rowMarks[r.countRow.id]?.tags ?? [], own: s.markupSource === 'row', markup: s.markup, hasMaterial: s.materialSource === 'takeoff' }
-                        })
-                        const markupMatCost = eff.reduce((s, r) => s + (splitOf(r).materialSource === 'none' ? 0 : r.materialsBeforeTax), 0)
-                        const markupMatPrice = eff.reduce((s, r) => s + splitOf(r).material, 0)
+                        // #128: the Markup and Tax tools beside the brush. Each is a button with a popover: a number or a
+                        // choice, a scope and one Undo. The rows they are handed are `lib/bids/rowMarkToolRows.ts`.
+                        const toolRows = eff.map((r) => ({ id: r.countRow.id, name: r.countRow.fixture ?? '', kind: rowKindOf(r.countRow.fixture ?? '', rowMarks[r.countRow.id]?.kind).kind, tags: rowMarks[r.countRow.id]?.tags ?? [], split: splitOf(r), materialsBeforeTax: r.materialsBeforeTax }))
                         const markupControl = (
-                          <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flex: '0 0 auto' }}>
-                            <button
-                              type="button"
-                              aria-expanded={markupToolOpen}
-                              onClick={() => setMarkupToolOpen((v) => !v)}
-                              title="Material markup — set one number across the rows, a tag or a kind"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', font: 'inherit', fontSize: '0.8rem', fontWeight: 700, padding: '0.3rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: markupToolOpen ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1, flex: '0 0 auto' }}
-                            >
-                              <span aria-hidden style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>+%</span>
-                              Markup ›
-                            </button>
-                            {markupToolOpen ? (
-                              <MarkupToolPopover
-                                rows={markupRows}
-                                bidMarkup={materialMarkup}
-                                weightedMarkup={markupMatCost > 0 ? markupMatPrice / markupMatCost - 1 : null}
-                                onApply={applyMarkupTool}
-                                undoCount={markupUndo?.length ?? 0}
-                                onUndo={undoMarkupTool}
-                                onClose={() => setMarkupToolOpen(false)}
-                              />
-                            ) : null}
-                          </span>
+                          <PricingMarkupTool
+                            open={markupToolOpen}
+                            onToggle={() => setMarkupToolOpen((v) => !v)}
+                            onClose={() => setMarkupToolOpen(false)}
+                            rows={markupToolRows(toolRows)}
+                            bidMarkup={materialMarkup}
+                            weightedMarkup={weightedMarkupOf(toolRows)}
+                            onApply={applyMarkupTool}
+                            undoCount={markupUndo?.length ?? 0}
+                            onUndo={undoMarkupTool}
+                          />
                         )
                         const taxControl = (
-                          <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flex: '0 0 auto' }}>
-                            <button
-                              type="button"
-                              aria-expanded={taxToolOpen}
-                              onClick={() => setTaxToolOpen((v) => !v)}
-                              title="Sales tax — make rows tax-free or taxed across the bid, a tag or a kind"
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', font: 'inherit', fontSize: '0.8rem', fontWeight: 700, padding: '0.3rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: taxToolOpen ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1, flex: '0 0 auto' }}
-                            >
-                              <span aria-hidden style={{ fontSize: '0.72rem', fontWeight: 800, lineHeight: 1, textDecoration: 'line-through' }}>tx</span>
-                              Tax ›
-                            </button>
-                            {taxToolOpen ? (
-                              <TaxToolPopover
-                                rows={eff.map((r) => {
-                                  const s = splitOf(r)
-                                  return { id: r.countRow.id, name: r.countRow.fixture ?? '', kind: rowKindOf(r.countRow.fixture ?? '', rowMarks[r.countRow.id]?.kind).kind, tags: rowMarks[r.countRow.id]?.tags ?? [], taxable: s.taxable, hasMaterial: s.material > 0 || s.materialSource === 'takeoff' }
-                                })}
-                                taxPercent={derived.taxPercent}
-                                onTaxPercentChange={setCostEstimatePOModalTaxPercent && pricingLock !== 'locked' ? (v) => setCostEstimatePOModalTaxPercent(String(v)) : undefined}
-                                onTaxPercentCommit={(text) => {
-                                  if (!guardPricingWrite()) return
-                                  onCommitTaxPercent?.(text)
-                                }}
-                                onApply={applyTaxTool}
-                                undoCount={taxUndo?.length ?? 0}
-                                onUndo={undoTaxTool}
-                                onClose={() => setTaxToolOpen(false)}
-                              />
-                            ) : null}
-                          </span>
+                          <PricingTaxTool
+                            open={taxToolOpen}
+                            onToggle={() => setTaxToolOpen((v) => !v)}
+                            onClose={() => setTaxToolOpen(false)}
+                            rows={taxToolRows(toolRows)}
+                            taxPercent={derived.taxPercent}
+                            onTaxPercentChange={setCostEstimatePOModalTaxPercent && pricingLock !== 'locked' ? (v) => setCostEstimatePOModalTaxPercent(String(v)) : undefined}
+                            onTaxPercentCommit={(text) => {
+                              if (!guardPricingWrite()) return
+                              onCommitTaxPercent?.(text)
+                            }}
+                            onApply={applyTaxTool}
+                            undoCount={taxUndo?.length ?? 0}
+                            onUndo={undoTaxTool}
+                          />
                         )
                         // v2.4194: a second line under the scoreboard when the bid carries an alternate —
                         // the base, what each alternate adds (with its own margin on hover), and the whole.
@@ -3239,63 +3207,30 @@ export function BidsPricingTab({
                         </div>
                       ) : null}
                     {robotUnpriced > 0 && selectedPricingVersionId && selectedBidForPricing && !selectedBidForPricing.bid_date_sent ? (
-                      <div style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
-                        <button
-                          type="button"
-                          data-testid="pricing-robot-price-door"
-                          disabled={robotPricing}
-                          onClick={async () => {
-                            const bidId = selectedBidForPricing.id
-                            setRobotPricing(true)
-                            try {
-                              await robotFixtures.price(bidId, selectedPricingVersionId)
-                              await reloadPricingForBid(bidId)
-                              robotFixtures.reload()
-                            } catch (e) {
-                              setError(formatErrorMessage(e))
-                            } finally {
-                              setRobotPricing(false)
-                            }
-                          }}
-                          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', cursor: robotPricing ? 'wait' : 'pointer' }}
-                        >
-                          {robotPricing ? 'Pricing…' : `${countedLabel('Price', robotUnpriced, 'robot row')} at the robot's prices`}
-                        </button>
-                        <span style={{ color: 'var(--text-muted)' }}>{robotUnpriced === 1 ? '1 robot row landed before a book was picked and has no price.' : `${robotUnpriced} robot rows landed before a book was picked and have no price.`}</span>
-                      </div>
+                      <PricingRobotRowsDoor
+                        count={robotUnpriced}
+                        busy={robotPricing}
+                        onPrice={async () => {
+                        const bidId = selectedBidForPricing.id
+                        setRobotPricing(true)
+                        try {
+                          await robotFixtures.price(bidId, selectedPricingVersionId)
+                          await reloadPricingForBid(bidId)
+                          robotFixtures.reload()
+                        } catch (e) {
+                          setError(formatErrorMessage(e))
+                        } finally {
+                          setRobotPricing(false)
+                        }
+                        }}
+                      />
                     ) : null}
                     {/* Frozen bid prices, PR 3 (v2.3591): a sent bid is locked — the chip says so and Revise unlocks it for this session. */}
                     {(() => {
                       const chip = pricingLockChipText(pricingLock, selectedBidForPricing?.bid_date_sent, new Date().getFullYear())
                       if (!chip) return null
                       const revising = pricingLock === 'revising'
-                      return (
-                        <div data-testid="pricing-lock-chip" style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.74rem' }}>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.3rem',
-                              padding: '0.15rem 0.55rem',
-                              borderRadius: 999,
-                              border: `1px solid ${revising ? 'var(--border-amber)' : 'var(--border-strong)'}`,
-                              background: revising ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)',
-                              color: revising ? 'var(--text-amber-700)' : 'var(--text-600)',
-                              fontWeight: 600,
-                            }}
-                          >
-                            {revising ? '✎' : '🔒'} {chip}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setPricingRevising(!revising)}
-                            title={revising ? 'Lock this bid\'s pricing again' : 'Unlock this bid\'s pricing for this session — changes after send are on purpose'}
-                            style={{ padding: '0.15rem 0.55rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', fontSize: '0.74rem', fontWeight: 600 }}
-                          >
-                            {revising ? 'Lock again' : 'Revise…'}
-                          </button>
-                        </div>
-                      )
+                      return <PricingLockChip chip={chip} revising={revising} onToggle={() => setPricingRevising(!revising)} />
                     })()}
                     {/* Frozen bid prices, PR 2: on a sent bid the grid is a recomputation, not the quote —
                         `bid_value` (stamped at send) is the honest number; say both wherever the live one is read. */}
@@ -3303,15 +3238,7 @@ export function BidsPricingTab({
                       const cmp = compareSentVsToday({ bidDateSent: selectedBidForPricing?.bid_date_sent, bidValue: selectedBidForPricing?.bid_value, today: effRevenue })
                       // v2.5671: no comparison while the open price loads — today's number is not its own yet.
                       if (!cmp || pricesLoading) return null
-                      const differs = cmp.kind === 'differs'
-                      return (
-                        <div
-                          data-testid="pricing-sent-vs-today"
-                          style={{ marginTop: '0.4rem', fontSize: '0.74rem', fontVariantNumeric: 'tabular-nums', color: differs ? 'var(--text-amber-700)' : 'var(--text-muted)', fontWeight: differs ? 600 : 400 }}
-                        >
-                          {sentVsTodayText(cmp, { where: 'grid', currentYear: new Date().getFullYear() })}
-                        </div>
-                      )
+                      return <PricingSentLine text={sentVsTodayText(cmp, { where: 'grid', currentYear: new Date().getFullYear() })} differs={cmp.kind === 'differs'} />
                     })()}
                     <PricingMaterialsTodayNote
                       drift={materialsToday}
