@@ -12,7 +12,8 @@ import { hrDocMarkdownToSafeHtml } from '../../../lib/people/hrDocMarkdown'
 import { letterBlanksWords, letterCopiedWords, letterCopyText, letterLeavesWordsOut, letterLeftOutWords, letterPieceLabel, type LetterCopy } from '../../../lib/legal/letterCopyText'
 import { useOptionalToastContext } from '../../../contexts/ToastContext'
 import { EVIDENCE_LANDING_LIT_MS, evidenceLanding, evidenceRowSelector } from '../../../lib/legal/evidenceLanding'
-import { addLegalMatterDocument, markLegalMatterDocumentReceived, markLegalMatterDocumentSent, openLegalMatterDocument, readLegalMatterDocumentText, retireLegalMatterDocument, setLegalMatterDocumentCounselOnly, setLegalMatterDocumentState, setLegalMatterDocumentWhose, updateLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
+import { addLegalMatterDocument, keepLegalMatterDocumentAsText, markLegalMatterDocumentReceived, markLegalMatterDocumentSent, openLegalMatterDocument, readLegalMatterDocumentText, retireLegalMatterDocument, setLegalMatterDocumentCounselOnly, setLegalMatterDocumentState, setLegalMatterDocumentWhose, updateLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
+import { KEEP_AS_TEXT_WORDS, keepAsTextBatchLabel, keepAsTextBatchShows, keepAsTextOutcome, legalDocumentCanKeepAsText, legalDocumentsToKeepAsText, type KeepAsTextFailure } from '../../../lib/legal/keepAsText'
 import { EVIDENCE_FROM_MESSAGES_WORDS, evidenceJobTiles, messagesLineHref, type EvidenceJobRow } from '../../../lib/legal/evidenceFromMessages'
 import { evidenceFromMessagesIo } from '../../../lib/legal/evidenceFromMessagesIo'
 import LegalEvidenceFromMessagesWindow from './LegalEvidenceFromMessagesWindow'
@@ -55,6 +56,12 @@ import LegalEvidenceFromMessagesWindow from './LegalEvidenceFromMessagesWindow'
  * heading, a draft named as one), each putting plain email text on the clipboard without the draft note at the top or an
  * internal section (`letterCopyText`), and a quiet *Copy everything as text*. The view says what the copy leaves out and
  * lists the bracketed blanks still to fill, and the toast counts them. A counsel-only paper has no copy press, as on the HR file.
+ *
+ * Since v2.7694 a text file kept only as a stored file (a `.md` or `.txt` put on the matter before v2.6716, so no
+ * `text_document_id`) can be turned into a text document from here: **Keep its words as text** on the row's ⋯, and one
+ * counted press beside the filters (*Keep 3 as text*) when more than one row waits. The counted press takes the rows
+ * one by one, keeps going past one that fails and lists it afterwards with its reason (`keepAsText`,
+ * `keepLegalMatterDocumentAsText`). The stored file stays; the row gains **Read** and the copy presses.
  */
 const shortDay = (ymd: string) => (ymd ? new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '')
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
@@ -89,6 +96,11 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
   /** v2.6716: the text document open under its row — its rendered words, or why they could not be read. */
   const [reading, setReading] = useState<{ id: string; html: string | null; why: string | null; /** v2.7683: what the copy presses put on the clipboard. */ copy?: LetterCopy } | null>(null)
   const toast = useOptionalToastContext()
+  /** v2.7694: the papers the counted *Keep N as text* could not take, each with its reason; they stay as they were. */
+  const [keepFailed, setKeepFailed] = useState<KeepAsTextFailure[]>([])
+  const toKeep = canEdit ? legalDocumentsToKeepAsText(documents) : []
+  /** A paper that has its words by now, or is gone from the matter, drops off the list. */
+  const keepStillFailed = keepFailed.filter((r) => toKeep.some((d) => d.id === r.id))
   /** v2.6276: the From the job's messages… window, and the door's reads for this matter and account. */
   const [pullOpen, setPullOpen] = useState(false)
   const pullJobs = fromMessages?.jobs
@@ -200,6 +212,32 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
       setReading({ id: d.id, html: null, why: formatErrorMessage(e, 'Could not read the document’s text.') })
     }
   }
+  /** v2.7694: one old text file's words kept as text; the row reloads with Read on it. */
+  const keepOne = (d: LegalMatterDocumentRow) => void act(`Could not keep the words of ${d.title} as text.`, async () => {
+    await keepLegalMatterDocumentAsText(supabase, d)
+    setKeepFailed((cur) => cur.filter((r) => r.id !== d.id))
+    toast?.showToast(keepAsTextOutcome(1, 0).line, 'success')
+  })
+  /** v2.7694: every waiting text file, one by one. A paper that fails does not stop the rest; it is named afterwards with its reason. */
+  const keepEach = async () => {
+    setBusy(true)
+    const failed: KeepAsTextFailure[] = []
+    let done = 0
+    for (const d of toKeep) {
+      try {
+        await keepLegalMatterDocumentAsText(supabase, d)
+        done += 1
+      } catch (e) {
+        failed.push({ id: d.id, title: d.title, why: formatErrorMessage(e, 'Could not keep its words as text.') })
+      }
+    }
+    const said = keepAsTextOutcome(done, failed.length)
+    setKeepFailed(failed)
+    setError(null)
+    toast?.showToast(said.line, said.tone)
+    setBusy(false)
+    if (done > 0) onChanged()
+  }
   /** v2.7683: plain text onto the clipboard; the toast says what went and what is still open in it. */
   const copyText = (text: string, done: { words: string; warn: boolean }) => {
     void Promise.resolve()
@@ -231,6 +269,12 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
               )
             })}
           </span>
+        ) : null}
+        {/* v2.7694: the old text files kept only as files, turned into text in one press that says its count. */}
+        {keepAsTextBatchShows(toKeep.length) ? (
+          <button type="button" data-legal-documents-keep-as-text disabled={busy} onClick={() => void keepEach()} title={KEEP_AS_TEXT_WORDS.batchTip} style={{ ...btn, height: 22, opacity: busy ? 0.6 : 1 }}>
+            {keepAsTextBatchLabel(toKeep.length)}
+          </button>
         ) : null}
         <span style={{ ...MUTED, fontSize: '0.78rem', marginLeft: 'auto' }}>the firm reads them under Evidence on its portal</span>
       </div>
@@ -286,6 +330,17 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
         )
       })}
       {error ? <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.8rem' }}>{error}</div> : null}
+      {keepStillFailed.length > 0 ? (
+        // v2.7694: the papers the counted press could not take stay as they were, each named with its reason.
+        <div role="status" data-legal-documents-keep-failed style={{ display: 'grid', gap: 2, fontSize: '0.78rem' }}>
+          <div style={{ color: 'var(--text-red-700)' }}>{keepAsTextOutcome(0, keepStillFailed.length).head}</div>
+          <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+            {keepStillFailed.map((r) => (
+              <li key={r.id} data-legal-documents-keep-failed-row={r.id}><b>{r.title}</b>: {r.why}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {landingNote ? <div role="status" data-legal-document-landing-note style={{ ...MUTED, fontSize: '0.78rem' }}>{landingNote}</div> : null}
       {documents.length === 0 && pending.length === 0 ? <div style={{ ...MUTED, fontSize: '0.8rem' }}>Nothing yet. A billing report, a supplier invoice, a signed estimate, an email thread printed to PDF: each with one line on what it shows.</div> : null}
       {documents.length > 0 && groups.length === 0 ? <EmptyState compact main={legalDocumentFilterEmptyWords(filter)} next={{ label: 'Show every paper', onPress: () => setFilter('all') }} /> : null}
@@ -363,6 +418,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
                                 {group.guessed ? <div>Under {g.words} by its title. Whose paper… sets it.</div> : null}
                                 {linkedStatements[d.id] ? <div data-legal-document-statement>The signed copy of a sworn statement on the Timeline.</div> : null}
                                 {d.source_message_id ? <div data-legal-document-source-line>{EVIDENCE_FROM_MESSAGES_WORDS.lineRecord}</div> : null}
+                                {legalDocumentCanKeepAsText(d) ? <div data-legal-document-file-only>{KEEP_AS_TEXT_WORDS.record}</div> : null}
                               </div>
                               {/* v2.6276: an .eml made from a Messages line opens the line, in a new tab so the desk stays. */}
                               {d.source_message_id && d.source_contact_id ? (
@@ -375,6 +431,8 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
                                 linkedStatements[d.id] && onOpenStatement ? { label: 'The statement on the Timeline', go: () => onOpenStatement(linkedStatements[d.id]!) } : null,
                                 d.held_reason ? { label: 'Release to the firm', go: () => void act('Could not release the document.', () => updateLegalMatterDocument(supabase, d.id, { held_reason: '' })) } : { label: 'Hold from the firm…', go: () => setHoldFor({ id: d.id, reason: '' }) },
                                 { label: 'Whose paper…', go: () => { setSentFor(null); setReceivedFor(null); setWhoseFor({ id: d.id, whose: legalDocumentWhoseOf(d.whose) ?? '' }) } },
+                                // v2.7694: an old text file kept only as a file gets its words kept as text, so the row can be read and copied.
+                                legalDocumentCanKeepAsText(d) ? { label: KEEP_AS_TEXT_WORDS.menu, go: () => keepOne(d) } : null,
                                 // v2.6720: for counsel alone, on and off.
                                 { label: d.counsel_only ? COUNSEL_ONLY_DOCUMENT_WORDS.menuOff : COUNSEL_ONLY_DOCUMENT_WORDS.menuOn, go: () => void act('Could not change the document’s counsel-only mark.', () => setLegalMatterDocumentCounselOnly(supabase, d.id, d.text_document_id ?? null, !d.counsel_only)) },
                                 doc.state === 'draft' || doc.state === 'final' ? { label: 'Mark sent…', go: () => { setReceivedFor(null); setWhoseFor(null); setSentFor({ id: d.id, draft: { sentOn: todayYmd, sentHow: '', sentTo: '', proofDocumentId: '' } }) } } : null,
