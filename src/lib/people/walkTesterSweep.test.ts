@@ -100,6 +100,8 @@ describe('the walk tester hides wherever a sample does', () => {
       // Cards and footers for the team (punch list #313): the list makes a card for nobody who is a sample, a twin or the walk tester.
       'src/lib/brandKit/cardIo.ts',
       'src/lib/bridge/weeklySend.ts',
+      // The office's Waiting on card (punch list #365): the leaders it names are nobody who is a sample, a twin or the walk tester.
+      'src/lib/dashboard/waitingOnLeaderIo.ts',
       // The dev seat's sub labor fixtures (v2.6944): made-up users rows carry the flag for the kernel's read; nothing there filters a roster.
       'src/lib/devMcp/subLaborFixture.ts',
       'src/lib/emailIn/countCardIo.ts',

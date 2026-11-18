@@ -480,6 +480,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     lienBoardStrip,
     /** Whether the leader's lien sources are still being read: the short Dashboard holds its list back until they are in, so it never says nothing waits too early. */
     reading: { lienDesk: lienDeskLoading, lienWaivers: lienSignature.loading },
+    /** The Lien desk's own read, for the office's Waiting on card (punch list #365, PR 2), so the desk is read once a page. */
+    lienDeskData,
     /** The hosts' windows and nudges: what a press opens, what a close refetches, what a secondary link snoozes. */
     handles: {
       tallyUnlinkedCount,

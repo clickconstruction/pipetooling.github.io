@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NEW_RECORD, SUB_RECORD_ORDER, SUB_RECORD_WORDS, recordFact, recordFromCounts, recordTone, subRecordOf, subRecords } from './subRecord'
+import { NEW_RECORD, SUB_RECORD_ORDER, SUB_RECORD_WORDS, recordFact, recordFromCounts, recordTone, subRecordOf, subRecords, inboundProspects } from './subRecord'
 
 const calls = [
   { prospect_id: 'a', interaction_type: 'answered' },
@@ -50,5 +50,23 @@ describe('subRecord', () => {
     expect(recordTone('reliable')).toBe('green')
     expect(recordTone('silent')).toBe('red')
     expect(recordTone('new')).toBe('grey')
+  })
+})
+
+describe('inboundProspects', () => {
+  it('names each prospect with a line in on its contact thread, once', () => {
+    const contacts = [
+      { id: 'c1', prospect_id: 'a' },
+      { id: 'c2', prospect_id: 'b' },
+      { id: 'c3', prospect_id: 'a' },
+    ]
+    const lines = [{ contact_id: 'c1' }, { contact_id: 'c3' }, { contact_id: 'c1' }]
+    expect([...inboundProspects(contacts, lines)]).toEqual(['a'])
+  })
+  it('a contact with no prospect, and a line on a contact we did not read, count for nobody', () => {
+    expect(inboundProspects([{ id: 'c1', prospect_id: null }], [{ contact_id: 'c1' }, { contact_id: 'c9' }]).size).toBe(0)
+  })
+  it('no lines is nobody', () => {
+    expect(inboundProspects([{ id: 'c1', prospect_id: 'a' }], []).size).toBe(0)
   })
 })

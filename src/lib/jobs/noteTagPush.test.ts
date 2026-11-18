@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { clip, donePush, firstName, notePushes, pushUrlFor } from '../../../supabase/functions/notify-note-tag/words'
+import { TASK_PUSH_URL, clip, donePush, firstName, notePushes, pushUrlFor, taskDonePush, taskNotePushes, taskTitleWords } from '../../../supabase/functions/notify-note-tag/words'
+import { taskTitlePlain } from '../tasks/taskPlace'
 
 /**
  * The words and the door of the notify-note-tag pushes (punch list #363, PR 5). The function reads the rows and
@@ -81,5 +82,62 @@ describe('notify-note-tag words', () => {
     const cut = clip(long)
     expect(cut.length).toBeLessThanOrEqual(140)
     expect(cut.endsWith('word…')).toBe(true)
+  })
+
+  describe('task notes (punch list #375)', () => {
+    const task = { eventId: 'e1', noteBody: 'Which bay first? @Dana Whitlock', taskTitle: '{{1:1466 · Cedar Bluff Lofts}} — Sweep the shop bays', authorName: 'Luis Ortega' }
+
+    it('reads a task title as plain words, the job token and all, as the app does', () => {
+      expect(taskTitleWords(task.taskTitle)).toBe('1466 · Cedar Bluff Lofts — Sweep the shop bays')
+      expect(taskTitleWords('Lock the yard gate')).toBe('Lock the yard gate')
+      expect(taskTitleWords('  ')).toBe('a task')
+      expect(taskTitleWords(null)).toBe('a task')
+      // The function cannot import src/lib, so its reader is its own. The two must agree on any title that has words.
+      for (const title of [task.taskTitle, 'Lock the yard gate', '{{1:J12 · Tanner}} and {{2:J13 · Oak}} —  both', 'a {{x}} b']) expect(taskTitleWords(title), title).toBe(taskTitlePlain(title))
+    })
+
+    it('tells the tagged person who tagged them, on which task, and lands every role on the Checklist', () => {
+      expect(taskNotePushes({ ...task, tagged: [{ userId: 'u-dana', role: 'assistant' }, { userId: 'u-hector', role: 'helpers' }], askers: [] })).toEqual([
+        {
+          userIds: ['u-dana', 'u-hector'],
+          title: 'Luis tagged you on 1466 · Cedar Bluff Lofts — Sweep the shop bays',
+          body: 'Which bay first? @Dana Whitlock',
+          url: '/checklist?tab=today',
+          tag: 'task-note-tag-e1',
+          templateType: 'task_note_tag',
+        },
+      ])
+      expect(TASK_PUSH_URL).toBe('/checklist?tab=today')
+    })
+
+    it('tells the asker the answer landed, and gives a person tagged back the tag alone', () => {
+      const pushes = taskNotePushes({ ...task, noteBody: 'Bay 2. @Marcus Hale which hose?', tagged: [{ userId: 'u-marcus', role: 'master_technician' }], askers: [{ userId: 'u-marcus', role: 'master_technician' }, { userId: 'u-dana', role: 'assistant' }] })
+      expect(pushes.map((p) => [p.templateType, p.userIds, p.title])).toEqual([
+        ['task_note_tag', ['u-marcus'], 'Luis tagged you on 1466 · Cedar Bluff Lofts — Sweep the shop bays'],
+        ['note_tag_answer', ['u-dana'], 'Luis answered on 1466 · Cedar Bluff Lofts — Sweep the shop bays'],
+      ])
+    })
+
+    it('sends nothing for a task note that tags nobody and answers nothing', () => {
+      expect(taskNotePushes({ ...task, tagged: [], askers: [] })).toEqual([])
+    })
+
+    it('cuts a long title so the notice still says who and what', () => {
+      const long = taskNotePushes({ ...task, taskTitle: 'Walk every unit on the third floor and write down each fixture that still needs its trim set before Friday', tagged: [{ userId: 'u-dana', role: 'assistant' }], askers: [] })[0]!
+      expect(long.title.startsWith('Luis tagged you on Walk every unit')).toBe(true)
+      expect(long.title.endsWith('…')).toBe(true)
+      expect(long.title.length).toBeLessThanOrEqual('Luis tagged you on '.length + 60)
+    })
+
+    it('tells the asker when a task tag was cleared with no note', () => {
+      expect(taskDonePush({ tagId: 't1', noteBody: task.noteBody, taskTitle: 'Lock the yard gate', taggedName: 'Dana Whitlock', asker: { userId: 'u-luis', role: 'superintendent' } })).toEqual({
+        userIds: ['u-luis'],
+        title: 'Dana: no reply needed',
+        body: 'Lock the yard gate: Which bay first? @Dana Whitlock',
+        url: '/checklist?tab=today',
+        tag: 'task-note-tag-done-t1',
+        templateType: 'note_tag_answer',
+      })
+    })
   })
 })

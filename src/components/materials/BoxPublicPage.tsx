@@ -28,6 +28,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
+import { useTabTitle } from '../../hooks/useTabTitle'
 import { browserReturnAddressStore, keepReturnAddress } from '../../lib/signInReturnAddress'
 import { publicFunctionHeaders } from '../../lib/customerSampleMode'
 import { KIT_ASSET_PATHS } from '../../lib/brandKit/assets'
@@ -80,10 +81,10 @@ export function BoxPublicPage({ code }: { code: string }) {
   }, [code, reloadKey])
 
   const payload = view.kind === 'box' ? view.payload : null
-  useEffect(() => {
-    const sticker = view.kind === 'sticker_blank' ? 'Reserved sticker' : view.kind === 'sticker_lost' ? 'Lost sticker' : null
-    document.title = payload ? `${boxPageNoun(payload.box.kind)} ${payload.box.stencil} · Click Plumbing & Electrical` : `${sticker ?? 'Box label'} · Click Plumbing & Electrical`
-  }, [payload, view])
+  // The tab reads the box, and reads the app again once the page closes (v2.7630): until then the box's name stayed on
+  // the tab through the sign-in and every page after it.
+  const stickerTitle = view.kind === 'sticker_blank' ? 'Reserved sticker' : view.kind === 'sticker_lost' ? 'Lost sticker' : null
+  useTabTitle(payload ? `${boxPageNoun(payload.box.kind)} ${payload.box.stencil} · Click Plumbing & Electrical` : `${stickerTitle ?? 'Box label'} · Click Plumbing & Electrical`)
 
   const signIn = () => {
     rememberBoxForSignIn(code)

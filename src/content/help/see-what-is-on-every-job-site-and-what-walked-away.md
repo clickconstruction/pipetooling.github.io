@@ -91,6 +91,8 @@ Press **Print the material location report** at the top to print the site. The [
 
 ## Read the row
 
+The job's number sits at the top of the page, before its name. Press the number to open the job window.
+
 Under the job's name one row reads the material's path left to right. It reads {{chip:blue|1,250 came in}} → {{chip:green|1,105 on site}} → {{chip:gray|120 used}} → {{chip:yellow|25 missing}}. Each figure is in its own colour. An amber badge counts what waits for a hand. A red badge is the money that walked away this week. Press a figure to open its section.
 
 The page reads the boxes again by itself. That happens when you come back to it, and every few minutes while it stays open. A crew's press shows without a reload.
@@ -102,6 +104,8 @@ A very large job can pass 5,000 rows in its ledger. Then History and the boxes s
 The boxes sit grouped by their place on the site. **All**, **Due a count** and **Can't find** narrow them. **List**, **By part** and **Map** at the row's end switch the view. List is the boxes. By part is one row per part on the job with its total and its boxes. Map is the site map with the boxes' pins. On a job that is on a site, By part has a line with **Open the whole site**.
 
 Press {{button:outline|Add a container}} to add a cage or box with its stencil and its place. On a line, **Correct…** sets the count the crew should have found. It writes a count row in your name.
+
+Beside **Edit** on a box, press {{button:outline|Where is it?}}. The box's window opens on its **Where is it?** tab. The tab says the place, the note, and who pinned the box and on what day. Under the words is the site from above with the box's pin. The tab is the same sheet the crew has on the phone. [Find a box on the site](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#find-a-box-on-the-site) says what each press does.
 
 ## Move everything on site to another job
 

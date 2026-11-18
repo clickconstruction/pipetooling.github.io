@@ -18,7 +18,7 @@
  * with another name reads *sticker reads G78*, and a scan of that one says so (`stickerMarksWords`). Since v2.7438 no
  * sticker's running number is shown anywhere.
  */
-import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sheet } from './OnSiteSheet'
 import StickerNewSheet from './StickerNewSheet'
@@ -26,12 +26,18 @@ import StickersOnBoxes from '../materials/StickersOnBoxes'
 import { ON_BOXES_LABEL } from '../../lib/materials/stickersOnBoxes'
 import { useJobStickers } from '../../hooks/useJobStickers'
 import { notYetOnBoxLine, stickerMarksWords, stickerReadsOtherWords, type PlaceOutcome } from '../../lib/materials/stickerPlace'
-import { LOST_STICKER_TITLE, OUT_OF_REACH_STICKER_TITLE, retiredBoxStickerTitle, type CodeLookup } from '../../lib/materials/stickers'
+import { LOST_STICKER_TITLE, OUT_OF_REACH_STICKER_TITLE, retiredBoxStickerTitle, retiredLabelTitle, type CodeLookup } from '../../lib/materials/stickers'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
 import type { OnSiteMapPin } from '../materials/OnSiteMap'
-import { requestMyLocation, type LatLng } from '../../lib/materials/myLocation'
+import { requestMyLocation, type LatLng, type MyFix } from '../../lib/materials/myLocation'
+import { taskPlaceSheetAccuracy } from '../../lib/tasks/taskPlace'
+import { WHERE_IS_IT_PRESS, boxPinShort, whereIsBoxTitle } from '../../lib/materials/whereIsBox'
+import WhereIsBox from '../materials/WhereIsBox'
+import PinAskStrip from '../materials/PinAskStrip'
+import { boxWantsPin, takePinAsk, takeScannedBox } from '../../lib/materials/pinAsk'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { useOnSiteJob } from '../../hooks/useOnSiteStore'
 import { usePaintedMapsLayer } from '../../hooks/usePaintedMapsLayer'
@@ -55,7 +61,7 @@ import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_LATER_NOTE, BOX_LIN
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
-import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, loadJob, moveContainer, pinContainer, resolveBoxCode, retireContainer, sayBoxLine, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, listContainerMoves, listContainers, listMovements, listPhotos, listPlaces, loadJob, moveContainer, pinContainer, resolveBoxCode, retireContainer, sayBoxLine, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
 import { BOX_KIND_CHOICES, BOX_WHERE_MAX, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
 import BoxTabs from '../materials/BoxTabs'
@@ -144,6 +150,8 @@ type Sheet =
   | { kind: 'places' }
   | { kind: 'map'; focusId: string | null }
   | { kind: 'pin'; container: Container }
+  /** Where is it? (punch list #372): what the app knows about where a box stands, the way to it, and I found it. */
+  | { kind: 'where'; container: Container }
   | { kind: 'pick-box' }
 
 export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPickJob, byUserId, byName, searchParts, initialContainerId, initialStickerCode = null, askSeq = 0, onOpenContainer, onOpenSticker }: Props) {
@@ -199,7 +207,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       else { pendingContainerRef.current = stickerFound.container.id; onPickJob(stickerFound.container.jobId) }
       return
     }
-    showToast(stickerFound.kind === 'lost' ? `${LOST_STICKER_TITLE}.` : stickerFound.kind === 'retired' ? `${retiredBoxStickerTitle(stickerFound.sticker)}. Bring it back first.` : stickerFound.kind === 'out_of_reach' ? `${OUT_OF_REACH_STICKER_TITLE}.` : 'That code is not a sticker or a box you can open.', 'warning')
+    showToast(stickerFound.kind === 'lost' ? `${LOST_STICKER_TITLE}.` : stickerFound.kind === 'retired' ? `${retiredBoxStickerTitle(stickerFound.sticker)}. Bring it back first.` : stickerFound.kind === 'retired_label' ? `${retiredLabelTitle(stickerFound.container)}. Bring it back first.` : stickerFound.kind === 'out_of_reach' ? `${OUT_OF_REACH_STICKER_TITLE}.` : 'That code is not a sticker or a box you can open.', 'warning')
   }, [stickerFound, jobId, onPickJob, showToast])
   useEffect(() => {
     if (!stickerCode) { setStickerFound(null); return }
@@ -221,6 +229,13 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const [flowFilter, setFlowFilter] = useState<'none' | 'used' | 'due'>('none')
   /** The last thing done to a box on this screen, so the Photo press turns blue for a few minutes and the picture is named "A1 after Put in" (#209). */
   const [lastAct, setLastAct] = useState<{ containerId: string; what: string; at: number } | null>(null)
+  // Pin A7 where you stand? (punch list #372, step 3): asked once a day for a box, after a count, a photo, a scan of
+  // its label or its own making, when the person is known to stand at it (`pinAsk.ts`).
+  const [pinAsk, setPinAsk] = useState<string | null>(null)
+  const offerPin = useCallback((c: Container | null | undefined) => {
+    if (c && takePinAsk(c, new Date(), todayYmdInAppTz())) setPinAsk(c.id)
+  }, [])
+  const scannedRef = useRef<string | null>(null)
   // The walk's line vanished under it (a fresh read dropped it, or the box lost its lines): the walk ends from an
   // effect, never while the screen is drawn, which React refuses as a state change inside a render.
   useEffect(() => {
@@ -229,36 +244,46 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
     if (!c || countWalkAt(view.keys, view.index, linesOf(lines, c.id))) return
     showToast(`${c.label} counted. ${view.keys.length} ${view.keys.length === 1 ? 'line' : 'lines'}, ${view.corrected} corrected.`, 'success')
     setLastAct({ containerId: c.id, what: 'Count', at: Date.now() })
+    offerPin(c)
     setView({ kind: 'container', id: c.id })
-  }, [view, containers, lines, showToast])
+  }, [view, containers, lines, showToast, offerPin])
+  // A label's code just opened a box (`BoxCode.tsx`): the ask waits for the box to be read, then is offered once.
+  useEffect(() => {
+    const id = scannedRef.current
+    if (!id) return
+    const c = containers.find((x) => x.id === id)
+    if (!c) return
+    scannedRef.current = null
+    offerPin(c)
+  }, [containers, offerPin])
   // The site map opens on the job's address, placed through the app's geocode cache, until a box is pinned.
   const addr = job?.job_address?.trim() ?? ''
   const geocodeAsk = useMemo(() => (addr ? [{ key: normalizeAddressForGeocodeKey(addr), display: addr }] : []), [addr])
   const { coords: jobCoords } = useAddressGeocodeCoords(geocodeAsk, addr.length > 0, 'on-site map')
   const jobCenter = addr ? (jobCoords.get(normalizeAddressForGeocodeKey(addr)) ?? null) : null
   // The job's painted maps (#345), under the boxes on the site map: read only while that map is open.
-  const painted = usePaintedMapsLayer(jobId ? { jobId } : null, sheet?.kind === 'map')
+  const painted = usePaintedMapsLayer(jobId ? { jobId } : null, sheet?.kind === 'map' || sheet?.kind === 'where')
   const mapPins: OnSiteMapPin[] = containers.filter((c) => c.lat != null && c.lng != null && !c.retiredAt).map((c) => ({ id: c.id, label: c.label, lat: c.lat as number, lng: c.lng as number, tone: countIsDue(lastCountedAt(movements, c.id), new Date()) && c.kind !== 'unsorted' ? 'amber' : 'ok' }))
   const pinnedCount = mapPins.length
   const boxCount = containers.filter((c) => c.kind !== 'unsorted' && !c.retiredAt).length
   // The map sheets: where the map should jump (Use my location), what the ring sits on while placing, and a word when the phone cannot say where it is.
-  const [mapFly, setMapFly] = useState<LatLng | null>(null)
+  const [mapFly, setMapFly] = useState<MyFix | null>(null)
   const [locating, setLocating] = useState<string | null>(null)
   const [pinCenter, setPinCenter] = useState<LatLng | null>(null)
   const myLocation = () => { setLocating('Finding you…'); requestMyLocation((p) => { setLocating(null); setMapFly({ ...p }) }, (words) => setLocating(words)) }
   const closeSheet = () => { setSheet(null); setLocating(null); setMapFly(null) }
-  /** Where is this box? The ring sits at the map's centre; the footer's button puts the pin there. Drawn from either view. */
+  /** Pin a box from the site map: the ring sits at the map's centre; the footer's button puts the pin there. Drawn from either view. */
   const pinSheet = sheet?.kind === 'pin' ? (
     <Sheet
       fill
-      title={`Where is ${sheet.container.label}?`}
+      title={`Pin ${sheet.container.label} on the map`}
       sub={sheet.container.lat != null ? 'Its pin is on the map. Drag the map to move the ring, then press the button.' : 'Step 1: drag the map until the ring is on the box, or press Use my location when you stand at it. Step 2: press the button.'}
       onClose={closeSheet}
       footer={
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '0.5rem' }}>
             <button type="button" style={btn} onClick={myLocation}>Use my location</button>
-            <button type="button" style={{ ...btnPrimary, minHeight: 52, ...dis(!pinCenter) }} disabled={!pinCenter} onClick={() => { if (!pinCenter) return; pinContainer(sheet.container.id, pinCenter); closeSheet(); showToast(`${sheet.container.label} pinned on the map.`, 'success') }}>Put {sheet.container.label} here</button>
+            <button type="button" style={{ ...btnPrimary, minHeight: 52, ...dis(!pinCenter) }} disabled={!pinCenter} onClick={() => { if (!pinCenter) return; /* The phone's margin stands only while the ring is still on its reading (v2.7575). */ pinContainer(sheet.container.id, pinCenter, { accuracyM: taskPlaceSheetAccuracy(mapFly, pinCenter), byName }); closeSheet(); showToast(`${sheet.container.label} pinned on the map.`, 'success') }}>Put {sheet.container.label} here</button>
           </div>
           {locating ? <p style={{ ...muted, margin: 0 }}>{locating}</p> : null}
           {sheet.container.lat != null ? <button type="button" style={{ ...quiet, justifySelf: 'start', color: 'var(--text-muted)', fontSize: '0.85rem' }} onClick={() => { pinContainer(sheet.container.id, null); closeSheet(); showToast(`${sheet.container.label}\u2019s pin removed.`, 'info') }}>Remove the pin</button> : null}
@@ -277,6 +302,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
     const pending = pendingContainerRef.current
     pendingContainerRef.current = null
     const open = pending ?? initialContainerId
+    const scanned = takeScannedBox()
+    if (open && scanned === open) scannedRef.current = open
     setView(open ? { kind: 'container', id: open } : { kind: 'containers' })
     setSheet(null)
     if (open) setStickerCode(null)
@@ -543,7 +570,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         {stickerFound === 'looking' ? <p style={{ ...muted, margin: 0 }} data-testid="on-site-sticker-looking">Reading the sticker…</p> : null}
         {stickerSheet}
         {onBoxesOpen && jobId && job ? <StickersOnBoxes sheet jobId={jobId} jobLabel={onSiteJobWords(job)} places={places} onClose={() => setOnBoxesOpen(false)} onPlaced={() => { void loadJob(jobId, { force: true }); jobStickers.refresh() }} /> : null}
-        {sheet?.kind === 'add-container' ? <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} onClose={() => setSheet(null)} onMade={(c) => { setSheet(null); setView({ kind: 'container', id: c.id }) }} /> : null}
+        {sheet?.kind === 'add-container' ? <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} onClose={() => setSheet(null)} onMade={(c) => { setSheet(null); offerPin(c); setView({ kind: 'container', id: c.id }) }} /> : null}
         {sheet?.kind === 'places' ? (
           <Sheet title="Places on this site" sub={`${boxCount} ${boxCount === 1 ? 'box' : 'boxes'} in ${places.length} ${places.length === 1 ? 'place' : 'places'}. Tap a place to see only its boxes.`} onClose={closeSheet} footer={<button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setSheet({ kind: 'map', focusId: null })}>Show the site map · {pinnedCount} pinned</button>}>
             <div style={{ display: 'grid', gap: '0.35rem' }}>
@@ -619,6 +646,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
     const done = (corrected: number) => {
       showToast(`${container.label} counted. ${total} ${total === 1 ? 'line' : 'lines'}, ${corrected} corrected.`, 'success')
       setLastAct({ containerId: container.id, what: 'Count', at: Date.now() })
+      offerPin(container)
       setView({ kind: 'container', id: container.id })
     }
     if (!at) return null
@@ -640,6 +668,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   return (
     <div style={{ display: 'grid', gap: '0.75rem' }}>
       {header}
+      {pinAsk === container.id && boxWantsPin(container, now) ? <PinAskStrip container={container} byName={byName} onPinned={(words) => { setPinAsk(null); showToast(words, 'success') }} onLater={() => setPinAsk(null)} /> : null}
       {/* What is in it (punch list #351, PR 2): the app's line from the parts until a person says it better. Never Unsorted, the app's own row. */}
       {container.kind !== 'unsorted' ? (
         <div style={{ display: 'grid', gap: '0.2rem' }} data-testid="on-site-box-line" data-by={boxLineNow.by}>
@@ -653,12 +682,13 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       ) : null}
       {container.kind !== 'unsorted' ? (
         <div style={{ display: 'grid', gap: '0.35rem', ...muted }}>
-          <span>At <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{placeName(places, container.locationId)}</b>{container.where ? `, ${container.where}` : ''}{container.lat != null ? ' · pinned on the map' : ''}</span>
+          <span>At <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{placeName(places, container.locationId)}</b>{container.where ? `, ${container.where}` : ''}{boxPinShort(container, new Date()) ? ` · ${boxPinShort(container, new Date())}` : ''}</span>
           {/* Three chips on one line at 375 (v2.6229): a three-column grid and short words; the words that were cut live on the chips' aria-labels. */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.4rem' }}>
             <button type="button" style={chip} aria-label={`Move ${container.label} to another place`} onClick={() => setSheet({ kind: 'move-box', container })}>Move box</button>
-            <button type="button" style={{ ...chip, gap: '0.3rem' }} aria-label={container.lat != null ? `${container.label} is on the map: open it` : `Mark ${container.label} on the map`} onClick={() => setSheet({ kind: 'pin', container })}><span aria-hidden>◎</span>{container.lat != null ? 'On the map' : 'Pin on map'}</button>
-            <PhotoPress jobId={jobId} containerId={container.id} containerLabel={container.label} after={after} byUserId={byUserId} byName={byName} onToast={showToast} style={{ ...chip, gap: '0.35rem', ...(after ? { borderColor: BLUE, color: BLUE } : {}) }} />
+            {/* Where is it? (punch list #372): one chip, pinned or not. The map to drag lives inside its sheet as Move the pin by hand. */}
+            <button type="button" style={{ ...chip, gap: '0.3rem' }} aria-label={whereIsBoxTitle(container.label)} onClick={() => setSheet({ kind: 'where', container })}><span aria-hidden>◎</span>{WHERE_IS_IT_PRESS}</button>
+            <PhotoPress jobId={jobId} containerId={container.id} containerLabel={container.label} after={after} byUserId={byUserId} byName={byName} onToast={showToast} onTaken={() => offerPin(container)} style={{ ...chip, gap: '0.35rem', ...(after ? { borderColor: BLUE, color: BLUE } : {}) }} />
           </div>
         </div>
       ) : null}
@@ -749,10 +779,18 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         <AddPartSheet container={sheet.container} names={onHandNames(lines, containers)} searchParts={searchParts} onClose={() => setSheet(null)} onAdd={(part, n) => { write('delivered', part, n, null, sheet.container.id, 'added on site'); setLastAct({ containerId: sheet.container.id, what: 'Add a part', at: Date.now() }); setSheet(null); showToast(`${n} ${part.partName} added to ${sheet.container.label}.`, 'success') }} />
       ) : null}
       {sheet?.kind === 'add-container' ? (
-        <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} onClose={() => setSheet(null)} onMade={(c) => { const mv = sheet.moveAfter; setSheet(null); if (mv) { write('moved', mv.line, mv.qty, mv.from.id, c.id); showToast(`Moved ${mv.qty} to ${c.label}.`, 'success') } else setView({ kind: 'container', id: c.id }) }} />
+        <AddContainerSheet jobId={jobId} siteBoxes={siteBoxes} places={places} onClose={() => setSheet(null)} onMade={(c) => { const mv = sheet.moveAfter; setSheet(null); if (mv) { write('moved', mv.line, mv.qty, mv.from.id, c.id); showToast(`Moved ${mv.qty} to ${c.label}.`, 'success') } else { offerPin(c); setView({ kind: 'container', id: c.id }) } }} />
       ) : null}
       {pinSheet}
       {stickerSheet}
+      {sheet?.kind === 'where' ? (() => {
+        const live = containers.find((c) => c.id === sheet.container.id) ?? sheet.container
+        return (
+          <Sheet title={whereIsBoxTitle(live.label)} onClose={closeSheet}>
+            <WhereIsBox touch container={live} containers={containers} places={places} moves={listContainerMoves(jobId)} movements={movements} photos={listPhotos(jobId)} jobCenter={jobCenter} jobAddress={addr} painted={painted.maps} byName={byName} onMoveBox={() => { closeSheet(); setSheet({ kind: 'move-box', container: live }) }} />
+          </Sheet>
+        )
+      })() : null}
       {sheet?.kind === 'move-box' ? <MoveBoxSheet jobId={jobId} container={sheet.container} places={places} byName={byName} onClose={() => setSheet(null)} onMoved={(name) => { setSheet(null); showToast(`${sheet.container.label} is now at ${name}.`, 'success') }} /> : null}
       {sheet?.kind === 'say-line' ? <SayLineSheet container={containers.find((c) => c.id === sheet.container.id) ?? sheet.container} line={boxLineOf(containers.find((c) => c.id === sheet.container.id) ?? sheet.container, lines)} appLine={boxLineFromParts(linesOf(lines, sheet.container.id))} onClose={() => setSheet(null)} onSaved={(words) => { setSheet(null); showToast(words, 'success') }} /> : null}
       {sheet?.kind === 'edit-box' ? (

@@ -1,6 +1,6 @@
 import { useOptionalAuth } from '../hooks/useAuth'
 import { useMyNoteTags } from '../hooks/useMyNoteTags'
-import { canTagInJobNotes, myTagsView } from '../lib/jobs/noteTags'
+import { canTagInJobNotes, myTagsView, tagsOfKind } from '../lib/jobs/noteTags'
 import { NAV_BADGE_STYLE, navBadgeWords } from '../lib/navBadgeStyle'
 
 /**
@@ -13,7 +13,8 @@ import { NAV_BADGE_STYLE, navBadgeWords } from '../lib/navBadgeStyle'
 export function JobsTagsBadge({ onMenuButton = false }: { onMenuButton?: boolean }) {
   const role = useOptionalAuth()?.role ?? null
   const { tags } = useMyNoteTags(canTagInJobNotes(role))
-  const count = tags ? myTagsView(tags).count : 0
+  // Job notes alone: a task note's tag counts on Checklist (punch list #375).
+  const count = tags ? myTagsView(tagsOfKind(tags, 'job')).count : 0
   if (!count) return null
   return (
     <span

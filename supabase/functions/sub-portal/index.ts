@@ -23,6 +23,7 @@ import {
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { grantPlansLink } from '../_shared/viewGrant.ts'
+import { internalFunctionCall } from '../_shared/internalFunctionCall.ts'
 import {
   buildSubPortalPapers,
   planPortalAnswer,
@@ -63,6 +64,8 @@ import type { PaperCompany } from '../_shared/subPapers.ts'
  * given here. A POST with the same token writes one of two answers to
  * `sub_paper_acks`: `got_it` on a payment, `something_wrong` on a statement or a
  * payment. Shaping and the rules live in `_shared/subPortalPapers.ts`.
+ * A note that something is wrong also tells the office (v2.7609): a line in the
+ * dispatch inbox and a push, as `submit-sub-portal` tells it of a sub's other notes.
  */
 
 const corsHeaders = {
@@ -171,8 +174,47 @@ async function readPaperCompany(admin: Admin): Promise<{ company: PaperCompany; 
   return { company: { name: s('companyName') || PORTAL_COMPANY.name, lines }, officePhone: s('phone') || PORTAL_COMPANY.phone }
 }
 
+/**
+ * A note that something is wrong is the one answer that asks the office to act (punch list #371, call 4), so the
+ * office is told the way it hears a sub's other notes: a line in the dispatch inbox and a push, as `submit-sub-portal`
+ * does. The answer is already saved by now, so a note that cannot be dropped is logged and nothing else fails.
+ */
+async function tellOfficeSomethingIsWrong(admin: Admin, link: { id?: string | null; created_by?: string | null }, person: { id: string; name: string }, what: string, row: { labor_job_id: string | null; sending_id: string | null; payment_id: string | null; note: string | null }, ackId: string | null): Promise<void> {
+  try {
+    // dispatch_requests.from_user_id is NOT NULL: the setting, else who made the link, else a dev. submit-sub-portal's chain.
+    const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', 'portal_requests_from_user_id').maybeSingle()
+    const configured = ((setting as { value_text?: string | null } | null)?.value_text ?? '').trim()
+    let fromUserId: string | null = /^[0-9a-f-]{36}$/.test(configured) ? configured : (link.created_by ?? null)
+    if (!fromUserId) {
+      const { data: dev } = await admin.from('users').select('id').eq('role', 'dev').limit(1).maybeSingle()
+      fromUserId = (dev as { id?: string } | null)?.id ?? null
+    }
+    if (!fromUserId) return
+    const note = (row.note ?? '').trim()
+    const { data: inserted, error } = await admin
+      .from('dispatch_requests')
+      .insert({
+        from_user_id: fromUserId,
+        title: `${person.name} says something is wrong on ${what}: “${note.slice(0, 120)}”`,
+        pending_payload: { source: 'sub_portal', subPortalLinkId: link.id ?? null, kind: 'sub_paper_wrong', personId: person.id, personName: person.name, about: what, laborJobId: row.labor_job_id, sendingId: row.sending_id, paymentId: row.payment_id, ackId, note },
+      })
+      .select('id')
+      .single()
+    if (error || !inserted) {
+      console.error('sub-portal: the office was not told of a note', error)
+      return
+    }
+    // The push, as an internal caller: a sub has no session, so the service key is the bearer.
+    const call = internalFunctionCall(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, 'notify-dispatch-request', { dispatch_request_id: (inserted as { id: string }).id })
+    const res = await fetch(call.url, call.init)
+    if (!res.ok) console.error('notify-dispatch-request refused', res.status, await res.text().catch(() => ''))
+  } catch (e) {
+    console.error('sub-portal: the office was not told of a note', e)
+  }
+}
+
 /** One answer from the sub's page: *Got it* on a payment, or *Something is wrong* on a statement or a payment. */
-async function answerFromPage(req: Request, admin: Admin, person: { id: string; name: string }, body: Record<string, unknown>): Promise<Response> {
+async function answerFromPage(req: Request, admin: Admin, link: { id?: string | null; created_by?: string | null }, person: { id: string; name: string }, body: Record<string, unknown>): Promise<Response> {
   // The office looking at a sub's page is not the sub: an answer is the sub's own word, kept as one.
   const who = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
   if (who.viewer !== 'outside') return jsonResponse({ error: 'This is the office looking at the page. Only the sub can answer, from their own link.' }, 403)
@@ -207,6 +249,7 @@ async function answerFromPage(req: Request, admin: Admin, person: { id: string; 
     return jsonResponse({ error: 'That could not be saved. Please try again, or call the office.' }, 500)
   }
   const said = portalAnswers([saved as PapersAckRow])
+  if (plan.row.kind === 'something_wrong') await tellOfficeSomethingIsWrong(admin, link, person, plan.what, plan.row, (saved as { id?: string | null }).id ?? null)
   return plan.row.kind === 'received' ? jsonResponse({ ok: true, already: false, received: said.received }) : jsonResponse({ ok: true, wrong: said.wrong[0] ?? null })
 }
 
@@ -245,19 +288,19 @@ serve(async (req) => {
       return jsonResponse(sampleSubPortalResponse(PORTAL_COMPANY, today, { day, nextRun: nextPayRunYmd(today, day), explainer: (m.get('sub_pay_explainer') ?? '').trim() || null }))
     }
 
-    let link: { person_id: string; revoked_at: string | null; token?: string | null } | null = null
+    let link: { id?: string | null; person_id: string; revoked_at: string | null; token?: string | null; created_by?: string | null } | null = null
 
     if (rawToken) {
       link = (await admin
         .from('sub_portal_links')
-        .select('person_id, revoked_at, token')
+        .select('id, person_id, revoked_at, token, created_by')
         .eq('token', rawToken)
         .maybeSingle()).data
       if (!link) {
         const tokenHash = await sha256Hex(rawToken)
         link = (await admin
           .from('sub_portal_links')
-          .select('person_id, revoked_at, token')
+          .select('id, person_id, revoked_at, token, created_by')
           .eq('token_hash', tokenHash)
           .maybeSingle()).data
       }
@@ -277,7 +320,7 @@ serve(async (req) => {
       // No mint-on-demand — a turned-off portal stays off however addressed.
       link = (await admin
         .from('sub_portal_links')
-        .select('person_id, revoked_at, token')
+        .select('id, person_id, revoked_at, token, created_by')
         .eq('person_id', slugRow.person_id)
         .is('revoked_at', null)
         .maybeSingle()).data
@@ -305,7 +348,7 @@ serve(async (req) => {
     const personEmail = ((person as { email?: string | null }).email ?? '').trim() || null
 
     // An answer writes one row and reads nothing else of the page. It is not a view, so it is not counted as one.
-    if (isAnswer) return await answerFromPage(req, admin, { id: link.person_id, name: personName }, answerBody)
+    if (isAnswer) return await answerFromPage(req, admin, link, { id: link.person_id, name: personName }, answerBody)
 
     // View counting — fire-and-forget, the statement never fails on measurement. Office
     // previews (`?preview=1`) and verified staff sessions do not count (journey-map #37;

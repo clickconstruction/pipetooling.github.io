@@ -7,6 +7,72 @@
  * in a folder as a new file, with no reuse: `uploadFromUrl` calls it for its upload half.
  */
 
+/** The fields this file reads off one of Google's answers. */
+export type DriveAnswerBody = { id?: string; access_token?: string; error_description?: string; error?: { message?: string } | string; files?: Array<{ id?: string; name?: string }> }
+
+/** One answer as read: its JSON, or an empty body and the page's own title when Google sent a web page. */
+export type DriveAnswer = { body: DriveAnswerBody; page: string | null; unread: boolean }
+
+/** The longest title kept off a page-shaped answer. */
+export const DRIVE_PAGE_TITLE_MAX = 120
+
+/**
+ * The title of a web page Google sent where its JSON should be, as a person reads it: `Error 502 (Server Error)`
+ * from `<title>Error 502 (Server Error)!!1</title>`. Null when the page has none. Pure.
+ */
+export function drivePageTitle(text: string): string | null {
+  const m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(text)
+  const title = (m?.[1] ?? '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/!!1$/, '')
+    .trim()
+  if (!title) return null
+  return title.length > DRIVE_PAGE_TITLE_MAX ? `${title.slice(0, DRIVE_PAGE_TITLE_MAX - 1).trimEnd()}…` : title
+}
+
+/**
+ * One answer's text read without throwing (v2.7642). Google's front door sends a web page when it is busy or a
+ * gateway failed, and a bare `res.json()` threw `Unexpected token '<'` on it, which lost the status and reached the
+ * screen as the one word `failed` (the receipt photo of 2026-11-17). `unread` is true when the text was not JSON,
+ * so a caller that lists can refuse to read a page as an empty list. Pure.
+ */
+export function driveAnswerOf(text: string): DriveAnswer {
+  const trimmed = text.trim()
+  if (!trimmed) return { body: {}, page: null, unread: false }
+  try {
+    const parsed = JSON.parse(trimmed) as unknown
+    return { body: parsed && typeof parsed === 'object' ? (parsed as DriveAnswerBody) : {}, page: null, unread: false }
+  } catch {
+    return { body: {}, page: drivePageTitle(trimmed), unread: true }
+  }
+}
+
+/** What an answer says went wrong: Drive's message, Google's, the page's own title, or `unknown`. Pure. */
+export function driveAnswerWords(answer: DriveAnswer): string {
+  const { error, error_description } = answer.body
+  if (error && typeof error === 'object' && error.message) return error.message
+  if (error_description) return error_description
+  if (typeof error === 'string' && error) return error
+  return answer.page ?? 'unknown'
+}
+
+async function readDriveAnswer(res: Response): Promise<DriveAnswer> {
+  return driveAnswerOf(await res.text().catch(() => ''))
+}
+
+/** A list read's answer: its JSON, or a throw that keeps the status when Google sent a page (never an empty list). */
+async function readDriveList(res: Response): Promise<DriveAnswerBody> {
+  const answer = await readDriveAnswer(res)
+  if (answer.unread) throw new Error(`Drive answered ${res.status}${answer.page ? `: ${answer.page}` : ''}`)
+  return answer.body
+}
+
 export function b64url(data: Uint8Array | string): string {
   const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data
   let bin = ''
@@ -37,9 +103,9 @@ export async function googleAccessToken(saJson: string, impersonate?: string): P
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt }),
   })
-  const body = await res.json()
-  if (!res.ok || !body.access_token) throw new Error(`Google token exchange failed (${res.status}): ${body.error_description ?? body.error ?? 'unknown'}`)
-  return body.access_token as string
+  const answer = await readDriveAnswer(res)
+  if (!res.ok || !answer.body.access_token) throw new Error(`Google token exchange failed (${res.status}): ${driveAnswerWords(answer)}`)
+  return answer.body.access_token
 }
 
 export const DRIVE = 'https://www.googleapis.com/drive/v3'
@@ -48,16 +114,16 @@ export async function findOrCreateFolder(token: string, parentId: string, name: 
   const q = encodeURIComponent(`name = '${name.replace(/'/g, "\\'")}' and '${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`)
   const found = await fetch(`${DRIVE}/files?q=${q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
     headers: { Authorization: `Bearer ${token}` },
-  }).then((r) => r.json())
+  }).then(readDriveList)
   if (found.files?.[0]?.id) return { id: found.files[0].id, created: false }
   const res = await fetch(`${DRIVE}/files?supportsAllDrives=true&fields=id`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
   })
-  const body = await res.json()
-  if (!res.ok || !body.id) throw new Error(`Folder create failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
-  return { id: body.id as string, created: true }
+  const answer = await readDriveAnswer(res)
+  if (!res.ok || !answer.body.id) throw new Error(`Folder create failed (${res.status}): ${driveAnswerWords(answer)}`)
+  return { id: answer.body.id, created: true }
 }
 
 /** file/d/<id>, open?id=, uc?id= → the Drive file id; null for a non-Drive URL. */
@@ -77,7 +143,7 @@ export async function findExistingFile(token: string, folderId: string, name: st
   const q = encodeURIComponent(`name = '${name.replace(/'/g, "\\'")}' and '${folderId}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false`)
   const found = await fetch(`${DRIVE}/files?q=${q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
     headers: { Authorization: `Bearer ${token}` },
-  }).then((r) => r.json())
+  }).then(readDriveList)
   return found.files?.[0]?.id ?? null
 }
 
@@ -133,9 +199,9 @@ export async function uploadBytes(token: string, folderId: string, bytes: Uint8A
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
     body: payload,
   })
-  const body = await res.json()
-  if (!res.ok || !body.id) throw new Error(`Upload failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
-  return { id: body.id as string }
+  const answer = await readDriveAnswer(res)
+  if (!res.ok || !answer.body.id) throw new Error(`Upload failed (${res.status}): ${driveAnswerWords(answer)}`)
+  return { id: answer.body.id }
 }
 
 /**
@@ -152,8 +218,7 @@ export async function startResumableUpload(token: string, folderId: string, name
   })
   const uri = res.headers.get('location')
   if (!res.ok || !uri) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(`Upload start failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
+    throw new Error(`Upload start failed (${res.status}): ${driveAnswerWords(await readDriveAnswer(res))}`)
   }
   await res.body?.cancel()
   return uri
@@ -175,9 +240,9 @@ export async function putResumablePiece(token: string, sessionUri: string, bytes
     await res.body?.cancel()
     return { offset: resumableOffset(res) }
   }
-  const body = await res.json().catch(() => ({}))
-  if ((res.status === 200 || res.status === 201) && body.id) return { id: body.id as string }
-  throw new Error(`Upload piece failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
+  const answer = await readDriveAnswer(res)
+  if ((res.status === 200 || res.status === 201) && answer.body.id) return { id: answer.body.id }
+  throw new Error(`Upload piece failed (${res.status}): ${driveAnswerWords(answer)}`)
 }
 
 /** Where an upload in pieces stands: whole (its id), part way (the offset), or null when Drive no longer knows the address. */
@@ -187,8 +252,8 @@ export async function resumableStatus(token: string, sessionUri: string, totalBy
     await res.body?.cancel()
     return { offset: resumableOffset(res) }
   }
-  const body = await res.json().catch(() => ({}))
-  if ((res.status === 200 || res.status === 201) && body.id) return { id: body.id as string }
+  const answer = await readDriveAnswer(res)
+  if ((res.status === 200 || res.status === 201) && answer.body.id) return { id: answer.body.id }
   if (res.status === 404 || res.status === 410) return null
-  throw new Error(`Upload status failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
+  throw new Error(`Upload status failed (${res.status}): ${driveAnswerWords(answer)}`)
 }

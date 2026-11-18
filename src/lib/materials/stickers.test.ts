@@ -11,6 +11,8 @@ import {
   OUT_OF_REACH_STICKER_TITLE,
   placingVerdict,
   retiredBoxStickerTitle,
+  retiredLabelDetail,
+  retiredLabelTitle,
   stickerAgoWords,
   stickerFactsOf,
   stickerNameIs,
@@ -201,9 +203,16 @@ describe('one resolver: what a code names', () => {
     expect(codeLookup({ sticker: onR76, stickerBox: null, ownBox: null })).toEqual({ kind: 'out_of_reach', sticker: onR76 })
   })
 
-  it('no sticker and no live box is nothing', () => {
+  it('no sticker and no box is nothing', () => {
     expect(codeLookup({ sticker: null, stickerBox: null, ownBox: null })).toEqual({ kind: 'none' })
-    expect(codeLookup({ sticker: null, stickerBox: null, ownBox: { ...a1, retiredAt: '2026-11-10T00:00:00Z' } })).toEqual({ kind: 'none' })
+  })
+
+  it('a box’s own label on a retired box the reader may see says which box (v2.7630)', () => {
+    // It read as nothing, so the page said the code did not open a box while the page with no sign-in named it.
+    const gone = { ...a1, retiredAt: '2026-11-10T00:00:00Z' }
+    expect(codeLookup({ sticker: null, stickerBox: null, ownBox: gone })).toEqual({ kind: 'retired_label', container: gone })
+    // A sticker still wins: a code means one thing.
+    expect(codeLookup({ sticker: blank, stickerBox: null, ownBox: gone })).toEqual({ kind: 'blank', sticker: blank })
   })
 })
 
@@ -222,6 +231,15 @@ describe('the pages a scan opens', () => {
     expect(retiredBoxStickerTitle(blank)).toBe('This sticker is on a box that was retired')
   })
 
+  it('a retired box’s own label names the box and the day it left, as the page with no sign-in does (v2.7630)', () => {
+    expect(retiredLabelTitle({ kind: 'cage', label: 'A1' })).toBe('Cage A1 was retired')
+    expect(retiredLabelTitle({ kind: 'loose', label: 'ZZ3' })).toBe('Pile ZZ3 was retired')
+    // 21:44 UTC on the 14th is still the 14th in Chicago, and 03:00 UTC on the 15th is too.
+    expect(retiredLabelDetail({ retiredAt: '2026-11-14T21:44:15.831Z' })).toBe('It left the job on Saturday, Nov 14. The office brings a retired box back from the Retired fold on its Materials page.')
+    expect(retiredLabelDetail({ retiredAt: '2026-11-15T03:00:00Z' })).toContain('Saturday, Nov 14.')
+    expect(retiredLabelDetail({ retiredAt: null })).toBe('The office brings a retired box back from the Retired fold on its Materials page.')
+  })
+
   it('every sentence a person reads follows the plain-words rules, and none says a number', () => {
     const words = [
       BLANK_STICKER_PUBLIC_WORDS,
@@ -230,6 +248,8 @@ describe('the pages a scan opens', () => {
       lostStickerDetail(blank),
       `${OUT_OF_REACH_STICKER_TITLE}.`,
       `${retiredBoxStickerTitle(onR76)}.`,
+      `${retiredLabelTitle({ kind: 'cage', label: 'A1' })}.`,
+      retiredLabelDetail({ retiredAt: '2026-11-14T21:44:15.831Z' }),
       'Nobody has said which box it is on.',
       'Open On site and bring the box back to use it.',
       'Ask the office to add you to that job.',

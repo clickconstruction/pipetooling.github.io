@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienDeskRunModal from './LienDeskRunModal'
+import { AddFileFailure } from '../../lib/jobs/addFileFailure'
 import type { RunNotice } from '../../lib/jobs/lienDeskRun'
 import { lienPropertyAffidavitLine, lienPropertyNoticeLine } from '../../lib/jobs/lienPropertyPapers'
 import type { LienRunProperty } from '../../lib/jobs/lienRunEnvelopeProperty'
@@ -1898,6 +1899,31 @@ describe('LienDeskRunModal · what was mailed (the owner’s ask of 2026-11-16)'
     await waitFor(() => expect(document.body.textContent).toContain('This job has no Drive folder yet.'))
     expect(screen.getByTestId('run-check-copies-it1').querySelector('a')).toBeNull()
     expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add what was mailed')
+  })
+
+  it('a file that did not go up keeps its reason under the row, and Try again sends the same file (v2.7635); a refusal has no second try', async () => {
+    cleanup()
+    const sent: File[] = []
+    let calls = 0
+    const addMailedCopy = vi.fn(async (a: { file: File }) => {
+      sent.push(a.file)
+      calls += 1
+      if (calls === 1) throw new AddFileFailure('The app could not reach Drive.', true)
+      if (calls === 2) throw new AddFileFailure('Drive did not take the file. Drive said: quota exceeded.', false)
+      return []
+    })
+    renderWithProviders(<LienDeskRunModal notices={[notice({ printedAt: '2026-10-07T15:00:00.000Z' })]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} addMailedCopy={addMailedCopy as never} />)
+    await settle()
+    const file = scan()
+    fireEvent.change(screen.getByTestId('run-check-copy-file-it1'), { target: { files: [file] } })
+    await waitFor(() => expect(screen.getByTestId('run-check-copy-failed-it1').textContent).toContain('The app could not reach Drive.'))
+    fireEvent.click(screen.getByTestId('run-check-copy-retry-it1'))
+    // The second try met a refusal: its reason replaces the first, and the press is gone.
+    await waitFor(() => expect(screen.getByTestId('run-check-copy-failed-it1').textContent).toContain('Drive said: quota exceeded.'))
+    expect(screen.queryByTestId('run-check-copy-retry-it1')).toBeNull()
+    expect(sent).toHaveLength(2)
+    expect(sent[1]).toBe(file)
+    expect(screen.getByTestId('run-check-copies-it1').querySelector('a')).toBeNull()
   })
 
   it('Take off (v2.7525): the notice forgets the file after the ask, the row stops listing it, the words say it is still in Drive, and the desk is told', async () => {

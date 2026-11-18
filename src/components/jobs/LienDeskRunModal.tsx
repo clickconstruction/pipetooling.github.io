@@ -54,6 +54,7 @@ import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { LIEN_MAILED_COPY_WORDS, lienMailedCopyAddedWords, lienMailedCopyProblem, lienMailedCopyTakenOffWords, type LienMailedCopy } from '../../lib/jobs/lienMailedCopies'
 import { addLienMailedCopy, removeLienMailedCopy } from '../../lib/jobs/lienMailedCopiesIo'
+import { addFileCanRetry } from '../../lib/jobs/addFileFailure'
 import { LIEN_RUN_ACT, lienRunWhatWords, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
 import { lienRunEnvelopePropertyLine, type LienRunProperty } from '../../lib/jobs/lienRunEnvelopeProperty'
 
@@ -603,6 +604,8 @@ export default function LienDeskRunModal({
   // What was mailed (the owner's ask of 2026-11-16): a printed row takes a scan or a photo of what goes in its envelope. The file goes
   // into the job's Drive folder and the notice remembers it; a file that cannot go says why and nothing is saved.
   const [addingCopy, setAddingCopy] = useState<string | null>(null)
+  // The file that did not go up (v2.7635): its reason stays under the row, and the same file goes again on Try again.
+  const [failedCopy, setFailedCopy] = useState<{ itemId: string; file: File; words: string; retry: boolean } | null>(null)
   const addCopy = async (row: LienRunRow, file: File) => {
     const problem = lienMailedCopyProblem(file)
     if (problem) {
@@ -610,6 +613,7 @@ export default function LienDeskRunModal({
       return
     }
     setAddingCopy(row.itemId)
+    setFailedCopy(null)
     try {
       // The file's name says which paper it is: a retainage notice rides in this run beside the monthly ones (v2.7525).
       const paper = notices.find((n) => n.itemId === row.itemId)?.kind === 'retainage_53_057' ? 'retainage' : 'notice'
@@ -619,7 +623,9 @@ export default function LienDeskRunModal({
       if (last) showToast(lienMailedCopyAddedWords(last.name), 'success')
       onRecorded()
     } catch (e) {
-      showToast(formatErrorMessage(e, LIEN_MAILED_COPY_WORDS.failed), 'error')
+      const said = formatErrorMessage(e, LIEN_MAILED_COPY_WORDS.failed)
+      setFailedCopy({ itemId: row.itemId, file, words: said, retry: addFileCanRetry(e) })
+      showToast(said, 'error')
     } finally {
       setAddingCopy(null)
     }
@@ -1109,7 +1115,14 @@ export default function LienDeskRunModal({
             focusMailItemId={focusMailItemId}
             // Close… (v2.7353): a paid row's own press and the fold's ask for the confirm above; nothing is written until it is pressed.
             paid={onClosePaid ? { readyIds: paidSplit.ready, heldWhy: paidHeldWhy, onClose: (ids) => { setClosedPaid(null); setTakeBackOpen(false); setTakeBackOne(null); setClosePaidIds(ids) } } : undefined}
-            mailedCopies={{ onAdd: (row, file) => void addCopy(row, file), addingItemId: addingCopy, onRemove: (row, copy) => void removeCopy(row, copy), removingItemId: removingCopy }}
+            mailedCopies={{
+              onAdd: (row, file) => void addCopy(row, file),
+              addingItemId: addingCopy,
+              onRemove: (row, copy) => void removeCopy(row, copy),
+              removingItemId: removingCopy,
+              failed: failedCopy ? { itemId: failedCopy.itemId, words: failedCopy.words, retry: failedCopy.retry } : null,
+              onRetry: (row) => (failedCopy && failedCopy.itemId === row.itemId ? void addCopy(row, failedCopy.file) : undefined),
+            }}
             // Un-print one (v2.7481): a ticked Printed is a press on every row the run could take back; the confirm above asks first.
             unprint={onTakeBack ? { ids: printedIds, onAsk: (row) => { setTakeBackOpen(false); setClosePaidIds(null); setTakenBack(null); setTakeBackOne(row.itemId) } } : undefined}
             // The groups (v2.7477): each row under its part's head, what is stopped first.

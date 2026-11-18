@@ -71,3 +71,17 @@ export function lienHeadDay(rows: ReadonlyArray<Pick<LienNextUpRow, 'dueOn' | 'd
   const daysLeft = rows.find((r) => r.dueOn === dueOn && r.daysLeft != null)?.daysLeft ?? null
   return { dueOn, daysLeft, words: `due ${lienMonthDayWords(dueOn)}${daysLeft == null ? '' : ` · ${lienDayLeftWords(daysLeft)}`}` }
 }
+
+/**
+ * A notice row's deadline chip (out of `LienDesk.tsx`): *window closed* once the day is past, or with no day left
+ * and months already missed; *due today*, *due tomorrow*, *due in Nd* inside two weeks; else *by* the day. Nothing
+ * for a row with no deadline and nothing missed.
+ */
+export function lienDeskDeadlineWords(e: { daysLeft: number | null; earliestDeadline: string | null; missedMonths: ReadonlyArray<string> }): string {
+  if (e.daysLeft == null || !e.earliestDeadline) return e.missedMonths.length ? 'window closed' : ''
+  if (e.daysLeft < 0) return 'window closed'
+  if (e.daysLeft === 0) return 'due today'
+  if (e.daysLeft === 1) return 'due tomorrow'
+  if (e.daysLeft <= 14) return `due in ${e.daysLeft}d`
+  return `by ${formatYmdMonthDay(e.earliestDeadline)}`
+}

@@ -79,3 +79,17 @@ export function withLastCall<T extends ProspectLastCallEntry>(
 ): Record<string, T> {
   return { ...map, [prospectId]: entry }
 }
+
+/**
+ * Each prospect's latest call, from the call rows read newest first: the first row a prospect has is its latest.
+ * Moved out of `loadProspectListProspects` in `src/pages/Prospects.tsx`.
+ */
+export function lastCallByProspect(
+  rows: readonly { prospect_id: string; interaction_type: string; created_at: string | null }[],
+): Record<string, ProspectLastCallEntry> {
+  const lastCalls: Record<string, ProspectLastCallEntry> = {}
+  for (const r of rows) {
+    if (!(r.prospect_id in lastCalls)) lastCalls[r.prospect_id] = { interaction_type: r.interaction_type, created_at: r.created_at }
+  }
+  return lastCalls
+}

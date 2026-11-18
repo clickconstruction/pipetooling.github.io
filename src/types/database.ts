@@ -20781,6 +20781,10 @@ export type Database = {
           label_printed_at: string | null
           lat: number | null
           lng: number | null
+          pin_accuracy_m: number | null
+          pinned_at: string | null
+          pinned_by: string | null
+          pinned_by_name: string | null
           place_id: string | null
           retired_at: string | null
           where_note: string
@@ -20797,6 +20801,10 @@ export type Database = {
           label_printed_at?: string | null
           lat?: number | null
           lng?: number | null
+          pin_accuracy_m?: number | null
+          pinned_at?: string | null
+          pinned_by?: string | null
+          pinned_by_name?: string | null
           place_id?: string | null
           retired_at?: string | null
           where_note?: string
@@ -20813,6 +20821,10 @@ export type Database = {
           label_printed_at?: string | null
           lat?: number | null
           lng?: number | null
+          pin_accuracy_m?: number | null
+          pinned_at?: string | null
+          pinned_by?: string | null
+          pinned_by_name?: string | null
           place_id?: string | null
           retired_at?: string | null
           where_note?: string
@@ -20830,6 +20842,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_containers_pinned_by_fkey"
+            columns: ["pinned_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -37074,40 +37093,80 @@ export type Database = {
           created_at: string
           id: string
           kind: string
+          labor_job_id: string | null
           note: string | null
-          paper_id: string
-          revision: number
+          paper_id: string | null
+          payment_id: string | null
+          person_id: string | null
+          revision: number | null
           said_by_name: string | null
           said_from: string | null
+          sending_id: string | null
         }
         Insert: {
           amount?: number | null
           created_at?: string
           id?: string
           kind: string
+          labor_job_id?: string | null
           note?: string | null
-          paper_id: string
-          revision: number
+          paper_id?: string | null
+          payment_id?: string | null
+          person_id?: string | null
+          revision?: number | null
           said_by_name?: string | null
           said_from?: string | null
+          sending_id?: string | null
         }
         Update: {
           amount?: number | null
           created_at?: string
           id?: string
           kind?: string
+          labor_job_id?: string | null
           note?: string | null
-          paper_id?: string
-          revision?: number
+          paper_id?: string | null
+          payment_id?: string | null
+          person_id?: string | null
+          revision?: number | null
           said_by_name?: string | null
           said_from?: string | null
+          sending_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sub_paper_acks_labor_job_id_fkey"
+            columns: ["labor_job_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_jobs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sub_paper_acks_paper_id_fkey"
             columns: ["paper_id"]
             isOneToOne: false
             referencedRelation: "sub_papers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_paper_acks_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_job_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_paper_acks_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_paper_acks_sending_id_fkey"
+            columns: ["sending_id"]
+            isOneToOne: false
+            referencedRelation: "sub_payment_sendings"
             referencedColumns: ["id"]
           },
         ]
@@ -39048,6 +39107,94 @@ export type Database = {
             columns: ["photo_id"]
             isOneToOne: false
             referencedRelation: "task_photos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_note_tags: {
+        Row: {
+          answer_event_id: string | null
+          asker_seen_at: string | null
+          cleared_at: string | null
+          cleared_how: string | null
+          created_at: string
+          event_id: string
+          id: string
+          instance_id: string
+          item_id: string
+          tagged_name: string
+          tagged_user_id: string
+          tagger_user_id: string
+        }
+        Insert: {
+          answer_event_id?: string | null
+          asker_seen_at?: string | null
+          cleared_at?: string | null
+          cleared_how?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          instance_id: string
+          item_id: string
+          tagged_name: string
+          tagged_user_id: string
+          tagger_user_id: string
+        }
+        Update: {
+          answer_event_id?: string | null
+          asker_seen_at?: string | null
+          cleared_at?: string | null
+          cleared_how?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          instance_id?: string
+          item_id?: string
+          tagged_name?: string
+          tagged_user_id?: string
+          tagger_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_note_tags_answer_event_id_fkey"
+            columns: ["answer_event_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instance_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_note_tags_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instance_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_note_tags_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_note_tags_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_note_tags_tagged_user_id_fkey"
+            columns: ["tagged_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_note_tags_tagger_user_id_fkey"
+            columns: ["tagger_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -44397,6 +44544,10 @@ export type Database = {
           label_printed_at: string | null
           lat: number | null
           lng: number | null
+          pin_accuracy_m: number | null
+          pinned_at: string | null
+          pinned_by: string | null
+          pinned_by_name: string | null
           place_id: string | null
           retired_at: string | null
           where_note: string
@@ -48254,6 +48405,38 @@ export type Database = {
         Returns: string
       }
       next_work_order_record_id: { Args: { p_job_id: string }; Returns: string }
+      note_tags_count: { Args: never; Returns: number }
+      note_tags_mine: {
+        Args: never
+        Returns: {
+          answer_body: string
+          answer_note_id: string
+          asker_seen_at: string
+          cleared_at: string
+          cleared_how: string
+          created_at: string
+          customer_name: string
+          instance_id: string
+          item_id: string
+          job_id: string
+          job_kind: string
+          job_name: string
+          job_number: string
+          kind: string
+          note_body: string
+          note_created_at: string
+          note_id: string
+          source: string
+          tag_id: string
+          tagged_left: boolean
+          tagged_name: string
+          tagged_user_id: string
+          tagger_name: string
+          tagger_user_id: string
+          task_date: string
+          task_title: string
+        }[]
+      }
       notify_dispatch_license_expiry_if_needed: {
         Args: { p_license_id: string; p_link: string }
         Returns: string
@@ -50154,6 +50337,62 @@ export type Database = {
       task_no_longer_applies: {
         Args: { p_instance_id: string; p_reason: string }
         Returns: Json
+      }
+      task_note_people: {
+        Args: { p_instance_id: string; p_with_test: boolean }
+        Returns: {
+          gave: boolean
+          name: string
+          on_task: boolean
+          role: string
+          user_id: string
+        }[]
+      }
+      task_note_post_tagged: {
+        Args: { p_body: string; p_instance_id: string; p_tagged?: string[] }
+        Returns: string
+      }
+      task_note_tag_done: { Args: { p_tag_id: string }; Returns: boolean }
+      task_note_taggable: {
+        Args: { p_instance_id: string }
+        Returns: {
+          gave: boolean
+          name: string
+          on_task: boolean
+          role: string
+          user_id: string
+        }[]
+      }
+      task_note_tags_count: { Args: never; Returns: number }
+      task_note_tags_mine: {
+        Args: never
+        Returns: {
+          answer_body: string
+          answer_event_id: string
+          asker_seen_at: string
+          cleared_at: string
+          cleared_how: string
+          created_at: string
+          event_id: string
+          instance_id: string
+          item_id: string
+          kind: string
+          note_body: string
+          note_created_at: string
+          tag_id: string
+          tagged_left: boolean
+          tagged_name: string
+          tagged_user_id: string
+          tagger_name: string
+          tagger_user_id: string
+          task_date: string
+          task_title: string
+        }[]
+      }
+      task_note_tags_seen: { Args: never; Returns: number }
+      task_note_tags_write: {
+        Args: { p_event_id: string; p_tagged: string[] }
+        Returns: number
       }
       team_feedback_aggregates_by_manager: {
         Args: never

@@ -20,7 +20,8 @@ type Anchor = { top: number; bottom: number; right: number }
  * The menu is drawn over the page, `position: fixed`, from where its press sits. It used to hang inside the
  * list, whose rounded edge cut it: on the last task a phone showed the top of *Edit* and no *Delete*. It opens
  * under its press when it fits and above it when it does not (`rowMenuPlacement`). Pinned to the screen, it
- * would be left behind by a scroll or a turn of the phone, so either closes it.
+ * would be left behind by a scroll or a turn of the phone, so either closes it. The page under it is left free
+ * to scroll for the same reason: its backdrop opts out of the app's scroll lock.
  */
 export function ManageRowMenu({ title, lines, open, onOpenChange }: { title: string; lines: readonly ManageRowMenuLine[]; open: boolean; onOpenChange: (open: boolean) => void }) {
   const [anchor, setAnchor] = useState<Anchor | null>(null)
@@ -65,7 +66,10 @@ export function ManageRowMenu({ title, lines, open, onOpenChange }: { title: str
       </button>
       {open ? (
         <>
-          <div data-testid="manage-row-menu-backdrop" style={{ position: 'fixed', inset: 0, zIndex: MANAGE_ROW_MENU_Z - 1 }} onClick={() => onOpenChange(false)} />
+          {/* `data-page-scroll="allow"`: the app's scroll lock reads a full-screen fixed layer as an open window and pins
+              the page, which moves a scrolled page for an instant. That movement is a scroll, and a scroll closes this
+              menu, so on any scrolled list the menu shut the moment it opened (v2.7602). */}
+          <div data-testid="manage-row-menu-backdrop" data-page-scroll="allow" style={{ position: 'fixed', inset: 0, zIndex: MANAGE_ROW_MENU_Z - 1 }} onClick={() => onOpenChange(false)} />
           <div
             role="menu"
             data-opens={opensUp ? 'up' : 'down'}

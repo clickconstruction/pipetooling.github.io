@@ -21,3 +21,9 @@ export const lienRowChipStyle = (bg: string, fg: string): CSSProperties => ({
   color: fg,
   verticalAlign: 'middle',
 })
+
+/** The small capitals over a box or a menu on the desk. */
+export const lienBoxHeadStyle: CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
+
+/** A press inside a pile's title on a phone: taller and in a size a thumb reads (punch list #352, PR 5). */
+export const LIEN_PHONE_PILE_PRESS: CSSProperties = { minHeight: 30, padding: '0 10px', fontSize: '0.8125rem' }

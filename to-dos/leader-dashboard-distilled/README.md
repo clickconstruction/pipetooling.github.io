@@ -2,18 +2,20 @@
 name: "The leader's Dashboard, distilled"
 number: 365
 group: close
-status: assessed and drawn 2026-11-16 · the owner picked direction B, the short Dashboard · PR 1 merged the same day (v2.7466) and its migration is pushed · nobody is on Short yet · the live screen as the leader was not walked
+status: the owner picked direction B, the short Dashboard · PR 1 (v2.7466), PR 2 (v2.7568, the office's Waiting on card) and the first half of PR 4 (v2.7572, the bar's Dashboard tab) are built · the short page was walked live as the leader's sample account on 2026-11-17 · the owner answered the seven calls on 2026-11-17 and every default stands · nobody is on Short yet
 summary: >
   One leader has been given too much on his Dashboard. He will not look at any of it, uses the app only on
   his phone, and hands even small updates to his assistants. The assessment counted 44 cards, strips and
   squares on his page, none of them folded, and found that only seven are his alone. The owner picked a
   short Dashboard: one list of what waits on him alone with one press a row, his day, and one door to
   everything else, set per person so a leader who wants everything keeps it. PR 1 builds that page and its
-  setting. The office's side of the same list, a text that reaches him, and his bottom bar are what is left.
-next: Set the leader to Short on his People desk, then walk his page with him on his phone. Then PR 2, the office's Waiting on card.
-size: M as a train of four (M · S · M · S); left: PRs 2 to 4 (S · M · S)
-blocker: The owner's answers to seven short calls, listed below. PR 1 took a default for each.
-ver: v2.7466
+  setting. PR 2 gives the office the same list with a Remind press. The owner kept every default on
+  2026-11-17, so no text goes to him and his bar keeps its five tabs. What is left is the press that sets him
+  to Short.
+next: Set the leader to Short on his People desk, then walk his page with him on his phone. Nothing else is owed until the owner asks for the text or the four tabs.
+size: M as a train of four (M · S · M · S); built: PRs 1 and 2 and the first half of 4; set aside by the owner's answers: PR 3 (M) and the four tabs (S)
+blocker: None in the code. Setting the leader to Short is the owner's or the office's press.
+ver: v2.7568
 opinion: build — the first PR changes nobody's page until the office presses Short, so the risk is in what the short page hides, and that is the owner's call to make with the leader beside him
 ---
 
@@ -62,7 +64,8 @@ session had no sign-in as him.
   Remind press. Since v2.7445 anyone in the office can remind him.
 - They can act for him on lien papers four ways: record his spoken word, have him draw on their screen, type
   his signing code, or record his pen on paper.
-- Nothing shows them the waivers, the line budgets or the tagged notes that wait on him.
+- Until v2.7568 nothing showed them the waivers, the line budgets or the tagged notes that wait on him. The
+  Waiting on card on their Dashboard lists them now.
 - Nothing scheduled tells him what waits. Asking him for a waiver signature sends him nothing.
 
 ## The three directions
@@ -78,6 +81,10 @@ on. A's folds came along free: a person on Short who opens Everything else on a 
 
 ## Where it plugs in
 
+Built in PR 2 (v2.7568): `src/lib/dashboard/waitingOnLeader.ts` (the rows and the words, held to the short
+page's six keys by its test), `waitingOnLeaderLien.ts`, `waitingOnLeaderIo.ts`, `useWaitingOnLeader`,
+`DashboardWaitingOnLeaderCard.tsx` under Needs you, and `src/lib/jobs/lienReminderRun.ts` for the send.
+
 Built in PR 1 (v2.7466):
 
 - `src/lib/dashboard/shortDashboard.ts`: the view, who may have it, the six keys that are his alone, the
@@ -92,20 +99,23 @@ Built in PR 1 (v2.7466):
 ## The plan
 
 1. **The short page and its setting.** Built, v2.7466.
-2. **The office's Waiting on card (S).** The same rows on an assistant's Dashboard: *Waiting on Marcus*, each
-   with Remind, and one press for *he is here, sign with his code*. The lien rows are already in the desk's
-   data. The waivers, the line budgets and the tagged notes need a read the office is allowed, so a small
-   definer function that counts them for a named leader.
-3. **A text when a paper is ready (M).** Direction C, on top of the short page: one text at an hour the owner
-   picks, with a link that opens the signing screen. A daily send, a schedule and a per-person switch.
+2. **The office's Waiting on card.** Built, v2.7568. The same rows on an assistant's Dashboard: *Waiting on
+   Marcus*, the lien rows with Remind, and one press for *Marcus is here, sign with the signing code*. No
+   function was needed: the office already reads the waivers, the line budgets and the tagged notes under its
+   own row-level security. A waiver, a tagged note and the line budgets have no reminder yet, and the row says
+   so. Step 3 is where a send for them belongs.
+3. **A text when a paper is ready (M).** Set aside, 2026-11-17: the owner kept call 6's default, no text
+   yet. If he asks later, it is direction C on top of the short page: one text at an hour he picks, with a
+   link that opens the signing screen. A daily send, a schedule and a per-person switch.
 4. **His bottom bar (S).** The first half is built, v2.7572: on Short, the Dashboard tab opens the short page
-   whichever mode is on, and one press on it leaves Everything else. Left: the bar holds the four tabs the
-   owner picks (call 5). The phone dock's four slots and its More sheet, the assistant's today, are where
-   they would go.
+   whichever mode is on, and one press on it leaves Everything else. The four tabs are set aside,
+   2026-11-17: the owner kept call 5's default, so the bar keeps its five tabs. If he asks later, the phone
+   dock's four slots and its More sheet, the assistant's today, are where they would go.
 
 ## The owner's calls
 
-PR 1 took the default in brackets for each.
+PR 1 took the default in brackets for each. All seven were put to the owner on 2026-11-17, in the session
+that built PR 2. **He answered the same day: the defaults stand, all seven.** Nothing built changed for it.
 
 1. Are the five leader-only lines the whole of what stays his alone? [The five, plus a job note that tagged him.]
 2. May he sign several notices with one press after reading the list, or one paper at a time? [One at a time.]
@@ -117,6 +127,17 @@ PR 1 took the default in brackets for each.
 7. Is Short the default for every leader, or set person by person? [Person by person. Everyone is on Full
    until someone presses Short.]
 
+What the answer settles:
+
+- **Call 5** keeps the bar's five tabs, so the four tabs half of step 4 is not built.
+- **Call 6** sends him no text, so step 3 is not built. The office's **Remind** on the Waiting on card is how
+  word reaches him.
+- **Call 7** leaves every leader on Full until someone presses Short on that person's desk.
+
+One thing was built on the bar before the answer came: v2.7572 changes where the Dashboard tab leads for a
+person on Short, and nothing else about the bar. Nobody is on Short, so nobody's bar changed. If *untouched*
+was meant to cover that too, v2.7572 is the one to take back.
+
 ## How to verify
 
 - `npx vitest run src/lib/dashboard/shortDashboard.test.ts src/components/dashboard/DashboardShortView.render.test.tsx src/components/personDesk/sections/PersonDeskDashboardViewSection.render.test.tsx`.
@@ -127,8 +148,38 @@ PR 1 took the default in brackets for each.
 - Read only as him: press nothing that signs, approves or sends.
 - A dev's own account can be set to Short too, which is the quick way to look without imitating anyone.
 
+## The live walk, 2026-11-17
+
+The short page was walked on the live app as the leader's sample account, 375 px wide, through View as. The
+view was answered Short in that browser only. Nothing was written: no row was set, and nothing was signed,
+approved or sent.
+
+- **It shows** the greeting and the count, **Waiting on you** with two rows that day (lien notices to sign
+  with **Sign them**, and the assumed lines with **Review**), the office's line, the door with *6 more of
+  yours are in there*, and Training.
+- **It hides** the Job Mode nudge, the Clock In, Job report and Tally squares, the Needs you card and its 26
+  lines, the three money cards, Money in, Projects, the nine quick buttons, Crew Day, My Inbox, Your people,
+  Recent reports, the Billing pipeline, the lien month, the HR report and My Time.
+- **Everything else** opens the full page, three times as tall, with nine sections folded to one line each
+  and **Back to the short Dashboard** on top. Back returns to the short page.
+- **The bar** holds its five tabs: Dashboard, Schedule, Inbox, Customers, PO.
+- No sideways scroll at 375 px.
+
+Four things for the owner's eye:
+
+1. **His day did not draw.** The sample account has nothing scheduled, so nothing sat between the list and
+   the office's line. His own day is still unseen.
+2. **Training shows three courses**, the one required and two that are optional. On a short page that is
+   three **Start** buttons under the door.
+3. **The line budgets row is long**: a figure and two sentences of instruction under one button.
+4. **The HR report is behind the door.** The assessment counted it among the seven that are his alone.
+
+Not walked: the dark theme on the live page, the lien card (no notice waited on an approval outside a run
+that day), and any press that signs.
+
 ## Where it stands
 
-PR 1 is on `main` (v2.7466) and its migration is pushed (2026-11-16). The page was looked at with sample
-rows at phone width in both themes. The live page as the leader has not been walked, and he has not been
-set to Short: every leader's and dev's row reads Full. That press is the owner's or the office's.
+PR 1 is on `main` (v2.7466) and its migration is pushed (2026-11-16). PR 2 (v2.7568) is the office's
+Waiting on card, client only. The first half of PR 4 (v2.7572) is on `main`. The owner answered the seven
+calls on 2026-11-17 and every default stands, so the text and the four tabs are not built. The leader has
+not been set to Short: every leader's and dev's row reads Full. That press is the owner's or the office's.

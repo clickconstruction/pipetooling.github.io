@@ -82,3 +82,29 @@ describe('LienRunMailedCopies · take a file off the list (v2.7525)', () => {
     expect((screen.getByTestId('run-check-copy-add-it1') as HTMLButtonElement).disabled).toBe(true)
   })
 })
+
+describe('LienRunMailedCopies · a file that did not go up (v2.7635)', () => {
+  it('leaves the reason under the row with Try again, and the press sends the row back', () => {
+    const onRetry = vi.fn()
+    render(<LienRunMailedCopies row={row([])} canAdd busy={false} press={{ onAdd: () => {}, addingItemId: null, failed: { itemId: 'it1', words: 'The app could not reach Drive.', retry: true }, onRetry }} />)
+    const failed = screen.getByTestId('run-check-copy-failed-it1')
+    expect(failed.getAttribute('role')).toBe('alert')
+    expect(failed.textContent).toContain('The app could not reach Drive.')
+    fireEvent.click(screen.getByTestId('run-check-copy-retry-it1'))
+    expect(onRetry).toHaveBeenCalledTimes(1)
+    expect(onRetry).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'it1' }))
+  })
+
+  it('shows a refusal with its reason and no Try again', () => {
+    render(<LienRunMailedCopies row={row([])} canAdd busy={false} press={{ onAdd: () => {}, addingItemId: null, failed: { itemId: 'it1', words: 'Drive did not take the file. Drive said: quota exceeded.', retry: false }, onRetry: () => {} }} />)
+    expect(screen.getByTestId('run-check-copy-failed-it1').textContent).toContain('Drive said: quota exceeded.')
+    expect(screen.queryByTestId('run-check-copy-retry-it1')).toBeNull()
+  })
+
+  it('draws nothing for another row’s failure, and hides the reason while the file goes again', () => {
+    const { rerender } = render(<LienRunMailedCopies row={row([])} canAdd busy={false} press={{ onAdd: () => {}, addingItemId: null, failed: { itemId: 'other', words: 'x', retry: true } }} />)
+    expect(screen.queryByTestId('run-check-copy-failed-it1')).toBeNull()
+    rerender(<LienRunMailedCopies row={row([])} canAdd busy={false} press={{ onAdd: () => {}, addingItemId: 'it1', failed: { itemId: 'it1', words: 'x', retry: true } }} />)
+    expect(screen.queryByTestId('run-check-copy-failed-it1')).toBeNull()
+  })
+})

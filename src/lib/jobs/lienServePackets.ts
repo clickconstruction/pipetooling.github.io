@@ -160,6 +160,13 @@ export const LIEN_SERVE_SHEET_WORDS = {
   held: 'Not in this print',
 } as const
 
+/**
+ * A column of the mail sheet that is no wider than its longest text (the owner’s ask of 2026-11-17, v2.7639): the
+ * number, who the copy goes to and the mail-by day. The table lays itself out by its content, so the room these three
+ * give up goes to the job, the envelope's name and address, and the blank for the certified mail number.
+ */
+const FIT = ' style="width:1%;white-space:nowrap"'
+
 /** The mail sheet: every envelope in the stack's order with a blank for its certified mail number, then what was left out. */
 export function lienServeMailSheetHtml(plan: Pick<LienServePlan, 'ready' | 'held' | 'envelopes'>, opts: { printedOn: string; letter: boolean }): string {
   let n = 0
@@ -168,7 +175,7 @@ export function lienServeMailSheetHtml(plan: Pick<LienServePlan, 'ready' | 'held
       r.envelopes
         .map((e) => {
           n += 1
-          return `<tr><td>${n}</td><td><strong>${esc(r.job.jobLabel)}</strong></td><td>${esc(TO_SHORT[e.recipient])}</td><td><strong>${esc(e.name)}</strong><br/>${esc(e.address)}</td><td>${esc(r.clock.serveDue ? `${formatYmdMonthDay(r.clock.serveDue)}${r.clock.late ? ' · late' : ''}` : '')}</td><td></td></tr>`
+          return `<tr><td${FIT}>${n}</td><td><strong>${esc(r.job.jobLabel)}</strong></td><td${FIT}>${esc(TO_SHORT[e.recipient])}</td><td><strong>${esc(e.name)}</strong><br/>${esc(e.address)}</td><td${FIT}>${esc(r.clock.serveDue ? `${formatYmdMonthDay(r.clock.serveDue)}${r.clock.late ? ' · late' : ''}` : '')}</td><td></td></tr>`
         })
         .join(''),
     )
@@ -180,8 +187,8 @@ export function lienServeMailSheetHtml(plan: Pick<LienServePlan, 'ready' | 'held
     STRIPE +
     `<div class="lien-help-band"><div><div class="lien-help-tag">${esc(LIEN_SERVE_SHEET_WORDS.tag)}</div><h2>${esc(count === 1 ? 'Copies of filed lien affidavits: 1 envelope' : `Copies of filed lien affidavits: ${count} envelopes`)}</h2></div><div class="lien-help-small" style="text-align:right">${esc(opts.printedOn ? `Printed ${opts.printedOn}` : '')}<br/>Texas Property Code § 53.055</div></div>` +
     `<div class="lien-help-box"><h3>From the printer to the mail</h3><ol>${LIEN_SERVE_SHEET_WORDS.steps.map((s) => `<li><span class="lien-help-tick"></span> ${esc(s)}</li>`).join('')}</ol></div>` +
-    `<table class="lien-help-rows"><colgroup><col style="width:4%"/><col style="width:22%"/><col style="width:12%"/><col style="width:30%"/><col style="width:10%"/><col style="width:22%"/></colgroup>` +
-    `<tr><th>#</th><th>Job</th><th>Copy to</th><th>Name and address on the envelope</th><th>Mail by</th><th>Certified mail number</th></tr>${rows}` +
+    `<table class="lien-help-rows" style="table-layout:auto">` +
+    `<tr><th${FIT}>#</th><th style="width:22%">Job</th><th${FIT}>Copy to</th><th>Name and address on the envelope</th><th${FIT}>Mail by</th><th style="width:22%">Certified mail number</th></tr>${rows}` +
     (left ? `<tr class="lien-help-group"><td colspan="6">${esc(LIEN_SERVE_SHEET_WORDS.held)}</td></tr>${left}` : '') +
     `</table>` +
     foot(`Mail sheet${opts.printedOn ? ` printed ${opts.printedOn}` : ''}`, opts.letter ? 'The first letter is the next page' : 'The first copy is the next page') +

@@ -30,3 +30,5 @@ Starts with `SET lock_timeout = '3s';`. No new table, so no fence calls. Idempot
 
 - `select column_name, is_nullable from information_schema.columns where table_name = 'sub_paper_acks' order by 1` names `person_id`, `labor_job_id`, `sending_id` and `payment_id`, and reads `YES` for `paper_id` and `revision`.
 - `select indexname from pg_indexes where tablename = 'sub_paper_acks' order by 1` names the two `received` keys.
+
+**Applied** to prod on 2026-11-17 by `supabase db push --include-all` from a checkout at `origin/main` (5223c4c540, after the merge of #8498). The dry run named this one file. `--include-all` was needed because `20261117160000` and `20261117170000` were already on prod. `check:migration-drift` reads 1,349 versions on both sides. A read of `sub_paper_acks` that names the four new columns answers, with no rows. The indexes were not read back: the file applies whole or not at all. The types follow in a PR of their own.

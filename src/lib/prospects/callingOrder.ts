@@ -89,3 +89,55 @@ export function queueAgeLabel(
 ): string {
   return queueAge(p, calledIds, nowMs).label
 }
+
+/**
+ * The queue once a card leaves it (an outcome, a landing, a delete): the list without the card, and where the
+ * pointer lands. The pointer keeps its place, so the card that followed comes up; when the card that left was
+ * the last one, the pointer steps back onto the new last card. `nextId` is the card now under the pointer, or
+ * null when the queue is empty.
+ *
+ * Moved out of `src/pages/Prospects.tsx`, where six handlers each wrote it inline.
+ */
+export function queueAfterRemoval<T extends { id: string }>(
+  queue: readonly T[],
+  index: number,
+  id: string,
+): { queue: T[]; index: number; nextId: string | null } {
+  const next = queue.filter((p) => p.id !== id)
+  const nextIndex = Math.min(index, Math.max(0, next.length - 1))
+  return { queue: next, index: nextIndex, nextId: next[nextIndex]?.id ?? null }
+}
+
+/**
+ * Where the pointer sits when a row that is not the deck's card leaves the queue (a landing from the list or the
+ * Board): one back when the row sat before the card, so the same card stays up; unchanged otherwise.
+ */
+export function indexAfterOtherRowLeft(queue: readonly { id: string }[], index: number, id: string): number {
+  const wasAt = queue.findIndex((p) => p.id === id)
+  return wasAt >= 0 && wasAt < index ? index - 1 : index
+}
+
+type ColdestRow = { id: string; last_contact: string | null; company_name: string | null }
+
+/**
+ * A row sent back into the queue (Send back on the Prospect List): added once, then the whole queue sorted
+ * coldest first, never-contacted rows leading, ties by company name. A row already in the queue changes
+ * nothing. The order is coldest whatever calling order the deck is on, until its next load.
+ */
+export function insertColdest<T extends ColdestRow>(queue: readonly T[], row: T): T[] {
+  if (queue.some((x) => x.id === row.id)) return queue as T[]
+  return [...queue, row].sort((a, b) => {
+    const aLc = a.last_contact ? new Date(a.last_contact).getTime() : 0
+    const bLc = b.last_contact ? new Date(b.last_contact).getTime() : 0
+    if (aLc !== bLc) return aLc - bLc
+    return (a.company_name ?? '').localeCompare(b.company_name ?? '')
+  })
+}
+
+/**
+ * The first row the queue peek shows: two rows above the card when there is room, never past the point where
+ * the last `limit` rows fill the peek, never before the first row.
+ */
+export function queueWindowStart(index: number, length: number, limit: number): number {
+  return Math.max(0, Math.min(index - 2, length - limit))
+}

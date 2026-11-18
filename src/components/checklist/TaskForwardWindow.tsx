@@ -4,7 +4,7 @@ import { FORWARD_KEEPS_WORDS, FORWARD_PICK_LABEL, FORWARD_TITLE, forwardPressLab
 
 /**
  * The office's Forward window (v2.7563): the task's words, who takes it, and one press. The task itself goes
- * (`handOnTask`), so the window takes no new title. My Inbox draws it; a refusal stays in the window in its words.
+ * (`handOnTask`), so the window takes no new title. My Inbox draws it, and Checklist's Today and Review since v2.7587; a refusal stays in the window in its words.
  */
 export function TaskForwardWindow({ title, people, saving, refusal, onForward, onClose }: {
   /** The task's words, already plain. */

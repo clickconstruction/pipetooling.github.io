@@ -18,6 +18,7 @@ import {
   runTextWords,
   TEXT_NO_CHANNEL,
   TEXT_NO_NUMBER,
+  firstCallbackWords,
 } from './callRun'
 
 describe('callRun: the link', () => {
@@ -152,5 +153,27 @@ describe('callRun: the first text starts the thread (v2.6032)', () => {
   it('notes the text on the card, and the thread it started', () => {
     expect(runTextNote('Hi.', false)).toBe('Text sent: Hi.')
     expect(runTextNote('Hi.', true)).toBe('Text sent: Hi. This first text started their Messages thread.')
+  })
+})
+
+describe('firstCallbackWords', () => {
+  const now = new Date(2026, 9, 16, 9, 0, 0)
+  it('keeps the first callback a prospect has, which is its next one when the rows come soonest first', () => {
+    const soon = new Date(2026, 9, 16, 15, 0, 0)
+    const later = new Date(2026, 9, 19, 10, 0, 0)
+    const other = new Date(2026, 9, 17, 11, 0, 0)
+    const words = firstCallbackWords(
+      [
+        { prospect_id: 'a', callback_date: soon.toISOString() },
+        { prospect_id: 'b', callback_date: other.toISOString() },
+        { prospect_id: 'a', callback_date: later.toISOString() },
+      ],
+      now,
+    )
+    expect(words).toEqual({ a: callbackWords(soon, now), b: callbackWords(other, now) })
+    expect(words.a).toContain('today')
+  })
+  it('no callbacks is an empty map', () => {
+    expect(firstCallbackWords([], now)).toEqual({})
   })
 })

@@ -257,3 +257,59 @@ export function recordProspectConverted(
 ): void {
   recordNavClick(userId, role, 'prospect_converted', `#${lane}`)
 }
+
+/**
+ * The prospect as Add customer takes it (`sourceProspect`): the eleven facts the form links and seeds from.
+ * `handleConverted` and `handleAskedUs` in `src/pages/Prospects.tsx` each wrote this literal.
+ */
+export function sourceProspectOf(p: Required<ConvertibleProspect>): Required<ConvertibleProspect> {
+  return {
+    id: p.id,
+    company_name: p.company_name,
+    contact_name: p.contact_name,
+    phone_number: p.phone_number,
+    email: p.email,
+    address: p.address,
+    prospect_fit_status: p.prospect_fit_status,
+    is_person: p.is_person,
+    contact_title: p.contact_title,
+    contact_phone: p.contact_phone,
+    lang: p.lang,
+  }
+}
+
+export type ConvertContactDraft = { name: string; phone: string; email: string; note: string }
+export type ConvertBidDraft = { project_name: string; service_type_id: string }
+
+/** The Convert tab's contact cards as rows to insert: a card with no name is skipped, an empty box is null. */
+export function convertContactRows(
+  persons: readonly ConvertContactDraft[],
+  customerId: string,
+): { customer_id: string; name: string; phone: string | null; email: string | null; note: string | null }[] {
+  return persons
+    .filter((cp) => cp.name.trim())
+    .map((cp) => ({
+      customer_id: customerId,
+      name: cp.name.trim(),
+      phone: cp.phone.trim() || null,
+      email: cp.email.trim() || null,
+      note: cp.note.trim() || null,
+    }))
+}
+
+/** The Convert tab's bid cards as rows to insert: a card with no project name or no service type is skipped. A first bid's materials model is rough. */
+export function convertBidRows(
+  bids: readonly ConvertBidDraft[],
+  customerId: string,
+  createdBy: string,
+): { customer_id: string; created_by: string; service_type_id: string; project_name: string; materials_model: 'rough' }[] {
+  return bids
+    .filter((b) => b.project_name.trim() && b.service_type_id)
+    .map((b) => ({
+      customer_id: customerId,
+      created_by: createdBy,
+      service_type_id: b.service_type_id,
+      project_name: b.project_name.trim(),
+      materials_model: 'rough' as const,
+    }))
+}

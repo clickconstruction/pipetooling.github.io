@@ -38,7 +38,7 @@ import { deliveryAgainWords, deliveryOutcomeWords, deliveryPartWords, notReadHea
 import { countedLabel } from '../../lib/batchWords'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { jobMaterialsSummaryFor, staleWords } from '../../lib/materials/onSiteSummary'
-import { onSiteJobWords } from '../../lib/materials/onSiteJobWords'
+import { onSiteJobHead, onSiteJobWords } from '../../lib/materials/onSiteJobWords'
 import { DESK_PICK_PLACEHOLDER, deskPickOptions } from '../../lib/materials/deskJobPick'
 import { SearchableSelect } from '../SearchableSelect'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
@@ -64,6 +64,7 @@ import OnSiteMoveJobModal from '../materials/OnSiteMoveJobModal'
 import { canMoveOnSite, MOVE_JOB_LABEL, MOVE_JOB_WHO, type MoveJobChoice } from '../../lib/materials/onSiteMoveJob'
 import { canMintStickers, PRINT_STICKERS_LABEL, STICKER_MINT_WHO } from '../../lib/materials/stickerRun'
 import { BoxWindow } from '../materials/BoxTabs'
+import { WHERE_IS_IT_PRESS, whereIsBoxTitle } from '../../lib/materials/whereIsBox'
 import { BOX_KIND_CHOICES, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
 import { addPressLabel, boxNameVerdict, nextFreeName, siteBoxesFor } from '../../lib/materials/boxName'
 import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_MAX, addedLineVerdict, boxLineOf, lineFieldValue, nameWordsNote } from '../../lib/materials/boxLine'
@@ -94,6 +95,8 @@ const BLUE = '#2563eb'
 const btn: CSSProperties = { minHeight: 36, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }
 const btnPrimary: CSSProperties = { ...btn, background: BLUE, borderColor: BLUE, color: '#fff' }
 /** A quiet press (v2.7305): a line of words under a list, for a rare act — the whole-job move. Dead, it keeps the muted colour and loses its underline. */
+/** The job's number in the page's head, the press that opens the job window: the head's own type, with the dotted line a box's name wears. */
+const headPress: CSSProperties = { font: 'inherit', color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }
 const quietPress: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '0.2em', textAlign: 'left' }
 const quietPressDead: CSSProperties = { ...quietPress, color: 'var(--text-muted)', cursor: 'default', textDecoration: 'none' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
@@ -637,8 +640,10 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const geocodeAsk = useMemo(() => (addr ? [{ key: normalizeAddressForGeocodeKey(addr), display: addr }] : []), [addr])
   const { coords: jobCoords } = useAddressGeocodeCoords(geocodeAsk, addr.length > 0, 'on-site map')
   const jobCenter = addr ? (jobCoords.get(normalizeAddressForGeocodeKey(addr)) ?? null) : null
-  // The job's painted maps (#345), under the boxes: read only while the map is the view.
-  const painted = usePaintedMapsLayer(jobId ? { jobId } : null, section === 'onsite' && onSiteView === 'map')
+  /** The box whose window opened on Where is it? (punch list #372): the same window as Edit, on its third tab. */
+  const [whereBoxId, setWhereBoxId] = useState<string | null>(null)
+  // The job's painted maps (#345), under the boxes: read only while the map is the view, or a box's Where is it? is open.
+  const painted = usePaintedMapsLayer(jobId ? { jobId } : null, (section === 'onsite' && onSiteView === 'map') || whereBoxId != null)
   const mapPins: OnSiteMapPin[] = containers.filter((c) => c.lat != null && c.lng != null).map((c) => ({ id: c.id, label: c.label, lat: c.lat as number, lng: c.lng as number, tone: c.kind !== 'unsorted' && countIsDue(lastCountedAt(movements, c.id), now) ? 'amber' : 'ok' }))
   const [reasonFilter, setReasonFilter] = useState<string>('')
   const [whoFilter, setWhoFilter] = useState<string>('')
@@ -698,18 +703,22 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const missingRows = diffs.filter((d) => d.at >= since && d.diff !== 0)
   const cannotRows = movements.filter((m) => m.reason === 'cannot_find' && m.at >= since)
 
+  const head = onSiteJobHead(job, jobLabel(job, jobId))
+
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
-      {/* One line that flows: the back chevron, the job with its address (which drops under the name when there is no room), Open the job pinned right. */}
+      {/* One line that flows: the back chevron, then the job with its address (which drops under the name when there is no room). The job's number is the press that opens the job window (the owner's ask of 2026-11-17), where a button stood at the far end of the line. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
         <button type="button" aria-label="Back to the Materials desk" title="Materials desk" style={{ ...btn, width: 36, height: 36, minHeight: 36, padding: 0, justifyContent: 'center', flex: '0 0 auto', lineHeight: 1 }} onClick={onBack}>
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" style={{ display: 'block' }}><path d="M8 1.5 3.5 6 8 10.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
         <div style={{ flex: '1 1 auto', minWidth: 0, display: 'grid', gap: 1 }}>
-          <h2 style={{ margin: 0, fontSize: '1.1rem', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{jobLabel(job, jobId)}</h2>
+          <h2 style={{ margin: 0, fontSize: '1.1rem', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+            <button type="button" data-testid="materials-job-open" title="Open the job" aria-label={head.openLabel} style={headPress} onClick={() => onOpenJobDetail(jobId)}>{head.press}</button>
+            {head.rest ? ` · ${head.rest}` : null}
+          </h2>
           {job?.job_address ? <span style={{ ...muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{job.job_address}</span> : null}
         </div>
-        <button type="button" style={{ ...btn, minHeight: 32, fontSize: '0.8rem', fontWeight: 500, flex: '0 0 auto', whiteSpace: 'nowrap' }} onClick={() => onOpenJobDetail(jobId)}>Open the job</button>
       </div>
       {!load.loaded && load.loading ? <p style={{ ...muted, margin: 0 }}>Loading the boxes…</p> : null}
       <OfflineRetryPanel failure={load.error ? recoveryFailureFromError(load.raw, 'The boxes on this job did not load.') : null} onRetry={load.retry} surface="materials-on-site-office" idempotent />
@@ -795,7 +804,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
               const boxLineNow = c.kind === 'unsorted' ? null : boxLineOf(c, lines)
               return (
                 <div key={c.id} style={{ ...sec, borderColor: due ? 'var(--text-amber-800)' : 'var(--border)' }}>
-                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}{stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? []) ? <span style={{ ...muted, fontWeight: 600 }} title="The stickers on it" data-testid="materials-box-stickers">· {stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? [])}</span> : null}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${boxKindWords(c.kind).toLowerCase()}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{boxLineNow?.text ? <p style={{ margin: 0, padding: '0.45rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }} data-testid="materials-box-line" data-by={boxLineNow.by}><span style={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{boxLineNow.text}</span>{boxLineNow.by === 'app' ? <span style={{ ...muted, fontSize: '0.75rem' }}>{BOX_LINE_FROM_PARTS}</span> : <span style={{ ...muted, fontSize: '0.75rem' }}>in a person’s words</span>}</p> : null}
+                  <h3 style={secH}>{c.kind === 'unsorted' ? <span style={{ fontSize: '1.2rem', fontWeight: 800 }}>{c.label}</span> : /* The name itself opens Edit (v2.7199, the owner's ask): the box is the thing a person reaches for. */ <button type="button" title={`${editBoxTitle(c)}: its name, its kind and where it stands`} style={{ font: 'inherit', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: '0.2em' }} onClick={() => setEditingBoxId(c.id)} data-testid="materials-box-name">{c.label}</button>}{stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? []) ? <span style={{ ...muted, fontWeight: 600 }} title="The stickers on it" data-testid="materials-box-stickers">· {stickerMarksWords(c.label, jobStickers.marksByBox.get(c.id) ?? [])}</span> : null}<span style={{ fontWeight: 500 }}>{c.kind === 'unsorted' ? 'delivered, not assigned storage' : `${boxKindWords(c.kind).toLowerCase()}${c.where ? ` · ${c.where}` : ''}`}</span><span style={{ marginLeft: 'auto', ...muted, ...(due ? { color: 'var(--text-amber-700)', fontWeight: 600 } : {}) }}>{c.kind === 'unsorted' ? '' : lastCountWords(last, now)}</span>{c.kind !== 'unsorted' ? <button type="button" aria-label={`Print the label for ${c.label}`} title={`Print the label for ${c.label}: the stencil, the code and its lines to write on`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setLabelsOpen({ only: c.id })}>Label</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={editBoxTitle(c)} title={`${editBoxTitle(c)}: its name, its kind and its where line`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => setEditingBoxId(c.id)}>Edit</button> : null}{c.kind !== 'unsorted' ? <button type="button" aria-label={whereIsBoxTitle(c.label)} title={`${whereIsBoxTitle(c.label)} What the app knows, its pin on the map and the way to it`} style={{ ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500, flex: '0 0 auto' }} onClick={() => { setWhereBoxId(c.id); setEditingBoxId(c.id) }} data-testid="materials-box-where">{WHERE_IS_IT_PRESS}</button> : null}{boxLineNow?.text ? <p style={{ margin: 0, padding: '0.45rem 0.9rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }} data-testid="materials-box-line" data-by={boxLineNow.by}><span style={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{boxLineNow.text}</span>{boxLineNow.by === 'app' ? <span style={{ ...muted, fontSize: '0.75rem' }}>{BOX_LINE_FROM_PARTS}</span> : <span style={{ ...muted, fontSize: '0.75rem' }}>in a person’s words</span>}</p> : null}
                   {(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <span title={ps.map((p) => p.fileName).join('\n')} style={{ ...muted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 500 }}><CameraGlyph /> {photoMarkWords(ps, now)}</span> : null })()}</h3>
                   {(() => { const ps = photos.filter((p) => p.containerId === c.id); return ps.length ? <div style={{ padding: '0.5rem 0.9rem 0.25rem' }}><BoxPhotos photos={ps} canAct={false} size={44} /></div> : null })()}
                   <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -1144,7 +1153,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       {moveOpen ? <OnSiteMoveJobModal sourceJobId={jobId} jobs={moveJobs} siteOfJob={siteOfJob} role={role} onClose={() => setMoveOpen(false)} onMoved={(_from, _to, words) => { showToast(words, 'success'); /* The runs fold and the sticker numbers keep their own reads (v2.7329): the run went with the boxes. */ setRunsKey((k) => k + 1) }} /> : null}
       {onBoxesOpen ? <StickersOnBoxes jobId={jobId} jobLabel={jobLabel(job, jobId)} places={places} initialNames={onBoxesOpen.initial} onClose={() => setOnBoxesOpen(null)} onPlaced={(_answer, outcome) => { showToast(onBoxesToast(outcome), outcome.tone === 'success' ? 'success' : 'warning'); /* The new boxes, the fold's counts and the names beside each box are read again. */ void loadJob(jobId, { force: true }); setRunsKey((k) => k + 1) }} /> : null}
       {stickersOpen ? <PrintStickersModal jobId={jobId} jobLabel={jobLabel(job, jobId)} role={role} run={stickersOpen.run} onClose={() => setStickersOpen(null)} onMinted={() => setRunsKey((k) => k + 1)} onPrinted={() => setRunsKey((k) => k + 1)} /> : null}
-      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} onClose={() => setEditingBoxId(null)} onSaved={(words) => { setEditingBoxId(null); showToast(words, 'success') }} /> : null })()}
+      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow key={`${box.id}:${whereBoxId === box.id ? 'where' : 'cage'}`} container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} where={{ jobCenter, jobAddress: addr, photos, painted: painted.maps }} startTab={whereBoxId === box.id ? 'where' : 'cage'} onClose={() => { setEditingBoxId(null); setWhereBoxId(null) }} onSaved={(words) => { setEditingBoxId(null); setWhereBoxId(null); showToast(words, 'success') }} /> : null })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}
     </div>
   )

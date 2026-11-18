@@ -243,7 +243,9 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and thirteen verbs, fifty-one of them POSTing one of twenty-one named dev-gated RPCs as the dev (one hundred and thirteen since v2.7515, whose served copies are the Lien window's own `served_at` and `sends` on the filing's row under the dev's RLS, no new role and no new policy;
+The one write path (v2.3722) is one hundred and seventeen verbs, fifty-one of them POSTing one of twenty-one named dev-gated RPCs as the dev (one hundred and seventeen since v2.7589, whose task place is the Edit window's own update of the place columns on `checklist_items`, or on `checklist_tech_tree_group_tasks` for a task from a roadmap, under the dev's RLS, with the address read from `address_geocodes` and never written, no new role and no new policy;
+one hundred and fifteen since v2.7584, whose given task is the New task window's own rows on `checklist_items`, its assignee tables, `checklist_instances` and `task_criteria` under the dev's RLS, no new role and no new policy;
+one hundred and thirteen since v2.7515, whose served copies are the Lien window's own `served_at` and `sends` on the filing's row under the dev's RLS, no new role and no new policy;
 one hundred and eleven since v2.7511, whose recorded lien filing is the Lien window's own `job_lien_filings` row and the desk item's mark under the dev's RLS, with its scan staged in the private `dev-seat-staging` bucket a dev reaches only inside their own folder, `docs/migrations/20261117100000_dev_seat_staging_bucket.md`, no new role;
 one hundred and nine since v2.7247, whose affidavit draft is the Lien desk pane's own `job_lien_desk_items` row under the dev's RLS, no new role and no new policy;
 one hundred and seven since v2.7241, whose box edit and part rename go through `dev_on_site_rename`, the second `SECURITY INVOKER` wrapper, under the dev's own RLS, `docs/migrations/20261114050000_dev_on_site_rename.md`;
@@ -307,6 +309,9 @@ A training account or a twin is refused in words, and so is a target account tha
 A person reads their own row and the office reads the desk's;
 no new policy.
 The controller sees the desk's section and presses nothing.
+
+The office's **Waiting on** card (v2.7568, punch list #365, PR 2) is drawn for the assistant and the controller alone (`canSeeWaitingOnLeader`).
+It adds no policy and no function: the waivers, the tagged notes and the line budgets are read under the office's own row-level security, and its **Remind** is `notify-lien-approval`, whose gate is the office roles.
 
 ### GC projects — New project, the plans, the questions and the scope book (door 1, v2.4832, `20261008003000_gc_door_1_new_project_team.sql`)
 
@@ -999,13 +1004,14 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Movements and moves are select + insert only: a wrong press gets a new row, never an edit, with one exception since v2.7212: a typed part's name is fixed by inserting a `job_part_renames` row (read and insert by the same gate, never updated or deleted, `docs/migrations/20261113230000_on_site_part_renames.md`), whose definer trigger sets `part_name` alone on the job's typed ledger rows after the caller's own RLS let the row in.
   Containers allow update (a move, a pin, a retirement, and since v2.7179 an edit of the name, the kind or the where line by the same gate, and since v2.7348 of the box's line, `description`, with no policy of its own;
   since v2.7276 a new or changed name is judged by the `job_containers_name_rule` trigger, `SECURITY DEFINER` so it reads every job of the site: a caller who cannot read the job next door is still held to its names, and the refusal names that job's number, `docs/migrations/20261114100000_box_name_rule.md`);
-  a place is insert only;
+  a place is insert only but for one column: since v2.7580 a place's `painted_map_id`, the way to it, may be updated by the same gate (`job_places_update`), and the `job_places_guard_way` trigger holds a direct caller to that column and holds the way, from anyone, to a painted map the writer can open on the place's own job or its development (`docs/migrations/20261117180000_place_painted_way.md`, punch list #372);
   a photo row may be updated by the one who took it.
   **The gate says which job;
   since v2.7240 triggers say which columns** (`docs/migrations/20261114013000_on_site_teammate_guards.md`, punch list #344 PR 5), for a direct caller alone (`current_user` is `authenticated` or `anon`;
   the service role and definer functions pass): a new ledger row and a new box move take the caller as `by_user_id`, the caller's own name as `by_name` (a dev's is kept, for the dev seat's agent label) and the server's time where the phone's is ahead, and a ledger row is stamped `recorded_at`, when it reached the office;
   a box photo's `drive_file_id`, `filed_at`, `refile_due_at`, `fail_why` and the status `filed` are the sweep's, its box, job and taker never change, and its `storage_path` is `<a job id>/<its own id>.jpg`;
   a box's `job_id` cannot be changed by a direct update.
+  Since v2.7573 a box's pin remembers who set it: `pinned_by` is the caller, never what the phone sent, and `pinned_by_name`, `pinned_at` and `pin_accuracy_m` change only with the pin and go when it goes (`job_containers_stamp_pin`, `docs/migrations/20261117170000_box_pin_remembers.md`, punch list #372).
   **The dev seat writes the same rows through `dev_on_site_write`** (v2.6367, `20261102100000`) **and, for a box's edit and a part's rename, `dev_on_site_rename`** (v2.7241, `20261114050000`): `SECURITY INVOKER`, so these policies, the CHECKs, training mode's blocks and the twin fence decide every insert as they do on the screen;
   gated `is_dev()` first, a training account and a digital twin refused in words;
   every row stamped `<agent_label> · MCP as <dev>` with the dev as `by_user_id`.
@@ -1324,6 +1330,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Since v2.7569 (punch list #371) that function also writes what a sub answers into `sub_paper_acks`, each row naming its person and its sheet, sending or payment (`docs/migrations/20261117150000_sub_paper_ack_targets.md`).
   It reads `sub_papers` and never writes it, so a number is given only by the office.
   A signed-in teammate or a preview of a sub's page cannot answer for the sub.
+  Since v2.7609 the office marks a sub's note answered through `answer_sub_paper_ack` (`docs/migrations/20261117190000_sub_paper_ack_answered.md`), a definer function for the same office roles that refuses a training account, a digital twin and an archived account.
+  It writes three columns and nothing else, and the table stays read only by grant.
 - **`sub_payment_sendings` · `sub_credit_entries`** (punch list #347, `docs/migrations/20261114020000_sub_credit_and_sendings.md`, v2.7235): one money movement to a sub, and the credit kept past what their sheets needed.
   **Read / insert** by the office (`is_office_staff()`), nothing else by policy: a credit entry goes with its payment row (`ON DELETE CASCADE`), and the functions do the rest.
   `record_sub_sending` and `apply_sub_credit` are `SECURITY INVOKER`, granted to `authenticated` and revoked from `anon`, so the policies decide;
@@ -1815,6 +1823,23 @@ Opening the scan goes through `open-contract-form-pdf` with `which: 'scan'` — 
 **Two-party forms** (v2.2802): `complete-contract-form-office` lets dev · master_technician · assistant · controller fill a form's `party: 'office'` boxes on the filed PDF and flatten it (the I-9's Section 2), provided the row is readable under their own RLS.
 The signer never sees office boxes;
 `office_values` stores only non-sensitive office answers.
+
+### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`)
+
+No screen calls it yet, and it locks nothing: the prompt and the lock in the database are later steps.
+`job_required_papers` holds the papers a job requires of everyone who opens it.
+The office (dev, master technician, assistant, controller) reads it through `is_office_staff()`.
+It has no write policy and no write grant: rows are written only by `job_papers_require` and `job_paper_remove`, both office only.
+Everyone must sign, the office too: `job_closed_to_me(job)` is true for any signed-in user who has not signed every live paper on the job, and false for the service role.
+The signer is the roster person tied to the login (`people.account_user_id`), never a name match.
+A login tied to no roster person reads as owing and cannot start a paper.
+`job_papers_mine(job)` hands any signed-in user the job's number and its papers' names, and nothing else of the job.
+`job_paper_start` makes the caller's own copy.
+Only the office or the service role makes one for someone else.
+`job_papers_roster(job)` is office only.
+`job_papers_for_person` and `job_paper_job_number` run for the service role alone.
+The policies on `person_contract_documents` are unchanged: a person never reads their own paper's row, only the functions' answers and the signing page.
+A training-mode account cannot sign, since starting a paper is a write.
 
 ### Contract documents: type/expiry/identity columns (v2.1213, `20260801200000_contract_doc_types_expiry.sql`)
 - `person_contract_documents` gains `doc_type` (agreement|coi|w9|license|other, default agreement), `expires_at`, and `person_id` (FK `people`, resolver backfill + `contract_docs_set_person_id` trigger).
@@ -2500,12 +2525,13 @@ Sample and walk-tester accounts are offered only to a dev or to another such acc
 The client's gate is `canTagInJobNotes` (`src/lib/jobs/noteTags.ts`): the same seven roles see the @ button, the count above Jobs and the Needs you line.
 
 **Tagged task notes** (v2.7570, `20261117160000_task_note_tags.sql`;
-no screen calls it yet): `task_note_tags` has one read policy and no write policy.
+open to the team since v2.7576): `task_note_tags` has one read policy and no write policy.
 The tagged person and the tagger read their own rows, and anyone else reads a tag when they can read its note in the task's thread.
 Rows are written only by `task_note_post_tagged` (the note under the writer's own policies, the tags through the definer `task_note_tags_write`), the answering trigger on `checklist_instance_events`, `task_note_tag_done` and `task_note_tags_seen`.
 **Who can be tagged on a task, and who can tag** (`task_note_people`, read for one day row): whoever gave the task and whoever has that day row, whatever their role but subcontractor or estimator, then dev, master technician, assistant and controller.
 A primary, a helper or a superintendent is on the list only when the task is theirs, so a tag never opens a task to someone new.
 Never an archived person, a digital twin or an account in training mode, and a sample or walk-tester account only for a dev or another such account.
+The client's gate is `canTagInTaskNotes` (`src/lib/jobs/noteTags.ts`), the seven roles of `canTagInJobNotes`: they see the @ button, the count on Checklist and the Needs you line, and a caller the task's list refuses gets a plain note box.
 
 **Job thread notes** (v2.5526, `20261014220000_helper_on_job_thread_notes.sql`): a helper or a subcontractor on a job's crew (`jobs_ledger_team_members`) reads and posts its `jobs_ledger_thread_notes`, Job Mode's **Something else** note among them, and so does one with a schedule block on it this week or last.
 The field branch of both policies asks the SECURITY DEFINER `helper_on_job(job)`, since `jobs_ledger_team_members`' SELECT policy hides a helper's own crew row and the old in-policy check never saw it.

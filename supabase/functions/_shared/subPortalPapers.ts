@@ -25,7 +25,10 @@ import {
   buildStatementOfAccount,
   buildWorkStatement,
   paperDay,
+  paperJobLabel,
+  paperMoneyDay,
   paperSendings,
+  paperSheetName,
   subPapersAddUp,
   type PaperCompany,
   type PaperContext,
@@ -317,7 +320,10 @@ export type PortalAnswerRow = {
   note: string | null
 }
 
-export type PortalAnswerPlan = { ok: true; row: PortalAnswerRow; already: string | null } | { ok: false; status: number; error: string }
+export type PortalAnswerPlan =
+  /** `what` names the statement or payment as the office reads it: `WS-2041-1 · #2041 Cedar Hollow Clinic`, `PR-0231`. */
+  | { ok: true; row: PortalAnswerRow; already: string | null; what: string }
+  | { ok: false; status: number; error: string }
 
 /** The live paper in the register for a sheet or a payment, by the mint's own rule: not replaced, not void, the highest revision. */
 function livePaper(register: readonly PapersRegisterRow[], match: (r: PapersRegisterRow) => boolean): { id: string; revision: number } | null {
@@ -353,7 +359,7 @@ export function planPortalAnswer(body: { action?: unknown; about?: unknown; key?
     const sheet = set.sheets.find((s) => s.id === key)
     if (!sheet) return { ok: false, status: 404, error: 'That statement is not on your page.' }
     const paper = livePaper(rows.register, (r) => r.kind === 'work_statement' && r.labor_job_id === sheet.id)
-    return { ok: true, already: null, row: { ...base, labor_job_id: sheet.id, sending_id: null, payment_id: null, paper_id: paper?.id ?? null, revision: paper?.revision ?? null, amount: buildWorkStatement(sheet, set.ctx).stillOpen } }
+    return { ok: true, already: null, what: [sheet.number, paperJobLabel(sheet)].filter(Boolean).join(' · ') || paperSheetName(sheet), row: { ...base, labor_job_id: sheet.id, sending_id: null, payment_id: null, paper_id: paper?.id ?? null, revision: paper?.revision ?? null, amount: buildWorkStatement(sheet, set.ctx).stillOpen } }
   }
   const sending = set.sendings.find((s) => s.key === key)
   const target = sending ? portalPaymentTarget(sending.key) : null
@@ -361,5 +367,5 @@ export function planPortalAnswer(body: { action?: unknown; about?: unknown; key?
   const paper = livePaper(rows.register, (r) => r.kind === 'payment_record' && (target.sending_id ? r.sending_id === target.sending_id : r.payment_id === target.payment_id))
   const received = portalAnswers(rows.acks).received
   const already = action === 'got_it' && sending.key in received ? received[sending.key] || paperDay(set.ctx.today) : null
-  return { ok: true, already, row: { ...base, labor_job_id: null, sending_id: target.sending_id, payment_id: target.payment_id, paper_id: paper?.id ?? null, revision: paper?.revision ?? null, amount: sending.amount } }
+  return { ok: true, already, what: sending.number || `the payment of ${paperMoneyDay(sending)}`, row: { ...base, labor_job_id: null, sending_id: target.sending_id, payment_id: target.payment_id, paper_id: paper?.id ?? null, revision: paper?.revision ?? null, amount: sending.amount } }
 }

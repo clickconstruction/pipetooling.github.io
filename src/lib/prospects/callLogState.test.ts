@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findRetaggableNote, RETAG_NOTE_WINDOW_MS, withCalledProspect, withLastCall } from './callLogState'
+import { findRetaggableNote, RETAG_NOTE_WINDOW_MS, withCalledProspect, withLastCall, lastCallByProspect } from './callLogState'
 
 const NOW = Date.parse('2026-09-03T14:00:00Z')
 const ME = 'me'
@@ -60,5 +60,26 @@ describe('withCalledProspect / withLastCall', () => {
     expect(nextMap.b).toEqual(entry)
     expect(nextMap.a).toBe(map.a)
     expect('b' in map).toBe(false)
+  })
+})
+
+describe('lastCallByProspect', () => {
+  it('keeps the first row a prospect has, which is its latest when the rows come newest first', () => {
+    const rows = [
+      { prospect_id: 'a', interaction_type: 'answered', created_at: '2026-10-03T00:00:00Z' },
+      { prospect_id: 'b', interaction_type: 'didnt_answer', created_at: '2026-10-02T00:00:00Z' },
+      { prospect_id: 'a', interaction_type: 'didnt_answer', created_at: '2026-10-01T00:00:00Z' },
+    ]
+    expect(lastCallByProspect(rows)).toEqual({
+      a: { interaction_type: 'answered', created_at: '2026-10-03T00:00:00Z' },
+      b: { interaction_type: 'didnt_answer', created_at: '2026-10-02T00:00:00Z' },
+    })
+  })
+  it('carries a missing time as it is, and no rows as an empty map', () => {
+    expect(lastCallByProspect([{ prospect_id: 'a', interaction_type: 'answered', created_at: null }])).toEqual({ a: { interaction_type: 'answered', created_at: null } })
+    expect(lastCallByProspect([])).toEqual({})
+  })
+  it('keeps only the call facts, not the row', () => {
+    expect(Object.keys(lastCallByProspect([{ prospect_id: 'a', interaction_type: 'answered', created_at: null }]).a ?? {})).toEqual(['interaction_type', 'created_at'])
   })
 })

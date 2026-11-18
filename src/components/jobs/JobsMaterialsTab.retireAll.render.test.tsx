@@ -122,3 +122,18 @@ describe('Retire every box on this job', () => {
     expect(screen.queryByTestId('retire-all-row')).toBeNull()
   })
 })
+
+describe("The job page's head", () => {
+  it('the job number opens the job, and no button stands at the far end of the line', () => {
+    data.boxes = [box('zz1', 'ZZ1')]
+    const opened: string[] = []
+    renderWithProviders(<JobsMaterialsTab jobs={jobs} byUserId="u1" byName="Sam" onOpenJobDetail={(id) => opened.push(id)} driveBackfill={false} />, { route: '/materials?tab=on-site&job=ja' })
+    const press = screen.getByTestId('materials-job-open')
+    expect(press.textContent).toBe('1111')
+    expect(press.getAttribute('aria-label')).toBe('Open job 1111')
+    expect(press.closest('h2')?.textContent).toBe('1111 · ZZ Test bio walk')
+    expect(screen.queryByRole('button', { name: 'Open the job' })).toBeNull()
+    fireEvent.click(press)
+    expect(opened).toEqual(['ja'])
+  })
+})

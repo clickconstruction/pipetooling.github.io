@@ -61,6 +61,8 @@ export function lienDeskTitleLineNeeds(parts: { back: number; views: number; too
 
 /** The page's name: the heading's words, and on a computer the first tab's too (v2.7465). */
 export const LIEN_DESK_NAME = 'Lien desk'
+/** What the desk is for, as a hover hint: on the title on a phone, and on the first tab on a computer, where the tab is the title (v2.7465). */
+export const LIEN_DESK_HINT = 'Every unpaid work month on a job with a GC needs its own § 53.056 notice — the office readies and drafts, the leader approves once per GC or per notice, the run goes out and is recorded. The help guide “send lien notices from the Lien desk” has the whole flow.'
 
 /** The first tab as drawn: its words, and whether it carries the page's name. */
 export type LienDeskFirstTab = {

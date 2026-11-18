@@ -27,6 +27,7 @@ vi.mock('../../lib/materials/onSiteStore', () => ({
   listMovements: () => store.movements,
   listPhotos: () => [],
   listPlaces: () => [],
+  listContainerMoves: () => [],
   moveContainer: vi.fn(),
   pinContainer: vi.fn(),
   retireContainer: vi.fn(),
@@ -205,6 +206,20 @@ describe('TallyOnSiteTab · Add a part offers the names the job already has (pun
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search the parts book' }), { target: { value: 'wax ring' } })
     expect(screen.queryByTestId('add-part-already')).toBeNull()
     expect(screen.getByRole('button', { name: 'Use “wax ring” as typed' })).toBeTruthy()
+  })
+})
+
+describe('TallyOnSiteTab · Where is it? (punch list #372)', () => {
+  it('the box screen’s middle chip opens the sheet, which says what the app knows', async () => {
+    open()
+    // One chip, pinned or not: the old Pin on map press is gone from the box screen.
+    expect(screen.queryByRole('button', { name: /Pin on map|On the map/ })).toBeNull()
+    fireEvent.click(await screen.findByRole('button', { name: 'Where is A2?' }))
+    const sheet = screen.getByRole('dialog', { name: 'Where is A2?' })
+    expect(sheet.textContent).toContain('Nobody has pinned A2.')
+    expect(sheet.textContent).toContain('It has no place yet.')
+    expect(screen.getByRole('button', { name: 'I found it' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Move the pin by hand' })).toBeTruthy()
   })
 })
 
@@ -417,5 +432,43 @@ describe('TallyOnSiteTab · These are on boxes (punch list #329, section 10, PR 
     list()
     await screen.findByText('A2')
     expect(screen.queryByTestId('on-site-on-boxes')).toBeNull()
+  })
+})
+
+describe('TallyOnSiteTab · Pin A2 where you stand? (punch list #372, step 3)', () => {
+  const countA2 = async () => {
+    const { addMovement } = await import('../../lib/materials/onSiteStore')
+    vi.mocked(addMovement).mockImplementation(((input: { partName: string; quantity: number; reason: string; fromContainerId: string | null; toContainerId: string | null }) => {
+      const row = mv({ partName: input.partName, quantity: input.quantity, reason: input.reason, fromContainerId: input.fromContainerId, toContainerId: input.toContainerId, at: '2026-11-12T10:00:00Z' })
+      store.movements = [...store.movements, row]
+      return row
+    }) as never)
+    store.movements = [mv({ partName: 'ZZ part a', reason: 'delivered', quantity: 5, at: '2026-11-01T10:00:00Z', toContainerId: 'a2' })]
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: 'Count this box' }))
+    fireEvent.click(screen.getByRole('button', { name: '5 is right' }))
+  }
+
+  it('after a count the box screen asks once, and one press pins the box where the counter stands', async () => {
+    localStorage.clear()
+    Object.defineProperty(navigator, 'geolocation', { configurable: true, value: { getCurrentPosition: (ok: (p: unknown) => void) => ok({ coords: { latitude: 29.5, longitude: -98.4, accuracy: 6 } }) } })
+    const { pinContainer } = await import('../../lib/materials/onSiteStore')
+    vi.mocked(pinContainer).mockClear()
+    await countA2()
+    const ask = await screen.findByTestId('pin-ask')
+    expect(ask.textContent).toContain('Pin A2 where you stand?')
+    fireEvent.click(screen.getByRole('button', { name: 'Pin it here' }))
+    await waitFor(() => expect(pinContainer).toHaveBeenCalledWith('a2', { lat: 29.5, lng: -98.4 }, { accuracyM: 6, byName: 'Mateo' }))
+    await waitFor(() => expect(screen.queryByTestId('pin-ask')).toBeNull())
+  })
+
+  it('Not now puts the ask away, and a second count the same day does not ask again', async () => {
+    localStorage.clear()
+    await countA2()
+    fireEvent.click(await screen.findByRole('button', { name: 'Not now' }))
+    expect(screen.queryByTestId('pin-ask')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Count this box' }))
+    fireEvent.click(screen.getByRole('button', { name: '5 is right' }))
+    expect(screen.queryByTestId('pin-ask')).toBeNull()
   })
 })

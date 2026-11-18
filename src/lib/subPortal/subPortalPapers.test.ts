@@ -215,6 +215,7 @@ describe('an answer, planned', () => {
     expect(plan({ action: 'got_it', key: SENDING_226 })).toEqual({
       ok: true,
       already: null,
+      what: 'PR-0226',
       row: { kind: 'received', person_id: HARLAN, note: null, labor_job_id: null, sending_id: SENDING_226, payment_id: null, paper_id: PAPER_SENDING_226, revision: 1, amount: 1500 },
     })
     // The office has not made sending 231's record: the answer hangs on the sending, with no paper.
@@ -231,11 +232,15 @@ describe('an answer, planned', () => {
     expect(plan({ action: 'something_wrong', about: 'statement', key: CEDAR_1, note: '  The back-charge was never talked about with me.  ' })).toEqual({
       ok: true,
       already: null,
+      what: 'WS-2041-1 · #2041 Cedar Hollow Clinic',
       row: { kind: 'something_wrong', person_id: HARLAN, note: 'The back-charge was never talked about with me.', labor_job_id: CEDAR_1, sending_id: null, payment_id: null, paper_id: PAPER_CEDAR_1_REV_2, revision: 2, amount: 1500 },
     })
     // A sheet the office has not papered still takes a note: it hangs on the sheet.
     expect(plan({ action: 'something_wrong', about: 'statement', key: ALDER_1, note: 'Wrong address.' })).toMatchObject({ ok: true, row: { labor_job_id: ALDER_1, paper_id: null, revision: null, amount: 0 } })
-    expect(plan({ action: 'something_wrong', about: 'payment', key: SENDING_231, note: 'Short by $50.' })).toMatchObject({ ok: true, already: null, row: { kind: 'something_wrong', sending_id: SENDING_231, amount: 2200 } })
+    expect(plan({ action: 'something_wrong', about: 'payment', key: SENDING_231, note: 'Short by $50.' })).toMatchObject({ ok: true, already: null, what: 'PR-0231', row: { kind: 'something_wrong', sending_id: SENDING_231, amount: 2200 } })
+    // What the office reads the note is about: the job where the sheet has no number, the day where the payment has none.
+    expect(plan({ action: 'something_wrong', about: 'statement', key: ALDER_1, note: 'x' })).toMatchObject({ what: '#2033 Alder Court Remodel' })
+    expect(plan({ action: 'something_wrong', about: 'payment', key: `row:${PAY_SEP_HIDDEN}`, note: 'x' })).toMatchObject({ what: 'the payment of recorded Sep 2, 2026' })
   })
 
   it('refuses what is not on the person’s own papers, with the reason', () => {

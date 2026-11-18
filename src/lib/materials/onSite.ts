@@ -36,6 +36,14 @@ export type Container = {
   /** Its pin on the site map, set from the phone where the crew stands or by dragging; null until marked. */
   lat: number | null
   lng: number | null
+  /**
+   * What the pin remembers (`job_containers.pinned_at`, `pinned_by_name`, `pin_accuracy_m`, v2.7573; `whereIsBox.ts`):
+   * when it was set, by whom, and the phone's own margin in metres when it came from a reading. Null or absent with
+   * no pin, and the margin is null for a pin dragged by hand.
+   */
+  pinnedAt?: string | null
+  pinnedByName?: string | null
+  pinAccuracyM?: number | null
   retiredAt: string | null
   createdAt: string
   /**

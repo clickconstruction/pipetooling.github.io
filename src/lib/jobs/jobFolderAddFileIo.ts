@@ -1,12 +1,14 @@
 /**
  * The io half of Add a file on the Documents tab (v2.6303): one call to `drive-link`'s `put` as the signed-in person,
  * the file read from this computer as base64, up to the function's 10 MB. The function's own words come back as the
- * error (`fnProblem`, as the job's other Drive calls read theirs).
+ * error, with its answer on whether the same file can go again (`AddFileFailure`, v2.7635); a call nothing answered
+ * says the file did not reach the app.
  */
 import { supabase } from '../supabase'
-import { fnProblem, type FnResult } from '../gc/gcIo'
+import type { FnResult } from '../gc/gcIo'
 import { base64OfBytes } from '../../../supabase/functions/_shared/messagesEmailFiles'
-import { ADD_FILE_WORDS, type AddFileWhere } from './jobFolderAddFile'
+import type { AddFileWhere } from './jobFolderAddFile'
+import { addFileFailureOf, type AddFileAnswer, type AddFileFailure } from './addFileFailure'
 
 export type AddedFile = { driveFileId: string; url: string }
 
@@ -20,11 +22,26 @@ export async function putJobFolderFile(jobId: string, where: AddFileWhere, file:
   const r = (await supabase.functions.invoke('drive-link', {
     body: { action: 'put', job: { jobs_ledger_id: jobId }, name: file.name, mime: file.type || 'application/octet-stream', where, base64 },
   })) as FnResult
-  const problem = await fnProblem(r, ADD_FILE_WORDS.failed)
-  if (problem) throw new Error(problem)
+  const failure = await addFileFailureFrom(r)
+  if (failure) throw failure
   const d = r.data as { driveFileId?: unknown; url?: unknown } | null
-  if (typeof d?.driveFileId !== 'string' || typeof d?.url !== 'string') throw new Error(ADD_FILE_WORDS.failed)
+  if (typeof d?.driveFileId !== 'string' || typeof d?.url !== 'string') throw addFileFailureOf({ error: '', status: null })
   return { driveFileId: d.driveFileId, url: d.url }
+}
+
+/**
+ * The failure in one `invoke` result, or null when it went through. The function answers a refusal with its own
+ * sentence in the body; an error with no body to read is a call nothing answered.
+ */
+export async function addFileFailureFrom(r: FnResult): Promise<AddFileFailure | null> {
+  const data = r.data as AddFileAnswer | null
+  if (data?.error) return addFileFailureOf({ ...data, status: null })
+  if (!r.error) return null
+  const context = r.error.context as { json?: () => Promise<unknown>; status?: unknown } | undefined
+  if (typeof context?.json !== 'function') return addFileFailureOf(null)
+  const body = (await context.json().catch(() => null)) as AddFileAnswer | null
+  const status = typeof context.status === 'number' ? context.status : null
+  return addFileFailureOf({ error: body?.error, retry: body?.retry, status })
 }
 
 export const supabaseJobFolderAddFileIo: JobFolderAddFileIo = { put: putJobFolderFile }

@@ -18,6 +18,7 @@ const io = vi.hoisted(() => ({
   tags: [] as unknown[],
   loadMyTags: vi.fn(),
   postTaggedNote: vi.fn(),
+  postTaggedTaskNote: vi.fn(),
   markTagDone: vi.fn(),
   markAnswersSeen: vi.fn(),
   notifyNoteTag: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock('../../lib/jobs/noteTagsIo', () => ({
   loadMyTags: io.loadMyTags,
   loadMyTagsCount: vi.fn(async () => 0),
   postTaggedNote: io.postTaggedNote,
+  postTaggedTaskNote: io.postTaggedTaskNote,
   markTagDone: io.markTagDone,
   markAnswersSeen: io.markAnswersSeen,
   notifyNoteTag: io.notifyNoteTag,
@@ -79,6 +81,7 @@ const ASKED = [
 beforeEach(() => {
   io.loadMyTags.mockReset().mockImplementation(async () => io.tags)
   io.postTaggedNote.mockReset().mockResolvedValue('note-9')
+  io.postTaggedTaskNote.mockReset().mockResolvedValue('ev-9')
   io.markTagDone.mockReset().mockResolvedValue(true)
   io.markAnswersSeen.mockReset().mockResolvedValue(1)
   io.notifyNoteTag.mockReset()
@@ -138,7 +141,7 @@ describe('TaggedJobNotesSection', () => {
     io.tags = [WAITING[0]!]
     renderWithProviders(<TaggedJobNotesSection variant="pipeline" />)
     fireEvent.click(await screen.findByRole('button', { name: 'No reply needed' }))
-    await vi.waitFor(() => expect(io.markTagDone).toHaveBeenCalledWith('w-new'))
+    await vi.waitFor(() => expect(io.markTagDone).toHaveBeenCalledWith('w-new', 'job'))
     await vi.waitFor(() => expect(io.notifyNoteTag).toHaveBeenCalledWith({ tagId: 'w-new' }))
     expect(io.postTaggedNote).not.toHaveBeenCalled()
   })
@@ -174,6 +177,86 @@ describe('TaggedJobNotesSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open ▾' }))
     await vi.waitFor(() => expect(container.querySelectorAll('[data-tagged-note]')).toHaveLength(2))
     await vi.waitFor(() => expect(io.markAnswersSeen).toHaveBeenCalledTimes(1))
+  })
+
+  describe('task notes (punch list #375)', () => {
+    const TASK_WAITING = tag({ tagId: 'tw', source: 'task', jobId: '', jobName: '', jobNumber: null, customerName: null, instanceId: 'inst-1', itemId: 'item-1', taskTitle: '{{1:1466 · Cedar Bluff Lofts}} — Sweep the shop bays', taskDate: '2026-11-14', noteBody: 'Which bay first? @Dana Whitlock', createdAt: '2026-11-14T10:00:00Z', noteCreatedAt: '2026-11-14T10:00:00Z' })
+    const TASK_ASKED = tag({ tagId: 'ta', kind: 'asked', source: 'task', jobId: '', jobName: '', instanceId: 'inst-2', itemId: 'item-2', taskTitle: 'Lock the yard gate', taggerUserId: 'u-dana', taggerName: 'Dana Whitlock', taggedUserId: 'u-luis', taggedName: 'Luis Ortega', clearedAt: '2026-11-15T17:00:00Z', clearedHow: 'answered', answerBody: 'Yes, at six.' })
+    const TASK_LEFT = tag({ tagId: 'tl', kind: 'asked', source: 'task', jobId: '', jobName: '', instanceId: 'inst-3', itemId: 'item-3', taskTitle: 'Sort the fittings wall', taggerUserId: 'u-dana', taggerName: 'Dana Whitlock', taggedUserId: 'u-gwen', taggedName: 'Gwen Park', taggedLeft: true })
+
+    it('keeps the Pipeline to job notes and Today to task notes', async () => {
+      io.tags = [WAITING[0]!, TASK_WAITING]
+      const pipeline = renderWithProviders(<TaggedJobNotesSection variant="pipeline" />)
+      await vi.waitFor(() => expect(pipeline.container.querySelectorAll('[data-tagged-note]')).toHaveLength(1))
+      expect(pipeline.container.textContent).toContain('Tagged job notes')
+      expect(pipeline.container.textContent).not.toContain('Sweep the shop bays')
+      pipeline.unmount()
+      const today = renderWithProviders(<TaggedJobNotesSection variant="today" />)
+      await vi.waitFor(() => expect(today.container.querySelectorAll('[data-tagged-note]')).toHaveLength(1))
+      expect(today.container.querySelector('[data-tagged-job-notes="today"]')?.getAttribute('aria-label')).toBe('Tagged task notes')
+      // The title is plain words, with the job it was sent from, and the day row's date beside it.
+      expect(today.container.textContent).toContain('1466 · Cedar Bluff Lofts — Sweep the shop bays')
+      expect(today.container.textContent).toContain('task · Nov 14')
+      expect(today.container.textContent).not.toContain('Did the check come?')
+    })
+
+    it('draws nothing on Today while no task note waits and none was asked', async () => {
+      io.tags = [WAITING[0]!]
+      const { container } = renderWithProviders(<TaggedJobNotesSection variant="today" />)
+      await settle()
+      expect(container.querySelector('[data-tagged-job-notes]')).toBeNull()
+    })
+
+    it('holds job tags too in Task Mode, and both in the window, the oldest first', async () => {
+      io.tags = [WAITING[0]!, TASK_WAITING]
+      const { container } = renderWithProviders(<TaggedJobNotesSection variant="today" kinds="both" />)
+      await vi.waitFor(() => expect(container.querySelectorAll('[data-tagged-note]')).toHaveLength(2))
+      const cards = [...container.querySelectorAll('[data-tagged-note]')]
+      expect(cards[0]!.textContent).toContain('Sweep the shop bays')
+      expect(cards[1]!.textContent).toContain('Cedar Bluff Lofts')
+      expect(container.querySelector('[data-tagged-job-notes="today"]')?.getAttribute('aria-label')).toBe('Tagged notes')
+    })
+
+    it('answers a task tag on the task\'s own day row, and clears one with No reply needed', async () => {
+      io.tags = [TASK_WAITING]
+      renderWithProviders(<TaggedJobNotesSection variant="today" />)
+      const box = await screen.findByLabelText('Answer Marcus on 1466 · Cedar Bluff Lofts — Sweep the shop bays')
+      fireEvent.change(box, { target: { value: 'Bay 2 first.', selectionStart: 12 } })
+      fireEvent.keyDown(box, { key: 'Enter' })
+      await vi.waitFor(() => expect(io.postTaggedTaskNote).toHaveBeenCalledWith('inst-1', 'Bay 2 first.', []))
+      expect(io.postTaggedNote).not.toHaveBeenCalled()
+      // The notice for the asker goes out for the task note that was posted.
+      await vi.waitFor(() => expect(io.notifyNoteTag).toHaveBeenCalledWith({ taskEventId: 'ev-9' }))
+      // The post is over once the box is empty and the press is live again.
+      await vi.waitFor(() => expect((screen.getByRole('button', { name: 'No reply needed' }) as HTMLButtonElement).disabled).toBe(false))
+      fireEvent.click(screen.getByRole('button', { name: 'No reply needed' }))
+      await vi.waitFor(() => expect(io.markTagDone).toHaveBeenCalledWith('tw', 'task'))
+      await vi.waitFor(() => expect(io.notifyNoteTag).toHaveBeenCalledWith({ taskTagId: 'tw' }))
+    })
+
+    it('opens a task that is on the page from its title, and leaves one that is not as plain words', async () => {
+      io.tags = [TASK_WAITING, TASK_ASKED]
+      const onOpenTask = vi.fn()
+      renderWithProviders(<TaggedJobNotesSection variant="today" onOpenTask={onOpenTask} taskOpens={(id) => id === 'inst-1'} />)
+      fireEvent.click(await screen.findByRole('button', { name: '1466 · Cedar Bluff Lofts — Sweep the shop bays' }))
+      expect(onOpenTask).toHaveBeenCalledWith('inst-1')
+      expect(screen.queryByRole('button', { name: 'Lock the yard gate' })).toBeNull()
+      expect(screen.getByText('Lock the yard gate')).toBeTruthy()
+    })
+
+    it('marks each kind seen by its own mark, and says has left for someone who is gone', async () => {
+      io.tags = [ASKED[1]!, TASK_ASKED, TASK_LEFT]
+      const { container } = renderWithProviders(<TaggedJobNotesSection variant="window" />)
+      await vi.waitFor(() => expect(container.querySelectorAll('[data-asked-note]')).toHaveLength(3))
+      await vi.waitFor(() => expect(io.markAnswersSeen.mock.calls.map((c) => c[0]).sort()).toEqual(['job', 'task']))
+      const left = [...container.querySelectorAll('[data-asked-note]')].find((el) => el.textContent?.includes('Gwen Park'))
+      expect(left?.textContent).toContain('has left')
+      io.markAnswersSeen.mockClear()
+      // Today marks task answers alone: the job answer still counts above Jobs until the Pipeline shows it.
+      const today = renderWithProviders(<TaggedJobNotesSection variant="today" />)
+      await vi.waitFor(() => expect(today.container.querySelectorAll('[data-asked-note]')).toHaveLength(2))
+      await vi.waitFor(() => expect(io.markAnswersSeen.mock.calls.map((c) => c[0])).toEqual(['task']))
+    })
   })
 
   it('shows three and holds the rest behind Show the rest', async () => {

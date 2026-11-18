@@ -157,4 +157,31 @@ describe('SubPortal render smoke', () => {
     expect(screen.queryByText('Internal error')).toBeNull()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
   })
+
+  it('Today and Statements: the switch opens the sub’s papers, and Today stays the paper Print prints (v2.7597)', async () => {
+    renderPortal()
+    await waitFor(() => expect(screen.getByText('Work & pay statement')).toBeTruthy())
+    expect(screen.queryByTestId('sub-portal-statements')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Today' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Statements' }))
+    expect(screen.getByRole('heading', { name: 'Your statements' })).toBeTruthy()
+    expect(screen.getByTestId('statements-still-open').textContent).toBe('$1,500.00')
+    // Today leaves the screen by a class a print rule undoes, and stays mounted with what a sub typed on it.
+    const today = screen.getByText('Work & pay statement').closest('.sp-today-off')
+    expect(today).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Today' })[0]!)
+    expect(screen.queryByTestId('sub-portal-statements')).toBeNull()
+    expect(screen.getByText('Work & pay statement').closest('.sp-today-off')).toBeNull()
+  })
+
+  it('a link can open on Statements, and a page with no papers has no switch (v2.7597)', async () => {
+    renderPortal('&view=statements')
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Your statements' })).toBeTruthy())
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ ...SUB_PORTAL_DEMO_PAYLOAD, papers: null }) })))
+    renderPortal('&view=statements')
+    await waitFor(() => expect(screen.getAllByText('Work & pay statement').length).toBe(2))
+    expect(screen.getAllByRole('heading', { name: 'Your statements' })).toHaveLength(1)
+    // The first page's own switch is the only one: the second page, with no papers, draws none.
+    expect(screen.getAllByRole('button', { name: 'Statements' })).toHaveLength(1)
+  })
 })

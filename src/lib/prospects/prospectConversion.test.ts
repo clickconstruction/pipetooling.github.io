@@ -11,6 +11,9 @@ import {
   type ConvertibleProspect,
   type ProspectConversionClient,
   markProspectOnBench,
+  convertBidRows,
+  convertContactRows,
+  sourceProspectOf,
 } from './prospectConversion'
 
 function prospect(overrides: Partial<ConvertibleProspect> = {}): ConvertibleProspect {
@@ -228,5 +231,75 @@ describe('the person we call lands on the customer (v2.5603)', () => {
   it('an old row says nothing about the type or the language, and a nameless person is no contact person', () => {
     expect(customerDraftFromProspect({ company_name: 'Ridgeway Builders', contact_name: null, phone_number: '(512) 555-0142', email: null, address: null })).toEqual({ name: 'Ridgeway Builders', phone: '(512) 555-0142' })
     expect(contactPersonFromProspect({ is_person: false, contact_name: '  ', phone_number: '(512) 555-0142' })).toBeNull()
+  })
+})
+
+describe('sourceProspectOf', () => {
+  const prospect = {
+    id: 'p1',
+    company_name: 'ZZ Test Builders',
+    contact_name: 'Pat Sample',
+    phone_number: '555-0100',
+    email: 'pat@example.test',
+    address: '1 Test St',
+    prospect_fit_status: null,
+    is_person: false,
+    contact_title: 'Owner',
+    contact_phone: '555-0101',
+    lang: 'en',
+    warmth_count: 3,
+    notes: 'not for the form',
+  }
+  it('carries the eleven facts Add customer links and seeds from, and nothing else', () => {
+    expect(sourceProspectOf(prospect)).toEqual({
+      id: 'p1',
+      company_name: 'ZZ Test Builders',
+      contact_name: 'Pat Sample',
+      phone_number: '555-0100',
+      email: 'pat@example.test',
+      address: '1 Test St',
+      prospect_fit_status: null,
+      is_person: false,
+      contact_title: 'Owner',
+      contact_phone: '555-0101',
+      lang: 'en',
+    })
+  })
+})
+
+describe('convertContactRows', () => {
+  it('skips a card with no name, trims the rest and writes an empty box as null', () => {
+    expect(
+      convertContactRows(
+        [
+          { name: '  Pat Sample ', phone: ' 555-0100 ', email: '', note: '  ' },
+          { name: '   ', phone: '555-0199', email: 'x@example.test', note: 'no name' },
+          { name: 'Sam', phone: '', email: ' sam@example.test ', note: ' office ' },
+        ],
+        'cust-1',
+      ),
+    ).toEqual([
+      { customer_id: 'cust-1', name: 'Pat Sample', phone: '555-0100', email: null, note: null },
+      { customer_id: 'cust-1', name: 'Sam', phone: null, email: 'sam@example.test', note: 'office' },
+    ])
+  })
+  it('no cards is no rows', () => {
+    expect(convertContactRows([], 'cust-1')).toEqual([])
+  })
+})
+
+describe('convertBidRows', () => {
+  it('skips a card with no project name or no service type, and a first bid is rough', () => {
+    expect(
+      convertBidRows(
+        [
+          { project_name: ' ZZ Test Project ', service_type_id: 'st-1' },
+          { project_name: '   ', service_type_id: 'st-1' },
+          { project_name: 'No type', service_type_id: '' },
+        ],
+        'cust-1',
+        'user-1',
+      ),
+    ).toEqual([{ customer_id: 'cust-1', created_by: 'user-1', service_type_id: 'st-1', project_name: 'ZZ Test Project', materials_model: 'rough' }])
   })
 })
