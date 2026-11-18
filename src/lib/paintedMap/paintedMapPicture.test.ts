@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fromPlane, type PaintedPoint } from './paintedLine'
-import { copyMadeWords, pictureFileName, pictureFrame, pictureKeyLine, picturePoint, pictureTiles, pictureTileUrl, worldPx, PICTURE_HEIGHT, PICTURE_MAX_ZOOM, PICTURE_NATIVE_ZOOM, PICTURE_PAD, PICTURE_POINT_ZOOM, PICTURE_WIDTH } from './paintedMapPicture'
+import { copyMadeWords, pictureFileName, pictureFrame, pictureKeyLine, pictureKindMark, picturePoint, pictureTiles, pictureTileUrl, worldPx, PICTURE_HEIGHT, PICTURE_MAX_ZOOM, PICTURE_NATIVE_ZOOM, PICTURE_PAD, PICTURE_POINT_ZOOM, PICTURE_WIDTH } from './paintedMapPicture'
 
 const ORIGIN: PaintedPoint = { lat: 39.5, lng: -98.35 }
 const at = (eastM: number, northM: number): PaintedPoint => fromPlane(ORIGIN, { x: eastM, y: northM })
@@ -98,6 +98,29 @@ describe('the words a copy carries', () => {
     expect(copyMadeWords('2027-02-01')).toBe('Made Feb 1, 2027')
     expect(copyMadeWords('')).toBe('')
     expect(copyMadeWords('2026-13-01')).toBe('')
+  })
+  it('draws a kind\'s mark around the dot, with the number on its shoulder (#393)', () => {
+    const mark = pictureKindMark({ kind: 'gate' }, { x: 600, y: 450 }, 23)!
+    expect(mark.warns).toBe(false)
+    expect(mark.glyph.stroke).toContain('M5 5v15')
+    // The drawing is centred on the dot and stays inside its ring.
+    expect(mark.box).toEqual({ left: 585, top: 435, size: 30 })
+    expect(mark.box.size).toBeLessThan(2 * 23 - 8)
+    // The number sits up and to the right, on the ring.
+    expect(mark.badge).toEqual({ x: 618, y: 432, r: 12, font: 16 })
+    expect(Math.hypot(mark.badge.x - 600, mark.badge.y - 450)).toBeGreaterThan(23)
+    expect(pictureKindMark({ kind: 'hazard' }, { x: 0, y: 0 }, 23)!.warns).toBe(true)
+  })
+  it('keeps the number readable beside a key row, where the dot is small (#393)', () => {
+    const mark = pictureKindMark({ kind: 'meter' }, { x: 51, y: 1000 }, 15)!
+    expect(mark.box.size).toBe(20)
+    expect(mark.badge.r).toBe(9)
+    expect(mark.badge.font).toBe(12)
+  })
+  it('leaves a plain place, and a kind it does not know, to the numbered dot (#393)', () => {
+    expect(pictureKindMark({}, { x: 0, y: 0 }, 23)).toBeNull()
+    expect(pictureKindMark({ kind: null }, { x: 0, y: 0 }, 23)).toBeNull()
+    expect(pictureKindMark({ kind: 'fire_hydrant' }, { x: 0, y: 0 }, 23)).toBeNull()
   })
   it('reads a place as its name and its words', () => {
     expect(pictureKeyLine({ name: 'Truck gate', words: 'Close it behind you.' })).toBe('Truck gate. Close it behind you.')

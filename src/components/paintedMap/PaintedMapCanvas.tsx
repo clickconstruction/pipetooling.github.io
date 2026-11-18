@@ -21,6 +21,7 @@ import { Circle, MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents
 import { legMiddles } from '../../lib/paintedMap/draftLine'
 import { PAINTED_SNAP_METERS, type NumberedPlace, type PaintedLineHow } from '../../lib/paintedMap/paintedMap'
 import { PAINT_COLOR } from './paintedMapLook'
+import { placeMarkHtml, placeMarkSize, placeSaysWords } from '../../lib/paintedMap/paintedPlaceKind'
 import { boundsOfPoints, lineRuns, metersPerPixel, snapTarget, type PaintedPart, type PaintedPoint, type SnapTarget } from '../../lib/paintedMap/paintedLine'
 
 export type PaintedCanvasLine = { id: string; points: PaintedPoint[]; poorParts: ReadonlyArray<PaintedPart>; how: PaintedLineHow }
@@ -121,20 +122,22 @@ const MIDDLE_ICON = L.divIcon({
   html: `<span style="display:block;width:10px;height:10px;margin:13px;border-radius:50%;background:${PAPER};opacity:.75;border:2px solid ${INK}"></span>`,
 })
 const placeIcons = new Map<string, L.DivIcon>()
-function placeIcon(number: number, size = 26): L.DivIcon {
-  const key = `${number}:${size}`
+/** A place's dot: its number, or its kind's mark with the number on its shoulder (`paintedPlaceKind.ts`). */
+function placeIcon(number: number, kind: string | null | undefined, size = 26): L.DivIcon {
+  const key = `${number}:${kind ?? ''}:${size}`
   const kept = placeIcons.get(key)
   if (kept) return kept
-  const icon = makePlaceIcon(number, size)
+  const icon = makePlaceIcon(number, kind, size)
   placeIcons.set(key, icon)
   return icon
 }
-function makePlaceIcon(number: number, size: number): L.DivIcon {
+function makePlaceIcon(number: number, kind: string | null | undefined, size: number): L.DivIcon {
+  const box = placeMarkSize(kind, size)
   return L.divIcon({
     className: 'painted-map-icon',
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    html: `<span style="display:grid;place-items:center;width:${size}px;height:${size}px;box-sizing:border-box;border-radius:50%;background:${PAPER};color:${INK};border:2px solid ${INK};font:800 ${Math.round(size * 0.46)}px/1 system-ui,sans-serif;box-shadow:0 1px 4px rgba(0,0,0,.5)">${number}</span>`,
+    iconSize: [box, box],
+    iconAnchor: [box / 2, box / 2],
+    html: placeMarkHtml({ number, kind }, { size, ink: INK, paper: PAPER, shadow: true }),
   })
 }
 const DOT_ICON = L.divIcon({
@@ -288,7 +291,7 @@ function Shapes({ lines, places, draftPoints, onPlaceTap, placeSize }: { lines: 
         </>
       ) : null}
       {places.map((p) => (
-        <Marker key={p.id} position={ll(p)} icon={placeIcon(p.number, placeSize)} interactive={!!onPlaceTap} eventHandlers={onPlaceTap ? { click: () => onPlaceTap(p.id) } : undefined} title={p.name} />
+        <Marker key={p.id} position={ll(p)} icon={placeIcon(p.number, p.kind, placeSize)} interactive={!!onPlaceTap} eventHandlers={onPlaceTap ? { click: () => onPlaceTap(p.id) } : undefined} title={placeSaysWords(p)} />
       ))}
     </>
   )

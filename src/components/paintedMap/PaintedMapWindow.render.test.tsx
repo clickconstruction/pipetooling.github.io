@@ -52,7 +52,7 @@ vi.mock('../../lib/paintedMap/paintedMapIo', () => {
     paintedPlacePhotoUrls: async (paths: Array<string | null>) => new Map(paths.filter((p): p is string => !!p).map((p) => [p, `https://signed.test/${p}`])),
     uploadPaintedPlacePhoto: async (mapId: string, photoId: string) => { io.calls.push({ fn: 'uploadPaintedPlacePhoto', args: [mapId, photoId] }); return io.refuseUpload ? { ok: false as const, error: io.refuseUpload } : { ok: true as const, value: `${mapId}/${photoId}.jpg` } },
     removePaintedPlacePhotoFile: async (path: string | null) => { io.calls.push({ fn: 'removePaintedPlacePhotoFile', args: [path] }) },
-    addPaintedPlace: async (mapId: string, place: { lat: number; lng: number; name?: string; words?: string; accuracyM?: number | null; photoPath?: string | null }, by: string) => { io.calls.push({ fn: 'addPaintedPlace', args: [mapId, place, by] }); return landed({ id: 'new-place', mapId, name: place.name || 'A place', words: place.words ?? '', lat: place.lat, lng: place.lng, accuracyM: place.accuracyM ?? null, photoPath: place.photoPath ?? null, setBy: by, setAt: '2026-11-13T16:10:00Z' }) },
+    addPaintedPlace: async (mapId: string, place: { lat: number; lng: number; name?: string; words?: string; accuracyM?: number | null; photoPath?: string | null; kind?: string | null }, by: string) => { io.calls.push({ fn: 'addPaintedPlace', args: [mapId, place, by] }); return landed({ id: 'new-place', mapId, name: place.name || 'A place', words: place.words ?? '', lat: place.lat, lng: place.lng, accuracyM: place.accuracyM ?? null, photoPath: place.photoPath ?? null, kind: place.kind ?? null, setBy: by, setAt: '2026-11-13T16:10:00Z' }) },
     savePaintedPlace: async (placeId: string, change: Record<string, unknown>) => { io.calls.push({ fn: 'savePaintedPlace', args: [placeId, change] }); const old = (io.whole as PaintedMapWhole).places.find((p) => p.id === placeId)!; return landed({ ...old, ...change, accuracyM: (change.accuracyM as number | null) ?? null, photoPath: (change.photoPath as string | null) ?? null }) },
     deletePaintedPlace: async (placeId: string) => { io.calls.push({ fn: 'deletePaintedPlace', args: [placeId] }); return landed(true) },
   }
@@ -63,7 +63,7 @@ const canvas = vi.hoisted(() => ({ draft: null as null | PaintedCanvasDraft }))
 vi.mock('./PaintedMapCanvas', async () => {
   const { useEffect } = await import('react')
   return {
-    default: function CanvasStub(props: { lines: Array<{ id: string }>; places: Array<{ id: string; number: number }>; draft?: PaintedCanvasDraft | null; dot?: { point: { lat: number; lng: number }; onMove: (p: { lat: number; lng: number }) => void } | null; onView?: (c: { lat: number; lng: number }) => void; onPlaceTap?: (id: string) => void }) {
+    default: function CanvasStub(props: { lines: Array<{ id: string }>; places: Array<{ id: string; number: number; kind?: string | null }>; draft?: PaintedCanvasDraft | null; dot?: { point: { lat: number; lng: number }; onMove: (p: { lat: number; lng: number }) => void } | null; onView?: (c: { lat: number; lng: number }) => void; onPlaceTap?: (id: string) => void }) {
       canvas.draft = props.draft ?? null
       const { onView } = props
       // The map says where it is looking once it has settled, as the real one does.
@@ -75,7 +75,7 @@ vi.mock('./PaintedMapCanvas', async () => {
           lines:{props.lines.map((l) => l.id).join(',')} corners:{props.draft ? props.draft.points.length : 'none'} dots:{props.places.map((p) => p.number).join(',')} dot:{props.dot ? `${props.dot.point.lat},${props.dot.point.lng}` : 'none'}
           {props.draft ? <button type="button" onClick={() => props.draft!.onAdd({ lat: 29.5 + props.draft!.points.length * 0.001, lng: -98.2 })}>add a corner</button> : null}
           {props.dot ? <button type="button" onClick={() => props.dot!.onMove({ lat: 29.7, lng: -98.4 })}>drag the dot</button> : null}
-          {props.places.map((p) => <button key={p.id} type="button" onClick={() => props.onPlaceTap?.(p.id)}>dot {p.number}</button>)}
+          {props.places.map((p) => <button key={p.id} type="button" data-dot-kind={p.kind ?? 'plain'} onClick={() => props.onPlaceTap?.(p.id)}>dot {p.number}</button>)}
         </div>
       )
     },
@@ -494,6 +494,76 @@ describe('places on a map', () => {
     // The photo it already had is kept, not sent again and not removed.
     expect(names()).not.toContain('uploadPaintedPlacePhoto')
     expect(names()).not.toContain('removePaintedPlacePhotoFile')
+  })
+
+  it('gives a place a kind from a chip: its mark is on the row and goes to the map (#393)', async () => {
+    io.whole = { map: MAP, lines: [LINE()], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    expect(screen.getByText('Each of these has its own mark on the map. Press one again to take it off.')).toBeTruthy()
+    // A name somebody typed is theirs: the chip gives the kind and leaves the name alone.
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Open trench' } })
+    const hazard = screen.getByRole('button', { name: 'Hazard' })
+    expect(hazard.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(hazard)
+    expect(hazard.getAttribute('aria-pressed')).toBe('true')
+    expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Open trench')
+    fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
+    await waitFor(() => expect(names()).toContain('addPaintedPlace'))
+    expect(io.calls.find((c) => c.fn === 'addPaintedPlace')!.args[1]).toMatchObject({ name: 'Open trench', kind: 'hazard' })
+    const row = await placeRow()
+    const mark = row.querySelector('[data-place-mark]')!
+    expect(mark.getAttribute('data-place-mark')).toBe('hazard')
+    expect(mark.getAttribute('aria-label')).toBe('Hazard, place 1')
+    expect(mark.querySelector('[data-place-mark-number]')?.textContent).toBe('1')
+    expect(mark.querySelector('svg path')?.getAttribute('d')).toContain('M12 4L21 19.5H3z')
+    expect(screen.getByRole('button', { name: 'dot 1' }).getAttribute('data-dot-kind')).toBe('hazard')
+  })
+
+  it('a chip names a place that has no name, and a second press takes the kind and that name off (#393)', async () => {
+    io.whole = { map: MAP, lines: [], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    const name = () => (screen.getByLabelText('Name') as HTMLInputElement).value
+    const pressed = () => Array.from(document.querySelectorAll('[data-place-kind][aria-pressed="true"]')).map((b) => b.getAttribute('data-place-kind'))
+    fireEvent.click(screen.getByRole('button', { name: 'Gate' }))
+    expect([name(), pressed()]).toEqual(['Gate', ['gate']])
+    // Another chip swaps the name the first one gave.
+    fireEvent.click(screen.getByRole('button', { name: 'Shutoff' }))
+    expect([name(), pressed()]).toEqual(['Shutoff', ['shutoff']])
+    fireEvent.click(screen.getByRole('button', { name: 'Shutoff' }))
+    expect([name(), pressed()]).toEqual(['', []])
+    // With no kind the place is the plain numbered dot it always was.
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'The slab' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
+    await waitFor(() => expect(names()).toContain('addPaintedPlace'))
+    expect(io.calls.find((c) => c.fn === 'addPaintedPlace')!.args[1]).toMatchObject({ name: 'The slab', kind: null })
+    const mark = (await placeRow()).querySelector('[data-place-mark]')!
+    expect(mark.getAttribute('data-place-mark')).toBe('plain')
+    expect(mark.textContent).toBe('1')
+    expect(screen.getByRole('button', { name: 'dot 1' }).getAttribute('data-dot-kind')).toBe('plain')
+  })
+
+  it('opens a place on its kind, and writes the kind only when it was changed (#393)', async () => {
+    auth.value = { user: { id: 'dana' }, role: 'helpers' }
+    io.whole = { map: MAP, lines: [], places: [{ ...PLACE, kind: 'gate' as const }] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    expect((await placeRow()).querySelector('[data-place-mark]')?.getAttribute('data-place-mark')).toBe('gate')
+    fireEvent.click(screen.getByRole('button', { name: 'Change this place' }))
+    expect(screen.getByRole('button', { name: 'Gate' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.change(screen.getByLabelText('A word for whoever comes next'), { target: { value: 'Chain it.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the place' }))
+    await waitFor(() => expect(names()).toContain('savePaintedPlace'))
+    // The kind was not touched, so it is not sent: an older app never wipes a kind it does not know.
+    expect(Object.keys(io.calls.find((c) => c.fn === 'savePaintedPlace')!.args[1] as object)).not.toContain('kind')
+
+    io.calls = []
+    fireEvent.click(await screen.findByRole('button', { name: 'Change this place' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hazard' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save the place' }))
+    await waitFor(() => expect(names()).toContain('savePaintedPlace'))
+    expect(io.calls.find((c) => c.fn === 'savePaintedPlace')!.args[1]).toMatchObject({ name: 'Truck gate', kind: 'hazard' })
+    await waitFor(() => expect(document.querySelector('[data-painted-place-row] [data-place-mark]')?.getAttribute('data-place-mark')).toBe('hazard'))
   })
 
   it('removes a place and its photo only after a confirm that names the act', async () => {

@@ -16,7 +16,7 @@
  */
 import { documentLinkWords, normalizeDocumentUrl } from './lienFilingDocumentLink'
 import { parseLienMailedCopies } from './lienMailedCopies'
-import { LIEN_SEND_RECIPIENT_WORDS, parseLienSends, type LienSendLike } from './lienSendTracking'
+import { LIEN_SEND_RECIPIENT_WORDS, parseLienSends, sendNeedsTracking, type LienSendLike } from './lienSendTracking'
 
 export type LienMailProofCopy = 'owner' | 'original_contractor'
 export type LienMailProofPaper = 'notice' | 'retainage' | 'affidavit'
@@ -36,6 +36,8 @@ export type LienMailProofEnvelope = {
   wantsReceipt: boolean
   /** The copy has gone out. False on a filed affidavit whose copies are not mailed yet. */
   mailed: boolean
+  /** A mail number is owed and not on file: a mailed copy that went by tracked post with none typed, and none coming from a mail provider. */
+  wantsNumber: boolean
 }
 
 export type LienMailProof = {
@@ -87,7 +89,7 @@ function sentEnvelope(recipient: LienMailProofCopy, s: LienSendLike): LienMailPr
   const tracking = (s.tracking ?? '').trim()
   const carried = !!(s.via ?? '').trim() && !!(s.piece_id ?? '').trim()
   const method = METHOD[s.method] ?? s.method
-  return { recipient, who: who(recipient), line: [method, tracking].filter(Boolean).join(' '), tracking, receiptUrl: (s.receipt_url ?? '').trim(), wantsReceipt: POSTED.has(s.method) && !carried, mailed: true }
+  return { recipient, who: who(recipient), line: [method, tracking].filter(Boolean).join(' '), tracking, receiptUrl: (s.receipt_url ?? '').trim(), wantsReceipt: POSTED.has(s.method) && !carried, mailed: true, wantsNumber: sendNeedsTracking(s) }
 }
 
 /** The files that went out: every mailed copy the desk item keeps, then the filing's saved copy when it is not one of them. */
@@ -123,7 +125,7 @@ export function lienMailProof(input: LienMailProofInput): LienMailProof | null {
       const receiptUrl = (s?.receipt_url ?? '').trim()
       const mailed = served || !!tracking || !!receiptUrl
       const line = tracking ? `Certified mail ${tracking}` : mailed ? 'Mailed, no number yet' : 'Not mailed yet'
-      return { recipient: r, who: who(r), line, tracking, receiptUrl, wantsReceipt: true, mailed }
+      return { recipient: r, who: who(r), line, tracking, receiptUrl, wantsReceipt: true, mailed, wantsNumber: mailed && !tracking }
     })
   } else {
     envelopes = COPIES.flatMap((r) => {

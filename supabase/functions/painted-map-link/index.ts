@@ -121,7 +121,7 @@ async function loadMap(admin: Admin, mapId: string) {
   const [mapRes, lineRes, placeRes] = await Promise.all([
     admin.from('painted_maps').select('name, words').eq('id', mapId).maybeSingle(),
     admin.from('painted_map_lines').select('how, points, poor_parts, fixed_by_hand, length_m, margin_m, measured_ft, measured_how, made_at').eq('map_id', mapId),
-    admin.from('painted_map_places').select('id, name, words, lat, lng, photo_path, set_at').eq('map_id', mapId),
+    admin.from('painted_map_places').select('id, name, words, lat, lng, photo_path, kind, set_at').eq('map_id', mapId),
   ])
   if (mapRes.error) throw new Error(`the map: ${mapRes.error.message}`)
   if (lineRes.error) throw new Error(`the lines: ${lineRes.error.message}`)

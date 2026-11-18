@@ -196,6 +196,40 @@ for (const width of TABLET_WIDTHS) {
   }
 }
 
+/**
+ * The header is one line on a phone (v2.7781, the owner's ask of 2026-11-18). Until then `.appNav` wrapped at
+ * 640 px and under, and a 375 px phone drew the wrench, the coloured presses and the gear on a second line.
+ * The row is measured and what has no room becomes a row of the gear menu (`lib/navRowFit.ts`), so the count
+ * of lines is 1 whatever the role's row holds. Counted once the row has settled: the role lands about half a
+ * second in and brings most of the presses with it.
+ */
+for (const size of [PHONE, NARROW_PHONE]) {
+  test(`the header is one line at ${size.width}px`, async ({ page }) => {
+    await page.setViewportSize(size)
+    await page.goto('/dashboard')
+    await expect(page.locator('main')).toContainText('My Schedule', { timeout: 20000 })
+    await page.waitForTimeout(1500)
+    const row = await page.evaluate(() => {
+      const nav = document.querySelector('nav.appNav')
+      if (!nav) return null
+      const drawn = Array.from(nav.querySelectorAll('a, button')).filter((el) => {
+        const box = el.getBoundingClientRect()
+        return box.width > 0 && box.height > 0
+      })
+      // A new line starts where a press's middle sits more than 16 px under the one before it.
+      const middles = drawn.map((el) => el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2).sort((x, y) => x - y)
+      const lines = middles.reduce((n, mid, i) => (i > 0 && mid - (middles[i - 1] ?? mid) > 16 ? n + 1 : n), 1)
+      const pastEdge = Math.max(...drawn.map((el) => el.getBoundingClientRect().right)) - document.documentElement.clientWidth
+      return { presses: drawn.length, lines, pastEdge: Math.round(pastEdge) }
+    })
+    expect(row, 'the header was not found').not.toBeNull()
+    expect(row?.presses ?? 0, 'the header drew no presses').toBeGreaterThan(2)
+    expect(row?.lines, `the header is on ${row?.lines} lines at ${size.width}px`).toBe(1)
+    expect(row?.pastEdge ?? 0, `a header press ends ${row?.pastEdge}px past the window's edge`).toBeLessThanOrEqual(0)
+    await expectSettledNoSidewaysOverflow(page, `the header @ ${size.width}px`)
+  })
+}
+
 test('Stages tables scroll inside their own wrappers, not the page', async ({ page }) => {
   await page.goto('/jobs?tab=stages')
   await expect(page.locator(STAGES_READY.within)).toHaveText(STAGES_READY.marker, { timeout: 20000 })

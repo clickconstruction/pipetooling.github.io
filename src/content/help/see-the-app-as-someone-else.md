@@ -22,7 +22,7 @@ Then you go to the page you wanted to check. That role may not be able to open i
 
 ## Come back
 
-The amber {{button:gray|Exit (Sample assistant)}} in the header returns you to your own account **and to the page you left**. Settings → *Back to my account* does the same.
+The amber {{button:gray|Exit (Sample assistant)}} in the header returns you to your own account **and to the page you left**. On a phone it sits on its own line above the header. Settings → *Back to my account* does the same.
 
 ## Sample accounts
 

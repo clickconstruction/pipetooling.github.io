@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor } from './lienBoardPrints'
+import { LIEN_BOARD_USUAL_STACK, lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor, lienBoardStackNote } from './lienBoardPrints'
 
 describe('lienBoardNoticePrint — the print under the notices’ column (v2.7470, punch list #362)', () => {
   it('names how many can print now; what waits on a signature stands in its own bin, so the press has no line, and the short pair still says how many wait (v2.7712)', () => {
@@ -46,8 +46,8 @@ describe('lienBoardNoticePrint — the print under the notices’ column (v2.747
 })
 
 describe('lienBoardAffidavitPrint — the print under the affidavits’ column', () => {
-  it('carries the print’s own name and count, what it leaves out, and what it prints with', () => {
-    expect(lienBoardAffidavitPrint({ ready: 10, held: 2, earlierForm: 0, with: ['the help sheet', 'the notice records'] })).toEqual({
+  it('carries the print’s own name and count and what it leaves out, and says nothing of the usual stack', () => {
+    expect(lienBoardAffidavitPrint({ ready: 10, held: 2, earlierForm: 0, stack: { helpSheet: true, noticeRecord: true, noticeCopies: false } })).toEqual({
       kind: 'affidavit',
       bin: 'affidavit:ready',
       act: 'print_affidavits',
@@ -55,18 +55,34 @@ describe('lienBoardAffidavitPrint — the print under the affidavits’ column',
       dead: false,
       short: { label: 'Print 10 for notarization', left: '2 held' },
       left: { words: '2 held on a property fact', door: 'See them' },
-      note: { words: 'Prints with the help sheet and the notice records', door: 'Change' },
+      note: null,
     })
   })
-  it('says the earlier form apart from a property fact, and lists three pages with commas', () => {
-    const side = lienBoardAffidavitPrint({ ready: 3, held: 1, earlierForm: 1, with: ['the help sheet', 'the notice records', 'copies of the notices'] })!
+  it('says the earlier form apart from a property fact, and names a stack that is not the usual one', () => {
+    const side = lienBoardAffidavitPrint({ ready: 3, held: 1, earlierForm: 1, stack: { helpSheet: true, noticeRecord: true, noticeCopies: true } })!
     expect(side.left).toEqual({ words: '1 held on a property fact · 1 on the earlier form', door: 'See them' })
-    expect(side.note!.words).toBe('Prints with the help sheet, the notice records and copies of the notices')
-    expect(lienBoardAffidavitPrint({ ready: 3, held: 0, earlierForm: 0, with: [] })).toMatchObject({ left: null, note: { words: 'Prints the affidavits alone' }, short: { left: null } })
+    expect(side.note).toEqual({ words: 'Prints with copies of the notices too', door: 'Leave them out' })
+    expect(lienBoardAffidavitPrint({ ready: 3, held: 0, earlierForm: 0, stack: { helpSheet: false, noticeRecord: false, noticeCopies: false } })).toMatchObject({ left: null, note: { words: 'Prints without the help sheet or the notice records', door: 'Put them back' }, short: { left: null } })
   })
   it('is dead when every approved paper is held, draws nothing with none approved, and says shown while a find narrows it', () => {
-    expect(lienBoardAffidavitPrint({ ready: 0, held: 1, earlierForm: 0, with: ['the help sheet'] })).toMatchObject({ label: 'Print for notarization', dead: true, note: null, left: { words: '1 held on a property fact', door: 'See it' } })
-    expect(lienBoardAffidavitPrint({ ready: 0, held: 0, earlierForm: 0, with: [] })).toBeNull()
-    expect(lienBoardAffidavitPrint({ ready: 3, held: 0, earlierForm: 0, with: [], shown: true })!.label).toBe('Print 3 shown for notarization')
+    expect(lienBoardAffidavitPrint({ ready: 0, held: 1, earlierForm: 0, stack: { helpSheet: true, noticeRecord: false, noticeCopies: false } })).toMatchObject({ label: 'Print for notarization', dead: true, note: null, left: { words: '1 held on a property fact', door: 'See it' } })
+    expect(lienBoardAffidavitPrint({ ready: 0, held: 0, earlierForm: 0, stack: { helpSheet: true, noticeRecord: true, noticeCopies: false } })).toBeNull()
+    expect(lienBoardAffidavitPrint({ ready: 3, held: 0, earlierForm: 0, stack: { helpSheet: true, noticeRecord: true, noticeCopies: false }, shown: true })!.label).toBe('Print 3 shown for notarization')
+  })
+})
+
+describe('lienBoardStackNote — the affidavits’ stack on the Board, said only when it is not the usual one', () => {
+  it('says nothing of the usual stack: the help sheet and the notice records, no copies', () => {
+    expect(lienBoardStackNote(LIEN_BOARD_USUAL_STACK)).toBeNull()
+    expect(lienBoardStackNote({ helpSheet: true, noticeRecord: true, noticeCopies: false })).toBeNull()
+  })
+  it('names a page left out, and its press puts it back', () => {
+    expect(lienBoardStackNote({ helpSheet: false, noticeRecord: true, noticeCopies: false })).toEqual({ words: 'Prints without the help sheet', door: 'Put it back' })
+    expect(lienBoardStackNote({ helpSheet: true, noticeRecord: false, noticeCopies: false })).toEqual({ words: 'Prints without the notice records', door: 'Put them back' })
+    expect(lienBoardStackNote({ helpSheet: false, noticeRecord: false, noticeCopies: false })).toEqual({ words: 'Prints without the help sheet or the notice records', door: 'Put them back' })
+  })
+  it('names the copies someone added, and both when a page is out and the copies are in', () => {
+    expect(lienBoardStackNote({ helpSheet: true, noticeRecord: true, noticeCopies: true })).toEqual({ words: 'Prints with copies of the notices too', door: 'Leave them out' })
+    expect(lienBoardStackNote({ helpSheet: false, noticeRecord: true, noticeCopies: true })).toEqual({ words: 'Prints without the help sheet, with copies of the notices', door: 'Use the usual pages' })
   })
 })

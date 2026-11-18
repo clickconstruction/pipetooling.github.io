@@ -37,6 +37,27 @@ export function impersonationExitDisplayLabel(
   return who ? `${verb} (${who})` : verb
 }
 
+/** What a screen reader hears on the exit control, wherever it is drawn. */
+export const IMPERSONATION_EXIT_ARIA_LABEL = 'Back to your original signed-in account'
+
+/**
+ * Where the exit control is drawn (v2.7782, the owner's ask of 2026-11-18). On a phone it was the
+ * last press of the header's icon row, where its name was cut off and it ran past the screen's
+ * edge. There it now has a line of its own above the header (`ViewAsExitStrip`),
+ * so the row under it holds what it holds for anyone else. `phoneWidth` is the screen's width alone:
+ * a desk header that collapsed to the phone's shape for want of room still has room for the button,
+ * and keeps it in the row. `null` while nobody is being viewed as.
+ */
+export type ImpersonationExitPlacement = 'strip' | 'header'
+
+export function impersonationExitPlacement(
+  impersonating: boolean,
+  phoneWidth: boolean,
+): ImpersonationExitPlacement | null {
+  if (!impersonating) return null
+  return phoneWidth ? 'strip' : 'header'
+}
+
 /** Tooltip `title` for the exit control: what happens, with the full name or email. */
 export function impersonationExitTitle(
   profileName: string | null | undefined,

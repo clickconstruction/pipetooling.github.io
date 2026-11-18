@@ -3,6 +3,7 @@
  * `supabase/functions/_shared/paintedMapLink.ts`, one source for the function and the app. Pure.
  */
 import type { PaintedLine, PaintedPlace } from './paintedMap'
+import { paintedPlaceKindFrom } from './paintedPlaceKind'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { SharedLine, SharedPaintedMap } from '../../../supabase/functions/_shared/paintedMapLink'
 
@@ -42,7 +43,7 @@ export function sharedLineForCanvas(line: SharedLine, index: number): Pick<Paint
 
 /** A shared map's places as the map draws them, each with the number the painter gave it. */
 export function sharedPlacesForCanvas(shared: SharedPaintedMap): Array<PaintedPlace & { number: number }> {
-  return shared.places.map((p) => ({ id: p.id, mapId: '', name: p.name, words: p.words, lat: p.lat, lng: p.lng, accuracyM: null, photoPath: null, setBy: null, setAt: '', number: p.number }))
+  return shared.places.map((p) => ({ id: p.id, mapId: '', name: p.name, words: p.words, lat: p.lat, lng: p.lng, accuracyM: null, photoPath: null, kind: paintedPlaceKindFrom(p.kind), setBy: null, setAt: '', number: p.number }))
 }
 
 /** What the share sheet says a reader sees, and does not. Said beside the link, before it goes anywhere. */

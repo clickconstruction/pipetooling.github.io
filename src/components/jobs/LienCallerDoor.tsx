@@ -5,7 +5,8 @@ import type { CSSProperties } from 'react'
  * *separate the search from the practice call area*): the door on the Lien desk header for
  * whoever answers the phone. It opens the words — `LienCallScriptModal` — filled with the job
  * under the reader. Finding the job is the list's find box (v2.4721), which reaches every notice
- * the desk ever sent.
+ * the desk ever sent. Since v2.7780 the window's last row is the door to an owner's records
+ * request, so the hover words name both.
  */
 export function LienCallerDoor({ onOpen, open = false, style, buttonStyle }: { onOpen: () => void; open?: boolean; style?: CSSProperties; buttonStyle?: CSSProperties }) {
   return (
@@ -16,7 +17,7 @@ export function LienCallerDoor({ onOpen, open = false, style, buttonStyle }: { o
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label="An owner is calling"
-        title="An owner is calling — what to say, filled with the job under you; find the job with the box on the list"
+        title="An owner is calling, or asked for our records. What to say, filled with the job under you, and the door to the records packet."
         style={{ padding: '2px 10px', borderRadius: 7, border: '1px solid transparent', background: open ? '#1e40af' : '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.85rem', lineHeight: '1.25rem', cursor: 'pointer', ...buttonStyle }}
       >
         ☎
