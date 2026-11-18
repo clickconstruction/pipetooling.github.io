@@ -23969,6 +23969,7 @@ export type Database = {
           sequence_order: number
           shared_with_gc: boolean
           stage_kind: string | null
+          trip_id: string | null
         }
         Insert: {
           bill_to_party?: string | null
@@ -23998,6 +23999,7 @@ export type Database = {
           sequence_order?: number
           shared_with_gc?: boolean
           stage_kind?: string | null
+          trip_id?: string | null
         }
         Update: {
           bill_to_party?: string | null
@@ -24027,6 +24029,7 @@ export type Database = {
           sequence_order?: number
           shared_with_gc?: boolean
           stage_kind?: string | null
+          trip_id?: string | null
         }
         Relationships: [
           {
@@ -24048,6 +24051,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_fixtures_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
             referencedColumns: ["id"]
           },
         ]
@@ -50968,6 +50978,17 @@ export type Database = {
       trip_is_mine: { Args: { p_trip_id: string }; Returns: boolean }
       trip_phone: { Args: { p: Json }; Returns: Json }
       trip_phone_state: { Args: { p_job_id: string }; Returns: Json }
+      trip_put_on_job_line: {
+        Args: {
+          p_amount: number
+          p_dry_run?: boolean
+          p_job_id: string
+          p_name: string
+          p_trip_id: string
+          p_words: string
+        }
+        Returns: Json
+      }
       trip_save: { Args: { p: Json; p_dry_run?: boolean }; Returns: Json }
       trips_office: { Args: never; Returns: boolean }
       typed_hours_rule_applies: {
