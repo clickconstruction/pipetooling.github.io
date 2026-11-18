@@ -67,7 +67,7 @@ describe('LienFilingTabs · a notice send takes a photo of its receipt', () => {
   it('saves each photo, fills the number it read, and records both on the sends', async () => {
     renderWithProviders(<LienFilingTabs {...props} />)
     fireEvent.click(screen.getByRole('button', { name: 'Save & record sends…' }))
-    const [ownerPhoto, contractorPhoto] = screen.getAllByLabelText('Take a photo of the receipt')
+    const [ownerPhoto, contractorPhoto] = screen.getAllByLabelText('Add the receipt')
     fireEvent.change(ownerPhoto!, { target: { files: [new File(['o'], 'owner.jpg', { type: 'image/jpeg' })] } })
     await waitFor(() => expect(screen.getByLabelText('Owner tracking number')).toHaveProperty('value', '9407111899560000000001'))
     expect(screen.getByText('Read 9407111899560000000001 off the photo. Check it against the receipt.')).toBeTruthy()
@@ -89,6 +89,6 @@ describe('LienFilingTabs · a notice send takes a photo of its receipt', () => {
     renderWithProviders(<LienFilingTabs {...props} ownerEmail="office@example.com" />)
     fireEvent.click(screen.getByRole('button', { name: 'Save & record sends…' }))
     fireEvent.change(screen.getByLabelText('Owner send method'), { target: { value: 'email' } })
-    expect(screen.getAllByLabelText('Take a photo of the receipt')).toHaveLength(1)
+    expect(screen.getAllByLabelText('Add the receipt')).toHaveLength(1)
   })
 })

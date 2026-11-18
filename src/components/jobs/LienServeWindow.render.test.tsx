@@ -168,4 +168,34 @@ describe('LienServeWindow', () => {
     open()
     expect(document.querySelector('[data-lien-serve-scans-part]')).toBeNull()
   })
+  it('keeps a number on its lien when the box is left, and a receipt taken off too', async () => {
+    const keep = vi.fn(async (args: { filingId: string; recipient: string; proof: { tracking?: string; receiptUrl?: string } }) => [{ recipient: args.recipient, method: 'certified_mail', tracking: args.proof.tracking ?? '', ...(args.proof.receiptUrl ? { receipt_url: args.proof.receiptUrl } : {}) }])
+    const props = open({ keep: keep as never })
+    expect(document.querySelector('[data-lien-serve-kept-lead]')?.textContent).toBe('Saved as you go. Each receipt and number is kept on its lien the moment you add it. Record sets the day mailed.')
+    const box = screen.getByRole('textbox', { name: 'Job 2104, owner, certified mail number' })
+    fireEvent.change(box, { target: { value: '9589 0001' } })
+    fireEvent.blur(box)
+    await waitFor(() => expect(keep).toHaveBeenCalledWith({ filingId: 'f-2104', recipient: 'owner', proof: { tracking: '9589 0001', receiptUrl: '' } }))
+    await waitFor(() => expect(document.querySelector('[data-lien-serve-row="2104"] [data-lien-serve-kept="owner"]')?.textContent).toBe('Kept on this lien.'))
+    // Leaving the box again with nothing new writes nothing.
+    fireEvent.blur(box)
+    expect(keep).toHaveBeenCalledTimes(1)
+    // The desk reads again once on the way out.
+    expect(props.onChanged).not.toHaveBeenCalled()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' }).slice(-1)[0]!)
+    expect(props.onChanged).toHaveBeenCalledTimes(1)
+    expect(props.onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('says why a number was not kept, and that Record still saves it', async () => {
+    const keep = vi.fn(async () => {
+      throw new Error('The network dropped.')
+    })
+    open({ keep: keep as never })
+    const box = screen.getByRole('textbox', { name: 'Job 2291, owner, certified mail number' })
+    fireEvent.change(box, { target: { value: '9589 0002' } })
+    fireEvent.blur(box)
+    await waitFor(() => expect(document.querySelector('[data-lien-serve-row="2291"] [data-lien-serve-not-kept="owner"]')?.textContent).toBe('Not kept yet: The network dropped. Record saves it with the day.'))
+    expect((document.querySelector('[data-lien-serve-record]') as HTMLButtonElement).disabled).toBe(false)
+  })
 })

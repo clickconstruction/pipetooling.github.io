@@ -91,8 +91,8 @@ describe('LienFilingTabs · the mail receipts on Record service…', () => {
     fireEvent.change(within(box()).getByLabelText('Copy to the original contractor, certified mail number'), { target: { value: '0000 0000 0002' } })
     const ownerCopy = box().querySelector('[data-lien-service-copy="owner"]') as HTMLElement
     const shot = new File(['not really a picture'], 'IMG_0001.jpg', { type: 'image/jpeg' })
-    fireEvent.change(within(ownerCopy).getByLabelText('Take a photo of the receipt'), { target: { files: [shot] } })
-    expect(await within(ownerCopy).findByRole('link', { name: 'Photo saved ›' })).toBeTruthy()
+    fireEvent.change(within(ownerCopy).getByLabelText('Add the receipt'), { target: { files: [shot] } })
+    expect(await within(ownerCopy).findByRole('link', { name: 'Open the receipt' })).toBeTruthy()
     expect(puts).toEqual([{ jobId: 'job-77', where: 'sent', name: 'Lien affidavit, Job 77, mail receipt, owner, 2026-11-18.jpg' }])
     fireEvent.click(within(box()).getByRole('button', { name: 'Record service' }))
     await waitFor(() => expect(updates.length).toBe(1))
@@ -108,9 +108,11 @@ describe('LienFilingTabs · the mail receipts on Record service…', () => {
   it('a served paper keeps a door to add its receipts, opened on what it holds', async () => {
     const served = { ...filed, served_at: '2026-11-18', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '0000 0000 0001', sent_on: '2026-11-18' }] }
     renderWithProviders(<LienFilingTabs {...props({ filings: [notice, served] as never })} />)
-    // The Filings list shows the number already on record.
+    // The Filings list shows the number already on record, in What went out under the affidavit's row.
+    const went = document.querySelector('[data-lien-mail-proof="affidavit"] [data-lien-mail-proof-envelope="owner"]') as HTMLElement
+    expect(went.textContent).toContain('Owner of record')
+    expect(went.textContent).toContain('Certified mail 0000 0000 0001')
     const proof = document.querySelector('[data-lien-service-proof]') as HTMLElement
-    expect(proof.textContent).toContain('Owner of record 0000 0000 0001')
     expect(screen.queryByRole('button', { name: 'Record service…' })).toBeNull()
     fireEvent.click(within(proof).getByRole('button', { name: 'mail receipts' }))
     expect((within(box()).getByLabelText('Served on') as HTMLInputElement).value).toBe('2026-11-18')

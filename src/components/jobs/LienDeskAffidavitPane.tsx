@@ -22,6 +22,7 @@ import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienAffidavitPaneSections, lienAffidavitWindowWords } from '../../lib/jobs/lienAffidavitPaneSections'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
+import { lienMailProof } from '../../lib/jobs/lienMailProof'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import { lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords } from '../../lib/jobs/lienDeskGates'
 import { lienAffidavitNoticeStanding } from '../../lib/jobs/lienAffidavitNoticeStanding'
@@ -281,7 +282,7 @@ export default function LienDeskAffidavitPane({
     const when = (ymd: string | null, iso: string) => formatYmdMonthDay(ymd ?? calendarYmdInAppTzFromIso(iso))
     const asSent = (f: (typeof filings)[number], words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
       const page = filingSnapshotPage(f, { issuer, jobNumber: jobNo })
-      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
+      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof: lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, servedAt: f.served_at }) }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
     }
     const envelope = `To ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'} by certified mail`
     const copyEnvelope = `A copy of the filed affidavit to ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'}, within five days of filing`
