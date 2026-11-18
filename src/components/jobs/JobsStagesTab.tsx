@@ -2,7 +2,7 @@ import { paySpeedPayer, stageRowPayerCustomerId } from '../../lib/jobs/billToPar
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
 import { billedListRows as billedListRowsFor, stagesSectionHeader, stagesSectionLoadingSuffix, type StagesSectionKey } from '../../lib/jobs/stagesSectionHeader'
 import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
-import { stagesLaborBreakdownByJobId as foldStagesLaborBreakdownByJobId, stagesManHoursByJobId as foldStagesManHoursByJobId } from '../../lib/jobs/stagesManHours'
+import { useStagesManHours } from '../../hooks/useStagesManHours'
 import { collectionsNoteLine as collectionsNoteLineFor } from '../../lib/jobs/lienClaimCorrection'
 import {
   Suspense,
@@ -677,13 +677,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [scheduleModalInitialDate, setScheduleModalInitialDate] = useState<string | null>(null)
   const [createPartialInvoiceAmount, setCreatePartialInvoiceAmount] = useState('')
   const [creatingPartialInvoiceFromModal, setCreatingPartialInvoiceFromModal] = useState(false)
-
-  // Stages board: man-hours applied per job (lightweight get_man_hours_by_job RPC; mirrors teamLabor.ts math).
-  const [stagesManHoursRows, setStagesManHoursRows] = useState<
-    Array<{ job_id: string; person_name: string; man_hours: number }>
-  >([])
-  const [stagesManHoursLoading, setStagesManHoursLoading] = useState(false)
-  const stagesManHoursLoadedRef = useRef(false)
 
   const [pendingStagesInvoiceFocusId, setPendingStagesInvoiceFocusId] = useState<string | null>(null)
   const [stagesInvoiceFlashId, setStagesInvoiceFlashId] = useState<string | null>(null)
@@ -2357,22 +2350,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   }, [sendBackInvoice])
 
-  /** Stages board man-hours-per-job (load-once per visit; RLS-governed RPC, empty for roles without labor access). */
-  async function loadStagesManHours() {
-    if (stagesManHoursLoadedRef.current) return
-    stagesManHoursLoadedRef.current = true
-    setStagesManHoursLoading(true)
-    const { data, error } = await supabase.rpc('get_man_hours_by_job')
-    setStagesManHoursLoading(false)
-    if (error) {
-      stagesManHoursLoadedRef.current = false // allow retry on next Stages visit
-      return
-    }
-    setStagesManHoursRows(
-      (data ?? []) as Array<{ job_id: string; person_name: string; man_hours: number }>,
-    )
-  }
-
   function printBilledAwaitingPaymentReport(rows: StageRow[], opts?: { searchFilter?: string }) {
     if (rows.length === 0) {
       showToast('Nothing to print in Billed Awaiting Payment.', 'warning')
@@ -2491,16 +2468,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (!billedTotalByNameModalOpen) setBilledTotalByNameExpandedName(null)
   }, [billedTotalByNameModalOpen])
 
-  useEffect(() => {
-    if (active && authUser?.id) {
-      const t = setTimeout(() => void loadStagesManHours(), 80)
-      return () => clearTimeout(t)
-    }
-  }, [active, authUser?.id])
-
-  /** Stages board: total man-hours per job id, and per person (descending) for the hover tooltip — `lib/jobs/stagesManHours` (v2.3860). */
-  const stagesManHoursByJobId = useMemo(() => foldStagesManHoursByJobId(stagesManHoursRows), [stagesManHoursRows])
-  const stagesLaborBreakdownByJobId = useMemo(() => foldStagesLaborBreakdownByJobId(stagesManHoursRows), [stagesManHoursRows])
+  // Man-hours per job and per person (`hooks/useStagesManHours`, the map's step 15): called where its effect stood, so the effects run in their old order.
+  const { stagesManHoursByJobId, stagesLaborBreakdownByJobId, stagesManHoursLoading } = useStagesManHours(active, authUser?.id)
 
   async function createInvoiceFromModal() {
     if (!createPartialInvoiceJob) return
