@@ -5,7 +5,7 @@ import { isOwnerOrDev } from '../lib/doorRoles'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { useAuth } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
-import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { formatErrorMessage, withRetry, withSupabaseRetry } from '../utils/errorHandling'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { useToastContext } from '../contexts/ToastContext'
 import { pageTabStyle } from '../lib/pageTabStyle'
@@ -59,6 +59,7 @@ import { testReportPdfSignedUrl } from '../lib/jobs/testReportDocumentOpen'
 import { supplyInvoicePaidWordMatches } from '../lib/supplyInvoicePaidSearch'
 import { EmptyState } from '../components/EmptyState'
 import { documentsLedgerEmptyWords } from '../lib/documents/documentsEmptyWords'
+import { documentsBidCountLinesByBid, loadDocumentsBidCountRows } from '../lib/documents/documentsBidCountLines'
 import { DocumentsWhereFilesGo } from '../components/documents/DocumentsWhereFilesGo'
 import { DocumentsCompanyFolder } from '../components/documents/DocumentsCompanyFolder'
 import { canSetWhereFilesGo } from '../lib/documents/whereFilesGoTab'
@@ -1230,37 +1231,8 @@ function DocumentsBidProposalsLedger({ embedSearch, onClearEmbedSearch }: Docume
         setCountRowsByBidId(new Map())
         return
       }
-      const [countData, versionData] = await Promise.all([
-        withSupabaseRetry(
-          async () =>
-            await supabase
-              .from('bids_count_rows')
-              .select('bid_id, bid_version_id, fixture, count')
-              .in('bid_id', ids)
-              .order('sequence_order', { ascending: true })
-              .order('id', { ascending: true }),
-          'load documents bid count rows',
-        ),
-        withSupabaseRetry(
-          async () => await supabase.from('bid_versions').select('id, bid_id, sort_order').in('bid_id', ids).order('sort_order'),
-          'load documents bid versions',
-        ),
-      ])
-      // v2.2132: counts are per version — show each bid's ACTIVE version's rows (saved choice, else
-      // its first version, else the unsplit rows).
-      const firstVersionByBid = new Map<string, string>()
-      for (const v of (versionData ?? []) as Array<{ id: string; bid_id: string }>) if (!firstVersionByBid.has(v.bid_id)) firstVersionByBid.set(v.bid_id, v.id)
-      const wantedVersionByBid = new Map<string, string | null>()
-      for (const b of list) wantedVersionByBid.set(b.id, b.selected_bid_version_id ?? firstVersionByBid.get(b.id) ?? null)
-      const byBid = new Map<string, Array<{ fixture: string; count: number }>>()
-      for (const r of countData ?? []) {
-        const row = r as { bid_id: string; bid_version_id: string | null; fixture: string; count: number }
-        if ((row.bid_version_id ?? null) !== (wantedVersionByBid.get(row.bid_id) ?? null)) continue
-        const arr = byBid.get(row.bid_id) ?? []
-        arr.push({ fixture: row.fixture ?? '', count: Number(row.count) })
-        byBid.set(row.bid_id, arr)
-      }
-      setCountRowsByBidId(byBid)
+      const { countRows, versions } = await withRetry(() => loadDocumentsBidCountRows(supabase, ids))
+      setCountRowsByBidId(documentsBidCountLinesByBid(list, versions, countRows))
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not load bid proposals'), 'error')
       setRows([])
