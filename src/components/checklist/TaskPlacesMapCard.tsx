@@ -1,9 +1,10 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { directionsUrlForPoint } from '../../lib/directionsUrl'
 import { requestMyFix, type MyFix } from '../../lib/materials/myLocation'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { MapCanvasPin } from '../../lib/map/mapCanvasTypes'
+import { mapTimeSpotFromPins } from '../../lib/map/mapTime'
 import {
   TASK_PLACE_PRIVACY_WORDS,
   taskPlaceDotGroups,
@@ -14,8 +15,7 @@ import {
   tasksWithoutPlaceWords,
   type TaskPlace,
 } from '../../lib/tasks/taskPlace'
-
-const TaskPlacesMapCanvasLazy = lazy(() => import('../map/PinsMapImageryCanvas'))
+import { PinsMapFrame } from '../map/PinsMapFrame'
 
 const HIDDEN_KEY = 'task_places_map_hidden'
 const ME_ID = '__me'
@@ -70,8 +70,9 @@ const press: CSSProperties = { minHeight: 40, padding: '0 0.8rem', borderRadius:
  * - Show where I am is a press. The reading puts a dot for the person on the map and a distance on
  *   every task's line for this visit. It is not saved and not sent.
  *
- * The canvas is the app's shared one (`PinsMapCanvas`, through `TaskPlacesMapCanvas`), with a view
- * from above laid over its streets while the dots sit on one property.
+ * It draws in the shared `PinsMapFrame` (punch list #395), on its Leaflet half alone: the view from
+ * above laid over the streets while the dots sit on one property, the Satellite and Streets switch,
+ * and the Time press. Time looks at a task's place and never at the person's own dot.
  */
 export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
   const isMobile = useIsMobile()
@@ -87,8 +88,6 @@ export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
     return { groups: taskPlaceDotGroups(placed.dots), withoutPlace: placed.withoutPlace }
   }, [tasks])
   const titleById = useMemo(() => new Map(tasks.map((t) => [t.id, t.title])), [tasks])
-  const [layerPick, setLayerPick] = useState<'satellite' | 'streets' | null>(null)
-  const layer = layerPick ?? taskPlacesDefaultLayer(groups)
 
   // The dots changed (a task was done, a place was set): frame them again, and drop a pick that is gone.
   const groupsKey = groups.map((g) => `${g.id}:${g.lat}:${g.lng}`).join('|')
@@ -117,10 +116,8 @@ export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
 
   if (groups.length === 0) return null
 
-  const pins: MapCanvasPin[] = [
-    ...groups.map((g) => ({ id: g.id, lat: g.lat, lng: g.lng, color: g.overdue ? OVERDUE : g.old ? OLD : DUE, title: g.name, label: g.label })),
-    ...(me ? [{ id: ME_ID, lat: me.lat, lng: me.lng, color: ME, ringColor: '#ffffff', title: 'You' }] : []),
-  ]
+  const placePins: MapCanvasPin[] = groups.map((g) => ({ id: g.id, lat: g.lat, lng: g.lng, color: g.overdue ? OVERDUE : g.old ? OLD : DUE, title: g.name, label: g.label }))
+  const pins: MapCanvasPin[] = [...placePins, ...(me ? [{ id: ME_ID, lat: me.lat, lng: me.lng, color: ME, ringColor: '#ffffff', title: 'You' }] : [])]
   const selected = groups.find((g) => g.id === selectedId) ?? null
   const directions = selected ? directionsUrlForPoint(selected.lat, selected.lng) : null
   const without = tasksWithoutPlaceWords(withoutPlace, groups.reduce((n, g) => n + g.taskIds.length, 0))
@@ -142,42 +139,30 @@ export function TaskPlacesMapCard({ tasks, onShowTask, onMe }: Props) {
       </div>
       {hidden ? null : (
         <>
-          <div className={layer === 'satellite' ? 'mapImagery' : undefined} style={{ position: 'relative', isolation: 'isolate', background: 'var(--bg-muted)', height }}>
-            <Suspense fallback={null}>
-              <TaskPlacesMapCanvasLazy
-                key={isMobile ? 'phone' : 'desk'}
-                layer={layer}
-                pins={pins}
-                selectedId={selectedId}
-                onSelect={(id) => setSelectedId(id === ME_ID ? null : id)}
-                fitSignal={fitSignal}
-                height={height}
-                isMobile={isMobile}
-                scrollZoomAfterClick
-              />
-            </Suspense>
-            <div role="group" aria-label="Map view" style={{ ...overlay, right: 8, top: 8, display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-strong)' }}>
-              {(['satellite', 'streets'] as const).map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  aria-pressed={layer === l}
-                  onClick={() => setLayerPick(l)}
-                  style={{ border: 'none', padding: '0.35rem 0.55rem', cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', fontWeight: 700, background: layer === l ? 'var(--text-strong)' : 'var(--surface)', color: layer === l ? 'var(--surface)' : 'var(--text-strong)' }}
-                >
-                  {l === 'satellite' ? 'Satellite' : 'Streets'}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={showWhereIAm}
-              disabled={asking}
-              style={{ ...overlay, left: 10, top: 80, minHeight: 32, padding: '0 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: asking ? 'default' : 'pointer' }}
-            >
-              {asking ? 'Finding you…' : me ? 'Find me again' : 'Show where I am'}
-            </button>
-          </div>
+          <PinsMapFrame
+            surface="my-tasks-map"
+            leafletOnly
+            defaultLayer={taskPlacesDefaultLayer(groups)}
+            pins={pins}
+            selectedId={selectedId}
+            onSelect={(id) => setSelectedId(id === ME_ID ? null : id)}
+            fitSignal={fitSignal}
+            height={height}
+            isMobile={isMobile}
+            scrollZoomAfterClick
+            // Time looks at a task's place: the open one, or the only one. The person's own dot is never its spot.
+            timeSpot={mapTimeSpotFromPins(placePins, selectedId)}
+            overlay={
+              <button
+                type="button"
+                onClick={showWhereIAm}
+                disabled={asking}
+                style={{ ...overlay, left: 10, top: 80, minHeight: 32, padding: '0 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: asking ? 'default' : 'pointer' }}
+              >
+                {asking ? 'Finding you…' : me ? 'Find me again' : 'Show where I am'}
+              </button>
+            }
+          />
           {noFix ? (
             <p role="status" data-task-places-no-fix style={{ margin: 0, padding: '0.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderTop: '1px solid var(--border-amber)' }}>
               {noFix}

@@ -1,6 +1,4 @@
 import {
-  lazy,
-  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -68,8 +66,10 @@ import {
 import { BID_STAGE_MARKER_COLOR } from '../../lib/map/builderBidMapFocus'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 
-// The shared pins canvas (v2.4796): the Dashboard, Bid Board, Pipeline and clocked-in maps draw on it too.
-const PinsMapCanvas = lazy(() => import('./PinsMapCanvas'))
+// The shared frame (punch list #395), on its Leaflet half alone: this page's tools are Leaflet's own. It loads the
+// pins canvas lazily (v2.4796), and holds the Satellite and Streets switch and the Time press.
+import { PinsMapFrame } from './PinsMapFrame'
+import { MAP_TIME_PINS_WORDS } from '../../lib/map/mapTime'
 import { farFromOfficePlaces, mapPageFitAllPoints, mapPageHomeFitPoints, splitFarFromOffice } from '../../lib/map/mapPageFirstView'
 import { farShortLine, mapPageNotFound, unplacedLine } from '../../lib/map/mapPageUnplaced'
 import { MapAddressSheet, type OpenableRecord } from './MapAddressSheet'
@@ -739,35 +739,32 @@ export function MapPageView() {
           ? { display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 0 }
           : { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: '0.75rem', alignItems: 'start', minWidth: 0 }}
       >
-        {/* isolation contains Leaflet's internal z-indexes (panes 200-700, controls 1000) so they can't paint over header dropdowns */}
-        <div style={{ position: 'relative', flex: '0 0 auto', minHeight: 360, minWidth: 0, border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', isolation: 'isolate' }}>
-          <Suspense fallback={<div style={{ height: narrow ? 360 : 520 }} />}>
-            <PinsMapCanvas
-              pins={pins}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              renderPopup={renderPopup}
-              fitSignal={fitSignal}
-              height={narrow ? 360 : 520}
-              isMobile={narrow}
-              anchor={canvasAnchor}
-              fitPoints={fitPoints}
-              cluster={clustered}
-              clusterRingPriority={MAP_PAGE_CLUSTER_RING_PRIORITY}
-              clusterNoun="places"
-              pulseId={narrow ? null : hoverKey}
-              // The map sits above the table: the wheel scrolls the page until the map is clicked once
-              scrollZoomAfterClick
-              // Leaflet ignores a height change after mount — remount when the form flips
-              key={narrow ? 'phone' : 'desktop'}
-            >
-              <MapFlyTo target={mapFlyTo} onConsumed={clearMapFlyTo} />
-              <GeomanDraw onFilterPolygon={onFilterPolygon} clearSignal={clearDraw} paused={courtMode} />
-              {precinctsShown ? <CourtAreasLayer areas={courtAreas} drawing={courtMode} onDrawn={onCourtDrawn} clearSignal={courtClear} /> : null}
-              {paintedOn && !courtMode ? <PaintedMapsLayer maps={paintedLayer.maps} onOpen={(id) => openPaintedMap(id)} /> : null}
-            </PinsMapCanvas>
-          </Suspense>
-        </div>
+        <PinsMapFrame
+          surface="map-page"
+          leafletOnly
+          style={{ flex: '0 0 auto', minHeight: 360, border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}
+          timeDotsWords={MAP_TIME_PINS_WORDS}
+          pins={pins}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          renderPopup={renderPopup}
+          fitSignal={fitSignal}
+          height={narrow ? 360 : 520}
+          isMobile={narrow}
+          anchor={canvasAnchor}
+          fitPoints={fitPoints}
+          cluster={clustered}
+          clusterRingPriority={MAP_PAGE_CLUSTER_RING_PRIORITY}
+          clusterNoun="places"
+          pulseId={narrow ? null : hoverKey}
+          // The map sits above the table: the wheel scrolls the page until the map is clicked once
+          scrollZoomAfterClick
+        >
+          <MapFlyTo target={mapFlyTo} onConsumed={clearMapFlyTo} />
+          <GeomanDraw onFilterPolygon={onFilterPolygon} clearSignal={clearDraw} paused={courtMode} />
+          {precinctsShown ? <CourtAreasLayer areas={courtAreas} drawing={courtMode} onDrawn={onCourtDrawn} clearSignal={courtClear} /> : null}
+          {paintedOn && !courtMode ? <PaintedMapsLayer maps={paintedLayer.maps} onOpen={(id) => openPaintedMap(id)} /> : null}
+        </PinsMapFrame>
         <MapPageRail
           selected={selected}
           anchor={anchorPoint}

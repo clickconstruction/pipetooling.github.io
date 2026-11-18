@@ -19,12 +19,25 @@ vi.mock('../../lib/materials/myLocation', () => ({
   },
 }))
 const opened = vi.hoisted(() => [] as string[])
+// Time (punch list #395): the photo archive's walk, answered here with today's photograph and one older.
+const walked = vi.hoisted(() => [] as Array<[number, number]>)
+vi.mock('../../lib/map/olderPhotosIo', () => ({
+  walkOlderPhotos: async (spot: { lat: number; lng: number }, opts: { onChange: (found: unknown[]) => void }) => {
+    walked.push([spot.lat, spot.lng])
+    const found = [
+      { release: 900, publishedYmd: '2026-10-29', size: 5, takenYmd: '2025-02-09' },
+      { release: 700, publishedYmd: '2022-03-01', size: 3, takenYmd: '2021-03-20' },
+    ]
+    opts.onChange(found)
+    return found
+  },
+}))
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.push(url) }))
 /** The canvas, stood in for: each dot is a button that reads its label and its colour, and the view is named. */
 vi.mock('../map/PinsMapImageryCanvas', () => ({
-  default: function CanvasStub(props: { pins: Array<{ id: string; label?: string; title: string; color: string }>; onSelect: (id: string | null) => void; height: number; layer: string }) {
+  default: function CanvasStub(props: { pins: Array<{ id: string; label?: string; title: string; color: string }>; onSelect: (id: string | null) => void; height: number; layer: string; imagery?: { url: string } | null; fitPoints?: Array<{ lat: number; lng: number }> | null }) {
     return (
-      <div data-testid="canvas" data-height={props.height}>
+      <div data-testid="canvas" data-height={props.height} data-imagery={props.imagery?.url ?? ''} data-fit={props.fitPoints ? props.fitPoints.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join(' ') : ''}>
         {props.pins.map((p) => (
           <button key={p.id} type="button" data-color={p.color} onClick={() => props.onSelect(p.id)}>
             {`dot ${p.label ?? p.title}`}
@@ -53,6 +66,7 @@ afterEach(() => {
   phone.asked = 0
   phone.why = null
   opened.length = 0
+  walked.length = 0
 })
 
 describe('TaskPlacesMapCard', () => {
@@ -116,6 +130,34 @@ describe('TaskPlacesMapCard', () => {
     await screen.findByTestId('canvas')
     expect(screen.queryByTestId('from-above')).toBeNull()
     expect(screen.getByRole('button', { name: 'Streets' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('Time looks at a task’s place and never at the person’s own dot (punch list #395)', async () => {
+    // One place and the person's dot: two dots on the map, and still one place for Time.
+    render(<TaskPlacesMapCard tasks={[TASKS[1]!]} onShowTask={() => {}} />)
+    const canvas = await screen.findByTestId('canvas')
+    fireEvent.click(screen.getByRole('button', { name: 'Show where I am' }))
+    expect(await screen.findByRole('button', { name: 'dot You' })).toBeTruthy()
+    fireEvent.click(document.querySelector('[data-map-time-press]') as HTMLButtonElement)
+    await waitFor(() => expect(document.querySelector('[data-map-time-caption]')?.textContent).toBe('Today’s photo of Pump house, taken February 9, 2025. 1 older photo.'))
+    expect(walked).toEqual([[29.55, -98.3]])
+    expect(canvas.getAttribute('data-fit')).toBe('29.5495,-98.3005 29.5505,-98.2995')
+    // A press on the person's dot opens nothing, and Time stays on the place.
+    fireEvent.click(screen.getByRole('button', { name: 'dot You' }))
+    expect(walked).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Mar 2021' }))
+    expect(canvas.getAttribute('data-imagery')).toContain('/tile/700/')
+    expect(document.querySelector('[data-map-time-caption]')?.textContent).toBe('Photo taken March 20, 2021. The dots are today’s.')
+    // The person's own press is still on the map.
+    expect(screen.getByRole('button', { name: 'Find me again' })).toBeTruthy()
+  })
+
+  it('with several places and none open, Time asks for a dot', async () => {
+    render(<TaskPlacesMapCard tasks={[TASKS[0]!, { id: 'far', title: 'Pick up the trailer', place: place('Yard', 29.9) }]} onShowTask={() => {}} />)
+    await screen.findByTestId('canvas')
+    fireEvent.click(document.querySelector('[data-map-time-press]') as HTMLButtonElement)
+    expect(document.querySelector('[data-map-time-caption]')?.textContent).toBe('Press a dot to pick the spot.')
+    expect(walked).toEqual([])
   })
 
   it('Show where I am asks once, hands the reading to the list, adds a dot for the person and says where the reading goes', async () => {
