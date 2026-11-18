@@ -15,7 +15,7 @@ import {
   type TaskPlace,
 } from '../../lib/tasks/taskPlace'
 
-const TaskPlacesMapCanvasLazy = lazy(() => import('./TaskPlacesMapCanvas'))
+const TaskPlacesMapCanvasLazy = lazy(() => import('../map/PinsMapImageryCanvas'))
 
 const HIDDEN_KEY = 'task_places_map_hidden'
 const ME_ID = '__me'

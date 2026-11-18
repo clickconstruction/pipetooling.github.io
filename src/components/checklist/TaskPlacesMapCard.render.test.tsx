@@ -21,7 +21,7 @@ vi.mock('../../lib/materials/myLocation', () => ({
 const opened = vi.hoisted(() => [] as string[])
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.push(url) }))
 /** The canvas, stood in for: each dot is a button that reads its label and its colour, and the view is named. */
-vi.mock('./TaskPlacesMapCanvas', () => ({
+vi.mock('../map/PinsMapImageryCanvas', () => ({
   default: function CanvasStub(props: { pins: Array<{ id: string; label?: string; title: string; color: string }>; onSelect: (id: string | null) => void; height: number; layer: string }) {
     return (
       <div data-testid="canvas" data-height={props.height}>
