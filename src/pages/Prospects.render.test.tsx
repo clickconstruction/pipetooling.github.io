@@ -835,6 +835,42 @@ describe('the windows', () => {
     expect(within(mine).getByText('My time prospecting')).toBeTruthy()
   })
 
+  it('Timer history with nothing timed says so', async () => {
+    await deck('/prospects')
+    fireEvent.click(screen.getByTitle(/Click to view history/))
+    const history = await screen.findByRole('dialog')
+    expect(await within(history).findByText('No events yet.')).toBeTruthy()
+  })
+
+  it('My time adds up the caller’s timed seconds', async () => {
+    world.timerEvents = [{ id: 't-1', created_at: '2026-10-01T12:00:00Z', timer_seconds: 125, button_name: 'next_prospect', prospect: null }]
+    await deck('/prospects')
+    press('my time')
+    const mine = await screen.findByRole('dialog')
+    await waitFor(() => expect(within(mine).getAllByText('02:05')).toHaveLength(4))
+    for (const label of ['Today', 'Yesterday', 'Last 7 days', 'Lifetime']) expect(within(mine).getByText(label)).toBeTruthy()
+    fireEvent.click(within(mine).getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('Set callback saves the typed note, and Cancel saves nothing', async () => {
+    await deck('/prospects')
+    press('Set callback')
+    let dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(writesTo('prospect_callbacks')).toHaveLength(0)
+    press('Set callback')
+    dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Date'), { target: { value: '2026-12-01' } })
+    fireEvent.change(within(dialog).getByLabelText('Time'), { target: { value: '09:30' } })
+    fireEvent.change(within(dialog).getByLabelText('Note'), { target: { value: '  discuss pricing ' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(writesTo('prospect_callbacks', 'insert')).toHaveLength(1))
+    expect(writesTo('prospect_callbacks', 'insert')[0]?.payload).toMatchObject({ note: 'discuss pricing', callback_date: new Date('2026-12-01T09:30').toISOString() })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
   it('a template’s Copy puts the filled words on the clipboard', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
