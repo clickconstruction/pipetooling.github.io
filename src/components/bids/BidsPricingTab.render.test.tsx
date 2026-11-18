@@ -27,7 +27,7 @@ vi.mock('../../hooks/useAuth', async () => {
 
 /** What a case hands the tab's two outside reads: the header chip, and the robot's pulled rows. */
 const smoke = vi.hoisted(() => ({
-  rfqChip: null as null | { kind: 'quotes'; tone: 'blue' | 'green'; label: string },
+  rfqChip: null as null | { kind: 'quotes'; tone: 'blue' | 'green'; label: string } | { kind: 'desk'; tone: 'amber' | 'red' | 'green'; label: string },
   robotRows: [] as Array<Record<string, unknown>>,
   robotPrice: [] as Array<[string, string]>,
 }))
@@ -397,6 +397,25 @@ describe('BidsPricingTab render smoke', () => {
     renderWithProviders(<BidsPricingTab {...pricedProps()} />)
     await settle()
     expect(button('Quotes (2)').id).toBe('pricing-price-requests')
+  })
+
+  it('a press on the chip opens the window its state belongs to: the compare for quotes, the desk for requests', async () => {
+    smoke.rfqChip = { kind: 'quotes', tone: 'blue', label: 'Quotes (2)' }
+    const view = renderWithProviders(<BidsPricingTab {...pricedProps()} />)
+    await settle()
+    fireEvent.click(button('Quotes (2)'))
+    await settle()
+    expect(screen.getByRole('dialog', { name: 'Supply house quotes' })).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Price requests' })).toBeNull()
+    view.unmount()
+
+    smoke.rfqChip = { kind: 'desk', tone: 'amber', label: '2 requests out' }
+    renderWithProviders(<BidsPricingTab {...pricedProps()} />)
+    await settle()
+    fireEvent.click(button('2 requests out'))
+    await settle()
+    expect(screen.getByRole('dialog', { name: 'Price requests' })).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Supply house quotes' })).toBeNull()
   })
 
   it('without the quote desk saying anything there is no header chip', async () => {
