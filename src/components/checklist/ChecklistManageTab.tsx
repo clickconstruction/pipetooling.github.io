@@ -19,7 +19,6 @@ import {
   AGING_ITEM_OPENED_CONTROL,
   ageStateForDays,
   agingItemOpenedTarget,
-  compareOldestFirst,
   ONE_OFF_TASK_AGE,
   shouldRecordAgingOpen,
   ymdAgeDays,
@@ -27,7 +26,7 @@ import {
 import { dueChipLabel } from '../../lib/checklistDueDates'
 import { pushedChipLabel, summarizeDuePushes, type DueChangeRow } from '../../lib/checklistDuePushes'
 import { ChecklistManageTimeline } from './ChecklistManageTimeline'
-import { isScheduledAhead, nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from '../../lib/checklistManageGroups'
+import { bucketManageItems, deriveItemInstanceStats, isItemCompleteFrom, isRepeatingItem, isScheduledAhead, nextOccurrenceLabel, openAgeLabel, repeatChipLabel, type ManageInstanceRow } from '../../lib/checklistManageGroups'
 import { EmptyState } from '../EmptyState'
 import { showsNotifiesOnDone } from '../../lib/checklistManageRow'
 import { ManageRowMenu } from './ManageRowMenu'
@@ -135,24 +134,7 @@ export function ChecklistManageTab({ authUserId, role, setError, setEditItemId, 
       .from('checklist_instances')
       .select('checklist_item_id, completed_at, scheduled_date')
       .in('checklist_item_id', ids)
-    const completion = new Map<string, { total: number; hasIncomplete: boolean }>()
-    const oldestOpen = new Map<string, string>()
-    const nextOpen = new Map<string, string>()
-    const todayForNext = todayYmdInAppTz()
-    for (const inst of (instData ?? []) as Array<{ checklist_item_id: string; completed_at: string | null; scheduled_date: string }>) {
-      const cur = completion.get(inst.checklist_item_id) ?? { total: 0, hasIncomplete: false }
-      cur.total += 1
-      if (!inst.completed_at) {
-        cur.hasIncomplete = true
-        const prev = oldestOpen.get(inst.checklist_item_id)
-        if (!prev || inst.scheduled_date < prev) oldestOpen.set(inst.checklist_item_id, inst.scheduled_date)
-        if (inst.scheduled_date >= todayForNext) {
-          const prevNext = nextOpen.get(inst.checklist_item_id)
-          if (!prevNext || inst.scheduled_date < prevNext) nextOpen.set(inst.checklist_item_id, inst.scheduled_date)
-        }
-      }
-      completion.set(inst.checklist_item_id, cur)
-    }
+    const { completion, oldestOpen, nextOpen } = deriveItemInstanceStats((instData ?? []) as ManageInstanceRow[], todayYmdInAppTz())
     setItemCompletion(completion)
     setOldestOpenByItem(oldestOpen)
     setNextOpenByItem(nextOpen)
@@ -206,40 +188,13 @@ export function ChecklistManageTab({ authUserId, role, setError, setEditItemId, 
     return false
   }
 
-  // "Until completed" and "Once" are one-off tasks; the day_of_week / days_after_completion
-  // types are repeating. (Mirrors the Repeat-column display logic.)
-  const isRepeating = (item: ChecklistItem): boolean =>
-    !item.show_until_completed &&
-    (item.repeat_type === 'day_of_week' || item.repeat_type === 'days_after_completion')
-  // A one-off item is complete when it has at least one instance and none are outstanding.
-  const isItemComplete = (item: ChecklistItem): boolean => {
-    const c = itemCompletion.get(item.id)
-    return !!c && c.total > 0 && !c.hasIncomplete
-  }
-
-  // Each section is sorted by created date, newest first.
-  const byCreatedDesc = (a: ChecklistItem, b: ChecklistItem) =>
-    (b.created_at ? Date.parse(b.created_at) : 0) - (a.created_at ? Date.parse(a.created_at) : 0)
+  // The library's parts and their rules are `lib/checklistManageGroups.ts`: one-offs against repeating, a one-off
+  // complete when it has a day and none open, open one-offs oldest first (journey-map #40 / J30-3), a one-off
+  // whose first day is ahead in its own part (v2.2346), the rest newest made first.
+  const isRepeating = isRepeatingItem
+  const isItemComplete = (item: ChecklistItem): boolean => isItemCompleteFrom(itemCompletion.get(item.id))
   const todayLocalStr = todayYmdInAppTz()
-  const incompleteItems = filteredItems.filter((i) => !isRepeating(i) && !isItemComplete(i)).sort(byCreatedDesc)
-  // Scheduled split (v2.2346): "open" means actionable today — future-dated
-  // one-offs park in their own section, soonest start first.
-  // Open one-offs OLDEST first (journey-map #40 / J30-3): the 128-day task
-  // leads the list instead of sinking under this week's. Oldest open instance
-  // date wins; an item with no instance yet falls back to its created date.
-  const openOneOffs = incompleteItems
-    .filter((i) => !isScheduledAhead(oldestOpenByItem.get(i.id), todayLocalStr))
-    .sort((a, b) =>
-      compareOldestFirst(
-        oldestOpenByItem.get(a.id) ?? a.created_at ?? undefined,
-        oldestOpenByItem.get(b.id) ?? b.created_at ?? undefined,
-      ),
-    )
-  const scheduledOneOffs = incompleteItems
-    .filter((i) => isScheduledAhead(oldestOpenByItem.get(i.id), todayLocalStr))
-    .sort((a, b) => (oldestOpenByItem.get(a.id) ?? '').localeCompare(oldestOpenByItem.get(b.id) ?? ''))
-  const repeatingItems = filteredItems.filter((i) => isRepeating(i)).sort(byCreatedDesc)
-  const completeItems = filteredItems.filter((i) => !isRepeating(i) && isItemComplete(i)).sort(byCreatedDesc)
+  const { incompleteItems, openOneOffs, scheduledOneOffs, repeatingItems, completeItems } = bucketManageItems(filteredItems, itemCompletion, oldestOpenByItem, todayLocalStr)
 
   const renderLibraryRow = (item: ChecklistItem, showOpenAge: boolean) => {
     const assignees = (item.checklist_item_assignees ?? [])
