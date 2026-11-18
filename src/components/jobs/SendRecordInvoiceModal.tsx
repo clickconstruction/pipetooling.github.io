@@ -143,6 +143,7 @@ import { invoiceDescriptionsNeedLowercaseLeadingHint } from '../../lib/invoiceLi
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { SendRecordInvoicePayload } from './SendRecordInvoiceModal.types'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { BillCustomerEditDatesDialog } from './BillCustomerEditDatesDialog'
 import { BillCustomerMadeEmailLine } from './BillCustomerMadeEmailLine'
 import { BillCustomerMemoPresetRow } from './BillCustomerMemoPresetRow'
 import { BillCustomerPhysicalModifications } from './BillCustomerPhysicalModifications'
@@ -150,7 +151,7 @@ import { BillCustomerPressBox } from './BillCustomerPressBox'
 import { BillCustomerSendTo } from './BillCustomerSendTo'
 import { BillCustomerStripeModifications } from './BillCustomerStripeModifications'
 import {
-  BILL_CUSTOMER_CONTROL_STYLE,
+  BILL_CUSTOMER_DATE_INPUT_STYLE,
   BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
   BILL_CUSTOMER_FIELD_LABEL_STYLE,
   BILL_CUSTOMER_PHYSICAL_DATE_LINK_BUTTON_STYLE,
@@ -2191,11 +2192,6 @@ export default function SendRecordInvoiceModal({
     }
   }
 
-  const billDateInputStyle: CSSProperties = {
-    ...BILL_CUSTOMER_CONTROL_STYLE,
-    colorScheme: 'light',
-  }
-
   /** "Preview the email…" (v2.1037): opens exactly what the customer receives —
    * envelope + body from the sender's own helpers + the notice inlined. */
   function openHazmatNoticeEmailPreview() {
@@ -2614,7 +2610,7 @@ export default function SendRecordInvoiceModal({
             </p>
             <div style={{ marginBottom: '0.75rem' }}>
               <label style={BILL_CUSTOMER_FIELD_LABEL_STYLE}>Date</label>
-              <input type="date" value={sentDate} onChange={(e) => setSentDate(e.target.value)} style={billDateInputStyle} />
+              <input type="date" value={sentDate} onChange={(e) => setSentDate(e.target.value)} style={BILL_CUSTOMER_DATE_INPUT_STYLE} />
             </div>
             <button
               type="button"
@@ -3301,94 +3297,17 @@ export default function SendRecordInvoiceModal({
       </div>
     </div>
     {editDueDateOpen ? (
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.45)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: overlayZIndex + 20,
-          padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
-        }}
-        role="presentation"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setEditDueDateOpen(false)
-        }}
-      >
-        <div
-          role="dialog"
-          aria-labelledby="edit-bill-customer-dates-title"
-          style={{
-            background: 'var(--surface)',
-            padding: '1.25rem',
-            borderRadius: 8,
-            minWidth: 280,
-            maxWidth: 400,
-            boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <h2 id="edit-bill-customer-dates-title" style={{ margin: '0 0 0.75rem', fontSize: '1.1rem', fontWeight: 600 }}>
-            {tab === 'physical' ? 'Edit dates' : 'Edit Due Date'}
-          </h2>
-          {tab === 'physical' ? (
-            <>
-              <label htmlFor="bill-customer-edit-service-date" style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, display: 'block' }}>
-                Service date
-              </label>
-              <input
-                id="bill-customer-edit-service-date"
-                type="date"
-                value={draftServiceYmd}
-                onChange={(e) => setDraftServiceYmd(e.target.value)}
-                style={{ ...billDateInputStyle, marginBottom: '1rem' }}
-              />
-            </>
-          ) : null}
-          <label htmlFor="bill-customer-edit-due-date" style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, display: 'block' }}>
-            Due date
-          </label>
-          <input
-            id="bill-customer-edit-due-date"
-            type="date"
-            value={draftDueYmd}
-            onChange={(e) => setDraftDueYmd(e.target.value)}
-            style={{ ...billDateInputStyle, marginBottom: '1rem' }}
-          />
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-            <button
-              type="button"
-              onClick={() => setEditDueDateOpen(false)}
-              style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (tab === 'physical') {
-                  setSentDate(draftServiceYmd.trim())
-                }
-                setStripeDueDate(draftDueYmd.trim())
-                setEditDueDateOpen(false)
-              }}
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#2563eb',
-                color: 'white',
-                border: 'none',
-                borderRadius: 4,
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
+      <BillCustomerEditDatesDialog
+        tab={tab}
+        overlayZIndex={overlayZIndex}
+        draftServiceYmd={draftServiceYmd}
+        setDraftServiceYmd={setDraftServiceYmd}
+        draftDueYmd={draftDueYmd}
+        setDraftDueYmd={setDraftDueYmd}
+        setEditDueDateOpen={setEditDueDateOpen}
+        setSentDate={setSentDate}
+        setStripeDueDate={setStripeDueDate}
+      />
     ) : null}
     <BillCustomerPreviewLineEditModal
       open={lineEditSession != null}

@@ -23,6 +23,12 @@ export const BILL_CUSTOMER_CONTROL_STYLE: CSSProperties = {
   background: 'var(--surface)',
 }
 
+/** A date box: the control, kept light so the browser's own date picker reads in dark mode. */
+export const BILL_CUSTOMER_DATE_INPUT_STYLE: CSSProperties = {
+  ...BILL_CUSTOMER_CONTROL_STYLE,
+  colorScheme: 'light',
+}
+
 export const BILL_CUSTOMER_TEXTAREA_STYLE: CSSProperties = {
   ...BILL_CUSTOMER_CONTROL_STYLE,
   resize: 'vertical',
