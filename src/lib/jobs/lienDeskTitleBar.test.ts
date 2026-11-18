@@ -1,15 +1,45 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { LIEN_DESK_NAME, LIEN_DESK_PILE_LINE_PARTS, LIEN_DESK_TITLE_LINE_PARTS, lienDeskFirstTab, lienDeskPileLineFit, lienDeskPileLineNeeds, lienDeskTitleBarLayout, lienDeskTitleLineFit, lienDeskTitleLineNeeds, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineParts, type LienDeskTitleLineParts } from './lienDeskTitleBar'
+import { LIEN_DESK_NAME, LIEN_DESK_PILE_LINE_PARTS, LIEN_DESK_TITLE_LINE_PARTS, LIEN_DESK_VIEW_NAMES, lienDeskFirstTab, lienDeskPileLineFit, lienDeskPileLineNeeds, lienDeskTitleBarLayout, lienDeskTitleLineFit, lienDeskTitleLineNeeds, lienDeskViewTab, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineParts, type LienDeskTitleLineParts } from './lienDeskTitleBar'
 
 /**
- * The office's line with the title in the first tab (v2.7465): the views with a two-figure count (372 px, measured
- * 2026-11-16 as *⏱ Lien desk · 32 to do*) and the four presses. In a window: chrome counts. The run's door was a part
- * too, 270 px that day, until v2.7490, and the owner-records door, 199 px, until v2.7780.
+ * The office's line with the title in the first tab (v2.7465): the views with a two-figure count (305 px, measured
+ * 2026-11-18 as *⏱ Lien desk · 35 to do*, *Date*, *Paper*, *Job*; 372 as *By date*, *By paper*, *By job* until v2.7784)
+ * and the four presses. In a window: chrome counts. The run's door was a part too, 270 px that day, until v2.7490, and
+ * the owner-records door, 199 px, until v2.7780.
  */
-const today: LienDeskTitleLineParts = { ...LIEN_DESK_TITLE_LINE_PARTS, views: 372 }
+const today: LienDeskTitleLineParts = { ...LIEN_DESK_TITLE_LINE_PARTS, views: 305 }
+/** The views as v2.7465 drew them with a two-figure count: the title in the first tab, and *By date*, *By paper*, *By job* at 10 px of side padding. */
+const viewsWithTheBys = 372
 /** The same stretch of the line as it was until v2.7465: the title (100) with its gap (14.4), and the views as *To do · 21* (278). */
 const beforeTheTitleWasTheTab = 100 + 14.4 + 278
+
+describe('the three views after the title (v2.7784, the owner’s pick: Date, Paper, Job)', () => {
+  it('on a computer each tab reads one word, and keeps the view’s name as its accessible name and the start of its hint', () => {
+    expect((['calendar', 'paper', 'timeline'] as const).map((v) => lienDeskViewTab(v, { isMobile: false }).words)).toEqual(['Date', 'Paper', 'Job'])
+    expect((['calendar', 'paper', 'timeline'] as const).map((v) => lienDeskViewTab(v, { isMobile: false }).name)).toEqual(['By date', 'By paper', 'By job'])
+    for (const v of ['calendar', 'paper', 'timeline'] as const) {
+      const tab = lienDeskViewTab(v, { isMobile: false })
+      expect(tab.name).toBe(LIEN_DESK_VIEW_NAMES[v])
+      expect(tab.hint.startsWith(`${tab.name}: `)).toBe(true)
+      // The name holds the words on the tab, so a spoken *Paper* finds the tab named *By paper*.
+      expect(tab.name.toLowerCase()).toContain(tab.words.toLowerCase())
+    }
+  })
+
+  it('a phone’s tabs read the names whole', () => {
+    for (const v of ['calendar', 'paper', 'timeline'] as const) {
+      const tab = lienDeskViewTab(v, { isMobile: true })
+      expect(tab.words).toBe(LIEN_DESK_VIEW_NAMES[v])
+      expect(tab.name).toBe(tab.words)
+    }
+  })
+
+  it('the short words and the tighter padding took 67 px off the views: 372 to 305 with a two-figure count, 383 to 316 at the longest', () => {
+    expect(viewsWithTheBys - today.views).toBe(67)
+    expect(LIEN_DESK_TITLE_LINE_PARTS.views).toBe(316)
+  })
+})
 
 describe('the first tab’s words (v2.7465, the owner’s pick: the title is the tab)', () => {
   it('on a computer the tab carries the page’s name and the count, and is the title', () => {
@@ -38,38 +68,41 @@ describe('the first tab’s words (v2.7465, the owner’s pick: the title is the
 })
 
 describe('whether the title line holds the tools (v2.7277; no title part since v2.7465, without the run\'s door since v2.7490 and the owner-records door since v2.7780)', () => {
-  it('a 900 px window holds the four presses at the end of the title line, and an 800 one does not', () => {
+  it('a 900 px window holds the four presses at the end of the title line, and a 750 one does not', () => {
     // With the owner-records door a tool too, a 900 px window held the presses with the door under them, on a second line.
     expect(lienDeskTitleLineFit(1300, today)).toBe('all')
     expect(lienDeskTitleLineFit(900, today)).toBe('all')
-    expect(lienDeskTitleLineFit(800, today)).toBe('none')
+    // 800 did not until v2.7784, when the views read *By date*, *By paper* and *By job*.
+    expect(lienDeskTitleLineFit(800, today)).toBe('all')
+    expect(lienDeskTitleLineFit(800, { ...today, views: viewsWithTheBys })).toBe('none')
+    expect(lienDeskTitleLineFit(750, today)).toBe('none')
   })
 
-  it('the line is the parts, a gap between each pair and the chrome: 817.8 px today', () => {
-    expect(lienDeskTitleLineNeeds({ ...today, tools: today.presses })).toBeCloseTo(817.8, 1)
-    expect(lienDeskTitleLineFit(818, today)).toBe('all')
-    expect(lienDeskTitleLineFit(817, today)).toBe('none')
+  it('the line is the parts, a gap between each pair and the chrome: 750.8 px today', () => {
+    expect(lienDeskTitleLineNeeds({ ...today, tools: today.presses })).toBeCloseTo(750.8, 1)
+    expect(lienDeskTitleLineFit(751, today)).toBe('all')
+    expect(lienDeskTitleLineFit(750, today)).toBe('none')
   })
 
   it('the title in the first tab made the line 20 px shorter with a two-figure count: the title and its gap went (114.4) and the views grew by 94', () => {
-    expect(beforeTheTitleWasTheTab - today.views).toBeCloseTo(20.4, 1)
+    expect(beforeTheTitleWasTheTab - viewsWithTheBys).toBeCloseTo(20.4, 1)
     // So the presses come up to the title line in a window 20 px narrower: 839 px with the title on the line, 818 with it in the first tab.
     expect(lienDeskTitleLineFit(825, today)).toBe('all')
   })
 
-  it('the longest line the desk can draw needs 829 px: 209 less than with the owner-records door on it', () => {
-    expect(lienDeskTitleLineNeeds(LIEN_DESK_TITLE_LINE_PARTS)).toBeCloseTo(828.8, 1)
-    expect(lienDeskTitleLineFit(829, LIEN_DESK_TITLE_LINE_PARTS)).toBe('all')
-    expect(lienDeskTitleLineFit(828, LIEN_DESK_TITLE_LINE_PARTS)).toBe('none')
-    // The owner's 1,290 px window holds them with 461 px to spare.
+  it('the longest line the desk can draw needs 762 px: 829 with the three By’s, and 1,038 with the owner-records door on it too', () => {
+    expect(lienDeskTitleLineNeeds(LIEN_DESK_TITLE_LINE_PARTS)).toBeCloseTo(761.8, 1)
+    expect(lienDeskTitleLineFit(762, LIEN_DESK_TITLE_LINE_PARTS)).toBe('all')
+    expect(lienDeskTitleLineFit(761, LIEN_DESK_TITLE_LINE_PARTS)).toBe('none')
+    // The owner's 1,290 px window holds them with 528 px to spare.
     expect(lienDeskTitleLineFit(1290, LIEN_DESK_TITLE_LINE_PARTS)).toBe('all')
   })
 
   it('a line with narrower presses needs less, and the needs are the parts with a gap between each pair', () => {
     const leader = { ...today, presses: 189 }
-    // 98 + 372 + 189, two gaps, the chrome.
-    expect(lienDeskTitleLineFit(776, leader)).toBe('all')
-    expect(lienDeskTitleLineFit(775, leader)).toBe('none')
+    // 98 + 305 + 189, two gaps, the chrome.
+    expect(lienDeskTitleLineFit(709, leader)).toBe('all')
+    expect(lienDeskTitleLineFit(708, leader)).toBe('none')
     // Three parts, two gaps.
     expect(lienDeskTitleLineNeeds({ back: 90, views: 251, tools: 200, gap: 10, chrome: 88 })).toBe(90 + 251 + 200 + 20 + 88)
   })
@@ -134,27 +167,28 @@ describe('which shape the pile line takes (v2.7311)', () => {
   /** By paper's Lien affidavits in a window too narrow for the presses on the title line: the three papers with their counts, the three piles, and the four presses in the span. */
   const affidavits: LienDeskPileLineParts = { papers: LIEN_DESK_PILE_LINE_PARTS.papers, piles: LIEN_DESK_PILE_LINE_PARTS.piles, right: LIEN_DESK_PILE_LINE_PARTS.presses, gap: LIEN_DESK_PILE_LINE_PARTS.gap }
 
-  it('the line is its parts and a gap between each pair: 1,109.8 px for Lien affidavits with the presses, so a 1,352 px bar (a 1,400 px window) holds it on one line and a 720 px one (the 768 px tablet) puts the span under the piles', () => {
-    expect(lienDeskPileLineNeeds(affidavits)).toBeCloseTo(1109.8, 1)
+  it('the line is its parts and a gap between each pair: 1,097.8 px for Lien affidavits with the presses, so a 1,352 px bar (a 1,400 px window) holds it on one line and a 720 px one (the 768 px tablet) puts the span under the piles', () => {
+    expect(lienDeskPileLineNeeds(affidavits)).toBeCloseTo(1097.8, 1)
     expect(lienDeskPileLineFit(1352, affidavits)).toBe('one_line')
-    expect(lienDeskPileLineFit(1110, affidavits)).toBe('one_line')
-    expect(lienDeskPileLineFit(1109, affidavits)).toBe('right_below')
+    expect(lienDeskPileLineFit(1098, affidavits)).toBe('one_line')
+    expect(lienDeskPileLineFit(1097, affidavits)).toBe('right_below')
     expect(lienDeskPileLineFit(720, affidavits)).toBe('right_below')
   })
 
   it('a part that is not there counts no gap: Monthly notices has no piles, and a line with the tools up on the title line has no span off Monthly notices', () => {
     const notices = { ...affidavits, piles: 0, right: LIEN_DESK_PILE_LINE_PARTS.gcDoor }
-    expect(lienDeskPileLineNeeds(notices)).toBeCloseTo(423 + 14.4 + 166, 1)
-    expect(lienDeskPileLineNeeds({ ...affidavits, right: 0 })).toBeCloseTo(423 + 14.4 + 427, 1)
+    expect(lienDeskPileLineNeeds(notices)).toBeCloseTo(411 + 14.4 + 166, 1)
+    expect(lienDeskPileLineNeeds({ ...affidavits, right: 0 })).toBeCloseTo(411 + 14.4 + 427, 1)
     expect(lienDeskPileLineFit(865, { ...affidavits, right: 0 })).toBe('one_line')
   })
 
-  it('the fullest line — Monthly notices with the GC door and the four presses in the span — needs 844 px, which is why a 768 px tablet puts the span under the papers', () => {
+  it('the fullest line — Monthly notices with the GC door and the four presses in the span — needs 832 px, which is why a 768 px tablet puts the span under the papers', () => {
     const { papers, right, gap, gcDoor, rightGap, presses } = LIEN_DESK_PILE_LINE_PARTS
     expect(right).toBeCloseTo(gcDoor + rightGap + presses, 1)
-    expect(lienDeskPileLineNeeds({ papers, piles: 0, right, gap })).toBeCloseTo(844, 1)
+    expect(lienDeskPileLineNeeds({ papers, piles: 0, right, gap })).toBeCloseTo(832, 1)
     expect(lienDeskPileLineFit(720, { papers, piles: 0, right, gap })).toBe('right_below')
-    expect(lienDeskPileLineFit(844, { papers, piles: 0, right, gap })).toBe('one_line')
+    expect(lienDeskPileLineFit(832, { papers, piles: 0, right, gap })).toBe('one_line')
+    expect(lienDeskPileLineFit(831, { papers, piles: 0, right, gap })).toBe('right_below')
   })
 })
 

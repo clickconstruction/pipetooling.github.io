@@ -1,6 +1,6 @@
 import type { CSSProperties, RefObject } from 'react'
 import { LIEN_PHONE_TAB as PHONE_TAB } from '../../lib/jobs/lienPhoneLists'
-import { LIEN_DESK_HINT, type LienDeskFirstTab } from '../../lib/jobs/lienDeskTitleBar'
+import { LIEN_DESK_HINT, lienDeskViewTab, type LienDeskFirstTab } from '../../lib/jobs/lienDeskTitleBar'
 import { LIEN_FILL as FILL } from './lienDeskButtonStyles'
 
 /** The desk's six views; By paper stands for the three papers' lists. */
@@ -9,7 +9,8 @@ export type LienDeskKind = 'next' | 'notice' | 'affidavit' | 'retainage' | 'time
 /**
  * The Lien desk's four view tabs: To do, By date, By paper, By job (punch list #82; its own file since v2.7586, out of
  * `LienDesk.tsx` as it stood). On a computer the first tab carries the page's name and the count (v2.7465) and its
- * press is the title's. The row scrolls sideways on a phone; the desk keeps the scroller (`useScrollEdgeFade`) so
+ * press is the title's; the other three read *Date*, *Paper* and *Job* there and keep their names for a screen reader
+ * (v2.7784, `lienDeskViewTab`). The row scrolls sideways on a phone; the desk keeps the scroller (`useScrollEdgeFade`) so
  * it can bring the picked tab into view.
  */
 export function LienDeskViewTabs({ kindTabs, isMobile, kind, paperShown, firstTab, onTitle, onPick }: { kindTabs: { ref: RefObject<HTMLDivElement>; onScroll: () => void; style: CSSProperties }; isMobile: boolean; kind: LienDeskKind; paperShown: boolean; firstTab: LienDeskFirstTab; /** The title's press: To do, with the Board brought into view. */ onTitle: () => void; onPick: (view: 'next' | 'calendar' | 'paper' | 'timeline') => void }) {
@@ -25,9 +26,11 @@ export function LienDeskViewTabs({ kindTabs, isMobile, kind, paperShown, firstTa
             </button>
           )
         }
+        // The three views after the title (v2.7784): *Date*, *Paper* and *Job* on a computer, each named *By date*, *By paper* and *By job* to a screen reader and in its hover hint (`lienDeskViewTab`). A phone reads the names whole.
+        const tab = v === 'next' ? null : lienDeskViewTab(v, { isMobile })
         return (
-          <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} onClick={() => onPick(v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: isMobile ? '0.875rem' : '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={v === 'paper' ? 'Every monthly notice, lien affidavit and retainage notice by its state' : v === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
-            {v === 'next' ? firstTab.words : v === 'calendar' ? 'By date' : v === 'paper' ? 'By paper' : 'By job'}
+          <button key={v} type="button" role="tab" aria-selected={on} aria-label={tab && tab.name !== tab.words ? tab.name : undefined} data-lien-desk-view={v} onClick={() => onPick(v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: isMobile ? '0.875rem' : '0.78rem', fontWeight: 600, cursor: 'pointer', ...(isMobile ? PHONE_TAB : null) }} title={tab && !isMobile ? tab.hint : undefined}>
+            {tab ? tab.words : firstTab.words}
           </button>
         )
       })}
