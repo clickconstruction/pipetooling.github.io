@@ -5897,7 +5897,7 @@ Since v2.7447 the last day of work may be set to any past day, also one earlier 
 the confirm window names the months that leave the lien clock and asks a second look, **Set the day anyway**, for a day far from the hours.
 Since v2.7516 the § 53.056 tab says when the Lien desk already holds the job's approved or printed notice, with **Open it on the Lien desk ›** (`lienWindowPrintNote.ts`), since a print from the tab is a new copy with no signature.
 Since v2.7558 that tab prints a set per envelope, each behind the run's divider (*Print 2 envelopes*, with *Reprint envelope 2 ›* under it, `lienNoticeOneOff.ts`), and since v2.7557 its **Save & record sends…** takes a photo of each paper copy's certified receipt and reads the mail number off it (`LienReceiptPhotoPress`).
-A filed affidavit (punch list #366): **Upload the scanned PDF** beside the photo press on *Record filing…* and on a recorded filing's row saves the clerk's stamped copy into the job's Drive folder (v2.7480, `LienFiledScanPress.tsx`), and **Print the copies to mail** beside *Record service…* prints the cover letter and a COPY page for each reader § 53.055 names, held until the filing has its recording number (v2.7472, `lienServedCopy.ts`);
+A filed affidavit (punch list #366): **Upload the scanned PDF** beside the photo press on *Record filing…* and on a recorded filing's row saves the clerk's stamped copy into the job's Drive folder (v2.7480, `LienFiledScanPress.tsx`), and **Print the copies to mail** beside *Enter mail numbers…* prints the cover letter and a COPY page for each reader § 53.055 names, held until the filing has its recording number (v2.7472, `lienServedCopy.ts`);
 every filed lien at once is the Lien desk's *Filed liens: copies to mail* window (see **The Board**).
 
 ### Lien desk
@@ -6159,6 +6159,7 @@ The press closes the stop's window and opens the place where that is entered, fo
 **Print the copies to mail** and **Enter mail numbers** are the two names of one step, a filed lien's copies under § 53.055, by the stage the copies are at (`lienServeStage.ts`, v2.7798).
 Every door on the desk to that step reads its stage's name and lands on that half: the Board's *Filed · copies to mail* press, the To do row, the band on the job's path, the affidavit pane's footer and the stop window's card.
 A lien's copies count as printed once a print of them is filed on its job, or once a mail number or a receipt is on its filing, and a lien the app did not draw reads **Enter mail numbers** from the start.
+Since v2.7816 the Lien window's own form for the second half reads the same: its opener is **Enter mail numbers…** (*Record service…* before), its day is *Mailed on*, and its save is **Record the mailing**, then **Save the mail receipts** once the day is on record (`LIEN_SERVE_FORM_WORDS`).
 The names retired from those doors are *Mail the copies*, *Mail N liens' copies ›*, *Mail this copy ›*, *Record the service ›* and *Record service ›*, none of which said whether it opened the print or the record.
 **Landed here** is the light on that place (`landOn.ts`, `[data-landed]`): it is scrolled into view, tinted and ringed for a second and a half, then fades, and under reduced motion a steady outline stands instead.
 Since v2.7695 the row reads as four numbered steps, Printed, Signed, In the envelope and Mailed: the file that goes in the envelope has a step of its own, and each envelope's number has **Add the receipt** under it.
@@ -6214,7 +6215,7 @@ The title bar's door to the run left every view on a computer in v2.7490, so By 
 a phone keeps the run as the first row of **More**.
 **Filed liens: copies to mail** (v2.7476, punch list #366, `LienServeWindow.tsx`): the window behind *Mail N liens' copies ›* on the Filed · copies to mail bin and its To do rows.
 Its top half prints every filed lien's cover letter and copies by serve-by day and lists what it holds with the reason;
-its bottom half takes the day mailed and, for each envelope, the certified mail number and a receipt photo, written as *Record service…* writes them.
+its bottom half takes the day mailed and, for each envelope, the certified mail number and a receipt photo, written as the Lien window's *Enter mail numbers…* form writes them.
 Its third part, **Add the stamped scans** (v2.7524, `LienScanBatchWindow.tsx`, also `/lien-desk?scans=1`), takes the clerk's stamped scans for every filed lien with no saved copy, one file a lien matched by recording number or job number;
 since v2.7528 a PDF of a whole stack is split in the browser into one PDF a lien, a page at a time (*It holds several liens: split it ›*, `lienScanStack.ts`).
 Since v2.7372 a computer's row is two lines: the job, what it owes and its press, then its bin in the Board's words (the door to the step card the four dots opened), the one thing to know and, on an affidavit, where its notice stands (`lienRowWords.ts`);
