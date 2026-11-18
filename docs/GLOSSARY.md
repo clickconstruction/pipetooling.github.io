@@ -4793,6 +4793,7 @@ Who opens them: the contact with **`supply_house_contacts.role = 'job_accounts'`
 The office marks accounts opened from the house's **Job accounts** roster (Supply houses → Accounts payable → expanded house) or the Dispatch errand's card;
 the field reads the **Job accounts strip** (v2.3424 — `list_job_account_strip`, [`JobAccountsStrip`](../src/components/jobs/JobAccountsStrip.tsx)) on every job card and asks with one tap (`dispatch_requests.pending_action = 'open_job_account'`), and since v2.7345 the office changes a not-needed answer from that chip's sheet (**Change this…** opens Mark opened, **Take the mark off** deletes the row), where a row carrying the old canned note reads *Marked not needed when the job was made.
 No reason was given.*;
+on My Schedule's cards the chips fold to one press, *none yet at 3 houses*, while two or more houses all read none yet (v2.7753, punch list #384, `foldNone` over `stripFoldsToOneLine`), and a press opens them;
 the question that opens when a hand-made job saves (`JobAccountsAfterCreatePrompt`) asks why before **None needed…** marks every unanswered house, one of three one-tap reasons or the office's own words kept as each row's `note` (`lib/jobs/jobAccountsNewJob.ts`);
 the PO code and the invoice default follow (train PRs 3–5).
 Distinct from the **Held for suppliers (Materials tab)** money lens (named *Job Accounts* until v2.3641) and from the **`on_job_account`** invoice flag (v2.2669), which classifies whose exposure an unpaid invoice is.
@@ -7197,6 +7198,7 @@ A company truck with no insurance, registration, service or replacement value on
   what the walks added v2.6347, PR 1b) — a check added for one job's stage by whoever authors on the job (the office, the superintendent on their own job, the estimator on a job they priced, `canAuthorOnJob` over `stage_checklist_may_author`): a `stage_checklist_templates` row with `job_id` and `fixture_id` that the sheet groups under *Added for this job* with who added it, when and why, that counts toward ready like a company question on the sheet, the strip, the Documents tab and the Pipeline's mark, and that the adder or the office takes off (retired, its answer kept) (`stageChecklistItems.ts`;
   the sheet's *+ Add a check for Trim Set*, whose box stays open for the next one until *Done adding*;
   the strip lists a stage with no question yet for a superintendent or an estimator who authors on the job;
+  on Job Mode's card the strip draws nothing while no listed stage has a question to answer (v2.7753, punch list #384, `hideWhileEmpty` over `stripHiddenWhileEmpty`), and the job window still lists it;
   the guide *add a check to a job's stage checklist*).
   A check can name a **plan sheet**, drawn as a chip that opens the job's Plans folder (`PlanSheetChip`), and go up or down among the job's own checks with ▲ and ▼ (`reorder_stage_checklist_items`).
   **Skip on this job** leaves a company question off one job's stage with a reason (`stage_checklist_skips`;

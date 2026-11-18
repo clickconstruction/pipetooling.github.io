@@ -11,7 +11,7 @@ A blue {{chip:blue|N new}} badge on the **Recent Reports** header counts what yo
 
 ## The three states
 
-- **New** shows a blue dot and a bold job name. You haven't opened it.
+- **New** shows a blue dot and a bold job name. You haven't opened it. A report you wrote yourself is never new to you. Your own report waits with the opened ones.
 - **Opened** means you tapped a report to expand it. The answers show right in place, with {{button:outline|Job detail}} and {{button:outline|Map}} buttons. The report's photos show under the answers. A folded row with photos carries a badge like 📷 2. When you collapse it, it stays in the list, dimmed with a green ✓. Nothing disappears until you say so.
 - **Done** means you tapped {{button:outline-blue|✓ Done}} on an expanded report. That clears it from the dashboard on all your devices. It's not deleted. **View all →** still shows every report ever filed.
 

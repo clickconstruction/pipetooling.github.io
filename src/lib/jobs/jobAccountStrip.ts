@@ -116,6 +116,20 @@ export function stripHasOpen(entries: JobAccountStripEntry[]): boolean {
 }
 
 /** Houses the field may still ask about: expecting houses with no account, and requested ones (to add a house to the ask). */
+/**
+ * True when a schedule card folds the strip to one line (punch list #384): two or more houses, and every one reads
+ * none yet. A card with three dashed chips said the same thing three times, on every stop of the day. One house is
+ * one chip already, and a house that is open, asked or not needed keeps every chip on the card.
+ */
+export function stripFoldsToOneLine(entries: ReadonlyArray<Pick<JobAccountStripEntry, 'state'>>): boolean {
+  return entries.length >= 2 && entries.every((e) => e.state === 'none')
+}
+
+/** The folded line's words: how many houses have no job account yet. A press opens the chips. */
+export function stripFoldedWords(houses: number): string {
+  return `none yet at ${houses} houses`
+}
+
 export function askableEntries(entries: JobAccountStripEntry[]): JobAccountStripEntry[] {
   return entries.filter((e) => e.state === 'none' || e.state === 'requested')
 }
