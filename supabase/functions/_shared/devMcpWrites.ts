@@ -244,8 +244,8 @@ export const WRITE_VERBS = {
   // filing or a visit's worth and hashes each on its own; an apply takes one.
   plan_lien_filing: { rpc: null, step: 'plan' },
   apply_lien_filing: { rpc: null, step: 'apply' },
-  // The copies of a filed lien affidavit recorded as mailed, as the Lien window's Record service… and the desk's Mail
-  // the copies window record them: served_at and sends on the filing's own row, through the form's kernel; rpc is null,
+  // The copies of a filed lien affidavit recorded as mailed, as the Lien window's Enter mail numbers… form and the desk's
+  // copies window record them: served_at and sends on the filing's own row, through the form's kernel; rpc is null,
   // the dry run the server's read of the job and its filed affidavit (devMcpLienService.ts). One or several a plan,
   // each hashed on its own; one an apply.
   plan_lien_service: { rpc: null, step: 'plan' },

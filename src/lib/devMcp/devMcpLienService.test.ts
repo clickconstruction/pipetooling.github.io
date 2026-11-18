@@ -1,7 +1,7 @@
 /**
  * The dev seat's served copies and its read of the filed liens, the pure half: plan_lien_service → apply_lien_service
  * and read_lien_filings. The kernel runs here against plain fixtures; the pins hold it to the Lien window's own
- * Record service… and the copies window's batch.
+ * Enter mail numbers… and the copies window's batch.
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
@@ -185,7 +185,7 @@ describe('lienServiceDryRun', () => {
     const reply = dry.reply as Record<string, never>
     expect(reply.writes).toEqual({ filing: FILING, served_at: '2026-11-18', sends })
     expect(reply.copies).toBe('two: the owner and the original contractor')
-    expect(String(reply.says)).toBe('JP2291: Service recorded with its mail receipts. The serve-by watch is cleared.')
+    expect(String(reply.says)).toBe('JP2291: Mailing recorded with its mail receipts. The serve-by watch is cleared.')
     expect(reply).not.toHaveProperty('late')
   })
 
