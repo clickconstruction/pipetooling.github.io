@@ -1,18 +1,19 @@
 ---
-name: "Lien desk To do: fold the Public jobs box, and put the records door on the tools row"
+name: "Lien desk To do: fold the Public jobs box (the records door is built another way)"
 number: 390
 group: ready
-status: drawn 2026-11-17 in #383's option B · saved as a card the same day · the two choices of part 2 drawn for the owner · he picked choice 1, the door on the title line on every view · nothing built
+status: drawn 2026-11-17 in #383's option B · saved as a card the same day · part 2 replaced 2026-11-18 by the owner's new ask and built as v2.7780, the records door a row of the call window · part 1, the fold, not built
 summary: >
   The last two parts of the drawing the owner picked for the Lien desk's To do page (#383, option B). The
   Public jobs box under the lien affidavits is as tall as its rows, 244 px with two jobs, and the drawing
-  folds it to one line with a press that opens it. The press An owner asked for records sits alone on a
-  second line of the title bar, and the drawing puts it on the tools row beside § Rules where the line has
-  room. The rest of option B is built in PR #8628.
-next: Build after PR #8628 merges. Part 1 first, the fold. Then part 2, the door on the title line on every view, as the owner picked.
-size: S (two small PRs, or one)
-blocker: PR #8628 on main first, since both parts touch the desk it changes.
-opinion: build — part 1 gives back about 200 px under the chart, and part 2 a whole line over it
+  folds it to one line with a press that opens it. The press An owner asked for records sat alone on a
+  second line of the title bar, and the drawing put it on the tools row beside § Rules. The owner then
+  asked for it inside the call press, and v2.7780 built that, so only the fold is left here. The rest of
+  option B is built in PR #8628.
+next: Build part 1, the fold. Part 2 needs nothing more.
+size: S (one small PR)
+blocker: none. PR #8628 merged 2026-11-18.
+opinion: build — part 1 gives back about 200 px under the chart
 ver: v2.7277 · v2.7311 · v2.7443 · v2.7490 · v2.7526
 ---
 
@@ -82,6 +83,14 @@ opens the box as it is today, and **Hide ▴** folds it again.
   `take-a-job-off-the-lien-path`
 
 ## Part 2 · An owner asked for records joins the tools row
+
+**Replaced 2026-11-18, and built another way. Build nothing from this part.** On the live desk the owner
+asked for something else: *"I think an owner asked for his records is so infrequent that we can combine
+these two buttons where 'an owner asked for his records' can sit inside the first press of the call
+button."* Two shapes were drawn and he picked the row: *"Build A"*. v2.7780 made the door the last row of
+the window ☎ opens. The title bar has no door, so off By paper it is one line, and its longest line needs
+829 px of window where choice 1 below needed 1,038. What follows is the record of what was drawn and
+picked before that.
 
 ### Today
 

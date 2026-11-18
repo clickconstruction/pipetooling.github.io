@@ -9,6 +9,10 @@
 import { CALL_OPENINGS, EMPTY_CALL_STATE, callCard, callJump, type CallFmt, type CallLetterFacts, type CallOpening } from './lienOwnerCallScript'
 
 export const CALL_SCRIPT_TITLE = 'An owner is calling'
+/** The window's last row (v2.7780): the owner wants our records for their property, by phone or in writing. Its press is the records window's one door on a computer. */
+export const CALL_SCRIPT_RECORDS_ASK = 'Asking what we billed and what was paid?'
+/** The door's own name, the one it had on the title bar and still has in a phone's More (`lienDeskMoreRows`). */
+export const CALL_SCRIPT_RECORDS_DOOR = 'An owner asked for records'
 export const CALL_SCRIPT_NO_JOB_WORDS = 'Pick the job on the desk and the facts fill in: the amount, the months, the day it mailed, the codes.'
 export const CALL_SCRIPT_NO_LETTER_WORDS = 'Nothing has been mailed on this job yet, so the caller is not holding a notice from us about it.'
 
