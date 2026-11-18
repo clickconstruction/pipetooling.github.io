@@ -1563,6 +1563,26 @@ Display-only — RLS and role permissions are unchanged.
 
 **See also** — **`RECENT_FEATURES.md`** **v2.1837**, fragment `v2.7050`, help guide `task-mode.md` (its old address `farm-mode` still opens it, `helpGuideFormerSlugs.ts`).
 
+### Tell the dev and Fix Mode (app-wide)
+**Tell the dev** is the wrench: a note to the dev from the page a person is on, with the page and its state (punch list #380).
+It is the guides' feedback box moved to every page: the same `help_feedback` table, the same row security and the same inbox.
+At a desk the wrench floats bottom left;
+on a phone it sits in the header beside Search, because Job Mode's bars own the bottom of a phone and toasts the top right.
+The box opens three **starts**, *I want…*, *This page is confusing because…* and *Something went wrong when I…*;
+the start is the note's `kind` (`want`, `confusing`, `broken`), and the last two may be sent with no words.
+**Goes with your note** lists everything a note carries before the press: the page, the open window, the role, the screen, the modes on, the version, the last error line shown and the calls the server refused.
+A note never carries a picture of the screen.
+A lost signal is never part of a note: the outbox keeps that press, so the no-connection line and a call with no answer are left out (`isLostSignalLine`).
+**Fix Mode** is the gear menu's switch for the wrench, per person per device, on until switched off (`fixMode.ts`, `useFixMode`);
+the phone dock's More sheet lists it with the other modes.
+**Notes to the dev** is the inbox, called Help feedback until v2.7658: the Dashboard's Teams inbox card and the Checklist's review, for the owner or a dev.
+Each note there shows its kind, page and state, with **Open that page** and **Copy as a brief** (`noteBrief`: the note by role, never by name).
+Opens and sends are counted in `ui_nav_clicks` as `tell_the_dev_open` (target the door) and `tell_the_dev_sent` (target the kind).
+Kernels in **[`src/lib/tellTheDev/`](../src/lib/tellTheDev/)**;
+the wrench and its box in **[`TellTheDevRoot.tsx`](../src/components/tellTheDev/TellTheDevRoot.tsx)**.
+
+**See also** — fragments `v2.7650` and `v2.7658`, help guide `tell-the-dev-about-a-page.md`, `to-dos/tell-the-dev/`.
+
 ### User Review modal
 A global, full-screen modal (**[`UserReviewModal`](../src/components/UserReviewModal.tsx)** + **[`UserReviewModalContext`](../src/contexts/UserReviewModalContext.tsx)**) opened by clicking a person's **name** on the Dashboard's **`DashboardTeamActiveClockStrip`** (the "Currently In" / "Clocked in today" strip).
 It pairs a read-only **schedule view** with an optional **Mercury transaction summary** for the same date window, all keyed to one subject user.
@@ -3624,6 +3644,22 @@ Since v2.6558 two chip rows above the Scoreboard cut it by job, part of the site
  **Ask a question** (v2.6047): the page writes the lane's own request (`estimator_requests` / `dispatch_requests`) with one reference, the site (`development_id`) or a piece;
  the inbox's reference line opens the page;
  the office team reads every request that carries a reference.
+
+**Trip** (punch list #379;
+the rules v2.7653, the tables v2.7655, the Trips look v2.7661): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
+A trip is people, and for each person their days, and each day is one of three kinds: **Getting ready**, **On the road** or **At the site**.
+A day off in the middle is a day that is not there.
+Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
+A trip may also say what it was for, who asked for it (us or them), how it went, the jobs its work goes on and its billing (**Inside the price**, **Extra**, **Ours**), and all of that can wait.
+A trip is a reading laid over the clock: saving, changing or deleting one changes no clock row, bill or cost.
+The site's hours fall into five figures (`src/lib/trips/tripHours.ts`): a row on a trip day takes the day's kind, a punch counts **At the site** only when a place it carries is the site, a row with no place is **No place on the punch** and is never added to At the site, and hours on the site's jobs outside every trip the person was on are **At home for the site**.
+The hours are the Scoreboard's own (`siteLabor.ts`), and a day's place comes from the clock's punches on the site's jobs read against the address's point (`tripPlace.ts`, `tripHourRows.ts`).
+The **Trips look** is the Development page's seventh look (`DevelopmentTripsCard.tsx` over `DevelopmentTripsLook.tsx`, `useSiteTrips`, `lib/trips/tripsLook.ts`): a band that says how many of the site's hours were at the site, one bar of the same hours, the year's trips on a strip, and a row a trip that opens in place.
+The look shows only on a site that has a trip or is 150 miles or more from the shop (`tripsLookShows`), and a nearer site has one door to its first trip in the line under its address.
+**+ Trip** opens the sheet (`components/trips/TripSheet.tsx` over `lib/trips/tripSheet.ts`): who went, which days, what for, the days painted and turned by a tap.
+A trip leaving and coming back are two **History** lines read from its days (`lib/trips/tripHistory.ts`), never kept rows.
+Access: `ACCESS_CONTROL.md`, *Trips*.
+Guide: `keep-a-trip-to-a-far-site`.
 
 ### Submittals tab: the road, the strip, the walkthrough and the GC's page beside it (v2.4067–v2.4189)
 Bids → Submittals reads as one **road** of eight steps (v2.4090;
@@ -6218,6 +6254,16 @@ and it reads the record back above the button before the press, *The record will
 **No send on record** (v2.7052) is a bill the app made that has no email, text or print on any record: it sits in a strip above the days, never on a day.
 Readers are the sent copies' own: dev, master, assistant, controller.
 
+### Agreements tab
+
+v2.7617 (punch list #376).
+The Documents page's list of every agreement on file, for the office: a job's contract, a warranty, a GC's own paper, a signed paper the office filed, a staff, sub or partner agreement and a sub work order, one line each, newest first under a band per month.
+A line is a kind tag (*Contract · Warranty · Their paper · Staff · Sub · Partner · Work order*), the paper's name, who it is with, the job, where it stands in that kind's own words, and the day it was signed, sent or ended.
+Every kind shares three states, *waiting*, *signed* and *ended*, which the second row of chips asks for: **Sent and signed** (where the tab opens), **Waiting on a signature** with its count, **Signed**, **Voided or ended**.
+A draft is never on it, and a signed paper filed over several jobs is one line that names the first job and counts the rest.
+It reads the `agreements_on_file` view, where each table's own row security decides what the reader sees ([`agreementsLedger.ts`](../src/lib/documents/agreementsLedger.ts), [`DocumentsAgreementsTab.tsx`](../src/components/documents/DocumentsAgreementsTab.tsx)).
+It adds a view and renames nothing: *Contract* under a job on the Jobs tab and in the job window, the Customer page's **Agreements** card, People → Contracts and Partnerships → Agreements keep their names.
+
 ### Sent copies
 
 v2.4554.
@@ -6599,6 +6645,12 @@ The **People folder** (v2.6393, `drive_people_folder_id`, the fifth card) is whe
 The **Tasks folder** (v2.6601, punch list #273 PR 4a, `drive_tasks_folder_id`, the card after the Fleet one) is where the photo sweep files a task card's photos, one folder per card under *PipeTooling Tasks*, which **Make the Tasks folder** finds or makes beside the Jobs folder in the app's Shared Drive (`job-drive-folders` `make: 'tasks'`, `tasks_needs_shared_drive` for a My Drive root;
 a pasted link is checked for the write, `tasks_unwritable`);
 until it is set every filed row reads `NO_TASKS_FOLDER_WORDS`.
+
+**Signed contracts card** (v2.7647, punch list #377): the card on Documents → Where files go that says where each signed job contract's copy in Google Drive stands.
+It counts the papers *in Drive*, *waiting* and *held*, and its press files the waiting ones now.
+**Contracts** (the folder): the sixth folder of a job's tree, inside Team only, made the first time the app files a signed contract on the job.
+**Filed** and **adopted**: a contract's Drive copy is *filed* when the app uploaded it, and *adopted* when the office already kept the file in the jobs drive and the app tied it to the record where it sits.
+**Held** (a contract): a signed paper that could not be filed, with its reason on the record and the door that fixes it.
 
 ### Empty state
 The app's one shape for a list with nothing in it (punch list #184, sweep C): the list says what fills it and offers the press, or, where empty is the good state, says so and names where to look next, so a bare *No bills* or *Nothing here* never leaves the person guessing.
@@ -7282,6 +7334,7 @@ Five sections the firm's portal mirrors: **Account · Paper · Record of contact
 Fees & steps ends with **What goes to the firm** (v2.5761, `src/lib/legal/exhibitDetail.ts`): a fold per exhibit, lettered by the firm's own section rule (`exhibitHome`, exported from `legalFirmPacketPrint.ts`) and sorted by that letter, each opening to a few lines of what is inside and a door to the tab that holds the rows;
 led since v2.4812 by the **Narrative**, the office's own account of the matter in markdown, which the firm reads first on its portal and in its printed packet, labelled as the office's with who saved it and when (Evidence also carries the office's **documents for the firm** since v2.4810: a title, one line on what each shows, a 15-minute link on the portal, held back with a reason or removed, never deleted;
 since v2.6716 a `.md` or `.txt` is kept as a text document, its words drawn by **Read** on the desk and **Read here** on the portal, and since v2.6720 one marked **Counsel-only** wears a lock on the portal and stays out of the printed packet ([ACCESS_CONTROL.md](./ACCESS_CONTROL.md));
+since v2.7683 **Read** carries copy presses over the words, one per piece to send (**Copy the letter**, a piece by its heading, a draft named as one) and a quiet **Copy everything as text**, each piece plain email text without the draft note at the top or a section headed *INTERNAL*, the bracketed blanks still to fill listed and counted (`src/lib/legal/letterCopyText.ts`), never on a counsel-only paper;
 since v2.6549 **Evidence by theme** stands above them on the portal's Evidence tab and a block a theme joins Section D of the printed packet — the kept marks on the documents and entries that travel, grouped and counted, never a why or a who, `portalThemesForMatter`;
 the firm reads, it does not mark) — the portal calls the third **Record of contact** and speaks the firm's words throughout (v2.4625, `src/lib/legal/legalFirmWords.ts`: stages *referred · demand sent · suit filed · judgment entered*, entries by whose act they are, never the office's *Needs You*).
 Above them: the **theory** an attorney could plead today — *signed contract* · *sworn account* (a bill the customer received, field evidence with GPS on the property, no dispute on record) · *lien only* · *none yet* — the firm's portal never shows the theory, only the facts behind it per job (v2.4634, `firmJobRecord`: *signed agreement 2026-04-22 by Pat Sample, bill sent, crew on site with GPS, no dispute logged*) — what Click **keeps** after the firm's cut and a filing cost (facts, no odds), and the **gaps** an attorney asks for first, each with a door to the surface that owns the record or, since v2.5920, **Answer…** (see *Gap answer*).

@@ -19208,10 +19208,14 @@ export type Database = {
           closed_at: string | null
           closed_by_user_id: string | null
           closed_note: string | null
+          context: Json
           created_at: string
           from_user_id: string
-          guide_slug: string
+          guide_slug: string | null
           id: string
+          kind: string
+          page_key: string | null
+          page_path: string | null
           status: string
         }
         Insert: {
@@ -19219,10 +19223,14 @@ export type Database = {
           closed_at?: string | null
           closed_by_user_id?: string | null
           closed_note?: string | null
+          context?: Json
           created_at?: string
           from_user_id: string
-          guide_slug: string
+          guide_slug?: string | null
           id?: string
+          kind?: string
+          page_key?: string | null
+          page_path?: string | null
           status?: string
         }
         Update: {
@@ -19230,10 +19238,14 @@ export type Database = {
           closed_at?: string | null
           closed_by_user_id?: string | null
           closed_note?: string | null
+          context?: Json
           created_at?: string
           from_user_id?: string
-          guide_slug?: string
+          guide_slug?: string | null
           id?: string
+          kind?: string
+          page_key?: string | null
+          page_path?: string | null
           status?: string
         }
         Relationships: [
@@ -20925,6 +20937,13 @@ export type Database = {
           covers_group_id: string | null
           created_at: string
           created_by: string | null
+          drive_file_hold: string | null
+          drive_file_hold_words: string | null
+          drive_file_id: string | null
+          drive_file_origin: string | null
+          drive_file_tried_at: string | null
+          drive_filed_at: string | null
+          drive_void_marked_at: string | null
           fields: Json
           first_viewed_at: string | null
           id: string
@@ -20994,6 +21013,13 @@ export type Database = {
           covers_group_id?: string | null
           created_at?: string
           created_by?: string | null
+          drive_file_hold?: string | null
+          drive_file_hold_words?: string | null
+          drive_file_id?: string | null
+          drive_file_origin?: string | null
+          drive_file_tried_at?: string | null
+          drive_filed_at?: string | null
+          drive_void_marked_at?: string | null
           fields?: Json
           first_viewed_at?: string | null
           id?: string
@@ -21063,6 +21089,13 @@ export type Database = {
           covers_group_id?: string | null
           created_at?: string
           created_by?: string | null
+          drive_file_hold?: string | null
+          drive_file_hold_words?: string | null
+          drive_file_id?: string | null
+          drive_file_origin?: string | null
+          drive_file_tried_at?: string | null
+          drive_filed_at?: string | null
+          drive_void_marked_at?: string | null
           fields?: Json
           first_viewed_at?: string | null
           id?: string
@@ -42748,6 +42781,29 @@ export type Database = {
       }
     }
     Views: {
+      agreements_on_file: {
+        Row: {
+          at: string | null
+          at_day: string | null
+          facts: Json | null
+          find_text: string | null
+          id: string | null
+          job_address: string | null
+          job_click_number: string | null
+          job_hcp_number: string | null
+          job_id: string | null
+          job_name: string | null
+          kind: string | null
+          more_jobs: number | null
+          paper_name: string | null
+          person_id: string | null
+          person_kind: string | null
+          source_id: string | null
+          state: string | null
+          with_name: string | null
+        }
+        Relationships: []
+      }
       cost_estimate_direct_costs: {
         Row: {
           cost_estimate_id: string | null

@@ -5474,6 +5474,13 @@ export type Database = {
           covers_group_id: string | null
           created_at: string
           created_by: string | null
+          drive_file_hold: string | null
+          drive_file_hold_words: string | null
+          drive_file_id: string | null
+          drive_file_origin: string | null
+          drive_file_tried_at: string | null
+          drive_filed_at: string | null
+          drive_void_marked_at: string | null
           fields: Json
           first_viewed_at: string | null
           id: string
@@ -5543,6 +5550,13 @@ export type Database = {
           covers_group_id?: string | null
           created_at?: string
           created_by?: string | null
+          drive_file_hold?: string | null
+          drive_file_hold_words?: string | null
+          drive_file_id?: string | null
+          drive_file_origin?: string | null
+          drive_file_tried_at?: string | null
+          drive_filed_at?: string | null
+          drive_void_marked_at?: string | null
           fields?: Json
           first_viewed_at?: string | null
           id?: string
@@ -5612,6 +5626,13 @@ export type Database = {
           covers_group_id?: string | null
           created_at?: string
           created_by?: string | null
+          drive_file_hold?: string | null
+          drive_file_hold_words?: string | null
+          drive_file_id?: string | null
+          drive_file_origin?: string | null
+          drive_file_tried_at?: string | null
+          drive_filed_at?: string | null
+          drive_void_marked_at?: string | null
           fields?: Json
           first_viewed_at?: string | null
           id?: string

@@ -19,6 +19,8 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import WhereFilesGoContractsCard from './WhereFilesGoContractsCard'
+import { CONTRACTS_FOLDER_NAME, CONTRACTS_FOLDER_WORDS } from '../../lib/jobs/jobContractDrive'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -836,6 +838,7 @@ function TreeCard({ settings, exampleName: name, customerName, save }: { setting
         {leaf(3, JOB_FOLDER_TREE.teamOnly)}
         {leaf(4, JOB_FOLDER_TREE.photos)}
         {leaf(4, JOB_FOLDER_TREE.sentByUs)}
+        {leaf(4, CONTRACTS_FOLDER_NAME)}
       </ul>
       <p style={{ ...muted, margin: 0 }}>{UNDER_CUSTOMER_WORDS}</p>
       <p style={{ ...muted, margin: 0 }} data-testid="wfg-customer-supplied">{CUSTOMER_SUPPLIED_WORDS}</p>
@@ -849,6 +852,7 @@ function TreeCard({ settings, exampleName: name, customerName, save }: { setting
         ))}
       </fieldset>
       <p style={{ ...muted, margin: 0 }}>{FIXED_NAMES_WORDS}</p>
+      <p style={{ ...muted, margin: 0 }} data-testid="wfg-contracts-folder">{CONTRACTS_FOLDER_WORDS}</p>
     </section>
   )
 }
@@ -1191,6 +1195,8 @@ export function DocumentsWhereFilesGo() {
           <TasksCard settings={settings} save={save} onMade={(next) => setSettings(next)} />
           <NameCard settings={settings} job={sample} bid={bid} save={save} />
           <TreeCard settings={settings} exampleName={sampleName} customerName={sample?.customer_name?.trim() || (sample ? NO_CUSTOMER_FOLDER_NAME : null)} save={save} />
+          {/* Punch list #377: where each signed job contract's copy in Drive stands, and the press that files what is ready. */}
+          <WhereFilesGoContractsCard />
         </div>
       ) : !settingsFailure ? (
         <p style={{ ...muted, marginTop: 12 }}>Reading the settings…</p>
