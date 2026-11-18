@@ -80,6 +80,15 @@ describe('lienBoardChipCard', () => {
     expect(lienBoardChipCard(lienBoardChipFor(b, 'j858', 'notice')!, b, facts({ customer: 'ZZ Builders', gc: 'zz builders' })).gc).toBeNull()
   })
 
+  it('a held paper says so after the name of the bin it stands in, and its other paper’s card says it is held there (v2.7783)', () => {
+    const closed = [gate('owner', true), gate('legal', true), gate('homestead_answer', false)]
+    const approved = { id: 'a1', status: 'approved', fields: {}, months: [], voided_at: null } as unknown as LienAffidavitEntry['item']
+    const b = buildLienBoard({ todayYmd: TODAY, notices: [notice('j858', 'sent')], affidavits: [affidavit('j858', 'held', { item: approved, ready: false, gates: closed })], retainage: [], jobNumber: (id) => id.slice(1), jobName: () => 'ZZ Service Visit', gcName: () => 'ZZ Builders', leaderName: 'Sam' })
+    const held = lienBoardChipCard(lienBoardChipFor(b, 'j858', 'affidavit')!, b, facts({ detail: 'Nobody has answered whether this home is a homestead. The approval stands.' }))
+    expect(held.stage).toBe('Ready to file · held')
+    expect(held.door).toBe('Press to open the property record at the homestead question.')
+    expect(lienBoardChipCard(lienBoardChipFor(b, 'j858', 'notice')!, b, facts()).other).toBe('Its lien affidavit is held in Ready to file.')
+  })
   it('a paper that will not make its day names the stages left, as many as the Board counted, with the job’s leader by name (v2.7419)', () => {
     const b = board()
     const chip = lienBoardChipFor(b, 'j858', 'notice')!
