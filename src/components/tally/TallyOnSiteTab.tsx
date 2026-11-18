@@ -877,9 +877,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
           </div>
         </div>
       ) : null}
-      {/* A take's two photos are drawn with their take (v2.7828); the box's other photos stay here. */}
+      {/* A take's two photos are drawn with their take, under the parts (v2.7828); the box's other photos stay here. */}
       {loosePhotos.length > 0 ? <BoxPhotos photos={loosePhotos} canAct onToast={showToast} /> : null}
-      {boxTakes.length > 0 ? <TakesPanel heading={`Taken from ${container.label}`} takes={boxTakes} labelOf={() => container.label} limit={2} /> : null}
       {countWalkKeys(ls).length > 0 && container.kind !== 'unsorted' ? <button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setView({ kind: 'count', id: container.id, keys: countWalkKeys(ls), index: 0, corrected: 0 })}>Count this box</button> : null}
       {ls.length === 0 ? <EmptyState compact main={`Nothing in ${container.label} yet.`} next={{ label: `Add a part to ${container.label}`, onPress: () => setSheet({ kind: 'add-part', container }) }} tail="adds the first, or move one in from another container." /> : null}
       {ls.map((l) => (
@@ -914,6 +913,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         </div>
       ))}
       <button type="button" style={{ ...btn, ...btnBlock }} onClick={() => setSheet({ kind: 'add-part', container })}>Add a part to {container.label}</button>
+      {/* What was taken from this box, with its pictures (v2.7828): under the parts, which a person at the box reads first. */}
+      {boxTakes.length > 0 ? <TakesPanel heading={`Taken from ${container.label}`} takes={boxTakes} labelOf={() => container.label} limit={2} /> : null}
       {container.kind !== 'unsorted' ? (
         /* The box's paper and its retirement (v2.6366): the two prints are a pair of pill presses with the printer glyph, one row under a caption, and Retire sits apart on its own line so a thumb reaching for a print never lands on it. Both print here since punch list #304: the office page they used to open is not every role's. */
         <div style={{ display: 'grid', gap: '0.5rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
