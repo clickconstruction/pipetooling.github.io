@@ -349,7 +349,7 @@ export default function LienDeskPage() {
         }}
         onOpenCalendarLastWork={(jobId) => withJob(jobId, (job) => setLienWindow({ job, openLastWork: true }))}
         onOpenCalendarJob={(jobId) => withJob(jobId, (job) => setLienWindow({ job }))}
-        onOpenOwnerRecords={() => setOwnerRecords({ jobId: null })}
+        onOpenOwnerRecords={(jobId) => setOwnerRecords({ jobId: jobId ?? null })}
         onOpenJob={openJob}
         onOpenLegalDesk={() => navigate(LEGAL_DESK_PATH)}
         legalSignoff={legalSignoff}

@@ -23,6 +23,21 @@ describe('LienCallScriptModal (v2.4731)', () => {
     fireEvent.click(screen.getByTestId('lien-call-script-record'))
     expect(onRecord).toHaveBeenCalledTimes(1)
   })
+  it('its last row is the door to an owner’s records request, drawn only when the desk hands one (v2.7780)', () => {
+    const onOwnerRecords = vi.fn()
+    const view = render(<LienCallScriptModal facts={letter} jobLabel="273 · Dunmere (Linmoor)" hasLetter us="Click" onRecord={() => {}} onFindJob={() => {}} onPractice={() => {}} onOwnerRecords={onOwnerRecords} onClose={() => {}} />)
+    const row = document.querySelector('[data-lien-call-script-records]') as HTMLElement
+    expect(row.textContent).toBe('Asking what we billed and what was paid?An owner asked for records ›')
+    // The row is the last thing in the words, after the chips, and its press is the door's own name.
+    expect(row.parentElement!.lastElementChild).toBe(row)
+    fireEvent.click(screen.getByRole('button', { name: 'An owner asked for records ›' }))
+    expect(onOwnerRecords).toHaveBeenCalledTimes(1)
+    view.unmount()
+    render(<LienCallScriptModal facts={letter} jobLabel="273 · Dunmere (Linmoor)" hasLetter us="Click" onRecord={() => {}} onFindJob={() => {}} onPractice={() => {}} onClose={() => {}} />)
+    expect(document.querySelector('[data-lien-call-script-records]')).toBeNull()
+    expect(screen.queryByTestId('lien-owner-records-door')).toBeNull()
+  })
+
   it('with no job under the reader the words still read, Find the job is the one door to search, and nothing can be recorded', () => {
     const onFindJob = vi.fn()
     const onClose = vi.fn()

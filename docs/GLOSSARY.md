@@ -6433,7 +6433,8 @@ Since v2.6726 the list sits under the people as **Beside the claim** (**＋ Add 
 ### Records for an owner (Lien desk)
 
 v2.4544.
-The Lien desk's answer to an owner who asks what we billed and what was paid on their property: the title-bar door **An owner asked for records ›** opens [`LienOwnerRecordsModal`](../src/components/jobs/LienOwnerRecordsModal.tsx) over the desk.
+The Lien desk's answer to an owner who asks what we billed and what was paid on their property: the door **An owner asked for records ›** opens [`LienOwnerRecordsModal`](../src/components/jobs/LienOwnerRecordsModal.tsx) over the desk.
+The door was a press of the title bar until v2.7780, the owner's ask of 2026-11-18: on a computer it is the last row of the window ☎ opens (`LienCallScriptModal`, `CALL_SCRIPT_RECORDS_DOOR`), handed the job under the reader, and on a phone it is still a row of More.
 Pick the owner (the owners of jobs with a notice on the desk, folded by owner and property — `ownerRecordsFromDesk`), then **four checks** on the left (`ownerRecordsSteps`: their request in writing · our contract with the GC, the leader's tick, read once per GC · the numbers agree with the notices, a warning · their signed acknowledgment) and **the packet** on the right (`buildOwnerPacket`: every job at that property for that owner, each bill, each payment with the day paid and the time recorded, what is still owed).
 *Record it as sent* needs checks 1, 2 and 4 (`ownerRecordsMissing`).
 The papers are `ownerRecordsDocs.ts`;
