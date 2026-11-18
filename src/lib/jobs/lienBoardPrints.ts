@@ -81,6 +81,15 @@ export function lienBoardSignDoor(waits: number): { label: string } | null {
 }
 
 /**
+ * The press on the affidavits' *To send for Master approval* bin (v2.7714): the door to By paper's list at that pile,
+ * where the batch send stands with what it holds. `ready` is what that send takes: the drafted papers someone read.
+ * Null with none.
+ */
+export function lienBoardSendDoor(ready: number): { label: string } | null {
+  return ready > 0 ? { label: `${countedLabel('Send', ready)} for approval ›` } : null
+}
+
+/**
  * Under the affidavits' column. `ready` is what the batch print takes (the desk's print plan: approved, on the short
  * form, every gate clear), `held` the approved papers a gate holds, `earlierForm` the approved papers on the earlier
  * form, which the batch leaves for their own Lien window. `with` names the pages that print in front of the stack, as

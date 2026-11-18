@@ -1287,10 +1287,10 @@ describe('LienDesk', () => {
     expect(board.querySelectorAll('[data-lien-board-tile]')).toHaveLength(4)
     expect(Array.from(board.querySelectorAll('[data-lien-board-column="notice"] [data-lien-board-bin]')).map((el) => el.getAttribute('data-stage'))).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent'])
     expect(Array.from(board.querySelectorAll('[data-lien-board-column="affidavit"] [data-lien-board-bin]')).map((el) => el.getAttribute('data-stage'))).toEqual(['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed', 'served'])
-    // J650 is one chip in the notice column, and its bin is lit as the busiest.
+    // J650 is one chip in the notice column. No bin is lit as the busiest since v2.7714.
     const chip = board.querySelector('[data-lien-board-chip="j650"][data-kind="notice"]') as HTMLElement
     const bin = chip.closest('[data-lien-board-bin]') as HTMLElement
-    expect(bin.getAttribute('data-lit')).toBe('yes')
+    expect(board.querySelector('[data-lit]')).toBeNull()
     const binLabel = bin.querySelector('[data-lien-board-bin-head] > span')!.textContent!
     // A pressed bin narrows the list under the Board to its jobs; the line says so; Show every row puts it back.
     fireEvent.click(within(bin).getByRole('button', { name: new RegExp(`^${binLabel}`) }))

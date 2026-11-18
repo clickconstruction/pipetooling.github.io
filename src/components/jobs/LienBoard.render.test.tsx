@@ -9,7 +9,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import LienBoard, { lienBoardArrowPaths } from './LienBoard'
 import { buildLienBoard, lienBoardForLeader, lienBoardLeaderBinPress, lienBoardPick, type LienBoardInput } from '../../lib/jobs/lienBoard'
 import { lienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
-import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSignDoor } from '../../lib/jobs/lienBoardPrints'
+import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor } from '../../lib/jobs/lienBoardPrints'
 import { lienFieldsHash } from '../../lib/jobs/lienNoticeSignature'
 import type { LienDeskEntry, LienDeskPile } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry, LienAffidavitGate, LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
@@ -55,10 +55,16 @@ describe('LienBoard', () => {
     render(<LienBoard board={board()} isMobile={false} />)
     const section = screen.getByRole('region', { name: 'The Board' })
     expect(section.getAttribute('data-lien-board-layout')).toBe('columns')
-    const stages = (kind: string) => Array.from(section.querySelectorAll(`[data-lien-board-column="${kind}"] [data-lien-board-bin]`)).map((el) => el.getAttribute('data-stage'))
-    expect(stages('notice')).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent', 'held'])
+    const stages = (kind: string) => Array.from(section.querySelectorAll(`[data-lien-board-flow="${kind}"] [data-lien-board-bin]`)).map((el) => el.getAttribute('data-stage'))
+    expect(stages('notice')).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent'])
     expect(stages('affidavit')).toEqual(['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed', 'served'])
-    expect(section.querySelector('[data-lien-board-bin="notice:held"]')!.getAttribute('data-beside')).toBe('yes')
+    // Held stands on the notices' heading line (v2.7714), its name, its count and its chip in one row, so every bin of the flow has the column's full width.
+    const held = section.querySelector('[data-lien-board-bin="notice:held"]') as HTMLElement
+    expect(held.getAttribute('data-beside')).toBe('yes')
+    expect(held.getAttribute('data-inline')).toBe('yes')
+    expect(held.parentElement!.getAttribute('data-lien-board-heading')).toBe('notice')
+    expect(held.textContent).toBe('Held1JP7!')
+    expect(section.querySelector('[data-lien-board-heading="affidavit"] [data-lien-board-bin]')).toBeNull()
     expect(section.querySelector('[data-lien-board-bin="notice:missed"]')).toBeNull()
     // To send: the one due in five days before the one due next month; amber then grey.
     const toSend = Array.from(section.querySelectorAll('[data-lien-board-chips="notice:to_send"] [data-lien-board-chip]'))
@@ -73,11 +79,15 @@ describe('LienBoard', () => {
     expect(atRisk.getAttribute('data-at-risk')).toBe('yes')
     expect(within(atRisk).getByText('!')).toBeTruthy()
     expect(atRisk.getAttribute('title')).toBe('Job 1 · Byrne · $1,000 · due within a day · will not make its day as it stands')
-    // An empty bin says so quietly.
-    expect(section.querySelector('[data-lien-board-chips="affidavit:filed"]')!.textContent).toBe('none')
-    // The busiest bin is lit: To send with two.
-    expect(section.querySelector('[data-lien-board-bin="notice:to_send"]')!.getAttribute('data-lit')).toBe('yes')
-    expect(section.querySelectorAll('[data-lit="yes"]')).toHaveLength(1)
+    // An empty bin folds to one quiet line (v2.7714): its name and a zero, no row under them.
+    const empty = section.querySelector('[data-lien-board-bin="affidavit:filed"]') as HTMLElement
+    expect(empty.getAttribute('data-folded')).toBe('yes')
+    expect(empty.textContent).toBe('Filed · copies to mail0')
+    expect(section.querySelector('[data-lien-board-chips="affidavit:filed"]')).toBeNull()
+    expect(section.querySelector('[data-lien-board-bin="notice:to_send"]')!.getAttribute('data-folded')).toBeNull()
+    // No bin is lit as the busiest, and with no press on the Board none has the blue edge.
+    expect(section.querySelector('[data-lit]')).toBeNull()
+    expect(section.querySelector('[data-act]')).toBeNull()
   })
   it('an approved notice stands in Approved · to sign until the leader signs it (v2.7712), in Approved · to print until its packet prints and in Approved · to mail after, each bin under its own name; the two that can go open the run and the unsigned one opens its notice', () => {
     const onChip = vi.fn()
@@ -494,5 +504,24 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
     // A bin with no chip draws no press, and the served lien stands in its own bin.
     expect(document.querySelector('[data-lien-board-bin-press="affidavit:ready"]')).toBeNull()
     expect(document.querySelector('[data-lien-board-chips="affidavit:served"]')!.textContent).toContain('JP9')
+  })
+
+  it('a bin whose own press is live has the blue edge, something to do now; a dead press, the office’s reminder and a bin with no press have none (v2.7714)', () => {
+    const b = board({ notices: [notice('9', 'ready', { item: item('i9') }), notice('10', 'ready', { item: item('i10', SIGNED) })], affidavits: [affidavit('3', 'to_draft'), affidavit('8', 'ready')] })
+    const onPress = vi.fn()
+    const binPress = { 'notice:to_sign': { label: 'Remind Malachi of 1 paper ›', onPress, quiet: true }, 'affidavit:to_send': { label: lienBoardSendDoor(1)!.label, onPress, marks: { 'data-lien-board-send': 'yes' } } }
+    render(<LienBoard board={b} isMobile={false} columnsOnly binPress={binPress} prints={{ notice: lienBoardNoticePrint({ toPrint: 2, waits: 1, printed: 0 }), affidavit: lienBoardAffidavitPrint({ ready: 0, held: 1, earlierForm: 0, with: [] }), ...handlers() }} />)
+    const edged = Array.from(document.querySelectorAll('[data-act="yes"]')).map((el) => el.getAttribute('data-lien-board-bin'))
+    // The print that can go, and the door to the affidavits to send. Not the reminder's bin, and not the dead print's.
+    expect(edged).toEqual(['notice:to_print', 'affidavit:to_send'])
+    expect((bin('notice:to_print') as HTMLElement).style.borderLeft).toBe('3px solid rgb(37, 99, 235)')
+    expect(bin('notice:to_sign').getAttribute('data-act')).toBeNull()
+    expect((bin('affidavit:ready').querySelector('[data-lien-board-print-press]') as HTMLButtonElement).disabled).toBe(true)
+    expect(bin('affidavit:ready').getAttribute('data-act')).toBeNull()
+    const send = document.querySelector('[data-lien-board-send]') as HTMLButtonElement
+    expect(send.textContent).toBe('Send 1 for approval ›')
+    expect(send.parentElement!.getAttribute('data-lien-board-bin-title')).toBe('affidavit:to_send')
+    fireEvent.click(send)
+    expect(onPress).toHaveBeenCalledTimes(1)
   })
 })

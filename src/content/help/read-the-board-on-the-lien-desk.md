@@ -27,7 +27,7 @@ The right column is the lien affidavits. Its first two bins are **Needs the prop
 
 One arrow crosses from Sent on the left to Waiting on its notice on the right. The notice on record is the affidavit's gate. When the notice is mailed and recorded, the affidavit moves down to **To send for Master approval**. On a phone the columns stand one over the other and that arrow is not drawn.
 
-The busiest bin has a blue border. Each bin's count sits at its right.
+A bin with a blue left edge has something to do now. Its press is beside its name. Each bin's count sits at its right. A bin with no paper is one quiet line with a zero.
 
 ## What a chip's colour means
 
@@ -83,6 +83,8 @@ On *Approved · to print* the press reads like {{button:blue|Print and mail 8 no
 On *Approved · to mail* the press reads like {{button:outline|Enter mail numbers · 6}}. It opens the same run, where you type each envelope's number. Once every approved notice has printed, this press turns blue.
 
 On **Ready to file** the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under the bin's name says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. A second line says what prints in front of the stack, like *Prints with the help sheet and the notice records*. Press **Change ›** to tick those pages on the affidavits list.
+
+On the affidavits' **To send for Master approval** the press reads like {{button:outline|Send 5 for approval ›}}. It opens the affidavits list at that pile. One press there sends every paper someone has read.
 
 On *Filed · copies to mail* the press reads like {{button:outline|Mail 10 liens' copies ›}}. It opens the window that prints each lien's copies.
 
@@ -140,7 +142,7 @@ A heading carries the day when every row under it shares that day. Then no row r
 
 ## Held, Missed and retainage
 
-A **Held** bin and a **Missed** bin stand beside a column only while a job is in one. A dashed border marks them. When they are empty they are not drawn.
+**Held** and **Missed** stand on a column's heading line, at its right. Each shows only while a job is in it. A dashed border marks them. Press the name and the list shows only those rows.
 
 Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. It also counts jobs where retainage looks held and none is recorded, like *2 look held, not on the job*. The retainage list on **By paper** has the rows.
 

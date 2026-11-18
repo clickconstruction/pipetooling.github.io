@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSignDoor } from './lienBoardPrints'
+import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor } from './lienBoardPrints'
 
 describe('lienBoardNoticePrint — the print under the notices’ column (v2.7470, punch list #362)', () => {
   it('names how many can print now; what waits on a signature stands in its own bin, so the press has no line, and the short pair still says how many wait (v2.7712)', () => {
@@ -37,6 +37,11 @@ describe('lienBoardNoticePrint — the print under the notices’ column (v2.747
     expect(lienBoardSignDoor(7)).toEqual({ label: 'Sign 7 notices ›' })
     expect(lienBoardSignDoor(1)).toEqual({ label: 'Sign 1 notice ›' })
     expect(lienBoardSignDoor(0)).toBeNull()
+  })
+  it('the door on the affidavits’ To send bin counts what the batch send takes, and is null with none (v2.7714)', () => {
+    expect(lienBoardSendDoor(5)).toEqual({ label: 'Send 5 for approval ›' })
+    expect(lienBoardSendDoor(1)).toEqual({ label: 'Send 1 for approval ›' })
+    expect(lienBoardSendDoor(0)).toBeNull()
   })
 })
 

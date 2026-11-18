@@ -81,7 +81,7 @@ import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { lienRunEntriesFor, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { lienBoardChipFor, lienBoardDoorWords, lienBoardLeaderBinPress, lienBoardPickWords, lienBoardRowInPick, type LienBoardBinKey, type LienBoardChip, type LienBoardKind } from '../../lib/jobs/lienBoard'
 import { lienBinFolds } from '../../lib/jobs/lienNextUpByBin'
-import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSignDoor, type LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
+import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor, type LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { useLienPileHeads } from './LienPileHeads'
 import LienBoard, { type LienBoardBinPress } from './LienBoard'
@@ -1711,11 +1711,20 @@ export default function LienDesk({
   // The presses that stand on a bin's title line beside the two prints (v2.7708): the run again on Approved · to mail while
   // notices still wait to print, the liens' copies on Filed · copies to mail (punch list #366), and the leader's one press
   // on his Awaiting Master approval bin, which stood under his own two bins until the switch to them was retired.
+  // To send for Master approval's press (v2.7714): the door to the affidavits list at that pile, where the batch send stands.
+  const sendDoor = office ? lienBoardSendDoor(affSendPlanAll.ready.length) : null
+  const showAffidavitsToSend = () => {
+    setMobileListShown(false)
+    setAffHeldOnlyPicked(false)
+    setAffPile('to_draft')
+    setKind('affidavit')
+  }
   const mailNumbersPress = office ? lienBoardMailNumbersPress({ toPrint: (counts?.ready ?? 0) + retReady, printed: counts?.printed ?? 0 }) : null
   const leaderBinPress = leaderView ? lienBoardLeaderBinPress(leaderView) : null
   const boardBinPress: Partial<Record<LienBoardBinKey, LienBoardBinPress>> = {
     ...(signDoor ? { 'notice:to_sign': { label: signDoor.label, onPress: showUnsignedNotices, filled: true, title: 'Open the approved notices. Each takes your signature on its own pane.', marks: { 'data-lien-board-sign': 'yes' } } } : null),
-    ...(signRemind ? { 'notice:to_sign': { label: reminding ? 'Reminding…' : signRemind.dead ? signRemind.button : `${signRemind.button} ›`, onPress: () => void remindLeader(), dead: signRemind.dead || reminding, marks: { 'data-lien-board-remind': 'yes' } } } : null),
+    ...(signRemind ? { 'notice:to_sign': { label: reminding ? 'Reminding…' : signRemind.dead ? signRemind.button : `${signRemind.button} ›`, onPress: () => void remindLeader(), dead: signRemind.dead || reminding, quiet: true, marks: { 'data-lien-board-remind': 'yes' } } } : null),
+    ...(sendDoor ? { 'affidavit:to_send': { label: sendDoor.label, onPress: showAffidavitsToSend, title: 'Open the affidavits to send, where one press sends every paper someone has read', marks: { 'data-lien-board-send': 'yes' } } } : null),
     ...(mailNumbersPress ? { 'notice:in_mail': { label: mailNumbersPress.label, onPress: openWholeRun, title: 'Open the run to type each printed notice’s mail number' } } : null),
     ...(office && serveDoor ? { 'affidavit:filed': { label: serveDoor, onPress: () => setServeOpen(true), title: 'Print the copies each filed lien owes, then enter their mail numbers' } } : null),
     ...(leaderBinPress ? { 'affidavit:awaiting': { label: approvingLot ? 'Approving…' : leaderBinPress.label, onPress: () => void approveTheLot(), filled: true, dead: leaderBinPress.dead || approvingLot, lines: leaderBinPress.line ? [{ key: 'late', words: leaderBinPress.line }] : [], marks: { 'data-lien-board-approve': 'yes' } } } : null),

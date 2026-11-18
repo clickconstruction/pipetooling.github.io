@@ -23,7 +23,6 @@ import {
   lienBoardForLeader,
   lienBoardLeaderPick,
   lienBoardLeaderWaits,
-  lienBoardLitBin,
   lienBoardPick,
   lienBoardPickWords,
   lienBoardRetainageLine,
@@ -75,7 +74,6 @@ describe('buildLienBoard — the bins', () => {
     expect(board.affidavits.map((b) => b.label)).toEqual(['Needs the property facts', 'Waiting on its notice', 'To send for Master approval', 'Awaiting Master approval', 'Ready to file', 'Filed · copies to mail', 'Served', 'Held', 'Missed'])
     expect(board.notices.filter((b) => b.beside).map((b) => b.stage)).toEqual(['held', 'missed'])
     expect(board.empty).toBe(true)
-    expect(board.lit).toBeNull()
   })
   it('puts every notice pile in its bin: To draft reads To send for Master approval, an approved one is Approved · to print and a printed one Approved · to mail', () => {
     const board = build({
@@ -119,14 +117,10 @@ describe('buildLienBoard — the bins', () => {
     const held = build({ notices: [notice('1', 'held')] })
     expect(lienBoardBinsShown(held.notices).map((b) => b.stage)).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent', 'held'])
   })
-  it('lights the busiest bin, the first in column order on a tie', () => {
+  it('lights no bin as the busiest (v2.7714): the blue edge is the component’s, on a bin whose press is live', () => {
     const board = build({ notices: [notice('1', 'to_draft'), notice('2', 'to_draft')], affidavits: [affidavit('3', 'ready'), affidavit('4', 'ready')] })
-    expect(board.lit).toBe('notice:to_send')
-    expect(bin(board, 'notice:to_send').lit).toBe(true)
-    expect(bin(board, 'affidavit:ready').lit).toBe(false)
-    const more = build({ notices: [notice('1', 'to_draft')], affidavits: [affidavit('3', 'ready'), affidavit('4', 'ready')] })
-    expect(more.lit).toBe('affidavit:ready')
-    expect(lienBoardLitBin([])).toBeNull()
+    expect('lit' in board).toBe(false)
+    expect([...board.notices, ...board.affidavits].some((b) => 'lit' in b)).toBe(false)
   })
 })
 

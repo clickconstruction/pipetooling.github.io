@@ -1,8 +1,8 @@
 ---
 name: "Lien desk To do: the band under the tiles, and where each press lives"
 number: 383
-group: ready
-status: asked 2026-11-17 · three whole-page options drawn and measured the same day · the owner picked B with each press on its bin's title line · PRs 1 and 2 of 3 shipped in v2.7708 and v2.7712 · PR 3 not built
+group: close
+status: asked 2026-11-17 · three whole-page options drawn and measured the same day · the owner picked B with each press on its bin's title line · all three PRs shipped in v2.7708, v2.7712 and v2.7714 · two small parts of the drawing left · the live desk not walked
 summary: >
   The owner boxed the band between the Board's four tiles and its two columns of bins: the sentence
   "Every bin." with its switch a page width away, and the two batch prints, one over each column. It
@@ -11,12 +11,13 @@ summary: >
   leader, at a computer's width and a phone's. A folds the band into the column headings. B puts every
   press in the bin it empties and gives signing a bin. C is B with the chart turned on its side. He picked
   B, with each press on the same line as its bin's name. PR 1 took the band away and moved the presses.
-  PR 2 gave signing its own bin, so a bin's count and its press are one number.
-next: PR 3, the quiet parts, the blue edge, the folded empty bins and Held and Missed on the heading line.
-size: S for what is left of B, PR 3; PRs 1 and 2 are done
-blocker: None.
-opinion: build — PR 3, since the blue border still marks the busiest bin beside blue presses that mean something else
-ver: v2.7311 · v2.7332 · v2.7334 · v2.7448 · v2.7470 · v2.7483 · v2.7490 · v2.7491 · v2.7497 · v2.7708 · v2.7712
+  PR 2 gave signing its own bin, so a bin's count and its press are one number. PR 3 marked the bins
+  with something to do, folded the empty ones and moved Held and Missed to the heading line.
+next: The owner's look at the live desk. Then the two parts left, if he wants them, the Public jobs box folded and the records door on the tools row.
+size: S for the two parts left; the three PRs are done
+blocker: The owner's look at the live desk.
+opinion: close — after the owner's look, since the band is gone and each bin's count and press agree
+ver: v2.7311 · v2.7332 · v2.7334 · v2.7448 · v2.7470 · v2.7483 · v2.7490 · v2.7491 · v2.7497 · v2.7708 · v2.7712 · v2.7714
 ---
 
 # Lien desk To do: the band under the tiles (#383)
@@ -83,10 +84,19 @@ column is narrow, as at 1,024 px wide, a press wraps under its bin's name.
 - A GC's run row on the list stands in *Approved · to sign* while every one of its notices waits on a
   signature, and in *Approved · to print* once one can print.
 
-**Left, PR 3: the quiet parts** (S). A blue edge on a bin with something to do now, in place of the blue
-border on the busiest bin. Empty bins fold to one line. **Held** and **Missed** move to the heading line.
-The Public jobs box folds to one line. *An owner asked for records* joins the tools row. *Send N for
-approval ›* on the affidavits' *To send* bin.
+**PR 3, v2.7714.** The quiet parts.
+
+- A blue left edge on a bin with something to do now, in place of the blue border on the busiest bin.
+- An empty bin folds to one line.
+- **Held** and **Missed** stand on the heading line, so every bin has the column's full width.
+- *Send N for approval ›* on the affidavits' *To send for Master approval* bin, the door to the list where
+  the batch send stands.
+
+Measured after PR 3: the Board is 972 px tall where it was about 1,080, and the flow's last bin ends above
+a 900 px fold at 1,440 wide.
+
+**Left of the drawing.** The Public jobs box still has its full height, where the drawing folds it to one
+line. *An owner asked for records* is still on the title bar's second row. Neither is built.
 
 ## What the band is
 
@@ -243,6 +253,6 @@ Small things the look found. Each stands by itself, whichever option is picked.
 
 ## Where it stands
 
-The owner picked B with each press on its bin's title line. PR 1 is shipped in v2.7708 and PR 2, the signing
-bin, in v2.7712. PR 3, the quiet parts, is not built. The live desk was not opened: every figure here is from
+The owner picked B with each press on its bin's title line. The three PRs are shipped in v2.7708, v2.7712
+and v2.7714. Two small parts of the drawing are left and named under **What is built**. The live desk was not opened: every figure here is from
 made-up jobs.

@@ -3,7 +3,7 @@
  * columns of bins, one per stage — the monthly notices on the left, the lien affidavits on the
  * right — every job in its bin as a small chip coloured by how soon its day is, thin arrows down
  * each column and one from Sent across to Waiting on its notice (the notice on record is the
- * affidavit's gate; the bin is its own since v2.7457, and Needs the property facts holds a missing fact alone), four tiles over the columns, the busiest bin lit, Held and Missed beside a
+ * affidavit's gate; the bin is its own since v2.7457, and Needs the property facts holds a missing fact alone), four tiles over the columns, Held and Missed beside a
  * column only while a job is in one, and retainage as one line under the notices.
  *
  * Pure. It folds the queues the desk already builds (`buildLienDeskQueue`, `buildLienAffidavitQueue`,
@@ -22,6 +22,9 @@
  * approval* and *Approved · to print*. An approved notice the leader has not signed stood in *Approved · to print*,
  * so that bin read 8 while its press read 1 and nothing on screen said why. Now the print bin holds exactly what the
  * print takes, and the third tile counts the same papers. A notice to sign has two stages left where it had one.
+ *
+ * No bin is lit as the busiest since v2.7714 (PR 3): the blue border said *most papers*, not *most urgent*, beside
+ * blue presses that mean *act here*. The component draws a blue edge on a bin whose own press is live instead.
  */
 import { batchWords, countedLabel, type BatchWords } from '../batchWords'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
@@ -98,8 +101,6 @@ export type LienBoardBin = {
   chips: LienBoardChip[]
   /** Held and Missed stand beside the column, drawn only while a job is in them. */
   beside: boolean
-  /** The busiest bin on the Board. */
-  lit: boolean
 }
 
 export type LienBoardArrow = { from: LienBoardBinKey; to: LienBoardBinKey; kind: 'down' | 'cross' }
@@ -136,8 +137,6 @@ export type LienBoard = {
   arrows: LienBoardArrow[]
   tiles: LienBoardTile[]
   pairs: LienBoardPair[]
-  /** The busiest bin, or null on an empty Board. */
-  lit: LienBoardBinKey | null
   /** Retainage as one line under the notices, or null when nothing is on its desk. */
   retainageLine: string | null
   /** The day the top tile counts to, as a day: *Monday*, *tomorrow*, *Nov 20*; null with nothing dated. */
@@ -586,18 +585,8 @@ function binsFor<S extends LienBoardNoticeStage | LienBoardAffidavitStage>(kind:
       label: LIEN_BOARD_WORDS[stage],
       chips: chips.filter((c) => c.bin === key).sort(compareLienBoardChips),
       beside: stage === 'held' || stage === 'missed',
-      lit: false,
     }
   })
-}
-
-/** The busiest bin, the first in column order on a tie; null when every bin is empty. */
-export function lienBoardLitBin(bins: ReadonlyArray<Pick<LienBoardBin, 'key' | 'chips'>>): LienBoardBinKey | null {
-  let best: { key: LienBoardBinKey; n: number } | null = null
-  for (const b of bins) {
-    if (b.chips.length > 0 && (!best || b.chips.length > best.n)) best = { key: b.key, n: b.chips.length }
-  }
-  return best?.key ?? null
 }
 
 /** A chip still to send or file: not sent, not filed, not past its window. */
@@ -698,8 +687,6 @@ export function buildLienBoard(input: LienBoardInput): LienBoard {
   const { notices, affidavits, pairs } = buildChips(input)
   const noticeBins = binsFor('notice', LIEN_BOARD_NOTICE_STAGES, notices)
   const affidavitBins = binsFor('affidavit', LIEN_BOARD_AFFIDAVIT_STAGES, affidavits)
-  const lit = lienBoardLitBin([...noticeBins, ...affidavitBins])
-  for (const b of [...noticeBins, ...affidavitBins]) b.lit = b.key === lit
   const t = tiles(input, notices, affidavits)
   return {
     notices: noticeBins,
@@ -707,7 +694,6 @@ export function buildLienBoard(input: LienBoardInput): LienBoard {
     arrows: lienBoardArrows(),
     tiles: t.tiles,
     pairs,
-    lit,
     retainageLine: lienBoardRetainageLine(input.retainage, input.retainageUnrecorded ?? 0),
     dayWords: t.dayWords,
     atRisk: t.atRisk,
