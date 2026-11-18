@@ -55,12 +55,16 @@ export type PersonAct = {
   note: string
   who: string
   personKey: string
+  /** The login behind the row, where the row carries one: a ledger row does, a box change does not. */
+  byUserId: string | null
   looks: ActLook[]
+  /** Why the act is outside the process, for a person the office is watching (`withWatch`); null otherwise. */
+  outside: string | null
   /** The live answer on the press, or null. A press taken back is in no sum and is drawn struck through. */
   answer: PressAnswer | null
 }
 
-export type ActPerson = { key: string; name: string; acts: number; lastAt: string }
+export type ActPerson = { key: string; name: string; acts: number; lastAt: string; userIds: string[] }
 
 export type SiteActsInput = {
   jobs: ReadonlyArray<{ id: string; label: string }>
@@ -213,7 +217,9 @@ export function sitePersonActs(input: SiteActsInput, dayOf: (iso: string) => str
       note: m.note.trim() || (m.source ?? '').trim(),
       who,
       personKey: personKeyOf(who),
+      byUserId: m.byUserId,
       looks,
+      outside: null,
       answer: answerOf.get(m.id) ?? null,
     })
   }
@@ -239,12 +245,14 @@ export function sitePersonActs(input: SiteActsInput, dayOf: (iso: string) => str
       note: '',
       who,
       personKey: personKeyOf(who),
+      byUserId: null,
       looks: [],
+      outside: null,
       answer: null,
     })
   }
   // The trail: changes to a box that are not ledger rows, and answers taken off.
-  const blank = { part: null, qty: '', pieces: 0, note: '', looks: [] as ActLook[], answer: null }
+  const blank = { part: null, qty: '', pieces: 0, note: '', looks: [] as ActLook[], answer: null, byUserId: null, outside: null }
   const boxAct = (id: string, at: string, byName: string, containerId: string, kind: ActKind, what: string, note: string): PersonAct => {
     const who = byName.trim() || NO_NAME
     const c = box.get(containerId)
@@ -269,11 +277,11 @@ export function actPeople(acts: ReadonlyArray<PersonAct>): ActPerson[] {
   const by = new Map<string, ActPerson>()
   for (const a of acts) {
     const p = by.get(a.personKey)
-    if (!p) by.set(a.personKey, { key: a.personKey, name: a.who, acts: 1, lastAt: a.at })
-    else {
-      p.acts += 1
-      if (a.at > p.lastAt) p.lastAt = a.at
-    }
+    const mine = p ?? { key: a.personKey, name: a.who, acts: 0, lastAt: a.at, userIds: [] }
+    if (!p) by.set(a.personKey, mine)
+    mine.acts += 1
+    if (a.at > mine.lastAt) mine.lastAt = a.at
+    if (a.byUserId && !mine.userIds.includes(a.byUserId)) mine.userIds.push(a.byUserId)
   }
   return [...by.values()].sort((a, b) => (a.lastAt < b.lastAt ? 1 : a.lastAt > b.lastAt ? -1 : a.name.localeCompare(b.name)))
 }
@@ -281,24 +289,26 @@ export function actPeople(acts: ReadonlyArray<PersonAct>): ActPerson[] {
 export type ActFilter = { person: string | null; kind: ActKind | null; lookOnly: boolean }
 
 export function filterActs(acts: ReadonlyArray<PersonAct>, f: ActFilter): PersonAct[] {
-  return acts.filter((a) => (!f.person || a.personKey === f.person) && (!f.kind || a.kind === f.kind) && (!f.lookOnly || a.looks.length > 0))
+  return acts.filter((a) => (!f.person || a.personKey === f.person) && (!f.kind || a.kind === f.kind) && (!f.lookOnly || a.looks.length > 0 || a.outside != null))
 }
 
 /** The four figures over the list, for the acts shown. */
-export function actTiles(acts: ReadonlyArray<PersonAct>): { presses: number; days: number; pieces: number; boxes: number; look: number; markedPieces: number } {
+export function actTiles(acts: ReadonlyArray<PersonAct>): { presses: number; days: number; pieces: number; boxes: number; look: number; markedPieces: number; outside: number } {
   const boxes = new Set<string>()
   const days = new Set<string>()
   let pieces = 0
   let look = 0
   let markedPieces = 0
+  let outside = 0
   for (const a of acts) {
     for (const id of a.boxIds) boxes.add(id)
     days.add(a.day)
     pieces += a.pieces
     if (a.answer?.answer === 'marked') markedPieces += a.pieces
-    if (a.looks.length > 0) look += 1
+    if (a.looks.length > 0 || a.outside != null) look += 1
+    if (a.outside != null) outside += 1
   }
-  return { presses: acts.length, days: days.size, pieces, boxes: boxes.size, look, markedPieces }
+  return { presses: acts.length, days: days.size, pieces, boxes: boxes.size, look, markedPieces, outside }
 }
 
 /** The acts grouped by day, in the order they came: newest day first when the acts are newest first. */
@@ -345,4 +355,28 @@ export function outsideProcess(act: Pick<PersonAct, 'kind' | 'note'>): string | 
     default:
       return null
   }
+}
+
+/**
+ * The acts with a watch applied. A person is watched when one of their rows carries a watched login;
+ * every act under that person's name then says why it is outside the process, or nothing. A box change
+ * carries a name and no login, so it follows the name.
+ */
+export function withWatch(acts: ReadonlyArray<PersonAct>, watchedUserIds: ReadonlySet<string>): PersonAct[] {
+  if (watchedUserIds.size === 0) return [...acts]
+  const watched = new Set<string>()
+  for (const a of acts) if (a.byUserId && watchedUserIds.has(a.byUserId)) watched.add(a.personKey)
+  if (watched.size === 0) return [...acts]
+  return acts.map((a) => (watched.has(a.personKey) && a.answer?.answer !== 'taken_back' ? { ...a, outside: outsideProcess(a) } : a))
+}
+
+/** The boxes a watched person opened on a screen since the watch began and never pressed on, oldest open first. */
+export function openedNotPressed(opens: ReadonlyArray<{ containerId: string; at: string }>, acts: ReadonlyArray<PersonAct>, since: string): string[] {
+  const pressed = new Set<string>()
+  for (const a of acts) if (a.at >= since) for (const id of a.boxIds) pressed.add(id)
+  const out: string[] = []
+  for (const o of [...opens].sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : 0))) {
+    if (o.at >= since && !pressed.has(o.containerId) && !out.includes(o.containerId)) out.push(o.containerId)
+  }
+  return out
 }
