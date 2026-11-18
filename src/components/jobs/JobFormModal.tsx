@@ -153,7 +153,6 @@ import { pickDefaultServiceTypeId, visibleServiceTypesForJobForm } from '../../l
 import { pickableServiceTypes } from '../../lib/serviceTypePickers'
 import {
   fixtureRowHasUserContent,
-  materialRowHasUserContent,
   newEmptyPaymentRow,
   newJobFormHasBlockingContent,
   paymentRowsFromJob,
@@ -186,7 +185,7 @@ import UnwindStripeOobPaymentModal from './UnwindStripeOobPaymentModal'
 import { CHECK_DID_NOT_CLEAR_REASON, oobUnwindDoneWords } from '../../lib/jobs/stripeOobSendBack'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
-import { mercuryCardTotalFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
+import { jobFormDeleteGate, jobFormEffectiveHcp, jobFormLaborLinkGates } from '../../lib/jobs/jobFormCostGates'
 import JobProjectLinkChoiceModal from './JobProjectLinkChoiceModal'
 import JobBidLinkChoiceModal, { type JobBidLinkOption } from './JobBidLinkChoiceModal'
 import { JobFormImportEstimateOrBidModal } from './JobFormImportEstimateOrBidModal'
@@ -1364,88 +1363,46 @@ export default function JobFormModal({
   }, [jobName, jobAddress, formServiceTypeId])
   const jobFormCanSubmit = jobFormMissingFields.length === 0
 
-  const editJobEffectiveHcp = useMemo(
-    () => (hcpNumber ?? '').trim() || (editing?.hcp_number ?? '').trim(),
-    [hcpNumber, editing?.hcp_number],
-  )
-
-  const canLinkTeamLaborOnJobs = useMemo(
-    () => !isAssistantLike(authRole) && authRole !== 'superintendent' && authRole !== 'primary',
-    [authRole],
-  )
-
-  const canLinkSubLaborOnJobs = useMemo(() => authRole !== 'primary', [authRole])
-
-  const showTeamLaborOpenOnJobsLink = useMemo(
+  // What the Costs loads decide before a press is drawn (the map's second pass, cut 1): the rules are
+  // `lib/jobs/jobFormCostGates.ts`; the form hands in what its three cost hooks read.
+  const editJobEffectiveHcp = jobFormEffectiveHcp(hcpNumber, editing?.hcp_number)
+  const { team: showTeamLaborOpenOnJobsLink, sub: showSubLaborOpenOnJobsLink } = useMemo(
     () =>
-      canLinkTeamLaborOnJobs &&
-      !editJobTeamLaborLoading &&
-      !editJobTeamLaborError &&
-      editJobTeamLaborRow != null,
-    [canLinkTeamLaborOnJobs, editJobTeamLaborLoading, editJobTeamLaborError, editJobTeamLaborRow],
+      jobFormLaborLinkGates({
+        role: authRole,
+        effectiveHcp: editJobEffectiveHcp,
+        team: { loading: editJobTeamLaborLoading, error: editJobTeamLaborError, value: editJobTeamLaborRow },
+        sub: { loading: editJobSubLaborLoading, error: editJobSubLaborError, value: editJobSubLaborData },
+      }),
+    [authRole, editJobEffectiveHcp, editJobTeamLaborLoading, editJobTeamLaborError, editJobTeamLaborRow, editJobSubLaborLoading, editJobSubLaborError, editJobSubLaborData],
   )
-
-  const showSubLaborOpenOnJobsLink = useMemo(
+  // A job with costs (or whose costs we couldn't verify) must be reassigned to another job before it can
+  // be deleted — there is no plain-delete escape hatch. A failed cost read counts as "has costs".
+  const {
+    materialsBilledTotal: materialsBilledTotalForMigrate,
+    partsCostStyleTotal,
+    costSnapshotStillLoading,
+    hasMigrateableCosts,
+    costCheckErrored,
+    reassignRequired,
+  } = useMemo(
     () =>
-      canLinkSubLaborOnJobs &&
-      !!editJobEffectiveHcp &&
-      !editJobSubLaborLoading &&
-      !editJobSubLaborError &&
-      editJobSubLaborData != null &&
-      editJobSubLaborData.count > 0,
+      jobFormDeleteGate({
+        materials,
+        supplyInvoiceTotal,
+        tallyPartLines,
+        mercuryAllocLines,
+        teamLaborRow: editJobTeamLaborRow,
+        subLaborData: editJobSubLaborData,
+        loading: { snapshot: jobMaterialsSnapshotLoading, teamLabor: editJobTeamLaborLoading, subLabor: editJobSubLaborLoading },
+        failed: { teamLabor: editJobTeamLaborError, subLabor: editJobSubLaborError, supplyInvoices: supplyInvoiceRpcFailed, cardCharges: mercuryFetchFailed, tally: tallyFetchFailed },
+      }),
     [
-      canLinkSubLaborOnJobs,
-      editJobEffectiveHcp,
-      editJobSubLaborLoading,
-      editJobSubLaborError,
-      editJobSubLaborData,
+      materials, supplyInvoiceTotal, tallyPartLines, mercuryAllocLines, editJobTeamLaborRow, editJobSubLaborData,
+      jobMaterialsSnapshotLoading, editJobTeamLaborLoading, editJobSubLaborLoading,
+      editJobTeamLaborError, editJobSubLaborError, supplyInvoiceRpcFailed, mercuryFetchFailed, tallyFetchFailed,
     ],
   )
-
-  const materialsBilledTotalForMigrate = useMemo(
-    () => materials.reduce((s, m) => s + (Number(m.amount) || 0), 0),
-    [materials],
-  )
-
-  const partsCostStyleTotal = useMemo(
-    () =>
-      supplyInvoiceTotal +
-      tallyPartsTotalFromLines(tallyPartLines) +
-      mercuryCardTotalFromLines(mercuryAllocLines),
-    [supplyInvoiceTotal, tallyPartLines, mercuryAllocLines],
-  )
-
-  const costSnapshotStillLoading =
-    jobMaterialsSnapshotLoading || editJobTeamLaborLoading || editJobSubLaborLoading
-
-  const hasMigrateableCosts = useMemo(() => {
-    if (partsCostStyleTotal > 0) return true
-    if (materialsBilledTotalForMigrate > 0) return true
-    if (materials.some(materialRowHasUserContent)) return true
-    const team = editJobTeamLaborRow
-    if (team && (team.jobCost > 0 || team.manHours > 0)) return true
-    if (editJobSubLaborData && editJobSubLaborData.count > 0) return true
-    return false
-  }, [
-    partsCostStyleTotal,
-    materialsBilledTotalForMigrate,
-    materials,
-    editJobTeamLaborRow,
-    editJobSubLaborData,
-  ])
-
-  // We couldn't confirm this job's costs if any cost source failed to load. Treated
-  // like "has costs" so a delete can't slip through unverified (force-reassign).
-  const costCheckErrored =
-    editJobTeamLaborError ||
-    editJobSubLaborError ||
-    supplyInvoiceRpcFailed ||
-    mercuryFetchFailed ||
-    tallyFetchFailed
-
-  // A job with costs (or whose costs we couldn't verify) must be reassigned to
-  // another job before it can be deleted — there is no plain-delete escape hatch.
-  const reassignRequired = hasMigrateableCosts || costCheckErrored
 
   /** Shell-owned (not moved into JobFormLinksSection): the project-link modal's onLinked focuses it. */
   const jobFormProjectDisconnectRef = useRef<HTMLButtonElement | null>(null)
@@ -2114,10 +2071,8 @@ export default function JobFormModal({
     }
   }, [customerId, customers])
 
-  const billedMaterialsTotalDisplay = useMemo(() => {
-    const sum = materials.reduce((s, m) => s + (Number(m.amount) || 0), 0)
-    return formatCurrency(sum)
-  }, [materials])
+  // Other job charges, summed: the delete gate's own sum, as the Costs tab prints it.
+  const billedMaterialsTotalDisplay = formatCurrency(materialsBilledTotalForMigrate)
 
   // The invoice doors (the Job form map's order #6): every handler that writes an invoice or moves
   // the job to Ready to Bill, with its busy flag. The selection and the Bill-to editor stay here.
