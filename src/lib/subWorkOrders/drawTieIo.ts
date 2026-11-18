@@ -38,15 +38,22 @@ export async function loadDrawTieSheet(db: Db, sheetId: string): Promise<DrawTie
   return { ...base, bills: (billsRes.data ?? []) as DrawBill[] }
 }
 
-/** Every sheet's tie, by sheet id: only the sheets that hold one. Empty before the migration is pushed. */
+/**
+ * Every sheet's tie, by sheet id: only the sheets that hold one. Empty before the migration is pushed, and
+ * empty when the read fails in any way: the ledger this rides beside must load whatever happens here.
+ */
 export async function loadDrawTies(db: Db): Promise<Map<string, string>> {
   const ties = new Map<string, string>()
-  const res = (await db
-    .from('people_labor_jobs')
-    .select('id, draw_invoice_id' as 'id')
-    .not('draw_invoice_id' as 'id', 'is', null)) as { data: Array<{ id: string; draw_invoice_id?: string | null }> | null; error: CodedError | null }
-  if (res.error) return ties
-  for (const r of res.data ?? []) if (r.draw_invoice_id) ties.set(r.id, r.draw_invoice_id)
+  try {
+    const res = (await db
+      .from('people_labor_jobs')
+      .select('id, draw_invoice_id' as 'id')
+      .not('draw_invoice_id' as 'id', 'is', null)) as { data: Array<{ id: string; draw_invoice_id?: string | null }> | null; error: CodedError | null }
+    if (res.error) return ties
+    for (const r of res.data ?? []) if (r.draw_invoice_id) ties.set(r.id, r.draw_invoice_id)
+  } catch {
+    // No ties to show. The sheets still load.
+  }
   return ties
 }
 
