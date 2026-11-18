@@ -30,8 +30,8 @@ vi.mock('./PaintAMapStartSheet', () => ({
   ),
 }))
 vi.mock('./PaintedMapWindow', () => ({
-  PaintedMapWindow: (props: { ask: { mapId?: string; start?: { id: string } }; kept?: { state: WalkState | null; pending: unknown[] } | null; address?: string | null; onClose: () => void }) => (
-    <div data-testid="window">
+  PaintedMapWindow: (props: { ask: { mapId?: string; start?: { id: string } }; kept?: { state: WalkState | null; pending: unknown[] } | null; address?: string | null; openOn?: 'place' | null; onClose: () => void }) => (
+    <div data-testid="window" data-open-on={props.openOn ?? 'nothing'}>
       {props.ask.mapId ? `map ${props.ask.mapId}` : `new ${props.ask.start?.id}`} kept:{props.kept ? `${props.kept.state?.status ?? 'none'}/${props.kept.pending.length}` : 'no'} at:{props.address ?? 'nowhere'}
       <button type="button" onClick={props.onClose}>close</button>
     </div>
@@ -105,6 +105,16 @@ describe('PaintedMapHost', () => {
     expect(screen.getByTestId('window').textContent).toContain('map m1 kept:no at:9 Other Road')
     fireEvent.click(screen.getByRole('button', { name: 'close' }))
     expect(screen.queryByTestId('window')).toBeNull()
+  })
+
+  it('opens a map already adding a place when the door asks for that (#393)', () => {
+    render(<PaintedMapHost />)
+    act(() => void openPaintedMap('list', '9 Other Road', 'place'))
+    expect(screen.getByTestId('window').textContent).toContain('map list kept:no at:9 Other Road')
+    expect(screen.getByTestId('window').getAttribute('data-open-on')).toBe('place')
+    // A plain open adds nothing.
+    act(() => void openPaintedMap('m1', null))
+    expect(screen.getByTestId('window').getAttribute('data-open-on')).toBe('nothing')
   })
 
   it('answers a paint with the new map\'s window and no sheet, and tells the caller when it closes', () => {

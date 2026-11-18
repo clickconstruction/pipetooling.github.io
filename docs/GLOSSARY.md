@@ -3117,6 +3117,10 @@ A place may carry **a kind** since v2.7776 (`paintedPlaceKind.ts`, over the colu
 A kind gives the dot **a mark** of its own with the number on its shoulder, on the map and beside the place in every list (`PaintedPlaceMark`), a hazard alone in red, and a kind the app does not know draws the plain numbered dot.
 The mark is drawn in the picture and on the printed page since v2.7777 (`pictureKindMark` in `paintedMapPicture.ts`, `placeMarkHtml`), and a file for another map says the kind in the place's name (`placeSaysWords`: *Hazard: Open trench*).
 A reader of a shared link sees the mark since v2.7778: `painted-map-link` hands on each place's `kind` as the table keeps it, and the page draws it.
+**Places on this job** (since v2.7795, `paintedJobList.ts`, over the column `painted_maps.job_list` from v2.7792): a job's own list of places, kept as a painted map that holds places only, so a place on it has its kind, its photo and the map's own link.
+It sits under the job's address with the painted maps (`JobPaintedMapsStrip`: a line when it holds a place, and **＋ Place on this job**, which sets one with no map to paint first), and its window has no line to draw or walk.
+A place on the job wears a letter and a map's own place a number, and every other painted map of the job draws the job's places with a dashed ring under **On this job**, where they are read and not changed.
+A link or a copy of a painted map carries that map's own places and not the job's, the table holds a job to no count of lists and the app reads every one as one, and only the office is offered **Throw this list away**.
 **Walking a line** (since v2.7220, `usePaintedWalk` over `paintedWalk.ts`): the phone is read only while a red bar says *Painting*, and only with the page on the screen, since no browser hands a hidden page its position.
 A lock leaves a gap the painter chooses what to do with;
 painting pauses after five minutes standing still and ends after an hour;

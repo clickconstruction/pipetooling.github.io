@@ -2,7 +2,7 @@
 name: "Pins on a painted map: points of interest"
 number: 393
 group: ready
-status: A shipped (v2.7773) · B's column shipped and pushed (v2.7775) · B's marks in the app, the copies and the shared link in one PR (v2.7776, v2.7777, v2.7778), its function to deploy after the merge · C answered 2026-11-18, a separate list, drawn, and the owner likes the mock-up · C's train of three not started
+status: A shipped (v2.7773) · B's column shipped and pushed (v2.7775) · B's marks in the app, the copies and the shared link in one PR (v2.7776, v2.7777, v2.7778), its function to deploy after the merge · C answered 2026-11-18, a separate list, drawn, and the owner likes the mock-up · C's column in its PR · C's screens built on `claude/393-job-places`, held for B's PR and the column's push
 summary: >
   The owner wants to set pins, points of interest, on a painted map, and not only lines. A painted
   map can already hold a place: a numbered dot with a name, a few words and a photo. Look it over,
@@ -11,8 +11,8 @@ summary: >
   three readings to the owner. A is ＋ Place on Look it over. B is kinds of pins, each with its own
   mark. C is a job's own pins, with no painted map. He ticked all three on 2026-11-18, so it is a
   train of three in that order.
-next: C's train of three, the column first. Deploy `painted-map-link` once B's PR merges, and walk the marks on the live app.
-size: L as a train of three (S · M · L); left: B's deploy and walk (XS) and C (M · M · M)
+next: Push C's column once it merges, then merge C's screens. Deploy `painted-map-link` once B's PR merges. Then one walk on the live app, of a place with a kind and of a place on the job.
+size: L as a train of three (S · M · L); left: two pushes and merges, one deploy and one walk (S)
 blocker: None. Two of C's calls were not answered one by one, the word and what a link carries, so they are built at their picks and are the owner's to change.
 ver: v2.7773 · 7775 · 7776 · 7777 · 7778
 opinion: build — the owner picked all three and then a separate list for C; A and B are done but for a deploy and a walk
@@ -70,7 +70,7 @@ Taken as a train in that order. Each step is its own PR.
   learn the kinds from what people mark. Read on 2026-11-18, prod held no place on any painted map,
   so there was nothing to learn from. The seven are the card's examples and the six names the place
   panel already offered. The list is one array in the app and is the owner's to change.
-- **C, a job's own pins: drawn, and the owner likes it.** See the next section. Not started.
+- **C, a job's own pins: built**, in two steps, the column and the screens. See the next section.
 
 ## C: a list of its own, kept on the job
 
@@ -119,14 +119,26 @@ The table does not hold a job to one such map. A job that goes leaves its maps s
 and two jobs can be combined, so a rule of one a job would refuse those. The app makes one and
 reads every one a job has as one list.
 
-**The train.**
+**The train, as built.**
 
-1. **The column.** One yes or no on `painted_maps`. A migration, its doc page and a scenario in
-   the painted maps bed.
-2. **The list.** The line and the press on `JobPaintedMapsStrip`, and `PaintedMapWindow` in its
-   places-only shape, with letters.
-3. **On every map of the job.** The dashed, lettered marks on `PaintedMapCanvas`, the *On this job*
-   rows in the window, and the Share sheet's sentence.
+1. **The column: built**, in its own PR. `painted_maps.job_list`, a yes or no, by migration
+   `20261118090000_painted_map_job_list.sql`. Its scenario in the painted maps bed passed in CI.
+2. **The list, and the job's places on every map of the job: built**, on `claude/393-job-places`,
+   as one step. The line and the press on `JobPaintedMapsStrip`. `PaintedMapWindow` in its
+   places-only shape, with letters. The dashed, lettered layer on `PaintedMapCanvas` and the *On
+   this job* rows on the job's other maps. It names the column in every read of a map, so it merges
+   after the push.
+
+**Built differently from the mock-up, on purpose.**
+
+- The sentence about what a link carries is under *On this job* in the map's window and not on the
+  Share sheet, since [#394](painted-map-share-sheet/README.md) is rebuilding that sheet.
+- **Throw this list away** is offered to the office alone. The mock-up drew no such press.
+- A list with no place on it shows no line under the address, only the press.
+
+**Left as it falls, and said in the fragment.** The list shows in the other lists of painted maps
+as a map named *Places on this job*. A place has no **Directions** of its own. One place cannot be
+shared by itself.
 
 ## Asked in passing: a faster Share, for routes and for places
 

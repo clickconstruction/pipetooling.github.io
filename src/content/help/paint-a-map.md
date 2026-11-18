@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -183,6 +183,29 @@ Never type a gate code or a lock code on a place. Anyone the map is shared with 
 To change a place you set, press **Change this place** beside it. Drag its dot, change its words or take another photo. Then press {{button:blue|Save the place}}. **Remove this place** takes it off the map for everyone.
 
 Press a photo in the list to see it large.
+
+## Keep a place on the job
+
+Some spots matter on every map of a job. The gate is one. The meter is another. Keep those on the job itself.
+
+1. Open the job. Under its address, press {{button:outline|＋ Place on this job}}.
+2. Drag the blue dot onto the spot.
+3. Press what it is, such as {{chip:gray|Gate}}.
+4. Press {{button:blue|Add this place}}.
+
+You do not paint a map first. The job now has a line named **Places on this job**. Press it to see them all.
+
+A place on the job wears a letter. A place on one map wears a number.
+
+Every painted map of the job shows the job's places. They have a dashed ring and sit under **On this job**. To change one, press **Open Places on this job**.
+
+A link or a copy of a painted map does not carry the job's places. To send them, open **Places on this job** and press {{button:outline|Share}}.
+
+Anyone can change or remove a place they set. Only the office can throw the whole list away.
+
+:::example What is where on Lot 14
+＋ Place on this job → {{chip:gray|Gate}} → **Add this place**. Then {{chip:gray|Meter}}, then {{chip:gray|Hazard}} for the open trench.
+:::
 
 ## Read a length
 
