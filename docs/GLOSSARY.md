@@ -1531,6 +1531,9 @@ The same predicate is folded into the kernel, so the Dashboard's early return ca
 a 1-minute interval re-checks `denverCalendarDayKey(Date.now())` so a long-open page rolls over at midnight.
 The picker is fully unit-tested (14 cases) so adding new state branches is safe.
 
+**A date in a job's name** — the card's title and rail draw a date typed into a job's name, `2026-11-08`, as the day of the week and the month and day, *Sun, Nov 8* (v2.7791, `jobNameWithPlainDates` in [`jobNameDate.ts`](../src/lib/jobNameDate.ts)).
+The short page's **Tomorrow** line and Your record's lines read the same way, and the name itself is never changed.
+
 **See also** — **`RECENT_FEATURES.md`** **v2.545**, **`PROJECT_DOCUMENTATION.md`** Dashboard **Job Mode**.
 
 ### Job Mode, short (a superintendent's one-screen home)
@@ -3126,6 +3129,12 @@ A place may carry **a kind** since v2.7776 (`paintedPlaceKind.ts`, over the colu
 A kind gives the dot **a mark** of its own with the number on its shoulder, on the map and beside the place in every list (`PaintedPlaceMark`), a hazard alone in red, and a kind the app does not know draws the plain numbered dot.
 The mark is drawn in the picture and on the printed page since v2.7777 (`pictureKindMark` in `paintedMapPicture.ts`, `placeMarkHtml`), and a file for another map says the kind in the place's name (`placeSaysWords`: *Hazard: Open trench*).
 A reader of a shared link sees the mark since v2.7778: `painted-map-link` hands on each place's `kind` as the table keeps it, and the page draws it.
+**Places on this job** (since v2.7795, `paintedJobList.ts`, over the column `painted_maps.job_list` from v2.7792): a job's own list of places, kept as a painted map that holds places only, so a place on it has its kind, its photo and the map's own link.
+It sits under the job's address with the painted maps (`JobPaintedMapsStrip`: a line when it holds a place, and **＋ Place on this job**, which sets one with no map to paint first), and its window has no line to draw or walk.
+A place on the job wears a letter and a map's own place a number, and every other painted map of the job draws the job's places with a dashed ring under **On this job**, where they are read and not changed.
+A link or a copy of a painted map carries that map's own places and not the job's, the table holds a job to no count of lists and the app reads every one as one, and only the office is offered **Throw this list away**.
+**Text this place…** (since v2.7799, `PaintedPlaceShare` over `paintedPlaceShare.ts`): each place's row sends that one place, on a phone by a link that opens the phone's own Messages with the place in words and a plain map link to the spot, and at a desk as **Copy this place**.
+The link is a point in a map app and not a link into the app, so the reader gives no name and sees nothing else of the map, and anyone who can see a place may send it, where a map's own link is its maker's and the office's.
 **Walking a line** (since v2.7220, `usePaintedWalk` over `paintedWalk.ts`): the phone is read only while a red bar says *Painting*, and only with the page on the screen, since no browser hands a hidden page its position.
 A lock leaves a gap the painter chooses what to do with;
 painting pauses after five minutes standing still and ends after an hour;
@@ -3743,7 +3752,10 @@ The mark lives on the line: remove the line and the trip reads not billed again,
 A trip's **billing chip** says where its money stands, read from its line and the bill that took it (`tripBillStanding`): *Extra · not billed yet*, *Extra · on J2101's lines, on no bill yet*, *Extra · on a bill, not sent*, *Extra · billed*, *Extra · paid*.
 A trip that holds a line shows **Open J2101 on Bill** in the press's place, and a trip moved off Extra after its line was made still reads the line.
 The line has its door back since v2.7768: **Open Trip 14 ›** under a trip's line in the Job window's ① Line Items closes the window and opens the trip on its site's page (`useLineTrips`, `lineTripDoors`).
-Deleting a trip that holds a line says the line stays and that Undo does not tie it back, and the trip sheet says the line stays once the billing is moved off Extra (`tripDeleteLineWords`, `tripSheetLineNote`).
+Deleting a trip that holds a line says the line stays and that neither Undo nor Put back ties it back, and the trip sheet says the line stays once the billing is moved off Extra (`tripDeleteLineWords`, `tripSheetLineNote`).
+**Deleted trips** is the fold under the Trips look's rows since v2.7804, on the ground of v2.7800 (`lib/trips/tripDeleted.ts`, `trip_deleted_list`): a deleted trip is kept 90 days in the deleted-records archive, and its line says who deleted it and until when it is kept.
+**Put back** saves a deleted trip again under its own id through the trip's own save, so it returns with who went, its days and its number, and a job deleted since is left out and said.
+A site whose only trip was deleted still shows its look, and the delete's question says the trip waits under Deleted trips after its minute of Undo.
 A job billed from the GC desk (a GC project's billing job) is never offered in that window since v2.7769, the owner's answer of 2026-11-18: its price grows only by a signed change order, so the window says so and **Open Change orders** opens that project's Change orders for the GC money team (`tripBillJobChoices`'s `held`, `changeOrdersHref`).
 Access: `ACCESS_CONTROL.md`, *Trips*.
 Guides: `keep-a-trip-to-a-far-site`, `start-a-trip-from-your-phone`.
@@ -5945,7 +5957,7 @@ the paper is the short form for every new draft since v2.6855 — § 53.054's it
 the months it swears are the month of the last day on site with the months the recorded notices name inside the job's work span (**v2.7302**;
 the noticed months alone before, so a paper could print a blank, which since v2.7266 the *Ask the attorney before this is filed* lines explain: *No recorded notice names a month this job was worked.*), or the months a person set by hand with counsel's reason (**v2.7270**: **Set the months by hand ›** on the pane, one row a job in `job_lien_affidavit_months`, named on the Lien window and the help sheet) — and a paper drafted earlier keeps the ten paragraphs until **Redraw on the short form…**, one paper or, since v2.6867, every ready one at once), *Filed* when a filing with `filed_at` exists, and the hand-off to the Legal desk while unpaid.
 **The timeline** (v2.3761): under the job's name on both panes, every Chapter 53 step in order — last work, each month's § 53.056, § 53.057, § 53.052, § 53.055, § 53.158, the release — dated by the desk's rules, today marked, with one *Next on the path* line (`lienTimeline.ts`, `LienTimelineStrip`;
-since v2.7321 that line is one band with a mark, the words and, on the desk's notice and affidavit panes, the next act as a press at its right, *Find the owner ›* or *Record the service ›* through the pane's own doors, or a quiet *Waiting on …* tag when the move is not ours, `lienNextAct.ts`, the label itself kept for a screen reader;
+since v2.7321 that line is one band with a mark, the words and, on the desk's notice and affidavit panes, the next act as a press at its right, *Find the owner ›* or *Enter mail numbers ›* (*Record the service ›* until v2.7798) through the pane's own doors, or a quiet *Waiting on …* tag when the move is not ours, `lienNextAct.ts`, the label itself kept for a screen reader;
 since v2.6102 an original contractor's job has no notice months on the path, so its next step is the § 53.057 notice or the affidavit, never a § 53.056 notice the row beside it reads as not required — punch list #213).
 **By job** (the Timeline tab under By paper until v2.7219;
 v2.3768): the fourth view — every billed job with money open and a lien month, one row each with its strip in miniature and its next step, sorted by the next date, a GC filter, *Something due / All*, and **Print the grid** (counsel's twelve columns per GC;
@@ -6013,6 +6025,7 @@ the addresses keep `?tab=deadlines`);
 Monthly notices, Lien affidavits and Retainage notices are a second row under By paper, and since **v2.7219** By job is a fourth view beside it (the row read Notices, Affidavits, Retainage and Timeline until then;
 `?tab=timeline` still opens it).
 Since **v2.7784** a computer's tabs for the three read **Date · Paper · Job** (`lienDeskViewTab`), each still named By date, By paper and By job to a screen reader, in its hover hint, on a phone and in the guides.
+Since **v2.7789** the three paper tabs sit on the title line, between the views and the tools, on a computer whose measured title line holds them (`lienDeskPapersFit`), and lead the second row where it does not and on a phone.
 Since **v2.4718** a gate's section is a row (number · label column · the fact with its doors first · one muted line) that folds on a clear job behind its cell or *More details ∨* (the press's name since v2.7423, when it also moved up under the last open row), and gate 3 is one line (`propertyKindLine`) whose *Change ›* opens the kind switch with `propertyKindSwitchWarning` — two clicks to switch, on purpose.
 **The pay offer** (**v2.4713**): when the leader approves a § 53.056 notice, a box above the footer (`LienOfferBox`) offers a discount on each enclosed Stripe bill paid in full by a day — 10% and 14 days after mailing by default, never later than a week before the affidavit must be filed (`lienPayOffer.ts`;
 `job_lien_desk_items.offer_pct / offer_by`, master or dev only).
@@ -6140,8 +6153,12 @@ its kernels (`src/lib/mail/`, v2.5375) carry the run's **Mail through Docsmit** 
 It lists every mailed file with its own link, then each envelope with its number and its receipt.
 **Mail proof** is its count: the files count as one piece and each posted copy's receipt as one, so *Mail proof: 2 of 3 on file* names one thing missing and the **Next:** line says which.
 A copy sent by email, handed over or carried by a mail provider owes no receipt.
-Since v2.7785 a recipient's card in the stop's window carries the press for the one thing its copy lacks (`lienMailProofDoor.ts`): **Enter the owner of record ›**, **Mail this copy ›**, **Enter the mail number ›** or **Add the receipt ›**.
+Since v2.7785 a recipient's card in the stop's window carries the press for the one thing its copy lacks (`lienMailProofDoor.ts`): **Enter the owner of record ›**, **Print the copies to mail ›** (*Mail this copy ›* until v2.7798), **Enter the mail number ›** or **Add the receipt ›**.
 The press closes the stop's window and opens the place where that is entered, for the office alone: the property record, *Filed liens: copies to mail* at the job's line, or the job's Lien window at the paper's row.
+**Print the copies to mail** and **Enter mail numbers** are the two names of one step, a filed lien's copies under § 53.055, by the stage the copies are at (`lienServeStage.ts`, v2.7798).
+Every door on the desk to that step reads its stage's name and lands on that half: the Board's *Filed · copies to mail* press, the To do row, the band on the job's path, the affidavit pane's footer and the stop window's card.
+A lien's copies count as printed once a print of them is filed on its job, or once a mail number or a receipt is on its filing, and a lien the app did not draw reads **Enter mail numbers** from the start.
+The names retired from those doors are *Mail the copies*, *Mail N liens' copies ›*, *Mail this copy ›*, *Record the service ›* and *Record service ›*, none of which said whether it opened the print or the record.
 **Landed here** is the light on that place (`landOn.ts`, `[data-landed]`): it is scrolled into view, tinted and ringed for a second and a half, then fades, and under reduced motion a steady outline stands instead.
 Since v2.7695 the row reads as four numbered steps, Printed, Signed, In the envelope and Mailed: the file that goes in the envelope has a step of its own, and each envelope's number has **Add the receipt** under it.
 A **Next:** line under the row's name says the one thing to do now.
@@ -6174,7 +6191,8 @@ The poll also keeps the account's prepaid balance (`app_settings` `docsmit_credi
 the second name since v2.7434, to print and to mail two bins since v2.7448) and the lien affidavits (Needs the property facts · Waiting on its notice · To send for Master approval · Awaiting Master approval · Ready to file · Filed · copies to mail · Served;
 the last two were one bin, *Filed · Served*, until v2.7497, punch list #366, when a filed lien's copies got a bin of their own with the press that mails them together;
 **Waiting on its notice** since v2.7457, the owner's pick of 2026-11-16, holds an affidavit whose one closed gate is its § 53.056 notice, the pile of the same name on By paper, paired with its notice chip, its row saying where that notice stands from `lienAffidavitNoticeStanding.ts`), every job a chip in the bin of its stage coloured by how soon its day is (red within a day or past, amber this week, purple waiting on the leader, grey later;
-a mark when its stages left outrun the working days), thin grey arrows down each column and one from Sent across to Waiting on its notice, a blue left edge on a bin whose own press is live (the busiest bin was lit until v2.7714), an empty bin folded to one line, Missed on a column's heading line only while a job is in it (Held stood there too until v2.7783), retainage one line under the notices;
+a mark when its stages left outrun the working days), thin grey arrows down each column and one from Sent across to Waiting on its notice, a blue left edge on a bin whose own press is live (the busiest bin was lit until v2.7714), an empty bin folded to one line, no bin on a column's heading line (Held stood there until v2.7783 and Missed until v2.7796), retainage one line under the notices;
+since v2.7796 a closed end at the foot of each column in the place of Missed on the heading line, *Window closed · no notice* under Sent and *Lien day passed · not filed* under Served, dashed with grey chips and no arrow into it, drawn only while a job is in it (`lienClosedEnd.ts`, the owner's pick of 2026-11-18), an affidavit not filed whose day has passed standing there whatever its status and a notice leaving once its closed months are recorded;
 a bin's head narrows the list under it;
 the page's title opens To do at the Board from any view, and since v2.7465 on a computer the title is the first tab, *⏱ Lien desk · N to do* (a phone keeps the title on its own row and its first tab reads *To do · N*);
 since v2.7333 every chip is a press to the desk's door for its stage (the property record at the missing line, the paper on By paper as a history entry of its own so Back returns to the Board, the run on that envelope, the affidavit, the Lien window) and the same press sits on every job number on To do, By date and By paper's notice and affidavit lists (a retainage row, By job's number and a pane's heading still open the job);

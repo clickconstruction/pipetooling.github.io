@@ -1,5 +1,6 @@
 import { shortPageFor, type DashboardView } from '../dashboard/shortDashboard'
 import { scheduleFormatTimeHm } from '../jobScheduleChicago'
+import { jobNameWithPlainDates } from '../jobNameDate'
 
 /**
  * Job Mode, short (punch list #384). A superintendent's Job Mode page ran to about six phone screens, and he
@@ -22,9 +23,12 @@ export function jobModeShortOn(input: { view: DashboardView; role: string | null
 /** One stop of the next day: when it starts (a Postgres time) and what it is called on My Schedule. */
 export type JobModeShortStop = { timeStart: string; label: string }
 
-/** My Schedule's label is "number · name". On a line of prose the dot is read as a break, so it becomes a space. */
+/**
+ * My Schedule's label is "number · name". On a line of prose the dot is read as a break, so it becomes a space.
+ * A date typed into the name reads as the day and the month and day, as it does on the card.
+ */
 function plainLabel(label: string): string {
-  return label.replace(/\s*·\s*/g, ' ').replace(/\s+/g, ' ').trim()
+  return jobNameWithPlainDates(label).replace(/\s*·\s*/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
 /** Whether tomorrow's blocks are in: the line never says *No stops yet* while the schedule is still being read. */

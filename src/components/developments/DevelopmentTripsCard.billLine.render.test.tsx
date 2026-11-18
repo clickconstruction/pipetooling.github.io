@@ -56,7 +56,7 @@ const reply = (over: Partial<TripBillLineReply> = {}): TripBillLineReply => ({ d
 
 function state(over: Partial<SiteTripsState> = {}): SiteTripsState {
   return {
-    records: [TRIP], failure: null, miles: 1180.4, sitePoint: { lat: 35, lng: -76.6 }, sitePointKnown: true, shows: true,
+    records: [TRIP], failure: null, miles: 1180.4, sitePoint: { lat: 35, lng: -76.6 }, sitePointKnown: true, shows: true, deleted: [], deletedKnown: true, deletedFailed: false,
     roster: [], punches: [], punchesFailed: false, dismissals: [], names: new Map(),
     askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), dismiss: vi.fn(async () => []), undismiss: vi.fn(async () => undefined), ...over,
   }
@@ -176,14 +176,14 @@ describe('DevelopmentTripsCard — Put on a bill', () => {
     draw()
     await waitFor(() => expect(screen.getByTestId('trip-row-billing').textContent).toContain('on J2101’s lines'))
     fireEvent.click(within(openTrip()).getByTestId('trip-delete'))
-    expect(screen.getByRole('alertdialog').textContent).toContain('No clock row, bill or cost changes. You can undo it for a minute. Its line stays on J2101’s lines, with its words and its price. Undo puts the trip back, but the line is no longer tied to it.')
+    expect(screen.getByRole('alertdialog').textContent).toContain('No clock row, bill or cost changes. You can undo it for a minute. After that it waits under Deleted trips for 90 days. Its line stays on J2101’s lines, with its words and its price. Undo or Put back brings the trip back, but the line is no longer tied to it.')
   })
 
   it('deleting a trip that holds no line asks as it did', async () => {
     draw()
     await waitFor(() => expect(screen.getByTestId('trip-row-billing').textContent).toBe('Extra · not billed yet'))
     fireEvent.click(within(openTrip()).getByTestId('trip-delete'))
-    expect(screen.getByRole('alertdialog').textContent).toContain('You can undo it for a minute.')
+    expect(screen.getByRole('alertdialog').textContent).toContain('You can undo it for a minute. After that it waits under Deleted trips for 90 days.')
     expect(screen.getByRole('alertdialog').textContent).not.toContain('Its line stays')
   })
 

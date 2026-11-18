@@ -137,9 +137,13 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 const IMPERSONATION_KEY = 'impersonation_original'
 
 const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
+// The height above and each press's icon are in em, so the type size is part of the size and lives here.
+// A link takes the page's 1rem where a button takes 0.875rem, which drew the green phone bigger than its neighbours.
+const HEADER_ACTION_BUTTON_FONT_SIZE = '0.875rem'
 
 const headerActionButtonBase = {
   height: HEADER_ACTION_BUTTON_HEIGHT,
+  fontSize: HEADER_ACTION_BUTTON_FONT_SIZE,
   boxSizing: 'border-box' as const,
   display: 'inline-flex' as const,
   alignItems: 'center' as const,

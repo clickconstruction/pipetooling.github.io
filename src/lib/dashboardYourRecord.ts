@@ -13,6 +13,8 @@
  * on the Bridge, teammates get focus. Empty when the record is clean. Pure.
  */
 
+import { jobNameWithPlainDates } from './jobNameDate'
+
 export type YourRecordSession = {
   id: string
   jobId: string | null
@@ -89,7 +91,8 @@ export function buildYourRecordItems(input: {
   return out.slice(0, YOUR_RECORD_MAX_ITEMS)
 }
 
-const jobWord = (job: YourRecordJob | null): string => (job ? `${job.hcpNumber ? `${job.hcpNumber} ` : ''}${job.jobName}`.trim() || 'a job' : 'a job')
+// A date typed into the name reads as the day and the month and day, as it does on the Job Mode card.
+const jobWord = (job: YourRecordJob | null): string => (job ? `${job.hcpNumber ? `${job.hcpNumber} ` : ''}${jobNameWithPlainDates(job.jobName)}`.trim() || 'a job' : 'a job')
 const md = (ymd: string): string => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })
 const hrs = (h: number): string => (h < 10 ? h.toFixed(1) : String(Math.round(h)))
 

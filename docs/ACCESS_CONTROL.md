@@ -925,7 +925,7 @@ The Board at the top of To do (v2.7332) is drawn for everyone who opens the desk
 its leader's press (v2.7334: the one counted press that approves the affidavits waiting on him, on his Awaiting Master approval bin's title line since v2.7708, when his own two bins and their switch were retired) shows to master / dev in the client (`isLienLeader`), counts only the jobs the viewer leads (`lienViewerLeadsJob`) and approves row by row through `approveLienDeskItem` under the same guard, with no new RPC;
 a notice is left out of that press, since only his signature approves it.
 The Dashboard's Needs you card draws the Board's four numbers for the office set (`isLienOffice`).
-Since v2.7785 a stop window's card in *What went out* carries its press (**Mail this copy ›**, **Enter the mail number ›**, **Add the receipt ›**, **Enter the owner of record ›**) for the office set alone (`isLienOffice`, through `proofOpeners` in `LienDesk.tsx` and the same check in `LienInstrumentsModal`).
+Since v2.7785 a stop window's card in *What went out* carries its press (**Print the copies to mail ›**, **Enter the mail number ›**, **Add the receipt ›**, **Enter the owner of record ›**) for the office set alone (`isLienOffice`, through `proofOpeners` in `LienDesk.tsx` and the same check in `LienInstrumentsModal`).
 Anyone else reads that card with no press.
 Since v2.4160 the Pipeline's **property kind badge** (C / R / ? at the end of every address) opens the same Residential | Commercial switch for dev · master · assistant-like (`PropertyKindBadge`, saving `customer_addresses.property_kind`);
 every other role sees the badge alone.
@@ -1138,6 +1138,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - **Who changes what**: anyone who reads a map may add a stroke or a place, signed as themselves (`made_by`, `set_by` must be the caller).
   Changing or removing a stroke or a place is its maker's and the office's.
   Renaming a map, moving it to another home and deleting it are its maker's and the office's, and they must pass the gate for the new home too.
+  **A job's own list of places** (v2.7792 the column `painted_maps.job_list`, v2.7795 the screens, punch list #393) is a painted map and has no rule of its own in the database: whoever may paint a map for the job may start its list, and its maker and the office may rename, unmark or delete it.
+  The app is narrower than the table on one press: it offers **Throw this list away** to the office team alone (`isOfficeRole`) and offers no rename, since the list holds other people's places.
   **Put it on a job…** (v2.7227) is that move, from no job to a job the mover can open.
 - **The bucket `painted-map-photos`** is private.
   Objects are named `<map id>/<file>`, and the policies read the map from `objects.name`, so whoever reads the map reads and adds its photos;

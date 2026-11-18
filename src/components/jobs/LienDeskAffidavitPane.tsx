@@ -24,6 +24,7 @@ import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
 import { lienMailProof } from '../../lib/jobs/lienMailProof'
 import { lienMailProofDoorPress, lienMailProofOwnerGap, type LienMailProofOpeners } from '../../lib/jobs/lienMailProofDoor'
+import { lienServeStage, lienServeStageDoor, type LienServePrinted } from '../../lib/jobs/lienServeStage'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import { lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords } from '../../lib/jobs/lienDeskGates'
 import { lienAffidavitNoticeStanding } from '../../lib/jobs/lienAffidavitNoticeStanding'
@@ -113,6 +114,8 @@ export default function LienDeskAffidavitPane({
   onOpenJob,
   onOpenLienAffidavit,
   proofOpeners,
+  servePrinted,
+  onServe,
   onOpenLegalDesk,
   onShowNotices,
   onShowRetainage,
@@ -148,6 +151,10 @@ export default function LienDeskAffidavitPane({
   onOpenLienAffidavit: (jobId: string) => void
   /** A stop window's card (`lienMailProofDoor.ts`): how the desk opens each place a copy's lack is entered, for one filing. Absent, a card has no press. */
   proofOpeners?: (filingId: string) => LienMailProofOpeners
+  /** The filed liens whose copies were printed here (`lienServeStage.ts`), from the desk's read. */
+  servePrinted?: LienServePrinted
+  /** The door to this job's copies, landed on the half its name says; absent, the Lien window opens. */
+  onServe?: (jobId: string) => void
   onOpenLegalDesk?: () => void
   /** Switch the desk to the notices kind on this job (the notice gate's door). */
   onShowNotices: (jobId: string) => void
@@ -205,6 +212,7 @@ export default function LienDeskAffidavitPane({
     rows: data.rows,
     items: data.items,
     filings: data.filingsByJob[entry.jobId] ?? [],
+    servePrinted,
     entry: data.queue.entries.find((e) => e.jobId === entry.jobId) ?? null,
     affidavit: entry,
     retainage: lienRetainageClockFromDesk(data, entry.jobId),
@@ -288,7 +296,7 @@ export default function LienDeskAffidavitPane({
     const asSent = (f: (typeof filings)[number], words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
       const page = filingSnapshotPage(f, { issuer, jobNumber: jobNo })
       const proof = lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, servedAt: f.served_at })
-      const proofDoor = proof && proofOpeners ? lienMailProofDoorPress({ jobId: entry.jobId, filingId: f.id, paper: proof.paper, served: Boolean(f.served_at), ownerGap: lienMailProofOwnerGap({ name: ownerName, mailingAddress: property.owner.mailingAddress }) }, proofOpeners(f.id), () => setStopOpen(null)) : null
+      const proofDoor = proof && proofOpeners ? lienMailProofDoorPress({ jobId: entry.jobId, filingId: f.id, paper: proof.paper, served: Boolean(f.served_at), printed: lienServeStage(f, servePrinted) === 'record', ownerGap: lienMailProofOwnerGap({ name: ownerName, mailingAddress: property.owner.mailingAddress }) }, proofOpeners(f.id), () => setStopOpen(null)) : null
       return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof, proofDoor }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
     }
     const envelope = `To ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'} by certified mail`
@@ -479,6 +487,7 @@ export default function LienDeskAffidavitPane({
       case 'retainage':
         return onShowRetainage ? onShowRetainage(entry.jobId) : onOpenEditJob(entry.jobId)
       case 'serve':
+        return onServe ? onServe(entry.jobId) : onOpenLienAffidavit(entry.jobId)
       case 'release':
         return onOpenLienAffidavit(entry.jobId)
       case 'legal_desk':
@@ -521,6 +530,9 @@ export default function LienDeskAffidavitPane({
   const heads = useLienPaneHeads({ paneRef, sections: paneHeads, phone: isMobile })
 
   // ---------- footer ----------
+  // Where this job's filed copies stand (`lienServeStage.ts`), for the name on the filed footer's door.
+  const filedLien = (data.filingsByJob[entry.jobId] ?? []).find((f) => f.kind === 'affidavit' && !f.voided_at && f.filed_at && !f.served_at) ?? null
+  const filedCopiesStage = filedLien ? lienServeStage(filedLien, servePrinted) : 'print'
   let footer: React.ReactNode = null
   const forfeit = <span style={{ color: 'var(--text-red-600)' }}>The lien right on {label} ends {demandDate(entry.deadline)}.</span>
   if (entry.pile === 'needs_property' || entry.pile === 'needs_notice' || entry.pile === 'to_draft') {
@@ -637,9 +649,10 @@ export default function LienDeskAffidavitPane({
   } else if (entry.pile === 'filed') {
     footer = (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <span>Filed{item?.sent_at ? ` ${demandDate(calendarYmdInAppTzFromIso(item.sent_at))}` : ''} · a copy must reach the owner and the contractor by the 5th day after filing (§ 53.055) — the Lien window records the service. {entry.openBalance > 0 ? 'Still unpaid: the account is the Legal desk’s next.' : ''}</span>
+        <span>Filed{item?.sent_at ? ` ${demandDate(calendarYmdInAppTzFromIso(item.sent_at))}` : ''} · a copy must reach the owner and the contractor by the 5th day after filing (§ 53.055). {entry.openBalance > 0 ? 'Still unpaid: the account is the Legal desk’s next.' : ''}</span>
         <span style={{ flex: 1 }} />
-        <button type="button" onClick={() => onOpenLienAffidavit(entry.jobId)} style={btn('plain')}>Record service ›</button>
+        {/* The door reads its stage's name (`lienServeStage.ts`): *Record service ›* until v2.7798. */}
+        <button type="button" data-lien-aff-serve-door onClick={() => (onServe ? onServe(entry.jobId) : onOpenLienAffidavit(entry.jobId))} style={btn('plain')}>{lienServeStageDoor(filedCopiesStage)}</button>
         {onOpenLegalDesk && entry.openBalance > 0 ? <button type="button" onClick={onOpenLegalDesk} style={btn('primary')}>Refer to the Legal desk ›</button> : null}
       </div>
     )

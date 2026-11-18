@@ -2,7 +2,7 @@
 name: "Pins on a painted map: points of interest"
 number: 393
 group: ready
-status: A shipped (v2.7773) · B's column shipped and pushed (v2.7775) · B's marks in the app, the copies and the shared link in one PR (v2.7776, v2.7777, v2.7778), its function to deploy after the merge · C answered 2026-11-18, a separate list, drawn, and the owner likes the mock-up · C's train of three not started
+status: A shipped (v2.7773) · B shipped: the column pushed (v2.7775), the marks merged (v2.7776, v2.7777, v2.7778) and `painted-map-link` deployed · C's column shipped and pushed (v2.7792) · C's screens and one place sent by text in one PR (v2.7795, v2.7799) · nothing of B or C walked on the live app yet
 summary: >
   The owner wants to set pins, points of interest, on a painted map, and not only lines. A painted
   map can already hold a place: a numbered dot with a name, a few words and a photo. Look it over,
@@ -11,11 +11,11 @@ summary: >
   three readings to the owner. A is ＋ Place on Look it over. B is kinds of pins, each with its own
   mark. C is a job's own pins, with no painted map. He ticked all three on 2026-11-18, so it is a
   train of three in that order.
-next: C's train of three, the column first. Deploy `painted-map-link` once B's PR merges, and walk the marks on the live app.
-size: L as a train of three (S · M · L); left: B's deploy and walk (XS) and C (M · M · M)
-blocker: None. Two of C's calls were not answered one by one, the word and what a link carries, so they are built at their picks and are the owner's to change.
-ver: v2.7773 · 7775 · 7776 · 7777 · 7778
-opinion: build — the owner picked all three and then a separate list for C; A and B are done but for a deploy and a walk
+next: One walk on the live app once the last PR has deployed: a place with a kind, a place on the job, and a place sent by text. Then retire the card, on the owner's word that he wants it closed.
+size: L as a train of three (S · M · L); left: one merge, one walk and the retirement (XS)
+blocker: None. The last PR's merge and deploy.
+ver: v2.7773 · 7775 · 7776 · 7777 · 7778 · 7792 · 7795 · 7799
+opinion: build — every reading the owner picked is built, and his Share ask with them; what is left is a walk
 ---
 
 # Pins on a painted map (#393)
@@ -62,15 +62,16 @@ Taken as a train in that order. Each step is its own PR.
      the list, so a new kind needs no deploy. **The function is deployed after the merge.** Until
      then a link shows plain dots, and nothing breaks either way round.
 
-  Steps 2 to 4 are one PR. **Left for B:** deploy `painted-map-link`, then walk a place with a kind
-  on the live app, on a made-up map on no job, thrown away after. The printed page has not been
+  Steps 2 to 4 were one PR, merged 2026-11-18. `painted-map-link` was deployed from `main` the same
+  day and answers: a made-up code reads *This map is no longer shared.* **Left for B:** walk a place
+  with a kind on the live app, on a made-up map, thrown away after. The printed page has not been
   sent to a real printer.
 
   **The list of kinds is a first list.** The card's pick was to wait until places were in use and
   learn the kinds from what people mark. Read on 2026-11-18, prod held no place on any painted map,
   so there was nothing to learn from. The seven are the card's examples and the six names the place
   panel already offered. The list is one array in the app and is the owner's to change.
-- **C, a job's own pins: drawn, and the owner likes it.** See the next section. Not started.
+- **C, a job's own pins: built**, in two steps, the column and the screens. See the next section.
 
 ## C: a list of its own, kept on the job
 
@@ -119,14 +120,25 @@ The table does not hold a job to one such map. A job that goes leaves its maps s
 and two jobs can be combined, so a rule of one a job would refuse those. The app makes one and
 reads every one a job has as one list.
 
-**The train.**
+**The train, as built.**
 
-1. **The column.** One yes or no on `painted_maps`. A migration, its doc page and a scenario in
-   the painted maps bed.
-2. **The list.** The line and the press on `JobPaintedMapsStrip`, and `PaintedMapWindow` in its
-   places-only shape, with letters.
-3. **On every map of the job.** The dashed, lettered marks on `PaintedMapCanvas`, the *On this job*
-   rows in the window, and the Share sheet's sentence.
+1. **The column: shipped and pushed**, v2.7792. `painted_maps.job_list`, a yes or no, by migration
+   `20261118090000_painted_map_job_list.sql`. Its scenario in the painted maps bed passed in CI.
+2. **The list, and the job's places on every map of the job**, v2.7795, as one step. The line and
+   the press on `JobPaintedMapsStrip`. `PaintedMapWindow` in its places-only shape, with letters.
+   The dashed, lettered layer on `PaintedMapCanvas` and the *On this job* rows on the job's other
+   maps. In one PR with the place sent by text, opened after the push.
+
+**Built differently from the mock-up, on purpose.**
+
+- The sentence about what a link carries is under *On this job* in the map's window and not on the
+  Share sheet, since [#394](painted-map-share-sheet/README.md) is rebuilding that sheet.
+- **Throw this list away** is offered to the office alone. The mock-up drew no such press.
+- A list with no place on it shows no line under the address, only the press.
+
+**Left as it falls, and said in the fragment.** The list shows in the other lists of painted maps
+as a map named *Places on this job*. A place has no **Directions** of its own. One place cannot be
+shared by itself.
 
 ## Asked in passing: a faster Share, for routes and for places
 
@@ -137,17 +149,36 @@ reads every one a job has as one list.
 > else can identify a location. Could you help me decide if we should add this to this edition or
 > add it as another edition.
 
-**The answer given: another edition, and most of it already has a home.**
+**The owner's reply**, the same day:
+
+> Rather than another addition, let's just build it all right now, so we can close that card
+
+So it is built here. What that came to is under the three points below.
+
+**The answer first given: another edition, and most of it already has a home.**
 
 - **A painted map, his routes.** This is [#394](painted-map-share-sheet/README.md), carded and
   drawn the same day by another session. Its lead press is **Text it from my phone…**, and every
   sending press makes the link itself. Nothing of it belongs on this card.
 - **The job's list of places.** C keeps it as a painted map, so it has **Share** from its first
   day, as the mock-up draws. It gets #394's sheet when that lands, with nothing more to build.
-- **One place alone**, to text someone a single spot. This is new and is on no card yet. It needs
-  the sheet #394 builds, and one call of its own: what the reader opens. That is either the map
-  with that place picked out, or a plain pin in their own map app. It fits #394 as a later step
-  better than a card of its own.
+- **One place alone**, to text someone a single spot. This was new and on no card. It had one
+  call of its own: what the reader opens. That is either the map with that place picked out, or a
+  plain pin in their own map app.
+
+**What was built on his reply.**
+
+- **A painted map, his routes: nothing more here.** #394's sheet was built the same day by its own
+  session, with **Text it from my phone…** as its lead press. It needed nothing from this card.
+- **One place alone: built**, v2.7799. Each place's row has **Text this
+  place…** on a phone, a link that opens the phone's own Messages with the place in words and a map
+  link to the spot. At a desk it reads **Copy this place**. It is on a map's own places, on the
+  job's list, and on the job's places as another map shows them.
+- **The call was made at its pick, a plain pin, and is his to change.** The reader opens a map app
+  on that one spot. They need no sign-in, give no name, and see nothing else of the map. So anyone
+  who can see a place can send it. The other way, the painted map opened on that place, would let
+  only the map's maker and the office send one, would ask the reader for their name first, and
+  would show them the whole map.
 
 ## What a painted map held when the card was written
 

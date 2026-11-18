@@ -16,6 +16,7 @@ import { EMPTY_CARD_CHARGE_EXCLUSIONS } from '../../../supabase/functions/_share
 import type { SiteTripsState } from '../../hooks/useSiteTrips'
 import { jobCostsFromRows, type SiteCostRows, type SiteCostsRead } from '../../lib/developments/siteCosts'
 import type { SiteLaborRead } from '../../lib/developments/siteLabor'
+import type { DeletedTrip } from '../../lib/trips/tripDeleted'
 import { newTripRecord, type TripRecord } from '../../lib/trips/tripRecord'
 import { DevelopmentTripsCard, tripBackWords, tripNameWords, type TripLogPrint } from './DevelopmentTripsCard'
 import type { TripOpenSignal } from './DevelopmentTripsLook'
@@ -58,7 +59,7 @@ const punch = { user_id: 'u-luis', work_date: '2026-10-31', clock_in_lat: 35.001
 
 function state(over: Partial<SiteTripsState> = {}): SiteTripsState {
   return {
-    records: [lifts], failure: null, miles: 1180.4, sitePoint: { lat: 35, lng: -76.6 }, sitePointKnown: true, shows: true,
+    records: [lifts], failure: null, miles: 1180.4, sitePoint: { lat: 35, lng: -76.6 }, sitePointKnown: true, shows: true, deleted: [], deletedKnown: true, deletedFailed: false,
     roster: [{ id: 'p-luis', name: 'Luis', userId: 'u-luis' }, { id: 'p-dana', name: 'Dana', userId: null }], punches: [punch], punchesFailed: false, dismissals: [], names: new Map(),
     askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), dismiss: vi.fn(async () => []), undismiss: vi.fn(async () => undefined), ...over,
   }
@@ -439,5 +440,52 @@ describe('DevelopmentTripsCard', () => {
   it('offers no print when the page hands it no head for the paper', () => {
     draw(state())
     expect(screen.queryByTestId('trips-print')).toBeNull()
+  })
+})
+
+describe('DevelopmentTripsCard: deleted trips', () => {
+  const walk: TripRecord = { ...newTripRecord({ id: 't3', developmentId: 'd1' }), tripNumber: 3, purpose: 'Reset the riser the framers moved', people: [{ personId: null, userId: null, name: 'Priya', days: { '2026-11-09': 'site', '2026-11-11': 'site' } }] }
+  const gone: DeletedTrip = { record: walk, deletedAt: '2026-11-16T18:00:00.000Z', deletedByName: 'Dana Office', jobsGone: 0 }
+
+  it('lists the site’s deleted trips under the rows, in a fold, with who deleted each', () => {
+    draw(state({ deleted: [gone] }))
+    expect(screen.getByTestId('trips-deleted-fold').textContent).toContain('Deleted trips · 1')
+    fireEvent.click(screen.getByTestId('trips-deleted-fold'))
+    const row = screen.getByTestId('trips-deleted-row')
+    expect(row.textContent).toContain('Trip 3 · Nov 9 to 11')
+    expect(row.textContent).toContain('Priya · Deleted Nov 16 by Dana Office · kept until Feb 14')
+  })
+
+  it('Put back saves the trip again as it was, and says it is back', async () => {
+    const trips = state({ deleted: [gone] })
+    draw(trips)
+    fireEvent.click(screen.getByTestId('trips-deleted-fold'))
+    fireEvent.click(screen.getByRole('button', { name: 'Put back' }))
+    await waitFor(() => expect(trips.save).toHaveBeenCalledWith(walk))
+    expect(await screen.findByText('Trip 3 is back.')).toBeTruthy()
+    expect(trips.remove).not.toHaveBeenCalled()
+  })
+
+  it('a put back that fails says its reason and saves nothing else', async () => {
+    const trips = state({ deleted: [gone], save: vi.fn(async () => Promise.reject({ message: 'Training mode is read-only.', code: '42501' })) })
+    draw(trips)
+    fireEvent.click(screen.getByTestId('trips-deleted-fold'))
+    fireEvent.click(screen.getByRole('button', { name: 'Put back' }))
+    await waitFor(() => expect(trips.save).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText(/could not be put back|read-only|access/i)).toBeTruthy()
+    expect(screen.queryByText('Trip 3 is back.')).toBeNull()
+  })
+
+  it('the delete’s question says where the trip waits after its minute of Undo', () => {
+    draw(state())
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    fireEvent.click(screen.getByTestId('trip-delete'))
+    expect(screen.getByRole('alertdialog').textContent).toContain('You can undo it for a minute. After that it waits under Deleted trips for 90 days.')
+  })
+
+  it('says the deleted trips did not read, in the fold’s place', () => {
+    draw(state({ deletedFailed: true }))
+    expect(screen.getByTestId('trips-deleted-failed')).toBeTruthy()
+    expect(screen.queryByTestId('trips-deleted-fold')).toBeNull()
   })
 })

@@ -14,6 +14,7 @@ import { PUNCH_COLUMNS, type PunchRow } from './tripHourRows'
 import type { TripPhoneAct } from './tripPhone'
 import { TRIP_DISMISSAL_SELECT, type TripDismissalInsert, type TripDismissalRow } from './tripOffers'
 import { tripFromRow, tripNumberOf, tripSavePayload, TRIP_SELECT, type TripRecord, type TripRosterPerson, type TripRow } from './tripRecord'
+import { parseDeletedTrips, type DeletedTrip } from './tripDeleted'
 
 // The tables are younger than the generated types; the next types PR removes this cast.
 const db = supabase as unknown as SupabaseClient
@@ -58,6 +59,16 @@ export async function saveTrip(record: TripRecord): Promise<number | null> {
 export async function deleteTrip(id: string): Promise<void> {
   const { error } = await db.from('trips').delete().eq('id', id)
   if (error) throw error
+}
+
+/**
+ * A site's deleted trips that nothing has put back, newest first (`trip_deleted_list`, migration 20261118100000).
+ * For the trips office: the function refuses everyone else in words. Putting one back is `saveTrip`.
+ */
+export async function readDeletedTrips(developmentId: string): Promise<DeletedTrip[]> {
+  const { data, error } = await db.rpc('trip_deleted_list', { p_development_id: developmentId })
+  if (error) throw error
+  return parseDeletedTrips(data)
 }
 
 /** The roster, for the sheet's Who went and for naming one person the same way everywhere. */

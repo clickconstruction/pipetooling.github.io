@@ -25,6 +25,9 @@
  * **Change**, to the roles that may change a job's lines. A trip that holds a line shows the door to it in the
  * press's place, and its billing chip says where its money stands, read from the line and the bill that took
  * it (`lib/trips/tripBillLine.ts`). The look is handed the lines; with none handed, a trip says its own word.
+ *
+ * Deleted trips: under the rows, a fold for the reader who can write, closed until pressed. Each deleted trip says
+ * who deleted it and until when it is kept, with **Put back**, which saves it again (`lib/trips/tripDeleted.ts`).
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
@@ -34,6 +37,7 @@ import { TRIP_COST_CAP, TRIP_COST_WHO, tripCostLines, type TripCardsState, type 
 import { tripEvidenceChips, type TripEvidence, type TripEvidenceChip } from '../../lib/trips/tripEvidence'
 import { TRIP_HOUR_BUCKET_LABEL, type TripHourBucket } from '../../lib/trips/tripHours'
 import { tripRowAnchor } from '../../lib/trips/jobTrips'
+import { TRIP_DELETED_FAILED_WORDS, TRIP_DELETED_FOLD_LABEL, TRIP_DELETED_NOTE, TRIP_PUT_BACK_LABEL, type DeletedTripLine } from '../../lib/trips/tripDeleted'
 import { TRIP_PUT_ON_BILL_LABEL, tripBillStanding, tripPutOnBillShows, type TripBillLine, type TripBillStanding } from '../../lib/trips/tripBillLine'
 import { TRIP_BILLING_WORDS, type TripRecord } from '../../lib/trips/tripRecord'
 import { atSitePercentWords, buildTripStrip, daysWords, filterTripRows, hoursWords, monthDay, tripStripStartYear, tripStripYearOf, TRIPS_FILTERS, type TripLookRow, type TripsFilter, type TripsLookModel } from '../../lib/trips/tripsLook'
@@ -69,6 +73,8 @@ function billingChipStyle(row: TripLookRow, standing: TripBillStanding | null = 
 
 /** What each trip cost, for a dev or a controller, and where the two reads behind it stand. */
 export type TripsCosts = { byTrip: ReadonlyMap<string, TripCost>; labor: TripLaborState; cards: TripCardsState }
+
+const NO_DELETED: ReadonlyArray<DeletedTripLine> = []
 
 /** One trip to open: its id, and a count that changes with each ask, so the same trip can be asked for twice. */
 export type TripOpenSignal = { id: string; n: number }
@@ -111,6 +117,10 @@ export function DevelopmentTripsLook({
   jobShort,
   onPutOnBill,
   onOpenBillLine,
+  deleted = NO_DELETED,
+  deletedFailed = false,
+  putBackBusy = false,
+  onPutBack,
 }: {
   model: TripsLookModel
   hoursState: TripsHoursState
@@ -159,10 +169,18 @@ export function DevelopmentTripsLook({
   onPutOnBill?: (record: TripRecord) => void
   /** The door to a trip's line: open its job on Bill with the line picked. Absent, the door is not drawn. */
   onOpenBillLine?: (record: TripRecord, line: TripBillLine) => void
+  /** The site's deleted trips, said in words, newest first. Drawn only for a reader who can write. */
+  deleted?: ReadonlyArray<DeletedTripLine>
+  /** The deleted trips would not read: a quiet line says so in the fold's place. */
+  deletedFailed?: boolean
+  putBackBusy?: boolean
+  /** **Put back**: save this deleted trip again, under its own id. Absent, the press is dead. */
+  onPutBack?: (id: string) => void
 }) {
   const [filter, setFilter] = useState<TripsFilter>('all')
   const [openId, setOpenId] = useState<string | null>(null)
   const [yearPick, setYearPick] = useState<number | null>(null)
+  const [deletedOpen, setDeletedOpen] = useState(false)
   const startYear = useMemo(() => tripStripStartYear(model.rows, todayYmd), [model.rows, todayYmd])
   const year = yearPick ?? startYear
   const strip = useMemo(() => buildTripStrip(model.rows, year, todayYmd), [model.rows, year, todayYmd])
@@ -428,6 +446,39 @@ export function DevelopmentTripsLook({
           })}
         </div>
       )}
+      {/* Deleted trips (the fold after v2.7800): kept 90 days, each with who deleted it, and the press that saves it again. */}
+      {canWrite && deleted.length > 0 ? (
+        <div style={{ marginTop: 14 }} data-testid="trips-deleted">
+          <button type="button" onClick={() => setDeletedOpen((v) => !v)} aria-expanded={deletedOpen} data-testid="trips-deleted-fold" style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-700)', cursor: 'pointer' }}>
+            <span aria-hidden>{deletedOpen ? '▾' : '▸'}</span> {TRIP_DELETED_FOLD_LABEL} · {deleted.length}
+          </button>
+          {deletedOpen ? (
+            <div style={{ marginTop: 8 }}>
+              <p style={{ margin: '0 0 8px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{TRIP_DELETED_NOTE}</p>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                {deleted.map((d, i) => (
+                  <div key={d.id} data-testid="trips-deleted-row" style={{ display: 'flex', flexDirection: phone ? 'column' : 'row', flexWrap: 'wrap', gap: '6px 14px', alignItems: phone ? 'flex-start' : 'center', justifyContent: 'space-between', padding: '9px 12px', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+                    <div style={{ flex: phone ? undefined : '1 1 320px', minWidth: 0 }}>
+                      <strong style={{ color: 'var(--text-strong)' }}>{d.name}</strong> <span style={{ color: 'var(--text-700)' }}>· {d.why}</span>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{[d.who || null, d.deleted, d.kept].filter(Boolean).join(' · ')}</div>
+                      {d.gone ? <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)' }}>{d.gone} Put back saves the trip without it.</div> : null}
+                    </div>
+                    <span data-testid="trips-deleted-put-back">
+                      <SmallButton onClick={() => onPutBack?.(d.id)} disabled={putBackBusy || !onPutBack} title={`${d.pressLabel}: who went, its days and its number are saved again. No clock row, bill or cost changes.`}>
+                        {TRIP_PUT_BACK_LABEL}
+                      </SmallButton>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : canWrite && deletedFailed ? (
+        <p style={{ margin: '12px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }} data-testid="trips-deleted-failed">
+          {TRIP_DELETED_FAILED_WORDS}
+        </p>
+      ) : null}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { LienDeskEntry, LienDeskItemRow, LienDeskMonth, LienNoticeMonthRow } from './lienDesk'
+import { lienServeStage, type LienServePrinted } from './lienServeStage'
 import { monthFromBill, monthIsStandIn } from './lienDesk'
 import { lienStandInMonth, type LienBill, type LienStandIn } from './lienBillMonths'
 import { lienAffidavitGateHeld, type LienAffidavitEntry, type LienAffidavitGateKey } from './lienDeskAffidavits'
@@ -29,6 +30,8 @@ export interface LienTimelineDeskSource {
   items: ReadonlyArray<LienDeskItemRow>
   /** Every non-voided filing on the job — affidavits and releases of record; notices are read from the items and months. */
   filings: ReadonlyArray<JobLienFilingRow>
+  /** The filed liens whose copies were printed here (`lienServeStage.ts`), from the desk's own read; absent reads a lien with nothing on its filing as still to print. */
+  servePrinted?: LienServePrinted
   entry: LienDeskEntry | null
   affidavit: LienAffidavitEntry | null
   /** The § 53.057 facts (#33 §1, v2.3753) when the desk carries them. */
@@ -207,6 +210,8 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
           recordingNumber: affidavitFiling?.recording_number ?? '',
           county: affidavitFiling?.county ?? '',
           servedAt: affidavitFiling?.served_at ?? null,
+          // Where a filed lien's copies stand, so the band's press reads its stage's name (`lienServeStage.ts`).
+          serveStage: affidavitFiling && !affidavitFiling.served_at ? lienServeStage(affidavitFiling, src.servePrinted) : null,
           serveDue: affidavitFiling?.serve_due ?? null,
           missingGates: (src.affidavit?.gates ?? []).filter((g) => !g.ok).map((g) => GATE_SHORT[g.key] ?? g.key),
           // Where the paper stands on the desk (v2.7187, punch list #335, row 2), so the desk's own timeline names the step too.
@@ -321,6 +326,8 @@ export function buildLienTimelineFromWindow(src: {
   propertyKind: string
   openBalance: number
   todayYmd: string
+  /** The filed liens whose copies were printed here (`lienServeStage.ts`); absent reads a lien with nothing on its filing as still to print. */
+  servePrinted?: LienServePrinted
   /** The job's demand letters (v2.3877) — the Lien window already loads them for its history. */
   demandLetters?: ReadonlyArray<JobDemandLetterRow> | null
   /** The courtesy notices sent on the job (punch list #231), from its sent notice's record; absent when the caller has not loaded them. */
@@ -372,7 +379,7 @@ export function buildLienTimelineFromWindow(src: {
     holdUntil: src.deskNotice?.holdUntil ?? null,
     retainage: src.job.lien_contract_ended_on ? { contractEndedOn: src.job.lien_contract_ended_on, deadline: lienThirtyDayClock(src.job.lien_contract_ended_on), noticed: false } : null,
     affidavit: affidavitFiling
-      ? { deadline: '', filedAt: affidavitFiling.filed_at, recordingNumber: affidavitFiling.recording_number, county: affidavitFiling.county, servedAt: affidavitFiling.served_at, serveDue: affidavitFiling.serve_due, missingGates: [] }
+      ? { deadline: '', filedAt: affidavitFiling.filed_at, recordingNumber: affidavitFiling.recording_number, county: affidavitFiling.county, servedAt: affidavitFiling.served_at, serveDue: affidavitFiling.serve_due, serveStage: affidavitFiling.served_at ? null : lienServeStage(affidavitFiling, src.servePrinted), missingGates: [] }
       : src.deskAffidavit?.state
         ? // No filing yet: the desk's word alone. The last day stays the window's own (`deadline: ''` reads the last month's).
           { deadline: '', filedAt: null, recordingNumber: '', county: '', servedAt: null, serveDue: null, missingGates: src.deskAffidavit.missing.map((k) => GATE_SHORT[k] ?? k), state: src.deskAffidavit.state, missingKeys: src.deskAffidavit.missing, holdUntil: src.deskAffidavit.holdUntil, noticeStanding: src.deskAffidavit.missing.includes('notice') ? lienAffidavitNoticeStandingOnDesk(src.deskNotice?.state) : null }

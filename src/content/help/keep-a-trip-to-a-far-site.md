@@ -2,7 +2,7 @@
 title: keep a trip to a site away from home
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: trip, trips, put on a bill, bill a trip, a trip's line, extra trip, bill the 1 picked, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log, trip number, number, trip 1, trip 5, copy link, link to a trip, open a trip
+keywords: trip, trips, deleted trips, put back, put a trip back, undo a deleted trip, restore a trip, put on a bill, bill a trip, a trip's line, extra trip, bill the 1 picked, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log, trip number, number, trip 1, trip 5, copy link, link to a trip, open a trip
 order: 76
 ---
 A trip is one going out to a site away from home and coming back. You keep it on the site's Development page, apart from the hours on its jobs.
@@ -198,9 +198,29 @@ To delete, press **Delete this trip** on the open trip. The page asks once, by t
 
 A message then offers **Undo** for one minute. **Undo** puts the trip back with the number it had.
 
+After that minute the trip waits under **Deleted trips** for 90 days.
+
 Deleting a trip changes no clock row, no bill and no cost.
 
 A trip on a job's lines leaves its line on the job. **Undo** puts the trip back without its tie to that line.
+
+## Put a deleted trip back
+
+A deleted trip is kept for 90 days. It waits under **Deleted trips**, below the trips on the Trips look.
+
+1. Press **Deleted trips**. The list opens.
+2. Find the trip. Its line says who deleted it and until when it is kept.
+3. Press {{button:outline|Put back}}.
+
+The trip comes back with who went, its days and the number it had. No clock row, bill or cost changes.
+
+A job the trip named may have been deleted since. The line says so. The trip then comes back without that job.
+
+A trip on a job's lines comes back without its tie to that line.
+
+A site whose only trip was deleted still shows its Trips look. You can put the trip back from there.
+
+After 90 days a deleted trip is gone for good.
 
 ## Put a trip on a bill
 
@@ -407,4 +427,4 @@ A browser can block the print window. The look then says so beside the link. All
 
 ## Who can do this
 
-The office, the leaders and the controller read and change every trip. The same people can put a trip on a bill. A primary reads every trip and cannot put one on a bill. The crew starts its own trip in Job Mode, as [start a trip from your phone](/help/start-a-trip-from-your-phone) shows. The related guide is [see everything on a development in one place](/help/see-everything-on-a-development).
+The office, the leaders and the controller read and change every trip. The same people can put a trip on a bill. Everyone who reads every trip sees **Deleted trips** and can put a trip back. A primary reads every trip and cannot put one on a bill. The crew starts its own trip in Job Mode, as [start a trip from your phone](/help/start-a-trip-from-your-phone) shows. The related guide is [see everything on a development in one place](/help/see-everything-on-a-development).

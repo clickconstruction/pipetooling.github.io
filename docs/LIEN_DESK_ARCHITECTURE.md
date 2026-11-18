@@ -118,7 +118,8 @@ last_updated: 2026-11-18
 > at each column's foot in v2.7470), a phone's two in one row over its folded bins, where the third tile only reads;
 > `lienBoardMailNumbersPress` hands *Approved · to mail* the run's door while notices still wait to print, and the desk's `boardBinPress` map carries it with the liens' copies and the leader's press;
 > since v2.7712 an approved notice with no signature stands in a bin of its own, *Approved · to sign* (`to_sign`, `noticeStageOf` over `lienItemUnsigned`, two stages left), whose press is the office's reminder or the leader's `lienBoardSignDoor`, so the print bin and the third tile count what the print takes and the notices' print has no line;
-> since v2.7714 `Bin` draws a blue left edge where its press is live and not `quiet` (`data-act`, with the kernel's `lit` and `lienBoardLitBin` gone), folds an empty bin to one line (`data-folded`), and draws Missed `inline` on the column's heading line (`data-lien-board-heading`, where Held stood too until v2.7783), and `lienBoardSendDoor` words the affidavits' *To send* press;
+> since v2.7714 `Bin` draws a blue left edge where its press is live and not `quiet` (`data-act`, with the kernel's `lit` and `lienBoardLitBin` gone), folds an empty bin to one line (`data-folded`), and drew Missed `inline` on the column's heading line until v2.7796 (`data-lien-board-heading`, where Held stood too until v2.7783), and `lienBoardSendDoor` words the affidavits' *To send* press;
+> since v2.7796 the `missed` stage is each column's closed end (`LienBoardBin.closed` in the place of `beside`, with `Bin`'s `inline` gone, `data-lien-board-closed`, named by `lienBoardStageWords` from `LIEN_CLOSED_BIN_WORDS`), drawn after the flow with no arrow and a dashed chip (`data-closed`, amber with `lateNotice`), `pileFor` puts an affidavit not filed past its day in `missed` whatever its status, and a notice in pile `missed` has a chip only while `lienNoticeWindowClosed` says a closed month is unrecorded;
 > `LienDoNowBar` shows the short pair while pinned.
 > In `LienDesk` the notices' press is `openWholeRun` (no GC), the affidavits' is `printReadyAffidavits` in place, *See them ›* opens By paper at the approved notices or, for the papers on the earlier form, at the affidavits in Ready to file (at the held affidavits until v2.7783).
 > Since v2.7779 the affidavits' print says what it prints with only when that is not the usual stack (`lienBoardStackNote` over `LienBoardPrintStack`, `LIEN_BOARD_USUAL_STACK`: the help sheet and the notice records, no copies), and the line's press sets the three ticks of By paper's print bar back to it in place (`onBoardPrintNote`).
@@ -226,7 +227,7 @@ last_updated: 2026-11-18
 > `lienBoardRowBin` gives `serve:` rows that bin;
 > `lienBinFolds` folds two or more into one row (`serve_copies`, a new `LienNextUpTarget`);
 > the row's line and its red day are [`lienServeClock.ts`](../src/lib/jobs/lienServeClock.ts) (`lienServeRowWords`).
-> `LienBoard` takes `binPress`, a press inside a bin under its chips, and the desk hands it *Mail N liens' copies ›* (`lienServeDoorWords`), which opens `LienServeWindow`.
+> `LienBoard` takes `binPress`, a press inside a bin under its chips, and the desk hands it the copies' press by stage, *Print N liens' copies ›* or *Enter mail numbers · N ›* (`lienServeStageDoorWords` since v2.7798, *Mail N liens' copies ›* before it), which opens `LienServeWindow`.
 
 > **v2.7446 (an open paper fits its pane, the owner's ask of 2026-11-16):** the three panes (`[data-lien-desk-pane]`, `[data-lien-affidavit-pane]`, `[data-lien-retainage-pane]`) are one-column grids whose column is `minmax(0, 1fr)` on every screen, and so is each section body (`[data-lien-pane-body]`) and `.lienDeskFooterSlot`.
 > **The rule: a grid a paper is drawn in never has an `auto` column.**
@@ -331,6 +332,17 @@ last_updated: 2026-11-18
 > A phone's tabs read the names whole, with no label.
 > `.lienDeskKindTab` in `index.css` is `2px 8px` where it was `2px 10px`, on the view tabs and on By paper's three (a window from 641 to 1,131 px keeps its 7).
 > Measured on the live desk at 1,440 px: the views 305 px with a two-figure count where they were 373 (316 at three figures, `LIEN_DESK_TITLE_LINE_PARTS.views`), the paper tabs 411 where they were 423 (`LIEN_DESK_PILE_LINE_PARTS.papers`).
+
+> **v2.7789 (By paper's paper tabs ride the title line when it has room, the owner's ask of 2026-11-18):** [`lienDeskTitleBar.ts`](../src/lib/jobs/lienDeskTitleBar.ts) `lienDeskPapersFit(width, parts, papers)` answers `title_line` when the measured line holds the way back, the views, the paper tabs and the four presses with a gap between each pair (`lienDeskTitleLineWithPapersNeeds`), and `second_line` otherwise or when the papers have no width.
+> `useLienDeskTitleBarFit` returns it as `papersFit`, read from the same two readers (`readLienDeskTitleLine` for the line, `readLienDeskPileLine` for the papers' width, the same on either line), and runs again on it, since the tab row is drawn anew when it changes lines.
+> `lienDeskTitleBarLayout` takes `papersFit` and `piles` (whether the view draws pile chips) and answers `papers`: `title_line`, `second_line`, or null off By paper.
+> With the papers up the second line is what is left: the piles on Lien affidavits and Retainage notices, *Put a GC on notice…* alone at the right on Monthly notices, and no second line at all where the view has neither.
+> `lienDeskPileLineFit` takes the papers' place as a third argument and measures the pile line without them once they are up.
+> `LienDesk.tsx` draws `paperTabs` in one of two places, after the views or after the header break, so the order on the page is the order a keyboard walks;
+> `LienDeskPaperTabs` marks its row `data-lien-desk-paper-kinds="title_line"` or `"second_line"`.
+> A phone is never measured and keeps the papers as its second row.
+> Measured on the live desk: the papers are up from 1,176 px of window with two-figure counts, and also from 1,100 to 1,131, where `index.css` draws the bar tighter;
+> from 1,132 to 1,175 and under 1,100 they lead the second line.
 
 > **v2.7311 (the owner-records door ends the pile line, the owner's ask of 2026-11-15):** on a computer *An owner asked for records ›* is the right end of the second line on every view, whatever the title line has room for — on By paper the paper tabs and the piles at the left, *Put a GC on notice…* and the door in the `data-lien-desk-right` span at the right;
 > off By paper the door alone in that span (the owner's answer when asked: yes, every view).
@@ -1147,6 +1159,9 @@ Each dossier says what the desk still holds, what is out, and what a next cut wo
 - **Since v2.7785:** in a stop's window a recipient's card in **What went out** carries the press for what its copy lacks, ruled by [`lienMailProofDoor.ts`](../src/lib/jobs/lienMailProofDoor.ts) and handed in as `record.proofDoor` on `LienStopPaper`.
 - The desk's openers are `proofOpeners` in `LienDesk.tsx`, for the office alone: the property record (`paneFix`), *Filed liens: copies to mail* at the job's line (`serveLand` through `LienDeskWindows`), and the job's Lien window (`onOpenLienProof`, then `land` on `LienInstrumentsModal` and `LienFilingTabs`).
 - The place is scrolled to and lit by [`landOn.ts`](../src/lib/landOn.ts) and the `[data-landed]` rule in `index.css`, the one shared light, which `LienPaperPropertyWindow` uses for its focused field too.
+- **Since v2.7798:** every door to a filed lien's copies reads the stage they are at and lands on that half, ruled by [`lienServeStage.ts`](../src/lib/jobs/lienServeStage.ts): **Print the copies to mail**, then **Enter mail numbers**.
+- The stage reads `data.servePrintedFilingIds`, the desk's one read of the prints filed against each unserved lien ([`lienServePrintsIo.ts`](../src/lib/jobs/lienServePrintsIo.ts), `sent_documents` of kind `lien_affidavit_copy`), plus what the copies window printed since (`servePrintedNow`).
+- `openServeFor` and `openServeAll` in `LienDesk.tsx` are the two doors: one job's (the To do row, the band, the pane's footer) and the bin's, each setting `serveLand` to the half its name says.
 - **Next:** the three doors (the courtesy record, the courtesy notice, the attorney's letter) are one component, since a draft footer and the sent footer both draw them.
   With them out, the owner's call, the courtesy window and the call script (2892–2980) can follow the sent footer.
 

@@ -181,6 +181,8 @@ Held entries show struck through. They never reach the printed packet, and they 
 
 Office staff can move a job to Collections but cannot release it. {{button:outline|Ask a dev to review…}} takes a short note. It puts the account at the top of the dev's Needs You card. The card reads "N Collections accounts await your review before an attorney sees them". It opens the desk on that account. The account's header shows who asked and how many days ago. **Withdraw the request** takes it back.
 
+The job's row on the Pipeline says where the account stands. After a request it wears {{chip:blue|⚖ review requested}}. Once the account is with the firm, the chip names the firm's stage, such as {{chip:yellow|⚖ demand sent}}. The chip sits beside the row's contract chip, on a computer and on a phone. Only the office sees it.
+
 ## The firm
 
 Each account belongs to the firm that covers its county. The firm's name at the top of the desk is this account's firm. The county that picked it sits beside the name, such as **Austin Legal, Travis County**. The county comes from the job's property record. With no record, it comes from where the job's address sits on the map. The Venue cell under the account's name says the county. Hover the firm's name to read where the county came from. The firm's portal shows the same three cells at the top of the matter. There, Venue opens the firm's **Who covers what** map on the county.
