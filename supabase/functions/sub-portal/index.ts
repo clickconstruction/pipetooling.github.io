@@ -45,6 +45,16 @@ import {
   type SubPortalPapersRows,
 } from '../_shared/subPortalPapers.ts'
 import type { PaperCompany } from '../_shared/subPapers.ts'
+import {
+  blankShutPaymentMemos,
+  blankShutSubPortalRows,
+  commitmentJobId,
+  jobsWaitingOnPerson,
+  sheetJobMap,
+  subPortalJobIds,
+  type CommitmentTie,
+  type SheetTie,
+} from '../_shared/subPortalJobPapers.ts'
 
 /**
  * Sub portal payload (sub-portal train): resolves a sub portal link token OR
@@ -66,6 +76,15 @@ import type { PaperCompany } from '../_shared/subPapers.ts'
  * payment. Shaping and the rules live in `_shared/subPortalPapers.ts`.
  * A note that something is wrong also tells the office (v2.7609): a line in the
  * dispatch inbox and a push, as `submit-sub-portal` tells it of a sub's other notes.
+ *
+ * Papers before a job opens (step 6): a sub with no login has no row security
+ * to hide a job from them, so this read is the lock. Every Pipeline job the
+ * page shows something of is asked about once (`job_papers_for_person`). A job
+ * with a paper the sub has not signed is shut: its address, name, scope lines,
+ * notes, memos and plans link are held back, its number, days and money stay,
+ * and `job_papers` lists it with its papers for the page's card. A job whose
+ * papers cannot be read is held shut too. The rule and the blanking live in
+ * `_shared/subPortalJobPapers.ts`.
  */
 
 const corsHeaders = {
@@ -479,17 +498,16 @@ serve(async (req) => {
     const totals = buildSubTotals(sheets)
     const openSheets = sheets.filter((s) => s.open > 0)
     const sheetsById = new Map(sheetRows.map((s) => [s.id, s]))
-    const payments = buildSubPaymentLines(paymentRows, sheetsById, addDaysYmd(todayYmd, -90))
     const paymentTraces = buildSubPaymentTraceLines(paymentEventRows, sheetsById, addDaysYmd(todayYmd, -90))
 
     // Open offers with the step name for the card title.
     const { data: offersRaw } = await admin
       .from('step_commitments')
-      .select('id, step_id, labor_job_id, amount, notes, offer_scope_snapshot, offer_expires_at, proposed_start, proposed_end, work_days, stage_window_id')
+      .select('id, step_id, labor_job_id, job_id, amount, notes, offer_scope_snapshot, offer_expires_at, proposed_start, proposed_end, work_days, stage_window_id')
       .eq('person_id', link.person_id)
       .eq('status', 'offered')
       .limit(20)
-    const offerRowsRaw = (offersRaw ?? []) as Array<SubOfferRow & { step_id: string | null; stage_window_id?: string | null }>
+    const offerRowsRaw = (offersRaw ?? []) as Array<SubOfferRow & { step_id: string | null; job_id?: string | null; stage_window_id?: string | null }>
     await loadWindows(offerRowsRaw.map((o) => o.stage_window_id ?? '').filter(Boolean))
     for (const o of offerRowsRaw) {
       const w = o.stage_window_id ? windowById.get(o.stage_window_id) : null
@@ -551,6 +569,8 @@ serve(async (req) => {
     // Your days (v2.2930): dated work from every live signed order (their pick, else the
     // office's span), office-set sheets with a date that no order already covers, and days off.
     const bookings: Array<{ start: string; end: string; label: string; address: string | null; jobNumber: string | null; source: 'pick' | 'office'; commitmentId: string | null; note: string | null }> = []
+    // Each booking's own job or sheet, in the bookings' order: the papers lock ties a booking to its Pipeline job by it.
+    const bookingTies: Array<{ job_id: string | null; labor_job_id: string | null }> = []
     {
       const { data: liveRaw } = await admin
         .from('step_commitments')
@@ -578,6 +598,8 @@ serve(async (req) => {
         const num = (job?.hcp_number ?? '').trim() || null
         const stage = o.stage_window_id ? stageNames.get(o.stage_window_id) ?? null : null
         bookings.push({ start, end, label: [stage, num ? `#${num}` : null].filter(Boolean).join(' · ') || 'Work order', address: cleanPortalAddress(job?.job_address), jobNumber: num, source: o.picked_start ? 'pick' : 'office', commitmentId: o.id, note: null })
+        bookingTies.push({ job_id: o.job_id, labor_job_id: o.labor_job_id })
+        if (o.job_id && num && !jobNumberById.has(o.job_id)) jobNumberById.set(o.job_id, num)
         if (o.labor_job_id) coveredSheetIds.add(o.labor_job_id)
       }
       for (const sh of sheetRows) {
@@ -585,6 +607,7 @@ serve(async (req) => {
         if (!d || d < todayYmd || coveredSheetIds.has(sh.id)) continue
         const num = (sh.job_ledger_id ? jobNumberById.get(sh.job_ledger_id) : undefined) ?? ((sh.job_number ?? '').trim() || null)
         bookings.push({ start: d, end: d, label: num ? `#${num}` : 'Sheet', address: cleanPortalAddress(sh.address), jobNumber: num, source: 'office', commitmentId: null, note: null })
+        bookingTies.push({ job_id: sh.job_ledger_id ?? null, labor_job_id: null })
       }
     }
     const { data: offRaw } = await admin.from('person_availability').select('day').eq('person_id', link.person_id).eq('kind', 'off').gte('day', addDaysYmd(todayYmd, -7)).limit(200)
@@ -593,8 +616,10 @@ serve(async (req) => {
     // Papers (punch list #371): the Statements view's block. Its reads are its own, so a failure here leaves the page a
     // sub knows exactly as it was: `papers` is null and nothing else changes.
     let papers: SubPortalPapers | null = null
+    let paperSheetTies: SheetTie[] = []
     try {
       const paperRows = await readPapersRows(admin, link.person_id, laborJobIds)
+      paperSheetTies = paperRows.sheets.map((s) => ({ id: s.id, job_ledger_id: s.job_ledger_id }))
       const { company, officePhone } = await readPaperCompany(admin)
       papers = buildSubPortalPapers(paperRows, { subName: personName, company, officePhone, now: new Date() })
     } catch (e) {
@@ -602,15 +627,34 @@ serve(async (req) => {
       papers = null
     }
 
+    // Papers before a job opens (step 6): this read is the lock for a person with no login. Every Pipeline job the page
+    // shows something of is asked about once, and a job the sub still owes a paper on keeps its number, days and money
+    // and nothing that says where it is or what the work is.
+    const sheetTies: SheetTie[] = [...sheetRows.map((s) => ({ id: s.id, job_ledger_id: s.job_ledger_id ?? null })), ...paperSheetTies]
+    const orderTies: CommitmentTie[] = [...offerRowsRaw.map((o) => ({ id: o.id, job_id: o.job_id ?? null, labor_job_id: o.labor_job_id ?? null })), ...bookingTies.map((b, i) => ({ id: `booking-${i}`, ...b }))]
+    // A work order whose sheet the page did not read is tied through that sheet, in one look. A look that fails stops
+    // the page: an order tied to no job would show.
+    const knownSheets = new Set(sheetTies.map((s) => s.id))
+    const straySheetIds = [...new Set(orderTies.filter((c) => !c.job_id && c.labor_job_id && !knownSheets.has(c.labor_job_id)).map((c) => c.labor_job_id as string))]
+    if (straySheetIds.length > 0) sheetTies.push(...(await readEvery<SheetTie>(admin, 'people_labor_jobs', 'id, job_ledger_id', ['id'], { column: 'id', in: straySheetIds })))
+    const sheetJob = sheetJobMap(sheetTies)
+    const jobPapers = await jobsWaitingOnPerson(admin, link.person_id, subPortalJobIds(sheetTies, orderTies), Object.fromEntries(jobNumberById))
+    const shutJobs = new Set(jobPapers.map((j) => j.job_id))
+    const offerJob: Record<string, string | null> = {}
+    for (const o of offerRowsRaw) offerJob[o.id] = commitmentJobId(o, sheetJob)
+    const shown = blankShutSubPortalRows({ sheets: openSheets, offers, bookings, papers }, { sheets: sheetJob, offers: offerJob, bookings: bookingTies.map((b) => commitmentJobId(b, sheetJob)) }, shutJobs)
+    // A shut job's payments keep their amounts and days; the memo, a note the office typed, is held back.
+    const payments = buildSubPaymentLines(blankShutPaymentMemos(paymentRows, sheetJob, shutJobs), sheetsById, addDaysYmd(todayYmd, -90))
+
     return jsonResponse({
       company: PORTAL_COMPANY,
       subName: personName,
       preparedOn: todayYmd,
-      sheets: openSheets,
+      sheets: shown.sheets,
       payments,
       paymentTraces,
       totals,
-      offers,
+      offers: shown.offers,
       documents,
       payRun: {
         day: payRunDay,
@@ -621,8 +665,10 @@ serve(async (req) => {
       // page submit forms and sign offers.
       requestToken: link.token ?? null,
       slug,
-      days: { bookings, offDays },
-      papers,
+      days: { bookings: shown.bookings, offDays },
+      papers: shown.papers,
+      // The jobs that wait on this sub's signature, each with its number and its papers. Empty for most.
+      job_papers: jobPapers,
     })
   } catch (e) {
     console.error('sub-portal error', e)

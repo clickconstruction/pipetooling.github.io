@@ -58,6 +58,16 @@ Each paper has its own link. A new link replaces the last one for that paper.
 
 A row can say *No file is linked to this login*. That person cannot sign yet. Link their login to their file on **People**. Then come back and copy their link.
 
+## A sub with no login
+
+A sub with no login signs on their own page. The page shows a card for the job, such as *Work on J2391*. The card lists the job's papers and which are signed. The sub presses {{button:blue|Read and sign: Site rules}} with the paper's own name on it. After signing the sub presses **Back to your page**.
+
+Until every paper is signed the sub's page holds the job back. The page shows the job's number and *Papers to sign first*. The page does not show the address, the scope, the plans link or any note. The sub's money stays on the page.
+
+The sub cannot accept that job's work order before signing. The sub cannot pick its days or report on it either.
+
+You can still text the sub a link. Find the sub's row in the table and press **Copy the signing link**.
+
 ## Take a paper off
 
 Press **Take off** on the paper's row and confirm. Nobody is asked to sign it for this job any more. Every signature already on file is kept.

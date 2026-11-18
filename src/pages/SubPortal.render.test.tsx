@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import SubPortal from './SubPortal'
 import { installDomShims } from '../test/renderSmokeMocks'
 import { SUB_PORTAL_DEMO_PAYLOAD } from '../lib/subPortal/subPortalDemoFixture'
+import { JOB_PAPERS_RETURN_KEY } from '../lib/jobs/jobPapers'
 
 /**
  * Wiring smoke for the sub portal page (sub-portal train): the edge-fn fetch
@@ -183,5 +184,138 @@ describe('SubPortal render smoke', () => {
     expect(screen.getAllByRole('heading', { name: 'Your statements' })).toHaveLength(1)
     // The first page's own switch is the only one: the second page, with no papers, draws none.
     expect(screen.getAllByRole('button', { name: 'Statements' })).toHaveLength(1)
+  })
+})
+
+/**
+ * Papers before a job opens, step 6: the reply as the function sends it for a sub who owes job J2391 two papers. The
+ * job's sheet, offer and booking come held back (no address, no scope, marked with the job), and `job_papers` lists
+ * the job. The second sheet, J-1477, is an open job and reads as it always did. Made-up names only.
+ */
+const CEDAR = 'job-cedar'
+const [demoSheet, openSheet] = SUB_PORTAL_DEMO_PAYLOAD.sheets
+const [demoOffer] = SUB_PORTAL_DEMO_PAYLOAD.offers
+const [demoBooking, ...otherBookings] = SUB_PORTAL_DEMO_PAYLOAD.days.bookings
+const NDA = { id: '00000000-0000-4000-8000-000000002391', paper_name: 'Ridgeway Builders NDA', is_form: true, status: 'none', signed_at: null }
+const SITE = { id: '00000000-0000-4000-8000-000000002392', paper_name: 'Site rules and photo policy', is_form: false, status: 'none', signed_at: null }
+const SHUT_PAYLOAD = {
+  ...SUB_PORTAL_DEMO_PAYLOAD,
+  sheets: [{ ...demoSheet!, jobNumber: 'J2391', address: null, items: [], plansUrl: null, agreement: null, payHoldReason: null, papersFirstJobId: CEDAR }, openSheet!],
+  offers: [{ ...demoOffer!, title: 'Work order', lines: [], startsLabel: null, exclusions: [], references: [], acknowledgements: [], specialProvisions: null, papersFirstJobId: CEDAR }],
+  days: { ...SUB_PORTAL_DEMO_PAYLOAD.days, bookings: [{ ...demoBooking!, label: '#J2391', jobNumber: 'J2391', address: null, papersFirstJobId: CEDAR }, ...otherBookings] },
+  job_papers: [{ job_id: CEDAR, job_number: 'J2391', papers: [NDA, SITE] }],
+}
+
+describe('SubPortal: papers before a job opens (step 6)', () => {
+  const assign = vi.fn()
+  const realLocation = window.location
+  beforeEach(() => {
+    assign.mockClear()
+    window.sessionStorage.clear()
+    Object.defineProperty(window, 'location', { configurable: true, value: { ...realLocation, assign, pathname: '/sub', search: `?t=${TOKEN}` } })
+  })
+  afterEach(() => {
+    Object.defineProperty(window, 'location', { configurable: true, value: realLocation })
+  })
+
+  function stub(submit: { ok: boolean; status: number; body: Record<string, unknown> }, payload: Record<string, unknown> = SHUT_PAYLOAD) {
+    const posts: Record<string, unknown>[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (!String(url).includes('submit-sub-portal')) return { ok: true, status: 200, json: async () => payload }
+        posts.push(JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>)
+        return { ok: submit.ok, status: submit.status, json: async () => submit.body }
+      }),
+    )
+    return posts
+  }
+
+  it('draws one card in place of the job’s rows: its number, its papers and Read and sign, with the money still there', async () => {
+    stub({ ok: true, status: 200, body: { ok: true, signPath: '/contract/accept?t=fresh' } })
+    renderPortal()
+    await waitFor(() => expect(screen.getByText('Work on J2391')).toBeTruthy())
+    expect(screen.getByText('This job has 2 papers to sign before you can see where it is and what the work is.')).toBeTruthy()
+    expect(screen.getByText('Ridgeway Builders NDA')).toBeTruthy()
+    expect(screen.getByText('Site rules and photo policy')).toBeTruthy()
+    expect(screen.getAllByText('Not signed yet')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Read and sign: Ridgeway Builders NDA' })).toBeTruthy()
+    // The job's sheet and offer are one line each inside the card: the number, why the address is not there, the money.
+    const card = document.querySelector('[data-sub-job-papers="owed"]')!
+    expect(card.querySelector('[data-sub-job-papers-sheet="demo-s1"]')!.textContent).toContain('J2391 · Papers to sign first')
+    expect(card.querySelector('[data-sub-job-papers-sheet="demo-s1"]')!.textContent).toContain('Agreed $3,120.00 · Paid $1,500.00 · Open $1,620.00')
+    expect(card.querySelector('[data-sub-job-papers-offer="demo-o1"]')!.textContent).toContain('New work for you · Papers to sign first')
+    // Nothing of the job's place or work is drawn: no sheet card, no offer card, no sign-to-accept.
+    expect(screen.queryByText(/1208 Brazos St/)).toBeNull()
+    expect(screen.queryByText(/14 × Top out fixtures/)).toBeNull()
+    expect(screen.queryByText('Rough-in · 407 E 6th St')).toBeNull()
+    expect(screen.queryByText(/Sign to accept this work/)).toBeNull()
+    // The New work section has no offer left to draw, so its heading is gone: the words live in the card's line alone.
+    expect(screen.queryByRole('heading', { name: 'New work for you' })).toBeNull()
+    expect(document.getElementById('sp-focus-sheet-demo-s1')).toBeNull()
+    // The open job beside it reads as it always did, and the owed figure still counts the held-back sheet.
+    expect(document.getElementById('sp-focus-sheet-demo-s2')).toBeTruthy()
+    expect(screen.getAllByText(/894 Lamar Blvd/).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('$4,180.00').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('Read and sign asks for the sub’s own copy, remembers the way back to this page and leaves for the signing page', async () => {
+    const posts = stub({ ok: true, status: 200, body: { ok: true, signPath: '/contract/accept?t=fresh' } })
+    renderPortal()
+    fireEvent.click(await screen.findByRole('button', { name: 'Read and sign: Ridgeway Builders NDA' }))
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/contract/accept?t=fresh'))
+    expect(posts).toEqual([{ token: TOKEN, kind: 'sign_job_paper', required_paper_id: NDA.id }])
+    expect(JSON.parse(window.sessionStorage.getItem(JOB_PAPERS_RETURN_KEY) ?? '{}')).toEqual({ jobId: CEDAR, path: `/sub?t=${TOKEN}` })
+  })
+
+  it('a refused press reads the function’s own sentence with the call to the office, in the language picked, and goes nowhere', async () => {
+    stub({ ok: false, status: 404, body: { error: 'That paper is not on your page.' } })
+    renderPortal()
+    fireEvent.click(await screen.findByRole('button', { name: 'Read and sign: Ridgeway Builders NDA' }))
+    expect(await screen.findByText('That paper is not on your page. Please call the office.')).toBeTruthy()
+    expect(assign).not.toHaveBeenCalled()
+    expect(window.sessionStorage.getItem(JOB_PAPERS_RETURN_KEY)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    expect(screen.getByText('Ese documento no está en su página. Llame a la oficina.')).toBeTruthy()
+    expect(screen.getByText('Trabajo en J2391')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Leer y firmar: Ridgeway Builders NDA' })).toBeTruthy()
+  })
+
+  it('after one paper is signed the card says what is left and offers the next one', async () => {
+    stub({ ok: true, status: 200, body: { ok: true, signPath: '/contract/accept?t=fresh' } }, { ...SHUT_PAYLOAD, job_papers: [{ job_id: CEDAR, job_number: 'J2391', papers: [{ ...NDA, status: 'signed', signed_at: '2026-09-02' }, SITE] }] })
+    renderPortal()
+    await waitFor(() => expect(screen.getByText('This job has 2 papers to sign before you can see where it is and what the work is. 1 paper is left.')).toBeTruthy())
+    expect(screen.getByText('Signed today')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Read and sign: Site rules and photo policy' })).toBeTruthy()
+  })
+
+  it('a job whose papers could not be read is held shut, says so and offers no press', async () => {
+    stub({ ok: true, status: 200, body: { ok: true } }, { ...SHUT_PAYLOAD, job_papers: [{ job_id: CEDAR, job_number: 'J2391', papers: [], unread: true }] })
+    renderPortal()
+    await waitFor(() => expect(screen.getByText('We could not check this job’s papers just now. Reload the page, or call the office.')).toBeTruthy())
+    expect(document.querySelector('[data-sub-job-papers="unread"]')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Read and sign/ })).toBeNull()
+    expect(screen.queryByText(/1208 Brazos St/)).toBeNull()
+  })
+
+  it('a held-back day keeps its dates and its number, and says why the address is not there', async () => {
+    stub({ ok: true, status: 200, body: { ok: true } })
+    renderPortal()
+    await waitFor(() => expect(screen.getByText('Work on J2391')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '2026-09-09' }))
+    const sheet = screen.getByTestId('sub-day-sheet')
+    expect(sheet.textContent).toContain('#J2391')
+    expect(sheet.textContent).toContain('Papers to sign first')
+    expect(sheet.textContent).not.toContain('Brazos')
+    expect(sheet.querySelector('a[href*="maps"]')).toBeNull()
+  })
+
+  it('a page with no waiting job is the page as it was: no card', async () => {
+    stub({ ok: true, status: 200, body: { ok: true } }, { ...SUB_PORTAL_DEMO_PAYLOAD, job_papers: [] })
+    renderPortal()
+    await waitFor(() => expect(screen.getByText('Work & pay statement')).toBeTruthy())
+    expect(document.querySelector('[data-sub-job-papers]')).toBeNull()
+    expect(screen.getByText('Rough-in · 407 E 6th St')).toBeTruthy()
+    expect(screen.getByText(/14 × Top out fixtures/)).toBeTruthy()
   })
 })
