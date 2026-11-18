@@ -3,7 +3,7 @@
  * Checklist → History, drawn through the page (v2.7732): the tab's first test. A wide screen draws the grid of
  * repeating tasks, a column a day and a rate a row, over the ledger of one-offs; edit mode asks, then takes a
  * missed day's row away. The grid's rules are `lib/checklistHistorySplit.ts`; this holds what the tab draws
- * from them, and it passed on the page before the rules left it.
+ * from them, and it passed on the page before the rules left it. v2.7754 moved the tab to its own file under it.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -148,5 +148,19 @@ describe('Checklist → History', () => {
     await waitFor(() => expect(H.deleted).toEqual(['s3']))
     await waitFor(() => expect(gridRow('ZZ Sweep the shop').cells[2]).toBe('2026-11-05: not due (click to cycle)'))
     expect(gridRow('ZZ Sweep the shop').rate).toBe('100%')
+  })
+
+  it('with one-offs and no repeating task, the grid has no row and one line says so', async () => {
+    // Every repeating row gone: the window holds the three one-offs alone.
+    H.deleted = ['s1', 's2', 's3', 's4', 'l1', 'l2']
+    const { container } = renderWithProviders(<Checklist />, { route: '/checklist?tab=history' })
+    await screen.findByText('ZZ Hang the sign')
+    await settle()
+
+    expect(screen.getByText('No repeating tasks in this range.').tagName).toBe('P')
+    // The grid's head still draws, over no row and no day (as the page drew it before the move).
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(0)
+    expect(Array.from(container.querySelectorAll('thead th')).map((th) => th.textContent)).toEqual(['Item', 'rate'])
+    expect(screen.getByText(/3 in this window · 1 done · newest first/)).toBeTruthy()
   })
 })

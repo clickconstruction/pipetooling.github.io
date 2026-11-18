@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   HISTORY_GRID_MAX_DAYS,
+  HISTORY_NO_REPEATING_WORDS,
   historyCellKey,
   historyCellStatus,
   historyGridDates,
@@ -154,5 +155,11 @@ describe('historyInstanceIndex', () => {
     expect(index.get(historyCellKey('rep', '2026-06-10'))).toEqual({ id: 'c', checklist_item_id: 'rep', scheduled_date: '2026-06-10' })
     expect(index.get(historyCellKey('rep', '2026-06-11'))?.id).toBe('b')
     expect(index.get(historyCellKey('rep', '2026-06-12'))).toBeUndefined()
+  })
+})
+
+describe('HISTORY_NO_REPEATING_WORDS', () => {
+  it('reads as the tab wrote it before its move', () => {
+    expect(HISTORY_NO_REPEATING_WORDS).toBe('No repeating tasks in this range.')
   })
 })
