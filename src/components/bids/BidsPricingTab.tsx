@@ -25,11 +25,11 @@ import { needsFreezeAfterWrite, resolvePricingWriteTarget } from '../../lib/bids
 import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
 import { pricingLockChipText, pricingLockState, pricingLockedMessage, readRevisedBids, writeRevisedBid } from '../../lib/bids/pricingLock'
 import { quoteToShow, sentTagWords } from '../../lib/bids/lockedQuote'
-import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
-import { rekeyClonedPricingToVersion as rekeyClonedPricing } from '../../lib/bids/rekeyClonedPricing'
+import { rekeyClonedPricingToVersion as rekeyClonedPricing, rekeyRowMap } from '../../lib/bids/rekeyClonedPricing'
+import { copyPricesCrossesVersions, copyPricesOutcomeWords, copyPricesPlan } from '../../lib/bids/copyPricesPlan'
 import { sumByAlternate } from '../../lib/bids/alternateScope'
 import { sameSolveScope, scopeWorkbenchRows, solveScopeLabel, type WorkbenchSolveScope } from '../../lib/bids/workbenchSolveScope'
-import { alternateScopeKey, isAlternateRow } from '../../lib/bids/countSheet'
+import { isAlternateRow } from '../../lib/bids/countSheet'
 import { isDeclinedRow } from '../../lib/bids/alternateAcceptance'
 import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
 import { SpotlightTour } from '../SpotlightTour'
@@ -1813,9 +1813,9 @@ export function BidsPricingTab({
     setWbCopyingPrices(true)
     try {
       const sourceBidVersionId = priceBookVersions.find((p) => p.id === sourceId)?.bid_version_id ?? null
-      const crossVersion = sourceBidVersionId != null && sourceBidVersionId !== selectedBidVersionId
+      const crossVersion = copyPricesCrossesVersions(sourceBidVersionId, selectedBidVersionId)
       let sourceCountRows: Array<{ id: string; fixture: string | null; count: number | string | null; group_tag: string | null }> = pricingCountRows
-      if (crossVersion) {
+      if (crossVersion && sourceBidVersionId != null) {
         const { data, error: err } = await supabase
           .from('bids_count_rows')
           .select('id, fixture, count, group_tag')
@@ -1840,24 +1840,18 @@ export function BidsPricingTab({
         assignments: (assignRes.data as BidPricingAssignment[]) ?? [],
         customPrices: (customRes.data as BidCountRowCustomPrice[]) ?? [],
       })
-      const scopeTags = selectedBidForPricing?.alternate_group_tags ?? []
       const rowMap = crossVersion
-        ? mapCountRowsByFixture(
+        ? rekeyRowMap(
             sourceCountRows.map((r) => ({ id: r.id, fixture: r.fixture, group_tag: r.group_tag })),
             pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, group_tag: r.group_tag })),
-            (r) => alternateScopeKey({ group_tag: r.group_tag ?? null }, scopeTags),
+            selectedBidForPricing?.alternate_group_tags ?? [],
           )
         : null
+      // Which price lands on which row, and how many had no row here: `lib/bids/copyPricesPlan.ts`.
+      const plan = copyPricesPlan(result.rows, rowMap)
       let copied = 0
-      let dropped = 0
-      for (const row of result.rows) {
-        if (!row.priced) continue // a $0 price copies like any other (v2.6001)
-        const targetRowId = rowMap ? rowMap.get(row.countRow.id) ?? null : row.countRow.id
-        if (!targetRowId) {
-          dropped++
-          continue
-        }
-        const err = await writeUnitPriceOverrideRow(targetRowId, row.unitPrice)
+      for (const w of plan.writes) {
+        const err = await writeUnitPriceOverrideRow(w.targetRowId, w.unitPrice)
         if (err) {
           setError(err.message)
           return
@@ -1867,15 +1861,8 @@ export function BidsPricingTab({
       await loadBidPricingAssignments(bid.id, targetId)
       await freezeSharedPricingAfterWrite()
       const sourceName = priceBookVersions.find((p) => p.id === sourceId)?.name ?? 'the other scenario'
-      if (copied > 0 && dropped > 0) {
-        showToast(`Copied ${copied} price${copied !== 1 ? 's' : ''} from "${sourceName}" — ${dropped} had no matching row in this packet's counts.`, 'info')
-      } else if (copied > 0) {
-        showToast(`Copied ${copied} price${copied !== 1 ? 's' : ''} from "${sourceName}".`, 'success')
-      } else if (dropped > 0) {
-        showToast(`"${sourceName}" prices matched none of this packet's count rows — nothing copied.`, 'error')
-      } else {
-        showToast(`"${sourceName}" has no prices to copy.`, 'error')
-      }
+      const said = copyPricesOutcomeWords(copied, plan.dropped, sourceName)
+      showToast(said.message, said.tone)
     } finally {
       setWbCopyingPrices(false)
     }

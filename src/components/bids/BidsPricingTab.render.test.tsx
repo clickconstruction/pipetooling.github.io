@@ -14,11 +14,54 @@
  * the tab draws itself. A cut that moves one of these out must leave every case green.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
+/** The rows a case hands the tab's own reads, by table, and every write the tab sends, in order. */
+const db = vi.hoisted(() => ({
+  tables: {} as Record<string, Array<Record<string, unknown>>>,
+  writes: [] as Array<{ table: string; op: string; payload: unknown }>,
+}))
+// The shared stub, with `from` answering a table's rows and recording a write once it is awaited.
+// A table with no rows answers as the shared stub does: an empty list, or null for a single row.
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
-  return { supabase: makeSupabaseStub() }
+  const WRITES = ['insert', 'update', 'upsert', 'delete']
+  return {
+    supabase: {
+      ...makeSupabaseStub(),
+      from: (table: string) => {
+        let op: string | null = null
+        let payload: unknown
+        let single = false
+        let logged = false
+        const answer = () => {
+          if (op && !logged) {
+            logged = true
+            db.writes.push({ table, op, payload })
+          }
+          const rows = op ? [] : (db.tables[table] ?? [])
+          return { data: single ? (rows[0] ?? null) : rows, error: null, count: rows.length }
+        }
+        const builder: unknown = new Proxy(
+          {},
+          {
+            get(_target, prop) {
+              if (prop === 'then') return (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => Promise.resolve(answer()).then(resolve, reject)
+              return (...args: unknown[]) => {
+                if (!op && WRITES.includes(String(prop))) {
+                  op = String(prop)
+                  payload = args[0]
+                }
+                if (prop === 'single' || prop === 'maybeSingle') single = true
+                return builder
+              }
+            },
+          },
+        )
+        return builder
+      },
+    },
+  }
 })
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -107,9 +150,9 @@ const COST_ESTIMATE = { id: 'ce-1', bid_id: 'bid-1', labor_rate: 50, driving_cos
 const MATERIALS_BY_ROW: Record<string, number> = { 'cr-wc': 1200, 'cr-lav': 400 }
 const PRICINGS = [{ id: PRICING_ID, name: 'Base price', bid_id: 'bid-1', bid_version_id: null, sort_order: 0, source_template_id: null, is_offered: false }] as unknown as Props['priceBookVersions']
 
-function gridRows(over: { countRows?: Props['pricingCountRows']; customPrices?: Props['bidCountRowCustomPrices'] } = {}) {
+function gridRows(over: { scenarioId?: string; countRows?: Props['pricingCountRows']; customPrices?: Props['bidCountRowCustomPrices'] } = {}) {
   return scenarioPricingRows({
-    scenarioId: PRICING_ID,
+    scenarioId: over.scenarioId ?? PRICING_ID,
     countRows: over.countRows ?? COUNT_ROWS,
     entries: [],
     assignments: [],
@@ -226,6 +269,8 @@ beforeEach(() => {
   smoke.rfqChip = null
   smoke.robotRows = []
   smoke.robotPrice = []
+  db.tables = {}
+  db.writes = []
   window.localStorage.clear()
   window.sessionStorage.clear()
 })
@@ -346,6 +391,25 @@ describe('BidsPricingTab render smoke', () => {
     fireEvent.click(button(/Base price · 0 entries/))
     await settle()
     expect(screen.getAllByText(/Price book/).length).toBeGreaterThan(1)
+  })
+
+  it("Copy prices on an empty price writes the other price's prices to their rows, and says what it copied", async () => {
+    // The open price is the empty Alternate 1. The base price holds $800 on the water closets and $500 on the lavatories.
+    db.tables = { bid_count_row_custom_prices: CUSTOM_PRICES as unknown as Array<Record<string, unknown>> }
+    const loadBidPricingAssignments = vi.fn(async () => {})
+    renderWithProviders(
+      <BidsPricingTab
+        {...pricedProps({ priceBookVersions: TWO_PRICES, selectedPricingVersionId: 'price-alt', bidCountRowCustomPrices: [], pricingRowsForGrid: gridRows({ scenarioId: 'price-alt', customPrices: [] }), loadBidPricingAssignments })}
+      />,
+    )
+    await settle()
+    fireEvent.click(await screen.findByRole('button', { name: 'copy prices from Base price' }))
+    await waitFor(() => expect(loadBidPricingAssignments).toHaveBeenCalledWith('bid-1', 'price-alt'))
+    expect(db.writes.filter((w) => w.table === 'bid_count_row_custom_prices')).toEqual([
+      { table: 'bid_count_row_custom_prices', op: 'insert', payload: { bid_id: 'bid-1', count_row_id: 'cr-wc', price_book_version_id: 'price-alt', unit_price: 800 } },
+      { table: 'bid_count_row_custom_prices', op: 'insert', payload: { bid_id: 'bid-1', count_row_id: 'cr-lav', price_book_version_id: 'price-alt', unit_price: 500 } },
+    ])
+    expect(await screen.findByText('Copied 2 prices from "Base price".')).toBeTruthy()
   })
 
   it("the three cards and the profit bar draw the bid's own totals", async () => {
