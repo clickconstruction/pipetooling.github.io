@@ -335,13 +335,22 @@ last_updated: 2026-11-18
 > **v2.7789 (By paper's paper tabs ride the title line when it has room, the owner's ask of 2026-11-18):** [`lienDeskTitleBar.ts`](../src/lib/jobs/lienDeskTitleBar.ts) `lienDeskPapersFit(width, parts, papers)` answers `title_line` when the measured line holds the way back, the views, the paper tabs and the four presses with a gap between each pair (`lienDeskTitleLineWithPapersNeeds`), and `second_line` otherwise or when the papers have no width.
 > `useLienDeskTitleBarFit` returns it as `papersFit`, read from the same two readers (`readLienDeskTitleLine` for the line, `readLienDeskPileLine` for the papers' width, the same on either line), and runs again on it, since the tab row is drawn anew when it changes lines.
 > `lienDeskTitleBarLayout` takes `papersFit` and `piles` (whether the view draws pile chips) and answers `papers`: `title_line`, `second_line`, or null off By paper.
-> With the papers up the second line is what is left: the piles on Lien affidavits and Retainage notices, *Put a GC on notice…* alone at the right on Monthly notices, and no second line at all where the view has neither.
+> With the papers up the second line is what is left: the piles on Lien affidavits and Retainage notices, and no second line at all where the view has none (until v2.7806 *Put a GC on notice…* sat alone at its right on Monthly notices).
 > `lienDeskPileLineFit` takes the papers' place as a third argument and measures the pile line without them once they are up.
 > `LienDesk.tsx` draws `paperTabs` in one of two places, after the views or after the header break, so the order on the page is the order a keyboard walks;
 > `LienDeskPaperTabs` marks its row `data-lien-desk-paper-kinds="title_line"` or `"second_line"`.
 > A phone is never measured and keeps the papers as its second row.
 > Measured on the live desk: the papers are up from 1,176 px of window with two-figure counts, and also from 1,100 to 1,131, where `index.css` draws the bar tighter;
 > from 1,132 to 1,175 and under 1,100 they lead the second line.
+
+> **v2.7806 (Put a GC on notice leaves the title bar for the job's own notice, the owner's words of 2026-11-18, *"I don't think I wanna see it in the header"*, and his pick of three places drawn, *"Build 2"*):** [`lienDeskGcPicker.ts`](../src/lib/jobs/lienDeskGcPicker.ts) `lienGcNoticePress({ office, handed, isMobile, gcId, gcName })` answers the press for a job's GC, or null for a reader who is not the office, a desk handed no run window, a job with no GC and a phone.
+> `LienDeskNoticePane` draws it in the job's heading, after *· GC <name>* and before the address (`data-lien-gc-notice-press`, words *⚠ Put on notice…*, accessible name *Put <GC> on notice…*, hint `LIEN_GC_NOTICE_HINT`), and its press calls `onPutGcOnNotice(gcId)` from the pane's context with no picker between.
+> A heading with no press keeps its one muted span.
+> `LienDesk.tsx` draws `LienDeskGcPicker` on a phone alone, as the sheet More's *Put a GC on notice…* row opens;
+> the component has no door of its own and takes no `isMobile` or `onToggle`.
+> `lienDeskTitleBarLayout` takes no `gcNotice`: on a computer the second line's right span is the tool row, drawn only where the title line has no room for it, so `pileBreak` comes only there and Monthly notices with the papers up is one line.
+> `useLienDeskTitleBarFit` takes no `gcNoticeShown`, and `LIEN_DESK_PILE_LINE_PARTS` has no `gcDoor` or `rightGap`, its `right` the four presses (231).
+> The other doors to the run are unchanged: the Pipeline's tools menu with the board filtered to one GC, the GC's row in Customer review, and `?gcnotice=<customer id>`.
 
 > **v2.7311 (the owner-records door ends the pile line, the owner's ask of 2026-11-15):** on a computer *An owner asked for records ›* is the right end of the second line on every view, whatever the title line has room for — on By paper the paper tabs and the piles at the left, *Put a GC on notice…* and the door in the `data-lien-desk-right` span at the right;
 > off By paper the door alone in that span (the owner's answer when asked: yes, every view).
@@ -992,7 +1001,7 @@ a sent notice's footer runs letter two, the GC's written okay, counsel's sign-of
 Header doors: **§ Rules**, **☎** — *An owner is calling* (`LienCallerDoor`, the icon alone since v2.4618;
 since v2.4731 it opens the words, `LienCallScriptModal`, whose last row since v2.7780 is **An owner asked for records ›**, the door to `LienOwnerRecordsModal` in the parent), **Share** (`LienDeskShare`), pile chips, **Put a GC on notice…** (hands off to `GcOnNoticeModal`), and until v2.7490 retired it **Send the run** (`LienDeskRunModal`, now opened from the Board's print, the pile head, a notice's footer and By date);
 above each list, the find box (`LienDeskFindBox`, v2.4721).
-Since v2.4746 every door on the title bar — § Rules, Send the run (until v2.7490), Put a GC on notice…, ☎ (`LienCallerDoor` takes it through its `buttonStyle` prop) and Share on a computer (the phone keeps its 40 px icon) — wears the `headDoor` style, § Rules' own height (`calc(0.78rem * 1.5 + 6px)`, 24.7 px measured), and the desk's `ModalFullScreenButton` had no border until it left with the window frame in v2.6781.
+Since v2.4746 every door on the title bar — § Rules, Send the run (until v2.7490), Put a GC on notice… (until v2.7806), ☎ (`LienCallerDoor` takes it through its `buttonStyle` prop) and Share on a computer (the phone keeps its 40 px icon) — wears the `headDoor` style, § Rules' own height (`calc(0.78rem * 1.5 + 6px)`, 24.7 px measured), and the desk's `ModalFullScreenButton` had no border until it left with the window frame in v2.6781.
 Since v2.4788 a job marked Uncollectible (punch list #94) is on no pile and no clock: the three `list_lien_*` RPCs skip it and the host skips it when it gathers the clocks and the By date rows (`jobUncollectible`).
 Help guide: [`send-lien-notices-from-the-lien-desk`](../src/content/help/send-lien-notices-from-the-lien-desk.md).
 

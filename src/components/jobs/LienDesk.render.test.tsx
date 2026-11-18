@@ -507,7 +507,7 @@ describe('LienDesk', () => {
     }
   })
 
-  it('By paper’s three paper tabs ride the title line, between the views and the tools, when the measured line holds them (v2.7789); a line too narrow keeps them leading the second, and the piles and Put a GC on notice stay on the line under', async () => {
+  it('By paper’s three paper tabs ride the title line, between the views and the tools, when the measured line holds them (v2.7789); a line too narrow keeps them leading the second, and the piles stay on the line under', async () => {
     const rect = Element.prototype.getBoundingClientRect
     // The bar as drawn on 2026-11-18: ← Back 90, the views 305, the three paper tabs 411, the four presses 231, the pile chips and the GC door at the widths given.
     // The line needs 90 + 305 + 411 + 231 and three 14.4 px gaps, 1,080.2 px: a 1,121 px bar's line (1,081) holds it and a 1,120 px one (1,080) does not.
@@ -556,13 +556,13 @@ describe('LienDesk', () => {
       expect(document.querySelector('[data-lien-desk-right]')).toBeNull()
       piles.unmount()
 
-      // Monthly notices with a GC to put on notice: the papers up, the GC door alone at the right of the line under.
-      Element.prototype.getBoundingClientRect = drawn(1252, { right: 166 })
+      // Monthly notices with a GC to put on notice: one line. The door left the bar in v2.7806; the press is on the job's own notice (the case under this one).
+      Element.prototype.getBoundingClientRect = drawn(1252)
       const notices = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={plain} initialKind="notice" backDoor={back} onPutGcOnNotice={vi.fn()} />)
       await settle()
-      expect(shape()).toEqual(['views', 'papers', 'tools', 'break', 'right'])
-      expect((document.querySelector('[data-lien-desk-right]') as HTMLElement).style.marginLeft).toBe('auto')
-      expect(document.querySelector('[data-lien-desk-right] button[aria-haspopup="menu"]')).not.toBeNull()
+      expect(shape()).toEqual(['views', 'papers', 'tools'])
+      expect(document.querySelector('[data-lien-desk-right]')).toBeNull()
+      expect(document.querySelector('.lienDeskTitleBar button[aria-haspopup="menu"]')).toBeNull()
       notices.unmount()
 
       // The edge: a 1,121 px bar holds the line and a 1,120 px one does not. Under it the papers lead the second line, as before, with the presses still up.
@@ -594,6 +594,61 @@ describe('LienDesk', () => {
       expect(papersLine()).toBe('second_line')
     } finally {
       Element.prototype.getBoundingClientRect = rect
+    }
+  })
+
+  it('Put a GC on notice is a press beside the GC’s name on a job’s own notice, and no part of the title bar on a computer (v2.7806, the owner’s pick: "Build 2")', async () => {
+    const onPutGcOnNotice = vi.fn()
+    const office = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" onPutGcOnNotice={onPutGcOnNotice} />)
+    await settle()
+    // The title bar holds no door to it, and no picker opens from it.
+    expect(document.querySelector('.lienDeskTitleBar button[aria-haspopup="menu"]')).toBeNull()
+    expect(document.querySelector('[data-lien-gc-picker]')).toBeNull()
+    expect(within(document.querySelector('.lienDeskTitleBar') as HTMLElement).queryByText(/on notice…/)).toBeNull()
+    // The job's heading: its GC's name, then the press, named for that GC.
+    const press = document.querySelector('[data-lien-gc-notice-press]') as HTMLButtonElement
+    expect(press.dataset.lienGcNoticePress).toBe('lowbeck')
+    expect(press.textContent).toBe('⚠ Put on notice…')
+    expect(press.getAttribute('aria-label')).toMatch(/^Put .+ on notice…$/)
+    expect(press.title).toContain('one approved run')
+    expect(press.previousElementSibling?.textContent).toMatch(/^· GC /)
+    expect(press.closest('[data-lien-pane-keep]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: press.getAttribute('aria-label')! })).toBe(press)
+    // One press opens the run for that GC, with no picker between.
+    fireEvent.click(press)
+    expect(onPutGcOnNotice).toHaveBeenCalledTimes(1)
+    expect(onPutGcOnNotice).toHaveBeenCalledWith('lowbeck')
+    office.unmount()
+
+    // The leader is the office too, so the press is his as the title bar's door was. A desk handed no run window draws none.
+    const leader = renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={data(J650)} initialJobId="j650" initialKind="notice" onPutGcOnNotice={onPutGcOnNotice} />)
+    await settle()
+    expect((document.querySelector('[data-lien-gc-notice-press]') as HTMLElement).dataset.lienGcNoticePress).toBe('lowbeck')
+    leader.unmount()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" />)
+    await settle()
+    expect(document.querySelector('[data-lien-gc-notice-press]')).toBeNull()
+    // The heading still names the GC, in its one line as before.
+    expect(document.querySelector('[data-lien-pane-keep]')!.textContent).toMatch(/· GC /)
+  })
+
+  it('a phone keeps Put a GC on notice as a row of More, which opens the picker as a sheet, and draws no press on the job (v2.7806)', async () => {
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      const onPutGcOnNotice = vi.fn()
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="notice" onPutGcOnNotice={onPutGcOnNotice} />)
+      await settle()
+      expect(document.querySelector('[data-lien-gc-notice-press]')).toBeNull()
+      fireEvent.click(document.querySelector('[data-lien-desk-more="door"]') as HTMLElement)
+      fireEvent.click(screen.getByRole('button', { name: /Put a GC on notice…/ }))
+      await settle()
+      const sheet = document.querySelector('[data-lien-gc-picker]') as HTMLElement
+      expect(sheet).not.toBeNull()
+      fireEvent.click(sheet.querySelector('[data-lien-gc-option="lowbeck"]') as HTMLElement)
+      expect(onPutGcOnNotice).toHaveBeenCalledWith('lowbeck')
+    } finally {
+      window.matchMedia = before
     }
   })
 

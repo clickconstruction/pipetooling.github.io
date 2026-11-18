@@ -1805,7 +1805,7 @@ export default function LienDesk({
   const gcNoticeShown = kind === 'notice' && office && !!onPutGcOnNotice && gcPickerOptions.length > 0
   const recordsDoorShown = office && !!onOpenOwnerRecords
   // What the title bar has room for, measured from the bar it drew (`useLienDeskTitleBarFit`, v2.7586).
-  const { titleBarRef, titleLineFit, pileLineFit, papersFit } = useLienDeskTitleBarFit({ isMobile, paperShown, gcNoticeShown, kind })
+  const { titleBarRef, titleLineFit, pileLineFit, papersFit } = useLienDeskTitleBarFit({ isMobile, paperShown, kind })
   // The first tab's words (v2.7465): on a computer the page's name and the count, on a phone *To do · N* under the title's own row.
   const firstTab = lienDeskFirstTab({ isMobile, count: data ? lienNextUpCount(nextUpRows) : null })
   const moreRun = runDoorShown ? { label: runDoor.label, count: runDoor.count, hint: runDoorHint } : null
@@ -2323,7 +2323,7 @@ export default function LienDesk({
     }
   }
   // The notice pane (`LienDeskNoticePane`, v2.7619) reads the desk through one object, built here on every render.
-  const paneCtx: LienNoticePaneContext = { data, todayYmd, authUserId, authName, onChanged, onOpenEditJob, onOpenJob, onCalendarChanged, isMobile, leader, office, setCheckedMonths, coverNote, setCoverNote, housesInLetter, setHousesInLetter, releaseId, setByHandOpen, rulePick, setRulePick, detailsOpen, setDetailsOpen, busy, run, touchDraft, editing, setEditing, paperRef, editInputRef, payEditing, setPayEditing, payPaperRef, payInputRef, claimOpenSignal, paneScrolled, setPaneScrolled, stripRef, paneRef, activeGate, pickGate, kindOpen, setKindOpen, kindBusy, setNoticeFootHome, entries, suppliers, selected, job, gc, address, property, ownerName, stopOpen, setStopOpen, pickKind, promise, gcHasPriorNotice, wm, item, storedDraft, months, monthsList, openBalance, supplierJob, correction, lastSentAt, claimed, wordingDiff, wordingEditedBy, wordingLocked, paneSignature, signClearedLine, docHtml, onPaperClick, commitEdit, claimNumber, noticeRelease, releaseHtml, coverHtml, payPage, claimBills, unbilled, billFromHere, billWhy, payChangedCount, payHtml, onPayPaperClick, commitPayEdit, pageTotal, noticePageNumber, noteMissed, gcOpenTotal, toggleRelease, partedBandNode, saveRule, openPreview, counts, relightPages, pageLabel, monthCards, monthGrid, gates, gateVerdict, gateByKey, gatesFold, timeline, stopPaperFor, footInPane, stripChips, pressStripChip, stripChipStyle, simpleApprove, bandAct, onBandAct, paneHead, goToSection, relightPane }
+  const paneCtx: LienNoticePaneContext = { data, todayYmd, authUserId, authName, onChanged, onOpenEditJob, onOpenJob, onPutGcOnNotice, onCalendarChanged, isMobile, leader, office, setCheckedMonths, coverNote, setCoverNote, housesInLetter, setHousesInLetter, releaseId, setByHandOpen, rulePick, setRulePick, detailsOpen, setDetailsOpen, busy, run, touchDraft, editing, setEditing, paperRef, editInputRef, payEditing, setPayEditing, payPaperRef, payInputRef, claimOpenSignal, paneScrolled, setPaneScrolled, stripRef, paneRef, activeGate, pickGate, kindOpen, setKindOpen, kindBusy, setNoticeFootHome, entries, suppliers, selected, job, gc, address, property, ownerName, stopOpen, setStopOpen, pickKind, promise, gcHasPriorNotice, wm, item, storedDraft, months, monthsList, openBalance, supplierJob, correction, lastSentAt, claimed, wordingDiff, wordingEditedBy, wordingLocked, paneSignature, signClearedLine, docHtml, onPaperClick, commitEdit, claimNumber, noticeRelease, releaseHtml, coverHtml, payPage, claimBills, unbilled, billFromHere, billWhy, payChangedCount, payHtml, onPayPaperClick, commitPayEdit, pageTotal, noticePageNumber, noteMissed, gcOpenTotal, toggleRelease, partedBandNode, saveRule, openPreview, counts, relightPages, pageLabel, monthCards, monthGrid, gates, gateVerdict, gateByKey, gatesFold, timeline, stopPaperFor, footInPane, stripChips, pressStripChip, stripChipStyle, simpleApprove, bandAct, onBandAct, paneHead, goToSection, relightPane }
   // The address named a job the list in view does not hold (v2.7744): the note in the pane's place, with the list the
   // job is on and its Lien window as the ways on. On one column it tops the list, since no pane is open to hold it.
   const offListNote = offList ? (
@@ -2369,7 +2369,7 @@ export default function LienDesk({
   // The pile chips in the header on a computer: Lien affidavits' or Retainage notices', when a pile has a chip to draw.
   const headerPileChips = !isMobile && (kind === 'retainage' || kind === 'affidavit') ? (kind === 'retainage' ? retPileChips : affPileChips) : []
   // The title bar's shape on this screen: where the tools and the paper tabs sit, whether it has a second line, and whether that line breaks before its span (v2.7213, v2.7277, v2.7311; no door of its own since v2.7780; the papers up on the title line where it has room since v2.7789).
-  const titleBar = lienDeskTitleBarLayout({ isMobile, fit: titleLineFit, pileFit: pileLineFit, papersFit, paperShown, gcNotice: gcNoticeShown, piles: headerPileChips.length > 0 })
+  const titleBar = lienDeskTitleBarLayout({ isMobile, fit: titleLineFit, pileFit: pileLineFit, papersFit, paperShown, piles: headerPileChips.length > 0 })
   // On a phone the chips are one strip that slides sideways, the first thing in the list's own scroller.
   const pileStrip = (chips: ReactNode[]) => (isMobile && chips.length > 0 ? <div data-lien-desk-piles style={{ display: 'flex', gap: 8, padding: '8px 12px', overflowX: 'auto', borderBottom: '1px solid var(--border)' }}>{chips}</div> : null)
 
@@ -2835,8 +2835,9 @@ export default function LienDesk({
           {/* A pile line too narrow for the piles and the span together breaks here (v2.7311), so the span falls under the piles as one piece, right-aligned, by the measured rule and not by wrapping. */}
           {titleBar.pileBreak ? <span aria-hidden data-lien-desk-pile-break style={{ flexBasis: '100%', height: 0 }} /> : null}
           {titleBar.rightSpan ? <span data-lien-desk-right style={{ marginLeft: 'auto', marginRight: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
-          {gcNoticeShown && onPutGcOnNotice ? (
-            <LienDeskGcPicker isMobile={isMobile} open={gcPickerOpen} onToggle={() => setGcPickerOpen((o) => !o)} onClose={() => setGcPickerOpen(false)} options={gcPickerOptions} onPick={onPutGcOnNotice} />
+          {/* A phone's GC picker, the sheet More opens. On a computer the door left the bar in v2.7806: the press is beside the GC's name on the job's own notice (`lienGcNoticePress`, drawn by `LienDeskNoticePane`). */}
+          {isMobile && gcNoticeShown && onPutGcOnNotice ? (
+            <LienDeskGcPicker open={gcPickerOpen} onClose={() => setGcPickerOpen(false)} options={gcPickerOptions} onPick={onPutGcOnNotice} />
           ) : null}
           {titleBar.tools === 'second_line' ? headerTools : null}
           </span> : null}

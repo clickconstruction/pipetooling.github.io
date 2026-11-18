@@ -5845,6 +5845,8 @@ The other end is End employment on the [Person Desk](#person-desk) (v2.3700).
 Guide *hire someone*.
 
 ### Put a GC on notice
+Since **v2.7806** the Lien desk's door to it on a computer is the press *⚠ Put on notice…* beside the GC's name on a job's own notice under Monthly notices (`lienGcNoticePress`), which opens the run for that job's GC with no picker.
+The title bar's *⚠ Put a GC on notice…* and its picker of GCs are a phone's alone since then, as a row of More.
 Jobs → Pipeline (**v2.3470**): one modal, the GC already picked, that sends the § 53.056 notice to the owner of every job with unpaid work under that GC — billed or still working — naming every unnoticed month, in one run.
 Owners first (the appraisal roll, *Use all found*), then what each notice claims (a closed window named as information, an unbilled job's contract balance;
 since v2.4970 a billed job's row claims what its sent bills still owe, `gcNoticeRowsWithBilledOpen`), then the decision once (a reason on every notice's record, the standing rule, Winding down, a Legal desk matter).
