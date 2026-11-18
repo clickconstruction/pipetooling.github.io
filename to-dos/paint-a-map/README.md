@@ -829,6 +829,8 @@ Taunya took all five at the pick on 2026-11-15.
 - **Asked on 2026-11-17, each on its own card:** Google's map under a painted map
   ([#387](../painted-maps-on-google.md)), a Paint a map press on the Dashboard with every map on a
   job ([#392](../paint-a-map-press/README.md)), and pins ([#393](../painted-map-pins.md)).
+- **Asked on 2026-11-18:** the Share sheet with fewer words
+  ([#394](../painted-map-share-sheet/README.md)).
 
 ## How to verify
 
