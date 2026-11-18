@@ -13,11 +13,12 @@ import { usePricingProfitBar } from '../../hooks/usePricingProfitBar'
 import { PriceBreakdownCard } from './PriceBreakdownCard'
 import { TagBreakdownCard } from './TagBreakdownCard'
 import { KindBreakdownCard } from './KindBreakdownCard'
-import { RowKindChip } from './RowKindChip'
+import { PricingBookMatchBar, PricingRowKindAndTags } from './PricingGridPieces'
 import { PricingResolvePanel, PricingRfqChip } from './PricingHeaderPieces'
 import { PricingLockChip, PricingMarkupTool, PricingRobotRowsDoor, PricingSentLine, PricingTaxTool } from './PricingBarPieces'
 import { markupToolRows, taxToolRows, weightedMarkupOf } from '../../lib/bids/rowMarkToolRows'
-import { cleanTag, rowKindOf } from '../../lib/bids/rowKinds'
+import { rowKindOf } from '../../lib/bids/rowKinds'
+import { allRowTags, withKind, withTag, withoutTag } from '../../lib/bids/rowMarksEdits'
 import { usePricingRowMarks } from '../../hooks/usePricingRowMarks'
 import { costEstimateLaborRowHours } from '../../lib/bidPricingRowCalculations'
 import { workbenchEffectiveRows, workbenchEffectiveTotals } from '../../lib/bids/workbenchEffectiveRows'
@@ -3294,31 +3295,19 @@ export function BidsPricingTab({
                         templatePriceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ??
                         'this pricing'
                       return (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.55rem', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Price book</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setWbBookDrawerOpen(true)
-                              setWbBooksExpanded(false)
-                              const t = currentPriceBookTemplateId ?? templatePriceBookVersions[0]?.id ?? null
-                              if (t) selectPanelVersion(t)
-                            }}
-                            title="Open the price book — switch books, edit entries"
-                            style={{ font: 'inherit', fontSize: '0.78rem', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 999, background: 'var(--surface)', padding: '0.18rem 0.7rem', cursor: 'pointer' }}
-                          >
-                            {activeBookName} · {priceBookEntries.length} entr{priceBookEntries.length === 1 ? 'y' : 'ies'} <b style={{ color: 'var(--text-link)' }}>{'\u25b8'}</b>
-                          </button>
-                          <button
-                            type="button"
-                            disabled={wbFillingBook || bookMatches.length === 0}
-                            onClick={() => void fillMatchingBookEntries(bookMatches)}
-                            title={bookMatches.length === 0 ? 'No unassigned rows exactly match a book entry name' : 'Assign each matching row its book entry — prices fill from the book'}
-                            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.28rem 0.7rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: bookMatches.length === 0 ? 'not-allowed' : 'pointer', opacity: wbFillingBook || bookMatches.length === 0 ? 0.55 : 1 }}
-                          >
-                            {wbFillingBook ? 'Filling…' : bookMatches.length === 0 ? '0 unassigned rows match the book' : `Fill ${bookMatches.length} matching from book`}
-                          </button>
-                        </div>
+                        <PricingBookMatchBar
+                          bookName={activeBookName}
+                          entryCount={priceBookEntries.length}
+                          matchCount={bookMatches.length}
+                          filling={wbFillingBook}
+                          onOpenBook={() => {
+                            setWbBookDrawerOpen(true)
+                            setWbBooksExpanded(false)
+                            const t = currentPriceBookTemplateId ?? templatePriceBookVersions[0]?.id ?? null
+                            if (t) selectPanelVersion(t)
+                          }}
+                          onFill={() => void fillMatchingBookEntries(bookMatches)}
+                        />
                       )
                     })()}
 
@@ -3451,57 +3440,19 @@ export function BidsPricingTab({
                                   {(() => {
                                     const marks = rowMarks[r.countRow.id] ?? {}
                                     const k = rowKindOf(r.countRow.fixture ?? '', marks.kind)
-                                    const tags = marks.tags ?? []
                                     return (
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center', marginTop: '0.2rem', fontWeight: 400 }}>
-                                        <RowKindChip kind={k.kind} guessed={k.guessed} rowName={r.countRow.fixture ?? 'row'} onChange={(kind) => updateRowMarks(r.countRow.id, (m) => ({ ...m, kind }))} />
-                                        {tags.map((tag) => (
-                                          <button
-                                            key={tag}
-                                            type="button"
-                                            title="Remove this tag"
-                                            onClick={() => updateRowMarks(r.countRow.id, (m) => ({ ...m, tags: (m.tags ?? []).filter((x) => x !== tag) }), { free: true })}
-                                            style={{ font: 'inherit', fontSize: '0.68rem', padding: '0 0.45rem', borderRadius: 999, border: '1px solid transparent', background: 'rgba(59, 130, 246, 0.14)', color: 'var(--text-link)', cursor: 'pointer' }}
-                                          >
-                                            {tag} <span style={{ color: 'var(--text-muted)' }}>×</span>
-                                          </button>
-                                        ))}
-                                        {tagEditRowId === r.countRow.id ? (
-                                          <input
-                                            type="text"
-                                            list="pricing-row-tags"
-                                            placeholder="a tag, then Enter"
-                                            autoFocus
-                                            aria-label={`Add a tag to ${r.countRow.fixture ?? 'row'}`}
-                                            onBlur={() => setTagEditRowId(null)}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Escape') {
-                                                e.stopPropagation()
-                                                setTagEditRowId(null)
-                                                return
-                                              }
-                                              if (e.key !== 'Enter') return
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                              const tag = cleanTag(e.currentTarget.value)
-                                              if (!tag) return
-                                              updateRowMarks(r.countRow.id, (m) => ({ ...m, tags: (m.tags ?? []).includes(tag) ? m.tags ?? [] : [...(m.tags ?? []), tag] }), { free: true })
-                                              e.currentTarget.value = ''
-                                            }}
-                                            style={{ font: 'inherit', fontSize: '0.68rem', width: '9em', padding: '0.05rem 0.5rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }}
-                                          />
-                                        ) : (
-                                          <button
-                                            type="button"
-                                            aria-label={`Add a tag to ${r.countRow.fixture ?? 'row'}`}
-                                            title="Add a tag"
-                                            onClick={() => setTagEditRowId(r.countRow.id)}
-                                            style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1, width: '1.15rem', height: '1.15rem', padding: 0, borderRadius: 999, border: '1px dashed var(--border-strong)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                          >
-                                            +
-                                          </button>
-                                        )}
-                                      </div>
+                                      <PricingRowKindAndTags
+                                        rowName={r.countRow.fixture ?? 'row'}
+                                        kind={k.kind}
+                                        guessed={k.guessed}
+                                        tags={marks.tags ?? []}
+                                        tagBoxOpen={tagEditRowId === r.countRow.id}
+                                        onKind={(kind) => updateRowMarks(r.countRow.id, (m) => withKind(m, kind))}
+                                        onRemoveTag={(tag) => updateRowMarks(r.countRow.id, (m) => withoutTag(m, tag), { free: true })}
+                                        onAddTag={(tag) => updateRowMarks(r.countRow.id, (m) => withTag(m, tag), { free: true })}
+                                        onOpenTagBox={() => setTagEditRowId(r.countRow.id)}
+                                        onCloseTagBox={() => setTagEditRowId(null)}
+                                      />
                                     )
                                   })()}
                                 </td>
@@ -3882,7 +3833,7 @@ export function BidsPricingTab({
                     {/* #128: what the price is made of — Cost · Price · Profit for material, tax,
                         equipment, labor and the small costs; the columns add to the strip. */}
                     <datalist id="pricing-row-tags">
-                      {[...new Set(Object.values(rowMarks).flatMap((m) => m.tags ?? []))].sort().map((tag) => (
+                      {allRowTags(rowMarks).map((tag) => (
                         <option key={tag} value={tag} />
                       ))}
                     </datalist>

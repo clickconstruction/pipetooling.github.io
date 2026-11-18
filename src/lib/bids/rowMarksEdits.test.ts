@@ -6,6 +6,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+  allRowTags,
   markupUndoBack,
   markupUndoFor,
   putBackFailedRowMarks,
@@ -20,8 +21,11 @@ import {
   taxUndoBack,
   taxUndoFor,
   toggledSplitOpen,
+  withKind,
   withSplitMarkup,
   withSplitTaxable,
+  withTag,
+  withoutTag,
 } from './rowMarksEdits'
 import type { RowMarksByRowId } from './rowKinds'
 import { rowMarksToDbPatch } from './rowMarksIo'
@@ -147,6 +151,37 @@ describe('withSplitMarkup / withSplitTaxable', () => {
     const m = { split: { markup: 0.6 } }
     withSplitMarkup(m, 0.1)
     expect(m).toEqual({ split: { markup: 0.6 } })
+  })
+})
+
+describe('withKind / withTag / withoutTag / allRowTags', () => {
+  const m = { kind: null, tags: ['restrooms', 'phase 2'], split: { markup: 0.6 } }
+
+  it('a chosen kind keeps the tags and the split', () => {
+    expect(withKind(m, 'equipment')).toEqual({ kind: 'equipment', tags: ['restrooms', 'phase 2'], split: { markup: 0.6 } })
+    expect(withKind({}, 'pipe')).toEqual({ kind: 'pipe' })
+  })
+  it('a new tag goes on the end', () => {
+    expect(withTag(m, 'level 2').tags).toEqual(['restrooms', 'phase 2', 'level 2'])
+    expect(withTag({}, 'level 2')).toEqual({ tags: ['level 2'] })
+  })
+  it('a tag the row already has changes nothing', () => {
+    expect(withTag(m, 'restrooms').tags).toEqual(['restrooms', 'phase 2'])
+  })
+  it('a tag taken off leaves the others in order, and one the row lacks changes nothing', () => {
+    expect(withoutTag(m, 'restrooms').tags).toEqual(['phase 2'])
+    expect(withoutTag(m, 'level 9').tags).toEqual(['restrooms', 'phase 2'])
+    expect(withoutTag({}, 'restrooms')).toEqual({ tags: [] })
+  })
+  it('none of the three changes the marks it was given', () => {
+    withKind(m, 'pipe')
+    withTag(m, 'level 2')
+    withoutTag(m, 'restrooms')
+    expect(m).toEqual({ kind: null, tags: ['restrooms', 'phase 2'], split: { markup: 0.6 } })
+  })
+  it("the tag box suggests every tag on the bid's rows, once each, in alphabetical order", () => {
+    expect(allRowTags({ wc: { tags: ['restrooms', 'phase 2'] }, lav: { tags: ['restrooms'] }, fd: {}, sink: { tags: ['kitchen'] } })).toEqual(['kitchen', 'phase 2', 'restrooms'])
+    expect(allRowTags({})).toEqual([])
   })
 })
 
