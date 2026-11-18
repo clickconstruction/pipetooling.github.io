@@ -2,7 +2,7 @@
 name: "Job Mode, short: a superintendent's one-screen home"
 number: 384
 group: ready
-status: the owner picked this direction on 2026-11-17 · PR 1 built 2026-11-18 (v2.7749, the setting opened to a superintendent, migration 20261118070000) · PR 2 and PR 3 not built
+status: the owner picked this direction on 2026-11-17 · PR 1 live 2026-11-18 (v2.7749, the setting opened to a superintendent, migration 20261118070000 pushed) · PR 2 built 2026-11-18 (v2.7752, the short page) · PR 3 not merged
 summary: >
   A superintendent says there is too much on his screen and it overwhelms him. His daily page is the Job Mode
   Dashboard on his phone: about six screens and about eighty presses, of which he uses the first screen. The
@@ -10,7 +10,7 @@ summary: >
   holds. The owner picked a short Job Mode page: the card's top, what waits on him, tomorrow in one line and
   one door to everything else, about one screen. It reuses the per-person Short setting from the leader's
   short Dashboard (#365), opened to a superintendent, so only the person the office sets changes.
-next: Push PR 1's migration after its merge. Build PR 2, the short page, then PR 3, the trims. Then the office sets one superintendent to Short and walks the page with him on his phone.
+next: Merge PR 3, the trims. Then the office sets one superintendent to Short on his People desk and walks the page with him on his phone.
 size: M as a train of three (S · M · S)
 blocker: None in the code. Setting a person to Short is the office's press, and the three questions below are the owner's to put to him.
 opinion: build — nobody's page changes until the office presses Short for one person, so the risk is only in what the short page tucks away, and every cut stays one press from the page
@@ -159,6 +159,8 @@ merge. The client calls nothing new, so the order is not tight.
   job note that tagged him: the lien lines are the leader's. **Clock In** is behind **Everything else**, one
   press further than on the full page. The door's second line said *Money, crew, jobs*, which is not his page, so
   it now reads *Clock In, your hours, your crew and the full Dashboard.* for him.
+- **Pushed 2026-11-18** right after the merge, the one file. The real press was walked on the sample
+  superintendent: the office's press on his People desk, then his own press in Settings.
 - **Until PR 2**, a superintendent on Short with Job Mode on keeps the Job Mode page as it is. On a phone My
   Schedule hides there while today and tomorrow hold no stop, as it does for a leader on Short. So the office
   sets nobody to Short before PR 2 is live.
@@ -177,6 +179,20 @@ merge. The client calls nothing new, so the order is not tight.
 - **Everything else** opens the full Dashboard for the visit and puts a way back on top, the #365 pattern.
 - Render tests: the card with `short` on and off, and the Dashboard's short order.
 - Docs: the sections architecture rows, the Glossary, the two guides, the release note and the fragment.
+
+**Built 2026-11-18 as v2.7752.** What moved from the plan, and what the walk found:
+
+- The page's order is its own component, `JobModeShortPage`, so a test holds it. `Dashboard.tsx` hands in the
+  pieces.
+- **Open this job** is the fold in place the card's default asks for. Open, the row reads **This job**.
+- **Everything else** opens the full Dashboard past the leader's short one, and the way back is the button on
+  top or Job Mode's **Dashboard** tab.
+- The Tomorrow line says *Reading your schedule.* while the schedule is being read, so it never says no stops
+  too early.
+- With no job on the card the Materials on site link stays on the page: it is the only door to its picker.
+- Walked as the sample superintendent at phone width: 1.0 screen with no job on the day and 1.06 clocked onto a
+  ZZ test project, every cut opened, every clock press opened its window. The sample account has no stops, so
+  a day of three or four is the office's walk to count.
 
 ### PR 3 · trims everyone gets (S, may ship first or last)
 

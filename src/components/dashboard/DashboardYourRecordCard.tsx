@@ -84,7 +84,7 @@ async function loadYourRecord(userId: string): Promise<YourRecordItem[]> {
 const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.6rem', alignItems: 'center', padding: '0.55rem 0.7rem', borderLeft: '4px solid #f59e0b', background: 'var(--surface)', borderRadius: 6 }
 const btnStyle: CSSProperties = { font: 'inherit', fontSize: '0.8rem', fontWeight: 700, padding: '0.35rem 0.75rem', borderRadius: 6, border: 'none', background: '#b45309', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }
 
-export default function DashboardYourRecordCard({ userId, role, displayName, isSalary }: { userId: string; role: UserRole | null; displayName: string; isSalary: boolean }) {
+export default function DashboardYourRecordCard({ userId, role, displayName, isSalary, title = 'Your record' }: { userId: string; role: UserRole | null; displayName: string; isSalary: boolean; /** The card's name. The short Job Mode page (punch list #384) calls it Waiting on you. */ title?: string }) {
   const [items, setItems] = useState<YourRecordItem[] | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [pctJob, setPctJob] = useState<YourRecordJob | null>(null)
@@ -123,8 +123,8 @@ export default function DashboardYourRecordCard({ userId, role, displayName, isS
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', marginTop: '0.75rem' }} data-testid="dashboard-your-record">
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.5rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700 }}>Your record</h2>
+      <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '0 0.5rem', marginBottom: '0.5rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700, whiteSpace: 'nowrap' }}>{title}</h2>
         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>this week · {items.length === 1 ? 'one thing' : `${items.length} things`} only you can fix</span>
       </div>
       <div style={{ display: 'grid', gap: '0.45rem' }}>

@@ -8,7 +8,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { isOwnerOrDev } from '../lib/doorRoles'
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
@@ -21,6 +21,9 @@ import { jobModeActiveSource, readJobModeStoredValue } from '../lib/jobModeToggl
 import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
 import DashboardJobModeFirstRunCard from '../components/dashboard/DashboardJobModeFirstRunCard'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
+import { JobModeShortPage } from '../components/jobMode/JobModeShortPage'
+import { JOB_MODE_SHORT_WORDS, jobModeShortOn, jobModeShortScheduleRead, jobModeShortTomorrow } from '../lib/jobMode/jobModeShort'
+import { useTrainingCoursesOwed } from '../hooks/useTrainingCoursesOwed'
 import DashboardYourRecordCard from '../components/dashboard/DashboardYourRecordCard'
 import { DashboardCustomerWordsStrip } from '../components/dashboard/DashboardCustomerWordsStrip'
 import { DashboardYourWeekCard } from '../components/dashboard/DashboardYourWeekCard'
@@ -500,13 +503,29 @@ export default function Dashboard() {
   const dashboardView = useDashboardView(authUser?.id ?? null, role)
   const shortDashboardOn = dashboardView === 'short' && canHaveShortDashboard(role)
   const [shortShowFullDashboard, setShortShowFullDashboard] = useState(false)
+  // Job Mode, short (punch list #384): a superintendent on Short with Job Mode on gets the short Job Mode page.
+  // Its Everything else opens the full Dashboard for the visit, past the short Dashboard, so it sets both flags,
+  // and the way back clears both.
+  const jobModeShort = jobModeShortOn({ view: dashboardView, role, jobModeOn: jobModeEnabled })
+  const jobModeShortNavigate = useNavigate()
+  const jobModeShortCoursesOwed = useTrainingCoursesOwed(authUser?.id ?? null, role, jobModeShort)
+  // Read through a ref so the way back keeps one identity: the tab's effect below must fire on a press alone,
+  // never because the view or Job Mode changed while the last press's mark was still on the location.
+  const jobModeShortRef = useRef(jobModeShort)
+  useEffect(() => {
+    jobModeShortRef.current = jobModeShort
+  }, [jobModeShort])
+  const leaveEverythingElse = useCallback(() => {
+    setShortShowFullDashboard(false)
+    if (jobModeShortRef.current) setJobModeShowFullDashboard(false)
+    window.scrollTo(0, 0)
+  }, [])
   // The bar's Dashboard tab is the way home (punch list #365, PR 4): a press on it leaves Everything else.
   const shortHomeLocation = useLocation()
   useEffect(() => {
     if (!isShortDashboardHomePress(shortHomeLocation.state)) return
-    setShortShowFullDashboard(false)
-    window.scrollTo(0, 0)
-  }, [shortHomeLocation.key, shortHomeLocation.state])
+    leaveEverythingElse()
+  }, [shortHomeLocation.key, shortHomeLocation.state, leaveEverythingElse])
   const [dashboardButtonVisibility, setDashboardButtonVisibility] = useState<Record<string, boolean> | null>(null)
   const [quickButtonsPlacement, setQuickButtonsPlacement] = useState<'top' | 'with_pins'>('with_pins')
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
@@ -1203,13 +1222,10 @@ export default function Dashboard() {
   // Dashboard is hidden until user taps "Show full dashboard" (component-local;
   // resets every page load). Toggle lives in the header gear menu (Layout.tsx).
   if (jobModeEnabled && !jobModeShowFullDashboard && authUser?.id) {
-    return (
-      <div>
-        {/* renderModals={false}: the tail modals never mounted in this early return (their openers are inert in Job Mode) — preserved.
-            hideBanners: notification banners live in the Job Mode Inbox tab instead (v2.917).
-            hideJobReport (punch list #189, PR 2 on a phone, PR 8 at every width): the row's Job Report button opened
-            nothing here, since the report window is the card's own Leave Report; the Tally square stays. */}
-        <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} hideBanners hideJobReport />
+    // The pieces both Job Mode pages draw: the clock mount the card's presses run through, the two strips on
+    // top, and the two windows the card opens.
+    const jobModeTop = (
+      <>
         {/* Visually-hidden clock mount: DashboardJobModeCard's Clock In / Start First Job actions
             run through the UpdateFocusOpenerBridge, whose opener/apply functions only exist while
             ClockInOutButton is mounted — without this, both card buttons silently no-op ("Update
@@ -1234,6 +1250,78 @@ export default function Dashboard() {
         </Suspense>
         {/* The customer's words, the day they land (v2.6584, punch list #255): a four or five star answer on a job this person clocked onto. */}
         <DashboardCustomerWordsStrip userId={authUser.id} />
+      </>
+    )
+    const jobModeWindows = (
+      <>
+        {leaveReportJob && (
+          <AdditionalReportModal
+            open={!!leaveReportJob}
+            onClose={() => setLeaveReportJob(null)}
+            onSaved={() => {
+              setLeaveReportJob(null)
+              void refreshDashboardAssignedJobLists()
+            }}
+            onReportSaved={() => { void refreshDashboardAssignedJobLists(); void loadDashboardReportCounts() }}
+            authUserId={authUser?.id ?? null}
+            userRole={role}
+            jobId={leaveReportJob.id}
+            hcpNumber={leaveReportJob.hcpNumber}
+            jobName={leaveReportJob.jobName}
+            jobAddress={leaveReportJob.jobAddress}
+          />
+        )}
+        {turnawayJob && (
+          <TurnawayModal
+            open={!!turnawayJob}
+            onClose={() => setTurnawayJob(null)}
+            onSubmitted={() => {
+              setTurnawayJob(null)
+              void refreshDashboardAssignedJobLists()
+            }}
+            authUserId={authUser?.id ?? null}
+            userRole={role}
+            jobId={turnawayJob.id}
+            hcpNumber={turnawayJob.hcpNumber}
+            jobName={turnawayJob.jobName}
+            jobAddress={turnawayJob.jobAddress}
+          />
+        )}
+      </>
+    )
+    // Job Mode, short (punch list #384): the card's top, what waits on him, tomorrow in one line and one door.
+    // The pinned quick row, Your week, the hours block, My Schedule and Training are behind Everything else.
+    if (jobModeShort) {
+      const tomorrowStops = subScheduleDayPartition.tomorrowBlocks.map((b) => ({ timeStart: b.time_start, label: subScheduleLabels.get(b.job_id ?? `bid:${b.bid_id ?? ''}`) ?? (b.job_id == null ? 'Bid' : 'Job') }))
+      return (
+        <JobModeShortPage
+          top={jobModeTop}
+          card={<DashboardJobModeCard userId={authUser.id} onLeaveReport={(j) => setLeaveReportJob(j)} onTurnaway={(j) => setTurnawayJob(j)} canClockOut={!dashboardSelfIsSalary} knownJobs={jobsForVisitLabels} short />}
+          waiting={<DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} title={JOB_MODE_SHORT_WORDS.waiting} />}
+          tomorrow={jobModeShortTomorrow(tomorrowStops, jobModeShortScheduleRead({ loading: subScheduleLoading, failed: subScheduleError != null, kept: subScheduleKeptAt != null }))}
+          coursesOwed={jobModeShortCoursesOwed}
+          onTomorrow={() => {
+            recordNavClick(authUser.id, role, 'job-mode-short', '/job-mode/schedule')
+            jobModeShortNavigate('/job-mode/schedule')
+          }}
+          onEverythingElse={() => {
+            recordNavClick(authUser.id, role, 'job-mode-short', '#everything-else')
+            setJobModeShowFullDashboard(true)
+            setShortShowFullDashboard(true)
+            window.scrollTo(0, 0)
+          }}
+          tail={jobModeWindows}
+        />
+      )
+    }
+    return (
+      <div>
+        {/* renderModals={false}: the tail modals never mounted in this early return (their openers are inert in Job Mode) — preserved.
+            hideBanners: notification banners live in the Job Mode Inbox tab instead (v2.917).
+            hideJobReport (punch list #189, PR 2 on a phone, PR 8 at every width): the row's Job Report button opened
+            nothing here, since the report window is the card's own Leave Report; the Tally square stays. */}
+        <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} hideBanners hideJobReport />
+        {jobModeTop}
         <DashboardJobModeCard
           userId={authUser.id}
           onLeaveReport={(j) => setLeaveReportJob(j)}
@@ -1273,39 +1361,7 @@ export default function Dashboard() {
             Show full dashboard
           </button>
         </div>
-        {leaveReportJob && (
-          <AdditionalReportModal
-            open={!!leaveReportJob}
-            onClose={() => setLeaveReportJob(null)}
-            onSaved={() => {
-              setLeaveReportJob(null)
-              void refreshDashboardAssignedJobLists()
-            }}
-            onReportSaved={() => { void refreshDashboardAssignedJobLists(); void loadDashboardReportCounts() }}
-            authUserId={authUser?.id ?? null}
-            userRole={role}
-            jobId={leaveReportJob.id}
-            hcpNumber={leaveReportJob.hcpNumber}
-            jobName={leaveReportJob.jobName}
-            jobAddress={leaveReportJob.jobAddress}
-          />
-        )}
-        {turnawayJob && (
-          <TurnawayModal
-            open={!!turnawayJob}
-            onClose={() => setTurnawayJob(null)}
-            onSubmitted={() => {
-              setTurnawayJob(null)
-              void refreshDashboardAssignedJobLists()
-            }}
-            authUserId={authUser?.id ?? null}
-            userRole={role}
-            jobId={turnawayJob.id}
-            hcpNumber={turnawayJob.hcpNumber}
-            jobName={turnawayJob.jobName}
-            jobAddress={turnawayJob.jobAddress}
-          />
-        )}
+        {jobModeWindows}
       </div>
     )
   }
@@ -1482,13 +1538,10 @@ export default function Dashboard() {
         <button
           type="button"
           data-short-back
-          onClick={() => {
-            setShortShowFullDashboard(false)
-            window.scrollTo(0, 0)
-          }}
+          onClick={leaveEverythingElse}
           style={{ display: 'block', minHeight: 44, margin: '0 0 0.75rem', padding: '0 0.9rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-link)', font: 'inherit', fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer' }}
         >
-          ‹ {SHORT_DASHBOARD_WORDS.back}
+          ‹ {jobModeShort ? JOB_MODE_SHORT_WORDS.back : SHORT_DASHBOARD_WORDS.back}
         </button>
       ) : null}
       <QuickEstimateWizard

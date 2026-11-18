@@ -59,6 +59,8 @@ import {
 import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { JobModePressBar } from './JobModePressBar'
+import { JobModeShortRow } from './JobModeShortRow'
+import { JOB_MODE_SHORT_WORDS } from '../../lib/jobMode/jobModeShort'
 import SuperintendentCard from './SuperintendentCard'
 import { useKeptRead } from '../../hooks/useKeptRead'
 import { PHONE_DAY_KEPT_LEAD, READING_AGAIN_WORDS } from '../../lib/keptRead'
@@ -95,6 +97,12 @@ type Props = {
    * (`lib/jobMode/scheduledJobLabels.ts`): a superintendent cannot read a job they never clocked onto.
    */
   knownJobs?: readonly ScheduledJobLabelSource[]
+  /**
+   * The short Job Mode page (punch list #384): the card's lower half sits behind **Open this job**, a fold in
+   * place over the same components, and the pace card behind its one line. The rail, the press bar and every
+   * sheet are as they are without it.
+   */
+  short?: boolean
 }
 
 type OpenSessionState = {
@@ -332,7 +340,9 @@ function safeTrim(s: string | null | undefined): string {
   return (s ?? '').trim()
 }
 
-export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway, canClockOut, knownJobs }: Props) {
+export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway, canClockOut, knownJobs, short = false }: Props) {
+  // The short page's fold over the card's lower half. It closes again when the job on the card changes.
+  const [shortJobOpen, setShortJobOpen] = useState<string | null>(null)
   const { prefixMap } = useLedgerDisplayPrefixes()
   const navigate = useNavigate()
   const { user: authUser, role, profileName } = useAuth()
@@ -1061,6 +1071,30 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   }
 
   const quietLink: CSSProperties = phone ? { ...quietClockOutBtn, ...quietLinkPhone } : quietClockOutBtn
+  // Details for the clocked-in job, else the Ready-to-start next job.
+  const detailsTarget =
+    leaveReportTarget ??
+    (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock
+      ? {
+          id: picked.nextBlock.job_id,
+          jobAddress: safeTrim(picked.nextBlock.job_address),
+        }
+      : null)
+  // The job the short page's Open this job row opens: the details' job, unless its papers still close it.
+  const shortDetailsTarget = detailsTarget && !closedJobs.has(detailsTarget.id) ? detailsTarget : null
+  const materialsOnSiteLink = (
+    <button
+      type="button"
+      style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+      aria-label="Materials on site"
+      title="What is in the cages and boxes on this job, and what you used"
+      onClick={() => navigate(`/tally?tab=on-site${leaveReportTarget ? `&job=${leaveReportTarget.id}` : ''}`)}
+      data-testid="job-mode-materials-on-site"
+    >
+      <span aria-hidden>▦</span>
+      Materials on site
+    </button>
+  )
 
   return (
     <div style={cardWrap} data-kept-read={held ? '' : undefined} data-testid="job-mode-card">
@@ -1292,20 +1326,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           {handPhoneBusy ? 'Opening the agreement…' : handPhoneDoor.label}
         </button>
       ) : null}
-      {/* Materials on site (punch list #209): the one press to the tally's On site tab, on the clocked-in job or its picker. */}
-      {dayOnScreen ? (
-        <button
-          type="button"
-          style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-          aria-label="Materials on site"
-          title="What is in the cages and boxes on this job, and what you used"
-          onClick={() => navigate(`/tally?tab=on-site${leaveReportTarget ? `&job=${leaveReportTarget.id}` : ''}`)}
-          data-testid="job-mode-materials-on-site"
-        >
-          <span aria-hidden>▦</span>
-          Materials on site
-        </button>
-      ) : null}
+      {/* Materials on site (punch list #209): the one press to the tally's On site tab, on the clocked-in job or its picker.
+          On the short page it sits inside Open this job while the card has a job to open. */}
+      {dayOnScreen && !(short && shortDetailsTarget) ? materialsOnSiteLink : null}
       {!loading && leaveReportTarget && jobModeMessagesOffered(role) ? (
         <MessageCustomerDoor
           jobId={leaveReportTarget.id}
@@ -1342,34 +1365,50 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         />
       ) : null}
       {(() => {
-        // Details for the clocked-in job, else the Ready-to-start next job.
-        const detailsTarget =
-          leaveReportTarget ??
-          (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock
-            ? {
-                id: picked.nextBlock.job_id,
-                jobAddress: safeTrim(picked.nextBlock.job_address),
-              }
-            : null)
-        return detailsTarget && closedJobs.has(detailsTarget.id) ? (
-          <div style={{ margin: '0.5rem 0' }}>
-            <JobPapersGate key={`papers-${detailsTarget.id}`} jobId={detailsTarget.id} onOpenJob={() => void rereadJobsClosedToMe()} />
-          </div>
-        ) : detailsTarget ? (
+        if (detailsTarget && closedJobs.has(detailsTarget.id)) {
+          return (
+            <div style={{ margin: '0.5rem 0' }}>
+              <JobPapersGate key={`papers-${detailsTarget.id}`} jobId={detailsTarget.id} onOpenJob={() => void rereadJobsClosedToMe()} />
+            </div>
+          )
+        }
+        if (!detailsTarget) return null
+        // The superintendent's line (punch list #242, PR 4): his project's pace from the same kernel as the office's Projects board.
+        const paceCard = role === 'superintendent' ? <SuperintendentCard key={`line-${detailsTarget.id}`} jobId={detailsTarget.id} rev={jobUpdatesRev} onSetPct={setPctJob} short={short} /> : null
+        const details = (
+          <JobModeDetailsSection
+            key={detailsTarget.id}
+            jobId={detailsTarget.id}
+            jobAddress={detailsTarget.jobAddress === '—' ? '' : detailsTarget.jobAddress}
+            hcpNumber={'hcpNumber' in detailsTarget ? detailsTarget.hcpNumber : undefined}
+            jobName={'jobName' in detailsTarget ? detailsTarget.jobName : undefined}
+            updatesRev={jobUpdatesRev}
+            onMessageCustomer={!loading && leaveReportTarget && leaveReportTarget.id === detailsTarget.id && jobModeMessagesOffered(role) ? () => setMessageDoorRev((n) => n + 1) : undefined}
+          />
+        )
+        if (!short) {
+          return (
+            <>
+              {paceCard}
+              {details}
+            </>
+          )
+        }
+        // The short page (punch list #384): the lower half behind one row, a fold in place, then the pace line.
+        const open = shortJobOpen === detailsTarget.id
+        const w = JOB_MODE_SHORT_WORDS.openJob
+        return (
           <>
-            {/* The superintendent's line (punch list #242, PR 4): his project's pace from the same kernel as the office's Projects board. */}
-            {role === 'superintendent' ? <SuperintendentCard key={`line-${detailsTarget.id}`} jobId={detailsTarget.id} rev={jobUpdatesRev} onSetPct={setPctJob} /> : null}
-            <JobModeDetailsSection
-              key={detailsTarget.id}
-              jobId={detailsTarget.id}
-              jobAddress={detailsTarget.jobAddress === '—' ? '' : detailsTarget.jobAddress}
-              hcpNumber={'hcpNumber' in detailsTarget ? detailsTarget.hcpNumber : undefined}
-              jobName={'jobName' in detailsTarget ? detailsTarget.jobName : undefined}
-              updatesRev={jobUpdatesRev}
-              onMessageCustomer={!loading && leaveReportTarget && leaveReportTarget.id === detailsTarget.id && jobModeMessagesOffered(role) ? () => setMessageDoorRev((n) => n + 1) : undefined}
-            />
+            <JobModeShortRow testId="job-mode-short-open-job" title={open ? w.openTitle : w.title} note={open ? w.openNote : w.note} expanded={open} onPress={() => setShortJobOpen(open ? null : detailsTarget.id)} />
+            {open ? (
+              <div data-testid="job-mode-short-job" style={{ display: 'grid', gap: '0.5rem', minWidth: 0 }}>
+                {dayOnScreen ? materialsOnSiteLink : null}
+                {details}
+              </div>
+            ) : null}
+            {paceCard}
           </>
-        ) : null
+        )
       })()}
       {papersJob ? (
         <JobPapersGateModal
