@@ -7213,6 +7213,8 @@ A company truck with no insurance, registration, service or replacement value on
   rides the final draw).
   Every line item defaults to Any.
   Kernel `supabase/functions/_shared/stagePlan.ts` (re-exported by `src/lib/jobs/stagePlan.ts`): `buildStagePlan` / `headline` / `billable` / `gcView`.
+  Since v2.7831 (punch list #397) a job opened from a won bid can take its stages at the win: New Job's carry window (`BidCarryWindow` over `src/lib/bids/jobStagesFromBid.ts`) asks **How should $X come onto the job?** with **As stages**, **As one line** and **Start at $0**.
+  The stage lines arrive Any, with dollars from the generator's presets or the bid's own schedule of values and each stage's hours from the bid's Labor tab.
 - **Tagged job notes** (punch list #363;
   v2.7384 the kernel, v2.7385 the table, v2.7400 the list of names, v2.7407 where it lands) — a job note that names a teammate picked from the list under the note box, kept as a row of `jobs_ledger_note_tags`.
   It **waits** on that person until they post a typed note on the job or press **No reply needed**;

@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps -- the callbacks keep the dependency lists they had in the form; the setters are stable */
-import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import { useCallback, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { formatPostgrestOrUnknownError, withSupabaseRetry } from '../utils/errorHandling'
@@ -12,7 +12,7 @@ import { jobDraftWords, type JobDraft } from '../lib/bids/jobDraft'
 import { setGcPacketOutcome } from '../lib/bids/gcPacketOutcome'
 import { bidBoardJobLinkLabel } from '../lib/bids/bidBoardJobLinks'
 import { secondConversionMessage } from '../lib/bids/wonMomentActions'
-import { bidImportAccountMan, bidImportCarry, bidImportCarryQuestion, bidImportEffectiveGc, bidImportFirstLine, bidImportLabel, bidImportWinWrite, decideBidImportGc } from '../lib/bids/jobImportFromBid'
+import { bidImportAccountMan, bidImportCarry, bidImportEffectiveGc, bidImportFirstLine, bidImportLabel, bidImportWinWrite, decideBidImportGc } from '../lib/bids/jobImportFromBid'
 import { estimateImportCustomerFields, estimateImportFixtureRows } from '../lib/jobs/jobImportFromEstimate'
 import { visibleServiceTypesForJobForm } from '../lib/jobs/jobFormServiceTypes'
 import { pickableServiceTypes } from '../lib/serviceTypePickers'
@@ -24,6 +24,8 @@ import { workbenchLineBudget, type AwardBidBreakdown } from '../lib/jobs/awardBa
 import { readLineBudgetSettings } from '../lib/jobs/lineBudgetSettingsStore'
 import type { FixtureRow, JobFormServiceType, MeServiceTypeColumns } from '../lib/jobs/jobFormTypes'
 import type { WinningGcOption } from '../components/jobs/PickWinningGcModal'
+import type { BidCarryAnswer, BidCarryAsk } from '../components/jobs/BidCarryWindow'
+import { loadBidScheduleForJob } from '../lib/aiaBidScheduleIo'
 import type { JobBidLinkOption } from '../components/jobs/JobBidLinkChoiceModal'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
@@ -98,6 +100,9 @@ export type JobFormImport = {
   applyPrefillFromBid: (bidRowId: string, forcedGc?: WinningGcOption, opts?: { closeOnCancel?: boolean; draft?: JobDraft | null; draftFrom?: string | null }) => Promise<void>
   handleWinningGcPick: (opt: WinningGcOption) => Promise<void>
   applyPrefillFromEstimate: (estimateId: string) => Promise<void>
+  /** The carry window's open question, or null; the form draws it (`BidCarryWindow`) and its Escape gate reads it. */
+  bidCarryAsk: BidCarryAsk | null
+  answerBidCarry: (answer: BidCarryAnswer) => void
 }
 
 /**
@@ -147,6 +152,26 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
 
+  // The carry window's open question (punch list #397): the form draws `bidCarryAsk`, and its answer resolves the import's wait.
+  const [bidCarryAsk, setBidCarryAsk] = useState<BidCarryAsk | null>(null)
+  const bidCarryResolve = useRef<((answer: BidCarryAnswer) => void) | null>(null)
+  const askBidCarry = useCallback(
+    (ask: BidCarryAsk) =>
+      new Promise<BidCarryAnswer>((resolve) => {
+        // One question at a time: a second import closes the first as cancelled.
+        bidCarryResolve.current?.({ choice: 'cancel' })
+        bidCarryResolve.current = resolve
+        setBidCarryAsk(ask)
+      }),
+    [],
+  )
+  const answerBidCarry = useCallback((answer: BidCarryAnswer) => {
+    const resolve = bidCarryResolve.current
+    bidCarryResolve.current = null
+    setBidCarryAsk(null)
+    resolve?.(answer)
+  }, [])
+
   /**
    * Tier-1 #8 (J15-F4): an abandoned bid import never strands a blank form — say what happened, and
    * when this form was opened only for the import, close it too.
@@ -169,7 +194,7 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
             await supabase
               .from('bids')
               .select(
-                'id, project_name, bid_number, service_type_id, customer_id, address, development_id, drive_link, plans_link, outcome, bid_date_sent, agreed_value, estimator_id, account_manager_id, customers(name, address, contact_info, date_met)',
+                'id, project_name, bid_number, service_type_id, customer_id, address, development_id, drive_link, plans_link, outcome, bid_date_sent, agreed_value, estimator_id, account_manager_id, customers(name, address, contact_info, date_met, customer_type)',
               )
               .eq('id', bidRowId)
               .maybeSingle(),
@@ -199,6 +224,7 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
             address: string | null
             contact_info: unknown
             date_met: string | null
+            customer_type?: string | null
           } | null
         }
         // Tier-1 #8: warn on a second conversion. First pass only — the picker's pick re-enters
@@ -265,12 +291,25 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
         // A draft already answered the question: its figure (or $0), asked of nobody.
         const carryValue = draft ? draft.carry : bidCarry
         if (carryValue != null) {
-          const carry = draft ? true : await confirmDialog(bidImportCarryQuestion({ carryValue, agreedValue, bid: b, gcName: chosen?.name ?? b.customers?.name }))
-          if (carry) {
-            // The ◆ a carried line takes (punch list #234 PR 1a): the bid's workbench priced labor and
-            // materials, so the line that carries the price carries their shares. Fail-soft to no budget.
-            const breakdown = await readBidBreakdownForImport(b.id)
-            setFixtures([{ id: crypto.randomUUID(), ...bidImportFirstLine({ carryValue, agreedValue, bid: b }), ...(workbenchLineBudget(breakdown, carryValue, readLineBudgetSettings().rateUsd) ?? {}) }])
+          // The bid's breakdown gives a carried line its ◆ (punch list #234 PR 1a) and each stage its hours; the bid's own
+          // schedule of values, when it has one, is a split the window offers. Both fail soft: no budget, no chip.
+          const settings = readLineBudgetSettings()
+          const [breakdown, schedule] = await Promise.all([readBidBreakdownForImport(b.id), draft ? Promise.resolve(null) : loadBidScheduleForJob(b.id, carryValue)])
+          // One window asks how the figure comes onto the job (punch list #397): as stages, as one line, or not at all.
+          // Until then one two-button question asked "Start the job at $X?" and Yes was the one line. A draft is one line.
+          const answer: BidCarryAnswer = draft
+            ? { choice: 'one' }
+            : await askBidCarry({ carryValue, agreedValue, bid: { bid_number: b.bid_number, project_name: b.project_name }, gcName: chosen?.name ?? b.customers?.name ?? null, schedule, breakdown, customerType: b.customers?.customer_type ?? null, settings })
+          if (answer.choice === 'cancel') {
+            cancelBidImport(!!opts?.closeOnCancel, 'Import cancelled. Nothing was filled in.')
+            return
+          }
+          if (answer.choice !== 'zero') {
+            setFixtures(
+              answer.choice === 'stages'
+                ? answer.lines.map((l) => ({ id: crypto.randomUUID(), ...l }))
+                : [{ id: crypto.randomUUID(), ...bidImportFirstLine({ carryValue, agreedValue, bid: b }), ...(workbenchLineBudget(breakdown, carryValue, settings.rateUsd) ?? {}) }],
+            )
             setFixtureScopeExpandedById({})
             if (agreedValue == null) {
               // Conditional carry (`.is('agreed_value', null)`): zero rows is the expected already-set case, not a refused write — no guard on purpose.
@@ -452,5 +491,5 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
     [customers, showToast],
   )
 
-  return { cancelBidImport, applyPrefillFromBid, handleWinningGcPick, applyPrefillFromEstimate }
+  return { cancelBidImport, applyPrefillFromBid, handleWinningGcPick, applyPrefillFromEstimate, bidCarryAsk, answerBidCarry }
 }

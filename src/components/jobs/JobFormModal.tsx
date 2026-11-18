@@ -39,6 +39,7 @@ import { useJobPropertyCandidates } from '../../hooks/useJobPropertyCandidates'
 import { useStandingDiscountOffer } from '../../hooks/useStandingDiscountOffer'
 import { useJobFormInvoiceActions } from '../../hooks/useJobFormInvoiceActions'
 import { useJobFormImport, type JobImportWinningGcPick } from '../../hooks/useJobFormImport'
+import { BidCarryWindow } from './BidCarryWindow'
 import { useDevelopmentAddressSuggestion } from '../../hooks/useDevelopmentAddressSuggestion'
 import { DevelopmentAddressSuggestionLine } from '../developments/DevelopmentAddressSuggestionLine'
 import { useJobFormPaymentActions } from '../../hooks/useJobFormPaymentActions'
@@ -1716,7 +1717,7 @@ export default function JobFormModal({
 
   // The New Job imports (the Job form map's order #7): a bid or an estimate fills the form. The
   // picker's open pick stays here — the Escape gate reads it.
-  const { cancelBidImport, applyPrefillFromBid, handleWinningGcPick, applyPrefillFromEstimate } = useJobFormImport({
+  const { cancelBidImport, applyPrefillFromBid, handleWinningGcPick, applyPrefillFromEstimate, bidCarryAsk, answerBidCarry } = useJobFormImport({
     authUserId: authUser?.id,
     authRole,
     customers,
@@ -3390,6 +3391,7 @@ export default function JobFormModal({
           }}
         />
       )}
+      {bidCarryAsk && <BidCarryWindow ask={bidCarryAsk} onAnswer={answerBidCarry} />}
       {segmentGeneratorOpen && (
         <MultipleSegmentGeneratorModal
           open={segmentGeneratorOpen}
