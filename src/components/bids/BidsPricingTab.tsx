@@ -20,6 +20,7 @@ import { TaxToolPopover } from './TaxToolPopover'
 import { cleanTag, rowKindOf } from '../../lib/bids/rowKinds'
 import { usePricingRowMarks } from '../../hooks/usePricingRowMarks'
 import { costEstimateLaborRowHours } from '../../lib/bidPricingRowCalculations'
+import { workbenchEffectiveRows, workbenchEffectiveTotals } from '../../lib/bids/workbenchEffectiveRows'
 import { parseSplitDollars, rowPriceSplit } from '../../lib/bids/rowPriceSplit'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
 import { needsFreezeAfterWrite, resolvePricingWriteTarget } from '../../lib/bids/pricingWriteTarget'
@@ -2478,31 +2479,9 @@ export function BidsPricingTab({
                   )
                 }
                 const { rows, totalCost, uncostedRevenue, openRowBreakdown } = derived
-                const eff = rows.map((r) => {
-                  const pv = wbPreview?.[r.countRow.id]
-                  const isPreview = pv != null && pv !== r.unitPrice
-                  const isVetoed = isPreview && wbPreviewVeto.has(r.countRow.id)
-                  // A price mid-typing drives the live totals too (v2.2373) — but
-                  // only the solver's preview map makes a row "preview": typed
-                  // prices save on Enter/blur instead of waiting on Apply.
-                  const draftRaw = wbPriceDrafts[r.countRow.id]
-                  const draftNum = draftRaw != null ? parseFloat(draftRaw.replace(/[$,]/g, '')) : NaN
-                  const draft = Number.isFinite(draftNum) && draftNum >= 0 ? draftNum : null
-                  // v2.2396 (Wendi): a row nothing prices reads as a dash and counts as unpriced (the
-                  // priced meter, "Show unpriced only", the solver's unpriced set). v2.6001 (Wendi again):
-                  // a saved $0 is a price — `priced` tells the two apart, where both read 0 before.
-                  const savedUnit = r.priced ? r.unitPrice : null
-                  // Totals see the pending solve (minus clicked-off rows); the row's
-                  // own cells keep the saved price — the ghost carries the proposal (v2.2379).
-                  const unit = draft ?? (isPreview && !isVetoed ? pv : null) ?? savedUnit
-                  const revenue = unit != null ? unit * r.count : 0
-                  const rowMargin = unit != null && revenue > 0 && r.cost > 0 ? (revenue - r.cost) / revenue : null
-                  const displayUnit = draft ?? savedUnit
-                  const displayRevenue = displayUnit != null ? displayUnit * r.count : 0
-                  const displayMargin =
-                    displayUnit != null && displayRevenue > 0 && r.cost > 0 ? (displayRevenue - r.cost) / displayRevenue : null
-                  return { ...r, effUnit: unit, effRevenue: revenue, effMargin: rowMargin, isPreview, isVetoed, displayUnit, displayRevenue, displayMargin }
-                })
+                // What each row is worth on screen right now: the typed draft, else the solver's unvetoed
+                // proposal, else the saved price. The arithmetic is `lib/bids/workbenchEffectiveRows.ts`.
+                const eff = workbenchEffectiveRows(rows, { preview: wbPreview, vetoed: wbPreviewVeto, drafts: wbPriceDrafts })
                 // #128: each row's Material · Tax · Equipment · Labor, typed or the rule's, adding to its price.
                 const splitOf = (r: (typeof eff)[number]) =>
                   rowPriceSplit({
@@ -2516,9 +2495,7 @@ export function BidsPricingTab({
                         ? { ...(rowMarks[r.countRow.id]?.split ?? {}), markup: rowMarkupPreview.markup }
                         : (rowMarks[r.countRow.id]?.split ?? null),
                   })
-                const effRevenue = eff.reduce((s, r) => s + r.effRevenue, 0)
-                const effProfit = effRevenue - totalCost
-                const effMargin = effRevenue > 0 ? effProfit / effRevenue : null
+                const { effRevenue, effProfit, effMargin, previewCount, vetoCount, costed, pricedCount, unpricedCost } = workbenchEffectiveTotals(eff, totalCost)
                 // v2.4194: the base and what each alternate adds — revenue and cost per row, summed by
                 // the Count Sheet's scope (one kernel with Takeoffs and Labor). null on a bid without one.
                 const altTags: readonly string[] = selectedBidForPricing?.alternate_group_tags ?? []
@@ -2553,11 +2530,6 @@ export function BidsPricingTab({
                   ) : altRowIds.has(id) ? (
                     <span title="In an alternate group — priced with and without" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)', marginLeft: '0.35rem', verticalAlign: '1px' }}>ALT</span>
                   ) : null
-                const previewCount = eff.filter((r) => r.isPreview && !r.isVetoed).length
-                const vetoCount = eff.filter((r) => r.isVetoed).length
-                const costed = eff.filter((r) => r.cost > 0)
-                const pricedCount = costed.filter((r) => r.effUnit != null).length
-                const unpricedCost = costed.filter((r) => r.effUnit == null).reduce((s, r) => s + r.cost, 0)
                 const conc = profitConcentration(
                   eff.map((r) => ({ id: r.countRow.id, label: r.countRow.fixture ?? '—', count: r.count, rowCost: r.cost, unitPrice: r.effUnit })),
                 )
