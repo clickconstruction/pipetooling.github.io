@@ -77,7 +77,7 @@ import { openInvoiceEmailPreviewInNewTab } from '../../lib/openInvoiceEmailPrevi
 import { type JobBillingContext } from '../../lib/jobBillingContext'
 import { useInKindStandings } from '../../hooks/useInKindStandings'
 import { isOfficeRole } from '../../lib/doorRoles'
-import { billSampleHref, theyWillGet, type BillSendChannel } from '../../lib/billing/billCustomerTheyWillGet'
+import { theyWillGet, type BillSendChannel } from '../../lib/billing/billCustomerTheyWillGet'
 import { canSeeWhatCustomersSee } from '../../lib/settingsGroups'
 import { BILL_IN_KIND_CHANNEL_NOTE, BILL_IN_KIND_RECORD_PRESS, billOnDealWords, billQuestionState, jobIsOffTheDeal, jobIsOnTheDeal, type InKindBillAnswer } from '../../lib/inKind/inKindChip'
 import { addJobToInKindArrangement } from '../../lib/inKind/inKindStandingIo'
@@ -143,8 +143,10 @@ import { invoiceDescriptionsNeedLowercaseLeadingHint } from '../../lib/invoiceLi
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { SendRecordInvoicePayload } from './SendRecordInvoiceModal.types'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { BillCustomerMadeEmailLine } from './BillCustomerMadeEmailLine'
 import { BillCustomerMemoPresetRow } from './BillCustomerMemoPresetRow'
 import { BillCustomerPhysicalModifications } from './BillCustomerPhysicalModifications'
+import { BillCustomerPressBox } from './BillCustomerPressBox'
 import { BillCustomerSendTo } from './BillCustomerSendTo'
 import { BillCustomerStripeModifications } from './BillCustomerStripeModifications'
 import {
@@ -2268,46 +2270,6 @@ export default function SendRecordInvoiceModal({
     }
   }
 
-  /** Punch list #343, PR 3: on the made-bill screen, how the one press's email went. Nothing for *send later*. */
-  function madeEmailLine() {
-    if (!stripeMadeEmail) return null
-    return stripeMadeEmail.kind === 'sent' ? (
-      <p role="status" data-testid="bill-customer-made-email" data-kind="sent" style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-green-700)' }}>
-        {stripeMadeEmail.line}
-      </p>
-    ) : (
-      <p role="alert" data-testid="bill-customer-made-email" data-kind="failed" style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
-        The bill is made. The bill email did not go: {stripeMadeEmail.error} Press Send Email invoice below to send it.
-      </p>
-    )
-  }
-
-  /** Punch list #343: what the press does, what it does not, and where the copy is kept, in a box right above the press. */
-  function pressBox(channel: BillSendChannel) {
-    // A paid job's presses are dead until the tick: the notice above says why, and this box would promise a send.
-    if (paidJobBlocked) return null
-    const words = sendWords(channel)
-    return (
-      <div
-        data-testid="bill-customer-press-box"
-        style={{ margin: '0.6rem 0 0', padding: '0.55rem 0.7rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', fontSize: '0.8125rem', color: 'var(--text-700)', lineHeight: 1.45 }}
-      >
-        <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{words.pressTitle}</div>
-        <ol style={{ margin: '0.2rem 0 0', paddingLeft: '1.15rem' }}>
-          {words.pressLines.map((line) => (
-            <li key={line}>{line}</li>
-          ))}
-        </ol>
-        {words.later ? <div style={{ marginTop: '0.3rem' }}>{words.later.line}</div> : null}
-        {canSeeWhatCustomersSee(authRole) ? (
-          <a href={billSampleHref(channel)} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: '0.3rem', color: 'var(--text-link)' }}>
-            See a sample of this email
-          </a>
-        ) : null}
-      </div>
-    )
-  }
-
   /** What the Send to block reads and writes, the same for both channels (`BillCustomerSendTo`). */
   const sendToProps = {
     job,
@@ -2919,7 +2881,7 @@ export default function SendRecordInvoiceModal({
                 </span>
               </label>
             ) : null}
-            {pressBox('physical')}
+            <BillCustomerPressBox channel="physical" words={sendWords('physical')} paidJobBlocked={paidJobBlocked} canSeeSample={canSeeWhatCustomersSee(authRole)} />
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
               <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>
                 Cancel
@@ -2961,7 +2923,7 @@ export default function SendRecordInvoiceModal({
                     : ''}
                   .
                 </p>
-                {madeEmailLine()}
+                <BillCustomerMadeEmailLine made={stripeMadeEmail} />
                 {stripeMadeEmail?.kind !== 'sent' && physicalAdditionalEmails().length > 0 ? (
                   <p style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     Copies to <strong>{physicalAdditionalEmails().join(', ')}</strong> go out from Click Plumbing and Electrical when you press Send Email invoice.
@@ -3033,7 +2995,7 @@ export default function SendRecordInvoiceModal({
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-amber-700)', marginBottom: '0.75rem' }}>
                   Could not reload job details; showing summary from the server response.
                 </p>
-                {madeEmailLine()}
+                <BillCustomerMadeEmailLine made={stripeMadeEmail} />
                 <StripeInvoiceSharePanel
                   hostedInvoiceUrl={stripeResult.hosted_invoice_url}
                   stripeInvoiceId={stripeResult.stripe_invoice_id}
@@ -3286,7 +3248,7 @@ export default function SendRecordInvoiceModal({
                       : `Notice email failed: ${hazmatNoticeEmailStatus} — re-send from Edit Job → Riders.`}
                   </p>
                 ) : null}
-                {pressBox('stripe')}
+                <BillCustomerPressBox channel="stripe" words={sendWords('stripe')} paidJobBlocked={paidJobBlocked} canSeeSample={canSeeWhatCustomersSee(authRole)} />
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
