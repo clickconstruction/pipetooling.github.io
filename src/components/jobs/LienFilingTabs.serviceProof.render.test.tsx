@@ -28,6 +28,21 @@ vi.mock('../../lib/supabase', () => ({
     }),
   },
 }))
+// A receipt the filing already holds comes off the filing at once (v2.7743): the write, then the trash call, in order.
+const order: string[] = []
+vi.mock('../../lib/jobs/lienReceiptKeepIo', () => ({
+  keepLienCopyProof: async (args: { filingId: string; recipient: string; proof: { receiptUrl?: string } }) => {
+    order.push(`keep:${args.filingId}:${args.recipient}:${args.proof.receiptUrl}`)
+    return []
+  },
+}))
+vi.mock('../../lib/jobs/jobFolderTrashIo', () => ({
+  takeFileToTrash: async (jobId: string, id: string | null) => {
+    order.push(`trash:${jobId}:${id}`)
+    return id ? { where: 'trash' } : null
+  },
+  untrashJobFolderFile: async () => ({ url: '' }),
+}))
 vi.mock('../../lib/jobs/jobFolderAddFileIo', () => ({
   putJobFolderFile: async (jobId: string, where: string, file: File) => {
     puts.push({ jobId, where, name: file.name })
@@ -39,6 +54,7 @@ afterEach(() => {
   cleanup()
   updates.length = 0
   puts.length = 0
+  order.length = 0
 })
 
 const job = makeJob({ id: 'job-77', hcp_number: '77', job_name: 'Alder Clinic', job_address: '12 Alder St, Marlow, TX 78000', status: 'billed', revenue: 9000 })
@@ -120,6 +136,34 @@ describe('LienFilingTabs · the mail receipts on Record service…', () => {
     fireEvent.click(within(box()).getByRole('button', { name: 'Save the mail receipts' }))
     await waitFor(() => expect(updates.length).toBe(1))
     expect(updates[0]!.row.served_at).toBe('2026-11-18')
+  })
+
+  it('a receipt the filing holds comes off the filing at once, so its file can go to Drive’s trash (v2.7743)', async () => {
+    const receipt = 'https://drive.google.com/file/d/made-up-receipt-1/view'
+    const served = { ...filed, served_at: '2026-11-18', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '0000 0000 0001', sent_on: '2026-11-18', receipt_url: receipt }] }
+    const onChanged = vi.fn()
+    renderWithProviders(<LienFilingTabs {...props({ filings: [notice, served] as never, onChanged })} />)
+    fireEvent.click(within(document.querySelector('[data-lien-service-proof]') as HTMLElement).getByRole('button', { name: 'mail receipts' }))
+    const ownerCopy = box().querySelector('[data-lien-service-copy="owner"]') as HTMLElement
+    fireEvent.click(within(ownerCopy).getByRole('button', { name: 'Take off' }))
+    fireEvent.click(within(ownerCopy).getByRole('button', { name: 'Take it off' }))
+    await waitFor(() => expect(ownerCopy.querySelector('[data-lien-receipt-off]')?.textContent).toContain('Taken off. The file is in Drive’s trash.'))
+    expect(order).toEqual(['keep:a1:owner:', 'trash:job-77:made-up-receipt-1'])
+    expect(onChanged).toHaveBeenCalledTimes(1)
+    // Nothing else was written: the day and the number wait for the press below, as before.
+    expect(updates).toEqual([])
+  })
+
+  it('a receipt added in the form alone is taken off with no write, and its file still goes to the trash', async () => {
+    renderWithProviders(<LienFilingTabs {...props({})} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Record service…' }))
+    const ownerCopy = box().querySelector('[data-lien-service-copy="owner"]') as HTMLElement
+    fireEvent.change(within(ownerCopy).getByLabelText('Add the receipt'), { target: { files: [new File(['not really a picture'], 'IMG_0001.jpg', { type: 'image/jpeg' })] } })
+    expect(await within(ownerCopy).findByRole('link', { name: 'Open the receipt' })).toBeTruthy()
+    fireEvent.click(within(ownerCopy).getByRole('button', { name: 'Take off' }))
+    fireEvent.click(within(ownerCopy).getByRole('button', { name: 'Take it off' }))
+    await waitFor(() => expect(ownerCopy.querySelector('[data-lien-receipt-off]')?.textContent).toContain('Taken off. The file is in Drive’s trash.'))
+    expect(order).toEqual(['trash:job-77:made-up-file'])
   })
 
   it('a hold closed after the filing does not take the press away', () => {
