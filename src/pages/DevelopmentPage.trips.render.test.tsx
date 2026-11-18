@@ -3,15 +3,16 @@
  * The Development page's seventh look (punch list #379, PR 3): Trips shows only on a site that has a trip or is
  * far from the shop. A site with neither keeps its six looks and one quiet door to its first trip, and a reader
  * outside the office door reads no trip at all. PR 5: the strip says when punches look like a trip, and an open
- * trip counts the page's History lines on its days. The fetch and the trips hook are mocked at their seams, so
- * this holds the page's wiring. Every name here is made up.
+ * trip counts the page's History lines on its days. PR 8: What it cost for a dev from the reads the page already
+ * makes, the Scoreboard's cut by trip, and the print's press. The fetch and the trips hook are mocked at their
+ * seams, so this holds the page's wiring. Every name here is made up.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, screen, within } from '@testing-library/react'
 import DevelopmentPage from './DevelopmentPage'
 import { LAND_ON_LOOK_MS } from '../hooks/useLandOnLook'
 import type { SiteTripsState } from '../hooks/useSiteTrips'
-import { writeFolds, writePlansView } from '../lib/developments/devicePrefs'
+import { writeFolds, writeMoneyView, writePlansView, writeScoreboardCut } from '../lib/developments/devicePrefs'
 import type { DevelopmentPageData } from '../lib/developments/fetchDevelopmentPage'
 import type { MemberJob } from '../lib/developments/overview'
 import { newTripRecord, type TripRecord } from '../lib/trips/tripRecord'
@@ -48,6 +49,18 @@ vi.mock('../hooks/useSiteLabor', () => ({
     return enabled ? { state: 'reading' } : undefined
   },
 }))
+// The site's costs (PR 8): whether the page asked for them, with nothing read.
+const costsAsked: boolean[] = []
+vi.mock('../hooks/useSiteCosts', () => ({
+  useSiteCosts: (_ids: string[], enabled: boolean) => {
+    costsAsked.push(enabled)
+    return enabled ? { state: 'reading' } : undefined
+  },
+}))
+// The Scoreboard's day ledger is the page's heaviest read: stood in for, so the board opens with no network.
+vi.mock('../hooks/useSiteOverhead', () => ({
+  useSiteOverhead: (_ids: string[], enabled: boolean) => (enabled ? { state: 'reading' } : { state: 'off' }),
+}))
 
 const lifts: TripRecord = { ...newTripRecord({ id: 't5', developmentId: 'dev-zz' }), purpose: 'Lift stations before the pour', people: [{ personId: null, userId: null, name: 'Luis', days: { '2026-10-30': 'road', '2026-10-31': 'site', '2026-11-01': 'road' } }] }
 function trips(over: Partial<SiteTripsState>): SiteTripsState {
@@ -71,6 +84,7 @@ beforeEach(() => {
   window.localStorage.clear()
   tripsState.asked.length = 0
   laborAsked.length = 0
+  costsAsked.length = 0
   served.data = data()
 })
 afterEach(() => {
@@ -208,5 +222,62 @@ describe('DevelopmentPage: landing on the Trips look, and the Trips lane on Plan
     await settle()
     expect(screen.queryByTestId('pbd-mark-trip-t5')).toBeNull()
     expect(screen.queryByTestId('pbd-name-lane-trips')).toBeNull()
+  })
+})
+
+describe('DevelopmentPage: what a trip cost, the Scoreboard cut by trip and the trip log (PR 8)', () => {
+  it('a dev’s open trip says What it cost from the reads the page already makes, and the look offers the print', async () => {
+    authState.current = { role: 'dev' }
+    tripsState.current = trips({ records: [lifts], shows: true, miles: 1180 })
+    renderWithProviders(<DevelopmentPage />)
+    await settle()
+    await screen.findByTestId('development-counts')
+    expect(within(screen.getByTestId('trips-print')).getByRole('button', { name: 'Print the trip log' })).toBeTruthy()
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    // Neither read is in here: the table says so, and gives no sum.
+    expect([...screen.getByTestId('trip-open-cost').querySelectorAll('tr')].map((tr) => tr.textContent)).toEqual(['The crew’s hoursreading the clock…', 'Card and bank charges in the daysreading the costs…', 'The trip—'])
+    // The costs are asked for a dev as they always were, for the Jobs & bids table, and never a second time for the look.
+    expect(costsAsked.every((enabled) => enabled)).toBe(true)
+  })
+
+  it('the office without the finance seats gets no cost on a trip and no cost read, and still prints the log', async () => {
+    authState.current = { role: 'assistant' }
+    tripsState.current = trips({ records: [lifts], shows: true, miles: 1180 })
+    renderWithProviders(<DevelopmentPage />)
+    await settle()
+    await screen.findByTestId('development-counts')
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    expect(screen.getByTestId('trip-open')).toBeTruthy()
+    expect(screen.queryByTestId('trip-open-cost')).toBeNull()
+    expect(costsAsked.some((enabled) => enabled)).toBe(false)
+    expect(screen.getByTestId('trips-print')).toBeTruthy()
+  })
+
+  it('the Scoreboard offers the cut by trip on a site with a trip, and draws its rows in place of the jobs', async () => {
+    authState.current = { role: 'dev' }
+    tripsState.current = trips({ records: [lifts], shows: true, miles: 1180 })
+    writeMoneyView('dev-zz', 'scoreboard')
+    renderWithProviders(<DevelopmentPage />)
+    await settle()
+    await screen.findByTestId('scoreboard-cuts')
+    expect(screen.getByTestId('scoreboard-cut-job').getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByTestId('scoreboard-cut-trip'))
+    expect(screen.getByTestId('scoreboard-cut-trip').getAttribute('aria-pressed')).toBe('true')
+    // The clock is still reading here, so the cut says so in place of rows.
+    expect(screen.getByTestId('scoreboard-trip-pending').textContent).toBe('Reading the clock…')
+    expect(screen.getByTestId('scoreboard-trip-note')).toBeTruthy()
+  })
+
+  it('a site with no trip has no trip chip, and a device that remembered the cut reads by job', async () => {
+    authState.current = { role: 'dev' }
+    tripsState.current = trips({ records: [], shows: false, miles: 12 })
+    writeMoneyView('dev-zz', 'scoreboard')
+    writeScoreboardCut('dev-zz', 'trip')
+    renderWithProviders(<DevelopmentPage />)
+    await settle()
+    await screen.findByTestId('scoreboard-cuts')
+    expect(screen.queryByTestId('scoreboard-cut-trip')).toBeNull()
+    expect(screen.getByTestId('scoreboard-cut-job').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByTestId('scoreboard-trip-pending')).toBeNull()
   })
 })

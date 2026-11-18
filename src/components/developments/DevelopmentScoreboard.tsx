@@ -53,6 +53,8 @@ import {
   type ScoreboardPersonRow,
   type ScoreboardWindowKey,
 } from '../../lib/developments/scoreboardCuts'
+import type { ScoreboardTripCut } from '../../lib/trips/tripScoreboardCut'
+import { ScoreboardTripCards, ScoreboardTripNote, ScoreboardTripRows } from '../trips/ScoreboardTripRows'
 import { capStyle, LinkButton } from './developmentPageBits'
 import { JobChip } from './JobChip'
 
@@ -83,6 +85,9 @@ export type DevelopmentScoreboardProps = {
     parts: ReadonlyArray<ScoreboardPartGroup> | null
     /** The people with their jobs, when the cut is by person. */
     people: ReadonlyArray<ScoreboardPersonRow> | null
+    /** The trips as rows, when the cut is by trip (punch list #379, PR 8); the chip shows only on a site with a trip (`tripOffered`). */
+    trips?: ScoreboardTripCut | null
+    tripOffered?: boolean
   }
 }
 
@@ -386,7 +391,7 @@ function CutChips({ cuts, window }: { cuts: NonNullable<DevelopmentScoreboardPro
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', paddingBottom: 8 }} data-testid="scoreboard-cuts">
       <span style={group} role="group" aria-label="Cut by">
         <span style={lead}>Cut by</span>
-        {SCOREBOARD_CUTS.map((c) => (
+        {SCOREBOARD_CUTS.filter((c) => c.key !== 'trip' || cuts.tripOffered).map((c) => (
           <Chip key={c.key} on={cuts.cut === c.key} label={c.label} title={c.title} onPress={() => cuts.onCut(c.key)} testId={`scoreboard-cut-${c.key}`} />
         ))}
       </span>
@@ -488,6 +493,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
   const cut: ScoreboardCut = cuts?.cut ?? 'job'
   const partGroups = cut === 'part' ? (cuts?.parts ?? []) : null
   const people = cut === 'person' ? (cuts?.people ?? []) : null
+  const trips = cut === 'trip' ? (cuts?.trips ?? null) : null
   const chips = cuts ? <CutChips cuts={cuts} window={model.window} /> : null
   const [showEmpties, setShowEmpties] = useState(false)
   const toggle = (id: string) =>
@@ -689,10 +695,11 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
           </div>
           {head.small ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6 }}>{head.small}</div> : null}
         </div>
-        {personCards ?? partSections ?? model.rows.map(card)}
+        {trips ? <ScoreboardTripCards cut={trips} columns={columns} reads={model.reads} /> : (personCards ?? partSections ?? model.rows.map(card))}
+        {trips ? <ScoreboardTripNote seesCosts={seesCosts} phone /> : null}
         {personCards ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', padding: '0 2px' }}>{SCOREBOARD_PERSON_NOTE}</div> : null}
-        {!personCards && model.empties.length ? <div style={{ textAlign: 'center', fontSize: '0.78rem', padding: 4 }}>{emptiesLine}</div> : null}
-        {!personCards && showEmpties ? model.empties.map(card) : null}
+        {!personCards && !trips && model.empties.length ? <div style={{ textAlign: 'center', fontSize: '0.78rem', padding: 4 }}>{emptiesLine}</div> : null}
+        {!personCards && !trips && showEmpties ? model.empties.map(card) : null}
         {printLine}
       </div>
     )
@@ -829,8 +836,8 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
               </td>
             </tr>
           ) : null}
-          {people ? people.map(personRow) : partGroups ? partGroups.map(partRow) : model.rows.map(row)}
-          {!people && model.empties.length ? (
+          {trips ? <ScoreboardTripRows cut={trips} columns={columns} reads={model.reads} fmt={fmt} narrow={narrow} /> : people ? people.map(personRow) : partGroups ? partGroups.map(partRow) : model.rows.map(row)}
+          {!people && !trips && model.empties.length ? (
             <tr data-testid="scoreboard-fold-row">
               <td style={{ ...cellPad, textAlign: 'left', paddingLeft: 10 }}>{emptiesLine}</td>
               {columns.map((c) => (
@@ -840,7 +847,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
               ))}
             </tr>
           ) : null}
-          {!people && showEmpties ? model.empties.map(row) : null}
+          {!people && !trips && showEmpties ? model.empties.map(row) : null}
         </tbody>
         <tfoot>
           <tr>
@@ -856,6 +863,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
       </table>
       </div>
       {people ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', paddingTop: 6 }} data-testid="scoreboard-person-note">{SCOREBOARD_PERSON_NOTE}</div> : null}
+      {trips ? <ScoreboardTripNote seesCosts={seesCosts} phone={false} /> : null}
       {legend}
       {printLine}
     </div>

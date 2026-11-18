@@ -3,23 +3,42 @@
  * The Trips card (punch list #379, PR 3): it draws the look only on a site that shows it, opens the sheet for
  * the site's first trip from the page's own door, saves through the hook, and deletes with a question and an
  * undo. PR 5: it offers a run of punches no trip covers as Looks like a trip, opens the sheet filled from them,
- * remembers Not a trip with an undo, and counts What shows it. Every name here is made up.
+ * remembers Not a trip with an undo, and counts What shows it. PR 8: What it cost for a dev or a controller from
+ * the reads the page already makes, and Print the trip log, which files the page that printed. Every name and
+ * every dollar here is made up.
  */
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
+import { EMPTY_CARD_CHARGE_EXCLUSIONS } from '../../../supabase/functions/_shared/cardChargeAllocationFilter'
 import type { SiteTripsState } from '../../hooks/useSiteTrips'
+import { jobCostsFromRows, type SiteCostRows, type SiteCostsRead } from '../../lib/developments/siteCosts'
 import type { SiteLaborRead } from '../../lib/developments/siteLabor'
 import { newTripRecord, type TripRecord } from '../../lib/trips/tripRecord'
-import { DevelopmentTripsCard, tripNameWords } from './DevelopmentTripsCard'
+import { DevelopmentTripsCard, tripNameWords, type TripLogPrint } from './DevelopmentTripsCard'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
 
+// The print (PR 8): the page that would print and where it would be filed, with no window opened.
+const printed = vi.hoisted(() => ({ html: [] as string[], filings: [] as unknown[], open: true }))
+vi.mock('../../lib/sent/sentCopiesIo', () => ({
+  printAndFile: (html: string, filing: unknown) => {
+    printed.html.push(html)
+    printed.filings.push(filing)
+    return printed.open
+  },
+}))
+
 beforeAll(installDomShims)
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  printed.html.length = 0
+  printed.filings.length = 0
+  printed.open = true
+})
 
 const TODAY = '2026-11-17'
 const lifts: TripRecord = { ...newTripRecord({ id: 't5', developmentId: 'd1' }), purpose: 'Lift stations before the pour', people: [{ personId: 'p-luis', userId: 'u-luis', name: 'Luis', days: { '2026-10-30': 'road', '2026-10-31': 'site', '2026-11-01': 'road' } }] }
@@ -42,7 +61,7 @@ function state(over: Partial<SiteTripsState> = {}): SiteTripsState {
   }
 }
 const NO_DAYS: string[] = []
-function draw(trips: SiteTripsState, addSignal = 0, laborRead: SiteLaborRead | undefined = LABOR, more: { historyDays?: string[]; onOffers?: (count: number) => void } = {}) {
+function draw(trips: SiteTripsState, addSignal = 0, laborRead: SiteLaborRead | undefined = LABOR, more: { historyDays?: string[]; onOffers?: (count: number) => void; seesCosts?: boolean; costsRead?: SiteCostsRead; print?: TripLogPrint } = {}) {
   const lines: string[] = []
   const ui = (signal: number) => (
     <DevelopmentTripsCard
@@ -61,6 +80,9 @@ function draw(trips: SiteTripsState, addSignal = 0, laborRead: SiteLaborRead | u
       addSignal={signal}
       historyDays={more.historyDays ?? NO_DAYS}
       onOffers={more.onOffers}
+      seesCosts={more.seesCosts}
+      costsRead={more.costsRead}
+      print={more.print}
     />
   )
   const view = renderWithProviders(ui(addSignal))
@@ -240,5 +262,90 @@ describe('DevelopmentTripsCard', () => {
     expect(screen.getByTestId('trip-open-shows').textContent).toBe('What shows it1 punch at the site2 On my way and I’m here stamps3 lines in History')
     expect(screen.getByTestId('trip-shows-punches').getAttribute('data-tone')).toBe('green')
     expect(screen.getByTestId('trip-shows-lines').getAttribute('data-tone')).toBe('plain')
+  })
+  // ---- PR 8: What it cost, and Print the trip log ---------------------------------------------
+
+  // Luis's wages by day, and three card lines on the site's job: one the day before the trip, two inside its days.
+  const PAID: SiteLaborRead = { state: 'read', labor: { ...(LABOR as Extract<SiteLaborRead, { state: 'read' }>).labor, byJobId: new Map([['j1', { jobId: 'j1', hours: 14, costUsd: 700, days: 2, people: [{ personName: 'Luis', personId: 'p-luis', userId: 'u-luis', hours: 14, costUsd: 700, days: 2, leadDays: 0, byWorkDate: [{ ymd: '2026-10-31', hours: 10, costUsd: 500 }, { ymd: '2026-10-12', hours: 4, costUsd: 200 }] }] }]]) } }
+  const tx = (posted_at: string, amount: number) => ({ posted_at, counterparty_name: 'A made-up fuel stop', amount })
+  const COST_ROWS: SiteCostRows = {
+    jobIds: ['j1'],
+    invoiceAmounts: [],
+    cardAlloc: [
+      { job_id: 'j1', id: 'a0', mercury_transaction_id: 'tx0', amount: -90, mercury_transactions: tx('2026-10-29', -90) },
+      { job_id: 'j1', id: 'a1', mercury_transaction_id: 'tx1', amount: -120, mercury_transactions: tx('2026-10-30', -120) },
+      { job_id: 'j1', id: 'a2', mercury_transaction_id: 'tx2', amount: -60, mercury_transactions: tx('2026-11-01', -60) },
+    ],
+    cardExclusions: EMPTY_CARD_CHARGE_EXCLUSIONS,
+    tally: [],
+    otherCharges: [],
+    sheets: [],
+    items: [],
+    settings: [],
+  }
+  const COSTS: SiteCostsRead = { state: 'read', byJobId: jobCostsFromRows(COST_ROWS), rows: COST_ROWS }
+  const PRINT: TripLogPrint = { customerName: 'Northgate Builders', customerId: 'cust-1', printedBy: 'Dana' }
+
+  it('says What it cost to a dev or a controller: the wages of the trip’s hours and the card and bank charges dated in its days', () => {
+    draw(state(), 0, PAID, { seesCosts: true, costsRead: COSTS })
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    // Luis's Oct 31 is on the trip and his Oct 12 is not; the Oct 29 charge is the day before the trip.
+    expect([...screen.getByTestId('trip-open-cost').querySelectorAll('tr')].map((tr) => tr.textContent)).toEqual(['The crew’s hours$500', 'Card and bank charges in the days · 2 charges$180', 'The trip$680'])
+  })
+
+  it('hands a reader who may not see costs nothing, even with the cost rows on the page', () => {
+    draw(state(), 0, PAID, { seesCosts: false, costsRead: COSTS })
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    expect(screen.queryByTestId('trip-open-cost')).toBeNull()
+    expect(document.getElementById('development-trips')?.textContent).not.toContain('$')
+  })
+
+  it('says which read is still out: the costs, or the clock', () => {
+    draw(state(), 0, PAID, { seesCosts: true, costsRead: { state: 'reading' } })
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    expect(screen.getByTestId('trip-cost-cards').textContent).toBe('Card and bank charges in the daysreading the costs…')
+    expect(screen.getByTestId('trip-cost-total').textContent).toBe('The trip—')
+    cleanup()
+    draw(state(), 0, { state: 'reading' }, { seesCosts: true, costsRead: COSTS })
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    expect(screen.getByTestId('trip-cost-labor').textContent).toBe('The crew’s hoursreading the clock…')
+    expect(screen.getByTestId('trip-cost-cards').textContent).toBe('Card and bank charges in the days · 2 charges$180')
+    cleanup()
+    draw(state(), 0, PAID, { seesCosts: true, costsRead: { state: 'failed', reason: 'the read did not finish' } })
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    expect(screen.getByTestId('trip-cost-cards').textContent).toBe('Card and bank charges in the daysthe costs did not read')
+  })
+
+  it('prints the trip log: one light page with the site, the customer and each trip, no dollar on it, filed under the site', () => {
+    draw(state(), 0, PAID, { seesCosts: true, costsRead: COSTS, print: PRINT })
+    fireEvent.click(screen.getByRole('button', { name: 'Print the trip log' }))
+    expect(printed.html).toHaveLength(1)
+    const page = printed.html[0]!
+    expect(page).toContain('<html lang="en" data-theme="light">')
+    expect(page).toContain('<h1>Heron Point · trip log</h1><span>Northgate Builders</span>')
+    expect(page).toContain('by Dana')
+    expect(page).toContain('<h2>Oct 30 to Nov 1, 2026 · Back</h2>')
+    expect(page).toContain('<dt>What for</dt><dd>Lift stations before the pour</dd>')
+    expect(page).toContain('Luis: 1 day at the site, 2 on the road')
+    expect(page).toContain('<dt>Hours</dt><dd>At the site 10 h')
+    expect(page).toContain('1 trip gone out · 1 day at the site · At the site 10 h')
+    // A dev printed it, and still no dollar is on the paper.
+    expect(page).not.toContain('$')
+    expect(printed.filings).toEqual([{ kind: 'trip_log', title: 'Trip log · Heron Point', customerId: 'cust-1', source: { table: 'developments', id: 'd1' } }])
+    expect(screen.queryByTestId('trips-print-note')).toBeNull()
+  })
+
+  it('says the print window was blocked, and leaves the hours off the page with the reason while the clock is not read', () => {
+    printed.open = false
+    draw(state({ punches: null }), 0, LABOR, { print: PRINT })
+    fireEvent.click(screen.getByRole('button', { name: 'Print the trip log' }))
+    expect(screen.getByTestId('trips-print-note').textContent).toBe('The print window was blocked. Allow pop-ups for this site and press again.')
+    expect(printed.html[0]).not.toContain('<dt>Hours</dt>')
+    expect(printed.html[0]).toContain('The clock was still being read when this was printed, so the hours are not on this page.')
+  })
+
+  it('offers no print when the page hands it no head for the paper', () => {
+    draw(state())
+    expect(screen.queryByTestId('trips-print')).toBeNull()
   })
 })

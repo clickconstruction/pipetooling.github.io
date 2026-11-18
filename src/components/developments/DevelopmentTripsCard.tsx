@@ -14,27 +14,45 @@
  * filled from the punches, and nothing is saved until Save. **Not a trip** keeps one row a person and can
  * be undone for a minute. It counts **What shows it** for each trip (`lib/trips/tripEvidence.ts`) from the
  * punches it holds and the days of the page's History lines.
+ *
+ * PR 8: for a dev or a controller it lays the site's wages and card and bank charges over the trips as **What it
+ * cost** (`lib/trips/tripCost.ts`), from the labor read and the cost rows the page already holds: the card
+ * makes no read of its own, and a reader who may not see costs is handed none. **Print the trip log** builds
+ * one paper from the look's own model (`lib/trips/tripLog.ts`) and opens it through `printAndFile`, so the
+ * page that printed is filed under the site, as the Plans by date print is (`docs/SENT_COPIES.md`).
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { SiteTripsState } from '../../hooks/useSiteTrips'
+import type { SiteCostsRead } from '../../lib/developments/siteCosts'
 import type { SiteLaborRead } from '../../lib/developments/siteLabor'
+import { ymdFromDateOnlyOrIso } from '../../lib/jobChargesTimeline'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
+import { siteCardCharges, tripCostsOfTrips, type TripCardsState, type TripLaborState } from '../../lib/trips/tripCost'
 import { tripEvidence, type TripEvidence } from '../../lib/trips/tripEvidence'
 import type { TripSuggestion } from '../../lib/trips/tripFinder'
 import { placesByPersonDay, tripHourRowsFromLabor } from '../../lib/trips/tripHourRows'
+import { buildTripLog, TRIP_LOG_HOURS_NOTE, tripLogPrintHtml } from '../../lib/trips/tripLog'
 import { buildTripOffers, dismissalRowsForOffer, moreTripOffersWords, notATripWords, tripOfferWords, tripOffersShown, tripRecordFromOffer } from '../../lib/trips/tripOffers'
 import { newTripRecord, tripPeopleIndex, type TripRecord } from '../../lib/trips/tripRecord'
 import { buildTripsLook, tripSpanWords, tripsLookWords } from '../../lib/trips/tripsLook'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import ConfirmDialog from '../ConfirmDialog'
 import { TripSheet, type TripSheetJob } from '../trips/TripSheet'
 import { Card, type CardFold } from './developmentPageBits'
-import { DevelopmentTripsLook, type TripsHoursState } from './DevelopmentTripsLook'
+import { DevelopmentTripsLook, type TripsCosts, type TripsHoursState } from './DevelopmentTripsLook'
 
 /** How long a deleted trip can be put back, and a Not a trip taken back. */
 export const TRIP_UNDO_MS = 60_000
 
 const NO_OFFERS: TripSuggestion[] = []
+
+/** The day of a card charge's bank stamp, read the way the Scoreboard's window and the Timeline read it. */
+const cardDay = (raw: string | null): string | null => ymdFromDateOnlyOrIso(raw, calendarYmdInAppTzFromIso)
+
+/** What the trip log needs that the look does not: who the site is for, and who printed. */
+export type TripLogPrint = { customerName: string | null; customerId: string | null; printedBy: string | null }
 
 const firstDay = (r: TripRecord): string | null => r.people.flatMap((p) => Object.keys(p.days)).sort()[0] ?? null
 const lastDay = (r: TripRecord): string | null => r.people.flatMap((p) => Object.keys(p.days)).sort().pop() ?? null
@@ -59,6 +77,9 @@ export function DevelopmentTripsCard({
   addSignal,
   historyDays,
   onOffers,
+  seesCosts = false,
+  costsRead,
+  print,
 }: {
   anchorId: string
   developmentId: string
@@ -77,6 +98,12 @@ export function DevelopmentTripsCard({
   historyDays: ReadonlyArray<string>
   /** Told how many offers the card holds, so the page's strip can say *1 looks like a trip*. */
   onOffers?: (count: number) => void
+  /** Whether this reader may see the site's costs (`canSeeSiteCosts`): a dev or a controller. */
+  seesCosts?: boolean
+  /** The site's cost rows as the page already reads them for the Jobs & bids table; undefined when it reads none. */
+  costsRead?: SiteCostsRead
+  /** The trip log's head and where its copy is filed. Absent, the look has no print. */
+  print?: TripLogPrint
 }) {
   const { showToast, showActionToast } = useToastContext()
   const [sheet, setSheet] = useState<{ record: TripRecord; isNew: boolean } | null>(null)
@@ -114,6 +141,36 @@ export function DevelopmentTripsCard({
     const byId = new Map(jobs.map((j) => [j.id, `${j.label} ${j.name}`.trim()]))
     return (id: string) => byId.get(id) ?? null
   }, [jobs])
+  // What it cost, for a dev or a controller alone: the wages from the clock read, the card and bank charges from the page's cost rows.
+  const cardCharges = useMemo(() => (seesCosts && costsRead?.state === 'read' && costsRead.rows ? siteCardCharges(costsRead.rows, cardDay) : null), [seesCosts, costsRead])
+  const costs = useMemo<TripsCosts | null>(() => {
+    if (!seesCosts) return null
+    const rosterIn = !!trips.roster
+    const byTrip = tripCostsOfTrips({ seesCosts, trips: model.rows.map((r) => r.trip), labor: rosterIn ? labor : null, index, cards: cardCharges })
+    if (!byTrip) return null
+    const laborState: TripLaborState = laborRead?.state === 'failed' ? 'failed' : labor && !labor.daysKnown ? 'closed' : labor && rosterIn ? 'read' : 'reading'
+    // No cost read at all means the site has no job to cost: nothing to wait for. Rows with no card lines on them leave the row out.
+    const cardsState: TripCardsState = cardCharges ? 'read' : !costsRead ? 'off' : costsRead.state === 'failed' ? 'failed' : costsRead.state === 'reading' ? 'reading' : 'off'
+    return { byTrip, labor: laborState, cards: cardsState }
+  }, [seesCosts, trips.roster, model.rows, labor, laborRead?.state, index, cardCharges, costsRead])
+  // Print the trip log: the look's own model on one paper, no dollars on it, filed under the site as a print is.
+  const [printNote, setPrintNote] = useState<string | null>(null)
+  const printLog = () => {
+    if (!print) return
+    const html = tripLogPrintHtml(
+      buildTripLog({
+        model,
+        siteName,
+        customerName: print.customerName,
+        printedAt: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
+        printedBy: print.printedBy,
+        jobLabel,
+        hoursNote: hoursState === 'read' ? null : TRIP_LOG_HOURS_NOTE[hoursState],
+      }),
+    )
+    const printed = printAndFile(html, { kind: 'trip_log', title: `Trip log · ${siteName}`, customerId: print.customerId, source: { table: 'developments', id: developmentId } })
+    setPrintNote(printed ? null : 'The print window was blocked. Allow pop-ups for this site and press again.')
+  }
 
   const openNew = () => setSheet({ record: newTripRecord({ id: crypto.randomUUID(), developmentId }), isNew: true })
   // The sheet's Who went reads the roster, which a site with no look yet has not asked for.
@@ -220,6 +277,9 @@ export function DevelopmentTripsCard({
             onOfferMake={makeFromOffer}
             onOfferDismiss={(key) => void dismissOffer(key)}
             evidence={evidence}
+            costs={costs}
+            onPrint={print ? printLog : undefined}
+            printNote={printNote}
           />
         </Card>
       ) : null}

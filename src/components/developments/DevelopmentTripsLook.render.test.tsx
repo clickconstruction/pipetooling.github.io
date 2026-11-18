@@ -2,7 +2,8 @@
 /**
  * The Trips look (punch list #379, PR 3): the band, the bar, the year strip, a row a trip that opens in place,
  * the chips, and what it says while the hours are not read. PR 5: the offers above the rows with their two
- * presses, and What shows it on an open trip. Heron Point's made-up trips.
+ * presses, and What shows it on an open trip. PR 8: What it cost on an open trip for a reader handed costs, and
+ * Print the trip log beside + Trip. Heron Point's made-up trips and round dollars.
  */
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -12,7 +13,7 @@ import type { TripHourRow } from '../../lib/trips/tripHours'
 import { newTripRecord, NO_TRIP_PEOPLE, type TripRecord } from '../../lib/trips/tripRecord'
 import { buildTripsLook } from '../../lib/trips/tripsLook'
 import type { TripEvidence } from '../../lib/trips/tripEvidence'
-import { DevelopmentTripsLook, TRIPS_HOURS_WORDS, TRIPS_NO_POINT_WORDS, type TripOfferLine, type TripsHoursState } from './DevelopmentTripsLook'
+import { DevelopmentTripsLook, TRIPS_HOURS_WORDS, TRIPS_NO_POINT_WORDS, type TripOfferLine, type TripsCosts, type TripsHoursState } from './DevelopmentTripsLook'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -47,12 +48,12 @@ const OFFERS: TripOfferLine[] = [
   { key: 'b', words: 'Walt punched in at Heron Point on 1 day, Sep 21. No trip covers that day.' },
 ]
 
-function draw(over: { records?: TripRecord[]; hours?: TripHourRow[] | null; hoursState?: TripsHoursState; noSitePoint?: boolean; phone?: boolean; canWrite?: boolean; offers?: TripOfferLine[]; moreOffersWords?: string | null; offerBusy?: boolean; evidence?: Map<string, TripEvidence> } = {}) {
-  const presses = { onAdd: vi.fn(), onChange: vi.fn(), onDelete: vi.fn(), onReload: vi.fn(), onOfferMake: vi.fn(), onOfferDismiss: vi.fn() }
+function draw(over: { records?: TripRecord[]; hours?: TripHourRow[] | null; hoursState?: TripsHoursState; noSitePoint?: boolean; phone?: boolean; canWrite?: boolean; offers?: TripOfferLine[]; moreOffersWords?: string | null; offerBusy?: boolean; evidence?: Map<string, TripEvidence>; costs?: TripsCosts | null; print?: boolean; printNote?: string | null } = {}) {
+  const presses = { onAdd: vi.fn(), onChange: vi.fn(), onDelete: vi.fn(), onReload: vi.fn(), onOfferMake: vi.fn(), onOfferDismiss: vi.fn(), onPrint: vi.fn() }
   const hours = over.hours === undefined ? HOURS : over.hours
   const model = buildTripsLook({ records: over.records ?? RECORDS, index: NO_TRIP_PEOPLE, hours, todayYmd: TODAY })
   renderWithProviders(
-    <DevelopmentTripsLook model={model} hoursState={over.hoursState ?? (hours ? 'read' : 'reading')} noSitePoint={over.noSitePoint ?? false} failure={null} todayYmd={TODAY} phone={over.phone ?? false} jobLabel={(id) => (id === 'j1' ? 'J2101 Rough-in: lodge and bunkhouse' : null)} canWrite={over.canWrite ?? true} offers={over.offers} moreOffersWords={over.moreOffersWords} offerBusy={over.offerBusy} evidence={over.evidence} {...presses} />,
+    <DevelopmentTripsLook model={model} hoursState={over.hoursState ?? (hours ? 'read' : 'reading')} noSitePoint={over.noSitePoint ?? false} failure={null} todayYmd={TODAY} phone={over.phone ?? false} jobLabel={(id) => (id === 'j1' ? 'J2101 Rough-in: lodge and bunkhouse' : null)} canWrite={over.canWrite ?? true} offers={over.offers} moreOffersWords={over.moreOffersWords} offerBusy={over.offerBusy} evidence={over.evidence} costs={over.costs} printNote={over.printNote} {...presses} onPrint={over.print === false ? undefined : presses.onPrint} />,
   )
   return presses
 }
@@ -230,5 +231,75 @@ describe('DevelopmentTripsLook', () => {
     fireEvent.click(screen.getAllByTestId('trip-row-press')[2]!)
     expect(screen.getByTestId('trip-open-no-punch').textContent).toBe('No punch at the site on this trip’s days. The days stand as painted.')
     expect(screen.getByTestId('trip-shows-punches').textContent).toBe('0 punches at the site')
+  })
+  // ---- PR 8: What it cost, and Print the trip log ---------------------------------------------
+
+  const COSTS: TripsCosts = { byTrip: new Map([['t5', { laborUsd: 2020, cards: { count: 3, usd: 420 }, totalUsd: 2440 }], ['t1', { laborUsd: 0, cards: { count: 0, usd: 0 }, totalUsd: 0 }]]), labor: 'read', cards: 'read' }
+
+  it('says What it cost on an open trip for a reader handed costs: the crew’s hours, the card and bank charges in the days and the trip', () => {
+    draw({ costs: COSTS, evidence: new Map([['t5', { punchesAtSite: 8, stamps: 0, historyLines: 3 }]]) })
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[1]!)
+    const cost = screen.getByTestId('trip-open-cost')
+    expect(cost.textContent).toContain('What it cost · a dev or a controller')
+    expect([...cost.querySelectorAll('tr')].map((tr) => tr.textContent)).toEqual(['The crew’s hours$2,020', 'Card and bank charges in the days · 3 charges$420', 'The trip$2,440'])
+    // Under What shows it, on the counted side.
+    expect(screen.getByTestId('trip-open-shows').compareDocumentPosition(cost) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('draws no cost at all for a reader handed none, and none on a trip that has not gone out', () => {
+    draw()
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[1]!)
+    expect(screen.queryByTestId('trip-open-cost')).toBeNull()
+    expect(screen.getByTestId('trips-look').textContent).not.toContain('$')
+    cleanup()
+    draw({ costs: COSTS })
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[0]!)
+    expect(screen.getByTestId('trip-open').textContent).toContain('Dec 1 to 5')
+    expect(screen.queryByTestId('trip-open-cost')).toBeNull()
+  })
+
+  it('says plainly what is not read yet, and gives no sum on half a read', () => {
+    draw({ costs: { byTrip: new Map([['t5', { laborUsd: 2020, cards: null, totalUsd: null }]]), labor: 'read', cards: 'reading' } })
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[1]!)
+    expect(screen.getByTestId('trip-cost-labor').textContent).toBe('The crew’s hours$2,020')
+    expect(screen.getByTestId('trip-cost-cards').textContent).toBe('Card and bank charges in the daysreading the costs…')
+    expect(screen.getByTestId('trip-cost-total').textContent).toBe('The trip—')
+  })
+
+  it('leaves the card row out when the page’s cost rows carry no card charges', () => {
+    draw({ costs: { byTrip: new Map([['t5', { laborUsd: 2020, cards: null, totalUsd: null }]]), labor: 'read', cards: 'off' } })
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[1]!)
+    expect(screen.queryByTestId('trip-cost-cards')).toBeNull()
+    expect(screen.getByTestId('trip-cost-total').textContent).toBe('The trip$2,020')
+  })
+
+  it('keeps What it cost in one column on a phone, under the counted table', () => {
+    draw({ costs: COSTS, phone: true })
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[1]!)
+    expect(screen.getByTestId('trip-cost-total').textContent).toBe('The trip$2,440')
+    expect(screen.getByTestId('trip-open-counted').compareDocumentPosition(screen.getByTestId('trip-open-cost')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('offers Print the trip log beside + Trip, to a reader who cannot write too', () => {
+    const presses = draw({ canWrite: false })
+    expect(screen.queryByText('+ Trip')).toBeNull()
+    fireEvent.click(within(screen.getByTestId('trips-print')).getByRole('button', { name: 'Print the trip log' }))
+    expect(presses.onPrint).toHaveBeenCalledTimes(1)
+    cleanup()
+    draw()
+    const press = screen.getByTestId('trips-print')
+    expect(press.compareDocumentPosition(screen.getByText('+ Trip')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(press.parentElement).toBe(screen.getByText('+ Trip').parentElement)
+  })
+
+  it('says what the last print left to say, and offers no print with no trip or no print handed in', () => {
+    draw({ printNote: 'The print window was blocked. Allow pop-ups for this site and press again.' })
+    expect(screen.getByTestId('trips-print-note').textContent).toBe('The print window was blocked. Allow pop-ups for this site and press again.')
+    cleanup()
+    draw({ records: [] })
+    expect(screen.queryByTestId('trips-print')).toBeNull()
+    cleanup()
+    draw({ print: false })
+    expect(screen.queryByTestId('trips-print')).toBeNull()
   })
 })

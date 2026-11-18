@@ -111,6 +111,7 @@ import type { ContactKind } from '../lib/contacts/kernel'
 import type { Database } from '../types/database'
 import { DevelopmentPhotosLook } from '../components/developments/DevelopmentPhotosLook'
 import { DevelopmentTripsCard } from '../components/developments/DevelopmentTripsCard'
+import { scoreboardTripCut } from '../lib/trips/tripScoreboardCut'
 import SiteMaterialsReportModal from '../components/materials/SiteMaterialsReportModal'
 import { useSitePhotos } from '../hooks/useSitePhotos'
 import { useSiteTrips } from '../hooks/useSiteTrips'
@@ -1143,14 +1144,18 @@ export default function DevelopmentPage() {
   const scoreboardWhole = buildScoreboard({ jobs: counted.jobs, invoices: data.invoices, jobLabel, labor: laborRead, costs: costsByJobId, overhead: overheadRead, sort: scoreSort })
   // With a window on (v2.6558) the board is cut to its days; the print keeps the whole life, as its heading says.
   const scoreboard = scoreWindowApplied ? buildScoreboard({ jobs: counted.jobs, invoices: data.invoices, jobLabel, labor: laborRead, costs: costsByJobId, overhead: overheadRead, sort: scoreSort, window: scoreWindowApplied, chargeEvents: scoreEvents }) : scoreboardWhole
+  // The cut by trip (punch list #379, PR 8) is offered only on a site with a trip; a device that remembered it elsewhere reads by job.
+  const tripCutOffered = (siteTrips.records?.length ?? 0) > 0
   const scoreboardCuts = {
-    cut: scoreCut,
+    cut: scoreCut === 'trip' && !tripCutOffered ? 'job' : scoreCut,
     onCut: setScoreCutMode,
     window: scoreWindow,
     onWindow: setScoreWindowMode,
     windowOffered: scoreWindowOffered,
     parts: scoreCut === 'part' ? scoreboardPartGroups(scoreboard, new Map(counted.jobs.map((j) => [j.id, j.plan_part_id ?? null])), siteRead?.parts ?? []) : null,
     people: scoreCut === 'person' ? scoreboardPeopleCut({ model: scoreboard, labor: laborRead, seesCosts: canSeeSiteCosts(role), viewer: { userId: authUser?.id ?? null, name: profileName ?? null }, sort: scoreSort }) : null,
+    tripOffered: tripCutOffered,
+    trips: scoreCut === 'trip' && tripCutOffered ? scoreboardTripCut({ model: scoreboard, labor: laborRead, records: siteTrips.records, roster: siteTrips.roster, costs: costsByJobId, seesCosts: canSeeSiteCosts(role), todayYmd: todayYmdInAppTz(), toYmd: (raw) => ymdFromDateOnlyOrIso(raw, calendarYmdInAppTzFromIso) }) : null,
   }
   // The head's bid count leaves a robot's shadow bid out, as the tiles do (v2.6378).
   const scoreboardHead = {
@@ -1807,6 +1812,9 @@ export default function DevelopmentPage() {
             addSignal={tripAddSignal}
             historyDays={tripHistoryDays}
             onOffers={setTripOffers}
+            seesCosts={canSeeSiteCosts(role)}
+            costsRead={costsByJobId}
+            print={{ customerName: data.customer?.name ?? null, customerId: data.customer?.id ?? null, printedBy: profileName ?? null }}
           />
         ) : null}
       </div>

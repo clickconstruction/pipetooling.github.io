@@ -2,7 +2,7 @@
 title: keep a trip to a site away from home
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: trip, trips, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane
+keywords: trip, trips, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log
 order: 76
 ---
 A trip is one going out to a site away from home and coming back. You keep it on the site's Development page, apart from the hours on its jobs.
@@ -211,6 +211,76 @@ Press a bar to see its trip on a card. Press {{button:outline|Open the Trips loo
 The lane prints with the chart.
 
 The lane shows only on a site that has a trip.
+
+## Read What it cost
+
+A dev or a controller sees **What it cost** on an open trip. Nobody else sees a dollar on a trip.
+
+1. Open a trip that has gone out.
+2. Find **What it cost** under **What shows it**.
+
+:::cards
+
+:::card The crew's hours
+The pay for the hours inside the trip. A person's day off is left out. A person who did not go is left out.
+:::
+
+:::card Card and bank charges in the days
+The site's card charges dated on the trip's days. A payment from the bank with no card, such as a check, counts here too. A charge counts on a day anyone was on the trip.
+:::
+
+:::card The trip
+The two figures together.
+:::
+
+:::
+
+A row says so while its figure is still being read. The sum waits for both figures.
+
+The figures change nothing. No clock row moves, and no bill or cost changes.
+
+## Cut the Scoreboard by trip
+
+1. Open the site's Development page.
+2. Press {{button:outline|Scoreboard}} at the top of Money.
+3. Find **Cut by** above the board.
+4. Press {{chip:gray|trip}}.
+
+Each trip that has gone out is a row. The newest trip comes first.
+
+The last row is **At home for the site**. The last row holds everything outside every trip.
+
+A trip's row shows its hours and its days with work. A dev or a controller also sees dollars on the row.
+
+- **Labor** is the pay for the trip's hours.
+- **Parts** is the card and bank charges dated in the trip's days.
+- **Cost** is the two together. The open trip shows the same figure as **The trip**.
+
+The last row shows the rest of the hours, the labor and the parts. The last row has no cost.
+
+Some cells stay empty. **Earned** and **Profit** belong to a job, so no row fills them.
+
+**Subs** and **Overhead** are not cut by trip. No row fills those two columns.
+
+**Hours**, **Labor** and **Parts** each add up to the site's total in the tile above.
+
+The {{chip:gray|trip}} chip shows only on a site that has a trip.
+
+## Print the trip log
+
+1. Open the Trips look.
+2. Press **Print the trip log** beside {{button:blue|+ Trip}}.
+3. Print the page, or save it as a PDF from the print window.
+
+The page lists every trip, oldest first. Each trip shows its days, who went, what it was for and who asked. Each trip also shows how it went, its jobs, its billing and its hours.
+
+The last line counts the trips and the days at the site. The last line adds the site's hours in the five figures.
+
+The page carries no dollars, whoever prints it.
+
+A copy of the printed page is kept in Documents under **Sent copies**.
+
+A browser can block the print window. The look then says so beside the link. Allow pop-ups for the site and press again.
 
 ## Who can do this
 

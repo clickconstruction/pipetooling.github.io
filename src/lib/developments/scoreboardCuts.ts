@@ -9,12 +9,14 @@ import type { ScoreboardColumnKey, ScoreboardJob, ScoreboardMeasures, Scoreboard
 import type { SiteLaborRead } from './siteLabor'
 import { inScoreboardWindow } from './scoreboard'
 
-export type ScoreboardCut = 'job' | 'part' | 'person'
+export type ScoreboardCut = 'job' | 'part' | 'person' | 'trip'
 
 export const SCOREBOARD_CUTS: ReadonlyArray<{ key: ScoreboardCut; label: string; title: string }> = [
   { key: 'job', label: 'job', title: 'A row per job, with who put what in under each' },
   { key: 'part', label: 'part of the site', title: 'The parts of the site as rows, their jobs under each; the jobs on no part come last' },
   { key: 'person', label: 'person', title: 'The crew who clocked on the site as rows, their jobs under each; earned is their share of the job by hours' },
+  // Offered only on a site with a trip (punch list #379, PR 8); its rows are `lib/trips/tripScoreboardCut.ts`.
+  { key: 'trip', label: 'trip', title: 'A row for each trip that has gone out, newest first, and a last row for everything outside every trip' },
 ]
 
 export function isScoreboardCut(v: unknown): v is ScoreboardCut {

@@ -11,11 +11,16 @@
  * PR 5: a run of punches at the site that no trip covers is offered above the rows, **Looks like a trip**,
  * with **Make it a trip** and **Not a trip** (`lib/trips/tripOffers.ts`). The app never makes the trip.
  * An open trip says **What shows it**: counts of what the page already reads (`lib/trips/tripEvidence.ts`).
+ *
+ * PR 8: an open trip that has gone out says **What it cost** to a dev or a controller, the wages of its hours
+ * and the card and bank charges in its days (`lib/trips/tripCost.ts`); the look is handed no costs for anyone else.
+ * **Print the trip log** sits beside **+ Trip** for everyone who sees the look.
  */
 import { useMemo, useState } from 'react'
 import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { TRIP_DAY_LABEL, TRIP_STANDING_LABEL, type TripDayKind } from '../../lib/trips/tripDays'
+import { TRIP_COST_CAP, TRIP_COST_WHO, tripCostLines, type TripCardsState, type TripCost, type TripCostLine, type TripLaborState } from '../../lib/trips/tripCost'
 import { tripEvidenceChips, type TripEvidence, type TripEvidenceChip } from '../../lib/trips/tripEvidence'
 import { TRIP_HOUR_BUCKET_LABEL, type TripHourBucket } from '../../lib/trips/tripHours'
 import { TRIP_BILLING_WORDS, type TripRecord } from '../../lib/trips/tripRecord'
@@ -45,6 +50,9 @@ function billingChipStyle(row: TripLookRow) {
   return { display: 'inline-flex', alignItems: 'center', border: `1px solid ${amber ? 'var(--text-amber-800)' : 'var(--border)'}`, borderRadius: 999, padding: '1px 9px', fontSize: '0.74rem', background: amber ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', color: amber ? 'var(--text-amber-800)' : 'var(--text-700)', whiteSpace: 'nowrap' } as const
 }
 
+/** What each trip cost, for a dev or a controller, and where the two reads behind it stand. */
+export type TripsCosts = { byTrip: ReadonlyMap<string, TripCost>; labor: TripLaborState; cards: TripCardsState }
+
 /** One offer as the look draws it: the finder's key and its sentence. */
 export type TripOfferLine = { key: string; words: string }
 
@@ -72,6 +80,9 @@ export function DevelopmentTripsLook({
   onOfferMake,
   onOfferDismiss,
   evidence,
+  costs = null,
+  onPrint,
+  printNote = null,
 }: {
   model: TripsLookModel
   hoursState: TripsHoursState
@@ -98,6 +109,12 @@ export function DevelopmentTripsLook({
   onOfferDismiss?: (key: string) => void
   /** What shows each trip, by its id; a trip with none yet draws no block. */
   evidence?: ReadonlyMap<string, TripEvidence>
+  /** What each trip cost. Null for a reader who may not see the site's costs: no table is drawn. */
+  costs?: TripsCosts | null
+  /** **Print the trip log**: every trip on one paper, with no dollars on it. */
+  onPrint?: () => void
+  /** What the last press of the print left to say, such as a blocked window. */
+  printNote?: string | null
 }) {
   const [filter, setFilter] = useState<TripsFilter>('all')
   const [openId, setOpenId] = useState<string | null>(null)
@@ -262,11 +279,25 @@ export function DevelopmentTripsLook({
               ))
             : null}
         </span>
-        {canWrite ? (
-          <SmallButton onClick={onAdd} primary title="Add a trip to this site: who went, which days, what for">
-            + Trip
-          </SmallButton>
-        ) : null}
+        <span style={{ display: 'inline-flex', gap: '6px 14px', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+          {printNote ? (
+            <span style={{ color: 'var(--text-muted)' }} data-testid="trips-print-note">
+              {printNote}
+            </span>
+          ) : null}
+          {onPrint && model.rows.length > 0 ? (
+            <span data-testid="trips-print">
+              <LinkButton onClick={onPrint} title="Opens every trip of this site on one page in a print window. The print window saves it as a PDF too. The page carries no dollars." nowrap>
+                Print the trip log
+              </LinkButton>
+            </span>
+          ) : null}
+          {canWrite ? (
+            <SmallButton onClick={onAdd} primary title="Add a trip to this site: who went, which days, what for">
+              + Trip
+            </SmallButton>
+          ) : null}
+        </span>
       </div>
 
       {model.rows.length === 0 ? (
@@ -314,7 +345,7 @@ export function DevelopmentTripsLook({
                   </div>
                   <div>{row.billingLabel ? <span style={billingChipStyle(row)}>{row.billingLabel}</span> : null}</div>
                 </button>
-                {open ? <OpenTrip row={row} evidence={evidence?.get(row.id) ?? null} phone={phone} jobLabel={jobLabel} canWrite={canWrite} hoursState={hoursState} onChange={() => onChange(row.record)} onDelete={() => onDelete(row.record)} /> : null}
+                {open ? <OpenTrip row={row} evidence={evidence?.get(row.id) ?? null} costLines={costs && row.standing !== 'planned' ? tripCostLines(costs.byTrip.get(row.id), costs) : null} phone={phone} jobLabel={jobLabel} canWrite={canWrite} hoursState={hoursState} onChange={() => onChange(row.record)} onDelete={() => onDelete(row.record)} /> : null}
               </div>
             )
           })}
@@ -341,7 +372,7 @@ const KIND_ROWS: ReadonlyArray<{ bucket: Exclude<TripHourBucket, 'home' | 'noPla
 ]
 
 /** One trip, open in place: what was typed on the left, what is counted from the clock on the right. */
-function OpenTrip({ row, evidence, phone, jobLabel, canWrite, hoursState, onChange, onDelete }: { row: TripLookRow; evidence: TripEvidence | null; phone: boolean; jobLabel: (jobId: string) => string | null; canWrite: boolean; hoursState: TripsHoursState; onChange: () => void; onDelete: () => void }) {
+function OpenTrip({ row, evidence, costLines, phone, jobLabel, canWrite, hoursState, onChange, onDelete }: { row: TripLookRow; evidence: TripEvidence | null; /** What it cost, for a dev or a controller; null for everyone else and for a trip that has not gone out. */ costLines: ReadonlyArray<TripCostLine> | null; phone: boolean; jobLabel: (jobId: string) => string | null; canWrite: boolean; hoursState: TripsHoursState; onChange: () => void; onDelete: () => void }) {
   const r = row.record
   const h = row.hours
   const cell = { padding: '5px 8px', borderTop: '1px solid var(--border)', verticalAlign: 'top' } as const
@@ -494,6 +525,26 @@ function OpenTrip({ row, evidence, phone, jobLabel, canWrite, hoursState, onChan
                   </span>
                 ))}
               </div>
+            </div>
+          ) : null}
+          {costLines ? (
+            <div data-testid="trip-open-cost">
+              <div style={{ ...capStyle, marginTop: 12 }}>
+                {TRIP_COST_CAP} <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>· {TRIP_COST_WHO}</span>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', marginTop: 6 }}>
+                <tbody>
+                  {costLines.map((l, i) => (
+                    <tr key={l.key} data-testid={`trip-cost-${l.key}`}>
+                      <td style={{ ...cell, borderTop: i === 0 ? 'none' : cell.borderTop, fontWeight: l.key === 'total' ? 700 : 400 }}>
+                        {l.label}
+                        {l.small ? <span style={label}> · {l.small}</span> : null}
+                      </td>
+                      <td style={{ ...right, borderTop: i === 0 ? 'none' : right.borderTop, fontWeight: l.key === 'total' && l.stands ? 700 : 400, color: l.stands ? undefined : 'var(--text-muted)' }}>{l.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : null}
         </div>

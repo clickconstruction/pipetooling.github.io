@@ -3660,12 +3660,13 @@ the press still opens the job.
 Since v2.6533 (punch list #268) the Jobs & bids look's head carries **Print the material location report** for the office door: one Letter paper of every cage and box across the site's jobs with the parts on hand in each (`SiteMaterialsReportModal.tsx` over `lib/materials/siteMaterialsReport.ts`, the site's three on-site tables read chunked and paged when the window opens), by job, by location or, since v2.7079, by part, with three chips the device remembers, the jobs with nothing on site in one closing block, printed to PDF through the browser's own print (guide `print-the-material-location-report`).
 Since v2.7074 (punch list #330) the same head carries **Open the site’s materials** for the office door (→ *A site's materials*).
 Since v2.6558 two chip rows above the Scoreboard cut it by job, part of the site or person (`scoreboardCuts.ts`: a part a row over its jobs, a person a row over theirs with earned as their share by hours, ≈) and window it to all time, this month or 90 days, both kept on the device.
+Since v2.7702 a site with a trip offers a fourth cut, by trip (*Trip*, below).
  **Ask a question** (v2.6047): the page writes the lane's own request (`estimator_requests` / `dispatch_requests`) with one reference, the site (`development_id`) or a piece;
  the inbox's reference line opens the page;
  the office team reads every request that carries a reference.
 
 **Trip** (punch list #379;
-the rules v2.7653, the tables v2.7655, the Trips look v2.7661, Looks like a trip and What shows it v2.7676, the Job window's line, the clock line's tag and the Plans by date lane v2.7685): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
+the rules v2.7653, the tables v2.7655, the Trips look v2.7661, Looks like a trip and What shows it v2.7676, the Job window's line, the clock line's tag and the Plans by date lane v2.7685, What it cost, the Scoreboard's cut by trip and the trip log v2.7702): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
 A trip is people, and for each person their days, and each day is one of three kinds: **Getting ready**, **On the road** or **At the site**.
 A day off in the middle is a day that is not there.
 Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
@@ -3684,6 +3685,11 @@ A trip leaving and coming back are two **History** lines read from its days (`li
 The line draws for the Development page's office door on a job that is in a development, and a job with no development has none.
 The **tag on a clock line** is what a clock line in the Job window's feed wears on a job whose site has a trip (`clockTripTag`, `components/trips/TripClockTag.tsx`): **TRIP · AT THE SITE**, **TRIP · ON THE ROAD**, **TRIP · GETTING READY** or **TRIP · NO PLACE ON THE PUNCH** for a person on one of their trip days, read from the place of that person's whole day on the job (the place the bar reads, so every punch of a day wears one tag), and the quiet chip *at home for the site* for a person on no trip that day.
 The **Trips lane** is the lane under the sets on the Plans look's By date view of a site that has a trip (`lib/trips/tripLane.ts`, `tripRuns` and `tripBarShape` in `lib/plans/plansByDate.ts`): each trip a bar coloured day by day by its kind, a planned one faint, and a bar's card carries **Open the Trips look**.
+**What it cost** is the table on an open trip for a dev or a controller alone (`canSeeSiteCosts`, `lib/trips/tripCost.ts`): **The crew's hours**, the wages of the hours inside the trip, **Card and bank charges in the days**, the site's counted charges in the card bucket dated on a day anyone was on the trip, a payment out of the bank with no card on it among them, and **The trip**, the two together.
+Both figures come from reads the page already makes, the Scoreboard's labor and the Jobs & bids table's cost rows, and everyone else is handed no dollar.
+The **cut by trip** is the Scoreboard's fourth cut, offered only on a site with a trip (`lib/trips/tripScoreboardCut.ts`, `components/trips/ScoreboardTripRows.tsx`): a row for each trip that has gone out, newest first, filling Hours, Days, Labor, Parts with its card and bank charges in the days and Cost with the two together, and a last row **At home for the site** that fills Hours, Days, Labor and Parts as the site less its trips.
+Subs and Overhead are not cut by trip and Earned and Profit belong to a job, so all four are blank on every row, the last row has no Cost, and Hours, Labor and Parts add up to the site's own totals.
+The **trip log** is the paper **Print the trip log** opens beside **+ Trip** (`lib/trips/tripLog.ts`): every trip oldest first with its days, who went, what for, who asked, how it went, its jobs, its billing and its hours, a totals line, no dollars whoever prints it, and its copy filed as kind `trip_log` (`SENT_COPIES.md`).
 Access: `ACCESS_CONTROL.md`, *Trips*.
 Guide: `keep-a-trip-to-a-far-site`.
 
