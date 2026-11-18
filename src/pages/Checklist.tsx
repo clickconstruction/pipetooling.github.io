@@ -48,6 +48,8 @@ import { missedTileCaption, outstandingTileCaption, reviewTileTone, signOffTileC
 import { collapseMissedInstances, type MissedGroup } from '../lib/checklistMissedGroups'
 import { useToastContext } from '../contexts/ToastContext'
 import { OutstandingByPersonSortableList, type OutstandingInstance } from '../components/checklist/OutstandingByPersonList'
+import { OutstandingDeleteAsk, ReviewUndoBar } from '../components/checklist/ChecklistReviewAsks'
+import { reviewFoldHeader, reviewTile } from '../components/checklist/reviewBoardChrome'
 import { useChecklistCostEstimates } from '../hooks/useChecklistCostEstimates'
 import { ACCURACY_MIN_COUNT, canSeeTaskCosts, estimateAccuracy, estimateAccuracyByPerson, formatMultiplier, formatWholeDollars, sumEstimateDollars } from '../lib/checklistCostEstimate'
 import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
@@ -1781,99 +1783,6 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
     [byUser, boardPlaces],
   )
   /** Review tiles (v2.2194): centered, tappable, captioned; the tile whose list is showing stays lit. */
-  const reviewTile = (
-    label: string,
-    count: number | null,
-    tone: 'zero' | 'blue' | 'red' | 'amber',
-    caption: { text: string; ok: boolean },
-    active: boolean,
-    onClick: () => void,
-  ) => (
-    <button
-      key={label}
-      type="button"
-      onClick={onClick}
-      aria-label={`${label} — ${count ?? '…'}. ${caption.text}`}
-      style={{
-        flex: '1 1 0',
-        minWidth: 0,
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        textAlign: 'center',
-        gap: 2,
-        minHeight: 104,
-        padding: '0.65rem 0.5rem 0.6rem',
-        background: 'var(--surface)',
-        border: `1px solid ${active ? '#3b82f6' : 'var(--border)'}`,
-        boxShadow: active ? '0 0 0 1px #3b82f6 inset' : undefined,
-        borderRadius: 12,
-        cursor: 'pointer',
-        font: 'inherit',
-        color: 'var(--text-strong)',
-      }}
-    >
-      <span aria-hidden style={{ position: 'absolute', top: 6, right: 9, color: 'var(--text-faint)', fontSize: '0.8rem' }}>›</span>
-      <span style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', lineHeight: 1.25, padding: '0 0.9rem' }}>{label}</span>
-      <span style={{ fontSize: '1.55rem', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.05, fontVariantNumeric: 'tabular-nums', color: tone === 'blue' ? 'var(--text-link)' : tone === 'red' ? 'var(--text-red-700)' : tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
-        {count == null ? '—' : count}
-      </span>
-      <span style={{ fontSize: '0.68rem', lineHeight: 1.3, color: caption.ok ? 'var(--text-green-700)' : 'var(--text-muted)' }}>{caption.text}</span>
-    </button>
-  )
-  const foldHeader = (
-    label: React.ReactNode,
-    badge: string | null,
-    badgeTone: 'blue' | 'red' | 'muted',
-    open: boolean,
-    onToggle: () => void,
-  ) => (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-expanded={open}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '0.5rem',
-        width: '100%',
-        minHeight: 44,
-        padding: '0.55rem 0.75rem',
-        background: 'var(--surface)',
-        border: 'none',
-        cursor: 'pointer',
-        fontSize: '0.9375rem',
-        fontWeight: 600,
-        color: 'var(--text-strong)',
-        textAlign: 'left',
-      }}
-    >
-      <span>{label}</span>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-        {badge != null ? (
-          <span
-            style={{
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              padding: '0.1rem 0.55rem',
-              borderRadius: 999,
-              background:
-                badgeTone === 'blue' ? 'var(--bg-blue-tint)' : badgeTone === 'red' ? 'var(--bg-red-100)' : 'var(--bg-muted)',
-              color:
-                badgeTone === 'blue' ? 'var(--text-link)' : badgeTone === 'red' ? 'var(--text-red-700)' : 'var(--text-muted)',
-            }}
-          >
-            {badge}
-          </span>
-        ) : null}
-        <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{open ? '▾' : '▸'}</span>
-      </span>
-    </button>
-  )
-
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <ChecklistStuckSection authUserId={authUserId} />
@@ -1918,7 +1827,7 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
       </div>
       <PeopleWeekSheet open={peopleWeekOpen} onClose={() => setPeopleWeekOpen(false)} meId={authUserId} canPickOthers={canEditRoadmapTasks} suggested={byUser.map((u) => u.userId)} />
       <div ref={foldReviewRef} style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden', scrollMarginTop: 70 }}>
-        {foldHeader('Review: completed work', reviewCount == null ? null : String(reviewCount), 'blue', foldReviewOpen, () => setFoldReviewOpen((o) => !o))}
+        {reviewFoldHeader('Review: completed work', reviewCount == null ? null : String(reviewCount), 'blue', foldReviewOpen, () => setFoldReviewOpen((o) => !o))}
         <div style={{ display: foldReviewOpen ? 'block' : 'none', borderTop: '1px solid var(--border)', padding: foldReviewOpen ? '0.5rem 0.5rem 0.2rem' : 0 }}>
           <ChecklistReviewInboxSection onCountChange={onReviewCount} renderWhenEmpty />
           {(() => {
@@ -1959,7 +1868,7 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
         </div>
       </div>
       <div style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '1.25rem', overflow: 'hidden' }}>
-        {foldHeader('Dispatch & estimator inboxes', openReqCount == null ? null : `${openReqCount} open`, openReqCount ? 'red' : 'muted', foldInboxOpen, () => setFoldInboxOpen((o) => !o))}
+        {reviewFoldHeader('Dispatch & estimator inboxes', openReqCount == null ? null : `${openReqCount} open`, openReqCount ? 'red' : 'muted', foldInboxOpen, () => setFoldInboxOpen((o) => !o))}
         <div style={{ display: foldInboxOpen ? 'block' : 'none', borderTop: '1px solid var(--border)', padding: '0.5rem 0.5rem 0' }}>
           <ChecklistReviewInboxes hideChecklistReviewSection onOpenRequestCount={onOpenReqCount} />
         </div>
@@ -2223,140 +2132,14 @@ function ChecklistOutstandingTab({ authUserId, canActForOthers, canSeeCosts, can
           onChanged={() => void loadOutstanding()}
         />
       )}
-      {undoToast ? (
-        <div
-          style={{
-            position: 'fixed',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
-            zIndex: 1001,
-            width: 'min(560px, calc(100vw - 24px))',
-            background: 'var(--text-strong)',
-            color: 'var(--surface)',
-            borderRadius: 12,
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.35)',
-            padding: '0.75rem 0.9rem 0.9rem',
-            overflow: 'hidden',
-          }}
-        >
-          <style>{'@keyframes checklist-undo-drain { from { width: 100% } to { width: 0% } }'}</style>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ flex: 1, minWidth: 0, fontSize: '0.875rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              ✓ Completed{undoToast.count > 1 ? ` ×${undoToast.count}` : ''} — {undoToast.title}
-            </span>
-            <button
-              type="button"
-              onClick={() => void undoComplete()}
-              style={{
-                flexShrink: 0,
-                minHeight: 40,
-                padding: '0 1.1rem',
-                fontSize: '0.9375rem',
-                fontWeight: 700,
-                color: '#4ade80',
-                background: 'transparent',
-                border: '1.5px solid #4ade80',
-                borderRadius: 9,
-                cursor: 'pointer',
-              }}
-            >
-              Undo
-            </button>
-          </div>
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              bottom: 0,
-              height: 3,
-              background: '#4ade80',
-              animation: 'checklist-undo-drain 5s linear forwards',
-            }}
-          />
-        </div>
-      ) : null}
-      {outstandingDeletePending && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 755,
-            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
-          }}
-          onClick={() => {
-            if (deletingInstanceId) return
-            setOutstandingDeletePending(null)
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="checklist-outstanding-delete-title"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              minWidth: 320,
-              maxWidth: 480,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              id="checklist-outstanding-delete-title"
-              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}
-            >
-              Delete outstanding task?
-            </h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.45 }}>
-              <strong>{outstandingDeletePending.checklist_items?.title ?? '—'}</strong>
-              <span style={{ color: 'var(--text-muted)' }}> ({outstandingDeletePending.scheduled_date})</span>
-            </p>
-            <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {(missedGroups.get(outstandingDeletePending.id)?.count ?? 1) > 1
-                ? `Removes all ${missedGroups.get(outstandingDeletePending.id)!.count} missed copies of this task. This cannot be undone.`
-                : 'This cannot be undone.'}
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => { if (!deletingInstanceId) setOutstandingDeletePending(null) }}
-                disabled={deletingInstanceId === outstandingDeletePending.id}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: 'var(--bg-200)',
-                  color: 'var(--text-700)',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: deletingInstanceId ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void performDeleteOutstandingInstance(outstandingDeletePending)}
-                disabled={deletingInstanceId === outstandingDeletePending.id}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#b91c1c',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: deletingInstanceId === outstandingDeletePending.id ? 'not-allowed' : 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                {deletingInstanceId === outstandingDeletePending.id ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReviewUndoBar toast={undoToast} onUndo={() => void undoComplete()} />
+      <OutstandingDeleteAsk
+        pending={outstandingDeletePending}
+        missedCount={outstandingDeletePending ? (missedGroups.get(outstandingDeletePending.id)?.count ?? 1) : 1}
+        deletingInstanceId={deletingInstanceId}
+        onCancel={() => setOutstandingDeletePending(null)}
+        onDelete={() => { if (outstandingDeletePending) void performDeleteOutstandingInstance(outstandingDeletePending) }}
+      />
       {fwdInstance && (
         <TaskForwardWindow
           title={taskTitlePlain(fwdInstance.checklist_items?.title ?? 'Untitled')}

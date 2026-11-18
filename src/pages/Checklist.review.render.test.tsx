@@ -3,8 +3,9 @@
  * Checklist → Review's board, drawn through the page: the three tiles and the two folds over it, a person's card
  * opened onto their rows (the age chip, the roadmap stage bar, the tick and the bin), the ask before a row is
  * deleted, and the bar that offers Undo after a tick. The row and the list live in
- * `components/checklist/OutstandingByPersonList.tsx` (v2.7765); this holds what the tab draws from them, and it
- * passed on the page before they left it.
+ * `components/checklist/OutstandingByPersonList.tsx` (v2.7765) and the tiles, fold headers, Undo bar and delete ask
+ * in `reviewBoardChrome.tsx` and `ChecklistReviewAsks.tsx` (v2.7766); this holds what the tab draws from them, and
+ * it passed on the page before any of them left it.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
