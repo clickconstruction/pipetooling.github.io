@@ -6,13 +6,17 @@
  * box from its row. Read only: the rows
  * are the on-site store's, already read by the desk, and the words are `sitePersonActs.ts`'s.
  */
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
 import type { Container, ContainerMove, Movement, Place } from '../../lib/materials/onSite'
+import { fetchSiteTrail, type SiteTrail, type SiteTrailReader } from '../../lib/materials/sitePeopleTrailIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { ACT_KINDS, LOOK_WORDS, actDays, actPeople, actTiles, countWords, filterActs, sitePersonActs, type ActKind } from '../../lib/materials/sitePersonActs'
 
 type Props = {
+  /** The site, a development: the scope its part ties and prices stand on. */
+  siteId: string
   jobs: ReadonlyArray<{ id: string; label: string }>
   movements: ReadonlyArray<Movement>
   containerMoves: ReadonlyArray<ContainerMove>
@@ -22,6 +26,8 @@ type Props = {
   boxHref: (jobId: string, containerId: string) => string
   /** The desk is still reading the boxes. */
   loading?: boolean
+  /** The read of the changes that are not ledger rows; a test hands in its own. */
+  readTrail?: SiteTrailReader
 }
 
 /** How many acts the list draws before it asks: a long site stays quick to open. */
@@ -49,13 +55,37 @@ function stampWords(iso: string): string {
   return `${new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}, ${timeWords(iso)}`
 }
 
-export default function SitePeopleView({ jobs, movements, containerMoves, containers, places, boxHref, loading }: Props) {
+export default function SitePeopleView({ siteId, jobs, movements, containerMoves, containers, places, boxHref, loading, readTrail = fetchSiteTrail }: Props) {
   const [person, setPerson] = useState('')
   const [kind, setKind] = useState<ActKind | ''>('')
   const [lookOnly, setLookOnly] = useState(false)
   const [all, setAll] = useState(false)
 
-  const acts = useMemo(() => sitePersonActs({ jobs, movements, containerMoves, containers, places }), [jobs, movements, containerMoves, containers, places])
+  /** The changes that are not ledger rows: a box retired, brought back, edited or renamed, an answer taken off. */
+  const [trail, setTrail] = useState<SiteTrail | null>(null)
+  const [trailError, setTrailError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  const jobKey = jobs.map((j) => j.id).join(',')
+  const boxKey = containers.map((c) => c.id).join(',')
+  useEffect(() => {
+    let live = true
+    setTrailError(null)
+    readTrail({ siteId, jobIds: jobKey ? jobKey.split(',') : [], containerIds: boxKey ? boxKey.split(',') : [] })
+      .then((t) => {
+        if (live) setTrail(t)
+      })
+      .catch((e: unknown) => {
+        if (live) setTrailError(formatErrorMessage(e, 'The box changes did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [siteId, jobKey, boxKey, readTrail, attempt])
+
+  const acts = useMemo(
+    () => sitePersonActs({ jobs, movements, containerMoves, containers, places, boxChanges: trail?.boxChanges, boxRenames: trail?.boxRenames, removedAnswers: trail?.removedAnswers }),
+    [jobs, movements, containerMoves, containers, places, trail],
+  )
   const people = useMemo(() => actPeople(acts), [acts])
   const picked = people.find((p) => p.key === person) ?? null
   const shown = filterActs(acts, { person: picked ? picked.key : null, kind: kind || null, lookOnly })
@@ -86,6 +116,13 @@ export default function SitePeopleView({ jobs, movements, containerMoves, contai
         </button>
         {picked ? <span style={muted} data-testid="site-people-last">{picked.name} · last press {stampWords(picked.lastAt)}</span> : null}
       </div>
+
+      {trailError ? (
+        <div role="status" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.75rem', fontSize: '0.8rem', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderBottom: '1px solid var(--border)' }} data-testid="site-people-trail-error">
+          <span>Box changes and answers taken off are not in this list. {trailError}</span>
+          <button type="button" style={btn} onClick={() => setAttempt((n) => n + 1)}>Try again</button>
+        </div>
+      ) : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 1, background: 'var(--border)', borderBottom: '1px solid var(--border)' }} data-testid="site-people-tiles">
         <div style={tile}><span style={tileBig}>{tiles.presses.toLocaleString('en-US')}</span><span style={muted}>{tiles.presses === 1 ? 'press' : 'presses'} over {countWords(tiles.days, 'day', 'days')}</span></div>

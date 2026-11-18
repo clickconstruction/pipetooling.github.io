@@ -13,6 +13,9 @@ import type { Container, Movement, MovementReason, Place } from '../../lib/mater
 import { readSiteView } from '../../lib/materials/siteMaterialsViewPrefs'
 import SiteMaterialsView from './SiteMaterialsView'
 
+// The By person look's own read: nothing on the trail here, and no call to the database.
+vi.mock('../../lib/materials/sitePeopleTrailIo', () => ({ fetchSiteTrail: async () => ({ boxChanges: [], boxRenames: [], removedAnswers: [] }) }))
+
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => makeUseAuthValue({ role: 'dev' }),
   useOptionalAuth: () => makeUseAuthValue({ role: 'dev' }),

@@ -109,6 +109,10 @@ Press **Worth a look only** to read those rows alone. Pick a kind under **Kind o
 
 A box moved from one place to another is in the list too. It reads *Moved a box*.
 
+So is a box someone retired, brought back, renamed or changed. The note says what it read before and after.
+
+A price or a join that someone took off is in the list. It reads *Removed a price* or *Undid a join*.
+
 **By person** is for the office. Nothing on it changes a count.
 
 ## Read the row
