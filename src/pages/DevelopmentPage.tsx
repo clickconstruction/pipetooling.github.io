@@ -1497,8 +1497,8 @@ export default function DevelopmentPage() {
             <span style={{ color: 'var(--text-faint)' }}>no job working</span>
           )}
         </span>
-        {/* A site with no trip and near the shop has no Trips look: this is the door to its first trip (punch list #379). It waits for the site's point, so a far site never shows the door and then the look. */}
-        {moneyShown && siteTrips.records && siteTrips.sitePointKnown && !siteTrips.shows ? (
+        {/* A site with no trip and near the shop has no Trips look: this is the door to its first trip (punch list #379). It waits for the site's point and its deleted trips, so a far site, or one whose only trip was deleted, never shows the door and then the look. */}
+        {moneyShown && siteTrips.records && siteTrips.sitePointKnown && siteTrips.deletedKnown && !siteTrips.shows ? (
           <span data-testid="trips-first-door">
             <span style={capStyle}>Trips</span>{' '}
             <LinkButton onClick={() => setTripAddSignal((n) => n + 1)} title="A trip is days at a site away from home, kept apart from the hours on its jobs. Adding one brings the Trips look to this page.">

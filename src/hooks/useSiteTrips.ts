@@ -6,17 +6,18 @@ import { readUserNames } from '../lib/developments/fetchDevelopmentPage'
 import type { LatLng } from '../lib/jobTravelEstimate'
 import type { PunchRow } from '../lib/trips/tripHourRows'
 import type { TripDismissalInsert, TripDismissalRow } from '../lib/trips/tripOffers'
+import type { DeletedTrip } from '../lib/trips/tripDeleted'
 import { milesFromShop, tripsLookShows } from '../lib/trips/tripPlace'
 import type { TripRecord, TripRosterPerson } from '../lib/trips/tripRecord'
-import { deleteTrip, deleteTripDismissals, insertTripDismissals, readSiteDismissals, readSitePunches, readSiteTrips, readTripRoster, saveTrip } from '../lib/trips/tripsIo'
+import { deleteTrip, deleteTripDismissals, insertTripDismissals, readDeletedTrips, readSiteDismissals, readSitePunches, readSiteTrips, readTripRoster, saveTrip } from '../lib/trips/tripsIo'
 import { useAddressGeocodeCoords } from './useAddressGeocodeCoords'
 
 /**
  * A development's trips on its page (punch list #379, PR 3). Three steps, each only when the one before
  * says it is worth it:
  *
- * 1. The trips themselves, and how far the site is from the shop. Both are small and decide whether the
- *    Trips look shows at all: a site with a trip, or a site far from the shop.
+ * 1. The trips themselves, the site's deleted trips, and how far the site is from the shop. All are small and
+ *    decide whether the Trips look shows at all: a site with a trip, kept or deleted, or a site far from the shop.
  * 2. Once the look shows, the roster and the punches on the site's jobs, which lay the clock's hours over
  *    the trips' days, and the days somebody said were Not a trip (PR 5), so Looks like a trip passes them over.
  * 3. Once the punches are in, the names of the logins on them that have no roster row, read once.
@@ -30,6 +31,8 @@ export type SiteTripsIo = {
   readShop: () => Promise<LatLng | null>
   /** The days on the site somebody said were not a trip. */
   readDismissals: (developmentId: string) => Promise<TripDismissalRow[]>
+  /** The site's deleted trips that nothing has put back, newest first. Absent, none is read. */
+  readDeleted?: (developmentId: string) => Promise<DeletedTrip[]>
   /** The names of logins, by user id. */
   readNames: (userIds: ReadonlyArray<string>) => Promise<Map<string, string>>
   /** Saves the trip whole; hands back the number the database gave it, when the reply names one. */
@@ -48,6 +51,7 @@ export const supabaseSiteTripsIo: SiteTripsIo = {
     return anchor ? { lat: anchor.lat, lng: anchor.lng } : null
   },
   readDismissals: readSiteDismissals,
+  readDeleted: readDeletedTrips,
   // Called late, so a test that stands in for the page's fetch need not stand in for this name read.
   readNames: (userIds) => readUserNames(userIds),
   save: saveTrip,
@@ -68,8 +72,14 @@ export type SiteTripsState = {
   sitePoint: LatLng | null
   /** True once the site's point has been asked for and answered, found or not. */
   sitePointKnown: boolean
-  /** Whether the Trips look shows: a trip exists, or the site is far from the shop. False until the reads say so. */
+  /** Whether the Trips look shows: a trip exists, kept or deleted, or the site is far from the shop. False until the reads say so. */
   shows: boolean
+  /** The site's deleted trips that nothing has put back, newest first; empty until read. */
+  deleted: DeletedTrip[]
+  /** True once the deleted trips have been asked for and answered, read or not. */
+  deletedKnown: boolean
+  /** The deleted trips would not read. */
+  deletedFailed: boolean
   roster: TripRosterPerson[] | null
   /** The punches on the site's jobs; null while reading, and `punchesFailed` when they would not read. */
   punches: PunchRow[] | null
@@ -97,6 +107,7 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
   const [roster, setRoster] = useState<TripRosterPerson[] | null>(null)
   const [punchRead, setPunchRead] = useState<{ key: string; rows: PunchRow[] | null; failed: boolean } | null>(null)
   const [dismissRead, setDismissRead] = useState<{ key: string; rows: TripDismissalRow[] } | null>(null)
+  const [deletedRead, setDeletedRead] = useState<{ key: string; rows: DeletedTrip[]; failed: boolean } | null>(null)
   const [names, setNames] = useState<ReadonlyMap<string, string>>(NO_NAMES)
   const [rosterWanted, setRosterWanted] = useState(false)
   const [gen, setGen] = useState(0)
@@ -130,6 +141,21 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
     }
   }, [enabled, io])
 
+  // The site's deleted trips, beside the trips: a site whose only trip was deleted still shows its look, so the
+  // trip can be put back. A read that fails leaves none, and says so.
+  const deletedKey = enabled && developmentId && io.readDeleted ? developmentId : ''
+  useEffect(() => {
+    if (!deletedKey || !io.readDeleted) return
+    let live = true
+    io.readDeleted(deletedKey).then(
+      (rows) => live && setDeletedRead({ key: deletedKey, rows, failed: false }),
+      () => live && setDeletedRead({ key: deletedKey, rows: [], failed: true }),
+    )
+    return () => {
+      live = false
+    }
+  }, [deletedKey, io, gen])
+
   const addresses = useMemo(() => (address && address.trim() ? [{ key: normalizeAddressForGeocodeKey(address), display: address.trim() }] : []), [address])
   const geo = useAddressGeocodeCoords(addresses, enabled && addresses.length > 0, 'trips site point')
   const sitePoint = addresses[0] ? (geo.coords.get(addresses[0].key) ?? null) : null
@@ -137,7 +163,11 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
   const miles = milesFromShop(shop, sitePoint)
 
   const records = read && read.key === readKey ? read.records : null
-  const shows = !!records && tripsLookShows({ tripCount: records.length, miles })
+  const deletedNow = deletedRead && deletedRead.key === deletedKey ? deletedRead : null
+  // A trip that is back, or on its minute of Undo and saved again, is not also listed as deleted.
+  const deleted = useMemo(() => (deletedNow && records ? deletedNow.rows.filter((d) => !records.some((r) => r.id === d.record.id)) : (deletedNow?.rows ?? [])), [deletedNow, records])
+  const deletedKnown = !deletedKey || !!deletedNow
+  const shows = !!records && tripsLookShows({ tripCount: records.length + deleted.length, miles })
 
   useEffect(() => {
     if (!(shows || rosterWanted) || roster) return
@@ -213,8 +243,10 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
     async (id: string) => {
       await io.remove(id)
       setRead((prev) => (prev ? { key: prev.key, records: prev.records.filter((r) => r.id !== id) } : prev))
+      // The deleted trips are read again, so the trip that just went is listed under them.
+      reload()
     },
-    [io],
+    [io, reload],
   )
 
   const dismiss = useCallback(
@@ -235,5 +267,5 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
 
   const punches = punchRead && punchRead.key === punchKey ? punchRead : null
   const dismissals = dismissRead && dismissRead.key === dismissKey ? dismissRead.rows : null
-  return { records, failure, miles, sitePoint, sitePointKnown, shows, roster, punches: punches?.rows ?? (punchKey ? null : []), punchesFailed: !!punches?.failed, dismissals, names, askRoster, reload, save, remove, dismiss, undismiss }
+  return { records, failure, miles, sitePoint, sitePointKnown, shows, deleted, deletedKnown, deletedFailed: !!deletedNow?.failed, roster, punches: punches?.rows ?? (punchKey ? null : []), punchesFailed: !!punches?.failed, dismissals, names, askRoster, reload, save, remove, dismiss, undismiss }
 }
