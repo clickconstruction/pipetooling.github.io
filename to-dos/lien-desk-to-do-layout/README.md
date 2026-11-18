@@ -2,7 +2,7 @@
 name: "Lien desk To do: the band under the tiles, and where each press lives"
 number: 383
 group: close
-status: asked 2026-11-17 · three whole-page options drawn and measured the same day · the owner picked B with each press on its bin's title line · all three PRs shipped in v2.7708, v2.7712 and v2.7714 · two small parts of the drawing left · the live desk not walked
+status: asked 2026-11-17 · three whole-page options drawn and measured the same day · the owner picked B with each press on its bin's title line · all three parts shipped in one PR as v2.7708, v2.7712 and v2.7714 · two small parts of the drawing left · the live desk not walked
 summary: >
   The owner boxed the band between the Board's four tiles and its two columns of bins: the sentence
   "Every bin." with its switch a page width away, and the two batch prints, one over each column. It
@@ -14,7 +14,7 @@ summary: >
   PR 2 gave signing its own bin, so a bin's count and its press are one number. PR 3 marked the bins
   with something to do, folded the empty ones and moved Held and Missed to the heading line.
 next: The owner's look at the live desk. Then the two parts left, if he wants them, the Public jobs box folded and the records door on the tools row.
-size: S for the two parts left; the three PRs are done
+size: S for the two parts left; the three built parts are done
 blocker: The owner's look at the live desk.
 opinion: close — after the owner's look, since the band is gone and each bin's count and press agree
 ver: v2.7311 · v2.7332 · v2.7334 · v2.7448 · v2.7470 · v2.7483 · v2.7490 · v2.7491 · v2.7497 · v2.7708 · v2.7712 · v2.7714
@@ -50,6 +50,8 @@ Then his pick, the same day: *"Build B but with the action button in the same li
 card it is in instead of at the bottom."* The mock-up's B is redrawn that way.
 
 ## What is built
+
+The three parts below were drawn as three PRs and shipped as one, each with its own version.
 
 **PR 1, v2.7708.** Nothing stands between the tiles and the chart.
 
@@ -253,6 +255,6 @@ Small things the look found. Each stands by itself, whichever option is picked.
 
 ## Where it stands
 
-The owner picked B with each press on its bin's title line. The three PRs are shipped in v2.7708, v2.7712
+The owner picked B with each press on its bin's title line. The three parts are shipped together in v2.7708, v2.7712
 and v2.7714. Two small parts of the drawing are left and named under **What is built**. The live desk was not opened: every figure here is from
 made-up jobs.
