@@ -12,6 +12,8 @@ import type { UserRole } from '../hooks/useAuth'
 import { EasterEggHost } from './FloatingEasterEgg'
 import { useAssistantDispatchLanding } from '../hooks/useAssistantDispatchLanding'
 import { useNavFitCollapse } from '../hooks/useNavFitCollapse'
+import { useNavRowFit } from '../hooks/useNavRowFit'
+import { NAV_ROW_GAP_REM, NAV_ROW_TIGHT_GAP_REM } from '../lib/navRowFit'
 import { useForceReload } from '../contexts/ForceReloadContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
@@ -85,7 +87,8 @@ import {
   showHeaderTaskChecklistButton,
   showTaskDispatchButton,
 } from '../lib/headerTaskDispatchEstimatorEligible'
-import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/impersonationUiLabels'
+import { impersonationExitDisplayLabel, impersonationExitPlacement, impersonationExitTitle } from '../lib/impersonationUiLabels'
+import { ViewAsExitStrip } from './layout/ViewAsExitStrip'
 import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import {
@@ -104,6 +107,7 @@ import { useIsPartner } from '../hooks/useIsPartner'
 import { useOwnLogbookShown } from '../hooks/useOwnLogbookShown'
 import { BookOpen } from 'lucide-react'
 import { TellTheDevHeaderButton, TellTheDevRoot } from './tellTheDev/TellTheDevRoot'
+import { GearAnswerDot, NavRowLinkMenuRows, PeopleNavIcon, TellTheDevMenuRow } from './layout/NavRowMenuRows'
 import { useFixMode } from '../hooks/useFixMode'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
 import { canOpenMessages } from '../lib/gc/access'
@@ -287,6 +291,20 @@ export default function Layout() {
   }, [authUser?.id])
   const phoneDockSlots = useMemo(() => resolveDockSlots(role, phoneDockRaw), [role, phoneDockRaw])
   const phoneDockActive = dispatchModeActive && isMobile && phoneDockSlots != null
+  // The phone's row is one line, always (`lib/navRowFit.ts`, the owner's ask of 2026-11-18): when it has no room
+  // the wrench, then the people press, then the customers press become rows of the gear menu. The row is measured,
+  // since what it holds differs by role and by mode. With the dock up there is no gear, so nothing moves.
+  const navRowIconLinks = role != null && !isSubcontractorLikeRole(role) && role !== 'primary' && role !== 'superintendent' && !taskModeActive && !phoneDockActive
+  const navRowHasCustomers = navRowIconLinks && !(isMobile && (role === 'dev' || role === 'master_technician'))
+  const navRowHasPeople = navRowIconLinks && role !== 'estimator'
+  const navRowHasWrench = isMobile && fixModeEnabled && !!authUser?.id
+  const navRow = useNavRowFit(
+    navRef,
+    isMobile,
+    { wrench: navRowHasWrench && !phoneDockActive, people: navRowHasPeople, customers: navRowHasCustomers },
+    `${navContentKey}|${fixModeEnabled ? 1 : 0}|${phoneDockActive ? 1 : 0}|${partnerNav.isPartner ? 1 : 0}`,
+  )
+  const navRowGap = `${navRow.tight ? NAV_ROW_TIGHT_GAP_REM : NAV_ROW_GAP_REM}rem`
   // A person on Short (punch list #365, PR 4): the bar's Dashboard tab opens the short page, whichever mode is on.
   const dashboardViewForBar = useDashboardView(authUser?.id ?? null, role)
   const shortDashboardHome = dashboardViewForBar === 'short' && canHaveShortDashboard(role)
@@ -522,6 +540,9 @@ export default function Layout() {
     () => impersonationExitDisplayLabel(profileName, authUser?.email ?? null, { compact: isMobile }),
     [profileName, authUser?.email, isMobile],
   )
+  // On a phone the way back has a line of its own above the header; at a desk it stays in the row (v2.7782).
+  // `viewportNarrow`, not `isMobile`: a desk header that collapsed for want of room still has room for it.
+  const impersonationExitWhere = impersonationExitPlacement(impersonating, viewportNarrow)
   const impersonationTooltipTitle = useMemo(
     () => impersonationExitTitle(profileName, authUser?.email ?? null),
     [profileName, authUser?.email],
@@ -912,6 +933,10 @@ export default function Layout() {
       )}
       {/* Customer Waiting (v2.3248): a portal request is open and high — follows inbox members on every page. */}
       <CustomerWaitingBanner />
+      {/* The way back from View as, on a phone (v2.7782): its own line above the header, never a press of the icon row. */}
+      {impersonationExitWhere === 'strip' && (
+        <ViewAsExitStrip label={impersonationExitLabel} title={impersonationTooltipTitle} onExit={handleBackToMyAccount} />
+      )}
       <div className="appNavChrome">
       {/* The app-health strip (#183 PR 1, v2.6009): the chrome's first row, in flow above the nav; the slow line, Retry, No signal; since #163 PR 2 the queue's bar too. */}
       <AppHealthStrip onTryNow={outboxReplay.tryNow} />
@@ -924,12 +949,12 @@ export default function Layout() {
           borderBottom: impersonating && isMobile ? '1px solid #f59e0b' : '1px solid var(--chrome-border)',
           background: impersonating && isMobile ? 'var(--bg-amber-100)' : undefined,
           display: 'flex',
-          gap: '0.5rem',
+          gap: navRowGap,
           alignItems: 'center',
         }}
       >
         {isMobile ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          <div data-nav-row-left style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
             {!isSubcontractorLikeRole(role) && !phoneDockActive && (
             <div ref={menuRef} style={{ position: 'relative' }}>
               <button
@@ -1083,9 +1108,15 @@ export default function Layout() {
             {renderNavLinks()}
           </span>
         )}
-        <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          {/* Tell the dev (punch list #380): on a phone the wrench sits here, since nothing may float over Job Mode's bars. */}
-          {isMobile && fixModeEnabled && authUser?.id && <TellTheDevHeaderButton />}
+        {/* On a phone this end may be narrower than what it holds, so the way back from View as can shorten instead of the row breaking. */}
+        <span data-nav-row-right style={{ marginLeft: 'auto', display: 'flex', gap: navRowGap, alignItems: 'center', ...(isMobile && { minWidth: 0 }) }}>
+          {/* Tell the dev (punch list #380): on a phone the wrench sits here, since nothing may float over Job Mode's bars.
+              On a row with no room for it, it is the gear menu's first row instead (`lib/navRowFit.ts`). */}
+          {navRowHasWrench && !navRow.inMenu.includes('wrench') && (
+            <span data-nav-row-press="wrench" style={{ display: 'inline-flex', flexShrink: 0 }}>
+              <TellTheDevHeaderButton />
+            </span>
+          )}
           {headerSearchEligible && <HeaderGlobalSearchOpenButton placement="toolbar" isMobile={isMobile} />}
           {/* Job Mode: the three task buttons become a labeled "Contact:" row when the
               viewport fits; small viewports keep the icon buttons with a phone on the left. */}
@@ -1297,11 +1328,12 @@ export default function Layout() {
             </span>
           </NavLink>
           )}
-          {role != null && !isSubcontractorLikeRole(role) && role !== 'primary' && role !== 'superintendent' && !taskModeActive && !phoneDockActive && (
+          {navRowIconLinks && (
             <>
-              {!(isMobile && (role === 'dev' || role === 'master_technician')) && (
+              {navRowHasCustomers && !navRow.inMenu.includes('customers') && (
                 <NavLink
                   to="/customers"
+                  data-nav-row-press="customers"
                   style={({ isActive }) => ({
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -1316,24 +1348,23 @@ export default function Layout() {
                   <CustomerContactCardIcon size={20} />
                 </NavLink>
               )}
-              {role !== 'estimator' && (
-              <NavLink
-              to="/people"
-              style={({ isActive }) => ({
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '0.5rem',
-                color: 'inherit',
-                textDecoration: 'none',
-                ...(isActive && { borderBottom: '1px solid currentColor' }),
-              })}
-              title="People"
-              aria-label="People"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
-                <path d="M320 80C377.4 80 424 126.6 424 184C424 241.4 377.4 288 320 288C262.6 288 216 241.4 216 184C216 126.6 262.6 80 320 80zM96 152C135.8 152 168 184.2 168 224C168 263.8 135.8 296 96 296C56.2 296 24 263.8 24 224C24 184.2 56.2 152 96 152zM0 480C0 409.3 57.3 352 128 352C140.8 352 153.2 353.9 164.9 357.4C132 394.2 112 442.8 112 496L112 512C112 523.4 114.4 534.2 118.7 544L32 544C14.3 544 0 529.7 0 512L0 480zM521.3 544C525.6 534.2 528 523.4 528 512L528 496C528 442.8 508 394.2 475.1 357.4C486.8 353.9 499.2 352 512 352C582.7 352 640 409.3 640 480L640 512C640 529.7 625.7 544 608 544L521.3 544zM472 224C472 184.2 504.2 152 544 152C583.8 152 616 184.2 616 224C616 263.8 583.8 296 544 296C504.2 296 472 263.8 472 224zM160 496C160 407.6 231.6 336 320 336C408.4 336 480 407.6 480 496L480 512C480 529.7 465.7 544 448 544L192 544C174.3 544 160 529.7 160 512L160 496z" />
-              </svg>
-            </NavLink>
+              {navRowHasPeople && !navRow.inMenu.includes('people') && (
+                <NavLink
+                  to="/people"
+                  data-nav-row-press="people"
+                  style={({ isActive }) => ({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.5rem',
+                    color: 'inherit',
+                    textDecoration: 'none',
+                    ...(isActive && { borderBottom: '1px solid currentColor' }),
+                  })}
+                  title="People"
+                  aria-label="People"
+                >
+                  <PeopleNavIcon />
+                </NavLink>
               )}
             </>
           )}
@@ -1360,6 +1391,8 @@ export default function Layout() {
             </button>
             {/* On a phone the Checklist link is inside this menu, so its count rides the button too (punch list #375). */}
             {isMobile && canShowChecklistNav ? <ChecklistTagsBadge style={{ top: 0, right: 0 }} /> : null}
+            {/* The wrench's answer dot rides the gear too while the wrench is one of its rows. */}
+            <GearAnswerDot inMenu={navRow.inMenu} />
             {gearOpen && (
               <div
                 data-navtrack="gear-menu"
@@ -1376,6 +1409,7 @@ export default function Layout() {
                   zIndex: 50,
                 }}
               >
+                <TellTheDevMenuRow inMenu={navRow.inMenu} onClose={() => setGearOpen(false)} />
                 {jobModeMenuEligible && authUser?.id && (
                   <button
                     type="button"
@@ -1811,6 +1845,7 @@ export default function Layout() {
                     Documents
                   </NavLink>
                 )}
+                <NavRowLinkMenuRows inMenu={navRow.inMenu} onClose={() => setGearOpen(false)} />
                 {isMobile && canShowMaterialsNav && (
                   <NavLink
                     to="/materials"
@@ -2050,15 +2085,18 @@ export default function Layout() {
           </div>
             )}
           </span>
-          {impersonating && (
+          {impersonationExitWhere === 'header' && (
             <button
               type="button"
               onClick={handleBackToMyAccount}
               title={impersonationTooltipTitle}
               aria-label="Back to your original signed-in account"
+              data-nav-row-squeeze
               style={{
                 ...IMPERSONATION_CHROME_BUTTON_STYLE,
                 maxWidth: isMobile ? '8.5rem' : '18rem',
+                // On a phone's row with no room left this is the part that shortens (`lib/navRowFit.ts`).
+                ...(isMobile && { minWidth: 0 }),
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',

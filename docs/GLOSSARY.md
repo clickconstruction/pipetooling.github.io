@@ -1584,6 +1584,7 @@ Display-only — RLS and role permissions are unchanged.
 It is the guides' feedback box moved to every page: the same `help_feedback` table, the same row security and the same inbox.
 At a desk the wrench floats bottom left;
 on a phone it sits in the header beside Search, because Job Mode's bars own the bottom of a phone and toasts the top right.
+Since v2.7781 a phone's header is one line at every width: on a row with no room the wrench is the gear menu's first row, **Tell the dev**, then the people press and then the customers press become gear rows too (`navRowFit.ts`, `useNavRowFit`, `NavRowMenuRows`).
 The box opens three **starts**, *I want…*, *This page is confusing because…* and *Something went wrong when I…*;
 the start is the note's `kind` (`want`, `confusing`, `broken`), and the last two may be sent with no words.
 **Goes with your note** lists everything a note carries before the press: the page, the open window, the role, the screen, the modes on, the version, the last error line shown and the calls the server refused.
@@ -1594,6 +1595,7 @@ Two more doors open the same box since v2.7660: a **Tell the dev** press on ever
 A door outside the shell shows only while a box is there to answer it (`isTellTheDevListening`: a signed-in person with Fix Mode on).
 **Your notes** (v2.7663) lists the sender's last six notes under the box, each *Sent*, *Answered* or *Closed* with its day, and the answer the owner or a dev typed at **Answer and close** (`closed_note`).
 The wrench wears a green dot while an answer is unread;
+the gear wears it too while the wrench is one of its rows (v2.7781);
 unread is kept per person per device as the time the box last listed the notes (`myNotes.ts`), and a device that has never sent or listed a note asks for nothing when the shell comes up.
 **Fix Mode** is the gear menu's switch for the wrench, per person per device, on until switched off (`fixMode.ts`, `useFixMode`);
 the phone dock's More sheet lists it with the other modes.
@@ -6435,7 +6437,8 @@ Since v2.6726 the list sits under the people as **Beside the claim** (**＋ Add 
 ### Records for an owner (Lien desk)
 
 v2.4544.
-The Lien desk's answer to an owner who asks what we billed and what was paid on their property: the title-bar door **An owner asked for records ›** opens [`LienOwnerRecordsModal`](../src/components/jobs/LienOwnerRecordsModal.tsx) over the desk.
+The Lien desk's answer to an owner who asks what we billed and what was paid on their property: the door **An owner asked for records ›** opens [`LienOwnerRecordsModal`](../src/components/jobs/LienOwnerRecordsModal.tsx) over the desk.
+The door was a press of the title bar until v2.7780, the owner's ask of 2026-11-18: on a computer it is the last row of the window ☎ opens (`LienCallScriptModal`, `CALL_SCRIPT_RECORDS_DOOR`), handed the job under the reader, and on a phone it is still a row of More.
 Pick the owner (the owners of jobs with a notice on the desk, folded by owner and property — `ownerRecordsFromDesk`), then **four checks** on the left (`ownerRecordsSteps`: their request in writing · our contract with the GC, the leader's tick, read once per GC · the numbers agree with the notices, a warning · their signed acknowledgment) and **the packet** on the right (`buildOwnerPacket`: every job at that property for that owner, each bill, each payment with the day paid and the time recorded, what is still owed).
 *Record it as sent* needs checks 1, 2 and 4 (`ownerRecordsMissing`).
 The papers are `ownerRecordsDocs.ts`;

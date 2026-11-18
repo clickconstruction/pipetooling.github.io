@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { callScriptLetterLine, callScriptOpeningLine, callScriptOpenings, genericCallFacts } from './lienCallScript'
+import { CALL_SCRIPT_RECORDS_ASK, CALL_SCRIPT_RECORDS_DOOR, callScriptLetterLine, callScriptOpeningLine, callScriptOpenings, callScriptRecordsJob, genericCallFacts } from './lienCallScript'
 import type { CallLetterFacts } from './lienOwnerCallScript'
 
 const fmt = { day: (ymd: string) => ymd, money: (n: number) => `$${n}` }
@@ -23,5 +23,24 @@ describe('lienCallScript (v2.4731)', () => {
   it('sums the letter in their hand on one line', () => {
     expect(callScriptLetterLine(letter, fmt)).toBe('mailed 2026-09-08 · claims $17,585.00 · for April, June, July and August 2026 · affidavit by 2026-11-16')
     expect(callScriptLetterLine({ ...letter, mailedOn: '', affidavitBy: '', months: '', instrument: 'retainage_53_057' }, fmt)).toBe('not mailed yet · claims $17,585.00 · retainage')
+  })
+})
+
+describe('the call window’s records row (v2.7780)', () => {
+  it('asks in the owner’s words and keeps the door’s own name', () => {
+    expect(CALL_SCRIPT_RECORDS_ASK).toBe('Asking what we billed and what was paid?')
+    expect(CALL_SCRIPT_RECORDS_DOOR).toBe('An owner asked for records')
+  })
+  it('hands the records window the paper open in By paper’s pane, by its kind', () => {
+    const open = { notice: 'j1', affidavit: 'j2', retainage: 'j3' }
+    expect(callScriptRecordsJob({ kind: 'notice', ...open })).toBe('j1')
+    expect(callScriptRecordsJob({ kind: 'affidavit', ...open })).toBe('j2')
+    expect(callScriptRecordsJob({ kind: 'retainage', ...open })).toBe('j3')
+    expect(callScriptRecordsJob({ kind: 'affidavit', notice: 'j1', affidavit: null, retainage: null })).toBeNull()
+  })
+  it('hands none from a view with no pane, whatever notice the desk still holds: the window starts at the owner picker', () => {
+    for (const kind of ['next', 'calendar', 'timeline']) {
+      expect(callScriptRecordsJob({ kind, notice: 'j1', affidavit: 'j2', retainage: 'j3' })).toBeNull()
+    }
   })
 })

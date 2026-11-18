@@ -419,7 +419,8 @@ export default function LienBoard({
    * The two prints (v2.7470, punch list #362; `lienBoardPrints.ts`): the whole run for the notices and the batch print for the
    * affidavits, each with what it leaves out and the door to it. Since v2.7708 each stands on the title line of the bin it
    * empties (`side.bin`), its lines under that. The notices' print has no line since v2.7712: what waits on a signature
-   * stands in its own bin. A phone keeps its bins folded, so there the two stand in one row over the
+   * stands in its own bin. The affidavits' print says what it prints with only when that is not the usual stack, and
+   * `onNote` puts the usual pages back (`lienBoardStackNote`). A phone keeps its bins folded, so there the two stand in one row over the
    * fold, in their short words, and an opened bin draws the lines alone. Absent, none is drawn.
    */
   prints?: {

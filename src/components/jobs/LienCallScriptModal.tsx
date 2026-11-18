@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { helpGuideHref } from '../../lib/helpGuideAnchors'
-import { CALL_SCRIPT_NO_JOB_WORDS, CALL_SCRIPT_NO_LETTER_WORDS, CALL_SCRIPT_TITLE, callScriptLetterLine, callScriptOpeningLine, callScriptOpenings, genericCallFacts } from '../../lib/jobs/lienCallScript'
+import { CALL_SCRIPT_NO_JOB_WORDS, CALL_SCRIPT_NO_LETTER_WORDS, CALL_SCRIPT_RECORDS_ASK, CALL_SCRIPT_RECORDS_DOOR, CALL_SCRIPT_TITLE, callScriptLetterLine, callScriptOpeningLine, callScriptOpenings, genericCallFacts } from '../../lib/jobs/lienCallScript'
 import type { CallLetterFacts } from '../../lib/jobs/lienOwnerCallScript'
 
 /**
@@ -11,6 +11,10 @@ import type { CallLetterFacts } from '../../lib/jobs/lienOwnerCallScript'
  * letter in their hand when a job is under the reader, Record the call to the call sheet that
  * keeps the answers, Find the job to the list's find box, and the practice call. Nothing is
  * typed to get here and nothing is written here.
+ *
+ * Since v2.7780 (the owner's ask of 2026-11-18) its last row is *An owner asked for records ›*,
+ * the records window's door on a computer, where it had a line of the title bar to itself. It
+ * opens the packet on the job under the reader when there is one.
  */
 type Props = {
   /** The selected job's last notice, or null when no job is under the reader. */
@@ -23,6 +27,8 @@ type Props = {
   onRecord: () => void
   onFindJob: () => void
   onPractice: () => void
+  /** Opens the records window for an owner who asked what we billed and what was paid (v2.7780). Absent, the row is not drawn. */
+  onOwnerRecords?: () => void
   onClose: () => void
 }
 
@@ -31,7 +37,7 @@ const GUIDE = 'answer-an-owner-who-calls-about-a-lien-letter'
 const kicker: CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }
 
-export default function LienCallScriptModal({ facts, jobLabel, hasLetter, us, onRecord, onFindJob, onPractice, onClose }: Props) {
+export default function LienCallScriptModal({ facts, jobLabel, hasLetter, us, onRecord, onFindJob, onPractice, onOwnerRecords, onClose }: Props) {
   const f = facts ?? genericCallFacts(us)
   const [picked, setPicked] = useState<string | null>(null)
   const opening = useMemo(() => callScriptOpeningLine(f, fmt), [f])
@@ -111,6 +117,16 @@ export default function LienCallScriptModal({ facts, jobLabel, hasLetter, us, on
               <span>{chosen.say}</span>
               {chosen.cites ? <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'ui-monospace, Menlo, monospace' }}>{chosen.cites}</span> : null}
               <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{hasLetter ? 'Record the call keeps their answers on the notice’s record, and counsel’s pile for the affidavit follows from them.' : 'Pick a job with a letter out to record what they said.'}</span>
+            </div>
+          ) : null}
+
+          {/* The records window's door (v2.7780): rare, so it is a row here and not a press of its own on the title bar. */}
+          {onOwnerRecords ? (
+            <div data-lien-call-script-records style={{ display: 'flex', justifyContent: 'space-between', gap: '0.3rem 0.7rem', alignItems: 'center', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.75rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>{CALL_SCRIPT_RECORDS_ASK}</span>
+              <button type="button" onClick={onOwnerRecords} data-testid="lien-owner-records-door" title="An owner asked what we billed and what was paid on their property: the packet for that property, behind four checks" style={{ ...link, minHeight: 28 }}>
+                {CALL_SCRIPT_RECORDS_DOOR} ›
+              </button>
             </div>
           ) : null}
         </div>

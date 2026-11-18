@@ -83,7 +83,7 @@ On *Approved · to print* the press reads like {{button:blue|Print and mail 8 no
 
 On *Approved · to mail* the press reads like {{button:outline|Enter mail numbers · 6}}. It opens the same run, where you type each envelope's number. Once every approved notice has printed, this press turns blue.
 
-On **Ready to file** the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under the bin's name says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. A second line says what prints in front of the stack, like *Prints with the help sheet and the notice records*. Press **Change ›** to tick those pages on the affidavits list.
+On **Ready to file** the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. A line under the bin's name says what it leaves out, like *2 held on a property fact*. Press **See them ›** to read why. The help sheet and the notice records print in front of the stack. The bin says nothing of that while it is so. If someone changed those pages on this computer, a second line says so, like *Prints without the help sheet*. Press **Put it back ›** and the usual pages print again. You tick those pages on the affidavits list, over its rows.
 
 On the affidavits' **To send for Master approval** the press reads like {{button:outline|Send 5 for approval ›}}. It opens the affidavits list at that pile. One press there sends every paper someone has read.
 

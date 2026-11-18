@@ -582,7 +582,7 @@ The pane's **payment bond** line says whether a bond is on the project. Check it
 When one GC stops paying everywhere at once, a month at a time is too slow. **Put a GC on notice** sends § 53.056 notices to the owners of every unpaid job under that GC. It names every month not yet noticed, in one run. Three doors open it with the GC already picked.
 
 - **Jobs, Pipeline, ⋯ Pipeline tools**, with the board filtered to one GC, shows {{button:amber|⚠ Put <GC> on notice…}}.
-- **The desk's title bar** has {{button:amber|⚠ Put a GC on notice…}} on its second line. That line ends with {{button:outline|An owner asked for records ›}}, at the right, on every view. It opens a picker of the GCs with notices due in the next 30 days, most money first. Each row shows the dollars, the jobs, the first window to close and what is stuck. A GC whose windows have all closed sits greyed under **Nothing left to claim**. It still opens, for the attorney’s letter and the grid.
+- **The desk's title bar** has {{button:amber|⚠ Put a GC on notice…}} on its second line. It opens a picker of the GCs with notices due in the next 30 days, most money first. Each row shows the dollars, the jobs, the first window to close and what is stuck. A GC whose windows have all closed sits greyed under **Nothing left to claim**. It still opens, for the attorney’s letter and the grid.
 - **Bids, Customer review** has {{button:amber|⚠ Put on notice…}} beside *set terms…* on the GC's row.
 
 The run covers every unpaid job with the GC, not only the ones the picker counts.

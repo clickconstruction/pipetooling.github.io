@@ -83,7 +83,7 @@ import { lienBoardChipFor, lienBoardDoorWords, lienBoardLeaderBinPress, lienBoar
 import { lienBinFolds } from '../../lib/jobs/lienNextUpByBin'
 import LienClosedWindow, { type LienClosedPaper } from './LienClosedWindow'
 import { buildLienClosedWindow, lienClosedAnswerPress, lienClosedFacts } from '../../lib/jobs/lienClosedEnd'
-import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor, type LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
+import { LIEN_BOARD_USUAL_STACK, lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor, type LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { useLienPileHeads } from './LienPileHeads'
 import LienBoard, { type LienBoardBinPress } from './LienBoard'
@@ -112,7 +112,7 @@ import { useLienDeskBoard } from './useLienDeskBoard'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type CallerMatchInput, type CallerOwnerHit } from '../../lib/jobs/lienCallerMatch'
 import LienCallScriptModal from './LienCallScriptModal'
-import { genericCallFacts } from '../../lib/jobs/lienCallScript'
+import { callScriptRecordsJob, genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import { lienNoticeOwedConfirmWords, lienNoticeToExtend } from '../../lib/jobs/lienNoticeOwed'
 import { addMonthsToLienNotice } from '../../lib/jobs/lienNoticeOwedIo'
@@ -253,8 +253,8 @@ export type LienDeskProps = {
   onOpenCalendarJob?: (jobId: string) => void
   /** The By date grid's last-day label (v2.4735): the Lien window with the last day's line already editing. */
   onOpenCalendarLastWork?: (jobId: string) => void
-  /** The title bar's door for an owner who asks for our records on their property (v2.4544). */
-  onOpenOwnerRecords?: () => void
+  /** The records window for an owner who asks for our records on their property (v2.4544): on a computer the last row of the window ☎ opens (v2.7780), on a phone a row of More. Handed the job of the paper open in By paper's pane, and none from any other view. */
+  onOpenOwnerRecords?: (jobId?: string | null) => void
   /** A job number opens the job itself: the Job window, with its history and Edit (v2.4531 the Calendar; v2.4535 the Timeline and the three panes' headings). */
   onOpenJob?: (jobId: string) => void
   /** The Calendar's pen wrote something (v2.4153): a pay date, or a property kind — the Pipeline re-reads what changed. */
@@ -1684,21 +1684,9 @@ export default function LienDesk({
   // The notice's preview in its own window, and what it posts back (`useLienNoticePreview`, v2.7614).
   const { openPreview } = useLienNoticePreview({ selected, job, noticeFields, jobDefaults, docExtras, paneSigned, wordingEditedBy, coverBlocks, payBlocks, wordingLocked, handSetClaimWords, monthsList, setWordingEdits, touchDraft, run, ensureDraft, paperRef, startEdit, docHtml, coverHtml, payHtml, wordingDiffLength: wordingDiff.length })
 
-  // An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. On a computer it sat on the title line
-  // left of § Rules on every view (v2.4740 off By paper; v2.4786 there too, the owner's ask — the title line had the room) until v2.7311, the owner's ask of 2026-11-15:
-  // it ends the second line on every view, at the right under Share, after the paper tabs and the piles on By paper. On a phone it is a row of More. Its height is the presses'
-  // (`headDoor`), so the pile line is as tall beside it as beside Put a GC on notice.
-  const ownerRecordsDoor = office && onOpenOwnerRecords ? (
-    <button
-      type="button"
-      data-testid="lien-owner-records-door"
-      onClick={onOpenOwnerRecords}
-      title="An owner asked what we billed and what was paid on their property: the packet for that property, behind four checks"
-      style={{ gap: '0.3rem', padding: '2px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer', ...headDoor }}
-    >
-      An owner asked for records ›
-    </button>
-  ) : null
+  // An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. On a computer its door was a press of the title bar
+  // (the title line until v2.7311, then the end of the second line on every view) until v2.7780, the owner's ask of 2026-11-18: it is the last row of the window
+  // ☎ opens, so off By paper the bar is one line. On a phone it is a row of More.
 
   // v2.4826: the § Rules window names the picked job and its two dates, and lights its row in the clock table.
   const rulesJob = selected ? lienRulesJobFrom({ label: jobLabel(job, selected.jobId), propertyKind: selected.propertyKind, isSub: !!selected.gcCustomerId, months: selected.months, earliestDeadline: selected.earliestDeadline }, todayYmd) : null
@@ -1732,7 +1720,7 @@ export default function LienDesk({
     office && data
       ? {
           notice: lienBoardNoticePrint({ toPrint: (counts?.ready ?? 0) + retReady, waits: readyWaits, printed: counts?.printed ?? 0 }),
-          affidavit: lienBoardAffidavitPrint({ ready: affPrintPlan.ready.length, held: affPrintPlan.gated.length, earlierForm: affPrintPlan.held.length, with: [affHelpSheet ? 'the help sheet' : '', affNoticeRecord ? 'the notice records' : '', affNoticeCopies && affNoticeCopyCount > 0 ? 'copies of the notices' : ''].filter(Boolean), shown: Boolean(affShown) }),
+          affidavit: lienBoardAffidavitPrint({ ready: affPrintPlan.ready.length, held: affPrintPlan.gated.length, earlierForm: affPrintPlan.held.length, stack: { helpSheet: affHelpSheet, noticeRecord: affNoticeRecord, noticeCopies: affNoticeCopies && affNoticeCopyCount > 0 }, shown: Boolean(affShown) }),
         }
       : null
   const openWholeRun = () => {
@@ -1799,11 +1787,13 @@ export default function LienDesk({
       setAffPile('ready')
     }
   }
-  // The pages that print in front of the stack are ticked on By paper's print bar, at Ready to file.
+  // The affidavits' stack is not the usual one (the owner's call of 2026-11-18): the line's press puts the usual pages
+  // back where it stands, the three ticks of By paper's print bar set as they start. The usual stack draws no line.
   const onBoardPrintNote = () => {
-    setAffHeldOnlyPicked(false)
-    setAffPile('ready')
-    setKind('affidavit')
+    aff.setAffHelpSheet(LIEN_BOARD_USUAL_STACK.helpSheet)
+    aff.setAffNoticeRecord(LIEN_BOARD_USUAL_STACK.noticeRecord)
+    aff.setAffNoticeCopies(LIEN_BOARD_USUAL_STACK.noticeCopies)
+    showToast('The affidavits print with the help sheet and the notice records again.', 'success')
   }
   // The title bar's run door is retired (v2.7490, the owner's call of 2026-11-16: *Retire it everywhere*). On a computer the run opens from the Board's notices' print on To do and from By paper's pile and footers. On a phone it is still the first row of More, off Affidavits, and the More button wears its count (punch list #352, PR 1).
   const runDoorShown = kind !== 'affidavit' && office && runCount > 0
@@ -1811,13 +1801,13 @@ export default function LienDesk({
   const gcNoticeShown = kind === 'notice' && office && !!onPutGcOnNotice && gcPickerOptions.length > 0
   const recordsDoorShown = office && !!onOpenOwnerRecords
   // What the title bar has room for, measured from the bar it drew (`useLienDeskTitleBarFit`, v2.7586).
-  const { titleBarRef, titleLineFit, pileLineFit } = useLienDeskTitleBarFit({ isMobile, recordsDoorShown, paperShown, gcNoticeShown, kind })
+  const { titleBarRef, titleLineFit, pileLineFit } = useLienDeskTitleBarFit({ isMobile, paperShown, gcNoticeShown, kind })
   // The first tab's words (v2.7465): on a computer the page's name and the count, on a phone *To do · N* under the title's own row.
   const firstTab = lienDeskFirstTab({ isMobile, count: data ? lienNextUpCount(nextUpRows) : null })
-  // The title bar's shape on this screen: where the tools and the door sit, whether it has a second line, and whether that line breaks before its span (v2.7213, v2.7277, v2.7311).
-  const titleBar = lienDeskTitleBarLayout({ isMobile, fit: titleLineFit, pileFit: pileLineFit, recordsDoor: recordsDoorShown, paperShown, gcNotice: gcNoticeShown })
+  // The title bar's shape on this screen: where the tools sit, whether it has a second line, and whether that line breaks before its span (v2.7213, v2.7277, v2.7311; no door of its own since v2.7780).
+  const titleBar = lienDeskTitleBarLayout({ isMobile, fit: titleLineFit, pileFit: pileLineFit, paperShown, gcNotice: gcNoticeShown })
   const moreRun = runDoorShown ? { label: runDoor.label, count: runDoor.count, hint: runDoorHint } : null
-  const moreRows = lienDeskMoreRows({ run: moreRun, gcNotice: gcNoticeShown, legendLabel: LIEN_DESK_LEGEND.label, caller: office, share: !!data, ownerRecords: office && !!onOpenOwnerRecords })
+  const moreRows = lienDeskMoreRows({ run: moreRun, gcNotice: gcNoticeShown, legendLabel: LIEN_DESK_LEGEND.label, caller: office, share: !!data, ownerRecords: recordsDoorShown })
   const moreButton = lienDeskMoreButton(moreRun)
   const pickMore = (key: LienDeskMoreKey) => {
     setMoreOpen(false)
@@ -2682,7 +2672,7 @@ export default function LienDesk({
     }
   }
 
-  // The tools (v2.6569): § Rules, ☎, ? and Share, with the owner-records door before them. On a computer they end the title line
+  // The tools (v2.6569): § Rules, ☎, ? and Share (the owner-records door stood before them until v2.7780). On a computer they end the title line
   // when it has room for them (v2.7213; a 1,540 px viewport rule until v2.7277, which measures the line and puts the door under the four when the line has room for them alone) and are the tool row, the title bar's steady second line, in a narrower one (v2.4618
   // put them at the right; until v2.6569 they sat on the title line and fell under it when the window was narrower than about
   // 1,250 px, with the leader's FYI sentence under that). On a phone they keep their places. Share (v2.4311) is the last of them.
@@ -2787,10 +2777,9 @@ export default function LienDesk({
           {/* Four views: To do, By date, By paper, By job. The first three are punch list #82, PR 5 (named Next up, Calendar, All paper until v2.4630 and Do now, Deadlines, All filings until v2.7207, the owner's pick: the first is the work, the other two the same jobs sorted two ways; only To do carries a count). By paper holds the three papers' lists as a second row. By job is the list that was Timeline in that row until v2.7219, the owner's pick of 2026-11-13: it is every job's path, not a kind of paper. */}
           <LienDeskViewTabs kindTabs={kindTabs} isMobile={isMobile} kind={kind} paperShown={paperShown} firstTab={firstTab} onTitle={() => { setKind('next'); bringBoard() }} onPick={(v) => setKind(v === 'paper' ? lastPaperKind : v)} />
           {/* In a window wide enough for both (v2.7213, the owner's screenshot at 1,846 px) the tools end the title line, pushed right: nothing is hidden and the bar loses its half-empty second line. */}
-          {/* With room for the four presses but not the door too (v2.7277, the owner's screenshot at about 1,290 px) the presses end the line and the door slides under them, the right end of the second line. */}
+          {/* The owner-records door was a tool here, then under the presses (v2.7277, v2.7311), until v2.7780: it is a row of the window ☎ opens. */}
           {titleBar.tools === 'title_line' ? (
             <span data-lien-desk-tools style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.6rem' }}>
-              {titleBar.door === 'with_tools' ? ownerRecordsDoor : null}
               {headerTools}
             </span>
           ) : null}
@@ -2800,8 +2789,8 @@ export default function LienDesk({
             <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} suppliers={suppliers.byJob} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
           ) : null}
           {isMobile && moreOpen ? <LienDeskMoreSheet rows={moreRows} onPick={pickMore} onClose={() => setMoreOpen(false)} /> : null}
-          {/* The second line (v2.3817): on By paper the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off By paper it holds the tool row on a computer (v2.6569), or the door on a phone. */}
-          {/* The second line is the tool row on a computer whose title line has no room for the presses (v2.6569; a 1,540 px viewport rule until v2.7277), or the door's line when it has room for the presses alone (v2.7277); on a phone, and on a computer with room for all five (v2.7213), it comes only with the paper tabs — since v2.7311 it is always there on a computer with the door, ending with it, the pile line on By paper. */}
+          {/* The second line (v2.3817): on By paper the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line). Off By paper it holds the tool row on a computer whose title line has no room for it (v2.6569). */}
+          {/* The second line is the tool row on a computer whose title line has no room for the presses (v2.6569; a 1,540 px viewport rule until v2.7277); on a phone, and on a computer with room for them (v2.7213), it comes only with the paper tabs. From v2.7311 to v2.7780 a computer with the owner-records door always had it, ending with the door. */}
           {titleBar.breakLine ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}
@@ -2814,15 +2803,14 @@ export default function LienDesk({
             <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', rowGap: LIEN_DESK_TITLE_BAR_ROW_GAP_PX, columnGap: 'inherit', minWidth: 0 }}>{kind === 'retainage' ? retPileChips : affPileChips}</span>
           ) : null}
           {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, To do doors) and the title offers *every pile* (*show every pile* until v2.7434). */}
-          {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the owner-records door (on every view's second line since v2.7311) and the tools (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker and the door. */}
+          {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the tools when the title line has no room for them (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker. */}
           {/* Drawn only when it holds something (v2.7213): empty, it would still take a column gap and push the title line's tools off the edge. */}
-          {/* The span ends the second line with the owner-records door on every view (v2.7311, the owner's ask); a pile line too narrow for the piles and the span together breaks here, so the span falls under the piles as one piece, right-aligned, by the measured rule and not by wrapping. */}
+          {/* A pile line too narrow for the piles and the span together breaks here (v2.7311), so the span falls under the piles as one piece, right-aligned, by the measured rule and not by wrapping. */}
           {titleBar.pileBreak ? <span aria-hidden data-lien-desk-pile-break style={{ flexBasis: '100%', height: 0 }} /> : null}
           {titleBar.rightSpan ? <span data-lien-desk-right style={{ marginLeft: 'auto', marginRight: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
           {gcNoticeShown && onPutGcOnNotice ? (
             <LienDeskGcPicker isMobile={isMobile} open={gcPickerOpen} onToggle={() => setGcPickerOpen((o) => !o)} onClose={() => setGcPickerOpen(false)} options={gcPickerOptions} onPick={onPutGcOnNotice} />
           ) : null}
-          {titleBar.tools === 'second_line' || titleBar.door === 'second_line' ? ownerRecordsDoor : null}
           {titleBar.tools === 'second_line' ? headerTools : null}
           </span> : null}
           {legendOpen ? <DeskLegendCard legend={LIEN_DESK_LEGEND} phone={isMobile} onClose={() => setLegendOpen(false)} style={{ flexBasis: '100%', marginTop: '0.4rem' }} /> : null}
@@ -3098,6 +3086,11 @@ export default function LienDesk({
               setCallScriptOpen(false)
               setPracticeCallOpen(true)
             }}
+            onOwnerRecords={recordsDoorShown ? () => {
+              setCallScriptOpen(false)
+              // The paper open in By paper's pane, and none on a view with no pane (`callScriptRecordsJob`).
+              onOpenOwnerRecords?.(callScriptRecordsJob({ kind, notice: selected?.jobId ?? null, affidavit: affSelected?.jobId ?? null, retainage: retSelected?.jobId ?? null }))
+            } : undefined}
             onClose={() => setCallScriptOpen(false)}
           />
         )

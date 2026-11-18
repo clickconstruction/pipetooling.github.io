@@ -38,6 +38,17 @@ describe('DashboardJobModeFirstRunCard', () => {
     expect(screen.getByTestId('job-mode-first-run-card')).toBeTruthy()
   })
 
+  it('puts Not now first and Turn on Job Mode last, in a row that spreads them to its two edges (v2.7787)', () => {
+    render(<DashboardJobModeFirstRunCard userId="m1" role="master_technician" onEnable={() => {}} />)
+    const row = screen.getByTestId('job-mode-first-run-card').querySelector<HTMLElement>('[data-job-mode-card-presses]')
+    expect(row).toBeTruthy()
+    const presses = Array.from(row!.querySelectorAll('button')).map((b) => b.textContent?.trim())
+    expect(presses).toEqual(['Not now', 'Turn on Job Mode'])
+    // Under the words on a phone the row is alone on its line and grows to the card's width, so the two sit at its edges.
+    expect(row!.style.justifyContent).toBe('space-between')
+    expect(row!.style.flexGrow).toBe('1')
+  })
+
   it('never renders for sub-like roles (already on) or office roles', () => {
     for (const role of ['helpers', 'subcontractor', 'dev', 'assistant', 'controller', 'estimator', 'primary']) {
       const r = render(<DashboardJobModeFirstRunCard userId="x" role={role} onEnable={() => {}} />)
