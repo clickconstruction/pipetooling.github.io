@@ -20,6 +20,8 @@ const Customers = lazy(() => import('./pages/Customers'))
 const CustomerDetail = lazy(() => import('./pages/CustomerDetail'))
 const InKind = lazy(() => import('./pages/InKind'))
 const DevelopmentPage = lazy(() => import('./pages/DevelopmentPage'))
+// SPIKE (#382, not shipped): Before we start, a made-up site in three seats. Remove at wrap-up.
+const BeforeWeStartSpike = lazy(() => import('./spike/beforeWeStart/BeforeWeStartSpike'))
 const Projects = lazy(() => import('./pages/Projects'))
 const ProjectEditGate = lazy(() => import('./pages/ProjectEditGate'))
 const ProjectNewGate = lazy(() => import('./pages/ProjectNewGate'))
@@ -269,6 +271,7 @@ function AppContent() {
         <Route path="/contract/sign" element={<JobContractSign />} />
         <Route path="/estimate/terms" element={<EstimatePublicTerms />} />
         <Route path="/hazmat-notice" element={<HazmatNoticePublic />} />
+        <Route path="/spike/before-we-start" element={<BeforeWeStartSpike />} />
         <Route path="/portal" element={<CustomerPortal />} />
         <Route path="/p/:slug" element={<CustomerPortal />} />
         <Route path="/sub" element={<SubPortal />} />
