@@ -44,7 +44,11 @@ export type HistoryOneOffRow = {
   status: HistoryOneOffStatus
 }
 
-function cellStatus(inst: HistorySplitInstance, selectedUserId: string): HistoryCellStatus {
+/** One day's row as the grid reads it for the person whose history this is: open, done by them, or done by someone else. */
+export function historyCellStatus(
+  inst: Pick<HistorySplitInstance, 'completed_at' | 'completed_by_user_id'>,
+  selectedUserId: string,
+): HistoryCellStatus {
   if (!inst.completed_at) return 'incomplete'
   return inst.completed_by_user_id && inst.completed_by_user_id !== selectedUserId
     ? 'completed_by_other'
@@ -80,7 +84,7 @@ export function splitHistoryItems(
     const createdYmd = itemCreatedYmd(inst)
     if (!isRepeating) {
       const status: HistoryOneOffStatus = inst.completed_at
-        ? cellStatus(inst, selectedUserId) === 'completed_by_other'
+        ? historyCellStatus(inst, selectedUserId) === 'completed_by_other'
           ? 'done_by_other'
           : 'done'
         : inst.scheduled_date < todayYmd
@@ -111,7 +115,7 @@ export function splitHistoryItems(
     }
     const birthCandidates = [row.sinceYmd, inst.scheduled_date, ...(createdYmd ? [createdYmd] : [])]
     row.sinceYmd = birthCandidates.sort()[0]!
-    row.dates[inst.scheduled_date] = cellStatus(inst, selectedUserId)
+    row.dates[inst.scheduled_date] = historyCellStatus(inst, selectedUserId)
   }
   oneOffs.sort((a, b) => (b.createdYmd ?? b.scheduledYmd).localeCompare(a.createdYmd ?? a.scheduledYmd))
   return { repeating: [...repeatingByItem.values()], oneOffs }
@@ -122,4 +126,63 @@ export function historyShortDate(ymd: string): string {
   const m = /^\d{4}-(\d{2})-(\d{2})/.exec(ymd)
   if (!m) return ymd
   return `${Number(m[1])}/${Number(m[2])}`
+}
+
+/** The key of one cell of the grid: a task on a day. */
+export function historyCellKey(itemId: string, date: string): string {
+  return `${itemId}-${date}`
+}
+
+/** How many days the grid draws: the newest ones, so a long range stays one screen wide. */
+export const HISTORY_GRID_MAX_DAYS = 60
+
+/**
+ * The grid's columns, oldest first: every day a repeating task had a row, the newest
+ * `HISTORY_GRID_MAX_DAYS` of them. A one-off's lone day mints no column.
+ */
+export function historyGridDates(repeating: ReadonlyArray<Pick<HistoryRepeatingRow, 'dates'>>): string[] {
+  const all = new Set<string>()
+  for (const row of repeating) for (const d of Object.keys(row.dates)) all.add(d)
+  return Array.from(all).sort().slice(-HISTORY_GRID_MAX_DAYS)
+}
+
+/**
+ * A row's rate over the days the grid draws: a done day (by anyone) is due and done, a missed day is due,
+ * a day with no row is neither. `isDeleted` names a day whose row edit mode just took away, which counts as no row.
+ */
+export function historyRowRate(
+  dates: Readonly<Record<string, HistoryCellStatus>>,
+  visibleDates: readonly string[],
+  isDeleted: (date: string) => boolean = () => false,
+): { due: number; done: number } {
+  let due = 0
+  let done = 0
+  for (const d of visibleDates) {
+    const st = isDeleted(d) ? undefined : dates[d]
+    if (st === 'completed' || st === 'completed_by_other') {
+      due++
+      done++
+    } else if (st === 'incomplete') due++
+  }
+  return { due, done }
+}
+
+/** The rate as the grid's last column says it: a whole percent, or a dash when nothing was due. */
+export function historyRateLabel(rate: { due: number; done: number }): string {
+  return rate.due > 0 ? `${Math.round((rate.done / rate.due) * 100)}%` : '—'
+}
+
+/** The loaded rows by cell, for edit mode to find the row behind a cell. A later row for the same cell wins. */
+export function historyInstanceIndex<T extends { id: string; checklist_item_id: string; scheduled_date: string }>(
+  instances: readonly T[],
+): Map<string, { id: string; checklist_item_id: string; scheduled_date: string }> {
+  const byKey = new Map<string, { id: string; checklist_item_id: string; scheduled_date: string }>()
+  for (const inst of instances) {
+    byKey.set(historyCellKey(inst.checklist_item_id, inst.scheduled_date), {
+      id: inst.id,
+      checklist_item_id: inst.checklist_item_id,
+      scheduled_date: inst.scheduled_date,
+    })
+  }
+  return byKey
 }

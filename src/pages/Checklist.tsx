@@ -29,7 +29,7 @@ import { PeopleWeekSheet } from '../components/checklist/PeopleWeekSheet'
 import { isVehicleTaskTitle, stripVehicleTaskMarker } from '../lib/vehicleFleet'
 import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstanceCard'
 import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistoryLedger'
-import { historyShortDate, splitHistoryItems } from '../lib/checklistHistorySplit'
+import { historyCellStatus, historyGridDates, historyInstanceIndex, historyRateLabel, historyRowRate, historyShortDate, splitHistoryItems } from '../lib/checklistHistorySplit'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { groupEventsByInstance, lastTransitionIsReopen, stuckReason, type ChecklistCardEvent } from '../lib/checklistCardEvents'
 import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActivity'
@@ -1379,18 +1379,9 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
 
   // Grid columns come from repeating instances only — a one-off's lone date no
   // longer mints a column of dashed boxes for every other row.
-  const allDates = new Set<string>()
-  for (const row of repeating) for (const d of Object.keys(row.dates)) allDates.add(d)
-  const sortedDates = Array.from(allDates).sort()
+  const visibleDates = historyGridDates(repeating)
 
-  const instanceByKey = new Map<string, { id: string; checklist_item_id: string; scheduled_date: string }>()
-  for (const inst of instances) {
-    instanceByKey.set(`${inst.checklist_item_id}-${inst.scheduled_date}`, {
-      id: inst.id,
-      checklist_item_id: inst.checklist_item_id,
-      scheduled_date: inst.scheduled_date,
-    })
-  }
+  const instanceByKey = historyInstanceIndex(instances)
 
   async function handleCycleStatus(itemId: string, date: string) {
     if (!editMode || cyclingCell || !selectedUserId) return
@@ -1402,13 +1393,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
     if (!proceed) return
     const key = `${itemId}-${date}`
     const cellInst = instances.find((i) => i.checklist_item_id === itemId && i.scheduled_date === date)
-    const rawStatus = !cellInst
-      ? undefined
-      : cellInst.completed_at
-        ? cellInst.completed_by_user_id && cellInst.completed_by_user_id !== selectedUserId
-          ? ('completed_by_other' as const)
-          : ('completed' as const)
-        : ('incomplete' as const)
+    const rawStatus = cellInst ? historyCellStatus(cellInst, selectedUserId) : undefined
     const status = deletedCells.has(key) ? undefined : rawStatus
     setCyclingCell(key)
     setError(null)
@@ -1541,7 +1526,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
           <thead>
             <tr>
               <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', position: 'sticky', left: 0, zIndex: 1, background: 'var(--surface)' }}>Item</th>
-              {sortedDates.slice(-60).map((d, i, arr) => {
+              {visibleDates.map((d, i, arr) => {
                 const parts = d.slice(5).split('-')
                 const month = parts[0] ?? ''
                 const day = parts[1] ?? ''
@@ -1557,14 +1542,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
           </thead>
           <tbody>
             {repeating.map(({ itemId, title, links, sinceYmd, dates }) => {
-              const visibleDates = sortedDates.slice(-60)
-              let due = 0
-              let done = 0
-              for (const d of visibleDates) {
-                const st = deletedCells.has(`${itemId}-${d}`) ? undefined : dates[d]
-                if (st === 'completed' || st === 'completed_by_other') { due++; done++ }
-                else if (st === 'incomplete') due++
-              }
+              const rate = historyRowRate(dates, visibleDates, (d) => deletedCells.has(`${itemId}-${d}`))
               const birthIndex = visibleDates.findIndex((d) => d >= sinceYmd)
               return (
               <tr key={itemId}>
@@ -1620,8 +1598,8 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
                     </td>
                   )
                 })}
-                <td style={{ padding: '0.15rem 0.4rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontSize: '0.8125rem', fontWeight: 600, color: due > 0 && done === due ? 'var(--text-green-800)' : 'var(--text-700)' }}>
-                  {due > 0 ? `${Math.round((done / due) * 100)}%` : '—'}
+                <td style={{ padding: '0.15rem 0.4rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontSize: '0.8125rem', fontWeight: 600, color: rate.due > 0 && rate.done === rate.due ? 'var(--text-green-800)' : 'var(--text-700)' }}>
+                  {historyRateLabel(rate)}
                 </td>
               </tr>
               )
