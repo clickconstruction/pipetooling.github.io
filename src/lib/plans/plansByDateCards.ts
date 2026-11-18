@@ -4,7 +4,7 @@
  * and the presses that act on it. This file is the words and the presses; the card's box, its place and the
  * acts themselves are the screen's (`DevelopmentPlansByDate.tsx`) and the page's.
  *
- * A card is keyed like the thing it is about: `set-<id>`, `bid-<id>`, `crew-<day>`, `job-<id>`,
+ * A card is keyed like the thing it is about: `set-<id>`, `bid-<id>`, `trip-<id>`, `crew-<day>`, `job-<id>`,
  * `hist-<id>`, `lane-<key>`, `figure-<key>`, `today`. A row of a card can lead to another card (the sets
  * behind a figure, the bids of the Bids lane), so a person walks from a number to the thing itself without
  * leaving the chart. What a reader may not do is not offered: no press is drawn dead here.
@@ -27,6 +27,7 @@ export type PbdCardAction =
   | { kind: 'keep'; label: string }
   | { kind: 'set-schedule'; label: string; bidId: string }
   | { kind: 'set-sheets'; label: string; setId: string; setName: string; count: number | null }
+  | { kind: 'open-trips'; label: string }
 
 /** A line of a card; `to` is the card it leads to, null when it is only words. */
 export type PbdCardRow = { key: string; glyph: PbdGlyph; day: string; text: string; soft: string; to: string | null }
@@ -68,6 +69,7 @@ export const PBD_PRESS = {
   changeSchedule: 'Change the schedule',
   setSheets: 'Set the sheet count',
   changeSheets: 'Change the sheet count',
+  openTrips: 'Open the Trips look',
 } as const
 
 /** Why a job's number opens nothing for a reader with no job read. */
@@ -108,7 +110,7 @@ export function buildPlansByDateCards(input: PlansByDateInput, model: PlansByDat
   const rowOf = new Map(model.rows.map((r) => [r.key, r]))
   const rowTo = (key: string): PbdCardRow[] => {
     const r = rowOf.get(key)
-    return r ? [{ key, glyph: r.glyph, day: r.ymd, text: r.lane && r.lane !== 'Bids' && r.lane !== 'History' && r.lane !== 'Crews on site' ? `${r.lane}: ${r.text}` : r.text, soft: r.soft, to: key }] : []
+    return r ? [{ key, glyph: r.glyph, day: r.ymd, text: r.lane && r.lane !== 'Bids' && r.lane !== 'History' && r.lane !== 'Crews on site' && r.lane !== 'Trips' ? `${r.lane}: ${r.text}` : r.text, soft: r.soft, to: key }] : []
   }
 
   // The bids
@@ -221,6 +223,16 @@ export function buildPlansByDateCards(input: PlansByDateInput, model: PlansByDat
     add({ ...c, key: `bidout-${b.id}` })
   }
 
+  // The trips (punch list #379): a bar's card says the trip, and its one press opens the Trips look.
+  const openTrips: PbdCardAction = { kind: 'open-trips', label: PBD_PRESS.openTrips }
+  for (const t of input.trips ?? []) {
+    if (!rowOf.has(`trip-${t.id}`)) continue
+    const facts: PbdCard['facts'] = []
+    if (t.who) facts.push({ label: 'Who went', value: t.who })
+    if (t.why) facts.push({ label: 'What for', value: clip(t.why, 240) })
+    add(card({ key: `trip-${t.id}`, glyph: 'trip', title: `Trip ${t.when}`, kicker: t.standing, facts, actions: [openTrips] }))
+  }
+
   // The crews
   const jobByLabel = new Map(input.jobs.map((j) => [j.label, j]))
   const clockJobs = input.clock === 'read' ? input.jobs.filter((j) => (j.days ?? []).length > 0) : []
@@ -304,6 +316,8 @@ export function buildPlansByDateCards(input: PlansByDateInput, model: PlansByDat
       if (caps.canWritePlans) actions.push({ kind: 'new-set', label: PBD_PRESS.newSet, partId: p.id })
       actions.push({ kind: 'show-part', label: PBD_PRESS.showPart, partId: p.id })
       add(card({ key: `lane-${p.id}`, title: p.name, kicker: lane.sub, facts, rowsTitle: mine.length ? 'Its sets, newest first' : null, ...capRows(mine.flatMap((s) => rowTo(`set-${s.id}`).map((r) => ({ ...r, text: r.text.replace(`${p.name}: `, '') })))), actions }))
+    } else if (lane.kind === 'trips') {
+      add(card({ key: 'lane-trips', title: 'Trips', kicker: lane.sub, rowsTitle: 'Newest first', ...capRows([...lane.spans].reverse().flatMap((s) => rowTo(s.key))), actions: [openTrips] }))
     } else if (lane.kind === 'crew') {
       add(card({ key: 'lane-crew', title: 'Crews on site', kicker: lane.sub, rowsTitle: lane.spans.length ? 'Newest first' : null, ...capRows([...lane.spans].reverse().flatMap((s) => rowTo(s.key))), quiet: input.clock === 'closed' ? 'The clock’s days read for the office.' : null }))
     } else {

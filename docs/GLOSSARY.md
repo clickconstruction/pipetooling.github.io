@@ -3626,7 +3626,7 @@ Since v2.6558 two chip rows above the Scoreboard cut it by job, part of the site
  the office team reads every request that carries a reference.
 
 **Trip** (punch list #379;
-the rules v2.7653, the tables v2.7655, the Trips look v2.7661, Looks like a trip and What shows it v2.7676): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
+the rules v2.7653, the tables v2.7655, the Trips look v2.7661, Looks like a trip and What shows it v2.7676, the Job window's line, the clock line's tag and the Plans by date lane v2.7685): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
 A trip is people, and for each person their days, and each day is one of three kinds: **Getting ready**, **On the road** or **At the site**.
 A day off in the middle is a day that is not there.
 Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
@@ -3640,6 +3640,10 @@ The look shows only on a site that has a trip or is 150 miles or more from the s
 A trip leaving and coming back are two **History** lines read from its days (`lib/trips/tripHistory.ts`), never kept rows.
 **Looks like a trip** is the look's offer of a run of punches at the site that no trip covers (`lib/trips/tripFinder.ts`, `tripOffers.ts`): the app never makes the trip, and a person presses **Make it a trip**, which opens the sheet filled from the punches, or **Not a trip**, which keeps one `trip_dismissals` row a person so the same days are not offered again.
 **What shows it** is the row of counts on an open trip, over the trip's own person-days (`lib/trips/tripEvidence.ts`): the punches at the site, the On my way and I’m here stamps, and the History lines on its days.
+**Trips on this job** is the line in the Job window's Job tab on a job a trip names under *Work goes on* (`components/trips/JobTripsLine.tsx` over `useJobTrips` and `lib/trips/jobTrips.ts`): how many trips went out, the last with who went, the next one planned, the job's hours in the five figures, **Open the site's trips** and **+ Trip**.
+The line draws for the Development page's office door on a job that is in a development, and a job with no development has none.
+The **tag on a clock line** is what a clock line in the Job window's feed wears on a job whose site has a trip (`clockTripTag`, `components/trips/TripClockTag.tsx`): **TRIP · AT THE SITE**, **TRIP · ON THE ROAD**, **TRIP · GETTING READY** or **TRIP · NO PLACE ON THE PUNCH** for a person on one of their trip days, read from the place of that person's whole day on the job (the place the bar reads, so every punch of a day wears one tag), and the quiet chip *at home for the site* for a person on no trip that day.
+The **Trips lane** is the lane under the sets on the Plans look's By date view of a site that has a trip (`lib/trips/tripLane.ts`, `tripRuns` and `tripBarShape` in `lib/plans/plansByDate.ts`): each trip a bar coloured day by day by its kind, a planned one faint, and a bar's card carries **Open the Trips look**.
 Access: `ACCESS_CONTROL.md`, *Trips*.
 Guide: `keep-a-trip-to-a-far-site`.
 

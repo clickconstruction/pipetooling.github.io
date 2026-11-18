@@ -114,6 +114,9 @@ import { DevelopmentTripsCard } from '../components/developments/DevelopmentTrip
 import SiteMaterialsReportModal from '../components/materials/SiteMaterialsReportModal'
 import { useSitePhotos } from '../hooks/useSitePhotos'
 import { useSiteTrips } from '../hooks/useSiteTrips'
+import { useLandOnLook } from '../hooks/useLandOnLook'
+import { asksForTripsLook } from '../lib/trips/jobTrips'
+import { plansByDateTrips } from '../lib/trips/tripLane'
 import { photosCardMeta, photosLookWords } from '../lib/photos/sitePhotos'
 import { tripHistoryLines } from '../lib/trips/tripHistory'
 import { NO_TRIP_PEOPLE, tripOfRecord } from '../lib/trips/tripRecord'
@@ -409,6 +412,8 @@ export default function DevelopmentPage() {
   const siteAddress = useMemo(() => (shown ? sharedAddressWords(shown) : null), [shown])
   const siteTrips = useSiteTrips({ developmentId, jobIds: shownJobIds, address: siteAddress, enabled: !!data && moneyShown })
   const tripsOpen = siteTrips.shows && !isFolded(lookFolds, 'trips', false)
+  // `?look=trips` (punch list #379, PR 6): the Job window's line links here, and the page lands on its Trips look once it shows. The card of a trip's bar on Plans by date makes the same move.
+  const goToTrips = useLandOnLook({ asked: asksForTripsLook(searchParams) && siteTrips.shows, anchorId: DEVELOPMENT_JUMP_ANCHOR.trips, unfold: () => (isFolded(lookFolds, 'trips', false) ? toggleLook('trips') : undefined) })
   const [tripAddSignal, setTripAddSignal] = useState(0)
   // How many runs of punches the Trips card says look like a trip (PR 5), for the strip's amber words.
   const [tripOffers, setTripOffers] = useState(0)
@@ -439,12 +444,14 @@ export default function DevelopmentPage() {
         return { id: j.id, label: jobLabel(j), name: j.job_name?.trim() || j.job_address?.trim() || null, partId: j.plan_part_id ?? null, days: plansByDateClock === 'read' ? [...days] : null, firstWorkDay: j.first_work_date ?? null, lastWorkDay: j.last_work_date }
       }),
       history: data.historyEntries.map((h) => ({ id: h.id, happenedAt: h.happenedAt, source: h.source, body: h.body, byName: h.byName ?? h.agentLabel, about: aboutWords(h.about), bodyChars: h.bodyChars })),
+      // The Trips lane (punch list #379, PR 6), only on a site with a trip; the trips are read for the office door alone.
+      trips: siteTrips.records?.length ? plansByDateTrips(siteTrips.records, todayYmdInAppTz()) : undefined,
       names: siteRead.names,
       clock: plansByDateClock,
       today: todayYmdInAppTz(),
       toYmd: (raw) => ymdFromDateOnlyOrIso(raw, calendarYmdInAppTzFromIso),
     }
-  }, [plansByDateOpen, counted, data, siteRead, laborRead, plansByDateClock, bidLabel, jobLabel])
+  }, [plansByDateOpen, counted, data, siteRead, laborRead, plansByDateClock, bidLabel, jobLabel, siteTrips.records])
   const plansByDate = useMemo(() => (plansByDateInput ? buildPlansByDate(plansByDateInput) : null), [plansByDateInput])
   // Every item's card: its details and the presses this reader has. A job opens for the office door only; anyone on the page can ask and keep a line.
   const plansByDateCards = useMemo(
@@ -1271,6 +1278,7 @@ export default function DevelopmentPage() {
       setComposing(true)
       window.setTimeout(() => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.changed)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
     } else if (a.kind === 'set-schedule') setScheduleFor(a.bidId)
+    else if (a.kind === 'open-trips') goToTrips()
     else if (a.kind === 'set-sheets') {
       // A set's sheet count, typed by a person: an empty answer clears it, Cancel leaves it.
       const typed = await promptDialog({ title: a.setName, message: 'How many sheets does this set have? Leave it empty if nobody has counted.', confirmLabel: 'Save the sheet count', defaultValue: a.count != null ? String(a.count) : '', placeholder: 'like 64' })
