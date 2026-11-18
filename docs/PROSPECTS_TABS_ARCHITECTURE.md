@@ -472,7 +472,7 @@ All of this stays in the parent (playbook rule), except the keys the two extract
 
 ## Test coverage by region
 
-`Prospects.tsx` has **no render test**, and no e2e spec opens `/prospects`. TeamProspectsTab has [`TeamProspectsTab.render.test.tsx`](../src/components/prospects/TeamProspectsTab.render.test.tsx) with 6 cases. There is **no money math on this surface**. The untested arithmetic is time (⚠ timer-second sums and my-time windows) and the copy-template rules (⚠, real business rules with zero tests).
+`Prospects.tsx` has a render smoke since v2.7615, [`Prospects.render.test.tsx`](../src/pages/Prospects.render.test.tsx) (60 cases, the Hiring board and the Permits tab stubbed), and no e2e spec opens `/prospects`. TeamProspectsTab has [`TeamProspectsTab.render.test.tsx`](../src/components/prospects/TeamProspectsTab.render.test.tsx) with 6 cases. There is **no money math on this surface**. The untested arithmetic is time (⚠ timer-second sums and my-time windows) and the copy-template rules (⚠, real business rules with zero tests).
 
 | Region | Tested kernels (`it` blocks) | Render test | Untested inline logic |
 |---|---|---|---|
@@ -531,7 +531,7 @@ Extract to `src/lib/*` + colocated tests **before** any component moves. Most ru
    - Triggers: `dial` (3653), `composer` (3864), `outcome` (2723 / 2761), `callback` (2211). The lane's last press takes no lock.
    - A colleague's row younger than `CALLING_LOCK_TTL_MS` (30 min) is never overwritten; an older row is taken over.
    - `loadFollowUpProspects` hides only live rows held by *others* at load time.
-   - Release (1844–1855) deletes only the row this tab wrote (`lockTakenForRef`). `handleNoLongerFit`, `handleCantReach`, `handleConverted`, `handleBenchSave`, `leaveQueueAsLanded` and `handleNextProspect` also delete the caller's own row; Didn't Answer and Answered do not.
+   - Release (1844–1855) means to delete only the row this tab wrote (`lockTakenForRef`); see quirk 36, no release is sent today. `handleNoLongerFit`, `handleCantReach`, `handleConverted`, `handleBenchSave`, `leaveQueueAsLanded` and `handleNextProspect` also delete the caller's own row; Didn't Answer and Answered do not.
    - There is no purge job; staleness is a read-side rule.
 3. **`?prospect_id` fetch-and-prepend** (1062–1090) deliberately shows a prospect even when it is `not_a_fit`/`cant_reach`/`converted` or locked, because Prospect List, Calendar and Quickfill must be able to open anything. A row of another kind is handed to its own lane, and a hidden ZZ row opens nothing.
 4. **Queue filter is split.** The server excludes `not_a_fit` on two lanes only (1013): the Subs lane reads every row, because its strip counts the exits. The client drops `not_a_fit` + `cant_reach` + `converted` (1028) and, for a non-dev, the ZZ rows. The order comes from `callingOrderModeRef.current`, a ref rather than state, so the loader is not recreated when the mode changes.
@@ -578,6 +578,7 @@ Extract to `src/lib/*` + colocated tests **before** any component moves. Most ru
 33. **The empty lane's press opens New Prospect without setting its kind** (3501 calls `setNewProspectModalOpen(true)`, not `openNewProspect`). The window opens on whatever `newKind` last was: `customer` on a fresh visit, even on the Subs or Jobs to GC lane. The `?newProspect=true` door does the same on purpose (it comes from the Dashboard). *Suspected defect, read from the code and not walked live; it gets its own fix PR, never a move.*
 34. **`saveNewProspect` on another lane's kind** closes the window and calls `setKindTab(newKind)`; the loaders then run on the kind change, not from the save (2927–2931).
 35. **The page imports `PORTAL_COMPANY` from `supabase/functions/_shared/portalCompany`** (97). A client file reading the edge side's shared folder is on purpose here: one company name for the app and the functions.
+36. **No calling lock is ever released.** The eight releases are written `void supabase.from('prospect_calling_locks').delete()…` and never awaited: the release effect, `handleNoLongerFit`, `handleCantReach`, `handleConverted`, `handleBenchSave`, `leaveQueueAsLanded` and `handleNextProspect` twice. The Supabase client sends a query only when it is awaited, so none is sent, and a lock stays until it goes stale. The render smoke pins this (v2.7615). *A defect, found by the smoke; it gets its own fix PR, never a move.*
 
 ## Recommended extraction order (value ÷ risk)
 
@@ -585,8 +586,8 @@ The page is 5,600 lines: 313 of module scope, about 2,800 of state, effects and 
 
 1. **Stage A, the copy-template rules** → `lib/prospects/prospectCopyTemplates.ts` (inventory row 1) — **shipped v2.7595** (the three rules, `resolveCopyText`, `foldCopyTemplateRows`, and `formatDateTime` as the first export of `prospectFormat.ts`; 29 tests; the page is 5,481 lines).
 2. **Stage A, the rest**, in the inventory's order — the row types and the formatters **shipped v2.7598** (`prospectRow.ts`, `prospectFormat.ts`, 15 tests; the page is 5,389 lines); the queue rules **shipped v2.7603** (`queueAfterRemoval`, `indexAfterOtherRowLeft`, `insertColdest`, `queueWindowStart`, 20 tests, the six handlers adopted; 5,377 lines); the time sums, the loaders' folds and the windows' helpers **shipped v2.7606** (31 tests; 5,284 lines). Stage A is done but for rows 8 and 9, which sit between awaits and move with their loader (step 10) and their hook (step 8).
-3. **The page's first render smoke**, `src/pages/Prospects.render.test.tsx`: every `?tab=` key on every lane for every role, the lane doors, a `?prospect_id=`, a run, the two estimator cases. Tests only.
-4. **The Subs lane's drawn pieces → `components/prospects/`:** `SubsPathStrip` (`renderSubsStrip`), `SubsPlansPicker` (`renderPlansPicker`), `SubsLaneList` (`renderSubsList`), `SubsNeedsPanel` (3318–3419), `GcWorkStrip` (3420–3469). Each is already a function of its arguments. About −350 lines.
+3. **The page's first render smoke**, `src/pages/Prospects.render.test.tsx` — **shipped v2.7615** (60 cases: every `?tab=` key on every lane, the lane doors, the roles, the deck's outcomes and its pointer, a run, the Board's run press, the list, Convert, Activity and six windows; seven of eight deliberate breaks caught, the eighth changes nothing on screen). Tests only.
+4. **The Subs lane's drawn pieces → `components/prospects/`** — **shipped v2.7621**: `SubsPathStrip` (`renderSubsStrip`), `SubsPlansPicker` (`renderPlansPicker`), `SubsLaneList` (`renderSubsList`), `SubsNeedsPanel`, `GcWorkStrip`, each a function of its props; `subsSectionOpen` stays in the page so a fold survives a tab switch; the smoke grew to 68 cases first; the page is 4,963 lines.
 5. **Follow Up's two self-contained windows:** `ProspectTimerHistoryModal` and `ProspectMyTimeModal`, each with its loader and its three states. About −220 lines. Then `ProspectCallbackModal` with `saveCallback`.
 6. **`activity` → `ProspectsActivityTab`:** 5 states, 2 callbacks, 2 effects, 160 lines of render, no shared writes. Validates the tab seam.
 7. **`convert` → `ProspectsConvertTab`:** 8 states, 3 effects, 262 lines of render and `handleConvertSubmit`. Props: `pool`, `lastCallMap`, `authUserId`, `authRole`, `onConverted`. The 1412–1416 loader effect stays in the parent.
@@ -613,7 +614,7 @@ Definition of done per tab, verification gates (`npm run typecheck && npm run li
 
 ## Hazards
 
-- **No render test and no e2e on the page.** Nothing proves a component move today. Step 3 comes before any step that moves JSX or a hook.
+- **One render smoke and no e2e on the page.** `Prospects.render.test.tsx` (v2.7615) is what proves a move. It mounts the router with `v7_startTransition` off, as `src/main.tsx` does; with it on, the address and the page's tab state commit in two renders and the list's jump to a card loses its prospect. A cut adds its own cases when it moves something the 60 do not press.
 - **The handlers are plain inner functions, not `useCallback`s.** Each closes over the render it was made in, and three paths depend on that: `saveTimerEvent` reads the click-time `followUpTimerSeconds`, `handleConverted`'s `onCreated` runs after the Add customer window closes with the click-time queue, and `handleAskedUs`'s `landed` does the same. A hook that memoizes them changes which render they see.
 - **Three effects carry `eslint-disable react-hooks/exhaustive-deps`** (1423, 1918, 1952), and the loader effects call non-memoized loaders. Moving a loader into a hook must keep the same dependency lists, or the queue reloads at different moments (quirk 5).
 - **The Follow Up block is one ternary chain** (3480–4127) with an IIFE that defines its button styles (3511–3526). A partial lift has to carry those styles or import them.

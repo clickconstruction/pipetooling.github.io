@@ -36,6 +36,9 @@ import { taskPlaceSheetAccuracy } from '../../lib/tasks/taskPlace'
 import { WHERE_IS_IT_PRESS, boxPinShort, whereIsBoxTitle } from '../../lib/materials/whereIsBox'
 import WhereIsBox from '../materials/WhereIsBox'
 import PinAskStrip from '../materials/PinAskStrip'
+import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
+import { PLACE_WAY_OPEN_PRESS, PLACE_WAY_PAINT_PRESS } from '../../lib/materials/placeWay'
+import { openPlaceWay, paintPlaceWay } from '../materials/placeWayPaint'
 import { boxWantsPin, takePinAsk, takeScannedBox } from '../../lib/materials/pinAsk'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
@@ -156,6 +159,8 @@ type Sheet =
 
 export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPickJob, byUserId, byName, searchParts, initialContainerId, initialStickerCode = null, askSeq = 0, onOpenContainer, onOpenSticker }: Props) {
   const { showToast, showActionToast } = useToastContext()
+  // Send someone to it (punch list #372, step 5): the New task window, where the app has one mounted.
+  const addTask = useChecklistAddModal()
   /** A 320 px phone: the four presses go two by two, as the mock-up drew them. */
   const narrow = useMatchMedia('(max-width: 359px)')
   const jobId = selectedJobId
@@ -574,9 +579,20 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         {sheet?.kind === 'places' ? (
           <Sheet title="Places on this site" sub={`${boxCount} ${boxCount === 1 ? 'box' : 'boxes'} in ${places.length} ${places.length === 1 ? 'place' : 'places'}. Tap a place to see only its boxes.`} onClose={closeSheet} footer={<button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setSheet({ kind: 'map', focusId: null })}>Show the site map · {pinnedCount} pinned</button>}>
             <div style={{ display: 'grid', gap: '0.35rem' }}>
-              {chips.map((ch) => (
-                <button key={ch.id} type="button" onClick={() => { setPlaceFilter(ch.id); closeSheet() }} style={{ ...btn, ...btnBlock, justifyContent: 'space-between', fontWeight: placeFilter === ch.id ? 700 : 500 }}>{ch.name}<span style={{ ...muted, fontWeight: 600 }}>{ch.n}</span></button>
-              ))}
+              {chips.map((ch) => {
+                // The way to a place (punch list #372, step 4): painted once, it serves every box that stands there.
+                const place = places.find((p) => p.id === ch.id) ?? null
+                return (
+                  <div key={ch.id} style={{ display: 'grid', gap: '0.1rem' }}>
+                    <button type="button" onClick={() => { setPlaceFilter(ch.id); closeSheet() }} style={{ ...btn, ...btnBlock, justifyContent: 'space-between', fontWeight: placeFilter === ch.id ? 700 : 500 }}>{ch.name}<span style={{ ...muted, fontWeight: 600 }}>{ch.n}</span></button>
+                    {place ? (
+                      place.wayMapId
+                        ? <button type="button" style={{ ...quiet, justifySelf: 'start', fontSize: '0.85rem' }} aria-label={`${PLACE_WAY_OPEN_PRESS} to ${place.name}`} onClick={() => { closeSheet(); openPlaceWay(place, addr || null, showToast) }}>{PLACE_WAY_OPEN_PRESS}</button>
+                        : <button type="button" style={{ ...quiet, justifySelf: 'start', fontSize: '0.85rem' }} aria-label={`Paint the way to ${place.name}`} onClick={() => { closeSheet(); paintPlaceWay(place, { jobId, label: job ? onSiteJobWords(job) : '', address: addr || null, center: jobCenter }, showToast) }}>{PLACE_WAY_PAINT_PRESS}</button>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
           </Sheet>
         ) : null}
@@ -787,7 +803,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         const live = containers.find((c) => c.id === sheet.container.id) ?? sheet.container
         return (
           <Sheet title={whereIsBoxTitle(live.label)} onClose={closeSheet}>
-            <WhereIsBox touch container={live} containers={containers} places={places} moves={listContainerMoves(jobId)} movements={movements} photos={listPhotos(jobId)} jobCenter={jobCenter} jobAddress={addr} painted={painted.maps} byName={byName} onMoveBox={() => { closeSheet(); setSheet({ kind: 'move-box', container: live }) }} />
+            <WhereIsBox touch container={live} containers={containers} places={places} moves={listContainerMoves(jobId)} movements={movements} photos={listPhotos(jobId)} jobCenter={jobCenter} jobAddress={addr} painted={painted.maps} byName={byName} onMoveBox={() => { closeSheet(); setSheet({ kind: 'move-box', container: live }) }} onOpenWay={(id) => { closeSheet(); openPaintedMap(id, addr || null) }} onSendSomeone={addTask ? (task) => { closeSheet(); addTask.openAddModal({ preset: task }) } : undefined} />
           </Sheet>
         )
       })() : null}

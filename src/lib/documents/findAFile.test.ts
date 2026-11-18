@@ -19,6 +19,7 @@ import {
   needsDriveBehind,
   pathWords,
   sourceWords,
+  paperChip,
 } from './findAFile'
 
 const hit = (over: Partial<FoundFile>): FoundFile => ({
@@ -214,3 +215,31 @@ describe('Drive fills in behind the index (PR 1, hardened in review)', () => {
     expect(driveBehindIndex(index, { ...drive, hits: [], more: false })).toBe(index)
   })
 })
+
+describe('a hit that is a signed job contract’s Drive copy (punch list #377)', () => {
+  it('reads the mark and the record from Drive’s finds, and the mark alone when no record is sent', () => {
+    const read = findAFileFromAnswer({
+      hits: [
+        { id: '1AbCdEfGhIjKlMnOpQrSt', name: '2026-11-14 Signed contract · 1042 · Dana Whitfield.pdf', paper: 'signed', contract_id: 'c1', contract_job_id: 'j1' },
+        { id: '2BcDeFgHiJkLmNoPqRsTu', name: 'VOIDED · 2026-10-02 Signed contract · 1008 · Jo Larkin.pdf', paper: 'voided' },
+        { id: '3CdEfGhIjKlMnOpQrStUv', name: 'Permit.pdf', paper: 'nonsense', contract_id: 'c9', contract_job_id: 'j9' },
+      ],
+    })
+    expect(read.hits[0]).toMatchObject({ paper: 'signed', contract: { id: 'c1', jobId: 'j1' } })
+    expect(read.hits[1]!.paper).toBe('voided')
+    expect(read.hits[1]!.contract).toBeUndefined()
+    expect(read.hits[2]!.paper).toBeUndefined()
+    expect(read.hits[2]!.contract).toBeUndefined()
+  })
+  it('reads the same from the index’s rows', () => {
+    const read = findAFileFromIndexRows([{ drive_file_id: '1AbCdEfGhIjKlMnOpQrSt', name: 'Signed.pdf', jobs_ledger_id: 'j1', paper: 'signed', contract_id: 'c1', contract_job_id: 'j1' }, { drive_file_id: '2BcDeFgHiJkLmNoPqRsTu', name: 'Plain.pdf' }])
+    expect(read.hits[0]).toMatchObject({ paper: 'signed', contract: { id: 'c1', jobId: 'j1' } })
+    expect(read.hits[1]!.paper).toBeUndefined()
+  })
+  it('words the chip green for a paper in force and red for a voided one', () => {
+    expect(paperChip('signed')).toEqual({ words: 'Signed contract', tone: 'green' })
+    expect(paperChip('voided')).toEqual({ words: 'Voided contract', tone: 'red' })
+    expect(paperChip(undefined)).toBeNull()
+  })
+})
+

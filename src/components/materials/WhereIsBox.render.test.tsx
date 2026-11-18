@@ -134,6 +134,29 @@ describe('WhereIsBox', () => {
     expect(screen.getByText('That pin is 6 weeks old. Boxes get moved. If A7 is not there, look near it, then press I found it.')).toBeTruthy()
   })
 
+  it('a place with a painted way says so and opens it (step 4)', () => {
+    const onOpenWay = vi.fn()
+    renderWithProviders(<WhereIsBox touch container={pinned} containers={[pinned]} places={[{ ...places[0]!, wayMapId: 'way-1' }]} moves={moves} movements={movements} photos={[]} jobCenter={PIN} jobAddress="100 Made-up Way" byName="Priya Nair" onMoveBox={onMoveBox} onOpenWay={onOpenWay} now={NOW} />)
+    expect(screen.getByTestId('where-is-box-way').textContent).toContain('The way to Laydown yard is painted.')
+    fireEvent.click(screen.getByRole('button', { name: 'Open the way' }))
+    expect(onOpenWay).toHaveBeenCalledWith('way-1')
+  })
+
+  it('Send someone to it hands the host a task for the box, and is not drawn with no host for it (step 5)', () => {
+    const onSendSomeone = vi.fn()
+    renderWithProviders(<WhereIsBox touch container={pinned} containers={[pinned]} places={[{ ...places[0]!, wayMapId: 'way-1' }]} moves={moves} movements={movements} photos={[]} jobCenter={PIN} jobAddress="100 Made-up Way" byName="Priya Nair" onMoveBox={onMoveBox} onSendSomeone={onSendSomeone} now={NOW} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Send someone to it' }))
+    expect(onSendSomeone).toHaveBeenCalledWith({ title: 'Find A7 at Laydown yard, by the north fence', links: [], place: { ...PIN, name: 'A7 at Laydown yard', accuracyM: 5.5, mapId: 'way-1', mapName: 'The way to Laydown yard' } })
+    cleanup()
+    draw(pinned)
+    expect(screen.queryByRole('button', { name: 'Send someone to it' })).toBeNull()
+  })
+
+  it('a place with no way draws no way line', () => {
+    draw(pinned)
+    expect(screen.queryByTestId('where-is-box-way')).toBeNull()
+  })
+
   it('Move the pin by hand puts the pin where the ring is, with no margin, and can take the pin off', async () => {
     draw(pinned)
     fireEvent.click(screen.getByRole('button', { name: 'Move the pin by hand' }))

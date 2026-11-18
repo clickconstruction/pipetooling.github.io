@@ -1,0 +1,122 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+/** What the view answers, and every call each read made on its query, in order. */
+const db = vi.hoisted(() => ({
+  answer: { data: [] as unknown, error: null as unknown, count: null as number | null },
+  throws: false,
+  reads: [] as Array<{ table: string; calls: Array<[string, unknown[]]> }>,
+}))
+
+vi.mock('../supabase', () => {
+  const builder = (table: string) => {
+    const read = { table, calls: [] as Array<[string, unknown[]]> }
+    db.reads.push(read)
+    const b: Record<string, unknown> = new Proxy(
+      {},
+      {
+        get: (_t, op: string) => {
+          if (op === 'then') {
+            return (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+              (db.throws ? Promise.reject(new Error('network down')) : Promise.resolve(db.answer)).then(resolve, reject)
+          }
+          return (...args: unknown[]) => {
+            read.calls.push([op, args])
+            return b
+          }
+        },
+      },
+    )
+    return b
+  }
+  return { supabase: { from: (table: string) => builder(table) } }
+})
+
+import { AGREEMENTS_SELECT } from './agreementsLedger'
+import { AGREEMENTS_VIEW, countAgreementsWaiting, readAgreements } from './agreementsLedgerIo'
+
+const calls = () => db.reads[db.reads.length - 1]?.calls ?? []
+const ops = () => calls().map(([op]) => op)
+
+beforeEach(() => {
+  db.answer = { data: [], error: null, count: null }
+  db.throws = false
+  db.reads.length = 0
+})
+
+describe('readAgreements', () => {
+  it('reads the view newest first, a page at a time, with the default state and no kind filter', async () => {
+    await readAgreements({ kind: 'all', state: 'live', typed: '', limit: 100 })
+    expect(db.reads[0]?.table).toBe(AGREEMENTS_VIEW)
+    expect(calls()).toEqual([
+      ['select', [AGREEMENTS_SELECT]],
+      ['in', ['state', ['waiting', 'signed']]],
+      ['order', ['at', { ascending: false }]],
+      ['order', ['id', { ascending: false }]],
+      ['limit', [100]],
+    ])
+  })
+
+  it('asks the database for a kind chip’s kinds and a state chip’s state', async () => {
+    await readAgreements({ kind: 'jobs', state: 'ended', typed: '', limit: 100 })
+    expect(calls().slice(1, 3)).toEqual([
+      ['in', ['kind', ['job_contract', 'their_paper']]],
+      ['in', ['state', ['ended']]],
+    ])
+  })
+
+  it('asks for every typed word in find_text, and nothing under two letters', async () => {
+    await readAgreements({ kind: 'all', state: 'live', typed: 'Cedar  J2391', limit: 100 })
+    expect(calls().filter(([op]) => op === 'ilike')).toEqual([
+      ['ilike', ['find_text', '*cedar*']],
+      ['ilike', ['find_text', '*j2391*']],
+    ])
+    await readAgreements({ kind: 'all', state: 'live', typed: 'c', limit: 100 })
+    expect(ops()).not.toContain('ilike')
+  })
+
+  it('says another page may follow when the page came back full', async () => {
+    db.answer = { data: [{ id: 'a' }, { id: 'b' }], error: null, count: null }
+    expect(await readAgreements({ kind: 'all', state: 'live', typed: '', limit: 2 })).toEqual({ rows: [{ id: 'a' }, { id: 'b' }], more: true })
+    expect(await readAgreements({ kind: 'all', state: 'live', typed: '', limit: 3 })).toEqual({ rows: [{ id: 'a' }, { id: 'b' }], more: false })
+  })
+
+  it('reads a page of a hundred when the limit is missing', async () => {
+    await readAgreements({ kind: 'all', state: 'live', typed: '', limit: 0 })
+    expect(calls()[calls().length - 1]).toEqual(['limit', [100]])
+  })
+
+  it('throws with the database’s own reason', async () => {
+    db.answer = { data: null, error: { message: 'relation "agreements_on_file" does not exist', code: '42P01' }, count: null }
+    await expect(readAgreements({ kind: 'all', state: 'live', typed: '', limit: 100 })).rejects.toThrow(/agreements_on_file/)
+  })
+
+  it('reads no row as an empty list', async () => {
+    db.answer = { data: null, error: null, count: null }
+    expect(await readAgreements({ kind: 'all', state: 'live', typed: '', limit: 100 })).toEqual({ rows: [], more: false })
+  })
+})
+
+describe('countAgreementsWaiting', () => {
+  it('counts the waiting rows without reading them', async () => {
+    db.answer = { data: null, error: null, count: 3 }
+    expect(await countAgreementsWaiting('all')).toBe(3)
+    expect(calls()).toEqual([
+      ['select', ['id', { count: 'exact', head: true }]],
+      ['eq', ['state', 'waiting']],
+    ])
+  })
+
+  it('counts under a kind chip', async () => {
+    db.answer = { data: null, error: null, count: 1 }
+    expect(await countAgreementsWaiting('orders')).toBe(1)
+    expect(calls()[2]).toEqual(['in', ['kind', ['work_order']]])
+  })
+
+  it('answers zero for no count, and null when the count cannot be read', async () => {
+    expect(await countAgreementsWaiting('all')).toBe(0)
+    db.answer = { data: null, error: { message: 'no' }, count: null }
+    expect(await countAgreementsWaiting('all')).toBeNull()
+    db.throws = true
+    expect(await countAgreementsWaiting('all')).toBeNull()
+  })
+})

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { groupEventsByInstance, stripStamp, type ChecklistCardEvent, droppedReason } from '../../lib/checklistCardEvents'
@@ -18,6 +18,12 @@ import { ChecklistTitleWithLinks } from '../ChecklistTitleWithLinks'
 import { EmptyState, type EmptyStateWords } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { useOptionalAuth } from '../../hooks/useAuth'
+import { useTaskNoteTags } from '../../hooks/useTaskNoteTags'
+import { canTagInTaskNotes } from '../../lib/jobs/noteTags'
+import { noteTagsChanged, notifyNoteTag, postTaggedTaskNote } from '../../lib/jobs/noteTagsIo'
+import { useNoteTagBox } from '../jobs/NoteTagBox'
+import { TaggedNoteBody } from '../jobs/TaggedNoteBody'
 
 /**
  * The phone-first History view (narrow screens): reverse-chronological day
@@ -52,6 +58,35 @@ export function ChecklistHistoryLedger({
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
+  // Tagging a teammate (punch list #375): one box is open at a time, the open day's, so one set of names serves it.
+  const draftRef = useRef<HTMLInputElement | null>(null)
+  const viewerRole = useOptionalAuth()?.role ?? null
+  const tagBox = useNoteTagBox({ jobId: '', taskInstanceId: expandedId, draft, setDraft, inputRef: draftRef, enabled: !!currentUserId && !!expandedId && canTagInTaskNotes(viewerRole), place: 'above', bigAt: true })
+  const tagsByNote = useTaskNoteTags(null, (expandedId && eventsByInstance.get(expandedId)?.length) || 0, expandedId)
+
+  /**
+   * One typed note on a day row: with its tags in one call when it carries any, as a plain insert when it does not.
+   * Either way the phone notice is asked for by the note's id, since a plain note can answer a tag.
+   */
+  async function writeNote(instanceId: string, body: string): Promise<string> {
+    const tagged = tagBox.taggedIds(body)
+    let id: string | null = null
+    if (tagged.length > 0) {
+      id = await postTaggedTaskNote(instanceId, body, tagged)
+    } else {
+      const { data: row, error: e } = await supabase
+        .from('checklist_instance_events')
+        .insert({ instance_id: instanceId, event_type: 'comment', actor_user_id: currentUserId, body })
+        .select('id')
+        .maybeSingle()
+      if (e) throw e
+      id = row?.id ?? null
+    }
+    if (id) notifyNoteTag({ taskEventId: id })
+    tagBox.reset()
+    noteTagsChanged()
+    return id ?? `local-${Date.now()}`
+  }
 
   // Stats read the FULL set (misses still count); the rendered groups are the
   // completed record only — misses live on Today's Outstanding section (v2.1864).
@@ -129,13 +164,8 @@ export function ChecklistHistoryLedger({
     setReopening(true)
     setError(null)
     try {
-      const { error: ce } = await supabase.from('checklist_instance_events').insert({
-        instance_id: inst.id,
-        event_type: 'comment',
-        actor_user_id: currentUserId,
-        body,
-      })
-      if (ce) throw ce
+      // The reason is a typed note, so a name tagged in it is tagged, and it answers a tag that waited on its writer.
+      await writeNote(inst.id, body)
       const { error: ue } = await supabase
         .from('checklist_instances')
         .update({ completed_at: null, completed_by_user_id: null })
@@ -187,14 +217,11 @@ export function ChecklistHistoryLedger({
     if (!body || posting || !currentUserId) return
     setPosting(true)
     try {
-      const { error: e } = await supabase.from('checklist_instance_events').insert({
-        instance_id: instanceId,
-        event_type: 'comment',
-        actor_user_id: currentUserId,
-        body,
-      })
-      if (e) {
-        setError(e.message)
+      let noteId: string
+      try {
+        noteId = await writeNote(instanceId, body)
+      } catch (e: unknown) {
+        setError(formatErrorMessage(e, 'The note was not posted'))
         return
       }
       setDraft('')
@@ -202,7 +229,7 @@ export function ChecklistHistoryLedger({
         const next = new Map(prev)
         const list = [...(next.get(instanceId) ?? [])]
         list.push({
-          id: `local-${Date.now()}`,
+          id: noteId,
           instance_id: instanceId,
           event_type: 'comment',
           actor_user_id: currentUserId,
@@ -373,7 +400,7 @@ export function ChecklistHistoryLedger({
                                   <div key={e.id} style={{ fontSize: '0.9375rem', color: 'var(--text-700)', lineHeight: 1.45 }}>
                                     <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{name(e.actor_user_id)}</span>{' '}
                                     <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{stripStamp(e.created_at)}</span>{' '}
-                                    — {e.body}
+                                    — <TaggedNoteBody body={e.body ?? ''} tags={tagsByNote.get(e.id)} postedIso={e.created_at} viewerId={currentUserId} />
                                   </div>
                                 )
                               }
@@ -399,17 +426,30 @@ export function ChecklistHistoryLedger({
                           </p>
                         )}
                         {currentUserId ? (
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          // The names offered and picked sit above the box, and the row of names opens above them (punch list #375).
+                          <div style={{ position: 'relative' }}>
+                          {tagBox.list}
+                          {tagBox.chips}
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {/* The mark in the words is drawn under the box, so the box is see-through and this holds its background. */}
+                            <span style={{ position: 'relative', display: 'flex', flex: '1 1 200px', minWidth: 0, background: 'var(--surface)', borderRadius: 10 }}>
+                            {tagBox.mark}
                             <input
+                              ref={draftRef}
                               type="text"
                               value={draft}
-                              onChange={(e) => setDraft(e.target.value)}
+                              onChange={(e) => tagBox.onText(e.target.value, e.target.selectionStart)}
+                              onClick={(e) => tagBox.onText(e.currentTarget.value, e.currentTarget.selectionStart)}
                               onKeyDown={(e) => {
+                                // The row of names takes its own keys first: Enter picks a name and Escape shuts the row.
+                                if (tagBox.onKeyDown(e)) return
                                 if (e.key === 'Enter') void postComment(inst.id)
                               }}
                               placeholder="Add a note…"
+                              aria-label="Add a note"
                               disabled={posting}
                               style={{
+                                position: 'relative',
                                 flex: 1,
                                 minWidth: 0,
                                 height: 44,
@@ -418,8 +458,12 @@ export function ChecklistHistoryLedger({
                                 fontSize: '1rem',
                                 border: '2px solid var(--text-600)',
                                 borderRadius: 10,
+                                background: 'transparent',
+                                color: 'var(--text-strong)',
                               }}
                             />
+                            </span>
+                            {tagBox.atButton}
                             <button
                               type="button"
                               onClick={() => void postComment(inst.id)}
@@ -458,6 +502,7 @@ export function ChecklistHistoryLedger({
                             >
                               {reopening ? '…' : 'Reopen'}
                             </button>
+                          </div>
                           </div>
                         ) : null}
                         {currentUserId ? (

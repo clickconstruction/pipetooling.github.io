@@ -64,7 +64,10 @@ import OnSiteMoveJobModal from '../materials/OnSiteMoveJobModal'
 import { canMoveOnSite, MOVE_JOB_LABEL, MOVE_JOB_WHO, type MoveJobChoice } from '../../lib/materials/onSiteMoveJob'
 import { canMintStickers, PRINT_STICKERS_LABEL, STICKER_MINT_WHO } from '../../lib/materials/stickerRun'
 import { BoxWindow } from '../materials/BoxTabs'
+import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { WHERE_IS_IT_PRESS, whereIsBoxTitle } from '../../lib/materials/whereIsBox'
+import { PLACE_WAY_OPEN_PRESS, PLACE_WAY_PAINT_PRESS, PLACE_WAY_TAKE_OFF_PRESS } from '../../lib/materials/placeWay'
+import { openPlaceWay, paintPlaceWay, takeOffPlaceWay } from '../materials/placeWayPaint'
 import { BOX_KIND_CHOICES, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
 import { addPressLabel, boxNameVerdict, nextFreeName, siteBoxesFor } from '../../lib/materials/boxName'
 import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_MAX, addedLineVerdict, boxLineOf, lineFieldValue, nameWordsNote } from '../../lib/materials/boxLine'
@@ -506,6 +509,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [landing, setLanding] = useState(false)
   const confirmDialog = useConfirmDialog()
   const { showActionToast } = useToastContext()
+  // Send someone to it (punch list #372, step 5): the New task window, where the app has one mounted.
+  const addTask = useChecklistAddModal()
   /**
    * Retire every box on this job (v2.7303, the owner's ask of 2026-11-14): the empty boxes go, each box with parts stays
    * with its reason, the press keeps going past a box that fails, and the toast carries Undo for a minute as the phone's
@@ -794,7 +799,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
           <div style={{ display: 'grid', gap: '1rem' }}>
             {groupByPlace(shownContainers, places).map((g) => (
               <div key={g.place?.id ?? (g.containers[0]?.kind === 'unsorted' ? 'unsorted' : 'none')} style={{ display: 'grid', gap: '0.5rem' }}>
-                {places.length > 0 && g.containers[0]?.kind !== 'unsorted' ? <h3 style={{ margin: '0.25rem 0 0', fontSize: '0.95rem', color: 'var(--text-strong)' }}>{g.place?.name ?? 'No place yet'} <span style={{ ...muted, fontWeight: 400 }}>· {g.containers.length} {g.containers.length === 1 ? 'container' : 'containers'}</span></h3> : null}
+                {places.length > 0 && g.containers[0]?.kind !== 'unsorted' ? <h3 style={{ margin: '0.25rem 0 0', fontSize: '0.95rem', color: 'var(--text-strong)' }}>{g.place?.name ?? 'No place yet'} <span style={{ ...muted, fontWeight: 400 }}>· {g.containers.length} {g.containers.length === 1 ? 'container' : 'containers'}</span>{/* The way to a place (punch list #372, step 4): painted once, it serves every box that stands there. */}{g.place ? (() => { const place = g.place; return place.wayMapId ? <span style={{ marginLeft: '0.6rem', display: 'inline-flex', gap: '0.6rem', fontWeight: 400 }}><button type="button" style={quietPress} aria-label={`${PLACE_WAY_OPEN_PRESS} to ${place.name}`} onClick={() => openPlaceWay(place, addr || null, showToast)}>{PLACE_WAY_OPEN_PRESS}</button><button type="button" style={{ ...quietPress, color: 'var(--text-muted)' }} aria-label={`${PLACE_WAY_TAKE_OFF_PRESS} ${place.name}`} title="The place keeps no way. The map itself is kept." onClick={() => void takeOffPlaceWay(place, jobId, showToast)}>{PLACE_WAY_TAKE_OFF_PRESS}</button></span> : <button type="button" style={{ ...quietPress, marginLeft: '0.6rem' }} aria-label={`Paint the way to ${place.name}`} title="Draw the way from the gate to this place once. Anyone who looks for a box here can open it." onClick={() => paintPlaceWay(place, { jobId, label: jobLabel(job, jobId), address: addr || null, center: jobCenter }, showToast)}>{PLACE_WAY_PAINT_PRESS}</button> })() : null}</h3> : null}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(480px, 100%), 1fr))', gap: '0.75rem' }}>
             {g.containers.map((c) => {
               const ls = linesOf(lines, c.id)
@@ -1153,7 +1158,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
       {moveOpen ? <OnSiteMoveJobModal sourceJobId={jobId} jobs={moveJobs} siteOfJob={siteOfJob} role={role} onClose={() => setMoveOpen(false)} onMoved={(_from, _to, words) => { showToast(words, 'success'); /* The runs fold and the sticker numbers keep their own reads (v2.7329): the run went with the boxes. */ setRunsKey((k) => k + 1) }} /> : null}
       {onBoxesOpen ? <StickersOnBoxes jobId={jobId} jobLabel={jobLabel(job, jobId)} places={places} initialNames={onBoxesOpen.initial} onClose={() => setOnBoxesOpen(null)} onPlaced={(_answer, outcome) => { showToast(onBoxesToast(outcome), outcome.tone === 'success' ? 'success' : 'warning'); /* The new boxes, the fold's counts and the names beside each box are read again. */ void loadJob(jobId, { force: true }); setRunsKey((k) => k + 1) }} /> : null}
       {stickersOpen ? <PrintStickersModal jobId={jobId} jobLabel={jobLabel(job, jobId)} role={role} run={stickersOpen.run} onClose={() => setStickersOpen(null)} onMinted={() => setRunsKey((k) => k + 1)} onPrinted={() => setRunsKey((k) => k + 1)} /> : null}
-      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow key={`${box.id}:${whereBoxId === box.id ? 'where' : 'cage'}`} container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} where={{ jobCenter, jobAddress: addr, photos, painted: painted.maps }} startTab={whereBoxId === box.id ? 'where' : 'cage'} onClose={() => { setEditingBoxId(null); setWhereBoxId(null) }} onSaved={(words) => { setEditingBoxId(null); setWhereBoxId(null); showToast(words, 'success') }} /> : null })()}
+      {(() => { const box = editingBoxId ? containers.find((c) => c.id === editingBoxId) : null; return box ? <BoxWindow key={`${box.id}:${whereBoxId === box.id ? 'where' : 'cage'}`} container={box} containers={containers} siteBoxes={siteBoxes} places={places} lines={lines} byName={byName} byUserId={byUserId} where={{ jobCenter, jobAddress: addr, photos, painted: painted.maps, onOpenWay: (id) => { setEditingBoxId(null); setWhereBoxId(null); openPaintedMap(id, addr || null) }, onSendSomeone: addTask ? (task) => { setEditingBoxId(null); setWhereBoxId(null); addTask.openAddModal({ preset: task }) } : undefined }} startTab={whereBoxId === box.id ? 'where' : 'cage'} onClose={() => { setEditingBoxId(null); setWhereBoxId(null) }} onSaved={(words) => { setEditingBoxId(null); setWhereBoxId(null); showToast(words, 'success') }} /> : null })()}
       {manifestOpen ? <ManifestPrintModal jobLabel={jobLabel(job, jobId)} site={job?.job_address?.trim() ?? ''} containers={containers} lines={lines} movements={movements} places={places} only={manifestOpen.only} onClose={() => setManifestOpen(null)} /> : null}
     </div>
   )

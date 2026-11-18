@@ -148,7 +148,7 @@ describe('devMcpSubLabor — the verbs on the allowlist', () => {
     expect(isSubLaborPaymentVerb('apply_sub_labor_payment')).toBe(true)
     expect(planVerbFor('apply_sub_labor')).toBe('plan_sub_labor')
     expect(planVerbFor('apply_sub_labor_payment')).toBe('plan_sub_labor_payment')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.96.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.97.0'")
     expect(SERVER).toContain('Writes are one hundred and seventeen verbs and nothing else:')
     expect(README).toContain("eighty-seven since v2.6944's sub labor pairs")
     expect(README).toContain('one hundred and seventeen `plan_` / `apply_` / `revert_` verbs')

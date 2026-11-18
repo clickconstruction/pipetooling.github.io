@@ -2,7 +2,7 @@
 name: "Find a lost box: show where a cage or box was last put, and draw the way to it"
 number: 372
 group: close
-status: asked 2026-11-16 · the card the same day · the mock-up 2026-11-17 · call 1 answered the same day (*Yes, cage or box*) · the owner's word the same day (*Build all the steps*), taken as the train of five with every other call at the card's pick · all five steps built and tested the same day · steps 1 and 2 and the way's column merged (#8503, #8510, #8511), both migrations on the live database · all five steps walked on a test job in a local browser · step 3 in this PR · the way's screens and step 5 built, each waiting its turn · not tried on a real phone
+status: asked 2026-11-16 · the card the same day · the mock-up 2026-11-17 · call 1 answered the same day (*Yes, cage or box*) · the owner's word the same day (*Build all the steps*), taken as the train of five with every other call at the card's pick · all five steps built the same day · steps 1, 2 and 3 and the way's column merged (#8503, #8510, #8531, #8511), both migrations on the live database · the way's screens in #8552 · step 5 in this PR, the last of the train · steps 2 and 3 walked on the live site and every step on a local server, on a test job · not tried on a real phone
 summary: >
   The owner wants the app to show someone where their crate is when it is lost, and to draw a path
   to where they can find it. The app has no crate: this card takes it to mean a cage or a box from
@@ -14,9 +14,9 @@ summary: >
   honest distance, and ends with I found it, which pins the box where the finder stands. A way
   painted once to each place where boxes stand (#345) is the path that knows about gates and
   fences, and a task carries it to someone who is not on the crew.
-next: The rest of the train lands one PR at a time: step 3, then the way's screens once the way's migration is pushed, then step 5, which closes the card's table. Then the owner's try on a real phone, which is step 0 and more: pin five boxes on a test job with I found it, some outdoors and some inside, walk away and press Show where I am, lock the phone mid-walk, and read what the sheet says indoors. Calls 2 to 11 stay his to change.
-size: L as a train of five (S · M · S · M · S), on the card's picks; left: three PRs to land and a real phone (S)
-blocker: None to build. The merge queue, one PR at a time. Nothing here, and nothing in Paint a map (#345) that it stands on, has been tried on a real phone.
+next: The owner's try on a real phone, which is step 0 and more: on a test job, press I found it at five boxes, some outdoors and some inside, walk away and press Show where I am, lock the phone mid-walk, and read what the sheet says indoors. Then his word to close the card. Calls 2 to 11 stay his to change. In a few weeks, count the live boxes that have a pin: it was none of 96, and that count says whether step 3's ask is answered.
+size: L as a train of five (S · M · S · M · S), on the card's picks; left: the owner's try on a real phone (XS)
+blocker: A real phone. Nothing here, and nothing in Paint a map (#345) that it stands on, has been tried on one.
 opinion: build — built on the owner's word. Whether it is used turns on crews pinning boxes, which step 3 asks for and a count of pinned boxes will show.
 ---
 
@@ -216,10 +216,10 @@ not yet merged are in their titles.
 |---|---|---|
 | 1 | #8503, merged | The pin remembers. Four columns on `job_containers` and the `job_containers_stamp_pin` trigger. Migration `20261117170000`, on the live database. |
 | 2 | #8510, merged | **Where is it?**: the sheet on the phone's box screen, and the third tab of the office's box window. |
-| 3 | the PR that carries this edit | The pin ask: *Pin A7 where you stand?* after a count, a photo, a scanned label and a new box. |
+| 3 | #8531, merged | The pin ask: *Pin A7 where you stand?* after a count, a photo, a scanned label and a new box. |
 | 4, the column | #8511, merged | A place can carry the way to it. One column, an update policy and a guard on `job_places`. Migration `20261117180000`, on the live database. |
-| 4, the screens | built, not opened | **＋ Paint the way here** on a place, **Open the way** on a box's sheet, and a helper's search offering **Paint a map** (call 8). |
-| 5 | built, not opened | **Send someone to it**: the New task window on *Find A7*, with the pin as the task's place and the way as its map. |
+| 4, the screens | #8552 | **＋ Paint the way here** on a place, **Open the way** on a box's sheet, and a helper's search offering **Paint a map** (call 8). |
+| 5 | the PR that carries this edit | **Send someone to it**: the New task window on *Find A7*, with the pin as the task's place and the way as its map. |
 
 **What differs from the card**, each in its fragment:
 
@@ -238,15 +238,25 @@ not yet merged are in their titles.
   phone that took it, and the app draws none from Drive. On another phone the sheet shows the
   photo's name and who took it, with no picture.
 
-**Walked**, on a dev server against the live database, in a headless Chromium at phone and desk
-width, as the dev account, with a made-up location, on a test job's test cage: the sheet on a box
+**Walked on the live site**, once steps 1 to 3 were deployed, at phone width, as the dev account,
+with a made-up location, on a test job's test cage: the sheet on a box nobody pinned, **I found
+it**, **Show where I am** from 240 ft away, **Move the pin by hand** and **Remove the pin**, and
+the pin ask on a box opened through its label's address, answered with **Pin it here**. No request
+failed and nothing ran off the side of the phone.
+
+**Walked on a dev server** against the live database, in a headless Chromium at phone and desk
+width, as the dev account, with a made-up location, on the same test cage: the sheet on a box
 nobody pinned, **I found it**, **Show where I am** from 240 ft away, a margin too wide to trust,
 **Move the pin by hand**, **Remove the pin**, the office's tab, the pin ask after a count, a way
 painted to a made-up place and opened from the cage, and **Send someone to it** as far as the New
 task window, with nothing sent. No request failed. The walk of step 5 found that the New task
 window kept a place and dropped its way, which step 5's PR fixes. Dark mode was not looked at. The
 pin and the made-up way were taken off after. The made-up place stays on the test job, since a
-place cannot be removed in the app.
+place cannot be removed in the app. A second pass walked what the first left: the office's
+**＋ Paint the way here** and **Take the way off**, the pin ask on a new box, which was retired
+after, and a helper's search for *paint*, through **View as** the sample helper, which offered
+**Paint a map**. Not walked anywhere: the pin ask after a photo, since a test photo would file
+itself in the job's Drive folder.
 
 **Not done**: step 0, the owner's try. Nothing has been tried on a real phone.
 
@@ -405,3 +415,7 @@ margin is wanted under every answer but a tag on the box (call 9).
 2026-11-17, later still: the owner said *Build all the steps*. All five were built that day and
 are landing one PR at a time. *What is built* above has the table. The card moved from *gated* to
 *close*: nothing waits on a decision.
+
+2026-11-17, evening: the owner asked for a walk. Steps 2 and 3 were walked on the live site and
+the rest on a dev server, as *What is built* says. With step 5 merged, the train is whole. What is
+left is his own try on a real phone, and then his word to close this card.
