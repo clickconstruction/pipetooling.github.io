@@ -2,7 +2,7 @@
 name: "Stages onto the job: a won bid offers its stages as the job's lines, and the superintendent gets a way in"
 number: 397
 group: ready
-status: asked 2026-11-18 · reviewed, drawn and planned the same day · the owner's word *build on defaults, build it all* · PR 2, the rule file, on `claude/stages-rule` with this card · PR 1 offered to its own session · PR 5 waits for punch list #396's open PRs · PR 7 held by the owner's default
+status: asked 2026-11-18 · reviewed, drawn and planned the same day · the owner's word *build on defaults, build it all* · PR 2, the rule file, on `claude/stages-rule` with this card · PR 3, the window on New Job, on `claude/stages-offer`, walked on the dev server with the ZZ bid · PR 1 offered to its own session · PR 5 waits for punch list #396's open PRs · PR 7 held by the owner's default
 summary: >
   The app calls five things a stage, and only the Pipeline's is used on every job. Everything new that
   reads a job's stages (the pace card's rail, the Projects board, the stage checklists, Before we start)
@@ -11,7 +11,7 @@ summary: >
   This card fills the lines at the win by an offer the office accepts, makes the same offer on a job
   still on one clean line, opens the superintendent's doors to the stages, and tidies three small things
   found on the way. Seven small PRs, no new table and no database change.
-next: PR 3, the offer window on New Job from a won bid, stacked on PR 2.
+next: PR 4, the same offer on a job that already exists, stacked on PR 3.
 size: M as a train of seven (S · S · M · S · S · S · S)
 blocker: None. PR 5 waits for punch list #396's four open PRs. PR 6 waits for the owner's look at the lines it re-reads. PR 7 is held until crews mark stages on real jobs.
 opinion: build — the owner picked this direction over doing nothing and over one shared stage system, and took every default
@@ -156,4 +156,8 @@ PR 3 should land before #382's fourth PR, *The list on a stage*, so that list ha
 
 ## Where it stands
 
-PR 2 is on `claude/stages-rule` with this card. Nothing else is built.
+PR 2 is on `claude/stages-rule` with this card. PR 3 is on `claude/stages-offer`, stacked on it.
+
+PR 3's walk, 2026-11-18, on the dev server with the ZZ bid, reading only: the window opened, **Bring 4 stages** laid four Any time lines into Line Items, and the form was closed unsaved. The walk caught one flaw before it shipped. A stage the Labor tab put at 23 h read 15 h on its line, because every reader of a line works hours out at the company's rate. The rule now values the hours at that rate, so a line reads the bid's own hours back, within a percent of its price.
+
+Not walked yet: a saved job, which writes a ZZ row.
