@@ -84,8 +84,9 @@ Press {{button:blue|Done}}. **Look it over** shows every line of the walk on the
 
 - **Fix this line by hand** opens the line's corners. Drag a corner onto the right spot, or press one and remove it. Then press {{button:blue|Use this line}}.
 - **Leave this line out** drops one line.
+- {{button:outline|＋ Place}} marks a spot, such as the gate. A place is saved when you add it.
 - {{button:outline|Keep painting}} goes back to walking.
-- {{button:outline|Throw it away}} drops the whole walk. It leaves nothing behind.
+- {{button:outline|Throw it away}} drops the whole walk. A place you added stays on the map.
 
 Press {{button:blue|Save the map}} to keep it.
 
@@ -154,6 +155,8 @@ A place is a named dot on the map. It says what is there, such as the gate, the 
 6. Press {{button:blue|Add this place}}.
 
 The place gets a number. The same number is on its dot and beside its name.
+
+On a walk, {{button:outline|＋ Place}} is under the red bar. It is on **Look it over** too.
 
 Standing on the spot? Press {{button:outline|Put the dot where I am}}. The dot moves to you and the window says how sure your phone is. Your phone is read once, on that press. It is not followed.
 

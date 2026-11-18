@@ -1,19 +1,20 @@
 ---
 name: "Pins on a painted map: points of interest"
 number: 393
-group: gated
-status: asked 2026-11-17 with two screenshots of a walk on the owner's phone · read the same day · three readings put to the owner, A, B and C, with a pick · nothing built · carded the same evening at the owner's word
+group: ready
+status: answered 2026-11-18, the owner ticked all three readings · A built on `claude/393-painted-map-pins-e3e77c`, in its PR · B and C not started
 summary: >
   The owner wants to set pins, points of interest, on a painted map, and not only lines. A painted
   map can already hold a place: a numbered dot with a name, a few words and a photo. Look it over,
   the screen in the owner's screenshot, has no ＋ Place, which may be why it looked missing. A place
   has no kind and no mark of its own, and a job has no pins outside a painted map. This card puts
   three readings to the owner. A is ＋ Place on Look it over. B is kinds of pins, each with its own
-  mark. C is a job's own pins, with no painted map.
-next: The owner says which reading is meant. A is the pick to build first, then B.
-size: M as a train of two (S · M) for A then B; C alone is L
-blocker: Which reading the owner means.
-opinion: build A — one press on the screen the owner was looking at, over the place panel that exists; B once places are in use
+  mark. C is a job's own pins, with no painted map. He ticked all three on 2026-11-18, so it is a
+  train of three in that order.
+next: A's PR merges, then B, a kind and a mark for each place. C opens with one call from the owner on Materials on site's places.
+size: L as a train of three (S · M · L); left: B (M) and C (L)
+blocker: None for A or B. C waits on the owner's call, whether Materials on site's places get a point and become the pins.
+opinion: build — the owner picked all three; A answers his screenshot, B follows, and C opens with his call on Materials on site's places
 ---
 
 # Pins on a painted map (#393)
@@ -29,14 +30,36 @@ question.
 The same message asked for Google's map under a painted map, now [#387](painted-maps-on-google.md),
 and for two ways out of **Close the map?**, built in v2.7690.
 
-## What a painted map holds today
+## The answer
+
+2026-11-18. The three readings below were put to the owner in one question, with A as the pick and
+closing the card unbuilt as a fourth choice. He ticked all three:
+
+> A. ＋ Place on Look it over (Recommended), B. Kinds of pins, C. A job's own pins
+
+Taken as a train in that order. Each step is its own PR.
+
+## Where it stands
+
+- **A, ＋ Place on Look it over: built**, in its PR from `claude/393-painted-map-pins-e3e77c`. The
+  press sits between the walk's lines and **Save**. It opens the place panel over the waiting lines.
+  A place is saved when it is added, as the walk's own is, and the screen says so. Its fragment in
+  `docs/recent-features/` holds the rest.
+- **B, kinds of pins: not started.** A column on `painted_map_places` with its migration, the kinds
+  and their marks as kernels under `src/lib/paintedMap/`, then the map, the `/way` page, the picture
+  and the print.
+- **C, a job's own pins: not started.** It opens with one call that is the owner's: whether
+  Materials on site's places (`job_places`) get a point and become the pins, or a job's pins are a
+  list of their own.
+
+## What a painted map held when the card was written
 
 - **A place.** A numbered dot at a point, with a name of up to 80 letters, up to 200 letters of
   words and one photo (`painted_map_places`).
-- **Three doors set one.** **Start with a place** on the start sheet. **＋ Place** while the red bar
+- **Three doors set one**, and Look it over is the fourth since A. **Start with a place** on the start sheet. **＋ Place** while the red bar
   says Painting. **＋ Place** in the map's own row, beside **Draw a line**.
-- **Look it over has none.** It is where a walk ends, before anything is saved
-  (`PaintedWalkReview.tsx`). Its presses are **Fix this line by hand**, **Leave this line out**,
+- **Look it over had none**, until A. It is where a walk ends, before anything is saved
+  (`PaintedWalkReview.tsx`). Its presses were **Fix this line by hand**, **Leave this line out**,
   **Save the map**, **Keep painting** and **Throw it away**.
 - **Every place looks the same.** A place has no kind and no mark of its own.
 - **A job has no pins outside a painted map.** Materials on site keeps a job's named places
