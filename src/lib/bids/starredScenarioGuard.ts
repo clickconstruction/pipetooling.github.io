@@ -36,3 +36,23 @@ export function scenarioIsCustomerFacing(input: {
     input.scenarioId === input.viewedCustomerFacingId
   )
 }
+
+/**
+ * Why the Price window's Delete is dead, or null when the price can go. A price some packet's ★
+ * is built on, or the viewed packet's customer-facing price, cannot be deleted from the window.
+ * The sentence names the other GC when the ★ belongs to a packet that is not on screen.
+ */
+export function priceDeleteBlock(input: {
+  bidVersions: StarHolder[]
+  pricingId: string
+  customerFacingPricingId: string | null
+  selectedBidVersionId: string | null
+  gcNameOf: (versionId: string) => string
+}): string | null {
+  const starringVersion = versionStarringScenario(input.bidVersions, input.pricingId)
+  const isBase = starringVersion != null || input.pricingId === input.customerFacingPricingId
+  if (!isBase) return null
+  return starringVersion && starringVersion.id !== input.selectedBidVersionId
+    ? `${input.gcNameOf(starringVersion.id)}'s letter is built on this price — star another price for that packet first.`
+    : "The GC's letter is built on this price — make another price the base first."
+}

@@ -441,4 +441,31 @@ describe('BidsPricingTab render smoke', () => {
     fireEvent.click(within(win).getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('dialog', { name: /Another price for/ })).toBeNull()
   })
+
+  it('a rename typed in the Price window and saved closes the window and reads the prices again', async () => {
+    const loadBidPricings = vi.fn(async () => [])
+    renderWithProviders(<BidsPricingTab {...pricedProps({ priceBookVersions: TWO_PRICES, loadBidPricings })} />)
+    await settle()
+    fireEvent.click(screen.getByLabelText('Edit Alternate 1'))
+    const win = screen.getByRole('dialog', { name: 'Price' })
+    fireEvent.change(within(win).getByLabelText('Name'), { target: { value: 'Value option' } })
+    expect((within(win).getByLabelText('Name') as HTMLInputElement).value).toBe('Value option')
+    fireEvent.click(within(win).getByRole('button', { name: 'Save' }))
+    await settle()
+    expect(screen.queryByRole('dialog', { name: 'Price' })).toBeNull()
+    expect(loadBidPricings).toHaveBeenCalledWith('bid-1')
+  })
+
+  it('the Another price window shows what is typed, starts from the open price and offers it at once', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps({ priceBookVersions: TWO_PRICES })} />)
+    await settle()
+    fireEvent.click(button(/Add\s*price/))
+    fireEvent.click(button(/Another price for/))
+    const win = screen.getByRole('dialog', { name: /Another price for/ })
+    const box = within(win).getByPlaceholderText('Alternate 2') as HTMLInputElement
+    fireEvent.change(box, { target: { value: 'Value option' } })
+    expect(box.value).toBe('Value option')
+    expect((within(win).getByRole('combobox') as HTMLSelectElement).value).toBe(PRICING_ID)
+    expect((within(win).getByRole('checkbox') as HTMLInputElement).checked).toBe(true)
+  })
 })
