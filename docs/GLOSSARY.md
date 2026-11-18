@@ -2972,6 +2972,9 @@ A task handed on is the same task, with its thread, place and photos, and the of
 **Go through them** beside Still open asks about the old tasks one at a time (v2.7547), **Mark N done** finishes a round of plain repeating tasks behind one confirm (v2.7550), and the **Yesterday** strip asks once about a repeating task left unticked in the last three days, **Did it** or **Skipped** (v2.7551, and History then reads **Skipped** where it read *Missed*).
 **＋ Add a task for me** and **Follow-up** on a done task open the *New task window* (v2.7537).
 For the office, Review opens on a **Stuck** list with **Sorted** while anyone is stuck.
+**See <first name>'s Task Mode** (v2.7697, punch list #381) is a press on a person's opened card on Review, for the owner or a dev, and it opens the *Task Mode look window* (`TaskModeLookWindow.tsx`).
+The window draws that person's Today as their phone draws it, at a phone's width at a desk, with **Read again** and **Close** in its head and a list of what a look does not show beside it.
+It is a look and not *View as*: the viewer stays signed in as themself, the day is read for the person on the card, and `TaskLookGate` stops every press on the screen that does not only open or fold something (`lookAllowsPress` in `lib/tasks/taskLook.ts`).
 Components, kernels and calls: `CHECKLIST_TABS_ARCHITECTURE.md` → *Today = two lists*;
 who may do each: `ACCESS_CONTROL.md` → *Task Mode tools*;
 guide `check-off-my-daily-tasks`.
