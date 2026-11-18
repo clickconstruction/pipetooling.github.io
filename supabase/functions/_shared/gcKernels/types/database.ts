@@ -8703,6 +8703,7 @@ export type Database = {
           person_id: string | null
           person_name: string
           record_hours_but_salary: boolean
+          salaried_week_hours: number[]
           show_in_hours: boolean
           vehicle_arrangement: string
           vehicle_rate_override: number | null
@@ -8714,6 +8715,7 @@ export type Database = {
           person_id?: string | null
           person_name: string
           record_hours_but_salary?: boolean
+          salaried_week_hours?: number[]
           show_in_hours?: boolean
           vehicle_arrangement?: string
           vehicle_rate_override?: number | null
@@ -8725,6 +8727,7 @@ export type Database = {
           person_id?: string | null
           person_name?: string
           record_hours_but_salary?: boolean
+          salaried_week_hours?: number[]
           show_in_hours?: boolean
           vehicle_arrangement?: string
           vehicle_rate_override?: number | null
