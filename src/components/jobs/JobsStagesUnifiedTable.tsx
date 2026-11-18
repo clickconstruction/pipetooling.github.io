@@ -1,6 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import type { StagesPhoneRowsMode } from './stagesPhoneRowsMode'
 import { stagesTableFlatProps, type StagesUnifiedTableShared } from './stagesTableShared'
+import { stagesRowContext } from './stagesRowContext'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
 import { useNavigate } from 'react-router-dom'
@@ -151,42 +152,12 @@ export default function JobsStagesUnifiedTable(tableProps: JobsStagesUnifiedTabl
     jobThreadNotesLoadingId,
     submitJobThreadNoteWithBody,
     authUser,
-    showToast,
-    customers,
-    openEditJobAndCreateCustomerFlow,
-    stagesManHoursByJobId,
-    stagesManHoursLoading,
-    crewByJobId,
-    checklistMarksFor,
-    openChecklistDoor,
-    stagesLaborBreakdownByJobId,
-    expandedJobThreadId,
-    toggleStagesJobThreadExpanded,
-    jobThreadStatsByJobId,
     jobThreadActivityByJobId,
-    openJobThreadFullscreen,
-    openJobActivityExpand,
-    openNewReportForJob,
-    openJobCalendar,
     stagesUpcomingByJobId,
     stagesWorkedByJobId,
     jobThreadFullscreen,
     setJobThreadFullscreen,
-    applyStagesInvoiceFocus,
-    canOpenJobScheduleModal,
-    setScheduleModalJob,
-    openQuickAssignForJob,
     authRole,
-    loadJobs,
-    jobContractCoverageByJobId,
-    propertyKindByJobId,
-    onPropertyKindSaved,
-    propertyLinkByJobId,
-    onPropertyLinked,
-    onOpenJobContract,
-    onOpenCustomerDoor,
-    boardDotByJobId,
-    customerLinesByJobId,
   } = props
   const wideViewport = useWideViewport1100()
   const navigate = useNavigate()
@@ -196,48 +167,14 @@ export default function JobsStagesUnifiedTable(tableProps: JobsStagesUnifiedTabl
   const customerProfileModal = useCustomerProfileModal()
   const jobHoursStoryModal = useJobHoursStoryModal()
   const sessionNotesOpener = useSessionNotesOpener()
-  const stagesRowSharedCtx: StagesRowRenderContext = {
+  const stagesRowSharedCtx = stagesRowContext(props, {
     openSessionNotesForJob: sessionNotesOpener,
     openCustomerProfile: customerProfileModal?.openCustomerProfile,
     openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
-    showToast,
-    customers,
-    openEditJobAndCreateCustomerFlow,
-    stagesManHoursByJobId,
-    stagesManHoursLoading,
-    crewByJobId,
-    checklistMarksFor,
-    openChecklistDoor,
-    stagesLaborBreakdownByJobId,
-    expandedJobThreadId,
-    toggleStagesJobThreadExpanded,
-    jobThreadStatsByJobId,
-    jobThreadActivityByJobId,
-    openJobThreadFullscreen,
-    openJobActivityExpand,
-    openNewReportForJob,
-    openJobCalendar,
-    stagesUpcomingByJobId,
-    stagesWorkedByJobId,
-    applyStagesInvoiceFocus,
-    canOpenJobScheduleModal,
-    setScheduleModalJob,
-    openQuickAssignForJob,
     navigate,
-    authRole,
     dispatchTaskModal,
     checklistAddModal,
-    loadJobs,
-    jobContractCoverageByJobId,
-    propertyKindByJobId,
-    onPropertyKindSaved,
-    propertyLinkByJobId,
-    onPropertyLinked,
-    onOpenJobContract,
-    onOpenCustomerDoor,
-    boardDotByJobId,
-    customerLinesByJobId,
-  }
+  })
   const renderStagesFieldAndBillingLines = (job: JobWithDetails, opts?: { datesBilledYmd?: string | null }) => (
     <StagesFieldAndBillingLines ctx={stagesRowSharedCtx} job={job} datesBilledYmd={opts?.datesBilledYmd} />
   )

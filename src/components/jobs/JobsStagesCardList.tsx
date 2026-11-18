@@ -60,6 +60,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsStagesTableProps } from './JobsStagesTable'
 import type { JobsStagesUnifiedTableProps } from './JobsStagesUnifiedTable'
 import { stagesTableFlatProps, type StagesTableShared } from './stagesTableShared'
+import { stagesRowContext } from './stagesRowContext'
 import { useSessionNotesOpener } from './sessionNotesOpenerContext'
 import JobKindChip from './JobKindChip'
 import { jobKindOfRow } from '../../lib/jobs/jobKind'
@@ -755,44 +756,14 @@ export default function JobsStagesCardList(listProps: JobsStagesTableProps) {
   const [moreActionsJob, setMoreActionsJob] = useState<JobWithDetails | null>(null)
   // The Job photos window (punch list #244): the sheet's Photos line opens it on that job.
   const [photosJob, setPhotosJob] = useState<JobWithDetails | null>(null)
-  const ctx: StagesRowRenderContext = {
+  const ctx = stagesRowContext(props, {
+    openSessionNotesForJob: sessionNotesOpener,
     openCustomerProfile: customerProfileModal?.openCustomerProfile,
     openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
-    showToast: props.showToast,
-    customers: props.customers,
-    openEditJobAndCreateCustomerFlow: props.openEditJobAndCreateCustomerFlow,
-    stagesManHoursByJobId: props.stagesManHoursByJobId,
-    stagesManHoursLoading: props.stagesManHoursLoading,
-    crewByJobId: props.crewByJobId,
-    checklistMarksFor: props.checklistMarksFor,
-    openChecklistDoor: props.openChecklistDoor,
-    stagesLaborBreakdownByJobId: props.stagesLaborBreakdownByJobId,
-    expandedJobThreadId: props.expandedJobThreadId,
-    toggleStagesJobThreadExpanded: props.toggleStagesJobThreadExpanded,
-    jobThreadStatsByJobId: props.jobThreadStatsByJobId,
-    jobThreadActivityByJobId: props.jobThreadActivityByJobId,
-    openJobThreadFullscreen: props.openJobThreadFullscreen,
-    openJobActivityExpand: props.openJobActivityExpand,
-    openNewReportForJob: props.openNewReportForJob,
-    openSessionNotesForJob: sessionNotesOpener,
-    openJobCalendar: props.openJobCalendar,
-    stagesUpcomingByJobId: props.stagesUpcomingByJobId,
-    stagesWorkedByJobId: props.stagesWorkedByJobId,
-    applyStagesInvoiceFocus: props.applyStagesInvoiceFocus,
-    canOpenJobScheduleModal: props.canOpenJobScheduleModal,
-    setScheduleModalJob: props.setScheduleModalJob,
-    openQuickAssignForJob: props.openQuickAssignForJob,
     navigate,
-    authRole: props.authRole,
     dispatchTaskModal,
     checklistAddModal,
-    loadJobs: props.loadJobs,
-    jobContractCoverageByJobId: props.jobContractCoverageByJobId,
-    onOpenJobContract: props.onOpenJobContract,
-    onOpenCustomerDoor: props.onOpenCustomerDoor,
-    boardDotByJobId: props.boardDotByJobId,
-    customerLinesByJobId: props.customerLinesByJobId,
-  }
+  })
 
   const openCrew = useStagesCrewModalOpener()
   const moreActionsFor = (j: JobWithDetails): StagesCardMoreAction[] => {
@@ -1102,44 +1073,14 @@ export function JobsStagesUnifiedCardList(listProps: JobsStagesUnifiedTableProps
   }
   const [moreActionsRow, setMoreActionsRow] = useState<(typeof rows)[number] | null>(null)
   const [photosJob, setPhotosJob] = useState<JobWithDetails | null>(null)
-  const ctx: StagesRowRenderContext = {
+  const ctx = stagesRowContext(props, {
+    openSessionNotesForJob: sessionNotesOpener,
     openCustomerProfile: customerProfileModal?.openCustomerProfile,
     openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
-    showToast: props.showToast,
-    customers: props.customers,
-    openEditJobAndCreateCustomerFlow: props.openEditJobAndCreateCustomerFlow,
-    stagesManHoursByJobId: props.stagesManHoursByJobId,
-    stagesManHoursLoading: props.stagesManHoursLoading,
-    crewByJobId: props.crewByJobId,
-    checklistMarksFor: props.checklistMarksFor,
-    openChecklistDoor: props.openChecklistDoor,
-    stagesLaborBreakdownByJobId: props.stagesLaborBreakdownByJobId,
-    expandedJobThreadId: props.expandedJobThreadId,
-    toggleStagesJobThreadExpanded: props.toggleStagesJobThreadExpanded,
-    jobThreadStatsByJobId: props.jobThreadStatsByJobId,
-    jobThreadActivityByJobId: props.jobThreadActivityByJobId,
-    openJobThreadFullscreen: props.openJobThreadFullscreen,
-    openJobActivityExpand: props.openJobActivityExpand,
-    openNewReportForJob: props.openNewReportForJob,
-    openSessionNotesForJob: sessionNotesOpener,
-    openJobCalendar: props.openJobCalendar,
-    stagesUpcomingByJobId: props.stagesUpcomingByJobId,
-    stagesWorkedByJobId: props.stagesWorkedByJobId,
-    applyStagesInvoiceFocus: props.applyStagesInvoiceFocus,
-    canOpenJobScheduleModal: props.canOpenJobScheduleModal,
-    setScheduleModalJob: props.setScheduleModalJob,
-    openQuickAssignForJob: props.openQuickAssignForJob,
     navigate,
-    authRole: props.authRole,
     dispatchTaskModal,
     checklistAddModal,
-    loadJobs: props.loadJobs,
-    jobContractCoverageByJobId: props.jobContractCoverageByJobId,
-    onOpenJobContract: props.onOpenJobContract,
-    onOpenCustomerDoor: props.onOpenCustomerDoor,
-    boardDotByJobId: props.boardDotByJobId,
-    customerLinesByJobId: props.customerLinesByJobId,
-  }
+  })
 
   const openCrew = useStagesCrewModalOpener()
   const moreActionsForRow = (row: (typeof rows)[number]): StagesCardMoreAction[] => {
