@@ -4229,6 +4229,17 @@ a BEFORE trigger (`people_labor_jobs_link_job_ledger`) resolves the link from th
 Every reader uses the link alone since v2.3435 (2026-09-14, measured 0 unlinked sheets): the number fallbacks, the two `get_jobs_ledger_by_hcp_numbers*` RPCs and the 10-character cap on `job_number` are gone, and the follow-ups to-do retired with them.
 To unlink a sheet, clear both columns.
 
+### Sub sheet → bill tie (`people_labor_jobs.draw_invoice_id`)
+**v2.7835** (punch list #388, step 1).
+A sub labor sheet that is *Waiting on customer* rides on one of its job's bills, `draw_invoice_id` → `jobs_ledger_invoices.id`, cleared when the bill is deleted.
+A BEFORE trigger (`people_labor_jobs_draw_tie`) ties a sheet that arrives at `customer_pay` to the job's one open bill when the job has exactly one, a bill being open until it is paid (`ready_to_bill` or `billed`).
+The same trigger clears the tie when the sheet leaves that stage and drops a tie to a bill of another job.
+With several open bills the office picks the bill in a window ([`SubSheetDrawBillModal`](../src/components/jobs/SubSheetDrawBillModal.tsx) through [`useDrawBillPick`](../src/hooks/useDrawBillPick.tsx)), asked before the move from the Pay rail, Subs → Work, the sheet story and the *Shown on the sub's portal* box.
+The pick is saved by `set_sub_sheet_draw_invoice`, which the writers of `set_sub_sheet_stage` may call: dev, assistant and master.
+A waiting sheet's row on Jobs → Subs → Pay reads *Rides on bill 2 of 3* or *No bill tied*, and that line opens the same window.
+Kernel [`drawTie.ts`](../src/lib/subWorkOrders/drawTie.ts), migration `20261118180000`.
+Nothing on the sub's page reads the tie yet.
+
 ### Followup Sheet
 Printable/downloadable report showing account manager's assigned projects with contact details and submission history.
 Available in Submission & Followup tab.

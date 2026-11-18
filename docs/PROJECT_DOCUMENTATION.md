@@ -849,6 +849,7 @@ WHERE proname IN (
   - `labor_rate` (numeric(10,2), nullable)
   - `distance_miles` (numeric(6,2), nullable) - round-trip miles for drive cost; editable inline in Sub Sheet Ledger
   - `invoice_link` (text, nullable) - optional URL to subcontractor invoice document; set via **Link Invoice** in New/Edit Sub Labor modal
+  - `draw_invoice_id` (uuid, nullable, FK → `jobs_ledger_invoices.id` ON DELETE SET NULL) - the bill the sheet rides on while it is Waiting on customer; see GLOSSARY → *Sub sheet → bill tie*
   - `created_at` (timestamptz)
 - **RLS**: Dev, master, assistant, estimator can read/insert/update/delete own jobs; dev can manage any; shared access via `master_shares` for SELECT
 
