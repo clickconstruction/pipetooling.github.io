@@ -1,8 +1,8 @@
 ---
 name: "Signed contracts: filed in the job's Drive folder and found by Find a file"
 number: 377
-group: ready
-status: asked 2026-11-17 as call 7 of #376 · looked at, drawn and rendered the same day · seven calls put to the owner · he settled call 1 the same day, the job's folder, then took the picks for calls 2 to 7 · all seven settled · nothing built, and nothing is built before he says build
+group: close
+status: asked 2026-11-17 as call 7 of #376 · the owner settled all seven calls the same day and said build · built 2026-11-17 as a train of six, every migration pushed and every function deployed · walked on prod on a ZZ Test contract · the sweep's first run tied six papers to their Drive files and held one · left: the owner's look
 summary: >
   A signed job contract lives in the app's own storage and nowhere in Google Drive, so Find a file cannot
   find it. This card files each signed paper in its job's Drive folder, under Team only › Contracts, and
@@ -11,10 +11,11 @@ summary: >
   within ten minutes, and a paper it cannot file waits with its reason and its door. The jobs drive and
   Find a file are open to estimators, who cannot read a contract in the app today, so filing there lets
   an estimator read it. The owner was told that first and chose the job's folder.
-next: The owner's word to build. Then PR 1, the rules, alone.
-size: M as a train of six (S · M · S · M · S · S)
-blocker: The owner's word to build. The seven calls are settled, so nothing else holds PR 1.
-opinion: build — the folders, the upload, the index and the holds all exist for photos; a contract is one more thing the same sweep pattern files, and most of today's papers are already in the drive waiting to be tied to their record
+next: The owner's look at a signed contract's Drive line and at the card on Where files go. Then his word to retire the card.
+size: M as a train of six (S · M · S · M · S · S); shipped: PR 1 to 6; left: the owner's look (XS)
+blocker: None. All six PRs are merged and live.
+opinion: your call — the code is done and walked; the look is yours
+ver: v2.7640 · 7643 · 7644 · 7645 · 7647 · 7649
 ---
 
 # Signed contracts in Google Drive (#377)
@@ -25,6 +26,66 @@ rendered with Playwright at desktop and phone width, in light and dark, before i
 
 This is call 7 of [#376](../documents-agreements-tab/README.md), the Agreements tab. That card lists the
 papers. This one puts the signed file where the office looks for files.
+
+## Where it stands
+
+Built 2026-11-17, the day the owner said build, as six PRs. All six are merged and live.
+
+| PR | Version | What |
+|---|---|---|
+| 1 | v2.7640 | The rules: which file a record files, the name, the due rule, the holds and their words |
+| 2 | v2.7643 | The columns on `job_contracts` and the function `job-contract-drive` |
+| 3 | v2.7644 | The Contract sweep's Drive pass drops a file that is already a paper on file |
+| 4 | v2.7645 | The sweep's cron, the Drive line on the Contract window, the office's filings ask at once |
+| 5 | v2.7647 | The Signed contracts card on Documents → Where files go |
+| 6 | v2.7649 | Find a file's chip and **Open the contract** |
+
+Both migrations are pushed and the three functions are deployed from `main`.
+
+**Walked on prod** as the dev, on a ZZ Test job's signed contract, through the function itself:
+
+- As it stood, with a typed link that is no Drive file: held, *The signed paper is a link outside the jobs
+  drive*, written on the record.
+- With a scan added and the job's link pointed at a folder that does not exist: held with Drive's own
+  words. The link was put back and checked.
+- Pressed again: filed. The copy sits in the ZZ job's folder under Team only › Contracts, named by day,
+  kind, job number and signer. The file index had it the same minute, with its text and its job. A second
+  press did nothing.
+- The Contract sweep's Drive pass, run fresh: it dropped four files that are papers on file, and did not
+  offer the copy.
+- Voided, then pressed: the copy's name starts `VOIDED · ` in Drive. The index had the new name on its
+  next run.
+- Find a file, both searches, by a word from the paper's text: the hit is marked as a voided contract
+  and carries its record.
+
+**The sweep's first run** on the real papers did what the look said it would: six read *In Drive, where
+the office put it*, and one is held with *Nothing to file*. No file was uploaded, moved or renamed.
+
+**Changes from the plan below**, each written up in its fragment:
+
+- Seven columns, not six, and no `job_contracts_drive_due` view. The function reads the queue itself.
+- Every hold is tried again an hour on, not only Drive's refusals.
+- A file past 25 MB is held as too big. It is not sent in pieces.
+- PR 6 needs no migration. `drive-link` marks the hits; the two search functions are as they were.
+- A copy's name is fixed when it is filed. A signer or a job number corrected later does not rename it.
+
+**Not walked:**
+
+- The screens in a browser: the Contract window's Drive line, the Signed contracts card and the chip.
+  Render tests hold each one, and the function under them is walked.
+- An estimator's Find a file, which shows the chip and no **Open the contract**. Unit tests hold the rule.
+- The open-link guard against a real open link. Drive does list inherited sharing on a job's subfolders,
+  which is what the guard reads. The proof takes one share press on a ZZ folder in Drive.
+- A contract signed through the customer's link, and a paper over several jobs. Tests hold both.
+
+**Left on prod by the walk:** the ZZ Test job's contract is now voided, with its test scan in storage, its
+`VOIDED · ` copy in Drive and one row in the file index.
+
+**Small, found and not built:**
+
+- Drive's words for a folder that is gone are technical (*Folder create failed (404)*). The hold could
+  say *The job's Drive folder is gone* and offer the job's door.
+- A voided copy's new name reaches the file index on the index's next run, not the same minute.
 
 ## The ask, in the owner's words
 
@@ -304,7 +365,8 @@ and every pass it gains is weighed against the upload cap. The new one reuses it
 
 ## The plan
 
-Each step is one PR, with its release note and fragment. Nothing is built until the owner says build.
+Each step is one PR, with its release note and fragment. All six are built: *Where it stands* above says
+what shipped and where it differs from this plan.
 
 1. **PR 1, the rules (S).** One kernel, read by the browser and the function: which file a record files,
    the name by kind, the due rule, when a link is adoptable, the hold kinds with their words and doors,
