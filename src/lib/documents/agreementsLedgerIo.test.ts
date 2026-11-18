@@ -64,6 +64,17 @@ describe('readAgreements', () => {
     ])
   })
 
+  it('asks for every state under the Search tab', async () => {
+    await readAgreements({ kind: 'all', state: 'any', typed: 'pierce', limit: 100 })
+    expect(calls()).toEqual([
+      ['select', [AGREEMENTS_SELECT]],
+      ['ilike', ['find_text', '*pierce*']],
+      ['order', ['at', { ascending: false }]],
+      ['order', ['id', { ascending: false }]],
+      ['limit', [100]],
+    ])
+  })
+
   it('asks for every typed word in find_text, and nothing under two letters', async () => {
     await readAgreements({ kind: 'all', state: 'live', typed: 'Cedar  J2391', limit: 100 })
     expect(calls().filter(([op]) => op === 'ilike')).toEqual([

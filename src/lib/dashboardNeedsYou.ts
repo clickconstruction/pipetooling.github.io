@@ -119,6 +119,7 @@ export type NeedsYouItem = {
     | 'while-off'
     | 'mail-saved'
     | 'tagged-notes'
+    | 'job-papers'
     | 'rating-low'
     | 'gc-review-weekly'
     | 'bulk-delete'
@@ -252,6 +253,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'mail-saved': 90,
   // Tagged job notes (punch list #363): a teammate waits on the viewer's answer, beside the customers who wait on the office.
   'tagged-notes': 40,
+  // Papers before a job opens: a job stays shut to the viewer until they sign, so it sits above the chasing tier.
+  'job-papers': 30,
   // The same tier: a customer who gave three stars or fewer and nobody has called (the review ask, v2.5946).
   'rating-low': 40,
   // Revenue chasing tier: a call somebody promised a GC for a day, due or missed.
@@ -815,6 +818,9 @@ export type NeedsYouInputs = {
   /** Tagged job notes (punch list #363): the job notes that tagged the viewer and still wait, and the answers to their own tags they have not seen. */
   taggedNotesEnabled?: boolean
   taggedNotes?: { count: number; title: string; detail: string } | null
+  /** Papers before a job opens: the jobs that wait on the viewer's own signature, worded by `jobPapersNeedsYou`. */
+  jobPapersEnabled?: boolean
+  jobPapers?: { title: string; detail: string; figure: string } | null
   /**
    * The review ask (v2.5946, punch list #185): the answers at three stars or fewer that nobody has called, inside thirty
    * days, as `useLowRatings` reads them (`ratings/ratingsOffice.ts` → `lowRatingsNeed`). The GC office team, as Today's
@@ -1563,6 +1569,20 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: m.detail,
       figure: m.count > 99 ? '99+' : String(m.count),
       actionLabel: MAIL_SAVED_WORDS.action,
+    })
+  }
+
+  // Papers before a job opens: amber, a job stays shut to the viewer until they sign. The press opens its prompt.
+  if (inputs.jobPapersEnabled && inputs.jobPapers) {
+    const j = inputs.jobPapers
+    items.push({
+      key: 'job-papers',
+      severity: 'amber',
+      kicker: 'Papers to sign',
+      title: j.title,
+      detail: j.detail,
+      figure: j.figure,
+      actionLabel: 'Sign',
     })
   }
 

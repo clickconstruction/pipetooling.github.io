@@ -40,12 +40,18 @@ If it's not done right, you type a comment. The comment is required, so the pers
 
 ## See where the open tasks are
 
+The owner can also open a person's own screen from an open card under **Outstanding by person**. [See what a person's Task Mode shows](/help/see-a-persons-task-mode) covers it.
+
 Above **Outstanding by person** sits a map called **Where the open tasks are**. It shows up when an open task on the board has a place.
 
 - Each person has a colour. Tap a name to see that person's tasks alone. Tap the name again to see everyone.
 - A navy dot with a number is a place more than one person has a task at.
 - Tap a dot to read who has what there. {{button:blue|Directions}} takes you to the place.
 - A line under the map counts the open tasks with no place. They are still on the board below.
+
+The map is a Google map. **Satellite** shows the ground from above with the street names on it. **Streets** shows the road map.
+
+Tap **Hide map** to fold the map away. Your device remembers, and **Show map** brings it back.
 
 The map shows where the tasks are. It does not show where a person is, and it asks no phone for its location.
 

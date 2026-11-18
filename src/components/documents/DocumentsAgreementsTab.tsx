@@ -24,6 +24,7 @@ import {
   waitingChipLabel,
   type AgreementRow,
   type KindPick,
+  type StateAsk,
   type StatePick,
 } from '../../lib/documents/agreementsLedger'
 import { countAgreementsWaiting, readAgreements } from '../../lib/documents/agreementsLedgerIo'
@@ -49,8 +50,9 @@ import { documentsLinkButton, documentsQuietButton } from '../jobs/jobDocumentsS
  * The read is the `agreements_on_file` view, where each table's own row security decides what the reader sees; a read
  * that fails says so with Retry and never reads as an empty ledger. The rules are `lib/documents/agreementsLedger.ts`.
  *
- * With `embedSearch` (the Search tab) the box is the page's own: the tab draws no box, asks for the words it is handed,
- * and stays quiet until there are two letters.
+ * With `embedSearch` (the Search tab) the box is the page's own: the tab draws no box and no chips, asks for the words
+ * it is handed across every kind and every state, so a voided paper is found too, and stays quiet until there are two
+ * letters.
  */
 
 const WorkOrderAssemblerModal = lazy(() => import('../jobs/WorkOrderAssemblerModal').then((m) => ({ default: m.WorkOrderAssemblerModal })))
@@ -116,18 +118,18 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   const [workOrder, setWorkOrder] = useState<{ job: JobWithDetails; commitmentId: string } | null>(null)
 
   // What was typed is asked for once the typing rests, so each key is not a read. The Search tab hands its own words.
+  const words = embedded ? (embedSearch ?? '') : typed
   useEffect(() => {
-    if (embedded) {
-      setAsked(embedSearch ?? '')
-      return
-    }
-    const t = window.setTimeout(() => setAsked(typed), 300)
+    const t = window.setTimeout(() => setAsked(words), 300)
     return () => window.clearTimeout(t)
-  }, [typed, embedded, embedSearch])
+  }, [words])
 
   const findWords = useMemo(() => agreementFindWords(asked), [asked])
   // Under the Search tab nothing is asked until there are two letters to ask for.
   const quietEmbed = embedded && findWords.length === 0
+  // The Search tab has no chips: it asks across every kind and every state.
+  const kindAsk: KindPick = embedded ? 'all' : kind
+  const stateAsk: StateAsk = embedded ? 'any' : state
 
   useEffect(() => {
     if (quietEmbed) {
@@ -137,7 +139,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     }
     let cancelled = false
     setReading(true)
-    void readAgreements({ kind, state, typed: asked, limit })
+    void readAgreements({ kind: kindAsk, state: stateAsk, typed: asked, limit })
       .then((read) => {
         if (cancelled) return
         setRows(read.rows)
@@ -154,11 +156,12 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     return () => {
       cancelled = true
     }
-  }, [kind, state, asked, limit, tries, quietEmbed])
+  }, [kindAsk, stateAsk, asked, limit, tries, quietEmbed])
 
   // The count on Waiting on a signature, under the kind picked; a count that cannot be read leaves the chip's words alone.
+  // The Search tab draws no chips, so it asks for no count.
   useEffect(() => {
-    if (quietEmbed) return
+    if (embedded) return
     let cancelled = false
     void countAgreementsWaiting(kind).then((n) => {
       if (!cancelled) setWaiting(n)
@@ -166,7 +169,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
     return () => {
       cancelled = true
     }
-  }, [kind, tries, quietEmbed])
+  }, [kind, tries, embedded])
 
   const retry = useCallback(() => setTries((n) => n + 1), [])
 
@@ -178,7 +181,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
 
   const today = todayYmdInAppTz()
   const groups = useMemo(() => agreementMonthGroups(rows ?? []), [rows])
-  const query = { kind, state, typed: asked }
+  const query = { kind: kindAsk, state: stateAsk, typed: asked }
   const narrowed = agreementsNarrowed(query)
   const clear = () => {
     setTyped('')
@@ -240,38 +243,42 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
         </p>
       ) : (
         <>
-          <div role="group" aria-label="Kind of agreement" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-            {AGREEMENT_KIND_CHIPS.map((c) => (
-              <button
-                key={c.key}
-                type="button"
-                aria-pressed={kind === c.key}
-                onClick={() => {
-                  setKind(c.key)
-                  setLimit(AGREEMENTS_PAGE)
-                }}
-                style={pickChipStyle(kind === c.key)}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-          <div role="group" aria-label="State" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-            {AGREEMENT_STATE_CHIPS.map((c) => (
-              <button
-                key={c.key}
-                type="button"
-                aria-pressed={state === c.key}
-                onClick={() => {
-                  setState(c.key)
-                  setLimit(AGREEMENTS_PAGE)
-                }}
-                style={pickChipStyle(state === c.key)}
-              >
-                {c.key === 'waiting' ? waitingChipLabel(c.label, waiting) : c.label}
-              </button>
-            ))}
-          </div>
+          {!embedded ? (
+            <>
+              <div role="group" aria-label="Kind of agreement" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                {AGREEMENT_KIND_CHIPS.map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    aria-pressed={kind === c.key}
+                    onClick={() => {
+                      setKind(c.key)
+                      setLimit(AGREEMENTS_PAGE)
+                    }}
+                    style={pickChipStyle(kind === c.key)}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              <div role="group" aria-label="State" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                {AGREEMENT_STATE_CHIPS.map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    aria-pressed={state === c.key}
+                    onClick={() => {
+                      setState(c.key)
+                      setLimit(AGREEMENTS_PAGE)
+                    }}
+                    style={pickChipStyle(state === c.key)}
+                  >
+                    {c.key === 'waiting' ? waitingChipLabel(c.label, waiting) : c.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
           {failure ? <OfflineRetryPanel failure={failure} onRetry={retry} surface="documents-agreements" idempotent busy={reading} /> : null}
           {rows == null && !failure ? (
             <p style={quiet}>Loading…</p>

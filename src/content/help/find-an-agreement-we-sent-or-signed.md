@@ -45,6 +45,12 @@ Type in **Find an agreement**. You can type a customer, a job number, a person, 
 
 Every word you type must match. Type `cedar wo` to find the work orders on a job named Cedar.
 
+## Find one from Search
+
+The **Search** tab finds agreements too. Type in its box and look under **Agreements**, below Jobs.
+
+Search looks at every agreement, voided ones included. Each line still says where it stands.
+
 ## Pick a kind
 
 Press a chip in the first row. **All** shows every kind. The others are **Job contracts**, **Warranties**, **Staff and subs**, **Partners** and **Work orders**.

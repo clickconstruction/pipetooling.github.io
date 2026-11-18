@@ -1,6 +1,21 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import { Toast, type ToastAction, type ToastAnchor, type ToastPlacement } from '../components/Toast'
-import { troubleMemory } from '../lib/tellTheDev/trouble'
+import { errorLineOffersNote, troubleMemory } from '../lib/tellTheDev/trouble'
+import { isTellTheDevListening, requestTellTheDev } from '../lib/tellTheDev/openBox'
+
+/** An error line with the press stays long enough to press it. */
+const ERROR_LINE_WITH_PRESS_MS = 9000
+
+/**
+ * Tell the dev (punch list #380): the press an error line carries, or none. Never for a line that
+ * only says the signal dropped (the outbox keeps that press and sends it later), never offline,
+ * and only while a box is there to answer.
+ */
+function errorLinePress(message: string): ToastAction | undefined {
+  const online = typeof navigator === 'undefined' || navigator.onLine !== false
+  if (!errorLineOffersNote({ words: message, online, fixMode: isTellTheDevListening() })) return undefined
+  return { label: 'Tell the dev', onClick: () => requestTellTheDev({ door: 'error_line', kind: 'broken' }) }
+}
 
 type ToastType = 'info' | 'warning' | 'error' | 'success'
 
@@ -45,7 +60,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       const id = Date.now()
       // Tell the dev (punch list #380): the last error lines shown ride on a note, in this tab's memory alone.
       if (type === 'error') troubleMemory.noteErrorLine(message)
-      setToasts((prev) => [...prev, { id, message, type, durationMs, anchor, placement }])
+      const action = type === 'error' ? errorLinePress(message) : undefined
+      setToasts((prev) => [...prev, { id, message, type, durationMs: action ? Math.max(durationMs ?? 0, ERROR_LINE_WITH_PRESS_MS) : durationMs, anchor, placement, action }])
     },
     [],
   )

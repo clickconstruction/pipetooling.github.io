@@ -33,6 +33,8 @@ export type LienRunRecipientCell = {
   mailed: boolean
   /** The paper route: a Docsmit or email copy has no box to fill. */
   needsNumber: boolean
+  /** The certified receipt added for this copy's envelope (v2.7695); '' when none. */
+  receiptUrl: string
 }
 
 export type LienRunRow = {
@@ -94,6 +96,7 @@ function recipientCell(r: RunRecipient): LienRunRecipientCell {
     tracking: r.tracking,
     mailed: recipientMailed(r),
     needsNumber: !viaDocsmit && r.method !== 'email',
+    receiptUrl: (r.receiptUrl ?? '').trim(),
   }
 }
 
@@ -147,6 +150,45 @@ export function lienRunChecklistRows(input: LienRunChecklistInput): LienRunRow[]
       mailedCopies: n.mailedCopies ?? [],
     }
   })
+}
+
+/**
+ * The row's four steps in the order they are done (v2.7695, the owner's yes to the mail proof mock-ups): each step is
+ * a cell with its own press, so the file that goes in the envelope has a place of its own between Signed and Mailed.
+ */
+export const LIEN_RUN_STEP_WORDS = {
+  printed: '1 · Printed',
+  signed: '2 · Signed',
+  envelope: '3 · In the envelope',
+  mailed: '4 · Mailed',
+  next: 'Next:',
+  ready: 'Ready to record.',
+} as const
+
+const COPY_SHORT: Record<string, string> = { owner: 'owner', original_contractor: 'GC' }
+
+/**
+ * The one thing to do next on a row, as a sentence; null on a row the run holds or that owes nothing, whose own line
+ * says why. The signature and the print, then the file that goes in the envelope, then each envelope's number and receipt. A
+ * receipt is asked for, never required: a row with every number typed reads *Ready to record.* once its receipts
+ * are in, and records without them.
+ */
+export function lienRunRowNext(row: LienRunRow, opts: { canAddCopy: boolean; canAddReceipt: boolean } = { canAddCopy: true, canAddReceipt: true }): string | null {
+  if (row.held || row.nothingToClaim) return null
+  // An unsigned notice is signed from a phone before it prints, or printed by hand for a pen: the signature is what it waits on either way.
+  if (row.signed === null) {
+    if (!row.leader?.name) return 'Name a leader on the job to sign it.'
+    return row.waitsOn === 'print' ? `Get ${row.leader.name}’s signature, or print it for a pen.` : `Get ${row.leader.name}’s signature.`
+  }
+  if (row.waitsOn === 'print') return 'Print the notice.'
+  if (row.paperless) return row.waitsOn === 'mail' ? 'Record it. The app sends the email.' : LIEN_RUN_STEP_WORDS.ready
+  if (opts.canAddCopy && row.mailedCopies.length === 0) return 'Scan what goes in the envelope and add the file.'
+  const boxes = row.recipients.filter((r) => r.needsNumber)
+  const noNumber = boxes.find((r) => !r.tracking.trim())
+  if (noNumber) return opts.canAddReceipt && !noNumber.receiptUrl ? `Add the ${COPY_SHORT[noNumber.key] ?? noNumber.key}’s receipt. The number fills in from a photo.` : `Type the ${COPY_SHORT[noNumber.key] ?? noNumber.key}’s mail number.`
+  const noReceipt = opts.canAddReceipt ? boxes.find((r) => !r.receiptUrl) : undefined
+  if (noReceipt) return `Add the ${COPY_SHORT[noReceipt.key] ?? noReceipt.key}’s receipt.`
+  return LIEN_RUN_STEP_WORDS.ready
 }
 
 export type LienRunHeldRow = { itemId: string; label: string; why: string }

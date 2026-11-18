@@ -20,16 +20,22 @@ type Props = {
   onConfirm: () => void
   onCancel: () => void
   busy?: boolean
+  /** Where the window opens (v2.7684): on the reason, after a day typed in the line's editor; on the day, from the timeline's press, where the day is still to pick. */
+  startOn?: 'reason' | 'day'
 }
 
 const btn = (primary = false, disabled = false): CSSProperties => ({ padding: '6px 14px', borderRadius: 8, border: primary ? '1px solid transparent' : '1px solid var(--border-strong)', background: primary ? '#2563eb' : 'var(--surface)', color: primary ? '#fff' : 'var(--text-700)', font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.45 : 1 })
 const kicker: CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 
-export function LienLastWorkDayConfirm({ jobLabel, input, day, onDay, note, onNote, onConfirm, onCancel, busy = false }: Props) {
+export function LienLastWorkDayConfirm({ jobLabel, input, day, onDay, note, onNote, onConfirm, onCancel, busy = false, startOn = 'reason' }: Props) {
   const preview = useMemo(() => lienLastWorkPreview({ ...input, candidate: day }), [input, day])
   const noteRef = useRef<HTMLInputElement | null>(null)
+  const dayRowRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
-    noteRef.current?.focus()
+    // From the timeline's press the day comes first: the window stays at its top, the day field in hand.
+    if (startOn === 'day') dayRowRef.current?.querySelector('input')?.focus({ preventScroll: true })
+    else noteRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the window opens
   }, [])
   // Esc closes only this window, in the capture phase, so the desk under it never sees the key.
   useEffect(() => {
@@ -70,7 +76,7 @@ export function LienLastWorkDayConfirm({ jobLabel, input, day, onDay, note, onNo
         </div>
 
         <div style={{ overflow: 'auto', minHeight: 0, padding: '0.75rem 1rem', display: 'grid', gap: '0.7rem', fontSize: '0.8125rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem 1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div ref={dayRowRef} style={{ display: 'flex', gap: '0.5rem 1rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <label style={{ display: 'grid', gap: 3, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
               Last day of work
               <FinishedDateInput aria-label="Last day of work" value={day} onCommit={(d) => onDay(d ?? '')} style={{ padding: '0.3rem 0.4rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }} />

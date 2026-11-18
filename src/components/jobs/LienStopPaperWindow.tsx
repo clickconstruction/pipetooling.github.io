@@ -1,4 +1,6 @@
 import { Fragment, lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
+import type { LienMailProof } from '../../lib/jobs/lienMailProof'
+import LienMailProofBlock from './LienMailProofBlock'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { stepRunPreview } from '../../lib/jobs/lienDeskRun'
 import { LIEN_RULE_CITES } from '../../lib/jobs/lienRuleCites'
@@ -28,7 +30,7 @@ export interface LienStopPaper {
   /** What must be true before the paper can go — the gates not yet clear. */
   before: ReadonlyArray<{ key: string; words: string }>
   /** The paper as it went out, when the stop is done: the words and the stored document, if any. */
-  record: { words: string; href: string | null } | null
+  record: { words: string; href: string | null; /** What went out (`lienMailProof.ts`): the files and each envelope's receipt, read-only here. */ proof?: LienMailProof | null } | null
   /** The stop's one act. */
   act: { label: string; onPress: () => void } | null
   /** The months the stop's notice carries, when known — the title names them all. */
@@ -264,6 +266,8 @@ export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jo
                 {step.opensWords ? <div style={{ color: 'var(--text-green-800)', fontWeight: 600 }}>{step.opensWords}</div> : null}
                 {step.words ? <div style={{ color: 'var(--text-700)' }}>{step.words}</div> : null}
                 {paper.record ? <div style={{ color: 'var(--text-700)', marginTop: 4 }}>{paper.record.words}</div> : null}
+                {/* The mailed files and the receipts show whether or not the paper is redrawn beside them: until now the saved copy's link drew only where no page did. */}
+                {paper.record?.proof && !counsel ? <div style={{ marginTop: 8 }}><LienMailProofBlock proof={paper.record.proof} isMobile /></div> : null}
                 {paper.moveWords ? <div style={{ marginTop: 6 }}><span data-testid="lien-stop-paper-move" style={{ display: 'inline-block', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', borderRadius: 999, padding: '3px 10px', color: paper.moveWords.startsWith('COUNSEL') ? 'var(--text-700)' : 'var(--text-link)', background: paper.moveWords.startsWith('COUNSEL') ? 'var(--surface)' : 'var(--bg-blue-tint)', border: paper.moveWords.startsWith('COUNSEL') ? '1px solid var(--border-strong)' : 'none' }}>{paper.moveWords}</span></div> : null}
               </div>
             </div>

@@ -202,6 +202,7 @@ Two account-level mechanisms ride
 on top of the normal role permissions:
 
 - **Training mode** (`users.read_only`) — the tester rung: full role visibility, zero writes.
+  Two writes are let through, each its own open row and nothing else: a clock punch (`clock_sessions`) and, since v2.7666, a note to the dev (`help_feedback`, punch list #380), each by a row guard in place of the statement trigger.
 - **The twin write-fence** (v2.2428, `apply_digital_twin_write_blocks()`): restrictive
   policies on every RLS-enabled table, `(NOT is_digital_twin()) OR (<allowance>)` — a no-op
   for every real user.
@@ -243,7 +244,8 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and seventeen verbs, fifty-one of them POSTing one of twenty-one named dev-gated RPCs as the dev (one hundred and seventeen since v2.7589, whose task place is the Edit window's own update of the place columns on `checklist_items`, or on `checklist_tech_tree_group_tasks` for a task from a roadmap, under the dev's RLS, with the address read from `address_geocodes` and never written, no new role and no new policy;
+The one write path (v2.3722) is one hundred and nineteen verbs, fifty-one of them POSTing one of twenty-one named dev-gated RPCs as the dev (one hundred and nineteen since v2.7592, whose photo of the spot is the Edit window's own two writes, the picture into the private `task-spot-photos` bucket under `can_write_task_spot_photo` and the task's `spot_photo_path` under the dev's RLS, the file staged first in the dev's own folder of `dev-seat-staging`, no new role and no new policy;
+one hundred and seventeen since v2.7589, whose task place is the Edit window's own update of the place columns on `checklist_items`, or on `checklist_tech_tree_group_tasks` for a task from a roadmap, under the dev's RLS, with the address read from `address_geocodes` and never written, no new role and no new policy;
 one hundred and fifteen since v2.7584, whose given task is the New task window's own rows on `checklist_items`, its assignee tables, `checklist_instances` and `task_criteria` under the dev's RLS, no new role and no new policy;
 one hundred and thirteen since v2.7515, whose served copies are the Lien window's own `served_at` and `sends` on the filing's row under the dev's RLS, no new role and no new policy;
 one hundred and eleven since v2.7511, whose recorded lien filing is the Lien window's own `job_lien_filings` row and the desk item's mark under the dev's RLS, with its scan staged in the private `dev-seat-staging` bucket a dev reaches only inside their own folder, `docs/migrations/20261117100000_dev_seat_staging_bucket.md`, no new role;
@@ -1846,9 +1848,16 @@ Opening the scan goes through `open-contract-form-pdf` with `which: 'scan'` — 
 The signer never sees office boxes;
 `office_values` stores only non-sensitive office answers.
 
-### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`; the office's section v2.7646)
+### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`; the office's section v2.7646; the prompt v2.7652)
 
-It locks nothing yet: the prompt and the lock in the database are later steps.
+The prompt is the only lock until the database lock lands: a direct request still reads the job's rows.
+**The prompt** (`JobPapersGateModal` over `useJobsClosedToMe`) is drawn in place of the job window for anyone who owes a paper, every role, the office too.
+It shows the job's number and the papers' names and nothing else of the job.
+No clock starts on a job the caller owes a paper on: the picker, Job Mode's On my way and the job change all open the prompt instead.
+**Lists** hide a closed job's name, address, customer and note from every role but the office and the primary (`useJobsLockedInLists`, `jobPapersPromptOnlyRole`): Job Mode's card, the crew's schedule, the calendar and the clock-in picker show its number and a lock.
+The office's and a primary's lists keep showing the job, by the owner's call: for them the prompt at the job and the Needs you line are the lock.
+From the prompt the office can open the job's papers and who has signed, so a paper can come off without signing it first.
+`get-contract-signing-link-for-self` mints a link for a job's paper only for the roster person it was made for, matched by `people.account_user_id`.
 The section **Papers before this job opens** on the job window's Documents tab and the chip in the job's head are drawn for the office roles alone (`isOfficeRole`: dev, master technician, assistant, controller).
 `job_required_papers` holds the papers a job requires of everyone who opens it.
 The office (dev, master technician, assistant, controller) reads it through `is_office_staff()`.
@@ -3065,7 +3074,7 @@ Sending does not imply inbox access.
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
 | **Roadmap page** (`/roadmap`, v2.2916 — was a dev-only tab here): the header **Roadmap** entry + the page are for `canOpenRoadmap` — the RLS edit set (`is_checklist_tech_tree_staff_or_primary`); off in Task Mode for everyone. Sub-like / estimator / superintendent deep links land on Today with the #29 sentence (`roleGate` surface `roadmap`; helpers quiet). Old `?tab=roadmap` links redirect. The **GOALS** strip lives on this page now (it left Review). | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
 | Dashboard / Quickfill **"roadmap tasks need a person"** card (`kind: 'roadmap'`, v2.2916) — the office's since v2.6758 (punch list #188 row 37, `canSeeRoadmapNeedsYou`; a dev's alone before, though the page had widened) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Checklist → **History edit mode** and Review's acts for others (mark done, Delete, Edit / Forward, add for a person): the owner or a dev since v2.6758 (punch list #188 row 65, `canEditHistory` / `canActForOthers`; a dev's alone before) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Checklist → **History edit mode** and Review's acts for others (mark done, Delete, Edit / Forward, add for a person, and since v2.7697 **See <first name>'s Task Mode**, a look at that person's Today that writes nothing): the owner or a dev since v2.6758 (punch list #188 row 65, `canEditHistory` / `canActForOthers`; a dev's alone before) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Task cost lens** (`canSeeTaskCosts`, Review and the Roadmap; `checklist_item_costs` RLS): dev, controller and, since v2.6758 (punch list #188 row 66, `20261109003000_dev_gates_dashboard_checklist.sql`), the owner — not `has_payroll_access()` | ✅ | ✅ | ❌ (controller ✅) | ❌ | ❌ | ❌ | ❌ |
 | **Roadmap** tab (tech tree): **see** a roadmap row (`can_select_checklist_tech_tree_roadmap`) | ✅ all | ✅ all | ✅ all | ✅ if member **or task assignee** | ✅ if member **or task assignee** | ✅ all | ✅ if member **or task assignee** |
 | **Roadmap**: **create** roadmap, **delete** roadmap | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
