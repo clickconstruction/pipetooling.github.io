@@ -34,6 +34,8 @@ export function useOnSiteAddress(input: {
   reportSticker: (code: string | null) => void
   /** A job chosen by hand: the box the address asked for belongs to the job before it, so it is forgotten. */
   pickJob: (jobId: string) => void
+  /** The box whose screen is open, null on the list: the page folds its own tabs away while one is (Take from a box). */
+  openContainerId: string | null
 } {
   const { jobIds, onTab, selectedJobId, selectJob } = input
   const [searchParams, setSearchParams] = useSearchParams()
@@ -73,5 +75,5 @@ export function useOnSiteAddress(input: {
     },
     [selectedJobId, selectJob],
   )
-  return { asked, reportOpen, reportSticker, pickJob }
+  return { asked, reportOpen, reportSticker, pickJob, openContainerId }
 }

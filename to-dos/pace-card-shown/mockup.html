@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The pace card, shown</title>
+<style>
+  :root { --bg:#eef0f4; --surface:#fff; --text:#111827; --muted:#6b7280; --faint:#9ca3af; --border:#d8dce3; --strong:#b6bcc7; --green:#15803d; --red:#b91c1c; --blue:#2563eb; --amber:#f59e0b; --tint:#eff6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 -apple-system, "Inter", "Segoe UI", sans-serif; }
+  .wrap { max-width:1040px; margin:0 auto; padding:16px; }
+  h1 { font-size:20px; margin:4px 0 2px; }
+  .lede { color:var(--muted); margin:0 0 6px; font-size:14px; max-width:70ch; }
+  .note { font-size:12px; color:var(--muted); margin:0 0 18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:18px; align-items:start; }
+  h2 { font-size:14px; margin:0 0 6px; }
+  h2 small { font-weight:500; color:var(--muted); margin-left:6px; }
+  .card { background:var(--surface); border:2px solid var(--strong); border-radius:12px; padding:12px 13px; display:grid; gap:10px; }
+  .card.behind { border-color:#dc2626; }
+  .muted { color:var(--muted); font-size:12.5px; }
+  .head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .head b { font-size:17.5px; }
+  .ok { color:var(--green); } .bad { color:var(--red); }
+  .row { display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:10px; align-items:center; min-height:40px; position:relative; }
+  .row.link::after { content:""; position:absolute; left:10px; top:31px; bottom:-9px; width:2px; background:var(--strong); }
+  .dot { width:22px; height:22px; border-radius:50%; border:2px solid var(--faint); background:var(--surface); display:flex; align-items:center; justify-content:center; font-size:12px; position:relative; z-index:1; }
+  .done .dot { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .now .dot { border-color:var(--blue); } .now .dot::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--blue); }
+  .row .n { font-size:15px; font-weight:500; } .now .n { font-weight:700; } .next .n { color:var(--muted); }
+  .row .s { font-size:14px; font-weight:600; white-space:nowrap; }
+  .press { min-height:44px; padding:0 12px; border-radius:8px; border:none; background:var(--blue); color:#fff; font:inherit; font-weight:700; font-size:13.5px; }
+  .quiet { min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--strong); background:var(--surface); color:#374151; font:inherit; font-size:13.5px; flex:1; }
+  .bar { display:grid; grid-template-columns:3.2rem minmax(0,1fr) auto; gap:8px; align-items:center; font-size:12.5px; color:var(--muted); }
+  .bar i { display:block; height:10px; border-radius:5px; background:var(--border); position:relative; overflow:hidden; }
+  .bar i b { position:absolute; left:0; top:0; bottom:0; border-radius:5px; }
+  .bar span:last-child { color:var(--text); white-space:nowrap; }
+  .acts { display:flex; gap:8px; }
+  .link { color:var(--blue); font-weight:600; font-size:13.5px; }
+  .fold { border-top:1px solid var(--border); padding-top:8px; display:grid; gap:6px; }
+  .strip { height:20px; border-radius:6px; background:var(--border); position:relative; }
+  .strip b { position:absolute; left:0; top:0; bottom:0; width:13%; background:var(--amber); border-radius:6px 0 0 6px; }
+  .strip u { position:absolute; left:25%; top:-3px; bottom:-3px; width:4px; background:var(--blue); }
+  .short { background:var(--surface); border:1px solid var(--strong); border-radius:12px; padding:10px 16px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; }
+  .short b { display:block; font-size:16px; } .short span { display:block; font-size:13px; color:var(--muted); }
+  .thin { display:block; height:6px; border-radius:5px; background:var(--border); position:relative; overflow:hidden; margin-top:5px; }
+  .thin b { position:absolute; left:0; top:0; bottom:0; border-radius:5px; }
+  .chip { display:inline-block; border:1px solid var(--strong); border-radius:8px; padding:7px 10px; font-size:13px; margin:0 6px 6px 0; }
+  .chip.on { border-color:var(--blue); background:var(--tint); color:#1d4ed8; }
+  .field { border:1px solid var(--strong); border-radius:8px; padding:9px 10px; color:var(--faint); font-size:14px; }
+  .ask { border-color:var(--blue); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The pace card, shown <small style="font-weight:500;color:var(--muted);font-size:14px">punch list #396</small></h1>
+  <p class="lede">The superintendent's card on Job Mode, as it was and as built. The numbers do not change. What changes is how they are shown, and what he can do from the card.</p>
+  <p class="note">The job, its stages, the days and the hours are made up.</p>
+
+  <div class="grid">
+    <div>
+      <h2>As it was <small>about 90 words, 1 press</small></h2>
+      <div class="card">
+        <div class="muted">J2050 · Sample Clinic · 70 h budget ◆ from the bid, frozen at award · 9 h in, all on sub sheets</div>
+        <div class="head"><b>On pace.</b></div>
+        <div class="strip"><b></b><u></u></div>
+        <div class="muted">done 25% · hours 13% · 0 d at 24 h? · money 3%</div>
+        <div style="font-size:13.5px">Planned finish Nov 20. At this pace, Nov 20.</div>
+        <div class="muted fold">Signed off by the office at 25% on Nov 8 · no checklist on the stages yet · the crew's 25% is the signed-off figure.</div>
+        <div class="muted" style="background:#f3f4f6;border-radius:6px;padding:6px 8px">Scored this month: 9 h under the baseline · on the plan · bonus $0 · nothing kept this period</div>
+      </div>
+    </div>
+
+    <div>
+      <h2>As built, on pace <small>PR 1</small></h2>
+      <div class="card">
+        <div class="head"><b>On pace.</b><span class="muted">3 days of hours left</span></div>
+        <div>
+          <div class="row link done"><span class="dot">✓</span><span class="n">Underground</span><span></span></div>
+          <div class="row link now"><span class="dot"></span><span class="n">Rough-in</span><button class="press">15% · Set the %</button></div>
+          <div class="row link next"><span class="dot"></span><span class="n">Top-out</span><span></span></div>
+          <div class="row link next"><span class="dot"></span><span class="n">Trim</span><span></span></div>
+          <div class="row"><span class="dot" style="border-color:var(--green);color:var(--green)">⚑</span><span class="n ok" style="font-weight:600">Finish</span><span class="s ok">Fri, Nov 20</span></div>
+        </div>
+        <div class="bar"><span>Hours</span><i><b style="width:13%;background:var(--amber)"></b></i><span>9 of 70 h</span></div>
+        <div class="acts"><button class="quiet">My finish date</button><button class="quiet">Ask a master</button></div>
+        <div class="link">How this is figured ▾</div>
+      </div>
+      <p class="note" style="margin-top:8px">My finish date is PR 3. Ask a master is PR 2.</p>
+    </div>
+
+    <div>
+      <h2>As built, behind</h2>
+      <div class="card behind">
+        <div class="head"><b class="bad">4 days behind.</b><span class="muted">1 day of hours left</span></div>
+        <div>
+          <div class="row link done"><span class="dot">✓</span><span class="n">Underground</span><span></span></div>
+          <div class="row link done"><span class="dot">✓</span><span class="n">Rough-in</span><span></span></div>
+          <div class="row link now"><span class="dot"></span><span class="n">Top-out</span><button class="press">20% · Set the %</button></div>
+          <div class="row link next"><span class="dot"></span><span class="n">Trim</span><span></span></div>
+          <div class="row link"><span class="dot" style="border-color:var(--faint);color:var(--muted)">⚑</span><span class="n" style="color:var(--muted)">Finish</span><span class="s" style="color:var(--muted)">Fri, Nov 20</span></div>
+          <div class="row"><span class="dot" style="border-color:var(--red);color:var(--red)">⚑</span><span class="n bad" style="font-weight:700">At this pace</span><span class="s bad">Tue, Nov 24</span></div>
+        </div>
+        <div class="bar"><span>Hours</span><i><b style="width:88%;background:#dc2626"></b></i><span>62 of 70 h</span></div>
+        <div style="font-size:13.5px">62 h in and the percent reads 60%. If the work moved, set it.</div>
+        <div class="acts"><button class="quiet">My finish date</button><button class="quiet">Ask a master</button></div>
+        <div class="link">How this is figured ▾</div>
+      </div>
+    </div>
+
+    <div>
+      <h2>The folded row on the short page</h2>
+      <div class="short">
+        <div><b>On pace.</b><span>Finish Fri, Nov 20. Tap for the pace card.</span><span class="thin"><b style="width:25%;background:var(--blue)"></b></span><span class="thin"><b style="width:13%;background:var(--amber)"></b></span></div>
+        <div class="link">▾</div>
+      </div>
+      <p class="note" style="margin-top:8px">Blue is the work done. Amber is the hours in. Most days he reads this and does not open the card.</p>
+
+      <h2 style="margin-top:14px">How this is figured, open</h2>
+      <div class="card">
+        <div class="link">How this is figured ▴</div>
+        <div class="muted">J2050 · Sample Clinic · 70 h budget ◆ from the bid, frozen at award · 9 h in, all on sub sheets</div>
+        <div class="strip"><b></b><u></u></div>
+        <div style="font-size:13.5px">Planned finish Nov 20. At this pace, Nov 20.</div>
+        <div class="muted fold">Signed off by the office at 25% on Nov 8 · the crew's 25% is the signed-off figure.</div>
+        <div class="muted" style="background:#f3f4f6;border-radius:6px;padding:6px 8px">Scored this month: 9 h under the baseline · on the plan · bonus $0</div>
+      </div>
+      <p class="note" style="margin-top:8px">Everything the card used to say, word for word. A tap on a day of the strip still opens the day.</p>
+    </div>
+
+    <div>
+      <h2>Ask a master, pressed <small>PR 2</small></h2>
+      <div class="card">
+        <b style="font-size:16px">Ask the master on this job</b>
+        <div><span class="chip">Is 25% right?</span><span class="chip">What counts as done here?</span><span class="chip">The plan's date looks wrong</span></div>
+        <div class="field">Does rough-in include the roof drains?</div>
+        <div class="muted">Sent with: 25% done, 9 of 70 hours, finish Fri, Nov 20</div>
+        <button class="press">Send</button>
+      </div>
+      <p class="note" style="margin-top:8px">A job note that tags the master. It waits on him until he answers, and the answer comes back under You asked. It is not a Checklist task.</p>
+    </div>
+
+    <div>
+      <h2>My finish date <small>PR 3</small></h2>
+      <div class="card ask">
+        <b style="font-size:16px">Still finishing Fri, Nov 20?</b>
+        <div class="acts"><button class="press" style="flex:1">Yes</button><button class="quiet">Pick a day</button></div>
+      </div>
+      <p class="note" style="margin:8px 0 12px">The card asks two days before the plan's finish, and when the job falls behind.</p>
+      <div class="card">
+        <b style="font-size:16px">When does this job finish?</b>
+        <div><span class="chip">Thu, Nov 19</span><span class="chip on">Fri, Nov 20 · the plan</span><span class="chip">Mon, Nov 23</span><span class="chip">Another day</span></div>
+        <div class="field">Waiting on the inspector</div>
+        <button class="press">Save my date</button>
+      </div>
+      <p class="note" style="margin-top:8px">His word beside the plan. It moves neither the plan nor the score.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

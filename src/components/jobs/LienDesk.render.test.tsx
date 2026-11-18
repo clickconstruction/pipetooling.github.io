@@ -507,7 +507,7 @@ describe('LienDesk', () => {
     }
   })
 
-  it('By paper’s three paper tabs ride the title line, between the views and the tools, when the measured line holds them (v2.7789); a line too narrow keeps them leading the second, and the piles and Put a GC on notice stay on the line under', async () => {
+  it('By paper’s three paper tabs ride the title line, between the views and the tools, when the measured line holds them (v2.7789); a line too narrow keeps them leading the second, and the piles stay on the line under', async () => {
     const rect = Element.prototype.getBoundingClientRect
     // The bar as drawn on 2026-11-18: ← Back 90, the views 305, the three paper tabs 411, the four presses 231, the pile chips and the GC door at the widths given.
     // The line needs 90 + 305 + 411 + 231 and three 14.4 px gaps, 1,080.2 px: a 1,121 px bar's line (1,081) holds it and a 1,120 px one (1,080) does not.
@@ -556,13 +556,13 @@ describe('LienDesk', () => {
       expect(document.querySelector('[data-lien-desk-right]')).toBeNull()
       piles.unmount()
 
-      // Monthly notices with a GC to put on notice: the papers up, the GC door alone at the right of the line under.
-      Element.prototype.getBoundingClientRect = drawn(1252, { right: 166 })
+      // Monthly notices with a GC to put on notice: one line. The door left the bar in v2.7806; the press is on the job's own notice (the case under this one).
+      Element.prototype.getBoundingClientRect = drawn(1252)
       const notices = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={plain} initialKind="notice" backDoor={back} onPutGcOnNotice={vi.fn()} />)
       await settle()
-      expect(shape()).toEqual(['views', 'papers', 'tools', 'break', 'right'])
-      expect((document.querySelector('[data-lien-desk-right]') as HTMLElement).style.marginLeft).toBe('auto')
-      expect(document.querySelector('[data-lien-desk-right] button[aria-haspopup="menu"]')).not.toBeNull()
+      expect(shape()).toEqual(['views', 'papers', 'tools'])
+      expect(document.querySelector('[data-lien-desk-right]')).toBeNull()
+      expect(document.querySelector('.lienDeskTitleBar button[aria-haspopup="menu"]')).toBeNull()
       notices.unmount()
 
       // The edge: a 1,121 px bar holds the line and a 1,120 px one does not. Under it the papers lead the second line, as before, with the presses still up.
@@ -594,6 +594,61 @@ describe('LienDesk', () => {
       expect(papersLine()).toBe('second_line')
     } finally {
       Element.prototype.getBoundingClientRect = rect
+    }
+  })
+
+  it('Put a GC on notice is a press beside the GC’s name on a job’s own notice, and no part of the title bar on a computer (v2.7806, the owner’s pick: "Build 2")', async () => {
+    const onPutGcOnNotice = vi.fn()
+    const office = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" onPutGcOnNotice={onPutGcOnNotice} />)
+    await settle()
+    // The title bar holds no door to it, and no picker opens from it.
+    expect(document.querySelector('.lienDeskTitleBar button[aria-haspopup="menu"]')).toBeNull()
+    expect(document.querySelector('[data-lien-gc-picker]')).toBeNull()
+    expect(within(document.querySelector('.lienDeskTitleBar') as HTMLElement).queryByText(/on notice…/)).toBeNull()
+    // The job's heading: its GC's name, then the press, named for that GC.
+    const press = document.querySelector('[data-lien-gc-notice-press]') as HTMLButtonElement
+    expect(press.dataset.lienGcNoticePress).toBe('lowbeck')
+    expect(press.textContent).toBe('⚠ Put on notice…')
+    expect(press.getAttribute('aria-label')).toMatch(/^Put .+ on notice…$/)
+    expect(press.title).toContain('one approved run')
+    expect(press.previousElementSibling?.textContent).toMatch(/^· GC /)
+    expect(press.closest('[data-lien-pane-keep]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: press.getAttribute('aria-label')! })).toBe(press)
+    // One press opens the run for that GC, with no picker between.
+    fireEvent.click(press)
+    expect(onPutGcOnNotice).toHaveBeenCalledTimes(1)
+    expect(onPutGcOnNotice).toHaveBeenCalledWith('lowbeck')
+    office.unmount()
+
+    // The leader is the office too, so the press is his as the title bar's door was. A desk handed no run window draws none.
+    const leader = renderWithProviders(<LienDesk {...baseProps} authRole="master_technician" data={data(J650)} initialJobId="j650" initialKind="notice" onPutGcOnNotice={onPutGcOnNotice} />)
+    await settle()
+    expect((document.querySelector('[data-lien-gc-notice-press]') as HTMLElement).dataset.lienGcNoticePress).toBe('lowbeck')
+    leader.unmount()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" />)
+    await settle()
+    expect(document.querySelector('[data-lien-gc-notice-press]')).toBeNull()
+    // The heading still names the GC, in its one line as before.
+    expect(document.querySelector('[data-lien-pane-keep]')!.textContent).toMatch(/· GC /)
+  })
+
+  it('a phone keeps Put a GC on notice as a row of More, which opens the picker as a sheet, and draws no press on the job (v2.7806)', async () => {
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      const onPutGcOnNotice = vi.fn()
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="notice" onPutGcOnNotice={onPutGcOnNotice} />)
+      await settle()
+      expect(document.querySelector('[data-lien-gc-notice-press]')).toBeNull()
+      fireEvent.click(document.querySelector('[data-lien-desk-more="door"]') as HTMLElement)
+      fireEvent.click(screen.getByRole('button', { name: /Put a GC on notice…/ }))
+      await settle()
+      const sheet = document.querySelector('[data-lien-gc-picker]') as HTMLElement
+      expect(sheet).not.toBeNull()
+      fireEvent.click(sheet.querySelector('[data-lien-gc-option="lowbeck"]') as HTMLElement)
+      expect(onPutGcOnNotice).toHaveBeenCalledWith('lowbeck')
+    } finally {
+      window.matchMedia = before
     }
   })
 
@@ -739,7 +794,9 @@ describe('LienDesk', () => {
     const lineEl = document.querySelector('[data-lien-public-board-line]') as HTMLElement
     expect(lineEl.textContent).toContain('1 job sits on public property and is still on the lien path')
     const bin = document.querySelector('[data-lien-public-bin]') as HTMLElement
-    expect(bin.textContent).toContain('Public jobs · bond claim')
+    // The box opens folded to one line that still counts the job whose bond nobody knows (punch list #390).
+    expect(bin.textContent).toBe('Public jobs · bond claim1 job · $2,918 unpaid1 to get the bondShow ▾')
+    fireEvent.click(within(bin).getByRole('button', { expanded: false }))
     expect(bin.textContent).toContain('not on the attorney’s list, the job is still being worked')
     expect((document.querySelector('[data-lien-board-column="affidavit"]') as HTMLElement).contains(bin)).toBe(true)
     fireEvent.click(within(lineEl).getByRole('button', { name: 'Review it ›' }))
@@ -753,7 +810,9 @@ describe('LienDesk', () => {
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={{ ...data(J650, [], true), offPathJobs: [off] }} initialKind="next" />)
     await settle()
     const bin = document.querySelector('[data-lien-off-path-bin]') as HTMLElement
-    expect(bin.textContent).toContain('Off the lien path')
+    // Folded as the public box is (punch list #390): one line, then a press on it opens the rows.
+    expect(bin.textContent).toBe('Off the lien path1 job · $1,050 unpaidShow ▾')
+    fireEvent.click(within(bin).getByRole('button', { expanded: false }))
     expect(bin.textContent).toContain('977 · ZZ Test Trip Charges')
     expect(bin.textContent).toContain('Lowbeck Contracting · off since Sep 10, by Dana · not on the attorney’s list')
     expect(bin.textContent).toContain('The bill is for trips to pick up checks.')
@@ -769,7 +828,9 @@ describe('LienDesk', () => {
     const off = { jobId: 'j977', number: '977', name: 'ZZ Test Trip Charges', gcName: '', unpaid: 1050, reason: 'Not for work on the property.', since: null, byUserId: null, attorneySince: null, status: 'billed', papers: [] }
     renderWithProviders(<LienDesk {...baseProps} authRole="estimator" data={{ ...data(J650, [], true), offPathJobs: [off] }} initialKind="next" />)
     await settle()
-    expect(document.querySelector('[data-lien-off-path-bin]')).toBeTruthy()
+    const bin = document.querySelector('[data-lien-off-path-bin]') as HTMLElement
+    fireEvent.click(within(bin).getByRole('button', { expanded: false }))
+    expect(document.querySelectorAll('[data-lien-off-path-bin-row]')).toHaveLength(1)
     expect(document.querySelector('[data-lien-off-path-bin-back]')).toBeNull()
   })
 
@@ -5668,5 +5729,59 @@ describe('LienDesk — the last day of work, set from under the timeline’s LAS
     fireEvent.click(screen.getByTestId('lien-last-work-confirm-set'))
     await waitFor(() => expect(onCalendarChanged).toHaveBeenCalledWith('last_work'))
     await waitFor(() => expect(screen.queryByTestId('lien-last-work-confirm')).toBeNull())
+  })
+})
+
+describe('LienDesk — the closed end on the Board (the owner’s pick of 2026-11-18)', () => {
+  // A made-up approved affidavit whose day passed four days before TODAY with nothing filed.
+  const lateRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-10', is_sub: true, noticed: true, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: true, has_legal: true, homestead: false, desk_item_id: 'it-a', desk_status: 'approved' }
+  const lateItem = { id: 'it-a', job_id: 'j650', kind: 'affidavit', months: [], status: 'approved', fields: {}, created_at: '2026-09-01T14:00:00Z', voided_at: null, sent_at: null } as unknown as LienDeskItemRow
+  const withLate = () => {
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [], true)
+    d.affidavitRows = [lateRow]
+    d.affidavits = buildLienAffidavitQueue([lateRow], [lateItem], TODAY)
+    return d
+  }
+  const closedChip = () => document.querySelector('[data-lien-board-chips="affidavit:missed"] [data-lien-board-chip="j650"]') as HTMLButtonElement
+
+  it('an approved affidavit past its day stands in Lien day passed, not in Ready to file, and the print does not count it', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withLate()} initialKind="next" />)
+    await settle()
+    const bin = document.querySelector('[data-lien-board-bin="affidavit:missed"]') as HTMLElement
+    expect(bin.closest('[data-lien-board-closed]')!.getAttribute('data-lien-board-closed')).toBe('affidavit')
+    expect(bin.textContent).toContain('Lien day passed · not filed')
+    expect(closedChip().getAttribute('data-closed')).toBe('yes')
+    expect(document.querySelector('[data-lien-board-chips="affidavit:ready"] [data-lien-board-chip]')).toBeNull()
+    expect(document.querySelector('[data-lien-board-print-press="print_affidavits"]')).toBeNull()
+    expect(document.querySelector('[data-lien-board-closed-press="affidavit:missed"]')!.textContent).toBe('Answer 1 ›')
+  })
+
+  it('the chip and the bin’s press open the window, and its date door goes to the last day of work', async () => {
+    const onOpenCalendarLastWork = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withLate()} initialKind="next" onOpenCalendarLastWork={onOpenCalendarLastWork} />)
+    await settle()
+    expect(closedChip().getAttribute('aria-label')).toContain('See what closed and answer it')
+    fireEvent.click(closedChip())
+    const win = await screen.findByTestId('lien-closed-window')
+    expect(win.getAttribute('aria-label')).toBe('The lien day has passed')
+    expect(win.getAttribute('data-lien-closed-job')).toBe('j650')
+    expect(win.querySelector('[data-lien-closed-sub]')!.textContent).toContain('$33,500 unpaid')
+    expect(win.querySelector('[data-lien-closed-what]')!.textContent).toBe('The last day to file a lien on this job was Thursday, Sep 10.')
+    // One paper in the bin: nothing to walk.
+    expect(win.querySelector('[data-lien-closed-walk]')).toBeNull()
+    fireEvent.click(win.querySelector('[data-lien-closed-press="date"]') as HTMLButtonElement)
+    expect(onOpenCalendarLastWork).toHaveBeenCalledWith('j650')
+    await waitFor(() => expect(screen.queryByTestId('lien-closed-window')).toBeNull())
+    fireEvent.click(document.querySelector('[data-lien-board-closed-press="affidavit:missed"]') as HTMLButtonElement)
+    expect((await screen.findByTestId('lien-closed-window')).getAttribute('data-lien-closed-kind')).toBe('gone')
+  })
+
+  it('a viewer with no door to the last day of work reads the date answer dead', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withLate()} initialKind="next" />)
+    await settle()
+    fireEvent.click(closedChip())
+    const win = await screen.findByTestId('lien-closed-window')
+    expect((win.querySelector('[data-lien-closed-press="date"]') as HTMLButtonElement).disabled).toBe(true)
+    expect((win.querySelector('[data-lien-closed-press="keep"]') as HTMLButtonElement).disabled).toBe(false)
   })
 })
