@@ -3667,6 +3667,7 @@ Since v2.7702 a site with a trip offers a fourth cut, by trip (*Trip*, below).
 
 **Trip** (punch list #379;
 the rules v2.7653, the tables v2.7655, the Trips look v2.7661, Looks like a trip and What shows it v2.7676, the Job window's line, the clock line's tag and the Plans by date lane v2.7685, What it cost, the Scoreboard's cut by trip and the trip log v2.7702, the number and the link v2.7707): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
+the rules v2.7653, the tables v2.7655, the Trips look v2.7661, Looks like a trip and What shows it v2.7676, the Job window's line, the clock line's tag and the Plans by date lane v2.7685, the phone v2.7701): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
 A trip is people, and for each person their days, and each day is one of three kinds: **Getting ready**, **On the road** or **At the site**.
 A day off in the middle is a day that is not there.
 Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
@@ -3696,8 +3697,13 @@ Both figures come from reads the page already makes, the Scoreboard's labor and 
 The **cut by trip** is the Scoreboard's fourth cut, offered only on a site with a trip (`lib/trips/tripScoreboardCut.ts`, `components/trips/ScoreboardTripRows.tsx`): a row for each trip that has gone out, newest first, filling Hours, Days, Labor, Parts with its card and bank charges in the days and Cost with the two together, and a last row **At home for the site** that fills Hours, Days, Labor and Parts as the site less its trips.
 Subs and Overhead are not cut by trip and Earned and Profit belong to a job, so all four are blank on every row, the last row has no Cost, and Hours, Labor and Parts add up to the site's own totals.
 The **trip log** is the paper **Print the trip log** opens beside **+ Trip** (`lib/trips/tripLog.ts`): every trip oldest first with its days, who went, what for, who asked, how it went, its jobs, its billing and its hours, a totals line, no dollars whoever prints it, and its copy filed as kind `trip_log` (`SENT_COPIES.md`).
+The **Trips lane** is the lane under the sets on the Plans look's By date view of a site that has a trip (`lib/trips/tripLane.ts`, `tripRuns` and `tripBarShape` in `lib/plans/plansByDate.ts`): each trip a bar coloured day by day by its kind, a planned one faint, and a bar's card carries **Open the Trips look**.
+The **phone's trip** is Job Mode's offer on the job somebody is clocked in on (`components/trips/JobModeTrip.tsx` over `hooks/useTripPhone.ts` and `lib/trips/tripPhone.ts`, fed by `trip_phone_state` and written through `trip_phone`): a question after the clock in on a site that is a trip from home, with **Start a trip**, **Join** for a crewmate's open trip and **Just clock in**, which the device remembers for the job until tomorrow.
+While the person's own trip is open the card shows a banner under the trip's number (*Trip 5 · day 3 at Heron Point*, the number the database hands out, left out on a trip made before numbers), before and after the clock in, with **Heading home**, which paints today On the road, and **End the trip**, which stamps the trip ended and keeps how it went.
+A person with an open trip who is clocked in on a job of its site has today painted by itself, the kind read from the open clock session (`tripKindOfSession`, `tripQuietPaint`): On the road while it is an On my way drive that has not arrived, At the site otherwise and from the moment of **I'm here**, never a site day turned into a road day, a Getting ready day left as painted, and nothing after **Heading home** in the same session.
+The question and that paint need a clock session that already exists, and nothing in the clock's path waits on a trip read or act, so none can hold up a clock in or a clock out.
 Access: `ACCESS_CONTROL.md`, *Trips*.
-Guide: `keep-a-trip-to-a-far-site`.
+Guides: `keep-a-trip-to-a-far-site`, `start-a-trip-from-your-phone`.
 
 ### Submittals tab: the road, the strip, the walkthrough and the GC's page beside it (v2.4067–v2.4189)
 Bids → Submittals reads as one **road** of eight steps (v2.4090;

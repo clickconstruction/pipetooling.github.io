@@ -3,13 +3,15 @@
  * A site's trips are few, so one read holds them whole, each with its people and its jobs. A trip saves
  * through the one door, `trip_save`, whole or not at all, and a delete takes its people and jobs with it.
  * The days somebody said were **Not a trip** (PR 5) are read by the site, kept one row a person, and
- * deleted by their ids, which is the undo. Nothing here reads or writes a clock row for change: the
+ * deleted by their ids, which is the undo. The phone's two calls (PR 7b; migration 20261118030000) are here
+ * too: `trip_phone_state` and `trip_phone`. Nothing here reads or writes a clock row for change: the
  * punches are read, never written.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { PUNCH_COLUMNS, type PunchRow } from './tripHourRows'
+import type { TripPhoneAct } from './tripPhone'
 import { TRIP_DISMISSAL_SELECT, type TripDismissalInsert, type TripDismissalRow } from './tripOffers'
 import { tripFromRow, tripNumberOf, tripSavePayload, TRIP_SELECT, type TripRecord, type TripRosterPerson, type TripRow } from './tripRecord'
 
@@ -115,4 +117,32 @@ export async function deleteTripDismissals(ids: ReadonlyArray<string>): Promise<
   if (ids.length === 0) return
   const { error } = await db.from('trip_dismissals').delete().in('id', [...ids])
   if (error) throw error
+}
+
+/**
+ * What the phone needs before it asks about a trip on a job (PR 7b): the reply of `trip_phone_state`, as it
+ * came. `parseTripPhoneState` reads it. One small call, made for somebody already clocked in on the job.
+ */
+export async function readTripPhoneState(jobId: string): Promise<unknown> {
+  const { data, error } = await db.rpc('trip_phone_state', { p_job_id: jobId })
+  if (error) throw error
+  return data as unknown
+}
+
+/** `trip_phone`'s own refusals: who may not press (42501) and a press it cannot take (22023). Its words are the screen's. */
+const TRIP_PHONE_REFUSALS: ReadonlySet<string> = new Set(['42501', '22023'])
+
+/**
+ * One of the phone's four acts through `trip_phone`: start, join, day or end. It writes the caller's own
+ * row on a trip and never a clock row, a bill or a cost. The function refuses in plain words (training
+ * mode, a trip that has ended, a job on no site), so its own refusal is thrown as those words alone:
+ * `formatErrorMessage` would otherwise read a 42501 as the house's *no access* sentence and lose them.
+ * Anything else (a lost signal, a function that is not there yet) is thrown as it came.
+ */
+export async function sendTripPhoneAct(act: TripPhoneAct): Promise<void> {
+  const { error } = await db.rpc('trip_phone', { p: act })
+  if (!error) return
+  const refusal = error as { code?: string; message?: string }
+  if (TRIP_PHONE_REFUSALS.has(refusal.code ?? '') && refusal.message?.trim()) throw new Error(refusal.message.trim())
+  throw error
 }

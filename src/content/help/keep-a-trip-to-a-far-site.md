@@ -342,4 +342,4 @@ A browser can block the print window. The look then says so beside the link. All
 
 ## Who can do this
 
-The office, the leaders and the controller read and change every trip. The related guide is [see everything on a development in one place](/help/see-everything-on-a-development).
+The office, the leaders and the controller read and change every trip. The crew starts its own trip in Job Mode, as [start a trip from your phone](/help/start-a-trip-from-your-phone) shows. The related guide is [see everything on a development in one place](/help/see-everything-on-a-development).
