@@ -2,7 +2,7 @@
 name: "Lien desk To do: fold the Public jobs box, and put the records door on the tools row"
 number: 390
 group: ready
-status: drawn 2026-11-17 in #383's option B · the owner asked the same day for these two as a card for another session · nothing built
+status: drawn 2026-11-17 in #383's option B · saved as a card the same day · the two choices of part 2 drawn for the owner · his answer on By paper not given yet · nothing built
 summary: >
   The last two parts of the drawing the owner picked for the Lien desk's To do page (#383, option B). The
   Public jobs box under the lien affidavits is as tall as its rows, 244 px with two jobs, and the drawing
@@ -12,21 +12,25 @@ summary: >
 next: Build after PR #8628 merges. Part 1 first, the fold. Then part 2, the door, which needs one answer from the owner on By paper.
 size: S (two small PRs, or one)
 blocker: PR #8628 on main first, since both parts touch the desk it changes.
-mockup: not required — both are drawn in #383's mock-up, option B, as a dev
 opinion: build — part 1 gives back about 200 px under the chart, and part 2 a whole line over it
 ver: v2.7277 · v2.7311 · v2.7443 · v2.7490 · v2.7526
 ---
 
 # Lien desk To do: fold the Public jobs box, and put the records door on the tools row (#390)
 
-Both parts are drawn in [#383's mock-up](lien-desk-to-do-layout/mockup.html), served at
-`/to-dos/lien-desk-to-do-layout/mockup.html#b-owner`. Pick **B · Acts in the bins**. The Public jobs line
-is under the lien affidavits. The records door is in the title bar, left of **§ Rules**.
+The mock-up is [mockup.html](mockup.html), served at
+`/to-dos/lien-board-public-fold-and-records-door/mockup.html`. It was drawn on 2026-11-17 when the owner
+asked to see the two choices of part 2 before deciding. Each title bar is drawn to scale from the widths
+`lienDeskTitleBar.ts` measured on the live desk, and its lines come from the desk's own two rules restated.
+The picker switches the window between 1,440 and 1,280 wide, and to dark. `#1280` and `#1440-dark` open on
+a state. Part 1's fold is drawn under it, closed and open. Made-up counts, jobs, names and figures only.
+
+Both parts were first drawn in [#383's mock-up](../lien-desk-to-do-layout/mockup.html), option B.
 
 ## The ask, in the owner's words
 
 2026-11-17, on the Lien desk's To do page, after three whole-page options were drawn
-([`lien-desk-to-do-layout`](lien-desk-to-do-layout/README.md), #383):
+([`lien-desk-to-do-layout`](../lien-desk-to-do-layout/README.md), #383):
 
 > Build B but with the action button in the same line as the title of the card it is in instead of at
 > the bottom.
@@ -39,11 +43,11 @@ B was built that day in PR #8628, except these two parts. Then:
 
 ### Today
 
-`LienPublicBinView` in [`LienPublicBoardParts.tsx`](../src/components/jobs/LienPublicBoardParts.tsx) draws
+`LienPublicBinView` in [`LienPublicBoardParts.tsx`](../../src/components/jobs/LienPublicBoardParts.tsx) draws
 the bin *Public jobs · bond claim* (v2.7443, Taunya's ask of 2026-11-16): a header with the title, the
 money and the count, then a row a job, then *Put a job back on the lien path…*. `LienDesk.tsx` hands it to
 the Board as `underAffidavits`, with `LienOffPathBinView`
-([`LienOffPathBoardParts.tsx`](../src/components/jobs/LienOffPathBoardParts.tsx), v2.7526) under it when a
+([`LienOffPathBoardParts.tsx`](../../src/components/jobs/LienOffPathBoardParts.tsx), v2.7526) under it when a
 job is off the lien path. With two jobs the box is 244 px tall, as on the owner's screenshot. It stands
 under **Served**, between the chart and the find box.
 
@@ -59,7 +63,7 @@ opens the box as it is today, and **Hide ▴** folds it again.
 - The same fold in `LienOffPathBinView`. The two have one shape, and one folded beside one open would
   read as a mistake.
 - **Keep what needs a person on the folded line.** A row whose bond nobody knows carries the chip *get
-  the bond* (`buildLienPublicBin` in [`lienPublicProperty.ts`](../src/lib/jobs/lienPublicProperty.ts),
+  the bond* (`buildLienPublicBin` in [`lienPublicProperty.ts`](../../src/lib/jobs/lienPublicProperty.ts),
   `chip`). Folded, that chip is hidden. So the folded line should count them, like *1 to get the bond*,
   in the chip's amber. This is the builder session's recommendation, not something the owner asked for.
   Put the words in the kernel beside `totalWords`, with a test.
@@ -86,7 +90,7 @@ four tools: **§ Rules**, ☎, **?** and **Share**. The second holds *An owner a
 the right, under **Share**. On By paper the second line also holds the paper tabs, the piles and *Put a
 GC on notice…*.
 
-The rule is `lienDeskTitleBarLayout` in [`lienDeskTitleBar.ts`](../src/lib/jobs/lienDeskTitleBar.ts). Its
+The rule is `lienDeskTitleBarLayout` in [`lienDeskTitleBar.ts`](../../src/lib/jobs/lienDeskTitleBar.ts). Its
 branch for a desk with the door reads `{ tools: 'title_line', door: 'second_line', breakLine: true }`
 whatever the measured line has room for.
 
@@ -124,6 +128,18 @@ The title line with all five tools needs 1,038 px of window by the file's own me
    GC on notice…*. This keeps v2.7311 on the view it was asked for, and the door then moves when the view
    changes.
 
+What the mock-up found, by the rule's own numbers:
+
+| Lines in the title bar | To do · 1,440 | To do · 1,280 | By paper · 1,440 | By paper · 1,280 |
+|---|---|---|---|---|
+| Today | 2 | 2 | 2 | 3 |
+| Choice 1 | 1 | 1 | 2 | 2 |
+| Choice 2 | 1 | 1 | 2 | 3 |
+
+By paper is drawn on Lien affidavits, the widest line the desk draws. At 1,280 wide its second line cannot
+hold the piles beside *Put a GC on notice…* and the door, so the two fall under the piles as a third line.
+With the door on the title line, *Put a GC on notice…* alone fits beside the piles.
+
 Ask before building part 2. Part 1 needs no answer.
 
 ### Files
@@ -147,10 +163,10 @@ Ask before building part 2. Part 1 needs no answer.
 
 ## Related
 
-- [`lien-desk-to-do-layout`](lien-desk-to-do-layout/README.md) (#383) is the look, the three options and
+- [`lien-desk-to-do-layout`](../lien-desk-to-do-layout/README.md) (#383) is the look, the three options and
   what shipped of B.
-- [`lien-to-do-one-run`](lien-to-do-one-run/README.md) (#362) owns the run and the list under the Board.
-- [`lien-desk-on-a-phone`](lien-desk-on-a-phone/README.md) (#352) owns the phone's More, where the records
+- [`lien-to-do-one-run`](../lien-to-do-one-run/README.md) (#362) owns the run and the list under the Board.
+- [`lien-desk-on-a-phone`](../lien-desk-on-a-phone/README.md) (#352) owns the phone's More, where the records
   door is a row and does not change.
 
 ## Where it stands
