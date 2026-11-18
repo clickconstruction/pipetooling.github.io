@@ -35,3 +35,5 @@ The table holds no rows. A column with a constant default adds no rewrite, and e
 ## Verify after the push
 
 Read `help_feedback` through the dev seat with `select=id,kind,page_key,page_path,context`: the columns answer, with no rows.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

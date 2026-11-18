@@ -13,3 +13,5 @@ The last step of the card: the `agreements_on_file` view (`20261117200000`) gain
 **The bed**: `agreements-on-file` gains a GC project with two sends of our contract, a sent and a draft statement of work and a company's agreement. It proves the three lines as a dev, the newest send as the owner contract's line, the draft absent, the find box reaching a project and a company, and each role's reach: the owner and the controller read the statement of work and not the owner contract, an assistant only the company's agreement. Its runner now re-applies this file, the view's newest definition.
 
 Apply order: the client reads only columns the view already has, so a client ahead of the push lists no GC paper and breaks nothing. Push after the merge. No types regen for it (the view's columns are unchanged).
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

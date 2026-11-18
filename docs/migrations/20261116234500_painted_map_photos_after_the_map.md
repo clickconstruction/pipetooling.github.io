@@ -65,3 +65,5 @@ Proved on prod, read only:
 - **The helper**: a signed-out call to `painted_map_stands` answers `42501 permission denied for function painted_map_stands`, so the function is there and closed to `anon`.
 - **The two policies and the helper**, read from prod's catalog on 2026-11-17 with one `SELECT` on `pg_policies` and `pg_proc`: each policy's text is the migration's, the insert policy is untouched, and `painted_map_stands` is `SECURITY DEFINER` with `search_path` pinned to `public`, returns `boolean`, and may be run by `authenticated` and not by `anon`.
 - **The walks** on the live app, in the v2.7473 fragment: as the office, and as a maker who is not office.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

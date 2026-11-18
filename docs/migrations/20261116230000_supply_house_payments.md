@@ -31,3 +31,5 @@ Supply house payments, the ground (the owner, 2026-11-16: record a payment to a 
 **Order.** Push right after the merge. An older client keeps working either way: before the push nothing has changed, and after it a by-hand Mark paid or Apply Payment makes its payments through the trigger.
 
 **After the push:** `npm run gen-types:linked`, then `node scripts/build-dev-mcp-catalog.mjs`, in one types PR.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

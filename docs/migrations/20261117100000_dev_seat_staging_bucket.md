@@ -10,3 +10,5 @@ A file waits here between a plan and its apply: the plan hands back a signed upl
 No table, so no fence calls. Idempotent: the bucket insert is `ON CONFLICT DO NOTHING` and each policy is dropped before it is made.
 
 **Apply order**: additive, and nothing reads the bucket until the next PR. Push at any quiet moment after the merge. The next PR's verbs need it, so push before that PR's function is deployed.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

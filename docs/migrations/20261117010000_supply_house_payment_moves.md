@@ -17,3 +17,5 @@ All four are `SECURITY INVOKER` and check `is_office_staff()` themselves; grante
 **Order.** Push right after the merge. Until then the client's Move, Take it back, Remove and Put it back are refused by the API with the missing function's name; the reads fail soft (no events), and recording a payment is unaffected.
 
 **After the push:** `npm run gen-types:linked`, then `node scripts/build-dev-mcp-catalog.mjs`, in one types PR.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

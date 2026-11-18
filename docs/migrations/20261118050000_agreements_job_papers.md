@@ -25,3 +25,5 @@ The columns are the same and in the same order, so the tab, its search and every
 No client change rides with it, so the push follows the merge.
 
 Proved by CI's `agreements-on-file` bed (`scripts/pgtest-agreements-on-file.sh`), which now re-applies this file as its second run, with a section for job papers added to `supabase/tests/agreements_on_file/20_scenario.sql`.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

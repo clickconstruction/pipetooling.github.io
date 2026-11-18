@@ -19,3 +19,5 @@ No new table, so no fence calls. `signed_document_url` is not touched: it stays 
 **No cron here.** The sweep is switched on by PR 4's migration, after PR 3 teaches the Contract sweep's Drive pass to leave a filed copy alone.
 
 **Order**: push this right after the merge, then deploy `job-contract-drive`, which reads the columns on every call. Nothing in the client reads them yet, so the Pages deploy does not wait on the push.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

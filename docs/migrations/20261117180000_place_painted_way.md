@@ -42,3 +42,5 @@ Nothing changes. A map on a job is already read by the job's crew and the office
 ## Order
 
 Additive and idempotent. No `CREATE TABLE`, so no fence calls. The push can come any time after the merge. **The client that follows must not merge before the push**: it names the column in the read of every place.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

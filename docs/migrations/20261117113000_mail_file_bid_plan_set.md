@@ -11,3 +11,5 @@ The constraint is added `NOT VALID` and validated in the next statement, so the 
 **Apply order**: push right after the merge and before `bid-plan-set-files` is deployed, since the function writes the column. No client reads it until PR 2.
 
 **Pushed** 2026-11-16, right after #8440 merged, with `bid-plan-set-files` deployed after it and `dev-mcp` redeployed for its catalog. The generated types took the column in the types PR that followed.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

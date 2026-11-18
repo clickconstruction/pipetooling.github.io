@@ -36,3 +36,5 @@ Read back on prod, read-only, the same hour:
 - The function's rule read against each role's sample account: assistant, controller, estimator and master technician may rate; helpers, primary, subcontractor and superintendent may not. Under the old rule the estimator was the one refused.
 - The sample estimator reads version 2 as the newest published list, which is what the client asks.
 - `gc_difficulty_ratings` held no row before or after: no rating was saved to check this.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

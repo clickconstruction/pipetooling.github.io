@@ -9,3 +9,5 @@ The backfill is this row's first run: every signed paper already on file is due 
 Unscheduled first if it exists, so a second run leaves one row. No table and no column, so nothing to fence.
 
 **Order**: push after `20261117213000` (the columns) and after `job-contract-drive` and `drive-contract-scan` are deployed. Pushed before the function exists, each call answers 404 and nothing is filed until it is deployed.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

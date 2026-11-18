@@ -41,3 +41,5 @@ No table is made, so no fence calls. Additive and idempotent: `ADD COLUMN IF NOT
 ## Apply order
 
 Nothing reads the columns or calls the function until the client PRs that follow, so the push can come any time after this merges and before those. Pushed on 2026-11-16 at about 22:45 UTC with `scripts/db-push.sh`, from a checkout equal to `origin/main` (465bdfdfc), where it was the only pending migration. Read back: `check:migration-drift` holds 1338 files against 1338 versions, and the four columns read NULL on real jobs.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

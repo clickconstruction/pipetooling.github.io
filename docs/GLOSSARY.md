@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -1587,6 +1587,7 @@ on a phone it sits in the header beside Search, because Job Mode's bars own the 
 The box opens three **starts**, *I want…*, *This page is confusing because…* and *Something went wrong when I…*;
 the start is the note's `kind` (`want`, `confusing`, `broken`), and the last two may be sent with no words.
 **Goes with your note** lists everything a note carries before the press: the page, the open window, the role, the screen, the modes on, the version, the last error line shown and the calls the server refused.
+The version is the newest release note in the build, on the note from the moment the box opens since v2.7742 (`APP_VERSION` in `lib/appVersion.ts`, built into `virtual:app-version`): before it the box read the version by a lazy import, and a note sent in that half second went without one.
 A note never carries a picture of the screen.
 A lost signal is never part of a note: the outbox keeps that press, so the no-connection line and a call with no answer are left out (`isLostSignalLine`).
 Two more doors open the same box since v2.7660: a **Tell the dev** press on every error toast, which opens on *Something went wrong* with the error attached and is never drawn for a lost signal (`errorLineOffersNote`), and a wrench in the title row of the shared window on a phone (`ResponsiveModalShell`, `tellTheDevDoor`).
@@ -3682,8 +3683,7 @@ Since v2.7702 a site with a trip offers a fourth cut, by trip (*Trip*, below).
  the office team reads every request that carries a reference.
 
 **Trip** (punch list #379;
-the rules v2.7653, the tables v2.7655, the Trips look v2.7661, Looks like a trip and What shows it v2.7676, the Job window's line, the clock line's tag and the Plans by date lane v2.7685, What it cost, the Scoreboard's cut by trip and the trip log v2.7702, the number and the link v2.7707): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
-the rules v2.7653, the tables v2.7655, the Trips look v2.7661, Looks like a trip and What shows it v2.7676, the Job window's line, the clock line's tag and the Plans by date lane v2.7685, the phone v2.7701): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
+the rules v2.7653, the tables v2.7655, the Trips look v2.7661, Looks like a trip and What shows it v2.7676, the Job window's line, the clock line's tag and the Plans by date lane v2.7685, the phone v2.7701, What it cost, the Scoreboard's cut by trip and the trip log v2.7702, the number and the link v2.7707): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
 A trip is people, and for each person their days, and each day is one of three kinds: **Getting ready**, **On the road** or **At the site**.
 A day off in the middle is a day that is not there.
 Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
@@ -3713,7 +3713,6 @@ Both figures come from reads the page already makes, the Scoreboard's labor and 
 The **cut by trip** is the Scoreboard's fourth cut, offered only on a site with a trip (`lib/trips/tripScoreboardCut.ts`, `components/trips/ScoreboardTripRows.tsx`): a row for each trip that has gone out, newest first, filling Hours, Days, Labor, Parts with its card and bank charges in the days and Cost with the two together, and a last row **At home for the site** that fills Hours, Days, Labor and Parts as the site less its trips.
 Subs and Overhead are not cut by trip and Earned and Profit belong to a job, so all four are blank on every row, the last row has no Cost, and Hours, Labor and Parts add up to the site's own totals.
 The **trip log** is the paper **Print the trip log** opens beside **+ Trip** (`lib/trips/tripLog.ts`): every trip oldest first with its days, who went, what for, who asked, how it went, its jobs, its billing and its hours, a totals line, no dollars whoever prints it, and its copy filed as kind `trip_log` (`SENT_COPIES.md`).
-The **Trips lane** is the lane under the sets on the Plans look's By date view of a site that has a trip (`lib/trips/tripLane.ts`, `tripRuns` and `tripBarShape` in `lib/plans/plansByDate.ts`): each trip a bar coloured day by day by its kind, a planned one faint, and a bar's card carries **Open the Trips look**.
 The **phone's trip** is Job Mode's offer on the job somebody is clocked in on (`components/trips/JobModeTrip.tsx` over `hooks/useTripPhone.ts` and `lib/trips/tripPhone.ts`, fed by `trip_phone_state` and written through `trip_phone`): a question after the clock in on a site that is a trip from home, with **Start a trip**, **Join** for a crewmate's open trip and **Just clock in**, which the device remembers for the job until tomorrow.
 While the person's own trip is open the card shows a banner under the trip's number (*Trip 5 · day 3 at Heron Point*, the number the database hands out, left out on a trip made before numbers), before and after the clock in, with **Heading home**, which paints today On the road, and **End the trip**, which stamps the trip ended and keeps how it went.
 A person with an open trip who is clocked in on a job of its site has today painted by itself, the kind read from the open clock session (`tripKindOfSession`, `tripQuietPaint`): On the road while it is an On my way drive that has not arrived, At the site otherwise and from the moment of **I'm here**, never a site day turned into a road day, a Getting ready day left as painted, and nothing after **Heading home** in the same session.
@@ -6100,7 +6099,8 @@ the job's History then carries a grey *Lien notice* line for the close (v2.7359,
 Nothing moves to Sent without its tracking number.
 **What was mailed** (v2.7461, the owner's ask of 2026-11-16): a printed row's **Add what was mailed** takes a scan or a photo of the papers in the envelope, up to 10 MB;
 the file goes into the job's Drive folder under Sent by us (`drive-link` `put`), the notice remembers it in `job_lien_desk_items.mailed_copies` (`lienMailedCopies.ts`, `lienMailedCopiesIo.ts`) and the mailing's record takes the first link as its saved copy;
-since v2.7525 a retainage notice's row has the press too (its file reads *Retainage notice as mailed*), and **Take off** beside a listed file asks first and then drops it from the notice's list, the file staying in Drive (`LienRunMailedCopies.tsx`).
+since v2.7525 a retainage notice's row has the press too (its file reads *Retainage notice as mailed*), and **Take off** beside a listed file asks first and then drops it from the notice's list (`LienRunMailedCopies.tsx`);
+since v2.7699 the file then goes to Drive's trash, where Drive keeps it 30 days, with **Put it back** on the line under the row (it stayed in the job's folder before), a file a lien record still names is never trashed (`drive-link`'s `trash` and `untrash`, `lib/jobs/jobFolderTrash.ts`), and since v2.7743 a receipt's **Take off** and **Replace** go through the same door (`LienReceiptPhotoPress`).
 Which notices the window holds: a To do row's press opens it on that GC's approved notices alone (v2.7442, `lienRunEntriesFor`), a notice's **Just this one · N envelopes ›** on that one notice, signed and a set per envelope (v2.7512, `lienRunOne.ts`;
 the job's Lien window until then), and the Board's print on every approved and printed notice;
 a line under the title says what the run holds and that affidavits are not in it (v2.7489), and each envelope card ends with where the other jobs at its property stand, a press to the property card (v2.7559, `lienRunEnvelopeProperty.ts`).

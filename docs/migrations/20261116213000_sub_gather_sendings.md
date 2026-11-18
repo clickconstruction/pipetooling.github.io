@@ -17,3 +17,5 @@ No new table, so no fence calls. One function, `CREATE OR REPLACE`: idempotent.
 **Order.** Push right after the merge. Until then the window says gathering is not switched on yet and changes nothing.
 
 **Pushed** 2026-11-16, 09:39 UTC, alone, by `scripts/db-push.sh` from a checkout equal to `origin/main`, 48 minutes after the merge: a merge woke no session, and every site deploy of main failed on `check:calls-ahead` until the push, which re-ran the held deploy. Read back on prod: the function is `SECURITY DEFINER`, its body refuses rows on different bank lines, a signed-out call is refused with 42501, and the ledger holds the version once. The types and the dev seat's catalog followed in a types PR, which also drops the window's `as never` casts.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).

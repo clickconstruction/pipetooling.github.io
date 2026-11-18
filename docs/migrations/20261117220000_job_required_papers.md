@@ -40,3 +40,5 @@ The policies on `person_contract_documents`: only the office reads or writes a p
 Nothing in the client calls these names, so the push follows the merge and no deploy waits on it.
 
 Proved by CI's `job-required-papers` bed (`scripts/pgtest-job-required-papers.sh`, `supabase/tests/job_required_papers/`, a line in `scripts/sql-beds.txt`, `npm run test:pg:job-required-papers`), on the whole schema with the migration applied twice. It counts the scans a transaction starts (`pg_stat_xact_user_tables`): with no required paper anywhere, a hundred asks of the lock question start a hundred scans of `job_required_papers` and none of `person_contract_documents` or `people`. CI was its first run: this Mac had neither Docker nor a free local Postgres.
+
+**Applied** to prod by 2026-11-18: `npm run check:migration-drift` read 1,366 local files against 1,366 remote versions, fully applied, this version among them (run in the docs pass after #8630).
