@@ -1490,6 +1490,9 @@ My Schedule and My day the same through `withKnownScheduledJobMeta`), and the Cu
 
 **The superintendent's line** (punch list #242, PR 4, **v2.6335**): for a superintendent whose current or next job is a project, the card draws **[`SuperintendentCard`](../src/components/jobMode/SuperintendentCard.tsx)** above the job's details — the headline (ahead or behind at this pace), the pace strip with the job's real days and stages, the office's target when one is set, the money when it leads, the proof and the one move with **Set the %** and **Open the checklist** — from the same read (`list_project_board`) and the same `projectPace` the office's Projects board stands on, so the two never disagree.
 
+Since v2.7797 (punch list #396) the card's face is shown, not told: the job's stages top to bottom as a rail that ends in the finish day ([`PaceRail`](../src/components/jobMode/PaceRail.tsx)), the hours as one bar and **Set the %** on the stage in hand, with everything the card used to say behind **How this is figured** (`lib/jobMode/paceCard.ts`).
+The short page's folded pace line carries two thin bars and the finish day.
+
 **Behavior** — clock-driven advance through today's `job_schedule_blocks`:
 
 - The card derives "current job" from the user's open `clock_sessions` row (so it matches whatever they're billing time to) and "next job" from the next scheduled block whose `job_id` differs from the current one.
