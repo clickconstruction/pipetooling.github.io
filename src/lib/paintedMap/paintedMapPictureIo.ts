@@ -4,7 +4,8 @@
  * a band of words under the map. Not pure: canvas and network. The geometry is `paintedMapPicture.ts`.
  */
 import { lineRuns, type PaintedPart, type PaintedPoint } from './paintedLine'
-import { PICTURE_ATTRIBUTION, PICTURE_START_WORD, pictureFrame, pictureKeyLine, picturePoint, pictureTiles, pictureTileUrl, PICTURE_HEIGHT, PICTURE_WIDTH } from './paintedMapPicture'
+import { PICTURE_ATTRIBUTION, PICTURE_START_WORD, pictureFrame, pictureKeyLine, pictureKindMark, picturePoint, pictureTiles, pictureTileUrl, PICTURE_HEIGHT, PICTURE_WIDTH, type PictureKindMark } from './paintedMapPicture'
+import { PLACE_WARN_COLOR } from './paintedPlaceKind'
 
 const PAINT = '#ff5a1f'
 const INK = '#111827'
@@ -17,7 +18,7 @@ const TILE_WAIT_MS = 8000
 export const PICTURE_KEY_MAX = 10
 
 export type PictureLine = { points: ReadonlyArray<PaintedPoint>; poorParts: ReadonlyArray<PaintedPart> }
-export type PicturePlace = { number: number; name: string; words: string; lat: number; lng: number }
+export type PicturePlace = { number: number; name: string; words: string; lat: number; lng: number; /** Its kind, which gives its dot a mark (#393). */ kind?: string | null }
 export type PictureInput = {
   lines: ReadonlyArray<PictureLine>
   places: ReadonlyArray<PicturePlace>
@@ -54,6 +55,51 @@ function fitted(ctx: CanvasRenderingContext2D, text: string, width: number): str
 function path(ctx: CanvasRenderingContext2D, pts: ReadonlyArray<{ x: number; y: number }>): void {
   ctx.beginPath()
   pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)))
+}
+
+/**
+ * A kind's mark (punch list #393): the disc, the kind's drawing in it and the place's number on its
+ * shoulder. It leaves the canvas as it found it, so the caller's type and colours still stand.
+ */
+function drawKindMark(ctx: CanvasRenderingContext2D, at: { x: number; y: number }, r: number, ring: number, number: number, mark: PictureKindMark): void {
+  const color = mark.warns ? PLACE_WARN_COLOR : INK
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(at.x, at.y, r, 0, Math.PI * 2)
+  ctx.fillStyle = PAPER
+  ctx.fill()
+  ctx.lineWidth = ring
+  ctx.strokeStyle = color
+  ctx.stroke()
+  // The drawing, on its own 24 by 24 grid.
+  ctx.save()
+  ctx.translate(mark.box.left, mark.box.top)
+  ctx.scale(mark.box.size / 24, mark.box.size / 24)
+  ctx.lineWidth = 2
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.stroke(new Path2D(mark.glyph.stroke))
+  ctx.fillStyle = color
+  for (const [cx, cy, cr] of mark.glyph.dots) {
+    ctx.beginPath()
+    ctx.arc(cx, cy, cr, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.restore()
+  // The number, on the shoulder.
+  ctx.beginPath()
+  ctx.arc(mark.badge.x, mark.badge.y, mark.badge.r, 0, Math.PI * 2)
+  ctx.fillStyle = INK
+  ctx.fill()
+  ctx.lineWidth = 2
+  ctx.strokeStyle = PAPER
+  ctx.stroke()
+  ctx.fillStyle = PAPER
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = `700 ${number > 9 ? Math.round(mark.badge.font * 0.82) : mark.badge.font}px ${FONT}`
+  ctx.fillText(String(number), mark.badge.x, mark.badge.y + 1)
+  ctx.restore()
 }
 
 /**
@@ -148,6 +194,11 @@ export async function drawPaintedMapPicture(input: PictureInput): Promise<{ blob
   ctx.textBaseline = 'middle'
   for (const place of input.places) {
     const p = picturePoint(frame, place)
+    const mark = pictureKindMark(place, p, 23)
+    if (mark) {
+      drawKindMark(ctx, p, 23, 4, place.number, mark)
+      continue
+    }
     ctx.beginPath()
     ctx.arc(p.x, p.y, 21, 0, Math.PI * 2)
     ctx.fillStyle = PAPER
@@ -185,15 +236,23 @@ export async function drawPaintedMapPicture(input: PictureInput): Promise<{ blob
     let y = PICTURE_HEIGHT + 118
     for (const place of keyed) {
       y += 38
-      ctx.beginPath()
-      ctx.arc(left + 15, y - 9, 15, 0, Math.PI * 2)
-      ctx.lineWidth = 3
-      ctx.strokeStyle = INK
-      ctx.stroke()
-      ctx.fillStyle = INK
-      ctx.textAlign = 'center'
-      ctx.font = `700 ${place.number > 9 ? 15 : 18}px ${FONT}`
-      ctx.fillText(String(place.number), left + 15, y - 3)
+      const at = { x: left + 15, y: y - 9 }
+      const mark = pictureKindMark(place, at, 15)
+      if (mark) {
+        // The same mark as on the map above, so the key reads against it.
+        drawKindMark(ctx, at, 15, 3, place.number, mark)
+        ctx.fillStyle = INK
+      } else {
+        ctx.beginPath()
+        ctx.arc(at.x, at.y, 15, 0, Math.PI * 2)
+        ctx.lineWidth = 3
+        ctx.strokeStyle = INK
+        ctx.stroke()
+        ctx.fillStyle = INK
+        ctx.textAlign = 'center'
+        ctx.font = `700 ${place.number > 9 ? 15 : 18}px ${FONT}`
+        ctx.fillText(String(place.number), left + 15, y - 3)
+      }
       ctx.textAlign = 'left'
       ctx.font = `500 26px ${FONT}`
       ctx.fillText(fitted(ctx, pictureKeyLine(place), width - 46), left + 46, y)

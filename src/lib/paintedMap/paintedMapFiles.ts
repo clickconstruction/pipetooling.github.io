@@ -9,9 +9,10 @@
  */
 import type { PaintedPoint } from './paintedLine'
 import { pictureFileName } from './paintedMapPicture'
+import { placeSaysWords } from './paintedPlaceKind'
 
 export type FileLine = { points: ReadonlyArray<PaintedPoint>; label?: string | null; lengthWords?: string | null }
-export type FilePlace = { number: number; name: string; words: string; lat: number; lng: number }
+export type FilePlace = { number: number; name: string; words: string; lat: number; lng: number; /** Its kind. A file draws no mark, so the kind is said in the name (#393). */ kind?: string | null }
 export type PaintedMapFileInput = {
   name: string
   words: string
@@ -38,14 +39,14 @@ export function paintedMapKml(i: PaintedMapFileInput): string {
   const lines = i.lines
     .filter((l) => l.points.length >= 2)
     .map((l, k, all) => `    <Placemark>\n      <name>${xmlText(lineName(l, k, all.length))}</name>${l.lengthWords ? `\n      <description>${xmlText(l.lengthWords)}</description>` : ''}\n      <styleUrl>#paint</styleUrl>\n      <LineString>\n        <tessellate>1</tessellate>\n        <coordinates>${l.points.map((p) => `${n(p.lng)},${n(p.lat)},0`).join(' ')}</coordinates>\n      </LineString>\n    </Placemark>`)
-  const places = i.places.map((p) => `    <Placemark>\n      <name>${xmlText(`${p.number}. ${p.name}`)}</name>${p.words.trim() ? `\n      <description>${xmlText(p.words.trim())}</description>` : ''}\n      <Point>\n        <coordinates>${n(p.lng)},${n(p.lat)},0</coordinates>\n      </Point>\n    </Placemark>`)
+  const places = i.places.map((p) => `    <Placemark>\n      <name>${xmlText(`${p.number}. ${placeSaysWords(p)}`)}</name>${p.words.trim() ? `\n      <description>${xmlText(p.words.trim())}</description>` : ''}\n      <Point>\n        <coordinates>${n(p.lng)},${n(p.lat)},0</coordinates>\n      </Point>\n    </Placemark>`)
   // KML colours are alpha, blue, green, red: the paint's #ff5a1f written backwards.
   return `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n  <Document>\n    <name>${xmlText(i.name)}</name>\n    <description>${xmlText(about(i))}</description>\n    <Style id="paint">\n      <LineStyle>\n        <color>ff1f5aff</color>\n        <width>5</width>\n      </LineStyle>\n    </Style>\n${[...lines, ...places].join('\n')}\n  </Document>\n</kml>\n`
 }
 
 /** GPS Exchange 1.1: hiking apps and handhelds. A track for a line, a waypoint for a place, and no time on either. */
 export function paintedMapGpx(i: PaintedMapFileInput): string {
-  const places = i.places.map((p) => `  <wpt lat="${n(p.lat)}" lon="${n(p.lng)}">\n    <name>${xmlText(`${p.number}. ${p.name}`)}</name>${p.words.trim() ? `\n    <desc>${xmlText(p.words.trim())}</desc>` : ''}\n  </wpt>`)
+  const places = i.places.map((p) => `  <wpt lat="${n(p.lat)}" lon="${n(p.lng)}">\n    <name>${xmlText(`${p.number}. ${placeSaysWords(p)}`)}</name>${p.words.trim() ? `\n    <desc>${xmlText(p.words.trim())}</desc>` : ''}\n  </wpt>`)
   const lines = i.lines
     .filter((l) => l.points.length >= 2)
     .map((l, k, all) => `  <trk>\n    <name>${xmlText(lineName(l, k, all.length))}</name>${l.lengthWords ? `\n    <desc>${xmlText(l.lengthWords)}</desc>` : ''}\n    <trkseg>\n${l.points.map((p) => `      <trkpt lat="${n(p.lat)}" lon="${n(p.lng)}"/>`).join('\n')}\n    </trkseg>\n  </trk>`)
