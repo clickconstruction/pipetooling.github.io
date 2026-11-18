@@ -1579,6 +1579,9 @@ A note never carries a picture of the screen.
 A lost signal is never part of a note: the outbox keeps that press, so the no-connection line and a call with no answer are left out (`isLostSignalLine`).
 Two more doors open the same box since v2.7660: a **Tell the dev** press on every error toast, which opens on *Something went wrong* with the error attached and is never drawn for a lost signal (`errorLineOffersNote`), and a wrench in the title row of the shared window on a phone (`ResponsiveModalShell`, `tellTheDevDoor`).
 A door outside the shell shows only while a box is there to answer it (`isTellTheDevListening`: a signed-in person with Fix Mode on).
+**Your notes** (v2.7663) lists the sender's last six notes under the box, each *Sent*, *Answered* or *Closed* with its day, and the answer the owner or a dev typed at **Answer and close** (`closed_note`).
+The wrench wears a green dot while an answer is unread;
+unread is kept per person per device as the time the box last listed the notes (`myNotes.ts`), and a device that has never sent or listed a note asks for nothing when the shell comes up.
 **Fix Mode** is the gear menu's switch for the wrench, per person per device, on until switched off (`fixMode.ts`, `useFixMode`);
 the phone dock's More sheet lists it with the other modes.
 **Notes to the dev** is the inbox, called Help feedback until v2.7658: the Dashboard's Teams inbox card and the Checklist's review, for the owner or a dev.
