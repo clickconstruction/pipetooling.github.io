@@ -2,12 +2,15 @@
  * Look it over (punch list #345): the lines a walk made, before anything is saved. Nothing has left
  * the phone yet. The person sees exactly what will be kept, sets right by hand what the phone got
  * wrong, and only then saves. Throwing it away leaves nothing behind.
+ *
+ * ＋ Place (punch list #393) marks a spot from here too. A place is saved when it is added, the way
+ * the walk's own ＋ Place saves one, so the screen says which places the map already has.
  */
 import type { CSSProperties } from 'react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { aboutLengthWords, giveOrTakeWords, lineHowWords } from '../../lib/paintedMap/paintedMap'
 import type { WalkStroke } from '../../lib/paintedMap/paintedWalk'
-import { WALK_NOTHING_LEFT_WORDS } from '../../lib/paintedMap/paintedWalkWords'
+import { WALK_REVIEW_PLACE_WORDS, walkNothingLeftWords } from '../../lib/paintedMap/paintedWalkWords'
 import { PAINT_SWATCH } from './paintedMapLook'
 
 type Props = {
@@ -15,6 +18,9 @@ type Props = {
   busy: boolean
   /** The map is already saved: these lines are added to it. */
   mapSaved: boolean
+  /** The places the map already has, each with its number: saved when they were added, not on Save. */
+  places: ReadonlyArray<{ id: string; number: number; name: string }>
+  onPlace: () => void
   onFix: (index: number) => void
   onRemove: (index: number) => void
   onSave: () => void
@@ -25,7 +31,7 @@ type Props = {
 const press: CSSProperties = { minHeight: 44, padding: '0 0.9rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.9375rem', cursor: 'pointer' }
 const quiet: CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontFamily: 'inherit', fontSize: '0.875rem', textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer', minHeight: 32 }
 
-export function PaintedWalkReview({ strokes, busy, mapSaved, onFix, onRemove, onSave, onKeepPainting, onThrowAway }: Props) {
+export function PaintedWalkReview({ strokes, busy, mapSaved, places, onFix, onRemove, onPlace, onSave, onKeepPainting, onThrowAway }: Props) {
   const total = strokes.reduce((sum, s) => sum + s.lengthM, 0)
   const canSave = strokes.length > 0 && !busy
   return (
@@ -66,6 +72,18 @@ export function PaintedWalkReview({ strokes, busy, mapSaved, onFix, onRemove, on
           })}
         </>
       )}
+      <div style={{ display: 'grid', gap: '0.35rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem 0.6rem' }}>
+          <button type="button" data-painted-review-place style={busy ? { ...press, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'var(--border)', cursor: 'default' } : press} disabled={busy} onClick={onPlace}>＋ Place</button>
+          {places.map((p) => (
+            <span key={p.id} data-painted-review-place-set style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', minWidth: 0 }}>
+              <span aria-hidden style={{ width: 22, height: 22, borderRadius: '50%', borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--text-strong)', display: 'grid', placeItems: 'center', fontSize: '0.6875rem', fontWeight: 800, flex: 'none' }}>{p.number}</span>
+              <b style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</b>
+            </span>
+          ))}
+        </div>
+        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{WALK_REVIEW_PLACE_WORDS}</p>
+      </div>
       <button type="button" data-painted-review-save style={canSave ? { ...press, minHeight: 52, background: '#2563eb', borderColor: '#2563eb', color: '#fff' } : { ...press, minHeight: 52, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'var(--border)', cursor: 'default' }} disabled={!canSave} onClick={onSave}>
         {busy ? 'Saving…' : mapSaved ? (strokes.length === 1 ? 'Save the line' : `Save the ${strokes.length} lines`) : 'Save the map'}
       </button>
@@ -73,7 +91,7 @@ export function PaintedWalkReview({ strokes, busy, mapSaved, onFix, onRemove, on
         <button type="button" style={press} onClick={onKeepPainting}>Keep painting</button>
         <button type="button" style={press} onClick={onThrowAway}>Throw it away</button>
       </div>
-      <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{WALK_NOTHING_LEFT_WORDS}</p>
+      <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{walkNothingLeftWords(mapSaved)}</p>
     </div>
   )
 }

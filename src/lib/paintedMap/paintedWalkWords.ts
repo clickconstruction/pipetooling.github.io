@@ -17,8 +17,24 @@ export const WALK_BEFORE_WORDS = [
 /** Under the start press: when the phone is read. */
 export const WALK_ASK_WORDS = 'Your phone will ask to share where you are. It is read only while this screen says Painting.'
 
-/** Beside Save, before anything leaves the phone. */
-export const WALK_NOTHING_LEFT_WORDS = 'Nothing has left this phone yet. Saving keeps the line. It keeps no clock along it, so it cannot say how fast you went or where you stopped.'
+/**
+ * Beside Save, before the walk's lines leave the phone. On a map that is already saved something has left it: a
+ * place added on the walk, or what the map held before. So there the sentence speaks of the walk alone (#393).
+ */
+export function walkNothingLeftWords(mapSaved: boolean): string {
+  const lead = mapSaved ? 'What you painted has not left this phone yet.' : 'Nothing has left this phone yet.'
+  return `${lead} Saving keeps the line. It keeps no clock along it, so it cannot say how fast you went or where you stopped.`
+}
+
+/** Under ＋ Place on Look it over: a place does not wait for Save the way a line does. */
+export const WALK_REVIEW_PLACE_WORDS = 'Mark a gate, a meter or where to park. A place is saved when you add it, so it stays if you throw the walk away.'
+
+/** What throwing a walk away leaves behind: nothing on a map that was never saved, and on a saved map everything that already was. */
+export function walkThrowAwayWords(mapSaved: boolean): string {
+  return mapSaved
+    ? 'The lines you painted go from this phone. What is already saved on the map stays.'
+    : 'What you painted goes from this phone. Nothing was sent anywhere, so nothing is left behind.'
+}
 
 /** While the screen cannot be held on by the browser. */
 export const WALK_CANNOT_STAY_AWAKE_WORDS = 'This phone cannot hold its own screen on. Touch the screen now and then so it does not lock.'

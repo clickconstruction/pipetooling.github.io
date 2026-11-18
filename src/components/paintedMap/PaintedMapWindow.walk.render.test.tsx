@@ -3,7 +3,8 @@
  * Painting a walk in a map's window (punch list #345). The bar is red while the phone is read and
  * says so. A locked screen leaves a gap and the person chooses what happens to it. Done opens Look
  * it over, where nothing has left the phone, a line is set right by hand, and Save writes shapes
- * with no time in them. A walk closed unsaved stays on the phone, paused.
+ * with no time in them. A walk closed unsaved stays on the phone, paused. Look it over has its own
+ * ＋ Place (punch list #393): the place is saved when it is added, and the walk's lines wait.
  */
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -79,10 +80,10 @@ vi.mock('../../lib/paintedMap/paintedMapIo', () => ({
 }))
 
 vi.mock('./PaintedMapCanvas', () => ({
-  default: function CanvasStub(props: { lines: Array<{ id: string; poorParts: unknown[] }>; draft?: PaintedCanvasDraft | null; me?: { lat: number } | null; follow?: boolean; dot?: { point: { lat: number; lng: number } } | null }) {
+  default: function CanvasStub(props: { lines: Array<{ id: string; poorParts: unknown[] }>; places?: Array<{ name: string; number: number }>; draft?: PaintedCanvasDraft | null; me?: { lat: number } | null; follow?: boolean; dot?: { point: { lat: number; lng: number } } | null }) {
     return (
       <div data-testid="canvas">
-        lines:{props.lines.map((l) => `${l.id}${l.poorParts.length ? '~' : ''}`).join(',')} corners:{props.draft ? props.draft.points.length : 'none'} me:{props.me ? 'yes' : 'no'} follow:{props.follow ? 'yes' : 'no'} dot:{props.dot ? 'yes' : 'no'}
+        lines:{props.lines.map((l) => `${l.id}${l.poorParts.length ? '~' : ''}`).join(',')} corners:{props.draft ? props.draft.points.length : 'none'} me:{props.me ? 'yes' : 'no'} follow:{props.follow ? 'yes' : 'no'} dot:{props.dot ? 'yes' : 'no'} places:{(props.places ?? []).map((pl) => `${pl.number} ${pl.name}`).join(',')}
         {props.draft ? <button type="button" onClick={() => props.draft!.onMove(0, { lat: 29.5001, lng: -98.2001 })}>move the first corner</button> : null}
       </div>
     )
@@ -265,6 +266,76 @@ describe('look it over, then save', () => {
     await waitFor(() => expect(phone.kept[phone.kept.length - 1]).toBeNull())
     expect(names()).toEqual([])
     expect(screen.getByText(/Nothing is painted on this map yet/)).toBeTruthy()
+  })
+
+  it('has its own ＋ Place: the place panel opens, the place is saved at once, and it shows with the walk\'s lines (#393)', async () => {
+    await toReview()
+    fireEvent.click(screen.getByRole('button', { name: '＋ Place' }))
+    expect(screen.getByRole('heading', { name: 'A place on the map' })).toBeTruthy()
+    // The dot is there to drag, over the lines that are still waiting. The phone is not read for it.
+    expect(screen.getByTestId('canvas').textContent).toContain('lines:pending-0 corners:none me:no follow:no dot:yes')
+    expect(phone.calls).toEqual(['start', 'clear'])
+    fireEvent.click(screen.getByRole('button', { name: 'Gate' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
+    await waitFor(() => expect(names()).toEqual(['createPaintedMap', 'addPaintedPlace']))
+    // Set by hand: no reading's margin goes with it.
+    expect(io.calls[1]!.args[1]).toMatchObject({ name: 'Gate', accuracyM: null })
+    // Back on Look it over, with the place numbered beside the press and on the map with the line.
+    await screen.findByRole('heading', { name: 'Look it over' })
+    expect(screen.getByTestId('canvas').textContent).toContain('lines:pending-0')
+    expect(screen.getByTestId('canvas').textContent).toContain('dot:no places:1 Gate')
+    expect(document.querySelector('[data-painted-review-place-set]')?.textContent).toBe('1Gate')
+    expect(screen.getByText(/A place is saved when you add it/)).toBeTruthy()
+    // The small print no longer says nothing has left the phone: the place has.
+    expect(screen.queryByText(/Nothing has left this phone yet/)).toBeNull()
+    expect(screen.getByText(/What you painted has not left this phone yet/)).toBeTruthy()
+    // The map was made by the place, so the walk's line is added to it: the map is not made twice.
+    fireEvent.click(screen.getByRole('button', { name: 'Save the line' }))
+    await waitFor(() => expect(names()).toEqual(['createPaintedMap', 'addPaintedPlace', 'addPaintedLine']))
+    await screen.findByRole('button', { name: 'Draw a line' })
+    expect(document.querySelector('[data-painted-place-row]')?.textContent).toContain('Gate')
+  })
+
+  it('goes back to Look it over when the place is cancelled, with nothing sent (#393)', async () => {
+    await toReview()
+    fireEvent.click(screen.getByRole('button', { name: '＋ Place' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByRole('heading', { name: 'Look it over' })).toBeTruthy()
+    expect(document.querySelectorAll('[data-painted-review-line]')).toHaveLength(1)
+    expect(document.querySelector('[data-painted-review-place-set]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Save the map' })).toBeTruthy()
+    expect(names()).toEqual([])
+  })
+
+  it('says the map keeps what is saved when a walk is thrown away after a place (#393)', async () => {
+    await toReview()
+    fireEvent.click(screen.getByRole('button', { name: '＋ Place' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Meter' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
+    await screen.findByRole('heading', { name: 'Look it over' })
+    fireEvent.click(screen.getByRole('button', { name: 'Throw it away' }))
+    const ask = screen.getByRole('alertdialog')
+    expect(ask.textContent).toContain('The lines you painted go from this phone. What is already saved on the map stays.')
+    expect(ask.textContent).not.toContain('nothing is left behind')
+    fireEvent.click(within(ask).getByRole('button', { name: 'Throw the walk away' }))
+    // The walk is gone and the place is still on the map.
+    await screen.findByRole('button', { name: 'Draw a line' })
+    expect(document.querySelector('[data-painted-place-row]')?.textContent).toContain('Meter')
+    expect(names()).toEqual(['createPaintedMap', 'addPaintedPlace'])
+  })
+
+  it('opens the map itself after a place added from a Look it over with no line (#393)', async () => {
+    render(<PaintedMapWindow ask={{ start: START }} kept={{ state: null, pending: [] }} center={{ lat: 29.5, lng: -98.2 }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'Look it over' })
+    expect(screen.getByText(/The phone did not move far enough to draw a line/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '＋ Place' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Park here' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
+    await waitFor(() => expect(names()).toEqual(['createPaintedMap', 'addPaintedPlace']))
+    expect(io.calls[1]!.args[1]).toMatchObject({ name: 'Park here', lat: 29.5, lng: -98.2 })
+    // Nothing is left to look over, so the map shows what it has.
+    await screen.findByRole('button', { name: 'Draw a line' })
+    expect(screen.queryByRole('heading', { name: 'Look it over' })).toBeNull()
   })
 
   it('goes on painting from Look it over, and keeps what was already looked over', async () => {
