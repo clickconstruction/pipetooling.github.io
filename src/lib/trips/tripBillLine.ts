@@ -11,7 +11,7 @@
  */
 import type { TripStanding } from './tripDays'
 import { TRIP_BILLING_LABEL, type TripBilling, type TripRecord } from './tripRecord'
-import { tripNameOfRecord } from './tripsLook'
+import { tripName, tripNameOfRecord } from './tripsLook'
 
 /** The roles that may put a trip on a bill: the ones that may add a discount to a job (`trip_put_on_job_line`). */
 export const TRIP_BILL_LINE_ROLES: ReadonlyArray<string> = ['dev', 'master_technician', 'assistant', 'controller']
@@ -287,4 +287,53 @@ export function tripOnLinesWords(tripShort: string, job: TripBillJob | null | un
 export function tripAlreadyOnLinesWords(tripShort: string, job: TripBillJob | null | undefined): string {
   const short = tripBillJobShort(job)
   return `${tripShort} is already on ${short ? possessive(short) : 'a job’s'} lines. Nothing was added.`
+}
+
+// ---- the door back from a line to its trip ----------------------------------------------------
+
+/** A trip as a line's door needs it: its number and the site it is kept on. */
+export type LineTrip = { id: string; tripNumber: number | null; developmentId: string | null }
+
+/** The door under a trip's line in the Job window's Line Items: *Open Trip 14*. */
+export type LineTripDoor = { tripId: string; developmentId: string; label: string }
+
+/** The trips a job's lines name, each once. */
+export function lineTripIds(lines: ReadonlyArray<{ trip_id?: string | null }>): string[] {
+  return [...new Set(lines.map((l) => l.trip_id).filter((id): id is string => !!id))]
+}
+
+/**
+ * The door for each line that came from a trip, by the line's id. A line whose trip the reader cannot read,
+ * or whose trip is kept on a job with no development, has no door: there is no Trips look to open it in.
+ * A line whose trip was deleted has lost its mark, so it is not here at all.
+ */
+export function lineTripDoors(args: { lines: ReadonlyArray<{ id: string; trip_id?: string | null }>; trips: ReadonlyArray<LineTrip> }): Map<string, LineTripDoor> {
+  const byId = new Map(args.trips.map((t) => [t.id, t]))
+  const out = new Map<string, LineTripDoor>()
+  for (const line of args.lines) {
+    const trip = line.trip_id ? byId.get(line.trip_id) : undefined
+    if (!trip || !trip.developmentId) continue
+    out.set(line.id, { tripId: trip.id, developmentId: trip.developmentId, label: tripName({ tripNumber: trip.tripNumber, span: null, todayYmd: '' }).door })
+  }
+  return out
+}
+
+/**
+ * What the delete of a trip adds to its question when the trip holds a line: the line stays, and the Undo
+ * does not tie it back. Null for a trip with no line, whose question is as it was.
+ */
+export function tripDeleteLineWords(line: TripBillLine | null, jobShort: string | null): string | null {
+  if (!line) return null
+  const job = jobShort?.trim()
+  return `Its line stays on ${job ? possessive(job) : 'the job’s'} lines, with its words and its price. Undo puts the trip back, but the line is no longer tied to it.`
+}
+
+/**
+ * What the sheet says under Billing when the trip holds a line and its billing is moved off Extra: the change
+ * is allowed, and the line stays. Null when the trip holds no line.
+ */
+export function tripSheetLineNote(line: TripBillLine | null, jobShort: string | null): string | null {
+  if (!line) return null
+  const job = jobShort?.trim()
+  return `This trip is on ${job ? possessive(job) : 'a job’s'} lines. Changing the billing leaves the line where it is.`
 }

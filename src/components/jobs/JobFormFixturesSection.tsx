@@ -21,6 +21,7 @@ import { LineBudgetPanel, LineBudgetQuietLine } from './LineBudgetQuietLine'
 import { lineBudgetColumnsFor, lineBudgetEntryOf } from '../../lib/jobs/lineBudgets'
 import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import { useLineBudgets } from '../../hooks/useLineBudgets'
+import { linkButtonStyle } from '../developments/developmentPageBits'
 
 const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
   position: 'absolute',
@@ -91,6 +92,11 @@ type JobFormFixturesSectionProps = {
   payerTags?: { customerName: string | null; gcName: string | null } | null
   /** The job reads as a project (#238's kind, punch list #234 PR 1a); undefined = the caller has no read, so an ordered stage stands in. */
   isProject?: boolean
+  /**
+   * The door back to its trip under a line that came from one (punch list #391, PR 4), by the line's id:
+   * *Open Trip 14*. A line with no entry has no door.
+   */
+  tripDoors?: ReadonlyMap<string, { label: string; onOpen: () => void }> | null
 }
 
 /**
@@ -128,6 +134,7 @@ export function JobFormFixturesSection({
   plan = null,
   payerTags = null,
   isProject,
+  tripDoors = null,
 }: JobFormFixturesSectionProps) {
   // Phone (v2.4312): under 640 px every line item stacks. The name takes the
   // row beside its badge and ▲▼, and the ×/$ boxes and the trash sit on a line
@@ -822,6 +829,14 @@ export function JobFormFixturesSection({
                               style={{ padding: '0 0.75rem', fontSize: '0.75rem', color: '#d97706' }}
                             >
                               ({stripeFixtureLineLen} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX}) — over the Stripe line limit
+                            </div>
+                          ) : null}
+                          {/* A line that came from a trip (punch list #391): the door back to the trip, under its words. */}
+                          {tripDoors?.get(row.id) ? (
+                            <div style={{ padding: scopeExpanded ? '0.25rem 0 0' : '0 0.75rem', fontSize: '0.78rem' }} data-testid="line-trip-door">
+                              <button type="button" onClick={tripDoors.get(row.id)?.onOpen} title="Open the trip this line came from, on its site’s page" style={linkButtonStyle(true, true)}>
+                                {tripDoors.get(row.id)?.label} ›
+                              </button>
                             </div>
                           ) : null}
                         </td>

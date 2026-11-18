@@ -200,6 +200,8 @@ A message then offers **Undo** for one minute. **Undo** puts the trip back with 
 
 Deleting a trip changes no clock row, no bill and no cost.
 
+A trip on a job's lines leaves its line on the job. **Undo** puts the trip back without its tie to that line.
+
 ## Put a trip on a bill
 
 A trip marked **Extra** is work past the job's price. You can put the trip on a job as one line. A bill takes the line later.
@@ -248,6 +250,10 @@ The line is a line like any other. Rename it, change its price or remove it in t
 Remove the line before a bill takes it. The trip then reads *not billed yet* again, and you can put it on a bill again.
 
 Delete the trip and the line stays on the job with its words.
+
+The line has a door back to its trip. Open the job and find the line under **Line Items**.
+
+Press **Open Trip 14 ›** under the line. The job's window closes and the trip opens on its site's page.
 
 You can change a trip's billing after its line is made. The line stays, and the chip still reads the line.
 

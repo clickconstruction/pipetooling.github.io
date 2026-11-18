@@ -43,6 +43,7 @@ export function TripSheet({
   todayYmd,
   busy,
   zIndex = 760,
+  lineStaysNote = null,
   onSave,
   onClose,
 }: {
@@ -56,6 +57,11 @@ export function TripSheet({
   todayYmd: string
   busy: boolean
   zIndex?: number
+  /**
+   * For a trip that is on a job's lines (punch list #391): what the sheet says under Billing once the billing
+   * is moved off Extra. The change is allowed, and the line stays. Null for a trip that holds no line.
+   */
+  lineStaysNote?: string | null
   /** Saves the trip; true when it saved, so the sheet closes. */
   onSave: (record: TripRecord) => Promise<boolean>
   onClose: () => void
@@ -268,6 +274,12 @@ export function TripSheet({
                       </button>
                     ))}
                   </div>
+                  {/* The trip is on a job's lines and its billing is no longer Extra: allowed, and the line stays. */}
+                  {lineStaysNote && state.billing !== 'extra' ? (
+                    <div style={{ marginTop: 5, fontSize: '0.76rem', color: 'var(--text-amber-800)' }} data-testid="trip-sheet-line-stays">
+                      {lineStaysNote}
+                    </div>
+                  ) : null}
                 </div>
                 <div>
                   <div style={{ ...capStyle, marginBottom: 5 }}>How it went</div>
