@@ -72,6 +72,12 @@ describe('ShortDashboardBody', () => {
     expect(props.onEverythingElse).toHaveBeenCalledTimes(1)
   })
 
+  it('a superintendent’s door names what is behind it for him (punch list #384)', () => {
+    const { container } = draw({ firstName: 'Sam', role: 'superintendent', waiting: [], office: 0 })
+    expect(container.querySelector('[data-short-door-note]')?.textContent).toBe('Clock In, your hours, your crew and the full Dashboard.')
+    expect(container.querySelector('[data-short-office]')?.textContent).toBe('Nothing else is open.')
+  })
+
   it('says nothing waits only once the read is in, and names what the door holds of his own', () => {
     const { container } = draw({ waiting: [], alsoYours: 2, office: 19 })
     expect(container.querySelector('[data-empty-state]')?.textContent).toBe('Nothing waiting on you. The office puts a paper here when it needs your signature or your word.')

@@ -1,12 +1,12 @@
 ---
 title: see only what waits on me on the dashboard
 category: Getting Started
-roles: dev, master_technician, assistant
-keywords: short dashboard, dashboard view, short, full, waiting on you, leader, owner, too much, overwhelmed, lien notices, sign, approve, decide, everything else, phone, people desk, office sets it
+roles: dev, master_technician, assistant, superintendent
+keywords: short dashboard, dashboard view, short, full, waiting on you, leader, owner, superintendent, too much, overwhelmed, lien notices, sign, approve, decide, everything else, phone, people desk, office sets it
 where: /dashboard
 order: 14
 ---
-The short Dashboard is a shorter home page for a leader. It shows only what waits on you, then your day, then one door to everything else.
+The short Dashboard is a shorter home page for a leader or a superintendent. The page shows only what waits on you, then your day, then one door to everything else.
 
 The full Dashboard holds every section the company has. The short one holds a list you can finish. The office keeps working the rest, and the page says how much that is.
 
@@ -44,11 +44,21 @@ On a phone, the **Dashboard** tab in the bottom bar opens the short page. The ta
 
 The tab is also the way home. After **Everything else**, press **Dashboard** once to return to the short page.
 
+## For a superintendent
+
+A superintendent can be on **Short** too. The office sets it, or you set it yourself in **Settings**.
+
+With Job Mode off you open onto this page. **Waiting on you** lists a job note that tagged you. The lien papers are the leader's, so they never show on your list.
+
+**Clock In** sits behind **Everything else**. The door's second line says so.
+
+With Job Mode on you keep the Job Mode page. That page comes first. See [clock in and out with Job Mode](/help/job-mode-clocking).
+
 ## Turn it on or off
 
 :::steps
 
-Open **Settings**, then **Dashboard & alerts**.
+Open **Settings**, then **Your dashboard**.
 
 Find **Dashboard view** at the top.
 
@@ -56,6 +66,6 @@ Press **Short** or **Full**.
 
 :::
 
-The office can set it for a leader. Open the leader's desk on **People**. Under **Dashboard view** press **Short** or **Full**. The leader sees the change the next time the Dashboard opens.
+The office can set it for a leader or a superintendent. Open the person's desk on **People**. Under **Dashboard view** press **Short** or **Full**. The person sees the change the next time the Dashboard opens.
 
 **Full** is the Dashboard as it always was. Nobody is on **Short** until someone presses it.

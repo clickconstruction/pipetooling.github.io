@@ -308,8 +308,8 @@ and since v2.7022 the seat takes a conversation back off its job through `gmail-
 
 ### Dashboard view — Short or Full per person (v2.7466, `20261117030000_dashboard_view.sql`, punch list #365)
 
-`users.dashboard_view` (`short`, `full`, NULL for full) is written only through **`set_dashboard_view(p_user_id, p_view)`** (SECURITY DEFINER): the leader, a dev and the assistant (`is_master_or_dev()` or `is_assistant()`), for themselves in Settings or for a leader on the People desk.
-A training account or a twin is refused in words, and so is a target account that is not a `master_technician` or a `dev`, since the short Dashboard is drawn for those two roles alone.
+`users.dashboard_view` (`short`, `full`, NULL for full) is written only through **`set_dashboard_view(p_user_id, p_view)`** (SECURITY DEFINER): the leader, a dev and the assistant (`is_master_or_dev()` or `is_assistant()`) for anyone on the People desk, and, since v2.7749 (`20261118070000_dashboard_view_superintendent.sql`, punch list #384), a person for his own row in Settings (`p_user_id = auth.uid()`).
+A training account or a twin is refused in words, and so is a target account that is not a `master_technician`, a `dev` or, since v2.7749, a `superintendent`: those three roles take a view (`DASHBOARD_VIEW_ROLES`, and `canSetDashboardView` is the client's copy of who presses a row).
 A person reads their own row and the office reads the desk's;
 no new policy.
 The controller sees the desk's section and presses nothing.

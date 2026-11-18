@@ -2,7 +2,7 @@
 name: "Job Mode, short: a superintendent's one-screen home"
 number: 384
 group: ready
-status: the owner picked this direction on 2026-11-17 and asked for a card so another session builds it · nothing is built · no branch yet
+status: the owner picked this direction on 2026-11-17 · PR 1 built 2026-11-18 (v2.7749, the setting opened to a superintendent, migration 20261118070000) · PR 2 and PR 3 not built
 summary: >
   A superintendent says there is too much on his screen and it overwhelms him. His daily page is the Job Mode
   Dashboard on his phone: about six screens and about eighty presses, of which he uses the first screen. The
@@ -10,7 +10,7 @@ summary: >
   holds. The owner picked a short Job Mode page: the card's top, what waits on him, tomorrow in one line and
   one door to everything else, about one screen. It reuses the per-person Short setting from the leader's
   short Dashboard (#365), opened to a superintendent, so only the person the office sets changes.
-next: Build PR 1, the setting opened to a superintendent, then PR 2, the short page. Then the office sets one superintendent to Short and walks the page with him on his phone.
+next: Push PR 1's migration after its merge. Build PR 2, the short page, then PR 3, the trims. Then the office sets one superintendent to Short and walks the page with him on his phone.
 size: M as a train of three (S · M · S)
 blocker: None in the code. Setting a person to Short is the office's press, and the three questions below are the owner's to put to him.
 opinion: build — nobody's page changes until the office presses Short for one person, so the risk is only in what the short page tucks away, and every cut stays one press from the page
@@ -148,6 +148,20 @@ All of it exists except the short page itself.
 
 Nobody's page changes: no superintendent is on Short until someone presses it. Push the migration after the
 merge. The client calls nothing new, so the order is not tight.
+
+**Built 2026-11-18 as v2.7749.** What moved from the plan, and what the walk found:
+
+- The rule is `DASHBOARD_VIEW_ROLES`, `shortPageFor` and `canSetDashboardView`, beside `canHaveShortDashboard`,
+  which now reads the three roles.
+- The migration is `20261118070000_dashboard_view_superintendent.sql`, the function alone, with a SQL bed
+  (`scripts/pgtest-dashboard-view.sh`).
+- **The walk, Job Mode off.** A superintendent on Short gets the leader's short Dashboard. His list holds only a
+  job note that tagged him: the lien lines are the leader's. **Clock In** is behind **Everything else**, one
+  press further than on the full page. The door's second line said *Money, crew, jobs*, which is not his page, so
+  it now reads *Clock In, your hours, your crew and the full Dashboard.* for him.
+- **Until PR 2**, a superintendent on Short with Job Mode on keeps the Job Mode page as it is. On a phone My
+  Schedule hides there while today and tomorrow hold no stop, as it does for a leader on Short. So the office
+  sets nobody to Short before PR 2 is live.
 
 ### PR 2 · the short Job Mode page (M)
 

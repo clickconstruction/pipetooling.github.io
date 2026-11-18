@@ -39,6 +39,8 @@ export type ShortDashboardBodyProps = {
   waiting: NeedsYouItem[]
   /** How many more of his own lines sit behind the door. */
   alsoYours: number
+  /** The viewer's role, for the door's second line: a superintendent's names what is behind it for him. */
+  role?: string | null
   /** How many lines someone else is pressing. */
   office: number
   read: ShortDashboardRead
@@ -58,7 +60,7 @@ export type ShortDashboardBodyProps = {
   onEverythingElse: () => void
 }
 
-export function ShortDashboardBody({ firstName, hour, waiting, alsoYours, office, read, phone, onAct, onOpenLien, onOpenLienDesk, onRateCrew, top, schedule, foot, onEverythingElse }: ShortDashboardBodyProps) {
+export function ShortDashboardBody({ firstName, hour, waiting, alsoYours, role, office, read, phone, onAct, onOpenLien, onOpenLienDesk, onRateCrew, top, schedule, foot, onEverythingElse }: ShortDashboardBodyProps) {
   const w = SHORT_DASHBOARD_WORDS
   const rows = waiting.length + (onRateCrew ? 1 : 0)
   // The count is a promise that the list is whole, so it waits for a read that is in.
@@ -144,7 +146,7 @@ export function ShortDashboardBody({ firstName, hour, waiting, alsoYours, office
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: '1rem', fontWeight: 700 }}>{w.door}</span>
           <span data-short-door-note style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            {w.doorNote(alsoYours)}
+            {w.doorNote(alsoYours, role)}
           </span>
         </span>
         <span aria-hidden="true" style={{ fontSize: '1.25rem', color: 'var(--text-link)' }}>
@@ -209,6 +211,7 @@ export default function DashboardShortHome({
         hour={new Date().getHours()}
         waiting={split.waiting}
         alsoYours={split.alsoYours.length}
+        role={role}
         office={split.office.length}
         read={read}
         phone={phone}

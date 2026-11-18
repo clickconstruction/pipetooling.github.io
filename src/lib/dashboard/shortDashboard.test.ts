@@ -7,13 +7,16 @@ import {
   DASHBOARD_VIEW_WORDS,
   DASHBOARD_VIEWS,
   SHORT_DASHBOARD_ALONE_KEYS,
+  DASHBOARD_VIEW_ROLES,
   SHORT_DASHBOARD_WORDS,
   canHaveShortDashboard,
+  canSetDashboardView,
   canSetDashboardViewFor,
   dashboardViewStorageKey,
   parseDashboardView,
   shortDashboardGreeting,
   shortDashboardRead,
+  shortPageFor,
   splitForShortDashboard,
 } from './shortDashboard'
 
@@ -26,12 +29,47 @@ describe('shortDashboard · the leader’s Dashboard, distilled', () => {
     expect(DASHBOARD_VIEWS).toEqual(['short', 'full'])
   })
 
-  it('is drawn for the leader and a dev; the office may set it for them', () => {
-    expect(canHaveShortDashboard('master_technician')).toBe(true)
-    expect(canHaveShortDashboard('dev')).toBe(true)
-    for (const r of ['assistant', 'controller', 'estimator', 'primary', 'subcontractor', 'helpers', 'superintendent', null]) expect(canHaveShortDashboard(r), String(r)).toBe(false)
+  it('the leader, a dev and a superintendent take a view; the office may set it for them', () => {
+    expect(DASHBOARD_VIEW_ROLES).toEqual(['master_technician', 'dev', 'superintendent'])
+    for (const r of DASHBOARD_VIEW_ROLES) expect(canHaveShortDashboard(r), r).toBe(true)
+    for (const r of ['assistant', 'controller', 'estimator', 'primary', 'subcontractor', 'helpers', '', null, undefined]) expect(canHaveShortDashboard(r), String(r)).toBe(false)
     for (const r of ['dev', 'master_technician', 'assistant']) expect(canSetDashboardViewFor(r), r).toBe(true)
-    for (const r of ['controller', 'estimator', 'subcontractor', null]) expect(canSetDashboardViewFor(r), String(r)).toBe(false)
+    for (const r of ['controller', 'estimator', 'subcontractor', 'superintendent', null]) expect(canSetDashboardViewFor(r), String(r)).toBe(false)
+  })
+
+  it('one setting gives the short form of whichever home the person uses', () => {
+    // Job Mode off: the short Dashboard, for every role that takes a view.
+    for (const r of DASHBOARD_VIEW_ROLES) expect(shortPageFor(r, false), r).toBe('dashboard')
+    // Job Mode on: the short Job Mode page is a superintendent's. A leader and a dev keep the full card.
+    expect(shortPageFor('superintendent', true)).toBe('job_mode')
+    expect(shortPageFor('master_technician', true)).toBeNull()
+    expect(shortPageFor('dev', true)).toBeNull()
+    // A role that takes no view has no short page, whichever home it uses.
+    for (const r of ['assistant', 'controller', 'estimator', 'primary', 'subcontractor', 'helpers', null, undefined]) {
+      expect(shortPageFor(r, false), String(r)).toBeNull()
+      expect(shortPageFor(r, true), String(r)).toBeNull()
+    }
+  })
+
+  it('the office presses any row that takes a view, and a person presses his own', () => {
+    const can = (viewerRole: string | null, viewerUserId: string | null, targetUserId: string | null, targetRole: string | null) => canSetDashboardView({ viewerRole, viewerUserId, targetUserId, targetRole })
+    // The office, for a leader and for a superintendent.
+    for (const office of ['dev', 'master_technician', 'assistant']) {
+      expect(can(office, 'u-office', 'u-lead', 'master_technician'), office).toBe(true)
+      expect(can(office, 'u-office', 'u-super', 'superintendent'), office).toBe(true)
+    }
+    // A superintendent for his own row, and for nobody else's.
+    expect(can('superintendent', 'u-super', 'u-super', 'superintendent')).toBe(true)
+    expect(can('superintendent', 'u-super', 'u-other', 'superintendent')).toBe(false)
+    expect(can('superintendent', 'u-super', 'u-lead', 'master_technician')).toBe(false)
+    // A role that takes no view has no row to press, its own included.
+    expect(can('estimator', 'u-est', 'u-est', 'estimator')).toBe(false)
+    expect(can('assistant', 'u-office', 'u-est', 'estimator')).toBe(false)
+    expect(can('subcontractor', 'u-sub', 'u-sub', 'subcontractor')).toBe(false)
+    // The controller reads. Nobody signed in presses nothing, and neither does a row with no account.
+    expect(can('controller', 'u-con', 'u-super', 'superintendent')).toBe(false)
+    expect(can(null, null, 'u-super', 'superintendent')).toBe(false)
+    expect(can('assistant', 'u-office', null, 'superintendent')).toBe(false)
   })
 
   it('every line on the list is one the leader’s own role presses', () => {
@@ -80,6 +118,10 @@ describe('shortDashboard · the leader’s Dashboard, distilled', () => {
     expect(SHORT_DASHBOARD_WORDS.office(1)).toBe('The office is handling 1 other thing.')
     expect(SHORT_DASHBOARD_WORDS.office(23)).toBe('The office is handling 23 other things.')
     expect(SHORT_DASHBOARD_WORDS.doorNote(0)).toBe('Money, crew, jobs and the full Dashboard.')
+    // A superintendent's door names what is behind it for him. His count lines are everyone's.
+    expect(SHORT_DASHBOARD_WORDS.doorNote(0, 'superintendent')).toBe('Clock In, your hours, your crew and the full Dashboard.')
+    expect(SHORT_DASHBOARD_WORDS.doorNote(0, 'master_technician')).toBe('Money, crew, jobs and the full Dashboard.')
+    expect(SHORT_DASHBOARD_WORDS.doorNote(2, 'superintendent')).toBe('2 more of yours are in there.')
     expect(SHORT_DASHBOARD_WORDS.doorNote(1)).toBe('1 more of yours is in there.')
     expect(SHORT_DASHBOARD_WORDS.doorNote(4)).toBe('4 more of yours are in there.')
   })
@@ -99,6 +141,7 @@ describe('shortDashboard · the leader’s Dashboard, distilled', () => {
       w.office(23),
       w.door,
       w.doorNote(0),
+      w.doorNote(0, 'superintendent'),
       w.doorNote(1),
       w.doorNote(4),
       w.rateCrew.title,
