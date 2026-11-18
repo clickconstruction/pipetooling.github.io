@@ -7,7 +7,7 @@ import { lienDeskPapersFit, lienDeskPileLineFit, lienDeskTitleLineFit, readLienD
  * again whenever the bar or one of its parts changes size. The rule is `lienDeskTitleBar.ts`. A phone is never
  * measured. Since v2.7789 it also answers whether By paper's paper tabs fit on the title line (`papersFit`).
  */
-export function useLienDeskTitleBarFit({ isMobile, paperShown, gcNoticeShown, kind }: { isMobile: boolean; paperShown: boolean; gcNoticeShown: boolean; kind: string }) {
+export function useLienDeskTitleBarFit({ isMobile, paperShown, kind }: { isMobile: boolean; paperShown: boolean; kind: string }) {
   // What the title line has room for at its end (v2.7213; measured since v2.7277): the four presses, or none. The
   // owner-records door was a tool too until v2.7780. The bar reads the line it drew; the rule is `lienDeskTitleBar.ts`. None until it is drawn.
   const titleBarRef = useRef<HTMLDivElement>(null)
@@ -44,6 +44,6 @@ export function useLienDeskTitleBarFit({ isMobile, paperShown, gcNoticeShown, ki
       if (el) ro.observe(el)
     }
     return () => ro.disconnect()
-  }, [isMobile, paperShown, gcNoticeShown, kind, titleLineFit, papersFit])
+  }, [isMobile, paperShown, kind, titleLineFit, papersFit])
   return { titleBarRef, titleLineFit, pileLineFit, papersFit }
 }
