@@ -66,6 +66,8 @@ Type the part's name. **Already on this job** lists the names the job has, with 
 
 On a box, tap {{button:outline|Photo}}. For ten minutes after a count, an added part or a put away the button is blue. A put away lights the box the parts went into. The picture is named for what it followed. Shoot and tap Use Photo. The phone shrinks the picture and files it in the job's Drive folder by itself.
 
+The picture shows on the box for everyone on the job. Tap a picture to open it whole. Tap **Close the photo** to go back. A dashed square means the picture is still on the phone that took it.
+
 With no signal the photo stays on the phone. Tap **Send now** when you have signal again, or **Share instead** to send it another way.
 
 ## With no signal
