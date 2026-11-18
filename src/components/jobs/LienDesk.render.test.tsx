@@ -18,7 +18,7 @@ import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienDesk from './LienDesk'
 import { LienJobSuppliersCard } from './LienJobSuppliers'
 import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticeMonthRow } from '../../lib/jobs/lienDesk'
-import type { LienDeskData } from '../../hooks/useLienDeskData'
+import { LIEN_DESK_JOB_COLUMNS, type LienDeskData } from '../../hooks/useLienDeskData'
 import type { LienClaimBill } from '../../lib/jobs/lienClaimBills'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { LIEN_AFFIDAVIT_PILES, buildLienAffidavitQueue, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
@@ -5319,6 +5319,33 @@ describe('LienDesk — the last day of work, set from under the timeline’s LAS
     await waitFor(() => expect(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-step="last_work"]')).toBeTruthy())
     expect(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-step="last_work"]')?.textContent).toContain('dated from the job’s creation')
     expect(document.querySelector('[data-lien-timeline-last-work-door]')).toBeNull()
+  })
+
+  it('a day set by hand comes off the desk’s read with its reason and its time: the months’ line shows both, and the press under the stop opens the window on that reason (v2.7741)', async () => {
+    // The job as the desk's read hands it back: the row jobs_ledger holds, cut to the columns the read names.
+    // An embed (`alias:table(...)`) comes back under its alias. Until v2.7741 the read named the day and not its reason, time or who.
+    const readNames = new Set(LIEN_DESK_JOB_COLUMNS.split(/,(?![^(]*\))/).map((c) => c.trim().replace(/[:(].*$/, '')))
+    const asRead = (stored: Record<string, unknown>) => Object.fromEntries(Object.entries(stored).filter(([name]) => readNames.has(name))) as LienDeskData['jobsById'][string]
+    const WHY = 'The crew’s last trip, by the daily log'
+    const d = data([row('j650', '2026-07', '2026-10-15', { month_source: 'hand' })], [], true)
+    d.jobsById.j650 = asRead({ ...d.jobsById.j650!, created_at: '2026-08-03T15:00:00Z', lien_last_work_on: '2026-07-24', lien_last_work_note: WHY, lien_last_work_set_at: '2026-09-10T18:00:00Z', lien_last_work_set_by: 'u-taunya', a_column_the_read_does_not_name: 'dropped' })
+    // The cut is a real one: a column the read does not name is gone, and the job is still the job.
+    expect(d.jobsById.j650).not.toHaveProperty('a_column_the_read_does_not_name')
+    expect(d.jobsById.j650).toMatchObject({ id: 'j650', hcp_number: '650', job_name: 'AXO Schertz' })
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="notice" initialJobId="j650" />)
+    await settle()
+    // The months' line: the day, the chip that says a person set it and on which day, and the reason in quotes, as the Lien window reads them.
+    await waitFor(() => expect(screen.getByTestId('lien-last-work-day').textContent).toBe('Jul 24'))
+    expect(screen.getByTestId('lien-last-work').getAttribute('data-source')).toBe('hand')
+    expect(screen.getByTestId('lien-last-work-source').textContent).toBe('set by hand · Sep 10')
+    expect(screen.getByTestId('lien-last-work-note').textContent).toBe(`“${WHY}”`)
+    // The press under LAST WORK: the window opens on the day the job reads and on the reason already stored, not on an empty one.
+    const door = document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-last-work-door]') as HTMLButtonElement
+    expect(door.textContent).toBe('change ›')
+    fireEvent.click(door)
+    const win = screen.getByTestId('lien-last-work-confirm')
+    expect((within(win).getByLabelText('Last day of work') as HTMLInputElement).value).toBe('2026-07-24')
+    expect((within(win).getByLabelText('Why the last day is set by hand') as HTMLTextAreaElement).value).toBe(WHY)
   })
 
   it('the affidavit pane’s strip carries the press too, and a save re-reads the lien clocks', async () => {
