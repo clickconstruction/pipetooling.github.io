@@ -15,7 +15,8 @@ import { recordJobModeEnabledOncePerSession } from '../../lib/jobModeTelemetry'
  * on by default for them, v2.2877 / journey-map Tier-2 #26); office roles never
  * see it (`showJobModeFirstRunCard`). One tap turns Job Mode on (stored
  * per user + device with provenance `card`) and the Dashboard re-renders into
- * the Job Mode card; "Not now" hides it for good on this device.
+ * the Job Mode card; "Not now" hides it for good on this device. "Not now" sits at the
+ * left edge and the green press at the right (v2.7787).
  */
 export default function DashboardJobModeFirstRunCard({
   userId,
@@ -54,14 +55,31 @@ export default function DashboardJobModeFirstRunCard({
         color: 'var(--text-base)',
       }}
     >
-      <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+      <div style={{ flex: '9999 1 240px', minWidth: 0 }}>
         <div style={{ fontWeight: 700, fontSize: '1rem' }}>Working in the field? Turn on Job Mode.</div>
         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 2 }}>
           One big card with your current job, today&apos;s stops, Clock In, Leave Report and Next Job. You can turn it
           off any time from the gear menu.
         </div>
       </div>
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+      {/* Not now on the left, Turn on Job Mode on the right. Under the words on a phone the row is the card's whole
+          width, so the two sit at its two edges. Beside the words on a desk it is only as wide as the two presses. */}
+      <div data-job-mode-card-presses style={{ flex: '1 0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={dismiss}
+          style={{
+            padding: '0.55rem 0.8rem',
+            borderRadius: 8,
+            border: '1px solid var(--border-strong)',
+            background: 'var(--surface)',
+            color: 'var(--text-gray-800)',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+          }}
+        >
+          Not now
+        </button>
         <button
           type="button"
           onClick={() => {
@@ -85,21 +103,6 @@ export default function DashboardJobModeFirstRunCard({
           }}
         >
           Turn on Job Mode
-        </button>
-        <button
-          type="button"
-          onClick={dismiss}
-          style={{
-            padding: '0.55rem 0.8rem',
-            borderRadius: 8,
-            border: '1px solid var(--border-strong)',
-            background: 'var(--surface)',
-            color: 'var(--text-gray-800)',
-            fontSize: '0.875rem',
-            cursor: 'pointer',
-          }}
-        >
-          Not now
         </button>
       </div>
     </section>
