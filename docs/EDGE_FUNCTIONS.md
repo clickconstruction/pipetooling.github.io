@@ -228,6 +228,7 @@ when_to_read:
    - [weekly-money-email-dispatch](#weekly-money-email-dispatch)
    - [payment-forecast-email-dispatch](#payment-forecast-email-dispatch)
    - [money-waiting-email-dispatch](#money-waiting-email-dispatch)
+   - [watch-notify-dispatch](#watch-notify-dispatch)
    - [crew-day-email-dispatch](#crew-day-email-dispatch)
    - [statement-round-email-dispatch](#statement-round-email-dispatch)
    - [gc-word-ask](#gc-word-ask)
@@ -7146,6 +7147,24 @@ A few legacy functions carry a `DEPLOY.md` (some also a `DEPLOY_NOW.md`) with fu
 - [`test-email/DEPLOY.md`](../supabase/functions/test-email/DEPLOY.md)
 
 ---
+
+### watch-notify-dispatch
+
+**Purpose** (v2.7842): tell the people on a watch's list what the watched person did with the material on site. A watch is a dev's mark on one person (`person_watches`); its `tell_user_ids` is the list.
+
+**Called by**: the cron job `watch-notify-dispatch`, every five minutes, with `X-Cron-Secret`. No signed-in caller reaches it: a call without the secret answers 401. `verify_jwt = false` in `config.toml`, as every cron function has.
+
+**What it does**: for each live watch with someone on its list, reads with the service role what the watched person did since the watch began, three days back at most: their ledger rows (`job_material_movements`), the boxes they moved (`job_container_moves`), retired, brought back or edited (`job_container_changes`) or renamed (`job_container_names`), and the part ties and site prices they took off (`on_site_removed_answers`). [`_shared/watchNotice.ts`](../supabase/functions/_shared/watchNotice.ts) decides what to send and writes the words: the first act of the day, each act outside the process (more than two in one run go as one push), and the day's count after 6 p.m. company time. The app's door to the same kernel is `src/lib/people/watchNotice.ts`, where its tests run.
+
+**Once only**: a notice's key (`started:<day>`, `evening:<day>`, `outside:<act id>`) is inserted into `person_watch_notices` before its push goes, and `(watch_id, key)` is unique. A key already there is skipped. A push that fails after its key landed is logged and not sent again.
+
+**The push** goes through each person's Push me hours ([`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts)), template type `watch_notice`, and opens the site's materials screen (`/materials?tab=on-site&site=<development>`, or `/materials?tab=on-site` for a job with no site). Nothing reaches the watched person.
+
+**Answers**: `{ watches, sent, skipped }`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
+
+**Deploy**: `supabase functions deploy watch-notify-dispatch`, before the migration `20261118200000_person_watch_notices.sql` is pushed.
 
 ## Related Documentation
 
