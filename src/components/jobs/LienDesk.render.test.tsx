@@ -2612,26 +2612,40 @@ describe('LienDesk affidavits · a paper keeps the form it was drafted on (punch
     expect(openPrintMock).not.toHaveBeenCalled()
   })
 
-  it('the Board’s Ready to file bin carries the print itself on its title line: it prints from To do, with what it leaves out and what it prints with (v2.7470, punch list #362; in the bin since v2.7708)', async () => {
+  it('the Board’s Ready to file bin carries the print itself on its title line: it prints from To do, and a stack that is not the usual one says so with the press that puts it back (v2.7470, punch list #362; in the bin since v2.7708)', async () => {
     openPrintMock.mockClear()
-    window.localStorage.removeItem('pt.lienHelpSheet.v1')
+    window.localStorage.setItem('pt.lienHelpSheet.v1', 'off')
     const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
     const d = three([ready('aff1', 'j650'), ready('aff2', 'j651'), ready('aff3', 'j652')])
     renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
     await settle()
     const foot = document.querySelector('[data-lien-board-bin="affidavit:ready"]') as HTMLElement
-    expect(foot.querySelector('[data-lien-board-print-note]')!.textContent).toContain('Prints with the help sheet')
+    expect(foot.querySelector('[data-lien-board-print-note]')!.textContent).toBe('Prints without the help sheet · Put it back ›')
     const press = within(foot).getByRole('button', { name: 'Print 3 for notarization' })
     fireEvent.click(press)
     await settle()
     // The stack printed, and the desk is still on To do: the press is the print, not a door.
     expect(openPrintMock).toHaveBeenCalledTimes(1)
     expect(document.querySelector('[data-lien-do-now]')).toBeTruthy()
-    // Change › is the door to By paper's print bar, where the pages in front of the stack are ticked.
-    fireEvent.click(within(foot).getByRole('button', { name: 'Change ›' }))
+    // The line's press puts the usual pages back where it stands: the line goes, the choice is forgotten, and the desk is still on To do.
+    fireEvent.click(within(foot).getByRole('button', { name: 'Put it back ›' }))
     await settle()
-    expect(document.querySelector('[data-lien-affidavit-print-all]')).toBeTruthy()
-    expect(document.querySelector('[data-lien-do-now]')).toBeNull()
+    expect(document.querySelector('[data-lien-board-bin="affidavit:ready"] [data-lien-board-print-note]')).toBeNull()
+    expect(window.localStorage.getItem('pt.lienHelpSheet.v1')).toBeNull()
+    expect(document.querySelector('[data-lien-do-now]')).toBeTruthy()
+    expect(document.querySelector('[data-lien-affidavit-print-all]')).toBeNull()
+  })
+
+  it('the usual stack draws no line under Ready to file (the owner’s call of 2026-11-18)', async () => {
+    window.localStorage.removeItem('pt.lienHelpSheet.v1')
+    window.localStorage.removeItem('pt.lienNoticeRecord.v1')
+    window.localStorage.removeItem('pt.lienNoticeCopiesBatch.v1')
+    const ready = (id: string, job_id: string) => ({ ...draft({ notice: {}, affidavitForm: 'short' }), id, job_id }) as LienDeskItemRow
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={three([ready('aff1', 'j650'), ready('aff2', 'j651'), ready('aff3', 'j652')])} initialKind="next" />)
+    await settle()
+    const foot = document.querySelector('[data-lien-board-bin="affidavit:ready"]') as HTMLElement
+    expect(within(foot).getByRole('button', { name: 'Print 3 for notarization' })).toBeTruthy()
+    expect(foot.querySelector('[data-lien-board-print-note]')).toBeNull()
   })
 
   it('a reader who is not the lien office gets no print on the Board’s bins', async () => {
