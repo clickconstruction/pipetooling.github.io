@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 /**
- * A copy of a painted map (punch list #345, PR 4b): a picture and a page to print. A copy says the
- * day it was made and carries the link when one is out. A print is filed with the job.
+ * A copy of a painted map (punch list #345, PR 4b; re-laid by #394): a picture and a page to print,
+ * drawn through the Share sheet as a person meets them. **Make a picture** is a tile among the
+ * first presses and the picture then takes the sheet alone. The page and the two files sit behind
+ * **Print or a file**. A copy says the day it was made and makes the link itself when none is out,
+ * so it always carries the way back. A print is filed with the job.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -10,13 +13,38 @@ import type { PictureInput } from '../../lib/paintedMap/paintedMapPictureIo'
 
 vi.mock('../../lib/sent/sentCopiesIo', () => ({ printWhenReadyAndFile: async () => true }))
 vi.mock('../../lib/paintedMap/paintedMapIo', () => ({ paintedPlacePhotoUrls: async () => new Map() }))
+vi.mock('../../hooks/useModalStackEntry', () => ({ useModalStackEntry: () => () => true }))
+vi.mock('qrcode.react', () => ({ QRCodeSVG: () => <svg data-testid="qr" /> }))
 
-import { PaintedMapCopies, type PaintedMapCopiesIo } from './PaintedMapCopies'
+/** The link's own calls: whether this device holds one, how many were made, and a refusal. */
+const link = vi.hoisted(() => ({ held: false, minted: 0, refuse: null as string | null }))
+vi.mock('../../lib/paintedMap/paintedMapLinkIo', () => ({
+  loadPaintedMapVisits: async () => ({ ok: true, value: [] }),
+  loadPaintedMapLinks: async () => ({ ok: true, value: link.held || link.minted > 0 ? [{ id: 'link-0', made_at: '2026-11-10T16:00:00Z', expires_at: '2999-01-01T00:00:00Z', ended_at: null, open_count: 0 }] : [] }),
+  mintPaintedMapLink: async () => {
+    if (link.refuse) throw new Error(link.refuse)
+    link.minted += 1
+    return { code: 'q7m2kd4x9p', endsOn: '2027-02-11' }
+  },
+  endPaintedMapLinks: async () => 1,
+  rememberPaintedMapLink: () => {},
+  rememberedPaintedMapLink: () => (link.held ? { code: 'q7m2kd4x9p', endsOn: '2027-02-11' } : null),
+}))
+
+import type { PaintedMapCopiesIo } from './PaintedMapCopies'
+import { PaintedMapShareSheet } from './PaintedMapShareSheet'
 
 const LINE: PaintedLine = { id: 'l1', mapId: 'm1', label: '', how: 'walked', points: [{ lat: 29.5, lng: -98.2 }, { lat: 29.501, lng: -98.2 }], poorParts: [], fixedByHand: false, lengthM: 265, marginM: 9, measuredFt: null, measuredHow: null, madeBy: 'me', madeAt: '2026-11-13T15:05:00Z' }
 const PLACE = (over: Partial<NumberedPlace> = {}): NumberedPlace => ({ id: 'p1', mapId: 'm1', name: 'Truck gate', words: 'Close it behind you.', lat: 29.5, lng: -98.2, accuracyM: null, photoPath: 'm1/gate.jpg', setBy: 'me', setAt: '2026-11-13T15:10:00Z', number: 1, ...over })
 const MAP = { id: 'm1', name: 'The way in for deliveries', words: 'Start at the truck gate.', jobId: 'j1' as string | null }
-const LINK = { url: 'https://example.test/way/q7m2kd4x9p', endsOn: '2027-02-11' }
+
+/** The sheet over a map, as the map's window opens it. `held` says this device already holds a link. */
+const draw = (io: PaintedMapCopiesIo, over: { map?: typeof MAP; lines?: PaintedLine[]; places?: NumberedPlace[]; held?: boolean } = {}) => {
+  link.held = over.held ?? false
+  const map = over.map ?? MAP
+  return render(<PaintedMapShareSheet mapId={map.id} mapName={map.name} whole={{ map, lines: over.lines ?? [LINE], places: over.places ?? [] }} origin="https://example.test" phone openMessages={async () => true} copiesIo={io} onClose={() => {}} />)
+}
+const openFold = () => fireEvent.click(screen.getByRole('button', { name: 'Print or a file' }))
 
 type Fake = PaintedMapCopiesIo & { drew: PictureInput[]; printed: Array<{ html: string; filing: unknown }>; shared: string[]; downloaded: string[]; phone: boolean; popup: boolean; missing: number; canDraw: boolean }
 const fake = (): Fake => {
@@ -51,21 +79,35 @@ beforeEach(() => {
   Object.defineProperty(URL, 'createObjectURL', { value: () => `blob:picture-${++n}`, configurable: true })
   Object.defineProperty(URL, 'revokeObjectURL', { value: () => {}, configurable: true })
 })
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  link.held = false
+  link.minted = 0
+  link.refuse = null
+})
 
-describe('PaintedMapCopies', () => {
-  it('says what a copy is before one is made', () => {
-    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[PLACE()]} link={null} io={fake()} />)
-    expect(screen.getByText('Or hand over a copy')).toBeTruthy()
-    expect(screen.getByText('A copy cannot be taken back, and it goes out of date. Send the link when you can.')).toBeTruthy()
+const RULE = 'A copy cannot be taken back, and it goes out of date. Send the link when you can.'
+
+describe('a copy of a painted map, on the Share sheet', () => {
+  it('keeps the copy’s rule for where a copy is made: under Print or a file, and on the picture', async () => {
+    draw(fake())
+    expect(screen.queryByText(RULE)).toBeNull()
+    expect(screen.queryByText('Or hand over a copy')).toBeNull()
+    openFold()
+    expect(screen.getByText(RULE)).toBeTruthy()
     expect(document.querySelector('[data-painted-picture]')).toBeNull()
+    openFold()
+    fireEvent.click(screen.getByRole('button', { name: 'Make a picture' }))
+    await waitFor(() => expect(document.querySelector('[data-painted-picture]')).toBeTruthy())
+    expect(screen.getByText(RULE)).toBeTruthy()
   })
 
   it('makes a picture with the map\'s name, its summary, the company, the day and the link under it', async () => {
     const io = fake()
-    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[PLACE()]} link={LINK} io={io} />)
+    draw(io, { places: [PLACE()], held: true })
     fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
     await waitFor(() => expect(document.querySelector('[data-painted-picture]')?.getAttribute('src')).toBe('blob:picture-1'))
+    expect(link.minted).toBe(0)
     const band = io.drew[0]!.band!
     expect(band.name).toBe('The way in for deliveries')
     expect(band.summary).toBe('About 870 ft · 1 place')
@@ -77,18 +119,42 @@ describe('PaintedMapCopies', () => {
     expect(io.downloaded).toEqual([])
   })
 
-  it('carries no address on a picture when no link is out', async () => {
+  it('makes the link itself when none is out, so the picture carries the way back', async () => {
     const io = fake()
-    render(<PaintedMapCopies map={MAP} lines={[]} places={[PLACE()]} link={null} io={io} />)
+    draw(io, { lines: [], places: [PLACE()] })
     fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
     await waitFor(() => expect(io.drew).toHaveLength(1))
+    expect(link.minted).toBe(1)
+    expect(io.drew[0]!.band!.foot).toEqual([expect.stringMatching(/ · Made Nov 13, 2026$/), 'example.test/way/q7m2kd4x9p'])
+  })
+
+  it('still makes the picture, with no address and no alarm, when the link cannot be made', async () => {
+    const io = fake()
+    link.refuse = 'Failed to fetch'
+    draw(io, { lines: [], places: [PLACE()] })
+    fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
+    await waitFor(() => expect(document.querySelector('[data-painted-picture]')).toBeTruthy())
     expect(io.drew[0]!.band!.foot).toHaveLength(1)
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('shows the picture alone, goes back on Every way to share, and does not draw it twice', async () => {
+    const io = fake()
+    draw(io, { held: true })
+    fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
+    await waitFor(() => expect(document.querySelector('[data-painted-picture]')).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Text it from my phone…' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Every way to share/ }))
+    expect(document.querySelector('[data-painted-picture]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
+    await waitFor(() => expect(document.querySelector('[data-painted-picture]')).toBeTruthy())
+    expect(io.drew).toHaveLength(1)
   })
 
   it('hands the picture to the phone\'s share sheet on a press of its own', async () => {
     const io = fake()
     io.phone = true
-    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[]} link={null} io={io} />)
+    draw(io)
     fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'Share the picture' }))
     await waitFor(() => expect(io.shared).toEqual(['the-way-in-for-deliveries.jpg']))
@@ -97,7 +163,7 @@ describe('PaintedMapCopies', () => {
 
   it('saves the picture as a file where there is no share sheet', async () => {
     const io = fake()
-    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[]} link={null} io={io} />)
+    draw(io)
     fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'Save the picture' }))
     await waitFor(() => expect(io.downloaded).toEqual(['the-way-in-for-deliveries.jpg']))
@@ -107,7 +173,7 @@ describe('PaintedMapCopies', () => {
   it('says so when part of the picture under the line did not load', async () => {
     const io = fake()
     io.missing = 3
-    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[]} link={null} io={io} />)
+    draw(io)
     fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
     expect(await screen.findByText(/Part of the picture under the line did not load\. The line and the places are right\./)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Make it again' })).toBeTruthy()
@@ -116,14 +182,15 @@ describe('PaintedMapCopies', () => {
   it('says why no picture was made', async () => {
     const io = fake()
     io.canDraw = false
-    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[]} link={null} io={io} />)
+    draw(io)
     fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
     expect((await screen.findByRole('alert')).textContent).toBe('The picture was not made. This browser would not draw it.')
   })
 
   it('prints a page that carries its own pictures and the code, and files it with the job', async () => {
     const io = fake()
-    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[PLACE(), PLACE({ id: 'p2', number: 2, name: 'Meter', words: '', photoPath: null })]} link={LINK} io={io} />)
+    draw(io, { places: [PLACE(), PLACE({ id: 'p2', number: 2, name: 'Meter', words: '', photoPath: null })], held: true })
+    openFold()
     fireEvent.click(screen.getByRole('button', { name: /Print, or save as a PDF/ }))
     await waitFor(() => expect(io.printed).toHaveLength(1))
     const { html, filing } = io.printed[0]!
@@ -143,10 +210,13 @@ describe('PaintedMapCopies', () => {
     const io = fake()
     const files: File[] = []
     io.download = (file) => void files.push(file)
-    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[PLACE({ name: 'Open trench', kind: 'hazard' }), PLACE({ id: 'p2', number: 2, name: 'Meter', words: '', photoPath: null })]} link={LINK} io={io} />)
+    draw(io, { places: [PLACE({ name: 'Open trench', kind: 'hazard' }), PLACE({ id: 'p2', number: 2, name: 'Meter', words: '', photoPath: null })], held: true })
     fireEvent.click(screen.getByRole('button', { name: /Make a picture/ }))
     await waitFor(() => expect(io.drew).toHaveLength(1))
     expect(io.drew[0]!.places.map((p) => [p.number, p.kind])).toEqual([[1, 'hazard'], [2, null]])
+    // The picture takes the sheet alone, so the page and the file are a press back and a fold away.
+    fireEvent.click(await screen.findByRole('button', { name: /Every way to share/ }))
+    openFold()
     fireEvent.click(screen.getByRole('button', { name: /Print, or save as a PDF/ }))
     await waitFor(() => expect(io.printed).toHaveLength(1))
     expect(io.printed[0]!.html).toContain('<td class="k">')
@@ -162,23 +232,38 @@ describe('PaintedMapCopies', () => {
     expect(text).toContain('<name>2. Meter</name>')
   })
 
-  it('prints with no code when no link is out, and says how to get one on the page', async () => {
+  it('makes the link for the page when none is out, so the page always carries its code', async () => {
     const io = fake()
-    render(<PaintedMapCopies map={{ ...MAP, jobId: null }} lines={[LINE]} places={[]} link={null} io={io} />)
-    expect(screen.getByText('One page with the map and the places. Make a link first and the page carries its code.')).toBeTruthy()
+    draw(io, { map: { ...MAP, jobId: null } })
+    openFold()
+    expect(screen.queryByText(/Make a link first/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Print, or save as a PDF/ }))
+    await waitFor(() => expect(io.printed).toHaveLength(1))
+    expect(link.minted).toBe(1)
+    expect(io.printed[0]!.html).toContain('<svg data-qr="https://example.test/way/q7m2kd4x9p"></svg>')
+    expect((io.printed[0]!.filing as { jobIds: string[] }).jobIds).toEqual([])
+    expect((await screen.findByRole('status')).textContent).toBe('The page opened to print. A copy is kept in Documents.')
+  })
+
+  it('prints with no code when the link cannot be made', async () => {
+    const io = fake()
+    link.refuse = 'Failed to fetch'
+    draw(io)
+    openFold()
     fireEvent.click(screen.getByRole('button', { name: /Print, or save as a PDF/ }))
     await waitFor(() => expect(io.printed).toHaveLength(1))
     expect(io.printed[0]!.html).not.toContain('class="code"')
-    expect((io.printed[0]!.filing as { jobIds: string[] }).jobIds).toEqual([])
-    expect((await screen.findByRole('status')).textContent).toBe('The page opened to print. A copy is kept in Documents.')
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('saves a .kml file of the lines and places, named after the map', async () => {
     const io = fake()
     const files: File[] = []
     io.download = (file) => void files.push(file)
-    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[PLACE()]} link={null} io={io} />)
+    draw(io, { places: [PLACE()] })
+    openFold()
     expect(screen.getByText(/The lines and the places with their words\. No photos\./)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /A \.kml file/ }).textContent).toBe('A .kml fileGoogle Earth and Google My Maps')
     fireEvent.click(screen.getByRole('button', { name: /A \.kml file/ }))
     await waitFor(() => expect(files).toHaveLength(1))
     expect(files[0]!.name).toBe('the-way-in-for-deliveries.kml')
@@ -198,7 +283,8 @@ describe('PaintedMapCopies', () => {
   it('hands a .gpx file to the phone\'s share sheet where it takes files', async () => {
     const io = fake()
     io.phone = true
-    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[]} link={null} io={io} />)
+    draw(io)
+    openFold()
     fireEvent.click(screen.getByRole('button', { name: /A \.gpx file/ }))
     await waitFor(() => expect(io.shared).toEqual(['the-way-in-for-deliveries.gpx']))
     expect(screen.getByRole('status').textContent).toBe('The file was handed to your phone to send.')
@@ -207,7 +293,8 @@ describe('PaintedMapCopies', () => {
   it('says what to do when the print window was blocked', async () => {
     const io = fake()
     io.popup = false
-    render(<PaintedMapCopies map={MAP} lines={[LINE]} places={[]} link={null} io={io} />)
+    draw(io)
+    openFold()
     fireEvent.click(screen.getByRole('button', { name: /Print, or save as a PDF/ }))
     expect((await screen.findByRole('alert')).textContent).toBe('The page did not open. Allow pop-ups for this site, then press again.')
   })
