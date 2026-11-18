@@ -6,6 +6,7 @@
 # line starting with # is a comment.
 gc-schedule
 bid-changes
+stage-kind
 ar-unbanked-checks
 ar-stripe-cases
 gc-building
@@ -139,4 +140,3 @@ job-papers-lock
 job-papers-lists
 dashboard-view
 job-finish-calls
-stage-kind
