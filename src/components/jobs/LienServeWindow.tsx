@@ -141,18 +141,32 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
   }
 
   const setCopy = (job: LienServeJob, copy: ServiceCopy, next: ServiceCopyDraft) => setDrafts((cur) => ({ ...cur, [job.filing.id]: lienServeDraftWith(cur[job.filing.id] ?? lienServeDraftFor(job), copy, next) }))
-  /** Keep one copy's number and receipt on its filing now. A write that fails says why under the envelope; Record still writes it. */
-  const keepCopy = async (job: LienServeJob, copy: ServiceCopy, draft: ServiceCopyDraft) => {
+  /**
+   * Keep one copy's number and receipt on its filing now. A write that fails says why under the envelope; Record still
+   * writes it. Answers whether the filing now holds what the draft holds.
+   */
+  const keepCopy = async (job: LienServeJob, copy: ServiceCopy, draft: ServiceCopyDraft): Promise<boolean> => {
     const id = job.filing.id
-    if (!lienCopyProofChanged(writtenSends.current[id] ?? job.filing.sends, copy, draft)) return
+    if (!lienCopyProofChanged(writtenSends.current[id] ?? job.filing.sends, copy, draft)) return true
     const key = `${id}:${copy}`
     try {
       writtenSends.current[id] = await keep({ filingId: id, recipient: copy, proof: { tracking: draft.tracking, receiptUrl: draft.receiptUrl } })
       keptAny.current = true
       setKept((cur) => ({ ...cur, [key]: '' }))
+      return true
     } catch (e) {
       setKept((cur) => ({ ...cur, [key]: lienReceiptNotKeptWords(formatErrorMessage(e, 'the lien did not take it')) }))
+      return false
     }
+  }
+  /**
+   * The receipt press's write (v2.7743): the draft takes the link, the filing takes it, and the press waits for that
+   * before a wrong file goes to Drive's trash. A write that did not land rejects, so the file stays where it is.
+   */
+  const setReceipt = async (job: LienServeJob, copy: ServiceCopy, draft: ServiceCopyDraft, receiptUrl: string) => {
+    const next = { ...draft, receiptUrl }
+    setCopy(job, copy, next)
+    if (!(await keepCopy(job, copy, next))) throw new Error(LIEN_RECEIPT_WORDS.notKept)
   }
   const setMailed = (job: LienServeJob, mailed: boolean) => setDrafts((cur) => ({ ...cur, [job.filing.id]: { ...(cur[job.filing.id] ?? lienServeDraftFor(job)), mailed } }))
 
@@ -194,16 +208,8 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
             day={servedOn}
             url={draft.receiptUrl}
             compact={!isMobile}
-            onSaved={(url) => {
-              const next = { ...draft, receiptUrl: url }
-              setCopy(job, copy, next)
-              void keepCopy(job, copy, next)
-            }}
-            onTakeOff={() => {
-              const next = { ...draft, receiptUrl: '' }
-              setCopy(job, copy, next)
-              void keepCopy(job, copy, next)
-            }}
+            onSaved={(url) => setReceipt(job, copy, draft, url)}
+            onTakeOff={() => setReceipt(job, copy, draft, '')}
           />
           {!draft.receiptUrl ? <span style={small}>{LIEN_RECEIPT_WORDS.hint}</span> : null}
           {kept[`${job.filing.id}:${copy}`] === '' ? (

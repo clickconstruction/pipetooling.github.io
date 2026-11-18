@@ -20,8 +20,8 @@ export type LienMailProofReceipts = {
   jobNumber: string
   /** The day on the paper, for a receipt's file name. */
   day: string
-  /** A receipt added (`url`) or taken off (`''`). */
-  onSet: (recipient: LienMailProofCopy, url: string) => void
+  /** A receipt added (`url`) or taken off (`''`). The write's promise goes back to the press, which waits for it (v2.7743). */
+  onSet: (recipient: LienMailProofCopy, url: string) => void | Promise<void>
 }
 
 export type LienMailProofFiles = {

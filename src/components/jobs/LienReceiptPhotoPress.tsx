@@ -4,7 +4,9 @@ import { putJobFolderFile } from '../../lib/jobs/jobFolderAddFileIo'
 import { addFileTooBig } from '../../lib/jobs/jobFolderAddFile'
 import { ADD_FILE_FAILURE_WORDS, addFileCanRetry } from '../../lib/jobs/addFileFailure'
 import { LIEN_SERVICE_PROOF_WORDS, lienReceiptPhotoName, receiptReadWords, type LienReceiptPaper, type LienReceiptPhotoOf } from '../../lib/jobs/lienServiceProof'
-import { LIEN_RECEIPT_ACCEPT, LIEN_RECEIPT_WORDS, lienReceiptFileName, lienReceiptIsPdf, lienReceiptProblem } from '../../lib/jobs/lienReceiptFile'
+import { LIEN_RECEIPT_ACCEPT, LIEN_RECEIPT_WORDS, lienReceiptFileName, lienReceiptIsPdf, lienReceiptProblem, lienReceiptTakeOffAsk } from '../../lib/jobs/lienReceiptFile'
+import { TAKE_OFF_FILE_WORDS, driveFileIdOfUrl, fileTakenOffWords, type FileTakenOff } from '../../lib/jobs/jobFolderTrash'
+import { takeFileToTrash, untrashJobFolderFile } from '../../lib/jobs/jobFolderTrashIo'
 import { readTrackingFromPhoto } from '../../lib/jobs/lienReceiptReadIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -21,7 +23,14 @@ import { PhoneSheet } from '../PhoneSheet'
  *
  * The file goes to the job's Drive folder under Team only, Sent by us, the moment it is picked, so a failure shows
  * here and not after the record is saved. The link comes back through `onSaved`. A saved receipt shows **Open**,
- * **Replace** and, where the form can forget it (`onTakeOff`), **Take off**, which asks first and leaves the file in Drive.
+ * **Replace** and, where the form can forget it (`onTakeOff`), **Take off**, which asks first.
+ *
+ * A wrong receipt taken off goes to Drive's trash (v2.7743), as a wrong mailed copy does (`jobFolderTrash.ts`). The
+ * link comes off first: `onTakeOff` and `onSaved` may answer a promise, and the press waits for it, because the
+ * function refuses to move a file a lien record still names. A caller whose write did not land rejects, and the file
+ * stays where it is. The line under the press says where the file is now, with **Put it back** and, where a second
+ * try can help, **Try again**. **Replace** sends the file it took the place of to the trash the same way. A link that
+ * is not a Drive file's is only forgotten. The clerk's page is not a receipt, and its file is left alone.
  *
  * With `onRead` (a § 53.056 notice's sends, v2.7557) the press also reads the certified mail number off a photo's
  * barcode and hands it to the form, and says under the press what it read or that it read none. A PDF is not read.
@@ -43,6 +52,8 @@ export function LienReceiptPhotoPress({
   onRead,
   read = readTrackingFromPhoto,
   put = putJobFolderFile,
+  trash = takeFileToTrash,
+  untrash = untrashJobFolderFile,
 }: {
   jobId: string
   jobNumber: string
@@ -51,9 +62,13 @@ export function LienReceiptPhotoPress({
   day: string
   /** The saved file's link, or '' when none is added yet. */
   url: string
-  onSaved: (url: string) => void
-  /** Forget the saved receipt. Absent = the saved receipt shows with no way to take it off. */
-  onTakeOff?: () => void
+  /**
+   * The record takes the link. A caller that writes the record at once answers its write's promise, and rejects when
+   * the write did not land; a caller that only holds the link in its form answers nothing.
+   */
+  onSaved: (url: string) => void | Promise<void>
+  /** Forget the saved receipt, under the same rule. Absent = the saved receipt shows with no way to take it off. */
+  onTakeOff?: () => void | Promise<void>
   /** The press's words; the receipt's by default. */
   label?: string
   /** The computer's record box draws small presses; the phone's sheet draws them 44 px tall. */
@@ -64,6 +79,8 @@ export function LienReceiptPhotoPress({
   onRead?: (tracking: string) => void
   read?: typeof readTrackingFromPhoto
   put?: typeof putJobFolderFile
+  trash?: typeof takeFileToTrash
+  untrash?: typeof untrashJobFolderFile
 }) {
   const { showToast } = useToastContext()
   const input = useRef<HTMLInputElement>(null)
@@ -74,13 +91,68 @@ export function LienReceiptPhotoPress({
   const [asking, setAsking] = useState(false)
   // The file that did not go up, with its reason; `retry` is whether the same file can go again.
   const [failed, setFailed] = useState<{ file: File; words: string; retry: boolean } | null>(null)
+  // The file whose link just came off, and where it is now: `outcome` is null while the first move is under way.
+  const [off, setOff] = useState<{ url: string; id: string; after: 'take_off' | 'replace'; outcome: FileTakenOff | null; working: 'trash' | 'back' | null } | null>(null)
   const receipt = of !== 'clerk'
   const words = LIEN_SERVICE_PROOF_WORDS
   const say = label ?? (receipt ? LIEN_RECEIPT_WORDS.add : words.clerkPhoto)
 
+  /** The file goes to Drive's trash once no record names it. Never throws: the outcome is the line under the press. */
+  const toTrash = async (was: string, id: string, after: 'take_off' | 'replace') => {
+    setOff({ url: was, id, after, outcome: null, working: 'trash' })
+    const outcome = await trash(jobId, id)
+    setOff((now) => (now && now.id === id ? (outcome ? { ...now, outcome, working: null } : null) : now))
+  }
+
+  const takeOff = async () => {
+    if (!onTakeOff) return
+    const was = url
+    setAsking(false)
+    setReadSaid('')
+    setOff(null)
+    try {
+      await onTakeOff()
+    } catch {
+      // The record kept the link, and the caller said why. The file stays where it is.
+      return
+    }
+    const id = receipt ? driveFileIdOfUrl(was) : null
+    if (id) await toTrash(was, id, 'take_off')
+  }
+
+  const trashAgain = async () => {
+    const o = off
+    if (!o || o.working) return
+    setOff({ ...o, working: 'trash' })
+    const outcome = await trash(jobId, o.id)
+    setOff((now) => (now && now.id === o.id ? { ...now, outcome: outcome ?? now.outcome, working: null } : now))
+  }
+
+  const putBack = async () => {
+    const o = off
+    if (!o || o.working || o.after !== 'take_off') return
+    setOff({ ...o, working: 'back' })
+    let inDrive = o.outcome?.where !== 'trash'
+    try {
+      if (!inDrive) {
+        await untrash(jobId, o.id)
+        inDrive = true
+      }
+      await onSaved(o.url)
+      setOff((now) => (now && now.id === o.id ? null : now))
+    } catch (e) {
+      const said = formatErrorMessage(e, TAKE_OFF_FILE_WORDS.putBackFailed)
+      // Out of the trash but not on the record: the line says the file is in Drive, and both presses still stand.
+      setOff((now) => (now && now.id === o.id ? { ...now, working: null, outcome: inDrive && now.outcome?.where === 'trash' ? { where: 'drive', why: said, retry: true } : now.outcome } : now))
+      showToast(said, 'error')
+    }
+  }
+
   const take = async (file: File) => {
+    const was = url
     setReadSaid('')
     setFailed(null)
+    setOff(null)
     const problem = receipt ? lienReceiptProblem(file) : null
     if (problem) {
       setFailed({ file, words: problem, retry: false })
@@ -101,7 +173,16 @@ export function LienReceiptPhotoPress({
         if (addFileTooBig(named.size)) throw new Error('That file is over 10 MB. Take the photo again, closer to the paper.')
       }
       const added = await put(jobId, 'sent', named)
-      onSaved(added.url)
+      let landed = true
+      try {
+        await onSaved(added.url)
+      } catch {
+        // The file is in Drive and the caller said why the record did not take it. Sending it again would add a second file.
+        landed = false
+      }
+      // Replace: the record names the new file, so the one it took the place of goes to Drive's trash.
+      const oldId = landed && receipt ? driveFileIdOfUrl(was) : null
+      const oldGone = oldId && oldId !== driveFileIdOfUrl(added.url) ? toTrash(was, oldId, 'replace') : null
       if (onRead) {
         if (pdf) {
           setReadSaid(LIEN_RECEIPT_WORDS.pdfNotRead)
@@ -112,6 +193,7 @@ export function LienReceiptPhotoPress({
           setReadSaid(receiptReadWords(tracking))
         }
       }
+      await oldGone
     } catch (e) {
       const said = formatErrorMessage(e, receipt ? LIEN_RECEIPT_WORDS.failed : 'Could not save the photo.')
       setFailed({ file, words: said, retry: addFileCanRetry(e) })
@@ -137,6 +219,8 @@ export function LienReceiptPhotoPress({
   // A receipt on a phone asks which way first; everything else opens the picker.
   const open = () => (receipt && !compact ? setSheet(true) : input.current?.click())
   const saved = !!url && !busy
+  const ask = lienReceiptTakeOffAsk(url)
+  const moving = off?.working != null
 
   return (
     <span data-lien-receipt-photo={of} style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', minWidth: 0, ...(compact ? {} : { width: '100%' }) }}>
@@ -173,18 +257,18 @@ export function LienReceiptPhotoPress({
           <a href={url} target="_blank" rel="noreferrer" aria-label="Open the receipt" style={openLink}>
             {compact ? `${LIEN_RECEIPT_WORDS.open} ›` : 'Open the receipt'}
           </a>
-          <button type="button" disabled={asking} onClick={open} aria-haspopup={compact ? undefined : 'dialog'} style={quiet}>
+          <button type="button" disabled={asking || moving} onClick={open} aria-haspopup={compact ? undefined : 'dialog'} style={quiet}>
             {LIEN_RECEIPT_WORDS.replace}
           </button>
           {onTakeOff ? (
-            <button type="button" disabled={asking} onClick={() => setAsking(true)} style={quiet}>
+            <button type="button" disabled={asking || moving} onClick={() => setAsking(true)} style={quiet}>
               {LIEN_RECEIPT_WORDS.takeOff}
             </button>
           ) : null}
         </>
       ) : (
         <>
-          <button type="button" disabled={busy} onClick={open} aria-haspopup={receipt && !compact ? 'dialog' : undefined} style={{ ...press, ...(receipt && !compact ? { flex: '1 1 100%' } : {}) }}>
+          <button type="button" disabled={busy || moving} onClick={open} aria-haspopup={receipt && !compact ? 'dialog' : undefined} style={{ ...press, ...(receipt && !compact ? { flex: '1 1 100%' } : {}) }}>
             {busy ? (receipt ? LIEN_RECEIPT_WORDS.saving : words.saving) : url ? words.again : say}
           </button>
           {url && !busy ? (
@@ -195,16 +279,9 @@ export function LienReceiptPhotoPress({
         </>
       )}
       {asking && onTakeOff ? (
-        <span role="group" aria-label={LIEN_RECEIPT_WORDS.takeOffAsk} data-lien-receipt-ask style={{ flexBasis: '100%', display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.55rem', border: '1px solid var(--border-amber)', borderRadius: 7, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: compact ? '0.75rem' : '0.8125rem' }}>
-          <span>{LIEN_RECEIPT_WORDS.takeOffAsk}</span>
-          <button
-            type="button"
-            onClick={() => {
-              setAsking(false)
-              setReadSaid('')
-              onTakeOff()
-            }}
-            style={{ ...press, color: 'var(--text-strong)' }}
+        <span role="group" aria-label={ask} data-lien-receipt-ask style={{ flexBasis: '100%', display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.55rem', border: '1px solid var(--border-amber)', borderRadius: 7, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: compact ? '0.75rem' : '0.8125rem' }}>
+          <span>{ask}</span>
+          <button type="button" onClick={() => void takeOff()} style={{ ...press, color: 'var(--text-strong)' }}
           >
             {LIEN_RECEIPT_WORDS.takeOffConfirm}
           </button>
@@ -219,6 +296,21 @@ export function LienReceiptPhotoPress({
           {failed.retry ? (
             <button type="button" data-lien-receipt-retry onClick={() => void take(failed.file)} style={{ ...press, color: 'var(--text-strong)' }}>
               {ADD_FILE_FAILURE_WORDS.tryAgain}
+            </button>
+          ) : null}
+        </span>
+      ) : null}
+      {off && !asking && !(busy && off.after === 'take_off') ? (
+        <span role="status" data-lien-receipt-off={off.outcome?.where ?? 'moving'} style={{ flexBasis: '100%', display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', fontSize: compact ? '0.72rem' : '0.8rem', color: 'var(--text-muted)' }}>
+          <span>{off.working === 'back' ? TAKE_OFF_FILE_WORDS.puttingBack : off.working === 'trash' || !off.outcome ? TAKE_OFF_FILE_WORDS.moving : fileTakenOffWords(off.outcome, off.after)}</span>
+          {off.outcome?.where === 'drive' && off.outcome.retry && !off.working ? (
+            <button type="button" data-lien-receipt-trash-again onClick={() => void trashAgain()} style={{ ...press, color: 'var(--text-strong)' }}>
+              {TAKE_OFF_FILE_WORDS.tryAgain}
+            </button>
+          ) : null}
+          {off.after === 'take_off' && off.outcome && !off.working ? (
+            <button type="button" data-lien-receipt-put-back onClick={() => void putBack()} style={{ ...press, color: 'var(--text-strong)' }}>
+              {TAKE_OFF_FILE_WORDS.putBack}
             </button>
           ) : null}
         </span>

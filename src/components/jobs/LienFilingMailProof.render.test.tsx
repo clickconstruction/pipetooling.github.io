@@ -11,8 +11,23 @@ import LienFilingMailProof from './LienFilingMailProof'
 vi.mock('../../lib/materials/photoShrink', () => ({ shrinkPhoto: async (file: File) => ({ blob: file, shrunk: false }) }))
 vi.mock('../../lib/jobs/jobFolderAddFileIo', () => ({ putJobFolderFile: vi.fn() }))
 vi.mock('../../lib/jobs/lienReceiptReadIo', () => ({ readTrackingFromPhoto: async () => '' }))
+// The trash call a receipt's take-off makes (v2.7743), with the order it came in against the filing's write.
+const order: string[] = []
+vi.mock('../../lib/jobs/jobFolderTrashIo', () => ({
+  takeFileToTrash: async (jobId: string, id: string | null) => {
+    order.push(`trash:${jobId}:${id}`)
+    return id ? { where: 'trash' } : null
+  },
+  untrashJobFolderFile: async (jobId: string, id: string) => {
+    order.push(`untrash:${jobId}:${id}`)
+    return { url: '' }
+  },
+}))
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  order.length = 0
+})
 
 const copies = [
   { url: 'https://drive.example/file/1', driveFileId: 'd1', name: 'Lien notice as mailed · 1042 · 2026-11-17.pdf', at: '', by: null },
@@ -72,6 +87,42 @@ describe('LienFilingMailProof', () => {
     await waitFor(() => expect(owner().textContent).toContain('No receipt yet'))
     expect(document.querySelector('[data-lien-mail-proof-chip]')?.textContent).toBe('Mail proof: 1 of 3 on file')
     expect(onChanged).toHaveBeenCalledTimes(1)
+  })
+
+  it('sends a wrong receipt to Drive’s trash once the filing has let go of it, and Put it back names it again (v2.7743)', async () => {
+    const receipt = 'https://drive.google.com/file/d/made-up-receipt-1/view'
+    const withReceipt = { ...filing, sends: [{ ...filing.sends[0]!, receipt_url: receipt }, filing.sends[1]!] }
+    const keep = vi.fn(async (args: { recipient: string; proof: { receiptUrl?: string } }) => {
+      order.push(`keep:${args.proof.receiptUrl}`)
+      return withReceipt.sends.map((s) => ({ recipient: s.recipient, method: s.method, tracking: s.tracking, sent_on: s.sent_on, ...(s.recipient === args.recipient && args.proof.receiptUrl ? { receipt_url: args.proof.receiptUrl } : {}) }))
+    })
+    renderWithProviders(<LienFilingMailProof {...base} filing={withReceipt as never} canEdit keep={keep as never} />)
+    const owner = () => document.querySelector('[data-lien-mail-proof-envelope="owner"]') as HTMLElement
+    fireEvent.click(within(owner()).getByRole('button', { name: 'Take off' }))
+    fireEvent.click(within(owner()).getByRole('button', { name: 'Take it off' }))
+    await waitFor(() => expect(owner().querySelector('[data-lien-receipt-off]')?.textContent).toContain('Taken off. The file is in Drive’s trash.'))
+    expect(order).toEqual(['keep:', 'trash:j1:made-up-receipt-1'])
+    expect(owner().textContent).toContain('No receipt yet')
+    fireEvent.click(within(owner()).getByRole('button', { name: 'Put it back' }))
+    await waitFor(() => expect((within(owner()).getByRole('link', { name: 'Open the receipt' }) as HTMLAnchorElement).href).toBe(receipt))
+    expect(order).toEqual(['keep:', 'trash:j1:made-up-receipt-1', 'untrash:j1:made-up-receipt-1', `keep:${receipt}`])
+    expect(owner().querySelector('[data-lien-receipt-off]')).toBeNull()
+  })
+
+  it('leaves the file in Drive when the filing did not take the take-off', async () => {
+    const receipt = 'https://drive.google.com/file/d/made-up-receipt-1/view'
+    const withReceipt = { ...filing, sends: [{ ...filing.sends[0]!, receipt_url: receipt }, filing.sends[1]!] }
+    const keep = vi.fn(async () => {
+      throw new Error('The network dropped.')
+    })
+    renderWithProviders(<LienFilingMailProof {...base} filing={withReceipt as never} canEdit keep={keep as never} />)
+    const owner = () => document.querySelector('[data-lien-mail-proof-envelope="owner"]') as HTMLElement
+    fireEvent.click(within(owner()).getByRole('button', { name: 'Take off' }))
+    fireEvent.click(within(owner()).getByRole('button', { name: 'Take it off' }))
+    await waitFor(() => expect(keep).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(owner().querySelector('[data-lien-receipt-ask]')).toBeNull())
+    expect(order).toEqual([])
+    expect((within(owner()).getByRole('link', { name: 'Open the receipt' }) as HTMLAnchorElement).href).toBe(receipt)
   })
 
   it('adds one more mailed file to the recorded notice and lists it at once', async () => {

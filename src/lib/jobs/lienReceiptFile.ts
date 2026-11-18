@@ -13,6 +13,7 @@
  * functions hold a copy of, stays untouched.
  */
 import { ADD_FILE_MAX_BYTES, addFileSizeWords, addFileTooBig } from './jobFolderAddFile'
+import { TAKE_OFF_FILE_WORDS, driveFileIdOfUrl } from './jobFolderTrash'
 import { LIEN_SCAN_ACCEPT, lienScanExtension, lienScanIsPdf, type LienScanFileLike } from './lienScanFile'
 import { parseLienSends, type LienSendLike } from './lienSendTracking'
 import { lienReceiptPhotoName, type LienReceiptPaper, type ServiceCopy } from './lienServiceProof'
@@ -85,7 +86,10 @@ export const LIEN_RECEIPT_WORDS = {
   /** The two answers to the ask. The first names the act. */
   takeOffConfirm: 'Take it off',
   keep: 'Keep it',
-  takeOffAsk: 'Take this receipt off? The file stays in the job’s Drive folder.',
+  /** The ask before a take-off. The file goes to Drive's trash (v2.7743), as a mailed copy's does. */
+  takeOffAsk: `Take this receipt off? ${TAKE_OFF_FILE_WORDS.askTail}`,
+  /** The ask for a link that is not a Drive file's: it is only forgotten, so nothing is said about a file. */
+  takeOffAskLink: 'Take this receipt off?',
   /** The phone's sheet: two ways to add one. */
   photo: 'Take a photo',
   photoSub: 'The camera opens. The number is read off the receipt.',
@@ -107,6 +111,11 @@ export const LIEN_RECEIPT_WORDS = {
   /** Under an envelope whose proof did not reach the filing. Record still writes it. */
   notKept: 'Not kept yet',
 } as const
+
+/** The ask before a receipt's take-off: a Drive file's says where the file goes, any other link's asks alone. */
+export function lienReceiptTakeOffAsk(url: string | null | undefined): string {
+  return driveFileIdOfUrl(url) ? LIEN_RECEIPT_WORDS.takeOffAsk : LIEN_RECEIPT_WORDS.takeOffAskLink
+}
 
 /** Under an envelope whose proof did not reach the filing: the reason, and what still saves it. */
 export function lienReceiptNotKeptWords(reason: string): string {

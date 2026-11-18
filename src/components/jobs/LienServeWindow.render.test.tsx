@@ -26,11 +26,21 @@ vi.mock('../../lib/sent/sentCopiesIo', () => ({
   },
 }))
 vi.mock('../../lib/jobs/jobFolderAddFileIo', () => ({ putJobFolderFile: async () => ({ driveFileId: 'made-up', url: 'https://drive.example/made-up' }) }))
+// The trash call a receipt's take-off makes (v2.7743), with the order it came in against the filing's write.
+const order: string[] = []
+vi.mock('../../lib/jobs/jobFolderTrashIo', () => ({
+  takeFileToTrash: async (jobId: string, id: string | null) => {
+    order.push(`trash:${jobId}:${id}`)
+    return id ? { where: 'trash' } : null
+  },
+  untrashJobFolderFile: async () => ({ url: '' }),
+}))
 
 afterEach(() => {
   cleanup()
   prints.length = 0
   filed.length = 0
+  order.length = 0
   window.localStorage.clear()
 })
 
@@ -185,6 +195,41 @@ describe('LienServeWindow', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Close' }).slice(-1)[0]!)
     expect(props.onChanged).toHaveBeenCalledTimes(1)
     expect(props.onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('takes a wrong receipt off its lien first, then sends the file to Drive’s trash (v2.7743)', async () => {
+    const receipt = 'https://drive.google.com/file/d/made-up-receipt-1/view'
+    let land: () => void = () => {}
+    const keep = vi.fn(async (args: { recipient: string; proof: { tracking?: string; receiptUrl?: string } }) => {
+      order.push(`keep:${args.proof.receiptUrl}`)
+      await new Promise<void>((done) => (land = done))
+      return [{ recipient: args.recipient, method: 'certified_mail', tracking: args.proof.tracking ?? '' }]
+    })
+    open({ jobs: [job('2104', { sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9589 0001', receipt_url: receipt }] })], keep: keep as never })
+    const owner = document.querySelector('[data-lien-serve-row="2104"] [data-lien-serve-envelope="owner"]') as HTMLElement
+    fireEvent.click(within(owner).getByRole('button', { name: 'Take off' }))
+    expect(within(owner).getByText('Take this receipt off? The file goes to Drive’s trash. Drive keeps it there 30 days.')).toBeTruthy()
+    fireEvent.click(within(owner).getByRole('button', { name: 'Take it off' }))
+    await waitFor(() => expect(keep).toHaveBeenCalledWith({ filingId: 'f-2104', recipient: 'owner', proof: { tracking: '9589 0001', receiptUrl: '' } }))
+    // The lien still names the file until its write lands, so the trash is not asked yet.
+    expect(order).toEqual(['keep:'])
+    land()
+    await waitFor(() => expect(owner.querySelector('[data-lien-receipt-off]')?.textContent).toContain('Taken off. The file is in Drive’s trash.'))
+    expect(order).toEqual(['keep:', 'trash:job-2104:made-up-receipt-1'])
+  })
+
+  it('leaves the file in Drive when the lien did not take the take-off, and says why', async () => {
+    const receipt = 'https://drive.google.com/file/d/made-up-receipt-1/view'
+    const keep = vi.fn(async () => {
+      throw new Error('The network dropped.')
+    })
+    open({ jobs: [job('2104', { sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9589 0001', receipt_url: receipt }] })], keep: keep as never })
+    const owner = document.querySelector('[data-lien-serve-row="2104"] [data-lien-serve-envelope="owner"]') as HTMLElement
+    fireEvent.click(within(owner).getByRole('button', { name: 'Take off' }))
+    fireEvent.click(within(owner).getByRole('button', { name: 'Take it off' }))
+    await waitFor(() => expect(owner.querySelector('[data-lien-serve-not-kept="owner"]')?.textContent).toBe('Not kept yet: The network dropped. Record saves it with the day.'))
+    expect(order).toEqual([])
+    expect(owner.querySelector('[data-lien-receipt-off]')).toBeNull()
   })
 
   it('says why a number was not kept, and that Record still saves it', async () => {
