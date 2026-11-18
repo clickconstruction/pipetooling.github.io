@@ -44,7 +44,7 @@ describe('JobsStagesCardList more-actions sheet', () => {
     const openStagesDetailJobModal = vi.fn()
     const job = makeJob({ job_name: 'Card Alpha' })
     renderWithProviders(
-      <JobsStagesCardList {...makeProps({ jobList: [job], openStagesDetailJobModal })} />,
+      <JobsStagesCardList {...makeProps({ jobList: [job] }, { openStagesDetailJobModal })} />,
     )
     await settle()
     fireEvent.click(screen.getByTitle('More actions'))
@@ -73,7 +73,7 @@ describe('JobsStagesCardList more-actions sheet', () => {
   it('the sheet’s Job folder opens the Documents tab and says when the folder is not made yet (v2.6301)', async () => {
     const openEdit = vi.fn()
     const job = makeJob({ job_name: 'Card Folder' })
-    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [job], openEdit })} />)
+    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [job] }, { openEdit })} />)
     await settle()
     fireEvent.click(screen.getByTitle('More actions'))
     expect(screen.getByText('not made yet')).toBeTruthy()
@@ -86,7 +86,7 @@ describe('JobsStagesCardList more-actions sheet', () => {
     const openChecklistDoor = vi.fn()
     const job = makeJob({ job_name: 'Card Stages', fixtures: [{ id: 'f3', name: 'Trim Set', count: 1, line_unit_price: 4100, sequence_order: 3 }] })
     const notReady = { kind: 'trim_set', asked: 6, answered: 3, standing: 'not_ready', ready: false } as const
-    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [job], openChecklistDoor, checklistMarksFor: () => new Map([['f3', notReady]]) })} />)
+    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [job] }, { openChecklistDoor, checklistMarksFor: () => new Map([['f3', notReady]]) })} />)
     await settle()
     fireEvent.click(screen.getByTitle('More actions'))
     expect(screen.getByText('Checklists')).toBeTruthy()
@@ -98,7 +98,7 @@ describe('JobsStagesCardList more-actions sheet', () => {
 
   it('the Checklists line is left off a service call and without the opener (#246)', async () => {
     const service = makeJob({ job_name: 'Card Service', fixtures: [{ id: 's1', name: 'Water heater', count: 1, line_unit_price: 900, sequence_order: 1 }] })
-    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [service], openChecklistDoor: vi.fn() })} />)
+    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [service] }, { openChecklistDoor: vi.fn() })} />)
     await settle()
     fireEvent.click(screen.getByTitle('More actions'))
     expect(screen.getByText('Job folder')).toBeTruthy()
@@ -111,7 +111,7 @@ describe('JobsStagesCardList more-actions sheet', () => {
     const job = makeJob({ job_name: 'Card Beta' })
     renderWithProviders(
       <JobsStagesCardList
-        {...makeProps({ jobList: [job], canCreateHazmatFee: true, offerHazmatFee: true, openHazmatFee, onSendBack })}
+        {...makeProps({ jobList: [job], offerHazmatFee: true, onSendBack }, { canCreateHazmatFee: true, openHazmatFee })}
       />,
     )
     await settle()
@@ -128,7 +128,7 @@ describe('JobsStagesCardList more-actions sheet', () => {
       team_members: [{ user_id: 'u1', users: { name: 'Malachi' } }] as ReturnType<typeof makeJob>['team_members'],
     })
     renderWithProviders(
-      <JobsStagesCardList {...makeProps({ jobList: [job], openQuickAssignForJob })} />,
+      <JobsStagesCardList {...makeProps({ jobList: [job] }, { openQuickAssignForJob })} />,
     )
     await settle()
     fireEvent.click(screen.getByTitle('More actions'))
@@ -141,7 +141,7 @@ describe('JobsStagesCardList more-actions sheet', () => {
   it('Cancel closes the sheet without running anything', async () => {
     const openEdit = vi.fn()
     const job = makeJob({ job_name: 'Card Gamma' })
-    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [job], openEdit })} />)
+    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [job] }, { openEdit })} />)
     await settle()
     fireEvent.click(screen.getByTitle('More actions'))
     fireEvent.click(screen.getByText('Cancel'))
@@ -190,6 +190,7 @@ describe('JobsStagesCardList customer line teaser (v2.6689, punch list #125)', (
       <JobsStagesCardList
         {...makeProps({
           jobList: [job],
+        }, {
           jobThreadStatsByJobId: { [job.id]: { note_count: 1, last_note_at: '2026-08-11T14:28:00Z', last_note_body: 'Inspector confirmed.', last_note_author_name: 'Rosa', last_report_at: null, report_count: 0, last_report_author_name: null, last_report_template_name: null, last_report_preview: null } },
           customerLinesByJobId: new Map([[job.id, [{ id: 'm-in', contactId: 'c-dana', contact: dana, channel: 'text' as const, direction: 'in' as const, at: '2026-08-12T01:15:00Z', who: '', body: 'Can you do Thursday after 10 instead?', tied: true }]]]),
           onOpenCustomerDoor,
@@ -219,6 +220,7 @@ describe('JobsStagesCardList phone row customer teaser (v2.6692, punch list #125
         {...makeProps({
           jobList: [job],
           phoneRows,
+        }, {
           jobThreadStatsByJobId: { [job.id]: stats('2026-08-11T14:28:00Z') },
           customerLinesByJobId: new Map([[job.id, [{ id: 'm-in', contactId: 'c-dana', contact: dana, channel: 'text' as const, direction: 'in' as const, at: '2026-08-12T01:15:00Z', who: '', body: 'Can you do Thursday after 10 instead?', tied: true }]]]),
           boardDotByJobId: new Map([[job.id, { who: 'Dana', channel: 'text' as const, when: 'yesterday', line: 'Can you do Thursday after 10 instead?', status: 'Nobody has answered.' as const }]]),
@@ -245,6 +247,7 @@ describe('JobsStagesCardList phone row customer teaser (v2.6692, punch list #125
         {...makeProps({
           jobList: [job],
           phoneRows,
+        }, {
           jobThreadStatsByJobId: { [job.id]: stats('2026-08-13T14:28:00Z') },
           customerLinesByJobId: new Map([[job.id, [{ id: 'm-in', contactId: 'c-dana', contact: dana, channel: 'text' as const, direction: 'in' as const, at: '2026-08-12T01:15:00Z', who: '', body: 'Can you do Thursday after 10 instead?', tied: true }]]]),
           onOpenCustomerDoor: vi.fn(),
