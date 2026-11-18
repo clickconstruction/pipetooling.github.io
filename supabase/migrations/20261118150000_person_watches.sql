@@ -80,6 +80,9 @@ CREATE OR REPLACE TRIGGER person_watches_stamp BEFORE INSERT OR UPDATE ON public
   FOR EACH ROW EXECUTE FUNCTION public.person_watches_stamp();
 
 ALTER TABLE public.person_watches ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.person_watches FROM anon, authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.person_watches TO authenticated;
+GRANT ALL ON TABLE public.person_watches TO service_role;
 DROP POLICY IF EXISTS person_watches_select ON public.person_watches;
 CREATE POLICY person_watches_select ON public.person_watches FOR SELECT TO authenticated USING (public.is_dev());
 DROP POLICY IF EXISTS person_watches_insert ON public.person_watches;
@@ -103,6 +106,9 @@ CREATE INDEX IF NOT EXISTS watched_box_opens_container_idx ON public.watched_box
 COMMENT ON TABLE public.watched_box_opens IS 'A box a watched person opened on a screen, insert only through on_site_note_box_open: the watch, the person, the box and when. The phone reports the open, so a person who never opens the screen leaves no row. Dev-only by RLS.';
 
 ALTER TABLE public.watched_box_opens ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.watched_box_opens FROM anon, authenticated;
+GRANT SELECT ON TABLE public.watched_box_opens TO authenticated;
+GRANT ALL ON TABLE public.watched_box_opens TO service_role;
 DROP POLICY IF EXISTS watched_box_opens_select ON public.watched_box_opens;
 CREATE POLICY watched_box_opens_select ON public.watched_box_opens FOR SELECT TO authenticated USING (public.is_dev());
 

@@ -78,6 +78,9 @@ CREATE OR REPLACE TRIGGER job_containers_keep_changes AFTER UPDATE OF retired_at
   ) EXECUTE FUNCTION public.job_containers_keep_changes();
 
 ALTER TABLE public.job_container_changes ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.job_container_changes FROM anon, authenticated;
+GRANT SELECT ON TABLE public.job_container_changes TO authenticated;
+GRANT ALL ON TABLE public.job_container_changes TO service_role;
 DROP POLICY IF EXISTS job_container_changes_select ON public.job_container_changes;
 CREATE POLICY job_container_changes_select ON public.job_container_changes FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM public.job_containers c WHERE c.id = container_id AND public.on_site_can_touch_job(c.job_id)));
@@ -132,6 +135,9 @@ CREATE OR REPLACE TRIGGER on_site_prices_keep_removed BEFORE DELETE ON public.on
   FOR EACH ROW EXECUTE FUNCTION public.on_site_keep_removed_answer('price');
 
 ALTER TABLE public.on_site_removed_answers ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.on_site_removed_answers FROM anon, authenticated;
+GRANT SELECT ON TABLE public.on_site_removed_answers TO authenticated;
+GRANT ALL ON TABLE public.on_site_removed_answers TO service_role;
 DROP POLICY IF EXISTS on_site_removed_answers_select ON public.on_site_removed_answers;
 CREATE POLICY on_site_removed_answers_select ON public.on_site_removed_answers FOR SELECT TO authenticated
   USING (public.on_site_can_tie_parts() AND public.on_site_can_read_ties(development_id, job_id));
