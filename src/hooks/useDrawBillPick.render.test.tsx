@@ -91,14 +91,14 @@ describe('a move to Waiting on customer', () => {
     const pending = await ask(() => h.askOnArrival('s-1', 'Harlan Pruitt'))
     const dialog = await screen.findByRole('dialog')
     expect(dialog.textContent).toContain('Which bill does this sheet ride on?')
-    expect(dialog.textContent).toContain('Harlan Pruitt’s sheet waits on this bill’s payment.')
+    expect(dialog.textContent).toContain('Harlan Pruitt’s page will say the customer paid when this bill is paid in full.')
     const radios = screen.getAllByRole('radio') as HTMLInputElement[]
     // Open bills first, the paid one after, No bill last.
     expect(radios.map((r) => r.closest('label')?.textContent)).toEqual([
       'Bill 2 of 3$3,000 · billed Oct 21 · open',
       'Bill 3 of 3$1,200 · not billed yet',
       'Bill 1 of 3$1,800 · paid',
-      'No billThe sheet rides on no bill. You can pick one later from the sheet’s row.',
+      'No billTheir page stays on Draw requested until you queue the payment. You can pick a bill later from the sheet’s row.',
     ])
     expect(radios.map((r) => r.checked)).toEqual([true, false, false, false])
     fireEvent.click(radios[1]!)

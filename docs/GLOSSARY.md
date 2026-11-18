@@ -4238,7 +4238,8 @@ With several open bills the office picks the bill in a window ([`SubSheetDrawBil
 The pick is saved by `set_sub_sheet_draw_invoice`, which the writers of `set_sub_sheet_stage` may call: dev, assistant and master.
 A waiting sheet's row on Jobs → Subs → Pay reads *Rides on bill 2 of 3* or *No bill tied*, and that line opens the same window.
 Kernel [`drawTie.ts`](../src/lib/subWorkOrders/drawTie.ts), migration `20261118180000`.
-Nothing on the sub's page reads the tie yet.
+Since v2.7843 the sub's page says *Customer paid* with the day once the tied bill's status is `paid`, by `customerPaidOn` in [`subPortalCustomerPaid.ts`](../supabase/functions/_shared/subPortalCustomerPaid.ts), the day being the latest `paid_on` on that bill.
+The office's row says the same under the tie (*Sub sees: Customer paid Nov 12*) and turns amber past two days with no payable-after date (`subSeesCustomerPaid`), a held sheet staying grey.
 
 ### Followup Sheet
 Printable/downloadable report showing account manager's assigned projects with contact details and submission history.

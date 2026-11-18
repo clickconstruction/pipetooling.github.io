@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { loadDrawTieSheet, loadDrawTies, saveDrawBill } from './drawTieIo'
+import { loadCustomerPaidDays, loadDrawTieSheet, loadDrawTies, saveDrawBill } from './drawTieIo'
 
 type Db = Parameters<typeof loadDrawTies>[0]
 type Answer = { data: unknown; error: { code?: string; message: string } | null }
@@ -8,7 +8,7 @@ type Answer = { data: unknown; error: { code?: string; message: string } | null 
 function dbOf(answers: Record<string, Answer>, rpc?: Answer): Db {
   const chain = (answer: Answer) => {
     const q: Record<string, unknown> = {}
-    for (const m of ['select', 'eq', 'not', 'in']) q[m] = () => q
+    for (const m of ['select', 'eq', 'not', 'in', 'limit']) q[m] = () => q
     q.maybeSingle = () => Promise.resolve(answer)
     q.then = (resolve: (a: Answer) => unknown) => Promise.resolve(answer).then(resolve)
     return q
@@ -71,5 +71,29 @@ describe('the save', () => {
     await expect(saveDrawBill(dbOf({}, { data: { error: 'That bill is not on this sheet’s job' }, error: null }), 's1', 'b9')).rejects.toEqual({ message: 'That bill is not on this sheet’s job' })
     const missing = { code: 'PGRST202', message: 'Could not find the function public.set_sub_sheet_draw_invoice' }
     await expect(saveDrawBill(dbOf({}, { data: null, error: missing }), 's1', 'b1')).rejects.toEqual(missing)
+  })
+})
+
+describe('the day the customer paid each tied sheet’s bill (step 2)', () => {
+  const ties = new Map([['s-paid', 'b-paid'], ['s-open', 'b-open']])
+  const bills = { data: [{ id: 'b-paid', status: 'paid' }, { id: 'b-open', status: 'billed' }], error: null }
+  const payments = { data: [{ invoice_id: 'b-paid', paid_on: '2026-11-03' }, { invoice_id: 'b-paid', paid_on: '2026-11-12' }, { invoice_id: 'b-open', paid_on: '2026-11-14' }], error: null }
+
+  it('is the last payment’s day on a bill paid in full, and nothing for a part payment', async () => {
+    expect([...(await loadCustomerPaidDays(dbOf({ jobs_ledger_invoices: bills, jobs_ledger_payments: payments }), ties))]).toEqual([['s-paid', '2026-11-12']])
+  })
+
+  it('reads nothing when no sheet is tied', async () => {
+    const db = dbOf({})
+    const from = vi.spyOn(db, 'from')
+    expect((await loadCustomerPaidDays(db, new Map())).size).toBe(0)
+    expect(from).not.toHaveBeenCalled()
+  })
+
+  it('is empty when either read is refused or throws', async () => {
+    expect((await loadCustomerPaidDays(dbOf({ jobs_ledger_invoices: bills, jobs_ledger_payments: { data: null, error: { message: 'permission denied' } } }), ties)).size).toBe(0)
+    expect((await loadCustomerPaidDays(dbOf({ jobs_ledger_invoices: { data: null, error: { message: 'permission denied' } }, jobs_ledger_payments: payments }), ties)).size).toBe(0)
+    const throwing = { from: () => ({ select: () => ({}) }) } as unknown as Db
+    await expect(loadCustomerPaidDays(throwing, ties)).resolves.toEqual(new Map())
   })
 })

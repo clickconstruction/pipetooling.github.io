@@ -8,7 +8,7 @@ import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
 import type { SubSheetStage } from '../lib/subSheetStage'
 import type { SetSubSheetStageResult } from '../types/database-functions'
 import type { DrawBillAnswer } from './useDrawBillPick'
-import { loadDrawTieSheet, loadDrawTies } from '../lib/subWorkOrders/drawTieIo'
+import { loadCustomerPaidDays, loadDrawTieSheet, loadDrawTies } from '../lib/subWorkOrders/drawTieIo'
 
 /**
  * Sub Labor ledger + payments engine (Jobs.tsx decomposition seam — see
@@ -261,9 +261,12 @@ export function useSubLaborLedger({
       // v2.7835: each sheet's tie to one bill. The column comes from migration 20261118180000, so it is read by
       // itself: a refused read is no ties, and every sheet still loads.
       const drawTies = await loadDrawTies(supabase)
+      // v2.7843: the day the customer paid each tied bill in full, by the rule the sub's page reads.
+      const customerPaid = await loadCustomerPaidDays(supabase, drawTies)
       const mappedJobs = (jobs as LaborJob[]).map((j) => ({
         ...j,
         draw_invoice_id: drawTies.get(j.id) ?? null,
+        customer_paid_on: customerPaid.get(j.id) ?? null,
         items: itemsByJob.get(j.id) ?? [],
         payments: paymentsByJob.get(j.id) ?? [],
         payment_events: eventsByJob.get(j.id) ?? [],
@@ -315,14 +318,17 @@ export function useSubLaborLedger({
     }
     // The tie as the database holds it now: the office's pick, or the job's one open bill tied by the move itself.
     let drawInvoiceId: string | null = null
+    let customerPaidOn: string | null = null
     if (stage === 'customer_pay') {
       await drawBill?.tieAfterMove(jobId, answer)
       drawInvoiceId = (await loadDrawTieSheet(supabase, jobId).catch(() => null))?.drawInvoiceId ?? null
+      // A bill already paid in full may be tied: the sub's page then says paid at once, and so does the row.
+      if (drawInvoiceId) customerPaidOn = (await loadCustomerPaidDays(supabase, new Map([[jobId, drawInvoiceId]]))).get(jobId) ?? null
     }
     setLaborJobs((prev) =>
       prev.map((j) =>
         j.id === jobId
-          ? { ...j, stage, stage_changed_at: new Date().toISOString(), stage_changed_by: authUserId ?? null, stage_source: 'office', stage_note: null, stage_changed_by_name: authUserName ?? null, draw_invoice_id: drawInvoiceId }
+          ? { ...j, stage, stage_changed_at: new Date().toISOString(), stage_changed_by: authUserId ?? null, stage_source: 'office', stage_note: null, stage_changed_by_name: authUserName ?? null, draw_invoice_id: drawInvoiceId, customer_paid_on: customerPaidOn }
           : j,
       ),
     )

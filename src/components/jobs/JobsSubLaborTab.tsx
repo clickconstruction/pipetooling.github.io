@@ -13,7 +13,7 @@ import { sheetOwedTo, sheetOwedToChip, TEAM_SHEET_RULE } from '../../lib/subWork
 import { teamSheetPayWhen } from '../../lib/subWorkOrders/sheetStanding'
 import { buildSubLaborPayRun, payRunFilterMatches, sheetPayWhen, PAY_RUN_FILTERS, PAY_RUN_FILTER_HINT, PAY_RUN_FILTER_LABEL, PAY_RUN_SEGMENTS, PAY_RUN_SEGMENT_LABEL, type PayRunFilter, type PayRunSegment, type PayRunSub, type SheetPayWhen } from '../../lib/subWorkOrders/subLaborPayRun'
 import { SHEET_RAIL_GAP } from '../../lib/subWorkOrders/sheetRailTone'
-import { drawTieRowWords, type DrawBill, type DrawTieRowWords } from '../../lib/subWorkOrders/drawTie'
+import { drawTieRowWords, subSeesCustomerPaid, type DrawBill, type DrawTieRowWords, type SubSeesWords } from '../../lib/subWorkOrders/drawTie'
 import { useDrawBillPick } from '../../hooks/useDrawBillPick'
 import { sheetPaidInFullWords, sheetPaidLine, sheetPaymentDates } from '../../lib/subWorkOrders/sheetPaymentDates'
 import { normalizePersonNameKey } from '../../lib/personNameKey'
@@ -240,7 +240,7 @@ export default function JobsSubLaborTab({
 
   /** The rail, the office's next move, who the sheet is for, and the rule its money is under — one call per row. */
   const spineFor = useCallback(
-    (job: LaborJob, bal: { totalCost: number; paid: number; backcharges: number; balance: number }): { coverage: JobWorkOrderCoverage; rail: SheetRailShape; next: SheetNextAction; crew: boolean; team: boolean; jobId: string | null; personId: string | null; parties: SheetParties; payWhen: SheetPayWhen; stageView: LaborJob; drawTie: DrawTieRowWords | null } => {
+    (job: LaborJob, bal: { totalCost: number; paid: number; backcharges: number; balance: number }): { coverage: JobWorkOrderCoverage; rail: SheetRailShape; next: SheetNextAction; crew: boolean; team: boolean; jobId: string | null; personId: string | null; parties: SheetParties; payWhen: SheetPayWhen; stageView: LaborJob; drawTie: DrawTieRowWords | null; subSees: SubSeesWords | null } => {
       // v2.3065: the sheet's link first; the number only for a sheet that never got one.
       const pipelineJob = (job.job_ledger_id ? spine.jobsById.get(job.job_ledger_id) : undefined) ?? (job.job_ledger_id ? null : spine.jobsByNumber.get((job.job_number ?? '').trim().toLowerCase())) ?? null
       const covering = [...(spine.bySheet.get(job.id) ?? []), ...(pipelineJob ? (spine.byJob.get(pipelineJob.id) ?? []) : [])]
@@ -270,7 +270,9 @@ export default function JobsSubLaborTab({
           : sheetPayWhen({ stage: eff.stage, payableAfter: job.payable_after ?? null, payHoldReason: job.pay_hold_reason ?? null, bills, gap: rail.gap, crew, balance: bal.balance, unpriced, todayYmd: today })
       // v2.7835: the bill the sheet rides on, read on the stored stage: the database ties on that one, never on a derived one.
       const drawTie = drawTieRowWords({ stage: job.stage, drawInvoiceId: job.draw_invoice_id ?? null, bills: (inv as DrawBill[] | null) ?? null })
-      return { coverage, rail, next, crew, team, jobId: pipelineJob?.id ?? null, personId, parties, payWhen, stageView, drawTie }
+      // v2.7843: what the sub reads once the customer has paid that bill, and the office's clock on it.
+      const subSees = subSeesCustomerPaid({ stage: job.stage, customerPaidOn: job.customer_paid_on ?? null, payableAfter: job.payable_after ?? null, payHoldReason: job.pay_hold_reason ?? null, todayYmd: today })
+      return { coverage, rail, next, crew, team, jobId: pipelineJob?.id ?? null, personId, parties, payWhen, stageView, drawTie, subSees }
     },
     [spine, roster.length, today, laborJobAssigneesByJobId, teamRule],
   )
@@ -678,7 +680,7 @@ export default function JobsSubLaborTab({
                   </tr>
                 )
                 const body = g.rows.flatMap((r) => {
-                  const { job, totalCost, paid, backcharges, balance, rail, next, coverage, jobId, personId, parties, payWhen, stageView, paidLine, paidInFull, drawTie } = r
+                  const { job, totalCost, paid, backcharges, balance, rail, next, coverage, jobId, personId, parties, payWhen, stageView, paidLine, paidInFull, drawTie, subSees } = r
                   // Punch list #350: whose paper this sheet makes. One person's sheet (a sub's, or a teammate's own) and nobody else's.
                   const papersOf = !r.crew && parties.contractors.length === 1 && parties.contractors[0]!.id ? { key: `id:${parties.contractors[0]!.id}`, name: parties.contractors[0]!.name } : null
                   const jobRate = job.labor_rate ?? 0
@@ -755,6 +757,7 @@ export default function JobsSubLaborTab({
                           }}
                           onOpenStory={() => setStorySheetId(job.id)}
                           drawTie={drawTie}
+                          subSees={subSees}
                           onChangeDrawBill={() => {
                             void drawBill.change(job.id, parties.label || job.assigned_to_name).then((saved) => {
                               if (saved) onReloadLaborJobs?.()
@@ -1074,6 +1077,7 @@ function SubSheetStageCell({
   onOpenStory,
   drawTie,
   onChangeDrawBill,
+  subSees,
 }: {
   job: LaborJob
   rail: SheetRailShape
@@ -1085,6 +1089,8 @@ function SubSheetStageCell({
   /** The bill a waiting sheet rides on (v2.7835); null off Waiting on customer. */
   drawTie?: DrawTieRowWords | null
   onChangeDrawBill?: () => void
+  /** What the sub reads once the customer paid the tied bill (v2.7843); amber when it sits unqueued past two days. */
+  subSees?: SubSeesWords | null
 }) {
   const stage = normalizeSubSheetStage(job.stage)
   const next = nextSubSheetStage(stage)
@@ -1136,6 +1142,27 @@ function SubSheetStageCell({
         >
           {drawTie.text}
         </button>
+      ) : null}
+      {subSees ? (
+        <div
+          data-testid="sheet-sub-sees"
+          data-tone={subSees.tone}
+          title={subSees.title}
+          style={{
+            display: 'inline-block',
+            marginTop: 3,
+            padding: '1px 7px',
+            borderRadius: 999,
+            fontSize: '0.6875rem',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            background: subSees.tone === 'amber' ? 'var(--bg-amber-100)' : 'var(--bg-subtle)',
+            color: subSees.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)',
+            border: `1px solid ${subSees.tone === 'amber' ? 'var(--border-amber)' : 'var(--border)'}`,
+          }}
+        >
+          {subSees.text}
+        </div>
       ) : null}
       {menuOpen && (
         <div

@@ -44,6 +44,11 @@ export type SubPortalSheet = {
   progress: { pct: number; note: string | null; on: string | null } | null
   /** Papers before a job opens: set on a sheet held back until the sub signs its job's papers. The job's id in `jobPapers`. */
   papersFirstJobId?: string | null
+  /**
+   * The day the customer paid the bill this sheet rides on, in full (punch list #388, step 2). Set only on a
+   * sheet waiting on the customer whose tied bill the office's record says is paid. Absent everywhere else.
+   */
+  customerPaidOn?: string | null
 }
 
 /** v2.2928: the dates the sub picked (or the office set) and the room they still have to move them. */
@@ -230,6 +235,8 @@ function parseSheet(raw: unknown): SubPortalSheet | null {
     dates: parseDates(r.dates),
     progress: parseProgress(r.progress),
     ...(strOrNull(r.papersFirstJobId) ? { papersFirstJobId: strOrNull(r.papersFirstJobId) } : {}),
+    // A day and nothing else: anything that is not YYYY-MM-DD is dropped, and the card reads as it did.
+    ...(/^\d{4}-\d{2}-\d{2}$/.test(str(r.customerPaidOn)) ? { customerPaidOn: str(r.customerPaidOn) } : {}),
   }
 }
 

@@ -21,6 +21,7 @@ import {
   type SubPaymentRow,
   type SubSheetRow, cleanPortalAddress } from '../_shared/subPortalStatement.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { attachCustomerPaid, customerPaidDays, type TiedBillPaymentRow, type TiedBillRow } from '../_shared/subPortalCustomerPaid.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { grantPlansLink } from '../_shared/viewGrant.ts'
 import { internalFunctionCall } from '../_shared/internalFunctionCall.ts'
@@ -494,7 +495,30 @@ serve(async (req) => {
       a.window_start = w?.window_start ?? null
       a.window_end = w?.window_end ?? null
     }
-    const sheets = attachSheetAgreements(buildSubSheets(sheetRows, itemRows, paymentRows), agreementRows, todayYmd)
+    // The customer paid (punch list #388, step 2): a sheet waiting on the customer is tied to one bill, and the page
+    // says paid for that bill alone, once the office's record says it is paid in full. Read by itself and fail-soft:
+    // a read that is refused or throws leaves the page as it was.
+    let paidDays = new Map<string, string>()
+    try {
+      const waitingIds = sheetRows.filter((s) => s.stage === 'customer_pay').map((s) => s.id)
+      if (waitingIds.length > 0) {
+        const { data: tiesRaw, error: tiesErr } = await admin.from('people_labor_jobs').select('id, stage, draw_invoice_id').in('id', waitingIds)
+        const ties = (tiesErr ? [] : (tiesRaw ?? [])) as Array<{ id: string; stage: string | null; draw_invoice_id: string | null }>
+        const billIds = [...new Set(ties.map((t) => t.draw_invoice_id ?? '').filter(Boolean))]
+        if (billIds.length > 0) {
+          const [billsRes, paysRes] = await Promise.all([
+            admin.from('jobs_ledger_invoices').select('id, status').in('id', billIds),
+            admin.from('jobs_ledger_payments').select('invoice_id, paid_on').in('invoice_id', billIds).limit(1000),
+          ])
+          if (!billsRes.error && !paysRes.error) {
+            paidDays = customerPaidDays(ties, (billsRes.data ?? []) as TiedBillRow[], (paysRes.data ?? []) as TiedBillPaymentRow[])
+          }
+        }
+      }
+    } catch {
+      paidDays = new Map<string, string>()
+    }
+    const sheets = attachCustomerPaid(attachSheetAgreements(buildSubSheets(sheetRows, itemRows, paymentRows), agreementRows, todayYmd), paidDays)
     const totals = buildSubTotals(sheets)
     const openSheets = sheets.filter((s) => s.open > 0)
     const sheetsById = new Map(sheetRows.map((s) => [s.id, s]))
