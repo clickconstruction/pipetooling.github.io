@@ -260,15 +260,6 @@ function pileFor(item: LienDeskItemRow | null, ready: boolean, filed: boolean, d
  * door is the gate's, its approval stands, and nothing asks him again. Read off the pile and the stored status, so any
  * reader that holds an entry's `pile` and `item` can tell the two holds apart.
  */
-/**
- * Whether the batch send takes this paper (v2.7852): it is in To send for Master approval and a person made its row, by
- * opening and changing it. A paper nobody has opened has no row, and the batch never sends it. One rule for the
- * send plan (`lienAffidavitSendPlan`) and for the Board's bin, so the bin's count and its press cannot disagree.
- */
-export function lienAffidavitSendReady(e: { pile: LienAffidavitPile; item: Pick<LienDeskItemRow, 'status'> | null }): boolean {
-  return e.pile === 'to_draft' && e.item != null && e.item.status === 'drafted'
-}
-
 export function lienAffidavitGateHeld(e: { pile: LienAffidavitPile; item: Pick<LienDeskItemRow, 'status'> | null } | null | undefined): boolean {
   return e?.pile === 'held' && e.item?.status === 'approved'
 }

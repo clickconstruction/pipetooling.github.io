@@ -126,7 +126,7 @@ last_updated: 2026-11-18
 > Until then every Ready to file bin read *Prints with the help sheet and the notice records* with *Change ›*, a door to the affidavits list.
 > Since v2.7783 (the owner's pick of 2026-11-18) the Board has no Held bin: `buildChips` gives a held chip `held` and the bin of the stage it is stopped at (`lienBoardHeldBin`: a gate-held affidavit in `affidavit:ready`, a leader's hold in `awaiting`), its `stage` still `held`, so the tiles and the stages left are unchanged.
 > `Chip` draws it with a dashed edge and a hold mark in its day's colour, `Bin` counts what can move (`lienBoardBinCount`) so the count is the press's number, and `lienBoardAffidavitPrint` has no line for a held paper, only for one in Ready to file on the earlier form.
-> Since v2.7852 the affidavits' *To send for Master approval* keeps the same rule: a paper the batch send leaves (`lienAffidavitSendReady` in `lienDeskAffidavits.ts`, the send plan's own test) has `unread` on its chip, a dashed edge and a ○ mark (`data-unread`, `data-lien-board-unread-mark`), stands after the ones the send takes and before any held one, and is left out of the count.
+> Since v2.7852 the affidavits' *To send for Master approval* keeps the same rule: a paper the batch send leaves (`lienAffidavitSendReady` in `lienAffidavitSendReady.ts`, the send plan's own test) has `unread` on its chip, a dashed edge and a ○ mark (`data-unread`, `data-lien-board-unread-mark`), stands after the ones the send takes and before any held one, and is left out of the count.
 > `lienBoardForLeader` leaves a held chip out of the leader's batch, and `lienBoardRowStage` and the chip's card say *Ready to file · held* (`lienBoardHeldWords`).
 
 > **v2.7461 (what was mailed, kept with the notice;

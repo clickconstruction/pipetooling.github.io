@@ -10,7 +10,8 @@ import type { SentFiling } from '../sent/sentCopies'
 import { lienAffidavitFormForItem } from './lienAffidavitForm'
 import { submitOutcome, type LienNoticePolicy, type LienSubmitOutcome } from './lienDesk'
 import { lienAffidavitFootBlockedSentence } from './lienDeskGates'
-import { lienAffidavitGateHeld, lienAffidavitSendReady, type LienAffidavitEntry } from './lienDeskAffidavits'
+import { lienAffidavitGateHeld, type LienAffidavitEntry } from './lienDeskAffidavits'
+import { lienAffidavitSendReady } from './lienAffidavitSendReady'
 
 /**
  * Two presses on the Affidavits list (punch list #305, v2.6918), for re-issuing a month's affidavits on the short
