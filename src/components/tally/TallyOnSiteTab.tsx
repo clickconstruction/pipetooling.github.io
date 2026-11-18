@@ -17,6 +17,10 @@
  * Since v2.7396 (section 10, PR 9) a sticker printed with the box's own name says nothing beside it, one printed
  * with another name reads *sticker reads G78*, and a scan of that one says so (`stickerMarksWords`). Since v2.7438 no
  * sticker's running number is shown anywhere.
+ *
+ * Since v2.7824 (Take from a box) a box's screen ends in **Take from G12**, a press that stays at the bottom: it opens
+ * the camera for a photo of the box as found, then the run's screen asks what was taken (`TakeScreen`, over
+ * `lib/materials/takeRun.ts`), and **Take 3 from G12** writes the rows and opens the camera for the photo after.
  */
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -53,7 +57,11 @@ import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { recoveryFailureFromError } from '../../lib/offlineRecoveryState'
 import { phoneFlow } from '../../lib/materials/flowRow'
 import { actIsFresh } from '../../lib/materials/photo'
-import { BoxPhotos, PhotoPress } from '../materials/PhotoPress'
+import { BoxPhotos, CameraGlyph, PhotoPress } from '../materials/PhotoPress'
+import { shootBoxPhoto } from '../../lib/materials/boxPhotoShoot'
+import { TAKE_MAX, newTakeRun, takeAddExtra, takeDoneWords, takeIsOnePart, takeLeftWords, takeLineHint, takeMark, takePhotoWords, takeQuicks, takeRemoveExtra, takeRows, takeSaveLabel, takeSaved, takeStartLabel, takeTotal, type TakePhotoKind, type TakeRun } from '../../lib/materials/takeRun'
+import { forgetTakeRun, keepTakeRun, readTakeRun, readTakeRuns } from '../../lib/materials/takeRunMemory'
+import type { PhotoNote } from '../../lib/materials/photo'
 import { FlowRow } from '../materials/FlowRow'
 import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { countWalkAt, countWalkCantFindWords, countWalkKeys } from '../../lib/materials/countWalk'
@@ -64,7 +72,7 @@ import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_LATER_NOTE, BOX_LIN
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
-import { addContainer, addMovement, addPlace, listContainerMoves, listContainers, listMovements, listPhotos, listPlaces, loadJob, moveContainer, pinContainer, resolveBoxCode, retireContainer, sayBoxLine, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
+import { addContainer, addMovement, addPlace, listContainerMoves, listContainers, listMovements, listPhotos, listPlaces, loadJob, moveContainer, newId, pinContainer, resolveBoxCode, retireContainer, sayBoxLine, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
 import { BOX_KIND_CHOICES, BOX_WHERE_MAX, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
 import BoxTabs from '../materials/BoxTabs'
@@ -133,16 +141,22 @@ function PrinterGlyph() {
     </svg>
   )
 }
+/** Take from a box: a run left on a box, offered again. */
+const leftStrip: CSSProperties = { display: 'grid', gap: '0.5rem', padding: '0.6rem 0.75rem', borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', color: 'var(--text-strong)' }
+/** The press that stays at the bottom of a box's screen and of the run's, above the app's own bottom bar. */
+const takeBar: CSSProperties = { position: 'sticky', bottom: 'var(--app-bottom-chrome, 0px)', zIndex: 5, display: 'grid', gap: '0.25rem', padding: '0.5rem 0 0.6rem', margin: '0 0 -1rem', background: 'var(--bg-page)', borderTop: '1px solid var(--border)' }
 /** Inline styles have no :disabled, so a dead press fades by hand. */
 const dis = (off: boolean): CSSProperties => (off ? { opacity: 0.45, cursor: 'default' } : {})
 
-type View = { kind: 'containers' } | { kind: 'container'; id: string } | { kind: 'count'; id: string; /** The walk's lines by part key, fixed when it starts (`countWalkKeys`). */ keys: string[]; index: number; corrected: number }
+type View = { kind: 'containers' } | { kind: 'container'; id: string } | { kind: 'take'; id: string } | { kind: 'count'; id: string; /** The walk's lines by part key, fixed when it starts (`countWalkKeys`). */ keys: string[]; index: number; corrected: number }
 type Sheet =
   | null
   | { kind: 'qty'; reason: 'used' | 'cannot_find'; line: ContainerLine; container: Container }
   | { kind: 'short'; line: ContainerLine; container: Container }
   | { kind: 'move'; line: ContainerLine; container: Container }
   | { kind: 'add-part'; container: Container }
+  /** Take from a box: a part the box's list does not hold. */
+  | { kind: 'take-other'; container: Container }
   | { kind: 'add-container'; moveAfter: { line: ContainerLine; qty: number; from: Container } | null }
   | { kind: 'retire'; container: Container }
   | { kind: 'edit-box'; container: Container }
@@ -184,6 +198,31 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const openBoxId = view.kind === 'container' ? view.id : null
   useEffect(() => { if (jobId && openBoxId) refreshJob(jobId, ON_SITE_BOX_REFRESH_AFTER_MS) }, [jobId, openBoxId])
   const [sheet, setSheet] = useState<Sheet>(null)
+  // Take from a box (v2.7824): the run on screen. It is kept on the phone on every change (`takeRunMemory.ts`), since
+  // a phone can drop the page while its camera is open; `takeRef` is the run as the camera's answer must read it.
+  const [take, setTake] = useState<TakeRun | null>(null)
+  const takeRef = useRef<TakeRun | null>(null)
+  const [takeBusy, setTakeBusy] = useState<string | null>(null)
+  const takeShot = useRef<TakePhotoKind | null>(null)
+  const onTakeFile = useRef<(f: File) => void>(() => {})
+  // The run's one camera input lives outside the screens: the press that opens it also changes the screen, and an
+  // input drawn by a screen would be gone before the camera answers.
+  const takeInput = useRef<HTMLInputElement | null>(null)
+  useEffect(() => {
+    const el = document.createElement('input')
+    el.type = 'file'
+    el.accept = 'image/*'
+    el.setAttribute('capture', 'environment')
+    el.setAttribute('aria-hidden', 'true')
+    el.setAttribute('data-testid', 'take-camera')
+    el.tabIndex = -1
+    el.style.display = 'none'
+    const onChange = () => { const f = el.files?.[0]; el.value = ''; if (f) onTakeFile.current(f) }
+    el.addEventListener('change', onChange)
+    document.body.appendChild(el)
+    takeInput.current = el
+    return () => { el.removeEventListener('change', onChange); el.remove(); takeInput.current = null }
+  }, [])
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
   /** The search's reach (punch list #304): this job, or every job the viewer may open. */
@@ -311,6 +350,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
     if (open && scanned === open) scannedRef.current = open
     setView(open ? { kind: 'container', id: open } : { kind: 'containers' })
     setSheet(null)
+    takeRef.current = null
+    setTake(null)
     if (open) setStickerCode(null)
     setQuery('')
     setScope('job')
@@ -337,6 +378,67 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
 
   const write = (reason: MovementReason, line: Pick<ContainerLine, 'partId' | 'partName' | 'manufacturer'>, quantity: number, from: string | null, to: string | null, note = '') =>
     addMovement({ jobId, partId: line.partId, partName: line.partName, manufacturer: line.manufacturer, quantity, reason, fromContainerId: from, toContainerId: to, note, byUserId, byName })
+
+  // ── Take from a box ─────────────────────────────────────────────────────────────────────────
+  const putTake = (run: TakeRun | null) => { takeRef.current = run; setTake(run); if (run) keepTakeRun(run) }
+  /** Opens the phone's camera. Called inside a press, since a browser opens the camera only from a tap. */
+  const openCamera = (kind: TakePhotoKind) => { takeShot.current = kind; takeInput.current?.click() }
+  const endTake = (run: TakeRun, c: Container, photoAfter: boolean) => {
+    forgetTakeRun(run.jobId, run.containerId)
+    putTake(null)
+    setSheet(null)
+    showToast(takeDoneWords(run.savedCount, c.label, photoAfter), 'success')
+    offerPin(c)
+    setView({ kind: 'container', id: c.id })
+  }
+  const startTake = (c: Container) => {
+    putTake(newTakeRun({ id: newId(), jobId, containerId: c.id, lines: linesOf(lines, c.id), now: new Date().toISOString() }))
+    setSheet(null)
+    setView({ kind: 'take', id: c.id })
+    openCamera('before')
+  }
+  /** A run left on this box is taken up again: its marks as they were, or the photo after that is still owed. */
+  const resumeTake = (c: Container, run: TakeRun) => {
+    putTake(run)
+    setSheet(null)
+    setView({ kind: 'take', id: c.id })
+    if (run.savedAt) openCamera('after')
+  }
+  const dropTake = (c: Container, run: TakeRun) => {
+    if (run.savedAt) { endTake(run, c, false); return }
+    forgetTakeRun(run.jobId, run.containerId)
+    putTake(null)
+    setView({ kind: 'container', id: c.id })
+  }
+  /** The take is saved before the photo after: the rows go through the store's outbox, then the camera opens. */
+  const saveTake = (c: Container) => {
+    const run = takeRef.current
+    if (!run || run.savedAt) return
+    const rows = takeRows(run, linesOf(lines, c.id))
+    if (rows.length === 0) return
+    for (const r of rows) addMovement({ jobId, partId: r.partId, partName: r.partName, manufacturer: r.manufacturer, quantity: r.quantity, reason: r.reason, fromContainerId: r.fromContainerId, toContainerId: r.toContainerId, note: r.note, byUserId, byName, takeId: run.id })
+    putTake(takeSaved(run, new Date().toISOString()))
+    openCamera('after')
+  }
+  onTakeFile.current = (f: File) => {
+    const run = takeRef.current
+    const kind = takeShot.current
+    const c = run ? containers.find((x) => x.id === run.containerId) : null
+    if (!run || !kind || !c) return
+    void (async () => {
+      try {
+        const shot = await shootBoxPhoto(f, { jobId, containerId: c.id, containerLabel: c.label, after: null, words: takePhotoWords(c.label, kind), kind, takeId: run.id, byUserId, byName, onStage: (st) => setTakeBusy(st === 'shrinking' ? 'Shrinking the photo…' : 'Sending the photo…') })
+        if (shot.kind === 'lost') { showToast(`${shot.why} This phone could not keep the photo either. Take it again.`, 'error'); return }
+        if (shot.kind === 'kept') showToast(`${shot.why} The photo is kept on this phone. It sends by itself when there is signal.`, 'info')
+        const now = takeRef.current
+        if (kind === 'after' && now && now.id === run.id && now.savedAt) endTake(now, c, true)
+      } catch (err) {
+        showToast(`The photo could not be taken: ${formatErrorMessage(err)}`, 'error')
+      } finally {
+        setTakeBusy(null)
+      }
+    })()
+  }
 
   /** The sticker's sheet said its last word: the sticker is placed, or a taken one's box is to be opened. The job is read again so a new box is there before its screen opens. */
   const stickerDone = (outcome: PlaceOutcome) => {
@@ -406,6 +508,18 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         <OfflineRetryPanel failure={load.error ? recoveryFailureFromError(load.raw, 'The boxes on this job did not load.') : null} onRetry={load.retry} surface="materials-on-site-phone" idempotent />
         {/* #297 (v2.6927): the job's box photos still on their way to its Drive folder after a combine or a move. */}
         {jobId ? <BoxPhotoRefileStrip jobId={jobId} onToast={showToast} /> : null}
+        {/* Take from a box: a run left on one of this job's boxes is offered again, on the list as on the box. */}
+        {readTakeRuns(jobId, Date.now()).map((run) => {
+          const c = containers.find((x) => x.id === run.containerId)
+          if (!c) return null
+          const words = takeLeftWords(run, c.label)
+          return (
+            <div key={run.id} role="group" aria-label={words.main} style={leftStrip} data-testid="on-site-take-left">
+              <span><b>{words.main}</b> {words.sub}</span>
+              <button type="button" style={{ ...btn, justifySelf: 'start' }} onClick={() => setView({ kind: 'container', id: c.id })}>Open {c.label}</button>
+            </div>
+          )
+        })}
         {/* The flow row (#209): the three names already on this screen, in the order of a day, each with its count; a dot where the crew is needed now. */}
         {containers.length > 0 ? (
           <FlowRow
@@ -654,6 +768,45 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
     </div>
   )
 
+  if (view.kind === 'take') {
+    const run = take && take.containerId === container.id ? take : null
+    if (!run) {
+      return (
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          {header}
+          <p style={{ ...muted, margin: 0 }}>This take is closed.</p>
+          <button type="button" style={btn} onClick={() => setView({ kind: 'container', id: container.id })}>Back to {container.label}</button>
+        </div>
+      )
+    }
+    const before = listPhotos(jobId).find((p) => p.takeId === run.id && p.kind === 'before') ?? null
+    if (run.savedAt) {
+      return <TakeAfterScreen container={container} run={run} busy={takeBusy} onShoot={() => openCamera('after')} onFinish={() => endTake(run, container, false)} />
+    }
+    return (
+      <>
+        <TakeScreen
+          container={container}
+          lines={ls}
+          run={run}
+          before={before}
+          busy={takeBusy}
+          narrow={narrow}
+          onBack={() => setView({ kind: 'container', id: container.id })}
+          onDrop={() => dropTake(container, run)}
+          onShootBefore={() => openCamera('before')}
+          onMark={(key, n) => putTake(takeMark(run, key, n))}
+          onOther={() => setSheet({ kind: 'take-other', container })}
+          onRemoveExtra={(i) => putTake(takeRemoveExtra(run, i))}
+          onSave={() => saveTake(container)}
+        />
+        {sheet?.kind === 'take-other' ? (
+          <AddPartSheet container={container} names={onHandNames(lines, containers)} searchParts={searchParts} words={{ title: 'What did you take?', sub: `It is not on ${container.label}'s list. The office will see it was there.`, press: (n) => `Add ${n} to the take` }} onClose={() => setSheet(null)} onAdd={(part, n) => { putTake(takeAddExtra(run, { ...part, n })); setSheet(null) }} />
+        ) : null}
+      </>
+    )
+  }
+
   if (view.kind === 'count') {
     // The walk's own list, fixed at its start (v2.7161): a line counted to none used to leave a list re-read on every
     // step, and the walk stepped over the line after it.
@@ -681,9 +834,21 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const unsorted = container.kind === 'unsorted'
   const touched = ls.reduce<{ at: string; by: string } | null>((best, l) => (l.lastTouchedAt && (!best || l.lastTouchedAt > best.at) ? { at: l.lastTouchedAt, by: l.lastTouchedBy ?? '' } : best), null)
   const boxLineNow = boxLineOf(container, lines)
+  const leftRun = unsorted ? null : readTakeRun(jobId, container.id, Date.now())
+  const leftRunWords = leftRun ? takeLeftWords(leftRun, container.label) : { main: '', sub: '', go: '', drop: '' }
   return (
     <div style={{ display: 'grid', gap: '0.75rem' }}>
       {header}
+      {/* Take from a box: a run started on this box and left, offered again. After twelve hours it is forgotten. */}
+      {leftRun ? (
+        <div role="group" aria-label={leftRunWords.main} style={leftStrip} data-testid="on-site-take-left">
+          <span><b>{leftRunWords.main}</b> {leftRunWords.sub}</span>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button type="button" style={btnPrimary} onClick={() => resumeTake(container, leftRun)}>{leftRun.savedAt ? <CameraGlyph size={16} /> : null}{leftRunWords.go}</button>
+            <button type="button" style={btn} onClick={() => dropTake(container, leftRun)}>{leftRunWords.drop}</button>
+          </div>
+        </div>
+      ) : null}
       {pinAsk === container.id && boxWantsPin(container, now) ? <PinAskStrip container={container} byName={byName} onPinned={(words) => { setPinAsk(null); showToast(words, 'success') }} onLater={() => setPinAsk(null)} /> : null}
       {/* What is in it (punch list #351, PR 2): the app's line from the parts until a person says it better. Never Unsorted, the app's own row. */}
       {container.kind !== 'unsorted' ? (
@@ -826,6 +991,13 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
           )}
         </Sheet>
       ) : null}
+      {/* Take from a box: the run's press stays under a thumb however far the box scrolls. Never Unsorted, whose parts are put away, not taken. */}
+      {!unsorted && !leftRun ? (
+        <div style={takeBar} data-testid="on-site-take-bar">
+          <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 56, fontSize: '1.05rem' }} onClick={() => startTake(container)}><CameraGlyph size={18} />{takeStartLabel(container.label)}</button>
+          <span style={{ ...muted, textAlign: 'center' }}>The camera opens for a photo of {container.label} as found.</span>
+        </div>
+      ) : null}
       {touched ? <p style={{ ...muted, fontSize: '0.75rem', margin: 0 }}>Last touched {new Date(touched.at).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })} by {touched.by}.</p> : null}
     </div>
   )
@@ -844,6 +1016,124 @@ function Stepper({ n, max, onChange }: { n: number; max: number; onChange: (n: n
       <button type="button" aria-label="One fewer" style={{ ...stepBtn, ...dis(n <= 1) }} disabled={n <= 1} onClick={() => onChange(Math.max(1, n - 1))}>−</button>
       <input type="number" inputMode="numeric" value={typed ?? n} min={1} max={max} aria-label="How many" onChange={(e) => { setTyped(stepperKeeps(e.target.value, max)); const v = stepperTyped(e.target.value, max); if (v != null) onChange(v) }} onBlur={() => setTyped(null)} style={{ ...input, width: 96, textAlign: 'center', fontSize: '2rem', fontWeight: 800, minHeight: 56 }} />
       <button type="button" aria-label="One more" style={{ ...stepBtn, ...dis(n >= max) }} disabled={n >= max} onClick={() => onChange(Math.min(max, n + 1))}>+</button>
+    </div>
+  )
+}
+
+/**
+ * Take from a box: what was taken, between the two photos (`lib/materials/takeRun.ts`). A box with one kind of part
+ * asks only how many, on the number sheet's own stepper, opened on 1. A box with more lists what it holds: a tap takes
+ * one, and the quick numbers open in the row. The press at the bottom names its count and opens the camera again.
+ */
+function TakeScreen({ container, lines, run, before, busy, narrow, onBack, onDrop, onShootBefore, onMark, onOther, onRemoveExtra, onSave }: { container: Container; lines: ContainerLine[]; run: TakeRun; before: PhotoNote | null; busy: string | null; narrow: boolean; onBack: () => void; onDrop: () => void; onShootBefore: () => void; onMark: (partKey: string, n: number) => void; onOther: () => void; onRemoveExtra: (index: number) => void; onSave: () => void }) {
+  const label = container.label
+  const one = takeIsOnePart(lines)
+  const only = one ? lines[0]! : null
+  const total = takeTotal(run)
+  const step = (on: 'done' | 'now' | 'next' | 'miss'): CSSProperties => ({ fontSize: '0.72rem', fontWeight: 700, textAlign: 'center', padding: '0.35rem 0.15rem', borderRadius: 999, borderWidth: 1, borderStyle: 'solid', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...(on === 'now' ? { background: BLUE, borderColor: BLUE, color: '#fff' } : on === 'done' ? { background: 'var(--surface)', borderColor: 'var(--text-green-700)', color: 'var(--text-green-700)' } : on === 'miss' ? { background: 'var(--surface)', borderColor: 'var(--text-amber-800)', color: 'var(--text-amber-800)' } : { background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-muted)' }) })
+  const quick = (on: boolean): CSSProperties => ({ ...btn, minHeight: 44, padding: '0 0.15rem', fontSize: '0.9rem', minWidth: 0, ...(on ? { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' } : {}) })
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.75rem' }} data-testid="on-site-take">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        <button type="button" aria-label={`Back to ${label}`} onClick={onBack} style={{ ...btn, width: TOUCH_MIN, padding: 0, fontSize: '1.25rem', flex: 'none' }}>‹</button>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{takeStartLabel(label)}</div>
+          <div style={muted}>{one ? 'Take your parts out. Then say how many.' : 'Tap a part to take one. Tap again for more.'}</div>
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.25rem' }} aria-hidden>
+        <span style={step(before ? 'done' : 'miss')}>{before ? '✓ As found' : 'Photo missing'}</span>
+        <span style={step('now')}>{one ? 'How many' : 'Tap what you take'}</span>
+        <span style={step('next')}>Photo after</span>
+      </div>
+      {before ? (
+        <BoxPhotos photos={[before]} canAct={false} size={64} />
+      ) : busy ? (
+        <p style={{ ...muted, margin: 0 }} role="status">{busy}</p>
+      ) : (
+        <div role="group" aria-label={`${label} has no photo as found`} style={leftStrip}>
+          <span><b>{label} has no photo as found.</b> You can go on without it.</span>
+          <button type="button" style={{ ...btn, justifySelf: 'start' }} onClick={onShootBefore}><CameraGlyph size={16} />Take the photo</button>
+        </div>
+      )}
+      {lines.length === 0 && run.extras.length === 0 ? <EmptyState compact main={`Nothing is listed in ${label}.`} next={{ label: 'Something not on the list…', onPress: onOther }} tail="says what you took." /> : null}
+      {only ? (() => {
+        const n = run.marks[only.partKey] ?? 0
+        const quicks = takeQuicks(only.onHand)
+        return (
+          <div style={{ ...card, display: 'grid', gap: '0.75rem' }}>
+            <div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>How many are you taking?</div>
+              <div style={muted}>{only.partName}. {label} has {Math.max(0, only.onHand)}.</div>
+            </div>
+            <Stepper n={Math.max(1, n)} max={TAKE_MAX} onChange={(v) => onMark(only.partKey, v)} />
+            {quicks.length > 0 || only.onHand > 1 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${quicks.length + (only.onHand > 1 ? 1 : 0)}, minmax(0, 1fr))`, gap: '0.35rem' }}>
+                {quicks.map((q) => <button key={q} type="button" style={quick(q === n)} onClick={() => onMark(only.partKey, q)}>{q}</button>)}
+                {only.onHand > 1 ? <button type="button" style={quick(n === only.onHand)} onClick={() => onMark(only.partKey, only.onHand)}>All {only.onHand}</button> : null}
+              </div>
+            ) : null}
+            <p style={{ ...muted, margin: 0, textAlign: 'center' }} data-testid="on-site-take-hint">{takeLineHint(label, only.onHand, n)}</p>
+          </div>
+        )
+      })() : lines.map((l) => {
+        const n = run.marks[l.partKey] ?? 0
+        const quicks = takeQuicks(l.onHand, [2, 5, 10])
+        return (
+          <div key={l.partKey} style={{ display: 'grid', gap: '0.35rem', gridTemplateColumns: 'minmax(0, 1fr)' }}>
+            <button type="button" aria-label={`Take one ${l.partName}`} onClick={() => onMark(l.partKey, n + 1)} style={{ ...card, display: 'flex', alignItems: 'center', gap: '0.6rem', minHeight: 64, textAlign: 'left', font: 'inherit', cursor: 'pointer', color: 'var(--text-strong)', ...(n > 0 ? { borderColor: BLUE, background: 'var(--bg-blue-tint)', boxShadow: `inset 4px 0 0 ${BLUE}` } : {}) }}>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontWeight: 600 }}>{l.partName}</span>
+                <span style={{ display: 'block', fontSize: '0.82rem', color: n > 0 ? 'var(--text-blue-700)' : 'var(--text-muted)', fontWeight: n > 0 ? 600 : 400 }}>{takeLineHint(label, l.onHand, n)}</span>
+              </span>
+              {n > 0 ? <span style={{ marginLeft: 'auto', fontSize: '1.7rem', fontWeight: 800, color: 'var(--text-blue-700)', fontVariantNumeric: 'tabular-nums', flex: 'none' }}>{n}</span> : <span aria-hidden style={{ marginLeft: 'auto', width: 44, height: 44, borderRadius: 999, border: '1px dashed var(--border-strong)', color: 'var(--text-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', flex: 'none' }}>+</span>}
+            </button>
+            {n > 0 ? (
+              <div style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'minmax(0, 1fr)', gap: '0.3rem' }}>
+                <button type="button" aria-label={`One fewer ${l.partName}`} style={quick(false)} onClick={() => onMark(l.partKey, n - 1)}>−</button>
+                {(narrow ? quicks.slice(0, 2) : quicks).map((q) => <button key={q} type="button" aria-label={`Take ${q} ${l.partName}`} style={quick(q === n)} onClick={() => onMark(l.partKey, q)}>{q}</button>)}
+                {l.onHand > 1 ? <button type="button" aria-label={`Take all ${l.onHand} ${l.partName}`} style={quick(n === l.onHand)} onClick={() => onMark(l.partKey, l.onHand)}>All {l.onHand}</button> : null}
+              </div>
+            ) : null}
+          </div>
+        )
+      })}
+      {run.extras.map((e, i) => (
+        <div key={`${e.partName}:${i}`} style={{ ...card, display: 'flex', alignItems: 'center', gap: '0.6rem', borderColor: BLUE, background: 'var(--bg-blue-tint)' }}>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: 'block', fontWeight: 600 }}>{e.partName}</span>
+            <span style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-blue-700)', fontWeight: 600 }}>Taking {e.n}. Not on {label}&rsquo;s list.</span>
+          </span>
+          <button type="button" aria-label={`Take ${e.partName} off the take`} style={{ ...btn, marginLeft: 'auto', width: TOUCH_MIN, padding: 0, fontSize: '1.25rem', flex: 'none' }} onClick={() => onRemoveExtra(i)}>−</button>
+        </div>
+      ))}
+      {lines.length > 0 || run.extras.length > 0 ? <button type="button" style={{ ...quiet, justifySelf: 'start' }} onClick={onOther}>Something not on the list…</button> : null}
+      <div style={takeBar}>
+        <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 56, fontSize: '1.05rem', ...dis(total === 0) }} disabled={total === 0} onClick={onSave} data-testid="on-site-take-save">{total > 0 ? <CameraGlyph size={18} /> : null}{takeSaveLabel(run, label, one)}</button>
+        {total > 0 ? <span style={{ ...muted, textAlign: 'center' }}>The camera opens next, for the photo after.</span> : <button type="button" style={{ ...quiet, justifySelf: 'center' }} onClick={onDrop}>Close. Nothing taken.</button>}
+      </div>
+    </div>
+  )
+}
+
+/** Take from a box: the take is saved and only the photo after is owed. Reached when the camera was closed with no shot. */
+function TakeAfterScreen({ container, run, busy, onShoot, onFinish }: { container: Container; run: TakeRun; busy: string | null; onShoot: () => void; onFinish: () => void }) {
+  const label = container.label
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.75rem' }} data-testid="on-site-take-after">
+      <div>
+        <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{run.savedCount} taken from {label}</div>
+        <div style={muted}>The take is saved.</div>
+      </div>
+      {busy ? (
+        <p style={{ ...muted, margin: 0 }} role="status">{busy}</p>
+      ) : (
+        <div role="group" aria-label={`${label} has no photo after`} style={leftStrip}>
+          <span><b>{label} has no photo after.</b> Take it now, or finish without it.</span>
+          <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 56, fontSize: '1.05rem' }} onClick={onShoot}><CameraGlyph size={18} />Take the photo</button>
+          <button type="button" style={{ ...btn, ...btnBlock }} onClick={onFinish}>Finish without it</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -890,7 +1180,7 @@ function MoveSheet({ line, from, others, onClose, onMove, onTaken, onReturned, o
   )
 }
 
-function AddPartSheet({ container, names, searchParts, onClose, onAdd }: { container: Container; /** The names this job already holds (punch list #330): offered first, so a part is not typed a second way. */ names: ReadonlyArray<OnHandName>; searchParts: (term: string) => Promise<OnSitePart[]>; onClose: () => void; onAdd: (part: { partId: string | null; partName: string; manufacturer: string | null }, n: number) => void }) {
+function AddPartSheet({ container, names, searchParts, words, onClose, onAdd }: { container: Container; /** Other words for the sheet, when the part is not being added to the box (Take from a box). */ words?: { title: string; sub: string; press: (n: number) => string }; /** The names this job already holds (punch list #330): offered first, so a part is not typed a second way. */ names: ReadonlyArray<OnHandName>; searchParts: (term: string) => Promise<OnSitePart[]>; onClose: () => void; onAdd: (part: { partId: string | null; partName: string; manufacturer: string | null }, n: number) => void }) {
   const [term, setTerm] = useState('')
   const [results, setResults] = useState<OnSitePart[]>([])
   const [searching, setSearching] = useState(false)
@@ -910,7 +1200,7 @@ function AddPartSheet({ container, names, searchParts, onClose, onAdd }: { conta
   }, [term, picked, searchParts])
   const already = picked ? [] : matchOnHandNames(names, term)
   return (
-    <Sheet title={`Add a part to ${container.label}`} sub={picked ? `${picked.partName}${picked.manufacturer ? ` · ${picked.manufacturer}` : ''}` : 'Pick a name this job already has, find it in the parts book, or type its name.'} onClose={onClose}>
+    <Sheet title={words?.title ?? `Add a part to ${container.label}`} sub={picked ? `${picked.partName}${picked.manufacturer ? ` · ${picked.manufacturer}` : ''}` : (words?.sub ?? 'Pick a name this job already has, find it in the parts book, or type its name.')} onClose={onClose}>
       {!picked ? (
         <>
           <input type="search" autoFocus value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Part name or manufacturer" aria-label="Search the parts book" style={input} />
@@ -947,7 +1237,7 @@ function AddPartSheet({ container, names, searchParts, onClose, onAdd }: { conta
       ) : (
         <>
           <Stepper n={n} max={9999} onChange={setN} />
-          <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 52 }} onClick={() => onAdd(picked, n)}>Add {n} to {container.label}</button>
+          <button type="button" style={{ ...btnPrimary, ...btnBlock, minHeight: 52 }} onClick={() => onAdd(picked, n)}>{words ? words.press(n) : `Add ${n} to ${container.label}`}</button>
           <button type="button" style={{ ...quiet, justifySelf: 'start' }} onClick={() => setPicked(null)}>Pick a different part</button>
         </>
       )}
