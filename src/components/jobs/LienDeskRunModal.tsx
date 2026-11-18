@@ -52,8 +52,10 @@ import { noticeDeadlineForMonth } from '../../lib/jobs/lienDeadlines'
 import { runEscapeAction, runHoldSinceOpen, runHoldWords } from '../../lib/jobs/lienRunEscape'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { LIEN_MAILED_COPY_WORDS, lienMailedCopyAddedWords, lienMailedCopyProblem, lienMailedCopyTakenOffWords, type LienMailedCopy } from '../../lib/jobs/lienMailedCopies'
-import { addLienMailedCopy, removeLienMailedCopy } from '../../lib/jobs/lienMailedCopiesIo'
+import { LIEN_MAILED_COPY_WORDS, lienMailedCopyAddedWords, lienMailedCopyProblem, lienMailedCopyPutBackWords, lienMailedCopyTakenOffWords, type LienMailedCopy } from '../../lib/jobs/lienMailedCopies'
+import { addLienMailedCopy, removeLienMailedCopy, restoreLienMailedCopy } from '../../lib/jobs/lienMailedCopiesIo'
+import { driveFileIdOfUrl, fileTakenOffWords, TAKE_OFF_FILE_WORDS, type FileTakenOff } from '../../lib/jobs/jobFolderTrash'
+import { takeFileToTrash, untrashJobFolderFile } from '../../lib/jobs/jobFolderTrashIo'
 import { addFileCanRetry } from '../../lib/jobs/addFileFailure'
 import { LIEN_RUN_ACT, lienRunWhatWords, lienRunWindowTitle } from '../../lib/jobs/lienRunWords'
 import { lienRunEnvelopePropertyLine, type LienRunProperty } from '../../lib/jobs/lienRunEnvelopeProperty'
@@ -95,6 +97,9 @@ export default function LienDeskRunModal({
   focusMailItemId = null,
   addMailedCopy = addLienMailedCopy,
   removeMailedCopy = removeLienMailedCopy,
+  restoreMailedCopy = restoreLienMailedCopy,
+  trashFile = takeFileToTrash,
+  untrashFile = untrashJobFolderFile,
   properties = null,
   onOpenProperty,
 }: {
@@ -134,6 +139,11 @@ export default function LienDeskRunModal({
   addMailedCopy?: typeof addLienMailedCopy
   /** Take a file off a notice's list (v2.7525); a test hands its own. */
   removeMailedCopy?: typeof removeLienMailedCopy
+  /** Put it back (v2.7699): the taken-off file listed on its notice again; a test hands its own. */
+  restoreMailedCopy?: typeof restoreLienMailedCopy
+  /** The taken-off file into Drive's trash, and back out of it; a test hands its own. */
+  trashFile?: typeof takeFileToTrash
+  untrashFile?: typeof untrashJobFolderFile
   /**
    * Every property the host's desk holds a job at (v2.7559, `lienRunProperties`): an envelope says where the other jobs
    * at its properties stand. Absent on a host with no desk in hand: the envelope then says nothing about them.
@@ -632,17 +642,48 @@ export default function LienDeskRunModal({
   }
   // Take off (v2.7525): the notice forgets one file. The file stays in the job's Drive folder, and the words say so.
   const [removingCopy, setRemovingCopy] = useState<string | null>(null)
+  // Where the file just taken off is now (v2.7699): Drive's trash, or still in Drive with the reason. The link comes
+  // off first and stands whatever Drive answers; Put it back lists the file again, out of the trash.
+  const [offCopy, setOffCopy] = useState<{ itemId: string; jobId: string; copy: LienMailedCopy; outcome: FileTakenOff | null; working: 'trash' | 'back' | null } | null>(null)
+  const copyFileId = (copy: LienMailedCopy): string | null => copy.driveFileId.trim() || driveFileIdOfUrl(copy.url)
   const removeCopy = async (row: LienRunRow, copy: LienMailedCopy) => {
     setRemovingCopy(row.itemId)
+    setOffCopy(null)
     try {
       const list = await removeMailedCopy({ itemId: row.itemId, copy })
       setNotices((prev) => prev.map((n) => (n.itemId === row.itemId ? { ...n, mailedCopies: list } : n)))
-      showToast(lienMailedCopyTakenOffWords(copy.name), 'success')
       onRecorded()
+      const outcome = await trashFile(row.jobId, copyFileId(copy))
+      setOffCopy({ itemId: row.itemId, jobId: row.jobId, copy, outcome, working: null })
+      showToast(lienMailedCopyTakenOffWords(copy.name, outcome), 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, LIEN_MAILED_COPY_WORDS.takeOffFailed), 'error')
     } finally {
       setRemovingCopy(null)
+    }
+  }
+  const trashCopyAgain = async () => {
+    const off = offCopy
+    if (!off || off.working) return
+    setOffCopy({ ...off, working: 'trash' })
+    const outcome = await trashFile(off.jobId, copyFileId(off.copy))
+    setOffCopy((now) => (now && now.copy === off.copy ? { ...now, outcome, working: null } : now))
+  }
+  const putCopyBack = async () => {
+    const off = offCopy
+    if (!off || off.working) return
+    setOffCopy({ ...off, working: 'back' })
+    try {
+      const id = copyFileId(off.copy)
+      if (id && off.outcome?.where === 'trash') await untrashFile(off.jobId, id)
+      const list = await restoreMailedCopy({ itemId: off.itemId, copy: off.copy })
+      setNotices((prev) => prev.map((n) => (n.itemId === off.itemId ? { ...n, mailedCopies: list } : n)))
+      setOffCopy(null)
+      showToast(lienMailedCopyPutBackWords(off.copy.name), 'success')
+      onRecorded()
+    } catch (e) {
+      setOffCopy((now) => (now && now.copy === off.copy ? { ...now, working: null } : now))
+      showToast(formatErrorMessage(e, TAKE_OFF_FILE_WORDS.putBackFailed), 'error')
     }
   }
   const markPrintedByHand = (row: LienRunRow) => {
@@ -1122,6 +1163,9 @@ export default function LienDeskRunModal({
               removingItemId: removingCopy,
               failed: failedCopy ? { itemId: failedCopy.itemId, words: failedCopy.words, retry: failedCopy.retry } : null,
               onRetry: (row) => (failedCopy && failedCopy.itemId === row.itemId ? void addCopy(row, failedCopy.file) : undefined),
+              off: offCopy?.outcome ? { itemId: offCopy.itemId, words: fileTakenOffWords(offCopy.outcome), canRetry: offCopy.outcome.where === 'drive' && offCopy.outcome.retry, working: offCopy.working } : null,
+              onTrashAgain: () => void trashCopyAgain(),
+              onPutBack: () => void putCopyBack(),
             }}
             // Un-print one (v2.7481): a ticked Printed is a press on every row the run could take back; the confirm above asks first.
             unprint={onTakeBack ? { ids: printedIds, onAsk: (row) => { setTakeBackOpen(false); setClosePaidIds(null); setTakenBack(null); setTakeBackOne(row.itemId) } } : undefined}

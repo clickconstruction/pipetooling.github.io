@@ -128,7 +128,13 @@ last_updated: 2026-11-17
 > `recordLienDeskRun` hands each filing `lienMailedCopyDocument(n.mailedCopies, typed)`, so the Lien window's *Saved copy* shows it.
 > A combined notice keeps its files on the lead job.
 > Since v2.7525 `buildLienRetainageRun` reads the column too, so a § 53.057 notice's row has the press and its file is named *Retainage notice as mailed* (`lienMailedCopyName`'s `paper`), and a listed file has **Take off**: the row asks first (`lienMailedCopyTakeOffAsk`), then `removeLienMailedCopy` reads the list fresh and writes it without that file (`lienMailedCopiesWithout`, told apart by `lienMailedCopyKey`).
-> Nothing is removed from Drive: `drive-link` has no verb for it.
+> Since v2.7699 the file then goes to Drive's trash: `removeCopy` awaits the list's write, then asks `drive-link`'s `trash` through `takeFileToTrash` (`jobFolderTrashIo.ts`), which never throws and answers where the file is now.
+
+> The function trashes only a file in the job's Sent by us folder that no row of `job_lien_filings` or `job_lien_desk_items` for that job still names (`_shared/driveTrash.ts`, `lienRowsUse`), so a file that is also a record's saved copy stays.
+
+> The line under the row says where the file is (`fileTakenOffWords`), offers the trash a second try where one can help, and **Put it back** untrashes the file and lists it again (`restoreLienMailedCopy`).
+
+> Nothing is deleted from Drive: the service account may trash a file and may not delete it.
 
 > **v2.7456 (To do follows the Board, punch list #362 step 4, the owner's pick of 2026-11-16):** [`lienNextUpByBin.ts`](../src/lib/jobs/lienNextUpByBin.ts) `groupLienNextUpByBin` puts the rows `groupLienNextUp` orders into one group a bin (`lienBoardRowBin` in `lienBoard.ts`: the bin's key, name and place), the notices' column first, each head with its papers and what they owe.
 > `lienBinFolds` names the folds the desk has a press for (the ready affidavits under the print door's words, the ones to send under the batch send's), each a row keyed `fold:<bin>:<action>` whose press is `{ open: 'affidavit_pile', pile }`, a new `LienNextUpTarget` that `actOnNextUp` opens as the Affidavits list at that pile.

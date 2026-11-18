@@ -1926,9 +1926,11 @@ describe('LienDeskRunModal · what was mailed (the owner’s ask of 2026-11-16)'
     expect(screen.getByTestId('run-check-copies-it1').querySelector('a')).toBeNull()
   })
 
-  it('Take off (v2.7525): the notice forgets the file after the ask, the row stops listing it, the words say it is still in Drive, and the desk is told', async () => {
+  it('Take off (v2.7525): the notice forgets the file after the ask, the row stops listing it, the file goes to Drive’s trash, and Put it back lists it again (v2.7699)', async () => {
     cleanup()
     const removed: Array<{ itemId: string; driveFileId: string }> = []
+    const trashed: Array<{ jobId: string; id: string | null }> = []
+    const untrashed: Array<{ jobId: string; id: string }> = []
     const onRecorded = vi.fn()
     renderWithProviders(
       <LienDeskRunModal
@@ -1942,17 +1944,75 @@ describe('LienDeskRunModal · what was mailed (the owner’s ask of 2026-11-16)'
           removed.push({ itemId: a.itemId, driveFileId: a.copy.driveFileId })
           return []
         }}
+        trashFile={async (jobId, id) => {
+          trashed.push({ jobId, id })
+          return { where: 'trash' }
+        }}
+        untrashFile={async (jobId, id) => {
+          untrashed.push({ jobId, id })
+          return { url: kept.url }
+        }}
+        restoreMailedCopy={async (a) => [a.copy]}
       />,
     )
     await settle()
     fireEvent.click(screen.getByTestId('run-check-copy-off-it1-0'))
     expect(removed).toEqual([])
+    expect(screen.getByTestId('run-check-copy-ask-it1').textContent).toContain('The file goes to Drive’s trash. Drive keeps it there 30 days.')
     fireEvent.click(screen.getByTestId('run-check-copy-off-yes-it1'))
     await waitFor(() => expect(screen.getByTestId('run-check-copies-it1').querySelector('a')).toBeNull())
     expect(removed).toEqual([{ itemId: 'it1', driveFileId: 'f1' }])
     expect(screen.getByTestId('run-check-copy-add-it1').textContent).toBe('Add what was mailed')
-    expect(document.body.textContent).toContain(`Took ${kept.name} off this notice. The file is still in the job’s Drive folder.`)
+    // The link came off first; then the file went to Drive's trash, and the line under the row says so (v2.7699).
+    await waitFor(() => expect(screen.getByTestId('run-check-copy-off-line-it1').textContent).toContain('Taken off. The file is in Drive’s trash.'))
+    expect(trashed).toHaveLength(1)
+    expect(trashed[0]?.id).toBe('f1')
+    expect(document.body.textContent).toContain(`Took ${kept.name} off this notice. The file is in Drive’s trash.`)
     expect(onRecorded).toHaveBeenCalledTimes(1)
+    // Put it back: out of the trash, listed on the notice again, and the line is gone.
+    fireEvent.click(screen.getByTestId('run-check-copy-put-back-it1'))
+    await waitFor(() => expect(screen.getByTestId('run-check-copies-it1').querySelector('a')?.textContent).toContain(kept.name))
+    expect(untrashed).toHaveLength(1)
+    expect(untrashed[0]?.id).toBe('f1')
+    expect(screen.queryByTestId('run-check-copy-off-line-it1')).toBeNull()
+    expect(document.body.textContent).toContain(`Put ${kept.name} back on this notice.`)
+    expect(onRecorded).toHaveBeenCalledTimes(2)
+  })
+
+  it('a file Drive would not trash stays, with its reason; Try again sends it again, and Put it back needs no trash to empty (v2.7699)', async () => {
+    cleanup()
+    let asks = 0
+    const untrash = vi.fn(async () => ({ url: kept.url }))
+    renderWithProviders(
+      <LienDeskRunModal
+        notices={[notice({ printedAt: '2026-10-07T15:00:00.000Z', mailedCopies: [kept] })]}
+        issuer={null}
+        todayYmd="2026-10-09"
+        userId="u1"
+        onClose={() => {}}
+        onRecorded={() => {}}
+        removeMailedCopy={async () => []}
+        trashFile={async () => {
+          asks += 1
+          return asks === 1 ? { where: 'drive', why: 'Drive did not move the file to its trash. Drive said: Error 503 (Service Unavailable)', retry: true } : { where: 'drive', why: 'A lien record still uses it.', retry: false }
+        }}
+        untrashFile={untrash}
+        restoreMailedCopy={async (a) => [a.copy]}
+      />,
+    )
+    await settle()
+    fireEvent.click(screen.getByTestId('run-check-copy-off-it1-0'))
+    fireEvent.click(screen.getByTestId('run-check-copy-off-yes-it1'))
+    await waitFor(() => expect(screen.getByTestId('run-check-copy-off-line-it1').textContent).toContain('Taken off. The file stays in Drive. Drive did not move the file to its trash.'))
+    fireEvent.click(screen.getByTestId('run-check-copy-trash-again-it1'))
+    // The second try met a refusal a third cannot fix: the reason changes and the press is gone.
+    await waitFor(() => expect(screen.getByTestId('run-check-copy-off-line-it1').textContent).toContain('A lien record still uses it.'))
+    expect(screen.queryByTestId('run-check-copy-trash-again-it1')).toBeNull()
+    expect(asks).toBe(2)
+    fireEvent.click(screen.getByTestId('run-check-copy-put-back-it1'))
+    await waitFor(() => expect(screen.getByTestId('run-check-copies-it1').querySelector('a')?.textContent).toContain(kept.name))
+    // The file never left the folder, so nothing is asked of Drive's trash.
+    expect(untrash).not.toHaveBeenCalled()
   })
 
   it('a take-off that fails says why and the file stays listed', async () => {
