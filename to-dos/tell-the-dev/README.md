@@ -1,8 +1,8 @@
 ---
 name: "Tell the dev: a wrench on every page that sends a note with the page it was written on"
 number: 380
-group: ready
-status: asked 2026-11-17 · read against the app, drawn and rendered the same day · the owner asked *is this the best we can do?*, took the revised version, added Fix mode and the no-signal rule, and said build · nothing shipped yet
+group: waiting
+status: asked 2026-11-17 · read against the app, drawn and rendered the same day · the owner asked *is this the best we can do?*, took the revised version, added Fix Mode and the no-signal rule, and said build · built the same day as a train of seven, both migrations pushed and the function deployed · the test started 2026-11-17, when PR 3 went live · no note has been sent yet
 summary: >
   The owner's idea: a small floating wrench on every page. A press opens a box that starts a
   sentence, *I want* or *This page is confusing because*, and the note goes to the dev with the
@@ -13,14 +13,36 @@ summary: >
   wrench floats at a desk and sits in the header on a phone, where both bottom corners belong to
   Job Mode. An error line carries its own press, a window's title row carries one on a phone, and
   the answer comes back to the sender with a dot. No picture of the screen is taken.
-next: PR 1, the ground. The test starts when PR 3 is live, and its read is two weeks after that day.
-size: M as a train of six (S · M · S · S · S · S)
-blocker: None. The owner said build.
+next: The read on 2026-12-01, two weeks after PR 3 went live, on Settings → Usage and Notes to the dev. Before then, every note gets an answer within two work days. The first note sent is also the live walk.
+size: M as a train of seven (S · M · S · S · S · S · S), the push's function sent ahead of its client call
+blocker: None. The read waits on its date.
 opinion: build as a test with a rule for taking it off — the pipe exists, so the cost is small, and the risk is on the reading side
 mockup: to-dos/tell-the-dev/mockup.html
 ---
 
 # Tell the dev (#380)
+
+## Where it stands
+
+Built 2026-11-17 and live. The test started that evening, when PR 3's deploy landed. The read is on 2026-12-01.
+
+| PR | Version | What |
+|---|---|---|
+| #8558 | v2.7650 | The ground: `20261117235000_help_feedback_page_notes.sql`, pushed, and the kernels |
+| #8575 | v2.7658 | The wrench, the box, Fix Mode in the gear menu, Notes to the dev, the guide |
+| #8577 | v2.7679 | `notify-help-feedback` words a page note. Deployed |
+| #8606 | v2.7660 | The press on an error line and the wrench in a window's title row on a phone |
+| #8629 | v2.7663 | Your notes and the dot |
+| #8644 | v2.7668 | A went wrong note calls the push |
+| #8576 | v2.7666 | Training accounts: `20261118001000_read_only_may_tell_the_dev.sql`, pushed, with its SQL bed |
+
+Checked before the merge, on a local server as the dev, read only: the wrench and the box at a desk, the sheet on a phone, the Fix Mode row, and Fix Mode off taking every wrench away. After the deploys, the site's bundle was read for the wrench and Fix Mode.
+
+Not done:
+
+- No note has been sent on the live app. The first one a person sends is the walk: it should land under Notes to the dev on the Dashboard, and a went wrong note should push the dev.
+- The four checks under *How to verify* have not been walked on the live app.
+- Nobody has pressed the wrench on a real phone.
 
 ## The ask
 
