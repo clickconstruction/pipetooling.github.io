@@ -336,7 +336,7 @@ describe('a number for each envelope (v2.7705) — tracking_by', () => {
 
   it('the server and the docs say it', () => {
     expect(SERVER).toContain('tracking_by: { owner, original_contractor }')
-    expect(SERVER).toContain("tracking_by?: { owner?, original_contractor? } (each envelope's own, certified mail or a courier)")
+    expect(SERVER).toContain('tracking_by?: { owner?, original_contractor? } (each envelope’s own, certified mail or a courier)')
     expect(README).toContain('tracking_by')
     expect(EDGE).toContain('**v2.7705 (server ')
   })
