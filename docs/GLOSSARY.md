@@ -1576,6 +1576,8 @@ the start is the note's `kind` (`want`, `confusing`, `broken`), and the last two
 **Goes with your note** lists everything a note carries before the press: the page, the open window, the role, the screen, the modes on, the version, the last error line shown and the calls the server refused.
 A note never carries a picture of the screen.
 A lost signal is never part of a note: the outbox keeps that press, so the no-connection line and a call with no answer are left out (`isLostSignalLine`).
+Two more doors open the same box since v2.7660: a **Tell the dev** press on every error toast, which opens on *Something went wrong* with the error attached and is never drawn for a lost signal (`errorLineOffersNote`), and a wrench in the title row of the shared window on a phone (`ResponsiveModalShell`, `tellTheDevDoor`).
+A door outside the shell shows only while a box is there to answer it (`isTellTheDevListening`: a signed-in person with Fix Mode on).
 **Fix Mode** is the gear menu's switch for the wrench, per person per device, on until switched off (`fixMode.ts`, `useFixMode`);
 the phone dock's More sheet lists it with the other modes.
 **Notes to the dev** is the inbox, called Help feedback until v2.7658: the Dashboard's Teams inbox card and the Checklist's review, for the owner or a dev.

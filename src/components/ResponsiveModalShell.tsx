@@ -1,6 +1,13 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, STICKY_MODAL_INSET, stickyModalHeaderStyle } from '../lib/stickyModalHeaderStyle'
 import { ModalFullScreenButton, useModalFullScreen } from './ModalFullScreenToggle'
+import { TellTheDevButton } from './tellTheDev/TellTheDevButton'
+import { isTellTheDevListening } from '../lib/tellTheDev/openBox'
+
+/** A phone, as the sheet's own rules in index.css draw it. */
+function isPhoneWidth(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
+}
 
 /** What the children get when they are a function: whether the dialog is filling the screen right now. */
 export type ResponsiveModalShellState = { fullScreen: boolean }
@@ -41,6 +48,7 @@ export default function ResponsiveModalShell({
   // Above the app's fixed bottom tab bar (z 1000) so the full-screen sheet truly
   // covers it; below the stacked leaf dialogs (Active Accounts 1200, PartForm 1300).
   zIndex = 1100,
+  tellTheDevDoor = true,
 }: {
   title: string
   onRequestClose: () => void
@@ -52,6 +60,12 @@ export default function ResponsiveModalShell({
   fullScreenKey?: string
   maxWidthDesktop?: number
   zIndex?: number
+  /**
+   * Tell the dev (punch list #380): on a phone the header's wrench is out of reach behind a
+   * window, so the title row carries one. It shows only while a box is there to answer (a signed-in
+   * person with Fix Mode on). False for the box's own sheet.
+   */
+  tellTheDevDoor?: boolean
 }) {
   const titleId = useId()
   const inset = STICKY_MODAL_INSET.x
@@ -115,6 +129,7 @@ export default function ResponsiveModalShell({
           <h2 id={titleId} style={{ margin: 0, flex: 1, minWidth: 0 }}>{title}</h2>
           {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} /> : null}
           {headerAction ? <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>{headerAction}</div> : null}
+          {tellTheDevDoor && isTellTheDevListening() && isPhoneWidth() ? <TellTheDevButton door="window" size={18} style={{ padding: '0.35rem', color: 'var(--text-muted)' }} /> : null}
           <button type="button" onClick={onRequestClose} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
         </div>
         {/* Always one box around the children, so the toggle never remounts them (a typed field survives it). */}
