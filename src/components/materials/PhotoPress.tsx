@@ -8,14 +8,14 @@
  * (`boxPhotoBytesIo.ts`), and a press on one opens the whole picture.
  */
 import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
-import { addPhoto, newId, updatePhoto } from '../../lib/materials/onSiteStore'
-import { photoFileName, photoStatusWords, photoWords, type PhotoNote } from '../../lib/materials/photo'
+import { updatePhoto } from '../../lib/materials/onSiteStore'
+import { shootBoxPhoto } from '../../lib/materials/boxPhotoShoot'
+import { photoStatusWords, photoWords, type PhotoNote } from '../../lib/materials/photo'
 import { readBoxPhotoBytes } from '../../lib/materials/boxPhotoBytesIo'
 import { boxPhotoMissingWords, boxPhotoOpenLabel } from '../../lib/materials/boxPhotoSource'
-import { bytesWords, shrinkPhoto } from '../../lib/materials/photoShrink'
-import { readTakenAt } from '../../lib/photos/photoTakenAt'
+import { bytesWords } from '../../lib/materials/photoShrink'
 import { canSharePhoto, downloadFile, sharePhoto } from '../../lib/materials/photoShare'
-import { BoxPhotoNotKeptError, sendBoxPhoto } from '../../lib/materials/photoUpload'
+import { sendBoxPhoto } from '../../lib/materials/photoUpload'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 export function CameraGlyph({ size = 14 }: { size?: number }) {
@@ -51,30 +51,17 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
     const f = e.target.files?.[0]
     e.target.value = ''
     if (!f) return
-    setBusy('Shrinking…')
     try {
-      // The photo's time is the file's own when the camera wrote one (punch list #247, PR 3), else now.
-      const at = await readTakenAt(f)
-      const shot = await shrinkPhoto(f)
-      const type = shot.shrunk ? 'image/jpeg' : f.type || 'image/jpeg'
-      const fileName = photoFileName({ at, byName, containerLabel, after, mime: type })
-      const id = newId()
-      const note: PhotoNote = { id, jobId, containerId, fileName, byUserId, byName, at, bytes: shot.blob.size, width: shot.width, height: shot.height, status: 'sending', driveFileId: null, storagePath: null, words: photoWords(containerLabel, after) }
-      setBusy('Sending…')
-      try {
-        const sent = await sendBoxPhoto({ id, jobId, containerId, blob: shot.blob, fileName })
-        addPhoto({ ...note, storagePath: sent.storagePath })
+      const shot = await shootBoxPhoto(f, { jobId, containerId, containerLabel, after, byUserId, byName, onStage: (s) => setBusy(s === 'shrinking' ? 'Shrinking…' : 'Sending…') })
+      if (shot.kind === 'lost') {
+        // Nothing holds the shot, and the words do not say it is kept.
+        onToast(`${shot.why} This phone could not keep the photo either. Take it again when there is signal.`, 'error')
+      } else if (shot.kind === 'kept') {
         onTaken?.()
-        onToast(`Photo of ${containerLabel} is on its way to the job's folder, ${bytesWords(shot.blob.size)}.`, 'success')
-      } catch (err) {
-        if (err instanceof BoxPhotoNotKeptError) {
-          // Nothing holds the shot: no note is made for a photo that is nowhere, and the words do not say it is kept.
-          onToast(`${formatErrorMessage(err)} This phone could not keep the photo either. Take it again when there is signal.`, 'error')
-        } else {
-          addPhoto({ ...note, status: 'on-phone' })
-          onTaken?.()
-          onToast(`${formatErrorMessage(err)} The photo is kept on this phone. Press Send now when there is signal.`, 'info')
-        }
+        onToast(`${shot.why} The photo is kept on this phone. It sends by itself when there is signal.`, 'info')
+      } else {
+        onTaken?.()
+        onToast(`Photo of ${containerLabel} is on its way to the job's folder, ${bytesWords(shot.note.bytes)}.`, 'success')
       }
     } catch (err) {
       onToast(`The photo could not be taken: ${formatErrorMessage(err)}`, 'error')

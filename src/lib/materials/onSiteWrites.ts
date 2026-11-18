@@ -11,6 +11,7 @@
  */
 import type { Container, ContainerKind, ContainerMove, Movement, MovementReason, Place } from './onSite'
 import type { PhotoNote, PhotoStatus } from './photo'
+import type { TakeMovement } from './takeRun'
 
 export const ON_SITE_TABLES = ['job_places', 'job_containers', 'job_container_moves', 'job_material_movements', 'job_box_photos'] as const
 export type OnSiteTable = (typeof ON_SITE_TABLES)[number]
@@ -117,7 +118,8 @@ export function applyOnSiteWrites(rows: OnSiteRows, writes: ReadonlyArray<OnSite
           at: str(r.at) || at,
           source: strOrNull(r.source),
           itemId: null,
-        },
+          takeId: strOrNull(r.take_id),
+        } as TakeMovement,
       ]
     } else {
       if (w.op === 'insert') {
@@ -140,6 +142,8 @@ export function applyOnSiteWrites(rows: OnSiteRows, writes: ReadonlyArray<OnSite
             storagePath: strOrNull(r.storage_path),
             words: str(r.words),
             failWhy: null,
+            kind: r.kind === 'before' || r.kind === 'after' ? r.kind : null,
+            takeId: strOrNull(r.take_id),
           },
         ]
       } else {
