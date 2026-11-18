@@ -7,7 +7,7 @@ import { FolderTree, JOB_FOLDER_COLUMNS, renameFolder, type JobFolderRow } from 
 import { fileMeta, indexContext, indexFiles, type IndexContext } from '../_shared/fileIndex.ts'
 import { JOB_CONTRACT_BUCKET, jobNumberLabel } from '../_shared/jobContract.ts'
 import { signerNamesLine } from '../_shared/jobContractSigners.ts'
-import { CONTRACT_FILE_MARK, contractDriveDue, isSignedLive, type ContractDriveHoldKind, type ContractDriveRow, type LinkedFileFacts } from '../_shared/jobContractDrive.ts'
+import { CONTRACT_FILE_MARK, contractDriveDue, isSignedLive, keptJobFolderWhy, type ContractDriveHoldKind, type ContractDriveRow, type LinkedFileFacts } from '../_shared/jobContractDrive.ts'
 import { fileContract, holdContract, markVoidedCopy, type FileOutcome, type FilerDrive, type FilerStore } from '../_shared/jobContractDriveFiler.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 
@@ -130,7 +130,11 @@ function driveFor(admin: SupabaseClient, google: string, saJson: string, rootId:
       const job = data as (JobFolderRow & { drive_folder_hold: string | null }) | null
       if (!job) return { why: 'That job is gone.' }
       const kept = driveFolderIdFromUrl(job.google_drive_link)
-      if (kept && !job.drive_folder_hold) return { folderId: kept }
+      if (kept && !job.drive_folder_hold) {
+        // The link may name a folder Drive no longer has, or one in its trash: held in plain words with the job's door.
+        const why = keptJobFolderWhy(await driveFileState(google, kept))
+        return why ? { why } : { folderId: kept }
+      }
       // No folder yet, or one held: the tree places it, or says again why it cannot, as the photo sweep's first photo does.
       if (!tree) tree = new FolderTree(admin, google, await readDriveSettings(admin, Deno.env.get('DRIVE_JOBS_FOLDER_ID')), rootId, appEmail)
       const placed = await tree.placeJob(job)

@@ -244,6 +244,21 @@ export const CONTRACT_HOLD_WORDS: Readonly<Record<ContractDriveHoldKind, string>
   drive_refused: 'Drive refused the file. The app tries again by itself.',
 }
 
+/** The job keeps a link to a folder Drive no longer has (punch list #377, v2.7704). */
+export const JOB_FOLDER_GONE_WORDS = 'This job’s Drive folder is gone. Put the right link on the job’s Edit tab and the paper files itself.'
+/** The job's folder is in Drive's trash: nothing is filed into it. */
+export const JOB_FOLDER_TRASHED_WORDS = 'This job’s Drive folder is in Drive’s trash. Put it back in Drive and the paper files itself.'
+
+/**
+ * Why the folder a job's link names cannot take a paper, or null when it can: Drive has no such folder (`null`), or it
+ * sits in the trash. Before v2.7704 the first write into it failed and the hold read Drive's own words, *Folder create
+ * failed (404)*, with no door.
+ */
+export function keptJobFolderWhy(state: { trashed: boolean } | null): string | null {
+  if (!state) return JOB_FOLDER_GONE_WORDS
+  return state.trashed ? JOB_FOLDER_TRASHED_WORDS : null
+}
+
 /** A hold as the row keeps it: the kind, and the words a person reads. */
 export interface ContractDriveHold {
   kind: ContractDriveHoldKind
