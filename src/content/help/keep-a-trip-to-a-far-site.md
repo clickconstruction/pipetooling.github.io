@@ -225,6 +225,12 @@ This press sends nothing to the customer. A bill goes out only when you send it.
 
 A trip with no job named lists the site's jobs. The job you pick joins the trip's jobs.
 
+A job billed from the GC desk is not offered. That job's price grows only by a signed change order.
+
+The window says so under **Job**. Put the trip's amount on a change order instead.
+
+A leader or the controller presses {{button:outline|Open Change orders}} there to write one.
+
 A dev or a controller sees **What it cost** under the amount. Nobody else sees a cost.
 
 ## Read where a trip's money stands

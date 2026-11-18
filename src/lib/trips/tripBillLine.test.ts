@@ -8,6 +8,7 @@ import {
   parseTripBillLineReply,
   parseTripLineAmount,
   tripAlreadyOnLinesWords,
+  tripBillHeldWords,
   tripBillJobChoices,
   tripBillLineFromRow,
   tripBillLinesByTrip,
@@ -335,5 +336,44 @@ describe('what a trip that holds a line says when it is deleted or its billing i
   it('a trip with no line adds nothing to either', () => {
     expect(tripDeleteLineWords(null, 'J2101')).toBeNull()
     expect(tripSheetLineNote(null, 'J2101')).toBeNull()
+  })
+})
+
+describe('a job billed from the GC desk takes no trip’s line (default 7, the owner’s answer of 2026-11-18)', () => {
+  const GC = [{ jobId: 'job-2', projectId: 'proj-9', projectName: 'Heron Point, built as the GC' }]
+  const WORDS = 'J2140 is billed from Owner Billing on the GC desk. Its price grows only by a signed change order. Put this trip’s amount on a change order there.'
+
+  it('says why, and where the amount goes instead', () => {
+    expect(tripBillHeldWords(JOBS[1]!)).toBe(WORDS)
+    expect(tripBillHeldWords({ id: 'j', label: ' ', name: ' ' })).toBe('This job is billed from Owner Billing on the GC desk. Its price grows only by a signed change order. Put this trip’s amount on a change order there.')
+  })
+
+  it('a trip on two jobs, one of them the GC’s: the other is picked, and the GC’s is held with its project', () => {
+    expect(tripBillJobChoices({ tripJobIds: ['job-1', 'job-2'], siteJobs: JOBS, siteName: 'Heron Point', gcJobs: GC })).toMatchObject({
+      jobs: [JOBS[0]],
+      picked: 'job-1',
+      held: [{ job: JOBS[1], projectId: 'proj-9', words: WORDS }],
+      noneWords: null,
+    })
+  })
+
+  it('a trip with no job named offers the site’s jobs without the GC’s', () => {
+    const choices = tripBillJobChoices({ tripJobIds: [], siteJobs: JOBS, siteName: 'Heron Point', gcJobs: GC })
+    expect(choices.jobs).toEqual([JOBS[0]])
+    expect(choices.held.map((h) => h.job.id)).toEqual(['job-2'])
+  })
+
+  it('a trip whose one job is the GC’s can pick nothing, and says why', () => {
+    expect(tripBillJobChoices({ tripJobIds: ['job-2'], siteJobs: JOBS, siteName: 'Heron Point', gcJobs: GC })).toMatchObject({ jobs: [], picked: null, held: [{ projectId: 'proj-9' }], noneWords: 'No job here can take a trip’s line.' })
+  })
+
+  it('holds nothing when no job is the GC’s, or when the read named none', () => {
+    expect(tripBillJobChoices({ tripJobIds: ['job-1'], siteJobs: JOBS, siteName: 'Heron Point', gcJobs: GC }).held).toEqual([])
+    expect(tripBillJobChoices({ tripJobIds: ['job-2'], siteJobs: JOBS, siteName: 'Heron Point' })).toMatchObject({ jobs: [JOBS[1]], picked: 'job-2', held: [] })
+    expect(tripBillJobChoices({ tripJobIds: ['job-2'], siteJobs: JOBS, siteName: 'Heron Point', gcJobs: [] }).held).toEqual([])
+  })
+
+  it('the button is dead with that reason when no job can be picked', () => {
+    expect(tripBillWindowState({ jobId: null, amountTyped: '6800', name: 'Trip 14', askWords: 'Pick one of the trip’s jobs', noneWords: 'No job here can take a trip’s line.' })).toMatchObject({ confirmLabel: 'Add the line · $6,800', problem: 'No job here can take a trip’s line.' })
   })
 })

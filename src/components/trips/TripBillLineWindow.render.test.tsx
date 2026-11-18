@@ -7,7 +7,7 @@
 import { act, cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
-import type { TripBillLineReply } from '../../lib/trips/tripBillLine'
+import type { TripBillGcJob, TripBillLineReply } from '../../lib/trips/tripBillLine'
 import { TripBillLineRefusal, type TripBillLinePress } from '../../lib/trips/tripBillLineIo'
 import { newTripRecord, type TripRecord } from '../../lib/trips/tripRecord'
 import { TRIP_BILL_PREVIEW_WAIT_MS, TripBillLineWindow } from './TripBillLineWindow'
@@ -44,11 +44,16 @@ const JOBS = [
 ]
 const reply = (over: Partial<TripBillLineReply> = {}): TripBillLineReply => ({ duplicate: false, dryRun: true, fixtureId: null, jobId: 'j1', revenueBefore: 184000, revenueAfter: 190800, ...over })
 
-function draw(over: { record?: TripRecord; costWords?: string | null; preview?: (p: TripBillLinePress) => Promise<TripBillLineReply>; onAdd?: (p: Omit<TripBillLinePress, 'dryRun'>) => Promise<boolean>; busy?: boolean } = {}) {
-  const spies = { preview: vi.fn(over.preview ?? (async () => reply())), onAdd: vi.fn(over.onAdd ?? (async () => true)), onClose: vi.fn() }
-  renderWithProviders(<TripBillLineWindow record={over.record ?? TRIP} siteName="Heron Point" jobs={JOBS} todayYmd={TODAY} costWords={over.costWords} busy={over.busy ?? false} preview={spies.preview} onAdd={spies.onAdd} onClose={spies.onClose} />)
+function draw(over: { record?: TripRecord; costWords?: string | null; preview?: (p: TripBillLinePress) => Promise<TripBillLineReply>; onAdd?: (p: Omit<TripBillLinePress, 'dryRun'>) => Promise<boolean>; busy?: boolean; gcJobs?: TripBillGcJob[]; changeOrders?: boolean } = {}) {
+  const spies = { preview: vi.fn(over.preview ?? (async () => reply())), onAdd: vi.fn(over.onAdd ?? (async () => true)), onClose: vi.fn(), readGcJobs: vi.fn(async (_ids: ReadonlyArray<string>) => over.gcJobs ?? []), onOpenChangeOrders: vi.fn() }
+  renderWithProviders(
+    <TripBillLineWindow record={over.record ?? TRIP} siteName="Heron Point" jobs={JOBS} todayYmd={TODAY} costWords={over.costWords} busy={over.busy ?? false} preview={spies.preview} readGcJobs={spies.readGcJobs} onOpenChangeOrders={over.changeOrders ? spies.onOpenChangeOrders : undefined} onAdd={spies.onAdd} onClose={spies.onClose} />,
+  )
   return spies
 }
+/** Let the read of the GC desk's jobs land. */
+const gcRead = () => act(async () => {})
+const POOL_HOUSE_GC: TripBillGcJob[] = [{ jobId: 'j2', projectId: 'proj-9', projectName: 'Heron Point, built as the GC' }]
 const type = (testId: string, value: string) => fireEvent.change(screen.getByTestId(testId), { target: { value } })
 const settle = () => act(() => vi.advanceTimersByTimeAsync(TRIP_BILL_PREVIEW_WAIT_MS + 5))
 const addButton = () => screen.getByRole('button', { name: /^Add the line|^Adding the line/ }) as HTMLButtonElement
@@ -202,5 +207,67 @@ describe('TripBillLineWindow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(spies.onClose).toHaveBeenCalledTimes(2)
+  })
+
+  it('asks which of its jobs are billed from the GC desk, once, and holds none back when none is', async () => {
+    const spies = draw()
+    await gcRead()
+    expect(spies.readGcJobs).toHaveBeenCalledTimes(1)
+    expect([...(spies.readGcJobs.mock.calls[0]?.[0] ?? [])].sort()).toEqual(['j1', 'j2'])
+    expect(screen.queryByTestId('trip-bill-held-job')).toBeNull()
+  })
+
+  it('a trip on two jobs, one billed from the GC desk: that job is not offered, the other is picked, and the money team gets the door to Change orders', async () => {
+    const spies = draw({ record: { ...TRIP, jobIds: ['j1', 'j2'] }, gcJobs: POOL_HOUSE_GC, changeOrders: true })
+    await gcRead()
+    expect(screen.queryByTestId('trip-bill-job-pick')).toBeNull()
+    expect(screen.getByTestId('trip-bill-job').textContent).toBe('J2101 Heron Point Clubhouse')
+    expect(screen.getByTestId('trip-bill-title').textContent).toBe('Put Trip 14 on J2101’s lines')
+    const held = screen.getByTestId('trip-bill-held-job')
+    expect(held.textContent).toContain('J2140 is billed from Owner Billing on the GC desk. Its price grows only by a signed change order. Put this trip’s amount on a change order there.')
+    fireEvent.click(screen.getByRole('button', { name: 'Open Change orders' }))
+    expect(spies.onOpenChangeOrders).toHaveBeenCalledWith('proj-9')
+    expect(spies.onAdd).not.toHaveBeenCalled()
+    // The other job still takes the line.
+    type('trip-bill-amount', '6800')
+    await settle()
+    expect(spies.preview.mock.calls[0]?.[0]).toMatchObject({ jobId: 'j1' })
+    expect(addButton().disabled).toBe(false)
+  })
+
+  it('a reader who cannot open Change orders is told who writes the change order, with no press', async () => {
+    draw({ record: { ...TRIP, jobIds: ['j1', 'j2'] }, gcJobs: POOL_HOUSE_GC })
+    await gcRead()
+    expect(screen.getByTestId('trip-bill-held-job').textContent).toContain('A leader or the controller writes the change order in Change orders on the GC desk.')
+    expect(screen.queryByRole('button', { name: 'Open Change orders' })).toBeNull()
+  })
+
+  it('a trip whose one job is billed from the GC desk: the pick moves off it, nothing can be added and the window says why', async () => {
+    const spies = draw({ record: { ...TRIP, jobIds: ['j2'] }, gcJobs: POOL_HOUSE_GC, changeOrders: true })
+    // Before the read lands the trip's one job is picked, as for any trip.
+    expect(screen.getByTestId('trip-bill-job').textContent).toBe('J2140 Heron Point Pool House')
+    await gcRead()
+    expect(screen.queryByTestId('trip-bill-job')).toBeNull()
+    expect(screen.getByTestId('trip-bill-no-job').textContent).toBe('No job here can take a trip’s line.')
+    expect(screen.getByTestId('trip-bill-title').textContent).toBe('Put Trip 14 on a job’s lines')
+    type('trip-bill-amount', '6800')
+    await settle()
+    expect(spies.preview).not.toHaveBeenCalled()
+    expect(screen.getByTestId('trip-bill-foot').textContent).toBe('No job here can take a trip’s line.')
+    expect(addButton().disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'Open Change orders' })).toBeTruthy()
+  })
+
+  it('when the GC desk’s jobs cannot be read, every job is offered and the function’s own refusal still stops the press', async () => {
+    const spies = { preview: vi.fn(async () => { throw new TripBillLineRefusal('This job is billed from Owner Billing on the GC desk. A trip’s line cannot go on its lines.') }) }
+    renderWithProviders(
+      <TripBillLineWindow record={{ ...TRIP, jobIds: ['j2'] }} siteName="Heron Point" jobs={JOBS} todayYmd={TODAY} busy={false} preview={spies.preview} readGcJobs={async () => { throw new Error('closed') }} onAdd={async () => true} onClose={() => {}} />,
+    )
+    await gcRead()
+    expect(screen.getByTestId('trip-bill-job').textContent).toBe('J2140 Heron Point Pool House')
+    type('trip-bill-amount', '6800')
+    await settle()
+    expect(screen.getByTestId('trip-bill-foot').textContent).toBe('This job is billed from Owner Billing on the GC desk. A trip’s line cannot go on its lines.')
+    expect(addButton().disabled).toBe(true)
   })
 })

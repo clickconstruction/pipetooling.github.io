@@ -8,6 +8,10 @@
  * changes. A dry run that is refused (a job billed from the GC desk, a trip that already holds a line) says
  * why in the function's words and leaves the button dead. The button names the act and its figure.
  *
+ * A job billed from the GC desk is never offered (the card's default 7, the owner's answer of 2026-11-18): on a job
+ * we build as the GC the customer's price grows only by a signed change order. The window reads which of its jobs
+ * those are, holds each back with that reason, and gives the money team the door to the project's **Change orders**.
+ *
  * The rules are `lib/trips/tripBillLine.ts`; this file draws them. Nothing is billed here: the press adds one
  * line, and a bill takes it later from the Job window. Drawn through a portal on the body, as the trip sheet.
  */
@@ -16,6 +20,8 @@ import { createPortal } from 'react-dom'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { TRIP_COST_CAP, TRIP_COST_WHO } from '../../lib/trips/tripCost'
 import {
+  TRIP_BILL_CHANGE_ORDERS_LABEL,
+  TRIP_BILL_CHANGE_ORDERS_WHO,
   TRIP_BILL_LINE_NOTE,
   TRIP_LINE_NAME_MAX,
   TRIP_LINE_WORDS_MAX,
@@ -26,10 +32,11 @@ import {
   tripBillWindowTitle,
   tripLineName,
   tripLineWords,
+  type TripBillGcJob,
   type TripBillJob,
   type TripBillLineReply,
 } from '../../lib/trips/tripBillLine'
-import { putTripOnJobLine, TripBillLineRefusal, type TripBillLinePress } from '../../lib/trips/tripBillLineIo'
+import { putTripOnJobLine, readTripBillGcJobs, TripBillLineRefusal, type TripBillLinePress } from '../../lib/trips/tripBillLineIo'
 import type { TripRecord } from '../../lib/trips/tripRecord'
 import { tripNameOfRecord } from '../../lib/trips/tripsLook'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -49,6 +56,8 @@ export function TripBillLineWindow({
   busy,
   zIndex = 760,
   preview = putTripOnJobLine,
+  readGcJobs = readTripBillGcJobs,
+  onOpenChangeOrders,
   onAdd,
   onClose,
 }: {
@@ -64,13 +73,44 @@ export function TripBillLineWindow({
   zIndex?: number
   /** The dry run that says the job total before and after. Injectable for tests. */
   preview?: (press: TripBillLinePress) => Promise<TripBillLineReply>
+  /** Which of these jobs are billed from the GC desk. Injectable for tests. */
+  readGcJobs?: (jobIds: ReadonlyArray<string>) => Promise<TripBillGcJob[]>
+  /**
+   * Open a GC project's Change orders. Handed in only for a reader on the GC money team, who can open them;
+   * absent, a held job says who writes the change order instead.
+   */
+  onOpenChangeOrders?: (projectId: string) => void
   /** The press. True when the line was added, so the window closes. */
   onAdd: (press: Omit<TripBillLinePress, 'dryRun'>) => Promise<boolean>
   onClose: () => void
 }) {
   const tripShort = useMemo(() => tripNameOfRecord(record, todayYmd).short, [record, todayYmd])
-  const choices = useMemo(() => tripBillJobChoices({ tripJobIds: record.jobIds, siteJobs: jobs, siteName }), [record.jobIds, jobs, siteName])
+  // The jobs billed from the GC desk, read once for the jobs this window could offer. Until it is in, and when it
+  // cannot be read, none is held: the function's own refusal then says so on the dry run.
+  const [gcJobs, setGcJobs] = useState<TripBillGcJob[]>([])
+  const readGcJobsRef = useRef(readGcJobs)
+  readGcJobsRef.current = readGcJobs
+  const jobIdsKey = useMemo(() => jobs.map((j) => j.id).sort().join(','), [jobs])
+  useEffect(() => {
+    if (!jobIdsKey) return
+    let live = true
+    readGcJobsRef.current(jobIdsKey.split(',')).then(
+      (found) => {
+        if (live) setGcJobs(found)
+      },
+      () => {},
+    )
+    return () => {
+      live = false
+    }
+  }, [jobIdsKey])
+  const choices = useMemo(() => tripBillJobChoices({ tripJobIds: record.jobIds, siteJobs: jobs, siteName, gcJobs }), [record.jobIds, jobs, siteName, gcJobs])
   const [jobId, setJobId] = useState<string | null>(choices.picked)
+  // A job picked before the read came in may turn out to be one the window holds back: the pick moves off it.
+  useEffect(() => {
+    if (jobId && !choices.jobs.some((j) => j.id === jobId)) setJobId(choices.picked)
+    else if (!jobId && choices.picked) setJobId(choices.picked)
+  }, [choices, jobId])
   const [amountTyped, setAmountTyped] = useState('')
   const [name, setName] = useState(() => tripLineName(record, todayYmd))
   const [words, setWords] = useState(() => tripLineWords(record))
@@ -89,7 +129,7 @@ export function TripBillLineWindow({
   }, [onClose])
 
   const job = jobs.find((j) => j.id === jobId) ?? null
-  const ui = tripBillWindowState({ jobId, amountTyped, name, askWords: choices.askWords })
+  const ui = tripBillWindowState({ jobId, amountTyped, name, askWords: choices.askWords, noneWords: choices.noneWords })
   const amount = ui.amount
 
   // The job total before and after: the function's own dry run, asked again once the job or the amount settles.
@@ -178,6 +218,21 @@ export function TripBillLineWindow({
                 ))}
               </select>
             )}
+            {/* A job billed from the GC desk takes no trip's line: why, and the press that takes the amount instead. */}
+            {choices.held.map((h) => (
+              <div key={h.job.id} style={{ marginTop: 8, border: '1px solid var(--border)', borderRadius: 8, padding: '7px 10px', background: 'var(--bg-subtle)', fontSize: '0.8rem' }} data-testid="trip-bill-held-job">
+                <div style={{ color: 'var(--text-700)' }}>{h.words}</div>
+                <div style={{ marginTop: 5 }}>
+                  {onOpenChangeOrders ? (
+                    <SmallButton onClick={() => onOpenChangeOrders(h.projectId)} title="Opens this job’s change orders on the GC desk. This window closes and nothing is added.">
+                      {TRIP_BILL_CHANGE_ORDERS_LABEL}
+                    </SmallButton>
+                  ) : (
+                    <span style={quiet}>{TRIP_BILL_CHANGE_ORDERS_WHO}</span>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
           <div>
             <div style={{ ...capStyle, marginBottom: 5 }}>Amount</div>

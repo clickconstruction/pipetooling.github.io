@@ -34,11 +34,13 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import type { UserRole } from '../../hooks/useAuth'
 import type { SiteTripsState } from '../../hooks/useSiteTrips'
 import { useTripBillLines } from '../../hooks/useTripBillLines'
 import type { SiteCostsRead } from '../../lib/developments/siteCosts'
 import type { SiteLaborRead } from '../../lib/developments/siteLabor'
 import { appUrl } from '../../lib/appOrigin'
+import { canSeeGcMoney } from '../../lib/gc/access'
 import { ymdFromDateOnlyOrIso } from '../../lib/jobChargesTimeline'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { TRIP_GONE_WORDS, tripHref } from '../../lib/trips/jobTrips'
@@ -102,6 +104,7 @@ export function DevelopmentTripsCard({
   openTrip = null,
   billRole = null,
   onOpenJobOnBill,
+  onOpenGcChangeOrders,
   billIo = putTripOnJobLine,
 }: {
   anchorId: string
@@ -139,6 +142,11 @@ export function DevelopmentTripsCard({
    * and the press opens nothing after it.
    */
   onOpenJobOnBill?: (jobId: string, lineIds: ReadonlyArray<string>, onJobSaved: () => void) => void
+  /**
+   * Open a GC project's Change orders on the GC desk. A job billed from that desk takes no trip's line, and the
+   * window points the money team here instead. Absent, the window says who writes the change order.
+   */
+  onOpenGcChangeOrders?: (projectId: string) => void
   /** The press and its dry run. Injectable for tests. */
   billIo?: (press: TripBillLinePress) => Promise<TripBillLineReply>
 }) {
@@ -328,6 +336,14 @@ export function DevelopmentTripsCard({
       setBusy(false)
     }
   }
+  // The door on a job billed from the GC desk: only the GC money team can open Change orders, so only they get it.
+  const openChangeOrders =
+    onOpenGcChangeOrders && canSeeGcMoney(billRole as UserRole | null)
+      ? (projectId: string) => {
+          setBilling(null)
+          onOpenGcChangeOrders(projectId)
+        }
+      : undefined
   const openBillLine = (_record: TripRecord, line: TripBillLine) => onOpenJobOnBill?.(line.jobId, [line.fixtureId], reloadBillLines)
   // What the trip cost, in the window's hint, for a dev or a controller alone and only when the figure stands.
   const billingCost = useMemo(() => {
@@ -412,7 +428,7 @@ export function DevelopmentTripsCard({
         </Card>
       ) : null}
       {sheet ? <TripSheet key={sheet.record.id} record={sheet.record} isNew={sheet.isNew} siteName={siteName} roster={trips.roster} jobs={jobs} todayYmd={todayYmd} busy={busy} lineStaysNote={sheetLineNote} onSave={save} onClose={() => setSheet(null)} /> : null}
-      {billing ? <TripBillLineWindow key={billing.id} record={billing} siteName={siteName} jobs={jobs} todayYmd={todayYmd} costWords={billingCost} busy={busy} preview={billIo} onAdd={putOnBill} onClose={() => setBilling(null)} /> : null}
+      {billing ? <TripBillLineWindow key={billing.id} record={billing} siteName={siteName} jobs={jobs} todayYmd={todayYmd} costWords={billingCost} busy={busy} preview={billIo} onOpenChangeOrders={openChangeOrders} onAdd={putOnBill} onClose={() => setBilling(null)} /> : null}
       {asking ? (
         <ConfirmDialog
           title={`Delete ${tripNameWords(asking, todayYmd)}?`}

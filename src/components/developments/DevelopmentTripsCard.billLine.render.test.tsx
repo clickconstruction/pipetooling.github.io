@@ -19,7 +19,7 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 // The lines read: what each read answers, and how often it was asked.
-const read = vi.hoisted(() => ({ lines: new Map<string, unknown>(), calls: 0, fail: false }))
+const read = vi.hoisted(() => ({ lines: new Map<string, unknown>(), calls: 0, fail: false, gcJobs: [] as Array<{ jobId: string; projectId: string; projectName: string | null }> }))
 vi.mock('../../lib/trips/tripBillLineIo', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../lib/trips/tripBillLineIo')>()),
   readTripBillLines: async () => {
@@ -27,6 +27,8 @@ vi.mock('../../lib/trips/tripBillLineIo', async (importOriginal) => ({
     if (read.fail) throw new Error('closed')
     return new Map(read.lines)
   },
+  // Which of the site's jobs are billed from the GC desk.
+  readTripBillGcJobs: async () => read.gcJobs,
 }))
 beforeAll(installDomShims)
 afterEach(() => {
@@ -34,6 +36,7 @@ afterEach(() => {
   read.lines = new Map()
   read.calls = 0
   read.fail = false
+  read.gcJobs = []
 })
 
 const TODAY = '2026-11-18'
@@ -60,7 +63,7 @@ function state(over: Partial<SiteTripsState> = {}): SiteTripsState {
 }
 function draw(over: { billIo?: (p: TripBillLinePress) => Promise<TripBillLineReply>; role?: string | null; trips?: SiteTripsState; noDoor?: boolean } = {}) {
   const trips = over.trips ?? state()
-  const spies = { billIo: vi.fn(over.billIo ?? (async (p: TripBillLinePress) => reply({ dryRun: p.dryRun, fixtureId: p.dryRun ? null : 'fx-new' }))), onOpenJobOnBill: vi.fn() }
+  const spies = { billIo: vi.fn(over.billIo ?? (async (p: TripBillLinePress) => reply({ dryRun: p.dryRun, fixtureId: p.dryRun ? null : 'fx-new' }))), onOpenJobOnBill: vi.fn(), onOpenGcChangeOrders: vi.fn() }
   renderWithProviders(
     <DevelopmentTripsCard
       anchorId="development-trips"
@@ -76,6 +79,7 @@ function draw(over: { billIo?: (p: TripBillLinePress) => Promise<TripBillLineRep
       historyDays={[]}
       billRole={over.role === undefined ? 'assistant' : over.role}
       onOpenJobOnBill={over.noDoor ? undefined : spies.onOpenJobOnBill}
+      onOpenGcChangeOrders={spies.onOpenGcChangeOrders}
       billIo={spies.billIo}
     />,
   )
@@ -191,6 +195,31 @@ describe('DevelopmentTripsCard — Put on a bill', () => {
     expect(screen.queryByTestId('trip-sheet-line-stays')).toBeNull()
     fireEvent.click(within(screen.getByTestId('trip-sheet')).getByRole('radio', { name: 'Ours' }))
     expect(screen.getByTestId('trip-sheet-line-stays').textContent).toBe('This trip is on J2101’s lines. Changing the billing leaves the line where it is.')
+  })
+
+  it('a trip whose job is billed from the GC desk: a leader gets the door to Change orders, and the press closes the window and adds nothing', async () => {
+    read.gcJobs = [{ jobId: 'j1', projectId: 'proj-9', projectName: 'Heron Point, built as the GC' }]
+    const { billIo, onOpenGcChangeOrders } = draw({ role: 'master_technician' })
+    await waitFor(() => expect(screen.getByTestId('trip-row-billing').textContent).toBe('Extra · not billed yet'))
+    fireEvent.click(within(within(openTrip()).getByTestId('trip-put-on-bill')).getByRole('button'))
+    const held = await screen.findByTestId('trip-bill-held-job')
+    expect(held.textContent).toContain('J2101 is billed from Owner Billing on the GC desk.')
+    expect(screen.getByTestId('trip-bill-no-job').textContent).toBe('No job here can take a trip’s line.')
+    fireEvent.click(within(held).getByRole('button', { name: 'Open Change orders' }))
+    expect(onOpenGcChangeOrders).toHaveBeenCalledWith('proj-9')
+    await waitFor(() => expect(screen.queryByTestId('trip-bill-window')).toBeNull())
+    expect(billIo).not.toHaveBeenCalled()
+  })
+
+  it('an assistant, who may press but is not on the GC money team, is told who writes the change order', async () => {
+    read.gcJobs = [{ jobId: 'j1', projectId: 'proj-9', projectName: null }]
+    const { onOpenGcChangeOrders } = draw({ role: 'assistant' })
+    await waitFor(() => expect(screen.getByTestId('trip-row-billing').textContent).toBe('Extra · not billed yet'))
+    fireEvent.click(within(within(openTrip()).getByTestId('trip-put-on-bill')).getByRole('button'))
+    const held = await screen.findByTestId('trip-bill-held-job')
+    expect(held.textContent).toContain('A leader or the controller writes the change order in Change orders on the GC desk.')
+    expect(within(held).queryByRole('button')).toBeNull()
+    expect(onOpenGcChangeOrders).not.toHaveBeenCalled()
   })
 
   it('reads no line on a site whose look does not show', () => {

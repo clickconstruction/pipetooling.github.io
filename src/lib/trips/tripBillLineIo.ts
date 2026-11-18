@@ -13,7 +13,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
-import { parseTripBillLineReply, TRIP_BILL_LINE_SELECT, tripBillLinesByTrip, type LineTrip, type TripBillLine, type TripBillLineReply, type TripBillLineRow } from './tripBillLine'
+import { parseTripBillLineReply, TRIP_BILL_LINE_SELECT, tripBillLinesByTrip, type LineTrip, type TripBillGcJob, type TripBillLine, type TripBillLineReply, type TripBillLineRow } from './tripBillLine'
 import { tripNumberOf } from './tripRecord'
 
 // The column and the function are younger than the generated types; the next types PR removes this cast.
@@ -71,4 +71,25 @@ export async function readLineTrips(tripIds: ReadonlyArray<string>): Promise<Lin
     'read the trips the job’s lines name',
   )
   return rows.map((r) => ({ id: r.id, tripNumber: tripNumberOf(r.trip_number), developmentId: r.development_id }))
+}
+
+/**
+ * Which of these jobs are a GC project's billing job, for the window (the card's default 7). Those take no trip's
+ * line: the function refuses them, and the window holds them back with the door to the project's Change orders.
+ * `gc_projects` is the GC office's to read, which the four roles that can press all are. A read that fails or is
+ * closed answers none, and the function's own refusal is then what the window shows.
+ */
+export async function readTripBillGcJobs(jobIds: ReadonlyArray<string>): Promise<TripBillGcJob[]> {
+  if (jobIds.length === 0) return []
+  type Row = { project_id: string; billing_job_id: string | null; projects: { name: string | null } | Array<{ name: string | null }> | null }
+  const rows = await fetchAllRowsChunkedIn<Row, string>(
+    [...jobIds],
+    (chunk, from, to) => db.from('gc_projects').select('project_id, billing_job_id, projects(name)').in('billing_job_id', chunk).order('project_id').range(from, to) as unknown as Paged<Row>,
+    'read which jobs are billed from the GC desk',
+  )
+  return rows.flatMap((r) => {
+    if (!r.billing_job_id) return []
+    const project = Array.isArray(r.projects) ? r.projects[0] : r.projects
+    return [{ jobId: r.billing_job_id, projectId: r.project_id, projectName: project?.name?.trim() || null }]
+  })
 }
