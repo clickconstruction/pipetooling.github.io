@@ -2,7 +2,7 @@
 name: "Job Mode, short: a superintendent's one-screen home"
 number: 384
 group: close
-status: built 2026-11-18 as three PRs · v2.7749 the setting opened to a superintendent (migration 20261118070000 pushed) · v2.7752 the short page · v2.7753 the trims · walked on the sample superintendent · no real person is on Short yet
+status: built 2026-11-18 as three PRs · v2.7749 the setting opened to a superintendent (migration 20261118070000 pushed) · v2.7752 the short page · v2.7753 the trims · walked on the sample superintendent · the look shown to the owner 2026-11-18, and v2.7791 from it · no real person is on Short yet
 summary: >
   A superintendent says there is too much on his screen and it overwhelms him. His daily page is the Job Mode
   Dashboard on his phone: about six screens and about eighty presses, of which he uses the first screen. The
@@ -218,6 +218,22 @@ Each is small and stands alone. Split them if one grows.
   window are untouched.
 - The first and third trims are held by tests only: no sample account has an empty stage listed or a
   schedule card with chips to show them live.
+
+### The look, 2026-11-18
+
+The owner saw the page as sixteen phone screenshots, taken as the sample superintendent at 375 by 812. The
+sample account has no stops, so a day of three was held in the browser. Nothing was written for it.
+
+- **The count with three stops.** The short page is 1.18 screens and 24 presses with a clean record, and 1.41
+  screens with one line under **Waiting on you**. The long page on Full with the same stops is 5.08 screens and
+  74 presses.
+- **On the first screen** the press bar cuts Tomorrow's heading, and **Everything else** is below the fold. The
+  walk with a real superintendent says whether that short scroll matters.
+- **One change from the look, v2.7791.** A date typed into a job's name reads as the day of the week and the
+  month and day on the card, on the Tomorrow line and under Waiting on you. The owner's words: "I think we
+  should add the day of the week and change the date to just month and day".
+- **Not reached.** A real working day, the clock presses, My Schedule behind the door, and a stage checklist
+  with questions.
 
 ## How to verify
 

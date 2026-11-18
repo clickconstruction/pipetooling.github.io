@@ -1531,6 +1531,9 @@ The same predicate is folded into the kernel, so the Dashboard's early return ca
 a 1-minute interval re-checks `denverCalendarDayKey(Date.now())` so a long-open page rolls over at midnight.
 The picker is fully unit-tested (14 cases) so adding new state branches is safe.
 
+**A date in a job's name** — the card's title and rail draw a date typed into a job's name, `2026-11-08`, as the day of the week and the month and day, *Sun, Nov 8* (v2.7791, `jobNameWithPlainDates` in [`jobNameDate.ts`](../src/lib/jobNameDate.ts)).
+The short page's **Tomorrow** line and Your record's lines read the same way, and the name itself is never changed.
+
 **See also** — **`RECENT_FEATURES.md`** **v2.545**, **`PROJECT_DOCUMENTATION.md`** Dashboard **Job Mode**.
 
 ### Job Mode, short (a superintendent's one-screen home)
