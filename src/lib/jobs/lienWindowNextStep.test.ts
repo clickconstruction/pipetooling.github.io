@@ -14,7 +14,9 @@ describe('lienWindowNextStep', () => {
 
   it('the affidavit, its service and the release of record are made in this window: the button switches the tab', () => {
     expect(lienWindowNextStep(next({ kind: 'affidavit' }), null).button).toEqual({ label: 'Go to the affidavit', door: { to: 'tab', tab: 'affidavit' } })
-    expect(lienWindowNextStep(next({ kind: 'serve' }), null).button).toEqual({ label: 'Record the service', door: { to: 'tab', tab: 'affidavit' } })
+    // A filed lien's copies: the press reads the stage they are at (`lienServeStage.ts`).
+    expect(lienWindowNextStep(next({ kind: 'serve' }), null).button).toEqual({ label: 'Print the copies to mail', door: { to: 'tab', tab: 'affidavit' } })
+    expect(lienWindowNextStep(next({ kind: 'serve' }), null, 'record').button).toEqual({ label: 'Enter mail numbers', door: { to: 'tab', tab: 'affidavit' } })
     expect(lienWindowNextStep(next({ kind: 'release' }), null).button).toEqual({ label: 'Go to the release of record', door: { to: 'tab', tab: 'release_record' } })
   })
 
