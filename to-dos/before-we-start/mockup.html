@@ -233,100 +233,105 @@
   .portal .ok { color: #15803d; font-weight: 600; }
   .cols2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
   @media (max-width: 760px) { .todo { grid-template-columns: 1fr; gap: 4px; } .sched { padding-left: 10px; } .sched .months { left: 10px; } .sched .r { height: 44px; } .sched .r .name { position: static; width: auto; padding-top: 2px; } .sched .w, .sched .dia, .sched .go { top: 24px; } .sched .w.trip { top: 27px; } .bul { grid-template-columns: 22px minmax(0, 1fr) 28px; } .bul .stc { grid-column: 2; } }
+  /* --- Second draft --- */
+  .st.asked { background: var(--bg-amber-tint); border-color: var(--text-amber-800); color: var(--text-amber-800); }
+  .st.word { background: var(--bg-blue-tint); border-color: var(--text-blue-700); color: var(--text-blue-700); }
+  .st.photo { background: var(--bg-blue-tint); border-color: var(--text-blue-700); color: var(--text-blue-700); }
+  .st.saw, .st.read, .st.go { background: var(--bg-green-tint); border-color: var(--text-green-700); color: var(--text-green-700); }
+  .st.read { border-style: dashed; }
+  .bul .box.word, .bul .box.photo { background: #2563eb; border-color: #2563eb; } .bul .box.saw, .bul .box.read { background: #15803d; border-color: #15803d; }
+  .who { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 10px 12px; margin-top: 10px; }
+  .who .hd { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+  .who .nm { font: 700 16px/1.3 var(--font); color: var(--text-strong); }
+  .who .ln { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto; gap: 8px 10px; padding: 6px 0; border-top: 1px solid var(--border); align-items: center; }
+  .who .ln:first-of-type { margin-top: 8px; }
+  .dec { border: 2px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--surface); }
+  .dec.go { border-color: var(--text-green-700); } .dec.hold { border-color: var(--text-amber-800); }
+  .moved { position: absolute; top: 7px; font-size: 11px; font-weight: 700; color: var(--text-red-700); white-space: nowrap; }
+  .portal .big { display: block; text-align: center; border-radius: 10px; padding: 11px 8px; font: 700 14px var(--font); background: #15803d; color: #fff; margin-top: 10px; }
+  .portal .lnk { color: #2563eb; font-weight: 600; font-size: 12.5px; }
+  .portal .conf { border: 1px solid #86efac; background: #f0fdf4; border-radius: 10px; padding: 10px; color: #166534; }
+  @media (max-width: 760px) { .who .ln { grid-template-columns: 1fr; gap: 2px; } }
 </style>
 </head>
 <body>
 <div class="wrap">
 <header class="top">
-  <p class="eyebrow">Design · first draft, to refine together · nothing built · every name and figure made up</p>
-  <h1>Before we start: what has to be true before a stage begins, and who said so</h1>
-  <p>For each stage the office writes a short list of things that must be true before the crew goes. The office follows up with the customer until each one has a yes. A stage with every yes reads Clear to start. The site's stages sit on one line of time, and any bullet can be shown on the GC's own page for them to confirm.</p>
-  <nav class="jump"><a href="#why">The gap</a><a href="#sheet">One stage</a><a href="#look">The site's schedule</a><a href="#ask">Ask them</a><a href="#portal">The GC's page</a><a href="#phone">On arrival</a><a href="#list">The company's lists</a><a href="#doors">Every door</a><a href="#rules">The rules</a><a href="#plan">The train</a><a href="#pass">The second pass</a><a href="#calls">Your calls</a></nav>
+  <p class="eyebrow">Design · second draft, after "is this the best we can do" · nothing built · every name and figure made up</p>
+  <h1>Before we start: what has to be true before a stage begins, who said so, and who decided to go</h1>
+  <p>For each stage the office writes a short list of things that must be true before the crew goes. The app tells the office who to call and what to ask. Each yes says how we know it. The decision to send the crew is a press with a name on it. Any bullet can show on the GC's own page, where one press answers the whole list.</p>
+  <nav class="jump"><a href="#better">What changed</a><a href="#call">Who to call</a><a href="#sheet">One stage</a><a href="#decide">Go or hold</a><a href="#portal">The GC's page</a><a href="#look">The site's schedule</a><a href="#phone">On arrival</a><a href="#list">The lists</a><a href="#doors">Every door</a><a href="#rules">The rules</a><a href="#plan">The train</a><a href="#calls">Your calls</a></nav>
 </header>
 
-<h2 id="why">The gap, in one picture</h2>
-<p class="lede">Today a stage has a window of dates and nothing that says the site will be ready for it. A crew can be sent on a phone call, find the slab not ready, and come home with no record of who said to come.</p>
-<div class="vs">
-  <div class="card"><h3>Today</h3><ul class="plain">
-    <li>A stage has <b>our window</b>. The GC's page can show it and ask for other dates.</li>
-    <li>What must be true first lives in someone's head.</li>
-    <li>The day they say the site will be ready lives in mail and calls. When it moves, the old day is gone.</li>
-    <li>Nothing tells the office which stage to call about this week.</li>
-  </ul></div>
-  <div class="card new"><h3>With Before we start <span class="tag-new">new</span></h3><ul class="plain">
-    <li>Each stage has a <b>Before we start</b> list, written in plain bullets.</li>
-    <li>Each bullet says who it waits on and where it stands: <span class="st open">Open</span> <span class="st told">Told yes</span> <span class="st seen">Seen</span>.</li>
-    <li>Every day they give for ready is kept, with who said it and how.</li>
-    <li>A <b>go or no-go day</b> tells the office when to have every yes in hand.</li>
-    <li>Any bullet can show on the GC's page, where they press <b>Yes, ready</b> themselves.</li>
-  </ul></div>
-</div>
+<h2 id="better">Is this the best we can do? Eight changes</h2>
+<p class="lede">The first draft had the right bones. Read again from the office's chair, the owner's, the crew's and the GC's, it was missing eight things. This draft has them.</p>
+<div class="app" style="margin-top:12px"><table class="t" id="screen-better"></table></div>
 
-<h2 id="sheet">1. One stage: the Before we start list</h2>
-<p class="lede">It opens from the stage, in the Job window and on the site's schedule. The four facts on top are the dates. The bullets below are the list. The eye on each bullet decides whether the GC's page shows it.</p>
+<h2 id="call">1. Who to call: the office's first screen</h2>
+<p class="lede">The office does not think in stages. It thinks in calls. So the list is by person: everything open with Ray across every stage is one row and one ask. Every ask is kept, so the row says when we last asked and whether they answered.</p>
+<div class="frame"><div class="frame-bar"><b>Development page</b> · the Schedule look opens here · also the Dashboard's Needs you</div><div class="screen" id="screen-call"></div></div>
+
+<h2 id="sheet">2. One stage: yes, and how we know</h2>
+<p class="lede">A bullet is Open or Yes. A Yes always says how we know: their word, their photo, or we saw it. Our own bullets are not typed at all. They read the order log, the trip and the permit, and open the place that fixes them.</p>
 <div class="frame"><div class="frame-bar"><b>Job window</b> · a stage · Before we start</div><div class="screen" id="screen-sheet"></div></div>
 
-<h2 id="look">2. The site's schedule, on the Development page</h2>
-<p class="lede">Every stage across the site's jobs on one line of time. A bar is our window. A diamond is the day they say it will be ready, and a hollow diamond is a day they gave before and moved. The dotted line is the go or no-go day. Under the chart, the stages to confirm are in the order the office should call.</p>
-<div class="frame"><div class="frame-bar"><b>Development page</b> · /developments/:id · the Schedule look · desk</div><div class="screen" id="screen-look"></div></div>
+<h2 id="decide">3. Go or hold: the decision has a name on it</h2>
+<p class="lede">On the go or no-go day somebody decides. That decision is a press. It keeps who decided, when, and what was still open. A hold writes the notice for the GC, so a start that slips because of the site is on record the day it slips.</p>
+<div class="frame"><div class="frame-bar"><b>Decide</b> · from the stage, the call list or the Needs you line</div><div class="screen" id="screen-decide"></div></div>
 
-<h2 id="ask">3. Ask them: the follow-up, written for the office</h2>
-<p class="lede">One press writes the ask from the open bullets. The office reads it, changes it, and sends it as a text or an email. Nothing goes out by itself. Their answer is recorded on each bullet with who said it and how.</p>
-<div class="frame"><div class="frame-bar"><b>Ask them</b> · from a stage or the To confirm list</div><div class="screen" id="screen-ask"></div></div>
+<h2 id="portal">4. The GC's page: one press, and something back</h2>
+<p class="lede">A superintendent will not tick six boxes. So the text carries a link that opens on the list, one press answers all of it, and a photo can go with a yes. Once we press Go, their page says the crew is confirmed. That firm date is what they get for answering.</p>
+<div class="frame"><div class="frame-bar"><b>The GC's page</b> · /portal · before and after we press Go</div><div class="screen" id="screen-portal"></div></div>
 
-<h2 id="portal">4. The GC's page: the option to show it</h2>
-<p class="lede">The GC's page already shows where the job is, when the job's sharing switch is on. With this, the next stage can carry its shared bullets. The GC ticks them, or says not yet and gives a day. Their press is a Told yes with their name, the time and the words on the portal.</p>
-<div class="frame"><div class="frame-bar"><b>The GC's page</b> · /portal · what they see, and what they never see</div><div class="screen" id="screen-portal"></div></div>
+<h2 id="look">5. The site's schedule, with the days they moved</h2>
+<p class="lede">Every stage on one line of time. A diamond is the day they say ready and a hollow diamond is a day they gave before. The red figure is how many days they have moved that stage. The site's total is the tile.</p>
+<div class="frame"><div class="frame-bar"><b>Development page</b> · the Schedule look · the chart, under the call list</div><div class="screen" id="screen-look"></div></div>
 
-<h2 id="phone">5. On arrival: is it as told?</h2>
-<p class="lede">The first clock-in on the stage asks the crew to look. Yes turns a Told yes into Seen. No is the record that the site was not as told, with a photo, and it reaches Dispatch at once.</p>
+<h2 id="phone">6. On arrival: one press when it is as told</h2>
+<p class="lede">The crew sees only the bullets nobody of ours has seen. One press says all of it is as told. A No is the record, with a photo, and it reaches Dispatch at once.</p>
 <div class="phones" id="screen-phone"></div>
 
-<h2 id="list">6. The company's lists: written once, beside the stage checklist</h2>
-<p class="lede">The stage checklist already holds the questions the crew answers at a stage. Before we start is a second list on the same editor: the company's bullets per stage kind, more added for one job, and a bullet skipped on one job with a reason.</p>
+<h2 id="list">7. The lists write themselves over time</h2>
+<p class="lede">An empty editor is the reason a list never gets written. So each stage kind offers a starter list once, and a No on a job offers its bullet to the company's list. Nothing is added without a press.</p>
 <div class="frame"><div class="frame-bar"><b>Job window</b> · Documents · Stage checklists</div><div class="screen" id="screen-list"></div></div>
 
-<h2 id="doors">7. Every door</h2>
-<p class="lede">Twelve doors. The chip says which pull request brings each.</p>
+<h2 id="doors">8. Every door</h2>
 <div class="doors" id="screen-doors"></div>
 
 <h2 id="rules">The rules, in plain words</h2>
 <div class="grid">
-  <div class="card"><h3>A bullet</h3><ul class="plain">
-    <li>Words, and who it waits on: <b>them</b> or <b>us</b>.</li>
-    <li>A bullet on them is <b>Open</b>, <b>Told yes</b> or <b>Seen</b>. A bullet on us is <b>Open</b> or <b>Done</b>.</li>
-    <li>Told yes keeps who said it, how, and the day. Seen keeps who saw it, the day, and a photo when there is one.</li>
-    <li>A bullet can go back to Open. Every change is kept.</li>
+  <div class="card"><h3>A bullet on them</h3><ul class="plain">
+    <li><b>Open</b> or <b>Yes</b>. A Yes says how we know: their word, their photo, or we saw it.</li>
+    <li>It keeps who said it, how and the day. It can go back to Open. Every change is kept.</li>
+    <li>A bullet can ask for a photo. Then their word alone leaves it Open.</li>
+    <li>Every ask is kept: the day, how, and whether they answered.</li>
   </ul></div>
-  <div class="card"><h3>A stage</h3><ul class="plain">
-    <li><b>Clear to start</b> when no bullet is Open. It says whether that is on their word or seen.</li>
-    <li>A stage with no list reads as it does today.</li>
-    <li>The <b>go or no-go day</b> is our window's first day, less the notice we need.</li>
-    <li>A stage that is not clear can still be scheduled. The app warns. It never blocks.</li>
+  <div class="card"><h3>A bullet on us</h3><ul class="plain">
+    <li>Read from the app where the app knows: material from the order log, the crew from the trip, the permit.</li>
+    <li>Nobody ticks it. Its line opens the place that fixes it.</li>
+    <li>A bullet the app cannot read is ticked by hand, as Done.</li>
+    <li>It never shows on the GC's page unless its eye is turned on.</li>
   </ul></div>
-  <div class="card"><h3>Their days</h3><ul class="plain">
-    <li>Each day they give for ready is a line: the day, who said it, how, and when.</li>
-    <li>A new day does not erase the old one. The chart shows both.</li>
-    <li>When their day is after our window's first day, the stage says so and offers to move our window.</li>
+  <div class="card"><h3>The decision</h3><ul class="plain">
+    <li>The <b>go or no-go day</b> is our first day less the notice we need.</li>
+    <li><b>Go</b> keeps who decided, when and what was open. A Go with a bullet open is a Go on a promise, with a last check the day before the crew leaves.</li>
+    <li><b>Hold</b> moves our window and writes the GC's notice for the office to send.</li>
+    <li>Nothing is blocked. A crew can be scheduled with no Go. The app says so in amber.</li>
   </ul></div>
-  <div class="card"><h3>What the GC's page shows</h3><ul class="plain">
-    <li>Only on a job whose sharing switch is on, and only the bullets with the eye on.</li>
-    <li>Our window, the notice we need and the day we need the answers by.</li>
-    <li>Never: a bullet on us without the eye, what we saw, a note, a name, a trip, a cost.</li>
-    <li>The office can read the page as the GC before turning anything on.</li>
+  <div class="card"><h3>The GC's page</h3><ul class="plain">
+    <li>Off until the job's sharing switch and a second switch are both on, then bullet by bullet.</li>
+    <li>It shows our window, the notice we need and the answer-by day.</li>
+    <li>Their press is a Yes on their word, by name, with the time. Their photo makes it a Yes with a photo.</li>
+    <li>Never: our own bullets, what we saw, a note, a name, a trip, a cost, a day they gave before.</li>
   </ul></div>
 </div>
 
 <h2 id="plan">The train</h2>
-<p class="lede">Eight small pull requests. The first four give the office the list, the dates and the site's schedule. The GC's page comes sixth, behind a switch that starts off.</p>
+<p class="lede">Nine small pull requests, in the order the office gets value: the list, then who to call, then the decision. The chart and the GC's page follow.</p>
 <div class="app" style="margin-top:12px"><table class="t" id="screen-plan"></table></div>
 
-<h2 id="pass">The second pass: is this the best we can do?</h2>
-<p class="lede">The first sketch was a yes or no per bullet on a new chart. Asked whether the office could use it untaught, and whether it left the office in charge, seven things changed.</p>
-<div class="app" style="margin-top:12px"><table class="t" id="screen-pass"></table></div>
-
 <h2 id="calls">Your calls</h2>
-<p class="lede">This draft is for refining. Each call has the default the drawing uses.</p>
+<p class="lede">Still a draft. Each call has the default the drawing uses.</p>
 <div class="app" style="margin-top:12px"><table class="t" id="screen-calls"></table></div>
 </div>
 
@@ -334,44 +339,40 @@
 // ---------- One list of made-up stages. Every screen is drawn from it. ----------
 const TODAY = '2026-11-17'
 const SITE = { name: 'Heron Point', customer: 'Northgate Builders', where: 'Marsh Road, Tidewater, NC', notice: 10, gc: 'Ray' }
-// A check: w words · on them|us · eye shown on the GC's page · st open|told|seen|done · who/how/day of the newest mark.
-const C = (w, on, eye, st, who, how, day, extra) => ({ w, on, eye, st, who, how, day, ...(extra || {}) })
+// A bullet on them: yes + know (word | photo | saw), or open with asks. A bullet on us: reads the app (fact, door) and is ok or not.
+const T = (w, o) => ({ w, on: 'them', eye: true, yes: false, asked: [], ...o })
+const U = (w, reads, ok, fact, door) => ({ w, on: 'us', eye: false, yes: ok, know: 'read', reads, fact, door, asked: [] })
 const STAGES = [
   { id: 's1', part: 'Lodge', job: 'J2101', name: 'Rough In', win: ['2026-03-09', '2026-03-20'], finished: true, ready: [], checks: [] },
   { id: 's2', part: 'Lodge', job: 'J2101', name: 'Top Out', win: ['2026-12-01', '2026-12-12'], trip: ['2026-11-30', '2026-12-13'],
     ready: [{ day: '2026-11-24', said: '2026-11-03', who: 'Ray', how: 'email' }, { day: '2026-11-28', said: '2026-11-12', who: 'Ray', how: 'email' }],
     checks: [
-      C('Framing is done and the roof is dried in.', 'them', true, 'told', 'Ray', 'by email', '2026-11-12'),
-      C('The framing inspection has passed.', 'them', true, 'open', '', '', '', { by: '2026-11-26' }),
-      C('The other trades are out of the walls we work in.', 'them', true, 'told', 'Ray', 'by phone', '2026-11-14'),
-      C('Power is on for our tools.', 'them', true, 'seen', 'Luis', 'on site, with a photo', '2026-11-03'),
-      C('Our material is on site, or lands before day one.', 'us', false, 'open', '', '', '', { note: 'Two lines on order, due Nov 25' }),
-      C('The crew and the trip are set.', 'us', false, 'done', 'Dana', '', '2026-11-12'),
+      T('Framing is done and the roof is dried in.', { yes: true, know: 'photo', who: 'Ray', how: 'on his page', day: '2026-11-12', wantsPhoto: true }),
+      T('The framing inspection has passed.', { by: '2026-11-26', asked: [['2026-11-14', 'text']] }),
+      T('The other trades are out of the walls we work in.', { yes: true, know: 'word', who: 'Ray', how: 'by phone', day: '2026-11-14' }),
+      T('Power is on for our tools.', { yes: true, know: 'saw', who: 'Luis', how: 'on site', day: '2026-11-03' }),
+      U('Our material lands before day one.', 'the order log', true, 'Two lines land Nov 25, six days ahead', 'Open the order log'),
+      U('The crew and the trip are set.', 'the trip', true, 'Trip planned Nov 30 to Dec 13, Dana and Luis', 'Open the trip'),
     ] },
-  { id: 's3', part: 'Site', job: 'J2102', name: 'Gas line tie-in', win: ['2026-12-08', '2026-12-09'],
+  { id: 's3', part: 'Site', job: 'J2102', name: 'Gas line tie-in', win: ['2026-12-08', '2026-12-09'], decision: { go: true, by: 'Dana', day: '2026-11-12' },
     ready: [{ day: '2026-12-05', said: '2026-11-10', who: 'Northgate office', how: 'text' }],
     checks: [
-      C('The gas company has set the meter.', 'them', true, 'seen', 'Luis', 'on site, with a photo', '2026-11-03'),
-      C('The trench to the building is open.', 'them', true, 'told', 'Ray', 'by text', '2026-11-10'),
-      C('The permit is in hand.', 'us', false, 'done', 'Dana', '', '2026-10-30'),
+      T('The gas company has set the meter.', { yes: true, know: 'saw', who: 'Luis', how: 'on site', day: '2026-11-03' }),
+      T('The trench to the building is open.', { yes: true, know: 'photo', who: 'Ray', how: 'on his page', day: '2026-11-10', wantsPhoto: true }),
+      U('The permit is in hand.', 'the permit', true, 'Issued Oct 30', 'Open the permit'),
     ] },
   { id: 's4', part: 'Bunkhouse', job: 'J2101', name: 'Underground', win: ['2026-12-08', '2026-12-12'],
     ready: [{ day: '2026-12-01', said: '2026-10-28', who: 'Ray', how: 'phone' }, { day: '2026-12-12', said: '2026-11-16', who: 'Ray', how: 'phone' }],
     checks: [
-      C('The pad is graded and the corners are staked.', 'them', true, 'told', 'Ray', 'by phone', '2026-11-16'),
-      C('The foundation plan we build from is the final one.', 'them', true, 'open'),
-      C('Forms are set where our pipe passes.', 'them', true, 'open'),
-      C('Water is on site.', 'them', true, 'open'),
-      C('The inspector can come within two days of our call.', 'them', true, 'open'),
-      C('Our material is on site, or lands before day one.', 'us', false, 'open'),
+      T('The pad is graded and the corners are staked.', { yes: true, know: 'word', who: 'Ray', how: 'by phone', day: '2026-11-16', wantsPhoto: true }),
+      T('The foundation plan we build from is the final one.', { asked: [['2026-11-16', 'phone']] }),
+      T('Forms are set where our pipe passes.', { asked: [['2026-11-16', 'phone']], wantsPhoto: true }),
+      T('Water is on site.', { asked: [['2026-11-16', 'phone']] }),
+      T('The inspector can come within two days of our call.', {}),
+      U('Our material lands before day one.', 'the order log', false, 'Three lines are not ordered. Order by Nov 24', 'Open the order log'),
     ] },
   { id: 's5', part: 'Bunkhouse', job: 'J2101', name: 'Rough In', win: ['2027-01-12', '2027-01-23'], ready: [],
-    checks: [
-      C('The slab is poured and cured enough to walk.', 'them', true, 'open'),
-      C('Framing is done where we run pipe.', 'them', true, 'open'),
-      C('Power is on for our tools.', 'them', true, 'open'),
-      C('Our material is on site, or lands before day one.', 'us', false, 'open'),
-    ] },
+    checks: [T('The slab is poured and cured enough to walk.', {}), T('Framing is done where we run pipe.', {}), T('Power is on for our tools.', {}), U('Our material lands before day one.', 'the order log', false, 'Nothing ordered yet. Order by Dec 18', 'Open the order log')] },
   { id: 's6', part: 'Lodge', job: 'J2101', name: 'Trim Set', win: ['2027-02-08', '2027-02-12'], ready: [], checks: [] },
 ]
 
@@ -384,212 +385,239 @@ const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const md = (ymd) => `${MON[D(ymd).getMonth()]} ${D(ymd).getDate()}`
 const dmd = (ymd) => `${DOW[D(ymd).getDay()]} ${md(ymd)}`
 const span = (a, b) => D(a).getMonth() === D(b).getMonth() ? `${md(a)} to ${D(b).getDate()}` : `${md(a)} to ${md(b)}`
-const isOpen = (c) => c.st === 'open'
-const openOf = (s) => s.checks.filter(isOpen)
+const nOf = (n, one, many) => `${n} ${n === 1 ? one : many}`
+// A bullet that asks for a photo is not a Yes on their word alone.
+const isYes = (c) => c.yes && !(c.wantsPhoto && c.know === 'word')
+const openOf = (s) => s.checks.filter((c) => !isYes(c))
 const goDay = (s) => add(s.win[0], -SITE.notice)
 const theirDay = (s) => s.ready.length ? s.ready[s.ready.length - 1] : null
+const movedDays = (s) => s.ready.length > 1 ? Math.max(0, diff(s.ready[0].day, theirDay(s).day)) : 0
 const clash = (s) => { const t = theirDay(s); return !!t && t.day > s.win[0] }
+const inDays = (ymd) => { const n = diff(TODAY, ymd); return n === 0 ? 'today' : n > 0 ? `in ${nOf(n, 'day', 'days')}` : `${nOf(-n, 'day', 'days')} ago` }
 function standing(s) {
   if (s.finished) return { k: 'done', word: 'Done', cls: 'later' }
   if (!s.checks.length) return { k: 'none', word: 'No list yet', cls: 'later' }
-  const open = openOf(s).length
-  if (!open) { const seen = s.checks.filter((c) => c.on === 'them').every((c) => c.st === 'seen'); return { k: 'clear', word: `Clear to start · ${seen ? 'seen' : 'on their word'}`, cls: 'seen' } }
-  const days = diff(TODAY, goDay(s))
-  if (days <= 0) return { k: 'now', word: `Needs a yes now · ${open} open`, cls: 'now' }
-  if (days <= 14) return { k: 'soon', word: `Needs a yes · ${open} open`, cls: 'open' }
+  if (s.decision && s.decision.go) return { k: 'go', word: `Go · ${s.decision.by}, ${md(s.decision.day)}`, cls: 'go' }
+  const open = openOf(s).length, days = diff(TODAY, goDay(s))
+  if (!open) return { k: 'clear', word: 'Clear to start · press Go', cls: 'saw' }
+  if (days <= 0) return { k: 'now', word: `Decide now · ${open} open`, cls: 'now' }
+  if (days <= 14) return { k: 'soon', word: `Decide by ${dmd(goDay(s))} · ${open} open`, cls: 'open' }
   return { k: 'later', word: `Later · ${open} open`, cls: 'later' }
 }
-const inDays = (ymd) => { const n = diff(TODAY, ymd); return n === 0 ? 'today' : n > 0 ? `in ${n} ${n === 1 ? 'day' : 'days'}` : `${-n} ${n === -1 ? 'day' : 'days'} ago` }
 const ahead = STAGES.filter((s) => !s.finished)
 const withList = ahead.filter((s) => s.checks.length)
-const toConfirm = withList.filter((s) => openOf(s).length).sort((a, b) => goDay(a).localeCompare(goDay(b)))
-const ST = { open: 'Open', told: 'Told yes', seen: 'Seen', done: 'Done' }
-const mark = (c) => c.st === 'open' ? (c.by ? `They say by ${md(c.by)}` : c.note || 'No answer yet') : c.st === 'done' ? `${c.who}, ${md(c.day)}` : `${c.who}, ${c.how}, ${md(c.day)}`
-const eye = (on) => `<span class="eye${on ? '' : ' off'}" title="${on ? 'Shown on the GC’s page' : 'Not shown'}">👁</span>`
-const bullet = (c) => `<div class="bul"><span class="box ${c.st}">${c.st === 'open' ? '' : '✓'}</span><div><div class="w">${c.w}</div><div class="sub">${mark(c)}</div></div><span class="stc"><span class="st ${c.st}">${ST[c.st]}</span></span>${eye(c.eye)}</div>`
+const undecided = withList.filter((s) => !(s.decision && s.decision.go))
+const lastAsk = (c) => c.asked.length ? c.asked[c.asked.length - 1] : null
+const KNOW = { word: 'their word', photo: 'their photo', saw: 'we saw it', read: 'read from the app' }
+function chip(c) {
+  if (c.on === 'us') return c.yes ? `<span class="st read">Yes · ${KNOW.read}</span>` : `<span class="st open">Not yet · ours</span>`
+  if (isYes(c)) return `<span class="st ${c.know}">Yes · ${KNOW[c.know]}</span>`
+  if (c.yes) return `<span class="st asked">Their word · photo asked</span>`
+  return lastAsk(c) ? `<span class="st asked">Asked ${md(lastAsk(c)[0])}</span>` : `<span class="st open">Open</span>`
+}
+function under(c) {
+  if (c.on === 'us') return `${c.fact} · <span style="color:var(--text-link)">${c.door}</span>`
+  if (c.yes) return `${c.who}, ${c.how}, ${md(c.day)}${c.wantsPhoto && c.know === 'word' ? ' · waiting on a photo' : ''}`
+  const a = lastAsk(c)
+  return [a ? `Asked ${md(a[0])} by ${a[1]}, no answer` : 'Not asked yet', c.by ? `they say by ${md(c.by)}` : '', c.wantsPhoto ? 'asks for a photo' : ''].filter(Boolean).join(' · ')
+}
+const eye = (on) => `<span class="eye${on ? '' : ' off'}">👁</span>`
+const bullet = (c) => `<div class="bul"><span class="box ${isYes(c) ? c.know : ''}">${isYes(c) ? '✓' : ''}</span><div><div class="w">${c.w}${c.wantsPhoto ? ' <span title="asks for a photo">📷</span>' : ''}</div><div class="sub">${under(c)}</div></div><span class="stc">${chip(c)}</span>${eye(c.eye)}</div>`
 const $ = (id) => document.getElementById(id)
-const label = (s) => `<b>${s.part}</b> · ${s.name}`
+const rows = (head, list) => `<tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr>` + list.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')
 
-// ---------- 1. One stage ----------
-function sheet(s) {
-  const st = standing(s), t = theirDay(s)
-  const them = s.checks.filter((c) => c.on === 'them'), us = s.checks.filter((c) => c.on === 'us')
-  return `<div class="app" style="max-width:860px"><div class="spread"><div><div class="cap">${SITE.name} · ${s.job} · ${s.part}</div><div style="font:700 18px/1.3 var(--font);color:var(--text-strong)">${s.name} · Before we start</div></div><span class="st ${st.cls}">${st.word}</span></div>
-    <div class="facts">
-      <div class="fact"><div class="cap">Our window</div><div class="v">${span(s.win[0], s.win[1])}</div><div class="s">typed by the office</div></div>
-      <div class="fact"><div class="cap">They say ready</div><div class="v">${t ? md(t.day) : 'no day yet'}</div><div class="s">${t ? `${t.who}, ${t.how}, ${md(t.said)}${s.ready.length > 1 ? ` · was ${md(s.ready[0].day)}` : ''}` : 'ask them for one'}</div></div>
-      <div class="fact"><div class="cap">Notice we need</div><div class="v">${SITE.notice} days</div><div class="s">the site's own, change it here</div></div>
-      <div class="fact"><div class="cap">Go or no-go by</div><div class="v">${dmd(goDay(s))}</div><div class="s">${inDays(goDay(s))}</div></div>
-    </div>
-    <div class="cap" style="margin-top:14px">Waits on them · ${them.filter((c) => !isOpen(c)).length} of ${them.length}</div>${them.map(bullet).join('')}
-    <div class="cap" style="margin-top:14px">Waits on us · ${us.filter((c) => !isOpen(c)).length} of ${us.length}</div>${us.map(bullet).join('')}
-    <div class="spread" style="margin-top:12px"><div class="row"><span class="btn">+ A bullet</span><span class="btn quiet">Their days · ${s.ready.length}</span><span class="btn quiet">See it as the GC</span></div><div class="row"><span class="btn">They gave a new day</span><span class="btn primary">Ask them about ${openOf(s).filter((c) => c.on === 'them').length} open</span></div></div>
-    <p class="muted" style="margin-top:8px;font-size:12.5px">Tap a bullet to say where it stands: who told you, how, and the day. The eye turns it on or off for the GC's page.</p></div>`
-}
-$('screen-sheet').innerHTML = sheet(STAGES[1])
+// ---------- What changed ----------
+$('screen-better').innerHTML = rows(['The first draft', 'Why it was not the best', 'This draft'], [
+  ['A chart first, then a list by stage.', 'The office thinks in calls, not stages. Two stages meant two texts to the same man.', '<b>Who to call</b>: one row and one ask per person, across every stage.'],
+  ['Open, Told yes, Seen.', 'On a far site nobody of ours can see anything before the trip. Their word was the only proof.', '<b>Yes, and how we know</b>: their word, their photo, or we saw it. A bullet can ask for a photo.'],
+  ['The office ticks our own bullets.', 'The app already knows when material lands and whether a trip is planned.', '<b>Our bullets read the app</b> and open the place that fixes them.'],
+  ['A go or no-go day, and nothing on it.', 'The costly moment was a crew sent on a phone call, with no name on the decision.', '<b>Go or hold</b> is a press: who decided, when, what was open. Hold writes the GC’s notice.'],
+  ['An ask goes out and is forgotten.', 'Follow-up is the whole job. Asked twice and no answer is itself a fact.', '<b>Every ask is kept</b> and shown on the bullet and the call list.'],
+  ['Their moved days drawn as diamonds.', 'Nobody added them up, and the total is what a late start is argued with.', '<b>Days they moved</b>, per stage and for the site.'],
+  ['The GC ticks each bullet.', 'A superintendent will not tick six boxes, and got nothing for doing it.', '<b>One press</b> from the text’s link, a photo with it, and <b>crew confirmed</b> back once we press Go.'],
+  ['An empty editor per stage kind.', 'The stage checklist shipped empty and no list was written.', '<b>A starter list</b> offered once, and a No on a job offers its bullet to the company.'],
+])
 
-// ---------- 2. The site's schedule ----------
-const A0 = '2026-11-01', A1 = '2027-03-01', ALEN = diff(A0, A1)
-const x = (ymd) => (Math.max(0, Math.min(ALEN, diff(A0, ymd))) / ALEN) * 100
-function sched() {
-  const months = ['2026-11-01', '2026-12-01', '2027-01-01', '2027-02-01'].map((m) => `<span style="left:${x(m)}%">${MON[D(m).getMonth()]}</span>`).join('')
-  const rows = ahead.map((s) => { const st = standing(s)
-    const cls = st.k === 'clear' ? 'clear' : st.k === 'now' ? 'now' : st.k === 'soon' ? 'soon' : 'later'
-    const dias = s.ready.map((r, i) => `<span class="dia${i < s.ready.length - 1 ? ' old' : ''}" style="left:${x(r.day)}%"></span>`).join('')
-    return `<div class="r"><span class="name">${label(s)}</span><span class="w ${cls}" style="left:${x(s.win[0])}%;width:${x(add(s.win[1], 1)) - x(s.win[0])}%"></span>${s.checks.length ? `<span class="go" style="left:${x(goDay(s))}%"></span>` : ''}${dias}</div>` }).join('')
-  const trips = ahead.filter((s) => s.trip).map((s) => `<span class="w trip" style="left:${x(s.trip[0])}%;width:${x(add(s.trip[1], 1)) - x(s.trip[0])}%"></span>`).join('')
-  return `<div class="sched"><div class="months">${months}</div>${rows}<div class="r"><span class="name">Trips planned</span>${trips}</div><div class="today" style="left:calc(190px + (100% - 200px) * ${x(TODAY) / 100})"><span>today</span></div></div>
-    <div class="legend"><span><span class="dot" style="background:#16a34a"></span>Clear to start</span><span><span class="dot" style="background:#f59e0b"></span>Needs a yes</span><span><span class="dot" style="background:#dc2626"></span>Needs a yes now</span><span><span class="dot" style="background:#9ca3af"></span>Later, or no list</span><span>◆ they say ready</span><span>◇ a day they gave before</span><span>⋮ go or no-go</span></div>`
-}
-const nextGo = toConfirm[0]
-const moved = ahead.filter((s) => s.ready.length > 1).length
-$('screen-look').innerHTML = `<div class="app">
+// ---------- 1. Who to call ----------
+const openThem = undecided.flatMap((s) => openOf(s).filter((c) => c.on === 'them').map((c) => ({ s, c })))
+const openUs = undecided.flatMap((s) => openOf(s).filter((c) => c.on === 'us').map((c) => ({ s, c })))
+const soonThem = openThem.filter((x) => ['now', 'soon'].includes(standing(x.s).k))
+const laterThem = openThem.filter((x) => !['now', 'soon'].includes(standing(x.s).k))
+const askedNoAnswer = openThem.filter((x) => lastAsk(x.c)).length
+const toDecide = undecided.filter((s) => ['now', 'soon', 'clear'].includes(standing(s).k)).sort((a, b) => goDay(a).localeCompare(goDay(b)))
+const siteMoved = ahead.reduce((n, s) => n + movedDays(s), 0)
+const stagesOf = (list) => [...new Set(list.map((x) => x.s))]
+$('screen-call').innerHTML = `<div class="app">
   <div class="site-head"><span class="name">${SITE.name}</span><span class="muted">${SITE.customer} · ${SITE.where}</span></div>
   <div class="looks">${['History', 'Jobs & bids', 'Money', 'Plans', 'Questions', 'Photos', 'Trips', 'Schedule'].map((l) => `<span class="look${l === 'Schedule' ? ' on' : ''}">${l}</span>`).join('')}</div>
   <div class="band">
-    <div class="tile"><div class="cap">Stages ahead</div><div class="v">${ahead.length}</div><div class="s">${withList.length} with a list</div></div>
-    <div class="tile"><div class="cap">Clear to start</div><div class="v">${ahead.filter((s) => standing(s).k === 'clear').length}</div><div class="s">every bullet has a yes</div></div>
-    <div class="tile"><div class="cap">Need a yes</div><div class="v">${toConfirm.filter((s) => ['now', 'soon'].includes(standing(s).k)).length}</div><div class="s">go or no-go inside 14 days</div></div>
-    <div class="tile"><div class="cap">Next go or no-go</div><div class="v">${md(goDay(nextGo))}</div><div class="s">${nextGo.part} · ${nextGo.name}, ${inDays(goDay(nextGo))}</div></div>
-    <div class="tile"><div class="cap">They moved a day</div><div class="v">${moved}</div><div class="s">${moved === 1 ? 'stage' : 'stages'}, each move kept</div></div>
+    <div class="tile"><div class="cap">To decide</div><div class="v">${toDecide.length}</div><div class="s">next ${dmd(goDay(toDecide[0]))}, ${inDays(goDay(toDecide[0]))}</div></div>
+    <div class="tile"><div class="cap">Open with them</div><div class="v">${soonThem.length}</div><div class="s">on ${nOf(stagesOf(soonThem).length, 'stage', 'stages')} due inside 14 days</div></div>
+    <div class="tile"><div class="cap">Asked, no answer</div><div class="v">${askedNoAnswer}</div><div class="s">the oldest ${md(openThem.filter((x) => lastAsk(x.c)).map((x) => lastAsk(x.c)[0]).sort()[0])}</div></div>
+    <div class="tile"><div class="cap">Ours to do</div><div class="v">${openUs.length}</div><div class="s">read from the app</div></div>
+    <div class="tile"><div class="cap">Days they moved</div><div class="v">${siteMoved}</div><div class="s">across ${nOf(ahead.filter((s) => movedDays(s) > 0).length, 'stage', 'stages')}</div></div>
   </div>
-  ${sched()}
-  <div class="spread" style="margin-top:14px"><div><span class="cap">To confirm, in the order to call</span></div><div class="row"><span class="btn quiet">See it as the GC</span><span class="btn quiet">Print the schedule</span></div></div>
-  <div class="trips">${toConfirm.map((s) => { const st = standing(s), t = theirDay(s), o = openOf(s)
-    return `<div class="todo"><div><b style="color:var(--text-strong)">${s.part} · ${s.name}</b><br><span class="muted">ours ${span(s.win[0], s.win[1])}</span></div>
-      <div><span class="st ${st.cls}">${st.word}</span> <span class="muted">first open:</span> ${o[0].w}${clash(s) ? `<br><span class="st now">They say ready ${md(t.day)}, after our first day</span> <span class="btn quiet">Move our window</span>` : ''}</div>
-      <div class="muted">go or no-go <b style="color:var(--text-strong)">${dmd(goDay(s))}</b><br>${inDays(goDay(s))}${t ? ` · they say ${md(t.day)}` : ' · no day from them'}</div>
-      <div><span class="btn primary">Ask them</span></div></div>` }).join('')}</div>
+  <div class="cap" style="margin-top:14px">Who to call</div>
+  <div class="who"><div class="hd"><div><span class="nm">${SITE.gc}</span> <span class="muted">· the site super · ${nOf(soonThem.length, 'bullet', 'bullets')} open on ${nOf(stagesOf(soonThem).length, 'stage', 'stages')}</span></div><div class="row"><span class="btn quiet">Their page</span><span class="btn primary">Ask ${SITE.gc} about all ${soonThem.length}</span></div></div>
+    ${stagesOf(soonThem).map((s) => { const list = soonThem.filter((x) => x.s === s), st = standing(s)
+      return `<div class="ln"><div><b style="color:var(--text-strong)">${s.part} · ${s.name}</b><br><span class="muted">ours ${span(s.win[0], s.win[1])}</span></div><div>${list.map((x) => `${x.c.w} <span class="muted">${x.c.yes ? `their word ${md(x.c.day)}, needs a photo` : lastAsk(x.c) ? `asked ${md(lastAsk(x.c)[0])}` : 'not asked'}</span>`).join('<br>')}${clash(s) ? `<br><span class="st now">They say ready ${md(theirDay(s).day)}, after our first day</span>` : ''}</div><div><span class="st ${st.cls}">${st.word}</span><br><span class="btn quiet">Go or hold</span></div></div>` }).join('')}</div>
+  <div class="who"><div class="hd"><div><span class="nm">Us</span> <span class="muted">· ${nOf(openUs.length, 'thing', 'things')} of ours not ready</span></div></div>
+    ${openUs.map((x) => `<div class="ln"><div><b style="color:var(--text-strong)">${x.s.part} · ${x.s.name}</b></div><div>${x.c.w} <span class="muted">${x.c.fact}</span></div><div><span class="btn">${x.c.door}</span></div></div>`).join('')}</div>
+  <div class="who"><div class="hd"><div><span class="nm">Later</span> <span class="muted">· ${nOf(laterThem.length, 'bullet', 'bullets')} on ${stagesOf(laterThem).map((s) => `${s.part} ${s.name}`).join(', ')}, decide by ${dmd(goDay(stagesOf(laterThem)[0]))}</span></div><span class="btn quiet">Show</span></div></div>
 </div>`
 
-// ---------- 3. Ask them ----------
-const s4 = STAGES[3], o4 = openOf(s4).filter((c) => c.on === 'them')
-$('screen-ask').innerHTML = `<div class="cols2"><div class="app">
-  <div class="spread"><b style="font-size:16px;color:var(--text-strong)">Ask ${SITE.gc} · ${s4.part} ${s4.name}</b><span class="muted">✕</span></div>
-  <div class="row" style="margin-top:8px"><span class="chip on">Text</span><span class="chip">Email</span><span class="muted">to ${SITE.gc}, the site super · from the site's GC contact</span></div>
-  <div class="msg" style="margin-top:10px">${SITE.gc}, we plan to start the ${s4.part.toLowerCase()} ${s4.name.toLowerCase()} on ${dmd(s4.win[0])}. We need ${SITE.notice} days to get a crew there, so we decide by ${dmd(goDay(s4))}.
+// ---------- 2. One stage ----------
+function sheet(s) {
+  const st = standing(s), t = theirDay(s)
+  const them = s.checks.filter((c) => c.on === 'them'), us = s.checks.filter((c) => c.on === 'us')
+  return `<div class="app" style="max-width:880px"><div class="spread"><div><div class="cap">${SITE.name} · ${s.job} · ${s.part}</div><div style="font:700 18px/1.3 var(--font);color:var(--text-strong)">${s.name} · Before we start</div></div><div class="row"><span class="st ${st.cls}">${st.word}</span><span class="btn primary">Go or hold</span></div></div>
+    <div class="facts">
+      <div class="fact"><div class="cap">Our window</div><div class="v">${span(s.win[0], s.win[1])}</div><div class="s">typed by the office</div></div>
+      <div class="fact"><div class="cap">They say ready</div><div class="v">${t ? md(t.day) : 'no day yet'}</div><div class="s">${t ? `${t.who}, ${t.how}, ${md(t.said)}` : 'ask them for one'}${movedDays(s) ? ` · <b style="color:var(--text-red-700)">moved ${nOf(movedDays(s), 'day', 'days')}</b>` : ''}</div></div>
+      <div class="fact"><div class="cap">Notice we need</div><div class="v">${SITE.notice} days</div><div class="s">the site's own, change it here</div></div>
+      <div class="fact"><div class="cap">Go or no-go by</div><div class="v">${dmd(goDay(s))}</div><div class="s">${inDays(goDay(s))} · last check ${dmd(add((s.trip || s.win)[0], -1))}</div></div>
+    </div>
+    <div class="cap" style="margin-top:14px">Waits on them · ${them.filter(isYes).length} of ${them.length}</div>${them.map(bullet).join('')}
+    <div class="cap" style="margin-top:14px">Ours · read from the app · ${us.filter(isYes).length} of ${us.length}</div>${us.map(bullet).join('')}
+    <div class="spread" style="margin-top:12px"><div class="row"><span class="btn">+ A bullet</span><span class="btn quiet">Their days · ${s.ready.length}</span><span class="btn quiet">Asks · ${them.reduce((n, c) => n + c.asked.length, 0)}</span><span class="btn quiet">See it as the GC</span></div><div class="row"><span class="btn">They gave a new day</span><span class="btn">Ask ${SITE.gc}</span></div></div>
+    <p class="muted" style="margin-top:8px;font-size:12.5px">Tap a bullet on them to say where it stands. 📷 means their word is not enough here: it needs their photo, or one of ours on site.</p></div>`
+}
+$('screen-sheet').innerHTML = sheet(STAGES[1])
 
-Can you tell us yes or not yet on each?
-${o4.map((c, i) => `${i + 1}. ${c.w}`).join('\n')}
-
-You said the pad would be ready ${md(theirDay(s4).day)}. If that still holds we will move our start to match.</div>
-  <div class="spread" style="margin-top:10px"><span class="muted">Nothing is sent until you press. You can change every word.</span><div class="row"><span class="btn">Copy</span><span class="btn primary">Text ${SITE.gc}</span></div></div>
-</div>
-<div class="app"><div class="cap">When they answer</div>
-  <p style="margin-top:6px">Their reply lands on the job's thread as today. One press on each bullet records it.</p>
-  <div class="bul" style="margin-top:6px"><span class="box"></span><div><div class="w">${o4[1].w}</div><div class="sub">Who told you, how, and the day</div></div><span class="stc"><span class="st open">Open</span></span>${eye(true)}</div>
-  <div class="row" style="margin:4px 0 8px 30px"><span class="chip on">Told yes</span><span class="chip">Not yet, they gave a day</span><span class="chip">We saw it</span><span class="input">${SITE.gc}</span><span class="input">by text</span><span class="input">Nov 18</span></div>
-  <p class="muted" style="font-size:12.5px">A Not yet with a day adds a line to Their days and keeps the bullet Open. The stage's go or no-go day does not move by itself. The office decides whether to move our window.</p>
-</div></div>`
+// ---------- 3. Go or hold ----------
+const s2 = STAGES[1], open2 = openOf(s2)
+const holdTo = [add(s2.win[0], 7), add(s2.win[1], 7)]
+$('screen-decide').innerHTML = `<div class="app"><div class="spread"><div><div class="cap">${s2.part} · ${s2.name} · ours ${span(s2.win[0], s2.win[1])}</div><b style="font-size:17px;color:var(--text-strong)">Go or hold? Decide by ${dmd(goDay(s2))}</b></div><span class="muted">✕</span></div>
+  <p style="margin-top:8px">${nOf(s2.checks.length - open2.length, 'bullet has', 'bullets have')} a yes. ${nOf(open2.length, 'is', 'are')} open: <b style="color:var(--text-strong)">${open2[0].w}</b> They say by ${md(open2[0].by)}.</p>
+  <div class="cols2" style="margin-top:12px">
+    <div class="dec go"><h3>Go</h3><p>Send the crew for ${dmd(s2.win[0])}. This is a go <b style="color:var(--text-strong)">on a promise</b>, with one bullet open.</p>
+      <ul class="plain"><li>Kept: who pressed Go, the time, and the bullet that was open.</li><li>Last check ${dmd(add(s2.trip[0], -1))}, the day before the trip leaves. The call list brings it back then.</li><li>Their page then reads <b>crew confirmed</b>.</li></ul>
+      <div class="row" style="margin-top:10px"><span class="btn green">Go, on their promise</span></div></div>
+    <div class="dec hold"><h3>Hold</h3><p>Keep the crew home until the bullet has a yes.</p>
+      <div class="row" style="margin-top:6px"><span class="muted">Move our window to</span><span class="input">${md(holdTo[0])}</span><span class="muted">to</span><span class="input">${md(holdTo[1])}</span></div>
+      <div class="msg" style="margin-top:8px">${SITE.gc}, we are holding our start on the ${s2.part.toLowerCase()} ${s2.name.toLowerCase()}. We planned ${dmd(s2.win[0])}. We cannot send a crew until the framing inspection has passed. Our next opening is ${dmd(holdTo[0])}. Tell us the day it passes and we will lock it in.</div>
+      <div class="row" style="margin-top:10px"><span class="btn">Hold, and text ${SITE.gc}</span><span class="btn quiet">Hold, say nothing yet</span></div></div>
+  </div>
+  <p class="muted" style="margin-top:10px;font-size:12.5px">Nothing is sent until you press. A hold moves two order-by days on the order log with the window, and says which.</p></div>`
 
 // ---------- 4. The GC's page ----------
-const s2 = STAGES[1], shared = s2.checks.filter((c) => c.eye)
-$('screen-portal').innerHTML = `<div class="cols2"><div style="max-width:380px"><div class="portal">
+const shared = s2.checks.filter((c) => c.eye), sharedOpen = shared.filter((c) => !isYes(c)), s3 = STAGES[2]
+$('screen-portal').innerHTML = `<div class="cols2"><div style="max-width:380px"><div class="cap" style="margin-bottom:6px">Before we press Go</div><div class="portal">
   <div class="cap2">Where the job is</div>
   <div class="step"><span class="num done">✓</span><div><b>Rough In</b><br><span style="color:#6b7280">Done in March</span></div></div>
   <div class="step"><span class="num next">2</span><div><b>Top Out</b> · next<br><span style="color:#6b7280">We plan ${span(s2.win[0], s2.win[1])}</span></div></div>
-  <div class="need"><b>Before we can start Top Out</b><br><span style="color:#374151;font-size:12.5px">We need ${SITE.notice} days' notice to get a crew there. Please answer by ${dmd(goDay(s2))}.</span>
-    ${shared.map((c) => c.st === 'open'
-      ? `<div style="margin-top:10px">${c.w}<div class="pb"><span class="y">Yes, ready</span><span>Not yet</span></div></div>`
-      : `<div style="margin-top:10px">${c.w}<br><span class="ok">✓ ${c.st === 'seen' ? 'We saw this on site' : `You told us ${md(c.day)}`}</span></div>`).join('')}
+  <div class="need"><b>Before we can start Top Out</b><br><span style="color:#374151;font-size:12.5px">We need ${SITE.notice} days to get a crew there. Answer by ${dmd(goDay(s2))} and we lock in ${md(s2.win[0])}.</span>
+    ${shared.map((c) => isYes(c)
+      ? `<div style="margin-top:9px">${c.w}<br><span class="ok">✓ ${c.know === 'saw' ? 'We saw this on site' : c.know === 'photo' ? `Your photo, ${md(c.day)}` : `You told us ${md(c.day)}`}</span></div>`
+      : `<div style="margin-top:9px"><b>${c.w}</b><br><span class="lnk">Not yet · give a day</span> &nbsp; <span class="lnk">Add a photo</span></div>`).join('')}
+    <span class="big">${sharedOpen.length === 1 ? 'Yes, this is ready' : `Yes, all ${sharedOpen.length} are ready`}</span>
   </div>
   <div class="step"><span class="num">3</span><div><b>Trim Set</b><br><span style="color:#6b7280">Later</span></div></div>
   <div class="pb"><span>Ask for other dates</span></div>
-  <div style="font-size:11.5px;color:#9ca3af;margin-top:10px">Dates are the plan as it stands; we'll update this page as the work moves.</div>
 </div></div>
+<div style="max-width:380px"><div class="cap" style="margin-bottom:6px">After we press Go</div><div class="portal">
+  <div class="cap2">Where the job is</div>
+  <div class="step"><span class="num next">1</span><div><b>${s3.name}</b> · next</div></div>
+  <div class="conf"><b>Crew confirmed for ${dmd(s3.win[0])}</b><br><span style="font-size:12.5px">${span(s3.win[0], s3.win[1])}. Everything we asked for has a yes.</span></div>
+  <div style="margin-top:10px"><span class="lnk">Something changed on site · tell us</span></div>
+  <div style="font-size:11.5px;color:#9ca3af;margin-top:10px">Dates are the plan as it stands; we'll update this page as the work moves.</div>
+</div>
+<div class="card" style="margin-top:14px"><h3>The text that brings them here</h3><div class="msg" style="margin-top:6px">${SITE.gc}, one thing left before we lock in ${md(s2.win[0])} for the lodge top out: has the framing inspection passed? Tap to answer, 10 seconds: prts.co/heron-point</div>
+  <p class="muted" style="margin-top:6px;font-size:12.5px">The link opens on the list. A plain reply works too: the office records it as their word.</p></div></div>
 <div><div class="card new"><h3>What turns it on <span class="tag-new">new</span></h3><ul class="plain">
-    <li>The job's sharing switch, which exists today, must be on.</li>
-    <li>A second switch on the job: <b>Show what we need before each stage</b>. It starts off.</li>
-    <li>Then each bullet's eye. A bullet on them starts with the eye on. A bullet on us starts with it off.</li>
+    <li>The job's sharing switch, which exists today.</li>
+    <li>A second switch on the job, <b>Show what we need before each stage</b>. It starts off.</li>
+    <li>Each bullet's eye. Theirs start on, ours start off.</li>
     <li><b>See it as the GC</b> draws this page for the office first.</li>
   </ul></div>
-  <div class="card" style="margin-top:14px"><h3>What their press does</h3><ul class="plain">
-    <li><b>Yes, ready</b> marks the bullet Told yes, by their name, on the portal, with the time. The office sees it at once.</li>
-    <li><b>Not yet</b> asks for a day. It adds a line to Their days.</li>
-    <li>They can take a yes back. The first yes is kept on the record.</li>
-  </ul></div>
   <div class="card" style="margin-top:14px"><h3>What this page never shows</h3><ul class="plain">
-    <li>A bullet without the eye, such as our material and our crew.</li>
-    <li>Who we are sending, a trip, an hour or a dollar.</li>
-    <li>Our notes, and which bullets we doubt.</li>
-    <li>The days they gave before. Those stay on our side.</li>
+    <li>Our own bullets, unless an eye is turned on.</li>
+    <li>What we saw that differs from what they said.</li>
+    <li>Who we send, a trip, an hour or a dollar.</li>
+    <li>The days they gave before, and the days they moved.</li>
   </ul></div></div></div>`
 
-// ---------- 5. On arrival ----------
-const themOn = s2.checks.filter((c) => c.on === 'them')
+// ---------- 5. The site's schedule ----------
+const A0 = '2026-11-01', A1 = '2027-03-01', ALEN = diff(A0, A1)
+const x = (ymd) => (Math.max(0, Math.min(ALEN, diff(A0, ymd))) / ALEN) * 100
+$('screen-look').innerHTML = `<div class="app"><div class="sched"><div class="months">${['2026-11-01', '2026-12-01', '2027-01-01', '2027-02-01'].map((m) => `<span style="left:${x(m)}%">${MON[D(m).getMonth()]}</span>`).join('')}</div>
+  ${ahead.map((s) => { const st = standing(s), cls = ['go', 'clear'].includes(st.k) ? 'clear' : st.k === 'now' ? 'now' : st.k === 'soon' ? 'soon' : 'later'
+    return `<div class="r"><span class="name"><b>${s.part}</b> · ${s.name}</span><span class="w ${cls}" style="left:${x(s.win[0])}%;width:${x(add(s.win[1], 1)) - x(s.win[0])}%"></span>${s.checks.length && st.k !== 'go' ? `<span class="go" style="left:${x(goDay(s))}%"></span>` : ''}${s.ready.map((r, i) => `<span class="dia${i < s.ready.length - 1 ? ' old' : ''}" style="left:${x(r.day)}%"></span>`).join('')}${movedDays(s) ? `<span class="moved" style="left:calc(${x(add(s.win[1], 1))}% + 8px)">moved ${nOf(movedDays(s), 'day', 'days')}</span>` : ''}</div>` }).join('')}
+  <div class="r"><span class="name">Trips planned</span>${ahead.filter((s) => s.trip).map((s) => `<span class="w trip" style="left:${x(s.trip[0])}%;width:${x(add(s.trip[1], 1)) - x(s.trip[0])}%"></span>`).join('')}</div>
+  <div class="today" style="left:calc(190px + (100% - 200px) * ${x(TODAY) / 100})"><span>today</span></div></div>
+  <div class="legend"><span><span class="dot" style="background:#16a34a"></span>Go, or clear</span><span><span class="dot" style="background:#f59e0b"></span>To decide inside 14 days</span><span><span class="dot" style="background:#dc2626"></span>Decide now</span><span><span class="dot" style="background:#9ca3af"></span>Later, or no list</span><span>◆ they say ready</span><span>◇ a day they gave before</span><span>⋮ go or no-go</span></div>
+  <div class="spread" style="margin-top:10px"><span class="muted">They have moved ${nOf(siteMoved, 'day', 'days')} across ${nOf(ahead.filter((s) => movedDays(s) > 0).length, 'stage', 'stages')} on this site. Every moved day is kept with who said it.</span><div class="row"><span class="btn quiet">Print the days they moved</span><span class="btn quiet">Print the schedule</span></div></div></div>`
+
+// ---------- 6. On arrival ----------
+const unseen = s2.checks.filter((c) => c.on === 'them' && c.know !== 'saw')
 $('screen-phone').innerHTML = `
   <div class="phone"><div class="cap">First clock-in on the stage</div><div class="app">
     <b style="font-size:16px;color:var(--text-strong)">${s2.part} · ${s2.name}</b><div class="muted">${SITE.name}</div>
-    <p style="margin-top:10px"><b style="color:var(--text-strong)">Is it as told?</b> Take a look before you unload.</p>
-    ${themOn.slice(0, 3).map((c, i) => `<div style="margin-top:10px">${c.w}<div class="row" style="margin-top:4px"><span class="chip ${i === 1 ? '' : 'green'}">Yes</span><span class="chip ${i === 1 ? 'amber' : ''}">No</span><span class="chip dash">+ photo</span></div></div>`).join('')}
-    <span class="btn green">Save and clock in</span></div></div>
+    <p style="margin-top:10px"><b style="color:var(--text-strong)">Is it as told?</b> Look before you unload.</p>
+    ${unseen.map((c) => `<div style="margin-top:9px">${c.w} <span class="chip dash">No</span></div>`).join('')}
+    <span class="btn green">Yes, all as told</span><span class="btn quiet">Skip for now</span></div></div>
   <div class="phone"><div class="cap">One bullet is No</div><div class="app">
-    <div class="banner" style="background:var(--bg-amber-tint);border-color:var(--text-amber-800);color:var(--text-amber-800)">Not as told<small>${themOn[1].w}</small></div>
+    <div class="banner" style="background:var(--bg-amber-tint);border-color:var(--text-amber-800);color:var(--text-amber-800)">Not as told<small>${unseen[1].w}</small></div>
     <p style="margin-top:10px">Take a photo. Dispatch is told now, with who said it was ready and when.</p>
     <span class="btn">Take a photo</span><span class="btn green">Tell Dispatch</span><span class="btn quiet">Start anyway</span>
     <p class="muted" style="margin-top:8px;font-size:12px">You are still clocked in. Nothing stops you from working.</p></div></div>
   <div class="phone"><div class="cap">What the office gets</div><div class="app">
     <div class="cap">Dispatch · high</div>
     <p style="margin-top:6px"><b style="color:var(--text-strong)">Not as told at ${SITE.name}</b><br>${s2.part} · ${s2.name}</p>
-    <p style="margin-top:8px">${themOn[1].w}</p>
-    <p class="muted" style="margin-top:6px">They said by ${md(themOn[1].by)}. Luis says No, Dec 1, with a photo.</p>
-    <span class="btn">Open the stage</span><span class="btn">Mark the trip turned around</span>
-    <p class="muted" style="margin-top:8px;font-size:12px">The trip record then carries which bullet was not true, for the bill.</p></div></div>`
+    <p style="margin-top:8px">${unseen[1].w}</p>
+    <p class="muted" style="margin-top:6px">They said by ${md(unseen[1].by)}. Dana pressed Go on that promise, Nov 21. Luis says No, Dec 1, with a photo.</p>
+    <span class="btn">Mark the trip turned around</span><span class="btn">Add this bullet to every Top Out</span>
+    <p class="muted" style="margin-top:8px;font-size:12px">The trip record carries the bullet, the promise and the photo to the bill.</p></div></div>`
 
-// ---------- 6. The company's lists ----------
-$('screen-list').innerHTML = `<div class="cols2"><div class="app"><div class="spread"><div><div class="cap">Top Out · every Top Out in the company</div><b style="color:var(--text-strong)">Before we start</b> <span class="tag-new">new</span></div><span class="btn">+ A bullet</span></div>
-  ${[['Framing is done and the roof is dried in.', 'them'], ['The framing inspection has passed.', 'them'], ['The other trades are out of the walls we work in.', 'them'], ['Power is on for our tools.', 'them'], ['Our material is on site, or lands before day one.', 'us'], ['The crew and the trip are set.', 'us']].map(([w, on]) => `<div class="bul" style="grid-template-columns:minmax(0,1fr) auto 28px"><div class="w">${w}</div><span class="chip">waits on ${on}</span>${eye(on === 'them')}</div>`).join('')}
-  <p class="muted" style="margin-top:8px;font-size:12.5px">▲ ▼ set the order. Take off the company's list keeps the reason, as the stage checklist does.</p></div>
-<div class="app"><div class="cap">Top Out · every Top Out in the company</div><b style="color:var(--text-strong)">At the stage</b> <span class="muted">· the stage checklist, as today</span>
-  ${['Every stub-out is capped and tested.', 'The test gauge is photographed.', 'Nail plates are on every stud we drilled.'].map((w) => `<div class="bul" style="grid-template-columns:minmax(0,1fr) auto"><div class="w">${w}</div><span class="chip">the crew answers</span></div>`).join('')}
-  <div class="note" style="margin-top:12px">Same editor, two lists. <b>Before we start</b> is answered by their word and what we see. <b>At the stage</b> is answered by the crew when the work is done.</div></div></div>`
+// ---------- 7. The lists ----------
+$('screen-list').innerHTML = `<div class="cols2"><div class="app"><div class="cap">Top Out · every Top Out in the company</div><b style="color:var(--text-strong)">Before we start</b> <span class="tag-new">new</span>
+  <div class="suggest" style="margin-top:10px"><b>No list yet for Top Out.</b> Start from six common bullets, then change them.<div class="row" style="margin-top:6px"><span class="btn primary">Use the six</span><span class="btn">Write my own</span><span class="btn quiet">Copy another job's</span></div></div>
+  ${[['Framing is done and the roof is dried in.', 'them', true], ['The framing inspection has passed.', 'them', false], ['The other trades are out of the walls we work in.', 'them', false], ['Power is on for our tools.', 'them', false], ['Our material lands before day one.', 'us · the order log', false], ['The crew and the trip are set.', 'us · the trip', false]].map(([w, on, ph]) => `<div class="bul" style="grid-template-columns:minmax(0,1fr) auto 28px;opacity:.75"><div class="w">${w}${ph ? ' 📷' : ''}</div><span class="chip">${on}</span>${eye(on === 'them')}</div>`).join('')}</div>
+<div><div class="app"><div class="cap">Learned on a job</div>
+  <p style="margin-top:6px">On Nov 3 a crew pressed <b style="color:var(--text-strong)">No</b> at another site and wrote why:</p>
+  <div class="msg" style="margin-top:6px">The scaffold was still up in the bathrooms we were sent to top out.</div>
+  <div class="row" style="margin-top:8px"><span class="btn primary">Add to every Top Out</span><span class="btn">Not this one</span></div>
+  <p class="muted" style="margin-top:6px;font-size:12.5px">It becomes a bullet the office words: The scaffold is out of the rooms we work in.</p></div>
+  <div class="note" style="margin-top:14px">Same editor as the stage checklist, two lists. <b>Before we start</b> is answered by their word, their photo and what we see. <b>At the stage</b> is answered by the crew when the work is done.</div></div></div>`
 
-// ---------- 7. Every door ----------
+// ---------- 8. Every door ----------
 const DOORS = [
-  ['The stage’s chip', 'Job window, on each stage', 'PR 3', `<b>Top Out</b> <span class="st open">Before we start · 4 of 6</span>`],
-  ['The Before we start list', 'opens from the chip and the schedule', 'PR 3', `<span class="st told">Told yes</span> Ray, by email, Nov 12 ${eye(true)}`],
-  ['The Schedule look', 'Development page', 'PR 4', `<div class="looks" style="margin:0"><span class="look">Trips</span><span class="look on">Schedule</span></div>`],
-  ['To confirm', 'the Schedule look and the Dashboard’s Needs you', 'PR 5', `<b>2 stages need a yes this week</b> <span class="btn quiet">Open</span>`],
-  ['Ask them', 'a stage, and each To confirm row', 'PR 5', `<span class="btn primary" style="padding:3px 10px">Ask them</span> writes the text from the open bullets`],
-  ['The Stage Plan', 'Jobs, Subs: the window row', 'PR 3', `Top Out · Dec 1 to 12 · <span class="st open">2 open</span> · they say Nov 28`],
-  ['The Pipeline row', 'a mark beside the stage, as the checklist has', 'PR 4', `☐ Top Out <span class="muted">start not clear</span>`],
-  ['Dispatch and trips', 'a warning when scheduling a stage that is not clear', 'PR 7', `<span class="st open">2 bullets have no yes</span> <span class="chip">Schedule anyway</span>`],
-  ['The GC’s page', '/portal, behind the job’s switches', 'PR 6', `<span class="st seen">Yes, ready</span> <span class="chip">Not yet</span> on each shared bullet`],
-  ['Is it as told?', 'the phone, first clock-in on the stage', 'PR 7', `<span class="chip green">Yes</span> <span class="chip amber">No</span> <span class="chip dash">+ photo</span>`],
-  ['The company’s lists', 'Documents, beside the stage checklist', 'PR 3', `<b>Before we start</b> · <b>At the stage</b>, one editor`],
-  ['The dev seat and print', 'read_stage_start, plan and apply; a sheet to send with a bid', 'PR 8', `What we need before each stage, one page`],
+  ['Who to call', 'the Schedule look’s first screen, and Needs you', 'PR 4', `<b>${SITE.gc}</b> · ${soonThem.length} open on ${stagesOf(soonThem).length} stages <span class="btn primary" style="padding:3px 10px">Ask</span>`],
+  ['The stage’s chip', 'Job window, on each stage', 'PR 3', `<b>Top Out</b> <span class="st open">Decide by Sat Nov 21 · 1 open</span>`],
+  ['The Before we start list', 'from the chip, the call list and the chart', 'PR 3', `<span class="st photo">Yes · their photo</span> Ray, Nov 12 ${eye(true)}`],
+  ['Go or hold', 'the stage, the call list, Needs you', 'PR 5', `<span class="btn green" style="padding:3px 10px">Go</span> <span class="chip">Hold, and text Ray</span>`],
+  ['Ask them', 'one ask per person, every ask kept', 'PR 4', `Asked Nov 14 by text, no answer <span class="chip">Ask again</span>`],
+  ['The Stage Plan', 'Jobs, Subs: the window row', 'PR 3', `Top Out · Dec 1 to 12 · <span class="st open">1 open</span> · they say Nov 28`],
+  ['The chart', 'the Schedule look, under the call list', 'PR 6', `◇ ◆ <span style="color:var(--text-red-700);font-weight:700">moved 11 days</span>`],
+  ['The Pipeline row', 'a mark beside the stage', 'PR 6', `☐ Top Out <span class="muted">no Go yet</span>`],
+  ['The GC’s page', '/portal, behind the job’s switches', 'PR 7', `<span class="st go">Yes, all are ready</span> then <b>crew confirmed</b>`],
+  ['Is it as told?', 'the phone, first clock-in on the stage', 'PR 8', `<span class="chip green">Yes, all as told</span> <span class="chip amber">No</span>`],
+  ['The company’s lists', 'Documents, beside the stage checklist', 'PR 3', `<b>Use the six</b> · <b>Add to every Top Out</b>`],
+  ['Dispatch, trips, the dev seat, print', 'a warning with no Go; verbs; the days they moved on paper', 'PR 8 · 9', `<span class="st open">No Go yet</span> <span class="chip">Schedule anyway</span>`],
 ]
 $('screen-doors').innerHTML = DOORS.map((d, i) => `<div class="door"><span class="chip pr">${d[2]}</span><span class="n">${i + 1}</span><b>${d[0]}</b><div class="muted">${d[1]}</div><div class="mini">${d[3]}</div></div>`).join('')
 
-// ---------- The train, the second pass, the calls ----------
-const rows = (head, list) => `<tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr>` + list.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')
+// ---------- The train and the calls ----------
 $('screen-plan').innerHTML = rows(['PR', 'What it brings', 'What it touches', 'Owed after'], [
-  ['1', '<b>The rules alone.</b> A bullet’s standing, Clear to start, the go or no-go day, what is to confirm, what the GC’s page may show.', 'A pure kernel and its tests. No screen.', 'Nothing'],
-  ['2', '<b>The table.</b> The bullets, their marks, their days, the notice.', 'One migration with the four fences, its doc, the types.', 'db push'],
-  ['3', '<b>The list on a stage.</b> The chip, the sheet, the company’s lists, the Stage Plan row.', 'Job window, Documents, Jobs → Subs, a guide.', 'Nothing'],
-  ['4', '<b>The Schedule look.</b> The band, the chart, the Pipeline mark.', 'Development page.', 'Nothing'],
-  ['5', '<b>To confirm and Ask them.</b> The office’s list, the written ask, the Needs you line.', 'The look, Messages’ composer, the Dashboard.', 'Nothing'],
-  ['6', '<b>The GC’s page.</b> The shared bullets, Yes ready and Not yet, See it as the GC.', 'The portal, two edge functions, a switch on the job.', 'Function deploy'],
-  ['7', '<b>On arrival and the warnings.</b> Is it as told, Not as told to Dispatch, the tie to a trip.', 'Job Mode, Dispatch, trips.', 'Nothing'],
-  ['8', '<b>The dev seat and the printed sheet.</b>', 'dev-mcp, a print page.', 'Function deploy'],
-])
-$('screen-pass').innerHTML = rows(['The first sketch', 'What was wrong with it', 'This draft'], [
-  ['A yes or no on each bullet.', 'It could not tell their word from what we saw. That gap is where a wasted trip comes from.', '<b>Open, Told yes, Seen</b>, each with who, how and when.'],
-  ['A stage that is not clear cannot be scheduled.', 'One open bullet would stop the team, and the office would tick bullets just to move.', 'It warns and never blocks.'],
-  ['One field for the day they say it is ready.', 'A moved day erased the old one, and the moves are the record.', '<b>Their days</b>, every one kept, drawn as diamonds.'],
-  ['The whole list shows on the GC’s page.', 'Our own material and crew are not theirs to read.', 'An eye on each bullet, behind two switches on the job.'],
-  ['A chart of bars and links, like GC mode’s.', 'We do not run the site. Our stages follow theirs in order.', 'A line of time and a list in the order to call.'],
-  ['The office types every answer.', 'The GC and the crew know first.', 'The GC ticks on their page. The crew confirms on arrival.'],
-  ['A new editor for the lists.', 'A second place to learn beside the stage checklist.', 'The same editor, a second list.'],
+  ['1', '<b>The rules alone.</b> Yes and how we know, a photo asked, our bullets read from the app, the go or no-go day, Go and Hold, who to call, what the GC’s page may show.', 'A pure kernel and its tests. No screen.', 'Nothing'],
+  ['2', '<b>The table.</b> Bullets, marks, asks, their days, decisions, the notice.', 'One migration with the four fences, its doc, the types.', 'db push'],
+  ['3', '<b>The list on a stage.</b> The chip, the sheet, our bullets reading the app, the lists with a starter.', 'Job window, Documents, Jobs → Subs, a guide.', 'Nothing'],
+  ['4', '<b>Who to call and Ask them.</b> One ask per person, every ask kept, the Needs you line.', 'Development page, Messages’ composer, the Dashboard.', 'Nothing'],
+  ['5', '<b>Go or hold.</b> The decision, the last check, the hold notice.', 'The stage, the Stage Plan’s window, the order log’s dates.', 'Nothing'],
+  ['6', '<b>The chart and the days they moved.</b> The Pipeline mark.', 'Development page, a print page.', 'Nothing'],
+  ['7', '<b>The GC’s page.</b> One press, a photo, crew confirmed, See it as the GC.', 'The portal, two edge functions, a switch on the job.', 'Function deploy'],
+  ['8', '<b>On arrival and learning.</b> Is it as told, Not as told to Dispatch, the tie to a trip, a No offered to the company’s list, the warnings.', 'Job Mode, Dispatch, trips.', 'Nothing'],
+  ['9', '<b>The dev seat and a sheet to send with a bid.</b>', 'dev-mcp, a print page.', 'Function deploy'],
 ])
 $('screen-calls').innerHTML = rows(['#', 'The call', 'The default in this draft'], [
-  ['1', 'Is their word enough to read Clear to start, or must we see it?', 'Their word clears it. The stage says which: on their word, or seen.'],
-  ['2', 'How much notice do we need?', 'One number per site, 10 days on a far site and 2 near home. A stage can have its own.'],
-  ['3', 'Does the Schedule look stand beside Trips, or hold it?', 'Its own look. Planned trips draw as a lane on it.'],
-  ['4', 'Which stages take a list?', 'Any stage line. The company’s lists are for Rough In, Top Out and Trim Set.'],
-  ['5', 'On the GC’s page, does their press count as Told yes?', 'Yes, with their name and the time. The office can still mark what we saw.'],
-  ['6', 'Does the GC’s page show the notice we need and the answer-by day?', 'Yes. It is the reason they should answer.'],
-  ['7', 'Who writes bullets?', 'Whoever writes stage checklist items today: the office, the job’s superintendent, the estimator who priced it.'],
+  ['1', 'Is their word enough for a yes?', 'Yes, unless the bullet asks for a photo. The yes always says how we know.'],
+  ['2', 'How much notice do we need?', 'One number per site: 10 days far, 2 near. A stage can have its own.'],
+  ['3', 'Who may press Go?', 'The office, and the job’s superintendent. The name is kept.'],
+  ['4', 'Does a hold tell the GC by itself?', 'No. It writes the notice and the office sends it.'],
+  ['5', 'Do the ask and their page say a wasted trip is billed?', 'Off until you write the sentence. Then it shows on both.'],
+  ['6', 'Does the GC see the days they moved?', 'No. That stays ours, and prints for us.'],
+  ['7', 'Does Schedule stand beside Trips, or hold it?', 'Its own look. Planned trips draw as a lane.'],
+  ['8', 'Do starter lists ship?', 'Offered once per stage kind, never added without a press.'],
 ])
 </script>
 </body>
