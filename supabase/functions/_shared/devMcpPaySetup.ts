@@ -532,14 +532,21 @@ export function paySetupDryRun(p: PaySetupPayload, world: PaySetupWorld, today: 
   else if (wageMoved) laborWords = `${crew.days} past crew day${s(crew.days)}${span} re-price on job labor at their logged hours × ${showValue('hourly_wage', after.hourly_wage)} in place of ${showValue('hourly_wage', before.hourly_wage)}: job labor reads today's wage for every past day, and no date shields them.`
   else laborWords = `Job labor does not re-price: the wage and Salaried stay as they are (${crew.days} past crew day${s(crew.days)} on record).`
 
-  // The clock.
+  // The clock. The sync the desk calls (sync_salary_clock_sessions_for_user_day) fills the day it is given AND the day
+  // before, and reads no employment start date: a template is enough. So turning Salaried on today can leave an
+  // unapproved auto-session on yesterday, even before the start date (found on the first live walk, 2026-11-18).
   const t = world.template
+  const dayBefore = ymdAddDays(today, -1)
+  const syncDays = ops.sync ? [dayBefore, today] : []
+  // With no template the sync mints nothing, so there is no day to name.
+  const syncBeforeStart = ops.sync && after.workday_start != null && after.start_date != null && dayBefore < after.start_date ? dayBefore : null
+  const syncWords = !ops.sync ? '' : `; apply syncs today and the day before (${dayBefore}), since the app's sync fills both days the template covers and reads no start date${syncBeforeStart ? `. So an unapproved session can appear on ${dayBefore}, before the start date ${after.start_date}: payroll's credit still starts on the start date, and the session waits on the clock strip` : ''}`
   const tStart = after.workday_start
   let clockWords: string
-  if (stoppedSalary) clockWords = `Turning Salaried off clears the workday schedule: ${t ? `the template (${templateStart(t)})` : 'no template stands'}, ${world.overrides} day override${s(world.overrides)}, and today's unapproved auto-sessions. Pay goes back to logged hours × wage, so ${payName} clocks in and out from now on. Past pay reports and approved hours stay.`
+  if (stoppedSalary) clockWords = `Turning Salaried off clears the workday schedule: ${t ? `the template (${templateStart(t)})` : 'no template stands'}, ${world.overrides} day override${s(world.overrides)}, and the unapproved auto-sessions of today and the day before (${dayBefore}). Pay goes back to logged hours × wage, so ${payName} clocks in and out from now on. Past pay reports and approved hours stay.`
   else if (!after.is_salary) clockWords = `Hourly: ${payName}'s own punches are what pays them; nothing on the clock changes.`
   else if (!user) clockWords = `${payName} has no users row, so no workday template and no sessions on a clock: payroll credits the flat ${dayH} h on weekdays all the same.`
-  else if (tStart) clockWords = `${ops.template ? (ops.template.kind === 'insert' ? 'A workday template is made' : `The workday template moves from ${before.workday_start}`) : 'A workday template stands'}: ${dayH} hours from ${tStart} to ${workdayEndOf(tStart, dayHours)}, ${t && !t.exclude_weekends ? 'every day' : 'weekdays'}. Sessions appear on ${payName}'s clock strip by themselves${ops.sync ? '; apply syncs today\'s' : ''}. They do not clock in for pay${after.record_hours_but_salary ? '; "also record hours" keeps their real punches recorded beside the salary' : ''}.`
+  else if (tStart) clockWords = `${ops.template ? (ops.template.kind === 'insert' ? 'A workday template is made' : `The workday template moves from ${before.workday_start}`) : 'A workday template stands'}: ${dayH} hours from ${tStart} to ${workdayEndOf(tStart, dayHours)}, ${t && !t.exclude_weekends ? 'every day' : 'weekdays'}. Sessions appear on ${payName}'s clock strip by themselves${syncWords}. They do not clock in for pay${after.record_hours_but_salary ? '; "also record hours" keeps their real punches recorded beside the salary' : ''}.`
   else clockWords = `No workday template: Salaried is on for pay (the flat ${dayH} h on weekdays), but no session appears on ${payName}'s clock strip until a template is saved. Pass workday_start (HH:MM) in the plan, or Workday schedule… on their sheet.`
 
   // The stints the trigger keeps.
@@ -554,9 +561,9 @@ export function paySetupDryRun(p: PaySetupPayload, world: PaySetupWorld, today: 
   const writes: string[] = []
   if (ops.dates) writes.push(`the roster row's dates: ${after.start_date ?? 'no start date'} → ${after.end_date ?? 'present'} (the desk's own save on people)`)
   if (ops.payChanges) writes.push(`set_pay_config as you, with the reason: ${Object.keys(ops.payChanges).map((k) => `${k} ${showValue(k as keyof PayFacts, ops.payChanges![k])}`).join(', ')} — one line on the pay log (pay_admin_events) with before and after${world.payRow ? '' : '; the pay row is made'}${ops.linkPersonId ? ', then linked to the roster row' : ''}`)
-  if (ops.clearSchedule) writes.push('pay_staff_clear_salary_schedule_by_person_name: the workday template, the day overrides and today\'s unapproved auto-sessions go')
+  if (ops.clearSchedule) writes.push('pay_staff_clear_salary_schedule_by_person_name: the workday template, the day overrides and the unapproved auto-sessions of today and the day before go')
   if (ops.template) writes.push(ops.template.kind === 'insert' ? `the workday template: one continuous ${dayMinutesOf(dayHours)}-minute block from ${ops.template.start}, weekdays (the Hire form's row)` : `the workday template's start: ${before.workday_start} → ${ops.template.start}; its length, its days and its job focus stay`)
-  if (ops.sync) writes.push('sync_salary_clock_sessions_for_user_day for today, so the clock strip shows the salaried sessions now')
+  if (ops.sync) writes.push('sync_salary_clock_sessions_for_user_day for today, which fills today and the day before, so the clock strip shows the salaried sessions now')
   if (ops.logPayload) writes.push(`one more line on the pay log for what set_pay_config does not record: ${Object.keys(ops.logPayload.changes as Json).join(', ')}`)
 
   const reply: Json = {
@@ -579,8 +586,8 @@ export function paySetupDryRun(p: PaySetupPayload, world: PaySetupWorld, today: 
       job_labor: { ...crew, words: laborWords },
       pay_reports: { pay_stubs: world.stubs.length, pay_stub_days: world.stubDays, words: world.stubs.length ? `The ${world.stubs.length} pay report${s(world.stubs.length)} already made (${world.stubDays} day row${s(world.stubDays)}) keep${world.stubs.length === 1 ? 's' : ''} the hours, rates and amounts stored on ${world.stubs.length === 1 ? 'it' : 'them'}; nothing here rewrites a report.` : 'No pay report exists yet, so nothing stored is at stake.' },
     },
-    clock: { template: !!t, day_overrides: world.overrides, words: clockWords },
-    fixed_day: after.is_salary || moved('workday_start') ? `${fixedDayWords(dayHours)}: a person who works a shorter day is still paid and shown ${dayH} hours.` : null,
+    clock: { template: !!t, day_overrides: world.overrides, sync_days: syncDays, sync_before_start: syncBeforeStart, words: clockWords },
+    fixed_day: after.is_salary || moved('workday_start') ? `${fixedDayWords(dayHours)}. A person who works a shorter day is still paid and shown ${dayH} hours.` : null,
     stints: stintWords,
     writes,
     not_written: 'a pay report, logged hours, time off, the vehicle arrangement, show in hours, a split workday and a salaried day\'s length — each stays on its own screen',

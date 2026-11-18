@@ -261,9 +261,21 @@ describe('plan_pay_setup — the dry run', () => {
     expect(none.clock.words).toContain('Pass workday_start (HH:MM)')
     expect(none.fixed_day).toContain('A salaried day is 8 hours for this person')
     expect(none.fixed_day).toContain('Today every salaried day is 8 hours')
+    expect(none.fixed_day).toContain('the seat does not set one. A person who works a shorter day is still paid and shown 8 hours.')
+    // Salaried on with no template: the sync runs as the desk runs it and mints nothing, so no day is named.
+    expect(none.clock).toMatchObject({ sync_days: ['2026-11-17', '2026-11-18'], sync_before_start: null })
+    expect(plan({ hourly_wage: 25, is_salary: true, start_date: '2026-11-18' }).clock.sync_before_start).toBeNull()
     expect(none.salaried_day_hours).toBe(8)
     const made = plan({ hourly_wage: 25, is_salary: true, workday_start: '06:00' })
     expect(made.clock.words).toContain('A workday template is made: 8 hours from 06:00 to 14:00, weekdays')
+    // The sync fills today and the day before, and reads no start date: the plan says so, and names the day when it falls before the start.
+    expect(made.clock).toMatchObject({ sync_days: ['2026-11-17', '2026-11-18'], sync_before_start: null })
+    expect(made.clock.words).toContain('apply syncs today and the day before (2026-11-17), since the app\'s sync fills both days the template covers and reads no start date. They do not clock in for pay')
+    const startsToday = plan({ hourly_wage: 25, is_salary: true, start_date: '2026-11-18', workday_start: '06:00' })
+    expect(startsToday.clock).toMatchObject({ sync_days: ['2026-11-17', '2026-11-18'], sync_before_start: '2026-11-17' })
+    expect(startsToday.clock.words).toContain('So an unapproved session can appear on 2026-11-17, before the start date 2026-11-18: payroll\'s credit still starts on the start date')
+    expect(startsToday.writes.join(' | ')).toContain('sync_salary_clock_sessions_for_user_day for today, which fills today and the day before')
+    expect(plan({ hourly_wage: 25, is_salary: true, start_date: '2026-11-10', workday_start: '06:00' }).clock.sync_before_start).toBeNull()
     expect(made.writes.join(' | ')).toContain('one continuous 480-minute block from 06:00, weekdays')
     const stands = plan({ hourly_wage: 25, is_salary: true }, world({ template }))
     expect(stands.workday_template).toMatchObject({ exists: true, start: '07:00', minutes: 480 })
@@ -277,7 +289,8 @@ describe('plan_pay_setup — the dry run', () => {
 
   it('Salaried off: the schedule goes, and the plan counts what goes with it', () => {
     const p = plan({ is_salary: false }, world({ payRow: salaried, template, overrides: 3 }))
-    expect(p.clock.words).toContain('Turning Salaried off clears the workday schedule: the template (07:00), 3 day overrides, and today\'s unapproved auto-sessions')
+    expect(p.clock.words).toContain('Turning Salaried off clears the workday schedule: the template (07:00), 3 day overrides, and the unapproved auto-sessions of today and the day before (2026-11-17)')
+    expect(p.clock).toMatchObject({ sync_days: [], sync_before_start: null })
     expect(p.after.workday_start).toBeNull()
     expect(p.reaches_back.payroll.salaried_before).toMatchObject({ weeks: 4, est_gross: 4000 })
     expect(p.reaches_back.payroll.salaried_after).toBeNull()
