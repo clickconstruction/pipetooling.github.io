@@ -87,7 +87,7 @@ export function PaintedMapCopies({ map, lines, places, link, io = liveIo }: Prop
   const company = PORTAL_COMPANY.name
   const made = copyMadeWords(io.today())
   const pictureLines = lines.map((l) => ({ points: l.points, poorParts: l.poorParts }))
-  const picturePlaces = places.map((p) => ({ number: p.number, name: p.name, words: p.words, lat: p.lat, lng: p.lng }))
+  const picturePlaces = places.map((p) => ({ number: p.number, name: p.name, words: p.words, lat: p.lat, lng: p.lng, kind: p.kind ?? null }))
   const summary = mapSummaryWords(lines, places.length)
 
   const makePicture = async () => {
@@ -142,7 +142,7 @@ export function PaintedMapCopies({ map, lines, places, link, io = liveIo }: Prop
           const printPlaces = await Promise.all(
             places.map(async (p) => {
               const url = p.photoPath ? photoUrls.get(p.photoPath) : undefined
-              return { number: p.number, name: p.name, words: p.words, photo: url ? await io.thumb(url) : null }
+              return { number: p.number, name: p.name, words: p.words, kind: p.kind ?? null, photo: url ? await io.thumb(url) : null }
             }),
           )
           return buildPaintedMapPrintHtml({

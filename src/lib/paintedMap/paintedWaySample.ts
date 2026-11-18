@@ -22,7 +22,7 @@ export const SAMPLE_PAINTED_WAY: SharedPaintedMap = {
     { how: 'drawn', points: [p(180, 87), p(188, 105)], poorParts: [], fixedByHand: false, lengthM: 20, marginM: 2.1, measuredFt: null, measuredHow: null },
   ],
   places: [
-    { id: 'sample-gate', number: 1, name: 'Truck gate', words: 'Chain is looped, not locked. Close it behind you.', lat: p(1, 11)[0], lng: p(1, 11)[1], photo: false },
+    { id: 'sample-gate', number: 1, name: 'Truck gate', words: 'Chain is looped, not locked. Close it behind you.', lat: p(1, 11)[0], lng: p(1, 11)[1], photo: false, kind: 'gate' },
     { id: 'sample-yard', number: 2, name: 'Laydown yard', words: 'Drop pipe by the blue box.', lat: p(70, 44)[0], lng: p(70, 44)[1], photo: false },
     { id: 'sample-stub', number: 3, name: 'Water stub', words: 'Blue riser at the back of the slab.', lat: p(190, 108)[0], lng: p(190, 108)[1], photo: false },
   ],

@@ -9,7 +9,7 @@ One property can hold many jobs. The Lien desk lists papers and jobs one by one,
 
 ## Open the property card
 
-Go to the Lien desk and press **By job**. A job on a property with more than one job has a blue line under its GC. The line reads like *412 Ridgeline Dr, Hollow Creek · 7 jobs here ›*. Press it.
+Go to the Lien desk and press **By job**. On a computer that tab reads **Job**. A job on a property with more than one job has a blue line under its GC. The line reads like *412 Ridgeline Dr, Hollow Creek · 7 jobs here ›*. Press it.
 
 The card opens over the desk. It reads nothing new if By job was already open.
 

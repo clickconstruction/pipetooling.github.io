@@ -24,6 +24,16 @@ const parse = (text: string): Document => {
 }
 
 describe('a painted map as a .kml file', () => {
+  it('says a place\'s kind in its name, since a file draws no mark (#393)', () => {
+    const map: PaintedMapFileInput = { ...MAP, places: [{ number: 1, name: 'Open trench', words: '', lat: 39.5, lng: -98.35, kind: 'hazard' }, { number: 2, name: 'Truck gate', words: '', lat: 39.5, lng: -98.35, kind: 'gate' }, { number: 3, name: 'The slab', words: '', lat: 39.5, lng: -98.35 }] }
+    const kml = paintedMapKml(map)
+    expect(kml).toContain('<name>1. Hazard: Open trench</name>')
+    // A name that already says its kind is not said twice, and a plain place is its name.
+    expect(kml).toContain('<name>2. Truck gate</name>')
+    expect(kml).toContain('<name>3. The slab</name>')
+    expect(paintedMapGpx(map)).toContain('<name>1. Hazard: Open trench</name>')
+    parse(kml)
+  })
   it('is well-formed, with a line for each line and a point for each place', () => {
     const doc = parse(paintedMapKml(MAP))
     expect(doc.documentElement.namespaceURI).toBe('http://www.opengis.net/kml/2.2')

@@ -5,6 +5,7 @@
  * so it always carries the day it was made.
  */
 import { boundsOfPoints, type PaintedPoint } from './paintedLine'
+import { PLACE_GLYPH_SHARE, placeKindInfo, type PlaceGlyph } from './paintedPlaceKind'
 
 export const PICTURE_TILE = 256
 /** The deepest tiles asked for. The view from above has this zoom nearly everywhere; deeper, a rural tile is a grey card. */
@@ -123,6 +124,36 @@ export function copyMadeWords(ymd: string | null | undefined): string {
   if (!m) return ''
   const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(m[2]) - 1]
   return month ? `Made ${month} ${Number(m[3])}, ${m[1]}` : ''
+}
+
+/** A kind's mark in a picture: what to draw and where, around a dot's centre. */
+export type PictureKindMark = {
+  /** A warning: its ring and its drawing are red. */
+  warns: boolean
+  glyph: PlaceGlyph
+  /** The square the drawing fills, in picture pixels. Its own grid is 24 by 24. */
+  box: { left: number; top: number; size: number }
+  /** The small disc on the mark's shoulder that carries the place's number. */
+  badge: { x: number; y: number; r: number; font: number }
+}
+
+/**
+ * How a place with a kind is drawn in a picture (punch list #393), for a dot of radius `r` centred
+ * at `at`. Null for a plain place and for a kind this app does not know: the caller draws the
+ * numbered dot it always drew.
+ */
+export function pictureKindMark(place: { kind?: string | null }, at: { x: number; y: number }, r: number): PictureKindMark | null {
+  const info = placeKindInfo(place.kind)
+  if (!info) return null
+  const size = Math.round(2 * r * PLACE_GLYPH_SHARE)
+  const badgeR = Math.max(9, Math.round(r * 0.5))
+  const off = Math.round(r * 0.78)
+  return {
+    warns: info.warns,
+    glyph: info.glyph,
+    box: { left: at.x - size / 2, top: at.y - size / 2, size },
+    badge: { x: at.x + off, y: at.y - off, r: badgeR, font: Math.round(badgeR * 1.3) },
+  }
 }
 
 /** A place as the key under a picture reads it: `Truck gate. Close it behind you.` */

@@ -7,9 +7,9 @@ import { lienDeskPileLineFit, lienDeskTitleLineFit, readLienDeskPileLine, readLi
  * again whenever the bar or one of its parts changes size. The rule is `lienDeskTitleBar.ts`. A phone is never
  * measured.
  */
-export function useLienDeskTitleBarFit({ isMobile, recordsDoorShown, paperShown, gcNoticeShown, kind }: { isMobile: boolean; recordsDoorShown: boolean; paperShown: boolean; gcNoticeShown: boolean; kind: string }) {
-  // What the title line has room for at its end (v2.7213; measured since v2.7277): all five tools, the four presses with the
-  // owner-records door under them, or none. The bar reads the line it drew; the rule is `lienDeskTitleBar.ts`. None until it is drawn.
+export function useLienDeskTitleBarFit({ isMobile, paperShown, gcNoticeShown, kind }: { isMobile: boolean; paperShown: boolean; gcNoticeShown: boolean; kind: string }) {
+  // What the title line has room for at its end (v2.7213; measured since v2.7277): the four presses, or none. The
+  // owner-records door was a tool too until v2.7780. The bar reads the line it drew; the rule is `lienDeskTitleBar.ts`. None until it is drawn.
   const titleBarRef = useRef<HTMLDivElement>(null)
   const [titleLineFit, setTitleLineFit] = useState<LienDeskTitleLineFit>('none')
   // Whether By paper's pile line holds its right span beside the piles, or the span falls under them (v2.7311). One line until measured.
@@ -27,7 +27,7 @@ export function useLienDeskTitleBarFit({ isMobile, recordsDoorShown, paperShown,
     }
     measure()
     if (typeof ResizeObserver === 'undefined') return
-    // The bar moves with the window; the views, the paper tabs and the piles move with their words. The door and the presses keep their widths wherever they sit.
+    // The bar moves with the window; the views, the paper tabs and the piles move with their words. The presses keep their width wherever they sit.
     const ro = new ResizeObserver(measure)
     ro.observe(bar)
     for (const part of ['[data-lien-desk-kinds]', '[data-lien-desk-paper-kinds]', '[data-lien-desk-piles]', '[data-lien-desk-right]']) {
@@ -35,6 +35,6 @@ export function useLienDeskTitleBarFit({ isMobile, recordsDoorShown, paperShown,
       if (el) ro.observe(el)
     }
     return () => ro.disconnect()
-  }, [isMobile, recordsDoorShown, paperShown, gcNoticeShown, kind, titleLineFit])
+  }, [isMobile, paperShown, gcNoticeShown, kind, titleLineFit])
   return { titleBarRef, titleLineFit, pileLineFit }
 }

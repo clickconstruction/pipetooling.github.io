@@ -18,6 +18,10 @@
  * signature: that bin holds those notices and carries the office's reminder, or the leader's door to sign them
  * (`lienBoardSignDoor`). The pair beside the find box still says *7 wait*.
  *
+ * Since v2.7783 the affidavits' press says nothing of what a property fact holds (the owner's pick of 2026-11-18): each
+ * held paper stands in *Ready to file* as a chip with a hold mark, one press from the fact. The line *1 held on a
+ * property fact · See it* repeated a chip already on the Board. The pair beside the find box still says *1 held*.
+ *
  * Pure: counts in, words out. The counts are the desk's own, the ones the run's door and By paper's print bar count
  * with, so the three cannot disagree. Every press names its act and its count (`countedLabel`), and is dead only when
  * nothing is ready. The notice press reads *Enter mail numbers* once every approved notice has printed, as the run's
@@ -42,8 +46,33 @@ export type LienBoardPrintSide = {
   short: { label: string; left: string | null }
   /** What the press leaves out, and the words of the door to it; null when it leaves nothing. */
   left: { words: string; door: string } | null
-  /** A quiet line under the press, with a door: what the affidavits print with, and *Change*. */
+  /** A quiet line under the press, with its press: the affidavits' print when it is not the usual stack, and the way back to it. Null on the usual stack. */
   note: { words: string; door: string } | null
+}
+
+/**
+ * The pages that print in front of a batch of affidavits, as the office ticked them on By paper's print bar
+ * (`lienPrintWithChips`). `noticeCopies` is true only when the box is ticked and a paper has a notice to copy.
+ */
+export type LienBoardPrintStack = { helpSheet: boolean; noticeRecord: boolean; noticeCopies: boolean }
+
+/** The stack as it prints until someone changes it on this computer: the help sheet and the notice records, no copies. */
+export const LIEN_BOARD_USUAL_STACK: LienBoardPrintStack = { helpSheet: true, noticeRecord: true, noticeCopies: false }
+
+/**
+ * What the Board says of the affidavits' stack (the owner's call of 2026-11-18: *delete the print line in the usual
+ * case*). The usual stack says nothing: until then one line read *Prints with the help sheet and the notice records*
+ * with *Change*, a door to By paper that showed him a job and no setting. A stack someone changed on this computer
+ * says what is missing or added, and its press puts the usual pages back where it stands.
+ */
+export function lienBoardStackNote(stack: LienBoardPrintStack): { words: string; door: string } | null {
+  const missing = [stack.helpSheet ? '' : 'the help sheet', stack.noticeRecord ? '' : 'the notice records'].filter(Boolean)
+  const extra = stack.noticeCopies
+  if (missing.length === 0 && !extra) return null
+  if (missing.length === 0) return { words: 'Prints with copies of the notices too', door: 'Leave them out' }
+  const without = `Prints without ${missing.join(' or ')}`
+  if (extra) return { words: `${without}, with copies of the notices`, door: 'Use the usual pages' }
+  return { words: without, door: missing.length === 1 && !stack.helpSheet ? 'Put it back' : 'Put them back' }
 }
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many)
@@ -90,18 +119,19 @@ export function lienBoardSendDoor(ready: number): { label: string } | null {
 }
 
 /**
- * Under the affidavits' column. `ready` is what the batch print takes (the desk's print plan: approved, on the short
- * form, every gate clear), `held` the approved papers a gate holds, `earlierForm` the approved papers on the earlier
- * form, which the batch leaves for their own Lien window. `with` names the pages that print in front of the stack, as
- * the office ticked them on By paper's print bar, where they are changed. Null when no approved affidavit is on the desk.
+ * The affidavits' print, on *Ready to file*. `ready` is what the batch print takes (the desk's print plan: approved, on
+ * the short form, every gate clear), `held` the approved papers a gate holds, `earlierForm` the papers in Ready to file
+ * on the earlier form, which the batch leaves for their own Lien window. A held paper has no line (v2.7783): it stands
+ * in the bin with its mark, and the bin's count leaves it out. A paper on the earlier form keeps its line, since its
+ * chip stands in the bin unmarked and the line is why the count is more than the press. `stack` is the pages that print
+ * in front of the stack, as the office ticked them on By paper's print bar: the usual stack draws no line
+ * (`lienBoardStackNote`). Null when no approved affidavit is on the desk.
  */
-export function lienBoardAffidavitPrint(c: { ready: number; held: number; earlierForm: number; with: ReadonlyArray<string>; shown?: boolean }): LienBoardPrintSide | null {
+export function lienBoardAffidavitPrint(c: { ready: number; held: number; earlierForm: number; stack: LienBoardPrintStack; shown?: boolean }): LienBoardPrintSide | null {
   const out = c.held + c.earlierForm
   if (c.ready <= 0 && out <= 0) return null
   // The print's own name, as By paper's bar says it (*Print 10 for notarization*): one act, one name.
   const label = `${countedLabel('Print', c.ready)}${c.shown && c.ready > 0 ? ' shown' : ''} for notarization`
-  const parts = [c.held > 0 ? `${c.held} held on a property fact` : '', c.earlierForm > 0 ? `${c.earlierForm} on the earlier form` : ''].filter(Boolean)
-  const left = parts.length ? { words: parts.join(' · '), door: plural(out, 'See it', 'See them') } : null
-  const withWords = c.with.length === 0 ? 'Prints the affidavits alone' : `Prints with ${c.with.length <= 2 ? c.with.join(' and ') : `${c.with.slice(0, -1).join(', ')} and ${c.with[c.with.length - 1]}`}`
-  return { kind: 'affidavit', bin: 'affidavit:ready', act: 'print_affidavits', label, dead: c.ready <= 0, short: { label, left: out > 0 ? `${out} held` : null }, left, note: c.ready > 0 ? { words: withWords, door: 'Change' } : null }
+  const left = c.earlierForm > 0 ? { words: `${c.earlierForm} on the earlier form`, door: plural(c.earlierForm, 'See it', 'See them') } : null
+  return { kind: 'affidavit', bin: 'affidavit:ready', act: 'print_affidavits', label, dead: c.ready <= 0, short: { label, left: out > 0 ? `${out} held` : null }, left, note: c.ready > 0 ? lienBoardStackNote(c.stack) : null }
 }

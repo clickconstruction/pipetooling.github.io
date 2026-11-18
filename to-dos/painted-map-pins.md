@@ -2,7 +2,7 @@
 name: "Pins on a painted map: points of interest"
 number: 393
 group: ready
-status: answered 2026-11-18, the owner ticked all three readings · A built on `claude/393-painted-map-pins-e3e77c`, in its PR · B and C not started
+status: A shipped (v2.7773) · B's column shipped and pushed (v2.7775) · B's marks in the app, the copies and the shared link in one PR (v2.7776, v2.7777, v2.7778), its function to deploy after the merge · C answered 2026-11-18, a separate list, drawn, and the owner likes the mock-up · C's train of three not started
 summary: >
   The owner wants to set pins, points of interest, on a painted map, and not only lines. A painted
   map can already hold a place: a numbered dot with a name, a few words and a photo. Look it over,
@@ -11,10 +11,11 @@ summary: >
   three readings to the owner. A is ＋ Place on Look it over. B is kinds of pins, each with its own
   mark. C is a job's own pins, with no painted map. He ticked all three on 2026-11-18, so it is a
   train of three in that order.
-next: A's PR merges, then B, a kind and a mark for each place. C opens with one call from the owner on Materials on site's places.
-size: L as a train of three (S · M · L); left: B (M) and C (L)
-blocker: None for A or B. C waits on the owner's call, whether Materials on site's places get a point and become the pins.
-opinion: build — the owner picked all three; A answers his screenshot, B follows, and C opens with his call on Materials on site's places
+next: C's train of three, the column first. Deploy `painted-map-link` once B's PR merges, and walk the marks on the live app.
+size: L as a train of three (S · M · L); left: B's deploy and walk (XS) and C (M · M · M)
+blocker: None. Two of C's calls were not answered one by one, the word and what a link carries, so they are built at their picks and are the owner's to change.
+ver: v2.7773 · 7775 · 7776 · 7777 · 7778
+opinion: build — the owner picked all three and then a separate list for C; A and B are done but for a deploy and a walk
 ---
 
 # Pins on a painted map (#393)
@@ -41,16 +42,112 @@ Taken as a train in that order. Each step is its own PR.
 
 ## Where it stands
 
-- **A, ＋ Place on Look it over: built**, in its PR from `claude/393-painted-map-pins-e3e77c`. The
-  press sits between the walk's lines and **Save**. It opens the place panel over the waiting lines.
-  A place is saved when it is added, as the walk's own is, and the screen says so. Its fragment in
-  `docs/recent-features/` holds the rest.
-- **B, kinds of pins: not started.** A column on `painted_map_places` with its migration, the kinds
-  and their marks as kernels under `src/lib/paintedMap/`, then the map, the `/way` page, the picture
-  and the print.
-- **C, a job's own pins: not started.** It opens with one call that is the owner's: whether
-  Materials on site's places (`job_places`) get a point and become the pins, or a job's pins are a
-  list of their own.
+- **A, ＋ Place on Look it over: shipped**, v2.7773. The press sits between the walk's lines and
+  **Save**. It opens the place panel over the waiting lines. A place is saved when it is added, as
+  the walk's own is, and the screen says so. Walked on a local server against the live database
+  before the merge. Not walked on the deployed app or on a real phone.
+- **B, kinds of pins: built**, in four steps.
+  1. **The column: shipped and pushed**, v2.7775. `painted_map_places.kind`, one short lowercase
+     word or null, by migration `20261118080000_painted_place_kind.sql`. The check holds the shape
+     of the word and not the list, so a new kind needs no migration. Its bed scenario passed in CI.
+  2. **The marks in the app**, v2.7776. Seven kinds, gate, parking, door, meter, shutoff, cleanout
+     and hazard, each with a drawing in `paintedPlaceKind.ts`. The place panel's chips pick one.
+     The dot wears the mark on the map and in the lists, with its number on its shoulder, and a
+     hazard is red.
+  3. **The picture, the printed page and the file**, v2.7777. The picture draws each mark on the
+     map and in its key. The printed page gives a place with a kind its mark in the list. A file
+     draws nothing, so it says the kind in the place's name, as in *Hazard: Open trench*.
+  4. **The shared page**, v2.7778. `painted-map-link` reads the kind and hands it on as the table
+     keeps it, and `/way/<code>` draws the mark on its map and beside each place. The page holds
+     the list, so a new kind needs no deploy. **The function is deployed after the merge.** Until
+     then a link shows plain dots, and nothing breaks either way round.
+
+  Steps 2 to 4 are one PR. **Left for B:** deploy `painted-map-link`, then walk a place with a kind
+  on the live app, on a made-up map on no job, thrown away after. The printed page has not been
+  sent to a real printer.
+
+  **The list of kinds is a first list.** The card's pick was to wait until places were in use and
+  learn the kinds from what people mark. Read on 2026-11-18, prod held no place on any painted map,
+  so there was nothing to learn from. The seven are the card's examples and the six names the place
+  panel already offered. The list is one array in the app and is the owner's to change.
+- **C, a job's own pins: drawn, and the owner likes it.** See the next section. Not started.
+
+## C: a list of its own, kept on the job
+
+2026-11-18. C opens with a call that is the owner's, so it was put to him with what the live data
+held that day: 1 painted map, 0 places on any map, and 4 Materials on site places, none with a
+point. The pick was to hold C on a card of its own until a job has a second map. The other choices
+were Materials on site's places becoming the pins, a separate list, and dropping C. He chose:
+
+> A separate list of pins
+
+**The mock-up** is [`painted-map-pins-on-the-job.html`](painted-map-pins-on-the-job.html), drawn
+the same day. Nothing in it is built. It draws three screens:
+
+1. **Under the job's address**, with the job's painted maps: a line, *Places on this job*, and a
+   press, **＋ Place on this job**.
+2. **Places on this job**: the window a painted map opens, in a places-only shape. The same place
+   panel, kinds, photo and **Put the dot where I am**. Its marks wear letters.
+3. **On a painted map of the same job**: the job's places drawn with a dashed ring and a letter,
+   under their own heading, *On this job*. The map keeps its own numbered places.
+
+**The owner's word on the mock-up**, 2026-11-18:
+
+> I like what you've mocked up.
+
+Taken as a yes to build it as drawn. He was asked three things at once: build it as drawn, what
+the list is called, and what a link carries. He answered with that message and not call by call.
+So calls 1 and 3 are built at their picks and stay his to change. Call 1 is one file of words.
+
+**The calls, each with its pick.**
+
+1. What the list is called. Pick: *Places on this job*. The other way: *Pins on this job*, his own
+   word, which a box in Materials on site already uses.
+2. How a place on the job is told from a map's own. Pick: a letter and a dashed ring.
+3. Whether a link or a copy of a painted map shows the job's places. Pick: no. A link shows what
+   was painted on that map, and the job's list has its own link, picture and page.
+4. Who sets and changes one. Pick: as on a painted map today. Anyone who can open the job sets one,
+   and whoever set it, or the office, changes or removes it.
+5. Materials on site's places. Pick: untouched, as he chose.
+6. A development's map, and a map on no job. Pick: not in this build.
+
+**How it is kept.** The job's list is a painted map that holds places only and is marked as the
+job's own. So everything a place already has comes with it: its kind and mark, its photo, who may
+read and change it, and its own link, picture and page. No new table.
+
+The table does not hold a job to one such map. A job that goes leaves its maps standing on no job,
+and two jobs can be combined, so a rule of one a job would refuse those. The app makes one and
+reads every one a job has as one list.
+
+**The train.**
+
+1. **The column.** One yes or no on `painted_maps`. A migration, its doc page and a scenario in
+   the painted maps bed.
+2. **The list.** The line and the press on `JobPaintedMapsStrip`, and `PaintedMapWindow` in its
+   places-only shape, with letters.
+3. **On every map of the job.** The dashed, lettered marks on `PaintedMapCanvas`, the *On this job*
+   rows in the window, and the Share sheet's sentence.
+
+## Asked in passing: a faster Share, for routes and for places
+
+2026-11-18, in the same message as his word on C's mock-up:
+
+> I do want to eventually add a share button to both painted routes as well as places so a user
+> can hit share and then immediately take that link into text and text it to someone so someone
+> else can identify a location. Could you help me decide if we should add this to this edition or
+> add it as another edition.
+
+**The answer given: another edition, and most of it already has a home.**
+
+- **A painted map, his routes.** This is [#394](painted-map-share-sheet/README.md), carded and
+  drawn the same day by another session. Its lead press is **Text it from my phone…**, and every
+  sending press makes the link itself. Nothing of it belongs on this card.
+- **The job's list of places.** C keeps it as a painted map, so it has **Share** from its first
+  day, as the mock-up draws. It gets #394's sheet when that lands, with nothing more to build.
+- **One place alone**, to text someone a single spot. This is new and is on no card yet. It needs
+  the sheet #394 builds, and one call of its own: what the reader opens. That is either the map
+  with that place picked out, or a plain pin in their own map app. It fits #394 as a later step
+  better than a card of its own.
 
 ## What a painted map held when the card was written
 
@@ -65,6 +162,8 @@ Taken as a train in that order. Each step is its own PR.
 - **A job has no pins outside a painted map.** Materials on site keeps a job's named places
   (`job_places`), each with a name and, since v2.7580, the painted map that shows the way there.
   None has a point of its own.
+
+*That was true on 2026-11-17. A and B have since changed the second, fourth and fifth points.*
 
 ## Three readings, each with a size and a pick
 

@@ -12,6 +12,7 @@ import LienPublicPutBackWindow from './LienPublicPutBackWindow'
 import LienScanBatchWindow from './LienScanBatchWindow'
 import LienServeWindow from './LienServeWindow'
 import type { LienDeskWindowFlags } from './useLienDeskWindows'
+import type { LienMailProofLanding } from '../../lib/jobs/lienMailProofDoor'
 
 /**
  * The windows the Lien desk opens over itself from the Board and a pane (its own file since v2.7588, out of
@@ -27,6 +28,8 @@ export function LienDeskWindows({
   issuer,
   windows,
   serveJobs,
+  serveLand = null,
+  onServeClosed,
   scanTargets,
   paneFix,
   onClosePaneFix,
@@ -47,9 +50,13 @@ export function LienDeskWindows({
   /** The five flags the Board raises, with their setters. */
   windows: LienDeskWindowFlags
   serveJobs: LienServeJob[]
+  /** The copy the copies window opens on, from a stop window's card; null opens it at the top. */
+  serveLand?: LienMailProofLanding | null
+  /** The copies window closed: the desk forgets where it landed. */
+  onServeClosed?: () => void
   scanTargets: LienScanTarget[]
   /** A pane's property fix: the job and the field to land on. */
-  paneFix: { jobId: string; focus: 'owner' | 'legal' | 'homestead_answer' } | null
+  paneFix: { jobId: string; focus: 'owner' | 'owner_address' | 'legal' | 'homestead_answer' } | null
   onClosePaneFix: () => void
   /** A property's card: the address, and the job it was opened from. */
   propertyCard: { addressId: string; fromJobId: string | null } | null
@@ -91,14 +98,20 @@ export function LienDeskWindows({
         issuer={issuer}
         isMobile={isMobile}
         zIndex={805}
+        land={serveLand}
         onOpenJob={(jobId) => {
           setServeOpen(false)
+          onServeClosed?.()
           onOpenAffidavit(jobId)
         }}
         onChanged={onChanged}
-        onClose={() => setServeOpen(false)}
+        onClose={() => {
+          setServeOpen(false)
+          onServeClosed?.()
+        }}
         onAddScans={() => {
           setServeOpen(false)
+          onServeClosed?.()
           setScansOpen(true)
         }}
       />

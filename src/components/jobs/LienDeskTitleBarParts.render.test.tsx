@@ -4,7 +4,7 @@
  * view tabs and By paper's three. Inside the desk they are held by `LienDesk.render.test.tsx`.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { LienGcPickerOption } from '../../lib/jobs/lienDeskGcPicker'
 import { lienDeskFirstTab } from '../../lib/jobs/lienDeskTitleBar'
 import { LienDeskGcPicker } from './LienDeskGcPicker'
@@ -81,6 +81,10 @@ describe('LienDeskViewTabs and LienDeskPaperTabs', () => {
     expect(tabs.map((t) => t.dataset.lienDeskView)).toEqual(['next', 'calendar', 'paper', 'timeline'])
     expect(tabs.map((t) => t.getAttribute('aria-selected'))).toEqual(['false', 'false', 'true', 'false'])
     expect(tabs[0]!.hasAttribute('data-lien-desk-title')).toBe(true)
+    // The other three read one word each (v2.7784), and each is still found by its view's name.
+    expect(tabs.slice(1).map((t) => t.textContent)).toEqual(['Date', 'Paper', 'Job'])
+    expect(tabs.slice(1).map((t) => t.title.split(':')[0])).toEqual(['By date', 'By paper', 'By job'])
+    expect(screen.getByRole('tab', { name: 'By paper' })).toBe(tabs[2])
     fireEvent.click(tabs[0]!)
     expect(onTitle).toHaveBeenCalledTimes(1)
     fireEvent.click(tabs[3]!)
@@ -93,6 +97,10 @@ describe('LienDeskViewTabs and LienDeskPaperTabs', () => {
     render(<LienDeskViewTabs kindTabs={kindTabs} isMobile kind="next" paperShown={false} firstTab={lienDeskFirstTab({ isMobile: true, count: 3 })} onTitle={onTitle} onPick={onPick} />)
     const first = document.querySelector('[data-lien-desk-view="next"]') as HTMLButtonElement
     expect(first.hasAttribute('data-lien-desk-title')).toBe(false)
+    // A phone's tabs read the names whole, with no label over them.
+    const rest = [...document.querySelectorAll<HTMLButtonElement>('[data-lien-desk-view]')].slice(1)
+    expect(rest.map((t) => t.textContent)).toEqual(['By date', 'By paper', 'By job'])
+    expect(rest.map((t) => t.getAttribute('aria-label'))).toEqual([null, null, null])
     fireEvent.click(first)
     expect(onPick).toHaveBeenCalledWith('next')
     expect(onTitle).not.toHaveBeenCalled()

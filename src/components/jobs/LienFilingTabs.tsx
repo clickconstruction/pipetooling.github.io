@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { landOnWhenThere } from '../../lib/landOn'
+import { lienMailProofLandingFocus, lienMailProofSelectors, lienMailProofWindowSpot, type LienMailProofLanding } from '../../lib/jobs/lienMailProofDoor'
 import { cleanStoredAddress } from '../../lib/displayAddress'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
@@ -135,6 +137,7 @@ export default function LienFilingTabs({
   affidavitFormUnread = false,
   deskNoticeState = '',
   onOpenDeskNotice,
+  land = null,
   onClose,
 }: {
   job: JobWithDetails
@@ -159,6 +162,8 @@ export default function LienFilingTabs({
   onChanged: () => void
   /** Months the notice names (the Lien desk, v2.3405); null = the last work month, as before. */
   noticeMonths?: string[] | null
+  /** A stop window's card (`lienMailProofDoor.ts`): the copy to land on, scrolled to and lit for a moment. `at` tells one press from the next. */
+  land?: (LienMailProofLanding & { at: number }) | null
   /** The unpaid bills as documents (v2.3437) — enclosed behind the § 53.056 notice (§ 53.056(a-3)). */
   invoiceDocs?: NoticeInvoiceDoc[]
   /** The job's work days for the period the affidavit's paragraph 5 swears (v2.6061): the Lien window's fresh last-day read, so a day set by hand reaches the paper the moment it is saved; absent, the job row's own. */
@@ -270,6 +275,45 @@ export default function LienFilingTabs({
     setVoidPendingId(null)
     setFilingCounty(property.county)
   }, [activeTab, job.id, property.county])
+
+  // A stop window's card lands here (`lienMailProofDoor.ts`). An affidavit's mailing and its mail number open the service
+  // step at that copy's fields. Anything else lands on the paper's row under Filings on this job, at the copy's line for a
+  // receipt. Each press lands once, when its tab and its filing are drawn. It stands after the effect above, which closes
+  // any open step when the tab or the property's county arrives: a county read late closes the step again, so within a
+  // few seconds of the landing the step is opened and lit once more.
+  const landedAt = useRef(0)
+  const landedWhen = useRef(0)
+  const landUndo = useRef<(() => void) | null>(null)
+  // The undo also forgets the press, so a second mount of the same tabs (React's strict mode draws twice) lands again.
+  useEffect(
+    () => () => {
+      landUndo.current?.()
+      landedAt.current = 0
+    },
+    [],
+  )
+  const filedAffidavitId = filedAffidavit?.id ?? null
+  useEffect(() => {
+    if (!land) return
+    const again = landedAt.current === land.at
+    const spot = lienMailProofWindowSpot(land)
+    const focus = lienMailProofLandingFocus(land.lack)
+    if (spot === 'service') {
+      if (filedAffidavitId !== land.filingId || activeTab !== 'affidavit') return
+      if (again && Date.now() - landedWhen.current > 8000) return
+      landedAt.current = land.at
+      if (!again) landedWhen.current = Date.now()
+      openServiceStep()
+      landUndo.current?.()
+      landUndo.current = landOnWhenThere(() => document.querySelector<HTMLElement>(lienMailProofSelectors.serviceCopy(land.recipient)), { focus })
+      return
+    }
+    if (again) return
+    landedAt.current = land.at
+    landUndo.current?.()
+    landUndo.current = landOnWhenThere(() => (spot === 'copy' ? document.querySelector<HTMLElement>(lienMailProofSelectors.filingCopy(land.filingId, land.recipient)) : null) ?? document.querySelector<HTMLElement>(lienMailProofSelectors.filingRow(land.filingId)), { focus })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openServiceStep reads the filing this effect already waits for
+  }, [land, filedAffidavitId, activeTab, job.id, property.county])
 
   // The desk holds this job's approved notice (v2.7516): this tab's print is a new, unsigned copy, and the tab says which paper to print.
   const deskPrintNote = useMemo(() => lienWindowPrintNote(deskNoticeState), [deskNoticeState])
@@ -976,7 +1020,7 @@ export default function LienFilingTabs({
       <div style={{ fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.35rem' }}>Filings on this job</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
         {live.map((f) => (
-          <div key={f.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.45rem', fontSize: '0.72rem' }}>
+          <div key={f.id} data-lien-filing-row={f.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.45rem', fontSize: '0.72rem' }}>
             <span style={{ fontWeight: 700 }}>{kindLabel(f.kind)}</span>
             <span style={{ color: 'var(--text-muted)' }}>
               {f.kind === 'notice_53_056' && (f.months_covered ?? []).length > 0 ? `covers ${(f.months_covered ?? []).join(', ')} · ` : ''}

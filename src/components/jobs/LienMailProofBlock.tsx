@@ -1,5 +1,5 @@
 import { useRef, type CSSProperties } from 'react'
-import { LIEN_MAIL_PROOF_WORDS, type LienMailProof, type LienMailProofCopy } from '../../lib/jobs/lienMailProof'
+import { LIEN_MAIL_PROOF_WORDS, type LienMailProof, type LienMailProofCopy, type LienMailProofEnvelope } from '../../lib/jobs/lienMailProof'
 import { LIEN_MAILED_COPY_ACCEPT } from '../../lib/jobs/lienMailedCopies'
 import { LienReceiptPhotoPress } from './LienReceiptPhotoPress'
 
@@ -11,6 +11,8 @@ import { LienReceiptPhotoPress } from './LienReceiptPhotoPress'
  * One block for the desk's Sent row, the stop's window and the Lien window's Filings list, so the three say the same
  * thing. With `receipts` each posted copy carries the receipt press (**Add the receipt**, then **Open**, **Replace**,
  * **Take off**). With `files` the block offers **Add what was mailed** or **Add another**. With neither it only reads.
+ * A block that only reads can still carry a door (`doorFor`, `lienMailProofDoor.ts`): one press at the right of a
+ * copy's line, named for what the copy lacks, which opens the place where that is entered.
  *
  * On a computer the labels sit in a column beside their lines. On a phone each part is a card of its own and every
  * press is a thumb tall.
@@ -29,9 +31,12 @@ export type LienMailProofFiles = {
   adding: boolean
 }
 
+/** One copy's press on a block that only reads: its words and what it opens. */
+export type LienMailProofDoorPress = { label: string; onPress: () => void }
+
 const lab: CSSProperties = { fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 
-export default function LienMailProofBlock({ proof, isMobile, receipts, files, bare }: { proof: LienMailProof; isMobile?: boolean; receipts?: LienMailProofReceipts; files?: LienMailProofFiles; /** Drawn inside a card that already has its own rule above. */ bare?: boolean }) {
+export default function LienMailProofBlock({ proof, isMobile, receipts, files, bare, doorFor, tallDoor }: { proof: LienMailProof; isMobile?: boolean; receipts?: LienMailProofReceipts; files?: LienMailProofFiles; /** Drawn inside a card that already has its own rule above. */ bare?: boolean; /** The press for what one copy lacks, on a block that only reads; null draws none. */ doorFor?: (envelope: LienMailProofEnvelope) => LienMailProofDoorPress | null; /** The door is a thumb tall: a phone. */ tallDoor?: boolean }) {
   const input = useRef<HTMLInputElement>(null)
   const part: CSSProperties = isMobile
     ? { display: 'flex', flexDirection: 'column', gap: '0.3rem', padding: '0.5rem 0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', minWidth: 0 }
@@ -83,7 +88,9 @@ export default function LienMailProofBlock({ proof, isMobile, receipts, files, b
         </div>
       </div>
 
-      {proof.envelopes.map((e) => (
+      {proof.envelopes.map((e) => {
+        const door = !receipts && doorFor ? doorFor(e) : null
+        return (
         <div key={e.recipient} style={part} data-lien-mail-proof-envelope={e.recipient}>
           <span style={label}>{e.who}</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'center', minWidth: 0 }}>
@@ -100,9 +107,15 @@ export default function LienMailProofBlock({ proof, isMobile, receipts, files, b
             ) : (
               <strong style={{ color: 'var(--text-amber-800)' }}>{LIEN_MAIL_PROOF_WORDS.noReceipt}</strong>
             )}
+            {door ? (
+              <button type="button" data-lien-mail-proof-door={e.recipient} aria-label={`${e.who}: ${door.label.replace(/\s*›$/, '')}`} onClick={door.onPress} style={{ marginLeft: 'auto', padding: tallDoor ? '0 0.9rem' : '0.25rem 0.65rem', minHeight: tallDoor ? 44 : undefined, borderRadius: tallDoor ? 8 : 6, border: '1px solid var(--border-blue)', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: tallDoor ? '0.875rem' : '0.75rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {door.label}
+              </button>
+            ) : null}
           </div>
         </div>
-      ))}
+        )
+      })}
 
       {proof.next ? (
         <div data-lien-mail-proof-next style={{ fontSize: isMobile ? '0.8125rem' : '0.78rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', borderRadius: 6, padding: '0.35rem 0.6rem' }}>

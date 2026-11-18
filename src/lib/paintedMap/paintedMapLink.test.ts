@@ -90,6 +90,21 @@ describe('what the page is told', () => {
     const out = sharedPaintedMap(MAP, [], [{ id: 'a', name: 'Off the globe', lat: 0, lng: 0, set_at: '1' }, { id: 'b', name: 'Gate', lat: 29.5, lng: -98.2, set_at: '2' }])
     expect(out.places.map((p) => `${p.number} ${p.name}`)).toEqual(['2 Gate'])
   })
+  it('hands on a place\'s kind as the table keeps it, and no kind for anything else (#393)', () => {
+    const at = { lat: 29.5, lng: -98.2 }
+    const out = sharedPaintedMap(MAP, [], [
+      { id: 'a', name: 'Open trench', ...at, kind: 'hazard', set_at: '1' },
+      { id: 'b', name: 'Hydrant', ...at, kind: 'fire_hydrant', set_at: '2' },
+      { id: 'c', name: 'The slab', ...at, kind: null, set_at: '3' },
+      { id: 'd', name: 'From before the column', ...at, set_at: '4' },
+      { id: 'e', name: 'Not a word', ...at, kind: 'Truck Gate!', set_at: '5' },
+      { id: 'f', name: 'Not text', ...at, kind: 7, set_at: '6' },
+    ])
+    // A word the page may not know yet is still handed on: the page draws it as the plain dot.
+    expect(out.places.map((p) => p.kind)).toEqual(['hazard', 'fire_hydrant', null, null, null, null])
+    // The map's own canvas takes only a kind this app knows.
+    expect(sharedPlacesForCanvas(out).map((p) => p.kind)).toEqual(['hazard', null, null, null, null, null])
+  })
   it('knows a map with nothing to show', () => {
     expect(sharedMapIsEmpty(sharedPaintedMap({ name: 'Empty' }, [], []))).toBe(true)
     expect(sharedMapIsEmpty(shared)).toBe(false)

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fromPlane, type PaintedPoint } from './paintedLine'
 import {
+  PAINTED_MAP_PLACE_SELECT,
   PAINTED_MAP_UNNAMED,
   PAINTED_PLACE_UNNAMED,
   aboutLengthWords,
@@ -98,6 +99,14 @@ describe('rows', () => {
     expect(paintedPlaceFromRow(placeRow({ name: ' ' }))!.name).toBe(PAINTED_PLACE_UNNAMED)
     expect(paintedPlaceFromRow(placeRow({ lat: 0, lng: 0 }))).toBeNull()
   })
+  it('reads a place\'s kind, and no kind from a row without one or with a word it does not know (#393)', () => {
+    expect(paintedPlaceFromRow(placeRow({ kind: 'shutoff' }))!.kind).toBe('shutoff')
+    expect(paintedPlaceFromRow(placeRow())!.kind).toBeNull()
+    expect(paintedPlaceFromRow(placeRow({ kind: null }))!.kind).toBeNull()
+    // A newer app's kind: the place still reads, as a plain dot.
+    expect(paintedPlaceFromRow(placeRow({ kind: 'fire_hydrant' }))).toMatchObject({ name: 'Truck gate', kind: null })
+    expect(PAINTED_MAP_PLACE_SELECT.split(',')).toContain('kind')
+  })
 })
 
 describe('what a save writes', () => {
@@ -133,6 +142,11 @@ describe('what a save writes', () => {
     expect(paintedPlaceColumns({ ...at(0, 0), name: ' Meter ', accuracyM: 5.6 }, 'm1', 'u1')!).toMatchObject({ name: 'Meter', accuracy_m: 6, set_by: 'u1', words: '' })
     expect(paintedPlaceColumns({ ...at(0, 0), name: '' }, 'm1', 'u1')!).toMatchObject({ name: PAINTED_PLACE_UNNAMED, accuracy_m: null, photo_path: null })
     expect(paintedPlaceColumns({ lat: 0, lng: 0 }, 'm1', 'u1')).toBeNull()
+  })
+  it('writes a place\'s kind, and no kind for a plain place (#393)', () => {
+    expect(paintedPlaceColumns({ ...at(0, 0), name: 'Open trench', kind: 'hazard' }, 'm1', 'u1')!).toMatchObject({ name: 'Open trench', kind: 'hazard' })
+    expect(paintedPlaceColumns({ ...at(0, 0), name: 'The slab' }, 'm1', 'u1')!.kind).toBeNull()
+    expect(paintedPlaceColumns({ ...at(0, 0), name: 'The slab', kind: null }, 'm1', 'u1')!.kind).toBeNull()
   })
   it('trims and caps what a person types', () => {
     expect(cleanPaintedText('  a   b  ', 10)).toBe('a b')

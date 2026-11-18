@@ -82,6 +82,8 @@ import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { PaintedCanvasDot, PaintedCanvasDraft } from './PaintedMapCanvas'
 import { CostBatchJobPicker } from '../costBatches/CostBatchJobPicker'
 import { PaintedMapShareSheet } from './PaintedMapShareSheet'
+import type { PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
+import { PaintedPlaceMark } from './PaintedPlaceMark'
 import { PaintedPlacePanel, type PaintedPlacePhotoChoice } from './PaintedPlacePanel'
 import { PaintedWalkPanel } from './PaintedWalkPanel'
 import { PaintedWalkReview } from './PaintedWalkReview'
@@ -518,7 +520,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const placingOnReading = !!placing?.fix && haversineMeters(placing.fix, placing.point) <= OFF_READING_METERS
   const placingAccuracy = placing?.fix && placingOnReading ? placing.fix.accuracyM : null
 
-  const savePlace = async (input: { name: string; words: string; photo: PaintedPlacePhotoChoice }) => {
+  const savePlace = async (input: { name: string; words: string; kind: PaintedPlaceKind | null; photo: PaintedPlacePhotoChoice }) => {
     if (!map || !user?.id || !placing || busy) return
     setBusy(true)
     setError(null)
@@ -538,9 +540,11 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
       }
       photoPath = up.value
     }
+    // A kind is written only when the painter changed it, so a place whose kind a newer app gave is not wiped by an older one.
+    const kindChange = old && input.kind === (old.kind ?? null) ? {} : { kind: input.kind }
     const res = old
-      ? await savePaintedPlace(old.id, { name: input.name, words: input.words, lat: placing.point.lat, lng: placing.point.lng, accuracyM: placingAccuracy, photoPath })
-      : await addPaintedPlace(map.id, { ...placing.point, name: input.name, words: input.words, accuracyM: placingAccuracy, photoPath }, user.id)
+      ? await savePaintedPlace(old.id, { name: input.name, words: input.words, lat: placing.point.lat, lng: placing.point.lng, accuracyM: placingAccuracy, photoPath, ...kindChange })
+      : await addPaintedPlace(map.id, { ...placing.point, name: input.name, words: input.words, accuracyM: placingAccuracy, photoPath, kind: input.kind }, user.id)
     setBusy(false)
     if (!res.ok) {
       // The picture went up for a place that did not save: it is taken back out.
@@ -1004,7 +1008,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                         const sure = taskPlaceAccuracyWords(p.accuracyM)
                         return (
                           <div key={p.id} data-painted-place-row data-picked={pickedPlace === p.id ? 'true' : undefined} style={{ borderWidth: pickedPlace === p.id ? 2 : 1, borderStyle: 'solid', borderColor: pickedPlace === p.id ? '#2563eb' : 'var(--border)', borderRadius: 10, padding: '0.55rem 0.7rem', display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '0.15rem 0.6rem', alignItems: 'start' }}>
-                            <span aria-hidden style={{ gridRow: '1 / 4', width: 24, height: 24, borderRadius: '50%', borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--text-strong)', display: 'grid', placeItems: 'center', fontSize: '0.75rem', fontWeight: 800 }}>{p.number}</span>
+                            <PaintedPlaceMark number={p.number} kind={p.kind} size={28} style={{ gridRow: '1 / 4' }} />
                             <b style={{ fontSize: '0.9375rem' }}>{p.name}</b>
                             {url ? (
                               <button type="button" aria-label={`Open the photo of ${p.name}`} onClick={() => setViewing(url)} style={{ gridRow: '1 / 4', gridColumn: 3, padding: 0, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--bg-muted)', cursor: 'pointer', width: 72, height: 54 }}>

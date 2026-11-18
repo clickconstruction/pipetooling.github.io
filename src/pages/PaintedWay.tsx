@@ -21,6 +21,7 @@ import { PAINTED_MAP_LINK_WORDS, PAINTED_MAP_VISITOR_NAME_MAX, linkEndsWords, pa
 import { paintedWayIo, type PaintedWayAsk, type PaintedWayIo, type PaintedWayView } from '../lib/paintedMap/paintedMapLinkIo'
 import { WAY_LENGTH_GUIDE_WORDS, WAY_NAME_WORDS, WAY_PRIVACY_WORDS, rememberWayName, wayDeviceId, wayIsSeenWords, wayKeptWords, wayLineUnderWords, wayNearMap, wayNoFixWords, wayOpenedAsWords, wayPointIsDue, wayRememberedName, wayScreenWords, wayWillSeeWords, wayWords } from '../lib/paintedMap/paintedWay'
 import { SAMPLE_PAINTED_WAY, SAMPLE_PAINTED_WAY_COMPANY } from '../lib/paintedMap/paintedWaySample'
+import { PaintedPlaceMark } from '../components/paintedMap/PaintedPlaceMark'
 import { PAINT_COLOR } from '../components/paintedMap/paintedMapLook'
 import { CARD, HAIR, INK, MUTED, NOTE_BAND, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
 
@@ -301,7 +302,7 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
                 <div style={card}>
                   {shared.places.map((p, i) => (
                     <div key={p.id} id={`way-place-${p.id}`} data-way-place style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'start', paddingTop: i === 0 ? 0 : 12, marginTop: i === 0 ? 0 : 12, borderTop: i === 0 ? 'none' : `1px solid ${HAIR}` }}>
-                      <span aria-hidden style={{ width: 26, height: 26, borderRadius: '50%', border: `2px solid ${INK}`, display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 800 }}>{p.number}</span>
+                      <PaintedPlaceMark number={p.number} kind={p.kind} size={30} ink={INK} paper={CARD} />
                       <div>
                         <b>{p.name}</b>
                         {p.words ? <div style={{ color: MUTED }}>{p.words}</div> : null}

@@ -915,6 +915,8 @@ The Board at the top of To do (v2.7332) is drawn for everyone who opens the desk
 its leader's press (v2.7334: the one counted press that approves the affidavits waiting on him, on his Awaiting Master approval bin's title line since v2.7708, when his own two bins and their switch were retired) shows to master / dev in the client (`isLienLeader`), counts only the jobs the viewer leads (`lienViewerLeadsJob`) and approves row by row through `approveLienDeskItem` under the same guard, with no new RPC;
 a notice is left out of that press, since only his signature approves it.
 The Dashboard's Needs you card draws the Board's four numbers for the office set (`isLienOffice`).
+Since v2.7785 a stop window's card in *What went out* carries its press (**Mail this copy ›**, **Enter the mail number ›**, **Add the receipt ›**, **Enter the owner of record ›**) for the office set alone (`isLienOffice`, through `proofOpeners` in `LienDesk.tsx` and the same check in `LienInstrumentsModal`).
+Anyone else reads that card with no press.
 Since v2.4160 the Pipeline's **property kind badge** (C / R / ? at the end of every address) opens the same Residential | Commercial switch for dev · master · assistant-like (`PropertyKindBadge`, saving `customer_addresses.property_kind`);
 every other role sees the badge alone.
 The desk's **Share** (v2.4311) shows to everyone who opens the desk;
@@ -1191,6 +1193,13 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   **Open Change orders** on a job held that way is drawn for the GC money team alone (dev, master_technician, controller: `canSeeGcMoney`), since Change orders are theirs, and an assistant is told who writes the change order.
   A training account, a digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
   The line is read and changed under the line table's own policies, like any line, and deleting the trip clears the mark and leaves the line.
+- **Deleted trips** (v2.7800, `docs/migrations/20261118100000_trips_deleted.md`): a deleted trip is kept in `deleted_records_archive`, its row, its people and its jobs under the trip's id.
+  The people and the jobs are kept only when the trip itself went, so a save that rewrites them and a deleted job that takes its link leave nothing.
+  **`trip_deleted_list(site)`**, a SECURITY DEFINER, reads a site's deleted trips that nothing has put back, for the trips office alone: dev, master_technician, assistant, controller and primary.
+  A person who was on the trip reads no deleted one, and the archive table itself stays dev-only.
+  A digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
+  Putting a trip back is `trip_save` under the trip's own id, under the trips tables' own policies, so no new write exists.
+  A trip made again settles its archive rows (`trips_settle_archive`), so the dev's Recently deleted never offers a living trip.
 
 ### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
 
@@ -2052,6 +2061,7 @@ A training-mode account cannot sign, since starting a paper is a write.
   Fires for all delete paths (direct `.delete()`, delete RPCs, cascade);
   guarded so it never blocks a delete.
   Rows auto-purge after 90 days (`pg_cron`).
+  Since v2.7800 a trip is kept too, and the trips office reads a site's own deleted trips through a function of its own (see *Trips*, **Deleted trips**).
 - **Access**: The archive table is **dev-only** — RLS `SELECT USING (public.is_dev())`, and **no** INSERT/UPDATE/DELETE policy (only the `SECURITY DEFINER` trigger, owned by postgres, writes it).
   Not in the realtime publication.
 - **Restore (v2.698, `20260716180000_deleted_records_restore.sql`)**: two **dev-only** RPCs — `list_deleted_records(p_limit)` (restorable bundles;
