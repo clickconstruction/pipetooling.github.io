@@ -257,8 +257,8 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
     },
     [billingRereadFromDb],
   )
-  /** Answers whether the job's lines came back and the form took them. */
-  const rehydrateFixturesFromDb = useCallback(async (jobId: string): Promise<boolean> => {
+  /** The re-read itself. Answers whether the job's lines came back and the form took them. */
+  const rereadFixtures = useCallback(async (jobId: string): Promise<boolean> => {
     const found = await fetchJobWithDetailsById(jobId)
     if (!found) return false
     setEditing(found)
@@ -269,7 +269,13 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
     return true
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the dependency list it had in the form; both setters are stable
   }, [setFixtures])
-  rereadFixturesRef.current = rehydrateFixturesFromDb
+  rereadFixturesRef.current = rereadFixtures
+  const rehydrateFixturesFromDb = useCallback(
+    async (jobId: string): Promise<void> => {
+      await rereadFixtures(jobId)
+    },
+    [rereadFixtures],
+  )
 
   // ---- Identity / materials / team autosave slices (v2.1079) ---------------
 
