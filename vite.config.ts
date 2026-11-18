@@ -15,6 +15,7 @@ import { renderTodoBoardModule } from './scripts/todos/readTodos'
 import { renderTodoHistoryModule } from './scripts/todos/readTodoHistory'
 import { lensSchemaFromDatabaseTs, lensSchemaModule } from './scripts/lens/lensSchema'
 import { parseThemeTokens } from './src/lib/lens/lensTokens'
+import { newestReleaseNoteVersion } from './src/lib/newestReleaseNote'
 
 const bundleAnalyze = process.env.ANALYZE === '1'
 
@@ -152,6 +153,26 @@ function lensTokensPlugin() {
     load(id: string) {
       if (id !== LENS_TOKENS_RESOLVED) return null
       return `export default ${JSON.stringify(parseThemeTokens(readFileSync(join(process.cwd(), 'src/index.css'), 'utf8')))}\n`
+    },
+  }
+}
+
+/**
+ * The running app's own version (punch list #380, v2.7742): the newest release note in this build,
+ * by number. A note to the dev carries it; read here, a tab knows it at boot with nothing to load,
+ * and a tab on an old build still names its own.
+ */
+const APP_VERSION_ID = 'virtual:app-version'
+const APP_VERSION_RESOLVED = '\0' + APP_VERSION_ID
+function appVersionPlugin() {
+  return {
+    name: 'app-version',
+    resolveId(id: string) {
+      return id === APP_VERSION_ID ? APP_VERSION_RESOLVED : null
+    },
+    load(id: string) {
+      if (id !== APP_VERSION_RESOLVED) return null
+      return `export default ${JSON.stringify(newestReleaseNoteVersion(readdirSync(join(process.cwd(), 'src/content/releaseNotes'))))}\n`
     },
   }
 }
@@ -349,6 +370,7 @@ export default defineConfig({
     todoHistoryPlugin(),
     lensSchemaPlugin(),
     lensTokensPlugin(),
+    appVersionPlugin(),
     ...(bundleAnalyze
       ? [
           // Use emitFile + filename only (no "dist/..." path) so the report is emitted

@@ -184,7 +184,7 @@ describe('the sentences our own functions write for the person reading (v2.5965)
       'get-rfq-quote-page', 'submit-rfq-quote', 'legal-notify-dispatch',
     ]
       .map((fn) => `${fn}/index.ts`)
-      .concat(['gcPortal', 'portalPromise', 'stageAsk', 'clausePaper', 'estimateOptions', 'gcWordAsk', 'subPick', 'submittalReviewActions', 'legalEmails'].map((f) => `_shared/${f}.ts`))
+      .concat(['gcPortal', 'portalPromise', 'stageAsk', 'clausePaper', 'estimateOptions', 'gcWordAsk', 'subPick', 'submittalReviewActions', 'legalEmails', 'subPortalJobPapers'].map((f) => `_shared/${f}.ts`))
     const literals = new Set<string>()
     for (const file of files) {
       const source = ts.createSourceFile(file, readFileSync(resolve(root, file), 'utf8'), ts.ScriptTarget.Latest, true)

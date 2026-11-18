@@ -17,12 +17,22 @@ import { diffPaymentRows, paymentUpsertStatements, unfinishedPaymentDateBoxes } 
 import { errorKindOf, formatErrorMessage } from '../../utils/errorHandling'
 
 /**
- * The billing slice: the job's revenue → its payments, diffed against the ids the form last
- * knew were saved (the owned-and-gone deleted, the rest upserted) → its line items, upserted
- * under their own ids in one call and then the job's lines not among them deleted (v2.6420,
- * `diffFixtureRows`; until then every line was deleted and re-inserted with a new id, and the
- * cascade took its checklist, its window and its progress) → the discount trail, logged without
- * waiting. Throws the first failed write as it came.
+ * The billing slice: a read of the job's line ids first (VERSION_TOKEN, `lineIdsNeverHeld`) → the
+ * job's revenue → its payments, diffed against the ids the form last knew were saved (the
+ * owned-and-gone deleted, the rest upserted) → its line items, upserted under their own ids in
+ * one call and then the job's lines not among them deleted (v2.6420, `diffFixtureRows`; until
+ * then every line was deleted and re-inserted with a new id, and the cascade took its checklist,
+ * its window and its progress) → the discount trail, logged without waiting. Throws the first
+ * failed call as it came.
+ *
+ * The read is the guard against a line added somewhere else while this window was open (a
+ * discount from Bill Customer on another screen, a change order's lines from Apply to job): the
+ * delete below keeps only the form's lines and the revenue is the form's sum, so a line the
+ * form never held would be deleted and the total written without it. When the database holds
+ * such a line the slice writes NOTHING and answers with those ids in `linesChangedElsewhere`;
+ * the engine reads the lines again and says so. It refuses, it does not merge. The read and the
+ * delete are two calls, so a line added between them is still lost; that gap is one save long,
+ * where it was as long as the window stayed open.
  *
  * `onPaymentsWritten` runs the moment the payments are down — before the line items are
  * touched — so a failure further on still leaves the form knowing which payments are saved.
@@ -43,11 +53,22 @@ export async function writeBillingSlice(
     hydratedPaymentIds: readonly string[]
     /** The discount rows as last saved. */
     persistedDiscounts: DiscountSnapshotEntry[]
+    /** Every line id this window's form has held for the job: the ones it read and the ones it made. */
+    heldLineIds: Iterable<string>
     onPaymentsWritten: (savedPaymentIds: string[]) => void
     onDiscountsWritten: (saved: DiscountSnapshotEntry[]) => void
   },
-): Promise<{ heldPaymentDates: string[] }> {
+): Promise<{ heldPaymentDates: string[]; linesChangedElsewhere: string[] }> {
   const { jobId, fixtures: fx, payments: pays } = args
+  // Before anything is written: a line the form never held means the job's lines changed elsewhere.
+  const { data: dbLines, error: readLinesErr } = await supabase.from('jobs_ledger_fixtures').select('id').eq('job_id', jobId)
+  if (readLinesErr) throw readLinesErr
+  const linesChangedElsewhere = lineIdsNeverHeld(
+    ((dbLines ?? []) as Array<{ id: string }>).map((row) => row.id),
+    args.heldLineIds,
+    fx,
+  )
+  if (linesChangedElsewhere.length > 0) return { heldPaymentDates: [], linesChangedElsewhere }
   const revNum = jobFormRevenueDollars(fx, args.riderFeesDollars)
   // B4 (FRAGILITY_REMEDIATION_PLAN.md): payments_made is a DB-trigger-
   // maintained cache of SUM(jobs_ledger_payments.amount) since B3 — the
@@ -85,8 +106,29 @@ export async function writeBillingSlice(
       if (error) console.warn('log_job_discount_event failed', error)
     })
   }
-  return { heldPaymentDates: unfinishedPaymentDateBoxes(upserts) }
+  return { heldPaymentDates: unfinishedPaymentDateBoxes(upserts), linesChangedElsewhere: [] }
 }
+
+/**
+ * The job's line ids the database holds that this window's form never held, in the order the
+ * database gave them. Held means the form's rows carried the id at some render since the job
+ * opened (`heldLineIds`), or carry it now: a line the form read and then dropped is its own to
+ * delete, and a line it made is its own to write. Anything else was added somewhere else.
+ */
+export function lineIdsNeverHeld(dbLineIds: readonly string[], heldLineIds: Iterable<string>, formFixtures: ReadonlyArray<Pick<FixtureRow, 'id'>>): string[] {
+  const held = new Set(heldLineIds)
+  for (const row of formFixtures) held.add(row.id)
+  return dbLineIds.filter((id) => !held.has(id))
+}
+
+/** What the form says when the billing save found lines it never held, and read the job's lines again. */
+export const LINES_CHANGED_ELSEWHERE_WORDS =
+  "This job's lines changed somewhere else while this window was open. The lines were read again. Your last change to the lines was not saved, so make it once more."
+/** The same refusal when the lines could not be read again. */
+export const LINES_CHANGED_ELSEWHERE_UNREAD_WORDS =
+  "This job's lines changed somewhere else while this window was open. Nothing was saved over them. Close this job and open it again to see them."
+/** How long the refusal stays up: it asks for a change to be made again. */
+export const LINES_CHANGED_ELSEWHERE_TOAST_MS = 15_000
 
 /**
  * The materials slice (#215 PR 3): the rows worth keeping are upserted by id in

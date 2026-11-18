@@ -50,6 +50,7 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { EMPTY_SERVICE_COPY, LIEN_CLERK_PAGE_NOTE, LIEN_SERVICE_PROOF_WORDS, heldServiceWords, noticeSendsWithReceipts, serviceCopyDraft, serviceProofLines, serviceSavedWords, serviceSends, type ServiceCopyDraft } from '../../lib/jobs/lienServiceProof'
 import { LienReceiptPhotoPress } from './LienReceiptPhotoPress'
+import { keepLienCopyProof } from '../../lib/jobs/lienReceiptKeepIo'
 import LienFilingMailProof from './LienFilingMailProof'
 import { readJobMailedCopies, type JobMailedCopies } from '../../lib/jobs/lienMailProofIo'
 import { lienServeHasContractor } from '../../lib/jobs/lienServeNumbers'
@@ -230,6 +231,24 @@ export default function LienFilingTabs({
     setOwnerProof(serviceCopyDraft(filedAffidavit.sends, 'owner'))
     setOcProof(serviceCopyDraft(filedAffidavit.sends, 'original_contractor'))
     setRecordStep('affidavit_service')
+  }
+  /**
+   * A copy's receipt on the service step (v2.7743). The form takes the link, as before. A receipt the filing already
+   * holds also comes off the filing now, or gives way to the new one there, because Drive's trash refuses a file a
+   * lien record still names. A receipt added in this form alone waits for the press below, as before. A write that
+   * fails says why and rejects, so the receipt press leaves the file where it is.
+   */
+  const setServiceReceipt = async (of: 'owner' | 'original_contractor', draft: ServiceCopyDraft, set: (d: ServiceCopyDraft) => void, url: string) => {
+    set({ ...draft, receiptUrl: url })
+    const held = filedAffidavit ? serviceCopyDraft(filedAffidavit.sends, of).receiptUrl.trim() : ''
+    if (!filedAffidavit || !held || held === url.trim()) return
+    try {
+      await keepLienCopyProof({ filingId: filedAffidavit.id, recipient: of, proof: { receiptUrl: url } })
+      onChanged()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The lien did not take the change.'), 'error')
+      throw e
+    }
   }
   const anyAffidavit = live.find((f) => f.kind === 'affidavit') ?? null
   // The claim is the desk's: what the sent bills still owe, less a claim set by hand. This tab counted the job's whole balance and read no correction.
@@ -1144,7 +1163,7 @@ export default function LienFilingTabs({
         <span style={recordSheetLabel}>{LIEN_SERVICE_PROOF_WORDS.number}</span>
         <input type="text" inputMode="numeric" value={draft.tracking} onChange={(e) => set({ ...draft, tracking: e.target.value })} placeholder={LIEN_SERVICE_PROOF_WORDS.numberPlaceholder} aria-label={`${label}, certified mail number`} autoComplete="off" style={recordSheetField} />
       </label>
-      <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} onSaved={(url) => set({ ...draft, receiptUrl: url })} onTakeOff={() => set({ ...draft, receiptUrl: '' })} />
+      <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} onSaved={(url) => setServiceReceipt(of, draft, set, url)} onTakeOff={() => setServiceReceipt(of, draft, set, '')} />
     </fieldset>
   )
   const recordSheet = !isMobile ? null : activeTab === 'notice' && isSub && recordStep === 'notice_sends' ? (
@@ -1384,7 +1403,7 @@ export default function LienFilingTabs({
       <div data-lien-service-copy={of} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.5rem', alignItems: 'center', fontSize: '0.75rem', margin: '0.35rem 0' }}>
         <span style={{ fontWeight: 700, minWidth: '11.5rem' }}>{label}</span>
         <input type="text" inputMode="numeric" value={draft.tracking} onChange={(e) => set({ ...draft, tracking: e.target.value })} placeholder={LIEN_SERVICE_PROOF_WORDS.number.toLowerCase()} aria-label={`${label}, certified mail number`} autoComplete="off" style={{ flex: '1 1 11rem', minWidth: 0, padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
-        <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} compact onSaved={(url) => set({ ...draft, receiptUrl: url })} onTakeOff={() => set({ ...draft, receiptUrl: '' })} />
+        <LienReceiptPhotoPress jobId={job.id} jobNumber={jobNumber} of={of} day={serviceDate} url={draft.receiptUrl} compact onSaved={(url) => setServiceReceipt(of, draft, set, url)} onTakeOff={() => setServiceReceipt(of, draft, set, '')} />
       </div>
     )
     const serviceRecordBox = filedAffidavit ? (

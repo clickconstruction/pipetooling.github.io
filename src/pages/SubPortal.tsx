@@ -28,6 +28,8 @@ import { SubPortalYourDays } from '../components/subPortal/SubPortalYourDays'
 import { SubPortalStatementsView, type SubPortalAnswer, type SubPortalAnswerResult } from '../components/subPortal/SubPortalStatementsView'
 import { parseSubPortalAnswer } from '../lib/subPortal/subPortalPapersPayload'
 import { paperDay } from '../../supabase/functions/_shared/subPapers'
+import { SubPortalJobPapersCard } from '../components/subPortal/SubPortalJobPapersCard'
+import { subPapersFirstLine } from '../lib/subPortal/subPortalJobPapers'
 import { pickEndFromStart } from '../../supabase/functions/_shared/subPick'
 import { subPortalGuide } from '../lib/subPortal/subPortalGuideStrings'
 import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
@@ -53,6 +55,12 @@ import {
  * opens a second view of the same page: the sub's own papers
  * (`SubPortalStatementsView`). Today is this page as it always was, and Print
  * still prints it, whichever view is showing.
+ *
+ * Papers before a job opens (step 6): a job that requires papers stays shut to
+ * the sub until each one is signed. The function holds that job's address,
+ * scope and notes back, and the page draws one card per waiting job in place
+ * of its sheets and offers (`SubPortalJobPapersCard`): the job's number, its
+ * papers, and Read and sign. The money stays the sub's to read.
  */
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
@@ -431,6 +439,17 @@ function SubPortalStatement({
       .reduce((sum, s) => sum + s.open, 0)
   }, [payload])
   const laterAmount = Math.max(0, payload.totals.open - queuedNow)
+  // Papers before a job opens: the jobs that wait on this sub's signature. Each draws one card in place of its rows.
+  const jobPapers = payload.jobPapers ?? []
+  const waitingJobIds = new Set(jobPapers.map((j) => j.jobId))
+  const heldBack = (row: { papersFirstJobId?: string | null }) => !!row.papersFirstJobId && waitingJobIds.has(row.papersFirstJobId)
+  const openSheets = payload.sheets.filter((s) => !heldBack(s))
+  const openOffers = payload.offers.filter((o) => !heldBack(o))
+  // A held-back day keeps its dates and its job's number, and says why the address is not there.
+  const days = useMemo(
+    () => ({ ...payload.days, bookings: payload.days.bookings.map((b) => (b.papersFirstJobId ? { ...b, address: null, note: subPapersFirstLine(lang) } : b)) }),
+    [payload.days, lang],
+  )
 
   return (
     <div>
@@ -502,10 +521,23 @@ function SubPortalStatement({
         <h2 style={sectionTitleStyle}>{t('yourJobs')}</h2>
         <span style={sectionNoteStyle}>{t('yourJobsNote')}</span>
       </div>
-      {payload.sheets.length === 0 ? (
-        <p style={{ fontSize: 13.5, color: MUTED, marginTop: 12 }}>{t('noOpenJobs')}</p>
+      {jobPapers.map((job) => (
+        <SubPortalJobPapersCard
+          key={job.jobId}
+          job={job}
+          sheets={payload.sheets.filter((s) => s.papersFirstJobId === job.jobId)}
+          offers={payload.offers.filter((o) => o.papersFirstJobId === job.jobId)}
+          lang={lang}
+          t={t}
+          today={payload.preparedOn}
+          submitToken={submitToken}
+          phone={payload.company.phone || null}
+        />
+      ))}
+      {openSheets.length === 0 ? (
+        jobPapers.length === 0 ? <p style={{ fontSize: 13.5, color: MUTED, marginTop: 12 }}>{t('noOpenJobs')}</p> : null
       ) : (
-        payload.sheets.map((sheet) => (
+        openSheets.map((sheet) => (
           <SheetCard
             key={sheet.id}
             sheet={sheet}
@@ -521,13 +553,13 @@ function SubPortalStatement({
       )}
 
       {/* Offers — screen only: a stale printed offer is a liability */}
-      {payload.offers.length > 0 && (
+      {openOffers.length > 0 && (
         <div data-screen-only>
           <div style={sectionHeadStyle}>
             <h2 style={sectionTitleStyle}>{t('newWork')}</h2>
             <span style={sectionNoteStyle}>{t('newWorkNote')}</span>
           </div>
-          {payload.offers.map((offer) => (
+          {openOffers.map((offer) => (
             <OfferCard key={offer.id} offer={offer} payload={payload} lang={lang} t={t} submitToken={submitToken} focused={isSubPortalFocused(focus, 'offer', offer.id)} />
           ))}
         </div>
@@ -705,7 +737,7 @@ function SubPortalStatement({
         <section style={{ marginTop: 22 }} data-screen-only>
           <h2 style={sectionTitleStyle}>{t('yourDays')}</h2>
           <SubPortalYourDays
-            days={payload.days}
+            days={days}
             todayYmd={payload.preparedOn}
             lang={lang}
             t={t}

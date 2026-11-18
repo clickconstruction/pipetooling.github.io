@@ -14,6 +14,8 @@ import LienMailProofBlock from './LienMailProofBlock'
  * *What went out* for one recorded filing, with its writes (`lienMailProof.ts`): the block, a receipt added or taken
  * off written onto the filing's `sends` at once (`keepLienCopyProof`), and one more mailed file added to a notice
  * already recorded (`addRecordedMailedCopy`). What was just written shows at once, and the host reads again behind it.
+ * The receipt's write answers its promise to the press (v2.7743), which waits for it before the wrong file goes to
+ * Drive's trash; a write that fails says why here and rejects, so the file stays where it is.
  *
  * A reader who cannot edit sees the block with its links alone. An affidavit's stamped scan is changed from its own
  * press in the Filings list, so the block adds no file to an affidavit.
@@ -81,6 +83,8 @@ export default function LienFilingMailProof({
       onChanged()
     } catch (e) {
       showToast(formatErrorMessage(e, LIEN_MAIL_PROOF_WORDS.failed), 'error')
+      // The filing still names the old link: the press leaves the file where it is.
+      throw e
     }
   }
 
@@ -111,7 +115,7 @@ export default function LienFilingMailProof({
       proof={proof}
       isMobile={isMobile}
       bare={bare}
-      receipts={canEdit ? { jobId, jobNumber, day, onSet: (recipient, url) => void setReceipt(recipient, url) } : undefined}
+      receipts={canEdit ? { jobId, jobNumber, day, onSet: (recipient, url) => setReceipt(recipient, url) } : undefined}
       files={canAddFile ? { onAdd: (file) => void addFile(file), adding } : undefined}
     />
   )

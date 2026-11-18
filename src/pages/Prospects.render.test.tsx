@@ -85,6 +85,8 @@ vi.mock('../lib/supabase', () => {
         return list(world.jobs.filter((j) => j.id === filters.id))
       }
       if (table === 'prospect_jobs' && m === 'delete') world.jobs = world.jobs.filter((j) => j.id !== filters.id)
+      if (table === 'prospect_calling_locks' && m === 'upsert') world.locks = [...world.locks.filter((l) => l.prospect_id !== (payload as Row).prospect_id), payload as Row]
+      if (table === 'prospect_calling_locks' && m === 'delete') world.locks = world.locks.filter((l) => !(l.prospect_id === filters.prospect_id && l.user_id === filters.user_id))
       return { data: null, error: null }
     }
     switch (table) {
@@ -481,9 +483,9 @@ describe('the deck', () => {
     await waitFor(() => expect(onCard()).toContain('Bravo Homes'))
     expect(where()).toBe('/prospects?tab=follow-up&prospect_id=cu-2')
     expect(writesTo('prospect_timer_events', 'insert').map((w) => (w.payload as Row).button_name)).toEqual(['next_prospect'])
-    // The lock's release is written `void supabase…delete()` and never awaited, and the client sends a query only
-    // when it is awaited, so no release is sent (the map's quirk 36). The stand-in is lazy the same way.
-    expect(writesTo('prospect_calling_locks', 'delete')).toHaveLength(0)
+    // Next releases the caller's own lock on the card they leave. The stand-in is lazy the way the real client is:
+    // it records a write only when the write is awaited, so this fails if the release is built and dropped.
+    expect(writesTo('prospect_calling_locks', 'delete').map((w) => w.filters)).toEqual([{ prospect_id: 'cu-1', user_id: 'smoke-auth-user-1' }])
   })
 
   it('Next Prospect on the last card wraps to the first', async () => {
@@ -1146,6 +1148,56 @@ describe('the calling lock', () => {
     expect(lockUpserts()[1]?.payload).toMatchObject({ prospect_id: 'cu-2' })
   })
 
+  const lockReleases = () => writesTo('prospect_calling_locks', 'delete').map((w) => w.filters)
+  const mine = (prospectId: string) => ({ prospect_id: prospectId, user_id: 'smoke-auth-user-1' })
+
+  it('moving to another card releases the lock this tab took', async () => {
+    await deck('/prospects')
+    fireEvent.focus(screen.getByPlaceholderText(/^Type what happened/))
+    await waitFor(() => expect(lockUpserts()).toHaveLength(1))
+    expect(world.locks).toHaveLength(1)
+    fireEvent.click(screen.getByText('Charlie Group'))
+    await waitFor(() => expect(onCard()).toContain('Charlie Group'))
+    await waitFor(() => expect(lockReleases()).toEqual([mine('cu-1')]))
+    expect(world.locks).toHaveLength(0)
+  })
+
+  it('leaving the deck for another tab releases it too', async () => {
+    await deck('/prospects')
+    fireEvent.focus(screen.getByPlaceholderText(/^Type what happened/))
+    await waitFor(() => expect(lockUpserts()).toHaveLength(1))
+    press('Prospect List')
+    await screen.findByText('Never called (2)')
+    await waitFor(() => expect(lockReleases()).toEqual([mine('cu-1')]))
+  })
+
+  it('a card nobody locked is not released when the caller only looks and moves on by the queue', async () => {
+    await deck('/prospects')
+    fireEvent.click(screen.getByText('Charlie Group'))
+    await waitFor(() => expect(onCard()).toContain('Charlie Group'))
+    await settle()
+    expect(lockReleases()).toEqual([])
+  })
+
+  it('an outcome that takes the card off the deck releases the caller’s lock on it', async () => {
+    await deck('/prospects')
+    press('Not a fit')
+    await waitFor(() => expect(onCard()).toContain('Bravo Homes'))
+    expect(lockReleases()).toContainEqual(mine('cu-1'))
+    press('Can\'t reach')
+    await waitFor(() => expect(onCard()).toContain('Charlie Group'))
+    expect(lockReleases()).toContainEqual(mine('cu-2'))
+  })
+
+  it('Didn’t Answer and Answered keep the lock: the caller is still on the card', async () => {
+    await deck('/prospects')
+    press('Didn\'t Answer')
+    await waitFor(() => expect(writesTo('prospect_comments', 'insert')).toHaveLength(1))
+    await settle()
+    expect(lockUpserts()).toHaveLength(1)
+    expect(lockReleases()).toEqual([])
+  })
+
   it('a colleague’s live lock keeps its prospect off the deck', async () => {
     world.locks = [{ prospect_id: 'cu-1', user_id: 'other-user', locked_at: new Date().toISOString() }]
     await deck('/prospects')
@@ -1264,6 +1316,46 @@ describe('the windows', () => {
     await waitFor(() => expect(writesTo('prospects', 'insert')).toHaveLength(1))
     expect(writesTo('prospects', 'insert')[0]?.payload).toMatchObject({ kind: 'sub', company_name: 'Kilo Masonry', created_by: 'smoke-auth-user-1', warmth_count: 0 })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it.each([
+    ['/prospects?tab=follow-up&kind=subs', 'sub', /A sub/],
+    ['/prospects?tab=follow-up&kind=gc-leads', 'gc_lead', /A job to GC|Jobs to GC|job/i],
+    ['/prospects?tab=follow-up', 'customer', /A customer/],
+  ])('an empty lane’s New Prospect opens on that lane’s kind (%s)', async (route, laneKind) => {
+    world.prospects = world.prospects.filter((p) => p.kind !== laneKind)
+    open(route)
+    const empty = await waitFor(() => {
+      const el = document.querySelector('[data-empty-state]')
+      expect(el).toBeTruthy()
+      return el as HTMLElement
+    })
+    fireEvent.click(within(empty).getByRole('button', { name: 'New Prospect' }))
+    const dialog = await screen.findByRole('dialog')
+    const cards = within(dialog).getAllByRole('radio')
+    const picked = cards.findIndex((c) => c.getAttribute('aria-checked') === 'true')
+    expect(picked).toBe(['customer', 'gc_lead', 'sub'].indexOf(laneKind))
+  })
+
+  it('an empty lane’s New Prospect opens with clean boxes, whatever was typed before', async () => {
+    world.prospects = world.prospects.filter((p) => p.kind !== 'sub')
+    await deck('/prospects')
+    press('New Prospect')
+    let dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Company'), { target: { value: 'Half Typed' } })
+    fireEvent.keyDown(document, { key: 'Escape' })
+    fireEvent.click(await screen.findByRole('button', { name: /^Leave/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    press('Subs')
+    const empty = await waitFor(() => {
+      const el = document.querySelector('[data-empty-state]')
+      expect(el).toBeTruthy()
+      return el as HTMLElement
+    })
+    fireEvent.click(within(empty).getByRole('button', { name: 'New Prospect' }))
+    dialog = await screen.findByRole('dialog')
+    expect((within(dialog).getByLabelText('Company') as HTMLInputElement).value).toBe('')
+    expect(within(dialog).getByRole('radio', { name: /A sub/ }).getAttribute('aria-checked')).toBe('true')
   })
 
   it('the Dashboard’s link opens New Prospect and drops its key from the address', async () => {

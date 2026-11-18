@@ -19,7 +19,15 @@ import {
   identitySliceReadyToSave,
   type JobIdentityFormFields,
 } from '../lib/jobs/jobFormAutosaveSlices'
-import { autosaveFailureWords, writeBillingSlice, writeMaterialsSlice, writeTeamSlice } from '../lib/jobs/jobFormSliceWrites'
+import {
+  LINES_CHANGED_ELSEWHERE_TOAST_MS,
+  LINES_CHANGED_ELSEWHERE_UNREAD_WORDS,
+  LINES_CHANGED_ELSEWHERE_WORDS,
+  autosaveFailureWords,
+  writeBillingSlice,
+  writeMaterialsSlice,
+  writeTeamSlice,
+} from '../lib/jobs/jobFormSliceWrites'
 import { discountSnapshot, type DiscountSnapshotEntry } from '../lib/jobs/discountActivity'
 import { fixtureRowsFromDb } from '../lib/jobs/jobFormFixtureHydrate'
 import type { JobFormDevelopmentRow } from '../lib/jobs/jobDevelopments'
@@ -141,10 +149,32 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
     toldHeldPaymentDatesRef.current = []
     setWrittenPaymentIds([])
   }, [openJobId])
+  /**
+   * VERSION_TOKEN: every line id the form's rows have carried since this job opened — the ones
+   * hydration read, the ones a re-read brought, the ones the person added. The billing write
+   * reads the job's line ids first and refuses when the database holds one that is not here: a
+   * line added somewhere else, which the write would delete. Only the form's own rows count; a
+   * re-read that set `editing` alone has not put its lines in the form, and the write would
+   * still drop them.
+   */
+  const heldLineIdsRef = useRef<{ jobId: string | null; ids: Set<string> }>({ jobId: null, ids: new Set() })
+  if (heldLineIdsRef.current.jobId !== openJobId) heldLineIdsRef.current = { jobId: openJobId, ids: new Set() }
+  for (const row of fixtures) heldLineIdsRef.current.ids.add(row.id)
+  /**
+   * The lines a refused save already read again, until the form's rows change: a save queued
+   * behind the refused one runs before the render that carries the new rows, and is refused
+   * without a second read or a second telling.
+   */
+  const rereadForLinesRef = useRef<string | null>(null)
+  /** `rehydrateFixturesFromDb`, declared below the slice it re-baselines; the writer reaches it here. */
+  const rereadFixturesRef = useRef<(jobId: string) => Promise<boolean>>(async () => false)
+  useEffect(() => {
+    rereadForLinesRef.current = null
+  }, [fixtures])
 
   /**
-   * The billing-slice WRITES (`writeBillingSlice`: the revenue, the payments
-   * diffed, the line items upserted in place since v2.6420, the discount
+   * The billing-slice WRITES (`writeBillingSlice`: the guard's read, the revenue, the
+   * payments diffed, the line items upserted in place since v2.6420, the discount
    * trail). Baseline, debounce, and in-flight bookkeeping live in
    * useJobFormAutosaveSlice.
    */
@@ -152,13 +182,14 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
     const jobId = autosaveJobIdRef.current
     if (!jobId) return true
     try {
-      const { heldPaymentDates } = await writeBillingSlice(supabase, {
+      const { heldPaymentDates, linesChangedElsewhere } = await writeBillingSlice(supabase, {
         jobId,
         fixtures: autosaveFixturesRef.current,
         payments: autosavePaymentsRef.current,
         riderFeesDollars: autosaveRiderFeesRef.current,
         hydratedPaymentIds: hydratedPaymentIdsRef.current,
         persistedDiscounts: persistedDiscountSnapshotRef.current,
+        heldLineIds: heldLineIdsRef.current.ids,
         onPaymentsWritten: (ids) => {
           hydratedPaymentIdsRef.current = ids
           setWrittenPaymentIds(ids)
@@ -167,6 +198,16 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
           persistedDiscountSnapshotRef.current = saved
         },
       })
+      if (linesChangedElsewhere.length > 0) {
+        // Nothing was written. Read the lines again and say so; the save fails, so the slice
+        // stays dirty and the render that carries the new rows starts the save a payment is owed.
+        const key = linesChangedElsewhere.join(',')
+        if (rereadForLinesRef.current === key) return false
+        const reread = await rereadFixturesRef.current(jobId).catch(() => false)
+        if (reread) rereadForLinesRef.current = key
+        showToast(reread ? LINES_CHANGED_ELSEWHERE_WORDS : LINES_CHANGED_ELSEWHERE_UNREAD_WORDS, 'warning', LINES_CHANGED_ELSEWHERE_TOAST_MS)
+        return false
+      }
       // A Sent or Received date caught half typed was left out of the write: say so, once per box.
       if (heldDatesToTell(toldHeldPaymentDatesRef.current, heldPaymentDates)) showToast(unfinishedDateMessage(new Date().getFullYear()), 'info')
       toldHeldPaymentDatesRef.current = heldPaymentDates
@@ -216,16 +257,25 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
     },
     [billingRereadFromDb],
   )
-  const rehydrateFixturesFromDb = useCallback(async (jobId: string) => {
+  /** The re-read itself. Answers whether the job's lines came back and the form took them. */
+  const rereadFixtures = useCallback(async (jobId: string): Promise<boolean> => {
     const found = await fetchJobWithDetailsById(jobId)
-    if (!found) return
+    if (!found) return false
     setEditing(found)
     const rows = fixtureRowsFromDb(found.fixtures)
     setFixtures(rows.length > 0 ? rows : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }])
     persistedDiscountSnapshotRef.current = discountSnapshot(rows)
     billingRereadFromDb()
+    return true
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the dependency list it had in the form; both setters are stable
   }, [setFixtures])
+  rereadFixturesRef.current = rereadFixtures
+  const rehydrateFixturesFromDb = useCallback(
+    async (jobId: string): Promise<void> => {
+      await rereadFixtures(jobId)
+    },
+    [rereadFixtures],
+  )
 
   // ---- Identity / materials / team autosave slices (v2.1079) ---------------
 

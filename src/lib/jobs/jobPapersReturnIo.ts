@@ -4,6 +4,8 @@
  *   1. the prompt writes where it was and which job (`JOB_PAPERS_RETURN_KEY`) before it leaves;
  *   2. the signing page's thank-you reads it and offers **Back to the job**; the press arms the job's id;
  *   3. the job window's provider takes the armed id once and opens that job, where the prompt says what is left.
+ * A sub with no login leaves from their own page (step 6): the thank-you offers **Back to your page**, the press ends
+ * the trip with nothing armed, and the page reads its papers again.
  * Nothing here is trusted beyond an in-app path and an id: the job still asks the database who owes what.
  */
 import { JOB_PAPERS_RETURN_KEY, type JobPapersReturn, parseJobPapersReturn } from './jobPapers'
@@ -29,6 +31,11 @@ export function armJobPapersBack(jobId: string): void {
   if (!s) return
   s.removeItem(JOB_PAPERS_RETURN_KEY)
   s.setItem(BACK_KEY, jobId)
+}
+
+/** Pressed on Back to your page: the trip is over. A sub's page has no job window to arm, and reads its papers again by itself. */
+export function endJobPapersReturn(): void {
+  storage()?.removeItem(JOB_PAPERS_RETURN_KEY)
 }
 
 /** The job to open on the way back, taken once. */

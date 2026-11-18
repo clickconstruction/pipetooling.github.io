@@ -1278,6 +1278,10 @@ const S = {
   saidAddAPrice: { en: 'Nothing to save — add a price or mark lines you can’t supply.', es: 'No hay nada que guardar. Agregue un precio o marque las líneas que no puede surtir.' },
   saidConfirmReplaced: { en: 'A newer confirmation email replaced it, or you were taken off the list. Ask whoever added you to press Resend the confirmation next to your name. It is on the portal’s Notifications tab.', es: 'Un correo de confirmación más reciente lo reemplazó, o lo quitaron de la lista. Pida a quien lo agregó que presione Resend the confirmation junto a su nombre. Está en la pestaña Notifications del portal.' },
   saidUseNewerEmail: { en: 'Use the link in a newer email, or stop emails from the portal.', es: 'Use el enlace de un correo más reciente, o detenga los correos desde el portal.' },
+  saidJobPapersFirst: { en: 'Sign this job’s papers first.', es: 'Primero firme los documentos de este trabajo.' },
+  saidJobPapersUnread: { en: 'We could not check this job’s papers. Please try again.', es: 'No pudimos revisar los documentos de este trabajo. Intente de nuevo.' },
+  saidJobPaperNotYours: { en: 'That paper is not on your page.', es: 'Ese documento no está en su página.' },
+  saidJobPaperGone: { en: 'This job no longer requires that paper.', es: 'Este trabajo ya no pide ese documento.' },
   saidOnlyFirmLinks: { en: "This address only answers the links in the firm's emails.", es: 'Esta dirección solo responde a los enlaces de los correos de la firma.' },
 } satisfies Record<string, Record<PortalLang, string>>
 

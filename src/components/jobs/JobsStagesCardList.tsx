@@ -59,6 +59,7 @@ import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsStagesTableProps } from './JobsStagesTable'
 import type { JobsStagesUnifiedTableProps } from './JobsStagesUnifiedTable'
+import { stagesTableFlatProps, type StagesTableShared } from './stagesTableShared'
 import { useSessionNotesOpener } from './sessionNotesOpenerContext'
 import JobKindChip from './JobKindChip'
 import { jobKindOfRow } from '../../lib/jobs/jobKind'
@@ -650,7 +651,7 @@ function cardFooterRow(
 
 /** Thread-panel inputs shared verbatim by both tables (structural subset). */
 type StagesCardThreadProps = Pick<
-  JobsStagesTableProps,
+  StagesTableShared,
   | 'canEditJobPctComplete'
   | 'pctCompleteSavingId'
   | 'commitStagesPctWithNote'
@@ -709,7 +710,9 @@ function renderCardThreadPanel(p: StagesCardThreadProps, ctx: StagesRowRenderCon
   )
 }
 
-export default function JobsStagesCardList(props: JobsStagesTableProps) {
+export default function JobsStagesCardList(listProps: JobsStagesTableProps) {
+  // The bundle and the section's own props as one flat object, so nothing under this line changed (step 10).
+  const props = stagesTableFlatProps(listProps)
   // Test reports (v2.3298): the ⋯ sheet's entry opens the modal; without the provider (render smokes) it keeps the old site.
   const testReportModal = useTestReportModalOptional()
   const openTestReportFor = (job: JobWithDetails) => {
@@ -1051,7 +1054,9 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
 }
 
 /** Unified sections (Ready to Bill / Billed / Collections): one job-anchored card per StageRow. */
-export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
+export function JobsStagesUnifiedCardList(listProps: JobsStagesUnifiedTableProps) {
+  // The bundle and the section's own props as one flat object, so nothing under this line changed (step 10).
+  const props = stagesTableFlatProps(listProps)
   const {
     rows,
     actionLabel,

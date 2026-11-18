@@ -14,7 +14,7 @@ vi.mock('../../hooks/useIsDigitalTwin', () => ({ useIsDigitalTwin: () => false }
 vi.mock('../../lib/tellTheDev/sendNote', () => ({ sendDevNote }))
 vi.mock('../../lib/tellTheDev/myNotesIo', () => ({ loadMyNotes }))
 vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
-vi.mock('../../content/releaseNotes', () => ({ RELEASE_NOTES: [{ version: 'v2.0001' }] }))
+vi.mock('../../lib/appVersion', () => ({ APP_VERSION: 'v2.0001' }))
 
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { useToastContext } from '../../contexts/ToastContext'

@@ -5,12 +5,12 @@
  * keeps the `expandedJobThreadId === job.id` gate; the tables build the shared inputs once.
  */
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
-import type { JobsStagesTableProps } from './JobsStagesTable'
+import type { StagesTableShared } from './stagesTableShared'
 import { STAGES_OPEN_ROW_BAR, renderStagesExpandedRowPanel, renderStagesThreadFullscreenJobHeader } from './jobsStagesRowShared'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 export type StagesExpandedThreadRowShared = Pick<
-  JobsStagesTableProps,
+  StagesTableShared,
   | 'jobThreadActivityByJobId'
   | 'jobThreadNotesLoadingId'
   | 'stagesUpcomingByJobId'

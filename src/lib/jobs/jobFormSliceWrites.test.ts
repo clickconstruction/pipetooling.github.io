@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { autosaveFailureWords, newJobChildRowFailureWords, writeBillingSlice, writeMaterialsSlice, writeNewJobChildRows, writeTeamSlice, type NewJobChildRowFailure } from './jobFormSliceWrites'
+import { autosaveFailureWords, lineIdsNeverHeld, newJobChildRowFailureWords, writeBillingSlice, writeMaterialsSlice, writeNewJobChildRows, writeTeamSlice, type NewJobChildRowFailure } from './jobFormSliceWrites'
 import { discountSnapshot } from './discountActivity'
 import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
 
@@ -9,9 +9,14 @@ type Step = { op: string; table: string; payload?: unknown; filters?: unknown[] 
 /**
  * A client that records every call in the order it ran. `fail` names the step to refuse —
  * `<op>:<table>` or `<op>:<table>#<n>` for its n-th occurrence.
+ *
+ * The billing slice's read of the job's line ids is counted apart, in `lineReads`, each with
+ * how many steps had run before it: the sequences pinned below are the writes, word for word
+ * what they were before the read existed. `lines` is what that read answers.
  */
-function makeClient(opts: { fail?: string; team?: string[] } = {}) {
+function makeClient(opts: { fail?: string; team?: string[]; lines?: string[] } = {}) {
   const steps: Step[] = []
+  const lineReads: Array<{ filters: unknown[]; stepsBefore: number }> = []
   const counts: Record<string, number> = {}
   const answer = (op: string, table: string) => {
     const key = `${op}:${table}`
@@ -30,6 +35,10 @@ function makeClient(opts: { fail?: string; team?: string[] } = {}) {
         }
       }
       b.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) => {
+        if (op === 'select' && table === 'jobs_ledger_fixtures') {
+          lineReads.push({ filters, stepsBefore: steps.length })
+          return Promise.resolve({ data: (opts.lines ?? []).map((id) => ({ id })), ...answer(op, table) }).then(onFulfilled, onRejected)
+        }
         steps.push({ op, table, payload, filters })
         const res = op === 'select' ? { data: (opts.team ?? []).map((user_id) => ({ user_id })), ...answer(op, table) } : answer(op, table)
         return Promise.resolve(res).then(onFulfilled, onRejected)
@@ -48,7 +57,7 @@ function makeClient(opts: { fail?: string; team?: string[] } = {}) {
     steps.push({ op: 'rpc', table: name, payload: params })
     return Promise.resolve(answer('rpc', name))
   }
-  return { steps, client: { from, rpc } as unknown as SupabaseClient }
+  return { steps, lineReads, client: { from, rpc } as unknown as SupabaseClient }
 }
 
 const fixture = (id: string, name: string, price: number | null, extra: Partial<FixtureRow> = {}): FixtureRow => ({ id, name, count: 1, line_unit_price: price, line_description: '', invoice_id: null, ...extra })
@@ -68,13 +77,14 @@ describe('writeBillingSlice', () => {
     riderFeesDollars: 75,
     hydratedPaymentIds: ['p-kept', 'p-gone'],
     persistedDiscounts: discountSnapshot(fixtures),
+    heldLineIds: [] as string[],
     onPaymentsWritten: vi.fn(),
     onDiscountsWritten: vi.fn(),
   })
 
   it('revenue → payments deleted then upserted → line items upserted then the rest deleted, in that order', async () => {
     const { client, steps } = makeClient()
-    expect(await writeBillingSlice(client, base())).toEqual({ heldPaymentDates: [] })
+    expect(await writeBillingSlice(client, base())).toEqual({ heldPaymentDates: [], linesChangedElsewhere: [] })
     expect(seq(steps)).toEqual([
       'update:jobs_ledger',
       'delete:jobs_ledger_payments',
@@ -106,7 +116,7 @@ describe('writeBillingSlice', () => {
     const { client, steps } = makeClient()
     const args = base()
     const answer = await writeBillingSlice(client, { ...args, payments: [pay('p-kept', 300), { ...pay('p-new', 200), paid_on: '0002-09-01', note: 'check 1182' }] })
-    expect(answer).toEqual({ heldPaymentDates: ['p-new:paid_on'] })
+    expect(answer).toEqual({ heldPaymentDates: ['p-new:paid_on'], linesChangedElsewhere: [] })
     expect(seq(steps)).toEqual([
       'update:jobs_ledger',
       'delete:jobs_ledger_payments',
@@ -210,7 +220,7 @@ describe('writeBillingSlice', () => {
     const { client, steps } = makeClient({ fail: 'rpc:log_job_discount_event' })
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const args = { ...base(), fixtures: withDiscount, persistedDiscounts: [] }
-    await expect(writeBillingSlice(client, args)).resolves.toEqual({ heldPaymentDates: [] })
+    await expect(writeBillingSlice(client, args)).resolves.toEqual({ heldPaymentDates: [], linesChangedElsewhere: [] })
     const logs = steps.filter((s) => s.op === 'rpc')
     expect(logs).toHaveLength(1)
     expect(logs[0]).toMatchObject({ table: 'log_job_discount_event', payload: { p_job_id: 'job-1', p_event_type: 'discount_added' } })
@@ -224,6 +234,77 @@ describe('writeBillingSlice', () => {
     const { client, steps } = makeClient()
     await writeBillingSlice(client, base())
     expect(steps.filter((s) => s.op === 'rpc')).toEqual([])
+  })
+})
+
+describe('writeBillingSlice — a line added somewhere else', () => {
+  const fixtures = [fixture('f1', 'Rough-in', 1_000), fixture('f2', 'Top-out', 500)]
+  const base = () => ({
+    jobId: 'job-1',
+    fixtures,
+    payments: [pay('p-kept', 300), pay('p-new', 200)],
+    riderFeesDollars: 0,
+    hydratedPaymentIds: ['p-kept', 'p-gone'],
+    persistedDiscounts: discountSnapshot(fixtures),
+    heldLineIds: ['f1', 'f2'],
+    onPaymentsWritten: vi.fn(),
+    onDiscountsWritten: vi.fn(),
+  })
+
+  it('reads the job’s line ids before anything is written', async () => {
+    const { client, steps, lineReads } = makeClient({ lines: ['f1', 'f2'] })
+    await writeBillingSlice(client, base())
+    expect(lineReads).toEqual([{ filters: ['eq', 'job_id', 'job-1'], stepsBefore: 0 }])
+    expect(steps.length).toBeGreaterThan(0)
+  })
+
+  it('a line the form never held: no revenue, no payment, no line upserted or deleted, no discount logged, and the line is named', async () => {
+    const { client, steps, lineReads } = makeClient({ lines: ['f1', 'f2', 'x-elsewhere'] })
+    const args = base()
+    expect(await writeBillingSlice(client, args)).toEqual({ heldPaymentDates: [], linesChangedElsewhere: ['x-elsewhere'] })
+    expect(lineReads).toHaveLength(1)
+    expect(steps).toEqual([])
+    expect(args.onPaymentsWritten).not.toHaveBeenCalled()
+    expect(args.onDiscountsWritten).not.toHaveBeenCalled()
+  })
+
+  it('a line the form read and then dropped is its own to delete: the save runs as before', async () => {
+    const { client, steps } = makeClient({ lines: ['f1', 'f2', 'f-dropped'] })
+    const answer = await writeBillingSlice(client, { ...base(), heldLineIds: ['f1', 'f2', 'f-dropped'] })
+    expect(answer.linesChangedElsewhere).toEqual([])
+    expect(seq(steps)).toEqual(['update:jobs_ledger', 'delete:jobs_ledger_payments', 'upsert:jobs_ledger_payments', 'upsert:jobs_ledger_fixtures', 'delete:jobs_ledger_fixtures'])
+    expect(steps.find((s) => s.op === 'delete' && s.table === 'jobs_ledger_fixtures')?.filters).toEqual(['eq', 'job_id', 'job-1', 'not', 'id', 'in', '(f1,f2)'])
+  })
+
+  it('a line the form made and has not saved yet is held by being in the form', async () => {
+    const { client, steps } = makeClient({ lines: ['f1'] })
+    const answer = await writeBillingSlice(client, { ...base(), heldLineIds: [] })
+    expect(answer.linesChangedElsewhere).toEqual([])
+    expect(seq(steps)).toContain('upsert:jobs_ledger_fixtures')
+  })
+
+  it('a job with no line in the database saves as before', async () => {
+    const { client, steps } = makeClient({ lines: [] })
+    expect((await writeBillingSlice(client, base())).linesChangedElsewhere).toEqual([])
+    expect(seq(steps)).toEqual(['update:jobs_ledger', 'delete:jobs_ledger_payments', 'upsert:jobs_ledger_payments', 'upsert:jobs_ledger_fixtures', 'delete:jobs_ledger_fixtures'])
+  })
+
+  it('a read that fails is thrown, and nothing is written', async () => {
+    const { client, steps } = makeClient({ fail: 'select:jobs_ledger_fixtures' })
+    await expect(writeBillingSlice(client, base())).rejects.toEqual({ message: 'select:jobs_ledger_fixtures refused' })
+    expect(steps).toEqual([])
+  })
+})
+
+describe('lineIdsNeverHeld', () => {
+  it('names the database’s lines that are neither among the held ids nor in the form, in the database’s order', () => {
+    expect(lineIdsNeverHeld(['a', 'x', 'b', 'y', 'c'], new Set(['a', 'b']), [{ id: 'c' }])).toEqual(['x', 'y'])
+  })
+
+  it('is empty when every line is held, when the job has no line, and when the form holds lines the database does not', () => {
+    expect(lineIdsNeverHeld(['a', 'b'], ['a', 'b', 'gone'], [])).toEqual([])
+    expect(lineIdsNeverHeld([], [], [{ id: 'new' }])).toEqual([])
+    expect(lineIdsNeverHeld(['a'], [], [{ id: 'a' }, { id: 'new' }])).toEqual([])
   })
 })
 

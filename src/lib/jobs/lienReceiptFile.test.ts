@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_RECEIPT_WORDS, lienCopyProofChanged, lienReceiptFileName, lienReceiptIsPdf, lienReceiptNotKeptWords, lienReceiptProblem, lienSendsWithProof } from './lienReceiptFile'
+import { LIEN_RECEIPT_WORDS, lienCopyProofChanged, lienReceiptFileName, lienReceiptIsPdf, lienReceiptNotKeptWords, lienReceiptProblem, lienReceiptTakeOffAsk, lienSendsWithProof } from './lienReceiptFile'
 import { keepLienCopyProof, type LienReceiptKeepIo } from './lienReceiptKeepIo'
 
 const MB = 1024 * 1024
@@ -83,5 +83,14 @@ describe('keepLienCopyProof', () => {
       { recipient: 'owner', method: 'certified_mail', tracking: '9507 01', receipt_url: 'https://d/r' },
     ])
     expect(stored.sends).toEqual(out)
+  })
+})
+
+describe('lienReceiptTakeOffAsk (v2.7743)', () => {
+  it('says where a Drive file goes, and asks alone for any other link', () => {
+    expect(lienReceiptTakeOffAsk('https://drive.google.com/file/d/made-up-file-01/view')).toBe('Take this receipt off? The file goes to Drive’s trash. Drive keeps it there 30 days.')
+    expect(LIEN_RECEIPT_WORDS.takeOffAsk).toBe(lienReceiptTakeOffAsk('https://drive.google.com/open?id=made-up-file-01'))
+    expect(lienReceiptTakeOffAsk('https://example.com/receipt.pdf')).toBe('Take this receipt off?')
+    expect(lienReceiptTakeOffAsk('')).toBe('Take this receipt off?')
   })
 })

@@ -17,10 +17,11 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 import JobsStagesTable, { type JobsStagesTableProps } from './JobsStagesTable'
+import type { StagesTableShared } from './stagesTableShared'
 import type { StageChecklistState } from '../../lib/jobs/stageChecklist'
 import { makeJob, makeTeamMember, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
-function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTableProps {
+function makeProps(section: Partial<Omit<JobsStagesTableProps, 'shared'>> = {}, shared: Partial<StagesTableShared> = {}): JobsStagesTableProps {
   return {
     jobList: [],
     actionLabel: 'Move to Working',
@@ -29,54 +30,57 @@ function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTab
     onSendBack: undefined,
     onSendBackSimple: undefined,
     showPctComplete: false,
-    stagesJobFlashId: null,
-    stagesEditMode: false,
-    renderStagesOpenDetailJobName: (j) => <div>{j.job_name ?? '—'}</div>,
-    stagesStatusUpdatingId: null,
-    pctCompleteSavingId: null,
-    updateJobPctComplete: vi.fn(async () => {}),
-    commitStagesPctWithNote: vi.fn(async () => {}),
-    setCreatePartialInvoiceAmount: vi.fn(),
-    setCreatePartialInvoiceJob: vi.fn(),
-    openEdit: vi.fn(),
-    openStagesDetailJobModal: vi.fn(),
-    setAiaG702StagesJob: vi.fn(),
-    canCreateHazmatFee: false,
-    openHazmatFee: vi.fn(),
-    canEditJobPctComplete: true,
-    canManageJobPeople: true,
-    setManageJobPeople: vi.fn(),
-    jobThreadNotesLoadingId: null,
-    jobThreadDraft: '',
-    jobThreadSubmittingId: null,
-    setJobThreadDraft: vi.fn(),
-    submitJobThreadNote: vi.fn(async () => {}),
-    authUser: { id: 'smoke-auth-user-1' } as JobsStagesTableProps['authUser'],
-    showToast: vi.fn(),
-    customers: [],
-    openEditJobAndCreateCustomerFlow: vi.fn(),
-    stagesManHoursByJobId: new Map(),
-    stagesManHoursLoading: false,
-    crewByJobId: new Map(),
-    stagesLaborBreakdownByJobId: new Map(),
-    expandedJobThreadId: null,
-    toggleStagesJobThreadExpanded: vi.fn(),
-    jobThreadStatsByJobId: {},
-    jobThreadActivityByJobId: {},
-    openJobThreadFullscreen: vi.fn(),
-    openJobActivityExpand: vi.fn(),
-    openJobCalendar: vi.fn(),
-    stagesUpcomingByJobId: {},
-    stagesWorkedByJobId: {},
-    jobThreadFullscreen: false,
-    setJobThreadFullscreen: vi.fn(),
-    applyStagesInvoiceFocus: vi.fn(() => true),
-    canOpenJobScheduleModal: true,
-    setScheduleModalJob: vi.fn(),
-    openQuickAssignForJob: vi.fn(),
-    authRole: 'dev',
-    loadJobs: vi.fn(async () => []),
-    ...overrides,
+    ...section,
+    shared: {
+      stagesJobFlashId: null,
+      stagesEditMode: false,
+      renderStagesOpenDetailJobName: (j) => <div>{j.job_name ?? '—'}</div>,
+      stagesStatusUpdatingId: null,
+      pctCompleteSavingId: null,
+      updateJobPctComplete: vi.fn(async () => {}),
+      commitStagesPctWithNote: vi.fn(async () => {}),
+      setCreatePartialInvoiceAmount: vi.fn(),
+      setCreatePartialInvoiceJob: vi.fn(),
+      openEdit: vi.fn(),
+      openStagesDetailJobModal: vi.fn(),
+      setAiaG702StagesJob: vi.fn(),
+      canCreateHazmatFee: false,
+      openHazmatFee: vi.fn(),
+      canEditJobPctComplete: true,
+      canManageJobPeople: true,
+      setManageJobPeople: vi.fn(),
+      jobThreadNotesLoadingId: null,
+      jobThreadDraft: '',
+      jobThreadSubmittingId: null,
+      setJobThreadDraft: vi.fn(),
+      submitJobThreadNote: vi.fn(async () => {}),
+      authUser: { id: 'smoke-auth-user-1' } as StagesTableShared['authUser'],
+      showToast: vi.fn(),
+      customers: [],
+      openEditJobAndCreateCustomerFlow: vi.fn(),
+      stagesManHoursByJobId: new Map(),
+      stagesManHoursLoading: false,
+      crewByJobId: new Map(),
+      stagesLaborBreakdownByJobId: new Map(),
+      expandedJobThreadId: null,
+      toggleStagesJobThreadExpanded: vi.fn(),
+      jobThreadStatsByJobId: {},
+      jobThreadActivityByJobId: {},
+      openJobThreadFullscreen: vi.fn(),
+      openJobActivityExpand: vi.fn(),
+      openJobCalendar: vi.fn(),
+      stagesUpcomingByJobId: {},
+      stagesWorkedByJobId: {},
+      jobThreadFullscreen: false,
+      setJobThreadFullscreen: vi.fn(),
+      applyStagesInvoiceFocus: vi.fn(() => true),
+      canOpenJobScheduleModal: true,
+      setScheduleModalJob: vi.fn(),
+      openQuickAssignForJob: vi.fn(),
+      authRole: 'dev',
+      loadJobs: vi.fn(async () => []),
+      ...shared,
+    },
   }
 }
 
@@ -123,7 +127,7 @@ describe('JobsStagesTable render smoke', () => {
     unmount()
     // Sorted: the header reads pressed and the column carries aria-sort.
     renderWithProviders(
-      <JobsStagesTable {...makeProps({ jobList: [makeJob({ job_name: 'Sortable' })], onToggleProgressSort, stagesSortMode: 'progress' })} />,
+      <JobsStagesTable {...makeProps({ jobList: [makeJob({ job_name: 'Sortable' })], onToggleProgressSort }, { stagesSortMode: 'progress' })} />,
     )
     await settle()
     const pressed = screen.getByRole('button', { name: /Progress & payment/ })
@@ -164,8 +168,9 @@ describe('JobsStagesTable render smoke', () => {
       <JobsStagesTable
         {...makeProps({
           jobList: [withFee, without],
-          canCreateHazmatFee: true,
           offerHazmatFee: true,
+        }, {
+          canCreateHazmatFee: true,
           hazmatFeeJobIds: new Set([withFee.id]),
         })}
       />,
@@ -184,6 +189,7 @@ describe('JobsStagesTable render smoke', () => {
       <JobsStagesTable
         {...makeProps({
           jobList: [teamless],
+        }, {
           expandedJobThreadId: teamless.id,
         })}
       />,
@@ -208,7 +214,7 @@ describe('JobsStagesTable render smoke', () => {
 
   it('a closed row carries neither the tint nor aria-expanded (v2.4131)', async () => {
     const job = makeJob({ job_name: 'Closed Row Job' })
-    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [job], expandedJobThreadId: null })} />)
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [job] }, { expandedJobThreadId: null })} />)
     await settle()
     const row = document.querySelector(`tr[data-stages-job-id="${job.id}"]`) as HTMLTableRowElement
     expect(row.getAttribute('aria-expanded')).toBe('false')
@@ -221,7 +227,7 @@ describe('JobsStagesTable render smoke', () => {
     const openQuickAssignForJob = vi.fn()
     const setScheduleModalJob = vi.fn()
     renderWithProviders(
-      <JobsStagesTable {...makeProps({ jobList: [teamless], openQuickAssignForJob, setScheduleModalJob })} />,
+      <JobsStagesTable {...makeProps({ jobList: [teamless] }, { openQuickAssignForJob, setScheduleModalJob })} />,
     )
     await settle()
     const btn = screen.getByLabelText('Assign work — pick people and a time') as HTMLButtonElement
@@ -234,7 +240,7 @@ describe('JobsStagesTable render smoke', () => {
   it('v2.4510 · the Not scheduled flag opens the Assign work sheet for a planner; no Assign work… line under it; a plain flag for everyone else', async () => {
     const job = makeJob({ job_name: 'Nothing Booked' })
     const openQuickAssignForJob = vi.fn()
-    const view = renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [job], openQuickAssignForJob })} />)
+    const view = renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [job] }, { openQuickAssignForJob })} />)
     await settle()
     const flag = screen.getByRole('button', { name: 'Not scheduled. Assign work' })
     expect(flag.textContent).toBe('Not scheduled')
@@ -243,7 +249,7 @@ describe('JobsStagesTable render smoke', () => {
     expect(openQuickAssignForJob).toHaveBeenCalledWith(expect.objectContaining({ id: job.id }))
     view.unmount()
 
-    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [job], canOpenJobScheduleModal: false })} />)
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [job] }, { canOpenJobScheduleModal: false })} />)
     await settle()
     expect(screen.queryByRole('button', { name: 'Not scheduled. Assign work' })).toBeNull()
     expect(screen.getByText('Not scheduled').tagName).toBe('SPAN')
@@ -261,6 +267,7 @@ describe('JobsStagesTable render smoke', () => {
       <JobsStagesTable
         {...makeProps({
           jobList: [commercial, residential, unknown, unlinked, gcOnly, orphan],
+        }, {
           propertyKindByJobId: new Map([
             ['j-c', 'non_residential'],
             ['j-r', 'residential'],
@@ -307,6 +314,7 @@ describe('JobsStagesTable render smoke', () => {
       <JobsStagesTable
         {...makeProps({
           jobList: [onSite, quiet, paid],
+        }, {
           jobContractCoverageByJobId: coverage,
           onOpenJobContract,
           stagesUpcomingByJobId: { 'j-on': { ymd: '2099-01-02', timeStart: '08:00', timeEnd: '16:00', assigneeNames: [], note: null, bookedYmds: ['2099-01-02'], lastYmd: '2099-01-02', visitCount: 1 } },
@@ -327,7 +335,7 @@ describe('JobsStagesTable render smoke', () => {
     const openEdit = vi.fn()
     const made = makeJob({ job_name: 'Has a folder', google_drive_link: 'https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUv' })
     const bare = makeJob({ job_name: 'No folder yet' })
-    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [made, bare], openEdit })} />)
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [made, bare] }, { openEdit })} />)
     await settle()
     const icons = screen.getAllByLabelText('Open the job’s folders')
     expect(icons).toHaveLength(2)
@@ -367,7 +375,7 @@ describe('JobsStagesTable render smoke', () => {
     const notReady: StageChecklistState = { kind: 'trim_set', asked: 6, answered: 3, standing: 'not_ready', ready: false }
     const filled: StageChecklistState = { kind: 'rough_in', asked: 4, answered: 4, standing: 'ready', ready: true }
     const checklistMarksFor = (job: { fixtures?: ReadonlyArray<{ id: string }> | null }) => (job.fixtures?.some((f) => f.id === 'f3') ? new Map([['f1', filled], ['f3', notReady]]) : null)
-    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [stages, service], openChecklistDoor, checklistMarksFor })} />)
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [stages, service] }, { openChecklistDoor, checklistMarksFor })} />)
     await settle()
     const doors = screen.getAllByLabelText(/Checklists on this job/)
     expect(doors).toHaveLength(1)
@@ -395,7 +403,7 @@ describe('JobsStagesTable render smoke', () => {
       ],
     })
     const notReady: StageChecklistState = { kind: 'trim_set', asked: 6, answered: 3, standing: 'not_ready', ready: false }
-    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [job], checklistMarksFor: () => new Map([['f3', notReady]]) })} />)
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [job] }, { checklistMarksFor: () => new Map([['f3', notReady]]) })} />)
     await settle()
     expect(screen.queryByLabelText(/Checklists on this job/)).toBeNull()
     expect(document.querySelector('[data-stage-checklist-press]')).toBeNull()

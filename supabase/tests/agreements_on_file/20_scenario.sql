@@ -1,4 +1,5 @@
--- Documents → Agreements' one list (migrations *_agreements_on_file and *_agreements_on_file_gc, punch list #376): the
+-- Documents → Agreements' one list (migrations *_agreements_on_file, *_agreements_on_file_gc and
+-- *_agreements_job_papers, punch list #376 and papers before a job opens): the
 -- view answers a job's contract, a warranty, a GC's own paper, a signed paper over several jobs, a person's agreement,
 -- a sub work order and GC mode's three (our contract with the owner, a trade's statement of work, a trade company's
 -- agreement) as one shape, under each table's own row security. The scenario, inside one transaction that rolls back: the office reads every row
@@ -257,6 +258,37 @@ BEGIN
   IF n <> 0 THEN RAISE EXCEPTION 'a caller who is not signed in read % agreement(s)', n; END IF;
   RAISE NOTICE 'ok: a caller who is not signed in reads no agreement';
 END $$;
+RESET ROLE;
+
+-- Papers before a job opens (migration *_agreements_job_papers): a person's copy of a paper a job requires is a line
+-- with its job and the paper's own name, whatever its form's kind, and the find box finds it by the job.
+INSERT INTO public.job_required_papers (id, job_id, paper_name, body_html, required_at) VALUES
+  ('00000000-0000-0000-0000-0000003760f1', '00000000-0000-0000-0000-0000000376b2', 'Site rules and photo policy', '<p>No photos past the gate.</p>', '2026-11-14T15:00:00Z'),
+  ('00000000-0000-0000-0000-0000003760f2', '00000000-0000-0000-0000-0000000376b2', 'Ridgeway Builders NDA', '<p>Keep it quiet.</p>', '2026-11-14T15:00:01Z');
+-- Marcus signed the site rules, filed as a form of the kind 'other'; Ortega opened the NDA and has not signed it.
+INSERT INTO public.person_contract_documents (id, person_name, person_id, document_name, contract_lineage_id, lineage_version, status, doc_type, sent_at, signed_at, job_id, job_required_paper_id) VALUES
+  ('00000000-0000-0000-0000-0000003760e8', 'Marcus Hale', '00000000-0000-0000-0000-000000037601', 'Site rules and photo policy (job 2391)', gen_random_uuid(), 1, 'signed', 'other', '2026-11-15T15:00:00Z', '2026-11-15', '00000000-0000-0000-0000-0000000376b2', '00000000-0000-0000-0000-0000003760f1'),
+  ('00000000-0000-0000-0000-0000003760e9', 'Ortega Mechanical', '00000000-0000-0000-0000-000000037602', 'Ridgeway Builders NDA (job 2391)', gen_random_uuid(), 1, 'sent', 'agreement', '2026-11-16T15:00:00Z', NULL, '00000000-0000-0000-0000-0000000376b2', '00000000-0000-0000-0000-0000003760f2');
+SELECT aof.as_user('00000000-0000-0000-0000-0000000376d3');
+SET LOCAL ROLE authenticated;
+SELECT aof.same('the office reads each job paper with its job and its own name',
+  (SELECT string_agg(concat_ws('|', a.kind, a.state, a.paper_name, a.with_name, a.job_hcp_number, a.job_name, a.job_address, a.person_kind, a.at_day::text), E'\n' ORDER BY a.at DESC, a.id DESC)
+   FROM public.agreements_on_file a WHERE a.source_id IN ('00000000-0000-0000-0000-0000003760e8', '00000000-0000-0000-0000-0000003760e9')),
+  'person_agreement|waiting|Ridgeway Builders NDA|Ortega Mechanical|2391|Cedar Bluff Lofts|1200 Quarry Rd|sub|2026-11-16' || E'\n' ||
+  'person_agreement|signed|Site rules and photo policy|Marcus Hale|2391|Cedar Bluff Lofts|1200 Quarry Rd|helper|2026-11-15');
+SELECT aof.same('the line carries the job''s id', (SELECT (a.job_id = '00000000-0000-0000-0000-0000000376b2')::text FROM public.agreements_on_file a WHERE a.source_id = '00000000-0000-0000-0000-0000003760e8'), 'true');
+SELECT aof.same('the find box finds a job paper by the job''s number, name and the words job paper',
+  (SELECT concat_ws('|', (position('j2391' IN a.find_text) > 0)::text, (position('cedar bluff lofts' IN a.find_text) > 0)::text, (position('job paper' IN a.find_text) > 0)::text) FROM public.agreements_on_file a WHERE a.source_id = '00000000-0000-0000-0000-0000003760e8'),
+  'true|true|true');
+SELECT aof.same('a person''s paper with no job still has none', (SELECT concat_ws('|', coalesce(a.job_id::text, '-'), coalesce(a.job_hcp_number, '-'), a.paper_name) FROM public.agreements_on_file a WHERE a.source_id = '00000000-0000-0000-0000-0000003760e1'), '-|-|Tool and vehicle use agreement');
+RESET ROLE;
+SELECT aof.as_user('00000000-0000-0000-0000-0000000376d6');
+SET LOCAL ROLE authenticated;
+SELECT aof.same('a primary still reads no person''s paper, a job paper included', (SELECT count(*)::text FROM public.agreements_on_file a WHERE a.kind = 'person_agreement'), '0');
+RESET ROLE;
+SELECT aof.as_user('00000000-0000-0000-0000-0000000376d8');
+SET LOCAL ROLE authenticated;
+SELECT aof.same('the sub reads no job paper, not even their own', (SELECT count(*)::text FROM public.agreements_on_file a WHERE a.kind = 'person_agreement'), '0');
 RESET ROLE;
 
 DO $$ BEGIN RAISE NOTICE 'agreements_on_file PASSED'; END $$;

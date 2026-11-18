@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDesk.tsx
 mapped_at: bc5f56a52b
 audience: Developers, AI Agents
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 ---
 
 > **Line numbers are as of `bc5f56a52b`** (the `mapped_at` commit), where the file is 3,019 lines.
@@ -138,6 +138,16 @@ last_updated: 2026-11-17
 > The line under the row says where the file is (`fileTakenOffWords`), offers the trash a second try where one can help, and **Put it back** untrashes the file and lists it again (`restoreLienMailedCopy`).
 
 > Nothing is deleted from Drive: the service account may trash a file and may not delete it.
+
+> Since v2.7743 a receipt takes the same door: [`LienReceiptPhotoPress.tsx`](../src/components/jobs/LienReceiptPhotoPress.tsx) awaits its caller's write (`onTakeOff` and `onSaved` may answer a promise), then asks `takeFileToTrash` and draws the same line under the press, with **Put it back** and **Try again**.
+
+> **Replace** sends the file it took the place of to the trash once the record names the new one, and offers no **Put it back**.
+
+> A caller that writes the record at once answers its write's promise and rejects when the write did not land, so the file stays: `LienServeWindow` (`setReceipt` over `keepCopy`), `LienFilingMailProof` (`setReceipt`) and the Lien window's service step for a receipt the filing already holds (`setServiceReceipt` in `LienFilingTabs`, through `keepLienCopyProof`).
+
+> A caller that only holds the link in its form answers nothing, because no record names the file yet: the run's checklist (`receiptFor`) and the Lien window's § 53.056 sends.
+
+> A receipt link that is not a Drive file's (`driveFileIdOfUrl`) is only forgotten, and the clerk's stamped page is left alone.
 
 > **v2.7456 (To do follows the Board, punch list #362 step 4, the owner's pick of 2026-11-16):** [`lienNextUpByBin.ts`](../src/lib/jobs/lienNextUpByBin.ts) `groupLienNextUpByBin` puts the rows `groupLienNextUp` orders into one group a bin (`lienBoardRowBin` in `lienBoard.ts`: the bin's key, name and place), the notices' column first, each head with its papers and what they owe.
 > `lienBinFolds` names the folds the desk has a press for (the ready affidavits under the print door's words, the ones to send under the batch send's), each a row keyed `fold:<bin>:<action>` whose press is `{ open: 'affidavit_pile', pile }`, a new `LienNextUpTarget` that `actOnNextUp` opens as the Affidavits list at that pile.
@@ -550,6 +560,14 @@ last_updated: 2026-11-17
 > The by-hand sheet's × closes the sheet (it closed the window).
 > The Affidavits and Retainage lists keep their own one-column switch (`mobileListShown`), since the address carries only the Notices selection.
 
+> **v2.7744 (an address that names a job its list does not hold):** [`lib/lien/lienDeskAim.ts`](../src/lib/lien/lienDeskAim.ts) reads `initialKind` and `initialJobId` as an aim, a paper list and a job (`lienDeskAimFrom`), and `readLienDeskAim` answers `none`, `waiting`, `on_list` or `off_list`.
+> Until then each list answered a job it did not hold with its own first row, the address lost `job`, and another job's pane opened with no word.
+> While the read is `off_list` the desk opens no job on that list: the Monthly notices selection effect returns before its first-row pick, and `useLienDeskAffidavits` and `lienRetainageListView` take `openNone`.
+> The note (`data-lien-desk-off-list`, `lienDeskOffListWords` through `EmptyState`) stands in the pane's place, and on one column it tops the list.
+> Its presses are the list that holds the job, when one does, and the job's Lien window.
+> The address keeps `job` on any of the three lists while the note stands (`lienDeskAimAddressJob`), and the aim is forgotten once its list holds the job, the reader picks another row or leaves the list (`lienDeskAimSpent`).
+> The re-aim effect hands the named job to all three selections, so a row picked before never stays open under an address that names another job.
+
 > **v2.6777 · v2.6780 (the desk is a page, punch list #182):** `/lien-desk` ([`pages/LienDeskPage.tsx`](../src/pages/LienDeskPage.tsx), the address in [`lib/lien/lienDeskRoute.ts`](../src/lib/lien/lienDeskRoute.ts): `?tab=deadlines|notices|affidavits|retainage|timeline`, `&job=`, `&pile=`, the one-shot `&records=`).
 > `LienDeskModal` takes `frame: 'page' | 'window'` — on the page no overlay, no ✕, no `useModalFullScreen` key, the page's `backDoor` before the title, `data-lien-desk-panel="page"`, a named region, and `onAddressChange` told every change of `kind`, the Notices selection and `pile` once `data` is in (the job a door named counts before the selection catches up);
 > the address is the truth there (`initialKind` re-applies on change).
@@ -827,6 +845,9 @@ last_updated: 2026-11-17
 > A job with clock hours keeps a worked month the reader no longer returns.
 > The two panes hand `job`.
 > The By job book and the firm's grid hand none, since their job read (`LIEN_BOOK_JOB_COLUMNS`) carries no bills.
+> **v2.7741 (the reason comes with the day):** the desk's job read (`LIEN_DESK_JOB_COLUMNS` in `useLienDeskData.ts`) names `lien_last_work_note`, `lien_last_work_set_at` and `lien_last_work_set_by` beside the day, as the Lien window's job carries them.
+> On the desk `LienLastWorkDayLine` then draws the reason and the day it was set, and `LienLastWorkDayWindow` opens from the press on the stored reason.
+> `useGcOnNoticeData` builds its job read on the same list.
 > **v2.4632 (the chip as a door to the paper):** `LienDeskNextUp` draws the Notice / Affidavit chip as a `lienPaperDoor` button when the desk passes `onOpenPaper` (`gapsFor` puts a red count or a tick on it);
 > the desk builds `paperEntries` on open — for each row with a job, the notice (`buildLienNoticeFieldsForJob`, the stored draft's fields when there is one, `buildLienNoticeBlocks`) or the affidavit (`buildLienAffidavitFieldsForJob`, `buildLienAffidavitBlocks`) with every statutory blank replaced by a token (`withGapTokens`) that `paintGaps` turns into the numbered red `.lienPaperGap` mark after `filingDocHtml`;
 > the gaps themselves come from `lienPaperGaps` (`lib/jobs/lienPaperGaps.ts`) over the resolved property, the owner, the GC, the signer, the issuer's address and, for an affidavit, the entry's gates.
@@ -1031,7 +1052,7 @@ Out means the code is in the named file and the desk keeps a mount or a hook cal
 | M. Windows and dialogs | `paneFix` 841, `propertyCard` 543; the mounts 2743, 2892–2980 (the owner's call, the courtesy notice, the call script, the practice call) | `useLienDeskWindows`, `LienDeskWindows` and the seven windows it draws; `LienOwnerCallDialog`, `LienCourtesyWindow`, `LienCallScriptModal` | low for the Board's windows; the four dialogs read the sent footer's state and `run` | the Board's windows are out; the four dialogs stay | `LienDeskWindows.render.test.tsx` 6, each window's own |
 | N. The papers behind To do | `paperOpen` 834, `stopOpen` 836, `paperFix` 839, `paperFilledFrom` 842; the effect 844–848; `paperFactsFor` 862, `paperGapCount` 881, `paperEntries` 886; the mounts 2720, 2763 | `LienPaperPreviewOverlay`, `LienPaperPropertyWindow`, `LienPaperGcWindow`; kernels `lienPaperGaps`, `lienStopPaperPages` | medium: `paperFactsFor` builds each paper from the desk's data | inline: the next clean cut | the overlay's own render 4 |
 
-Render test: [`LienDesk.render.test.tsx`](../src/components/jobs/LienDesk.render.test.tsx) (5,220 lines, 207 tests).
+Render test: [`LienDesk.render.test.tsx`](../src/components/jobs/LienDesk.render.test.tsx) (5,377 lines, 212 tests).
 It mounts the desk by view: Lien affidavits 56 times, To do 55, Monthly notices 20, the calendar 7, Retainage 7, By job once.
 It passed with no edit through all thirteen cuts of 2026-11-17, which makes it the regression net for any further move.
 No Playwright spec names the desk.
@@ -1418,7 +1439,7 @@ Drawn inside `LienDeskNoticePane`, not by the desk: `LienTimelineStrip` (793), `
 | [`LienServeCopiesPress.tsx`](../src/components/jobs/LienServeCopiesPress.tsx) | 150 | LienFilingTabs | **Print the copies to mail** on a filed, unserved affidavit (punch list #366): each envelope's cover letter and COPY page from `src/lib/jobsDocuments/lienServedCopy.ts` over the filing's own fields (`src/lib/jobs/lienServeFacts.ts`), filed on the job as `lien_affidavit_copy`; a filing with no recording number is held and takes the number there; the amber lines read the two `…_READ_BY_COUNSEL` flags | render 7 · kernels 24 / 4 |
 | [`LienScanBatchWindow.tsx`](../src/components/jobs/LienScanBatchWindow.tsx) | 230 | LienDesk | **Add the stamped scans** (punch list #366): several filed liens' scans in one sitting, one file a lien, each saved to its own job. `src/lib/jobs/lienScanBatch.ts` lists every filed affidavit (`lienScanTargetsFromDesk`), matches each picked file to a lien by the recording number or the job number in its name, else by its place (`lienScanMatches`), and plans what the press saves and holds (`lienScanPlan`, worded through `batchWords`); `lienScanBatchIo.ts` puts each file in its job's folder and links it on its filing. Opened from `LienServeWindow`, and by the address `?scans=1`, the door under the single upload on a job's Record filing. A PDF of several pages can be split (v2.7528): `lienScanStack.ts` sends each page to a lien (in order, by hand, joined to the page before, or left out; `lienScanStackResolve`) and hands the plan one piece a lien, `lienScanStackIo.ts` counts the pages and cuts each lien's with `pdf-lib` in the browser, and the pictures are `PdfPageCanvas` | render 7 + 7 (+2 in `LienDesk`) · kernels 12 / 2 / 13 / 3 |
 | [`LienFiledScanPress.tsx`](../src/components/jobs/LienFiledScanPress.tsx) | 90 | LienFilingTabs | **Upload the scanned PDF** beside the stamped page's photo press (punch list #366): the clerk's stamped affidavit picked from this computer, put in the job's Drive folder under Sent by us as it is, and made the filing's saved copy with the note `LIEN_CLERK_SCAN_NOTE`; on a filing already recorded it is saved at once. The file rule and the words are `src/lib/jobs/lienScanFile.ts` | render 5 (in `LienFilingTabs.filedScan`) · kernel 5 |
-| [`LienReceiptPhotoPress.tsx`](../src/components/jobs/LienReceiptPhotoPress.tsx) | 258 | LienFilingTabs, LienServeWindow | one file of a lien paper's proof, put in the job's Drive folder under Sent by us: a copy's mail receipt as a photo or a PDF (**Add the receipt**, `src/lib/jobs/lienReceiptFile.ts`, a phone's sheet of **Take a photo** and **Choose a photo or a PDF**, a saved one with **Open**, **Replace** and **Take off**), or a photo of the clerk's stamped page; since v2.7635 a file that did not go up keeps its reason under the press, with Try again where the same file can go again  |  render (in `LienFilingTabs.serviceProof`, and its own `LienReceiptPhotoPress.render`) · kernel `lienReceiptFile.test`  |
+| [`LienReceiptPhotoPress.tsx`](../src/components/jobs/LienReceiptPhotoPress.tsx) | 361 | LienFilingTabs, LienServeWindow | one file of a lien paper's proof, put in the job's Drive folder under Sent by us: a copy's mail receipt as a photo or a PDF (**Add the receipt**, `src/lib/jobs/lienReceiptFile.ts`, a phone's sheet of **Take a photo** and **Choose a photo or a PDF**, a saved one with **Open**, **Replace** and **Take off**), or a photo of the clerk's stamped page; since v2.7635 a file that did not go up keeps its reason under the press, with Try again where the same file can go again; since v2.7743 a receipt taken off or replaced goes to Drive's trash once the record has let go of its link, with the line under the press (**Put it back**, **Try again**)  |  render (in `LienFilingTabs.serviceProof`, `LienServeWindow.render`, `LienFilingMailProof.render`, and its own `LienReceiptPhotoPress.render`) · kernel `lienReceiptFile.test`  |
 | [`LienMailProofBlock.tsx`](../src/components/jobs/LienMailProofBlock.tsx) · [`LienFilingMailProof.tsx`](../src/components/jobs/LienFilingMailProof.tsx) | 114 · 123 | LienDesk (the sent footer's `proof`), LienFilingTabs, LienStopPaperWindow | **What went out** on a recorded paper (v2.7691): `src/lib/jobs/lienMailProof.ts` reads one filing's proof, every mailed file with its own link (`job_lien_desk_items.mailed_copies`, reached by `sent_filing_id`, then the filing's saved copy when it is not one of them), each envelope's number and receipt, the count (*Mail proof: 2 of 3 on file*) and the **Next:** line. The block draws it, in a label column on a computer and as cards with thumb-tall presses on a phone. `LienFilingMailProof` adds the writes: a receipt added or taken off goes onto the filing's `sends` at once (`keepLienCopyProof`), and one more mailed file goes onto the notice's list (`addRecordedMailedCopy`, `lienMailProofIo.ts`). The stop's window draws the block read-only from `record.proof`, whether or not the page is redrawn beside it | render 5 · kernel 9 |
 | `LienWaiverAmountMath.tsx` (v2.4296) | 234 | LienReleaseModal | the Release of Lien window's amount pieces, per step; draws only, the kernel is `lienWaiverAmountMath.ts`; the amount box types through `lib/moneyTyping.ts` (v2.4334) and the drawn signature is trimmed by `lib/signatureInkTrim.ts` (v2.4335) | kernels 16 / 6 |
 | `LienWindowFoldedSteps.tsx` (v2.4398) | 113 | LienInstrumentsModal | the Lien window's steps folded to one strip on a phone, so the paper gets the room | render 3 |

@@ -166,6 +166,7 @@ export const LIEN_MAIL_PROOF_WORDS = {
   adding: 'Adding…',
   next: 'Next:',
   receiptKept: 'Receipt kept on this paper.',
-  receiptOff: 'Receipt taken off. The file is still in the job’s Drive folder.',
+  /** The line under the press says where the file went (v2.7743). */
+  receiptOff: 'Receipt taken off.',
   failed: 'The change was not saved.',
 } as const

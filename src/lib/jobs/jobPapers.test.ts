@@ -8,6 +8,8 @@ import {
   JOB_PAPERS_LOCK_STAGE,
   cellWords,
   copyLinksLabel,
+  isSubPortalPath,
+  jobPapersBackLabel,
   jobPapersChip,
   lockStageNote,
   noLinkReason,
@@ -167,5 +169,21 @@ describe('pickablePapers', () => {
   it('leaves out what the job already requires and what is already picked', () => {
     expect(pickablePapers(book, roster.papers).map((p) => p.paperName)).toEqual(['Blank paper'])
     expect(pickablePapers(book, [], ['book-nda']).map((p) => p.paperName)).toEqual(['Blank paper', 'Site rules and photo policy'])
+  })
+})
+
+describe('the way back from the signing page', () => {
+  it('a sub with no login goes back to their own page, by its link or its short address', () => {
+    for (const path of ['/sub?t=0123456789abcdef0123456789abcdef', '/sub?t=0123456789abcdef&view=statements', '/sub', '/s/tall-pine', '/s/tall-pine?view=statements']) {
+      expect(isSubPortalPath(path), path).toBe(true)
+      expect(jobPapersBackLabel(path), path).toBe('Back to your page')
+    }
+  })
+
+  it('anyone else goes back to the job', () => {
+    for (const path of ['/dashboard?tab=today', '/jobs', '/submittal?t=abc', '/subs', '/s', '/s/', '/settings/s/tall-pine', '', null, undefined]) {
+      expect(isSubPortalPath(path), String(path)).toBe(false)
+      expect(jobPapersBackLabel(path), String(path)).toBe('Back to the job')
+    }
   })
 })

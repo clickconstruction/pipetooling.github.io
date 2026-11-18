@@ -255,18 +255,6 @@ export function renderStagesExpandedRowPanel(children: ReactNode) {
   return <div style={{ position: 'sticky', left: 0, maxWidth: 'calc(100vw - 2rem)' }}>{children}</div>
 }
 
-/** Stages table headers: one visual line per phrase when the table is narrow (no mid-phrase wrap). */
-const stagesThreeLineHeaderLineStyle: CSSProperties = { display: 'block', whiteSpace: 'nowrap' }
-
-export function renderStagesTwoLineHeader(line1: string, line2: string) {
-  return (
-    <>
-      <span style={stagesThreeLineHeaderLineStyle}>{line1}</span>
-      <span style={stagesThreeLineHeaderLineStyle}>{line2}</span>
-    </>
-  )
-}
-
 /** Shared metrics so Job HCP badge and service-type pill match box height. */
 const stagesJobSublinePillBoxBase: CSSProperties = {
   display: 'inline-block',

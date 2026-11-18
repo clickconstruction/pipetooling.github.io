@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildFixtureStripeLineDescriptionForStripe,
+  DEFAULT_STRIPE_INVOICE_LINE_DESCRIPTION,
+  defaultStripeLineDescriptionFromJob,
   STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
 } from './stripeInvoiceLineDescription'
 
@@ -27,5 +29,19 @@ describe('buildFixtureStripeLineDescriptionForStripe', () => {
     const pad = 'a'.repeat(STRIPE_INVOICE_LINE_DESCRIPTION_MAX + 20)
     const out = buildFixtureStripeLineDescriptionForStripe(pad, null)
     expect(out.length).toBe(STRIPE_INVOICE_LINE_DESCRIPTION_MAX)
+  })
+})
+
+describe('defaultStripeLineDescriptionFromJob', () => {
+  const job = { id: 'job-1', master_user_id: 'u-1', hcp_number: '978', job_name: 'Penmoor demo', customer_id: 'cust-1', customer_name: 'Kestrin Contracting', customer_email: 'ap@kestrin.test' }
+
+  it('is the fixed default line, whatever the job says (the legacy builder ignores its three arguments)', () => {
+    expect(defaultStripeLineDescriptionFromJob(job)).toBe(DEFAULT_STRIPE_INVOICE_LINE_DESCRIPTION)
+    expect(defaultStripeLineDescriptionFromJob(job)).toBe('Custom service.')
+  })
+
+  it('reads a job with no customer name, job name or number the same way', () => {
+    expect(defaultStripeLineDescriptionFromJob({ ...job, customer_name: null, job_name: null, hcp_number: null })).toBe('Custom service.')
+    expect(defaultStripeLineDescriptionFromJob({ ...job, customer_name: '   ' })).toBe('Custom service.')
   })
 })

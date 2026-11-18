@@ -381,6 +381,16 @@ export function parseJobPapersReturn(raw: string | null): JobPapersReturn | null
   }
 }
 
+/** True for a sub's own page, opened by its link with no login: `/sub?t=…` or the short address `/s/<slug>`. */
+export function isSubPortalPath(path: string | null | undefined): boolean {
+  return /^\/(sub(?=[?#]|$)|s\/[^/?#]+)/.test(path ?? '')
+}
+
+/** The signing page's way back: a sub with no login goes back to their page, anyone else to the job. */
+export function jobPapersBackLabel(path: string | null | undefined): string {
+  return isSubPortalPath(path) ? 'Back to your page' : 'Back to the job'
+}
+
 /** What a locked job reads as in the clock-in picker, in place of its name. */
 export const LOCKED_PICK_NAME = '🔒 Sign its papers to clock in here'
 

@@ -3,64 +3,87 @@
 ---
 file: docs/PROSPECTS_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
-purpose: Step-0 map for the Prospects surface (per PAGE_DECOMPOSITION_PLAYBOOK.md) — what every lane and tab of src/pages/Prospects.tsx (5,600 lines at the map's anchor, 1,555 after the thirteen cuts of 2026-11-17) and the already-extracted src/components/prospects/TeamProspectsTab.tsx (2,376 lines) touches (state, loaders, handlers, sub-components, supabase tables/RPCs, cross-tab coupling), so extraction can proceed cut by cut without re-deriving the strategy.
+purpose: Step-0 map for the Prospects surface (per PAGE_DECOMPOSITION_PLAYBOOK.md) — what every lane and tab of src/pages/Prospects.tsx (1,556 lines since the thirteen cuts of 2026-11-17, 5,600 before them) and the pieces cut out of it touch (state, loaders, handlers, sub-components, supabase tables/RPCs, cross-tab coupling), with the already-extracted src/components/prospects/TeamProspectsTab.tsx (2,376 lines), so the next cut can start without re-deriving the strategy.
 covers:
   - src/pages/Prospects.tsx
   - src/components/prospects/TeamProspectsTab.tsx
+  - src/components/prospects/ProspectsFollowUpTab.tsx, ProspectsListTab.tsx, ProspectsConvertTab.tsx, ProspectsActivityTab.tsx (the tabs, cut out 2026-11-17)
+  - src/components/prospects/useProspectsData.ts, useSubsBoardData.ts, useSubsBench.ts, useProspectDoubles.ts, useProspectJobs.ts, useCallingLock.ts, useCallRun.ts, useProspectCopyTemplates.ts, useProspectListTab.ts, useProspectConvert.ts, useEditProspectWindow.ts, useNewProspectWindow.ts (the hooks the page calls)
+  - src/components/prospects/EditProspectWindow.tsx, NewProspectWindow.tsx, ProspectKindFields.tsx, ProspectCallbackModal.tsx, ProspectTimerHistoryModal.tsx, ProspectMyTimeModal.tsx, ProspectCopyTemplateRow.tsx, ProspectCopyTemplateEditModal.tsx, ProspectCopyBlankFieldsModal.tsx (the windows)
+  - src/components/prospects/SubsPathStrip.tsx, SubsPlansPicker.tsx, SubsLaneList.tsx, SubsNeedsPanel.tsx, GcWorkStrip.tsx (the Subs and Jobs to GC lanes' drawn pieces)
   - src/components/prospects/ProspectPersonForm.tsx, ProspectJobsBox.tsx, ProspectBenchModal.tsx (the lanes' windows, v2.5560–v2.5604), SubsBoard.tsx (the Board, v2.5808)
-  - src/components/prospects/ProspectsFollowUpTab.tsx, ProspectsListTab.tsx, ProspectsConvertTab.tsx, ProspectsActivityTab.tsx, the windows and the Subs lane's drawn pieces, and the hooks the page calls (useProspectsData, useProspectConvert, useProspectListTab, useEditProspectWindow, useNewProspectWindow, useCallingLock, useCallRun, useProspectCopyTemplates, useSubsBench, useSubsBoardData, useProspectDoubles, useProspectJobs), cut out of the page 2026-11-17
-  - src/lib/prospects/ (the lanes' kernels: prospectKinds, subsLane, gcLeadLane, laneLoad, companyDouble, deckWords, windowLeave, zzProspects, stripState, personBlock, mapsShareText, textingRule, subsStages, benchOrigin, subsBoard, subRecord, callRun, subsRanks, benchAsk, needTones, gcNeeds, pagePadding)
-mapped_at: 6af60c5bcf
+  - src/lib/prospects/ (the kernels: prospectKinds, prospectRow, prospectFormat, prospectCopyTemplates, prospectTimerSums, prospectTimerIo, prospectWeekReportIo, subsDeckOrder, benchRead, callingLockIo, subsLane, gcLeadLane, laneLoad, companyDouble, deckWords, windowLeave, zzProspects, stripState, personBlock, mapsShareText, textingRule, subsStages, benchOrigin, subsBoard, subRecord, callRun, subsRanks, benchAsk, needTones, gcNeeds, pagePadding)
+mapped_at: 82094de18b
 audience: Developers, AI Agents
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 sections: What this surface is; Master summary table; Shared substrate; Per-tab dossiers; TeamProspectsTab sub-decomposition; Page-level windows; URL / navigation router; Test coverage by region; Stage-A pure-logic inventory; Preserve-quirks list; Recommended extraction order; Hazards
 ---
 
-> **Line numbers are exact as of `6af60c5bcf`** (re-mapped 2026-11-17 from `a05cef4c4`: `Prospects.tsx` read again whole against its `npm run map` fact sheet, 3,962 → 5,600 lines; `TeamProspectsTab.tsx` re-anchored through its diff, 2,383 → 2,376 lines, and checked by symbol).
+> **Line numbers are exact as of `82094de18b`** (re-mapped 2026-11-18 from `6af60c5bcf`, after the thirteen cuts and the two fixes they found: `Prospects.tsx` read again against its `npm run map` fact sheet, 5,600 → 1,556 lines, and every piece cut out of it indexed the same way; `TeamProspectsTab.tsx` has not changed since `6af60c5bcf`, so its section stands as it was).
 > They drift with every edit. Search for the named symbol; the range is a hint.
-> Regenerate the fact sheet with `npm run map -- src/pages/Prospects.tsx`.
-> The cuts in [the extraction order](#recommended-extraction-order-value--risk) are shipping one PR a step; each step's line says what moved and the page's size after it, and the ranges below it in the file sit that much lower than this map says until the next re-anchor.
+> A bare range is in the file its section or its bullet names; a range in any other file names the file.
+> Regenerate a fact sheet with `npm run map -- src/pages/Prospects.tsx`, or the same with any file below.
 
 ## What this surface is
 
-[`src/pages/Prospects.tsx`](../src/pages/Prospects.tsx) is the cold-call workstation. It finds three kinds of company through one calling deck, and it is the door to the Hiring board and the Permits ledger. [`src/components/prospects/TeamProspectsTab.tsx`](../src/components/prospects/TeamProspectsTab.tsx) is the extracted Hiring tab, a God component of its own. Hook censuses are from `npm run map` at `6af60c5bcf`:
+[`src/pages/Prospects.tsx`](../src/pages/Prospects.tsx) is the cold-call workstation. It finds three kinds of company through one calling deck, and it is the door to the Hiring board and the Permits ledger. Since the cuts of 2026-11-17 the page is the shell: the router and the gates, the tab rows, the state the tabs share, the outcomes that write the caches, and the mounts. Each tab draws in its own file, and the page reaches its data through hooks it calls, so a tab's state lives as long as the page does and survives a tab switch. [`src/components/prospects/TeamProspectsTab.tsx`](../src/components/prospects/TeamProspectsTab.tsx) is the extracted Hiring tab, a God component of its own. Hook censuses are from `npm run map` at `82094de18b`:
 
-| File | Lines (at `a05cef4c4`) | useState · effects · useMemo · useCallback · refs | Handlers | Commits (90 d) | Role |
-|---|---|---|---|---|---|
-| `Prospects.tsx` (`Prospects` 419–5600) | 5,600 (3,962) | 111 · 30 · 2 · 4 · 6 | 95 | 58 | shell + router + three lanes × five sub-tabs + nine windows |
-| `TeamProspectsTab.tsx` (`TeamProspectsTab` 785–2376) | 2,376 (2,383) | 36 · 2 · 0 · 1 · 0 (35 in the component + `RoleColumn.menuOpen`) | 34 | 21 | Hiring board: 5 stages + 6 modals |
+| File | Lines (at `6af60c5bcf`) | useState · effects · useMemo · useCallback · refs | Handlers | Role |
+|---|---|---|---|---|
+| `Prospects.tsx` (`Prospects` 98–1556) | 1,556 (5,600) | 28 · 15 · 1 · 1 · 1 | 42 | shell: router, gates, tab rows, shared state, the outcomes, the mounts |
+| `ProspectsFollowUpTab.tsx` (`ProspectsFollowUpTab` 128–954) | 954 (—) | 0 · 0 · 0 · 0 · 0 | 2 render helpers | the calling deck, drawn from 82 props |
+| `TeamProspectsTab.tsx` (`TeamProspectsTab` 785–2376) | 2,376 (2,376) | 36 · 2 · 0 · 1 · 0 (35 in the component + `RoleColumn.menuOpen`) | 34 | Hiring board: 5 stages + 6 modals |
 
-Already out of the page, each in `src/components/prospects/` unless named: `SubsBoard.tsx` (904 lines, the Board), `ProspectsResearchTab.tsx` (805, the Permits tab, with fifteen children of its own), `ProspectJobsBox.tsx` (228), `ProspectBenchModal.tsx` (196), `ProspectPersonForm.tsx` (139), `components/gc/GcCallScriptWindow.tsx`, `components/NewCustomerForm.tsx`, and 38 tested kernels under `src/lib/prospects/`.
+**Cut out of the page on 2026-11-17**, each in `src/components/prospects/` unless named:
 
-`Prospects.tsx` calls 13 custom hooks: `useNavigate`, `useLocation`, `useAuth`, `useIsMobile`, `useZzTestJobsHidden`, `useMyHiringShares`, `useToastContext`, `useConfirmDialog`, `usePromptDialog`, `useNewCustomerModal`, `useSearchParams` (420–436) and `useLeaveGuard` twice (747, 749). Its module scope (105–417) holds 12 functions (formatters, copy-template helpers, `tabStyle`, `DIDNT_ANSWER_MOVE_NEXT_KEY`, `renderKindFields`), 4 copy-template constants, 2 tone-style tables and 3 inline SVG icons (`EnvelopeIcon` / `EnvelopeCheckIcon` / `EditIcon`, 126–142).
+| Piece | Lines | What it holds | Shipped |
+|---|---|---|---|
+| `ProspectsFollowUpTab.tsx` | 954 | the Follow Up tab's JSX and its two queue helpers, props only | v2.7638 |
+| `ProspectsListTab.tsx` + `useProspectListTab.ts` | 417 + 121 | the Prospect List, with its search, open sections, folds, selected row and timed seconds | v2.7636 |
+| `ProspectsConvertTab.tsx` + `useProspectConvert.ts` | 303 + 178 | Convert, with its 8 states, 3 effects, picker pool and submit | v2.7628 |
+| `ProspectsActivityTab.tsx` | 228 | Activity, with its 4 states and its two reads (`lib/prospects/prospectWeekReportIo.ts` for the week) | v2.7626 |
+| `useProspectsData.ts` | 300 | the lane's caches, the pointer, the call-history sets, both loaders, the calling order | v2.7634 |
+| `useSubsBoardData.ts` | 100 | the Board's pins and extras, and the pin writes | v2.7634 |
+| `useSubsBench.ts`, `useProspectDoubles.ts`, `useProspectJobs.ts` | 48, 92, 85 | the bench read; the doubles and the GC work read; a lead's jobs and their five writes | v2.7631 |
+| `useCallingLock.ts`, `useCallRun.ts`, `useProspectCopyTemplates.ts` | 91, 110, 254 | the lock; the run's notes and its text; the copy templates' state, reads and presses | v2.7632 |
+| `ProspectCopyTemplateRow.tsx`, `ProspectCopyTemplateEditModal.tsx`, `ProspectCopyBlankFieldsModal.tsx` | 85, 147, 53 | the copy row with the three icons, and its two windows | v2.7632 |
+| `useEditProspectWindow.ts` + `EditProspectWindow.tsx`, `useNewProspectWindow.ts` + `NewProspectWindow.tsx`, `ProspectKindFields.tsx` | 204 + 148, 169 + 194, 85 | the two windows, and `renderKindFields` | v2.7637 |
+| `ProspectCallbackModal.tsx`, `ProspectTimerHistoryModal.tsx`, `ProspectMyTimeModal.tsx` | 99, 100, 105 | Set callback's boxes; the two time windows with their reads (`lib/prospects/prospectTimerIo.ts`) | v2.7623 |
+| `SubsPathStrip.tsx`, `SubsPlansPicker.tsx`, `SubsLaneList.tsx`, `SubsNeedsPanel.tsx`, `GcWorkStrip.tsx` | 61, 52, 201, 130, 73 | the Subs lane's strip, For picker, list by trade and needs panel; the Jobs to GC work strip | v2.7621 |
+| `lib/prospects/` | — | new: `prospectCopyTemplates`, `prospectFormat`, `prospectRow`, `prospectTimerSums`, `prospectTimerIo`, `prospectWeekReportIo`, `subsDeckOrder`, `benchRead`, `callingLockIo`; grown: `callingOrder`, `callLogState`, `subRecord`, `callRun`, `prospectKinds`, `windowLeave`, `prospectConversion` | v2.7595–v2.7656 |
+
+Out before the cuts, each in `src/components/prospects/` unless named: `SubsBoard.tsx` (904 lines, the Board), `ProspectsResearchTab.tsx` (805, the Permits tab, with fifteen children of its own), `ProspectJobsBox.tsx` (228), `ProspectBenchModal.tsx` (196), `ProspectPersonForm.tsx` (139), `components/gc/GcCallScriptWindow.tsx` and `components/NewCustomerForm.tsx`.
+
+`Prospects.tsx` calls 23 hooks. Eleven are the router's, the auth's, the toasts' and the dialogs' (`useNavigate`, `useLocation`, `useAuth`, `useIsMobile`, `useZzTestJobsHidden`, `useMyHiringShares`, `useToastContext`, `useConfirmDialog`, `usePromptDialog`, `useNewCustomerModal`, `useSearchParams`, 99–115). Twelve are its own pieces: `useSubsBench` 134, `useSubsBoardData` 136, `useProspectsData` 139, `useProspectDoubles` 191, `useProspectListTab` 536, `useEditProspectWindow` 547, `useNewProspectWindow` 561, `useProspectConvert` 584, `useCallingLock` 598, `useCallRun` 600, `useProspectCopyTemplates` 609 and `useProspectJobs` 611. Its module scope (84–94) holds the two tab types, `PROSPECTS_TABS` and `tabStyle`. Everything else that was module-level moved: the formatters and the copy rules to `lib/prospects/`, the `Prospect` type to `lib/prospects/prospectRow.ts`, the three icons to `ProspectCopyTemplateRow.tsx`, `STAGE_TONE_STYLE` to `SubsLaneList.tsx`, `NEED_TONE_COLOR` to `SubsNeedsPanel.tsx`, `DIDNT_ANSWER_MOVE_NEXT_KEY` to `ProspectsFollowUpTab.tsx` and `renderKindFields` to `ProspectKindFields.tsx`.
 
 ### How it grew
 
 | Day | Commit | Lines | What landed |
 |---|---|---|---|
 | 2026-02-23 | `28931d97ec` | — | the page's first commit |
-| 2026-09-25 | `a05cef4c4` | 3,962 | this map's last anchor: one customer deck, four sub-tabs, seven windows |
+| 2026-09-25 | `a05cef4c4` | 3,962 | the first map's anchor: one customer deck, four sub-tabs, seven windows |
 | 2026-10-15 | before v2.5559 | 3,970 | — |
 | 2026-10-15 | v2.5559 | 4,271 | three kinds of prospect (punch list #110): the `kind` state, `renderKindFields`, the kind cards |
 | 2026-10-17 | v2.5606 | 4,782 | the lanes' bench and jobs (v2.5560, v2.5561), the #113 spots (v2.5578–v2.5585), the person first (#117, v2.5601–v2.5606) |
 | 2026-10-24 | v2.5810 | 5,530 | what GC mode needs (#148, v2.5782, v2.5785), the path onto the bench, the Board, the run, the pins, the ask on landing (#153, v2.5807–v2.5810) |
 | 2026-10-28 | v2.6032 | 5,546 | the run's first text starts a thread |
-| 2026-11-17 | `6af60c5bcf` | 5,600 | the Permits tab's mount (v2.6782, v2.6787), the phone padding (v2.6869), sweeps |
+| 2026-11-17 | `6af60c5bcf` | 5,600 | the Permits tab's mount (v2.6782, v2.6787), the phone padding (v2.6869), sweeps; the second map's anchor |
+| 2026-11-18 | `82094de18b` | 1,556 | the thirteen cuts of 2026-11-17 (v2.7595–v2.7638) and the two fixes they found (v2.7656, v2.7657) |
 
-1,560 of the 1,638 lines since the last anchor came in the ten days from 2026-10-15 to 2026-10-24, all of them on the lanes. Each feature put its rules in a tested kernel under `src/lib/prospects/`, and left its state, its effects, its handlers and its JSX in the page. So the rules are tested and the page is not: it has no render test.
+1,560 of the 1,638 lines between the first two anchors came in the ten days from 2026-10-15 to 2026-10-24, all of them on the lanes. Each feature put its rules in a tested kernel under `src/lib/prospects/`, and left its state, its effects, its handlers and its JSX in the page, which had no render test. The cuts gave it one first (v2.7615), then moved everything but the shell out, each move run against the same cases before and after.
 
 ### Tabs and lanes
 
 The page switches on **four levels of state**:
 
 ```
-topTab:    'customers' | 'team' | 'research'                              (ProspectsTopTab 144; 'research' is the Permits tab, ?tab=permits)
-kind:      'customer' | 'gc_lead' | 'sub'                                 (ProspectKind, lib/prospects/prospectKinds.ts; state 442; only under 'customers')
-activeTab: 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity' (ProspectsTab 146, PROSPECTS_TABS 200; only under 'customers')
+topTab:    'customers' | 'team' | 'research'                              (ProspectsTopTab 84; 'research' is the Permits tab, ?tab=permits)
+kind:      'customer' | 'gc_lead' | 'sub'                                 (ProspectKind, lib/prospects/prospectKinds.ts; state 121; only under 'customers')
+activeTab: 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity' (ProspectsTab 86, PROSPECTS_TABS 88; only under 'customers')
 stage:     'screen' | 'interview' | 'tryout' | 'hire' | 'review'          (TeamProspectsTab 806; HiringStage in lib/hiring/sharedHiringTab.ts)
 ```
 
-The top row (3228–3242) draws five pills: **Customers**, **Jobs to GC** and **Subs** (one per `PROSPECT_KINDS`, each sets `kind` through `setKindTab`), then **Hiring** and **Permits**. The second row (3248–3307) shows under the three lanes only: **Follow Up**, **Board** (Subs only), **Prospect List**, **Convert** (Customers only), **Activity** (dev and assistant-like), and the **New Prospect** button.
+The top row (1284–1305) draws five pills: **Customers**, **Jobs to GC** and **Subs** (one per `PROSPECT_KINDS`, each sets `kind` through `setKindTab`, 1287–1291), then **Hiring** (1293) and **Permits** (1298). The second row (1307–1366) shows under the three lanes only: **Follow Up**, **Board** (Subs only), **Prospect List**, **Convert** (Customers only, 1332–1343), **Activity** (dev and assistant-like, 1344–1355), and the **New Prospect** button (1356–1364).
 
 | Tab | Shows on | Owns |
 |---|---|---|
@@ -76,33 +99,34 @@ One `?tab=` param selects the top tab and the sub-tab together, and `?kind=` sel
 
 ### Access gates
 
-- **`canAccessFollowUp`** (3199): signed in AND [`canAccessProspectPipeline`](../src/lib/prospects/prospectConversion.ts)`(authRole, estimatorProspectsAccess)`. That means dev, master_technician, assistant or controller, or an estimator with the flag. It gates the three lane pills, Follow Up, the Board, Prospect List and Convert (each shows "You do not have access" otherwise) and the New Prospect button. An estimator without the flag gets an early-return page (3209–3220), except on the Permits tab.
-- **`canAccessActivityTab`** (644): `authRole === 'dev' || isAssistantLike(authRole)`.
-- **`canOpenHiring`** (429): `teamProspectsAccess || myHiringShares.length > 0`. `useMyHiringShares` (428) reads the viewer's own `team_prospect_role_shares` rows. A share holder without the switch gets the trimmed board, because the page passes `shared={!teamProspectsAccess}`.
-- **`canResearch`** (431): `canResearchPermits(authRole)`, the office and every estimator, flagged or not.
-- **Lane rules, in the router and in `setKindTab`:** `board` needs `kind === 'sub'`, `convert` needs `kind === 'customer'`. Either falls back to Follow Up.
+- **`canAccessFollowUp`** (1258): signed in AND [`canAccessProspectPipeline`](../src/lib/prospects/prospectConversion.ts)`(authRole, estimatorProspectsAccess)`. That means dev, master_technician, assistant or controller, or an estimator with the flag. It gates the three lane pills, Follow Up, the Board, Prospect List and Convert (each shows "You do not have access" otherwise) and the New Prospect button. The page hands it to each tab as a prop. An estimator without the flag gets an early-return page (1268–1279), except on the Permits tab.
+- **`canAccessActivityTab`** (244): `authRole === 'dev' || isAssistantLike(authRole)`.
+- **`canOpenHiring`** (108): `teamProspectsAccess || myHiringShares.length > 0`. `useMyHiringShares` (107) reads the viewer's own `team_prospect_role_shares` rows. A share holder without the switch gets the trimmed board, because the page passes `shared={!teamProspectsAccess}`.
+- **`canResearch`** (110): `canResearchPermits(authRole)`, the office and every estimator, flagged or not.
+- **Lane rules, in the router (299) and in `setKindTab` (412):** `board` needs `kind === 'sub'`, `convert` needs `kind === 'customer'`. Either falls back to Follow Up.
 - **The GC tables are read fail-soft.** A role they refuse sees the Subs and Jobs to GC lanes without their strips.
 
 ## Master summary table
 
-| Region | Render anchor (`6af60c5bcf`) | Lines | Status | Owned state | Coupling | Risk | Recommended action |
+| Region | Where it lives (`82094de18b`) | Lines | Status | Owned state | Coupling | Risk | Next |
 |---|---|---|---|---|---|---|---|
-| Module scope | constants 105–124, icons 126–142, types 144–198, formatters 222–267, copy helpers 269–337, `renderKindFields` 341–417 | 313 | inline | — | the page-local `Prospect` type (148–184) | lowest | **Stage A first**: the copy-template rules and the formatters to `lib/prospects/` with tests; the type and `PROSPECT_COLUMNS` to a lib file |
-| Shell: gates, tab rows, URL router | effects 646–729 / 732–742, `setTradeFilter` 913, `setPlansFor` 924, `setTab` 933, `setKindTab` 946, `openResearchTab` 967, `openTeamTab` 978, early returns 3201–3220, tab rows 3225–3307 | ~290 | permanent parent | `topTab`, `activeTab`, `kind` | — | — | Stays |
-| Lane reads: the bench, GC work, doubles, jobs | effects 771–794, 829–849, 873–896; `mergeJobs` 898–911; job handlers 2515–2560 | ~175 | inline | 10: `benchTrades`, `gcBench`, `benchCompanies`, `benchQuoted`, `gcPlans`, `gcWork`, `gcBidding`, `customerDoubles`, `prospectDoubles`, `jobsByProspect` | read-only and fail-soft; keyed on `kind`, `newKind`, the user | low | Hook seams: `useSubsBench`, `useGcLeadStrip`, `useProspectDoubles`, `useProspectJobs` |
-| Subs lane drawn helpers | `renderSubsStrip` 2998–3038, `renderPlansPicker` 3041–3075, `renderSubsList` 3078–3197 | 200 | inline render helpers | `subsSectionOpen` | props-clean: rows, sets and callbacks | low | **First component move** → `SubsPathStrip`, `SubsPlansPicker`, `SubsLaneList` |
-| Follow Up | `topTab === 'customers' && activeTab === 'follow-up'` 3315–4166 + 5 tab-local windows 5036–5449 | 852 + 414 | inline | 45 states, 5 refs, 16 effects, 2 callbacks | high (pointer, both caches, `saving`, the call-history sets, the Edit window, the run, the bench) | high | Peel the panels, the windows and the hook seams first; extract **last** |
-| — Subs needs panel | `gcNeedsNow` block 3318–3419 | 102 | inline | — | `gcNeedsNow`, `tradeFilter`, `setTradeFilter`, `openAddSub` | low | → `SubsNeedsPanel` |
-| — GC work strip | `stripReads(gcWork)` block 3420–3469 | 50 | inline | — | `gcWork`, `gcBidding`, `followUpProspects`, `jobsByProspect` | low | → `GcWorkStrip` |
-| Board (Subs) | `activeTab === 'board' && kind === 'sub'` 4168–4204 | 37 | drawn by `SubsBoard` (**extracted**); its data and writes inline | `laneRanks`, `laneCallRows`, `inboundProspectIds`, `laneCallbacks` + 2 memos | med: fed by the list's loader; 9 callbacks into page handlers | med | `useSubsBoardData` after the data seam |
-| Prospect List | `activeTab === 'prospect-list'` 4206–4509 | 304 | inline (grouping in `prospectListGrouping.ts`; Subs through `renderSubsList`) | 5 states, 2 effects | med (3 cache-writing actions, shared Edit window, pointer via `selectProspectForList`) | med | Extract after the data seam |
-| Convert | `activeTab === 'convert'` 4511–4772 | 262 | inline (picker in `convertProspectSearch.ts`) | 8 states, 3 effects | low-med (reads the cache union + `prospectLastCallMap`; patches both caches on success) | low | → `ProspectsConvertTab` |
-| Activity | `activeTab === 'activity' && canAccessActivityTab` 4774–4933 | 160 | inline (both loaders lib-backed) | 5 states, 2 callbacks, 2 effects | low: Source success reads `prospectListProspects` on a lane | lowest | → `ProspectsActivityTab` |
-| Hiring (key `team`) | `topTab === 'team' && canOpenHiring && authUser?.id` 3309–3311 | 3 | **extracted** (`TeamProspectsTab`) | 0 (parent owns `useMyHiringShares` for the gate) | 5 props: `authUserId`, `isDev`, `canEditOnboarding`, `resolveMasterId`, `shared` | — | Sub-decompose (below) |
-| Permits (key `permits`) | `topTab === 'research' && canResearch && authUser?.id` 3313 | 1 | **extracted** (`ProspectsResearchTab`) | 0 | 1 prop: `authUserId`; its own URL keys through `permitsLink.ts` | — | Nothing to cut here |
-| Edit Prospect window | `editModalOpen && (currentProspect \|\| editingProspect)` 4936–5033 | 98 | inline, parent | the `editPerson` / `editCompany` blocks, 4 kind fields, `editOpenedWith`, a leave guard | opened by Follow Up, Prospect List and the Board; hosts warmth ± (5006–5008) | med | Controller hook + component, after the data seam |
-| New Prospect window | `newProspectModalOpen` 5457–5597 | 141 | inline, parent | `newKind`, 4 kind fields, the `newPerson` / `newCompany` blocks, `newCustomerLink`, `newProspectError`, the doubles, a leave guard | tab-row button, `?newProspect=true`, `openAddSub` (panel, list, Board), the empty states; Save reads **Save anyway** while a double shows | med | Controller hook + component, after the lane read hooks |
-| Bench window, call script | `scriptOpen` 5451, `benchDraft` 5452–5455 | 5 | **extracted** (`GcCallScriptWindow`, `ProspectBenchModal`) | `benchDraft`, `benchSaving`, `benchError`, `scriptOpen` | `handleBenchSave` writes three caches and the pointer | — | Stays with its handler |
+| Module scope | page 84–94 | 11 | inline | — | — | — | Stays |
+| Shell: gates, tab rows, URL router | page: effects 246–329 / 332–342, `setTradeFilter` 375, `setPlansFor` 386, `setTab` 395, `setKindTab` 408, `openResearchTab` 429, `openTeamTab` 440, early returns 1260–1279, tab rows 1284–1366 | ~300 | permanent parent | `topTab`, `activeTab`, `kind` | — | — | Stays |
+| Data seam | `useProspectsData.ts` 33–297, called at page 139 and destructured 150–173 | 300 | **extracted v2.7634** | the caches, the pointer, the call-history sets, the calling order, both loading flags | every tab; the page's handlers patch its caches through its setters | — | Done |
+| Lane reads | `useSubsBench.ts`, `useProspectDoubles.ts`, `useProspectJobs.ts`, `useSubsBoardData.ts` | 325 | **extracted v2.7631 / v2.7634** | the bench's five, GC work, the doubles, the jobs, the pins and extras | read-only and fail-soft; keyed on `kind`, `newKind`, the user | — | Done |
+| Subs lane drawn pieces | `SubsPathStrip`, `SubsPlansPicker`, `SubsLaneList`, `SubsNeedsPanel`, `GcWorkStrip` | 517 | **extracted v2.7621** | `subsSectionOpen` (`useProspectListTab.ts` 35) | props only | — | Done |
+| Follow Up | page 1374–1459 mounts `ProspectsFollowUpTab.tsx` 128–954 | 86 + 954 | **extracted v2.7638**, props only | 18 page states (the comments, the composer, the notes, the clock, the order toggle, the auto-advance choice, the text ask, the open flags, the caller's name) and the hooks' values | high: 82 props by name; the outcomes stay in the page | med | `useFollowUpDeck`, then `FollowUpQueue` (see [the order](#recommended-extraction-order-value--risk)) |
+| — Follow Up's outcomes and call logging | page 742–1229 (`openCallbackModal` … `handleNextProspect`) | ~490 | inline, parent | — | write the caches, the pointer, the clock, the lock and the run; close over the click-time render | high | Stays until a deck hook exists |
+| Board (Subs) | page 1461–1497 mounts `SubsBoard` (1472) | 37 | drawn by `SubsBoard`; data in `useSubsBoardData` | — | 9 callbacks into page handlers | low | Done |
+| Prospect List | page 1499–1524 mounts `ProspectsListTab.tsx` 57–417 over `useProspectListTab` (page 536) | 26 + 417 + 121 | **extracted v2.7636** | 5 states | the row actions stay in the page | — | Done |
+| Convert | page 1526–1528 mounts `ProspectsConvertTab.tsx` 12–303 over `useProspectConvert` (page 584) | 3 + 303 + 178 | **extracted v2.7628** | 8 states | patches both caches on success | — | Done |
+| Activity | page 1530–1532 mounts `ProspectsActivityTab.tsx` 19–228 | 3 + 228 | **extracted v2.7626** | 4 states; `weekOffset` stays in the page (243) | reads the lane's rows for Source success | — | Done |
+| Hiring (key `team`) | page 1368–1370 | 3 | **extracted** (`TeamProspectsTab`) | 0 (parent owns `useMyHiringShares` for the gate) | 5 props: `authUserId`, `isDev`, `canEditOnboarding`, `resolveMasterId`, `shared` | — | Sub-decompose (below) |
+| Permits (key `permits`) | page 1372 | 1 | **extracted** (`ProspectsResearchTab`) | 0 | 1 prop: `authUserId`; its own URL keys through `permitsLink.ts` | — | Nothing to cut here |
+| Edit Prospect window | `useEditProspectWindow.ts` 20–202 (page 547), `EditProspectWindow.tsx` 14–148 (page 1534) | 204 + 148 | **extracted v2.7637** | 9 states + a leave guard | opened by Follow Up, Prospect List and the Board; hosts warmth ± | — | Done |
+| New Prospect window | `useNewProspectWindow.ts` 17–167 (page 561), `NewProspectWindow.tsx` 15–194 (page 1553) | 169 + 194 | **extracted v2.7637** | 8 states + a leave guard; the open flag and `newKind` stay in the page (131–132) | tab-row button, `?newProspect=true`, `openAddSub`, the empty states; Save reads **Save anyway** while a double shows | — | Done |
+| Follow Up's small windows | page 1536–1546 | — | **extracted v2.7623 / v2.7632** | the open flags stay in the page; the boxes and reads in the windows | — | — | Done |
+| Bench window, call script | page 1548–1551; state 124–126 and 179 | 4 | **extracted** (`GcCallScriptWindow`, `ProspectBenchModal`) | `benchDraft`, `benchSaving`, `benchError`, `scriptOpen` | `handleBenchSave` writes three caches and the pointer | — | Stays with its handler |
 | — TPT module components | `EmailText` 193–208 … `RoleColumn` 632–782 | ~590 | inline in file, pure props | `RoleColumn.menuOpen` only | none | lowest | **Move to own files first** |
 | — TPT Screen | header 1651–1689, board 1691–1738, Passed 2045, Sources 2047–2094 | ~140 | inline | 5 | `rows`/`roles`/`busy`/`load`/`setStatus`/`openEdit`, hygiene, shares, drag | med-high | Last |
 | — TPT Interview | 1740–1845 + My review modal 2172–2219 | 106 + 48 | inline | 2 (reads TPT-level `reviews`/`reviewerNames` from `load`) | `setStatus`, `startTryOut`, `markContacted` | low-med | 3rd |
@@ -113,37 +137,37 @@ One `?tab=` param selects the top tab and the sub-tab together, and `?kind=` sel
 
 ## Shared substrate
 
-1. **The lane:** `kind` (442) starts from the link (`kindFromSearch`, so a refresh never paints the Customers deck under a lane's tab) and is written only by the `?tab=` effect and `setKindTab`.
-   - Both loaders filter `prospects.kind`. The Activity reads join each row on `prospects!inner(kind)`.
-   - `latestLoad` (443, `makeLatestOnly`) numbers the deck's loads, and every await in `loadFollowUpProspects` returns early unless its load is still the newest.
-   - The deck draws a card only when `cardOnLane` says it is the lane's (3503–3505), and says `laneLoadingWords(kind)` otherwise.
-   - `kindWords = PROSPECT_KIND_WORDS[kind]` (444) names the lane's tab, its last press and its landed words.
-2. **Selection pointer:** `currentProspectIndex` (504) indexes `followUpProspects` (503) and yields `const currentProspect = followUpProspects[currentProspectIndex] ?? null` (1447). It syncs to the URL as `?prospect_id=`.
-   - The index is written by every advance and removal handler, by the `renderQueueRows` row click (2018–2023), by `loadFollowUpProspects` (1093) and by the index-sync effect (1653–1659). The `?prospect_id=` half is written by `updateUrlProspectId` (2063–2071) and, cross-tab, by `selectProspectForList` (2865–2874) and `openDoubleProspect` (855–870).
-   - `?prospect_id=` is read by `loadFollowUpProspects` (1062–1090) and the index-sync effect.
-   - Eight per-prospect effects hang off `currentProspect?.id`: the text-ask reset 1449–1451, notes sync 1453–1455, comments 1661–1669, email-sent keys 1682–1688, ledger seconds 1702–1708, scheduled callback 1836–1838 (via `loadScheduledCallback` 1813–1834), calling-lock release 1844–1855 and the card clock 1912–1919.
-   - **Stays in the parent**, passed to an extracted Follow Up as controlled props.
-3. **The prospect caches:** `followUpProspects` (the deck) and `prospectListProspects` (539, the list, the Board and Convert). The Subs lane adds `laneAllRows` (463, every row of the lane for the strip's counts) and `laneQueueAll` (457, the whole queue before the trade filter). Which mutation writes which:
-   - both caches: `saveFollowUpNotes`, `saveOkToText`, `savePriority` (and `laneAllRows`), `handleDeleteProspect`, `saveEdit`, `handleCantReach`, `handleConverted`, `handleBenchSave` (and `laneAllRows`), `leaveQueueAsLanded`, `handleSendBack`, `handleDeleteFromList`, `handleAnswered`, `handleConvertSubmit`
-   - Follow Up cache only: `handleWarmthDelta`, `handleWarmthReset`, `handleNoLongerFit`, `handleDidntAnswer`, `handleAddComment`
+1. **The lane:** `kind` (page 121) starts from the link (`kindFromSearch`, so a refresh never paints the Customers deck under a lane's tab) and is written only by the `?tab=` effect and `setKindTab`.
+   - Both loaders filter `prospects.kind` (`useProspectsData.ts` 100 and 182). The Activity reads join each row on `prospects!inner(kind)` (`lib/prospects/prospectWeekReportIo.ts`).
+   - `latestLoad` (`useProspectsData.ts` 59, `makeLatestOnly`) numbers the deck's loads, and every await in `loadFollowUpProspects` returns early unless its load is still the newest.
+   - The deck draws a card only when `cardOnLane` says it is the lane's (`ProspectsFollowUpTab.tsx` 347–349), and says `laneLoadingWords(kind)` otherwise.
+   - `kindWords = PROSPECT_KIND_WORDS[kind]` (page 122) names the lane's tab, its last press and its landed words.
+2. **Selection pointer:** `currentProspectIndex` (`useProspectsData.ts` 65) indexes `followUpProspects` (64) and yields `currentProspect` (206) and `currentProspectId` (207). It syncs to the URL as `?prospect_id=`.
+   - The index is written by every advance and removal handler in the page, by the `renderQueueRows` row click (`ProspectsFollowUpTab.tsx` 250–303), by `loadFollowUpProspects` and by the index-sync effect (`useProspectsData.ts` 209–215). The `?prospect_id=` half is written by `updateUrlProspectId` (`useProspectsData.ts` 254–262) and, cross-tab, by `selectProspectForList` (`useProspectListTab.ts` 93–102) and `openDoubleProspect` (page 358–373).
+   - `?prospect_id=` is read by `loadFollowUpProspects` (`useProspectsData.ts` 140–160) and the index-sync effect.
+   - Per-prospect effects hang off the card. In the page: the text-ask reset 612–614, notes sync 616–618, comments 651–659, ledger seconds 671–677, scheduled callback 702–704 (via `loadScheduledCallback` 679–700) and the card clock 718–725. In the hooks: the email-sent keys (`useProspectCopyTemplates.ts` 225–232) and the lock's release (`useCallingLock.ts` 34–45).
+   - **Stays with the parent**, through the hook it calls; the tabs get it as props.
+3. **The prospect caches:** `followUpProspects` (the deck) and `prospectListProspects` (`useProspectsData.ts` 67: the list, the Board and Convert). The Subs lane adds `laneAllRows` (61, every row of the lane for the strip's counts) and `laneQueueAll` (60, the whole queue before the trade filter). The page destructures them with their setters (150–173), and its handlers patch them as before. Which mutation writes which:
+   - both caches: `saveFollowUpNotes`, `saveOkToText`, `savePriority` (and `laneAllRows`), `handleCantReach`, `handleConverted`, `handleBenchSave` (and `laneAllRows`), `leaveQueueAsLanded`, `handleSendBack`, `handleDeleteFromList` and `handleAnswered` in the page; `handleDeleteProspect` and `saveEdit` in `useEditProspectWindow.ts`; `handleConvertSubmit` in `useProspectConvert.ts`
+   - Follow Up cache only: `handleNoLongerFit`, `handleDidntAnswer` and `handleAddComment` in the page; `handleWarmthDelta` and `handleWarmthReset` in `useEditProspectWindow.ts`
    - list cache only: `handleNotAFitFromList` (`passFromBoard` then patches `laneAllRows`)
-   - reloads both: `saveNewProspect`, unless the new row is another lane's, where `setKindTab` moves there and the kind change reloads
+   - reloads both: `saveNewProspect` (`useNewProspectWindow.ts` 104–142), unless the new row is another lane's, where `setKindTab` moves there and the kind change reloads
 
-   Four call-history derivatives travel with the caches:
-   - `calledProspectIds` (560): set by `loadFollowUpProspects`, patched by `markCalledLocally` 2652–2655. It drives the "never called" chip and the queue order.
-   - `prospectLastCallMap` (543): set by `loadProspectListProspects`, patched by `markCalledLocally`. It is read by Prospect List ("Last touch"), the Subs list, the Board, Convert search and suggestions, and the list's `?prospect_id` effect.
-   - `answeredProspectIds` (464) and `laneCallRows` (472): set by both loaders. They feed the Subs stages and `subRecordMap` (481).
+   Four call-history derivatives travel with the caches, all in `useProspectsData.ts`:
+   - `calledProspectIds` (76): set by `loadFollowUpProspects`, patched by `markCalledLocally` 267–270. It drives the "never called" chip and the queue order.
+   - `prospectLastCallMap` (69): set by `loadProspectListProspects` through `lastCallByProspect` (195), patched by `markCalledLocally`. It is read by Prospect List ("Last touch"), the Subs list, the Board, Convert search and suggestions, and the list's `?prospect_id` effect.
+   - `answeredProspectIds` (62) and `laneCallRows` (63): set by both loaders. They feed the Subs stages and `subRecordMap` (page 178).
 
-   This is the page's `useBidPricingEngine` analog. The seam hook would be **`useProspectsData`**, returning `{ kind, followUpProspects, prospectListProspects, laneAllRows, laneQueueAll, currentProspectIndex, currentProspect, calledProspectIds, answeredProspectIds, laneCallRows, prospectLastCallMap, followUpLoading, prospectListLoading, loadFollowUpProspects, loadProspectListProspects, updateUrlProspectId, markCalledLocally, saving, setSaving, …patch helpers }`. `callingOrderModeRef` (559) and `latestLoad` (443) have to move with `loadFollowUpProspects`, which reads them.
-4. **One global `saving` flag** (512; 26 readers, 14 writers) disables buttons across every lane's tabs and windows, the Board's cards included (`busy={saving}`). A behavior-preserving extraction keeps it page-level (or in the seam hook), not per tab. Convert has `convertSaving` and the bench window has `benchSaving`.
-5. **Tab-keyed loaders:**
-   - 1405–1410 runs `loadFollowUpProspects` + `loadMyTimeToday` on `[topTab, activeTab, authUser?.id, searchParams, kind, benchTrades]`. See quirk 5.
-   - 1412–1416 runs `loadProspectListProspects` on entry to prospect-list, convert **or** board, and on a kind change.
-   - 1419–1424 runs it again on Activity of a lane that is not Customers, for Source success.
-6. **The bench read** (effect 771–794) is shared by five readers: the needs panel, the path strip (`benchQuoted`), the For picker and the Board (`gcPlans`, `gcBench`), the Trades picks in New and Edit (`benchTrades`) and the double check (`benchCompanies`). It runs when the lane **or** the New Prospect window's kind is `sub`.
+   **`useProspectsData`** is the seam the map proposed at `6af60c5bcf`, as built. It returns the caches, the pointer, the sets, both loading flags, both loaders, `updateUrlProspectId`, `markCalledLocally` and the calling order with its switch, each with its setter (`ProspectsData`, 299). `callingOrderModeRef` (75) and `latestLoad` (59) moved with `loadFollowUpProspects`, which reads them. The page's `switchCallingOrder` (175–177) closes the order toggle around the hook's (237–252). It does not own `saving`.
+4. **One global `saving` flag** (page 198) disables buttons across every lane's tabs and windows, the Board's cards included (`busy={saving}`). It stayed in the page: the tabs and windows read it as a prop, and `useEditProspectWindow` and `useNewProspectWindow` take `setSaving` as an argument. Convert has `convertSaving` (`useProspectConvert.ts` 46) and the bench window has `benchSaving` (page 125).
+5. **Tab-keyed loaders**, in the page on purpose (they decide when a hook's loader runs, and they read the tab state the page owns):
+   - 513–518 runs `loadFollowUpProspects` + `loadMyTimeToday` on `[topTab, activeTab, authUser?.id, searchParams, kind, benchTrades]`. See quirk 5.
+   - 520–524 runs `loadProspectListProspects` on entry to prospect-list, convert **or** board, and on a kind change.
+   - 527–532 runs it again on Activity of a lane that is not Customers, for Source success.
+6. **The bench read** (`useSubsBench.ts` 23–45, over `benchReadFromBoard`) is shared by five readers: the needs panel, the path strip (`benchQuoted`), the For picker and the Board (`gcPlans`, `gcBench`), the Trades picks in New and Edit (`benchTrades`) and the double check (`benchCompanies`). It runs when the lane **or** the New Prospect window's kind is `sub`, which is why `newKind` sits in the page above it (132).
 7. **TeamProspectsTab and ProspectsResearchTab are substrate-free from the parent's side.**
    - Each loads its own data. Hiring takes 5 props, Permits takes 1.
-   - `getEffectiveMasterId` (2876–2880) is just `resolveCompanyOwnerUserId(supabase, authUser.id)` (v2.2972, one company). It serves `saveNewProspect` and TPT's `saveNewCandidate`/`addRole`.
+   - `getEffectiveMasterId` (page 1231–1235) is just `resolveCompanyOwnerUserId(supabase, authUser.id)` (v2.2972, one company). It serves `saveNewProspect` (handed to `useNewProspectWindow`) and TPT's `saveNewCandidate`/`addRole`.
    - *Inside* TPT the substrate is `rows`/`roles`/`loading`/`busy`/`modalError`/`load()` plus `setStatus`/`openEdit`/`markContacted`/`startTryOut`.
 8. **Logic duplicated with other surfaces** is listed under [Cross-surface duplicates](#cross-surface-duplicates-fix-outside-the-moves).
 
@@ -151,92 +175,88 @@ One `?tab=` param selects the top tab and the sub-tab together, and `?kind=` sel
 
 ### The lanes — what a kind adds
 
-- **Customers** (`customer`): the deck as it always was, plus the Convert tab and the copy templates. Its last press is **Converted ✓** (`handleConverted` 2313–2357).
+- **Customers** (`customer`): the deck as it always was, plus the Convert tab and the copy templates. Its last press is **Converted ✓** (`handleConverted`, page 839–870).
 - **Jobs to GC** (`gc_lead`): an owner, developer, architect or owner's rep with a job we could build as the GC.
-  - State: `jobsByProspect` (494), `gcWork` (495, a `StripRead`), `gcBidding` (497), `customerDoubles` (498).
-  - Reads: effect 873–896 (`loadGcProjects` → `gcWorkCounts`, `gcBiddingLines`; `loadCustomerDoubles`), and `mergeJobs` 898–911 beside both loaders.
-  - Draws: the **GC work in flight** strip 3420–3469, the card's Jobs box (`ProspectJobsBox`, 3680–3693), the **Soonest bid** order.
-  - Writes: `addJobFor` 2515–2519, `editJobFor` 2522–2525, `changeJob` 2527–2536, `markJobLost` 2538–2549 (`promptDialog`), `removeJob` 2551–2560, all through `gcLeadLaneIo.ts` on `prospect_jobs`.
-  - Last press **Asked us ✓** (`handleAskedUs` 2460–2512): the customer on file when `customer_id` is set, else Add customer; the job with the soonest bid marked asked; `leaveQueueAsLanded` 2441–2454; then `navigate('/gc?new=1', { state: { newProjectSeed } })`.
+  - State: `jobsByProspect` (`useProspectJobs.ts` 19); `gcWork` (a `StripRead`), `gcBidding` and `customerDoubles` (`useProspectDoubles.ts` 36, 38, 39).
+  - Reads: `useProspectDoubles.ts` effect 66–89 (`loadGcProjects` → `gcWorkCounts`, `gcBiddingLines`; `loadCustomerDoubles`), and `mergeJobs` (`useProspectJobs.ts` 21–34) beside both loaders.
+  - Draws: the **GC work in flight** strip (`GcWorkStrip.tsx`, mounted at `ProspectsFollowUpTab.tsx` 311–313), the card's Jobs box (`ProspectJobsBox`, `ProspectsFollowUpTab.tsx` 526), the **Soonest bid** order.
+  - Writes, in `useProspectJobs.ts`: `addJobFor` 37–41, `editJobFor` 44–47, `changeJob` 49–58, `markJobLost` 60–71 (`promptDialog`), `removeJob` 73–82, all through `gcLeadLaneIo.ts` on `prospect_jobs`.
+  - Last press **Asked us ✓** (`handleAskedUs`, page 971–1011): the customer on file when `customer_id` is set (987–995), else Add customer (998–1009); the job with the soonest bid marked asked (978); `leaveQueueAsLanded` 953–965; then `navigate('/gc?new=1', { state: { newProjectSeed } })` (985).
 - **Subs** (`sub`): a company that does a trade we buy out.
-  - State: `benchTrades` (453), `gcBench` (455), `benchCompanies` (456), `laneQueueAll` (457), `scriptOpen` (458), `laneAllRows` (463), `answeredProspectIds` (464), `benchQuoted` (465), `gcPlans` (466), `subsSectionOpen` (467), `laneCallRows` (472), `inboundProspectIds` (473), `laneCallbacks` (474), the run's four (477–480), `laneRanks` (483), the bench window's three (446–448).
-  - URL: `?trade=` (`tradeFilter` 459), `?for=` (`plansFor` 468, `plansPick` 469), `?run=` with `?pkg=` (`run` 475).
-  - Reads: the bench effect 771–794 (`loadGcProjects` → `loadGcBoardRows` → `boardStateFromRows` → `tradeBenches`, the way GC projects reads it), `loadLaneRanks` 1216–1226, `loadLaneExtras` 1279–1311 (`contacts` → `messages` in, the upcoming `prospect_callbacks`).
-  - Derived per render: `deckIds` 797, `laneQueueNow` 798 (`stillQueued`), `gcNeedsNow` 800 (`gcNeeds`), `subRecordMap` 481, `lanePins` 484.
-  - Draws: the path strip, the needs panel, the For picker, the list by trade, the Board, the run's head and receipt, the priority presses on the card, **Call script** (`GcCallScriptWindow`), the **By need** and **By rank** orders.
-  - Writes: `savePriority` 1265–1276, `dropOnBoard` 1229–1235 / `unpinOnBoard` 1237–1241 → `writePins` 1243–1262 (`prospect_trade_ranks`), `passFromBoard` 2714–2719, `sendRunText` 2672–2711 (`quo-send`).
-  - Last press **Add to the bench ✓** (`openBenchModal` 2375–2380 → `ProspectBenchModal` → `handleBenchSave` 2382–2438): `addGcCompany` → `markProspectOnBench` → the ask on the job's package (`askGcCompanies`, when `benchAskForProspect` 2363–2372 finds one) → the three caches, the pointer, the run's note.
-- **Every lane** shares the person and company blocks (`personBlock.ts`, `ProspectPersonForm`), the ZZ rule (`withoutZzProspects` behind `useZzTestJobsHidden`), the **May we text?** chip (`saveOkToText` 2883–2893, `textRefusal` holds a text until the yes) and the double lookup on New Prospect (`companyDouble` over effect 829–849).
+  - State: in the page `scriptOpen` (179), the bench window's three (124–126); in `useSubsBench.ts` `benchTrades` 16, `gcBench` 18, `benchCompanies` 19, `benchQuoted` 20, `gcPlans` 21; in `useProspectsData.ts` `laneQueueAll` 60, `laneAllRows` 61, `answeredProspectIds` 62, `laneCallRows` 63; in `useSubsBoardData.ts` `inboundProspectIds` 16, `laneCallbacks` 17, `laneRanks` 19; in `useCallRun.ts` the run's four (40–43); in `useProspectListTab.ts` `subsSectionOpen` (35).
+  - URL, read in the page: `?trade=` (`tradeFilter` 180), `?for=` (`plansFor` 184, `plansPick` 185), `?run=` with `?pkg=` (`run` 188).
+  - Reads: the bench (`useSubsBench.ts` 23–45: `loadGcProjects` → `loadGcBoardRows`, shaped by `benchReadFromBoard`, the way GC projects reads it), `loadLaneRanks` (`useSubsBoardData.ts` 23–33), `loadLaneExtras` (`useSubsBoardData.ts` 72–97: `contacts` → `messages` in, the upcoming `prospect_callbacks`).
+  - Derived per render, in the page: `deckIds` 345, `laneQueueNow` 346 (`stillQueued`), `gcNeedsNow` 348 (`gcNeeds`), `subRecordMap` 178; `lanePins` in `useSubsBoardData.ts` (20).
+  - Draws: the path strip (`SubsPathStrip`, through the page's `subsStrip` 1254–1256), the needs panel (`SubsNeedsPanel`), the For picker (`SubsPlansPicker`), the list by trade (`SubsLaneList`), the Board, the run's head and receipt (`ProspectsFollowUpTab.tsx` 314–340), the priority presses on the card (604–615), **Call script** (516, `GcCallScriptWindow`), the **By need** and **By rank** orders.
+  - Writes: `savePriority` (page 479–490), `dropOnBoard` 36–42 / `unpinOnBoard` 44–48 → `writePins` 50–69 (`useSubsBoardData.ts`, `prospect_trade_ranks`), `passFromBoard` (page 1091–1096), `sendRunText` (`useCallRun.ts` 68–107, `quo-send`).
+  - Last press **Add to the bench ✓** (`openBenchModal`, page 888–893 → `ProspectBenchModal` → `handleBenchSave` 895–950): `addGcCompany` → `markProspectOnBench` → the ask on the job's package (`askGcCompanies` 916, when `benchAskForProspect` 876–885 finds one) → the three caches, the pointer, the run's note.
+- **Every lane** shares the person and company blocks (`personBlock.ts`, `ProspectPersonForm`), the ZZ rule (`withoutZzProspects` behind `useZzTestJobsHidden`), the **May we text?** chip (`saveOkToText`, page 1238–1248; `textRefusal` holds a text until the yes) and the double lookup on New Prospect (`companyDouble` over `useProspectDoubles.ts` 43–63).
 
 ### `follow-up` — Follow Up (the calling workstation)
 
-- **Render location:** 3315–4166. It contains:
-  - Over the card: the Subs path strip 3317, the needs panel 3318–3419 (its *Trades nobody does yet* chips from 3398), the GC work strip 3420–3469, the run's head 3470–3479.
-  - The state chain 3480–3506: no access → loading → the run's receipt 3484–3496 → the empty lane 3497–3502 (`emptyLaneWords`) → a card of another lane 3503–3505 → the card.
-  - Header card IIFE from 3510:
-    - who you're calling from 3529 (`prospectTitle`, `personLineParts`, the **May we text?** chooser 3548–3568, *Maps ↗* and a sub's license and trades 3598–3613, the `telHrefFor` link that takes the lock at 3653, **Call script** on Subs 3669–3672, the Jobs box on a lead 3680–3693)
-    - outcome row from 3694: Didn't Answer 3697 / Answered 3700 / Can't reach 3703 / Not a fit 3708 / the lane's last press; in a run the text press 3739 and Next 3746
-    - utility row from 3751: Set callback 3753 · Edit prospect 3755 · the priority presses on Subs 3759–3767 or the 🔥 warmth pill (read-only) · scheduled-callback link · mobile "N of M · show order" 3794–3801 · the `this call` timer (opens Timer history, 3814) · `my day`
-  - Mobile queue peek from 3837 (15 rows).
-  - Comments section from 3852 (the composer takes the lock on focus at 3864; quick-note chips 3888–3931).
-  - Info card with notes from 3985: Last Contact / Last updated by / Last Successful Contact / Address / Time on this prospect; notes from 4003.
-  - Copy-template buttons 4028–4086, on Customers only (4029).
-  - The advance bar 4087–4109 (`Next Prospect →`, or `Finish the run →` on a run's last card).
-  - Desktop queue rail 4111–4125 (12 rows; the order toggle hides in a run).
-  - Footer 4128–4164: the Didn't-Answer auto-advance checkbox and the "my time" link.
+- **Render location:** page 1374–1459 mounts `<ProspectsFollowUpTab>` (1375) with 82 props. The tab is `ProspectsFollowUpTab.tsx` 128–954, its props type 33–117. It contains:
+  - Over the card: the Subs path strip 307, the needs panel 308–310 (`SubsNeedsPanel`), the GC work strip 311–313 (`GcWorkStrip`), the run's head 314–323.
+  - The state chain 324–915: no access → loading → the run's receipt 328–340 → the empty lane 341–346 (`emptyLaneWords`; its press opens New Prospect through `openNewProspect`) → a card of another lane 347–349 → the card 350–915.
+  - Header card IIFE from 354 (its button styles 355–370):
+    - who you're calling from 376 (`prospectTitle`, `personLineParts`, the **May we text?** chooser 384–419, *Maps ↗* 438 and a sub's license (442) and trades (449), the `telHrefFor` link that takes the lock at 496–497, **Call script** on Subs 516, the Jobs box on a lead 526)
+    - outcome row from 541: Didn't Answer 541 / Answered 544 / Can't reach 547 / Not a fit 552 / the lane's last press 564–566; in a run the text press 574–588 and Next 590
+    - utility row from 596: Set callback 597 · Edit prospect 599 · the priority presses on Subs 604–615 or the 🔥 warmth pill (read-only, 623) · scheduled-callback link · mobile "N of M · show order" 638–650 · the `this call` timer (opens Timer history, 654–663) · `my day` 667
+  - Mobile queue peek from 682 (15 rows, 691).
+  - Comments section from 696 (the composer takes the lock on focus at 707; quick-note chips from 734).
+  - Info card with notes from 829: Last Contact 831 / Last updated by / Last Successful Contact / Address / Time on this prospect 840; notes from 846.
+  - Copy-template row 872 (`ProspectCopyTemplateRow`), on Customers only.
+  - The advance bar 875–898 (`Next Prospect →`, or `Finish the run →` on a run's last card, 896).
+  - Desktop queue rail 900–913 (12 rows, 911; the order toggle hides in a run).
+  - Footer 916–951: the Didn't-Answer auto-advance checkbox (921–926) and the "my time" link.
 
-  Five tab-local windows render after the tab blocks (see [Page-level windows](#page-level-windows)).
-- **Owned local state (45, moves with the tab):**
-  - comments / composer: `comments`, `commentInputValue`, `commentInputRef` (a state used as a ref), `quickNotes`, `followUpNotes`, `followUpNotesSaving`, `followUpLoading`
-  - queue: `callingOrderMode`, `calledProspectIds` (seam candidate), `showCallingOrder`, `didntAnswerMoveNext`
-  - lock: `lockHeldBy`
-  - timers: `followUpTimerSeconds` (also zeroed by the parent's `handleDeleteProspect` when it deletes the current prospect, 2170, so the parent needs a reset callback), `myTimeTodaySeconds`, `prospectLedgerSeconds`
-  - callback: `scheduledCallback`, `callbackModalOpen`, `callbackDate`, `callbackTime`, `callbackNote`
-  - timer history: `timerHistoryModalOpen`, `timerEvents`, `timerEventsLoading`
-  - my time: `myTimeModalOpen`, `myTimeStats`, `myTimeStatsLoading`
-  - copy templates (13): `copyDefaults`, `copyOverrides`, `copySubjectDefaults`, `copySubjectOverrides`, `personPhone`, `authUserName`, `editingCopyTemplateKey`, `editingCopyText`, `editingCopySubject`, `copyTemplateSaving`, `copyBlankFieldsModalOpen`, `copyBlankFieldsList`, `emailSentTemplateKeys`
-  - the card's small ones: `textAskOpen`, `scriptOpen`
-  - the run: `runOutcomes`, `runDone`, `runCallbackAt`, `runTextState`
+  The windows it opens render from the page (see [Page-level windows](#page-level-windows)).
+- **Where its state lives:** the tab owns none; it draws what it is handed. The 45 states the map counted at `6af60c5bcf` now sit here:
+  - in the page (18): the comments and the composer, `comments` 194, `commentInputValue` 196, `commentInputRef` 197 (a state used as a ref), `quickNotes` 212, `followUpNotes` 208, `followUpNotesSaving` 209; the queue, `showCallingOrder` 217, `didntAnswerMoveNext` 215; the clocks, `followUpTimerSeconds` 200, `myTimeTodaySeconds` 227, `prospectLedgerSeconds` 230; the callback, `scheduledCallback` 199, `callbackModalOpen` 195; the time windows' flags, `timerHistoryModalOpen` 223, `myTimeModalOpen` 226; the card's small ones, `textAskOpen` 236, `scriptOpen` 179; and the caller's name, `authUserName` 241
+  - in `useProspectsData.ts`: `followUpLoading` 66, `callingOrderMode` 74, `calledProspectIds` 76
+  - in `useCallingLock.ts`: `lockHeldBy` 28
+  - in `useCallRun.ts`: `runOutcomes`, `runDone`, `runCallbackAt`, `runTextState` (40–43)
+  - in `useProspectCopyTemplates.ts`: the twelve copy states (40–67), `personPhone` among them
+  - in the windows: the callback's three boxes (`ProspectCallbackModal.tsx` 19–21), the timer events (`ProspectTimerHistoryModal.tsx` 11–12), the my-time stats (`ProspectMyTimeModal.tsx` 11–12)
 
-  `authUserName` is also read by `handleBenchSave` and `sendRunText`.
+  `authUserName` is read by `handleBenchSave`, `useCallRun` and the copy templates. `followUpTimerSeconds` is also zeroed by `handleDeleteProspect` when it deletes the card (`useEditProspectWindow.ts` 138), which takes the setter.
 
-  Refs: `lockTakenForRef` 519, `lockAttemptForRef` 520, `callingOrderModeRef` 559, `loadCommentsForProspectRef` 564, `copyTemplateTextareaRef` 636. The sixth ref, `latestLoad` 443, is the lane's.
-- **Cross-tab state (stays in the parent):** the lane, the pointer, the caches, `prospectLastCallMap`, `saving`, the Edit Prospect window's cluster, the lane reads, `jobsByProspect`.
+  Refs: `lockTakenForRef` and `lockAttemptForRef` (`useCallingLock.ts` 26–27), `callingOrderModeRef` and `latestLoad` (`useProspectsData.ts` 75, 59), `loadCommentsForProspectRef` (page 220), `copyTemplateTextareaRef` (`useProspectCopyTemplates.ts` 68).
+- **Cross-tab state (stays with the parent):** the lane, the pointer and the caches (through `useProspectsData`), `prospectLastCallMap`, `saving`, the Edit window's hook, the lane reads, `jobsByProspect`.
 - **Derived values:**
-  - `currentProspect` 1447 and `retaggableNote` 1636–1639 (`findRetaggableNote` over this prospect's comments).
+  - `currentProspect` (`useProspectsData.ts` 206) and `retaggableNote` (page 646–649, `findRetaggableNote` over this prospect's comments).
   - The info card's "Last Contact" is `comments[0]?.created_at ?? currentProspect.last_contact`. "Last Successful Contact" is the newest `answered` comment.
   - Readouts: `this call` = `followUpTimerSeconds`; `my day` = `myTimeTodaySeconds + followUpTimerSeconds`; "Time on this prospect" = `prospectLedgerSeconds + followUpTimerSeconds`.
 - **Handlers and loaders:**
-  - `loadFollowUpProspects` 989–1095 (seam). In parallel it reads live locks held by *others* (`.gte('locked_at', callingLockCutoffIso(now))`) and every call comment. The server filter is `.eq('kind', kind)` and, off the Subs lane, `fit null | neq not_a_fit` (1013); the client then drops `not_a_fit` + `cant_reach` + `converted` (1028) and, for a non-dev, the ZZ rows, then `orderFollowUpProspects(…, callingOrderModeRef.current)`. The Subs branch 1032–1054 keeps the whole queue for the strip, then takes a run's ids in their order, or the trade filter with By need or By rank. The Jobs to GC branch 1055–1060 merges the jobs and orders by Soonest bid. Finally, if the `?prospect_id` row is missing from the list, it fetches that row and prepends it (a row of another kind switches `?kind=` instead, 1073–1085; a hidden ZZ row opens nothing).
-  - Loaders: `loadComments` 1097–1110, `loadTimerEvents` 1112–1135 (last 100), `loadMyTimeStats` 1137–1163, `loadMyTimeToday` 1165–1178, `loadCopyTemplates` 1313–1356, `loadPersonPhone` 1358–1380 (users → people fallback), `loadQuickNotes` 1382–1390, `loadEmailSentTemplateKeys` 1671–1680, `loadProspectLedgerSeconds` 1690–1700, `loadScheduledCallback` 1813–1834 (useCallback).
-  - Notes and copy templates: `saveFollowUpNotes` 1457–1474, `cancelFollowUpNotes` 1476–1478, `getResolvedCopyText` 1480–1484 / `getResolvedCopySubject` 1486–1490, `handleCopyTemplate` 1492–1521, `handleOpenMail` 1523–1555, `openEditCopyModal` 1557–1561, `saveCopyTemplate` 1563–1580.
-  - `takeCallingLock(trigger)` 1863–1898 (useCallback). It reads the lock row, runs `callingLockDecision`, upserts only on `take` / `stale-take`, names the holder on `held-by-other`, and records `prospect_lock_taken` via `recordNavClick`.
-  - Queue: `switchCallingOrder` 1955–1970, `renderCallingOrderToggle` 1972–2006 (two more orders on Subs, one more on Jobs to GC), `renderQueueRows(limit, collapseOnJump)` 2008–2061.
-  - Callbacks and timer events: `openCallbackModal` 2210–2217, `saveCallback` 2219–2236, `saveTimerEvent` 2238–2246.
-  - Outcomes: `handleNoLongerFit` 2248–2277, `handleCantReach` 2279–2304, `handleConverted` 2313–2357, `handleAskedUs` 2460–2512, `handleBenchSave` 2382–2438. **`handleConverted` opens the global Add customer modal** via `useNewCustomerModal().openNewCustomerModal({ initialValues: customerDraftFromProspect(p), sourceProspect, conversionLane: 'follow-up', onCreated })`. The form's Save runs `markProspectConverted`, and `onCreated` then writes the timer event, releases the lock, patches both caches and advances. Cancel writes nothing.
-  - Call logging: `writeCallOutcome` 2625–2647, `markCalledLocally` 2652–2655, `handleDidntAnswer` 2721–2757, `handleAnswered` 2759–2782 (sets `last_contact` + warmth +1), `handleAddComment` 2784–2805.
-  - The run: `noteRunOutcome` 2658–2665, `sendRunText` 2672–2711, the reset effect 485–491, and the run branches inside `handleDidntAnswer` (2735–2751) and `handleNextProspect` (2832–2840).
-  - Quick notes and advance: `handleQuickNoteClick` 2807–2809, `handleAddQuickNote` 2811–2822 (`promptDialog`), `handleDeleteQuickNote` 2824–2829, `handleNextProspect(skipTimerEvent?)` 2831–2852.
-- **Effects (16):**
-  - 485–491: a new run starts clean
-  - 1392–1403: per-user loads (copy templates, phone, quick notes, `users.name`)
-  - 1405–1410: queue load
-  - 1449–1451: the text ask closes on a new card
-  - 1453–1455: notes sync
-  - 1653–1659: index sync from `?prospect_id`
-  - 1661–1669: comments
-  - 1682–1688: email-sent keys
-  - 1702–1708: ledger seconds
-  - 1836–1838: scheduled callback
-  - 1844–1855: lock **release-only**; deletes only when `lockTakenForRef` says this tab wrote the row
-  - 1901–1909: `visibilitychange` resets the timer
-  - 1912–1919: 1-second interval, gated on `cardClockTicks({ onDeck, visible, hasCard })` and keyed on the card
-  - 1922–1927: textarea auto-resize
-  - 1930–1934: `didntAnswerMoveNext` preference
-  - 1938–1953: calling-order preference; reloads the queue if it is not `coldest`
+  - `loadFollowUpProspects` (`useProspectsData.ts` 78–173). In parallel it reads live locks held by *others* (`.gte('locked_at', callingLockCutoffIso(now))`, 90) and every call comment (91). The server filter is `.eq('kind', kind)` (100) and, off the Subs lane, `fit null | neq not_a_fit` (102); the client then drops `not_a_fit` + `cant_reach` + `converted` and, for a non-dev, the ZZ rows, then `orderFollowUpProspects(…, callingOrderModeRef.current)` (115–118). The Subs branch orders through `orderSubsDeck` (126–131): a run's ids in their order, or the trade filter with By need or By rank. The Jobs to GC branch merges the jobs (135) and orders by Soonest bid. Finally, if the `?prospect_id` row is missing from the list, it fetches that row and prepends it (140–160; a row of another kind switches `?kind=` instead, 155–158; a hidden ZZ row opens nothing).
+  - Loaders in the page: `loadComments` 451–464, `loadMyTimeToday` 466–476, `loadQuickNotes` 492–500, `loadProspectLedgerSeconds` 661–669, `loadScheduledCallback` 679–700 (useCallback). In `useProspectCopyTemplates.ts`: `loadCopyTemplates` 70–82, `loadPersonPhone` 84–106 (users → people fallback), `loadEmailSentTemplateKeys` 214–223. The timer events and the my-time stats are read by their windows as they mount (`lib/prospects/prospectTimerIo.ts`).
+  - Notes, in the page: `saveFollowUpNotes` 620–637, `cancelFollowUpNotes` 639–641. Copy templates, in `useProspectCopyTemplates.ts`: `getResolvedCopyText` 116–118 / `getResolvedCopySubject` 120–122, `handleCopyTemplate` 124–153, `handleOpenMail` 155–187, `openEditCopyModal` 189–193, `saveCopyTemplate` 195–212.
+  - `takeCallingLock(trigger)` (`useCallingLock.ts` 53–88, useCallback). It reads the lock row, runs `callingLockDecision`, upserts only on `take` / `stale-take`, names the holder on `held-by-other`, and records `prospect_lock_taken` via `recordNavClick`.
+  - Queue: `switchCallingOrder` (page 175–177, around `useProspectsData.ts` 237–252), `renderCallingOrderToggle` (`ProspectsFollowUpTab.tsx` 214–248; two more orders on Subs, one more on Jobs to GC), `renderQueueRows(limit, collapseOnJump)` (`ProspectsFollowUpTab.tsx` 250–303).
+  - Callbacks and timer events, in the page: `openCallbackModal` 742–745, `saveCallback` 747–764, `saveTimerEvent` 766–774.
+  - Outcomes, in the page: `handleNoLongerFit` 776–804, `handleCantReach` 806–830, `handleConverted` 839–870, `handleAskedUs` 971–1011, `handleBenchSave` 895–950. **`handleConverted` opens the global Add customer modal** via `useNewCustomerModal().openNewCustomerModal({ initialValues: customerDraftFromProspect(p), sourceProspect, conversionLane: 'follow-up', onCreated })`. The form's Save runs `markProspectConverted`, and `onCreated` then writes the timer event, releases the lock, patches both caches and advances. Cancel writes nothing.
+  - Call logging: `writeCallOutcome` (page 1066–1088), `markCalledLocally` (`useProspectsData.ts` 267–270), and in the page `handleDidntAnswer` 1098–1134, `handleAnswered` 1136–1159 (sets `last_contact` + warmth +1), `handleAddComment` 1161–1182.
+  - The run: `noteRunOutcome` (`useCallRun.ts` 54–61), `sendRunText` (68–107), the reset effect (45–51), and the run branches inside `handleDidntAnswer` (page 1112–1129) and `handleNextProspect` (1209–1217).
+  - Quick notes and advance, in the page: `handleQuickNoteClick` 1184–1186, `handleAddQuickNote` 1188–1199 (`promptDialog`), `handleDeleteQuickNote` 1201–1206, `handleNextProspect(skipTimerEvent?)` 1208–1229.
+- **Effects (17):**
+  - `useCallRun.ts` 45–51: a new run starts clean
+  - page 502–511: per-user loads (quick notes, `users.name`); `useProspectCopyTemplates.ts` 108–114: the copy templates and the phone
+  - page 513–518: queue load
+  - page 612–614: the text ask closes on a new card
+  - page 616–618: notes sync
+  - `useProspectsData.ts` 209–215: index sync from `?prospect_id`
+  - page 651–659: comments
+  - `useProspectCopyTemplates.ts` 225–232: email-sent keys
+  - page 671–677: ledger seconds
+  - page 702–704: scheduled callback
+  - `useCallingLock.ts` 34–45: lock **release-only**; deletes only when `lockTakenForRef` says this tab wrote the row, through `releaseCallingLock`
+  - page 707–715: `visibilitychange` resets the timer
+  - page 718–725: 1-second interval, gated on `cardClockTicks({ onDeck, visible, hasCard })` and keyed on the card
+  - page 728–733: textarea auto-resize
+  - page 736–740: `didntAnswerMoveNext` preference
+  - `useProspectsData.ts` 219–234: calling-order preference; reloads the queue if it is not `coldest`
 - **Supabase tables:**
   - `prospects`: SELECT/UPDATE/DELETE
-  - `prospect_calling_locks`: SELECT on load and in `takeCallingLock`; UPSERT `onConflict: 'prospect_id'`; DELETE on release/outcome
+  - `prospect_calling_locks`: SELECT on load and in `takeCallingLock`; UPSERT `onConflict: 'prospect_id'`; DELETE on release and on an outcome, through `releaseCallingLock`
   - `prospect_comments`: SELECT with `created_by_user:users!prospect_comments_created_by_fkey(name, email)`; INSERT; DELETE on retag
   - `prospect_callbacks`: SELECT/INSERT
   - `prospect_timer_events`: SELECT/INSERT, always through `(supabase as any)`
@@ -248,101 +268,101 @@ One `?tab=` param selects the top tab and the sub-tab together, and `?kind=` sel
   - `people`: phone fallback
   - through the lib: `prospect_jobs` (`gcLeadLaneIo.ts`), the GC board's tables (`lib/gc/gcIo.ts`: `loadGcProjects`, `loadGcBoardRows`, `addGcCompany`, `askGcCompanies`), `contacts` / `contact_channels` and the RPC `contact_for_prospect` (`prospectThreadIo.ts`)
   - edge function: `quo-send` (the run's text)
-- **Sub-components:** `ProspectJobsBox`, `GcCallScriptWindow`, `ProspectBenchModal`, `EmptyState`. The icons are module-level and move with the tab. `renderCallingOrderToggle` + `renderQueueRows` are render helpers used twice (mobile peek and desktop rail), which makes them a presentational child to lift (`FollowUpQueue`).
+- **Sub-components:** `SubsNeedsPanel`, `GcWorkStrip`, `ProspectJobsBox`, `ProspectCopyTemplateRow` (with the three icons), `EmptyState`; the page mounts `GcCallScriptWindow` and `ProspectBenchModal`. `renderCallingOrderToggle` + `renderQueueRows` are render helpers drawn twice (the mobile peek and the desktop rail), which makes them a presentational child to lift (`FollowUpQueue`).
 - **External coupling:**
-  - localStorage keys `prospects_didnt_answer_move_next_<uid>` (1932 / 4138, not try/catch-guarded) and `prospects_calling_order_v1_<uid>` (1942 / 1962, guarded)
-  - `navigator.clipboard` (1516); `window.location.href = mailto:…` (1549)
+  - localStorage keys `prospects_didnt_answer_move_next_<uid>` (`DIDNT_ANSWER_MOVE_NEXT_KEY`, `ProspectsFollowUpTab.tsx` 31; read by the page's effect 736–740, written by the tab's checkbox at 926, neither try/catch-guarded) and `prospects_calling_order_v1_<uid>` (`CALLING_ORDER_STORAGE_KEY`, read and written in `useProspectsData.ts` 219–252, guarded)
+  - `navigator.clipboard` (`handleCopyTemplate`) and `window.location.href = mailto:…` (`handleOpenMail`), both in `useProspectCopyTemplates.ts`
   - the global Add customer modal context; the router's state on `/gc?new=1`
-  - `PORTAL_COMPANY` from `supabase/functions/_shared/portalCompany` (the run's text names the company)
+  - `PORTAL_COMPANY` from `supabase/functions/_shared/portalCompany`, imported by `useCallRun.ts` (10): the run's text names the company
   - its rows feed Activity, Quickfill's team chart and Calendar callbacks (inbound `?tab=follow-up&prospect_id=` from `Calendar.tsx`)
-- **Extraction status, risk and approach:** Inline. **High risk**: the biggest tab and the home of the pointer. Extract it last, after the `useProspectsData` seam. Before the JSX move, peel what needs no layout change: the two lane panels, the five windows, and the hook seams (see [order](#recommended-extraction-order-value--risk)). The pointer and the Edit Prospect window stay parent-owned.
+- **Extraction status, risk and approach:** **Extracted (v2.7638), props only.** The page keeps the pointer, the caches, `saving` and the outcomes that write them, so a typed comment and the clock survive a tab switch. What is left is the width of the seam: 82 props, 40 values, 11 setters and 31 handlers by name. **Medium risk** for the next step, `useFollowUpDeck` (see [the order](#recommended-extraction-order-value--risk)): the clock's effects and `saveTimerEvent` read `followUpTimerSeconds` from the render they were made in (see [Hazards](#hazards)).
 
 ### `board` — Board (Subs only)
 
-- **Render location:** 4168–4204. The page filters `prospectListProspects` to the live rows, builds `calledIds` from `prospectLastCallMap`, and mounts `<SubsBoard>` with 20 props.
-- **Owned state:** `laneRanks` (483) with the memo `lanePins` (484); `laneCallRows` (472) and `inboundProspectIds` (473) with the memo `subRecordMap` (481); `laneCallbacks` (474).
+- **Render location:** page 1461–1497. The page filters `prospectListProspects` to the live rows, builds `calledIds` from `prospectLastCallMap`, and mounts `<SubsBoard>` (1472) with 20 props.
+- **Owned state:** `laneRanks` with the memo `lanePins` (`useSubsBoardData.ts` 19–20); `laneCallRows` (`useProspectsData.ts` 63) and `inboundProspectIds` (`useSubsBoardData.ts` 16) with the memo `subRecordMap` (page 178); `laneCallbacks` (`useSubsBoardData.ts` 17).
 - **Cross-tab / shared state:** `prospectListProspects`, `prospectLastCallMap`, `gcBench`, `gcPlans`, `plansPick`, `saving`.
-- **Props that are page handlers:** `onPick={setPlansFor}`, `onCall` (navigates to `runHref(ids, trade, plansFor, packageId)`), `onBench={openBenchModal}`, `onPass={passFromBoard}`, `onEdit={openEditModalForProspect}`, `onAddSub={openAddSub}`, `onDrop={dropOnBoard}`, `onUnpin={unpinOnBoard}`, `onPriority={savePriority}`, and `strip={renderSubsStrip(…)}` as a drawn node.
-- **Loaders:** the list's loader (effect 1412–1416), which on Subs calls `loadLaneExtras` for the live rows (1212), which calls `loadLaneRanks`.
+- **Props that are page handlers:** `onPick={setPlansFor}`, `onCall` (1484, navigates to `runHref(ids, trade, plansFor, packageId)`), `onBench={openBenchModal}`, `onPass={passFromBoard}`, `onEdit={openEditModalForProspect}`, `onAddSub={openAddSub}`, `onDrop={dropOnBoard}`, `onUnpin={unpinOnBoard}`, `onPriority={savePriority}`, and `strip={subsStrip(…)}` as a drawn node (page 1254–1256).
+- **Loaders:** the list's loader (page effect 520–524), which on Subs calls `loadLaneExtras` for the live rows (`useProspectsData.ts` 203), which calls `loadLaneRanks`.
 - **Supabase tables:** `prospect_trade_ranks` (SELECT/UPSERT `onConflict: 'prospect_id,trade'`/DELETE), `contacts`, `messages`, `prospect_callbacks` (SELECT), `prospects` (UPDATE `priority`, `prospect_fit_status`).
 - **Sub-components:** [`SubsBoard`](../src/components/prospects/SubsBoard.tsx) (**extracted**, dnd-kit; a card's sortable id is `tradeKey:prospectId`), over `subsBoard.ts`, `subRecord.ts`, `subsRanks.ts`.
-- **Extraction status, risk and approach:** The drawing is out. What is left is data and writes: a hook `useSubsBoardData` (the ranks, the extras, the pin writes, the priority write) beside the board. **Medium risk**, because `savePriority` patches three caches and the pins are optimistic with a reload on refusal. After the data seam.
+- **Extraction status:** **Done.** The drawing is in `SubsBoard`; the ranks, the extras and the pin writes are in `useSubsBoardData` (v2.7634). `savePriority` (page 479–490) stays in the page, because it patches three caches; the pins are optimistic with a reload on refusal.
 
 ### `prospect-list` — Prospect List
 
-- **Render location:** 4206–4509.
-  - Search input from 4214, then a grouping IIFE: `filterProspectsForList` (4228), and on Subs `renderSubsList(filtered, calledIds, nowMs)` (4232) draws the whole list instead.
-  - Otherwise `groupProspectsForList(filtered, calledIds, nowMs)` (4233). The jump-chip row covers every section except `cant_reach`/`not_a_fit` (4235); the `converted` chip reads the lane's `landedChip` (4268).
-  - Each `LIST_SECTION_ORDER` section (4273) is collapsible (`plist-sec-<key>`, 4278) with a desktop table (from 4293) and mobile cards (from 4408).
-  - "Last touch" shows `lastTouchLabel(p, prospectLastCallMap[p.id], nowMs)` plus `formatTimerSeconds(prospectLedgerSecondsMap[p.id])`.
+- **Render location:** page 1499–1524 mounts `<ProspectsListTab>` (1500). The tab is `ProspectsListTab.tsx` 57–417, its props type 22–50, over `useProspectListTab` (page 536).
+  - Search input at 95, then a grouping IIFE: `filterProspectsForList` (106), and on Subs `<SubsLaneList>` (112) draws the whole list instead.
+  - Otherwise `groupProspectsForList(filtered, calledIds, nowMs)` (140). The jump-chip row covers every section except `cant_reach`/`not_a_fit` (142); the `converted` chip reads the lane's `landedChip` (175).
+  - Each `LIST_SECTION_ORDER` section (180) is collapsible (`plist-sec-<key>`, 185) with a desktop table (from 201) and mobile cards (from 316).
+  - "Last touch" shows `lastTouchLabel(p, prospectLastCallMap[p.id], nowMs)` (259, 352) plus `formatTimerSeconds(prospectLedgerSecondsMap[p.id])`.
   - Terminal sections (`converted` / `cant_reach` / `not_a_fit`) get Edit / Send back / Not a fit / Delete. Other rows select into Follow Up.
-  - The empty list's words and press come from `prospectListEmpty` 810–816.
-- **The Subs list** (`renderSubsList` 3078–3197): the path strip, the For picker, then one section a trade in the needs panel's order (`groupSubsByTrade`), each row with its stage chip (`subStage`, `STAGE_TONE_STYLE` 206–212) and its press (`rowPress`: **Call now →**, **Add to the bench ✓**), then the folds *No trade named*, the landed rows and the exits. Section doors: **Call for ‹trade› →** (`callForTradeHref`) or **Add a sub** (`openAddSub`).
+  - The empty list's words and press come from the page's `prospectListEmpty` (350–356), drawn at 149.
+- **The Subs list** (`SubsLaneList.tsx` 29–201): the path strip, the For picker, then one section a trade in the needs panel's order (`groupSubsByTrade`), each row (93–150) with its stage chip (`subStage`, `STAGE_TONE_STYLE` 16–22) and its press (`rowPress`: **Call now →**, **Add to the bench ✓**), then the folds *No trade named*, the landed rows and the exits. Section doors (151–175): **Call for ‹trade› →** (`callForTradeHref`) or **Add a sub** (`openAddSub`).
 - **Sections (pipeline, not warmth):** `never_called` → `recent` (<30 d) → `going_cold` (30–90 d) → `cold` (90 d+) → `converted` → `cant_reach` → `not_a_fit`. `LIST_SECTIONS_DEFAULT_OPEN` = `never_called` + `recent`.
-- **Owned local state (5 + 1):** `prospectListSearchQuery`, `prospectListLoading`, `prospectListSectionOpen`, `selectedProspectForList`, `prospectLedgerSecondsMap`, and the Subs list's `subsSectionOpen`.
+- **Owned state (5), in `useProspectListTab.ts`:** `subsSectionOpen` 35, `prospectListSearchQuery` 36, `prospectListSectionOpen` 37, `selectedProspectForList` 38, `prospectLedgerSecondsMap` 39. `prospectListLoading` is the data hook's (`useProspectsData.ts` 68).
 - **Cross-tab / shared state:** `prospectListProspects`, `followUpProspects` (patched by `handleSendBack`/`handleDeleteFromList`), `prospectLastCallMap`, `saving`, the shared Edit Prospect window, the bench window (`openBenchModal(p)` from a Subs row), and the pointer (`selectProspectForList` sets `activeTab` and writes `?tab=follow-up&prospect_id=`).
 - **Handlers and loaders:**
-  - `loadProspectListProspects` 1180–1213, shared with Convert, the Board and a lane's Activity. It is a `prospects` SELECT by `kind` (less the ZZ rows for a non-dev) plus every call comment newest-first, building `prospectLastCallMap` at 1199–1204. On Jobs to GC it merges the jobs; on Subs it loads the Board's extras.
-  - `loadProspectLedgerSecondsMap` 1710–1724.
-  - `openEditModalForProspect` 2140–2148, `handleSendBack` 2562–2584, `handleNotAFitFromList` 2586–2597, `handleDeleteFromList` 2599–2616 (`confirmDialog`).
-  - `toggleProspectListSection` 2854–2856, `jumpToProspectListSection` 2858–2863 (rAF + `scrollIntoView`), `selectProspectForList` 2865–2874.
-- **Effects (2 + the shared loader):**
-  - 1427–1445: handles `?prospect_id` (from Quickfill's Can't reach). It selects the row, opens its section via `groupProspectsForList([p], …)` when that section is not default-open, then strips the param.
-  - 1726–1732: loads or clears the ledger map on tab entry/exit.
+  - `loadProspectListProspects` (`useProspectsData.ts` 175–204), shared with Convert, the Board and a lane's Activity. It is a `prospects` SELECT by `kind` (less the ZZ rows for a non-dev) plus every call comment newest-first, folded into `prospectLastCallMap` by `lastCallByProspect` (195). On Jobs to GC it merges the jobs (202); on Subs it loads the Board's extras (203).
+  - `loadProspectLedgerSecondsMap` (`useProspectListTab.ts` 63–71).
+  - In the page: `handleSendBack` 1013–1025, `handleNotAFitFromList` 1027–1038, `handleDeleteFromList` 1040–1057 (`confirmDialog`). `openEditModalForProspect` is the Edit window's (`useEditProspectWindow.ts` 109–117).
+  - In `useProspectListTab.ts`: `toggleProspectListSection` 82–84, `jumpToProspectListSection` 86–91 (rAF + `scrollIntoView`), `selectProspectForList` 93–102, `toggleSubsSection` 105.
+- **Effects (2 + the shared loader), in `useProspectListTab.ts`:**
+  - 42–61: handles `?prospect_id` (from Quickfill's Can't reach). It selects the row, opens its section via `groupProspectsForList([p], …)` when that section is not default-open, then strips the param.
+  - 73–80: loads or clears the ledger map on tab entry/exit.
 - **Supabase tables:** `prospects` (SELECT/UPDATE/DELETE), `prospect_comments` (SELECT call rows), `prospect_timer_events` (SELECT, `as any`).
-- **Extraction status, risk and approach:** Inline. **Medium risk.** The JSX is self-contained, but three actions write the caches and the Edit window stays in the parent. Move `renderSubsList` out first as a component (it is already a function of its arguments and nine callbacks). Extract the tab after the data seam. Props: `kind`, `prospects`, `lastCallMap`, `loading`, `saving`, `onSelectProspect`, `onEditProspect`, `onSendBack`, `onNotAFit`, `onDelete`, `onNewProspect`. The tab can own the ledger-map loader and effect.
+- **Extraction status:** **Done (v2.7636).** The page calls the hook, so the search and the open sections survive a tab switch. The row actions stay in the page, where they patch both caches.
 
 ### `convert` — Convert (Customers only)
 
-- **Render location:** 4511–4772.
-  - Selector from 4517: a type-ahead over `convertPickerPool` where Enter picks the first hit. When the query is empty and nothing is picked, "Suggested — answered in the last 30 days" chips appear (4572). A summary card follows (4590).
-  - Once `convertProspectId` is set: `NewCustomerForm` (`mode="page"`, 4625), contact-person cards (from 4639), bid cards (from 4700), and a submit row (from 4750) whose button targets `form="convert-customer-form"` (4755).
+- **Render location:** page 1526–1528 mounts `<ProspectsConvertTab convert={convert} …>`. The tab is `ProspectsConvertTab.tsx` 12–303, over `useProspectConvert` (page 584, `active: activeTab === 'convert'`).
+  - The selector, from 43: a type-ahead over `convertPickerPool` where Enter picks the first hit, its hits 69–101 (no hit: `EmptyState`, 72). When the query is empty and nothing is picked, "Suggested — answered in the last 30 days" chips appear (102–118). A summary card follows (119–146).
+  - Once `convertProspectId` is set (149–298): `NewCustomerForm` (`mode="page"`, 155), contact-person cards (169–229), bid cards (from 230), and a submit row whose button targets `form="convert-customer-form"`.
   - Its `convert*` class names are styled in `src/index.css`.
-- **Owned local state (8):** `convertProspectId`, `convertSearchQuery`, `convertContactPersons`, `convertBids`, `convertServiceTypes`, `convertSaving`, `convertError`, `convertFirstInteractionDate`.
+- **Owned state (8), in `useProspectConvert.ts` 41–48:** `convertProspectId`, `convertSearchQuery`, `convertContactPersons`, `convertBids`, `convertServiceTypes`, `convertSaving`, `convertError`, `convertFirstInteractionDate`.
 - **Cross-tab / shared state:**
   - Reads `prospectListProspects` + `followUpProspects` (the picker pool is their union) and `prospectLastCallMap`.
   - Patches both caches after a successful mark.
   - No default selection: the tab starts on search.
-- **Derived values (in the component body, not memoized, 1629–1632):** `convertProspect`, `convertPickerPool`, `convertSearchResults = searchConvertProspects(pool, query)`, `convertSuggestions = suggestRecentlyAnswered(pool, prospectLastCallMap, now)`. Converted prospects are excluded by the kernel.
-- **Handlers:** `pickConvertProspect` 1641–1644. `handleConvertSubmit(payload)` 2936–2992 runs in order:
+- **Derived values (`useProspectConvert.ts` 98–101, not memoized):** `convertProspect`, `convertPickerPool`, `convertSearchResults = searchConvertProspects(pool, query)`, `convertSuggestions = suggestRecentlyAnswered(pool, prospectLastCallMap, now)`. Converted prospects are excluded by the kernel.
+- **Handlers:** `pickConvertProspect` (103–106). `handleConvertSubmit(payload)` (115–155) runs in order:
   1. INSERT `customers`
-  2. loop `customer_contact_persons` (skips blank names)
-  3. loop `bids` (skips blank project or service type; hard-codes `materials_model: 'rough'`, 2966)
+  2. the `customer_contact_persons` rows (`convertContactRows` skips blank names)
+  3. the `bids` rows (`convertBidRows` skips a blank project or service type and hard-codes `materials_model: 'rough'`, `prospectConversion.ts` 313)
   4. `markProspectConverted(...)` + `recordProspectConverted(…, 'convert-tab')`; a failed mark only logs
   5. `navigate('/customers/<id>')`
-- **Effects (3 + the shared loader 1412–1416):**
-  - 1588–1615: earliest `prospect_comments` date → `convertFirstInteractionDate` (cancellation-guarded, `localCalendarDayKey`)
-  - 1618–1626: `service_types` load on tab activation (`'service_types' as any`, less the billing-only types)
-  - 1645–1651: pre-fill the first contact person
+- **Effects (3 + the shared loader), in `useProspectConvert.ts`:**
+  - 57–84: earliest `prospect_comments` date → `convertFirstInteractionDate` (cancellation-guarded, `localCalendarDayKey`)
+  - 87–95: `service_types` load on tab activation (`'service_types' as any`, less the billing-only types)
+  - 107–113: pre-fill the first contact person
 - **Supabase tables:** `customers`, `customer_contact_persons`, `bids` (INSERT); `service_types`, `prospect_comments` (SELECT); plus `prospects` / `prospect_comments` through `markProspectConverted`.
 - **Sub-components:** [`NewCustomerForm`](../src/components/NewCustomerForm.tsx) (**extracted**, `onSubmitForConvert`).
-- **Extraction status, risk and approach:** Inline. **Low risk** → `ProspectsConvertTab`. Props: `pool` (or both caches), `lastCallMap`, `authUserId`, `authRole`, `onConverted(prospectId)` (the parent patches both caches), `navigate`. All 8 states and the 3 effects move verbatim.
+- **Extraction status:** **Done (v2.7628).** The page calls the hook, so the form survives a look at another tab; the list's loader effect stays in the page.
 
 ### `activity` — Activity (team calling stats, dev and assistant-like)
 
-- **Render location:** 4774–4933.
-  - Week report section from 4776: a header on `weekOffset` with ‹ previous / next › (not past 0), the empty week's words (`callingWeekEmptyWords`, 4803), per-user cards plus a team card when there is more than one user, and a "Daily detail" table. The landed count reads the lane's `landedCount` (4820).
-  - **Source success** 4860–4879, on a lane that is not Customers: `sourceSuccess(prospectListProspects)`.
-  - "Marked / Updated by day — last 30 days" 4880–4931, built from an inline date-key loop at 4885–4893.
-- **Owned local state (5):** `teamDataByDate`, `teamLoading`, `weekOffset`, `weekReport`, `weekLoading`. The gate `canAccessActivityTab` lives in the parent.
-- **Cross-tab state:** `kind`, `kindWords`, `hideZz`, and `prospectListProspects` for Source success (effect 1419–1424 loads it).
+- **Render location:** page 1530–1532 mounts `<ProspectsActivityTab>` behind `canAccessActivityTab` (244). The tab is `ProspectsActivityTab.tsx` 19–228.
+  - The week report: a header on `weekOffset` with ‹ previous / next › (not past 0), the empty week's words (`callingWeekEmptyWords`, 103), per-user cards plus a team card when there is more than one user, and a "Daily detail" table. The landed count reads the lane's `landedCount` (120).
+  - **Source success** 160–179, on a lane that is not Customers: `sourceSuccess(laneRows)`.
+  - "Marked / Updated by day — last 30 days" 181–225, its days from `getOrderedDateKeysLast30Days`, reversed (187).
+- **Owned state (4):** `teamDataByDate` 37, `teamLoading` 38, `weekReport` 39, `weekLoading` 40. `weekOffset` stays in the page (243), so the pager survives a tab switch. The gate `canAccessActivityTab` lives in the parent.
+- **Cross-tab state:** `kind`, `kindWords`, `hideZz`, and the lane's rows for Source success (`laneRows`, loaded by the page's effect 527–532).
 - **Loaders:**
-  - `loadTeamActivity` 1734–1746 (useCallback) → [`loadProspectTeamActivity`](../src/lib/prospectTeamActivity.ts)`(supabase, kind, { hideZz })`. Quickfill's team chart reads the same lib for every kind.
-  - `loadWeekReport(offset)` 1754–1805 (useCallback) runs 4 parallel reads: `users` (audience `.or(...)`), `prospect_comments` call/converted rows in `weekRange`, `prospect_timer_events` (`as any`), and `prospect_callbacks`, each joined on `prospects!inner(kind)`. The results feed [`buildProspectWeekReport`](../src/lib/prospects/prospectWeekReport.ts).
-  - Effects: 1748–1752 and 1807–1811.
+  - `loadTeamActivity` 42–53 (useCallback) → [`loadProspectTeamActivity`](../src/lib/prospectTeamActivity.ts)`(supabase, kind, { hideZz })`. Quickfill's team chart reads the same lib for every kind.
+  - `loadWeekReport` 59–68 (useCallback) → [`loadProspectWeekReport`](../src/lib/prospects/prospectWeekReportIo.ts) (10–52), which runs 4 parallel reads: `users` (audience `.or(...)`), `prospect_comments` call/converted rows in `weekRange`, `prospect_timer_events` (`as any`), and `prospect_callbacks`, each joined on `prospects!inner(kind)`. The results feed [`buildProspectWeekReport`](../src/lib/prospects/prospectWeekReport.ts).
+  - Effects: 55–57 and 70–72.
 - **Supabase tables:** `users`, `prospect_comments`, `prospect_timer_events`, `prospect_callbacks`.
-- **Extraction status, risk and approach:** Inline. **Lowest risk** → `ProspectsActivityTab`. Props: `kind`, `hideZz`, `laneRows` (for Source success). It validates the seam the way `bid-costs` did for Bids.
+- **Extraction status:** **Done (v2.7626).**
 
 ### `team` — Hiring (extracted wrapper)
 
-- **Render location:** 3309–3311: `<TeamProspectsTab authUserId={authUser.id} isDev={authRole === 'dev'} canEditOnboarding={isOwnerOrDev(authRole)} resolveMasterId={getEffectiveMasterId} shared={!teamProspectsAccess} />`.
-- **In the parent:** `useMyHiringShares` (428) + `canOpenHiring` (429). The `?tab=` effect waits for `hiringSharesLoading` as it does for `authLoading`.
+- **Render location:** page 1368–1370: `<TeamProspectsTab authUserId={authUser.id} isDev={authRole === 'dev'} canEditOnboarding={isOwnerOrDev(authRole)} resolveMasterId={getEffectiveMasterId} shared={!teamProspectsAccess} />`.
+- **In the parent:** `useMyHiringShares` (107) + `canOpenHiring` (108). The `?tab=` effect waits for `hiringSharesLoading` as it does for `authLoading`.
 - **Extraction status:** **Done at page level.** The component is the surface's second God component; see the next section.
 
 ### `permits` — Permits (extracted)
 
-- **Render location:** 3313: `<ProspectsResearchTab authUserId={authUser.id} />`. The key was `research` until v2.6787, and the old key still opens the tab and is rewritten.
-- **In the parent:** `canResearch` (431), the `?tab=` branch 678–697, `openResearchTab` 967–976 (it drops the tab's own address keys through `permitsLinkCleared`, so the tab's name opens on Skim), and the estimator's landing (722).
+- **Render location:** page 1372: `<ProspectsResearchTab authUserId={authUser.id} />`. The key was `research` until v2.6787, and the old key still opens the tab and is rewritten.
+- **In the parent:** `canResearch` (110), the `?tab=` branch 278–295, `openResearchTab` 429–438 (it drops the tab's own address keys through `permitsLinkCleared`, so the tab's name opens on Skim), and the estimator's landing (322).
 - **What the tab owns, all of it outside this file:** [`ProspectsResearchTab.tsx`](../src/components/prospects/ProspectsResearchTab.tsx) (805 lines, 30-odd states) and its children (`PermitSkimDeck`, `PermitSkimLook`, `PermitSkimGoogleStill`, `PermitPlaceList`, `PermitBuilders`, `PermitBuildingSheet`, `WhoPulledItSheet`, `PermitDecideSheet`, `PermitCloseOutSheet`, `PermitFindPanel`, `PermitCountStrip`, `PermitLookAlikes`, `ResearchMapCard`, `BuilderNameTies`, `GoogleSearchPress`), over the kernels in `src/lib/research/`.
   - Its views: Skim, Investigating, Pursuing, Closed, the second look, Find, Builders, the ledger and the map.
   - Its four verdicts (`VERDICT_WORDS`): **Pursue**, **Investigate**, **Pass**, **Has a plumber**. Pursue makes a lead on the Customers deck or on Jobs to GC (`approachFromPermit`: a `prospects` row, and a `prospect_jobs` row for a lead), which is the tab's one write into this page's tables.
@@ -434,57 +454,63 @@ One `?tab=` param selects the top tab and the sub-tab together, and `?kind=` sel
 
 ## Page-level windows
 
-| Window | Anchor | State | Opened from | Verdict |
-|---|---|---|---|---|
-| Edit Prospect | 4936–5033 | `editModalOpen`, `editingProspect` (null ⇒ edits `currentProspect`), the `editPerson` / `editCompany` blocks, `editSource` / `editTrades` / `editMaxMiles` / `editRole`, `editOpenedWith`; `editGuard` (749) with `LeaveQuestion` (5013); `openEditModal` 2098–2107 / `openEditModalForProspect` 2140–2148, `editSnapshotOf` 2110–2120, `setEditKindFields` 2122–2127, `kindFieldsPayload` 2130–2138, `handleDeleteProspect` 2150–2177, `saveEdit` 2179–2208; warmth ± (`handleWarmthDelta` 2073–2084 / `handleWarmthReset` 2086–2096) at 5006–5008, shown only when editing the current prospect; `ProspectPersonForm` (4991) and `renderKindFields` (4992) | Follow Up "Edit prospect", Prospect List row actions, the Subs list, a Board card | **Stays in parent** (3 tabs) until the data seam; then a controller hook |
-| New Prospect | 5457–5597 | `newProspectModalOpen`, `newKind`, `newSource` / `newTrades` / `newMaxMiles` / `newRole`, the `newPerson` / `newCompany` blocks, `newCustomerLink`, `newProspectError`; `newGuard` (747) with `LeaveQuestion` (5577); the three kind cards (5488–5510); the double line (`newProspectTwin` 850–852, drawn 5535–5564 with its three doors); `openNewProspect` 802–808, `openAddSub` 818–825, `resetNewProspectForm` 758–767, `closeNewProspect` 750–753, `openDoubleProspect` 855–870, `saveNewProspect` 2895–2934 (`getEffectiveMasterId`, `blocksProblem`; switches lanes when `newKind` is not the lane's) | the tab row's button (3297–3305, `canAccessFollowUp`), `?newProspect=true`, the empty lane (3501), the empty list, Add a sub (the needs panel, the Subs list, the Board) | **Stays in parent** (tab row + URL) until the lane read hooks; then a controller hook |
-| Callback | 5036–5111 | `callbackModalOpen`, `callbackDate`/`callbackTime`/`callbackNote`, `saveCallback` | Follow Up only | Moves on its own, or with Follow Up |
-| Copy template edit | 5114–5248 | `editingCopyTemplateKey`, `editingCopyText`, `editingCopySubject`, `copyTemplateSaving`, placeholder chips via `copyTemplateTextareaRef` | Follow Up only, Customers only | Moves with `useProspectCopyTemplates` |
-| Copy blank fields | 5251–5294 | `copyBlankFieldsModalOpen`, `copyBlankFieldsList` | Follow Up only | Moves with `useProspectCopyTemplates` |
-| Timer history | 5297–5369 | `timerHistoryModalOpen`, `timerEvents`, `timerEventsLoading`, `loadTimerEvents` | Follow Up `this call` timer | **Self-contained**: moves on its own with its loader |
-| My time | 5372–5449 | `myTimeModalOpen`, `myTimeStats`, `myTimeStatsLoading`, `loadMyTimeStats` (+ live `followUpTimerSeconds` bonus when `activeTab === 'follow-up'`) | Follow Up footer | **Self-contained**: moves on its own with its loader; takes the live seconds as a prop |
-| Call script | 5451 | `scriptOpen`; `<GcCallScriptWindow job={run ? { trade, project } : null}>` | the Subs card's **Call script** | Extracted; the state moves with Follow Up |
-| Add to the bench | 5452–5455 | `benchDraft` (the prospect, the draft, the ask), `benchSaving`, `benchError`; `<ProspectBenchModal onSave={handleBenchSave}>` | the Subs card's last press, a Subs list row, a Board card | Extracted; stays with `handleBenchSave` in the parent |
+Every window mounts at the end of the page (1534–1553), behind its open flag.
 
-**May we text?** is not a window: it is a chooser inline on the card (3548–3568, `textAskOpen`).
+| Window | Anchor | State | Opened from | Status |
+|---|---|---|---|---|
+| Edit Prospect | page 1534; `EditProspectWindow.tsx` 14–148 over `useEditProspectWindow.ts` 20–202 (page 547) | in the hook: `editModalOpen` 45, `editingProspect` 46 (null ⇒ edits `currentProspect`), `editSource` / `editTrades` / `editMaxMiles` / `editRole` 48–51, the `editPerson` / `editCompany` blocks 52–53, `editOpenedWith` 54; `editGuard` (59) with `LeaveQuestion`; `openEditModal` 91–100 / `openEditModalForProspect` 109–117, `setEditKindFields` 102–107, `handleDeleteProspect` 119–145, `saveEdit` 147–176; warmth ± (`handleWarmthDelta` 66–77 / `handleWarmthReset` 79–89) drawn at `EditProspectWindow.tsx` 113–125, only when editing the current prospect; `ProspectPersonForm` and `renderKindFields` (`ProspectKindFields.tsx` 9–85) | Follow Up "Edit prospect", Prospect List row actions, the Subs list, a Board card | **Extracted v2.7637**; the page calls the hook |
+| New Prospect | page 1553; `NewProspectWindow.tsx` 15–194 over `useNewProspectWindow.ts` 17–167 (page 561) | in the page: `newProspectModalOpen` 131, `newKind` 132 (the bench read keys on it); in the hook: `newCustomerLink` 51, `newProspectError` 52, `newSource` / `newTrades` / `newMaxMiles` / `newRole` 53–56, the `newPerson` / `newCompany` blocks 57–58; `newGuard` (63) with `LeaveQuestion`; the double line (`newProspectTwin` 100–102, drawn at `NewProspectWindow.tsx` 131–163 with its three doors); `openNewProspect` 82–88, `openAddSub` 91–98, `resetNewProspectForm` 70–79, `closeNewProspect` 65–68, `saveNewProspect` 104–142 (`getEffectiveMasterId`, `blocksProblem`; switches lanes when `newKind` is not the lane's, 138); `openDoubleProspect` stays in the page (358–373) | the tab row's button (page 1356–1364, `canAccessFollowUp`), `?newProspect=true` (332–342), the empty lane (`ProspectsFollowUpTab.tsx` 341–346), the empty list, Add a sub (the needs panel, the Subs list, the Board) | **Extracted v2.7637** |
+| Callback | page 1536; `ProspectCallbackModal.tsx` 8–99 | `callbackModalOpen` (page 195); the three boxes in the window (19–21); `saveCallback` (page 747–764), which holds `saving` | Follow Up only | **Extracted v2.7623** |
+| Copy template edit | page 1538; `ProspectCopyTemplateEditModal.tsx` 9–147 | the copy hook's `editingCopyTemplateKey`, `editingCopyText`, `editingCopySubject`, `copyTemplateSaving`, and the placeholder chips through `copyTemplateTextareaRef` (`useProspectCopyTemplates.ts` 61–68) | Follow Up only, Customers only | **Extracted v2.7632** with `useProspectCopyTemplates` |
+| Copy blank fields | page 1540; `ProspectCopyBlankFieldsModal.tsx` 7–53 | `copyBlankFieldsModalOpen`, `copyBlankFieldsList` (`useProspectCopyTemplates.ts` 65–66) | Follow Up only | **Extracted v2.7632** with `useProspectCopyTemplates` |
+| Timer history | page 1542; `ProspectTimerHistoryModal.tsx` 10–100 | `timerHistoryModalOpen` (page 223); its rows and their read in the window (11–25, `loadProspectTimerEvents`) | Follow Up `this call` timer | **Extracted v2.7623**: reads on every open |
+| My time | page 1544–1546; `ProspectMyTimeModal.tsx` 10–105 | `myTimeModalOpen` (page 226); its stats and their read in the window (11–25, `loadMyTimeStats`); the live `followUpTimerSeconds` as `liveSeconds` while `activeTab === 'follow-up'` | Follow Up footer | **Extracted v2.7623**: reads on every open |
+| Call script | page 1548 | `scriptOpen` (179); `<GcCallScriptWindow job={run ? { trade, project } : null}>` | the Subs card's **Call script** | Extracted; its flag stays in the page |
+| Add to the bench | page 1549–1551 | `benchDraft` (the prospect, the draft, the ask), `benchSaving`, `benchError` (124–126); `<ProspectBenchModal onSave={handleBenchSave}>` | the Subs card's last press, a Subs list row, a Board card | Extracted; stays with `handleBenchSave` in the parent |
+
+**May we text?** is not a window: it is a chooser inline on the card (`ProspectsFollowUpTab.tsx` 384–419, `textAskOpen`).
 
 ## URL / navigation router (parent, permanent)
 
-- **`?tab=`** effect 646–729 waits for `authLoading` **and** `hiringSharesLoading`, because the per-user grants arrive with the role.
-  - `subs` and `gc-leads` are doors, not tabs (653–662): each is rewritten to `tab=follow-up` with `kind=`.
-  - `team` requires `canOpenHiring`; otherwise it rewrites to `follow-up` (`replace: true`).
-  - `permits` (or the older `research`, rewritten to `permits`) requires `canResearch`; otherwise it rewrites.
-  - `activity` requires `canAccessActivityTab`, `convert` the Customers lane, `board` the Subs lane (699); otherwise it rewrites.
-  - A missing tab resolves through [`resolveProspectsLanding`](../src/lib/prospects/prospectsLanding.ts) and is written into the URL. An estimator with no Prospects flag lands on `permits` (722).
+All of it is in the page.
+
+- **`?tab=`** effect 246–329 waits for `authLoading` **and** `hiringSharesLoading`, because the per-user grants arrive with the role.
+  - `subs` and `gc-leads` are doors, not tabs (252–261): each is rewritten to `tab=follow-up` with `kind=`.
+  - `team` requires `canOpenHiring` (265–277); otherwise it rewrites to `follow-up` (`replace: true`).
+  - `permits` (or the older `research`, rewritten to `permits`) requires `canResearch` (278–295); otherwise it rewrites.
+  - `activity` requires `canAccessActivityTab`, `convert` the Customers lane, `board` the Subs lane (299); otherwise it rewrites.
+  - A missing tab resolves through [`resolveProspectsLanding`](../src/lib/prospects/prospectsLanding.ts) and is written into the URL (314–327). An estimator with no Prospects flag lands on `permits` (322).
   - `setTab`, `setKindTab`, `openTeamTab` and `openDoubleProspect` remember the clicked top tab in localStorage (`prospects:lastTopTab`); `openResearchTab` and URL-driven landings never write it. Each also sets `?tab=` and deletes `prospect_id`.
-- **`?kind=`** (`gc-leads`, `subs`; bare for Customers): read first by `kindFromSearch` for the state's initial value (442), then by the `?tab=` effect (663–664). Written by `setKindTab` (946–965), which also drops `trade` and `for` off the Subs lane, by `openDoubleProspect`, and by `loadFollowUpProspects` when an inbound `?prospect_id=` is another lane's row (1077–1082).
+- **`?kind=`** (`gc-leads`, `subs`; bare for Customers): read first by `kindFromSearch` for the state's initial value (121), then by the `?tab=` effect (263). Written by `setKindTab` (408–427), which also drops `trade` and `for` off the Subs lane, by `openDoubleProspect`, and by `loadFollowUpProspects` when an inbound `?prospect_id=` is another lane's row (`useProspectsData.ts` 155–158).
 - **`?prospect_id=`:**
-  - read by `loadFollowUpProspects` (fetch-and-prepend when missing), the index-sync effect 1653–1659, and the Prospect List effect 1427–1445 (which opens the right section, then strips the param)
-  - written by `updateUrlProspectId` on every advance/removal/queue jump, by `selectProspectForList` and by `openDoubleProspect`
+  - read by `loadFollowUpProspects` (fetch-and-prepend when missing), the index-sync effect (`useProspectsData.ts` 209–215), and the Prospect List effect (`useProspectListTab.ts` 42–61, which opens the right section, then strips the param)
+  - written by `updateUrlProspectId` (`useProspectsData.ts` 254–262) on every advance/removal/queue jump, by `selectProspectForList` and by `openDoubleProspect`
   - inbound from Calendar (follow-up), Quickfill's Can't reach (prospect-list) and GC projects' *Send the owner back to Prospects* (`?tab=gc-leads&prospect_id=`)
-- **`?trade=`** (Subs): the deck's trade filter. Read at 459 and inside `loadFollowUpProspects`; written by `setTradeFilter` (913–921, which also drops `prospect_id`); inbound from the bench's *Find N more* (`subsLaneHref`) and the list's **Call for ‹trade› →**.
-- **`?for=`** (Subs): the project a set of plans is for. Read at 468; written by `setPlansFor` (924–931); carried by the run and by `boardHref`.
-- **`?run=`** with `?trade=`, `?for=`, `?pkg=` (Subs): the run's ids, fixed at the press (`runFromSearch` / `runHref`, `callRun.ts`). Read at 475 and inside `loadFollowUpProspects` (1038); written by the Board's `onCall` (4191).
-- **`?newProspect=true`** (Dashboard quick-add): effect 732–742 opens the New Prospect window and strips the param.
+- **`?trade=`** (Subs): the deck's trade filter. Read at 180 and inside `loadFollowUpProspects` (`useProspectsData.ts` 131); written by `setTradeFilter` (375–383, which also drops `prospect_id`); inbound from the bench's *Find N more* (`subsLaneHref`) and the list's **Call for ‹trade› →**.
+- **`?for=`** (Subs): the project a set of plans is for. Read at 184; written by `setPlansFor` (386–393); carried by the run and by `boardHref`.
+- **`?run=`** with `?trade=`, `?for=`, `?pkg=` (Subs): the run's ids, fixed at the press (`runFromSearch` / `runHref`, `callRun.ts`). Read at 188 and inside `loadFollowUpProspects` (`useProspectsData.ts` 126); written by the Board's `onCall` (1484).
+- **`?newProspect=true`** (Dashboard quick-add): effect 332–342 opens the New Prospect window and strips the param.
 - **`?stage=` / `?rate=`** (from the Dashboard pinned row, Needs you and the Person desk, e.g. `/prospects?tab=team&stage=review&rate=<id>`): handled **inside** TeamProspectsTab (effect 814–826). It passes through `coerceStage(wanted, shared)`, so a share holder's `hire`/`review` is ignored. It is applied once, then stripped.
 - **`?view=` / `?looks=` / `?city=`** (Permits): handled **inside** `ProspectsResearchTab` through `permitsLink.ts`. The parent only clears them in `openResearchTab`.
 
-All of this stays in the parent (playbook rule), except the keys the two extracted tabs already own.
+All of this stays in the parent (playbook rule), except the keys the two extracted tabs own and the `?prospect_id=` reads that moved into the data and list hooks with their effects.
 
 ## Test coverage by region
 
-`Prospects.tsx` has a render smoke since v2.7615, [`Prospects.render.test.tsx`](../src/pages/Prospects.render.test.tsx) (60 cases, the Hiring board and the Permits tab stubbed), and no e2e spec opens `/prospects`. TeamProspectsTab has [`TeamProspectsTab.render.test.tsx`](../src/components/prospects/TeamProspectsTab.render.test.tsx) with 6 cases. There is **no money math on this surface**. The untested arithmetic is time (⚠ timer-second sums and my-time windows) and the copy-template rules (⚠, real business rules with zero tests).
+`Prospects.tsx` has a render smoke since v2.7615, [`Prospects.render.test.tsx`](../src/pages/Prospects.render.test.tsx): 123 cases, the Hiring board and the Permits tab stubbed, its supabase stand-in lazy the way the real client is (a query is recorded only when it is awaited). Every cut ran its cases against the page before its move and after it. The pieces cut out are proven through it; none of them has a render test of its own. No e2e spec opens `/prospects`. TeamProspectsTab has [`TeamProspectsTab.render.test.tsx`](../src/components/prospects/TeamProspectsTab.render.test.tsx) with 6 cases. There is **no money math on this surface**, and the time sums and the copy-template rules are tested kernels now.
 
 | Region | Tested kernels (`it` blocks) | Render test | Untested inline logic |
 |---|---|---|---|
-| Shell / router | `prospectsLanding` (4), `prospectConversion` (19, incl. `canAccessProspectPipeline`), `laneLoad` (6), `prospectKinds` (14), `pagePadding` (2), `permitsLink` (9) | — | the `?tab` rewrite effect 646–729; `setKindTab`'s param rules 946–965 |
-| The lanes | `subsLane` (13), `gcNeeds` (13), `subsStages` (12), `gcLeadLane` (14), `stripState` (1), `zzProspects` (2), `companyDouble` (9), `benchAsk` (2), `benchOrigin` (3) | `ProspectJobsBox` (7), `ProspectBenchModal` (6) | the bench read's shaping 782–786; `handleBenchSave`'s cache and pointer patch 2412–2429; `handleAskedUs`'s chain |
-| Follow Up | `callingOrder` (11), `callingLock` (10), `callLogState` (7), `callRun` (15), `deckWords` (6), `textingRule` (1), `personBlock` (9), `phoneContact` (5) | — | ⚠ copy-template substitution / blank-field rules 269–337; formatters 222–267; ⚠ my-time windows 1137–1178 and ledger sum 1690–1700; queue window 2009; `writeCallOutcome` insert-then-delete; the queue-after-removal arithmetic, six copies |
-| Board | `subsBoard` (8), `subRecord` (4), `subsRanks` (3) | `SubsBoard` (4) | `writePins`' optimistic paint 1243–1262; `loadLaneExtras`' two folds 1286–1310 |
-| Prospect List | `prospectListGrouping` (13), `callLogState` (7), `subsStages` (12) | — | `handleSendBack` comparator 2575–2580; ⚠ ledger-map reduce 1710–1724; last-call map build 1199–1204 |
-| Convert | `convertProspectSearch` (8), `prospectConversion` (19) | — | `handleConvertSubmit` insert chain 2936–2992 |
-| Activity | `prospectTeamActivity` (4), `prospectWeekReport` (9); `prospectTeamActivityChartData` (2) is Quickfill's and not imported here (reuse target below) | — | 30-day date-key loop 4885–4893 |
-| New / Edit windows | `companyOwner` (4), `companyDouble` (9), `windowLeave` (4), `personBlock` (9), `mapsShareText` (4) | `ProspectPersonForm` (3) | `kindFieldsPayload` 2130–2138; `editSnapshotOf` 2110–2120 |
+| Shell / router | `prospectsLanding` (4), `prospectConversion` (23, incl. `canAccessProspectPipeline`), `laneLoad` (6), `prospectKinds` (21), `pagePadding` (2), `permitsLink` (9) | the smoke: every `?tab=` key on every lane, the lane doors, the roles | the `?tab` rewrite effect 246–329 and `setKindTab`'s param rules 408–427, both pressed by the smoke |
+| Data seam | `subsDeckOrder` (9), `callingOrder` (31), `callLogState` (10) | the smoke: the calling orders, By rank with pins, Soonest bid, the ZZ rule, a lane switch | — |
+| The lanes | `subsLane` (13), `gcNeeds` (13), `subsStages` (12), `gcLeadLane` (14), `stripState` (1), `zzProspects` (2), `companyDouble` (9), `benchAsk` (2), `benchOrigin` (3), `benchRead` (5) | `ProspectJobsBox` (7), `ProspectBenchModal` (6), the smoke | `handleBenchSave`'s cache and pointer patch (page 924–943); `handleAskedUs`'s chain |
+| Follow Up | `callingOrder` (31), `callingLock` (10), `callingLockIo` (2), `callLogState` (10), `callRun` (17), `deckWords` (6), `textingRule` (1), `personBlock` (9), `phoneContact` (5), `prospectCopyTemplates` (27), `prospectFormat` (13), `prospectTimerSums` (11), `prospectTimerIo` (4), `leadThread` (18) | the smoke: the outcomes, the pointer, a run and its text, the lock, the copy templates | `writeCallOutcome`'s insert-then-delete (page 1066–1088) |
+| Board | `subsBoard` (8), `subRecord` (7), `subsRanks` (3) | `SubsBoard` (4), the smoke (the Board's writes) | `writePins`' optimistic paint (`useSubsBoardData.ts` 50–69) |
+| Prospect List | `prospectListGrouping` (13), `callLogState` (10), `subsStages` (12) | the smoke: search and sections across a tab switch, the row actions | — |
+| Convert | `convertProspectSearch` (8), `prospectConversion` (23) | the smoke: a full Convert, a bid card left out, a suggestion | `handleConvertSubmit`'s insert chain (`useProspectConvert.ts` 115–155) |
+| Activity | `prospectTeamActivity` (4), `prospectWeekReport` (9), `prospectTeamActivityChartData` (2, Quickfill's, whose date keys the tab reuses) | the smoke: a week, a caller's week, an empty week, Source success | — |
+| New / Edit windows | `companyOwner` (4), `companyDouble` (9), `windowLeave` (7), `personBlock` (9), `mapsShareText` (4), `prospectKinds` (21) | `ProspectPersonForm` (3), the smoke: both leave questions, New Prospect by kind, the empty lane's press, Edit's warmth and Delete | — |
+| Guard | `src/lib/unsentQueries.test.ts` (3): no source file builds a supabase query and drops it unsent | — | — |
 | Permits (`ProspectsResearchTab`) | the kernels under `lib/research/` | `ProspectsResearchTab` (44), `PermitBuilders` (13) | outside covers |
 | TPT Screen | `teamProspectRanking` (23), `teamProspectSourceSummary` (16, incl. an `it.each` matrix), `candidateHygiene` (8), `columnShares` (7), `sharedHiringTab` (4) | share chip + column menu; share-holder trimmed board | `parseCandidateLinks`/`serializeCandidateLinks`; `mergeDuplicate` merge rules 1096–1122; `handleDragEnd` wiring |
 | TPT Interview | — | — | review draft ↔ row mapping (1242–1251) |
@@ -494,65 +520,64 @@ All of this stays in the parent (playbook rule), except the keys the two extract
 
 ## Stage-A pure-logic inventory
 
-Extract to `src/lib/*` + colocated tests **before** any component moves. Most rules already live in tested kernels (last row). What remains in `Prospects.tsx`, in the order to take it:
+Stage A for the page is done: every rule the map found inline at `6af60c5bcf` now lives in a tested kernel. The table keeps the record of where each went. Row 16 is the Hiring tab's and is still open.
 
-| # | Candidate | Currently | Target |
+| # | Candidate | Status | Where it lives |
 |---|---|---|---|
-| 1 | `substituteCopyPlaceholders` 312–337, `getBlankPlaceholderFields` 269–295, `getBlankFieldsForMail` 297–310 + `COPY_TEMPLATE_KEYS`/`COPY_TEMPLATE_LABELS`/`APP_SETTINGS_KEYS`/`APP_SUBJECT_SETTINGS_KEYS` 105–124; the override-fallback rule in `getResolvedCopyText`/`Subject` 1480–1490; the defaults and overrides fold in `loadCopyTemplates` 1320–1355 | **shipped v2.7595** | `lib/prospects/prospectCopyTemplates.ts`, 27 tests: placeholder substitution, `_______` per-template behavior, blank-field detection incl. the `forMail` prospect-email rule, `null`-or-`''` → default (`resolveCopyText`), the two reads' fold (`foldCopyTemplateRows`) |
-| 2 | The `Prospect` type 148–184, `PROSPECT_COLUMNS` 187–188, `ProspectComment` 190–198 | **shipped v2.7598** | `lib/prospects/prospectRow.ts` (types and the column list, 3 tests: every type key is in the list and nothing else is) |
-| 3 | `formatDateTime`, `formatInteractionType`, `formatTimerButtonName`, `formatTimerSeconds`, `formatWebsiteDisplay`, `getWebsiteHref` (222–267); TPT `formatLastContact` 341–347 | the page's six **shipped v2.7595 / v2.7598** (14 tests); TPT's `formatLastContact` still module-level, untested | `lib/prospects/prospectFormat.ts` |
-| 4 | The queue after a card leaves, six copies of `nextList` / `nextIdx = Math.min(index, Math.max(0, length − 1))`: `handleDeleteProspect` 2167–2171, `handleNoLongerFit` 2270–2275, `handleCantReach` 2297–2302, `handleConverted` 2348–2353, `handleBenchSave` 2419–2429 (with the row-before-the-pointer branch), `leaveQueueAsLanded` 2448–2453 | **shipped v2.7603**, the six call sites with it | `queueAfterRemoval(queue, index, id)` and `indexAfterOtherRowLeft` in `callingOrder.ts`, 11 tests |
-| 5 | `loadMyTimeStats` windows 1140–1145, `loadMyTimeToday` 1167–1169, the sums at 1147 / 1176, ledger sums 1690–1700 / 1710–1724 | **shipped v2.7606** | `lib/prospects/prospectTimerSums.ts`: `sumTimerSeconds` / `sumTimerSecondsByProspect` / `myTimeWindows(now)`, 11 tests |
-| 6 | `kindFieldsPayload` 2130–2138, `editSnapshotOf` 2110–2120 | **shipped v2.7606** | `prospectKinds.ts` and `windowLeave.ts`, 10 tests |
-| 7 | The `sourceProspect` literal, written twice: `handleConverted` 2319–2331 and `handleAskedUs` 2490–2502 | **shipped v2.7606** | `sourceProspectOf(p)` beside `customerDraftFromProspect` in `prospectConversion.ts` |
-| 8 | The Subs deck's order in `loadFollowUpProspects` 1032–1054 (a run's ids in their order, else the trade filter, By need, By rank over the pins) | **shipped v2.7634** with the loader | `orderSubsDeck(queue, { run, trade, mode, benchTrades, called, calls, ranks })` in `lib/prospects/subsDeckOrder.ts`, 9 tests |
-| 9 | The bench read's shaping 782–786 (the dependable counts, the quoted set, the plans' input, our own trades, the vetted flag) | **shipped v2.7631** with `useSubsBench` | `benchReadFromBoard(rows, projects, today)` in `lib/prospects/benchRead.ts`, 5 tests |
-| 10 | `handleSendBack` re-insert comparator 2575–2580; queue window `start` in `renderQueueRows` 2009 | **shipped v2.7603** | `insertColdest` and `queueWindowStart` in `callingOrder.ts`, 9 tests |
-| 11 | last-call map build 1199–1204 (first row per prospect of the newest-first call rows) | **shipped v2.7606** | `lastCallByProspect(rows)` in `callLogState.ts`, 3 tests |
-| 12 | `loadLaneExtras`' two folds: inbound lines by contact → prospect 1286–1297, first upcoming callback per prospect 1303–1307 | **shipped v2.7606** | `inboundProspects(contacts, lines)` in `subRecord.ts` and `firstCallbackWords(rows, now)` in `callRun.ts`, 5 tests |
-| 13 | Convert's rows: the picker pool union 1630, the first-contact prefill 1647–1650, the skip rules in `handleConvertSubmit` 2946–2969 | the two skip rules **shipped v2.7606**; the pool union and the prefill move with the tab in step 7 | `convertContactRows` and `convertBidRows` in `prospectConversion.ts`, 3 tests |
-| 14 | Activity 30-day date-key loop 4885–4893 | **shipped v2.7606** | reuses [`getOrderedDateKeysLast30Days`](../src/lib/prospectTeamActivityChartData.ts), reversed, since the tab renders newest first |
-| 15 | `saveCallback`'s title 2222 | **shipped v2.7606** | calls `runCallbackTitle` |
+| 1 | the copy-template rules: placeholder substitution, `_______` per template, blank fields with the `forMail` rule, the four key tables, the override fallback, the two reads' fold | **shipped v2.7595** | `lib/prospects/prospectCopyTemplates.ts` (`substituteCopyPlaceholders`, `getBlankPlaceholderFields`, `getBlankFieldsForMail`, `resolveCopyText`, `foldCopyTemplateRows`) |
+| 2 | the `Prospect` type, `PROSPECT_COLUMNS`, `ProspectComment` | **shipped v2.7598** | `lib/prospects/prospectRow.ts` (every type key is in the column list and nothing else is) |
+| 3 | `formatDateTime`, `formatInteractionType`, `formatTimerButtonName`, `formatTimerSeconds`, `formatWebsiteDisplay`, `getWebsiteHref`; TPT's `formatLastContact` (341–347) | the page's six **shipped v2.7595 / v2.7598**; TPT's still module-level, untested | `lib/prospects/prospectFormat.ts` |
+| 4 | the queue after a card leaves, written six times | **shipped v2.7603**, the six call sites with it | `queueAfterRemoval` and `indexAfterOtherRowLeft` in `callingOrder.ts` |
+| 5 | the my-time windows and the timer sums | **shipped v2.7606** | `lib/prospects/prospectTimerSums.ts` (`sumTimerSeconds`, `sumTimerSecondsByProspect`, `myTimeWindows`) |
+| 6 | `kindFieldsPayload`, `editSnapshotOf` | **shipped v2.7606** | `prospectKinds.ts` and `windowLeave.ts` |
+| 7 | the `sourceProspect` literal, written twice | **shipped v2.7606** | `sourceProspectOf(p)` beside `customerDraftFromProspect` in `prospectConversion.ts` |
+| 8 | the Subs deck's order (a run's ids in their order, else the trade filter, By need, By rank over the pins) | **shipped v2.7634** with its loader | `orderSubsDeck` in `lib/prospects/subsDeckOrder.ts` |
+| 9 | the bench read's shaping (the dependable counts, the quoted set, the plans' input, our own trades, the vetted flag) | **shipped v2.7631** with `useSubsBench` | `benchReadFromBoard` in `lib/prospects/benchRead.ts` |
+| 10 | `handleSendBack`'s re-insert comparator; the queue window's start | **shipped v2.7603** | `insertColdest` and `queueWindowStart` in `callingOrder.ts` |
+| 11 | the last-call map's build (the first row per prospect of the newest-first call rows) | **shipped v2.7606** | `lastCallByProspect` in `callLogState.ts` |
+| 12 | `loadLaneExtras`' two folds: inbound lines by contact → prospect, the first upcoming callback per prospect | **shipped v2.7606** | `inboundProspects` in `subRecord.ts`, `firstCallbackWords` in `callRun.ts` |
+| 13 | Convert's rows: the picker pool's union, the first-contact prefill, the submit's skip rules | the skip rules **shipped v2.7606**; the union and the prefill moved with the tab in v2.7628 (`useProspectConvert.ts` 99, 107–113) | `convertContactRows` and `convertBidRows` in `prospectConversion.ts` |
+| 14 | Activity's 30-day date keys | **shipped v2.7606** | [`getOrderedDateKeysLast30Days`](../src/lib/prospectTeamActivityChartData.ts), reversed (`ProspectsActivityTab.tsx` 187), since the tab renders newest first |
+| 15 | `saveCallback`'s title | **shipped v2.7606** | `runCallbackTitle` |
 | 16 | `parseCandidateLinks` / `serializeCandidateLinks` 166–186 + `mergeDuplicate`'s merge rules 1096–1106 (link dedupe by URL, notes concatenated when they differ) and review re-point filter 1118–1120 | module-level / inline in TPT, untested | `lib/prospects/candidateLinks.ts` (+ `mergeCandidateFields`) + tests |
-| — | **Already in lib with tests** | 38 kernels under `lib/prospects/` (the deck: `callingOrder`, `callLogState`, `callingLock`, `prospectConversion`, `prospectsLanding`, `prospectListGrouping`, `convertProspectSearch`, `prospectWeekReport`; the lanes: `prospectKinds`, `laneLoad`, `subsLane`, `gcNeeds`, `gcLeadLane`, `subsStages`, `subsBoard`, `subRecord`, `subsRanks`, `callRun`, `benchAsk`, `benchOrigin`, `companyDouble`, `deckWords`, `windowLeave`, `zzProspects`, `stripState`, `personBlock`, `mapsShareText`, `textingRule`, `leadThread`, `pagePadding`; Hiring: `candidateHygiene`, `helperTrial`, `hireRosterKinds` and the review kernels), plus `prospectTeamActivity`, `teamProspectRanking`, `teamProspectSourceSummary`, `hiring/trialTally`, `hiring/columnShares`, `hiring/sharedHiringTab` | — (reference implementations) |
 
 ### Cross-surface duplicates (fix outside the moves)
 
-- **The prospects-staff audience predicate** exists 4× on the client: `canAccessProspectPipeline` (`lib/prospects/prospectConversion.ts`), `hasProspectsStaffAccess` (`lib/hiring/columnShares.ts`, the twin of DB `user_has_prospects_staff_access()`), and the PostgREST string `.or('role.in.(dev,master_technician,assistant,controller),and(role.eq.estimator,estimator_prospects_access.eq.true)')` in both `loadWeekReport` (1766) and `lib/prospectTeamActivity.ts`.
-- **"Called"** (`CALL_INTERACTION_TYPES`) is loaded twice by unbounded full scans of call comments: `loadFollowUpProspects` 1002 and `loadProspectListProspects` 1188–1192. `loadWeekReport` hard-codes `['didnt_answer', 'answered', 'converted']` (1771).
-- **The GC board is read here the way `GcProjects` reads it** (`loadGcProjects` → `loadGcBoardRows` → `boardStateFromRows` → `tradeBenches`, 777–781), and the Jobs to GC effect calls `loadGcProjects` again (877). One `useGcBoardRead` would serve the page and GC projects.
-- **`loadCustomerDoubles`** is called by two effects (839 and 886), and both write `customerDoubles`.
+- **The prospects-staff audience predicate** exists 4× on the client: `canAccessProspectPipeline` (`lib/prospects/prospectConversion.ts`), `hasProspectsStaffAccess` (`lib/hiring/columnShares.ts`, the twin of DB `user_has_prospects_staff_access()`), and the PostgREST string `.or('role.in.(dev,master_technician,assistant,controller),and(role.eq.estimator,estimator_prospects_access.eq.true)')` in both `loadProspectWeekReport` (`lib/prospects/prospectWeekReportIo.ts` 19) and `lib/prospectTeamActivity.ts`.
+- **"Called"** (`CALL_INTERACTION_TYPES`) is loaded twice by unbounded full scans of call comments: `loadFollowUpProspects` (`useProspectsData.ts` 91) and `loadProspectListProspects` (`useProspectsData.ts` 183–186). `loadProspectWeekReport` hard-codes `['didnt_answer', 'answered', 'converted']` (`prospectWeekReportIo.ts` 24).
+- **The GC board is read here the way `GcProjects` reads it** (`loadGcProjects` → `loadGcBoardRows`, in `useSubsBench.ts` 23–45), and the Jobs to GC read calls `loadGcProjects` again (`useProspectDoubles.ts` 66–89). One `useGcBoardRead` would serve the page and GC projects.
+- **`loadCustomerDoubles`** is called by both effects of `useProspectDoubles.ts` (43–63 and 66–89), and both write `customerDoubles`.
 - `team_prospect_role_shares` is read 3×: TPT `load()`, `useMyHiringShares` (this page's gate) and `useHiringColumnShares` (the person desk). The playbook's cross-surface seam 41 holds it.
 - Quickfill's [`prospectWarmthCounts.ts`](../src/lib/prospectWarmthCounts.ts) still buckets by warmth, while the Prospect List groups by pipeline stage. The playbook's *Prospects ↔ Quickfill* row holds it.
 
 ## Preserve-quirks list (odd but load-bearing — do not "fix" during the move)
 
-1. **Stale type casts.** Prospects.tsx has `(supabase as any)` on `prospect_timer_events` ×10 (1115, 1150–1153, 1170, 1692, 1712, 1775, 2240) and `'service_types' as any` (1621). TPT has `'team_prospect_trial_tally' as never` (863) and `keepTrying`'s update `as never` (1219), plus jsonb `links` written `as unknown as string` (1020, 1055, 1109). Those tables, the RPC and the `trial_deferred_*` columns are all in generated `database.ts` now, so the casts are removable. Do that in a separate types pass, never during a move.
+1. **Stale type casts.** `(supabase as any)` on `prospect_timer_events` sits in the page (469, 663, 768), in `useProspectListTab.ts` (66), `lib/prospects/prospectTimerIo.ts` (33, 50) and `lib/prospects/prospectWeekReportIo.ts` (29), and `'service_types' as any` in `useProspectConvert.ts` (90). TPT has `'team_prospect_trial_tally' as never` (863) and `keepTrying`'s update `as never` (1219), plus jsonb `links` written `as unknown as string` (1020, 1055, 1109). Those tables, the RPC and the `trial_deferred_*` columns are all in generated `database.ts` now, so the casts are removable. Do that in a separate types pass, never during a move.
 2. **Calling locks are advisory, taken on intent, and expire.**
-   - Triggers: `dial` (3653), `composer` (3864), `outcome` (2723 / 2761), `callback` (2211). The lane's last press takes no lock.
-   - A colleague's row younger than `CALLING_LOCK_TTL_MS` (30 min) is never overwritten; an older row is taken over.
+   - Triggers: `dial` (`ProspectsFollowUpTab.tsx` 497), `composer` (`ProspectsFollowUpTab.tsx` 707), `outcome` (page 1100 / 1138), `callback` (page 743). The lane's last press takes no lock.
+   - A colleague's row younger than `CALLING_LOCK_TTL_MS` (30 min) is never overwritten; an older row is taken over (but see quirk 38).
    - `loadFollowUpProspects` hides only live rows held by *others* at load time.
-   - Release (1844–1855) means to delete only the row this tab wrote (`lockTakenForRef`); see quirk 36, no release is sent today. `handleNoLongerFit`, `handleCantReach`, `handleConverted`, `handleBenchSave`, `leaveQueueAsLanded` and `handleNextProspect` also delete the caller's own row; Didn't Answer and Answered do not.
+   - Release (`useCallingLock.ts` 34–45) deletes only the row this tab wrote (`lockTakenForRef`), through `releaseCallingLock` (quirk 36). In the page `handleNoLongerFit` (789), `handleCantReach` (819), `handleConverted` (858), `handleBenchSave` (927), `leaveQueueAsLanded` (956) and `handleNextProspect` (1213, 1222) also delete the caller's own row; Didn't Answer and Answered do not.
    - There is no purge job; staleness is a read-side rule.
-3. **`?prospect_id` fetch-and-prepend** (1062–1090) deliberately shows a prospect even when it is `not_a_fit`/`cant_reach`/`converted` or locked, because Prospect List, Calendar and Quickfill must be able to open anything. A row of another kind is handed to its own lane, and a hidden ZZ row opens nothing.
-4. **Queue filter is split.** The server excludes `not_a_fit` on two lanes only (1013): the Subs lane reads every row, because its strip counts the exits. The client drops `not_a_fit` + `cant_reach` + `converted` (1028) and, for a non-dev, the ZZ rows. The order comes from `callingOrderModeRef.current`, a ref rather than state, so the loader is not recreated when the mode changes.
-5. **The queue reloads on every URL change, and twice on the Subs lane's entry.** Effect 1405–1410 depends on `searchParams`, so each `updateUrlProspectId` (every advance, removal and queue jump) re-runs `loadFollowUpProspects` + `loadMyTimeToday`, and the index-sync effect re-points. It also depends on `benchTrades`, so the Subs deck loads once before the bench read answers and once after (By need reads the bench). In never-called-first mode, a prospect just called moves into the called block on that reload. Keep the dependencies.
+3. **`?prospect_id` fetch-and-prepend** (`useProspectsData.ts` 140–160) deliberately shows a prospect even when it is `not_a_fit`/`cant_reach`/`converted` or locked, because Prospect List, Calendar and Quickfill must be able to open anything. A row of another kind is handed to its own lane, and a hidden ZZ row opens nothing.
+4. **Queue filter is split.** The server excludes `not_a_fit` on two lanes only (`useProspectsData.ts` 102): the Subs lane reads every row, because its strip counts the exits. The client drops `not_a_fit` + `cant_reach` + `converted` and, for a non-dev, the ZZ rows (115–118). The order comes from `callingOrderModeRef.current`, a ref rather than state, so the loader is not recreated when the mode changes.
+5. **The queue reloads on every URL change, and twice on the Subs lane's entry.** The page's effect 513–518 depends on `searchParams`, so each `updateUrlProspectId` (every advance, removal and queue jump) re-runs `loadFollowUpProspects` + `loadMyTimeToday`, and the index-sync effect re-points. It also depends on `benchTrades`, so the Subs deck loads once before the bench read answers and once after (By need reads the bench). In never-called-first mode, a prospect just called moves into the called block on that reload. Keep the dependencies.
 6. **Timer semantics.**
    - `followUpTimerSeconds` resets on tab re-visibility and on every advance.
    - A `prospect_timer_events` row is written only by `saveTimerEvent` for `no_longer_fit` / `next_prospect` / `cant_reach` / `converted`. A landing writes `converted` on every lane, and closes over the click-time render values.
-   - `handleDidntAnswer`'s auto-advance calls `handleNextProspect(true)`: **no timer event, no lock delete, no `loadMyTimeToday`** on that path. The release effect still frees the lock.
-   - `handleBenchSave` writes the timer event only when the landed prospect is the deck's card (2413).
-7. **Live "session bonus":** `my day`, "Time on this prospect" and the My time window add the running `followUpTimerSeconds` to DB sums (the window only when `activeTab === 'follow-up'`). Yesterday intentionally gets no bonus.
+   - `handleDidntAnswer`'s auto-advance calls `handleNextProspect(true)` (page 1130): **no timer event, no lock delete, no `loadMyTimeToday`** on that path. The release effect still frees the lock.
+   - `handleBenchSave` writes the timer event only when the landed prospect is the deck's card (page 926).
+7. **Live "session bonus":** `my day`, "Time on this prospect" and the My time window add the running `followUpTimerSeconds` to DB sums (the window only when `activeTab === 'follow-up'`, through `liveSeconds`). Yesterday intentionally gets no bonus.
 8. **Last Contact and warmth.**
    - The card prefers `comments[0]?.created_at` over `prospects.last_contact`.
    - `handleAnswered`/`handleDidntAnswer`/`handleAddComment` bump `last_contact` to now after inserting.
    - Answered also sets warmth +1. The warmth pill on the card is read-only; ± lives only in the Edit window and only for the current prospect. `handleWarmthDelta`/`Reset` patch the Follow Up cache only. On the Subs lane the card shows the priority presses in place of the pill.
-9. **Call-outcome retag** (`writeCallOutcome` 2625–2647). Applies when the composer is empty and the newest comment is the caller's own `user_comment` within `RETAG_NOTE_WINDOW_MS` (10 min). The outcome row takes the note's text and original `created_at`, and **then** the note is deleted: insert-then-delete, because `prospect_comments` has no UPDATE policy. A failed delete toasts but keeps the call.
-10. **Single-cache patches are safe only because the list reloads on every tab entry** (effect 1412–1416). `handleNoLongerFit`, `handleDidntAnswer` and `handleAddComment` leave `prospectListProspects` stale until then.
-11. **Copy-template override fallback:** an override that is `null` **or** `''` falls back to the app_settings default. The save upsert writes `subject_text: editingCopySubject || null`. The template row shows on the Customers lane only (4029).
-12. **`handleOpenMail` fires the mailto first**, then upserts `prospect_email_sent`. The envelope-check icon is per user + prospect + template.
+9. **Call-outcome retag** (`writeCallOutcome`, page 1066–1088). Applies when the composer is empty and the newest comment is the caller's own `user_comment` within `RETAG_NOTE_WINDOW_MS` (10 min). The outcome row takes the note's text and original `created_at`, and **then** the note is deleted: insert-then-delete, because `prospect_comments` has no UPDATE policy. A failed delete toasts but keeps the call.
+10. **Single-cache patches are safe only because the list reloads on every tab entry** (page effect 520–524). `handleNoLongerFit`, `handleDidntAnswer` and `handleAddComment` leave `prospectListProspects` stale until then.
+11. **Copy-template override fallback:** an override that is `null` **or** `''` falls back to the app_settings default (`resolveCopyText`). The save upsert writes `subject_text: editingCopySubject || null`. The template row shows on the Customers lane only (`ProspectsFollowUpTab.tsx` 872).
+12. **`handleOpenMail` fires the mailto first** (`useProspectCopyTemplates.ts` 155–187), then upserts `prospect_email_sent`. The envelope-check icon is per user + prospect + template.
 13. **One global `saving` flag** across every lane's mutations; TeamProspectsTab has its own `busy`, Convert has `convertSaving`, the bench window has `benchSaving`. Keep each scope intact. `savePriority`, `saveOkToText` and the job handlers set none of them.
-14. **Edit window dual identity:** `editingProspect === null` means "editing `currentProspect`" (Follow Up); a set value means "editing this row" (Prospect List, the Subs list, the Board). `handleDeleteProspect` handles both and re-points the Follow Up index. The kind boxes follow `(editingProspect ?? currentProspect)?.kind ?? kind`.
+14. **Edit window dual identity:** `editingProspect === null` means "editing `currentProspect`" (Follow Up); a set value means "editing this row" (Prospect List, the Subs list, the Board). `handleDeleteProspect` (`useEditProspectWindow.ts` 119–145) handles both and re-points the Follow Up index. The kind boxes follow `(editingProspect ?? currentProspect)?.kind ?? kind`.
 15. **Sort orders differ on purpose.** Prospect List groups by pipeline stage and recency, and the Subs list by trade in the needs panel's order. The Follow Up queue is coldest-first, never-called-first, By need, By rank or Soonest bid. `handleSendBack` re-inserts in coldest order regardless of `callingOrderMode`.
 16. **Convert marks the prospect only through `markProspectConverted`** (status → `converted` + a `converted` comment naming `/customers/<id>`; also the `customer_contact_persons` row when Add customer hands it a contact person, which Convert does not). Add customer, Follow Up and Asked us ✓ use the same kernel; never re-inline it. Convert does not delete the prospect. The submit button lives outside `NewCustomerForm` via `form="convert-customer-form"`, and new bids hard-code `materials_model: 'rough'`.
 17. **Owner stamping.** `getEffectiveMasterId` → `resolveCompanyOwnerUserId` stamps prospects, roles and candidates with the company owner. `addHireToRoster` alone uses the raw `authUserId` as `people.master_user_id`. Preserve the inconsistency.
@@ -568,47 +593,55 @@ Extract to `src/lib/*` + colocated tests **before** any component moves. Most ru
 22. **The shared board only hides controls.** `hiringTabPowers(shared)` trims the UI; the database refuses everything outside the share (`20260924040000`). Handlers such as `setStatus` do not re-check powers.
 23. **One-shot deep links:** `?stage=`/`?rate=`, `?newProspect=true`, the `subs` / `gc-leads` doors and the Prospect List `?prospect_id` are each applied once, then stripped or rewritten, so later tab-hopping does not snap back.
 24. **Activity hides a day entirely** when every user's Marked and Updated are 0. Date labels render via `new Date(dk + 'T12:00:00')` (a noon guard against timezone off-by-one), and all week and day boundaries are browser-local.
-25. **`commentInputRef` is a state, not a ref.** The auto-resize effect depends on it re-running when the node mounts.
-26. **Dialogs are context dialogs:** `handleAddQuickNote` and `markJobLost` use `promptDialog`, and the two prospect deletes (2154, 2602), `passFromBoard` (2715), merge, Try out and the Try-out card's Pass (`endTryOut`) use `confirmDialog`. TPT's candidate and column deletes confirm inline instead (`confirmingDelete`, `confirmDeleteRoleId`), and Pass on a Screen or Interview card (`setStatus('passed')`) has no confirm. New Prospect and Edit prospect ask to leave inline (`LeaveQuestion` through `useLeaveGuard`). Keep them as they are; no modal redesign during the move.
-27. **A run is fixed at the press.** `?run=` carries the ids; the deck works them in that order and nothing reshuffles (1039–1042). The run's notes (`runOutcomes`, `runDone`, `runCallbackAt`, `runTextState`) reset when the ids change (485–491) and do not survive a refresh. In a run Didn't Answer never auto-advances: it writes a callback at `callbackHourFor(now)` and offers the text (2735–2751). Next on the last card shows the receipt and never wraps to the first (2832–2840).
-28. **A landing from a list row or a Board card leaves the deck's card alone.** `handleBenchSave` advances only when the landed prospect is the card (2412, 2422–2426); when the landed row sat before the pointer the index steps back one (2427–2428). A refused ask leaves the landing whole and says so (2406–2408).
-29. **Asked us ✓ makes no second customer.** With `customer_id` set it marks the prospect against the customer on file (2476–2485). Marking the job asked is fail-soft (2466–2470): the project still opens.
-30. **The job handlers key the cache two ways.** `changeJob`, `markJobLost` and `removeJob` patch `jobsByProspect[currentProspect.id]`; `addJobFor` takes the id and `editJobFor` uses `job.prospect_id`. They agree only because the Jobs box draws on the deck's card.
-31. **`customerDoubles` has two writers** (effects 829–849 and 873–896). Whichever read answers last wins; both read the same rows.
-32. **`passFromBoard` patches `laneAllRows` whatever the write did** (2717–2718): `handleNotAFitFromList` swallows its error. On a refused write the strip's count moves and the list's does not, until the next load.
-33. **The empty lane's press opens New Prospect without setting its kind** (3501 calls `setNewProspectModalOpen(true)`, not `openNewProspect`). The window opens on whatever `newKind` last was: `customer` on a fresh visit, even on the Subs or Jobs to GC lane. The `?newProspect=true` door does the same on purpose (it comes from the Dashboard). *Suspected defect, read from the code and not walked live; it gets its own fix PR, never a move.*
-34. **`saveNewProspect` on another lane's kind** closes the window and calls `setKindTab(newKind)`; the loaders then run on the kind change, not from the save (2927–2931).
-35. **The page imports `PORTAL_COMPANY` from `supabase/functions/_shared/portalCompany`** (97). A client file reading the edge side's shared folder is on purpose here: one company name for the app and the functions.
-36. **No calling lock is ever released.** The eight releases are written `void supabase.from('prospect_calling_locks').delete()…` and never awaited: the release effect, `handleNoLongerFit`, `handleCantReach`, `handleConverted`, `handleBenchSave`, `leaveQueueAsLanded` and `handleNextProspect` twice. The Supabase client sends a query only when it is awaited, so none is sent, and a lock stays until it goes stale. The render smoke pins this (v2.7615). *A defect, found by the smoke; it gets its own fix PR, never a move.*
-37. **The deck loads once on any entry to the page.** `activeTab` starts as `follow-up`, and the queue-load effect runs on the first render, before the `?tab=` effect reads the address. A link to another tab still loads the deck once, and a link to the Prospect List with a `?prospect_id=` also puts that prospect up as the deck's card.
+25. **`commentInputRef` is a state, not a ref** (page 197). The auto-resize effect (728–733) depends on it re-running when the node mounts.
+26. **Dialogs are context dialogs:** `handleAddQuickNote` and `markJobLost` use `promptDialog`, and the two prospect deletes (`useEditProspectWindow.ts` 123, page 1043), `passFromBoard` (page 1092), merge, Try out and the Try-out card's Pass (`endTryOut`) use `confirmDialog`. TPT's candidate and column deletes confirm inline instead (`confirmingDelete`, `confirmDeleteRoleId`), and Pass on a Screen or Interview card (`setStatus('passed')`) has no confirm. New Prospect and Edit prospect ask to leave inline (`LeaveQuestion` through `useLeaveGuard`). Keep them as they are; no modal redesign during a move.
+27. **A run is fixed at the press.** `?run=` carries the ids; the deck works them in that order and nothing reshuffles (`orderSubsDeck`, `useProspectsData.ts` 131). The run's notes (`runOutcomes`, `runDone`, `runCallbackAt`, `runTextState`) reset when the ids change (`useCallRun.ts` 45–51) and do not survive a refresh. In a run Didn't Answer never auto-advances: it writes a callback at `callbackHourFor(now)` and offers the text (page 1112–1129). Next on the last card shows the receipt and never wraps to the first (1209–1217).
+28. **A landing from a list row or a Board card leaves the deck's card alone.** `handleBenchSave` advances only when the landed prospect is the card (page 924–938); when the landed row sat before the pointer the index steps back one (939). A refused ask leaves the landing whole and says so (916–920).
+29. **Asked us ✓ makes no second customer.** With `customer_id` set it marks the prospect against the customer on file (page 987–995). Marking the job asked is fail-soft (976–981): the project still opens.
+30. **The job handlers key the cache two ways.** `changeJob`, `markJobLost` and `removeJob` patch `jobsByProspect[currentProspect.id]`; `addJobFor` takes the id and `editJobFor` uses `job.prospect_id` (`useProspectJobs.ts`). They agree only because the Jobs box draws on the deck's card.
+31. **`customerDoubles` has two writers** (`useProspectDoubles.ts` effects 43–63 and 66–89). Whichever read answers last wins; both read the same rows.
+32. **`passFromBoard` patches `laneAllRows` whatever the write did** (page 1095): `handleNotAFitFromList` swallows its error. On a refused write the strip's count moves and the list's does not, until the next load.
+33. **The empty lane's press and the header's button open New Prospect the same way** (v2.7657): both call `openNewProspect`, which sets the window's kind to the lane's and clears its boxes. Until then the empty lane's press only raised the open flag, so the window opened on the kind picked last. The `?newProspect=true` door still only raises the flag, on purpose: it comes from the Dashboard and lands on Customers.
+34. **`saveNewProspect` on another lane's kind** closes the window and calls `setKindTab(newKind)` (`useNewProspectWindow.ts` 138); the loaders then run on the kind change, not from the save.
+35. **`useCallRun.ts` imports `PORTAL_COMPANY` from `supabase/functions/_shared/portalCompany`** (10; the page did until v2.7632). A client file reading the edge side's shared folder is on purpose here: one company name for the app and the functions.
+36. **Every lock release goes through `releaseCallingLock`** (`lib/prospects/callingLockIo.ts`, v2.7656). Until then the eight releases were written `void supabase.from('prospect_calling_locks').delete()…` and never awaited, and the Supabase client sends a query only when it is awaited, so none was sent and a lock stayed until it went stale. `src/lib/unsentQueries.test.ts` fails on that shape anywhere in the app.
+37. **The deck loads once on any entry to the page.** `activeTab` starts as `follow-up`, and the queue-load effect (page 513–518) runs on the first render, before the `?tab=` effect reads the address. A link to another tab still loads the deck once, and a link to the Prospect List with a `?prospect_id=` also puts that prospect up as the deck's card.
+38. **A colleague's stale lock cannot be taken over.** `takeCallingLock` upserts on `prospect_id`, which updates their row, and the table's update policy lets a caller change only their own. The database refuses, the code treats it as no lock taken, and the call goes on. *Read in the migrations, not tested; a fix is a policy change, the owner's call.*
 
 ## Recommended extraction order (value ÷ risk)
 
-The page is 5,600 lines: 313 of module scope, about 2,800 of state, effects and handlers, and 2,378 of render. Every step is one small PR that changes no behaviour. Steps 1 and 2 need no render smoke; step 3 is the smoke every later step leans on.
+The thirteen steps drawn at `6af60c5bcf` are the record below; each line says what moved and the page's size after it. Steps 1 and 2 needed no render smoke; step 3 was the smoke every later step leaned on.
 
 1. **Stage A, the copy-template rules** → `lib/prospects/prospectCopyTemplates.ts` (inventory row 1) — **shipped v2.7595** (the three rules, `resolveCopyText`, `foldCopyTemplateRows`, and `formatDateTime` as the first export of `prospectFormat.ts`; 29 tests; the page is 5,481 lines).
-2. **Stage A, the rest**, in the inventory's order — the row types and the formatters **shipped v2.7598** (`prospectRow.ts`, `prospectFormat.ts`, 15 tests; the page is 5,389 lines); the queue rules **shipped v2.7603** (`queueAfterRemoval`, `indexAfterOtherRowLeft`, `insertColdest`, `queueWindowStart`, 20 tests, the six handlers adopted; 5,377 lines); the time sums, the loaders' folds and the windows' helpers **shipped v2.7606** (31 tests; 5,284 lines). Stage A is done but for rows 8 and 9, which sit between awaits and move with their loader (step 10) and their hook (step 8).
+2. **Stage A, the rest**, in the inventory's order — the row types and the formatters **shipped v2.7598** (`prospectRow.ts`, `prospectFormat.ts`, 15 tests; the page is 5,389 lines); the queue rules **shipped v2.7603** (`queueAfterRemoval`, `indexAfterOtherRowLeft`, `insertColdest`, `queueWindowStart`, 20 tests, the six handlers adopted; 5,377 lines); the time sums, the loaders' folds and the windows' helpers **shipped v2.7606** (31 tests; 5,284 lines). Rows 8 and 9 sat between awaits and moved with their loader (step 10) and their hook (step 8).
 3. **The page's first render smoke**, `src/pages/Prospects.render.test.tsx` — **shipped v2.7615** (60 cases: every `?tab=` key on every lane, the lane doors, the roles, the deck's outcomes and its pointer, a run, the Board's run press, the list, Convert, Activity and six windows; seven of eight deliberate breaks caught, the eighth changes nothing on screen). Tests only.
-4. **The Subs lane's drawn pieces → `components/prospects/`** — **shipped v2.7621**: `SubsPathStrip` (`renderSubsStrip`), `SubsPlansPicker` (`renderPlansPicker`), `SubsLaneList` (`renderSubsList`), `SubsNeedsPanel`, `GcWorkStrip`, each a function of its props; `subsSectionOpen` stays in the page so a fold survives a tab switch; the smoke grew to 68 cases first; the page is 4,963 lines.
+4. **The Subs lane's drawn pieces → `components/prospects/`** — **shipped v2.7621**: `SubsPathStrip` (`renderSubsStrip`), `SubsPlansPicker` (`renderPlansPicker`), `SubsLaneList` (`renderSubsList`), `SubsNeedsPanel`, `GcWorkStrip`, each a function of its props; `subsSectionOpen` stays with the page so a fold survives a tab switch; the smoke grew to 68 cases first; the page is 4,963 lines.
 5. **Follow Up's small windows** — **shipped v2.7623**: `ProspectTimerHistoryModal` and `ProspectMyTimeModal`, each with its rows and its read (`lib/prospects/prospectTimerIo.ts`), and `ProspectCallbackModal` with its three boxes; the three open flags and `saveCallback` stay in the page, which holds `saving`; the smoke is 71 cases; the page is 4,681 lines.
 6. **`activity` → `ProspectsActivityTab`** — **shipped v2.7626**: the tab with its 4 states, its 2 loaders and `lib/prospects/prospectWeekReportIo.ts`; `weekOffset` stays in the page so the pager survives a tab switch; the smoke is 75 cases, run against the page before and after; the page is 4,438 lines.
 7. **`convert` → `ProspectsConvertTab`** — **shipped v2.7628**: `useProspectConvert` (the 8 states, the 3 effects, the picker pool and the submit), which the page calls so the form survives a tab switch, and `ProspectsConvertTab`, which draws it; the list's loader effect stays in the parent; the smoke is 79 cases, run against the page before and after; the page is 4,075 lines.
 8. **The lane read hooks (no JSX move)** — **shipped v2.7631**: `useSubsBench` (the bench effect and its 5 states, over the new kernel `benchReadFromBoard`, Stage-A row 9), `useProspectDoubles` (the doubles and the Jobs to GC reads, with `customerDoubles` and its two writers), `useProspectJobs` (`jobsByProspect`, `mergeJobs`, the five job writes); the smoke is 83 cases, run against the page before and after; the page is 3,928 lines.
 9. **Follow Up hook seams** — **shipped v2.7632**: `useCallingLock` (the refs, `lockHeldBy`, the release effect, `takeCallingLock`), `useProspectCopyTemplates` (the 12 copy states, their reads and the four presses) with `ProspectCopyTemplateRow` and the two copy windows, and `useCallRun` (the run's four states, the reset, `noteRunOutcome`, `sendRunText`); the caller's name stays in the page; the smoke is 94 cases, run against the page before and after; the page is 3,358 lines.
 10. **Data seam `useProspectsData`** — **shipped v2.7634**: the lane's caches, the pointer and its `?prospect_id=` effect, the call-history sets, both loaders (with `callingOrderModeRef` and `latestLoad`), the calling order, `updateUrlProspectId` and `markCalledLocally`; `useSubsBoardData` beside it (the pins, the extras, the pin writes); `orderSubsDeck` as a kernel (Stage-A row 8, 9 tests); the page destructures the hook and its handlers still patch the caches; the tab-keyed loader effects and `saving` stay in the page; the smoke is 104 cases, run against the page before and after, with six of seven breaks of the hook caught (the `?prospect_id=` effect is shadowed by the loader, which re-points the card on every reload); the page is 3,092 lines.
-11. **`prospect-list` → `ProspectsListTab`** — **shipped v2.7636** (`useSubsBoardData` went with the data seam in step 10): `useProspectListTab` (the search, the open sections and folds, the selected row, the timed seconds, the two effects), which the page calls so the search survives a tab switch, and `ProspectsListTab`, which draws it; the row actions stay in the page; the smoke is 109 cases, run against the page before and after; the page is 2,722 lines.
+11. **`prospect-list` → `ProspectsListTab`** — **shipped v2.7636**: `useProspectListTab` (the search, the open sections and folds, the selected row, the timed seconds, the two effects), which the page calls so the search survives a tab switch, and `ProspectsListTab`, which draws it; the row actions stay in the page; the smoke is 109 cases, run against the page before and after; the page is 2,722 lines.
 12. **The New Prospect and Edit Prospect windows** — **shipped v2.7637**: `useEditProspectWindow` + `EditProspectWindow` and `useNewProspectWindow` + `NewProspectWindow`, each hook called by the page; `renderKindFields` moved whole to `ProspectKindFields.tsx`; the open flag and kind of New Prospect, the `?newProspect=` effect and `openDoubleProspect` stay in the page; the smoke is 114 cases, run against the page before and after; the page is 2,223 lines.
-13. **`follow-up` → `ProspectsFollowUpTab`** — **shipped v2.7638**: the tab's JSX and its two queue helpers, props-only (40 values, 12 setters, 31 handlers handed down by name); the page keeps the pointer, the caches, `saving` and the outcomes that write them, so a typed comment and the clock survive a tab switch; the same 114 smoke cases pass before and after; the page is 1,555 lines.
-14. **TeamProspectsTab** (independent track; can interleave from step 1): the module components to their own files (`EmailText`, `CandidateLinkChips`, `CandidateRatingBars`, `TrialTallyBlock`, `CandidateFields`, `SortableCandidateCard`, `RoleColumn` and the style/dnd helpers, 193–782, ≈590 lines, with the `candidateLinks.ts` Stage A), then `TeamHireStage` → `TeamTryoutStage` → `TeamInterviewStage` → optionally `TeamScreenBoard`, plus the share-editor hook. `rows`/`roles`/`load`/`busy`/`modalError`/`setStatus`/`openEdit`/`markContacted`/`startTryOut` and the roster hand-off stay in TeamProspectsTab.
+13. **`follow-up` → `ProspectsFollowUpTab`** — **shipped v2.7638**: the tab's JSX and its two queue helpers, props-only (40 values, 12 setters, 30 handlers handed down by name; 82 props); the page keeps the pointer, the caches, `saving` and the outcomes that write them, so a typed comment and the clock survive a tab switch; the same 114 smoke cases pass before and after; the page is 1,555 lines.
 
-Steps 1 to 13 shipped on 2026-11-17 (v2.7595 to v2.7638). The page went from 5,600 lines to 1,555, from 111 `useState` to 28 and from 30 effects to 15, and its render smoke stands at 114 cases. **The dossiers and line numbers above still describe the page at `6af60c5bcf`, before the cuts**: each step's line here says where its code went. A re-map against the page as it stands is due once the train is on `main`.
+The two fixes the cuts found shipped beside them: the calling lock's release (v2.7656, quirk 36, with the guard test) and the empty lane's press (v2.7657, quirk 33). The smoke stands at 123 cases, and the page at 1,556 lines with 28 `useState` and 15 effects, from 111 and 30.
 
-**Left, none of it scheduled:** a `useFollowUpDeck` hook for the comments, the notes and the clock, so `ProspectsFollowUpTab` takes one value in place of 83; `handleBenchSave` beside its window; the two defects the cuts found (quirks 33 and 36), each its own fix PR; step 14, the Hiring tab's own track.
+**Next, ranked by value ÷ risk.** None is scheduled; each is one small PR that changes no behaviour, proven by the smoke before and after.
+
+1. **`useFollowUpDeck`** (medium value, medium risk). The deck's own state still in the page: the comments, the composer, the quick notes, the notes, the scheduled callback, the three clocks, the order toggle, the auto-advance choice and the text ask (13 states), their five loaders (`loadComments`, `loadMyTimeToday`, `loadQuickNotes`, `loadProspectLedgerSeconds`, `loadScheduledCallback`) and their nine effects (612–740), into one hook the page calls. The page drops about 200 lines, under the 1,500 the map threshold counts, and `ProspectsFollowUpTab` takes the hook's value in place of some 25 props. The page's handlers keep reading the clock from the render they were made in, so the outcomes stay where they are (see [Hazards](#hazards)).
+2. **`FollowUpQueue`** (low value, low risk). `renderCallingOrderToggle` + `renderQueueRows` (`ProspectsFollowUpTab.tsx` 214–303) as a child drawn twice, the mobile peek and the desktop rail.
+3. **The bench landing beside its window** (low value, low-medium risk). `benchDraft`, `benchSaving`, `benchError` (124–126), `benchAskForProspect`, `openBenchModal` and `handleBenchSave` (876–950) as `useBenchLanding`. It writes three caches and the pointer, so it takes their setters.
+4. **The types pass** (quirk 1). The `as any` casts on `prospect_timer_events` and `service_types` are removable; one PR of its own, never inside a move.
+5. **The outcomes** (page 742–1229, about 490 lines) stay in the page unless it grows again. They write the caches, the pointer, the clock, the lock and the run, and three of them close over the click-time render. A hook for them would take some 30 arguments and buy little.
+6. **Step 14, TeamProspectsTab** (independent track): the module components to their own files (`EmailText`, `CandidateLinkChips`, `CandidateRatingBars`, `TrialTallyBlock`, `CandidateFields`, `SortableCandidateCard`, `RoleColumn` and the style/dnd helpers, 193–782, ≈590 lines, with the `candidateLinks.ts` Stage A, inventory row 16), then `TeamHireStage` → `TeamTryoutStage` → `TeamInterviewStage` → optionally `TeamScreenBoard`, plus the share-editor hook. `rows`/`roles`/`load`/`busy`/`modalError`/`setStatus`/`openEdit`/`markContacted`/`startTryOut` and the roster hand-off stay in TeamProspectsTab.
+7. **The stale lock's takeover** (quirk 38) is a policy change, the owner's call, and not a move.
 
 **What must stay in `Prospects.tsx` permanently:**
-- the `?tab=` / `?kind=` / `?prospect_id=` / `?newProspect=` router and the access-gate rewrites
+- the `?tab=` / `?kind=` / `?newProspect=` router and the access-gate rewrites
 - `topTab`/`activeTab`/`kind` and the two tab rows
-- the selection pointer and the caches (via the seam hook)
+- the selection pointer and the caches, through `useProspectsData`
 - `saving`
 - the landings that write the caches and the pointer (`handleConverted`, `handleAskedUs`, `handleBenchSave`, `leaveQueueAsLanded`)
 - `getEffectiveMasterId`
@@ -618,11 +651,12 @@ Definition of done per tab, verification gates (`npm run typecheck && npm run li
 
 ## Hazards
 
-- **One render smoke and no e2e on the page.** `Prospects.render.test.tsx` (v2.7615) is what proves a move. It mounts the router with `v7_startTransition` off, as `src/main.tsx` does; with it on, the address and the page's tab state commit in two renders and the list's jump to a card loses its prospect. A cut adds its own cases when it moves something the 60 do not press.
-- **The handlers are plain inner functions, not `useCallback`s.** Each closes over the render it was made in, and three paths depend on that: `saveTimerEvent` reads the click-time `followUpTimerSeconds`, `handleConverted`'s `onCreated` runs after the Add customer window closes with the click-time queue, and `handleAskedUs`'s `landed` does the same. A hook that memoizes them changes which render they see.
-- **Three effects carry `eslint-disable react-hooks/exhaustive-deps`** (1423, 1918, 1952), and the loader effects call non-memoized loaders. Moving a loader into a hook must keep the same dependency lists, or the queue reloads at different moments (quirk 5).
-- **The Follow Up block is one ternary chain** (3480–4127) with an IIFE that defines its button styles (3511–3526). A partial lift has to carry those styles or import them.
-- **`Prospect` is a page-local type** (148–184). Until it lives in a lib file, every extracted component re-declares a structural copy, as `SubsBoard` and `ProspectJobsBox` do today.
-- **The file was hot for ten days and is quiet now.** 58 commits in 90 days, 20 in the last 30, none of them a feature since 2026-11-11. On 2026-11-17 no open PR touches it and no session card names it. Check `npm run sessions` and the open PRs again before each cut: the permit train (#302, #307) writes into the lanes from outside and could come back to the page.
+- **One render smoke and no e2e on the page.** `Prospects.render.test.tsx` (123 cases) is what proves a move. It mounts the router with `v7_startTransition` off, as `src/main.tsx` does; with it on, the address and the page's tab state commit in two renders and the list's jump to a card loses its prospect. Its supabase stand-in sends nothing until it is awaited, as the real client does. A cut adds its own cases, before its move, when it moves something the 123 do not press.
+- **The handlers are plain inner functions, not `useCallback`s.** Each closes over the render it was made in, and three paths depend on that: `saveTimerEvent` (page 766–774) reads the click-time `followUpTimerSeconds`, `handleConverted`'s `onCreated` runs after the Add customer window closes with the click-time queue, and `handleAskedUs`'s `landed` does the same. A hook that memoizes them changes which render they see; a hook that returns plain functions made on each render does not.
+- **Seven effects carry `eslint-disable react-hooks/exhaustive-deps`**: the page's 531 and 724, `useProspectsData.ts` 233, `useProspectCopyTemplates.ts` 113 and 231, `useProspectListTab.ts` 60 and 79. The loader effects call non-memoized loaders. Moving a loader or an effect must keep the same dependency lists, or the queue reloads at different moments (quirk 5); every cut so far kept them.
+- **The Follow Up tab takes 82 props by name.** A handler renamed in the page must be renamed in `ProspectsFollowUpTabProps` (33–117); the typecheck catches a miss, the smoke catches a wrong wire.
+- **The Follow Up block is one ternary chain** (`ProspectsFollowUpTab.tsx` 324–915) with an IIFE that defines its button styles (355–370). A partial lift has to carry those styles or import them.
+- **`Prospect` lives in `lib/prospects/prospectRow.ts`** since v2.7598, and the pieces cut out import it. `SubsBoard` and `ProspectJobsBox`, out before the cuts, still declare structural copies of their own.
+- **The file was the train's for a day and is quiet again.** Some 65 commits in 90 days, the last seven of them this train's, one PR each. Check `npm run sessions` and the open PRs before each cut: the permit train (#302, #307) writes into the lanes from outside and could come back to the page.
 - **The lanes read the GC tables.** A change to `lib/gc/gcIo.ts` or `boardRows.ts` reaches this page's strips, and the render smoke must stub those reads.
-- **The CSS class names** (`followUpQueueRail`, `followUpQueueMobileStrip`, `followUpCommentsSection`, `followUpInfoCard*`, `convert*`) are styled in `src/index.css`. A moved block keeps its class names.
+- **The CSS class names** (`followUpQueueRail`, `followUpQueueMobileStrip`, `followUpCommentsSection`, `followUpInfoCard*` in `ProspectsFollowUpTab.tsx`; `prospectList*` in `ProspectsListTab.tsx`; `convert*` in `ProspectsConvertTab.tsx`) are styled in `src/index.css`. A moved block keeps its class names.

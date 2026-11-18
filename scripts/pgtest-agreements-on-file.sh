@@ -21,7 +21,7 @@ PORT="${PGTEST_PORT:-55814}"
 NAME="pgtest-agreements-on-file"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 # The newest definition of the view: re-applying an older one would put the older view back.
-WRITES="$(ls supabase/migrations/*_agreements_on_file_gc.sql)"
+WRITES="$(ls supabase/migrations/*_agreements_job_papers.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

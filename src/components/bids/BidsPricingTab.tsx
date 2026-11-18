@@ -14,11 +14,13 @@ import { PriceBreakdownCard } from './PriceBreakdownCard'
 import { TagBreakdownCard } from './TagBreakdownCard'
 import { KindBreakdownCard } from './KindBreakdownCard'
 import { RowKindChip } from './RowKindChip'
+import { PricingResolvePanel, PricingRfqChip } from './PricingHeaderPieces'
 import { MarkupToolPopover } from './MarkupToolPopover'
 import { TaxToolPopover } from './TaxToolPopover'
 import { cleanTag, rowKindOf } from '../../lib/bids/rowKinds'
 import { usePricingRowMarks } from '../../hooks/usePricingRowMarks'
 import { costEstimateLaborRowHours } from '../../lib/bidPricingRowCalculations'
+import { workbenchEffectiveRows, workbenchEffectiveTotals } from '../../lib/bids/workbenchEffectiveRows'
 import { parseSplitDollars, rowPriceSplit } from '../../lib/bids/rowPriceSplit'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
 import { needsFreezeAfterWrite, resolvePricingWriteTarget } from '../../lib/bids/pricingWriteTarget'
@@ -49,7 +51,9 @@ import { gcNameForVersion as gcNameForVersionOf } from '../../lib/bids/pricingCa
 import { sameGcAlternateVersions, sameGcBaseVersions } from '../../lib/bids/ownTakeoffAlternates'
 import { savedTickWords, versionOnScreen } from '../../lib/bids/versionOnScreen'
 import { nextSortOrder } from '../../lib/bids/pickActivePricing'
-import { versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
+import { priceDeleteBlock, versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
+import { AddPriceOptionWindow, PricingEditWindow } from './PricingPriceWindows'
+import { defaultPriceOptionName, priceOptionsOnVersion } from '../../lib/bids/addPriceOption'
 import { afterOpenPriceDeleted, resolvedStarPricingId } from '../../lib/bids/versionStar'
 import { useMarginBrush } from '../../hooks/useMarginBrush'
 import { resolveCurrentPriceBookTemplateId, resolvePriceBookTemplateRoot } from '../../lib/bids/resolveCurrentPriceBookTemplateId'
@@ -2341,46 +2345,14 @@ export function BidsPricingTab({
                 {/* v2.2630/31/36: one chip, five states (deriveRfqChip) — quotes-only
                     opens compare (as shipped); any request opens the RFQ desk. */}
                 {canPackageAndSendBidPricing && rfqChip.kind !== 'none' ? (
-                  <button
-                    type="button"
-                    id="pricing-price-requests"
-                    onClick={() => {
+                  <PricingRfqChip
+                    chip={rfqChip}
+                    onOpen={() => {
                       if (rfqChip.kind === 'robot') void openRobotChip(rfqChip)
                       else if (rfqChip.kind === 'desk') setRfqDeskOpen(true)
                       else setQuotesCompareOpen(true)
                     }}
-                    title={rfqChip.kind === 'robot' ? (rfqChip.status === 'ready' ? 'The robot’s matrix is ready — open the compare' : 'Where the robot is on this bid') : rfqChip.kind === 'desk' ? 'Open the price-request desk' : 'Compare supply house quotes on this bid'}
-                    style={{
-                      padding: '0.45rem 0.8rem',
-                      background:
-                        rfqChip.kind === 'robot'
-                          ? rfqChip.tone === 'green'
-                            ? 'var(--bg-green-tint)'
-                            : rfqChip.tone === 'amber'
-                              ? 'var(--bg-yellow-tint)'
-                              : 'var(--bg-blue-tint)'
-                          : rfqChip.kind === 'desk' && rfqChip.tone === 'amber'
-                            ? 'var(--bg-yellow-tint)'
-                            : 'var(--surface)',
-                      color:
-                        rfqChip.kind === 'quotes' || (rfqChip.kind === 'robot' && rfqChip.tone === 'blue')
-                          ? 'var(--text-blue-500)'
-                          : rfqChip.tone === 'red'
-                            ? '#ef4444'
-                            : rfqChip.tone === 'amber'
-                              ? 'var(--text-amber-700)'
-                              : 'var(--text-green-700)',
-                      border: `1px solid ${rfqChip.kind === 'quotes' || (rfqChip.kind === 'robot' && rfqChip.tone === 'blue') ? '#3b82f6' : rfqChip.tone === 'red' ? '#ef4444' : rfqChip.tone === 'amber' ? '#f59e0b' : '#16a34a'}`,
-                      borderRadius: 999,
-                      cursor: 'pointer',
-                      font: 'inherit',
-                      fontSize: '0.8125rem',
-                      fontWeight: 600,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {rfqChip.label}
-                  </button>
+                  />
                 ) : null}
                 {/* v2.2198 (option A, artifact df8daa33): Share keeps one click; Print / CSV / review live in the ▾ menu. */}
                 <PricingShareMenu
@@ -2470,38 +2442,7 @@ export function BidsPricingTab({
               (() => {
                 // v2.2367: while this bid's versions/prices are still resolving (or the resolve
                 // failed), say so — the "needs Counts…" empty state below reads as deleted work.
-                if (resolvePanel === 'skeleton') {
-                  return (
-                    <div role="status" aria-label="Loading this bid's packets and prices" style={{ padding: '0.95rem 1.1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem', fontWeight: 500 }}>
-                        <span className="bid-resolve-spinner" aria-hidden />
-                        Loading this bid's packets and prices…
-                      </div>
-                      {[['34%', '14%'], ['46%', '20%'], ['40%', '11%']].map(([w1, w2]) => (
-                        <div key={w1} aria-hidden style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                          <span className="bid-resolve-shimmer" style={{ width: w1, height: 12, borderRadius: 4 }} />
-                          <span className="bid-resolve-shimmer" style={{ width: w2, height: 12, borderRadius: 4 }} />
-                        </div>
-                      ))}
-                    </div>
-                  )
-                }
-                if (resolvePanel === 'error') {
-                  return (
-                    <div style={{ padding: '0.9rem 1.1rem', border: '1px solid var(--border-red)', borderRadius: 8, background: 'var(--bg-red-tint)', display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
-                      <span style={{ color: 'var(--text-red-700)', fontSize: '0.8125rem', fontWeight: 500 }}>
-                        Couldn't load this bid's packets and prices — the connection dropped or the server didn't answer. Your versions are safe.
-                      </span>
-                      <button
-                        type="button"
-                        onClick={onRetryResolve}
-                        style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.3rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  )
-                }
+                if (resolvePanel === 'skeleton' || resolvePanel === 'error') return <PricingResolvePanel panel={resolvePanel} onRetry={onRetryResolve} />
                 const derived = derivePricingWorkbench()
                 if (!derived) {
                   // #137: a version with no prices starts here — from a book (the Old grid's
@@ -2538,31 +2479,9 @@ export function BidsPricingTab({
                   )
                 }
                 const { rows, totalCost, uncostedRevenue, openRowBreakdown } = derived
-                const eff = rows.map((r) => {
-                  const pv = wbPreview?.[r.countRow.id]
-                  const isPreview = pv != null && pv !== r.unitPrice
-                  const isVetoed = isPreview && wbPreviewVeto.has(r.countRow.id)
-                  // A price mid-typing drives the live totals too (v2.2373) — but
-                  // only the solver's preview map makes a row "preview": typed
-                  // prices save on Enter/blur instead of waiting on Apply.
-                  const draftRaw = wbPriceDrafts[r.countRow.id]
-                  const draftNum = draftRaw != null ? parseFloat(draftRaw.replace(/[$,]/g, '')) : NaN
-                  const draft = Number.isFinite(draftNum) && draftNum >= 0 ? draftNum : null
-                  // v2.2396 (Wendi): a row nothing prices reads as a dash and counts as unpriced (the
-                  // priced meter, "Show unpriced only", the solver's unpriced set). v2.6001 (Wendi again):
-                  // a saved $0 is a price — `priced` tells the two apart, where both read 0 before.
-                  const savedUnit = r.priced ? r.unitPrice : null
-                  // Totals see the pending solve (minus clicked-off rows); the row's
-                  // own cells keep the saved price — the ghost carries the proposal (v2.2379).
-                  const unit = draft ?? (isPreview && !isVetoed ? pv : null) ?? savedUnit
-                  const revenue = unit != null ? unit * r.count : 0
-                  const rowMargin = unit != null && revenue > 0 && r.cost > 0 ? (revenue - r.cost) / revenue : null
-                  const displayUnit = draft ?? savedUnit
-                  const displayRevenue = displayUnit != null ? displayUnit * r.count : 0
-                  const displayMargin =
-                    displayUnit != null && displayRevenue > 0 && r.cost > 0 ? (displayRevenue - r.cost) / displayRevenue : null
-                  return { ...r, effUnit: unit, effRevenue: revenue, effMargin: rowMargin, isPreview, isVetoed, displayUnit, displayRevenue, displayMargin }
-                })
+                // What each row is worth on screen right now: the typed draft, else the solver's unvetoed
+                // proposal, else the saved price. The arithmetic is `lib/bids/workbenchEffectiveRows.ts`.
+                const eff = workbenchEffectiveRows(rows, { preview: wbPreview, vetoed: wbPreviewVeto, drafts: wbPriceDrafts })
                 // #128: each row's Material · Tax · Equipment · Labor, typed or the rule's, adding to its price.
                 const splitOf = (r: (typeof eff)[number]) =>
                   rowPriceSplit({
@@ -2576,9 +2495,7 @@ export function BidsPricingTab({
                         ? { ...(rowMarks[r.countRow.id]?.split ?? {}), markup: rowMarkupPreview.markup }
                         : (rowMarks[r.countRow.id]?.split ?? null),
                   })
-                const effRevenue = eff.reduce((s, r) => s + r.effRevenue, 0)
-                const effProfit = effRevenue - totalCost
-                const effMargin = effRevenue > 0 ? effProfit / effRevenue : null
+                const { effRevenue, effProfit, effMargin, previewCount, vetoCount, costed, pricedCount, unpricedCost } = workbenchEffectiveTotals(eff, totalCost)
                 // v2.4194: the base and what each alternate adds — revenue and cost per row, summed by
                 // the Count Sheet's scope (one kernel with Takeoffs and Labor). null on a bid without one.
                 const altTags: readonly string[] = selectedBidForPricing?.alternate_group_tags ?? []
@@ -2613,11 +2530,6 @@ export function BidsPricingTab({
                   ) : altRowIds.has(id) ? (
                     <span title="In an alternate group — priced with and without" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--text-amber-700)', color: 'var(--text-amber-700)', marginLeft: '0.35rem', verticalAlign: '1px' }}>ALT</span>
                   ) : null
-                const previewCount = eff.filter((r) => r.isPreview && !r.isVetoed).length
-                const vetoCount = eff.filter((r) => r.isVetoed).length
-                const costed = eff.filter((r) => r.cost > 0)
-                const pricedCount = costed.filter((r) => r.effUnit != null).length
-                const unpricedCost = costed.filter((r) => r.effUnit == null).reduce((s, r) => s + r.cost, 0)
                 const conc = profitConcentration(
                   eff.map((r) => ({ id: r.countRow.id, label: r.countRow.fixture ?? '—', count: r.count, rowCost: r.cost, unitPrice: r.effUnit })),
                 )
@@ -4199,50 +4111,22 @@ export function BidsPricingTab({
             onDelete={openDeletePricingVersionModal}
           />
         )}
-        {pricingEdit && (() => {
-          // The card row can show ANOTHER packet's ★ (unscoped legacy-pointer fallback),
-          // so the guard asks whether any packet stars this scenario — not just the viewed one.
-          const starringVersion = versionStarringScenario(bidVersions, pricingEdit.id)
-          const isBase = starringVersion != null || pricingEdit.id === customerFacingPricingId
-          const baseMsg = starringVersion && starringVersion.id !== selectedBidVersionId
-            ? `${gcNameForVersion(starringVersion.id)}'s letter is built on this price — star another price for that packet first.`
-            : "The GC's letter is built on this price — make another price the base first."
-          const close = () => setPricingEdit(null)
-          return (
-            <div role="presentation" onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 750, paddingTop: 'var(--app-top-chrome, 0px)' }}>
-              <div role="dialog" aria-label="Price" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); close() } }} style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.25rem 1.4rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
-                <h3 style={{ margin: '0 0 1rem' }}>Price</h3>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }} htmlFor="pricing-edit-name">Name</label>
-                <input
-                  id="pricing-edit-name"
-                  autoFocus
-                  value={pricingEdit.name}
-                  onChange={(e) => setPricingEdit({ id: pricingEdit.id, name: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void savePricingEdit() } }}
-                  style={{ width: '100%', padding: '0.5rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box' }}
-                />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.1rem' }}>
-                  <button
-                    type="button"
-                    disabled={isBase}
-                    title={isBase ? baseMsg : 'Delete this price'}
-                    onClick={() => {
-                      const target = priceBookVersions.find((pv) => pv.id === pricingEdit.id)
-                      close()
-                      if (target) { setPricingVersionToDelete(target); setDeletePricingVersionModalOpen(true) }
-                    }}
-                    style={{ font: 'inherit', fontSize: '0.9rem', padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-red)', background: 'var(--surface)', color: isBase ? 'var(--text-faint)' : 'var(--text-red-700)', cursor: isBase ? 'not-allowed' : 'pointer' }}
-                  >
-                    Delete
-                  </button>
-                  <span style={{ flex: 1 }} />
-                  <button type="button" onClick={close} style={{ font: 'inherit', fontSize: '0.9rem', padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Cancel</button>
-                  <button type="button" onClick={() => void savePricingEdit()} style={{ font: 'inherit', fontSize: '0.9rem', padding: '0.45rem 1.1rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Save</button>
-                </div>
-              </div>
-            </div>
-          )
-        })()}
+        {pricingEdit && (
+          <PricingEditWindow
+            name={pricingEdit.name}
+            // The card row can show ANOTHER packet's ★ (unscoped legacy-pointer fallback),
+            // so the guard asks whether any packet stars this scenario — not just the viewed one.
+            deleteBlocked={priceDeleteBlock({ bidVersions, pricingId: pricingEdit.id, customerFacingPricingId, selectedBidVersionId, gcNameOf: gcNameForVersion })}
+            onNameChange={(name) => setPricingEdit({ id: pricingEdit.id, name })}
+            onDelete={() => {
+              const target = priceBookVersions.find((pv) => pv.id === pricingEdit.id)
+              setPricingEdit(null)
+              if (target) { setPricingVersionToDelete(target); setDeletePricingVersionModalOpen(true) }
+            }}
+            onClose={() => setPricingEdit(null)}
+            onSave={() => void savePricingEdit()}
+          />
+        )}
         {deletePricingVersionModalOpen && pricingVersionToDelete && (
           <DeletePricingVersionModal
             version={pricingVersionToDelete}
@@ -4288,28 +4172,19 @@ export function BidsPricingTab({
 
       {addPriceOpen && selectedBidForPricing ? (() => {
         const gc = gcNameForVersion(selectedBidVersionId)
-        const mine = priceBookVersions.filter((p) => (selectedBidVersionId ? p.bid_version_id === selectedBidVersionId : p.bid_version_id == null))
-        const defaultName = `Alternate ${Math.max(1, mine.length)}`
+        const options = priceOptionsOnVersion(priceBookVersions, selectedBidVersionId, customerFacingPricingId)
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={() => !wbCloning && setAddPriceOpen(null)}>
-            <div role="dialog" aria-label={`Another price for ${gc}`} style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 460, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
-              <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>Another price for {gc}</h3>
-              <p style={{ margin: '0 0 0.7rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>Same counts, same takeoff — a second price this GC can pick. Different materials? use “+ version” in the picker instead.</p>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.2rem' }}>Name this price option</label>
-              <input type="text" autoFocus value={addPriceOpen.name} onChange={(e) => setAddPriceOpen((st) => st && { ...st, name: e.target.value })} placeholder={defaultName} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void createPriceOption(addPriceOpen.name.trim() || defaultName, addPriceOpen.fromId, addPriceOpen.offer) } }} style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-strong)', font: 'inherit', boxSizing: 'border-box' }} />
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, margin: '0.6rem 0 0.2rem' }}>Start from</label>
-              <select value={addPriceOpen.fromId ?? ''} onChange={(e) => setAddPriceOpen((st) => st && { ...st, fromId: e.target.value || null })} style={{ width: '100%', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-strong)', font: 'inherit' }}>
-                {mine.map((p) => <option key={p.id} value={p.id}>{p.name}{p.id === customerFacingPricingId ? ' · ★ base' : ''}</option>)}
-              </select>
-              <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.82rem', marginTop: '0.6rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={addPriceOpen.offer} onChange={(e) => setAddPriceOpen((st) => st && { ...st, offer: e.target.checked })} /> Offer it to {shortGc(gc)} as an alternate right away
-              </label>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.8rem' }}>
-                <button type="button" onClick={() => setAddPriceOpen(null)} disabled={wbCloning} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Cancel</button>
-                <button type="button" onClick={() => void createPriceOption(addPriceOpen.name.trim() || defaultName, addPriceOpen.fromId, addPriceOpen.offer)} disabled={wbCloning || mine.length === 0} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: wbCloning ? 'wait' : 'pointer' }}>{wbCloning ? 'Creating…' : 'Create'}</button>
-              </div>
-            </div>
-          </div>
+          <AddPriceOptionWindow
+            gc={gc}
+            gcShort={shortGc(gc)}
+            options={options}
+            value={addPriceOpen}
+            defaultName={defaultPriceOptionName(options.length)}
+            busy={wbCloning}
+            onChange={(patch) => setAddPriceOpen((st) => st && { ...st, ...patch })}
+            onClose={() => setAddPriceOpen(null)}
+            onCreate={(name, fromId, offer) => void createPriceOption(name, fromId, offer)}
+          />
         )
       })() : null}
       {adoptOpen && selectedBidForPricing ? (

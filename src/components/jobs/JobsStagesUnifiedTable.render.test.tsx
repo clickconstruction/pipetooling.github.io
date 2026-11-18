@@ -26,10 +26,11 @@ vi.mock('../../contexts/CustomerProfileModalContext', async (importOriginal) => 
 
 import JobsStagesUnifiedTable, { type JobsStagesUnifiedTableProps } from './JobsStagesUnifiedTable'
 import { JobsStagesUnifiedCardList } from './JobsStagesCardList'
+import type { StagesUnifiedTableShared } from './stagesTableShared'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 
-function makeProps(overrides: Partial<JobsStagesUnifiedTableProps> = {}): JobsStagesUnifiedTableProps {
+function makeProps(section: Partial<Omit<JobsStagesUnifiedTableProps, 'shared'>> = {}, shared: Partial<StagesUnifiedTableShared> = {}): JobsStagesUnifiedTableProps {
   return {
     rows: [],
     actionLabel: 'Bill Customer',
@@ -42,62 +43,65 @@ function makeProps(overrides: Partial<JobsStagesUnifiedTableProps> = {}): JobsSt
     showTimeOpen: false,
     sendBackBelowRemaining: false,
     showCreatePartialInvoice: true,
-    flashInvoiceId: null,
-    stagesJobFlashId: null,
-    stagesHamMode: false,
-    stagesEditMode: false,
-    renderStagesOpenDetailJobName: (j) => <div>{j.job_name ?? '—'}</div>,
-    stagesStatusUpdatingId: null,
-    pctCompleteSavingId: null,
-    updateJobPctComplete: vi.fn(async () => {}),
-    commitStagesPctWithNote: vi.fn(async () => {}),
-    setCreatePartialInvoiceAmount: vi.fn(),
-    setCreatePartialInvoiceJob: vi.fn(),
-    openEdit: vi.fn(),
-    openStagesDetailJobModal: vi.fn(),
-    setAiaG702StagesJob: vi.fn(),
-    canCreateHazmatFee: false,
-    openHazmatFee: vi.fn(),
-    canEditJobPctComplete: true,
-    canManageJobPeople: true,
-    setManageJobPeople: vi.fn(),
-    jobThreadNotesLoadingId: null,
-    jobThreadDraft: '',
-    jobThreadSubmittingId: null,
-    setJobThreadDraft: vi.fn(),
-    submitJobThreadNote: vi.fn(async () => {}),
-    authUser: { id: 'smoke-auth-user-1' } as JobsStagesUnifiedTableProps['authUser'],
-    showToast: vi.fn(),
-    customers: [],
-    openEditJobAndCreateCustomerFlow: vi.fn(),
-    stagesManHoursByJobId: new Map(),
-    stagesManHoursLoading: false,
-    crewByJobId: new Map(),
-    checklistMarksFor: () => null,
-    stagesLaborBreakdownByJobId: new Map(),
-    expandedJobThreadId: null,
-    toggleStagesJobThreadExpanded: vi.fn(),
-    jobThreadStatsByJobId: {},
-    jobThreadActivityByJobId: {},
-    openJobThreadFullscreen: vi.fn(),
-    openJobActivityExpand: vi.fn(),
-    openJobCalendar: vi.fn(),
-    stagesUpcomingByJobId: {},
-    stagesWorkedByJobId: {},
-    jobThreadFullscreen: false,
-    setJobThreadFullscreen: vi.fn(),
-    applyStagesInvoiceFocus: vi.fn(() => true),
-    canOpenJobScheduleModal: true,
-    setScheduleModalJob: vi.fn(),
-    openQuickAssignForJob: vi.fn(),
-    authRole: 'dev',
-    loadJobs: vi.fn(async () => []),
-    stagesInvoiceUpdatingId: null,
-    invoiceEstimatedBillDateSavingId: null,
-    bumpInvoiceEstimatedBillDate: vi.fn(async () => {}),
-    setWhenInvoiceBillModal: vi.fn(),
-    setWhenInvoiceBillModalDate: vi.fn(),
-    ...overrides,
+    ...section,
+    shared: {
+      flashInvoiceId: null,
+      stagesJobFlashId: null,
+      stagesHamMode: false,
+      stagesEditMode: false,
+      renderStagesOpenDetailJobName: (j) => <div>{j.job_name ?? '—'}</div>,
+      stagesStatusUpdatingId: null,
+      pctCompleteSavingId: null,
+      updateJobPctComplete: vi.fn(async () => {}),
+      commitStagesPctWithNote: vi.fn(async () => {}),
+      setCreatePartialInvoiceAmount: vi.fn(),
+      setCreatePartialInvoiceJob: vi.fn(),
+      openEdit: vi.fn(),
+      openStagesDetailJobModal: vi.fn(),
+      setAiaG702StagesJob: vi.fn(),
+      canCreateHazmatFee: false,
+      openHazmatFee: vi.fn(),
+      canEditJobPctComplete: true,
+      canManageJobPeople: true,
+      setManageJobPeople: vi.fn(),
+      jobThreadNotesLoadingId: null,
+      jobThreadDraft: '',
+      jobThreadSubmittingId: null,
+      setJobThreadDraft: vi.fn(),
+      submitJobThreadNote: vi.fn(async () => {}),
+      authUser: { id: 'smoke-auth-user-1' } as StagesUnifiedTableShared['authUser'],
+      showToast: vi.fn(),
+      customers: [],
+      openEditJobAndCreateCustomerFlow: vi.fn(),
+      stagesManHoursByJobId: new Map(),
+      stagesManHoursLoading: false,
+      crewByJobId: new Map(),
+      checklistMarksFor: () => null,
+      stagesLaborBreakdownByJobId: new Map(),
+      expandedJobThreadId: null,
+      toggleStagesJobThreadExpanded: vi.fn(),
+      jobThreadStatsByJobId: {},
+      jobThreadActivityByJobId: {},
+      openJobThreadFullscreen: vi.fn(),
+      openJobActivityExpand: vi.fn(),
+      openJobCalendar: vi.fn(),
+      stagesUpcomingByJobId: {},
+      stagesWorkedByJobId: {},
+      jobThreadFullscreen: false,
+      setJobThreadFullscreen: vi.fn(),
+      applyStagesInvoiceFocus: vi.fn(() => true),
+      canOpenJobScheduleModal: true,
+      setScheduleModalJob: vi.fn(),
+      openQuickAssignForJob: vi.fn(),
+      authRole: 'dev',
+      loadJobs: vi.fn(async () => []),
+      stagesInvoiceUpdatingId: null,
+      invoiceEstimatedBillDateSavingId: null,
+      bumpInvoiceEstimatedBillDate: vi.fn(async () => {}),
+      setWhenInvoiceBillModal: vi.fn(),
+      setWhenInvoiceBillModalDate: vi.fn(),
+      ...shared,
+    },
   }
 }
 
@@ -138,7 +142,7 @@ describe('JobsStagesUnifiedTable render smoke', () => {
   it('the Progress & payment header sorts by % complete when the tab hands it a toggle (v2.3408)', async () => {
     const onToggleProgressSort = vi.fn()
     const rows: StageRow[] = [{ kind: 'job', job: makeJob({ job_name: 'RTB Sortable', status: 'ready_to_bill' }) }]
-    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, onToggleProgressSort, stagesSortMode: 'progress' })} />)
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, onToggleProgressSort }, { stagesSortMode: 'progress' })} />)
     await settle()
     const header = screen.getByRole('button', { name: /Progress & payment/ })
     expect(header.getAttribute('aria-pressed')).toBe('true')
@@ -152,7 +156,7 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     const billedInvoice = makeInvoice({ job_id: billedJob.id, amount: 500, status: 'billed' })
     const rows: StageRow[] = [{ kind: 'job_with_merged_billed', job: billedJob, inv: billedInvoice }]
     renderWithProviders(
-      <JobsStagesUnifiedTable {...makeProps({ rows, flashInvoiceId: billedInvoice.id })} />,
+      <JobsStagesUnifiedTable {...makeProps({ rows }, { flashInvoiceId: billedInvoice.id })} />,
     )
     const row = document.querySelector(`tr[data-stages-invoice-id="${billedInvoice.id}"]`) as HTMLElement
     expect(row).toBeTruthy()
@@ -165,7 +169,7 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     const billedInvoice = makeInvoice({ job_id: billedJob.id, amount: 500, status: 'billed' })
     const rows: StageRow[] = [{ kind: 'job_with_merged_billed', job: billedJob, inv: billedInvoice }]
     renderWithProviders(
-      <JobsStagesUnifiedTable {...makeProps({ rows, flashInvoiceId: 'some-other-invoice' })} />,
+      <JobsStagesUnifiedTable {...makeProps({ rows }, { flashInvoiceId: 'some-other-invoice' })} />,
     )
     const row = document.querySelector(`tr[data-stages-invoice-id="${billedInvoice.id}"]`) as HTMLElement
     expect(row.style.backgroundColor).toBe('')
@@ -197,7 +201,7 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     const floaterInvoice = makeInvoice({ job_id: floaterJob.id, amount: 250, status: 'billed' })
     const rows: StageRow[] = [{ kind: 'invoice', inv: floaterInvoice, job: floaterJob }]
     renderWithProviders(
-      <JobsStagesUnifiedTable {...makeProps({ rows, flashInvoiceId: floaterInvoice.id })} />,
+      <JobsStagesUnifiedTable {...makeProps({ rows }, { flashInvoiceId: floaterInvoice.id })} />,
     )
     const row = document.querySelector(`tr[data-stages-invoice-id="${floaterInvoice.id}"]`) as HTMLElement
     expect(row.style.backgroundColor).toBe('var(--bg-amber-100)')
@@ -351,7 +355,7 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     ]
     renderWithProviders(
       <JobsStagesUnifiedTable
-        {...makeProps({ rows, canCreateHazmatFee: true, offerHazmatFee: true, hazmatFeeJobIds: new Set([withFee.id]) })}
+        {...makeProps({ rows, offerHazmatFee: true }, { canCreateHazmatFee: true, hazmatFeeJobIds: new Set([withFee.id]) })}
       />,
     )
     await settle()
@@ -394,7 +398,7 @@ describe('one door for each thing on the row (v2.4324)', () => {
   it('under 1100 px the Job column has one See all pill, no Reports and no Sessions', async () => {
     const { rows } = billedRow()
     const openJobActivityExpand = vi.fn()
-    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, openJobActivityExpand })} />)
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows }, { openJobActivityExpand })} />)
     await settle()
     const pill = screen.getByRole('button', { name: 'Expand job activity' })
     expect(pill.textContent).toBe('See all')
@@ -425,7 +429,7 @@ describe('one door for each thing on the row (v2.4324)', () => {
     const onOpenJobContract = vi.fn()
     renderWithProviders(
       <JobsStagesUnifiedTable
-        {...makeProps({ rows, onOpenJobContract, jobContractCoverageByJobId: new Map([[job.id, { kind: 'none' as const }]]) })}
+        {...makeProps({ rows }, { onOpenJobContract, jobContractCoverageByJobId: new Map([[job.id, { kind: 'none' as const }]]) })}
       />,
     )
     await settle()
@@ -442,7 +446,7 @@ describe('one door for each thing on the row (v2.4324)', () => {
     const onOpenJobContract = vi.fn()
     renderWithProviders(
       <JobsStagesUnifiedTable
-        {...makeProps({ rows, onOpenJobContract, jobContractCoverageByJobId: new Map([[job.id, { kind: 'none' as const }]]) })}
+        {...makeProps({ rows }, { onOpenJobContract, jobContractCoverageByJobId: new Map([[job.id, { kind: 'none' as const }]]) })}
       />,
     )
     await settle()
@@ -459,6 +463,7 @@ describe('one door for each thing on the row (v2.4324)', () => {
       <JobsStagesUnifiedTable
         {...makeProps({
           rows,
+        }, {
           onOpenJobContract: vi.fn(),
           jobContractCoverageByJobId: new Map([[job.id, { kind: 'none' as const }]]),
           stagesUpcomingByJobId: { [job.id]: { ymd: '2099-01-02', timeStart: '08:00', timeEnd: '12:00', assigneeNames: [], note: null, bookedYmds: ['2099-01-02'], lastYmd: '2099-01-02', visitCount: 1 } },
@@ -472,7 +477,7 @@ describe('one door for each thing on the row (v2.4324)', () => {
 
   it('a billed row with a dates block does not repeat Billed under the crew', async () => {
     const { rows } = billedRow()
-    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, billedLienRunway: () => <span data-testid="dates-block" /> })} />)
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows }, { billedLienRunway: () => <span data-testid="dates-block" /> })} />)
     await settle()
     expect(screen.getByTestId('dates-block')).toBeTruthy()
     expect(crewLineLabels()).not.toContain('Billed')
@@ -486,7 +491,7 @@ describe('one door for each thing on the row (v2.4324)', () => {
     document.body.innerHTML = ''
     const paid = billedRow()
     paid.job.payments = [{ ...({} as (typeof paid.job.payments)[number]), id: 'pay-1', job_id: paid.job.id, paid_on: '2026-09-20', amount: 100 }]
-    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows: paid.rows, billedLienRunway: () => null })} />)
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows: paid.rows }, { billedLienRunway: () => null })} />)
     await settle()
     expect(crewLineLabels()).toContain('Paid')
   })

@@ -89,6 +89,8 @@ import { lienScanTargetsFromDesk } from '../../lib/jobs/lienScanBatch'
 import { lienServeDoorWords, lienServeJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
 import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
 import { LienOffPathBinView } from './LienOffPathBoardParts'
+import { EmptyState } from '../EmptyState'
+import { lienDeskAimAddressJob, lienDeskAimFrom, lienDeskAimSpent, lienDeskOffListWords, readLienDeskAim, type LienDeskAim } from '../../lib/lien/lienDeskAim'
 import { lienDeskJobLabel as jobLabel, lienDeskJobNumber as jobNumberOf, splitLienJobLabel } from '../../lib/jobs/lienJobLabel'
 import { lienStepCard, lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { lienJobScreen, lienJobScreenClosesOnAct } from '../../lib/jobs/lienPhoneJobScreen'
@@ -516,8 +518,16 @@ export default function LienDesk({
       setMobileListShown(false)
       // A door onto the Affidavits list names its paper too (v2.7180: the leader's push for one affidavit).
       if (initialKind === 'affidavit') setAffSelectedJobId(initialJobId)
+      // v2.7744: so does a door onto the other two lists, and the job it names is the aim, so a list that does not
+      // hold it keeps the row picked before from standing under an address that names another job.
+      else if (initialKind === 'retainage') setRetSelectedJobId(initialJobId)
+      else if ((initialKind ?? 'notice') === 'notice') setSelectedJobId(initialJobId)
+      setAim(lienDeskAimFrom(initialKind ?? 'notice', initialJobId))
     }
   }, [initialJobId, initialKind, aimKey])
+  // The job the address names on a paper list (v2.7744, `lienDeskAim.ts`): kept until its list holds it, the reader
+  // picks another row or leaves the list. While the list does not hold it, no job opens there.
+  const [aim, setAim] = useState<LienDeskAim | null>(() => lienDeskAimFrom(initialKind ?? 'notice', initialJobId))
   // By paper (punch list #82, PR 5; All paper until v2.4630, All filings until v2.7207): the three papers share one view; it reopens on the list last looked at.
   // Four lists until v2.7219, when the job-by-job book left the row for a view of its own, By job: it is every job's path, not a kind of paper.
   const paperShown = kind === 'notice' || kind === 'affidavit' || kind === 'retainage'
@@ -614,6 +624,18 @@ export default function LienDesk({
   const [noticeFootHome, setNoticeFootHome] = useState<HTMLDivElement | null>(null)
 
   const entries = data?.queue.entries ?? []
+  // Where the aim stands (v2.7744): each list is every job it holds, whatever pile or find narrows what is drawn.
+  const aimLists = useMemo(
+    () => ({ notice: (data?.queue.entries ?? []).map((e) => e.jobId), affidavit: (data?.affidavits.entries ?? []).map((e) => e.jobId), retainage: (data?.retainage.entries ?? []).map((e) => e.jobId) }),
+    [data],
+  )
+  const aimRead = readLienDeskAim({ aim, kind, picked: aim?.kind === 'affidavit' ? affSelectedJobId : aim?.kind === 'retainage' ? retSelectedJobId : selectedJobId, loaded: data != null, lists: aimLists })
+  /** The address named a job the list in view does not hold: no job opens, and the note stands in the pane's place. */
+  const offList = aimRead.state === 'off_list' ? aimRead : null
+  const aimSpent = aim != null && lienDeskAimSpent(aimRead)
+  useEffect(() => {
+    if (aimSpent) setAim(null)
+  }, [aimSpent])
   // Supply houses on the desk's jobs (v2.4404): a mark on a row while a house is still owed, and the card in the pane.
   const supplierJobIds = useMemo(() => {
     const ids = new Set<string>()
@@ -699,6 +721,7 @@ export default function LienDesk({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finding, visible.map((e) => e.jobId).join('|')])
 
+  const noticeOffList = offList?.kind === 'notice'
   // Selection follows the list: the requested job, else the first visible row (desktop). Stacked (a phone, punch list #182
   // PR 3), the address is the list or one notice: no job in it means the list, whatever was picked before.
   useEffect(() => {
@@ -712,6 +735,8 @@ export default function LienDesk({
       setMobileListShown(false)
       return
     }
+    // The address names a job this list does not hold (v2.7744): the first row is not opened in its place.
+    if (noticeOffList) return
     if (doorPickedJobId.current && visible.some((e) => e.jobId === doorPickedJobId.current)) {
       doorPickedJobId.current = null
       return
@@ -720,7 +745,7 @@ export default function LienDesk({
     if (selectedJobId && visible.some((e) => e.jobId === selectedJobId)) return
     setSelectedJobId(!oneColumn && visible[0] ? visible[0].jobId : null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stacked, initialJobId, visible.map((e) => e.jobId).join('|')])
+  }, [stacked, initialJobId, noticeOffList, visible.map((e) => e.jobId).join('|')])
 
   const selected = visible.find((e) => e.jobId === selectedJobId) ?? entries.find((e) => e.jobId === selectedJobId) ?? null
   useEffect(() => setStopOpen(null), [selectedJobId])
@@ -729,7 +754,9 @@ export default function LienDesk({
   // through a ref so a changed callback alone never rewrites the address.
   const onAddressChangeRef = useRef(onAddressChange)
   onAddressChangeRef.current = onAddressChange
-  const addressJob = kind === 'notice' ? (selectedJobId ?? (initialJobId && entries.some((e) => e.jobId === initialJobId) ? initialJobId : null)) : null
+  // v2.7744: while the note for a job off its list stands, the address keeps that job on any of the three lists, so a
+  // reload says the same thing; a picked row or another view writes its own, as before.
+  const addressJob = lienDeskAimAddressJob(aimRead) ?? (kind === 'notice' ? (selectedJobId ?? (initialJobId && entries.some((e) => e.jobId === initialJobId) ? initialJobId : null)) : null)
   const addressPile = kind === 'notice' ? pile : null
   const hasData = data != null
   useEffect(() => {
@@ -1655,11 +1682,11 @@ export default function LienDesk({
 
   const counts = data?.queue.counts
   // By paper → Lien affidavits (v2.7585): what the list shows and its three batch presses live in `useLienDeskAffidavits`.
-  const aff = useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, signerNameFor, onChanged, finding, findWords, findFactsFor, oneColumn, affPile, setAffPile, affHeldOnlyPicked, setAffHeldOnlyPicked, affSelectedJobId })
+  const aff = useLienDeskAffidavits({ data, todayYmd, authUserId, issuer, signerNameFor, onChanged, finding, findWords, findFactsFor, oneColumn, affPile, setAffPile, affHeldOnlyPicked, setAffHeldOnlyPicked, affSelectedJobId, openNone: offList?.kind === 'affidavit' })
   const { affPrintPlanAll, affHeldOnly, affVisible, affSelected, affShown, affPrintPlan, affCount, affPilesShown, affSendPlanAll, affHelpSheet, affNoticeRecord, affNoticeCopies, affNoticeCopyCount, showHeldAffidavits, printReadyAffidavits } = aff
   const retEntries = data?.retainage.entries ?? []
   // What the Retainage list shows and which row is open (`lienRetainageListView`, v2.7583).
-  const { visible: retVisible, selected: retSelected, pilesShown: retPilesShown } = lienRetainageListView({ entries: retEntries, pile: retPile, finding, matches: (e, pileLabel) => lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [pileLabel]), findWords).ok, selectedJobId: retSelectedJobId, oneColumn })
+  const { visible: retVisible, selected: retSelected, pilesShown: retPilesShown } = lienRetainageListView({ entries: retEntries, pile: retPile, finding, matches: (e, pileLabel) => lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [pileLabel]), findWords).ok, selectedJobId: retSelectedJobId, oneColumn, openNone: offList?.kind === 'retainage' })
   const retCount = retEntries.filter((e) => e.pile !== 'sent').length + (data?.retainageUnrecorded?.length ?? 0)
   const retReady = data?.retainage.counts.ready ?? 0
   /** What the run lists (v2.4568): ready and printed notices, and ready retainage. The buttons that open it count the same. */
@@ -1923,9 +1950,10 @@ export default function LienDesk({
   }
 
   // The find box above a list (v2.4721): one column, the box then the scrolling list.
-  const withFind = (node: ReactNode, matched: number) => (
-    <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }} data-lien-desk-find-column>
+  const withFind = (node: ReactNode, matched: number, top: ReactNode = null) => (
+    <div style={{ display: 'grid', gridTemplateRows: top ? 'auto auto minmax(0, 1fr)' : 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }} data-lien-desk-find-column>
       <LienDeskFindBox value={find} onChange={setFind} matched={matched} isMobile={isMobile} />
+      {top}
       {node}
     </div>
   )
@@ -2259,7 +2287,27 @@ export default function LienDesk({
   }
   // The notice pane (`LienDeskNoticePane`, v2.7619) reads the desk through one object, built here on every render.
   const paneCtx: LienNoticePaneContext = { data, todayYmd, authUserId, authName, onChanged, onOpenEditJob, onOpenJob, onCalendarChanged, isMobile, leader, office, setCheckedMonths, coverNote, setCoverNote, housesInLetter, setHousesInLetter, releaseId, setByHandOpen, rulePick, setRulePick, detailsOpen, setDetailsOpen, busy, run, touchDraft, editing, setEditing, paperRef, editInputRef, payEditing, setPayEditing, payPaperRef, payInputRef, claimOpenSignal, paneScrolled, setPaneScrolled, stripRef, paneRef, activeGate, pickGate, kindOpen, setKindOpen, kindBusy, setNoticeFootHome, entries, suppliers, selected, job, gc, address, property, ownerName, stopOpen, setStopOpen, pickKind, promise, gcHasPriorNotice, wm, item, storedDraft, months, monthsList, openBalance, supplierJob, correction, lastSentAt, claimed, wordingDiff, wordingEditedBy, wordingLocked, paneSignature, signClearedLine, docHtml, onPaperClick, commitEdit, claimNumber, noticeRelease, releaseHtml, coverHtml, payPage, claimBills, unbilled, billFromHere, billWhy, payChangedCount, payHtml, onPayPaperClick, commitPayEdit, pageTotal, noticePageNumber, noteMissed, gcOpenTotal, toggleRelease, partedBandNode, saveRule, openPreview, counts, relightPages, pageLabel, monthCards, monthGrid, gates, gateVerdict, gateByKey, gatesFold, timeline, stopPaperFor, footInPane, stripChips, pressStripChip, stripChipStyle, simpleApprove, bandAct, onBandAct, paneHead, goToSection, relightPane }
-  const pane = <LienDeskNoticePane ctx={paneCtx} />
+  // The address named a job the list in view does not hold (v2.7744): the note in the pane's place, with the list the
+  // job is on and its Lien window as the ways on. On one column it tops the list, since no pane is open to hold it.
+  const offListNote = offList ? (
+    <div data-lien-desk-off-list={offList.kind} role="status" style={oneColumn ? { borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' } : { padding: '1.5rem' }}>
+      <EmptyState
+        compact={oneColumn}
+        {...lienDeskOffListWords(offList, data?.jobsById[offList.jobId] ? jobLabel(data.jobsById[offList.jobId], offList.jobId) : '', {
+          onOpenList: (to) => {
+            const jobId = offList.jobId
+            if (to === 'affidavit') setAffSelectedJobId(jobId)
+            else if (to === 'retainage') setRetSelectedJobId(jobId)
+            else setSelectedJobId(jobId)
+            setKind(to)
+            setMobileListShown(false)
+          },
+          onOpenLienWindow: () => (offList.kind === 'affidavit' ? (onOpenLienAffidavit ?? onOpenLienInstruments) : offList.kind === 'retainage' ? (onOpenCalendarJob ?? onOpenLienInstruments) : onOpenLienInstruments)(offList.jobId),
+        })}
+      />
+    </div>
+  ) : null
+  const pane = offList?.kind === 'notice' ? offListNote : <LienDeskNoticePane ctx={paneCtx} />
 
   // ---------- affidavits: the list and the pane (v2.3412) ----------
   // The pile chips of Affidavits and Retainage. A pile with nothing in it draws no chip unless it is the one picked.
@@ -2344,7 +2392,7 @@ export default function LienDesk({
         onLastWorkChanged={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())}
         footerEl={affFooterEl}
       />
-    ) : (
+    ) : offList?.kind === 'affidavit' ? offListNote : (
       <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
     )
 
@@ -2400,7 +2448,7 @@ export default function LienDesk({
         }}
         footerEl={retFooterEl}
       />
-    ) : (
+    ) : offList?.kind === 'retainage' ? offListNote : (
       <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
     )
 
@@ -2864,20 +2912,20 @@ export default function LienDesk({
               }}
             />
           ) : kind === 'affidavit'
-            ? (oneColumn ? (mobileListShown ? withFind(affList, affVisible.length) : affPane) : (
+            ? (oneColumn ? (mobileListShown || offList ? withFind(affList, affVisible.length, offListNote) : affPane) : (
                 <>
                   {withFind(affList, affVisible.length)}
                   {paneColumn(affPane)}
                 </>
               ))
             : kind === 'retainage'
-              ? (oneColumn ? (mobileListShown ? withFind(retList, retVisible.length) : retPane) : (
+              ? (oneColumn ? (mobileListShown || offList ? withFind(retList, retVisible.length, offListNote) : retPane) : (
                   <>
                     {withFind(retList, retVisible.length)}
                     {paneColumn(retPane)}
                   </>
                 ))
-            : oneColumn ? (mobileListShown ? withFind(list, visible.length) : pane) : (
+            : oneColumn ? (mobileListShown || offList ? withFind(list, visible.length, offListNote) : pane) : (
             <>
               {withFind(list, visible.length)}
               {paneColumn(pane)}
