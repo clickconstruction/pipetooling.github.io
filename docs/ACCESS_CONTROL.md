@@ -1182,6 +1182,13 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   A training account, a digital twin and an archived caller are refused by the functions themselves, because a definer stands behind the tables' fences.
 - **The trip's number** (v2.7703, `docs/migrations/20261118040000_trip_numbers.md`): `trips.trip_number` is handed out by the `trips_take_number` trigger, a SECURITY DEFINER, and held through every update, so no role sets or changes it.
   **`trip_number_counters`** has row security on, no policy and no grant: nobody reads or writes it but that trigger.
+- **Put on a bill** (v2.7756, punch list #391, `docs/migrations/20261118060000_trip_bill_line.md`): `jobs_ledger_fixtures.trip_id` is the trip a line came from, and one function sets it.
+  **`trip_put_on_job_line(trip, job, amount, name, words, dry_run)`**, a SECURITY DEFINER, writes one work line for a trip marked Extra, the job's total and one History row, for the four roles that may add a discount to a job: dev, master_technician, assistant and controller.
+  A primary reads every trip and may not press, and a crew member on the trip may not either.
+  The caller must read the trip (`trips_office()` or `trip_is_mine`) and the job (`can_read_job_activity`), and the job must be one of the trip's jobs, the job that holds the trip or a job of its site.
+  It refuses the GC desk's billing job, whose total is not its lines.
+  A training account, a digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
+  The line is read and changed under the line table's own policies, like any line, and deleting the trip clears the mark and leaves the line.
 
 ### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
 
