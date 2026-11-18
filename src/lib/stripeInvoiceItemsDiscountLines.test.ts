@@ -44,6 +44,7 @@ const row = (o: Partial<Row> & { id: string; sequence_order: number }): Row => (
   discount_pct: null,
   discount_basis_positions: null,
   discount_reason: null,
+  trip_id: null,
   ...o,
 })
 const job892 = (): Row[] => [

@@ -42,6 +42,7 @@ function fixture(over: Partial<Fixture> & { id: string; name: string }): Fixture
     sequence_order: 0,
     shared_with_gc: false,
     stage_kind: 'order',
+    trip_id: null,
     ...over,
   }
 }

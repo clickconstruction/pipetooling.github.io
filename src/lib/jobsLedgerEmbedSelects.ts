@@ -98,6 +98,8 @@ export const JOBS_LEDGER_FIXTURES_EMBED = [
   'sequence_order',
   'shared_with_gc',
   'stage_kind',
+  // The trip a line came from (punch list #391): the Job window draws the line's door back to its trip from it.
+  'trip_id',
 ].join(', ')
 
 /** `jobs_ledger_team_members` + users embed */

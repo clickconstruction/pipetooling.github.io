@@ -6856,6 +6856,7 @@ export type Database = {
           sequence_order: number
           shared_with_gc: boolean
           stage_kind: string | null
+          trip_id: string | null
         }
         Insert: {
           bill_to_party?: string | null
@@ -6885,6 +6886,7 @@ export type Database = {
           sequence_order?: number
           shared_with_gc?: boolean
           stage_kind?: string | null
+          trip_id?: string | null
         }
         Update: {
           bill_to_party?: string | null
@@ -6914,6 +6916,7 @@ export type Database = {
           sequence_order?: number
           shared_with_gc?: boolean
           stage_kind?: string | null
+          trip_id?: string | null
         }
         Relationships: [
           {
@@ -6935,6 +6938,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_fixtures_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
             referencedColumns: ["id"]
           },
         ]
