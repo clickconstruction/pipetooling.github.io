@@ -171,11 +171,21 @@ describe('bidStageLines, the hours', () => {
     expect(BID_CARRY_WORDS.hoursFrom(r, 'B482', '')).toBe('Hours: B482’s Labor tab, spread by price.')
   })
 
-  it('uses the company rate when the bid has hours and no rate of its own', () => {
-    const b = usable({ labor_rate: null, labor_usd: 0, completeness: { rows_total: 10, rows_with_hours: 10, rate_set: false, usable: false } })
-    const r = bidStageLines({ priceUsd: 56_343, split: split('commercial'), breakdown: b, settings, bid, agreed: true })
-    expect(r.hoursBasis).toBe('stages')
-    expect(r.lines[0]!.budget_rate_usd).toBe(45)
+  it('reads the bid’s own hours back whatever rate the bid priced its labor at', () => {
+    // A bid at $30 an hour once read 15 h on a line where its Labor tab said 23: every reader of a line divides by the company's rate.
+    for (const labor_rate of [30, 45, 80, null]) {
+      const b = usable({ labor_rate, labor_usd: labor_rate ? 563 * labor_rate : 0, completeness: { rows_total: 10, rows_with_hours: 10, rate_set: labor_rate != null, usable: labor_rate != null } })
+      const r = bidStageLines({ priceUsd: 56_343, split: split('commercial'), breakdown: b, settings, bid, agreed: true })
+      expect(r.hoursBasis).toBe('stages')
+      expect(r.lines[0]!.budget_rate_usd).toBe(45)
+      expect(Math.abs(r.preview[0]!.hours - 240)).toBeLessThan(2)
+      expect(Math.abs(r.totalHours - 563)).toBeLessThan(5)
+    }
+  })
+
+  it('keeps small hours on a big price within a percent of the line', () => {
+    const r = bidStageLines({ priceUsd: 56_343, split: split('commercial'), breakdown: usable({ labor_hours: 70, labor_hours_by_stage: { rough: 23, top: 27, trim: 20 } }), settings, bid, agreed: true })
+    expect(r.preview.slice(0, 3).map((p) => Math.round(p.hours))).toEqual([23, 26, 19])
   })
 
   it('stores no budget when the bid cannot be used, and the lines read the company’s split', () => {

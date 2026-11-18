@@ -131,11 +131,13 @@ function dollarsOf(split: BidStageSplit, priceUsd: number): number[] {
 /**
  * The job's lines for a price and a split, with each line's hours.
  *
- * A stage's hours go to the lines that name it, shared by their price when there are several. A
- * line's labor is those hours at the bid's rate (the company's when the bid has none), stored as
- * its share of the line's price, as the one carried line stores the whole bid's labor today. The
- * hours a line then reads are that labor at the company's rate, the way every reader of a line
- * budget works them out, so they match the bid's hours when the two rates match. Materials are the bid's materials at their share of the whole price, the same on every
+ * A stage's hours go to the lines that name it, shared by their price when there are several.
+ * What crosses is the hours. Every reader of a line budget works a line's hours out as its labor
+ * dollars at the company's cost rate (`calcLineBudget`), so a line stores the bid's hours valued
+ * at that same rate, as a share of its price, and then reads the bid's own hours back. Valued at
+ * the bid's own rate instead, a bid priced at $30 an hour read 15 h on a line where its Labor tab
+ * said 23 (seen on the first live walk, 2026-11-18). The share is a whole percent, so a line
+ * reads within a percent of its price of the bid's figure. Materials are the bid's materials at their share of the whole price, the same on every
  * line, and give way to labor so the two never pass the price. A row whose dollars come to zero
  * is left out.
  */
@@ -156,13 +158,13 @@ export function bidStageLines(args: {
   const figure = args.agreed ? 'the agreed value' : 'what was sent'
 
   const usable = bidBaselineUsable(breakdown, settings.rateUsd)
-  const rate = usable && num(breakdown!.labor_rate) > 0 ? num(breakdown!.labor_rate) : settings.rateUsd
+  // The rate the hours are valued and read at: the company's, the one `calcLineBudget` divides by.
+  const rate = settings.rateUsd
   const stageHours = (k: BidStageKey) => num(breakdown?.labor_hours_by_stage?.[STAGE_HOURS_KEY[k]])
   const byStage = usable && (['rough_in', 'top_out', 'trim_set'] as const).some((k) => stageHours(k) > 0)
   const materialsPct = usable && priceUsd > 0 ? clampPct((num(breakdown!.materials_usd) / priceUsd) * 100) : 0
-  // The whole bid's labor at its share of the price: what one carried line takes today, for a bid with no hours by stage.
-  const wholeLaborUsd = usable ? (num(breakdown!.labor_usd) > 0 ? num(breakdown!.labor_usd) : num(breakdown!.labor_hours) * rate) : 0
-  const spreadLaborPct = usable && priceUsd > 0 ? clampPct((wholeLaborUsd / priceUsd) * 100) : 0
+  // A bid with no hours by stage: its whole hours at their share of the price, the same on every line.
+  const spreadLaborPct = usable && priceUsd > 0 ? clampPct(((num(breakdown!.labor_hours) * rate) / priceUsd) * 100) : 0
 
   const priceByStage = new Map<BidStageKey, number>()
   for (const r of rows) if (r.stage) priceByStage.set(r.stage, (priceByStage.get(r.stage) ?? 0) + r.priceUsd)
@@ -212,10 +214,15 @@ export const BID_CARRY_WORDS = {
   asOneLine: 'As one line',
   startAtZero: 'Start at $0',
   startAtZeroNote: 'Writes nothing.',
-  cancel: 'Cancel',
+  cancel: 'Cancel import',
   changeLater: 'You can change every name and amount in Line Items before you save the job.',
   anyTime: 'Each line arrives Any time.',
   title: (carryUsd: number): string => `How should ${usd(carryUsd)} come onto the job?`,
+  /** Under the title: whose figure it is (`bidImportWhoseFigure`). */
+  whose: (whoseFigure: string): string => `That is ${whoseFigure}.`,
+  /** Said when the bid has no agreed value yet and the answer carries the figure. */
+  recordsAgreed: 'Bringing it over also records it on the bid as the agreed value.',
+  ariaLabel: 'How the bid’s price comes onto the job',
   oneLineNote: (carryUsd: number): string => `Bid price · $${formatCurrency(carryUsd)}.`,
   /** Under the rows: where the dollars came from. */
   dollarsFrom: (split: BidStageSplit, bidLabel: string): string => (split.key === 'bid' ? `Dollars: ${bidLabel}’s schedule of values.` : `Dollars: the company’s ${split.label.replace(/^\S+\s+/, '')}.`),
