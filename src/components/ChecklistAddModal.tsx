@@ -13,7 +13,7 @@ import { parseLines } from '../lib/taskCriteria'
 import { writeItemLines } from '../lib/taskLinesIo'
 import { asksForPhotoDefault } from '../lib/taskProgress'
 import type { TaskPlaceDraft } from '../lib/tasks/taskPlace'
-import { sentenceWithMap, type TaskMapDraft } from '../lib/tasks/taskMapPick'
+import { sentenceWithMap, taskMapAfterPlace, type TaskMapDraft } from '../lib/tasks/taskMapPick'
 import { newTaskAssigneeRows, newTaskSend } from '../lib/tasks/newTaskSend'
 import type { TaskSpotPhotoDraft } from './checklist/TaskSpotPhotoField'
 import { putTaskSpotPhoto } from '../lib/tasks/taskSpotPhotoIo'
@@ -242,7 +242,9 @@ export default function ChecklistAddModal({
       })
       setFormError(null)
       setPlace(preset?.place ?? null)
-      setTaskMap(null)
+      // A place that brings its way in makes that the task's map, by the window's own rule (`taskMapAfterPlace`). Until
+      // v2.7582 a window opened on a place dropped the way, and Send then saved the place with no map.
+      setTaskMap(taskMapAfterPlace(null, preset?.place ?? null))
       setSpotPhoto(null)
       // The job bar already shows its link, so the links stay closed behind it (v2.3751).
       setRowsOpen(presetLinks.length > 0 && !preset?.job ? 'link' : null)
