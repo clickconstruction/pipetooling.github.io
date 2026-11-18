@@ -9,7 +9,9 @@
  * Circle markers in the caller's colors (a ring color becomes a thick stroke),
  * a desktop info window whose body the caller renders, an optional anchor
  * diamond with distance rings, fit-to-all, and Google's native dark color
- * scheme following the app's `<html data-theme>` stamp. Lazy-load this file.
+ * scheme following the app's `<html data-theme>` stamp. Since v2.7686 a card
+ * with a Satellite / Streets switch passes `mapTypeId`; a card that passes none
+ * draws the road map as before. Lazy-load this file.
  */
 import {
   Component,
@@ -42,6 +44,7 @@ import {
 import type { PinsMapCanvasProps } from './PinsMapCanvas'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
 import { pinLabelInkHex } from '../../lib/map/pinLabelInk'
+import { googleMapTypeIsImagery, type GoogleMapTypeId } from '../../lib/map/googleMapType'
 import { mapPulseTarget } from '../../lib/map/pulseTarget'
 import { googleScrollwheelOption } from '../../lib/map/scrollZoomGate'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -50,6 +53,8 @@ export type PinsMapGoogleCanvasProps = PinsMapCanvasProps & {
   apiKey: string
   /** The API could not be used on this page — the card switches to OpenStreetMap. */
   onUnavailable: (reason: string) => void
+  /** v2.7686: the base map, for a card with a Satellite / Streets switch. Omitted, the map is the road map. */
+  mapTypeId?: GoogleMapTypeId
 }
 
 /** How long the Maps script may take before the card gives up on it. */
@@ -285,7 +290,7 @@ class GoogleCanvasBoundary extends Component<{ onUnavailable: (reason: string) =
 }
 
 export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
-  const { apiKey, onUnavailable, pins, fitSignal, height, isMobile, anchor, fitPoints } = props
+  const { apiKey, onUnavailable, pins, fitSignal, height, isMobile, anchor, fitPoints, mapTypeId } = props
   const theme = useStampedTheme()
   const [loaded, setLoaded] = useState(false)
   const frameRef = useRef<HTMLDivElement | null>(null)
@@ -337,6 +342,8 @@ export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
             gestureHandling={isMobile ? 'cooperative' : 'greedy'}
             // Spread, so a map without the gate never sends the option at all
             {...(scrollwheel === undefined ? {} : { scrollwheel })}
+            // Spread, so a card with no switch sends no map type. A photograph is held flat: Google tilts to its 45° view when zoomed in, and a dot would sit off its spot
+            {...(mapTypeId ? { mapTypeId, ...(googleMapTypeIsImagery(mapTypeId) ? { tilt: 0 } : {}) } : {})}
             disableDefaultUI
             zoomControl
             clickableIcons={false}

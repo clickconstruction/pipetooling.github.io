@@ -5,6 +5,7 @@ import { useAuth } from '../../../hooks/useAuth'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateUtils'
 import { formatErrorMessage } from '../../../utils/errorHandling'
+import { letterCopiedWords, letterCopyText, letterLeavesWordsOut, letterLeftOutWords, letterPieceLabel } from '../../../lib/legal/letterCopyText'
 import { derivePersonFileFreshness } from '../../../lib/people/personFileFreshness'
 import { hrDocMarkdownToSafeHtml, extractHrDocHeadings } from '../../../lib/people/hrDocMarkdown'
 import { hrDocDraftWords, hrDocSaveFailureWords, hrDocSavePayload, type HrDocTarget } from '../../../lib/people/hrDocEditor'
@@ -2144,6 +2145,19 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         () => showToast('Could not copy: the clipboard refused.', 'error'),
       )
     }
+    // v2.7683: a document with a draft note at its top or an internal section also offers the part to send, as plain
+    // email text (`letterCopyText`, the Legal desk's kernel); the toast counts the bracketed blanks still open in it.
+    const letter = letterCopyText(d.content)
+    const letterDraft = letter.draftBanner !== null
+    const copyPiece = (i: number) => {
+      const done = letterCopiedWords(letter, i, letterDraft)
+      void Promise.resolve()
+        .then(() => navigator.clipboard.writeText(letter.pieces[i]!.text))
+        .then(
+          () => showToast(done.words, done.warn ? 'warning' : 'success'),
+          (e) => showToast(formatErrorMessage(e, 'Could not copy: the clipboard refused.'), 'error'),
+        )
+    }
     return (
       <section aria-label={d.title} data-testid="hr-doc-open">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
@@ -2167,6 +2181,13 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                   Copy as text
                 </button>
               ) : null}
+              {!d.counsel_only && letterLeavesWordsOut(letter)
+                ? letter.pieces.map((_p, i) => (
+                    <button key={i} type="button" data-testid={`hr-doc-copy-letter-${i}`} onClick={() => copyPiece(i)} title={letterLeftOutWords(letter) ?? undefined} style={OUTLINE_PRESS}>
+                      {letterPieceLabel(letter, i, letterDraft)}
+                    </button>
+                  ))
+                : null}
             </>
           ) : null}
         </div>

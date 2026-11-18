@@ -16,6 +16,14 @@ vi.mock('virtual:pwa-register', () => ({
   },
 }))
 
+// jsdom has no service worker: a bare event target stands in, so a test can say "the new
+// worker took over" by dispatching `controllerchange`. `workboxReload` is the listener
+// workbox-window adds after ours, the one vite-plugin-pwa reloads from.
+const swContainer = new EventTarget()
+Object.defineProperty(navigator, 'serviceWorker', { value: swContainer, configurable: true })
+const workboxReload = vi.fn()
+const workerTakesOver = () => swContainer.dispatchEvent(new Event('controllerchange'))
+
 function Nav() {
   const navigate = useNavigate()
   return (
@@ -50,6 +58,7 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     reload.mockReset()
+    workboxReload.mockReset()
     updateSW.mockClear()
     sessionStorage.clear()
     __resetUnsavedWorkForTests()
@@ -67,11 +76,12 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
     expect(screen.getByText('Updating to the newest version…')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Reload' })).toBeNull()
     expect(updateSW).toHaveBeenCalledTimes(1)
-    expect(sessionStorage.getItem(AUTO_RELOAD_KEY)).not.toBeNull()
     act(() => {
       vi.advanceTimersByTime(4000)
     })
     expect(reload).toHaveBeenCalled()
+    // The loop guard's stamp lands with the reload itself.
+    expect(sessionStorage.getItem(AUTO_RELOAD_KEY)).not.toBeNull()
   })
 
   it('after a touch, first paint is over: the pill shows and nothing reloads', () => {
@@ -196,5 +206,192 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
     act(() => swOpts.current?.onNeedRefresh?.())
     expect(screen.getByText('A new version is ready.')).toBeTruthy()
     expect(updateSW).not.toHaveBeenCalled()
+  })
+  describe('the second look, when the reload would fire', () => {
+    /** A write through the counted fetch that stays in flight until `finish` is called. */
+    const startWrite = () => {
+      let finish: (r: Response) => void = () => undefined
+      const counting = wrapFetchCountingWrites(() => new Promise<Response>((r) => (finish = r)))
+      const pending = counting('https://x/functions/v1/keep', { method: 'POST' })
+      return {
+        finish: async () => {
+          finish(new Response('{}'))
+          await pending
+        },
+      }
+    }
+
+    it('still quiet when the new worker takes over: it reloads then, not four seconds on', () => {
+      mount()
+      act(() => swOpts.current?.onNeedRefresh?.())
+      expect(reload).not.toHaveBeenCalled()
+      act(() => {
+        vi.advanceTimersByTime(300)
+        workerTakesOver()
+      })
+      expect(reload).toHaveBeenCalledTimes(1)
+    })
+
+    it('a write that begins after the decision is waited out, then the reload lands', async () => {
+      mount()
+      act(() => swOpts.current?.onNeedRefresh?.())
+      expect(screen.getByText('Updating to the newest version…')).toBeTruthy()
+      const write = startWrite()
+      act(() => {
+        workerTakesOver()
+      })
+      // The worker took over mid-write, and the old four seconds ran out: neither reloads.
+      act(() => {
+        vi.advanceTimersByTime(6_000)
+      })
+      expect(reload).not.toHaveBeenCalled()
+      expect(sessionStorage.getItem(AUTO_RELOAD_KEY)).toBeNull()
+      await act(async () => {
+        await write.finish()
+      })
+      // Back, but the next write of a chain may follow: not yet.
+      expect(reload).not.toHaveBeenCalled()
+      act(() => {
+        vi.advanceTimersByTime(1_500)
+      })
+      expect(reload).toHaveBeenCalledTimes(1)
+    })
+
+    it('a second write right behind the first holds it too', async () => {
+      mount()
+      act(() => swOpts.current?.onNeedRefresh?.())
+      const first = startWrite()
+      act(() => {
+        workerTakesOver()
+      })
+      await act(async () => {
+        await first.finish()
+      })
+      act(() => {
+        vi.advanceTimersByTime(1_000)
+      })
+      const second = startWrite()
+      act(() => {
+        vi.advanceTimersByTime(5_000)
+      })
+      expect(reload).not.toHaveBeenCalled()
+      await act(async () => {
+        await second.finish()
+      })
+      act(() => {
+        vi.advanceTimersByTime(1_500)
+      })
+      expect(reload).toHaveBeenCalledTimes(1)
+    })
+
+    it('a write that never comes back hands the update to the pill after half a minute', () => {
+      mount()
+      act(() => swOpts.current?.onNeedRefresh?.())
+      startWrite()
+      act(() => {
+        workerTakesOver()
+        vi.advanceTimersByTime(30_000)
+      })
+      expect(reload).not.toHaveBeenCalled()
+      expect(screen.getByText('A new version is ready.')).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy()
+    })
+
+    it('a touch after the decision stands a first-paint reload down: the pill, no reload, no stamp', () => {
+      mount()
+      act(() => swOpts.current?.onNeedRefresh?.())
+      expect(screen.getByText('Updating to the newest version…')).toBeTruthy()
+      fireEvent.pointerDown(window)
+      expect(screen.getByText('A new version is ready.')).toBeTruthy()
+      act(() => {
+        workerTakesOver()
+        vi.advanceTimersByTime(10_000)
+      })
+      expect(reload).not.toHaveBeenCalled()
+      expect(sessionStorage.getItem(AUTO_RELOAD_KEY)).toBeNull()
+    })
+
+    it('a dialog that opened in the gap stands it down', () => {
+      mount()
+      act(() => swOpts.current?.onNeedRefresh?.())
+      const dialog = document.createElement('div')
+      dialog.setAttribute('role', 'dialog')
+      document.body.appendChild(dialog)
+      act(() => {
+        workerTakesOver()
+      })
+      expect(reload).not.toHaveBeenCalled()
+      expect(screen.getByText('A new version is ready.')).toBeTruthy()
+    })
+
+    it('stood down under the new worker: the next quiet moment reloads at once', () => {
+      mount()
+      act(() => swOpts.current?.onNeedRefresh?.())
+      fireEvent.pointerDown(window)
+      act(() => {
+        workerTakesOver()
+      })
+      expect(reload).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByText('go'))
+      expect(updateSW).toHaveBeenCalledTimes(2)
+      expect(reload).toHaveBeenCalledTimes(1)
+      expect(sessionStorage.getItem(AUTO_RELOAD_KEY)).not.toBeNull()
+    })
+
+    it('stood down under the new worker: the pill’s Reload does not wait four seconds', () => {
+      mount()
+      act(() => swOpts.current?.onNeedRefresh?.())
+      fireEvent.pointerDown(window)
+      act(() => {
+        workerTakesOver()
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+      expect(reload).toHaveBeenCalledTimes(1)
+    })
+
+    it('the pill’s own Reload goes through a write in flight: the person asked', () => {
+      mount()
+      fireEvent.pointerDown(window)
+      act(() => swOpts.current?.onNeedRefresh?.())
+      startWrite()
+      fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+      expect(reload).not.toHaveBeenCalled()
+      act(() => {
+        workerTakesOver()
+      })
+      expect(reload).toHaveBeenCalledTimes(1)
+      // A press is not an automatic reload: the loop guard keeps no stamp of it.
+      expect(sessionStorage.getItem(AUTO_RELOAD_KEY)).toBeNull()
+    })
+
+    it('another tab takes the update: this one does not reload under the person, and workbox never hears it', () => {
+      mount()
+      fireEvent.pointerDown(window)
+      act(() => swOpts.current?.onNeedRefresh?.())
+      // workbox-window listens after this component, as it does once registerSW has run.
+      swContainer.addEventListener('controllerchange', workboxReload)
+      act(() => {
+        workerTakesOver()
+        vi.advanceTimersByTime(10_000)
+      })
+      swContainer.removeEventListener('controllerchange', workboxReload)
+      expect(workboxReload).not.toHaveBeenCalled()
+      expect(reload).not.toHaveBeenCalled()
+      expect(screen.getByText('A new version is ready.')).toBeTruthy()
+      // The next move finds the worker already switched and reloads with no gap.
+      fireEvent.click(screen.getByText('go'))
+      expect(reload).toHaveBeenCalledTimes(1)
+    })
+
+    it('with no update known here a worker change is left to workbox (a first install claiming the page)', () => {
+      mount()
+      swContainer.addEventListener('controllerchange', workboxReload)
+      act(() => {
+        workerTakesOver()
+      })
+      swContainer.removeEventListener('controllerchange', workboxReload)
+      expect(workboxReload).toHaveBeenCalledTimes(1)
+      expect(reload).not.toHaveBeenCalled()
+    })
   })
 })

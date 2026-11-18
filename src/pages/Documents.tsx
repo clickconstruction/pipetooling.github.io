@@ -1746,7 +1746,9 @@ const documentsUnifiedSectionHeadingStyle: CSSProperties = {
 }
 
 function DocumentsUnifiedSearchTab() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  /** The office's Agreements section (punch list #376): the same list the Agreements tab draws, fed this box's words. */
+  const agreementsVisible = canSeeAgreements(role)
   const [query, setQuery] = useState('')
   const q = query.trim()
   const filterQuery = q.length >= 2 ? query : ''
@@ -1762,7 +1764,7 @@ function DocumentsUnifiedSearchTab() {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Type at least 2 characters — estimates, bids, jobs, supply invoices…"
+          placeholder={agreementsVisible ? 'Type at least 2 characters — estimates, bids, jobs, agreements, supply invoices…' : 'Type at least 2 characters — estimates, bids, jobs, supply invoices…'}
           autoComplete="off"
           aria-label="Search across document ledgers"
           style={documentsLedgerSearchInputStyle}
@@ -1785,6 +1787,12 @@ function DocumentsUnifiedSearchTab() {
         <h2 style={documentsUnifiedSectionHeadingStyle}>Jobs</h2>
         <DocumentsJobsLedger embedSearch={filterQuery} onClearEmbedSearch={() => setQuery('')} />
       </div>
+      {agreementsVisible ? (
+        <div>
+          <h2 style={documentsUnifiedSectionHeadingStyle}>Agreements</h2>
+          <DocumentsAgreementsTab embedSearch={filterQuery} onClearEmbedSearch={() => setQuery('')} />
+        </div>
+      ) : null}
       <div>
         <h2 style={documentsUnifiedSectionHeadingStyle}>Supply invoices</h2>
         <DocumentsSupplyHouseInvoicesLedger embedSearch={filterQuery} onClearEmbedSearch={() => setQuery('')} />

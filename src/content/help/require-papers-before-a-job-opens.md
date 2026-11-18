@@ -7,9 +7,13 @@ order: 76
 ---
 A job can require papers. An NDA, site rules or a GC's own form are common ones. Everyone signs each paper, the office too. You set them on the job's **Documents** tab.
 
-## What works today
+## What locks today
 
-This is landing in steps. Today you can require papers on a job and collect the signatures. The job does not lock yet. The section says so in a yellow note until the lock is live. Signatures collected now will count.
+A person who owes a paper meets a prompt when they open the job. The prompt shows the job's number and the papers. It shows nothing else of the job until they sign. Nobody can clock in to the job before signing.
+
+The prompt is the only lock for now. The lock in the database arrives with the next update. The section says so in a yellow note until then.
+
+The crew and subs see a locked job by its number alone in their lists. Your own lists keep showing the job. So do a primary's. For the office and a primary the prompt at the job is the lock.
 
 ## Put a paper on a job
 
@@ -27,7 +31,11 @@ A paper with no words is grey in the list. Write it in the Contract Book first. 
 
 ## Sign your own
 
-Saving asks you to sign at once. A blue line says what you have not signed. Press {{button:blue|Read and sign: Site rules}} with the paper's own name on it. The signing page opens in a new tab. Come back and the list reads again.
+Saving locks the job for you too. The prompt takes the place of the job at once. Press {{button:blue|Read and sign: Site rules}} with the paper's own name on it. Sign, then press **Back to the job**.
+
+The prompt has one more press for the office. **This job's papers and who has signed** opens this same section from the prompt. Use it to take off a paper you added by mistake. You do not have to sign it first.
+
+A **Papers to sign** line under **Needs you** also leads to the prompt.
 
 ## See who has signed
 

@@ -1,8 +1,8 @@
 ---
 name: "The sub's page: a Statements view with their work statements, payment records and statement of account"
 number: 371
-group: ready
-status: asked 2026-11-17 · the mock-up and this card the same day · the owner answered all seven calls 2026-11-17, each with the card's pick · step 1, the function, live 2026-11-17 (v2.7569): its migration pushed and `sub-portal` deployed on the owner's go · the list was drawn on made-up data in the sub labor spike and is not wired to the page
+group: close
+status: asked 2026-11-17 · the owner answered all seven calls the same day, each with the card's pick · all four steps live 2026-11-17: the function (v2.7569), the switch and the list (v2.7597), the two presses with the office's chip and flag (v2.7609), and the walk on the test sub, which passed
 summary: >
   Card #350 gave the office three papers for a sub. A sub still cannot find them on their own page:
   the page shows open sheets and 90 days of payment lines, with no paid sheets, no numbers, no
@@ -12,9 +12,9 @@ summary: >
   office prints. A sub can mark a payment received or say a figure looks wrong. It was step 6 of
   card #350 and moves here with its own mock-up, because it puts papers in front of subs and has
   calls of its own.
-next: step 2, the switch and the list, cut from the spike's snapshot and fitted to the page; the owner reads its Spanish words before they ship
-size: M as a train of four (M · S · M · S); left: steps 2 to 4 (S · M · S)
-blocker: the owner reads the Spanish words before step 2 ships them (call 5); Confirm waits on counsel and is not in this card
+next: the owner's look on a real phone, then retire the card on his word; what is left is listed under *Where it stands*
+size: M as a train of four (M · S · M · S); left: a look on a real phone (S)
+blocker: none for what is built; Confirm waits on counsel and is not in this card
 opinion: build it as a switch at the top, Today and Statements, so the page a sub knows does not change; never let the sub's page give out a number; ship Got it as a quiet chip and Something is wrong as the one thing that asks the office to act
 mockup: to-dos/sub-portal-statements/mockup.html
 ---
@@ -86,23 +86,45 @@ A payment record's answer hung on a paper in the register (`sub_paper_acks.paper
 
 ## Where it stands
 
-Step 1 is live since 2026-11-17 (v2.7569). The page a sub opens is unchanged until step 2 reads the new block.
+All four steps are live since 2026-11-17, and the walk passed on the test sub.
 
-- **The `papers` block.** `sub-portal` hands back every sheet that is the sub's alone, paid ones too, as the papers' kernel reads a sheet, with the letterhead, the answers already given and whether the set adds up. A set that does not add up hands back no figure. A failure in the block leaves the rest of the page as it is.
-- **The two answers.** A `POST` with `action: 'got_it'` or `action: 'something_wrong'` writes one row of `sub_paper_acks`. A second *Got it* on one payment changes nothing.
-- **A number is read, never given.** The block reads a sheet's live number and revision from `sub_papers` and says whether today's figures are the ones the office issued (`numbers[sheet].asIssued`). Step 2 prints a revision's number only on a paper whose figures are as issued. A sheet that changed since reads its number, the day of the office's copy and *Saved from your page*.
-- **Whose a sheet is.** `sheetParties`, `teamSheetRule`, `rosterSub` and `laborJobPersonMatch` moved under `supabase/functions/_shared/`. Their old paths re-export them, so no screen's import changed.
-- **Left out of step 1.** An earlier copy of a changed statement (the mock-up's *Copy of Oct 29*) is not handed over. A memo the office hid after that copy was made would still be in it, so it needs a rule of its own before a sub can open it.
+| Step | Version | What went out |
+|---|---|---|
+| 1. The function | v2.7569 | the `papers` block and the two answers on `sub-portal`, migration `20261117150000_sub_paper_ack_targets.sql` |
+| 2. The switch and the list | v2.7597 | Today and Statements on the sub's page, the PDFs, both languages |
+| 3. The presses and the office's side | v2.7609 | Got it, Something is wrong, the chip, the flag and Mark answered, migration `20261117190000_sub_paper_ack_answered.sql`, and the dispatch inbox line from `sub-portal` |
+| 4. The walk | none | on the test sub and a ZZ TEST job, below |
 
-**Pushed and deployed 2026-11-17**, on the owner's go that named `sub-portal`. The migration went up by `supabase db push --include-all` from a checkout at `origin/main`: the dry run named this one file, and two later stamps were already on prod. `sub-portal` was deployed from the same checkout, and the deployed copy reads byte for byte as main's, 41 files.
+Both migrations are pushed. `sub-portal` was deployed twice, each time on the owner's go that named it, and the deployed copy reads byte for byte as main's.
 
-Checked live, with nothing written but one preview visit:
+**The walk, 2026-11-17.** A ZZ TEST sheet with two test payments was made for the test sub on a ZZ TEST job, with made-up amounts.
 
-- The function boots, and the sample page's read answers as before.
-- The new refusals answer: a sample page, an unknown link and an empty body.
-- The test sub's page, read as an office preview, carries `papers` with the letterhead from Settings and the office's phone.
+- **The page.** Statements shows *Still open*, the statement of account, the work statement with no number and both payments with their sending's number. *Still open* equals *Owed to you* on Today.
+- **The PDF.** A statement of account saved from the page reads *Not numbered yet*, and its foot reads *Saved from your page* with the day and time.
+- **A hidden memo** was in neither the page nor the PDF. The one the sub may read was there.
+- **Spanish.** Every line of the view read in Spanish, with the dates and the payment method.
+- **The office cannot answer.** A press from a signed-in office browser was refused with its sentence, and nothing was written.
+- **Got it,** pressed as the sub with no sign-in, marked the payment received. The row read *Received* after a reload.
+- **Something is wrong** sent a note. It was kept on the sheet, a line landed in the dispatch inbox, and the row said so after a reload.
+- **Jobs → Subs → Pay** showed the grey *Received · from their page* chip on the marked payment and nothing on the other. It showed the red flag on the sub's group and the sheet, and the note under *From the sub's page*.
+- **Mark answered** put the flag down. The note stayed with who answered it and the day.
 
-Not checked live: a person with sheets. The test sub has none today, so the sheets, the payments, the numbers and both answers were not exercised on prod. Every column the block reads was read through the dev seat and exists. Step 4's walk covers the rest on the test sub and a ZZ Test job.
+The test payments and the sheet were removed afterwards, and the test sub's page reads empty again. What the walk left, since the app cannot delete it: two rows of `sub_paper_acks` on the test sub, one ZZ TEST line in the dispatch inbox, two sending numbers, and the removed payments' trace lines.
+
+**Not walked.** A real phone: the view was looked at at phone width on the dev server only. The two presses as the sub went through the page's own script in a browser with no sign-in, since no window could draw it. A push reaching a phone was not seen.
+
+**Built differently from the mock-up, on purpose.**
+
+- No *Not marked received* chip. Most payments predate the page, so the chip would sit on nearly every line.
+- A **Mark answered** press, which the card did not draw. Without it a flag could never be put down.
+- An answer is kept on the sheet, sending or payment itself, with the office's paper and revision where there is one. The page never registers a paper.
+
+**Left, none of it blocking.**
+
+- An earlier copy of a changed statement (the mock-up's *Copy of Oct 29*) is not offered. A memo hidden after that copy was made would still be in it, so it needs a rule of its own.
+- The sample page (*What customers see*) carries no papers, so it shows no switch.
+- The sentence under Got it, *It is not a release or a waiver of any lien right*, mirrors one of card #350's six sentences that wait on counsel. Counsel's words replace it with theirs.
+- The PDFs are in English.
 
 ## The calls
 

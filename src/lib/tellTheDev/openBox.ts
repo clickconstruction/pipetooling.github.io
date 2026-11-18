@@ -22,6 +22,21 @@ export function requestTellTheDev(request: TellTheDevOpenRequest): void {
   window.dispatchEvent(new CustomEvent<TellTheDevOpenRequest>(TELL_THE_DEV_OPEN_EVENT, { detail: request }))
 }
 
+/**
+ * Whether a box is there to answer: the shell is mounted, a person is signed in and Fix Mode is
+ * on. A door drawn outside the shell (an error line, a window's title row) asks this before it
+ * shows, so a public page and a person with Fix Mode off see no wrench.
+ */
+let listening = false
+
+export function setTellTheDevListening(on: boolean): void {
+  listening = on
+}
+
+export function isTellTheDevListening(): boolean {
+  return listening
+}
+
 /** The ledger's names for the test's two counts: a box opened, a note sent. */
 export const TELL_THE_DEV_OPEN_CONTROL = 'tell_the_dev_open'
 export const TELL_THE_DEV_SENT_CONTROL = 'tell_the_dev_sent'

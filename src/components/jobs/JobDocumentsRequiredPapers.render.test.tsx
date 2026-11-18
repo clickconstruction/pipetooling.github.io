@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Papers before this job opens on the Documents tab, over a fake io: a job with none names the next press; picking
- * two papers draws the counted save and how many people it reaches; saving asks whoever saved to sign their own; the
+ * two papers draws the counted save and how many people it reaches; the
  * roster shows who has signed and copies a person's signing links; a paper comes off after the confirm; a failed
  * read draws the retry panel. Made-up names only.
  */
@@ -18,7 +18,7 @@ vi.mock('../../lib/supabase', async () => {
 })
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
-  return useAuthModuleMock({ user: { id: 'u1' } as never, role: 'assistant' })
+  return useAuthModuleMock({ role: 'assistant' })
 })
 
 const people = [
@@ -53,6 +53,10 @@ function fakeIo(over: Partial<JobPapersIo> = {}): JobPapersIo {
     removePaper: vi.fn(async () => undefined),
     signingLink: vi.fn(async (paperId: string) => `https://example.test/sign/${paperId}`),
     countRequired: vi.fn(async () => 0),
+    readClosed: vi.fn(async () => []),
+    readMine: vi.fn(async () => ({ jobNumber: 'J2391', linked: true, papers: [] })),
+    ownSigningLink: vi.fn(async () => 'https://example.test/sign/own'),
+    readNeedingMe: vi.fn(async () => []),
     ...over,
   }
 }
@@ -72,15 +76,13 @@ describe('JobDocumentsRequiredPapers', () => {
     fireEvent.click(screen.getByRole('button', { name: /Ridgeway Builders NDA/ }))
     fireEvent.click(screen.getByRole('button', { name: /Site rules and photo policy/ }))
     expect(screen.getByText('not saved yet')).toBeTruthy()
-    expect(screen.getByTestId('job-papers-foot').textContent).toBe('3 people can open this job today. Each one is asked to sign, the office and you included.')
+    expect(screen.getByTestId('job-papers-foot').textContent).toBe('3 people can open this job today. Each one is locked out of it until they sign, the office and you included.')
     fireEvent.click(screen.getByRole('button', { name: 'Require 2 papers' }))
     await waitFor(() => expect(io.requirePapers).toHaveBeenCalledWith('job-1', ['book-nda', 'book-site']))
-    // Saved: the roster, and whoever saved is asked to sign their own.
+    // Saved: the roster.
     await screen.findByTestId('job-papers-summary')
     expect(screen.getByTestId('job-papers-summary').textContent).toBe('0 of 3 have signed. 3 still owe a paper.')
-    expect(screen.getByTestId('job-papers-own').textContent).toContain('You have not signed these 2 papers yourself.')
-    expect(screen.getByRole('button', { name: 'Read and sign: Ridgeway Builders NDA' })).toBeTruthy()
-    expect(screen.getByTestId('job-papers-stage-note').textContent).toMatch(/does not lock yet/)
+    expect(screen.getByTestId('job-papers-stage-note').textContent).toMatch(/only lock for now/)
   })
 
   it('the roster shows who has signed, copies a person’s links, and says why a row has none', async () => {
