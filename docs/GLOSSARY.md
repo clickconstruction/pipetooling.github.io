@@ -900,6 +900,8 @@ The rejected status displays as "Previous work incomplete" in the UI.
 Since **v2.1190** the UI says **"Step"** everywhere for project-workflow work items (Workflow page, Projects Forecast, Dashboard Projects card) — disambiguating from **Jobs → Pipeline** (the billing pipeline board;
 tab key `stages`) and from Bids/Takeoff stages (Rough In / Top Out / Trim Set).
 Code identifiers, element ids, and DB names (`project_workflow_steps`, `sequence_order` helpers named `*Stage*`) are unchanged.
+A job line's stage is read from its name by one rule since v2.7850 (punch list #397): `stageRank` in `src/lib/jobs/stageRecognition.ts`, with the database's copy `stage_checklist_kind_of` held to it by `STAGE_NAME_TABLE`.
+The start of the name gives the stage, *Set trim* is trim, and a name that also holds another stage's word stands for none.
 
 **Statuses**: pending, in_progress, completed, approved, rejected (rejected displays as "Previous work incomplete"), skipped
 
