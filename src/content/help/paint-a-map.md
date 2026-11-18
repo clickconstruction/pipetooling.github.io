@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -183,6 +183,22 @@ Never type a gate code or a lock code on a place. Anyone the map is shared with 
 To change a place you set, press **Change this place** beside it. Drag its dot, change its words or take another photo. Then press {{button:blue|Save the place}}. **Remove this place** takes it off the map for everyone.
 
 Press a photo in the list to see it large.
+
+## Send one place to someone
+
+Each place has a press of its own for this. You do not share the whole map.
+
+On a phone, press **Text this place…** beside the place. Messages opens with the words already written. You pick who gets it.
+
+The text says what the place is and the word you left on it. It ends with a map link to the exact spot.
+
+Whoever gets it presses the link. A map app opens with a dot on the spot. They need no sign-in and give no name.
+
+They see that one spot. They do not see the painted map or its other places.
+
+At a desk the press reads **Copy this place**. It copies the same words. Paste them into a text or an email.
+
+Anyone who can see a place can send it. To send the whole map, press {{button:outline|Share}}.
 
 ## Keep a place on the job
 

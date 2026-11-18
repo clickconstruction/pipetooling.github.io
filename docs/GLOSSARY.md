@@ -3121,6 +3121,8 @@ A reader of a shared link sees the mark since v2.7778: `painted-map-link` hands 
 It sits under the job's address with the painted maps (`JobPaintedMapsStrip`: a line when it holds a place, and **＋ Place on this job**, which sets one with no map to paint first), and its window has no line to draw or walk.
 A place on the job wears a letter and a map's own place a number, and every other painted map of the job draws the job's places with a dashed ring under **On this job**, where they are read and not changed.
 A link or a copy of a painted map carries that map's own places and not the job's, the table holds a job to no count of lists and the app reads every one as one, and only the office is offered **Throw this list away**.
+**Text this place…** (since v2.7799, `PaintedPlaceShare` over `paintedPlaceShare.ts`): each place's row sends that one place, on a phone by a link that opens the phone's own Messages with the place in words and a plain map link to the spot, and at a desk as **Copy this place**.
+The link is a point in a map app and not a link into the app, so the reader gives no name and sees nothing else of the map, and anyone who can see a place may send it, where a map's own link is its maker's and the office's.
 **Walking a line** (since v2.7220, `usePaintedWalk` over `paintedWalk.ts`): the phone is read only while a red bar says *Painting*, and only with the page on the screen, since no browser hands a hidden page its position.
 A lock leaves a gap the painter chooses what to do with;
 painting pauses after five minutes standing still and ends after an hour;

@@ -693,7 +693,7 @@ describe('a job\'s own list of places (#393)', () => {
       expect(io.jobReads).toEqual([{ jobId: 'j1' }])
       expect(section.querySelector('h3')?.textContent).toBe('On this job')
       const rows = [...section.querySelectorAll('[data-painted-job-place-row]')]
-      expect(rows.map((r) => r.textContent)).toEqual(['ATruck gate', 'BThe slab', 'COpen trenchKeep the truck off it.'])
+      expect(rows.map((r) => r.textContent)).toEqual(['ATruck gateCopy this place', 'BThe slabCopy this place', 'COpen trenchKeep the truck off it.Copy this place'])
       expect(rows.map((r) => (r.querySelector('[data-place-mark]') as HTMLElement).getAttribute('data-place-mark'))).toEqual(['gate', 'plain', 'hazard'])
       // The plain one's ring is dashed, so it is not taken for the map's own place 1.
       expect((rows[1]!.querySelector('[data-place-mark]') as HTMLElement).style.borderStyle).toBe('dashed')
@@ -702,8 +702,8 @@ describe('a job\'s own list of places (#393)', () => {
       expect((await placeRow()).textContent).toContain('Laydown yard')
       expect(dot('1').getAttribute('data-dot-job')).toBe('no')
       expect([dot('A'), dot('B'), dot('C')].map((d) => d.getAttribute('data-dot-job'))).toEqual(['yes', 'yes', 'yes'])
-      // Nothing here changes a place of the job's: that is done on the list, which this press opens.
-      expect(section.querySelector('button')?.textContent).toBe('Open Places on this job')
+      // Nothing here changes a place of the job's: a row can be sent, and the one other press opens the list.
+      expect([...section.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Copy this place', 'Copy this place', 'Copy this place', 'Open Places on this job'])
       fireEvent.click(screen.getByRole('button', { name: 'Open Places on this job' }))
       expect(closed).toBe(1)
       await waitFor(() => expect(asks).toEqual([{ kind: 'open', mapId: 'list', address: '1 Made Up Road' }]))
@@ -720,4 +720,78 @@ describe('a job\'s own list of places (#393)', () => {
     expect(io.jobReads).toEqual([])
     expect(document.querySelector('[data-painted-job-places]')).toBeNull()
   })
+})
+
+describe('one place, sent to someone (#393)', () => {
+  const PLACE = { id: 'p1', mapId: 'm1', name: 'Open trench', words: 'Keep the truck off it.', lat: 29.5, lng: -98.2, accuracyM: null, photoPath: null, kind: 'hazard' as const, setBy: 'dana', setAt: '2026-11-13T15:02:00Z' }
+  const WORDS = 'Hazard: Open trench. Keep the truck off it.\nhttps://www.google.com/maps/search/?api=1&query=29.500000,-98.200000'
+  const onAPhone = (run: () => Promise<void>) => async () => {
+    const was = Object.getOwnPropertyDescriptor(navigator, 'userAgent')
+    Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)', configurable: true })
+    try {
+      await run()
+    } finally {
+      if (was) Object.defineProperty(navigator, 'userAgent', was)
+      else delete (navigator as unknown as { userAgent?: string }).userAgent
+    }
+  }
+
+  it('on a phone, a place\'s press is a link that opens Messages with the place in words and a map link to the spot', onAPhone(async () => {
+    // Dana set it and I did not: sending a place is anyone's who can see it.
+    io.whole = { map: MAP, lines: [], places: [PLACE] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    const row = await placeRow()
+    expect(screen.queryByRole('button', { name: 'Change this place' })).toBeNull()
+    const link = row.querySelector('[data-place-share="text"]') as HTMLAnchorElement
+    expect(link.textContent).toBe('Text this place…')
+    // Nobody is picked: the sender picks who gets it, in their own Messages.
+    expect(link.getAttribute('href')!.startsWith('sms:?&body=')).toBe(true)
+    expect(decodeURIComponent(link.getAttribute('href')!.slice('sms:?&body='.length))).toBe(WORDS)
+    // Nothing is sent by the app, and no link into the app is made for it.
+    expect(names()).toEqual(['loadPaintedMap'])
+  }))
+
+  it('at a desk, the press copies the same words and says so', async () => {
+    const copied: string[] = []
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t: string) => void copied.push(t) }, configurable: true })
+    try {
+      io.whole = { map: MAP, lines: [], places: [PLACE] }
+      render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+      const row = await placeRow()
+      expect(row.querySelector('[data-place-share="text"]')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Copy this place' }))
+      await waitFor(() => expect(copied).toEqual([WORDS]))
+      expect(row.querySelector('[data-place-share-said]')?.textContent).toBe('Copied. Paste it into a text or an email.')
+    } finally {
+      delete (navigator as unknown as { clipboard?: unknown }).clipboard
+    }
+  })
+
+  it('says so when the browser will not copy', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: async () => { throw new Error('denied') } }, configurable: true })
+    try {
+      io.whole = { map: MAP, lines: [], places: [PLACE] }
+      render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+      await placeRow()
+      fireEvent.click(screen.getByRole('button', { name: 'Copy this place' }))
+      expect((await screen.findByText('This browser would not copy it. Open the map on a phone and press Text this place….')).getAttribute('role')).toBe('status')
+    } finally {
+      delete (navigator as unknown as { clipboard?: unknown }).clipboard
+    }
+  })
+
+  it('a place kept on the job can be sent from any map of the job', onAPhone(async () => {
+    const LIST: PaintedMap = { id: 'list', name: 'Places on this job', words: '', jobId: 'j1', developmentId: null, jobList: true, createdBy: 'dana', createdAt: '2026-11-18T15:00:00Z' }
+    io.whole = { map: MAP, lines: [LINE()], places: [] }
+    io.jobWholes = [{ map: LIST, lines: [], places: [{ ...PLACE, id: 'jp1', mapId: 'list', name: 'Truck gate', words: '', kind: 'gate' as const }] }]
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    const row = await waitFor(() => {
+      const el = document.querySelector('[data-painted-job-place-row]')
+      expect(el).not.toBeNull()
+      return el as HTMLElement
+    })
+    const href = (row.querySelector('[data-place-share="text"]') as HTMLAnchorElement).getAttribute('href')!
+    // A name that says its kind is not said twice.
+    expect(decodeURIComponent(href.slice('sms:?&body='.length))).toBe('Truck gate.\nhttps://www.google.com/maps/search/?api=1&query=29.500000,-98.200000')
+  }))
 })

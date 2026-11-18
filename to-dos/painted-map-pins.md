@@ -2,7 +2,7 @@
 name: "Pins on a painted map: points of interest"
 number: 393
 group: ready
-status: A shipped (v2.7773) · B's column shipped and pushed (v2.7775) · B's marks in the app, the copies and the shared link in one PR (v2.7776, v2.7777, v2.7778), its function to deploy after the merge · C answered 2026-11-18, a separate list, drawn, and the owner likes the mock-up · C's column in its PR · C's screens built on `claude/393-job-places`, held for B's PR and the column's push
+status: A shipped (v2.7773) · B's column shipped and pushed (v2.7775) · B's marks in the app, the copies and the shared link in one PR (v2.7776, v2.7777, v2.7778), its function to deploy after the merge · C answered 2026-11-18, a separate list, drawn, and the owner likes the mock-up · C's column in its PR · C's screens built on `claude/393-job-places`, held for B's PR and the column's push · one place sent by text built on `claude/393-place-share`, stacked on it, on the owner's word to build the Share ask here
 summary: >
   The owner wants to set pins, points of interest, on a painted map, and not only lines. A painted
   map can already hold a place: a numbered dot with a name, a few words and a photo. Look it over,
@@ -11,7 +11,7 @@ summary: >
   three readings to the owner. A is ＋ Place on Look it over. B is kinds of pins, each with its own
   mark. C is a job's own pins, with no painted map. He ticked all three on 2026-11-18, so it is a
   train of three in that order.
-next: Push C's column once it merges, then merge C's screens. Deploy `painted-map-link` once B's PR merges. Then one walk on the live app, of a place with a kind and of a place on the job.
+next: Push C's column once it merges, then merge C's screens and the place share after them. Deploy `painted-map-link` once B's PR merges. Then one walk on the live app: a place with a kind, a place on the job, and a place sent by text.
 size: L as a train of three (S · M · L); left: two pushes and merges, one deploy and one walk (S)
 blocker: None. Two of C's calls were not answered one by one, the word and what a link carries, so they are built at their picks and are the owner's to change.
 ver: v2.7773 · 7775 · 7776 · 7777 · 7778
@@ -149,17 +149,36 @@ shared by itself.
 > else can identify a location. Could you help me decide if we should add this to this edition or
 > add it as another edition.
 
-**The answer given: another edition, and most of it already has a home.**
+**The owner's reply**, the same day:
+
+> Rather than another addition, let's just build it all right now, so we can close that card
+
+So it is built here. What that came to is under the three points below.
+
+**The answer first given: another edition, and most of it already has a home.**
 
 - **A painted map, his routes.** This is [#394](painted-map-share-sheet/README.md), carded and
   drawn the same day by another session. Its lead press is **Text it from my phone…**, and every
   sending press makes the link itself. Nothing of it belongs on this card.
 - **The job's list of places.** C keeps it as a painted map, so it has **Share** from its first
   day, as the mock-up draws. It gets #394's sheet when that lands, with nothing more to build.
-- **One place alone**, to text someone a single spot. This is new and is on no card yet. It needs
-  the sheet #394 builds, and one call of its own: what the reader opens. That is either the map
-  with that place picked out, or a plain pin in their own map app. It fits #394 as a later step
-  better than a card of its own.
+- **One place alone**, to text someone a single spot. This was new and on no card. It had one
+  call of its own: what the reader opens. That is either the map with that place picked out, or a
+  plain pin in their own map app.
+
+**What was built on his reply.**
+
+- **A painted map, his routes: nothing more here.** #394's sheet was built the same day by its own
+  session, with **Text it from my phone…** as its lead press. It needed nothing from this card.
+- **One place alone: built**, on `claude/393-place-share`. Each place's row has **Text this
+  place…** on a phone, a link that opens the phone's own Messages with the place in words and a map
+  link to the spot. At a desk it reads **Copy this place**. It is on a map's own places, on the
+  job's list, and on the job's places as another map shows them.
+- **The call was made at its pick, a plain pin, and is his to change.** The reader opens a map app
+  on that one spot. They need no sign-in, give no name, and see nothing else of the map. So anyone
+  who can see a place can send it. The other way, the painted map opened on that place, would let
+  only the map's maker and the office send one, would ask the reader for their name first, and
+  would show them the whole map.
 
 ## What a painted map held when the card was written
 
