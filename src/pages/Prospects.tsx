@@ -1,38 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { prospectsPagePadding } from '../lib/prospects/pagePadding'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { isOwnerOrDev } from '../lib/doorRoles'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { myTimeWindows, sumTimerSeconds, sumTimerSecondsByProspect } from '../lib/prospects/prospectTimerSums'
+import { myTimeWindows, sumTimerSeconds } from '../lib/prospects/prospectTimerSums'
 import {
-  CALL_INTERACTION_TYPES,
-  CALLING_ORDER_STORAGE_KEY,
   indexAfterOtherRowLeft,
   insertColdest,
-  orderFollowUpProspects,
   queueAfterRemoval,
-  queueAge,
-  queueWindowStart,
-  readCallingOrderMode,
   type CallingOrderMode,
 } from '../lib/prospects/callingOrder'
-import { ageChipStyle } from '../lib/ageState'
-import {
-  filterProspectsForList,
-  groupProspectsForList,
-  lastTouchLabel,
-  LIST_SECTION_CHIP_LABELS,
-  LIST_SECTION_LABELS,
-  LIST_SECTION_ORDER,
-  LIST_SECTIONS_DEFAULT_OPEN,
-  type ListSectionKey,
-  type ProspectLastCall,
-} from '../lib/prospects/prospectListGrouping'
-import { findRetaggableNote, lastCallByProspect, withCalledProspect, withLastCall, type CallInteractionType } from '../lib/prospects/callLogState'
-import { callingLockCutoffIso, callingLockDecision, type CallingLockRow, type CallingLockTrigger } from '../lib/prospects/callingLock'
-import { recordNavClick } from '../lib/navClickTelemetry'
+import { findRetaggableNote, type CallInteractionType } from '../lib/prospects/callLogState'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
@@ -47,31 +27,20 @@ import {
   sourceProspectOf,
 } from '../lib/prospects/prospectConversion'
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
-import { PROSPECT_COMPANY_ROLES, PROSPECT_KINDS, PROSPECT_KIND_WORDS, PROSPECT_SOURCES, benchDraftFromProspect, kindFieldsPayload, kindFromUrlKey, prospectKindFacts, prospectLandedToast, tradesText, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
-import { addGcCompany, askGcCompanies, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
-import { boardStateFromRows } from '../lib/gc/boardRows'
-import { tradeBenches } from '../lib/gc/bench'
-import { cardOnLane, kindFromSearch, laneLoadingWords, makeLatestOnly } from '../lib/prospects/laneLoad'
-import { companyDouble, doubleLaneParams, type CompanyDouble, type ProspectDoubleRow } from '../lib/prospects/companyDouble'
-import { loadProspectDoubles } from '../lib/prospects/companyDoubleIo'
-import { stripReads, type StripRead } from '../lib/prospects/stripState'
-import { ProspectPersonForm } from '../components/prospects/ProspectPersonForm'
-import { EMPTY_COMPANY, EMPTY_PERSON, OK_TO_TEXT_CHOICES, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type OkToText, type PersonFields } from '../lib/prospects/personBlock'
-import { BY_NEED_NOTE, benchNeeds, orderSubsByNeed, stillQueued, subsForTrade, tradesLeftToPick, withTrade } from '../lib/prospects/subsLane'
-import { plansChoices, type PlansChoice } from '../lib/prospects/subsStages'
-import { gcBenchInput, gcNeeds, type GcBenchIn } from '../lib/prospects/gcNeeds'
-import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
-import { EmptyState, type EmptyStateWords } from '../components/EmptyState'
+import { PROSPECT_KINDS, PROSPECT_KIND_WORDS, benchDraftFromProspect, kindFromUrlKey, prospectLandedToast, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
+import { addGcCompany, askGcCompanies } from '../lib/gc/gcIo'
+import { kindFromSearch } from '../lib/prospects/laneLoad'
+import { doubleLaneParams, type CompanyDouble } from '../lib/prospects/companyDouble'
+import { prospectTitle, type OkToText } from '../lib/prospects/personBlock'
+import { stillQueued } from '../lib/prospects/subsLane'
+import { gcNeeds } from '../lib/prospects/gcNeeds'
+import { cardClockTicks, emptyLaneWords } from '../lib/prospects/deckWords'
+import { type EmptyStateWords } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
-import { useLeaveGuard } from '../hooks/useLeaveGuard'
-import { LeaveQuestion } from '../components/bids/SubmittalLeaveGuard'
-import { anyTyped, editDirty, editSnapshotOf } from '../lib/prospects/windowLeave'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
-import { isZzTestProspect, withoutZzProspects } from '../lib/prospects/zzProspects'
 import { GcCallScriptWindow } from '../components/gc/GcCallScriptWindow'
-import { SOONEST_BID_NOTE, gcBiddingLines, gcWorkCounts, jobToHandOn, newProjectSeedFromLead, orderLeadsBySoonestBid, type BiddingLine, type GcWorkCounts, type NewProspectJob, type ProspectJob } from '../lib/prospects/gcLeadLane'
-import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus, updateProspectJob } from '../lib/prospects/gcLeadLaneIo'
-import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
+import { jobToHandOn, newProjectSeedFromLead } from '../lib/prospects/gcLeadLane'
+import { setProspectJobStatus } from '../lib/prospects/gcLeadLaneIo'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
 import { ProspectsResearchTab } from '../components/prospects/ProspectsResearchTab'
 import { canResearchPermits } from '../lib/research/permitResearch'
@@ -79,70 +48,43 @@ import { permitsLinkCleared } from '../lib/research/permitsLink'
 import { ProspectCallbackModal } from '../components/prospects/ProspectCallbackModal'
 import { ProspectsActivityTab } from '../components/prospects/ProspectsActivityTab'
 import { ProspectsConvertTab } from '../components/prospects/ProspectsConvertTab'
+import { EditProspectWindow } from '../components/prospects/EditProspectWindow'
+import { NewProspectWindow } from '../components/prospects/NewProspectWindow'
+import { useEditProspectWindow } from '../components/prospects/useEditProspectWindow'
+import { useNewProspectWindow } from '../components/prospects/useNewProspectWindow'
+import { DIDNT_ANSWER_MOVE_NEXT_KEY, ProspectsFollowUpTab } from '../components/prospects/ProspectsFollowUpTab'
+import { ProspectsListTab } from '../components/prospects/ProspectsListTab'
+import { useProspectListTab } from '../components/prospects/useProspectListTab'
+import { ProspectCopyBlankFieldsModal } from '../components/prospects/ProspectCopyBlankFieldsModal'
+import { ProspectCopyTemplateEditModal } from '../components/prospects/ProspectCopyTemplateEditModal'
+import { useProspectCopyTemplates } from '../components/prospects/useProspectCopyTemplates'
+import { useCallRun } from '../components/prospects/useCallRun'
+import { useCallingLock } from '../components/prospects/useCallingLock'
 import { useProspectConvert } from '../components/prospects/useProspectConvert'
+import { useProspectDoubles } from '../components/prospects/useProspectDoubles'
+import { useProspectJobs } from '../components/prospects/useProspectJobs'
+import { useProspectsData } from '../components/prospects/useProspectsData'
+import { useSubsBench } from '../components/prospects/useSubsBench'
+import { useSubsBoardData } from '../components/prospects/useSubsBoardData'
 import { ProspectMyTimeModal } from '../components/prospects/ProspectMyTimeModal'
 import { ProspectTimerHistoryModal } from '../components/prospects/ProspectTimerHistoryModal'
 import { SubsBoard } from '../components/prospects/SubsBoard'
-import { SubsLaneList } from '../components/prospects/SubsLaneList'
-import { SubsNeedsPanel } from '../components/prospects/SubsNeedsPanel'
 import { SubsPathStrip } from '../components/prospects/SubsPathStrip'
-import { GcWorkStrip } from '../components/prospects/GcWorkStrip'
-import { inboundProspects, subRecords } from '../lib/prospects/subRecord'
-import { BY_RANK_NOTE, PRIORITY_CHOICES, orderColumn, priorityWord } from '../lib/prospects/subsBoard'
-import { pinAfterDrop, pinnedIds, pinsByTrade, rankWrites, unpin, type RankRow } from '../lib/prospects/subsRanks'
+import { subRecords } from '../lib/prospects/subRecord'
 import { tradeKey } from '../lib/prospects/subsLane'
-import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_NO_CHANNEL, TEXT_SENT, TEXT_THEM, TEXT_THEM_TITLE, boardHref, callbackHourFor, callbackWords, firstCallbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt, runTextNote, runTextPlan, runTextWords, type RunOutcome } from '../lib/prospects/callRun'
-import { loadProspectThread, startProspectThread } from '../lib/prospects/prospectThreadIo'
-import { textRefusal } from '../lib/prospects/textingRule'
+import { callbackHourFor, callbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHref } from '../lib/prospects/callRun'
 import { benchAskFor, benchAskedToast, type BenchAsk } from '../lib/prospects/benchAsk'
-import { callerFirstName } from '../lib/gc/callScript'
-import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
-import { ProspectJobsBox } from '../components/prospects/ProspectJobsBox'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 import { useMyHiringShares } from '../hooks/useMyHiringShares'
 import { todayYmdInAppTz } from '../utils/dateUtils'
-import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
-import {
-  APP_SETTINGS_KEYS,
-  APP_SUBJECT_SETTINGS_KEYS,
-  COPY_TEMPLATE_KEYS,
-  COPY_TEMPLATE_LABELS,
-  foldCopyTemplateRows,
-  getBlankFieldsForMail,
-  getBlankPlaceholderFields,
-  resolveCopyText,
-  substituteCopyPlaceholders,
-  type CopyTemplateKey,
-} from '../lib/prospects/prospectCopyTemplates'
-import { formatDateTime, formatInteractionType, formatTimerSeconds, formatWebsiteDisplay, getWebsiteHref } from '../lib/prospects/prospectFormat'
-import { PROSPECT_COLUMNS, type Prospect, type ProspectComment } from '../lib/prospects/prospectRow'
-
-const EnvelopeIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1rem" height="1rem" fill="currentColor" style={{ display: 'block' }}>
-    <path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z" />
-  </svg>
-)
-
-const EnvelopeCheckIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1rem" height="1rem" fill="currentColor" style={{ display: 'block' }}>
-    <path d="M64 176C64 149.5 85.5 128 112 128L528 128C554.5 128 576 149.5 576 176L576 257.4C551.6 246.2 524.6 240 496 240C408.3 240 334.3 298.8 311.3 379.2C304.2 377.9 297.2 375 291.2 370.4L83.2 214.4C71.1 205.3 64 191.1 64 176zM304 432C304 460.6 310.2 487.6 321.4 512L128 512C92.7 512 64 483.3 64 448L64 260L262.4 408.8C275 418.2 289.3 424.2 304.1 426.7C304.1 428.5 304 430.2 304 432zM352 432C352 352.5 416.5 288 496 288C575.5 288 640 352.5 640 432C640 511.5 575.5 576 496 576C416.5 576 352 511.5 352 432zM553.4 371.1C546.3 365.9 536.2 367.5 531 374.6L478 447.5L451.2 420.7C445 414.5 434.8 414.5 428.6 420.7C422.4 426.9 422.4 437.1 428.6 443.3L468.6 483.3C471.9 486.6 476.5 488.3 481.2 487.9C485.9 487.5 490.1 485.1 492.9 481.4L556.9 393.4C562.1 386.3 560.5 376.2 553.4 371.1z" />
-  </svg>
-)
-
-const EditIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1rem" height="1rem" fill="currentColor" style={{ display: 'block' }}>
-    <path d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z" />
-  </svg>
-)
+import { type Prospect, type ProspectComment } from '../lib/prospects/prospectRow'
 
 type ProspectsTopTab = 'customers' | 'team' | 'research'
 
 type ProspectsTab = 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity'
 
 const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'board', 'prospect-list', 'convert', 'activity']
-
-const DIDNT_ANSWER_MOVE_NEXT_KEY = (userId: string) => `prospects_didnt_answer_move_next_${userId}`
 
 const tabStyle = (active: boolean) => ({
   ...pageTabStyle(active),
@@ -151,84 +93,6 @@ const tabStyle = (active: boolean) => ({
 })
 
 
-/** The boxes a kind adds to New Prospect and Edit prospect (v2.5559): where we found them for every kind; a sub's trades, range and language; a GC lead's role. */
-function renderKindFields(
-  k: ProspectKind,
-  f: {
-    source: string
-    setSource: (v: string) => void
-    trades: string
-    setTrades: (v: string) => void
-    maxMiles: string
-    setMaxMiles: (v: string) => void
-    role: string
-    setRole: (v: string) => void
-    /** The bench's trade names (v2.5560), offered as picks under Trades. */
-    tradeChoices?: readonly string[]
-  },
-) {
-  const inputStyle = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
-  const labelStyle = { display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' } as const
-  return (
-    <>
-      {k === 'gc_lead' && (
-        <div>
-          <span style={labelStyle}>Who they are</span>
-          <div style={{ display: 'flex', gap: '0.5rem 0.9rem', flexWrap: 'wrap', fontSize: '0.875rem' }}>
-            {PROSPECT_COMPANY_ROLES.map((r) => (
-              <label key={r.role} style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
-                <input type="radio" name="prospect-company-role" checked={f.role === r.role} onChange={() => f.setRole(r.role)} />
-                {r.label}
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-      {k === 'sub' && (
-        <>
-          <label>
-            <span style={labelStyle}>
-              Trades <span style={{ color: 'var(--text-muted)' }}>— the bench's names, a comma between two</span>
-            </span>
-            <input type="text" value={f.trades} onChange={(e) => f.setTrades(e.target.value)} style={inputStyle} placeholder="Concrete, Fire sprinkler" />
-          </label>
-          {(() => {
-            const left = tradesLeftToPick(f.tradeChoices ?? [], f.trades)
-            if (left.length === 0) return null
-            return (
-              <div role="group" aria-label="The bench's trades" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '-0.4rem', fontSize: '0.75rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>On the bench:</span>
-                {left.map((trade) => (
-                  <button
-                    key={trade}
-                    type="button"
-                    onClick={() => f.setTrades(withTrade(f.trades, trade))}
-                    style={{ font: 'inherit', fontSize: '0.75rem', padding: '0.05rem 0.5rem', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
-                  >
-                    + {trade}
-                  </button>
-                ))}
-              </div>
-            )
-          })()}
-          <label>
-            <span style={labelStyle}>Goes up to (miles)</span>
-            <input type="number" min={1} value={f.maxMiles} onChange={(e) => f.setMaxMiles(e.target.value)} style={inputStyle} placeholder="not said" />
-          </label>
-        </>
-      )}
-      <label>
-        <span style={labelStyle}>Where we found them</span>
-        <input type="text" list="prospect-sources" value={f.source} onChange={(e) => f.setSource(e.target.value)} style={inputStyle} placeholder={PROSPECT_SOURCES[0]} />
-        <datalist id="prospect-sources">
-          {PROSPECT_SOURCES.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
-      </label>
-    </>
-  )
-}
 
 export default function Prospects() {
   const navigate = useNavigate()
@@ -254,7 +118,6 @@ export default function Prospects() {
   // The lane from the link before the first load (v2.5578): starting on the customer deck and reading
   // `?kind=` afterwards raced two loads, and a refresh could paint the Customers deck under a lane's tab.
   const [kind, setKind] = useState<ProspectKind>(() => kindFromSearch(location.search))
-  const latestLoad = useRef(makeLatestOnly())
   const kindWords = PROSPECT_KIND_WORDS[kind]
   // Add to the bench ✓ (v2.5559): the sub's card as the bench's Add a company.
   const [benchDraft, setBenchDraft] = useState<{ prospect: Prospect; draft: BenchDraft; ask: BenchAsk | null } | null>(null)
@@ -263,96 +126,84 @@ export default function Prospects() {
   // The Subs lane (v2.5560): the bench's trades and how many each can count on (null: not read, or
   // refused), the bench's companies for the double check, the lane's whole queue for the counts,
   // and the call script's window.
-  // The strips' reads (v2.5585): undefined until the first answer, null when the read failed, the rows once read.
-  const [benchTrades, setBenchTrades] = useState<StripRead<{ trade: string; dependable: number }[]>>(undefined)
-  // What GC mode needs (v2.5782, punch list #148): the bench with its open asks, and the trades we do ourselves.
-  const [gcBench, setGcBench] = useState<{ benches: GcBenchIn[]; ownTrades: string[] }>({ benches: [], ownTrades: [] })
-  const [benchCompanies, setBenchCompanies] = useState<{ id: string; name: string; phone: string | null; trades: string[]; vetted?: boolean }[]>([])
-  const [laneQueueAll, setLaneQueueAll] = useState<Prospect[]>([])
+  // New Prospect's open flag and its kind sit here, above the lane reads that follow them.
+  const [newProspectModalOpen, setNewProspectModalOpen] = useState(false)
+  const [newKind, setNewKind] = useState<ProspectKind>('customer')
+  // The bench (v2.5560), read by `useSubsBench` when the lane or New Prospect's kind is Subs.
+  const { benchTrades, gcBench, benchCompanies, benchQuoted, gcPlans } = useSubsBench(kind, newKind, authUser?.id ?? null)
+  // What the Subs Board reads beside the lane's rows, and its pin writes.
+  const { inboundProspectIds, laneCallbacks, setLaneCallbacks, lanePins, loadLaneRanks, loadLaneExtras, dropOnBoard, unpinOnBoard } = useSubsBoardData({ userId: authUser?.id ?? null })
+  // The lane's data: the deck and the list, the card that is up, the call-history sets, the two loaders, the calling order.
+  // `mergeJobs` is the jobs hook's, called further down; a loader only runs after the render that made both.
+  const data = useProspectsData({
+    kind,
+    userId: authUser?.id ?? null,
+    hideZz,
+    searchParams,
+    setSearchParams,
+    benchTrades,
+    mergeJobs: (ids) => mergeJobs(ids),
+    loadLaneRanks,
+    loadLaneExtras,
+  })
+  const {
+    followUpProspects,
+    setFollowUpProspects,
+    currentProspectIndex,
+    setCurrentProspectIndex,
+    currentProspect,
+    currentProspectId,
+    followUpLoading,
+    prospectListProspects,
+    setProspectListProspects,
+    prospectListLoading,
+    prospectLastCallMap,
+    laneAllRows,
+    setLaneAllRows,
+    laneQueueAll,
+    answeredProspectIds,
+    laneCallRows,
+    calledProspectIds,
+    callingOrderMode,
+    loadFollowUpProspects,
+    loadProspectListProspects,
+    updateUrlProspectId,
+    markCalledLocally,
+  } = data
+  /** The calling order's switch: the data hook reloads the deck in the new order, and the phone's order sheet folds. */
+  const switchCallingOrder = (mode: CallingOrderMode) => {
+    if (data.switchCallingOrder(mode)) setShowCallingOrder(false)
+  }
+  const subRecordMap = useMemo(() => subRecords({ calls: laneCallRows, inbound: inboundProspectIds }), [laneCallRows, inboundProspectIds])
   const [scriptOpen, setScriptOpen] = useState(false)
   const tradeFilter = searchParams.get('trade')
   // The path onto the bench (v2.5807, punch list #153): every sub row for the strip's counts, who has answered,
   // which bench companies have quoted, the projects a set of plans could be for (the For picker, `?for=`), and
   // which of the list's groups are open.
-  const [laneAllRows, setLaneAllRows] = useState<Prospect[]>([])
-  const [answeredProspectIds, setAnsweredProspectIds] = useState<Set<string>>(() => new Set())
-  const [benchQuoted, setBenchQuoted] = useState<Set<string>>(() => new Set())
-  const [gcPlans, setGcPlans] = useState<PlansChoice[]>([])
-  const [subsSectionOpen, setSubsSectionOpen] = useState<Record<string, boolean>>({})
   const plansFor = searchParams.get('for')
   const plansPick = kind === 'sub' && plansFor ? gcPlans.find((c) => c.id === plansFor) ?? null : null
   // The board and the run (v2.5808): the lane's call rows for each sub's record, the lines back on their threads, the
   // upcoming callbacks, the run the link names (`?run=`), what the run did so far, and the text press's state.
-  const [laneCallRows, setLaneCallRows] = useState<{ prospect_id: string; interaction_type: string }[]>([])
-  const [inboundProspectIds, setInboundProspectIds] = useState<Set<string>>(() => new Set())
-  const [laneCallbacks, setLaneCallbacks] = useState<Record<string, string>>({})
   const run = kind === 'sub' ? runFromSearch(location.search) : null
-  const runKey = run ? run.ids.join(',') : ''
-  const [runOutcomes, setRunOutcomes] = useState<RunOutcome[]>([])
-  const [runDone, setRunDone] = useState(false)
-  const [runCallbackAt, setRunCallbackAt] = useState<Date | null>(null)
-  const [runTextState, setRunTextState] = useState<Record<string, 'sending' | 'sent'>>({})
-  const subRecordMap = useMemo(() => subRecords({ calls: laneCallRows, inbound: inboundProspectIds }), [laneCallRows, inboundProspectIds])
-  // The board's pins (v2.5809): one row a company a trade, read with the lane, written on a drop.
-  const [laneRanks, setLaneRanks] = useState<RankRow[]>([])
-  const lanePins = useMemo(() => pinsByTrade(laneRanks), [laneRanks])
-  useEffect(() => {
-    // A new run starts clean; the same run survives a refresh except for its receipt, which the ids cannot carry.
-    setRunOutcomes([])
-    setRunDone(false)
-    setRunCallbackAt(null)
-    setRunTextState({})
-  }, [runKey])
   // The Jobs to GC lane (v2.5561): each lead's jobs, how much GC work is in flight (null: not read, or
   // refused), the customers for the double check, and the customer a new lead is linked to.
-  const [jobsByProspect, setJobsByProspect] = useState<Record<string, ProspectJob[]>>({})
-  const [gcWork, setGcWork] = useState<StripRead<GcWorkCounts>>(undefined)
-  // The projects bidding now (v2.5785, punch list #148, PR 2): named under the counts, soonest due first.
-  const [gcBidding, setGcBidding] = useState<BiddingLine[]>([])
-  const [customerDoubles, setCustomerDoubles] = useState<{ id: string; name: string; phone: string | null; since: string | null }[]>([])
-  const [prospectDoubles, setProspectDoubles] = useState<ProspectDoubleRow[]>([])
-  const [newCustomerLink, setNewCustomerLink] = useState<{ id: string; name: string } | null>(null)
+  const { gcWork, gcBidding, customerDoubles, prospectDoubles } = useProspectDoubles({ kind, newKind, newProspectModalOpen, userId: authUser?.id ?? null })
 
   // Follow Up state
-  const [followUpProspects, setFollowUpProspects] = useState<Prospect[]>([])
-  const [currentProspectIndex, setCurrentProspectIndex] = useState(0)
   const [comments, setComments] = useState<ProspectComment[]>([])
-  const [followUpLoading, setFollowUpLoading] = useState(false)
-  const [editModalOpen, setEditModalOpen] = useState(false)
-  const [editingProspect, setEditingProspect] = useState<Prospect | null>(null)
   const [callbackModalOpen, setCallbackModalOpen] = useState(false)
   const [commentInputValue, setCommentInputValue] = useState('')
   const [commentInputRef, setCommentInputRef] = useState<HTMLTextAreaElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [scheduledCallback, setScheduledCallback] = useState<{ callback_date: string; note: string | null } | null>(null)
   const [followUpTimerSeconds, setFollowUpTimerSeconds] = useState(0)
-  // Calling lock (v2.2850 — journey-map #14(b)): taken on INTENT, never on
-  // view. `lockTakenForRef` remembers which prospect THIS tab locked so the
-  // release effect only deletes a row we wrote; `lockHeldBy` names a colleague
-  // whose live lock we found (and did not steal) on the displayed prospect.
-  const lockTakenForRef = useRef<string | null>(null)
-  const lockAttemptForRef = useRef<string | null>(null)
-  const [lockHeldBy, setLockHeldBy] = useState<{ prospectId: string; name: string | null } | null>(null)
 
   // Edit form state
-  const [editSource, setEditSource] = useState('')
-  const [editTrades, setEditTrades] = useState('')
-  const [editMaxMiles, setEditMaxMiles] = useState('')
-  const [editRole, setEditRole] = useState('')
   // The person we call and the company under them (v2.5601), the two blocks both windows share.
-  const [editPerson, setEditPerson] = useState<PersonFields>(EMPTY_PERSON)
-  const [editCompany, setEditCompany] = useState<CompanyFields>(EMPTY_COMPANY)
-  const [editOpenedWith, setEditOpenedWith] = useState<Record<string, string>>({})
 
   // Callback form state
 
   // Prospect List state
-  const [prospectListProspects, setProspectListProspects] = useState<Prospect[]>([])
-  const [prospectListSearchQuery, setProspectListSearchQuery] = useState('')
-  const [prospectListLoading, setProspectListLoading] = useState(false)
-  const [prospectListSectionOpen, setProspectListSectionOpen] = useState<Partial<Record<ListSectionKey, boolean>>>({})
-  const [prospectLastCallMap, setProspectLastCallMap] = useState<Record<string, ProspectLastCall>>({})
-  const [selectedProspectForList, setSelectedProspectForList] = useState<Prospect | null>(null)
   const [followUpNotes, setFollowUpNotes] = useState('')
   const [followUpNotesSaving, setFollowUpNotesSaving] = useState(false)
 
@@ -362,13 +213,6 @@ export default function Prospects() {
   // Per-user preference: move to next prospect when Didn't Answer is clicked
   const [didntAnswerMoveNext, setDidntAnswerMoveNext] = useState(false)
 
-  // Calling order (v2.2301): 'coldest' (default) or never-called-first, per user.
-  // The ref mirrors state so loadFollowUpProspects reads the current mode
-  // without being recreated. calledProspectIds = prospects with any
-  // didnt_answer/answered on record; drives ordering + the queue badges.
-  const [callingOrderMode, setCallingOrderMode] = useState<CallingOrderMode>('coldest')
-  const callingOrderModeRef = useRef<CallingOrderMode>('coldest')
-  const [calledProspectIds, setCalledProspectIds] = useState<Set<string>>(() => new Set())
   const [showCallingOrder, setShowCallingOrder] = useState(false)
 
   // Ref to ignore stale loadComments responses when prospect changes quickly
@@ -385,54 +229,15 @@ export default function Prospects() {
   const [prospectLedgerSeconds, setProspectLedgerSeconds] = useState(0)
 
   // Total time spent per prospect for Prospect List (prospect_id -> seconds)
-  const [prospectLedgerSecondsMap, setProspectLedgerSecondsMap] = useState<Record<string, number>>({})
 
   // New Prospect modal state
-  const [newProspectModalOpen, setNewProspectModalOpen] = useState(false)
-  const [newProspectError, setNewProspectError] = useState<string | null>(null)
-  const [newKind, setNewKind] = useState<ProspectKind>('customer')
-  const [newSource, setNewSource] = useState('')
-  const [newTrades, setNewTrades] = useState('')
-  const [newMaxMiles, setNewMaxMiles] = useState('')
-  const [newRole, setNewRole] = useState('')
-  const [newPerson, setNewPerson] = useState<PersonFields>(EMPTY_PERSON)
   /** May we text? on the card (v2.5606): the chip opens the three answers. */
   const [textAskOpen, setTextAskOpen] = useState(false)
-  const [newCompany, setNewCompany] = useState<CompanyFields>(EMPTY_COMPANY)
 
-  // Copy templates (defaults from app_settings, overrides from user_prospect_copy_templates)
-  const [copyDefaults, setCopyDefaults] = useState<Record<CopyTemplateKey, string>>({
-    no_response_email: '',
-    phone_followup_email: '',
-    just_checking_in_email: '',
-  })
-  const [copyOverrides, setCopyOverrides] = useState<Record<CopyTemplateKey, string | null>>({
-    no_response_email: null,
-    phone_followup_email: null,
-    just_checking_in_email: null,
-  })
-  const [copySubjectDefaults, setCopySubjectDefaults] = useState<Record<CopyTemplateKey, string>>({
-    no_response_email: '',
-    phone_followup_email: '',
-    just_checking_in_email: '',
-  })
-  const [copySubjectOverrides, setCopySubjectOverrides] = useState<Record<CopyTemplateKey, string | null>>({
-    no_response_email: null,
-    phone_followup_email: null,
-    just_checking_in_email: null,
-  })
-  const [personPhone, setPersonPhone] = useState<string | null>(null)
-  const [authUserName, setAuthUserName] = useState<string>('')
-  const [editingCopyTemplateKey, setEditingCopyTemplateKey] = useState<CopyTemplateKey | null>(null)
-  const [editingCopyText, setEditingCopyText] = useState('')
-  const [editingCopySubject, setEditingCopySubject] = useState('')
-  const [copyTemplateSaving, setCopyTemplateSaving] = useState(false)
-  const [copyBlankFieldsModalOpen, setCopyBlankFieldsModalOpen] = useState(false)
-  const [copyBlankFieldsList, setCopyBlankFieldsList] = useState<string[]>([])
-  const [emailSentTemplateKeys, setEmailSentTemplateKeys] = useState<Set<string>>(new Set())
-  const copyTemplateTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Activity tab state (dev and assistant) - last 30 days
+  /** The caller's own name off `users`: the copy templates, the bench's ask and the run's text sign with it. */
+  const [authUserName, setAuthUserName] = useState<string>('')
   /** The week the Activity tab's pager is on. It stays here so it survives a visit to another tab. */
   const [weekOffset, setWeekOffset] = useState(0)
   const canAccessActivityTab = authRole === 'dev' || isAssistantLike(authRole)
@@ -535,71 +340,11 @@ export default function Prospects() {
     }
   }, [location.search, setSearchParams])
 
-  // Escape and the backdrop (v2.5582): an untouched window closes at once, a touched one asks (useLeaveGuard, as the
-  // big windows do since v2.5530). Leaving New Prospect clears its boxes; Edit compares its boxes to what it opened with.
-  const newProspectDirty = newProspectModalOpen && anyTyped({ ...newPerson, okToText: newPerson.okToText !== 'not_asked', ...newCompany, newSource, newTrades, newMaxMiles, newRole, linked: !!newCustomerLink })
-  const newGuard = useLeaveGuard({ dirty: newProspectDirty, onClose: closeNewProspect, busy: saving, paused: !newProspectModalOpen })
-  const editFieldsNow: Record<string, string> = { ...editPerson, ...editCompany, source: editSource, trades: editTrades, miles: editMaxMiles, role: editRole }
-  const editGuard = useLeaveGuard({ dirty: editModalOpen && editDirty(editFieldsNow, editOpenedWith), onClose: closeEditProspect, busy: saving, paused: !editModalOpen })
-  function closeNewProspect() {
-    setNewProspectModalOpen(false)
-    resetNewProspectForm()
-  }
-  function closeEditProspect() {
-    setEditModalOpen(false)
-    setEditingProspect(null)
-  }
-  function resetNewProspectForm() {
-    setNewPerson(EMPTY_PERSON)
-    setNewCompany(EMPTY_COMPANY)
-    setNewSource('')
-    setNewTrades('')
-    setNewMaxMiles('')
-    setNewRole('')
-    setNewCustomerLink(null)
-    setNewProspectError(null)
-  }
-
-  // The bench (v2.5560): read the way GC projects reads it, so the strip says what the bench's own
-  // rule says. Fail-soft: a role the GC tables refuse sees the lane without the strip.
-  useEffect(() => {
-    if (kind !== 'sub' && newKind !== 'sub') return
-    if (!authUser?.id) return
-    let live = true
-    ;(async () => {
-      try {
-        const projects = await loadGcProjects()
-        const rows = await loadGcBoardRows(projects, todayYmdInAppTz(), { money: false })
-        if (!live) return
-        const state = boardStateFromRows(rows)
-        const benches = tradeBenches(state)
-        setBenchTrades(benches.map((b) => ({ trade: b.trade, dependable: b.dependable })))
-        setBenchQuoted(new Set(state.partners.filter((p) => p.bids > 0).map((p) => p.id)))
-        setGcPlans(plansChoices(projects.map((p) => ({ id: p.id, name: p.name, stage: p.stage, bidDue: p.bidDue, lostOn: p.lostOn, packages: p.trades.map((k) => ({ id: k.id, trade: k.trade, ours: k.ours })) })), todayYmdInAppTz()))
-        setGcBench({ benches: gcBenchInput(benches), ownTrades: state.projects.flatMap((p) => p.packages.filter((k) => k.selfPerform).map((k) => k.trade)) })
-        setBenchCompanies(rows.companies.map((c) => ({ id: c.id, name: c.name, phone: c.phone || null, trades: c.trades, vetted: c.vetting_status === 'approved' ? true : c.vetting_status === 'new' ? false : undefined })))
-      } catch {
-        if (live) setBenchTrades(null)
-      }
-    })()
-    return () => {
-      live = false
-    }
-  }, [kind, newKind, authUser?.id])
-
   // The strip counts the lane as it stands: a sub the deck took off (an outcome, a delete) leaves the count with it.
   const deckIds = new Set(followUpProspects.map((p) => p.id))
   const laneQueueNow = kind === 'sub' ? stillQueued(laneQueueAll, deckIds, tradeFilter) : []
   // The panel over the Subs deck (v2.5782): every trade short of quotes or short on the bench, then the book's.
   const gcNeedsNow = kind === 'sub' ? gcNeeds(gcBench.benches, laneQueueNow, gcBench.ownTrades) : null
-  /** New Prospect on this lane's kind, the header's button and the empty Prospect List's press (punch list #184, sweep C). */
-  const openNewProspect = () => {
-    resetNewProspectForm()
-    setNewKind(kind)
-    setNewCustomerLink(null)
-    setNewProspectError(null)
-    setNewProspectModalOpen(true)
-  }
   /** The Prospect List with nothing to list: a search's own Clear the search, else the lane's empty words and New Prospect. */
   const prospectListEmpty = (): EmptyStateWords => {
     if (prospectListSearchQuery.trim()) {
@@ -608,43 +353,6 @@ export default function Prospects() {
     const words = emptyLaneWords(kind, null)
     return { main: words.main, next: { label: words.doorLabel, onPress: openNewProspect }, tail: words.tail }
   }
-  /** Add a sub (v2.5782): New Prospect as a sub with the trade filled in, from a need's row or a book chip. */
-  const openAddSub = (trade: string) => {
-    resetNewProspectForm()
-    setNewKind('sub')
-    setNewTrades(trade)
-    setNewCustomerLink(null)
-    setNewProspectError(null)
-    setNewProspectModalOpen(true)
-  }
-
-  // One lookup for every double (v2.5579): the prospects of every lane and the customers load when New Prospect
-  // opens, whatever its kind; both fail-soft, and the bench rides along from the Subs effect above.
-  useEffect(() => {
-    if (!newProspectModalOpen || !authUser?.id) return
-    let live = true
-    loadProspectDoubles()
-      .then((rows) => {
-        if (live) setProspectDoubles(rows)
-      })
-      .catch(() => {
-        if (live) setProspectDoubles([])
-      })
-    loadCustomerDoubles()
-      .then((rows) => {
-        if (live) setCustomerDoubles(rows)
-      })
-      .catch(() => {
-        if (live) setCustomerDoubles([])
-      })
-    return () => {
-      live = false
-    }
-  }, [newProspectModalOpen, authUser?.id])
-  const newProspectTwin = newProspectModalOpen
-    ? companyDouble(newCompany.company || newPerson.name, newPerson.cell || newCompany.officePhone, { kind: newKind, prospects: prospectDoubles, bench: benchCompanies, customers: customerDoubles }, Date.now(), newCompany.mapsUrl)
-    : null
-
   /** Open it on a prospect double (v2.5579): the form closes and the card opens on its own lane. */
   function openDoubleProspect(twin: Extract<CompanyDouble, { door: 'open_prospect' }>) {
     const lane = doubleLaneParams(twin)
@@ -661,47 +369,6 @@ export default function Prospects() {
       next.delete('trade')
       return next
     })
-  }
-
-  // The Jobs to GC lane (v2.5561): the Project Board's counts and the customers, both fail-soft.
-  useEffect(() => {
-    if (kind !== 'gc_lead' && newKind !== 'gc_lead') return
-    if (!authUser?.id) return
-    let live = true
-    loadGcProjects()
-      .then((projects) => {
-        if (!live) return
-        setGcWork(gcWorkCounts(projects))
-        setGcBidding(gcBiddingLines(projects, todayYmdInAppTz()))
-      })
-      .catch(() => {
-        if (live) setGcWork(null)
-      })
-    loadCustomerDoubles()
-      .then((rows) => {
-        if (live) setCustomerDoubles(rows)
-      })
-      .catch(() => {
-        if (live) setCustomerDoubles([])
-      })
-    return () => {
-      live = false
-    }
-  }, [kind, newKind, authUser?.id])
-
-  async function mergeJobs(ids: string[]) {
-    if (ids.length === 0) return {}
-    try {
-      const jobs = await loadProspectJobs(ids)
-      setJobsByProspect((prev) => {
-        const next = { ...prev }
-        for (const id of ids) next[id] = jobs[id] ?? []
-        return next
-      })
-      return jobs
-    } catch {
-      return {}
-    }
   }
 
   const setTradeFilter = (trade: string | null) => {
@@ -780,114 +447,6 @@ export default function Prospects() {
     })
   }
 
-  async function loadFollowUpProspects() {
-    if (!authUser?.id) return
-    setFollowUpLoading(true)
-    // Only the newest load paints (v2.5578): a kind change mid-load starts another, and the first must not land last.
-    const load = latestLoad.current.start()
-    const [{ data: locks }, { data: callRows }] = await Promise.all([
-      // Only LIVE locks hide a prospect — a row older than the TTL is a closed
-      // tab or a forgotten row, not a colleague on the phone (callingLock.ts).
-      supabase
-        .from('prospect_calling_locks')
-        .select('prospect_id')
-        .neq('user_id', authUser.id)
-        .gte('locked_at', callingLockCutoffIso(Date.now())),
-      supabase.from('prospect_comments').select('prospect_id, interaction_type').in('interaction_type', [...CALL_INTERACTION_TYPES]),
-    ])
-    if (!latestLoad.current.isLatest(load)) return
-    const callList = (callRows ?? []) as { prospect_id: string; interaction_type: string }[]
-    const called = new Set(callList.map((r) => r.prospect_id))
-    setCalledProspectIds(called)
-    setAnsweredProspectIds(new Set(callList.filter((r) => r.interaction_type === 'answered').map((r) => r.prospect_id)))
-    setLaneCallRows(callList)
-    const lockedByOthers = (locks ?? []).map((r) => r.prospect_id)
-    let query = supabase.from('prospects').select(PROSPECT_COLUMNS).eq('kind', kind)
-    // The Subs lane's strip counts every exit too (v2.5807); the other lanes never load Not a fit.
-    if (kind !== 'sub') query = query.or('prospect_fit_status.is.null,prospect_fit_status.neq.not_a_fit')
-    if (lockedByOthers.length > 0) {
-      query = query.not('id', 'in', `(${lockedByOthers.join(',')})`)
-    }
-    const { data, error } = await query
-      .order('last_contact', { ascending: true, nullsFirst: true })
-      .order('created_at', { ascending: true })
-    if (!latestLoad.current.isLatest(load)) return
-    if (error) {
-      setFollowUpProspects([])
-      setFollowUpLoading(false)
-      return
-    }
-    const raw = withoutZzProspects((data ?? []) as Prospect[], hideZz)
-    let prospects = orderFollowUpProspects(
-      raw.filter((p) => p.prospect_fit_status !== 'not_a_fit' && p.prospect_fit_status !== 'cant_reach' && p.prospect_fit_status !== 'converted'),
-      called,
-      callingOrderModeRef.current,
-    )
-    if (kind === 'sub') {
-      // The Subs lane (v2.5560): the whole queue feeds the strip's counts; the deck shows one trade
-      // when the URL names it, and By need puts the biggest gap first.
-      setLaneQueueAll(prospects)
-      setLaneAllRows(raw)
-      const needsNow = benchNeeds(benchTrades ?? [], prospects)
-      const runNow = runFromSearch(`?${searchParams.toString()}`)
-      if (runNow) {
-        // A run (v2.5808): the ids fixed at the press, in the column's order; a card that landed or left is gone.
-        const byId = new Map(prospects.map((p) => [p.id, p]))
-        prospects = runNow.ids.map((id) => byId.get(id)).filter((p): p is Prospect => !!p)
-      } else {
-        prospects = subsForTrade(prospects, searchParams.get('trade'))
-        if (callingOrderModeRef.current === 'by_need') prospects = orderSubsByNeed(prospects, needsNow, called)
-        if (callingOrderModeRef.current === 'by_rank') {
-          const ranks = await loadLaneRanks()
-          if (!latestLoad.current.isLatest(load)) return
-          const trade = searchParams.get('trade')
-          const pins = trade ? pinsByTrade(ranks).get(tradeKey(trade)) : undefined
-          prospects = orderColumn(prospects, { records: subRecords({ calls: callList }), calledIds: called, ...(pins ? { pins } : {}) })
-        }
-      }
-    }
-    if (kind === 'gc_lead') {
-      // The Jobs to GC lane (v2.5561): each lead's jobs ride along, and Soonest bid orders on them.
-      const jobs = await mergeJobs(prospects.map((p) => p.id))
-      if (!latestLoad.current.isLatest(load)) return
-      if (callingOrderModeRef.current === 'soonest_bid') prospects = orderLeadsBySoonestBid(prospects, jobs, called)
-    }
-
-    const prospectId = searchParams.get('prospect_id')
-    let finalProspects = prospects
-    let idx = prospectId ? prospects.findIndex((p) => p.id === prospectId) : -1
-
-    if (prospectId && idx < 0) {
-      const { data: single } = await supabase
-        .from('prospects')
-        .select(PROSPECT_COLUMNS)
-        .eq('id', prospectId)
-        .maybeSingle()
-      if (!latestLoad.current.isLatest(load)) return
-      const otherKind = single ? (single as Prospect).kind : null
-      if (otherKind && otherKind !== kind) {
-        // A link from elsewhere (Calendar's callbacks, v2.5563) to a prospect of another kind: its own lane opens it,
-        // so the card's last press is that kind's.
-        setSearchParams((p) => {
-          const next = new URLSearchParams(p)
-          if (otherKind === 'customer') next.delete('kind')
-          else next.set('kind', urlKeyForKind(otherKind))
-          return next
-        }, { replace: true })
-        setFollowUpLoading(false)
-        return
-      }
-      if (single && !(hideZz && isZzTestProspect(single as Prospect))) {
-        finalProspects = [single as Prospect, ...prospects]
-        idx = 0
-      }
-    }
-
-    setFollowUpProspects(finalProspects)
-    setCurrentProspectIndex(idx >= 0 ? idx : 0)
-    setFollowUpLoading(false)
-  }
-
   async function loadComments(prospectId: string) {
     const { data, error } = await supabase
       .from('prospect_comments')
@@ -915,86 +474,6 @@ export default function Prospects() {
     setMyTimeTodaySeconds(sumTimerSeconds((data ?? []) as { timer_seconds: number }[]))
   }
 
-  async function loadProspectListProspects() {
-    if (!authUser?.id) return
-    setProspectListLoading(true)
-    const [{ data, error }, { data: callRows }] = await Promise.all([
-      supabase
-        .from('prospects')
-        .select(PROSPECT_COLUMNS)
-        .eq('kind', kind),
-      supabase
-        .from('prospect_comments')
-        .select('prospect_id, interaction_type, created_at')
-        .in('interaction_type', [...CALL_INTERACTION_TYPES])
-        .order('created_at', { ascending: false }),
-    ])
-    if (error) {
-      setProspectListProspects([])
-      setProspectListLoading(false)
-      return
-    }
-    // Rows arrive newest-first, so the first row per prospect is its latest call.
-    setProspectLastCallMap(lastCallByProspect((callRows ?? []) as { prospect_id: string; interaction_type: string; created_at: string | null }[]))
-    const callList = (callRows ?? []) as { prospect_id: string; interaction_type: string }[]
-    setAnsweredProspectIds(new Set(callList.filter((r) => r.interaction_type === 'answered').map((r) => r.prospect_id)))
-    setLaneCallRows(callList)
-    const rows = withoutZzProspects((data ?? []) as Prospect[], hideZz)
-    setProspectListProspects(rows)
-    setProspectListLoading(false)
-    if (kind === 'gc_lead') void mergeJobs(rows.map((p) => p.id))
-    if (kind === 'sub') void loadLaneExtras(rows.filter((p) => p.prospect_fit_status == null).map((p) => p.id))
-  }
-
-  /** The board's pins (v2.5809), the whole lane's: a few hundred rows at most. Fail-soft. */
-  async function loadLaneRanks(): Promise<RankRow[]> {
-    try {
-      const { data, error } = await supabase.from('prospect_trade_ranks').select('prospect_id, trade, rank_order')
-      if (error) return []
-      const rows = (data ?? []) as RankRow[]
-      setLaneRanks(rows)
-      return rows
-    } catch {
-      return []
-    }
-  }
-
-  /** A drop on the board (v2.5809): the dragged card pinned where it landed among the column's pins; the rows written dense. */
-  async function dropOnBoard(trade: string, draggedId: string, toIndex: number) {
-    if (!authUser?.id) return
-    const key = tradeKey(trade)
-    const was = lanePins.get(key)
-    const next = pinAfterDrop(pinnedIds(was), draggedId, toIndex)
-    await writePins(trade, next, was)
-  }
-
-  async function unpinOnBoard(trade: string, prospectId: string) {
-    const key = tradeKey(trade)
-    const was = lanePins.get(key)
-    await writePins(trade, unpin(pinnedIds(was), prospectId), was)
-  }
-
-  async function writePins(trade: string, next: string[], was: ReadonlyMap<string, number> | undefined) {
-    if (!authUser?.id) return
-    const { upserts, deletes } = rankWrites(trade, next, was)
-    const key = tradeKey(trade)
-    // Paint first, then write; a refusal reloads the truth.
-    setLaneRanks((prev) => [...prev.filter((r) => tradeKey(r.trade) !== key), ...upserts])
-    const problems: string[] = []
-    if (deletes.length > 0) {
-      const { error } = await supabase.from('prospect_trade_ranks').delete().eq('trade', trade).in('prospect_id', deletes)
-      if (error) problems.push(error.message)
-    }
-    if (upserts.length > 0) {
-      const { error } = await supabase.from('prospect_trade_ranks').upsert(upserts.map((r) => ({ ...r, set_by: authUser.id, set_at: new Date().toISOString() })), { onConflict: 'prospect_id,trade' })
-      if (error) problems.push(error.message)
-    }
-    if (problems.length > 0) {
-      showToast(`The pin did not save: ${problems[0]}`, 'error')
-      void loadLaneRanks()
-    }
-  }
-
   /** Call first · Normal · Later (v2.5809), on a board card or the deck's card. */
   async function savePriority(prospect: Prospect, value: 1 | null | 3) {
     if ((prospect.priority ?? null) === value) return
@@ -1009,72 +488,6 @@ export default function Prospects() {
     setLaneAllRows((prev) => prev.map(patch))
   }
 
-  /** The board's extra facts (v2.5808): a text or an email back on a sub's thread, and the upcoming callbacks. Both fail-soft. */
-  async function loadLaneExtras(ids: string[]) {
-    if (ids.length === 0) {
-      setInboundProspectIds(new Set())
-      setLaneCallbacks({})
-      return
-    }
-    try {
-      const { data: contacts } = await supabase.from('contacts').select('id, prospect_id').in('prospect_id', ids)
-      const contactRows = (contacts ?? []) as { id: string; prospect_id: string | null }[]
-      let inbound = new Set<string>()
-      if (contactRows.length > 0) {
-        const { data: lines } = await supabase.from('messages').select('contact_id').eq('direction', 'in').in('contact_id', contactRows.map((c) => c.id))
-        inbound = inboundProspects(contactRows, (lines ?? []) as { contact_id: string }[])
-      }
-      setInboundProspectIds(inbound)
-    } catch {
-      setInboundProspectIds(new Set())
-    }
-    void loadLaneRanks()
-    try {
-      const { data: cbs } = await supabase.from('prospect_callbacks').select('prospect_id, callback_date').gte('callback_date', new Date().toISOString()).in('prospect_id', ids).order('callback_date', { ascending: true })
-      setLaneCallbacks(firstCallbackWords((cbs ?? []) as { prospect_id: string; callback_date: string }[], new Date()))
-    } catch {
-      setLaneCallbacks({})
-    }
-  }
-
-  async function loadCopyTemplates() {
-    if (!authUser?.id) return
-    const allKeys = [...Object.values(APP_SETTINGS_KEYS), ...Object.values(APP_SUBJECT_SETTINGS_KEYS)]
-    const [defaultsRes, overridesRes] = await Promise.all([
-      supabase.from('app_settings').select('key, value_text').in('key', allKeys),
-      supabase.from('user_prospect_copy_templates').select('template_key, value_text, subject_text').eq('user_id', authUser.id),
-    ])
-    const texts = foldCopyTemplateRows(defaultsRes.data ?? [], overridesRes.data ?? [])
-    setCopyDefaults(texts.defaults)
-    setCopySubjectDefaults(texts.subjectDefaults)
-    setCopyOverrides(texts.overrides)
-    setCopySubjectOverrides(texts.subjectOverrides)
-  }
-
-  async function loadPersonPhone() {
-    if (!authUser?.id) return
-    // Prefer users.phone (set in Settings > My Profile); fall back to people.phone
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('phone')
-      .eq('id', authUser.id)
-      .maybeSingle()
-    const userPhone = (userRow as { phone: string | null } | null)?.phone
-    if (userPhone != null && userPhone.trim() !== '') {
-      setPersonPhone(userPhone.trim())
-      return
-    }
-    const { data: peopleData } = await supabase
-      .from('people')
-      .select('phone')
-      .is('archived_at', null)
-      .eq('master_user_id', authUser.id)
-      .not('phone', 'is', null)
-      .limit(1)
-    const first = (peopleData ?? [])[0] as { phone: string | null } | undefined
-    setPersonPhone(first?.phone ?? null)
-  }
-
   async function loadQuickNotes() {
     if (!authUser?.id) return
     const { data } = await supabase
@@ -1087,8 +500,6 @@ export default function Prospects() {
 
   useEffect(() => {
     if (authUser?.id) {
-      loadCopyTemplates()
-      loadPersonPhone()
       loadQuickNotes()
       supabase.from('users').select('name').eq('id', authUser.id).maybeSingle().then(({ data }) => {
         setAuthUserName((data as { name: string } | null)?.name ?? '')
@@ -1119,26 +530,53 @@ export default function Prospects() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, authUser?.id, kind])
 
-  // When on Prospect List with prospect_id in URL (e.g. from Quickfill Edit), select that prospect
-  useEffect(() => {
-    if (activeTab !== 'prospect-list') return
-    const prospectId = searchParams.get('prospect_id')
-    if (!prospectId || prospectListProspects.length === 0) return
-    const p = prospectListProspects.find((x) => x.id === prospectId)
-    if (p) {
-      setSelectedProspectForList(p)
-      const grouped = groupProspectsForList([p], new Set(Object.keys(prospectLastCallMap)), Date.now())
-      const sectionKey = LIST_SECTION_ORDER.find((k) => grouped[k].length > 0)
-      if (sectionKey && !LIST_SECTIONS_DEFAULT_OPEN.has(sectionKey)) {
-        setProspectListSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
-      }
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev)
-        next.delete('prospect_id')
-        return next
-      }, { replace: true })
-    }
-  }, [activeTab, searchParams, prospectListProspects])
+  // The Prospect List tab's own state. It is called here, not inside the tab, so the search and the open sections
+  // survive a visit to another tab.
+  const list = useProspectListTab({
+    active: activeTab === 'prospect-list',
+    userId: authUser?.id ?? null,
+    searchParams,
+    setSearchParams,
+    prospectListProspects,
+    prospectLastCallMap,
+    showDeck: () => setActiveTab('follow-up'),
+  })
+  const { prospectListSearchQuery, setProspectListSearchQuery } = list
+  // The Edit Prospect window: its boxes, its leave guard and its writes. It edits the deck's card, or a row from the list or the Board.
+  const editWin = useEditProspectWindow({
+    currentProspect,
+    followUpProspects,
+    currentProspectIndex,
+    saving,
+    setSaving,
+    setFollowUpProspects,
+    setProspectListProspects,
+    setCurrentProspectIndex,
+    setFollowUpTimerSeconds,
+    updateUrlProspectId,
+  })
+  const { editModalOpen, editingProspect, openEditModal, openEditModalForProspect } = editWin
+  // The New Prospect window: its boxes, its leave guard, the double's answer and its save.
+  const newWin = useNewProspectWindow({
+    kind,
+    newKind,
+    setNewKind,
+    newProspectModalOpen,
+    setNewProspectModalOpen,
+    saving,
+    setSaving,
+    userId: authUser?.id ?? null,
+    prospectDoubles,
+    benchCompanies,
+    customerDoubles,
+    getEffectiveMasterId,
+    setKindTab,
+    reloadLane: async () => {
+      await loadFollowUpProspects()
+      await loadProspectListProspects()
+    },
+  })
+  const { openNewProspect, openAddSub } = newWin
 
   // The Convert tab's engine. It is called here, not inside the tab, so the picked prospect and the typed cards
   // survive a visit to another tab.
@@ -1155,8 +593,21 @@ export default function Prospects() {
     },
   })
 
-  const currentProspect = followUpProspects[currentProspectIndex] ?? null
-  const currentProspectId = currentProspect?.id ?? null
+  // The advisory calling lock: taken on intent (a dial, the composer, an outcome, a callback), never on view.
+  const { lockHeldBy, takeCallingLock } = useCallingLock({ onDeck: topTab === 'customers' && activeTab === 'follow-up', currentProspectId, userId: authUser?.id ?? null, authRole })
+  // What the run has done so far: its notes, its receipt flag, the callback a missed call set, the text press.
+  const { runOutcomes, runDone, setRunDone, runCallbackAt, setRunCallbackAt, runTextState, noteRunOutcome, sendRunText } = useCallRun({
+    run,
+    userId: authUser?.id ?? null,
+    authUserName,
+    projectName: plansPick?.name ?? null,
+    currentProspectId,
+    loadComments,
+  })
+  // The Customers lane's three email templates: their words, the presses, the two windows' state.
+  const copy = useProspectCopyTemplates({ userId: authUser?.id ?? null, userEmail: authUser?.email, authUserName, currentProspect, comments })
+  // A lead's jobs and the Jobs box's writes. The loaders above call `mergeJobs`; it is theirs by the time they run.
+  const { jobsByProspect, mergeJobs, addJobFor, editJobFor, changeJob, markJobLost, removeJob } = useProspectJobs({ userId: authUser?.id ?? null, currentProspectId })
   useEffect(() => {
     setTextAskOpen(false)
   }, [currentProspectId])
@@ -1188,104 +639,6 @@ export default function Prospects() {
     setFollowUpNotes(currentProspect?.notes ?? '')
   }
 
-  function getResolvedCopyText(key: CopyTemplateKey): string {
-    return resolveCopyText(copyOverrides[key], copyDefaults[key])
-  }
-
-  function getResolvedCopySubject(key: CopyTemplateKey): string {
-    return resolveCopyText(copySubjectOverrides[key], copySubjectDefaults[key])
-  }
-
-  async function handleCopyTemplate(key: CopyTemplateKey) {
-    if (!authUser || !currentProspect) return
-    const text = getResolvedCopyText(key)
-    if (!text.trim()) {
-      showToast('No text to copy. Edit the template first.', 'warning')
-      return
-    }
-    const blankFields = getBlankPlaceholderFields(
-      text,
-      authUserName ?? '',
-      authUser.email ?? '',
-      currentProspect,
-      personPhone,
-      key,
-      comments
-    )
-    if (blankFields.length > 0) {
-      setCopyBlankFieldsList(blankFields)
-      setCopyBlankFieldsModalOpen(true)
-      return
-    }
-    const userInfo = { name: (authUserName || authUser.email) ?? '', email: authUser.email ?? '' }
-    const substituted = substituteCopyPlaceholders(text, userInfo, currentProspect, personPhone, key, comments)
-    try {
-      await navigator.clipboard.writeText(substituted)
-      showToast('Copied to clipboard', 'success')
-    } catch {
-      showToast('Failed to copy to clipboard', 'error')
-    }
-  }
-
-  async function handleOpenMail(key: CopyTemplateKey) {
-    if (!authUser || !currentProspect) return
-    const body = getResolvedCopyText(key)
-    const subject = getResolvedCopySubject(key)
-    const blankFields = getBlankFieldsForMail(
-      body,
-      subject,
-      authUserName ?? '',
-      authUser.email ?? '',
-      currentProspect,
-      personPhone,
-      key,
-      comments
-    )
-    if (blankFields.length > 0) {
-      setCopyBlankFieldsList(blankFields)
-      setCopyBlankFieldsModalOpen(true)
-      return
-    }
-    const userInfo = { name: (authUserName || authUser.email) ?? '', email: authUser.email ?? '' }
-    const substitutedBody = substituteCopyPlaceholders(body, userInfo, currentProspect, personPhone, key, comments)
-    const substitutedSubject = substituteCopyPlaceholders(subject, userInfo, currentProspect, personPhone, key, comments)
-    const to = encodeURIComponent(currentProspect.email!.trim())
-    const subjectEnc = encodeURIComponent(substitutedSubject)
-    const bodyEnc = encodeURIComponent(substitutedBody)
-    const mailtoUrl = `mailto:${to}?subject=${subjectEnc}&body=${bodyEnc}`
-    window.location.href = mailtoUrl
-    await supabase.from('prospect_email_sent').upsert(
-      { prospect_id: currentProspect.id, user_id: authUser.id, template_key: key },
-      { onConflict: 'prospect_id,user_id,template_key' }
-    )
-    setEmailSentTemplateKeys((prev) => new Set([...prev, key]))
-  }
-
-  function openEditCopyModal(key: CopyTemplateKey) {
-    setEditingCopyTemplateKey(key)
-    setEditingCopyText(getResolvedCopyText(key))
-    setEditingCopySubject(getResolvedCopySubject(key))
-  }
-
-  async function saveCopyTemplate(e: React.FormEvent) {
-    e.preventDefault()
-    if (!authUser?.id || !editingCopyTemplateKey) return
-    setCopyTemplateSaving(true)
-    const { error } = await supabase.from('user_prospect_copy_templates').upsert(
-      { user_id: authUser.id, template_key: editingCopyTemplateKey, value_text: editingCopyText, subject_text: editingCopySubject || null },
-      { onConflict: 'user_id,template_key' }
-    )
-    setCopyTemplateSaving(false)
-    if (error) {
-      showToast(error.message, 'error')
-      return
-    }
-    setCopyOverrides((prev) => ({ ...prev, [editingCopyTemplateKey]: editingCopyText }))
-    setCopySubjectOverrides((prev) => ({ ...prev, [editingCopyTemplateKey]: editingCopySubject || null }))
-    setEditingCopyTemplateKey(null)
-    showToast('Template saved', 'success')
-  }
-
   // The caller's own fresh plain note on the current prospect — Didn't Answer /
   // Answered will retag it into the call (see callLogState.ts), and the
   // composer says so while that holds.
@@ -1293,14 +646,6 @@ export default function Prospects() {
     authUser?.id && currentProspect
       ? findRetaggableNote(comments.filter((c) => c.prospect_id === currentProspect.id), authUser.id, Date.now())
       : null
-
-  useEffect(() => {
-    const prospectId = searchParams.get('prospect_id')
-    if (prospectId && followUpProspects.length > 0) {
-      const idx = followUpProspects.findIndex((p) => p.id === prospectId)
-      if (idx >= 0) setCurrentProspectIndex(idx)
-    }
-  }, [searchParams.get('prospect_id'), followUpProspects])
 
   useEffect(() => {
     if (currentProspect?.id) {
@@ -1311,25 +656,6 @@ export default function Prospects() {
       setComments([])
     }
   }, [currentProspect?.id])
-
-  async function loadEmailSentTemplateKeys(prospectId: string) {
-    if (!authUser?.id) return
-    const { data } = await supabase
-      .from('prospect_email_sent')
-      .select('template_key')
-      .eq('prospect_id', prospectId)
-      .eq('user_id', authUser.id)
-    const keys = new Set((data ?? []).map((r) => r.template_key))
-    setEmailSentTemplateKeys(keys)
-  }
-
-  useEffect(() => {
-    if (currentProspect?.id && authUser?.id) {
-      loadEmailSentTemplateKeys(currentProspect.id)
-    } else {
-      setEmailSentTemplateKeys(new Set())
-    }
-  }, [currentProspect?.id, authUser?.id])
 
   async function loadProspectLedgerSeconds(prospectId: string) {
     if (!authUser?.id) return
@@ -1348,23 +674,6 @@ export default function Prospects() {
       setProspectLedgerSeconds(0)
     }
   }, [currentProspect?.id, authUser?.id])
-
-  async function loadProspectLedgerSecondsMap() {
-    if (!authUser?.id) return
-    const { data } = await (supabase as any)
-      .from('prospect_timer_events')
-      .select('prospect_id, timer_seconds')
-      .eq('user_id', authUser.id)
-    setProspectLedgerSecondsMap(sumTimerSecondsByProspect((data ?? []) as Array<{ prospect_id: string | null; timer_seconds: number }>))
-  }
-
-  useEffect(() => {
-    if (activeTab === 'prospect-list' && authUser?.id) {
-      loadProspectLedgerSecondsMap()
-    } else {
-      setProspectLedgerSecondsMap({})
-    }
-  }, [activeTab, authUser?.id])
 
   const loadScheduledCallback = useCallback(async () => {
     if (!currentProspect?.id || !authUser?.id) {
@@ -1392,66 +701,6 @@ export default function Prospects() {
   useEffect(() => {
     loadScheduledCallback()
   }, [loadScheduledCallback])
-
-  // Calling lock — RELEASE only. Viewing a prospect writes nothing (v2.2850,
-  // journey-map #14(b) / J34-F5): the row is taken by `takeCallingLock` on
-  // the first sign of intent. On prospect change / tab leave, delete the row
-  // only if THIS tab took it.
-  useEffect(() => {
-    if (topTab !== 'customers' || activeTab !== 'follow-up' || !currentProspect?.id || !authUser?.id) return
-    const prospectId = currentProspect.id
-    const userId = authUser.id
-    return () => {
-      lockAttemptForRef.current = null
-      setLockHeldBy((prev) => (prev?.prospectId === prospectId ? null : prev))
-      if (lockTakenForRef.current !== prospectId) return
-      lockTakenForRef.current = null
-      void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', userId)
-    }
-  }, [topTab, activeTab, currentProspect?.id, authUser?.id])
-
-  /**
-   * Take the advisory calling lock on the displayed prospect because the
-   * caller showed intent (`trigger`). Once per prospect per tab. Never steals:
-   * a colleague's lock younger than the TTL leaves the row alone and names
-   * them on the card; a stale one (closed tab) is taken over.
-   */
-  const takeCallingLock = useCallback(
-    (trigger: CallingLockTrigger) => {
-      if (!currentProspect?.id || !authUser?.id) return
-      const prospectId = currentProspect.id
-      const me = authUser.id
-      if (lockAttemptForRef.current === prospectId) return
-      lockAttemptForRef.current = prospectId
-      void (async () => {
-        try {
-          const { data } = await supabase
-            .from('prospect_calling_locks')
-            .select('prospect_id, user_id, locked_at')
-            .eq('prospect_id', prospectId)
-            .maybeSingle()
-          const existing = (data ?? null) as CallingLockRow | null
-          const decision = callingLockDecision({ existing, now: Date.now(), me })
-          if (decision === 'held-by-other' && existing) {
-            const { data: holder } = await supabase.from('users').select('name').eq('id', existing.user_id).maybeSingle()
-            setLockHeldBy({ prospectId, name: (holder as { name?: string | null } | null)?.name ?? null })
-            return
-          }
-          const { error } = await supabase
-            .from('prospect_calling_locks')
-            .upsert({ prospect_id: prospectId, user_id: me, locked_at: new Date().toISOString() }, { onConflict: 'prospect_id' })
-          if (error) throw error
-          lockTakenForRef.current = prospectId
-          setLockHeldBy((prev) => (prev?.prospectId === prospectId ? null : prev))
-          recordNavClick(me, authRole, 'prospect_lock_taken', `#${trigger}${decision === 'stale-take' ? '-stale' : ''}`)
-        } catch {
-          // Advisory lock — the call goes on without it; allow a later retry.
-          lockAttemptForRef.current = null
-        }
-      })()
-    },
-    [currentProspect?.id, authUser?.id, authRole],
-  )
 
   // Follow Up timer: counts up while on tab, resets when user leaves and comes back
   useEffect(() => {
@@ -1488,255 +737,6 @@ export default function Prospects() {
     const stored = localStorage.getItem(DIDNT_ANSWER_MOVE_NEXT_KEY(authUser.id))
     setDidntAnswerMoveNext(stored === 'true')
   }, [authUser?.id])
-
-  // Load the calling-order preference; reload the queue if it isn't the default
-  // (the initial load already ran with 'coldest' via the ref).
-  useEffect(() => {
-    if (!authUser?.id) return
-    let stored: string | null = null
-    try {
-      stored = localStorage.getItem(`${CALLING_ORDER_STORAGE_KEY}_${authUser.id}`)
-    } catch {
-      /* private mode */
-    }
-    const mode = readCallingOrderMode(stored)
-    if (mode !== callingOrderModeRef.current) {
-      callingOrderModeRef.current = mode
-      setCallingOrderMode(mode)
-      void loadFollowUpProspects()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authUser?.id])
-
-  function switchCallingOrder(mode: CallingOrderMode) {
-    if (mode === callingOrderModeRef.current) return
-    callingOrderModeRef.current = mode
-    setCallingOrderMode(mode)
-    setShowCallingOrder(false)
-    if (authUser?.id) {
-      try {
-        localStorage.setItem(`${CALLING_ORDER_STORAGE_KEY}_${authUser.id}`, mode)
-      } catch {
-        /* private mode */
-      }
-    }
-    // Re-runs the query with the new order; the URL-synced prospect_id keeps
-    // the current prospect selected across the reshuffle.
-    void loadFollowUpProspects()
-  }
-
-  function renderCallingOrderToggle() {
-    return (
-      <div role="group" aria-label="Calling order" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
-        {(
-          [
-            ['coldest', 'Coldest', 'Longest since any contact first (the original order)'],
-            ['never_called_first', 'Never called', "Prospects with no Didn't Answer / Answered on record lead, oldest entry first; the cold backlog follows"],
-            ...(kind === 'sub' ? ([['by_need', 'By need', BY_NEED_NOTE], ['by_rank', 'By rank', BY_RANK_NOTE]] as const) : []),
-            ...(kind === 'gc_lead' ? ([['soonest_bid', 'Soonest bid', SOONEST_BID_NOTE]] as const) : []),
-          ] as readonly (readonly [CallingOrderMode, string, string])[]
-        ).map(([mode, label, hint]) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => switchCallingOrder(mode)}
-            aria-pressed={callingOrderMode === mode}
-            title={hint}
-            style={{
-              font: 'inherit',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              padding: '0.25rem 0.55rem',
-              border: 'none',
-              background: callingOrderMode === mode ? '#2563eb' : 'var(--surface)',
-              color: callingOrderMode === mode ? '#fff' : 'var(--text-700)',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-    )
-  }
-
-  function renderQueueRows(limit: number, collapseOnJump: boolean) {
-    const start = queueWindowStart(currentProspectIndex, followUpProspects.length, limit)
-    const nowMs = Date.now()
-    return followUpProspects.slice(start, start + limit).map((p, i) => {
-      const absIdx = start + i
-      const isCurrent = absIdx === currentProspectIndex
-      return (
-        <button
-          key={p.id}
-          type="button"
-          onClick={() => {
-            setCurrentProspectIndex(absIdx)
-            setFollowUpTimerSeconds(0)
-            updateUrlProspectId(p.id)
-            if (collapseOnJump) setShowCallingOrder(false)
-          }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.55rem',
-            width: '100%',
-            padding: '0.45rem 0.7rem',
-            border: 'none',
-            borderBottom: '1px solid var(--border)',
-            background: isCurrent ? 'var(--bg-blue-tint)' : 'var(--surface)',
-            font: 'inherit',
-            fontSize: '0.8125rem',
-            textAlign: 'left',
-            cursor: 'pointer',
-          }}
-        >
-          <span style={{ width: '1.8rem', textAlign: 'right', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{absIdx + 1}</span>
-          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: isCurrent ? 600 : 400 }}>
-            {p.company_name?.trim() || p.contact_name?.trim() || '(no name)'}
-          </span>
-          {!calledProspectIds.has(p.id) ? (
-            <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-green-700)', background: 'var(--bg-green-tint)', borderRadius: 999, padding: '0.1rem 0.5rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              never called
-            </span>
-          ) : null}
-          {(() => {
-            // The age words carry their state (punch list #184 sweep B): PROSPECT_CALL_AGE, amber at a week, red at a month. The order is the mode's.
-            const age = queueAge(p, calledProspectIds, nowMs)
-            return (
-              <span data-queue-age={age.state} style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', flexShrink: 0, ...ageChipStyle(age.state) }}>
-                {age.label}
-              </span>
-            )
-          })()}
-          {isCurrent ? <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', flexShrink: 0 }}>← you</span> : null}
-        </button>
-      )
-    })
-  }
-
-  function updateUrlProspectId(id: string | null) {
-    setSearchParams((p) => {
-      const next = new URLSearchParams(p)
-      next.set('tab', 'follow-up')
-      if (id) next.set('prospect_id', id)
-      else next.delete('prospect_id')
-      return next
-    })
-  }
-
-  async function handleWarmthDelta(delta: number) {
-    if (!currentProspect || saving) return
-    setSaving(true)
-    const newVal = (currentProspect.warmth_count ?? 0) + delta
-    const { error } = await supabase.from('prospects').update({ warmth_count: newVal }).eq('id', currentProspect.id)
-    if (!error) {
-      setFollowUpProspects((prev) =>
-        prev.map((p) => (p.id === currentProspect.id ? { ...p, warmth_count: newVal } : p))
-      )
-    }
-    setSaving(false)
-  }
-
-  async function handleWarmthReset() {
-    if (!currentProspect || saving) return
-    setSaving(true)
-    const { error } = await supabase.from('prospects').update({ warmth_count: 0 }).eq('id', currentProspect.id)
-    if (!error) {
-      setFollowUpProspects((prev) =>
-        prev.map((p) => (p.id === currentProspect.id ? { ...p, warmth_count: 0 } : p))
-      )
-    }
-    setSaving(false)
-  }
-
-  function openEditModal() {
-    if (!currentProspect) return
-    setEditingProspect(null)
-    const blocks = blocksFromRow(currentProspect)
-    setEditPerson(blocks.person)
-    setEditCompany(blocks.company)
-    setEditKindFields(currentProspect)
-    setEditOpenedWith(editSnapshotOf(currentProspect))
-    setEditModalOpen(true)
-  }
-
-  function setEditKindFields(p: Prospect) {
-    setEditSource(p.source ?? '')
-    setEditTrades(tradesText(p.trades))
-    setEditMaxMiles(p.max_miles == null ? '' : String(p.max_miles))
-    setEditRole(p.company_role ?? '')
-  }
-
-  function openEditModalForProspect(p: Prospect) {
-    setEditingProspect(p)
-    const blocks = blocksFromRow(p)
-    setEditPerson(blocks.person)
-    setEditCompany(blocks.company)
-    setEditKindFields(p)
-    setEditOpenedWith(editSnapshotOf(p))
-    setEditModalOpen(true)
-  }
-
-  async function handleDeleteProspect() {
-    const prospectToEdit = editingProspect ?? currentProspect
-    if (!prospectToEdit || saving) return
-    if (
-      !(await confirmDialog({
-        message: `Delete prospect "${prospectToEdit.company_name || 'Unknown'}"? This cannot be undone.`,
-        confirmLabel: 'Delete',
-        danger: true,
-      }))
-    )
-      return
-    setSaving(true)
-    const { error } = await supabase.from('prospects').delete().eq('id', prospectToEdit.id)
-    if (!error) {
-      setFollowUpProspects((prev) => prev.filter((p) => p.id !== prospectToEdit.id))
-      setProspectListProspects((prev) => prev.filter((p) => p.id !== prospectToEdit.id))
-      if (currentProspect?.id === prospectToEdit.id) {
-        const left = queueAfterRemoval(followUpProspects, currentProspectIndex, prospectToEdit.id)
-        setCurrentProspectIndex(left.index)
-        setFollowUpTimerSeconds(0)
-        updateUrlProspectId(left.nextId)
-      }
-      setEditModalOpen(false)
-      setEditingProspect(null)
-    }
-    setSaving(false)
-  }
-
-  async function saveEdit() {
-    const prospectToEdit = editingProspect ?? currentProspect
-    if (!prospectToEdit || saving) return
-    setSaving(true)
-    const held = blocksProblem(editPerson, editCompany)
-    if (held) {
-      showToast(held, 'error')
-      setSaving(false)
-      return
-    }
-    const updated = {
-      ...rowFromBlocks(editPerson, editCompany),
-      ...kindFieldsPayload(prospectToEdit.kind, { source: editSource, trades: editTrades, maxMiles: editMaxMiles, role: editRole }),
-    }
-    const { error } = await supabase
-      .from('prospects')
-      .update(updated)
-      .eq('id', prospectToEdit.id)
-    if (!error) {
-      setFollowUpProspects((prev) =>
-        prev.map((p) => (p.id === prospectToEdit.id ? { ...p, ...updated } : p))
-      )
-      setProspectListProspects((prev) =>
-        prev.map((p) => (p.id === prospectToEdit.id ? { ...p, ...updated } : p))
-      )
-      setEditModalOpen(false)
-      setEditingProspect(null)
-    }
-    setSaving(false)
-  }
 
   function openCallbackModal() {
     takeCallingLock('callback')
@@ -2009,54 +1009,6 @@ export default function Prospects() {
     })
   }
 
-  /** + Add a job on a lead's card (v2.5561): the box shows a refusal's words, so this throws. */
-  async function addJobFor(prospectId: string, job: NewProspectJob) {
-    if (!authUser?.id) throw new Error('Sign in first.')
-    const made = await addProspectJob(prospectId, job, authUser.id)
-    setJobsByProspect((prev) => ({ ...prev, [prospectId]: [...(prev[prospectId] ?? []), made] }))
-  }
-
-  /** Edit in place (v2.5580): the row's changes saved, the box re-sorts on the new bid day. */
-  async function editJobFor(job: ProspectJob, changes: NewProspectJob) {
-    const saved = await updateProspectJob(job.id, changes)
-    setJobsByProspect((prev) => ({ ...prev, [job.prospect_id]: (prev[job.prospect_id] ?? []).map((j) => (j.id === job.id ? saved : j)) }))
-  }
-
-  async function changeJob(job: ProspectJob, status: 'open' | 'dropped', wonBy: string | null = null) {
-    if (!currentProspect) return
-    const pid = currentProspect.id
-    try {
-      await setProspectJobStatus(job.id, status, wonBy)
-      setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).map((j) => (j.id === job.id ? { ...j, status, won_by: wonBy } : j)) }))
-    } catch (err) {
-      showToast(formatErrorMessage(err, 'That did not save.'), 'error')
-    }
-  }
-
-  async function markJobLost(job: ProspectJob) {
-    if (!currentProspect) return
-    const who = await promptDialog({ title: 'Who got it?', message: `${job.name}: the builder that won, if you know.`, placeholder: 'Another builder', confirmLabel: 'Mark lost' })
-    if (who === null) return
-    const pid = currentProspect.id
-    try {
-      await setProspectJobStatus(job.id, 'lost', who.trim() || null)
-      setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).map((j) => (j.id === job.id ? { ...j, status: 'lost', won_by: who.trim() || null } : j)) }))
-    } catch (err) {
-      showToast(formatErrorMessage(err, 'That did not save.'), 'error')
-    }
-  }
-
-  async function removeJob(job: ProspectJob) {
-    if (!currentProspect) return
-    const pid = currentProspect.id
-    try {
-      await deleteProspectJob(job.id)
-      setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).filter((j) => j.id !== job.id) }))
-    } catch (err) {
-      showToast(formatErrorMessage(err, 'That did not save.'), 'error')
-    }
-  }
-
   async function handleSendBack(p: Prospect) {
     if (saving) return
     setSaving(true)
@@ -2132,70 +1084,6 @@ export default function Prospects() {
       if (delErr) showToast(`Logged the call, but the note it replaced could not be removed: ${delErr.message}`, 'error')
     }
     return true
-  }
-
-  // The called-ids set (never-called chip + queue order) and the Prospect
-  // List's last-call map were only rebuilt on a full reload, so the chip
-  // outlived the call that should have cleared it.
-  function markCalledLocally(prospectId: string, type: CallInteractionType, nowIso: string) {
-    setCalledProspectIds((prev) => withCalledProspect(prev, prospectId))
-    setProspectLastCallMap((prev) => withLastCall<ProspectLastCall>(prev, prospectId, { interaction_type: type, created_at: nowIso }))
-  }
-
-  /** What the run did to a card (v2.5808), one note a card, the newest outcome standing. */
-  function noteRunOutcome(id: string, kindOf: RunOutcome['kind'], patch: Partial<RunOutcome> = {}) {
-    if (!run) return
-    setRunOutcomes((prev) => {
-      const was = prev.find((o) => o.id === id)
-      const next: RunOutcome = { ...(was ?? { id, kind: kindOf }), kind: kindOf, ...patch }
-      return [...prev.filter((o) => o.id !== id), next]
-    })
-  }
-
-  /**
-   * The one-press text after a missed call in a run (v2.5808): held by the texting rule until they said we may, sent
-   * through quo-send to the number on their Messages thread, and noted on the card. The first text to a sub nobody
-   * has written to starts their thread from the card's number (v2.6032: `runTextPlan` → `contact_for_prospect`).
-   */
-  async function sendRunText(prospect: Prospect) {
-    if (!run || !authUser?.id) return
-    const held = textRefusal(prospect)
-    if (held) {
-      showToast(held.words, 'info')
-      return
-    }
-    setRunTextState((st) => ({ ...st, [prospect.id]: 'sending' }))
-    const clear = () =>
-      setRunTextState((st) => {
-        const next = { ...st }
-        delete next[prospect.id]
-        return next
-      })
-    try {
-      let plan = runTextPlan(prospect, await loadProspectThread(prospect.id))
-      let started = false
-      if (plan.kind === 'start') {
-        plan = runTextPlan(prospect, await startProspectThread(prospect.id), true)
-        started = true
-      }
-      if (plan.kind !== 'send') {
-        showToast(plan.kind === 'hold' ? plan.words : TEXT_NO_CHANNEL, 'info')
-        clear()
-        return
-      }
-      const body = runTextWords({ caller: callerFirstName(authUserName), company: PORTAL_COMPANY.name, trade: run.trade, projectName: plansPick?.name ?? null })
-      const { data, error } = await supabase.functions.invoke('quo-send', { body: { contactId: plan.contactId, channelId: plan.channelId, body } })
-      const answer = (data ?? null) as { ok?: boolean; words?: string } | null
-      if (error || !answer?.ok) throw new Error(answer?.words ?? 'The text did not go.')
-      await supabase.from('prospect_comments').insert({ prospect_id: prospect.id, created_by: authUser.id, comment_text: runTextNote(body, started), interaction_type: 'user_comment' })
-      setRunTextState((st) => ({ ...st, [prospect.id]: 'sent' }))
-      noteRunOutcome(prospect.id, 'didnt_answer', { texted: true })
-      showToast(TEXT_SENT, 'success')
-      if (currentProspect?.id === prospect.id) await loadComments(prospect.id)
-    } catch (err) {
-      showToast(formatErrorMessage(err, 'The text did not go.'), 'error')
-      clear()
-    }
   }
 
   /** Pass on a board card (v2.5808): Not a fit, after one question, since the board has no undo of its own. */
@@ -2339,28 +1227,6 @@ export default function Prospects() {
     updateUrlProspectId(followUpProspects[nextIdx]?.id ?? null)
   }
 
-  function toggleProspectListSection(key: ListSectionKey) {
-    setProspectListSectionOpen((prev) => ({ ...prev, [key]: !(prev[key] ?? LIST_SECTIONS_DEFAULT_OPEN.has(key)) }))
-  }
-
-  function jumpToProspectListSection(key: ListSectionKey) {
-    setProspectListSectionOpen((prev) => ({ ...prev, [key]: true }))
-    requestAnimationFrame(() => {
-      document.getElementById(`plist-sec-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
-
-  function selectProspectForList(p: Prospect) {
-    setSelectedProspectForList(p)
-    setActiveTab('follow-up')
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      next.set('tab', 'follow-up')
-      next.set('prospect_id', p.id)
-      return next
-    })
-  }
-
   async function getEffectiveMasterId(): Promise<string | null> {
     if (!authUser?.id) return null
     // One company (v2.2972): every prospect is stamped with the company owner account.
@@ -2380,47 +1246,6 @@ export default function Prospects() {
     setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? { ...p, ok_to_text: value } : p)))
   }
 
-  async function saveNewProspect() {
-    if (!authUser?.id || saving) return
-    const held = blocksProblem(newPerson, newCompany)
-    if (held) {
-      setNewProspectError(held)
-      return
-    }
-    setNewProspectError(null)
-    setSaving(true)
-    const effectiveMasterId = await getEffectiveMasterId()
-    if (!effectiveMasterId) {
-      setNewProspectError('Unable to determine prospect owner.')
-      setSaving(false)
-      return
-    }
-    const payload = {
-      master_user_id: effectiveMasterId,
-      created_by: authUser.id,
-      warmth_count: 0,
-      ...rowFromBlocks(newPerson, newCompany),
-      kind: newKind,
-      ...kindFieldsPayload(newKind, { source: newSource, trades: newTrades, maxMiles: newMaxMiles, role: newRole }),
-      customer_id: newKind === 'gc_lead' && newCustomerLink ? newCustomerLink.id : null,
-    }
-    const { error } = await supabase.from('prospects').insert(payload)
-    setSaving(false)
-    if (error) {
-      setNewProspectError(error.message)
-      return
-    }
-    setNewProspectModalOpen(false)
-    resetNewProspectForm()
-    if (newKind !== kind) {
-      // The new row lives on another lane: go there, and its loaders run on the kind change.
-      setKindTab(newKind)
-      return
-    }
-    await loadFollowUpProspects()
-    await loadProspectListProspects()
-  }
-
 
   // ---------- The path onto the bench (v2.5807, punch list #153, PR 1) ----------
 
@@ -2428,8 +1253,6 @@ export default function Prospects() {
   const subsStrip = (rows: readonly Prospect[], calledIds: ReadonlySet<string>) => (
     <SubsPathStrip rows={rows} calledIds={calledIds} answeredIds={answeredProspectIds} quotedCompanyIds={benchQuoted} />
   )
-  /** Which of the Subs list's folds are open stays here, so a fold survives a visit to another tab. */
-  const toggleSubsSection = (key: string, fallback: boolean) => setSubsSectionOpen((prev) => ({ ...prev, [key]: !(prev[key] ?? fallback) }))
 
   const canAccessFollowUp = !!authUser && canAccessProspectPipeline(authRole, estimatorProspectsAccess)
 
@@ -2548,708 +1371,90 @@ export default function Prospects() {
       {topTab === 'research' && canResearch && authUser?.id && <ProspectsResearchTab authUserId={authUser.id} />}
 
       {topTab === 'customers' && activeTab === 'follow-up' && (
-        <>
-          {kind === 'sub' && canAccessFollowUp && laneAllRows.length > 0 && subsStrip(laneAllRows, calledProspectIds)}
-          {kind === 'sub' && canAccessFollowUp && stripReads(benchTrades) !== 'loading' && gcNeedsNow && (
-            <SubsNeedsPanel needs={gcNeedsNow} benchFailed={stripReads(benchTrades) === 'failed'} tradeFilter={tradeFilter} onTradeFilter={setTradeFilter} onAddSub={openAddSub} />
-          )}
-          {kind === 'gc_lead' && canAccessFollowUp && stripReads(gcWork) !== 'loading' && (
-            <GcWorkStrip work={gcWork ?? null} bidding={gcBidding} deckIds={followUpProspects.map((p) => p.id)} jobsByProspect={jobsByProspect} />
-          )}
-          {run && canAccessFollowUp && !followUpLoading && (
-            // The run's head (v2.5808): the trade, the project a set of plans is for, and where the caller stands in it.
-            <div data-run-head style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.75rem', flexWrap: 'wrap', background: 'var(--bg-blue-tint)', border: '1px solid #3b82f6', borderRadius: 10, padding: '0.5rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-              <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{runHeadWords(run, plansPick?.name ?? null, runPosition(run, currentProspect?.id ?? null).at, run.ids.length)}</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>The deck works these in order. Nothing reshuffles under you.</span>
-              <Link to={boardHref(plansFor)} style={{ marginLeft: 'auto', color: 'var(--text-link)', fontWeight: 600 }}>
-                {BACK_TO_BOARD}
-              </Link>
-            </div>
-          )}
-          {!canAccessFollowUp ? (
-            <p style={{ color: 'var(--text-muted)' }}>You do not have access to Follow Up.</p>
-          ) : followUpLoading ? (
-            <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
-          ) : run && (runDone || followUpProspects.length === 0) ? (
-            // The run's receipt (v2.5808): what it did, then back to the board.
-            <div data-run-receipt style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem 1.25rem', maxWidth: 520 }}>
-              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.0625rem' }}>{RUN_DONE_WORDS}</h3>
-              <ul style={{ margin: '0 0 0.75rem', paddingLeft: '1.25rem', color: 'var(--text-700)', fontSize: '0.9375rem' }}>
-                {runReceipt(runOutcomes, runCallbackAt, new Date()).map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-              <Link to={boardHref(plansFor)} style={{ display: 'inline-block', padding: '0.5rem 1rem', background: '#2563eb', color: 'white', borderRadius: 8, fontWeight: 600, textDecoration: 'none' }}>
-                {BACK_TO_BOARD}
-              </Link>
-            </div>
-          ) : followUpProspects.length === 0 ? (
-            (() => {
-              // The empty lane names the control that fills it (v2.5581): New Prospect, or All subs on a trade filter.
-              const words = emptyLaneWords(kind, kind === 'sub' ? tradeFilter : null)
-              return <EmptyState main={words.main} next={{ label: words.doorLabel, onPress: () => (words.door === 'all_subs' ? setTradeFilter(null) : setNewProspectModalOpen(true)) }} tail={words.tail} />
-            })()
-          ) : currentProspect && !cardOnLane(currentProspect, kind) ? (
-            // A card of another kind never wears this lane's press (v2.5578): the lane's own load is still coming.
-            <p style={{ color: 'var(--text-muted)' }}>{laneLoadingWords(kind)}</p>
-          ) : currentProspect ? (
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {/* Header card: call target + outcomes + utilities */}
-              {(() => {
-                const btnBase = {
-                  padding: '0.5rem 1rem',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  borderRadius: 8,
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s, opacity 0.15s',
-                } as const
-                const btnSecondary = { ...btnBase, background: 'var(--surface)', color: 'var(--text-700)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid var(--border)' }
-                const btnPrimary = { ...btnBase, background: '#2563eb', color: 'white', boxShadow: '0 1px 2px rgba(59,130,246,0.3)' }
-                const btnConverted = { ...btnBase, background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)', border: '1px solid #8b5cf6', boxShadow: '0 1px 2px rgba(139,92,246,0.2)' }
-                const btnDisabled = (s: object) => ({ ...s, opacity: 0.6, cursor: 'not-allowed' as const })
-                const btnAmber = { ...btnBase, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber-soft)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }
-                const btnAnswered = { ...btnBase, background: '#16a34a', color: 'white', boxShadow: '0 1px 2px rgba(22,163,74,0.3)' }
-                const linkBtn = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' } as const
-                return (
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.875rem 1rem', marginBottom: '1rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                    {/* Who you're calling */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-strong)' }}>{prospectTitle(currentProspect)}</div>
-                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
-                          {personLineParts(currentProspect).map((part, i) => (
-                            <Fragment key={part}>
-                              {i > 0 ? <span aria-hidden>·</span> : null}
-                              <span>{part}</span>
-                            </Fragment>
-                          ))}
-                          {(() => {
-                            // The texting fact (v2.5601): asked on the call, read by the texts' path. Since v2.5606 the chip is a press
-                            // that opens the three answers and saves the one pressed.
-                            const ok = okToTextOf(currentProspect.ok_to_text)
-                            const ask = textAskWords(ok)
-                            const tone = ask.tone === 'yes' ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' } : ask.tone === 'no' ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }
-                            if (textAskOpen) {
-                              return (
-                                <span role="group" aria-label="May we text?" style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>May we text?</span>
-                                  {OK_TO_TEXT_CHOICES.map((c) => (
-                                    <button
-                                      key={c.value}
-                                      type="button"
-                                      aria-pressed={ok === c.value}
-                                      onClick={() => void saveOkToText(currentProspect, c.value)}
-                                      style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 600, padding: '0 0.45rem', borderRadius: 999, border: '1px solid var(--border)', background: ok === c.value ? 'var(--bg-blue-200)' : 'var(--surface)', color: ok === c.value ? 'var(--text-blue-800)' : 'var(--text-700)', cursor: 'pointer' }}
-                                    >
-                                      {c.label}
-                                    </button>
-                                  ))}
-                                </span>
-                              )
-                            }
-                            return (
-                              <button
-                                type="button"
-                                data-ok-to-text={ok}
-                                onClick={() => setTextAskOpen(true)}
-                                title="May we text them? Press to answer."
-                                style={{ font: 'inherit', padding: '0 0.45rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, border: 'none', cursor: 'pointer', ...tone }}
-                              >
-                                {ask.words}
-                              </button>
-                            )
-                          })()}
-                          {currentProspect.email ? (
-                            <>
-                              <span aria-hidden>·</span>
-                              <a href={`mailto:${encodeURIComponent(currentProspect.email)}`} style={{ color: 'var(--text-link)' }}>{currentProspect.email}</a>
-                            </>
-                          ) : null}
-                          {currentProspect.links_to_website ? (
-                            <>
-                              <span aria-hidden>·</span>
-                              <a href={getWebsiteHref(currentProspect.links_to_website)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)' }}>
-                                {formatWebsiteDisplay(currentProspect.links_to_website)}
-                              </a>
-                            </>
-                          ) : null}
-                          {currentProspect.maps_url ? (
-                            <>
-                              <span aria-hidden>·</span>
-                              <a href={currentProspect.maps_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
-                                Maps ↗
-                              </a>
-                            </>
-                          ) : null}
-                          {currentProspect.kind === 'sub' && currentProspect.license ? (
-                            <>
-                              <span aria-hidden>·</span>
-                              <span>{currentProspect.license}</span>
-                            </>
-                          ) : null}
-                        </div>
-                        {(currentProspect.kind !== 'customer' || currentProspect.source) && (
-                          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.375rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.25rem' }}>
-                            {currentProspect.kind === 'sub' &&
-                              (currentProspect.trades ?? []).map((trade) => (
-                                <span key={trade} style={{ padding: '0 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, background: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' }}>
-                                  {trade}
-                                </span>
-                              ))}
-                            {currentProspect.kind === 'sub' && (currentProspect.trades ?? []).length === 0 && <span>no trade named yet</span>}
-                            {(() => {
-                              const facts = prospectKindFacts(currentProspect)
-                              if (facts.length === 0) return null
-                              const lead = currentProspect.kind === 'sub' ? '· ' : ''
-                              return <span>{lead}{facts.join(' · ')}</span>
-                            })()}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ flex: 1 }} />
-                      {dueChipWords(currentProspect.last_contact) && (
-                        <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 4, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}>
-                          {dueChipWords(currentProspect.last_contact)}
-                        </span>
-                      )}
-                      {!calledProspectIds.has(currentProspect.id) && (
-                        <span
-                          title="No call logged yet — only Didn't Answer / Answered count as calls; plain notes and emails don't"
-                          style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 4, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}
-                        >
-                          never called
-                        </span>
-                      )}
-                      {lockHeldBy?.prospectId === currentProspect.id && (
-                        <span
-                          title="A colleague started working this prospect in the last 30 minutes — you can still call, but you may be doubling up"
-                          style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 4, background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}
-                        >
-                          {lockHeldBy.name ?? 'Someone'} is calling this one
-                        </span>
-                      )}
-                      {(() => {
-                        // The cell first (v2.5601); the office line beside it when both are known.
-                        const nums = callNumbers(currentProspect)
-                        if (!nums.call) return <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>no phone number</span>
-                        return (
-                          <>
-                            <a
-                              href={telHrefFor(nums.call)}
-                              onClick={() => takeCallingLock('dial')}
-                              style={{ ...btnPrimary, textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
-                            >
-                              📞 {nums.call}
-                            </a>
-                            {nums.other && (
-                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                                {nums.other.label} {nums.other.number}
-                              </span>
-                            )}
-                            {currentProspect.also_reach && (
-                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>also {currentProspect.also_reach}</span>
-                            )}
-                          </>
-                        )
-                      })()}
-                      {kind === 'sub' && (
-                        <button
-                          type="button"
-                          onClick={() => setScriptOpen(true)}
-                          title="What to say when phoning a company new to us, your name already in it"
-                          style={{ ...btnSecondary, whiteSpace: 'nowrap' }}
-                        >
-                          {CALL_SCRIPT_BUTTON}
-                        </button>
-                      )}
-                    </div>
-                    {currentProspect.kind === 'gc_lead' && (
-                      <div style={{ marginTop: '0.75rem' }}>
-                        <ProspectJobsBox
-                          jobs={jobsByProspect[currentProspect.id] ?? []}
-                          todayYmd={todayYmdInAppTz()}
-                          busy={saving}
-                          onAdd={(job) => addJobFor(currentProspect.id, job)}
-                          onEdit={(job, changes) => editJobFor(job, changes)}
-                          onLost={(job) => void markJobLost(job)}
-                          onStatus={(job, status) => void changeJob(job, status)}
-                          onRemove={(job) => void removeJob(job)}
-                        />
-                      </div>
-                    )}
-                    {/* Outcome row */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>How did the call end?</span>
-                      <button type="button" onClick={handleDidntAnswer} disabled={saving} style={saving ? btnDisabled(btnAmber) : btnAmber}>
-                        Didn&apos;t Answer
-                      </button>
-                      <button type="button" onClick={handleAnswered} disabled={saving} style={saving ? btnDisabled(btnAnswered) : btnAnswered}>
-                        Answered
-                      </button>
-                      <button type="button" onClick={handleCantReach} disabled={saving} style={saving ? btnDisabled(btnSecondary) : btnSecondary}>
-                        Can't reach
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleNoLongerFit}
-                        disabled={saving}
-                        style={saving ? btnDisabled(btnSecondary) : btnSecondary}
-                        title={kindWords.notAFitTitle}
-                      >
-                        Not a fit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={kind === 'sub' ? () => openBenchModal() : kind === 'gc_lead' ? handleAskedUs : handleConverted}
-                        disabled={saving}
-                        style={saving ? btnDisabled(btnConverted) : btnConverted}
-                        title={kindWords.lastPressTitle}
-                      >
-                        {kindWords.lastPress}
-                      </button>
-                    </div>
-                    {run && runOutcomes.find((o) => o.id === currentProspect.id)?.kind === 'didnt_answer' && (
-                      // When one does not answer in a run (v2.5808): the callback set, the text offered where they said we may, the next card.
-                      <div data-run-ledger style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-                        <span style={{ fontWeight: 600, color: 'var(--text-amber-700)' }}>{runCallbackAt ? callbackWords(runCallbackAt, new Date()) : 'callback not set'}</span>
-                        <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
-                        {(() => {
-                          const held = textRefusal(currentProspect)
-                          const state = runTextState[currentProspect.id]
-                          if (state === 'sent') return <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{TEXT_SENT}</span>
-                          return (
-                            <button
-                              type="button"
-                              disabled={!!held || state === 'sending' || saving}
-                              title={held ? held.words : TEXT_THEM_TITLE}
-                              onClick={() => void sendRunText(currentProspect)}
-                              style={{ ...btnSecondary, padding: '0.25rem 0.6rem', fontSize: '0.8125rem', opacity: held ? 0.6 : 1, cursor: held ? 'not-allowed' : 'pointer' }}
-                            >
-                              {held ? TEXT_ASK_FIRST : state === 'sending' ? 'Sending…' : TEXT_THEM}
-                            </button>
-                          )
-                        })()}
-                        <button type="button" onClick={() => handleNextProspect()} style={{ ...btnPrimary, padding: '0.25rem 0.7rem', fontSize: '0.8125rem', marginLeft: 'auto' }}>
-                          {currentProspectIndex >= followUpProspects.length - 1 ? 'Finish the run →' : RUN_NEXT}
-                        </button>
-                      </div>
-                    )}
-                    {/* Utility row */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.625rem', fontSize: '0.8125rem' }}>
-                      <button type="button" onClick={openCallbackModal} disabled={saving} style={linkBtn}>Set callback</button>
-                      <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
-                      <button type="button" onClick={openEditModal} disabled={saving} style={linkBtn}>Edit prospect</button>
-                      <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
-                      {kind === 'sub' ? (
-                        // The office's priority (v2.5809) stands where warmth stood on Subs: Call first · Normal · Later.
-                        <span role="group" aria-label="Priority" style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
-                          {PRIORITY_CHOICES.map((c) => {
-                            const on = priorityWord(currentProspect.priority) === c.word
-                            return (
-                              <button
-                                key={c.word}
-                                type="button"
-                                aria-pressed={on}
-                                onClick={() => void savePriority(currentProspect, c.value)}
-                                title="The office's priority on the Subs board: Call first sits over who answers, Later at the foot"
-                                style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.05rem 0.5rem', borderRadius: 999, border: '1px solid var(--border)', background: on ? (c.value === 1 ? 'var(--bg-amber-100)' : 'var(--bg-blue-200)') : 'var(--surface)', color: on ? (c.value === 1 ? 'var(--text-amber-800)' : 'var(--text-blue-800)') : 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                              >
-                                {c.value === 1 ? '★ ' : ''}
-                                {c.word}
-                              </button>
-                            )
-                          })}
-                        </span>
-                      ) : (
-                        <span
-                          title="Warmth — goes up by one every Answered. Adjust it in Edit prospect."
-                          style={{ padding: '0.125rem 0.5rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, background: 'var(--bg-orange-100)', color: 'var(--text-orange-700)', whiteSpace: 'nowrap' }}
-                        >
-                          🔥 {currentProspect.warmth_count ?? 0}
-                        </span>
-                      )}
-                      {scheduledCallback && (
-                        <>
-                          <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
-                          <Link to="/calendar" style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
-                            Callback {formatDateTime(scheduledCallback.callback_date)}
-                            {scheduledCallback.note && ` (${scheduledCallback.note})`}
-                          </Link>
-                        </>
-                      )}
-                      <span className="followUpQueueMobileStrip" style={{ color: 'var(--text-muted)' }}>
-                        <span aria-hidden style={{ color: 'var(--text-faint)' }}>· </span>
-                        <strong style={{ color: 'var(--text-700)' }}>{currentProspectIndex + 1}</strong> of{' '}
-                        <strong style={{ color: 'var(--text-700)' }}>{followUpProspects.length}</strong>
-                        {' · '}
-                        <button
-                          type="button"
-                          onClick={() => setShowCallingOrder((v) => !v)}
-                          aria-expanded={showCallingOrder}
-                          style={{ ...linkBtn, textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}
-                        >
-                          {showCallingOrder ? 'hide order ▴' : 'show order ▾'}
-                        </button>
-                      </span>
-                      <div style={{ flex: 1 }} />
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>this call</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTimerHistoryModalOpen(true)
-                          }}
-                          style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem', color: 'var(--text-muted)', fontFamily: 'ui-monospace, monospace', background: 'none', border: '1px solid transparent', borderRadius: 4, cursor: 'pointer', padding: '0.125rem 0.25rem' }}
-                          title="Time on this prospect this session (resets when you leave and return). Click to view history."
-                        >
-                          {String(Math.floor(followUpTimerSeconds / 60)).padStart(2, '0')}:{String(followUpTimerSeconds % 60).padStart(2, '0')}
-                        </button>
-                      </div>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>my day</span>
-                        <span
-                          style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem', color: 'var(--text-green-600)', fontFamily: 'ui-monospace, monospace', fontWeight: 500, padding: '0.125rem 0.25rem' }}
-                          title="My time prospecting today"
-                        >
-                          {(myTimeTodaySeconds + followUpTimerSeconds) === 0 ? '—' : formatTimerSeconds(myTimeTodaySeconds + followUpTimerSeconds)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })()}
-
-              {/* Mobile queue peek — the desktop rail is always visible instead. */}
-              {showCallingOrder ? (
-                <div className="followUpQueueMobileStrip" style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', margin: '0 0 1.25rem' }}>
-                  <div style={{ padding: '0.4rem 0.7rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {callingOrderMode === 'never_called_first'
-                        ? 'Never called first, then coldest. Tap a row to jump to it.'
-                        : 'Coldest first. Tap a row to jump to it.'}
-                    </span>
-                    {!run && renderCallingOrderToggle()}
-                  </div>
-                  {renderQueueRows(15, true)}
-                </div>
-              ) : null}
-
-              {/* Comments first on mobile so visible without scrolling */}
-              <div className="followUpCommentsSection">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem' }}>Comments</h3>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Didn&apos;t Answer / Answered above log the call with your comment attached — Enter alone saves a note, not a call
-                  </span>
-                </div>
-                <textarea
-                  ref={setCommentInputRef}
-                  placeholder="Type what happened, then click Didn't Answer / Answered above to log the call. Enter saves it as a plain note."
-                  value={commentInputValue}
-                  onFocus={() => takeCallingLock('composer')}
-                  onChange={(e) => setCommentInputValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      handleAddComment()
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    minHeight: '4.5rem',
-                    padding: '0.5rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    marginBottom: '0.75rem',
-                    resize: 'vertical',
-                    boxSizing: 'border-box',
-                  }}
-                />
-                {retaggableNote && (
-                  <p style={{ margin: '-0.25rem 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>
-                    Saved as a note, not a call. If that was the call, click Didn&apos;t Answer or Answered above — it tags this note instead of adding a second one.
-                  </p>
-                )}
-                {/* Quick notes - below textarea, above comments list */}
-                {canAccessFollowUp && (
-                  <div style={{ marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                    {quickNotes.map((qn) => (
-                      <span key={qn.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickNoteClick(qn.label)}
-                          disabled={saving}
-                          style={{
-                            padding: '0.35rem 0.6rem',
-                            fontSize: '0.8125rem',
-                            background: 'var(--bg-muted)',
-                            border: '1px solid var(--border-strong)',
-                            borderRadius: 4,
-                            cursor: saving ? 'not-allowed' : 'pointer',
-                            fontWeight: 500,
-                            opacity: saving ? 0.6 : 1,
-                          }}
-                        >
-                          {qn.label}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteQuickNote(qn.id)}
-                          title="Remove quick note"
-                          style={{
-                            padding: '0.2rem 0.35rem',
-                            fontSize: '0.75rem',
-                            background: 'none',
-                            border: '1px solid var(--border)',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            color: 'var(--text-muted)',
-                            lineHeight: 1,
-                          }}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={handleAddQuickNote}
-                      style={{
-                        padding: '0.35rem 0.6rem',
-                        fontSize: '0.8125rem',
-                        background: 'var(--bg-muted)',
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        fontWeight: 500,
-                        color: 'var(--text-muted)',
-                      }}
-                    >
-                      + Add
-                    </button>
-                  </div>
-                )}
-                {comments.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No comments yet.</p>
-                ) : (
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {comments.map((c) => (
-                      <li
-                        key={c.id}
-                        style={{
-                          padding: '0.5rem 0.75rem',
-                          marginBottom: '0.5rem',
-                          background: 'var(--bg-subtle)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 4,
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            {formatDateTime(c.created_at)}
-                            {c.created_by_user && (
-                              <span style={{ marginLeft: '0.5rem' }}>
-                                · {(c.created_by_user.name || c.created_by_user.email || 'Unknown').trim()}
-                              </span>
-                            )}
-                          </span>
-                          {(c.interaction_type === 'answered' || c.interaction_type === 'didnt_answer') && (
-                            <span style={{ fontSize: '0.7rem', background: 'var(--bg-200)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>
-                              {formatInteractionType(c.interaction_type)}
-                            </span>
-                          )}
-                        </div>
-                        <div>{c.comment_text}</div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {/* Info block with notes */}
-              <div className="followUpInfoCard">
-                <div className="followUpInfoCardDetails">
-                  <div><strong>Last Contact:</strong> {formatDateTime(comments[0]?.created_at ?? currentProspect.last_contact) || '—'}</div>
-                  {comments[0]?.created_by_user && (
-                    <div>
-                      Last updated by: {(comments[0].created_by_user.name || comments[0].created_by_user.email || 'Unknown').trim()}
-                    </div>
-                  )}
-                  <div>Last Successful Contact: {formatDateTime(comments.find((c) => c.interaction_type === 'answered')?.created_at ?? null) || '—'}</div>
-                  <div><strong>Address:</strong> {currentProspect.address || '—'}</div>
-                  <div>
-                    <strong>Time on this prospect:</strong>{' '}
-                    <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: 'var(--text-green-600)' }}>
-                      {formatTimerSeconds(prospectLedgerSeconds + followUpTimerSeconds)}
-                    </span>
-                  </div>
-                </div>
-                <div className="followUpInfoCardNotes">
-                  <textarea
-                      value={followUpNotes}
-                      onChange={(e) => setFollowUpNotes(e.target.value)}
-                      placeholder="Add notes..."
-                      style={{ width: '100%', minHeight: 120, padding: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.9375rem', resize: 'vertical', fontFamily: 'inherit' }}
-                    />
-                    <div className="followUpInfoCardNotesActions">
-                    <button
-                      type="button"
-                      onClick={saveFollowUpNotes}
-                      disabled={followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '')}
-                      style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '') ? 'not-allowed' : 'pointer', opacity: followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '') ? 0.6 : 1 }}
-                    >
-                      {followUpNotesSaving ? 'Saving…' : 'Save'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelFollowUpNotes}
-                      disabled={followUpNotes === (currentProspect.notes ?? '')}
-                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: followUpNotes === (currentProspect.notes ?? '') ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                  {/* Copy templates: the customer deck's words (v2.5563); a sub's or an owner's email waits on the owner's own words. */}
-                  {kind === 'customer' && (
-                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Copy:</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                      {COPY_TEMPLATE_KEYS.map((key) => (
-                        <span key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyTemplate(key)}
-                            style={{
-                              padding: '0.35rem 0.6rem',
-                              fontSize: '0.8125rem',
-                              background: 'var(--bg-muted)',
-                              border: '1px solid var(--border-strong)',
-                              borderRadius: 4,
-                              cursor: 'pointer',
-                              fontWeight: 500,
-                            }}
-                          >
-                            {COPY_TEMPLATE_LABELS[key]}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenMail(key)}
-                            title={emailSentTemplateKeys.has(key) ? 'Email sent' : 'Open in email'}
-                            style={{
-                              padding: '0.35rem',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: emailSentTemplateKeys.has(key) ? 'var(--text-green-600)' : 'var(--text-muted)',
-                              fontSize: '0.875rem',
-                            }}
-                          >
-                            {emailSentTemplateKeys.has(key) ? <EnvelopeCheckIcon /> : <EnvelopeIcon />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openEditCopyModal(key)}
-                            title="Edit template"
-                            style={{
-                              padding: '0.35rem',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: 'var(--text-muted)',
-                              fontSize: '0.875rem',
-                            }}
-                          >
-                            <EditIcon />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  )}
-                </div>
-              </div>
-              {/* The advance bar: the last thing you hit after logging the outcome and notes. */}
-              <button
-                type="button"
-                onClick={() => handleNextProspect()}
-                disabled={followUpProspects.length <= 1 && !run}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  marginTop: '1rem',
-                  padding: '0.875rem',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  borderRadius: 10,
-                  border: 'none',
-                  background: '#2563eb',
-                  color: 'white',
-                  boxShadow: '0 1px 2px rgba(59,130,246,0.3)',
-                  cursor: followUpProspects.length <= 1 && !run ? 'not-allowed' : 'pointer',
-                  opacity: followUpProspects.length <= 1 && !run ? 0.6 : 1,
-                }}
-              >
-                {run ? (currentProspectIndex >= followUpProspects.length - 1 ? 'Finish the run →' : RUN_NEXT) : 'Next Prospect →'}
-              </button>
-            </div>
-            {/* Desktop queue rail (v2.2458): the v2.2301 peek, always visible. */}
-            <div className="followUpQueueRail">
-              <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                <div style={{ padding: '0.5rem 0.7rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>{run ? RUN_RAIL_TITLE : kind === 'sub' && tradeFilter ? tradeFilter : 'Queue'}</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                      {currentProspectIndex + 1} of {followUpProspects.length}
-                    </span>
-                  </div>
-                  {!run && renderCallingOrderToggle()}
-                </div>
-                {renderQueueRows(12, false)}
-              </div>
-            </div>
-            </div>
-          ) : null}
-          {canAccessFollowUp && (
-            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-700)' }}>
-                <input
-                  type="checkbox"
-                  checked={didntAnswerMoveNext}
-                  onChange={(e) => {
-                    const checked = e.target.checked
-                    setDidntAnswerMoveNext(checked)
-                    if (authUser?.id) {
-                      localStorage.setItem(DIDNT_ANSWER_MOVE_NEXT_KEY(authUser.id), String(checked))
-                    }
-                  }}
-                  style={{ width: 18, height: 18, cursor: 'pointer' }}
-                />
-                Automatically move to the next prospect when I click Didn&apos;t Answer
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  setMyTimeModalOpen(true)
-                }}
-                style={{
-                  padding: 0,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  color: 'var(--text-blue-500)',
-                  textDecoration: 'underline',
-                }}
-              >
-                my time
-              </button>
-            </div>
-          )}
-        </>
+        <ProspectsFollowUpTab
+          authUserId={authUser?.id ?? null}
+          kind={kind}
+          kindWords={kindWords}
+          canAccessFollowUp={canAccessFollowUp}
+          saving={saving}
+          followUpLoading={followUpLoading}
+          followUpProspects={followUpProspects}
+          currentProspect={currentProspect}
+          currentProspectIndex={currentProspectIndex}
+          calledProspectIds={calledProspectIds}
+          callingOrderMode={callingOrderMode}
+          showCallingOrder={showCallingOrder}
+          comments={comments}
+          commentInputValue={commentInputValue}
+          retaggableNote={retaggableNote}
+          quickNotes={quickNotes}
+          followUpNotes={followUpNotes}
+          followUpNotesSaving={followUpNotesSaving}
+          scheduledCallback={scheduledCallback}
+          followUpTimerSeconds={followUpTimerSeconds}
+          myTimeTodaySeconds={myTimeTodaySeconds}
+          prospectLedgerSeconds={prospectLedgerSeconds}
+          didntAnswerMoveNext={didntAnswerMoveNext}
+          lockHeldBy={lockHeldBy}
+          textAskOpen={textAskOpen}
+          copy={copy}
+          tradeFilter={tradeFilter}
+          plansFor={plansFor}
+          plansPick={plansPick}
+          laneAllRows={laneAllRows}
+          benchTrades={benchTrades}
+          gcNeedsNow={gcNeedsNow}
+          gcWork={gcWork}
+          gcBidding={gcBidding}
+          jobsByProspect={jobsByProspect}
+          run={run}
+          runOutcomes={runOutcomes}
+          runDone={runDone}
+          runCallbackAt={runCallbackAt}
+          runTextState={runTextState}
+          setShowCallingOrder={setShowCallingOrder}
+          setCurrentProspectIndex={setCurrentProspectIndex}
+          setFollowUpTimerSeconds={setFollowUpTimerSeconds}
+          setCommentInputValue={setCommentInputValue}
+          setCommentInputRef={setCommentInputRef}
+          setFollowUpNotes={setFollowUpNotes}
+          setDidntAnswerMoveNext={setDidntAnswerMoveNext}
+          setTextAskOpen={setTextAskOpen}
+          setScriptOpen={setScriptOpen}
+          setTimerHistoryModalOpen={setTimerHistoryModalOpen}
+          setMyTimeModalOpen={setMyTimeModalOpen}
+          setNewProspectModalOpen={setNewProspectModalOpen}
+          subsStrip={subsStrip}
+          setTradeFilter={setTradeFilter}
+          openAddSub={openAddSub}
+          switchCallingOrder={switchCallingOrder}
+          updateUrlProspectId={updateUrlProspectId}
+          takeCallingLock={takeCallingLock}
+          handleDidntAnswer={handleDidntAnswer}
+          handleAnswered={handleAnswered}
+          handleCantReach={handleCantReach}
+          handleNoLongerFit={handleNoLongerFit}
+          handleConverted={handleConverted}
+          handleAskedUs={handleAskedUs}
+          openBenchModal={openBenchModal}
+          handleNextProspect={handleNextProspect}
+          sendRunText={sendRunText}
+          savePriority={savePriority}
+          saveOkToText={saveOkToText}
+          openCallbackModal={openCallbackModal}
+          openEditModal={openEditModal}
+          handleAddComment={handleAddComment}
+          handleQuickNoteClick={handleQuickNoteClick}
+          handleAddQuickNote={handleAddQuickNote}
+          handleDeleteQuickNote={handleDeleteQuickNote}
+          saveFollowUpNotes={saveFollowUpNotes}
+          cancelFollowUpNotes={cancelFollowUpNotes}
+          addJobFor={addJobFor}
+          editJobFor={editJobFor}
+          changeJob={changeJob}
+          markJobLost={markJobLost}
+          removeJob={removeJob}
+        />
       )}
 
       {topTab === 'customers' && activeTab === 'board' && kind === 'sub' && (
@@ -3291,337 +1496,30 @@ export default function Prospects() {
       )}
 
       {topTab === 'customers' && activeTab === 'prospect-list' && (
-        <>
-          {!canAccessFollowUp ? (
-            <p style={{ color: 'var(--text-muted)' }}>You do not have access to Prospect List.</p>
-          ) : prospectListLoading ? (
-            <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
-          ) : (
-            <>
-              <div style={{ width: '100%', marginBottom: '0.25rem' }}>
-                <input
-                  type="search"
-                  placeholder="Search company, contact, phone, or email..."
-                  value={prospectListSearchQuery}
-                  onChange={(e) => setProspectListSearchQuery(e.target.value)}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  style={{ width: '100%', padding: '0.35rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
-                />
-              </div>
-              {(() => {
-            const filtered = filterProspectsForList(prospectListProspects, prospectListSearchQuery)
-            const calledIds = new Set(Object.keys(prospectLastCallMap))
-            const nowMs = Date.now()
-            // The Subs lane's list (v2.5807): the strip, For, and the lane by trade, not the recency buckets.
-            if (kind === 'sub') {
-              return (
-                <SubsLaneList
-                  filtered={filtered}
-                  calledIds={calledIds}
-                  nowMs={nowMs}
-                  answeredIds={answeredProspectIds}
-                  quotedCompanyIds={benchQuoted}
-                  benches={gcBench.benches}
-                  ownTrades={gcBench.ownTrades}
-                  plans={gcPlans}
-                  plansFor={plansFor}
-                  picked={plansPick}
-                  onPick={setPlansFor}
-                  sectionOpen={subsSectionOpen}
-                  onToggleSection={toggleSubsSection}
-                  selectedId={selectedProspectForList?.id ?? null}
-                  lastCalls={prospectLastCallMap}
-                  saving={saving}
-                  kindWords={kindWords}
-                  empty={prospectListEmpty()}
-                  onCall={selectProspectForList}
-                  onBench={openBenchModal}
-                  onEdit={openEditModalForProspect}
-                  onSendBack={handleSendBack}
-                  onDelete={handleDeleteFromList}
-                  onAddSub={openAddSub}
-                />
-              )
-            }
-            const sections = groupProspectsForList(filtered, calledIds, nowMs)
-            const isTerminal = (k: ListSectionKey) => k === 'converted' || k === 'cant_reach' || k === 'not_a_fit'
-            const chipKeys = LIST_SECTION_ORDER.filter((k) => k !== 'cant_reach' && k !== 'not_a_fit')
-            const chipColors: Partial<Record<ListSectionKey, { background: string; color: string }>> = {
-              never_called: { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' },
-              going_cold: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' },
-              converted: { background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' },
-            }
-            return filtered.length === 0 ? (
-              <EmptyState {...prospectListEmpty()} />
-            ) : (
-              <div>
-                <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', margin: '0.75rem 0 0.25rem' }}>
-                  {chipKeys.map((key) => {
-                    const n = sections[key].length
-                    const palette = chipColors[key]
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => jumpToProspectListSection(key)}
-                        disabled={n === 0}
-                        style={{
-                          padding: '0.2rem 0.6rem',
-                          borderRadius: 999,
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          border: '1px solid transparent',
-                          cursor: n === 0 ? 'default' : 'pointer',
-                          opacity: n === 0 ? 0.45 : 1,
-                          background: palette?.background ?? 'var(--bg-subtle)',
-                          color: palette?.color ?? 'var(--text-muted)',
-                          borderColor: palette ? 'transparent' : 'var(--border)',
-                        }}
-                      >
-                        {key === 'converted' ? kindWords.landedChip : LIST_SECTION_CHIP_LABELS[key]} {n}
-                      </button>
-                    )
-                  })}
-                </div>
-                {LIST_SECTION_ORDER.map((sectionKey) => {
-                  const prospects = sections[sectionKey]
-                  if (prospects.length === 0) return null
-                  const isOpen = prospectListSectionOpen[sectionKey] ?? LIST_SECTIONS_DEFAULT_OPEN.has(sectionKey)
-                  return (
-                    <div key={sectionKey} id={`plist-sec-${sectionKey}`}>
-                      <button
-                        type="button"
-                        onClick={() => toggleProspectListSection(sectionKey)}
-                        aria-expanded={isOpen}
-                        style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
-                      >
-                        <span aria-hidden>{isOpen ? '\u25BC' : '\u25B6'}</span>
-                        {`${sectionKey === 'converted' ? kindWords.landed : LIST_SECTION_LABELS[sectionKey]} (${prospects.length})`}
-                        {sectionKey === 'never_called' && (
-                          <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>\u2014 oldest first, matches the calling queue</span>
-                        )}
-                      </button>
-                      {isOpen && (
-                        <div className="prospectListWrapper">
-                          {/* Desktop: table */}
-                          <div className="prospectListDesktop">
-                            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-                              <colgroup>
-                                <col style={{ width: '17%' }} />
-                                <col style={{ width: '11%' }} />
-                                <col style={{ width: '11%' }} />
-                                <col style={{ width: '8%' }} />
-                                <col style={{ width: '14%' }} />
-                                <col style={{ width: '22%' }} />
-                                <col style={{ width: isTerminal(sectionKey) ? '17%' : '10%' }} />
-                              </colgroup>
-                              <thead style={{ background: 'var(--bg-subtle)' }}>
-                                <tr>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Company</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contact</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Phone</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Added</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Last touch</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Email / Links</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{isTerminal(sectionKey) ? 'Actions' : ''}</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {prospects.length === 0 ? (
-                                  <tr><td colSpan={7} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No prospects in this group</td></tr>
-                                ) : (
-                                  prospects.map((p) => (
-                                    <tr
-                                      key={p.id}
-                                      onClick={() => selectProspectForList(p)}
-                                      style={{
-                                        borderBottom: '1px solid var(--border)',
-                                        cursor: 'pointer',
-                                        background: selectedProspectForList?.id === p.id ? 'var(--bg-blue-tint)' : undefined,
-                                      }}
-                                    >
-                                      <td style={{ padding: '0.75rem' }}>
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
-                                          {p.company_name || '—'}
-                                          {(p.warmth_count ?? 0) > 0 && (
-                                            <span style={{ padding: '0.05rem 0.4rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, background: 'var(--bg-orange-100)', color: 'var(--text-orange-700)', whiteSpace: 'nowrap' }}>
-                                              🔥 {p.warmth_count}
-                                            </span>
-                                          )}
-                                        </span>
-                                      </td>
-                                      <td style={{ padding: '0.75rem' }}>{p.contact_name || '—'}</td>
-                                      <td style={{ padding: '0.75rem' }}>
-                                        {p.phone_number ? (
-                                          <a href={telHrefFor(p.phone_number)} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
-                                            {p.phone_number}
-                                          </a>
-                                        ) : (
-                                          '—'
-                                        )}
-                                      </td>
-                                      <td style={{ padding: '0.75rem' }}>{p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
-                                      <td style={{ padding: '0.75rem' }} title={p.last_contact ? `Last contact ${formatDateTime(p.last_contact)}` : undefined}>
-                                        {lastTouchLabel(p, prospectLastCallMap[p.id], nowMs)}
-                                        {(prospectLedgerSecondsMap[p.id] ?? 0) > 0 && (
-                                          <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: 'var(--text-green-600)' }}>
-                                            {' · '}{formatTimerSeconds(prospectLedgerSecondsMap[p.id] ?? 0)}
-                                          </span>
-                                        )}
-                                      </td>
-                                      <td style={{ padding: '0.75rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                          <div>
-                                            {p.email ? (
-                                              <a href={`mailto:${encodeURIComponent(p.email)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
-                                                {p.email}
-                                              </a>
-                                            ) : (
-                                              '—'
-                                            )}
-                                          </div>
-                                          <div>
-                                            {p.links_to_website ? (
-                                              <a
-                                                href={getWebsiteHref(p.links_to_website)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}
-                                              >
-                                                {formatWebsiteDisplay(p.links_to_website)}
-                                              </a>
-                                            ) : (
-                                              '—'
-                                            )}
-                                          </div>
-                                        </div>
-                                      </td>
-                                      {isTerminal(sectionKey) ? (
-                                        <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
-                                          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                                            <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
-                                            <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
-                                            <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
-                                            <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-red-600)', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
-                                          </div>
-                                        </td>
-                                      ) : (
-                                        <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
-                                          <button type="button" onClick={() => selectProspectForList(p)} style={{ padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                            Call now →
-                                          </button>
-                                        </td>
-                                      )}
-                                    </tr>
-                                  ))
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-                          {/* Mobile: cards */}
-                          <div className="prospectListMobile">
-                            {prospects.length === 0 ? (
-                              <div className="prospectListMobileEmpty">No prospects in this group</div>
-                            ) : (
-                              prospects.map((p) => (
-                                <div key={p.id} style={{ position: 'relative' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => selectProspectForList(p)}
-                                    className={`prospectListMobileCard ${selectedProspectForList?.id === p.id ? 'prospectListMobileCardSelected' : ''}`}
-                                    style={isTerminal(sectionKey) ? { paddingBottom: '3rem' } : undefined}
-                                  >
-                                    <div className="prospectListMobileCardTitle">{p.company_name || '—'}</div>
-                                    <div className="prospectListMobileCardRow">
-                                      <span className="prospectListMobileCardLabel">Contact</span>
-                                      <span>{p.contact_name || '—'}</span>
-                                    </div>
-                                    <div className="prospectListMobileCardRow">
-                                      <span className="prospectListMobileCardLabel">Address</span>
-                                      <span>{p.address || '—'}</span>
-                                    </div>
-                                    <div className="prospectListMobileCardRow">
-                                      <span className="prospectListMobileCardLabel">Phone</span>
-                                      <span>
-                                        {p.phone_number ? (
-                                          <a href={telHrefFor(p.phone_number)} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
-                                            {p.phone_number}
-                                          </a>
-                                        ) : (
-                                          '—'
-                                        )}
-                                      </span>
-                                    </div>
-                                    <div className="prospectListMobileCardRow">
-                                      <span className="prospectListMobileCardLabel">Last touch</span>
-                                      <span>
-                                        {lastTouchLabel(p, prospectLastCallMap[p.id], nowMs)}
-                                        {(prospectLedgerSecondsMap[p.id] ?? 0) > 0 && (
-                                          <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: 'var(--text-green-600)' }}>
-                                            {' · '}{formatTimerSeconds(prospectLedgerSecondsMap[p.id] ?? 0)}
-                                          </span>
-                                        )}
-                                      </span>
-                                    </div>
-                                    <div className="prospectListMobileCardRow">
-                                      <span className="prospectListMobileCardLabel">Email / Links</span>
-                                      <span style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <span>
-                                          {p.email ? (
-                                            <a href={`mailto:${encodeURIComponent(p.email)}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
-                                              {p.email}
-                                            </a>
-                                          ) : (
-                                            '—'
-                                          )}
-                                        </span>
-                                        <span>
-                                          {p.links_to_website ? (
-                                            <a
-                                              href={getWebsiteHref(p.links_to_website)}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              onClick={(e) => e.stopPropagation()}
-                                              style={{ color: 'var(--text-link)', textDecoration: 'underline' }}
-                                            >
-                                              {formatWebsiteDisplay(p.links_to_website)}
-                                            </a>
-                                          ) : (
-                                            '—'
-                                          )}
-                                        </span>
-                                      </span>
-                                    </div>
-                                    <div className="prospectListMobileCardMeta">
-                                      <span>Warmth {p.warmth_count ?? 0}</span>
-                                    </div>
-                                  </button>
-                                  {isTerminal(sectionKey) && (
-                                    <div style={{ position: 'absolute', bottom: '0.5rem', left: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
-                                      <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
-                                      <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
-                                      <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
-                                      <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-red-600)', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
-                                    </div>
-                                  )}
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })()}
-            </>
-          )}
-        </>
+        <ProspectsListTab
+          list={list}
+          kind={kind}
+          kindWords={kindWords}
+          canAccessFollowUp={canAccessFollowUp}
+          prospectListLoading={prospectListLoading}
+          prospectListProspects={prospectListProspects}
+          prospectLastCallMap={prospectLastCallMap}
+          saving={saving}
+          prospectListEmpty={prospectListEmpty}
+          answeredProspectIds={answeredProspectIds}
+          benchQuoted={benchQuoted}
+          gcBench={gcBench}
+          gcPlans={gcPlans}
+          plansFor={plansFor}
+          plansPick={plansPick}
+          setPlansFor={setPlansFor}
+          openBenchModal={openBenchModal}
+          openEditModalForProspect={openEditModalForProspect}
+          handleSendBack={handleSendBack}
+          handleNotAFitFromList={handleNotAFitFromList}
+          handleDeleteFromList={handleDeleteFromList}
+          openAddSub={openAddSub}
+        />
       )}
 
       {topTab === 'customers' && activeTab === 'convert' && (
@@ -3632,290 +1530,13 @@ export default function Prospects() {
         <ProspectsActivityTab kind={kind} kindWords={kindWords} hideZz={hideZz} laneRows={prospectListProspects} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
       )}
 
-      {/* Edit modal */}
-      {editModalOpen && (currentProspect || editingProspect) && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-          onClick={editGuard.requestClose}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              maxWidth: 480,
-              width: '90%',
-              // A sub's or a lead's boxes make the window taller than a laptop screen (v2.5574): it scrolls inside.
-              maxHeight: 'min(90vh, 100%)',
-              overflowY: 'auto',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0 }}>Edit Prospect</h3>
-              <button
-                type="button"
-                className="prospectsEditModalDeleteBtn"
-                onClick={handleDeleteProspect}
-                disabled={saving}
-                title="Delete prospect"
-                style={{
-                  padding: '0.375rem',
-                  background: 'none',
-                  border: 'none',
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                  color: 'var(--text-faint)',
-                  opacity: saving ? 0.5 : 1,
-                }}
-                aria-label="Delete prospect"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  <line x1="10" y1="11" x2="10" y2="17" />
-                  <line x1="14" y1="11" x2="14" y2="17" />
-                </svg>
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <ProspectPersonForm person={editPerson} onPerson={setEditPerson} company={editCompany} onCompany={setEditCompany} kind={(editingProspect ?? currentProspect)?.kind ?? kind} onSource={setEditSource} />
-              {renderKindFields((editingProspect ?? currentProspect)?.kind ?? kind, {
-                source: editSource, setSource: setEditSource,
-                trades: editTrades, setTrades: setEditTrades,
-                maxMiles: editMaxMiles, setMaxMiles: setEditMaxMiles,
-                role: editRole, setRole: setEditRole,
-                tradeChoices: (benchTrades ?? []).map((b) => b.trade),
-              })}
-              {(!editingProspect || editingProspect.id === currentProspect?.id) && currentProspect && (
-                <div>
-                  <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
-                    Warmth <span style={{ color: 'var(--text-muted)' }}>— goes up by one every Answered</span>
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 600 }}>🔥 {currentProspect.warmth_count ?? 0}</span>
-                    <button type="button" onClick={() => handleWarmthDelta(-1)} disabled={saving} style={{ padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer', color: 'inherit' }}>−1</button>
-                    <button type="button" onClick={() => handleWarmthDelta(1)} disabled={saving} style={{ padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer', color: 'inherit' }}>+1</button>
-                    <button type="button" onClick={handleWarmthReset} disabled={saving} style={{ padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer', fontSize: '0.8125rem', color: 'inherit' }}>Reset</button>
-                  </div>
-                </div>
-              )}
-            </div>
-            {editGuard.asking && <LeaveQuestion what="The changes to this prospect are not saved." onLeave={closeEditProspect} onKeep={editGuard.keep} />}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-              <button
-                type="button"
-                onClick={saveEdit}
-                disabled={saving}
-                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={editGuard.requestClose}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {editModalOpen && (currentProspect || editingProspect) && <EditProspectWindow win={editWin} kind={kind} currentProspect={currentProspect} saving={saving} benchTrades={benchTrades} />}
 
       {callbackModalOpen && currentProspect && <ProspectCallbackModal saving={saving} onSave={saveCallback} onClose={() => setCallbackModalOpen(false)} />}
 
-      {/* Copy template edit modal */}
-      {editingCopyTemplateKey && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-          onClick={() => !copyTemplateSaving && setEditingCopyTemplateKey(null)}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              maxWidth: 560,
-              width: '90%',
-              maxHeight: 'min(85vh, 100%)',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem 0' }}>Edit {COPY_TEMPLATE_LABELS[editingCopyTemplateKey]}</h3>
-            <form onSubmit={saveCopyTemplate} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Subject</label>
-                <input
-                  type="text"
-                  value={editingCopySubject}
-                  onChange={(e) => setEditingCopySubject(e.target.value)}
-                  placeholder="Email subject (supports same placeholders as body)"
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem 0.75rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    fontSize: '0.9375rem',
-                    fontFamily: 'inherit',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <textarea
-                ref={copyTemplateTextareaRef}
-                value={editingCopyText}
-                onChange={(e) => setEditingCopyText(e.target.value)}
-                placeholder="Template text. Use [User name], [user email], [user phone number], [company name], [prospect phone number], [prospect contact name], [prospect last contact], [prospect last successful contact] as placeholders."
-                style={{
-                  width: '100%',
-                  minHeight: 200,
-                  padding: '0.75rem',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 4,
-                  fontSize: '0.9375rem',
-                  resize: 'vertical',
-                  fontFamily: 'inherit',
-                  flex: 1,
-                  boxSizing: 'border-box',
-                }}
-              />
-              <div style={{ marginTop: '0.75rem' }}>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.375rem' }}>Placeholders:</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
-                  {[
-                    { text: '[User name]' },
-                    { text: '[user email]' },
-                    { text: '[user phone number]' },
-                    { text: '[company name]' },
-                    { text: '[prospect phone number]' },
-                    { text: '[prospect contact name]' },
-                    { text: '[prospect last contact]' },
-                    { text: '[prospect last successful contact]' },
-                    ...(editingCopyTemplateKey === 'phone_followup_email' || editingCopyTemplateKey === 'just_checking_in_email'
-                      ? [{ text: '_______', tooltip: editingCopyTemplateKey === 'phone_followup_email' ? '(contact name)' : '(contact info)' }]
-                      : []),
-                  ].map(({ text, tooltip }) => (
-                    <button
-                      key={text}
-                      type="button"
-                      title={tooltip}
-                      onClick={() => {
-                        const ta = copyTemplateTextareaRef.current
-                        const start = ta ? ta.selectionStart : editingCopyText.length
-                        const end = ta ? ta.selectionEnd : editingCopyText.length
-                        const before = editingCopyText.slice(0, start)
-                        const after = editingCopyText.slice(end)
-                        setEditingCopyText(before + text + after)
-                        if (ta) {
-                          ta.focus()
-                          const newPos = start + text.length
-                          setTimeout(() => ta.setSelectionRange(newPos, newPos), 0)
-                        }
-                      }}
-                      style={{
-                        padding: '0.25rem 0.5rem',
-                        background: 'var(--bg-muted)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 9999,
-                        fontSize: '0.8125rem',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      {text}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button
-                  type="submit"
-                  disabled={copyTemplateSaving}
-                  style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: copyTemplateSaving ? 'not-allowed' : 'pointer' }}
-                >
-                  {copyTemplateSaving ? 'Saving…' : 'Save'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => !copyTemplateSaving && setEditingCopyTemplateKey(null)}
-                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {copy.editingCopyTemplateKey && <ProspectCopyTemplateEditModal copy={copy} />}
 
-      {/* Copy blank fields modal */}
-      {copyBlankFieldsModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-          onClick={() => setCopyBlankFieldsModalOpen(false)}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              maxWidth: 400,
-              width: '90%',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem 0' }}>Missing information</h3>
-            <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.9375rem' }}>
-              The following fields are blank but used in your template. Please fill them in before copying:
-            </p>
-            <ul style={{ margin: '0 0 1rem 0', paddingLeft: '1.25rem' }}>
-              {copyBlankFieldsList.map((field) => (
-                <li key={field} style={{ marginBottom: '0.25rem' }}>{field}</li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={() => setCopyBlankFieldsModalOpen(false)}
-              style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
+      {copy.copyBlankFieldsModalOpen && <ProspectCopyBlankFieldsModal copy={copy} />}
 
       {timerHistoryModalOpen && <ProspectTimerHistoryModal userId={authUser?.id ?? null} onClose={() => setTimerHistoryModalOpen(false)} />}
 
@@ -3928,148 +1549,7 @@ export default function Prospects() {
         <ProspectBenchModal draft={benchDraft.draft} saving={benchSaving} error={benchError} onSave={handleBenchSave} onCancel={() => !benchSaving && setBenchDraft(null)} ask={benchDraft.ask} />
       )}
 
-      {/* New Prospect modal */}
-      {newProspectModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 750,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-          onClick={newGuard.requestClose}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              maxWidth: 520,
-              width: '90%',
-              // The kind cards and a kind's boxes make the window taller than a laptop screen (v2.5574): it scrolls
-              // inside, and it is wide enough that the three cards read in a few lines each.
-              maxHeight: 'min(90vh, 100%)',
-              overflowY: 'auto',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 0.25rem 0' }}>New Prospect</h3>
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Who are we looking for?</p>
-            <div role="radiogroup" aria-label="What kind of prospect" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.5rem', marginBottom: '1rem' }}>
-              {PROSPECT_KINDS.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  role="radio"
-                  aria-checked={newKind === k}
-                  onClick={() => setNewKind(k)}
-                  style={{
-                    textAlign: 'left',
-                    padding: '0.5rem 0.6rem',
-                    borderRadius: 8,
-                    border: newKind === k ? '2px solid #3b82f6' : '1px solid var(--border)',
-                    background: newKind === k ? 'var(--bg-blue-200)' : 'var(--surface)',
-                    cursor: 'pointer',
-                    font: 'inherit',
-                  }}
-                >
-                  <span style={{ display: 'block', fontWeight: 700, fontSize: '0.875rem' }}>{PROSPECT_KIND_WORDS[k].tab === 'Customers' ? 'A customer' : PROSPECT_KIND_WORDS[k].tab === 'Subs' ? 'A sub' : 'A job to GC'}</span>
-                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-700)' }}>{PROSPECT_KIND_WORDS[k].card}</span>
-                </button>
-              ))}
-            </div>
-            {newProspectError && (
-              <p style={{ color: 'var(--text-red-600)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{newProspectError}</p>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <ProspectPersonForm
-                person={newPerson}
-                onPerson={setNewPerson}
-                company={newCompany}
-                onCompany={setNewCompany}
-                kind={newKind}
-                onSource={setNewSource}
-                double={(() => {
-                // One line for every double (v2.5579): this lane, another lane, the bench, the customers, in that order.
-                const linkish = { font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 } as const
-                if (newKind === 'gc_lead' && newCustomerLink) {
-                  return (
-                    <p role="status" style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-green)', background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
-                      Linked to the customer {newCustomerLink.name}. Asked us ✓ will use that record.{' '}
-                      <button type="button" onClick={() => setNewCustomerLink(null)} style={linkish}>
-                        Unlink
-                      </button>
-                    </p>
-                  )
-                }
-                const twin = newProspectTwin
-                if (!twin) return null
-                return (
-                  <p role="status" data-company-double={twin.where} style={{ margin: 0, padding: '0.4rem 0.6rem', borderLeft: '3px solid var(--border-amber-soft)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.8125rem', borderRadius: '0 4px 4px 0' }}>
-                    {twin.line}{' '}
-                    {twin.door === 'open_prospect' && (
-                      <button type="button" onClick={() => openDoubleProspect(twin)} style={linkish}>
-                        Open it
-                      </button>
-                    )}
-                    {twin.door === 'open_bench' && (
-                      <Link to="/gc?view=partners" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
-                        Open it
-                      </Link>
-                    )}
-                    {twin.door === 'customer' && (
-                      <>
-                        {newKind === 'gc_lead' && (
-                          <>
-                            <button type="button" onClick={() => setNewCustomerLink({ id: twin.id, name: twin.name })} style={linkish}>
-                              Link this lead to them
-                            </button>
-                            {' · '}
-                          </>
-                        )}
-                        <Link to={`/customers/${twin.id}`} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
-                          Open their page
-                        </Link>
-                      </>
-                    )}
-                  </p>
-                )
-              })()}
-              />
-              {renderKindFields(newKind, {
-                source: newSource, setSource: setNewSource,
-                trades: newTrades, setTrades: setNewTrades,
-                maxMiles: newMaxMiles, setMaxMiles: setNewMaxMiles,
-                role: newRole, setRole: setNewRole,
-                tradeChoices: (benchTrades ?? []).map((b) => b.trade),
-              })}
-            </div>
-            {newGuard.asking && <LeaveQuestion what="The new prospect is not saved." onLeave={closeNewProspect} onKeep={newGuard.keep} />}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-              <button
-                type="button"
-                onClick={saveNewProspect}
-                disabled={saving}
-                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
-              >
-                {newProspectTwin ? 'Save anyway' : 'Save'}
-              </button>
-              <button
-                type="button"
-                onClick={newGuard.requestClose}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {newProspectModalOpen && <NewProspectWindow win={newWin} newKind={newKind} setNewKind={setNewKind} saving={saving} benchTrades={benchTrades} openDoubleProspect={openDoubleProspect} />}
     </div>
   )
 }

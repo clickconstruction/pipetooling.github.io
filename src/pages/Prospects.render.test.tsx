@@ -27,6 +27,13 @@ const world = vi.hoisted(() => ({
   jobs: [] as Array<Record<string, unknown>>,
   timerEvents: [] as Array<Record<string, unknown>>,
   appSettings: [] as Array<Record<string, unknown>>,
+  /** Calling locks on record. A live one held by somebody else hides its prospect from the deck. */
+  locks: [] as Array<Record<string, unknown>>,
+  /** A prospect's Messages thread: the contact that points at it, and that contact's numbers. */
+  contacts: [] as Array<Record<string, unknown>>,
+  channels: [] as Array<Record<string, unknown>>,
+  /** The Subs Board's pins: one row a company a trade. */
+  ranks: [] as Array<Record<string, unknown>>,
   writes: [] as Array<{ table: string; method: string; payload: unknown; filters: Record<string, unknown> }>,
   invokes: [] as Array<{ name: string; body: unknown }>,
   /** The GC board's read: null refuses it (the lanes then draw without their strips). */
@@ -68,6 +75,16 @@ vi.mock('../lib/supabase', () => {
         return list([row])
       }
       if (table === 'customers' && m === 'insert') return list([{ id: 'cust-new', ...(payload as Row) }])
+      if (table === 'prospect_jobs' && m === 'insert') {
+        const row = { id: `j-${world.nextId++}`, won_by: null, created_at: '2026-10-16T12:00:00Z', ...(payload as Row) }
+        world.jobs = [...world.jobs, row]
+        return list([row])
+      }
+      if (table === 'prospect_jobs' && m === 'update') {
+        world.jobs = world.jobs.map((j) => (j.id === filters.id ? { ...j, ...(payload as Row) } : j))
+        return list(world.jobs.filter((j) => j.id === filters.id))
+      }
+      if (table === 'prospect_jobs' && m === 'delete') world.jobs = world.jobs.filter((j) => j.id !== filters.id)
       return { data: null, error: null }
     }
     switch (table) {
@@ -76,6 +93,8 @@ vi.mock('../lib/supabase', () => {
         if (filters.kind) rows = rows.filter((p) => p.kind === filters.kind)
         if (filters.id) rows = rows.filter((p) => p.id === filters.id)
         if (has(steps, 'or')) rows = rows.filter((p) => p.prospect_fit_status !== 'not_a_fit')
+        const notIn = steps.find((st) => st.method === 'not' && st.args[0] === 'id' && st.args[1] === 'in')?.args[2]
+        if (typeof notIn === 'string') rows = rows.filter((p) => !notIn.slice(1, -1).split(',').includes(String(p.id)))
         return list(rows)
       }
       case 'prospect_comments': {
@@ -93,6 +112,19 @@ vi.mock('../lib/supabase', () => {
         return list(world.timerEvents)
       case 'app_settings':
         return list(world.appSettings)
+      case 'prospect_calling_locks': {
+        const notMine = steps.find((st) => st.method === 'neq' && st.args[0] === 'user_id')?.args[1]
+        let rows = world.locks
+        if (notMine) rows = rows.filter((l) => l.user_id !== notMine)
+        if (filters.prospect_id) rows = rows.filter((l) => l.prospect_id === filters.prospect_id)
+        return list(rows)
+      }
+      case 'prospect_trade_ranks':
+        return list(world.ranks)
+      case 'contacts':
+        return list(filters.prospect_id ? world.contacts.filter((c) => c.prospect_id === filters.prospect_id) : world.contacts)
+      case 'contact_channels':
+        return list(world.channels.filter((c) => c.contact_id === filters.contact_id))
       case 'users':
         if (filters.id) return list([{ id: 'smoke-auth-user-1', name: 'Pat Office', email: 'pat@example.test', phone: '555-0199', role: world.role }])
         return list([{ id: 'smoke-auth-user-1', name: 'Pat Office', email: 'pat@example.test', role: world.role }])
@@ -239,6 +271,10 @@ function seed() {
   world.jobs = []
   world.timerEvents = []
   world.appSettings = [{ key: 'prospect_copy_no_response_email', value_text: 'Hello [company name], this is [User name].' }]
+  world.locks = []
+  world.contacts = []
+  world.channels = []
+  world.ranks = []
   world.writes = []
   world.invokes = []
   world.gcBoard = null
@@ -714,6 +750,65 @@ describe('the Jobs to GC lane', () => {
   })
 })
 
+describe('a lead’s jobs', () => {
+  const job = (extra: Row = {}): Row => ({ id: 'j-1', prospect_id: 'gc-1', name: 'Test Office Shell', status: 'open', bid_due: '2026-12-01', won_by: null, created_at: '2026-10-01T12:00:00Z', created_by: 'smoke-auth-user-1', location: null, notes: null, plans: null, ...extra })
+  const box = () => document.querySelector('[data-prospect-jobs]') as HTMLElement
+
+  it('Add a job writes it under the lead and shows it in the box', async () => {
+    await deck('/prospects?tab=follow-up&kind=gc-leads')
+    fireEvent.click(within(box()).getByRole('button', { name: /Add a job/ }))
+    fireEvent.change(within(box()).getByPlaceholderText('Retail shell'), { target: { value: 'Test Clinic' } })
+    fireEvent.click(within(box()).getByRole('button', { name: /^(Add|Save)/ }))
+    await waitFor(() => expect(writesTo('prospect_jobs', 'insert')).toHaveLength(1))
+    expect(writesTo('prospect_jobs', 'insert')[0]?.payload).toMatchObject({ prospect_id: 'gc-1', name: 'Test Clinic', status: 'open', created_by: 'smoke-auth-user-1' })
+    expect(await within(box()).findByText(/Test Clinic/)).toBeTruthy()
+  })
+
+  it('Drop and Remove write the job and the box follows', async () => {
+    world.jobs = [job()]
+    await deck('/prospects?tab=follow-up&kind=gc-leads')
+    await within(box()).findByText(/Test Office Shell/)
+    fireEvent.click(within(box()).getByRole('button', { name: /Drop/ }))
+    await waitFor(() => expect(writesTo('prospect_jobs', 'update')).toHaveLength(1))
+    expect(writesTo('prospect_jobs', 'update')[0]).toMatchObject({ payload: { status: 'dropped' }, filters: { id: 'j-1' } })
+    fireEvent.click(await within(box()).findByRole('button', { name: /Remove/ }))
+    await waitFor(() => expect(writesTo('prospect_jobs', 'delete')).toHaveLength(1))
+    await waitFor(() => expect(within(box()).queryByText(/Test Office Shell/)).toBeNull())
+  })
+
+  it('Lost asks who got it and saves the answer', async () => {
+    world.jobs = [job()]
+    await deck('/prospects?tab=follow-up&kind=gc-leads')
+    await within(box()).findByText(/Test Office Shell/)
+    fireEvent.click(within(box()).getByRole('button', { name: /Lost/ }))
+    const ask = await screen.findByRole('dialog')
+    expect(within(ask).getByText('Who got it?')).toBeTruthy()
+    fireEvent.change(within(ask).getByPlaceholderText('Another builder'), { target: { value: ' Other Builder ' } })
+    fireEvent.click(within(ask).getByRole('button', { name: 'Mark lost' }))
+    await waitFor(() => expect(writesTo('prospect_jobs', 'update')).toHaveLength(1))
+    expect(writesTo('prospect_jobs', 'update')[0]).toMatchObject({ payload: { status: 'lost', won_by: 'Other Builder' }, filters: { id: 'j-1' } })
+  })
+})
+
+describe('New Prospect’s double line', () => {
+  it('a company already on a lane is named, Save reads Save anyway, and Open it opens its card', async () => {
+    await deck('/prospects?tab=follow-up&kind=subs')
+    press('New Prospect')
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Company'), { target: { value: 'Bravo Homes' } })
+    const line = await waitFor(() => {
+      const el = dialog.querySelector('[data-company-double]')
+      expect(el).toBeTruthy()
+      return el as HTMLElement
+    })
+    expect(within(dialog).getByRole('button', { name: 'Save anyway' })).toBeTruthy()
+    fireEvent.click(within(line).getByRole('button', { name: 'Open it' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await waitFor(() => expect(onCard()).toContain('Bravo Homes'))
+    expect(where()).toBe('/prospects?tab=follow-up&prospect_id=cu-2')
+  })
+})
+
 describe('Prospect List', () => {
   it('a row’s Call now opens Follow Up on that prospect', async () => {
     open('/prospects?tab=prospect-list')
@@ -749,6 +844,68 @@ describe('Prospect List', () => {
     fireEvent.change(search, { target: { value: 'no such company' } })
     fireEvent.click(await screen.findByRole('button', { name: 'Clear the search' }))
     await screen.findByText('Never called (2)')
+  })
+})
+
+describe('Prospect List, the row actions and what it remembers', () => {
+  async function listWithGone() {
+    open('/prospects?tab=prospect-list&prospect_id=cu-4')
+    await waitFor(() => expect(screen.getAllByText('Delta Gone').length).toBeGreaterThan(0))
+    return screen.getAllByText('Delta Gone')[0]?.closest('tr') as HTMLElement
+  }
+
+  it('the search and an opened section are still there after a look at another tab', async () => {
+    open('/prospects?tab=prospect-list')
+    await screen.findByText('Never called (2)')
+    fireEvent.click(screen.getByRole('button', { name: /Going cold — last touch/ }))
+    expect(await screen.findAllByText('Bravo Homes')).not.toHaveLength(0)
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'bravo' } })
+    await waitFor(() => expect(screen.queryByText('Alpha Builders')).toBeNull())
+    press('Follow Up')
+    await screen.findByText('How did the call end?')
+    press('Prospect List')
+    await waitFor(() => expect((screen.getByRole('searchbox') as HTMLInputElement).value).toBe('bravo'))
+    expect(screen.getAllByText('Bravo Homes').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Alpha Builders')).toBeNull()
+  })
+
+  it('a section heading folds and unfolds its rows', async () => {
+    open('/prospects?tab=prospect-list')
+    await screen.findByText('Never called (2)')
+    expect(screen.getAllByText('Alpha Builders').length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: /Never called \(2\)/ }))
+    await waitFor(() => expect(screen.queryByText('Alpha Builders')).toBeNull())
+  })
+
+  it('Edit on a row that left the queue opens the Edit window on that row', async () => {
+    const row = await listWithGone()
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit' }))
+    const dialog = await screen.findByRole('dialog')
+    expect((within(dialog).getByLabelText('Company') as HTMLInputElement).value).toBe('Delta Gone')
+    expect(within(dialog).getByText('Edit Prospect')).toBeTruthy()
+  })
+
+  it('Not a fit and Delete on such a row write it, and Delete asks first', async () => {
+    const row = await listWithGone()
+    fireEvent.click(within(row).getByRole('button', { name: 'Not a fit' }))
+    await waitFor(() => expect(writesTo('prospects', 'update')).toHaveLength(1))
+    expect(writesTo('prospects', 'update')[0]).toMatchObject({ payload: { prospect_fit_status: 'not_a_fit' }, filters: { id: 'cu-4' } })
+    // The row moved to Not a fit, a section that opens folded.
+    fireEvent.click(await screen.findByRole('button', { name: /No longer a fit \(1\)/ }))
+    await waitFor(() => expect(screen.getAllByText('Delta Gone').length).toBeGreaterThan(0))
+    const again = screen.getAllByText('Delta Gone')[0]?.closest('tr') as HTMLElement
+    fireEvent.click(within(again).getByRole('button', { name: 'Delete' }))
+    const ask = await screen.findByRole('alertdialog')
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(writesTo('prospects', 'delete')).toHaveLength(1))
+    await waitFor(() => expect(screen.queryByText('Delta Gone')).toBeNull())
+  })
+
+  it('shows each row’s timed seconds beside its last touch', async () => {
+    world.timerEvents = [{ id: 't-1', prospect_id: 'cu-1', created_at: '2026-10-01T12:00:00Z', timer_seconds: 125, button_name: 'next_prospect', prospect: null }]
+    open('/prospects?tab=prospect-list')
+    await screen.findByText('Never called (2)')
+    expect((await screen.findAllByText(/02:05/)).length).toBeGreaterThan(0)
   })
 })
 
@@ -871,6 +1028,231 @@ describe('Activity', () => {
   })
 })
 
+describe('the calling order and the deck’s order', () => {
+  const rail = () => within(document.querySelector('.followUpQueueRail') as HTMLElement)
+  const railOrder = (names: RegExp) => rail().getAllByText(names).map((n) => n.textContent)
+  const remember = (mode: string) => window.localStorage.setItem('prospects_calling_order_v1_smoke-auth-user-1', mode)
+
+  it('a remembered order is the one the deck loads in', async () => {
+    remember('never_called_first')
+    await deck('/prospects')
+    await waitFor(() => expect(railOrder(/^(Alpha Builders|Bravo Homes|Charlie Group)$/)).toEqual(['Alpha Builders', 'Charlie Group', 'Bravo Homes']))
+    expect(rail().getByRole('button', { name: 'Never called' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('the default order is coldest first', async () => {
+    await deck('/prospects')
+    expect(railOrder(/^(Alpha Builders|Bravo Homes|Charlie Group)$/)).toEqual(['Alpha Builders', 'Bravo Homes', 'Charlie Group'])
+    expect(rail().getByRole('button', { name: 'Coldest' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('By rank on a trade leads with that trade’s pins', async () => {
+    remember('by_rank')
+    world.ranks = [{ prospect_id: 'su-2', trade: 'Concrete', rank_order: 1 }]
+    await deck('/prospects?tab=follow-up&kind=subs&trade=Concrete')
+    await waitFor(() => expect(railOrder(/^(Golf Concrete|Hotel Concrete)$/)).toEqual(['Hotel Concrete', 'Golf Concrete']))
+    expect(onCard()).toContain('Hotel Concrete')
+  })
+
+  it('By rank with no pins keeps Call first ahead of Later', async () => {
+    remember('by_rank')
+    world.prospects = world.prospects.map((p) => (p.id === 'su-1' ? { ...p, priority: 3 } : p.id === 'su-3' ? { ...p, priority: 1 } : p))
+    await deck('/prospects?tab=follow-up&kind=subs')
+    await waitFor(() => expect(railOrder(/^(Golf Concrete|Hotel Concrete|India Framing)$/)).toEqual(['India Framing', 'Hotel Concrete', 'Golf Concrete']))
+  })
+
+  it('Soonest bid on Jobs to GC leads with the lead whose bid is due first', async () => {
+    remember('soonest_bid')
+    world.jobs = [{ id: 'j-1', prospect_id: 'gc-2', name: 'Test Clinic', status: 'open', bid_due: '2099-01-05', won_by: null, created_at: '2026-10-01T12:00:00Z', created_by: 'smoke-auth-user-1', location: null, notes: null, plans: null }]
+    await deck('/prospects?tab=follow-up&kind=gc-leads')
+    await waitFor(() => expect(railOrder(/^(Echo Owner|Foxtrot Developer)$/)).toEqual(['Foxtrot Developer', 'Echo Owner']))
+  })
+
+  it('a lane that has no such order falls back to its own rows, and the switch offers only its own orders', async () => {
+    remember('soonest_bid')
+    await deck('/prospects')
+    expect(railOrder(/^(Alpha Builders|Bravo Homes|Charlie Group)$/)).toEqual(['Alpha Builders', 'Bravo Homes', 'Charlie Group'])
+    expect(rail().queryByRole('button', { name: 'Soonest bid' })).toBeNull()
+    expect(rail().queryByRole('button', { name: 'By rank' })).toBeNull()
+  })
+
+  it('a ZZ test company stays off the deck and the list for the office', async () => {
+    world.role = 'assistant'
+    world.prospects = [...world.prospects, prospect('cu-zz', 'customer', 'ZZ Test Company', { last_contact: '2026-08-01T12:00:00Z' })]
+    await deck('/prospects')
+    expect(screen.getByText('1 of 3')).toBeTruthy()
+    expect(screen.queryByText('ZZ Test Company')).toBeNull()
+    press('Prospect List')
+    await screen.findByText('Never called (2)')
+    expect(screen.queryByText('ZZ Test Company')).toBeNull()
+  })
+
+  it('switching lanes reloads the deck for the new lane and leaves no card of the old one', async () => {
+    await deck('/prospects')
+    press('Jobs to GC')
+    await waitFor(() => expect(onCard()).toContain('Echo Owner'))
+    expect(screen.queryByText('Alpha Builders')).toBeNull()
+    expect(screen.getByText('1 of 2')).toBeTruthy()
+  })
+})
+
+describe('the Board’s writes', () => {
+  const card = (id: string) => document.querySelector(`[data-board-card="${id}"]`) as HTMLElement | null
+
+  it('Pass asks first, marks the company not a fit and takes it off the column', async () => {
+    open('/prospects?tab=board&kind=subs')
+    await screen.findByText('Call the 2 here →')
+    fireEvent.click(within(card('su-1') as HTMLElement).getByRole('button', { name: 'Pass' }))
+    const ask = await screen.findByRole('alertdialog')
+    fireEvent.click(within(ask).getByRole('button', { name: 'Pass' }))
+    await waitFor(() => expect(writesTo('prospects', 'update')).toHaveLength(1))
+    expect(writesTo('prospects', 'update')[0]).toMatchObject({ payload: { prospect_fit_status: 'not_a_fit' }, filters: { id: 'su-1' } })
+    await waitFor(() => expect(card('su-1')).toBeNull())
+    expect(card('su-2')).toBeTruthy()
+  })
+
+  it('To the bench opens the bench window filled from the card', async () => {
+    open('/prospects?tab=board&kind=subs')
+    await screen.findByText('Call the 2 here →')
+    fireEvent.click(within(card('su-1') as HTMLElement).getByRole('button', { name: 'To the bench ✓' }))
+    const dialog = await screen.findByRole('dialog')
+    expect((within(dialog).getByDisplayValue('Golf Concrete') as HTMLInputElement).value).toBe('Golf Concrete')
+  })
+})
+
+describe('the calling lock', () => {
+  const lockUpserts = () => writesTo('prospect_calling_locks', 'upsert')
+
+  it('looking at a card takes no lock; focusing the composer takes it, once', async () => {
+    await deck('/prospects')
+    expect(lockUpserts()).toHaveLength(0)
+    const composer = screen.getByPlaceholderText(/^Type what happened/)
+    fireEvent.focus(composer)
+    await waitFor(() => expect(lockUpserts()).toHaveLength(1))
+    expect(lockUpserts()[0]?.payload).toMatchObject({ prospect_id: 'cu-1', user_id: 'smoke-auth-user-1' })
+    fireEvent.focus(composer)
+    await settle()
+    expect(lockUpserts()).toHaveLength(1)
+  })
+
+  it('an outcome press takes the lock for its card, and the next card takes its own', async () => {
+    await deck('/prospects')
+    press('Didn\'t Answer')
+    await waitFor(() => expect(lockUpserts()).toHaveLength(1))
+    press('Next Prospect →')
+    await waitFor(() => expect(onCard()).toContain('Bravo Homes'))
+    press('Set callback')
+    await waitFor(() => expect(lockUpserts()).toHaveLength(2))
+    expect(lockUpserts()[1]?.payload).toMatchObject({ prospect_id: 'cu-2' })
+  })
+
+  it('a colleague’s live lock keeps its prospect off the deck', async () => {
+    world.locks = [{ prospect_id: 'cu-1', user_id: 'other-user', locked_at: new Date().toISOString() }]
+    await deck('/prospects')
+    expect(onCard()).toContain('Bravo Homes')
+    expect(screen.getByText('1 of 2')).toBeTruthy()
+  })
+
+  it('a colleague who took the card after it came up is named on it, and their lock is left alone', async () => {
+    await deck('/prospects')
+    world.locks = [{ prospect_id: 'cu-1', user_id: 'other-user', locked_at: new Date().toISOString() }]
+    fireEvent.focus(screen.getByPlaceholderText(/^Type what happened/))
+    expect(await screen.findByText('Pat Office is calling this one')).toBeTruthy()
+    expect(lockUpserts()).toHaveLength(0)
+  })
+
+  it('a colleague’s stale lock is taken over', async () => {
+    await deck('/prospects')
+    world.locks = [{ prospect_id: 'cu-1', user_id: 'other-user', locked_at: '2026-01-01T00:00:00Z' }]
+    fireEvent.focus(screen.getByPlaceholderText(/^Type what happened/))
+    await waitFor(() => expect(lockUpserts()).toHaveLength(1))
+    expect(screen.queryByText(/is calling this one/)).toBeNull()
+  })
+})
+
+describe('the copy templates', () => {
+  it('show on the Customers lane only', async () => {
+    await deck('/prospects?tab=follow-up&kind=subs')
+    expect(screen.queryByRole('button', { name: 'No Response Email' })).toBeNull()
+  })
+
+  it('a template that names a detail the prospect lacks lists what is missing and copies nothing', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    world.appSettings = [{ key: 'prospect_copy_phone_followup_email', value_text: 'Hi [prospect contact name], call me at [user phone number].' }]
+    world.prospects = world.prospects.map((p) => (p.id === 'cu-1' ? { ...p, contact_name: null } : p))
+    await deck('/prospects')
+    fireEvent.click(await screen.findByRole('button', { name: 'Phone call Follow up Email' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Missing information')).toBeTruthy()
+    expect(within(dialog).getByText('Prospect contact name')).toBeTruthy()
+    expect(writeText).not.toHaveBeenCalled()
+  })
+
+  it('Edit template saves a person’s own words, and Copy then uses them', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    await deck('/prospects')
+    fireEvent.click((await screen.findAllByTitle('Edit template'))[0] as HTMLElement)
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Edit No Response Email')).toBeTruthy()
+    const body = within(dialog).getByDisplayValue('Hello [company name], this is [User name].')
+    fireEvent.change(body, { target: { value: 'Hi [company name].' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Save/ }))
+    await waitFor(() => expect(writesTo('user_prospect_copy_templates', 'upsert')).toHaveLength(1))
+    expect(writesTo('user_prospect_copy_templates', 'upsert')[0]?.payload).toEqual({ user_id: 'smoke-auth-user-1', template_key: 'no_response_email', value_text: 'Hi [company name].', subject_text: null })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: 'No Response Email' }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('Hi Alpha Builders.'))
+  })
+
+  it('Open in email opens the mail, records it sent and turns the envelope', async () => {
+    const real = window.location
+    const fake = { href: '' }
+    Object.defineProperty(window, 'location', { value: fake, configurable: true, writable: true })
+    try {
+      await deck('/prospects')
+      fireEvent.click((await screen.findAllByTitle('Open in email'))[0] as HTMLElement)
+      await waitFor(() => expect(writesTo('prospect_email_sent', 'upsert')).toHaveLength(1))
+      expect(fake.href).toBe(`mailto:${encodeURIComponent('pat@example.test')}?subject=&body=${encodeURIComponent('Hello Alpha Builders, this is Pat Office.')}`)
+      expect(writesTo('prospect_email_sent', 'upsert')[0]?.payload).toEqual({ prospect_id: 'cu-1', user_id: 'smoke-auth-user-1', template_key: 'no_response_email' })
+      expect(await screen.findByTitle('Email sent')).toBeTruthy()
+    } finally {
+      Object.defineProperty(window, 'location', { value: real, configurable: true, writable: true })
+    }
+  })
+})
+
+describe('the run’s text', () => {
+  const run = '/prospects?tab=follow-up&kind=subs&run=su-2,su-1&trade=Concrete'
+  const ledger = () => document.querySelector('[data-run-ledger]') as HTMLElement
+
+  it('is held until they said we may text', async () => {
+    await deck(run)
+    press('Didn\'t Answer')
+    await waitFor(() => expect(ledger()).toBeTruthy())
+    const ask = within(ledger()).getByRole('button', { name: 'Ask first' }) as HTMLButtonElement
+    expect(ask.disabled).toBe(true)
+    expect(ask.title).toContain('has not said we may text')
+    expect(world.invokes).toHaveLength(0)
+  })
+
+  it('goes to the number on their thread, is noted on the card and reads Text sent', async () => {
+    world.prospects = world.prospects.map((p) => (p.id === 'su-2' ? { ...p, ok_to_text: 'yes' } : p))
+    world.contacts = [{ id: 'ct-1', prospect_id: 'su-2' }]
+    world.channels = [{ id: 'ch-1', contact_id: 'ct-1', kind: 'phone', value: '555-0100', opted_out_at: null }]
+    await deck(run)
+    press('Didn\'t Answer')
+    await waitFor(() => expect(ledger()).toBeTruthy())
+    fireEvent.click(within(ledger()).getByRole('button', { name: 'Text them' }))
+    await waitFor(() => expect(world.invokes).toHaveLength(1))
+    expect(world.invokes[0]).toMatchObject({ name: 'quo-send', body: { contactId: 'ct-1', channelId: 'ch-1' } })
+    expect(await within(ledger()).findByText('Text sent')).toBeTruthy()
+    const notes = writesTo('prospect_comments', 'insert').map((w) => w.payload as Row)
+    expect(notes.some((n) => n.interaction_type === 'user_comment' && String(n.comment_text).startsWith('Text sent: '))).toBe(true)
+  })
+})
+
 describe('the windows', () => {
   it('New Prospect opens on the lane’s kind and saves a row of that kind', async () => {
     await deck('/prospects?tab=follow-up&kind=subs')
@@ -902,6 +1284,70 @@ describe('the windows', () => {
     await waitFor(() => expect(writesTo('prospects', 'update')).toHaveLength(1))
     expect(writesTo('prospects', 'update')[0]).toMatchObject({ payload: { company_name: 'Alpha Builders West' }, filters: { id: 'cu-1' } })
     await waitFor(() => expect(onCard()).toContain('Alpha Builders West'))
+  })
+
+  it('New Prospect closes on Escape while untouched, and asks once something is typed', async () => {
+    await deck('/prospects')
+    press('New Prospect')
+    let dialog = await screen.findByRole('dialog')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    press('New Prospect')
+    dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Company'), { target: { value: 'Kilo Masonry' } })
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(await screen.findByText('The new prospect is not saved.')).toBeTruthy()
+    expect(writesTo('prospects')).toHaveLength(0)
+  })
+
+  it('New Prospect with nobody named says what is missing and writes nothing', async () => {
+    await deck('/prospects')
+    press('New Prospect')
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await settle()
+    expect(writesTo('prospects')).toHaveLength(0)
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(dialog.textContent).toMatch(/name|company/i)
+  })
+
+  it('New Prospect picked as another kind saves that kind and moves to its lane', async () => {
+    await deck('/prospects')
+    press('New Prospect')
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('radio', { name: /A sub/ }))
+    fireEvent.change(within(dialog).getByLabelText('Company'), { target: { value: 'Kilo Masonry' } })
+    fireEvent.change(within(dialog).getByPlaceholderText('Concrete, Fire sprinkler'), { target: { value: 'Masonry, Concrete' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(writesTo('prospects', 'insert')).toHaveLength(1))
+    expect(writesTo('prospects', 'insert')[0]?.payload).toMatchObject({ kind: 'sub', company_name: 'Kilo Masonry', trades: ['Masonry', 'Concrete'] })
+    await waitFor(() => expect(where()).toBe('/prospects?tab=follow-up&kind=subs'))
+  })
+
+  it('Edit prospect on the card warms it with +, and Delete asks, deletes it and brings up the next card', async () => {
+    await deck('/prospects')
+    press('Edit prospect')
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: '+1' }))
+    await waitFor(() => expect(writesTo('prospects', 'update')).toHaveLength(1))
+    expect(writesTo('prospects', 'update')[0]).toMatchObject({ payload: { warmth_count: 1 }, filters: { id: 'cu-1' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete prospect' }))
+    const ask = await screen.findByRole('alertdialog')
+    fireEvent.click(within(ask).getByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(writesTo('prospects', 'delete')).toHaveLength(1))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await waitFor(() => expect(onCard()).toContain('Bravo Homes'))
+    expect(screen.getByText('1 of 2')).toBeTruthy()
+  })
+
+  it('Edit prospect asks before it throws away a change', async () => {
+    await deck('/prospects')
+    press('Edit prospect')
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('Company'), { target: { value: 'Alpha Builders West' } })
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(await screen.findByText('The changes to this prospect are not saved.')).toBeTruthy()
+    expect(writesTo('prospects')).toHaveLength(0)
   })
 
   it('Set callback opens its window and saves a callback for the card', async () => {
