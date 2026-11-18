@@ -13,6 +13,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { type SentCopy, canReadSentCopies } from '../../lib/sent/sentCopies'
 import { loadSentCopiesForJob, openSentFile } from '../../lib/sent/sentCopiesIo'
 import { useAuth } from '../../hooks/useAuth'
+import { useTakenDown } from '../../hooks/useTakenDown'
 import { isOfficeRole } from '../../lib/doorRoles'
 import { useToastContext } from '../../contexts/ToastContext'
 import AiaG702G703Modal from './AiaG702G703Modal'
@@ -95,28 +96,31 @@ export function JobWindowDocumentsTab({
   const [aia, setAia] = useState<number | 'new' | null>(null)
   // The deleted application being put back (#92), while the write is in flight.
   const [restoringId, setRestoringId] = useState<string | null>(null)
+  // Closing the pay application window and putting one back read again and keep nothing to stop that read: one that
+  // lands after the tab is taken down sets nothing (v2.7771).
+  const takenDown = useTakenDown()
 
   const reload = useCallback(() => {
     let cancelled = false
     void loadPayApplications(job.id)
       .catch(() => [] as SavedPayApplication[])
       .then((list) => {
-        if (!cancelled) setApps(list)
+        if (!cancelled && !takenDown()) setApps(list)
       })
     void loadSentCopiesForJob(job.id)
       .catch(() => [] as SentCopy[])
       .then((list) => {
-        if (!cancelled) setSent(list)
+        if (!cancelled && !takenDown()) setSent(list)
       })
     void loadDeletedPayApplications(job.id)
       .catch(() => [] as SavedPayApplication[])
       .then((list) => {
-        if (!cancelled) setDeleted(list)
+        if (!cancelled && !takenDown()) setDeleted(list)
       })
     return () => {
       cancelled = true
     }
-  }, [job.id])
+  }, [job.id, takenDown])
 
   const history = payApplicationHistory(apps ?? [], sent ?? [], deleted)
   const otherSent = sent == null ? null : sent.filter((r) => !isPayApplicationCopy(r))

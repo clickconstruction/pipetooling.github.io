@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { usePeopleAccess } from '../../hooks/usePeopleAccess'
+import { useTakenDown } from '../../hooks/useTakenDown'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -43,39 +44,42 @@ export function StatementsOfChargesSection({ job, zIndex = 1030, onOverlayOpenCh
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [opening, setOpening] = useState<ChargeStatementRow | null>(null)
+  // Closing the window reads again and keeps nothing to stop that read, so every answer also asks whether the section
+  // is still up: one that lands after it is taken down sets nothing (v2.7771).
+  const takenDown = useTakenDown()
 
   const reload = useCallback(() => {
     let cancelled = false
     if (!allowed) return () => undefined
     void listChargeStatementsForJob(job.id)
       .then((list) => {
-        if (cancelled) return
+        if (cancelled || takenDown()) return
         setRows(list)
         setError(null)
       })
       .catch((e: unknown) => {
-        if (cancelled) return
+        if (cancelled || takenDown()) return
         setRows([])
         setError(formatErrorMessage(e, 'The statements of charges could not be read.'))
       })
     void listHoursStatementPeople(job.id)
       .then((p) => {
-        if (!cancelled) setPeople(p.length)
+        if (!cancelled && !takenDown()) setPeople(p.length)
       })
       .catch(() => {
-        if (!cancelled) setPeople(0)
+        if (!cancelled && !takenDown()) setPeople(0)
       })
     void loadMaterialLines(job.id)
       .then((l) => {
-        if (!cancelled) setLines(l.length)
+        if (!cancelled && !takenDown()) setLines(l.length)
       })
       .catch(() => {
-        if (!cancelled) setLines(0)
+        if (!cancelled && !takenDown()) setLines(0)
       })
     return () => {
       cancelled = true
     }
-  }, [job.id, allowed])
+  }, [job.id, allowed, takenDown])
 
   useEffect(() => reload(), [reload])
 

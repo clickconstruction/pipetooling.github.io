@@ -5,6 +5,7 @@ import { loadJobContractRows } from '../../lib/jobs/jobLienPaperIo'
 import { normalizeDocumentUrl } from '../../lib/jobs/lienFilingDocumentLink'
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useTakenDown } from '../../hooks/useTakenDown'
 import JobContractModal from './JobContractModal'
 import { buildJobContractRecordHtml } from './JobContractRecordModal'
 import { documentsChip, documentsHeading, documentsLinkButton, documentsQuietButton, documentsTd } from './jobDocumentsStyles'
@@ -20,16 +21,19 @@ export function JobDocumentsContract({ job, onOverlayOpenChange }: { job: JobWit
   const [rows, setRows] = useState<JobContractRow[] | null>(null)
   // null = closed; '' = the window with no record picked; otherwise that record.
   const [windowOn, setWindowOn] = useState<string | null>(null)
+  // A change heard from the Contract window reads again and keeps nothing to stop that read: one that lands after the
+  // section is taken down sets nothing (v2.7771).
+  const takenDown = useTakenDown()
 
   const reload = useCallback(() => {
     let cancelled = false
     void loadJobContractRows(job.id).then((list) => {
-      if (!cancelled) setRows(list)
+      if (!cancelled && !takenDown()) setRows(list)
     })
     return () => {
       cancelled = true
     }
-  }, [job.id])
+  }, [job.id, takenDown])
 
   useEffect(() => reload(), [reload])
   // The Contract window announces a change from wherever it is open (the Edit tab has one too).
