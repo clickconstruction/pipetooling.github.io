@@ -2,7 +2,7 @@
 name: "Lien desk To do: the band under the tiles, and where each press lives"
 number: 383
 group: ready
-status: asked 2026-11-17 · three whole-page options drawn and measured the same day · the owner picked B with each press on its bin's title line · PR 1 of 3 shipped in v2.7708 · PRs 2 and 3 not built
+status: asked 2026-11-17 · three whole-page options drawn and measured the same day · the owner picked B with each press on its bin's title line · PRs 1 and 2 of 3 shipped in v2.7708 and v2.7712 · PR 3 not built
 summary: >
   The owner boxed the band between the Board's four tiles and its two columns of bins: the sentence
   "Every bin." with its switch a page width away, and the two batch prints, one over each column. It
@@ -11,11 +11,12 @@ summary: >
   leader, at a computer's width and a phone's. A folds the band into the column headings. B puts every
   press in the bin it empties and gives signing a bin. C is B with the chart turned on its side. He picked
   B, with each press on the same line as its bin's name. PR 1 took the band away and moved the presses.
-next: PR 2, the signing bin, so a bin's count and its press are one number. Then PR 3, the quiet parts.
-size: M for what is left of B, PR 2 (M) and PR 3 (S); PR 1 is done
+  PR 2 gave signing its own bin, so a bin's count and its press are one number.
+next: PR 3, the quiet parts, the blue edge, the folded empty bins and Held and Missed on the heading line.
+size: S for what is left of B, PR 3; PRs 1 and 2 are done
 blocker: None.
-opinion: build — PR 2 next, since the notices to print still read 14, 8 and 1 until signing has a bin
-ver: v2.7311 · v2.7332 · v2.7334 · v2.7448 · v2.7470 · v2.7483 · v2.7490 · v2.7491 · v2.7497 · v2.7708
+opinion: build — PR 3, since the blue border still marks the busiest bin beside blue presses that mean something else
+ver: v2.7311 · v2.7332 · v2.7334 · v2.7448 · v2.7470 · v2.7483 · v2.7490 · v2.7491 · v2.7497 · v2.7708 · v2.7712
 ---
 
 # Lien desk To do: the band under the tiles (#383)
@@ -68,8 +69,19 @@ Measured on the built Board, with the same made-up jobs: the first bin's top edg
 279 px. The notices' print sits 544 px down and the affidavits' 630 px, both above a 720 px fold. Where a
 column is narrow, as at 1,024 px wide, a press wraps under its bin's name.
 
-**Left, PR 2: the signing bin** (M). As drawn below. Until it ships the notices to print still read 14 on
-the tile, 8 on the bin and 1 on the press, with the line under the bin's name saying why.
+**PR 2, v2.7712.** Signing has its own bin, *Approved · to sign*, between *Awaiting Master approval* and
+*Approved · to print*.
+
+- An approved notice the leader has not signed stands there, violet. Its chip opens the notice, where it
+  is signed.
+- *Approved · to print* holds exactly what its press takes. With the made-up jobs of the measurement it
+  reads 1 beside *Print and mail 1 notice*, and the new bin reads 7.
+- The third tile counts the two bins under it. A notice to sign is the second tile's alone.
+- The office's *Remind … ›* stands on the new bin's title line. On a master's desk the press there is
+  *Sign N notices ›*.
+- A notice to sign has two stages left where it had one, so it reads as at risk a working day sooner.
+- A GC's run row on the list stands in *Approved · to sign* while every one of its notices waits on a
+  signature, and in *Approved · to print* once one can print.
 
 **Left, PR 3: the quiet parts** (S). A blue edge on a bin with something to do now, in place of the blue
 border on the busiest bin. Empty bins fold to one line. **Held** and **Missed** move to the heading line.
@@ -231,6 +243,6 @@ Small things the look found. Each stands by itself, whichever option is picked.
 
 ## Where it stands
 
-The owner picked B with each press on its bin's title line. PR 1 is shipped in v2.7708. PR 2, the signing
-bin, and PR 3, the quiet parts, are not built. The live desk was not opened: every figure here is from
+The owner picked B with each press on its bin's title line. PR 1 is shipped in v2.7708 and PR 2, the signing
+bin, in v2.7712. PR 3, the quiet parts, is not built. The live desk was not opened: every figure here is from
 made-up jobs.

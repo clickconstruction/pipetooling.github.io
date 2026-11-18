@@ -9,7 +9,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import LienBoard, { lienBoardArrowPaths } from './LienBoard'
 import { buildLienBoard, lienBoardForLeader, lienBoardLeaderBinPress, lienBoardPick, type LienBoardInput } from '../../lib/jobs/lienBoard'
 import { lienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
-import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint } from '../../lib/jobs/lienBoardPrints'
+import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSignDoor } from '../../lib/jobs/lienBoardPrints'
+import { lienFieldsHash } from '../../lib/jobs/lienNoticeSignature'
 import type { LienDeskEntry, LienDeskPile } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry, LienAffidavitGate, LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
@@ -23,6 +24,8 @@ const gate = (key: LienAffidavitGate['key'], ok: boolean): LienAffidavitGate => 
 function affidavit(jobId: string, pile: LienAffidavitPile, over: Partial<LienAffidavitEntry> = {}): LienAffidavitEntry {
   return { jobId, isSub: true, lastMonth: '2026-07', lastMonthFromCreation: false, deadline: '2026-12-15', daysLeft: 30, severity: 'quiet', openBalance: 1000, customerId: 'c1', gcCustomerId: 'gc1', propertyKind: '', gates: [gate('owner', true), gate('legal', true)], ready: true, item: null, pile, ...over }
 }
+/** The columns of a notice the leader signed as it stands: without them an approved notice waits in Approved · to sign. */
+const SIGNED = { signed_at: '2026-11-13T19:14:00Z', signer_printed_name: 'Malachi', signer_signature_mode: 'type', signed_fields_hash: lienFieldsHash({}) }
 const item = (id: string, over: Record<string, unknown> = {}) => ({ id, status: 'approved', fields: {}, months: [], voided_at: null, ...over }) as unknown as LienDeskEntry['item']
 
 function board(over: Partial<LienBoardInput> = {}) {
@@ -53,7 +56,7 @@ describe('LienBoard', () => {
     const section = screen.getByRole('region', { name: 'The Board' })
     expect(section.getAttribute('data-lien-board-layout')).toBe('columns')
     const stages = (kind: string) => Array.from(section.querySelectorAll(`[data-lien-board-column="${kind}"] [data-lien-board-bin]`)).map((el) => el.getAttribute('data-stage'))
-    expect(stages('notice')).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_print', 'in_mail', 'sent', 'held'])
+    expect(stages('notice')).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent', 'held'])
     expect(stages('affidavit')).toEqual(['needs_property', 'needs_notice', 'to_send', 'awaiting', 'ready', 'filed', 'served'])
     expect(section.querySelector('[data-lien-board-bin="notice:held"]')!.getAttribute('data-beside')).toBe('yes')
     expect(section.querySelector('[data-lien-board-bin="notice:missed"]')).toBeNull()
@@ -76,21 +79,27 @@ describe('LienBoard', () => {
     expect(section.querySelector('[data-lien-board-bin="notice:to_send"]')!.getAttribute('data-lit')).toBe('yes')
     expect(section.querySelectorAll('[data-lit="yes"]')).toHaveLength(1)
   })
-  it('an approved notice stands in Approved · to print until its packet prints and in Approved · to mail after, each bin under its own name, and both chips open the run (v2.7448)', () => {
+  it('an approved notice stands in Approved · to sign until the leader signs it (v2.7712), in Approved · to print until its packet prints and in Approved · to mail after, each bin under its own name; the two that can go open the run and the unsigned one opens its notice', () => {
     const onChip = vi.fn()
-    const b = board({ notices: [notice('4', 'ready', { item: item('i4') }), notice('5', 'printed', { item: item('i5', { printed_at: '2026-11-14T10:00:00Z' }) })], affidavits: [] })
+    const b = board({ notices: [notice('4', 'ready', { item: item('i4', SIGNED) }), notice('5', 'printed', { item: item('i5', { ...SIGNED, printed_at: '2026-11-14T10:00:00Z' }) }), notice('6', 'ready', { item: item('i6'), earliestDeadline: '2026-12-15', daysLeft: 30 })], affidavits: [] })
     render(<LienBoard board={b} isMobile={false} onChip={onChip} />)
     const head = (key: string) => document.querySelector(`[data-lien-board-bin-head="${key}"]`)!.textContent
+    expect(head('notice:to_sign')).toBe('Approved · to sign1')
     expect(head('notice:to_print')).toBe('Approved · to print1')
     expect(head('notice:in_mail')).toBe('Approved · to mail1')
     const chips = (key: string) => Array.from(document.querySelectorAll(`[data-lien-board-chips="${key}"] [data-lien-board-chip]`)).map((el) => el.textContent)
+    expect(chips('notice:to_sign')).toEqual(['JP6'])
     expect(chips('notice:to_print')).toEqual(['JP4'])
     expect(chips('notice:in_mail')).toEqual(['JP5'])
+    // The unsigned one is violet, as every paper that waits on the leader is.
+    expect(document.querySelector('[data-lien-board-chip="6"]')!.getAttribute('data-urgency')).toBe('waiting')
     fireEvent.click(document.querySelector('[data-lien-board-chip="4"]') as HTMLElement)
     expect(onChip.mock.calls[0]![0]).toMatchObject({ jobId: '4', stage: 'to_print', destination: { kind: 'run', itemId: 'i4', jobId: '4' } })
     fireEvent.click(document.querySelector('[data-lien-board-chip="5"]') as HTMLElement)
     expect(onChip.mock.calls[1]![0]).toMatchObject({ jobId: '5', stage: 'in_mail', destination: { kind: 'run', itemId: 'i5', jobId: '5' } })
-    // The tiles over them: the approved notice is unsigned, so it waits on the leader too.
+    fireEvent.click(document.querySelector('[data-lien-board-chip="6"]') as HTMLElement)
+    expect(onChip.mock.calls[2]![0]).toMatchObject({ jobId: '6', stage: 'to_sign', destination: { kind: 'paper', tab: 'notices', jobId: '6' } })
+    // The tiles over them: the unsigned notice is the second tile's, and the third counts the two bins under it.
     const line = (key: string) => document.querySelector(`[data-lien-board-tile="${key}"] [data-lien-board-tile-line]`)!.textContent
     expect(line('waiting')).toBe('1 to sign')
     expect(line('in_mail')).toBe('1 to print · 1 to mail')
@@ -187,24 +196,24 @@ describe('LienBoard', () => {
     const b = board()
     const box = (left: number, top: number) => ({ left, top, width: 200, height: 60 })
     const boxes = {
-      'notice:needs_owner': box(0, 0), 'notice:to_send': box(0, 100), 'notice:awaiting': box(0, 200), 'notice:to_print': box(0, 300), 'notice:in_mail': box(0, 400), 'notice:sent': box(0, 500),
+      'notice:needs_owner': box(0, 0), 'notice:to_send': box(0, 100), 'notice:awaiting': box(0, 200), 'notice:to_sign': box(0, 300), 'notice:to_print': box(0, 400), 'notice:in_mail': box(0, 500), 'notice:sent': box(0, 600),
       'affidavit:needs_property': box(300, 0), 'affidavit:needs_notice': box(300, 100), 'affidavit:to_send': box(300, 200), 'affidavit:awaiting': box(300, 300), 'affidavit:ready': box(300, 400), 'affidavit:filed': box(300, 500), 'affidavit:served': box(300, 600),
     }
     const lines = lienBoardArrowPaths(b.arrows, boxes, false)
-    // Five down the notices (v2.7448), six down the affidavits (v2.7457, and Served since v2.7497), one across.
-    expect(lines).toHaveLength(12)
+    // Six down the notices (v2.7448, and Approved · to sign since v2.7712), six down the affidavits (v2.7457, and Served since v2.7497), one across.
+    expect(lines).toHaveLength(13)
     expect(lines.some((l) => l.key === 'affidavit:filed>affidavit:served')).toBe(true)
     expect(lines[0]).toEqual({ key: 'notice:needs_owner>notice:to_send', kind: 'down', d: 'M 100 60 L 100 99' })
     expect(lines.slice(2, 4)).toEqual([
-      { key: 'notice:awaiting>notice:to_print', kind: 'down', d: 'M 100 260 L 100 299' },
-      { key: 'notice:to_print>notice:in_mail', kind: 'down', d: 'M 100 360 L 100 399' },
+      { key: 'notice:awaiting>notice:to_sign', kind: 'down', d: 'M 100 260 L 100 299' },
+      { key: 'notice:to_sign>notice:to_print', kind: 'down', d: 'M 100 360 L 100 399' },
     ])
     // The crossing arrow lands on the second bin of the affidavits (v2.7457): the one a recorded mailing empties.
-    expect(lines[11]).toEqual({ key: 'notice:sent>affidavit:needs_notice', kind: 'cross', d: 'M 200 530 H 250 V 130 L 299 130' })
-    expect(lienBoardArrowPaths(b.arrows, boxes, true)).toHaveLength(11)
+    expect(lines[12]).toEqual({ key: 'notice:sent>affidavit:needs_notice', kind: 'cross', d: 'M 200 630 H 250 V 130 L 299 130' })
+    expect(lienBoardArrowPaths(b.arrows, boxes, true)).toHaveLength(12)
     // With the columns measured the vertical run sits in the gutter between them, clear of a bin beside the notices.
     const withColumns = { ...boxes, 'col:notice': { left: 0, top: 0, width: 240, height: 600 }, 'col:affidavit': { left: 300, top: 0, width: 240, height: 600 } }
-    expect(lienBoardArrowPaths(b.arrows, withColumns, false)[11]!.d).toBe('M 200 530 H 270 V 130 L 299 130')
+    expect(lienBoardArrowPaths(b.arrows, withColumns, false)[12]!.d).toBe('M 200 630 H 270 V 130 L 299 130')
     // A bin not drawn (Missed while empty) has no box and so no arrow; nothing throws.
     expect(lienBoardArrowPaths([{ from: 'notice:held', to: 'notice:missed', kind: 'down' }], boxes, false)).toEqual([])
   })
@@ -340,7 +349,7 @@ describe('LienBoard · public property (v2.7443)', () => {
 })
 
 describe('LienBoard · every press on its bin’s title line (v2.7708, punch list #383; the two prints stood in a band under the tiles since v2.7483)', () => {
-  const sides = () => ({ notice: lienBoardNoticePrint({ toPrint: 15, waits: 7, printed: 0, leaderName: 'Malachi' }), affidavit: lienBoardAffidavitPrint({ ready: 10, held: 2, earlierForm: 0, with: ['the help sheet'] }) })
+  const sides = () => ({ notice: lienBoardNoticePrint({ toPrint: 15, waits: 7, printed: 0 }), affidavit: lienBoardAffidavitPrint({ ready: 10, held: 2, earlierForm: 0, with: ['the help sheet'] }) })
   const handlers = () => ({ onPress: vi.fn(), onLeft: vi.fn(), onNote: vi.fn() })
   const bin = (key: string) => document.querySelector(`[data-lien-board-bin="${key}"]`) as HTMLElement
 
@@ -357,9 +366,12 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
     // The press is on the title line, after the bin's name and count; the lines stand under it, over the chips.
     const title = left.querySelector('[data-lien-board-bin-title]') as HTMLElement
     expect(Array.from(title.children).map((el) => el.textContent)).toEqual(['Approved · to print0', 'Print and mail 8 notices'])
-    expect(Array.from(left.children).map((el) => (el.hasAttribute('data-lien-board-bin-title') ? 'title' : el.hasAttribute('data-lien-board-bin-line') ? 'line' : 'chips'))).toEqual(['title', 'line', 'chips'])
+    const parts = (el: HTMLElement) => Array.from(el.children).map((c) => (c.hasAttribute('data-lien-board-bin-title') ? 'title' : c.hasAttribute('data-lien-board-bin-line') ? 'line' : 'chips'))
+    expect(parts(right)).toEqual(['title', 'line', 'line', 'chips'])
     expect(within(left).getByRole('button', { name: 'Print and mail 8 notices' }).style.background).toBe('rgb(37, 99, 235)')
-    expect(left.querySelector('[data-lien-board-print-left]')!.textContent).toBe('7 wait on Malachi’s signature · See them ›')
+    // The notices' print has no line (v2.7712): what waits on a signature stands in its own bin, Approved · to sign.
+    expect(parts(left)).toEqual(['title', 'chips'])
+    expect(left.querySelector('[data-lien-board-print-left]')).toBeNull()
     expect(left.querySelector('[data-lien-board-print-note]')).toBeNull()
     expect(right.querySelector('[data-lien-board-print-left]')!.textContent).toBe('2 held on a property fact · See them ›')
     expect(right.querySelector('[data-lien-board-print-note]')!.textContent).toBe('Prints with the help sheet · Change ›')
@@ -367,8 +379,8 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
     expect(h.onPress.mock.calls[0]![0]).toMatchObject({ kind: 'notice', act: 'print_run', bin: 'notice:to_print' })
     fireEvent.click(within(right).getByRole('button', { name: 'Print 10 for notarization' }))
     expect(h.onPress.mock.calls[1]![0]).toMatchObject({ kind: 'affidavit', act: 'print_affidavits', bin: 'affidavit:ready' })
-    fireEvent.click(within(left).getByRole('button', { name: 'See them ›' }))
-    expect(h.onLeft.mock.calls[0]![0].kind).toBe('notice')
+    fireEvent.click(within(right).getByRole('button', { name: 'See them ›' }))
+    expect(h.onLeft.mock.calls[0]![0].kind).toBe('affidavit')
     fireEvent.click(within(right).getByRole('button', { name: 'Change ›' }))
     expect(h.onNote).toHaveBeenCalledTimes(1)
   })
@@ -387,36 +399,50 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
     expect(lienBoardMailNumbersPress({ toPrint: 0, printed: 6 })).toBeNull()
   })
 
-  it('the line that counts the notices waiting on his signature carries the office’s reminder, on the notices’ bin alone; dead it reads when it went (v2.7491)', () => {
+  it('Approved · to sign carries the office’s reminder on its title line, and for the leader the door to sign them; dead it reads when it went (v2.7491; on the bin since v2.7712)', () => {
     const onPress = vi.fn()
-    const view = render(<LienBoard board={board()} isMobile={false} columnsOnly prints={{ ...sides(), ...handlers(), remind: { button: 'Remind Malachi of 7 papers', dead: false, onPress } }} />)
-    const left = bin('notice:to_print').querySelector('[data-lien-board-print-left]') as HTMLElement
-    expect(left.textContent).toBe('7 wait on Malachi’s signature · See them › · Remind Malachi of 7 papers ›')
-    expect(bin('affidavit:ready').querySelector('[data-lien-board-remind]')).toBeNull()
-    fireEvent.click(left.querySelector('[data-lien-board-remind]') as HTMLButtonElement)
+    const b = board({ notices: [notice('9', 'ready', { item: item('i9') }), notice('10', 'ready', { item: item('i10', SIGNED) })] })
+    const remind = (over: Record<string, unknown> = {}) => ({ 'notice:to_sign': { label: 'Remind Malachi of 1 paper ›', onPress, marks: { 'data-lien-board-remind': 'yes' }, ...over } })
+    const view = render(<LienBoard board={b} isMobile={false} columnsOnly binPress={remind()} prints={{ notice: lienBoardNoticePrint({ toPrint: 2, waits: 1, printed: 0 }), affidavit: null, ...handlers() }} />)
+    const press = document.querySelector('[data-lien-board-remind]') as HTMLButtonElement
+    expect(press.parentElement!.getAttribute('data-lien-board-bin-title')).toBe('notice:to_sign')
+    expect(press.textContent).toBe('Remind Malachi of 1 paper ›')
+    // An outline: the bin's act is the leader's, and this is the office's nudge.
+    expect(press.style.background).toBe('var(--surface)')
+    // The print bin under it holds what the print takes, and says so with one number.
+    expect(bin('notice:to_print').querySelector('[data-lien-board-bin-title]')!.textContent).toBe('Approved · to print1Print and mail 1 notice')
+    fireEvent.click(press)
     expect(onPress).toHaveBeenCalledTimes(1)
     view.unmount()
-    render(<LienBoard board={board()} isMobile={false} columnsOnly prints={{ ...sides(), ...handlers(), remind: { button: 'Reminded at 2:14 PM', dead: true, onPress } }} />)
-    const sent = document.querySelector('[data-lien-board-remind]') as HTMLButtonElement
-    expect(sent.textContent).toBe('Reminded at 2:14 PM')
-    expect(sent.disabled).toBe(true)
+    const sent = render(<LienBoard board={b} isMobile={false} columnsOnly binPress={remind({ label: 'Reminded at 2:14 PM', dead: true })} />)
+    expect((document.querySelector('[data-lien-board-remind]') as HTMLButtonElement).textContent).toBe('Reminded at 2:14 PM')
+    expect((document.querySelector('[data-lien-board-remind]') as HTMLButtonElement).disabled).toBe(true)
+    sent.unmount()
+    // The leader's own desk: the door to the notices that take his signature, filled, since the act is his.
+    const door = lienBoardSignDoor(1)!
+    render(<LienBoard board={b} isMobile={false} columnsOnly binPress={{ 'notice:to_sign': { label: door.label, onPress, filled: true, marks: { 'data-lien-board-sign': 'yes' } } }} />)
+    const sign = document.querySelector('[data-lien-board-sign]') as HTMLButtonElement
+    expect(sign.textContent).toBe('Sign 1 notice ›')
+    expect(sign.style.background).toBe('rgb(37, 99, 235)')
+    expect(document.querySelector('[data-lien-board-remind]')).toBeNull()
   })
 
-  it('a press with nothing ready is dead and still says why while its bin holds a paper; in an empty bin it is not drawn; a column with no approved paper has no press', () => {
+  it('a press with nothing ready is dead while its bin holds a paper; in an empty bin it is not drawn; a column with no approved paper has no press', () => {
     const h = handlers()
-    const unsigned = board({ notices: [notice('9', 'ready', { item: item('i9') })] })
-    const view = render(<LienBoard board={unsigned} isMobile={false} columnsOnly prints={{ notice: lienBoardNoticePrint({ toPrint: 2, waits: 2, printed: 0 }), affidavit: null, ...h }} />)
+    const held = board({ notices: [notice('9', 'ready', { item: item('i9', SIGNED) })] })
+    const view = render(<LienBoard board={held} isMobile={false} columnsOnly prints={{ notice: lienBoardNoticePrint({ toPrint: 2, waits: 2, printed: 0 }), affidavit: null, ...h }} />)
     const press = bin('notice:to_print').querySelector('[data-lien-board-print-press]') as HTMLButtonElement
     expect(press.disabled).toBe(true)
-    expect(bin('notice:to_print').querySelector('[data-lien-board-print-left]')!.textContent).toContain('2 wait on the leader’s signature')
     fireEvent.click(press)
     expect(h.onPress).not.toHaveBeenCalled()
     expect(bin('affidavit:ready').querySelector('[data-lien-board-bin-press]')).toBeNull()
     view.unmount()
-    // The same dead press over a bin with no chip says nothing: the bin reads none.
-    render(<LienBoard board={board()} isMobile={false} columnsOnly prints={{ notice: lienBoardNoticePrint({ toPrint: 2, waits: 2, printed: 0 }), affidavit: null, ...h }} />)
+    // Every approved notice waits on a signature: they stand in Approved · to sign, and the empty print bin draws no dead press.
+    const unsigned = board({ notices: [notice('9', 'ready', { item: item('i9') })] })
+    render(<LienBoard board={unsigned} isMobile={false} columnsOnly prints={{ notice: lienBoardNoticePrint({ toPrint: 1, waits: 1, printed: 0 }), affidavit: null, ...h }} />)
     expect(document.querySelector('[data-lien-board-print-press]')).toBeNull()
-    expect(document.querySelector('[data-lien-board-print-left]')).toBeNull()
+    expect(bin('notice:to_print').querySelector('[data-lien-board-count]')!.textContent).toBe('0')
+    expect(bin('notice:to_sign').querySelector('[data-lien-board-count]')!.textContent).toBe('1')
   })
 
   it('the third tile opens the run again on a computer, with the print in its bin or with none; on a phone, where the print stands right under the tiles, it only reads', () => {

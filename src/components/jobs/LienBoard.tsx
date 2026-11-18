@@ -376,7 +376,7 @@ export default function LienBoard({
   over?: ReactNode
   /** A bin of the desk's own under the affidavit column (v2.7443): *Public jobs · bond claim*. */
   underAffidavits?: ReactNode
-  /** A press on a bin's title line, by the bin's key: *Mail 12 liens’ copies ›* on *Filed · copies to mail* (punch list #366), *Enter mail numbers · 6* on *Approved · to mail*, the leader's *Approve 2 affidavits* on his *Awaiting Master approval*. */
+  /** A press on a bin's title line, by the bin's key: *Mail 12 liens’ copies ›* on *Filed · copies to mail* (punch list #366), *Enter mail numbers · 6* on *Approved · to mail*, the leader's *Approve 2 affidavits* on his *Awaiting Master approval*, and on *Approved · to sign* (v2.7712) the office's reminder or the leader's *Sign 7 notices ›*. */
   binPress?: Partial<Record<LienBoardBinKey, LienBoardBinPress>>
   /** Told when the columns stack or stand side by side, so the desk can make To do one page while the Board is taller than the screen. */
   onLayout?: (stacked: boolean) => void
@@ -385,7 +385,8 @@ export default function LienBoard({
   /**
    * The two prints (v2.7470, punch list #362; `lienBoardPrints.ts`): the whole run for the notices and the batch print for the
    * affidavits, each with what it leaves out and the door to it. Since v2.7708 each stands on the title line of the bin it
-   * empties (`side.bin`), its lines under that. A phone keeps its bins folded, so there the two stand in one row over the
+   * empties (`side.bin`), its lines under that. The notices' print has no line since v2.7712: what waits on a signature
+   * stands in its own bin. A phone keeps its bins folded, so there the two stand in one row over the
    * fold, in their short words, and an opened bin draws the lines alone. Absent, none is drawn.
    */
   prints?: {
@@ -395,12 +396,6 @@ export default function LienBoard({
     onLeft: (side: LienBoardPrintSide) => void
     onNote: (side: LienBoardPrintSide) => void
     busy?: boolean
-    /**
-     * The office's reminder (v2.7491), beside the line that counts the notices waiting on the leader's signature: the
-     * same press as To do's waiting rows carry, so it stands on a day when no paper waits on an approval. Null with
-     * no notice to sign, or for a viewer who cannot send it.
-     */
-    remind?: { button: string; dead: boolean; busy?: boolean; onPress: () => void } | null
   } | null
 }) {
   const gridRef = useRef<HTMLDivElement | null>(null)
@@ -492,19 +487,8 @@ export default function LienBoard({
   // what it leaves out with its door. A phone draws the press over the folded bins and the lines in the bin.
   const printSides = prints ? [prints.notice, prints.affidavit].filter((side): side is LienBoardPrintSide => Boolean(side)) : []
   const printPress = (side: LienBoardPrintSide): LienBoardBinPress => {
-    const remind = side.kind === 'notice' ? prints?.remind : null
     const lines: LienBoardBinLine[] = []
-    if (side.left)
-      lines.push({
-        key: 'left',
-        words: side.left.words,
-        tone: 'amber',
-        marks: { 'data-lien-board-print-left': side.kind },
-        doors: [
-          { key: 'left', label: `${side.left.door} ›`, onPress: () => prints?.onLeft(side), marks: { 'data-lien-board-print-left-door': side.kind } },
-          ...(remind ? [{ key: 'remind', label: remind.busy ? 'Reminding…' : remind.dead ? remind.button : `${remind.button} ›`, dead: remind.dead || Boolean(remind.busy), onPress: remind.onPress, marks: { 'data-lien-board-remind': 'yes' } }] : []),
-        ],
-      })
+    if (side.left) lines.push({ key: 'left', words: side.left.words, tone: 'amber', marks: { 'data-lien-board-print-left': side.kind }, doors: [{ key: 'left', label: `${side.left.door} ›`, onPress: () => prints?.onLeft(side), marks: { 'data-lien-board-print-left-door': side.kind } }] })
     if (side.note) lines.push({ key: 'note', words: side.note.words, tone: 'muted', marks: { 'data-lien-board-print-note': side.kind }, doors: [{ key: 'note', label: `${side.note.door} ›`, onPress: () => prints?.onNote(side), marks: { 'data-lien-board-print-note-door': side.kind } }] })
     return { label: side.label, onPress: () => prints?.onPress(side), filled: true, dead: side.dead || Boolean(prints?.busy), whenEmpty: true, linesOnly: isMobile, lines, marks: { 'data-lien-board-print-press': side.act } }
   }

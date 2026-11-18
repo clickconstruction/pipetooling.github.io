@@ -117,6 +117,7 @@ last_updated: 2026-11-17
 > `LienBoard` takes them as `prints` and since v2.7708 (punch list #383, the owner's *Build B but with the action button in the same line as the title of the card*) draws each on the title line of the bin it empties (`side.bin`, `LienBoardBinPress` with its `lines`), nothing between the tiles and the columns (one band there from v2.7483;
 > at each column's foot in v2.7470), a phone's two in one row over its folded bins, where the third tile only reads;
 > `lienBoardMailNumbersPress` hands *Approved · to mail* the run's door while notices still wait to print, and the desk's `boardBinPress` map carries it with the liens' copies and the leader's press;
+> since v2.7712 an approved notice with no signature stands in a bin of its own, *Approved · to sign* (`to_sign`, `noticeStageOf` over `lienItemUnsigned`, two stages left), whose press is the office's reminder or the leader's `lienBoardSignDoor`, so the print bin and the third tile count what the print takes and the notices' print has no line;
 > `LienDoNowBar` shows the short pair while pinned.
 > In `LienDesk` the notices' press is `openWholeRun` (no GC), the affidavits' is `printReadyAffidavits` in place, *See them ›* opens By paper at the approved notices or the held affidavits, and *Change ›* opens the affidavits list at Ready to file, where the print's pages and county are ticked.
 

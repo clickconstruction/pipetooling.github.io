@@ -14,6 +14,10 @@
  * the card it is in*) each press stands on the title line of the bin it empties, and nothing stands between the tiles
  * and the chart. `bin` names that bin. A phone keeps its bins folded, so there the pair stands in one row over them.
  *
+ * Since v2.7712 signing has its own bin, *Approved · to sign*, so the notices' press says nothing of what waits on a
+ * signature: that bin holds those notices and carries the office's reminder, or the leader's door to sign them
+ * (`lienBoardSignDoor`). The pair beside the find box still says *7 wait*.
+ *
  * Pure: counts in, words out. The counts are the desk's own, the ones the run's door and By paper's print bar count
  * with, so the three cannot disagree. Every press names its act and its count (`countedLabel`), and is dead only when
  * nothing is ready. The notice press reads *Enter mail numbers* once every approved notice has printed, as the run's
@@ -45,20 +49,18 @@ export type LienBoardPrintSide = {
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many)
 
 /**
- * Under the notices' column. `toPrint` is every approved notice not yet printed (retainage notices ride the same
+ * The notices' print. `toPrint` is every approved notice not yet printed (retainage notices ride the same
  * run), `waits` how many of them still lack the leader's signature, `printed` the ones printed with mail numbers
- * still owed. Null when no approved notice is on the desk: the column ends with no press.
+ * still owed. Null when no approved notice is on the desk: no bin has the press.
  */
-export function lienBoardNoticePrint(c: { toPrint: number; waits: number; printed: number; leaderName?: string | null }): LienBoardPrintSide | null {
+export function lienBoardNoticePrint(c: { toPrint: number; waits: number; printed: number }): LienBoardPrintSide | null {
   const waits = Math.max(0, Math.min(c.waits, c.toPrint))
   const ready = c.toPrint - waits
   if (c.toPrint <= 0 && c.printed <= 0) return null
-  const leader = (c.leaderName ?? '').trim() || 'the leader'
-  const left = waits > 0 ? { words: `${waits} ${plural(waits, 'waits', 'wait')} on ${leader}’s signature`, door: plural(waits, 'See it', 'See them') } : null
   // Every approved notice has printed: the run is open on its mail numbers, as its own door says.
   if (c.toPrint <= 0) return { kind: 'notice', bin: 'notice:in_mail', act: 'record_run', label: `Enter mail numbers · ${c.printed}`, dead: false, short: { label: `Enter mail numbers · ${c.printed}`, left: null }, left: null, note: null }
   const label = countedLabel('Print and mail', ready, 'notice')
-  return { kind: 'notice', bin: 'notice:to_print', act: 'print_run', label, dead: ready <= 0, short: { label, left: waits > 0 ? `${waits} ${plural(waits, 'waits', 'wait')}` : null }, left, note: null }
+  return { kind: 'notice', bin: 'notice:to_print', act: 'print_run', label, dead: ready <= 0, short: { label, left: waits > 0 ? `${waits} ${plural(waits, 'waits', 'wait')}` : null }, left: null, note: null }
 }
 
 /**
@@ -68,6 +70,14 @@ export function lienBoardNoticePrint(c: { toPrint: number; waits: number; printe
 export function lienBoardMailNumbersPress(c: { toPrint: number; printed: number }): { label: string } | null {
   if (c.printed <= 0 || c.toPrint <= 0) return null
   return { label: `Enter mail numbers · ${c.printed}` }
+}
+
+/**
+ * The leader's press on *Approved · to sign* (v2.7712): the door to the approved notices, where each takes his
+ * signature on its own pane. Null with none to sign. The office's press on that bin is its reminder.
+ */
+export function lienBoardSignDoor(waits: number): { label: string } | null {
+  return waits > 0 ? { label: `${countedLabel('Sign', waits, 'notice')} ›` } : null
 }
 
 /**
