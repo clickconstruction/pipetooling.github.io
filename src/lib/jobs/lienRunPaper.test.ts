@@ -82,7 +82,7 @@ describe('the sheet, the divider and the foot', () => {
     expect(html).toContain('<td class="n">1</td><td class="to"><strong>TC/JP SEGUIN 2019 LLC</strong><small>9993 IH 10 WEST SUITE 102<br>SAN ANTONIO, TX 78230</small></td>')
     expect(html).toContain('<b>7 documents</b> · counsel’s letter, the notice, the pay page, 4 unpaid invoices<br>878 · Tune 5- Seguin · $38,625.00')
     expect(html).toContain('<span>☐ stuffed</span><span>☐ label on</span><span>☐ mailed</span>')
-    expect((html.match(/<tr class="runtrk"><td colspan="4"><div><span class="lab">Tracking number<\/span><span class="box"><small>20 digits from the certified label<\/small>/g) ?? []).length).toBe(2)
+    expect((html.match(/<tr class="runtrk"><td colspan="4"><div><span class="lab">Tracking number<\/span><span class="box"><small>20 or 22 digits from the certified label<\/small>/g) ?? []).length).toBe(2)
     expect(html).toContain('<tr class="runrow held" data-run-sheet-envelope="3" data-run-held="yes"><td class="n">3</td><td class="to"><strong>RLC- Dunmere Mallin · no mailing address</strong><small class="why">No mailing address, and the claim is $0. Nothing to send. The notice stays on the desk.</small></td><td class="in"><b>Held</b><br>1008 · Trip Charges · $0.00</td><td class="done">—</td></tr>')
   })
 

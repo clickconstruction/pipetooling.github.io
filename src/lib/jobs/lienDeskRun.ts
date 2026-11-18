@@ -644,20 +644,8 @@ export function runCourtesyResultWords(sent: ReadonlyArray<RunCourtesySend>, fai
   }
 }
 
-/** The shape of a tracking number for its method (v2.4119): a certified article number is 20 digits (22 with the service prefix); a courier number is any non-empty string; email and hand delivery need none. */
-export type TrackingShape = { ok: boolean; hint: string; digits: number }
-
-export function trackingShape(method: RunSendMethod, tracking: string): TrackingShape {
-  const raw = (tracking ?? '').trim()
-  if (method === 'email' || method === 'hand') return { ok: true, hint: '', digits: 0 }
-  if (!raw) return { ok: false, hint: '', digits: 0 }
-  const digits = raw.replace(/\D/g, '').length
-  if (method === 'certified_mail') {
-    if (digits === 20 || digits === 22) return { ok: true, hint: `${digits} digits · certified`, digits }
-    return { ok: false, hint: `${digits} digits — a certified number has 20`, digits }
-  }
-  return { ok: true, hint: '', digits }
-}
+/** The shape of a tracking number for its method (v2.4119): a certified number is 20 digits or 22, by the label. The rule lives in `lienSendTracking.ts`, which the by-hand record shares. */
+export { trackingShape, type TrackingShape } from './lienSendTracking'
 
 /** An envelope counts as mailed once it carries a number, or goes by email or hand (v2.4119). */
 export function recipientMailed(r: Pick<RunRecipient, 'method' | 'tracking' | 'via' | 'pieceId' | 'pieceStatus'>): boolean {

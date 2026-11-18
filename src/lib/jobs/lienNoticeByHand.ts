@@ -10,6 +10,7 @@
 import type { LienNoticeFields } from '../jobsDocuments/lienNoticeFieldsType'
 import { filingDocumentPayload } from './lienFilingDocumentLink'
 import { propertyKey } from './ownerConfirm'
+import { trackedMethod, trackingShape, type TrackingShape } from './lienSendTracking'
 
 export type ByHandRecipient = 'owner' | 'original_contractor'
 export type ByHandMethod = 'certified_mail' | 'mail' | 'traceable_courier' | 'email' | 'hand'
@@ -37,7 +38,14 @@ export type ByHandInput = {
   /** 'YYYY-MM-DD' — the day it went out. */
   sentOn: string
   method: ByHandMethod
+  /** The one box: an email's address, who signed for a hand delivery, or one number for every envelope. */
   tracking: string
+  /**
+   * A number for each envelope (v2.7705): the owner's copy and the original contractor's go in two envelopes, and a
+   * carrier gives each its own label. When this is given and the method is certified mail or a courier, it rules: a
+   * recipient it does not name has no number, and `tracking` is not read.
+   */
+  trackingBy?: Partial<Record<ByHandRecipient, string>>
   recipients: ByHandRecipient[]
   /** The total the paper claimed. */
   printedClaim: number
@@ -68,9 +76,71 @@ export function byHandClaimWords(printedClaim: number, appClaim: number, opts: {
   return `printed ${money(printedClaim)} · the app's ${opts.timely ? 'timely ' : ''}claim would have been ${money(appClaim)}`
 }
 
-/** The delivery record every covered job's filing carries. */
-export function byHandSends(input: Pick<ByHandInput, 'sentOn' | 'method' | 'tracking' | 'recipients'>): Array<{ recipient: ByHandRecipient; method: ByHandMethod; tracking: string; sent_on: string }> {
-  return input.recipients.map((recipient) => ({ recipient, method: input.method, tracking: input.tracking.trim(), sent_on: input.sentOn }))
+/** The two recipients a § 53.056 notice names, in the statute's order, as the form words them. */
+export const BY_HAND_RECIPIENTS: ReadonlyArray<{ key: ByHandRecipient; label: string }> = [
+  { key: 'owner', label: 'owner of record' },
+  { key: 'original_contractor', label: 'original contractor' },
+]
+
+/** A carrier that hands back a number for each envelope: certified mail and a traceable courier (the sends' own rule). */
+export function byHandMethodNumbersEnvelopes(method: ByHandMethod): boolean {
+  return trackedMethod(method)
+}
+
+/**
+ * The recipients that get a number box of their own (v2.7705), in the statute's order: everyone the paper went to,
+ * when a carrier took it. Empty for mail, email and hand delivery, which keep the one box.
+ */
+export function byHandNumberBoxes(input: Pick<ByHandInput, 'method' | 'recipients'>): ByHandRecipient[] {
+  if (!byHandMethodNumbersEnvelopes(input.method)) return []
+  return BY_HAND_RECIPIENTS.map((r) => r.key).filter((r) => input.recipients.includes(r))
+}
+
+type ByHandNumbers = Pick<ByHandInput, 'method' | 'tracking' | 'trackingBy' | 'recipients'>
+
+/** The number one recipient's send carries: its own when the form took one for each envelope, else the one box. */
+export function byHandTrackingFor(input: Pick<ByHandInput, 'method' | 'tracking' | 'trackingBy'>, recipient: ByHandRecipient): string {
+  if (input.trackingBy && byHandMethodNumbersEnvelopes(input.method)) return (input.trackingBy[recipient] ?? '').trim()
+  return input.tracking.trim()
+}
+
+/** One recipient's number against the shape its method asks for: a certified number is 20 or 22 digits. */
+export function byHandNumberShape(input: Pick<ByHandInput, 'method' | 'tracking' | 'trackingBy'>, recipient: ByHandRecipient): TrackingShape {
+  return trackingShape(input.method, byHandTrackingFor(input, recipient))
+}
+
+const sameNumberKey = (t: string) => t.replace(/[^a-z0-9]/gi, '').toLowerCase()
+
+/** Two envelopes on one number: a carrier took the paper to both recipients and both sends would carry the same number. */
+export function byHandSameNumberTwice(input: ByHandNumbers): boolean {
+  const boxes = byHandNumberBoxes(input)
+  if (boxes.length < 2) return false
+  const keys = boxes.map((r) => sameNumberKey(byHandTrackingFor(input, r)))
+  return keys[0] !== '' && keys.every((k) => k === keys[0])
+}
+
+export const BY_HAND_SAME_NUMBER_WORDS = 'Both envelopes carry the same number. Each envelope has its own label, so check the second one.'
+
+/**
+ * What the numbers as typed deserve a second look for, none of it stopping the record (the run window's own rule: the
+ * post office may hand a number back later): a certified number of the wrong length, by recipient, and one number on
+ * two envelopes. Empty when they read right.
+ */
+export function byHandNumberNotes(input: ByHandNumbers): string[] {
+  const out: string[] = []
+  if (!byHandMethodNumbersEnvelopes(input.method)) return out
+  for (const r of BY_HAND_RECIPIENTS) {
+    if (!input.recipients.includes(r.key)) continue
+    const shape = byHandNumberShape(input, r.key)
+    if (!shape.ok && shape.hint) out.push(`${r.label}: ${shape.hint}`)
+  }
+  if (byHandSameNumberTwice(input)) out.push(BY_HAND_SAME_NUMBER_WORDS)
+  return out
+}
+
+/** The delivery record every covered job's filing carries: one send for each recipient, each with its own envelope's number. */
+export function byHandSends(input: Pick<ByHandInput, 'sentOn' | 'method' | 'tracking' | 'trackingBy' | 'recipients'>): Array<{ recipient: ByHandRecipient; method: ByHandMethod; tracking: string; sent_on: string }> {
+  return input.recipients.map((recipient) => ({ recipient, method: input.method, tracking: byHandTrackingFor(input, recipient), sent_on: input.sentOn }))
 }
 
 /**

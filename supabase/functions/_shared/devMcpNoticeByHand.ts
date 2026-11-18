@@ -16,11 +16,18 @@
 // same mailing day and the same number is refused as already recorded, and a first job whose claim was set by hand is
 // refused with the desk as its door, since the seat does not read a corrected claim.
 //
+// A number for each envelope (v2.7705 / the owner, 2026-11-17: a notice's two copies go in two envelopes, each with
+// its own certified label, and one number had been written on both sends). `tracking` still puts one number on every
+// send; `tracking_by: { owner, original_contractor }` gives each envelope its own, for certified mail or a courier, as
+// the form's two boxes do, through the same kernel (`byHandSends`). The already-recorded check reads either. What the
+// form says about the numbers and does not stop on, the plan says too: a certified number that is not 20 or 22 digits,
+// and one number on two envelopes.
+//
 // It records a fact. It mails nothing, drafts nothing, approves nothing and changes no bill. No wrapper RPC and no
 // migration: the dry run is this server's read, hashed with the payload.
 // Pure: no env reads, no network; the test runs a recording fake (src/lib/devMcp/devMcpNoticeByHand.test.ts).
 
-import { BY_HAND_METHODS, byHandClaimWords, byHandFilingPayloads, byHandProblems, otherJobsAtProperty, type ByHandInput, type ByHandJob, type ByHandMethod, type ByHandRecipient } from './gcKernels/lib/jobs/lienNoticeByHand.ts'
+import { BY_HAND_METHODS, BY_HAND_RECIPIENTS, byHandClaimWords, byHandFilingPayloads, byHandMethodNumbersEnvelopes, byHandNumberNotes, byHandProblems, byHandSameNumberTwice, otherJobsAtProperty, type ByHandInput, type ByHandJob, type ByHandMethod, type ByHandRecipient } from './gcKernels/lib/jobs/lienNoticeByHand.ts'
 import { buildLienNoticeFieldsForJob, homesteadStatementApplies, type LienNoticeIssuer } from './gcKernels/lib/jobs/lienNoticeJobFields.ts'
 import { lienSignerNameFor } from './gcKernels/lib/jobs/lienSigner.ts'
 import { earliestSendDay, sentAtForTypedDay } from './gcKernels/lib/jobs/lienSentAt.ts'
@@ -59,6 +66,8 @@ export type NoticeByHandPayload = {
   sent_on: string
   method: ByHandMethod
   tracking: string
+  /** Each envelope's own number (v2.7705), in place of `tracking`. Left off the payload when not given, so a plan with one number hashes as it did. */
+  tracking_by?: Partial<Record<ByHandRecipient, string>>
   to: ByHandRecipient[]
   claim_as_printed: number
   months_as_printed: string[]
@@ -69,7 +78,7 @@ export type NoticeByHandPayload = {
 export type NoticeByHandInput = { ok: true; p: NoticeByHandPayload; target: string; planHash: string | null } | { ok: false; error: string }
 
 const METHOD_KEYS = BY_HAND_METHODS.map((m) => m.key)
-const NOTICE_SHAPE = `needs notice — { job_id (a jobs_ledger.id — find_job: the job the paper was printed for), also_covers? ([job ids]: the other unpaid jobs at the same property the one paper covered), sent_on (YYYY-MM-DD, the day it was mailed), method (${METHOD_KEYS.join(' | ')}), tracking? (the mail number; an email's address), to ([owner, original_contractor] — only who it really went to), claim_as_printed (dollars, the paper's total), months_as_printed ([YYYY-MM], the months the paper names), saved_copy_link? (the Drive link), saved_copy_note? (one line, under ${NOTICE_BY_HAND_NOTE_MAX}) }. Type it as the paper went.`
+const NOTICE_SHAPE = `needs notice — { job_id (a jobs_ledger.id — find_job: the job the paper was printed for), also_covers? ([job ids]: the other unpaid jobs at the same property the one paper covered), sent_on (YYYY-MM-DD, the day it was mailed), method (${METHOD_KEYS.join(' | ')}), tracking? (one mail number for every envelope; an email's address; who signed for a hand delivery), tracking_by? ({ owner?, original_contractor? }: the number on each envelope's own label, for certified mail or a courier, in place of tracking), to ([owner, original_contractor] — only who it really went to), claim_as_printed (dollars, the paper's total), months_as_printed ([YYYY-MM], the months the paper names), saved_copy_link? (the Drive link), saved_copy_note? (one line, under ${NOTICE_BY_HAND_NOTE_MAX}) }. Type it as the paper went.`
 
 /** plan_notice_by_hand / apply_notice_by_hand's input, shaped. What the form itself would refuse is the dry run's to say. */
 export function noticeByHandInput(verb: NoticeByHandVerb, input: Json): NoticeByHandInput {
@@ -99,11 +108,29 @@ export function noticeByHandInput(verb: NoticeByHandVerb, input: Json): NoticeBy
   const months = [...new Set((monthsRaw as string[]).map((m) => m.trim()))].sort()
   const tracking = str('tracking')
   if (tracking.length > NOTICE_BY_HAND_TRACKING_MAX) return { ok: false, error: `${verb}: tracking is the mail number, under ${NOTICE_BY_HAND_TRACKING_MAX} characters.` }
+  // Each envelope's own number: the form's two boxes. A blank one is a number the post office has not handed back.
+  let trackingBy: Partial<Record<ByHandRecipient, string>> | null = null
+  if (src.tracking_by !== undefined && src.tracking_by !== null) {
+    const by = obj(src.tracking_by)
+    const keys = by ? Object.keys(by) : []
+    if (!by || keys.length === 0 || keys.some((k) => (k !== 'owner' && k !== 'original_contractor') || typeof by[k] !== 'string')) return { ok: false, error: `${verb}: tracking_by is { owner?, original_contractor? }, each the mail number on that envelope's own label.` }
+    if (!byHandMethodNumbersEnvelopes(method as ByHandMethod)) return { ok: false, error: `${verb}: tracking_by is for certified_mail or traceable_courier, where each envelope has its own number. An email's address, or who signed for a hand delivery, goes in tracking.` }
+    if (tracking) return { ok: false, error: `${verb}: give tracking (one number for every envelope) or tracking_by (each envelope's own), not both.` }
+    const strangers = BY_HAND_RECIPIENTS.filter((r) => keys.includes(r.key) && !to.includes(r.key))
+    if (strangers.length > 0) return { ok: false, error: `${verb}: tracking_by names the ${strangers.map((r) => r.label).join(' and the ')}, and to does not. A number goes on an envelope that went.` }
+    const given: Partial<Record<ByHandRecipient, string>> = {}
+    for (const r of BY_HAND_RECIPIENTS) {
+      const v = typeof by[r.key] === 'string' ? (by[r.key] as string).trim() : ''
+      if (v.length > NOTICE_BY_HAND_TRACKING_MAX) return { ok: false, error: `${verb}: tracking_by.${r.key} is the mail number, under ${NOTICE_BY_HAND_TRACKING_MAX} characters.` }
+      if (v) given[r.key] = v
+    }
+    if (Object.keys(given).length > 0) trackingBy = given
+  }
   const link = str('saved_copy_link')
   if (link.length > NOTICE_BY_HAND_LINK_MAX || (link && !/^https:\/\//i.test(link))) return { ok: false, error: `${verb}: saved_copy_link is an https link to the saved copy, or left out.` }
   const note = str('saved_copy_note')
   if (note.length > NOTICE_BY_HAND_NOTE_MAX) return { ok: false, error: `${verb}: saved_copy_note is one line, under ${NOTICE_BY_HAND_NOTE_MAX} characters.` }
-  const p: NoticeByHandPayload = { action: 'notice_by_hand', job_id: jobId, also_covers: also, sent_on: sentOn, method: method as ByHandMethod, tracking, to: [...to], claim_as_printed: cents(claim), months_as_printed: months, saved_copy_link: link, saved_copy_note: note }
+  const p: NoticeByHandPayload = { action: 'notice_by_hand', job_id: jobId, also_covers: also, sent_on: sentOn, method: method as ByHandMethod, tracking, ...(trackingBy ? { tracking_by: trackingBy } : {}), to: [...to], claim_as_printed: cents(claim), months_as_printed: months, saved_copy_link: link, saved_copy_note: note }
   let planHash: string | null = null
   if (verb.startsWith('apply_')) {
     const h = typeof input.plan_hash === 'string' ? input.plan_hash.trim().toLowerCase() : ''
@@ -248,7 +275,7 @@ export function byHandInputOf(p: NoticeByHandPayload, world: NoticeByHandWorld):
     if (!o) continue
     jobs.push({ jobId: o.id, label: jobLabelOf(o), amount: Math.max(0, num(o.revenue) - num(o.payments_made)), itemId: itemFor(o.id) })
   }
-  return { sentOn: p.sent_on, method: p.method, tracking: p.tracking, recipients: p.to, printedClaim: p.claim_as_printed, printedMonths: p.months_as_printed, documentUrl: p.saved_copy_link, documentNote: p.saved_copy_note, jobs }
+  return { sentOn: p.sent_on, method: p.method, tracking: p.tracking, ...(p.tracking_by ? { trackingBy: p.tracking_by } : {}), recipients: p.to, printedClaim: p.claim_as_printed, printedMonths: p.months_as_printed, documentUrl: p.saved_copy_link, documentNote: p.saved_copy_note, jobs }
 }
 
 /**
@@ -268,10 +295,12 @@ export function noticeByHandDryRun(p: NoticeByHandPayload, world: NoticeByHandWo
   const input = byHandInputOf(p, world)
   const problems = byHandProblems(input, todayYmd)
   if (problems.length > 0) return { ok: false, refused: `${label}: the form would not record this. Missing or wrong: ${problems.join(' · ')}.` }
-  const sameMailing = world.notices.filter((n) => n.first_sent_on === p.sent_on && (p.tracking ? n.trackings.some((t) => normTracking(t) === normTracking(p.tracking)) : n.by_hand))
+  // The numbers this paper carries, from either form: one for every envelope, or each envelope's own.
+  const numbers = (p.tracking_by ? Object.values(p.tracking_by) : [p.tracking]).map((t) => normTracking(t ?? '')).filter(Boolean)
+  const sameMailing = world.notices.filter((n) => n.first_sent_on === p.sent_on && (numbers.length > 0 ? n.trackings.some((t) => numbers.includes(normTracking(t))) : n.by_hand))
   if (sameMailing.length > 0) {
     const names = [...new Set(sameMailing.map((n) => n.job_id))].map((id) => (id === primary.id ? label : jobLabelOf(world.others.find((j) => j.id === id) ?? { job_name: null, click_number: null, hcp_number: null })))
-    return { ok: false, refused: `Already on record: ${names.join(' · ')} ${names.length === 1 ? 'holds' : 'hold'} a notice mailed ${p.sent_on}${p.tracking ? ` with that number` : ' by hand'}. Leave ${names.length === 1 ? 'it' : 'them'} out and plan again for the rest; a job the paper was printed for but that is already recorded cannot be the first job.` }
+    return { ok: false, refused: `Already on record: ${names.join(' · ')} ${names.length === 1 ? 'holds' : 'hold'} a notice mailed ${p.sent_on}${numbers.length > 1 ? ' with one of those numbers' : numbers.length === 1 ? ' with that number' : ' by hand'}. Leave ${names.length === 1 ? 'it' : 'them'} out and plan again for the rest; a job the paper was printed for but that is already recorded cannot be the first job.` }
   }
   // The first job is always there: byHandInputOf puts it first.
   const firstShare = input.jobs[0]?.amount ?? 0
@@ -308,13 +337,17 @@ export function noticeByHandDryRun(p: NoticeByHandPayload, world: NoticeByHandWo
   const zero = jobs.filter((j) => j.share <= 0).map((j) => j.label)
   const notCovered = world.others.filter((j) => !p.also_covers.includes(j.id)).map((j) => ({ id: j.id, label: jobLabelOf(j), open: cents(Math.max(0, num(j.revenue) - num(j.payments_made))) }))
   const to = p.to.map((r) => RECIPIENT_WORDS[r]).join(' and ')
+  // What the form says about the numbers and does not stop on. One number given for two carrier envelopes is the
+  // mistake the two boxes took out of the form, so the plan points at the per-envelope form.
+  const numberNotes = byHandNumberNotes(input)
+  const oneNumberForBoth = !p.tracking_by && byHandSameNumberTwice(input)
   return {
     ok: true,
     input,
     fields,
     reply: {
       action: 'notice_by_hand',
-      paper: { mailed: p.sent_on, how: BY_HAND_METHODS.find((m) => m.key === p.method)?.label ?? p.method, tracking: p.tracking || null, to: p.to, claim_as_printed: p.claim_as_printed, months_as_printed: p.months_as_printed, saved_copy_link: p.saved_copy_link || null, saved_copy_note: p.saved_copy_note || null },
+      paper: { mailed: p.sent_on, how: BY_HAND_METHODS.find((m) => m.key === p.method)?.label ?? p.method, tracking: p.tracking || null, ...(p.tracking_by ? { tracking_by: Object.fromEntries(p.to.map((r) => [r, p.tracking_by?.[r] || null])) } : {}), to: p.to, claim_as_printed: p.claim_as_printed, months_as_printed: p.months_as_printed, saved_copy_link: p.saved_copy_link || null, saved_copy_note: p.saved_copy_note || null },
       jobs,
       covered_total: coveredTotal,
       difference: difference || null,
@@ -322,6 +355,7 @@ export function noticeByHandDryRun(p: NoticeByHandPayload, world: NoticeByHandWo
       recorded_by: who.userId,
       says: `One notice mailed ${p.sent_on} to the ${to}, claiming ${usd(p.claim_as_printed)} for ${monthsWords(p.months_as_printed)}, goes on record for ${jobs.length} ${jobs.length === 1 ? 'job' : 'jobs'}: ${jobs.map((j) => `${j.label} (${usd(j.share)})`).join(' · ')}.${difference ? ` The paper against the app: ${difference}.` : ''}`,
       ...(p.to.length < 2 ? { one_recipient: `The paper went to the ${to} alone. The record will say no copy to the ${p.to.includes('owner') ? 'original contractor' : 'owner of record'} is on record, and an affidavit's notice record will ask about it.` } : {}),
+      ...(numberNotes.length > 0 ? { check_the_numbers: [...numberNotes, ...(oneNumberForBoth ? ['tracking puts one number on both sends. tracking_by: { owner, original_contractor } takes each envelope’s own; leave out one the post office has not handed back.'] : [])] } : {}),
       ...(zero.length > 0 ? { nothing_open: `${zero.join(' · ')} ${zero.length === 1 ? 'reads' : 'read'} nothing open on sent bills, so ${zero.length === 1 ? 'its' : 'their'} share is $0.00.` } : {}),
       ...(notCovered.length > 0 ? { other_unpaid_jobs_at_the_property_not_covered: notCovered } : {}),
       not_done: NOT_DONE,

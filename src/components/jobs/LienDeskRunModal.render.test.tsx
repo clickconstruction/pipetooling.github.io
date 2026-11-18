@@ -484,7 +484,7 @@ describe('LienDeskRunModal — the mailing (v2.4119)', () => {
     // The checklist's box is the envelope's: the card's shape line answers what is typed there.
     const owner = screen.getByLabelText('650 · AXO Schertz — owner tracking')
     fireEvent.change(owner, { target: { value: '9407 1118 9876 5432 10' } })
-    expect(screen.getByTestId('run-tracking-shape-1').textContent).toBe('18 digits — a certified number has 20')
+    expect(screen.getByTestId('run-tracking-shape-1').textContent).toBe('18 digits — a certified number has 20 or 22')
     fireEvent.change(owner, { target: { value: '9407 1118 9876 5432 1098' } })
     expect(screen.getByTestId('run-tracking-shape-1').textContent).toBe('✓ 20 digits · certified')
     expect(screen.getByTestId('run-check-line-it1').textContent).toBe('printed · not mailed')

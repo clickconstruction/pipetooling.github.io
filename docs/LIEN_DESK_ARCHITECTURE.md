@@ -887,6 +887,7 @@ last_updated: 2026-11-17
 > **v2.4119 (the mailing):** a `printed` pile between Ready and Held (`job_lien_desk_items.printed_at`, stamped by the run's *Print the packet* through `markLienDeskItemsPrinted`);
 > the run window (`LienDeskRunModal`) gained the steps strip, `trackingShape` hints, `runRecordSplit` (numbered envelopes record, the rest stay printed), *Mailed on*, and *Envelope faces* (`runEnvelopeFacesHtml`);
 > the Sent footer (region F2) and the Lien window's Filings list draw `LienTrackingOwedEditor` when a certified send has no number (`lib/jobs/lienSendTracking.ts`).
+> Since v2.7705 `trackingShape` lives in `lib/jobs/lienSendTracking.ts` (20 or 22 digits for a certified number), and `LienNoticeByHandPane` draws a number box for each envelope a carrier took, written by `byHandSends` on that recipient's send alone.
 > The run's source is `piles.ready + piles.printed`.
 
 > **v2.5073 (preview the courtesy email):** region J's run window ends the original contractor's courtesy line with **Preview the email ›** (`run-courtesy-preview-<n>`), a sibling of the tick's label so a press never flips it, live once the window's first read of the bills ends (`enclosuresRead`).
