@@ -354,6 +354,17 @@ export function billCustomerMemoSummaryLine(memo: string): string {
   return 'Custom'
 }
 
+/** How much of a typed line item override the closed disclosure shows before the ellipsis. */
+export const BILL_CUSTOMER_LINE_ON_BILL_SUMMARY_MAX = 48
+
+/** The words beside Bill Customer's Line item override disclosure: the typed line on one row, cut at the max. */
+export function billCustomerLineOnBillSummaryLine(line: string): string {
+  const t = line.replace(/\s+/g, ' ').trim()
+  if (!t) return '—'
+  if (t.length <= BILL_CUSTOMER_LINE_ON_BILL_SUMMARY_MAX) return t
+  return `${t.slice(0, BILL_CUSTOMER_LINE_ON_BILL_SUMMARY_MAX)}…`
+}
+
 export function getBillCustomerMemoSettingsDraft(): {
   standardBody: string
   alternateBody: string

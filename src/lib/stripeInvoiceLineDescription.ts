@@ -1,3 +1,5 @@
+import type { JobBillingContext } from './jobBillingContext'
+
 /** Keep in sync with `supabase/functions/_shared/stripeLineDescription.ts` (Edge). */
 export const STRIPE_INVOICE_LINE_DESCRIPTION_MAX = 500
 
@@ -49,4 +51,13 @@ export function buildStripeInvoiceLineDescription(
   _hcpNumber: string | null,
 ): string {
   return DEFAULT_STRIPE_INVOICE_LINE_DESCRIPTION
+}
+
+/** Bill Customer's default line wording for a job: what the line item override's *default* press writes back. */
+export function defaultStripeLineDescriptionFromJob(j: JobBillingContext): string {
+  return buildStripeInvoiceLineDescription(
+    (j.customer_name ?? '').trim() || 'Customer',
+    j.job_name,
+    j.hcp_number,
+  )
 }

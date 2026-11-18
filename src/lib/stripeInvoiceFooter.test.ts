@@ -52,6 +52,7 @@ import {
   resetStripeInvoiceFooterPresetsToBuiltins,
   saveStripeInvoiceFooterPresetsFromForm,
   stripeInvoiceFooterActivePreset,
+  stripeInvoiceFooterSummaryLine,
   upsertStripeInvoiceFooterPresetsToAppSettings,
 } from './stripeInvoiceFooter'
 
@@ -211,5 +212,24 @@ describe('resetStripeInvoiceFooterPresetsToBuiltins', () => {
     expect(calls.map(write)).toEqual(['app_settings:delete'])
     expect(store.has(LS)).toBe(false)
     expect(getStripeInvoiceFooterPresetPlumbing()).toBe(STRIPE_INVOICE_FOOTER_PRESET_PLUMBING)
+  })
+})
+
+describe('stripeInvoiceFooterSummaryLine', () => {
+  it('names an empty footer Stripe default, a preset by its trade and anything else Custom', () => {
+    expect(stripeInvoiceFooterSummaryLine('', null)).toBe('Stripe default')
+    expect(stripeInvoiceFooterSummaryLine(STRIPE_INVOICE_FOOTER_PRESET_PLUMBING, 'plumbing')).toBe('Plumbing')
+    expect(stripeInvoiceFooterSummaryLine(STRIPE_INVOICE_FOOTER_PRESET_ELECTRICAL, 'electrical')).toBe('Electrical')
+    expect(stripeInvoiceFooterSummaryLine('A footer typed by hand.', null)).toBe('Custom')
+  })
+
+  it('only the exactly empty footer is Stripe default: spaces alone read Custom', () => {
+    expect(stripeInvoiceFooterSummaryLine('   ', null)).toBe('Custom')
+  })
+
+  it('reads with the preset the footer matches today', () => {
+    const footer = getStripeInvoiceFooterPresetElectrical()
+    expect(stripeInvoiceFooterSummaryLine(footer, stripeInvoiceFooterActivePreset(footer))).toBe('Electrical')
+    expect(stripeInvoiceFooterSummaryLine(`${footer} more`, stripeInvoiceFooterActivePreset(`${footer} more`))).toBe('Custom')
   })
 })

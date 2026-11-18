@@ -24,17 +24,11 @@ import {
   parseStripeInvoiceLinesSnapshot,
   parseStripeInvoicePreviewResponse,
 } from '../../lib/stripeInvoicePreview'
-import {
-  buildStripeInvoiceLineDescription,
-  STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
-} from '../../lib/stripeInvoiceLineDescription'
+import { defaultStripeLineDescriptionFromJob } from '../../lib/stripeInvoiceLineDescription'
 import {
   fetchStripeInvoiceFooterPresetsFromAppSettings,
   getStripeInvoiceFooterDefaultOnOpen,
-  getStripeInvoiceFooterPresetElectrical,
-  getStripeInvoiceFooterPresetPlumbing,
   STRIPE_INVOICE_FOOTER_MAX_CHARS,
-  stripeInvoiceFooterActivePreset,
 } from '../../lib/stripeInvoiceFooter'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
@@ -139,24 +133,29 @@ import {
   fetchPhysicalInvoiceFooterPresetsFromAppSettings,
   getPhysicalInvoiceFooterDefaultOnOpen,
   listPhysicalInvoiceFooterPresets,
-  PHYSICAL_INVOICE_FOOTER_MAX_CHARS,
-  physicalInvoiceFooterActivePresetId,
-  physicalInvoiceFooterSummaryLine,
 } from '../../lib/physicalInvoiceFooter'
 import {
   BILL_CUSTOMER_MEMO_MAX_CHARS,
-  billCustomerMemoActivePresetId,
   billCustomerMemoSummaryLine,
   fetchBillCustomerMemoPresetsFromAppSettings,
   getBillCustomerMemoDefaultOnOpen,
   listBillCustomerMemoPresets,
-  type BillCustomerMemoPreset,
 } from '../../lib/billCustomerMemoPresets'
 import { fetchPhysicalInvoiceIssuerFromAppSettings } from '../../lib/physicalInvoiceIssuer'
 import { invoiceDescriptionsNeedLowercaseLeadingHint } from '../../lib/invoiceLineDescriptionLeadingLowercase'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { SendRecordInvoicePayload } from './SendRecordInvoiceModal.types'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { BillCustomerMemoPresetRow } from './BillCustomerMemoPresetRow'
+import { BillCustomerPhysicalModifications } from './BillCustomerPhysicalModifications'
+import { BillCustomerStripeModifications } from './BillCustomerStripeModifications'
+import {
+  BILL_CUSTOMER_CONTROL_STYLE,
+  BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
+  BILL_CUSTOMER_FIELD_LABEL_STYLE,
+  BILL_CUSTOMER_PHYSICAL_DATE_LINK_BUTTON_STYLE,
+  BILL_CUSTOMER_TEXTAREA_STYLE,
+} from './billCustomerStyles'
 
 export type { JobBillingContext }
 export type { SendRecordInvoicePayload }
@@ -200,112 +199,12 @@ function billCustomerTopTabButtonStyle(active: boolean): CSSProperties {
   }
 }
 
-/** Match Edit Job / JobFormModal field styling */
-const BILL_CUSTOMER_FIELD_LABEL_STYLE: CSSProperties = {
-  display: 'block',
-  marginBottom: 4,
-  fontWeight: 500,
-  fontSize: '0.875rem',
-  color: 'var(--text-700)',
-}
-
-const BILL_CUSTOMER_CONTROL_STYLE: CSSProperties = {
-  width: '100%',
-  padding: '0.5rem',
-  border: '1px solid var(--border-strong)',
-  borderRadius: 4,
-  fontSize: '0.875rem',
-  boxSizing: 'border-box',
-  background: 'var(--surface)',
-}
-
-const BILL_CUSTOMER_TEXTAREA_STYLE: CSSProperties = {
-  ...BILL_CUSTOMER_CONTROL_STYLE,
-  resize: 'vertical',
-  lineHeight: 1.4,
-  minHeight: '4.25rem',
-}
-
-const BILL_CUSTOMER_LINE_ON_BILL_PLACEHOLDER = 'Custom service.'
-
-const BILL_CUSTOMER_LINE_ON_BILL_SUMMARY_MAX = 48
-
-const BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE: CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: '0.5rem',
-  width: '100%',
-  padding: '0.4rem 0.25rem',
-  border: 'none',
-  borderRadius: 4,
-  background: 'transparent',
-  cursor: 'pointer',
-  textAlign: 'left',
-  font: 'inherit',
-  color: 'inherit',
-  boxSizing: 'border-box',
-}
-
-/** Line item override + Memo + Footer: tighter vertical rhythm than standalone disclosures. */
-const BILL_CUSTOMER_MODIFICATIONS_STACK_STYLE: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.25rem',
-}
-
-/** Stripe + Physical: gray card around invoice modification disclosures. */
-const BILL_CUSTOMER_INVOICE_MODIFICATIONS_SHELL_STYLE: CSSProperties = {
-  background: 'var(--bg-subtle)',
-  border: '1px solid var(--border)',
-  borderRadius: 8,
-  padding: '0.75rem 1rem',
-  marginBottom: '0.75rem',
-}
-
-const BILL_CUSTOMER_INVOICE_MODIFICATIONS_TITLE_STYLE: CSSProperties = {
-  fontSize: '0.875rem',
-  fontWeight: 600,
-  color: 'var(--text-strong)',
-  marginBottom: '0.35rem',
-  textAlign: 'center',
-}
-
-const BILL_CUSTOMER_PHYSICAL_DATE_LINK_BUTTON_STYLE: CSSProperties = {
-  fontSize: '0.875rem',
-  color: 'var(--text-link)',
-  textDecoration: 'underline',
-  textUnderlineOffset: '2px',
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  padding: 0,
-  font: 'inherit',
-  textAlign: 'left',
-}
-
-function billCustomerLineOnBillSummaryLine(line: string): string {
-  const t = line.replace(/\s+/g, ' ').trim()
-  if (!t) return '—'
-  if (t.length <= BILL_CUSTOMER_LINE_ON_BILL_SUMMARY_MAX) return t
-  return `${t.slice(0, BILL_CUSTOMER_LINE_ON_BILL_SUMMARY_MAX)}…`
-}
-
 function todayIsoDate(): string {
   const d = new Date()
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
-}
-
-function defaultStripeLineDescriptionFromJob(j: JobBillingContext): string {
-  return buildStripeInvoiceLineDescription(
-    (j.customer_name ?? '').trim() || 'Customer',
-    j.job_name,
-    j.hcp_number,
-  )
 }
 
 /** Matches Edge `buildStripeInvoiceItemsFromFixtures` billable rows (Specific Work on the job). */
@@ -332,85 +231,6 @@ function jobHasBillableStripeSpecificWorkFixtures(
     if (Number.isFinite(dollars) && dollars > 0) return true
   }
   return false
-}
-
-function stripeInvoiceFooterSummaryLine(
-  footer: string,
-  activePreset: ReturnType<typeof stripeInvoiceFooterActivePreset>,
-): string {
-  if (footer === '') return 'Stripe default'
-  if (activePreset === 'plumbing') return 'Plumbing'
-  if (activePreset === 'electrical') return 'Electrical'
-  return 'Custom'
-}
-
-function BillCustomerMemoPresetRow({
-  presets,
-  valueForHighlight,
-  onApplyBoth,
-}: {
-  presets: BillCustomerMemoPreset[]
-  valueForHighlight: string
-  onApplyBoth: (body: string) => void
-}) {
-  const activeId = billCustomerMemoActivePresetId(valueForHighlight)
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '0.35rem',
-        alignItems: 'center',
-        marginBottom: '0.35rem',
-      }}
-    >
-      {presets.map((p) => {
-        const pressed = activeId === p.id
-        return (
-          <button
-            key={p.id}
-            type="button"
-            aria-pressed={pressed}
-            onClick={() => {
-              if (pressed) {
-                onApplyBoth('')
-                return
-              }
-              onApplyBoth(p.body)
-            }}
-            title={`${p.label} memo (click again to clear)`}
-            style={{
-              padding: '0.25rem 0.5rem',
-              fontSize: '0.75rem',
-              border: pressed ? '2px solid #2563eb' : '1px solid var(--border-strong)',
-              borderRadius: 4,
-              background: pressed ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
-              color: 'var(--text-700)',
-              cursor: 'pointer',
-              fontWeight: pressed ? 600 : 500,
-            }}
-          >
-            {p.label}
-          </button>
-        )
-      })}
-      <button
-        type="button"
-        onClick={() => onApplyBoth('')}
-        style={{
-          padding: '0.25rem 0.5rem',
-          fontSize: '0.75rem',
-          border: '1px solid var(--border-strong)',
-          borderRadius: 4,
-          background: 'var(--surface)',
-          color: 'var(--text-muted)',
-          cursor: 'pointer',
-        }}
-      >
-        Clear
-      </button>
-    </div>
-  )
 }
 
 type CreateStripeInvoiceFnResponse = {
@@ -959,7 +779,6 @@ export default function SendRecordInvoiceModal({
     onClose()
   }, [onSuccess, onClose])
 
-  const activeStripeFooterPreset = stripeInvoiceFooterActivePreset(stripeInvoiceFooter)
   const physicalFooterPresets = useMemo(() => listPhysicalInvoiceFooterPresets(), [open, physicalFooterPresetsGeneration])
   const memoPresets = useMemo(() => listBillCustomerMemoPresets(), [open, billCustomerMemoPresetsGeneration])
 
@@ -2377,8 +2196,6 @@ export default function SendRecordInvoiceModal({
     colorScheme: 'light',
   }
 
-  const physicalFooterActiveId = physicalInvoiceFooterActivePresetId(physicalInvoiceFooter)
-
   /** "Preview the email…" (v2.1037): opens exactly what the customer receives —
    * envelope + body from the sender's own helpers + the notice inlined. */
   function openHazmatNoticeEmailPreview() {
@@ -3009,289 +2826,24 @@ export default function SendRecordInvoiceModal({
               </p>
             ) : null}
             {sendToBlock('physical')}
-            <div style={BILL_CUSTOMER_INVOICE_MODIFICATIONS_SHELL_STYLE}>
-              <div style={BILL_CUSTOMER_INVOICE_MODIFICATIONS_TITLE_STYLE}>
-                Invoice Modifications (optional)
-              </div>
-              <div style={BILL_CUSTOMER_MODIFICATIONS_STACK_STYLE}>
-            <button
-              type="button"
-              aria-expanded={lineOnBillSectionOpen}
-              aria-controls="bill-customer-physical-line-on-bill-section-panel"
-              onClick={() => setLineOnBillSectionOpen((v) => !v)}
-              style={{
-                ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                marginBottom: 0,
-              }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
-                <span style={{ fontSize: '0.75rem', flexShrink: 0 }} aria-hidden>
-                  {lineOnBillSectionOpen ? '▼' : '\u25b6'}
-                </span>
-                <span
-                  id="bill-customer-physical-line-on-bill-disclosure-heading"
-                  style={{
-                    fontWeight: 500,
-                    fontSize: '0.875rem',
-                    color: 'var(--text-700)',
-                  }}
-                >
-                  Line item override
-                </span>
-              </span>
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  color: 'var(--text-muted)',
-                  flexShrink: 0,
-                }}
-              >
-                {billCustomerLineOnBillSummaryLine(stripeLineDescription)}
-              </span>
-            </button>
-            <div
-              id="bill-customer-physical-line-on-bill-section-panel"
-              role="region"
-              aria-labelledby="bill-customer-physical-line-on-bill-disclosure-heading"
-              hidden={!lineOnBillSectionOpen}
-              style={{ marginBottom: 0 }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '0.5rem',
-                  marginBottom: 4,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <span
-                  id="bill-customer-physical-line-on-bill-count"
-                  style={{
-                    fontSize: '0.72rem',
-                    color: 'var(--text-muted)',
-                    fontWeight: 400,
-                    flex: '1 1 auto',
-                    minWidth: 0,
-                  }}
-                >
-                  ({stripeLineDescription.length} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
-                </span>
-                <button
-                  type="button"
-                  onClick={() => job && setStripeLineDescription(defaultStripeLineDescriptionFromJob(job))}
-                  disabled={!job}
-                  title="Reset line item override to default"
-                  aria-label="Reset line item override to default"
-                  style={{
-                    padding: 0,
-                    border: 'none',
-                    background: 'none',
-                    color: 'var(--text-link)',
-                    cursor: job ? 'pointer' : 'not-allowed',
-                    fontSize: '0.8125rem',
-                    textDecoration: 'underline',
-                    textUnderlineOffset: '2px',
-                    flexShrink: 0,
-                  }}
-                >
-                  default
-                </button>
-              </div>
-              <textarea
-                id="bill-customer-physical-line-description"
-                aria-describedby="bill-customer-physical-line-on-bill-count"
-                placeholder={BILL_CUSTOMER_LINE_ON_BILL_PLACEHOLDER}
-                value={stripeLineDescription}
-                onChange={(e) =>
-                  setStripeLineDescription(e.target.value.slice(0, STRIPE_INVOICE_LINE_DESCRIPTION_MAX))
-                }
-                rows={2}
-                style={{
-                  ...BILL_CUSTOMER_TEXTAREA_STYLE,
-                  marginBottom: 0,
-                  minHeight: '3.5rem',
-                }}
-              />
-            </div>
-            <button
-              type="button"
-              aria-expanded={memoSectionOpen}
-              aria-controls="bill-customer-physical-memo-section-panel"
-              onClick={() => setMemoSectionOpen((v) => !v)}
-              style={{
-                ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                marginBottom: 0,
-              }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
-                <span style={{ fontSize: '0.75rem', flexShrink: 0 }} aria-hidden>
-                  {memoSectionOpen ? '▼' : '\u25b6'}
-                </span>
-                <span
-                  id="bill-customer-physical-memo-disclosure-heading"
-                  style={{
-                    fontWeight: 500,
-                    fontSize: '0.875rem',
-                    color: 'var(--text-700)',
-                  }}
-                >
-                  Memo
-                </span>
-              </span>
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  color: 'var(--text-muted)',
-                  flexShrink: 0,
-                }}
-              >
-                {billCustomerMemoSummaryLine(externalNote)}
-              </span>
-            </button>
-            <div
-              id="bill-customer-physical-memo-section-panel"
-              role="region"
-              aria-labelledby="bill-customer-physical-memo-disclosure-heading"
-              hidden={!memoSectionOpen}
-              style={{ marginBottom: 0 }}
-            >
-              <span style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                ({externalNote.length} / {BILL_CUSTOMER_MEMO_MAX_CHARS})
-              </span>
-              <BillCustomerMemoPresetRow
-                presets={memoPresets}
-                valueForHighlight={externalNote}
-                onApplyBoth={applyMemoPresetToBoth}
-              />
-              <textarea
-                value={externalNote}
-                onChange={(e) => setExternalNote(e.target.value.slice(0, BILL_CUSTOMER_MEMO_MAX_CHARS))}
-                rows={2}
-                style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: 0, minHeight: '3.5rem' }}
-              />
-            </div>
-            <button
-              type="button"
-              aria-expanded={physicalFooterSectionOpen}
-              aria-controls="bill-customer-physical-footer-section-panel"
-              onClick={() => setPhysicalFooterSectionOpen((v) => !v)}
-              style={{
-                ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                marginBottom: 0,
-              }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
-                <span style={{ fontSize: '0.75rem', flexShrink: 0 }} aria-hidden>
-                  {physicalFooterSectionOpen ? '▼' : '\u25b6'}
-                </span>
-                <span
-                  id="bill-customer-physical-footer-disclosure-heading"
-                  style={{
-                    fontWeight: 500,
-                    fontSize: '0.875rem',
-                    color: 'var(--text-700)',
-                  }}
-                >
-                  Footer
-                </span>
-              </span>
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  color: 'var(--text-muted)',
-                  flexShrink: 0,
-                }}
-              >
-                {physicalInvoiceFooterSummaryLine(physicalInvoiceFooter)}
-              </span>
-            </button>
-            <div
-              id="bill-customer-physical-footer-section-panel"
-              role="region"
-              aria-labelledby="bill-customer-physical-footer-disclosure-heading"
-              hidden={!physicalFooterSectionOpen}
-              style={{ marginBottom: 0 }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '0.5rem',
-                  marginBottom: '0.35rem',
-                }}
-              >
-                <span
-                  id="bill-customer-physical-invoice-footer-count"
-                  style={{
-                    fontSize: '0.72rem',
-                    color: 'var(--text-muted)',
-                    fontWeight: 400,
-                    flex: '1 1 auto',
-                    minWidth: 0,
-                  }}
-                >
-                  ({physicalInvoiceFooter.length} / {PHYSICAL_INVOICE_FOOTER_MAX_CHARS})
-                </span>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '0.35rem',
-                    alignItems: 'center',
-                    flexShrink: 0,
-                    justifyContent: 'flex-end',
-                  }}
-                >
-                  {physicalFooterPresets.map((p) => {
-                    const pressed = physicalFooterActiveId === p.id
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        aria-pressed={pressed}
-                        onClick={() => {
-                          if (pressed) {
-                            setPhysicalInvoiceFooter('')
-                            return
-                          }
-                          setPhysicalInvoiceFooter(p.body.slice(0, PHYSICAL_INVOICE_FOOTER_MAX_CHARS))
-                        }}
-                        title={`${p.label} physical footer (click again to clear)`}
-                        style={{
-                          padding: '0.25rem 0.5rem',
-                          fontSize: '0.75rem',
-                          border: pressed ? '2px solid #2563eb' : '1px solid var(--border-strong)',
-                          borderRadius: 4,
-                          background: pressed ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
-                          color: 'var(--text-700)',
-                          cursor: 'pointer',
-                          fontWeight: pressed ? 600 : 500,
-                        }}
-                      >
-                        {p.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <textarea
-                id="bill-customer-physical-invoice-footer"
-                aria-labelledby="bill-customer-physical-footer-disclosure-heading"
-                aria-describedby="bill-customer-physical-invoice-footer-count"
-                value={physicalInvoiceFooter}
-                onChange={(e) =>
-                  setPhysicalInvoiceFooter(e.target.value.slice(0, PHYSICAL_INVOICE_FOOTER_MAX_CHARS))
-                }
-                rows={3}
-                style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: 0, minHeight: '4.5rem' }}
-              />
-            </div>
-              </div>
-            </div>
+            <BillCustomerPhysicalModifications
+              job={job}
+              lineOnBillSectionOpen={lineOnBillSectionOpen}
+              setLineOnBillSectionOpen={setLineOnBillSectionOpen}
+              stripeLineDescription={stripeLineDescription}
+              setStripeLineDescription={setStripeLineDescription}
+              memoSectionOpen={memoSectionOpen}
+              setMemoSectionOpen={setMemoSectionOpen}
+              externalNote={externalNote}
+              setExternalNote={setExternalNote}
+              memoPresets={memoPresets}
+              applyMemoPresetToBoth={applyMemoPresetToBoth}
+              physicalFooterSectionOpen={physicalFooterSectionOpen}
+              setPhysicalFooterSectionOpen={setPhysicalFooterSectionOpen}
+              physicalInvoiceFooter={physicalInvoiceFooter}
+              setPhysicalInvoiceFooter={setPhysicalInvoiceFooter}
+              physicalFooterPresets={physicalFooterPresets}
+            />
             <div style={{ marginBottom: '0.75rem' }}>
               <div
                 style={{
@@ -3617,318 +3169,23 @@ export default function SendRecordInvoiceModal({
               </>
             ) : (
               <>
-                <div style={BILL_CUSTOMER_INVOICE_MODIFICATIONS_SHELL_STYLE}>
-                  <div style={BILL_CUSTOMER_INVOICE_MODIFICATIONS_TITLE_STYLE}>
-                    Invoice Modifications (optional)
-                  </div>
-                  <div style={BILL_CUSTOMER_MODIFICATIONS_STACK_STYLE}>
-                  <button
-                    type="button"
-                    aria-expanded={lineOnBillSectionOpen}
-                    aria-controls="bill-customer-stripe-line-on-bill-section-panel"
-                    onClick={() => setLineOnBillSectionOpen((v) => !v)}
-                    style={{
-                      ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                      marginBottom: 0,
-                    }}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
-                      <span style={{ fontSize: '0.75rem', flexShrink: 0 }} aria-hidden>
-                        {lineOnBillSectionOpen ? '▼' : '\u25b6'}
-                      </span>
-                      <span
-                        id="bill-customer-stripe-line-on-bill-disclosure-heading"
-                        style={{
-                          fontWeight: 500,
-                          fontSize: '0.875rem',
-                          color: 'var(--text-700)',
-                        }}
-                      >
-                        Line item override
-                      </span>
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--text-muted)',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {billCustomerLineOnBillSummaryLine(stripeLineDescription)}
-                    </span>
-                  </button>
-                  <div
-                    id="bill-customer-stripe-line-on-bill-section-panel"
-                    role="region"
-                    aria-labelledby="bill-customer-stripe-line-on-bill-disclosure-heading"
-                    hidden={!lineOnBillSectionOpen}
-                    style={{ marginBottom: 0 }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '0.5rem',
-                        marginBottom: 4,
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <span
-                        id="bill-customer-stripe-line-on-bill-count"
-                        style={{
-                          fontSize: '0.72rem',
-                          color: 'var(--text-muted)',
-                          fontWeight: 400,
-                          flex: '1 1 auto',
-                          minWidth: 0,
-                        }}
-                      >
-                        ({stripeLineDescription.length} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => job && setStripeLineDescription(defaultStripeLineDescriptionFromJob(job))}
-                        disabled={!job}
-                        title="Reset line item override to default"
-                        aria-label="Reset line item override to default"
-                        style={{
-                          padding: 0,
-                          border: 'none',
-                          background: 'none',
-                          color: 'var(--text-link)',
-                          cursor: job ? 'pointer' : 'not-allowed',
-                          fontSize: '0.8125rem',
-                          textDecoration: 'underline',
-                          textUnderlineOffset: '2px',
-                          flexShrink: 0,
-                        }}
-                      >
-                        default
-                      </button>
-                    </div>
-                    <textarea
-                      id="bill-customer-stripe-line-description"
-                      aria-describedby="bill-customer-stripe-line-on-bill-count"
-                      placeholder={BILL_CUSTOMER_LINE_ON_BILL_PLACEHOLDER}
-                      value={stripeLineDescription}
-                      onChange={(e) =>
-                        setStripeLineDescription(
-                          e.target.value.slice(0, STRIPE_INVOICE_LINE_DESCRIPTION_MAX),
-                        )
-                      }
-                      rows={2}
-                      style={{
-                        ...BILL_CUSTOMER_TEXTAREA_STYLE,
-                        marginBottom: 0,
-                        minHeight: '3.5rem',
-                      }}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    aria-expanded={memoSectionOpen}
-                    aria-controls="bill-customer-stripe-memo-section-panel"
-                    onClick={() => setMemoSectionOpen((v) => !v)}
-                    style={{
-                      ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                      marginBottom: 0,
-                    }}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
-                      <span style={{ fontSize: '0.75rem', flexShrink: 0 }} aria-hidden>
-                        {memoSectionOpen ? '▼' : '\u25b6'}
-                      </span>
-                      <span
-                        id="bill-customer-stripe-memo-disclosure-heading"
-                        style={{
-                          fontWeight: 500,
-                          fontSize: '0.875rem',
-                          color: 'var(--text-700)',
-                        }}
-                      >
-                        Memo
-                      </span>
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--text-muted)',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {billCustomerMemoSummaryLine(stripeMemo)}
-                    </span>
-                  </button>
-                  <div
-                    id="bill-customer-stripe-memo-section-panel"
-                    role="region"
-                    aria-labelledby="bill-customer-stripe-memo-disclosure-heading"
-                    hidden={!memoSectionOpen}
-                    style={{ marginBottom: 0 }}
-                  >
-                    <span style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                      ({stripeMemo.length} / {BILL_CUSTOMER_MEMO_MAX_CHARS})
-                    </span>
-                    <BillCustomerMemoPresetRow
-                      presets={memoPresets}
-                      valueForHighlight={stripeMemo}
-                      onApplyBoth={applyMemoPresetToBoth}
-                    />
-                    <textarea
-                      value={stripeMemo}
-                      onChange={(e) => setStripeMemo(e.target.value.slice(0, BILL_CUSTOMER_MEMO_MAX_CHARS))}
-                      rows={2}
-                      style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: 0, minHeight: '3.5rem' }}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    aria-expanded={stripeFooterSectionOpen}
-                    aria-controls="bill-customer-footer-section-panel"
-                    onClick={() => setStripeFooterSectionOpen((v) => !v)}
-                    style={{
-                      ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                      marginBottom: 0,
-                    }}
-                  >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
-                      <span style={{ fontSize: '0.75rem', flexShrink: 0 }} aria-hidden>
-                        {stripeFooterSectionOpen ? '▼' : '\u25b6'}
-                      </span>
-                      <span
-                        id="bill-customer-footer-disclosure-heading"
-                        style={{
-                          fontWeight: 500,
-                          fontSize: '0.875rem',
-                          color: 'var(--text-700)',
-                        }}
-                      >
-                        Footer
-                      </span>
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '0.75rem',
-                        color: 'var(--text-muted)',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {stripeInvoiceFooterSummaryLine(stripeInvoiceFooter, activeStripeFooterPreset)}
-                    </span>
-                  </button>
-                  <div
-                    id="bill-customer-footer-section-panel"
-                    role="region"
-                    aria-labelledby="bill-customer-footer-disclosure-heading"
-                    hidden={!stripeFooterSectionOpen}
-                    style={{ marginBottom: 0 }}
-                  >
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '0.5rem',
-                          marginBottom: '0.35rem',
-                        }}
-                      >
-                        <span
-                          id="bill-customer-stripe-invoice-footer-count"
-                          style={{
-                            fontSize: '0.72rem',
-                            color: 'var(--text-muted)',
-                            fontWeight: 400,
-                            flex: '1 1 auto',
-                            minWidth: 0,
-                          }}
-                        >
-                          ({stripeInvoiceFooter.length} / {STRIPE_INVOICE_FOOTER_MAX_CHARS})
-                        </span>
-                        <div
-                          style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '0.35rem',
-                            alignItems: 'center',
-                            flexShrink: 0,
-                          }}
-                        >
-                          <button
-                            type="button"
-                            aria-pressed={activeStripeFooterPreset === 'plumbing'}
-                            onClick={() => {
-                              if (activeStripeFooterPreset === 'plumbing') {
-                                setStripeInvoiceFooter('')
-                                return
-                              }
-                              setStripeInvoiceFooter(
-                                getStripeInvoiceFooterPresetPlumbing().slice(0, STRIPE_INVOICE_FOOTER_MAX_CHARS),
-                              )
-                            }}
-                            title="Plumbing footer (click again to clear and use Stripe default)"
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.75rem',
-                              border:
-                                activeStripeFooterPreset === 'plumbing'
-                                  ? '2px solid #2563eb'
-                                  : '1px solid var(--border-strong)',
-                              borderRadius: 4,
-                              background: activeStripeFooterPreset === 'plumbing' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
-                              color: 'var(--text-700)',
-                              cursor: 'pointer',
-                              fontWeight: activeStripeFooterPreset === 'plumbing' ? 600 : 500,
-                            }}
-                          >
-                            Plumbing
-                          </button>
-                          <button
-                            type="button"
-                            aria-pressed={activeStripeFooterPreset === 'electrical'}
-                            onClick={() => {
-                              if (activeStripeFooterPreset === 'electrical') {
-                                setStripeInvoiceFooter('')
-                                return
-                              }
-                              setStripeInvoiceFooter(
-                                getStripeInvoiceFooterPresetElectrical().slice(0, STRIPE_INVOICE_FOOTER_MAX_CHARS),
-                              )
-                            }}
-                            title="Electrical footer (click again to clear and use Stripe default)"
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.75rem',
-                              border:
-                                activeStripeFooterPreset === 'electrical'
-                                  ? '2px solid #2563eb'
-                                  : '1px solid var(--border-strong)',
-                              borderRadius: 4,
-                              background: activeStripeFooterPreset === 'electrical' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
-                              color: 'var(--text-700)',
-                              cursor: 'pointer',
-                              fontWeight: activeStripeFooterPreset === 'electrical' ? 600 : 500,
-                            }}
-                          >
-                            Electrical
-                          </button>
-                        </div>
-                      </div>
-                      <textarea
-                        id="bill-customer-stripe-invoice-footer"
-                        aria-labelledby="bill-customer-footer-disclosure-heading"
-                        aria-describedby="bill-customer-stripe-invoice-footer-count"
-                        value={stripeInvoiceFooter}
-                        onChange={(e) =>
-                          setStripeInvoiceFooter(e.target.value.slice(0, STRIPE_INVOICE_FOOTER_MAX_CHARS))
-                        }
-                        rows={3}
-                        style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: 0, minHeight: '4.5rem' }}
-                      />
-                  </div>
-                  </div>
-                </div>
+                <BillCustomerStripeModifications
+                  job={job}
+                  lineOnBillSectionOpen={lineOnBillSectionOpen}
+                  setLineOnBillSectionOpen={setLineOnBillSectionOpen}
+                  stripeLineDescription={stripeLineDescription}
+                  setStripeLineDescription={setStripeLineDescription}
+                  memoSectionOpen={memoSectionOpen}
+                  setMemoSectionOpen={setMemoSectionOpen}
+                  stripeMemo={stripeMemo}
+                  setStripeMemo={setStripeMemo}
+                  memoPresets={memoPresets}
+                  applyMemoPresetToBoth={applyMemoPresetToBoth}
+                  stripeFooterSectionOpen={stripeFooterSectionOpen}
+                  setStripeFooterSectionOpen={setStripeFooterSectionOpen}
+                  stripeInvoiceFooter={stripeInvoiceFooter}
+                  setStripeInvoiceFooter={setStripeInvoiceFooter}
+                />
                 {discountStrip}
                 {sendToBlock('stripe')}
                 {job && !paidJobBlocked ? (
