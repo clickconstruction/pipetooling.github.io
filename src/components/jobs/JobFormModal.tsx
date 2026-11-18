@@ -203,6 +203,7 @@ import { JobFormMercuryUnlinkConfirm } from './JobFormMercuryUnlinkConfirm'
 import { JobFormPaymentRemoveConfirm } from './JobFormPaymentRemoveConfirm'
 import { JobFormStripeLinePreviewDialog } from './JobFormStripeLinePreviewDialog'
 import { useJobFormLabor } from '../../hooks/useJobFormLabor'
+import { useJobFormHighlights } from '../../hooks/useJobFormHighlights'
 
 import { JobFormHeaderRow } from './JobFormHeaderRow'
 import { JobFormIdentityFields } from './JobFormIdentityFields'
@@ -489,14 +490,6 @@ export default function JobFormModal({
   const [bannerOverlayOpen, setBannerOverlayOpen] = useState(false)
   const [customerExpanded, setCustomerExpanded] = useState(false)
   const [projectFilesPlansExpanded, setProjectFilesPlansExpanded] = useState(false)
-  const [billingCustomerHighlight, setBillingCustomerHighlight] = useState(false)
-  const [fixturesSectionHighlight, setFixturesSectionHighlight] = useState(false)
-  const [paymentsReceivedHighlight, setPaymentsReceivedHighlight] = useState(false)
-  const paymentsReceivedHighlightRef = useRef<HTMLDivElement | null>(null)
-  // The GC run's chips (v2.3819): land on the status stepper or the % done field, ringed for a moment, then plain.
-  const [focusFieldFlash, setFocusFieldFlash] = useState<'status' | 'pct' | null>(focusRowInitial === 'status' || focusRowInitial === 'pct' ? focusRowInitial : null)
-  const focusFieldRef = useRef<HTMLDivElement | null>(null)
-  const [jobPicturesLinkHighlight, setJobPicturesLinkHighlight] = useState(false)
   const [dateMet, setDateMet] = useState('')
   const [googleDriveLink, setGoogleDriveLink] = useState('')
   const [jobPicturesLink, setJobPicturesLink] = useState('')
@@ -1149,10 +1142,6 @@ export default function JobFormModal({
       setJobImportSourceOpen(false)
     }
   }, [newJobImportBlockedByContent, jobImportSourceOpen])
-  const billingCustomerHighlightRef = useRef<HTMLDivElement | null>(null)
-  const fixturesSectionHighlightRef = useRef<HTMLDivElement | null>(null)
-  const jobPicturesLinkHighlightRef = useRef<HTMLDivElement | null>(null)
-  const jobPicturesLinkInputRef = useRef<HTMLInputElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   // The payment lines' actions (the Job form map's order #8): Remove and its confirm, the drop of
@@ -1931,105 +1920,26 @@ export default function JobFormModal({
     })
   }, [bids, bidId, prefixMap])
 
-  useEffect(() => {
-    if (customerId && billingCustomerHighlight) {
-      setBillingCustomerHighlight(false)
-    }
-  }, [customerId, billingCustomerHighlight])
-
-  useEffect(() => {
-    if (!billingCustomerHighlight) return
-    const id = requestAnimationFrame(() => {
-      billingCustomerHighlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    })
-    return () => cancelAnimationFrame(id)
-  }, [billingCustomerHighlight])
-
-  useEffect(() => {
-    if (!fixturesSectionHighlight) return
-    const id = requestAnimationFrame(() => {
-      fixturesSectionHighlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    })
-    return () => cancelAnimationFrame(id)
-  }, [fixturesSectionHighlight])
-
-  useEffect(() => {
-    if (!fixturesSectionHighlight) return
-    const t = window.setTimeout(() => setFixturesSectionHighlight(false), 2500)
-    return () => window.clearTimeout(t)
-  }, [fixturesSectionHighlight])
-
-  // v2.3795: the bank-returned deposits card lands on ③ Payments received — scroll there, flash, fade.
-  // The payments table mounts only after the job and its payments have loaded (seconds after Edit Job
-  // opens from a deep link), so the scroll waits for the block to exist and the fade counts from then.
-  useEffect(() => {
-    if (!paymentsReceivedHighlight) return
-    let tries = 0
-    let fade: number | null = null
-    const tick = window.setInterval(() => {
-      const el = paymentsReceivedHighlightRef.current
-      tries += 1
-      if (el && el.getBoundingClientRect().height > 0) {
-        window.clearInterval(tick)
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        fade = window.setTimeout(() => setPaymentsReceivedHighlight(false), 4000)
-      } else if (tries >= 150) {
-        window.clearInterval(tick)
-        setPaymentsReceivedHighlight(false)
-      }
-    }, 100)
-    return () => {
-      window.clearInterval(tick)
-      if (fade !== null) window.clearTimeout(fade)
-    }
-  }, [paymentsReceivedHighlight])
-
-  // v2.3819: the GC run's chips land on the status stepper (Edit) or the % done field (Bill) — scroll there once it has
-  // a size (the Bill region is display-toggled, the job loads after the window opens), ring it, fade.
-  useEffect(() => {
-    if (!focusFieldFlash) return
-    let tries = 0
-    let fade: number | null = null
-    const tick = window.setInterval(() => {
-      const el = focusFieldRef.current
-      tries += 1
-      if (el && el.getBoundingClientRect().height > 0) {
-        window.clearInterval(tick)
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        fade = window.setTimeout(() => setFocusFieldFlash(null), 4500)
-      } else if (tries >= 150) {
-        window.clearInterval(tick)
-        setFocusFieldFlash(null)
-      }
-    }, 100)
-    return () => {
-      window.clearInterval(tick)
-      if (fade !== null) window.clearTimeout(fade)
-    }
-  }, [focusFieldFlash])
-
-  useEffect(() => {
-    if (!jobPicturesLinkHighlight) return
-    const id = requestAnimationFrame(() => {
-      jobPicturesLinkHighlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      const input = jobPicturesLinkInputRef.current
-      if (input) {
-        input.focus()
-        try {
-          input.select()
-        } catch {
-          // ignore environments where select() throws on empty inputs
-        }
-      }
-    })
-    return () => cancelAnimationFrame(id)
-  }, [jobPicturesLinkHighlight])
-
-  useEffect(() => {
-    if (!jobPicturesLinkHighlight) return
-    const t = window.setTimeout(() => setJobPicturesLinkHighlight(false), 2500)
-    return () => window.clearTimeout(t)
-  }, [jobPicturesLinkHighlight])
+  // The highlight and focus doors (the map's second pass, cut 5): the five flags a deep link opens the form with,
+  // the elements they land on and the eight effects that scroll, flash and fade. Called here, where those effects
+  // ran, so the order of the form's effects is unchanged; hydrate, reset and close set the flags through the setters.
+  const {
+    billingCustomerHighlight,
+    setBillingCustomerHighlight,
+    billingCustomerHighlightRef,
+    fixturesSectionHighlight,
+    setFixturesSectionHighlight,
+    fixturesSectionHighlightRef,
+    paymentsReceivedHighlight,
+    setPaymentsReceivedHighlight,
+    paymentsReceivedHighlightRef,
+    focusFieldFlash,
+    focusFieldRef,
+    jobPicturesLinkHighlight,
+    setJobPicturesLinkHighlight,
+    jobPicturesLinkHighlightRef,
+    jobPicturesLinkInputRef,
+  } = useJobFormHighlights({ customerId, focusFieldInitial: focusRowInitial === 'status' || focusRowInitial === 'pct' ? focusRowInitial : null })
 
   useEffect(() => {
     if (customerId && customers.length > 0) {
