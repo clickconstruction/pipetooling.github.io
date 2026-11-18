@@ -103,6 +103,8 @@ import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImperso
 import { useIsPartner } from '../hooks/useIsPartner'
 import { useOwnLogbookShown } from '../hooks/useOwnLogbookShown'
 import { BookOpen } from 'lucide-react'
+import { TellTheDevHeaderButton, TellTheDevRoot } from './tellTheDev/TellTheDevRoot'
+import { useFixMode } from '../hooks/useFixMode'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
 import { canOpenMessages } from '../lib/gc/access'
 import { isOwnerOrDev } from '../lib/doorRoles'
@@ -170,6 +172,8 @@ export default function Layout() {
   // Pin Mode (v2.1972): whether the page-bottom pin footer renders. Existing
   // pins (Dashboard quick bar, Settings management) work regardless.
   const [pinModeEnabled, setPinModeEnabled] = usePinModeEnabled(authUser?.id ?? null)
+  // Fix Mode (punch list #380): whether the wrench shows. On until this person switches it off here.
+  const [fixModeEnabled, setFixModeEnabled] = useFixMode(authUser?.id ?? null)
   // Assistants and masters get Dispatch Mode ON by default (until they explicitly turn it off).
   const [dispatchModeEnabled, setDispatchModeEnabled] = useDispatchModeEnabled(
     authUser?.id ?? null,
@@ -297,6 +301,11 @@ export default function Layout() {
     }
     window.location.href = '/sign-in'
   }
+  // What a note to the dev says was on (punch list #380).
+  const tellTheDevModes = useMemo(
+    () => [jobModeFooterActive ? 'Job Mode' : '', dispatchModeActive ? 'Dispatch Mode' : '', taskModeActive ? 'Task Mode' : ''].filter(Boolean),
+    [jobModeFooterActive, dispatchModeActive, taskModeActive],
+  )
   // The More sheet's Modes rows: the gear menu's toggles, same gates, same handlers.
   const phoneDockModes: PhoneDockModeRow[] = !authUser?.id
     ? []
@@ -321,6 +330,7 @@ export default function Layout() {
           : []),
         { key: 'task', label: 'Task Mode', on: taskModeEnabled, onToggle: () => setTaskModeEnabled(!taskModeEnabled) },
         { key: 'pin', label: 'Pin Mode', on: pinModeEnabled, onToggle: () => setPinModeEnabled(!pinModeEnabled) },
+        { key: 'fix', label: 'Fix Mode', on: fixModeEnabled, onToggle: () => setFixModeEnabled(!fixModeEnabled) },
         { key: 'dark', label: 'Dark Mode', on: theme === 'dark', onToggle: () => setThemeOverride(theme === 'dark' ? 'light' : 'dark') },
       ]
   const [pinForUsers, setPinForUsers] = useState<Array<{ id: string; name: string; email: string; role: UserRole | null; estimatorProspectsAccess: boolean }>>([])
@@ -1071,6 +1081,8 @@ export default function Layout() {
           </span>
         )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {/* Tell the dev (punch list #380): on a phone the wrench sits here, since nothing may float over Job Mode's bars. */}
+          {isMobile && fixModeEnabled && authUser?.id && <TellTheDevHeaderButton />}
           {headerSearchEligible && <HeaderGlobalSearchOpenButton placement="toolbar" isMobile={isMobile} />}
           {/* Job Mode: the three task buttons become a labeled "Contact:" row when the
               viewport fits; small viewports keep the icon buttons with a phone on the left. */}
@@ -1605,6 +1617,55 @@ export default function Layout() {
                       }}
                     >
                       {pinModeEnabled ? '✓' : ''}
+                    </span>
+                  </button>
+                )}
+                {authUser?.id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFixModeEnabled(!fixModeEnabled)
+                      setGearOpen(false)
+                    }}
+                    title={fixModeEnabled ? 'Turn Fix Mode off: hide the wrench' : 'Turn Fix Mode on: show the wrench that sends a note to the dev'}
+                    aria-label="Toggle Fix Mode"
+                    aria-pressed={fixModeEnabled}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      padding: '0.5rem 1rem',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 'inherit',
+                      color: 'inherit',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                      fontWeight: fixModeEnabled ? 600 : 400,
+                    }}
+                  >
+                    <span>Fix Mode</span>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        display: 'inline-flex',
+                        width: 16,
+                        height: 16,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 3,
+                        border: '1px solid var(--border-400)',
+                        background: fixModeEnabled ? '#16a34a' : 'var(--surface)',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {fixModeEnabled ? '✓' : ''}
                     </span>
                   </button>
                 )}
@@ -2297,6 +2358,7 @@ export default function Layout() {
         />
       ) : null}
       {jobModeFooterActive ? <DispatchModeFooter variant="job" /> : null}
+      <TellTheDevRoot isMobile={isMobile} modes={tellTheDevModes} fixMode={fixModeEnabled} />
       <ChecklistAddModal />
       {/* Painted maps (punch list #345): the one host that answers a line under an address, whatever window it sits in. */}
       <PaintedMapHost />

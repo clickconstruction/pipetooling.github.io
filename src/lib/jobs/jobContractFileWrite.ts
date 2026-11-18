@@ -17,6 +17,7 @@ import { unfinishedDateStopsMessage } from '../dateBoxEntry'
 import type { JobContractDraftPayload } from './jobContractDraftWrite'
 import { isHttpUrl } from './jobContractDocument'
 import { isAwaitingPaperCopy } from './jobContractHandoff'
+import { fileContractInDriveQuietly } from './jobContractDriveQuiet'
 import type { JobContractRow } from './jobContractLifecycle'
 
 export const JOB_CONTRACT_BUCKET = 'job-contract-documents'
@@ -164,6 +165,11 @@ export async function fileSignedJobContract(input: {
   link: string
   file: File | null
   authUserId: string | null
+  /**
+   * The caller writes more on the row first (a paper over several jobs: its group and its own copy of the scan) and
+   * asks Drive itself once the row is whole (#377). Left out, the paper is asked for here.
+   */
+  driveLater?: boolean
 }): Promise<{ row: JobContractRow | null; uploadError: string | null }> {
   // v2.5101: refused before any write, whichever door files it.
   const refusal = paperFilingRefusal({ existing: input.existingDraft, signerName: input.signerName, coSignerName: input.coSignerName })
@@ -222,6 +228,8 @@ export async function fileSignedJobContract(input: {
   }
   if (row) {
     await supabase.from('job_contract_events').insert({ contract_id: row.id, event_type: 'recorded', metadata: { paper_signed_on: input.signedOn || null, file: !!input.file }, actor_user_id: input.authUserId })
+    // Punch list #377: the paper goes to its job's Drive folder now, not on the sweep's next run. Never awaited.
+    if (!input.driveLater) fileContractInDriveQuietly(row.id)
   }
   return { row, uploadError }
 }

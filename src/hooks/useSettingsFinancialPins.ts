@@ -1,4 +1,4 @@
-import { openAmount } from '../lib/materials/payments/supplyPayment'
+import { sumOpenSupplyBills } from '../lib/materials/supplyHousePhone'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getUsersWithPin } from '../lib/pinnedTabs'
@@ -68,7 +68,7 @@ export function useSettingsFinancialPins(enabled: boolean) {
       supabase.from('supply_house_invoices').select('amount, amount_paid, is_paid').eq('is_paid', false),
       getUsersWithPin('/materials', 'supply-houses'),
     ])
-    const total = (invoicesRes.data ?? []).reduce((sum, r) => sum + openAmount(r), 0)
+    const total = sumOpenSupplyBills(invoicesRes.data ?? [])
     setApTotal(total)
     const pinned = new Set(pinnedRes.map((r) => r.user_id))
     setPinAPMasterIds(pinned)

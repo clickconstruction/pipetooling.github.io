@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import {
   type BookPaperRow,
   type JobPapersRoster,
+  JOB_PAPERS_LOCK_STAGE,
   cellWords,
   copyLinksLabel,
   jobPapersChip,
@@ -20,7 +21,6 @@ import {
   requiredToast,
   rosterSummary,
   shortDay,
-  signYourOwnWords,
   signingLinksText,
 } from './jobPapers'
 
@@ -108,6 +108,7 @@ describe('the words', () => {
     expect(requireButton(0)).toEqual({ label: 'Require papers', dead: true })
   })
   it('the foot counts who the save reaches and never claims a lock that is not live', () => {
+    expect(JOB_PAPERS_LOCK_STAGE).toBe('prompt')
     expect(requireFoot(8, 'none')).toBe('8 people can open this job today. Each one is asked to sign, the office and you included.')
     expect(requireFoot(8, 'prompt')).toBe('8 people can open this job today. Each one is locked out of it until they sign, the office and you included.')
     expect(requireFoot(1, 'database')).toBe('1 person can open this job today. Each one is locked out of it until they sign, the office and you included.')
@@ -156,23 +157,15 @@ describe('pickablePapers', () => {
     expect(byName.get('Site rules and photo policy')).toBe('From the Contract Book')
     expect(byName.get('Blank paper')).toBe('No words yet. Write it in the Contract Book first.')
   })
+  it('a paper with two copies is offered by the copy that has words', () => {
+    const two: BookPaperRow[] = [
+      { id: 'w9-shell', document_name: 'W-9', book_body_html: null, book_body_format: 'html', audience: 'sub', updated_at: '2026-11-10T00:00:00Z' },
+      { id: 'w9-form', document_name: 'W-9', book_body_html: null, book_body_format: 'html', form_template_id: 'form-w9', audience: 'staff', updated_at: '2026-09-01T00:00:00Z' },
+    ]
+    expect(pickablePapers(two, [])).toEqual([{ bookDocumentId: 'w9-form', paperName: 'W-9', isForm: true, hasWords: true, from: 'A form from the Contract Book' }])
+  })
   it('leaves out what the job already requires and what is already picked', () => {
     expect(pickablePapers(book, roster.papers).map((p) => p.paperName)).toEqual(['Blank paper'])
     expect(pickablePapers(book, [], ['book-nda']).map((p) => p.paperName)).toEqual(['Blank paper', 'Site rules and photo policy'])
-  })
-})
-
-describe('signYourOwnWords', () => {
-  it('asks whoever saved to sign what they owe', () => {
-    expect(signYourOwnWords(roster, 'u2')).toEqual({ line: 'You have not signed this paper yourself.', next: roster.papers[1], blocked: null })
-    expect(signYourOwnWords(roster, 'u4')?.line).toBe('You have not signed these 2 papers yourself.')
-  })
-  it('says nothing to someone who owes nothing or is not on the roster', () => {
-    expect(signYourOwnWords(roster, 'u1')).toBeNull()
-    expect(signYourOwnWords(roster, 'nobody')).toBeNull()
-    expect(signYourOwnWords(roster, null)).toBeNull()
-  })
-  it('names the missing link when no file is tied to the login', () => {
-    expect(signYourOwnWords(roster, 'u3')).toEqual({ line: 'You have not signed these 2 papers yourself.', next: null, blocked: 'No file is linked to your login. Link it on People, then you can sign.' })
   })
 })

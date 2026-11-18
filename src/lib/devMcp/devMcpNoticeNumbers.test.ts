@@ -62,11 +62,11 @@ describe('the verbs', () => {
       expect(SERVER).toContain(`name: '${v}',`)
     }
     expect(isNoticeNumbersVerb('plan_lien_service')).toBe(false)
-    expect(Object.keys(WRITE_VERBS)).toHaveLength(119)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.98.0'")
-    expect(SERVER).toContain('Writes are one hundred and nineteen verbs and nothing else:')
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(121)
+    expect(SERVER).toContain("const SERVER_VERSION = '0.99.0'")
+    expect(SERVER).toContain('Writes are one hundred and twenty-one verbs and nothing else:')
     expect(README).toContain('`plan_notice_numbers(notice \\| notices)` · `apply_notice_numbers(notice, plan_hash)`')
-    expect(EDGE).toContain('**v2.7687 (server 0.98.0)')
+    expect(EDGE).toContain('**v2.7687 (server 0.99.0)')
   })
 
   it('write what the desk’s add the number door writes: the sends alone, on a live notice', () => {

@@ -23,6 +23,7 @@ import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
+import { fileContractInDriveQuietly } from '../../lib/jobs/jobContractDriveQuiet'
 import { useToastContext } from '../../contexts/ToastContext'
 import { usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import ResponsiveModalShell from '../ResponsiveModalShell'
@@ -766,6 +767,8 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
             .eq('id', liveRow.id),
         'void job contract',
       )
+      // Punch list #377: a signed paper voided here has its Drive copy renamed VOIDED. Never awaited.
+      fileContractInDriveQuietly(liveRow.id)
       const payload = buildRowPayload()
       const created = await withSupabaseRetry<JobContractRow>(
         () =>
@@ -1371,6 +1374,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
               onOpenJob={onEditJob && job ? () => onEditJob(job) : null}
               onBack={recordRow && (liveRow || startNew || signedRows[0]?.id !== recordRow.id) ? () => setRecordRow(null) : null}
               onClose={onClose}
+              onRowChanged={() => void loadRows()}
             />
           ) : null}
           {signedView ? null : sentRail}

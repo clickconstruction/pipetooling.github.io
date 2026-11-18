@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import type { ChecklistCardEvent } from '../lib/checklistCardEvents'
+import { noteTagsChanged, notifyNoteTag } from '../lib/jobs/noteTagsIo'
 
 /** The slice of a roadmap task the mutations need to decide what to write. */
 export type MutableTechTreeTask = {
@@ -128,16 +129,19 @@ export function useTechTreeTaskMutations(args: {
   const postInstanceComment = useCallback(
     async (instanceId: string, body: string): Promise<boolean> => {
       if (!authUserId) return false
-      const { error: e } = await supabase.from('checklist_instance_events').insert({
-        instance_id: instanceId,
-        event_type: 'comment',
-        actor_user_id: authUserId,
-        body,
-      })
+      const { data: row, error: e } = await supabase
+        .from('checklist_instance_events')
+        .insert({ instance_id: instanceId, event_type: 'comment', actor_user_id: authUserId, body })
+        .select('id')
+        .maybeSingle()
       if (e) {
         setError(e.message)
         return false
       }
+      // A typed note answers a tag that waited on its writer on this task (punch list #375): the asker's phone
+      // notice is asked for by the note's id, and the counts read again.
+      if (row?.id) notifyNoteTag({ taskEventId: row.id })
+      noteTagsChanged()
       return true
     },
     [authUserId, setError],

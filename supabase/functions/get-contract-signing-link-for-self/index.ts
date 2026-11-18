@@ -139,7 +139,7 @@ serve(async (req) => {
     const { data: docRow, error: docErr } = await admin
       .from('person_contract_documents')
       .select(
-        'id, person_name, document_name, status, signing_body_html, canonical_document_url, url, dashboard_prompt_after_clock_in, form_template_id',
+        'id, person_name, document_name, status, signing_body_html, canonical_document_url, url, dashboard_prompt_after_clock_in, form_template_id, person_id, job_required_paper_id',
       )
       .eq('id', person_contract_document_id)
       .single()
@@ -160,9 +160,34 @@ serve(async (req) => {
       canonical_document_url: string | null
       url: string | null
       dashboard_prompt_after_clock_in: boolean | null
+      person_id: string | null
+      job_required_paper_id: string | null
     }
 
-    if (!doc.dashboard_prompt_after_clock_in) {
+    // Papers before a job opens: a job's required paper is signed from the job's prompt, never the Dashboard
+    // reminder, so it does not need the reminder's switch. Its signer is the roster person it was made for, and
+    // that person is the caller by the login tied to their file (people.account_user_id), never by a name or an
+    // email that happens to match.
+    const isJobPaper = Boolean(doc.job_required_paper_id)
+    let jobPaperSigner = false
+    if (isJobPaper && doc.person_id) {
+      const { data: signer } = await admin
+        .from('people')
+        .select('id')
+        .eq('id', doc.person_id)
+        .eq('account_user_id', user.id)
+        .is('archived_at', null)
+        .maybeSingle()
+      jobPaperSigner = Boolean(signer)
+    }
+    if (isJobPaper && !jobPaperSigner) {
+      return new Response(JSON.stringify({ error: 'This paper was made for someone else. Open the job and press Read and sign there.' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (!isJobPaper && !doc.dashboard_prompt_after_clock_in) {
       return new Response(JSON.stringify({ error: 'Dashboard signing is not enabled for this document' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -219,7 +244,7 @@ serve(async (req) => {
       if (match) rosterEmailForPerson = (match.email ?? '').trim() || null
     }
 
-    if (!isSignerForPersonContract(u.email, u.name, doc.person_name, rosterEmailForPerson)) {
+    if (!isJobPaper && !isSignerForPersonContract(u.email, u.name, doc.person_name, rosterEmailForPerson)) {
       return new Response(JSON.stringify({ error: 'Not allowed to sign this document' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

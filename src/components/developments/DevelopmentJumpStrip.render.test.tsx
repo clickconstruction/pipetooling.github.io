@@ -53,6 +53,23 @@ describe('DevelopmentJumpStrip', () => {
     expect(rule).not.toMatch(/grid-template-columns|repeat\(/)
   })
 
+  it('draws Trips as a seventh look only when it is given one, and names the strip by its count', () => {
+    screenState.phone = false
+    renderWithProviders(<DevelopmentJumpStrip looks={{ ...looks, trips: { n: 3, count: '3 trips', need: '1 out now' } }} />)
+    expect(screen.getByTestId('review-cap').textContent).toBe('Seven looks')
+    const cells = screen.getAllByTestId('development-jump')
+    expect(cells).toHaveLength(7)
+    expect(cells[6]!.textContent).toContain('Trips')
+    expect(cells[6]!.textContent).toContain('3 trips · 1 out now')
+    expect(cells[6]!.getAttribute('data-need')).toBe('1')
+  })
+
+  it('on a phone the seventh look is one more cell in the one row', () => {
+    renderWithProviders(<DevelopmentJumpStrip looks={{ ...looks, trips: { n: 3, count: '3 trips', need: null } }} />)
+    expect(screen.getByTestId('development-phone-strip').getAttribute('aria-label')).toBe('Seven looks at the site')
+    expect(screen.getAllByTestId('development-jump').map((c) => c.querySelector('.developmentPhoneLookName')?.textContent)).toEqual(['History', 'Jobs & bids', 'Money', 'Plans', 'Questions', 'Photos', 'Trips'])
+  })
+
   it('on a desk the cap and the nav carry the same counted name', () => {
     screenState.phone = false
     renderWithProviders(<DevelopmentJumpStrip looks={looks} />)

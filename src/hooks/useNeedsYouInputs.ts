@@ -1,3 +1,5 @@
+import { useJobsNeedingMe } from './useJobsClosedToMe'
+import { jobPapersNeedsYou } from '../lib/jobs/jobPapers'
 import { useMemo } from 'react'
 import { buildLienBoard, lienBoardDots, type LienBoardDot } from '../lib/jobs/lienBoard'
 import { isLienOffice } from '../lib/jobs/lienDesk'
@@ -261,6 +263,10 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const taggedNotesEnabled = on('taggedNotes')
   const taggedNotesRead = useMyNoteTags(taggedNotesEnabled)
   const taggedNotes = useMemo(() => (taggedNotesRead.tags ? tagsNeed(myTagsView(taggedNotesRead.tags)) : null), [taggedNotesRead.tags])
+  // Papers before a job opens: the jobs that wait on the viewer's own signature. Reads nothing while no job is closed to them.
+  const jobPapersEnabled = on('jobPapers')
+  const jobsNeedingMe = useJobsNeedingMe(jobPapersEnabled)
+  const jobPapers = useMemo(() => jobPapersNeedsYou(jobsNeedingMe), [jobsNeedingMe])
   // The day back (punch list #256 PR 9): an Away note's countdown has ended and the office asked to be told.
   const awayBackDayEnabled = on('awayBackDay')
   const awayBackDay = useAwayBackDay(awayBackDayEnabled)
@@ -375,6 +381,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     mailSaved: mailSaved.need,
     taggedNotesEnabled,
     taggedNotes,
+    jobPapersEnabled,
+    jobPapers,
     awayBackDayEnabled,
     awayBackDay: awayBackDay.need,
     lowRatingsEnabled,

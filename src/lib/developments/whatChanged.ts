@@ -12,7 +12,7 @@ import type { UploadedPhotoRow } from '../photos/uploadedPhotos'
  * `photos` (punch list #247, PR 2): a batch of the crews' photos on one piece by one person within an hour, with its thumbnails.
  * `mail` (v2.7479): an email tied to one of the site's bids or jobs in Messages, drawn from its own row at its own time.
  */
-export type ChangeKind = 'asked' | 'answered' | 'sent' | 'contact' | 'won' | 'lost' | 'plans' | 'stage' | 'billed' | 'paid' | 'note' | 'new_bid' | 'new_job' | 'entry' | 'photos' | 'mail'
+export type ChangeKind = 'asked' | 'answered' | 'sent' | 'contact' | 'won' | 'lost' | 'plans' | 'stage' | 'billed' | 'paid' | 'note' | 'new_bid' | 'new_job' | 'entry' | 'photos' | 'mail' | 'trip'
 
 /** Where a history entry came from (punch list #208, the History look): the badge and the verb. */
 export type HistorySource = 'email' | 'call' | 'text' | 'on_site' | 'letter' | 'note'
