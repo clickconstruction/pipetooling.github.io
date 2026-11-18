@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { OLDER_PHOTOS_FAILED_WORDS, tileForSpot, type MapSpot, type OlderPhotoFound } from '../lib/map/olderPhotos'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { OLDER_PHOTOS_FAILED_WORDS, olderPhotosForAsk, tileForSpot, type MapSpot, type OlderPhotoFound } from '../lib/map/olderPhotos'
 import { walkOlderPhotos } from '../lib/map/olderPhotosIo'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 
@@ -21,12 +21,15 @@ export function useOlderPhotos(spot: MapSpot | null): OlderPhotosState {
   const [looking, setLooking] = useState<'walk' | 'days' | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [attempt, setAttempt] = useState(0)
+  // The tile the state below was walked for. It lands a frame after the ask changes: `olderPhotosForAsk` covers that frame.
+  const [heldKey, setHeldKey] = useState<string | null>(null)
   const tile = spot ? tileForSpot(spot) : null
   const key = tile ? `${tile.z}/${tile.x}/${tile.y}` : null
   const lat = spot?.lat ?? null
   const lng = spot?.lng ?? null
 
   useEffect(() => {
+    setHeldKey(key)
     setFound([])
     setFailure(null)
     if (key == null || lat == null || lng == null) {
@@ -52,5 +55,6 @@ export function useOlderPhotos(spot: MapSpot | null): OlderPhotosState {
   }, [key, attempt])
 
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
-  return { found, looking, failure, retry }
+  const shown = useMemo(() => olderPhotosForAsk(key, { key: heldKey, found, looking }), [key, heldKey, found, looking])
+  return { found: shown.found, looking: shown.looking, failure: heldKey === key ? failure : null, retry }
 }
