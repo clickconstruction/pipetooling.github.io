@@ -27,6 +27,8 @@ const H = vi.hoisted(() => ({
   person: { role: 'helpers', email: null, login_attached_at: null } as { role: string; email: string | null; login_attached_at: string | null },
   /** Every sign-in as someone that was asked for, by email. */
   signIns: [] as string[],
+  /** Where each of those sign-ins was told to land. */
+  landings: [] as string[],
 }))
 
 vi.mock('../hooks/useAuth', async () => {
@@ -86,7 +88,7 @@ vi.mock('../lib/supabase', async () => {
   }
 })
 vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: () => {} }))
-vi.mock('../lib/loginAsUser', () => ({ loginAsUser: (u: { email: string | null }) => (H.signIns.push(u.email ?? ''), Promise.resolve()) }))
+vi.mock('../lib/loginAsUser', () => ({ loginAsUser: (u: { email: string | null }, to?: string) => (H.signIns.push(u.email ?? ''), H.landings.push(to ?? ''), Promise.resolve()) }))
 
 const { default: Checklist } = await import('./Checklist')
 const { ChecklistAddModalProvider, useChecklistAddModal } = await import('../contexts/ChecklistAddModalContext')
@@ -143,6 +145,7 @@ beforeEach(() => {
   H.writes = []
   H.person = { role: 'helpers', email: null, login_attached_at: null }
   H.signIns = []
+  H.landings = []
   localStorage.clear()
 })
 
@@ -287,6 +290,8 @@ describe('Checklist → Review, see a person’s Task Mode', () => {
     fireEvent.click(within(line).getByRole('button', { name: 'View as Dana' }))
     fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'View as Dana' }))
     await waitFor(() => expect(H.signIns).toEqual(['dana@example.com']))
+    // it lands on their Today, the screen the look drew, and never on Review, which a crew role is not drawn
+    expect(H.landings).toEqual([`${window.location.origin}/checklist?tab=today`])
     expect(H.writes).toEqual([])
   })
 
@@ -308,5 +313,13 @@ describe('Checklist → Review, see a person’s Task Mode', () => {
     const win = await screen.findByRole('dialog', { name: 'Dana Whitlow’s Task Mode' })
     await within(win).findByText('Restock van 4 with fittings')
     expect(win.querySelector('[data-look-view-as]')).toBeNull()
+  })
+
+  it('sends a crew person who lands on Review to their Today, never to an empty page', async () => {
+    H.role = 'helpers'
+    renderWithProviders(<Checklist />, { route: '/checklist?tab=review' })
+    await screen.findByText('Restock van 4 with fittings')
+    expect(document.querySelector('[data-today-sentence]')?.textContent).toBe('0 of 2 done today. 1 older task is still open.')
+    expect(screen.queryByText('Outstanding by person')).toBeNull()
   })
 })
