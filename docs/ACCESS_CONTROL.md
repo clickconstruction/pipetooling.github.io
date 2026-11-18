@@ -910,7 +910,7 @@ every other role gets an empty result.
 The Dashboard's `lien-notice-approve` card shows to master / dev;
 `lien-notice-draft` to the office set.
 The Board at the top of To do (v2.7332) is drawn for everyone who opens the desk;
-its leader view (v2.7334: **Only my bins** and the one counted press that approves the affidavits waiting on him) shows to master / dev in the client (`isLienLeader`), on for a master and off for a dev, holds only the jobs the viewer leads (`lienViewerLeadsJob`) and approves row by row through `approveLienDeskItem` under the same guard, with no new RPC;
+its leader's press (v2.7334: the one counted press that approves the affidavits waiting on him, on his Awaiting Master approval bin's title line since v2.7708, when his own two bins and their switch were retired) shows to master / dev in the client (`isLienLeader`), counts only the jobs the viewer leads (`lienViewerLeadsJob`) and approves row by row through `approveLienDeskItem` under the same guard, with no new RPC;
 a notice is left out of that press, since only his signature approves it.
 The Dashboard's Needs you card draws the Board's four numbers for the office set (`isLienOffice`).
 Since v2.4160 the Pipeline's **property kind badge** (C / R / ? at the end of every address) opens the same Residential | Commercial switch for dev · master · assistant-like (`PropertyKindBadge`, saving `customer_addresses.property_kind`);

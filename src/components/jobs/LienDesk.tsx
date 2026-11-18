@@ -79,12 +79,12 @@ import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { lienRunEntriesFor, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
-import { lienBoardChipFor, lienBoardDoorWords, lienBoardPickWords, lienBoardRowInPick, type LienBoardChip, type LienBoardKind } from '../../lib/jobs/lienBoard'
+import { lienBoardChipFor, lienBoardDoorWords, lienBoardLeaderBinPress, lienBoardPickWords, lienBoardRowInPick, type LienBoardBinKey, type LienBoardChip, type LienBoardKind } from '../../lib/jobs/lienBoard'
 import { lienBinFolds } from '../../lib/jobs/lienNextUpByBin'
-import { lienBoardAffidavitPrint, lienBoardNoticePrint, type LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
+import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor, type LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { useLienPileHeads } from './LienPileHeads'
-import LienBoard from './LienBoard'
+import LienBoard, { type LienBoardBinPress } from './LienBoard'
 import { lienScanTargetsFromDesk } from '../../lib/jobs/lienScanBatch'
 import { lienServeDoorWords, lienServeJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
 import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
@@ -784,8 +784,6 @@ export default function LienDesk({
     publicLine,
     publicBin,
     offPathBin,
-    boardMine,
-    toggleBoardMine,
     leaderView,
     approvingLot,
     approveTheLot,
@@ -1673,13 +1671,10 @@ export default function LienDesk({
   // The print at the foot of each Board column (v2.7470, punch list #362, the owner's *Yes, build this* of 2026-11-16): the
   // whole run under the notices, the batch print itself under the affidavits, counted as the run's door and By paper's
   // print bar count. The lien office's alone, as those two are.
-  // Whose signature the unsigned notices wait on, by name when it is one leader's; else *the leader*.
-  const unsignedLeaderIds = new Set((data?.queue.piles.ready ?? []).filter((e) => lienItemUnsigned(e.item)).map((e) => data?.jobsById[e.jobId]?.master_user_id ?? null))
-  const unsignedLeaderName = unsignedLeaderIds.size === 1 ? (leaderNameFor?.([...unsignedLeaderIds][0] ?? null) ?? '') : ''
   const boardPrints =
     office && data
       ? {
-          notice: lienBoardNoticePrint({ toPrint: (counts?.ready ?? 0) + retReady, waits: readyWaits, printed: counts?.printed ?? 0, leaderName: unsignedLeaderName }),
+          notice: lienBoardNoticePrint({ toPrint: (counts?.ready ?? 0) + retReady, waits: readyWaits, printed: counts?.printed ?? 0 }),
           affidavit: lienBoardAffidavitPrint({ ready: affPrintPlan.ready.length, held: affPrintPlan.gated.length, earlierForm: affPrintPlan.held.length, with: [affHelpSheet ? 'the help sheet' : '', affNoticeRecord ? 'the notice records' : '', affNoticeCopies && affNoticeCopyCount > 0 ? 'copies of the notices' : ''].filter(Boolean), shown: Boolean(affShown) }),
         }
       : null
@@ -1702,15 +1697,42 @@ export default function LienDesk({
     setRunOpen(true)
   }
   const onBoardPrint = (side: LienBoardPrintSide) => (side.act === 'print_affidavits' ? printReadyAffidavits() : openWholeRun())
+  // The approved notices on By paper, where a row says it is unsigned.
+  const showUnsignedNotices = () => {
+    setMobileListShown(false)
+    setCalendarJobFilter(null)
+    setKind('notice')
+    setPile('ready')
+  }
+  // Approved · to sign's press (v2.7712): the office's reminder to the leader, the same press as To do's waiting rows carry
+  // (v2.7491), or for a master, whose own the signature is, the door to the approved notices where he signs each.
+  const signDoor = office && authRole === 'master_technician' ? lienBoardSignDoor(readyWaits) : null
+  const signRemind = office && authRole !== 'master_technician' && reminderWords && reminderPlan && reminderPlan.signatures.length > 0 ? reminderWords : null
+  // The presses that stand on a bin's title line beside the two prints (v2.7708): the run again on Approved · to mail while
+  // notices still wait to print, the liens' copies on Filed · copies to mail (punch list #366), and the leader's one press
+  // on his Awaiting Master approval bin, which stood under his own two bins until the switch to them was retired.
+  // To send for Master approval's press (v2.7714): the door to the affidavits list at that pile, where the batch send stands.
+  const sendDoor = office ? lienBoardSendDoor(affSendPlanAll.ready.length) : null
+  const showAffidavitsToSend = () => {
+    setMobileListShown(false)
+    setAffHeldOnlyPicked(false)
+    setAffPile('to_draft')
+    setKind('affidavit')
+  }
+  const mailNumbersPress = office ? lienBoardMailNumbersPress({ toPrint: (counts?.ready ?? 0) + retReady, printed: counts?.printed ?? 0 }) : null
+  const leaderBinPress = leaderView ? lienBoardLeaderBinPress(leaderView) : null
+  const boardBinPress: Partial<Record<LienBoardBinKey, LienBoardBinPress>> = {
+    ...(signDoor ? { 'notice:to_sign': { label: signDoor.label, onPress: showUnsignedNotices, filled: true, title: 'Open the approved notices. Each takes your signature on its own pane.', marks: { 'data-lien-board-sign': 'yes' } } } : null),
+    ...(signRemind ? { 'notice:to_sign': { label: reminding ? 'Reminding…' : signRemind.dead ? signRemind.button : `${signRemind.button} ›`, onPress: () => void remindLeader(), dead: signRemind.dead || reminding, quiet: true, marks: { 'data-lien-board-remind': 'yes' } } } : null),
+    ...(sendDoor ? { 'affidavit:to_send': { label: sendDoor.label, onPress: showAffidavitsToSend, title: 'Open the affidavits to send, where one press sends every paper someone has read', marks: { 'data-lien-board-send': 'yes' } } } : null),
+    ...(mailNumbersPress ? { 'notice:in_mail': { label: mailNumbersPress.label, onPress: openWholeRun, title: 'Open the run to type each printed notice’s mail number' } } : null),
+    ...(office && serveDoor ? { 'affidavit:filed': { label: serveDoor, onPress: () => setServeOpen(true), title: 'Print the copies each filed lien owes, then enter their mail numbers' } } : null),
+    ...(leaderBinPress ? { 'affidavit:awaiting': { label: approvingLot ? 'Approving…' : leaderBinPress.label, onPress: () => void approveTheLot(), filled: true, dead: leaderBinPress.dead || approvingLot, lines: leaderBinPress.line ? [{ key: 'late', words: leaderBinPress.line }] : [], marks: { 'data-lien-board-approve': 'yes' } } } : null),
+  }
   // What a print leaves out, by its door: the approved notices on By paper, where a row says it is unsigned; the held affidavits, narrowed to them.
   const onBoardPrintLeft = (side: LienBoardPrintSide) => {
+    if (side.kind === 'notice') return showUnsignedNotices()
     setMobileListShown(false)
-    if (side.kind === 'notice') {
-      setCalendarJobFilter(null)
-      setKind('notice')
-      setPile('ready')
-      return
-    }
     setKind('affidavit')
     if (affPrintPlan.gated.length > 0) showHeldAffidavits(true)
     else {
@@ -2784,8 +2806,8 @@ export default function LienDesk({
           })() : null}
           {kind === 'next' ? (
             <div ref={doNowRef} data-lien-do-now={doNow.mode} style={doNow.frame}>
-            {board ? <LienBoard board={board} isMobile={isMobile} binPress={office && serveDoor ? { 'affidavit:filed': { label: serveDoor, onPress: () => setServeOpen(true), title: 'Print the copies each filed lien owes, then enter their mail numbers' } } : undefined} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} leader={leaderView ? { view: leaderView, mine: boardMine, onToggleMine: toggleBoardMine, onApprove: () => void approveTheLot(), busy: approvingLot } : undefined} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} prints={boardPrints ? { ...boardPrints, onPress: onBoardPrint, onLeft: onBoardPrintLeft, onNote: onBoardPrintNote, remind: office && reminderWords && reminderPlan && reminderPlan.signatures.length > 0 ? { button: reminderWords.button, dead: reminderWords.dead, busy: reminding, onPress: () => void remindLeader() } : null } : null} over={publicLine ? <LienPublicBoardLineView line={publicLine} isMobile={isMobile} onReview={office && publicLine.addressIds.length ? () => setPublicReview(publicLine.addressIds) : null} /> : null} underAffidavits={publicBin || offPathBin ? <div style={{ display: 'grid', gap: 10 }}>{publicBin ? <LienPublicBinView bin={publicBin} isMobile={isMobile} onPutBack={office ? setPublicPutBack : null} /> : null}{offPathBin ? <LienOffPathBinView bin={offPathBin} isMobile={isMobile} onOpenJob={onOpenJob} onPutBack={office ? setJobPath : null} /> : null}</div> : null} /> : <div />}
-            <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)} prints={boardPrints && !(leaderView && boardMine) ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.short.label, left: side.short.left, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
+            {board ? <LienBoard board={board} isMobile={isMobile} binPress={boardBinPress} onLayout={setBoardStacked} onChip={zoomTo} cardFor={chipCardFor} pick={boardPick} shown={nextUpRowsShown.length} onPick={(key) => pickBoardBins(key ? [key] : null)} onTile={openBoardTile} prints={boardPrints ? { ...boardPrints, onPress: onBoardPrint, onLeft: onBoardPrintLeft, onNote: onBoardPrintNote } : null} over={publicLine ? <LienPublicBoardLineView line={publicLine} isMobile={isMobile} onReview={office && publicLine.addressIds.length ? () => setPublicReview(publicLine.addressIds) : null} /> : null} underAffidavits={publicBin || offPathBin ? <div style={{ display: 'grid', gap: 10 }}>{publicBin ? <LienPublicBinView bin={publicBin} isMobile={isMobile} onPutBack={office ? setPublicPutBack : null} /> : null}{offPathBin ? <LienOffPathBinView bin={offPathBin} isMobile={isMobile} onOpenJob={onOpenJob} onPutBack={office ? setJobPath : null} /> : null}</div> : null} /> : <div />}
+            <LienDoNowBar pins={doNowBarPins} scrollerRef={doNowRef} parts={doNowBarParts} onPart={openBoardTile} pick={boardPick ? lienBoardPickWords(boardPick, nextUpRowsShown.length) : null} onClearPick={() => pickBoardBins(null)} prints={boardPrints ? [boardPrints.notice, boardPrints.affidavit].flatMap((side) => (side ? [{ key: side.kind, label: side.short.label, left: side.short.left, dead: side.dead, onPress: () => onBoardPrint(side) }] : [])) : undefined}>
               <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsShown.length} isMobile={isMobile} />
             </LienDoNowBar>
             <LienDeskNextUp scrolls={doNow.listScrolls} amountFor={phoneAmountFor} rows={nextUpRowsShown} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} zoomFor={(row) => (row.jobId ? zoomFor(row.jobId, row.kind === 'affidavit' ? 'affidavit' : row.kind === 'notice' ? 'notice' : 'either') : null)} foldsOpen={finding} waitingOn={nextUpWaitingOn} risk={rowRisk} riskLabel={riskLabel} stageFor={rowStage} noticeFor={rowNotice} byBin={board && !isMobile ? { binFor: rowBin, folds: lienBinFolds({ office, serveOwed: serveJobs.length, serveButton: serveDoor, printReady: affPrintPlanAll.ready.length, printButton: lienAffidavitPrintDoorWords(affPrintPlanAll), sendReady: affSendPlanAll.ready.length }), narrowed: Boolean(boardPick) } : null} trackPress={office && !isMobile && affPrintPlanAll.ready.length >= 2 ? { button: lienAffidavitPrintDoorWords(affPrintPlanAll), onPress: () => { setAffHeldOnlyPicked(false); setAffPile('ready'); setKind('affidavit') } } : null} remind={office && reminderWords && waitingRows.length > 0 ? { button: reminderWords.button, dead: reminderWords.dead, busy: reminding, onPress: () => void remindLeader() } : null} factsFor={stepFactsFor} viewerIsLeader={leader} leadsRow={leadsRow} onOpenRow={isMobile ? openJobScreen : undefined} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
