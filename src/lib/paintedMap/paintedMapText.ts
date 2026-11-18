@@ -1,28 +1,31 @@
 /**
- * Text it… (punch list #345): a painted map's link, texted to the job's customer from the
+ * Text the customer… (punch list #345, named *Text it…* until #394): a painted map's link, texted to the job's customer from the
  * company's number. Pure. The sheet's press opens the customer's own box on Text
  * (`ContractTextDoor` over `JobCustomerBox`), with these words in it, tied to the job. Nothing is
  * sent in the press: the box's send window is the confirm, and its holds say why a text cannot go.
  *
  * The office team writes to a customer, as everywhere in Messages (`jobBoxOffered`). A tech who
- * painted a map still has Copy and the phone's own share sheet. A text goes to a job's customer,
- * so a map on a development or on no job has nobody to text, and the sheet says so.
+ * painted a map texts it from their own phone, to whoever they pick (`paintedMapOwnTextHref`). A
+ * text from the company goes to a job's customer, so a map on a development or on no job has
+ * nobody to text, and the press says so.
  */
 
-/** What the share sheet draws for Text it…. */
+/** What the share sheet draws for Text the customer…. */
 export type PaintedMapTextDoor =
   /** Not the office team: no row at all. */
   | { kind: 'hidden' }
   /** The office, and the map is on a job: the press. */
   | { kind: 'offered'; jobId: string }
-  /** The office, and the map is on no job: one line that says why there is no press. */
+  /** The office, and the map is on no job: the press is dead and says why. */
   | { kind: 'no-job'; words: string }
 
 export const PAINTED_MAP_TEXT_WORDS = {
-  press: 'Text it…',
-  pressSub: 'To the job’s customer, from the company’s number',
+  /** Since punch list #394 the press names who gets it, and its second line whose number it goes from. */
+  press: 'Text the customer…',
+  pressSub: 'From the company’s number',
   head: 'Text the map’s link',
-  noJob: 'A text goes to a job’s customer. This map is on no job, so copy the link or send it another way.',
+  /** Said on the press itself, which keeps its place and is dead: the other ways are on the sheet beside it. */
+  noJob: 'This map is on no job.',
   opening: 'Opening the job…',
   jobGone: 'The job could not be opened, so the text cannot go from here. Copy the link.',
 } as const

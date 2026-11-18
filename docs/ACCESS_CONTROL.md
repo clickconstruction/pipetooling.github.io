@@ -1157,7 +1157,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   It has no role check of its own: a caller the gate turns away gets an empty list and sees only **＋ Paint a map**, and a save they may not make is refused by the database in words.
   In the window, the presses that change a line or the map, and **Share**, show for its maker and for the office (`isOfficeRole`);
   the database holds the same line.
-  On the Share sheet, **Text it…** (v2.7338) shows for the office team alone (`jobBoxOffered`, the roles that write to a customer in Messages) and only on a map that is on a job;
+  On the Share sheet, **Text the customer…** (v2.7338, named **Text it…** until v2.7790) shows for the office team alone (`jobBoxOffered`, the roles that write to a customer in Messages) and only on a map that is on a job;
   the text is the customer's box's own send through `quo-send`, so its holds and its roles are that box's.
   The Map page's **Painted maps** chip and Materials on site's map (v2.7228), and the *Painted maps* group in the header's search (v2.7227), read every map the caller can open under this same gate, and a read it refuses is an empty layer or list.
   The **Painted maps** section of a job's Documents tab (v2.7393) and the Documents page's **Painted maps** tab (v2.7409, drawn for everyone who opens the page) have no role check of their own either: row security decides the rows.

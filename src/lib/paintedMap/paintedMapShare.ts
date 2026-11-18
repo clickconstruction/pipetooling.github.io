@@ -11,7 +11,7 @@
  */
 import { smsHref } from '../gc/followUpSheet'
 import { linkOpenedWords } from './paintedMapLink'
-import { paintedMapTextDoor, paintedMapTextWords, type PaintedMapTextDoor } from './paintedMapText'
+import { PAINTED_MAP_TEXT_WORDS, paintedMapTextDoor, paintedMapTextWords, type PaintedMapTextDoor } from './paintedMapText'
 
 /** The tiles under the leading press, in the order they are drawn. */
 export type PaintedMapShareTile = 'code' | 'copy' | 'picture' | 'another'
@@ -64,9 +64,9 @@ export const PAINTED_MAP_SHARE_SHEET_WORDS = {
   /** The same press, once the link is made and the phone did not open Messages by itself. */
   openMessages: 'Open Messages',
   making: 'Making the link…',
-  customer: 'Text the customer…',
-  customerSub: 'From the company’s number',
-  customerNoJob: 'This map is on no job.',
+  customer: PAINTED_MAP_TEXT_WORDS.press,
+  customerSub: PAINTED_MAP_TEXT_WORDS.pressSub,
+  customerNoJob: PAINTED_MAP_TEXT_WORDS.noJob,
   code: 'Show a code to scan',
   hideCode: 'Hide the code',
   copy: 'Copy the link',
