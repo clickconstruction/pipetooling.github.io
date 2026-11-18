@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useJobFormAutosaveSlice } from '../components/jobs/useJobFormAutosaveSlice'
 import { useToastContext } from '../contexts/ToastContext'
@@ -18,10 +18,17 @@ import { isEstimateUuidSegment, parseEstimateQuoteNumberSegment } from '../lib/e
 import { readStoredEstimateAcceptUrl } from '../lib/estimates/estimateAcceptUrlSession'
 import { customerFieldsFromEstimate, defaultAcceptNotifyIds, estimateFormFromRow, estimateInitialTitle } from '../lib/estimates/estimateDetailHydration'
 import type { EstimateDetailRow } from '../lib/estimates/estimateDetailRow'
-import { buildEstimateDraftPersistPayload, estimateDraftHeldDateMessage, estimateDraftUnfinishedDateBlocksSend, estimateDraftUnfinishedDates } from '../lib/estimates/estimateDraftPersist'
+import { estimateDraftHeldDateMessage, estimateDraftUnfinishedDateBlocksSend, estimateDraftUnfinishedDates } from '../lib/estimates/estimateDraftPersist'
 import type { EstimateNotifyUserOption } from '../lib/estimates/estimateNotifyOptions'
 import type { EstimateOption } from '../lib/estimates/estimateOptions'
-import { estimateRecipientEmail } from '../lib/estimates/estimateSendPlan'
+import {
+  estimateDraftPayloadOfForm,
+  estimateServerFormFromRow,
+  reseedEstimateFormAfterSave,
+  settledEstimateFormAfterSave,
+  type EstimateEditorForm,
+  type EstimateEditorFormKey,
+} from '../lib/estimates/estimateQuietReload'
 import { supabase } from '../lib/supabase'
 import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -39,8 +46,9 @@ import { useAuth } from './useAuth'
  * Three things must stay together here and never be split across files:
  * - `buildDraftPersistPayload` is both what a save writes and what the autosave compares, so "dirty"
  *   can never disagree with what a save would write;
- * - `saveDraft` reloads the row unless told not to, and the autosave tells it not to, because a reload
- *   re-seeds the editor and would clobber what was typed while the save was in flight;
+ * - `saveDraft` reads the row back unless told not to, and the autosave tells it not to. The read-back
+ *   is quiet (v2.7748): the page stays up, `reseedEstimateFormAfterSave` decides field by field what
+ *   the editor holds, and the autosave is handed what the row holds as its baseline;
  * - the leave rule is keyed on the route, not the row: its cleanup runs while the state is still the
  *   old row's, which is the row it must judge.
  */
@@ -107,6 +115,16 @@ export function useEstimateDetailData({ routeSegment }: { routeSegment: string }
   const [acceptNotifyResolvedUsers, setAcceptNotifyResolvedUsers] = useState<EstimateNotifyUserOption[]>([])
   /** Tracks last persisted customer link for draft auto-save; `undefined` = skip first run after load/navigation. */
   const prevCustomerIdForAutosave = useRef<string | null | undefined>(undefined)
+  /** The estimate on the address bar now: a save's read-back that lands after the page moved on is dropped. */
+  const routeSegmentRef = useRef(routeSegment)
+  routeSegmentRef.current = routeSegment
+  /** The customers the page holds now, for a read-back whose own customers read fails. */
+  const customersRef = useRef(customers)
+  customersRef.current = customers
+  /** The row a save's read-back already merged into the editor (`reloadAfterSave`). */
+  const reseededRowRef = useRef<EstimateDetailRow | null>(null)
+  /** What the row holds after a save, as the autosave's JSON: handed to the autosave for one commit, then cleared. */
+  const [savedBaselineJson, setSavedBaselineJson] = useState<string | null>(null)
   useEffect(() => {
     setLastAcceptUrl(null)
     setValidUntilPreset(null)
@@ -404,6 +422,8 @@ export function useEstimateDetailData({ routeSegment }: { routeSegment: string }
       setCxOverrideFields({})
       return
     }
+    // A save's read-back merged these already: seeding them again here would undo typing newer than the row.
+    if (reseededRowRef.current === row) return
     setCxOverrideFields(parseEstimateExperienceOverrides(row.customer_experience_overrides))
   }, [row?.id, row?.updated_at, row?.customer_experience_overrides])
   const refetchCustomersAfterEdit = useCallback(
@@ -436,16 +456,6 @@ export function useEstimateDetailData({ routeSegment }: { routeSegment: string }
   const isCO = isChangeOrderDocKind(row?.doc_kind)
   const [coFields, setCoFields] = useState<EstimateChangeOrderFields>(EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS)
   const totalCents = sumNormalizedLineItems(lines)
-  function resolveCustomerEmailForPersist(): string | null {
-    if (!customerId) return null
-    const sel = customers.find((x) => x.id === customerId)
-    const crm = sel ? extractContactFromCustomer(sel).email.trim() : ''
-    return estimateRecipientEmail(crm, sendEmailOverride) || null
-  }
-  function buildCustomerExperienceOverridesPayload(): Record<string, string> | null {
-    const parsed = parseEstimateExperienceOverrides(cxOverrideFields)
-    return Object.keys(parsed).length > 0 ? parsed : null
-  }
   // Lazy projects fetch for the draft's linked-project picker (first draft render only).
   useEffect(() => {
     if (!row || !isDraft || projectsForPicker !== null) return
@@ -459,36 +469,128 @@ export function useEstimateDetailData({ routeSegment }: { routeSegment: string }
       cancelled = true
     }
   }, [row, isDraft, projectsForPicker])
+  /** The editor's form as one value: what a save writes from, and what a save's read-back is weighed against. */
+  const screenForm: EstimateEditorForm = {
+    title,
+    terms,
+    lines,
+    options: estimateOptions,
+    viewedOptionKey,
+    previewSelectedOptionKeys,
+    coFields,
+    customerId,
+    customerSearch,
+    sendEmailOverride,
+    validUntil,
+    validUntilPreset,
+    forAddress,
+    linkedProjectId,
+    internalNotes,
+    attachmentUrl: customerAttachmentUrl,
+    attachmentLabel: customerAttachmentLabel,
+    acceptHeaderBrand,
+    cxOverrideFields,
+    acceptNotifyUserIds,
+  }
+  const screenFormRef = useRef(screenForm)
+  screenFormRef.current = screenForm
   /**
-   * The exact draft UPDATE payload — one builder shared by saveDraft and the
-   * autosave dirty check (v2.2592), so "dirty" can never disagree with what a
-   * save would actually write.
+   * The exact draft UPDATE payload — one builder shared by saveDraft, the
+   * autosave dirty check (v2.2592) and the baseline a save hands the autosave,
+   * so "dirty" can never disagree with what a save would actually write
+   * (`estimateDraftPayloadOfForm`, over `lib/estimates/estimateDraftPersist`, v2.3867).
    */
-  function buildDraftPersistPayload(attDb: { url: string | null; label: string | null }) {
-    // The one builder (`lib/estimates/estimateDraftPersist`, v2.3867); the page resolves the
-    // two state-derived values and hands over the fields.
-    return buildEstimateDraftPersistPayload(
-      {
-        isChangeOrder: isCO,
-        title,
-        terms,
-        lines,
-        totalCents,
-        options: estimateOptions,
-        viewedOptionKey,
-        validUntil,
-        forAddress,
-        linkedProjectId,
-        internalNotes,
-        customerId,
-        customerEmail: resolveCustomerEmailForPersist(),
-        customerExperienceOverrides: buildCustomerExperienceOverridesPayload(),
-        acceptHeaderBrand,
-        acceptNotifyUserIds,
-        changeOrderFields: coFields,
-      },
-      attDb,
-    )
+  function buildDraftPersistPayload(form: EstimateEditorForm) {
+    return estimateDraftPayloadOfForm(form, { isChangeOrder: isCO, customers })
+  }
+  /** Sets the fields a save's read-back moved, and only those: an untouched field keeps its value and its identity. */
+  function applyEditorForm(form: EstimateEditorForm, changed: readonly EstimateEditorFormKey[]) {
+    const setters: { [K in EstimateEditorFormKey]: (value: EstimateEditorForm[K]) => void } = {
+      title: setTitle,
+      terms: setTerms,
+      lines: setLines,
+      options: setEstimateOptions,
+      viewedOptionKey: setViewedOptionKey,
+      previewSelectedOptionKeys: setPreviewSelectedOptionKeys,
+      coFields: setCoFields,
+      customerId: setCustomerId,
+      customerSearch: setCustomerSearch,
+      sendEmailOverride: setSendEmailOverride,
+      validUntil: setValidUntil,
+      validUntilPreset: setValidUntilPreset,
+      forAddress: setForAddress,
+      linkedProjectId: setLinkedProjectId,
+      internalNotes: setInternalNotes,
+      attachmentUrl: setCustomerAttachmentUrl,
+      attachmentLabel: setCustomerAttachmentLabel,
+      acceptHeaderBrand: setAcceptHeaderBrand,
+      cxOverrideFields: setCxOverrideFields,
+      acceptNotifyUserIds: setAcceptNotifyUserIds,
+    }
+    const set = <K extends EstimateEditorFormKey>(key: K) => setters[key](form[key])
+    for (const key of changed) set(key)
+  }
+  /**
+   * A save's read-back (the quiet reload, v2.7748, punch list #46 row 3). `load()` blanked the page and
+   * seeded the whole editor from the row; this reads the same row and the same customers with the page
+   * up, and `reseedEstimateFormAfterSave` decides field by field: the row's value where nothing was
+   * typed since the save, the typing where something was. The autosave is then told what the row
+   * holds, so typing newer than the save is saved next and nothing else is written twice.
+   *
+   * A row that is no longer a draft takes the whole seed, as the refresh after a send does. A read
+   * that fails leaves the editor as typed and says so: the write landed.
+   */
+  async function reloadAfterSave(sent: EstimateEditorForm, savedRowId: string) {
+    const isChangeOrder = isCO
+    let r: EstimateDetailRow | null
+    try {
+      const one = await withSupabaseRetry(
+        async () => await supabase.from('estimates').select('*, jobs_ledger(hcp_number)').eq('id', savedRowId).maybeSingle(),
+        'reload estimate after save',
+      )
+      r = (one ?? null) as EstimateDetailRow | null
+    } catch (e) {
+      setSavedBaselineJson(JSON.stringify(buildDraftPersistPayload(sent)))
+      showToast(`Saved. The page could not read the estimate back: ${formatErrorMessage(e, 'the read failed')}`, 'warning')
+      return
+    }
+    if (routeSegmentRef.current !== routeSegment) return
+    if (!r) {
+      showToast('Estimate not found.', 'error')
+      navigate('/estimates')
+      return
+    }
+    if (r.status !== 'draft') {
+      await load({ refresh: true })
+      return
+    }
+    let list: CustomerRow[] = customersRef.current
+    let listRead = false
+    if (user?.id) {
+      try {
+        const cust = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('customers')
+              .select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at')
+              .order('name'),
+          'load customers for estimate',
+        )
+        list = (cust ?? []) as CustomerRow[]
+        listRead = true
+      } catch {
+        /* the customers the page already holds stand */
+      }
+      if (routeSegmentRef.current !== routeSegment) return
+    }
+    const server = estimateServerFormFromRow(r, list)
+    const merged = reseedEstimateFormAfterSave({ sent, now: screenFormRef.current, server, isChangeOrder })
+    const settled = settledEstimateFormAfterSave({ sent, server, isChangeOrder })
+    reseededRowRef.current = r
+    setRow(r)
+    if (listRead) setCustomers(list)
+    applyEditorForm(merged.form, merged.changed)
+    setSavedBaselineJson(JSON.stringify(estimateDraftPayloadOfForm(settled, { isChangeOrder, customers: list })))
   }
   /** The date boxes caught half typed: the payload above leaves them out, a save says so, and nothing goes out past one. */
   function unfinishedDraftDates() {
@@ -508,13 +610,15 @@ export function useEstimateDetailData({ routeSegment }: { routeSegment: string }
       showToast('Supporting document URL must be a valid https link.', 'error')
       return false
     }
+    // The form as this save writes it: what the read-back below weighs the screen against.
+    const sent = screenForm
     setSaving(true)
     try {
       await withSupabaseRetry(
         async () =>
           await supabase
             .from('estimates')
-            .update(buildDraftPersistPayload(attDb))
+            .update(buildDraftPersistPayload(sent))
             .eq('id', row.id)
             .eq('status', 'draft'),
         'save estimate',
@@ -527,10 +631,9 @@ export function useEstimateDetailData({ routeSegment }: { routeSegment: string }
         showToast(estimateDraftHeldDateMessage(heldDates, new Date().getFullYear()), 'info')
       } else if (!quiet) showToast('Saved', 'success')
       toldHeldDraftDatesRef.current = heldBoxes
-      // Autosave (v2.2592) skips the reload: load() re-seeds the whole editor
-      // from the row (resets lines, options, the viewed option) and would
-      // clobber whatever was typed while the save was in flight.
-      if (!options?.skipReload) await load()
+      // Autosave (v2.2592) skips the read-back: it has its own baseline and nothing to learn from the row.
+      // Every other save reads the row back with the page up (`reloadAfterSave`).
+      if (!options?.skipReload) await reloadAfterSave(sent, row.id)
       return true
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save'), 'error')
@@ -561,8 +664,10 @@ export function useEstimateDetailData({ routeSegment }: { routeSegment: string }
   // completes — never against a half-hydrated editor.
   const draftAutosaveAttachment = normalizeCustomerAttachmentDraftForDb(customerAttachmentUrl, customerAttachmentLabel)
   const draftAutosaveBlocked = Boolean(customerAttachmentUrl.trim() && !draftAutosaveAttachment.url)
+  // For the one commit after a save's read-back the autosave is shown what the row holds instead of the screen,
+  // and `markSavedNow` below takes it as the baseline. Typing newer than the save then reads as unsaved.
   const draftAutosaveSliceJson =
-    row && isDraft && !draftAutosaveBlocked ? JSON.stringify(buildDraftPersistPayload(draftAutosaveAttachment)) : ''
+    row && isDraft ? (savedBaselineJson ?? (draftAutosaveBlocked ? '' : JSON.stringify(buildDraftPersistPayload(screenForm)))) : ''
   const draftAutosave = useJobFormAutosaveSlice({
     jobId: row && isDraft && !loading ? row.id : null,
     sliceJson: draftAutosaveSliceJson,
@@ -572,6 +677,13 @@ export function useEstimateDetailData({ routeSegment }: { routeSegment: string }
   })
   const draftAutosaveFlushRef = useRef(draftAutosave.flush)
   draftAutosaveFlushRef.current = draftAutosave.flush
+  // A layout effect, so the baseline is set and the screen's own JSON is back before the autosave's effect compares.
+  useLayoutEffect(() => {
+    if (savedBaselineJson === null) return
+    draftAutosave.markSavedNow()
+    setSavedBaselineJson(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedBaselineJson])
   // Leave hook (decision 17, v2.2885): a draft this visit minted that never
   // received a commit — no autosave landed, no Save draft, no Send — and is
   // still empty deletes itself when you navigate away or the editor unmounts.
