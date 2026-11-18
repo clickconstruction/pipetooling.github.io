@@ -19,19 +19,22 @@ export function PlaceGlyphDrawing({ glyph, size, color = 'currentColor' }: { gly
 }
 
 type Props = {
-  number: number
+  /** What the dot is called: a map's own place has a number, and a place kept on the job a letter. */
+  number: number | string
   /** The place's kind as stored. None, or one this app does not know, draws the plain dot. */
   kind?: string | null
   /** The mark's whole width. A row's marks are all this wide, so its names line up. */
   size?: number
   ink?: string
   paper?: string
+  /** A dashed ring: a place kept on the job, shown on one of the job's painted maps. */
+  dashed?: boolean
   style?: CSSProperties
 }
 
-export function PaintedPlaceMark({ number, kind, size = 28, ink = 'var(--text-strong)', paper = 'var(--surface)', style }: Props) {
+export function PaintedPlaceMark({ number, kind, size = 28, ink = 'var(--text-strong)', paper = 'var(--surface)', dashed = false, style }: Props) {
   const info = placeKindInfo(kind)
-  const disc: CSSProperties = { width: size, height: size, boxSizing: 'border-box', borderRadius: '50%', borderWidth: 2, borderStyle: 'solid', display: 'grid', placeItems: 'center', flex: 'none' }
+  const disc: CSSProperties = { width: size, height: size, boxSizing: 'border-box', borderRadius: '50%', borderWidth: 2, borderStyle: dashed ? 'dashed' : 'solid', display: 'grid', placeItems: 'center', flex: 'none' }
   if (!info) {
     return (
       <span aria-hidden data-place-mark="plain" style={{ ...disc, borderColor: ink, fontSize: Math.round(size * 0.43), fontWeight: 800, ...style }}>

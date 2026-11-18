@@ -2,7 +2,7 @@
 title: see your jobs on a map
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, subcontractor, helpers, estimator, primary, superintendent
-keywords: map, my jobs, dashboard, pins, directions, where is the job, job location, working, waiting, zoom, scroll wheel, mouse wheel, zooms out
+keywords: map, my jobs, dashboard, pins, directions, where is the job, job location, working, waiting, satellite, streets, time, older photos, zoom, scroll wheel, mouse wheel, zooms out
 order: 31
 ---
 The Dashboard has a Your jobs on a map card above your Assigned Jobs. It plots every active job you are on.
@@ -31,6 +31,12 @@ On a phone, you tap a pin. The job shows as a bar under the map instead of a pop
 You press {{button:outline-blue|Fit all}} to re-center the map on every pin after you have zoomed in on one. **Hide map** collapses the card. That choice is remembered on that device. **Show map** brings it back.
 
 On a desktop the mouse wheel scrolls the page when the pointer crosses the map. So you can scroll past it without the map zooming out. **Click the map once** and the wheel zooms it from then on. The **+** and **−** buttons, dragging and the pins work from the start.
+
+## Satellite, Streets and Time
+
+Three presses sit on the map. **Streets** is the road map the card opens on. **Satellite** is a photo from above.
+
+Tap a pin, then tap **Time** to see that job site on earlier days. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) shows how.
 
 ## A job with no map location yet
 

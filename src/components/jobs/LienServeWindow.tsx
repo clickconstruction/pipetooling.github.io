@@ -18,7 +18,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { LIEN_SCAN_BATCH_WORDS } from '../../lib/jobs/lienScanBatch'
 import { useLienServeLetterChoice } from './lienHelpSheetChoice'
 import { landOnWhenThere } from '../../lib/landOn'
-import { lienMailProofLandingFocus, lienMailProofSelectors, type LienMailProofLanding } from '../../lib/jobs/lienMailProofDoor'
+import { lienServeLandingSelector, type LienServeLanding } from '../../lib/jobs/lienServeStage'
 
 type Props = {
   /** Every filed lien that owes its copies (`lienServeJobsFromDesk`). */
@@ -38,8 +38,10 @@ type Props = {
   /** One copy's proof kept on its filing the moment it is added; a test hands its own. */
   keep?: typeof keepLienCopyProof
   zIndex?: number
-  /** Open on one copy's line, scrolled to and lit for a moment (`landOn.ts`): the press on a stop window's card. */
-  land?: Pick<LienMailProofLanding, 'jobId' | 'recipient' | 'lack'> | null
+  /** Open on the half the door named, scrolled to and lit for a moment (`landOn.ts`, `lienServeStage.ts`): the print half, the numbers half, or one copy's line in it. */
+  land?: LienServeLanding | null
+  /** The copies of these filings were sent to the printer: the desk's doors to them read *Enter mail numbers* from now on. */
+  onPrinted?: (filingIds: string[]) => void
 }
 
 const head: CSSProperties = { margin: 0, fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -66,24 +68,23 @@ function chipStyle(late: boolean, today: boolean): CSSProperties {
  * Serve the filed liens (punch list #366, steps 3 and 4): one window for every filed lien that owes its copies. The
  * top half prints the stack, the mail sheet first and then each envelope's letter and copy; a lien with no recording
  * number or no address is left out with its reason and its door. The bottom half takes the day the copies were
- * mailed and each certified mail number, and one press records every ticked lien as **Record service…** would.
+ * mailed and each certified mail number, and one press records every ticked lien as the Lien window's **Enter mail numbers…** form would.
  *
  * Each print is filed on its own job. Nothing here mails anything: the office does, and says so by ticking *Mailed*.
  *
  * A receipt or a number is kept on its filing the moment it is added (`lienReceiptFile.ts`), so a window closed before
  * **Record** loses nothing. **Record** still sets the day, which is what clears the serve-by watch.
  */
-export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOpenJob, onChanged, onAddScans, onClose: onCloseProp, record = recordLienServices, keep = keepLienCopyProof, zIndex = 1200, land = null }: Props) {
+export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOpenJob, onChanged, onAddScans, onClose: onCloseProp, record = recordLienServices, keep = keepLienCopyProof, zIndex = 1200, land = null, onPrinted }: Props) {
   const isTopmost = useModalStackEntry()
   const scopeRef = useRef<HTMLDivElement | null>(null)
-  // The copy a stop window's card sent the reader to: in view and lit once its line is drawn.
-  const landJob = land?.jobId
-  const landCopy = land?.recipient
-  const landLack = land?.lack
+  // The half, or the copy, a door sent the reader to: in view and lit once it is drawn.
+  const landAt = land ? lienServeLandingSelector(land) : ''
+  const landCursor = land?.part === 'numbers' && Boolean(land.cursor)
   useEffect(() => {
-    if (!landJob || !landCopy) return
-    return landOnWhenThere(() => scopeRef.current?.querySelector<HTMLElement>(lienMailProofSelectors.serveCopy(landJob, landCopy)), { focus: landLack ? lienMailProofLandingFocus(landLack) : null })
-  }, [landJob, landCopy, landLack])
+    if (!landAt) return
+    return landOnWhenThere(() => scopeRef.current?.querySelector<HTMLElement>(landAt), { focus: landCursor ? 'input[type="text"]' : null })
+  }, [landAt, landCursor])
   const { showToast } = useToastContext()
   const [letterOn, setLetterOn] = useLienServeLetterChoice()
   const [servedOn, setServedOn] = useState(todayYmd)
@@ -131,6 +132,8 @@ export default function LienServeWindow({ jobs, todayYmd, issuer, isMobile, onOp
     }
     // A print counts as a send (docs/SENT_COPIES.md): each job keeps its own papers, never the mail sheet, which is a desk paper.
     for (const j of out.jobs) void fileSentCopy({ kind: LIEN_SERVED_COPY_SENT_KIND, title: j.title, how: 'print', jobIds: [j.jobId], recipientName: j.recipientName, source: { table: 'job_lien_filings', id: j.filingId } }, { html: j.html })
+    // The desk's doors to these copies read *Enter mail numbers* at once, ahead of the desk's next read.
+    onPrinted?.(out.jobs.map((j) => j.filingId))
   }
 
   const recordNow = async () => {

@@ -141,8 +141,11 @@ describe('buildLienNextUp — affidavits and retainage', () => {
 
   it('a lien filed and not served opens the job’s Lien window on the Lien affidavit tab', () => {
     const r = one({ serveDue: [{ jobId: 'j9', serveDue: '2026-10-07' }] })
-    expect([r.key, r.kind, r.action, r.button, r.dueOn, r.daysLeft, r.group]).toEqual(['serve:j9', 'affidavit', 'record_service', 'Mail the copies', '2026-10-07', 2, 'now'])
+    expect([r.key, r.kind, r.action, r.button, r.dueOn, r.daysLeft, r.group]).toEqual(['serve:j9', 'affidavit', 'record_service', 'Print the copies to mail', '2026-10-07', 2, 'now'])
     expect(r.target).toEqual({ open: 'lien_window', jobId: 'j9', tab: 'affidavit' })
+    // Once its copies are printed the same row's press names the other half (`lienServeStage.ts`).
+    const printed = one({ serveDue: [{ jobId: 'j9', serveDue: '2026-10-07', stage: 'record' }] })
+    expect([printed.button, printed.serveStage, r.serveStage]).toEqual(['Enter mail numbers', 'record', 'print'])
   })
 
   it('a filed lien’s row says what is owed and by when, and turns red the day before its day (punch list #366)', () => {

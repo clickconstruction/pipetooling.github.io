@@ -12,7 +12,7 @@ import LienPublicPutBackWindow from './LienPublicPutBackWindow'
 import LienScanBatchWindow from './LienScanBatchWindow'
 import LienServeWindow from './LienServeWindow'
 import type { LienDeskWindowFlags } from './useLienDeskWindows'
-import type { LienMailProofLanding } from '../../lib/jobs/lienMailProofDoor'
+import type { LienServeLanding } from '../../lib/jobs/lienServeStage'
 
 /**
  * The windows the Lien desk opens over itself from the Board and a pane (its own file since v2.7588, out of
@@ -30,6 +30,7 @@ export function LienDeskWindows({
   serveJobs,
   serveLand = null,
   onServeClosed,
+  onServePrinted,
   scanTargets,
   paneFix,
   onClosePaneFix,
@@ -50,8 +51,10 @@ export function LienDeskWindows({
   /** The five flags the Board raises, with their setters. */
   windows: LienDeskWindowFlags
   serveJobs: LienServeJob[]
-  /** The copy the copies window opens on, from a stop window's card; null opens it at the top. */
-  serveLand?: LienMailProofLanding | null
+  /** Where the copies window opens, from the door that opened it (`lienServeStage.ts`); null opens it at the top. */
+  serveLand?: LienServeLanding | null
+  /** The copies window sent these filings' copies to the printer. */
+  onServePrinted?: (filingIds: string[]) => void
   /** The copies window closed: the desk forgets where it landed. */
   onServeClosed?: () => void
   scanTargets: LienScanTarget[]
@@ -99,6 +102,7 @@ export function LienDeskWindows({
         isMobile={isMobile}
         zIndex={805}
         land={serveLand}
+        onPrinted={onServePrinted}
         onOpenJob={(jobId) => {
           setServeOpen(false)
           onServeClosed?.()

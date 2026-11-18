@@ -50,6 +50,75 @@ function board(over: Partial<LienBoardInput> = {}) {
   })
 }
 
+describe('LienBoard — the closed end at the foot of each column', () => {
+  const closedBoard = () =>
+    board({
+      notices: [
+        notice('6', 'sent'),
+        notice('7', 'held'),
+        // Every month closed. A late notice can still save 21; 22 is past its lien day too.
+        notice('21', 'missed', { dueMonths: [], earliestDeadline: null, daysLeft: null, missedUnrecorded: ['2026-08'], affidavitDay: '2026-12-15', affidavitDaysLeft: 30 }),
+        notice('22', 'missed', { dueMonths: [], earliestDeadline: null, daysLeft: null, missedUnrecorded: ['2026-07'], affidavitDay: '2026-11-10', affidavitDaysLeft: -5 }),
+      ],
+      affidavits: [affidavit('8', 'ready', { deadline: '2026-11-16', daysLeft: 1 }), affidavit('22', 'missed', { deadline: '2026-11-10', daysLeft: -5 })],
+    })
+
+  it('draws each closed bin under its column’s flow, named for what closed, and off the heading line', () => {
+    render(<LienBoard board={closedBoard()} isMobile={false} columnsOnly />)
+    const section = screen.getByRole('region', { name: 'The Board' })
+    for (const [kind, name] of [['notice', 'Window closed · no notice'], ['affidavit', 'Lien day passed · not filed']] as const) {
+      const column = section.querySelector(`[data-lien-board-column="${kind}"]`) as HTMLElement
+      const foot = column.querySelector(`[data-lien-board-closed="${kind}"]`) as HTMLElement
+      const bin = foot.querySelector(`[data-lien-board-bin="${kind}:missed"]`) as HTMLElement
+      expect(bin.getAttribute('data-closed')).toBe('yes')
+      expect(bin.getAttribute('data-inline')).toBeNull()
+      expect(within(bin).getByText(name)).toBeTruthy()
+      // After the flow, never inside it and never on the heading line.
+      const flow = column.querySelector(`[data-lien-board-flow="${kind}"]`) as HTMLElement
+      expect(flow.querySelector('[data-stage="missed"]')).toBeNull()
+      expect(column.querySelector(`[data-lien-board-heading="${kind}"] [data-stage="missed"]`)).toBeNull()
+      expect(flow.compareDocumentPosition(foot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    }
+    // No bin stands on a heading line: a held paper is drawn in the bin where it stopped (v2.7783), with its mark.
+    expect(section.querySelector('[data-lien-board-heading] [data-lien-board-bin]')).toBeNull()
+    expect(section.querySelector('[data-lien-board-chips="notice:awaiting"] [data-lien-board-chip="7"]')!.getAttribute('data-held')).toBe('yes')
+  })
+
+  it('draws a closed chip quiet and dashed, never red, and marks the one a late notice can still save', () => {
+    render(<LienBoard board={closedBoard()} isMobile={false} columnsOnly />)
+    const section = screen.getByRole('region', { name: 'The Board' })
+    const chips = Array.from(section.querySelectorAll<HTMLElement>('[data-lien-board-chips="notice:missed"] [data-lien-board-chip]'))
+    expect(chips.map((el) => [el.textContent, el.getAttribute('data-closed'), el.getAttribute('data-late-notice'), el.getAttribute('data-urgency')])).toEqual([['JP21', 'yes', 'yes', 'later'], ['JP22', 'yes', null, 'later']])
+    expect(chips.map((el) => el.style.borderStyle)).toEqual(['dashed', 'dashed'])
+    expect(chips[0]!.style.color).toBe('var(--text-amber-800)')
+    expect(chips[1]!.style.color).toBe('var(--text-muted)')
+    expect(chips[0]!.getAttribute('title')).toContain('a late notice can still go')
+    const gone = section.querySelector('[data-lien-board-chips="affidavit:missed"] [data-lien-board-chip]') as HTMLElement
+    expect(gone.getAttribute('title')).toContain('the lien day passed')
+    expect(gone.querySelector('[data-lien-board-risk]')).toBeNull()
+    // A chip in the flow keeps its solid colours.
+    expect((section.querySelector('[data-lien-board-chips="affidavit:ready"] [data-lien-board-chip]') as HTMLElement).style.borderStyle).toBe('')
+  })
+
+  it('draws no closed end while nothing has closed, and no arrow runs into one', () => {
+    const { unmount } = render(<LienBoard board={board()} isMobile={false} columnsOnly />)
+    expect(document.querySelector('[data-lien-board-closed]')).toBeNull()
+    unmount()
+    expect(closedBoard().arrows.some((a) => a.to.endsWith(':missed') || a.from.endsWith(':missed'))).toBe(false)
+  })
+
+  it('takes a press on its title line, as every bin does, and narrows the list from its head', () => {
+    const onPress = vi.fn()
+    const onPick = vi.fn()
+    render(<LienBoard board={closedBoard()} isMobile={false} columnsOnly onPick={onPick} binPress={{ 'affidavit:missed': { label: 'Answer 1 ›', onPress } }} />)
+    const bin = document.querySelector('[data-lien-board-bin="affidavit:missed"]') as HTMLElement
+    fireEvent.click(within(bin).getByRole('button', { name: 'Answer 1 ›' }))
+    expect(onPress).toHaveBeenCalledTimes(1)
+    fireEvent.click(bin.querySelector('[data-lien-board-bin-head]') as HTMLElement)
+    expect(onPick).toHaveBeenCalledWith('affidavit:missed')
+  })
+})
+
 describe('LienBoard', () => {
   it('draws the two columns of bins in flow order, a held paper in the bin of its stage and no bin named Held, each chip in its bin sorted by day and coloured by urgency', () => {
     render(<LienBoard board={board()} isMobile={false} />)
@@ -563,10 +632,10 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
   it('a bin’s own press stands on its title line, an outline when it is a door to a window (punch list #366; under the chips until v2.7708)', () => {
     const onPress = vi.fn()
     const b = board({ affidavits: [affidavit('8', 'filed'), affidavit('9', 'filed')], serve: [{ jobId: '8', serveDue: '2026-11-16' }] })
-    const binPress = { 'affidavit:filed': { label: 'Mail 1 lien’s copies ›', onPress }, 'affidavit:ready': { label: 'never drawn', onPress } } as const
+    const binPress = { 'affidavit:filed': { label: 'Print 1 lien’s copies ›', onPress }, 'affidavit:ready': { label: 'never drawn', onPress } } as const
     render(<LienBoard board={b} isMobile={false} binPress={binPress} />)
     const press = document.querySelector('[data-lien-board-bin-press="affidavit:filed"]') as HTMLButtonElement
-    expect(press.textContent).toBe('Mail 1 lien’s copies ›')
+    expect(press.textContent).toBe('Print 1 lien’s copies ›')
     expect(press.parentElement!.getAttribute('data-lien-board-bin-title')).toBe('affidavit:filed')
     expect(press.style.background).toBe('var(--surface)')
     fireEvent.click(press)

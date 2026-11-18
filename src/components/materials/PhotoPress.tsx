@@ -3,12 +3,15 @@
  * opens the camera, shrinks the shot on the phone, names it the way the photo sweep names one in the
  * job's Drive folder (*2026-10-28 Jordan · A1 after Put in.jpg*) and sends it; the sweep files it and
  * the note reads "in the job's folder". With no signal the shot stays on the phone and the box screen
- * offers Send now, or Share instead through the share sheet. `BoxPhotos` draws the thumbnails.
+ * offers Send now, or Share instead through the share sheet. `BoxPhotos` draws the thumbnails, on every phone and
+ * at the office since v2.7819: from this phone's own store, else from the job's Drive folder, else from the bucket
+ * (`boxPhotoBytesIo.ts`), and a press on one opens the whole picture.
  */
 import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from 'react'
 import { addPhoto, newId, updatePhoto } from '../../lib/materials/onSiteStore'
 import { photoFileName, photoStatusWords, photoWords, type PhotoNote } from '../../lib/materials/photo'
-import { getPhotoBlob } from '../../lib/materials/photoBlobs'
+import { readBoxPhotoBytes } from '../../lib/materials/boxPhotoBytesIo'
+import { boxPhotoMissingWords, boxPhotoOpenLabel } from '../../lib/materials/boxPhotoSource'
 import { bytesWords, shrinkPhoto } from '../../lib/materials/photoShrink'
 import { readTakenAt } from '../../lib/photos/photoTakenAt'
 import { canSharePhoto, downloadFile, sharePhoto } from '../../lib/materials/photoShare'
@@ -92,30 +95,37 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
 
 /** The box's photos as thumbnails with their status; on the phone a kept shot offers Send now and Share instead. */
 export function BoxPhotos({ photos, canAct, onToast, size = 56 }: { photos: PhotoNote[]; canAct: boolean; onToast?: Toast; size?: number }) {
-  // The bytes come from the phone's own store; a blob is kept beside its url so Share instead can run inside the press.
-  const [loaded, setLoaded] = useState<Record<string, { url: string; blob: Blob }>>({})
-  const ids = photos.map((p) => p.id).join('|')
+  // The picture comes from the first place that holds it (`boxPhotoBytesIo.ts`); the bytes are kept beside the url
+  // when this phone has them, so Send now and Share instead can run inside the press.
+  const [loaded, setLoaded] = useState<Record<string, { url: string; blob: Blob | null }>>({})
+  /** The photos whose read came back with nothing: the square says why. */
+  const [missing, setMissing] = useState<Record<string, true>>({})
+  const [open, setOpen] = useState<PhotoNote | null>(null)
+  // A shot the sweep filed since the last look is read again, from its folder.
+  const ids = photos.map((p) => `${p.id}:${p.status}:${p.driveFileId ?? ''}`).join('|')
   useEffect(() => {
     let live = true
     const made: string[] = []
-    Promise.all(photos.map(async (p) => [p.id, await getPhotoBlob(p.id).catch(() => null)] as const)).then((pairs) => {
-      if (!live) return
-      const next: Record<string, { url: string; blob: Blob }> = {}
-      for (const [id, blob] of pairs) {
-        if (!blob) continue
-        const url = URL.createObjectURL(blob)
-        made.push(url)
-        next[id] = { url, blob }
-      }
-      setLoaded(next)
-    })
+    setLoaded({})
+    setMissing({})
+    for (const p of photos) {
+      void readBoxPhotoBytes(p, 'thumb').then(
+        (got) => {
+          if (!got) { if (live) setMissing((m) => ({ ...m, [p.id]: true })); return }
+          if (!live) { URL.revokeObjectURL(got.url); return }
+          made.push(got.url)
+          setLoaded((m) => ({ ...m, [p.id]: { url: got.url, blob: got.blob } }))
+        },
+        () => { if (live) setMissing((m) => ({ ...m, [p.id]: true })) },
+      )
+    }
     return () => { live = false; for (const u of made) URL.revokeObjectURL(u) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ids])
   const [busyId, setBusyId] = useState<string | null>(null)
   const sendNow = async (p: PhotoNote) => {
     const got = loaded[p.id]
-    if (!got) return
+    if (!got?.blob) return
     setBusyId(p.id)
     try {
       const sent = await sendBoxPhoto({ id: p.id, jobId: p.jobId, containerId: p.containerId, blob: got.blob, fileName: p.fileName })
@@ -129,7 +139,7 @@ export function BoxPhotos({ photos, canAct, onToast, size = 56 }: { photos: Phot
   }
   const shareInstead = async (p: PhotoNote) => {
     const got = loaded[p.id]
-    if (!got) return
+    if (!got?.blob) return
     const file = new File([got.blob], p.fileName, { type: got.blob.type || 'image/jpeg' })
     try {
       if (canSharePhoto(file)) {
@@ -151,7 +161,13 @@ export function BoxPhotos({ photos, canAct, onToast, size = 56 }: { photos: Phot
         return (
           <div key={p.id} style={{ display: 'grid', gap: 4, justifyItems: 'start', maxWidth: 220 }} title={`${p.fileName} · ${bytesWords(p.bytes)}${p.width ? ` · ${p.width} × ${p.height}` : ''}`}>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              {got ? <img src={got.url} alt={p.fileName} width={size} height={size} style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} /> : <span style={{ width: size, height: size, borderRadius: 8, border: '1px dashed var(--border-strong)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)' }}><CameraGlyph size={18} /></span>}
+              {got ? (
+                <button type="button" aria-label={boxPhotoOpenLabel(p)} onClick={() => setOpen(p)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', lineHeight: 0, flex: 'none' }}>
+                  <img src={got.url} alt={p.fileName} width={size} height={size} style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
+                </button>
+              ) : (
+                <span title={missing[p.id] ? boxPhotoMissingWords(p) : undefined} data-testid="box-photo-none" style={{ width: size, height: size, flex: 'none', borderRadius: 8, border: '1px dashed var(--border-strong)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)' }}><CameraGlyph size={18} /></span>
+              )}
               <span style={{ fontSize: '0.8rem', color: p.status === 'on-phone' ? 'var(--text-amber-700)' : 'var(--text-muted)', fontWeight: p.status === 'on-phone' ? 600 : 500, lineHeight: 1.25 }}>
                 {words}
                 {p.failWhy && p.status !== 'filed' ? <><br /><span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>{p.failWhy}</span></> : null}
@@ -161,13 +177,50 @@ export function BoxPhotos({ photos, canAct, onToast, size = 56 }: { photos: Phot
             </div>
             {canAct && p.status === 'on-phone' ? (
               <div style={{ display: 'flex', gap: '0.35rem' }}>
-                <button type="button" style={small} disabled={busyId === p.id || !got} onClick={() => sendNow(p)}>{busyId === p.id ? 'Sending…' : 'Send now'}</button>
-                <button type="button" style={small} disabled={!got} onClick={() => shareInstead(p)}>Share instead</button>
+                <button type="button" style={small} disabled={busyId === p.id || !got?.blob} onClick={() => sendNow(p)}>{busyId === p.id ? 'Sending…' : 'Send now'}</button>
+                <button type="button" style={small} disabled={!got?.blob} onClick={() => shareInstead(p)}>Share instead</button>
               </div>
             ) : null}
           </div>
         )
       })}
+      {open ? <BoxPhotoViewer photo={open} onClose={() => setOpen(null)} /> : null}
+    </div>
+  )
+}
+
+/** The whole picture over the screen (v2.7819): a press on a thumbnail opens it, a press anywhere or Escape closes it. */
+export function BoxPhotoViewer({ photo, onClose }: { photo: PhotoNote; onClose: () => void }) {
+  const [state, setState] = useState<{ url: string } | 'loading' | 'none'>('loading')
+  useEffect(() => {
+    let live = true
+    let made: string | null = null
+    setState('loading')
+    void readBoxPhotoBytes(photo, 'full').then(
+      (got) => {
+        if (!got) { if (live) setState('none'); return }
+        if (!live) { URL.revokeObjectURL(got.url); return }
+        made = got.url
+        setState({ url: got.url })
+      },
+      () => { if (live) setState('none') },
+    )
+    return () => { live = false; if (made) URL.revokeObjectURL(made) }
+  }, [photo])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  const what = photo.words?.trim() || photo.fileName
+  const when = new Date(photo.at).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return (
+    <div role="dialog" aria-modal="true" aria-label={`Photo of ${what}`} onClick={(e) => { e.stopPropagation(); onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.82)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', padding: 'calc(var(--app-top-chrome, 0px) + 0.75rem) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
+      {state === 'loading' ? <p style={{ margin: 0, color: '#fff' }}>Opening the photo…</p> : null}
+      {state === 'none' ? <p role="alert" style={{ margin: 0, color: '#fff', textAlign: 'center' }}>{boxPhotoMissingWords(photo)}</p> : null}
+      {typeof state === 'object' ? <img src={state.url} alt={photo.fileName} style={{ maxWidth: '100%', maxHeight: 'min(78vh, 100%)', objectFit: 'contain', borderRadius: 8, display: 'block' }} /> : null}
+      <p style={{ margin: 0, color: '#fff', fontSize: '0.9rem', textAlign: 'center', overflowWrap: 'anywhere' }}>{what} · {photo.byName} · {when}</p>
+      <button type="button" onClick={(e) => { e.stopPropagation(); onClose() }} style={{ minHeight: 48, padding: '0 1.4rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}>Close the photo</button>
     </div>
   )
 }

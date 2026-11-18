@@ -87,7 +87,7 @@ function open(over: Partial<Parameters<typeof LienServeWindow>[0]> = {}) {
 
 describe('LienServeWindow', () => {
   it('opened from a stop window’s card, lands on that job’s copy: its line is lit and the cursor is in its number', () => {
-    open({ land: { jobId: 'job-2104', recipient: 'original_contractor', lack: 'number' } })
+    open({ land: { part: 'numbers', jobId: 'job-2104', recipient: 'original_contractor', cursor: true } })
     const lit = document.querySelectorAll('[data-landed="yes"]')
     expect(lit).toHaveLength(1)
     expect(lit[0]!.getAttribute('data-lien-serve-envelope')).toBe('original_contractor')
@@ -98,6 +98,21 @@ describe('LienServeWindow', () => {
   it('opened from its own press, lights nothing', () => {
     open()
     expect(document.querySelectorAll('[data-landed="yes"]')).toHaveLength(0)
+  })
+
+  it('opened by a door that said Print, lights the print half, and by one that said Enter mail numbers, the numbers’ heading', () => {
+    open({ land: { part: 'print' } })
+    expect(document.querySelector('[data-landed="yes"]')?.hasAttribute('data-lien-serve-print-part')).toBe(true)
+    cleanup()
+    open({ land: { part: 'numbers' } })
+    expect(document.querySelector('[data-landed="yes"]')?.textContent).toBe('2 · After the post office: enter mail numbers')
+  })
+
+  it('a print tells the desk which liens’ copies went to the printer', () => {
+    const onPrinted = vi.fn()
+    open({ onPrinted })
+    fireEvent.click(screen.getByRole('button', { name: 'Print 2 liens’ copies · 1 held ▸' }))
+    expect(onPrinted).toHaveBeenCalledWith(['f-2104', 'f-2291'])
   })
 
   it('says how many filed liens owe their copies, the soonest day, and what is late', () => {

@@ -35,6 +35,8 @@ vi.mock('../../hooks/useOfficeAnchor', () => ({
   useOfficeAnchor: (enabled: boolean) => (enabled ? { lat: 29.653, lng: -97.797, source: 'map_default_view', label: '12921 FM 20, Kingsbury' } : null),
 }))
 const openExternal = vi.fn()
+// The photo archive's walk is answered here: nothing found, and nothing asked of the network.
+vi.mock('../../lib/map/olderPhotosIo', () => ({ walkOlderPhotos: async () => [] }))
 vi.mock('../../contexts/ToastContext', () => ({ useToastContext: () => ({ showToast: vi.fn() }) }))
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (u: string) => openExternal(u) }))
 vi.mock('../map/PinsMapGoogleCanvas', () => ({
@@ -172,6 +174,23 @@ describe('BidBoardMapCard', () => {
     await settle()
     fireEvent.click(await screen.findByText(/^pin .*385 · Gallenby Park$/))
     expect(onFocusRow).toHaveBeenCalledWith('a')
+  })
+
+  it('Time frames the one bid on the photo archive and opens its row; Time again brings the board’s map back (punch list #395)', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
+    renderCard([bid({ id: 'a' })])
+    await settle()
+    await screen.findByText(/^pin .*385 · Gallenby Park$/)
+    expect(screen.getByRole('button', { name: 'Streets' }).getAttribute('aria-pressed')).toBe('true')
+    const time = document.querySelector('[data-map-time-press]') as HTMLButtonElement
+    fireEvent.click(time)
+    await waitFor(() => expect(document.querySelector('[data-map-time-caption]')?.textContent).toMatch(/^Today’s photo of .*385 · Gallenby Park\./))
+    expect(document.querySelector('[data-map-provider]')?.getAttribute('data-map-provider')).toBe('archive')
+    // The pin, the office and the rail are still the card's own.
+    expect(screen.getByText(/^pin .*385 · Gallenby Park$/)).toBeTruthy()
+    fireEvent.click(time)
+    expect(document.querySelector('[data-map-time-row]')).toBeNull()
+    expect(document.querySelector('[data-map-provider]')?.getAttribute('data-map-provider')).toBe('osm')
   })
 
   it('a row hover in the store pulses that pin; leaving clears it (v2.3251)', async () => {

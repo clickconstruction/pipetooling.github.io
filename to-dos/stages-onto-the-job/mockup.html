@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stages onto the job</title>
+<!--
+  The mock-up for punch list #397, Stages onto the job. Six drawn screens, nothing to press.
+  Every job, bid, price, hour and percent here is made up: bid B482 · Oak Ridge, job J2041 · Oak Ridge Lot 14,
+  $48,000, 480 hours. The page follows the reader's light or dark setting. The dashed violet outline marks
+  what this card adds; everything else on a screen is there today or lands with punch list #396.
+-->
+<style>
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body { margin: 0; }
+img { max-width: 100%; }
+
+/* Layout: one reading column, 46rem. Each mock-up is a drawn screen in its own frame; phone frames sit two across when there is room. */
+:root {
+  --bg: #f4f6f9; --surface: #ffffff; --ink: #18222e; --muted: #5a6877; --rule: #d6dde6;
+  --pipe: #1d5fa6; --pipe-soft: #e3eefa; --hub: #a8551c; --hub-soft: #fbeee2;
+  --ok: #1c7a4a; --ok-soft: #e2f4ea; --warn: #9a6500; --warn-soft: #fdf2d6; --dead: #7a8591; --dead-soft: #eceff3;
+  --press: #2563eb; --press-ink: #ffffff; --new: #6d28d9; --new-soft: #efe7fd;
+  --display: system-ui, -apple-system, "Segoe UI", sans-serif; --body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161c; --surface: #19212b; --ink: #e6ecf2; --muted: #9aa8b6; --rule: #2c3846;
+  --pipe: #7db4ee; --pipe-soft: #1b2f47; --hub: #e9a36b; --hub-soft: #3a2817;
+  --ok: #6fcf9a; --ok-soft: #17332a; --warn: #e6bd5c; --warn-soft: #362c12; --dead: #8b97a4; --dead-soft: #222b36;
+  --press: #2563eb; --press-ink: #ffffff; --new: #b79cf5; --new-soft: #2a2145; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11161c; --surface: #19212b; --ink: #e6ecf2; --muted: #9aa8b6; --rule: #2c3846;
+  --pipe: #7db4ee; --pipe-soft: #1b2f47; --hub: #e9a36b; --hub-soft: #3a2817;
+  --ok: #6fcf9a; --ok-soft: #17332a; --warn: #e6bd5c; --warn-soft: #362c12; --dead: #8b97a4; --dead-soft: #222b36;
+  --press: #2563eb; --press-ink: #ffffff; --new: #b79cf5; --new-soft: #2a2145; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 46rem; margin: 0 auto; padding-block: 2.5rem 4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 2.75rem; }
+section { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+h1 { font-family: var(--display); font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.1; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h2 { font-family: var(--display); font-size: 1.45rem; line-height: 1.2; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--display); font-size: 1.08rem; line-height: 1.3; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+.eyebrow { font-size: 0.75rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.lede { font-size: 1.1rem; }
+.muted { color: var(--muted); } .small { font-size: 0.88rem; }
+code { font-family: var(--mono); font-size: 0.82em; background: var(--dead-soft); padding: 0.08em 0.32em; border-radius: 4px; overflow-wrap: anywhere; }
+ul, ol { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.45rem; }
+.box { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: 0.7rem; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 0.75rem; }
+.fact { border-top: 3px solid var(--pipe); padding-top: 0.55rem; display: flex; flex-direction: column; gap: 0.15rem; }
+.fact b { font-family: var(--display); font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.fact span { font-size: 0.86rem; color: var(--muted); }
+.scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; min-width: 44rem; }
+th, td { text-align: left; vertical-align: top; padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--rule); }
+th { font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tag { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 0.12em 0.55em; border-radius: 999px; white-space: nowrap; }
+.tag.ok { background: var(--ok-soft); color: var(--ok); } .tag.warn { background: var(--warn-soft); color: var(--warn); } .tag.dead { background: var(--dead-soft); color: var(--dead); } .tag.new { background: var(--new-soft); color: var(--new); }
+.shot { display: flex; flex-direction: column; gap: 0.6rem; padding-top: 1.2rem; border-top: 1px solid var(--rule); }
+.shot:first-of-type { border-top: 0; padding-top: 0; }
+.num { font-family: var(--display); color: var(--pipe); font-weight: 700; margin-right: 0.4rem; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; align-items: start; }
+/* drawn screens */
+.mock { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.7rem; font-size: 0.9rem; min-width: 0; box-shadow: 0 1px 0 var(--rule); }
+.mock.phone { max-width: 22rem; width: 100%; justify-self: center; border-radius: 22px; padding: 1rem 0.9rem; }
+.mock .cap { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.mock h4 { margin: 0; font-family: var(--body); font-size: 1.02rem; font-weight: 700; line-height: 1.3; }
+.mock .sub { color: var(--muted); font-size: 0.84rem; }
+.opt { border: 1.5px solid var(--rule); border-radius: 10px; padding: 0.7rem 0.8rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.opt.on { border-color: var(--press); background: var(--pipe-soft); }
+.opt .head { display: flex; gap: 0.55rem; align-items: baseline; font-weight: 600; }
+.radio { width: 0.9rem; height: 0.9rem; border-radius: 50%; border: 2px solid var(--muted); flex: none; position: relative; top: 0.1rem; }
+.opt.on .radio { border-color: var(--press); box-shadow: inset 0 0 0 3px var(--surface); background: var(--press); }
+.rows { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 0.3rem 0.9rem; font-variant-numeric: tabular-nums; }
+.rows span:nth-child(3n+2), .rows span:nth-child(3n) { text-align: right; white-space: nowrap; }
+.rows .tot { border-top: 1px solid var(--rule); padding-top: 0.3rem; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chip { border: 1px solid var(--rule); border-radius: 999px; padding: 0.2rem 0.65rem; font-size: 0.8rem; background: var(--surface); }
+.chip.on { border-color: var(--press); color: var(--pipe); font-weight: 600; }
+.btns { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; }
+.btn { border-radius: 8px; padding: 0.5rem 0.9rem; font-weight: 600; font-size: 0.9rem; border: 1px solid var(--rule); background: var(--surface); color: var(--ink); }
+.btn.go { background: var(--press); border-color: var(--press); color: var(--press-ink); }
+.btn.dead { background: var(--dead-soft); color: var(--dead); border-color: var(--dead-soft); }
+.link { color: var(--pipe); text-decoration: underline; text-underline-offset: 2px; }
+.line { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 0.3rem 0.7rem; align-items: center; padding: 0.45rem 0; border-bottom: 1px solid var(--rule); }
+.line:last-of-type { border-bottom: 0; }
+.badge { font-size: 0.62rem; text-align: center; color: var(--warn); line-height: 1.1; width: 2.6rem; }
+.badge i { display: block; width: 0.95rem; height: 0.95rem; border: 2px solid var(--warn); transform: rotate(45deg); margin: 0.1rem auto 0.3rem; border-radius: 2px; }
+.line .amt { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.line .bud { grid-column: 2 / 4; font-size: 0.78rem; color: var(--muted); }
+.note { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 0.5rem 0.7rem; font-size: 0.84rem; }
+.newmark { outline: 2px dashed var(--new); outline-offset: 3px; border-radius: 8px; }
+.rail { display: grid; gap: 0; }
+.rr { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr) auto; gap: 0.6rem; align-items: center; min-height: 2.6rem; position: relative; }
+.dot { width: 1.3rem; height: 1.3rem; border-radius: 50%; border: 2px solid var(--muted); display: grid; place-items: center; font-size: 0.7rem; background: var(--surface); position: relative; z-index: 1; }
+.dot.done { background: var(--press); border-color: var(--press); color: #fff; } .dot.now { border-color: var(--press); } .dot.now::after { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--press); }
+.dot.fin { border-color: var(--ok); color: var(--ok); }
+.rr::before { content: ""; position: absolute; left: 0.62rem; top: 1.9rem; bottom: -0.7rem; width: 2px; background: var(--rule); }
+.rr:last-child::before { display: none; }
+.bar { height: 0.6rem; border-radius: 0.3rem; background: var(--rule); position: relative; overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; background: #f59e0b; border-radius: 0.3rem; }
+.strip { height: 1.3rem; border-radius: 6px; background: var(--rule); position: relative; overflow: hidden; }
+.strip i { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--surface); box-shadow: 0 0 0 1px var(--muted); }
+.strip b { position: absolute; inset: 0 auto 0 0; background: #f59e0b; border-radius: 6px 0 0 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; font-size: 0.84rem; color: var(--muted); }
+.key { display: inline-block; width: 1.1rem; height: 0.7rem; border: 2px dashed var(--new); border-radius: 3px; vertical-align: middle; margin-right: 0.35rem; }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:0.9rem">
+  <div class="eyebrow">Punch list #397 · mock-up · every figure made up</div>
+  <h1>Stages onto the job</h1>
+  <p class="lede">A won bid offers its stages as the job’s lines. The superintendent gets a way in. Six screens, in the order a job meets them.</p>
+</header>
+<section>
+    <h2>What each person would see</h2>
+  <div class="legend"><span><span class="key"></span>new with this card</span><span>Everything else on a screen is there today, or lands with punch list #396.</span></div>
+
+  <div class="shot">
+    <h3><span class="num">A</span>The office opens a job from a won bid</h3>
+    <p>Today one question asks <b>Start the job at $48,000?</b> with <b>Carry $48,000 over</b> and <b>Start at $0</b>. The same moment becomes one window with three answers. Nothing is saved until <b>Create job</b>.</p>
+    <div class="mock newmark">
+      <div class="cap">New Job · from B482 · Oak Ridge</div>
+      <h4>How should $48,000 come onto the job?</h4>
+      <div class="sub">That is B482 · Oak Ridge’s agreed value.</div>
+      <div class="opt on">
+        <div class="head"><span class="radio"></span><span>As stages</span></div>
+        <div class="chips"><span class="chip on">Commercial 30 / 30 / 30 / 10</span><span class="chip">Residential 40 / 40 / 20</span></div>
+        <div class="rows">
+          <span>Rough In</span><span>210 h</span><span>$14,400.00</span>
+          <span>Top Out</span><span>150 h</span><span>$14,400.00</span>
+          <span>Trim Set</span><span>120 h</span><span>$14,400.00</span>
+          <span>Final</span><span class="muted">no hours</span><span>$4,800.00</span>
+          <span class="tot">4 lines</span><span class="tot">480 h</span><span class="tot">$48,000.00</span>
+        </div>
+        <div class="sub">Dollars: the company’s 30 / 30 / 30 / 10. Hours: B482’s Labor tab. Each line arrives <b>Any time</b>.</div>
+      </div>
+      <div class="opt"><div class="head"><span class="radio"></span><span>As one line</span></div><div class="sub">Bid price · $48,000.00. This is what happens today.</div></div>
+      <div class="opt"><div class="head"><span class="radio"></span><span>Start at $0</span></div><div class="sub">Writes nothing.</div></div>
+      <div class="sub">You can change every name and amount in ① Line Items before you press <b>Create job</b>.</div>
+      <div class="btns"><span class="btn">Cancel</span><span class="btn go">Bring 4 stages · $48,000</span></div>
+    </div>
+    <ul class="small">
+      <li>The chip that starts lit follows the customer’s kind. The office can press the other.</li>
+      <li>A bid with no stage hours still offers stages. Its lines read <b>≈ assumed</b> hours, as a typed line does today.</li>
+      <li>A bid that has its own schedule of values shows a third chip, <b>The bid’s schedule</b>, lit first.</li>
+      <li>The button always names what it will do and how many: <b>Bring 3 stages</b>, <b>Carry $48,000 over</b>, <b>Start at $0</b>.</li>
+    </ul>
+  </div>
+
+  <div class="shot">
+    <h3><span class="num">B</span>The job’s Bill tab, right after</h3>
+    <p>The lines land in ① Line Items like any typed line. The diamond says the hours came from the bid.</p>
+    <div class="mock">
+      <div class="cap">J2041 · Oak Ridge Lot 14 · Bill</div>
+      <div style="display:flex;justify-content:space-between;gap:0.6rem;flex-wrap:wrap"><b>① Line Items</b><span class="link">Multiple Segment Generator</span></div>
+      <div>
+        <div class="line"><span class="badge"><i></i>Any time</span><span>Rough In</span><span class="amt">$14,400.00</span><span class="bud">◆ 210 h · from B482’s Labor tab</span></div>
+        <div class="line"><span class="badge"><i></i>Any time</span><span>Top Out</span><span class="amt">$14,400.00</span><span class="bud">◆ 150 h · from B482’s Labor tab</span></div>
+        <div class="line"><span class="badge"><i></i>Any time</span><span>Trim Set</span><span class="amt">$14,400.00</span><span class="bud">◆ 120 h · from B482’s Labor tab</span></div>
+        <div class="line"><span class="badge"><i></i>Any time</span><span>Final</span><span class="amt">$4,800.00</span><span class="bud">no labor on this line</span></div>
+      </div>
+      <div style="text-align:right;font-weight:600">Job Total: $48,000.00</div>
+    </div>
+    <div class="note">Two things wake up on a job with these lines, and both are meant to. The Pipeline row draws the job as stages. And Rough In, Top Out and Trim Set each take the company’s stage checklist, so the row reads <b>not ready</b> until the crew answers. The owner took this as it is drawn (call 3).</div>
+  </div>
+
+  <div class="shot">
+    <h3><span class="num">C</span>A job that already exists, still on one line</h3>
+    <p>The same offer, on the Bill tab, beside the generator. It shows only when it is safe. When it is not, it says why and where to go.</p>
+    <div class="pair">
+      <div class="mock">
+        <div class="cap">Ready</div>
+        <div style="display:flex;justify-content:space-between;gap:0.6rem;flex-wrap:wrap;align-items:center"><b>① Line Items</b><span style="display:flex;gap:0.8rem;flex-wrap:wrap"><span class="link newmark">Bring B482’s stages</span><span class="link">Multiple Segment Generator</span></span></div>
+        <div class="line"><span class="badge"><i></i>Any time</span><span>Bid price</span><span class="amt">$48,000.00</span><span class="bud">≈ 480 h · assumed</span></div>
+        <div class="sub">Opens window A with <b>As one line</b> shown as “keep it as it is”.</div>
+      </div>
+      <div class="mock">
+        <div class="cap">Held</div>
+        <div style="display:flex;justify-content:space-between;gap:0.6rem;flex-wrap:wrap;align-items:center"><b>① Line Items</b><span class="link">Multiple Segment Generator</span></div>
+        <div class="line"><span class="badge"><i></i>Any time</span><span>Bid price</span><span class="amt">$48,000.00</span><span class="bud">on bill 0412</span></div>
+        <div class="sub newmark" style="padding:0.3rem 0.4rem">This line is on a bill, so it stays one line. Add a stage with <b>+ Add line item</b>.</div>
+      </div>
+    </div>
+    <p class="small">It holds, with its reason, when the line is on a bill, has a crew’s percent, has a checklist answer, a stage window or a trip on it, when the owner tuned its budget, or when the job has a pay application.</p>
+  </div>
+
+  <div class="shot">
+    <h3><span class="num">D</span>The superintendent’s phone</h3>
+    <p>The rail and <b>Set the %</b> come with punch list #396. This card adds a press on each stage, a door to every project, and the same door on his plain Dashboard.</p>
+    <div class="pair">
+      <div class="mock phone">
+        <div class="cap">Job Mode · the pace card</div>
+        <h4>On pace.</h4>
+        <div class="rail">
+          <div class="rr"><span class="dot done">✓</span><span>Rough In</span><span class="sub">done</span></div>
+          <div class="rr"><span class="dot now"></span><span class="newmark" style="font-weight:700;padding:0.1rem 0.3rem">Top Out <span class="sub" style="font-weight:400">· 2 of 3 answered ›</span></span><span class="btn go" style="padding:0.35rem 0.6rem;font-size:0.8rem">40% · Set the %</span></div>
+          <div class="rr"><span class="dot"></span><span class="muted">Trim Set</span><span></span></div>
+          <div class="rr"><span class="dot"></span><span class="muted">Final</span><span></span></div>
+          <div class="rr"><span class="dot fin">⚑</span><span style="font-weight:600;color:var(--ok)">Finish</span><span style="font-weight:600;color:var(--ok)">Fri, Dec 18</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:3rem 1fr auto;gap:0.5rem;align-items:center" class="sub"><span>Hours</span><span class="bar"><i style="width:44%"></i></span><span style="color:var(--ink)">212 of 480 h</span></div>
+        <div style="display:flex;justify-content:space-between;gap:0.6rem;flex-wrap:wrap"><span class="link">How this is figured</span><span class="link newmark">All projects ›</span></div>
+      </div>
+      <div class="mock phone">
+        <div class="cap">Dashboard · Job Mode off</div>
+        <div style="display:flex;gap:0.5rem"><span class="btn go" style="flex:1;text-align:center;background:#c2410c;border-color:#c2410c">Clock In</span><span class="btn go">Job Report</span></div>
+        <div class="newmark" style="border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.7rem;display:flex;flex-direction:column;gap:0.25rem">
+          <div style="display:flex;justify-content:space-between;gap:0.5rem"><b>Projects</b><span class="link">Open ▾</span></div>
+          <div class="sub">3 working · 1 behind · 2 on pace. Worst: J2041, 2 days behind.</div>
+        </div>
+        <div style="border:1px solid var(--rule);border-radius:10px;padding:0.6rem 0.7rem"><b>My Schedule</b><div class="sub">Nothing scheduled today.</div></div>
+      </div>
+    </div>
+    <ul class="small">
+      <li>Tapping a stage on the rail opens that stage’s checklist. When #382 lands, the same tap opens its Before we start list. A stage with no questions is not a press.</li>
+      <li>The <b>Projects</b> bar is the one the master has today. For a superintendent it reads only. He sets no hours.</li>
+    </ul>
+  </div>
+
+  <div class="shot">
+    <h3><span class="num">E</span>The Projects board on a phone</h3>
+    <p>Today a phone reads <b>4 stages</b> and cannot open them. The words become a press.</p>
+    <div class="mock phone">
+      <div class="cap">Projects · where each one stands</div>
+      <div style="display:flex;justify-content:space-between"><b>J2041 · Oak Ridge Lot 14</b><span class="link">Job ›</span></div>
+      <div class="strip"><b style="width:44%"></b><i style="left:43%"></i><i style="left:76%"></i><i style="left:99%"></i></div>
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.3rem 0.8rem" class="sub"><span>done 40%</span><span>hours 44%</span><span class="link newmark">4 stages ▾</span></div>
+      <div class="newmark" style="padding:0.3rem 0.4rem">
+        <div class="rows small"><span>Rough In</span><span>210 h</span><span>100%</span><span>Top Out</span><span>150 h</span><span>40%</span><span>Trim Set</span><span>120 h</span><span class="muted">not started</span><span>Final</span><span class="muted">no hours</span><span class="muted">not started</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="shot">
+    <h3><span class="num">F</span>Two small things for the office</h3>
+    <div class="pair">
+      <div class="mock">
+        <div class="cap">Projects · a project’s Workflow page</div>
+        <div class="newmark" style="padding:0.6rem;display:flex;flex-direction:column;gap:0.5rem;align-items:flex-start">
+          <b>No workflow on this project yet.</b>
+          <div class="sub">Steps you add here show to the people they are assigned to.</div>
+          <span class="btn go">Start a workflow</span>
+        </div>
+        <div class="sub">Today, opening this page creates an empty workflow without asking.</div>
+      </div>
+      <div class="mock">
+        <div class="cap">Dashboard · Needs you · the office</div>
+        <div class="newmark" style="padding:0.5rem 0.6rem;display:flex;justify-content:space-between;gap:0.6rem;align-items:center;flex-wrap:wrap">
+          <span><b>1 stage reads 100% and is not billed</b><br><span class="sub">Rough In on J2041 · $14,400.00</span></span><span class="btn">Open the Bill tab</span>
+        </div>
+        <div class="sub">It offers the bill. It never sends one. Held until stages are in use (PR 7).</div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+</body>
+</html>

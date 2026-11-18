@@ -1,5 +1,6 @@
 /**
- * Older photos of a spot (v2.7693): the pure half of the archive view on the Review map.
+ * Older photos of a spot (v2.7693): the pure half of the archive view, which every map with a Time
+ * press shows (punch list #395, `mapTime.ts`).
  *
  * The photographs are Esri's World Imagery Wayback: every release of its imagery since February
  * 2014, each its own tile layer, with a metadata layer that names the day a photograph was taken.
@@ -25,12 +26,8 @@ const WAYBACK_HOST = 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/W
 /** Esri's own credit line for World Imagery, as its item page gives it. */
 export const WAYBACK_ATTRIBUTION = 'Imagery &copy; Esri, Vantor, Earthstar Geographics, and the GIS User Community'
 
-export const OLDER_PHOTOS_PRESS = 'Older photos'
-export const OLDER_PHOTOS_BACK_PRESS = 'Back to today'
 export const OLDER_PHOTOS_LOOKING_WORDS = 'Looking through the archive…'
 export const OLDER_PHOTOS_DAYS_WORDS = 'Finding the days the photos were taken…'
-export const OLDER_PHOTOS_ONE_WORDS = 'The archive has one photo of this spot.'
-export const OLDER_PHOTOS_NOTHING_WORDS = 'The archive has nothing for this spot.'
 export const OLDER_PHOTOS_FAILED_WORDS = "Couldn't read the photo archive."
 export const OLDER_PHOTOS_EARTH_PRESS = 'Open this spot in Google Earth'
 export const OLDER_PHOTOS_EARTH_WORDS = 'Google keeps its own older photos there.'
@@ -216,7 +213,8 @@ function parts(ymd: string): { y: number; m: number; d: number } {
   return { y: y ?? 0, m: Math.max(1, Math.min(12, m ?? 1)), d: d ?? 1 }
 }
 
-function longDay(ymd: string): string {
+/** A day in full: `March 12, 2019`. */
+export function olderPhotoLongDay(ymd: string): string {
   const { y, m, d } = parts(ymd)
   return `${MONTHS_LONG[m - 1]} ${d}, ${y}`
 }
@@ -257,27 +255,12 @@ export function olderPhotoChoices(found: ReadonlyArray<OlderPhotoFound>): OlderP
     const day = shared ? `${MONTHS_SHORT[m - 1]} ${d}, ${y}` : `${MONTHS_SHORT[m - 1]} ${y}`
     const label = r.taken ? day : `Before ${day}`
     const caption = r.taken
-      ? `Photo taken ${longDay(r.ymd)}.`
+      ? `Photo taken ${olderPhotoLongDay(r.ymd)}.`
       : r.asking
-        ? `Esri published this picture on ${longDay(r.ymd)}. Finding the day it was taken…`
-        : `Esri published this picture on ${longDay(r.ymd)}. It was taken before that, and the archive did not say when.`
+        ? `Esri published this picture on ${olderPhotoLongDay(r.ymd)}. Finding the day it was taken…`
+        : `Esri published this picture on ${olderPhotoLongDay(r.ymd)}. It was taken before that, and the archive did not say when.`
     return { ...r, label, caption }
   })
-}
-
-/**
- * The photograph the view opens on: the walk's second stop, the picture the archive showed before
- * its newest one, since the newest is close to what today's map shows. With one photograph, that
- * one. The walk's order never changes, so the view does not jump while the days come in.
- */
-export function defaultOlderPhotoRelease(found: ReadonlyArray<OlderPhotoFound>): number | null {
-  return (found[1] ?? found[0])?.release ?? null
-}
-
-/** The choice on show: the person's pick while it is on the list, else the default. */
-export function shownOlderPhoto(choices: ReadonlyArray<OlderPhotoChoice>, picked: number | null, fallback: number | null): OlderPhotoChoice | null {
-  const of = (release: number | null) => (release == null ? undefined : choices.find((c) => c.releases.includes(release)))
-  return of(picked) ?? of(fallback) ?? choices[choices.length - 1] ?? null
 }
 
 /** Whether every photograph of a finished walk has its day: only such a walk is worth keeping past the visit. */

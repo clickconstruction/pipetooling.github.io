@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -244,7 +244,7 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and twenty-three verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-three since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
+The one write path (v2.3722) is one hundred and twenty-five verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-three since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
 one hundred and twenty-one since v2.7687, whose notice numbers are the Lien desk's own update of `sends` on the notice's `job_lien_filings` row under the dev's RLS, no new role and no new policy;
 one hundred and nineteen since v2.7592, whose photo of the spot is the Edit window's own two writes, the picture into the private `task-spot-photos` bucket under `can_write_task_spot_photo` and the task's `spot_photo_path` under the dev's RLS, the file staged first in the dev's own folder of `dev-seat-staging`, no new role and no new policy;
 one hundred and seventeen since v2.7589, whose task place is the Edit window's own update of the place columns on `checklist_items`, or on `checklist_tech_tree_group_tasks` for a task from a roadmap, under the dev's RLS, with the address read from `address_geocodes` and never written, no new role and no new policy;
@@ -282,6 +282,8 @@ never through `view_as`, and training mode blocks them inside the definer.
 Since v2.6792 (punch list #260's seat door) six of the verbs reach the account functions themselves, as the dev's own session, so each function's dev gate decides as it does for the desk: `plan_account` / `apply_account` call `add_worker` (the roster's own RPC — a dev, a master, an assistant or the controller), `invite-user` and `create-user` (dev only: *Create users*), patch `users.name` / `role` / `title` / `phone` under `users_guard_privileged_columns` (a role change is a dev's) and `change-user-email` (dev only);
 `plan_login` / `apply_login` call `create-user` with `user_id`, `send-sign-in-email` and `detach-login` (dev only, the attach and detach doors' own refusals: never a sample, a twin, an archived person or the caller's own login);
 `plan_password_reset` / `apply_password_reset` call `set-user-password` (dev only) or the sign-in page's own `resetPasswordForEmail` with the anon client, one send per address per ten minutes, never on the caller's own account.
+Since v2.7821 two more make one hundred and twenty-five: `plan_pay_setup` / `apply_pay_setup` call `set_pay_config` (payroll access or the service role, which a dev has;
+the function writes its own `pay_admin_events` line), patch `people.start_date` / `end_date`, write `salary_work_schedule_templates` and one more `pay_admin_events` line under the pay desk's own RLS, and call `sync_salary_clock_sessions_for_user_day` and `pay_staff_clear_salary_schedule_by_person_name` as the sheet's Pay & schedule does, with the server's own dev check before all of it and no new gate, role or policy.
 `get_login_state` is a dev's alone (refused through `view_as`): the users and people rows are read under the dev's RLS, and the auth account's stamps — `invited_at`, `confirmation_sent_at`, `email_confirmed_at`, `recovery_sent_at`, `last_sign_in_at`, `banned_until` — are read by id as the service role, picked by name and never a hash: the fourth thing the seat uses the service role for.
 A password an ask carries is never printed back and reaches `dev_mcp_calls` as `(set, not logged)`.
 One verb sits outside that grammar (v2.6187): `mint_twin_setup_code` POSTs `twin-setup` as the dev for a ten-minute, single-use setup code (the function's dev-for-any-twin rule and ten codes per ten minutes;
@@ -925,7 +927,7 @@ The Board at the top of To do (v2.7332) is drawn for everyone who opens the desk
 its leader's press (v2.7334: the one counted press that approves the affidavits waiting on him, on his Awaiting Master approval bin's title line since v2.7708, when his own two bins and their switch were retired) shows to master / dev in the client (`isLienLeader`), counts only the jobs the viewer leads (`lienViewerLeadsJob`) and approves row by row through `approveLienDeskItem` under the same guard, with no new RPC;
 a notice is left out of that press, since only his signature approves it.
 The Dashboard's Needs you card draws the Board's four numbers for the office set (`isLienOffice`).
-Since v2.7785 a stop window's card in *What went out* carries its press (**Mail this copy ›**, **Enter the mail number ›**, **Add the receipt ›**, **Enter the owner of record ›**) for the office set alone (`isLienOffice`, through `proofOpeners` in `LienDesk.tsx` and the same check in `LienInstrumentsModal`).
+Since v2.7785 a stop window's card in *What went out* carries its press (**Print the copies to mail ›**, **Enter the mail number ›**, **Add the receipt ›**, **Enter the owner of record ›**) for the office set alone (`isLienOffice`, through `proofOpeners` in `LienDesk.tsx` and the same check in `LienInstrumentsModal`).
 Anyone else reads that card with no press.
 Since v2.4160 the Pipeline's **property kind badge** (C / R / ? at the end of every address) opens the same Residential | Commercial switch for dev · master · assistant-like (`PropertyKindBadge`, saving `customer_addresses.property_kind`);
 every other role sees the badge alone.
@@ -1047,6 +1049,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   **Print labels** opens for all of them from the rows this gate lets them read, since a label shows a stencil and a code;
   since v2.6852 the phone's box screen prints a box's label and manifest in the tab for every role on the job, where its two presses used to open `/jobs?tab=materials`, which only the office may open.
 - **A site's materials on one screen** (v2.7074, punch list #330): `?site=<development id>` on the On site tab and on Jobs → Materials draws every part across the site's jobs from the rows the desk already read, so the gate above decides it and a job the reader may not touch adds nothing.
+  Since v2.7818 the screen's **By person** look, every press and box move on the site by who made it, is offered at the desk's mount to dev, master_technician, assistant and controller alone (`isOfficeRole`), a client gate over rows those roles already read, and the crew's mount never offers it.
   The office and a primary reach it through the desk's site row and read the week's missing money, as on the desk;
   a primary and a superintendent get a site row over their jobs on Materials → On site, with no money and the phone screen as each box's door;
   an estimator gets no site row.
@@ -1138,6 +1141,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - **Who changes what**: anyone who reads a map may add a stroke or a place, signed as themselves (`made_by`, `set_by` must be the caller).
   Changing or removing a stroke or a place is its maker's and the office's.
   Renaming a map, moving it to another home and deleting it are its maker's and the office's, and they must pass the gate for the new home too.
+  **A job's own list of places** (v2.7792 the column `painted_maps.job_list`, v2.7795 the screens, punch list #393) is a painted map and has no rule of its own in the database: whoever may paint a map for the job may start its list, and its maker and the office may rename, unmark or delete it.
+  The app is narrower than the table on one press: it offers **Throw this list away** to the office team alone (`isOfficeRole`) and offers no rename, since the list holds other people's places.
   **Put it on a job…** (v2.7227) is that move, from no job to a job the mover can open.
 - **The bucket `painted-map-photos`** is private.
   Objects are named `<map id>/<file>`, and the policies read the map from `objects.name`, so whoever reads the map reads and adds its photos;

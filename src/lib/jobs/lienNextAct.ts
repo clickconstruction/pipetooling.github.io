@@ -15,6 +15,7 @@ import type { LienAffidavitGateKey } from './lienDeskAffidavits'
 import { lienAffidavitNoticeWaits, lienAffidavitNoticeWords, type LienAffidavitNoticeStanding } from './lienAffidavitNoticeStanding'
 import type { LienTimelineAffidavitState, LienTimelineMove, LienTimelineNextKind, LienTimelineNoticeState } from './lienTimeline'
 import { LIEN_RUN_ACT } from './lienRunWords'
+import { lienServeStageDoor, type LienServeStage } from './lienServeStage'
 
 /**
  * The doors a pane maps an act to. `gate:*` opens the record the gate reads (`owner` the property record at
@@ -42,6 +43,8 @@ export type LienNextActFacts = {
   missingKeys: ReadonlyArray<LienAffidavitGateKey>
   /** Where the job's notice stands while the affidavit's notice gate is closed (`lienAffidavitNoticeStanding.ts`); absent reads *Send the notice first ›*. */
   noticeStanding?: LienAffidavitNoticeStanding | null
+  /** Where a filed lien's copies stand (`lienServeStage.ts`); absent reads as still to print. */
+  serveStage?: LienServeStage | null
   paid: boolean
 }
 
@@ -91,7 +94,8 @@ export function lienNextActFor(f: LienNextActFacts): LienNextAct {
       return door('footer', footerLabel(state, 'affidavit'))
     }
     case 'serve':
-      return door('serve', 'Record the service ›')
+      // The step's stage names the press, as on every door to the copies (`lienServeStage.ts`). *Record the service ›* until v2.7798.
+      return door('serve', lienServeStageDoor(f.serveStage ?? 'print'))
     case 'release':
       return door('release', 'File the release ›')
     case 'lien_gone':

@@ -59,6 +59,7 @@ vi.mock('../../hooks/usePaintedWalk', async () => {
 const io = vi.hoisted(() => ({ whole: null as unknown, calls: [] as Array<{ fn: string; args: unknown[] }>, refuseLine: null as string | null }))
 vi.mock('../../lib/paintedMap/paintedMapIo', () => ({
   loadPaintedMap: async () => ({ ok: true, value: io.whole }),
+  loadPaintedMapsFor: async () => ({ ok: true, value: [] }),
   loadPainterNames: async () => new Map([['me', 'Marcus Hale']]),
   paintedPlacePhotoUrls: async () => new Map(),
   createPaintedMap: async (input: { id: string; name: string; jobId?: string | null; by: string }) => { io.calls.push({ fn: 'createPaintedMap', args: [input] }); return { ok: true, value: { id: input.id, name: input.name, words: '', jobId: input.jobId ?? null, developmentId: null, createdBy: input.by, createdAt: '2026-11-13T16:00:00Z' } } },

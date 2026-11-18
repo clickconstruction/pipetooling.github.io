@@ -1,7 +1,7 @@
 /**
  * The dev seat's served copies and its read of the filed liens, the pure half: plan_lien_service → apply_lien_service
  * and read_lien_filings. The kernel runs here against plain fixtures; the pins hold it to the Lien window's own
- * Record service… and the Mail the copies window's batch.
+ * Record service… and the copies window's batch.
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
@@ -88,9 +88,9 @@ describe('the pair and what it stands on', () => {
     expect(isWriteVerb('read_lien_filings')).toBe(false)
     expect(SERVER).toContain("case 'read_lien_filings': {")
     expect(SERVER).toContain("name: 'read_lien_filings',")
-    expect(Object.keys(WRITE_VERBS)).toHaveLength(123)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.101.0'")
-    expect(SERVER).toContain('Writes are one hundred and twenty-three verbs and nothing else:')
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(125)
+    expect(SERVER).toContain("const SERVER_VERSION = '0.102.0'")
+    expect(SERVER).toContain('Writes are one hundred and twenty-five verbs and nothing else:')
     expect(SERVER).toContain("await restRows(session, 'PATCH', 'job_lien_filings', target, { served_at: write.servedOn, sends: lienServiceSends(write) }, 'return=representation')")
     expect(README).toContain('`plan_lien_service(service \\| services)` · `apply_lien_service(service, plan_hash)`')
     expect(README).toContain('`read_lien_filings(show?, job_id?)`')
