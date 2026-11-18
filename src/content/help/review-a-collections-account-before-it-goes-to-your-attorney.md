@@ -97,7 +97,11 @@ A letter kept as a .md or .txt file can go straight into an email. Open the **Ev
 
 The copy is plain text. The copy has no stars, pound signs or rule lines. Lists keep their dashes. Line breaks stay where they were written.
 
-The copy leaves two things out. One is a draft note at the top of the document. The other is any section whose heading starts with INTERNAL. A line over the words names what the copy left out.
+The copy leaves two things out. One is a draft note at the top of the document. The other is any section whose heading starts with INTERNAL. A heading that carries INTERNAL in capital letters anywhere counts too. A line over the words names what the copy left out.
+
+A title can carry INTERNAL in capital letters. Then the whole paper is internal. The desk says there is no letter to copy.
+
+A copy can still say DRAFT or INTERNAL in capital letters. An amber line says so, and the copied message warns. Read the copy before you paste.
 
 A blank in square brackets stays as written, such as `[DATE]`. An amber line lists every blank still to fill. The copied message counts them. Fill each one in your email before you send.
 

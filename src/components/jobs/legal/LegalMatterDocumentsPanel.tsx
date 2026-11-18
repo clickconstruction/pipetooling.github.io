@@ -9,7 +9,7 @@ import { PORTAL_COMPANY } from '../../../../supabase/functions/_shared/portalCom
 import { EmptyState } from '../../EmptyState'
 import { COUNSEL_ONLY_DOCUMENT_WORDS, LEGAL_DOCUMENT_FILTERS, LEGAL_DOCUMENT_SENT_HOWS, groupLegalDocumentsByWhose, legalDocumentDayWords, legalDocumentFilterCounts, legalDocumentFilterEmptyWords, legalDocumentFilterWords, legalDocumentGroupOf, legalDocumentIsText, legalDocumentKindWords, legalDocumentMime, legalDocumentPassesFilter, legalDocumentProblem, legalDocumentSentHowWords, legalDocumentSentProblem, legalDocumentSizeWords, legalDocumentStateChipWords, legalDocumentStateWords, legalDocumentTimelineDay, legalDocumentTitleFromName, legalDocumentWhoseChoices, legalDocumentWhoseGuess, legalDocumentWhoseOf, legalPortalDocumentFromRow, type LegalDocumentDraft, type LegalDocumentFilter, type LegalDocumentSentDraft, type LegalDocumentWhose } from '../../../lib/legal/legalMatterDocuments'
 import { hrDocMarkdownToSafeHtml } from '../../../lib/people/hrDocMarkdown'
-import { letterBlanksWords, letterCopiedWords, letterCopyText, letterLeavesWordsOut, letterLeftOutWords, letterPieceLabel, type LetterCopy } from '../../../lib/legal/letterCopyText'
+import { letterBlanksWords, letterCopiedWords, letterCopyText, letterLeavesWordsOut, letterLeftOutWords, letterPieceLabel, letterStillSaysWords, type LetterCopy } from '../../../lib/legal/letterCopyText'
 import { useOptionalToastContext } from '../../../contexts/ToastContext'
 import { EVIDENCE_LANDING_LIT_MS, evidenceLanding, evidenceRowSelector } from '../../../lib/legal/evidenceLanding'
 import { addLegalMatterDocument, keepLegalMatterDocumentAsText, markLegalMatterDocumentReceived, markLegalMatterDocumentSent, openLegalMatterDocument, readLegalMatterDocumentText, retireLegalMatterDocument, setLegalMatterDocumentCounselOnly, setLegalMatterDocumentState, setLegalMatterDocumentWhose, updateLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
@@ -56,6 +56,7 @@ import LegalEvidenceFromMessagesWindow from './LegalEvidenceFromMessagesWindow'
  * heading, a draft named as one), each putting plain email text on the clipboard without the draft note at the top or an
  * internal section (`letterCopyText`), and a quiet *Copy everything as text*. The view says what the copy leaves out and
  * lists the bracketed blanks still to fill, and the toast counts them. A counsel-only paper has no copy press, as on the HR file.
+ * Since v2.7716 a copy that still says DRAFT or INTERNAL in capitals says so on an amber line, and the toast warns.
  *
  * Since v2.7694 a text file kept only as a stored file (a `.md` or `.txt` put on the matter before v2.6716, so no
  * `text_document_id`) can be turned into a text document from here: **Keep its words as text** on the row's ⋯, and one
@@ -475,6 +476,11 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, keptOut
                           {copy.pieces.map((_p, i) => {
                             const open = letterBlanksWords(copy, i)
                             return open ? <div key={i} data-legal-document-copy-blanks={i} style={{ color: 'var(--text-amber-700)', fontSize: '0.74rem' }}>{open}</div> : null
+                          })}
+                          {/* v2.7716: a copy that still says DRAFT or INTERNAL in capitals says so before the paste. */}
+                          {copy.pieces.map((_p, i) => {
+                            const says = letterStillSaysWords(copy, i)
+                            return says ? <div key={i} data-legal-document-copy-still-says={i} style={{ color: 'var(--text-amber-700)', fontSize: '0.74rem' }}>{says}</div> : null
                           })}
                         </div>
                       )

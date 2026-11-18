@@ -10,14 +10,20 @@
  *  1. An HTML comment is dropped. The read view never drew it.
  *  2. **The draft banner**: the first block of the document, when it is a heading or a paragraph that says
  *     `DRAFT` in capitals or opens with the word *draft*. The italic paragraphs right under it go with it.
- *  3. **Internal sections**: a heading of any size whose words open with *internal* drops itself and
- *     everything under it, up to the next heading of its own size or larger.
+ *  3. **Internal sections**: a heading of any size whose words open with *internal*, or carry `INTERNAL` in
+ *     capitals anywhere (a tag at the end of a title, since v2.7716), drops itself and everything under it, up
+ *     to the next heading of its own size or larger. A title so tagged leaves no piece: the whole paper is
+ *     internal. The word in small letters inside a heading is an ordinary word.
  *  4. **Pieces**: a `#` or `##` heading starts a piece and names it, and its own line is not part of the
  *     text. Words before the first such heading are a piece with no name. A smaller heading stays inside its
  *     piece as a plain line. A piece with no words under it is a title, and is not a piece.
  *  5. **Plain text**: no `**`, `*`, `_`, backticks, `#` or rule lines. A list keeps its dash, a numbered list
  *     its number, and a line break stays where it was written, since a signature block is lines.
  *     A bracketed blank such as `[DATE]` or `[counsel: confirm the day]` stays as written.
+ *
+ * Since v2.7716 a piece also answers `stillSays`: `DRAFT` and `INTERNAL` where they stand in capitals in the
+ * words that go out (a status line under a title, a tag in a sentence), so the press warns the way it does
+ * for an open blank. Nothing is dropped for it: the rules above decide what leaves, this only says so.
  */
 
 /** A bracketed blank still in a piece, and how many times it stands there. */
@@ -33,7 +39,12 @@ export interface LetterPiece {
   blanks: LetterBlank[]
   /** Every place a blank stands, a repeated blank counted each time. */
   blankCount: number
+  /** The marks still in the text in capitals, in this order: `DRAFT`, `INTERNAL`. Empty when it says neither. */
+  stillSays: LetterMark[]
 }
+
+/** A word that marks a paper as not for sending when it stands in capitals. */
+export type LetterMark = 'DRAFT' | 'INTERNAL'
 
 export interface LetterCopy {
   pieces: LetterPiece[]
@@ -126,6 +137,17 @@ export function letterBlanks(text: string): LetterBlank[] {
   return [...seen].map(([text, times]) => ({ text, times }))
 }
 
+/** A heading that marks its section internal: the word first, in any case, or `INTERNAL` in capitals anywhere. */
+const headingIsInternal = (words: string) => /^\W*internal\b/i.test(words) || /\bINTERNAL\b/.test(words)
+
+/** `DRAFT` and `INTERNAL` where they stand in capitals as whole words. */
+export function letterMarks(text: string): LetterMark[] {
+  const out: LetterMark[] = []
+  if (/\bDRAFT\b/.test(text)) out.push('DRAFT')
+  if (/\bINTERNAL\b/.test(text)) out.push('INTERNAL')
+  return out
+}
+
 const saysDraft = (plain: string) => /\bDRAFT\b/.test(plain) || /^\W*draft\b/i.test(plain)
 const isItalicBlock = (block: ReadonlyArray<string>) => {
   const s = block.join(' ').trim().replace(/^(?:>\s?)+/, '')
@@ -182,7 +204,7 @@ export function letterCopyText(markdown: string): LetterCopy {
       const words = plainInline(h[2]!).trim()
       if (skipLevel !== null && level > skipLevel) continue
       skipLevel = null
-      if (/^\W*internal\b/i.test(words)) {
+      if (headingIsInternal(words)) {
         skipLevel = level
         internalHeadings.push(words)
         continue
@@ -201,7 +223,7 @@ export function letterCopyText(markdown: string): LetterCopy {
     const text = joinPlain(r.lines)
     if (text === '') continue
     const blanks = letterBlanks(text)
-    pieces.push({ heading: r.heading, text, blanks, blankCount: blanks.reduce((n, b) => n + b.times, 0) })
+    pieces.push({ heading: r.heading, text, blanks, blankCount: blanks.reduce((n, b) => n + b.times, 0), stillSays: letterMarks(text) })
   }
   return { pieces, everything: markdownToPlainText(markdown), draftBanner: banner?.words ?? null, internalHeadings }
 }
@@ -222,12 +244,14 @@ export function letterPieceLabel(copy: LetterCopy, index: number, draft: boolean
   return draft ? 'Copy the draft letter' : 'Copy the letter'
 }
 
-/** What the toast says once a piece is on the clipboard. `warn` when blanks are still open in it. */
+/** What the toast says once a piece is on the clipboard. `warn` when blanks are still open in it or it still says a mark. */
 export function letterCopiedWords(copy: LetterCopy, index: number, draft: boolean): { words: string; warn: boolean } {
   const what = letterPieceLabel(copy, index, draft).replace(/^Copy /, '')
   const n = copy.pieces[index]?.blankCount ?? 0
+  const marks = copy.pieces[index]?.stillSays ?? []
   const open = n === 0 ? '' : n === 1 ? ' 1 blank is still open in it.' : ` ${n} blanks are still open in it.`
-  return { words: `Copied ${what}.${open}`, warn: n > 0 }
+  const says = marks.length ? ` The copy still says ${marks.join(' and ')}.` : ''
+  return { words: `Copied ${what}.${open}${says}`, warn: n > 0 || marks.length > 0 }
 }
 
 /** One line on what the pieces leave out, or null when they leave nothing out. */
@@ -246,4 +270,12 @@ export function letterBlanksWords(copy: LetterCopy, index: number): string | nul
   if (!piece || piece.blankCount === 0) return null
   const where = copy.pieces.length > 1 ? ` in ${piece.heading ? `“${piece.heading}”` : 'the letter'}` : ''
   return `Still to fill${where}: ${piece.blanks.map((b) => (b.times > 1 ? `${b.text} ×${b.times}` : b.text)).join(' · ')}`
+}
+
+/** The marks a piece still says in capitals, as one line for the read view; null when none. Among several pieces it names the piece. */
+export function letterStillSaysWords(copy: LetterCopy, index: number): string | null {
+  const piece = copy.pieces[index]
+  if (!piece || piece.stillSays.length === 0) return null
+  const where = copy.pieces.length > 1 ? ` of ${piece.heading ? `“${piece.heading}”` : 'the letter'}` : ''
+  return `The copy${where} still says ${piece.stillSays.join(' and ')}. Read it before you paste.`
 }

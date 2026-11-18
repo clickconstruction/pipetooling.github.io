@@ -89,6 +89,25 @@ describe('LegalMatterDocumentsPanel · copy a letter into an email (v2.7683)', (
     expect((await screen.findByRole('alert')).textContent).toContain('Write permission denied.')
   })
 
+  it('a paper whose title is tagged INTERNAL has no letter to copy; a copy that still says DRAFT warns (v2.7716)', async () => {
+    io.read.mockResolvedValue('# Review of the supplier account (INTERNAL, 2026-01-05)\n\nOpening words.\n\n## What we found\n\nFinding one.')
+    const { unmount } = renderWithProviders(<LegalMatterDocumentsPanel matterId="m-1" documents={[row('d-1', 'Supplier review')]} canEdit onChanged={() => {}} />)
+    fireEvent.click(document.querySelector('[data-legal-document-read]')!)
+    await waitFor(() => expect(bar()).toBeTruthy())
+    expect(bar().querySelector('[data-legal-document-copy-none]')!.textContent).toBe('Every word here is a draft note or an internal section, so there is no letter to copy.')
+    expect(document.querySelector('[data-legal-document-copy]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Copy everything as text' })).toBeTruthy()
+    unmount()
+
+    io.read.mockResolvedValue('# Service terms\n\n- **Status**: version 2 (DRAFT for review)\n\nThe terms.')
+    renderWithProviders(<LegalMatterDocumentsPanel matterId="m-1" documents={[row('d-2', 'Service terms')]} canEdit onChanged={() => {}} />)
+    fireEvent.click(document.querySelector('[data-legal-document-read]')!)
+    const press = await screen.findByRole('button', { name: 'Copy the letter' })
+    expect(bar().querySelector('[data-legal-document-copy-still-says="0"]')!.textContent).toBe('The copy still says DRAFT. Read it before you paste.')
+    fireEvent.click(press)
+    expect(await screen.findByText('Copied the letter. The copy still says DRAFT.')).toBeTruthy()
+  })
+
   it('a counsel-only paper reads but has no copy press', async () => {
     renderWithProviders(<LegalMatterDocumentsPanel matterId="m-1" documents={[row('d-1', 'Memo for counsel', { counsel_only: true })]} canEdit onChanged={() => {}} />)
     fireEvent.click(document.querySelector('[data-legal-document-read]')!)
