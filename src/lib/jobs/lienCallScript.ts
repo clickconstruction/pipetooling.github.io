@@ -13,6 +13,19 @@ export const CALL_SCRIPT_TITLE = 'An owner is calling'
 export const CALL_SCRIPT_RECORDS_ASK = 'Asking what we billed and what was paid?'
 /** The door's own name, the one it had on the title bar and still has in a phone's More (`lienDeskMoreRows`). */
 export const CALL_SCRIPT_RECORDS_DOOR = 'An owner asked for records'
+
+/**
+ * The job the records row hands the records window (v2.7780), so the packet opens on its property: the paper open in
+ * By paper's pane, which the reader picked and can see. To do, By date and By job have no such pane, and the desk still
+ * holds a notice there that nobody chose, so those views hand none and the window starts at the owner picker, as the
+ * title bar's door did.
+ */
+export function callScriptRecordsJob(o: { kind: string; notice: string | null; affidavit: string | null; retainage: string | null }): string | null {
+  if (o.kind === 'notice') return o.notice
+  if (o.kind === 'affidavit') return o.affidavit
+  if (o.kind === 'retainage') return o.retainage
+  return null
+}
 export const CALL_SCRIPT_NO_JOB_WORDS = 'Pick the job on the desk and the facts fill in: the amount, the months, the day it mailed, the codes.'
 export const CALL_SCRIPT_NO_LETTER_WORDS = 'Nothing has been mailed on this job yet, so the caller is not holding a notice from us about it.'
 

@@ -359,13 +359,20 @@ describe('LienDesk', () => {
     expect(onOpenOwnerRecords).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('lien-call-script')).toBeNull()
     view.unmount()
-    // With a job under the reader the records window is handed that job, so it opens on its property.
+    // With a notice open in By paper's pane the records window is handed its job, so it opens on that property.
     const picked = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" onOpenOwnerRecords={onOpenOwnerRecords} />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'An owner is calling' }))
     fireEvent.click(screen.getByTestId('lien-owner-records-door'))
     expect(onOpenOwnerRecords).toHaveBeenLastCalledWith('j650')
     picked.unmount()
+    // To do has no pane: the desk still holds that notice, which nobody chose here, so the window is handed none and starts at the owner picker.
+    const todo = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="next" onOpenOwnerRecords={onOpenOwnerRecords} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'An owner is calling' }))
+    fireEvent.click(screen.getByTestId('lien-owner-records-door'))
+    expect(onOpenOwnerRecords).toHaveBeenLastCalledWith(null)
+    todo.unmount()
     // jsdom draws no widths, so the bar keeps the two steady lines of v2.6569: the tool row under the title line, with the break before it, on By date as on By paper.
     const deadlines = renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650)} initialKind="calendar" onOpenOwnerRecords={onOpenOwnerRecords} />)
     await settle()

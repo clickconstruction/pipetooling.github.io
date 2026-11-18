@@ -110,7 +110,7 @@ import { useLienDeskBoard } from './useLienDeskBoard'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type CallerMatchInput, type CallerOwnerHit } from '../../lib/jobs/lienCallerMatch'
 import LienCallScriptModal from './LienCallScriptModal'
-import { genericCallFacts } from '../../lib/jobs/lienCallScript'
+import { callScriptRecordsJob, genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import { lienNoticeOwedConfirmWords, lienNoticeToExtend } from '../../lib/jobs/lienNoticeOwed'
 import { addMonthsToLienNotice } from '../../lib/jobs/lienNoticeOwedIo'
@@ -251,7 +251,7 @@ export type LienDeskProps = {
   onOpenCalendarJob?: (jobId: string) => void
   /** The By date grid's last-day label (v2.4735): the Lien window with the last day's line already editing. */
   onOpenCalendarLastWork?: (jobId: string) => void
-  /** The records window for an owner who asks for our records on their property (v2.4544): on a computer the last row of the window ☎ opens (v2.7780), on a phone a row of More. Handed the job under the reader, when there is one. */
+  /** The records window for an owner who asks for our records on their property (v2.4544): on a computer the last row of the window ☎ opens (v2.7780), on a phone a row of More. Handed the job of the paper open in By paper's pane, and none from any other view. */
   onOpenOwnerRecords?: (jobId?: string | null) => void
   /** A job number opens the job itself: the Job window, with its history and Edit (v2.4531 the Calendar; v2.4535 the Timeline and the three panes' headings). */
   onOpenJob?: (jobId: string) => void
@@ -3034,7 +3034,8 @@ export default function LienDesk({
             }}
             onOwnerRecords={recordsDoorShown ? () => {
               setCallScriptOpen(false)
-              onOpenOwnerRecords?.(selected?.jobId ?? null)
+              // The paper open in By paper's pane, and none on a view with no pane (`callScriptRecordsJob`).
+              onOpenOwnerRecords?.(callScriptRecordsJob({ kind, notice: selected?.jobId ?? null, affidavit: affSelected?.jobId ?? null, retainage: retSelected?.jobId ?? null }))
             } : undefined}
             onClose={() => setCallScriptOpen(false)}
           />
