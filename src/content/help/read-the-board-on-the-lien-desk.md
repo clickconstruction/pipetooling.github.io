@@ -40,7 +40,7 @@ A chip is a job's number. Its colour says how soon its day is.
 
 A chip with a red mark after its number will not make its day as it stands. It has more stages to pass than working days left.
 
-A chip with a dashed edge and a ‖ mark is held. Its colour still says how soon its day is. [Held papers](#held-papers-missed-and-retainage) says where it stands.
+A chip with a dashed edge and a ‖ mark is held. Its colour still says how soon its day is. [Held papers](#held-papers-and-retainage) says where it stands.
 
 A job that needs its owner stands in both columns. Point at either chip and both light up. One press on the owner clears both.
 
@@ -142,7 +142,7 @@ Point at a bin's name on a row to read where that paper stands. It opens the car
 
 A heading carries the day when every row under it shares that day. Then no row repeats it. A row with another day says its own.
 
-## Held papers, Missed and retainage
+## Held papers and retainage
 
 A held paper stands in the bin of the stage it is stopped at. Its chip has a dashed edge and a ‖ mark after its number. It stands after the chips that can move. No bin is named Held.
 
@@ -150,9 +150,31 @@ An approved affidavit that a property fact holds stands in **Ready to file**. Fo
 
 A bin's count leaves a held paper out. So the count is the number the bin's press takes. A bin can read 0 and still show a held chip. In the list, a held paper's row starts with the bin's name and *held*.
 
-**Missed** stands on a column's heading line, at its right. It shows only while a job is in it. A dashed border marks it. Press the name and the list shows only those rows.
-
 Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. It also counts jobs where retainage looks held and none is recorded, like *2 look held, not on the job*. The retainage list on **By paper** has the rows.
+
+## A window that has closed
+
+A closed window has its own bin at the foot of each column. It shows only while a job is in it. No arrow runs into it. The bin is dashed and its chips are grey, because nothing there can be rushed.
+
+:::cards
+
+:::card Window closed · no notice
+
+This bin sits under **Sent**. Every month of the job passed its notice day and no notice went. An amber chip can still be saved. A late notice counts while the job's lien day is ahead.
+
+:::
+
+:::card Lien day passed · not filed
+
+This bin sits under **Served**. The last day to file the lien passed and no filing is on record. A paper stands here whatever stage it had reached. An approved affidavit past its day leaves **Ready to file**, so the print no longer counts it.
+
+:::
+
+:::
+
+A paper leaves the closed bin by itself when its dates change. Record a filing that was made in time and the paper moves to *Filed · copies to mail*. Set a later last day of work and the paper goes back into the flow. A notice also leaves once someone records its months closed.
+
+The app counts the days. It does not judge the law. Ask the attorney when a date is not clear.
 
 ## Public property
 
