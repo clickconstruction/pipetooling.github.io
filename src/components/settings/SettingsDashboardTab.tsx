@@ -345,7 +345,7 @@ export default function SettingsDashboardTab({
   }
   return (
     <>
-      {/* Dashboard view: Short or Full, for the roles the short Dashboard is drawn for. The office can set it too, on the People desk. */}
+      {/* Dashboard view: Short or Full, for the roles that take a view (the leader, a dev and a superintendent). The office can set it too, on the People desk. */}
       {authUser?.id && canHaveShortDashboard(myRole) ? (
         <div data-settings-dashboard-view style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
           <h2 style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>{DASHBOARD_VIEW_PICKER_WORDS.label}</h2>

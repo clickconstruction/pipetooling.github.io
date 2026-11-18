@@ -2511,8 +2511,9 @@ What a leader whose **Dashboard view** is **Short** opens onto in place of the f
 the lien notices as the leader's lien card), then My Schedule, then one line for what the office is handling and one door, **Everything else**, which opens the full Dashboard for the visit, folded on a phone, with **Back to the short Dashboard** on top.
 It never says *Nothing waiting on you* while the Lien desk is being read or after that read failed.
 For a person on Short the bottom bar's **Dashboard** tab opens the short page whichever mode is on, and one press on it leaves **Everything else** (v2.7572, `shortHome` on `DispatchModeFooter`).
-The view is `users.dashboard_view` through `set_dashboard_view`, pressed in Settings → Dashboard & alerts by the person or on the People desk's **Dashboard view** section by the office;
-only a leader's or a dev's account takes one, and every account reads as **Full** until someone presses. → *Needs You card*;
+The view is `users.dashboard_view` through `set_dashboard_view`, pressed in Settings → Your dashboard by the person or on the People desk's **Dashboard view** section by the office;
+a leader's, a dev's and, since v2.7749 (punch list #384), a superintendent's account takes one, and every account reads as **Full** until someone presses.
+A superintendent on Short with Job Mode off opens onto this page, where his list holds only a job note that tagged him and the door's second line names Clock In, his hours and his crew (`shortPageFor` says which short page a role gets). → *Needs You card*;
 guide `use-the-short-dashboard`.
 
 ### Waiting on card (the office's side of the short Dashboard)

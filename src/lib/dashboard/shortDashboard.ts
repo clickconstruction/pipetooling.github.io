@@ -8,6 +8,10 @@ import type { EmptyStateWords } from '../emptyWords'
  * one door to everything else. The full Dashboard stays for a leader who wants it: the view is a setting per
  * person (`users.dashboard_view`), and the office may set it for him.
  *
+ * Since punch list #384 a superintendent takes the view too. One setting gives the short form of whichever home
+ * the person uses: `shortPageFor` says which. With Job Mode off it is this page. With Job Mode on it is the short
+ * Job Mode page, for a superintendent alone: a leader in Job Mode keeps the full card, as #365 decided.
+ *
  * This file is the rule and the words. `splitForShortDashboard` sorts the Needs you lines three ways:
  * **waiting** (only he can do it), **alsoYours** (his by `needsYouActor`, but the office can carry it or it can
  * wait behind the door) and **office** (someone else presses the button). Pure: items and a role in, piles out.
@@ -21,14 +25,44 @@ export function parseDashboardView(value: unknown): DashboardView {
   return value === 'short' ? 'short' : 'full'
 }
 
-/** The roles the short Dashboard is drawn for: the leader, and a dev, who is the owner's own account. */
+/**
+ * The roles whose account takes a view: the leader, a dev, who is the owner's own account, and a superintendent
+ * (punch list #384). `set_dashboard_view` holds the same three, so a change here is a migration too.
+ */
+export const DASHBOARD_VIEW_ROLES: readonly string[] = ['master_technician', 'dev', 'superintendent']
+
+/** Whether this role's account takes a view, so the pickers show and the row is read. */
 export function canHaveShortDashboard(role: string | null | undefined): boolean {
-  return role === 'master_technician' || role === 'dev'
+  return typeof role === 'string' && DASHBOARD_VIEW_ROLES.includes(role)
+}
+
+/** The short page a person on Short opens onto: the short Dashboard, or the short Job Mode page. */
+export type ShortPage = 'dashboard' | 'job_mode'
+
+/**
+ * Which short page the role gets, by the home the person uses. Job Mode off: the short Dashboard, for every role
+ * that takes a view. Job Mode on: the short Job Mode page for a superintendent, and nothing for a leader or a dev,
+ * who keep the full Job Mode card. Null is no short page: the person sees the page they see today.
+ */
+export function shortPageFor(role: string | null | undefined, jobModeOn: boolean): ShortPage | null {
+  if (!canHaveShortDashboard(role)) return null
+  if (!jobModeOn) return 'dashboard'
+  return role === 'superintendent' ? 'job_mode' : null
 }
 
 /** The office set that may flip another person's view: the leader, a dev and the assistant. */
 export function canSetDashboardViewFor(viewerRole: string | null | undefined): boolean {
   return viewerRole === 'dev' || viewerRole === 'master_technician' || viewerRole === 'assistant'
+}
+
+/**
+ * Whether this viewer may press the view on this person's row, as `set_dashboard_view` rules it: the row's role
+ * must take a view, and the viewer is the office or the person himself.
+ */
+export function canSetDashboardView(input: { viewerRole: string | null | undefined; viewerUserId: string | null | undefined; targetUserId: string | null | undefined; targetRole: string | null | undefined }): boolean {
+  if (!input.targetUserId || !canHaveShortDashboard(input.targetRole)) return false
+  if (canSetDashboardViewFor(input.viewerRole)) return true
+  return input.viewerUserId === input.targetUserId
 }
 
 /**
@@ -112,8 +146,12 @@ export const SHORT_DASHBOARD_WORDS = {
   empty: { main: 'Nothing waiting on you.', tail: 'The office puts a paper here when it needs your signature or your word.' } satisfies EmptyStateWords,
   office: (n: number): string => (n <= 0 ? 'Nothing else is open.' : n === 1 ? 'The office is handling 1 other thing.' : `The office is handling ${n} other things.`),
   door: 'Everything else',
-  /** The door's second line: what of his own is behind it, or what the door opens. */
-  doorNote: (alsoYours: number): string => (alsoYours <= 0 ? 'Money, crew, jobs and the full Dashboard.' : alsoYours === 1 ? '1 more of yours is in there.' : `${alsoYours} more of yours are in there.`),
+  /**
+   * The door's second line: what of his own is behind it, or what the door opens. A superintendent's full
+   * Dashboard holds no money, and his Clock In sits behind the door, so his line names what is his.
+   */
+  doorNote: (alsoYours: number, role?: string | null): string =>
+    alsoYours <= 0 ? (role === 'superintendent' ? 'Clock In, your hours, your crew and the full Dashboard.' : 'Money, crew, jobs and the full Dashboard.') : alsoYours === 1 ? '1 more of yours is in there.' : `${alsoYours} more of yours are in there.`,
   rateCrew: { title: 'Rate your crew', detail: 'A few taps on the people you worked with this week.', press: 'Rate' },
   /** The full Dashboard's way back, shown to a person whose view is Short. */
   back: 'Back to the short Dashboard',
