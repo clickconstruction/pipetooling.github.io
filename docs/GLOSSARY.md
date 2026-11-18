@@ -3135,6 +3135,8 @@ A place on the job wears a letter and a map's own place a number, and every othe
 A link or a copy of a painted map carries that map's own places and not the job's, the table holds a job to no count of lists and the app reads every one as one, and only the office is offered **Throw this list away**.
 **Text this place…** (since v2.7799, `PaintedPlaceShare` over `paintedPlaceShare.ts`): each place's row sends that one place, on a phone by a link that opens the phone's own Messages with the place in words and a plain map link to the spot, and at a desk as **Copy this place**.
 The link is a point in a map app and not a link into the app, so the reader gives no name and sees nothing else of the map, and anyone who can see a place may send it, where a map's own link is its maker's and the office's.
+**Send more…** (since v2.7844, `PaintedPlaceSendMore` over `paintedPlaceSendMore.ts`) sits beside that press and opens a sheet of up to three ways: the place with its photo through the phone's own share sheet, every place of the row's set in one text, and **The whole map**, the door to the map's Share for whoever may share it.
+It is drawn only when the row has a way to offer, a row under *On this job* never offers the map it is drawn on, and a place with a photo says under its press that a text carries the spot and not the photo.
 **Walking a line** (since v2.7220, `usePaintedWalk` over `paintedWalk.ts`): the phone is read only while a red bar says *Painting*, and only with the page on the screen, since no browser hands a hidden page its position.
 A lock leaves a gap the painter chooses what to do with;
 painting pauses after five minutes standing still and ends after an hour;

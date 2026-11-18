@@ -317,6 +317,9 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
 
   const mine = (by: string | null) => !!user?.id && (by === user.id || isOfficeRole(role))
   const canChangeMap = !!map && mine(map.createdBy)
+  // A link is its maker's and the office's to hand out, and a map with nothing on it has nothing to show.
+  const mayShareMap = saved && canChangeMap && (lines.length > 0 || places.length > 0)
+  const openShare = () => setSharing(true)
 
   // What a dragged corner catches: every place, and the two ends of every other line.
   const targets = useMemo<SnapTarget[]>(() => {
@@ -986,7 +989,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                       <button type="button" style={press} onClick={() => openInExternalBrowser(directions)}>Directions to the start</button>
                     ) : null}
                     {/* A link is its maker's and the office's to hand out, and a map with nothing on it has nothing to show. */}
-                    {saved && canChangeMap && (lines.length > 0 || places.length > 0) ? (
+                    {mayShareMap ? (
                       <button type="button" data-painted-share style={press} onClick={() => setSharing(true)}>Share</button>
                     ) : null}
                   </div>
@@ -1078,9 +1081,9 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                                 </>
                               ) : null}
                             </span>
-                            {/* One place, sent to someone: anyone who sees it may (`paintedPlaceShare.ts`). */}
+                            {/* One place, sent to someone: anyone who sees it may (`paintedPlaceShare.ts`). Send more… offers its photo, every place here, and the map to whoever may share it. */}
                             <span style={{ gridColumn: 2 }}>
-                              <PaintedPlaceShare place={p} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 }} />
+                              <PaintedPlaceShare place={p} more={{ set: places, setKind: isList ? 'job' : 'map', photoPath: p.photoPath, onShareMap: mayShareMap ? openShare : undefined, list: isList }} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 }} />
                             </span>
                           </div>
                         )
@@ -1098,7 +1101,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                           <b style={{ fontSize: '0.9375rem' }}>{p.name}</b>
                           {p.words ? <span style={{ gridColumn: 2, fontSize: '0.875rem', color: 'var(--text-base)' }}>{p.words}</span> : null}
                           <span style={{ gridColumn: 2 }}>
-                            <PaintedPlaceShare place={p} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 }} />
+                            <PaintedPlaceShare place={p} more={{ set: overlay, setKind: 'job', photoPath: p.photoPath }} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 }} />
                           </span>
                         </div>
                       ))}
