@@ -1836,9 +1836,10 @@ Opening the scan goes through `open-contract-form-pdf` with `which: 'scan'` — 
 The signer never sees office boxes;
 `office_values` stores only non-sensitive office answers.
 
-### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`)
+### Papers before a job opens (v2.7641, `20261117220000_job_required_papers.sql`; the office's section v2.7646)
 
-No screen calls it yet, and it locks nothing: the prompt and the lock in the database are later steps.
+It locks nothing yet: the prompt and the lock in the database are later steps.
+The section **Papers before this job opens** on the job window's Documents tab and the chip in the job's head are drawn for the office roles alone (`isOfficeRole`: dev, master technician, assistant, controller).
 `job_required_papers` holds the papers a job requires of everyone who opens it.
 The office (dev, master technician, assistant, controller) reads it through `is_office_staff()`.
 It has no write policy and no write grant: rows are written only by `job_papers_require` and `job_paper_remove`, both office only.

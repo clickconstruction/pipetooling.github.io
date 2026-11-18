@@ -36,6 +36,7 @@ import { taskPlaceSheetAccuracy } from '../../lib/tasks/taskPlace'
 import { WHERE_IS_IT_PRESS, boxPinShort, whereIsBoxTitle } from '../../lib/materials/whereIsBox'
 import WhereIsBox from '../materials/WhereIsBox'
 import PinAskStrip from '../materials/PinAskStrip'
+import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { PLACE_WAY_OPEN_PRESS, PLACE_WAY_PAINT_PRESS } from '../../lib/materials/placeWay'
 import { openPlaceWay, paintPlaceWay } from '../materials/placeWayPaint'
 import { boxWantsPin, takePinAsk, takeScannedBox } from '../../lib/materials/pinAsk'
@@ -158,6 +159,8 @@ type Sheet =
 
 export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPickJob, byUserId, byName, searchParts, initialContainerId, initialStickerCode = null, askSeq = 0, onOpenContainer, onOpenSticker }: Props) {
   const { showToast, showActionToast } = useToastContext()
+  // Send someone to it (punch list #372, step 5): the New task window, where the app has one mounted.
+  const addTask = useChecklistAddModal()
   /** A 320 px phone: the four presses go two by two, as the mock-up drew them. */
   const narrow = useMatchMedia('(max-width: 359px)')
   const jobId = selectedJobId
@@ -800,7 +803,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         const live = containers.find((c) => c.id === sheet.container.id) ?? sheet.container
         return (
           <Sheet title={whereIsBoxTitle(live.label)} onClose={closeSheet}>
-            <WhereIsBox touch container={live} containers={containers} places={places} moves={listContainerMoves(jobId)} movements={movements} photos={listPhotos(jobId)} jobCenter={jobCenter} jobAddress={addr} painted={painted.maps} byName={byName} onMoveBox={() => { closeSheet(); setSheet({ kind: 'move-box', container: live }) }} onOpenWay={(id) => { closeSheet(); openPaintedMap(id, addr || null) }} />
+            <WhereIsBox touch container={live} containers={containers} places={places} moves={listContainerMoves(jobId)} movements={movements} photos={listPhotos(jobId)} jobCenter={jobCenter} jobAddress={addr} painted={painted.maps} byName={byName} onMoveBox={() => { closeSheet(); setSheet({ kind: 'move-box', container: live }) }} onOpenWay={(id) => { closeSheet(); openPaintedMap(id, addr || null) }} onSendSomeone={addTask ? (task) => { closeSheet(); addTask.openAddModal({ preset: task }) } : undefined} />
           </Sheet>
         )
       })() : null}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Container, ContainerMove, Movement, Place } from './onSite'
-import { BOX_PIN_OLD_DAYS, boxPinSentence, boxPinShort, foundNoFixWords, foundVerdict, lastPutOf, lastTouchOf, newestPhotoWords, noPlaceAsk, stillThereAsk, whereIsBoxFar, whereIsBoxWords, whereMapPins, whereNoPinWords } from './whereIsBox'
+import { BOX_PIN_OLD_DAYS, findBoxTask, boxPinSentence, boxPinShort, foundNoFixWords, foundVerdict, lastPutOf, lastTouchOf, newestPhotoWords, noPlaceAsk, stillThereAsk, whereIsBoxFar, whereIsBoxWords, whereMapPins, whereNoPinWords } from './whereIsBox'
 import { PLAIN_WORDS_MAX_SENTENCE_WORDS } from '../plainWords'
 
 // Noon on the company's calendar, Tuesday Nov 17 2026. Every name, place and point here is made up.
@@ -176,5 +176,27 @@ describe('whereMapPins', () => {
     ])
     expect(whereMapPins(pinned({ pinnedAt: '2026-10-06T15:00:00Z' }), [], NOW)[0]!.tone).toBe('target-old')
     expect(whereMapPins(box(), others, NOW).map((p) => p.id)).toEqual(['a3'])
+  })
+})
+
+describe('findBoxTask — Send someone to it (step 5)', () => {
+  it('a pinned box in a place with a way: the title, the pin as the task’s place, the way as its map', () => {
+    expect(findBoxTask({ box: pinned(), places, way: { id: 'way-1', name: 'The way to Laydown yard' } })).toEqual({
+      title: 'Find A7 at Laydown yard, by the north fence',
+      links: [],
+      place: { ...PIN, name: 'A7 at Laydown yard', accuracyM: 5.5, mapId: 'way-1', mapName: 'The way to Laydown yard' },
+    })
+  })
+  it('a pin with no way carries no map, and a pin dragged by hand no margin', () => {
+    expect(findBoxTask({ box: pinned({ pinAccuracyM: null }), places }).place).toEqual({ ...PIN, name: 'A7 at Laydown yard', accuracyM: null })
+  })
+  it('a box nobody pinned still makes a task, with its words and no dot', () => {
+    expect(findBoxTask({ box: box(), places, way: { id: 'way-1', name: 'The way to Laydown yard' } })).toEqual({ title: 'Find A7 at Laydown yard, by the north fence', links: [] })
+    expect(findBoxTask({ box: box({ locationId: null }), places })).toEqual({ title: 'Find A7, by the north fence', links: [] })
+    expect(findBoxTask({ box: box({ locationId: null, where: '' }), places })).toEqual({ title: 'Find A7', links: [] })
+  })
+  it('the place’s name fits a task place’s length', () => {
+    const long: Place[] = [{ id: 'yard', jobId: 'j1', name: 'The far laydown yard behind the east parking garage', createdAt: '' }]
+    expect(findBoxTask({ box: pinned(), places: long }).place!.name.length).toBeLessThanOrEqual(40)
   })
 })

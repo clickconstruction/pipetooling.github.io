@@ -22629,6 +22629,7 @@ export type Database = {
           id: string
           job_id: string
           name: string
+          painted_map_id: string | null
         }
         Insert: {
           created_at?: string
@@ -22636,6 +22637,7 @@ export type Database = {
           id?: string
           job_id: string
           name: string
+          painted_map_id?: string | null
         }
         Update: {
           created_at?: string
@@ -22643,6 +22645,7 @@ export type Database = {
           id?: string
           job_id?: string
           name?: string
+          painted_map_id?: string | null
         }
         Relationships: [
           {
@@ -22657,6 +22660,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_places_painted_map_id_fkey"
+            columns: ["painted_map_id"]
+            isOneToOne: false
+            referencedRelation: "painted_maps"
             referencedColumns: ["id"]
           },
         ]
@@ -22737,6 +22747,87 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: true
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_required_papers: {
+        Row: {
+          body_format: string
+          body_html: string | null
+          book_document_id: string | null
+          canonical_document_url: string | null
+          form_template_id: string | null
+          id: string
+          job_id: string
+          paper_name: string
+          removed_at: string | null
+          removed_by: string | null
+          required_at: string
+          required_by: string | null
+        }
+        Insert: {
+          body_format?: string
+          body_html?: string | null
+          book_document_id?: string | null
+          canonical_document_url?: string | null
+          form_template_id?: string | null
+          id?: string
+          job_id: string
+          paper_name: string
+          removed_at?: string | null
+          removed_by?: string | null
+          required_at?: string
+          required_by?: string | null
+        }
+        Update: {
+          body_format?: string
+          body_html?: string | null
+          book_document_id?: string | null
+          canonical_document_url?: string | null
+          form_template_id?: string | null
+          id?: string
+          job_id?: string
+          paper_name?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          required_at?: string
+          required_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_required_papers_book_document_id_fkey"
+            columns: ["book_document_id"]
+            isOneToOne: false
+            referencedRelation: "contract_template_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_required_papers_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "contract_form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_required_papers_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_required_papers_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_required_papers_required_by_fkey"
+            columns: ["required_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -32113,6 +32204,8 @@ export type Database = {
           form_template_id: string | null
           form_values: Json | null
           id: string
+          job_id: string | null
+          job_required_paper_id: string | null
           lineage_version: number
           note: string | null
           office_attested_at: string | null
@@ -32162,6 +32255,8 @@ export type Database = {
           form_template_id?: string | null
           form_values?: Json | null
           id?: string
+          job_id?: string | null
+          job_required_paper_id?: string | null
           lineage_version?: number
           note?: string | null
           office_attested_at?: string | null
@@ -32211,6 +32306,8 @@ export type Database = {
           form_template_id?: string | null
           form_values?: Json | null
           id?: string
+          job_id?: string | null
+          job_required_paper_id?: string | null
           lineage_version?: number
           note?: string | null
           office_attested_at?: string | null
@@ -32267,6 +32364,20 @@ export type Database = {
             columns: ["form_template_id"]
             isOneToOne: false
             referencedRelation: "contract_form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_job_required_paper_id_fkey"
+            columns: ["job_required_paper_id"]
+            isOneToOne: false
+            referencedRelation: "job_required_papers"
             referencedColumns: ["id"]
           },
           {
@@ -37090,6 +37201,9 @@ export type Database = {
       sub_paper_acks: {
         Row: {
           amount: number | null
+          answered_at: string | null
+          answered_by: string | null
+          answered_by_name: string | null
           created_at: string
           id: string
           kind: string
@@ -37105,6 +37219,9 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          answered_at?: string | null
+          answered_by?: string | null
+          answered_by_name?: string | null
           created_at?: string
           id?: string
           kind: string
@@ -37120,6 +37237,9 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          answered_at?: string | null
+          answered_by?: string | null
+          answered_by_name?: string | null
           created_at?: string
           id?: string
           kind?: string
@@ -37134,6 +37254,13 @@ export type Database = {
           sending_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sub_paper_acks_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sub_paper_acks_labor_job_id_fkey"
             columns: ["labor_job_id"]
@@ -43510,6 +43637,7 @@ export type Database = {
         Args: { p_answer: string; p_message_id: string; p_reason?: string }
         Returns: undefined
       }
+      answer_sub_paper_ack: { Args: { p_ack_id: string }; Returns: string }
       answered_from_own_mailbox: {
         Args: {
           p_contact_id: string
@@ -46325,6 +46453,7 @@ export type Database = {
         }
         Returns: string
       }
+      job_closed_to_me: { Args: { p_job_id: string }; Returns: boolean }
       job_lead_contact: {
         Args: { p_job_id: string }
         Returns: {
@@ -46399,7 +46528,28 @@ export type Database = {
         Args: { p_note_id: string; p_tagged: string[] }
         Returns: number
       }
+      job_paper_job_number: { Args: { p_job_id: string }; Returns: string }
+      job_paper_remove: {
+        Args: { p_required_paper_id: string }
+        Returns: undefined
+      }
+      job_paper_start: {
+        Args: { p_person_id?: string; p_required_paper_id: string }
+        Returns: string
+      }
+      job_papers_for_person: {
+        Args: { p_job_id: string; p_person_id: string }
+        Returns: Json
+      }
+      job_papers_mine: { Args: { p_job_id: string }; Returns: Json }
+      job_papers_needing_me: { Args: never; Returns: Json }
+      job_papers_require: {
+        Args: { p_book_document_ids: string[]; p_job_id: string }
+        Returns: number
+      }
+      job_papers_roster: { Args: { p_job_id: string }; Returns: Json }
       job_rider_fees: { Args: { p_job_id: string }; Returns: number }
+      jobs_closed_to_me: { Args: never; Returns: string[] }
       jobs_ledger_row_visible_for_tally_assign: {
         Args: { p_job_id: string; p_user_id: string }
         Returns: boolean
@@ -48503,6 +48653,10 @@ export type Database = {
         Returns: Json
       }
       on_site_job_counts: { Args: { p_job_id: string }; Returns: Json }
+      on_site_job_in_development: {
+        Args: { p_development_id: string; p_job_id: string }
+        Returns: boolean
+      }
       on_site_job_summary: {
         Args: { p_job_id: string; p_since?: string }
         Returns: Json
