@@ -3657,7 +3657,7 @@ Since v2.6558 two chip rows above the Scoreboard cut it by job, part of the site
  the office team reads every request that carries a reference.
 
 **Trip** (punch list #379;
-the rules v2.7653, the tables v2.7655, the Trips look v2.7661): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
+the rules v2.7653, the tables v2.7655, the Trips look v2.7661, Looks like a trip and What shows it v2.7676): one going-out to a site away from home and coming back, kept on the development as its own record and never as a job.
 A trip is people, and for each person their days, and each day is one of three kinds: **Getting ready**, **On the road** or **At the site**.
 A day off in the middle is a day that is not there.
 Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
@@ -3669,6 +3669,8 @@ The **Trips look** is the Development page's seventh look (`DevelopmentTripsCard
 The look shows only on a site that has a trip or is 150 miles or more from the shop (`tripsLookShows`), and a nearer site has one door to its first trip in the line under its address.
 **+ Trip** opens the sheet (`components/trips/TripSheet.tsx` over `lib/trips/tripSheet.ts`): who went, which days, what for, the days painted and turned by a tap.
 A trip leaving and coming back are two **History** lines read from its days (`lib/trips/tripHistory.ts`), never kept rows.
+**Looks like a trip** is the look's offer of a run of punches at the site that no trip covers (`lib/trips/tripFinder.ts`, `tripOffers.ts`): the app never makes the trip, and a person presses **Make it a trip**, which opens the sheet filled from the punches, or **Not a trip**, which keeps one `trip_dismissals` row a person so the same days are not offered again.
+**What shows it** is the row of counts on an open trip, over the trip's own person-days (`lib/trips/tripEvidence.ts`): the punches at the site, the On my way and I’m here stamps, and the History lines on its days.
 Access: `ACCESS_CONTROL.md`, *Trips*.
 Guide: `keep-a-trip-to-a-far-site`.
 

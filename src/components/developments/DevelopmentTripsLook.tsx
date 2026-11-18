@@ -7,11 +7,16 @@
  * Everything drawn comes from one model (`lib/trips/tripsLook.ts`), so the band, the strip, a row and an
  * open trip are counted from the same days. A trip is a reading over the clock: nothing here changes a
  * clock row, a bill or a cost.
+ *
+ * PR 5: a run of punches at the site that no trip covers is offered above the rows, **Looks like a trip**,
+ * with **Make it a trip** and **Not a trip** (`lib/trips/tripOffers.ts`). The app never makes the trip.
+ * An open trip says **What shows it**: counts of what the page already reads (`lib/trips/tripEvidence.ts`).
  */
 import { useMemo, useState } from 'react'
 import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { TRIP_DAY_LABEL, TRIP_STANDING_LABEL, type TripDayKind } from '../../lib/trips/tripDays'
+import { tripEvidenceChips, type TripEvidence, type TripEvidenceChip } from '../../lib/trips/tripEvidence'
 import { TRIP_HOUR_BUCKET_LABEL, type TripHourBucket } from '../../lib/trips/tripHours'
 import { TRIP_BILLING_WORDS, type TripRecord } from '../../lib/trips/tripRecord'
 import { atSitePercentWords, buildTripStrip, daysWords, filterTripRows, hoursWords, monthDay, tripStripStartYear, TRIPS_FILTERS, type TripLookRow, type TripsFilter, type TripsLookModel } from '../../lib/trips/tripsLook'
@@ -40,6 +45,14 @@ function billingChipStyle(row: TripLookRow) {
   return { display: 'inline-flex', alignItems: 'center', border: `1px solid ${amber ? 'var(--text-amber-800)' : 'var(--border)'}`, borderRadius: 999, padding: '1px 9px', fontSize: '0.74rem', background: amber ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', color: amber ? 'var(--text-amber-800)' : 'var(--text-700)', whiteSpace: 'nowrap' } as const
 }
 
+/** One offer as the look draws it: the finder's key and its sentence. */
+export type TripOfferLine = { key: string; words: string }
+
+function evidenceChipStyle(tone: TripEvidenceChip['tone']) {
+  const green = tone === 'green'
+  return { display: 'inline-flex', alignItems: 'center', border: `1px solid ${green ? 'var(--border-green)' : 'var(--border)'}`, borderRadius: 999, padding: '1px 9px', fontSize: '0.74rem', background: green ? 'var(--bg-green-tint)' : 'var(--surface)', color: green ? 'var(--text-green-700)' : 'var(--text-700)', whiteSpace: 'nowrap' } as const
+}
+
 export function DevelopmentTripsLook({
   model,
   hoursState,
@@ -53,6 +66,12 @@ export function DevelopmentTripsLook({
   onAdd,
   onChange,
   onDelete,
+  offers = [],
+  moreOffersWords = null,
+  offerBusy = false,
+  onOfferMake,
+  onOfferDismiss,
+  evidence,
 }: {
   model: TripsLookModel
   hoursState: TripsHoursState
@@ -68,6 +87,17 @@ export function DevelopmentTripsLook({
   onAdd: () => void
   onChange: (record: TripRecord) => void
   onDelete: (record: TripRecord) => void
+  /** Runs of punches at the site that no trip covers, oldest first. Drawn only for a reader who can write, once the hours are read, on a site with a point. */
+  offers?: ReadonlyArray<TripOfferLine>
+  /** The quiet line under the offers when more wait behind them. */
+  moreOffersWords?: string | null
+  offerBusy?: boolean
+  /** **Make it a trip**: open the sheet on a new trip filled from the punches. */
+  onOfferMake?: (key: string) => void
+  /** **Not a trip**: remember it, so the same days are not offered again. */
+  onOfferDismiss?: (key: string) => void
+  /** What shows each trip, by its id; a trip with none yet draws no block. */
+  evidence?: ReadonlyMap<string, TripEvidence>
 }) {
   const [filter, setFilter] = useState<TripsFilter>('all')
   const [openId, setOpenId] = useState<string | null>(null)
@@ -80,6 +110,7 @@ export function DevelopmentTripsLook({
   const wait = hoursState === 'read' ? null : TRIPS_HOURS_WORDS[hoursState]
   const num = (n: number | undefined) => (n == null ? (hoursState === 'reading' ? '…' : '—') : hoursWords(n))
   const yearAt = strip.years.indexOf(year)
+  const offersShown = canWrite && hoursState === 'read' && !noSitePoint ? offers : []
 
   if (failure) return <OfflineRetryPanel failure={failure} onRetry={onReload} surface="development-trips" idempotent />
 
@@ -190,6 +221,36 @@ export function DevelopmentTripsLook({
         </div>
       ) : null}
 
+      {/* Looks like a trip: the app only offers. A person makes the trip, or says Not a trip once. */}
+      {offersShown.length > 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8, marginTop: 12 }} data-testid="trips-offers">
+          {offersShown.map((o) => (
+            <div
+              key={o.key}
+              data-testid="trips-offer"
+              style={{ border: '1px dashed var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: phone ? 'column' : 'row', flexWrap: 'wrap', gap: '8px 12px', alignItems: phone ? 'flex-start' : 'center', justifyContent: 'space-between' }}
+            >
+              <div style={{ flex: phone ? undefined : '1 1 280px', minWidth: 0, fontSize: '0.86rem' }}>
+                <strong style={{ color: 'var(--text-strong)' }}>Looks like a trip.</strong> {o.words}
+              </div>
+              <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
+                <SmallButton onClick={() => onOfferMake?.(o.key)} primary disabled={offerBusy} title="Open a new trip filled from these punches. Nothing is saved until you press Save the trip.">
+                  Make it a trip
+                </SmallButton>
+                <SmallButton onClick={() => onOfferDismiss?.(o.key)} disabled={offerBusy} title="Remember that these days were not a trip, so they are not offered again. No clock row changes.">
+                  Not a trip
+                </SmallButton>
+              </span>
+            </div>
+          ))}
+          {moreOffersWords ? (
+            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }} data-testid="trips-offers-more">
+              {moreOffersWords}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* The rows. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
         <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }} role="radiogroup" aria-label="Which trips">
@@ -253,7 +314,7 @@ export function DevelopmentTripsLook({
                   </div>
                   <div>{row.billingLabel ? <span style={billingChipStyle(row)}>{row.billingLabel}</span> : null}</div>
                 </button>
-                {open ? <OpenTrip row={row} phone={phone} jobLabel={jobLabel} canWrite={canWrite} hoursState={hoursState} onChange={() => onChange(row.record)} onDelete={() => onDelete(row.record)} /> : null}
+                {open ? <OpenTrip row={row} evidence={evidence?.get(row.id) ?? null} phone={phone} jobLabel={jobLabel} canWrite={canWrite} hoursState={hoursState} onChange={() => onChange(row.record)} onDelete={() => onDelete(row.record)} /> : null}
               </div>
             )
           })}
@@ -280,7 +341,7 @@ const KIND_ROWS: ReadonlyArray<{ bucket: Exclude<TripHourBucket, 'home' | 'noPla
 ]
 
 /** One trip, open in place: what was typed on the left, what is counted from the clock on the right. */
-function OpenTrip({ row, phone, jobLabel, canWrite, hoursState, onChange, onDelete }: { row: TripLookRow; phone: boolean; jobLabel: (jobId: string) => string | null; canWrite: boolean; hoursState: TripsHoursState; onChange: () => void; onDelete: () => void }) {
+function OpenTrip({ row, evidence, phone, jobLabel, canWrite, hoursState, onChange, onDelete }: { row: TripLookRow; evidence: TripEvidence | null; phone: boolean; jobLabel: (jobId: string) => string | null; canWrite: boolean; hoursState: TripsHoursState; onChange: () => void; onDelete: () => void }) {
   const r = row.record
   const h = row.hours
   const cell = { padding: '5px 8px', borderTop: '1px solid var(--border)', verticalAlign: 'top' } as const
@@ -423,6 +484,18 @@ function OpenTrip({ row, phone, jobLabel, canWrite, hoursState, onChange, onDele
           ) : (
             <p style={{ margin: '8px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{hoursState === 'read' ? '—' : TRIPS_HOURS_WORDS[hoursState]}</p>
           )}
+          {evidence ? (
+            <div data-testid="trip-open-shows">
+              <div style={{ ...capStyle, marginTop: 12 }}>What shows it</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                {tripEvidenceChips(evidence).map((c) => (
+                  <span key={c.key} data-tone={c.tone} data-testid={`trip-shows-${c.key}`} style={evidenceChipStyle(c.tone)}>
+                    {c.words}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

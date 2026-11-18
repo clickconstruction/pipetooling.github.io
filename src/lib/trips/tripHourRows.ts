@@ -9,6 +9,7 @@
  */
 import type { LatLng } from '../jobTravelEstimate'
 import type { SiteLabor } from '../developments/siteLabor'
+import type { SitePunchDay } from './tripFinder'
 import type { TripHourRow } from './tripHours'
 import { placeOfDay, placeOfPunch, type PunchPoint, type TripPlace } from './tripPlace'
 import { tripPersonKey, type TripPeopleIndex } from './tripRecord'
@@ -26,9 +27,12 @@ export type PunchRow = {
   clock_out_lat: number | null
   clock_out_lng: number | null
   clock_out_location_source: string | null
+  /** The drive's two stamps: On my way, and I’m here. */
+  travel_started_at: string | null
+  arrived_at: string | null
 }
 
-export const PUNCH_COLUMNS = 'id, user_id, work_date, clock_in_lat, clock_in_lng, clock_in_location_source, arrived_lat, arrived_lng, arrived_location_source, clock_out_lat, clock_out_lng, clock_out_location_source'
+export const PUNCH_COLUMNS = 'id, user_id, work_date, clock_in_lat, clock_in_lng, clock_in_location_source, arrived_lat, arrived_lng, arrived_location_source, clock_out_lat, clock_out_lng, clock_out_location_source, travel_started_at, arrived_at'
 
 function point(lat: number | null, lng: number | null, source: string | null): PunchPoint | null {
   if (lat == null || lng == null) return null
@@ -55,6 +59,22 @@ export function placesByPersonDay(punches: ReadonlyArray<PunchRow>, site: LatLng
   const out = new Map<string, TripPlace>()
   for (const [key, places] of byDay) out.set(key, placeOfDay(places))
   return out
+}
+
+/**
+ * The days each person punched in at the site, for the finder behind **Looks like a trip**: a person-day
+ * whose place is the site. `nameOf` gives the name a person goes by, when one is known. Oldest day first.
+ */
+export function sitePunchDays(places: ReadonlyMap<string, TripPlace>, nameOf: (personKey: string) => string | undefined = () => undefined): SitePunchDay[] {
+  const out: SitePunchDay[] = []
+  for (const [key, place] of places) {
+    if (place !== 'site') continue
+    const cut = key.indexOf('\u0000')
+    if (cut < 0) continue
+    const personKey = key.slice(0, cut)
+    out.push({ personKey, name: nameOf(personKey), ymd: key.slice(cut + 1) })
+  }
+  return out.sort((a, b) => a.ymd.localeCompare(b.ymd) || a.personKey.localeCompare(b.personKey))
 }
 
 /**

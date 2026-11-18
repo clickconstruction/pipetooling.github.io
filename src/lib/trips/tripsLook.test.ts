@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { addDays, type TripDayKind } from './tripDays'
 import type { TripHourRow } from './tripHours'
 import { newTripRecord, NO_TRIP_PEOPLE, type TripRecord } from './tripRecord'
-import { askedByWords, atSitePercentWords, buildTripStrip, buildTripsLook, daysWords, filterTripRows, hoursWords, monthDay, namesWords, tripSpanWords, tripStripStartYear, tripsLookWords, tripsStripWords } from './tripsLook'
+import { askedByWords, atSitePercentWords, buildTripStrip, buildTripsLook, daysWords, filterTripRows, hoursWords, monthDay, namesWords, tripSpanWords, tripOffersNeedWords, tripStripStartYear, tripsLookWords, tripsStripWords } from './tripsLook'
 
 // Every name, day and hour here is made up.
 const TODAY = '2026-11-17'
@@ -114,6 +114,15 @@ describe('the look', () => {
     expect(tripsStripWords(records, '2026-10-31')).toEqual({ n: 3, count: '3 trips', need: '1 out now' })
     expect(tripsStripWords([lifts], TODAY)).toEqual({ n: 1, count: '1 trip', need: null })
     expect(tripsStripWords([], TODAY)).toEqual({ n: 0, count: 'none yet', need: null })
+  })
+
+  it('adds the runs of punches that look like a trip to the amber words, a trip that is out first', () => {
+    expect(tripOffersNeedWords(1)).toBe('1 looks like a trip')
+    expect(tripOffersNeedWords(3)).toBe('3 look like trips')
+    expect(tripsLookWords(model, 1)).toEqual({ n: 3, count: '3 trips', need: '1 looks like a trip' })
+    expect(tripsStripWords(records, '2026-10-31', 2)).toEqual({ n: 3, count: '3 trips', need: '1 out now · 2 look like trips' })
+    expect(tripsStripWords([], TODAY, 1)).toEqual({ n: 0, count: 'none yet', need: '1 looks like a trip' })
+    expect(tripsStripWords([lifts], TODAY, 0)).toEqual({ n: 1, count: '1 trip', need: null })
   })
 
   it('shares the hours at the site as a percent', () => {

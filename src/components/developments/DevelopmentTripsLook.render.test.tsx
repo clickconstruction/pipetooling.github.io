@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
  * The Trips look (punch list #379, PR 3): the band, the bar, the year strip, a row a trip that opens in place,
- * the chips, and what it says while the hours are not read. Heron Point's made-up trips.
+ * the chips, and what it says while the hours are not read. PR 5: the offers above the rows with their two
+ * presses, and What shows it on an open trip. Heron Point's made-up trips.
  */
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -10,7 +11,8 @@ import { addDays, type TripDayKind } from '../../lib/trips/tripDays'
 import type { TripHourRow } from '../../lib/trips/tripHours'
 import { newTripRecord, NO_TRIP_PEOPLE, type TripRecord } from '../../lib/trips/tripRecord'
 import { buildTripsLook } from '../../lib/trips/tripsLook'
-import { DevelopmentTripsLook, TRIPS_HOURS_WORDS, TRIPS_NO_POINT_WORDS, type TripsHoursState } from './DevelopmentTripsLook'
+import type { TripEvidence } from '../../lib/trips/tripEvidence'
+import { DevelopmentTripsLook, TRIPS_HOURS_WORDS, TRIPS_NO_POINT_WORDS, type TripOfferLine, type TripsHoursState } from './DevelopmentTripsLook'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -40,12 +42,17 @@ const RECORDS = [
 ]
 const HOURS: TripHourRow[] = [hour('Luis', '2026-10-29', 6, 'elsewhere'), hour('Luis', '2026-10-31', 10, 'site'), hour('Luis', '2026-11-03', 10, 'none'), hour('Priya', '2026-10-31', 10.5, 'site'), hour('Dana', '2026-10-12', 4, 'elsewhere')]
 
-function draw(over: { records?: TripRecord[]; hours?: TripHourRow[] | null; hoursState?: TripsHoursState; noSitePoint?: boolean; phone?: boolean; canWrite?: boolean } = {}) {
-  const presses = { onAdd: vi.fn(), onChange: vi.fn(), onDelete: vi.fn(), onReload: vi.fn() }
+const OFFERS: TripOfferLine[] = [
+  { key: 'a', words: 'Omar punched in at Heron Point on 4 days, Sep 8 to 11. No trip covers those days.' },
+  { key: 'b', words: 'Walt punched in at Heron Point on 1 day, Sep 21. No trip covers that day.' },
+]
+
+function draw(over: { records?: TripRecord[]; hours?: TripHourRow[] | null; hoursState?: TripsHoursState; noSitePoint?: boolean; phone?: boolean; canWrite?: boolean; offers?: TripOfferLine[]; moreOffersWords?: string | null; offerBusy?: boolean; evidence?: Map<string, TripEvidence> } = {}) {
+  const presses = { onAdd: vi.fn(), onChange: vi.fn(), onDelete: vi.fn(), onReload: vi.fn(), onOfferMake: vi.fn(), onOfferDismiss: vi.fn() }
   const hours = over.hours === undefined ? HOURS : over.hours
   const model = buildTripsLook({ records: over.records ?? RECORDS, index: NO_TRIP_PEOPLE, hours, todayYmd: TODAY })
   renderWithProviders(
-    <DevelopmentTripsLook model={model} hoursState={over.hoursState ?? (hours ? 'read' : 'reading')} noSitePoint={over.noSitePoint ?? false} failure={null} todayYmd={TODAY} phone={over.phone ?? false} jobLabel={(id) => (id === 'j1' ? 'J2101 Rough-in: lodge and bunkhouse' : null)} canWrite={over.canWrite ?? true} {...presses} />,
+    <DevelopmentTripsLook model={model} hoursState={over.hoursState ?? (hours ? 'read' : 'reading')} noSitePoint={over.noSitePoint ?? false} failure={null} todayYmd={TODAY} phone={over.phone ?? false} jobLabel={(id) => (id === 'j1' ? 'J2101 Rough-in: lodge and bunkhouse' : null)} canWrite={over.canWrite ?? true} offers={over.offers} moreOffersWords={over.moreOffersWords} offerBusy={over.offerBusy} evidence={over.evidence} {...presses} />,
   )
   return presses
 }
@@ -160,5 +167,68 @@ describe('DevelopmentTripsLook', () => {
     draw({ phone: true })
     expect(screen.getAllByTestId('trip-row')).toHaveLength(3)
     expect(screen.getByTestId('trips-band-site').textContent).toBe('20.5 h')
+  })
+
+  it('offers each run of punches above the rows, with Make it a trip and Not a trip', () => {
+    const presses = draw({ offers: OFFERS })
+    const offers = screen.getAllByTestId('trips-offer')
+    expect(offers.map((o) => o.textContent)).toEqual([`Looks like a trip. ${OFFERS[0]!.words}Make it a tripNot a trip`, `Looks like a trip. ${OFFERS[1]!.words}Make it a tripNot a trip`])
+    expect(screen.queryByTestId('trips-offers-more')).toBeNull()
+    // Between the year strip and the rows.
+    const order = [...screen.getByTestId('trips-look').querySelectorAll('[data-testid="trips-strip"], [data-testid="trips-offers"], [data-testid="trips-rows"]')].map((n) => n.getAttribute('data-testid'))
+    expect(order).toEqual(['trips-strip', 'trips-offers', 'trips-rows'])
+    fireEvent.click(within(offers[1]!).getByText('Make it a trip'))
+    expect(presses.onOfferMake).toHaveBeenCalledWith('b')
+    fireEvent.click(within(offers[0]!).getByText('Not a trip'))
+    expect(presses.onOfferDismiss).toHaveBeenCalledWith('a')
+  })
+
+  it('says in one quiet line how many more offers wait', () => {
+    draw({ offers: OFFERS, moreOffersWords: '2 more look like trips. They show as these are settled.' })
+    expect(screen.getByTestId('trips-offers-more').textContent).toBe('2 more look like trips. They show as these are settled.')
+  })
+
+  it('shows no offer to a reader who cannot write, while the hours are not read, or on a site with no point', () => {
+    draw({ offers: OFFERS, canWrite: false })
+    expect(screen.queryByTestId('trips-offers')).toBeNull()
+    cleanup()
+    draw({ offers: OFFERS, hours: null, hoursState: 'reading' })
+    expect(screen.queryByTestId('trips-offers')).toBeNull()
+    cleanup()
+    draw({ offers: OFFERS, noSitePoint: true })
+    expect(screen.queryByTestId('trips-offers')).toBeNull()
+  })
+
+  it('offers on a site with no trip yet, and holds both presses while one is being kept', () => {
+    draw({ records: [], offers: OFFERS, offerBusy: true })
+    const offer = screen.getAllByTestId('trips-offer')[0]!
+    expect((within(offer).getByText('Make it a trip') as HTMLButtonElement).disabled).toBe(true)
+    expect((within(offer).getByText('Not a trip') as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('stacks an offer on a phone, its two presses under the sentence', () => {
+    draw({ offers: OFFERS, phone: true })
+    const offer = screen.getAllByTestId('trips-offer')[0]!
+    expect(offer.style.flexDirection).toBe('column')
+    expect(within(offer).getAllByRole('button').map((b) => b.textContent)).toEqual(['Make it a trip', 'Not a trip'])
+  })
+
+  it('says what shows an open trip under the counted table, green above zero and grey at zero', () => {
+    draw({ evidence: new Map([['t5', { punchesAtSite: 8, stamps: 0, historyLines: 3 }]]) })
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[1]!)
+    const shows = screen.getByTestId('trip-open-shows')
+    expect(shows.textContent).toBe('What shows it8 punches at the site0 On my way and I’m here stamps3 lines in History')
+    expect([...shows.querySelectorAll('[data-tone]')].map((c) => c.getAttribute('data-tone'))).toEqual(['green', 'plain', 'plain'])
+    // After the counted table, on the same side.
+    expect(screen.getByTestId('trip-open-counted').compareDocumentPosition(shows) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('draws no What shows it for a trip with no counts yet, and keeps the amber sentence about no punch', () => {
+    draw({ evidence: new Map([['t1', { punchesAtSite: 0, stamps: 0, historyLines: 0 }]]) })
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[1]!)
+    expect(screen.queryByTestId('trip-open-shows')).toBeNull()
+    fireEvent.click(screen.getAllByTestId('trip-row-press')[2]!)
+    expect(screen.getByTestId('trip-open-no-punch').textContent).toBe('No punch at the site on this trip’s days. The days stand as painted.')
+    expect(screen.getByTestId('trip-shows-punches').textContent).toBe('0 punches at the site')
   })
 })

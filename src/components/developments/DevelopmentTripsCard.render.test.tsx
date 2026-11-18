@@ -2,7 +2,8 @@
 /**
  * The Trips card (punch list #379, PR 3): it draws the look only on a site that shows it, opens the sheet for
  * the site's first trip from the page's own door, saves through the hook, and deletes with a question and an
- * undo. Every name here is made up.
+ * undo. PR 5: it offers a run of punches no trip covers as Looks like a trip, opens the sheet filled from them,
+ * remembers Not a trip with an undo, and counts What shows it. Every name here is made up.
  */
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -31,20 +32,46 @@ const LABOR: SiteLaborRead = {
     daysKnown: true,
   },
 }
-const punch = { user_id: 'u-luis', work_date: '2026-10-31', clock_in_lat: 35.001, clock_in_lng: -76.601, clock_in_location_source: 'gps', arrived_lat: null, arrived_lng: null, arrived_location_source: null, clock_out_lat: null, clock_out_lng: null, clock_out_location_source: null }
+const punch = { user_id: 'u-luis', work_date: '2026-10-31', clock_in_lat: 35.001, clock_in_lng: -76.601, clock_in_location_source: 'gps', arrived_lat: null, arrived_lng: null, arrived_location_source: null, clock_out_lat: null, clock_out_lng: null, clock_out_location_source: null, travel_started_at: null, arrived_at: null }
 
 function state(over: Partial<SiteTripsState> = {}): SiteTripsState {
   return {
     records: [lifts], failure: null, miles: 1180.4, sitePoint: { lat: 35, lng: -76.6 }, sitePointKnown: true, shows: true,
-    roster: [{ id: 'p-luis', name: 'Luis', userId: 'u-luis' }, { id: 'p-dana', name: 'Dana', userId: null }], punches: [punch], punchesFailed: false,
-    askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), ...over,
+    roster: [{ id: 'p-luis', name: 'Luis', userId: 'u-luis' }, { id: 'p-dana', name: 'Dana', userId: null }], punches: [punch], punchesFailed: false, dismissals: [], names: new Map(),
+    askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), dismiss: vi.fn(async () => []), undismiss: vi.fn(async () => undefined), ...over,
   }
 }
-function draw(trips: SiteTripsState, addSignal = 0, laborRead: SiteLaborRead | undefined = LABOR) {
-  const ui = (signal: number) => <DevelopmentTripsCard anchorId="development-trips" developmentId="d1" siteName="Heron Point" trips={trips} laborRead={laborRead} jobs={[{ id: 'j1', label: 'J2101', name: 'Rough-in' }]} todayYmd={TODAY} phone={false} foldFor={(line) => ({ open: true, onToggle: () => {}, line })} addSignal={signal} />
+const NO_DAYS: string[] = []
+function draw(trips: SiteTripsState, addSignal = 0, laborRead: SiteLaborRead | undefined = LABOR, more: { historyDays?: string[]; onOffers?: (count: number) => void } = {}) {
+  const lines: string[] = []
+  const ui = (signal: number) => (
+    <DevelopmentTripsCard
+      anchorId="development-trips"
+      developmentId="d1"
+      siteName="Heron Point"
+      trips={trips}
+      laborRead={laborRead}
+      jobs={[{ id: 'j1', label: 'J2101', name: 'Rough-in' }]}
+      todayYmd={TODAY}
+      phone={false}
+      foldFor={(line) => {
+        lines.push(line)
+        return { open: true, onToggle: () => {}, line }
+      }}
+      addSignal={signal}
+      historyDays={more.historyDays ?? NO_DAYS}
+      onOffers={more.onOffers}
+    />
+  )
   const view = renderWithProviders(ui(addSignal))
-  return { bump: (signal: number) => view.rerender(ui(signal)) }
+  return { bump: (signal: number) => view.rerender(ui(signal)), lines }
 }
+
+// Omar punched in at the site on four days in September, and no trip covers them.
+const OMAR = { id: 'p-omar', name: 'Omar', userId: 'u-omar' }
+const omarPunches = ['2026-09-08', '2026-09-09', '2026-09-10', '2026-09-11'].map((work_date) => ({ ...punch, user_id: 'u-omar', work_date }))
+const withOmar = (over: Partial<SiteTripsState> = {}): SiteTripsState => state({ roster: [{ id: 'p-luis', name: 'Luis', userId: 'u-luis' }, OMAR], punches: [punch, ...omarPunches], ...over })
+const OFFER_WORDS = 'Looks like a trip. Omar punched in at Heron Point on 4 days, Sep 8 to 11. No trip covers those days.'
 
 describe('DevelopmentTripsCard', () => {
   it('draws the look with the site’s hours laid over the trip, and how far the site is', () => {
@@ -116,5 +143,102 @@ describe('DevelopmentTripsCard', () => {
   it('names a trip by its days', () => {
     expect(tripNameWords(lifts, TODAY)).toBe('the trip of Oct 30 to Nov 1')
     expect(tripNameWords(newTripRecord({ id: 'e', developmentId: 'd1' }), TODAY)).toBe('this trip')
+  })
+
+  it('offers a run of punches at the site that no trip covers, says so in its one line, and tells the page how many', () => {
+    const onOffers = vi.fn()
+    const { lines } = draw(withOmar(), 0, LABOR, { onOffers })
+    expect(screen.getAllByTestId('trips-offer').map((o) => o.textContent)).toEqual([`${OFFER_WORDS}Make it a tripNot a trip`])
+    expect(lines[lines.length - 1]).toBe('1 trip · 1 looks like a trip')
+    expect(onOffers).toHaveBeenLastCalledWith(1)
+  })
+
+  it('offers nothing for days a trip covers, and tells the page none', () => {
+    const onOffers = vi.fn()
+    draw(state(), 0, LABOR, { onOffers })
+    expect(screen.queryByTestId('trips-offers')).toBeNull()
+    expect(onOffers).toHaveBeenLastCalledWith(0)
+  })
+
+  it('offers nothing while the hours are not read, on a site with no point, or while Not a trip is not read', () => {
+    const reading = draw(withOmar(), 0, { state: 'reading' })
+    expect(screen.queryByTestId('trips-offers')).toBeNull()
+    // The punches are in, so the one line still counts it: the fold says it before the hours are read.
+    expect(reading.lines[reading.lines.length - 1]).toBe('1 trip · 1 looks like a trip')
+    cleanup()
+    draw(withOmar({ sitePoint: null }))
+    expect(screen.queryByTestId('trips-offers')).toBeNull()
+    cleanup()
+    const { lines } = draw(withOmar({ dismissals: null }))
+    expect(screen.queryByTestId('trips-offers')).toBeNull()
+    expect(lines[lines.length - 1]).toBe('1 trip')
+  })
+
+  it('passes over days somebody said were not a trip', () => {
+    draw(withOmar({ dismissals: [{ id: 'x1', development_id: 'd1', job_id: null, person_id: 'p-omar', user_id: 'u-omar', person_name: 'Omar', first_day: '2026-09-08', last_day: '2026-09-11' }] }))
+    expect(screen.queryByTestId('trips-offers')).toBeNull()
+  })
+
+  it('names a login with no roster row from the names read, and Someone until then', () => {
+    const noRow = { roster: [{ id: 'p-luis', name: 'Luis', userId: 'u-luis' }] }
+    draw(withOmar(noRow))
+    expect(screen.getByTestId('trips-offer').textContent).toContain('Someone punched in at Heron Point on 4 days')
+    cleanup()
+    draw(withOmar({ ...noRow, names: new Map([['u-omar', 'Omar']]) }))
+    expect(screen.getByTestId('trips-offer').textContent).toContain('Omar punched in at Heron Point on 4 days')
+  })
+
+  it('Make it a trip opens the sheet filled from the punches, and saves nothing until Save', async () => {
+    const trips = withOmar()
+    draw(trips)
+    fireEvent.click(screen.getByText('Make it a trip'))
+    const sheet = screen.getByTestId('trip-sheet')
+    expect(sheet.textContent).toContain('Omar')
+    expect(trips.save).not.toHaveBeenCalled()
+    expect(trips.dismiss).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Save the trip'))
+    await waitFor(() => expect(trips.save).toHaveBeenCalled())
+    const saved = (trips.save as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as TripRecord
+    expect(saved).toMatchObject({ developmentId: 'd1', people: [{ personId: 'p-omar', userId: 'u-omar', name: 'Omar', days: { '2026-09-08': 'site', '2026-09-09': 'site', '2026-09-10': 'site', '2026-09-11': 'site' } }] })
+    expect(saved.id).toMatch(/^[0-9a-f-]{36}$/)
+  })
+
+  it('closing the sheet opened from an offer keeps nothing, and the offer stays', () => {
+    const trips = withOmar()
+    draw(trips)
+    fireEvent.click(screen.getByText('Make it a trip'))
+    fireEvent.click(screen.getByLabelText('Close'))
+    expect(screen.queryByTestId('trip-sheet')).toBeNull()
+    expect(trips.save).not.toHaveBeenCalled()
+    expect(screen.getByTestId('trips-offer')).toBeTruthy()
+  })
+
+  it('Not a trip remembers one row a person, and Undo takes the same rows back', async () => {
+    const row = { development_id: 'd1', job_id: null, person_id: 'p-omar', user_id: 'u-omar', person_name: 'Omar', first_day: '2026-09-08', last_day: '2026-09-11' }
+    const trips = withOmar({ dismiss: vi.fn(async () => [{ id: 'x1', ...row }]) })
+    draw(trips)
+    fireEvent.click(screen.getByText('Not a trip'))
+    await waitFor(() => expect(trips.dismiss).toHaveBeenCalledWith([row]))
+    expect(await screen.findByText('Not a trip: Omar, Sep 8 to 11. Those days are not offered again. No clock row changed.')).toBeTruthy()
+    expect(trips.save).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Undo'))
+    await waitFor(() => expect(trips.undismiss).toHaveBeenCalledWith(['x1']))
+  })
+
+  it('names the reason when Not a trip is not remembered', async () => {
+    const trips = withOmar({ dismiss: vi.fn(async () => Promise.reject(new Error('Not a trip is said by the office or a leader.'))) })
+    draw(trips)
+    fireEvent.click(screen.getByText('Not a trip'))
+    await waitFor(() => expect(screen.getByText('Not a trip is said by the office or a leader.')).toBeTruthy())
+    expect(screen.queryByText('Undo')).toBeNull()
+  })
+
+  it('says what shows an open trip: its punches at the site, its stamps and the History lines on its days', () => {
+    const stamped = { ...punch, travel_started_at: '2026-10-31T12:05:00Z', arrived_at: '2026-10-31T12:40:00Z' }
+    draw(state({ punches: [stamped, { ...punch, work_date: '2026-10-12' }] }), 0, LABOR, { historyDays: ['2026-10-30', '2026-10-31', '2026-10-31', '2026-09-01'] })
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    expect(screen.getByTestId('trip-open-shows').textContent).toBe('What shows it1 punch at the site2 On my way and I’m here stamps3 lines in History')
+    expect(screen.getByTestId('trip-shows-punches').getAttribute('data-tone')).toBe('green')
+    expect(screen.getByTestId('trip-shows-lines').getAttribute('data-tone')).toBe('plain')
   })
 })

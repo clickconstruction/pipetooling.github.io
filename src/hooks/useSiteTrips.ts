@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { normalizeAddressForGeocodeKey } from '../lib/map/normalizeAddressForGeocode'
 import { resolveOfficeAnchor } from '../lib/officeAddressSettings'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
+import { readUserNames } from '../lib/developments/fetchDevelopmentPage'
 import type { LatLng } from '../lib/jobTravelEstimate'
 import type { PunchRow } from '../lib/trips/tripHourRows'
+import type { TripDismissalInsert, TripDismissalRow } from '../lib/trips/tripOffers'
 import { milesFromShop, tripsLookShows } from '../lib/trips/tripPlace'
 import type { TripRecord, TripRosterPerson } from '../lib/trips/tripRecord'
-import { deleteTrip, readSitePunches, readSiteTrips, readTripRoster, saveTrip } from '../lib/trips/tripsIo'
+import { deleteTrip, deleteTripDismissals, insertTripDismissals, readSiteDismissals, readSitePunches, readSiteTrips, readTripRoster, saveTrip } from '../lib/trips/tripsIo'
 import { useAddressGeocodeCoords } from './useAddressGeocodeCoords'
 
 /**
@@ -16,7 +18,8 @@ import { useAddressGeocodeCoords } from './useAddressGeocodeCoords'
  * 1. The trips themselves, and how far the site is from the shop. Both are small and decide whether the
  *    Trips look shows at all: a site with a trip, or a site far from the shop.
  * 2. Once the look shows, the roster and the punches on the site's jobs, which lay the clock's hours over
- *    the trips' days.
+ *    the trips' days, and the days somebody said were Not a trip (PR 5), so Looks like a trip passes them over.
+ * 3. Once the punches are in, the names of the logins on them that have no roster row, read once.
  *
  * `enabled` false reads nothing (a reader outside the office door). The io is injectable for tests.
  */
@@ -25,8 +28,14 @@ export type SiteTripsIo = {
   readRoster: () => Promise<TripRosterPerson[]>
   readPunches: (jobIds: ReadonlyArray<string>) => Promise<PunchRow[]>
   readShop: () => Promise<LatLng | null>
+  /** The days on the site somebody said were not a trip. */
+  readDismissals: (developmentId: string) => Promise<TripDismissalRow[]>
+  /** The names of logins, by user id. */
+  readNames: (userIds: ReadonlyArray<string>) => Promise<Map<string, string>>
   save: (record: TripRecord) => Promise<void>
   remove: (id: string) => Promise<void>
+  dismiss: (rows: ReadonlyArray<TripDismissalInsert>) => Promise<TripDismissalRow[]>
+  undismiss: (ids: ReadonlyArray<string>) => Promise<void>
 }
 
 export const supabaseSiteTripsIo: SiteTripsIo = {
@@ -37,9 +46,16 @@ export const supabaseSiteTripsIo: SiteTripsIo = {
     const anchor = await resolveOfficeAnchor()
     return anchor ? { lat: anchor.lat, lng: anchor.lng } : null
   },
+  readDismissals: readSiteDismissals,
+  // Called late, so a test that stands in for the page's fetch need not stand in for this name read.
+  readNames: (userIds) => readUserNames(userIds),
   save: saveTrip,
   remove: deleteTrip,
+  dismiss: insertTripDismissals,
+  undismiss: deleteTripDismissals,
 }
+
+const NO_NAMES: ReadonlyMap<string, string> = new Map()
 
 export type SiteTripsState = {
   /** Null until the first read is in. */
@@ -57,11 +73,19 @@ export type SiteTripsState = {
   /** The punches on the site's jobs; null while reading, and `punchesFailed` when they would not read. */
   punches: PunchRow[] | null
   punchesFailed: boolean
+  /** The days somebody said were Not a trip; null while reading, or when they would not read, so nothing is offered twice. */
+  dismissals: TripDismissalRow[] | null
+  /** The names of the logins on the punches that have no roster row, by user id; empty until read. */
+  names: ReadonlyMap<string, string>
   /** Ask for the roster before the look shows: the sheet for a site's first trip needs it. */
   askRoster: () => void
   reload: () => void
   save: (record: TripRecord) => Promise<void>
   remove: (id: string) => Promise<void>
+  /** Remember Not a trip, one row a person; the rows come back with their ids. */
+  dismiss: (rows: ReadonlyArray<TripDismissalInsert>) => Promise<TripDismissalRow[]>
+  /** Take a Not a trip back by its rows' ids. */
+  undismiss: (ids: ReadonlyArray<string>) => Promise<void>
 }
 
 export function useSiteTrips({ developmentId, jobIds, address, enabled, io = supabaseSiteTripsIo }: { developmentId: string; jobIds: ReadonlyArray<string>; address: string | null; enabled: boolean; io?: SiteTripsIo }): SiteTripsState {
@@ -71,6 +95,8 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
   const [shop, setShop] = useState<LatLng | null>(null)
   const [roster, setRoster] = useState<TripRosterPerson[] | null>(null)
   const [punchRead, setPunchRead] = useState<{ key: string; rows: PunchRow[] | null; failed: boolean } | null>(null)
+  const [dismissRead, setDismissRead] = useState<{ key: string; rows: TripDismissalRow[] } | null>(null)
+  const [names, setNames] = useState<ReadonlyMap<string, string>>(NO_NAMES)
   const [rosterWanted, setRosterWanted] = useState(false)
   const [gen, setGen] = useState(0)
 
@@ -137,6 +163,39 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
     }
   }, [punchKey, io, gen])
 
+  // Not a trip, by the site. A read that fails leaves it unknown, and the look then offers nothing.
+  const dismissKey = shows ? developmentId : ''
+  useEffect(() => {
+    if (!dismissKey) return
+    let live = true
+    io.readDismissals(dismissKey).then(
+      (rows) => live && setDismissRead({ key: dismissKey, rows }),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [dismissKey, io, gen])
+
+  // The logins on the punches with no roster row: an offer names them, so their names are read once.
+  const punchRows = punchRead && punchRead.key === punchKey ? punchRead.rows : null
+  const namelessKey = useMemo(() => {
+    if (!roster || !punchRows) return ''
+    const onRoster = new Set(roster.map((r) => r.userId))
+    return [...new Set(punchRows.map((p) => p.user_id).filter((id) => id && !onRoster.has(id)))].sort().join(',')
+  }, [roster, punchRows])
+  useEffect(() => {
+    if (!namelessKey) return
+    let live = true
+    io.readNames(namelessKey.split(',')).then(
+      (read) => live && setNames(read),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [namelessKey, io])
+
   const reload = useCallback(() => setGen((g) => g + 1), [])
   const askRoster = useCallback(() => setRosterWanted(true), [])
   const save = useCallback(
@@ -155,6 +214,23 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
     [io],
   )
 
+  const dismiss = useCallback(
+    async (rows: ReadonlyArray<TripDismissalInsert>) => {
+      const made = await io.dismiss(rows)
+      setDismissRead((prev) => (prev ? { key: prev.key, rows: [...prev.rows, ...made] } : prev))
+      return made
+    },
+    [io],
+  )
+  const undismiss = useCallback(
+    async (ids: ReadonlyArray<string>) => {
+      await io.undismiss(ids)
+      setDismissRead((prev) => (prev ? { key: prev.key, rows: prev.rows.filter((r) => !ids.includes(r.id)) } : prev))
+    },
+    [io],
+  )
+
   const punches = punchRead && punchRead.key === punchKey ? punchRead : null
-  return { records, failure, miles, sitePoint, sitePointKnown, shows, roster, punches: punches?.rows ?? (punchKey ? null : []), punchesFailed: !!punches?.failed, askRoster, reload, save, remove }
+  const dismissals = dismissRead && dismissRead.key === dismissKey ? dismissRead.rows : null
+  return { records, failure, miles, sitePoint, sitePointKnown, shows, roster, punches: punches?.rows ?? (punchKey ? null : []), punchesFailed: !!punches?.failed, dismissals, names, askRoster, reload, save, remove, dismiss, undismiss }
 }
