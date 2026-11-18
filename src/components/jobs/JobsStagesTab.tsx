@@ -2638,6 +2638,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     loadJobs,
     jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
     onOpenJobContract: openContractChip,
+    legalMatterByJobId: legalMatters.byJobId,
     propertyKindByJobId: propertyKinds.byJobId,
     onPropertyKindSaved: propertyKinds.setKind,
     propertyLinkByJobId: propertyKinds.linkByJobId,
