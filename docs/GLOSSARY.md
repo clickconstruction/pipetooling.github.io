@@ -6159,6 +6159,7 @@ its kernels (`src/lib/mail/`, v2.5375) carry the run's **Mail through Docsmit** 
 It lists every mailed file with its own link, then each envelope with its number and its receipt.
 **Mail proof** is its count: the files count as one piece and each posted copy's receipt as one, so *Mail proof: 2 of 3 on file* names one thing missing and the **Next:** line says which.
 A copy sent by email, handed over or carried by a mail provider owes no receipt.
+Since v2.7871 the three screens that open a stop's window share one reading, `lienStopProof.ts`, so a filed lien on a job under a GC shows the contractor's card and counts its receipt on each of them, before that copy has any record.
 Since v2.7785 a recipient's card in the stop's window carries the press for the one thing its copy lacks (`lienMailProofDoor.ts`): **Enter the owner of record ›**, **Print the copies to mail ›** (*Mail this copy ›* until v2.7798), **Enter the mail number ›** or **Add the receipt ›**.
 The press closes the stop's window and opens the place where that is entered, for the office alone: the property record, *Filed liens: copies to mail* at the job's line, or the job's Lien window at the paper's row.
 **Print the copies to mail** and **Enter mail numbers** are the two names of one step, a filed lien's copies under § 53.055, by the stage the copies are at (`lienServeStage.ts`, v2.7798).
