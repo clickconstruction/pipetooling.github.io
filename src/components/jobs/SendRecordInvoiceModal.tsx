@@ -142,6 +142,7 @@ import { invoiceDescriptionsNeedLowercaseLeadingHint } from '../../lib/invoiceLi
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { SendRecordInvoicePayload } from './SendRecordInvoiceModal.types'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { BillCustomerDisclosure } from './BillCustomerDisclosure'
 import { BillCustomerEditDatesDialog } from './BillCustomerEditDatesDialog'
 import { BillCustomerMadeEmailLine } from './BillCustomerMadeEmailLine'
 import { BillCustomerMemoPresetRow } from './BillCustomerMemoPresetRow'
@@ -153,7 +154,6 @@ import { BillCustomerSendTo } from './BillCustomerSendTo'
 import { BillCustomerStripeModifications } from './BillCustomerStripeModifications'
 import {
   BILL_CUSTOMER_DATE_INPUT_STYLE,
-  BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
   BILL_CUSTOMER_FIELD_LABEL_STYLE,
   BILL_CUSTOMER_PHYSICAL_DATE_LINK_BUTTON_STYLE,
   BILL_CUSTOMER_TEXTAREA_STYLE,
@@ -2532,47 +2532,15 @@ export default function SendRecordInvoiceModal({
               <label style={BILL_CUSTOMER_FIELD_LABEL_STYLE}>Date</label>
               <input type="date" value={sentDate} onChange={(e) => setSentDate(e.target.value)} style={BILL_CUSTOMER_DATE_INPUT_STYLE} />
             </div>
-            <button
-              type="button"
-              aria-expanded={memoSectionOpen}
-              aria-controls="bill-customer-hcp-memo-section-panel"
-              onClick={() => setMemoSectionOpen((v) => !v)}
-              style={{
-                ...BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE,
-                marginBottom: memoSectionOpen ? '0.35rem' : '0.65rem',
-              }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
-                <span style={{ fontSize: '0.75rem', flexShrink: 0 }} aria-hidden>
-                  {memoSectionOpen ? '▼' : '\u25b6'}
-                </span>
-                <span
-                  id="bill-customer-hcp-memo-disclosure-heading"
-                  style={{
-                    fontWeight: 500,
-                    fontSize: '0.875rem',
-                    color: 'var(--text-700)',
-                  }}
-                >
-                  Memo
-                </span>
-              </span>
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  color: 'var(--text-muted)',
-                  flexShrink: 0,
-                }}
-              >
-                {billCustomerMemoSummaryLine(externalNote)}
-              </span>
-            </button>
-            <div
-              id="bill-customer-hcp-memo-section-panel"
-              role="region"
-              aria-labelledby="bill-customer-hcp-memo-disclosure-heading"
-              hidden={!memoSectionOpen}
-              style={{ marginBottom: '0.75rem' }}
+            <BillCustomerDisclosure
+              panelId="bill-customer-hcp-memo-section-panel"
+              headingId="bill-customer-hcp-memo-disclosure-heading"
+              title="Memo"
+              summary={billCustomerMemoSummaryLine(externalNote)}
+              open={memoSectionOpen}
+              onToggle={() => setMemoSectionOpen((v) => !v)}
+              toggleMarginBottom={memoSectionOpen ? '0.35rem' : '0.65rem'}
+              panelMarginBottom="0.75rem"
             >
               <span style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>
                 ({externalNote.length} / {BILL_CUSTOMER_MEMO_MAX_CHARS})
@@ -2588,7 +2556,7 @@ export default function SendRecordInvoiceModal({
                 rows={3}
                 style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: 0 }}
               />
-            </div>
+            </BillCustomerDisclosure>
             {outsideError && <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{outsideError}</p>}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
               <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>
