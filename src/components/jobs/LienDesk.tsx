@@ -1774,11 +1774,9 @@ export default function LienDesk({
   const gcNoticeShown = kind === 'notice' && office && !!onPutGcOnNotice && gcPickerOptions.length > 0
   const recordsDoorShown = office && !!onOpenOwnerRecords
   // What the title bar has room for, measured from the bar it drew (`useLienDeskTitleBarFit`, v2.7586).
-  const { titleBarRef, titleLineFit, pileLineFit } = useLienDeskTitleBarFit({ isMobile, paperShown, gcNoticeShown, kind })
+  const { titleBarRef, titleLineFit, pileLineFit, papersFit } = useLienDeskTitleBarFit({ isMobile, paperShown, gcNoticeShown, kind })
   // The first tab's words (v2.7465): on a computer the page's name and the count, on a phone *To do · N* under the title's own row.
   const firstTab = lienDeskFirstTab({ isMobile, count: data ? lienNextUpCount(nextUpRows) : null })
-  // The title bar's shape on this screen: where the tools sit, whether it has a second line, and whether that line breaks before its span (v2.7213, v2.7277, v2.7311; no door of its own since v2.7780).
-  const titleBar = lienDeskTitleBarLayout({ isMobile, fit: titleLineFit, pileFit: pileLineFit, paperShown, gcNotice: gcNoticeShown })
   const moreRun = runDoorShown ? { label: runDoor.label, count: runDoor.count, hint: runDoorHint } : null
   const moreRows = lienDeskMoreRows({ run: moreRun, gcNotice: gcNoticeShown, legendLabel: LIEN_DESK_LEGEND.label, caller: office, share: !!data, ownerRecords: recordsDoorShown })
   const moreButton = lienDeskMoreButton(moreRun)
@@ -2335,6 +2333,10 @@ export default function LienDesk({
     const on = retPile === p.key
     return [pileChip(p.key, p.label, n, on, () => setRetPile(on ? null : p.key))]
   })
+  // The pile chips in the header on a computer: Lien affidavits' or Retainage notices', when a pile has a chip to draw.
+  const headerPileChips = !isMobile && (kind === 'retainage' || kind === 'affidavit') ? (kind === 'retainage' ? retPileChips : affPileChips) : []
+  // The title bar's shape on this screen: where the tools and the paper tabs sit, whether it has a second line, and whether that line breaks before its span (v2.7213, v2.7277, v2.7311; no door of its own since v2.7780; the papers up on the title line where it has room since v2.7789).
+  const titleBar = lienDeskTitleBarLayout({ isMobile, fit: titleLineFit, pileFit: pileLineFit, papersFit, paperShown, gcNotice: gcNoticeShown, piles: headerPileChips.length > 0 })
   // On a phone the chips are one strip that slides sideways, the first thing in the list's own scroller.
   const pileStrip = (chips: ReactNode[]) => (isMobile && chips.length > 0 ? <div data-lien-desk-piles style={{ display: 'flex', gap: 8, padding: '8px 12px', overflowX: 'auto', borderBottom: '1px solid var(--border)' }}>{chips}</div> : null)
 
@@ -2722,6 +2724,10 @@ export default function LienDesk({
     : kind === 'notice' && footer ? (footInPane ? (noticeFootHome ? createPortal(noticeFooterStrip, noticeFootHome) : null) : noticeFooterStrip)
     : null
   const paneColumn = (node: ReactNode) => (footerHome.column ? <div data-lien-desk-pane-column style={footerHome.column}>{node}{paneFooter}</div> : node)
+  // By paper's three paper tabs, drawn on the title line or leading the second (`titleBar.papers`, v2.7789).
+  const paperTabs = paperShown ? (
+    <LienDeskPaperTabs isMobile={isMobile} kind={kind} toolsOnTitleLine={titleBar.tools === 'title_line'} onTitleLine={titleBar.papers === 'title_line'} noticeCount={counts ? entries.filter((e) => e.pile !== 'sent').length : null} affCount={data ? affCount : null} retCount={data ? retCount : null} onPick={setKind} />
+  ) : null
   return (
     <section aria-label="Lien desk" data-lien-desk-page style={{ display: 'contents' }}>
       <div style={panelStyle} data-lien-desk-panel="page">
@@ -2761,6 +2767,8 @@ export default function LienDesk({
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
           {/* Four views: To do, By date, By paper, By job. The first three are punch list #82, PR 5 (named Next up, Calendar, All paper until v2.4630 and Do now, Deadlines, All filings until v2.7207, the owner's pick: the first is the work, the other two the same jobs sorted two ways; only To do carries a count). By paper holds the three papers' lists as a second row. By job is the list that was Timeline in that row until v2.7219, the owner's pick of 2026-11-13: it is every job's path, not a kind of paper. */}
           <LienDeskViewTabs kindTabs={kindTabs} isMobile={isMobile} kind={kind} paperShown={paperShown} firstTab={firstTab} onTitle={() => { setKind('next'); bringBoard() }} onPick={(v) => setKind(v === 'paper' ? lastPaperKind : v)} />
+          {/* By paper's three paper tabs ride the title line, between the views and the tools, when the measured line holds them all (v2.7789, the owner's ask of 2026-11-18: "when it can fit, I would like to move this section up into this space, but when it cant fit it should wrap like it has been"). `lienDeskPapersFit` decides, never a wrap. */}
+          {titleBar.papers === 'title_line' ? paperTabs : null}
           {/* In a window wide enough for both (v2.7213, the owner's screenshot at 1,846 px) the tools end the title line, pushed right: nothing is hidden and the bar loses its half-empty second line. */}
           {/* The owner-records door was a tool here, then under the presses (v2.7277, v2.7311), until v2.7780: it is a row of the window ☎ opens. */}
           {titleBar.tools === 'title_line' ? (
@@ -2780,12 +2788,11 @@ export default function LienDesk({
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}
           {/* With the tools up on the title line (v2.7213) the paper tabs are the tallest thing some kinds have here: 2px above and below keeps this line as tall as it is with the GC door, so the bar does not move between Notices and Affidavits. */}
-          {paperShown ? (
-            <LienDeskPaperTabs isMobile={isMobile} kind={kind} toolsOnTitleLine={titleBar.tools === 'title_line'} noticeCount={counts ? entries.filter((e) => e.pile !== 'sent').length : null} affCount={data ? affCount : null} retCount={data ? retCount : null} onPick={setKind} />
-          ) : null}
+          {/* The papers lead the second line where the title line has no room for them, as since v2.3817, and always on a phone. */}
+          {titleBar.papers === 'second_line' ? paperTabs : null}
           {/* The pile chips: in the header on a computer, one span so the pile line can be measured (v2.7311); on a phone a strip at the top of the list, where they scroll away with it (punch list #352, PR 1). The span's own wrapped rows keep the bar's 6 px (v2.7322), since the bar's row gap is 0 now. */}
-          {!isMobile && (kind === 'retainage' || kind === 'affidavit') && (kind === 'retainage' ? retPileChips : affPileChips).length > 0 ? (
-            <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', rowGap: LIEN_DESK_TITLE_BAR_ROW_GAP_PX, columnGap: 'inherit', minWidth: 0 }}>{kind === 'retainage' ? retPileChips : affPileChips}</span>
+          {headerPileChips.length > 0 ? (
+            <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', rowGap: LIEN_DESK_TITLE_BAR_ROW_GAP_PX, columnGap: 'inherit', minWidth: 0 }}>{headerPileChips}</span>
           ) : null}
           {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, To do doors) and the title offers *every pile* (*show every pile* until v2.7434). */}
           {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the tools when the title line has no room for them (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker. */}

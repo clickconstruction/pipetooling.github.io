@@ -6003,6 +6003,7 @@ the addresses keep `?tab=deadlines`);
 Monthly notices, Lien affidavits and Retainage notices are a second row under By paper, and since **v2.7219** By job is a fourth view beside it (the row read Notices, Affidavits, Retainage and Timeline until then;
 `?tab=timeline` still opens it).
 Since **v2.7784** a computer's tabs for the three read **Date · Paper · Job** (`lienDeskViewTab`), each still named By date, By paper and By job to a screen reader, in its hover hint, on a phone and in the guides.
+Since **v2.7789** the three paper tabs sit on the title line, between the views and the tools, on a computer whose measured title line holds them (`lienDeskPapersFit`), and lead the second row where it does not and on a phone.
 Since **v2.4718** a gate's section is a row (number · label column · the fact with its doors first · one muted line) that folds on a clear job behind its cell or *More details ∨* (the press's name since v2.7423, when it also moved up under the last open row), and gate 3 is one line (`propertyKindLine`) whose *Change ›* opens the kind switch with `propertyKindSwitchWarning` — two clicks to switch, on purpose.
 **The pay offer** (**v2.4713**): when the leader approves a § 53.056 notice, a box above the footer (`LienOfferBox`) offers a discount on each enclosed Stripe bill paid in full by a day — 10% and 14 days after mailing by default, never later than a week before the affidavit must be filed (`lienPayOffer.ts`;
 `job_lien_desk_items.offer_pct / offer_by`, master or dev only).
