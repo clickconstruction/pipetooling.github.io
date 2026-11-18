@@ -12,9 +12,10 @@ import {
   PAY_SETUP_VERBS,
   PAY_TEMPLATE_SELECT,
   PAY_USER_SELECT,
-  SALARIED_DAY_MINUTES,
+  SALARIED_DAY_HOURS_DEFAULT,
   WAGE_MAX,
   crewDays,
+  dayMinutesOf,
   isPaySetupVerb,
   payLogRow,
   payNameOf,
@@ -25,6 +26,7 @@ import {
   readPaySetupWorld,
   resolvePaySetup,
   salariedCreditHours,
+  salariedDayHoursOf,
   setPayConfigArgs,
   weeksBefore,
   workdayEndOf,
@@ -193,18 +195,18 @@ describe('plan_pay_setup — the shape', () => {
     expect(r({ person: NAME, reason: 'x', hourly_wage: WAGE_MAX })).toMatchObject({ ok: true })
   })
 
-  it('a day of any length but 8 hours is refused, never stored', () => {
-    const six = r({ person: NAME, reason: 'x', is_salary: true, workday_start: '06:00', workday_end: '12:00' })
-    expect(six).toMatchObject({ ok: false, error: expect.stringContaining('A salaried day is 8 hours in this app') })
-    expect(six).toMatchObject({ ok: false, error: expect.stringContaining('the sessions then run 06:00 to 14:00') })
-    expect(r({ person: NAME, reason: 'x', workday_start: '06:00', workday_hours: 6 })).toMatchObject({ ok: false, error: expect.stringContaining('No other length can be stored') })
-    expect(r({ person: NAME, reason: 'x', workday_start: '06:00', workday_minutes: 360 })).toMatchObject({ ok: false, error: expect.stringContaining('nothing was planned') })
+  it('the workday\'s length may be named, once, and is kept for the plan to judge', () => {
+    expect(r({ person: NAME, reason: 'x', is_salary: true, workday_start: '06:00', workday_end: '12:00' })).toMatchObject({ ok: true, p: { set: { workday_start: '06:00', workday_hours: 6 } } })
+    expect(r({ person: NAME, reason: 'x', workday_start: '06:00', workday_minutes: 360 })).toMatchObject({ ok: true, p: { set: { workday_hours: 6 } } })
+    expect(r({ person: NAME, reason: 'x', workday_start: '06:00', workday_hours: 8, workday_end: '14:00' })).toMatchObject({ ok: true, p: { set: { workday_start: '06:00', workday_hours: 8 } } })
+    expect(r({ person: NAME, reason: 'x', workday_start: '22:00', workday_end: '06:00' })).toMatchObject({ ok: true, p: { set: { workday_hours: 8 } } })
     expect(r({ person: NAME, reason: 'x', is_salary: true, workday_hours: 8 })).toMatchObject({ ok: false, error: expect.stringContaining('goes with pay.workday_start') })
-    // The one length the app holds passes, and adds nothing to the ask.
-    expect(r({ person: NAME, reason: 'x', workday_start: '06:00', workday_hours: 8, workday_end: '14:00' })).toMatchObject({ ok: true, p: { set: { workday_start: '06:00' } } })
+    expect(r({ person: NAME, reason: 'x', workday_start: '06:00', workday_hours: 6, workday_end: '14:00' })).toMatchObject({ ok: false, error: expect.stringContaining('Name the length once') })
+    expect(r({ person: NAME, reason: 'x', workday_start: '06:00', workday_hours: 0 })).toMatchObject({ ok: false, error: expect.stringContaining('over 0 and at most 24') })
+    expect(r({ person: NAME, reason: 'x', workday_start: '06:00', workday_end: 'noon' })).toMatchObject({ ok: false, error: expect.stringContaining('pay.workday_end must be HH:MM') })
     expect(workdayEndOf('06:00')).toBe('14:00')
     expect(workdayEndOf('18:30')).toBe('02:30')
-    expect(SALARIED_DAY_MINUTES).toBe(480)
+    expect(workdayEndOf('06:00', 6)).toBe('12:00')
   })
 })
 
@@ -257,8 +259,9 @@ describe('plan_pay_setup — the dry run', () => {
     expect(none.workday_template).toEqual({ exists: false })
     expect(none.clock.words).toContain('No workday template')
     expect(none.clock.words).toContain('Pass workday_start (HH:MM)')
-    expect(none.fixed_day).toContain('A salaried day is 8 hours in this app')
-    expect(none.fixed_day).toContain('06:00 to 12:00')
+    expect(none.fixed_day).toContain('A salaried day is 8 hours for this person')
+    expect(none.fixed_day).toContain('Today every salaried day is 8 hours')
+    expect(none.salaried_day_hours).toBe(8)
     const made = plan({ hourly_wage: 25, is_salary: true, workday_start: '06:00' })
     expect(made.clock.words).toContain('A workday template is made: 8 hours from 06:00 to 14:00, weekdays')
     expect(made.writes.join(' | ')).toContain('one continuous 480-minute block from 06:00, weekdays')
@@ -309,6 +312,50 @@ describe('plan_pay_setup — the dry run', () => {
     expect(p.person).toMatchObject({ pay_name: NAME, user_id: null, login: 'no users row' })
     expect(p.clock.words).toContain('has no users row, so no workday template')
     expect(p.writes.join(' | ')).not.toContain('sync_salary_clock_sessions_for_user_day')
+  })
+})
+
+describe('a salaried day\'s length is read in one place', () => {
+  it('8 hours today, and a workday of another length is refused with nothing stored', () => {
+    expect(SALARIED_DAY_HOURS_DEFAULT).toBe(8)
+    expect(salariedDayHoursOf(null)).toBe(8)
+    expect(salariedDayHoursOf(hourly)).toBe(8)
+    expect(dayMinutesOf(salariedDayHoursOf(hourly))).toBe(480)
+    const six = refusal({ hourly_wage: 25, is_salary: true, workday_start: '06:00', workday_end: '12:00' })
+    expect(six).toContain('a 6-hour workday (06:00 to 12:00) is not ZZ Test Helper\'s salaried day')
+    expect(six).toContain('A salaried day is 8 hours for this person')
+    expect(six).toContain('a person\'s own day length is not on the pay row yet')
+    expect(six).toContain('nothing was stored')
+    expect(six).toContain('the sessions then run 06:00 to 14:00')
+    // The one length the person's day holds passes, and the template is that long.
+    const eight = plan({ hourly_wage: 25, is_salary: true, workday_start: '06:00', workday_hours: 8 })
+    expect(eight.writes.join(' | ')).toContain('one continuous 480-minute block from 06:00')
+    // The kernel never writes a bare 8 or 480 where a day's length belongs.
+    const kernel = readFileSync('supabase/functions/_shared/devMcpPaySetup.ts', 'utf8')
+    expect(kernel.match(/\b480\b/g)?.length).toBe(1) // the comment that says what today's day is
+    expect(kernel).not.toMatch(/segment_a_duration_minutes: \d/)
+    expect(kernel).not.toMatch(/\* 8 \*|× 8 ×/)
+  })
+
+  it('a pay row that carries its own day is priced, credited and scheduled by it', () => {
+    // The follow-up adds salaried_day_hours to PAY_ROW_SELECT and to the ask; nothing below it moves.
+    const sixHour = world({ payRow: { ...hourly, salaried_day_hours: 6 } })
+    expect(salariedDayHoursOf(sixHour.payRow)).toBe(6)
+    const p = plan({ hourly_wage: 10, is_salary: true, start_date: '2026-11-09', workday_start: '06:00', workday_end: '12:00' }, sixHour)
+    expect(p.salaried_day_hours).toBe(6)
+    expect(p.weekly).toMatchObject({ day_hours: 6, per_week: 300, words: expect.stringContaining('$10.00/h × 6 h × 5 weekdays = $300.00 a week') })
+    expect(p.reaches_back.payroll.salaried_after).toMatchObject({ weeks: 1, hours: 30, est_gross: 300 })
+    expect(p.reaches_back.job_labor.words).toContain('reads a flat 6 h × $10.00/h')
+    expect(p.clock.words).toContain('6 hours from 06:00 to 12:00')
+    expect(p.writes.join(' | ')).toContain('one continuous 360-minute block from 06:00')
+    const r = resolvePaySetup(ask({ hourly_wage: 10, is_salary: true, workday_start: '06:00' }), sixHour)
+    if (!r.ok) throw new Error(r.refused)
+    expect(r.ops.dayHours).toBe(6)
+    expect(workdayTemplateRow(USER, '06:00', APP_CALENDAR_TZ, r.ops.dayHours)).toMatchObject({ segment_a_duration_minutes: 360, segment_a_start_local: '06:00:00' })
+    // And an 8-hour workday is then the one refused.
+    expect(refusal({ hourly_wage: 10, is_salary: true, workday_start: '06:00', workday_hours: 8 }, sixHour)).toContain('an 8-hour workday (06:00 to 14:00) is not')
+    expect(salariedCreditHours('2026-11-10', { timeOff: [], employmentStart: null, employmentEnd: null, stints: [] }, 6)).toBe(6)
+    expect(SERVER).toContain('workdayTemplateRow(ops.userId!, t.start, APP_CALENDAR_TZ, ops.dayHours)')
   })
 })
 
