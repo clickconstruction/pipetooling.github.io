@@ -124,6 +124,7 @@ describe('buildLienBoard — the bins', () => {
     const gone = bin(board, 'affidavit:missed')
     expect(gone.label).toBe('Lien day passed · not filed')
     expect(gone.chips.map((c) => [c.label, c.urgency, c.atRisk, c.daysLeft])).toEqual([['JP2', 'later', false, -5]])
+    expect(gone.chips[0]!.destination).toEqual({ kind: 'closed', jobId: '2' })
     // Drawn only while a job is in it.
     expect(lienBoardBinsShown(board.notices).map((b) => b.stage)).toContain('missed')
     expect(lienBoardBinsShown(build({}).notices).map((b) => b.stage)).not.toContain('missed')
@@ -176,7 +177,8 @@ describe('buildLienBoard — the chips', () => {
     expect(dest('in_mail')).toEqual({ kind: 'run', itemId: 'i4', jobId: '4' })
     expect(dest('sent')).toEqual({ kind: 'paper', tab: 'notices', jobId: '5' })
     expect(dest('held')).toEqual({ kind: 'paper', tab: 'notices', jobId: '6' })
-    expect(dest('missed')).toEqual({ kind: 'paper', tab: 'notices', jobId: '7' })
+    // A chip at the closed end opens the window that says what closed and asks what to do.
+    expect(dest('missed')).toEqual({ kind: 'closed', jobId: '7' })
   })
   it('names the desk door for each affidavit stage: the property line that is missing, the notice when it is the one gate left, the Lien window once filed', () => {
     const board = build({
@@ -488,6 +490,7 @@ describe('the arrows, the day words, the retainage line, the dots and the leader
     expect(lienBoardDoorWords({ kind: 'paper', tab: 'affidavits', jobId: '1' })).toBe('Open the affidavit')
     expect(lienBoardDoorWords({ kind: 'run', itemId: 'i2', jobId: '2' })).toBe('Open the run on this envelope')
     expect(lienBoardDoorWords({ kind: 'lienWindow', jobId: '3' })).toBe('Open the job’s Lien window')
+    expect(lienBoardDoorWords({ kind: 'closed', jobId: '3' })).toBe('See what closed and answer it')
   })
   it('the words constant holds every bin name once', () => {
     expect(Object.keys(LIEN_BOARD_WORDS).sort()).toEqual(['awaiting', 'filed', 'held', 'in_mail', 'needs_notice', 'needs_owner', 'needs_property', 'ready', 'sent', 'served', 'to_print', 'to_send', 'to_sign'])

@@ -5473,3 +5473,57 @@ describe('LienDesk — the last day of work, set from under the timeline’s LAS
     await waitFor(() => expect(screen.queryByTestId('lien-last-work-confirm')).toBeNull())
   })
 })
+
+describe('LienDesk — the closed end on the Board (the owner’s pick of 2026-11-18)', () => {
+  // A made-up approved affidavit whose day passed four days before TODAY with nothing filed.
+  const lateRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-10', is_sub: true, noticed: true, filed: false, open_balance: 33_500, customer_id: 'axo', gc_customer_id: 'lowbeck', property_kind: '', has_owner: true, has_legal: true, homestead: false, desk_item_id: 'it-a', desk_status: 'approved' }
+  const lateItem = { id: 'it-a', job_id: 'j650', kind: 'affidavit', months: [], status: 'approved', fields: {}, created_at: '2026-09-01T14:00:00Z', voided_at: null, sent_at: null } as unknown as LienDeskItemRow
+  const withLate = () => {
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [], true)
+    d.affidavitRows = [lateRow]
+    d.affidavits = buildLienAffidavitQueue([lateRow], [lateItem], TODAY)
+    return d
+  }
+  const closedChip = () => document.querySelector('[data-lien-board-chips="affidavit:missed"] [data-lien-board-chip="j650"]') as HTMLButtonElement
+
+  it('an approved affidavit past its day stands in Lien day passed, not in Ready to file, and the print does not count it', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withLate()} initialKind="next" />)
+    await settle()
+    const bin = document.querySelector('[data-lien-board-bin="affidavit:missed"]') as HTMLElement
+    expect(bin.closest('[data-lien-board-closed]')!.getAttribute('data-lien-board-closed')).toBe('affidavit')
+    expect(bin.textContent).toContain('Lien day passed · not filed')
+    expect(closedChip().getAttribute('data-closed')).toBe('yes')
+    expect(document.querySelector('[data-lien-board-chips="affidavit:ready"] [data-lien-board-chip]')).toBeNull()
+    expect(document.querySelector('[data-lien-board-print-press="print_affidavits"]')).toBeNull()
+    expect(document.querySelector('[data-lien-board-closed-press="affidavit:missed"]')!.textContent).toBe('Answer 1 ›')
+  })
+
+  it('the chip and the bin’s press open the window, and its date door goes to the last day of work', async () => {
+    const onOpenCalendarLastWork = vi.fn()
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withLate()} initialKind="next" onOpenCalendarLastWork={onOpenCalendarLastWork} />)
+    await settle()
+    expect(closedChip().getAttribute('aria-label')).toContain('See what closed and answer it')
+    fireEvent.click(closedChip())
+    const win = await screen.findByTestId('lien-closed-window')
+    expect(win.getAttribute('aria-label')).toBe('The lien day has passed')
+    expect(win.getAttribute('data-lien-closed-job')).toBe('j650')
+    expect(win.querySelector('[data-lien-closed-sub]')!.textContent).toContain('$33,500 unpaid')
+    expect(win.querySelector('[data-lien-closed-what]')!.textContent).toBe('The last day to file a lien on this job was Thursday, Sep 10.')
+    // One paper in the bin: nothing to walk.
+    expect(win.querySelector('[data-lien-closed-walk]')).toBeNull()
+    fireEvent.click(win.querySelector('[data-lien-closed-press="date"]') as HTMLButtonElement)
+    expect(onOpenCalendarLastWork).toHaveBeenCalledWith('j650')
+    await waitFor(() => expect(screen.queryByTestId('lien-closed-window')).toBeNull())
+    fireEvent.click(document.querySelector('[data-lien-board-closed-press="affidavit:missed"]') as HTMLButtonElement)
+    expect((await screen.findByTestId('lien-closed-window')).getAttribute('data-lien-closed-kind')).toBe('gone')
+  })
+
+  it('a viewer with no door to the last day of work reads the date answer dead', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={withLate()} initialKind="next" />)
+    await settle()
+    fireEvent.click(closedChip())
+    const win = await screen.findByTestId('lien-closed-window')
+    expect((win.querySelector('[data-lien-closed-press="date"]') as HTMLButtonElement).disabled).toBe(true)
+    expect((win.querySelector('[data-lien-closed-press="keep"]') as HTMLButtonElement).disabled).toBe(false)
+  })
+})

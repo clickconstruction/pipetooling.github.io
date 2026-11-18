@@ -81,6 +81,8 @@ import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { lienRunEntriesFor, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { lienBoardChipFor, lienBoardDoorWords, lienBoardLeaderBinPress, lienBoardPickWords, lienBoardRowInPick, type LienBoardBinKey, type LienBoardChip, type LienBoardKind } from '../../lib/jobs/lienBoard'
 import { lienBinFolds } from '../../lib/jobs/lienNextUpByBin'
+import LienClosedWindow, { type LienClosedPaper } from './LienClosedWindow'
+import { buildLienClosedWindow, lienClosedAnswerPress, lienClosedFacts } from '../../lib/jobs/lienClosedEnd'
 import { lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor, type LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { useLienPileHeads } from './LienPileHeads'
@@ -1062,6 +1064,31 @@ export default function LienDesk({
       }
     }
   }
+  // The closed end's window (`LienClosedWindow`): the papers it walks, and the one it opened on.
+  const [closedWalk, setClosedWalk] = useState<{ jobIds: string[]; start: string } | null>(null)
+  const closedBinJobs = (bin: LienBoardBinKey): string[] => (board ? [...board.notices, ...board.affidavits].find((b) => b.key === bin)?.chips.map((c) => c.jobId) ?? [] : [])
+  /** One job as the window needs it, off the rows the desk holds; null once the job is at no closed end. */
+  const closedPaperFor = (jobId: string): LienClosedPaper | null => {
+    if (!data) return null
+    const closedJob = data.jobsById[jobId]
+    const notice = data.queue.entries.find((e) => e.jobId === jobId) ?? null
+    const affidavit = data.affidavits.entries.find((e) => e.jobId === jobId) ?? null
+    if (!closedJob || (!notice && !affidavit)) return null
+    const gcId = closedJob.gc_customer_id ?? notice?.gcCustomerId ?? affidavit?.gcCustomerId ?? null
+    const facts = lienClosedFacts({
+      number: effectiveJobLedgerNumber(closedJob.hcp_number, closedJob.click_number) || '—',
+      name: closedJob.job_name ?? '',
+      gcName: gcId ? (data.gcsById[gcId]?.name ?? '') : '',
+      unpaid: affidavit?.openBalance ?? notice?.openBalance ?? 0,
+      notice,
+      affidavit,
+      collectionsSince: closedJob.collections_at,
+      status: closedJob.status,
+      role: authRole,
+      lastWorkDoor: Boolean(onOpenCalendarLastWork),
+    })
+    return buildLienClosedWindow(facts) ? { jobId, facts, gcCustomerId: gcId, customerId: closedJob.customer_id ?? null } : null
+  }
   /**
    * A chip's press on the Board, or a job number's anywhere on the desk (v2.7333): the desk's own door for the paper's
    * stage. The property record and the run open over To do, so closing them is the way back; a paper opens through the
@@ -1079,6 +1106,9 @@ export default function LienDesk({
       setRunOpen(true)
     } else if (d.kind === 'lienWindow') {
       ;(onOpenLienAffidavit ?? onOpenLienInstruments)(d.jobId)
+    } else if (d.kind === 'closed') {
+      // A chip at a closed end opens the window that says what closed and asks what to do; it walks its bin from this paper.
+      setClosedWalk({ jobIds: closedBinJobs(chip.bin), start: d.jobId })
     } else if (d.tab === 'affidavits') {
       onZoomAddress?.({ kind: 'affidavit', job: d.jobId, pile: null })
       setKind('affidavit')
@@ -1754,6 +1784,8 @@ export default function LienDesk({
     ...(sendDoor ? { 'affidavit:to_send': { label: sendDoor.label, onPress: showAffidavitsToSend, title: 'Open the affidavits to send, where one press sends every paper someone has read', marks: { 'data-lien-board-send': 'yes' } } } : null),
     ...(mailNumbersPress ? { 'notice:in_mail': { label: mailNumbersPress.label, onPress: openWholeRun, title: 'Open the run to type each printed notice’s mail number' } } : null),
     ...(office && serveDoor ? { 'affidavit:filed': { label: serveDoor, onPress: () => setServeOpen(true), title: 'Print the copies each filed lien owes, then enter their mail numbers' } } : null),
+    // Each closed end's press: the window opens on the bin's first paper and walks the rest. `quiet`, since nothing there can be rushed.
+    ...Object.fromEntries((['notice:missed', 'affidavit:missed'] as const).map((key) => [key, closedBinJobs(key)] as const).filter(([, ids]) => ids.length > 0).map(([key, ids]) => [key, { label: lienClosedAnswerPress(ids.length), onPress: () => setClosedWalk({ jobIds: ids, start: ids[0]! }), quiet: true, title: 'See what closed on each one and answer it', marks: { 'data-lien-board-closed-press': key } }])),
     ...(leaderBinPress ? { 'affidavit:awaiting': { label: approvingLot ? 'Approving…' : leaderBinPress.label, onPress: () => void approveTheLot(), filled: true, dead: leaderBinPress.dead || approvingLot, lines: leaderBinPress.line ? [{ key: 'late', words: leaderBinPress.line }] : [], marks: { 'data-lien-board-approve': 'yes' } } } : null),
   }
   // What a print leaves out, by its door: the approved notices on By paper, where a row says it is unsigned; the held affidavits, narrowed to them.
@@ -2840,6 +2872,26 @@ export default function LienDesk({
             onOpenAffidavit={(jobId) => (onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)}
             onOpenJobPaper={openJobPaper}
           />
+          {closedWalk ? (
+            <LienClosedWindow
+              key={closedWalk.start}
+              jobIds={closedWalk.jobIds}
+              startJobId={closedWalk.start}
+              paperFor={closedPaperFor}
+              authUserId={authUserId}
+              authName={authName}
+              authRole={authRole}
+              zIndex={805}
+              onClose={() => setClosedWalk(null)}
+              onChanged={onChanged}
+              onSetLastWork={(jobId) => onOpenCalendarLastWork?.(jobId)}
+              onRecordFiling={(jobId) => (onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)}
+              onDraftLateNotice={(jobId) => {
+                const chip = board ? lienBoardChipFor(board, jobId, 'notice') : null
+                if (chip) zoomTo({ ...chip, destination: { kind: 'paper', tab: 'notices', jobId } })
+              }}
+            />
+          ) : null}
           {paperFix && data ? (() => {
             const entry = paperEntries[paperFix.index]
             const row = paperRows[paperFix.index]

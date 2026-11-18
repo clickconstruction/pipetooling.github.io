@@ -67,6 +67,7 @@ Every chip is a press to the right place for its stage. Point at a chip to read 
 - A chip in *Approved · to print* or *Approved · to mail* opens the run on that envelope.
 - A chip in **Ready to file** opens the affidavit.
 - A chip in *Filed · copies to mail* or *Served* opens the job's Lien window.
+- A chip in a closed bin opens the window that asks what to do. See [A window that has closed](#a-window-that-has-closed).
 
 A paper opened from a chip is a step of its own in the browser. Press Back and the desk returns to To do with the Board in view. The property record and the run open over the Board. Close them and the Board is where it was.
 
@@ -169,6 +170,38 @@ This bin sits under **Served**. The last day to file the lien passed and no fili
 A paper leaves the closed bin by itself when its dates change. Record a filing that was made in time and the paper moves to *Filed · copies to mail*. Set a later last day of work and the paper goes back into the flow. A notice also leaves once someone records its months closed.
 
 The app counts the days. It does not judge the law. Ask the attorney when a date is not clear.
+
+### Answer a closed paper
+
+Press a chip in a closed bin. A window opens on that job. {{button:outline|Answer 2 ›}} on the bin's title line opens the same window on the first job. The window says what closed and on which day. It also says where that day is counted from.
+
+When the lien day has passed, the window gives three answers.
+
+:::steps
+
+1. **The date is wrong.** {{button:outline|Set the last day of work ›}} opens the job where that day is set. A later day puts the paper back in the flow. *Record the filing ›* is for a lien that was filed in time and never recorded.
+2. **Keep collecting.** {{button:blue|Keep collecting 4127}} takes the job off the Lien desk and keeps it in Collections. A billed job that is not in Collections goes there. Nothing is filed or deleted.
+3. **Let it go.** {{button:outline|Mark 4127 Uncollectible}} asks once more. Then it marks the job Uncollectible, as the Pipeline does.
+
+:::
+
+Type a note first when you have one. The note is kept on the job with your name and the day.
+
+When one month's notice window closed, the lien day is still ahead. The window gives three other answers.
+
+:::steps
+
+1. **Send a late notice.** {{button:blue|Draft the late notice ›}} opens the notice for that month. A late notice still counts while the lien day is ahead.
+2. **The date is wrong.** {{button:outline|Set the last day of work ›}} opens the job where that day is set.
+3. **Record it closed.** The press writes down that no notice goes for that month. The job stays on the Lien desk for its lien day.
+
+:::
+
+A closed month never asks you to let the job go. The lien office answers these windows. Anyone else can read them.
+
+With more than one job in the bin, the window counts them, like *1 of 2*. Each answer shows the next job. *Next ›* passes a job over for now.
+
+A job that keeps collecting is listed under [A job that is off the lien path](#a-job-that-is-off-the-lien-path). **Put it back…** there undoes the answer.
 
 ## Public property
 
