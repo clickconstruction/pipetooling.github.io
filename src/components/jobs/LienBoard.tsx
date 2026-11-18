@@ -411,7 +411,7 @@ export default function LienBoard({
   over?: ReactNode
   /** A bin of the desk's own under the affidavit column (v2.7443): *Public jobs · bond claim*. */
   underAffidavits?: ReactNode
-  /** A press on a bin's title line, by the bin's key: *Mail 12 liens’ copies ›* on *Filed · copies to mail* (punch list #366), *Enter mail numbers · 6* on *Approved · to mail*, the leader's *Approve 2 affidavits* on his *Awaiting Master approval*, on *Approved · to sign* (v2.7712) the office's reminder or the leader's *Sign 7 notices ›*, and *Send 5 for approval ›* on the affidavits' *To send for Master approval* (v2.7714). */
+  /** A press on a bin's title line, by the bin's key: *Print 12 liens’ copies ›* or *Enter mail numbers · 12 ›* on *Filed · copies to mail* (punch list #366, by stage since v2.7798), *Enter mail numbers · 6* on *Approved · to mail*, the leader's *Approve 2 affidavits* on his *Awaiting Master approval*, on *Approved · to sign* (v2.7712) the office's reminder or the leader's *Sign 7 notices ›*, and *Send 5 for approval ›* on the affidavits' *To send for Master approval* (v2.7714). */
   binPress?: Partial<Record<LienBoardBinKey, LienBoardBinPress>>
   /** Told when the columns stack or stand side by side, so the desk can make To do one page while the Board is taller than the screen. */
   onLayout?: (stacked: boolean) => void

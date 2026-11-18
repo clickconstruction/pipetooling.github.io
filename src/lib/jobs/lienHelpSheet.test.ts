@@ -85,7 +85,7 @@ describe('the words a first-timer reads', () => {
     expect(after).toContain('<strong>Alder County Clerk</strong>')
     expect(after).toContain('<strong>Open the affidavit tab ›</strong>')
     expect(after).toContain('<strong>Record filing…</strong>')
-    expect(after).toContain('<strong>Record service…</strong>')
+    expect(after).toContain('<strong>Enter mail numbers…</strong>')
     expect(lienHelpAfterSteps('', true)[0]).toContain('County Clerk of the property’s county')
   })
 })
@@ -429,9 +429,9 @@ describe('changes 6 to 11 · the picture, the clerks, who to ask, lines to write
     expect(lienHelpAfterSteps('Alder', true)[0]).toContain('The clerk charges a fee for each paper.')
     expect(typed.join(' ').match(/<span class="lien-help-write"><\/span>/g)).toHaveLength(3)
     expect(textOf(typed[1] as string)).toBe('Write on the stamped copy, and here. Recording number Filed on')
-    // Record service takes the day, and since change 5 each copy's certified mail number and a photo of its receipt. The sheet says what the form asks.
+    // Enter mail numbers… (Record service… until v2.7816) takes the day, and since change 5 each copy's certified mail number and a photo of its receipt. The sheet says what the form asks.
     expect(typed.join(' ')).not.toContain('tracking')
-    expect(textOf(typed[4] as string)).toBe('Press Record service… and set the day the copies were mailed. Type each certified mail number and take a photo of each receipt.')
+    expect(textOf(typed[4] as string)).toBe('Press Enter mail numbers… and set the day the copies were mailed. Type each certified mail number and take a photo of each receipt.')
     expect(lienHelpBatchSheetHtml({ papers: [full()], printedOn: 'November 11, 2026' })).toContain('<th>Recording no. · day filed</th>')
     for (const step of [...lienHelpAfterSteps('Alder', true), ...lienHelpAfterSteps('', false)]) expect(plainWordsFailures(textOf(step)), step).toEqual([])
   })
@@ -471,9 +471,9 @@ describe('changes 6 to 11 · the picture, the clerks, who to ask, lines to write
     // A press's bold ends before the full stop; read the step as a reader does.
     const read = (step: string) => textOf(step).replace(/ ([.,])/g, '$1')
     expect(read(coded[2] as string)).toBe('The same day, scan the code with a phone. On a computer, open the job on the Lien desk and press Open the affidavit tab ›. Press Record filing… and type both.')
-    expect(textOf(coded[4] as string)).toBe('Scan the code again. Press Record service… and set the day the copies were mailed. Type each certified mail number and take a photo of each receipt.')
+    expect(textOf(coded[4] as string)).toBe('Scan the code again. Press Enter mail numbers… and set the day the copies were mailed. Type each certified mail number and take a photo of each receipt.')
     expect(read(lienHelpBatchAfterSteps(true)[1] as string)).toBe('The same day, scan the code with a phone. It opens the Affidavits list. On each job press Open the affidavit tab ›, then Record filing…, and type both.')
-    expect(textOf(lienHelpBatchAfterSteps(true)[3] as string)).toContain('Scan the code again. On each job press Record service…')
+    expect(textOf(lienHelpBatchAfterSteps(true)[3] as string)).toContain('Scan the code again. On each job press Enter mail numbers…')
     for (const step of [...coded, ...lienHelpBatchAfterSteps(true), ...lienHelpBatchAfterSteps()]) expect(plainWordsFailures(textOf(step)), step).toEqual([])
     // No code handed in: no code, and no step that sends a reader to one.
     const bare = lienHelpCoverSheetHtml(full(), 'November 11, 2026', { guideCode: CODE })
