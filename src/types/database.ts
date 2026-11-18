@@ -30151,6 +30151,7 @@ export type Database = {
           development_id: string | null
           id: string
           job_id: string | null
+          job_list: boolean
           name: string
           words: string
         }
@@ -30160,6 +30161,7 @@ export type Database = {
           development_id?: string | null
           id?: string
           job_id?: string | null
+          job_list?: boolean
           name: string
           words?: string
         }
@@ -30169,6 +30171,7 @@ export type Database = {
           development_id?: string | null
           id?: string
           job_id?: string | null
+          job_list?: boolean
           name?: string
           words?: string
         }
