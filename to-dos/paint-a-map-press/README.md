@@ -2,7 +2,7 @@
 name: "Paint a map from the Dashboard: a press that is always there, and every map on a job"
 number: 392
 group: gated
-status: asked 2026-11-17 · designed, drawn and rendered the same day (ten states at a phone's width and one at a desk) · shown to the owner with nine calls, each with a pick · nothing built · carded the same evening at the owner's word
+status: asked 2026-11-17 · designed, drawn and rendered the same day (ten states at a phone's width and one at a desk) · shown to the owner with nine calls, each with a pick · nothing built · carded the same evening at the owner's word · the Share sheet was built apart as #394 on 2026-11-18 (v2.7788 · 7790) · walked the same day as a leader on a phone, and the missing Dashboard press was the walk's worst snag · a leader's phone drawn the same day (three states), a tenth call added with a pick, and the plan's order changed so the Saved band comes before the picker
 summary: >
   The owner wants anyone to make a one-off map and text it from the Dashboard, clocked in or not,
   with a job today or not. Every map must be tied to a job, and picking the job must be easy.
@@ -11,19 +11,19 @@ summary: >
   the Dashboard's top row, the row that holds Tally and Job Report on every Dashboard. When the app
   knows the job, the map lands on it with no question. When it does not, the person picks from
   today's jobs and the jobs they were on lately. After Save, one press opens the phone's own
-  Messages with the link written. A map that takes nine presses and two bouts of typing today
+  Messages with the link written. A map that takes seven presses and two bouts of typing today
   takes four.
-next: The owner's word to build, and a different pick on any of the nine calls the owner wants changed. Then step 1, the kernel.
-size: L as a train of five (S · M · L · M · S)
+next: The owner's word to build, and a different pick on any of the ten calls the owner wants changed. Call 10 is new: a square or a line on a leader's phone. Then step 1, the kernel.
+size: L as a train of five (S · M · S · L · S)
 blocker: The owner's word. Each call has a pick, so a plain *build it* is enough to start.
-opinion: build — the doors, the start sheet and the job gate already exist, so it is one press, a picker and a shorter share
+opinion: build — the doors, the start sheet and the job gate already exist and the Share sheet is built, so it is one press, a Saved band and a picker
 ---
 
 # Paint a map from the Dashboard (#392)
 
-The mock-up is [mockup.html](mockup.html). It draws ten states side by side. Add `?s=<state>` to see
-one alone: `tech-job`, `tech-nojob`, `office-phone`, `picker`, `picker-near`, `start`, `saved`,
-`share`, `messages` or `office-desk`. Add `&plain=1` to take off the purple marks that show what is
+The mock-up is [mockup.html](mockup.html). It draws thirteen states side by side. Add `?s=<state>` to see
+one alone: `tech-job`, `tech-nojob`, `office-phone`, `leader-phone`, `leader-phone-clocked`,
+`leader-phone-link`, `picker`, `picker-near`, `start`, `saved`, `share`, `messages` or `office-desk`. Add `&plain=1` to take off the purple marks that show what is
 new. Every job, street and link code on it is made up. It was rendered at 375 px and at a desk's
 width before it was shown, and the render's own check found nothing off the side of the screen.
 
@@ -46,11 +46,12 @@ already.
 ## What a person meets today
 
 - **From a job it works.** The job window's Job tab, under Where, or a tech's Job Mode card:
-  **＋ Paint a map**, the start sheet, paint, **Share**, **Make a link**, **Send it another way…**,
-  then the phone's Messages.
+  **＋ Paint a map**, the start sheet, paint, **Share**, then **Text it from my phone…**, which
+  opens the phone's Messages (#394).
 - **With no job it does not.** A person with no schedule and no clock-in has no Paint a map press
   on the Dashboard. The only door is the header's search: type *paint*, press **Paint a map**. The
-  start sheet opens on no job, with a small **Pick the job it is for**.
+  start sheet opens on no job, with a small **Pick the job it is for**. Walked as a leader on
+  2026-11-18: see *The walk as a leader* below.
 - **Text it…** is the office's, and sends to the job's customer from the company's number.
 - **A link** is made only by the painter or the office.
 
@@ -63,7 +64,8 @@ already.
      button left empty (punch list #189). Its second line says where the map will land: *On J2417 ·
      Cedar Hollow 12*, or *You pick the job it is for*.
    - The office's phone: a third quiet link beside *Job report* and *Tally*.
-   - A desk, and a field person on the full Dashboard: a square after Job Report.
+   - A desk, and a field person on the full Dashboard: a square after Job Report. A leader's phone
+     is this shape at 375 wide, drawn as `leader-phone` and `leader-phone-clocked` (call 10).
 
    No header button, no dock slot, nothing on the day's press bar.
 2. **The job.** When the app knows the job, the start sheet opens with it set: the job the person
@@ -87,13 +89,14 @@ The marking tools do not change.
 
 | | Today | With this card |
 |---|---|---|
-| No job known | 9 presses and two bouts of typing | 4 presses, no typing |
-| Job known | 6 presses | 3 presses |
+| No job known | 7 presses and two bouts of typing | 4 presses, no typing |
+| Job known | 4 presses | 3 presses |
 
 Painting and Save are not counted on either side. Today, with no job known: the search, type
 *paint*, **Paint a map**, **Pick the job it is for**, type, the job, **Draw it by hand**, then
-**Share**, **Make a link**, **Send it another way…** and Messages. With this card: **Paint a map**,
-the job, **Draw it by hand**, then **Text it from my phone…**.
+**Share** and **Text it from my phone…**. With this card: **Paint a map**, the job, **Draw it by
+hand**, then **Text it from my phone…**. Before #394 built the Share sheet, today's count was 9
+and 6.
 
 ## What was read that shapes it
 
@@ -113,6 +116,36 @@ the job, **Draw it by hand**, then **Text it from my phone…**.
 - **One press to Messages** depends on the phone opening Messages after the short wait for the link.
   It has not been tried on a real iPhone or Android phone. If a phone refuses, the press becomes
   two: the link is made, then *Open Messages*.
+
+## The walk as a leader, 2026-11-18
+
+The owner asked whether a leader can easily draw a map and text it. The flow was walked as the
+Sample leader at 375 by 812 on a local server, with one made-up map on no job, thrown away after.
+What it found that bears on this card:
+
+- **No press, Job Mode on or off.** With nothing on the schedule, the leader's Dashboard has no
+  Paint a map press in either mode. This was the walk's worst snag: a first-timer does not start.
+- **The search finds it by the right words only.** *draw a map* lists **Paint a map** first.
+  *paint* lists it third, under two jobs with paint in their names. *map* alone lists it far down.
+- **Dashboard to the first corner was 5 presses, a typed word and a scroll**: the search, *paint*,
+  **Paint a map**, a name chip, **Draw it by hand** below the fold, then **Start the map where I
+  am**, since a map on no job opens on the whole country. Call 3 ends that last press.
+- **A leader's phone is not the office's phone.** `isPhoneOfficeRole` does not count a master, so
+  a leader on a phone gets the square row: Tally 48 wide, the clock 231 and Job Report 64, inside
+  a 359 wide row. The mock-up drew squares only at a desk's width.
+- **Making the link took 1.3 seconds at a desk.** #394's sheet already falls back to a second
+  press when a phone will not open Messages after that wait.
+
+## A leader's phone
+
+Drawn in three states, rendered at 375 wide with nothing off the side of the screen.
+
+- **`leader-phone`, clocked out.** A fourth square, 72 wide, after Job Report. The clock goes from
+  231 to 151 wide. **Clock In** still fits on one line.
+- **`leader-phone-clocked`, clocked in.** At 151 wide the red press breaks onto two lines, the time
+  then *Clock Out*. The row grows from 104 to 108 tall. Nothing is cut off.
+- **`leader-phone-link`, the other choice.** The row stays as it is today and **Paint a map** is a
+  line under it, 44 tall, as on the office's phone. The clock keeps its one line.
 
 ## The calls, each with a pick
 
@@ -138,6 +171,10 @@ the job, **Draw it by hand**, then **Text it from my phone…**.
    deserves its own decision.
 9. **Find the jobs near me.** Build it last or not at all, since it lists only jobs the app has
    already placed.
+10. **A leader's phone: a square or a line.** The square, since the walk's worst snag was that
+    nothing on the Dashboard says map, and a square beside Job Report reads as a press of the same
+    rank. Its cost is the clocked-in clock on two lines. The other choice is the line under the
+    row, which costs nothing and is easier to miss.
 
 ## Where it plugs in
 
@@ -156,25 +193,35 @@ the job, **Draw it by hand**, then **Text it from my phone…**.
 
 1. **The kernel** (S), no screen. Which job the press lands on, the second line's words and the
    picker's order, with tests. An Office or billing-only clock is not a job.
-2. **The press** (M) on the Dashboard's top row, opening today's start sheet with the job set. The
-   guide `paint-a-map`, a release note, a fragment and the Glossary's entry amended.
-3. **The picker** (L). *For* at the top with **Change the job**, *Leave it on no job* retired from
-   the doors, and **Move it to another job…**.
-4. **The share step** (M). The Saved band, **Text it from my phone…**, and the Share sheet with no
-   *Make a link* step, as [#394](../painted-map-share-sheet/README.md) draws it. Walked on a real
-   iPhone and a real Android phone before it merges.
+2. **The press** (M) on the Dashboard's top row, opening today's start sheet with the job set. A
+   leader's phone at call 10's pick. The header's search also lists **Paint a map** first for
+   *map* and *paint*. The guide `paint-a-map`, a release note, a fragment and the Glossary's entry
+   amended.
+3. **The Saved band** (S). The map says *Saved on* the job and offers **Text it from my phone…**
+   at once, with one blue press on the screen and the press back in view after a place is added.
+   The Share sheet itself is built ([#394](../painted-map-share-sheet/README.md)), so this is what
+   is left of the old share step. Walked on a real iPhone and a real Android phone before it
+   merges.
+4. **The picker** (L). *For* at the top with **Change the job**, *Leave it on no job* retired from
+   the doors, **Move it to another job…**, and **Draw it by hand** above the fold as the `start`
+   state draws it.
 5. **Find the jobs near me** (S), if the owner wants it.
+
+The Saved band was fourth and the picker third until 2026-11-18. The band is small and is where a
+saved map still loses people, so it goes first. That puts the rule that every map is tied to a job
+one small step later: until step 4, the press opens today's sheet with the job set when the app
+knows it and **Pick the job it is for** when it does not. The owner may swap 3 and 4 back.
 
 ## How to verify
 
 - Kernel tests for the job the press lands on in each state: clocked onto a job, clocked onto
   Office or billing only, a next job on today's schedule, and nothing today.
-- Render tests on the top row in its three shapes, and on the picker with a search hit the person
-  cannot paint on.
+- Render tests on the top row in its three shapes, with the square row at a phone's width, and on
+  the picker with a search hit the person cannot paint on.
 - A local harness at 375 px before each screen PR, to see the press beside Tally with the app's own
   CSS.
 - On the live app: a made-up map on a made-up job, as a tech and as the office, thrown away after.
-- Step 4 on two real phones, as above.
+- Step 3 on two real phones, as above.
 
 ## Out of scope
 
