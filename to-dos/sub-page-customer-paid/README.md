@@ -122,7 +122,7 @@ Test rows: the test sub and a ZZ TEST job. Never a real sub's page.
 2026-11-17. The card and its mock-up are written and the five calls are answered. Nothing is built, and no branch holds work. The owner stopped here for the night, and another session picks it up.
 
 - **Start with step 1, the tie.** It changes no sub's page and needs no deploy of `sub-portal`. It carries a migration, so it needs a `supabase db push` after its merge.
-- **Card #371 was built on the same page and the same function the same day.** Its card, `to-dos/sub-portal-statements/README.md`, tells how the walk was done on the test sub and what a walk leaves behind.
+- **Card #371 was built on the same page and the same function the same day.** It is retired. The #371 paragraph under *Closed* in `to-dos/README.md` tells how the walk was done on the test sub and what a walk leaves behind, and the whole card is in git history at the commit that deleted `to-dos/sub-portal-statements/`.
 - **Three gotchas met on #371:**
   - A `src/lib` file that `supabase/functions/_shared/gcKernels/` holds a copy of must not be moved or edited. The copy changes, and about thirty functions then read as owing a redeploy. Run `npm run gen:edge-kernels` and expect no change under `gcKernels/`.
   - A SQL bed scenario that makes a helper schema grants the service role its use, or the bed fails in CI. The beds run in CI only.
