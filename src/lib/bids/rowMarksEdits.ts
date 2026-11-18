@@ -5,7 +5,7 @@
  * (decomposition queue row 1). The marks' shape is `rowKinds.ts`, their columns `rowMarksIo.ts`,
  * and the split they feed `rowPriceSplit.ts`.
  */
-import type { RowMarks, RowMarksByRowId } from './rowKinds'
+import type { RowKind, RowMarks, RowMarksByRowId } from './rowKinds'
 import { rowMarksFromDbRow, type RowMarksDbRow } from './rowMarksIo'
 
 /**
@@ -74,6 +74,26 @@ export function withSplitMarkup(m: RowMarks, markup: number | null): RowMarks {
 /** A row's marks with its tax choice set (null = the rule again); the rest of its split is kept. */
 export function withSplitTaxable(m: RowMarks, taxable: boolean | null): RowMarks {
   return { ...m, split: { ...(m.split ?? {}), taxable } }
+}
+
+/** A row's marks with its kind chosen; its tags and its split are kept. */
+export function withKind(m: RowMarks, kind: RowKind): RowMarks {
+  return { ...m, kind }
+}
+
+/** A row's marks with one more tag, at the end. A tag the row already has changes nothing. */
+export function withTag(m: RowMarks, tag: string): RowMarks {
+  return { ...m, tags: (m.tags ?? []).includes(tag) ? m.tags ?? [] : [...(m.tags ?? []), tag] }
+}
+
+/** A row's marks with one tag taken off; the others keep their order. */
+export function withoutTag(m: RowMarks, tag: string): RowMarks {
+  return { ...m, tags: (m.tags ?? []).filter((x) => x !== tag) }
+}
+
+/** Every tag in use on the bid's rows, once each, in alphabetical order: what the tag box suggests. */
+export function allRowTags(marks: RowMarksByRowId): string[] {
+  return [...new Set(Object.values(marks).flatMap((m) => m.tags ?? []))].sort()
 }
 
 /** What the Markup tool's Undo puts back: each row's own markup as it stood (undefined = it had no split). */

@@ -371,6 +371,29 @@ describe('BidsPricingTab render smoke', () => {
     expect(screen.getByLabelText('Add a tag to Lavatory')).toBeTruthy()
   })
 
+  it("a row's tags and kind are set under its name: + opens the box, Enter adds a tag, a press takes one off, the chip sets the kind", async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps()} />)
+    await settle()
+    fireEvent.click(screen.getByLabelText('Add a tag to Lavatory'))
+    const box = screen.getByPlaceholderText('a tag, then Enter') as HTMLInputElement
+    expect(box.getAttribute('aria-label')).toBe('Add a tag to Lavatory')
+    fireEvent.change(box, { target: { value: 'Level 2' } })
+    fireEvent.keyDown(box, { key: 'Enter' })
+    await settle()
+    expect(within(grid()).getByRole('button', { name: /level 2/ })).toBeTruthy()
+
+    fireEvent.click(within(grid()).getByRole('button', { name: /restrooms/ }))
+    await settle()
+    expect(within(grid()).queryByRole('button', { name: /restrooms/ })).toBeNull()
+
+    const kindOfDrain = () => within(grid()).getByRole('group', { name: 'Kind of Floor drain' })
+    expect(kindOfDrain().textContent).toContain('Fixture')
+    fireEvent.click(within(kindOfDrain()).getByRole('combobox'))
+    fireEvent.click(await screen.findByRole('option', { name: /Pipe/ }))
+    await settle()
+    expect(kindOfDrain().textContent).toContain('Pipe')
+  })
+
   it("a row's chevron opens its split, and the header opens and closes every row's", async () => {
     renderWithProviders(<BidsPricingTab {...pricedProps()} />)
     await settle()
