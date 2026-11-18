@@ -1048,6 +1048,10 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   since v2.6852 the phone's box screen prints a box's label and manifest in the tab for every role on the job, where its two presses used to open `/jobs?tab=materials`, which only the office may open.
 - **A site's materials on one screen** (v2.7074, punch list #330): `?site=<development id>` on the On site tab and on Jobs → Materials draws every part across the site's jobs from the rows the desk already read, so the gate above decides it and a job the reader may not touch adds nothing.
   Since v2.7818 the screen's **By person** look, every press and box move on the site by who made it, is offered at the desk's mount to dev, master_technician, assistant and controller alone (`isOfficeRole`), a client gate over rows those roles already read, and the crew's mount never offers it.
+- **Who changed a box** (v2.7825, `20261118140000_on_site_box_changes.sql`): `job_container_changes` is read by the on-site gate on the box's job, as `job_container_names` is, and written by its trigger alone.
+  `on_site_removed_answers`, a part tie or a site price deleted, is read by `on_site_can_tie_parts()` with `on_site_can_read_ties()` and written by its trigger alone.
+- **A watch on one person** (v2.7825, `20261118150000_person_watches.sql`): `person_watches` and `watched_box_opens` are read by devs alone (`is_dev()`), and a dev inserts and updates a watch and never deletes one.
+  `on_site_note_box_open(uuid)` is granted to every signed-in caller, writes only for a caller with a live watch and answers nothing either way, so no caller learns from it whether they are watched.
   The office and a primary reach it through the desk's site row and read the week's missing money, as on the desk;
   a primary and a superintendent get a site row over their jobs on Materials → On site, with no money and the phone screen as each box's door;
   an estimator gets no site row.
