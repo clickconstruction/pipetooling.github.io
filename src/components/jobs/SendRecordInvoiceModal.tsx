@@ -102,7 +102,6 @@ import {
 import { eligibleHazmatRollIns, foldedHazmatFeeLines, hazmatFeeLinesWithinAmount, hazmatRollInTotalDollars, type HazmatRollInLine } from '../../lib/hazmatRollIn'
 import {
   applyBillToToJobBillingContext,
-  billToDisplayLabel,
   invoiceBillToFromRow,
   type InvoiceBillTo,
 } from '../../lib/jobs/invoiceBillTo'
@@ -146,6 +145,8 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { BillCustomerEditDatesDialog } from './BillCustomerEditDatesDialog'
 import { BillCustomerMadeEmailLine } from './BillCustomerMadeEmailLine'
 import { BillCustomerMemoPresetRow } from './BillCustomerMemoPresetRow'
+import { BillCustomerMissingEmailBanner } from './BillCustomerMissingEmailBanner'
+import { BillCustomerPayerBanner } from './BillCustomerPayerBanner'
 import { BillCustomerPhysicalModifications } from './BillCustomerPhysicalModifications'
 import { BillCustomerPressBox } from './BillCustomerPressBox'
 import { BillCustomerSendTo } from './BillCustomerSendTo'
@@ -2376,103 +2377,22 @@ export default function SendRecordInvoiceModal({
           />
         ) : null}
         {!billInKind && !(job.customer_email ?? '').trim() ? (
-          <div
-            role="group"
-            aria-label="Customer email missing"
-            style={{
-              border: '1px solid #d97706',
-              background: 'var(--bg-amber-tint)',
-              borderRadius: 8,
-              padding: '0.6rem 0.75rem',
-              marginBottom: '1rem',
-            }}
-          >
-            <p style={{ margin: '0 0 0.4rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>
-              {payerParty === 'gc'
-                ? `${payerRecipient?.name || 'The GC'} pays this job and has no billing email yet — Stripe and emailed invoices need one.`
-                : 'No customer email on this job — Stripe and emailed invoices need one.'}
-            </p>
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-              <input
-                type="email"
-                value={emailFixDraft}
-                onChange={(e) => setEmailFixDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    void saveMissingCustomerEmail()
-                  }
-                }}
-                placeholder={payerParty === 'gc' ? 'ap@builder.com' : 'customer@email.com'}
-                aria-label={payerParty === 'gc' ? 'GC billing email' : 'Customer email'}
-                style={{ flex: '1 1 200px', padding: '0.4rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6 }}
-              />
-              <button
-                type="button"
-                onClick={() => void saveMissingCustomerEmail()}
-                disabled={emailFixSaving || !emailFixDraft.trim()}
-                style={{ padding: '0.4rem 0.9rem', background: emailFixSaving || !emailFixDraft.trim() ? DEAD_PRESS_FILL : '#2563eb', color: emailFixSaving || !emailFixDraft.trim() ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: emailFixSaving || !emailFixDraft.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
-              >
-                {emailFixSaving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-            {payerParty === 'gc' ? (
-              <p style={{ margin: '0.4rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Saved on {payerRecipient?.name || 'the GC'}&rsquo;s customer record — every job billed to them uses it.
-              </p>
-            ) : jobRaw?.customer_id ? (
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={emailFixAlsoCustomer}
-                  onChange={(e) => setEmailFixAlsoCustomer(e.target.checked)}
-                />
-                Also add to {job.customer_name ?? 'the customer'}&rsquo;s record if it has no email
-              </label>
-            ) : null}
-            {emailFixError ? (
-              <p style={{ margin: '0.4rem 0 0', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{emailFixError}</p>
-            ) : null}
-          </div>
+          <BillCustomerMissingEmailBanner
+            payerParty={payerParty}
+            payerRecipient={payerRecipient}
+            rawCustomerId={jobRaw?.customer_id}
+            customerName={job.customer_name}
+            emailFixDraft={emailFixDraft}
+            setEmailFixDraft={setEmailFixDraft}
+            emailFixAlsoCustomer={emailFixAlsoCustomer}
+            setEmailFixAlsoCustomer={setEmailFixAlsoCustomer}
+            emailFixSaving={emailFixSaving}
+            emailFixError={emailFixError}
+            saveMissingCustomerEmail={saveMissingCustomerEmail}
+          />
         ) : null}
 
-        {billToOverride ? (
-          <div
-            style={{
-              marginBottom: '0.75rem',
-              padding: '0.5rem 0.75rem',
-              borderRadius: 6,
-              background: 'var(--bg-amber-tint)',
-              border: '1px solid var(--border-strong)',
-              fontSize: '0.8125rem',
-              color: 'var(--text-amber-800)',
-              lineHeight: 1.4,
-            }}
-          >
-            <strong>Billing to {billToDisplayLabel(billToOverride)}</strong> — not the job customer
-            {(jobRaw?.customer_name ?? '').trim() ? ` (${(jobRaw?.customer_name ?? '').trim()})` : ''}. Change or
-            remove this on the job’s Bill tab → Bill to ▾
-          </div>
-        ) : payerParty === 'gc' ? (
-          <div
-            data-testid="bill-customer-gc-payer-banner"
-            style={{
-              marginBottom: '0.75rem',
-              padding: '0.5rem 0.75rem',
-              borderRadius: 6,
-              background: 'var(--bg-amber-tint)',
-              border: '1px solid var(--border-strong)',
-              fontSize: '0.8125rem',
-              color: 'var(--text-amber-800)',
-              lineHeight: 1.4,
-            }}
-          >
-            <strong>Billing {payerRecipient?.name || 'the GC'}</strong>, the GC on this job
-            {(jobRaw?.customer_name ?? '').trim() ? ` — not ${(jobRaw?.customer_name ?? '').trim()}` : ''}.
-            {payerRecipient?.email ? '' : ' They have no billing email yet.'} Change this on the job’s Edit tab → Bills go to, or per
-            bill with Bill to ▾ on the Bill tab.
-          </div>
-        ) : null}
+        <BillCustomerPayerBanner billToOverride={billToOverride} payerParty={payerParty} payerRecipient={payerRecipient} rawCustomerName={jobRaw?.customer_name} />
 
         {/* Contract Desk PR 3: is there a signed agreement behind this bill? */}
         <JobContractStrip job={billCustomerJobDetails} />
