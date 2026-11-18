@@ -175,6 +175,8 @@ This bin sits under **Served**. The last day to file the lien passed and no fili
 
 A paper leaves the closed bin by itself when its dates change. Record a filing that was made in time and the paper moves to *Filed · copies to mail*. Set a later last day of work and the paper goes back into the flow. A notice also leaves once someone records its months closed.
 
+A job whose lien day passed stays in its bin until someone answers it. It does not drop off after a week. It leaves when it is answered or paid.
+
 The app counts the days. It does not judge the law. Ask the attorney when a date is not clear.
 
 ### Answer a closed paper
