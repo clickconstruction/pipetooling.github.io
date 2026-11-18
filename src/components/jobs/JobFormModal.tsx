@@ -174,8 +174,8 @@ import {
   shouldHideHcpEntryField,
 } from '../../lib/hideHcpFieldSetting'
 import { resolveEditJobMasterUserId } from '../../lib/resolveEditJobMasterUserId'
-import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
-import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
+import { stripeBillLacksMemoOrFooter } from '../../lib/jobs/stripeMemoBackfill'
+import { useStripeMemoBackfill } from '../../hooks/useStripeMemoBackfill'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import UndoStripePartPaymentModal from './UndoStripePartPaymentModal'
@@ -371,60 +371,9 @@ export default function JobFormModal({
     })
   }, [])
 
-  const stripeMemoBackfillKey = useMemo(() => {
-    if (!editing?.id) return null
-    const needIds = (editing.invoices ?? [])
-      .filter(
-        (i) =>
-          i.status === 'billed' &&
-          (i.stripe_invoice_id ?? '').trim() &&
-          (i.hosted_invoice_url ?? '').trim() &&
-          (!(i.stripe_invoice_memo ?? '').trim() || !(i.stripe_invoice_footer ?? '').trim()),
-      )
-      .map((i) => i.id)
-      .sort()
-      .join('|')
-    if (!needIds) return null
-    return `${editing.id}::${needIds}`
-  }, [editing?.id, editing?.invoices])
-
-  useEffect(() => {
-    if (!stripeMemoBackfillKey || !editing?.id) return
-    const jobId = editing.id
-    const targets = (editing.invoices ?? []).filter(
-      (i) =>
-        i.status === 'billed' &&
-        (i.stripe_invoice_id ?? '').trim() &&
-        (i.hosted_invoice_url ?? '').trim() &&
-        (!(i.stripe_invoice_memo ?? '').trim() || !(i.stripe_invoice_footer ?? '').trim()),
-    )
-    if (targets.length === 0) return
-
-    let cancelled = false
-    void (async () => {
-      const token = await getAccessTokenForEdgeFunctions()
-      if (!token || cancelled) return
-      for (const inv of targets) {
-        if (cancelled) return
-        await supabase.functions.invoke('get-stripe-invoice-details', {
-          body: {
-            jobs_ledger_invoice_id: inv.id,
-            // A5: dev-gated pref — non-devs pinned live (the invoice row's own
-            // mode wins server-side since A3 regardless).
-            ...stripeModeInvokeBody(stripeModeForBillingFromRole(authRole)),
-          },
-          headers: { Authorization: `Bearer ${token}` },
-        })
-      }
-      if (cancelled) return
-      const found = await fetchJobWithDetailsById(jobId)
-      if (!cancelled && found) setEditing(found)
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [stripeMemoBackfillKey])
+  // The Stripe memo backfill (the map's second pass, cut 3): the form's first effect, now `useStripeMemoBackfill`.
+  // Called here, where the effect always ran, so the order of the form's effects is unchanged.
+  useStripeMemoBackfill({ editing, setEditing, authRole })
   const [hcpNumber, setHcpNumber] = useState('')
   const [clickNumber, setClickNumber] = useState('')
   /** New Job: `next_job_number_suggestion` in flight (v2.2909, J1-F3) — the C# box says "finding…" instead of sitting blank. */
@@ -3623,13 +3572,8 @@ export default function JobFormModal({
               if (attempt > 0) await new Promise((r) => setTimeout(r, 280))
               const found = await tryRefetch()
               if (!found || !invId) break
-              const inv = found.invoices.find((x) => x.id === invId)
-              const stillNeeds =
-                inv &&
-                (inv.stripe_invoice_id ?? '').trim() &&
-                (inv.hosted_invoice_url ?? '').trim() &&
-                (!(inv.stripe_invoice_memo ?? '').trim() || !(inv.stripe_invoice_footer ?? '').trim())
-              if (!stillNeeds) break
+              // The same rule the backfill reads, here without the sent-bill test, as it was.
+              if (!stripeBillLacksMemoOrFooter(found.invoices.find((x) => x.id === invId))) break
             }
           })()
         }}
