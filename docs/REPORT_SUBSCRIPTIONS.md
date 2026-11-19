@@ -5,7 +5,7 @@ file: REPORT_SUBSCRIPTIONS.md
 type: Architecture/Reference
 purpose: Names and defines the app's recurring/scheduled report-email pattern — streams, request tables, cron dispatchers, fresh-at-send builds, and the My Email Schedule surface — and the checklist for adding a new stream
 audience: Developers, AI Agents
-last_updated: 2026-11-11
+last_updated: 2026-11-19
 key_sections:
   - name: "What the system is"
   - name: "The five pieces"
@@ -38,8 +38,8 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 
 | Stream key | Kind | Request table / source | Dispatcher | In schedule grid | In subscriptions list |
 |---|---|---|---|---|---|
-| `report_digest` | weekly digest | `recurring_job_report_schedules` + `_recipients` | `recurring-job-report-dispatch` | ✅ weekly slots (chip names the recipient's scope since v2.3472) | ✅ standing row per schedule (v2.3472) |
-| `report_email` | event | `report_email_subscriptions` + `_authors` (named authors, v2.746) + `report_email_dispatch_log` | `send-report-email` (fired by the report modals at filing; manual "Send now" for the last 14 days) | — | ✅ "Field reports" row (v2.3472; matched by user id or by an outside address equal to the account email) |
+| `report_digest` | weekly digest | `recurring_job_report_schedules` + `_recipients` | `recurring-job-report-dispatch` (a recipient who is a primary gets only the field reports they read in the app, v2.7914) | ✅ weekly slots (chip names the recipient's scope since v2.3472) | ✅ standing row per schedule (v2.3472) |
+| `report_email` | event | `report_email_subscriptions` + `_authors` (named authors, v2.746) + `report_email_dispatch_log` | `send-report-email` (fired by the report modals at filing; manual "Send now" for the last 14 days; a subscriber who is a primary, picked or typed by their own account address, gets only the reports they read in the app, and a report left out is not logged as sent, v2.7914) | — | ✅ "Field reports" row (v2.3472; matched by user id or by an outside address equal to the account email) |
 | `billed_report` | scheduled report | `billed_report_email_requests` (`repeat_weekly`) | `billed-report-email` | ✅ one-offs + weekly chains | — |
 | `schedule_day` | scheduled report | `schedule_day_email_requests` | `schedule-day-email-dispatch` | ✅ | — |
 | `paid_in_full` | event | `app_settings.paid_job_email_recipients_v1` | `paid-job-email` (queue trigger) | — | ✅ |
@@ -66,7 +66,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 - **Fresh at send time.** Dispatchers never store report content; a Monday 7 AM email shows Monday's numbers. If a payload can't be built, the send fails visibly (row stays pending with an error), never silently sends stale data.
 - **The weekly chain is rows, not config.** `repeat_weekly` re-inserts next week's row on successful send. The grid labels chains "weekly"; cancelling the pending row ends the chain.
 - **Payload RPCs are service-role only** and must be fidelity-verified against the client surface they mirror before first dispatch.
-- **Recipient scoping:** `get_my_email_schedule()` lists rows *addressed to* the caller. Streams that can send to **outside email addresses** (no user row — e.g. a GC's AP inbox) list on the **requester's** schedule instead, labeled with the destination address ("→ accounting@example.com").
+- **Recipient scoping:** `get_my_email_schedule()` lists rows *addressed to* the caller. Streams that can send to **outside email addresses** (no user row — e.g. a GC's AP inbox) list on the **requester's** schedule instead, labeled with the destination address ("→ accounting@example.com"). A dispatcher runs with the service role, so no row policy narrows what it sends: a stream that carries rows a role may not read in the app asks the database about the recipient **by name** before it sends. `report_email` and `report_digest` do, for a recipient who is a primary (`reports_open_to_user` / `reports_open_to_address`, service role only, through [`_shared/primaryReportScope.ts`](../supabase/functions/_shared/primaryReportScope.ts)); when that question fails, the recipient it would narrow is sent nothing and everyone else what they were.
 - **Audit separately from requests.** Actual sends log to `email_send_log` (best-effort) and any stream-specific audit table (e.g. `gc_statement_emails`); the request row's `sent_at` is the dispatch record.
 - **Internal-only vs external recipients** is a per-stream decision made at the table level: `recipient_user_id` FK for internal-only streams (billed report), a free-text `sent_to` for streams that may leave the company (GC statements).
 - **Standing copies = grouped weekly chains** (v2.1431): a "send to Todd every Mon + Wed" subscription is N repeat_weekly rows (one per weekday), grouped by recipient for display and edited by diffing chains (kernel [`gcStatementStandingCopies.ts`](../src/lib/gcStatementStandingCopies.ts)). No standing-subscription table exists — reuse this pattern before inventing one.

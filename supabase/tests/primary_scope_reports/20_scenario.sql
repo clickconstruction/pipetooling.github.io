@@ -5,6 +5,7 @@
 -- list functions, the percent reads, the photos and the bucket. Pat, a primary on nothing, reads none. The master,
 -- the assistant, the superintendent and the helper read as before. Everything rolls back. Raises on the first failed
 -- assertion; ends with "primary_scope_reports PASSED". See scripts/pgtest-primary-scope-reports.sh. Never against prod.
+-- Part 5 asks the same rule about a named user (migration *_primary_reports_named_user), as the senders with no login do.
 \set ON_ERROR_STOP 1
 BEGIN;
 
@@ -203,6 +204,102 @@ SELECT psr.as_user('00000000-0000-0000-0000-00000005ca09');
 SELECT psr.same('Sue, the superintendent on P2, reads P2''s reports and the bids''', psr.tags_list(), 'R2 R6 R8 R9');
 SELECT psr.as_user('00000000-0000-0000-0000-00000005ca08');
 SELECT psr.same('Sam, the helper, reads the reports he wrote', psr.tags_list(), 'R1 R2 R3 R4 R6 R7 R8 R9');
+
+-- 5 · The same rule about a NAMED user (migration *_primary_reports_named_user): what the senders that read with the
+--     service role ask (send-report-email, the digest, the push). Luis reads by name exactly what he reads signed in,
+--     Pat reads none, and everyone who is not a primary reads every report named. The helpers are definer functions,
+--     owned by the bed's superuser, because the three functions are service role only.
+RESET ROLE;
+-- B3: Luis is the estimator. B4: Luis made it. With B1 (account manager) they are part 1's three ways onto a bid.
+INSERT INTO public.bids (id, created_by, service_type_id, project_name, estimator_id) VALUES
+  ('00000000-0000-0000-0000-00000005ce03', '00000000-0000-0000-0000-00000005ca07', '00000000-0000-0000-0000-00000005cb01', 'Greene Street', '00000000-0000-0000-0000-00000005ca04'),
+  ('00000000-0000-0000-0000-00000005ce04', '00000000-0000-0000-0000-00000005ca04', '00000000-0000-0000-0000-00000005cb01', 'Howell Mill', NULL);
+-- Of the bed's reports, the ones open to that user by name.
+CREATE FUNCTION psr.by_name(p_user uuid) RETURNS text LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT coalesce(string_agg(r.field_values->>'tag', ' ' ORDER BY r.field_values->>'tag'), 'none')
+  FROM public.reports r
+  WHERE r.template_id = '00000000-0000-0000-0000-00000005c101'
+    AND r.id = ANY (public.reports_open_to_user(
+          p_user,
+          (SELECT array_agg(x.id) FROM public.reports x WHERE x.template_id = '00000000-0000-0000-0000-00000005c101')))
+$$;
+CREATE FUNCTION psr.by_address(p_email text) RETURNS text LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT coalesce(string_agg(r.field_values->>'tag', ' ' ORDER BY r.field_values->>'tag'), 'none')
+  FROM public.reports r
+  WHERE r.template_id = '00000000-0000-0000-0000-00000005c101'
+    AND r.id = ANY (public.reports_open_to_address(
+          p_email,
+          (SELECT array_agg(x.id) FROM public.reports x WHERE x.template_id = '00000000-0000-0000-0000-00000005c101')))
+$$;
+CREATE FUNCTION psr.job_by_name(p_user uuid, p_job uuid) RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT public.primary_user_can_read_job_reports(p_user, p_job)
+$$;
+CREATE FUNCTION psr.bid_by_name(p_user uuid, p_bid uuid) RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT public.primary_user_can_read_report(p_user, NULL, NULL, p_bid, NULL)
+$$;
+CREATE FUNCTION psr.may_run(p_role text, p_fn text) RETURNS text LANGUAGE sql AS $$
+  SELECT has_function_privilege(p_role, p_fn, 'EXECUTE')::text
+$$;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA psr TO anon, authenticated, service_role;
+
+SELECT psr.same('by name, Luis reads his reports', psr.by_name('00000000-0000-0000-0000-00000005ca04'), 'R1 R10 R2 R4 R5 R6 R8');
+SELECT psr.same('by name, Pat reads none', psr.by_name('00000000-0000-0000-0000-00000005ca05'), 'none');
+SELECT psr.same('by name, Mo the master reads every report', psr.by_name('00000000-0000-0000-0000-00000005ca07'), 'R1 R10 R2 R3 R4 R5 R6 R7 R8 R9');
+SELECT psr.same('by name, Rosa the assistant reads every report', psr.by_name('00000000-0000-0000-0000-00000005ca03'), 'R1 R10 R2 R3 R4 R5 R6 R7 R8 R9');
+SELECT psr.same('by name, a role that is not primary is not narrowed: Sue', psr.by_name('00000000-0000-0000-0000-00000005ca09'), 'R1 R10 R2 R3 R4 R5 R6 R7 R8 R9');
+SELECT psr.same('by name, nobody reads none', psr.by_name(NULL), 'none');
+SELECT psr.same('by name, an id with no user reads none', psr.by_name('00000000-0000-0000-0000-00000005caff'), 'none');
+SELECT psr.same('no reports named, none answered', cardinality(public.reports_open_to_user('00000000-0000-0000-0000-00000005ca04', '{}'::uuid[]))::text, '0');
+SELECT psr.same('a report id that is no report is not handed to a primary', cardinality(public.reports_open_to_user('00000000-0000-0000-0000-00000005ca04', ARRAY['00000000-0000-0000-0000-00000005c2ff']::uuid[]))::text, '0');
+-- An outside address that is a primary's own account address is that primary; any other address is not narrowed.
+SELECT psr.same('Luis''s own address typed as an outside one reads as Luis', psr.by_address('luis@reports.test'), 'R1 R10 R2 R4 R5 R6 R8');
+SELECT psr.same('whatever its case and spaces', psr.by_address('  Luis@Reports.TEST '), 'R1 R10 R2 R4 R5 R6 R8');
+SELECT psr.same('Pat''s own address reads none', psr.by_address('pat@reports.test'), 'none');
+SELECT psr.same('a GC''s inbox is sent every report', psr.by_address('ap@builder.test'), 'R1 R10 R2 R3 R4 R5 R6 R7 R8 R9');
+SELECT psr.same('the master''s own address is sent every report', psr.by_address('mo@reports.test'), 'R1 R10 R2 R3 R4 R5 R6 R7 R8 R9');
+-- Service role only: a signed-in user cannot ask about somebody else.
+SELECT psr.same('reports_open_to_user: not authenticated', psr.may_run('authenticated', 'public.reports_open_to_user(uuid, uuid[])'), 'false');
+SELECT psr.same('reports_open_to_user: not anon', psr.may_run('anon', 'public.reports_open_to_user(uuid, uuid[])'), 'false');
+SELECT psr.same('reports_open_to_user: the service role', psr.may_run('service_role', 'public.reports_open_to_user(uuid, uuid[])'), 'true');
+SELECT psr.same('reports_open_to_address: not authenticated', psr.may_run('authenticated', 'public.reports_open_to_address(text, uuid[])'), 'false');
+SELECT psr.same('reports_open_to_address: not anon', psr.may_run('anon', 'public.reports_open_to_address(text, uuid[])'), 'false');
+SELECT psr.same('primary_user_can_read_report: not authenticated', psr.may_run('authenticated', 'public.primary_user_can_read_report(uuid, uuid, uuid, uuid, uuid)'), 'false');
+SELECT psr.same('primary_user_can_read_job_reports: not authenticated', psr.may_run('authenticated', 'public.primary_user_can_read_job_reports(uuid, uuid)'), 'false');
+SELECT psr.same('primary_can_read_report keeps its grant', psr.may_run('authenticated', 'public.primary_can_read_report(uuid, uuid, uuid, uuid)'), 'true');
+
+-- Signed in and by name are one answer, for the two primaries.
+SET LOCAL ROLE authenticated;
+SELECT psr.as_user('00000000-0000-0000-0000-00000005ca04');
+SELECT psr.same('Luis: the table and the answer by name agree', psr.tags_table(), psr.by_name('00000000-0000-0000-0000-00000005ca04'));
+SELECT psr.same('Luis: the list and the answer by name agree', psr.tags_list(), psr.by_name('00000000-0000-0000-0000-00000005ca04'));
+-- The two legs written out against the named user are parts 1 to 3's own: every job primary_can_access_job passes
+-- opens by name, and the bids primary_can_access_bid passes are the bids that open by name, no more and no fewer.
+SELECT psr.same('his job by parts 1 to 3', (
+  SELECT coalesce(string_agg(right(j::text, 2), ' ' ORDER BY j), 'none')
+  FROM unnest(ARRAY['00000000-0000-0000-0000-00000005cf01', '00000000-0000-0000-0000-00000005cf02', '00000000-0000-0000-0000-00000005cf03', '00000000-0000-0000-0000-00000005cf04']::uuid[]) j
+  WHERE public.primary_can_access_job(j)), '01');
+SELECT psr.same('no job parts 1 to 3 pass is shut by name', (
+  SELECT coalesce(string_agg(right(j::text, 2), ' ' ORDER BY j), 'none')
+  FROM unnest(ARRAY['00000000-0000-0000-0000-00000005cf01', '00000000-0000-0000-0000-00000005cf02', '00000000-0000-0000-0000-00000005cf03', '00000000-0000-0000-0000-00000005cf04']::uuid[]) j
+  WHERE public.primary_can_access_job(j) AND NOT psr.job_by_name('00000000-0000-0000-0000-00000005ca04', j)), 'none');
+SELECT psr.same('the jobs whose reports open by name', (
+  SELECT coalesce(string_agg(right(j::text, 2), ' ' ORDER BY j), 'none')
+  FROM unnest(ARRAY['00000000-0000-0000-0000-00000005cf01', '00000000-0000-0000-0000-00000005cf02', '00000000-0000-0000-0000-00000005cf03', '00000000-0000-0000-0000-00000005cf04']::uuid[]) j
+  WHERE psr.job_by_name('00000000-0000-0000-0000-00000005ca04', j)), '01 02 04');
+SELECT psr.same('his bids by part 1: account manager, estimator, creator', (
+  SELECT coalesce(string_agg(right(b::text, 2), ' ' ORDER BY b), 'none')
+  FROM unnest(ARRAY['00000000-0000-0000-0000-00000005ce01', '00000000-0000-0000-0000-00000005ce02', '00000000-0000-0000-0000-00000005ce03', '00000000-0000-0000-0000-00000005ce04']::uuid[]) b
+  WHERE public.primary_can_access_bid(b)), '01 03 04');
+SELECT psr.same('the same bids open by name', (
+  SELECT coalesce(string_agg(right(b::text, 2), ' ' ORDER BY b), 'none')
+  FROM unnest(ARRAY['00000000-0000-0000-0000-00000005ce01', '00000000-0000-0000-0000-00000005ce02', '00000000-0000-0000-0000-00000005ce03', '00000000-0000-0000-0000-00000005ce04']::uuid[]) b
+  WHERE psr.bid_by_name('00000000-0000-0000-0000-00000005ca04', b)), '01 03 04');
+SELECT psr.as_user('00000000-0000-0000-0000-00000005ca05');
+SELECT psr.same('Pat: the table and the answer by name agree', psr.tags_table(), psr.by_name('00000000-0000-0000-0000-00000005ca05'));
+SELECT psr.same('Pat: no bid opens by name', (
+  SELECT coalesce(string_agg(right(b::text, 2), ' ' ORDER BY b), 'none')
+  FROM unnest(ARRAY['00000000-0000-0000-0000-00000005ce01', '00000000-0000-0000-0000-00000005ce03', '00000000-0000-0000-0000-00000005ce04']::uuid[]) b
+  WHERE psr.bid_by_name('00000000-0000-0000-0000-00000005ca05', b)), 'none');
 
 DO $$ BEGIN RAISE NOTICE 'primary_scope_reports PASSED'; END $$;
 ROLLBACK;

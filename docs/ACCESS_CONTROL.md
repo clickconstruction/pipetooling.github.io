@@ -2790,7 +2790,9 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
   The one predicate is `primary_can_read_report(job, project, bid, author)`, read behind `NOT is_primary()` by the RESTRICTIVE `primary_scope_reports` policy (every direct read, the invoker functions and the realtime feed) and by `list_reports_with_job_info`, `list_reports_for_job_ledger`, `list_reports_for_bid` and the newest-report percent in `list_job_crew_position`, each SECURITY DEFINER.
   A report's photos follow: `primary_scope_report_photos` on `report_photos` and the `report-photos` bucket's read policy open a primary's own shot or a job whose reports they read (`primary_can_read_job_reports`).
   `list_my_reports` is the caller's own and is untouched, and so is the New-report job picker (`search_jobs_for_reports`).
-  The two office-picked email streams (`report_email`, `report_digest`) send what the office subscribes a person to and are not filtered by this rule.
+  The two office-picked email streams (`report_email`, `report_digest`) and the push on a new report follow the same rule since v2.7914: each asks `reports_open_to_user(user, report ids)` about the recipient it names (service role only, `20261119060000_primary_reports_named_user.sql`), so a primary the office subscribes is sent only the reports they read in the app.
+  An outside address is narrowed only when it is a primary's own account address (`reports_open_to_address`).
+  The rule's one body is `primary_user_can_read_report(user, job, project, bid, author)`, which `primary_can_read_report` asks about `auth.uid()`.
 - **Documents**: the page is a ledger view over jobs/estimates/bids, so it inherits the scoping;
   the Jobs tab adds an explicit Account-Man filter.
 - Materials adoption via `master_primaries` is unchanged, but adding materials to a job now requires being its Account Man (the `jobs_ledger_materials` rows are scoped).

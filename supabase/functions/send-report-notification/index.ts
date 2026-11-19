@@ -1,6 +1,7 @@
 // send-report-notification: the push to the people opted in to a report kind when one is filed. A person's hours
 // (punch list #141 PR 5, v2.6217): the push goes through _shared/pushHoursSend.ts, which pushes the people on and holds
-// a person outside their Push me hours, writing the row as `held` and sending nothing.
+// a person outside their Push me hours, writing the row as `held` and sending nothing. A recipient who is a primary is
+// pushed only a report they read in the app (_shared/primaryReportScope.ts).
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
@@ -9,6 +10,7 @@ import { webPushSender } from '../_shared/webPushSend.ts'
 import { reportPhotoCountClause } from '../_shared/reportPhotoEmail.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 import { recipientsNotShut } from '../_shared/jobPapersLock.ts'
+import { recipientsWhoReadReport } from '../_shared/primaryReportScope.ts'
 
 /** Matches client `reportTemplateDisplayName` legacy alias for notification copy. */
 const LEGACY_SUPERINTENDENT_REPORT_TEMPLATE_NAME = 'Superintendent Report'
@@ -171,7 +173,12 @@ serve(async (req) => {
 
     // Papers before a job opens: the push names the job, so a person who still owes that job a paper is left out of it
     // (the app's Papers to sign line tells them instead). A report on a project or a bid goes to everyone as before.
-    const toPush = await recipientsNotShut(adminClient, subject.kind === 'job' ? (reportRow.job_ledger_id as string | null) : null, recipientIds)
+    const notShut = await recipientsNotShut(adminClient, subject.kind === 'job' ? (reportRow.job_ledger_id as string | null) : null, recipientIds)
+    // A primary reads their own jobs' reports (the owner's word of 2026-11-19). The preference table's policy lets only
+    // dev, master, assistant and controller keep a row, so a primary holds one only as a leftover from a role change,
+    // one they can neither see nor remove. The push names the author and the job, so they are left out of a report
+    // they could not open. Everyone else is pushed as before.
+    const toPush = await recipientsWhoReadReport(adminClient, report_id, notShut)
     if (toPush.length === 0) {
       return new Response(
         JSON.stringify({ success: true, message: 'No recipients', push_sent: 0 }),
