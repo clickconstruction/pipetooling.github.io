@@ -24,8 +24,8 @@ One new function and two restated. No table and no policy.
 
 ## Order and proof
 
-Safe on either side of the client deploy, so the push follows the merge with no client step first.
+Safe on either side of the client deploy, so the push follows the merge with no client step first. `check:calls-ahead` still labels the PR *push right after the merge*, because the client calls two functions the migration replaces, and the Pages deploy holds until the push.
 
 Proved by CI's `schedule-reads-gate` bed (`scripts/pgtest-schedule-reads-gate.sh`, `supabase/tests/schedule_reads_gate/`, a line in `scripts/sql-beds.txt`, `npm run test:pg:schedule-reads-gate`), on the whole schema with the migration applied twice. The `job-papers-lists` bed read both functions with no login, as the database itself; it now reads them as the service role, the way the dispatch functions do.
 
-**Not yet applied.** Push from a clean checkout of `main` after the merge: `supabase db push`.
+**Not yet applied.** Push from a clean checkout of `main` right after the merge: `bash scripts/db-push.sh`.
