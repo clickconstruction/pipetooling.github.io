@@ -3,9 +3,10 @@
  * opens the map to draw on. Nothing is saved here: the map is made when its first line is.
  *
  * Every map is on a job (punch list #392, step 4). *For* leads the sheet and names the job. Opened
- * with no job, the sheet reads the person's jobs once. When they have a last job with a day, the
- * sheet opens on it with no question and says so under *For* (`pickerGuess`, the owner's word of
- * 2026-11-19). When they have none, or a job is on today's schedule, it asks **Which job is it
+ * with no job, the sheet reads the person's jobs once. When a job is next on their schedule inside
+ * a week, or they were at a job in the last two weeks, the sheet opens on it with no question and
+ * says so under *For* (`pickerGuess`, the owner's words of 2026-11-19). When they have neither, or
+ * a job is on today's schedule, it asks **Which job is it
  * for?** first (`PaintAMapJobPicker`), and the sheet itself is drawn once a job is pressed. A job
  * the app or the painter picked can be changed with **Change the job**, which opens the same
  * picker on the lists already read. A sheet opened under a job's own address keeps that job.
@@ -54,7 +55,7 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose, loadLists =
   const { user } = useAuth()
   const userId = user?.id ?? null
   const desk = usePaintedSheetDesk()
-  // Opened with no job (the Dashboard's press with nothing known, the header's search, the Documents tab): the app guesses the last job, or asks.
+  // Opened with no job (the Dashboard's press with nothing known, the header's search, the Documents tab): the app guesses the next job or the last, or asks.
   const homeless = !given.jobId && !given.developmentId
   const [picked, setPicked] = useState<PickerJob | null>(null)
   /** The person's jobs, read once for the guess and handed to the picker so it reads nothing more. */

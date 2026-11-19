@@ -199,12 +199,31 @@ describe('pickerPlan', () => {
     })
     // Each job once, at its soonest day, soonest first.
     expect(got.soon).toEqual([
-      { jobId: 'near', day: '2026-11-20' },
-      { jobId: 'far', day: '2026-11-25' },
+      { jobId: 'near', day: '2026-11-20', time: null },
+      { jobId: 'far', day: '2026-11-25', time: null },
     ])
     expect(got.order.map((m) => [m.jobId, m.how, m.day])).toEqual([
       ['near', 'schedule', '2026-11-14'],
       ['old', 'schedule', '2026-11-10'],
+    ])
+  })
+
+  it('puts the jobs of one day ahead in order of start, each at its first stop', () => {
+    const got = pickerPlan({
+      ...none,
+      blocks: [
+        { jobId: 'late', day: '2026-11-20', time: '13:00:00' },
+        { jobId: 'early', day: '2026-11-20', time: '10:30:00' },
+        { jobId: 'early', day: '2026-11-20', time: '07:00:00' },
+        { jobId: 'untimed', day: '2026-11-20', time: null },
+        { jobId: 'later-day', day: '2026-11-21', time: '06:00:00' },
+      ],
+    })
+    expect(got.soon.map((s) => [s.jobId, s.time])).toEqual([
+      ['early', '07:00:00'],
+      ['late', '13:00:00'],
+      ['untimed', null],
+      ['later-day', '06:00:00'],
     ])
   })
 
@@ -412,11 +431,38 @@ describe('pickerGuess', () => {
     expect(since.last.map((r) => [r.job.id, r.how ?? null, r.tag])).toContainEqual(['j-cedar', 'changed', 'yesterday'])
     expect(since.guess?.job.id).toBe('j-cedar')
     expect(pickerGuessWords(since.guess!, '2026-11-19')).toBe('The last job you clocked onto, Friday.')
-    // On the schedule again tomorrow: it is under Coming up, and still the last job they were on.
-    const again = pickerSections({ todayStops: [], soon: [soonOn(marlowe, '2026-11-20')], last: inOrder([sched(marlowe, '2026-11-10')]), todayYmd: '2026-11-19', paintable: all })
-    expect(again.soon.map((r) => r.job.id)).toEqual(['j-marlowe'])
+    // On the schedule again more than a week out: it is under Coming up, and still the last job they were on.
+    const again = pickerSections({ todayStops: [], soon: [soonOn(marlowe, '2026-11-30')], last: inOrder([sched(marlowe, '2026-11-10')]), todayYmd: '2026-11-19', paintable: all })
+    expect(again.soon.map((r) => [r.job.id, r.tag])).toEqual([['j-marlowe', 'Nov 30']])
     expect(again.last).toEqual([])
     expect(pickerGuessWords(again.guess!, '2026-11-19')).toBe('The last job on your schedule, Nov 10.')
+  })
+
+  it('is the next job on the schedule inside a week, over the last job (the owner’s word of 2026-11-19, call 16)', () => {
+    const next = (soon: PickerSoon[], last: PickerLast[] = [clock(pinto, '2026-11-18')]) => pickerSections({ todayStops: [], soon, last: inOrder(last), todayYmd: '2026-11-19', paintable: all })
+    const tomorrow = next([soonOn(marlowe, '2026-11-23'), soonOn(cedar, '2026-11-20')])
+    expect(tomorrow.guess?.job.id).toBe('j-cedar')
+    expect(pickerGuessWords(tomorrow.guess!, '2026-11-19')).toBe('The next job on your schedule, tomorrow.')
+    // Two jobs tomorrow: the first stop of the day.
+    const two = next([{ job: marlowe, day: '2026-11-20', timeStart: '13:00:00' }, { job: cedar, day: '2026-11-20', timeStart: '07:30:00' }])
+    expect(two.guess?.job.id).toBe('j-cedar')
+    expect(two.soon.map((r) => r.job.id)).toEqual(['j-cedar', 'j-marlowe'])
+    // Six days out is still inside a week, and said as its weekday.
+    const wednesday = next([soonOn(marlowe, '2026-11-25')])
+    expect(pickerGuessWords(wednesday.guess!, '2026-11-19')).toBe('The next job on your schedule, Wednesday.')
+    // A week out or more is a plan: the last job leads again.
+    const far = next([soonOn(marlowe, '2026-11-26')])
+    expect(far.guess?.job.id).toBe('j-pinto')
+    expect(pickerGuessWords(far.guess!, '2026-11-19')).toBe('The last job you clocked onto, yesterday.')
+    // A person with a job tomorrow and no last job at all still opens on it.
+    expect(next([soonOn(cedar, '2026-11-20')], []).guess?.job.id).toBe('j-cedar')
+  })
+
+  it('is never a next job the person may not paint on, the office job, or any job while one is on today', () => {
+    const mine = pickerSections({ todayStops: [], soon: [soonOn(office, '2026-11-20'), soonOn(cedar, '2026-11-20'), soonOn(marlowe, '2026-11-21')], last: [], todayYmd: '2026-11-19', paintable: new Set([office.id, marlowe.id]) })
+    expect(mine.guess?.job.id).toBe('j-marlowe')
+    const today = pickerSections({ todayStops: [{ job: pinto, timeStart: '09:00:00', timeEnd: '10:00:00' }], soon: [soonOn(cedar, '2026-11-20')], last: [], todayYmd: '2026-11-19', paintable: all })
+    expect(today.guess).toBeNull()
   })
 
   it('is none when a job is on today’s schedule: the person is asked which', () => {

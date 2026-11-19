@@ -25,8 +25,10 @@
  * office's schedule every day and is no job to paint a way in for, so no list offers it. The
  * search still finds it.
  *
- * When the app is told no job and the person was at a job in the last two weeks, the start sheet
- * opens on it with no question (`pickerGuess`), and **Change the job** opens this picker.
+ * When the app is told no job, the start sheet opens with no question on the next job on the
+ * person's schedule inside a week, else on the last job they were at in the last two weeks
+ * (`pickerGuess`), and **Change the job** opens this picker. The next job leads on the owner's
+ * word of 2026-11-19 (call 16): a way in is most use the day before the crew arrives.
  *
  * A person may paint a map for a job they can open or are on the team of (`on_site_can_touch_job`).
  * The app's job search finds more than that, so a search hit a person may not paint on is listed
@@ -57,8 +59,8 @@ export type PickerMark = { jobId: string; how: PickerLastHow; day: string | null
 /** A job the person was on, named by its best sign: how the app knows, and that sign's day. A list of these is in the order `pickerLastOrder` gave. */
 export type PickerLast = { job: PickerJob; how: PickerLastHow; day: string | null; there?: PickerThere | null }
 
-/** A job on the person's schedule on a day ahead. */
-export type PickerSoon = { job: PickerJob; day: string }
+/** A job on the person's schedule on a day ahead, and when its first stop that day starts (`07:30:00`). */
+export type PickerSoon = { job: PickerJob; day: string; timeStart?: string | null }
 
 export type PickerRow = {
   job: PickerJob
@@ -72,6 +74,8 @@ export type PickerRow = {
   how?: string | null
   /** Under Your last jobs: how the app knows, and the day. */
   last?: { how: PickerLastHow; day: string | null }
+  /** Under Coming up: the day it is on the schedule. */
+  next?: { day: string }
   /** Whether the person may paint a map for it. A row that is not cannot be pressed. */
   paintable: boolean
 }
@@ -91,6 +95,8 @@ export const PICKER_LAST_MAX = 6
 export const PICKER_LAST_READ = 24
 /** How many days back the start sheet's guess looks. An older day is asked about, not opened on. */
 export const PICKER_GUESS_DAYS = 14
+/** How many days ahead it looks for the next job: inside a week, where a day is said as *tomorrow* or a weekday. */
+export const PICKER_NEXT_DAYS = 7
 /** How many jobs Coming up holds. */
 export const PICKER_SOON_MAX = 4
 /** How many days ahead Coming up looks. Past two weeks a schedule is a plan, not a day. */
@@ -254,14 +260,14 @@ export function pickerLastOrder(marks: ReadonlyArray<PickerMark>): PickerMark[] 
     .map((h) => ({ jobId: h.jobId, how: h.how, day: h.day, ...(h.there ? { there: h.there } : {}) }))
 }
 
-/** One row of a read, as its job and its day on the company's calendar. */
-export type PickerSign = { jobId: string | null; day: string | null }
+/** One row of a read, as its job and its day on the company's calendar. A schedule row also says when it starts. */
+export type PickerSign = { jobId: string | null; day: string | null; time?: string | null }
 
 /**
  * What the reads say, sorted into what to read whole. `order` is the person's last jobs in the
  * list's own order, held to `PICKER_LAST_READ`, with the job the start sheet may open on added
  * when newer signs pushed it out. `soon` is each job on the schedule ahead, once, at its soonest
- * day, soonest first. A day on the schedule ahead of today is coming up, a day behind is a last
+ * day and start, soonest first. A day on the schedule ahead of today is coming up, a day behind is a last
  * job, and today is the day's own read. Today's jobs and the company's office job are in neither.
  */
 export function pickerPlan(read: {
@@ -276,18 +282,21 @@ export function pickerPlan(read: {
   changes: ReadonlyArray<PickerSign>
   /** The teams, each with the day the person joined it. */
   teams: ReadonlyArray<PickerSign>
-}): { order: PickerMark[]; soon: Array<{ jobId: string; day: string }> } {
+}): { order: PickerMark[]; soon: Array<{ jobId: string; day: string; time: string | null }> } {
   const skip = new Set(read.todayJobIds)
   if (read.officeJobId) skip.add(read.officeJobId)
   const marks: PickerMark[] = []
-  const soonest = new Map<string, string>()
+  const soonest = new Map<string, { day: string; time: string | null }>()
+  /** A day and a start as one word that sorts. A stop with no start sorts last in its day. */
+  const when = (w: { day: string; time: string | null }) => `${w.day} ${w.time || '99'}`
   for (const r of read.clocks) if (r?.jobId) marks.push({ jobId: r.jobId, how: 'clock', day: r.day })
   for (const r of read.blocks) {
     if (!r?.jobId || !r.day || dayNumber(r.day) == null) continue
     if (r.day < read.todayYmd) marks.push({ jobId: r.jobId, how: 'schedule', day: r.day })
     else if (r.day > read.todayYmd && !skip.has(r.jobId)) {
+      const now = { day: r.day, time: r.time ?? null }
       const had = soonest.get(r.jobId)
-      if (!had || r.day < had) soonest.set(r.jobId, r.day)
+      if (!had || when(now) < when(had)) soonest.set(r.jobId, now)
     }
   }
   for (const r of read.changes) if (r?.jobId && r.day) marks.push({ jobId: r.jobId, how: 'changed', day: r.day })
@@ -297,7 +306,7 @@ export function pickerPlan(read: {
   // The job the start sheet may open on is the one with the newest clock or scheduled day. It is read even when newer signs fill the list.
   const been = all.filter((m) => !!m.there).sort((a, b) => (a.there!.day < b.there!.day ? 1 : a.there!.day > b.there!.day ? -1 : 0))[0]
   if (been && !order.includes(been)) order.push(been)
-  const soon = [...soonest].map(([jobId, day]) => ({ jobId, day })).sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0))
+  const soon = [...soonest].map(([jobId, w]) => ({ jobId, ...w })).sort((a, b) => (when(a) < when(b) ? -1 : when(a) > when(b) ? 1 : 0))
   return { order, soon }
 }
 
@@ -323,16 +332,18 @@ function guessRowOf(l: PickerLast, there: PickerThere, todayYmd: string): Picker
 /**
  * The picker's three lists, and the job the start sheet may open on. Today's stops in order of
  * start, each job once. Then Coming up: the jobs on the schedule in the next `PICKER_SOON_DAYS`
- * days, soonest first, each job once, without the ones under Today, held to `PICKER_SOON_MAX`.
+ * days, soonest first and by start inside a day, each job once, without the ones under Today,
+ * held to `PICKER_SOON_MAX`.
  * Then Your last jobs, in the order they are handed in (`pickerLastOrder`), each job once,
  * without the ones already above, held to `PICKER_LAST_MAX`. A billing-only job is in none: it has
  * no site. Nor is the company's office job. A job the person may not paint on is left out of all
  * three, since these lists are offers and an offer that cannot be taken is noise. A clock, a
  * scheduled day or a change ahead of today is no last day, so its job is left out too.
  *
- * The guess is the job with the newest clock or scheduled day, wherever it sits: down the list,
- * under Coming up, or named by a change made since. There is none when a job is on today's
- * schedule, since the person is then asked which. There is none from a change or the team alone,
+ * The guess is the first job under Coming up when its day is inside `PICKER_NEXT_DAYS`: the next
+ * job on the schedule, and the first stop of that day. With none, it is the job with the newest
+ * clock or scheduled day, wherever it sits: down the list or named by a change made since. There
+ * is none when a job is on today's schedule, since the person is then asked which. There is none from a change or the team alone,
  * which say nothing of when the person was there. And there is none from a day more than
  * `PICKER_GUESS_DAYS` back: an office person's last clock may be months old, and the jobs they
  * changed today are then the better list to be asked from.
@@ -349,14 +360,15 @@ export function pickerSections(input: { todayStops: ReadonlyArray<PaintPressStop
   }
   const soon: PickerRow[] = []
   const soonEnd = pickerDayPlus(input.todayYmd, PICKER_SOON_DAYS)
-  const ahead = [...(input.soon ?? [])].map((s, i) => ({ s, i })).sort((a, b) => (a.s.day < b.s.day ? -1 : a.s.day > b.s.day ? 1 : a.i - b.i))
+  const whenOf = (s: PickerSoon) => `${s.day} ${s.timeStart || '99'}`
+  const ahead = [...(input.soon ?? [])].map((s, i) => ({ s, i })).sort((a, b) => (whenOf(a.s) < whenOf(b.s) ? -1 : whenOf(a.s) > whenOf(b.s) ? 1 : a.i - b.i))
   for (const { s } of ahead) {
     if (soon.length >= PICKER_SOON_MAX) break
     if (!s?.job || !ok(s.job) || seen.has(s.job.id)) continue
     const words = s.day <= soonEnd ? pickerSoonWords(s.day, input.todayYmd) : ''
     if (!words) continue
     seen.add(s.job.id)
-    soon.push(rowOf(s.job, words, true))
+    soon.push({ ...rowOf(s.job, words, true), next: { day: s.day } })
   }
   const last: PickerRow[] = []
   const listed = new Set<string>()
@@ -371,20 +383,27 @@ export function pickerSections(input: { todayStops: ReadonlyArray<PaintPressStop
     if (l.how !== 'team' && (!l.day || l.day > input.todayYmd)) continue
     if (last.length < PICKER_LAST_MAX) last.push(lastRowOf(l, input.todayYmd))
   }
-  return { today, soon, last, guess: today.length === 0 && best ? guessRowOf(best.l, best.there, input.todayYmd) : null }
+  if (today.length > 0) return { today, soon, last, guess: null }
+  const next = soon[0]?.next && soon[0].next.day < pickerDayPlus(input.todayYmd, PICKER_NEXT_DAYS) ? soon[0] : null
+  return { today, soon, last, guess: next ?? (best ? guessRowOf(best.l, best.there, input.todayYmd) : null) }
 }
 
 /**
- * The job the start sheet opens on when the app is told none: the newest job the person clocked
- * onto or had on their schedule, in the last two weeks. None when a job is on today's schedule,
- * and none from a change or the team alone (`pickerSections`).
+ * The job the start sheet opens on when the app is told none: the next job on the person's
+ * schedule inside a week, else the newest job they clocked onto or had on their schedule in the
+ * last two weeks. None when a job is on today's schedule, and none from a change or the team
+ * alone (`pickerSections`).
  */
 export function pickerGuess(sections: PickerSections): PickerRow | null {
   return sections.guess
 }
 
-/** Under *For* on a sheet the app opened on a guess: `The last job you clocked onto, Friday.` */
+/** Under *For* on a sheet the app opened on a guess: `The next job on your schedule, tomorrow.` or `The last job you clocked onto, Friday.` */
 export function pickerGuessWords(row: PickerRow, todayYmd: string): string {
+  if (row.next) {
+    const soon = pickerSoonWords(row.next.day, todayYmd)
+    return soon ? `The next job on your schedule, ${soon}.` : 'The next job on your schedule.'
+  }
   const day = row.last?.day ? pickerDayWords(row.last.day, todayYmd) : ''
   const lead = row.last?.how === 'schedule' ? 'The last job on your schedule' : 'The last job you clocked onto'
   return day ? `${lead}, ${day}.` : `${lead}.`
