@@ -184,7 +184,7 @@ export type LienBoardBinLine = { key: string; words: string; tone?: 'amber' | 'm
  * where the print stands over the folded bins. `quiet` is a press that nudges someone else, the office's reminder:
  * its bin gets no blue edge, since the act is not the viewer's.
  */
-export type LienBoardBinPress = { label: string; onPress: () => void; title?: string; filled?: boolean; dead?: boolean; whenEmpty?: boolean; linesOnly?: boolean; quiet?: boolean; lines?: ReadonlyArray<LienBoardBinLine>; marks?: Record<string, string> }
+export type LienBoardBinPress = { label: string; onPress: () => void; title?: string; filled?: boolean; dead?: boolean; whenEmpty?: boolean; linesOnly?: boolean; quiet?: boolean; lines?: ReadonlyArray<LienBoardBinLine>; /** Lines this press adds under a print that takes the bin's title line (v2.7856): *Back from the clerk? · Enter document numbers · 3 ›* under *Print 3 for notarization*. */ under?: ReadonlyArray<LienBoardBinLine>; marks?: Record<string, string> }
 
 const LINE_DOOR: CSSProperties = { border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', borderRadius: 3 }
 
@@ -534,7 +534,11 @@ export default function LienBoard({
     return { label: side.label, onPress: () => prints?.onPress(side), filled: true, dead: side.dead || Boolean(prints?.busy), whenEmpty: true, linesOnly: isMobile, lines, marks: { 'data-lien-board-print-press': side.act } }
   }
   const presses: Partial<Record<LienBoardBinKey, LienBoardBinPress>> = { ...binPress }
-  for (const side of printSides) presses[side.bin] = printPress(side)
+  // A print takes its bin's title line. A press the desk gave the same bin keeps its place as a line under it.
+  for (const side of printSides) {
+    const print = printPress(side)
+    presses[side.bin] = { ...print, lines: [...(print.lines ?? []), ...(binPress?.[side.bin]?.under ?? [])] }
+  }
   // A phone's row over the fold: the two prints in their short words, side by side.
   const phonePrints = isMobile && printSides.length > 0
   const column = (kind: 'notice' | 'affidavit', title: string, bins: LienBoardBin[], under: ReactNode) => {

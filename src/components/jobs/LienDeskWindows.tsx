@@ -12,6 +12,8 @@ import LienPublicPutBackWindow from './LienPublicPutBackWindow'
 import LienScanBatchWindow from './LienScanBatchWindow'
 import type { LienDocKnown } from '../../lib/jobs/lienDocNumber'
 import LienServeWindow from './LienServeWindow'
+import LienFilingBatchWindow from './LienFilingBatchWindow'
+import { lienFilingDoorWords, type LienFilingTarget } from '../../lib/jobs/lienFilingBatch'
 import type { LienDeskWindowFlags } from './useLienDeskWindows'
 import type { LienServeLanding } from '../../lib/jobs/lienServeStage'
 
@@ -32,6 +34,8 @@ export function LienDeskWindows({
   serveMailedJobs,
   docKnown,
   servePrinted,
+  filingTargets = [],
+  authUserId = null,
   serveLand = null,
   onServeClosed,
   onServePrinted,
@@ -61,6 +65,10 @@ export function LienDeskWindows({
   docKnown?: LienDocKnown[]
   /** The filings whose copies a print is filed for. */
   servePrinted?: ReadonlySet<string>
+  /** The liens in Ready to file, for **Back from the clerk** (`lienFilingTargets`); empty for a viewer who does not record. */
+  filingTargets?: LienFilingTarget[]
+  /** The person signed in: a filing is recorded as theirs. */
+  authUserId?: string | null
   /** Where the copies window opens, from the door that opened it (`lienServeStage.ts`); null opens it at the top. */
   serveLand?: LienServeLanding | null
   /** The copies window sent these filings' copies to the printer. */
@@ -85,7 +93,8 @@ export function LienDeskWindows({
   /** A paper on the property's card: the desk opens that job's notice or affidavit. */
   onOpenJobPaper: (jobId: string, paper: 'notice' | 'affidavit') => void
 }) {
-  const { serveOpen, setServeOpen, scansOpen, setScansOpen, publicReview, setPublicReview, publicPutBack, setPublicPutBack, jobPath, setJobPath } = windows
+  const { serveOpen, setServeOpen, scansOpen, setScansOpen, publicReview, setPublicReview, publicPutBack, setPublicPutBack, jobPath, setJobPath, filingsOpen, setFilingsOpen } = windows
+  const filingsDoorWords = lienFilingDoorWords(filingTargets.length)
   return (
     <>
     {paneFix && data && data.jobsById[paneFix.jobId] ? (() => {
@@ -110,6 +119,7 @@ export function LienDeskWindows({
         mailed={serveMailedJobs}
         docKnown={docKnown}
         printed={servePrinted}
+        filingsDoor={filingsDoorWords ? { label: filingsDoorWords, count: filingTargets.length, onPress: () => { setServeOpen(false); onServeClosed?.(); setFilingsOpen(true) } } : null}
         todayYmd={todayYmd}
         issuer={issuer}
         isMobile={isMobile}
@@ -130,6 +140,26 @@ export function LienDeskWindows({
           setServeOpen(false)
           onServeClosed?.()
           setScansOpen(true)
+        }}
+      />
+    ) : null}
+    {filingsOpen ? (
+      <LienFilingBatchWindow
+        targets={filingTargets}
+        known={docKnown ?? []}
+        todayYmd={todayYmd}
+        isMobile={isMobile}
+        zIndex={805}
+        authUserId={authUserId}
+        onChanged={onChanged}
+        onClose={() => setFilingsOpen(false)}
+        onOpenLien={(jobId) => {
+          setFilingsOpen(false)
+          onOpenAffidavit(jobId)
+        }}
+        onMailCopies={() => {
+          setFilingsOpen(false)
+          setServeOpen(true)
         }}
       />
     ) : null}

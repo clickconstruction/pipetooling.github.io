@@ -154,6 +154,22 @@ The paper prints with nothing of the browser on it. It should not show the date 
 
 Was the lien filed without this tab, by counsel or on paper from elsewhere? The gate does not stop the record. Press {{button:outline|Already filed — record it…}} under the gate list. Type the county, the recording number and the day it was filed. The serve-by day and the year to sue count from that day. A hold never hides **Enter mail numbers…** on a lien that is already on file. The press sits under the gate list until the copies are recorded.
 
+### Several liens back from the clerk
+
+Did a stack of liens come back from the County Clerk together? Record them in one sitting. Open the Lien desk's To do. On the Board, find the bin **Ready to file**. Under its print a line reads *Back from the clerk?* Press {{button:outline|Enter document numbers · 3 ›}} beside it. The press counts the liens in the bin. One window opens. It is named **Back from the clerk: record the filings**.
+
+Set **Filed on** to the day the clerk recorded them. Each lien has one line, with its county clerk and a box. Type the number from the clerk's stamp and press Enter. That lien is recorded as filed at once. The cursor moves to the next lien. Leaving a box records it too. The line turns green and says the day its copies must be mailed by.
+
+A number another lien already holds is not recorded. The line says which lien holds it. A number that is not the county's usual length gets a question. Check it against the stamp. Press **Record it anyway** when it is right. A lien with no number stays in the window for later.
+
+Do you have the clerk's PDFs? Press {{button:outline-blue|Choose the stamped liens}} and pick them all at once. A file named with its job number goes to that lien. A file named *J858 Lien* goes to job 858. A long number in the name is typed in as the document number. Check each one against the stamp. Then press the counted press at the foot, like **Record 3 filings**. Each file is kept as its lien's stamped copy. A file that names no lien here is left out, and a line says why.
+
+One lien can take its file alone. Press **Add the stamped lien** on its line. The file can also follow on a later day.
+
+Was a lien recorded by mistake? Press **Open its Lien window ›** on its line. Find its record in the list of filings there. Press **Void** on it. Then tell your lead. The paper does not go back to **Ready to file** by itself yet.
+
+When the liens are on record, press {{button:blue|Print the copies to mail ›}}. It opens the window for the next step.
+
 ## Mail the copies within five days
 
 A filed lien owes a copy of its affidavit to the owner. A job under a GC owes the original contractor a copy too. Send the copies by the fifth day after the filing.
