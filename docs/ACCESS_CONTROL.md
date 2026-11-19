@@ -3435,6 +3435,7 @@ The service role with no login reads both for anyone, which is how `schedule-sha
 A signed-in caller reads both for himself.
 The office (`is_office_staff()`) also reads the day's email for anyone, the roles that may send it to another user.
 Anyone else is refused with `42501`, and the public key holds neither function.
+A primary named as the viewer or the recipient reads the blocks assigned to him and the blocks of the jobs he is the account manager of, the table's rule for him written inline (punch list #400, family 7).
 
 ### Master-Assistant Adoption
 

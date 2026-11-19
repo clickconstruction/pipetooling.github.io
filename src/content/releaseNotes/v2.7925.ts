@@ -8,7 +8,8 @@ const note: ReleaseNote = {
   highlights: [
     'The preview in the Schedule’s Share window now reads for the person signed in and nobody else. It shows the same board as before.',
     'The preview in the Dashboard’s Email schedule window reads for you. The office also reads it for the person picked under Send to, as before.',
-    'The emails that go out are the same. Nothing changes on any screen.',
+    'A primary’s schedule email, and its preview, now list the visits assigned to them and the jobs they are the account manager of. They listed every job before.',
+    'Everyone else’s schedule emails are the same.',
   ],
 }
 

@@ -12,10 +12,17 @@ SET lock_timeout = '3s';
 --     lets send that email to another person. Their window previews what the person picked will be sent.
 --     The shared schedule has no such leg: its window previews the sender's own board and names nobody else.
 --
+-- One clause changes inside the read, family 7 of punch list #400 (to-dos/primary-job-doors.md): a primary named as
+-- the viewer or the recipient is held to the blocks assigned to him and the jobs he is the account manager of
+-- (jobs_ledger.account_manager_user_id), the rule the table job_schedule_blocks already holds him to through
+-- primary_scope_jobs_ledger. It is written inline because these reads ask about a named person, not auth.uid().
+-- Every other role's legs, and the bid blocks, are as they were.
+--
 -- Both functions are replaced from their live definitions (pg_get_functiondef on a copy of the whole schema, the same
--- bodies as 20261118020000) with one statement added in front of the read. No name, argument or returned column
--- changes, and every caller in the app already asks within the rule, so this is safe on either side of a client
--- deploy. The grants are restated by name: authenticated and the service role, never anon.
+-- bodies as 20261118020000) with the gate's statement in front of the read and the primary's clause round the job
+-- legs. No name, argument or returned column changes, and every caller in the app already asks within the gate's
+-- rule, so this is safe on either side of a client deploy. The grants are restated by name: authenticated and the
+-- service role, never anon.
 -- No CREATE TABLE. Idempotent: CREATE OR REPLACE and grants that name every role.
 
 -- 1) The gate. p_office_reads_anyone is true for the read whose senders may name another person.
@@ -86,7 +93,13 @@ AS $function$
       ))
       OR (jsb.job_id IS NOT NULL AND (
         jsb.assignee_user_id = p_recipient
-        OR EXISTS (SELECT 1 FROM public.users WHERE id = p_recipient AND role = 'dev')
+        -- A primary is held to the jobs he is the account manager of, the rule the table holds him to
+        -- (primary_scope_jobs_ledger), asked here about the named person. Every other role reads as before.
+        OR ((
+          jl.account_manager_user_id = p_recipient
+          OR NOT EXISTS (SELECT 1 FROM public.users WHERE id = p_recipient AND role = 'primary')
+        ) AND (
+        EXISTS (SELECT 1 FROM public.users WHERE id = p_recipient AND role = 'dev')
         OR jl.master_user_id = p_recipient
         OR EXISTS (SELECT 1 FROM public.users WHERE id = p_recipient AND role = 'primary')
         OR EXISTS (
@@ -107,13 +120,14 @@ AS $function$
           SELECT 1 FROM public.jobs_ledger_team_members jtm
           WHERE jtm.job_id = jl.id AND jtm.user_id = p_recipient
         )
+        ))
       ))
     )
   ORDER BY jsb.time_start ASC, jsb.assignee_user_id ASC;
 $function$;
 
 COMMENT ON FUNCTION public.list_job_schedule_blocks_for_schedule_email(uuid, date) IS
-  'Dispatch schedule blocks for one calendar day as p_recipient sees them (the job_schedule_blocks SELECT rule asked about a named person). Read by the service role, by the office for anyone, and by a signed-in person for himself (schedule_read_gate); anyone else is refused with 42501.';
+  'Dispatch schedule blocks for one calendar day as p_recipient sees them (the job_schedule_blocks SELECT rule asked about a named person). A primary named is held to the blocks assigned to him and the jobs he is the account manager of. Read by the service role, by the office for anyone, and by a signed-in person for himself (schedule_read_gate); anyone else is refused with 42501.';
 REVOKE ALL ON FUNCTION public.list_job_schedule_blocks_for_schedule_email(uuid, date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.list_job_schedule_blocks_for_schedule_email(uuid, date) TO authenticated, service_role;
 
@@ -156,7 +170,13 @@ AS $function$
       ))
       OR (jsb.job_id IS NOT NULL AND (
         jsb.assignee_user_id = p_viewer
-        OR EXISTS (SELECT 1 FROM public.users WHERE id = p_viewer AND role = 'dev')
+        -- A primary is held to the jobs he is the account manager of, the rule the table holds him to
+        -- (primary_scope_jobs_ledger), asked here about the named person. Every other role reads as before.
+        OR ((
+          jl.account_manager_user_id = p_viewer
+          OR NOT EXISTS (SELECT 1 FROM public.users WHERE id = p_viewer AND role = 'primary')
+        ) AND (
+        EXISTS (SELECT 1 FROM public.users WHERE id = p_viewer AND role = 'dev')
         OR jl.master_user_id = p_viewer
         OR EXISTS (SELECT 1 FROM public.users WHERE id = p_viewer AND role = 'primary')
         OR EXISTS (
@@ -177,12 +197,13 @@ AS $function$
           SELECT 1 FROM public.jobs_ledger_team_members jtm
           WHERE jtm.job_id = jl.id AND jtm.user_id = p_viewer
         )
+        ))
       ))
     )
   ORDER BY assignee_name ASC, jsb.work_date ASC, jsb.time_start ASC;
 $function$;
 
 COMMENT ON FUNCTION public.list_schedule_blocks_for_share(uuid, date, date) IS
-  'The dispatch board (all assignees) over [p_start, p_end] as p_viewer sees it (the job_schedule_blocks SELECT rule asked about a named person). Read by the service role and by a signed-in person for himself (schedule_read_gate); anyone else is refused with 42501.';
+  'The dispatch board (all assignees) over [p_start, p_end] as p_viewer sees it (the job_schedule_blocks SELECT rule asked about a named person). A primary named is held to the blocks assigned to him and the jobs he is the account manager of. Read by the service role and by a signed-in person for himself (schedule_read_gate); anyone else is refused with 42501.';
 REVOKE ALL ON FUNCTION public.list_schedule_blocks_for_share(uuid, date, date) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.list_schedule_blocks_for_share(uuid, date, date) TO authenticated, service_role;
