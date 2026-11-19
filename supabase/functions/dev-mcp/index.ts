@@ -4883,7 +4883,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         await run('clear_schedule', async () => {
           const r = await restPost(session, 'rpc/pay_staff_clear_salary_schedule_by_person_name', { p_person_name: ops.payName })
           const body = (r.body && typeof r.body === 'object' ? r.body : {}) as { ok?: unknown; code?: unknown; message?: unknown }
-          if (r.ok && body.ok === true) return { ok: true, words: 'the workday template, the day overrides and today\'s unapproved auto-sessions are cleared.' }
+          if (r.ok && body.ok === true) return { ok: true, words: 'the workday template, the day overrides and the unapproved auto-sessions of today and the day before are cleared.' }
           // No users row under the name: nothing hangs on one, so there was no schedule to clear.
           if (r.ok && body.code === 'no_login_user' && !ops.userId) return { ok: true, words: 'no users row under the name, so no workday schedule stood to clear.' }
           return { ok: false, words: `the schedule was not cleared: ${r.ok ? String(body.message ?? 'the function answered no') : restError(r.status, r.body)}` }
@@ -4902,7 +4902,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if (ops.sync && ops.userId) {
         await run('sync_today', async () => {
           const r = await restPost(session, 'rpc/sync_salary_clock_sessions_for_user_day', { p_user_id: ops.userId, p_work_date: today })
-          return { ok: r.ok, words: r.ok ? `today's salary sessions are synced (${today}).` : `the sync did not run: ${restError(r.status, r.body)}. The pay row stands; the sessions appear with the next sync.` }
+          return { ok: r.ok, words: r.ok ? `the salary sessions of ${today} and the day before are synced.` : `the sync did not run: ${restError(r.status, r.body)}. The pay row stands; the sessions appear with the next sync.` }
         })
       }
       const logRow = payLogRow(ops, p.reason, who.userId)
