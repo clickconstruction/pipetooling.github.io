@@ -33394,6 +33394,50 @@ export type Database = {
           },
         ]
       }
+      person_watch_notices: {
+        Row: {
+          body: string
+          day: string
+          id: string
+          key: string
+          kind: string
+          sent_at: string
+          title: string
+          told: string[]
+          watch_id: string
+        }
+        Insert: {
+          body?: string
+          day: string
+          id?: string
+          key: string
+          kind: string
+          sent_at?: string
+          title?: string
+          told?: string[]
+          watch_id: string
+        }
+        Update: {
+          body?: string
+          day?: string
+          id?: string
+          key?: string
+          kind?: string
+          sent_at?: string
+          title?: string
+          told?: string[]
+          watch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_watch_notices_watch_id_fkey"
+            columns: ["watch_id"]
+            isOneToOne: false
+            referencedRelation: "person_watches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_watches: {
         Row: {
           id: string

@@ -7169,7 +7169,7 @@ A few legacy functions carry a `DEPLOY.md` (some also a `DEPLOY_NOW.md`) with fu
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
 
-**Deploy**: `supabase functions deploy watch-notify-dispatch`, before the migration `20261118200000_person_watch_notices.sql` is pushed.
+**Deploy**: `supabase functions deploy watch-notify-dispatch`, before the migration `20261118200000_person_watch_notices.sql` is pushed. Deployed on 2026-11-19, then the migration was pushed.
 
 ## Related Documentation
 
