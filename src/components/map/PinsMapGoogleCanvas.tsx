@@ -4,7 +4,8 @@
  * card. Same props as `PinsMapCanvas` plus `apiKey` and `onUnavailable`,
  * which the card treats as "fall back to OpenStreetMap for the rest of this
  * page": the API failed to load (bad key, blocked referrer, network), took
- * longer than the timeout, never painted, or threw while rendering.
+ * longer than the timeout, never painted while its frame was in the window,
+ * or threw while rendering.
  *
  * Circle markers in the caller's colors (a ring color becomes a thick stroke),
  * a desktop info window whose body the caller renders, an optional anchor
@@ -21,7 +22,9 @@ import {
   useRef,
   useState,
   type ErrorInfo,
+  type MutableRefObject,
   type ReactNode,
+  type RefObject,
 } from 'react'
 import {
   APIProvider,
@@ -43,6 +46,7 @@ import {
 } from '../../lib/map/mapCanvasTypes'
 import type { PinsMapCanvasProps } from './PinsMapCanvas'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
+import { PAINT_POLL_MS, paintClockLook } from '../../lib/map/paintClock'
 import { pinLabelInkHex } from '../../lib/map/pinLabelInk'
 import { googleMapTypeIsImagery, type GoogleMapTypeId } from '../../lib/map/googleMapType'
 import { mapPulseTarget } from '../../lib/map/pulseTarget'
@@ -59,14 +63,28 @@ export type PinsMapGoogleCanvasProps = PinsMapCanvasProps & {
 
 /** How long the Maps script may take before the card gives up on it. */
 const LOAD_TIMEOUT_MS = 10000
+
 /**
- * How long a loaded API may take to actually paint a map (`.gm-style` in the
- * container). Live-tested 2026-09-08 with a bogus key: the script loads, markers
- * are created, but the map stays an empty div and neither `onError` nor
- * `gm_authFailure` fires — this watchdog is what catches that case.
+ * Whether the map's frame is in the window, for the paint clock (`paintClock.ts`). Google builds no
+ * map until its own observer sees the div, so the clock must not run before ours does. Ours has no
+ * margin and Google's has 2,500 px at the least, so whenever this says yes Google's wait is over.
+ * A browser with no `IntersectionObserver` gets no wait from Google either, and always reads yes.
+ * A ref, not state: only the clock reads it, and a scroll must not redraw the map.
  */
-const PAINT_TIMEOUT_MS = 8000
-const PAINT_POLL_MS = 500
+function useFrameInView(frameRef: RefObject<HTMLDivElement | null>): MutableRefObject<boolean> {
+  const inView = useRef(typeof IntersectionObserver === 'undefined')
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame || typeof IntersectionObserver === 'undefined') return
+    const obs = new IntersectionObserver((entries) => {
+      const last = entries[entries.length - 1]
+      if (last) inView.current = last.isIntersecting
+    })
+    obs.observe(frame)
+    return () => obs.disconnect()
+  }, [frameRef])
+  return inView
+}
 
 function useStampedTheme(): string | null {
   const [theme, setTheme] = useState<string | null>(() =>
@@ -294,22 +312,21 @@ export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
   const theme = useStampedTheme()
   const [loaded, setLoaded] = useState(false)
   const frameRef = useRef<HTMLDivElement | null>(null)
-  // Paint watchdog: once the script has loaded, the map must materialise in the frame.
+  const frameInView = useFrameInView(frameRef)
+  // Paint watchdog: once the script has loaded, the map must materialise in the frame. It is the
+  // one door that catches a rejected key, and its clock runs only while the frame is in the window.
   useEffect(() => {
     if (!loaded) return
-    const started = Date.now()
+    let waitedMs = 0
     const tick = window.setInterval(() => {
-      if (frameRef.current?.querySelector('.gm-style')) {
-        window.clearInterval(tick)
-        return
-      }
-      if (Date.now() - started >= PAINT_TIMEOUT_MS) {
-        window.clearInterval(tick)
-        onUnavailable('render: the Maps API loaded but never painted a map (key rejected or blocked?)')
-      }
+      const step = paintClockLook(waitedMs, { painted: !!frameRef.current?.querySelector('.gm-style'), inView: frameInView.current })
+      waitedMs = step.waitedMs
+      if (step.verdict === 'waiting') return
+      window.clearInterval(tick)
+      if (step.verdict === 'never-painted') onUnavailable('render: the Maps API loaded but never painted a map (key rejected or blocked?)')
     }, PAINT_POLL_MS)
     return () => window.clearInterval(tick)
-  }, [loaded, onUnavailable])
+  }, [loaded, onUnavailable, frameInView])
   useEffect(() => {
     if (loaded) return
     const t = window.setTimeout(() => onUnavailable('timeout: Maps JavaScript API did not load'), LOAD_TIMEOUT_MS)
