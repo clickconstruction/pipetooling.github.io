@@ -2,7 +2,7 @@
 name: "Paint a map from the Dashboard: a press that is always there, and every map on a job"
 number: 392
 group: close
-status: asked 2026-11-17 · designed, drawn and rendered the same day (ten states at a phone's width and one at a desk) · shown to the owner with nine calls, each with a pick · nothing built · carded the same evening at the owner's word · the Share sheet was built apart as #394 on 2026-11-18 (v2.7788 · 7790) · walked the same day as a leader on a phone, and the missing Dashboard press was the walk's worst snag · a leader's phone drawn the same day (three states), a tenth call added with a pick, and the plan's order changed so the Saved band comes before the picker · the owner's word the same day (*Yes, build it*) · the kernel and the press built the same day (v2.7859), walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark · the Saved band built the same day (v2.7866), walked the same way on a made-up map on no job, thrown away after · the picker built the same day (v2.7868), walked with made-up jobs answered to its reads and nothing saved · Find the jobs near me built the same day (v2.7869), pressed live from a made-up spot beside the test jobs · every step built · not yet tried on a real phone
+status: asked 2026-11-17 · designed, drawn and rendered the same day (ten states at a phone's width and one at a desk) · shown to the owner with nine calls, each with a pick · nothing built · carded the same evening at the owner's word · the Share sheet was built apart as #394 on 2026-11-18 (v2.7788 · 7790) · walked the same day as a leader on a phone, and the missing Dashboard press was the walk's worst snag · a leader's phone drawn the same day (three states), a tenth call added with a pick, and the plan's order changed so the Saved band comes before the picker · the owner's word the same day (*Yes, build it*) · the kernel and the press built the same day (v2.7859), walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark · the Saved band built the same day (v2.7866), walked the same way on a made-up map on no job, thrown away after · the picker built the same day (v2.7868), walked with made-up jobs answered to its reads and nothing saved · Find the jobs near me built the same day (v2.7869), pressed live from a made-up spot beside the test jobs · every step built · merged 2026-11-18 as one PR (#8814) · the Saved band's press brought in line with the Share sheet's on 2026-11-19 (v2.7894): Messages opens inside the press, and a false note is taken back · not yet tried on a real phone
 summary: >
   The owner wants anyone to make a one-off map and text it from the Dashboard, clocked in or not,
   with a job today or not. Every map must be tied to a job, and picking the job must be easy.
@@ -16,7 +16,7 @@ summary: >
 next: Walk it on a real iPhone and a real Android phone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band, together with #394's walk. The owner answers call 11, the two short pages. Then delete this card.
 size: L as a train of five (S · M · S · L · S), all built; left: the walk on two real phones (XS) and call 11
 blocker: A real phone in a hand, and the owner's answer to call 11.
-ver: v2.7859 · 7866 · 7868 · 7869
+ver: v2.7859 · 7866 · 7868 · 7869 · 7894
 opinion: built as carded, with two changes said on the card — the phone walk is what is left
 ---
 
@@ -213,9 +213,12 @@ Drawn in three states, rendered at 375 wide with nothing off the side of the scr
 3. **The Saved band** (S). **Built, v2.7866.** The map says *Saved on* the job and offers **Text it from my phone…**
    at once, with one blue press on the screen and the press back in view after a place is added.
    The Share sheet itself is built ([#394](../painted-map-share-sheet/README.md)), so this is what
-   is left of the old share step. The press is the Share sheet's own, with its fall back to
-   **Open Messages**. Built on the owner's word to build every step, so the walk on a real iPhone
-   and a real Android phone is still to do, together with #394's.
+   is left of the old share step. The press is the Share sheet's own. Since v2.7894 that holds to
+   the end: the phone picks the link's code, so Messages opens inside the press with no wait, and
+   the band takes back *The link is ready. Press Open Messages.* once the page is left. #394's
+   walk on an iPhone simulator found the band still making the link first and saying that after
+   Messages had opened. The walk on a real iPhone and a real Android phone is still to do,
+   together with #394's.
 4. **The picker** (L). **Built, v2.7868.** **Which job is it for?** opens first when a map is started
    with no job: today's stops, the jobs clocked onto in the last 45 days, then a search of every
    job, with a job the person may not paint on listed grey with its reason. *For* leads the start
