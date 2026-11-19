@@ -1649,6 +1649,54 @@ export type Database = {
           },
         ]
       }
+      bid_permit_answers: {
+        Row: {
+          answer: string
+          answered_at: string
+          answered_by: string
+          bid_id: string
+          city: string
+          id: string
+          permit_number: string
+          permit_type: string
+        }
+        Insert: {
+          answer: string
+          answered_at?: string
+          answered_by: string
+          bid_id: string
+          city: string
+          id?: string
+          permit_number: string
+          permit_type?: string
+        }
+        Update: {
+          answer?: string
+          answered_at?: string
+          answered_by?: string
+          bid_id?: string
+          city?: string
+          id?: string
+          permit_number?: string
+          permit_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_permit_answers_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_permit_answers_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_photos: {
         Row: {
           added_at: string | null
@@ -49643,6 +49691,14 @@ export type Database = {
         Returns: undefined
       }
       people_phones_from_accounts: { Args: never; Returns: number }
+      permit_address_plumbing_counts: {
+        Args: {
+          p_building_builder_key: string
+          p_city: string
+          p_plumbing_builder_key: string
+        }
+        Returns: boolean
+      }
       permit_funnel: {
         Args: { p_city: string; p_since: string }
         Returns: Json
