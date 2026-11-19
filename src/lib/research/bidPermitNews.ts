@@ -13,6 +13,7 @@ import { ROBOT_BID_RE } from '../bids/bidPursuit'
 import { leadPermit, permitsOnSite, plumbingListing, plumbingTypeOf, readBidAddress } from './bidSite'
 import { stageChip, type Chip, type SitePermitRow } from './bidSitePanel'
 import { NO_OUR_KEYS, type OurNameKeys } from './ourNames'
+import { NO_PERMIT_ANSWERS, permitAnswerKey, type PermitAnswers, type PermitRef, type StandingAnswer } from './bidPermitAnswers'
 
 /** A bid as the board's news reads it. */
 export type NewsBid = {
@@ -31,7 +32,41 @@ export type NewsBid = {
 
 export type NewsKind = 'plumbing' | 'ours' | 'issued' | 'applied'
 /** `markLost`: the line offers Mark lost…, a sent bid with a general plumbing permit that lists another name. The press opens the board's outcome and the news marks nothing. */
-export type NewsItem = { bidId: string; kind: NewsKind; title: string; words: string; day: string; markLost: boolean }
+export type NewsItem = {
+  bidId: string
+  kind: NewsKind
+  title: string
+  words: string
+  day: string
+  markLost: boolean
+  /** The city the permit is in, and the permit the line is about: what an answer names. */
+  city: string
+  permit: SitePermitRow
+  /** The building permit beside a plumbing permit's line, when the address has one. */
+  beside: SitePermitRow | null
+  /** The answer that stands on this bid and permit (punch list #401). Null while the line is new. */
+  answered: StandingAnswer | null
+}
+
+/** A permit someone said is not this job: off the bid, and listed so the answer can be taken back. */
+export type TakenOffPermit = { bidId: string; title: string; city: string; permit: SitePermitRow; words: string; by: string; at: string }
+
+/** What an answer names of a permit. */
+export function permitRefOf(city: string, permit: Pick<SitePermitRow, 'permit_number' | 'permit_type'>): PermitRef {
+  return { city, permit_number: permit.permit_number, permit_type: permit.permit_type }
+}
+
+/** A permit in a few words, for a list of answered lines: "Plumbing permit listing Lone Oak Plumbing, Aug 30". */
+export function permitShortWords(permit: SitePermitRow, todayYmd: string): string {
+  const day = dayOf(permit)
+  const on = day ? shortDay(day, todayYmd) : null
+  if (plumbingTypeOf(permit.permit_type) != null) {
+    const name = permit.contact?.replace(/\s+/g, ' ').trim()
+    return [name ? `Plumbing permit listing ${name}` : 'Plumbing permit', on].filter(Boolean).join(', ')
+  }
+  if (permit.kind === 'building') return permit.stage === 'applied' ? `Permit application${on ? ` filed ${on}` : ''}` : `Building permit${on ? ` issued ${on}` : ''}`
+  return [permit.work_type ?? permit.permit_type.replace(/ Permit$/i, ''), on].filter(Boolean).join(', ')
+}
 
 /** How long an issued permit or a new application stays news. A plumbing permit under another name stays while the bid is undecided. */
 export const NEWS_DAYS = 30
@@ -70,6 +105,11 @@ function agoWords(days: number | null): string | null {
  * `plumbingServiceTypeId` is the Plumbing type, and null leaves the trade unchecked. A plumbing
  * permit under another name from before the bid was started is no news: a quiet chip for
  * `BEFORE_BID_DAYS`, nothing after.
+ *
+ * `answers` are what people said of a permit on a bid (`foldPermitAnswers`). A permit that is not
+ * this job is off the bid before anything is read, so the chip and the news are the ones the
+ * address would have without it, and it is listed under `takenOff`. A line on a permit that is
+ * this job carries the answer (`answered`), which is how a list tells a new line from one that stands.
  */
 export function bidPermitNews(
   bids: readonly NewsBid[],
@@ -78,22 +118,32 @@ export function bidPermitNews(
   todayYmd: string,
   ourKeys: OurNameKeys = NO_OUR_KEYS,
   plumbingServiceTypeId: string | null = null,
-): { chips: Map<string, Chip>; news: NewsItem[] } {
+  answers: PermitAnswers = NO_PERMIT_ANSWERS,
+): { chips: Map<string, Chip>; news: NewsItem[]; takenOff: TakenOffPermit[] } {
   const chips = new Map<string, Chip>()
   const news: NewsItem[] = []
+  const takenOff: TakenOffPermit[] = []
   for (const bid of bids) {
     if (bid.outcome != null || ROBOT_BID_RE.test(bid.project_name ?? '')) continue
     const site = readBidAddress(bid.address, readCities)
     if (site.kind !== 'site') continue
-    const onSite = permitsOnSite(site, permitsByCity.get(site.city) ?? [])
+    const title = [bid.bid_number?.trim() || null, bid.project_name ?? 'A bid'].filter(Boolean).join(' · ')
+    const answerOn = (p: SitePermitRow): StandingAnswer | null => answers.get(permitAnswerKey(bid.id, permitRefOf(site.city, p))) ?? null
+    const onSite: SitePermitRow[] = []
+    for (const p of permitsOnSite(site, permitsByCity.get(site.city) ?? [])) {
+      const said = answerOn(p)
+      if (said?.answer === 'not_this_job') takenOff.push({ bidId: bid.id, title, city: site.city, permit: p, words: permitShortWords(p, todayYmd), by: said.by, at: said.at })
+      else onSite.push(p)
+    }
     if (onSite.length === 0) continue
+    /** What every line of this bid carries: the city, the permit it is about, and the answer that stands on it. */
+    const about = (permit: SitePermitRow, beside: SitePermitRow | null) => ({ city: site.city, permit, beside, answered: answerOn(permit) })
     const lead = leadPermit(bid.project_name, onSite)
     const building = lead && lead.kind === 'building' ? lead : null
     // A plumbing permit says nothing about who has the electrical work.
     const plumbingBid = plumbingServiceTypeId == null || bid.service_type_id == null || bid.service_type_id === plumbingServiceTypeId
     const general = plumbingBid ? ([...onSite].sort((a, b) => dayOf(b).localeCompare(dayOf(a))).find((p) => plumbingTypeOf(p.permit_type) === 'general') ?? null) : null
     const listing = general ? plumbingListing(general, building, ourKeys) : null
-    const title = [bid.bid_number?.trim() || null, bid.project_name ?? 'A bid'].filter(Boolean).join(' · ')
     const sent = bid.bid_date_sent != null
 
     // Our own permit: its own chip, news while it is new, and never the line that says another name. The bid stays undecided.
@@ -110,6 +160,7 @@ export function bidPermitNews(
           title,
           day,
           markLost: false,
+          ...about(general, building),
           words: `A general plumbing permit that lists us ${general.stage === 'applied' ? 'was applied for' : 'was issued'} on this address ${shortDay(day, todayYmd)}, as ${listing.name}. ${sent ? 'The bid is not yet won or lost.' : 'The bid is not sent yet.'}`,
         })
         continue
@@ -129,6 +180,7 @@ export function bidPermitNews(
           title,
           day,
           markLost: sent,
+          ...about(general, building),
           words: `A general plumbing permit ${general.stage === 'applied' ? 'was applied for' : 'was issued'} on this address${day ? ` ${shortDay(day)}` : ''}. It lists ${listing.name}. ${sent ? 'The bid is not yet won or lost.' : 'The bid is not sent yet.'}`,
         })
         continue
@@ -147,14 +199,15 @@ export function bidPermitNews(
     if (!fresh) continue
     if (building.stage === 'issued') {
       const contact = sent ? agoWords(daysBetween(bid.last_contact ? bid.last_contact.slice(0, 10) : null, todayYmd)) : null
-      news.push({ bidId: bid.id, kind: 'issued', title, day, markLost: false, words: `The building permit on this address was issued ${shortDay(day)}.${contact ? ` Last contact ${contact}.` : sent ? '' : ' The bid is not sent yet.'}` })
+      news.push({ bidId: bid.id, kind: 'issued', title, day, markLost: false, ...about(building, null), words: `The building permit on this address was issued ${shortDay(day)}.${contact ? ` Last contact ${contact}.` : sent ? '' : ' The bid is not sent yet.'}` })
     } else {
       const facts = [shortMoney(building.declared_value) ? `${shortMoney(building.declared_value)} declared` : null, sqFtWords(building.area_sf)].filter(Boolean).join(', ')
-      news.push({ bidId: bid.id, kind: 'applied', title, day, markLost: false, words: `A permit application was filed on this address ${shortDay(day)}${facts ? `: ${facts}` : ''}.` })
+      news.push({ bidId: bid.id, kind: 'applied', title, day, markLost: false, ...about(building, null), words: `A permit application was filed on this address ${shortDay(day)}${facts ? `: ${facts}` : ''}.` })
     }
   }
   news.sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || b.day.localeCompare(a.day) || a.title.localeCompare(b.title))
-  return { chips, news }
+  takenOff.sort((a, b) => b.at.localeCompare(a.at) || a.title.localeCompare(b.title))
+  return { chips, news, takenOff }
 }
 
 /** "Permit news on your bids". The count sits beside it. */
@@ -177,3 +230,22 @@ export function newsForReader(news: readonly NewsItem[], isMine: (bidId: string)
 
 /** The second press on a plumbing line of a sent bid. */
 export const MARK_LOST_LABEL = 'Mark lost…'
+
+/** One reader's side of the permit news: what is new, what was answered and still stands, and what was taken off a bid. */
+export type PermitInboxSide = { fresh: NewsItem[]; standing: NewsItem[]; takenOff: TakenOffPermit[] }
+
+/**
+ * The permit news as an inbox (punch list #401): the reader's own bids apart from everyone
+ * else's, and on each side the lines nobody has answered apart from the ones that stand. The red
+ * count on Followup is `mine.fresh.length`. The order within each list is the kernel's.
+ */
+export function permitInbox(result: { news: readonly NewsItem[]; takenOff: readonly TakenOffPermit[] }, isMine: (bidId: string) => boolean): { mine: PermitInboxSide; others: PermitInboxSide } {
+  const mine: PermitInboxSide = { fresh: [], standing: [], takenOff: [] }
+  const others: PermitInboxSide = { fresh: [], standing: [], takenOff: [] }
+  for (const n of result.news) {
+    const side = isMine(n.bidId) ? mine : others
+    ;(n.answered ? side.standing : side.fresh).push(n)
+  }
+  for (const t of result.takenOff) (isMine(t.bidId) ? mine : others).takenOff.push(t)
+  return { mine, others }
+}

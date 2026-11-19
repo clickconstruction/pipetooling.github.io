@@ -3,10 +3,10 @@ import { todayYmdInAppTz } from '../utils/dateUtils'
 import { RESEARCH_CITIES } from '../lib/research/permitResearch'
 import { numbersToAsk, type Chip, type SitePermitRow } from '../lib/research/bidSitePanel'
 import { loadPermitsByHouseNumber } from '../lib/research/bidSiteIo'
-import { bidPermitNews, type NewsBid, type NewsItem } from '../lib/research/bidPermitNews'
+import { bidPermitNews, type NewsBid, type NewsItem, type TakenOffPermit } from '../lib/research/bidPermitNews'
 import { NO_OUR_KEYS, type OurNameKeys } from '../lib/research/ourNames'
 
-const NOTHING: { chips: Map<string, Chip>; news: NewsItem[] } = { chips: new Map(), news: [] }
+const NOTHING: { chips: Map<string, Chip>; news: NewsItem[]; takenOff: TakenOffPermit[] } = { chips: new Map(), news: [], takenOff: [] }
 
 /**
  * Permit news for the Bid Board (punch list #307, PR 5): one read for every undecided bid on the
@@ -17,7 +17,7 @@ const NOTHING: { chips: Map<string, Chip>; news: NewsItem[] } = { chips: new Map
  * `plumbingServiceTypeId` is the Plumbing trade, so a plumbing permit is news on a plumbing bid
  * only; null leaves the trade unchecked.
  */
-export function useBidPermitNews(bids: readonly NewsBid[], enabled: boolean, ourKeys: OurNameKeys = NO_OUR_KEYS, plumbingServiceTypeId: string | null = null): { chips: Map<string, Chip>; news: NewsItem[] } {
+export function useBidPermitNews(bids: readonly NewsBid[], enabled: boolean, ourKeys: OurNameKeys = NO_OUR_KEYS, plumbingServiceTypeId: string | null = null): { chips: Map<string, Chip>; news: NewsItem[]; takenOff: TakenOffPermit[] } {
   const undecided = useMemo(() => (enabled ? bids.filter((b) => b.outcome == null) : []), [bids, enabled])
   const asks = useMemo(() => numbersToAsk(undecided, RESEARCH_CITIES), [undecided])
   // The read runs again only when the set of house numbers changes, not on every reload of the board.
