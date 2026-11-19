@@ -49,7 +49,7 @@ describe('SettingsJobsBillingGroups (punch list #261)', () => {
       expect(document.getElementById(c.anchor)?.getAttribute('data-open'), c.anchor).toBe('yes')
       expect(container.querySelector(`[data-stub="${c.slug}"]`), c.anchor).toBeTruthy()
     }
-    expect(container.querySelectorAll('[data-stub]')).toHaveLength(27)
+    expect(container.querySelectorAll('[data-stub]')).toHaveLength(28)
   })
 
   it('a child anchor opens its card alone', () => {
@@ -96,7 +96,7 @@ describe('SettingsJobsBillingGroups (punch list #261)', () => {
     delete cards.rates
     const { container } = renderWithProviders(<SettingsJobsBillingGroups role="dev" cards={cards} />)
     expect(document.getElementById('settings-jobs-rates')).toBeNull()
-    expect(container.querySelectorAll('[data-settings-card]')).toHaveLength(26)
+    expect(container.querySelectorAll('[data-settings-card]')).toHaveLength(27)
   })
 
   it('a money card draws its live value on the folded row, the static line while open or until the value is read, and a fold reads again (PR 3)', () => {

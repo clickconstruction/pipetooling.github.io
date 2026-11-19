@@ -114,6 +114,7 @@ import OwnerAutoConfirmSettingsBlock from '../components/settings/OwnerAutoConfi
 import LineBudgetSettingsBlock from '../components/settings/LineBudgetSettingsBlock'
 import SuperintendentBonusSettingsBlock from '../components/settings/SuperintendentBonusSettingsBlock'
 import GcBillDayCutoffSettingsBlock from '../components/settings/GcBillDayCutoffSettingsBlock'
+import TripFarMilesSettingsBlock from '../components/settings/TripFarMilesSettingsBlock'
 import GcCardBillSettingsBlock from '../components/settings/GcCardBillSettingsBlock'
 import GcOfficeNoticesSettingsBlock from '../components/settings/GcOfficeNoticesSettingsBlock'
 import GcCustomerDueNoticesSettingsBlock from '../components/settings/GcCustomerDueNoticesSettingsBlock'
@@ -1105,6 +1106,7 @@ export default function Settings() {
     'gc-office-notices': <GcOfficeNoticesSettingsBlock />,
     'gc-customer-notice': <GcCustomerDueNoticesSettingsBlock />,
     'gc-cutoff': <GcBillDayCutoffSettingsBlock />,
+    trips: <TripFarMilesSettingsBlock />,
   }
   useEffect(() => {
     const key = `${location.search}|${location.hash}`

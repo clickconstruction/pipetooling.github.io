@@ -1231,6 +1231,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Putting a trip back is `trip_save` under the trip's own id, under the trips tables' own policies, so no new write exists.
   A trip made again settles its archive rows (`trips_settle_archive`), so the dev's Recently deleted never offers a living trip.
   Since v2.7860 (`docs/migrations/20261118203000_trip_line_tie.md`) the trip's capture keeps the id of the line it held, and the same trigger ties that line to the trip made again, as a SECURITY DEFINER, only when the line is still there and tied to no trip.
+- **How far is far** (v2.7888): `app_settings` `trips_far_miles_v1`, the miles from the shop that make a site a trip from home, is read by every signed-in user, as `app_settings` is, and set by a dev alone under the table's own dev policy.
+  No key-scoped policy and no migration: the **Trips** card on Settings → Jobs, bills and liens is mounted for a dev, and anyone else's write is refused by the table.
 
 ### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
 

@@ -123,6 +123,32 @@ describe('useTripPhone: the reads', () => {
     expect(result.current.view).toMatchObject({ kind: 'ask', siteLine: 'Heron Point · 1,181 miles from the shop', joins: [] })
   })
 
+  it('asks by the one setting: a site about 104 miles off is far at 90 miles and near at the default (v2.7888)', async () => {
+    geo.point = { lat: 31.5, lng: -97 }
+    const set = makeIo({ readFarMiles: vi.fn(async () => 90) })
+    const a = draw(set)
+    await waitFor(() => expect(a.result.current.view.kind).toBe('ask'))
+    expect(set.readFarMiles).toHaveBeenCalledTimes(1)
+    a.unmount()
+
+    const plain = makeIo()
+    const b = draw(plain)
+    await waitFor(() => expect(plain.readShop).toHaveBeenCalled())
+    await act(async () => undefined)
+    expect(b.result.current.view).toEqual({ kind: 'none' })
+    b.unmount()
+
+    // A setting that will not read answers the default, and the phone still asks on a truly far site.
+    geo.point = FAR
+    const failing = makeIo({
+      readFarMiles: vi.fn(async () => {
+        throw new Error('no signal')
+      }),
+    })
+    const c = draw(failing)
+    await waitFor(() => expect(c.result.current.view.kind).toBe('ask'))
+  })
+
   it('asks nothing on a near site with no trip, or when a point will not read', async () => {
     geo.point = NEAR
     const near = makeIo()
