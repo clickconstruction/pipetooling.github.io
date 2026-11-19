@@ -223,6 +223,8 @@ export const LIEN_SERVE_WORDS = {
   noLetter: 'No cover letter for this lien. The app holds no record of the affidavit’s words.',
   /** Where the print goes. */
   opens: 'The print opens as one PDF in a new tab.',
+  /** Each envelope's pages are in order and an envelope may be three pages: a double-sided print would put the next envelope's letter on the back of a stamped page. */
+  oneSide: 'Print on one side of the paper.',
   numberLabel: 'Recording number',
   numberSave: 'Save the number',
   /** Under the press: how many envelopes, and what to do next. */

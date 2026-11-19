@@ -186,7 +186,7 @@ The copy is the stamped lien saved on the filing. Every page of that file prints
 
 The press reads the saved file first. For a moment it says *Reading the stamped copy…*. Then a line under it says how many pages the stamped copy has.
 
-The print opens as one PDF in a new tab. The print window opens over it. If it does not, print from that tab.
+The print opens as one PDF in a new tab. The print window opens over it. If it does not, print from that tab. Print on one side of the paper. An envelope is often three pages. A two-sided print would put the next letter on the back of a stamped page.
 
 **Counsel has not read the letter.** Counsel has not read the letter's words yet. A line under the press says so. Untick the letter's box to leave the letter out.
 

@@ -606,7 +606,7 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
               <>
                 <div style={small}>{plan.envelopes === 1 ? '1 envelope.' : `${plan.envelopes} envelopes.`} A mail sheet prints first and stays in the office. Each print is kept on its job.</div>
                 <div data-lien-serve-copy-is style={small}>
-                  {LIEN_SERVE_WORDS.copyIs} {LIEN_SERVE_WORDS.opens}
+                  {LIEN_SERVE_WORDS.copyIs} {LIEN_SERVE_WORDS.opens} <strong>{LIEN_SERVE_WORDS.oneSide}</strong>
                 </div>
               </>
             ) : null}

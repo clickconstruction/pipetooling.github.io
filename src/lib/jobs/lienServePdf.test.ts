@@ -110,6 +110,12 @@ describe('the run', () => {
     const opens = async (b: Blob) => (await PDFDocument.load(await b.arrayBuffer())).catalog.has(PDFName.of('OpenAction'))
     expect(await opens(out.stack!)).toBe(true)
     expect(await opens(out.jobs[0]!.blob)).toBe(false)
+    // Both ask for one side of the paper and each page at its own size: an envelope is three pages on a usual lien.
+    for (const file of [out.stack!, out.jobs[0]!.blob]) {
+      const prefs = (await PDFDocument.load(await file.arrayBuffer())).catalog.getOrCreateViewerPreferences()
+      expect(prefs.getDuplex()).toBe('Simplex')
+      expect(prefs.getPrintScaling()).toBe('None')
+    }
   })
 })
 

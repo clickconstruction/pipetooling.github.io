@@ -83,7 +83,7 @@ describe('LienServeCopiesPress', () => {
     await ready()
     expect(readCopy).toHaveBeenCalledWith('job-77', '1SampleStampedScan77')
     expect(screen.getByText('Two envelopes: the owner and the original contractor. Mail each envelope by certified mail. Then press Enter mail numbers… and type each number.')).toBeTruthy()
-    expect(document.querySelector('[data-lien-serve-copy-is]')?.textContent).toBe('Stamped copy: 2 pages. The copy in each envelope is the clerk’s stamped scan, every page of it. The print opens as one PDF in a new tab.')
+    expect(document.querySelector('[data-lien-serve-copy-is]')?.textContent).toBe('Stamped copy: 2 pages. The copy in each envelope is the clerk’s stamped scan, every page of it. The print opens as one PDF in a new tab. Print on one side of the paper.')
     fireEvent.click(press())
     await waitFor(() => expect(onPrinted).toHaveBeenCalledWith('a1'))
     const [run, bytesOf, opts] = printRun.mock.calls[0]!

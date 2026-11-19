@@ -160,7 +160,7 @@ describe('LienServeWindow', () => {
     expect(Array.from(bytesOf('f-2291') ?? [])).toEqual([1, 2, 3])
     expect(opts).toMatchObject({ letter: true, todayYmd: '2026-11-16' })
     expect(screen.getByText('4 envelopes. A mail sheet prints first and stays in the office. Each print is kept on its job.')).toBeTruthy()
-    expect(document.querySelector('[data-lien-serve-copy-is]')?.textContent).toBe('The copy in each envelope is the clerk’s stamped scan, every page of it. The print opens as one PDF in a new tab.')
+    expect(document.querySelector('[data-lien-serve-copy-is]')?.textContent).toBe('The copy in each envelope is the clerk’s stamped scan, every page of it. The print opens as one PDF in a new tab. Print on one side of the paper.')
     // The redrawn page's own line is gone with the page.
     expect(document.body.textContent).not.toContain('Counsel has not said yet that this page counts as the copy')
     const held = within(document.querySelector('[data-lien-serve-held-list]') as HTMLElement)

@@ -151,7 +151,7 @@ export function LienServeCopiesPress({ filing, jobId, jobNumber, isSub, issuer, 
             {lienServeEnvelopeWords(ready.facts)} {LIEN_SERVE_WORDS.then}
           </div>
           <div data-lien-serve-copy-is style={small}>
-            {lienCopyReadyWords(ready.file)} {LIEN_SERVE_WORDS.copyIs} {LIEN_SERVE_WORDS.opens}
+            {lienCopyReadyWords(ready.file)} {LIEN_SERVE_WORDS.copyIs} {LIEN_SERVE_WORDS.opens} <strong>{LIEN_SERVE_WORDS.oneSide}</strong>
           </div>
           {ready.letter ? (
             <>
