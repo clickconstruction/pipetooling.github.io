@@ -1788,6 +1788,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "research_name_key": [{"args":{"p_name":"string"},"returns":"string"}],
   "research_permits": [{"args":{"p_city":"string","p_residential?":"boolean","p_since":"string"},"returns":"{ address: string area_sf: number city: string contact: string declared_value: number filed_on: string id: string issued_on: string lat: number lng: number perm…"}],
   "research_permits_v2": [{"args":{"p_city":"string","p_residential?":"boolean","p_since":"string"},"returns":"{ address: string area_sf: number builder_key: string builder_kind: string builder_mark: string builder_mark_at: string builder_mark_by_name: string builder_mar…"}],
+  "research_permits_v3": [{"args":{"p_city":"string","p_residential?":"boolean","p_since":"string"},"returns":"{ address: string area_sf: number builder_key: string builder_kind: string builder_mark: string builder_mark_at: string builder_mark_by_name: string builder_mar…"}],
   "resolve_job_ledger_id_by_number": [{"args":{"p_number":"string"},"returns":"string"}],
   "resolve_noncard_transaction_attribution": [{"args":{"p_mercury_transaction_id":"string","p_note?":"string","p_resolution_kind":"string"},"returns":"undefined"}],
   "resolve_pay_person_id": [{"args":{"p_name":"string"},"returns":"string"}],
