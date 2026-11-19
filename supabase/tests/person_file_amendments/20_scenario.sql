@@ -169,7 +169,8 @@ INSERT INTO public.person_file_amendments (person_id, from_kind, from_id, to_kin
 RESET ROLE;
 SELECT pfa.same('the withdrawn link stays on the record beside the new one',
   (SELECT string_agg(a.how || ' ' || right(a.from_id::text, 2) || '>' || right(a.to_id::text, 2) || CASE WHEN a.withdrawn_at IS NULL THEN '' ELSE ' (withdrawn by ' || (SELECT u.name FROM public.users u WHERE u.id = a.withdrawn_by) || ': ' || a.withdrawn_why || ')' END, ', ' ORDER BY a.withdrawn_at NULLS LAST)
-     FROM public.person_file_amendments a WHERE 'e3' IN (right(a.from_id::text, 2), right(a.to_id::text, 2))),
+     -- By e3's whole id: the entry the write above made has a random id, and one time in 256 it ends in e3 too.
+     FROM public.person_file_amendments a WHERE '00000000-0000-0000-0000-0000000969e3'::uuid IN (a.from_id, a.to_id)),
   'completes e4>e3 (withdrawn by Amend Dev: two separate talks), completes e3>e4');
 SET LOCAL ROLE authenticated;
 
