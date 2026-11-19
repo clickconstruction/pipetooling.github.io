@@ -84,12 +84,19 @@ describe('LienFilingTabs · Void on a filed lien (v2.7892)', () => {
     expect(await screen.findByText('Record voided. Its paper still reads as filed on the Lien desk. Tell your lead.')).toBeTruthy()
   })
 
-  it('a notice voids through the same writer and says only that it is voided', async () => {
-    voided.answer = 'none'
+  it('a notice voids through the same writer and says the notice is back, in a notice’s words (v2.7911)', async () => {
     mount()
     fireEvent.click(within(filingRow('notice-1')).getByRole('button', { name: 'Void' }))
     fireEvent.click(within(filingRow('notice-1')).getByRole('button', { name: 'Confirm void' }))
     await waitFor(() => expect(voided.calls).toEqual([{ id: 'notice-1', kind: 'notice_53_056' }]))
+    expect(await screen.findByText('Record voided. The notice is approved again and back on the Lien desk.')).toBeTruthy()
+  })
+
+  it('a notice with no paper tied to it says only that it is voided', async () => {
+    voided.answer = 'none'
+    mount()
+    fireEvent.click(within(filingRow('notice-1')).getByRole('button', { name: 'Void' }))
+    fireEvent.click(within(filingRow('notice-1')).getByRole('button', { name: 'Confirm void' }))
     expect(await screen.findByText('Record voided.')).toBeTruthy()
   })
 

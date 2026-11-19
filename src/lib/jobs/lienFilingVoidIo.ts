@@ -5,19 +5,19 @@
  */
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { lienVoidPaperOutcome, type LienVoidPaperOutcome, type LienVoidPaperRow } from './lienFilingVoid'
+import { lienVoidHasPaper, lienVoidPaperOutcome, type LienVoidPaperOutcome, type LienVoidPaperRow } from './lienFilingVoid'
 
 export type LienFilingVoidDeps = {
-  /** The live affidavit papers that are sent and tied to this filing, by id. */
-  tiedPapers: (filingId: string) => Promise<string[]>
+  /** The live papers of this kind that are sent and tied to this filing, by id. */
+  tiedPapers: (filingId: string, kind: string) => Promise<string[]>
   voidFiling: (filingId: string, at: string) => Promise<void>
   papers: (ids: ReadonlyArray<string>) => Promise<LienVoidPaperRow[]>
 }
 
 export const supabaseLienFilingVoidDeps: LienFilingVoidDeps = {
-  tiedPapers: async (filingId) => {
+  tiedPapers: async (filingId, kind) => {
     const rows = await withSupabaseRetry<Array<{ id: string }>>(
-      () => supabase.from('job_lien_desk_items').select('id').eq('sent_filing_id', filingId).eq('kind', 'affidavit').eq('status', 'sent').is('voided_at', null) as never,
+      () => supabase.from('job_lien_desk_items').select('id').eq('sent_filing_id', filingId).eq('kind', kind).eq('status', 'sent').is('voided_at', null) as never,
       'read lien paper',
     )
     return (rows ?? []).map((r) => r.id)
@@ -32,14 +32,15 @@ export const supabaseLienFilingVoidDeps: LienFilingVoidDeps = {
 }
 
 /**
- * Void one filing. Throws with the reason when the void did not land. Answers what became of the lien's paper; a
- * filing that is not an affidavit has no paper to put back, and answers `none`.
+ * Void one filing. Throws with the reason when the void did not land. Answers what became of its paper. A filed
+ * affidavit and a § 53.056 notice have one (`lienVoidHasPaper`); a retainage notice and a release of record have
+ * none, and answer `none`.
  */
 export async function voidLienFiling(filing: { id: string; kind: string }, deps: LienFilingVoidDeps = supabaseLienFilingVoidDeps): Promise<LienVoidPaperOutcome> {
   let tied: string[] = []
-  if (filing.kind === 'affidavit') {
+  if (lienVoidHasPaper(filing.kind)) {
     try {
-      tied = await deps.tiedPapers(filing.id)
+      tied = await deps.tiedPapers(filing.id, filing.kind)
     } catch {
       // The void still goes ahead. With no list, nothing is said about the paper.
     }
