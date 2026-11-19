@@ -130,6 +130,22 @@ describe('PercentRowWindow', () => {
     expect(screen.getByRole('button', { name: 'Add Connections at $1,234.50' })).toBeTruthy()
   })
 
+  it('Put on a row… lists the bid’s rows where the name box was, and holds until one is picked', () => {
+    const from = { revenue: 900, pct: null, basis: null, sourceKey: null, words: '900' }
+    const calls = setup({ last: null, from, pickRow: true, start: percentWindowStart({ rows: BID, self: null, last: null, from, pickRow: true }) })
+    expect(screen.queryByLabelText('Name')).toBeNull()
+    expect(screen.getByRole('status').textContent).toBe('Pick the row first.')
+    const list = screen.getByLabelText('Row') as HTMLSelectElement
+    expect([...list.options].map((o) => o.textContent)).toEqual(['Pick a row on this bid…', 'WC · now $5,000.00', 'LAV · now $4,000.00', 'ft of 3/4IN WATER · now $1,800.00', 'ft of 1/2IN WATER · now $1,200.00', 'ft of 2IN VENT · now $1,000.00', 'ft of 4IN WASTE · now $1,800.00', 'ft of 3IN WASTE · now $400.00'])
+    fireEvent.change(list, { target: { value: 'lav' } })
+    // $900.00 over two lavatories, in place of their $4,000.00.
+    expect(drawn().getByText('$450.00')).toBeTruthy()
+    expect(drawn().getByText('$12,100.00')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Set LAV to $900.00' }))
+    expect(calls.submit.mock.calls[0]![1]).toMatchObject({ ruleToSave: null, hold: null })
+    expect(calls.submit.mock.calls[0]![1].target.id).toBe('lav')
+  })
+
   it('on a sent bid the tick box says the price is set once', () => {
     setup({ sent: true })
     expect(screen.getByLabelText('Keep the rule on the row. This bid is sent, so its price is set once.')).toBeTruthy()

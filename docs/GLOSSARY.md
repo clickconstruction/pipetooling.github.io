@@ -4088,6 +4088,7 @@ The row's price is an ordinary saved price that the Workbench re-writes from the
 A sent bid keeps the price it went out with, and the row's chip reads *kept as sent*.
 A price typed over the row drops its rule, and the solver holds the row as it holds a pinned one.
 A rule never reads its own row or a row with a rule, so rules cannot chain.
+Since v2.7857 the Pricing Tape's **Put on a row…** and **Make a new row…** open the same window with the calculator's number, through `lib/bids/pricingTapeBridge.ts`.
 Kernel `lib/bids/percentRow.ts`, hook `usePercentRows.ts`, window `PercentRowWindow.tsx`;
 guide `price-a-bid-with-the-workbench`.
 
