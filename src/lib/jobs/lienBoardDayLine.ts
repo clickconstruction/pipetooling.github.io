@@ -9,10 +9,27 @@
  * the Board to the papers the line counts, and a second press puts the list back. Here: the door's words, and the
  * late papers as a pick, by the one rule the tile counts them with (`lienBoardChipLate`). Pure.
  */
-import { lienBoardChipLate, lienBoardLatePhrase, type LienBoard, type LienBoardPick } from './lienBoard'
+import { lienBoardChipLate, lienBoardLatePhrase, type LienBoard, type LienBoardPick, type LienBoardTile } from './lienBoard'
 
 /** The door's words on the red line, with no arrow: the view adds *›*. */
 export const LIEN_BOARD_DAY_LINE_DOOR = 'Show them'
+
+/** The door's words while the list is narrowed to the line's papers: the words of the press on the line under the bins (`lienBoardPickWords`). */
+export const LIEN_BOARD_DAY_LINE_DOOR_PICKED = 'Show every row'
+
+/**
+ * Whether the list under the Board is narrowed to the papers this tile's red line counts. Each line's pick names
+ * the line it came from (`LienBoardPick.line`), so a pressed bin and the leader's pick never read as the line's.
+ */
+export function lienBoardDayLinePicked(tile: Pick<LienBoardTile, 'lineDestination'>, pick: Pick<LienBoardPick, 'line'> | null | undefined): boolean {
+  const kind = tile.lineDestination?.kind
+  return Boolean(pick?.line && kind && pick.line === kind)
+}
+
+/** What the red line's press says it does: *Show them*, and the way back while its papers are what the list shows. */
+export function lienBoardDayLineDoorWords(picked = false): string {
+  return picked ? LIEN_BOARD_DAY_LINE_DOOR_PICKED : LIEN_BOARD_DAY_LINE_DOOR
+}
 
 /** What follows *Showing N rows* under the late pick: every row shown holds at least one late paper. */
 export const LIEN_BOARD_LATE_PICK_WORDS = 'with a paper past its day'
@@ -31,6 +48,7 @@ export function lienBoardLatePick(board: Pick<LienBoard, 'notices' | 'affidavits
     gcIds: new Set(chips.filter((c) => c.kind === 'notice').map((c) => c.gcId).filter((g): g is string => Boolean(g))),
     count: chips.length,
     papers: new Set(chips.map((c) => `${c.kind}:${c.jobId}`)),
+    line: 'late',
     // No verb to agree with the rows: a run row can hold several late notices, so *1 row that are past* would read wrong.
     words: LIEN_BOARD_LATE_PICK_WORDS,
   }

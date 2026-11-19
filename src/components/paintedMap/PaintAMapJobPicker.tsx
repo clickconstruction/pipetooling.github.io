@@ -3,9 +3,14 @@
  * first when the app does not know the job, over the start sheet for **Change the job**, and over
  * a map's window for **Put it on a job…** and **Move it to another job…**.
  *
- * Today's stops lead, then the jobs the person was clocked onto lately, then a search of every
- * job. One press on a row picks it. A search hit the person may not paint on is listed, says why,
- * and cannot be pressed (`paintedMapJobPicker.ts`).
+ * The search leads, with **Near me** beside it, so what is found is drawn under the box and over a
+ * phone's keyboard. Under it, today's stops and **Your last jobs**, which holds up to six while the
+ * person has been on six (`paintedMapJobPicker.ts`). One press on a row picks it. While a search is
+ * typed, what it found takes the lists' place. A search hit the person may not paint on is listed,
+ * says why, and cannot be pressed.
+ *
+ * On a phone it is a sheet on the bottom edge. At a desk it is a window that hangs from near the
+ * top, so it stays put while typing shortens the list, and the cursor starts in the search.
  *
  * The lists are a read, so a lost signal draws the retry panel and reads again by itself. A person
  * with no signal must still be able to paint: where the caller allows it, the failed read offers
@@ -15,13 +20,14 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { createPortal } from 'react-dom'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { useTakenDown } from '../../hooks/useTakenDown'
-import { PICKER_NEAR_NO_FIX, PICKER_WORDS as W, pickerNearRows, pickerSearchRows, pickerSections, type PickerJob, type PickerPoint, type PickerRow, type PickerSections } from '../../lib/paintedMap/paintedMapJobPicker'
+import { PICKER_NEAR_NO_FIX, PICKER_NEAR_NO_FIX_DESK, PICKER_WORDS as W, pickerNearRows, pickerSearchRows, pickerSections, type PickerJob, type PickerPoint, type PickerRow, type PickerSections } from '../../lib/paintedMap/paintedMapJobPicker'
 import { PickerNoFix, loadPickerLists, loadPickerNear, locateForPicker, searchPickerJobs, type PickerLists } from '../../lib/paintedMap/paintedMapJobPickerIo'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { PAINTED_MAP_SHEET_Z } from '../../lib/windowLayers'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import { paintedSheetFrame, usePaintedSheetDesk } from './paintedSheetFrame'
 
 const SEARCH_DEBOUNCE_MS = 250
 
@@ -44,6 +50,8 @@ type Props = {
   onClose: () => void
   /** Offered only when the lists could not be read: paint with no job, and pick it later. */
   onLater?: () => void
+  /** The lists, when the caller has just read them: the picker then reads nothing to open. */
+  lists?: PickerLists | null
   /** For a smoke. */
   io?: PaintAMapJobPickerIo
 }
@@ -52,6 +60,7 @@ const secHead: CSSProperties = { fontSize: '0.72rem', fontWeight: 700, letterSpa
 const rowPress: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.6rem', width: '100%', minHeight: 52, padding: '0.45rem 0.7rem', borderRadius: 9, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', boxSizing: 'border-box' }
 const field: CSSProperties = { minHeight: 44, padding: '0.5rem 0.6rem', fontSize: '1rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', boxSizing: 'border-box', width: '100%', fontFamily: 'inherit' }
 const quietPress: CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontFamily: 'inherit', fontSize: '0.9375rem', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer', minHeight: 44, textAlign: 'left' }
+const nearPress: CSSProperties = { flex: 'none', minHeight: 44, padding: '0 0.75rem', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit', fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap', cursor: 'pointer' }
 
 /** One job as a row. A job the person may not paint on is drawn quiet, says why, and takes no press. */
 export function PaintAMapJobRow({ row, onPick }: { row: PickerRow; onPick: (job: PickerJob) => void }) {
@@ -62,16 +71,29 @@ export function PaintAMapJobRow({ row, onPick }: { row: PickerRow; onPick: (job:
         {row.sub ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.sub}</span> : null}
         {row.paintable ? null : <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>{W.notYours}</span>}
       </span>
-      {row.tag ? <span style={{ flex: 'none', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textAlign: 'right', lineHeight: 1.2 }}>{row.tag}</span> : null}
+      {row.tag ? (
+        <span data-picker-tag style={{ flex: 'none', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textAlign: 'right', lineHeight: 1.2 }}>
+          {row.how ? (
+            <>
+              {row.how}
+              <br />
+            </>
+          ) : null}
+          {row.tag}
+        </span>
+      ) : null}
     </button>
   )
 }
 
-export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null, onPick, onClose, onLater, io = realIo }: Props) {
+export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null, onPick, onClose, onLater, lists: given = null, io = realIo }: Props) {
   const isTopmost = useModalStackEntry()
-  const [lists, setLists] = useState<PickerLists | null>(null)
+  const desk = usePaintedSheetDesk()
+  const [lists, setLists] = useState<PickerLists | null>(given)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
-  const [reading, setReading] = useState(true)
+  const [reading, setReading] = useState(!given)
+  /** Lists handed in were just read: the picker opens on them and reads nothing. */
+  const handed = useRef(!!given)
   const [q, setQ] = useState('')
   const [found, setFound] = useState<PickerRow[] | null>(null)
   const [searching, setSearching] = useState(false)
@@ -101,6 +123,7 @@ export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null,
   }, [io, userId, takenDown])
 
   useEffect(() => {
+    if (handed.current) return
     void read()
   }, [read])
 
@@ -156,29 +179,33 @@ export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null,
       setNear({ kind: 'found', rows: pickerNearRows(got.nearest, got.jobs, got.paintable).filter((r) => r.job.id !== excludeJobId) })
     } catch (e) {
       if (takenDown()) return
-      setNear({ kind: 'failed', words: e instanceof PickerNoFix ? PICKER_NEAR_NO_FIX[e.why] : formatErrorMessage(e, W.nearFailed) })
+      setNear({ kind: 'failed', words: e instanceof PickerNoFix ? (desk ? PICKER_NEAR_NO_FIX_DESK : PICKER_NEAR_NO_FIX)[e.why] : formatErrorMessage(e, W.nearFailed) })
     }
   }
 
-  const sections: PickerSections | null = lists ? pickerSections({ todayStops: lists.todayStops, lately: lists.lately, todayYmd: lists.todayYmd, paintable: lists.paintable }) : null
-  // A job already under Near you is not said again under Today or Lately.
+  const sections: PickerSections | null = lists ? pickerSections({ todayStops: lists.todayStops, last: lists.last.filter((l) => l.job.id !== excludeJobId), todayYmd: lists.todayYmd, paintable: lists.paintable }) : null
+  // A job already under Near you is not said again under Today or Your last jobs.
   const nearIds = new Set(near.kind === 'found' ? near.rows.map((r) => r.job.id) : [])
   const today = (sections?.today ?? []).filter((r) => r.job.id !== excludeJobId && !nearIds.has(r.job.id))
-  const lately = (sections?.lately ?? []).filter((r) => r.job.id !== excludeJobId && !nearIds.has(r.job.id))
+  const last = (sections?.last ?? []).filter((r) => !nearIds.has(r.job.id))
+  /** A search is typed: what it found takes the lists' place, under the box. */
+  const typed = q.trim().length >= 2
+  const frame = paintedSheetFrame(desk)
   const head = mode === 'move' ? W.moveHead : mode === 'change' ? W.changeHead : W.head
   const lead = mode === 'move' ? W.moveLead : mode === 'change' ? W.changeLead : W.lead
 
   return createPortal(
     <div
       data-paint-a-map-job-picker={mode}
-      style={{ position: 'fixed', inset: 0, zIndex: PAINTED_MAP_SHEET_Z + 10, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 'env(safe-area-inset-top, 0px) 0 0' }}
+      data-picker-shape={desk ? 'window' : 'sheet'}
+      style={{ ...frame.scrim, zIndex: PAINTED_MAP_SHEET_Z + 10 }}
       onClick={(e) => {
         // The sheet or the map's window sits behind: this press closes the picker alone.
         e.stopPropagation()
         onClose()
       }}
     >
-      <div role="dialog" aria-modal="true" aria-label={head} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-strong)', width: '100%', maxWidth: 520, maxHeight: '100%', overflowY: 'auto', borderTopLeftRadius: 14, borderTopRightRadius: 14 }}>
+      <div role="dialog" aria-modal="true" aria-label={head} onClick={(e) => e.stopPropagation()} style={frame.sheet}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1rem', borderBottom: '1px solid var(--border)' }}>
           <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{head}</h2>
           <button type="button" onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.9375rem', minHeight: 40, padding: '0 0.25rem' }}>
@@ -188,89 +215,98 @@ export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null,
         <div style={{ display: 'grid', gap: '0.7rem', padding: '0.85rem 1rem calc(0.95rem + env(safe-area-inset-bottom, 0px))' }}>
           <p style={{ margin: 0, fontSize: '0.9375rem' }}>{lead}</p>
 
-          {near.kind === 'found' ? (
-            <>
-              <div style={secHead}>{W.near}</div>
-              {near.rows.length > 0 ? (
-                <div data-picker-near style={{ display: 'grid', gap: '0.35rem' }}>
-                  {near.rows.map((r) => (
-                    <PaintAMapJobRow key={r.job.id} row={r} onPick={onPick} />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState compact main={W.nearNone} />
-              )}
-              <span data-picker-near-only style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.nearOnly}</span>
-            </>
-          ) : null}
-
-          {failure ? (
-            <div data-picker-failed style={{ display: 'grid', gap: '0.4rem' }}>
-              <OfflineRetryPanel failure={failure} onRetry={read} surface="paint-a-map-job-picker" idempotent busy={reading} />
-              {onLater ? (
-                <>
-                  <button type="button" data-picker-later style={quietPress} onClick={onLater}>
-                    {W.later}
-                  </button>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.laterNote}</span>
-                </>
+          <div style={{ display: 'grid', gap: '0.3rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+              {/* The cursor starts here at a desk. On a phone it would raise the keyboard over the lists. */}
+              <input type="search" data-picker-search aria-label={W.search} value={q} onChange={(e) => setQ(e.target.value)} placeholder={desk ? W.searchPlaceholder : W.search} autoComplete="off" autoFocus={desk} style={{ ...field, flex: 1, minWidth: 0 }} />
+              {canLocate ? (
+                <button type="button" data-picker-near-press style={nearPress} disabled={near.kind === 'finding'} onClick={() => void findNear()}>
+                  {near.kind === 'finding' ? W.nearFinding : W.nearPress}
+                </button>
               ) : null}
             </div>
-          ) : reading && !lists ? (
-            <p role="status" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>{W.reading}</p>
+            {canLocate && near.kind === 'failed' ? (
+              <span role="alert" style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>{near.words}</span>
+            ) : canLocate && near.kind !== 'found' && !typed ? (
+              <span data-picker-near-note style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.nearNote}</span>
+            ) : null}
+          </div>
+
+          {typed ? (
+            <>
+              {searching ? <p role="status" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.searching}</p> : null}
+              {searchError ? <p role="alert" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{searchError}</p> : null}
+              {found && found.length === 0 && !searching ? <EmptyState compact main={`No jobs match ‘${q.trim()}’.`} /> : null}
+              {found && found.length > 0 ? (
+                <>
+                  <div style={secHead}>{W.found}</div>
+                  <div data-picker-found style={{ display: 'grid', gap: '0.35rem' }}>
+                    {found.map((r) => (
+                      <PaintAMapJobRow key={r.job.id} row={r} onPick={onPick} />
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </>
           ) : (
             <>
-              {today.length > 0 ? (
+              {near.kind === 'found' ? (
                 <>
-                  <div style={secHead}>{W.today}</div>
-                  <div data-picker-today style={{ display: 'grid', gap: '0.35rem' }}>
-                    {today.map((r) => (
-                      <PaintAMapJobRow key={r.job.id} row={r} onPick={onPick} />
-                    ))}
-                  </div>
+                  <div style={secHead}>{W.near}</div>
+                  {near.rows.length > 0 ? (
+                    <div data-picker-near style={{ display: 'grid', gap: '0.35rem' }}>
+                      {near.rows.map((r) => (
+                        <PaintAMapJobRow key={r.job.id} row={r} onPick={onPick} />
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState compact main={W.nearNone} />
+                  )}
+                  <span data-picker-near-only style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.nearOnly}</span>
                 </>
               ) : null}
-              {lately.length > 0 ? (
+
+              {failure ? (
+                <div data-picker-failed style={{ display: 'grid', gap: '0.4rem' }}>
+                  <OfflineRetryPanel failure={failure} onRetry={read} surface="paint-a-map-job-picker" idempotent busy={reading} />
+                  {onLater ? (
+                    <>
+                      <button type="button" data-picker-later style={quietPress} onClick={onLater}>
+                        {W.later}
+                      </button>
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.laterNote}</span>
+                    </>
+                  ) : null}
+                </div>
+              ) : reading && !lists ? (
+                <p role="status" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>{W.reading}</p>
+              ) : (
                 <>
-                  <div style={secHead}>{W.lately}</div>
-                  <div data-picker-lately style={{ display: 'grid', gap: '0.35rem' }}>
-                    {lately.map((r) => (
-                      <PaintAMapJobRow key={r.job.id} row={r} onPick={onPick} />
-                    ))}
-                  </div>
+                  {today.length > 0 ? (
+                    <>
+                      <div style={secHead}>{W.today}</div>
+                      <div data-picker-today style={{ display: 'grid', gap: '0.35rem' }}>
+                        {today.map((r) => (
+                          <PaintAMapJobRow key={r.job.id} row={r} onPick={onPick} />
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+                  {last.length > 0 ? (
+                    <>
+                      <div style={secHead}>{W.last}</div>
+                      <div data-picker-last style={{ display: 'grid', gap: '0.35rem' }}>
+                        {last.map((r) => (
+                          <PaintAMapJobRow key={r.job.id} row={r} onPick={onPick} />
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+                  {today.length === 0 && last.length === 0 && near.kind !== 'found' ? <EmptyState compact main={canLocate ? W.noneNear : W.none} /> : null}
                 </>
-              ) : null}
-              {today.length === 0 && lately.length === 0 && near.kind !== 'found' ? <EmptyState compact main={W.none} /> : null}
+              )}
             </>
           )}
-
-          {canLocate && near.kind !== 'found' ? (
-            <div data-picker-near-ask style={{ display: 'grid', gap: '0.15rem' }}>
-              <button type="button" data-picker-near-press style={{ ...quietPress, justifySelf: 'start' }} disabled={near.kind === 'finding'} onClick={() => void findNear()}>
-                {near.kind === 'finding' ? W.nearFinding : W.nearPress}
-              </button>
-              {near.kind === 'failed' ? (
-                <span role="alert" style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>{near.words}</span>
-              ) : (
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.nearNote}</span>
-              )}
-            </div>
-          ) : null}
-
-          <label style={{ display: 'grid', gap: '0.3rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
-            {W.search}
-            <input type="search" data-picker-search value={q} onChange={(e) => setQ(e.target.value)} placeholder={W.searchPlaceholder} autoComplete="off" style={field} />
-          </label>
-          {searching ? <p role="status" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{W.searching}</p> : null}
-          {searchError ? <p role="alert" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{searchError}</p> : null}
-          {found && found.length === 0 && !searching ? <EmptyState compact main={`No jobs match ‘${q.trim()}’.`} /> : null}
-          {found && found.length > 0 ? (
-            <div data-picker-found style={{ display: 'grid', gap: '0.35rem' }}>
-              {found.map((r) => (
-                <PaintAMapJobRow key={r.job.id} row={r} onPick={onPick} />
-              ))}
-            </div>
-          ) : null}
         </div>
       </div>
     </div>,

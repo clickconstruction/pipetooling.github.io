@@ -61,4 +61,8 @@ Both beds apply this file a second time, which must change nothing.
 
 ## Applied
 
-Not yet. `supabase db push` after the merge.
+2026-11-19 (06:05 UTC), by `scripts/db-push.sh` from a clean checkout at the PR's merge commit, after a dry run that listed this file alone. The drift check after it read every file applied.
+
+## Verified on prod
+
+A read of both functions' own text on prod found the combine's new block and the trigger's rule for a trip that moves home. No combine was run: prod held no trip that day, and a combine is not undone. The two beds hold the behaviour.

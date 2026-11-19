@@ -662,7 +662,7 @@ export function SubsBoard<T extends SubsBoardProspect>({
                                         color: 'var(--text-amber-800)',
                                         border: 'none',
                                         cursor: 'pointer',
-                                        font: 'inherit',
+                                        fontFamily: 'inherit',
                                         fontSize: '0.7rem',
                                         fontWeight: 600,
                                       }}

@@ -33,8 +33,8 @@ const panel: CSSProperties = { position: 'absolute', top: 'calc(100% + 6px)', le
 const dialHead: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, fontSize: '0.85rem' }
 const dialWhy: CSSProperties = { fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.35 }
 const segWrap: CSSProperties = { display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }
-const segBtn = (on: boolean, last: boolean): CSSProperties => ({ padding: '0.2rem 0.55rem', fontSize: '0.78rem', border: 'none', borderRight: last ? 'none' : '1px solid var(--border)', background: on ? 'var(--text-strong)' : 'var(--surface)', color: on ? 'var(--surface)' : 'var(--text-700)', cursor: 'pointer', font: 'inherit' })
-const btn: CSSProperties = { padding: '0.3rem 0.7rem', fontSize: '0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', font: 'inherit' }
+const segBtn = (on: boolean, last: boolean): CSSProperties => ({ padding: '0.2rem 0.55rem', fontSize: '0.78rem', border: 'none', borderRight: last ? 'none' : '1px solid var(--border)', background: on ? 'var(--text-strong)' : 'var(--surface)', color: on ? 'var(--surface)' : 'var(--text-700)', cursor: 'pointer', fontFamily: 'inherit' })
+const btn: CSSProperties = { padding: '0.3rem 0.7rem', fontSize: '0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', fontFamily: 'inherit' }
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }
 const reconK: CSSProperties = { fontSize: '0.62rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }
 const reconV: CSSProperties = { fontSize: '0.9rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }

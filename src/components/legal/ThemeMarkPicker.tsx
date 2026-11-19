@@ -19,7 +19,7 @@ const CHIP = (on: boolean, still = false): CSSProperties => ({
   color: on ? 'var(--text-blue-700)' : 'var(--text-600)',
   cursor: still ? 'default' : 'pointer',
   whiteSpace: 'nowrap',
-  font: 'inherit',
+  fontFamily: 'inherit',
   fontSize: '0.74rem',
   opacity: still ? 0.8 : 1,
 })

@@ -452,8 +452,9 @@ export function daysInWords(words: string): string[] {
 
 /**
  * What the caller read off the paper against the paper the record keeps: the filing's own claim, county and day, and
- * the snapshot of the affidavit it was recorded with (`fields`). The snapshot is what *Print the copies to mail*
- * redraws, so a difference here is a copy that would not match the filed paper. A fact the caller did not send, or the
+ * the snapshot of the affidavit it was recorded with (`fields`). *Print the copies to mail* mails the filing's saved
+ * copy, the clerk's stamped scan, and draws only the cover letter in front from the snapshot, so a difference here is a
+ * record, and at most a letter, that does not say what the filed paper says. A fact the caller did not send, or the
  * snapshot does not hold (an earlier form names no months), is named and not compared.
  */
 export function lienFilingRecordCheck(p: LienFilingPayload, record: LienFilingOnRecord): { differences: LienRecordDifference[]; notChecked: string[]; paperOnRecord: Json } {
@@ -491,8 +492,19 @@ export function lienFilingRecordCheck(p: LienFilingPayload, record: LienFilingOn
   }
 }
 
-/** The differences that change the words of the copy *Print the copies to mail* redraws. */
-const COPY_WORDS: ReadonlyArray<LienRecordDifference['what']> = ['claim', 'months', 'notice_day', 'property_address', 'legal_description', 'owner']
+/** The differences in the paper's own words: the record's snapshot is not the paper that was filed. */
+const PAPER_WORDS: ReadonlyArray<LienRecordDifference['what']> = ['claim', 'months', 'notice_day', 'property_address', 'legal_description', 'owner']
+/** Of those, the ones the cover letter states (`buildLienServeLetterBlocks`: the owner, the property and the claim). */
+const LETTER_WORDS: ReadonlyArray<string> = ['claim', 'property_address', 'owner']
+
+/** What the print of the copies to mail does with a record that differs from the filed paper. The copy is the stamped scan and never the record. */
+export const LIEN_COPY_IS_THE_SCAN_WORDS = 'Print the copies to mail mails the filing’s saved copy, the clerk’s stamped scan, so the copy in the envelope is the filed paper whatever the record says.'
+/** The sentence that follows it when the record and the paper differ on something the cover letter states. Empty when they do not. */
+export function lienLetterDiffersWords(what: ReadonlyArray<string>, record: 'on record' | 'recorded as it stands' = 'on record'): string {
+  const stated = what.filter((w) => LETTER_WORDS.includes(w))
+  if (stated.length === 0) return ''
+  return ` The cover letter in front is drawn from the record and${record === 'on record' ? '' : ', recorded as it stands,'} would not say what the paper says on ${stated.join(', ')}: leave the letter out with the window’s “Print the cover letter in front of each copy” tick.`
+}
 
 const NOT_DONE = 'A record alone. No copy is mailed and nobody is told: the copies to the owner and the original contractor are due by the serve-by day, and plan_lien_service records them once they are mailed. No line lands on the job’s Activity: the table’s trigger posts notices, not affidavits.'
 
@@ -527,7 +539,7 @@ export function lienFilingDryRun(p: LienFilingPayload, world: LienFilingWorld, w
           agrees: check.differences.length === 0,
           differences: check.differences,
           ...(check.notChecked.length > 0 ? { not_checked: `Not compared: ${check.notChecked.join(', ')}.` } : {}),
-          ...(check.differences.some((d) => COPY_WORDS.includes(d.what)) ? { copy_to_mail: 'Print the copies to mail redraws the copy from the record, so its copy would not say what the filed paper says: mail a photocopy of the stamped scan. Neither the seat nor the app changes a recorded paper’s words; a record voided and made again on the job’s Lien window reads the desk as it stands that day.' } : {}),
+          ...(check.differences.some((d) => PAPER_WORDS.includes(d.what)) ? { copy_to_mail: `${LIEN_COPY_IS_THE_SCAN_WORDS}${lienLetterDiffersWords(check.differences.map((d) => d.what))} Neither the seat nor the app changes a recorded paper’s words; a record voided and made again on the job’s Lien window reads the desk as it stands that day.` } : {}),
         }
       : {}
     // The copy the filing carries gives way only when the call says so, with its reason: the Filings list's *change the saved copy*.
@@ -718,11 +730,11 @@ export function lienFilingDryRun(p: LienFilingPayload, world: LienFilingWorld, w
     paper_as_you_read_it: p.paper_states,
     differences,
     ...(notChecked.length > 0 ? { not_checked: `You sent no ${notChecked.join(', ')} from the paper, so ${notChecked.length === 1 ? 'it was' : 'they were'} not compared.` } : {}),
-    ...(blanks.length > 0 ? { no_copy_to_print: `The snapshot has no ${blanks.join(', ')}, so Print the copies to mail will not redraw this affidavit: mail a photocopy of the filed paper.` } : {}),
+    ...(blanks.length > 0 ? { no_cover_letter: `The snapshot has no ${blanks.join(', ')}, so Print the copies to mail prints this lien’s stamped copy with no cover letter in front.` } : {}),
     writes: {
       filing: row,
       desk_item: item ? { id: item.id, from: item.from, to: 'sent', sent_at: sentAt ?? 'the moment of the write' } : 'none: the desk holds no affidavit item short of sent for this job',
-      file: scan ? { lands_in: LIEN_SCAN_LANDING_WORDS, name: scan.name, mime: scan.mime, size_bytes: scan.size_bytes, sha256: scan.sha256, becomes: `the filing’s saved copy, noted “${LIEN_CLERK_SCAN_NOTE}”` } : p.saved_copy ? { saved_copy: p.saved_copy.link, note: p.saved_copy.note || null } : 'none: the filing is recorded with no saved copy; read_lien_filings lists it until one is added',
+      file: scan ? { lands_in: LIEN_SCAN_LANDING_WORDS, name: scan.name, mime: scan.mime, size_bytes: scan.size_bytes, sha256: scan.sha256, becomes: `the filing’s saved copy, noted “${LIEN_CLERK_SCAN_NOTE}”` } : p.saved_copy ? { saved_copy: p.saved_copy.link, note: p.saved_copy.note || null } : 'none: the filing is recorded with no saved copy; read_lien_filings lists it until one is added, and Print the copies to mail holds this lien until then, since the copy it mails is the saved stamped scan',
     },
     says: `${label}: affidavit filed ${p.filed_on} in ${p.county} County as instrument ${p.recording_number}, claim ${usd(claim)}. Copies go to ${copies} by ${serveBy}.`,
     not_done: NOT_DONE,
@@ -734,7 +746,7 @@ export function lienFilingDryRun(p: LienFilingPayload, world: LienFilingWorld, w
       reply: {
         ...reply,
         status: 'held',
-        held_because: `The paper and the desk differ on ${differences.map((d) => d.what).join(', ')}. Fix each through its door and plan again, or plan again with accept_differences: true to record the filing as the desk reads it.${differences.some((d) => d.what === 'claim' || d.what === 'months' || d.what === 'notice_day') ? ' Recorded as it stands, the copy Print the copies to mail redraws would not match the filed paper: mail a photocopy of the scan instead.' : ''}`,
+        held_because: `The paper and the desk differ on ${differences.map((d) => d.what).join(', ')}. Fix each through its door and plan again, or plan again with accept_differences: true to record the filing as the desk reads it. ${LIEN_COPY_IS_THE_SCAN_WORDS}${lienLetterDiffersWords(differences.map((d) => d.what), 'recorded as it stands')}`,
       },
     }
   }

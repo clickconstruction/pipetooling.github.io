@@ -98,7 +98,7 @@ export default function PersonWatchRow({ userId, name, viewerUserId, io = defaul
           <>
             <span>
               <strong>Watched since {dayWords(watch.setAt)}</strong>
-              <span style={muted}> · set by {watch.setByName || 'a dev'}{watch.tellUserIds.length === 0 ? ' · nobody is on its list' : tellsMe ? ' · you are on its list' : ` · ${watch.tellUserIds.length === 1 ? '1 person is' : `${watch.tellUserIds.length} people are`} on its list`}</span>
+              <span style={muted}> · set by {watch.setByName || 'a dev'}{watch.tellUserIds.length === 0 ? ' · tells nobody' : tellsMe ? ' · tells you' : ` · tells ${watch.tellUserIds.length === 1 ? '1 person' : `${watch.tellUserIds.length} people`}`}</span>
             </span>
             {watch.why ? <span style={muted}>{watch.why}</span> : null}
             <span style={muted}>A site’s By person look marks what {name} does outside the process in red. {name} sees nothing different.</span>
@@ -111,9 +111,9 @@ export default function PersonWatchRow({ userId, name, viewerUserId, io = defaul
             <input aria-label="Why the watch is on" placeholder="Why (kept, never shown to them)" value={why} onChange={(e) => setWhy(e.target.value)} maxLength={500} style={field} />
             <label style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.85rem' }}>
               <input type="checkbox" checked={tellMe} onChange={(e) => setTellMe(e.target.checked)} />
-              Put me on the list to be told
+              Tell me when they press
             </label>
-            <span style={muted}>Nobody is told yet. The list is kept for when alerts are sent.</span>
+            <span style={muted}>You are told when they start on a day, when a press is outside the process, and once in the evening.</span>
             <span><button type="button" style={{ ...press, ...(busy ? dead : {}) }} disabled={busy} aria-disabled={busy} onClick={() => void turnOn()}>Turn on the watch</button></span>
           </>
         )}

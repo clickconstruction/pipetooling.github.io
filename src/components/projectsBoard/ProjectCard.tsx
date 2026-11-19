@@ -83,7 +83,7 @@ export function ProjectCardBody({ row, pace, target, events, valueEvents, dollar
     <div data-testid={big ? 'project-card-big' : 'project-card'} data-tone={line.tone} onClick={openUnlessControl} title={opens ? 'Open this project large' : undefined} style={{ border: big ? 'none' : `1.5px solid ${toneBorder}`, borderRadius: 12, padding: big ? 0 : '0.7rem 0.8rem', display: 'grid', gap: big ? 14 : 8, background: 'var(--surface)', cursor: opens ? 'pointer' : undefined }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
         {opens ? (
-          <button type="button" onClick={onExpand} aria-label={`Open ${jobLabel} large`} style={{ fontWeight: 700, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left', background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer' }}>{jobLabel}</button>
+          <button type="button" onClick={onExpand} aria-label={`Open ${jobLabel} large`} style={{ fontWeight: 700, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left', background: 'none', border: 'none', padding: 0, color: 'inherit', fontFamily: 'inherit', cursor: 'pointer' }}>{jobLabel}</button>
         ) : big ? (
           // The window's title already names the job: the large card's first line is where it is.
           <span style={{ ...muted, flex: 1, minWidth: 0 }}>{row.job_address}</span>

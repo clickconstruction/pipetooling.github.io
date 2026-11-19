@@ -21,9 +21,9 @@ function readDraft(): LegalFirmIntake | null {
   }
 }
 
-const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 5, border: `1px solid ${COPPER}`, color: COPPER, background: CARD, cursor: 'pointer', font: 'inherit' }
+const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 5, border: `1px solid ${COPPER}`, color: COPPER, background: CARD, cursor: 'pointer', fontFamily: 'inherit' }
 const input: CSSProperties = { font: 'inherit', fontSize: 13.5, padding: '6px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: 'var(--surface)', color: INK, width: '100%' }
-const link: CSSProperties = { background: 'none', border: 'none', padding: 0, color: COPPER, fontWeight: 600, cursor: 'pointer', font: 'inherit' }
+const link: CSSProperties = { background: 'none', border: 'none', padding: 0, color: COPPER, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }
 
 export default function LegalPortalIntakeForm({ short, intake, recipients, recordedById, busy, notice, onSend, onOpenRules, onOpenNotifications }: {
   short: string

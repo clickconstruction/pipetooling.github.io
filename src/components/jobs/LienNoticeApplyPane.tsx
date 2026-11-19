@@ -138,7 +138,7 @@ export default function LienNoticeApplyPane({
       {paper && checks.warnings.length > 0 ? (
         <label style={{ display: 'block' }}>
           <span style={sheet ? recordSheetLabel : { ...label, display: 'block', marginBottom: 2 }}>Why it stands for {tickedList.length === 1 ? workMonthShort(tickedList[0]!) : 'these months'} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>kept on the record</span></span>
-          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} aria-label="Why the paper stands for the month" placeholder="Its total held this job’s unpaid bill. No new charge that month." style={sheet ? { ...recordSheetField, height: 'auto' } : { width: '100%', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit', font: 'inherit', resize: 'vertical' }} />
+          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} aria-label="Why the paper stands for the month" placeholder="Its total held this job’s unpaid bill. No new charge that month." style={sheet ? { ...recordSheetField, height: 'auto' } : { width: '100%', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }} />
           {reasonProblem && reason.trim() ? <span style={{ display: 'block', fontSize: small, color: 'var(--text-red-600)' }}>{reasonProblem}</span> : null}
         </label>
       ) : null}

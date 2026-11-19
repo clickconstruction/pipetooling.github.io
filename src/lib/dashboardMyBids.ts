@@ -6,6 +6,17 @@
  * build (filter/sort/bucket), and the section's pure formatters.
  */
 
+/**
+ * How the My Bids card opens on the first look of a load: folded to its heading
+ * for a primary, whose list of old unsent bids pushed the rest of the Dashboard
+ * down the page, open for every other role. The card keeps no memory of the
+ * press, so a primary's card is folded again on the next load. A role that has
+ * not arrived yet reads as open: the card folds when `primary` hydrates.
+ */
+export function myBidsStartsOpen(role: string | null | undefined): boolean {
+  return role !== 'primary'
+}
+
 /** Dashboard My Bids: how many "from others" rows to add per "Show more" click. */
 export const MY_BID_OTHERS_VISIBLE_STEP = 5
 

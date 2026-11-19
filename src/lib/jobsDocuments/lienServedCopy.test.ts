@@ -1,22 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { filingDocText, HOMESTEAD_AFFIDAVIT_NOTICE, type LienAffidavitFields } from './lienFilingDocuments'
+import { filingDocText, type LienAffidavitFields } from './lienFilingDocuments'
 import {
   buildLienServeLetterBlocks,
-  buildLienServedCopyBlocks,
   lienServeEnvelopeWords,
   lienServeFiledWords,
   lienServeHoldActs,
   lienServeHoldWords,
   lienServeHolds,
   lienServeLetterParagraphs,
-  lienServePacketHtml,
-  lienServePapers,
+  lienServeLetterDrawable,
+  lienServeLetters,
   lienServeRecipients,
-  lienServedCopyBoxWords,
   lienServedCopySentTitle,
   LIEN_SERVE_LETTER_ENCLOSED,
   LIEN_SERVE_LETTER_READ_BY_COUNSEL,
-  LIEN_SERVED_COPY_READ_BY_COUNSEL,
+  LIEN_SERVE_WORDS,
   type LienServeFacts,
 } from './lienServedCopy'
 
@@ -74,48 +72,50 @@ describe('who the copies go to', () => {
 })
 
 describe('what holds a filing’s copies', () => {
-  it('holds nothing when the filing and both addresses are on record', () => {
-    expect(lienServeHolds(facts())).toEqual([])
+  it('holds nothing when the filing, both addresses and a stamped copy in Drive are on record', () => {
+    expect(lienServeHolds(facts(), 'drive')).toEqual([])
     expect(lienServeHoldWords([])).toBe('')
     expect(lienServeHoldActs([])).toBe('')
   })
 
   it('holds a filing with no recording number, and its door is the filing', () => {
-    const holds = lienServeHolds(facts({ recordingNumber: '  ' }))
+    const holds = lienServeHolds(facts({ recordingNumber: '  ' }), 'drive')
     expect(holds).toEqual([{ key: 'no_recording_number', words: 'no recording number yet', act: 'Type the number the clerk gave.', door: 'filing' }])
-    expect(lienServePapers(facts({ recordingNumber: '' }), { letter: true })).toEqual([])
-    expect(lienServePacketHtml(facts({ recordingNumber: '' }), { letter: true, title: 't' })).toBe('')
+  })
+
+  it('holds a filing with no stamped copy, and never falls back to a page of its own', () => {
+    expect(lienServeHolds(facts(), 'none')).toEqual([{ key: 'no_saved_copy', words: 'no stamped copy saved', act: 'Add the clerk’s stamped scan on the job’s Lien window.', door: 'scan' }])
+    expect(lienServeHolds(facts(), 'not_drive')).toEqual([{ key: 'copy_not_drive', words: 'the saved copy is a link the app cannot read', act: 'Upload the stamped scan itself on the job’s Lien window.', door: 'scan' }])
   })
 
   it('names every reason, the filing’s own first, and what to do about each', () => {
-    const holds = lienServeHolds(facts({ recordingNumber: '' }, { ownerAddress: '', originalContractorAddress: ' ' }))
-    expect(holds.map((h) => h.key)).toEqual(['no_recording_number', 'no_owner_address', 'no_contractor_address'])
-    expect(lienServeHoldWords(holds)).toBe('Held: no recording number yet, no mailing address for the owner, no mailing address for the original contractor.')
-    expect(lienServeHoldActs(holds)).toBe('Type the number the clerk gave. Add it on the property record. Add it on the GC’s customer record.')
+    const holds = lienServeHolds(facts({ recordingNumber: '' }, { ownerAddress: '', originalContractorAddress: ' ' }), 'none')
+    expect(holds.map((h) => h.key)).toEqual(['no_recording_number', 'no_saved_copy', 'no_owner_address', 'no_contractor_address'])
+    expect(lienServeHoldWords(holds)).toBe('Held: no recording number yet, no stamped copy saved, no mailing address for the owner, no mailing address for the original contractor.')
+    expect(lienServeHoldActs(holds)).toBe('Type the number the clerk gave. Add the clerk’s stamped scan on the job’s Lien window. Add it on the property record. Add it on the GC’s customer record.')
   })
 
   it('does not ask for a contractor on a job contracted with the owner', () => {
-    expect(lienServeHolds(facts({ isSub: false }, { originalContractorName: '', originalContractorAddress: '' }))).toEqual([])
+    expect(lienServeHolds(facts({ isSub: false }, { originalContractorName: '', originalContractorAddress: '' }), 'drive')).toEqual([])
   })
 
   it('mails to the address the office holds today, and the paper’s own when it holds none', () => {
     const f = facts({ to: { owner: { name: '', address: '500 New Owner Blvd, Austin, TX 78701' }, contractor: null } }, { ownerAddress: '' })
-    expect(lienServeHolds(f)).toEqual([])
+    expect(lienServeHolds(f, 'drive')).toEqual([])
     expect(lienServeRecipients(f)).toEqual([
       { recipient: 'owner', name: 'Hollow Creek Holdings LLC', address: '500 New Owner Blvd, Austin, TX 78701' },
       { recipient: 'original_contractor', name: 'Brightline Builders', address: '12 Example Pkwy, Buda, TX 78610' },
     ])
-    // The copy is the paper as filed: today's address is on the letter, never on the copy.
     expect(filingDocText(buildLienServeLetterBlocks(f, 'owner'))).toContain('500 New Owner Blvd, Austin, TX 78701')
-    expect(filingDocText(buildLienServedCopyBlocks(f))).not.toContain('500 New Owner Blvd')
   })
 
-  it('draws no copy of an affidavit the app did not draw', () => {
-    // Recorded with Already filed — record it…, while the app's own page still had blanks.
-    const holds = lienServeHolds(facts({}, { ownerName: '', ownerAddress: '' }))
-    expect(holds.map((h) => h.key)).toEqual(['no_paper', 'no_owner_address'])
-    expect(holds[0]).toMatchObject({ door: 'photocopy', act: 'Mail a photocopy of the filed affidavit.' })
-    expect(lienServeHolds(facts({ to: { owner: { name: 'Hollow Creek Holdings LLC', address: '1 Way, Austin, TX 78701' } } }, { ownerName: '', ownerAddress: '' })).map((h) => h.key)).toEqual(['no_paper'])
+  it('does not hold an affidavit the app did not draw: its stamped copy prints, with no letter', () => {
+    // Recorded with Already filed — record it…, or filed by counsel: the record keeps none of the paper's words.
+    const blank = facts({ to: { owner: { name: 'Hollow Creek Holdings LLC', address: '1 Way, Austin, TX 78701' } } }, { ownerName: '', ownerAddress: '', unpaidAmount: '' })
+    expect(lienServeHolds(blank, 'drive')).toEqual([])
+    expect(lienServeLetterDrawable(blank.fields)).toBe(false)
+    expect(lienServeLetters(blank, { letter: true })).toEqual([])
+    expect(lienServeLetterDrawable(facts().fields)).toBe(true)
   })
 })
 
@@ -172,48 +172,22 @@ describe('the letter', () => {
   })
 })
 
-describe('the copy', () => {
-  it('opens with the box that says what it is and what it does not show', () => {
-    const blocks = buildLienServedCopyBlocks(facts())
-    expect(blocks[0]).toEqual({ kind: 'callout', text: lienServedCopyBoxWords(facts()) })
-    expect(lienServedCopyBoxWords(facts())).toBe(
-      'COPY. This is a copy of the lien affidavit filed with the County Clerk of Hays County, Texas, on November 13, 2026, as document number 2026-0041877. ' +
-        'It is drawn from the claimant\'s record of the paper as filed. The filed affidavit is signed and notarized. This copy does not show the signatures, the notary\'s seal or the clerk\'s stamp.',
-    )
+describe('the letters', () => {
+  it('draws one letter for each reader, in envelope order', () => {
+    expect(lienServeLetters(facts(), { letter: true }).map((p) => p.label)).toEqual(['Letter to the owner', 'Letter to the original contractor'])
+    expect(lienServeLetters(facts({ isSub: false }, { isSub: false }), { letter: true }).map((p) => p.recipient)).toEqual(['owner'])
   })
 
-  it('keeps the homestead notice first on the page, the box after it', () => {
-    const blocks = buildLienServedCopyBlocks(facts({}, { homestead: true }))
-    expect(blocks[0]).toEqual({ kind: 'topNotice', text: HOMESTEAD_AFFIDAVIT_NOTICE })
-    expect(blocks[1]?.kind).toBe('callout')
+  it('draws none when the letter is left out: the envelope still takes the stamped copy', () => {
+    expect(lienServeLetters(facts(), { letter: false })).toEqual([])
   })
 
-  it('is the affidavit’s own words under the box', () => {
-    const text = filingDocText(buildLienServedCopyBlocks(facts()))
-    expect(text).toContain('The amount of the claim is $18,450.00. Claimant claims a lien on the property for that amount.')
-    expect(text).toContain('The owner or reputed owner is Hollow Creek Holdings LLC, 88 Sample Ridge Rd, Austin, TX 78700.')
-  })
-
-  it('falls back to the affidavit’s county when the record names none', () => {
-    expect(lienServedCopyBoxWords(facts({ county: '' }))).toContain('County Clerk of Hays County, Texas')
-  })
-})
-
-describe('the packet', () => {
-  it('prints each reader’s letter in front of that reader’s copy', () => {
-    expect(lienServePapers(facts(), { letter: true }).map((p) => p.label)).toEqual(['Letter to the owner', 'Copy for the owner', 'Letter to the original contractor', 'Copy for the original contractor'])
-  })
-
-  it('never leaves the copy out when the letter is left out', () => {
-    expect(lienServePapers(facts(), { letter: false }).map((p) => p.what)).toEqual(['copy', 'copy'])
-    expect(lienServePapers(facts({ isSub: false }, { isSub: false }), { letter: false }).map((p) => p.label)).toEqual(['Copy for the owner'])
-  })
-
-  it('draws one print document with every paper on its own sheet', () => {
-    const html = lienServePacketHtml(facts(), { letter: true, title: 'Copy of lien affidavit — Job 2291' })
-    expect(html).toContain('<title>Copy of lien affidavit — Job 2291</title>')
-    expect(html.match(/class="filing-paper filing-next-paper/g)?.length).toBe(3)
-    expect(html).toContain('COPY. This is a copy of the lien affidavit')
+  it('draws nothing that stands in for the copy', () => {
+    // The redrawn page is gone (v2.7916): no paper here says COPY, and the screen says what the copy is.
+    const text = lienServeLetters(facts(), { letter: true }).map((l) => filingDocText(l.blocks)).join('\n')
+    expect(text).not.toContain('COPY.')
+    expect(text).not.toContain('does not show the signatures')
+    expect(LIEN_SERVE_WORDS.copyIs).toBe('The copy in each envelope is the clerk’s stamped scan, every page of it.')
   })
 
   it('titles the copy filed on the job by its job number', () => {
@@ -224,8 +198,8 @@ describe('the packet', () => {
 
 describe('counsel’s read', () => {
   // The day counsel answers, the flag turns and the screen's line goes with it; this test turns with it.
-  it('is still open on the letter and on the copy', () => {
+  it('is still open on the letter', () => {
+    // The copy's own question went with the redrawn page: the copy is now the stamped scan itself.
     expect(LIEN_SERVE_LETTER_READ_BY_COUNSEL).toBe(false)
-    expect(LIEN_SERVED_COPY_READ_BY_COUNSEL).toBe(false)
   })
 })

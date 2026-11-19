@@ -163,7 +163,7 @@ export function SupplyHouseJobAccountsRoster({
     border: `1px solid ${accent ? TEAL : 'var(--border-strong)'}`,
     borderRadius: 4,
     cursor: 'pointer',
-    font: 'inherit',
+    fontFamily: 'inherit',
     whiteSpace: 'nowrap' as const,
   })
 

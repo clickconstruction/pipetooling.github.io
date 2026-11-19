@@ -66,7 +66,7 @@ export function GcBoardByTrade({
                     padding: '0.15rem 0.6rem',
                     fontSize: '0.8rem',
                     cursor: 'pointer',
-                    font: 'inherit',
+                    fontFamily: 'inherit',
                   }}
                 >
                   {c.name}

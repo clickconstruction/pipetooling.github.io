@@ -15,7 +15,7 @@ import { JobPhotosViewer } from './JobPhotosViewer'
 import { PhoneSectionTitle } from '../jobs/JobWindowPhoneSections'
 
 const label: CSSProperties = { fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)' }
-const doorBtn: CSSProperties = { ...label, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontWeight: 600, font: 'inherit', fontSize: '0.8125rem' }
+const doorBtn: CSSProperties = { ...label, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontWeight: 600, fontFamily: 'inherit', fontSize: '0.8125rem' }
 const muted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }
 const strip: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }
 const tileBtn: CSSProperties = { ...TILE, padding: 0, cursor: 'pointer' }
@@ -27,7 +27,7 @@ const BANNER_TILE = 72
 const bannerRow: CSSProperties = { display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', margin: '0 -0.9rem', padding: '0 0.9rem 4px', WebkitMaskImage: 'linear-gradient(90deg, #000 calc(100% - 24px), transparent)', maskImage: 'linear-gradient(90deg, #000 calc(100% - 24px), transparent)' }
 const bannerTile: CSSProperties = { ...TILE, width: BANNER_TILE, height: BANNER_TILE, aspectRatio: undefined, flex: 'none', borderRadius: 10, padding: 0, cursor: 'pointer' }
 const bannerAdd: CSSProperties = { ...bannerTile, border: '1.5px dashed var(--text-blue-500)', background: 'var(--surface)', color: 'var(--text-link)', fontFamily: 'inherit', fontWeight: 700, fontSize: '0.6875rem', lineHeight: 1.15, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, textAlign: 'center', padding: '0 4px' }
-const smallBtn: CSSProperties = { display: 'inline-block', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.15rem 0.6rem', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', marginTop: '0.3rem', font: 'inherit' }
+const smallBtn: CSSProperties = { display: 'inline-block', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.15rem 0.6rem', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', marginTop: '0.3rem', fontFamily: 'inherit' }
 
 export interface JobPhotosStripProps {
   jobId: string

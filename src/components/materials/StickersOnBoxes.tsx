@@ -47,7 +47,7 @@ const btn: CSSProperties = { minHeight: 44, padding: '0 0.9rem', borderRadius: 8
 const btnPrimary: CSSProperties = { ...btn, background: BLUE, borderColor: BLUE, color: '#fff', width: '100%', minHeight: 48 }
 const deadStyle: CSSProperties = { background: DEAD_PRESS_FILL, borderColor: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'default' }
 const on: CSSProperties = { background: 'var(--text-strong)', color: 'var(--bg-page)', borderColor: 'var(--text-strong)' }
-const input: CSSProperties = { width: '100%', minHeight: 44, padding: '0.5rem 0.75rem', fontSize: '1rem', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit' }
+const input: CSSProperties = { width: '100%', minHeight: 44, padding: '0.5rem 0.75rem', fontSize: '1rem', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.85rem' }
 const lineStyle: CSSProperties = { margin: 0, fontSize: '0.9rem', lineHeight: 1.45 }
 

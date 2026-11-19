@@ -53,7 +53,7 @@ const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem'
 const cardStyle: CSSProperties = { position: 'relative', touchAction: 'pan-y', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }
 // On a phone the two answers stay at the foot of the screen, over the app's own bottom bar, however tall the card is.
 const stickyAnswers: CSSProperties = { position: 'sticky', bottom: 'calc(var(--app-bottom-chrome, 0px) + 8px)', background: 'var(--surface)', borderTop: '1px solid var(--border)', borderRadius: '0 0 14px 14px', zIndex: 5 }
-const factRow: CSSProperties = { display: 'grid', gridTemplateColumns: '74px minmax(0, 1fr) auto', gap: 8, alignItems: 'start', padding: '10px 0', borderTop: '1px solid var(--border)', fontSize: '0.875rem', textAlign: 'left', width: '100%', background: 'transparent', color: 'var(--text)', font: 'inherit' }
+const factRow: CSSProperties = { display: 'grid', gridTemplateColumns: '74px minmax(0, 1fr) auto', gap: 8, alignItems: 'start', padding: '10px 0', borderTop: '1px solid var(--border)', fontSize: '0.875rem', textAlign: 'left', width: '100%', background: 'transparent', color: 'var(--text)', fontFamily: 'inherit' }
 const factName: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', paddingTop: 2 }
 const pill = (tone: 'green' | 'grey' | 'blue' | 'amber'): CSSProperties => ({
   display: 'inline-block',

@@ -688,7 +688,7 @@ export function ScheduleDispatchAssignJobPickerModal({
                 border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 fontSize: '0.8125rem',
-                font: 'inherit',
+                fontFamily: 'inherit',
                 resize: 'vertical',
               }}
             />

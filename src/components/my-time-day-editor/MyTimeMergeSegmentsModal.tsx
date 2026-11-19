@@ -178,7 +178,7 @@ export function MyTimeMergeSegmentsModal({
               fontSize: '0.8125rem',
               cursor: 'pointer',
               textAlign: 'center',
-              font: 'inherit',
+              fontFamily: 'inherit',
             }}
           >
             {NO_JOB_BID_LINKED_LABEL}
@@ -214,7 +214,7 @@ export function MyTimeMergeSegmentsModal({
                 fontSize: '0.75rem',
                 cursor: 'pointer',
                 textDecoration: 'underline',
-                font: 'inherit',
+                fontFamily: 'inherit',
               }}
             >
               Restore default merge

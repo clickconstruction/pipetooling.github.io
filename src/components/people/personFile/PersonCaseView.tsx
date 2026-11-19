@@ -32,7 +32,7 @@ import {
 import { writePersonCase } from '../../../lib/people/personCaseIo'
 
 const CARD: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem 0.9rem' }
-const FIELD: CSSProperties = { padding: '0.35rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 7, fontSize: '0.82rem', background: 'var(--bg-page)', color: 'var(--text-base)', font: 'inherit', boxSizing: 'border-box' }
+const FIELD: CSSProperties = { padding: '0.35rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 7, fontSize: '0.82rem', background: 'var(--bg-page)', color: 'var(--text-base)', fontFamily: 'inherit', boxSizing: 'border-box' }
 const HEAD: CSSProperties = { margin: '0 0 0.45rem', fontSize: '0.7rem', letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 700 }
 const NUMBER: CSSProperties = { display: 'inline-block', padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 700, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', whiteSpace: 'nowrap' }
 

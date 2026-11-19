@@ -176,7 +176,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
                     type="button"
                     onClick={openMoveModal}
                     title={`The move was asked for by ${moveAsk.via}${moveAsk.sent_to ? ` (${moveAsk.sent_to})` : ''} — follow up with a call, then mark it moved`}
-                    style={{ padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', font: 'inherit', background: age === 'red' ? 'var(--bg-red-100)' : 'var(--bg-amber-tint)', color: age === 'red' ? 'var(--text-red-800)' : 'var(--text-amber-800)' }}
+                    style={{ padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: age === 'red' ? 'var(--bg-red-100)' : 'var(--bg-amber-tint)', color: age === 'red' ? 'var(--text-red-800)' : 'var(--text-amber-800)' }}
                   >
                     asked {formatYmdLocal(calendarYmdInAppTzFromIso(moveAsk.requested_at))} · follow up ☎
                   </button>
@@ -333,7 +333,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
                             type="button"
                             onClick={() => void sendMoveRequest(unasked.map((r) => r.id), busyKey, false)}
                             disabled={agingMoveBusy === busyKey}
-                            style={{ marginLeft: '0.6rem', padding: '0.1rem 0.55rem', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none', letterSpacing: 0, background: 'transparent', color: '#0f766e', border: '1px solid #0f766e', borderRadius: 4, cursor: 'pointer', font: 'inherit', opacity: agingMoveBusy === busyKey ? 0.6 : 1 }}
+                            style={{ marginLeft: '0.6rem', padding: '0.1rem 0.55rem', fontSize: '0.7rem', fontWeight: 600, textTransform: 'none', letterSpacing: 0, background: 'transparent', color: '#0f766e', border: '1px solid #0f766e', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit', opacity: agingMoveBusy === busyKey ? 0.6 : 1 }}
                           >
                             {agingMoveBusy === busyKey ? 'Sending…' : `✉ Email ${(rep.name ?? '').trim().split(' ')[0] || 'the rep'} the list ›`}
                           </button>
@@ -457,7 +457,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
                     <button
                       type="button"
                       onClick={() => setAgingCellMarkOpenedFor({ inv, flagOnOpen: true })}
-                      style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}
+                      style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Mark opened…
                     </button>
@@ -523,7 +523,7 @@ export function AgingCellWindow({ aging, agingUnpaidInvoices, supplyHouseSummary
                     type="button"
                     disabled={agingMoveBusy === 'send' || !repHasEmail}
                     onClick={() => void sendMoveRequest([inv.id], 'send', true)}
-                    style={{ marginTop: '0.75rem', padding: '0.25rem 0.6rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 5, cursor: 'pointer', font: 'inherit' }}
+                    style={{ marginTop: '0.75rem', padding: '0.25rem 0.6rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 5, cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     {agingMoveBusy === 'send' ? 'Sending…' : 'Send the email again ›'}
                   </button>

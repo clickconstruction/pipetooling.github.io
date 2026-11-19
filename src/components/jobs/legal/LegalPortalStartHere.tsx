@@ -30,10 +30,10 @@ export type StartHereProps = {
   onOpenRules: () => void
 }
 
-const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 5, border: `1px solid ${COPPER}`, color: COPPER, background: CARD, cursor: 'pointer', font: 'inherit' }
+const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, padding: '6px 14px', borderRadius: 5, border: `1px solid ${COPPER}`, color: COPPER, background: CARD, cursor: 'pointer', fontFamily: 'inherit' }
 const fill: CSSProperties = { ...btn, background: COPPER, color: '#fff' }
 const ghost: CSSProperties = { ...btn, borderColor: HAIR, color: MUTED }
-const link: CSSProperties = { background: 'none', border: 'none', padding: 0, color: COPPER, fontWeight: 600, cursor: 'pointer', font: 'inherit' }
+const link: CSSProperties = { background: 'none', border: 'none', padding: 0, color: COPPER, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }
 
 function Lines({ lines }: { lines: ReadonlyArray<string> }) {
   return (

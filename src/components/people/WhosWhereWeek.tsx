@@ -182,7 +182,7 @@ export default function WhosWhereWeek({ week, loading, whenEmpty }: Props) {
                   type="button"
                   onClick={() => setNotInOpen((o) => !o)}
                   aria-expanded={notInOpen}
-                  style={{ ...railHeading, font: 'inherit', fontSize: '0.65rem', fontWeight: 700, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', marginBottom: 0 }}
+                  style={{ ...railHeading, fontFamily: 'inherit', fontSize: '0.65rem', fontWeight: 700, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', marginBottom: 0 }}
                 >
                   Not in · {week.notIn.length} {notInOpen ? '▾' : '▸'}
                 </button>

@@ -40,8 +40,8 @@ const BUCKET_COLOR: Record<CohortBucket, string> = { won: WON, lost: LOST, open:
 const OUTCOME_COLORS = PURSUIT_OUTCOME_CHIP_COLORS
 
 const usd = (n: number): string => `$${formatCurrency(n)}`
-const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 999, padding: '2px 9px', fontSize: '0.75rem', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'none', color: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', font: 'inherit' }
-const navBtn: CSSProperties = { border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: '0.75rem', color: 'var(--text-muted)', background: 'none', cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }
+const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 999, padding: '2px 9px', fontSize: '0.75rem', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'none', color: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }
+const navBtn: CSSProperties = { border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: '0.75rem', color: 'var(--text-muted)', background: 'none', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }
 const th: CSSProperties = { padding: '0.45rem 0.55rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: 'var(--bg-subtle)' }
 const thNum: CSSProperties = { ...th, textAlign: 'right' }
 const cell: CSSProperties = { padding: '0.45rem 0.55rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top', whiteSpace: 'nowrap' }
@@ -117,7 +117,7 @@ export function BidListModal({ open, onClose, title, sub, rows, cohort, onOpenBi
               {d?.shareOfDecided != null ? ` · ${Math.round(d.shareOfDecided * 100)}% of what ${d.label} decided, by value` : ''}
             </div>
           </div>
-          <button ref={closeRef} type="button" onClick={onClose} style={{ border: 'none', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.35rem 0.65rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500, flexShrink: 0, font: 'inherit' }}>Close</button>
+          <button ref={closeRef} type="button" onClick={onClose} style={{ border: 'none', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.35rem 0.65rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500, flexShrink: 0, fontFamily: 'inherit' }}>Close</button>
         </div>
 
         {d ? (

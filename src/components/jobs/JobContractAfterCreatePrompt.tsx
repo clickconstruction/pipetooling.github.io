@@ -248,7 +248,7 @@ export default function JobContractAfterCreatePrompt({ jobId, onClose }: { jobId
                     key={r}
                     type="button"
                     onClick={() => setReason(on ? '' : r)}
-                    style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: 999, border: `1px solid ${on ? 'var(--text-link)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}
+                    style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: 999, border: `1px solid ${on ? 'var(--text-link)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', fontFamily: 'inherit', fontWeight: 600, cursor: 'pointer' }}
                   >
                     {r}
                   </button>

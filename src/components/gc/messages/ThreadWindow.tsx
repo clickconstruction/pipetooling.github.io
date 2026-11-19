@@ -349,7 +349,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                           {!whoOnCard && (
                             <>
                               <span aria-hidden="true">·</span>
-                              <button type="button" data-thread-who="inline" onClick={() => setNaming(true)} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--text-blue-700)', fontWeight: 600, cursor: 'pointer', font: 'inherit', flex: 'none' }}>
+                              <button type="button" data-thread-who="inline" onClick={() => setNaming(true)} style={{ border: 'none', background: 'transparent', padding: 0, color: 'var(--text-blue-700)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flex: 'none' }}>
                                 Who is this?
                               </button>
                             </>

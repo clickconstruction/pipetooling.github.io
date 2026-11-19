@@ -2,7 +2,7 @@
 name: "Sub NDA builder: a job's secrecy settings make the paper its subs sign"
 number: 389
 group: waiting
-status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · nothing is built
+status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · nothing of the builder is built
 summary: >
   On a job where the company owes secrecy to a GC or an owner, the office sets a short page of secrecy
   settings, or the GC proposes them from the portal page they already open. The office confirms. The app
@@ -12,7 +12,7 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The owner's review of the look and the open calls below. Then the Contract Book step, which waits on nothing else.
+next: The owner's review of the look and the open calls below, with the seven wider calls in *The wider look*. Then the Contract Book step, which waits on nothing else.
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -143,14 +143,17 @@ Not yet answered. The build can start on them, and each can be flipped.
 
 ## What exists today
 
-Read in the code on 2026-11-17.
+Read in the code on 2026-11-17, and again on 2026-11-19 with prod read through the dev seat.
 
 - **Clause papers.** A Contract Book entry can be built from clauses
   (`supabase/migrations/20261012150000_contract_clauses.sql`, `src/lib/contracts/assemble.ts`,
   `supabase/functions/_shared/clausePaper.ts`). `contract_clauses` holds each clause with its own version.
   Every change goes through `edit_clause` and bumps the entry's `revision`.
   `contract_paper_clauses(p_paper_id, p_trades, p_lang)` is the database's assembly, and `assemblePaper`
-  is its TypeScript twin, used only by the Book's preview (`ClausePreviewWindow.tsx`).
+  is its TypeScript twin, used only by the Book's preview (`ClausePreviewWindow.tsx`). Clauses are
+  edited in Settings (`src/components/settings/SettingsContractsTab.tsx`).
+- **No clause paper has run on prod.** On 2026-11-19 `contract_clauses` held no row, all 18 Book entries
+  read `revision = 0`, and no signed copy carried a `paper_revision`. Step 1 is the engine's first real use.
 - **A clause is kept or dropped by trade only.** There is no slot, no condition and no blank in clause
   text. Nothing picks one wording out of several.
 - **Signing.** `accept-contract` re-reads the paper, refuses with `paper_changed` when the revision
@@ -158,10 +161,12 @@ Read in the code on 2026-11-17.
   trigger blocks any later change. No hash is kept, and a clause paper makes no PDF.
 - **A trap.** `clausePaperFor` answers null for a paper that is not built from clauses, and the accept
   then signs the body. A settings paper asked for with no settings must never fall through that door.
-- **The gate, papers before a job opens.** Its first three steps are on `main`: the ground
-  (`job_required_papers`, `job_papers_require`, `job_paper_start`), the office's section
-  (`src/components/papers/JobPapersSection.tsx`) and the prompt. `job_papers_require` refuses an entry
-  with no body, form or link, so a clause-built entry is refused today.
+- **The gate, papers before a job opens.** All seven of its steps are on `main` and live (v2.7641 to
+  v2.7726): the ground (`job_required_papers`, `job_papers_require`, `job_paper_start`), the office's
+  section (`src/components/jobs/JobDocumentsRequiredPapers.tsx`), the prompt, the lock in the database,
+  the lists, the page of a sub with no login, and the lines on Documents → Agreements.
+  `job_papers_require` refuses an entry with no body, form or link, so a clause-built entry is refused
+  today. No job on prod required a paper on 2026-11-19.
 - **The GC's door is the customer portal** (`supabase/functions/customer-portal/index.ts`, a link whose
   audience is `gc` or `all`, jobs by `jobs_ledger.gc_customer_id`). A GC sees bills, waivers, test
   reports, contracts and the stage plan. A GC's presses go through `submit-portal-request` as kinds. No
@@ -223,8 +228,8 @@ paper until an entry has a settings list, and the first one is a test entry.
 3. **Settings on the job, the ground (M).** The columns on `job_required_papers`, `job_papers_require`
    accepting a clause-built entry with settings, a function that sets them and locks at the first
    signature, the read-revision rule, the freeze with the hash, and the signature's *Signing for* line.
-4. **The office's settings page (M).** Inside `JobPapersSection`. This is the first screen the open look
-   decides.
+4. **The office's settings page (M).** Inside `JobDocumentsRequiredPapers`. This is the first screen the
+   open look decides.
 5. **The GC's page, read-only (M).** The Secrecy block, the sample PDF function, the sub businesses.
 6. **The GC proposes (M).** The proposal kind, stricter-only checked on the server, the office's take
    and confirm, the record of who and when.
@@ -279,8 +284,143 @@ These are the builder's own questions, apart from the draft's wording.
 - **Steps 5 and 6.** A `gc` link for the ZZ Test customer shows the block. The server refuses a looser
   proposal. A stricter one lands as an ask and changes nothing until the office takes it.
 
+## The wider look: the builder, the gate and contracts on Documents
+
+Asked 2026-11-19, in the owner's words:
+
+> can you look at the NDA builder and how we handle contracts and let me know what things look like. We
+> were building in the direction of an NDA builder where a GC could participate and having some jobs
+> require NDAs be signed before the user can have access, and the ability to manage contracts from the
+> documents page not just the people page (we were doing this part so eventually we could have outside
+> vendors and subcontractors sign documents, and the management of that was better served through
+> documents).
+
+A read of the code and of prod through the dev seat, the same day. Nothing was built. Each line says
+where it comes from: **code**, **live** or **card**.
+
+### The short answer
+
+| Direction | State |
+|---|---|
+| An NDA builder a GC takes part in | **Drawn only.** No builder code exists (code). The clause engine under it has never run on prod (live). |
+| A job requires a paper before a person gets in | **Built and live, not yet used.** All seven steps are merged and deployed (code). No job on prod requires a paper (live). |
+| Managing contracts from Documents | **The list is built and live. The managing is not started.** Agreements finds and opens a paper. It cannot send, remind, void or add one (code). |
+| Outside vendors and subs signing | **Half there.** Anyone with a link signs with no login (code). A vendor or a GC has no record to hold the paper, gets no copy and no reminder (code). |
+
+### How the pieces fit
+
+| Kind of paper | Made | Sent | Signed | Kept | Listed | On prod, 2026-11-19 |
+|---|---|---|---|---|---|---|
+| Staff or sub paper | Contract library and Form Studio, opened from People → Contracts | People → Contracts by email, or the sub's own page. The link lasts 14 days. | `/contract/accept`, no login | On the person's row. A form keeps a PDF. A plain paper keeps its words and the signature. | People → Contracts, Documents → Agreements | 59 papers, 30 signed |
+| A paper a job requires | Picked from the Contract Book on the job's Documents tab | The prompt, **Needs you**, the sub's page, or **Copy the signing link** | The same page | As a person's paper, with its job | The job's roster, Agreements | None |
+| The customer's job contract or warranty | The job's Contract window | Email, link, text, in person or on paper. The link lasts 90 days. Three reminders go out by themselves. | `/contract/sign`, two signers on their side | A PDF, emailed to them and filed in the job's Drive folder (#377) | The job, the customer's portal, Agreements | 19 records, 7 signed, most filed by hand |
+| A GC's own paper (#173) | Recorded on the job, not made | Not sent | Not signed in the app | A link or an upload | Agreements, the Legal desk | None |
+| A sub's work order | Work Orders | The sub's page | The sub's page | On the order | Agreements | None in the list |
+| GC mode's papers, when the company is the GC | GC mode, dev only | Their portal | Their portal | On the send | Agreements | None |
+
+Agreements held 45 lines: 16 job contracts and 29 staff and sub papers (live).
+
+### What the gate holds closed, and for whom
+
+Read in the code (`20261118010000_job_papers_lock.sql`, `_shared/subPortalJobPapers.ts`).
+
+- **Helpers, subs with a login, superintendents and estimators.** The database refuses the job: its row,
+  notes, photos, plans, files and texts. A list shows the number and a lock. No push goes out.
+- **The office and a primary.** The prompt at the job is the only lock, and nobody clocks in before
+  signing. That is the owner's call 8 of 2026-11-17.
+- **A sub with no login.** Their page holds back the address, the scope, the plans link and the notes.
+  Money stays. The page is the lock, and it stays shut when the check fails.
+- **A GC.** Not gated. No paper is asked of a GC, and a GC cannot see who has signed.
+- **An outside vendor.** Has no door to a job, so there is nothing to gate.
+
+A required paper is a Contract Book paper with words, a Form Studio form, or a Book entry with a link. A
+GC's own form goes in as a Form Studio form. It cannot be a file uploaded straight onto the job. The
+gate does not close a Drive folder already shared with the person, and its own notes name six list
+functions that were not checked (`docs/recent-features/v2.7665.md`).
+
+**Usable now, with no builder:** a secrecy paper with fixed words can be required on a job today. It
+waits only on an attorney's read of the words. A test entry is in the Book for it.
+
+### What Documents can and cannot do
+
+Read in the code (`src/lib/documents/agreementsLedger.ts`, `DocumentsAgreementsTab.tsx`).
+
+- **On Documents → Agreements:** find, filter by kind and by state, and open. A signed job contract opens
+  its Contract window, with Share, Download, Print and its Drive line. A signed staff or sub paper opens
+  its record. A work order opens its window. A GC mode line opens the GC page, not its project.
+- **Only on People → Contracts:** the Contract library, Form Studio, sending and sending again, entering
+  a paper form, and the office's half of a two-party form.
+- **Only on the job's Contract window:** writing, sending, reminding, **Void & redo** and filing a signed
+  copy.
+- **Only in GC mode:** its three papers, dev only.
+
+### Who can sign today
+
+| Who | Can sign? | What is missing |
+|---|---|---|
+| Staff with a login | Yes | Nothing |
+| A sub, with or without a login | Yes | No reminder by email |
+| A sub's signer, a different person | Yes, the email is typed by hand | The paper is filed under the roster name, not the business or the signer |
+| A customer | Yes, with a co-signer | The company never countersigns |
+| A GC | Only an estimate or a bid | No flow sends a GC the company's paper |
+| A supply house or a vendor | No | No record to send it to. The whole flow. |
+
+Three gaps apply to every outsider (code, `accept-contract`): the signer gets no copy by email, a plain
+paper makes no PDF, and the only reminder is a Dashboard prompt an outsider never sees.
+
+### Two faults found on the way
+
+Both were handed to a session of their own on 2026-11-19.
+
+- A waiting staff or sub paper's line on Agreements opens *This document is not in signed status.*
+  #376 says it opens People → Contracts on that paper. Two lines did this on prod.
+- The consent record's allowed kinds lost the GC owner contract's kind
+  (`20261030030000_hours_statements.sql` restated the list without it). No owner contract has been sent,
+  so nothing is lost yet.
+
+Two more lines of #376's README are behind the code: it says nothing goes to Google Drive, which #377
+changed, and it says a GC line opens its project.
+
+### What is left to build, in order
+
+Sizes for this card's own steps are the train's above.
+
+| # | What | Size | Waits on |
+|---|---|---|---|
+| 1 | The two faults above | S | In its own session |
+| 2 | The owner's look at #376, #377 and #173, to retire them | XS | The owner |
+| 3 | A fixed secrecy paper's words read, then the gate's first real job | no code | Counsel |
+| 4 | Agreements lines get presses: **Send again**, **Copy link**, **Remind**, **Void** | M | Nothing |
+| 5 | Send a paper and open the Contract library from Documents | S to M | Wider call 5 |
+| 6 | Step 1 here, the Book takes settings | M | Nothing |
+| 7 | Step 2 here, the summary and the sample | S | Nothing |
+| 8 | An outside party as a record, with the *Signing for* line of step 3 | M | Wider call 3 |
+| 9 | The signer's copy by email, and a PDF of a plain paper | S to M | Nothing |
+| 10 | Reminders by email for staff, sub and outside papers | S | Nothing |
+| 11 | Steps 3 to 7 here | M · M · M · M · S | The look for step 4. Counsel before a real job. |
+| 12 | The company's own signature on a paper | M | Wider call 4 |
+| 13 | Step 8 here, the company's own secrecy paper to a vendor or partner | M | Rows 8 and 12, and its own clause set from counsel |
+| 14 | The gate's leftovers: the six unchecked list functions, the Spanish read of the sub's card | S | Nothing |
+
+### The wider calls, the owner's to make
+
+1. **The builder's look.** The calls in *Open: the look* above, then *Open: the picks the build stands on*.
+2. **Counsel.** Who reads the wording, and whether a fixed secrecy paper goes first so the gate is used
+   before the builder exists.
+3. **Where an outside signer lives.** A vendor, a sub's business or a GC's contact has no record that
+   holds a paper today.
+4. **Whether the company signs in the app.** A mutual paper needs the company's signature. Today it signs
+   nowhere, save the office's half of a two-party form.
+5. **Documents or both.** Whether sending moves to Documents, or People and Documents both keep a door.
+6. **The GC and the gate.** Whether a GC ever signs a job's paper, and what *one signature per GC* should
+   mean. `docs/recent-features/v2.7726.md` names it as the owner's call 4 and its wording is not in the
+   repo.
+7. **Staff and sub papers in Drive.** Only job contracts are filed there. Estimators can read the jobs
+   drive.
+
 ## Where it stands
 
-Nothing is built and no code is written. The owner settled four calls and liked the idea. He liked
-sliders and did not love either drawing of them, so the look is the first thing to review. After that
-come the picks the build stands on, then step 1.
+Nothing of the builder is built and no code is written. The owner settled four calls and liked the
+idea. He liked sliders and did not love either drawing of them, so the look is the first thing to
+review. After that come the picks the build stands on, then step 1. The gate under it is live and
+unused, and *The wider look* orders what is left around it.

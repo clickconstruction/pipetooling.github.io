@@ -776,6 +776,41 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
         await waitFor(() => expect(screen.getByTestId('address').textContent).toBe('?tab=permits'))
       })
 
+      it('brings the lit step into view on a phone, where Builders sat past the right edge (v2.7902)', async () => {
+        // jsdom lays nothing out, so the strip and two of its steps get the boxes a 375 px phone measured on 2026-11-19.
+        const STRIP = { left: 12, width: 351, content: 623 }
+        const STEPS: Record<string, { left: number; width: number }> = { Skim: { left: 42, width: 70 }, Builders: { left: 419, width: 76 } }
+        const isStrip = (el: HTMLElement) => el.getAttribute('aria-label') === 'Where the permits are'
+        vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+          return isStrip(this) ? STRIP.width : 0
+        })
+        vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) {
+          return isStrip(this) ? STRIP.content : 0
+        })
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+          if (isStrip(this)) return new DOMRect(STRIP.left, 0, STRIP.width, 38)
+          const strip = this.closest<HTMLElement>('[aria-label="Where the permits are"]')
+          const step = STEPS[(this.textContent ?? '').replace(/ \d+$/, '')]
+          return strip && step ? new DOMRect(STRIP.left + step.left - strip.scrollLeft, 0, step.width, 36) : new DOMRect()
+        })
+        const scrolled = vi.spyOn(window, 'scrollTo')
+        try {
+          renderWithProviders(<ProspectsResearchTab authUserId="u1" />, { route: '/prospects?tab=permits&view=builders' })
+          const strip = screen.getByRole('group', { name: 'Where the permits are' })
+          // Builders ends at 495 of the strip's 623. With 24 px of Ledger showing, the 351 px view ends at 519.
+          expect(strip.scrollLeft).toBe(168)
+          const builders = screen.getByRole('button', { name: 'Builders' }).getBoundingClientRect()
+          expect(builders.left).toBeGreaterThanOrEqual(STRIP.left)
+          expect(builders.right).toBeLessThanOrEqual(STRIP.left + STRIP.width)
+          // Another step comes into view when it is pressed, and the page itself never moves.
+          fireEvent.click(await screen.findByRole('button', { name: /^Skim/ }))
+          await waitFor(() => expect(strip.scrollLeft).toBe(18))
+          expect(scrolled).not.toHaveBeenCalled()
+        } finally {
+          vi.restoreAllMocks()
+        }
+      })
+
       it('puts Builders on the address when it is opened by its press, and opens on Skim with no word for it', async () => {
         renderWithProviders(
           <>

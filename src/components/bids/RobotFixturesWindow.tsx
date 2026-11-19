@@ -54,7 +54,7 @@ export type RobotFixturesWindowProps = {
 
 const CARD: CSSProperties = { background: 'var(--surface)', padding: 0, borderRadius: 10, maxWidth: 960, width: '96%', maxHeight: 'min(92vh, 100%)', overflow: 'auto', display: 'flex', flexDirection: 'column' }
 const PHONE_CARD: CSSProperties = { ...CARD, borderRadius: 0, maxWidth: 'none', width: '100%', maxHeight: '100%', height: '100%' }
-const SEG_BTN: CSSProperties = { padding: '2px 10px', fontSize: '0.78rem', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-700)', font: 'inherit' }
+const SEG_BTN: CSSProperties = { padding: '2px 10px', fontSize: '0.78rem', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-700)', fontFamily: 'inherit' }
 const BUCKET_HEAD: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 1.1rem', background: 'var(--bg-muted)', borderTop: '1px solid var(--border)', fontSize: '0.84rem', flexWrap: 'wrap' }
 const CELL: CSSProperties = { padding: '0.35rem 0.6rem', borderTop: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.84rem' }
 const NUM: CSSProperties = { ...CELL, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }

@@ -897,6 +897,8 @@ export type LienBoardPick = {
   label: string
   /** The papers themselves, by `kind:jobId`, when the pick is narrower than a job (the red line, v2.7371); absent, every row of a picked job is in. */
   papers?: ReadonlySet<string>
+  /** The day tile's red line this pick came from, at risk or late: that line then says the way back (`lienBoardDayLinePicked`). Absent for a bin's pick and the leader's. */
+  line?: 'risk' | 'late'
   /** What follows *Showing N rows* when the pick is not a bin: *that will not make tomorrow as they stand*. Absent, *in* and the label. */
   words?: string
   /** The jobs in those bins. */
@@ -932,6 +934,7 @@ export function lienBoardRiskPick(board: Pick<LienBoard, 'notices' | 'affidavits
     gcIds: new Set(chips.filter((c) => c.kind === 'notice').map((c) => c.gcId).filter((g): g is string => Boolean(g))),
     count: chips.length,
     papers: new Set(chips.map((c) => `${c.kind}:${c.jobId}`)),
+    line: 'risk',
     words: `that ${phrase}`,
   }
 }

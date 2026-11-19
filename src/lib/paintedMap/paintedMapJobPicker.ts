@@ -4,8 +4,20 @@
  * `components/paintedMap/PaintAMapJobPicker.tsx`.
  *
  * The owner's rule: every map is tied to a job, and picking the job is easy. So the picker leads
- * with the jobs the person is most likely standing on: today's stops, then the jobs they were
- * clocked onto lately. A search of every job comes after.
+ * with the jobs the person is most likely standing on: today's stops, then **Your last jobs**.
+ *
+ * Your last jobs never runs short while the person has been on six (the owner's word of
+ * 2026-11-19, after he opened the picker on an empty list). It is read three ways, each a sign the
+ * person was on the job: they clocked onto it, it was on their schedule on a past day, or they are
+ * on its team. Each sign has a day, the team's being the day they joined it, and the list runs
+ * newest first by a job's newest sign. So a job the office put the person on last week is above
+ * one they clocked onto in spring. A row is named by its best sign: a clock says its day, a
+ * scheduled day says *scheduled* over it, and a job known by its team alone says *on the team*. A
+ * row that is not a clock says how the app knows, since a job on a schedule does not prove the
+ * person went.
+ *
+ * When the app is told no job and the person has a last job with a day, the start sheet opens on
+ * it with no question (`pickerGuess`), and **Change the job** opens this picker.
  *
  * A person may paint a map for a job they can open or are on the team of (`on_site_can_touch_job`).
  * The app's job search finds more than that, so a search hit a person may not paint on is listed
@@ -20,8 +32,14 @@ import { paintPressJobLabel, type PaintPressJob, type PaintPressStop } from './p
 /** A job in the picker: the press's job, with the development it is a lot of. */
 export type PickerJob = PaintPressJob & { developmentId?: string | null }
 
-/** A job the person was clocked onto, and the last day they were (`2026-11-17`). */
-export type PickerLately = { job: PickerJob; lastOn: string }
+/** How the app knows a person was on a job: they clocked onto it, it was on their schedule on a past day, or they are on its team. */
+export type PickerLastHow = 'clock' | 'schedule' | 'team'
+
+/** One sign a person was on a job, and its day (`2026-11-17`). The team's day is the day they joined, when it is known. */
+export type PickerMark = { jobId: string; how: PickerLastHow; day: string | null }
+
+/** A job the person was on, named by its best sign: how the app knows, and that sign's day. A list of these is in the order `pickerLastOrder` gave. */
+export type PickerLast = { job: PickerJob; how: PickerLastHow; day: string | null }
 
 export type PickerRow = {
   job: PickerJob
@@ -29,30 +47,51 @@ export type PickerRow = {
   label: string
   /** The address, under the label. */
   sub: string | null
-  /** At the row's right: `9:30 AM`, `yesterday`, `Friday`, `Nov 12`, or `about 300 ft`. */
+  /** At the row's right: `9:30 AM`, `yesterday`, `Friday`, `Nov 12`, `on the team`, or `about 300 ft`. */
   tag: string | null
+  /** Over the tag, when the day is not a clock's: `scheduled`. */
+  how?: string | null
+  /** Under Your last jobs: how the app knows, and the day. */
+  last?: { how: PickerLastHow; day: string | null }
   /** Whether the person may paint a map for it. A row that is not cannot be pressed. */
   paintable: boolean
 }
 
-export type PickerSections = { today: PickerRow[]; lately: PickerRow[] }
+export type PickerSections = {
+  today: PickerRow[]
+  last: PickerRow[]
+  /** The job the start sheet opens on with no question (`pickerGuess`), or none. */
+  guess: PickerRow | null
+}
 
-/** How many jobs the Lately list holds. Past this a person searches. */
-export const PICKER_LATELY_MAX = 6
+/** How many jobs Your last jobs holds. Past this a person searches. */
+export const PICKER_LAST_MAX = 6
+/** How many of a person's last jobs are read whole. Some may fail the paint rule, so more are read than are listed. */
+export const PICKER_LAST_READ = 24
 
 export const PICKER_WORDS = {
   head: 'Which job is it for?',
   lead: 'Every painted map is on a job. Press the job and the map opens.',
   today: 'Today',
-  lately: 'Lately',
+  last: 'Your last jobs',
   near: 'Near you',
-  search: 'Or search every job',
-  searchPlaceholder: 'Search by number, name or address',
+  /** The search box's name, and what a phone's box says when empty. */
+  search: 'Search every job',
+  /** What a desk's box says when empty: there is room for the three things it reads. */
+  searchPlaceholder: 'Search every job by number, name or address',
+  /** Over what a search found. */
+  found: 'Every job',
   searching: 'Searching…',
+  /** Over a day that is a scheduled day and not a clock's. */
+  scheduled: 'scheduled',
+  /** At the right of a job the person is on the team of, with no day to say. */
+  team: 'on the team',
   /** Under a job the person may not paint on. */
   notYours: 'You are not on this job, so you cannot paint a map for it.',
-  /** No stop today and no clock lately: the search is the way. */
-  none: 'No job on your schedule today, and none you clocked onto lately. Search for the job.',
+  /** Nobody has put the person on a job yet: the search is the way. */
+  none: 'You have not been on a job yet. Search for the job above.',
+  /** The same, on a device that gives a location. */
+  noneNear: 'You have not been on a job yet. Search for the job, or press Near me.',
   reading: 'Reading your jobs…',
   /** The lists could not be read. The search may still work, and the map can still be painted. */
   failed: 'Your jobs could not be read. There may be no signal here.',
@@ -60,8 +99,8 @@ export const PICKER_WORDS = {
   later: 'Paint now and pick the job later',
   laterNote: 'The map stays yours and the office’s until it is put on a job.',
   /** Find the jobs near me (step 5): the press, what the phone will ask, and what the list can and cannot hold. */
-  nearPress: 'Find the jobs near me',
-  nearNote: 'Your phone will ask to share where you are. It is read once, for this list.',
+  nearPress: 'Near me',
+  nearNote: 'Near me asks where you are once, for this list.',
   nearFinding: 'Finding you…',
   nearOnly: 'Only jobs with an address the app has placed on the map are listed. Search finds the rest.',
   nearNone: 'No job the app has placed on the map is near you. Search for the job.',
@@ -82,9 +121,9 @@ function dayNumber(ymd: string): number | null {
   return Math.round(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 86_400_000)
 }
 
-/** `today`, `yesterday`, `Friday` inside a week, then `Nov 12`. Empty for a day that is not one or is ahead. */
-export function pickerLatelyWords(lastOn: string, todayYmd: string): string {
-  const then = dayNumber(lastOn)
+/** `today`, `yesterday`, `Friday` inside a week, then `Nov 12`, and `Nov 12, 2025` in another year. Empty for a day that is not one or is ahead. */
+export function pickerDayWords(day: string, todayYmd: string): string {
+  const then = dayNumber(day)
   const now = dayNumber(todayYmd)
   if (then == null || now == null || then > now) return ''
   const ago = now - then
@@ -92,7 +131,8 @@ export function pickerLatelyWords(lastOn: string, todayYmd: string): string {
   if (ago === 1) return 'yesterday'
   const at = new Date(then * 86_400_000)
   if (ago < 7) return WEEKDAYS[at.getUTCDay()]!
-  return `${MONTHS[at.getUTCMonth()]} ${at.getUTCDate()}`
+  const words = `${MONTHS[at.getUTCMonth()]} ${at.getUTCDate()}`
+  return at.getUTCFullYear() === new Date(now * 86_400_000).getUTCFullYear() ? words : `${words}, ${at.getUTCFullYear()}`
 }
 
 /** `07:30:00` as `7:30 AM`. Empty for a time that is not one. */
@@ -105,13 +145,78 @@ export function pickerStopWords(pgTime: string): string {
 
 const rowOf = (job: PickerJob, tag: string | null, paintable: boolean): PickerRow => ({ job, label: paintPressJobLabel(job) ?? 'A job', sub: job.address?.trim() || null, tag: tag || null, paintable })
 
+const HOW_RANK: Record<PickerLastHow, number> = { clock: 0, schedule: 1, team: 2 }
+
 /**
- * The picker's two lists. Today's stops in order of start, each job once. Then the jobs clocked onto
- * lately, newest first, without the ones already under Today, held to `PICKER_LATELY_MAX`. A
- * billing-only job is in neither: it has no site. A job the person may not paint on is left out of
- * both, since these lists are offers and an offer that cannot be taken is noise.
+ * Each job once, in the order Your last jobs lists them.
+ *
+ * - **Placed by its newest sign.** A clock, a scheduled day and the day the person joined the team
+ *   each count, so a job the office put them on last week is above one they clocked onto in
+ *   spring. A job with no day at all comes last, in the order read.
+ * - **Named by its best sign.** A clock or a scheduled day beats the team. Of two such days the
+ *   later wins, and on one day a clock beats the schedule. A job known by its team alone is named
+ *   by the team, and keeps the day they joined for its place.
+ *
+ * A clock or a scheduled day that is not a day is no sign at all.
  */
-export function pickerSections(input: { todayStops: ReadonlyArray<PaintPressStop>; lately: ReadonlyArray<PickerLately>; todayYmd: string; paintable: ReadonlySet<string> }): PickerSections {
+export function pickerLastOrder(marks: ReadonlyArray<PickerMark>): PickerMark[] {
+  type Held = { jobId: string; how: PickerLastHow; day: string | null; at: number | null; newest: number | null; i: number }
+  const held = new Map<string, Held>()
+  marks.forEach((m, i) => {
+    if (!m?.jobId) return
+    const at = dayNumber(m.day ?? '')
+    if (m.how !== 'team' && at == null) return
+    const day = at == null ? null : m.day
+    const had = held.get(m.jobId)
+    if (!had) {
+      held.set(m.jobId, { jobId: m.jobId, how: m.how, day, at, newest: at, i })
+      return
+    }
+    if (at != null && (had.newest == null || at > had.newest)) had.newest = at
+    // The name: a dated clock or schedule over the team, the later day, a clock on one day.
+    const dated = m.how !== 'team'
+    const hadDated = had.how !== 'team'
+    const wins = dated && (!hadDated || at! > had.at! || (at === had.at && HOW_RANK[m.how] < HOW_RANK[had.how]))
+    if (wins) {
+      had.how = m.how
+      had.day = day
+      had.at = at
+    } else if (!dated && !hadDated && had.at == null && at != null) {
+      // Two team rows for one job: the one with a day.
+      had.day = day
+      had.at = at
+    }
+  })
+  return [...held.values()]
+    .sort((a, b) => {
+      if (a.newest != null && b.newest != null) return b.newest - a.newest || HOW_RANK[a.how] - HOW_RANK[b.how] || a.i - b.i
+      if (a.newest != null) return -1
+      if (b.newest != null) return 1
+      return a.i - b.i
+    })
+    .map((h) => ({ jobId: h.jobId, how: h.how, day: h.day }))
+}
+
+/** A last job as a row: a clock says its day, a scheduled day says so over it, the team says it is the team. */
+function lastRowOf(l: PickerLast, todayYmd: string): PickerRow {
+  const day = l.how !== 'team' && l.day ? pickerDayWords(l.day, todayYmd) : ''
+  const row = rowOf(l.job, l.how === 'team' ? PICKER_WORDS.team : day, true)
+  return { ...row, how: l.how === 'schedule' && day ? PICKER_WORDS.scheduled : null, last: { how: l.how, day: l.day } }
+}
+
+/**
+ * The picker's two lists, and the job the start sheet may open on. Today's stops in order of
+ * start, each job once. Then Your last jobs, in the order they are handed in (`pickerLastOrder`),
+ * each job once, without the ones already under Today, held to `PICKER_LAST_MAX`. A billing-only
+ * job is in neither: it has no site. A job the person may not paint on is left out of both, since
+ * these lists are offers and an offer that cannot be taken is noise. A clock or a scheduled day
+ * ahead of today is no last day, so its job is left out too.
+ *
+ * The guess is the job with the newest clock or scheduled day, wherever it sits in the list. There
+ * is none when a job is on today's schedule, since the person is then asked which. There is none
+ * from the team alone, which says nothing of when the person was there.
+ */
+export function pickerSections(input: { todayStops: ReadonlyArray<PaintPressStop>; last: ReadonlyArray<PickerLast>; todayYmd: string; paintable: ReadonlySet<string> }): PickerSections {
   const ok = (job: PickerJob) => !!job.id && !job.billingOnly && input.paintable.has(job.id)
   const seen = new Set<string>()
   const today: PickerRow[] = []
@@ -121,15 +226,33 @@ export function pickerSections(input: { todayStops: ReadonlyArray<PaintPressStop
     seen.add(s.job.id)
     today.push(rowOf(s.job, pickerStopWords(s.timeStart), true))
   }
-  const lately: PickerRow[] = []
-  const byDay = [...input.lately].sort((a, b) => (a.lastOn < b.lastOn ? 1 : a.lastOn > b.lastOn ? -1 : 0))
-  for (const l of byDay) {
-    if (lately.length >= PICKER_LATELY_MAX) break
-    if (!ok(l.job) || seen.has(l.job.id)) continue
+  const last: PickerRow[] = []
+  let best: PickerLast | null = null
+  for (const l of input.last) {
+    if (!l?.job || !ok(l.job) || seen.has(l.job.id)) continue
+    const dated = l.how !== 'team'
+    if (dated && (!l.day || l.day > input.todayYmd)) continue
     seen.add(l.job.id)
-    lately.push(rowOf(l.job, pickerLatelyWords(l.lastOn, input.todayYmd), true))
+    if (last.length < PICKER_LAST_MAX) last.push(lastRowOf(l, input.todayYmd))
+    if (dated && (!best || l.day! > best.day! || (l.day === best.day && HOW_RANK[l.how] < HOW_RANK[best.how]))) best = l
   }
-  return { today, lately }
+  return { today, last, guess: today.length === 0 && best ? lastRowOf(best, input.todayYmd) : null }
+}
+
+/**
+ * The job the start sheet opens on when the app is told none: the newest job the person clocked
+ * onto or had on their schedule. None when a job is on today's schedule, and none from the team
+ * alone (`pickerSections`).
+ */
+export function pickerGuess(sections: PickerSections): PickerRow | null {
+  return sections.guess
+}
+
+/** Under *For* on a sheet the app opened on a guess: `The last job you clocked onto, Friday.` */
+export function pickerGuessWords(row: PickerRow, todayYmd: string): string {
+  const day = row.last?.day ? pickerDayWords(row.last.day, todayYmd) : ''
+  const lead = row.last?.how === 'schedule' ? 'The last job on your schedule' : 'The last job you clocked onto'
+  return day ? `${lead}, ${day}.` : `${lead}.`
 }
 
 /** A search's hits as rows: every hit listed, the ones the person may not paint on marked. Billing-only jobs are left out. */
@@ -166,6 +289,13 @@ export const PICKER_NEAR_NO_FIX: Record<'none' | 'refused' | 'failed', string> =
   none: 'This device gives no location. Search for the job.',
   refused: 'Location is off for this app. Allow it in the phone’s settings, or search for the job.',
   failed: 'Your phone could not find you. Try again outside, or search for the job.',
+}
+
+/** The same at a desk, where there is no phone to name. */
+export const PICKER_NEAR_NO_FIX_DESK: Record<'none' | 'refused' | 'failed', string> = {
+  none: PICKER_NEAR_NO_FIX.none,
+  refused: 'Location is off for this app. Allow it in the browser’s settings, or search for the job.',
+  failed: 'This computer could not find you. Search for the job.',
 }
 
 /** The square of ground the placed addresses are read from, a little wider than the list looks. */

@@ -20,7 +20,7 @@ export default function LegalLetterRecipients({ people, pickedName, onPick, copi
   const chip = (row: LetterRecipient, kind: 'to' | 'copy') => {
     const refused = row.refused != null
     const on = kind === 'to' && !refused && row.person.name.trim().toLowerCase() === pickedName.trim().toLowerCase()
-    const base = { display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--border)', borderRadius: 999, padding: '2px 10px', fontSize: '0.78rem', font: 'inherit', background: 'var(--surface)', color: 'var(--text-base)' } as const
+    const base = { display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--border)', borderRadius: 999, padding: '2px 10px', fontSize: '0.78rem', fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--text-base)' } as const
     if (refused) return <span key={row.person.id} data-legal-recipient={row.person.id} data-legal-recipient-refused title={row.refused ?? undefined} style={{ ...base, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{row.label}</span>
     if (kind === 'copy') {
       if (!onToggleCopy || row.person.use !== 'copies') return <span key={row.person.id} data-legal-recipient={row.person.id} style={base}>{row.label}</span>

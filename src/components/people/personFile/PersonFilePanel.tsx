@@ -1727,7 +1727,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.7rem', marginTop: '0.45rem', fontSize: '0.72rem', color: 'var(--text-faint)' }}>
                         <span style={chip(r.counsel_only ? FACT_TONE.gray : stateLook)} data-testid={r.counsel_only ? 'evidence-counsel-chip' : undefined}>{r.counsel_only ? '🔒 ' : ''}{evidenceDriveWords(r)}</span>
                         {transcriptByEvidenceId.has(r.id) ? (
-                          <button type="button" onClick={() => { const t = transcriptByEvidenceId.get(r.id); if (t) openTranscript(t.id) }} aria-label={`Open the transcript of ${r.title}`} data-testid="evidence-transcript-chip" style={{ ...chip(FACT_TONE.gray), border: 'none', cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}>
+                          <button type="button" onClick={() => { const t = transcriptByEvidenceId.get(r.id); if (t) openTranscript(t.id) }} aria-label={`Open the transcript of ${r.title}`} data-testid="evidence-transcript-chip" style={{ ...chip(FACT_TONE.gray), border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}>
                             Transcript on file ›
                           </button>
                         ) : null}
@@ -2101,7 +2101,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
       <div data-testid="hr-doc-transcribes" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center', marginBottom: '0.6rem', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
         {record ? (
           <>
-            <button type="button" aria-label={`Open the evidence record ${record.title}`} title="Open the record on the Evidence tab" onClick={() => openEvidenceRecord(record.id)} style={{ ...chip(FACT_TONE.gray), border: 'none', cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}>
+            <button type="button" aria-label={`Open the evidence record ${record.title}`} title="Open the record on the Evidence tab" onClick={() => openEvidenceRecord(record.id)} style={{ ...chip(FACT_TONE.gray), border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}>
               {transcribedRecordWords(record, dayWordsWithYear)} ›
             </button>
             {record.files.map((f) => evidenceFileChip(f, record))}

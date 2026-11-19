@@ -20,7 +20,7 @@ const page: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '1.
 const h2: CSSProperties = { margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-strong)' }
 const quiet: CSSProperties = { margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }
 const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.9rem 1rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }
-const button: CSSProperties = { padding: '0.35rem 0.8rem', fontSize: '0.8125rem', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontWeight: 600 }
+const button: CSSProperties = { padding: '0.35rem 0.8rem', fontSize: '0.8125rem', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontFamily: 'inherit', fontWeight: 600 }
 
 export function BankingCostBatchesTab() {
   const { prefixMap } = useLedgerDisplayPrefixes()

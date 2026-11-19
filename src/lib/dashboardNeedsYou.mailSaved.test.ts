@@ -1,15 +1,18 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildNeedsYouItems, type NeedsYouInputs } from './dashboardNeedsYou'
-import { resolveSettingsDeepLink } from './settingsDeepLink'
-import { MAIL_SAVED_DOOR, MAIL_SAVED_WORDS } from './myMail/savedForYou'
-import { needsYouDoor } from './needsYouDoors'
-import { NEEDS_YOU_SOURCES, needsYouSourceEnabled } from './needsYouSources'
+import { MAIL_SAVED_CHANNEL, MAIL_SAVED_WORDS } from './myMail/savedForYou'
+import { MAIL_SAVED_TEMPLATE } from './myMail/savedForYouNames'
+import { NEEDS_YOU_ITEM_ACTOR } from './needsYouActor'
+import { NEEDS_YOU_SOURCES } from './needsYouSources'
 
 /**
- * The owner is told (v2.7068): the Needs you line that says someone else saved the viewer's mail onto a job, as
- * `useMailSavedForYou` hands it in. Its own file, as While you were off has.
+ * The notice is a record only (v2.7904). When a developer saves a teammate's mail onto a job, that teammate is told by
+ * one `notification_history` row (v2.7068). The Needs you card drew a line from it, kicker *Your mail*, for seven
+ * days. The owner saw the line on a user's Dashboard on 2026-11-19 and chose: *record only*. So the notice is still
+ * written and still listed under Settings → Activity logs, and no Needs you line is built from it. This file holds
+ * that decision; the record's own row is `SettingsRecentPushNotifications.render.test.tsx`.
  */
 function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
   return {
@@ -59,36 +62,38 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
   }
 }
 
-describe('the line on the Needs you card', () => {
-  const need = { count: 2, title: 'Nadia Reyes saved 17 conversations from your mail to 7 jobs.', detail: 'It was today at 3:05 PM. Nothing changed in your Gmail.' }
-  const line = (over: Partial<NeedsYouInputs>) => buildNeedsYouItems(inputs({ mailSavedEnabled: true, ...over })).find((i) => i.key === 'mail-saved')
+/** The names the line stood on. A Needs you file that reads any of them has brought the line back. */
+const LINE_NAMES = ['mailSaved', 'mail-saved', 'MailSaved', 'savedForYou', 'MAIL_SAVED', MAIL_SAVED_TEMPLATE]
 
-  it('is news with nothing to do: blue, in the notice’s own words, with a door to the person’s own record', () => {
-    const item = line({ mailSaved: need })!
-    expect(item).toMatchObject({ key: 'mail-saved', severity: 'blue', kicker: MAIL_SAVED_WORDS.kicker, title: need.title, detail: need.detail, figure: '2', actionLabel: MAIL_SAVED_WORDS.action })
-    expect(needsYouDoor(item, { role: 'helpers' }, 'dashboard')).toEqual({ kind: 'href', href: MAIL_SAVED_DOOR })
-    expect(MAIL_SAVED_DOOR).toBe('/settings?tab=settings-recent-push#settings-recent-push')
-  })
+/** Every file a Needs you line is wired through: its source, its input, its item, its door and its actor. */
+const NEEDS_YOU_WIRING = ['src/lib/dashboardNeedsYou.ts', 'src/lib/needsYouSources.ts', 'src/lib/needsYouDoors.ts', 'src/lib/needsYouActor.ts', 'src/hooks/useNeedsYouInputs.ts']
 
-  it('the door lands on the record itself, not on the top of its tab: an owner has a card of sent emails above it', () => {
-    const [search, hash] = MAIL_SAVED_DOOR.slice('/settings'.length).split('#')
-    expect(resolveSettingsDeepLink(search!, `#${hash}`)).toEqual({ tabId: 'settings-recent-push', anchorId: 'settings-recent-push' })
-    // The card carries the id the door names.
-    const card = readFileSync(join(process.cwd(), 'src/components/settings/SettingsRecentPushNotifications.tsx'), 'utf8')
-    expect(card).toContain('id="settings-recent-push"')
-  })
-
-  it('draws nothing when the source is off or there is no notice', () => {
-    expect(line({ mailSavedEnabled: false, mailSaved: need })).toBeUndefined()
-    expect(line({ mailSaved: null })).toBeUndefined()
-    expect(line({ mailSaved: { ...need, count: 0 } })).toBeUndefined()
-  })
-
-  it('is on for every role, the field roles too, on the Dashboard and on Quickfill, and for nobody signed out', () => {
-    expect(NEEDS_YOU_SOURCES).toContain('mailSaved')
+describe('a mail-saved notice is a record only: no Needs you line', () => {
+  it('builds no item from a notice, even when one is handed in as the old inputs carried it', () => {
+    const need = { count: 2, title: 'Nadia Reyes saved 17 conversations from your mail to 7 jobs.', detail: 'It was today at 3:05 PM. Nothing changed in your Gmail.' }
+    const old = { mailSavedEnabled: true, mailSaved: need } as Partial<NeedsYouInputs>
     for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers'] as const) {
-      expect(needsYouSourceEnabled('mailSaved', role, 'dashboard'), role).toBe(true)
+      const items = buildNeedsYouItems(inputs({ role, ...old }))
+      expect(items.filter((i) => (i.key as string) === 'mail-saved' || i.kicker === 'Your mail' || i.title === need.title || i.actionLabel === 'See the record'), role).toEqual([])
     }
-    expect(needsYouSourceEnabled('mailSaved', null, 'dashboard')).toBe(false)
+  })
+
+  it('has no source, no key and no actor for it', () => {
+    expect(NEEDS_YOU_SOURCES as readonly string[]).not.toContain('mailSaved')
+    expect(Object.keys(NEEDS_YOU_ITEM_ACTOR)).not.toContain('mail-saved')
+  })
+
+  it('no Needs you file reads the notice, and the hook and the read that fed the line are gone', () => {
+    for (const file of NEEDS_YOU_WIRING) {
+      const source = readFileSync(join(process.cwd(), file), 'utf8')
+      for (const name of LINE_NAMES) expect(source.includes(name), `${file} names ${name}`).toBe(false)
+    }
+    expect(existsSync(join(process.cwd(), 'src/hooks/useMailSavedForYou.ts'))).toBe(false)
+    expect(existsSync(join(process.cwd(), 'src/lib/myMail/savedForYouIo.ts'))).toBe(false)
+  })
+
+  it('the record keeps its words: the notice is still an app row, and its row wears In the app', () => {
+    expect([MAIL_SAVED_TEMPLATE, MAIL_SAVED_CHANNEL]).toEqual(['mail_saved_for_you', 'app'])
+    expect(MAIL_SAVED_WORDS).toEqual({ badge: 'In the app' })
   })
 })

@@ -773,7 +773,7 @@ export function BillsSentLedger() {
       {failure ? <OfflineRetryPanel failure={failure} onRetry={retry} surface="bills-sent" idempotent busy={reading} /> : null}
       {stripVisible && stripFolded ? (
         gapsShown.open.length > 0 ? (
-          <button type="button" onClick={() => setRoute('gap')} data-testid="bills-sent-gaps-fold" style={{ ...gapBox, font: 'inherit', fontSize: '0.875rem', textAlign: 'left', cursor: 'pointer', minHeight: THUMB, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <button type="button" onClick={() => setRoute('gap')} data-testid="bills-sent-gaps-fold" style={{ ...gapBox, fontFamily: 'inherit', fontSize: '0.875rem', textAlign: 'left', cursor: 'pointer', minHeight: THUMB, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <b style={{ color: 'var(--text-amber-800)', flex: '1 1 auto' }}>{billsSentGapHeading(gapsShown.open.length)}</b>
             <span style={{ color: 'var(--text-amber-800)', textDecoration: 'underline', textUnderlineOffset: 2, whiteSpace: 'nowrap' }}>Show</span>
           </button>

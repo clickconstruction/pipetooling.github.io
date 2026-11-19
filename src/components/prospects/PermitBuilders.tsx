@@ -45,11 +45,11 @@ import { GoogleSearchPress } from './GoogleSearchPress'
  * builder's sheet shows each tie with whose word it is and takes it back.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem' }
-const chip = (on: boolean): CSSProperties => ({ padding: '5px 11px', borderRadius: 999, fontSize: '0.78rem', border: `1px solid ${on ? '#2563eb' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text)', fontWeight: on ? 600 : 400, minHeight: 32, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' })
+const chip = (on: boolean): CSSProperties => ({ padding: '5px 11px', borderRadius: 999, fontSize: '0.78rem', border: `1px solid ${on ? '#2563eb' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text)', fontWeight: on ? 600 : 400, minHeight: 32, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' })
 const th: CSSProperties = { textAlign: 'left', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, padding: '8px 10px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
 const td: CSSProperties = { padding: '9px 10px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.8125rem' }
 const num: CSSProperties = { ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
-const smallPress: CSSProperties = { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: '0.8125rem', minHeight: 34, cursor: 'pointer', font: 'inherit' }
+const smallPress: CSSProperties = { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: '0.8125rem', minHeight: 34, cursor: 'pointer', fontFamily: 'inherit' }
 
 function MarkPill({ mark }: { mark: BuilderMarkValue | null }) {
   const base: CSSProperties = { display: 'inline-block', borderRadius: 999, padding: '1px 8px', fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap' }
@@ -343,7 +343,7 @@ function BuilderSheet({ row, city, authUserId, todayYmd, reach, ground, onAnswer
         type="button"
         aria-pressed={on}
         onClick={() => setMark(value)}
-        style={{ padding: '8px 14px', fontSize: '0.8125rem', fontWeight: 600, minHeight: 40, border: 0, borderLeft: value === 'good' ? 0 : '1px solid var(--border)', cursor: 'pointer', font: 'inherit', background: on ? (tone === 'green' ? 'var(--bg-green-tint)' : tone === 'red' ? 'var(--bg-red-tint)' : 'var(--bg-200)') : 'var(--surface)', color: on ? (tone === 'green' ? 'var(--text-green-700)' : tone === 'red' ? 'var(--text-red-700)' : 'var(--text)') : 'var(--text-muted)' }}
+        style={{ padding: '8px 14px', fontSize: '0.8125rem', fontWeight: 600, minHeight: 40, border: 0, borderLeft: value === 'good' ? 0 : '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', background: on ? (tone === 'green' ? 'var(--bg-green-tint)' : tone === 'red' ? 'var(--bg-red-tint)' : 'var(--bg-200)') : 'var(--surface)', color: on ? (tone === 'green' ? 'var(--text-green-700)' : tone === 'red' ? 'var(--text-red-700)' : 'var(--text)') : 'var(--text-muted)' }}
       >
         {words}
       </button>

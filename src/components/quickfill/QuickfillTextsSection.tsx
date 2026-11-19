@@ -49,7 +49,7 @@ const pillCall: CSSProperties = { ...pill, background: '#1d4ed8', borderColor: '
 // One column that may shrink below its content's width (`minmax(0, 1fr)`), so a long line never widens a phone's page.
 const rows: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.35rem' }
 const quiet: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-muted)' }
-const doorLink: CSSProperties = { color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none', fontSize: '0.8rem', whiteSpace: 'nowrap', background: 'none', border: 0, padding: 0, cursor: 'pointer', font: 'inherit' }
+const doorLink: CSSProperties = { color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none', fontSize: '0.8rem', whiteSpace: 'nowrap', background: 'none', border: 0, padding: 0, cursor: 'pointer', fontFamily: 'inherit' }
 
 function Band({ color, title, count, note, children }: { color: string; title: string; count: number; note?: string; children?: ReactNode }) {
   return (

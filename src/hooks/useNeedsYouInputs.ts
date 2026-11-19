@@ -59,7 +59,6 @@ import { useCustomerMessagesCounts } from './useCustomerMessagesCounts'
 import { useLowRatings } from './useLowRatings'
 import { useTodaysSends } from './useTodaysSends'
 import { useWhileOff } from './useWhileOff'
-import { useMailSavedForYou } from './useMailSavedForYou'
 import { useClauseNeeds } from './useClauseNeeds'
 import { useRobotBacklogNudge } from './useRobotBacklogNudge'
 import { useRobotSilenceNudge } from './useRobotSilenceNudge'
@@ -260,9 +259,6 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   // While you were off (v2.6060, punch list #141 PR 4): the pushes the viewer's own hours held, whoever they are.
   const whileOffEnabled = on('whileOff')
   const whileOff = useWhileOff(whileOffEnabled, authUserId)
-  // The owner is told (v2.7068): the viewer's own notices that someone else saved their mail onto a job.
-  const mailSavedEnabled = on('mailSaved')
-  const mailSaved = useMailSavedForYou(mailSavedEnabled, authUserId)
   // Tagged job notes (punch list #363): the tab's one read of the viewer's tags, shared with the count above Jobs.
   const taggedNotesEnabled = on('taggedNotes')
   const taggedNotesRead = useMyNoteTags(taggedNotesEnabled)
@@ -383,8 +379,6 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     todaysSends: todaysSends.need,
     whileOffEnabled,
     whileOff: whileOff.need,
-    mailSavedEnabled,
-    mailSaved: mailSaved.need,
     taggedNotesEnabled,
     taggedNotes,
     jobPapersEnabled,

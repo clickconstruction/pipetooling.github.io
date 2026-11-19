@@ -686,7 +686,7 @@ export default function Projects() {
                           ...activeStyle,
                           padding: '0.2rem 0.6rem',
                           cursor: 'pointer',
-                          font: 'inherit',
+                          fontFamily: 'inherit',
                         }
                       : {
                           display: 'inline-block',
@@ -698,7 +698,7 @@ export default function Projects() {
                           color: 'var(--text-700)',
                           border: '1px solid var(--border-strong)',
                           cursor: 'pointer',
-                          font: 'inherit',
+                          fontFamily: 'inherit',
                         }
                   }
                 >

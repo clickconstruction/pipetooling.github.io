@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Permit news on Followup</title>
+<style>
+  /* The app's own tokens (src/index.css), light then dark. */
+  body {
+    --surface: #ffffff; --bg-page: #f0f2f5; --bg-muted: #f3f4f6; --chrome-bg: #fafafa;
+    --text-strong: #111827; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-red-tint: #fef2f2; --text-red-700: #b91c1c; --bg-amber-tint: #fffbeb; --text-amber-800: #92400e; --border-amber: #f3d48a;
+    --bg-green-tint: #f0fdf4; --text-green-700: #15803d; --bg-blue-tint: #eff6ff;
+    --board: #dfe3e8; --cap: #1f2937; --cap-small: #4b5563; --mark: #7c3aed;
+  }
+  body[data-theme='dark'] {
+    --surface: #1f2937; --bg-page: #111827; --bg-muted: #374151; --chrome-bg: #0f1623;
+    --text-strong: #f9fafb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --border: #374151; --border-strong: #4b5563;
+    --bg-red-tint: #3b1a1a; --text-red-700: #f87171; --bg-amber-tint: #3a2f11; --text-amber-800: #fcd34d; --border-amber: #6b5416;
+    --bg-green-tint: #12301f; --text-green-700: #4ade80; --bg-blue-tint: #172a46;
+    --board: #0b1220; --cap: #f3f4f6; --cap-small: #9ca3af; --mark: #a78bfa;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--board); color: var(--text-strong); font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  button { font-family: inherit; }
+
+  .bar { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 14px; }
+  .bar b { font-size: 15px; }
+  .bar a { color: var(--text-link); text-decoration: none; font-weight: 600; white-space: nowrap; }
+  .bar .sp { margin-left: auto; display: flex; gap: 8px; }
+  .tog { min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 600; font-size: 14px; cursor: pointer; }
+  .tog[aria-pressed='true'] { background: #2563eb; border-color: #2563eb; color: #fff; }
+
+  .intro { max-width: 900px; padding: 18px 16px 0; font-size: 15px; color: var(--cap); }
+  .intro h1 { font-size: 20px; margin: 0 0 6px; }
+  .intro p { margin: 0 0 8px; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; max-width: 1180px; padding: 6px 16px 0; }
+  .fact { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .fact b { display: block; font-size: 22px; line-height: 1.15; }
+  .fact span { font-size: 13px; color: var(--cap-small); }
+  .band { padding: 26px 16px 4px; scroll-margin-top: 60px; }
+  .band h2 { margin: 0; font-size: 18px; color: var(--cap); }
+  .band p { margin: 4px 0 0; max-width: 900px; font-size: 14.5px; color: var(--cap-small); }
+  .band p b { color: var(--cap); }
+  .pick { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: #15803d; color: #fff; font-size: 12px; font-weight: 700; vertical-align: 2px; }
+  .hers { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: var(--bg-muted); color: var(--cap); font-size: 12px; font-weight: 700; vertical-align: 2px; }
+  .board { display: flex; flex-wrap: wrap; gap: 24px 20px; padding: 14px 16px 6px; align-items: flex-start; }
+  .cell { display: grid; gap: 8px; min-width: 0; }
+  .cap { font-size: 13px; font-weight: 700; color: var(--cap); max-width: 375px; }
+  .cap small { display: block; font-weight: 500; color: var(--cap-small); }
+  .cell.wide .cap { max-width: 1100px; }
+  .notes { max-width: 900px; margin: 6px 16px 0; padding: 12px 16px 12px 34px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 14.5px; color: var(--cap); }
+  .notes li { margin: 0 0 6px; }
+  .tbl { margin: 10px 16px 0; max-width: 1100px; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); font-size: 13.5px; }
+  .tbl th, .tbl td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .tbl th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+  .tbl td.out { color: var(--text-muted); } .tbl td.stay { font-weight: 700; }
+
+  /* The frames: a desk's first screen, 1180 x 700, and a phone's, 375 x 700. */
+  .desk { position: relative; width: 1180px; max-width: 100%; height: 700px; overflow: hidden; background: var(--bg-page); border: 1px solid var(--border-strong); }
+  .phone { position: relative; width: 375px; height: 700px; overflow: hidden; background: var(--bg-page); border: 1px solid var(--border-strong); }
+  .fade { position: absolute; left: 0; right: 0; bottom: 0; height: 26px; background: linear-gradient(transparent, var(--bg-page)); pointer-events: none; }
+  .nav { height: 44px; display: flex; align-items: center; gap: 16px; padding: 0 16px; background: var(--chrome-bg); border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-link); }
+  .nav b { text-decoration: underline; }
+  .nav .dots { margin-left: auto; display: flex; gap: 8px; }
+  .nav .dots i, .ico { width: 26px; height: 26px; border-radius: 6px; background: var(--bg-muted); display: inline-block; flex: none; }
+  .pg { padding: 10px 16px 0; display: grid; gap: 10px; }
+  .phone .pg { padding: 8px 10px 0; gap: 8px; }
+  .above { font-size: 11.5px; color: var(--text-muted); text-align: center; padding: 5px 0; background: var(--chrome-bg); border-bottom: 1px dashed var(--border-strong); }
+  .tabs { display: flex; align-items: center; gap: 14px; font-size: 14px; color: var(--text-700); flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; font-weight: 700; font-size: 13px; }
+  .seg span { padding: 5px 12px; } .seg .on { background: var(--mark); color: #fff; }
+  .seg.sq { border-radius: 6px; } .seg.sq .on { background: var(--bg-blue-tint); color: var(--text-link); }
+  .tab.on { background: #2563eb; color: #fff; font-weight: 700; padding: 6px 10px; }
+  .tab { position: relative; }
+  .cnt { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; text-align: center; margin-left: 4px; vertical-align: 1px; }
+  .newbid { margin-left: auto; background: #2563eb; color: #fff; font-weight: 600; padding: 6px 14px; border-radius: 4px; font-size: 13.5px; }
+  .flow { display: flex; gap: 22px; justify-content: center; font-size: 13.5px; color: var(--text-muted); padding-bottom: 8px; border-bottom: 2px solid var(--border); white-space: nowrap; overflow: hidden; }
+  .flow b { color: var(--text-amber-800); }
+  .plans { display: flex; align-items: center; gap: 10px; background: var(--bg-amber-tint); color: var(--text-amber-800); border-radius: 8px; padding: 9px 14px; font-size: 13.5px; }
+  .plans .go { margin-left: auto; background: #2563eb; color: #fff; font-weight: 600; padding: 5px 11px; border-radius: 6px; white-space: nowrap; font-size: 13px; }
+  .tools { display: flex; gap: 8px; align-items: center; }
+  .field { flex: 1; min-width: 0; height: 36px; border-radius: 4px; background: var(--bg-muted); border: 1px solid var(--border); color: var(--text-muted); font-size: 13.5px; display: flex; align-items: center; padding: 0 10px; white-space: nowrap; overflow: hidden; }
+  .tool { height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 4px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .tool.marked { border-color: var(--mark); color: var(--mark); }
+  .tool.news { border-color: var(--text-red-700); color: var(--text-red-700); background: var(--bg-red-tint); }
+  .tool.sqr { width: 36px; padding: 0; justify-content: center; }
+  .score { border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text-700); background: var(--bg-page); }
+  .score b { font-size: 15px; color: var(--text-strong); margin: 0 6px; }
+
+  /* The strip, as BidBoardPermitNews draws it. */
+  .strip { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 10px 14px; }
+  .strip .h { display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .strip .n { border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 700; background: var(--bg-red-tint); color: var(--text-red-700); }
+  .line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--border); }
+  .line .w { flex: 1 1 260px; min-width: 0; }
+  .line .w strong { font-size: 14px; display: block; }
+  .line .w span { display: block; font-size: 13px; color: var(--text-700); line-height: 1.45; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .press { background: var(--surface); color: var(--text-strong); border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 600; min-height: 34px; display: inline-flex; align-items: center; white-space: nowrap; }
+  .press.blue { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .more { display: block; padding: 8px 0 0; border-top: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text-link); }
+  .strip.one { padding: 8px 14px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+  .strip.one .go { margin-left: auto; color: var(--text-link); font-size: 13px; }
+
+  .pills { display: flex; gap: 6px; align-items: center; font-size: 12.5px; padding: 4px 0 8px; border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; }
+  .pills > b { font-size: 12.5px; margin-right: 2px; }
+  .pill { border: 1px solid var(--border-strong); border-radius: 999px; padding: 3px 10px; background: var(--surface); font-weight: 600; }
+  .pill i { font-style: normal; font-weight: 700; margin-left: 5px; padding: 0 6px; border-radius: 999px; background: var(--bg-muted); font-size: 11px; }
+  .pill.hot i { background: #c2410c; color: #fff; }
+  .pill.news { border-color: var(--text-red-700); color: var(--text-red-700); background: var(--bg-red-tint); }
+  .pill.news i { background: var(--text-red-700); color: var(--surface); }
+  .pill.news.on { background: var(--text-red-700); color: var(--surface); } .pill.news.on i { background: var(--surface); color: var(--text-red-700); }
+  .mapbar { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 7px 12px; font-size: 13px; color: var(--text-muted); }
+  .sec { font-size: 14px; font-weight: 700; margin: 2px 0 -4px; }
+  .showing { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text-700); }
+  .showing a { color: var(--text-link); font-weight: 600; }
+
+  /* A desk row of the board: marks, number, name over GC over chips, bid, due, estimator, links. */
+  .tb { border: 1px solid var(--border); border-radius: 4px; background: var(--bg-page); }
+  .tr { display: grid; grid-template-columns: 130px 64px minmax(0, 1fr) 60px 120px 90px 110px; gap: 10px; align-items: center; padding: 7px 12px; border-top: 1px solid var(--border); font-size: 13px; }
+  .tr.hd { border-top: 0; font-size: 11px; font-weight: 700; color: var(--text-700); padding: 5px 12px; }
+  .marks { display: flex; gap: 5px; justify-content: flex-end; }
+  .marks i { width: 14px; height: 10px; border-radius: 2px; background: var(--border-strong); display: inline-block; }
+  .num { color: var(--text-link); text-decoration: underline; font-weight: 600; }
+  .nm b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nm .gc { display: block; font-size: 12px; color: var(--text-link); }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 3px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 700; white-space: nowrap; max-width: 100%; }
+  .chip.red { background: var(--bg-red-tint); color: var(--text-red-700); }
+  .chip.green { background: var(--bg-green-tint); color: var(--text-green-700); }
+  .chip.grey { background: var(--bg-muted); color: var(--text-700); }
+  .chip.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px solid var(--border-amber); }
+  .chip.press { border: 1px solid currentColor; cursor: pointer; padding: 2px 9px; }
+  .chip.press::after { content: '›'; font-size: 13px; line-height: 1; }
+  .chip.press.open::after { content: '⌄'; }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
+  .due { justify-self: center; text-align: center; border-radius: 8px; padding: 2px 9px; font-size: 11.5px; font-weight: 700; background: var(--bg-muted); color: var(--text-700); line-height: 1.25; }
+  .due small { display: block; font-weight: 500; font-size: 10.5px; color: var(--text-muted); }
+  .due.soon { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .est { text-align: center; font-weight: 700; }
+  .amt { text-align: right; font-weight: 700; }
+  .links { display: flex; gap: 7px; justify-content: flex-end; }
+  .links i { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid var(--border-strong); display: inline-block; }
+  .newsbox { grid-column: 3 / -1; border: 1px solid var(--border-strong); border-left: 3px solid var(--text-red-700); background: var(--surface); border-radius: 8px; padding: 9px 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 0 0 3px; }
+  .newsbox.green { border-left-color: var(--text-green-700); } .newsbox.grey { border-left-color: var(--border-strong); }
+  .newsbox p { margin: 0; flex: 1 1 300px; font-size: 13px; color: var(--text-700); line-height: 1.45; }
+  .newsbox p b { color: var(--text-strong); }
+  .undo { font-size: 13px; color: var(--text-700); } .undo a { color: var(--text-link); font-weight: 600; }
+  .tear { text-align: center; font-size: 12px; color: var(--text-muted); border-top: 1px dashed var(--border-strong); border-bottom: 1px dashed var(--border-strong); padding: 5px 0; background: var(--chrome-bg); }
+
+  /* A phone card of the board. */
+  .card { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 9px 11px; display: grid; gap: 5px; font-size: 13px; }
+  .card .top { display: flex; align-items: center; gap: 8px; }
+  .card .top .due { margin-left: auto; }
+  .card .ttl { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .meta { font-size: 12.5px; color: var(--text-muted); }
+  .card .meta a { color: var(--text-link); }
+  .card .newsbox, .wth .newsbox { grid-column: auto; margin: 2px 0 0; }
+  .phone .tools .tool { padding: 0; width: 38px; justify-content: center; }
+  .phone .strip { padding: 10px 12px; }
+  .phone .line { display: block; }
+  .phone .line .btns { margin-top: 7px; }
+  .phone .pills { overflow: hidden; }
+
+  /* Followup. */
+  .lens { display: flex; gap: 6px; flex-wrap: wrap; font-size: 13px; }
+  .lens span { border: 1px solid var(--border-strong); border-radius: 6px; padding: 5px 10px; background: var(--surface); font-weight: 600; white-space: nowrap; }
+  .lens .on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .wth { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 12px; display: grid; gap: 7px; font-size: 13px; }
+  .wth .ttl { font-weight: 700; font-size: 14px; } .wth .meta { color: var(--text-muted); font-size: 12.5px; }
+  .wth .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .wth .acts span { border: 1px solid var(--border-strong); border-radius: 6px; padding: 4px 9px; font-weight: 600; font-size: 12.5px; background: var(--surface); }
+  .winloss { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 12px; display: grid; gap: 7px; font-size: 13px; max-width: 520px; }
+  .winloss label { font-weight: 600; } .winloss .opts { display: flex; gap: 14px; color: var(--text-700); }
+  .hint { font-size: 12.5px; color: var(--text-red-700); background: var(--bg-red-tint); border-radius: 6px; padding: 6px 9px; }
+  .needs { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 12px; display: flex; gap: 10px; align-items: center; font-size: 13.5px; max-width: 520px; }
+  .needs small { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+  .needs .press { margin-left: auto; }
+  /* Followup, drawn closer: the lens bar as BidsLensBar draws it, and the permit news lines. */
+  .desk.tall { height: 880px; } .desk.short { height: 430px; } .phone.tall { height: 880px; }
+  .cnt.in { position: static; }
+  .lbrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .lb { display: inline-flex; flex-wrap: wrap; align-items: center; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; background: var(--surface); font-size: 13.5px; }
+  .lb .p { padding: 7px 14px; color: var(--text-700); white-space: nowrap; }
+  .lb .p.on { background: #2563eb; color: #fff; font-weight: 700; }
+  .lb .old { font-size: 11px; color: var(--text-muted); padding: 0 2px 0 10px; border-left: 1px solid var(--border); }
+  .bdg { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; margin-left: 4px; vertical-align: 1px; }
+  .bdg.new { background: var(--bg-green-tint); color: var(--text-green-700); }
+  .bdg.amb { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .bdg.red { background: #dc2626; color: #fff; }
+  .p.on .bdg.red { background: #fff; color: #b91c1c; }
+  .capline { font-size: 12.5px; color: var(--text-muted); }
+  .phone .lb { font-size: 12.5px; } .phone .lb .p { padding: 6px 9px; }
+  .ih { display: flex; align-items: center; gap: 10px; font-size: 14.5px; font-weight: 700; flex-wrap: wrap; }
+  .ih .n { border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 700; background: var(--bg-red-tint); color: var(--text-red-700); }
+  .ih .n.q { background: var(--bg-muted); color: var(--text-700); }
+  .ih .sw { margin-left: auto; display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; font-size: 12.5px; font-weight: 600; }
+  .ih .sw span { padding: 4px 11px; color: var(--text-700); } .ih .sw .on { background: var(--bg-blue-tint); color: var(--text-link); }
+  .pn { border: 1px solid var(--border); border-left: 3px solid var(--text-red-700); border-radius: 8px; background: var(--surface); padding: 10px 14px; display: grid; gap: 7px; font-size: 13px; min-width: 0; }
+  .pn.green { border-left-color: var(--text-green-700); } .pn.grey { border-left-color: var(--border-strong); } .pn.amber { border-left-color: #d97706; }
+  .pn .who { display: flex; gap: 4px 10px; align-items: baseline; flex-wrap: wrap; }
+  .pn .who b { font-size: 14px; } .pn .who span { color: var(--text-muted); font-size: 12.5px; }
+  .pn .who .tag { border-radius: 999px; padding: 0 8px; background: var(--bg-amber-tint); color: var(--text-amber-800); font-weight: 700; font-size: 11.5px; }
+  .pn .say { font-size: 14px; line-height: 1.45; color: var(--text-700); } .pn .say b { color: var(--text-strong); }
+  .ev { display: grid; grid-template-columns: 118px minmax(0, 1fr); gap: 3px 12px; margin: 0; font-size: 12.5px; background: var(--bg-page); border-radius: 6px; padding: 8px 11px; }
+  .ev dt { color: var(--text-muted); } .ev dd { margin: 0; color: var(--text-700); min-width: 0; } .ev dd b { color: var(--text-strong); }
+  .ev .ok { color: var(--text-green-700); font-weight: 700; }
+  .phone .ev { grid-template-columns: 1fr; gap: 0; } .phone .ev dt { margin-top: 5px; font-size: 11.5px; } .phone .ev dt:first-child { margin-top: 0; }
+  .pn .btns .lnk { margin-left: auto; color: var(--text-link); font-weight: 600; font-size: 13px; }
+  .phone .pn .btns .press { flex: 1 1 130px; justify-content: center; min-height: 40px; } .phone .pn .btns .lnk { flex: 1 0 100%; margin: 2px 0 0; }
+  .said { font-size: 12.5px; color: var(--text-muted); } .said a { color: var(--text-link); font-weight: 600; }
+  .fold { font-size: 13px; font-weight: 600; color: var(--text-link); }
+  .empty { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 18px 16px; text-align: center; font-size: 14px; color: var(--text-700); display: grid; gap: 4px; }
+  .empty b { color: var(--text-strong); font-size: 15px; } .empty small { color: var(--text-muted); font-size: 12.5px; }
+  .stand { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 2px 14px; font-size: 13px; }
+  .stand .r { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--border); }
+  .stand .r:first-child { border-top: 0; } .stand .r .t { flex: 1 1 280px; min-width: 0; } .stand .r .t b { display: block; font-size: 13.5px; }
+  .stand .r .t span { color: var(--text-muted); font-size: 12.5px; } .stand .r a { color: var(--text-link); font-weight: 600; white-space: nowrap; }
+  .lost { border: 1px solid var(--border-strong); border-radius: 8px; padding: 9px 12px; display: grid; gap: 7px; background: var(--bg-page); }
+  .lost label { font-weight: 700; font-size: 12.5px; } .lost .why { display: flex; gap: 6px; flex-wrap: wrap; }
+  .lost .why span { border: 1px solid var(--border-strong); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; background: var(--surface); }
+  .lost .why .on { background: var(--bg-blue-tint); color: var(--text-link); border-color: var(--text-link); }
+  .cq { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 14px; display: grid; gap: 8px; font-size: 13px; }
+  .cq .h { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; } .cq .h b { font-size: 15px; } .cq .h span { color: var(--text-muted); font-size: 12.5px; } .cq .h a { color: var(--text-link); font-weight: 600; }
+  .cq .bid { border-top: 1px solid var(--border); padding-top: 8px; display: grid; gap: 6px; }
+  .cq .bid .l { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .cq .bid .l b { font-size: 13.5px; } .cq .bid .l span.m { color: var(--text-muted); font-size: 12.5px; }
+  .cq .acts { display: flex; gap: 6px; flex-wrap: wrap; } .cq .acts span { border: 1px solid var(--border-strong); border-radius: 6px; padding: 4px 9px; font-weight: 600; font-size: 12.5px; background: var(--surface); }
+  .cell { max-width: 100%; grid-template-columns: minmax(0, 1fr); } .tblwrap { overflow-x: auto; max-width: 100%; }
+  /* The card after the third look: what kind of news, whose bid, what the city shows, why it looks like yours, and the answers in one column. */
+  .pc { border: 1px solid var(--border); border-left: 3px solid var(--text-red-700); border-radius: 8px; background: var(--surface); padding: 11px 14px; display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 8px 16px; font-size: 13px; min-width: 0; }
+  .pc.green { border-left-color: var(--text-green-700); } .pc.amber { border-left-color: #d97706; }
+  .pc .main { display: grid; gap: 5px; min-width: 0; align-content: start; }
+  .pc .top { display: flex; gap: 4px 10px; align-items: baseline; flex-wrap: wrap; }
+  .kind { border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+  .kind.red { background: var(--bg-red-tint); color: var(--text-red-700); } .kind.green { background: var(--bg-green-tint); color: var(--text-green-700); } .kind.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .pc .bidname { font-size: 13.5px; font-weight: 600; } .pc .bidname u { color: var(--text-link); } .pc .bidmeta { color: var(--text-muted); font-size: 12.5px; }
+  .pc .head { font-size: 15.5px; font-weight: 700; line-height: 1.35; }
+  .pc .city { font-size: 12.5px; color: var(--text-700); } .pc .city a { color: var(--text-link); font-weight: 600; white-space: nowrap; }
+  .why { display: flex; gap: 3px 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-700); }
+  .why .t::before { content: '✓ '; color: var(--text-green-700); font-weight: 700; } .why .u { color: var(--text-muted); } .why .u::before { content: '? '; font-weight: 700; }
+  .pc .ask { display: grid; gap: 6px; align-content: start; border-left: 1px solid var(--border); padding-left: 16px; }
+  .pc .ask .q { font-weight: 700; font-size: 13px; }
+  .pc .ask .press { justify-content: center; } 
+  .pc .ask .door { font-size: 12.5px; color: var(--text-link); font-weight: 600; }
+  .pc .under { grid-column: 1 / -1; }
+  .phone .pc { grid-template-columns: minmax(0, 1fr); }
+  .phone .pc .ask { border-left: 0; border-top: 1px solid var(--border); padding: 9px 0 0; grid-template-columns: 1fr 1fr; }
+  .phone .pc .ask .q, .phone .pc .ask .door, .phone .pc .ask.three .press.quiet { grid-column: 1 / -1; } .phone .pc .ask .press { min-height: 40px; }
+  .rcpt { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 8px 14px; font-size: 13px; color: var(--text-700); display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; }
+  .rcpt b { color: var(--text-strong); } .rcpt a { color: var(--text-link); font-weight: 600; margin-left: auto; }
+  .w700 { width: 700px; max-width: 100%; display: grid; gap: 8px; }
+  .band.sm { padding: 0; } .w620 { width: 620px; max-width: 100%; } .w560 { width: 560px; max-width: 100%; }
+  .plan td:first-child { font-weight: 700; white-space: nowrap; }
+</style>
+</head>
+<body data-theme="light">
+<div class="bar">
+  <b>Permit news on Followup · punch list #401</b>
+  <a href="#third">Third look</a><a href="#board">The board</a><a href="#lens">The lens</a><a href="#answer">The answers</a><a href="#none">Nothing new</a><a href="#phone">A phone</a><a href="#where">Where a bid is chased</a><a href="#ways">Three places</a><a href="#second">Second look</a><a href="#plan">The plan</a>
+  <span class="sp"><button class="tog" data-t="light" aria-pressed="true">Light</button><button class="tog" data-t="dark" aria-pressed="false">Dark</button></span>
+</div>
+
+<div class="intro">
+  <h1>Permit news on Followup, with a red count to answer</h1>
+  <p>The owner, 2026-11-19, after the first mock-up: <i>“I like the idea of the permit information being on the follow-up page with potentially a red numbered icon on the follow up header title when new permit information comes through for the estimator to verify or ignore.”</i></p>
+  <p>This page draws that direction. The strip leaves the Bid Board. <b>Followup</b> gets a lens, <b>Permit news</b>, and a red count of the lines you have not answered. Each line asks the one thing that matters about the bid and takes its answer in one press. The first mock-up, with the board as it is today and the other ways, is <a href="mockup.html" style="color:var(--text-link);font-weight:600">mockup.html</a>.</p>
+  <p>The owner then read this page and asked: <i>“Is this the best we can do though? Are we making it intuitive yet easy? Are we structuring things visually well?”</i> The honest answer was no, on five counts. The first band shows the card before and after. Every frame below it is the redrawn one.</p>
+  <p>Every bid, builder and plumber here is made up. <b>Marcus</b> is an estimator with three new lines. <b>Dana</b> is an estimator with none. <b>Priya</b> works in the office. The two presses at the top right switch the theme.</p>
+</div>
+<div class="facts">
+  <div class="fact"><b>10 → 5</b><span>lines on the live Plumbing board on Nov 19, before and after the three rules that drop a line the records rule out.</span></div>
+  <div class="fact"><b>0</b><span>lines answered in the nine days the strip has been live. Its only answer is Mark lost….</span></div>
+  <div class="fact"><b>0</b><span>lines for the estimator who asked, once the count is her own bids. She sees no red count at all.</span></div>
+  <div class="fact"><b>4 in 30 days</b><span>building permits issued or applied for on a bid's address. About one new line a week.</span></div>
+  <div class="fact"><b>1 press</b><span>answers a line. Marking a bid lost asks one more thing: why.</span></div>
+  <div class="fact"><b>247 → 162 px</b><span>a card’s height at a desk, with its reasons on it. Three fit a screen 900 px tall.</span></div>
+</div>
+
+<div id="bands"></div>
+
+<script>
+  const chip = (words, tone, door) => `<span class="chip ${tone}${door ? ' press' : ''}">${words}</span>`
+  const cnt = (n) => `<i class="cnt" style="font-style:normal">${n}</i>`
+  const nav = '<div class="nav"><span>Estimates</span><b>Bids</b><span>Customers</span><span>Permits</span><span>Messages</span><span class="dots"><i></i><i></i><i></i><i></i></span></div>'
+  const tabs = (on, n) => `<div class="tabs"><span class="seg"><span class="on">Trades</span><span>GC</span></span><span class="seg sq"><span class="on">Plumbing</span><span>Electrical</span><span>HVAC</span></span><span style="width:40px"></span><span class="tab${on === 'board' ? ' on' : ''}">Bid Board</span><span class="tab">Robots</span><span class="tab${on === 'fu' ? ' on' : ''}">Followup${n ? cnt(n) : ''}</span><span class="tab">Unsent/Working</span><span class="tab">Bid Costs</span><span class="tab">Estimators</span><span class="newbid">New Bid</span></div>`
+  const tabsPhone = (on, n) => `<div class="tabs" style="gap:12px"><span class="tab${on === 'board' ? ' on' : ''}">Bid Board</span><span class="tab">Robots</span><span class="tab${on === 'fu' ? ' on' : ''}">Followup${n ? cnt(n) : ''}</span><span class="tab">Unsent</span><span class="tab">Bid Costs</span></div>`
+  const flow = '<div class="flow"><b>Counts</b><span>Takeoffs</span><span>Labor</span><b>Pricing</b><b>Cover Letter</b><span>Submittals</span><span>RFI</span><span>Change Order</span><span>Lien Release</span></div>'
+  const above = (w) => `<div class="above">↑ ${w}</div>`
+  const desk = (inner, on, n, size = '') => `<div class="desk ${size}">${nav}<div class="pg">${tabs(on, n)}${flow}${inner}</div><div class="fade"></div></div>`
+  const phone = (inner, size = '') => `<div class="phone ${size}">${above('the header')}<div class="pg">${inner}</div><div class="fade"></div></div>`
+
+  // The Followup bar, as BidsLensBar draws it, with the new pill last.
+  const lensbar = (on, n, caption, noPill) => {
+    const p = (key, label, extra = '') => `<span class="p${on === key ? ' on' : ''}">${label}${extra}</span>`
+    return `<div class="lbrow"><span class="lb">${p('cq', 'Call queue', '<span class="bdg new">new</span>')}<span class="old">Old:</span>${p('bb', 'By builder')}${p('bs', 'By status')}${p('wl', 'Why we lost')}${p('wh', 'Waiting to hear')}${p('ja', 'Job accounts', '<span class="bdg amb">4</span>')}${p('mo', 'Money', '<span class="bdg amb">2</span>')}${noPill ? '' : p('pn', 'Permit news', n ? `<span class="bdg red">${n}</span>` : '')}</span>${caption ? `<span class="capline">${caption}</span>` : ''}</div>`
+  }
+  const CAPTION = 'What the city filed on the addresses of your bids. One press answers each.'
+
+  // ---- The lines. Made up, in the shapes the live strip held.
+  const ev = (rows) => `<dl class="ev">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`
+  const answers = '<span class="press blue">It is this job</span><span class="press">Not this job</span>'
+  const open = '<span class="lnk">Open the bid ›</span>'
+  const L = {
+    b502: {
+      tone: 'red', who: '<b>b502 · Northside High School restrooms</b><span>Ridgeway Builders · $212k · sent Jun 4 · last contact 41 days ago</span>',
+      say: '<b>A plumbing permit on this address lists Copperline Plumbing.</b> It was issued Aug 27, 84 days after you sent the bid.',
+      ev: [['Permit', 'PLB-26-041877 · Plumbing, general'], ['Work, in the city’s words', 'RESTROOM REMODEL, 12 FIXTURES'], ['Address', '4410 Northside Dr. The permit names no suite, and neither does the bid.'], ['Also on this address', 'A building permit issued Jul 30, listing Ridgeway Builders']],
+    },
+    b495: {
+      tone: 'green', who: '<b>b495 · Walters at Oakmont</b><span>Tall Pine Construction · $95k · sent May 22 · last contact 38 days ago</span>',
+      say: '<b>The building permit on this address was issued Oct 29.</b> The job is moving, and no plumber is on a permit yet.',
+      ev: [['Permit', 'COM-26-118204 · Commercial new building'], ['Project, in the city’s words', 'WALTERS AT OAKMONT RETAIL SHELL <span class="ok">· looks like this job</span>'], ['Declared', '$2.1M · 14,200 sq ft. Your bid is 4.5% of the declared value.']],
+    },
+    b430: {
+      tone: 'red', who: '<b>b430 · Suite 100, Tradewind Drive</b><span>Halvorsen Construction · $64k · sent Apr 10 · last contact 55 days ago</span>',
+      say: '<b>A plumbing permit on this address lists Blue Heron Plumbing.</b> It was issued Sep 29.',
+      ev: [['Permit', 'PLB-26-052310 · Plumbing, general'], ['Work, in the city’s words', 'TENANT FINISH OUT PLUMBING'], ['Address', '2200 Tradewind Dr, <b>Suite 100</b> <span class="ok">· the bid’s own suite</span>']],
+    },
+    b672: {
+      tone: 'amber', who: '<b>b672 · Ridgeline Surgical and Imaging, Unit A</b><span class="tag">Not sent yet</span><span>Halvorsen Construction · due Mon 11/23</span>',
+      say: '<b>A permit application was filed on this address Nov 12.</b> $3.4M declared, 22,000 sq ft.',
+      ev: [['Permit', 'APP-26-207731 · Commercial project application'], ['Address', '901 Ridgeline Pkwy, <b>Unit A</b> <span class="ok">· the bid’s own unit</span>']],
+    },
+  }
+  const line = (k, foot = `<div class="btns">${answers}${open}</div>`, withEv = true) => { const l = L[k]; return `<div class="pn ${l.tone}"><div class="who">${l.who}</div><div class="say">${l.say}</div>${withEv ? ev(l.ev) : ''}${foot}</div>` }
+  // ---- The card after the third look.
+  const A3 = ['We lost it…', 'Still waiting', 'Not our job']
+  const A2 = ['Got it', 'Not our job']
+  const C = {
+    b502: { tone: 'red', kind: 'Another plumber on the permit', bid: ['b502', 'Northside High School restrooms', 'Ridgeway Builders · $212k · sent Jun 4 · last contact 41 days ago'],
+      head: 'The city lists Copperline Plumbing on a plumbing permit here, issued Aug 27.', city: '“Restroom remodel, 12 fixtures”', permit: 'PLB-26-041877',
+      why: [['t', 'Issued 84 days after you sent the bid'], ['t', 'The building permit lists Ridgeway Builders, your GC'], ['u', 'Neither the permit nor the bid names a suite']], q: 'Did we lose this bid?', a: A3 },
+    b430: { tone: 'red', kind: 'Another plumber on the permit', bid: ['b430', 'Suite 100, Tradewind Drive', 'Halvorsen Construction · $64k · sent Apr 10 · last contact 55 days ago'],
+      head: 'The city lists Blue Heron Plumbing on a plumbing permit here, issued Sep 29.', city: '“Tenant finish out plumbing”', permit: 'PLB-26-052310',
+      why: [['t', 'Suite 100, the bid’s own suite'], ['t', 'Issued 172 days after you sent the bid']], q: 'Did we lose this bid?', a: A3 },
+    b495: { tone: 'green', kind: 'Building permit issued', bid: ['b495', 'Walters at Oakmont', 'Tall Pine Construction · $95k · sent May 22 · last contact 38 days ago'],
+      head: 'The building permit here was issued Oct 29. No plumber is on a permit yet.', city: '“Walters at Oakmont retail shell” · $2.1M declared · 14,200 sq ft', permit: 'COM-26-118204',
+      why: [['t', 'The city’s project line names Walters at Oakmont'], ['t', 'The permit lists Tall Pine Construction, your GC']], q: 'The job is moving.', a: A2, door: 'Tall Pine is 3rd in your Call queue ›' },
+    b672: { tone: 'amber', kind: 'Application filed', tag: 'Not sent yet', bid: ['b672', 'Ridgeline Surgical and Imaging, Unit A', 'Halvorsen Construction · due Mon 11/23'],
+      head: 'A permit application was filed here Nov 12.', city: '“Ridgeline surgical and imaging” · $3.4M declared · 22,000 sq ft', permit: 'APP-26-207731',
+      why: [['t', 'Unit A, the bid’s own unit'], ['t', 'Filed 6 days after the bid was started']], q: 'Plans are with the city.', a: A2 },
+  }
+  const askCol = (c) => `<div class="ask${c.a.length === 3 ? ' three' : ''}"><div class="q">${c.q}</div>${c.a.map((x) => `<span class="press${x === 'Not our job' ? ' quiet' : ''}">${x}</span>`).join('')}${c.door ? `<span class="door">${c.door}</span>` : ''}</div>`
+  // `opts.note` adds words after the bid's own; `opts.lean` leaves the city's words and the reasons out; `opts.under` draws a window across the card in place of the answers.
+  const card = (k, opts = {}) => { const c = C[k]; return `<div class="pc ${c.tone}"><div class="main"><div class="top"><span class="kind ${c.tone}">${c.kind}</span>${c.tag ? `<span class="kind amber">${c.tag}</span>` : ''}<span class="bidname"><u>${c.bid[0]}</u> · ${c.bid[1]}</span><span class="bidmeta">${c.bid[2]}${opts.note ? ` · ${opts.note}` : ''}</span></div><div class="head">${c.head}</div>${opts.lean ? '' : `<div class="city">The city’s words: ${c.city} · <a>Permit ${c.permit} ›</a></div><div class="why">${c.why.map(([t, w]) => `<span class="${t}">${w}</span>`).join('')}</div>`}</div>${opts.under ? `<div class="under">${opts.under}</div>` : askCol(c)}</div>` }
+  const rcpt = (k, words, undo = 'Undo') => `<div class="rcpt"><span><b>${C[k].bid[0]} · ${C[k].bid[1]}</b> ${words}</span><a>${undo}</a></div>`
+
+  const ih = (title, n, quiet, sw = true) => `<div class="ih">${title}<span class="n${quiet ? ' q' : ''}">${n}</span>${sw ? '<span class="sw"><span class="on">Yours</span><span>Everyone’s 5</span></span>' : ''}</div>`
+  const standing = (rows) => `<div class="stand">${rows.map(([t, s, a]) => `<div class="r"><div class="t"><b>${t}</b><span>${s}</span></div>${a.map((x) => `<a>${x}</a>`).join('')}</div>`).join('')}</div>`
+  const STAND = [
+    ['b477 · Juniper Dental, Suite 210', 'Building permit issued Nov 3 · Marcus said it is this job, Nov 12 · the bid is not yet won or lost', ['Open the bid', 'Take back']],
+    ['b461 · Larkspur Pet Hospital', 'Plumbing permit listing Quill & Sons Plumbing, Sep 8 · Priya said it is not this job, Nov 14', ['Put back']],
+  ]
+
+  // ---- 1. The board.
+  const B = {
+    b681: ['b681', 'Marlow Animal Clinic', 'Ridgeway Builders', '', 'Fri 11/20', 'Dana'],
+    b672: ['b672', 'Ridgeline Surgical and Imaging, Unit A', 'Halvorsen Construction', '', 'Mon 11/23', 'Marcus'],
+    b679: ['b679', 'Sunday Yoga, South Lamar', 'Bluebonnet Contractors', '', 'Thu 11/26', 'Priya'],
+    b502: ['b502', 'Northside High School restrooms', 'Ridgeway Builders', '212k', 'sent Thu 6/4', 'Marcus'],
+    b495: ['b495', 'Walters at Oakmont', 'Tall Pine Construction', '95k', 'sent Fri 5/22', 'Marcus'],
+    b655: ['b655', 'Copy Stop finish out', 'Ridgeway Builders', '72k', 'sent Wed 11/18', 'Priya'],
+  }
+  const marks = '<span class="marks"><i></i><i></i><i></i><i></i><i></i></span>'
+  const links = '<span class="links"><i></i><i></i><i></i><i></i></span>'
+  const row = (k, chips = '') => { const b = B[k]; return `<div class="tr">${marks}<span class="num">${b[0]}</span><span class="nm"><b>${b[1]}</b><span class="gc">${b[2]}</span>${chips ? `<span class="chips">${chips}</span>` : ''}</span><span class="amt">${b[3]}</span><span class="due">${b[4]}</span><span class="est">${b[5]}</span>${links}</div>` }
+  const thead = '<div class="tr hd"><span></span><span>Bid #</span><span>Project Name<br>GC/Builder</span><span style="text-align:right">Bid</span><span style="text-align:center">Due Date</span><span style="text-align:center">Estimator</span><span style="text-align:right">Links</span></div>'
+  const table = (rows) => `<div class="tb">${thead}${rows.join('')}</div>`
+  const tools = '<div class="tools"><span class="field">Search (project name, GC/Builder, bid number or address)…</span><span class="tool">All developments ▾</span><span class="tool marked">○ Marked 3</span><span class="tool">$ Pricing rules</span><span class="tool">Reply book</span></div>'
+  const pills = '<div class="pills"><b>Plumbing:</b><span class="pill">Map</span><span class="pill">Unsent<i>22</i></span><span class="pill hot">Pending<i>118</i></span><span class="pill">Won<i>15</i></span><span class="pill">Started<i>28</i></span><span class="pill">Lost<i>132</i></span><span class="pill">Health</span></div>'
+  const sec = (t) => `<div class="sec">▼ ${t}</div>`
+  const boardRows = table([row('b681'), row('b672', chip('Applied Nov 12', 'amber', 1))]) + sec('Not yet won or lost (118)') + table([row('b655', chip('Plumbing permit here since Nov 2', 'grey')), row('b502', chip('Permit lists Copperline Plumbing · Aug 27', 'red', 1)), row('b495', chip('Building permit issued · Oct 29', 'green', 1))])
+  const boardMarcus = desk(tools + pills + sec('Unsent / Working Bids (22)') + boardRows, 'board', 3)
+  const boardDana = desk(tools + pills + sec('Unsent / Working Bids (22)') + boardRows, 'board', 0, 'short')
+
+  // ---- 2. The lens.
+  const lensMarcus = desk(lensbar('pn', 3, CAPTION) + ih('New on your bids', 3) + card('b502') + card('b430') + card('b495') + '<span class="fold">Answered on your bids · 2 ›</span>', 'fu', 3)
+
+  // ---- 3. The answers.
+  const said = (w) => `<div class="said">${w}</div>`
+  const ansPlumber = `<div class="w700">${card('b502')}</div>`
+  const ansLost = `<div class="w700">${card('b502', { lean: true, under: `<div class="lost"><label>Lost · why? It saves as you pick.</label><div class="why"><span>Price</span><span class="on">Relationship</span><span>Scope</span><span>Schedule</span><span>No answer</span><span>Other</span></div><label style="font-weight:500;color:var(--text-muted)">Who won it: Copperline Plumbing, from the permit. Change it if the GC says otherwise.</label><div class="btns"><span class="press blue">Mark this bid lost</span><span class="press">Not now</span></div></div>` })}</div>`
+  const ansAfter = `<div class="w700">${rcpt('b502', '· You said still waiting. The permit stays on the bid as a chip.')}${rcpt('b430', '· You said it is not our job. It is off the bid for everyone.')}${card('b495')}</div>`
+  const ansOther = `<div class="w700">${card('b495')}${card('b672')}</div>`
+
+  // ---- 4. Nothing new.
+  const noneDana = desk(lensbar('pn', 0, CAPTION) + `<div class="empty"><b>Nothing waiting on you.</b><span>A new permit on the address of one of your bids shows here, and a red count shows on Followup.</span><small>The city’s records are read every morning and run 2 to 3 days behind.</small></div>` + ih('Answered on your bids', 1, true, true) + standing([['b668 · Greenleaf Market #12', 'Building permit issued Oct 6 · Dana said it is this job, Oct 9 · the bid is not yet won or lost', ['Open the bid', 'Take back']]]), 'fu', 0, 'short')
+  const noneOffice = `<div class="w700"><div class="pg" style="padding:0">${ih('New on everyone’s bids', 5, false, false).replace('</div>', '<span class="sw"><span>Yours 0</span><span class="on">Everyone’s 5</span></span></div>')}${card('b502', { note: '<b>Marcus’s bid</b>' })}<span class="fold">4 more on other people’s bids ›</span></div></div>`
+
+  // ---- 5. A phone.
+  const phoneLens = phone(tabsPhone('fu', 3) + lensbar('pn', 3) + ih('New on your bids', 3) + card('b502') + card('b430'), 'tall')
+  const phoneBoard = phone(tabsPhone('board', 3) + '<div class="field" style="flex:none">Search project, GC or bid number…</div>' + pills + sec('Unsent / Working Bids (22)') + `<div class="card"><div class="top">${marks}<span class="num">b681</span><span class="due soon">Fri 11/20</span></div><div class="ttl">Marlow Animal Clinic</div><div class="meta"><a>Ridgeway Builders</a> · Dana · Last contact +</div></div><div class="card"><div class="top">${marks}<span class="num">b672</span><span class="due">Mon 11/23</span></div><div class="ttl">Ridgeline Surgical and Imaging, Unit A</div><div class="chips" style="margin:0">${chip('Applied Nov 12', 'amber', 1)}</div><div class="meta"><a>Halvorsen Construction</a> · Marcus · Last contact +</div></div><div class="card"><div class="top">${marks}<span class="num">b679</span><span class="due">Thu 11/26</span></div><div class="ttl">Sunday Yoga, South Lamar</div><div class="meta"><a>Bluebonnet Contractors</a> · Priya · Last contact +</div></div>`)
+  const phoneAfter = phone(tabsPhone('fu', 2) + lensbar('pn', 2) + ih('New on your bids', 2) + rcpt('b502', '· You said still waiting. The permit stays on the bid as a chip.') + card('b430') + card('b495'), 'tall')
+
+  // ---- 6. Where a bid is chased.
+  const acts = '<div class="acts"><span>Left message</span><span>Still pending</span><span>Bid tab received</span><span>Rebid / RFQ</span><span>Won</span><span>Lost…</span></div>'
+  const callq = `<div class="w620"><div class="cq"><div class="h"><b>Ridgeway Builders</b><span>last contact 41 days ago · 2 bids waiting</span><a>512-555-0142</a></div><div class="bid"><div class="l"><b>b502 · Northside High School restrooms</b><span class="m">$212k · sent Jun 4</span>${chip('Permit lists Copperline Plumbing · Aug 27', 'red', 1)}</div>${acts}</div><div class="bid"><div class="l"><b>b655 · Copy Stop finish out</b><span class="m">$72k · sent Nov 18</span></div>${acts}</div></div></div>`
+  const rowDoor = `<div style="width:1180px;max-width:100%">${table([row('b502', chip('Permit lists Copperline Plumbing · Aug 27', 'red', 1)), row('b495', chip('Building permit issued · Oct 29', 'green', 1)), row('b655', chip('Plumbing permit here since Nov 2', 'grey'))])}</div>`
+
+  // ---- 7. Three places on Followup.
+  const mini = (inner, n) => `<div class="desk short" style="width:760px">${nav}<div class="pg">${tabsPhone('fu', n)}${inner}</div><div class="fade"></div></div>`
+  const wayLens = mini(lensbar('pn', 3) + ih('New on your bids', 3, false, false) + card('b502', { lean: true }) + card('b430', { lean: true }), 3)
+  const cqCard = `<div class="cq"><div class="h"><b>Mesa Verde Builders</b><span>last contact 62 days ago · 3 bids waiting</span><a>512-555-0177</a></div><div class="bid"><div class="l"><b>b388 · Oakmont Auto Parts</b><span class="m">$41k · sent Mar 2</span></div>${acts}</div></div>`
+  const wayBand = mini(lensbar('cq', 0, '', true) + `<div class="strip"><div class="h">Permit news to answer <span class="n">3</span></div>${['b502 · Northside High School restrooms|The city lists Copperline Plumbing on a plumbing permit, issued Aug 27.', 'b430 · Suite 100, Tradewind Drive|The city lists Blue Heron Plumbing on a plumbing permit, issued Sep 29.'].map((x) => { const [t, w] = x.split('|'); return `<div class="line"><div class="w"><strong>${t}</strong><span>${w}</span></div><div class="btns"><span class="press">We lost it…</span><span class="press">Still waiting</span><span class="press">Not our job</span></div></div>` }).join('')}<span class="more">See 1 more ›</span></div>` + cqCard, 3)
+  const wayLand = mini(lensbar('pn', 3) + `<div class="showing">You came to Followup with 3 lines to answer, so it opened here. <a>Go to the Call queue ›</a></div>` + card('b502', { lean: true }) + card('b430', { lean: true }), 3)
+
+  const cell = (id, cap, small, html, wide) => `<div class="cell${wide ? ' wide' : ''}" id="${id}"><div class="cap">${cap}<small>${small}</small></div>${html}</div>`
+  const band = (id, title, words, cells, tag) => `<section><div class="band" id="${id}"><h2>${title}${tag ? `<span class="pick">${tag}</span>` : ''}</h2>${words.map((w) => `<p>${w}</p>`).join('')}</div><div class="board">${cells.join('')}</div></section>`
+
+  const BANDS = [
+    band('third', 'The third look · the card, before and after', ['The first draft worked, but it made her do the reading. Five things were wrong with it. <b>1.</b> It asked a clerk’s question, whose permit is this, when what she wants to know is whether the bid is lost. <b>2.</b> A plumber’s permit took two steps: say it is the job, then say what that means. <b>3.</b> The proof was a grey box of four labelled rows, all the same weight, that she had to compare by eye. <b>4.</b> Nothing said what kind of news a card was until the sentence was read. <b>5.</b> The presses sat at a different height on every card.', 'The redrawn card reads top to bottom in the order she thinks: <b>what kind of news</b>, <b>which bid</b>, <b>what the city shows</b>, <b>why it looks like hers</b>. The app does the comparing and says what matched with a tick, and what it could not tell with a question mark. The answers stand in one column on the right, the same place on every card, under the question they answer.'], [
+      cell('third-before', 'Before · the first draft, at a desk’s width', '247 px tall. Two steps on a plumber’s permit. Four rows to compare by eye.', `<div style="width:1146px;max-width:100%">${line('b502')}</div>`, 1),
+      cell('third-after', 'After, at the same width', '162 px tall. One press. A tick for each reason, a question mark for what the records do not say.', `<div style="width:1146px;max-width:100%">${card('b502')}</div>`, 1),
+    ]),
+    band('board', '1 · The Bid Board, with the strip gone', ['The board starts at its bids. The news is one red number on <b>Followup</b>, counted over your own bids, and it is drawn on every Bids tab. The red number is its own press and opens the lens, so the news is one press from any Bids tab. The word Followup still opens the Call queue. A row keeps the chip it has today, now with the name and the day. A red, green or amber chip is a door to its line on Followup. The grey one is only a note: that permit was there before the bid was started.'], [
+      cell('board-marcus', 'Marcus, at a desk', 'Three lines to answer. He can finish what he is doing on the board first.', boardMarcus, 1),
+      cell('board-dana', 'Dana, at a desk', 'No line on her bids, so no number. She reads other people’s chips on their rows.', boardDana, 1),
+    ]),
+    band('lens', '2 · Followup → Permit news', ['A plumber under another name comes first, since that is the one that can cost a bid. Each card names its kind, the bid, what the city shows and the reasons it looks like her job. The bid’s number opens the bid. <b>Yours</b> and <b>Everyone’s</b> switch whose bids are listed. The red count is always yours.'], [
+      cell('lens-marcus', 'Marcus presses the red 3', 'Two plumbers’ permits, then a building permit. The answers line up down the right side.', lensMarcus, 1),
+    ]),
+    band('answer', '3 · The answers', ['A plumber’s permit asks <b>Did we lose this bid?</b> and takes one of three answers. <b>We lost it…</b> opens the board’s own loss window in the card. <b>Still waiting</b> keeps the permit on the bid as a chip and marks nothing. <b>Not our job</b> takes the permit off the bid for everyone. A building permit or an application is not a question, so it takes <b>Got it</b> or <b>Not our job</b>. Every answer is one press, by anyone who can open the bid, written down with who and when. An answered card folds to one line with <b>Undo</b> where it stood, so she does not lose her place.'], [
+      cell('ans-plumber', 'A plumber’s permit', 'Three answers, none of them pressed for her. The safe one, Still waiting, changes nothing about the bid.', ansPlumber),
+      cell('ans-lost', 'We lost it…', 'The loss window opens across the card. The winner is filled in from the permit.', ansLost),
+      cell('ans-after', 'After two answers', 'Each answered card is one line with Undo. The count on Followup is now 1.', ansAfter),
+      cell('ans-other', 'A building permit, and a bid not sent yet', 'No question to settle. The first points at the builder’s place in the Call queue. The second never offers a loss.', ansOther),
+    ]),
+    band('none', '4 · Nothing new', ['Most days this is the lens. With nothing to answer there is no red number anywhere. The lens still lists what you answered on bids that are not yet won or lost, so an answer can be taken back.'], [
+      cell('none-dana', 'Dana', 'No count on Followup and none on the lens.', noneDana, 1),
+      cell('none-office', 'Priya, in the office, on Everyone’s', 'She holds no bid with news. The switch lists every person’s lines, each with whose bid it is. Her answer counts for the estimator too.', noneOffice),
+    ]),
+    band('phone', '5 · A phone', ['The same three screens at 375 px. The lens bar wraps to three rows, as it does today with seven lenses. '], [
+      cell('phone-board', 'The board', 'The count rides on Followup in the tab row.', phoneBoard),
+      cell('phone-lens', 'The lens', 'The same card in one column. The answers are full-width presses, 40 px tall.', phoneLens),
+      cell('phone-after', 'After Still waiting', 'The count is 2. The answered card is one line with Undo.', phoneAfter),
+    ]),
+    band('where', '6 · Where a bid is chased', ['An answered line is not news any more, but the person about to call the builder should still see it. The chip rides on the bid wherever it is chased: a builder’s card in the Call queue, a Waiting to hear row, and the board’s row. It opens the line on Followup.'], [
+      cell('where-cq', 'A builder’s card in the Call queue', 'The chip sits on the bid’s line, beside the presses that decide it.', callq),
+      cell('where-row', 'Rows of the Bid Board', 'Red, green and amber chips are doors. The grey chip is a note.', rowDoor, 1),
+    ]),
+    band('ways', '7 · Three places for it on Followup', ['The direction is settled. Where on Followup is not. Three ways, drawn small.'], [
+      cell('way-lens', 'A · Its own lens', '<b>Gains:</b> one home for new and answered lines. Nothing is put in front of the Call queue. <b>Loses:</b> an eighth pill in a bar that already wraps on a phone, and one press to reach the news.', wayLens),
+      cell('way-band', 'B · A band on the Call queue, gone when answered', '<b>Gains:</b> no new lens, and no press to reach it. <b>Loses:</b> it is the strip again, one tab over. A line she is not ready to answer sits above her calls every time.', wayBand),
+      cell('way-land', 'C · Its own lens, and Followup opens on it when there is news', '<b>Gains:</b> the news cannot be missed. Robots already opens on Audits this way. <b>Loses:</b> a line left for later costs a press on every visit, which is the complaint that started this.', wayLand),
+    ], ''),
+  ]
+
+  const SECOND = `<section><div class="band" id="second"><h2>The second look, kept</h2><p>The second look changed eight things. The third look, at the top of this page, went further on points 1, 2 and 4: one press, the reasons as ticks, and answers in the estimator’s own terms.</p></div>
+  <ol class="notes">
+    <li><b>“Verify” left the hard line hanging.</b> Saying a plumber’s permit is on our job answers nothing by itself. Now the next press is offered in place: <b>Mark lost…</b> or <b>Keep waiting</b>.</li>
+    <li><b>The proof is on the line.</b> The first draft sent her to the bid’s window to check a suite. Now the permit’s number, the work in the city’s words, the suite and the building permit beside it are under each line.</li>
+    <li><b>The count is what is unanswered, not what is unseen.</b> A count that drops when a lens is opened teaches people to open and leave. An answer is one press, so the count can wait for it. It is the same on a phone and a desk, and one answer clears it for everyone on the bid.</li>
+    <li><b>The words are the answer to a question.</b> “Verify” and “Ignore” say what to do with the line. The presses now say what is true of the bid, and that is what gets written down.</li>
+    <li><b>Followup does not open on it.</b> Way C is how Robots works, but a line kept for later would cost a press on every visit. The red number does the pointing.</li>
+    <li><b>The three rules go first.</b> Without them five of the ten live lines are about another suite, an older job or another trade, and she would press Not our job five times on day one. With them the app drops those itself.</li>
+    <li><b>A bid not sent yet stays in the list.</b> Followup is about sent bids, but an application filed on a bid she is still pricing is worth a line. It carries <b>Not sent yet</b> and never offers Mark lost….</li>
+    <li><b>An answered line is still on the bid.</b> The chip rides on the bid in the Call queue, on a Waiting to hear row and on the board, so the person who calls the builder sees it without opening the lens.</li>
+  </ol></section>`
+
+  const PLAN = `<section><div class="band" id="plan"><h2>The plan</h2><p>Five small pull requests. Each ships alone with its release note and its guide. The first is written and tested, and it is held until you say go.</p></div>
+  <div class="tblwrap"><table class="tbl plan"><tr><th>PR</th><th>What ships</th><th>What a person sees</th><th>Size</th></tr>
+  <tr><td>1 · The rules</td><td>A permit on another suite is off the bid. A plumbing permit from before the bid was started is a grey note, or history past six months. A plumbing permit is news on a plumbing bid only. The strip, still on the board for now, lists your own bids.</td><td>The live ten lines become five. The estimator who asked sees no strip.</td><td>S · written, no migration</td></tr>
+  <tr><td>2 · The answers</td><td>One new table that only grows: the bid, the permit, the answer, who, when. The read beside the board’s one read. The kernel that sorts a reader’s lines into new, answered and taken off.</td><td>Nothing yet.</td><td>S · one migration</td></tr>
+  <tr><td>3 · The lens and the count</td><td>Followup → Permit news as drawn in 1 to 5, the red count on Followup as its own press, the answers with Undo, the loss window in the card. The strip leaves the Bid Board.</td><td>The whole of this page down to band 5.</td><td>M</td></tr>
+  <tr><td>4 · Where a bid is chased</td><td>The chip with the name and the day, on the board’s row as a door, on a builder’s card in the Call queue and on a Waiting to hear row. Taken-off permits say so in the bid’s This site list.</td><td>Band 6.</td><td>S</td></tr>
+  <tr><td>5 · The Dashboard</td><td>One line in Needs you when a count is waiting. Only if you ask for it after two weeks of 3.</td><td>—</td><td>S</td></tr>
+  </table></div>
+  <ol class="notes" style="margin-top:12px">
+    <li><b>Your calls:</b> the place (A, B or C in band 7, my pick is A). The words on the presses. Whether an answer counts for everyone on the bid (my pick) or only for the person who gave it. Whether PR 1 ships today.</li>
+    <li><b>Not in this plan:</b> an email when a line arrives, and guessing whether a listed name is a plumber. Both can follow once the lens has two weeks of answers to read.</li>
+  </ol></section>`
+
+  document.getElementById('bands').innerHTML = BANDS.join('') + SECOND + PLAN
+  const setTheme = (t) => { document.body.dataset.theme = t; document.querySelectorAll('.tog').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.t === t))) }
+  document.querySelectorAll('.tog').forEach((b) => b.addEventListener('click', () => setTheme(b.dataset.t)))
+  const asked = new URLSearchParams(location.search).get('theme')
+  if (asked === 'dark' || asked === 'light') setTheme(asked)
+</script>
+</body>
+</html>

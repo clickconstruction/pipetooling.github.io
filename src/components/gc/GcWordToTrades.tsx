@@ -111,7 +111,7 @@ export function GcWordToTrades({
                 disabled={sending}
                 placeholder="What every trade on this job should know. A blank line starts a new paragraph."
                 onChange={(e) => setText(e.target.value)}
-                style={{ ...input, width: '100%', boxSizing: 'border-box', resize: 'vertical', font: 'inherit' }}
+                style={{ ...input, width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
               />
             </label>
           </>

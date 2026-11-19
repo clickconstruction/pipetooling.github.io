@@ -201,7 +201,7 @@ function Rails({ guides, through = false }: { guides: ReadonlyArray<TagGuide>; t
 const btn: CSSProperties = { padding: '0.35rem 0.75rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 500 }
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: 2 }
-const inp: CSSProperties = { padding: '0.2rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box', font: 'inherit', background: 'var(--surface)', color: 'var(--text-base)' }
+const inp: CSSProperties = { padding: '0.2rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box', fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--text-base)' }
 
 type DateField = 'ordered_on' | 'expected_on' | 'delivered_on'
 

@@ -20,7 +20,7 @@ import { MaterialsMarkupPair } from '../charges/MaterialsMarkupPair'
 
 type Loaded = { rule: JobChargeRule; markupPct: number | null }
 
-const field: CSSProperties = { padding: '0.3rem 0.4rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit' }
+const field: CSSProperties = { padding: '0.3rem 0.4rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', fontFamily: 'inherit' }
 const label: CSSProperties = { display: 'grid', gap: 3, fontSize: '0.8125rem' }
 const small: CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)' }
 

@@ -15,6 +15,18 @@ export const LINK_DAYS = 30
 /** Over this, a Team only file does not come through our stream, which never holds a file whole (the lead, 2026-10-12). */
 export const STREAM_CAP_BYTES = 50 * 1024 * 1024
 
+/** Over this, the office's `read` hands no bytes over: a paper the app prints from is a scan, never a plan set. */
+export const READ_CAP_BYTES = 30 * 1024 * 1024
+
+/** Why the office's `read` hands no bytes over, in the words the screen shows. */
+export const DRIVE_READ_WORDS = {
+  notInFolder: 'That file is not in the job’s Drive folder.',
+  trashed: 'That file is in Drive’s trash.',
+  noBytes: 'That is a Google document or a folder, not a file with pages.',
+  tooBig: 'That file is over 30 MB.',
+  unanswered: 'Drive did not hand that file over.',
+} as const
+
 /** A link's token: 16 random bytes as base64url, 22 characters, short enough for a text. */
 export const LINK_TOKEN_BYTES = 16
 
@@ -132,6 +144,8 @@ export type OfficeAsk =
   | { action: 'link'; job: JobRef; driveFileId: string; messageId: string | null }
   | { action: 'save'; attachmentId: string; half: 'plans' | 'team_only' }
   | { action: 'open'; job: JobRef; driveFileId: string }
+  /** A file's own bytes, for a paper the app prints from it: a filed lien's stamped scan into the copies to mail. */
+  | { action: 'read'; job: JobRef; driveFileId: string }
   /** The company papers folder (the Documents spike of 2026-11-01): its files, and a file from this computer into it. */
   | { action: 'list_company' }
   | { action: 'put_company'; name: string; mime: string }
@@ -152,7 +166,7 @@ export type OfficeAsk =
   | { action: 'embed_probe' }
 
 /** The office actions that read Drive and change nothing: the ones a training account runs at `drive-link`'s gate. */
-const OFFICE_READS: ReadonlySet<string> = new Set<OfficeAsk['action']>(['list', 'open', 'search', 'search_index', 'list_company', 'ocr_probe', 'embed_probe'])
+const OFFICE_READS: ReadonlySet<string> = new Set<OfficeAsk['action']>(['list', 'open', 'read', 'search', 'search_index', 'list_company', 'ocr_probe', 'embed_probe'])
 /** A digital twin's refusal at the office's door, true to what it asked (v2.6488): a search is not a change. The door stays shut either way. */
 export function twinRefusalWords(action: unknown): string {
   if (action === 'search' || action === 'search_index') return 'A digital twin cannot search Drive.'
@@ -200,10 +214,11 @@ export function parseOfficeAsk(body: unknown): OfficeAsk | null {
       const half = b.half === 'plans' ? 'plans' : b.half === 'team_only' ? 'team_only' : null
       return attachmentId && half ? { action: 'save', attachmentId, half } : null
     }
-    case 'open': {
+    case 'open':
+    case 'read': {
       const job = jobOf(b.job)
       const driveFileId = typeof b.driveFileId === 'string' && DRIVE_ID.test(b.driveFileId) ? b.driveFileId : null
-      return job && driveFileId ? { action: 'open', job, driveFileId } : null
+      return job && driveFileId ? { action: b.action === 'read' ? 'read' : 'open', job, driveFileId } : null
     }
     case 'list_company':
       return { action: 'list_company' }

@@ -530,7 +530,7 @@ export function BidsCallQueueTab({
       onChange={(e) => setNoteDraft(e.target.value)}
       placeholder={placeholder}
       aria-label="Call note"
-      style={{ flex: 1, minWidth: '14rem', maxWidth: '30rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.78rem', font: 'inherit' }}
+      style={{ flex: 1, minWidth: '14rem', maxWidth: '30rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.78rem', fontFamily: 'inherit' }}
     />
   )
   const noteInput = noteInputFor('what they said (optional — saved with the next tap)')
@@ -695,7 +695,7 @@ export function BidsCallQueueTab({
                           background: asking === a.key ? '#2563eb' : a.key === 'won' ? 'var(--bg-emerald-tint)' : a.key === 'lost' ? 'var(--bg-red-tint)' : 'var(--surface)',
                           color: asking === a.key ? '#fff' : a.key === 'won' ? 'var(--text-emerald-800)' : a.key === 'lost' ? 'var(--text-red-800)' : 'var(--text-700)',
                           opacity: savingBidId != null ? 0.6 : 1,
-                          font: 'inherit',
+                          fontFamily: 'inherit',
                         }}
                       >
                         {a.label}
@@ -1066,7 +1066,7 @@ export function BidsCallQueueTab({
                         color: builder.hasWork ? '#fff' : 'var(--text-muted)',
                         cursor: 'pointer',
                         whiteSpace: 'nowrap',
-                        font: 'inherit',
+                        fontFamily: 'inherit',
                       }}
                     >
                       {'📞'} {builder.hasWork ? 'Start call' : 'Call anyway'}

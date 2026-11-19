@@ -20,7 +20,7 @@ import { JobPhotosWindowLazy } from '../photos/JobPhotosWindowLazy'
 import { documentsHeading, documentsQuietButton } from './jobDocumentsStyles'
 
 const line: CSSProperties = { fontSize: '0.875rem', color: 'var(--text-700)' }
-const doorBtn: CSSProperties = { ...line, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontWeight: 600, font: 'inherit', fontSize: '0.875rem' }
+const doorBtn: CSSProperties = { ...line, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontWeight: 600, fontFamily: 'inherit', fontSize: '0.875rem' }
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }
 const row: CSSProperties = { display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }
 

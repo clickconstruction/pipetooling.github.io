@@ -40,7 +40,7 @@ export type ByHandPrimaryJob = {
   itemId: string | null
 }
 
-const input: React.CSSProperties = { width: '100%', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit', font: 'inherit' }
+const input: React.CSSProperties = { width: '100%', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit', fontFamily: 'inherit' }
 const lbl: React.CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)' }
 
 export default function LienNoticeByHandPane({

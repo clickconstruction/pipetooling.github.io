@@ -70,7 +70,7 @@ export default function LienTrackingOwedEditor({
               type="button"
               onClick={() => void save(s.recipient)}
               disabled={busy || !v.trim()}
-              style={{ border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 700, cursor: busy || !v.trim() ? 'default' : 'pointer', padding: 0, font: 'inherit' }}
+              style={{ border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 700, cursor: busy || !v.trim() ? 'default' : 'pointer', padding: 0, fontFamily: 'inherit' }}
             >
               add the number ›
             </button>

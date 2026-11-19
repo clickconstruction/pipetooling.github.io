@@ -670,7 +670,7 @@ export default function Workflow() {
             display: 'inline-block',
             border: 'none',
             cursor: 'pointer',
-            font: 'inherit',
+            fontFamily: 'inherit',
           }}
         >
           {formatProjectNumberLabel(project.project_number)

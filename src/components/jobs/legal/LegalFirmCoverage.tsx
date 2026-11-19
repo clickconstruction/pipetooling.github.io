@@ -307,4 +307,4 @@ const num: CSSProperties = { ...td, textAlign: 'right', fontVariantNumeric: 'tab
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', font: 'inherit', fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap' }
 const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }
 const chip: CSSProperties = { border: '1px solid var(--border)', borderRadius: 999, padding: '1px 9px', background: 'var(--bg-subtle)', color: 'var(--text)', fontSize: '0.8rem' }
-const chipBtn: CSSProperties = { ...chip, cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600 }
+const chipBtn: CSSProperties = { ...chip, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 600 }

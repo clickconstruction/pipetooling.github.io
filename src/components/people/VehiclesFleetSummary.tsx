@@ -109,7 +109,7 @@ export function VehiclesFleetSummary({
                   title={it.action === 'readings' ? 'Open the odometer catch-up list' : 'Open the maintenance-task list'}
                   aria-label={`${it.count} ${it.label}`}
                   data-testid={`fleet-attn-${it.key}`}
-                  style={{ ...rowBase, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid var(--border)', font: 'inherit', cursor: 'pointer' }}
+                  style={{ ...rowBase, width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid var(--border)', fontFamily: 'inherit', cursor: 'pointer' }}
                 >
                   {inner}
                 </button>

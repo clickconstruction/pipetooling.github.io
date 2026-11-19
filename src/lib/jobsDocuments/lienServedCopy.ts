@@ -3,30 +3,25 @@
  * Tex. Prop. Code § 53.055 has the claimant send to the owner or reputed owner, and to the original contractor when
  * the claimant is not one, by the fifth day after the filing. In front of it, a short cover letter.
  *
- * The owner of the business asked (2026-11-16) whether the desk makes it easy to draft the letter that tells a
- * customer a lien was filed. It did not: the desk recorded the service and drew nothing to mail. His picks that day:
- * the app draws the copy from its own record, marked COPY; the letter prints now and is marked as not yet read by
- * counsel; a filing with no recording number is held.
+ * The copy is the clerk's stamped scan, the filing's saved copy, every page of it (the owner's ask of 2026-11-19: "I
+ * am required by law to share with them a copy of the lien I filed. Because I have to submit the copy I filed I cannot
+ * share with them the redraw from our record"; counsel's suggestion was the same, a copy of what was signed and
+ * filed). Until v2.7916 the app drew the copy from the filing's stored fields, marked COPY, with no signature, seal or
+ * stamp. That page is gone and nothing draws it. `lienStampedCopy.ts` holds the rules a saved copy is read by.
  *
- * Two rules the words keep. The letter is a courtesy and never stands in for the copy, so a packet always carries the
- * copy and the letter can be left out. And the letter says only what is true of the filing: the county, the day, the
- * document number, the amount, and how to pay and get a release. It makes no threat and gives no advice. It says
+ * Two rules the words keep. The letter is a courtesy and never stands in for the copy, so an envelope always carries
+ * the copy and the letter can be left out. And the letter says only what is true of the filing: the county, the day,
+ * the document number, the amount, and how to pay and get a release. It makes no threat and gives no advice. It says
  * *affidavit claiming a lien* and never *a lien*, the statute's own phrase, so the same words are true on a homestead.
- *
- * The copy is the affidavit's words as the filing keeps them (`job_lien_filings.fields`), drawn by the builder that
- * drew the paper. It shows no signature, seal or clerk's stamp, and its box says so. Whether that page is *a copy of
- * the affidavit* is counsel's call (`LIEN_SERVED_COPY_READ_BY_COUNSEL`).
  *
  * Pure. Every sentence a reader outside the company sees is in this file, one sentence per fact.
  */
 import type { ServiceCopy } from '../jobs/lienServiceProof'
 import { demandDate, demandMoney } from './demandLetter'
-import { buildLienAffidavitBlocks, filingDocFooter, filingDocsPrintHtml, lienAffidavitPrintOptions, type FilingDocBlock, type FilingDocExtras, type FilingPrintOptions, type LienAffidavitFields } from './lienFilingDocuments'
+import type { FilingDocBlock, FilingDocExtras, LienAffidavitFields } from './lienFilingDocuments'
 
 /** Counsel has not read the cover letter's words. The press stays live; the screen says so (the owner's pick, 2026-11-16). */
 export const LIEN_SERVE_LETTER_READ_BY_COUNSEL = false
-/** Counsel has not said that a copy drawn from the record, with no signature, seal or stamp, is the copy § 53.055 means. */
-export const LIEN_SERVED_COPY_READ_BY_COUNSEL = false
 
 /** A reader's name and address as the office holds them today. Blank parts fall back to the affidavit's own. */
 export type LienServeParty = { name: string; address: string }
@@ -67,29 +62,44 @@ export function lienServeRecipients(f: Pick<LienServeFacts, 'fields' | 'isSub' |
 
 /**
  * What stops a filing's copies from printing, and the door that fixes it: `filing` is typed on the filing's own row,
- * `property` on the property record, `contractor` on the GC's customer record. `photocopy` has no door in the app:
- * the paper was filed without the app's page, so the office mails a photocopy of it.
+ * `scan` is the stamped copy on the job's Lien window, `property` the property record, `contractor` the GC's customer
+ * record. The `copy_` holds are found when the saved copy is read (`lienStampedCopy.ts`); the rest are read off the
+ * rows. `ask` marks a hold the reader can lift on their own word: a copy that looks like more than one lien.
  */
-export type LienServeHold = { key: 'no_recording_number' | 'no_paper' | 'no_owner_address' | 'no_contractor' | 'no_contractor_address'; words: string; act: string; door: 'filing' | 'property' | 'contractor' | 'photocopy' }
+export type LienServeHoldKey = 'no_recording_number' | 'no_saved_copy' | 'copy_not_drive' | 'copy_unreadable' | 'copy_not_printable' | 'copy_broken' | 'copy_several' | 'no_owner_address' | 'no_contractor' | 'no_contractor_address'
+export type LienServeHold = { key: LienServeHoldKey; words: string; act: string; door: 'filing' | 'scan' | 'property' | 'contractor'; ask?: boolean }
 
-const HOLD: Record<LienServeHold['key'], Omit<LienServeHold, 'key'>> = {
+type RowHoldKey = 'no_recording_number' | 'no_saved_copy' | 'copy_not_drive' | 'no_owner_address' | 'no_contractor' | 'no_contractor_address'
+
+const HOLD: Record<RowHoldKey, Omit<LienServeHold, 'key'>> = {
   no_recording_number: { words: 'no recording number yet', act: 'Type the number the clerk gave.', door: 'filing' },
-  no_paper: { words: 'the app did not draw this affidavit, so it has no copy to print', act: 'Mail a photocopy of the filed affidavit.', door: 'photocopy' },
+  no_saved_copy: { words: 'no stamped copy saved', act: 'Add the clerk’s stamped scan on the job’s Lien window.', door: 'scan' },
+  copy_not_drive: { words: 'the saved copy is a link the app cannot read', act: 'Upload the stamped scan itself on the job’s Lien window.', door: 'scan' },
   no_owner_address: { words: 'no mailing address for the owner', act: 'Add it on the property record.', door: 'property' },
   no_contractor: { words: 'no original contractor named', act: 'Add the GC on the job.', door: 'contractor' },
   no_contractor_address: { words: 'no mailing address for the original contractor', act: 'Add it on the GC’s customer record.', door: 'contractor' },
 }
 
 /**
- * Every reason a filing's copies cannot print yet, the filing's own first. Empty when they can. A filing with no
- * recording number is held (the owner's pick): its letter and its copy both name the number. A filing recorded with
- * *Already filed — record it…* keeps the app's fields as they stood, blanks and all, and is not the paper that was
- * filed: an affidavit that names no owner, no property or no amount is that case, and the app draws no copy of it.
+ * Whether the filing keeps the affidavit's words, which the cover letter states: the owner, the property and the
+ * amount. A filing recorded with *Already filed — record it…*, or filed by counsel, may keep none. Its stamped copy
+ * still prints, with no letter in front: the letter never says what the record does not hold.
  */
-export function lienServeHolds(f: Pick<LienServeFacts, 'fields' | 'isSub' | 'recordingNumber' | 'to'>): LienServeHold[] {
-  const keys: LienServeHold['key'][] = []
+export function lienServeLetterDrawable(fields: Pick<LienAffidavitFields, 'ownerName' | 'propertyAddress' | 'unpaidAmount'>): boolean {
+  return Boolean(fields.ownerName.trim() && fields.propertyAddress.trim() && fields.unpaidAmount.trim())
+}
+
+/**
+ * Every reason the rows give that a filing's copies cannot print yet, the filing's own first. Empty when they can. A
+ * filing with no recording number is held (the owner's pick): its letter names the number. A filing with no saved
+ * copy, or with a saved copy that is a typed link and not a file in Drive, is held too: the copy is the stamped scan
+ * and nothing stands in for it. `savedCopy` is the reading of the filing's `document_url` (`lienCopySource`).
+ */
+export function lienServeHolds(f: Pick<LienServeFacts, 'fields' | 'isSub' | 'recordingNumber' | 'to'>, savedCopy: 'drive' | 'none' | 'not_drive'): LienServeHold[] {
+  const keys: RowHoldKey[] = []
   if (!f.recordingNumber.trim()) keys.push('no_recording_number')
-  if (!f.fields.ownerName.trim() || !f.fields.propertyAddress.trim() || !f.fields.unpaidAmount.trim()) keys.push('no_paper')
+  if (savedCopy === 'none') keys.push('no_saved_copy')
+  if (savedCopy === 'not_drive') keys.push('copy_not_drive')
   for (const r of lienServeRecipients(f)) {
     if (r.recipient === 'owner' && !r.address) keys.push('no_owner_address')
     if (r.recipient === 'original_contractor' && !r.name) keys.push('no_contractor')
@@ -176,51 +186,25 @@ export function buildLienServeLetterBlocks(f: LienServeFacts, to: ServiceCopy, e
   return blocks
 }
 
-/** The box on the copy: what it is a copy of, where the paper is on file, and what the page does not show. */
-export function lienServedCopyBoxWords(f: Pick<LienServeFacts, 'county' | 'fields' | 'filedYmd' | 'recordingNumber'>): string {
-  return (
-    `COPY. This is a copy of the lien affidavit filed with the County Clerk of ${countyName(f) || '_______'} County, Texas, on ${demandDate(f.filedYmd)}, as document number ${f.recordingNumber.trim() || '_______'}. ` +
-    `It is drawn from the claimant's record of the paper as filed. The filed affidavit is signed and notarized. This copy does not show the signatures, the notary's seal or the clerk's stamp.`
-  )
-}
-
-/**
- * The copy: the affidavit as the filing keeps it, with the box that says it is a copy. On a homestead the statute's
- * notice stays the first thing on the page (§ 53.254(f)) and the box follows it.
- */
-export function buildLienServedCopyBlocks(f: LienServeFacts): FilingDocBlock[] {
-  const paper = buildLienAffidavitBlocks(f.fields)
-  const box: FilingDocBlock = { kind: 'callout', text: lienServedCopyBoxWords(f) }
-  const at = paper[0]?.kind === 'topNotice' ? 1 : 0
-  return [...paper.slice(0, at), box, ...paper.slice(at)]
-}
-
-export type LienServePaper = { recipient: ServiceCopy; what: 'letter' | 'copy'; label: string; blocks: FilingDocBlock[]; footer?: string; opts?: Pick<FilingPrintOptions, 'leading'> }
+export type LienServeLetter = { recipient: ServiceCopy; label: string; blocks: FilingDocBlock[] }
 
 const TO_WORDS: Record<ServiceCopy, string> = { owner: 'the owner', original_contractor: 'the original contractor' }
 
 /**
- * One filing's papers in envelope order: for each reader the letter, when it is wanted, and then the copy. The copy
- * is never left out. Empty while a hold stands.
+ * One filing's cover letters, one for each reader in envelope order. Empty when the letter is not wanted, or when the
+ * filing does not keep the words a letter states (`lienServeLetterDrawable`). The copy behind each letter is the
+ * stamped scan and is not drawn here.
  */
-export function lienServePapers(f: LienServeFacts, opts: { letter: boolean; letterhead?: FilingDocExtras['letterhead'] }): LienServePaper[] {
-  if (lienServeHolds(f).length > 0) return []
-  const out: LienServePaper[] = []
-  const tight = lienAffidavitPrintOptions(f.fields)
-  for (const r of lienServeRecipients(f)) {
-    if (opts.letter) out.push({ recipient: r.recipient, what: 'letter', label: `Letter to ${TO_WORDS[r.recipient]}`, blocks: buildLienServeLetterBlocks(f, r.recipient, { letterhead: opts.letterhead }) })
-    out.push({ recipient: r.recipient, what: 'copy', label: `Copy for ${TO_WORDS[r.recipient]}`, blocks: buildLienServedCopyBlocks(f), footer: filingDocFooter('affidavit'), ...(tight?.leading ? { opts: { leading: tight.leading } } : {}) })
-  }
-  return out
+export function lienServeLetters(f: LienServeFacts, opts: { letter: boolean; letterhead?: FilingDocExtras['letterhead'] }): LienServeLetter[] {
+  if (!opts.letter || !lienServeLetterDrawable(f.fields)) return []
+  return lienServeRecipients(f).map((r) => ({ recipient: r.recipient, label: `Letter to ${TO_WORDS[r.recipient]}`, blocks: buildLienServeLetterBlocks(f, r.recipient, { letterhead: opts.letterhead }) }))
 }
 
-/** The same papers as one print document, each on its own sheet. '' while a hold stands. */
-export function lienServePacketHtml(f: LienServeFacts, opts: { letter: boolean; letterhead?: FilingDocExtras['letterhead']; title: string }): string {
-  const papers = lienServePapers(f, opts)
-  return papers.length === 0 ? '' : filingDocsPrintHtml(papers, opts.title)
-}
-
-/** The kind a printed packet is filed under on the job (`docs/SENT_COPIES.md`). Never changes once rows exist. */
+/**
+ * The kind a printed packet is filed under on the job (`docs/SENT_COPIES.md`). Never changes once rows exist. A print
+ * made before v2.7916 is the redrawn page, kept as HTML. A print of the stamped copy is a PDF whose row says so
+ * (`lienStampedPrintSnapshot`).
+ */
 export const LIEN_SERVED_COPY_SENT_KIND = 'lien_affidavit_copy'
 
 export function lienServedCopySentTitle(jobNumber: string): string {
@@ -233,7 +217,14 @@ export const LIEN_SERVE_WORDS = {
   press: 'Print the copies to mail',
   letterBox: 'Print the cover letter in front of each copy',
   letterUnread: 'Counsel has not read this letter yet.',
-  copyUnread: 'Counsel has not said yet that this page counts as the copy. The page says what it does not show.',
+  /** Under the press: what the copy is. */
+  copyIs: 'The copy in each envelope is the clerk’s stamped scan, every page of it.',
+  /** A lien whose record keeps none of the affidavit's words. */
+  noLetter: 'No cover letter for this lien. The app holds no record of the affidavit’s words.',
+  /** Where the print goes. */
+  opens: 'The print opens as one PDF in a new tab.',
+  /** Each envelope's pages are in order and an envelope may be three pages: a double-sided print would put the next envelope's letter on the back of a stamped page. */
+  oneSide: 'Print on one side of the paper.',
   numberLabel: 'Recording number',
   numberSave: 'Save the number',
   /** Under the press: how many envelopes, and what to do next. */

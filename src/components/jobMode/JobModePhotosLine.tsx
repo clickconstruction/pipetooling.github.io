@@ -10,7 +10,7 @@ import { JobPhotosWindowLazy } from '../photos/JobPhotosWindowLazy'
 import { jobModePhotosLineWords } from '../../lib/photos/jobPhotoNotes'
 import { countJobUploadedPhotos, type JobPhotosWindowIo } from '../../lib/photos/jobPhotoNotesIo'
 
-const door: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.4rem', minHeight: 44, padding: '0 0.25rem', border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.9375rem', cursor: 'pointer', font: 'inherit', textAlign: 'left' }
+const door: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.4rem', minHeight: 44, padding: '0 0.25rem', border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.9375rem', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }
 
 export function JobModePhotosLine({ jobId, hcpNumber, jobName, jobAddress, countIo, windowIo }: { jobId: string; hcpNumber?: string | null; jobName?: string | null; jobAddress?: string | null; countIo?: (jobId: string) => Promise<number | null>; windowIo?: JobPhotosWindowIo }) {
   const count = useMemo(() => countIo ?? countJobUploadedPhotos, [countIo])

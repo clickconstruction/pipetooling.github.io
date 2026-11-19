@@ -28,7 +28,7 @@ export type OwnMailboxThreadSlots = Pick<ThreadSlots, 'aboveBox'>
 
 const strip: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem', padding: '0.45rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-blue-tint)', fontSize: '0.85rem' }
 const row: CSSProperties = { display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }
-const door: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.25rem 0.7rem', background: 'var(--surface)', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', font: 'inherit' }
+const door: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.25rem 0.7rem', background: 'var(--surface)', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }
 const quiet: CSSProperties = { ...door, color: 'var(--text-base)', fontWeight: 500 }
 const muted: CSSProperties = { color: 'var(--text-muted)' }
 const mailRow: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', padding: '0.2rem 0' }

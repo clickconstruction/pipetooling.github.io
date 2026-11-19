@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_TAKE_BACK_WORDS, lienNotTakenBackWords, lienTakenBackWords, lienVoidPaperOutcome, lienVoidPaperStuck, lienVoidPaperWords, type LienVoidPaperRow } from './lienFilingVoid'
+import { LIEN_TAKE_BACK_WORDS, lienNotTakenBackWords, lienTakenBackWords, lienVoidHasPaper, lienVoidPaperOutcome, lienVoidPaperStuck, lienVoidPaperWords, type LienVoidPaperRow } from './lienFilingVoid'
 import { plainWordsFailures } from '../plainWords'
 
 const paper = (id: string, status: string, voided = false): LienVoidPaperRow => ({ id, status, voided_at: voided ? '2026-11-19T10:00:00Z' : null })
@@ -40,6 +40,20 @@ describe('the words', () => {
     expect(lienVoidPaperWords('none')).toBe('Record voided.')
   })
 
+  it('a notice’s record says the same five things in a notice’s words (v2.7911)', () => {
+    expect(lienVoidPaperWords('approved', 'notice_53_056')).toBe('Record voided. The notice is approved again and back on the Lien desk.')
+    expect(lienVoidPaperWords('drafted', 'notice_53_056')).toBe('Record voided. The notice is back on the Lien desk as a draft.')
+    expect(lienVoidPaperWords('set_aside', 'notice_53_056')).toBe('Record voided. A newer notice for this job is on the Lien desk, so the old one is set aside.')
+    expect(lienVoidPaperWords('still_sent', 'notice_53_056')).toBe('Record voided. The notice still reads as sent on the Lien desk. Tell your lead.')
+    expect(lienVoidPaperWords('none', 'notice_53_056')).toBe('Record voided.')
+    // A record with no paper on the desk says only that it is voided, whatever the reads answered.
+    expect(lienVoidPaperWords('none', 'release_of_record')).toBe('Record voided.')
+  })
+
+  it('a filed affidavit and a § 53.056 notice have a paper to put back, and no other record does', () => {
+    expect(['affidavit', 'notice_53_056', 'retainage_53_057', 'release_of_record', '', null, undefined].filter(lienVoidHasPaper)).toEqual(['affidavit', 'notice_53_056'])
+  })
+
   it('only a paper that did not move is a warning', () => {
     expect((['approved', 'drafted', 'set_aside', 'still_sent', 'none'] as const).filter(lienVoidPaperStuck)).toEqual(['still_sent'])
   })
@@ -53,7 +67,7 @@ describe('the words', () => {
 
   it('every sentence a person reads here is plain', () => {
     const said = [
-      ...(['approved', 'drafted', 'set_aside', 'still_sent', 'none'] as const).flatMap((o) => [lienVoidPaperWords(o), lienTakenBackWords(o)]),
+      ...(['approved', 'drafted', 'set_aside', 'still_sent', 'none'] as const).flatMap((o) => [lienVoidPaperWords(o), lienVoidPaperWords(o, 'notice_53_056'), lienTakenBackWords(o)]),
       LIEN_TAKE_BACK_WORDS.hint,
     ]
     for (const words of said) expect([words, plainWordsFailures(words)]).toEqual([words, []])

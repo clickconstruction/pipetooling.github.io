@@ -30,7 +30,7 @@ const chip = (on: boolean): CSSProperties => ({
   fontWeight: 600,
   whiteSpace: 'nowrap',
   cursor: 'pointer',
-  font: 'inherit',
+  fontFamily: 'inherit',
   lineHeight: 1.4,
 })
 const tileBtn: CSSProperties = { border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', position: 'relative', display: 'block', borderRadius: 8 }

@@ -112,7 +112,7 @@ export function PersonContractSignedRecordModal({
           return
         }
         if (doc.status !== 'signed') {
-          setError('This document is not in signed status.')
+          setError('This paper is not signed yet, so it has no signed record.')
           return
         }
         setRow(doc)

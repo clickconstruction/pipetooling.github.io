@@ -44,6 +44,10 @@ psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-apply
 # schema is main's.
 LATER="$(ls supabase/migrations/*_gc_clause_papers.sql)"
 psql_as postgres -f - < "$LATER" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $LATER"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# The second run of the contract's migration also restates the e-sign ledger's check as it stood then, without the
+# kinds added since. v2.7924's restatement (every kind, ours among them) runs again last, so the check is main's.
+KINDS="$(ls supabase/migrations/*_esign_consents_owner_contract_kind.sql)"
+psql_as postgres -f - < "$KINDS" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $KINDS"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/gc_owner_contract/20_scenario.sql 2>&1 || true)"
 if ! grep -q "gc_owner_contract PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"

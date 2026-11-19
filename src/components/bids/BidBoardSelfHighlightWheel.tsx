@@ -380,7 +380,7 @@ export function BidBoardSelfHighlightWheel({ pref, onSave, previewName }: Props)
           <button
             type="button"
             onClick={() => onSave(withThemePref(pref, mode, null))}
-            style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0, font: 'inherit', textAlign: 'left' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit', textAlign: 'left' }}
           >
             Reset this mode to default
           </button>

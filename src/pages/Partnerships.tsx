@@ -623,7 +623,7 @@ export default function Partnerships() {
                   <button
                     type="button"
                     onClick={() => setLensOn((v) => !v)}
-                    style={{ ...IMPERSONATION_CHROME_BUTTON_STYLE, font: 'inherit', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    style={{ ...IMPERSONATION_CHROME_BUTTON_STYLE, fontFamily: 'inherit', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
                   >
                     {lensOn ? '✕ Exit partner view' : `👁 View as ${selected.display_name || 'partner'}`}
                   </button>

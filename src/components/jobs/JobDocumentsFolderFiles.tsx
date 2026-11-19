@@ -16,7 +16,7 @@ import { documentsChip, documentsHeading } from './jobDocumentsStyles'
 
 const line: CSSProperties = { fontSize: '0.875rem', color: 'var(--text-700)' }
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }
-const doorBtn: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontWeight: 600, font: 'inherit', fontSize: '0.8125rem' }
+const doorBtn: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontWeight: 600, fontFamily: 'inherit', fontSize: '0.8125rem' }
 const folderName: CSSProperties = { margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }
 const fileLink: CSSProperties = { fontSize: '0.875rem', color: 'var(--text-link)', textDecoration: 'none', fontWeight: 500, overflowWrap: 'anywhere' }
 const appChip: CSSProperties = { ...documentsChip, marginLeft: 0, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' }

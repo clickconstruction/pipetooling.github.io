@@ -196,7 +196,7 @@ export function QuickRepliesEditorLine({
           rows={2}
           disabled={busy || line.removed}
           onChange={(e) => setText(e.target.value)}
-          style={{ ...input, resize: 'vertical', font: 'inherit' }}
+          style={{ ...input, resize: 'vertical', fontFamily: 'inherit' }}
         />
         {!line.removed && (
           <div data-qr-chips role="group" aria-label="Put a blank in the words" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
@@ -233,7 +233,7 @@ export function QuickRepliesEditorLine({
               placeholder={SPANISH_WORDS.placeholder}
               disabled={busy || line.removed}
               onChange={(e) => setEs(e.target.value)}
-              style={{ ...input, resize: 'vertical', font: 'inherit' }}
+              style={{ ...input, resize: 'vertical', fontFamily: 'inherit' }}
             />
           </label>
         )}

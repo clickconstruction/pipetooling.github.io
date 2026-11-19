@@ -258,7 +258,7 @@ Nothing is emailed until they sign. If the office already sent this customer an 
 
 ## Read your project's line as a superintendent
 
-A superintendent on a project sees one more card on Job Mode, above the job's details. The card's first line says whether the job is ahead or behind at this pace. Under it, the job's stages run top to bottom. A stage with a tick is done. The stage with a filled circle is the one in hand. The last row is the finish day.
+A superintendent on a project sees one more card on Job Mode, above the job's details. The card's first line says whether the job is ahead or behind at this pace. Under it, the job's stages run top to bottom. A stage with a tick is done. The stage with a filled circle is the one in hand. Work on the bid that is not a stage shows as one row, **Other work**. The last row is the finish day.
 
 - Press {{button:blue|Set the %}} on the stage in hand to say how far along the work is. The window takes a number for each stage.
 - A stage with checklist questions says how many are answered under its name. Press the stage to open its checklist.

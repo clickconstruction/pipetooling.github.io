@@ -225,7 +225,7 @@ export function SupplyHouseForm({
                       fontWeight: on ? 600 : 400,
                       fontSize: '0.8125rem',
                       cursor: 'pointer',
-                      font: 'inherit',
+                      fontFamily: 'inherit',
                     }}
                   >
                     {t.name}
@@ -258,7 +258,7 @@ export function SupplyHouseForm({
                       fontWeight: on ? 600 : 400,
                       fontSize: '0.8125rem',
                       cursor: 'pointer',
-                      font: 'inherit',
+                      fontFamily: 'inherit',
                     }}
                   >
                     {vendorKindLabel(k)}
@@ -289,7 +289,7 @@ export function SupplyHouseForm({
                       fontWeight: on ? 600 : 400,
                       fontSize: '0.8125rem',
                       cursor: 'pointer',
-                      font: 'inherit',
+                      fontFamily: 'inherit',
                     }}
                   >
                     {JOB_ACCOUNT_POLICY_LABELS[p]}

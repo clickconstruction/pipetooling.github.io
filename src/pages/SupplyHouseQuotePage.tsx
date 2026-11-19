@@ -316,7 +316,7 @@ export default function SupplyHouseQuotePage() {
                   <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>You priced {priorCount} of these for us before</span>
                   {priorAgeDays != null ? <span style={{ color: '#5b6577', fontSize: '0.8rem' }}> (newest {priorAgeDays === 0 ? 'today' : `${priorAgeDays} day${priorAgeDays === 1 ? '' : 's'} ago`})</span> : null}
                   <div style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <button type="button" onClick={fillFromPrior} style={{ background: '#2563eb', color: '#fff', fontWeight: 700, padding: '0.45rem 1rem', borderRadius: 7, fontSize: '0.85rem', border: 'none', cursor: 'pointer', font: 'inherit' }}>
+                    <button type="button" onClick={fillFromPrior} style={{ background: '#2563eb', color: '#fff', fontWeight: 700, padding: '0.45rem 1rem', borderRadius: 7, fontSize: '0.85rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
                       Fill with last time’s prices
                     </button>
                     <span style={{ color: '#5b6577', fontSize: '0.78rem' }}>then just change what moved</span>

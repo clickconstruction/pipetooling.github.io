@@ -131,9 +131,9 @@ for (const { path, marker, within, settle } of PAGES) {
 }
 
 /**
- * The narrowest phone (v2.6109). The Bid Board's tools row (search · development filter · four
- * presses) fits on one line from 366 px up and wraps under that; at 375 the wrap never runs, so only
- * this width measures it. The 320 column is 288 px, where the no-shrink press group alone is 180.
+ * The narrowest phone (v2.6109). The Bid Board's tools row is the search, the development filter
+ * and a group of presses. On a phone the search takes a line and the group wraps its own presses
+ * when they are wider than the column (v2.7912), which the 288 px column of a 320 screen shows first.
  */
 const NARROW_PHONE = { width: 320, height: 740 }
 

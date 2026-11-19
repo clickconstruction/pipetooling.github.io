@@ -22,7 +22,7 @@ const BASE: CSSProperties = {
   borderRadius: 4,
   cursor: 'pointer',
   fontSize: '0.85rem',
-  font: 'inherit',
+  fontFamily: 'inherit',
   lineHeight: 1.2,
   whiteSpace: 'nowrap',
 }

@@ -48,7 +48,7 @@ describe('the task verbs are on the allowlist with no wrapper RPC', () => {
       expect(SERVER).toContain(`name: '${read}'`)
       expect(SERVER).toContain(`case '${read}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.106.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.108.0'")
     expect(SERVER).toContain('plan_task → apply_task')
     expect(README).toContain('`plan_task(task)`')
     expect(README).toContain('`get_task(task)`')

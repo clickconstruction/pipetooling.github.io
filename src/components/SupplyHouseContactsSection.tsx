@@ -19,8 +19,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type ContactRow = { id: string; name: string | null; email: string; label: string | null; is_default: boolean; created_by: string | null; created_at: string; role?: string | null; phone?: string | null }
 
-const ROLE_CHIP_ON: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, color: '#0f766e', border: '1px solid #0f766e', background: '#ccfbf1', borderRadius: 999, padding: '0.05rem 0.5rem', cursor: 'pointer', font: 'inherit' }
-const ROLE_CHIP_OFF: CSSProperties = { fontSize: '0.68rem', fontWeight: 500, color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent', borderRadius: 999, padding: '0.05rem 0.5rem', cursor: 'pointer', font: 'inherit' }
+const ROLE_CHIP_ON: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, color: '#0f766e', border: '1px solid #0f766e', background: '#ccfbf1', borderRadius: 999, padding: '0.05rem 0.5rem', cursor: 'pointer', fontFamily: 'inherit' }
+const ROLE_CHIP_OFF: CSSProperties = { fontSize: '0.68rem', fontWeight: 500, color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent', borderRadius: 999, padding: '0.05rem 0.5rem', cursor: 'pointer', fontFamily: 'inherit' }
 
 export function SupplyHouseContactsSection({
   supplyHouseId,

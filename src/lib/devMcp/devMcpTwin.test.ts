@@ -145,7 +145,7 @@ describe('the twin verbs (a digital twin made from the dev seat, v2.7879)', () =
     const seat = twinSeatFor({ kind: 'estimator' }, FLEET)
     const ok = (step: TwinStep['step']): TwinStep => ({ step, ok: true, words: 'done' })
     const whole = twinAppliedWords([ok('account'), ok('flags'), ok('counttooling_seat'), ok('takeofftooling_seat')], seat)
-    expect(whole).toBe('Made: Twin Estimator 4 (twin-estimator-4@twins.pipetooling.local) stands in the fleet with its CountTooling and TakeoffTooling seats. Next: mint_twin_setup_code { label, twin: "twin-estimator-4@twins.pipetooling.local" } for its key. It is read-only until the rung is flipped at Settings → System → Digital twins.')
+    expect(whole).toBe('Made: Twin Estimator 4 (twin-estimator-4@twins.pipetooling.local) stands in the fleet with its CountTooling and TakeoffTooling seats. Next: mint_twin_setup_code { label, twin: "twin-estimator-4@twins.pipetooling.local" } for its key. It is read-only until plan_twin_rung moves it to rung 2.')
     const held = twinAppliedWords([ok('account'), ok('flags'), { step: 'counttooling_seat', ok: false, words: 'ct-bridge made no seat: answered 500' }, ok('takeofftooling_seat')], seat)
     expect(held).toContain('Held: counttooling seat (ct-bridge made no seat: answered 500).')
     expect(held).toContain("The link button on the twin's row at Settings → System → Digital twins makes a held seat again.")
@@ -169,7 +169,7 @@ describe('the twin verbs (a digital twin made from the dev seat, v2.7879)', () =
       expect(SERVER).toContain(`case '${verb}':`)
     }
     const from = SERVER.indexOf("case 'plan_twin':")
-    const branch = SERVER.slice(from, SERVER.indexOf("case 'plan_pay_setup':", from))
+    const branch = SERVER.slice(from, SERVER.indexOf("case 'read_twin_keys':", from))
     expect(branch).toContain("if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)")
     expect(branch).toContain("await invokeAsDev(session, 'create-user', twinCreateBody(seat, ")
     expect(branch).toContain("await invokeAsDev(session, 'ct-bridge', twinBridgeBody(ctEmail, seat.name))")
@@ -178,12 +178,12 @@ describe('the twin verbs (a digital twin made from the dev seat, v2.7879)', () =
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
     expect(branch).not.toContain('twin_credentials') // it makes no key
     expect(branch).not.toContain('password:') // the password is the kernel's body alone, never a reply or a log line
-    expect(SERVER).toContain("const SERVER_VERSION = '0.106.0'")
-    expect(SERVER).toContain('Writes are one hundred and twenty-nine verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.108.0'")
+    expect(SERVER).toContain('Writes are one hundred and thirty-three verbs and nothing else')
     expect(SERVER).toContain('plan_twin → apply_twin (a digital twin')
     expect(README).toContain('| `plan_twin(twin)` · `apply_twin(twin, plan_hash)` |')
     expect(README).toContain("one hundred and twenty-nine since v2.7879's twin pair")
-    expect(README).toContain('one hundred and twenty-nine `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('one hundred and thirty-three `plan_` / `apply_` / `revert_` verbs')
     expect(EDGE).toContain('v2.7879 (server 0.105.0) — a digital twin made from the seat')
   })
 })

@@ -26,8 +26,6 @@ export const NEEDS_YOU_ITEM_ACTOR: Record<NeedsYouItem['key'], NeedsYouActor> = 
   'todays-sends': 'anyone',
   // While you were off (v2.6060, punch list #141 PR 4): the viewer's own held pushes; nobody else's line.
   'while-off': 'anyone',
-  // The owner is told (v2.7068): someone else saved the viewer's own mail; nobody else's line.
-  'mail-saved': 'anyone',
   // Tagged job notes (punch list #363): the viewer's own tags; nobody else's line.
   'tagged-notes': 'anyone',
   // Papers before a job opens: the viewer's own signature, whoever they are.

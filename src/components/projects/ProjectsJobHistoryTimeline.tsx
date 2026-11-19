@@ -709,7 +709,7 @@ function JobBarContent({
           whiteSpace: 'nowrap',
           zIndex: 2,
           cursor: 'pointer',
-          font: 'inherit',
+          fontFamily: 'inherit',
         }}
       >
         {labelText}

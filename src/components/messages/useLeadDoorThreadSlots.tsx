@@ -15,7 +15,7 @@ import { useLeadDoors } from './useLeadDoors'
 export type LeadDoorThreadSlots = Pick<ThreadSlots, 'aboveLines'>
 
 const strip: CSSProperties = { display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.9rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-blue-tint)', fontSize: '0.85rem' }
-const door: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.25rem 0.7rem', background: 'var(--surface)', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', font: 'inherit' }
+const door: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.25rem 0.7rem', background: 'var(--surface)', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }
 
 export function LeadDoorsAbove({ contact, io }: { contact: Contact; io?: LeadDoorsIo }) {
   const open = useOpenThread()

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { JobLienFilingRow } from './lienDeadlines'
-import { lienServeBatchPrint, lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServeMailSheetHtml, lienServePlan, lienServePlanWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
+import { lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServeMailSheet, lienServePlan, lienServePlanRead, lienServePlanWords, lienServeRunWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
+import { LIEN_COPY_BROKEN_HOLD, type LienCopyRead } from './lienStampedCopy'
 import { lienServeStageCounts, lienServeStageDoorWords } from './lienServeStage'
 
 // Every name, address and figure here is made up.
@@ -28,7 +29,7 @@ const FIELDS = {
 }
 
 const filing = (id: string, over: Record<string, unknown> = {}): JobLienFilingRow =>
-  ({ id, job_id: `job-${id}`, kind: 'affidavit', fields: FIELDS, county: 'Hays', recording_number: `2026-00${id}`, filed_at: '2026-11-13', serve_due: '2026-11-18', served_at: null, voided_at: null, sends: [], ...over }) as unknown as JobLienFilingRow
+  ({ id, job_id: `job-${id}`, kind: 'affidavit', fields: FIELDS, county: 'Hays', recording_number: `2026-00${id}`, filed_at: '2026-11-13', serve_due: '2026-11-18', served_at: null, voided_at: null, sends: [], document_url: `https://drive.google.com/file/d/1SampleStampedScan${id}/view`, ...over }) as unknown as JobLienFilingRow
 
 const job = (number: string, over: Record<string, unknown> = {}, more: Partial<LienServeJob> = {}): LienServeJob => ({ jobId: `job-${number}`, jobNumber: number, jobLabel: `${number} · Sample Job`, filing: filing(number, over), isSub: true, ...more })
 
@@ -70,10 +71,21 @@ describe('lienServePlan', () => {
     expect(lienServeHeldLine(plan.held[0]!)).toBe('2340 · Sample Job: no recording number yet.')
   })
 
-  it('leaves out a served filing, and holds one that keeps no fields', () => {
-    const plan = lienServePlan([job('1', { served_at: '2026-11-14' }), job('2', { fields: null })], CTX)
-    expect(plan.ready).toEqual([])
-    expect(plan.held.map((h) => [h.job.jobNumber, h.holds[0]?.door])).toEqual([['2', 'photocopy']])
+  it('leaves out a served filing, and prints one that keeps no fields with no letter', () => {
+    const plan = lienServePlan([job('1', { served_at: '2026-11-14' }), job('2', { fields: null }, { to: { owner: { name: 'Hollow Creek Holdings LLC', address: '1 Way, Austin, TX 78701' }, contractor: { name: 'Brightline Builders', address: '12 Example Pkwy, Buda, TX 78610' } } })], CTX)
+    expect(plan.held).toEqual([])
+    expect(plan.ready.map((r) => [r.job.jobNumber, r.letter, r.envelopes.length])).toEqual([['2', false, 2]])
+  })
+
+  it('holds a lien with no stamped copy, or one that is a typed link, and prints the rest', () => {
+    const plan = lienServePlan([job('1'), job('2', { document_url: '' }), job('3', { document_url: 'https://example.com/scan.pdf' }), job('4', { document_url: 'in the red folder' })], CTX)
+    expect(plan.ready.map((r) => [r.job.jobNumber, r.copy.fileId, r.letter])).toEqual([['1', '1SampleStampedScan1', true]])
+    expect(plan.held.map((h) => [h.job.jobNumber, h.holds.map((x) => x.key).join()])).toEqual([
+      ['2', 'no_saved_copy'],
+      ['3', 'copy_not_drive'],
+      ['4', 'no_saved_copy'],
+    ])
+    expect(plan.held[0]?.holds[0]).toMatchObject({ door: 'scan', act: 'Add the clerk’s stamped scan on the job’s Lien window.' })
   })
 
   it('mails to the address the desk holds today', () => {
@@ -132,55 +144,75 @@ describe('lienServePlanWords', () => {
   })
 })
 
-describe('the stack', () => {
+describe('the plan once the saved copies are read', () => {
+  const ok = (pages: number, bytes = 450_000): LienCopyRead => ({ state: 'ok', file: { kind: 'pdf', pages, bytes, sha256: 'abc' } })
+  const plan = lienServePlan([job('2291'), job('2104', { serve_due: '2026-11-11', fields: { ...FIELDS, isSub: false } }, { isSub: false }), job('2340', { recording_number: '' }), job('2400', { serve_due: '2026-11-20' })], CTX)
+
+  it('waits on a copy still being read, and the press says how many', () => {
+    const run = lienServePlanRead(plan, { '2104': ok(2), '2291': { state: 'reading' } })
+    expect(run.ready.map((r) => r.job.jobNumber)).toEqual(['2104'])
+    expect(run.reading).toBe(2)
+    const words = lienServeRunWords(run, TODAY)
+    expect(words).toMatchObject({ button: 'Reading 2 stamped copies…', dead: true })
+    // The lead counts every lien that owes its copies, read or not.
+    expect(words.lead).toBe('4 filed liens owe their copies. The soonest was due Nov 11.')
+    expect(lienServeRunWords(lienServePlanRead(plan, { '2104': ok(2), '2291': ok(2) }), TODAY).button).toBe('Reading 1 stamped copy…')
+  })
+
+  it('prints what is read, and holds a copy the app cannot print with its reason while the rest print', () => {
+    const run = lienServePlanRead(plan, { '2104': ok(2), '2291': { state: 'held', hold: LIEN_COPY_BROKEN_HOLD }, '2400': ok(3) })
+    expect(run.reading).toBe(0)
+    expect(run.ready.map((r) => [r.job.jobNumber, r.file.pages])).toEqual([['2104', 2], ['2400', 3]])
+    expect(run.held.map((h) => [h.job.jobNumber, h.holds[0]?.key])).toEqual([['2291', 'copy_broken'], ['2340', 'no_recording_number']])
+    expect(run.envelopes).toBe(3)
+    expect(lienServeRunWords(run, TODAY)).toMatchObject({ button: 'Print 2 liens’ copies · 2 held ▸', dead: false })
+  })
+
+  it('holds a copy that looks like more than one lien until a person says it is this lien alone', () => {
+    const reads = { '2104': ok(2), '2291': ok(18), '2400': ok(2, 9_000_000) }
+    const run = lienServePlanRead(plan, reads)
+    expect(run.ready.map((r) => r.job.jobNumber)).toEqual(['2104'])
+    expect(run.held.find((h) => h.job.jobNumber === '2291')?.holds[0]).toMatchObject({ key: 'copy_several', ask: true, words: 'the saved copy has 18 pages, and a stamped lien is usually 2' })
+    expect(run.held.find((h) => h.job.jobNumber === '2400')?.holds[0]?.words).toBe('the saved copy is 8.6 MB, several times a usual scan')
+    const said = lienServePlanRead(plan, reads, new Set(['2291']))
+    expect(said.ready.map((r) => r.job.jobNumber)).toEqual(['2104', '2291'])
+    // A person's word lifts the question about pages, never a hold of another kind.
+    expect(lienServePlanRead(plan, reads, new Set(['2340'])).held.some((h) => h.job.jobNumber === '2340')).toBe(true)
+  })
+})
+
+describe('the mail sheet', () => {
+  const ok = (pages: number): LienCopyRead => ({ state: 'ok', file: { kind: 'pdf', pages, bytes: 450_000, sha256: 'abc' } })
   const plan = lienServePlan([job('2291'), job('2104', { serve_due: '2026-11-11', fields: { ...FIELDS, isSub: false } }, { isSub: false }), job('2340', { recording_number: '' })], CTX)
+  const run = lienServePlanRead(plan, { '2291': ok(2), '2104': ok(3) })
 
-  it('lists every envelope on the mail sheet in the order it prints, then what was left out', () => {
-    const sheet = lienServeMailSheetHtml(plan, { printedOn: 'November 16, 2026', letter: true })
-    expect(sheet).toContain('Copies of filed lien affidavits: 3 envelopes')
-    expect(sheet.indexOf('2104 · Sample Job')).toBeLessThan(sheet.indexOf('2291 · Sample Job'))
-    expect(sheet).toContain('Nov 11 · late')
-    expect(sheet).toContain('>Original contractor</td>')
-    expect(sheet).toContain('Not printed: no recording number yet. <span style="font-weight:400">Type the number the clerk gave.</span>')
-    expect(sheet).toContain('The first letter is the next page')
-    expect(lienServeMailSheetHtml(plan, { printedOn: '', letter: false })).toContain('The first copy is the next page')
-  })
-
-  it('keeps the number, Copy to and Mail by no wider than their longest text', () => {
-    const sheet = lienServeMailSheetHtml(plan, { printedOn: '', letter: true })
-    const fit = ' style="width:1%;white-space:nowrap"'
-    // The table lays itself out by its content: no fixed column widths are left to pad the three.
-    expect(sheet).toContain('<table class="lien-help-rows" style="table-layout:auto">')
-    expect(sheet).not.toContain('<colgroup>')
-    expect(sheet).toContain(`<th${fit}>#</th>`)
-    expect(sheet).toContain(`<th${fit}>Copy to</th>`)
-    expect(sheet).toContain(`<th${fit}>Mail by</th>`)
-    expect(sheet).toContain(`<td${fit}>1</td>`)
-    expect(sheet).toContain(`<td${fit}>Original contractor</td>`)
-    expect(sheet).toContain(`<td${fit}>Nov 11 · late</td>`)
-    // The job, the envelope's name and address, and the blank for the number keep the room.
-    expect(sheet).toContain('<th style="width:22%">Job</th>')
-    expect(sheet).toContain('<th>Name and address on the envelope</th>')
-    expect(sheet).toContain('<th style="width:22%">Certified mail number</th>')
-  })
-
-  it('prints one document behind the sheet and hands each job its own papers to file', () => {
-    const print = lienServeBatchPrint(plan, { letter: true, todayYmd: TODAY })
-    expect(print?.jobs.map((j) => [j.jobId, j.filingId, j.title, j.papers.length])).toEqual([
-      ['job-2104', '2104', 'Copy of lien affidavit — Job 2104', 2],
-      ['job-2291', '2291', 'Copy of lien affidavit — Job 2291', 4],
+  it('lists every envelope in the order it prints with its pages, then what was left out', () => {
+    const sheet = lienServeMailSheet(run, { printedOn: 'November 16, 2026', letter: true })
+    expect(sheet.title).toBe('Copies of filed lien affidavits: 3 envelopes')
+    expect(sheet.printed).toBe('Printed November 16, 2026')
+    expect(sheet.rows.map((r) => [r.n, r.job, r.to, r.pages, r.mailBy])).toEqual([
+      [1, '2104 · Sample Job', 'Owner', '4', 'Nov 11 · late'],
+      [2, '2291 · Sample Job', 'Owner', '3', 'Nov 18'],
+      [3, '2291 · Sample Job', 'Original contractor', '3', 'Nov 18'],
     ])
-    expect(print?.html).toContain('data-lien-serve-sheet')
-    expect(print?.html.match(/class="filing-paper/g)?.length).toBe(6)
-    expect(print?.html.indexOf('data-lien-serve-sheet')).toBeLessThan(print?.html.indexOf('class="filing-paper') ?? 0)
-    // A job's own copy carries its papers alone, never the sheet.
-    expect(print?.jobs[0]?.html).not.toContain('data-lien-serve-sheet')
-    expect(print?.jobs[0]?.html.match(/class="filing-paper/g)?.length).toBe(2)
+    expect(sheet.rows[0]).toMatchObject({ name: 'Hollow Creek Holdings LLC', address: '88 Sample Ridge Rd, Austin, TX 78700' })
+    expect(sheet.held).toEqual([{ job: '2340 · Sample Job', words: 'Not printed: no recording number yet.', act: 'Type the number the clerk gave.' }])
+    expect(sheet.steps[0]).toBe('Each envelope takes its letter and the clerk’s stamped copy behind it. They come off the printer in the order below.')
+    expect(sheet.foot).toEqual(['Mail sheet printed November 16, 2026', 'The first letter is the next page'])
+    expect(sheet.columns).toEqual(['#', 'Job', 'Copy to', 'Name and address on the envelope', 'Pages', 'Mail by', 'Certified mail number'])
   })
 
-  it('leaves the letters out when the box is unticked, and is null with nothing ready', () => {
-    expect(lienServeBatchPrint(plan, { letter: false, todayYmd: TODAY })?.html.match(/class="filing-paper/g)?.length).toBe(3)
-    expect(lienServeBatchPrint(lienServePlan([job('2340', { recording_number: '' })], CTX), { letter: true, todayYmd: TODAY })).toBeNull()
+  it('counts the stamped copy alone when the letters are left out, and says so', () => {
+    const sheet = lienServeMailSheet(run, { printedOn: '', letter: false })
+    expect(sheet.rows.map((r) => r.pages)).toEqual(['3', '2', '2'])
+    expect(sheet.steps[0]).toBe('Each envelope takes one clerk’s stamped copy. They come off the printer in the order below.')
+    expect(sheet.foot).toEqual(['Mail sheet', 'The first copy is the next page'])
+  })
+
+  it('names a lien the run could not put in the stack after all', () => {
+    const sheet = lienServeMailSheet({ ready: run.ready.slice(0, 1), held: [] }, { printedOn: '', letter: true, notPrinted: [{ job: run.ready[1]!.job, reason: 'its papers could not be put together.' }] })
+    expect(sheet.rows).toHaveLength(1)
+    expect(sheet.held).toEqual([{ job: '2291 · Sample Job', words: 'Not printed: its papers could not be put together.', act: 'Print this lien again from the Lien desk.' }])
   })
 })
 

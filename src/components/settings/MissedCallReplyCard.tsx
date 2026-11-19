@@ -45,7 +45,7 @@ const lineStyle: CSSProperties = {
   background: 'var(--surface)',
   color: 'var(--text-base)',
   fontSize: '0.9rem',
-  font: 'inherit',
+  fontFamily: 'inherit',
   resize: 'vertical',
 }
 

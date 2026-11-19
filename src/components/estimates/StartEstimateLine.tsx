@@ -109,7 +109,7 @@ export function StartEstimateLine({ message, contact, io, onDrafted }: StartEsti
               </label>
               <label style={{ display: 'grid', gap: '0.2rem' }}>
                 Description
-                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={{ ...input, font: 'inherit' }} />
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={{ ...input, fontFamily: 'inherit' }} />
               </label>
               <div>{`It goes on at $0 for ${form.draft.signer.name} to approve. The money team prices it and sends it.`}</div>
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>

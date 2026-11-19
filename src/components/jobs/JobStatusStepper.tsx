@@ -217,7 +217,7 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
     padding: '0.35rem 0.8rem 0.35rem 0.5rem',
     borderRadius: 999,
     fontSize: '0.875rem',
-    font: 'inherit',
+    fontFamily: 'inherit',
     whiteSpace: 'nowrap',
     lineHeight: 1.2,
   }

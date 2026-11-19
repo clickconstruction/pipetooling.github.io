@@ -52,7 +52,6 @@ import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGap
 import type { GcNeedsYou } from './gc/needsYou'
 import type { CustomerMessagesCounts } from './followUp/customerCounts'
 import { WHAT_WAITED_WORDS, type WhatWaited } from './messages/whatWaited'
-import { MAIL_SAVED_WORDS, type MailSavedNeed } from './myMail/savedForYou'
 import { STALE_COUNT_DAYS } from './materials/onSite'
 import { nudgeWords } from './research/permitBuilders'
 import { lookAlikeNudgeWords } from './research/lookAlikeWorklist'
@@ -118,7 +117,6 @@ export type NeedsYouItem = {
     | 'customer-messages'
     | 'todays-sends'
     | 'while-off'
-    | 'mail-saved'
     | 'tagged-notes'
     | 'job-papers'
     | 'rating-low'
@@ -251,8 +249,6 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'todays-sends': 40,
   // The same tier: the pushes the viewer's own Push me hours held while they were off (v2.6060, punch list #141 PR 4).
   'while-off': 40,
-  // The owner is told (v2.7068): news with nothing to do, so it sits below everything that asks for a press.
-  'mail-saved': 90,
   // Tagged job notes (punch list #363): a teammate waits on the viewer's answer, beside the customers who wait on the office.
   'tagged-notes': 40,
   // Papers before a job opens: a job stays shut to the viewer until they sign, so it sits above the chasing tier.
@@ -819,9 +815,6 @@ export type NeedsYouInputs = {
    */
   whileOffEnabled?: boolean
   whileOff?: WhatWaited | null
-  /** The owner is told (v2.7068): the viewer's own notices that someone else saved their mail onto a job. */
-  mailSavedEnabled?: boolean
-  mailSaved?: MailSavedNeed | null
   /** Tagged job notes (punch list #363): the job notes that tagged the viewer and still wait, and the answers to their own tags they have not seen. */
   taggedNotesEnabled?: boolean
   taggedNotes?: { count: number; title: string; detail: string } | null
@@ -1579,20 +1572,6 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         actionLabel: 'Messages',
       })
     }
-  }
-
-  // The owner is told (v2.7068): someone else saved the viewer's mail onto a job. Blue: news, with nothing to do.
-  if (inputs.mailSavedEnabled && inputs.mailSaved && inputs.mailSaved.count > 0) {
-    const m = inputs.mailSaved
-    items.push({
-      key: 'mail-saved',
-      severity: 'blue',
-      kicker: MAIL_SAVED_WORDS.kicker,
-      title: m.title,
-      detail: m.detail,
-      figure: m.count > 99 ? '99+' : String(m.count),
-      actionLabel: MAIL_SAVED_WORDS.action,
-    })
   }
 
   // Papers before a job opens: amber, a job stays shut to the viewer until they sign. The press opens its prompt.

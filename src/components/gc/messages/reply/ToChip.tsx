@@ -46,7 +46,7 @@ export function ToChip({
     background: 'var(--surface)',
     color: hasMenu ? 'var(--text-blue-700)' : 'var(--text-base)',
     cursor: hasMenu ? 'pointer' : 'default',
-    font: 'inherit',
+    fontFamily: 'inherit',
   } as const
 
   return (

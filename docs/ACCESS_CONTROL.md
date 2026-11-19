@@ -245,7 +245,9 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and twenty-nine verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-nine since v2.7879, whose twin pair makes a digital twin through the Digital twins panel's own doors as the dev, `create-user`, `ct-bridge` and `tt-bridge` each holding its own dev gate and the twin flags set under the dev's RLS, with no new role and no new policy;
+The one write path (v2.3722) is one hundred and thirty-three verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and thirty-three since v2.7918, whose rung pair is the Digital twins panel's own update of `read_only` on a twin's `users` row under the table's dev update policy, held to a row that is a twin, with no new role and no new policy;
+one hundred and thirty-one since v2.7900, whose key revoke is the Digital twins panel's own update of `revoked_at` on the key's `twin_credentials` row under the table's dev-only RLS, with `read_twin_keys` reading that table by a column list that never names `token_hash`, no new role and no new policy;
+one hundred and twenty-nine since v2.7879, whose twin pair makes a digital twin through the Digital twins panel's own doors as the dev, `create-user`, `ct-bridge` and `tt-bridge` each holding its own dev gate and the twin flags set under the dev's RLS, with no new role and no new policy;
 one hundred and twenty-seven since v2.7823, whose task close is the card's own `task_no_longer_applies` called as the dev, the function's own gate holding (the office or a person the task is given to), with no new role and no new policy;
 one hundred and twenty-five since v2.7821, whose pay setup pair is told further down, where this section says *Since v2.7821*;
 one hundred and twenty-three since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
@@ -840,7 +842,8 @@ Read-only training mode and the twin write fence apply.
 `job_test_reports` (hydrostatic / pinpoint / gas) follows the job's own children: **read** dev · master · assistant-like · primary;
 **insert / update** dev · master · assistant-like;
 **delete** the same set and only while `status = 'draft'` — a sent report is a record.
-Every policy also requires `can_reach_job_for_test_report(job_id)` (the `jobs_ledger_fixtures` job predicate: master own, dev, primary, adoption either way, `assistants_share_master`).
+Every policy also requires `can_reach_job_for_test_report(job_id)` (the `jobs_ledger_fixtures` job predicate: master own, dev, adoption either way, `assistants_share_master`, and a primary on the jobs they account-manage: since v2.7926, punch list #400, the primary leg asks `primary_can_access_job`, `20261119103000_primary_test_papers.sql`, the SQL bed `primary-test-papers`;
+before it any primary read every job's paper and its PDF).
 The Stages door (`TestReportModal`) and Settings → Jobs, bills and liens → Test reports (the certifier and the paper's text, `app_settings.test_report_settings_v1`) show to dev / master / assistant-like.
 **Send** (v2.3301, `send-test-report`): Bearer JWT, the row is read and stamped through the caller's own client, so the same UPDATE policy decides who may send;
 the stored PDF lives in the private `job-test-reports` bucket;
@@ -957,7 +960,7 @@ the job's History line for a close (`lien_notice_closed_paid`) is written by the
 and `sign_lien_desk_item_with_code` stamps the signer's full name since `20261116110000` (a leader's *Full name and title* up to the first comma, a dev's account name), its callers, its lock and its grant to `authenticated` unchanged.
 **Back from the clerk** adds none (v2.7856): it inserts the Lien window's own `job_lien_filings` row as the person signed in, under that table's insert policy (`created_by = auth.uid()`, the office set), and its door is drawn for the office alone.
 **Voiding a filed lien adds no policy and opens one move in the guard** (v2.7892, `20261119020000`): the void is still one UPDATE of `job_lien_filings.voided_at` under that table's update policy, and the SECURITY DEFINER trigger `job_lien_filing_void_restores_paper` moves the affidavit paper tied to it back, with EXECUTE on its function revoked from clients.
-`job_lien_desk_items_guard` no longer reads that move as a new approval: for an affidavit paper, `sent` back to `approved` passes for any office role while the filing it was tied to is voided and `approved_at`, `approved_by` and `approval_mode` are untouched.
+`job_lien_desk_items_guard` no longer reads that move as a new approval: for an affidavit paper, and for a notice since v2.7911 (`20261119050000`), `sent` back to `approved` passes for any office role while the filing it was tied to is voided and `approved_at`, `approved_by` and `approval_mode` are untouched.
 A `sent` paper with a live filing, and a move that changes who approved, when or how, are still a new approval, so a `leader` approval is still a master's or a dev's alone.
 The copies window's writes add none either (v2.7846): a *Mailed* tick is one UPDATE of `served_at` and `sends`, and a changed document number is one UPDATE of `recording_number`, each on the filing's own `job_lien_filings` row under that table's update policy, for the office set that already records a mailing.
 
@@ -1065,6 +1068,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   `on_site_removed_answers`, a part tie or a site price deleted, is read by `on_site_can_tie_parts()` with `on_site_can_read_ties()` and written by its trigger alone.
 - **A watch on one person** (v2.7825, `20261118150000_person_watches.sql`): `person_watches` and `watched_box_opens` are read by devs alone (`is_dev()`), and a dev inserts and updates a watch and never deletes one.
   `on_site_note_box_open(uuid)` is granted to every signed-in caller, writes only for a caller with a live watch and answers nothing either way, so no caller learns from it whether they are watched.
+  `person_watch_notices` (v2.7842), the notices a watch sent, is read by devs alone and written by the `watch-notify-dispatch` function with the service role, which answers 401 to any call without the cron secret.
   Since v2.7839 the Person desk draws **Watch on site** for a dev on another person's row, and the By person look marks a watched person's presses for whoever can read the watch, which is a dev.
 - **An answer to a press** (v2.7827, `20261118170000_on_site_press_answers.sql`): `job_movement_answers` is read by the office (`on_site_reads_answers()`: dev, master_technician, assistant, controller), a dev inserts one and withdraws one, and nobody deletes one.
   A row with a live taken-back answer is closed to every signed-in read of `job_material_movements` by the RESTRICTIVE policy `job_material_movements_not_taken_back`, a dev's own read included, and `on_site_taken_back_rows(uuid[])` answers those rows to the office alone.
@@ -1896,6 +1900,7 @@ Both new tables are RLS-enabled and carry the read-only (training mode) blocks.
 `esign_consents` holds the exact ESIGN / Texas UETA consent words a signer saw (version, language, clause text) plus name, method, time, IP and device, one row per signature from the public signing functions.
 **SELECT**: `is_master_or_dev() OR is_office_or_estimator()` (dev · leaders · assistant · controller · estimator).
 **No client write policy** — only `accept-estimate`, `accept-contract`, `sign-job-contract`, `sign-bid-room` and `submit-sub-portal` insert, with the service role.
+`record_type` is held by `esign_consents_record_type_check`, whose newest restatement must list every kind a function writes (`src/lib/esignConsentKinds.test.ts`, v2.7924).
 Subs, helpers, primaries and superintendents do not read it;
 the signed rows they can already see keep their own `signer_consented_at`.
 
@@ -2774,7 +2779,8 @@ The window's **Open your portal** is drawn only while the person has a live port
 
 **Purpose**: Materials and job reports specialist.
 **Scoped to their own work (owner rule 2026-08-23, v2.2174–2177;
-since v2.5655, punch list #129, the SECURITY DEFINER paid verbs too — `mark_job_paid`, `mark_invoice_paid`, `apply_mercury_bank_payment_allocations`, `remove_jobs_ledger_payment_and_reconcile`, `record_job_tip_from_deposit` — each holding a primary to `is_job_people(j.id)` in the job's own check, `20261019120000_primary_paid_verbs.sql`)** — enforced by RESTRICTIVE `primary_scope_*` RLS policies that only bite for `primary` (helpers `is_primary()`, `primary_can_access_bid/job/estimate()`;
+since v2.5655, punch list #129, the SECURITY DEFINER paid verbs too — `mark_job_paid`, `mark_invoice_paid`, `apply_mercury_bank_payment_allocations`, `remove_jobs_ledger_payment_and_reconcile`, `record_job_tip_from_deposit` — each holding a primary to `is_job_people(j.id)` in the job's own check, `20261019120000_primary_paid_verbs.sql`;
+since v2.7921, punch list #400, the money verbs that pass missed too — `apply_agreed_write_down_to_billed_invoice`, `delete_billed_invoice_on_send_back`, `delete_marked_paid_invoice_without_payment`, `delete_ready_to_bill_invoice`, `revert_stripe_oob_invoice_payment`, `move_jobs_ledger_payment` on both jobs and the paid to billed leg of `update_job_status` by the same clause, and `apply_estimate_to_job` and `create_job_from_estimate` by `primary_can_access_estimate`, `20261119100000_primary_money_verbs.sql`, the SQL bed `primary-money-verbs`)** — enforced by RESTRICTIVE `primary_scope_*` RLS policies that only bite for `primary` (helpers `is_primary()`, `primary_can_access_bid/job/estimate()`;
 migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_estimates`, `20260823172141_primary_scope_jobs`):
 - **Bids**: only bids where they are the estimator, the account manager, or the creator (`bids.estimator_id` / `account_manager_id` / `created_by`), across the whole bids family (versions, pricing, counts, takeoff, cost estimates, submissions).
   The Bid Board adds the same filter client-side.
@@ -2841,7 +2847,7 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
   **primary** defaults **collapsed** and does **not** auto-expand when reports are unread (**`RECENT_FEATURES`** **v2.494**)
 - **My Bids** section (estimator/account-manager bids);
   title **My Bids (`n`)** after load;
-  **primary** defaults **collapsed** (**`RECENT_FEATURES`** **v2.494**)
+  **primary** defaults **collapsed** at every width, a phone included since v2.7905, with **New Bid** beside the heading while folded (**`RECENT_FEATURES`** **v2.494**)
 **Unallocated bank deposits** — **Dashboard** blue banner uses **`canRoleSeeArBankUnallocatedDashboardBanner`** (**dev** + **assistant** only;
 **master_technician** does not — **`RECENT_FEATURES`** **v2.497**).
 **Quickfill** / **`/accounts-receivable`** still use **`canRoleSeeArBankUnallocatedOrgNudge`** (**dev**, **master_technician**, **assistant**;

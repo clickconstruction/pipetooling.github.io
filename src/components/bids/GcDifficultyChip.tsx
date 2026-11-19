@@ -11,7 +11,7 @@ import { GC_DIFFICULTY_WORDS, gcDifficultyCardHref, gcDifficultyChipTitle, gcDif
 const CHIP: CSSProperties = { display: 'inline-block', fontSize: '0.7rem', fontWeight: 600, padding: '0.08rem 0.5rem', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)', textDecoration: 'none', whiteSpace: 'nowrap', lineHeight: 1.4, fontVariantNumeric: 'tabular-nums' }
 const RATE: CSSProperties = { fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }
 
-const PRESS: CSSProperties = { font: 'inherit', cursor: 'pointer' }
+const PRESS: CSSProperties = { fontFamily: 'inherit', cursor: 'pointer' }
 
 /**
  * `onRate` (PR 5): on the Bid Board the chip and *Rate them* open the master's sheet for that bid instead of leaving

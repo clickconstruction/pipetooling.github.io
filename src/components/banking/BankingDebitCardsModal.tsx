@@ -42,7 +42,7 @@ const smallBtn: CSSProperties = {
   background: 'var(--surface)',
   color: 'var(--text-base)',
   cursor: 'pointer',
-  font: 'inherit',
+  fontFamily: 'inherit',
 }
 const label: CSSProperties = { display: 'block', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 2 }
 
@@ -332,7 +332,7 @@ export function BankingDebitCardsModal({
                       disabled={busy}
                       aria-label={`Role of card ${formatMercuryDebitCardIdCompact(id)}`}
                       title={DEBIT_CARD_ROLE_OPTIONS.find((o) => o.key === role)?.hint}
-                      style={{ width: '100%', padding: '4px 6px', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit' }}
+                      style={{ width: '100%', padding: '4px 6px', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', fontFamily: 'inherit' }}
                     >
                       {DEBIT_CARD_ROLE_OPTIONS.map((o) => (
                         <option key={o.key} value={o.key}>

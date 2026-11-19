@@ -81,7 +81,7 @@ const EDIT_INK = '#2b3f9e'
 const paper: CSSProperties = { background: 'var(--surface)', color: INK, borderRadius: 10, padding: 'clamp(0.9rem, 3vw, 1.4rem) clamp(0.9rem, 3vw, 1.5rem) 1.4rem', font: '13px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', boxShadow: '0 4px 24px rgba(0,0,0,0.18)', border: `1px solid ${RULE}`, minWidth: 0 }
 const h2: CSSProperties = { font: '700 10px/1 -apple-system, "Segoe UI", Roboto, sans-serif', letterSpacing: '0.1em', textTransform: 'uppercase', color: BRAND, margin: '18px 0 6px' }
 const kv: CSSProperties = { color: 'var(--text-600)', fontSize: 12 }
-const ghost: CSSProperties = { color: 'var(--text-faint)', fontStyle: 'italic', fontSize: 11.5, background: 'none', border: 'none', padding: '1px 2px', font: 'inherit', cursor: 'pointer', textAlign: 'left', borderRadius: 4 }
+const ghost: CSSProperties = { color: 'var(--text-faint)', fontStyle: 'italic', fontSize: 11.5, background: 'none', border: 'none', padding: '1px 2px', fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left', borderRadius: 4 }
 const editorInput: CSSProperties = { width: '100%', boxSizing: 'border-box', font: 'inherit', fontSize: 13, color: INK, background: EDIT_BG, border: `1px solid ${EDIT_LINE}`, borderRadius: 4, padding: '3px 6px' }
 const chipBtn = (on: boolean): CSSProperties => ({ border: `1px solid ${on ? '#7b96f7' : '#cdd5e3'}`, borderRadius: 999, padding: '2px 9px', font: 'inherit', fontSize: 11, fontWeight: 600, color: on ? EDIT_INK : INK_2, background: on ? '#e6ecff' : 'var(--surface)', cursor: 'pointer' })
 const linkBtn: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: 11, color: '#4f63c4', textDecoration: 'underline', cursor: 'pointer' }

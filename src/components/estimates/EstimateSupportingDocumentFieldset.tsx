@@ -53,7 +53,7 @@ export default function EstimateSupportingDocumentFieldset({ label, url, onLabel
               marginTop: '0.25rem',
               padding: '0.5rem',
               boxSizing: 'border-box',
-              font: 'inherit',
+              fontFamily: 'inherit',
             }}
           />
         </label>
@@ -72,7 +72,7 @@ export default function EstimateSupportingDocumentFieldset({ label, url, onLabel
               marginTop: '0.25rem',
               padding: '0.5rem',
               boxSizing: 'border-box',
-              font: 'inherit',
+              fontFamily: 'inherit',
             }}
           />
         </label>
