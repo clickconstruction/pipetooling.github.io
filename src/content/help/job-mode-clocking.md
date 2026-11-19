@@ -111,7 +111,7 @@ The office can set a superintendent's **Dashboard view** to **Short**. With Job 
 - The job card's top stays as it is. Your next stop, today's stops and the buttons at the bottom do not move.
 - **Open this job** opens the rest of the card in place. You get the customer, photos, the ticket, checklists, materials on site and job updates.
 - Tap **This job** to fold it away again.
-- The pace line says ahead or behind in one line. Tap it for the full pace card. **Fold the pace card** closes it.
+- The pace line says ahead or behind in one line. Two thin bars sit under it. The blue bar is the work done. The amber bar is the hours in. Tap the line for the pace card. **Fold the pace card** closes it.
 - **Waiting on you** lists what only you can fix. The list shows only when something waits.
 - **Tomorrow** says how many stops you have and when the first is. Tap it to open the **Schedule** tab.
 - **Everything else** opens the full Dashboard for this visit. The second line of the row says how many courses you still have to do.
@@ -258,10 +258,15 @@ Nothing is emailed until they sign. If the office already sent this customer an 
 
 ## Read your project's line as a superintendent
 
-A superintendent on a project sees one more card on Job Mode, above the job's details. The card's first line says whether the job is ahead or behind at this pace. Under it, the strip is the labor budget. The real days the crew worked fill it. The stages divide it, with their names under the strip. The blue mark is the work done. The thin line at the bottom is the money.
+A superintendent on a project sees one more card on Job Mode, above the job's details. The card's first line says whether the job is ahead or behind at this pace. Under it, the job's stages run top to bottom. A stage with a tick is done. The stage with a filled circle is the one in hand. The last row is the finish day.
 
-- Tap a day on the strip to read who clocked and for how long. The day also shows the report.
-- When the office set expected hours for the job, the card reads them with 🎯. The line says who set them, when, from what, and why.
-- When the job is behind, the card names the one move. Press {{button:blue|Set the %}} to set the percent done. Press {{button:outline|Open the checklist}} to answer the stage's open questions.
+- Press {{button:blue|Set the %}} on the stage in hand to say how far along the work is. The window takes a number for each stage.
+- The **Hours** bar shows the hours in against the budget. It turns red when the job is behind.
+- When the job is behind, a row under **Finish** reads **At this pace** with the day this pace lands on. Press {{button:outline|Open the checklist}} to answer the stage's open questions.
+- Press **How this is figured** for the rest. It holds the strip with the days the crew worked and where the budget came from. It also holds the office's sign-off and your score this month.
+- Inside it, tap a day on the strip to read who clocked and for how long. The day also shows the report.
+- When the office set expected hours for the job, the same fold reads them with 🎯. The line says who set them, when, from what, and why.
 
-The office reads the same strip on its [Projects board](/help/see-where-every-project-stands-and-set-its-expected-hours). The two can never disagree, because they read one number.
+A job with fewer than two stages has no list. It shows one **Work** bar and the finish day in words.
+
+The office reads the same numbers on its [Projects board](/help/see-where-every-project-stands-and-set-its-expected-hours). The two can never disagree, because they read one number.

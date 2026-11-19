@@ -198,11 +198,11 @@ describe('LienFilingTabs · record steps', () => {
     onPhone(() => {
       const filed = { id: 'f-1', job_id: 'job-650', kind: 'affidavit', filed_at: '2026-10-01', serve_due: '2026-10-06', served_at: null, voided_at: null, county: 'Guadalupe', recording_number: '2026-0001', months_covered: [], sends: [], fields: {}, created_at: '2026-10-01T15:00:00Z' }
       renderWithProviders(<LienFilingTabs {...props({ activeTab: 'affidavit', isSub: false, filings: [filed as never] })} />)
-      fireEvent.click(screen.getByRole('button', { name: 'Record service…' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Enter mail numbers…' }))
       expect(sheet()!.getAttribute('data-lien-record-sheet')).toBe('affidavit_service')
       expect(sheet()!.querySelector('[data-lien-record-summary]')!.textContent).toContain('Service is due October 6, 2026.')
-      expect((screen.getByLabelText('Served on') as HTMLInputElement).type).toBe('date')
-      expect(sheet()!.querySelector('[data-lien-record-action]')!.textContent).toBe('Record service')
+      expect((screen.getByLabelText('Mailed on') as HTMLInputElement).type).toBe('date')
+      expect(sheet()!.querySelector('[data-lien-record-action]')!.textContent).toBe('Record the mailing')
     })
   })
 

@@ -252,7 +252,8 @@ the address is known at the moment of the press and nothing waits.
   the saved map either.
 - **[#345](../paint-a-map/README.md).** Its rule for copies and its privacy sentences are the list
   above. Nothing on the `/way` page changes.
-- **[#393](../painted-map-pins.md).** It works in the map's window and the place sheet. This card
+- **#393 (closed 2026-11-18, in [the Closed lines](../README.md)).** It worked in the map's window
+  and the place sheet. This card
   touches `PaintedMapShareSheet.tsx` and `PaintedMapCopies.tsx` only.
 
 This card can be built before #392. The share step is where the walk lost people, and it needs

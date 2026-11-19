@@ -40,6 +40,17 @@ vi.mock('../../hooks/useOverheadOfficeJobId', () => ({ useOverheadOfficeJobId: (
 let mobile = false
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => mobile }))
 const openExternal = vi.fn()
+// Time (punch list #395): the photo archive's walk, answered here with today's photograph and one older.
+vi.mock('../../lib/map/olderPhotosIo', () => ({
+  walkOlderPhotos: async (_spot: unknown, opts: { onChange: (found: unknown[]) => void }) => {
+    const found = [
+      { release: 900, publishedYmd: '2026-10-29', size: 5, takenYmd: '2025-02-09' },
+      { release: 700, publishedYmd: '2022-03-01', size: 3, takenYmd: '2021-03-20' },
+    ]
+    opts.onChange(found)
+    return found
+  },
+}))
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (u: string) => openExternal(u) }))
 vi.mock('../clock-sessions/AssignSessionJobPopover', async () => {
   const { useState } = await import('react')
@@ -193,6 +204,25 @@ describe('ClockedInMapModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
+  it('punch list #395: Time shows the one stop on earlier days, says the pins are people there now, and opens no popup over the photograph', async () => {
+    mount([vellano('a', 'Abraham')])
+    fireEvent.click(await screen.findByRole('button', { name: 'pin J1021 · Vellano Pinpoint · 1' }))
+    expect(screen.getByTestId('popup')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Streets' }).getAttribute('aria-pressed')).toBe('true')
+    const time = document.querySelector('[data-map-time-press]') as HTMLButtonElement
+    fireEvent.click(time)
+    await waitFor(() => expect(document.querySelector('[data-map-time-caption]')?.textContent).toBe('Today’s photo of J1021 · Vellano Pinpoint, taken February 9, 2025. 1 older photo.'))
+    expect(document.querySelector('[data-map-provider]')?.getAttribute('data-map-provider')).toBe('archive')
+    expect(screen.queryByTestId('popup')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Mar 2021' }))
+    expect(document.querySelector('[data-map-time-caption]')?.textContent).toBe('Photo taken March 20, 2021. The pins show who is there now.')
+    // The stop is still open in the list beside the map, with its doors.
+    expect(screen.getByRole('button', { name: /J1021 · Vellano Pinpoint.*Abraham/ }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(time)
+    expect(document.querySelector('[data-map-time-row]')).toBeNull()
+    expect(screen.getByTestId('popup')).toBeTruthy()
   })
 
   it('on a phone: the summary line, the selected stop as a bar under the map with two big buttons, the rest listed beneath', async () => {

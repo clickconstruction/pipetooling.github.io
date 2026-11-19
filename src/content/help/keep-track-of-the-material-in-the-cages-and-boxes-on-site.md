@@ -2,7 +2,7 @@
 title: keep track of the material in the cages and boxes on site
 category: Field Work
 roles: all
-keywords: materials on site, on site, materials page, track, where is it, find a box, lost box, lost cage, i found it, show where i am, move the pin by hand, sticker, reserved sticker, blank sticker, stick a sticker on a box, sticker is new, it is on a box i know, it is a new box, sticker name, named sticker, your jobs with boxes, find a part on any job, every job, this job, look on every job, scan a label, print the label, print the manifest, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
+keywords: materials on site, on site, take from a box, take parts out, photo before and after, as found, materials page, track, where is it, find a box, lost box, lost cage, i found it, show where i am, move the pin by hand, sticker, reserved sticker, blank sticker, stick a sticker on a box, sticker is new, it is on a box i know, it is a new box, sticker name, named sticker, your jobs with boxes, find a part on any job, every job, this job, look on every job, scan a label, print the label, print the manifest, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
 order: 66
 ---
 On a big job the material lives in stencilled cages and boxes left on the site. The On site tab on the Tally keeps what is in each one. The office then knows what is there, what was used and what walked away.
@@ -48,6 +48,32 @@ The office and a job's primary can file that request. A helper or a subcontracto
 
 Every press but Short is one row in the ledger. A wrong press gets a new press. Nothing is edited. Short writes a request, not a row in the box.
 
+## Take parts out of a box
+
+When you take parts out of a cage or box, the app asks for two photos. One shows the box as you found it. One shows the box after. Between them you say what you took.
+
+Open the box. Scanning its label opens it for you. Tap {{button:blue|Take from G12}} at the bottom of the screen. The camera opens. Take a photo of the box as you found it and tap Use Photo.
+
+Most boxes hold one kind of part. For those the screen asks **How many are you taking?** It starts on 1. Tap **+** or a quick number to change it. Tap **All 24** to take every piece.
+
+A box with more than one part lists what it holds. Tap a part to take one. Tap it again to take one more. Quick numbers show under a part you tapped. Tap one to set the count.
+
+Did you take a part the list does not show? Tap **Something not on the list…** and name it.
+
+Then tap the press at the bottom. It reads your count, like **Take 3 from G12**. The take is saved at once. The camera opens again. Take a photo of the box after and tap Use Photo. You are done.
+
+You can skip a photo. Close the camera with no shot and the app goes on. The screen reads **G12 has no photo as found.** Tap **Take the photo** to try again. After the take, tap **Finish without it** to leave the second photo out. The office sees which photo is missing.
+
+If you walk away, the box keeps your take for twelve hours. It reads *You started a take from G12 at 2:14 PM.* Tap **Finish it** to go on. Tap **Nothing taken** to put it away.
+
+With no signal the take and its photos are kept on the phone. They send by themselves when the signal is back.
+
+The app's number never stops you. If you take more than the app counted, the rest is recorded as found.
+
+While a box is open, the Tally's tabs are put away. Tap **‹** to go back to the boxes and the tabs.
+
+**Used** on a part's line still works. It takes parts out with no photo.
+
 ## Count a box
 
 A box is due a count after two weeks. Tap {{button:blue|Count this box}} and walk the lines. The walk shows every line that has parts, one at a time. A line marked can't find is in the walk too, even with none left. Your count clears the mark.
@@ -68,7 +94,7 @@ On a box, tap {{button:outline|Photo}}. For ten minutes after a count, an added 
 
 The picture shows on the box for everyone on the job. Tap a picture to open it whole. Tap **Close the photo** to go back. A dashed square means the picture is still on the phone that took it.
 
-With no signal the photo stays on the phone. Tap **Send now** when you have signal again, or **Share instead** to send it another way.
+With no signal the photo stays on the phone. It sends by itself when the signal is back. Tap **Send now** to send it at once. Tap **Share instead** to send it another way.
 
 ## With no signal
 

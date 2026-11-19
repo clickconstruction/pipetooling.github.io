@@ -67,6 +67,8 @@ export type LienBoardDestination =
   | { kind: 'run'; itemId: string; jobId: string }
   /** The job's Lien window on its affidavit tab. */
   | { kind: 'lienWindow'; jobId: string }
+  /** The window that says what closed and asks what to do (`lienClosedEnd.ts`): a chip at a closed end. */
+  | { kind: 'closed'; jobId: string }
 
 export type LienBoardChip = {
   jobId: string
@@ -412,6 +414,8 @@ function propertyFocus(gates: ReadonlyArray<{ key: LienAffidavitGateKey; ok: boo
 
 function noticeDestination(e: LienDeskEntry, stage: LienBoardNoticeStage): LienBoardDestination {
   switch (stage) {
+    case 'missed':
+      return { kind: 'closed', jobId: e.jobId }
     case 'needs_owner':
       return { kind: 'property', jobId: e.jobId, focus: 'owner' }
     case 'to_print':
@@ -441,6 +445,8 @@ function affidavitDestination(e: LienAffidavitEntry, stage: LienBoardAffidavitSt
     case 'filed':
     case 'served':
       return { kind: 'lienWindow', jobId: e.jobId }
+    case 'missed':
+      return { kind: 'closed', jobId: e.jobId }
     default:
       return { kind: 'paper', tab: 'affidavits', jobId: e.jobId }
   }
@@ -814,6 +820,21 @@ export function lienBoardLeaderBinPress(view: Pick<LienBoardLeaderView, 'chips' 
   return { label: countedLabel('Approve', ready, 'affidavit'), dead: ready <= 0, line: late > 0 ? `${late} ${plural(late, 'is', 'are')} past ${plural(late, 'its', 'their')} day and ${plural(late, 'stays', 'stay')} here.` : null }
 }
 
+/** The notices in *Approved · to sign*, by whose signature each waits on: the viewer's own, and another leader's. */
+export type LienBoardSignSplit = { mine: LienBoardChip[]; others: LienBoardChip[] }
+
+/**
+ * Whose the notices in *Approved · to sign* are (v2.7853, found on the live look at punch list #383). A notice takes
+ * the signature of the leader of its job, so the viewer's own are the ones on the jobs he leads (`leads`, the rule his
+ * *Approve N affidavits* counts by). His *Sign N notices ›* counts `mine`, and its door opens those alone. Until then
+ * the press counted every unsigned notice: a master who led none of the jobs read *Sign 7 notices ›*. A held paper
+ * never stands in this bin, and is left out as the bin's own count leaves it out.
+ */
+export function lienBoardSignSplit(board: Pick<LienBoard, 'notices'>, leads: (jobId: string) => boolean): LienBoardSignSplit {
+  const chips = board.notices.filter((b) => b.stage === 'to_sign').flatMap((b) => b.chips).filter((c) => !c.held)
+  return { mine: chips.filter((c) => leads(c.jobId)), others: chips.filter((c) => !leads(c.jobId)) }
+}
+
 /**
  * The papers that will not make their day as they stand (v2.7371): the chips the day tile's red line counts, by
  * `kind:jobId`, each with the stages it still has to pass. The To do list reads the same map, so the tile, the
@@ -1002,5 +1023,7 @@ export function lienBoardDoorWords(d: LienBoardDestination): string {
       return 'Open the run on this envelope'
     case 'lienWindow':
       return 'Open the job’s Lien window'
+    case 'closed':
+      return 'See what closed and answer it'
   }
 }

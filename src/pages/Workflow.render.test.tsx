@@ -6,7 +6,9 @@
  * the header, the stage list per role, the Hide Old Steps summary, the Projections & Ledger bar,
  * a subcontractor's filtered view, and what Approve does to the list — the approved card folds,
  * the next one opens; a refused write shows a banner over the page, while a denied load still
- * replaces it (v2.5108). Not a test of every region.
+ * replaces it (v2.5108). Since punch list #397 PR 1 opening a project with no workflow writes
+ * nothing: the page draws an empty state, and Start a workflow is the one press that makes it.
+ * Not a test of every region.
  */
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -28,8 +30,10 @@ const world = vi.hoisted(() => ({
   templateSteps: [] as Array<Record<string, unknown>>,
   writes: [] as Array<{ table: string; method: string; payload: unknown; id: unknown }>,
   stepReads: [] as Array<Array<{ method: string; args: unknown[] }>>,
-  /** The project has no workflow yet, so the page's load would make one. */
+  /** The project has no workflow yet. Opening the page makes none; an insert here gives it one. */
   noWorkflow: false,
+  /** The insert of a workflow is refused, as PostgREST answers it: a plain object with a code. */
+  refuseWorkflowInsert: false,
   /** The project is a GC project (a gc_projects row, v2.4846). */
   gcProject: false,
   /** Every update to a step is refused (v2.5108, the banner). */
@@ -43,7 +47,7 @@ vi.mock('../lib/supabase', () => {
   const arg = (steps: Step[], m: string, i = 0) => steps.find((s) => s.method === m)?.args[i]
   const eqValue = (steps: Step[], col: string) => steps.find((s) => s.method === 'eq' && s.args[0] === col)?.args[1]
 
-  function answer(table: string, steps: Step[]): { data: unknown; error: { message: string } | null } {
+  function answer(table: string, steps: Step[]): { data: unknown; error: { message: string; code?: string } | null } {
     const single = has(steps, 'single') || has(steps, 'maybeSingle')
     const list = (rows: Row[]) => ({ data: single ? (rows[0] ?? null) : rows, error: null })
     for (const m of ['insert', 'update', 'delete', 'upsert']) {
@@ -60,7 +64,11 @@ vi.mock('../lib/supabase', () => {
           return { data: [{ id: `new-${world.steps.length}` }], error: null }
         }
         if (table === 'project_workflows' && m === 'insert') {
-          return { data: { id: 'w-new', project_id: 'p1', name: 'Elm Street workflow', status: 'draft' }, error: null }
+          if (world.refuseWorkflowInsert) {
+            return { data: null, error: { message: 'new row violates row-level security policy for table "project_workflows"', code: '42501' } }
+          }
+          world.noWorkflow = false
+          return { data: { id: 'w1', project_id: 'p1', name: 'Elm Street workflow', status: 'draft' }, error: null }
         }
         if (table === 'project_workflow_step_actions' && m === 'insert') {
           return { data: { id: `act-${world.writes.length}`, ...(arg(steps, m) as Row) }, error: null }
@@ -226,6 +234,7 @@ afterEach(() => {
   world.templates = []
   world.templateSteps = []
   world.noWorkflow = false
+  world.refuseWorkflowInsert = false
   world.gcProject = false
   world.refuseStepUpdates = false
   world.failStepReads = false
@@ -240,14 +249,90 @@ describe('Workflow page', () => {
     expect(await screen.findByText('This is a GC project.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Open it on GC projects' }).getAttribute('href')).toBe('/gc?focus=p1')
     await settle()
-    expect(world.writes.filter((w) => w.table === 'project_workflows')).toEqual([])
+    expect(world.writes).toEqual([])
+    expect(screen.queryByRole('button', { name: 'Start a workflow' })).toBeNull()
   })
 
-  it('a plumbing project with no workflow still gets its draft one on open', async () => {
+  it('opening a project with no workflow writes nothing and offers Start a workflow (punch list #397 PR 1)', async () => {
     world.noWorkflow = true
     renderWorkflow('dev', [])
-    await waitFor(() => expect(world.writes.some((w) => w.table === 'project_workflows' && w.method === 'insert')).toBe(true))
+    const empty = await screen.findByText('No workflow on this project yet. Steps you add here show to the people they are assigned to.')
+    expect(empty.closest('[data-empty-state]')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Start a workflow' })).toBeTruthy()
+    await settle()
+    // The staggered reads (projections, POs, line items) have had their turn too.
+    await new Promise((r) => setTimeout(r, 300))
+    expect(world.writes).toEqual([])
     expect(screen.queryByText('This is a GC project.')).toBeNull()
+    // The project is still named, and nothing that needs a workflow is offered beside the one press.
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('Elm Street')
+    expect(screen.queryByRole('button', { name: 'Add step' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Create from template' })).toBeNull()
+  })
+
+  it('one press on Start a workflow sends exactly one insert, then the page loads as before', async () => {
+    world.noWorkflow = true
+    renderWorkflow('dev', [])
+    const start = await screen.findByRole('button', { name: 'Start a workflow' })
+    await settle()
+    await act(async () => {
+      fireEvent.click(start)
+      // A second press while the first runs joins it.
+      fireEvent.click(start)
+    })
+    expect(await screen.findByText('No steps yet. Add a step or create from a template.')).toBeTruthy()
+    await settle()
+    expect(world.writes).toEqual([
+      { table: 'project_workflows', method: 'insert', payload: { project_id: 'p1', name: 'Elm Street workflow', status: 'draft' }, id: undefined },
+    ])
+    expect(screen.queryByText(/No workflow on this project yet/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Add step' })).toBeTruthy()
+  })
+
+  it('a role that cannot start one reads the first sentence alone, with no press', async () => {
+    world.noWorkflow = true
+    world.userName = 'Sam Sub'
+    renderWorkflow('subcontractor', [])
+    const empty = await screen.findByText('No workflow on this project yet.')
+    expect(empty.closest('[data-empty-state]')!.textContent).toBe('No workflow on this project yet.')
+    expect(screen.queryByRole('button', { name: 'Start a workflow' })).toBeNull()
+    await settle()
+    expect(world.writes).toEqual([])
+    world.userName = 'Pat Office'
+  })
+
+  it('a superintendent manages steps but the database refuses their insert, so they get no press either', async () => {
+    world.noWorkflow = true
+    renderWorkflow('superintendent', [])
+    const empty = await screen.findByText('No workflow on this project yet.')
+    expect(empty.closest('[data-empty-state]')!.textContent).toBe('No workflow on this project yet.')
+    expect(screen.queryByRole('button', { name: 'Start a workflow' })).toBeNull()
+    await settle()
+    expect(world.writes).toEqual([])
+  })
+
+  it('a controller gets the press', async () => {
+    world.noWorkflow = true
+    renderWorkflow('controller', [])
+    expect(await screen.findByRole('button', { name: 'Start a workflow' })).toBeTruthy()
+    await settle()
+    expect(world.writes).toEqual([])
+  })
+
+  it('a refused Start a workflow shows its reason in the banner and keeps the press', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    world.noWorkflow = true
+    world.refuseWorkflowInsert = true
+    renderWorkflow('dev', [])
+    const start = await screen.findByRole('button', { name: 'Start a workflow' })
+    await settle()
+    await act(async () => {
+      fireEvent.click(start)
+    })
+    const banner = await screen.findByRole('alert')
+    expect(banner.textContent).toMatch(/The workflow could not be started\. \S/)
+    expect(screen.getByRole('button', { name: 'Start a workflow' })).toBeTruthy()
+    expect(world.writes.filter((w) => w.table === 'project_workflows')).toHaveLength(1)
   })
 
   it('draws the project and every stage, each at its #step- anchor, open or folded by status', async () => {

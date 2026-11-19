@@ -360,7 +360,7 @@ export function lineTripDoors(args: { lines: ReadonlyArray<{ id: string; trip_id
 export function tripDeleteLineWords(line: TripBillLine | null, jobShort: string | null): string | null {
   if (!line) return null
   const job = jobShort?.trim()
-  return `Its line stays on ${job ? possessive(job) : 'the job’s'} lines, with its words and its price. Undo or Put back brings the trip back, but the line is no longer tied to it.`
+  return `Its line stays on ${job ? possessive(job) : 'the job’s'} lines, with its words and its price. Undo or Put back ties the trip to it again.`
 }
 
 /**

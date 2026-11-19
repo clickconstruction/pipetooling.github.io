@@ -10,7 +10,7 @@ describe('legalPaperNextDoor — the Legal desk’s door to the next lien step (
 
   it('the affidavit, its service and the release open the Lien window on their tab', () => {
     expect(legalPaperNextDoor({ kind: 'affidavit' })).toEqual({ label: 'Go to the affidavit…', to: 'window', tab: 'affidavit' })
-    expect(legalPaperNextDoor({ kind: 'serve' })).toEqual({ label: 'Record the service…', to: 'window', tab: 'affidavit' })
+    expect(legalPaperNextDoor({ kind: 'serve' })).toEqual({ label: 'Enter mail numbers…', to: 'window', tab: 'affidavit' })
     expect(legalPaperNextDoor({ kind: 'release' })).toEqual({ label: 'Record the release…', to: 'window', tab: 'release_record' })
   })
 

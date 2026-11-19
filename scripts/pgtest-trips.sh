@@ -20,6 +20,7 @@
 # the one function that writes it.
 # A fifth, 60_deleted.sql, holds deleted trips (*_trips_deleted): what the archive keeps of one, who reads a site's,
 # and a trip put back under its own id.
+# A sixth, 70_line_tie.sql, holds the line's tie (*_trip_line_tie): a trip put back is tied to the line it held.
 # Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration.
 # Never touches prod.
 set -euo pipefail
@@ -28,7 +29,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55829}"
 NAME="pgtest-trips"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_trips.sql supabase/migrations/*_trips_phone.sql supabase/migrations/*_trip_numbers.sql supabase/migrations/*_trip_bill_line.sql supabase/migrations/*_trips_deleted.sql)"
+WRITES="$(ls supabase/migrations/*_trips.sql supabase/migrations/*_trips_phone.sql supabase/migrations/*_trip_numbers.sql supabase/migrations/*_trip_bill_line.sql supabase/migrations/*_trips_deleted.sql supabase/migrations/*_trip_line_tie.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -70,5 +71,10 @@ grep -o "ok: .*" <<<"$out"
 # site's deleted trips, a trip put back with its number, and the dev's own restore on a trip's bundle.
 out="$(psql_as postgres -f - < supabase/tests/trips/60_deleted.sql 2>&1 || true)"
 if ! grep -q "trips deleted PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+# The line's tie (*_trip_line_tie): the trip's capture keeps the line it held, a put back ties it again, and a line
+# that is gone or taken by another trip is left alone.
+out="$(psql_as postgres -f - < supabase/tests/trips/70_line_tie.sql 2>&1 || true)"
+if ! grep -q "trips line tie PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "trips bed ok"

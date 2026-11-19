@@ -174,7 +174,7 @@ The affidavit needs six things.
 
 **Counsel has not read this.** The app prints the served copy from its own record of the affidavit. That page shows no signature, seal or clerk's stamp. Counsel has not said it counts as the copy. Counsel has not read the cover letter that goes with it.
 
-**What you do.** Open the job's Lien window on the Lien affidavit tab. It checks the six facts first. A missing GC address is typed on the GC's customer record. Press {{button:outline|Record filing}} to record the filing. A red Needs you card watches the serve-by date. Press {{button:outline-blue|Print the copies to mail}} for the letter and the copy each envelope takes. Press {{button:outline|Record service}} to record the service. It keeps each copy's certified mail number and a photo of its receipt. [Open the Affidavits list](/lien-desk?tab=affidavits).
+**What you do.** Open the job's Lien window on the Lien affidavit tab. It checks the six facts first. A missing GC address is typed on the GC's customer record. Press {{button:outline|Record filing}} to record the filing. A red Needs you card watches the serve-by date. Press {{button:outline-blue|Print the copies to mail}} for the letter and the copy each envelope takes. Press {{button:outline|Enter mail numbers…}} to record the mailing. It keeps each copy's certified mail number and a photo of its receipt. [Open the Affidavits list](/lien-desk?tab=affidavits).
 
 **Cite.** *§ 53.052, § 53.054, § 53.055*
 
