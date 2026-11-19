@@ -18,6 +18,7 @@ import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { mergeScopedRows, NON_PAID_SCOPES, type JobsBoardScope } from '../lib/jobs/boardScopes'
 import { applyStagesEnrichment, patchJobsById } from '../lib/jobs/stagesEnrichment'
 import { boardIsFreshForTab } from '../lib/jobs/boardRefetchTtl'
+import { keptBoardFlags } from '../lib/jobs/keptBoardFlags'
 import { useKeptRead } from '../hooks/useKeptRead'
 import { buildKeptReadKey } from '../lib/keptRead'
 import type { StagesHeaderStats } from '../lib/jobs/stagesHeaderStats'
@@ -579,10 +580,10 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const value: JobsListCacheContextValue = {
     jobs: visibleJobs,
     setJobs,
-    // While the kept rows show (v2.3610 / v2.6031): loading off, refreshing on until the live read settles.
-    jobsListLoading: showingKept ? false : jobsListLoading,
+    // While the kept rows show (v2.3610 / v2.6031): loading off, refreshing on until the last read
+    // landed, the enrichment too, or the live read failed (`keptBoardFlags`).
+    ...keptBoardFlags({ showingKept, loading: jobsListLoading, refreshing: jobsListRefreshing, enriching: jobsListEnriching, keptFailed: kept.failed }),
     jobsListEnriching,
-    jobsListRefreshing: showingKept ? jobsListLoading || jobsListRefreshing : jobsListRefreshing,
     jobsListSnapshotAt,
     // Compat derivations (pre-v2.1823 consumers): paid is just one scope now.
     paidJobsLoading: scopeLoading.has('paid'),
