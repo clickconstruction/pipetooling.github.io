@@ -90,7 +90,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 | Lines | Symbol | Region |
 |---|---|---|
 | 1–100 | imports | 73 local, 2 packages |
-| 102–129 | `navStyle`, `dropdownLinkStyle`, `IMPERSONATION_KEY`, `HEADER_ACTION_BUTTON_HEIGHT`, `headerActionButtonBase` | F / G / J |
+| 102–129 | `navStyle`, `dropdownLinkStyle`, `IMPERSONATION_KEY`, `HEADER_ACTION_BUTTON_HEIGHT`, `HEADER_ACTION_BUTTON_FONT_SIZE` (v2.7812), `headerActionButtonBase` | F / G / J |
 | 132–139 | router, `useAuth`, `useIsDigitalTwin`, `useIsPartner`, `useTheme`, `useAppActivityHeartbeat` | shell |
 | 141–145 | dismissal-sync effect | D |
 | 146–198 | Job/Task/Pin/Dispatch mode hooks, locality effect (168–172), `useAssistantDispatchLanding` (177), `jobModeContactPhone` (183), PO-tab state + effect (186–198) | E (+D, C) |

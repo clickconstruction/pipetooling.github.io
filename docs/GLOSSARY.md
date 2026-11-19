@@ -3093,10 +3093,12 @@ Beside the place the giver may add one **Photo of the spot** (`TaskSpotPhotoFiel
 It shows where tasks are and never where a person is.
 Since v2.7686 it draws on Google Maps through the shared `PinsMapGoogleCanvas`, **Satellite** as Google's `hybrid` and **Streets** as its `roadmap` (`googleMapTypeForLayer` in `lib/map/googleMapType.ts`), and falls back to the Leaflet canvas with no browser key or once Google fails on the page.
 Since v2.7794 (punch list #395) the card draws in the shared frame `PinsMapFrame`, which holds the provider rule, the **Satellite** and **Streets** switch (`MapViewControl`) and **Time**.
+Since v2.7809 *Where my tasks are* draws in it too, on its Leaflet half, where Time looks at a task's place and never at the person's own dot.
 **Time** (v2.7794, which began as **Older photos**, v2.7693) is the press on a map that frames one spot on the photo archive and opens a row of dates under the map (`MapTimeRow`), from Esri's World Imagery Wayback (`lib/map/olderPhotos.ts`, `walkOlderPhotos`).
 The spot is the open dot, or the only dot, and with several dots and none open the row asks for a press on a dot (`mapTimeSpotFromPins` and `MAP_TIME_NO_SPOT_WORDS` in `lib/map/mapTime.ts`).
 **Today** is the right end of that row and is today's photograph of the same ground, so a date and Today are one tile layer apart and the map does not move between them.
 A photograph is named by the day it was taken, and **Before** its publishing month until that day is known.
+Since v2.7870 the row reads *Looking through the archive…* until the walk for the spot asked about is over (`olderPhotosForAsk`), and the sentence over it counts the older photographs only then (`mapTimeCaption`), since two stops taken on one day are one photograph and a running count would fall.
 The Google map is down for as long as Time is on, since Google's terms keep another provider's map off and away from its own, and **Time** again, **Satellite** or **Streets** returns to it.
 Whether Time is on, its spot and its date are kept nowhere (`useMapTime`): they end when the map leaves the screen.
 A map draws in the frame to get all of this, and no doc lists which maps do: each map's own entry or architecture doc says so, and its release fragment says when.

@@ -55,3 +55,5 @@ Nothing changes. The policies on `people_pay_config` are by row, so whoever may 
 ## Order
 
 Additive and idempotent. No `CREATE TABLE`, so no fence calls. The lock is an `ALTER TABLE` on a small table, under the 3 second timeout. A column added with a constant default does not rewrite the table. The push can come any time after the merge. **The client that follows must not merge before the push**: it names the column in the read of the pay row.
+
+**Applied** to prod by 2026-11-18: the dev seat's `check_migration_ledger` read 1,380 versions applied against 1,381 local files, this version among them and `20261118190000` alone still to push (read in the docs pass after #8710).
