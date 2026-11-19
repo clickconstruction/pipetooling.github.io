@@ -210,17 +210,17 @@ describe('a twin\'s keys from the dev seat (v2.7900)', () => {
     // Every read of the table in the seat goes through the one column list, and the write asks for the id alone.
     const reads = SERVER.match(/restGet\(session, 'twin_credentials', `select=([^&`]+)/g) ?? []
     // v2.7918: the rung pair reads the twin's live keys by its own, shorter list (devMcpTwinRung.test.ts).
-    expect(reads.map((r) => /select=\$\{(\w+)\}/.exec(r)?.[1])).toEqual(['TWIN_KEY_SELECT', 'TWIN_KEY_SELECT', 'TWIN_RUNG_KEY_SELECT'])
+    expect(reads.map((r) => /select=\$\{(\w+)\}/.exec(r)?.[1])).toEqual(['TWIN_KEY_SELECT', 'TWIN_KEY_SELECT', 'TWIN_RUNG_KEY_SELECT', 'PRICER_KEY_SELECT']) // v2.7958: the price matrix plan counts a pricing robot's live keys by id (devMcpPriceMatrix.test.ts)
     expect(branch).toContain("await restRows(session, 'PATCH', 'twin_credentials', `id=eq.${key.id}&revoked_at=is.null&select=id`, patch, 'return=representation')")
     expect(SERVER.match(/rest(Rows|Post)\(session, '(PATCH|POST|DELETE)', 'twin_credentials'/g)).toHaveLength(1) // one write of the table, and it is this one
     expect(branch).not.toContain('token_hash')
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.113.0'")
-    expect(SERVER).toContain('Writes are one hundred and thirty-nine verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.114.0'")
+    expect(SERVER).toContain('Writes are one hundred and forty-one verbs and nothing else')
     expect(SERVER).toContain('plan_twin_key_revoke → apply_twin_key_revoke (a twin')
     expect(README).toContain('| `read_twin_keys(twin?)` · `plan_twin_key_revoke(revoke)` · `apply_twin_key_revoke(revoke, plan_hash)` |')
     expect(README).toContain("one hundred and thirty-one since v2.7900's key revoke")
-    expect(README).toContain('one hundred and thirty-nine `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('one hundred and forty-one `plan_` / `apply_` / `revert_` verbs')
     expect(EDGE).toContain("v2.7900 (server 0.107.0) — a twin's keys listed, and one cut off")
   })
 })
