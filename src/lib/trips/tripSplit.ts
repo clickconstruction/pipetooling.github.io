@@ -21,7 +21,7 @@ export const TRIP_SPLIT_BUSY_LABEL = 'Splitting the trip…'
 export const TRIP_SPLIT_PICK_CAP = 'The second trip starts on'
 export const TRIP_SPLIT_PICK_FIRST = 'Pick the day the second trip starts.'
 export const TRIP_SPLIT_KEEPS_NOTE = 'Both trips keep what it was for, who asked, how it went and the jobs. No clock row, bill or cost changes.'
-export const TRIP_SPLIT_NO_UNDO_NOTE = 'A split has no undo. To take one back, delete the new trip and add its days to the first with Change.'
+export const TRIP_SPLIT_BACK_NOTE = 'To take a split back, open the first trip and press Join with the next.'
 export const TRIP_SPLIT_FAILED_WORDS = 'The trip was not split.'
 
 /** One day of a trip, with everyone on it. */

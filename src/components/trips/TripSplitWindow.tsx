@@ -17,7 +17,7 @@ import {
   TRIP_SPLIT_BUSY_LABEL,
   TRIP_SPLIT_CONFIRM_LABEL,
   TRIP_SPLIT_KEEPS_NOTE,
-  TRIP_SPLIT_NO_UNDO_NOTE,
+  TRIP_SPLIT_BACK_NOTE,
   TRIP_SPLIT_PICK_CAP,
   TRIP_SPLIT_PICK_FIRST,
   tripSplitBillNote,
@@ -136,7 +136,7 @@ export function TripSplitWindow({
               </div>
             ) : null}
             <div style={quiet}>{TRIP_SPLIT_KEEPS_NOTE}</div>
-            <div style={quiet}>{TRIP_SPLIT_NO_UNDO_NOTE}</div>
+            <div style={quiet}>{TRIP_SPLIT_BACK_NOTE}</div>
           </div>
         </div>
         <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

@@ -23,8 +23,8 @@ afterEach(cleanup)
 const TODAY = '2026-11-18'
 const KEPT: TripRecord = { ...newTripRecord({ id: 't5', developmentId: 'd1' }), tripNumber: 5, purpose: 'Set the lodge fixtures', people: [{ personId: null, userId: null, name: 'Dana', days: { '2026-11-03': 'site' } }] }
 const GONE: DeletedTripLine[] = [
-  { id: 't3', name: 'Trip 3 · Nov 9 to 11', why: 'Reset the riser the framers moved', who: 'Luis, Priya', deleted: 'Deleted Nov 18 by Dana Office', kept: 'kept until Feb 16', gone: null, pressLabel: 'Put back Trip 3, Nov 9 to 11' },
-  { id: 't1', name: 'Trip 1 · Oct 12', why: 'Walk the site', who: 'Luis', deleted: 'Deleted Nov 2 by Marcus Master', kept: 'kept until Jan 31', gone: 'A job it named is gone since.', pressLabel: 'Put back Trip 1, Oct 12' },
+  { id: 't3', name: 'Trip 3 · Nov 9 to 11', why: 'Reset the riser the framers moved', who: 'Luis, Priya', deleted: 'Deleted Nov 18 by Dana Office', kept: 'kept until Feb 16', gone: null, joined: null, pressLabel: 'Put back Trip 3, Nov 9 to 11' },
+  { id: 't1', name: 'Trip 1 · Oct 12', why: 'Walk the site', who: 'Luis', deleted: 'Deleted Nov 2 by Marcus Master', kept: 'kept until Jan 31', gone: 'A job it named is gone since.', joined: null, pressLabel: 'Put back Trip 1, Oct 12' },
 ]
 
 function draw(over: { records?: TripRecord[]; deleted?: DeletedTripLine[]; deletedFailed?: boolean; canWrite?: boolean; putBackBusy?: boolean; noPress?: boolean; phone?: boolean } = {}) {
@@ -128,5 +128,17 @@ describe('Deleted trips on the Trips look', () => {
     draw({ phone: true })
     openFold()
     expect(screen.getAllByTestId('trips-deleted-row')).toHaveLength(2)
+  })
+
+  it('a trip that was joined into another says where its days are, and has no Put back', () => {
+    const onPutBack = draw({ deleted: [{ ...GONE[0]!, deleted: 'Joined into Trip 5 on Nov 18 by Dana Office', joined: 'Its days are on Trip 5. To take the join back, press Split in two on Trip 5.' }, GONE[1]!] })
+    openFold()
+    const rows = screen.getAllByTestId('trips-deleted-row')
+    expect(rows[0]?.textContent).toContain('Joined into Trip 5 on Nov 18 by Dana Office')
+    expect(within(rows[0]!).getByTestId('trips-deleted-joined').textContent).toBe('Its days are on Trip 5. To take the join back, press Split in two on Trip 5.')
+    expect(within(rows[0]!).queryByTestId('trips-deleted-put-back')).toBeNull()
+    // The trip somebody deleted keeps its press.
+    fireEvent.click(within(rows[1]!).getByRole('button', { name: 'Put back' }))
+    expect(onPutBack).toHaveBeenCalledWith('t1')
   })
 })
