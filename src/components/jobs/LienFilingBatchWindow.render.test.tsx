@@ -34,10 +34,11 @@ function open(over: Partial<Parameters<typeof LienFilingBatchWindow>[0]> = {}) {
     onMailCopies: vi.fn(),
     record: vi.fn(async (args: { target: LienFilingTarget; file?: File | null }) => ({ filingId: `filing-${args.target.jobId}`, scanProblem: '', scanSaved: Boolean(args.file) })),
     saveScan: vi.fn(async () => ''),
+    takeBack: vi.fn(async () => 'approved' as const),
     ...over,
   }
   renderWithProviders(<LienFilingBatchWindow {...(props as unknown as Parameters<typeof LienFilingBatchWindow>[0])} />)
-  return props as typeof props & { record: ReturnType<typeof vi.fn>; saveScan: ReturnType<typeof vi.fn> }
+  return props as typeof props & { record: ReturnType<typeof vi.fn>; saveScan: ReturnType<typeof vi.fn>; takeBack: ReturnType<typeof vi.fn> }
 }
 const numberBox = (n: string) => screen.getByRole('textbox', { name: `Job JP${n}, document number` }) as HTMLInputElement
 const row = (n: string) => document.querySelector(`[data-lien-filing-row="JP${n}"]`) as HTMLElement
@@ -166,7 +167,7 @@ describe('LienFilingBatchWindow', () => {
     expect(row('9007').getAttribute('data-lien-filing-recorded')).toBe('yes')
   })
 
-  it('saves a stamped file at once on a lien already on record, and opens the Lien window to take one back', async () => {
+  it('saves a stamped file at once on a lien already on record', async () => {
     const props = open()
     fireEvent.change(numberBox('9004'), { target: { value: '20260229004' } })
     fireEvent.keyDown(numberBox('9004'), { key: 'Enter' })
@@ -175,8 +176,77 @@ describe('LienFilingBatchWindow', () => {
     await waitFor(() => expect(props.saveScan).toHaveBeenCalledTimes(1))
     expect((props.saveScan.mock.calls[0]![0] as { filingId: string; number: string }).filingId).toBe('filing-job-9004')
     await waitFor(() => expect(row('9004').querySelector('[data-lien-filing-file="saved"]')).not.toBeNull())
-    fireEvent.click(row('9004').querySelector('[data-lien-filing-take-back]') as HTMLButtonElement)
-    expect(props.onOpenLien).toHaveBeenCalledWith('job-9004')
+  })
+
+  describe('Take it back on a recorded line (v2.7892)', () => {
+    const recordOne = async (props: ReturnType<typeof open>) => {
+      fireEvent.change(numberBox('9004'), { target: { value: '20260229004' } })
+      fireEvent.keyDown(numberBox('9004'), { key: 'Enter' })
+      await waitFor(() => expect(row('9004').getAttribute('data-lien-filing-recorded')).toBe('yes'))
+      expect(props.record).toHaveBeenCalledTimes(1)
+    }
+
+    it('asks first, voids that filing on the second press, and opens the line again for the right number', async () => {
+      const props = open()
+      await recordOne(props)
+      // The first press writes nothing and sends nobody to another window.
+      fireEvent.click(within(row('9004')).getByRole('button', { name: 'Take it back' }))
+      expect(props.takeBack).not.toHaveBeenCalled()
+      expect(props.onOpenLien).not.toHaveBeenCalled()
+      expect(row('9004').querySelector('[data-lien-filing-take-back-ask]')?.textContent).toContain('Recorded by mistake? This voids the filing and puts the lien back in Ready to file.')
+      fireEvent.click(within(row('9004')).getByRole('button', { name: 'Confirm take back' }))
+      await waitFor(() => expect(row('9004').getAttribute('data-lien-filing-recorded')).toBe('no'))
+      expect(props.takeBack).toHaveBeenCalledTimes(1)
+      expect(props.takeBack).toHaveBeenCalledWith({ id: 'filing-job-9004', kind: 'affidavit' })
+      expect(row('9004').querySelector('[data-lien-filing-said="ok"]')?.textContent?.trim()).toBe('Taken back. The filing is voided and the lien is in Ready to file again.')
+      // The box is back, empty, and counts as waiting again.
+      expect(numberBox('9004').value).toBe('')
+      expect(document.querySelector('[data-lien-filing-lead]')?.textContent).toBe('3 liens are approved and not yet on record as filed.')
+      // The right number records the lien again, as a second filing.
+      fireEvent.change(numberBox('9004'), { target: { value: '20260229014' } })
+      fireEvent.keyDown(numberBox('9004'), { key: 'Enter' })
+      await waitFor(() => expect(row('9004').getAttribute('data-lien-filing-recorded')).toBe('yes'))
+      expect(props.record).toHaveBeenCalledTimes(2)
+      expect((props.record.mock.calls[1]![0] as { number: string }).number).toBe('20260229014')
+    })
+
+    it('Keep it writes nothing and leaves the lien on record', async () => {
+      const props = open()
+      await recordOne(props)
+      fireEvent.click(within(row('9004')).getByRole('button', { name: 'Take it back' }))
+      fireEvent.click(within(row('9004')).getByRole('button', { name: 'Keep it' }))
+      expect(props.takeBack).not.toHaveBeenCalled()
+      expect(row('9004').getAttribute('data-lien-filing-recorded')).toBe('yes')
+      expect(within(row('9004')).getByRole('button', { name: 'Take it back' })).toBeTruthy()
+    })
+
+    it('says why a take-back did not land, with the lien still on record', async () => {
+      const props = open({ takeBack: vi.fn(async () => { throw { message: 'the network dropped' } }) as never })
+      await recordOne(props)
+      fireEvent.click(within(row('9004')).getByRole('button', { name: 'Take it back' }))
+      fireEvent.click(within(row('9004')).getByRole('button', { name: 'Confirm take back' }))
+      await waitFor(() => expect(row('9004').querySelector('[data-lien-filing-said="bad"]')?.textContent?.trim()).toBe('Not taken back: the network dropped. The lien is still on record as filed.'))
+      expect(row('9004').getAttribute('data-lien-filing-recorded')).toBe('yes')
+    })
+
+    it('warns when the filing is voided and its paper did not move', async () => {
+      const props = open({ takeBack: vi.fn(async () => 'still_sent' as const) as never })
+      await recordOne(props)
+      fireEvent.click(within(row('9004')).getByRole('button', { name: 'Take it back' }))
+      fireEvent.click(within(row('9004')).getByRole('button', { name: 'Confirm take back' }))
+      await waitFor(() => expect(row('9004').querySelector('[data-lien-filing-said="warn"]')?.textContent?.trim()).toBe('Taken back. The filing is voided. Its paper still reads as filed on the Lien desk. Tell your lead.'))
+    })
+
+    it('the desk reads again on the way out even when the only record was taken back', async () => {
+      const props = open()
+      await recordOne(props)
+      fireEvent.click(within(row('9004')).getByRole('button', { name: 'Take it back' }))
+      fireEvent.click(within(row('9004')).getByRole('button', { name: 'Confirm take back' }))
+      await waitFor(() => expect(row('9004').getAttribute('data-lien-filing-recorded')).toBe('no'))
+      fireEvent.click(document.querySelector('[data-lien-filing-close]') as HTMLButtonElement)
+      expect(props.onChanged).toHaveBeenCalledTimes(1)
+      expect(props.onClose).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('sends a lien the desk cannot draw to its own Lien window, and has a good empty state', () => {

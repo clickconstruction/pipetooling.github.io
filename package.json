@@ -168,6 +168,7 @@
     "test:pg:walk-kit": "bash scripts/pgtest-walk-kit.sh",
     "test:pg:bed-apply": "bash scripts/pgtest-bed-apply.sh",
     "test:pg:lien-release-sign": "bash scripts/pgtest-lien-release-sign.sh",
+    "test:pg:lien-void-paper": "bash scripts/pgtest-lien-void-paper.sh",
     "test:pg:archived-seal": "bash scripts/pgtest-archived-seal.sh",
     "test:pg:away-notes": "bash scripts/pgtest-away-notes.sh",
     "test:pg:permit-skim": "bash scripts/pgtest-permit-skim.sh",
