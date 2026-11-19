@@ -22,6 +22,7 @@ import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/bill
 import { buildLienAffidavitQueue, withContractorAddress, withHomesteadAnswer, withPublicOwner, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, parsePaymentBond, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
 import { LIEN_DESK_STARTED_READ_DAYS, lienDeskKeepNoticeRows, lienDeskKeepRows } from '../lib/jobs/lienDeskStarted'
+import { withLienClosedDays } from '../lib/jobs/lienClosedDays'
 import { letterTwoByJobFrom, letterTwoMailClocksFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
 import { lastCourtesyAtByJob } from '../lib/jobs/lienCourtesyReply'
 import { readCourtesyOwnerContacts, readCourtesyRepliesByJob, type CourtesyReplySource } from '../lib/jobs/lienCourtesyReplyIo'
@@ -235,13 +236,15 @@ export function useLienDeskData(
         // The three readers are asked further ahead than the desk's lead (v2.7261, punch list #354), and the rows past the
         // lead are kept only on a job with a started paper of that kind (`lienDeskStarted.ts`), so a drafted, held or
         // approved paper due in six weeks is on the desk and nothing else past thirty days is.
-        const [rowsRaw, itemsRaw, affRaw, retRaw, unrecordedRead] = await Promise.all([
+        const [rowsRaw, itemsRaw, affRaw, closedRaw, retRaw, unrecordedRead] = await Promise.all([
           withSupabaseRetry(() => supabase.rpc('list_lien_notice_months', { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never), 'lien desk: due months'),
           withSupabaseRetry(
             () => supabase.from('job_lien_desk_items').select('*').is('voided_at', null).order('created_at', { ascending: false }),
             'lien desk: items',
           ),
           withSupabaseRetry(() => supabase.rpc('list_lien_affidavit_windows', { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never), 'lien desk: affidavit windows').catch(() => []),
+          // The lien days that passed with nothing filed and no answer (v2.7817): the windows reader stops listing a job seven days after its day, and this one keeps it from the eighth. Read in light mode too, so the Dashboard's strip and the Board agree. Empty until its migration is pushed, and on any failed read, never the desk dark.
+          withSupabaseRetry(() => supabase.rpc('list_lien_closed_days' as never), 'lien desk: closed lien days').catch(() => []),
           // The retainage reader (v2.3753) — empty until its migration is pushed, so the client can ship first.
           withSupabaseRetry(() => supabase.rpc('list_lien_retainage_windows' as never, { p_within_days: LIEN_DESK_STARTED_READ_DAYS } as never), 'lien desk: retainage windows').catch(() => []),
           // Retainage nobody recorded (fix A of the retainage clock check): the desk's own read, never the Dashboard's light one. A refused read says why on the Retainage list and leaves the desk standing.
@@ -262,7 +265,7 @@ export function useLienDeskData(
           itemsRead,
           todayYmd,
         )
-        const affidavitRowsRead = lienDeskKeepRows(((affRaw ?? []) as unknown as LienAffidavitRow[]).map((r) => ({ ...r, open_balance: Number(r.open_balance) || 0 })), itemsRead, 'affidavit', todayYmd)
+        const affidavitRowsRead = lienDeskKeepRows(withLienClosedDays((affRaw ?? []) as unknown as LienAffidavitRow[], (closedRaw ?? []) as unknown as LienAffidavitRow[]).map((r) => ({ ...r, open_balance: Number(r.open_balance) || 0 })), itemsRead, 'affidavit', todayYmd)
         const retainageRowsRead = lienDeskKeepRows(((retRaw ?? []) as unknown as LienRetainageRow[]).map((r) => ({ ...r, retainage_held: Number(r.retainage_held) || 0, open_balance: Number(r.open_balance) || 0 })), itemsRead, 'retainage_53_057', todayYmd)
         const jobIdsRead = [...new Set([...rowsRead.map((r) => r.job_id), ...itemsRead.map((i) => i.job_id), ...affidavitRowsRead.map((r) => r.job_id), ...retainageRowsRead.map((r) => r.job_id)])]
 

@@ -19,6 +19,7 @@ gc-back-charges
 lien-claim
 lien-hand-day
 lien-bill-months
+lien-closed-days
 customer-sends-trail
 lien-closed-paid-activity
 sub-sheet-stamps
