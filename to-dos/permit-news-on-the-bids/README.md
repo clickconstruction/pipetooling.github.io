@@ -1,18 +1,18 @@
 ---
-name: "Permit news on Followup: a red count of your own bids' new lines, each answered It is this job or Not this job"
+name: "Permit news on Followup: a red count of your own bids' new lines, each answered in one press"
 number: 401
 group: gated
-status: asked 2026-11-19 with a screenshot of the Bid Board · the live lines counted through the app's own kernel, read only · the board drawn as it is and five ways it could be · the owner then chose Followup with a red count, to verify or ignore · that direction drawn at a desk and a phone, in both themes, with a second look · PR 1 (the three rules, and the strip as the reader's own) written and tested on its branch, not merged · the owner picks the place on Followup and says go
+status: asked 2026-11-19 with a screenshot of the Bid Board · the live lines counted through the app's own kernel, read only · the board drawn as it is and five ways it could be · the owner then chose Followup with a red count, to verify or ignore · that direction drawn at a desk and a phone, in both themes, with a second look · the owner asked whether it was intuitive, easy and well structured, and a third look redrew the card · PR 1 (the three rules, and the strip as the reader's own) written and tested on its branch, not merged · the owner picks the place on Followup and says go
 summary: >
   An estimator asked for the strip Permit news on your bids to move lower on the Bid Board or
   onto Followup. The live lines say the place is the smaller problem: the strip lists every
   person's bids, five of its seven "another name" lines are about another suite, an older job
   or site work, and no line has been answered in nine days, because the only way out is to mark
   a bid lost. The owner chose Followup. The strip leaves the board. Followup gets a lens, Permit
-  news, and a red count of the lines on your own bids that nobody has answered. Each line shows
-  what an estimator needs to say whose job it is, and has two answers: It is this job, which on a
-  plumber's permit offers Mark lost… in place, and Not this job, which takes the permit off the
-  bid for everyone. Three rules in the kernel drop the lines the records can rule out before
+  news, and a red count of the lines on your own bids that nobody has answered. Each card names
+  its kind, the bid, what the city shows and the reasons it looks like that bid, and takes one
+  press: on a plumber's permit We lost it…, Still waiting or Not our job, and on a building
+  permit Got it or Not our job. Three rules in the kernel drop the lines the records can rule out before
   anyone is asked. An answered line rides as a chip on the bid wherever it is chased.
 next: The owner picks the place on Followup (a lens of its own, a band on the Call queue, or a lens Followup opens on) and says whether PR 1 ships now. Calls 1 to 6 below, each with a pick.
 size: M as a train of four (S · S · M · S), a fifth only if asked
@@ -54,6 +54,11 @@ And after the first mock-up, the same day:
 > numbered icon in on the follow up header title when new permanent information comes through for
 > the estimator to verify or ignore. I think I want to build in this direction. Can you help me
 > come up with a plan to build this? And a better mock up
+
+And on reading that mock-up:
+
+> I like your proposal for containing it on the follow-up. Is this the best we can do though? Are
+> we making it intuitive yet easy? Are we structuring things visually well?
 
 ## What is there today (read on main at v2.7901)
 
@@ -223,42 +228,76 @@ Drawn in [`followup-mockup.html`](followup-mockup.html).
 - **Followup → Permit news** is an eighth lens, last in the bar, with the same count. It lists
   what is new on your bids, a plumber under another name first. **Yours** and **Everyone's**
   switch whose bids are listed. The count is always yours.
-- **A line** is the bid (number, name, GC, value, sent day, last contact), what the city filed in
-  one sentence, and the proof under it: the permit's number and kind, the work in the city's
-  words, the suite on each side, and the building permit beside it. All of it is already in the
-  board's one read (`SitePermitRow`).
-- **It is this job** keeps the permit on the bid and takes the line out of the count. On a sent
-  bid whose permit lists another plumber, the next press is offered in place: **Mark lost…**,
-  which opens the board's own loss window with the winner filled in from the permit, or **Keep
-  waiting**. On a building permit it points at the builder's place in the Call queue.
-- **Not this job** takes the permit off the bid for everyone, with Undo. It stays in the bid's
-  This site list with who said so.
+- **The red number is its own press** and opens the lens from any Bids tab. The word Followup
+  still opens the Call queue.
+- **A card** reads top to bottom in the order an estimator thinks. What kind of news it is, as a
+  coloured tag (*Another plumber on the permit*, *Building permit issued*, *Application filed*).
+  Which bid, its number a door to the bid. What the city shows, as the one large sentence. The
+  work in the city's own words and the permit's number. Then why it looks like this bid, each
+  reason with a tick and each thing the records do not say with a question mark: the suite, the
+  days since the bid was sent, the GC on the building permit, the project line. All of it comes
+  from the board's one read (`SitePermitRow`) and kernels that exist (`unitsOf`,
+  `looksLikeThisJob`, `builderKeyOf`).
+- **The answers stand in one column** on the right of every card, under the question they
+  answer, and at the foot of the card on a phone.
+  - A plumber's permit on a sent bid asks **Did we lose this bid?** **We lost it…** opens the
+    board's own loss window across the card, with the winner filled in from the permit. **Still
+    waiting** keeps the permit on the bid as a chip and marks nothing. **Not our job** takes the
+    permit off the bid for everyone.
+  - A building permit or an application is not a question. It takes **Got it** or **Not our
+    job**, and a building permit points at the builder's place in the Call queue.
+  - A bid not sent yet never offers a loss.
+- **An answered card folds to one line with Undo** where it stood. A permit taken off stays in
+  the bid's This site list with who said so.
 - **Answered on your bids** sits under the new lines: what was answered on bids not yet won or
   lost, each with **Take back** or **Put back**.
 - **Where a bid is chased**, the chip rides on the bid: a builder's card in the Call queue, a
   Waiting to hear row, the board's row.
 
-### Is this the best we can do?
+### The second look
 
 A second look at the first draft of that page changed eight things.
 
 1. **"Verify" left the hard line hanging.** Saying a plumber's permit is on our job answers
-   nothing by itself. The next press, Mark lost… or Keep waiting, is offered in place.
+   nothing by itself. The third look made the loss one of the card's own answers.
 2. **The proof is on the line.** The first draft sent her to the bid's window to check a suite.
 3. **The count is what is unanswered, not what is unseen.** A count that drops when a lens is
    opened teaches people to open and leave. An answer is one press, so the count can wait for
    it. It is the same on a phone and a desk, and one answer clears it for everyone on the bid.
    This replaces the browser's *seen* memory of the first round, and makes the answers table
    part of the lens, not a later PR.
-4. **The words are the question.** *Verify* and *Ignore* say what to do with the line. *It is
-   this job* and *Not this job* say what is true of the bid, which is what gets written down.
+4. **The words are the answer to a question.** *Verify* and *Ignore* say what to do with the
+   line. The presses say what is true of the bid, which is what gets written down. The third
+   look, below, chose the words.
 5. **Followup does not open on the lens.** Robots opens on Audits when audits wait. Here a line
    kept for later would cost a press on every visit, which is the complaint that started this.
 6. **The three rules go first.** Without them five of the ten live lines are about another
-   suite, an older job or another trade, and she would press Not this job five times on day one.
+   suite, an older job or another trade, and she would press Not our job five times on day one.
 7. **A bid not sent yet stays in the list.** It carries *Not sent yet* and never offers Mark
    lost….
 8. **An answered line is still on the bid**, as the chip, for the person about to call.
+
+### The third look: intuitive, easy, well structured?
+
+Asked by the owner of the page above. The first draft worked, but it made her do the reading.
+
+1. **It asked a clerk's question.** *Whose permit is this* is the app's problem. Hers is whether
+   the bid is lost. The card now asks that.
+2. **A plumber's permit took two steps.** Say it is the job, then say what that means. Now one
+   press of three.
+3. **The proof was a grey box of four labelled rows**, all one weight, to compare by eye. Now the
+   app compares and shows what matched as ticks, and says what it could not tell.
+4. **Nothing said what kind of news a card was** until its sentence was read. Now a coloured tag
+   leads each card.
+5. **The presses sat at a different height on every card.** Now they are one column, so a list
+   is worked down its right edge.
+6. **The count was two presses away.** Now the red number opens the lens.
+
+At a desk's width the card is 162 px tall with its reasons on it. The first draft's was 247.
+
+One thing this costs: the two answers the owner named, verify and ignore, are now three on a
+plumber's permit. *Still waiting* and *We lost it…* are both a verify. The store keeps two
+(`this_job`, `not_this_job`), and a loss is the bid's own outcome, as it is today.
 
 ### Three places for it on Followup
 
@@ -271,8 +310,9 @@ A second look at the first draft of that page changed eight things.
 ## The calls, each with a pick
 
 1. **The place on Followup.** A, B or C above. *Pick: A.*
-2. **The words on the two presses.** *Pick: It is this job and Not this job.* The other way is
-   Verify and Ignore, the owner's own words.
+2. **The words on the presses.** *Pick: the card's own question and its answers (We lost it…,
+   Still waiting, Not our job; Got it, Not our job).* The other way is one pair on every card,
+   Verify and Ignore in the owner's words, with the loss as a second step.
 3. **Whose answer counts.** *Pick: one answer, by anyone who can open the bid, for everyone.*
    The other way is that each person answers for themself, which leaves the next reader the same
    line.
@@ -297,7 +337,7 @@ lens.
 | `BidBoardPermitNews.tsx` | The strip | **PR 1, written:** lists the reader's own lines, and folds the rest behind one quiet line that only the office sees alone. **PR 3:** retired. Its line and its Mark lost… window move into the lens. |
 | `src/lib/bids/bidsLenses.ts`, `BidsLensBar.tsx`, `bidsTabAccess.ts` | Seven Followup lenses, badge tones `new`, `count`, `dev` | **PR 3.** An eighth lens, `permit-news`, with a red badge tone. |
 | `src/pages/Bids.tsx` | The Followup tab is a plain button | **PR 3.** The red inbox pill beside it, as Robots has for audits. |
-| New `BidsPermitNewsLens.tsx` | — | **PR 3.** The lens: new lines with their proof and two answers, the step after It is this job, Answered on your bids, the empty state. |
+| New `BidsPermitNewsLens.tsx` | — | **PR 3.** The lens: the cards with their reasons and answers, the loss window in the card, the one-line receipt with Undo, Answered on your bids, the empty state. |
 | `BidBoardNewsMarkLost.tsx`, `BidLostQuickPopover.tsx` | The outcome under a news line | Unchanged, drawn from the lens. |
 | New table `bid_permit_answers` | — | **PR 2.** Append only, as `builder_customer_answers` is: the bid, the city, the permit's number and type, the answer (`this_job`, `not_this_job`, `taken_back`), who, when. The newest row per bid and permit stands. RLS as the bid's own. Read beside the board's one read. |
 | `PermitChip.tsx`, `BidsCallQueueTab.tsx`, `BidsWaitingToHearLens.tsx`, `BidsBidBoardTab.tsx` | A label on the board's row | **PR 4.** The chip's words carry the name and the day. It is a door to the line on Followup, and it rides on the bid in the Call queue and on a Waiting to hear row. |
@@ -315,8 +355,9 @@ Each PR ships with its release note, its fragment and the guide's change.
 2. **The answers (S).** The migration (`SET lock_timeout`, the four fence calls, its doc), the
    read, the writes, and the kernel that sorts a reader's lines. No screen. Pushed right after
    the merge.
-3. **The lens and the count (M).** Followup → Permit news, the red count on Followup, the two
-   answers with Undo, Mark lost… in place. The strip leaves the Bid Board. Render smokes for the
+3. **The lens and the count (M).** Followup → Permit news, the red count on Followup as its own
+   press, the answers with Undo, the loss window in the card. A kernel for a card's reasons
+   (`permitReasons`), with a test for each tick and each question mark. The strip leaves the Bid Board. Render smokes for the
    lens with none, some and answered, and for the count on the tab row.
 4. **Where a bid is chased (S).** The chip with the name and the day, as a door on the board's
    row, on the Call queue and on Waiting to hear. Taken-off permits in This site.
@@ -332,7 +373,7 @@ Each PR ships with its release note, its fragment and the guide's change.
   `loadPermitsByHouseNumber` per city. On 2026-11-19 that run gave 12 lines. After PR 1 the same
   run should give two *another name* lines on the Plumbing board, one quiet chip and three
   building lines.
-- **Never press Mark lost…, It is this job or Not this job on a real bid.** BP398 is the test bid. Read its
+- **Never press an answer on a real bid.** BP398 is the test bid. Read its
   address first: unless it sits in a city the pull reads, on a site with a permit, the window is
   proven by render smokes and by a made-up permit in the kernel's tests.
 - **Widths**: 1,400 and 375, both themes. The Browser pane reads width 0 when hidden, so set

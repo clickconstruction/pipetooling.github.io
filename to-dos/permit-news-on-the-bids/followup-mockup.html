@@ -229,6 +229,29 @@
   .cq .bid .l { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .cq .bid .l b { font-size: 13.5px; } .cq .bid .l span.m { color: var(--text-muted); font-size: 12.5px; }
   .cq .acts { display: flex; gap: 6px; flex-wrap: wrap; } .cq .acts span { border: 1px solid var(--border-strong); border-radius: 6px; padding: 4px 9px; font-weight: 600; font-size: 12.5px; background: var(--surface); }
   .cell { max-width: 100%; grid-template-columns: minmax(0, 1fr); } .tblwrap { overflow-x: auto; max-width: 100%; }
+  /* The card after the third look: what kind of news, whose bid, what the city shows, why it looks like yours, and the answers in one column. */
+  .pc { border: 1px solid var(--border); border-left: 3px solid var(--text-red-700); border-radius: 8px; background: var(--surface); padding: 11px 14px; display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 8px 16px; font-size: 13px; min-width: 0; }
+  .pc.green { border-left-color: var(--text-green-700); } .pc.amber { border-left-color: #d97706; }
+  .pc .main { display: grid; gap: 5px; min-width: 0; align-content: start; }
+  .pc .top { display: flex; gap: 4px 10px; align-items: baseline; flex-wrap: wrap; }
+  .kind { border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+  .kind.red { background: var(--bg-red-tint); color: var(--text-red-700); } .kind.green { background: var(--bg-green-tint); color: var(--text-green-700); } .kind.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .pc .bidname { font-size: 13.5px; font-weight: 600; } .pc .bidname u { color: var(--text-link); } .pc .bidmeta { color: var(--text-muted); font-size: 12.5px; }
+  .pc .head { font-size: 15.5px; font-weight: 700; line-height: 1.35; }
+  .pc .city { font-size: 12.5px; color: var(--text-700); } .pc .city a { color: var(--text-link); font-weight: 600; white-space: nowrap; }
+  .why { display: flex; gap: 3px 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-700); }
+  .why .t::before { content: '✓ '; color: var(--text-green-700); font-weight: 700; } .why .u { color: var(--text-muted); } .why .u::before { content: '? '; font-weight: 700; }
+  .pc .ask { display: grid; gap: 6px; align-content: start; border-left: 1px solid var(--border); padding-left: 16px; }
+  .pc .ask .q { font-weight: 700; font-size: 13px; }
+  .pc .ask .press { justify-content: center; } 
+  .pc .ask .door { font-size: 12.5px; color: var(--text-link); font-weight: 600; }
+  .pc .under { grid-column: 1 / -1; }
+  .phone .pc { grid-template-columns: minmax(0, 1fr); }
+  .phone .pc .ask { border-left: 0; border-top: 1px solid var(--border); padding: 9px 0 0; grid-template-columns: 1fr 1fr; }
+  .phone .pc .ask .q, .phone .pc .ask .door, .phone .pc .ask.three .press.quiet { grid-column: 1 / -1; } .phone .pc .ask .press { min-height: 40px; }
+  .rcpt { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 8px 14px; font-size: 13px; color: var(--text-700); display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; }
+  .rcpt b { color: var(--text-strong); } .rcpt a { color: var(--text-link); font-weight: 600; margin-left: auto; }
+  .w700 { width: 700px; max-width: 100%; display: grid; gap: 8px; }
   .band.sm { padding: 0; } .w620 { width: 620px; max-width: 100%; } .w560 { width: 560px; max-width: 100%; }
   .plan td:first-child { font-weight: 700; white-space: nowrap; }
 </style>
@@ -236,14 +259,15 @@
 <body data-theme="light">
 <div class="bar">
   <b>Permit news on Followup · punch list #401</b>
-  <a href="#board">The board</a><a href="#lens">The lens</a><a href="#answer">The two answers</a><a href="#none">Nothing new</a><a href="#phone">A phone</a><a href="#where">Where a bid is chased</a><a href="#ways">Three places</a><a href="#second">Second look</a><a href="#plan">The plan</a>
+  <a href="#third">Third look</a><a href="#board">The board</a><a href="#lens">The lens</a><a href="#answer">The answers</a><a href="#none">Nothing new</a><a href="#phone">A phone</a><a href="#where">Where a bid is chased</a><a href="#ways">Three places</a><a href="#second">Second look</a><a href="#plan">The plan</a>
   <span class="sp"><button class="tog" data-t="light" aria-pressed="true">Light</button><button class="tog" data-t="dark" aria-pressed="false">Dark</button></span>
 </div>
 
 <div class="intro">
   <h1>Permit news on Followup, with a red count to answer</h1>
   <p>The owner, 2026-11-19, after the first mock-up: <i>“I like the idea of the permit information being on the follow-up page with potentially a red numbered icon on the follow up header title when new permit information comes through for the estimator to verify or ignore.”</i></p>
-  <p>This page draws that direction. The strip leaves the Bid Board. <b>Followup</b> gets a lens, <b>Permit news</b>, and a red count of the lines you have not answered. Each line has two answers: <b>It is this job</b> and <b>Not this job</b>. The first mock-up, with the board as it is today and the other ways, is <a href="mockup.html" style="color:var(--text-link);font-weight:600">mockup.html</a>.</p>
+  <p>This page draws that direction. The strip leaves the Bid Board. <b>Followup</b> gets a lens, <b>Permit news</b>, and a red count of the lines you have not answered. Each line asks the one thing that matters about the bid and takes its answer in one press. The first mock-up, with the board as it is today and the other ways, is <a href="mockup.html" style="color:var(--text-link);font-weight:600">mockup.html</a>.</p>
+  <p>The owner then read this page and asked: <i>“Is this the best we can do though? Are we making it intuitive yet easy? Are we structuring things visually well?”</i> The honest answer was no, on five counts. The first band shows the card before and after. Every frame below it is the redrawn one.</p>
   <p>Every bid, builder and plumber here is made up. <b>Marcus</b> is an estimator with three new lines. <b>Dana</b> is an estimator with none. <b>Priya</b> works in the office. The two presses at the top right switch the theme.</p>
 </div>
 <div class="facts">
@@ -251,7 +275,8 @@
   <div class="fact"><b>0</b><span>lines answered in the nine days the strip has been live. Its only answer is Mark lost….</span></div>
   <div class="fact"><b>0</b><span>lines for the estimator who asked, once the count is her own bids. She sees no red count at all.</span></div>
   <div class="fact"><b>4 in 30 days</b><span>building permits issued or applied for on a bid's address. About one new line a week.</span></div>
-  <div class="fact"><b>2 presses</b><span>answer a line: one to say whose job it is, and one more only when a bid is lost.</span></div>
+  <div class="fact"><b>1 press</b><span>answers a line. Marking a bid lost asks one more thing: why.</span></div>
+  <div class="fact"><b>247 → 162 px</b><span>a card’s height at a desk, with its reasons on it. Three fit a screen 900 px tall.</span></div>
 </div>
 
 <div id="bands"></div>
@@ -272,7 +297,7 @@
     const p = (key, label, extra = '') => `<span class="p${on === key ? ' on' : ''}">${label}${extra}</span>`
     return `<div class="lbrow"><span class="lb">${p('cq', 'Call queue', '<span class="bdg new">new</span>')}<span class="old">Old:</span>${p('bb', 'By builder')}${p('bs', 'By status')}${p('wl', 'Why we lost')}${p('wh', 'Waiting to hear')}${p('ja', 'Job accounts', '<span class="bdg amb">4</span>')}${p('mo', 'Money', '<span class="bdg amb">2</span>')}${noPill ? '' : p('pn', 'Permit news', n ? `<span class="bdg red">${n}</span>` : '')}</span>${caption ? `<span class="capline">${caption}</span>` : ''}</div>`
   }
-  const CAPTION = 'What the city filed on the addresses of your bids. Say whether each is your job.'
+  const CAPTION = 'What the city filed on the addresses of your bids. One press answers each.'
 
   // ---- The lines. Made up, in the shapes the live strip held.
   const ev = (rows) => `<dl class="ev">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`
@@ -301,6 +326,28 @@
     },
   }
   const line = (k, foot = `<div class="btns">${answers}${open}</div>`, withEv = true) => { const l = L[k]; return `<div class="pn ${l.tone}"><div class="who">${l.who}</div><div class="say">${l.say}</div>${withEv ? ev(l.ev) : ''}${foot}</div>` }
+  // ---- The card after the third look.
+  const A3 = ['We lost it…', 'Still waiting', 'Not our job']
+  const A2 = ['Got it', 'Not our job']
+  const C = {
+    b502: { tone: 'red', kind: 'Another plumber on the permit', bid: ['b502', 'Northside High School restrooms', 'Ridgeway Builders · $212k · sent Jun 4 · last contact 41 days ago'],
+      head: 'The city lists Copperline Plumbing on a plumbing permit here, issued Aug 27.', city: '“Restroom remodel, 12 fixtures”', permit: 'PLB-26-041877',
+      why: [['t', 'Issued 84 days after you sent the bid'], ['t', 'The building permit lists Ridgeway Builders, your GC'], ['u', 'Neither the permit nor the bid names a suite']], q: 'Did we lose this bid?', a: A3 },
+    b430: { tone: 'red', kind: 'Another plumber on the permit', bid: ['b430', 'Suite 100, Tradewind Drive', 'Halvorsen Construction · $64k · sent Apr 10 · last contact 55 days ago'],
+      head: 'The city lists Blue Heron Plumbing on a plumbing permit here, issued Sep 29.', city: '“Tenant finish out plumbing”', permit: 'PLB-26-052310',
+      why: [['t', 'Suite 100, the bid’s own suite'], ['t', 'Issued 172 days after you sent the bid']], q: 'Did we lose this bid?', a: A3 },
+    b495: { tone: 'green', kind: 'Building permit issued', bid: ['b495', 'Walters at Oakmont', 'Tall Pine Construction · $95k · sent May 22 · last contact 38 days ago'],
+      head: 'The building permit here was issued Oct 29. No plumber is on a permit yet.', city: '“Walters at Oakmont retail shell” · $2.1M declared · 14,200 sq ft', permit: 'COM-26-118204',
+      why: [['t', 'The city’s project line names Walters at Oakmont'], ['t', 'The permit lists Tall Pine Construction, your GC']], q: 'The job is moving.', a: A2, door: 'Tall Pine is 3rd in your Call queue ›' },
+    b672: { tone: 'amber', kind: 'Application filed', tag: 'Not sent yet', bid: ['b672', 'Ridgeline Surgical and Imaging, Unit A', 'Halvorsen Construction · due Mon 11/23'],
+      head: 'A permit application was filed here Nov 12.', city: '“Ridgeline surgical and imaging” · $3.4M declared · 22,000 sq ft', permit: 'APP-26-207731',
+      why: [['t', 'Unit A, the bid’s own unit'], ['t', 'Filed 6 days after the bid was started']], q: 'Plans are with the city.', a: A2 },
+  }
+  const askCol = (c) => `<div class="ask${c.a.length === 3 ? ' three' : ''}"><div class="q">${c.q}</div>${c.a.map((x) => `<span class="press${x === 'Not our job' ? ' quiet' : ''}">${x}</span>`).join('')}${c.door ? `<span class="door">${c.door}</span>` : ''}</div>`
+  // `opts.note` adds words after the bid's own; `opts.lean` leaves the city's words and the reasons out; `opts.under` draws a window across the card in place of the answers.
+  const card = (k, opts = {}) => { const c = C[k]; return `<div class="pc ${c.tone}"><div class="main"><div class="top"><span class="kind ${c.tone}">${c.kind}</span>${c.tag ? `<span class="kind amber">${c.tag}</span>` : ''}<span class="bidname"><u>${c.bid[0]}</u> · ${c.bid[1]}</span><span class="bidmeta">${c.bid[2]}${opts.note ? ` · ${opts.note}` : ''}</span></div><div class="head">${c.head}</div>${opts.lean ? '' : `<div class="city">The city’s words: ${c.city} · <a>Permit ${c.permit} ›</a></div><div class="why">${c.why.map(([t, w]) => `<span class="${t}">${w}</span>`).join('')}</div>`}</div>${opts.under ? `<div class="under">${opts.under}</div>` : askCol(c)}</div>` }
+  const rcpt = (k, words, undo = 'Undo') => `<div class="rcpt"><span><b>${C[k].bid[0]} · ${C[k].bid[1]}</b> ${words}</span><a>${undo}</a></div>`
+
   const ih = (title, n, quiet, sw = true) => `<div class="ih">${title}<span class="n${quiet ? ' q' : ''}">${n}</span>${sw ? '<span class="sw"><span class="on">Yours</span><span>Everyone’s 5</span></span>' : ''}</div>`
   const standing = (rows) => `<div class="stand">${rows.map(([t, s, a]) => `<div class="r"><div class="t"><b>${t}</b><span>${s}</span></div>${a.map((x) => `<a>${x}</a>`).join('')}</div>`).join('')}</div>`
   const STAND = [
@@ -330,23 +377,23 @@
   const boardDana = desk(tools + pills + sec('Unsent / Working Bids (22)') + boardRows, 'board', 0, 'short')
 
   // ---- 2. The lens.
-  const lensMarcus = desk(lensbar('pn', 3, CAPTION) + ih('New on your bids', 3) + line('b502') + line('b495') + line('b430', undefined, false) + '<span class="fold">Answered on your bids · 2 ›</span>', 'fu', 3, 'tall')
+  const lensMarcus = desk(lensbar('pn', 3, CAPTION) + ih('New on your bids', 3) + card('b502') + card('b430') + card('b495') + '<span class="fold">Answered on your bids · 2 ›</span>', 'fu', 3)
 
-  // ---- 3. The two answers.
+  // ---- 3. The answers.
   const said = (w) => `<div class="said">${w}</div>`
-  const yesPlumbing = `<div class="w620">${line('b502', `<div class="say"><b>Kept on the bid.</b> A plumber is on the permit, so the plumbing may be let. Is the bid lost?</div><div class="btns"><span class="press blue">Mark lost…</span><span class="press">Keep waiting</span>${open}</div>${said('Marcus said it is this job, just now. <a>Take back</a>')}`, false)}</div>`
-  const lostOpen = `<div class="w620">${line('b502', `<div class="lost"><label>Lost · why? It saves as you pick.</label><div class="why"><span>Price</span><span class="on">Relationship</span><span>Scope</span><span>Schedule</span><span>No answer</span><span>Other</span></div><label style="font-weight:500;color:var(--text-muted)">Who won it: Copperline Plumbing, from the permit. Change it if the GC says otherwise.</label><div class="btns"><span class="press blue">Mark this bid lost</span><span class="press">Not now</span></div></div>`, false)}</div>`
-  const yesBuilding = `<div class="w620">${line('b495', `<div class="say"><b>Kept on the bid.</b> Tall Pine Construction is third in your Call queue.</div><div class="btns"><span class="press blue">Open the Call queue</span><span class="press">Done</span>${open}</div>${said('Marcus said it is this job, just now. <a>Take back</a>')}`, false)}</div>`
-  const notThis = `<div class="w620"><div class="pn grey"><div class="who">${L.b430.who}</div><div class="say"><b>Taken off this bid, for everyone.</b> The permit stays in the bid’s <b>This site</b> list, with who said so.</div><div class="btns"><span class="press">Undo</span></div></div></div>`
+  const ansPlumber = `<div class="w700">${card('b502')}</div>`
+  const ansLost = `<div class="w700">${card('b502', { lean: true, under: `<div class="lost"><label>Lost · why? It saves as you pick.</label><div class="why"><span>Price</span><span class="on">Relationship</span><span>Scope</span><span>Schedule</span><span>No answer</span><span>Other</span></div><label style="font-weight:500;color:var(--text-muted)">Who won it: Copperline Plumbing, from the permit. Change it if the GC says otherwise.</label><div class="btns"><span class="press blue">Mark this bid lost</span><span class="press">Not now</span></div></div>` })}</div>`
+  const ansAfter = `<div class="w700">${rcpt('b502', '· You said still waiting. The permit stays on the bid as a chip.')}${rcpt('b430', '· You said it is not our job. It is off the bid for everyone.')}${card('b495')}</div>`
+  const ansOther = `<div class="w700">${card('b495')}${card('b672')}</div>`
 
   // ---- 4. Nothing new.
   const noneDana = desk(lensbar('pn', 0, CAPTION) + `<div class="empty"><b>Nothing waiting on you.</b><span>A new permit on the address of one of your bids shows here, and a red count shows on Followup.</span><small>The city’s records are read every morning and run 2 to 3 days behind.</small></div>` + ih('Answered on your bids', 1, true, true) + standing([['b668 · Greenleaf Market #12', 'Building permit issued Oct 6 · Dana said it is this job, Oct 9 · the bid is not yet won or lost', ['Open the bid', 'Take back']]]), 'fu', 0, 'short')
-  const noneOffice = `<div class="w620"><div class="pg" style="padding:0">${ih('New on everyone’s bids', 5, false, false).replace('</div>', '<span class="sw"><span>Yours 0</span><span class="on">Everyone’s 5</span></span></div>')}${line('b502', `<div class="btns">${answers}${open}</div>${said('Marcus holds this bid.')}`, false)}<span class="fold">4 more on other people’s bids ›</span></div></div>`
+  const noneOffice = `<div class="w700"><div class="pg" style="padding:0">${ih('New on everyone’s bids', 5, false, false).replace('</div>', '<span class="sw"><span>Yours 0</span><span class="on">Everyone’s 5</span></span></div>')}${card('b502', { note: '<b>Marcus’s bid</b>' })}<span class="fold">4 more on other people’s bids ›</span></div></div>`
 
   // ---- 5. A phone.
-  const phoneLens = phone(tabsPhone('fu', 3) + lensbar('pn', 3) + ih('New on your bids', 3) + line('b502') + line('b495'), 'tall')
+  const phoneLens = phone(tabsPhone('fu', 3) + lensbar('pn', 3) + ih('New on your bids', 3) + card('b502') + card('b430'), 'tall')
   const phoneBoard = phone(tabsPhone('board', 3) + '<div class="field" style="flex:none">Search project, GC or bid number…</div>' + pills + sec('Unsent / Working Bids (22)') + `<div class="card"><div class="top">${marks}<span class="num">b681</span><span class="due soon">Fri 11/20</span></div><div class="ttl">Marlow Animal Clinic</div><div class="meta"><a>Ridgeway Builders</a> · Dana · Last contact +</div></div><div class="card"><div class="top">${marks}<span class="num">b672</span><span class="due">Mon 11/23</span></div><div class="ttl">Ridgeline Surgical and Imaging, Unit A</div><div class="chips" style="margin:0">${chip('Applied Nov 12', 'amber', 1)}</div><div class="meta"><a>Halvorsen Construction</a> · Marcus · Last contact +</div></div><div class="card"><div class="top">${marks}<span class="num">b679</span><span class="due">Thu 11/26</span></div><div class="ttl">Sunday Yoga, South Lamar</div><div class="meta"><a>Bluebonnet Contractors</a> · Priya · Last contact +</div></div>`)
-  const phoneAfter = phone(tabsPhone('fu', 2) + lensbar('pn', 2) + ih('New on your bids', 2) + line('b502', `<div class="say"><b>Kept on the bid.</b> A plumber is on the permit. Is the bid lost?</div><div class="btns"><span class="press blue">Mark lost…</span><span class="press">Keep waiting</span></div>${said('You said it is this job, just now. <a>Take back</a>')}`, false) + line('b495'), 'tall')
+  const phoneAfter = phone(tabsPhone('fu', 2) + lensbar('pn', 2) + ih('New on your bids', 2) + rcpt('b502', '· You said still waiting. The permit stays on the bid as a chip.') + card('b430') + card('b495'), 'tall')
 
   // ---- 6. Where a bid is chased.
   const acts = '<div class="acts"><span>Left message</span><span>Still pending</span><span>Bid tab received</span><span>Rebid / RFQ</span><span>Won</span><span>Lost…</span></div>'
@@ -355,36 +402,40 @@
 
   // ---- 7. Three places on Followup.
   const mini = (inner, n) => `<div class="desk short" style="width:760px">${nav}<div class="pg">${tabsPhone('fu', n)}${inner}</div><div class="fade"></div></div>`
-  const wayLens = mini(lensbar('pn', 3) + ih('New on your bids', 3, false, false) + line('b502', `<div class="btns">${answers}${open}</div>`, false) + line('b495', undefined, false), 3)
+  const wayLens = mini(lensbar('pn', 3) + ih('New on your bids', 3, false, false) + card('b502', { lean: true }) + card('b430', { lean: true }), 3)
   const cqCard = `<div class="cq"><div class="h"><b>Mesa Verde Builders</b><span>last contact 62 days ago · 3 bids waiting</span><a>512-555-0177</a></div><div class="bid"><div class="l"><b>b388 · Oakmont Auto Parts</b><span class="m">$41k · sent Mar 2</span></div>${acts}</div></div>`
-  const wayBand = mini(lensbar('cq', 0, '', true) + `<div class="strip"><div class="h">Permit news to answer <span class="n">3</span></div>${['b502 · Northside High School restrooms|A plumbing permit lists Copperline Plumbing, issued Aug 27.', 'b495 · Walters at Oakmont|The building permit was issued Oct 29.'].map((x) => { const [t, w] = x.split('|'); return `<div class="line"><div class="w"><strong>${t}</strong><span>${w}</span></div><div class="btns">${answers}</div></div>` }).join('')}<span class="more">See 1 more ›</span></div>` + cqCard, 3)
-  const wayLand = mini(lensbar('pn', 3) + `<div class="showing">You came to Followup with 3 lines to answer, so it opened here. <a>Go to the Call queue ›</a></div>` + line('b502', `<div class="btns">${answers}${open}</div>`, false) + line('b495', undefined, false), 3)
+  const wayBand = mini(lensbar('cq', 0, '', true) + `<div class="strip"><div class="h">Permit news to answer <span class="n">3</span></div>${['b502 · Northside High School restrooms|The city lists Copperline Plumbing on a plumbing permit, issued Aug 27.', 'b430 · Suite 100, Tradewind Drive|The city lists Blue Heron Plumbing on a plumbing permit, issued Sep 29.'].map((x) => { const [t, w] = x.split('|'); return `<div class="line"><div class="w"><strong>${t}</strong><span>${w}</span></div><div class="btns"><span class="press">We lost it…</span><span class="press">Still waiting</span><span class="press">Not our job</span></div></div>` }).join('')}<span class="more">See 1 more ›</span></div>` + cqCard, 3)
+  const wayLand = mini(lensbar('pn', 3) + `<div class="showing">You came to Followup with 3 lines to answer, so it opened here. <a>Go to the Call queue ›</a></div>` + card('b502', { lean: true }) + card('b430', { lean: true }), 3)
 
   const cell = (id, cap, small, html, wide) => `<div class="cell${wide ? ' wide' : ''}" id="${id}"><div class="cap">${cap}<small>${small}</small></div>${html}</div>`
   const band = (id, title, words, cells, tag) => `<section><div class="band" id="${id}"><h2>${title}${tag ? `<span class="pick">${tag}</span>` : ''}</h2>${words.map((w) => `<p>${w}</p>`).join('')}</div><div class="board">${cells.join('')}</div></section>`
 
   const BANDS = [
-    band('board', '1 · The Bid Board, with the strip gone', ['The board starts at its bids. The news is one red number on <b>Followup</b>, counted over your own bids, and it is drawn on every Bids tab. A row keeps the chip it has today, now with the name and the day. A red, green or amber chip is a door to its line on Followup. The grey one is only a note: that permit was there before the bid was started.'], [
+    band('third', 'The third look · the card, before and after', ['The first draft worked, but it made her do the reading. Five things were wrong with it. <b>1.</b> It asked a clerk’s question, whose permit is this, when what she wants to know is whether the bid is lost. <b>2.</b> A plumber’s permit took two steps: say it is the job, then say what that means. <b>3.</b> The proof was a grey box of four labelled rows, all the same weight, that she had to compare by eye. <b>4.</b> Nothing said what kind of news a card was until the sentence was read. <b>5.</b> The presses sat at a different height on every card.', 'The redrawn card reads top to bottom in the order she thinks: <b>what kind of news</b>, <b>which bid</b>, <b>what the city shows</b>, <b>why it looks like hers</b>. The app does the comparing and says what matched with a tick, and what it could not tell with a question mark. The answers stand in one column on the right, the same place on every card, under the question they answer.'], [
+      cell('third-before', 'Before · the first draft, at a desk’s width', '247 px tall. Two steps on a plumber’s permit. Four rows to compare by eye.', `<div style="width:1146px;max-width:100%">${line('b502')}</div>`, 1),
+      cell('third-after', 'After, at the same width', '162 px tall. One press. A tick for each reason, a question mark for what the records do not say.', `<div style="width:1146px;max-width:100%">${card('b502')}</div>`, 1),
+    ]),
+    band('board', '1 · The Bid Board, with the strip gone', ['The board starts at its bids. The news is one red number on <b>Followup</b>, counted over your own bids, and it is drawn on every Bids tab. The red number is its own press and opens the lens, so the news is one press from any Bids tab. The word Followup still opens the Call queue. A row keeps the chip it has today, now with the name and the day. A red, green or amber chip is a door to its line on Followup. The grey one is only a note: that permit was there before the bid was started.'], [
       cell('board-marcus', 'Marcus, at a desk', 'Three lines to answer. He can finish what he is doing on the board first.', boardMarcus, 1),
       cell('board-dana', 'Dana, at a desk', 'No line on her bids, so no number. She reads other people’s chips on their rows.', boardDana, 1),
     ]),
-    band('lens', '2 · Followup → Permit news', ['The lens lists what is new on your bids, the bid first and then what the city filed. Under each line is what an estimator needs to say whose job it is: the permit’s number and kind, the work in the city’s words, the suite, and what else is on the address. A plumber under another name comes first. <b>Yours</b> and <b>Everyone’s</b> switch whose bids are listed. The red count is always yours.'], [
-      cell('lens-marcus', 'Marcus opens Followup and presses Permit news', 'Followup still opens on the Call queue. The red count on the lens says where the news is.', lensMarcus, 1),
+    band('lens', '2 · Followup → Permit news', ['A plumber under another name comes first, since that is the one that can cost a bid. Each card names its kind, the bid, what the city shows and the reasons it looks like her job. The bid’s number opens the bid. <b>Yours</b> and <b>Everyone’s</b> switch whose bids are listed. The red count is always yours.'], [
+      cell('lens-marcus', 'Marcus presses the red 3', 'Two plumbers’ permits, then a building permit. The answers line up down the right side.', lensMarcus, 1),
     ]),
-    band('answer', '3 · The two answers', ['<b>It is this job</b> keeps the permit on the bid and takes the line out of the count. On a sent bid with a plumber on the permit, the next press is offered in place: <b>Mark lost…</b> or <b>Keep waiting</b>. <b>Not this job</b> takes the permit off the bid for everyone, with Undo. Either answer is one press, by anyone who can open the bid, and it is written down with who and when.'], [
-      cell('yes-plumbing', 'It is this job, on a plumber’s permit', 'The line stays open for one more press. Keep waiting closes it and marks nothing.', yesPlumbing),
-      cell('lost-open', 'Mark lost…', 'The board’s own loss window, under the line. The winner is filled in from the permit.', lostOpen),
-      cell('yes-building', 'It is this job, on a building permit', 'An issued permit is a reason to call. The line points at the builder’s place in the Call queue.', yesBuilding),
-      cell('not-this', 'Not this job', 'Off the bid, off its row’s chip, out of the count. One press undoes it.', notThis),
+    band('answer', '3 · The answers', ['A plumber’s permit asks <b>Did we lose this bid?</b> and takes one of three answers. <b>We lost it…</b> opens the board’s own loss window in the card. <b>Still waiting</b> keeps the permit on the bid as a chip and marks nothing. <b>Not our job</b> takes the permit off the bid for everyone. A building permit or an application is not a question, so it takes <b>Got it</b> or <b>Not our job</b>. Every answer is one press, by anyone who can open the bid, written down with who and when. An answered card folds to one line with <b>Undo</b> where it stood, so she does not lose her place.'], [
+      cell('ans-plumber', 'A plumber’s permit', 'Three answers, none of them pressed for her. The safe one, Still waiting, changes nothing about the bid.', ansPlumber),
+      cell('ans-lost', 'We lost it…', 'The loss window opens across the card. The winner is filled in from the permit.', ansLost),
+      cell('ans-after', 'After two answers', 'Each answered card is one line with Undo. The count on Followup is now 1.', ansAfter),
+      cell('ans-other', 'A building permit, and a bid not sent yet', 'No question to settle. The first points at the builder’s place in the Call queue. The second never offers a loss.', ansOther),
     ]),
     band('none', '4 · Nothing new', ['Most days this is the lens. With nothing to answer there is no red number anywhere. The lens still lists what you answered on bids that are not yet won or lost, so an answer can be taken back.'], [
       cell('none-dana', 'Dana', 'No count on Followup and none on the lens.', noneDana, 1),
       cell('none-office', 'Priya, in the office, on Everyone’s', 'She holds no bid with news. The switch lists every person’s lines, each with whose bid it is. Her answer counts for the estimator too.', noneOffice),
     ]),
-    band('phone', '5 · A phone', ['The same three screens at 375 px. The lens bar wraps to three rows, as it does today with seven lenses. The two answers are full-width presses, 40 px tall.'], [
+    band('phone', '5 · A phone', ['The same three screens at 375 px. The lens bar wraps to three rows, as it does today with seven lenses. '], [
       cell('phone-board', 'The board', 'The count rides on Followup in the tab row.', phoneBoard),
-      cell('phone-lens', 'The lens', 'The bid, what the city filed, the proof, two answers.', phoneLens),
-      cell('phone-after', 'After It is this job', 'The count is 2. The next press is in place.', phoneAfter),
+      cell('phone-lens', 'The lens', 'The same card in one column. The answers are full-width presses, 40 px tall.', phoneLens),
+      cell('phone-after', 'After Still waiting', 'The count is 2. The answered card is one line with Undo.', phoneAfter),
     ]),
     band('where', '6 · Where a bid is chased', ['An answered line is not news any more, but the person about to call the builder should still see it. The chip rides on the bid wherever it is chased: a builder’s card in the Call queue, a Waiting to hear row, and the board’s row. It opens the line on Followup.'], [
       cell('where-cq', 'A builder’s card in the Call queue', 'The chip sits on the bid’s line, beside the presses that decide it.', callq),
@@ -397,14 +448,14 @@
     ], ''),
   ]
 
-  const SECOND = `<section><div class="band" id="second"><h2>Is this the best we can do?</h2><p>A second look at the first draft of this page changed eight things. The frames above are the redrawn ones.</p></div>
+  const SECOND = `<section><div class="band" id="second"><h2>The second look, kept</h2><p>The second look changed eight things. The third look, at the top of this page, went further on points 1, 2 and 4: one press, the reasons as ticks, and answers in the estimator’s own terms.</p></div>
   <ol class="notes">
     <li><b>“Verify” left the hard line hanging.</b> Saying a plumber’s permit is on our job answers nothing by itself. Now the next press is offered in place: <b>Mark lost…</b> or <b>Keep waiting</b>.</li>
     <li><b>The proof is on the line.</b> The first draft sent her to the bid’s window to check a suite. Now the permit’s number, the work in the city’s words, the suite and the building permit beside it are under each line.</li>
     <li><b>The count is what is unanswered, not what is unseen.</b> A count that drops when a lens is opened teaches people to open and leave. An answer is one press, so the count can wait for it. It is the same on a phone and a desk, and one answer clears it for everyone on the bid.</li>
-    <li><b>The words are the question.</b> “Verify” and “Ignore” say what to do with the line. <b>It is this job</b> and <b>Not this job</b> say what is true of the bid, and that is what gets written down.</li>
+    <li><b>The words are the answer to a question.</b> “Verify” and “Ignore” say what to do with the line. The presses now say what is true of the bid, and that is what gets written down.</li>
     <li><b>Followup does not open on it.</b> Way C is how Robots works, but a line kept for later would cost a press on every visit. The red number does the pointing.</li>
-    <li><b>The three rules go first.</b> Without them five of the ten live lines are about another suite, an older job or another trade, and she would press Not this job five times on day one. With them the app drops those itself.</li>
+    <li><b>The three rules go first.</b> Without them five of the ten live lines are about another suite, an older job or another trade, and she would press Not our job five times on day one. With them the app drops those itself.</li>
     <li><b>A bid not sent yet stays in the list.</b> Followup is about sent bids, but an application filed on a bid she is still pricing is worth a line. It carries <b>Not sent yet</b> and never offers Mark lost….</li>
     <li><b>An answered line is still on the bid.</b> The chip rides on the bid in the Call queue, on a Waiting to hear row and on the board, so the person who calls the builder sees it without opening the lens.</li>
   </ol></section>`
@@ -413,12 +464,12 @@
   <div class="tblwrap"><table class="tbl plan"><tr><th>PR</th><th>What ships</th><th>What a person sees</th><th>Size</th></tr>
   <tr><td>1 · The rules</td><td>A permit on another suite is off the bid. A plumbing permit from before the bid was started is a grey note, or history past six months. A plumbing permit is news on a plumbing bid only. The strip, still on the board for now, lists your own bids.</td><td>The live ten lines become five. The estimator who asked sees no strip.</td><td>S · written, no migration</td></tr>
   <tr><td>2 · The answers</td><td>One new table that only grows: the bid, the permit, the answer, who, when. The read beside the board’s one read. The kernel that sorts a reader’s lines into new, answered and taken off.</td><td>Nothing yet.</td><td>S · one migration</td></tr>
-  <tr><td>3 · The lens and the count</td><td>Followup → Permit news as drawn in 2 to 5, the red count on Followup, the two answers with Undo, Mark lost… in place. The strip leaves the Bid Board.</td><td>The whole of this page down to band 5.</td><td>M</td></tr>
+  <tr><td>3 · The lens and the count</td><td>Followup → Permit news as drawn in 1 to 5, the red count on Followup as its own press, the answers with Undo, the loss window in the card. The strip leaves the Bid Board.</td><td>The whole of this page down to band 5.</td><td>M</td></tr>
   <tr><td>4 · Where a bid is chased</td><td>The chip with the name and the day, on the board’s row as a door, on a builder’s card in the Call queue and on a Waiting to hear row. Taken-off permits say so in the bid’s This site list.</td><td>Band 6.</td><td>S</td></tr>
   <tr><td>5 · The Dashboard</td><td>One line in Needs you when a count is waiting. Only if you ask for it after two weeks of 3.</td><td>—</td><td>S</td></tr>
   </table></div>
   <ol class="notes" style="margin-top:12px">
-    <li><b>Your calls:</b> the place (A, B or C in band 7, my pick is A). The words on the two presses. Whether an answer counts for everyone on the bid (my pick) or only for the person who gave it. Whether PR 1 ships today.</li>
+    <li><b>Your calls:</b> the place (A, B or C in band 7, my pick is A). The words on the presses. Whether an answer counts for everyone on the bid (my pick) or only for the person who gave it. Whether PR 1 ships today.</li>
     <li><b>Not in this plan:</b> an email when a line arrives, and guessing whether a listed name is a plumber. Both can follow once the lens has two weeks of answers to read.</li>
   </ol></section>`
 
