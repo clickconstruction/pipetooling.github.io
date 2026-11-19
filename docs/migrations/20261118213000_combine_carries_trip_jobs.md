@@ -37,4 +37,8 @@ The bed applies this file a second time, which must change nothing.
 
 ## Applied
 
-Not yet. `supabase db push` after the merge.
+2026-11-18 (01:05 UTC on the 19th), by `scripts/db-push.sh` from a clean checkout at the merge commit of the PR that followed it, after a dry run that listed this file and `20261118223000` alone. It was stamped before a migration already applied, so the push took `--include-all`. The drift check after it read every file applied.
+
+## Verified on prod
+
+A read of the function's own text on prod found the block that makes the trip links on the target. No combine was run: prod held no trip link that day, and a combine is not undone. The combine bed holds the behaviour.
