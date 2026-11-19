@@ -7294,6 +7294,8 @@ A company truck with no insurance, registration, service or replacement value on
   Since v2.7831 (punch list #397) a job opened from a won bid can take its stages at the win: New Job's carry window (`BidCarryWindow` over `src/lib/bids/jobStagesFromBid.ts`) asks **How should $X come onto the job?** with **As stages**, **As one line** and **Start at $0**.
   The stage lines arrive Any, with dollars from the generator's presets or the bid's own schedule of values and each stage's hours from the bid's Labor tab.
   Since v2.7836 a job that already exists on one clean line is offered the same stages from the Bill tab, beside Multiple Segment Generator (`useBringBidStages`, `bringBidStagesStanding`), or reads why the offer is held.
+  Since v2.7889 (PR 7) the office's Needs You line *N stages read 100% and are not billed* (`stages-done-not-billed`, `needsYou/stagesDone.ts`) names a stage the crew put at 100% that sits on no bill, on a Working job with two or more priced lines.
+  Its press, **Open the job**, opens that job's window and bills nothing.
 - **Tagged job notes** (punch list #363;
   v2.7384 the kernel, v2.7385 the table, v2.7400 the list of names, v2.7407 where it lands) — a job note that names a teammate picked from the list under the note box, kept as a row of `jobs_ledger_note_tags`.
   It **waits** on that person until they post a typed note on the job or press **No reply needed**;

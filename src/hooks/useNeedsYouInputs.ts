@@ -40,6 +40,7 @@ import { myTagsView, tagsNeed } from '../lib/jobs/noteTags'
 import { useJobKindGaps } from './useJobKindGaps'
 import { useInKindCreditsDue } from './useInKindCreditsDue'
 import { useBaselineGaps } from './useBaselineGaps'
+import { useStagesDone } from './useStagesDone'
 import { useReceiptChases } from './useReceiptChases'
 import { receiptChaseDetail } from '../lib/needsYou/fillInReceipts'
 import { useLineBudgetsReview } from './useLineBudgetsReview'
@@ -213,6 +214,9 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { credits: inKindCredits } = useInKindCreditsDue(inKindCreditsEnabled)
   const baselineGapsEnabled = on('baselineGaps')
   const { gaps: baselineGaps } = useBaselineGaps(baselineGapsEnabled)
+  // A stage the crew put at 100% that sits on no bill (punch list #397, PR 7).
+  const stagesDoneEnabled = on('stagesDone')
+  const { done: stagesDone } = useStagesDone(stagesDoneEnabled)
   // The card charges waiting on a receipt the text cannot get (punch list #299, the step after PR 2).
   const receiptChasesEnabled = on('receiptChases')
   const { chases: receiptChaseCountsNow } = useReceiptChases(receiptChasesEnabled)
@@ -339,6 +343,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     inKindCredits,
     baselineGapsEnabled,
     baselineGaps,
+    stagesDoneEnabled,
+    stagesDone,
     receiptChasesEnabled,
     receiptChases,
     lineBudgetsReviewEnabled,
@@ -474,6 +480,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     whileOffFirst: whileOff.need?.first ?? null,
     lookAlikeCity: lookAlikes?.city ?? null,
     awayBackFirstUserId: awayBackDay.need?.first.userId ?? null,
+    stagesDoneFirstJobId: stagesDone?.rows[0]?.jobId ?? null,
     materialsStaleJobId: materialsOnSite?.staleJobId ?? null,
     materialsMissingJobId: materialsOnSite?.missingJobId ?? null,
     inKindCreditFirst: inKindCredits?.due[0] ? { customerId: inKindCredits.due[0].customerId, arrangementId: inKindCredits.due[0].arrangementId, month: inKindCredits.due[0].month } : null,
