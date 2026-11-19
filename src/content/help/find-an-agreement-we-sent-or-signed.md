@@ -2,12 +2,12 @@
 title: find an agreement we sent or signed
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase
+keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature
 where: /documents?tab=agreements
 ---
 The Agreements tab lists every agreement in one place. It holds job contracts, warranties, a GC's own paper, staff and sub agreements, partner agreements and sub work orders.
 
-The newest is on top. A press opens the window each agreement already has. A paper that waits on a signature can be sent again from its own line.
+The newest is on top. A press opens the window each agreement already has. A paper that waits on a signature can be sent again from its own line. A new paper can be sent from here too.
 
 ## Open the list
 
@@ -90,6 +90,20 @@ Nothing is emailed. The link works for 14 days.
 Press the name of a contract that waits. The Contract window opens.
 
 Press **Resend email** there to send it again. **Void & redo** starts it over. **File the signed copy** files a paper they signed by hand.
+
+## Send a paper to sign
+
+1. Press **Send a paper**, beside the find box.
+2. Pick the paper. The list is the Contract Book.
+3. Pick the person. People who have signed it are not listed.
+4. Check the address under **Signer email**.
+5. Press **Send email**.
+
+Nothing is saved until you press **Send email**. The new line then shows at the top of the list.
+
+A person who already has the paper out gets the same copy again. The window says so.
+
+A job's contract is not sent here. Send it from its job.
 
 ## See a voided one
 

@@ -2,7 +2,7 @@
 name: "Documents: an Agreements tab, every agreement the app makes in one list"
 number: 376
 group: close
-status: asked 2026-11-17 · the owner took all seven picks and said build the whole train the same day · all five built and live: the rules v2.7604, the view and the read v2.7612, the tab v2.7617, Search v2.7620, GC mode’s three kinds v2.7625 · both migrations pushed 2026-11-17 and 2026-11-18 · checked on the live list in a local build, in the live build’s files, and by role through the dev seat · asked again 2026-11-19 to finish the section so the office manages a paper there · a second train of three: a waiting line acts where it sits v2.7932, then send a paper from the tab, then the Contract library door · left: the rest of that train, and the owner’s own look
+status: asked 2026-11-17 · the owner took all seven picks and said build the whole train the same day · all five built and live: the rules v2.7604, the view and the read v2.7612, the tab v2.7617, Search v2.7620, GC mode’s three kinds v2.7625 · both migrations pushed 2026-11-17 and 2026-11-18 · checked on the live list in a local build, in the live build’s files, and by role through the dev seat · asked again 2026-11-19 to finish the section so the office manages a paper there · a second train of three: a waiting line acts where it sits v2.7932, send a paper from the tab v2.7937, then the Contract library door · left: the last of that train, and the owner’s own look
 summary: >
   The owner looked for agreements on the Documents page and found none. The page has ten tabs and
   none lists agreements. A job's signed paper shows only as a line under its job on the Jobs tab,
@@ -12,10 +12,10 @@ summary: >
   press opens the window that kind already has. The list is one database view over the tables that
   hold agreements, so each table's own row security decides what a reader sees, and nobody reads a
   paper here that they cannot read today. It renames nothing: Contract under a job stays.
-next: The second train’s next PR, sending a paper from the tab. Then the owner opens Documents → Agreements, presses Send again on a waiting line, and types a name on the Search tab. No statement of work and no owner contract send exists yet, so a GC line is proven by the database test until one is sent. Call 7’s card is #377.
+next: The second train’s last PR, the Contract library door. Then the owner opens Documents → Agreements, presses Send a paper and Send again, and types a name on the Search tab. No statement of work and no owner contract send exists yet, so a GC line is proven by the database test until one is sent. Call 7’s card is #377.
 size: M as a train of five (S · M · M · S · S), then M as a second train of three (M · M · S)
 blocker: None.
-ver: v2.7604 · v2.7612 · v2.7617 · v2.7620 · v2.7625 · v2.7932
+ver: v2.7604 · v2.7612 · v2.7617 · v2.7620 · v2.7625 · v2.7932 · v2.7937
 opinion: build — the papers exist and the office already reads them in four places; the tab is a read over what is there, with no new table and no change to who can see what
 ---
 
@@ -235,8 +235,10 @@ there is no migration.
    People uses, whose Send for signature window was lifted into a shared file for this. A job contract that
    waits opens its real Contract window, where **Resend email**, **Void & redo** and **File the signed copy**
    are. A voided one keeps the preview. Walked on the live list, and for real on a ZZ Test person.
-2. **Send a paper from the tab (M).** One press that picks a paper from the Contract Book and a person, and
-   sends it through People's quick send.
+2. **Send a paper from the tab (M), v2.7937.** **Send a paper**, beside the find box, picks a paper from the
+   Contract Book, then a person, and opens the same email window. It is People's quick send: the same person
+   picker, one rule for the pick (`quickSendPickPlan`), and nothing written until **Send email**. The new line
+   then shows on the list. Walked on a ZZ Test person.
 3. **The Contract library from the tab (S).** A door that opens the Contract library window in place, with
    the role rules it has on People.
 

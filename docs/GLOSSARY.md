@@ -6491,6 +6491,7 @@ It adds a view and renames nothing: *Contract* under a job on the Jobs tab and i
 Since v2.7932 a staff, sub or partner paper that waits on a signature acts on its own line: **Send again** emails a new signing link through the window People → Contracts uses, and **Copy the signing link** makes a link to text and emails nobody.
 Either one ends the link sent before, and the app says so first.
 A job contract that waits opens its Contract window from the line ([`agreementsActs.ts`](../src/lib/documents/agreementsActs.ts)).
+Since v2.7937 **Send a paper**, beside the find box, picks a paper from the Contract Book and a person and opens the same email window: People → Contracts' quick send on this page ([`AgreementsSendPaper.tsx`](../src/components/documents/AgreementsSendPaper.tsx)).
 
 ### Sent copies
 

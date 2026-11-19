@@ -346,5 +346,13 @@ describe('DocumentsAgreementsTab', () => {
     expect(screen.queryByRole('group', { name: 'Kind of agreement' })).toBeNull()
     expect(screen.queryByRole('group', { name: 'State' })).toBeNull()
     expect(screen.queryByTestId('documents-agreements-doors')).toBeNull()
+    // Send a paper belongs to the tab, beside its own box: the Search tab has neither.
+    expect(screen.queryByRole('button', { name: 'Send a paper' })).toBeNull()
+  })
+
+  it('Send a paper sits beside the find box', async () => {
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await screen.findByTestId('documents-agreements-empty')
+    expect(screen.getByLabelText('Find an agreement').parentElement?.contains(screen.getByRole('button', { name: 'Send a paper' }))).toBe(true)
   })
 })

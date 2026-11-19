@@ -7,6 +7,8 @@ order: 75
 ---
 You do not need to assign a whole packet just to get one document signed. There are two fast paths, both in People → Contracts.
 
+You can also start on Documents. See [Send a paper to sign](/help/find-an-agreement-we-sent-or-signed#send-a-paper-to-sign).
+
 ## Send from the Agreements panel
 
 Best when you are thinking document-first. For example, "who still needs the Handbook?"

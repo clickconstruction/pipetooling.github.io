@@ -49,6 +49,7 @@ import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import { AgreementsSendPaper } from './AgreementsSendPaper'
 import { EmptyState } from '../EmptyState'
 import JobContractModal from '../jobs/JobContractModal'
 import { buildJobContractRecordHtml } from '../jobs/JobContractRecordModal'
@@ -62,6 +63,7 @@ import { documentsLinkButton, documentsQuietButton } from '../jobs/jobDocumentsS
  * state, the box finds by customer, job number, person or paper, and a press opens the window that kind already has.
  * A staff, sub or partner paper that waits on a signature acts where it sits: Send again and Copy the signing link, both
  * through the sender People → Contracts uses (`lib/documents/agreementsActs.ts`), and the list reads again after.
+ * **Send a paper**, beside the box, sends a Contract Book paper to a person (`AgreementsSendPaper.tsx`).
  * The read is the `agreements_on_file` view, where each table's own row security decides what the reader sees; a read
  * that fails says so with Retry and never reads as an empty ledger. The rules are `lib/documents/agreementsLedger.ts`.
  *
@@ -289,17 +291,20 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   return (
     <section aria-label="Agreements" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
       {!embedded ? (
-        <input
-          type="search"
-          value={typed}
-          onChange={(ev) => {
-            setTyped(ev.target.value)
-            setLimit(AGREEMENTS_PAGE)
-          }}
-          placeholder="Find an agreement: a customer, a job number, a person, a paper"
-          aria-label="Find an agreement"
-          style={{ width: '100%', padding: '0.5rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', boxSizing: 'border-box' }}
-        />
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            type="search"
+            value={typed}
+            onChange={(ev) => {
+              setTyped(ev.target.value)
+              setLimit(AGREEMENTS_PAGE)
+            }}
+            placeholder="Find an agreement: a customer, a job number, a person, a paper"
+            aria-label="Find an agreement"
+            style={{ flex: '1 1 16rem', minWidth: 0, padding: '0.5rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', boxSizing: 'border-box' }}
+          />
+          <AgreementsSendPaper onSent={retry} />
+        </div>
       ) : null}
       {quietEmbed ? (
         <p style={quiet} data-testid="documents-agreements-embed-hint">

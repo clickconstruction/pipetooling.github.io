@@ -896,6 +896,7 @@ The view is `security_invoker` and has no policy of its own, so each branch answ
 Since v2.7625 GC mode's papers are in it under the same rule: `gc_owner_contract_sends` answers a dev, `gc_sows` a dev, the owner and the controller, and a trade company's agreement the office, so under the **GC projects** chip an assistant sees a company's agreement alone.
 No policy changed for it, and nobody reads a paper through it that they could not read before.
 Since v2.7932 a waiting staff, sub or partner line carries **Send again** and **Copy the signing link**: both call `send-contract-for-signature` as the reader, which reads the paper under the caller's own policy and refuses one it cannot read.
+Since v2.7937 **Send a paper** writes a person's copy as People → Contracts' quick send does, under `person_contract_documents`' own write policy, and reads the Contract Book and the roster under theirs.
 Since v2.7726 a person's copy of a paper a job requires is in it with its job, under the same read as every person's agreement: the office.
 `estimator`, `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
 
