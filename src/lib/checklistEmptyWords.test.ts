@@ -10,6 +10,7 @@ import {
   NEW_TASK_CONTROL,
   ROADMAP_PLAN_EMPTY,
   checklistHistoryEmptyWords,
+  checklistHistoryNoRepeatingWords,
   checklistManageEmptyWords,
   checklistOutstandingEmptyWords,
   checklistTodayEmptyWords,
@@ -44,6 +45,16 @@ describe('checklistEmptyWords', () => {
     expect(year).toHaveBeenCalledTimes(1)
     expect(checklistHistoryEmptyWords(6, year).main).toBe('No checklist history in the last 6 months.')
     expect(checklistHistoryEmptyWords(HISTORY_MONTHS_MAX, year)).toEqual({ main: 'No checklist history in the last 12 months.' })
+  })
+
+  it('History with one-offs and no repeating task says so for the months picked, with the same press', () => {
+    const year = vi.fn()
+    const six = checklistHistoryNoRepeatingWords(6, year)
+    expect(read(six)).toBe(`No repeating tasks in the last 6 months. Show ${HISTORY_MONTHS_MAX} months`)
+    press(six)
+    expect(year).toHaveBeenCalledTimes(1)
+    expect(checklistHistoryNoRepeatingWords(1, year).main).toBe('No repeating tasks in the last month.')
+    expect(checklistHistoryNoRepeatingWords(HISTORY_MONTHS_MAX, year)).toEqual({ main: 'No repeating tasks in the last 12 months.' })
   })
 
   it('Outstanding says the good state for each range', () => {
@@ -91,6 +102,7 @@ describe('checklistEmptyWords', () => {
       checklistTodayEmptyWords(noop),
       CHECKLIST_UPCOMING_EMPTY,
       checklistHistoryEmptyWords(3, noop),
+      checklistHistoryNoRepeatingWords(3, noop),
       ...BOARD_RANGE_ORDER.map((r) => checklistOutstandingEmptyWords(r)),
       checklistManageEmptyWords({ total: 0, shown: 0, query: '', forPerson: true, newTask: noop, clearSearch: noop })!,
       checklistManageEmptyWords({ total: 3, shown: 0, query: 'gate', forPerson: false, newTask: noop, clearSearch: noop })!,

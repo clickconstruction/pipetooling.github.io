@@ -244,7 +244,7 @@ Nothing escalates on its own. An overdue one-off doesn't page anyone or move up 
 
 On your phone, **Checklist → History** shows your days newest-first. Each day says how many you finished. Every task carries a chip. {{chip:green|✓ 7:58 AM}} means done. {{chip:yellow|✓ by Maria}} means someone covered it. The other chips are {{chip:red|✗ Missed}} and {{chip:yellow|Reopened}}. The strip up top shows your week percentage and streak. Tap any task to read its whole story and add a note.
 
-On a computer, History is two lists. **Repeating** tasks keep the day-by-day grid. Each row starts the day the task was created. It reads *since 6/14* under the title, with a blue tick on its first day. So there are no empty boxes for days a task didn't exist yet. **One-off tasks** sit below as a simple ledger. A row reads {{chip:green|✓ done}} with created → done dates, {{chip:red|✗ missed}}, or open.
+On a computer, History is two lists. **Repeating** tasks keep the day-by-day grid. Each row starts the day the task was created. It reads *since 6/14* under the title, with a blue tick on its first day. So there are no empty boxes for days a task didn't exist yet. If you have no repeating task in the months picked, one line says so in place of the grid. **Show 12 months** beside it looks back a full year. **One-off tasks** sit below as a simple ledger. A row reads {{chip:green|✓ done}} with created → done dates, {{chip:red|✗ missed}}, or open.
 
 ## Sending a task back yourself
 

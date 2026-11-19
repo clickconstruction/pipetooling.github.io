@@ -10,10 +10,10 @@ import { activeUsersQuery } from '../../lib/people/fetchActiveUsers'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { ChecklistTitleWithLinks } from '../ChecklistTitleWithLinks'
 import { ChecklistHistoryLedger } from './ChecklistHistoryLedger'
-import { HISTORY_NO_REPEATING_WORDS, historyCellStatus, historyGridDates, historyInstanceIndex, historyRateLabel, historyRowRate, historyShortDate, splitHistoryItems } from '../../lib/checklistHistorySplit'
+import { historyCellStatus, historyGridDates, historyInstanceIndex, historyRateLabel, historyRowRate, historyShortDate, splitHistoryItems } from '../../lib/checklistHistorySplit'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { EmptyState } from '../EmptyState'
-import { HISTORY_MONTHS_MAX, checklistHistoryEmptyWords } from '../../lib/checklistEmptyWords'
+import { HISTORY_MONTHS_MAX, checklistHistoryEmptyWords, checklistHistoryNoRepeatingWords } from '../../lib/checklistEmptyWords'
 import { localCalendarDayKey } from '../../utils/dateUtils'
 import type { PersonDayRow } from '../../lib/tasks/personDay'
 
@@ -215,7 +215,8 @@ export function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory,
           </span>
         )}
       </div>
-      {!isNarrow && (repeating.length > 0 || oneOffs.length > 0) ? (
+      {/* The label and the grid draw only over a repeating row; with none, the line below names the gap itself. */}
+      {!isNarrow && repeating.length > 0 ? (
         <p style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
           REPEATING <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {repeating.length} task{repeating.length === 1 ? '' : 's'} · rows start at each task’s creation</span>
         </p>
@@ -230,7 +231,7 @@ export function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory,
           onAfterReopen={() => void loadHistory()}
           empty={checklistHistoryEmptyWords(monthsBack, () => setMonthsBack(HISTORY_MONTHS_MAX))}
         />
-      ) : (
+      ) : repeating.length > 0 ? (
       <div style={{ overflowX: 'auto' }}>
         <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>
@@ -317,9 +318,11 @@ export function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory,
           </tbody>
         </table>
       </div>
-      )}
+      ) : null}
       {!isNarrow && repeating.length === 0 && oneOffs.length > 0 && (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{HISTORY_NO_REPEATING_WORDS}</p>
+        <div style={{ maxWidth: '46rem' }}>
+          <EmptyState compact {...checklistHistoryNoRepeatingWords(monthsBack, () => setMonthsBack(HISTORY_MONTHS_MAX))} />
+        </div>
       )}
       {!isNarrow && oneOffs.length > 0 && (
         <div style={{ marginTop: '1.1rem', maxWidth: '46rem' }}>
