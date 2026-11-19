@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { loadCustomerPaidDays, loadDrawBillsByJob, loadDrawTieSheet, loadDrawTies, saveDrawBill } from './drawTieIo'
+import { loadCustomerPaidDays, loadDrawBillsByJob, loadDrawTieSheet, loadDrawTies, loadUsualPayWeeks, saveDrawBill } from './drawTieIo'
 
 type Db = Parameters<typeof loadDrawTies>[0]
 type Answer = { data: unknown; error: { code?: string; message: string } | null }
@@ -119,5 +119,42 @@ describe('the bills of the tied sheets’ jobs', () => {
     expect((await loadDrawBillsByJob(dbOf({ jobs_ledger_invoices: { data: null, error: { message: 'permission denied' } } }), ['j1'])).size).toBe(0)
     const throwing = { from: () => ({ select: () => ({}) }) } as unknown as Db
     await expect(loadDrawBillsByJob(throwing, ['j1'])).resolves.toEqual(new Map())
+  })
+})
+
+describe('how long each waiting sheet’s payer usually takes (step 3)', () => {
+  // Made-up payers and days.
+  const receipt = (gapDays: number) => ({ billedYmd: '2026-05-01', paidYmd: '2026-06-10', gapDays })
+  const SPEEDS = { data: { receipts: { 'payer-steady': [28, 28, 35, 42, 42].map(receipt), 'payer-thin': [10, 12, 14].map(receipt) } }, error: null }
+  const JOBS = { data: [{ id: 'job-1', bill_to_party: 'customer', customer_id: 'payer-steady', gc_customer_id: null }, { id: 'job-2', bill_to_party: 'customer', customer_id: 'payer-thin', gc_customer_id: null }], error: null }
+  const BILLS = { data: [{ id: 'b1', bill_to_party: null, bill_to_email: null }], error: null }
+  const waiting = (id: string, over: Record<string, unknown> = {}) => ({ id, stage: 'customer_pay', job_ledger_id: 'job-1', draw_invoice_id: 'b1', payable_after: null, ...over })
+
+  it('is the page’s own weeks for a payer with the history, and nothing for a thin one', async () => {
+    const db = dbOf({ jobs_ledger: JOBS, jobs_ledger_invoices: BILLS }, SPEEDS)
+    const out = await loadUsualPayWeeks(db, [waiting('s1'), waiting('s2', { job_ledger_id: 'job-2', draw_invoice_id: null })], new Map())
+    expect([...out]).toEqual([['s1', { lo: 4, hi: 6 }]])
+    expect(db.rpc).toHaveBeenCalledWith('get_billed_customer_pay_speeds')
+  })
+
+  it('reads nothing at all when no sheet is waiting with no payment and no pay day', async () => {
+    const db = dbOf({}, SPEEDS)
+    const sheets = [waiting('s1'), waiting('s2', { payable_after: '2026-11-27' }), waiting('s3', { stage: 'walkthrough' })]
+    expect((await loadUsualPayWeeks(db, sheets, new Map([['s1', '2026-11-12']]))).size).toBe(0)
+    expect(db.rpc).not.toHaveBeenCalled()
+  })
+
+  it('is empty for a role the pay speeds are not shown to', async () => {
+    const db = dbOf({ jobs_ledger: JOBS, jobs_ledger_invoices: BILLS }, { data: null, error: null })
+    expect((await loadUsualPayWeeks(db, [waiting('s1')], new Map())).size).toBe(0)
+  })
+
+  it('is empty when any read is refused or throws, so the ledger beside it still loads', async () => {
+    const refused = { data: null, error: { message: 'permission denied' } }
+    expect((await loadUsualPayWeeks(dbOf({ jobs_ledger: refused, jobs_ledger_invoices: BILLS }, SPEEDS), [waiting('s1')], new Map())).size).toBe(0)
+    expect((await loadUsualPayWeeks(dbOf({ jobs_ledger: JOBS, jobs_ledger_invoices: refused }, SPEEDS), [waiting('s1')], new Map())).size).toBe(0)
+    expect((await loadUsualPayWeeks(dbOf({ jobs_ledger: JOBS, jobs_ledger_invoices: BILLS }, refused), [waiting('s1')], new Map())).size).toBe(0)
+    const broken = { from: () => ({ select: () => ({}) }) } as unknown as Db
+    await expect(loadUsualPayWeeks(broken, [waiting('s1')], new Map())).resolves.toEqual(new Map())
   })
 })

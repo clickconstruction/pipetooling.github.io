@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import SubPortal from './SubPortal'
 import { installDomShims } from '../test/renderSmokeMocks'
@@ -376,5 +376,47 @@ describe('SubPortal: the customer paid (punch list #388, step 2)', () => {
     await open({ ...SUB_PORTAL_DEMO_PAYLOAD, sheets: SUB_PORTAL_DEMO_PAYLOAD.sheets.map((s) => (s.id === 'demo-s2' ? { ...s, customerPaidOn: '2026-09-01' } : s)) })
     expect(screen.queryByTestId('sub-portal-customer-paid')).toBeNull()
     expect(screen.getByText(/You told us the work's done Sep 1, 2026/)).toBeTruthy()
+  })
+
+  // Step 3, the usual pay time: one line under the waiting sentence.
+  it('says nothing of a usual pay time when the function sends none', async () => {
+    await open(paid({}))
+    expect(screen.queryByTestId('sub-portal-usual-pay')).toBeNull()
+  })
+
+  it('adds one line under the waiting sentence, in weeks, with no name and no days', async () => {
+    await open(paid({ usualPayWeeks: { lo: 4, hi: 6 } }))
+    expect(screen.getByText(/their payment is the last thing between you and this money/)).toBeTruthy()
+    const line = screen.getByTestId('sub-portal-usual-pay')
+    expect(line.textContent).toBe('This customer usually pays 4 to 6 weeks after we ask.')
+    expect(screen.getByText('Draw requested')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    expect(screen.getByTestId('sub-portal-usual-pay').textContent).toBe('Este cliente suele pagar de 4 a 6 semanas después de que se lo pedimos.')
+  })
+
+  it('reads one figure, and within a week, in both languages', async () => {
+    await open(paid({ usualPayWeeks: { lo: 4, hi: 4 } }))
+    expect(screen.getByTestId('sub-portal-usual-pay').textContent).toBe('This customer usually pays about 4 weeks after we ask.')
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    expect(screen.getByTestId('sub-portal-usual-pay').textContent).toBe('Este cliente suele pagar unas 4 semanas después de que se lo pedimos.')
+    cleanup()
+    await open(paid({ usualPayWeeks: { lo: 0, hi: 1 } }))
+    expect(screen.getByTestId('sub-portal-usual-pay').textContent).toBe('This customer usually pays within a week after we ask.')
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    expect(screen.getByTestId('sub-portal-usual-pay').textContent).toBe('Este cliente suele pagar en menos de una semana después de que se lo pedimos.')
+  })
+
+  it('the line goes away once the customer paid, and once the sheet is queued', async () => {
+    await open(paid({ usualPayWeeks: { lo: 4, hi: 6 }, customerPaidOn: '2026-09-01' }))
+    expect(screen.getByTestId('sub-portal-customer-paid')).toBeTruthy()
+    expect(screen.queryByTestId('sub-portal-usual-pay')).toBeNull()
+    cleanup()
+    await open(paid({ usualPayWeeks: { lo: 4, hi: 6 }, payableAfter: '2026-09-11' }))
+    expect(screen.queryByTestId('sub-portal-usual-pay')).toBeNull()
+  })
+
+  it('a figure on a sheet that is not waiting on the customer changes nothing', async () => {
+    await open({ ...SUB_PORTAL_DEMO_PAYLOAD, sheets: SUB_PORTAL_DEMO_PAYLOAD.sheets.map((s) => (s.id === 'demo-s2' ? { ...s, usualPayWeeks: { lo: 4, hi: 6 } } : s)) })
+    expect(screen.queryByTestId('sub-portal-usual-pay')).toBeNull()
   })
 })

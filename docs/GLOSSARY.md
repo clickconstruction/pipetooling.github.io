@@ -4266,6 +4266,8 @@ A waiting sheet's row on Jobs → Subs → Pay reads *Rides on bill 2 of 3* or *
 Kernel [`drawTie.ts`](../src/lib/subWorkOrders/drawTie.ts), migration `20261118180000`.
 Since v2.7843 the sub's page says *Customer paid* with the day once the tied bill's status is `paid`, by `customerPaidOn` in [`subPortalCustomerPaid.ts`](../supabase/functions/_shared/subPortalCustomerPaid.ts), the day being the latest `paid_on` on that bill.
 The office's row says the same under the tie (*Sub sees: Customer paid Nov 12*) and turns amber past two days with no payable-after date (`subSeesCustomerPaid`), a held sheet staying grey.
+Since v2.7881 a waiting sheet with no paid day and no payable-after date also carries the payer's usual pay time, as whole weeks (`usualPayWeeks`, the floor being five payments in the last 12 months), from the receipts behind *Pays in*.
+The sub's page writes it as one line (*This customer usually pays 4 to 6 weeks after we ask.*) and the office's row as *Sub sees: usually 4 to 6 weeks* (`subSeesUsualPay`).
 
 ### Followup Sheet
 Printable/downloadable report showing account manager's assigned projects with contact details and submission history.

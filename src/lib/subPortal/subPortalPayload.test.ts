@@ -67,4 +67,23 @@ describe('parseSubPortalPayload (punch list #388: the day the customer paid)', (
       expect('customerPaidOn' in sheetsOf([{ id: 's1', items: [], customerPaidOn: bad }])[0]!).toBe(false)
     }
   })
+
+  it('keeps the usual pay time in its three shapes, and is absent for an older function (step 3)', () => {
+    const [range, one, within, plain] = sheetsOf([
+      { id: 's1', items: [], stage: 'customer_pay', usualPayWeeks: { lo: 4, hi: 6, payer: 'never kept' } },
+      { id: 's2', items: [], stage: 'customer_pay', usualPayWeeks: { lo: 4, hi: 4 } },
+      { id: 's3', items: [], stage: 'customer_pay', usualPayWeeks: { lo: 0, hi: 1 } },
+      { id: 's4', items: [], stage: 'customer_pay' },
+    ])
+    expect(range!.usualPayWeeks).toEqual({ lo: 4, hi: 6 })
+    expect(one!.usualPayWeeks).toEqual({ lo: 4, hi: 4 })
+    expect(within!.usualPayWeeks).toEqual({ lo: 0, hi: 1 })
+    expect('usualPayWeeks' in plain!).toBe(false)
+  })
+
+  it('drops a usual pay time that is not whole weeks in one of those shapes', () => {
+    for (const bad of ['4 to 6 weeks', 30, null, {}, { lo: 6, hi: 4 }, { lo: 0, hi: 3 }, { lo: 1, hi: 1 }, { lo: 4.5, hi: 6 }, { loDays: 28, hiDays: 42 }]) {
+      expect('usualPayWeeks' in sheetsOf([{ id: 's1', items: [], usualPayWeeks: bad }])[0]!).toBe(false)
+    }
+  })
 })

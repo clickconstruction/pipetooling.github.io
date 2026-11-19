@@ -28,6 +28,26 @@ export function subPortalCustomerPaidDay(sheet: Pick<SubPortalSheet, 'stage' | '
   return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null
 }
 
+/** The three forms of the usual pay time line, as keys of the page's word list with what fills them. */
+export type SubPortalUsualPayWords =
+  | { key: 'usualPayWithin'; vars?: undefined }
+  | { key: 'usualPayAbout'; vars: { n: string } }
+  | { key: 'usualPayRange'; vars: { lo: string; hi: string } }
+
+/**
+ * The usual pay time line under the waiting sentence (punch list #388, step 3), or null when the card says
+ * nothing: the function sent a weeks figure, the sheet still waits on the customer, the customer has not paid
+ * (that sentence takes the line's place) and the office has not queued it.
+ */
+export function subPortalUsualPay(sheet: Pick<SubPortalSheet, 'stage' | 'payableAfter' | 'customerPaidOn' | 'usualPayWeeks'>): SubPortalUsualPayWords | null {
+  if (sheet.stage !== 'customer_pay' || isSubPortalSheetQueued(sheet) || subPortalCustomerPaidDay(sheet)) return null
+  const w = sheet.usualPayWeeks
+  if (!w) return null
+  if (w.hi <= 1) return { key: 'usualPayWithin' }
+  if (w.lo === w.hi) return { key: 'usualPayAbout', vars: { n: String(w.lo) } }
+  return { key: 'usualPayRange', vars: { lo: String(w.lo), hi: String(w.hi) } }
+}
+
 export function subPortalRailStep(sheet: Pick<SubPortalSheet, 'stage' | 'payableAfter'>): SubPortalRailStep {
   if (isSubPortalSheetQueued(sheet)) return 3
   switch (sheet.stage) {

@@ -87,6 +87,8 @@ export type LaborJob = {
   draw_invoice_id?: string | null
   /** The day the customer paid that bill in full (v2.7843), by the rule the sub's page reads; null until then. Display only. */
   customer_paid_on?: string | null
+  /** How long this waiting sheet's payer usually takes, in the weeks the sub's page shows (v2.7881); null when the page says nothing. Display only. */
+  usual_pay_weeks?: { lo: number; hi: number } | null
   /** The bills of a tied sheet's job (v2.7843), read with the ledger so the row can name its bill. Display only. */
   draw_bills?: Array<{ id: string; status: string | null; sequence_order: number | null; billed_at: string | null; amount: number | null; created_at?: string | null }> | null
   /** Resolved display name of stage_changed_by (office moves only). */

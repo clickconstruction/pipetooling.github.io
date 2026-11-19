@@ -153,6 +153,21 @@ const STRINGS = {
   },
   stageCustomerPaidNextHeld: { en: 'Your payment is next.', es: 'Su pago es el siguiente.' },
   payHoldLabel: { en: 'On hold:', es: 'En espera:' },
+  // The usual pay time (punch list #388, step 3): one line under the waiting sentence, for a payer with five
+  // payments in the last 12 months. Weeks and the word usually; never days, never the payer's name. The owner
+  // read the three forms in both languages on 2026-11-18.
+  usualPayRange: {
+    en: 'This customer usually pays {lo} to {hi} weeks after we ask.',
+    es: 'Este cliente suele pagar de {lo} a {hi} semanas después de que se lo pedimos.',
+  },
+  usualPayAbout: {
+    en: 'This customer usually pays about {n} weeks after we ask.',
+    es: 'Este cliente suele pagar unas {n} semanas después de que se lo pedimos.',
+  },
+  usualPayWithin: {
+    en: 'This customer usually pays within a week after we ask.',
+    es: 'Este cliente suele pagar en menos de una semana después de que se lo pedimos.',
+  },
   // ── Sheet work orders (v2.2789): exclusions, referenced documents, confirmations, the signed record ──
   exclusionsLabel: { en: 'Not included', es: 'No incluido' },
   attachedByReference: { en: 'Also part of this work order', es: 'También forma parte de esta orden' },

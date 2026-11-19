@@ -6,7 +6,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 import type { DrawBill } from './drawTie'
-import { customerPaidDays, type TiedBillPaymentRow, type TiedBillRow } from '../../../supabase/functions/_shared/subPortalCustomerPaid'
+import {
+  customerPaidDays,
+  payerGapDays,
+  usualPayBySheet,
+  usualPaySheets,
+  type TiedBillPaymentRow,
+  type TiedBillRow,
+  type UsualPayBillRow,
+  type UsualPayJobRow,
+  type UsualPaySheetRow,
+  type UsualPayWeeks,
+} from '../../../supabase/functions/_shared/subPortalCustomerPaid'
 
 type Db = SupabaseClient<Database>
 type CodedError = { code?: string | null; message: string }
@@ -97,6 +108,36 @@ export async function loadCustomerPaidDays(db: Db, ties: ReadonlyMap<string, str
     if (billsRes.error || paysRes.error) return new Map()
     const sheets = [...ties].map(([id, draw_invoice_id]) => ({ id, stage: 'customer_pay', draw_invoice_id }))
     return customerPaidDays(sheets, (billsRes.data ?? []) as TiedBillRow[], (paysRes.data ?? []) as TiedBillPaymentRow[])
+  } catch {
+    return new Map()
+  }
+}
+
+/**
+ * How long each waiting sheet's payer usually takes, in the page's own weeks, by sheet id (step 3): the same rule
+ * the sub's page reads, `usualPayBySheet`, on the office's own pay speeds answer. Read only when a sheet waits on
+ * the customer with no payment and no pay day. Empty when a read fails in any way, or for a role the pay speeds
+ * are not shown to.
+ */
+export async function loadUsualPayWeeks(db: Db, sheets: readonly UsualPaySheetRow[], paidDays: ReadonlyMap<string, string>): Promise<Map<string, UsualPayWeeks>> {
+  const waiting = usualPaySheets(sheets, paidDays)
+  const jobIds = [...new Set(waiting.map((s) => s.job_ledger_id ?? '').filter(Boolean))]
+  if (jobIds.length === 0) return new Map()
+  const billIds = [...new Set(waiting.map((s) => s.draw_invoice_id ?? '').filter(Boolean))]
+  try {
+    const [jobsRes, billsRes, speedsRes] = await Promise.all([
+      db.from('jobs_ledger').select('id, bill_to_party, customer_id, gc_customer_id').in('id', jobIds),
+      billIds.length > 0 ? db.from('jobs_ledger_invoices').select('id, bill_to_party, bill_to_email').in('id', billIds) : Promise.resolve({ data: [], error: null }),
+      db.rpc('get_billed_customer_pay_speeds'),
+    ])
+    if (jobsRes.error || billsRes.error || speedsRes.error) return new Map()
+    return usualPayBySheet({
+      sheets: waiting,
+      paidDays,
+      jobs: (jobsRes.data ?? []) as UsualPayJobRow[],
+      bills: (billsRes.data ?? []) as UsualPayBillRow[],
+      gapsByPayer: payerGapDays(speedsRes.data),
+    })
   } catch {
     return new Map()
   }

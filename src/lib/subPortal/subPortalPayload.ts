@@ -4,6 +4,7 @@
  * response renders the friendly error, never a crash.
  */
 
+import { isUsualPayWeeks, type UsualPayWeeks } from '../../../supabase/functions/_shared/subPortalCustomerPaid'
 import type { SubPortalBooking, SubPortalDays } from './subPortalDays'
 import { parseSubPortalPapers, type SubPortalPapers } from './subPortalPapersPayload'
 import { parseSubPortalJobPapers, type SubPortalJobPapers } from './subPortalJobPapers'
@@ -49,6 +50,12 @@ export type SubPortalSheet = {
    * sheet waiting on the customer whose tied bill the office's record says is paid. Absent everywhere else.
    */
   customerPaidOn?: string | null
+  /**
+   * How long this sheet's payer usually takes, in whole weeks (punch list #388, step 3). Set only on a sheet
+   * waiting on the customer, with no payment and no pay day, whose payer has five payments in the last 12
+   * months. `{ lo: 0, hi: 1 }` is within a week, `lo` equal to `hi` is one figure, otherwise a range.
+   */
+  usualPayWeeks?: UsualPayWeeks | null
 }
 
 /** v2.2928: the dates the sub picked (or the office set) and the room they still have to move them. */
@@ -237,6 +244,8 @@ function parseSheet(raw: unknown): SubPortalSheet | null {
     ...(strOrNull(r.papersFirstJobId) ? { papersFirstJobId: strOrNull(r.papersFirstJobId) } : {}),
     // A day and nothing else: anything that is not YYYY-MM-DD is dropped, and the card reads as it did.
     ...(/^\d{4}-\d{2}-\d{2}$/.test(str(r.customerPaidOn)) ? { customerPaidOn: str(r.customerPaidOn) } : {}),
+    // Whole weeks in one of three shapes, or nothing: a figure that does not fit is dropped.
+    ...(isUsualPayWeeks(r.usualPayWeeks) ? { usualPayWeeks: { lo: r.usualPayWeeks.lo, hi: r.usualPayWeeks.hi } } : {}),
   }
 }
 

@@ -21,7 +21,19 @@ import {
   type SubPaymentRow,
   type SubSheetRow, cleanPortalAddress } from '../_shared/subPortalStatement.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
-import { attachCustomerPaid, customerPaidDays, type TiedBillPaymentRow, type TiedBillRow } from '../_shared/subPortalCustomerPaid.ts'
+import {
+  attachCustomerPaid,
+  attachUsualPay,
+  customerPaidDays,
+  payerGapDays,
+  usualPayBySheet,
+  usualPaySheets,
+  type TiedBillPaymentRow,
+  type TiedBillRow,
+  type UsualPayBillRow,
+  type UsualPayJobRow,
+  type UsualPayWeeks,
+} from '../_shared/subPortalCustomerPaid.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { grantPlansLink } from '../_shared/viewGrant.ts'
 import { internalFunctionCall } from '../_shared/internalFunctionCall.ts'
@@ -499,11 +511,13 @@ serve(async (req) => {
     // says paid for that bill alone, once the office's record says it is paid in full. Read by itself and fail-soft:
     // a read that is refused or throws leaves the page as it was.
     let paidDays = new Map<string, string>()
+    const tieBySheet = new Map<string, string>()
     try {
       const waitingIds = sheetRows.filter((s) => s.stage === 'customer_pay').map((s) => s.id)
       if (waitingIds.length > 0) {
         const { data: tiesRaw, error: tiesErr } = await admin.from('people_labor_jobs').select('id, stage, draw_invoice_id').in('id', waitingIds)
         const ties = (tiesErr ? [] : (tiesRaw ?? [])) as Array<{ id: string; stage: string | null; draw_invoice_id: string | null }>
+        for (const t of ties) if (t.draw_invoice_id) tieBySheet.set(t.id, t.draw_invoice_id)
         const billIds = [...new Set(ties.map((t) => t.draw_invoice_id ?? '').filter(Boolean))]
         if (billIds.length > 0) {
           const [billsRes, paysRes] = await Promise.all([
@@ -518,7 +532,41 @@ serve(async (req) => {
     } catch {
       paidDays = new Map<string, string>()
     }
-    const sheets = attachCustomerPaid(attachSheetAgreements(buildSubSheets(sheetRows, itemRows, paymentRows), agreementRows, todayYmd), paidDays)
+    // The usual pay time (punch list #388, step 3): while a sheet waits on the customer, how long this payer
+    // usually takes, as weeks. Read only when a sheet is waiting with no payment and no pay day, from the office's
+    // own answer (`get_billed_customer_pay_speeds`, which lets the service role through), so the line and the
+    // office's *Pays in* figure come from the same receipts. No name and no days leave here. Fail-soft: a read
+    // that is refused or throws leaves the card as it was.
+    let usualPay = new Map<string, UsualPayWeeks>()
+    try {
+      const waiting = usualPaySheets(
+        sheetRows.map((s) => ({ id: s.id, stage: s.stage, job_ledger_id: s.job_ledger_id, draw_invoice_id: tieBySheet.get(s.id) ?? null, payable_after: s.payable_after })),
+        paidDays,
+      )
+      const waitingJobIds = [...new Set(waiting.map((s) => s.job_ledger_id ?? '').filter(Boolean))]
+      if (waitingJobIds.length > 0) {
+        const waitingBillIds = [...new Set(waiting.map((s) => s.draw_invoice_id ?? '').filter(Boolean))]
+        const [jobsRes, billsRes, speedsRes] = await Promise.all([
+          admin.from('jobs_ledger').select('id, bill_to_party, customer_id, gc_customer_id').in('id', waitingJobIds),
+          waitingBillIds.length > 0
+            ? admin.from('jobs_ledger_invoices').select('id, bill_to_party, bill_to_email').in('id', waitingBillIds)
+            : Promise.resolve({ data: [], error: null }),
+          admin.rpc('get_billed_customer_pay_speeds'),
+        ])
+        if (!jobsRes.error && !billsRes.error && !speedsRes.error) {
+          usualPay = usualPayBySheet({
+            sheets: waiting,
+            paidDays,
+            jobs: (jobsRes.data ?? []) as UsualPayJobRow[],
+            bills: (billsRes.data ?? []) as UsualPayBillRow[],
+            gapsByPayer: payerGapDays(speedsRes.data),
+          })
+        }
+      }
+    } catch {
+      usualPay = new Map<string, UsualPayWeeks>()
+    }
+    const sheets = attachUsualPay(attachCustomerPaid(attachSheetAgreements(buildSubSheets(sheetRows, itemRows, paymentRows), agreementRows, todayYmd), paidDays), usualPay)
     const totals = buildSubTotals(sheets)
     const openSheets = sheets.filter((s) => s.open > 0)
     const sheetsById = new Map(sheetRows.map((s) => [s.id, s]))
