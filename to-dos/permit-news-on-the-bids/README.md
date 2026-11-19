@@ -2,7 +2,7 @@
 name: "Permit news on Followup: a red count of your own bids' new lines, each answered in one press"
 number: 401
 group: waiting
-status: asked 2026-11-19 with a screenshot of the Bid Board · the live lines counted through the app's own kernel, read only · the board drawn as it is and five ways it could be · the owner then chose Followup with a red count, to verify or ignore · that direction drawn at a desk and a phone, in both themes, with a second look · the owner asked whether it was intuitive, easy and well structured, and a third look redrew the card · the owner said build it · PR 1 (the three rules, and the strip as the reader's own) shipped as v2.7923 · PR 2 (the answers table, its read and write, the sorting kernel) shipped as v2.7940 · PR 3 (the Permit news lens on Followup, the red count, the strip off the board) shipped as v2.7941 · PR 4 (the chip with the name and the day, a door on the board, the Call queue and Waiting to hear) shipped as v2.7942
+status: asked 2026-11-19 with a screenshot of the Bid Board · the live lines counted through the app's own kernel, read only · the board drawn as it is and five ways it could be · the owner then chose Followup with a red count, to verify or ignore · that direction drawn at a desk and a phone, in both themes, with a second look · the owner asked whether it was intuitive, easy and well structured, and a third look redrew the card · the owner said build it · PR 1 (the three rules, and the strip as the reader's own) shipped as v2.7923 · PR 2 (the answers table, alone, so its merge holds no deploy) shipped as v2.7940 · PR 3 (the answers' read, write and kernel, the Permit news lens on Followup, the red count, the strip off the board) shipped as v2.7941 · PR 4 (the chip with the name and the day, a door on the board, the Call queue and Waiting to hear) shipped as v2.7942
 summary: >
   An estimator asked for the strip Permit news on your bids to move lower on the Bid Board or
   onto Followup. The live lines say the place is the smaller problem: the strip lists every
@@ -17,7 +17,7 @@ summary: >
 next: Two weeks of the lens, then weigh the Dashboard line. Two small things are left under The plan: a taken-off permit in the bid's This site list, and the bid's suite read from its project name.
 size: M as a train of four (S · S · M · S), a fifth only if asked
 blocker: Two weeks of answers on the lens, to read before the Dashboard line and the two leftovers are weighed.
-ver: v2.6870 (the strip and the row's chip) · v2.6960 (Mark lost… on a line) · v2.7923 (the three rules, and the strip as the reader's own) · v2.7940 (the answers table and its kernel) · v2.7941 (the lens, the count, the strip gone) · v2.7942 (the chip as a door)
+ver: v2.6870 (the strip and the row's chip) · v2.6960 (Mark lost… on a line) · v2.7923 (the three rules, and the strip as the reader's own) · v2.7940 (the answers table) · v2.7941 (the lens, the count, the strip gone) · v2.7942 (the chip as a door)
 opinion: built — watch what gets answered for two weeks before adding to it
 ---
 
@@ -351,9 +351,10 @@ Each PR ships with its release note, its fragment and the guide's change.
 1. **The rules, and yours first (S). Shipped, v2.7923.** The three rules in the kernel, with a
    case for each of the eight live shapes. The strip, still on the board, lists the reader's own
    lines. **This site** says how many permits on another suite it left out. No migration.
-2. **The answers (S). Shipped, v2.7940.** The migration `20261119130000_bid_permit_answers`, the
-   read, the write, the fold (`foldPermitAnswers`) and the inbox for one reader (`permitInbox`).
-   No screen.
+2. **The answers (S). Shipped, v2.7940.** The migration `20261119130000_bid_permit_answers`,
+   alone. The deploy refuses a client that names a table the database lacks, until the push, so
+   the table went first and the read, the write, the fold (`foldPermitAnswers`) and the inbox
+   (`permitInbox`) went with the lens.
 3. **The lens and the count (M). Shipped, v2.7941.** Followup → Permit news, the red count on Followup as its own
    press, the answers with Undo, the loss window in the card. The card's words and reasons
    are `permitNewsCard`, with a test for each tick and each question mark. The strip leaves the Bid Board. Render smokes for the
