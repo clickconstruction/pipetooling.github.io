@@ -269,7 +269,7 @@ export function mailLines(
   },
 ): ChangeLine[] {
   const contactById = new Map(ctx.contacts.map((c) => [c.id, c]))
-  // A mail's files by its line: how many we hold that are in no set yet, and how many already are. A link is no file, and a signature's picture is not one to keep (v2.7556).
+  // A mail's files by its line: how many we hold that are in no set yet, and how many already are. A link is no file, and a signature's picture or a Drive link's preview is not one to keep (v2.7556, v2.7954).
   const filesByMail = new Map<string, { ready: number; kept: number }>()
   for (const f of ctx.files ?? []) {
     if (f.kind !== 'file') continue

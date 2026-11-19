@@ -48,7 +48,7 @@ export function useEmailViewerThreadSlots(io?: EmailViewerIo): Pick<ThreadSlots,
         ? {
             messageWindowFirst: (m) => {
               const inv = lineInvitation({ channel: m.channel, direction: m.direction, subject: m.subject, body: m.body, at: m.at, invitation: m.invitation })
-              // A link is no file, and a signature's picture (image001.png) is not one to keep: most mail carries one (v2.7556).
+              // A link is no file, and a signature's picture (image001.png) or Gmail's picture of a Drive link is not one to keep (v2.7556, v2.7954).
               const files = (m.files ?? []).filter((f) => f.kept !== 'link' && !isInlinePicture(f)).length
               const presses = viewerPresses({ jobId: m.jobId, channel: m.channel, direction: m.direction, invitation: inv !== null, role, files }).filter(
                 (p): p is Exclude<ViewerPress, 'change_order'> => p !== 'change_order',
