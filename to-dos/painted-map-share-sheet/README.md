@@ -15,7 +15,7 @@ summary: >
 next: Two looks, then delete this card. An Android phone has not been tried at all, so press Text it from my phone…, Send it another way… and Copy the link on one, each before a link is out, on the live app with a made-up map. And Taunya sees the one line that stands for her name sentence.
 size: M as a train of three (S · M · S), all built, with the fix the walk found (XS); left: an Android phone and Taunya's look (XS)
 blocker: An Android phone in a hand. Call 4 was taken at the pick on the owner's word, and the name sentence was Taunya's ask, so she should see the one line that stands for it.
-ver: v2.7788 · 7790 · 7863 · 7877
+ver: v2.7788 · 7790 · 7863 · 7877 · 7894
 opinion: built as carded, step 3 included and walked on an iPhone simulator — an Android phone is the one thing nobody has seen
 ---
 
@@ -266,8 +266,9 @@ the address is known at the moment of the press and nothing waits.
   my phone…** still makes the link first and then opens Messages. On the simulator Messages opened
   with no question, because the link came back fast. The band then read *The link is ready. Press
   Open Messages.* though Messages had opened. That is the false note v2.7863 took out of the
-  sheet, and the band does not yet listen for the page being left. The band can take both: the
-  sheet's press at once, and its listener.
+  sheet. **Fixed in v2.7894:** the band asks the server the sheet's question, hands the phone its
+  text inside the press on a yes, and listens for the page being left. Walked on the same
+  simulator after: Messages opened, and back in Safari the band said nothing false.
 - **[#345](../paint-a-map/README.md).** Its rule for copies and its privacy sentences are the list
   above. Nothing on the `/way` page changes.
 - **#393 (closed 2026-11-18, in [the Closed lines](../README.md)).** It worked in the map's window
@@ -283,7 +284,7 @@ nothing from the Dashboard press.
 - The words: `PAINTED_MAP_SHARE_WORDS` in `src/lib/paintedMap/paintedMapLink.ts`,
   `PAINTED_MAP_TEXT_WORDS` and `paintedMapTextWords` in `paintedMapText.ts`, and
   `PAINTED_MAP_COPY_WORDS` in `paintedMapPicture.ts`.
-- The link: `mintPaintedMapLink` in `paintedMapLinkIo.ts` over the `painted-map-link` function,
+- The link: `registerPaintedMapLink` in `paintedMapLinkIo.ts` over the `painted-map-link` function,
   which this card leaves alone through step 2.
 - The phone's Messages: `smsHref` in `src/lib/gc/followUpSheet.ts`.
 - The guide: `src/content/help/paint-a-map.md`, its *Share a map* and *Hand over a copy* sections.

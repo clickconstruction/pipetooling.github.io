@@ -20,6 +20,7 @@ import type { StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
 import type { StepCommitmentRow } from '../lib/workflow/stepCommitments'
 import { sendStepLifecycleNotifications } from '../lib/workflow/stepLifecycleNotifications'
 import { START_WORKFLOW_FAILED, newWorkflowRow, workflowFindStep } from '../lib/workflow/workflowStart'
+import { workflowReadFailure } from '../lib/workflow/workflowReadWords'
 import { formatErrorMessage } from '../utils/errorHandling'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
@@ -88,7 +89,7 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
     ])
     if (queryError) {
       console.error('Error querying workflows:', queryError)
-      fail(`Failed to load workflow: ${queryError.message}`)
+      fail(workflowReadFailure('workflow', queryError))
       return null
     }
     const step = workflowFindStep({ found: Boolean(wfs && wfs.length > 0), isGcProject: Boolean(gcRow), pressed })
@@ -108,7 +109,7 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
     const { data: proj, error: projError } = await supabase.from('projects').select('name').eq('id', pid).single()
     if (projError) {
       console.error('Error loading project:', projError)
-      fail(`Failed to load project: ${projError.message}`)
+      fail(workflowReadFailure('project', projError))
       return null
     }
     const { data: inserted, error: insertError } = await supabase
@@ -145,8 +146,8 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
   }
 
   /**
-   * A press's finder: the project's workflow, made when there is none. Only a person's press calls
-   * it (Start a workflow, a first step, a template, a projection), never a load or a re-read.
+   * A press's finder: the project's workflow, made when there is none. Only `startWorkflow` calls
+   * it, the page's **Start a workflow** press, never a load, a re-read or another save.
    */
   async function ensureWorkflow(pid: string) {
     // Check if there's already a pending call for this project
@@ -189,8 +190,9 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
       .eq('id', pid)
       .single()
     if (e) {
-      if (stepsDrawn.current) setError(e.message)
-      else setLoadError(e.message)
+      const words = workflowReadFailure('project', e)
+      if (stepsDrawn.current) setError(words)
+      else setLoadError(words)
       setLoading(false)
       return false
     }
@@ -217,8 +219,9 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
     
     const { data, error: e } = await query.order('sequence_order', { ascending: true })
     if (e) {
-      if (stepsDrawn.current) setError(`Failed to load steps: ${e.message}`)
-      else setLoadError(`Failed to load steps: ${e.message}`)
+      const words = workflowReadFailure('steps', e)
+      if (stepsDrawn.current) setError(words)
+      else setLoadError(words)
       console.error('Error loading steps:', e)
       return
     }
@@ -340,7 +343,7 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
         console.error('Error loading line items:', error)
         // Don't show error to user for RLS/permission issues, just log and continue
         if (error.code !== 'PGRST116' && error.message && !error.message.includes('permission')) {
-          setError(`Failed to load line items: ${error.message}`)
+          setError(workflowReadFailure('lineItems', error))
         }
         setLineItems({})
         return

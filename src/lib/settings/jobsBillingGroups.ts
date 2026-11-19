@@ -40,6 +40,7 @@ export type JobsBillingSlug =
   | 'photos'
   | 'test-reports'
   | 'developments'
+  | 'trips'
   | 'city-lines'
   | 'county-suggestions'
   | 'invoice-issuer'
@@ -109,6 +110,7 @@ export const JOBS_BILLING_GROUPS: readonly JobsBillingGroup[] = [
       card('photos', 'Photos', 'the size a report photo is shrunk to', 'dev-master-office'),
       card('test-reports', 'Test reports', 'who certifies, the words on the paper, who sends', 'dev-master-office'),
       card('developments', 'Manage developments', 'the list: rename, the default GC, archive', 'dev-master-office'),
+      card('trips', 'Trips', 'how far a site is from the shop before it is a trip from home', 'dev'),
       card('city-lines', 'Job address city line breaks', 'extra city names the address reader knows', 'dev-master-office'),
       card('county-suggestions', 'Property county suggestions', 'extra city = county pairs', 'dev-master-office'),
     ],

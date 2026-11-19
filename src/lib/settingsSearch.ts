@@ -124,6 +124,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Photos', keywords: ['photo size', 'report photo', 'shrink'], tabId: 'settings-jobs', anchorId: 'settings-jobs-photos' },
   { label: 'Test reports', keywords: ['certifier', 'hydrostatic', 'pinpoint', 'gas test', 'test report words'], tabId: 'settings-jobs', anchorId: 'settings-jobs-test-reports' },
   { label: 'Manage developments', keywords: ['developments', 'default gc', 'archive development'], tabId: 'settings-jobs', anchorId: 'settings-jobs-developments' },
+  { label: 'Trips: miles from the shop', keywords: ['trips', 'trip', 'far site', 'miles from the shop', '150 miles', 'out of town'], tabId: 'settings-jobs', anchorId: 'settings-jobs-trips', seenBy: (role) => role === 'dev' },
   { label: 'Job address city line breaks', keywords: ['city names', 'address parser', 'localities'], tabId: 'settings-jobs', anchorId: 'settings-jobs-city-lines' },
   { label: 'Property county suggestions', keywords: ['county suggestions', 'city county pairs'], tabId: 'settings-jobs', anchorId: 'settings-jobs-county-suggestions' },
   { label: 'Owner of record from the roll', keywords: ['owner of record', 'appraisal roll', 'save owners'], tabId: 'settings-jobs', anchorId: 'settings-jobs-owner-of-record' },

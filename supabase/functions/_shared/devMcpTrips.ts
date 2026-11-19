@@ -73,7 +73,7 @@ export const TRIP_TABLE_COLUMNS: Readonly<Record<string, readonly string[]>> = {
 }
 
 /** A trip whole in one read: the row with its people and its jobs, as the Trips look asks for it. */
-export const TRIP_SELECT = 'id,development_id,job_id,purpose,asked_by,asked_who,asked_how,outcome,billing,via,agent_label,created_at,updated_at,trip_people(person_id,user_id,person_name,days),trip_jobs(job_id)'
+export const TRIP_SELECT = 'id,trip_number,development_id,job_id,purpose,asked_by,asked_who,asked_how,outcome,billing,via,agent_label,created_at,updated_at,trip_people(person_id,user_id,person_name,days),trip_jobs(job_id)'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -82,6 +82,8 @@ const obj = (v: unknown): Json | null => (v && typeof v === 'object' && !Array.i
 const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v))
 const strOrNull = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null)
 const by = (column: string, value: string): RowFilter[] => [{ column, op: 'eq', value }]
+/** A trip's number as the database gave it: a whole number from 1, or null. */
+export const tripNumberOf = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) && v >= 1 ? v : null)
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 const nameKey = (name: string) => name.trim().toLowerCase()
 
@@ -365,7 +367,7 @@ export type TripPrepared = {
 }
 
 /** One person's days that another trip already kept in the same place also claims. */
-export type TripOverlap = { trip_id: string; name: string; days: number; first_day: string; last_day: string }
+export type TripOverlap = { trip_id: string; trip_number: number | null; name: string; days: number; first_day: string; last_day: string }
 
 /**
  * The days this trip's people already have on another trip, by the roster person when both name one and by name
@@ -380,7 +382,7 @@ export function tripOverlaps(p: TripPayload, kept: ReadonlyArray<TripRead>): Tri
       const same = other.people.find((x) => (person.person_id && x.person_id ? x.person_id.toLowerCase() === person.person_id : nameKey(x.name) === nameKey(person.name)))
       if (!same) continue
       const shared = Object.keys(person.days).filter((day) => same.days[day] != null)
-      if (shared.length) out.push({ trip_id: other.id, name: person.name, days: shared.length, first_day: shared[0]!, last_day: shared[shared.length - 1]! })
+      if (shared.length) out.push({ trip_id: other.id, trip_number: other.trip_number, name: person.name, days: shared.length, first_day: shared[0]!, last_day: shared[shared.length - 1]! })
     }
   }
   return out
@@ -480,18 +482,22 @@ export function tripPlanWords(prep: TripPrepared, reply: unknown, todayYmd: stri
   const standing = tripStanding(trip, todayYmd)
   const would = tripSaveWould(reply)
   const lead = would === 'change' ? 'Would change the trip' : would === 'add' ? 'Would add a trip' : 'A trip'
+  const kept = tripNumberOf((obj(reply) ?? {}).trip_number)
   const notes: string[] = []
   if (would === 'change') notes.push('A change replaces the trip whole: its words, its people and its jobs become what this plan says, and anything left out is cleared. Its via and agent_label stay as the trip was first kept.')
   if (would === 'add' && prep.idWas === 'made') notes.push('No id came with the call, so the id is made from the trip’s own words: the same trip planned again lands on this id and reads change. To change a trip already kept, pass its id (read_trips lists them).')
   if (would === 'add' && prep.idWas === 'given') notes.push('No trip has this id, so one is made under it. That is how a deleted trip is put back.')
   const alone = prep.people.filter((x) => x.fit === 'unknown' || x.fit === 'several')
   if (alone.length) notes.push(`${alone.map((x) => x.name).join(', ')} ${alone.length === 1 ? 'is a name alone' : 'are names alone'}: a name alone has no roster row and no login, so no hours can be laid over their days. Pass person_id (find_person) to tie one to the roster.`)
-  for (const o of prep.overlaps) notes.push(`${o.name} already has ${o.days === 1 ? o.first_day : `${o.days} of these days (${o.first_day} to ${o.last_day})`} on another trip kept here, ${o.trip_id}. If this is that trip, pass its id; two trips should not claim one person’s day.`)
+  for (const o of prep.overlaps) notes.push(`${o.name} already has ${o.days === 1 ? o.first_day : `${o.days} of these days (${o.first_day} to ${o.last_day})`} on another trip kept here, ${o.trip_number != null ? `Trip ${o.trip_number} (${o.trip_id})` : o.trip_id}. If this is that trip, pass its id; two trips should not claim one person’s day.`)
+  if (kept != null) notes.push(`It is Trip ${kept} on its site, and a change keeps that number.`)
+  else if (would === 'add') notes.push('The database hands the trip its number on its site when it is kept (Trip 1, Trip 2). Nobody types it, and the applied reply names it.')
   notes.push('A trip is a reading over the clock. It changes no clock row, bill or cost.')
   return {
     reads: `${lead} to ${homeWords(prep.home)}${span ? `, ${span.first === span.last ? span.first : `${span.first} to ${span.last}`}: ${plural(counts.days, 'day')} (${tripCountsWords(counts)})` : ''}, ${plural(p.people.length, 'person', 'people')}. Today (${todayYmd}) it would read ${TRIP_STANDING_LABEL[standing]}.`,
     trip: {
       id: p.id ?? null,
+      trip_number: tripNumberOf((obj(reply) ?? {}).trip_number),
       id_was: prep.idWas === 'made' ? 'made from the trip’s own words' : 'given',
       on: { [prep.home.kind]: { id: prep.home.id, name: prep.home.name, ...(prep.home.kind === 'development' ? { city: prep.home.city } : { number: prep.home.number }) } },
       first_day: span?.first ?? null,
@@ -522,10 +528,11 @@ export function tripPlanWords(prep: TripPrepared, reply: unknown, todayYmd: stri
 export function tripAppliedWords(prep: TripPrepared, reply: unknown): Json {
   const r = obj(reply) ?? {}
   const did = r.did === 'changed' ? 'Changed the trip' : 'Added a trip'
+  const number = tripNumberOf(r.trip_number)
   const door = prep.home.kind === 'development' ? `read_trips { development_id: "${prep.home.id}" }` : `read_trips { job_id: "${prep.home.id}" }`
   return {
     ...r,
-    reads: `${did} to ${homeWords(prep.home)}: ${plural(prep.p.people.length, 'person', 'people')}${typeof r.first_day === 'string' && typeof r.last_day === 'string' ? `, ${r.first_day === r.last_day ? r.first_day : `${r.first_day} to ${r.last_day}`}` : ''}.`,
+    reads: `${did} to ${homeWords(prep.home)}: ${plural(prep.p.people.length, 'person', 'people')}${typeof r.first_day === 'string' && typeof r.last_day === 'string' ? `, ${r.first_day === r.last_day ? r.first_day : `${r.first_day} to ${r.last_day}`}` : ''}.${number != null ? ` It is Trip ${number}.` : ''}`,
     next: `${door} reads it back, and the Trips look on the Development page shows it. To change it, plan_trip with id: "${str(r.trip_id) || prep.p.id || ''}" and the trip whole. Deleting a trip is done in the app.`,
   }
 }
@@ -563,6 +570,8 @@ export function tripArgsForLog(name: string, args: Json): Json {
 
 export type TripRead = {
   id: string
+  /** The trip's short number on its site (Trip 5), handed out by the database. Null on a row read without it. */
+  trip_number: number | null
   first_day: string | null
   last_day: string | null
   standing: TripStanding
@@ -609,6 +618,7 @@ export function tripReadOf(row: Row, todayYmd: string): TripRead {
   const standing = tripStanding(trip, todayYmd)
   return {
     id: trip.id,
+    trip_number: tripNumberOf(row.trip_number),
     first_day: span?.first ?? null,
     last_day: span?.last ?? null,
     standing,
@@ -632,7 +642,8 @@ export function tripReadOf(row: Row, todayYmd: string): TripRead {
 }
 
 /**
- * read_trips: a site's trips, or a job's, as the reader (RLS applies), in the order they went out. A site's trips are
+ * read_trips: a site's trips, or a job's, as the reader (RLS applies), in the order they went out, each with its
+ * number on its site (`trip_number`: the order trips were made, not the order they went out). A site's trips are
  * the ones kept on the development. A job's are the ones the job holds by itself (no development) and the ones whose
  * work goes on it. Where each stands is read from its days and `todayYmd`, the company's calendar day. Throws on a
  * refused read; the name of the site or the job is left out when the reader cannot read it.

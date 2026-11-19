@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { lienBoardBinCount, lienBoardBinsShown, lienBoardDoorWords, lienBoardHoldWords, lienBoardUnreadWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
 import type { LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
+import { LIEN_BOARD_RETAINAGE_DOOR_HINT, lienBoardRetainageDoor } from '../../lib/jobs/lienBoardRetainageDoor'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { LIEN_BOARD_DAY_LINE_DOOR } from '../../lib/jobs/lienBoardDayLine'
 import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
+import { lienBoardTileDoorWords, lienBoardTilePicked } from '../../lib/jobs/lienBoardTileDoor'
 
 /**
  * The Lien desk's Board (the owner's ask of 2026-11-15): the month as one picture at the top of To do, where The
@@ -69,6 +72,12 @@ const ARROW = 'var(--border-strong)'
  * bin's bold, so the bin reads as there and not active. 4.83 to 1 on the light surface and 5.78 to 1 on the dark one.
  */
 export const LIEN_BOARD_QUIET_HEAD: CSSProperties = { color: 'var(--text-muted)', fontWeight: 600 }
+
+/**
+ * A column's heading, *Monthly notices* and *Lien affidavits*: the muted grey on both. They were blue and red until the
+ * owner's pick of 2026-11-18, and a red heading over a column read as a late column. Red on the Board is a late day alone.
+ */
+export const LIEN_BOARD_COLUMN_HEAD_COLOR = 'var(--text-muted)'
 
 /** The columns stand side by side from this width; under it they stack and the crossing arrow is not drawn. */
 export const LIEN_BOARD_STACK_UNDER_PX = 760
@@ -268,7 +277,7 @@ function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard, 
   )
 }
 
-function Tile({ tile, isMobile, onTile }: { tile: LienBoardTile; isMobile: boolean; onTile?: (d: LienBoardTileDestination) => void }) {
+function Tile({ tile, isMobile, onTile, picked }: { tile: LienBoardTile; isMobile: boolean; onTile?: (d: LienBoardTileDestination) => void; /** The list under the Board is narrowed to this tile's papers: its press puts the list back. */ picked?: boolean }) {
   const press = tile.destination && onTile ? () => onTile(tile.destination!) : null
   const linePress = !press && tile.lineDestination && onTile ? () => onTile(tile.lineDestination!) : null
   const inner = (
@@ -277,9 +286,11 @@ function Tile({ tile, isMobile, onTile }: { tile: LienBoardTile; isMobile: boole
       <span data-lien-board-tile-label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-700)', lineHeight: 1.25 }}>{tile.label}</span>
       {tile.line ? (
         linePress ? (
-          // The red line is a press of its own (v2.7371): the list under the Board shows only the papers it counts.
-          <button type="button" className="lienJobDoor" data-lien-board-tile-line data-press="yes" onClick={linePress} title="Show only these rows" style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: '0.72rem', color: 'var(--text-red-700)', lineHeight: 1.3, textAlign: 'left', cursor: 'pointer', borderRadius: 3, textDecoration: 'underline', textUnderlineOffset: 3, minHeight: isMobile ? 32 : undefined }}>
-            {tile.line}
+          // The red line is a press of its own (v2.7371): the list under the Board shows only the papers it counts. It says so in words
+          // (the owner's pick of 2026-11-18): the red sentence, then *Show them ›* in the link colour. An underline said it until then.
+          <button type="button" className="lienJobDoor" data-lien-board-tile-line-press={tile.lineDestination?.kind} data-press="yes" onClick={linePress} title="Show only these rows" style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: '0.72rem', lineHeight: 1.3, textAlign: 'left', cursor: 'pointer', borderRadius: 3, minHeight: isMobile ? 32 : undefined }}>
+            <span data-lien-board-tile-line style={{ color: 'var(--text-red-700)' }}>{tile.line}</span>{' '}
+            <span data-lien-board-tile-line-door style={{ color: 'var(--text-link)', fontWeight: 600, whiteSpace: 'nowrap' }}>{LIEN_BOARD_DAY_LINE_DOOR} ›</span>
           </button>
         ) : (
           <span data-lien-board-tile-line style={{ fontSize: '0.72rem', color: tile.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-muted)', lineHeight: 1.3 }}>{tile.line}</span>
@@ -289,9 +300,16 @@ function Tile({ tile, isMobile, onTile }: { tile: LienBoardTile; isMobile: boole
   )
   const marks = { 'data-lien-board-tile': tile.key, 'data-tone': tile.tone }
   if (press) {
+    // A tile that is a press says where it goes, at its top right (the owner's pick of 2026-11-18): *Show them ›*, *Open the run ›*.
+    const door = lienBoardTileDoorWords(tile.destination, picked)
     return (
-      <button type="button" className="lienBoardTile" onClick={press} {...marks}>
+      <button type="button" className="lienBoardTile" onClick={press} aria-pressed={tile.destination?.kind === 'leader' ? Boolean(picked) : undefined} style={door ? { position: 'relative' } : undefined} {...marks}>
         {inner}
+        {door ? (
+          <span data-lien-board-tile-door={tile.destination?.kind} style={{ position: 'absolute', top: isMobile ? 9 : 10, right: isMobile ? 10 : 12, fontSize: '0.74rem', fontWeight: 600, lineHeight: 1.3, color: 'var(--text-link)' }}>
+            {door} ›
+          </span>
+        ) : null}
       </button>
     )
   }
@@ -394,6 +412,7 @@ export default function LienBoard({
   onLayout,
   cardFor,
   prints,
+  onRetainage,
 }: {
   board: LienBoardModel
   isMobile: boolean
@@ -438,6 +457,8 @@ export default function LienBoard({
     onNote: (side: LienBoardPrintSide) => void
     busy?: boolean
   } | null
+  /** The Retainage line's door (the owner's pick of 2026-11-18): the desk opens By paper on the Retainage list. Absent, the line is words alone. */
+  onRetainage?: () => void
 }) {
   const gridRef = useRef<HTMLDivElement | null>(null)
   const [stacked, setStacked] = useState<boolean>(isMobile)
@@ -548,7 +569,8 @@ export default function LienBoard({
       <div data-lien-board-column={kind} style={{ display: 'grid', gap: 10, alignContent: 'start', minWidth: 0 }}>
         {/* No bin stands on the heading line: Held is drawn where its paper stopped (v2.7783) and Missed is the closed end at the column's foot. */}
         <div data-lien-board-heading={kind} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px', minHeight: 24 }}>
-          <h3 style={{ margin: 0, flex: '1 1 auto', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: kind === 'notice' ? 'var(--text-blue-700)' : 'var(--text-red-700)' }}>{title}</h3>
+          {/* Both headings are the muted grey (the owner's pick of 2026-11-18): blue and red until then, and red on the Board now only means late. */}
+          <h3 style={{ margin: 0, flex: '1 1 auto', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: LIEN_BOARD_COLUMN_HEAD_COLOR }}>{title}</h3>
         </div>
         <div data-lien-board-flow={kind} style={{ display: 'grid', gap: 22 }}>
           {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} press={presses[b.key]} />)}
@@ -564,14 +586,28 @@ export default function LienBoard({
     )
   }
 
-  const retainage = board.retainageLine ? <div data-lien-board-retainage style={{ fontSize: '0.78rem', color: 'var(--text-muted)', padding: '2px 4px' }}>{board.retainageLine}</div> : null
+  // Retainage has no bin and no chip: its one line ends in the door to its list (`lienBoardRetainageDoor.ts`).
+  const retainageLine = lienBoardRetainageDoor(board.retainageLine, Boolean(onRetainage))
+  const retainage = retainageLine ? (
+    <div data-lien-board-retainage-row style={{ fontSize: '0.78rem', color: 'var(--text-muted)', padding: '2px 4px' }}>
+      <span data-lien-board-retainage>{retainageLine.words}</span>
+      {retainageLine.door ? (
+        <>
+          {' · '}
+          <button type="button" className="lienJobDoor" data-lien-board-retainage-door onClick={onRetainage} title={LIEN_BOARD_RETAINAGE_DOOR_HINT} aria-label={LIEN_BOARD_RETAINAGE_DOOR_HINT} style={{ ...LINE_DOOR, minHeight: isMobile ? 32 : undefined }}>
+            {retainageLine.door} ›
+          </button>
+        </>
+      ) : null}
+    </div>
+  ) : null
   const pickWords = pick ? lienBoardPickWords(pick, shown ?? 0) : null
 
   return (
     <section ref={boardRef} aria-label="The Board" data-lien-board data-lien-board-layout={layout ? 'stacked' : 'columns'} style={{ position: 'relative', display: 'grid', gap: isMobile ? 10 : 12, padding: isMobile ? '0.6rem 0.75rem 0.4rem' : '0.75rem 1.25rem 0.5rem' }}>
       <div data-lien-board-tiles style={{ display: 'grid', gridTemplateColumns: isMobile || layout ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
         {/* The third tile's press opens the run. On a phone the notices' print stands right under the tiles, the same door twice, so there the tile only reads. */}
-        {board.tiles.map((t) => <Tile key={t.key} tile={t.key === 'in_mail' && phonePrints && prints?.notice ? { ...t, destination: null } : t} isMobile={isMobile} onTile={onTile} />)}
+        {board.tiles.map((t) => <Tile key={t.key} tile={t.key === 'in_mail' && phonePrints && prints?.notice ? { ...t, destination: null } : t} isMobile={isMobile} onTile={onTile} picked={lienBoardTilePicked(t, pick)} />)}
       </div>
       {/* A phone keeps its bins folded, so its two prints stand here in one row (v2.7708; stacked, with their lines, since v2.7483). */}
       {/* The row is a grid of equal columns, one a press, so the two share it on every phone: as a wrapping flex row they needed 337 px of a 375 px phone's 335 and the second fell under the first. A press too narrow for its words wraps them inside itself. */}

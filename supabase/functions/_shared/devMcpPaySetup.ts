@@ -17,9 +17,14 @@
 // says, before anything is written, what the change reaches back into — the weeks with no pay report, the crew days
 // job labor re-prices — and what it leaves alone (pay reports already made keep their stored amounts).
 //
+// Since v2.7882 the plan prices with the person's own salaried week, read from the pay row by the app's rule. The seat
+// reads the week and does not set it: no screen sets one yet, and set_pay_config does not take the key.
+//
 // Pure: no network, no env. The server (dev-mcp/index.ts) resolves the person and runs the legs; this file says what
 // the ask may name, what is refused and why, what each write becomes, and the words. readPaySetupWorld takes the
 // server's reader, so the reads are tested here too. Tests: src/lib/devMcp/devMcpPaySetup.test.ts.
+
+import { formatDayHours, SALARIED_DEFAULT_WEEK, salariedUniformDayHours, salariedWeekHours, salariedWeeklyPay, salariedWeekOf, salariedWeekWords, type SalariedWeek } from './gcKernels/lib/salariedEffectiveHours.ts'
 
 type Json = Record<string, unknown>
 const obj = (v: unknown): Json | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Json) : null)
@@ -33,19 +38,21 @@ export function isPaySetupVerb(verb: string): verb is PaySetupVerb {
 }
 
 /**
- * The hours a salaried day holds when the pay row names none. Today that is every row: the app credits a flat 8 h on a
- * weekday and the workday template is one 480-minute block. A per-person day (people_pay_config.salaried_day_hours)
- * is on its way; everything below reads the length from salariedDayHoursOf, so the follow-up adds the column to
- * PAY_ROW_SELECT and the field to the ask, and nothing else moves.
+ * A salaried person is paid their week (v2.7882): people_pay_config.salaried_week_hours (v2.7826), the paid hours of
+ * each day, seven numbers, Sunday first, 0 for a day off, 8 on the five weekdays when the row names none. The plan
+ * reads it with the app's own rule (salariedWeekOf, the edge copy of src/lib/salariedEffectiveHours.ts) and prices
+ * with it: the weekly figure, the payroll credit, the job labor words. The seat does not set it.
  */
-export const SALARIED_DAY_HOURS_DEFAULT = 8
-export const SALARIED_WEEKDAYS = 5
-/** The one place a salaried day's length is read: the pay row's own day when it carries one, else 8. */
-export function salariedDayHoursOf(row: { salaried_day_hours?: number | null } | null | undefined): number {
-  const h = row?.salaried_day_hours
-  return typeof h === 'number' && Number.isFinite(h) && h > 0 && h <= 24 ? h : SALARIED_DAY_HOURS_DEFAULT
-}
-export const dayMinutesOf = (dayHours: number): number => Math.round(dayHours * 60)
+export { SALARIED_DEFAULT_WEEK, salariedWeekOf, type SalariedWeek }
+export const isDefaultWeek = (week: SalariedWeek): boolean => week.length === 7 && week.every((h, i) => h === SALARIED_DEFAULT_WEEK[i])
+/** A week said once with what it comes to: *8 h Mon to Fri, 40 hours a week*. */
+export const weekSaid = (week: SalariedWeek): string => `${salariedWeekWords(week)}, ${formatDayHours(salariedWeekHours(week))} hours a week`
+/**
+ * The workday template's one continuous block: 480 minutes for everyone (the table's own check,
+ * salary_template_continuous_duration). It draws the clock strip and does not read the week.
+ */
+export const WORKDAY_TEMPLATE_MINUTES = 480
+export const WORKDAY_TEMPLATE_HOURS = WORKDAY_TEMPLATE_MINUTES / 60
 /** An hourly wage past this is a weekly or yearly figure typed in the wrong box. */
 export const WAGE_MAX = 500
 export const PAY_REASON_MAX = 300
@@ -66,25 +73,25 @@ export type PaySetupSet = {
   start_date?: string | null
   end_date?: string | null
   workday_start?: string
-  /** The length the ask named for the workday (workday_hours, workday_minutes or workday_end), in hours: checked against the person's salaried day once the row is read. */
+  /** The length the ask named for the workday (workday_hours, workday_minutes or workday_end), in hours: checked against the template's one block. */
   workday_hours?: number
 }
 export type PaySetupPayload = { action: 'pay_setup'; person: string; reason: string; set: PaySetupSet }
 export type PaySetupInput = { ok: true; p: PaySetupPayload; target: string } | { ok: false; error: string }
 
-const hoursWords = (h: number): string => `${Number.isInteger(h) ? h : Number(h.toFixed(2))}`
+const hoursWords = formatDayHours
 const aOrAn = (h: number): string => (/^(8|11|18)/.test(hoursWords(h)) ? 'an' : 'a')
-/** What the app holds for a salaried day today, said once. */
-export const fixedDayWords = (dayHours: number): string => `A salaried day is ${hoursWords(dayHours)} hours for this person: the workday template stores one continuous ${dayMinutesOf(dayHours)}-minute block and payroll credits a flat ${hoursWords(dayHours)} h on each weekday. Today every salaried day is ${SALARIED_DAY_HOURS_DEFAULT} hours: a person's own day length is not on the pay row yet, and the seat does not set one`
+/** What the app holds for this person's salaried week, and what the seat does with it, said once. */
+export const salariedWeekNote = (who: string, week: SalariedWeek): string => `${who}'s salaried week is ${weekSaid(week)}${isDefaultWeek(week) ? ', the default' : ', their own on the pay row'}. Payroll credits each day its hours in that week, and job costs read the same week. The seat reads the week and does not set it. The workday template is apart from it: one continuous ${WORKDAY_TEMPLATE_MINUTES}-minute block that does not read the week`
 
-const PAY_SETUP_SHAPE = `needs pay — { person (a users.id, a people.id, an address or a name matching one person), reason (one line, kept on the pay log), and one or more of: hourly_wage (a number, or null to clear; a weekly salary ÷ 40), office_hourly_wage (a number or null), is_salary (true | false), record_hours_but_salary (true | false: also record real punches beside the salary), start_date and end_date (YYYY-MM-DD or null, the employment dates on the roster row; end on or after start), workday_start (HH:MM, the start of the salaried day's one block; workday_hours or workday_end may say its length, and the plan refuses a length that is not the person's salaried day) }. Today a salaried day is ${SALARIED_DAY_HOURS_DEFAULT} hours for everyone: a person's own day length is not on the pay row yet.`
+const PAY_SETUP_SHAPE = `needs pay — { person (a users.id, a people.id, an address or a name matching one person), reason (one line, kept on the pay log), and one or more of: hourly_wage (a number, or null to clear; a weekly salary ÷ the hours in the person's salaried week, 40 unless their pay row names another week), office_hourly_wage (a number or null), is_salary (true | false), record_hours_but_salary (true | false: also record real punches beside the salary), start_date and end_date (YYYY-MM-DD or null, the employment dates on the roster row; end on or after start), workday_start (HH:MM, the start of the workday template's one ${WORKDAY_TEMPLATE_HOURS}-hour block; workday_hours or workday_end may say its length, and the plan refuses one that is not ${WORKDAY_TEMPLATE_HOURS} hours) }. A salaried person is paid their week on the pay row (salaried_week_hours: the hours of each day, 8 on Monday to Friday unless it names another). The plan reads the week and prices with it; the seat does not set it.`
 
 const str = (o: Json, k: string): string => (typeof o[k] === 'string' ? (o[k] as string).trim() : '')
 const cents = (n: number): number => Math.round(n * 100) / 100
 const hhmmToMinutes = (t: string): number => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
 const minutesToHhmm = (m: number): string => `${String(Math.floor((((m % 1440) + 1440) % 1440) / 60)).padStart(2, '0')}:${String((((m % 1440) + 1440) % 1440) % 60).padStart(2, '0')}`
-/** The end of the block that starts at `start` (HH:MM) and runs the person's salaried day, wrapping past midnight. */
-export const workdayEndOf = (start: string, dayHours: number = SALARIED_DAY_HOURS_DEFAULT): string => minutesToHhmm(hhmmToMinutes(start) + dayMinutesOf(dayHours))
+/** The end of the block that starts at `start` (HH:MM) and runs `hours`, the template's 8 unless named, wrapping past midnight. */
+export const workdayEndOf = (start: string, hours: number = WORKDAY_TEMPLATE_HOURS): string => minutesToHhmm(hhmmToMinutes(start) + Math.round(hours * 60))
 
 /** The ask's shape, refused in words. */
 export function paySetupInput(verb: PaySetupVerb, input: Json): PaySetupInput {
@@ -104,7 +111,7 @@ export function paySetupInput(verb: PaySetupVerb, input: Json): PaySetupInput {
     }
     const n = a[key]
     if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return { ok: false, error: `${verb}: pay.${key} must be a number, 0 or more, or null to clear it.` }
-    if (n > WAGE_MAX) return { ok: false, error: `${verb}: pay.${key} ${n} reads like a weekly or yearly figure. The app holds a salary as an hourly wage priced over the flat salaried day: divide a weekly amount by ${SALARIED_DAY_HOURS_DEFAULT * SALARIED_WEEKDAYS} (${SALARIED_DAY_HOURS_DEFAULT} hours × ${SALARIED_WEEKDAYS} weekdays, the salaried week today; a yearly one by ${SALARIED_DAY_HOURS_DEFAULT * SALARIED_WEEKDAYS * 52}) and pass that.` }
+    if (n > WAGE_MAX) return { ok: false, error: `${verb}: pay.${key} ${n} reads like a weekly or yearly figure. The app holds a salary as an hourly wage priced over the person's salaried week: divide a weekly amount by the week's hours (${formatDayHours(salariedWeekHours(SALARIED_DEFAULT_WEEK))} unless their pay row names another week; any plan for them shows it) and pass that.` }
     set[key] = cents(n)
   }
   for (const key of ['is_salary', 'record_hours_but_salary'] as const) {
@@ -160,8 +167,8 @@ export const PAY_USER_SELECT = 'id,name,role,login_attached_at,archived_at,is_sa
 export type PayUserRow = { id: string; name: string | null; role: string | null; login_attached_at: string | null; archived_at: string | null; is_sample: boolean | null; is_digital_twin: boolean | null; is_walk_tester: boolean | null }
 export const PAY_PERSON_SELECT = 'id,name,kind,start_date,end_date,archived_at,account_user_id'
 export type PayPersonRow = { id: string; name: string; kind: string | null; start_date: string | null; end_date: string | null; archived_at: string | null; account_user_id: string | null }
-export const PAY_ROW_SELECT = 'person_name,person_id,hourly_wage,office_hourly_wage,is_salary,record_hours_but_salary'
-export type PayRow = { person_name: string; person_id: string | null; hourly_wage: number | null; office_hourly_wage: number | null; is_salary: boolean; record_hours_but_salary: boolean; /** The person's own salaried day, once the column is on main and in PAY_ROW_SELECT. */ salaried_day_hours?: number | null }
+export const PAY_ROW_SELECT = 'person_name,person_id,hourly_wage,office_hourly_wage,is_salary,record_hours_but_salary,salaried_week_hours'
+export type PayRow = { person_name: string; person_id: string | null; hourly_wage: number | null; office_hourly_wage: number | null; is_salary: boolean; record_hours_but_salary: boolean; /** The paid hours of each day of the person's week, Sunday first, as PostgREST hands it; read with salariedWeekOf. */ salaried_week_hours?: unknown }
 export const PAY_TEMPLATE_SELECT = 'user_id,timezone,exclude_weekends,mode,segment_a_start_local,segment_a_duration_minutes,segment_b_start_local,segment_b_duration_minutes,use_split_focus,job_ledger_id,bid_id,updated_at'
 export type PayTemplateRow = { user_id: string; timezone: string; exclude_weekends: boolean; mode: string; segment_a_start_local: string; segment_a_duration_minutes: number; segment_b_start_local: string | null; segment_b_duration_minutes: number | null; use_split_focus: boolean; job_ledger_id: string | null; bid_id: string | null; updated_at: string | null }
 export type PayStint = { start_date: string | null; end_date: string | null }
@@ -258,9 +265,10 @@ const isWeekend = (ymd: string): boolean => weekdayOf(ymd) === 0 || weekdayOf(ym
 
 export type PayWindow = { timeOff: PayTimeOff[]; employmentStart: string | null; employmentEnd: string | null; stints: PayStint[] }
 
-/** The hours payroll credits a salaried person on a day (salariedDayCredit): their salaried day on a weekday inside the employment window, 0 on unpaid time off. */
-export function salariedCreditHours(ymd: string, w: PayWindow, dayHours: number = SALARIED_DAY_HOURS_DEFAULT): number {
-  if (isWeekend(ymd)) return 0
+/** The hours payroll credits a salaried person on a day (salariedDayCredit): that day's hours in their week inside the employment window, 0 on unpaid time off. */
+export function salariedCreditHours(ymd: string, w: PayWindow, week: SalariedWeek = SALARIED_DEFAULT_WEEK): number {
+  const day = week[weekdayOf(ymd)] ?? 0
+  if (!(day > 0)) return 0
   if (w.stints.length >= 2) {
     if (!w.stints.some((s) => (s.start_date == null || ymd >= s.start_date) && (s.end_date == null || ymd <= s.end_date))) return 0
   } else {
@@ -269,7 +277,7 @@ export function salariedCreditHours(ymd: string, w: PayWindow, dayHours: number 
   }
   const overlapping = w.timeOff.filter((r) => ymd >= r.start_date && ymd <= r.end_date)
   if (overlapping.some((r) => r.kind !== 'paid')) return 0
-  return dayHours
+  return day
 }
 
 /** The `weeksBack` Sunday-to-Saturday weeks before the week holding `today`, newest first (scanWeeksBefore). */
@@ -293,8 +301,6 @@ export type PayChange = { field: keyof PayFacts; from: unknown; to: unknown }
 /** What apply writes, in order. Derived by the same function as the plan, so the two cannot disagree. */
 export type PaySetupOps = {
   payName: string
-  /** The person's salaried day in hours (salariedDayHoursOf): the template's length and the week's price. */
-  dayHours: number
   userId: string | null
   personId: string | null
   /** The desk's PATCH on people. */
@@ -313,7 +319,7 @@ export type PaySetupOps = {
   logPayload: Json | null
 }
 
-export type PaySetupResolved = { ok: true; payName: string; dayHours: number; before: PayFacts; after: PayFacts; changes: PayChange[]; unchanged: string[]; ops: PaySetupOps } | { ok: false; refused: string }
+export type PaySetupResolved = { ok: true; payName: string; /** The person's salaried week as the pay row holds it (salariedWeekOf). */ week: SalariedWeek; before: PayFacts; after: PayFacts; changes: PayChange[]; unchanged: string[]; ops: PaySetupOps } | { ok: false; refused: string }
 
 const templateStart = (t: PayTemplateRow | null): string | null => (t ? String(t.segment_a_start_local ?? '').slice(0, 5) || null : null)
 const sameMoney = (a: number | null, b: number | null): boolean => (a == null || b == null ? a == b : cents(a) === cents(b))
@@ -334,8 +340,8 @@ export function resolvePaySetup(p: PaySetupPayload, world: PaySetupWorld): PaySe
   if (world.payRowOtherName) return { ok: false, refused: `Nothing to plan: the pay row for ${who} is under another name, ${JSON.stringify(world.payRowOtherName)}, while the account reads ${JSON.stringify(payName)}. The pay tables are keyed by name, so a change here would make a second pay row. Make the names agree first (plan_account, rename: the name-keyed rows follow).` }
 
   const row = world.payRow
-  const dayHours = salariedDayHoursOf(row)
-  const dayMinutes = dayMinutesOf(dayHours)
+  const week = salariedWeekOf(row)
+  const weekHours = salariedWeekHours(week)
   const before: PayFacts = {
     hourly_wage: row?.hourly_wage ?? null,
     office_hourly_wage: row?.office_hourly_wage ?? null,
@@ -360,17 +366,17 @@ export function resolvePaySetup(p: PaySetupPayload, world: PaySetupWorld): PaySe
   const becameSalary = !before.is_salary && after.is_salary
   if (stoppedSalary) after.workday_start = null
   if (after.start_date && after.end_date && after.end_date < after.start_date) return { ok: false, refused: `Nothing to plan: the end date ${after.end_date} would fall before the start date ${after.start_date}. End on or after start; pass both dates to move them together.` }
-  if (after.is_salary && (becameSalary || set.hourly_wage !== undefined) && !((after.hourly_wage ?? 0) > 0)) return { ok: false, refused: `Nothing to plan: Salaried needs the hourly rate the flat ${hoursWords(dayHours)}-hour day is priced at, and ${who} would have none. Pass hourly_wage: a weekly amount ÷ ${hoursWords(dayHours * SALARIED_WEEKDAYS)}.` }
+  if (after.is_salary && (becameSalary || set.hourly_wage !== undefined) && !((after.hourly_wage ?? 0) > 0)) return { ok: false, refused: `Nothing to plan: Salaried needs the hourly rate ${who}'s week is priced at (${weekSaid(week)}), and ${who} would have none. Pass hourly_wage${weekHours > 0 ? `: a weekly amount ÷ ${hoursWords(weekHours)}` : ''}.` }
   if (set.record_hours_but_salary === true && !after.is_salary) return { ok: false, refused: `Nothing to plan: "also record hours" goes with Salaried, and ${who} would be hourly: their logged hours are already what pays them.` }
   if (set.workday_start !== undefined) {
     if (!after.is_salary) return { ok: false, refused: `Nothing to plan: a workday template is a salaried day's, and ${who} would be hourly. Pass is_salary: true in the same plan, or leave workday_start out.` }
     if (!user) return { ok: false, refused: `Nothing to plan: ${who} has no users row, and the workday template hangs on one. plan_account makes the row; the wage and Salaried can be planned without the workday.` }
-    if (set.workday_hours !== undefined && Math.abs(set.workday_hours - dayHours) > 1e-9) {
-      return { ok: false, refused: `Nothing to plan: ${aOrAn(set.workday_hours)} ${hoursWords(set.workday_hours)}-hour workday (${set.workday_start} to ${workdayEndOf(set.workday_start, set.workday_hours)}) is not ${who}'s salaried day. ${fixedDayWords(dayHours)}, so nothing was stored. Pass workday_start alone: the sessions then run ${set.workday_start} to ${workdayEndOf(set.workday_start, dayHours)}, and pay is the wage × ${hoursWords(dayHours)} × ${SALARIED_WEEKDAYS} a week whatever the person works. Until a person's own day length lands, a shorter paid day is an hourly person with logged hours, or a lower wage.` }
+    if (set.workday_hours !== undefined && Math.abs(set.workday_hours - WORKDAY_TEMPLATE_HOURS) > 1e-9) {
+      return { ok: false, refused: `Nothing to plan: ${aOrAn(set.workday_hours)} ${hoursWords(set.workday_hours)}-hour workday (${set.workday_start} to ${workdayEndOf(set.workday_start, set.workday_hours)}) is not a length the workday template holds. It stores one continuous ${WORKDAY_TEMPLATE_MINUTES}-minute block for everyone, so nothing was stored. Pass workday_start alone: the sessions then run ${set.workday_start} to ${workdayEndOf(set.workday_start)}. The template draws the clock strip and pays nobody: ${who}'s pay is the wage × their salaried week (${weekSaid(week)}), which the seat reads and does not set.` }
     }
     const t = world.template
-    if (t && (t.mode !== 'continuous' || t.segment_a_duration_minutes !== dayMinutes || t.segment_b_start_local != null)) {
-      return { ok: false, refused: `Nothing to plan: ${who}'s workday is a split day (${templateStart(t)} for ${t.segment_a_duration_minutes} minutes${t.segment_b_start_local ? `, then ${String(t.segment_b_start_local).slice(0, 5)} for ${t.segment_b_duration_minutes ?? 0}` : ''}), set on their sheet. The seat writes only the one continuous ${hoursWords(dayHours)}-hour block: change a split day in Workday schedule… on People → their sheet → Pay & schedule, or leave workday_start out.` }
+    if (t && (t.mode !== 'continuous' || t.segment_a_duration_minutes !== WORKDAY_TEMPLATE_MINUTES || t.segment_b_start_local != null)) {
+      return { ok: false, refused: `Nothing to plan: ${who}'s workday is a split day (${templateStart(t)} for ${t.segment_a_duration_minutes} minutes${t.segment_b_start_local ? `, then ${String(t.segment_b_start_local).slice(0, 5)} for ${t.segment_b_duration_minutes ?? 0}` : ''}), set on their sheet. The seat writes only the one continuous ${WORKDAY_TEMPLATE_HOURS}-hour block: change a split day in Workday schedule… on People → their sheet → Pay & schedule, or leave workday_start out.` }
     }
   }
 
@@ -398,7 +404,6 @@ export function resolvePaySetup(p: PaySetupPayload, world: PaySetupWorld): PaySe
   const logged: (keyof PayFacts)[] = (['start_date', 'end_date', 'workday_start'] as const).filter(moved)
   const ops: PaySetupOps = {
     payName,
-    dayHours,
     userId: user?.id ?? null,
     personId: person?.id ?? null,
     dates: datesMoved ? { start_date: after.start_date, end_date: after.end_date } : null,
@@ -409,7 +414,7 @@ export function resolvePaySetup(p: PaySetupPayload, world: PaySetupWorld): PaySe
     sync: !!user && !stoppedSalary && (becameSalary || !!templateOp),
     logPayload: logged.length ? { via: 'dev-mcp', verb: 'apply_pay_setup', changes: Object.fromEntries(logged.map((k) => [k, after[k]])), before: Object.fromEntries(logged.map((k) => [k, before[k]])), after: Object.fromEntries(logged.map((k) => [k, after[k]])) } : null,
   }
-  return { ok: true, payName, dayHours, before, after, changes, unchanged, ops }
+  return { ok: true, payName, week, before, after, changes, unchanged, ops }
 }
 
 // ---------------------------------------------------------------------------
@@ -433,7 +438,7 @@ export type PayrollWeeks = {
 }
 
 /** The weeks before this one with no pay report, and how many of them payroll catch-up shows for a salaried person. */
-export function payrollWeeks(world: PaySetupWorld, before: PayFacts, after: PayFacts, today: string, dayHours: number = salariedDayHoursOf(world.payRow)): PayrollWeeks {
+export function payrollWeeks(world: PaySetupWorld, before: PayFacts, after: PayFacts, today: string, week: SalariedWeek = salariedWeekOf(world.payRow)): PayrollWeeks {
   const lastEnd = world.stubs.map((st) => st.period_end).filter((d) => YMD_RE.test(d)).sort().pop() ?? null
   const sundayThis = ymdAddDays(today, -weekdayOf(today))
   let back = CATCH_UP_WEEKS
@@ -449,14 +454,14 @@ export function payrollWeeks(world: PaySetupWorld, before: PayFacts, after: PayF
     const starts: string[] = []
     for (const w of open) {
       let h = 0
-      for (let d = w.weekStart; d <= w.weekEnd; d = ymdAddDays(d, 1)) h += salariedCreditHours(d, window, dayHours)
+      for (let d = w.weekStart; d <= w.weekEnd; d = ymdAddDays(d, 1)) h += salariedCreditHours(d, window, week)
       if (h < 0.005) continue
       weeks++
       hours += h
       starts.push(w.weekStart)
     }
     starts.sort()
-    return { weeks, hours, est_gross: cents(hours * (facts.hourly_wage ?? 0)), first_week: starts[0] ?? null, last_week: starts[starts.length - 1] ?? null }
+    return { weeks, hours: cents(hours), est_gross: cents(hours * (facts.hourly_wage ?? 0)), first_week: starts[0] ?? null, last_week: starts[starts.length - 1] ?? null }
   }
   const was = before.is_salary ? credit(before, world.stints) : null
   return {
@@ -468,11 +473,16 @@ export function payrollWeeks(world: PaySetupWorld, before: PayFacts, after: PayF
   }
 }
 
-/** The crew days up to today that job labor prices (teamLabor.ts): weekdays and weekend days apart. */
-export function crewDays(world: PaySetupWorld, today: string): { days: number; weekdays: number; weekend_days: number; first: string | null; last: string | null } {
+/**
+ * The crew days up to today that job labor prices (teamLabor.ts): weekdays and weekend days apart, and against the
+ * person's week, the days it pays, the days it leaves out and the hours a salaried reading of them comes to.
+ */
+export function crewDays(world: PaySetupWorld, today: string, week: SalariedWeek = salariedWeekOf(world.payRow)): { days: number; weekdays: number; weekend_days: number; paid_days: number; unpaid_days: number; flat_hours: number; first: string | null; last: string | null } {
   const past = world.crewDates.filter((d) => d <= today)
   const weekend = past.filter(isWeekend).length
-  return { days: past.length, weekdays: past.length - weekend, weekend_days: weekend, first: past[0] ?? null, last: past[past.length - 1] ?? null }
+  const hours = past.map((d) => week[weekdayOf(d)] ?? 0)
+  const paid = hours.filter((h) => h > 0).length
+  return { days: past.length, weekdays: past.length - weekend, weekend_days: weekend, paid_days: paid, unpaid_days: past.length - paid, flat_hours: cents(hours.reduce((t, h) => t + h, 0)), first: past[0] ?? null, last: past[past.length - 1] ?? null }
 }
 
 // ---------------------------------------------------------------------------
@@ -493,8 +503,15 @@ const showValue = (field: keyof PayFacts, v: unknown): string => {
 export function paySetupDryRun(p: PaySetupPayload, world: PaySetupWorld, today: string): PaySetupDryRun {
   const r = resolvePaySetup(p, world)
   if (!r.ok) return r
-  const { payName, dayHours, before, after, changes, unchanged, ops } = r
-  const dayH = hoursWords(dayHours)
+  const { payName, week, before, after, changes, unchanged, ops } = r
+  const weekWords = salariedWeekWords(week)
+  const weekHours = salariedWeekHours(week)
+  const uniform = salariedUniformDayHours(week)
+  const defaultWeek = isDefaultWeek(week)
+  // Job labor's reading of a salaried day: one length when every paid day shares it, else the day's own.
+  const flatDay = uniform != null ? `a flat ${hoursWords(uniform)} h` : `its day's hours in their week (${weekWords})`
+  const paidDaysWords = (n: number): string => (defaultWeek ? `${n} weekday${s(n)}` : `${n} day${s(n)} their week pays`)
+  const unpaidDaysWords = (n: number): string => (defaultWeek ? `${n} weekend day${s(n)}` : `${n} day${s(n)} it leaves out`)
   const { user, person } = world
   const moved = (f: keyof PayFacts): boolean => changes.some((c) => c.field === f)
   const becameSalary = !before.is_salary && after.is_salary
@@ -502,11 +519,11 @@ export function paySetupDryRun(p: PaySetupPayload, world: PaySetupWorld, today: 
   const wageMoved = moved('hourly_wage')
 
   const weekly = after.is_salary && after.hourly_wage != null
-    ? { hourly_wage: after.hourly_wage, day_hours: dayHours, per_week: cents(after.hourly_wage * dayHours * SALARIED_WEEKDAYS), words: `${money(after.hourly_wage)}/h × ${dayH} h × ${SALARIED_WEEKDAYS} weekdays = ${money(cents(after.hourly_wage * dayHours * SALARIED_WEEKDAYS))} a week, whatever hours are worked or logged. A weekday of unpaid time off, or outside the employment dates, pays 0.` }
+    ? { hourly_wage: after.hourly_wage, week_hours: weekHours, per_week: salariedWeeklyPay(after.hourly_wage, week), words: `${money(after.hourly_wage)}/h × ${hoursWords(weekHours)} h (${weekWords}) = ${money(salariedWeeklyPay(after.hourly_wage, week))} a week, whatever hours are worked or logged. A paid day of unpaid time off, or outside the employment dates, pays 0.` }
     : null
 
   // Payroll: the weeks with no pay report.
-  const weeks = payrollWeeks(world, before, after, today, dayHours)
+  const weeks = payrollWeeks(world, before, after, today, week)
   const since = weeks.last_report_through ? `Since the last pay report (through ${weeks.last_report_through})` : `No pay report has ever been made for ${payName}; over the ${weeks.weeks_counted} weeks payroll catch-up scans`
   let payrollWords = `${since}, ${weeks.weeks_without_report} whole week${s(weeks.weeks_without_report)} before this one ${weeks.weeks_without_report === 1 ? 'has' : 'have'} no pay report${weeks.weeks_counted >= WEEKS_BACK_MAX ? ` (counted ${WEEKS_BACK_MAX} weeks back and no further)` : ''}.`
   if (weeks.salaried_after) {
@@ -515,20 +532,20 @@ export function paySetupDryRun(p: PaySetupPayload, world: PaySetupWorld, today: 
     payrollWords += a.weeks === 0
       ? ` With Salaried on${after.start_date ? ` and the start date ${after.start_date}` : ''}, none of them shows on payroll catch-up as unreported.`
       : ` With Salaried on${after.start_date ? ` and the start date ${after.start_date}` : ' and no start date'}, ${a.weeks} of them show${a.weeks === 1 ? 's' : ''} on payroll catch-up as an unreported week (${a.first_week}${a.last_week !== a.first_week ? ` to the week of ${a.last_week}` : ''}), about ${money(a.est_gross)} in all at this wage${was ? `; today ${was.weeks} show${was.weeks === 1 ? 's' : ''}, about ${money(was.est_gross)}` : '; today, hourly, a week shows only when it holds logged hours'}.`
-    if (a.weeks > 0 && !after.start_date) payrollWords += ' The app has no effective date: a salaried person is credited ${dayH} h on every weekday of every week with no report, back as far as anyone looks. A start date is the only thing that stops it, and only on payroll: pass start_date (the first salaried day) in the same plan.'
-    else if (a.weeks > 0) payrollWords += ` Each is a weekday on or after the start date with no report covering it: make those reports, or move start_date to the first day the salary applies.`
+    if (a.weeks > 0 && !after.start_date) payrollWords += ` The app has no effective date: a salaried person is credited their week (${weekWords}) in every week with no report, back as far as anyone looks. A start date is the only thing that stops it, and only on payroll: pass start_date (the first salaried day) in the same plan.`
+    else if (a.weeks > 0) payrollWords += ` Each holds a paid day on or after the start date with no report covering it: make those reports, or move start_date to the first day the salary applies.`
   } else {
     payrollWords += stoppedSalary ? ` With Salaried off, a week shows on payroll catch-up only when it holds logged hours: the salaried weeks with no report stop showing.` : ` Hourly: a week shows on payroll catch-up only when it holds logged hours${wageMoved ? ', and its estimate there reads the new wage' : ''}.`
   }
 
   // Job labor: today's row prices every past crew day.
-  const crew = crewDays(world, today)
+  const crew = crewDays(world, today, week)
   const span = crew.days ? ` (${crew.first}${crew.last !== crew.first ? ` to ${crew.last}` : ''})` : ''
   let laborWords: string
   if (crew.days === 0) laborWords = `${payName} is on no crew day with a job yet, so nothing on job labor re-prices.`
-  else if (becameSalary) laborWords = `${crew.days} past crew day${s(crew.days)}${span} re-price on job labor: each of the ${crew.weekdays} weekday${s(crew.weekdays)} reads a flat ${dayH} h × ${showValue('hourly_wage', after.hourly_wage)} whatever was logged, and the ${crew.weekend_days} weekend day${s(crew.weekend_days)} read${crew.weekend_days === 1 ? 's' : ''} 0. The start date does not shield them: job labor reads today's pay row for every past day.`
+  else if (becameSalary) laborWords = `${crew.days} past crew day${s(crew.days)}${span} re-price on job labor: each of the ${paidDaysWords(crew.paid_days)} reads ${flatDay} × ${showValue('hourly_wage', after.hourly_wage)} whatever was logged, and the ${unpaidDaysWords(crew.unpaid_days)} read${crew.unpaid_days === 1 ? 's' : ''} 0. The start date does not shield them: job labor reads today's pay row for every past day.`
   else if (stoppedSalary) laborWords = `${crew.days} past crew day${s(crew.days)}${span} re-price on job labor: each goes back to its logged hours × ${showValue('hourly_wage', after.hourly_wage)}, and a day with no logged hours reads 0.`
-  else if (wageMoved && after.is_salary) laborWords = `${crew.weekdays} past weekday crew day${s(crew.weekdays)}${span} re-price on job labor at a flat ${dayH} h × ${showValue('hourly_wage', after.hourly_wage)} in place of ${showValue('hourly_wage', before.hourly_wage)}: job labor reads today's wage for every past day, and no date shields them.`
+  else if (wageMoved && after.is_salary) laborWords = `${defaultWeek ? `${crew.paid_days} past weekday crew day${s(crew.paid_days)}` : `${crew.paid_days} past crew day${s(crew.paid_days)} on a day their week pays`}${span} re-price on job labor at ${flatDay} × ${showValue('hourly_wage', after.hourly_wage)} in place of ${showValue('hourly_wage', before.hourly_wage)}: job labor reads today's wage for every past day, and no date shields them.`
   else if (wageMoved) laborWords = `${crew.days} past crew day${s(crew.days)}${span} re-price on job labor at their logged hours × ${showValue('hourly_wage', after.hourly_wage)} in place of ${showValue('hourly_wage', before.hourly_wage)}: job labor reads today's wage for every past day, and no date shields them.`
   else laborWords = `Job labor does not re-price: the wage and Salaried stay as they are (${crew.days} past crew day${s(crew.days)} on record).`
 
@@ -545,9 +562,9 @@ export function paySetupDryRun(p: PaySetupPayload, world: PaySetupWorld, today: 
   let clockWords: string
   if (stoppedSalary) clockWords = `Turning Salaried off clears the workday schedule: ${t ? `the template (${templateStart(t)})` : 'no template stands'}, ${world.overrides} day override${s(world.overrides)}, and the unapproved auto-sessions of today and the day before (${dayBefore}). Pay goes back to logged hours × wage, so ${payName} clocks in and out from now on. Past pay reports and approved hours stay.`
   else if (!after.is_salary) clockWords = `Hourly: ${payName}'s own punches are what pays them; nothing on the clock changes.`
-  else if (!user) clockWords = `${payName} has no users row, so no workday template and no sessions on a clock: payroll credits the flat ${dayH} h on weekdays all the same.`
-  else if (tStart) clockWords = `${ops.template ? (ops.template.kind === 'insert' ? 'A workday template is made' : `The workday template moves from ${before.workday_start}`) : 'A workday template stands'}: ${dayH} hours from ${tStart} to ${workdayEndOf(tStart, dayHours)}, ${t && !t.exclude_weekends ? 'every day' : 'weekdays'}. Sessions appear on ${payName}'s clock strip by themselves${syncWords}. They do not clock in for pay${after.record_hours_but_salary ? '; "also record hours" keeps their real punches recorded beside the salary' : ''}.`
-  else clockWords = `No workday template: Salaried is on for pay (the flat ${dayH} h on weekdays), but no session appears on ${payName}'s clock strip until a template is saved. Pass workday_start (HH:MM) in the plan, or Workday schedule… on their sheet.`
+  else if (!user) clockWords = `${payName} has no users row, so no workday template and no sessions on a clock: payroll credits their week (${weekWords}) all the same.`
+  else if (tStart) clockWords = `${ops.template ? (ops.template.kind === 'insert' ? 'A workday template is made' : `The workday template moves from ${before.workday_start}`) : 'A workday template stands'}: ${WORKDAY_TEMPLATE_HOURS} hours from ${tStart} to ${workdayEndOf(tStart)}, ${t && !t.exclude_weekends ? 'every day' : 'weekdays'}. Sessions appear on ${payName}'s clock strip by themselves${syncWords}. They do not clock in for pay${after.record_hours_but_salary ? '; "also record hours" keeps their real punches recorded beside the salary' : ''}.${defaultWeek ? '' : ` The template does not read their week: the sessions run ${WORKDAY_TEMPLATE_HOURS} hours on ${t && !t.exclude_weekends ? 'every day' : 'weekdays'}, while pay follows the week (${weekWords}).`}`
+  else clockWords = `No workday template: Salaried is on for pay (${weekWords}), but no session appears on ${payName}'s clock strip until a template is saved. Pass workday_start (HH:MM) in the plan, or Workday schedule… on their sheet.`
 
   // The stints the trigger keeps.
   let stintWords: string | null = null
@@ -562,7 +579,7 @@ export function paySetupDryRun(p: PaySetupPayload, world: PaySetupWorld, today: 
   if (ops.dates) writes.push(`the roster row's dates: ${after.start_date ?? 'no start date'} → ${after.end_date ?? 'present'} (the desk's own save on people)`)
   if (ops.payChanges) writes.push(`set_pay_config as you, with the reason: ${Object.keys(ops.payChanges).map((k) => `${k} ${showValue(k as keyof PayFacts, ops.payChanges![k])}`).join(', ')} — one line on the pay log (pay_admin_events) with before and after${world.payRow ? '' : '; the pay row is made'}${ops.linkPersonId ? ', then linked to the roster row' : ''}`)
   if (ops.clearSchedule) writes.push('pay_staff_clear_salary_schedule_by_person_name: the workday template, the day overrides and the unapproved auto-sessions of today and the day before go')
-  if (ops.template) writes.push(ops.template.kind === 'insert' ? `the workday template: one continuous ${dayMinutesOf(dayHours)}-minute block from ${ops.template.start}, weekdays (the Hire form's row)` : `the workday template's start: ${before.workday_start} → ${ops.template.start}; its length, its days and its job focus stay`)
+  if (ops.template) writes.push(ops.template.kind === 'insert' ? `the workday template: one continuous ${WORKDAY_TEMPLATE_MINUTES}-minute block from ${ops.template.start}, weekdays (the Hire form's row)` : `the workday template's start: ${before.workday_start} → ${ops.template.start}; its length, its days and its job focus stay`)
   if (ops.sync) writes.push('sync_salary_clock_sessions_for_user_day for today, which fills today and the day before, so the clock strip shows the salaried sessions now')
   if (ops.logPayload) writes.push(`one more line on the pay log for what set_pay_config does not record: ${Object.keys(ops.logPayload.changes as Json).join(', ')}`)
 
@@ -572,13 +589,14 @@ export function paySetupDryRun(p: PaySetupPayload, world: PaySetupWorld, today: 
     person: { pay_name: payName, user_id: user?.id ?? null, person_id: person?.id ?? null, kind: person?.kind ?? null, role: user?.role ?? null, login: !user ? 'no users row' : user.login_attached_at ? 'attached' : 'none' },
     reason: p.reason,
     // The rows as read: the plan commits to them, so a save by anyone since refuses the apply.
-    pay_row: world.payRow ? { exists: true, person_name: world.payRow.person_name, linked: !!world.payRow.person_id, hourly_wage: world.payRow.hourly_wage, office_hourly_wage: world.payRow.office_hourly_wage, is_salary: world.payRow.is_salary, record_hours_but_salary: world.payRow.record_hours_but_salary } : { exists: false },
+    pay_row: world.payRow ? { exists: true, person_name: world.payRow.person_name, linked: !!world.payRow.person_id, hourly_wage: world.payRow.hourly_wage, office_hourly_wage: world.payRow.office_hourly_wage, is_salary: world.payRow.is_salary, record_hours_but_salary: world.payRow.record_hours_but_salary, salaried_week_hours: world.payRow.salaried_week_hours ?? null } : { exists: false },
     employment: person ? { start_date: person.start_date, end_date: person.end_date } : null,
     workday_template: t ? { exists: true, mode: t.mode, start: templateStart(t), minutes: t.segment_a_duration_minutes, exclude_weekends: t.exclude_weekends, timezone: t.timezone, job_focus: !!(t.job_ledger_id || t.bid_id), updated_at: t.updated_at } : { exists: false },
     changes: changes.map((c) => ({ field: c.field, from: c.from, to: c.to, words: `${FIELD_WORDS[c.field]}: ${showValue(c.field, c.from)} → ${showValue(c.field, c.to)}` })),
     unchanged,
     after,
-    salaried_day_hours: dayHours,
+    // The week the plan priced with: the pay row's own, or the default when the row names none.
+    salaried_week: { hours: [...week], week_hours: weekHours, uniform_day_hours: uniform, is_default: defaultWeek, words: weekSaid(week), note: after.is_salary || moved('workday_start') ? `${salariedWeekNote(payName, week)}.` : null },
     weekly,
     reaches_back: {
       rule: 'The app keeps no effective date and no wage history: one pay row, read as it stands today for every past day. A change is not dated; it rewrites how the past is priced wherever a report has not already stored it.',
@@ -587,10 +605,9 @@ export function paySetupDryRun(p: PaySetupPayload, world: PaySetupWorld, today: 
       pay_reports: { pay_stubs: world.stubs.length, pay_stub_days: world.stubDays, words: world.stubs.length ? `The ${world.stubs.length} pay report${s(world.stubs.length)} already made (${world.stubDays} day row${s(world.stubDays)}) keep${world.stubs.length === 1 ? 's' : ''} the hours, rates and amounts stored on ${world.stubs.length === 1 ? 'it' : 'them'}; nothing here rewrites a report.` : 'No pay report exists yet, so nothing stored is at stake.' },
     },
     clock: { template: !!t, day_overrides: world.overrides, sync_days: syncDays, sync_before_start: syncBeforeStart, words: clockWords },
-    fixed_day: after.is_salary || moved('workday_start') ? `${fixedDayWords(dayHours)}. A person who works a shorter day is still paid and shown ${dayH} hours.` : null,
     stints: stintWords,
     writes,
-    not_written: 'a pay report, logged hours, time off, the vehicle arrangement, show in hours, a split workday and a salaried day\'s length — each stays on its own screen',
+    not_written: 'a pay report, logged hours, time off, the vehicle arrangement, show in hours and a split workday, which each stay on their own screen; and the days and hours of the salaried week, which the seat reads and does not set',
     then: `apply writes ${writes.length === 1 ? 'it' : `the ${writes.length} steps in this order`} as you and stops at the first that fails, naming it; what landed stays. Then it reads the rows back.`,
   }
   return { ok: true, reply }
@@ -605,9 +622,9 @@ export function setPayConfigArgs(ops: PaySetupOps, reason: string): Json {
   return { p_person: ops.payName, p_changes: ops.payChanges ?? {}, p_reason: reason }
 }
 
-/** The workday template the Hire form saves (saveSalaryTemplate): one continuous block from the start, the person's salaried day long, weekdays. */
-export function workdayTemplateRow(userId: string, start: string, timezone: string, dayHours: number = SALARIED_DAY_HOURS_DEFAULT): Json {
-  return { user_id: userId, timezone, exclude_weekends: true, mode: 'continuous', segment_a_start_local: `${start}:00`, segment_a_duration_minutes: dayMinutesOf(dayHours), segment_b_start_local: null, segment_b_duration_minutes: null, use_split_focus: false, job_ledger_id: null, bid_id: null, segment_b_job_ledger_id: null, segment_b_bid_id: null }
+/** The workday template the Hire form saves (saveSalaryTemplate): one continuous 480-minute block from the start, weekdays. */
+export function workdayTemplateRow(userId: string, start: string, timezone: string): Json {
+  return { user_id: userId, timezone, exclude_weekends: true, mode: 'continuous', segment_a_start_local: `${start}:00`, segment_a_duration_minutes: WORKDAY_TEMPLATE_MINUTES, segment_b_start_local: null, segment_b_duration_minutes: null, use_split_focus: false, job_ledger_id: null, bid_id: null, segment_b_job_ledger_id: null, segment_b_bid_id: null }
 }
 
 /** The pay log's line for the dates and the workday start, written as the dev (set_pay_config logs the pay row's own keys). */

@@ -88,10 +88,9 @@ function world(initial: WorkflowProjection[], opts: { readFails?: boolean; write
 
 let latest: WorkflowProjections
 const onError = vi.fn()
-const ensureWorkflow = vi.fn(async () => 'w-found' as string | null)
 
-function Probe({ workflowId, userRole, projectId = 'p1' }: { workflowId: string | null; userRole: string | null; projectId?: string }) {
-  const p = useWorkflowProjections({ workflowId, projectId, userRole, ensureWorkflow, onError })
+function Probe({ workflowId, userRole }: { workflowId: string | null; userRole: string | null }) {
+  const p = useWorkflowProjections({ workflowId, userRole, onError })
   latest = p
   return (
     <div data-testid="p">
@@ -104,8 +103,6 @@ afterEach(() => {
   cleanup()
   queries.length = 0
   onError.mockReset()
-  ensureWorkflow.mockClear()
-  ensureWorkflow.mockImplementation(async () => 'w-found')
 })
 
 describe('useWorkflowProjections', () => {
@@ -260,25 +257,25 @@ describe('useWorkflowProjections', () => {
     expect(screen.getByTestId('p').textContent).toBe('list:a=100 window:closed')
   })
 
-  it('with no workflow in hand, a write finds the project’s workflow first — and checks it before the words', async () => {
+  it('with no workflow in hand, a write says so and sends nothing: it never finds or makes a workflow, and it checks before the words', async () => {
     world([])
     await renderSettled(<Probe workflowId={null} userRole="dev" />, { loaded: () => screen.findByTestId('p') })
+    queries.length = 0
     await act(async () => {
       await latest.saveProjection(null, 'Rough', 'x', '10')
     })
-    expect(ensureWorkflow).toHaveBeenCalledWith('p1')
-    expect((writes('insert')[0]!.steps[0]!.args[0] as { workflow_id: string }).workflow_id).toBe('w-found')
-
-    ensureWorkflow.mockImplementation(async () => null)
-    queries.length = 0
+    expect(onError).toHaveBeenLastCalledWith('This project has no workflow yet, so nothing was saved.')
+    // Empty words would be refused too, but the workflow is checked first.
+    onError.mockReset()
     await act(async () => {
       await latest.saveProjection(null, '', '', '10')
     })
-    expect(onError).toHaveBeenLastCalledWith('Workflow not found. Please refresh the page.')
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenLastCalledWith('This project has no workflow yet, so nothing was saved.')
     await act(async () => {
       await latest.deleteProjection('a')
     })
-    expect(onError).toHaveBeenLastCalledWith('Workflow not found. Please refresh the page.')
+    expect(onError).toHaveBeenLastCalledWith('This project has no workflow yet, so nothing was saved.')
     expect(queries).toEqual([])
   })
 })

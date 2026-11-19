@@ -70,7 +70,41 @@ describe('what went out on a filed affidavit', () => {
     expect(p.next).toBe('Add the stamped scan.')
     const served = lienMailProof({ kind: 'affidavit', sends: [], documentUrl: 'https://drive.google.com/file/d/scan/view', servedAt: '2026-11-18', hasContractor: false })!
     expect(served.envelopes[0]!.line).toBe('Mailed, no number yet')
-    expect(served.next).toBe('Add the owner’s receipt.')
+    // The number comes before the receipt, the order the card's press asks in.
+    expect(served.next).toBe('Enter the owner’s mail number.')
+  })
+
+  it('does not read a file on every copy as mailed: the day is what says so (v2.7883)', () => {
+    // The live desk of 2026-11-18: the stamped scan, a file on both envelopes, no number and no day on record.
+    const kept = [
+      { recipient: 'owner', method: 'certified_mail', tracking: '', receipt_url: 'https://drive.example/r-owner' },
+      { recipient: 'original_contractor', method: 'certified_mail', tracking: '', receipt_url: 'https://drive.example/r-oc' },
+    ]
+    const p = lienMailProof({ kind: 'affidavit', sends: kept, documentUrl: 'https://drive.google.com/file/d/scan/view', servedAt: null, hasContractor: true })!
+    expect(p.envelopes.map((e) => [e.line, e.mailed, e.wantsNumber, e.receiptUrl !== ''])).toEqual([
+      ['Not mailed yet', false, false, true],
+      ['Not mailed yet', false, false, true],
+    ])
+    // Every file is in, so the chip names what is missing in place of a full count. It read Mail proof complete.
+    expect([p.have, p.of, p.complete, p.chip, p.next]).toEqual([3, 3, false, 'Mailed day not recorded', 'Record the day the copies were mailed.'])
+    // The day on record: the copies are mailed, and each still owes its number, as the copies window keeps them.
+    const mailed = lienMailProof({ kind: 'affidavit', sends: kept, documentUrl: 'https://drive.google.com/file/d/scan/view', servedAt: '2026-11-18', hasContractor: true })!
+    expect(mailed.envelopes.map((e) => [e.line, e.mailed, e.wantsNumber])).toEqual([
+      ['Mailed, no number yet', true, true],
+      ['Mailed, no number yet', true, true],
+    ])
+    expect([mailed.complete, mailed.chip, mailed.next]).toEqual([false, 'Mail number missing', 'Enter the owner’s mail number.'])
+    // The day, each number and each receipt: nothing is left, and only now is it complete.
+    const whole = lienMailProof({ kind: 'affidavit', sends: kept.map((s, i) => ({ ...s, tracking: `9507 0${i + 1}` })), documentUrl: 'https://drive.google.com/file/d/scan/view', servedAt: '2026-11-18', hasContractor: true })!
+    expect([whole.complete, whole.chip, whole.next]).toEqual([true, 'Mail proof complete', null])
+    // A number typed ahead of the day shows on the line, and the copy is still not mailed.
+    const early = lienMailProof({ kind: 'affidavit', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9507 03' }], documentUrl: 'https://drive.google.com/file/d/scan/view', servedAt: null, hasContractor: false })!
+    expect([early.envelopes[0]!.line, early.envelopes[0]!.mailed, early.chip, early.next]).toEqual(['Not mailed yet · certified mail 9507 03', false, 'Mail proof: 1 of 2 on file', 'Record the day the copies were mailed.'])
+  })
+
+  it('holds a notice open while a certified copy has no number, though every receipt is in', () => {
+    const p = lienMailProof({ kind: 'notice_53_056', sends: [send('owner', { tracking: '', receipt_url: 'https://drive.example/r1' })], mailedCopies: [copy(1)] })!
+    expect([p.have, p.of, p.complete, p.chip, p.next]).toEqual([2, 2, false, 'Mail number missing', 'Enter the owner’s mail number.'])
   })
 
   it('reads nothing for a release of record', () => {

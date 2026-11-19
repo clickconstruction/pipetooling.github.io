@@ -12,6 +12,7 @@ import type { NeedsYouHost } from './needsYouSources'
 import { lookAlikesHref } from './research/permitsLink'
 import { materialsNeedsHref } from './needsYou/materialsOnSite'
 import { RECEIPT_CHASE_TEAM_HREF } from './needsYou/fillInReceipts'
+import { stagesDoneHref } from './needsYou/stagesDone'
 import type { UserRole } from '../hooks/useAuth'
 
 /**
@@ -75,6 +76,8 @@ export type NeedsYouDoorData = {
   materialsMissingJobId?: string | null
   /** In kind (punch list #301, PR 3): the oldest month with no credit, whose window the line opens on the customer's page. */
   inKindCreditFirst?: { customerId: string | null; arrangementId: string; month: string } | null
+  /** The job that holds the first stage at 100% with no bill (punch list #397, PR 7). */
+  stagesDoneFirstJobId?: string | null
 }
 
 const STAGES = '/jobs?tab=stages'
@@ -132,6 +135,9 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'> & Partial<Pick<Need
       return href('/jobs?tab=stages&kind=unset')
     case 'projects-no-baseline':
       return href('/jobs?tab=stages&kind=project')
+    case 'stages-done-not-billed':
+      // The job that holds the first finished stage, its window open (punch list #397, PR 7). It bills nothing.
+      return href(stagesDoneHref(d.stagesDoneFirstJobId))
     case 'receipts-to-chase':
       // The Team queue, where each charge's line says what the text did and has + Ticket (punch list #299).
       return href(RECEIPT_CHASE_TEAM_HREF)

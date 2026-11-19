@@ -1831,7 +1831,7 @@ A **GC project** (GC mode, `/gc`) is a `projects` row too, so it shows here for 
 ### 3. Workflow Management
 `Workflow.tsx` (~4.4k lines) at `/workflows/:projectId` — the stage-by-stage project interface: step cards with status actions (Set Start / Complete / Approve / Send Back / Re-open), roster-autocomplete assignment, expected dates + `%` complete (feeds Projects → Forecast), tech/office notes, line items with PO and supply-house-invoice links, projections-vs-ledger financials, per-step action ledger, and notification subscriptions. Tables: `project_workflow_steps`, `workflow_step_line_items`, `workflow_projections`, `project_workflow_step_actions`, `step_subscriptions`. Depth: [WORKFLOW_PAGE_ARCHITECTURE.md](./WORKFLOW_PAGE_ARCHITECTURE.md), [WORKFLOW_FEATURES.md](./WORKFLOW_FEATURES.md); per-role behavior: ACCESS_CONTROL.md.
 
-Opening the page only reads (v2.7838): a project with no workflow draws an empty state, *No workflow on this project yet.*, and **Start a workflow** is the press that makes it, shown to the roles the insert policy admits, dev, master, assistant and controller (`workflowFindStep` and `canStartWorkflow`, `src/lib/workflow/workflowStart.ts`). A GC project gets no plumbing workflow: the finder (`findWorkflow` on the open, `ensureWorkflow` on a press, `useWorkflowStepsEngine.ts`) reads `gc_projects` with the workflows and, for a GC project, makes none and the page says where it lives (v2.4846). Before, any door into `/workflows/<id>` filed a GC project as a draft plumbing workflow on load.
+Opening the page only reads (v2.7838): a project with no workflow draws an empty state, *No workflow on this project yet.*, and **Start a workflow** is the press that makes it, shown to the roles the insert policy admits, dev, master, assistant and controller (`workflowFindStep` and `canStartWorkflow`, `src/lib/workflow/workflowStart.ts`). A read that fails names what could not be loaded and then its reason (`workflowReadFailure`, `src/lib/workflow/workflowReadWords.ts`, v2.7887). A GC project gets no plumbing workflow: the finder (`findWorkflow` on the open, `ensureWorkflow` on the **Start a workflow** press, `useWorkflowStepsEngine.ts`) reads `gc_projects` with the workflows and, for a GC project, makes none and the page says where it lives (v2.4846). Before, any door into `/workflows/<id>` filed a GC project as a draft plumbing workflow on load.
 
 ### 4. Template System
 `Templates.tsx` (the owner or a dev since v2.6763) — CRUD for workflow templates and their ordered steps; templates seed workflows at project creation. Tables: `workflow_templates`, `workflow_template_steps`.
@@ -1879,7 +1879,7 @@ Opening the page only reads (v2.7838): a project with no workflow draws an empty
 ### 8. Dashboard
 `dashboard/DashboardYourPeopleSection.tsx` — **Your people** (punch list #273, PR 3c, v2.6600): under My Inbox for the office roles (`useDashboardYourPeople` over `lib/dashboardYourPeople.ts`), one row per person with an open one-off card, the ring on their newest-moved card (`TaskRing`), *moved today* / *moved Wed* / *stuck 32 days* on Review's own age rule (`ONE_OFF_TASK_AGE`), **🔔 Remind** through `send-checklist-notification` and **Open Review**; since v2.6603 **✉ Get this every Monday** opens `checklist/PeopleWeekSheet.tsx`, the Monday email of their week with the rows' people picked (`docs/DASHBOARD_SECTIONS_ARCHITECTURE.md` row 6b).
 
-`dashboard/DashboardProjectsStrip.tsx` — Projects on the leader's Dashboard (punch list #242, PR 6, v2.6352): under Money in in `DashboardFinancialsSection`, for `dev` and `master_technician`, a closed line in Money in's frame (the counts from `paceCounts`, the worst project from `worstWords`) pressed open to the board's `ProjectCard`s over the same `useProjectsBoard` read, which asks for a day's dollars only while open; the choice is kept per device (`dashboard-projects-open`).
+`dashboard/DashboardProjectsStrip.tsx` — Projects on the leader's Dashboard (punch list #242, PR 6, v2.6352): under Money in in `DashboardFinancialsSection`, for `dev` and `master_technician`, a closed line in Money in's frame (the counts from `paceCounts`, the worst project from `worstWords`) pressed open to the board's `ProjectCard`s over the same `useProjectsBoard` read, which asks for a day's dollars only while open; the choice is kept per device (`dashboard-projects-open`). Since v2.7885 (punch list #397 PR 5) `Dashboard.tsx` also draws it for a `superintendent`, above Recent reports, read only.
 
 `jobMode/SuperintendentCard.tsx` — the superintendent's line on Job Mode (punch list #242, PR 4, v2.6335): for a superintendent whose current or next job is a project, his project's pace above the job's details — the headline, the pace strip (`jobMode/PaceStrip.tsx`) with the real days and the stages, the target the office set, the money when it leads, the proof and the one move with **Set the %** (the Dashboard's stepper) and **Open the checklist** (the next stage with a question left, `StageChecklistSheet`) — from `list_project_board` and `projectPace` (`lib/jobs/projectsBoard.ts`), the same read and assembly the Projects board stands on; a tapped day opens in hours, since that read carries no wages. Mounted in `DashboardJobModeCard` beside `JobModeDetailsSection`. Since v2.6665 (punch list #234 PR 2) the line reads the planned finish frozen at award (*Planned finish Nov 14. At this pace, Nov 11.*), and since v2.6666 (PR 4) the card carries his month's score under the proof line — *Scored this month: 42 h under the baseline · 1 day ahead of the plan · bonus $213*, or *Not scored yet this month: no office sign-off on the percent yet.* — his own row of `superintendent_scores`, no wage. Since v2.6737 the proof line is the office's sign-off (*Signed off by the office at 25% on Nov 8*, the crew's percent provisional until then) and the hours in count the subs' sheet hours, and since v2.6776 the budget is the hours frozen at award (*70 h budget ◆ from the bid, frozen at award*), all off that read.
 Since v2.7797 (punch list #396) its face is the headline, the stages as a rail ending in the finish day (`jobMode/PaceRail.tsx`, rows from `lib/jobMode/paceCard.ts`), the hours bar and **Set the %** on the stage in hand; the strip, the target, the money, the proof and the score sit behind **How this is figured**.
@@ -2597,32 +2597,17 @@ useEffect(() => {
 - Force reload by resetting ref (e.g., in `refreshData` function)
 
 ### 8. Workflow ID Lookup Pattern
-**Use Case**: Ensure valid workflow_id for operations when React state might be stale
+**Use Case**: A save on the Workflow page that needs the workflow's id
 
 ```typescript
 async function saveStep(stepData: StepData) {
-  // Ensure we have a workflow_id - fetch from DB if state isn't ready
-  // Explicitly type as string | null to match ensureWorkflow return type
-  let workflowId: string | null = workflow?.id ?? null
-  if (!workflowId && projectId) {
-    workflowId = await ensureWorkflow(projectId)
-    // Optionally sync state if needed
-    if (workflowId && workflow?.id !== workflowId) {
-      const { data: wf } = await supabase
-        .from('project_workflows')
-        .select('*')
-        .eq('id', workflowId)
-        .single()
-      if (wf) setWorkflow(wf as Workflow)
-    }
-  }
-  
+  // The page draws this press only on a workflow, so there is always one in hand.
+  const workflowId = workflow?.id ?? null
   if (!workflowId) {
-    setError('Workflow not found. Please refresh the page.')
+    setError(NO_WORKFLOW_TO_SAVE_ON)
     return
   }
-  
-  // Now use workflowId for the operation
+
   await supabase.from('project_workflow_steps').insert({
     workflow_id: workflowId,
     ...stepData
@@ -2631,12 +2616,10 @@ async function saveStep(stepData: StepData) {
 ```
 
 **Key Points**:
-- Always check `workflow?.id` from state first
-- Explicitly type variable as `string | null` to match function return type
-- Use `?? null` to convert `undefined` (from optional chaining) to `null`
-- Fall back to `ensureWorkflow(projectId)` if state is null
-- Optionally sync state after `ensureWorkflow` to prevent future mismatches
-- Use this pattern in all save/delete operations that depend on workflow_id
+- Read `workflow?.id` from state. A save never finds or makes a workflow (v2.7887): until then each save fell back to `ensureWorkflow(projectId)` and said *Workflow not found. Please refresh the page.*
+- Only the **Start a workflow** press makes a workflow (`startWorkflow` in `useWorkflowStepsEngine.ts`)
+- With none in hand, say `NO_WORKFLOW_TO_SAVE_ON` (`src/lib/workflow/workflowStart.ts`) and stop
+- Use this pattern in every save and delete that depends on workflow_id (`saveStep`, `copyStep`, `createFromTemplate`, `saveProjection`, `deleteProjection`)
 
 ### 9. TypeScript null vs undefined Pattern
 **Use Case**: Handle type mismatches when functions return `string | null` but variables are inferred as `string | undefined`
@@ -2832,8 +2815,8 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - **Issue**: Projections and workflow steps (cards) not persisting when navigating away and back to a project
   - Symptoms: Added projections/steps disappear on first navigation back, but appear on subsequent visits
   - Root Cause: Race condition where `workflow?.id` from React state was `null` during immediate save operations
-- **Solution**: Modified `saveProjection`, `deleteProjection`, `saveStep`, `refreshSteps`, `createFromTemplate`, and `copyStep` to always obtain a valid `workflowId` by calling `ensureWorkflow(projectId)` if state is null (since v2.7838 `refreshSteps` reads through `findWorkflow`, which never makes one)
-- **Implementation**: All save/delete operations now check for `workflow?.id` and fall back to `ensureWorkflow(projectId)` if needed
+- **Solution**: Modified `saveProjection`, `deleteProjection`, `saveStep`, `refreshSteps`, `createFromTemplate`, and `copyStep` to always obtain a valid `workflowId` by calling `ensureWorkflow(projectId)` if state is null (since v2.7838 `refreshSteps` reads through `findWorkflow`, which never makes one; since v2.7887 the saves read `workflow?.id` alone, see pattern 8)
+- **Implementation**: All save/delete operations check for `workflow?.id`; until v2.7887 they fell back to `ensureWorkflow(projectId)` when it was missing
 - **Files Modified**: `src/pages/Workflow.tsx`
 - **Result**: Projections and steps now persist correctly on first navigation back
 

@@ -7,9 +7,9 @@ import type { LatLng } from '../lib/jobTravelEstimate'
 import type { PunchRow } from '../lib/trips/tripHourRows'
 import type { TripDismissalInsert, TripDismissalRow } from '../lib/trips/tripOffers'
 import type { DeletedTrip } from '../lib/trips/tripDeleted'
-import { milesFromShop, tripsLookShows } from '../lib/trips/tripPlace'
+import { milesFromShop, tripsLookShows, TRIP_FAR_MILES_DEFAULT } from '../lib/trips/tripPlace'
 import type { TripRecord, TripRosterPerson } from '../lib/trips/tripRecord'
-import { deleteTrip, deleteTripDismissals, insertTripDismissals, readDeletedTrips, readSiteDismissals, readSitePunches, readSiteTrips, readTripRoster, saveTrip } from '../lib/trips/tripsIo'
+import { deleteTrip, deleteTripDismissals, insertTripDismissals, readDeletedTrips, readSiteDismissals, readSitePunches, readSiteTrips, readTripFarMiles, readTripRoster, saveTrip } from '../lib/trips/tripsIo'
 import { useAddressGeocodeCoords } from './useAddressGeocodeCoords'
 
 /**
@@ -29,6 +29,8 @@ export type SiteTripsIo = {
   readRoster: () => Promise<TripRosterPerson[]>
   readPunches: (jobIds: ReadonlyArray<string>) => Promise<PunchRow[]>
   readShop: () => Promise<LatLng | null>
+  /** How many miles from the shop makes a site a trip from home: the one setting. Absent, the default. */
+  readFarMiles?: () => Promise<number>
   /** The days on the site somebody said were not a trip. */
   readDismissals: (developmentId: string) => Promise<TripDismissalRow[]>
   /** The site's deleted trips that nothing has put back, newest first. Absent, none is read. */
@@ -50,6 +52,7 @@ export const supabaseSiteTripsIo: SiteTripsIo = {
     const anchor = await resolveOfficeAnchor()
     return anchor ? { lat: anchor.lat, lng: anchor.lng } : null
   },
+  readFarMiles: readTripFarMiles,
   readDismissals: readSiteDismissals,
   readDeleted: readDeletedTrips,
   // Called late, so a test that stands in for the page's fetch need not stand in for this name read.
@@ -104,6 +107,7 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
   const [read, setRead] = useState<{ key: string; records: TripRecord[] } | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [shop, setShop] = useState<LatLng | null>(null)
+  const [farMiles, setFarMiles] = useState(TRIP_FAR_MILES_DEFAULT)
   const [roster, setRoster] = useState<TripRosterPerson[] | null>(null)
   const [punchRead, setPunchRead] = useState<{ key: string; rows: PunchRow[] | null; failed: boolean } | null>(null)
   const [dismissRead, setDismissRead] = useState<{ key: string; rows: TripDismissalRow[] } | null>(null)
@@ -132,8 +136,14 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
   useEffect(() => {
     if (!enabled) return
     let live = true
-    io.readShop().then(
-      (p) => live && setShop(p),
+    // The shop and the setting land together: the site's miles are unknown until both are in, so a site is never
+    // called far by the default while the setting is still on its way.
+    Promise.all([io.readShop(), io.readFarMiles ? io.readFarMiles().catch(() => TRIP_FAR_MILES_DEFAULT) : TRIP_FAR_MILES_DEFAULT]).then(
+      ([p, far]) => {
+        if (!live) return
+        setFarMiles(far)
+        setShop(p)
+      },
       () => undefined,
     )
     return () => {
@@ -167,7 +177,7 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
   // A trip that is back, or on its minute of Undo and saved again, is not also listed as deleted.
   const deleted = useMemo(() => (deletedNow && records ? deletedNow.rows.filter((d) => !records.some((r) => r.id === d.record.id)) : (deletedNow?.rows ?? [])), [deletedNow, records])
   const deletedKnown = !deletedKey || !!deletedNow
-  const shows = !!records && tripsLookShows({ tripCount: records.length + deleted.length, miles })
+  const shows = !!records && tripsLookShows({ tripCount: records.length + deleted.length, miles, farMiles })
 
   useEffect(() => {
     if (!(shows || rosterWanted) || roster) return

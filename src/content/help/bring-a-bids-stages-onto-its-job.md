@@ -57,7 +57,7 @@ Sometimes the bid cannot give hours. The window then says why, such as hours on 
 ## What changes on the job
 
 - The Pipeline row draws the job as stages.
-- Rough In, Top Out and Trim Set each take the company's stage checklist. The row reads **not ready** until the crew answers.
+- Rough In, Top Out and Trim Set each take the company's stage checklist, once the office has written its questions. From then the row reads **not ready** until the crew answers.
 - The superintendent's pace card draws the stages.
 - Every line arrives **Any time**, so nothing about billing changes. Tap a line's badge to make it **In order**.
 - The hours frozen at award stay as they are. See [give a project its hours baseline at award](/help/give-a-project-its-hours-baseline).

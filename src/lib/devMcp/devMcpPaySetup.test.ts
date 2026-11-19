@@ -12,10 +12,11 @@ import {
   PAY_SETUP_VERBS,
   PAY_TEMPLATE_SELECT,
   PAY_USER_SELECT,
-  SALARIED_DAY_HOURS_DEFAULT,
+  SALARIED_DEFAULT_WEEK,
   WAGE_MAX,
+  WORKDAY_TEMPLATE_HOURS,
+  WORKDAY_TEMPLATE_MINUTES,
   crewDays,
-  dayMinutesOf,
   isPaySetupVerb,
   payLogRow,
   payNameOf,
@@ -26,7 +27,7 @@ import {
   readPaySetupWorld,
   resolvePaySetup,
   salariedCreditHours,
-  salariedDayHoursOf,
+  salariedWeekOf,
   setPayConfigArgs,
   weeksBefore,
   workdayEndOf,
@@ -44,6 +45,7 @@ import { WRITE_VERBS, planHash, planReply, planVerbFor, writeRpcBody } from '../
 import { CATALOG_RPCS, CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
 import { APP_CALENDAR_TZ } from '../../../supabase/functions/_shared/appTimeZone'
 import { salariedHoursForDay } from '../salariedPayrollDays'
+import { salariedWeeklyPay, salariedWeekOf as appWeekOf, salariedWeekWords } from '../salariedEffectiveHours'
 import { scanWeeksBefore, unreportedPayrollWeeks } from '../unreportedPayrollWeeks'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
@@ -107,7 +109,7 @@ describe('the pay setup pair is on the allowlist with no wrapper RPC', () => {
     expect(isPaySetupVerb('plan_account')).toBe(false)
     expect(planVerbFor('apply_pay_setup')).toBe('plan_pay_setup')
     expect(Object.keys(WRITE_VERBS)).toHaveLength(131)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.106.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.107.0'")
     expect(SERVER).toContain('Writes are one hundred and thirty-one verbs and nothing else:')
     expect(SERVER).toContain('plan_pay_setup → apply_pay_setup')
     expect(README).toContain('`plan_pay_setup(pay)` · `apply_pay_setup(pay, plan_hash)`')
@@ -191,7 +193,7 @@ describe('plan_pay_setup — the shape', () => {
   })
 
   it('a weekly figure in the wage box is refused with the sum to do', () => {
-    expect(r({ person: NAME, reason: 'x', hourly_wage: 1000 })).toMatchObject({ ok: false, error: expect.stringContaining('divide a weekly amount by 40') })
+    expect(r({ person: NAME, reason: 'x', hourly_wage: 1000 })).toMatchObject({ ok: false, error: expect.stringContaining('divide a weekly amount by the week\'s hours (40 unless their pay row names another week') })
     expect(r({ person: NAME, reason: 'x', hourly_wage: WAGE_MAX })).toMatchObject({ ok: true })
   })
 
@@ -214,7 +216,7 @@ describe('plan_pay_setup — the dry run', () => {
   it('Salaried on with no start date: every week with no report shows, and the plan says so', () => {
     const p = plan({ hourly_wage: 25, is_salary: true })
     expect(p.changes.map((c: any) => c.words)).toEqual(['the hourly wage: $20.00/h → $25.00/h', 'Salaried: off → on'])
-    expect(p.weekly).toMatchObject({ per_week: 1000, words: expect.stringContaining('$25.00/h × 8 h × 5 weekdays = $1,000.00 a week') })
+    expect(p.weekly).toMatchObject({ per_week: 1000, words: expect.stringContaining('$25.00/h × 40 h (8 h Mon to Fri) = $1,000.00 a week') })
     expect(p.reaches_back.payroll).toMatchObject({ last_report_through: '2026-10-17', weeks_without_report: 4, salaried_before: null, salaried_after: { weeks: 4, hours: 160, est_gross: 4000, first_week: '2026-10-18', last_week: '2026-11-08' } })
     expect(p.reaches_back.payroll.words).toContain('4 whole weeks before this one have no pay report')
     expect(p.reaches_back.payroll.words).toContain('and no start date, 4 of them show on payroll catch-up as an unreported week')
@@ -259,13 +261,13 @@ describe('plan_pay_setup — the dry run', () => {
     expect(none.workday_template).toEqual({ exists: false })
     expect(none.clock.words).toContain('No workday template')
     expect(none.clock.words).toContain('Pass workday_start (HH:MM)')
-    expect(none.fixed_day).toContain('A salaried day is 8 hours for this person')
-    expect(none.fixed_day).toContain('Today every salaried day is 8 hours')
-    expect(none.fixed_day).toContain('the seat does not set one. A person who works a shorter day is still paid and shown 8 hours.')
+    expect(none.salaried_week).toMatchObject({ hours: [0, 8, 8, 8, 8, 8, 0], week_hours: 40, uniform_day_hours: 8, is_default: true, words: '8 h Mon to Fri, 40 hours a week' })
+    expect(none.salaried_week.note).toContain('ZZ Test Helper\'s salaried week is 8 h Mon to Fri, 40 hours a week, the default.')
+    expect(none.salaried_week.note).toContain('The seat reads the week and does not set it.')
+    expect(none.salaried_week.note).toContain('one continuous 480-minute block that does not read the week.')
     // Salaried on with no template: the sync runs as the desk runs it and mints nothing, so no day is named.
     expect(none.clock).toMatchObject({ sync_days: ['2026-11-17', '2026-11-18'], sync_before_start: null })
     expect(plan({ hourly_wage: 25, is_salary: true, start_date: '2026-11-18' }).clock.sync_before_start).toBeNull()
-    expect(none.salaried_day_hours).toBe(8)
     const made = plan({ hourly_wage: 25, is_salary: true, workday_start: '06:00' })
     expect(made.clock.words).toContain('A workday template is made: 8 hours from 06:00 to 14:00, weekdays')
     // The sync fills today and the day before, and reads no start date: the plan says so, and names the day when it falls before the start.
@@ -284,7 +286,7 @@ describe('plan_pay_setup — the dry run', () => {
     expect(moved.clock.words).toContain('The workday template moves from 07:00: 8 hours from 06:00 to 14:00')
     expect(moved.writes.join(' | ')).toContain("the workday template's start: 07:00 → 06:00; its length, its days and its job focus stay")
     expect(plan({ hourly_wage: 22 }).clock.words).toContain('Hourly')
-    expect(plan({ hourly_wage: 22 }).fixed_day).toBeNull()
+    expect(plan({ hourly_wage: 22 }).salaried_week).toMatchObject({ week_hours: 40, note: null })
   })
 
   it('Salaried off: the schedule goes, and the plan counts what goes with it', () => {
@@ -328,47 +330,92 @@ describe('plan_pay_setup — the dry run', () => {
   })
 })
 
-describe('a salaried day\'s length is read in one place', () => {
-  it('8 hours today, and a workday of another length is refused with nothing stored', () => {
-    expect(SALARIED_DAY_HOURS_DEFAULT).toBe(8)
-    expect(salariedDayHoursOf(null)).toBe(8)
-    expect(salariedDayHoursOf(hourly)).toBe(8)
-    expect(dayMinutesOf(salariedDayHoursOf(hourly))).toBe(480)
+describe('a salaried person is paid their week, read from the pay row', () => {
+  const shortFriday: PayRow = { ...hourly, salaried_week_hours: [0, 6, 6, 6, 6, 4, 0] }
+
+  it('the template is one 480-minute block, and a workday of another length is refused with nothing stored', () => {
+    expect(WORKDAY_TEMPLATE_MINUTES).toBe(480)
+    expect(WORKDAY_TEMPLATE_HOURS).toBe(8)
     const six = refusal({ hourly_wage: 25, is_salary: true, workday_start: '06:00', workday_end: '12:00' })
-    expect(six).toContain('a 6-hour workday (06:00 to 12:00) is not ZZ Test Helper\'s salaried day')
-    expect(six).toContain('A salaried day is 8 hours for this person')
-    expect(six).toContain('a person\'s own day length is not on the pay row yet')
-    expect(six).toContain('nothing was stored')
+    expect(six).toContain('a 6-hour workday (06:00 to 12:00) is not a length the workday template holds')
+    expect(six).toContain('one continuous 480-minute block for everyone, so nothing was stored')
     expect(six).toContain('the sessions then run 06:00 to 14:00')
-    // The one length the person's day holds passes, and the template is that long.
+    expect(six).toContain('ZZ Test Helper\'s pay is the wage × their salaried week (8 h Mon to Fri, 40 hours a week), which the seat reads and does not set')
     const eight = plan({ hourly_wage: 25, is_salary: true, workday_start: '06:00', workday_hours: 8 })
     expect(eight.writes.join(' | ')).toContain('one continuous 480-minute block from 06:00')
-    // The kernel never writes a bare 8 or 480 where a day's length belongs.
+    // A person on a short week asks for the same thing and gets the same answer: the template does not read the week.
+    expect(refusal({ hourly_wage: 10, is_salary: true, workday_start: '06:00', workday_hours: 6 }, world({ payRow: shortFriday }))).toContain('their salaried week (6 h Mon to Thu, 4 h Fri, 28 hours a week)')
+    expect(workdayTemplateRow(USER, '06:00', APP_CALENDAR_TZ)).toMatchObject({ segment_a_duration_minutes: 480, segment_a_start_local: '06:00:00' })
+    expect(SERVER).toContain('workdayTemplateRow(ops.userId!, t.start, APP_CALENDAR_TZ)')
+    // The 480 is held once, and no price is written out as a day times five.
     const kernel = readFileSync('supabase/functions/_shared/devMcpPaySetup.ts', 'utf8')
-    expect(kernel.match(/\b480\b/g)?.length).toBe(1) // the comment that says what today's day is
+    expect(kernel).toContain('export const WORKDAY_TEMPLATE_MINUTES = 480')
+    expect(kernel).toContain('segment_a_duration_minutes: WORKDAY_TEMPLATE_MINUTES')
     expect(kernel).not.toMatch(/segment_a_duration_minutes: \d/)
-    expect(kernel).not.toMatch(/\* 8 \*|× 8 ×/)
+    expect(kernel).not.toMatch(/\* 8 \*|× 8 ×|\* 40\b|÷ 40\b/)
   })
 
-  it('a pay row that carries its own day is priced, credited and scheduled by it', () => {
-    // The follow-up adds salaried_day_hours to PAY_ROW_SELECT and to the ask; nothing below it moves.
-    const sixHour = world({ payRow: { ...hourly, salaried_day_hours: 6 } })
-    expect(salariedDayHoursOf(sixHour.payRow)).toBe(6)
-    const p = plan({ hourly_wage: 10, is_salary: true, start_date: '2026-11-09', workday_start: '06:00', workday_end: '12:00' }, sixHour)
-    expect(p.salaried_day_hours).toBe(6)
-    expect(p.weekly).toMatchObject({ day_hours: 6, per_week: 300, words: expect.stringContaining('$10.00/h × 6 h × 5 weekdays = $300.00 a week') })
-    expect(p.reaches_back.payroll.salaried_after).toMatchObject({ weeks: 1, hours: 30, est_gross: 300 })
-    expect(p.reaches_back.job_labor.words).toContain('reads a flat 6 h × $10.00/h')
-    expect(p.clock.words).toContain('6 hours from 06:00 to 12:00')
-    expect(p.writes.join(' | ')).toContain('one continuous 360-minute block from 06:00')
-    const r = resolvePaySetup(ask({ hourly_wage: 10, is_salary: true, workday_start: '06:00' }), sixHour)
-    if (!r.ok) throw new Error(r.refused)
-    expect(r.ops.dayHours).toBe(6)
-    expect(workdayTemplateRow(USER, '06:00', APP_CALENDAR_TZ, r.ops.dayHours)).toMatchObject({ segment_a_duration_minutes: 360, segment_a_start_local: '06:00:00' })
-    // And an 8-hour workday is then the one refused.
-    expect(refusal({ hourly_wage: 10, is_salary: true, workday_start: '06:00', workday_hours: 8 }, sixHour)).toContain('an 8-hour workday (06:00 to 14:00) is not')
-    expect(salariedCreditHours('2026-11-10', { timeOff: [], employmentStart: null, employmentEnd: null, stints: [] }, 6)).toBe(6)
-    expect(SERVER).toContain('workdayTemplateRow(ops.userId!, t.start, APP_CALENDAR_TZ, ops.dayHours)')
+  it('the week is read by the app\'s own rule, and the pay row\'s select names the column', () => {
+    expect(PAY_ROW_SELECT.split(',')).toContain('salaried_week_hours')
+    // A row with no week, a week of strings as a numeric array can arrive, and a week that is not seven numbers.
+    const rows = [null, hourly, shortFriday, { salaried_week_hours: ['0', '6.00', '6.00', '6.00', '6.00', '4.00', '0'] }, { salaried_week_hours: [8, 8, 8] }, { salaried_week_hours: [0, 8, 8, 8, 8, 8, 17] }]
+    for (const row of rows) expect(salariedWeekOf(row), JSON.stringify(row)).toEqual(appWeekOf(row))
+    expect(salariedWeekOf(hourly)).toEqual([0, 8, 8, 8, 8, 8, 0])
+    expect(salariedWeekOf(rows[3])).toEqual([0, 6, 6, 6, 6, 4, 0])
+    expect(salariedWeekOf(rows[4])).toEqual([...SALARIED_DEFAULT_WEEK])
+  })
+
+  it('a short Friday: the weekly figure, the payroll credit and job labor read each day\'s own hours', () => {
+    const w = world({ payRow: shortFriday })
+    const p = plan({ hourly_wage: 10, is_salary: true, start_date: '2026-11-09' }, w)
+    expect(p.pay_row.salaried_week_hours).toEqual([0, 6, 6, 6, 6, 4, 0])
+    expect(p.salaried_week).toMatchObject({ hours: [0, 6, 6, 6, 6, 4, 0], week_hours: 28, uniform_day_hours: null, is_default: false, words: '6 h Mon to Thu, 4 h Fri, 28 hours a week' })
+    expect(p.salaried_week.note).toContain('ZZ Test Helper\'s salaried week is 6 h Mon to Thu, 4 h Fri, 28 hours a week, their own on the pay row.')
+    expect(p.weekly).toMatchObject({ week_hours: 28, per_week: 280, words: expect.stringContaining('$10.00/h × 28 h (6 h Mon to Thu, 4 h Fri) = $280.00 a week') })
+    expect(p.weekly.per_week).toBe(salariedWeeklyPay(10, appWeekOf(shortFriday)))
+    expect(p.salaried_week.words).toContain(salariedWeekWords(appWeekOf(shortFriday)))
+    // One whole week on or after the start date has no report: Monday to Thursday at 6, Friday at 4.
+    expect(p.reaches_back.payroll.salaried_after).toMatchObject({ weeks: 1, hours: 28, est_gross: 280 })
+    // The two Tuesdays are paid days; the Saturday is not in the week.
+    expect(p.reaches_back.job_labor).toMatchObject({ days: 3, paid_days: 2, unpaid_days: 1, flat_hours: 12 })
+    expect(p.reaches_back.job_labor.words).toContain('each of the 2 days their week pays reads its day\'s hours in their week (6 h Mon to Thu, 4 h Fri) × $10.00/h whatever was logged, and the 1 day it leaves out reads 0')
+    // With no start date the plan names the week it credits, in words that are filled in.
+    const open = plan({ hourly_wage: 10, is_salary: true }, w).reaches_back.payroll.words
+    expect(open).toContain('a salaried person is credited their week (6 h Mon to Thu, 4 h Fri) in every week with no report')
+    expect(open).not.toContain('${')
+    // A wage change on a person already salaried on that week.
+    expect(plan({ hourly_wage: 12 }, world({ payRow: { ...shortFriday, hourly_wage: 10, is_salary: true } })).reaches_back.job_labor.words).toContain('2 past crew days on a day their week pays (2026-10-20 to 2026-11-03) re-price on job labor at its day\'s hours in their week (6 h Mon to Thu, 4 h Fri) × $12.00/h in place of $10.00/h')
+  })
+
+  it('one length on every paid day reads as a flat day, and a Saturday in the week is a paid day', () => {
+    const six = plan({ hourly_wage: 10, is_salary: true, start_date: '2026-11-09' }, world({ payRow: { ...hourly, salaried_week_hours: [0, 6, 6, 6, 6, 6, 0] } }))
+    expect(six.salaried_week).toMatchObject({ week_hours: 30, uniform_day_hours: 6, is_default: false })
+    expect(six.weekly).toMatchObject({ per_week: 300, words: expect.stringContaining('$10.00/h × 30 h (6 h Mon to Fri) = $300.00 a week') })
+    expect(six.reaches_back.payroll.salaried_after).toMatchObject({ weeks: 1, hours: 30, est_gross: 300 })
+    expect(six.reaches_back.job_labor.words).toContain('each of the 2 days their week pays reads a flat 6 h × $10.00/h')
+    const tueToSat = plan({ hourly_wage: 10, is_salary: true }, world({ payRow: { ...hourly, salaried_week_hours: [0, 0, 8, 8, 8, 8, 8] } }))
+    expect(tueToSat.salaried_week.words).toBe('8 h Tue to Sat, 40 hours a week')
+    expect(tueToSat.reaches_back.job_labor).toMatchObject({ weekdays: 2, weekend_days: 1, paid_days: 3, unpaid_days: 0, flat_hours: 24 })
+    expect(tueToSat.reaches_back.job_labor.words).toContain('each of the 3 days their week pays reads a flat 8 h × $10.00/h whatever was logged, and the 0 days it leaves out read 0')
+  })
+
+  it('a template on a short week: the clock still draws 8 hours, and the plan says pay follows the week', () => {
+    const p = plan({ hourly_wage: 10, is_salary: true, workday_start: '06:00' }, world({ payRow: shortFriday }))
+    expect(p.clock.words).toContain('A workday template is made: 8 hours from 06:00 to 14:00, weekdays')
+    expect(p.clock.words).toContain('The template does not read their week: the sessions run 8 hours on weekdays, while pay follows the week (6 h Mon to Thu, 4 h Fri).')
+    expect(p.writes.join(' | ')).toContain('one continuous 480-minute block from 06:00')
+    expect(plan({ hourly_wage: 25, is_salary: true, workday_start: '06:00' }).clock.words).not.toContain('does not read their week')
+    expect(plan({ hourly_wage: 10, is_salary: true }, world({ payRow: shortFriday })).clock.words).toContain('Salaried is on for pay (6 h Mon to Thu, 4 h Fri), but no session appears')
+    expect(p.not_written).toContain('the days and hours of the salaried week, which the seat reads and does not set')
+  })
+
+  it('a week that has no paid days prices at nothing, and the wage refusal names no sum', () => {
+    const none = world({ payRow: { ...hourly, hourly_wage: null, salaried_week_hours: [0, 0, 0, 0, 0, 0, 0] } })
+    expect(refusal({ is_salary: true }, none)).toContain('Salaried needs the hourly rate ZZ Test Helper\'s week is priced at (no paid days, 0 hours a week), and ZZ Test Helper would have none. Pass hourly_wage.')
+    expect(refusal({ is_salary: true }, world({ payRow: { ...hourly, hourly_wage: null } }))).toContain('Pass hourly_wage: a weekly amount ÷ 40.')
+    const p = plan({ hourly_wage: 10, is_salary: true }, none)
+    expect(p.weekly).toMatchObject({ week_hours: 0, per_week: 0 })
+    expect(p.reaches_back.payroll.salaried_after).toMatchObject({ weeks: 0, hours: 0, est_gross: 0 })
   })
 })
 
@@ -426,6 +473,8 @@ describe('the plan commits to the rows as read', () => {
     expect(await planHash('apply_pay_setup', p, (paySetupDryRun(p, world(), TODAY) as { reply: unknown }).reply)).toBe(base)
     expect(await hashOf(world({ payRow: { ...hourly, office_hourly_wage: 18 } }))).not.toBe(base)
     expect(await hashOf(world({ payRow: { ...hourly, record_hours_but_salary: true } }))).not.toBe(base)
+    // The week is on the pay row as read, so a week set by anyone since refuses the apply.
+    expect(await hashOf(world({ payRow: { ...hourly, salaried_week_hours: [0, 6, 6, 6, 6, 6, 0] } }))).not.toBe(base)
     expect(await hashOf(world({ person: { ...person, end_date: '2026-12-31' } }))).not.toBe(base)
     expect(await hashOf(world({ template }))).not.toBe(base)
     expect(await hashOf(world({ template: { ...template, updated_at: '2026-11-18T09:00:00Z' } }))).not.toBe(await hashOf(world({ template })))
@@ -441,12 +490,19 @@ describe('the calendar is the app\'s own', () => {
       { timeOff: [{ start_date: '2026-11-03', end_date: '2026-11-04', kind: 'unpaid' }, { start_date: '2026-11-05', end_date: '2026-11-05', kind: 'paid' }], employmentStart: '2026-10-21', employmentEnd: '2026-11-12', stints: [] },
       { timeOff: [], employmentStart: '2026-11-09', employmentEnd: null, stints: [{ start_date: '2026-10-01', end_date: '2026-10-23' }, { start_date: '2026-11-09', end_date: null }] },
     ]
-    for (const w of windows) {
-      for (let i = 0; i < 45; i++) {
-        const d = new Date(Date.parse('2026-10-10T12:00:00Z') + i * 86_400_000).toISOString().slice(0, 10)
-        expect(salariedCreditHours(d, w), `${d} ${JSON.stringify(w)}`).toBe(salariedHoursForDay(d, w))
+    // The default week, a short Friday, four tens and a Tuesday-to-Saturday week.
+    const weeks = [undefined, [0, 6, 6, 6, 6, 4, 0], [0, 10, 10, 10, 10, 0, 0], [0, 0, 8, 8, 8, 8, 8], [0, 0, 0, 0, 0, 0, 0]]
+    for (const week of weeks) {
+      for (const w of windows) {
+        for (let i = 0; i < 45; i++) {
+          const d = new Date(Date.parse('2026-10-10T12:00:00Z') + i * 86_400_000).toISOString().slice(0, 10)
+          expect(salariedCreditHours(d, w, week ?? SALARIED_DEFAULT_WEEK), `${d} ${JSON.stringify(week)} ${JSON.stringify(w)}`).toBe(salariedHoursForDay(d, week ? { ...w, week } : w))
+        }
       }
     }
+    // With the week left out the credit is the default's, as it was before the week landed.
+    expect(salariedCreditHours('2026-11-10', windows[0]!)).toBe(8)
+    expect(salariedCreditHours('2026-11-14', windows[0]!)).toBe(0)
   })
 
   it('the weeks are payroll catch-up\'s, and the count is what its list would hold', () => {
@@ -466,7 +522,7 @@ describe('the calendar is the app\'s own', () => {
     // The week of unpaid time off holds no credit; the week the start date falls in holds four days.
     expect(mine.salaried_after).toMatchObject({ weeks: theirs.length, hours: theirs.reduce((n, r) => n + r.hours, 0), est_gross: theirs.reduce((n, r) => n + r.estGross, 0) })
     expect(mine.salaried_after).toMatchObject({ weeks: 3, hours: 112 })
-    expect(crewDays(world(), TODAY)).toEqual({ days: 3, weekdays: 2, weekend_days: 1, first: '2026-10-20', last: '2026-11-03' })
+    expect(crewDays(world(), TODAY)).toEqual({ days: 3, weekdays: 2, weekend_days: 1, paid_days: 2, unpaid_days: 1, flat_hours: 16, first: '2026-10-20', last: '2026-11-03' })
   })
 })
 

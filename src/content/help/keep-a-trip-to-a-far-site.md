@@ -17,7 +17,9 @@ A trip never changes the clock. It changes no bill and no cost. It is a reading 
 2. Find **Trips** at the end of the strip of looks.
 3. Press **Trips** to jump to it.
 
-The look shows on a site that has a trip. It also shows on a site 150 miles or more from the shop.
+The look shows on a site that has a trip. It also shows on a site far from the shop.
+
+Far is 150 miles or more until a dev sets another distance. A dev sets it in Settings, on the **Trips** card under **Jobs, bills and liens**.
 
 A nearer site with no trip has no look. Its page has one door instead. Find **Trips** in the line under the address and press *none yet · add one*.
 

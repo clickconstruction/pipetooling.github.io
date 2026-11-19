@@ -16,6 +16,8 @@ import {
   type LienFilingTarget,
 } from '../../lib/jobs/lienFilingBatch'
 import { recordLienFiling, saveLienFilingScan } from '../../lib/jobs/lienFilingBatchIo'
+import { LIEN_TAKE_BACK_WORDS, lienNotTakenBackWords, lienTakenBackWords, lienVoidPaperStuck } from '../../lib/jobs/lienFilingVoid'
+import { voidLienFiling } from '../../lib/jobs/lienFilingVoidIo'
 import { LIEN_DOC_NUMBER_WORDS, lienDocNumberClean, type LienDocKnown } from '../../lib/jobs/lienDocNumber'
 import { LIEN_SERVE_STAGE_WORDS } from '../../lib/jobs/lienServeStage'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -32,13 +34,15 @@ type Props = {
   /** The desk reads again, once, on the way out when a lien was recorded. */
   onChanged: () => void
   onClose: () => void
-  /** A lien's own Lien window: for a paper the desk cannot draw, and to take back a lien recorded by mistake. */
+  /** A lien's own Lien window: for a paper the desk cannot draw. */
   onOpenLien: (jobId: string) => void
   /** The door on to the copies, once liens are on record. Absent draws none. */
   onMailCopies?: () => void
   /** The writes, handed in by a test. */
   record?: typeof recordLienFiling
   saveScan?: typeof saveLienFilingScan
+  /** The take-back's write: the filing voided, and what became of the lien's paper (`voidLienFiling`). */
+  takeBack?: typeof voidLienFiling
   zIndex?: number
 }
 
@@ -70,9 +74,11 @@ function chipStyle(tone: 'quiet' | 'soon' | 'late'): CSSProperties {
  * name, and a document number in the name is typed in. Such a number waits for a look at the stamp: Enter on it
  * records it, and the counted press at the foot records every one that waits.
  *
- * A recorded lien stays on its line until the window closes, with what was written and the door to take it back.
+ * A recorded lien stays on its line until the window closes, with what was written. **Take it back** on that line
+ * voids the filing after a second press (v2.7892), the database puts the lien's paper back in *Ready to file*, and
+ * the line opens again for the right number.
  */
-export default function LienFilingBatchWindow({ targets, known, todayYmd, isMobile, authUserId, onChanged, onClose: onCloseProp, onOpenLien, onMailCopies, record = recordLienFiling, saveScan = saveLienFilingScan, zIndex = 1200 }: Props) {
+export default function LienFilingBatchWindow({ targets, known, todayYmd, isMobile, authUserId, onChanged, onClose: onCloseProp, onOpenLien, onMailCopies, record = recordLienFiling, saveScan = saveLienFilingScan, takeBack = voidLienFiling, zIndex = 1200 }: Props) {
   const isTopmost = useModalStackEntry()
   const [filedOn, setFiledOn] = useState(todayYmd)
   const [typed, setTyped] = useState<Record<string, string>>({})
@@ -84,6 +90,11 @@ export default function LienFilingBatchWindow({ targets, known, todayYmd, isMobi
   const [recorded, setRecorded] = useState<Record<string, Recorded>>({})
   const [filesSaid, setFilesSaid] = useState<{ went: string; left: string[] } | null>(null)
   const [running, setRunning] = useState(false)
+  // A recorded line whose Take it back was pressed once, and one whose take-back is on its way.
+  const [armed, setArmed] = useState<Record<string, boolean>>({})
+  const [taking, setTaking] = useState<Record<string, boolean>>({})
+  // True once anything was written, so the desk reads again on the way out even when every record was taken back.
+  const wrote = useRef(false)
   const inFlight = useRef<Set<string>>(new Set())
   const recordedRef = useRef<Record<string, Recorded>>({})
   const inputs = useRef<Record<string, HTMLInputElement | null>>({})
@@ -102,7 +113,7 @@ export default function LienFilingBatchWindow({ targets, known, todayYmd, isMobi
   }, [targets])
 
   const onClose = useCallback(() => {
-    if (Object.keys(recordedRef.current).length > 0) onChanged()
+    if (wrote.current || Object.keys(recordedRef.current).length > 0) onChanged()
     onCloseProp()
   }, [onChanged, onCloseProp])
 
@@ -142,6 +153,7 @@ export default function LienFilingBatchWindow({ targets, known, todayYmd, isMobi
       const done = await record({ target: t, number, filedYmd: filedOn, createdBy: authUserId, file: files[id] ?? null })
       const row: Recorded = { filingId: done.filingId, number, filedYmd: filedOn, scanSaved: done.scanSaved }
       recordedRef.current = { ...recordedRef.current, [id]: row }
+      wrote.current = true
       setRecorded(recordedRef.current)
       setFromName((cur) => ({ ...cur, [id]: false }))
       setSaid((cur) => ({ ...cur, [id]: done.scanProblem ? { tone: 'warn', words: `${lienFilingRecordedWords(filedOn)} Its stamped lien did not save: ${done.scanProblem.replace(/[.\s]+$/, '')}. Add it again.` } : { tone: 'ok', words: lienFilingRecordedWords(filedOn) } }))
@@ -152,6 +164,31 @@ export default function LienFilingBatchWindow({ targets, known, todayYmd, isMobi
     } finally {
       inFlight.current.delete(id)
       setBusy((cur) => ({ ...cur, [id]: false }))
+    }
+  }
+
+  /** Take one recorded lien back: its filing voided. The line opens again, empty, for the right number. */
+  const takeBackRow = async (t: LienFilingTarget) => {
+    const id = t.jobId
+    const done = recordedRef.current[id]
+    if (!done || inFlight.current.has(id)) return
+    inFlight.current.add(id)
+    setTaking((cur) => ({ ...cur, [id]: true }))
+    try {
+      const outcome = await takeBack({ id: done.filingId, kind: 'affidavit' })
+      const { [id]: _gone, ...rest } = recordedRef.current
+      recordedRef.current = rest
+      setRecorded(rest)
+      // The number and the file went with the voided record: a line left holding them would record them again on a stray Enter.
+      setTyped((cur) => ({ ...cur, [id]: '' }))
+      setFiles(({ [id]: _file, ...cur }) => cur)
+      setSaid((cur) => ({ ...cur, [id]: { tone: lienVoidPaperStuck(outcome) ? 'warn' : 'ok', words: lienTakenBackWords(outcome) } }))
+    } catch (e) {
+      setSaid((cur) => ({ ...cur, [id]: { tone: 'bad', words: lienNotTakenBackWords(formatErrorMessage(e, 'the record was not voided')) } }))
+    } finally {
+      inFlight.current.delete(id)
+      setTaking((cur) => ({ ...cur, [id]: false }))
+      setArmed((cur) => ({ ...cur, [id]: false }))
     }
   }
 
@@ -284,8 +321,8 @@ export default function LienFilingBatchWindow({ targets, known, todayYmd, isMobi
             </button>
           </div>
         ) : null}
-        {busy[id] ? <div style={small}>{LIEN_FILING_BATCH_WORDS.recording}</div> : null}
-        {s?.words && !busy[id] ? (
+        {taking[id] ? <div style={small}>{LIEN_TAKE_BACK_WORDS.taking}</div> : busy[id] ? <div style={small}>{LIEN_FILING_BATCH_WORDS.recording}</div> : null}
+        {s?.words && !busy[id] && !taking[id] ? (
           <div data-lien-filing-said={s.tone} role={s.tone === 'ok' ? 'status' : 'alert'} style={{ fontSize: '0.75rem', fontWeight: 600, color: SAID_COLOR[s.tone] }}>
             {s.words}{' '}
             {s.anyway ? (
@@ -326,10 +363,21 @@ export default function LienFilingBatchWindow({ targets, known, todayYmd, isMobi
                 {!done ? <span style={small}>{LIEN_FILING_BATCH_WORDS.addOneHint}</span> : null}
               </>
             )}
-            {done ? (
-              <button type="button" data-lien-filing-take-back onClick={() => onOpenLien(id)} title={LIEN_FILING_BATCH_WORDS.wrongLien} style={{ border: 'none', background: 'none', padding: 0, marginLeft: 'auto', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', ...(isMobile ? { minHeight: 44 } : {}) }}>
-                {LIEN_FILING_BATCH_WORDS.openLien}
+            {done && !armed[id] ? (
+              <button type="button" data-lien-filing-take-back disabled={Boolean(taking[id] || busy[id])} onClick={() => setArmed((cur) => ({ ...cur, [id]: true }))} title={LIEN_TAKE_BACK_WORDS.hint} style={{ border: 'none', background: 'none', padding: 0, marginLeft: 'auto', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', ...(isMobile ? { minHeight: 44 } : {}) }}>
+                {LIEN_TAKE_BACK_WORDS.press}
               </button>
+            ) : null}
+            {done && armed[id] ? (
+              <span data-lien-filing-take-back-ask style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'center', marginLeft: 'auto', fontSize: '0.75rem' }}>
+                <span style={small}>{LIEN_TAKE_BACK_WORDS.hint}</span>
+                <button type="button" data-lien-filing-take-back-confirm disabled={Boolean(taking[id])} onClick={() => void takeBackRow(t)} style={{ ...btn, padding: '0.2rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--text-red-700)', color: 'var(--text-red-700)', ...(isMobile ? { minHeight: 44 } : {}) }}>
+                  {LIEN_TAKE_BACK_WORDS.confirm}
+                </button>
+                <button type="button" data-lien-filing-take-back-keep disabled={Boolean(taking[id])} onClick={() => setArmed((cur) => ({ ...cur, [id]: false }))} style={{ ...btn, padding: '0.2rem 0.6rem', fontSize: '0.75rem', ...(isMobile ? { minHeight: 44 } : {}) }}>
+                  {LIEN_TAKE_BACK_WORDS.keep}
+                </button>
+              </span>
             ) : null}
           </div>
         ) : null}

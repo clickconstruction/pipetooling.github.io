@@ -9,11 +9,11 @@ The Lien desk opens on its To do view. The Board sits across the top of that vie
 
 ## The four tiles
 
-The first tile counts what is due by the next day. It reads like *21 by Monday*, then how many are to file and how many are to send. A red line under it says how many will not make that day as they stand. A paper will not make its day when it has more stages left than working days. Press the red line and the list shows only those papers.
+The first tile counts what is due by the next day. It reads like *21 by Monday*, then how many are to file and how many are to send. A red line under it says how many will not make that day as they stand. A paper will not make its day when it has more stages left than working days. Press the red line and the list shows only those papers. The line ends in *Show them ›*. With no paper at risk, the red line counts the papers past their day. It reads like *6 are past their day. Show them ›*. Press it and the list shows only the rows with a late paper. Press it again and the list is whole.
 
-The second tile counts everything waiting on the leader, by name. Its small line names the two parts, like *1 to approve · 7 to sign*. **To approve** is a paper the office sent for approval. **To sign** is an approved notice with no signature on it yet. Those notices stand in their own bin, *Approved · to sign*. Press the tile and the list shows only those rows.
+The second tile counts everything waiting on the leader, by name. Its small line names the two parts, like *1 to approve · 7 to sign*. **To approve** is a paper the office sent for approval. **To sign** is an approved notice with no signature on it yet. Those notices stand in their own bin, *Approved · to sign*. The tile says *Show them ›* at its top right. Press the tile and the list shows only those rows. The tile then says *Show every row ›*. Press it again and the list is whole.
 
-The third tile counts the approved notices that can print, and the printed ones still to mail. Its small line says how many are to print and how many are to mail. A notice that waits on a signature is on the second tile, not this one. Press the tile and the run opens. The same press stands in the bin under it. Read [a press beside the bin name](#a-press-beside-the-bin-name).
+The third tile counts the approved notices that can print, and the printed ones still to mail. Its small line says how many are to print and how many are to mail. A notice that waits on a signature is on the second tile, not this one. The tile says *Open the run ›* at its top right. Press the tile and the run opens. The same press stands in the bin under it. Read [a press beside the bin name](#a-press-beside-the-bin-name).
 
 The fourth tile is the money still unpaid on the desk. Each job counts once.
 
@@ -27,7 +27,7 @@ The right column is the lien affidavits. Its first two bins are **Needs the prop
 
 One arrow crosses from Sent on the left to Waiting on its notice on the right. The notice on record is the affidavit's gate. When the notice is mailed and recorded, the affidavit moves down to **To send for Master approval**. On a phone the columns stand one over the other and that arrow is not drawn.
 
-A bin with a blue left edge has something to do now. Its press is beside its name. Each bin's count sits at its right. A bin with no paper is one quiet line with a zero. An empty bin's name and zero are grey.
+A bin with a blue left edge has something to do now. Its press is beside its name. Each bin's count sits at its right. A bin with no paper is one quiet line with a zero. An empty bin's name and zero are grey. The two column headings are grey too. Red on the Board always means a late day.
 
 ## What a chip's colour means
 
@@ -122,6 +122,8 @@ On a computer the list under the Board is the Board written out. It has one grou
 
 Each heading says how many papers the bin holds and what their jobs still owe. Inside a bin the papers that will not make their day come first. These are the chips with the red mark. Start there. A paper that needs a fact needs it today to go out with the rest.
 
+The red heading over the list reads like *Needs you now · 27 papers*. It counts papers, as the bins do. A paper that waits on the leader is in that count. Beside it a grey line reads like *12 more under Later*. The first tab counts another thing. It counts the rows you can move, and one row can hold several papers. So the two numbers can differ.
+
 Papers that share one act are one row. Twelve affidavits ready to file read as one row, *12 affidavits approved and ready to file*. Its press is {{button:blue|Print 10 for notarization ›}}. It opens the affidavits list at **Ready to file**. The button of the same name there prints the batch. Press **The 12 jobs** on the row to see each job, its notice and what it owes. Affidavits not yet sent for approval fold the same way, under {{button:blue|Send 3 for approval ›}}.
 
 A paper the office waits on sits in its **Awaiting Master approval** bin. The office cannot approve these papers. It can remind the leader. Press {{button:outline|Remind Malachi of 3 papers}} on that heading. When only a retainage notice waits, the press is on the **Other lien papers** heading. The desk asks first. Then the leader gets the message again, on the phone or by email. A text with the link goes too, from the company number. Anyone in the office can send it, whoever sent the paper. A notice is one message each. A retainage notice is one message too. The affidavits share one message. An approved notice the leader has yet to sign is in the same press. The notices to sign share one message too. On a day with nothing to approve, the press is on the Board, beside the line that counts them. Nothing on the papers changes. The desk then says how many papers the leader was reminded of. A reminder that did not go is named with its reason, so you can tell the leader another way. The desk also says whether the text went. When no text went, it says why, like no mobile number on the leader's account. **Send texts** must be on for the text to go. Read [turn on texts from the company number](/help/turn-on-texts-from-the-company-number). After a send the button says when, like *Reminded at 2:14 PM*.
@@ -154,7 +156,7 @@ An approved affidavit that a property fact holds stands in **Ready to file**. Fo
 
 A bin's count leaves a held paper out. So the count is the number the bin's press takes. A bin can read 0 and still show a held chip. In the list, a held paper's row starts with the bin's name and *held*.
 
-Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. It also counts jobs where retainage looks held and none is recorded, like *2 look held, not on the job*. The retainage list on **By paper** has the rows.
+Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. It also counts jobs where retainage looks held and none is recorded, like *2 look held, not on the job*. The retainage list on **By paper** has the rows. The line ends in *Open ›*. Press it and that list opens, whole, with nothing in the find box.
 
 ## A window that has closed
 

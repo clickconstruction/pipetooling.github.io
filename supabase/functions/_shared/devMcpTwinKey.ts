@@ -1,4 +1,4 @@
-// dev-mcp's read_twin_keys and plan_twin_key_revoke / apply_twin_key_revoke (v2.7900 / 0.106.0): a twin's keys listed
+// dev-mcp's read_twin_keys and plan_twin_key_revoke / apply_twin_key_revoke (v2.7900 / 0.107.0): a twin's keys listed
 // and one cut off, as Settings → System → Digital twins lists them and its Revoke press cuts one off
 // (DigitalTwinsPanel.revokeToken) — revoked_at set on the key's own twin_credentials row, as the dev under the table's
 // dev-only RLS. Until now the seat could mint a key (mint_twin_setup_code) and neither see nor take one back.

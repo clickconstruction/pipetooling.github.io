@@ -27,9 +27,12 @@ describe('the press on a recipient’s card', () => {
     // A number with no receipt.
     const numbered = affidavit([send('owner', { tracking: '9507 01' })], '2026-11-18')
     expect(lienMailProofDoor('affidavit', copy(numbered.envelopes, 'owner'), { ...everywhere, served: true })).toEqual({ recipient: 'owner', lack: 'receipt', place: 'lien_window', label: 'Add the receipt ›' })
-    // The same lack before the day is recorded is still worked in the copies window.
+    // A number kept before the day is recorded (v2.7883): the copy is not mailed yet, and what it lacks is the day, in the copies window.
     const early = affidavit([send('owner', { tracking: '9507 01' })])
-    expect(lienMailProofDoor('affidavit', copy(early.envelopes, 'owner'), everywhere)).toMatchObject({ lack: 'receipt', place: 'serve' })
+    expect(copy(early.envelopes, 'owner').line).toBe('Not mailed yet · certified mail 9507 01')
+    expect(lienMailProofDoor('affidavit', copy(early.envelopes, 'owner'), everywhere)).toEqual({ recipient: 'owner', lack: 'mailed', place: 'serve', label: 'Record the mailing ›' })
+    // Its contractor's copy keeps nothing yet, so it still reads its stage.
+    expect(lienMailProofDoor('affidavit', copy(early.envelopes, 'original_contractor'), { ...everywhere, printed: true })).toMatchObject({ lack: 'number', place: 'serve' })
     // Number and receipt on file: nothing is lacking, so there is no press.
     const whole = affidavit([send('owner', { tracking: '9507 01', receipt_url: 'https://drive.example/r1' })], '2026-11-18')
     expect(lienMailProofDoor('affidavit', copy(whole.envelopes, 'owner'), { ...everywhere, served: true })).toBeNull()
@@ -37,9 +40,15 @@ describe('the press on a recipient’s card', () => {
     expect(lienMailProofDoor('affidavit', copy(whole.envelopes, 'original_contractor'), { ...everywhere, served: true })).toMatchObject({ recipient: 'original_contractor', lack: 'number' })
   })
 
-  it('reads a receipt with no number as a number still owed', () => {
+  it('reads a file kept with no mailed day as the day still owed, and with the day as a number still owed', () => {
+    // The live desk of 2026-11-18: a file on every envelope, no day. A file is not the mailing.
     const p = affidavit([send('owner', { receipt_url: 'https://drive.example/r1' })])
-    expect(lienMailProofLack(copy(p.envelopes, 'owner'), everywhere)).toBe('number')
+    expect(copy(p.envelopes, 'owner').mailed).toBe(false)
+    expect(lienMailProofLack(copy(p.envelopes, 'owner'), everywhere)).toBe('mailed')
+    // The owner's gap does not come back once the copy keeps a file.
+    expect(lienMailProofLack(copy(p.envelopes, 'owner'), { ...everywhere, ownerGap: 'owner' })).toBe('mailed')
+    const mailed = affidavit([send('owner', { receipt_url: 'https://drive.example/r1' })], '2026-11-18')
+    expect(lienMailProofLack(copy(mailed.envelopes, 'owner'), everywhere)).toBe('number')
   })
 
   it('sends a notice’s lack to its Lien window, and asks nothing of a copy that owes no proof', () => {
@@ -69,6 +78,8 @@ describe('the press on a recipient’s card', () => {
     expect(lienMailProofPlaces('notice', 'number', false)).toEqual(['lien_window'])
     expect(lienMailProofWindowSpot({ paper: 'affidavit', lack: 'print' })).toBe('print')
     expect(lienMailProofWindowSpot({ paper: 'affidavit', lack: 'number' })).toBe('service')
+    expect(lienMailProofWindowSpot({ paper: 'affidavit', lack: 'mailed' })).toBe('service')
+    expect(lienMailProofPlaces('affidavit', 'mailed', false)).toEqual(['serve', 'lien_window'])
     expect(lienMailProofWindowSpot({ paper: 'affidavit', lack: 'receipt' })).toBe('copy')
     expect(lienMailProofWindowSpot({ paper: 'notice', lack: 'number' })).toBe('row')
     expect(lienMailProofWindowSpot({ paper: 'retainage', lack: 'receipt' })).toBe('copy')
@@ -76,8 +87,10 @@ describe('the press on a recipient’s card', () => {
     expect(lienMailProofServeLanding({ jobId: 'j1', recipient: 'owner', lack: 'print' })).toEqual({ part: 'print' })
     expect(lienMailProofServeLanding({ jobId: 'j1', recipient: 'owner', lack: 'number' })).toEqual({ part: 'numbers', jobId: 'j1', recipient: 'owner', cursor: true })
     expect(lienMailProofServeLanding({ jobId: 'j1', recipient: 'original_contractor', lack: 'receipt' })).toEqual({ part: 'numbers', jobId: 'j1', recipient: 'original_contractor', cursor: false })
+    // The day lands on the lien's whole row, the cursor on its Mailed box.
+    expect(lienMailProofServeLanding({ jobId: 'j1', recipient: 'original_contractor', lack: 'mailed' })).toEqual({ part: 'numbers', jobId: 'j1', tick: true })
     expect(lienMailProofSelectors.filingCopy('f1', 'original_contractor')).toBe('[data-lien-filing-row="f1"] [data-lien-mail-proof-envelope="original_contractor"]')
-    expect([lienMailProofLandingFocus('number'), lienMailProofLandingFocus('receipt'), lienMailProofLandingFocus('print')]).toEqual(['input[type="text"]', 'button', null])
+    expect([lienMailProofLandingFocus('number'), lienMailProofLandingFocus('receipt'), lienMailProofLandingFocus('print'), lienMailProofLandingFocus('mailed')]).toEqual(['input[type="text"]', 'button', null, null])
     expect([lienMailProofWindowTab('affidavit'), lienMailProofWindowTab('notice'), lienMailProofWindowTab('retainage')]).toEqual(['affidavit', 'notice', 'notice'])
   })
 

@@ -2,7 +2,7 @@
 name: "The sub's page: the customer paid, and how long this customer usually takes"
 number: 388
 group: ready
-status: steps 1 and 2 of 3 live 2026-11-18 (v2.7835, v2.7843), `sub-portal` deployed and the page walked · step 3 not built · all five calls answered 2026-11-17
+status: all three steps live (v2.7835, v2.7843 on 2026-11-18 · v2.7881 on 2026-11-19) · waits on the owner's word to retire · all five calls answered 2026-11-17
 summary: >
   A sub's sheet waits at Draw requested until the customer pays. The page tells the sub that the
   customer's payment is the last thing between them and their money. It then says nothing when the
@@ -11,9 +11,9 @@ summary: >
   records it. While it waits, the page says how long this customer usually takes, as a range in
   weeks. The office's row for the sheet shows the same words, so the office reads what the sub
   reads.
-next: build step 3, the usual pay time, whose deploy of `sub-portal` waits on a go of its own; start from *Where it stands*
+next: the owner looks at the three steps on the sub's page and gives the word to retire the card
 size: M as a train of three (S · M · S)
-blocker: step 3's deploy of `sub-portal` waits on a go that names it
+blocker: none; the card waits on the owner's word to retire it
 opinion: build — show the customer's payment first, tied to one bill so the page never says paid on a guess; show the pay time as a range in weeks with a floor of five payments, never as the office's raw figure
 mockup: to-dos/sub-page-customer-paid/mockup.html
 ---
@@ -119,7 +119,7 @@ Test rows: the test sub and a ZZ TEST job. Never a real sub's page.
 
 ## Where it stands
 
-2026-11-18. **Steps 1 and 2 are live.** Step 3, the usual pay time, is not built.
+2026-11-19. **All three steps are live.** The card waits on the owner's word to retire it.
 
 - **Step 1, the tie** (v2.7835, migration `20261118180000_sub_sheet_draw_invoice.sql`): `docs/recent-features/v2.7835.md`. Merged, pushed and walked on prod on 2026-11-18.
   - **The walk**, on the test sub's sheet and ZZ TEST job 1064, through the page's own presses: the window before the move with the sent bill picked, **Request the draw**, the tie changed from the row, the tied bill deleted, the one open bill tied by the move itself with no window, **No bill**, a move back, and the pick refused off the stage. The database was read after every press.
@@ -137,7 +137,25 @@ Test rows: the test sub and a ZZ TEST job. Never a real sub's page.
   - **Put back:** the sheet, field for field. The two payments were removed through the app's own Remove, which turned the bill back to Billed, and the bill was deleted. The job's status, total and paid figure are as they were.
   - **Left on prod, since the app cannot delete them:** eighteen lines on ZZ Test job 1113's Activity feed from two runs of the walk (the stage moves, the bill, the payments and their removals), and one email to the office's payment list about a payment on that job, which the queue sent at its next run from the four rows the payments left. The first run stopped on one of the walk's own checks after everything was put back.
 
-**What the two steps settled that this card left open.** Step 3 builds on them.
+- **Step 3, the usual pay time** (v2.7881): `docs/recent-features/v2.7881.md`. Merged on 2026-11-19. Its three Spanish forms were on the page the owner read on 2026-11-18: *Reads right*. `sub-portal` was deployed from `main` on 2026-11-19 on his go, *Deploy sub-portal*, and the page was walked right after.
+  - **The weeks hold the days.** The fast end of the office's range rounds down to a whole week and the slow end rounds up, so the page never promises a shorter wait than the office's own figure shows. A slow end of a week or less reads *within a week*, and a fast end never reads zero.
+  - **Which sheets.** At Waiting on customer, with no paid day and no payable-after date. A held sheet that is still waiting on the customer keeps the line.
+  - **Which payer.** Whoever the sheet's bill goes to, the builder on a builder-billed bill. A sheet with no tie reads the job's own rule. A bill typed to someone else says nothing.
+  - **Run on the office's live answer on 2026-11-18,** read only, nothing kept: for every payer at the floor the rule gave the days the office's own spread gives, and its weeks held them. Every payer below the floor said nothing.
+  - **The office's row** says *Sub sees: usually 4 to 6 weeks* from the same rule. It was not in the plan's line for step 3 and is in the mock-up.
+  - **No real sheet was waiting on a customer** on 2026-11-19, read on prod with nothing written. So no real payer's line was on any page to read against the office's figure, and the walk staged a pay history on test rows.
+  - **The walk**, on the test sub's own link, the test sheet and ZZ Test job 1113, signed out. The function's answer was read beside the card each time.
+    - Waiting on a $2 bill the move tied by itself, the test customer with no payment on record: no weeks sent, no line. English and Spanish.
+    - A second bill, $5, dated 48 days back, paid $1 at a time through **Mark Paid** on four days: four payments, one under the floor, and still no line.
+    - The fifth $1: the office's answer held 21, 28, 35, 42 and 48 days for the test customer. The function sent `usualPayWeeks: { lo: 4, hi: 6 }` and the card read *This customer usually pays 4 to 6 weeks after we ask.* and *Este cliente suele pagar de 4 a 6 semanas después de que se lo pedimos.*
+    - The answer carried no days, no count and no receipt.
+    - The office's row: *Rides on bill 1 of 2* and *Sub sees: usually 4 to 6 weeks*, with its tooltip.
+    - A pay day: no weeks sent, no line. The pay day taken off: the line came back.
+    - The $2 bill paid: the page said the customer paid, and the line went. English and Spanish.
+  - **Put back:** the sheet, field for field. The six payments were removed through the app's own Remove and both bills were deleted. The job's status, total and paid figure are as they were, and the office's answer holds no payment for the test customer again.
+  - **Left on prod, since the app cannot delete them:** eighteen more lines on ZZ Test job 1113's Activity feed (the stage moves, the bills, the payments and their removals), and one more email to the office's payment list about payments on that test job. The six payments were recorded inside one minute, so the queue sent one email at 07:22 UTC and marked the other five rows superseded.
+
+**What the steps settled that this card left open.**
 
 - **A bill is open until it is paid.** A draft bill counts, as the mock-up's window shows. So a job with one sent bill and money left to bill has two open bills, and the office is asked. The window leans to the one sent bill.
 - **The office's word is bill, not draw.** The window says *Bill 2 of 3*, as the lien desk and the owner's records do.
@@ -150,7 +168,7 @@ Test rows: the test sub and a ZZ TEST job. Never a real sub's page.
 
 **Next.**
 
-- **Step 3, the usual pay time.** The weeks rule with its floor of five payments goes beside `customerPaidOn` in `supabase/functions/_shared/subPortalCustomerPaid.ts`. `paymentReliability.ts` is not in the edge copy, so restate the spread there with a parity test. The function calls `get_billed_customer_pay_speeds` as the service role. The payer is `paySpeedPayer` in `billToParty.ts`, which the copy holds already. Its line was on the page the owner read on 2026-11-18, in three forms: a range, one figure (*unas 4 semanas*) and under a week (*en menos de una semana*). Words that differ from those three need a new read. `sub-portal` is deployed again on a named go.
+- **Close.** The owner looks at the three steps on the sub's page and gives the word to retire the card.
 - **Counsel.** The new sentences sit beside the one already with counsel. They are listed, English and Spanish, on the page the owner read.
 
 **Three gotchas met on #371,** the Statements view built on the same page and function. Its paragraph under *Closed* in `to-dos/README.md` tells how the walk was done on the test sub.

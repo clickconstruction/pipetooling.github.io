@@ -89,9 +89,12 @@ export function PercentRowWindow({
   }
   const answer = preview.answer
   const money = (n: number | null | undefined) => (n == null ? DASH : `$${formatCurrency(n)}`)
-  const rowName = self?.name || value.name.trim() || 'the row'
-  const margin = self && self.cost > 0 && answer && answer.revenue > 0 ? `${Math.round(((answer.revenue - self.cost) / answer.revenue) * 100)}%` : NO_COST
-  const kindControl = self ? (
+  // Put on a row… before a row is picked: there is no row to draw yet, so the strip says so and shows only the number waiting.
+  const awaitingPick = preview.awaitingPick
+  const rowName = awaitingPick ? 'Pick a row below' : self?.name || value.name.trim() || 'the row'
+  const countWords = awaitingPick ? DASH : String(self ? self.count : 1)
+  const margin = awaitingPick ? DASH : self && self.cost > 0 && answer && answer.revenue > 0 ? `${Math.round(((answer.revenue - self.cost) / answer.revenue) * 100)}%` : NO_COST
+  const kindControl = awaitingPick ? null : self ? (
     <span style={{ display: 'inline-block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0 0.5rem', background: 'var(--surface)' }}>{ROW_KIND_WORDS[self.kind]}</span>
   ) : (
     <select
@@ -152,19 +155,19 @@ export function PercentRowWindow({
 
         <div data-testid="percent-row-preview" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{self ? 'The row, as Pricing will show it' : 'The new row, as Pricing will show it'}</span>
+            <span style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{self || awaitingPick ? 'The row, as Pricing will show it' : 'The new row, as Pricing will show it'}</span>
             {narrow ? null : revenueLine}
           </div>
           {narrow ? (
             <div style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-blue-tint)', padding: '0.7rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                <strong style={{ fontSize: '0.98rem' }}>{rowName}</strong>
+                <strong style={{ fontSize: '0.98rem', color: awaitingPick ? 'var(--text-muted)' : undefined }}>{rowName}</strong>
                 {kindControl}
               </div>
               <div>{entryCell}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-700)' }}>
-                  Count {self ? self.count : 1} · {margin}
+                  Count {countWords} · {margin}
                 </span>
                 <strong style={{ fontSize: '1.25rem', fontVariantNumeric: 'tabular-nums' }}>{money(answer?.revenue)}</strong>
               </div>
@@ -185,12 +188,12 @@ export function PercentRowWindow({
                 <tbody>
                   <tr style={{ background: 'var(--bg-blue-tint)' }}>
                     <td style={{ ...td, textAlign: 'left' }}>
-                      <div style={{ fontWeight: 600 }}>{rowName}</div>
+                      <div style={{ fontWeight: 600, color: awaitingPick ? 'var(--text-muted)' : undefined }}>{rowName}</div>
                       {kindControl}
                     </td>
-                    <td style={td}>{self ? self.count : 1}</td>
+                    <td style={td}>{countWords}</td>
                     <td style={{ ...td, textAlign: 'left' }}>{entryCell}</td>
-                    <td style={{ ...td, fontWeight: 700, color: 'var(--text-strong)' }}>{money(answer?.unitPrice)}</td>
+                    <td style={{ ...td, fontWeight: 700, color: 'var(--text-strong)' }}>{money(awaitingPick ? null : answer?.unitPrice)}</td>
                     <td style={{ ...td, fontWeight: 700, color: 'var(--text-strong)' }}>{money(answer?.revenue)}</td>
                     <td style={{ ...td, fontWeight: 600, color: 'var(--text-muted)' }}>{margin}</td>
                   </tr>

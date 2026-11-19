@@ -271,7 +271,7 @@ export const WRITE_VERBS = {
   // of any row wearing the next seat's address (devMcpTwin.ts). It makes no key: mint_twin_setup_code does.
   plan_twin: { rpc: null, step: 'plan' },
   apply_twin: { rpc: null, step: 'apply' },
-  // v2.7900 / 0.106.0: a twin's key cut off as Revoke on the twin's row at Settings → Digital twins cuts it off —
+  // v2.7900 / 0.107.0: a twin's key cut off as Revoke on the twin's row at Settings → Digital twins cuts it off —
   // revoked_at on the key's own twin_credentials row, as the dev under the table's dev-only RLS; no wrapper, so rpc is
   // null — the dry run is the server's read of the twin and its keys by a column list that never names token_hash
   // (devMcpTwinKey.ts). read_twin_keys, the list beside it, writes nothing and is not counted here.

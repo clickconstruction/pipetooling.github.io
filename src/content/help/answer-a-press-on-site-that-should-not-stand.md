@@ -13,7 +13,7 @@ Open a site on the Materials desk and press **By person**. The guide [see what i
 
 Tick the box at the start of each press to answer. Then press **Answer 2 presses…** under the list. The button counts what you ticked.
 
-A box moved, retired or renamed has no tick box. Those are changed back on the box itself.
+A box moved, retired or renamed has no tick box. See [Put a box change back](#put-a-box-change-back).
 
 ## Choose an answer
 
@@ -58,6 +58,16 @@ An answered press wears a chip. It reads *taken back by* or *marked not allowed 
 A press taken back is struck through. It is in no count and no total.
 
 The line under **pieces taken or used** counts the pieces marked not allowed.
+
+## Put a box change back
+
+A box someone retired, brought back, renamed or changed has **Put it back…** on its row.
+
+Press it. A window asks first, and its button names the act, like *Bring G22 back*.
+
+The press shows only while the box still reads as that change left it. A later change to the same box takes the press away.
+
+Both changes stay in the list, each with who made it.
 
 ## Change your mind
 

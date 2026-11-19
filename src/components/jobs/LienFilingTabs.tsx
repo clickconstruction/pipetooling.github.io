@@ -13,6 +13,8 @@ import { FilingSheetNote } from './FilingSheetNote'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
 import { isLienAppliedRow, lienAppliedRowWords, type LienAppliedRow } from '../../lib/jobs/lienNoticeApply'
 import { undoLienNoticeApply } from '../../lib/jobs/lienNoticeApplyIo'
+import { lienVoidPaperStuck, lienVoidPaperWords } from '../../lib/jobs/lienFilingVoid'
+import { voidLienFiling } from '../../lib/jobs/lienFilingVoidIo'
 import LienRecordSheet from './LienRecordSheet'
 import { LienFiledScanPress } from './LienFiledScanPress'
 import { LIEN_CLERK_SCAN_NOTE } from '../../lib/jobs/lienScanFile'
@@ -966,11 +968,9 @@ export default function LienFilingTabs({
         onChanged()
         return
       }
-      await withSupabaseRetry(
-        () => supabase.from('job_lien_filings').update({ voided_at: new Date().toISOString() }).eq('id', f.id),
-        'void lien filing',
-      )
-      showToast('Record voided.', 'success')
+      // v2.7892: the database puts a filed affidavit's paper back in the same step, and the words say where it went.
+      const outcome = await voidLienFiling({ id: f.id, kind: f.kind })
+      showToast(lienVoidPaperWords(outcome), lienVoidPaperStuck(outcome) ? 'error' : 'success')
       setVoidPendingId(null)
       onChanged()
     } catch (e) {

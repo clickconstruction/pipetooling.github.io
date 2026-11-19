@@ -277,3 +277,48 @@ describe('a watch', () => {
     expect(openedNotPressed(opens, sam, '2026-11-17T00:00:00Z')).toEqual(['g9', 'b7'])
   })
 })
+
+describe('the way back from a box change', () => {
+  const retired: Container = { ...box('r1', 'j1', 'R1', 'p1'), retiredAt: '2026-11-18T19:50:00Z' }
+  const edited: Container = { ...box('e1', 'j1', 'E1', 'p1'), kind: 'cage', where: 'by the north fence', said: 'drain fittings' }
+  const acts = sitePersonActs({
+    jobs, movements: [], containerMoves: [], places,
+    containers: [...containers, retired, edited],
+    boxChanges: [
+      { id: 'c1', containerId: 'r1', what: 'retired', oldValue: '', newValue: '', byName: 'Sam R.', at: '2026-11-18T19:50:00Z' },
+      { id: 'c2', containerId: 'g22', what: 'retired', oldValue: '', newValue: '', byName: 'Sam R.', at: '2026-11-17T10:00:00Z' },
+      { id: 'c3', containerId: 'g22', what: 'brought_back', oldValue: '', newValue: '', byName: 'Dana K.', at: '2026-11-17T11:00:00Z' },
+      { id: 'c4', containerId: 'e1', what: 'kind', oldValue: 'box', newValue: 'cage', byName: 'Sam R.', at: '2026-11-16T10:00:00Z' },
+      { id: 'c5', containerId: 'e1', what: 'where', oldValue: '', newValue: 'by the north fence', byName: 'Sam R.', at: '2026-11-16T09:00:00Z' },
+      { id: 'c6', containerId: 'e1', what: 'said', oldValue: 'fittings', newValue: 'drain fittings', byName: 'Sam R.', at: '2026-11-16T08:00:00Z' },
+      { id: 'c7', containerId: 'e1', what: 'where', oldValue: 'inside', newValue: 'outside', byName: 'Sam R.', at: '2026-11-15T08:00:00Z' },
+      { id: 'c8', containerId: 'r1', what: 'kind', oldValue: 'box', newValue: 'cage', byName: 'Sam R.', at: '2026-11-14T08:00:00Z' },
+    ],
+    boxRenames: [
+      { id: 'n1', containerId: 'e1', oldLabel: 'E0', newLabel: 'E1', byName: 'Sam R.', at: '2026-11-13T08:00:00Z' },
+      { id: 'n2', containerId: 'g22', oldLabel: 'G2', newLabel: 'G21', byName: 'Sam R.', at: '2026-11-12T08:00:00Z' },
+    ],
+  }, day)
+  const back = (id: string) => acts.find((a) => a.id === id)?.putBack ?? null
+
+  it('offers to bring back a box that is still retired, and to retire again a box that is still live', () => {
+    expect(back('c1')).toEqual({ containerId: 'r1', act: 'unretire', words: 'Bring R1 back' })
+    // G22 was retired and then brought back: the retire has nothing left to undo, the bring-back does.
+    expect(back('c2')).toBeNull()
+    expect(back('c3')).toEqual({ containerId: 'g22', act: 'retire', words: 'Retire G22 again' })
+  })
+
+  it('offers an edit back only while the box still reads as the edit left it', () => {
+    expect(back('c4')).toEqual({ containerId: 'e1', act: 'patch', patch: { kind: 'box' }, words: 'Make E1 a box again' })
+    expect(back('c5')).toEqual({ containerId: 'e1', act: 'patch', patch: { where: '' }, words: 'Put the where line of E1 back' })
+    expect(back('c6')).toEqual({ containerId: 'e1', act: 'patch', patch: { said: 'fittings' }, words: 'Put the words on E1 back' })
+    // The where line was changed again after this one, and a retired box takes no edit.
+    expect(back('c7')).toBeNull()
+    expect(back('c8')).toBeNull()
+  })
+
+  it('offers a rename back while the box still carries the new name', () => {
+    expect(back('n1')).toEqual({ containerId: 'e1', act: 'patch', patch: { label: 'E0' }, words: 'Rename E1 back to E0' })
+    expect(back('n2')).toBeNull()
+  })
+})

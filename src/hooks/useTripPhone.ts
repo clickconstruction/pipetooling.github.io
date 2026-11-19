@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { normalizeAddressForGeocodeKey } from '../lib/map/normalizeAddressForGeocode'
 import { resolveOfficeAnchor } from '../lib/officeAddressSettings'
 import type { LatLng } from '../lib/jobTravelEstimate'
-import { milesFromShop } from '../lib/trips/tripPlace'
+import { milesFromShop, TRIP_FAR_MILES_DEFAULT } from '../lib/trips/tripPlace'
 import {
   parseTripPhoneState,
   readTripHeadedHome,
@@ -20,7 +20,7 @@ import {
   type TripPhoneView,
   type TripSessionTravel,
 } from '../lib/trips/tripPhone'
-import { readTripPhoneState, sendTripPhoneAct } from '../lib/trips/tripsIo'
+import { readTripFarMiles, readTripPhoneState, sendTripPhoneAct } from '../lib/trips/tripsIo'
 import type { TripDayKind } from '../lib/trips/tripDays'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { useAddressGeocodeCoords } from './useAddressGeocodeCoords'
@@ -59,6 +59,8 @@ export type TripPhoneIo = {
   readState: (jobId: string) => Promise<unknown>
   act: (act: TripPhoneAct) => Promise<void>
   readShop: () => Promise<LatLng | null>
+  /** How many miles from the shop makes a site a trip from home: the one setting. Absent, the default. */
+  readFarMiles?: () => Promise<number>
 }
 
 export const supabaseTripPhoneIo: TripPhoneIo = {
@@ -68,6 +70,7 @@ export const supabaseTripPhoneIo: TripPhoneIo = {
     const anchor = await resolveOfficeAnchor()
     return anchor ? { lat: anchor.lat, lng: anchor.lng } : null
   },
+  readFarMiles: readTripFarMiles,
 }
 
 export type TripPhone = {
@@ -118,6 +121,7 @@ export function useTripPhone({
 }): TripPhone {
   const [read, setRead] = useState<Read | null>(null)
   const [shop, setShop] = useState<LatLng | null>(null)
+  const [farMiles, setFarMiles] = useState(TRIP_FAR_MILES_DEFAULT)
   /** Just clock in said on this screen, kept here too so a device that cannot remember does not ask twice. */
   const [saidNo, setSaidNo] = useState<string | null>(null)
   /** The clock session Heading home was pressed in on this screen, kept here too for the same reason. */
@@ -170,10 +174,15 @@ export function useTripPhone({
   useEffect(() => {
     if (!needsMiles) return
     let live = true
+    // The shop and the setting land together, so the phone never asks by the default while the setting is on its way.
     Promise.resolve()
-      .then(() => io.readShop())
+      .then(() => Promise.all([io.readShop(), io.readFarMiles ? io.readFarMiles().catch(() => TRIP_FAR_MILES_DEFAULT) : TRIP_FAR_MILES_DEFAULT]))
       .then(
-        (p) => live && setShop(p),
+        ([p, far]) => {
+          if (!live) return
+          setFarMiles(far)
+          setShop(p)
+        },
         () => undefined,
       )
     return () => {
@@ -266,7 +275,7 @@ export function useTripPhone({
     [jobId, tripId, io, remember],
   )
 
-  const view = useMemo(() => tripPhoneView({ state, miles, justClockIn: justClockInSaid, clockedIn }), [state, miles, justClockInSaid, clockedIn])
+  const view = useMemo(() => tripPhoneView({ state, miles, justClockIn: justClockInSaid, clockedIn, farMiles }), [state, miles, justClockInSaid, clockedIn, farMiles])
 
   return { state, view, start, join, headHome, end, justClockIn: remember }
 }

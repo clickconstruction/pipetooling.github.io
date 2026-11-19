@@ -27,6 +27,7 @@ import {
   tripInput,
   tripOverlaps,
   tripPlanWords,
+  tripNumberOf,
   tripReadOf,
   tripSaveWould,
   tripStableId,
@@ -133,7 +134,9 @@ describe('the trip verbs are on the allowlist, over the app’s own door', () =>
     expect(isWriteVerb('read_trips')).toBe(false)
     expect(SERVER).toContain("name: 'read_trips',")
     expect(SERVER).toContain("case 'read_trips': {")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.106.0'")
+    expect(SERVER).toContain('its number on its site (trip_number, since v2.7886')
+    expect(SERVER).toContain('// 0.106.0 (v2.7886, punch list #379')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.107.0'")
     expect(SERVER).toContain('Writes are one hundred and thirty-one verbs and nothing else:')
     expect(SERVER).toContain('plan_trip → apply_trip (a trip to a site away from home')
     expect(SERVER).toContain('read_trips reads a site’s or a job’s trips'.replace(/’/g, "'"))
@@ -173,6 +176,9 @@ describe('the trip verbs are on the allowlist, over the app’s own door', () =>
     for (const col of ['id', 'development_id', 'job_id', 'via', 'agent_label']) expect(TRIP_TABLE_COLUMNS.trips).toContain(col)
     expect(TRIP_TABLE_COLUMNS.trip_jobs).toEqual(expect.arrayContaining(['trip_id', 'job_id']))
     expect(TRIP_SELECT).toContain('trip_people(person_id,user_id,person_name,days)')
+    // The number rides the trip's own row (v2.7886). It is younger than the table, so it is not in the young-table list.
+    expect(TRIP_SELECT.startsWith('id,trip_number,development_id,')).toBe(true)
+    expect(TRIP_TABLE_COLUMNS.trips).not.toContain('trip_number')
     expect(TRIP_SELECT).toContain('trip_jobs(job_id)')
   })
   it('leaves one apply per plan to the database: a landed add reads change, so the log’s rule is not asked', () => {
@@ -388,14 +394,16 @@ describe('prepareTripWrite — the id, the home and the roster, the same at plan
     expect(await prepareTripWrite('plan_trip', { trip: { ...ASK, people: [] } }, fake(WORLD))).toMatchObject({ ok: false, error: expect.stringContaining('people is the list of who went') })
   })
   it('a plan names the days another trip kept there already claims; an apply does not read for them', async () => {
-    const kept: Row = { id: TRIP, development_id: SITE, job_id: null, via: 'app', trip_people: [{ person_id: DANA, user_id: DANA_LOGIN, person_name: 'Dana', days: { '2026-10-31': 'site', '2026-11-01': 'site' } }, { person_id: null, user_id: null, person_name: 'luis', days: { '2026-11-02': 'road' } }], trip_jobs: [] }
+    const kept: Row = { id: TRIP, trip_number: 3, development_id: SITE, job_id: null, via: 'app', trip_people: [{ person_id: DANA, user_id: DANA_LOGIN, person_name: 'Dana', days: { '2026-10-31': 'site', '2026-11-01': 'site' } }, { person_id: null, user_id: null, person_name: 'luis', days: { '2026-11-02': 'road' } }], trip_jobs: [] }
     const world = { ...WORLD, trips: [kept] }
     const plan = await prepareTripWrite('plan_trip', { trip: ASK }, fake(world))
     if (!plan.ok) throw new Error(plan.error)
     expect(plan.overlaps).toEqual([
-      { trip_id: TRIP, name: 'Dana', days: 1, first_day: '2026-10-31', last_day: '2026-10-31' },
-      { trip_id: TRIP, name: 'Luis', days: 1, first_day: '2026-11-02', last_day: '2026-11-02' },
+      { trip_id: TRIP, trip_number: 3, name: 'Dana', days: 1, first_day: '2026-10-31', last_day: '2026-10-31' },
+      { trip_id: TRIP, trip_number: 3, name: 'Luis', days: 1, first_day: '2026-11-02', last_day: '2026-11-02' },
     ])
+    // The note names the kept trip by its number, with its id beside it.
+    expect((tripPlanWords(plan, { dry_run: true, would: 'add', trip_id: plan.p.id }, '2026-11-17').notes as string[]).join(' ')).toContain(`on another trip kept here, Trip 3 (${TRIP}).`)
     // The same trip, changed under its own id, overlaps nothing.
     const change = await prepareTripWrite('plan_trip', { trip: { ...ASK, id: TRIP } }, fake(world))
     expect(change.ok && change.overlaps).toEqual([])
@@ -478,6 +486,23 @@ describe('the plan, as a person reads it', () => {
     expect(String(done.next)).toContain(`plan_trip with id: "${prep.p.id}"`)
     expect(String(done.next)).toContain('Deleting a trip is done in the app.')
   })
+  it('names the trip’s number: a kept trip’s in the plan, the one it was given in the applied reply', async () => {
+    const prep = await prepared({ id: TRIP })
+    const change = tripPlanWords(prep, { ...dry('change', TRIP), trip_number: 3 }, '2026-11-01')
+    expect((change.trip as { trip_number: unknown }).trip_number).toBe(3)
+    expect((change.notes as string[]).join(' ')).toContain('It is Trip 3 on its site, and a change keeps that number.')
+    // A trip not kept yet has no number: the database hands it out on the save.
+    const add = tripPlanWords(prep, { ...dry('add', TRIP), trip_number: null }, '2026-11-01')
+    expect((add.trip as { trip_number: unknown }).trip_number).toBeNull()
+    expect((add.notes as string[]).join(' ')).toContain('The database hands the trip its number on its site when it is kept')
+    const done = tripAppliedWords(prep, { dry_run: false, did: 'added', trip_id: TRIP, people: 3, person_days: 8, first_day: '2026-10-29', last_day: '2026-11-03', jobs: 1, trip_number: 7 })
+    expect(done.reads).toBe('Added a trip to Heron Point: 3 people, 2026-10-29 to 2026-11-03. It is Trip 7.')
+    expect(done).toMatchObject({ trip_number: 7 })
+    expect(tripAppliedWords(prep, { did: 'changed', trip_id: TRIP, first_day: '2026-10-29', last_day: '2026-10-29', trip_number: 3 }).reads).toBe('Changed the trip to Heron Point: 3 people, 2026-10-29. It is Trip 3.')
+  })
+  it('reads a number only as the database gives one: a whole number from 1', () => {
+    expect([tripNumberOf(1), tripNumberOf(14), tripNumberOf(0), tripNumberOf(-2), tripNumberOf(2.5), tripNumberOf('3'), tripNumberOf(null), tripNumberOf(undefined)]).toEqual([1, 14, null, null, null, null, null, null])
+  })
   it('the call log keeps the home, the names and a count of days, and an apply’s plan_hash', () => {
     const logged = tripArgsForLog('apply_trip', { trip: { ...ASK, purpose: 'x'.repeat(400) }, plan_hash: ` ${HASH.toUpperCase()} ` })
     expect(logged).toMatchObject({ plan_hash: HASH, trip: { development_id: SITE, agent_label: 'the ledger robot', people: [{ name: 'Dana', days: '5 days' }, { name: 'Luis', days: '2 days' }] } })
@@ -500,6 +525,7 @@ describe('readTrips — a site’s trips, in the order they went out', () => {
     via: 'mcp',
     agent_label: 'the ledger robot',
     trip_jobs: [{ job_id: JOB }],
+    trip_number: 2,
   })
   const EARLIER = row('eeeeeeee-0001-4000-8000-000000000001', [person('Omar', { '2026-09-14': 'road', '2026-09-15': 'site' })])
   const AHEAD = row('eeeeeeee-0003-4000-8000-000000000003', [person('Priya', { '2026-12-01': 'ready', 'next week': 'site', '2026-12-02': 'flying' })])
@@ -512,6 +538,7 @@ describe('readTrips — a site’s trips, in the order they went out', () => {
     expect(out.trips).toHaveLength(1)
     expect(out.trips[0]).toEqual({
       id: MONTH_END.id,
+      trip_number: 2,
       first_day: '2026-10-29',
       last_day: '2026-11-03',
       standing: 'out',
@@ -555,6 +582,8 @@ describe('readTrips — a site’s trips, in the order they went out', () => {
     expect(out.reading).toBe('4 trips on Heron Point: 2 planned, 2 back. In the order they went out.')
     expect(out.trips[2]?.people[0]?.days).toEqual({ '2026-12-01': 'ready' })
     expect(out.trips[3]).toMatchObject({ first_day: null, last_day: null, days: { site: 0, road: 0, ready: 0, days: 0 } })
+    // A row that carries no number reads null, never a made-up one.
+    expect(out.trips.map((t) => t.trip_number)).toEqual([null, 2, null, null])
     const read = log.find((l) => l.table === 'trips')
     expect(read?.q.select).toBe(TRIP_SELECT)
     expect(read?.q.filters).toEqual([{ column: 'development_id', op: 'eq', value: SITE }])

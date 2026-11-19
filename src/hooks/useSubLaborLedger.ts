@@ -8,7 +8,7 @@ import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
 import type { SubSheetStage } from '../lib/subSheetStage'
 import type { SetSubSheetStageResult } from '../types/database-functions'
 import type { DrawBillAnswer } from './useDrawBillPick'
-import { loadCustomerPaidDays, loadDrawBillsByJob, loadDrawTieSheet, loadDrawTies } from '../lib/subWorkOrders/drawTieIo'
+import { loadCustomerPaidDays, loadDrawBillsByJob, loadDrawTieSheet, loadDrawTies, loadUsualPayWeeks } from '../lib/subWorkOrders/drawTieIo'
 import type { DrawBill } from '../lib/subWorkOrders/drawTie'
 
 /**
@@ -265,11 +265,20 @@ export function useSubLaborLedger({
       // v2.7843: the day the customer paid each tied bill in full, by the rule the sub's page reads.
       const customerPaid = await loadCustomerPaidDays(supabase, drawTies)
       // The tied sheets' jobs' bills, so the row names its bill whatever jobs the page has loaded.
-      const drawBillsByJob = await loadDrawBillsByJob(supabase, (jobs as LaborJob[]).filter((j) => drawTies.has(j.id)).map((j) => j.job_ledger_id ?? ''))
+      // v2.7881: how long each waiting sheet's payer usually takes, in the weeks the sub's page shows. Read beside the bills.
+      const [drawBillsByJob, usualPay] = await Promise.all([
+        loadDrawBillsByJob(supabase, (jobs as LaborJob[]).filter((j) => drawTies.has(j.id)).map((j) => j.job_ledger_id ?? '')),
+        loadUsualPayWeeks(
+          supabase,
+          (jobs as LaborJob[]).map((j) => ({ id: j.id, stage: j.stage, job_ledger_id: j.job_ledger_id, draw_invoice_id: drawTies.get(j.id) ?? null, payable_after: j.payable_after })),
+          customerPaid,
+        ),
+      ])
       const mappedJobs = (jobs as LaborJob[]).map((j) => ({
         ...j,
         draw_invoice_id: drawTies.get(j.id) ?? null,
         customer_paid_on: customerPaid.get(j.id) ?? null,
+        usual_pay_weeks: usualPay.get(j.id) ?? null,
         draw_bills: drawTies.has(j.id) && j.job_ledger_id ? (drawBillsByJob.get(j.job_ledger_id) ?? null) : null,
         items: itemsByJob.get(j.id) ?? [],
         payments: paymentsByJob.get(j.id) ?? [],

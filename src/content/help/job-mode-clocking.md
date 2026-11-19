@@ -261,11 +261,13 @@ Nothing is emailed until they sign. If the office already sent this customer an 
 A superintendent on a project sees one more card on Job Mode, above the job's details. The card's first line says whether the job is ahead or behind at this pace. Under it, the job's stages run top to bottom. A stage with a tick is done. The stage with a filled circle is the one in hand. The last row is the finish day.
 
 - Press {{button:blue|Set the %}} on the stage in hand to say how far along the work is. The window takes a number for each stage.
+- A stage with checklist questions says how many are answered under its name. Press the stage to open its checklist.
 - The **Hours** bar shows the hours in against the budget. It turns red when the job is behind.
 - When the job is behind, a row under **Finish** reads **At this pace** with the day this pace lands on. Press {{button:outline|Open the checklist}} to answer the stage's open questions.
 - Press **My finish date** to say when you think the job finishes. Pick a day and say what is in the way. Your day shows on the card as **You said**. It does not change the planned finish or your score.
 - Two days before that day the card asks *Still finishing?* with the day. Press **Yes**, or press **Pick a day** to change it.
 - Press **Ask a master** to send a question to the master on the job. The percent, the hours and the finish day go with it. The card then says who your question waits on. See [tag a teammate](/help/tag-a-teammate-in-a-job-note) for where the answer shows.
+- Press **All projects** to open the Projects board, with every working project on it.
 - Press **How this is figured** for the rest. It holds the strip with the days the crew worked and where the budget came from. It also holds the office's sign-off and your score this month.
 - Inside it, tap a day on the strip to read who clocked and for how long. The day also shows the report.
 - When the office set expected hours for the job, the same fold reads them with 🎯. The line says who set them, when, from what, and why.

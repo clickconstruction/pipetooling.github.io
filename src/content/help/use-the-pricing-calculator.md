@@ -64,7 +64,7 @@ Two buttons sit under the display while a bid is open on Pricing.
 
 Each button opens the **Percent row** window with the number in it. The window draws the row at its top, as the table will show it. The window's button says what it will do, like {{button:blue|Set LAV to $900.00}}. Nothing changes on the bid until you press that button.
 
-**Put on a row…** lists the bid's rows. Pick one. The number becomes the row's whole price, spread over the row's count.
+**Put on a row…** lists the bid's rows. Pick one. Until you pick, the button stays grey and the bid's revenue reads as it stands. The number becomes the row's whole price, spread over the row's count.
 
 **Make a new row…** asks for a name. The new row lands at the end of the table with a count of 1.
 

@@ -5,6 +5,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
 import type { Database } from '../../types/database'
 import { WORKFLOW_ASSIGNABLE_USER_ROLES, buildWorkflowUserRoster } from '../../lib/workflow/stepAssignment'
+import type { WorkflowViewerRole } from '../../hooks/useWorkflowRoster'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 
@@ -30,7 +31,7 @@ export function StepFormModal({
   toDatetimeLocal,
   fromDatetimeLocal,
 }: {
-  viewerRole: 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'superintendent' | null
+  viewerRole: WorkflowViewerRole | null
   step: Step | null
   dependsOnStepId: string | null
   insertAfterStepId: string | null

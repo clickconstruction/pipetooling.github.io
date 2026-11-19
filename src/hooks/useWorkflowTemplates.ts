@@ -9,9 +9,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { WorkflowStepsEngine } from './useWorkflowStepsEngine'
+import { NO_WORKFLOW_TO_SAVE_ON } from '../lib/workflow/workflowStart'
 
-export function useWorkflowTemplates(engine: WorkflowStepsEngine, projectId: string | undefined) {
-  const { workflow, setError, ensureWorkflow, refreshSteps } = engine
+export function useWorkflowTemplates(engine: WorkflowStepsEngine) {
+  const { workflow, setError, refreshSteps } = engine
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false)
@@ -25,13 +26,10 @@ export function useWorkflowTemplates(engine: WorkflowStepsEngine, projectId: str
 
   async function createFromTemplate() {
     if (!selectedTemplateId) return
-    // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId: string | null = workflow?.id ?? null
-    if (!workflowId && projectId) {
-      workflowId = await ensureWorkflow(projectId)
-    }
+    // The card is drawn on a workflow with no steps, so there is always one in hand.
+    const workflowId = workflow?.id ?? null
     if (!workflowId) {
-      setError('Workflow not found. Please refresh the page.')
+      setError(NO_WORKFLOW_TO_SAVE_ON)
       return
     }
     setCreatingFromTemplate(true)

@@ -2,7 +2,7 @@
 name: "Stages onto the job: a won bid offers its stages as the job's lines, and the superintendent gets a way in"
 number: 397
 group: ready
-status: asked 2026-11-18 · reviewed, drawn and planned the same day · the owner's word *build on defaults, build it all* · shipped: PR 1 the Workflow page (v2.7838), PR 2 the rule file (v2.7822), PR 3 the window on New Job (v2.7831) · PR 4, the same offer on a job that exists, open and walked with a write on ZZ rows · PR 6, one reader for a stage's name, open with its migration on the owner's pick *B, with migration* · PR 5 waits for punch list #396's open PRs · PR 7 held by the owner's default
+status: asked 2026-11-18 · reviewed, drawn and planned the same day · the owner's word *build on defaults, build it all* · shipped: PR 1 the Workflow page (v2.7838), PR 2 the rule file (v2.7822), PR 3 the window on New Job (v2.7831), PR 4 the same offer on a job that exists (v2.7836), PR 6 one reader for a stage's name (v2.7850, its migration applied) · built and open: PR 5 the superintendent's doors, PR 7 the 100% notice (v2.7889), on the owner's word to build the rest
 summary: >
   The app calls five things a stage, and only the Pipeline's is used on every job. Everything new that
   reads a job's stages (the pace card's rail, the Projects board, the stage checklists, Before we start)
@@ -11,9 +11,9 @@ summary: >
   This card fills the lines at the win by an offer the office accepts, makes the same offer on a job
   still on one clean line, opens the superintendent's doors to the stages, and tidies three small things
   found on the way. Seven small PRs and no new table. One of them replaces a database function.
-next: Push PR 6's migration once it lands. Then PR 5, the superintendent's doors, once punch list #396's PRs land.
+next: See PR 5 and PR 7 to their merge. Then the office writes the company's stage checklist questions, since none exist yet, and the card closes on the owner's word.
 size: M as a train of seven (S · S · M · S · S · S · S)
-blocker: None. PR 5 waits for punch list #396's open PRs. PR 7 is held until crews mark stages on real jobs.
+blocker: None. The whole train is built. PR 5 and PR 7 are open with auto-merge armed.
 opinion: build — the owner picked this direction over doing nothing and over one shared stage system, and took every default
 ---
 
@@ -86,10 +86,10 @@ Each was put to him with a default, and he took every default.
 |---|---|---|
 | 1 | Where do the dollars for each stage come from? | The company's terms, by chip: 30/30/30/10 or 40/40/20. The bid's own schedule of values wins when it has one. Never by hours. |
 | 2 | Does 30/30/30/10 bring a fourth line, Final? | Yes. It is the generator's own preset. |
-| 3 | The stage checklists wake up on these jobs, and the Pipeline reads *not ready* until the crew answers. | Yes, let them. |
+| 3 | The stage checklists wake up on these jobs, and the Pipeline reads *not ready* until the crew answers. | Yes, let them. The call was put to him on a wrong reading: the company has no checklist questions written, so nothing wakes up until the office writes them. He was told the same day. |
 | 4 | Does a superintendent see every project on the board, or only his own? | Every project, as the board does today. |
 | 5 | PR 6 changes how a few lines on open jobs are read. Does he see them first? | Yes. He was shown the count and the shapes in the session, with two ways to do it, and picked *B, with migration*: the app's readers and the database's copy all take one rule. |
-| 6 | Is PR 7, the 100% notice, built now or held? | Held until crews mark stages on real jobs. |
+| 6 | Is PR 7, the 100% notice, built now or held? | Held until crews mark stages on real jobs. Later the same day he said to build PRs 5, 6 and 7, so it was built. |
 
 ## Guard rails
 
@@ -128,7 +128,7 @@ words. Six change no table. PR 6 replaces one database function.
 | 4 | **Bring the bid's stages on a job that exists.** The link beside Multiple Segment Generator, or the reason it is held. | S | `JobFormFixturesSection.tsx`, `JobFormModal.tsx` | PR 3 |
 | 5 | **The superintendent's doors.** A press on each stage of the rail, *All projects*, the Projects bar on his Dashboard, the board's stages as a press. | S | `PaceRail.tsx`, `SuperintendentCard.tsx`, `PaceStrip.tsx`, `DashboardProjectsStrip.tsx` and its gate | Punch list #396's open PRs |
 | 6 | **One reader for a stage's name.** The job's reader, the bid's and the database's copy become one rule: the start of the name gives the stage, *Set trim* is trim, and a name that also holds another stage's word stands for none. | S | `stageRecognition.ts`, `stageEarnedValue.ts`, `aiaBidSchedule.ts`, a new `stageNameTable.ts`, one migration for `stage_checklist_kind_of` and its SQL bed | Its own PR. The migration is pushed after it lands |
-| 7 | **A stage at 100% that is not billed.** One Needs you line, with the Bill tab as its press. | S | `dashboardNeedsYou.ts` and its read | Held (call 6) |
+| 7 | **A stage at 100% that is not billed.** One Needs you line, with the job's window as its press. | S | `needsYou/stagesDone.ts`, its read and hook, `dashboardNeedsYou.ts` and the line's registrations | Nothing |
 
 PR 3 should land before #382's fourth PR, *The list on a stage*, so that list has stages to sit on.
 
@@ -156,10 +156,14 @@ PR 3 should land before #382's fourth PR, *The list on a stage*, so that list ha
 
 ## Where it stands
 
-PRs 1, 2 and 3 are on main. PR 4 is on `claude/stages-existing-job`. PR 6 is on `claude/stage-name-one-reader` with one migration to push after it lands.
+PRs 1, 2, 3, 4 and 6 are on main, and PR 6's migration is applied. PR 5 is on `claude/stages-super-doors` and PR 7 on `claude/stages-done-not-billed`, both open.
+
+PR 7's check, 2026-11-18, on the dev server as the dev, reading only. On the real reads no stage qualified and Needs you drew no line. With two reads answered in the browser so the ZZ job's Rough In read 100%, the line drew with the stage, the job and its dollars, and **Open the job** opened that job's window. Nothing was written. No real stage has been at 100% with no bill yet, so the line has not been seen on real rows.
+
+One thing the train did not do: the stage checklists. The company has no checklist questions written, so a job's new stages carry no checklist until the office writes them.
 
 PR 3's walk, 2026-11-18, on the dev server with the ZZ bid, reading only: the window opened, **Bring 4 stages** laid four Any time lines into Line Items, and the form was closed unsaved. The walk caught one flaw before it shipped. A stage the Labor tab put at 23 h read 15 h on its line, because every reader of a line works hours out at the company's rate. The rule now values the hours at that rate, so a line reads the bid's own hours back, within a percent of its price.
 
-PR 4 is on `claude/stages-existing-job`, stacked on PR 3. Its walk, the same day, on the ZZ job's Bill tab, reading only: the link read *Bring B398's stages*, the window opened on the stages in place of the one line, and **Keep one line** closed it with the job unchanged.
+PR 4's walk, the same day, on the ZZ job's Bill tab, reading only: the link read *Bring B398's stages*, the window opened on the stages in place of the one line, and **Keep one line** closed it with the job unchanged.
 
 Walked with a write, on the owner's *Yes, on ZZ rows*, the same day: a new ZZ job, *ZZ Test Stages Walk 2026-11-18*, was opened from the ZZ bid with **Bring 4 stages** and saved with **Create Job**. It was then brought down to one line by the form's own presses and split again through the Bill tab's link. The rows read back right both times, and the Projects board drew the job's strip cut at each stage's end. The job stays as a ZZ fixture with four stage lines, for PR 5's walk. New Job made its Drive folders, as it does for every job.

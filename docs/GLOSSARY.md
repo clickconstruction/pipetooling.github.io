@@ -3129,6 +3129,7 @@ A map on no job is its maker's and the office's until **Put it on a job…**.
 Since v2.7859 (punch list #392) the Dashboard's top row carries **Paint a map** for every role, clocked in or not: wide beside the Tally square in Job Mode with the job it lands on, a quiet link on the office's phone, a square after Job Report at a desk and on a leader's phone (`PaintAMapPress` over `paintedMapPress.ts`).
 The press lands on the job the person is clocked onto, else the stop under way or next today, else the person picks, and a job the press picked can be changed on the start sheet with **Change the job**.
 **The Saved band** (v2.7866, punch list #392) is the green band a painted map's window draws once a save lands in it: *Saved on* the job, what is on the map and who can open it, and on a phone one blue **Text it from my phone…** for whoever may share the map (`PaintedMapSavedBand` over `paintedMapSaved.ts`).
+Since v2.7894 the band's press is the Share sheet's whole: it asks `desk.can` once, on a yes the phone picks the link's code and Messages opens inside the press, and a page left within a minute of a hand-off takes back what the band said about Messages not opening (`onPageLeft`).
 While the band carries that press **Draw a line** is plain, so the screen has one blue press.
 **Which job is it for?**, the sheet a painter picks a job from (v2.7868, punch list #392), is there because every painted map is on a job: **Today** the day's stops, **Lately** the jobs clocked onto in the last 45 days, then a search of every job (`PaintAMapJobPicker` over `paintedMapJobPicker.ts`).
 It opens first when a map is started with no job, from the start sheet's **Change the job**, and from a map's **Put it on a job…** and **Move it to another job…**.
@@ -3738,6 +3739,7 @@ A trip is people, and for each person their days, and each day is one of three k
 A day off in the middle is a day that is not there.
 Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
 Each trip also has a short number on its site, **Trip 5**, handed out by the database when the trip is made (v2.7703, `trips.trip_number`): never typed, never changed, and never given to another trip, so a bill that cites it means one trip for good.
+Since v2.7886 the dev seat's `read_trips` gives each trip that number (`trip_number`), and `plan_trip` and `apply_trip` name it in their replies.
 A trip may also say what it was for, who asked for it (us or them), how it went, the jobs its work goes on and its billing (**Inside the price**, **Extra**, **Ours**), and all of that can wait.
 A trip is a reading laid over the clock: saving, changing or deleting one changes no clock row, bill or cost.
 A trip's number on its site, **Trip 5**, leads the trip wherever the app names one since v2.7707, built in one place (`tripName` in `lib/trips/tripsLook.ts`) and never an input: the look's row, the open trip's heading, the strip's bar, the delete's question and its toasts, the two History lines (*Trip 5 out*, *Trip 5 back*), the Job window's line, the Plans by date card and list, the Scoreboard's row and the trip log's blocks.
@@ -3750,6 +3752,7 @@ The site's hours fall into five figures (`src/lib/trips/tripHours.ts`): a row on
 The hours are the Scoreboard's own (`siteLabor.ts`), and a day's place comes from the clock's punches on the site's jobs read against the address's point (`tripPlace.ts`, `tripHourRows.ts`).
 The **Trips look** is the Development page's seventh look (`DevelopmentTripsCard.tsx` over `DevelopmentTripsLook.tsx`, `useSiteTrips`, `lib/trips/tripsLook.ts`): a band that says how many of the site's hours were at the site, one bar of the same hours, the year's trips on a strip, and a row a trip that opens in place.
 The look shows only on a site that has a trip or is 150 miles or more from the shop (`tripsLookShows`), and a nearer site has one door to its first trip in the line under its address.
+Since v2.7888 the 150 miles is one setting a dev changes, 25 to 1,000 whole miles, on **Settings → Jobs, bills and liens → Trips** (`app_settings` `trips_far_miles_v1`, `tripFarMiles.ts`), and the phone's trip question reads the same number.
 **+ Trip** opens the sheet (`components/trips/TripSheet.tsx` over `lib/trips/tripSheet.ts`): who went, which days, what for, the days painted and turned by a tap.
 A trip leaving and coming back are two **History** lines read from its days (`lib/trips/tripHistory.ts`), never kept rows.
 **Looks like a trip** is the look's offer of a run of punches at the site that no trip covers (`lib/trips/tripFinder.ts`, `tripOffers.ts`): the app never makes the trip, and a person presses **Make it a trip**, which opens the sheet filled from the punches, or **Not a trip**, which keeps one `trip_dismissals` row a person so the same days are not offered again.
@@ -4276,6 +4279,8 @@ A waiting sheet's row on Jobs → Subs → Pay reads *Rides on bill 2 of 3* or *
 Kernel [`drawTie.ts`](../src/lib/subWorkOrders/drawTie.ts), migration `20261118180000`.
 Since v2.7843 the sub's page says *Customer paid* with the day once the tied bill's status is `paid`, by `customerPaidOn` in [`subPortalCustomerPaid.ts`](../supabase/functions/_shared/subPortalCustomerPaid.ts), the day being the latest `paid_on` on that bill.
 The office's row says the same under the tie (*Sub sees: Customer paid Nov 12*) and turns amber past two days with no payable-after date (`subSeesCustomerPaid`), a held sheet staying grey.
+Since v2.7881 a waiting sheet with no paid day and no payable-after date also carries the payer's usual pay time, as whole weeks (`usualPayWeeks`, the floor being five payments in the last 12 months), from the receipts behind *Pays in*.
+The sub's page writes it as one line (*This customer usually pays 4 to 6 weeks after we ask.*) and the office's row as *Sub sees: usually 4 to 6 weeks* (`subSeesUsualPay`).
 
 ### Followup Sheet
 Printable/downloadable report showing account manager's assigned projects with contact details and submission history.
@@ -6210,8 +6215,11 @@ its kernels (`src/lib/mail/`, v2.5375) carry the run's **Mail through Docsmit** 
 It lists every mailed file with its own link, then each envelope with its number and its receipt.
 **Mail proof** is its count: the files count as one piece and each posted copy's receipt as one, so *Mail proof: 2 of 3 on file* names one thing missing and the **Next:** line says which.
 A copy sent by email, handed over or carried by a mail provider owes no receipt.
+Since v2.7883 the chip reads *Mail proof complete* only when nothing is left to add, which is every counted piece, a filed lien's mailed day and each copy's mail number.
+A filed lien's copy is mailed once its day is on record (`served_at`), so a number or a file kept ahead of the day reads *Not mailed yet*, and with every file in the chip reads *Mailed day not recorded* or *Mail number missing*.
 Since v2.7871 the three screens that open a stop's window share one reading, `lienStopProof.ts`, so a filed lien on a job under a GC shows the contractor's card and counts its receipt on each of them, before that copy has any record.
 Since v2.7785 a recipient's card in the stop's window carries the press for the one thing its copy lacks (`lienMailProofDoor.ts`): **Enter the owner of record ›**, **Print the copies to mail ›** (*Mail this copy ›* until v2.7798), **Enter the mail number ›** or **Add the receipt ›**.
+Since v2.7883 a copy that keeps a number or a file while its lien has no mailed day reads **Record the mailing ›**, which opens the lien's card in *Filed liens: copies to mail* at its *Mailed* box.
 The press closes the stop's window and opens the place where that is entered, for the office alone: the property record, *Filed liens: copies to mail* at the job's line, or the job's Lien window at the paper's row.
 **Print the copies to mail** and **Enter mail numbers** are the two names of one step, a filed lien's copies under § 53.055, by the stage the copies are at (`lienServeStage.ts`, v2.7798).
 Every door on the desk to that step reads its stage's name and lands on that half: the Board's *Filed · copies to mail* press, the To do row, the band on the job's path, the affidavit pane's footer and the stop window's card.
@@ -6263,17 +6271,22 @@ Since v2.7783 (the owner's pick of 2026-11-18) a held paper stands in the bin of
 Since v2.7833 (punch list #390, part 1) the two boxes under the lien affidavits, **Public jobs · bond claim** and **Off the lien path**, open folded to one line with the name, the jobs, their money and **Show ▾**, which opens the box as it read before under **Hide ▴** (`lienBinFold.ts`, `LienBinFoldHeader`, never stored).
 A folded **Public jobs · bond claim** also counts in amber the rows whose chip the fold hides, like *1 to get the bond*.
 Since v2.7852 an affidavit nobody has read stands in *To send for Master approval* after the ones the batch send takes, its chip with a dashed edge and a ○ mark, and the bin's count leaves it out, so the bin reads the number on *Send N for approval ›* (`unread`, `lienAffidavitSendReady`).
+Since v2.7893 (the owner's pick of 2026-11-18) the two column headings, *Monthly notices* and *Lien affidavits*, are both the muted grey where they were blue and red, so red on the Board only means a late day (`LIEN_BOARD_COLUMN_HEAD_COLOR`).
 Since v2.7367 (punch list #362) To do scrolls as one page wherever the Board leaves the list under 320 px, the find box pinned at the top with the Board's counts beside it, the waiting, run and at-risk ones presses, and **↑ The Board** (`lienDoNowFrame.ts`, `LienDoNowBar.tsx`);
 a screen tall enough for both keeps the Board put.
+Since v2.7896 (the owner's pick of 2026-11-18) a tile that is a press says where it goes at its top right, *Show them ›* on the second tile and *Open the run ›* on the third, and the second reads *Show every row ›* while the list is narrowed to the leader's papers (`lienBoardTileDoor.ts`).
 Since v2.7371 *Needs you now* reads in three parts by the Board's own at-risk rule: the rows that will not make their day as they stand (the day tile's red line is a press that shows only those), *Waiting on <leader>* with the office's **Remind <leader> of N papers** (asks first, sends the approval's own message again, dead once sent that session;
 `lienLeaderReminder.ts`), then *On track*.
+Since v2.7897 (the owner's pick of 2026-11-18) the day tile's other red line, *N are past their day*, is a press too, both lines end in *Show them ›* in the link colour where the at-risk one was underlined, and the late line narrows the list to the rows with a paper past its day (`lienBoardDayLine.ts`, `lienBoardChipLate`).
 The reminder covers everything that waits on him: a retainage notice since v2.7478, the approved notices that lack his signature since v2.7491, and since v2.7495 a text with the link goes beside the push or the email (`notify-lien-approval`).
 Since v2.7456 a computer's list under the Board is one group a bin, under the bin's own name and in the Board's order, papers that share one act folded into one row with the press that takes them all, and everything not due inside the week under **Later** (`lienNextUpByBin.ts`).
+Since v2.7899 (the owner's pick of 2026-11-18) that list's head names what it counts and where the rest are, *Needs you now · 27 papers* with *12 more under Later* beside it, where it read a bare number that did not match the tab's count of rows the viewer can move (`lienNextUpNowWords.ts`).
 Since v2.7708 (punch list #383) every batch press stands on the title line of the bin it empties, right of the bin's name and count, and nothing stands between the tiles and the columns (the two prints stood in one band there from v2.7483, at each column's foot in v2.7470;
 `lienBoardPrints.ts`): *Print and mail N notices* on Approved · to print opens the whole run, *Enter mail numbers · N* on Approved · to mail opens it again, *Print N for notarization* on Ready to file prints the ready ones, and a line under the bin's name says what a print leaves out with a door to those papers.
 Since v2.7712 **Approved · to sign** is a bin of its own between Awaiting Master approval and Approved · to print: an approved notice the leader has not signed stands there, violet, with the office's **Remind** or the leader's *Sign N notices ›* beside the bin's name, so Approved · to print and the third tile count exactly what the print takes.
 Since v2.7853 the leader's *Sign N notices ›* counts only the notices on the jobs he leads and opens By paper narrowed to those, a line under the bin's name says how many wait on another leader, and a leader who leads none of them reads the office's **Remind**.
 Since v2.7714 the affidavits' To send for Master approval carries *Send N for approval ›*, the door to the affidavits list at that pile.
+Since v2.7898 (the owner's pick of 2026-11-18) the Retainage line under the notices ends in *Open ›*, the door to By paper's Retainage list, whole and with nothing typed in the find box (`lienBoardRetainageDoor.ts`).
 The title bar's door to the run left every view on a computer in v2.7490, so By job has no door to the run;
 a phone keeps the run as the first row of **More**.
 **Filed liens: copies to mail** (v2.7476, punch list #366, `LienServeWindow.tsx`): the window behind *Mail N liens' copies ›* on the Filed · copies to mail bin and its To do rows.
@@ -6286,6 +6299,9 @@ A mailed lien that still lacks a number or a receipt stays in the window under *
 **Back from the clerk: record the filings** (v2.7856, `LienFilingBatchWindow.tsx`, `lienFilingBatch.ts`): the window behind *Enter document numbers · N ›*, a line under the print on the Ready to file bin and a door at the top of the copies window.
 It lists every lien in Ready to file, and each is recorded as filed the moment its document number is typed, by Enter or by leaving its box, as the job's Lien window records one.
 **Choose the stamped liens** sends the clerk's files to their liens by the job number in each name and types in a document number found in the name, which waits for one counted press.
+**Take it back** (v2.7892, `lienFilingVoid.ts`, `lienFilingVoidIo.ts`): the press on a recorded line of *Back from the clerk*, which asks first and then voids that line's filing, so the line opens again for the right number.
+**Voiding a filed lien puts its paper back** (v2.7892, `20261119020000`): when an affidavit's record is voided, from the Lien window's **Void** or from *Take it back*, the database returns the lien's paper to `approved` with its approval untouched, or to `drafted` when nobody had approved it, and clears its tie to the filing.
+Until v2.7892 the paper stayed `sent`, so the Board showed the lien under **Served** with no lien on file.
 Its third part, **Add the stamped scans** (v2.7524, `LienScanBatchWindow.tsx`, also `/lien-desk?scans=1`), takes the clerk's stamped scans for every filed lien with no saved copy, one file a lien matched by recording number or job number;
 since v2.7528 a PDF of a whole stack is split in the browser into one PDF a lien, a page at a time (*It holds several liens: split it ›*, `lienScanStack.ts`).
 Since v2.7372 a computer's row is two lines: the job, what it owes and its press, then its bin in the Board's words (the door to the step card the four dots opened), the one thing to know and, on an affidavit, where its notice stands (`lienRowWords.ts`);
@@ -7297,6 +7313,8 @@ A company truck with no insurance, registration, service or replacement value on
   Since v2.7831 (punch list #397) a job opened from a won bid can take its stages at the win: New Job's carry window (`BidCarryWindow` over `src/lib/bids/jobStagesFromBid.ts`) asks **How should $X come onto the job?** with **As stages**, **As one line** and **Start at $0**.
   The stage lines arrive Any, with dollars from the generator's presets or the bid's own schedule of values and each stage's hours from the bid's Labor tab.
   Since v2.7836 a job that already exists on one clean line is offered the same stages from the Bill tab, beside Multiple Segment Generator (`useBringBidStages`, `bringBidStagesStanding`), or reads why the offer is held.
+  Since v2.7889 (PR 7) the office's Needs You line *N stages read 100% and are not billed* (`stages-done-not-billed`, `needsYou/stagesDone.ts`) names a stage the crew put at 100% that sits on no bill, on a Working job with two or more priced lines.
+  Its press, **Open the job**, opens that job's window and bills nothing.
 - **Tagged job notes** (punch list #363;
   v2.7384 the kernel, v2.7385 the table, v2.7400 the list of names, v2.7407 where it lands) — a job note that names a teammate picked from the list under the note box, kept as a row of `jobs_ledger_note_tags`.
   It **waits** on that person until they post a typed note on the job or press **No reply needed**;
@@ -7736,6 +7754,9 @@ Every role reads one server read, `list_project_board`, so no role's own RLS can
 The money budget is the Burn's: a baseline counts only with a labor and a materials figure, else the price at 35% margin.
 Since **v2.6352** the leader and a dev also read it on the Dashboard as the **Projects** line under Money in (`DashboardProjectsStrip`): closed, the counts and the worst project;
 open, the same cards.
+Since **v2.7885** (punch list #397 PR 5) a superintendent reads the same line on his Dashboard, above Recent reports, and sets nothing on it.
+The pace card's rail carries each stage's checklist as a press, and its foot a door, **All projects**, to the board.
+The strip's stage count is a press that lists the stages, since a phone cannot hover.
 Guide *see where every project stands and set its expected hours*.
 Since **v2.6665** (punch list #234 PR 2) a project leaves award with a **planned finish** frozen beside its hours on `job_budgets` (`planned_start` · `planned_finish` · `planned_source` rough · assumed · typed · `planned_detail`;
 `lib/jobs/plannedFinish.ts`: the GC project's kept rough schedule, else the start the bid assumed plus the baseline hours at 24 crew hours a day in working days, a weekend start counting from the Monday after it since **v2.6737**, else a typed day, picked on the New Job award block, written by `award_job_baseline`'s eighth argument or later from the Costs strip's **Freeze the planned finish**), which `list_project_board` returns and the superintendent's line reads as *Planned finish Nov 14.

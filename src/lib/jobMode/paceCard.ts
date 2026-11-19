@@ -113,7 +113,37 @@ export function paceRowNote(plannedFinishYmd: string | null | undefined): string
   return day ? `Finish ${day}. ${PACE_CARD_WORDS.rowOpen}` : PACE_CARD_WORDS.rowOpen
 }
 
+/**
+ * A stage's checklist on its rail row (punch list #397, PR 5): *2 of 3 answered*, and the press that opens it.
+ * Null for a stage with no question, which is no press: an empty sheet is nothing to open.
+ */
+export function paceStageCheck(state: { asked: number; answered: number } | null | undefined): { words: string; ready: boolean } | null {
+  if (!state || !(state.asked > 0)) return null
+  return { words: `${state.answered} of ${state.asked} answered`, ready: state.answered >= state.asked }
+}
+
+/** One row of the strip's stage list, the board's stages on a phone: the stage, its hours of the budget, and the crew's report on it. */
+export type PaceStageListRow = { name: string; hours: string; pct: string; reported: boolean }
+
+/**
+ * The strip's stages as a list. The strip cuts its track at each stage's end and names a stage on hover, and a
+ * phone cannot hover, so a board card on a phone said *3 stages* and showed none of them.
+ */
+export function paceStageList(stages: ReadonlyArray<{ name: string; hours: number; pctDone: number | null }>): PaceStageListRow[] {
+  return stages.map((s) => ({
+    name: s.name,
+    hours: `${Math.round(Math.max(0, s.hours))} h`,
+    pct: s.pctDone != null ? `${Math.round(clamp(s.pctDone))}%` : PACE_CARD_WORDS.notReported,
+    reported: s.pctDone != null,
+  }))
+}
+
 export const PACE_CARD_WORDS = {
+  /** The door from one project's card to every project. */
+  allProjects: 'All projects ›',
+  /** A stage the crew has not reported by itself. */
+  notReported: 'not reported',
+  stagesCount: (n: number): string => `${n} stage${n === 1 ? '' : 's'}`,
   work: 'Work',
   hours: 'Hours',
   hoursOf: (used: number, budget: number): string => `${used} of ${budget} h`,

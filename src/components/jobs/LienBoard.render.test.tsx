@@ -339,16 +339,16 @@ describe('LienBoard', () => {
     const onTile = vi.fn()
     const view = render(<LienBoard board={b} isMobile={false} onTile={onTile} columnsOnly />)
     const tile = document.querySelector('[data-lien-board-tile="by_day"]') as HTMLElement
-    const line = tile.querySelector('[data-lien-board-tile-line]') as HTMLButtonElement
-    // The tile itself only reads; the line under its count is the press.
+    const line = tile.querySelector('[data-lien-board-tile-line]') as HTMLElement
+    // The tile itself only reads; the line under its count is the press, its sentence and its door's words in one button.
     expect(tile.tagName).toBe('DIV')
-    expect(line.tagName).toBe('BUTTON')
+    expect(line.closest('button')?.getAttribute('data-lien-board-tile-line-press')).toBe('risk')
     expect(line.textContent).toMatch(/will not make tomorrow as (it stands|they stand)\.$/)
     fireEvent.click(line)
     expect(onTile).toHaveBeenCalledWith({ kind: 'risk' })
     view.unmount()
     render(<LienBoard board={b} isMobile={false} columnsOnly />)
-    expect((document.querySelector('[data-lien-board-tile="by_day"] [data-lien-board-tile-line]') as HTMLElement).tagName).toBe('SPAN')
+    expect((document.querySelector('[data-lien-board-tile="by_day"] [data-lien-board-tile-line]') as HTMLElement).closest('button')).toBeNull()
   })
 
   it('a chip pointed at shows a card before any press: the job, its address and its customer, then where its paper stands; it goes when the pointer leaves (v2.7381)', async () => {

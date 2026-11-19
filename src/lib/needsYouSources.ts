@@ -48,6 +48,8 @@ export type NeedsYouSource =
   | 'jobKindGaps'
   | 'inKindCredits'
   | 'baselineGaps'
+  // A stage the crew put at 100% that sits on no bill (punch list #397, PR 7), the office's.
+  | 'stagesDone'
   // The card charges waiting on a receipt the text cannot get (punch list #299, the step after PR 2), the office's.
   | 'receiptChases'
   | 'lineBudgetsReview'
@@ -118,6 +120,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'jobKindGaps',
   'inKindCredits',
   'baselineGaps',
+  'stagesDone',
   'receiptChases',
   'lineBudgetsReview',
   'materialsOnSite',
@@ -204,6 +207,7 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'jobKindGaps':
     case 'inKindCredits':
     case 'baselineGaps':
+    case 'stagesDone':
     case 'receiptChases':
     case 'materialsOnSite':
     case 'jobFollowups':

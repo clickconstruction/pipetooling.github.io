@@ -12,6 +12,7 @@
  */
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { daysBetweenYmd } from './sheetRail'
+import { subPortalUsualPay } from '../subPortal/subPortalRail'
 
 /** One of the job's bills, as `jobs_ledger_invoices` holds it. */
 export type DrawBill = {
@@ -157,4 +158,23 @@ export function subSeesCustomerPaid(input: {
     return { text: `Customer paid ${day} · not queued, ${days} days`, tone: 'amber', title: 'Their page has said the customer paid since that day. Set a payable-after date to queue it, or type why it waits.' }
   }
   return { text: `Sub sees: Customer paid ${day}`, tone: 'grey', title: 'Their page says the customer paid and that their payment is next.' }
+}
+
+/**
+ * What the sub's page says about the wait itself (v2.7881, punch list #388 step 3): the usual pay time of the
+ * sheet's payer, in the page's own weeks. Shown on the same sheets as the page's line (`subPortalUsualPay`): at
+ * Waiting on customer, not yet paid, not queued. Always grey: it is something the sub reads, not a thing to do.
+ */
+export function subSeesUsualPay(input: {
+  stage: string | null | undefined
+  customerPaidOn: string | null | undefined
+  payableAfter: string | null | undefined
+  usualPayWeeks: { lo: number; hi: number } | null | undefined
+}): SubSeesWords | null {
+  const stage = input.stage === 'customer_pay' ? 'customer_pay' : null
+  if (!stage) return null
+  const words = subPortalUsualPay({ stage, payableAfter: input.payableAfter ?? null, customerPaidOn: input.customerPaidOn ?? null, usualPayWeeks: input.usualPayWeeks ?? null })
+  if (!words) return null
+  const weeks = words.key === 'usualPayWithin' ? 'within a week' : words.key === 'usualPayAbout' ? `about ${words.vars.n} weeks` : `${words.vars.lo} to ${words.vars.hi} weeks`
+  return { text: `Sub sees: usually ${weeks}`, tone: 'grey', title: 'Their page says this customer usually pays in that time. It reads the same payments as Pays in, and shows only with five or more.' }
 }
