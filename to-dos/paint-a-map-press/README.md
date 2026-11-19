@@ -2,7 +2,7 @@
 name: "Paint a map from the Dashboard: a press that is always there, and every map on a job"
 number: 392
 group: close
-status: asked 2026-11-17 · designed, drawn and rendered the same day (ten states at a phone's width and one at a desk) · shown to the owner with nine calls, each with a pick · nothing built · carded the same evening at the owner's word · the Share sheet was built apart as #394 on 2026-11-18 (v2.7788 · 7790) · walked the same day as a leader on a phone, and the missing Dashboard press was the walk's worst snag · a leader's phone drawn the same day (three states), a tenth call added with a pick, and the plan's order changed so the Saved band comes before the picker · the owner's word the same day (*Yes, build it*) · the kernel and the press built the same day (v2.7859), walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark · the Saved band built the same day (v2.7866), walked the same way on a made-up map on no job, thrown away after · the picker built the same day (v2.7868), walked with made-up jobs answered to its reads and nothing saved · Find the jobs near me built the same day (v2.7869), pressed live from a made-up spot beside the test jobs · every step built · merged 2026-11-18 as one PR (#8814) · the Saved band's press was a step behind the Share sheet's, and #394's session brings it in line in #8856: Messages opens inside the press, and a false note is taken back · not yet tried on a real phone
+status: asked 2026-11-17 · designed, drawn and rendered the same day (ten states at a phone's width and one at a desk) · shown to the owner with nine calls, each with a pick · nothing built · carded the same evening at the owner's word · the Share sheet was built apart as #394 on 2026-11-18 (v2.7788 · 7790) · walked the same day as a leader on a phone, and the missing Dashboard press was the walk's worst snag · a leader's phone drawn the same day (three states), a tenth call added with a pick, and the plan's order changed so the Saved band comes before the picker · the owner's word the same day (*Yes, build it*) · the kernel and the press built the same day (v2.7859), walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark · the Saved band built the same day (v2.7866), walked the same way on a made-up map on no job, thrown away after · the picker built the same day (v2.7868), walked with made-up jobs answered to its reads and nothing saved · Find the jobs near me built the same day (v2.7869), pressed live from a made-up spot beside the test jobs · every step built · merged 2026-11-18 as one PR (#8814) · the Saved band's press was a step behind the Share sheet's, and #394's session brings it in line in #8856: Messages opens inside the press, and a false note is taken back · not yet tried on a real phone · the owner opened the picker on 2026-11-19 with nothing on his schedule and no clock, met an empty window and asked for his last jobs there · the rows were read, the window drawn three ways at a phone's width and a desk's, light and dark, and shown to him with four calls · none of that is built
 summary: >
   The owner wants anyone to make a one-off map and text it from the Dashboard, clocked in or not,
   with a job today or not. Every map must be tied to a job, and picking the job must be easy.
@@ -13,11 +13,11 @@ summary: >
   today's jobs and the jobs they were on lately. After Save, one press opens the phone's own
   Messages with the link written. A map that takes seven presses and two bouts of typing today
   takes four.
-next: Walk it on a real iPhone and a real Android phone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band, together with #394's walk. The owner answers call 11, the two short pages. Then delete this card.
-size: L as a train of five (S · M · S · L · S), all built; left: the walk on two real phones (XS) and call 11
-blocker: A real phone in a hand, and the owner's answer to call 11.
+next: The owner picks a window for the picker (calls 12 to 15, the mock-up is picker-mockup.html), and it is built on his word. Also: walk it on a real iPhone and a real Android phone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band, together with #394's walk. The owner answers call 11, the two short pages. Then delete this card.
+size: L as a train of five (S · M · S · L · S), all built; left: the walk on two real phones (XS), call 11, and the picker's last jobs (S, then S, then S with a migration)
+blocker: The owner's pick on calls 12 to 15, a real phone in a hand, and his answer to call 11.
 ver: v2.7859 · 7866 · 7868 · 7869
-opinion: built as carded, with two changes said on the card — the phone walk is what is left
+opinion: built as carded, with two changes said on the card — the phone walk is left, and the picker should never open on an empty list
 ---
 
 # Paint a map from the Dashboard (#392)
@@ -151,6 +151,100 @@ Drawn in three states, rendered at 375 wide with nothing off the side of the scr
 - **`leader-phone-link`, the other choice.** The row stays as it is today and **Paint a map** is a
   line under it, 44 tall, as on the office's phone. The clock keeps its one line.
 
+## The picker with nothing to offer, 2026-11-19
+
+The mock-up is [picker-mockup.html](picker-mockup.html). It draws the window as it is and three
+ways it could be, each at a phone's width and a desk's. **Dark** at its top flips every screen.
+Add `?s=<state>` to see one alone: `now-phone`, `now-desk`, `a-phone`, `a-desk`, `b-phone`,
+`b-phone-tech`, `b-phone-typed`, `b-phone-new`, `b-desk`, `c-phone` or `c-desk`. Add `&theme=dark`
+or `&plain=1`. Every job and street on it is made up.
+
+### The ask, in the owner's words
+
+> when a user clicks on paint a map on their dashboard, I don't love this modal of sorts. I think
+> we should show for a user the last jobs they were on In a section, if the other sections haven't
+> populated.
+
+He opened it as himself: nothing on his schedule, no clock in 45 days. The window said *No job on
+your schedule today, and none you clocked onto lately. Search for the job.* over a gap, a link and
+the search.
+
+### What "the last jobs you were on" can mean
+
+Read from the live rows on 2026-11-19 through the dev seat, for seventeen real people. Reads only.
+Counts are jobs, each counted once.
+
+| Where it is read from | Office (8 people) | Superintendent and lead | Field techs (7) |
+|---|---|---|---|
+| Clocked onto in the last 45 days, which is **Lately** today | 0 or 1 for all eight | 23 and 15 | 14 and 16 for two, 0 or 1 for five |
+| Clocked onto, any age | the owner 4 (newest Sep 18), Trace 17, Bryan 4, three for two estimators | over 100 and over 68 | Micah 11, Darren 3, Kyle none ever |
+| On their schedule on a past day, any age | the owner 6 (newest Nov 14), Trace 12, Bryan 7 | over 100 and over 72 | Kyle 26, Micah 9, Darren 2 |
+| On the job's team | the owner 14, Trace 37, Bryan 12, Taunya 4, one each for four more | over 200 each | Kyle 35, Micah 10, Darren 3 |
+| Changed in the app (the job's activity record) | Taunya 52 jobs in ten days, the owner 30, none for four | 68 and 20 | next to none |
+| Wrote a report on | one or two, months old | 164 and 19 | none to 4 |
+| Painted a map on before | the owner 1 | none | none |
+| Account manager of | Trace 21, the owner 2 | 4 for the lead | none |
+
+What the rows say:
+
+- **A superintendent and a lead never meet the empty window.** Most of the office does. So do the
+  field techs who are scheduled and do not clock: Kyle has 26 scheduled jobs and no clock, ever.
+- **Three reads fill the list for nearly everyone**: older clocks, past days on the schedule, and
+  the team. Each already has its index (`clock_sessions` by person and day,
+  `job_schedule_blocks` by assignee and day, `jobs_ledger_team_members` by person).
+- **Each can be painted on.** The office can open every job. A schedule block puts a person on the
+  job's team, and the team is half of `on_site_can_touch_job`. A helper's old clock on a job they
+  have since left fails the rule and is dropped, as it is today.
+- **The office's truest list is the jobs they changed in the app.** `job_activity_events` has no
+  index by person, and its read rule runs a function a row. Reading it by person needs one index,
+  which is a migration. That is call 14.
+- **Reports, painted maps and account manager add almost nobody** the first three miss. A job's
+  master is every job for a lead, so it says nothing.
+- **Two new helpers have nothing in any source.** They still need a sentence that names a press.
+- Tally's Choose job sheet already lists Recent jobs from every clock with no 45-day wall, each
+  row saying how it knows (#216). The picker is the stricter of the two today.
+- A job numbered 000 that the office uses as a catch-all is in three people's lists. It is a real
+  job to the database, so it is listed.
+
+### The three ways
+
+- **A, the owner's direction.** When Today and Lately are both empty, a third list takes the gap:
+  **Your last jobs**. Clocked or scheduled at any age, newest first, then the team. Up to six.
+  Nothing else in the window moves.
+- **B, the pick.** The same list under one rule: **Your last jobs** replaces Lately and always
+  holds up to six. Recent clocks lead it, older days and the team fill it. A tech with one clock
+  this month gets six rows too, not one. The window is refitted: the search on top with
+  **Near me** beside it, and at a desk a window near the top of the screen with the cursor in the
+  search. Today still leads with its times.
+- **C, skip the question.** The press opens the start sheet on the last job, with **Change the
+  job**. One press fewer when the guess is right.
+
+### Is this the best we can do?
+
+Asked after the render, at 375 by 812 and 1180 by 720, light and dark. Nothing ran off the side of
+a screen and no window was taller than its screen.
+
+What the look changed:
+
+- The desk window hangs from near the top, not the middle. Six rows did not fit under a centred
+  window on a short screen, and a window at one height stays put while typing shortens the list.
+- A row says how it knows only when it is not a clock. A plain day means they clocked onto it.
+  *scheduled Nov 14* means it was on their schedule, which does not prove they went.
+- *on the team*, not *your team*.
+- B is shorter than A on a phone, 603 tall against 696 with the same six rows. The link's two lines
+  and the search's label go.
+
+What was weighed and lost: one flat list with no headings (Today's times earn their heading). A
+menu that drops from the press at a desk (the window opens from four doors and three have no press
+to hang it from). Rows as one ruled list (the boxed row is shared with the search and Near you).
+Cutting the first sentence (it is the owner's rule in words). C, since the Dashboard's square has
+no line to say where the map lands, and a wrong guess is a map on the wrong job.
+
+What is still weak: the office's truest list waits on call 14. A person on no job yet still meets
+a sentence, though it now names the two presses above it. That the search belongs on top on a
+phone rests on the belief that what is found today is drawn under the box, where the keyboard
+sits, and that is not yet tried on a real phone.
+
 ## The calls, each with a pick
 
 1. **Where it sits.** The top row beside Tally, since one component already draws that row on every
@@ -185,6 +279,15 @@ Drawn in three states, rendered at 375 wide with nothing off the side of the scr
     away, behind **Everything else**. Leave it there, since a short page is short on purpose and
     the job's own **＋ Paint a map** is one fold away on Job Mode's short card. The other choice
     is one more line on each short page.
+12. **The picker's window: A, B or C** (2026-11-19, `picker-mockup.html`). B, built as two changes:
+    the list first, since it is what was asked, then the refit.
+13. **What "was on" counts.** Clocked onto at any age, on the schedule on a past day, then on the
+    team, in that order. A row that is not a clock says so.
+14. **The jobs an office person changed in the app.** Yes, as a third step, since it is the
+    truest list for the office: Taunya changed 52 jobs in ten days and is on the team of 4. Its
+    cost is one index on `job_activity_events`, a migration.
+15. **Jobs coming up on the schedule.** Not asked for and not drawn. Worth a line of their own
+    under Today later, since a way-in map is most use the day before. Leave it out of this build.
 
 ## Where it plugs in
 
@@ -233,6 +336,15 @@ Drawn in three states, rendered at 375 wide with nothing off the side of the scr
    picker reads the phone once and lists **Near you** the jobs at the placed addresses within about
    five miles, nearest first, up to six, each with how far. A job under Near you is not said again
    under Today or Lately. The list says it holds only jobs the app has placed.
+
+6. **Your last jobs** (S), on the owner's pick of call 12. The rule for which list shows, its
+   order and its cap in `paintedMapJobPicker.ts` with tests. The second read in
+   `paintedMapJobPickerIo.ts`, made only when the first leaves fewer than six rows. Render smokes
+   for the empty case and the filled one. The guide, the Glossary's line, a release note and a
+   fragment. No migration.
+7. **The window refitted** (S), if the pick is B: the search on top with **Near me** beside it,
+   the desk's window, and the words that say *phone* at a desk.
+8. **The office's changed jobs** (S, one migration), on call 14.
 
 The Saved band was fourth and the picker third until 2026-11-18. The band is small and is where a
 saved map still loses people, so it goes first. That puts the rule that every map is tied to a job
