@@ -12,6 +12,8 @@ single-use and lasts ten minutes; a miss says nothing about why.
 
 After it: python3 scripts/twin/twin.py get_brief answers, /bid bNNN runs, and
 bash scripts/twin-session.sh starts a Code session with the twin-mcp connector live.
+With --rounds the kickoff it saves is the round text, and the next step puts the rounds agent on
+this Mac from it:  npx vite-node scripts/twin/install-rounds.ts  (--dry-run says what it would do).
 Revoke the key by its label at Settings → Digital twins.
 """
 import argparse
@@ -78,6 +80,8 @@ def main() -> None:
     print(f"Connector: {reply.get('connector_name')} at {reply.get('connector_url')}")
     if kickoff_path:
         print(f"Kickoff ({reply.get('kickoff_for')}) saved to {kickoff_path}")
+    if a.rounds and reply.get("kickoff_for") == "rounds":
+        print("Next, to make the rounds from this Mac: npx vite-node scripts/twin/install-rounds.ts -- --dry-run, then without --dry-run")
     print(f"Check: {reply.get('check_call') or 'call get_brief'} — e.g. python3 scripts/twin/twin.py get_brief")
     print("Revoke the key by its label at Settings → Digital twins.")
 
