@@ -6304,6 +6304,7 @@ It lists every lien in Ready to file, and each is recorded as filed the moment i
 **Choose the stamped liens** sends the clerk's files to their liens by the job number in each name and types in a document number found in the name, which waits for one counted press.
 **Take it back** (v2.7892, `lienFilingVoid.ts`, `lienFilingVoidIo.ts`): the press on a recorded line of *Back from the clerk*, which asks first and then voids that line's filing, so the line opens again for the right number.
 **Voiding a filed lien puts its paper back** (v2.7892, `20261119020000`): when an affidavit's record is voided, from the Lien window's **Void** or from *Take it back*, the database returns the lien's paper to `approved` with its approval untouched, or to `drafted` when nobody had approved it, and clears its tie to the filing.
+Since v2.7911 (`20261119050000`) voiding a § 53.056 notice's record puts the notice back the same way, signed and printed as it was, so a printed notice stands in *Approved · to mail* again and its attorney's letter clock stops.
 Until v2.7892 the paper stayed `sent`, so the Board showed the lien under **Served** with no lien on file.
 Its third part, **Add the stamped scans** (v2.7524, `LienScanBatchWindow.tsx`, also `/lien-desk?scans=1`), takes the clerk's stamped scans for every filed lien with no saved copy, one file a lien matched by recording number or job number;
 since v2.7528 a PDF of a whole stack is split in the browser into one PDF a lien, a page at a time (*It holds several liens: split it ›*, `lienScanStack.ts`).
