@@ -153,5 +153,5 @@ Built 2026-11-17 and 2026-11-18, in its own session. Read on 2026-11-18.
   that opens it.
 - **Owed, not in a PR yet:** a setting for the 150 miles, Split in two, and the trip's number in the dev seat's
   read.
-- **Built after the train (v2.7861):** the combine carries a trip's job link to the job that is kept. A trip a
-  job holds by itself still goes with its job, and is kept in the deleted-records archive.
+- **Built after the train (v2.7861, v2.7884):** the combine carries a trip's job link to the job that is kept, and
+  a trip the deleted job held by itself.

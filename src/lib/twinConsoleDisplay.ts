@@ -91,19 +91,11 @@ export function relativeTimeFrom(iso: string, nowMs: number): string {
   return calendarYmdInAppTzFromIso(iso)
 }
 
-export type TwinSeatKind = 'estimator' | 'pricer'
-
-/**
- * Next free fleet seat from the emails already minted (gaps are not reused).
- * Each kind numbers its own seats: `twin-estimator-<n>` for the bid robots,
- * `twin-pricer-<n>` (Price Matrix PR 3) for the pricing robot that never bids.
- */
-export function nextTwinSeat(emails: string[], kind: TwinSeatKind = 'estimator'): { n: number; email: string } {
-  const re = new RegExp(`^twin-${kind}-(\\d+)@`)
-  const ns = emails.map((e) => Number(re.exec(e)?.[1] ?? 0))
-  const n = Math.max(0, ...ns) + 1
-  return { n, email: `twin-${kind}-${n}@twins.pipetooling.local` }
-}
+// The next free seat lives in supabase/functions/_shared/twinSeat.ts (v2.7879), so the dev seat's plan_twin numbers a
+// twin by the rule this panel does. This path is the client's door to it; the tests beside this file run here.
+import type { TwinSeatKind } from '../../supabase/functions/_shared/twinSeat'
+export { nextTwinSeat } from '../../supabase/functions/_shared/twinSeat'
+export type { TwinSeatKind }
 
 /** The seat kind an email encodes — `twin-pricer-1@…` → pricer; anything else → estimator. */
 export function twinSeatKindFromEmail(email: string): TwinSeatKind {

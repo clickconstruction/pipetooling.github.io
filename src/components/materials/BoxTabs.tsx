@@ -34,6 +34,7 @@ import { boxHistory, contentsTabWords, historyFoldWords, lineAdded, lineAddedWor
 import { fetchBoxNames } from '../../lib/materials/boxHistoryIo'
 import { boxAddressWords, boxCodeWords } from '../../lib/materials/labels'
 import { jobLedgerCapped, listContainerMoves, listMovements, loadJob } from '../../lib/materials/onSiteStore'
+import { noteBoxOpen } from '../../lib/people/personWatchIo'
 import { FIX_PART_NAME_LABEL, PART_NAME_MAX, UNDO_PART_RENAME_LABEL, partRenameMergeNote, partRenamePressLabel, partRenameScopeNote, partRenameVerdict, renamedPartWords, undonePartWords } from '../../lib/materials/partRename'
 import { renamePart, undoPartRename } from '../../lib/materials/partRenameIo'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -224,6 +225,9 @@ export function BoxWindow({ onClose, ...rest }: Omit<Props, 'touch'> & { onClose
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+  // The office's box window reports its open like the phone's screen does (`personWatchIo.ts`).
+  const openedBoxId = rest.container.id
+  useEffect(() => { noteBoxOpen(openedBoxId) }, [openedBoxId])
   const title = editBoxTitle(rest.container)
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>

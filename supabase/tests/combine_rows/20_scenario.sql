@@ -81,12 +81,24 @@ INSERT INTO public.photo_saves (jobs_ledger_id, on_since) VALUES ('00000000-0000
 INSERT INTO public.job_promised_pay_dates (job_id, promised_date, marked_at) VALUES ('00000000-0000-0000-0000-000000252b02', '2026-11-14', '2026-10-01 10:00+00');
 INSERT INTO public.job_lien_claim_corrections (job_id, amount_off, reason) VALUES ('00000000-0000-0000-0000-000000252b02', 15, 'Bed correction first');
 
+-- Trips a job holds by itself (the trip record, #379: a job with no development). The target holds one, so its run
+-- has handed out 1. The first source holds two, numbered 1 and 2 in its own run.
+INSERT INTO public.trips (id, job_id, purpose) VALUES ('00000000-0000-0000-0000-0000002523d3', '00000000-0000-0000-0000-000000252b01', 'Combine bed target own trip');
+INSERT INTO public.trips (id, job_id, purpose) VALUES
+  ('00000000-0000-0000-0000-0000002523d4', '00000000-0000-0000-0000-000000252b02', 'Combine bed source own trip one'),
+  ('00000000-0000-0000-0000-0000002523d5', '00000000-0000-0000-0000-000000252b02', 'Combine bed source own trip two');
+INSERT INTO public.trip_people (trip_id, person_name, days) VALUES ('00000000-0000-0000-0000-0000002523d4', 'Dee Dev', '{"2026-10-05": "site"}');
+
 SELECT cr.as_user('00000000-0000-0000-0000-000000252a01');
 SET LOCAL ROLE authenticated;
 SELECT public.migrate_job_ledger_costs_and_delete('00000000-0000-0000-0000-000000252b02', '00000000-0000-0000-0000-000000252b01') AS combine_one \gset
 RESET ROLE;
 SELECT cr.same('the first combine says ok', coalesce(:'combine_one'::jsonb ->> 'error', :'combine_one'::jsonb ->> 'ok'), 'true');
 SELECT cr.same('the first source is gone', (SELECT count(*)::text FROM public.jobs_ledger WHERE id = '00000000-0000-0000-0000-000000252b02'), '0');
+SELECT cr.same('the trips the first source held by itself are the target''s', (SELECT string_agg(job_id::text || ' ' || coalesce(development_id::text, 'no site'), ',') FROM public.trips WHERE id IN ('00000000-0000-0000-0000-0000002523d4', '00000000-0000-0000-0000-0000002523d5')), '00000000-0000-0000-0000-000000252b01 no site,00000000-0000-0000-0000-000000252b01 no site');
+SELECT cr.same('each took the target''s next number, in their own order', (SELECT string_agg(trip_number::text, ',' ORDER BY id) FROM public.trips WHERE id IN ('00000000-0000-0000-0000-0000002523d3', '00000000-0000-0000-0000-0000002523d4', '00000000-0000-0000-0000-0000002523d5')), '1,2,3');
+SELECT cr.same('a moved trip keeps its people', (SELECT string_agg(person_name, ',') FROM public.trip_people WHERE trip_id = '00000000-0000-0000-0000-0000002523d4'), 'Dee Dev');
+SELECT cr.same('and nothing of them was kept as deleted', (SELECT count(*)::text FROM public.deleted_records_archive WHERE group_key IN ('00000000-0000-0000-0000-0000002523d4', '00000000-0000-0000-0000-0000002523d5')), '0');
 SELECT cr.same('a target with no plan part takes the source''s', (SELECT job_id::text FROM public.plan_parts WHERE id = '00000000-0000-0000-0000-000000252f01'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('and names it', (SELECT plan_part_id::text FROM public.jobs_ledger WHERE id = '00000000-0000-0000-0000-000000252b01'), '00000000-0000-0000-0000-000000252f01');
 SELECT cr.same('the part still builds from its set', (SELECT current_set_id::text FROM public.plan_parts WHERE id = '00000000-0000-0000-0000-000000252f01'), '00000000-0000-0000-0000-000000252f11');
@@ -316,6 +328,10 @@ INSERT INTO public.trip_jobs (trip_id, job_id) VALUES
   ('00000000-0000-0000-0000-0000002523d2', '00000000-0000-0000-0000-000000252b03'),
   ('00000000-0000-0000-0000-0000002523d2', '00000000-0000-0000-0000-000000252b01');
 
+-- A third trip on the bed's development that also carries the source job in its own job column.
+INSERT INTO public.trips (id, development_id, job_id, purpose) VALUES
+  ('00000000-0000-0000-0000-0000002523d6', '00000000-0000-0000-0000-0000002523a2', '00000000-0000-0000-0000-000000252b03', 'Combine bed trip three');
+
 -- 3a. Both jobs hold a live work order for Pat: the combine holds, says so, and moves nothing.
 SELECT cr.as_user('00000000-0000-0000-0000-000000252a01');
 SET LOCAL ROLE authenticated;
@@ -498,6 +514,7 @@ SELECT cr.same('the general conditions job moved', (SELECT general_conditions_jo
 SELECT cr.same('a trip''s job link moved', (SELECT string_agg(job_id::text, ',') FROM public.trip_jobs WHERE trip_id = '00000000-0000-0000-0000-0000002523d1'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('a trip that named both jobs keeps one link', (SELECT string_agg(job_id::text, ',') FROM public.trip_jobs WHERE trip_id = '00000000-0000-0000-0000-0000002523d2'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('both trips are still there, and no link was kept as a deleted trip''s', (SELECT count(*)::text FROM public.trips WHERE id IN ('00000000-0000-0000-0000-0000002523d1', '00000000-0000-0000-0000-0000002523d2')) || ' ' || (SELECT count(*)::text FROM public.deleted_records_archive WHERE table_name = 'trip_jobs' AND group_key IN ('00000000-0000-0000-0000-0000002523d1', '00000000-0000-0000-0000-0000002523d2')), '2 0');
+SELECT cr.same('a site''s trip that carried the source job carries the target, on its site, under its number', (SELECT job_id::text || ' ' || development_id::text || ' ' || trip_number::text FROM public.trips WHERE id = '00000000-0000-0000-0000-0000002523d6'), '00000000-0000-0000-0000-000000252b01 00000000-0000-0000-0000-0000002523a2 3');
 SELECT cr.same('a Stripe case moved', (SELECT job_id::text FROM public.ar_stripe_cases WHERE id = '00000000-0000-0000-0000-0000002523bc'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('a returned-check case moved', (SELECT job_id::text FROM public.ar_unbanked_check_cases WHERE id = '00000000-0000-0000-0000-0000002523bd'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('a rating ask moved', (SELECT job_id::text FROM public.customer_ratings WHERE id = '00000000-0000-0000-0000-0000002523bf'), '00000000-0000-0000-0000-000000252b01');
@@ -514,6 +531,23 @@ SELECT cr.same('the paid-job mail queue row is gone', (SELECT count(*)::text FRO
 SELECT cr.same('the source''s note count cache is gone', (SELECT count(*)::text FROM public.jobs_ledger_thread_note_stats_cache WHERE job_id = '00000000-0000-0000-0000-000000252b03'), '0');
 SELECT cr.same('the target''s note count cache counts every note it now holds', (SELECT note_count::text FROM public.jobs_ledger_thread_note_stats_cache WHERE job_id = '00000000-0000-0000-0000-000000252b01'), (SELECT count(*)::text FROM public.jobs_ledger_thread_notes WHERE job_id = '00000000-0000-0000-0000-000000252b01'));
 SELECT cr.same('the moved notes are among them', (SELECT count(*)::text FROM public.jobs_ledger_thread_notes WHERE job_id = '00000000-0000-0000-0000-000000252b01' AND body LIKE 'Bed note%'), '2');
+
+-- 4. A third combine: the source holds a trip by itself, the target is in the bed's development. The trip becomes
+-- the development's, names the target as the job its work goes on, and takes the development's next number (its
+-- own, 1, was handed out there long ago).
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name, customer_id, status, hcp_number, development_id) VALUES
+  ('00000000-0000-0000-0000-000000252b04', '00000000-0000-0000-0000-000000252a02', '00000000-0000-0000-0000-000000252f09', 'Combine bed far source', '00000000-0000-0000-0000-000000252c01', 'working', '9104', NULL),
+  ('00000000-0000-0000-0000-000000252b05', '00000000-0000-0000-0000-000000252a02', '00000000-0000-0000-0000-000000252f09', 'Combine bed site target', '00000000-0000-0000-0000-000000252c01', 'working', '9105', '00000000-0000-0000-0000-0000002523a2');
+INSERT INTO public.trips (id, job_id, purpose) VALUES ('00000000-0000-0000-0000-0000002523d7', '00000000-0000-0000-0000-000000252b04', 'Combine bed far trip');
+SELECT cr.as_user('00000000-0000-0000-0000-000000252a01');
+SET LOCAL ROLE authenticated;
+SELECT public.migrate_job_ledger_costs_and_delete('00000000-0000-0000-0000-000000252b04', '00000000-0000-0000-0000-000000252b05') AS combine_three \gset
+RESET ROLE;
+SELECT cr.same('the third combine says ok', coalesce(:'combine_three'::jsonb ->> 'error', :'combine_three'::jsonb ->> 'ok'), 'true');
+SELECT cr.same('the far source is gone', (SELECT count(*)::text FROM public.jobs_ledger WHERE id = '00000000-0000-0000-0000-000000252b04'), '0');
+SELECT cr.same('its own trip is the development''s, with no job of its own', (SELECT development_id::text || ' ' || coalesce(job_id::text, 'no job') FROM public.trips WHERE id = '00000000-0000-0000-0000-0000002523d7'), '00000000-0000-0000-0000-0000002523a2 no job');
+SELECT cr.same('it names the target as the job its work goes on', (SELECT string_agg(job_id::text, ',') FROM public.trip_jobs WHERE trip_id = '00000000-0000-0000-0000-0000002523d7'), '00000000-0000-0000-0000-000000252b05');
+SELECT cr.same('and it took the development''s next number', (SELECT string_agg(trip_number::text, ',' ORDER BY trip_number) FROM public.trips WHERE development_id = '00000000-0000-0000-0000-0000002523a2'), '1,2,3,4');
 
 DO $$
 DECLARE
