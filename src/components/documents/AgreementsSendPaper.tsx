@@ -1,5 +1,4 @@
-import { Suspense, lazy, useMemo, useState, type CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
+import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { SEND_A_PAPER_LABEL, papersMatching, sendablePapers } from '../../lib/documents/agreementsSend'
@@ -18,6 +17,9 @@ import { ContractQuickSendPicker } from '../people/ContractQuickSendPicker'
  * send on this page: the same person picker, the same plan (`quickSendPickPlan`), the same window and the same sender.
  * Nothing is written until **Send email** is pressed, so closing any step leaves nothing behind. Once the email goes,
  * `onSent` lets the list read again and the new line shows on it.
+ *
+ * `startOn` lets another door start at the person step for a paper it names: the Contract library's Send to…. And
+ * `onOpenLibrary` is where the paper step sends someone who wants to write or change a paper.
  */
 
 const ContractSendWindow = lazy(() => import('../contracts/ContractSendWindow').then((m) => ({ default: m.ContractSendWindow })))
@@ -32,7 +34,17 @@ type Step =
   | { at: 'person'; documentName: string }
   | { at: 'send'; documentName: string; docId: string | null; plan: QuickSendPlan; again: boolean; facts: PersonPaperSendFacts }
 
-export function AgreementsSendPaper({ onSent }: { onSent: () => void }) {
+export function AgreementsSendPaper({
+  onSent,
+  startOn = null,
+  onOpenLibrary,
+}: {
+  onSent: () => void
+  /** A paper another door picked. A new object starts the person step on it. */
+  startOn?: { documentName: string } | null
+  /** Opens the Contract library in place. */
+  onOpenLibrary: () => void
+}) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
   const [data, setData] = useState<AgreementsSendBook | null>(null)
@@ -79,6 +91,34 @@ export function AgreementsSendPaper({ onSent }: { onSent: () => void }) {
 
   const close = () => setStep(null)
 
+  // Another door named the paper: read what the pick needs, then ask for the person.
+  useEffect(() => {
+    if (!startOn) return
+    let live = true
+    setBusy('open')
+    readAgreementsSendBook().then(
+      (read) => {
+        if (!live) return
+        setData(read)
+        setStep({ at: 'person', documentName: startOn.documentName })
+        setBusy(null)
+      },
+      (e: unknown) => {
+        if (!live) return
+        showToast(formatErrorMessage(e, 'The Contract Book did not read.'), 'error')
+        setBusy(null)
+      },
+    )
+    return () => {
+      live = false
+    }
+  }, [startOn, showToast])
+
+  const toLibrary = () => {
+    setStep(null)
+    onOpenLibrary()
+  }
+
   return (
     <>
       <button type="button" style={busy === 'open' ? primaryBusy : primary} disabled={busy != null} onClick={() => void open()}>
@@ -101,7 +141,7 @@ export function AgreementsSendPaper({ onSent }: { onSent: () => void }) {
             </div>
             <p style={{ margin: '0.25rem 0 0.6rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Pick a paper from the Contract Book. You pick the person next.</p>
             {papers.length === 0 ? (
-              <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'data', noun: 'papers in the Contract Book', page: { label: 'People', tail: 'is where a paper is written, on Contracts.' } }), { to: '/people?tab=contracts' })} />
+              <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'data', noun: 'papers in the Contract Book', page: { label: 'Contract library', tail: 'is where a paper is written.' } }), { onPress: toLibrary })} />
             ) : (
               <>
                 <input
@@ -132,10 +172,10 @@ export function AgreementsSendPaper({ onSent }: { onSent: () => void }) {
                   )
                 )}
                 <p style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  A job’s contract is sent from its job. A paper is written and changed in the Contract library, on{' '}
-                  <Link to="/people?tab=contracts" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
-                    People
-                  </Link>
+                  A job’s contract is sent from its job. A paper is written and changed in the{' '}
+                  <button type="button" onClick={toLibrary} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', color: 'var(--text-link)', fontWeight: 600 }}>
+                    Contract library
+                  </button>
                   .
                 </p>
               </>

@@ -50,6 +50,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { AgreementsSendPaper } from './AgreementsSendPaper'
+import { AgreementsContractLibrary } from './AgreementsContractLibrary'
 import { EmptyState } from '../EmptyState'
 import JobContractModal from '../jobs/JobContractModal'
 import { buildJobContractRecordHtml } from '../jobs/JobContractRecordModal'
@@ -63,7 +64,8 @@ import { documentsLinkButton, documentsQuietButton } from '../jobs/jobDocumentsS
  * state, the box finds by customer, job number, person or paper, and a press opens the window that kind already has.
  * A staff, sub or partner paper that waits on a signature acts where it sits: Send again and Copy the signing link, both
  * through the sender People → Contracts uses (`lib/documents/agreementsActs.ts`), and the list reads again after.
- * **Send a paper**, beside the box, sends a Contract Book paper to a person (`AgreementsSendPaper.tsx`).
+ * **Send a paper**, beside the box, sends a Contract Book paper to a person (`AgreementsSendPaper.tsx`), and
+ * **Contract library** opens the library People → Contracts opens, in place (`AgreementsContractLibrary.tsx`).
  * The read is the `agreements_on_file` view, where each table's own row security decides what the reader sees; a read
  * that fails says so with Retry and never reads as an empty ledger. The rules are `lib/documents/agreementsLedger.ts`.
  *
@@ -139,6 +141,9 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   const [workOrder, setWorkOrder] = useState<{ job: JobWithDetails; commitmentId: string } | null>(null)
   /** Send again: the waiting paper whose Send window is open, with what the window needs to know about it. */
   const [sendAgain, setSendAgain] = useState<{ documentId: string; facts: PersonPaperSendFacts } | null>(null)
+  /** The Contract library, opened in place; and the paper its Send to… named, which starts Send a paper at the person. */
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [sendStart, setSendStart] = useState<{ documentName: string } | null>(null)
   /** The one act in flight, `<act>:<line id>`, so a second press waits for the first. */
   const [busyAct, setBusyAct] = useState<string | null>(null)
 
@@ -303,7 +308,10 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
             aria-label="Find an agreement"
             style={{ flex: '1 1 16rem', minWidth: 0, padding: '0.5rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', boxSizing: 'border-box' }}
           />
-          <AgreementsSendPaper onSent={retry} />
+          <AgreementsSendPaper onSent={retry} startOn={sendStart} onOpenLibrary={() => setLibraryOpen(true)} />
+          <button type="button" style={documentsQuietButton} onClick={() => setLibraryOpen(true)}>
+            Contract library
+          </button>
         </div>
       ) : null}
       {quietEmbed ? (
@@ -468,6 +476,7 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
           <PersonContractSignedRecordModal open onClose={() => setSignedDocId(null)} documentId={signedDocId} />
         </Suspense>
       ) : null}
+      {!embedded ? <AgreementsContractLibrary open={libraryOpen} onClose={() => setLibraryOpen(false)} onQuickSend={(documentName) => setSendStart({ documentName })} onChanged={retry} /> : null}
       {sendAgain != null ? (
         <Suspense fallback={null}>
           <ContractSendWindow

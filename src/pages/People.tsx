@@ -3,6 +3,7 @@ import { CardAndFooterWindow } from '../components/people/CardAndFooterWindow'
 import { TeamCardsWindow } from '../components/people/TeamCardsWindow'
 import type { UserRole } from '../hooks/useAuth'
 import { pageSubTabStyle, pageTabStyle } from '../lib/pageTabStyle'
+import { canDeleteFromContractLibrary, canUseContractFormStudio } from '../lib/contracts/contractLibraryRoles'
 import { payReportPeriodWord, typedConfirmMessage, typedWordMatches } from '../lib/typedConfirm'
 import { isControllerOrDev } from '../lib/doorRoles'
 import { canManageActivityGrants, canPickOfficeJob, canSeePayrollViews, canSeeReviewTab, canSeeScoreboardTab, canUseUsersTags } from '../lib/people/peopleDoorGates'
@@ -655,8 +656,7 @@ export default function People() {
   // pay approval like the Payroll tab does.
   const canAccessOverheadTab =
     authRole === 'dev' || (authRole === 'master_technician' && canAccessPay)
-  const canDeletePeopleContracts =
-    authRole !== null && ['dev', 'master_technician'].includes(authRole)
+  const canDeletePeopleContracts = canDeleteFromContractLibrary(authRole)
   // Punch list #188 row 78 (v2.6765): the controller deletes a pay report behind the period's last day, typed.
   const [payStubDeleteTyped, setPayStubDeleteTyped] = useState('')
   // Punch list #188 PR 4 (v2.6757): the doors the owner and the controller now hold, one gate each in peopleDoorGates.ts.
@@ -2713,7 +2713,7 @@ export default function People() {
           archived={archivedRoster}
           canDeletePeopleContracts={canDeletePeopleContracts}
           currentUserId={authUser?.id ?? null}
-          canUseFormStudio={isDev || authRole === 'controller'}
+          canUseFormStudio={isDev || canUseContractFormStudio(authRole)}
         />
       )}
 

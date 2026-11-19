@@ -46,6 +46,7 @@ import {
   resolveQuickSendSource,
 } from '../../lib/contractsQuickSend'
 import { contractsDocLanding, contractsDocLinkId, contractsDocOffRosterWords } from '../../lib/contractsDocLink'
+import { CONTRACT_ASSIGNMENT_COLUMNS, CONTRACT_BOOK_COLUMNS, CONTRACT_PACKET_COLUMNS, PERSON_PAPER_COLUMNS } from '../../lib/contracts/contractsLibraryIo'
 import { ContractQuickSendPicker } from './ContractQuickSendPicker'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { useAuth } from '../../hooks/useAuth'
@@ -633,20 +634,10 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
     setContractsLoading(true)
     setContractsError(null)
     const [templatesRes, templateDocsRes, assignmentsRes, documentsRes] = await Promise.all([
-      supabase.from('contract_templates').select('id, name, sequence_order, created_at').order('sequence_order'),
-      supabase
-        .from('contract_template_documents')
-        .select(
-          'id, template_id, document_name, sequence_order, book_body_html, book_body_format, tags, canonical_document_url, updated_at, book_version_date, audience, form_template_id',
-        )
-        .order('template_id')
-        .order('sequence_order'),
-      supabase.from('person_contract_assignments').select('id, person_name, template_id'),
-      supabase
-        .from('person_contract_documents')
-        .select(
-          'id, person_name, document_name, url, signing_body_html, signing_body_format, canonical_document_url, status, signed_at, sent_at, signer_last_viewed_at, note, dashboard_prompt_after_clock_in, applied_contract_template_document_id, applied_version_date, contract_lineage_id, lineage_version, supersedes_person_contract_document_id, form_template_id, office_completed_at',
-        ),
+      supabase.from('contract_templates').select(CONTRACT_PACKET_COLUMNS).order('sequence_order'),
+      supabase.from('contract_template_documents').select(CONTRACT_BOOK_COLUMNS).order('template_id').order('sequence_order'),
+      supabase.from('person_contract_assignments').select(CONTRACT_ASSIGNMENT_COLUMNS),
+      supabase.from('person_contract_documents').select(PERSON_PAPER_COLUMNS),
     ])
     setContractsLoading(false)
     if (templatesRes.error) setContractsError(templatesRes.error.message)
