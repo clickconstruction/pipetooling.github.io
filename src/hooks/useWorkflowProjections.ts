@@ -19,6 +19,7 @@ import {
   type EditingProjection,
   type ProjectionPlacement,
 } from '../lib/workflow/projectionEdit'
+import { NO_WORKFLOW_TO_SAVE_ON } from '../lib/workflow/workflowStart'
 
 export type WorkflowProjection = Database['public']['Tables']['workflow_projections']['Row']
 export type EditingWorkflowProjection = EditingProjection<WorkflowProjection>
@@ -26,10 +27,7 @@ export type EditingWorkflowProjection = EditingProjection<WorkflowProjection>
 export type UseWorkflowProjectionsArgs = {
   /** The loaded workflow's id, once the page has it. */
   workflowId: string | null | undefined
-  projectId: string | undefined
   userRole: string | null
-  /** The page's find-or-create for the project's workflow — the fallback when `workflowId` is not in hand yet. */
-  ensureWorkflow: (projectId: string) => Promise<string | null>
   onError: (message: string) => void
 }
 
@@ -59,9 +57,7 @@ export type WorkflowProjections = {
  */
 export function useWorkflowProjections({
   workflowId: loadedWorkflowId,
-  projectId,
   userRole,
-  ensureWorkflow,
   onError,
 }: UseWorkflowProjectionsArgs): WorkflowProjections {
   const [projections, setProjections] = useState<WorkflowProjection[]>([])
@@ -94,17 +90,12 @@ export function useWorkflowProjections({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- as on the page: re-run on the workflow or the role, not on every render's loader
   }, [loadedWorkflowId, userRole])
 
-  // Ensure we have a workflow_id - fetch from DB if state isn't ready
-  async function resolveWorkflowId(): Promise<string | null> {
-    let workflowId: string | null = loadedWorkflowId ?? null
-    if (!workflowId && projectId) {
-      workflowId = await ensureWorkflow(projectId)
-    }
-    if (!workflowId) {
-      onError('Workflow not found. Please refresh the page.')
-      return null
-    }
-    return workflowId
+  // A write lands on the loaded workflow. The page draws these presses only once there is one, so
+  // a write with none in hand says so and stops: it never finds or makes a workflow itself.
+  function resolveWorkflowId(): string | null {
+    if (loadedWorkflowId) return loadedWorkflowId
+    onError(NO_WORKFLOW_TO_SAVE_ON)
+    return null
   }
 
   async function saveProjection(
@@ -114,7 +105,7 @@ export function useWorkflowProjections({
     amount: string,
     anchor?: { step_id: string; placement: ProjectionPlacement },
   ) {
-    const workflowId = await resolveWorkflowId()
+    const workflowId = resolveWorkflowId()
     if (!workflowId) return
 
     const problem = projectionSaveProblem(stageName, memo)
@@ -149,7 +140,7 @@ export function useWorkflowProjections({
 
   /** A refused delete goes to onError (v2.5103; it said nothing before); either way the re-read shows what is left. */
   async function deleteProjection(itemId: string) {
-    const workflowId = await resolveWorkflowId()
+    const workflowId = resolveWorkflowId()
     if (!workflowId) return
     const { error } = await supabase.from('workflow_projections').delete().eq('id', itemId)
     const refused = projectionWriteError('delete', error)

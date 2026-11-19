@@ -88,7 +88,7 @@ vi.mock('../lib/supabase', () => {
         return list(world.gcProject ? [{ project_id: 'p1' }] : [])
       case 'project_workflow_steps': {
         world.stepReads.push(steps)
-        if (world.failStepReads) return { data: null, error: { message: 'timeout' } }
+        if (world.failStepReads) return { data: null, error: { message: 'canceling statement due to statement timeout', code: '57014' } }
         const who = eqValue(steps, 'assigned_to_name')
         const rows = world.steps
           .filter((s) => who === undefined || s.assigned_to_name === who)
@@ -439,7 +439,7 @@ describe('Workflow page', () => {
       fireEvent.click(within(card).getByRole('button', { name: 'Approve' }))
     })
     const banner = await screen.findByRole('alert')
-    expect(banner.textContent).toContain('Failed to load steps: timeout')
+    expect(banner.textContent).toContain('The steps could not be loaded: canceling statement due to statement timeout')
     expect(world.writes.some((w) => w.table === 'project_workflow_steps' && w.method === 'update' && w.id === 's3')).toBe(true)
     expect(screen.getByRole('heading', { name: 'Elm Street \u2013 Workflow' })).toBeTruthy()
     for (const id of ['s1', 's2', 's3', 's4']) expect(document.getElementById(`step-${id}`)).toBeTruthy()

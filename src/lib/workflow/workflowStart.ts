@@ -1,7 +1,7 @@
 /**
  * Starting a project's workflow (punch list #397 PR 1). Opening the Workflow page only reads: a
  * project with no workflow draws an empty state, and the workflow is made when a person presses
- * **Start a workflow** or saves something that needs one (a first step, a template, a projection).
+ * **Start a workflow**, the one press that makes it.
  * Before this, the open itself inserted a draft `project_workflows` row, so a person who opened the
  * page to look left a record behind.
  *
@@ -48,6 +48,13 @@ export const START_WORKFLOW_LABEL = 'Start a workflow'
 /** What the press reads while its insert runs, so a second press is not needed. */
 export const STARTING_WORKFLOW_LABEL = 'Starting the workflow…'
 export const START_WORKFLOW_FAILED = 'The workflow could not be started.'
+/**
+ * What a save says when the project has no workflow to save onto. The page draws those presses
+ * (a step, a template, a projection) only once there is a workflow, so nobody should read this.
+ * It replaces *Workflow not found. Please refresh the page.*, which sent people to refresh a page
+ * that would open the same.
+ */
+export const NO_WORKFLOW_TO_SAVE_ON = 'This project has no workflow yet, so nothing was saved.'
 
 /** What the second sentence tells the people who may start one. */
 const WHO_SEES_STEPS = 'Steps you add here show to the people they are assigned to.'
