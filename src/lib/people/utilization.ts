@@ -16,13 +16,16 @@
  * its own, since office people clock unevenly and should not sway a crew decision.
  *
  * Salaried people's sessions are made by their schedule, so their percent would always read full:
- * the board keeps them on the schedule's hours and out of the counts unless the pay desk lets them
- * record real hours (`record_hours_but_salary`) AND the window holds a punch of theirs.
+ * the board keeps them out of the counts unless the pay desk lets them record real hours
+ * (`record_hours_but_salary`) AND the window holds a punch of theirs. Either way a salaried
+ * person's hours are their set week from pay (`salaried_week_hours`, 8 hours Monday to Friday when
+ * the row carries none) until someone draws them a week, and a day off takes that day's hours.
  *
  * Pure. The components draw it; nothing here reads a table.
  */
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
 import { payWeekContaining, type PayWeek } from '../payWeekAnchor'
+import { SALARIED_DEFAULT_WEEK, salariedWeekHours, type SalariedWeek } from '../salariedEffectiveHours'
 import { sessionHours } from './approvalsQueue'
 import { dayHours, dowOfYmd, outsideMinutes, weekHours, type WeekDays } from './weekAvailability'
 
@@ -62,6 +65,8 @@ export type UtilizationPerson = {
   role: string
   isSalary: boolean
   recordsHoursButSalary: boolean
+  /** A salaried person's set week from pay, seven days Sunday first; 8 hours Monday to Friday when missing. */
+  salariedWeek?: SalariedWeek | null
   startYmd?: string | null
   endYmd?: string | null
 }
@@ -107,7 +112,15 @@ export type PersonWeek = {
   outsideHours: number | null
 }
 
-export type CanWork = { hours: number; source: AvailabilitySource; setAt: string | null; setBy: string | null; days: WeekDays | null }
+export type CanWork = {
+  hours: number
+  source: AvailabilitySource
+  setAt: string | null
+  setBy: string | null
+  days: WeekDays | null
+  /** The set week the hours come from when the source is `schedule`. */
+  salariedWeek?: SalariedWeek | null
+}
 
 export type PersonVerdict = 'add' | 'use_more' | 'steady' | 'salaried' | 'quiet' | 'left'
 
@@ -174,8 +187,6 @@ export type UtilizationInput = {
   sessions: readonly UtilizationSession[]
   answers: readonly AvailableHoursAnswer[]
   timeOff?: readonly UtilizationTimeOff[]
-  /** A salaried person's weekly hours from their workday template, by user id (8 h × 5 when missing). */
-  scheduleHoursByUser?: ReadonlyMap<string, number>
   weeks?: number
 }
 
@@ -275,12 +286,12 @@ function personWeek(args: {
   sessions: readonly UtilizationSession[]
   answers: readonly AvailableHoursAnswer[]
   timeOff: readonly UtilizationTimeOff[]
-  scheduleHours: number | undefined
 }): PersonWeek {
-  const { person, kind, week, todayYmd, nowMs, sessions, answers, timeOff, scheduleHours } = args
+  const { person, kind, week, todayYmd, nowMs, sessions, answers, timeOff } = args
   const partial = todayYmd >= week.start && todayYmd <= week.end
   const answer = kind === 'salaried' ? null : answerInForce(answers, week.start)
   const drawn = answer?.days ?? null
+  const setWeek = person.isSalary ? (person.salariedWeek ?? SALARIED_DEFAULT_WEEK) : null
   const byDay = new Map<string, number>()
   let pendingHours = 0
   let openNow = false
@@ -306,20 +317,26 @@ function personWeek(args: {
     if (h > UTILIZATION_LONG_DAY_HOURS) longDays += 1
     if (h > longestDayHours) longestDayHours = h
   }
+  // An answer wins. Without one a salaried person is held to their set week, anyone else to the company week.
   let canWorkHours: number
   let source: AvailabilitySource
-  if (kind === 'salaried') {
-    canWorkHours = scheduleHours ?? UTILIZATION_ASSUMED_HOURS
+  if (answer) {
+    canWorkHours = drawn ? weekHours(drawn) : answer.hours_per_week
+    source = 'answered'
+  } else if (setWeek) {
+    canWorkHours = salariedWeekHours(setWeek)
     source = 'schedule'
   } else {
-    canWorkHours = answer ? (drawn ? weekHours(drawn) : answer.hours_per_week) : UTILIZATION_ASSUMED_HOURS
-    source = answer ? 'answered' : 'assumed'
+    canWorkHours = UTILIZATION_ASSUMED_HOURS
+    source = 'assumed'
   }
-  // A recorded day off takes that day's drawn hours out of the week, or a fifth of the week when only a number was given.
+  // A recorded day off takes that day's drawn hours out of the week, that day's hours in a set week,
+  // or a fifth of the week when only a number was given.
   let hoursOffRaw = 0
   for (let d = week.start; d <= week.end; d = addDaysYmd(d, 1)) {
     if (!timeOff.some((t) => t.user_id === person.id && d >= t.startYmd && d <= t.endYmd)) continue
     if (drawn) hoursOffRaw += dayHours(drawn, dowOfYmd(d))
+    else if (source === 'schedule' && setWeek) hoursOffRaw += setWeek[dowOfYmd(d)] ?? 0
     else if (isWeekday(d)) hoursOffRaw += canWorkHours / UTILIZATION_WEEKDAYS
   }
   const hoursOff = round1(hoursOffRaw)
@@ -452,9 +469,7 @@ export function buildUtilizationBoard(input: UtilizationInput): UtilizationBoard
     const answers = (answersByUser.get(person.id) ?? []).slice().sort((a, b) => a.effective_from.localeCompare(b.effective_from) || a.set_at.localeCompare(b.set_at))
     const punches = sessions.some((s) => s.origin !== SALARY_SCHEDULE_ORIGIN)
     const kind: PersonUtilization['kind'] = person.isSalary && !(person.recordsHoursButSalary && punches) ? 'salaried' : 'hourly'
-    const personWeeks = weeks.map((week) =>
-      personWeek({ person, kind, week, todayYmd: input.todayYmd, nowMs: input.nowMs, sessions, answers, timeOff, scheduleHours: input.scheduleHoursByUser?.get(person.id) }),
-    )
+    const personWeeks = weeks.map((week) => personWeek({ person, kind, week, todayYmd: input.todayYmd, nowMs: input.nowMs, sessions, answers, timeOff }))
     const anyRecorded = personWeeks.some((w) => w.workedHours > 0)
     if (!anyRecorded && answers.length === 0) continue
     const fullWeeks = personWeeks.filter((w) => !w.partial)
@@ -467,15 +482,15 @@ export function buildUtilizationBoard(input: UtilizationInput): UtilizationBoard
     const current = personWeeks[personWeeks.length - 1]!
     const outsideWeeks = personWeeks.filter((w) => w.outsideHours != null)
     const outsideHours = outsideWeeks.length ? round1(outsideWeeks.reduce((a, w) => a + (w.outsideHours ?? 0), 0)) : null
-    const canWork: CanWork =
-      kind === 'salaried'
-        ? { hours: current.canWorkHours, source: 'schedule', setAt: null, setBy: null, days: null }
-        : (() => {
-            const a = answerInForce(answers, input.todayYmd)
-            return a
-              ? { hours: a.days ? weekHours(a.days) : a.hours_per_week, source: 'answered', setAt: a.set_at, setBy: a.set_by, days: a.days ?? null }
-              : { hours: UTILIZATION_ASSUMED_HOURS, source: 'assumed', setAt: null, setBy: null, days: null }
-          })()
+    const canWork: CanWork = (() => {
+      const a = kind === 'salaried' ? null : answerInForce(answers, input.todayYmd)
+      if (a) return { hours: a.days ? weekHours(a.days) : a.hours_per_week, source: 'answered', setAt: a.set_at, setBy: a.set_by, days: a.days ?? null }
+      if (person.isSalary) {
+        const setWeek = person.salariedWeek ?? SALARIED_DEFAULT_WEEK
+        return { hours: current.canWorkHours, source: 'schedule', setAt: null, setBy: null, days: null, salariedWeek: setWeek }
+      }
+      return { hours: UTILIZATION_ASSUMED_HOURS, source: 'assumed', setAt: null, setBy: null, days: null }
+    })()
     const side = utilizationSide(person.role)
     // A person who left inside the window keeps the weeks they worked on the board, with no verdict to act on.
     const left = Boolean(person.endYmd && person.endYmd.slice(0, 10) < input.todayYmd)

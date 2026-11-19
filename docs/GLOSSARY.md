@@ -1851,7 +1851,7 @@ Verdicts by streak: over three full weeks running reads *add people*;
 light four weeks running (a roster week with nothing recorded counts) reads *use them more*, field only.
 Two sides: the **field** (leaders, helpers, subs, superintendents) carries the lines, the tiles and the verdicts;
 the **office** lists under it with a line of its own.
-Salaried people stay on the schedule's hours and out of the counts unless `record_hours_but_salary` and a punch in the window;
+Salaried people read against their set week from pay (`salaried_week_hours`, v2.7948, a day off taking that day's hours) and stay out of the counts unless `record_hours_but_salary` and a punch in the window, when a drawn week wins and the set week stands in for the assumed 40;
 a person archived inside the window keeps their weeks as *Left the roster*.
 The office draws a person's week from the row (**Set hours** / **Change**, `AvailableHoursModal` with `WeekAvailabilityPainter`);
 a person draws their own from My Time's **Your hours** block, which reads their last eight pay weeks against it, or from the same block as a card under Your record in Job Mode (v2.6709, `DashboardMyHoursBlock`;

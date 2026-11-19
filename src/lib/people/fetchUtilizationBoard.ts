@@ -1,9 +1,9 @@
 /**
  * The Utilization board's reads: the roster (every active person with a login), the window's
  * recorded clock sessions (paged, as the Man hours card reads them), the pay flags through
- * `list_people_pay_flags` (so a viewer with no pay access still learns who is salaried), the
- * recorded days off, and the answers through the availability door. Pure after the reads:
- * `buildUtilizationBoard` does the counting.
+ * `list_people_pay_flags` (so a viewer with no pay access still learns who is salaried, and on
+ * what set week), the recorded days off, and the answers through the availability door. Pure
+ * after the reads: `buildUtilizationBoard` does the counting.
  *
  * Who can read other people's sessions is RLS's call (`clock_sessions select access`: dev,
  * payroll access, assistant and controller, else one's own), so a viewer the policy keeps to
@@ -13,6 +13,7 @@ import { supabase } from '../supabase'
 import { fetchAllRows } from '../supabasePaging'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
+import type { SalariedWeek } from '../salariedEffectiveHours'
 import { fetchUserTimeOffForUsersInRange } from '../userTimeOffByCell'
 import type { AvailabilityIo } from './availabilityIo'
 import { buildPayFlagsIndex, type PayFlagRpcRow } from './payFlagsIndex'
@@ -78,6 +79,7 @@ export async function fetchUtilizationBoard(io: AvailabilityIo, opts: { weeks?: 
       role: r.role ?? r.kind ?? '',
       isSalary: f?.isSalary === true,
       recordsHoursButSalary: f?.recordHoursButSalary === true,
+      salariedWeek: f?.isSalary ? f.salariedWeek : null,
       startYmd: r.start_date,
       endYmd,
     })
@@ -98,8 +100,11 @@ export async function fetchUtilizationBoard(io: AvailabilityIo, opts: { weeks?: 
   return { board, people, startYmd, endYmd }
 }
 
-/** One person's own weeks for My Time: their sessions (their own rows under RLS), their days off and their answers. */
-export async function fetchMyUtilization(args: { userId: string; name: string; role: string; isSalary: boolean; io: AvailabilityIo; weeks?: number }): Promise<UtilizationBoardRead> {
+/**
+ * One person's own weeks for My Time: their sessions (their own rows under RLS), their days off and their answers.
+ * `salariedWeek` is their own set week, which the dashboard's salary probe reads (`self_salary_clock_state`).
+ */
+export async function fetchMyUtilization(args: { userId: string; name: string; role: string; isSalary: boolean; salariedWeek?: SalariedWeek | null; io: AvailabilityIo; weeks?: number }): Promise<UtilizationBoardRead> {
   const todayYmd = todayYmdInAppTz()
   const nowMs = Date.now()
   const weeks = payWeeksEndingAt(todayYmd, args.weeks ?? UTILIZATION_WEEKS)
@@ -110,7 +115,7 @@ export async function fetchMyUtilization(args: { userId: string; name: string; r
     fetchUserTimeOffForUsersInRange([args.userId], startYmd, endYmd),
     args.io.listAnswers([args.userId]),
   ])
-  const person: UtilizationPerson = { id: args.userId, name: args.name, role: args.role, isSalary: args.isSalary, recordsHoursButSalary: false }
+  const person: UtilizationPerson = { id: args.userId, name: args.name, role: args.role, isSalary: args.isSalary, recordsHoursButSalary: false, salariedWeek: args.isSalary ? (args.salariedWeek ?? null) : null }
   const board = buildUtilizationBoard({
     todayYmd,
     nowMs,
