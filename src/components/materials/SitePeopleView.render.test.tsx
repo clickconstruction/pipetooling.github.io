@@ -251,3 +251,28 @@ describe('SitePeopleView, a watched person', () => {
   })
 })
 
+describe('SitePeopleView, a box change put back', () => {
+  const retiredBox: Container = { ...containers[0] as Container, retiredAt: '2026-11-18T13:50:00' }
+  const trail = async () => ({ ...noTrail, boxChanges: [{ id: 'c1', containerId: 'g22', what: 'retired' as const, oldValue: '', newValue: '', byName: 'Sam R.', at: '2026-11-18T13:50:00' }] })
+
+  it('offers a dev the way back, asks first, and writes it through the screen’s own store', async () => {
+    const putBack = vi.fn()
+    draw({ canAnswer: true, containers: [retiredBox], readTrail: trail, putBack })
+    fireEvent.click(await screen.findByRole('button', { name: 'Put it back…' }))
+    // The confirm window's press names the act.
+    fireEvent.click(await screen.findByRole('button', { name: 'Bring G22 back' }))
+    await waitFor(() => expect(putBack).toHaveBeenCalledWith({ containerId: 'g22', act: 'unretire', words: 'Bring G22 back' }))
+  })
+
+  it('offers nothing to the office, and nothing once the box has changed again', async () => {
+    draw({ containers: [retiredBox], readTrail: trail, putBack: vi.fn() })
+    await waitFor(() => expect(within(screen.getByRole('table')).getByText('Retired a box')).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Put it back…' })).toBeNull()
+    cleanup()
+    // The box is live again: the retire has nothing left to put back.
+    draw({ canAnswer: true, readTrail: trail, putBack: vi.fn() })
+    await waitFor(() => expect(within(screen.getByRole('table')).getByText('Retired a box')).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Put it back…' })).toBeNull()
+  })
+})
+

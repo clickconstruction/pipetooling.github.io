@@ -15,10 +15,11 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { fetchSiteAnswers, giveAnswer, withdrawAnswer, type SiteAnswers, type SiteAnswersReader } from '../../lib/materials/pressAnswersIo'
 import { isAnswerable } from '../../lib/materials/pressAnswers'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { fetchLiveWatches, fetchWatchedOpens, type PersonWatch, type WatchedOpen } from '../../lib/people/personWatchIo'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import PressAnswerWindow, { AnswerWithdrawWindow, type AnswerOutcome } from './PressAnswerWindow'
-import { ACT_KINDS, LOOK_WORDS, actDays, actPeople, actTiles, countWords, filterActs, openedNotPressed, sitePersonActs, withWatch, type ActKind } from '../../lib/materials/sitePersonActs'
+import { ACT_KINDS, LOOK_WORDS, actDays, actPeople, actTiles, countWords, filterActs, openedNotPressed, sitePersonActs, withWatch, type ActKind, type PutBack } from '../../lib/materials/sitePersonActs'
 
 type Props = {
   /** The site, a development: the scope its part ties and prices stand on. */
@@ -42,6 +43,8 @@ type Props = {
   withdraw?: typeof withdrawAnswer
   /** A take-back or its withdrawal changed these jobs' ledgers: the desk reads them again. */
   onLedgerChanged?: (jobIds: string[]) => void
+  /** Writes a box change back, through the store the desk reads. Absent where the screen has none. */
+  putBack?: (back: PutBack) => void
   /** The live watches and a watch's opened boxes: a dev's reads, nothing for anyone else. A test hands in its own. */
   readWatches?: () => Promise<PersonWatch[]>
   readOpens?: (watchId: string) => Promise<WatchedOpen[]>
@@ -77,7 +80,7 @@ function stampWords(iso: string): string {
   return `${new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}, ${timeWords(iso)}`
 }
 
-export default function SitePeopleView({ siteId, jobs, movements, containerMoves, containers, places, boxHref, loading, readTrail = fetchSiteTrail, canAnswer = false, readAnswers = fetchSiteAnswers, give = giveAnswer, withdraw = withdrawAnswer, onLedgerChanged, readWatches = fetchLiveWatches, readOpens = fetchWatchedOpens }: Props) {
+export default function SitePeopleView({ siteId, jobs, movements, containerMoves, containers, places, boxHref, loading, readTrail = fetchSiteTrail, canAnswer = false, readAnswers = fetchSiteAnswers, give = giveAnswer, withdraw = withdrawAnswer, onLedgerChanged, putBack, readWatches = fetchLiveWatches, readOpens = fetchWatchedOpens }: Props) {
   const [person, setPerson] = useState('')
   const [kind, setKind] = useState<ActKind | ''>('')
   const [lookOnly, setLookOnly] = useState(false)
@@ -128,6 +131,19 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null)
   const { showToast } = useToastContext()
   const addTask = useChecklistAddModal()
+  const confirmDialog = useConfirmDialog()
+  /** Put one box change back: asked first, written through the store, and the trail read again once it has landed. */
+  const runPutBack = async (back: PutBack, who: string) => {
+    if (!putBack) return
+    if (!(await confirmDialog({ title: `${back.words}?`, message: `${who} changed this box. The box goes back to how it read before, and both changes stay in this list.`, confirmLabel: back.words }))) return
+    try {
+      putBack(back)
+      showToast(`${back.words}: done.`, 'success')
+      window.setTimeout(() => setAttempt((n) => n + 1), 1500)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The box was not changed back.'), 'error')
+    }
+  }
 
   /** The live watches: a dev's read. Anyone else gets none, and the look draws as it does for everyone. */
   const [watches, setWatches] = useState<PersonWatch[]>([])
@@ -315,6 +331,7 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
                     <td style={td}>
                       {a.outside ? <span style={chipRed}>{a.outside}</span> : a.looks.map((l) => <span key={l} style={chip} title={LOOK_WORDS[l].why}>{LOOK_WORDS[l].chip}</span>)}
                       {a.note}
+                      {canAnswer && putBack && a.putBack ? <button type="button" style={linkPress} onClick={() => void runPutBack(a.putBack as PutBack, a.who)}>Put it back…</button> : null}
                       {a.answer ? (
                         <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           <span style={a.answer.answer === 'marked' ? chipRed : chipGrey}>{a.answer.answer === 'marked' ? 'marked not allowed' : 'taken back'} by {a.answer.byName || 'a dev'}</span>
