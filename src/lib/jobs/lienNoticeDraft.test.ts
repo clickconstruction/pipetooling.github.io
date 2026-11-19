@@ -140,4 +140,14 @@ describe('buildLienAffidavitFieldsForJob · the period the earlier form’s para
     // No month at all: the paper shows its blanks.
     expect(paragraph5(buildLienAffidavitFieldsForJob({ ...aff, lastMonth: '' }))).toContain('during the period from — through —.')
   })
+  it('the retainage cover letter prints one period after a name that ends in one, and no other character moves (v2.7957)', () => {
+    const base = { property: '100 Example St, Austin, TX', amount: '$4,250.00', contact: 'Jo Example', phone: '(512) 555-0100', inClaim: false, endedHow: 'complete' as const, paymentBond: 'yes' as const }
+    const t = lienRetainageCoverLetter({ ...base, gcName: 'Acme & Assoc.', claimantName: 'Example Plumbing Co.' })
+    expect(t).not.toContain('..')
+    expect(t).toContain('do not release it to Acme & Assoc. A payment bond covers this project')
+    expect(t).toContain('payable only to Example Plumbing Co. The day it clears')
+    expect(t).toContain('A copy of this letter and the notice is going to Acme & Assoc.')
+    const standIn = lienRetainageCoverLetter({ ...base, gcName: 'ZZGC', claimantName: 'ZZUS' })
+    expect(t).toBe(standIn.split('ZZGC.').join('Acme & Assoc.').split('ZZGC').join('Acme & Assoc.').split('ZZUS.').join('Example Plumbing Co.').split('ZZUS').join('Example Plumbing Co.'))
+  })
 })
