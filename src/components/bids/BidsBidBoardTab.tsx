@@ -88,8 +88,8 @@ import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidBoardJobAccountStrips } from '../../hooks/useBidBoardJobAccountStrips'
 import { countBidsMissingAccounts, missingAccountsHeaderNote } from '../../lib/bids/bidBoardJobAccounts'
 import { BidBoardJobAccountChips } from './BidBoardJobAccountChips'
-import { PermitChip } from './PermitChip'
-import type { Chip } from '../../lib/research/bidSitePanel'
+import { PermitNewsChip } from './PermitChip'
+import type { PermitNewsDoors } from '../../lib/research/bidPermitNews'
 import { jobAccountFlowFacts, stripJob } from '../../lib/bids/bidBoardJobAccounts'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
@@ -137,8 +137,8 @@ type BidsBidBoardTabProps = {
   canSeeEstimatingLabor?: boolean
   /** Journey map P-B2: the pulse / everyone-stands analytics are office-only — off for primaries and superintendents. */
   showEstimatingHealth?: boolean
-  /** What the city has on each bid's address, as the chip on its row (punch list #307), for the people who read Prospects → Permits. The page reads it once for the board and for Followup's Permit news (punch list #401). None when not passed. */
-  permitChips?: ReadonlyMap<string, Chip>
+  /** What the city has on each bid's address, as the chip on its row (punch list #307), for the people who read Prospects → Permits. The page reads it once for the board and for Followup's Permit news (punch list #401), and a chip on a bid with a line there opens it. None when not passed. */
+  permitNews?: PermitNewsDoors
   /** The map card and its Map pill — off on the Robot Board, where ZZ shells have no office geography worth a map. */
   showMap?: boolean
   /** v2.2741: jobs made from this bid's signed proposal (only passed for roles that can open Jobs). */
@@ -288,7 +288,7 @@ export function BidsBidBoardTab({
   isDev,
   canSeeEstimatingLabor = false,
   showEstimatingHealth = true,
-  permitChips,
+  permitNews,
   showMap = true,
   jobsByBidId,
   budgetChips,
@@ -1591,7 +1591,7 @@ export function BidsBidBoardTab({
               ) : null}
               {/* v2.3520: job accounts under the GC, for every won bid — packets or a plain GC button alike. */}
               {showsJobAccounts(bid) ? <BidBoardJobAccountChips bidId={bid.id} loaded={jobAccountStrips.loaded} rows={jobAccountStrips.byBid.get(bid.id) ?? []} onChanged={jobAccountStrips.reload} /> : null}
-              {permitChips?.get(bid.id) ? <span title="What the city has on this bid's address"><PermitChip chip={permitChips.get(bid.id)!} /></span> : null}
+              {permitNews?.chips.get(bid.id) ? <span title="What the city has on this bid's address" style={{ minWidth: 0, maxWidth: '100%' }}><PermitNewsChip bidId={bid.id} news={permitNews} /></span> : null}
             </div>
           </td>
           {/* v2.4264: the value reads at the estimator name's size, in tabular figures — the owner could not read it at the cell's 11px. */}
@@ -1791,7 +1791,7 @@ export function BidsBidBoardTab({
         ) : null}
         {/* v2.3520: job accounts under the GC, for every won bid — packets or a plain GC button alike. */}
         {showsJobAccounts(bid) ? <BidBoardJobAccountChips bidId={bid.id} loaded={jobAccountStrips.loaded} rows={jobAccountStrips.byBid.get(bid.id) ?? []} onChanged={jobAccountStrips.reload} /> : null}
-        {permitChips?.get(bid.id) ? <div style={{ margin: '0.15rem 0' }}><PermitChip chip={permitChips.get(bid.id)!} /></div> : null}
+        {permitNews?.chips.get(bid.id) ? <div style={{ margin: '0.15rem 0', minWidth: 0 }}><PermitNewsChip bidId={bid.id} news={permitNews} /></div> : null}
         {bidDevelopmentName(bid) ? (
           <div
             title="Development for this bid"

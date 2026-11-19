@@ -6,6 +6,7 @@
  * the card folds to a line with Undo. We lost it… opens the board's own outcome and writes no
  * answer. Every bid, builder and plumber here is made up.
  */
+import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -52,7 +53,7 @@ vi.mock('../../hooks/useAuth', async () => {
 
 import { BidsPermitNewsLens, type PermitNewsBid } from './BidsPermitNewsLens'
 import { BidBoardNewsMarkLost } from './BidBoardNewsMarkLost'
-import { PermitChip } from './PermitChip'
+import { PermitNewsChip } from './PermitChip'
 import { useBidPermitNews } from '../../hooks/useBidPermitNews'
 
 const RECENT = ymdPlusDays(todayYmdInAppTz(), -5)
@@ -76,6 +77,8 @@ const BIDS = [
 function Page({ bids = BIDS, mine = () => true, onOpen = () => {}, onCallQueue = () => {}, onChanged = () => {} }: { bids?: Bid[]; mine?: (bidId: string) => boolean; onOpen?: (id: string) => void; onCallQueue?: () => void; onChanged?: () => void }) {
   const permitNews = useBidPermitNews(bids, true)
   const inbox = permitInbox(permitNews, mine)
+  const [focus, setFocus] = useState<string | null>(null)
+  const doors = { chips: permitNews.chips, lineBidIds: new Set(permitNews.news.map((n) => n.bidId)), onOpen: setFocus }
   return (
     <div>
       <div data-testid="count">{inbox.mine.fresh.length}</div>
@@ -86,10 +89,11 @@ function Page({ bids = BIDS, mine = () => true, onOpen = () => {}, onCallQueue =
         onOpenBid={onOpen}
         onOpenCallQueue={onCallQueue}
         renderMarkLost={(bidId, close) => <BidBoardNewsMarkLost bid={{ id: bidId, outcome: null }} packets={undefined} onChanged={onChanged} onClose={close} />}
+        focusBidId={focus}
       />
       {bids.map((b) => (
         <div key={b.id} data-testid={`row-${b.id}`}>
-          {permitNews.chips.get(b.id) ? <PermitChip chip={permitNews.chips.get(b.id)!} /> : 'no chip'}
+          {permitNews.chips.get(b.id) ? <PermitNewsChip bidId={b.id} news={doors} /> : 'no chip'}
         </div>
       ))}
     </div>
@@ -152,7 +156,7 @@ describe('Followup → Permit news', () => {
     expect(receipt.textContent).toContain('501 · Pecan Grove Pharmacy · You said still waiting. The permit stays on the bid as a chip.')
     expect(receipt.compareDocumentPosition(cards()[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // The permit is still on the bid: its row keeps the chip.
-    expect(screen.getByTestId('row-b2').textContent).toBe('Plumbing permit · another name')
+    expect(screen.getByTestId('row-b2').textContent).toBe('Permit lists Lone Oak Plumbing · Mar 1 ›')
     // What this window answered is its receipt, not a second row under Answered.
     expect(screen.queryByRole('button', { name: /^Answered on your bids/ })).toBeNull()
 
@@ -172,7 +176,7 @@ describe('Followup → Permit news', () => {
     expect(screen.getByTestId('permit-news-receipt').textContent).toContain('You said it is not our job. It is off the bid for everyone.')
     expect(screen.getByTestId('count').textContent).toBe('1')
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
-    await waitFor(() => expect(screen.getByTestId('row-b2').textContent).toBe('Plumbing permit · another name'))
+    await waitFor(() => expect(screen.getByTestId('row-b2').textContent).toBe('Permit lists Lone Oak Plumbing · Mar 1 ›'))
     expect(cards()).toHaveLength(2)
   })
 
@@ -260,5 +264,35 @@ describe('Followup → Permit news', () => {
     renderWithProviders(<Page />)
     await waitFor(() => expect(io.loadPermitsByHouseNumber).toHaveBeenCalledTimes(2))
     expect(screen.getByTestId('row-b1').textContent).toBe('no chip')
+  })
+
+  it('makes the chip on a bid with a line a press that opens the lens on that bid, on everyone’s list when the bid is not yours', async () => {
+    renderWithProviders(<Page mine={(id) => id === 'b1'} />)
+    await waitFor(() => expect(cards()).toHaveLength(1))
+    // The other person's bid: its chip is a press, and its card is not on your list.
+    const chip = within(screen.getByTestId('row-b2')).getByRole('button', { name: 'Permit lists Lone Oak Plumbing · Mar 1 ›' })
+    expect(screen.queryByRole('group', { name: /Pecan Grove Pharmacy/ })).toBeNull()
+    fireEvent.click(chip)
+    await waitFor(() => expect(cardOf(/Pecan Grove Pharmacy/)).toBeTruthy())
+    expect(screen.getByRole('button', { name: 'Everyone’s 2' }).getAttribute('aria-pressed')).toBe('true')
+    expect(cardOf(/Pecan Grove Pharmacy/).style.outline).toContain('2px solid')
+    expect(cardOf(/Mill Street Lofts/).style.outline).toBe('')
+  })
+
+  it('opens Answered for a chip on a bid whose line stands, and leaves a chip with no line a label', async () => {
+    answers.state.rows = [{ id: 'a1', bid_id: 'b2', city: 'San Antonio', permit_number: 'PLB-2', permit_type: 'Plumbing General Permit', answer: 'this_job', answered_by: 'u-priya', answered_at: '2026-11-14T15:00:00Z' }]
+    // An application older than thirty days is a chip with no line.
+    io.loadPermitsByHouseNumber.mockResolvedValue([
+      permit({ submitted_on: ymdPlusDays(todayYmdInAppTz(), -60) }),
+      permit({ id: 'p2', permit_number: 'PLB-2', address: '88 HARBOR ST', kind: 'plumbing', permit_type: 'Plumbing General Permit', stage: 'issued', issued_on: '2026-03-01', project_name: null, contact: 'Lone Oak Plumbing' }),
+    ])
+    renderWithProviders(<Page />)
+    await waitFor(() => expect(screen.getByTestId('row-b2').textContent).toBe('Permit lists Lone Oak Plumbing · Mar 1 ›'))
+    expect(within(screen.getByTestId('row-b1')).queryByRole('button')).toBeNull()
+    expect(screen.getByTestId('row-b1').textContent).toMatch(/^Applied /)
+    expect(screen.queryByTestId('permit-news-answered')).toBeNull()
+    fireEvent.click(within(screen.getByTestId('row-b2')).getByRole('button'))
+    await waitFor(() => expect(screen.getAllByTestId('permit-news-answered')).toHaveLength(1))
+    expect(screen.getByTestId('permit-news-answered').textContent).toContain('Priya said it is this job, Nov 14')
   })
 })

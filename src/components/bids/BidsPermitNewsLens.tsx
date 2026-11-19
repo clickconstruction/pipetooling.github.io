@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { EmptyState } from '../EmptyState'
 import { emptyWords } from '../../lib/emptyWords'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -46,6 +46,7 @@ export function BidsPermitNewsLens({
   onOpenCallQueue,
   renderMarkLost,
   narrow = false,
+  focusBidId = null,
 }: {
   inbox: { mine: PermitInboxSide; others: PermitInboxSide }
   /** The bids the lines are on, for the card's own words about the bid. */
@@ -57,6 +58,8 @@ export function BidsPermitNewsLens({
   /** The board's own window for marking this bid lost, drawn across the card while open. */
   renderMarkLost: (bidId: string, close: () => void) => ReactNode
   narrow?: boolean
+  /** The bid a chip was pressed on: the lens opens on the list that holds its line, and marks it. */
+  focusBidId?: string | null
 }) {
   const today = todayYmdInAppTz()
   const [everyone, setEveryone] = useState(false)
@@ -68,6 +71,21 @@ export function BidsPermitNewsLens({
   const [answeredOpen, setAnsweredOpen] = useState(false)
   /** The order the lines were first drawn in, so an answered card keeps its place and a line that comes back returns to it. */
   const order = useRef<string[]>([])
+
+  // A chip pressed on a bid opens its line wherever it is: on everyone's list when the bid is not the reader's, and under Answered when it stands.
+  const sectionRef = useRef<HTMLElement | null>(null)
+  const focusOnOthers = focusBidId != null && [...inbox.others.fresh, ...inbox.others.standing].some((n) => n.bidId === focusBidId)
+  const focusAnswered = focusBidId != null && [...inbox.mine.standing, ...inbox.others.standing].some((n) => n.bidId === focusBidId)
+  useEffect(() => {
+    if (focusBidId == null) return
+    if (focusOnOthers) setEveryone(true)
+    if (focusAnswered) setAnsweredOpen(true)
+    const frame = window.requestAnimationFrame(() => {
+      const hit = [...(sectionRef.current?.querySelectorAll<HTMLElement>('[data-bid-id]') ?? [])].find((el) => el.dataset.bidId === focusBidId)
+      hit?.scrollIntoView?.({ block: 'center' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [focusBidId, focusOnOthers, focusAnswered])
 
   const fresh: NewsItem[] = everyone ? [...inbox.mine.fresh, ...inbox.others.fresh] : inbox.mine.fresh
   const standing: NewsItem[] = everyone ? [...inbox.mine.standing, ...inbox.others.standing] : inbox.mine.standing
@@ -119,7 +137,7 @@ export function BidsPermitNewsLens({
     const busy = busyKey === key
     const lostOpen = lostKey === key
     return (
-      <div key={key} role="group" aria-label={title} data-testid="permit-news-card" style={{ border: '1px solid var(--border)', borderLeft: `3px solid ${tone.edge}`, borderRadius: 8, background: 'var(--surface)', padding: '11px 14px', display: 'grid', gridTemplateColumns: narrow || lostOpen ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) 190px', gap: '8px 16px', minWidth: 0 }}>
+      <div key={key} role="group" aria-label={title} data-testid="permit-news-card" data-bid-id={item.bidId} style={{ border: '1px solid var(--border)', outline: item.bidId === focusBidId ? '2px solid var(--text-link)' : undefined, outlineOffset: 1, borderLeft: `3px solid ${tone.edge}`, borderRadius: 8, background: 'var(--surface)', padding: '11px 14px', display: 'grid', gridTemplateColumns: narrow || lostOpen ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) 190px', gap: '8px 16px', minWidth: 0 }}>
         <div style={{ display: 'grid', gap: 5, minWidth: 0, alignContent: 'start' }}>
           <div style={{ display: 'flex', gap: '4px 10px', alignItems: 'baseline', flexWrap: 'wrap' }}>
             <span style={{ ...tag, ...tone.tag }}>{c.kind}</span>
@@ -191,7 +209,7 @@ export function BidsPermitNewsLens({
   )
 
   return (
-    <section aria-label="Permit news" style={{ display: 'grid', gap: 10, minWidth: 0 }}>
+    <section ref={sectionRef} aria-label="Permit news" style={{ display: 'grid', gap: 10, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: '0.9rem', fontWeight: 700 }}>
         {everyone ? 'New on everyone’s bids' : 'New on your bids'}
         <span data-testid="permit-news-count" style={{ ...countPill, ...(fresh.length > 0 ? TONE.red.tag : { background: 'var(--bg-200)', color: 'var(--text-700)' }) }}>{fresh.length}</span>
@@ -231,7 +249,7 @@ export function BidsPermitNewsLens({
           {answeredOpen ? (
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '2px 14px', fontSize: '0.8125rem' }}>
               {answered.map((a, i) => (
-                <div key={a.key} data-testid="permit-news-answered" style={{ display: 'grid', gap: 4, padding: '8px 0', borderTop: i === 0 ? undefined : '1px solid var(--border)' }}>
+                <div key={a.key} data-testid="permit-news-answered" data-bid-id={a.bidId} style={{ display: 'grid', gap: 4, padding: '8px 0', borderTop: i === 0 ? undefined : '1px solid var(--border)' }}>
                   <div style={{ display: 'flex', gap: '4px 12px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 280px', minWidth: 0 }}>
                       <strong style={{ display: 'block' }}>{a.title}</strong>

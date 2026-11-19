@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BEFORE_BID_DAYS, bidPermitNews, permitInbox, permitRefOf, permitShortWords, type NewsBid } from './bidPermitNews'
+import { anotherNameChip, BEFORE_BID_DAYS, bidPermitNews, permitInbox, permitRefOf, permitShortWords, type NewsBid } from './bidPermitNews'
 import { foldPermitAnswers, type PermitAnswerRow } from './bidPermitAnswers'
 import type { SitePermitRow } from './bidSitePanel'
 
@@ -44,7 +44,7 @@ describe('bidPermitNews', () => {
   it('leads with a general plumbing permit that lists another name, however old, and marks nothing', () => {
     const plumbing = permit({ id: 'p2', kind: 'plumbing', permit_type: 'Plumbing General Permit', stage: 'issued', issued_on: '2026-08-30', project_name: null, contact: 'Lone Oak Plumbing' })
     const { chips, news } = run([bid({ bid_date_sent: '2026-08-01' }), bid({ id: 'b2', bid_number: '488', project_name: 'Harbor Street Offices', address: '88 Harbor St, San Antonio, TX' })], [permit({ submitted_on: '2026-07-01' }), plumbing, permit({ id: 'p3', address: '88 HARBOR ST', stage: 'issued', issued_on: '2026-11-05', project_name: 'HARBOR OFFICES' })])
-    expect(chips.get('b1')).toEqual({ words: 'Plumbing permit · another name', tone: 'red' })
+    expect(chips.get('b1')).toEqual({ words: 'Permit lists Lone Oak Plumbing · Aug 30', tone: 'red' })
     expect(news.map((n) => n.kind)).toEqual(['plumbing', 'issued'])
     expect(news[0]?.words).toBe('A general plumbing permit was issued on this address Aug 30. It lists Lone Oak Plumbing. The bid is not yet won or lost.')
     expect(run([bid()], [permit(), plumbing]).news[0]?.words).toBe('A general plumbing permit was issued on this address Aug 30. It lists Lone Oak Plumbing. The bid is not sent yet.')
@@ -181,7 +181,7 @@ describe('an answer on a line', () => {
   it('this job: the line stays, with its chip, and carries who answered and when', () => {
     const { chips, news, takenOff } = read([sent], [permit(), plumbing], [said({})])
     expect(news.map((n) => [n.kind, n.markLost, n.answered])).toEqual([['plumbing', true, { answer: 'this_job', by: 'u-marcus', at: '2026-11-08T15:00:00Z' }]])
-    expect(chips.get('b1')).toEqual({ words: 'Plumbing permit · another name', tone: 'red' })
+    expect(chips.get('b1')).toEqual({ words: 'Permit lists Lone Oak Plumbing · Oct 25', tone: 'red' })
     expect(takenOff).toEqual([])
   })
 
@@ -207,6 +207,12 @@ describe('an answer on a line', () => {
 
   it('takes a decided bid’s answers off every list', () => {
     expect(read([bid({ outcome: 'lost' })], [plumbing], [said({ answer: 'not_this_job' })])).toEqual({ chips: new Map(), news: [], takenOff: [] })
+  })
+
+  it('names the name and the day on the chip, and the name alone when the permit has no day', () => {
+    expect(anotherNameChip('Lone Oak Plumbing', '2026-10-25', TODAY)).toEqual({ words: 'Permit lists Lone Oak Plumbing · Oct 25', tone: 'red' })
+    expect(anotherNameChip('Lone Oak Plumbing', '2025-02-11', TODAY).words).toBe('Permit lists Lone Oak Plumbing · Feb 11, 2025')
+    expect(anotherNameChip('Lone Oak Plumbing', '', TODAY).words).toBe('Permit lists Lone Oak Plumbing')
   })
 
   it('says a permit in a few words', () => {

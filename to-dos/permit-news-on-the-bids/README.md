@@ -1,8 +1,8 @@
 ---
 name: "Permit news on Followup: a red count of your own bids' new lines, each answered in one press"
 number: 401
-group: ready
-status: asked 2026-11-19 with a screenshot of the Bid Board · the live lines counted through the app's own kernel, read only · the board drawn as it is and five ways it could be · the owner then chose Followup with a red count, to verify or ignore · that direction drawn at a desk and a phone, in both themes, with a second look · the owner asked whether it was intuitive, easy and well structured, and a third look redrew the card · the owner said build it · PR 1 (the three rules, and the strip as the reader's own) shipped as v2.7923 · PR 2 (the answers table, its read and write, the sorting kernel) shipped as v2.7940 · PR 3 (the Permit news lens on Followup, the red count, the strip off the board) shipped as v2.7941 · PR 4, the chip where a bid is chased, is next
+group: waiting
+status: asked 2026-11-19 with a screenshot of the Bid Board · the live lines counted through the app's own kernel, read only · the board drawn as it is and five ways it could be · the owner then chose Followup with a red count, to verify or ignore · that direction drawn at a desk and a phone, in both themes, with a second look · the owner asked whether it was intuitive, easy and well structured, and a third look redrew the card · the owner said build it · PR 1 (the three rules, and the strip as the reader's own) shipped as v2.7923 · PR 2 (the answers table, its read and write, the sorting kernel) shipped as v2.7940 · PR 3 (the Permit news lens on Followup, the red count, the strip off the board) shipped as v2.7941 · PR 4 (the chip with the name and the day, a door on the board, the Call queue and Waiting to hear) shipped as v2.7942
 summary: >
   An estimator asked for the strip Permit news on your bids to move lower on the Bid Board or
   onto Followup. The live lines say the place is the smaller problem: the strip lists every
@@ -14,11 +14,11 @@ summary: >
   press: on a plumber's permit We lost it…, Still waiting or Not our job, and on a building
   permit Got it or Not our job. Three rules in the kernel drop the lines the records can rule out before
   anyone is asked. An answered line rides as a chip on the bid wherever it is chased.
-next: PR 4, the chip with the name and the day, as a door on the board's row, on the Call queue and on Waiting to hear. Then two weeks of the lens before the Dashboard line is weighed.
+next: Two weeks of the lens, then weigh the Dashboard line. Two small things are left under The plan: a taken-off permit in the bid's This site list, and the bid's suite read from its project name.
 size: M as a train of four (S · S · M · S), a fifth only if asked
-blocker: none
-ver: v2.6870 (the strip and the row's chip) · v2.6960 (Mark lost… on a line) · v2.7923 (the three rules, and the strip as the reader's own) · v2.7940 (the answers table and its kernel) · v2.7941 (the lens, the count, the strip gone)
-opinion: build — the owner chose Followup and said go; the rules are in, the answers table is next
+blocker: Two weeks of answers on the lens, to read before the Dashboard line and the two leftovers are weighed.
+ver: v2.6870 (the strip and the row's chip) · v2.6960 (Mark lost… on a line) · v2.7923 (the three rules, and the strip as the reader's own) · v2.7940 (the answers table and its kernel) · v2.7941 (the lens, the count, the strip gone) · v2.7942 (the chip as a door)
+opinion: built — watch what gets answered for two weeks before adding to it
 ---
 
 # Permit news on the bids (#401)
@@ -358,9 +358,18 @@ Each PR ships with its release note, its fragment and the guide's change.
    press, the answers with Undo, the loss window in the card. The card's words and reasons
    are `permitNewsCard`, with a test for each tick and each question mark. The strip leaves the Bid Board. Render smokes for the
    lens with none, some and answered, and for the count on the tab row.
-4. **Where a bid is chased (S).** The chip with the name and the day, as a door on the board's
-   row, on the Call queue and on Waiting to hear. Taken-off permits in This site.
+4. **Where a bid is chased (S). Shipped, v2.7942.** The chip with the name and the day, as a
+   door on the board's row, on the Call queue and on Waiting to hear.
 5. **The Dashboard line (S).** Only if asked for after two weeks of the lens.
+
+Left over, each a small PR of its own:
+
+- **A taken-off permit in This site.** The list in the bid's window reads the address alone. It
+  needs the bid's id to say *Taken off this bid by Priya, Nov 14* with **Put back**.
+- **The bid's suite from its project name.** A bid named *Suite 100, Tradewind Drive* with no
+  suite in its address still gets a card for a permit on suite 120. One live card on 2026-11-19
+  was of this kind. Read the words *suite*, *ste* and *unit* from the name, never a bare number
+  sign, since *Market #12* is a store.
 
 ## How to verify
 

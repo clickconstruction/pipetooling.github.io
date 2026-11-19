@@ -73,7 +73,7 @@ describe('the Bid Board and the names that are us', () => {
 
   it('reads the same permit as another name until a name is added, then reads the list again', async () => {
     renderWithProviders(<Board />)
-    await waitFor(() => expect(screen.getByTestId('row').textContent).toBe('Plumbing permit · another name'))
+    await waitFor(() => expect(screen.getByTestId('row').textContent).toMatch(/^Permit lists BLUE HERON PLUMBING · /))
     expect(screen.getByText(/It lists BLUE HERON PLUMBING\./)).toBeTruthy()
     // A save on Settings → Company tells the board.
     names.loadOurNames.mockResolvedValue({ names: [], companyName: 'Blue Heron Plumbing, LLC' })
@@ -86,7 +86,7 @@ describe('the Bid Board and the names that are us', () => {
   it('leaves the board as it was when the names cannot be read, and reads nothing when the news is off', async () => {
     names.loadOurNames.mockRejectedValue(new Error('The network dropped.'))
     const first = renderWithProviders(<Board />)
-    await waitFor(() => expect(screen.getByTestId('row').textContent).toBe('Plumbing permit · another name'))
+    await waitFor(() => expect(screen.getByTestId('row').textContent).toMatch(/^Permit lists BLUE HERON PLUMBING · /))
     first.unmount()
     names.loadOurNames.mockClear()
     renderWithProviders(<Board enabled={false} />)

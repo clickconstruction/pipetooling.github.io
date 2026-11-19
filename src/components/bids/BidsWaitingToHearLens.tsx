@@ -54,6 +54,8 @@ import { bidTriagePillLabel } from '../../lib/bids/bidFormatting'
 import { buildBidStory, buildSiblingLines, type StorySourceEntry } from '../../lib/bids/followupStorySoFar'
 import { SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR, noteByLineFromEmbed } from '../../lib/noteCreatorDisplay'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import type { PermitNewsDoors } from '../../lib/research/bidPermitNews'
+import { PermitNewsChip } from './PermitChip'
 import { telHrefFor } from '../../lib/phoneContact'
 import { WAITING_TO_HEAR_EMPTY } from '../../lib/bids/bidsEmptyWords'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
@@ -73,6 +75,8 @@ export type BidsWaitingToHearLensProps = {
   /** Bid Room read-backs (v2.2471): bidId → gcKey ('' = own GC) → summary. */
   roomStatesByBid?: Record<string, Record<string, BidRoomStateSummary>>
   narrowViewport640: boolean
+  /** Permit news on a bid (punch list #401): the chip beside the bid's name, a door to its line on Followup's Permit news. */
+  permitNews?: PermitNewsDoors
   authUserId: string | null
   onError: (message: string | null) => void
   onReloadBids: () => void
@@ -151,6 +155,7 @@ export function BidsWaitingToHearLens({
   recipientsByBidId,
   roomStatesByBid,
   narrowViewport640,
+  permitNews,
   authUserId,
   onError,
   onReloadBids,
@@ -751,6 +756,7 @@ export function BidsWaitingToHearLens({
               <div style={{ ...cardStyle, marginBottom: '0.6rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{selectedBid.label} · {selectedBid.project}</span>
+                  <PermitNewsChip bidId={selectedBid.raw.id} news={permitNews} />
                 </div>
                 {selectedBid.address ? (
                   <button

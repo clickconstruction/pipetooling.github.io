@@ -127,7 +127,9 @@ Three rules keep a card off a bid it is not true of.
 
 No card marks a bid for you. Read it, then decide.
 
-On the **Bid Board**, a bid with a permit on its address carries a chip on its row. It reads {{chip:yellow|Applied Sep 11}} or {{chip:green|Issued Nov 3}}. A {{chip:red|Plumbing permit · another name}} chip matches the first kind of news. A {{chip:green|Plumbing permit · ours}} chip means the plumbing permit lists one of our own names. A chip stays on the row after its card is answered.
+On the **Bid Board**, a bid with a permit on its address carries a chip on its row. It reads {{chip:yellow|Applied Sep 11}} or {{chip:green|Issued Nov 3}}. A red chip matches the first kind of news. It names the name the city lists and the permit's day, like {{chip:red|Permit lists Copperline Plumbing · Aug 27}}. A {{chip:green|Plumbing permit · ours}} chip means the plumbing permit lists one of our own names. A chip stays on the row after its card is answered.
+
+A chip with an arrow is a press. It opens **Permit news** on that bid's card. The same chip sits beside the bid on a builder's card in the **Call queue** and on **Waiting to hear**. A chip with no arrow has no card. It only says what the city has.
 
 Our own permit never marks a bid won. Mark the bid yourself when you know.
 

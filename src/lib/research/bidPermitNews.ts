@@ -85,6 +85,18 @@ export function beforeBidChip(day: string, todayYmd: string): Chip {
   return { words: `Plumbing permit here since ${shortDay(day, todayYmd)}`, tone: 'grey' }
 }
 
+/** The chip on a bid whose address carries a general plumbing permit under another name: the name the city lists and the permit's day, so most rows are read without a press. */
+export function anotherNameChip(name: string, day: string, todayYmd: string): Chip {
+  return { words: `Permit lists ${name}${day ? ` · ${shortDay(day, todayYmd)}` : ''}`, tone: 'red' }
+}
+
+/**
+ * The board's permit news as the screens that chase a bid carry it (punch list #401): the chip
+ * on each bid, which bids have a line in Followup's Permit news, and the press that opens it.
+ * A chip on one of those bids is a door. Any other chip is a label.
+ */
+export type PermitNewsDoors = { chips: ReadonlyMap<string, Chip>; lineBidIds: ReadonlySet<string>; onOpen: (bidId: string) => void }
+
 /** The chip on a bid whose address carries a general plumbing permit that lists one of our names. */
 export const OURS_BOARD_CHIP: Chip = { words: 'Plumbing permit · ours', tone: 'green' }
 const dayOf = (p: { issued_on: string | null; submitted_on: string | null }): string => p.issued_on ?? p.submitted_on ?? ''
@@ -173,7 +185,7 @@ export function bidPermitNews(
       // How many days before the bid was started the permit is dated. Null when either day is missing: the rule says nothing.
       const before = day && bid.created_at ? daysBetween(day, bid.created_at.slice(0, 10)) : null
       if (before == null || before <= 0) {
-        chips.set(bid.id, { words: 'Plumbing permit · another name', tone: 'red' })
+        chips.set(bid.id, anotherNameChip(listing.name, day, todayYmd))
         news.push({
           bidId: bid.id,
           kind: 'plumbing',
