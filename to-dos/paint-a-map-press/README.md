@@ -13,10 +13,10 @@ summary: >
   today's jobs and the jobs they were on lately. After Save, one press opens the phone's own
   Messages with the link written. A map that takes seven presses and two bouts of typing today
   takes four.
-next: The owner answers calls 14 and 15 on the picker's last jobs. Walk it on a real iPhone and a real Android phone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band, together with #394's walk. The owner answers call 11, the two short pages. Then delete this card.
-size: L as a train of five (S · M · S · L · S), all built; left: the walk on two real phones (XS), call 11, and the office's changed jobs if call 14 is a yes (S with a migration)
-blocker: A real phone in a hand, and the owner's answers to calls 11, 14 and 15.
-ver: v2.7859 · 7866 · 7868 · 7869 · 7915
+next: Walk it on a real iPhone and a real Android phone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band, together with #394's walk. The owner answers call 11, the two short pages, and call 16, whether the sheet should open on tomorrow's job. Then delete this card.
+size: L as a train of five (S · M · S · L · S), all built, with the changed jobs and Coming up after it (S with one index); left: the walk on two real phones (XS) and calls 11 and 16
+blocker: A real phone in a hand, and the owner's answers to calls 11 and 16.
+ver: v2.7859 · 7866 · 7868 · 7869 · 7915 · 7920
 opinion: built as carded, with two changes said on the card — the phone walk is left, and the picker should never open on an empty list
 ---
 
@@ -253,7 +253,33 @@ to hang it from). Rows as one ruled list (the boxed row is shared with the searc
 Cutting the first sentence (it is the owner's rule in words). C, since the Dashboard's square has
 no line to say where the map lands, and a wrong guess is a map on the wrong job.
 
-What is still weak: the office's truest list waits on call 14. A person on no job yet still meets
+**The owner's word on calls 14 and 15, 2026-11-19:** *Yes, build it*, then *help me build* both.
+**Built, v2.7920**, as one change. What the rows said before it was written, read the same way:
+
+- **Changed jobs.** A person's newest 200 changes cover 20 jobs or more for everyone who works at a
+  desk: Taunya 52 jobs in ten days, the owner 30. So the read is the newest 200 rows by who made
+  them, with no function of its own, and one index.
+- **Coming up.** The field's schedule runs days ahead, not weeks: a superintendent has five jobs in
+  the next two days, a lead two, two helpers one each. So Coming up holds four and looks two weeks
+  out.
+- **The office job.** Every office person has a block on the company's office job each working
+  day, 38 blocks in the next two weeks. Left alone it would be the one row under Coming up for
+  the whole office. It was already under Today, where it stopped the sheet from opening on a last
+  job, and the Dashboard's press landed on it. The app knows which job it is (People → Overhead).
+  So no list offers it and no press lands on it, and the search still finds it. This takes back
+  one line of the first read above, that the catch-all job is listed because it is a real job.
+
+- **The guess, held to two weeks.** With the office job out of Today, the sheet would have opened
+  for Taunya on a job she clocked onto on Aug 21, over six jobs she changed today. So the sheet
+  opens on a last job only when the person was there in the last two weeks. An older one is asked
+  about, with that job in the list. The owner's own guess, last Saturday's job, is unchanged.
+
+Asked again of the real window after the build: a row under Coming up says only its day, with no
+word over it, since the heading says how the app knows. *changed* is one word for every kind of
+change, a payment taken as much as a field edited, because the row has room for one. The guess was
+left as it was: a job a person only changed, or has coming up, is never opened with no question.
+
+What is still weak: a person on no job yet still meets
 a sentence, though it now names the two presses above it. That the search belongs on top on a
 phone rests on the belief that what is found today is drawn under the box, where the keyboard
 sits, and that is not yet tried on a real phone.
@@ -300,9 +326,16 @@ sits, and that is not yet tried on a real phone.
     list's order by each job's newest sign.
 14. **The jobs an office person changed in the app.** Yes, as a third step, since it is the
     truest list for the office: Taunya changed 52 jobs in ten days and is on the team of 4. Its
-    cost is one index on `job_activity_events`, a migration.
+    cost is one index on `job_activity_events`, a migration. **The owner said yes. Built,
+    v2.7920.**
 15. **Jobs coming up on the schedule.** Not asked for and not drawn. Worth a line of their own
     under Today later, since a way-in map is most use the day before. Leave it out of this build.
+    **The owner asked for it the same day. Built, v2.7920**, as **Coming up** under Today.
+16. **Should the sheet open on tomorrow's job?** With nothing today, the sheet opens on the last
+    job the person was at. A job on tomorrow's schedule may be the better guess, since the map is
+    most use the day before. Leave it: a wrong guess is a map on the wrong job, and tomorrow's job
+    is the first row behind **Change the job**. The other choice is to open on the soonest job
+    coming up and say *The next job on your schedule, tomorrow.*
 
 ## Where it plugs in
 
@@ -360,7 +393,13 @@ sits, and that is not yet tried on a real phone.
 7. **The window refitted** (S). **Built, v2.7915**, with step 6: the search on top with **Near
    me** beside it, the desk's window for the picker and the start sheet, and no *phone* in the
    words at a desk. The sheet opens on the last job (`pickerGuess`).
-8. **The office's changed jobs** (S, one migration), on call 14. Not built.
+8. **The office's changed jobs** (S, one migration), on call 14. **Built, v2.7920.** A fourth
+   sign in `pickerLastOrder`, read from `job_activity_events` by who made the change over the new
+   index `job_activity_events_actor_occurred_idx`. A row says *changed* over its day. The read
+   fails soft, so the list is drawn without it.
+9. **Coming up** (S), on call 15. **Built, v2.7920**, with step 8. The schedule's one read now
+   runs from two weeks ahead back, and `pickerPlan` splits it at today. The office job is left
+   out of every list and off the press.
 
 The Saved band was fourth and the picker third until 2026-11-18. The band is small and is where a
 saved map still loses people, so it goes first. That puts the rule that every map is tied to a job

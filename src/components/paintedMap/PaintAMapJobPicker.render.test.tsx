@@ -153,6 +153,72 @@ describe('PaintAMapJobPicker', () => {
     expect(picked).toEqual([finch])
   })
 
+  it('an office person on no team opens on the jobs they changed in the app, each saying so (call 14)', async () => {
+    const io = makeIo({
+      lists: vi.fn(async () => ({
+        todayStops: [],
+        last: [
+          { job: marlowe, how: 'changed' as const, day: '2026-11-18' },
+          { job: hadley, how: 'changed' as const, day: '2026-11-17' },
+          { job: finch, how: 'clock' as const, day: '2026-09-18' },
+        ],
+        paintable: new Set([finch.id, hadley.id, marlowe.id]),
+        todayYmd: '2026-11-19',
+      })),
+    })
+    const picked: PickerJob[] = []
+    render(<PaintAMapJobPicker userId="me" io={io} onPick={(j) => picked.push(j)} onClose={() => {}} />)
+    await settle()
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
+    const rows = [...document.querySelectorAll('[data-picker-last] [data-picker-row]')] as HTMLButtonElement[]
+    expect(rows.map((r) => r.querySelector('[data-picker-tag]')?.textContent)).toEqual(['changedyesterday', 'changedTuesday', 'Sep 18'])
+    fireEvent.click(rows[0]!)
+    expect(picked).toEqual([marlowe])
+  })
+
+  it('lists Coming up between Today and Your last jobs, each job with its day, and a press picks it (call 15)', async () => {
+    const io = makeIo({
+      lists: vi.fn(async () => ({
+        todayStops: [{ job: cedar, timeStart: '09:30:00', timeEnd: '12:00:00' }],
+        soon: [
+          { job: pinto, day: '2026-11-20' },
+          { job: tavish, day: '2026-11-24' },
+          // Already under Today, so not said again.
+          { job: cedar, day: '2026-11-20' },
+        ],
+        last: [
+          { job: marlowe, how: 'clock' as const, day: '2026-11-13' },
+          // On the schedule again tomorrow: said once, under Coming up.
+          { job: pinto, how: 'clock' as const, day: '2026-11-12' },
+        ],
+        paintable: new Set([cedar.id, marlowe.id, pinto.id, tavish.id]),
+        todayYmd: '2026-11-19',
+      })),
+    })
+    const picked: PickerJob[] = []
+    render(<PaintAMapJobPicker userId="me" io={io} onPick={(j) => picked.push(j)} onClose={() => {}} />)
+    await settle()
+    const heads = ['Today', 'Coming up', 'Your last jobs'].map((h) => screen.getByText(h))
+    expect(heads[0]!.compareDocumentPosition(heads[1]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(heads[1]!.compareDocumentPosition(heads[2]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const soon = [...document.querySelectorAll('[data-picker-soon] [data-picker-row]')] as HTMLButtonElement[]
+    expect(soon.map((r) => [r.querySelector('b')?.textContent, r.querySelector('[data-picker-tag]')?.textContent])).toEqual([
+      ['J2431 · Pinto Ridge 3', 'tomorrow'],
+      ['J2402 · Tavish repipe', 'Tuesday'],
+    ])
+    expect([...document.querySelectorAll('[data-picker-last] [data-picker-row] b')].map((b) => b.textContent)).toEqual(['J2398 · Marlowe Dental'])
+    fireEvent.click(soon[0]!)
+    expect(picked).toEqual([pinto])
+  })
+
+  it('a person with only jobs coming up is not told they have been on none', async () => {
+    const io = makeIo({ lists: vi.fn(async () => ({ ...LISTS, todayStops: [], last: [], soon: [{ job: cedar, day: '2026-11-19' }] })) })
+    render(<PaintAMapJobPicker userId="me" io={io} onPick={() => {}} onClose={() => {}} />)
+    await settle()
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
+    expect(document.querySelectorAll('[data-picker-soon] [data-picker-row]')).toHaveLength(1)
+  })
+
   it('a person nobody has put on a job is told so, with the two presses named', async () => {
     const io = makeIo({ lists: vi.fn(async () => ({ ...LISTS, todayStops: [], last: [] })) })
     render(<PaintAMapJobPicker userId="me" io={io} onPick={() => {}} onClose={() => {}} />)

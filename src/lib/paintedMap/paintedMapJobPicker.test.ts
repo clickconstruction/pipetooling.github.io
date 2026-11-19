@@ -4,14 +4,15 @@
  * question. Every job here is made up.
  */
 import { describe, expect, it } from 'vitest'
-import { PICKER_LAST_MAX, PICKER_NEAR_ADDRESSES, PICKER_NEAR_MAX, PICKER_NEAR_MAX_M, PICKER_NEAR_NO_FIX, PICKER_NEAR_NO_FIX_DESK, pickerDayWords, pickerGuess, pickerGuessWords, pickerHome, pickerLastOrder, pickerNearBox, pickerNearJobsFilter, pickerNearRows, pickerNearestPlaced, pickerPaintable, pickerSearchRows, pickerSections, pickerStopWords, type PickerJob, type PickerLast } from './paintedMapJobPicker'
+import { PICKER_LAST_MAX, PICKER_LAST_READ, PICKER_NEAR_ADDRESSES, PICKER_NEAR_MAX, PICKER_NEAR_MAX_M, PICKER_NEAR_NO_FIX, PICKER_NEAR_NO_FIX_DESK, PICKER_SOON_MAX, pickerDayPlus, pickerDayWords, pickerGuess, pickerGuessWords, pickerHome, pickerLastOrder, pickerNearBox, pickerNearJobsFilter, pickerNearRows, pickerNearestPlaced, pickerPaintable, pickerPlan, pickerSearchRows, pickerSections, pickerSoonWords, pickerStopWords, type PickerJob, type PickerLast, type PickerSoon } from './paintedMapJobPicker'
 
 const job = (id: string, number: string, name: string, over: Partial<PickerJob> = {}): PickerJob => ({ id, number, name, address: `${number} Made Up Road`, ...over })
 const cedar = job('j-cedar', 'J2417', 'Cedar Hollow 12')
 const marlowe = job('j-marlowe', 'J2398', 'Marlowe Dental')
 const pinto = job('j-pinto', 'J2431', 'Pinto Ridge 3')
 const billing = job('j-bill', 'J2000', 'Billing only', { billingOnly: true })
-const all = new Set([cedar.id, marlowe.id, pinto.id, billing.id])
+const office = job('j-office', '000', 'Office', { office: true })
+const all = new Set([cedar.id, marlowe.id, pinto.id, billing.id, office.id])
 
 describe('pickerDayWords', () => {
   // 2026-11-18 is a Wednesday.
@@ -41,6 +42,30 @@ describe('pickerDayWords', () => {
   })
 })
 
+describe('pickerSoonWords', () => {
+  const today = '2026-11-19' // a Thursday
+  it('says tomorrow, a weekday inside a week, then the day', () => {
+    expect(pickerSoonWords('2026-11-20', today)).toBe('tomorrow')
+    expect(pickerSoonWords('2026-11-23', today)).toBe('Monday')
+    expect(pickerSoonWords('2026-11-25', today)).toBe('Wednesday')
+    // A week on is the same weekday as today, so it is said as a day.
+    expect(pickerSoonWords('2026-11-26', today)).toBe('Nov 26')
+    expect(pickerSoonWords('2027-01-08', '2026-12-30')).toBe('Jan 8, 2027')
+  })
+
+  it('says nothing for today, a day behind, or a day that is not one', () => {
+    expect(pickerSoonWords(today, today)).toBe('')
+    expect(pickerSoonWords('2026-11-18', today)).toBe('')
+    expect(pickerSoonWords('soon', today)).toBe('')
+  })
+
+  it('counts days on with no clock', () => {
+    expect(pickerDayPlus('2026-11-19', 14)).toBe('2026-12-03')
+    expect(pickerDayPlus('2026-12-25', 14)).toBe('2027-01-08')
+    expect(pickerDayPlus('never', 14)).toBe('')
+  })
+})
+
 describe('pickerStopWords', () => {
   it('writes a stop time as the app says a time', () => {
     expect(pickerStopWords('07:30:00')).toBe('7:30 AM')
@@ -53,11 +78,13 @@ describe('pickerStopWords', () => {
 
 const clock = (j: PickerJob, day: string): PickerLast => ({ job: j, how: 'clock', day })
 const sched = (j: PickerJob, day: string): PickerLast => ({ job: j, how: 'schedule', day })
+const changed = (j: PickerJob, day: string): PickerLast => ({ job: j, how: 'changed', day })
 const team = (j: PickerJob, joined: string | null = null): PickerLast => ({ job: j, how: 'team', day: joined })
+const soonOn = (j: PickerJob, day: string): PickerSoon => ({ job: j, day })
 /** The signs as the read hands them on: each job once, in the list's own order. */
 const inOrder = (signs: PickerLast[]): PickerLast[] => {
   const jobs = new Map(signs.map((l) => [l.job.id, l.job] as const))
-  return pickerLastOrder(signs.map((l) => ({ jobId: l.job.id, how: l.how, day: l.day }))).map((m) => ({ job: jobs.get(m.jobId)!, how: m.how, day: m.day }))
+  return pickerLastOrder(signs.map((l) => ({ jobId: l.job.id, how: l.how, day: l.day }))).map((m) => ({ job: jobs.get(m.jobId)!, how: m.how, day: m.day, there: m.there }))
 }
 
 describe('pickerLastOrder', () => {
@@ -92,7 +119,7 @@ describe('pickerLastOrder', () => {
       { jobId: 'c', how: 'clock', day: '2026-11-11' },
       { jobId: 'c', how: 'team', day: '2026-11-05' },
     ])
-    expect(got).toEqual([
+    expect(got.map(({ jobId, how, day }) => ({ jobId, how, day }))).toEqual([
       { jobId: 'b', how: 'schedule', day: '2026-11-12' },
       { jobId: 'c', how: 'clock', day: '2026-11-11' },
       { jobId: 'a', how: 'clock', day: '2026-11-10' },
@@ -106,15 +133,113 @@ describe('pickerLastOrder', () => {
       { jobId: 'a', how: 'clock', day: '2026-09-18' },
       { jobId: 'a', how: 'team', day: '2026-11-18' },
     ])
-    expect(got).toEqual([
+    expect(got.map(({ jobId, how, day }) => ({ jobId, how, day }))).toEqual([
       { jobId: 'a', how: 'clock', day: '2026-09-18' },
       { jobId: 'b', how: 'schedule', day: '2026-11-14' },
+    ])
+  })
+
+  it('counts a day the person changed the job: it places the job, and names it when it is the later day', () => {
+    const got = pickerLastOrder([
+      { jobId: 'a', how: 'clock', day: '2026-09-18' },
+      { jobId: 'a', how: 'changed', day: '2026-11-18' },
+      { jobId: 'b', how: 'schedule', day: '2026-11-14' },
+      { jobId: 'c', how: 'changed', day: '2026-11-17' },
+      { jobId: 'c', how: 'team', day: '2026-11-18' },
+      // One day, three signs: the clock names it.
+      { jobId: 'd', how: 'changed', day: '2026-11-10' },
+      { jobId: 'd', how: 'schedule', day: '2026-11-10' },
+      { jobId: 'd', how: 'clock', day: '2026-11-10' },
+    ])
+    expect(got.map((m) => [m.jobId, m.how, m.day])).toEqual([
+      ['a', 'changed', '2026-11-18'],
+      ['c', 'changed', '2026-11-17'],
+      ['b', 'schedule', '2026-11-14'],
+      ['d', 'clock', '2026-11-10'],
+    ])
+  })
+
+  it('keeps a job’s newest clock or scheduled day beside its name, for the guess', () => {
+    const got = pickerLastOrder([
+      { jobId: 'a', how: 'changed', day: '2026-11-18' },
+      { jobId: 'a', how: 'clock', day: '2026-09-18' },
+      { jobId: 'a', how: 'schedule', day: '2026-11-14' },
+      { jobId: 'b', how: 'changed', day: '2026-11-17' },
+      { jobId: 'c', how: 'team', day: '2026-11-16' },
+    ])
+    expect(got.map((m) => [m.jobId, m.how, m.there ?? null])).toEqual([
+      ['a', 'changed', { how: 'schedule', day: '2026-11-14' }],
+      ['b', 'changed', null],
+      ['c', 'team', null],
     ])
   })
 
   it('takes a clock or a scheduled day that is not a day as no sign, and a job with no id as no job', () => {
     expect(pickerLastOrder([{ jobId: 'a', how: 'clock', day: '' }, { jobId: 'b', how: 'schedule', day: null }, { jobId: '', how: 'team', day: null }])).toEqual([])
     expect(pickerLastOrder([{ jobId: 'a', how: 'team', day: 'soon' }])).toEqual([{ jobId: 'a', how: 'team', day: null }])
+  })
+})
+
+describe('pickerPlan', () => {
+  const none = { todayYmd: '2026-11-19', officeJobId: 'j-office', todayJobIds: [] as string[], clocks: [], blocks: [], changes: [], teams: [] }
+
+  it('splits the schedule at today: days ahead are coming up, days behind are last jobs, and today is neither', () => {
+    const got = pickerPlan({
+      ...none,
+      blocks: [
+        { jobId: 'far', day: '2026-11-25' },
+        { jobId: 'near', day: '2026-11-21' },
+        { jobId: 'near', day: '2026-11-20' },
+        { jobId: 'now', day: '2026-11-19' },
+        { jobId: 'near', day: '2026-11-14' },
+        { jobId: 'old', day: '2026-11-10' },
+        { jobId: null, day: '2026-11-20' },
+        { jobId: 'bad', day: 'soon' },
+      ],
+    })
+    // Each job once, at its soonest day, soonest first.
+    expect(got.soon).toEqual([
+      { jobId: 'near', day: '2026-11-20' },
+      { jobId: 'far', day: '2026-11-25' },
+    ])
+    expect(got.order.map((m) => [m.jobId, m.how, m.day])).toEqual([
+      ['near', 'schedule', '2026-11-14'],
+      ['old', 'schedule', '2026-11-10'],
+    ])
+  })
+
+  it('reads the four signs together: a change and a team place a job, and a change with no day is no sign', () => {
+    const got = pickerPlan({
+      ...none,
+      clocks: [{ jobId: 'a', day: '2026-09-18' }],
+      changes: [{ jobId: 'b', day: '2026-11-18' }, { jobId: 'a', day: '2026-11-17' }, { jobId: 'c', day: null }],
+      teams: [{ jobId: 'd', day: '2026-11-16' }, { jobId: 'e', day: null }],
+    })
+    expect(got.order.map((m) => [m.jobId, m.how])).toEqual([
+      ['b', 'changed'],
+      ['a', 'changed'],
+      ['d', 'team'],
+      ['e', 'team'],
+    ])
+    expect(got.order[1]!.there).toEqual({ how: 'clock', day: '2026-09-18' })
+  })
+
+  it('leaves out the office job and the jobs on today’s schedule, from both lists', () => {
+    const got = pickerPlan({
+      ...none,
+      todayJobIds: ['today'],
+      clocks: [{ jobId: 'j-office', day: '2026-11-18' }, { jobId: 'today', day: '2026-11-17' }, { jobId: 'a', day: '2026-11-16' }],
+      blocks: [{ jobId: 'j-office', day: '2026-11-20' }, { jobId: 'today', day: '2026-11-20' }, { jobId: 'b', day: '2026-11-20' }],
+    })
+    expect(got.order.map((m) => m.jobId)).toEqual(['a'])
+    expect(got.soon.map((s) => s.jobId)).toEqual(['b'])
+  })
+
+  it('reads the job the sheet may open on even when newer changes fill the read', () => {
+    const changes = Array.from({ length: PICKER_LAST_READ + 3 }, (_, i) => ({ jobId: `c${i}`, day: '2026-11-18' }))
+    const got = pickerPlan({ ...none, changes, clocks: [{ jobId: 'was-there', day: '2026-06-01' }, { jobId: 'older', day: '2026-05-01' }] })
+    expect(got.order).toHaveLength(PICKER_LAST_READ + 1)
+    expect(got.order[got.order.length - 1]).toMatchObject({ jobId: 'was-there', how: 'clock' })
   })
 })
 
@@ -147,6 +272,55 @@ describe('pickerSections', () => {
       ['j-pinto', null, 'on the team'],
     ])
     expect(got.last.map((r) => r.last?.how)).toEqual(['schedule', 'clock', 'team'])
+  })
+
+  it('says changed over the day the person changed a job in the app', () => {
+    const got = pickerSections({ todayStops: [], last: inOrder([changed(cedar, '2026-11-18'), clock(marlowe, '2026-11-13'), changed(marlowe, '2026-11-12')]), todayYmd: '2026-11-19', paintable: all })
+    expect(got.last.map((r) => [r.job.id, r.how ?? null, r.tag])).toEqual([
+      ['j-cedar', 'changed', 'yesterday'],
+      ['j-marlowe', null, 'Friday'],
+    ])
+  })
+
+  it('lists Coming up soonest first, each job once, under Today and over Your last jobs', () => {
+    const got = pickerSections({
+      todayStops: [{ job: pinto, timeStart: '13:00:00', timeEnd: '15:00:00' }],
+      soon: [soonOn(marlowe, '2026-11-24'), soonOn(cedar, '2026-11-20'), soonOn(marlowe, '2026-11-21'), soonOn(pinto, '2026-11-20')],
+      last: inOrder([clock(cedar, '2026-11-17'), clock(marlowe, '2026-11-13')]),
+      todayYmd: '2026-11-19',
+      paintable: all,
+    })
+    expect(got.today.map((r) => r.job.id)).toEqual(['j-pinto'])
+    // Pinto Ridge is under Today. Marlowe is said once, at its soonest day.
+    expect(got.soon.map((r) => [r.label, r.tag, r.paintable])).toEqual([
+      ['J2417 · Cedar Hollow 12', 'tomorrow', true],
+      ['J2398 · Marlowe Dental', 'Saturday', true],
+    ])
+    // A job under Coming up is not said again under Your last jobs.
+    expect(got.last).toEqual([])
+  })
+
+  it('holds Coming up to its cap and to two weeks, and leaves out a job the person may not paint on', () => {
+    const lots = Array.from({ length: PICKER_SOON_MAX + 2 }, (_, i) => soonOn(job(`s${i}`, `J7${i}`, `Soon lot ${i}`), `2026-11-${20 + i}`))
+    const full = pickerSections({ todayStops: [], soon: lots, last: [], todayYmd: '2026-11-19', paintable: new Set(lots.map((l) => l.job.id)) })
+    expect(full.soon.map((r) => r.job.id)).toEqual(['s0', 's1', 's2', 's3'])
+    const far = pickerSections({ todayStops: [], soon: [soonOn(cedar, '2026-12-03'), soonOn(marlowe, '2026-12-04'), soonOn(pinto, '2026-11-20'), soonOn(billing, '2026-11-20')], last: [], todayYmd: '2026-11-19', paintable: new Set([cedar.id, marlowe.id, billing.id]) })
+    expect(far.soon.map((r) => [r.job.id, r.tag])).toEqual([['j-cedar', 'Dec 3']])
+  })
+
+  it('offers the office job in no list: not today, not coming up, not as a last job', () => {
+    const got = pickerSections({
+      todayStops: [{ job: office, timeStart: '08:00:00', timeEnd: '17:00:00' }],
+      soon: [soonOn(office, '2026-11-20')],
+      last: inOrder([clock(office, '2026-11-18'), changed(cedar, '2026-11-17')]),
+      todayYmd: '2026-11-19',
+      paintable: all,
+    })
+    expect(got.today).toEqual([])
+    expect(got.soon).toEqual([])
+    expect(got.last.map((r) => r.job.id)).toEqual(['j-cedar'])
+    // A day at the office is no last job to open on.
+    expect(got.guess).toBeNull()
   })
 
   it('keeps the order it is handed', () => {
@@ -204,7 +378,7 @@ describe('pickerGuess', () => {
     const above = pickerGuess(sections([team(pinto, '2026-11-18'), sched(marlowe, '2026-11-10')]))!
     expect(above.job.id).toBe('j-marlowe')
     const teams = Array.from({ length: PICKER_LAST_MAX + 2 }, (_, i) => team(job(`t${i}`, `J9${i}`, `Team lot ${i}`), '2026-11-18'))
-    const got = pickerSections({ todayStops: [], last: inOrder([...teams, clock(cedar, '2026-09-18')]), todayYmd: '2026-11-19', paintable: new Set([cedar.id, ...teams.map((t) => t.job.id)]) })
+    const got = pickerSections({ todayStops: [], last: inOrder([...teams, clock(cedar, '2026-11-08')]), todayYmd: '2026-11-19', paintable: new Set([cedar.id, ...teams.map((t) => t.job.id)]) })
     expect(got.last.map((r) => r.job.id)).not.toContain('j-cedar')
     expect(got.guess?.job.id).toBe('j-cedar')
     // A job clocked onto in September and put back on the team yesterday: the guess is by the day they were there.
@@ -216,13 +390,42 @@ describe('pickerGuess', () => {
     expect(pickerGuess(sections([team(cedar, '2026-11-18'), team(pinto)]))).toBeNull()
   })
 
+  it('is none from a day more than two weeks back: the person is asked, with that job in the list', () => {
+    const old = pickerSections({ todayStops: [], last: inOrder([changed(pinto, '2026-11-19'), clock(cedar, '2026-08-21')]), todayYmd: '2026-11-19', paintable: all })
+    expect(old.guess).toBeNull()
+    expect(old.last.map((r) => [r.job.id, r.how ?? null, r.tag])).toEqual([
+      ['j-pinto', 'changed', 'today'],
+      ['j-cedar', null, 'Aug 21'],
+    ])
+    // Two weeks to the day still opens.
+    expect(pickerGuess(sections([sched(cedar, '2026-11-05')]))?.job.id).toBe('j-cedar')
+    expect(pickerGuess(sections([sched(cedar, '2026-11-04')]))).toBeNull()
+  })
+
+  it('is none from a change alone: a payment taken at a desk does not say where the map goes', () => {
+    expect(pickerGuess(sections([changed(cedar, '2026-11-18'), changed(pinto, '2026-11-17')]))).toBeNull()
+  })
+
+  it('is by the day they were there, on a job changed since or one that is coming up', () => {
+    // Clocked onto on Friday and changed yesterday: the row says changed, the guess says the clock.
+    const since = pickerSections({ todayStops: [], last: inOrder([changed(cedar, '2026-11-18'), clock(cedar, '2026-11-13'), changed(pinto, '2026-11-18')]), todayYmd: '2026-11-19', paintable: all })
+    expect(since.last.map((r) => [r.job.id, r.how ?? null, r.tag])).toContainEqual(['j-cedar', 'changed', 'yesterday'])
+    expect(since.guess?.job.id).toBe('j-cedar')
+    expect(pickerGuessWords(since.guess!, '2026-11-19')).toBe('The last job you clocked onto, Friday.')
+    // On the schedule again tomorrow: it is under Coming up, and still the last job they were on.
+    const again = pickerSections({ todayStops: [], soon: [soonOn(marlowe, '2026-11-20')], last: inOrder([sched(marlowe, '2026-11-10')]), todayYmd: '2026-11-19', paintable: all })
+    expect(again.soon.map((r) => r.job.id)).toEqual(['j-marlowe'])
+    expect(again.last).toEqual([])
+    expect(pickerGuessWords(again.guess!, '2026-11-19')).toBe('The last job on your schedule, Nov 10.')
+  })
+
   it('is none when a job is on today’s schedule: the person is asked which', () => {
     expect(pickerGuess(sections([clock(marlowe, '2026-11-18')], [{ job: cedar, timeStart: '09:30:00', timeEnd: '12:00:00' }]))).toBeNull()
   })
 
   it('is none for a person nobody has put on a job, and never a job they may not paint on', () => {
     expect(pickerGuess(sections([]))).toBeNull()
-    const got = pickerGuess(pickerSections({ todayStops: [], last: inOrder([clock(cedar, '2026-11-18'), clock(pinto, '2026-11-01')]), todayYmd: '2026-11-19', paintable: new Set([pinto.id]) }))
+    const got = pickerGuess(pickerSections({ todayStops: [], last: inOrder([clock(cedar, '2026-11-18'), clock(pinto, '2026-11-10')]), todayYmd: '2026-11-19', paintable: new Set([pinto.id]) }))
     expect(got?.job.id).toBe('j-pinto')
   })
 })
