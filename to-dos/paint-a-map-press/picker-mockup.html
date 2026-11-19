@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Which job is it for?</title>
+<style>
+  /* The app's own tokens (src/index.css), light then dark. */
+  body {
+    --surface: #ffffff; --bg-page: #f0f2f5; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --chrome-bg: #fafafa;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --border: #cfd4db; --border-strong: #aab2bd;
+    --board: #dfe3e8; --cap: #1f2937; --cap-small: #4b5563; --paint: #ff5a1f; --kbd: #d1d5db;
+  }
+  body[data-theme='dark'] {
+    --surface: #1f2937; --bg-page: #111827; --bg-subtle: #18212f; --bg-muted: #374151; --chrome-bg: #111827;
+    --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-600: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3;
+    --text-link: #60a5fa; --border: #374151; --border-strong: #4b5563;
+    --board: #0b1220; --cap: #f3f4f6; --cap-small: #9ca3af; --kbd: #374151;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--board); color: var(--text-strong); font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  button { font-family: inherit; }
+
+  .bar { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 14px; }
+  .bar b { font-size: 15px; }
+  .bar .sp { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .tog { min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 600; font-size: 14px; cursor: pointer; }
+  .tog[aria-pressed='true'] { background: #2563eb; border-color: #2563eb; color: #fff; }
+
+  .intro { max-width: 860px; padding: 18px 16px 0; font-size: 15px; color: var(--cap); }
+  .intro h1 { font-size: 20px; margin: 0 0 6px; }
+  .intro p { margin: 0 0 8px; }
+  .band { padding: 22px 16px 4px; }
+  .band h2 { margin: 0; font-size: 18px; color: var(--cap); }
+  .band p { margin: 4px 0 0; max-width: 860px; font-size: 14.5px; color: var(--cap-small); }
+  .pick { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: #15803d; color: #fff; font-size: 12px; font-weight: 700; vertical-align: 2px; }
+  .board { display: flex; flex-wrap: wrap; gap: 24px 20px; padding: 14px 16px 6px; align-items: flex-start; }
+  .cell { display: grid; gap: 8px; min-width: 0; }
+  .cap { font-size: 13px; font-weight: 700; color: var(--cap); max-width: 375px; }
+  .cap small { display: block; font-weight: 500; color: var(--cap-small); }
+  .cell.wide .cap { max-width: 900px; }
+
+  /* A phone's screen, 375 x 812, and a desk's, 1180 x 720. What is fixed in the app is absolute in here. */
+  .phone { position: relative; width: 375px; height: 812px; overflow: hidden; background: var(--bg-page); }
+  .desk { position: relative; width: 1180px; max-width: 100%; height: 720px; overflow: hidden; background: var(--bg-page); }
+  .chrome { height: 50px; display: flex; align-items: center; gap: 12px; padding: 0 14px; background: var(--chrome-bg); border-bottom: 1px solid var(--border); color: var(--text-700); }
+  .chrome b { font-size: 15px; color: var(--text-strong); }
+  .chrome .nav { display: flex; gap: 18px; font-size: 14px; color: var(--text-600); margin-left: 18px; }
+  .page { padding: 12px 14px 0; display: grid; gap: 12px; }
+  .actionRow { display: flex; gap: 0.5rem; }
+  .sq { width: 64px; min-height: 48px; border-radius: 8px; background: #2563eb; color: #fff; font-size: 0.8125rem; font-weight: 600; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; }
+  .sq.paint { width: 72px; background: var(--surface); color: var(--text-strong); border: 1px solid var(--border-strong); flex-direction: column; gap: 5px; font-weight: 700; }
+  .swatch { width: 20px; height: 5px; border-radius: 3px; background: var(--paint); display: inline-block; flex: none; }
+  .clock { flex: 1; min-height: 48px; border-radius: 8px; background: #c75000; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .ghost { height: 92px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
+
+  /* The window as the app draws it today (PaintAMapJobPicker): a sheet on the bottom edge at every width. */
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+  .sheet { background: var(--surface); color: var(--text-strong); width: 100%; max-width: 520px; max-height: 100%; overflow: hidden; border-top-left-radius: 14px; border-top-right-radius: 14px; display: flex; flex-direction: column; }
+  /* The refit: at a desk, a window in the middle with four round corners. */
+  .scrim.mid { align-items: flex-start; padding-top: 56px; }
+  .scrim.mid .sheet { border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,0.35); max-height: calc(100% - 80px); }
+  .head { display: flex; align-items: center; gap: 0.5rem; padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); }
+  .head h3 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+  .head .x { margin-left: auto; color: var(--text-muted); font-size: 0.9375rem; }
+  .body { display: grid; gap: 0.7rem; padding: 0.85rem 1rem 0.95rem; }
+  .lead { margin: 0; font-size: 0.9375rem; }
+  .secHead { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin: 0.1rem 0 -0.15rem; }
+  .rows { display: grid; gap: 0.35rem; }
+  .jobRow { display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 52px; padding: 0.45rem 0.7rem; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text-strong); text-align: left; }
+  .jobRow .w { min-width: 0; display: grid; gap: 1px; flex: 1; }
+  .jobRow .w b { font-size: 0.9375rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .jobRow .w span { font-size: 0.8125rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .jobRow .tag { flex: none; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-align: right; line-height: 1.2; }
+  .empty { margin: 0; padding: 0.75rem; text-align: center; color: var(--text-muted); font-size: 0.875rem; }
+  .quiet { color: var(--text-link); font-size: 0.9375rem; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; min-height: 44px; display: flex; align-items: center; }
+  .small { font-size: 0.8125rem; color: var(--text-muted); }
+  .lbl { display: grid; gap: 0.3rem; font-size: 0.8125rem; font-weight: 600; color: var(--text-700); }
+  .field { min-height: 44px; padding: 0.5rem 0.6rem; font-size: 1rem; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-base); width: 100%; display: flex; align-items: center; }
+  .field.ph { color: var(--text-faint); }
+  .field.on { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.25); }
+  .caret { width: 1.5px; height: 1.2em; background: var(--text-strong); margin-left: 1px; }
+  /* The refit's search row: the box, and Near me as a press beside it. */
+  .find { display: flex; gap: 0.5rem; align-items: stretch; }
+  .find .field { flex: 1; min-width: 0; }
+  .nearBtn { flex: none; min-height: 44px; padding: 0 0.75rem; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 600; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap; }
+  .kbd { flex: none; height: 291px; background: var(--kbd); display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px; font-weight: 600; }
+
+  /* The start sheet, for the option that skips the question. */
+  .forBox { display: flex; align-items: center; gap: 0.6rem; border: 1px solid var(--border); background: var(--bg-subtle); border-radius: 10px; padding: 0.5rem 0.7rem; }
+  .forBox .who { min-width: 0; display: grid; gap: 1px; }
+  .forBox .who b { font-size: 0.9375rem; line-height: 1.25; }
+  .forBox .who span { font-size: 0.8125rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .forBox .quiet { margin-left: auto; flex: none; min-height: 32px; font-size: 0.875rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .chip { min-height: 36px; padding: 0 0.8rem; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 600; font-size: 0.875rem; display: inline-flex; align-items: center; }
+  .chip.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .blue { min-height: 52px; border-radius: 8px; border: 1px solid #2563eb; background: #2563eb; color: #fff; font-weight: 700; font-size: 1rem; }
+  .plain { min-height: 48px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 700; font-size: 1rem; }
+
+  .new { outline: 2px dashed #7c3aed; outline-offset: 3px; border-radius: 6px; }
+  body.plain .new { outline: none; }
+
+  .notes { max-width: 860px; margin: 26px 16px 40px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; font-size: 14.5px; color: var(--text-700); }
+  .notes h2 { margin: 0 0 6px; font-size: 17px; color: var(--text-strong); }
+  .notes h3 { margin: 14px 0 4px; font-size: 15px; color: var(--text-strong); }
+  .notes p { margin: 0 0 8px; }
+  .notes ul, .notes ol { margin: 0 0 8px; padding-left: 1.2rem; display: grid; gap: 4px; }
+  table { border-collapse: collapse; font-size: 13.5px; margin: 4px 0 10px; width: 100%; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text-strong); }
+</style>
+</head>
+<body>
+<div class="bar">
+  <b>Which job is it for?</b><span>punch list #392 · the window behind the Dashboard's Paint a map press · every job and street is made up</span>
+  <span class="sp">
+    <button class="tog" id="tTheme" aria-pressed="false">Dark</button>
+    <button class="tog" id="tPlain" aria-pressed="false">Hide the purple marks</button>
+  </span>
+</div>
+
+<div class="intro">
+  <h1>The window, as it is and three ways it could be</h1>
+  <p>The person drawn is the one in the owner's screenshot. Nothing is on their schedule today. They have not clocked onto a job in 45 days. A purple dashed line marks what is new.</p>
+</div>
+
+<div id="out"></div>
+
+<div class="notes" id="notes">
+  <h2>What "the last jobs you were on" can mean</h2>
+  <p>Read from the live rows on 2026-11-19, as the owner, for seventeen real people. Counts are jobs, each counted once.</p>
+  <table>
+    <tr><th>Where it is read from</th><th>Office</th><th>Superintendent and lead</th><th>Field tech</th><th>May they paint on it?</th></tr>
+    <tr><td>Clocked onto in the last 45 days. This is <b>Lately</b> today.</td><td>0 or 1 for all eight</td><td>23 and 15</td><td>14 and 16 for two. 0 or 1 for the other five.</td><td>Yes, when they can open the job or are on its team.</td></tr>
+    <tr><td>Clocked onto, any age</td><td>The owner 4, the newest Sep 18. Trace 17. Three for two estimators. Bryan 4.</td><td>Over 100 and over 68</td><td>Micah 11, Darren 3. Kyle none, ever.</td><td>The same rule.</td></tr>
+    <tr><td>On their schedule on a past day, any age</td><td>The owner 6, the newest Nov 14. Trace 12. Bryan 7.</td><td>Over 100 and over 72</td><td>Kyle 26, Micah 9, Darren 2.</td><td>Yes. A schedule block puts the person on the job's team.</td></tr>
+    <tr><td>On the job's team</td><td>The owner 14. Trace 37. Bryan 12. Taunya 4. One each for four more.</td><td>Over 200 each</td><td>Kyle 35, Micah 10, Darren 3.</td><td>Always. The team is half of the rule.</td></tr>
+    <tr><td>Changed in the app lately (the job's activity record)</td><td>Taunya 52 jobs in ten days. The owner 30. None for four of the eight.</td><td>68 and 20</td><td>Next to none</td><td>Yes for the office, who can open every job.</td></tr>
+    <tr><td>Wrote a report on</td><td>One or two, months old</td><td>164 and 19</td><td>None to 4</td><td>The same rule.</td></tr>
+    <tr><td>Painted a map on before</td><td>The owner 1. Nobody else.</td><td>None</td><td>None</td><td>Yes.</td></tr>
+    <tr><td>Account manager of</td><td>Trace 21. The owner 2.</td><td>4 for the lead</td><td>None</td><td>Yes.</td></tr>
+  </table>
+  <p><b>What the rows say.</b> A superintendent and a lead never meet the empty window. Most of the office does, and so do the field techs who are scheduled and do not clock. Three reads fill the list for nearly everyone, and each is already a quick read: older clocks, past days on the schedule, and the team. Two new helpers have nothing in any of them. They still need a sentence that names the search.</p>
+  <p><b>What needs a decision.</b> For the office, the truest answer is the jobs they changed in the app. That record has no quick way to be read by person today. Reading it needs one small index on the database, which is a migration. The mock-ups below do not lean on it.</p>
+  <p><b>What was left out.</b> Reports and painted maps add almost nobody that the first three miss. A job's master is every job for a lead, so it says nothing.</p>
+
+  <h2 style="margin-top:18px">My pick: B</h2>
+  <p id="pickWords"></p>
+
+  <h2 style="margin-top:18px" id="second">Is this the best we can do?</h2>
+  <div id="secondPass">
+    <p>Asked after the page was rendered at 375 by 812 and at 1180 by 720, light and dark. Nothing ran off the side of a screen. No window was taller than its screen.</p>
+    <h3>What the look changed</h3>
+    <ul>
+      <li><b>The desk window starts near the top, not in the middle.</b> Six rows did not fit under a centred window on a short screen. A window that hangs from one height also stays put while typing shortens the list.</li>
+      <li><b>A row says how it knows, only when it is not a clock.</b> A plain day means they clocked onto it. <i>scheduled Nov 14</i> means it was on their schedule, which does not prove they went. Tally's Choose job sheet already says how it knows on each Recent row (#216).</li>
+      <li><b>On the team</b>, not <i>your team</i>. The job is not theirs. They are on its team.</li>
+      <li><b>B is shorter than A on a phone</b>: 603 tall against 696, with the same six rows. The link's two lines and the search's label go.</li>
+    </ul>
+    <h3>What was weighed and lost</h3>
+    <ul>
+      <li><b>One flat list with no headings.</b> Today's jobs carry times, and a heading is how a tech finds them in one look.</li>
+      <li><b>A menu that drops from the press at a desk.</b> The same window opens from four doors, and three of them have no press to hang it from.</li>
+      <li><b>Rows as one ruled list, not boxes.</b> The boxed row is the one the search and Near you draw, and a box 52 tall is what a press looks like across the app.</li>
+      <li><b>Cutting the first sentence.</b> It is the owner's rule in words, and it tells a first-timer why they are asked.</li>
+      <li><b>C, the guess.</b> The Dashboard's square has no second line to say where the map will land. A job from last week is a weak guess. A wrong one is a map on the wrong job.</li>
+    </ul>
+    <h3>What is still weak</h3>
+    <ul>
+      <li>The office's truest list is the jobs they changed in the app. That waits on the owner's call about one small index.</li>
+      <li>A person nobody has put on a job still meets a sentence and no rows. It now names the two presses above it.</li>
+      <li>That the search belongs on top on a phone rests on one belief: what is found today is drawn under the box, where the keyboard sits. That has not been tried on a real phone.</li>
+      <li>Jobs coming up on the schedule are not listed. A way-in map is most use the day before, so this is worth its own call.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  // Made-up jobs. `tag` is what sits at the row's right.
+  const J = {
+    marlow: ['J2390 · Marlow Dental fit-out', '410 Quarry Bend'],
+    cedar: ['J2417 · Cedar Hollow 12', '1208 Wrenfield Loop'],
+    pine: ['J2362 · Pinecrest Lot 7', '77 Tallow Court'],
+    hadley: ['J2301 · Hadley remodel', '9 Orchard Rise'],
+    bright: ['J2288 · Brightwater Lot 3', '31 Heron Way'],
+    finch: ['J2240 · Finch & Co warehouse', '2600 Dray Road'],
+    cedar14: ['J2420 · Cedar Hollow 14', '1216 Wrenfield Loop'],
+  }
+  const row = (k, tag) => `<div class="jobRow"><span class="w"><b>${J[k][0]}</b><span>${J[k][1]}</span></span>${tag ? `<span class="tag">${tag}</span>` : ''}</div>`
+  const rows = (list, cls = '') => `<div class="rows ${cls}">${list.map(([k, t]) => row(k, t)).join('')}</div>`
+  // The office person's last jobs. A plain day is a clock. A row says how it knows when it is not one.
+  const LAST = [['marlow', 'scheduled<br>Nov 14'], ['cedar', 'Sep 18'], ['pine', 'scheduled<br>Aug 18'], ['hadley', 'on the team'], ['bright', 'on the team'], ['finch', 'on the team']]
+  const TODAY = [['cedar', '7:30 AM'], ['cedar14', '1:00 PM']]
+  const LATELY = [['marlow', 'yesterday'], ['pine', 'Friday'], ['hadley', 'Nov 6']]
+
+  const LEAD = '<p class="lead">Every painted map is on a job. Press the job and the map opens.</p>'
+  const head = (t = 'Which job is it for?') => `<div class="head"><h3>${t}</h3><span class="x">Cancel</span></div>`
+  const nearOld = (words) => `<div style="display:grid;gap:0.15rem"><span class="quiet">Find the jobs near me</span><span class="small">${words}</span></div>`
+  const searchOld = '<div class="lbl">Or search every job<span class="field ph">Search by number, name or address</span></div>'
+  const find = (desk, typed = '') => `<div class="find new"><span class="field ${typed ? 'on' : desk ? 'on ph' : 'ph'}">${typed ? `${typed}<i class="caret"></i>` : desk ? '<i class="caret" style="margin:0 2px 0 0"></i>Search every job by number, name or address' : 'Search every job'}</span><span class="nearBtn">◎ Near me</span></div>`
+  const sec = (t, isNew) => `<div class="secHead${isNew ? ' new' : ''}">${t}</div>`
+
+  const backdrop = (desk) => `<div class="chrome"><b>PipeTooling</b>${desk ? '<span class="nav"><span>Dashboard</span><span>Jobs</span><span>Bids</span><span>Schedule</span><span>People</span></span>' : ''}</div>
+    <div class="page"><div class="actionRow"><span class="sq">Tally</span><span class="clock">Clock In</span><span class="sq">Job<br>Report</span><span class="sq paint"><i class="swatch"></i>Paint a map</span></div><div class="ghost"></div><div class="ghost"></div><div class="ghost"></div></div>`
+
+  const frame = (desk, sheet, mid = false) => `<div class="${desk ? 'desk' : 'phone'}">${backdrop(desk)}<div class="scrim${mid ? ' mid' : ''}">${sheet}</div></div>`
+  const sheet = (inner, extra = '') => `<div class="sheet">${inner}${extra}</div>`
+
+  // ---- The windows.
+  const asIs = (desk) => sheet(head() + `<div class="body">${LEAD}<p class="empty">No job on your schedule today, and none you clocked onto lately. Search for the job.</p>${nearOld('Your phone will ask to share where you are. It is read once, for this list.')}${searchOld}</div>`)
+  const optA = (desk) => sheet(head() + `<div class="body">${LEAD}${sec('Your last jobs', true)}${rows(LAST, 'new')}${nearOld('Your phone will ask to share where you are. It is read once, for this list.')}${searchOld}</div>`)
+  const optB = (desk, who = 'office', typed = '') => {
+    let list
+    if (typed) list = sec('Every job') + rows([['cedar', ''], ['cedar14', '']])
+    else if (who === 'tech') list = sec('Today') + rows(TODAY) + sec('Your last jobs', true) + rows([...LATELY, ['bright', 'Oct 2'], ['finch', 'on the team']])
+    else if (who === 'new') list = '<p class="empty new">You have not been on a job yet. Search for the job, or press <b style="color:var(--text-link)">Near me</b>.</p>'
+    else list = sec('Your last jobs', true) + rows(LAST, 'new')
+    const note = typed ? '' : `<span class="small" style="margin-top:-0.35rem">Near me asks where you are once, for this list.</span>`
+    return sheet(head() + `<div class="body">${LEAD}${find(desk, typed)}${note}${list}</div>`, typed && !desk ? '<div class="kbd">the phone’s keyboard</div>' : '')
+  }
+  const optC = (desk) => sheet(head('Paint a map') + `<div class="body">
+      <div style="display:grid;gap:0.3rem"><span class="lbl">For</span>
+        <div class="forBox new"><i class="swatch"></i><span class="who"><b>${J.marlow[0]}</b><span>You were on it Nov 14</span></span><span class="quiet">Change the job</span></div></div>
+      <div style="display:grid;gap:0.4rem"><div class="lbl">What is it?<span class="field">The way in</span></div><div class="chips"><span class="chip on">The way in</span><span class="chip">Where to park</span><span class="chip">What is where</span></div></div>
+      <div class="lbl">A line for whoever opens it<span class="field ph">Start at the truck gate, not the sales entrance.</span></div>
+      <button class="blue">Draw it by hand</button><button class="plain">Start with a place</button></div>`)
+
+  const cell = (id, cap, small, html, wide) => `<div class="cell${wide ? ' wide' : ''}" id="${id}"><div class="cap">${cap}<small>${small}</small></div>${html}</div>`
+  const band = (id, title, words, cells, pick) => `<section data-band="${id}"><div class="band"><h2>${title}${pick ? '<span class="pick">my pick</span>' : ''}</h2><p>${words}</p></div><div class="board">${cells.join('')}</div></section>`
+
+  const BANDS = [
+    band('now', 'As it is', 'What the owner met. A grey sentence over a gap, then a link, then the search at the foot. At a desk it is still a phone’s sheet: it sits on the bottom edge with two round corners, and it says “Your phone will ask”.', [
+      cell('now-phone', 'A phone', 'Nothing to press but the link and the search.', frame(false, asIs(false))),
+      cell('now-desk', 'A desk', 'The sheet hangs off the bottom edge. The cursor is not in the search.', frame(true, asIs(true)), true),
+    ]),
+    band('a', 'A · The owner’s direction: a section of your last jobs', 'When Today and Lately are both empty, a third list takes the gap: Your last jobs. It holds the jobs the person clocked onto or was scheduled on, at any age, newest first, then jobs they are on the team of. Up to six. Nothing else in the window moves. A person with a job today sees what they see now.', [
+      cell('a-phone', 'A phone', 'Six jobs to press. A plain day is the last day they clocked onto it. A row that is not a clock says so.', frame(false, optA(false))),
+      cell('a-desk', 'A desk', 'The same list. The sheet still hangs off the bottom edge.', frame(true, optA(true)), true),
+    ]),
+    band('b', 'B · The list never runs short, and the window fits the screen', 'The same list as A, under one rule: Your last jobs always holds up to six. Recent clocks lead it, older days and the team fill it. So a tech with one clock this month gets six rows too, not one. The search moves to the top with Near me beside it. At a desk the window sits in the middle and the cursor is in the search.', [
+      cell('b-phone', 'A phone · the owner’s case', 'Search on top, no keyboard until it is pressed. Six jobs under it.', frame(false, optB(false))),
+      cell('b-phone-tech', 'A phone · a tech with jobs today', 'Today leads as it does now, with its times. Your last jobs replaces Lately and is topped up.', frame(false, optB(false, 'tech'))),
+      cell('b-phone-typed', 'A phone · typing', 'What is found is drawn under the box, above the keyboard.', frame(false, optB(false, 'office', 'cedar'))),
+      cell('b-phone-new', 'A phone · a new person', 'Nobody has put them on a job yet. The sentence names the two presses above it.', frame(false, optB(false, 'new'))),
+      cell('b-desk', 'A desk', 'A window in the middle. Type at once, or press a job.', frame(true, optB(true), true), true),
+    ], true),
+    band('c', 'C · Skip the question', 'No window at all. The press opens the start sheet on the last job the person was on, with Change the job beside it. This is what the press already does for a person with a job today.', [
+      cell('c-phone', 'A phone', 'One press fewer when the guess is right. A map on the wrong job when it is not noticed.', frame(false, optC(false))),
+      cell('c-desk', 'A desk', 'The guess here is a job from five days ago.', frame(true, optC(true), true), true),
+    ]),
+  ]
+  document.getElementById('out').innerHTML = BANDS.join('')
+
+  document.getElementById('pickWords').textContent = 'B is the owner’s direction with two things added. The list is one rule and not a section that comes and goes, so it also helps the tech with one clock this month. And the window stops being a phone’s sheet at a desk. A is the safe half of B and could ship first. C saves a press and risks a map on the wrong job, since a job from last week is a weak guess.'
+
+  // ?s=<cell id> shows one cell alone, ?theme=dark starts dark, ?plain=1 hides the marks.
+  const qs = new URLSearchParams(location.search)
+  const setTheme = (dark) => { document.body.dataset.theme = dark ? 'dark' : 'light'; const b = document.getElementById('tTheme'); b.setAttribute('aria-pressed', String(dark)); b.textContent = dark ? 'Light' : 'Dark' }
+  const setPlain = (on) => { document.body.classList.toggle('plain', on); document.getElementById('tPlain').setAttribute('aria-pressed', String(on)) }
+  document.getElementById('tTheme').onclick = () => setTheme(document.body.dataset.theme !== 'dark')
+  document.getElementById('tPlain').onclick = () => setPlain(!document.body.classList.contains('plain'))
+  setTheme(qs.get('theme') === 'dark')
+  setPlain(qs.get('plain') === '1')
+  const only = qs.get('s')
+  if (only) {
+    document.querySelectorAll('.cell').forEach((c) => { if (c.id !== only) c.remove() })
+    document.querySelectorAll('section').forEach((s) => { if (!s.querySelector('.cell')) s.remove() })
+    document.querySelector('.intro').remove(); document.getElementById('notes').remove()
+  }
+</script>
+</body>
+</html>

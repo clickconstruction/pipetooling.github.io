@@ -258,6 +258,54 @@ describe('PersonDeskAccessSection — a person with no login (punch list #260, v
     expect(invoke).toHaveBeenNthCalledWith(2, 'send-sign-in-email', { body: { email: 'rio@example.test', redirectTo: expect.stringContaining('/dashboard') } })
   })
 
+  it('Set a password now attaches with the password typed and sends no email (v2.7901)', async () => {
+    const { onChanged } = renderSection({ ...RIO, email: 'rio@example.test' }, DEV)
+    fireEvent.click(screen.getByRole('button', { name: 'Attach a login…' }))
+    expect(screen.queryByLabelText('Password')).toBeNull()
+    fireEvent.click(screen.getByLabelText('Set a password now'))
+    expect(screen.queryByRole('button', { name: 'Attach and send the sign-in email' })).toBeNull()
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pw-rio-123' } })
+    fireEvent.change(screen.getByLabelText('Type the password again'), { target: { value: 'pw-rio-124' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Attach with this password' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('The two passwords do not match.')
+    expect(invoke).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Type the password again'), { target: { value: 'pw-rio-123' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Attach with this password' }))
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalled())
+    expect(invoke).toHaveBeenCalledTimes(1)
+    expect(invoke).toHaveBeenCalledWith('create-user', { body: { user_id: 'u-rio', email: 'rio@example.test', password: 'pw-rio-123' } })
+  })
+
+  it('a press that passes the checks takes the last refusal down, even when the server then refuses (v2.7901)', async () => {
+    renderSection({ ...RIO, email: 'rio@example.test' }, DEV)
+    fireEvent.click(screen.getByRole('button', { name: 'Attach a login…' }))
+    fireEvent.click(screen.getByLabelText('Set a password now'))
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pw-rio-123' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Attach with this password' }))
+    expect(await screen.findByText('The two passwords do not match.')).toBeTruthy()
+    invoke.mockResolvedValueOnce({ data: { error: 'Rio Vance already has a login.' }, error: null } as never)
+    fireEvent.change(screen.getByLabelText('Type the password again'), { target: { value: 'pw-rio-123' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Attach with this password' }))
+    await vi.waitFor(() => expect(invoke).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText('The two passwords do not match.')).toBeNull()
+    // The form stays open with what was typed, so the office can read the refusal and press again.
+    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('pw-rio-123')
+  })
+
+  it('back on Email them a link, the press sends the email and carries no password (v2.7901)', async () => {
+    const { onChanged } = renderSection({ ...RIO, email: 'rio@example.test' }, DEV)
+    fireEvent.click(screen.getByRole('button', { name: 'Attach a login…' }))
+    fireEvent.click(screen.getByLabelText('Set a password now'))
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'pw-rio-123' } })
+    fireEvent.change(screen.getByLabelText('Type the password again'), { target: { value: 'pw-rio-123' } })
+    fireEvent.click(screen.getByLabelText('Email them a link'))
+    expect(screen.queryByLabelText('Password')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Attach and send the sign-in email' }))
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalled())
+    expect(invoke).toHaveBeenNthCalledWith(1, 'create-user', { body: { user_id: 'u-rio', email: 'rio@example.test' } })
+    expect(invoke).toHaveBeenNthCalledWith(2, 'send-sign-in-email', { body: { email: 'rio@example.test', redirectTo: expect.stringContaining('/dashboard') } })
+  })
+
   it('an archived account whose employment ended offers Bring back… in place of Restore (v2.6523)', () => {
     const gone = { ...KAI, archived_at: '2026-11-03T18:00:00Z' }
     const onBringBack = vi.fn()

@@ -9,6 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { passwordProblem } from './accountWrites'
 
 type FnClient = { functions: { invoke: (name: string, opts: { body: Record<string, unknown> }) => Promise<{ data: unknown; error: unknown }> } }
 
@@ -29,6 +30,37 @@ export function attachEmailProblem(email: string): string | null {
   if (!e) return 'An email is required to attach a login.'
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return 'That email does not look right.'
   return null
+}
+
+/**
+ * How the Attach form makes the login (v2.7901): `email` sends the sign-in email with its link, `password` sets one the
+ * office types now and hands over, and no email goes. The Hire form's own two choices, on a person who already exists.
+ */
+export type AttachSignInBy = 'email' | 'password'
+
+export type AttachFormInput = { email: string; signInBy: AttachSignInBy; password: string; again: string }
+
+/** What stops the Attach press, in the form's own words: the address first, then the password when one is being set. Null when it may go. */
+export function attachFormProblem(input: AttachFormInput): string | null {
+  const email = attachEmailProblem(input.email)
+  if (email) return email
+  return input.signInBy === 'password' ? passwordProblem(input.password, input.again) : null
+}
+
+/** The press says what it will do: send the email, or attach with the password typed. */
+export function attachPressLabel(signInBy: AttachSignInBy): string {
+  return signInBy === 'password' ? 'Attach with this password' : 'Attach and send the sign-in email'
+}
+
+/** The line under the form, before a press. */
+export function attachHintWords(signInBy: AttachSignInBy): string {
+  const stays = 'The login lands on this same person: their hours, Charged as and pay stay where they are.'
+  return signInBy === 'password' ? `${stays} No email goes out. Give them the password in person or by phone.` : `${stays} They choose a password from the email.`
+}
+
+/** The toast after the login lands. */
+export function attachDoneWords(signInBy: AttachSignInBy, email: string, name: string): string {
+  return signInBy === 'password' ? `Login attached. No email went. Give ${name} the password in person or by phone.` : `Login attached. Sign-in email sent to ${email}.`
 }
 
 async function fnErrorMessage(e: unknown, fallback: string): Promise<string> {

@@ -80,6 +80,7 @@ export const IMPORTERS = [
   'stripe-webhook',
   'team-scores',
   'walk',
+  'watch-notify-dispatch',
   'your-week-email',
 ]
 

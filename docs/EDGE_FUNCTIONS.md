@@ -228,6 +228,7 @@ when_to_read:
    - [weekly-money-email-dispatch](#weekly-money-email-dispatch)
    - [payment-forecast-email-dispatch](#payment-forecast-email-dispatch)
    - [money-waiting-email-dispatch](#money-waiting-email-dispatch)
+   - [watch-notify-dispatch](#watch-notify-dispatch)
    - [crew-day-email-dispatch](#crew-day-email-dispatch)
    - [statement-round-email-dispatch](#statement-round-email-dispatch)
    - [gc-word-ask](#gc-word-ask)
@@ -1402,11 +1403,11 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Purpose**: "Set up on this Mac" (v2.3277, Price Matrix PR 6 — `docs/PRICE_MATRIX_PLAN.md`). Collapses the three-step Claude Desktop connector setup (issue a key, paste it into Terminal, quit/reopen Desktop) into one click and one paste, with the robot key never shown to a person. Two actions in one JSON body:
 
 - `{ action: 'mint', twin_user_id? | kind?: 'estimator' | 'pricer', label? }` — **staff session** (`Authorization: Bearer <jwt>`; roles dev · master_technician · assistant · controller · estimator). Devs may mint for any twin; the other roles only for a **pricer** (`users.twin_kind = 'pricer'`) — key issuance for the bid robots stays dev-only. Mints a one-time **setup code** (`K7Q2-M9XD-4T`: ten symbols from a 30-letter Crockford-ish alphabet ≈ 49 bits, rejection-sampled) into `twin_setup_codes` (sha256 of the normalized code; `expires_at` = now + 10 min). Rate limit: 10 codes per minter per 10 minutes (429). Returns `{ code, expires_at, twin_email, twin_kind, label, setup_url, connector_url }`; the client wraps it in the Terminal command (`buildDesktopSetupCommandFromCode` in `src/lib/bids/desktopKickoff.ts`).
-- `{ action: 'redeem', code, machine? }` — **no session; the code is the auth** (a Terminal command on a fresh Mac calls it). Normalizes the code (dashes dropped, upper-cased, O→0, I/L→1), claims the row with a conditional `UPDATE … WHERE code_hash = ? AND redeemed_at IS NULL AND expires_at > now()` (two Macs racing get exactly one winner), re-checks the twin is still eligible, mints a `twin_credentials` token server-side (`ptt_` + 64 hex since v2.3648, `formatTwinMcpKey` in `_shared/mcpKeyPrefixes.ts` — the shape the Digital twins card mints; label = the code's label, `created_by` = the minter), stamps `credential_id` on the code, logs a `twin_runs` row (`mission = 'setup'`), and returns `{ token, twin_email, twin_kind, label, connector_url, kickoff, kickoff_for, check_call }` — the kickoff is the twin's kickoff doc with the connector URL filled in (from the generated `_shared/twinKickoffs.ts`), so the command can put it on the clipboard: the bid robot's Claude Code kickoff (`kickoff_for: 'code'`, v2.4231) or the pricer's chat kickoff (`'chat'`), and the command tells the person where to paste it from that field. A miss (unknown, used, expired, malformed) waits 400 ms and returns 404 with one generic sentence.
+- `{ action: 'redeem', code, machine? }` — **no session; the code is the auth** (a Terminal command on a fresh Mac calls it). Normalizes the code (dashes dropped, upper-cased, O→0, I/L→1), claims the row with a conditional `UPDATE … WHERE code_hash = ? AND redeemed_at IS NULL AND expires_at > now()` (two Macs racing get exactly one winner), re-checks the twin is still eligible, mints a `twin_credentials` token server-side (`ptt_` + 64 hex since v2.3648, `formatTwinMcpKey` in `_shared/mcpKeyPrefixes.ts` — the shape the Digital twins card mints; label = the code's label, `created_by` = the minter), stamps `credential_id` on the code, logs a `twin_runs` row (`mission = 'setup'`), and returns `{ token, twin_email, twin_kind, label, connector_url, kickoff, kickoff_for, check_call }` — the kickoff is the twin's kickoff doc with the connector URL filled in and, since v2.7903, the twin's own seat named in place of the first seat the doc is written for (`fillTwinKickoff` in `_shared/twinKickoffFill.ts`, over the generated `_shared/twinKickoffs.ts`), so the command can put it on the clipboard: the bid robot's Claude Code kickoff (`kickoff_for: 'code'`, v2.4231) or the pricer's chat kickoff (`'chat'`), and the command tells the person where to paste it from that field. A miss (unknown, used, expired, malformed) waits 400 ms and returns 404 with one generic sentence.
 
 **Endpoint**: `POST /functions/v1/twin-setup` · **Auth**: in-function (mint: staff JWT via `auth.getUser`; redeem: the code). `verify_jwt = false` in `config.toml` — preserve on redeploys. **Env**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `TWIN_MCP_PUBLIC_URL` (set to `https://mcp.clicktooling.com/twin` since v2.3634) when the connector is reached at another address — a bare origin gets `/functions/v1/twin-mcp` appended, an address with a path (`https://mcp.clicktooling.com/twin`) is taken verbatim (`_shared/twinConnectorUrl.ts`, shared with the client's copy buttons; v2.3633).
 
-**Generated input**: `supabase/functions/_shared/twinKickoffs.ts` is written by `node scripts/build-twin-mcp-briefs.mjs` from `docs/twins/kickoffs/{code,desktop,pricing,rounds}-operator.md` — regenerate + redeploy `twin-setup` after editing those docs (the same run regenerates twin-mcp's `briefs.ts`).
+**Generated input**: `supabase/functions/_shared/twinKickoffs.ts` is written by `node scripts/build-twin-mcp-briefs.mjs` from `docs/twins/kickoffs/{code,desktop,pricing,rounds}-operator.md` — regenerate + redeploy `twin-setup` after editing those docs (the same run regenerates twin-mcp's `briefs.ts`). Each doc names its kind's first seat once in bold (`**twin-estimator-1**`, `**twin-pricer-1**`): that is the name `redeem` swaps, and `src/lib/bids/twinKickoffFill.test.ts` fails when a doc loses it.
 
 **Rounds and the connector name (v1.2.0 / v2.5735, Robot rounds PR 5, punch list #142)**: `redeem` takes `rounds: true` (the setup command sends it when the dialog's *This Mac makes the rounds* tick is on) and, for an estimator key, hands back `ROUNDS_KICKOFF` with `kickoff_for: 'rounds'` — the round text (since v2.5752 the whole document is what the Robot rounds agent, a LaunchAgent the command installs, hands to `claude -p` every five minutes from `~/Library/Application Support/ClickTooling/round.md`; the command no longer puts it on the clipboard, and the function is unchanged but for the regenerated `twinKickoffs.ts`); the response also carries `connector_name` (`twin-mcp` for the bid robot, `twin-pricer-mcp` for the pricer), which the command uses as the config key so one Mac can hold both seats, and `check_call` names it.
 
@@ -7148,6 +7149,24 @@ A few legacy functions carry a `DEPLOY.md` (some also a `DEPLOY_NOW.md`) with fu
 - [`test-email/DEPLOY.md`](../supabase/functions/test-email/DEPLOY.md)
 
 ---
+
+### watch-notify-dispatch
+
+**Purpose** (v2.7842): tell the people on a watch's list what the watched person did with the material on site. A watch is a dev's mark on one person (`person_watches`); its `tell_user_ids` is the list.
+
+**Called by**: the cron job `watch-notify-dispatch`, every five minutes, with `X-Cron-Secret`. No signed-in caller reaches it: a call without the secret answers 401. `verify_jwt = false` in `config.toml`, as every cron function has.
+
+**What it does**: for each live watch with someone on its list, reads with the service role what the watched person did since the watch began, three days back at most: their ledger rows (`job_material_movements`), the boxes they moved (`job_container_moves`), retired, brought back or edited (`job_container_changes`) or renamed (`job_container_names`), and the part ties and site prices they took off (`on_site_removed_answers`). [`_shared/watchNotice.ts`](../supabase/functions/_shared/watchNotice.ts) decides what to send and writes the words: the first act of the day, each act outside the process (more than two in one run go as one push), and the day's count after 6 p.m. company time. The app's door to the same kernel is `src/lib/people/watchNotice.ts`, where its tests run.
+
+**Once only**: a notice's key (`started:<day>`, `evening:<day>`, `outside:<act id>`) is inserted into `person_watch_notices` before its push goes, and `(watch_id, key)` is unique. A key already there is skipped. A push that fails after its key landed is logged and not sent again.
+
+**The push** goes through each person's Push me hours ([`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts)), template type `watch_notice`, and opens the site's materials screen (`/materials?tab=on-site&site=<development>`, or `/materials?tab=on-site` for a job with no site). Nothing reaches the watched person.
+
+**Answers**: `{ watches, sent, skipped }`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
+
+**Deploy**: `supabase functions deploy watch-notify-dispatch`, before the migration `20261118200000_person_watch_notices.sql` is pushed.
 
 ## Related Documentation
 

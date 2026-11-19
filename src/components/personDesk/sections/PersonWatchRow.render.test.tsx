@@ -33,13 +33,13 @@ describe('PersonWatchRow', () => {
     await waitFor(() => expect(calls.set).toHaveBeenCalledWith('u-sam', ' back on site alone ', ['u-dana']))
     expect(await screen.findByText(/Watched since/)).toBeTruthy()
     expect(screen.getByTestId('person-watch').textContent).toContain('set by Dana K.')
-    expect(screen.getByTestId('person-watch').textContent).toContain('you are on its list')
+    expect(screen.getByTestId('person-watch').textContent).toContain('tells you')
   })
 
   it('leaves the viewer off the list when the box is cleared', async () => {
     const calls = io()
     renderWithProviders(<PersonWatchRow userId="u-sam" name="Sam" viewerUserId="u-dana" io={calls} />)
-    fireEvent.click(await screen.findByLabelText('Put me on the list to be told'))
+    fireEvent.click(await screen.findByLabelText('Tell me when they press'))
     fireEvent.click(screen.getByRole('button', { name: 'Turn on the watch' }))
     await waitFor(() => expect(calls.set).toHaveBeenCalledWith('u-sam', '', []))
   })
