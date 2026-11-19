@@ -2,8 +2,11 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   CALIBRATION_PERSON_SELECT,
+  CALIBRATION_RUNS_QUERY,
+  CALIBRATION_RUNS_SOURCE,
   CALIBRATION_RUN_SELECT,
   calibrationRunCounts,
+  calibrationRunsOf,
   calibrationStandardAppliedWords,
   calibrationStandardDryRun,
   calibrationStandardInput,
@@ -17,6 +20,7 @@ import {
 import { TEACHER_ROLES, canBeCalibrationStandard, teacherCandidates } from '../../../supabase/functions/_shared/twinTeachers'
 import { WRITE_VERBS, alreadyApplied, planHash, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 import { CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
+import { SHADOW_RUNS_COLUMNS } from '../../../supabase/functions/_shared/devMcpShadowRuns'
 import * as clientTeachers from '../twinTeachers'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
@@ -30,7 +34,8 @@ const A = 'aaaaaaaa-1111-4111-8111-111111111111'
 const B = 'bbbbbbbb-2222-4222-8222-222222222222'
 const person = (over: Partial<CalibrationPersonRow> = {}): CalibrationPersonRow => ({ id: A, name: 'Ada Example', email: 'ada@example.com', role: 'estimator', is_digital_twin: false, archived_at: null, calibration_standard: false, ...over })
 const other = (over: Partial<CalibrationPersonRow> = {}): CalibrationPersonRow => person({ id: B, name: 'Bo Example', email: 'bo@example.com', calibration_standard: true, ...over })
-const run = (axis: string | null, assisted = false): CalibrationRunRow => ({ axis, assisted_at: assisted ? '2026-11-01T00:00:00Z' : null })
+// A run names its teacher, as the staff RPC answers it; the person's runs are the ones that carry their name.
+const run = (axis: string | null, assisted = false, teacher: string | null = 'Ada Example'): CalibrationRunRow => ({ axis, assisted_at: assisted ? '2026-11-01T00:00:00Z' : null, teacher_name: teacher })
 const RUNS = [run('small TI'), run('small TI'), run('institutional'), run(null), run('small TI', true)]
 const world = (over: Partial<CalibrationWorld> = {}): CalibrationWorld => ({ person: person(), standards: [], runs: [], ...over })
 const plan = (standard: boolean, w: Partial<CalibrationWorld> = {}) => {
@@ -77,7 +82,10 @@ describe('the calibration standard from the dev seat (v2.7934)', () => {
     // A flag already set never hides, so it can always be lifted.
     expect(teacherCandidates([person({ archived_at: '2026-01-01T00:00:00Z', calibration_standard: true })])).toHaveLength(1)
     for (const c of CALIBRATION_PERSON_SELECT.split(',')) expect(Object.keys(CATALOG_TABLES.users?.columns ?? {}), c).toContain(c)
-    for (const c of [...CALIBRATION_RUN_SELECT.split(','), 'status', 'teacher_user_id']) expect(Object.keys(CATALOG_TABLES.twin_shadow_runs?.columns ?? {}), c).toContain(c)
+    // The runs come through the staff RPC, and every column the plan asks of it is one it answers.
+    expect(CALIBRATION_RUNS_SOURCE).toBe('rpc/list_shadow_runs')
+    expect(CALIBRATION_RUNS_QUERY).toBe('select=axis,assisted_at,teacher_name&status=eq.scored&limit=1000')
+    for (const c of [...CALIBRATION_RUN_SELECT.split(','), 'status']) expect(SHADOW_RUNS_COLUMNS as readonly string[], c).toContain(c) // devMcpShadowRuns.test.ts holds those to the RPC's answer
   })
 
   it('counts a person’s scored runs as the gate reads them: assisted runs apart, the rest by axis', () => {
@@ -85,6 +93,18 @@ describe('the calibration standard from the dev seat (v2.7934)', () => {
     expect(calibrationRunCounts([])).toEqual({ scored: 0, counted: 0, assisted: 0, by_axis: {} })
     // twin-mcp's gate math: a standard teacher's run counts unless the estimator took robot fixtures on it.
     expect(TWIN_SEAT).toContain('const isStandard = !!r.teacher_user_id && standardIds.has(r.teacher_user_id as string) && !r.assisted_at')
+  })
+
+  it('takes a person’s runs by the teacher’s name on the run, and never reads no name as no runs', () => {
+    const all = [...RUNS, run('small TI', false, 'Bo Example'), run('bank-branch', false, ' ada EXAMPLE '), run('vet-clinic', false, null)]
+    expect(calibrationRunsOf(person(), all)).toHaveLength(6)
+    expect(calibrationRunsOf(other(), all)).toEqual([run('small TI', false, 'Bo Example')])
+    expect(calibrationRunsOf(person({ name: null }), all)).toBeNull()
+    // Another teacher's runs do not move with this person.
+    expect(plan(true, { runs: [run('small TI', false, 'Bo Example')] }).scored_shadow_runs).toMatchObject({ scored: 0, counted: 0 })
+    const nameless = plan(true, { person: person({ name: null }), runs: RUNS })
+    expect(nameless.scored_shadow_runs).toBeNull()
+    expect(nameless.then).toContain('could not be matched, since they have no name on their account, so how many move is not known')
   })
 
   it('plans the first standard: who stands after, and the scored runs that start to count', () => {
@@ -95,7 +115,7 @@ describe('the calibration standard from the dev seat (v2.7934)', () => {
       to: 'a calibration standard',
       standards_before: [],
       standards_after: [{ id: A, name: 'Ada Example' }],
-      scored_shadow_runs: { scored: 5, counted: 4, assisted: 1, at_least: false },
+      scored_shadow_runs: { scored: 5, counted: 4, assisted: 1, at_least: false, matched_by: "the teacher's name on the run" },
       warnings: [],
     })
     expect(reply.then).toContain('apply sets calibration_standard true on their users row as you, as the ★ Calibration standard card at Settings → System → Digital twins does.')
@@ -172,13 +192,13 @@ describe('the calibration standard from the dev seat (v2.7934)', () => {
     const branch = SERVER.slice(from, SERVER.indexOf("case 'plan_robot_book_price':", from))
     expect(branch).toContain("if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)")
     expect(branch).toContain("await restGet(session, 'users', `select=${CALIBRATION_PERSON_SELECT}&id=eq.${p.person}&limit=1`)")
-    expect(branch).toContain("await restGet(session, 'twin_shadow_runs', `select=${CALIBRATION_RUN_SELECT}&status=eq.scored&teacher_user_id=eq.${p.person}&limit=${CALIBRATION_RUNS_LIMIT}`)")
+    expect(branch).toContain('const runsRead = await restGet(session, CALIBRATION_RUNS_SOURCE, CALIBRATION_RUNS_QUERY)')
     expect(branch).toContain("await restRows(session, 'PATCH', 'users', `${calibrationStandardPatchQuery(dry.person, p.standard)}&select=id`, calibrationStandardPatch(p.standard), 'return=representation')")
     expect(branch.match(/restRows\(/g)).toHaveLength(1) // one write, and it is the flag
-    expect(branch).not.toContain("'twin_shadow_runs', `id=eq.") // no score is rewritten
+    expect(branch).not.toContain('twin_shadow_runs') // no score is rewritten, and the table is never read: it answers a signed-in person no rows
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
     expect(branch).toContain('const prior = await hooks.priorApply(name, fresh)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.111.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.112.0'")
     expect(SERVER).toContain('Writes are one hundred and thirty-seven verbs and nothing else')
     expect(SERVER).toContain('plan_calibration_standard → apply_calibration_standard (a person made a calibration standard')
     expect(README).toContain('| `plan_calibration_standard(calibration)` · `apply_calibration_standard(calibration, plan_hash)` |')

@@ -215,7 +215,7 @@ describe('a twin\'s keys from the dev seat (v2.7900)', () => {
     expect(SERVER.match(/rest(Rows|Post)\(session, '(PATCH|POST|DELETE)', 'twin_credentials'/g)).toHaveLength(1) // one write of the table, and it is this one
     expect(branch).not.toContain('token_hash')
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.111.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.112.0'")
     expect(SERVER).toContain('Writes are one hundred and thirty-seven verbs and nothing else')
     expect(SERVER).toContain('plan_twin_key_revoke → apply_twin_key_revoke (a twin')
     expect(README).toContain('| `read_twin_keys(twin?)` · `plan_twin_key_revoke(revoke)` · `apply_twin_key_revoke(revoke, plan_hash)` |')
