@@ -106,6 +106,16 @@ describe('buildBilledByCustomerBreakdown', () => {
     expect(byId.get('i2')!.externalSendChannel).toBe('housecallpro')
     expect(byId.get('i2')!.billToEmail).toBeNull()
     expect(byId.get('i3')!.externalSendChannel).toBeNull()
+    // Who each bill went to (v2.7959): the typed recipient, else the job's rule.
+    expect(byId.get('i1')!.billedTo).toBe('other')
+    expect(byId.get('i2')!.billedTo).toBe('customer')
+  })
+
+  it('a bill on a GC-billed job says it went to the GC, so Email again targets the GC (v2.7959)', () => {
+    const j = job({ customer_email: 'pat@example.com', gc_customer_id: 'gc-1', bill_to_party: 'gc' } as Partial<JobWithDetails>)
+    const [bill] = buildBilledByCustomerBreakdown([invRow(j, { id: 'i1', amount: 1000, external_send_channel: 'physical' })], NOW)[0]!.bills
+    expect(bill!.billedTo).toBe('gc')
+    expect(bill!.customerEmail).toBe('pat@example.com')
   })
 
   it('bill amounts net payments applied to that invoice; a fully-applied row stays as a $0 settled bill that never ages', () => {
