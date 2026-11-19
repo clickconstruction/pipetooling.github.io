@@ -35,7 +35,7 @@ The question comes after your clock in has gone through. You are clocked in what
 2. Press the **Join** press when a crewmate already started the trip. The press names the crewmate and the day they left.
 3. Press **Just clock in** when this is not a trip.
 
-The phone asks on a site 150 miles or more from the shop. The phone also asks on a site that has had a trip before.
+The phone asks on a site far from the shop. Far is 150 miles or more unless the office has set another distance. The phone also asks on a site that has had a trip before.
 
 **Just clock in** is remembered on your phone for that job until tomorrow. Closing the question counts as **Just clock in**.
 

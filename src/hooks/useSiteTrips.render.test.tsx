@@ -17,7 +17,20 @@ vi.mock('../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
-afterEach(cleanup)
+/** The site's point, stood in for: none unless a case sets one, as before this file asked for any. */
+const geo: { point: { lat: number; lng: number } | null } = { point: null }
+vi.mock('./useAddressGeocodeCoords', () => ({
+  useAddressGeocodeCoords: (addresses: Array<{ key: string }>, enabled: boolean) => {
+    const coords = new Map<string, { lat: number; lng: number }>()
+    if (enabled && geo.point && addresses[0]) coords.set(addresses[0].key, geo.point)
+    return { coords, resolving: false }
+  },
+}))
+
+afterEach(() => {
+  cleanup()
+  geo.point = null
+})
 
 const lifts: TripRecord = { ...newTripRecord({ id: 't5', developmentId: 'd1' }), people: [{ personId: 'p-luis', userId: 'u-luis', name: 'Luis', days: { '2026-10-31': 'site' } }] }
 const punch = (user_id: string, work_date: string): PunchRow => ({ user_id, work_date, clock_in_lat: null, clock_in_lng: null, clock_in_location_source: null, arrived_lat: null, arrived_lng: null, arrived_location_source: null, clock_out_lat: null, clock_out_lng: null, clock_out_location_source: null, travel_started_at: null, arrived_at: null })
@@ -216,3 +229,53 @@ describe('useSiteTrips: the site’s deleted trips', () => {
     expect(result.current.records?.map((r) => r.id)).toContain('t5')
   })
 })
+
+describe('useSiteTrips: how far is far (v2.7888, the one setting)', () => {
+  // The shop and a site about 104 miles off, both made up: far at 90 miles, near at the default 150.
+  const SHOP = { lat: 30, lng: -97 }
+  const SITE = { lat: 31.5, lng: -97 }
+  const noTrips = (over: Partial<SiteTripsIo> = {}) => makeIo({ readTrips: vi.fn(async () => []), readDeleted: vi.fn(async () => []), readShop: vi.fn(async () => SHOP), ...over })
+  const drawAt = (io: SiteTripsIo) => renderHook(() => useSiteTrips({ developmentId: 'd1', jobIds: JOBS, address: '1 Heron Point Rd', enabled: true, io }))
+
+  it('a site with no trip shows its look once it is as far as the setting says', async () => {
+    geo.point = SITE
+    const io = noTrips({ readFarMiles: vi.fn(async () => 90) })
+    const { result } = drawAt(io)
+    await waitFor(() => expect(result.current.shows).toBe(true))
+    expect(io.readFarMiles).toHaveBeenCalledTimes(1)
+    expect(Math.round(result.current.miles ?? 0)).toBe(104)
+  })
+
+  it('the same site shows no look at the default, when no setting is read or the read fails', async () => {
+    geo.point = SITE
+    const plain = noTrips()
+    const a = drawAt(plain)
+    await waitFor(() => expect(Math.round(a.result.current.miles ?? 0)).toBe(104))
+    expect(a.result.current.shows).toBe(false)
+    a.unmount()
+
+    const failing = noTrips({
+      readFarMiles: vi.fn(async () => {
+        throw new Error('no signal')
+      }),
+    })
+    const b = drawAt(failing)
+    await waitFor(() => expect(Math.round(b.result.current.miles ?? 0)).toBe(104))
+    expect(b.result.current.shows).toBe(false)
+  })
+
+  it('the miles stay unknown until the setting is in, so the default never calls a site far first', async () => {
+    geo.point = { lat: 32.5, lng: -97 } // about 173 miles: far at the default, near at 300
+    let settle: (miles: number) => void = () => undefined
+    const io = noTrips({ readFarMiles: vi.fn(() => new Promise<number>((res) => (settle = res))) })
+    const { result } = drawAt(io)
+    await waitFor(() => expect(result.current.records).toEqual([]))
+    await act(async () => undefined)
+    expect(result.current.miles).toBeNull()
+    expect(result.current.shows).toBe(false)
+    await act(async () => settle(300))
+    await waitFor(() => expect(Math.round(result.current.miles ?? 0)).toBe(173))
+    expect(result.current.shows).toBe(false)
+  })
+})
+

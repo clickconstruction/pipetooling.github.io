@@ -11,11 +11,11 @@ import {
 } from './jobsBillingGroups'
 
 describe('jobsBillingGroups (punch list #261)', () => {
-  it('holds 27 cards under six headings, every slug and anchor once', () => {
+  it('holds 28 cards under six headings, every slug and anchor once', () => {
     expect(JOBS_BILLING_GROUPS.map((g) => g.id)).toEqual(['money', 'record', 'bill', 'liens', 'notices', 'repairs'])
-    expect(JOBS_BILLING_CARDS).toHaveLength(27)
-    expect(new Set(JOBS_BILLING_CARDS.map((c) => c.slug)).size).toBe(27)
-    expect(new Set(JOBS_BILLING_CARDS.map((c) => c.anchor)).size).toBe(27)
+    expect(JOBS_BILLING_CARDS).toHaveLength(28)
+    expect(new Set(JOBS_BILLING_CARDS.map((c) => c.slug)).size).toBe(28)
+    expect(new Set(JOBS_BILLING_CARDS.map((c) => c.anchor)).size).toBe(28)
     for (const c of JOBS_BILLING_CARDS) {
       expect(c.anchor.startsWith('settings-')).toBe(true)
       expect(c.title.trim()).toBe(c.title)
@@ -36,7 +36,7 @@ describe('jobsBillingGroups (punch list #261)', () => {
   })
 
   it('a dev sees every heading; the owner his prices, switches and firms; the office its filing; the controller the bill’s words and lists (punch list #188, v2.6756); a tech nothing', () => {
-    expect(jobsBillingGroupsFor('dev').map((g) => g.cards.length)).toEqual([8, 7, 4, 4, 2, 2])
+    expect(jobsBillingGroupsFor('dev').map((g) => g.cards.length)).toEqual([8, 8, 4, 4, 2, 2])
     const master = jobsBillingGroupsFor('master_technician')
     expect(master.map((g) => g.id)).toEqual(['money', 'record', 'liens', 'notices', 'repairs'])
     expect(master.flatMap((g) => g.cards.map((c) => c.slug))).toEqual(['trip-charges', 'labor-rate', 'job-book', 'gc-card', 'gc-cutoff', 'line-budgets', 'stage-checklists', 'machine-templates', 'photos', 'test-reports', 'developments', 'city-lines', 'county-suggestions', 'owner-of-record', 'legal-firm', 'gc-office-notices', 'gc-customer-notice', 'hide-hcp'])
@@ -57,7 +57,7 @@ describe('jobsBillingGroups (punch list #261)', () => {
 
   it('maps every card and heading anchor to the tab for the deep links', () => {
     const map = jobsBillingAnchorToTab()
-    expect(Object.keys(map)).toHaveLength(27 + 6)
+    expect(Object.keys(map)).toHaveLength(28 + 6)
     expect(map['settings-jobs-rates']).toBe('settings-jobs')
     expect(map['settings-legal-firm']).toBe('settings-jobs')
     expect(map['settings-jobs-group-money']).toBe('settings-jobs')

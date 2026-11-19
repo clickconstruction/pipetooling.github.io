@@ -15,6 +15,8 @@ import type { TripPhoneAct } from './tripPhone'
 import { TRIP_DISMISSAL_SELECT, type TripDismissalInsert, type TripDismissalRow } from './tripOffers'
 import { tripFromRow, tripNumberOf, tripSavePayload, TRIP_SELECT, type TripRecord, type TripRosterPerson, type TripRow } from './tripRecord'
 import { parseDeletedTrips, type DeletedTrip } from './tripDeleted'
+import { TRIP_FAR_MILES_KEY, tripFarMilesOf } from './tripFarMiles'
+import { TRIP_FAR_MILES_DEFAULT } from './tripPlace'
 
 // The tables are younger than the generated types; the next types PR removes this cast.
 const db = supabase as unknown as SupabaseClient
@@ -156,4 +158,21 @@ export async function sendTripPhoneAct(act: TripPhoneAct): Promise<void> {
   const refusal = error as { code?: string; message?: string }
   if (TRIP_PHONE_REFUSALS.has(refusal.code ?? '') && refusal.message?.trim()) throw new Error(refusal.message.trim())
   throw error
+}
+
+/**
+ * How far a site is from the shop before it is a trip from home (v2.7888): the one setting, `app_settings`
+ * `trips_far_miles_v1`. Every signed-in user reads it. No row, a number out of range or a read that fails
+ * answers the default, so the look and the phone behave as they did before the setting.
+ */
+export async function readTripFarMiles(): Promise<number> {
+  const { data, error } = await db.from('app_settings').select('value_num').eq('key', TRIP_FAR_MILES_KEY).maybeSingle()
+  if (error) return TRIP_FAR_MILES_DEFAULT
+  return tripFarMilesOf((data as { value_num?: unknown } | null)?.value_num ?? null)
+}
+
+/** Sets the distance. A dev's write, by the table's own policy; anyone else is refused in the database's words. */
+export async function saveTripFarMiles(miles: number): Promise<void> {
+  const { error } = await db.from('app_settings').upsert({ key: TRIP_FAR_MILES_KEY, value_num: miles }, { onConflict: 'key' })
+  if (error) throw error
 }
