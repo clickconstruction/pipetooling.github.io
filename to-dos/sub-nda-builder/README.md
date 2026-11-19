@@ -477,7 +477,7 @@ Sizes for this card's own steps are the train's above.
 | 5 | Send a paper and open the Contract library from Documents | S to M | Wider call 5 |
 | 6 | Step 1 here, the Book takes settings | M | Nothing |
 | 7 | Step 2 here, the summary and the sample | S | Nothing |
-| 8 | An outside party as a record, with the *Signing for* line of step 3 | M | Wider call 3 |
+| 8 | An outside party as a record, with the *Signing for* line of step 3 | Card #403's train | Wider call 3, on card #403 |
 | 9 | The signer's copy by email, and a PDF of a plain paper | S to M | Nothing |
 | 10 | Reminders by email for staff, sub and outside papers | S | Nothing |
 | 11 | Steps 3 to 7 here | M · M · M · M · S | The look for step 4. Counsel before a real job. |
@@ -491,7 +491,8 @@ Sizes for this card's own steps are the train's above.
 2. **Counsel.** Who reads the wording, and whether a fixed secrecy paper goes first so the gate is used
    before the builder exists.
 3. **Where an outside signer lives.** A vendor, a sub's business or a GC's contact has no record that
-   holds a paper today.
+   holds a paper today. Card #403 lays out the options, a pick and a mock-up
+   (`to-dos/outside-signer-record/README.md`), and the call is made there.
 4. **Whether the company signs in the app.** A mutual paper needs the company's signature. Today it signs
    nowhere, save the office's half of a two-party form.
 5. **Documents or both.** Whether sending moves to Documents, or People and Documents both keep a door.

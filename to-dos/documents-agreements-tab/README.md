@@ -272,6 +272,8 @@ Smaller things the tab still leaves to People, each S, none asked for yet:
   lien waiver, a sub's statement of account (#350).
 - **A machine rental's agreement number** and **in-kind arrangements**.
 - **Any change to row security**, and any new viewer or new table.
+- **A paper to an outside company.** **Send a paper** offers the roster. Where a supply house's, a
+  customer's or a sub's business's record lives is card #403, `to-dos/outside-signer-record/README.md`.
 - **The Jobs tab.** Its contract lines, its 200-job read and its search stay as they are.
 - **The follow-up, as its own card (call 7):** a signed job contract was not saved to Google Drive or the
   file index, so Find a file could not find it. Card #377 built that.
