@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_SERVE_FORM_WORDS, LIEN_SERVE_STAGE_WORDS, lienServeFormHead, lienServeLandingSelector, lienServeStage, lienServeStageCounts, lienServeStageDoor, lienServeStageDoorWords } from './lienServeStage'
+import { LIEN_SERVE_FORM_WORDS, LIEN_SERVE_STAGE_WORDS, lienServeFormHead, lienServeLandingFocus, lienServeLandingSelector, lienServeStage, lienServeStageCounts, lienServeStageDoor, lienServeStageDoorWords } from './lienServeStage'
 
 const filing = (id: string, sends: unknown[] = []) => ({ id, sends })
 
@@ -58,5 +58,8 @@ describe('where a filed lien’s copies stand', () => {
     expect(lienServeLandingSelector({ part: 'numbers' })).toBe('[data-lien-serve-numbers-part] > h3')
     expect(lienServeLandingSelector({ part: 'numbers', jobId: 'j1', recipient: 'original_contractor' })).toBe('[data-lien-serve-job="j1"] [data-lien-serve-envelope="original_contractor"]')
     expect(lienServeLandingSelector({ part: 'numbers', jobId: 'j1' })).toBe('[data-lien-serve-job="j1"] [data-lien-serve-envelope="owner"]')
+    // The mailed day lands on the lien's whole row, the cursor on its Mailed box (v2.7883).
+    expect(lienServeLandingSelector({ part: 'numbers', jobId: 'j1', tick: true })).toBe('[data-lien-serve-job="j1"]')
+    expect([lienServeLandingFocus({ part: 'numbers', jobId: 'j1', tick: true }), lienServeLandingFocus({ part: 'numbers', jobId: 'j1', cursor: true }), lienServeLandingFocus({ part: 'numbers' }), lienServeLandingFocus({ part: 'print' })]).toEqual(['input[type="checkbox"]', 'input[type="text"]', null, null])
   })
 })

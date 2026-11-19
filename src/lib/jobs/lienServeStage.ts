@@ -100,13 +100,21 @@ export function lienServeStageCounts(plan: { ready: ReadonlyArray<{ job: { filin
 }
 
 /**
- * Where a door lands in *Filed liens: copies to mail*: the print half, the numbers half, or one copy's line in it.
- * The selectors live here so the window's markup and the landing cannot drift.
+ * Where a door lands in *Filed liens: copies to mail*: the print half, the numbers half, one lien's row in it (its
+ * *Mailed* box under the cursor), or one copy's line. The selectors live here so the window's markup and the landing
+ * cannot drift.
  */
-export type LienServeLanding = { part: 'print' } | { part: 'numbers'; jobId?: string; recipient?: 'owner' | 'original_contractor'; /** Put the cursor in the copy's number box. */ cursor?: boolean }
+export type LienServeLanding = { part: 'print' } | { part: 'numbers'; jobId?: string; recipient?: 'owner' | 'original_contractor'; /** Put the cursor in the copy's number box. */ cursor?: boolean; /** Land on the lien's whole row, the cursor on its *Mailed* box. */ tick?: boolean }
+
+/** What the landing puts the cursor in: the lien's *Mailed* box, a copy's number box, or nothing. */
+export function lienServeLandingFocus(land: LienServeLanding): string | null {
+  if (land.part !== 'numbers') return null
+  return land.tick ? 'input[type="checkbox"]' : land.cursor ? 'input[type="text"]' : null
+}
 
 export function lienServeLandingSelector(land: LienServeLanding): string {
   if (land.part === 'print') return '[data-lien-serve-print-part]'
+  if (land.jobId && land.tick) return `[data-lien-serve-job="${land.jobId}"]`
   if (land.jobId) return `[data-lien-serve-job="${land.jobId}"] [data-lien-serve-envelope="${land.recipient ?? 'owner'}"]`
   return '[data-lien-serve-numbers-part] > h3'
 }
