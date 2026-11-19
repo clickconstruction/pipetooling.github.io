@@ -164,6 +164,7 @@
     "test:pg:sub-gather-sendings": "bash scripts/pgtest-sub-gather-sendings.sh",
     "test:pg:sub-papers": "bash scripts/pgtest-sub-papers.sh",
     "test:pg:job-required-papers": "bash scripts/pgtest-job-required-papers.sh",
+    "test:pg:primary-test-papers": "bash scripts/pgtest-primary-test-papers.sh",
     "test:pg:job-papers-lock": "bash scripts/pgtest-job-papers-lock.sh",
     "test:pg:job-papers-lists": "bash scripts/pgtest-job-papers-lists.sh",
     "test:pg:walk-kit": "bash scripts/pgtest-walk-kit.sh",
