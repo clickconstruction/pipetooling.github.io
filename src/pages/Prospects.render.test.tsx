@@ -88,7 +88,7 @@ vi.mock('../lib/supabase', () => {
       }
       if (table === 'prospect_jobs' && m === 'delete') world.jobs = world.jobs.filter((j) => j.id !== filters.id)
       if (table === 'prospect_calling_locks' && m === 'upsert' && world.refuseLockUpserts) {
-        return { data: null, error: { code: '42501', message: 'new row violates row-level security policy (USING expression) for table "prospect_calling_locks"' } }
+        return { data: null, error: { message: '42501 new row violates row-level security policy (USING expression) for table "prospect_calling_locks"' } }
       }
       if (table === 'prospect_calling_locks' && m === 'upsert') world.locks = [...world.locks.filter((l) => l.prospect_id !== (payload as Row).prospect_id), payload as Row]
       if (table === 'prospect_calling_locks' && m === 'delete') world.locks = world.locks.filter((l) => !(l.prospect_id === filters.prospect_id && l.user_id === filters.user_id))
