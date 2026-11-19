@@ -22217,6 +22217,7 @@ export type Database = {
           recorded_at: string | null
           source: string | null
           take_id: string | null
+          taken_back_at: string | null
           to_container_id: string | null
         }
         Insert: {
@@ -22236,6 +22237,7 @@ export type Database = {
           recorded_at?: string | null
           source?: string | null
           take_id?: string | null
+          taken_back_at?: string | null
           to_container_id?: string | null
         }
         Update: {
@@ -22255,6 +22257,7 @@ export type Database = {
           recorded_at?: string | null
           source?: string | null
           take_id?: string | null
+          taken_back_at?: string | null
           to_container_id?: string | null
         }
         Relationships: [
@@ -22291,6 +22294,70 @@ export type Database = {
             columns: ["to_container_id"]
             isOneToOne: false
             referencedRelation: "job_containers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_movement_answers: {
+        Row: {
+          answer: string
+          at: string
+          by_name: string
+          by_user_id: string | null
+          id: string
+          movement_id: string
+          why: string
+          withdrawn_at: string | null
+          withdrawn_by: string | null
+          withdrawn_by_name: string
+          withdrawn_why: string
+        }
+        Insert: {
+          answer: string
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          id?: string
+          movement_id: string
+          why: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_by_name?: string
+          withdrawn_why?: string
+        }
+        Update: {
+          answer?: string
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          id?: string
+          movement_id?: string
+          why?: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_by_name?: string
+          withdrawn_why?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_movement_answers_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_movement_answers_movement_id_fkey"
+            columns: ["movement_id"]
+            isOneToOne: false
+            referencedRelation: "job_material_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_movement_answers_withdrawn_by_fkey"
+            columns: ["withdrawn_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -49373,7 +49440,37 @@ export type Database = {
         Args: { p_container_id: string }
         Returns: undefined
       }
+      on_site_reads_answers: { Args: never; Returns: boolean }
       on_site_site_job_ids: { Args: { p_job_id: string }; Returns: string[] }
+      on_site_taken_back_rows: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          at: string
+          by_name: string
+          by_user_id: string | null
+          from_container_id: string | null
+          id: string
+          item_id: string | null
+          job_id: string
+          manufacturer: string | null
+          note: string
+          part_id: string | null
+          part_name: string
+          quantity: number
+          reason: string
+          recorded_at: string | null
+          source: string | null
+          take_id: string | null
+          taken_back_at: string | null
+          to_container_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "job_material_movements"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       on_site_typed_names_on_hand: {
         Args: { p_container_id: string; p_names: string[] }
         Returns: number
@@ -51336,6 +51433,10 @@ export type Database = {
         Returns: Json
       }
       trip_save: { Args: { p: Json; p_dry_run?: boolean }; Returns: Json }
+      trip_split: {
+        Args: { p_dry_run?: boolean; p_from_day: string; p_trip_id: string }
+        Returns: Json
+      }
       trips_office: { Args: never; Returns: boolean }
       typed_hours_rule_applies: {
         Args: { p_subject: string }

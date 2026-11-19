@@ -11,7 +11,7 @@ summary: >
   days, each day one of three kinds, what it was for, who asked for it and how it went. The hours, card
   charges, photos and History inside its days read as the trip's by themselves, and a trip never changes a
   clock row, a bill or a cost.
-next: The parts owed and in no PR yet: a setting for the 150 miles, Split in two, and the trip's number in the dev seat's read. The combine carries a trip's job link since v2.7861. Put on a bill left this train for its own card, #391.
+next: Nothing is owed. The three parts left over shipped on 2026-11-19: the trip's number in the dev seat's read (v2.7886), a setting for the 150 miles (v2.7888) and Split in two (v2.7891). The combine carries a trip's job link (v2.7861) and a trip a job holds by itself (v2.7884). Not built: Join with the next, the mock-up's other press, which would also be the undo of a split. The card waits for the owner's word to close. Put on a bill left this train for its own card, #391.
 size: L as a train of nine (S · S · M · S · S · S · M · S · S), eight built and the ninth moved to #391; left: the three owed parts, not sized yet
 blocker: None. The six calls each have a default.
 opinion: build — the clock already stamps a place on a punch and the drive to a job, and the Development page already rolls a site's hours by person, so a trip is a reading laid over rows that exist
@@ -124,7 +124,7 @@ owner's word, through the dev seat.
 
 | # | The call | The default |
 |---|---|---|
-| 1 | How far is a site before the look shows and the phone asks? | 150 miles from the shop, one setting; a person can turn trips on for any site |
+| 1 | How far is a site before the look shows and the phone asks? | 150 miles from the shop, one setting (since v2.7888, on Settings); a person can turn trips on for any site (the page's *none yet · add one*) |
 | 2 | Do Getting ready days belong to a trip? | Yes, as their own kind, never counted as days at the site |
 | 3 | May a crew member start a trip from the phone? | Yes; the office and the leader can change or delete it |
 | 4 | Who sees a trip's dollars? | A dev or a controller, as on the Scoreboard |
@@ -151,7 +151,10 @@ Built 2026-11-17 and 2026-11-18, in its own session. Read on 2026-11-18.
 - **Moved out:** Put on a bill is #391 (closed 2026-11-18, in [the Closed lines](../README.md)).
 - **Added past the plan, on the owner's word:** every trip has a number on its site (*Trip 14*), and a link
   that opens it.
-- **Owed, not in a PR yet:** a setting for the 150 miles, Split in two, and the trip's number in the dev seat's
-  read.
+- **The three parts owed, built 2026-11-18 and 2026-11-19:** the trip's number in the dev seat's read (v2.7886,
+  server 0.106.0), a setting for the 150 miles on Settings → Jobs, bills and liens → Trips (v2.7888, set by a dev,
+  25 to 1,000 miles) and Split in two on an open trip (v2.7891, `trip_split`). Each was read live on the ZZ Test
+  development.
+- **Not built:** Join with the next, the mock-up's other press. A split has no undo until it is.
 - **Built after the train (v2.7861, v2.7884):** the combine carries a trip's job link to the job that is kept, and
   a trip the deleted job held by itself.
