@@ -13,6 +13,13 @@
  *
  * A row that still does not fit with all three in the menu closes its gaps (`tight`), and the way back from View
  * as, the one part with words, shortens with an ellipsis. Nothing ever falls to a second line.
+ *
+ * A tight row can still be too long: on a 320 px phone the Bids page adds the worded Bid press, and the dev's row
+ * needed 313 px of a 304 px row with its gaps closed, so the gear ran past the screen and the page scrolled
+ * sideways (the smoke's 322 px in 320, 2026-11-19). The coloured presses of a tight row therefore give
+ * (`navRowPressGive`): each may shrink under its own padding, and the browser takes exactly what the row is short
+ * from them, in proportion to their widths. Their icons hold their size (`NAV_ROW_ICON_HOLD`), so only padding
+ * goes. The gear and the row's left end never shrink.
  */
 
 /** A press that can leave the row for the gear menu. */
@@ -30,6 +37,17 @@ export const NAV_ROW_CLUSTER_GAP_REM = 0.125
 /** An icon press: a 20 px icon with 0.5rem of padding on each side. What a press takes while it is not drawn and was never measured. */
 export const NAV_ROW_ICON_PX = 20
 export const NAV_ROW_ICON_PAD_REM = 0.5
+
+/**
+ * What a coloured press of the right end takes on a tight row: leave to shrink under its padding. Nothing on a
+ * row that fits, where a press that could shrink would be measured short and the fit would answer from that.
+ */
+export function navRowPressGive(tight: boolean): { minWidth: 0 } | undefined {
+  return tight ? { minWidth: 0 } : undefined
+}
+
+/** A press's icon keeps its size while the press around it gives. */
+export const NAV_ROW_ICON_HOLD = { flexShrink: 0 } as const
 
 /**
  * The row's parts, in px. `left` is the menu, home and search. `fixed` is everything at the right end that never

@@ -13,7 +13,7 @@ import { EasterEggHost } from './FloatingEasterEgg'
 import { useAssistantDispatchLanding } from '../hooks/useAssistantDispatchLanding'
 import { useNavFitCollapse } from '../hooks/useNavFitCollapse'
 import { useNavRowFit } from '../hooks/useNavRowFit'
-import { NAV_ROW_GAP_REM, NAV_ROW_TIGHT_GAP_REM } from '../lib/navRowFit'
+import { NAV_ROW_GAP_REM, NAV_ROW_ICON_HOLD, NAV_ROW_TIGHT_GAP_REM, navRowPressGive } from '../lib/navRowFit'
 import { useForceReload } from '../contexts/ForceReloadContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
@@ -1116,6 +1116,8 @@ export default function Layout() {
           </span>
         )}
         {/* On a phone this end may be narrower than what it holds, so the way back from View as can shorten instead of the row breaking. */}
+        {/* A tight row's coloured presses give up padding by what the row is still short (`navRowPressGive`), so the
+            gear never leaves the screen: on a 320 px phone the Bids page's row was 9 px too long with its gaps closed. */}
         <span data-nav-row-right style={{ marginLeft: 'auto', display: 'flex', gap: navRowGap, alignItems: 'center', ...(isMobile && { minWidth: 0 }) }}>
           {/* Tell the dev (punch list #380): on a phone the wrench sits here, since nothing may float over Job Mode's bars.
               On a row with no room for it, it is the gear menu's first row instead (`lib/navRowFit.ts`). */}
@@ -1139,13 +1141,14 @@ export default function Layout() {
               aria-label={`Call the office at ${jobModeContactPhone.display}`}
               style={{
                 ...headerActionButtonBase,
+                ...navRowPressGive(navRow.tight),
                 padding: '0.5rem 0.5rem',
                 background: '#16a34a',
                 color: 'white',
                 textDecoration: 'none',
               }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true" style={NAV_ROW_ICON_HOLD}>
                 <path d="M164.9 24.6c-7.7-18.6-28-28.5-47.4-23.2L31.4 24.9C13.4 29.8 0 46.3 0 64C0 311.4 200.6 512 448 512c17.7 0 34.2-13.4 39.1-31.4l23.5-86.1c5.3-19.4-4.6-39.7-23.2-47.4l-96-40c-16.3-6.8-35.2-2.1-46.3 11.6L304.7 368C234.3 334.7 177.3 277.7 144 207.3L193.3 167c13.7-11.2 18.4-30 11.6-46.3l-40-96z" />
               </svg>
             </a>
@@ -1215,12 +1218,13 @@ export default function Layout() {
               aria-label="Task Dispatch"
               style={{
                 ...headerActionButtonBase,
+                ...navRowPressGive(navRow.tight),
                 padding: '0.5rem 0.5rem',
                 background: DESK_MARKS.dispatch.fill,
                 color: DESK_MARKS.dispatch.ink,
               }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox={DESK_MARKS.dispatch.icon.viewBox} width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox={DESK_MARKS.dispatch.icon.viewBox} width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true" style={NAV_ROW_ICON_HOLD}>
                 <path d={DESK_MARKS.dispatch.icon.path} />
               </svg>
             </button>
@@ -1233,12 +1237,13 @@ export default function Layout() {
               aria-label={HEADER_ASK_ESTIMATING_LABEL}
               style={{
                 ...headerActionButtonBase,
+                ...navRowPressGive(navRow.tight),
                 padding: '0.5rem 0.5rem',
                 background: DESK_MARKS.estimating.fill,
                 color: DESK_MARKS.estimating.ink,
               }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox={DESK_MARKS.estimating.icon.viewBox} width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox={DESK_MARKS.estimating.icon.viewBox} width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true" style={NAV_ROW_ICON_HOLD}>
                 <path d={DESK_MARKS.estimating.icon.path} />
               </svg>
             </button>
@@ -1251,13 +1256,14 @@ export default function Layout() {
               aria-label="Task"
               style={{
                 ...headerActionButtonBase,
+                ...navRowPressGive(navRow.tight),
                 padding: '0.5rem 0.5rem',
                 background: '#2563eb',
                 color: 'white',
                 fontWeight: 500,
               }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true" style={NAV_ROW_ICON_HOLD}>
                 <path d="M530.8 134.1C545.1 144.5 548.3 164.5 537.9 178.8L281.9 530.8C276.4 538.4 267.9 543.1 258.5 543.9C249.1 544.7 240 541.2 233.4 534.6L105.4 406.6C92.9 394.1 92.9 373.8 105.4 361.3C117.9 348.8 138.2 348.8 150.7 361.3L252.2 462.8L486.2 141.1C496.6 126.8 516.6 123.6 530.9 134z" />
               </svg>
             </button>
@@ -1270,6 +1276,7 @@ export default function Layout() {
               aria-label="New Bid"
               style={{
                 ...headerActionButtonBase,
+                ...navRowPressGive(navRow.tight),
                 padding: '0.5rem 1rem',
                 background: '#2563eb',
                 color: 'white',
