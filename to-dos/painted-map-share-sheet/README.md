@@ -2,7 +2,7 @@
 name: "Share this map: a sheet a person on site can use almost without reading"
 number: 394
 group: close
-status: asked 2026-11-18 with a phone screenshot of the sheet · designed, drawn and rendered the same day (seven rows of sheets at a phone's width and a desk's, light and dark) · shown to the owner with seven calls, each with a pick · the owner's word the same day (*Build it*), every call at the pick · the kernel built (v2.7788) and the sheet over it (v2.7790) the same day · walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark, with a stand-in for the link's calls · not yet tried on a real phone or with a real link · walked 2026-11-18 on an iPhone simulator (iOS 26.4, Safari) against a local server signed in as the dev, with real links on a made-up map on no job, thrown away after: all three presses work after the wait for the link, and the walk found the sheet saying Messages had not opened when it had, fixed in v2.7863 · the owner's word the same evening (*Build all the steps*): step 3 built in v2.7877, the phone picks the link's code and Messages opens inside the press
+status: asked 2026-11-18 with a phone screenshot of the sheet · designed, drawn and rendered the same day (seven rows of sheets at a phone's width and a desk's, light and dark) · shown to the owner with seven calls, each with a pick · the owner's word the same day (*Build it*), every call at the pick · the kernel built (v2.7788) and the sheet over it (v2.7790) the same day · walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark, with a stand-in for the link's calls · not yet tried on a real phone or with a real link · walked 2026-11-18 on an iPhone simulator (iOS 26.4, Safari) against a local server signed in as the dev, with real links on a made-up map on no job, thrown away after: all three presses work after the wait for the link, and the walk found the sheet saying Messages had not opened when it had, fixed in v2.7863 · the owner's word the same evening (*Build all the steps*): step 3 built in v2.7877, the phone picks the link's code and Messages opens inside the press · merged and `painted-map-link` deployed the same night, then walked on the iPhone simulator against the deployed function: the first press opened Messages with no question from Safari, and the server held the code the phone picked
 summary: >
   The owner asked how to offer a painted map's Share sheet with fewer words, so a person does not
   have to read so much. Today the sheet shows 163 words before a link exists and its one live press,
@@ -16,7 +16,7 @@ next: Two looks, then delete this card. An Android phone has not been tried at a
 size: M as a train of three (S · M · S), all built, with the fix the walk found (XS); left: an Android phone and Taunya's look (XS)
 blocker: An Android phone in a hand. Call 4 was taken at the pick on the owner's word, and the name sentence was Taunya's ask, so she should see the one line that stands for it.
 ver: v2.7788 · 7790 · 7863 · 7877
-opinion: built as carded, step 3 included — an Android phone is the one thing nobody has seen
+opinion: built as carded, step 3 included and walked on an iPhone simulator — an Android phone is the one thing nobody has seen
 ---
 
 # Share this map, with fewer words (#394)
@@ -218,6 +218,19 @@ does once a link is out.
   *The link in that text will not open. Do not send it.*
 - Without the server's yes the sheet works as before: the link is made first, then Messages.
 
+**Step 3, walked after the deploy (2026-11-18).** The same simulator, against a local server on
+main and the deployed function. A map now has to be on a job, so the made-up map was painted on a
+ZZ test job. Both links were ended and the map was thrown away after. No text was sent.
+
+- **Text it from my phone…, before a link is out.** Messages opened at once, with no question from
+  Safari. The New Message had nobody picked and the words written, with a link under a code the
+  phone picked.
+- **The server held that code.** Asked for it with no sign-in, the function knew the link. Asked
+  for a code one letter off, it answered that the map is no longer shared.
+- **Back in Safari** the sheet read *One link is out, since Nov 18. Not opened yet.* and said
+  nothing false about Messages.
+- **End this link now** ended it: the function then answered the same code as no longer shared.
+
 ## When the phone refuses
 
 Making the link took 1.3 seconds at a desk. A phone's browser may refuse to open another app that
@@ -249,7 +262,12 @@ the address is known at the moment of the press and nothing waits.
   and replaces that mock-up's `share` state. #392 keeps the Saved band and its press on the saved
   map, and its `saved` and `messages` states stand. Its plan's step 4 becomes the Saved band alone
   once this card is built. One thing for #392 to take from here: the press needs no second line on
-  the saved map either.
+  the saved map either. A second, from the walk after step 3: the Saved band's own **Text it from
+  my phone…** still makes the link first and then opens Messages. On the simulator Messages opened
+  with no question, because the link came back fast. The band then read *The link is ready. Press
+  Open Messages.* though Messages had opened. That is the false note v2.7863 took out of the
+  sheet, and the band does not yet listen for the page being left. The band can take both: the
+  sheet's press at once, and its listener.
 - **[#345](../paint-a-map/README.md).** Its rule for copies and its privacy sentences are the list
   above. Nothing on the `/way` page changes.
 - **#393 (closed 2026-11-18, in [the Closed lines](../README.md)).** It worked in the map's window
@@ -280,7 +298,7 @@ nothing from the Dashboard press.
 2. **The sheet** (M). **Built, v2.7790, and walked in a headless Chrome with a stand-in for the link's calls. The two real phones are still to do.** The new layout over the kernel, the link made by the first press, the two
    views for the code and the picture, the fall backs above. The guide's two sections rewritten, a
    release note and a fragment. Walked on a real iPhone and a real Android phone before it merges.
-3. **The phone picks the code** (S). **Built, v2.7877, on the owner's word.** No phone refused on
+3. **The phone picks the code** (S). **Built, v2.7877, on the owner's word, deployed and walked 2026-11-18.** No phone refused on
    the walk, so this was no longer a repair. It takes away Safari's *Open this page in
    “Messages”?* on the first press. The function takes the code from the painter's phone and keeps
    its hash, so the address is known at the press. A deploy of `painted-map-link`.
