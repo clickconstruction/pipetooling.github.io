@@ -45,7 +45,7 @@ describe('the photo verbs are on the allowlist with no wrapper RPC', () => {
       expect(SERVER).toContain(`case '${v}':`)
     }
     expect(planVerbFor('apply_task_photo')).toBe('plan_task_photo')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.104.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.105.0'")
     expect(SERVER).toContain('plan_task_photo → apply_task_photo')
     expect(README).toContain('`plan_task_photo(photo)`')
     // A photo put on, taken off and put on again is a second act: the task's own state refuses a replay, not the call log.

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { salariedFlatDayHours, salariedWeekOf } from '../../lib/salariedEffectiveHours'
 import { USERS_TAB_PAY_LENS_PATH } from '../../lib/people/usersTabLens'
 import { EMPTY_HOURS_ROSTER_MESSAGE } from '../../lib/people/hoursGridRoster'
 import type { User } from '@supabase/supabase-js'
@@ -491,8 +492,7 @@ export default function PeoplePayStubsTab({
     const paidByDate: Record<string, number> = {}
     for (const key of dayKeys) {
       if (isSalary) {
-        const dow = new Date(key + 'T12:00:00').getDay()
-        earnedByDate[key] = (dow >= 1 && dow <= 5 ? 8 : 0) * wage
+        earnedByDate[key] = salariedFlatDayHours(key, salariedWeekOf(cfg)) * wage
       } else if (splitByDate) {
         earnedByDate[key] = splitByDate.get(key)?.paidAmount ?? 0
       } else {

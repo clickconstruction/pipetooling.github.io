@@ -3,6 +3,7 @@ import {
   overheadBucketForSession,
   type OverheadClockSessionRow,
 } from './overheadDailyLabor'
+import { salariedFlatDayHours, salariedWeekOf } from './salariedEffectiveHours'
 
 /**
  * One (person, work_date) day where field-type time exists on a person's
@@ -94,6 +95,8 @@ export type PeopleHoursUnallocatedPayConfigInput = {
   /** people.id when known (C1-3d) — enables id-first flag resolution. */
   person_id?: string | null
   is_salary: boolean
+  /** A salaried person's paid hours by day, Sunday first; 8 h Mon–Fri when missing. */
+  salaried_week_hours?: readonly number[] | null
   /** Salary people who still record hours (still salary for "8h on weekday" rule). */
   record_hours_but_salary?: boolean
 }
@@ -186,10 +189,8 @@ function effectiveDayHoursRaw(args: {
   const key = `${args.personName}|${args.workDate}`
   const approvedHours = args.approvedHoursLookup.get(key) ?? 0
   if (cfg?.is_salary) {
-    const dayOfWeek = new Date(args.workDate + 'T12:00:00').getDay()
-    if (dayOfWeek === 0 || dayOfWeek === 6) return 0
     if (approvedHours <= 0) return 0
-    return 8
+    return salariedFlatDayHours(args.workDate, salariedWeekOf(cfg))
   }
   return approvedHours
 }

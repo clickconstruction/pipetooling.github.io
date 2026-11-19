@@ -184,3 +184,23 @@ describe('resolveRecordedHoursTable (v2.3179)', () => {
     expect(tablesRead.filter((t) => t === 'people_hours_recorded')).toHaveLength(1)
   })
 })
+
+describe('a salaried crew day reads the person\'s own week', () => {
+  // 2026-10-26 is a Monday, 2026-10-30 a Friday, 2026-10-31 a Saturday.
+  it('pays that weekday\'s hours, whatever was recorded', async () => {
+    const { laborDayHours } = await import('./teamLabor')
+    const shortFriday = { is_salary: true, salaried_week_hours: [0, 6, 6, 6, 6, 4, 0] }
+    expect(laborDayHours(shortFriday, '2026-10-26', 9.5)).toBe(6)
+    expect(laborDayHours(shortFriday, '2026-10-30', 9.5)).toBe(4)
+    expect(laborDayHours(shortFriday, '2026-10-31', 9.5)).toBe(0)
+    expect(laborDayHours({ is_salary: true, salaried_week_hours: [0, 0, 8, 8, 8, 8, 8] }, '2026-10-31', 0)).toBe(8)
+  })
+
+  it('a salaried row with no week is 8 on a weekday, and an hourly row is its recorded hours', async () => {
+    const { laborDayHours } = await import('./teamLabor')
+    expect(laborDayHours({ is_salary: true }, '2026-10-26', 9.5)).toBe(8)
+    expect(laborDayHours({ is_salary: true, salaried_week_hours: null }, '2026-10-31', 9.5)).toBe(0)
+    expect(laborDayHours({ is_salary: false, salaried_week_hours: [0, 6, 6, 6, 6, 4, 0] }, '2026-10-26', 9.5)).toBe(9.5)
+    expect(laborDayHours(undefined, '2026-10-26', 9.5)).toBe(9.5)
+  })
+})

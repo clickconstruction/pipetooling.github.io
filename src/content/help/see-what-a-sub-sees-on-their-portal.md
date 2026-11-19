@@ -33,7 +33,7 @@ Every sub sheet sits at one of three stages. The portal draws them as a four-dot
 | {{chip:yellow|Waiting on work}} | "Finish the work, so we can call it in for inspection." |
 | {{chip:purple|Waiting on inspection}} | *"You told us the work's done Sep 4. We've called it in for inspection — a short punch list may come first."* |
 | {{chip:blue|Waiting on customer}} | *"Passed inspection Sep 6. Draw requested from the customer — their payment is the last thing between you and this money…"* |
-| {{chip:blue|Waiting on customer}}, and the customer paid the sheet's bill | A green {{chip:green|Customer paid Nov 12}} chip: *"The customer paid on Nov 12. Your payment is next. We will give it a pay run day."* |
+| {{chip:blue|Waiting on customer}}, and the customer paid the sheet's bill | A green {{chip:green|Customer paid Nov 12, 2026}} chip: *"The customer paid on Nov 12, 2026. Your payment is next. We will give it a pay run day."* |
 | {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with a green {{chip:green|Queued for Friday}} chip: *"Queued for the pay run — the date is right below."* |
 | {{chip:green|Paid}} | The card leaves *Your jobs*. Paid sets itself when the balance hits $0. |
 

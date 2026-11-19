@@ -2,7 +2,7 @@
 name: "The pace card, shown: stages as a rail, fewer words, and presses of its own"
 number: 396
 group: ready
-status: asked 2026-11-18 at the look for #384 · drawn four times with the owner the same day (two bars, three additions, then the stages stood up as a rail) · his word *Build the entire PR train* · PR 1 built as v2.7797, the card's new face · PR 2 built as v2.7803, Ask a master · PR 3a built as v2.7807, the table · PR 3b built as v2.7808, My finish date
+status: asked 2026-11-18 at the look for #384 · drawn four times with the owner the same day (two bars, three additions, then the stages stood up as a rail) · his word *Build the entire PR train* · PR 1 built as v2.7797, the card's new face · PR 2 built as v2.7803, Ask a master · PR 3a built as v2.7807, the table · PR 3b built as v2.7808, My finish date · PR 3c built as v2.7811, his date on the Projects board
 summary: >
   The owner looked at the superintendent's pace card on the short Job Mode page and did not like it:
   too many words, not enough showing instead of telling, and nothing to do when the job is on pace.
@@ -13,7 +13,7 @@ summary: >
   never opened. Two presses are new: Ask a master, a question to the master on the job that carries
   the numbers with it, and My finish date, his own word on when the job finishes, which the card
   also asks for two days before the plan's day and when the job falls behind.
-next: Push v2.7807's migration after its merge, then merge PR 3b. Then PR 3c, his date on the office's Projects board. Then the owner's walk.
+next: The PRs land in order, each on the one before. v2.7807's migration is pushed after its merge, before PR 3b and PR 3c merge. Then the owner's walk on a real project.
 size: M as a train of five (M · S · S · M · S)
 blocker: None in the code. PR 3's migration is pushed by hand right after its merge.
 opinion: build — the card's numbers do not change, only how they are shown, and each new press rides something the app already does or one small table
@@ -152,9 +152,18 @@ Is this the best we can do? Asked of this step:
   day** alone.
 - The quick picks step over Saturday and Sunday. A crew that works a Saturday uses **Another day**.
 
-### PR 3c · his date on the Projects board (S)
+### PR 3c · his date on the Projects board (S) · built as v2.7811
 
-One line on a project's card for the office: who says which day, and what is in the way.
+One line on a project's card for the office: who says which day, and what is in the way. Each person's
+newest word, on the board page and on the Dashboard's Projects strip, from one read for all the cards.
+
+Is this the best we can do? Asked of this step:
+
+- The line does not say when he said it. A day said three weeks ago reads the same as one said this morning.
+  The window's history is in the table, and a *said Tuesday* on the line is a small follow-up if the office
+  asks for it.
+- The office cannot answer on the board. **Ask a master** is the crew's way to ask, and the tagged job note is
+  the office's way to answer.
 
 ## How to verify
 

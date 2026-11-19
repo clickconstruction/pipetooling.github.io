@@ -2,7 +2,7 @@
 name: "The sub's page: the customer paid, and how long this customer usually takes"
 number: 388
 group: ready
-status: steps 1 and 2 of 3 built 2026-11-18 (v2.7835, v2.7843) · `sub-portal` not deployed yet · step 3 not built · all five calls answered 2026-11-17
+status: steps 1 and 2 of 3 live 2026-11-18 (v2.7835, v2.7843), `sub-portal` deployed and the page walked · step 3 not built · all five calls answered 2026-11-17
 summary: >
   A sub's sheet waits at Draw requested until the customer pays. The page tells the sub that the
   customer's payment is the last thing between them and their money. It then says nothing when the
@@ -11,9 +11,9 @@ summary: >
   records it. While it waits, the page says how long this customer usually takes, as a range in
   weeks. The office's row for the sheet shows the same words, so the office reads what the sub
   reads.
-next: deploy `sub-portal` on a go that names it and walk the page on the test sub, then build step 3, the usual pay time; start from *Where it stands*
+next: build step 3, the usual pay time, whose deploy of `sub-portal` waits on a go of its own; start from *Where it stands*
 size: M as a train of three (S · M · S)
-blocker: each deploy of `sub-portal` waits on a go that names it
+blocker: step 3's deploy of `sub-portal` waits on a go that names it
 opinion: build — show the customer's payment first, tied to one bill so the page never says paid on a guess; show the pay time as a range in weeks with a floor of five payments, never as the office's raw figure
 mockup: to-dos/sub-page-customer-paid/mockup.html
 ---
@@ -119,14 +119,23 @@ Test rows: the test sub and a ZZ TEST job. Never a real sub's page.
 
 ## Where it stands
 
-2026-11-18. **Steps 1 and 2 are built.** Step 3, the usual pay time, is not.
+2026-11-18. **Steps 1 and 2 are live.** Step 3, the usual pay time, is not built.
 
 - **Step 1, the tie** (v2.7835, migration `20261118180000_sub_sheet_draw_invoice.sql`): `docs/recent-features/v2.7835.md`. Merged, pushed and walked on prod on 2026-11-18.
   - **The walk**, on the test sub's sheet and ZZ TEST job 1064, through the page's own presses: the window before the move with the sent bill picked, **Request the draw**, the tie changed from the row, the tied bill deleted, the one open bill tied by the move itself with no window, **No bill**, a move back, and the pick refused off the stage. The database was read after every press.
   - **Put back:** the sheet, field for field, and the job's bills. The walk added one $1 draft bill and deleted it.
   - **Left on prod, since the app cannot delete them:** six *Sub labor* lines on ZZ TEST job 1064's Activity feed, one per stage move.
-- **Step 2, customer paid on the page** (v2.7843): `docs/recent-features/v2.7843.md`. The owner read its Spanish, side by side with the English, on 2026-11-18 before it merged: *Reads right*.
-- **`sub-portal` is not deployed with step 2 yet.** Until it is, the page reads as it did: the client draws the new state only from a day the function sends. The deploy waits on a go that names it.
+- **Step 2, customer paid on the page** (v2.7843): `docs/recent-features/v2.7843.md`. The owner read its Spanish, side by side with the English, on 2026-11-18 before it merged: *Reads right*. `sub-portal` was deployed from `main` the same evening on his go, *Deploy sub-portal*, and the page was walked.
+  - **The walk**, on the test sub's own link, the test sheet and ZZ Test job 1113, signed out, in English and Spanish at every state. The function's answer was read beside the card each time.
+    - Waiting on a $2 bill the move tied by itself: no day sent, nothing said of a payment.
+    - A $1 payment through **Mark Paid**: the bill stayed Billed and the page did not change.
+    - The second $1: the bill read Paid, the function sent the later payment's day, and the chip and the sentence said so.
+    - A hold: the sentence stopped at *Your payment is next.* and the reason sat under it after *On hold:* (*En espera:*).
+    - A pay day: *Queued for the pay run*, and no word of the customer's payment.
+    - The office's row at the paid state: *Rides on the only bill* and *Sub sees: Customer paid Nov 18*.
+  - **The page writes the day with its year,** as its other dates do: *Customer paid Nov 18, 2026*, *El cliente pagó el 18 nov 2026*. The office's row writes it short.
+  - **Put back:** the sheet, field for field. The two payments were removed through the app's own Remove, which turned the bill back to Billed, and the bill was deleted. The job's status, total and paid figure are as they were.
+  - **Left on prod, since the app cannot delete them:** eighteen lines on ZZ Test job 1113's Activity feed from two runs of the walk (the stage moves, the bill, the payments and their removals), and one email to the office's payment list about a payment on that job, which the queue sent at its next run from the four rows the payments left. The first run stopped on one of the walk's own checks after everything was put back.
 
 **What the two steps settled that this card left open.** Step 3 builds on them.
 
@@ -141,7 +150,6 @@ Test rows: the test sub and a ZZ TEST job. Never a real sub's page.
 
 **Next.**
 
-- **Deploy `sub-portal`** on a go that names it, then walk the page on the test sub as *How to verify* says: a bill on a ZZ TEST job, the move, a part payment, the rest, a hold, a pay day, each state in both languages. Put everything back.
 - **Step 3, the usual pay time.** The weeks rule with its floor of five payments goes beside `customerPaidOn` in `supabase/functions/_shared/subPortalCustomerPaid.ts`. `paymentReliability.ts` is not in the edge copy, so restate the spread there with a parity test. The function calls `get_billed_customer_pay_speeds` as the service role. The payer is `paySpeedPayer` in `billToParty.ts`, which the copy holds already. Its line was on the page the owner read on 2026-11-18, in three forms: a range, one figure (*unas 4 semanas*) and under a week (*en menos de una semana*). Words that differ from those three need a new read. `sub-portal` is deployed again on a named go.
 - **Counsel.** The new sentences sit beside the one already with counsel. They are listed, English and Spanish, on the page the owner read.
 

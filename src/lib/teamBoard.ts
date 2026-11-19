@@ -10,7 +10,7 @@
  * every chip runs 6 am → midnight.
  */
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
-import { salariedFlatDayHours } from './salariedEffectiveHours'
+import { salariedFlatDayHours, salariedWeekOf } from './salariedEffectiveHours'
 
 export type TeamBoardSession = {
   id: string
@@ -220,7 +220,7 @@ export type BuildTeamBoardInput = {
   labels: Record<string, TeamTargetLabel>
   officeJobId?: string | null
   /** person name → pay flags, for person-row targets. */
-  payFlags?: Record<string, { is_salary?: boolean | null }>
+  payFlags?: Record<string, { is_salary?: boolean | null; salaried_week_hours?: readonly number[] | null }>
   /** null = the ran-long rule is off (nothing is flagged). */
   ranLong?: RanLongRule | null
   /** v2.2981: `teamAckKey(...)` of every accepted chip in the week. */
@@ -390,7 +390,10 @@ export function buildTeamBoard(input: BuildTeamBoardInput): TeamBoard {
   for (const r of personRowsMap.values()) {
     for (const d of Object.keys(r.cellsByDay)) r.cellsByDay[d]!.sort((a, b) => (labels[a.targetKey]?.label ?? a.targetKey).localeCompare(labels[b.targetKey]?.label ?? b.targetKey))
     const flags = payFlags[r.key]
-    if (flags?.is_salary) r.target = days.reduce((t, d) => t + salariedFlatDayHours(d), 0)
+    if (flags?.is_salary) {
+      const week = salariedWeekOf(flags)
+      r.target = days.reduce((t, d) => t + salariedFlatDayHours(d, week), 0)
+    }
     else r.target = r.planned > 0 ? r.planned : null
   }
   const personRows = [...personRowsMap.values()].sort((a, b) => a.label.localeCompare(b.label))

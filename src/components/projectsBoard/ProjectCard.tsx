@@ -2,6 +2,7 @@ import { useState, type CSSProperties, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { PaceStrip } from '../jobMode/PaceStrip'
+import { boardSaysWords, latestFinishCallsByPerson, type FinishCall } from '../../lib/jobMode/finishCall'
 import { DayDetailsModal, DayHoverCard } from '../jobMode/DayDetailsModal'
 import { superintendentLine, BUDGET_SOURCE_WORDS } from '../../lib/jobs/superintendentLine'
 import { clampExpectedHours, expectedHoursRange, EXPECTED_HOURS_LEVER_WORDS } from '../../lib/jobs/expectedHoursRange'
@@ -34,9 +35,11 @@ export type ProjectCardProps = {
   onClearTarget: () => Promise<boolean>
   /** Open the card large on arrival: the Costs tab's door lands on this project (PR 5). */
   initiallyOpen?: boolean
+  /** What the crew said about the finish (punch list #396, PR 3c): every saying on the job. The card reads each person's newest. */
+  says?: readonly FinishCall[]
 }
 
-export function ProjectCardBody({ row, pace, target, events, valueEvents, dollars, canEdit, onSetTarget, onClearTarget, big = false, onExpand }: Omit<ProjectCardProps, 'initiallyOpen'> & { big?: boolean; onExpand?: () => void }) {
+export function ProjectCardBody({ row, pace, target, events, valueEvents, dollars, canEdit, onSetTarget, onClearTarget, says, big = false, onExpand }: Omit<ProjectCardProps, 'initiallyOpen'> & { big?: boolean; onExpand?: () => void }) {
   const current = Math.round(target?.hours ?? pace.baseHours)
   const [draft, setDraft] = useState<number | null>(null)
   const [why, setWhy] = useState('')
@@ -134,6 +137,12 @@ export function ProjectCardBody({ row, pace, target, events, valueEvents, dollar
         ) : null}
       </div>
       {line.move && !moved ? <div style={{ fontSize: big ? '0.9rem' : '0.76rem', color: 'var(--text-700)' }}>{line.move.why}</div> : null}
+      {/* His own word on the finish, beside the plan's (punch list #396): the newest saying of each person, two at most on the small card. */}
+      {latestFinishCallsByPerson(says ?? []).slice(0, big ? 6 : 2).map((c) => (
+        <div key={c.userId} data-testid="project-says" style={{ fontSize: big ? '0.9rem' : '0.78rem', color: 'var(--text-700)', overflowWrap: 'anywhere' }}>
+          ✎ {boardSaysWords(c)}
+        </div>
+      ))}
       {big ? <div style={muted}>{line.proofWords}</div> : null}
     </div>
   )

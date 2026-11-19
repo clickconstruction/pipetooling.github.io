@@ -35,9 +35,11 @@ const boxHref = (jobId: string, boxId: string) => `/jobs?tab=materials&job=${job
 const noTrail: SiteTrail = { boxChanges: [], boxRenames: [], removedAnswers: [] }
 const readNothing = async () => noTrail
 const readNoAnswers = async () => ({ answers: [], takenBack: [] })
+const readNoWatches = async () => []
+const readNoOpens = async () => []
 
 function draw(over: Partial<Parameters<typeof SitePeopleView>[0]> = {}) {
-  return renderWithProviders(<SitePeopleView siteId="dev1" readTrail={readNothing} readAnswers={readNoAnswers} jobs={jobs} movements={movements} containerMoves={moves} containers={containers} places={places} boxHref={boxHref} {...over} />)
+  return renderWithProviders(<SitePeopleView siteId="dev1" readTrail={readNothing} readAnswers={readNoAnswers} readWatches={readNoWatches} readOpens={readNoOpens} jobs={jobs} movements={movements} containerMoves={moves} containers={containers} places={places} boxHref={boxHref} {...over} />)
 }
 
 describe('SitePeopleView', () => {
@@ -209,6 +211,43 @@ describe('SitePeopleView, answers to a press', () => {
     expect(onLedgerChanged).toHaveBeenCalledWith(['j1'])
     // An answered press takes no second answer: only the three with none can be picked.
     expect(screen.getAllByRole('checkbox')).toHaveLength(3)
+  })
+})
+
+describe('SitePeopleView, a watched person', () => {
+  // The same site, with the logins behind the names: a watch is on a login.
+  const withLogins = movements.map((m) => ({ ...m, byUserId: m.byName === 'Sam R.' ? 'u-sam' : 'u-dana' }))
+  const watch = { id: 'w1', userId: 'u-sam', why: 'back on site alone', tellUserIds: [], setByName: 'Dana K.', setAt: '2026-11-18T00:00:00' }
+  const secondBox: Container = { id: 'g40', jobId: 'j1', label: 'G40', kind: 'cage', where: '', locationId: 'p1', lat: null, lng: null, retiredAt: null, createdAt: '2026-11-01T12:00:00' }
+
+  it('marks what the watched person does outside the process in red, and nothing for anyone else', async () => {
+    draw({ movements: withLogins, readWatches: async () => [watch] })
+    // In the list of everyone, the watched person's count and no-note take read in red.
+    await waitFor(() => expect(screen.getByText('a count is the office’s')).toBeTruthy())
+    expect(screen.getByText('no note')).toBeTruthy()
+    expect(screen.queryByText('count changed the number')).toBeNull()
+    expect(screen.queryByTestId('site-people-watched')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Person'), { target: { value: 'sam r.' } })
+    expect(screen.getByTestId('site-people-watched').textContent).toContain('Watched since')
+    expect(screen.getByRole('button', { name: 'Outside the process only' })).toBeTruthy()
+    expect(screen.getByTestId('site-people-tiles').textContent).toContain('2outside the process')
+    // The other person keeps the words everyone has.
+    fireEvent.change(screen.getByLabelText('Person'), { target: { value: 'dana k.' } })
+    expect(screen.queryByTestId('site-people-watched')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Worth a look only' })).toBeTruthy()
+  })
+
+  it('names the boxes the watched person opened and pressed nothing on', async () => {
+    const readOpens = vi.fn(async () => [
+      { containerId: 'g40', at: '2026-11-18T09:00:00' },
+      { containerId: 'g22', at: '2026-11-18T09:05:00' },
+    ])
+    draw({ movements: withLogins, containers: [...containers, secondBox], readWatches: async () => [watch], readOpens })
+    fireEvent.change(await screen.findByLabelText('Person'), { target: { value: 'sam r.' } })
+    const strip = await screen.findByTestId('site-people-quiet-boxes')
+    expect(strip.textContent).toContain('Sam R. opened 1 box and pressed nothing:')
+    expect(within(strip).getByRole('link', { name: 'G40' }).getAttribute('href')).toBe('/jobs?tab=materials&job=j1&box=g40')
+    expect(readOpens).toHaveBeenCalledWith('w1')
   })
 })
 

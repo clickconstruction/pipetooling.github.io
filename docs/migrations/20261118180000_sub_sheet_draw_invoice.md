@@ -58,6 +58,17 @@ SELECT count(*) FILTER (WHERE stage = 'customer_pay') AS waiting, count(draw_inv
 -- expect: tied = 0 right after the push
 ```
 
+## Applied
+
+2026-11-19, about 00:45 UTC, with `bash scripts/db-push.sh`, after the file landed on `main` (#8790).
+
+- The landed file was compared with the reviewed one first: identical.
+- It applied out of order, through the script's own `--include-all` retry. Two newer files, `20261118203000` and `20261118220000`, were on prod already. Neither names this file's column, trigger or functions, and the dry run named this one file and no other.
+- `check:migration-drift` after: 1377 local files, 1377 remote versions, fully applied.
+- Read on prod after, read only: `draw_invoice_id` is a `uuid`, its foreign key clears on a deleted bill, the trigger `people_labor_jobs_stage_draw_tie_biu` is enabled, a signed-in person may call `set_sub_sheet_draw_invoice` and a signed-out one may not, and the push tied nothing (no sheet was waiting on the customer).
+- The SQL bed ran for the first time on #8790's CI and passed.
+- The generated types gained the column and the function with the next regeneration after it (#8833).
+
 ## Rollback
 
 ```sql

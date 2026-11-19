@@ -7,7 +7,7 @@
  * job, a job's days, the site's days. The crew row names the day's lead, so a person's lead days
  * are kept for the Lead tag. Pure; `fetchSiteLabor.ts` reads the rows.
  */
-import { buildHoursMap, hoursForCrewRow, type CrewJobAssignment } from '../../utils/teamLabor'
+import { buildHoursMap, hoursForCrewRow, laborDayHours, type CrewJobAssignment, type LaborPayConfig } from '../../utils/teamLabor'
 
 export type SiteCrewRow = {
   work_date: string
@@ -19,7 +19,7 @@ export type SiteCrewRow = {
 
 export type SiteHoursRow = { person_name: string; person_id: string | null; work_date: string; hours: number }
 
-export type SitePayConfig = Record<string, { hourly_wage: number; is_salary: boolean }>
+export type SitePayConfig = Record<string, LaborPayConfig>
 
 export type SiteLaborPerson = {
   personName: string
@@ -65,13 +65,9 @@ export type SiteLabor = {
 /** What the page holds: reading, read, or failed (the cells say so, never a false zero). */
 export type SiteLaborRead = { state: 'reading' } | { state: 'read'; labor: SiteLabor } | { state: 'failed' }
 
-/** A crew day's hours: 8 on a weekday for a salaried person, the recorded hours for an hourly one. */
-export function crewDayHours(cfg: { is_salary: boolean } | undefined, row: SiteCrewRow, hoursMap: Record<string, number>): number {
-  if (cfg?.is_salary) {
-    const day = new Date(row.work_date + 'T12:00:00').getDay()
-    return day >= 1 && day <= 5 ? 8 : 0
-  }
-  return hoursForCrewRow(hoursMap, row)
+/** A crew day's hours: a salaried person's day in their own week (8 on a weekday unless their pay row says otherwise), the recorded hours for an hourly one. */
+export function crewDayHours(cfg: Pick<LaborPayConfig, 'is_salary' | 'salaried_week_hours'> | undefined, row: SiteCrewRow, hoursMap: Record<string, number>): number {
+  return laborDayHours(cfg, row.work_date, hoursForCrewRow(hoursMap, row))
 }
 
 export function allocateSiteLabor(args: { jobIds: ReadonlyArray<string>; crewRows: ReadonlyArray<SiteCrewRow>; hoursRows: ReadonlyArray<SiteHoursRow>; config: SitePayConfig; userIdByPersonId?: ReadonlyMap<string, string> }): SiteLabor {

@@ -36,7 +36,7 @@ type BlockRow = {
   bids: BidEmbed
 }
 type SheetRow = { id: string; job_number: string | null; job_ledger_id: string | null; job_date: string | null; assigned_to_name: string; address: string; stage: string; jobs_ledger: JobEmbed }
-type PayFlagRow = { person_name: string; is_salary: boolean }
+type PayFlagRow = { person_name: string; is_salary: boolean; salaried_week_hours?: readonly number[] | null }
 
 export type TeamBoardWeekData = {
   sessions: TeamBoardSession[]
@@ -44,7 +44,7 @@ export type TeamBoardWeekData = {
   subSheets: TeamBoardSubSheet[]
   labels: Record<string, TeamTargetLabel>
   officeJobId: string | null
-  payFlags: Record<string, { is_salary: boolean }>
+  payFlags: Record<string, { is_salary: boolean; salaried_week_hours?: readonly number[] | null }>
   /** v2.2981: accepted chips this week — `teamAckKey` → row id (for undo). Empty when the table is not there yet. */
   ackIdByKey: Record<string, string>
 }
@@ -138,8 +138,8 @@ export async function fetchTeamBoardWeek(startYmd: string, endYmd: string, prefi
       const jobId = s.job_ledger_id ?? (s.job_number ? (hcpToJobId[s.job_number.trim()] ?? null) : null)
       return { id: s.id, workDate: s.job_date as string, jobId, jobNumber: s.job_number, contractor: s.assigned_to_name, stage: s.stage, address: s.address }
     })
-  const payFlags: Record<string, { is_salary: boolean }> = {}
-  for (const f of (flagRows ?? []) as PayFlagRow[]) payFlags[f.person_name.trim()] = { is_salary: !!f.is_salary }
+  const payFlags: Record<string, { is_salary: boolean; salaried_week_hours?: readonly number[] | null }> = {}
+  for (const f of (flagRows ?? []) as PayFlagRow[]) payFlags[f.person_name.trim()] = f.salaried_week_hours ? { is_salary: !!f.is_salary, salaried_week_hours: f.salaried_week_hours } : { is_salary: !!f.is_salary }
 
   const ackIdByKey: Record<string, string> = {}
   for (const a of ackRows) ackIdByKey[teamAckKey(a.kind, a.work_date, a.person_user_id, a.target_key)] = a.id

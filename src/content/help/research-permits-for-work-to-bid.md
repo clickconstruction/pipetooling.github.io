@@ -2,7 +2,7 @@
 title: research the permits a city issues and find work to bid
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: skim, find, search, look up, map of passed, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, investigate, investigating, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
+keywords: quiet, quiet since, newest permit day, stopped publishing, skim, find, search, look up, map of passed, city, austin, new braunfels, san marcos, seguin, second look, history, who moved, investigate, investigating, keep, pass, pursue, builders, good, avoid, put back, hand off, research, permits, permit ledger, san antonio, building permit, plumbing permit, gc lead, approach, prospects, owner of record, google, deeds, the building
 where: /prospects?tab=permits
 order: 73
 ---
@@ -14,6 +14,30 @@ Every city publishes the permits it issues. A building permit says who is about 
 The city box sits at the top, beside the value pick. The box lists the cities the app reads. They are San Antonio, Austin, New Braunfels, San Marcos and Seguin. The app remembers the city you pick.
 
 On a phone, Skim keeps the city on the strip, beside the magnifier. Tap the city to pick another.
+
+## See how fresh a city is
+
+Each city in the box shows its newest permit day. Open the box to read all five.
+
+:::example The city box
+
+San Antonio · newest Nov 13
+
+Austin · newest Nov 16
+
+New Braunfels · quiet since Nov 3
+
+:::
+
+A city can stop publishing while our pull still runs every morning. Its row then reads **quiet since** and the day it stopped. The box turns amber while that city is on screen.
+
+A quiet city's list is only as new as that day. Press an address, then press **Open the city's permit search** to look for newer permits.
+
+A city reads quiet after seven days with nothing newer. San Antonio publishes a week at a time, so it gets ten days.
+
+A pull of ours that stopped never makes a city read quiet. The line under the strip says what stopped.
+
+On a phone the chip names the day only for a quiet city.
 
 Austin posts a permit once the city issues it. San Antonio also posts applications, so its permits show earlier.
 

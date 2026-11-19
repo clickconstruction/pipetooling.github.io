@@ -15,6 +15,7 @@ import SiteMaterialsView from './SiteMaterialsView'
 
 // The By person look's own read: nothing on the trail here, and no call to the database.
 vi.mock('../../lib/materials/sitePeopleTrailIo', () => ({ fetchSiteTrail: async () => ({ boxChanges: [], boxRenames: [], removedAnswers: [] }) }))
+vi.mock('../../lib/people/personWatchIo', () => ({ fetchLiveWatches: async () => [], fetchWatchedOpens: async () => [], noteBoxOpen: () => {} }))
 vi.mock('../../lib/materials/pressAnswersIo', () => ({ fetchSiteAnswers: async () => ({ answers: [], takenBack: [] }), giveAnswer: async () => {}, withdrawAnswer: async () => {} }))
 
 vi.mock('../../hooks/useAuth', () => ({

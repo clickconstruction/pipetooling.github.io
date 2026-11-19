@@ -678,3 +678,20 @@ describe('buildWorkDateListInclusive', () => {
     expect(buildWorkDateListInclusive('2026-05-13', '2026-05-11')).toEqual([])
   })
 })
+
+describe('a salaried day is the person\'s own week', () => {
+  it('a 6-hour person who showed up is 6 hours, not 8', () => {
+    const payConfig = PAY_CONFIG.map((c) => (c.person_name === 'Alex' ? { ...c, salaried_week_hours: [0, 6, 6, 6, 6, 6, 0] } : c))
+    const rows = computeUnallocatedFieldRows({
+      payConfig,
+      crewRows: [],
+      overheadSessions: [fieldSession({ id: 'alex-field', userId: ALEX_ID, userName: 'Alex', workDate: '2026-05-12', hours: 6 })],
+      officeJobLedgerId: OFFICE_JOB_ID,
+      workDates: WORK_DATES,
+      thresholdHours: 0.5,
+    })
+    const alexTue = rows.find((r) => r.personName === 'Alex' && r.workDate === '2026-05-12')
+    expect(alexTue?.dayHoursRaw).toBe(6)
+    expect(alexTue?.unallocatedHrs).toBe(6)
+  })
+})
