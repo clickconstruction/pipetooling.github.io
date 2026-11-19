@@ -3,7 +3,9 @@
  * Documents → Agreements (punch list #376): every agreement on file, newest first under a band per month, with a kind
  * and a state to pick and a box to type in; a line says its kind, its name, who it is with, the job, where it stands
  * and its day, and a press opens the window that kind already has; the list says so when nothing matches or nothing is
- * on file; a read that fails says so with Retry; under the Search tab it asks only for the words it is handed.
+ * on file; a read that fails says so with Retry; under the Search tab it asks only for the words it is handed. A paper
+ * that waits acts where it sits: a job's contract opens its Contract window, and a staff, sub or partner paper carries
+ * Send again and Copy the signing link, both through the one sender, and the list reads again after.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -20,6 +22,9 @@ const io = vi.hoisted(() => ({
   fail: null as null | Error,
   jobs: [] as string[],
   windows: [] as string[],
+  facts: [] as string[],
+  sends: [] as Array<Record<string, unknown>>,
+  sendFail: null as null | Error,
 }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'assistant', user: { id: 'u1' } })
@@ -35,6 +40,28 @@ vi.mock('../../lib/documents/agreementsLedgerIo', () => ({
     io.counts.push(kind)
     return io.waiting
   },
+}))
+vi.mock('../../lib/contracts/personPaperSendIo', () => ({
+  readPersonPaperSendFacts: async (documentId: string) => {
+    io.facts.push(documentId)
+    return { target: { personName: 'Bryce Tolland', documentName: 'Referral partner agreement' }, initialEmail: 'bryce@example.com', personId: null, sender: null }
+  },
+  sendPersonPaperForSignature: async (input: Record<string, unknown>) => {
+    io.sends.push(input)
+    if (io.sendFail) throw io.sendFail
+    return { acceptUrl: 'https://x/contract/accept?t=new', emailed: false, emailNote: null }
+  },
+}))
+// The Send window is its own file's to test: here it says what it was opened on, and its button says it sent.
+vi.mock('../contracts/ContractSendWindow', () => ({
+  ContractSendWindow: (p: { again?: boolean; docId: string | null; target: { personName: string; documentName: string } | null; initialEmail: string; onSent: (s: { docId: string; emailed: boolean; planKind: null }) => void }) => (
+    <div data-testid="send-window">
+      {`${p.again ? 'again' : 'first'}|${p.docId}|${p.target?.personName}|${p.target?.documentName}|${p.initialEmail}`}
+      <button type="button" onClick={() => p.onSent({ docId: p.docId ?? '', emailed: true, planKind: null })}>
+        fake send
+      </button>
+    </div>
+  ),
 }))
 vi.mock('../../lib/fetchJobWithDetailsById', () => ({
   fetchJobWithDetailsById: async (id: string) => {
@@ -88,6 +115,9 @@ beforeEach(() => {
   io.counts = []
   io.fail = null
   io.jobs = []
+  io.facts = []
+  io.sends = []
+  io.sendFail = null
 })
 afterEach(() => {
   cleanup()
@@ -180,8 +210,20 @@ describe('DocumentsAgreementsTab', () => {
     expect(io.jobs).toEqual(['j1'])
   })
 
-  it('an unsigned contract opens its preview in a window, inside the press', async () => {
+  it('a contract that waits on a signature opens its Contract window, where it is sent again or voided', async () => {
     io.rows = [row({ state: 'waiting', facts: { status: 'sent', send_count: 1 } })]
+    const opened = vi.spyOn(window, 'open').mockReturnValue(null)
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    fireEvent.click(screen.getByRole('button', { name: 'Residential plumbing contract' }))
+    expect((await screen.findByTestId('contract-window')).textContent).toBe('j1|c1')
+    expect(opened).not.toHaveBeenCalled()
+    // A job's contract carries no presses on its line: its acts are in its window.
+    expect(screen.queryByRole('button', { name: 'Send again' })).toBeNull()
+  })
+
+  it('a voided contract opens its preview in a window, inside the press', async () => {
+    io.rows = [row({ state: 'ended', facts: { status: 'voided', voided_at: '2026-10-15T12:00:00Z' } })]
     const opened = vi.spyOn(window, 'open').mockReturnValue(null)
     renderWithProviders(<DocumentsAgreementsTab />)
     await lines()
@@ -202,6 +244,66 @@ describe('DocumentsAgreementsTab', () => {
     expect(screen.getByRole('link', { name: 'Referral partner agreement' }).getAttribute('href')).toBe('/people?tab=contracts&doc=d2')
     fireEvent.click(screen.getByRole('button', { name: 'Employee handbook' }))
     expect((await screen.findByTestId('signed-record-window')).textContent).toBe('d1')
+  })
+
+  const waitingPaper = () =>
+    row({ id: 'partner_agreement:d2', kind: 'partner_agreement', source_id: 'd2', state: 'waiting', paper_name: 'Referral partner agreement', with_name: 'Bryce Tolland', job_id: null, job_name: null, job_hcp_number: null, facts: { status: 'sent' } })
+  const signedPaper = () =>
+    row({ id: 'person_agreement:d1', kind: 'person_agreement', source_id: 'd1', paper_name: 'Employee handbook', with_name: 'Priya Nair', job_id: null, job_name: null, job_hcp_number: null, facts: { status: 'signed' } })
+
+  it('only a paper that waits carries Send again and Copy the signing link', async () => {
+    io.rows = [signedPaper(), waitingPaper()]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    const rows = await lines()
+    expect(rows[0]?.querySelectorAll('button').length).toBe(1)
+    expect(Array.from(rows[1]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Send again', 'Copy the signing link'])
+  })
+
+  it('Send again opens the Send window on that paper, and the list reads again once it is sent', async () => {
+    io.rows = [waitingPaper()]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    const before = io.asks.length
+    fireEvent.click(screen.getByRole('button', { name: 'Send again' }))
+    expect((await screen.findByTestId('send-window')).textContent).toContain('again|d2|Bryce Tolland|Referral partner agreement|bryce@example.com')
+    expect(io.facts).toEqual(['d2'])
+    // Nothing is sent by opening the window.
+    expect(io.sends).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'fake send' }))
+    await waitFor(() => expect(screen.queryByTestId('send-window')).toBeNull())
+    await waitFor(() => expect(io.asks.length).toBe(before + 1))
+  })
+
+  it('Copy the signing link asks first, makes the link with nothing emailed, copies it, and reads again', async () => {
+    io.rows = [waitingPaper()]
+    const copied: string[] = []
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t: string) => void copied.push(t) } })
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    const before = io.asks.length
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the signing link' }))
+    expect(await screen.findByText('This makes a new signing link for Bryce Tolland. The link sent before stops working. Nothing is emailed.')).toBeTruthy()
+    // Nothing is made until the confirm's own press.
+    expect(io.sends).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Make and copy the link' }))
+    expect(await screen.findByText('Signing link copied. Send it to Bryce Tolland. It works for 14 days.')).toBeTruthy()
+    expect(io.sends).toEqual([{ documentId: 'd2', mode: 'link' }])
+    expect(copied).toEqual(['https://x/contract/accept?t=new'])
+    await waitFor(() => expect(io.asks.length).toBe(before + 1))
+  })
+
+  it('Cancel on the confirm makes no link, and a link that fails says why', async () => {
+    io.rows = [waitingPaper()]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the signing link' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Make and copy the link' })).toBeNull())
+    expect(io.sends).toEqual([])
+    io.sendFail = new Error('This document is already signed')
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the signing link' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Make and copy the link' }))
+    expect(await screen.findByText('This document is already signed')).toBeTruthy()
   })
 
   it('a work order opens its window on the job, and one with no job is not a press', async () => {

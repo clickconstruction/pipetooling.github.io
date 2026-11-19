@@ -2,6 +2,7 @@ import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useState, ty
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog, usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import {
   AGREEMENTS_EMPTY_PAGE,
   AGREEMENTS_PAGE,
@@ -28,6 +29,18 @@ import {
   type StatePick,
 } from '../../lib/documents/agreementsLedger'
 import { countAgreementsWaiting, readAgreements } from '../../lib/documents/agreementsLedgerIo'
+import {
+  COPY_SIGNING_LINK_LABEL,
+  SEND_AGAIN_LABEL,
+  agreementCanBeSentAgain,
+  agreementOpensContractWindow,
+  copySigningLinkConfirm,
+  signingLinkByHandPrompt,
+  signingLinkCopiedWords,
+} from '../../lib/documents/agreementsActs'
+import { readPersonPaperSendFacts, sendPersonPaperForSignature, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { emptyWordsWithPress } from '../../lib/emptyWords'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
@@ -47,6 +60,8 @@ import { documentsLinkButton, documentsQuietButton } from '../jobs/jobDocumentsS
  * agreement and a sub work order each keep their own window; this tab lists them side by side, a line each: its kind,
  * its name, who it is with and the job, where it stands in that kind's own words, and its day. A chip picks a kind or a
  * state, the box finds by customer, job number, person or paper, and a press opens the window that kind already has.
+ * A staff, sub or partner paper that waits on a signature acts where it sits: Send again and Copy the signing link, both
+ * through the sender People → Contracts uses (`lib/documents/agreementsActs.ts`), and the list reads again after.
  * The read is the `agreements_on_file` view, where each table's own row security decides what the reader sees; a read
  * that fails says so with Retry and never reads as an empty ledger. The rules are `lib/documents/agreementsLedger.ts`.
  *
@@ -57,6 +72,7 @@ import { documentsLinkButton, documentsQuietButton } from '../jobs/jobDocumentsS
 
 const WorkOrderAssemblerModal = lazy(() => import('../jobs/WorkOrderAssemblerModal').then((m) => ({ default: m.WorkOrderAssemblerModal })))
 const PersonContractSignedRecordModal = lazy(() => import('../contracts/PersonContractSignedRecordModal').then((m) => ({ default: m.PersonContractSignedRecordModal })))
+const ContractSendWindow = lazy(() => import('../contracts/ContractSendWindow').then((m) => ({ default: m.ContractSendWindow })))
 
 const band: CSSProperties = {
   position: 'sticky',
@@ -92,6 +108,7 @@ const day: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', 
 const quiet: CSSProperties = { margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }
 const doorLink: CSSProperties = { color: 'var(--text-link)', fontWeight: 600 }
 const nameText: CSSProperties = { fontWeight: 600, color: 'var(--text-strong)' }
+const actBusy: CSSProperties = { ...documentsQuietButton, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, cursor: 'wait' }
 
 function pickChipStyle(pressed: boolean): CSSProperties {
   const base: CSSProperties = { ...documentsQuietButton, borderRadius: 999, fontWeight: pressed ? 700 : 500 }
@@ -102,6 +119,8 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   const embedded = embedSearch !== undefined
   const { user } = useAuth()
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
+  const promptDialog = usePromptDialog()
   const [kind, setKind] = useState<KindPick>('all')
   const [state, setState] = useState<StatePick>('live')
   const [typed, setTyped] = useState('')
@@ -116,6 +135,10 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
   const [contractWindow, setContractWindow] = useState<{ job: JobWithDetails; recordId: string } | null>(null)
   const [signedDocId, setSignedDocId] = useState<string | null>(null)
   const [workOrder, setWorkOrder] = useState<{ job: JobWithDetails; commitmentId: string } | null>(null)
+  /** Send again: the waiting paper whose Send window is open, with what the window needs to know about it. */
+  const [sendAgain, setSendAgain] = useState<{ documentId: string; facts: PersonPaperSendFacts } | null>(null)
+  /** The one act in flight, `<act>:<line id>`, so a second press waits for the first. */
+  const [busyAct, setBusyAct] = useState<string | null>(null)
 
   // What was typed is asked for once the typing rests, so each key is not a read. The Search tab hands its own words.
   const words = embedded ? (embedSearch ?? '') : typed
@@ -197,9 +220,10 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
       setSignedDocId(door.documentId)
       return
     }
-    if (door.kind === 'contract' && !door.signed) {
-      // An unsigned contract opens as the same preview its line on the Jobs tab opens. The window opens inside the
-      // press, so a popup blocker allows it, and takes the page once the job and the contract are read.
+    if (door.kind === 'contract' && !agreementOpensContractWindow(row)) {
+      // A voided contract opens as the preview of the page that went out: the Contract window opens on the job's live
+      // contract, never on a voided record. The preview opens inside the press, so a popup blocker allows it, and takes
+      // the page once the job and the contract are read.
       const ok = await openHtmlWindowWhenReady(async () => {
         const [job, contracts] = await Promise.all([fetchJobWithDetailsById(door.jobId), loadJobContractRows(door.jobId)])
         const contract = contracts.find((c) => c.id === door.recordId)
@@ -217,6 +241,46 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
       }
       if (door.kind === 'contract') setContractWindow({ job, recordId: door.recordId })
       else setWorkOrder({ job, commitmentId: door.commitmentId })
+    }
+  }
+
+  // Send again: read who the paper is with and their address, then open the Send window on it.
+  const openSendAgain = async (row: AgreementRow) => {
+    if (busyAct) return
+    setBusyAct(`send:${row.id}`)
+    try {
+      const facts = await readPersonPaperSendFacts(row.source_id, user?.id)
+      setSendAgain({ documentId: row.source_id, facts })
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The paper did not open to send.'), 'error')
+    } finally {
+      setBusyAct(null)
+    }
+  }
+
+  // Copy the signing link: a new link is made and nothing is emailed. The confirm says the link sent before stops
+  // working, since the signer may still hold that email.
+  const copySigningLink = async (row: AgreementRow) => {
+    if (busyAct) return
+    if (!(await confirmDialog(copySigningLinkConfirm(row)))) return
+    setBusyAct(`link:${row.id}`)
+    try {
+      const sent = await sendPersonPaperForSignature({ documentId: row.source_id, mode: 'link' })
+      if (!sent.acceptUrl) throw new Error('The signing link did not come back.')
+      let copied = true
+      try {
+        await navigator.clipboard.writeText(sent.acceptUrl)
+      } catch {
+        // The clipboard is closed to the app here: the link shows in a window to copy by hand.
+        copied = (await promptDialog(signingLinkByHandPrompt(sent.acceptUrl))) !== null
+      }
+      if (copied) showToast(signingLinkCopiedWords(row), 'success')
+      else showToast('A new signing link was made. It was not copied.', 'info')
+      retry()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The signing link was not made.'), 'error')
+    } finally {
+      setBusyAct(null)
     }
   }
 
@@ -308,6 +372,9 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                       const jobTitle = agreementJobTitle(row)
                       const tail = agreementJobTail(row)
                       const dayWords = agreementDayWords(row, today)
+                      const acts = agreementCanBeSentAgain(row)
+                      const sending = busyAct === `send:${row.id}`
+                      const linking = busyAct === `link:${row.id}`
                       return (
                         <div key={row.id} style={line} data-testid="documents-agreements-row">
                           <div style={lineLeft}>
@@ -343,6 +410,16 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
                           <div style={lineRight}>
                             <span style={{ ...stateChip, background: chipColors.background, color: chipColors.color }}>{chip.words}</span>
                             {dayWords ? <span style={day}>{dayWords}</span> : null}
+                            {acts ? (
+                              <>
+                                <button type="button" style={sending ? actBusy : documentsQuietButton} disabled={busyAct != null} onClick={() => void openSendAgain(row)}>
+                                  {sending ? 'Opening…' : SEND_AGAIN_LABEL}
+                                </button>
+                                <button type="button" style={linking ? actBusy : documentsQuietButton} disabled={busyAct != null} onClick={() => void copySigningLink(row)}>
+                                  {linking ? 'Making the link…' : COPY_SIGNING_LINK_LABEL}
+                                </button>
+                              </>
+                            ) : null}
                           </div>
                         </div>
                       )
@@ -384,6 +461,23 @@ export function DocumentsAgreementsTab({ embedSearch, onClearEmbedSearch }: { em
       {signedDocId != null ? (
         <Suspense fallback={null}>
           <PersonContractSignedRecordModal open onClose={() => setSignedDocId(null)} documentId={signedDocId} />
+        </Suspense>
+      ) : null}
+      {sendAgain != null ? (
+        <Suspense fallback={null}>
+          <ContractSendWindow
+            again
+            target={sendAgain.facts.target}
+            docId={sendAgain.documentId}
+            initialEmail={sendAgain.facts.initialEmail}
+            sender={sendAgain.facts.sender}
+            personId={sendAgain.facts.personId}
+            onClose={() => setSendAgain(null)}
+            onSent={() => {
+              setSendAgain(null)
+              retry()
+            }}
+          />
         </Suspense>
       ) : null}
       {workOrder != null ? (

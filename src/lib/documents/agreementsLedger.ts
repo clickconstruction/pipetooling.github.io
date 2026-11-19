@@ -413,11 +413,11 @@ export const AGREEMENTS_GC_PAGE = '/gc'
 
 /** Each kind keeps the window it has: the tab builds no viewer of its own. */
 export type AgreementDoor =
-  /** The Contract window on that record, or its preview while it is unsigned: what the Jobs tab's line opens. */
+  /** The Contract window on that record, or on the job for one that waits; a voided one opens its preview (`agreementOpensContractWindow`). */
   | { kind: 'contract'; jobId: string; recordId: string; signed: boolean }
   /** The signed record window People → Contracts uses. */
   | { kind: 'person-signed'; documentId: string }
-  /** People → Contracts on that paper, where it is sent again. */
+  /** People → Contracts on that paper's own row. Its line here also carries Send again and Copy the signing link (`agreementsActs.ts`). */
   | { kind: 'people-contracts'; to: string }
   /** GC mode's page, for a paper of a GC project: it has no address of its own to open one project on. */
   | { kind: 'gc'; to: string }

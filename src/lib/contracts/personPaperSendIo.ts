@@ -1,0 +1,147 @@
+/**
+ * Sending a person's paper to sign: the calls. One sender for every screen that sends a staff, sub or partner paper
+ * from the app's own windows: `send-contract-for-signature`, in email mode (the signer is emailed the link) or link
+ * mode (the link comes back and nothing is emailed). Either mode mints a new link, so the one sent before stops working.
+ * Browser io, not pure; the rules are `personPaperSend.ts`.
+ */
+import { supabase } from '../supabase'
+import { withSupabaseRetry } from '../../utils/errorHandling'
+import type { QuickSendPlan } from '../contractsQuickSend'
+import { onePersonIdForName, rosterEmailForName, sendWindowSender, type PersonPaperSendResult, type SendRosterPerson, type SendRosterUser } from './personPaperSend'
+
+export type PersonPaperSendInput = {
+  documentId: string
+  /** `email` sends the link to `signerEmail`; `link` hands it back and emails nobody. */
+  mode: 'email' | 'link'
+  signerEmail?: string
+  /** The office's own subject and opening words; blank keeps the email's own. */
+  subject?: string
+  intro?: string
+}
+
+/** Send the paper, or mint its link. Throws with the function's own reason. */
+export async function sendPersonPaperForSignature(input: PersonPaperSendInput): Promise<PersonPaperSendResult> {
+  const { data: sess } = await supabase.auth.getSession()
+  const jwt = sess.session?.access_token
+  if (!jwt) throw new Error('Not signed in.')
+  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+  const subject = (input.subject ?? '').trim()
+  const intro = (input.intro ?? '').trim()
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-contract-for-signature`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${jwt}`,
+      apikey: anon,
+    },
+    body: JSON.stringify({
+      person_contract_document_id: input.documentId,
+      ...(input.mode === 'link' ? { mode: 'link' } : { signer_email: (input.signerEmail ?? '').trim() }),
+      public_origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+      ...(subject ? { email_subject: subject } : {}),
+      ...(intro ? { email_intro_plain: intro } : {}),
+    }),
+  })
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean
+    accept_url?: string
+    emailed?: boolean
+    email_error?: string
+    warning?: string
+    error?: string
+  }
+  if (!res.ok || !json.ok) throw new Error(json.error || 'Send failed')
+  return { acceptUrl: json.accept_url ?? null, emailed: json.emailed === true, emailNote: json.warning || json.email_error || null }
+}
+
+/**
+ * The write a quick-send pick deferred: fill the placeholder or insert the unsent row, returning the id the send
+ * function needs. Called from Send email only. Throws on failure, and nothing is minted.
+ */
+export async function materializeQuickSendRow(pending: { personName: string; documentName: string; plan: Extract<QuickSendPlan, { kind: 'fill' | 'insert' }> }): Promise<string> {
+  const { plan } = pending
+  const source = plan.source
+  if (plan.kind === 'fill') {
+    await withSupabaseRetry(
+      async () =>
+        supabase
+          .from('person_contract_documents')
+          .update({
+            signing_body_html: source.signingBodyHtml,
+            signing_body_format: source.signingBodyFormat,
+            canonical_document_url: source.canonicalDocumentUrl,
+            ...(source.kind === 'book' ? { applied_contract_template_document_id: source.appliedTemplateDocumentId } : {}),
+          })
+          .eq('id', plan.docId),
+      'fill quick send content',
+    )
+    return plan.docId
+  }
+  const inserted = await withSupabaseRetry<{ id: string }>(
+    async () =>
+      supabase
+        .from('person_contract_documents')
+        .insert({
+          person_name: pending.personName,
+          document_name: pending.documentName,
+          contract_lineage_id: globalThis.crypto.randomUUID(),
+          lineage_version: 1,
+          supersedes_person_contract_document_id: null,
+          status: 'unsent',
+          signing_body_html: source.signingBodyHtml,
+          signing_body_format: source.signingBodyFormat,
+          canonical_document_url: source.canonicalDocumentUrl,
+          applied_contract_template_document_id: source.kind === 'book' ? source.appliedTemplateDocumentId : null,
+        })
+        .select('id')
+        .single(),
+    'create quick send document',
+  )
+  if (!inserted?.id) throw new Error('Could not create the document copy.')
+  return inserted.id
+}
+
+/** Whether the person has a live portal address: a saved slug and an unrevoked link. Nothing is minted. */
+export async function readPortalSlugIfLive(personId: string): Promise<string | null> {
+  const [slugRes, linkRes] = await Promise.all([
+    supabase.from('sub_portal_slugs' as never).select('slug').eq('person_id', personId).maybeSingle(),
+    supabase.from('sub_portal_links' as never).select('id').eq('person_id', personId).is('revoked_at', null).limit(1),
+  ])
+  const slug = ((slugRes.data as { slug?: string | null } | null)?.slug ?? '').trim()
+  const live = ((linkRes.data ?? []) as unknown[]).length > 0
+  return slug && live ? slug : null
+}
+
+/** What the Send window needs about one paper, for a screen that holds no roster of its own. */
+export type PersonPaperSendFacts = {
+  target: { personName: string; documentName: string }
+  initialEmail: string
+  personId: string | null
+  sender: { name: string; email: string } | null
+}
+
+/**
+ * Read one paper's send facts: the paper as filed, the person's address from the roster or a login of that name, and
+ * the sender. Each table's own row security answers; a paper the caller cannot read throws.
+ */
+export async function readPersonPaperSendFacts(documentId: string, currentUserId: string | null | undefined): Promise<PersonPaperSendFacts> {
+  const doc = await withSupabaseRetry<{ person_name: string; document_name: string }>(
+    async () => supabase.from('person_contract_documents').select('person_name, document_name').eq('id', documentId).single(),
+    'read the paper',
+  )
+  const personName = (doc.person_name ?? '').trim()
+  const [peopleRes, usersRes, meRes] = await Promise.all([
+    supabase.from('people').select('id, name, email').eq('name', personName).is('archived_at', null).limit(5),
+    supabase.from('users').select('id, name, email').eq('name', personName).limit(5),
+    currentUserId ? supabase.from('users').select('id, name, email').eq('id', currentUserId).maybeSingle() : Promise.resolve({ data: null }),
+  ])
+  const people = (peopleRes.data ?? []) as SendRosterPerson[]
+  const users = (usersRes.data ?? []) as SendRosterUser[]
+  const me = meRes.data as SendRosterUser | null
+  return {
+    target: { personName, documentName: (doc.document_name ?? '').trim() },
+    initialEmail: rosterEmailForName(personName, people, users),
+    personId: onePersonIdForName(personName, people),
+    sender: sendWindowSender(currentUserId, me ? [me] : []),
+  }
+}
