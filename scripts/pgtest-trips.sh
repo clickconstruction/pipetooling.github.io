@@ -15,7 +15,8 @@
 # it. It raises on its first failed assertion and ends with "trips PASSED". PGTEST_KEEP=1 leaves the container up.
 # A second scenario, 30_phone.sql, holds the phone's ground (*_trips_phone): the gate, what the phone is told, start,
 # join, day and end on the caller's own row, who is refused, and the stamp trip_save names.
-# A third, 40_numbers.sql, holds the trip numbers (*_trip_numbers).
+# A third, 40_numbers.sql, holds the trip numbers (*_trip_numbers), and the number a trip takes when it moves home
+# (*_combine_carries_job_held_trip).
 # A fourth, 50_bill_line.sql, holds Put on a bill (*_trip_bill_line, punch list #391): the mark on a job's line and
 # the one function that writes it.
 # A fifth, 60_deleted.sql, holds deleted trips (*_trips_deleted): what the archive keeps of one, who reads a site's,
@@ -29,7 +30,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55829}"
 NAME="pgtest-trips"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_trips.sql supabase/migrations/*_trips_phone.sql supabase/migrations/*_trip_numbers.sql supabase/migrations/*_trip_bill_line.sql supabase/migrations/*_trips_deleted.sql supabase/migrations/*_trip_line_tie.sql)"
+WRITES="$(ls supabase/migrations/*_trips.sql supabase/migrations/*_trips_phone.sql supabase/migrations/*_trip_numbers.sql supabase/migrations/*_trip_bill_line.sql supabase/migrations/*_trips_deleted.sql supabase/migrations/*_trip_line_tie.sql supabase/migrations/*_combine_carries_job_held_trip.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
