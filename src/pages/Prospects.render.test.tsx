@@ -29,6 +29,8 @@ const world = vi.hoisted(() => ({
   appSettings: [] as Array<Record<string, unknown>>,
   /** Calling locks on record. A live one held by somebody else hides its prospect from the deck. */
   locks: [] as Array<Record<string, unknown>>,
+  /** The database refuses every lock upsert, as it refuses a write over a colleague's live row. */
+  refuseLockUpserts: false,
   /** A prospect's Messages thread: the contact that points at it, and that contact's numbers. */
   contacts: [] as Array<Record<string, unknown>>,
   channels: [] as Array<Record<string, unknown>>,
@@ -85,6 +87,9 @@ vi.mock('../lib/supabase', () => {
         return list(world.jobs.filter((j) => j.id === filters.id))
       }
       if (table === 'prospect_jobs' && m === 'delete') world.jobs = world.jobs.filter((j) => j.id !== filters.id)
+      if (table === 'prospect_calling_locks' && m === 'upsert' && world.refuseLockUpserts) {
+        return { data: null, error: { code: '42501', message: 'new row violates row-level security policy (USING expression) for table "prospect_calling_locks"' } }
+      }
       if (table === 'prospect_calling_locks' && m === 'upsert') world.locks = [...world.locks.filter((l) => l.prospect_id !== (payload as Row).prospect_id), payload as Row]
       if (table === 'prospect_calling_locks' && m === 'delete') world.locks = world.locks.filter((l) => !(l.prospect_id === filters.prospect_id && l.user_id === filters.user_id))
       return { data: null, error: null }
@@ -274,6 +279,7 @@ function seed() {
   world.timerEvents = []
   world.appSettings = [{ key: 'prospect_copy_no_response_email', value_text: 'Hello [company name], this is [User name].' }]
   world.locks = []
+  world.refuseLockUpserts = false
   world.contacts = []
   world.channels = []
   world.ranks = []
@@ -1232,6 +1238,28 @@ describe('the calling lock', () => {
     fireEvent.focus(screen.getByPlaceholderText(/^Type what happened/))
     await waitFor(() => expect(lockUpserts()).toHaveLength(1))
     expect(screen.queryByText(/is calling this one/)).toBeNull()
+    // The takeover is one upsert on the prospect, in the caller's own name: the row that was the colleague's is theirs.
+    expect(lockUpserts()[0]?.payload).toMatchObject({ prospect_id: 'cu-1', user_id: 'smoke-auth-user-1' })
+    expect(world.locks).toHaveLength(1)
+    expect(world.locks[0]).toMatchObject({ prospect_id: 'cu-1', user_id: 'smoke-auth-user-1' })
+    expect(Date.now() - Date.parse(String(world.locks[0]?.locked_at))).toBeLessThan(60_000)
+  })
+
+  it('a takeover the database refuses claims no lock, and the next sign of intent tries again', async () => {
+    // What the caller met before the policy let a stale row be taken, and what a colleague who dials in the same
+    // second still meets: the upsert comes back refused. The lock is advisory, so the card carries on without it.
+    await deck('/prospects')
+    world.locks = [{ prospect_id: 'cu-1', user_id: 'other-user', locked_at: '2026-01-01T00:00:00Z' }]
+    world.refuseLockUpserts = true
+    fireEvent.focus(screen.getByPlaceholderText(/^Type what happened/))
+    await waitFor(() => expect(lockUpserts()).toHaveLength(1))
+    expect(world.locks[0]).toMatchObject({ user_id: 'other-user' })
+    expect(screen.queryByText(/is calling this one/)).toBeNull()
+    world.refuseLockUpserts = false
+    // The same card may try again: a second sign of intent sends a second upsert, and this one lands.
+    fireEvent.focus(screen.getByPlaceholderText(/^Type what happened/))
+    await waitFor(() => expect(lockUpserts()).toHaveLength(2))
+    await waitFor(() => expect(world.locks[0]).toMatchObject({ prospect_id: 'cu-1', user_id: 'smoke-auth-user-1' }))
   })
 })
 
