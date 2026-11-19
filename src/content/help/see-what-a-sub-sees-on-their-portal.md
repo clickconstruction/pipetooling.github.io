@@ -68,6 +68,17 @@ Moving the sheet back a stage clears the bill. Deleting the bill clears it too.
 
 The sub does not see which bill the sheet rides on.
 
+## See these sentences on the sample
+
+The sample of a sub's page shows these sentences, each on a sheet of its own.
+
+- **Open the sample.** Go to [Settings → What customers see](/settings?tab=settings-what-customers-see) and open the **Sub portal** step.
+- **One sheet is queued.** It shows the pay day you promised.
+- **One sheet waits on the customer.** It carries the line *This customer usually pays 4 to 6 weeks after we ask.*
+- **One sheet says the customer paid.** Its chip reads *Customer paid* with yesterday's date.
+
+The sample is made up. No real sub, customer or payment is on it.
+
 ## How long the customer usually takes
 
 While a sheet waits on the customer, their page can say how long that customer usually takes.

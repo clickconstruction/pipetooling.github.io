@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import SubPortal from './SubPortal'
 import { installDomShims } from '../test/renderSmokeMocks'
 import { SUB_PORTAL_DEMO_PAYLOAD } from '../lib/subPortal/subPortalDemoFixture'
+import { sampleSubPortalPage } from '../../supabase/functions/_shared/customerSampleSub'
 import { JOB_PAPERS_RETURN_KEY } from '../lib/jobs/jobPapers'
 
 /**
@@ -418,5 +419,23 @@ describe('SubPortal: the customer paid (punch list #388, step 2)', () => {
   it('a figure on a sheet that is not waiting on the customer changes nothing', async () => {
     await open({ ...SUB_PORTAL_DEMO_PAYLOAD, sheets: SUB_PORTAL_DEMO_PAYLOAD.sheets.map((s) => (s.id === 'demo-s2' ? { ...s, usualPayWeeks: { lo: 4, hi: 6 } } : s)) })
     expect(screen.queryByTestId('sub-portal-usual-pay')).toBeNull()
+  })
+})
+
+// The office's sample (Settings → What customers see → Sub portal): the function's own sample answer, drawn by the page.
+describe('SubPortal: the office’s sample shows the two lines of punch list #388', () => {
+  const COMPANY = { name: 'Sample Plumbing', cityLine: 'Kyle, TX', licenseLine: 'M-00000', phone: '(512) 555-0100', email: 'office@example.com' }
+
+  it('one sheet says how long this customer usually takes, one says the customer paid, one stays queued', async () => {
+    const payload = sampleSubPortalPage(COMPANY, '2026-11-19', { day: 'friday', nextRun: '2026-11-20', explainer: null })
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => payload })))
+    renderPortal()
+    await waitFor(() => expect(screen.getByText('Work & pay statement')).toBeTruthy())
+    expect(screen.getAllByTestId('sub-portal-usual-pay').map((el) => el.textContent)).toEqual(['This customer usually pays 4 to 6 weeks after we ask.'])
+    expect(screen.getByText('Customer paid Nov 18, 2026')).toBeTruthy()
+    expect(screen.getAllByTestId('sub-portal-customer-paid').map((el) => el.textContent)).toEqual(['The customer paid on Nov 18, 2026. Your payment is next. We will give it a pay run day.'])
+    expect(screen.getAllByText(/Queued for the pay run/).length).toBeGreaterThanOrEqual(1)
+    // The day and never the amount: the paid sheet's own money is its agreed price, and no payment of the customer's is drawn.
+    expect(screen.getAllByText('Draw requested')).toHaveLength(1)
   })
 })

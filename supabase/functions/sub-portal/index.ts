@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
-import { sampleSubPortalResponse } from '../_shared/customerSampleFixtures.ts'
+import { sampleSubPortalPage } from '../_shared/customerSampleSub.ts'
 import {
   attachSheetAgreements,
   buildSubDocuments,
@@ -317,7 +317,7 @@ serve(async (req) => {
       const m = new Map(((sampleSettings ?? []) as Array<{ key: string; value_text: string | null }>).map((r) => [r.key, r.value_text]))
       const day = (m.get('sub_pay_run_day') ?? '').trim() || null
       const today = todayYmdInAppTz()
-      return jsonResponse(sampleSubPortalResponse(PORTAL_COMPANY, today, { day, nextRun: nextPayRunYmd(today, day), explainer: (m.get('sub_pay_explainer') ?? '').trim() || null }))
+      return jsonResponse(sampleSubPortalPage(PORTAL_COMPANY, today, { day, nextRun: nextPayRunYmd(today, day), explainer: (m.get('sub_pay_explainer') ?? '').trim() || null }))
     }
 
     let link: { id?: string | null; person_id: string; revoked_at: string | null; token?: string | null; created_by?: string | null } | null = null
