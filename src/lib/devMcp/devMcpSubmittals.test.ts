@@ -122,7 +122,7 @@ describe('the grammar', () => {
   })
 
   it('is on the server and in the README', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.108.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.109.0'")
     expect(SERVER).toContain('Writes are one hundred and thirty-three verbs and nothing else:')
     for (const v of [...SUBMITTAL_VERBS, 'get_submittals']) expect(SERVER).toContain(`name: '${v}'`)
     expect(SERVER).toContain("case 'get_submittals':")

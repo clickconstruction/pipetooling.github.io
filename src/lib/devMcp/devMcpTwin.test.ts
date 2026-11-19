@@ -178,7 +178,7 @@ describe('the twin verbs (a digital twin made from the dev seat, v2.7879)', () =
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
     expect(branch).not.toContain('twin_credentials') // it makes no key
     expect(branch).not.toContain('password:') // the password is the kernel's body alone, never a reply or a log line
-    expect(SERVER).toContain("const SERVER_VERSION = '0.108.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.109.0'")
     expect(SERVER).toContain('Writes are one hundred and thirty-three verbs and nothing else')
     expect(SERVER).toContain('plan_twin → apply_twin (a digital twin')
     expect(README).toContain('| `plan_twin(twin)` · `apply_twin(twin, plan_hash)` |')
