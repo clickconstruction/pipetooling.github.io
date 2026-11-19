@@ -159,6 +159,8 @@ describe('PaintedMapSavedBand', () => {
       await settle()
       expect(a.io.can).toHaveBeenCalledTimes(1)
       expect(a.io.can).toHaveBeenCalledWith('m1')
+      // A walk reads this off the press to know which path the next press takes.
+      expect(document.querySelector('[data-painted-saved-text]')?.getAttribute('data-painted-saved-at-once')).toBe('true')
       cleanup()
       const b = makeIo(yes())
       render(band(b.io, false))

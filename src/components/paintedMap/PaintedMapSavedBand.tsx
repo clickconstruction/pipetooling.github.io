@@ -182,7 +182,7 @@ export function PaintedMapSavedBand({ mapId, mapName, head, under, offersText, o
       </div>
       {offersText ? (
         <>
-          <button type="button" data-painted-saved-text style={making ? { ...lead, ...dead } : lead} disabled={making} onClick={() => void press()}>
+          <button type="button" data-painted-saved-text data-painted-saved-at-once={mayHandOff} style={making ? { ...lead, ...dead } : lead} disabled={making} onClick={() => void press()}>
             {making ? (
               W.making
             ) : (
