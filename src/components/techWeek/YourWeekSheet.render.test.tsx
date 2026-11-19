@@ -25,7 +25,14 @@ const week = (signal: string | null) => ({
   callbacks: [],
 })
 
-beforeEach(() => localStorage.clear())
+// Every case reads one fixed moment, 5:31 PM Central on Friday Nov 6, 2026. On the real clock the case below read the day
+// twice, once for its rows and once in the sheet, and midnight Central fell between them in the merge queue (2026-11-19).
+const NOW = new Date('2026-11-06T23:31:00Z')
+beforeEach(() => {
+  localStorage.clear()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(NOW)
+})
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
@@ -41,7 +48,7 @@ describe('YourWeekSheet', () => {
     expect(screen.getByText('Jobs without a callback')).toBeTruthy()
     expect(screen.getByText('“Marcus explained everything.”')).toBeTruthy()
     expect(screen.getByText(/Dana W\. · water heater · today/)).toBeTruthy()
-    const press = screen.getByRole('button', { name: /Have a good/ })
+    const press = screen.getByRole('button', { name: 'Have a good weekend' })
     fireEvent.click(press)
     expect(onClose).toHaveBeenCalled()
     expect(weekSheetAlreadyDealt('u-marcus', Object.keys(localStorage).find((k) => k.startsWith('your_week_sheet_seen_u-marcus_'))!.replace('your_week_sheet_seen_u-marcus_', ''))).toBe(true)
@@ -49,7 +56,6 @@ describe('YourWeekSheet', () => {
 
   it('reads the week on the company calendar on a Saturday evening, when the UTC day is already Sunday', async () => {
     // 6:30 PM Saturday Nov 7 in Chicago is 00:30 Sunday Nov 8 in UTC: the next pay week by the UTC day.
-    vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-11-08T00:30:00Z'))
     expect(todayYmdInAppTz()).toBe('2026-11-07')
     render(<YourWeekSheet open userId="u-marcus" clockedOutIso="2026-11-07T23:31:00Z" onClose={vi.fn()} io={io(week('jobs_without_callback'))} />)
