@@ -3973,7 +3973,7 @@ The office's two overrides — `legal_firm_set_paused`, `legal_firm_recipient_re
 
 ## Job accounts at a supply house (v2.3423)
 
-`job_supply_house_accounts` (one row per job × house: requested · open · not needed) is **readable by anyone who can read the job's operational activity** — `can_read_job_activity(job_id, false)`: dev, the job's master, adopted / shared assistants, primaries, and the crew on the job's team — because the field reads the status at the counter (PR 2's strip).
+`job_supply_house_accounts` (one row per job × house: requested · open · not needed) is **readable by anyone who can read the job's operational activity** — `can_read_job_activity(job_id, false)`: dev, the job's master, adopted / shared assistants, a primary who is one of the job's people (`is_job_people`, since v2.7929, punch list #400: before it any primary passed, and with money lines too), and the crew on the job's team — because the field reads the status at the counter (PR 2's strip).
 **Writes:** the office (`is_office_staff()`: dev, master_technician, assistant, controller) inserts, updates and deletes any status;
 any job reader may insert a `requested` row attributed to themselves (`requested_by = auth.uid()`) — the field's one-tap ask.
 Marking an account opened or not needed is office-only, and so are **Change this…** and **Take the mark off** on a not-needed chip's sheet (v2.7345, the client's `isOfficeRole`;
