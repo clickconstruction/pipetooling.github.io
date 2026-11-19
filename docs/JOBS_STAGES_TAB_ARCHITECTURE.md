@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: af364443c
 audience: Developers, AI Agents
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 ---
 
 > **Line numbers are as of v2.7774** (2026-11-18). They were carried forward from `58caa94ee` at v2.7719 by the diff's hunks, each checked against its line's text, and every cut since re-stamps them the same way. The per-cluster hook counts in §1 are still the `58caa94ee` census. This is the hottest surface in the repo (260 commits in 90 days on the tab, 52 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -403,10 +403,35 @@ Already-extracted lib (add tests only where missing): `buildJobsStagesBoardLists
 19. **The partial-invoice write → the shared draft write** (cluster M) — **shipped v2.7760:** `createInvoiceFromModal` calls `writeDraftInvoice` and `draftInvoiceErrorMessage` from [`lib/jobs/draftInvoiceWrite.ts`](../src/lib/jobs/draftInvoiceWrite.ts), the job form's write since v2.3926 (17 tests), where it carried its own copy of the insert, the re-sync and the error words. No new lib: the playbook's shared seam 38 already was one, and the tab was its fourth copy. 6 tab cases through the real dialog that hold on the old code too, 3 on what the tab hands the write (ten mutants killed). The board opens the dialog only from a Waiting or Working card, so the re-sync on a Ready to Bill job is pinned in the lib's tests; `showCreatePartialInvoice` on the bill tables is read by nothing. Quirk 9 holds. The tab 4,984 → 4,963 lines.
 20. **Fix: `applyStagesInvoiceFocus`'s deps** (quirk 17) — **shipped v2.7761:** the callback's deps name `stagesCombinedExtraJobIds`, which its body reads. Before, a job the server lookup alone had found (by an old job number, say) showed on the board while the jump to one of its bills still looked through the rows from before the lookup answered, and said *Clear the Stages search to see this invoice*. 4 tab cases; the first fails on the old line. A fix, the one cut of this run that changes what someone sees.
 21. **The rows' ⚖ legal chip, wired** (§9) — **shipped v2.7762:** `legalMatterByJobId` is a field of `StagesTableShared`, the tab's bundle fills it from `useLegalMatters` (the office only) and `stagesRowContext` hands it to the rows, forty-one keys now. Three lines of app code. v2.3313 had shipped the chip and the Glossary says a Collections row carries it; it had never drawn. 4 tab cases on the table rows and the phone cards, two of which fail on the old code (four mutants killed); with no matter in a state that speaks, the board's HTML is unchanged. On the live data of 2026-11-18 no matter was in such a state, so the first chip shows when one is: review requested, with the firm, or closed. The one cut of this run that puts something new on the screen.
-22. **Later, each on a quiet week or after a map step of its own:** `billedLienRunwayRenderer` → a component (166 lines; the lien and pay-calendar trains land on it), a host for the lien windows (tied to the lien clocks and the desk's re-read), and the Billed section's header → a component (about 215 lines). `stagesSectionActionProps` (178 lines) stays: it writes thirteen confirm states and calls the move engine, so a hook would only move the coupling.
+22. **Not built**: the rows of the table below the list marked *not built*, each with its reason.
 23. **`billedBillLineRenderer` → a component** (cluster H) — **shipped v2.7764:** [`StagesBilledRowExtras`](../src/components/jobs/StagesBilledRowExtras.tsx) draws what a Billed or Collections row adds beside its buttons: the bank-returned ⚠, a job-shell's pill and the shell's They said…. A close read put it at low risk, where the fact sheet alone had said medium: it holds no state and no money math, only two presses. The renderer keeps the decision whether a row has extras at all. 10 render cases (seven mutants killed; an eighth, extras on every bill row, draws the same empty output). The tab 4,964 → 4,915 lines.
 24. **The contract windows → a host** (§6) — **shipped v2.7772:** [`StagesContractWindows`](../src/components/jobs/StagesContractWindows.tsx) draws the Contract window, the GC subcontract sheet and the contract sweep, moved as they were; their three open states stay in the tab, since the row chips, the phone chips, the command bar, the overview and `?contractSweep=1` open them. 8 host cases with the windows as probes and 4 tab cases that hold on the old code too (twelve mutants killed); the board's HTML is unchanged with the sweep open. The first table called it low risk and not worth a PR; the rule for this run builds every low-risk cut, so it shipped. The tab 4,915 → 4,886 lines.
 25. **The snapshot age chip → its own file** (§3) — **shipped v2.7774:** [`BoardSnapshotAgeChip`](../src/components/jobs/BoardSnapshotAgeChip.tsx), the amber *board from 5 min ago* beside *Updating jobs…* and beside the line that says the refresh did not land, moved as it was. 3 chip cases and 4 tab cases that hold on the old code too (five mutants killed); the board's HTML is unchanged with the chip drawn. The tab 4,886 → 4,865 lines.
+
+Every cut of the run of 2026-11-17 and 18 (punch list #46 row 2), with the ones left. *Lines out* is measured for a cut that shipped and estimated for one that did not.
+
+| Step | Cut | Lines out | Risk | Should we | Shipped |
+|---|---|---|---|---|---|
+| 10 | The tables take the shared bundle as one typed prop | 144 from the two tables (measured) | Low | Yes | v2.7719, #8646 |
+| 11 | Dead header export | 12 from the shared renderers (measured) | None | Yes | v2.7723, #8667 |
+| 12 | Customer-line tail as one helper | 40 from the shared renderers (measured) | Low | Yes | v2.7727, #8679 |
+| 13 | Row context built once | 181 across the four lists (measured) | Low | Yes | v2.7731, #8685 |
+| 14 | One bundle helper for the lists’ tests | 93 lines of tests, net (measured) | None | Yes | v2.7736, #8692 |
+| 15 | Man-hours read → `useStagesManHours` | 31 from the tab (measured) | Low | Yes | v2.7745, #8697 |
+| 16 | Back to Edit Job banner → a component | 89 from the tab (measured) | Low | Yes | v2.7750, #8702 |
+| 17 | Follow-up deck row → kernels | 61 from the tab (measured) | Low | Yes | v2.7757, #8706 |
+| 18 | Phone rows’ Next-line input → a kernel | 43 from the tab (measured) | Low | Yes | v2.7758, #8707 |
+| 19 | Partial invoice → the job form’s draft write | 21 from the tab (measured) | Low | Yes | v2.7760, #8717 |
+| 20 | Fix: the jump to a bill reads the board’s rows | one line changed | Low, a fix with a test that fails on the old line | Yes | v2.7761, #8731 |
+| 21 | The rows’ ⚖ legal chip, wired | 3 lines added | Low, a fix that puts the chip v2.3313 shipped on the screen | Yes | v2.7762, #8751 |
+| 23 | Billed row extras → a component | 49 from the tab (measured) | Low after a close read (medium on the fact sheet alone) | Yes | v2.7764, #8779 |
+| 24 | Contract windows → a host | 29 from the tab (measured) | Low | Yes, under this run’s rule to build every low-risk cut | v2.7772, #8826 |
+| 25 | Snapshot age chip → its own file | 21 from the tab (measured) | None | Yes | v2.7774, #8834 |
+| — | `billedLienRunwayRenderer` → a component | about 166 (estimated) | Medium to high: thirteen sources, five windows opened, and the lien and pay-calendar trains land on it | Later, on a quiet week | not built |
+| — | The lien windows → a host | about 60 (estimated) | Medium: their saves write the jobs cache, bump the lien clocks and re-read the desk | Later, after the Lien desk settles | not built |
+| — | The Billed section’s header → a component | about 215 (estimated) | Medium: about twenty-five props and nine role gates | Later, mapped first | not built |
+| — | `stagesSectionActionProps` → a hook | 178 (estimated) | High: it writes thirteen confirm states and calls the move engine | No: a hook would only move the coupling | not built |
+| — | `printBilledAwaitingPaymentReport` → `lib` | about 8 (estimated) | None | No: the tab would keep a wrapper of the same size | not built |
 
 **What must STAY in `JobsStagesTab`:** the imperative handle and everything it writes (`stagesSectionOpen`, both focus / flash pairs, the modal flags the handle opens), `stagesBoardLists` / `unfilteredBoardLists` / `bankPaymentsModalBilledRows`, the search state and effects, the mode toggles, the section wiring, the confirm handlers and the partial-invoice IO (they call the page's mutation engine and write focus), and the prop plumbing for the parent-injected engines. **What stays in `Jobs.tsx`** (unchanged from the parent map): the URL router for the handle's params, the jobs cache, `customers` / `users`, the `useJobsStagesMutations` / `useJobThreadNotes` call sites, and the app modal contexts (`useJobFormModal`, `useJobDetailModal`, `useBillCustomerModal`; the tables and card list call `useDispatchTaskModal` / `useChecklistAddModal` themselves).
 
