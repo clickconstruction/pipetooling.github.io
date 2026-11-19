@@ -39,7 +39,7 @@ Each step is its own write. One that fails stops the run with the reason on its 
 
 ## When the hire made no login
 
-A dev who hired without the invite sees {{button:blue|Attach a login}} at the end of the form. Press it. The form closes and the person's desk opens on **Access & account** with the Attach form ready. Check the email and press {{button:blue|Attach and send the sign-in email}}. The login lands on the same person. Their hours and pay stay where they are. Do not look for an invite for them. An invite would make a second person, so the app refuses it.
+A dev who hired without the invite sees {{button:blue|Attach a login}} at the end of the form. Press it. The form closes and the person's desk opens on **Access & account** with the Attach form ready. Check the email and press {{button:blue|Attach and send the sign-in email}}. Or pick **Set a password now**, type a password twice and press {{button:blue|Attach with this password}}. Then no email goes out. The login lands on the same person. Their hours and pay stay where they are. Do not look for an invite for them. An invite would make a second person, so the app refuses it.
 
 ## Find the desk again
 

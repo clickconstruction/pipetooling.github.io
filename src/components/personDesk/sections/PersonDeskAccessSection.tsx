@@ -22,7 +22,7 @@ import {
   tradesMeaningForRole,
 } from '../../../lib/people/accountWrites'
 import type { PersonDeskUserRow } from '../../../hooks/usePersonDesk'
-import { attachEmailProblem, attachLogin, removeLogin } from '../../../lib/people/attachLogin'
+import { attachDoneWords, attachFormProblem, attachHintWords, attachLogin, attachPressLabel, removeLogin, type AttachSignInBy } from '../../../lib/people/attachLogin'
 import { canOfferFreshDelete, runFreshDelete } from '../../../lib/people/freshPersonDelete'
 import { useOptionalPersonDesk } from '../../../contexts/PersonDeskContext'
 import { MergeDuplicateDialog } from './MergeDuplicateDialog'
@@ -139,6 +139,10 @@ export function PersonDeskAccessSection({
   // Attach a login (punch list #260, v2.6518): null = the form is closed.
   const [attachDraft, setAttachDraft] = useState<string | null>(null)
   const [attachError, setAttachError] = useState<string | null>(null)
+  // v2.7901: the Hire form's two ways to sign in, on a person who exists. A password typed here sends no email.
+  const [attachBy, setAttachBy] = useState<AttachSignInBy>('email')
+  const [attachPassword, setAttachPassword] = useState('')
+  const [attachPasswordAgain, setAttachPasswordAgain] = useState('')
   // v2.6789: a door that names the Attach step opens the form with the address filled, once per person, so the dev who
   // just hired without the invite lands on the one press left and nothing else opens on top.
   const attachUserId = user?.id ?? null
@@ -174,6 +178,15 @@ export function PersonDeskAccessSection({
   const canFlipSupervision = canSetSupervision(viewer) && (!isSelf || viewer.isDev)
   const canRun = u.needs_supervision === false
   const showCountTooling = viewer.isDev && (Boolean(u.counttooling_user_id) || u.role === 'estimator')
+
+  /** Closes the Attach form and forgets what was typed, the password above all. */
+  function closeAttach() {
+    setAttachDraft(null)
+    setAttachBy('email')
+    setAttachPassword('')
+    setAttachPasswordAgain('')
+    setAttachError(null)
+  }
 
   /** One write: busy while it runs, a toast either way, the desk reloads on success. */
   async function run(key: string, write: () => Promise<unknown>, success: string): Promise<boolean> {
@@ -406,19 +419,21 @@ export function PersonDeskAccessSection({
               style={{ flexBasis: '100%', display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center', marginTop: '0.3rem' }}
               onSubmit={(e: FormEvent) => {
                 e.preventDefault()
-                const problem = attachEmailProblem(attachDraft)
+                const problem = attachFormProblem({ email: attachDraft, signInBy: attachBy, password: attachPassword, again: attachPasswordAgain })
                 if (problem) {
                   setAttachError(problem)
                   return
                 }
+                // A press that passed the checks takes the last refusal's words down, so a failed call never sits under a stale reason.
+                setAttachError(null)
                 const email = attachDraft.trim().toLowerCase()
                 void run(
                   'attach',
                   async () => {
-                    await attachLogin(supabase, { userId: u.id, email, redirectTo: new URL('dashboard', window.location.href).href })
-                    setAttachDraft(null)
+                    await attachLogin(supabase, { userId: u.id, email, redirectTo: new URL('dashboard', window.location.href).href, ...(attachBy === 'password' ? { password: attachPassword } : {}) })
+                    closeAttach()
                   },
-                  `Login attached. Sign-in email sent to ${email}.`,
+                  attachDoneWords(attachBy, email, displayName),
                 )
               }}
             >
@@ -426,13 +441,36 @@ export function PersonDeskAccessSection({
                 <span style={{ fontSize: '0.8125rem' }}>Email</span>
                 <input type="email" value={attachDraft} onChange={(e) => setAttachDraft(e.target.value)} aria-label="Login email" autoFocus style={{ flex: 1, fontSize: '0.8125rem', padding: '0.2rem 0.4rem' }} />
               </label>
+              <fieldset style={{ flexBasis: '100%', margin: 0, border: 'none', padding: 0, display: 'grid', gap: '0.35rem', fontSize: '0.8125rem' }}>
+                <legend style={{ padding: 0, color: 'var(--text-muted)' }}>How they sign in</legend>
+                <span style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <input type="radio" name="attach-sign-in" checked={attachBy === 'email'} onChange={() => { setAttachBy('email'); setAttachError(null) }} /> Email them a link
+                  </label>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <input type="radio" name="attach-sign-in" checked={attachBy === 'password'} onChange={() => { setAttachBy('password'); setAttachError(null) }} /> Set a password now
+                  </label>
+                </span>
+                {attachBy === 'password' ? (
+                  <span style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.5rem', maxWidth: '26rem' }}>
+                    <label style={{ display: 'grid', gap: '0.2rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Password</span>
+                      <input type="password" autoComplete="new-password" value={attachPassword} onChange={(e) => setAttachPassword(e.target.value)} aria-label="Password" style={{ fontSize: '0.8125rem', padding: '0.2rem 0.4rem', width: '100%', minWidth: 0, boxSizing: 'border-box' }} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '0.2rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Type it again</span>
+                      <input type="password" autoComplete="new-password" value={attachPasswordAgain} onChange={(e) => setAttachPasswordAgain(e.target.value)} aria-label="Type the password again" style={{ fontSize: '0.8125rem', padding: '0.2rem 0.4rem', width: '100%', minWidth: 0, boxSizing: 'border-box' }} />
+                    </label>
+                  </span>
+                ) : null}
+              </fieldset>
               <button type="submit" style={deskBtn(BTN_BLUE, busy != null)} disabled={busy != null}>
-                {busy === 'attach' ? 'Attaching…' : 'Attach and send the sign-in email'}
+                {busy === 'attach' ? 'Attaching…' : attachPressLabel(attachBy)}
               </button>
-              <button type="button" style={deskBtn(BTN_QUIET, busy != null)} disabled={busy != null} onClick={() => setAttachDraft(null)}>
+              <button type="button" style={deskBtn(BTN_QUIET, busy != null)} disabled={busy != null} onClick={closeAttach}>
                 Cancel
               </button>
-              {attachError ? <span style={{ ...HINT, color: 'var(--text-red-600)' }}>{attachError}</span> : <span style={HINT}>The login lands on this same person: their hours, Charged as and pay stay where they are. They choose a password from the email.</span>}
+              {attachError ? <span role="alert" style={{ ...HINT, color: 'var(--text-red-600)' }}>{attachError}</span> : <span style={HINT}>{attachHintWords(attachBy)}</span>}
             </form>
           ) : null}
         </DeskRow>
