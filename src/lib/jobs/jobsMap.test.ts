@@ -20,8 +20,8 @@ function job(p: Partial<JobWithDetails> & { id: string }): JobWithDetails {
   return {
     hcp_number: '1019',
     click_number: null,
-    job_name: 'Vasquez pretest',
-    job_address: '173 Atlantis, Kyle, TX',
+    job_name: 'Varga pretest',
+    job_address: '441 Averill, Kyle, TX',
     status: 'working',
     collections_at: null,
     pct_complete: 60,
@@ -67,7 +67,7 @@ describe('jobsMapJobs', () => {
       job({ id: 'cust', hcp_number: '', click_number: '204', job_name: 'Corl remodel' }),
       job({ id: 'none', job_address: '' }),
     ])
-    expect(jobs[0]!.label).toBe('1019 · Vasquez pretest')
+    expect(jobs[0]!.label).toBe('1019 · Varga pretest')
     expect(jobs[0]!.payerName).toBe('Dead Level Foundation')
     expect(jobs[1]!.label).toBe('204 · Corl remodel')
     expect(jobs[1]!.payerName).toBe('Maria Vasquez')
@@ -131,7 +131,7 @@ describe('jobsMapJobs', () => {
 describe('pins, legend and visibility', () => {
   const { jobs } = jobsMapJobs([job({ id: 'a' }), job({ id: 'b', status: 'paid', job_address: '9 Elm St, Austin' }), job({ id: 'c', job_address: '1 Cold Rd, Nowhere' })])
   const coords = new Map([
-    ['173 atlantis, kyle, tx', { lat: 30.0, lng: -97.9 }],
+    ['441 averill, kyle, tx', { lat: 30.0, lng: -97.9 }],
     ['9 elm st, austin', { lat: 30.3, lng: -97.7 }],
   ])
 

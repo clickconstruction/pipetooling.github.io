@@ -72,7 +72,7 @@ const GLENN: Contact = {
 const OAK: JobTile = { key: 'bid:b-oak', kind: 'bid', num: 'B512', name: 'Oak Hill Clinic', day: { words: 'bid due Thu Nov 12 · 8 days', tone: 'soon' } }
 const ELM: JobTile = { key: 'bid:b-elm', kind: 'bid', num: 'B520', name: 'Elm Street Shell', day: { words: 'no due day', tone: '' } }
 
-const SUBJECT = 'Northeast Bible Church Elementary Building @ San Antonio - Invitation to Bid'
+const SUBJECT = 'Northeast Barlow Church Elementary Building @ San Antonio - Invitation to Bid'
 const line = (id: string, over: Partial<ThreadMessage> = {}): ThreadMessage => ({
   id,
   contactId: 'c-glenn',

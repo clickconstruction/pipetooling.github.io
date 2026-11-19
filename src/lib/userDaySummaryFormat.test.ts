@@ -144,7 +144,7 @@ describe('computeSessionDurationMs', () => {
 
 describe('associationLabel (re-exported smoke)', () => {
   const jobs = new Map([['job-a', 'JP740 · San Marcos Demo']])
-  const bids = new Map([['bid-x', 'B249 · Diamondback Rough-In']])
+  const bids = new Map([['bid-x', 'B249 · Davenport Rough-In']])
 
   it('returns the job title when job_ledger_id resolves', () => {
     expect(
@@ -155,7 +155,7 @@ describe('associationLabel (re-exported smoke)', () => {
   it('falls back to the bid title when bid_id resolves and no job', () => {
     expect(
       associationLabel(makeSession({ bid_id: 'bid-x' }), jobs, bids),
-    ).toBe('B249 · Diamondback Rough-In')
+    ).toBe('B249 · Davenport Rough-In')
   })
 
   it('returns `No job` when neither id resolves', () => {

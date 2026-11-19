@@ -93,18 +93,18 @@ describe('fix it from the paper (v2.4719)', () => {
   })
   it('names the blanks a window filled; an owner still missing an address is not filled', () => {
     const before = lienPaperGaps('affidavit', blank)
-    const after = lienPaperGaps('affidavit', { ...blank, county: 'Guadalupe', legalDescription: 'Lot 12', ownerName: 'Bruce Hall' })
+    const after = lienPaperGaps('affidavit', { ...blank, county: 'Guadalupe', legalDescription: 'Lot 12', ownerName: 'Blake Hendry' })
     expect(lienPaperFilledSince(before, after).map((g) => g.key)).toEqual(['county', 'legal'])
-    const whole = lienPaperGaps('affidavit', { ...blank, county: 'Guadalupe', legalDescription: 'Lot 12', ownerName: 'Bruce Hall', ownerAddress: '1200 Ilka Rd', gcName: 'Hill Country Builders' })
+    const whole = lienPaperGaps('affidavit', { ...blank, county: 'Guadalupe', legalDescription: 'Lot 12', ownerName: 'Blake Hendry', ownerAddress: '5171 Irving Rd', gcName: 'Hill Country Builders' })
     expect(lienPaperFilledSince(before, whole).map((g) => g.key)).toEqual(['county', 'legal', 'owner', 'gc'])
   })
   it('marks the filled values on the paper in green and leaves the rest alone', () => {
-    const fields = { county: 'Guadalupe', legalDescription: 'Lot 12', ownerName: 'Bruce Hall', ownerAddress: '1200 Ilka Rd', originalContractorName: '' }
+    const fields = { county: 'Guadalupe', legalDescription: 'Lot 12', ownerName: 'Blake Hendry', ownerAddress: '5171 Irving Rd', originalContractorName: '' }
     const marked = withFreshMarks(fields, [{ key: 'county' }, { key: 'owner' }, { key: 'gc' }])
     expect(marked.legalDescription).toBe('Lot 12')
     expect(marked.originalContractorName).toBe('')
     const html = paintGaps(`<p>COUNTY OF ${marked.county.toUpperCase()}</p><p>${marked.ownerName}, ${marked.ownerAddress}</p>`, [])
-    expect(html).toBe('<p>COUNTY OF <span class="lienPaperFresh">GUADALUPE</span></p><p><span class="lienPaperFresh">Bruce Hall</span>, <span class="lienPaperFresh">1200 Ilka Rd</span></p>')
+    expect(html).toBe('<p>COUNTY OF <span class="lienPaperFresh">GUADALUPE</span></p><p><span class="lienPaperFresh">Blake Hendry</span>, <span class="lienPaperFresh">5171 Irving Rd</span></p>')
     expect(withFreshMarks(marked, [{ key: 'county' }]).county).toBe(marked.county)
   })
 })

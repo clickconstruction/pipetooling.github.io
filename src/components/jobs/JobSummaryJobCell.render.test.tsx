@@ -22,8 +22,8 @@ describe('JobSummaryJobCell', () => {
         hcpNumber="754"
         clickNumber={null}
         serviceTypeName="Plumbing"
-        jobName="Lavender Springs Assisted Living"
-        address="501 Ranch to Market Rd 3237, Wimberley, TX 78676"
+        jobName="Langford Springs Assisted Living"
+        address="756 Ranch to Market Rd 3237, Wimberley, TX 78676"
         chips={<span>✂ write-down</span>}
       />,
     )
@@ -31,11 +31,11 @@ describe('JobSummaryJobCell', () => {
     const cell = screen.getByTestId('job-summary-job-cell')
     expect(cell.textContent).toContain('J754')
     expect(cell.textContent).toContain('plum')
-    expect(cell.textContent).toContain('Lavender Springs Assisted Living')
+    expect(cell.textContent).toContain('Langford Springs Assisted Living')
     expect(cell.textContent).toContain('✂ write-down')
     expect(cell.textContent).toContain('▶')
-    const addr = screen.getByTitle('501 Ranch to Market Rd 3237, Wimberley, TX 78676')
-    expect(addr.textContent).toBe('501 Ranch to Market Rd 3237, Wimberley, TX 78676')
+    const addr = screen.getByTitle('756 Ranch to Market Rd 3237, Wimberley, TX 78676')
+    expect(addr.textContent).toBe('756 Ranch to Market Rd 3237, Wimberley, TX 78676')
     expect(addr.style.textOverflow).toBe('ellipsis')
   })
 

@@ -41,14 +41,14 @@ describe('buildRecentlyAddedRows', () => {
   it('carries a compact address (zip stripped) and the GC name, object or array embed', () => {
     const rows = buildRecentlyAddedRows(
       [
-        lean({ id: 'obj', job_address: '110 Lenz Dr, Seguin, TX 78155', gc_customer: { name: 'RLC- Dunmere Mallin' } }),
-        lean({ id: 'arr', gc_customer: [{ name: 'DSI (Diamondback)' }] }),
+        lean({ id: 'obj', job_address: '439 Larkin Dr, Seguin, TX 78155', gc_customer: { name: 'RLC- Dunmere Mallin' } }),
+        lean({ id: 'arr', gc_customer: [{ name: 'DWT (Davenport)' }] }),
         lean({ id: 'bare', job_address: null, gc_customer: null }),
       ],
       NOW,
     )
-    expect(rows.find((r) => r.id === 'obj')).toMatchObject({ address: '110 Lenz Dr, Seguin, TX', gcName: 'RLC- Dunmere Mallin' })
-    expect(rows.find((r) => r.id === 'arr')?.gcName).toBe('DSI (Diamondback)')
+    expect(rows.find((r) => r.id === 'obj')).toMatchObject({ address: '439 Larkin Dr, Seguin, TX', gcName: 'RLC- Dunmere Mallin' })
+    expect(rows.find((r) => r.id === 'arr')?.gcName).toBe('DWT (Davenport)')
     expect(rows.find((r) => r.id === 'bare')).toMatchObject({ address: '', gcName: '' })
   })
 

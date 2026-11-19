@@ -160,13 +160,13 @@ describe('buildAlternatesBlock', () => {
 })
 
 describe('customerFacingAlternateName', () => {
-  const gc = 'MERIT GENERAL CONTRACTORS'
+  const gc = 'MADDOX GENERAL CONTRACTORS'
   const project = 'ALSATIAN'
 
   it("swaps the GC for the project and collapses the doubled halves (the owner's screenshot)", () => {
     expect(
       customerFacingAlternateName(
-        'MERIT GENERAL CONTRACTORS value engineered · MERIT GENERAL CONTRACTORS value engineered',
+        'MADDOX GENERAL CONTRACTORS value engineered · MADDOX GENERAL CONTRACTORS value engineered',
         gc,
         project,
       ),
@@ -174,19 +174,19 @@ describe('customerFacingAlternateName', () => {
   })
 
   it('a packet named exactly the GC becomes the project name', () => {
-    expect(customerFacingAlternateName('MERIT GENERAL CONTRACTORS · value engineered', gc, project)).toBe(
+    expect(customerFacingAlternateName('MADDOX GENERAL CONTRACTORS · value engineered', gc, project)).toBe(
       'ALSATIAN · value engineered',
     )
   })
 
   it('GC match is case-insensitive; names without the GC pass through', () => {
-    expect(customerFacingAlternateName('Merit General Contractors VE', gc, project)).toBe('ALSATIAN VE')
+    expect(customerFacingAlternateName('Maddox General Contractors VE', gc, project)).toBe('ALSATIAN VE')
     expect(customerFacingAlternateName('PEX in lieu of copper', gc, project)).toBe('PEX in lieu of copper')
   })
 
   it('no project name: the GC prefix drops; nothing left keeps the original', () => {
-    expect(customerFacingAlternateName('MERIT GENERAL CONTRACTORS value engineered', gc, null)).toBe('value engineered')
-    expect(customerFacingAlternateName('MERIT GENERAL CONTRACTORS', gc, null)).toBe('MERIT GENERAL CONTRACTORS')
+    expect(customerFacingAlternateName('MADDOX GENERAL CONTRACTORS value engineered', gc, null)).toBe('value engineered')
+    expect(customerFacingAlternateName('MADDOX GENERAL CONTRACTORS', gc, null)).toBe('MADDOX GENERAL CONTRACTORS')
   })
 
   it('buildAlternatesBlock auto labels read customer-facing; saved labels stay untouched', () => {

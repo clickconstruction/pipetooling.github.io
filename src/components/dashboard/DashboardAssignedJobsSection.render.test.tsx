@@ -25,8 +25,8 @@ function makeRow(p: Partial<DashboardTeamAssignedJobRow> = {}): DashboardTeamAss
   return {
     id: 'job-1',
     hcp_number: '928',
-    job_name: 'Willow Brook Apartments',
-    job_address: '412 E William Cannon Dr Austin, TX 78745',
+    job_name: 'Wexford Barclay Apartments',
+    job_address: '198 E Wendy Corbin Dr Austin, TX 78745',
     google_drive_link: null,
     job_plans_link: null,
     revenue: null,
@@ -73,7 +73,7 @@ describe('DashboardAssignedJobsSection (extracted)', () => {
     renderWithProviders(<DashboardAssignedJobsSection {...assignedProps()} />)
     await settle()
     expect(screen.getByText(/Assigned Jobs \(1\)/)).toBeTruthy()
-    expect(screen.getByText(/Willow Brook Apartments/)).toBeTruthy()
+    expect(screen.getByText(/Wexford Barclay Apartments/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Send to Billing/ })).toBeNull()
     expect(screen.getByRole('button', { name: /Leave Report/ })).toBeTruthy()
     // v2.997 compact meta line: two-unit age, no "Last Activity" prefix

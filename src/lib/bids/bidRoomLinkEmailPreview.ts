@@ -10,8 +10,8 @@ export const BID_ROOM_LINK_EMAIL_SAMPLE_PAYLOAD: BidRoomRevisionPayloadV1 = {
   v: 1,
   add_ons: [],
   project_name: 'Hunter Road Sound Studio',
-  project_address: '2530 Hunter Rd, San Marcos, TX 78666',
-  gc_name: 'Knight Contracting',
+  project_address: '4455 Hadley Rd, San Marcos, TX 78666',
+  gc_name: 'Kirby Contracting',
   service_type_name: 'Plumbing',
   options: [
     { key: 'base', name: 'To Plans', is_base: true, total_cents: 5_634_300, fixture_rows: [] },

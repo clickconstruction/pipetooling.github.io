@@ -33,14 +33,14 @@ const fx = (o: Partial<SubmittalItemRow> & { id: string; tag: string }): Submitt
 const gcPart = (id: string, item: string, label: string, seq: number, review_decision: string | null = null, review_note: string | null = null): SubmittalPartRow => ({ id, item_id: item, label, sequence_order: seq, on_submittal: true, review_decision, review_note } as unknown as SubmittalPartRow)
 
 // The SkyLab draft in small: a fixture with one part rejected, two waiting, one with no product.
-const typed = { review_decision: 'rejected', reviewed_by_name: 'structura', reviewed_at: '2026-10-02T15:00:00Z', decision_source: 'entered', decision_entered_by_name: 'Wendi' } as const
+const typed = { review_decision: 'rejected', reviewed_by_name: 'sheffield', reviewed_at: '2026-10-02T15:00:00Z', decision_source: 'entered', decision_entered_by_name: 'Wendi' } as const
 const lav = fx({ id: 'lav', tag: 'LAV-1', ...typed })
 const dwh = fx({ id: 'dwh', tag: 'DWH-1', sequence_order: 2 })
 const fco = fx({ id: 'fco', tag: 'FCO', sequence_order: 3 })
 const sink = fx({ id: 'sink', tag: 'UTILITY SINK', sequence_order: 4, status: 'missing', submitted_label: null })
 const bp = [lav, dwh, fco, sink]
 const bpParts = new Map([['lav', [gcPart('tsl', 'lav', 'TSL.MON.B.38.2.PS1.BK MONOLITH', 1), gcPart('faucet', 'lav', 'TOTO T25S51E#CP', 2, 'rejected', 'TEL145')]]])
-const sentBack: DecisionSummary = { ...none, decided: 1, rejected: 1, open: 2, noAnswer: 3, sentBack: 1, byName: ['structura'], entered: 1, enteredBy: ['Wendi'] }
+const sentBack: DecisionSummary = { ...none, decided: 1, rejected: 1, open: 2, noAnswer: 3, sentBack: 1, byName: ['sheffield'], entered: 1, enteredBy: ['Wendi'] }
 
 function mount(over: Partial<SubmittalTheirCallPanelProps> = {}) {
   const on = { onEdit: vi.fn(), onAnswer: vi.fn(), onApproveAll: vi.fn(), onPickFile: vi.fn(), onAskRobot: vi.fn(), onOpenFile: vi.fn(), onRemoveFile: vi.fn(), onCancelTask: vi.fn(), onConfirmRedlines: vi.fn(), onToggleThread: vi.fn(), onReplyTo: vi.fn(), onReplyBody: vi.fn(), onSendReply: vi.fn() }
@@ -57,7 +57,7 @@ describe('SubmittalTheirCallPanel', () => {
       expect([...screen.getByTestId('their-call-cells').children].map((c) => `${c.getAttribute('title')}`)).toEqual(['LAV-1 · sent back', 'DWH-1 · waiting', 'FCO · waiting', 'UTILITY SINK · no product yet'])
       expect(screen.getByTestId('their-call-cells').getAttribute('aria-label')).toBe('0 approved, 1 sent back, 2 waiting, 1 with no product yet')
       expect(screen.getByTestId('decisions-line').textContent).toBe('0approved1sent back2waiting1no product yet')
-      expect(screen.getByTestId('their-call-who').textContent).toBe('structura answered. Wendi typed the answers in on Oct 2.')
+      expect(screen.getByTestId('their-call-who').textContent).toBe('sheffield answered. Wendi typed the answers in on Oct 2.')
     })
 
     it('what came back: the fixture, the part, the reviewer’s words, and the door to change it', () => {
@@ -79,7 +79,7 @@ describe('SubmittalTheirCallPanel', () => {
     it('who is still owed an answer: each fixture is a button that opens Their answer, and one entry marks them all', () => {
       const on = mount({ items: bp, partsOf: bpParts, decisions: sentBack, approvable: 2 })
       const waiting = screen.getByTestId('their-call-waiting')
-      expect(waiting.textContent).toContain('Waiting on structura · 2 fixtures')
+      expect(waiting.textContent).toContain('Waiting on sheffield · 2 fixtures')
       expect(waiting.textContent).toContain('Got an answer by email? Press the fixture and type it in.')
       expect(screen.getAllByTestId('waiting-fixture').map((b) => b.textContent)).toEqual(['DWH-1', 'FCO'])
       fireEvent.click(screen.getByRole('button', { name: 'Type in their answer on FCO' }))
@@ -113,9 +113,9 @@ describe('SubmittalTheirCallPanel', () => {
     })
 
     it('everything approved: one line says so and points on; nothing waits', () => {
-      const ok = { review_decision: 'approved', reviewed_by_name: 'structura', reviewed_at: '2026-10-09T15:00:00Z' } as const
-      mount({ items: [fx({ id: 'a', tag: 'DWH-1', ...ok }), fx({ id: 'b', tag: 'FCO', ...ok })], decisions: { ...none, decided: 2, approved: 2, open: 0, noAnswer: 0, byName: ['structura'] } })
-      expect(screen.getByTestId('their-call-who').textContent).toBe('All 2 approved by structura on Oct 9. Nothing is left to do here. Order them in step 8.')
+      const ok = { review_decision: 'approved', reviewed_by_name: 'sheffield', reviewed_at: '2026-10-09T15:00:00Z' } as const
+      mount({ items: [fx({ id: 'a', tag: 'DWH-1', ...ok }), fx({ id: 'b', tag: 'FCO', ...ok })], decisions: { ...none, decided: 2, approved: 2, open: 0, noAnswer: 0, byName: ['sheffield'] } })
+      expect(screen.getByTestId('their-call-who').textContent).toBe('All 2 approved by sheffield on Oct 9. Nothing is left to do here. Order them in step 8.')
       expect(screen.queryByTestId('their-call-waiting')).toBeNull()
       expect(screen.queryByTestId('approve-all-open')).toBeNull()
     })

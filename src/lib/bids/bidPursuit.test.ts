@@ -27,12 +27,12 @@ const labor = (manHours: number, bidCost: number, people: Array<[string, number]
 const william = { id: 'u-w', name: 'William', email: 'w@x' }
 const wendi = { id: 'u-we', name: 'Wendi', email: 'we@x' }
 
-// Today's prod shape, trimmed: MPH STAGE open, Prue open, AXO won (started), Handel's lost, a robot twin, a bid with nothing.
+// Today's prod shape, trimmed: MCK STAGE open, Parrish open, AXO won (started), Harlow's lost, a robot twin, a bid with nothing.
 const bids: PursuitBidInput[] = [
-  bid({ id: 'mph', bid_number: '148', project_name: 'MPH STAGE', bid_date_sent: '2026-08-01', bid_value: 148000, estimator: william, customers: { name: 'Selwick GC' } }),
-  bid({ id: 'prue', bid_number: '380', project_name: 'Prue Event Center', bid_date_sent: '2026-08-24', bid_value: 380000, estimator: [william], bids_gc_builders: { name: 'TCT Construction' } }),
+  bid({ id: 'mph', bid_number: '148', project_name: 'MCK STAGE', bid_date_sent: '2026-08-01', bid_value: 148000, estimator: william, customers: { name: 'Selwick GC' } }),
+  bid({ id: 'parrish', bid_number: '380', project_name: 'Parrish Event Center', bid_date_sent: '2026-08-24', bid_value: 380000, estimator: [william], bids_gc_builders: { name: 'TCT Construction' } }),
   bid({ id: 'axo', bid_number: '34', project_name: 'AXO Schertz, TX', outcome: 'started_or_complete', bid_date_sent: '2026-05-01', bid_value: 34000, agreed_value: 33500, estimator: wendi }),
-  bid({ id: 'handel', bid_number: '95', project_name: "HANDEL'S ICE CREAM LEANDER", outcome: 'lost', bid_date_sent: '2026-08-14', bid_value: 95000, estimator: wendi, customers: { name: 'Selwick GC' } }),
+  bid({ id: 'harlow', bid_number: '95', project_name: "HARLOW'S ICE CREAM LATHROP", outcome: 'lost', bid_date_sent: '2026-08-14', bid_value: 95000, estimator: wendi, customers: { name: 'Selwick GC' } }),
   bid({ id: 'twin', project_name: 'ZZ Twin AXO SCHERTZ, TX (backtest)', created_at: '2026-09-01T00:00:00Z', estimator: { id: 'u-t', name: 'Twin Estimator 1', email: 't@x' } }),
   bid({ id: 'quiet', bid_number: '7', project_name: 'Quiet bid', bid_date_sent: '2026-07-01', bid_value: 10000 }),
   bid({ id: 'old', bid_number: '2', project_name: 'Old lost bid', outcome: 'lost', bid_date_sent: '2025-03-01', bid_value: 50000, estimator: william }),
@@ -40,9 +40,9 @@ const bids: PursuitBidInput[] = [
 ]
 const laborByBid = new Map([
   ['mph', labor(19.8, 494.99, [['William', 19.8]])],
-  ['prue', labor(18.25, 456.1, [['William', 18.25]])],
+  ['parrish', labor(18.25, 456.1, [['William', 18.25]])],
   ['axo', labor(0.2333, 6.04, [['William', 0.2333]])],
-  ['handel', labor(7.0667, 106.04, [['Wendi', 7.0667]])],
+  ['harlow', labor(7.0667, 106.04, [['Wendi', 7.0667]])],
   ['twin', labor(1, 30, [['Twin Estimator 1', 1]])],
   ['old', labor(4, 100, [['William', 4]])],
 ])
@@ -55,15 +55,15 @@ describe('buildPursuitRows', () => {
     expect(pursuitOutcomeOf({ outcome: null, bid_date_sent: '2026-08-01', working_board_archived_at: null })).toBe('open')
     expect(pursuitOutcomeOf({ outcome: null, bid_date_sent: null, working_board_archived_at: '2026-08-01' })).toBeNull()
     expect(rows.find((r) => r.label === 'Archived unsent')).toBeUndefined()
-    expect(rows.map((r) => r.bidId)).toEqual(['mph', 'prue', 'handel', 'old', 'twin', 'axo', 'quiet'])
+    expect(rows.map((r) => r.bidId)).toEqual(['mph', 'parrish', 'harlow', 'old', 'twin', 'axo', 'quiet'])
   })
   it('reads label, estimator (object or one-element array), GC, value, and $ per $1k bid', () => {
     const mph = rows.find((r) => r.bidId === 'mph')!
-    expect(mph).toMatchObject({ label: 'B148 MPH STAGE', estimatorName: 'William', gcName: 'Selwick GC', outcome: 'open', dateYmd: '2026-08-01', hours: 19.8, laborUsd: 494.99, cardUsd: 37.99, bidValue: 148000 })
+    expect(mph).toMatchObject({ label: 'B148 MCK STAGE', estimatorName: 'William', gcName: 'Selwick GC', outcome: 'open', dateYmd: '2026-08-01', hours: 19.8, laborUsd: 494.99, cardUsd: 37.99, bidValue: 148000 })
     expect(mph.totalUsd).toBeCloseTo(532.98, 2)
     expect(mph.usdPerThousandBid).toBeCloseTo(3.6012, 3)
-    const prue = rows.find((r) => r.bidId === 'prue')!
-    expect(prue).toMatchObject({ estimatorName: 'William', gcName: 'TCT Construction' })
+    const parrish = rows.find((r) => r.bidId === 'parrish')!
+    expect(parrish).toMatchObject({ estimatorName: 'William', gcName: 'TCT Construction' })
     const axo = rows.find((r) => r.bidId === 'axo')!
     expect(axo.bidValue).toBe(33500) // agreed wins over bid value
     expect(rows.find((r) => r.bidId === 'quiet')).toMatchObject({ totalUsd: 0, hours: 0, usdPerThousandBid: null, people: [] })
@@ -75,18 +75,18 @@ describe('buildPursuitRows', () => {
 
 describe('filters', () => {
   it('the window reads the sent date (else created) and folds robots unless asked', () => {
-    expect(pursuitRowsInWindow(rows, 'year', TODAY, false).map((r) => r.bidId)).toEqual(['mph', 'prue', 'handel', 'axo', 'quiet'])
-    expect(pursuitRowsInWindow(rows, '90d', TODAY, false).map((r) => r.bidId)).toEqual(['mph', 'prue', 'handel', 'quiet'])
-    expect(pursuitRowsInWindow(rows, 'all', TODAY, true).map((r) => r.bidId)).toEqual(['mph', 'prue', 'handel', 'old', 'twin', 'axo', 'quiet'])
+    expect(pursuitRowsInWindow(rows, 'year', TODAY, false).map((r) => r.bidId)).toEqual(['mph', 'parrish', 'harlow', 'axo', 'quiet'])
+    expect(pursuitRowsInWindow(rows, '90d', TODAY, false).map((r) => r.bidId)).toEqual(['mph', 'parrish', 'harlow', 'quiet'])
+    expect(pursuitRowsInWindow(rows, 'all', TODAY, true).map((r) => r.bidId)).toEqual(['mph', 'parrish', 'harlow', 'old', 'twin', 'axo', 'quiet'])
   })
   it('the default filter hides empties; chips, estimator, GC and search narrow further', () => {
-    expect(filterPursuitRows(rows, DEFAULT_PURSUIT_FILTER, TODAY).map((r) => r.bidId)).toEqual(['mph', 'prue', 'handel', 'axo'])
+    expect(filterPursuitRows(rows, DEFAULT_PURSUIT_FILTER, TODAY).map((r) => r.bidId)).toEqual(['mph', 'parrish', 'harlow', 'axo'])
     expect(filterPursuitRows(rows, { ...DEFAULT_PURSUIT_FILTER, showEmpty: true }, TODAY).map((r) => r.bidId)).toContain('quiet')
-    expect(filterPursuitRows(rows, { ...DEFAULT_PURSUIT_FILTER, outcomes: new Set(['lost']) }, TODAY).map((r) => r.bidId)).toEqual(['handel'])
-    expect(filterPursuitRows(rows, { ...DEFAULT_PURSUIT_FILTER, estimator: 'Wendi' }, TODAY).map((r) => r.bidId)).toEqual(['handel', 'axo'])
-    expect(filterPursuitRows(rows, { ...DEFAULT_PURSUIT_FILTER, gc: 'Selwick GC' }, TODAY).map((r) => r.bidId)).toEqual(['mph', 'handel'])
-    expect(filterPursuitRows(rows, { ...DEFAULT_PURSUIT_FILTER, query: 'prue' }, TODAY).map((r) => r.bidId)).toEqual(['prue'])
-    expect(filterPursuitRows(rows, { ...DEFAULT_PURSUIT_FILTER, query: 'tct' }, TODAY).map((r) => r.bidId)).toEqual(['prue'])
+    expect(filterPursuitRows(rows, { ...DEFAULT_PURSUIT_FILTER, outcomes: new Set(['lost']) }, TODAY).map((r) => r.bidId)).toEqual(['harlow'])
+    expect(filterPursuitRows(rows, { ...DEFAULT_PURSUIT_FILTER, estimator: 'Wendi' }, TODAY).map((r) => r.bidId)).toEqual(['harlow', 'axo'])
+    expect(filterPursuitRows(rows, { ...DEFAULT_PURSUIT_FILTER, gc: 'Selwick GC' }, TODAY).map((r) => r.bidId)).toEqual(['mph', 'harlow'])
+    expect(filterPursuitRows(rows, { ...DEFAULT_PURSUIT_FILTER, query: 'parrish' }, TODAY).map((r) => r.bidId)).toEqual(['parrish'])
+    expect(filterPursuitRows(rows, { ...DEFAULT_PURSUIT_FILTER, query: 'tct' }, TODAY).map((r) => r.bidId)).toEqual(['parrish'])
   })
 })
 

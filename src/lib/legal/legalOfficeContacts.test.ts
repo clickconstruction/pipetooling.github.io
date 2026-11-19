@@ -4,18 +4,18 @@ import { askForWords, emptyOfficeContacts, formatUsPhone, legalOfficeContactLine
 const rows = [
   { name: 'Robin Ortega', phone: null, role: 'assistant' },
   { name: 'Casey Lindell', phone: '(512) 555-0199', role: 'assistant' },
-  { name: 'Robert Douglas', phone: '+1 617 939 6295', role: 'controller' },
+  { name: 'Robert Douglas', phone: '+1 617 555 0194', role: 'controller' },
   { name: '  ', phone: '1', role: 'assistant' },
 ]
 
 describe('legalOfficeContacts', () => {
   it('builds the contacts from the users rows, by name, and formats the numbers one way', () => {
     const c = officeContactsFromUsers(rows, '(512) 360-0599')
-    expect(c).toEqual({ phone: '(512) 360-0599', assistants: ['Casey Lindell', 'Robin Ortega'], controllers: [{ name: 'Robert Douglas', phone: '+1 617 939 6295' }] })
-    expect(formatUsPhone('+1 617 939 6295')).toBe('(617) 939-6295')
+    expect(c).toEqual({ phone: '(512) 360-0599', assistants: ['Casey Lindell', 'Robin Ortega'], controllers: [{ name: 'Robert Douglas', phone: '+1 617 555 0194' }] })
+    expect(formatUsPhone('+1 617 555 0194')).toBe('(617) 555-0194')
     expect(formatUsPhone('5123600599')).toBe('(512) 360-0599')
     expect(formatUsPhone('ext 204')).toBe('ext 204')
-    expect(telHref('(617) 939-6295')).toBe('tel:+16179396295')
+    expect(telHref('(617) 555-0194')).toBe('tel:+16175550194')
   })
 
   it('says who to ask for by first name', () => {
@@ -29,10 +29,10 @@ describe('legalOfficeContacts', () => {
     const c = officeContactsFromUsers(rows, '(512) 360-0599')
     expect(legalOfficeContactLines(c)).toEqual([
       { role: 'Office', name: '', phoneWords: '(512) 360-0599', href: 'tel:+15123600599', note: 'ask for Casey or Robin' },
-      { role: 'Controller · settlements and payments', name: 'Robert Douglas', phoneWords: '(617) 939-6295', href: 'tel:+16179396295', note: '' },
+      { role: 'Controller · settlements and payments', name: 'Robert Douglas', phoneWords: '(617) 555-0194', href: 'tel:+16175550194', note: '' },
     ])
     expect(legalOfficeContactsHoursLine(c)).toBe('The office in business hours. Robert when the office does not answer.')
-    expect(legalOfficeContactPrintLines(c)).toEqual(['Reach the office: (512) 360-0599, ask for Casey or Robin', 'Controller Robert Douglas (617) 939-6295'])
+    expect(legalOfficeContactPrintLines(c)).toEqual(['Reach the office: (512) 360-0599, ask for Casey or Robin', 'Controller Robert Douglas (617) 555-0194'])
     expect(legalOfficeContactsGap(c)).toBeNull()
   })
 

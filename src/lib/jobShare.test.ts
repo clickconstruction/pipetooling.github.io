@@ -12,7 +12,7 @@ import {
   type JobSharePayload,
 } from './jobShare'
 
-const fields = { hcpNumber: '951', jobName: 'Shellan Pinpoint', jobAddress: '717 Trinity St, Lockhart, TX' }
+const fields = { hcpNumber: '951', jobName: 'Shellan Pinpoint', jobAddress: '972 Tarleton St, Lockhart, TX' }
 
 describe('buildJobShareTitle', () => {
   it('joins job # and name', () => {
@@ -48,7 +48,7 @@ describe('buildJobSharePayload', () => {
   it('puts title and address on separate lines of the text', () => {
     const p = buildJobSharePayload('j1', fields, 'https://pipetooling.com')
     expect(p.title).toBe('Job #951 — Shellan Pinpoint')
-    expect(p.text).toBe('Job #951 — Shellan Pinpoint\n717 Trinity St, Lockhart, TX')
+    expect(p.text).toBe('Job #951 — Shellan Pinpoint\n972 Tarleton St, Lockhart, TX')
     expect(p.url).toBe('https://pipetooling.com/jobs?jobDetail=j1')
   })
 
@@ -91,7 +91,7 @@ describe('buildJobShareFunctionUrl', () => {
 
 const payload: JobSharePayload = {
   title: 'Job #951 — Shellan Pinpoint',
-  text: 'Job #951 — Shellan Pinpoint\n717 Trinity St, Lockhart, TX',
+  text: 'Job #951 — Shellan Pinpoint\n972 Tarleton St, Lockhart, TX',
   url: 'https://pipetooling.com/jobs?jobDetail=j1',
 }
 

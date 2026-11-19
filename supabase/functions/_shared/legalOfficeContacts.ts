@@ -39,13 +39,13 @@ function phoneDigits(raw: string): string {
   return d.length === 11 && d.startsWith('1') ? d.slice(1) : d
 }
 
-/** `(617) 939-6295` for a ten-digit number, with or without the leading 1; anything else as typed. */
+/** `(617) 555-0194` for a ten-digit number, with or without the leading 1; anything else as typed. */
 export function formatUsPhone(raw: string): string {
   const d = phoneDigits(raw)
   return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : raw.trim()
 }
 
-/** The tap-to-call link: `tel:+16179396295` for a US number; the digits as typed otherwise. */
+/** The tap-to-call link: `tel:+16175550194` for a US number; the digits as typed otherwise. */
 export function telHref(raw: string): string {
   const d = phoneDigits(raw)
   return d.length === 10 ? `tel:+1${d}` : `tel:${raw.replace(/[^\d+]/g, '')}`

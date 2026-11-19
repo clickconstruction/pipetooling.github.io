@@ -32,12 +32,12 @@ vi.mock('../../lib/jobs/jobContractFileWrite', () => ({
 }))
 
 function job(p: Partial<JobWithDetails> & { id: string; hcp_number: string }): JobWithDetails {
-  return { click_number: '', job_name: 'Mission Flats', job_address: '2100 Independence Dr, New Braunfels, TX', customer_name: 'TF Halden', revenue: 123600, gcCustomer: null, ...p } as unknown as JobWithDetails
+  return { click_number: '', job_name: 'Mission Flats', job_address: '9345 Iverson Dr, New Braunfels, TX', customer_name: 'TF Halden', revenue: 123600, gcCustomer: null, ...p } as unknown as JobWithDetails
 }
 const JOBS = [
   job({ id: 'j523', hcp_number: '523' }),
-  job({ id: 'j651', hcp_number: '651', job_name: 'Dunmere Mallin', job_address: '233 Palomino Trail, Natalia, TX', customer_name: 'RLC- Dunmere Mallin', revenue: 21950 }),
-  job({ id: 'j683', hcp_number: '683', job_name: 'Job', job_address: '15054 State Hwy 71, Bee Cave, TX', customer_name: 'The Reading Corner', revenue: null }),
+  job({ id: 'j651', hcp_number: '651', job_name: 'Dunmere Mallin', job_address: '524 Pickford Trail, Natalia, TX', customer_name: 'RLC- Dunmere Mallin', revenue: 21950 }),
+  job({ id: 'j683', hcp_number: '683', job_name: 'Job', job_address: '71490 State Hwy 71, Bee Cave, TX', customer_name: 'The Reading Corner', revenue: null }),
 ]
 
 describe('DriveContractsFoundModal', () => {
@@ -52,7 +52,7 @@ describe('DriveContractsFoundModal', () => {
         scanned_at: new Date(Date.now() - 5 * 60_000).toISOString(),
         cached: true,
         files: [
-          { id: 'f1', name: 'TF Halden – Mission Flats – Subcontract (signed).pdf', mimeType: 'application/pdf', modifiedTime: '2026-06-14T15:00:00.000Z', webViewLink: 'https://drive.google.com/file/d/f1/view', size: 100, folderId: 'a', folderName: '2100 Independence Dr' },
+          { id: 'f1', name: 'TF Halden – Mission Flats – Subcontract (signed).pdf', mimeType: 'application/pdf', modifiedTime: '2026-06-14T15:00:00.000Z', webViewLink: 'https://drive.google.com/file/d/f1/view', size: 100, folderId: 'a', folderName: '9345 Iverson Dr' },
           { id: 'f2', name: 'Palomino Trail service agreement', mimeType: 'application/vnd.google-apps.document', modifiedTime: '2026-08-03T15:00:00.000Z', webViewLink: 'https://docs.google.com/document/d/f2', size: null, folderId: 'b', folderName: 'Dunmere Mallin – Palomino' },
           { id: 'f3', name: 'Plans A-1.pdf', mimeType: 'application/pdf', modifiedTime: null, webViewLink: 'https://drive.google.com/file/d/f3/view', size: 1, folderId: 'c', folderName: 'TLE Bee Cave' },
         ],
@@ -65,7 +65,7 @@ describe('DriveContractsFoundModal', () => {
     expect(screen.getByRole('button', { name: /^Confident · 1$/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Check · 1$/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^No match · 1$/ })).toBeTruthy()
-    expect(screen.getAllByTestId('drive-row')[0]!.textContent).toContain('folder names 2100 Independence Dr · signed subcontract')
+    expect(screen.getAllByTestId('drive-row')[0]!.textContent).toContain('folder names 9345 Iverson Dr · signed subcontract')
     fireEvent.click(screen.getByTestId('drive-file-confident'))
     await waitFor(() => expect(onFiled).toHaveBeenCalledWith(['j523']))
     expect(fileSpy).toHaveBeenCalledTimes(1)

@@ -374,7 +374,7 @@ describe('buildReadyToBillStageRows', () => {
 
 describe('filterJobsByStagesSearch', () => {
   it('finds a job by a number it answered to before a combine (v2.6226)', () => {
-    const a = jobStub({ id: 'job-a', hcp_number: '468', job_name: 'Diamondback', job_address: 'Gray Fox Trail', invoices: [], prior_numbers: ['HCP 550', 'C# 543'] })
+    const a = jobStub({ id: 'job-a', hcp_number: '468', job_name: 'Davenport', job_address: 'Gray Fox Trail', invoices: [], prior_numbers: ['HCP 550', 'C# 543'] })
     const b = jobStub({ id: 'job-b', hcp_number: '200', job_name: 'Beta', job_address: '2 Oak', invoices: [], prior_numbers: [] })
     expect(filterJobsByStagesSearch([a, b], '550').map((j) => j.id)).toEqual(['job-a'])
     expect(filterJobsByStagesSearch([a, b], '543').map((j) => j.id)).toEqual(['job-a'])
@@ -443,11 +443,11 @@ describe('filterJobsByStagesSearch', () => {
   it('GC filter: options are distinct + name-sorted; filter matches id or the no-GC sentinel (v2.1183)', () => {
     const k1 = jobStub({ id: 'j1', invoices: [], gcCustomer: { id: 'gc-k', name: 'Kestrin Contracting' } })
     const k2 = jobStub({ id: 'j2', invoices: [], gcCustomer: { id: 'gc-k', name: 'Kestrin Contracting' } })
-    const a = jobStub({ id: 'j3', invoices: [], gcCustomer: { id: 'gc-a', name: 'achilles austin' } })
+    const a = jobStub({ id: 'j3', invoices: [], gcCustomer: { id: 'gc-a', name: 'ashdown austin' } })
     const none = jobStub({ id: 'j4', invoices: [] })
     const jobsList = [k1, k2, a, none]
     expect(gcFilterOptionsFromJobs(jobsList)).toEqual([
-      { id: 'gc-a', name: 'achilles austin' },
+      { id: 'gc-a', name: 'ashdown austin' },
       { id: 'gc-k', name: 'Kestrin Contracting' },
     ])
     expect(filterJobsByGcCustomer(jobsList, null).map((j) => j.id)).toEqual(['j1', 'j2', 'j3', 'j4'])

@@ -54,7 +54,7 @@ describe('JobFormAddressPin (v2.4783)', () => {
 
   it('an address already in the cache reads placed at once, with no lookup', async () => {
     db.cached = true
-    render(<JobFormAddressPin address="595 Cardinal Rd, Rosanky, TX 78953" />)
+    render(<JobFormAddressPin address="958 Cranston Rd, Rosanky, TX 78953" />)
     await waitFor(() => expect(document.querySelector('[data-pin-state="placed"]')).not.toBeNull())
     expect(document.querySelector('[data-job-address-pin]')!.textContent).toContain('pinned earlier')
     expect(db.invoke).not.toHaveBeenCalled()

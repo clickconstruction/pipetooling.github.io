@@ -86,7 +86,7 @@ describe('pipelineChecklistDoor: the sheet’s words', () => {
   it('titles the sheet with the job’s number and name, and never the name twice', () => {
     expect(doorJobLabel({ hcp_number: '1088', job_name: 'Riders Walk' })).toBe('JP1088 · Riders Walk')
     expect(doorJobLabel({ click_number: 'B12', job_name: '' })).toBe('B12')
-    expect(doorJobLabel({ job_name: 'Big Easy sink drain' })).toBe('Big Easy sink drain')
+    expect(doorJobLabel({ job_name: 'Blythe Emery sink drain' })).toBe('Blythe Emery sink drain')
     expect(doorSheetTitle('JP1088 · Riders Walk')).toBe('Checklists on JP1088 · Riders Walk')
   })
   it('names the next press when no stage takes a checklist, and the foot says what a press does', () => {

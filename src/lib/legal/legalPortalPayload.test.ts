@@ -15,7 +15,7 @@ function matterRaw() {
     releasedAt: '2026-09-11',
     sharedOverrides: { 'contact:c0': false },
     jobs: [job],
-    customer: { id: 'tle', name: 'The Reading Corner', address: '15054 State Hwy 71', contact_info: {}, customer_type: 'commercial', payment_terms: 'standard', payment_terms_note: null },
+    customer: { id: 'tle', name: 'The Reading Corner', address: '71490 State Hwy 71', contact_info: {}, customer_type: 'commercial', payment_terms: 'standard', payment_terms_note: null },
     contacts: [],
     contactEntries: [{ id: 'c0', ymd: '2026-03-28', method: 'Site visit', by: 'Malachi', text: 'Walked the scope.' }, { id: 'c2', ymd: '2026-05-05', method: 'Phone', by: 'Taunya', text: 'Retainage.' }],
     addresses: [],
@@ -85,8 +85,8 @@ describe('the notice desk items (#41 PR 1b)', () => {
 describe('officeContacts (v2.4755)', () => {
   const base = { company: { name: 'Click', phone: '(512) 360-0599' }, preparedOn: '2026-10-06', firm, particulars: {}, recipients: [], firmPaused: false, matters: [] }
   it('reads who the firm calls, and falls back to the letterhead number from an older function', () => {
-    const full = parseLegalPortalPayload({ ...base, officeContacts: { phone: '(512) 360-0599', assistants: ['Robin Ortega', 7, ''], controllers: [{ name: 'Robert Douglas', phone: '+1 617 939 6295' }, { name: ' ' }, { name: 'Lee Park', phone: '' }] } })!
-    expect(full.officeContacts).toEqual({ phone: '(512) 360-0599', assistants: ['Robin Ortega'], controllers: [{ name: 'Robert Douglas', phone: '+1 617 939 6295' }, { name: 'Lee Park', phone: null }] })
+    const full = parseLegalPortalPayload({ ...base, officeContacts: { phone: '(512) 360-0599', assistants: ['Robin Ortega', 7, ''], controllers: [{ name: 'Robert Douglas', phone: '+1 617 555 0194' }, { name: ' ' }, { name: 'Lee Park', phone: '' }] } })!
+    expect(full.officeContacts).toEqual({ phone: '(512) 360-0599', assistants: ['Robin Ortega'], controllers: [{ name: 'Robert Douglas', phone: '+1 617 555 0194' }, { name: 'Lee Park', phone: null }] })
     expect(parseLegalPortalPayload(base)!.officeContacts).toEqual({ phone: '(512) 360-0599', assistants: [], controllers: [] })
   })
 })

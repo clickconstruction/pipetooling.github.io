@@ -69,7 +69,7 @@ describe('parseArDepositBooking', () => {
 describe('small rules', () => {
   it('shortens a rule named payee - label', () => {
     expect(ruleShortName('TEXAS MUTUAL - Insurance', 'Insurance')).toBe('TEXAS MUTUAL')
-    expect(ruleShortName('City of Seguin - Taxes and Licenses', 'Taxes and Licenses')).toBe('City of Seguin')
+    expect(ruleShortName('City of Sefton - Taxes and Licenses', 'Taxes and Licenses')).toBe('City of Sefton')
     expect(ruleShortName('Gas stations', 'Fuel / Gas')).toBe('Gas stations')
   })
 

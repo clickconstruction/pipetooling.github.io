@@ -115,7 +115,7 @@ describe('buildLegalPacket', () => {
   })
   const account = groupCollectionsByPayer([tleJobA, tleJobB], new Map(), TODAY)[0] as LegalAccountSummary
   const addr = (over: Partial<CustomerAddressRow>): CustomerAddressRow =>
-      ({ id: 'a1', customer_id: 'tle', address: '15054 State Hwy 71, Bee Cave, TX', county: 'Travis', county_source: 'manual', legal_description: 'Lot 4, Block B', owner_mode: 'company', owner_name: '', owner_company: 'TLE Holdings', owner_mailing_address: 'PO Box 1', parcel_id: 'R123', parcel_source: 'cad', parcel_tax_year: '2026', parcel_looked_up_at: null, homestead: false, property_kind: 'non_residential', is_primary: true, note: null, sequence_order: 0, created_at: null, updated_at: null, ...over }) as CustomerAddressRow
+      ({ id: 'a1', customer_id: 'tle', address: '71490 State Hwy 71, Bee Cave, TX', county: 'Travis', county_source: 'manual', legal_description: 'Lot 4, Block B', owner_mode: 'company', owner_name: '', owner_company: 'TLE Holdings', owner_mailing_address: 'PO Box 1', parcel_id: 'R123', parcel_source: 'cad', parcel_tax_year: '2026', parcel_looked_up_at: null, homestead: false, property_kind: 'non_residential', is_primary: true, note: null, sequence_order: 0, created_at: null, updated_at: null, ...over }) as CustomerAddressRow
   // TLE's Hwy 71 site is commercial: linked to its record the jobs run the 4th-month clock. A job with no property
   // record reads a kind not set — residential, a month earlier (v2.5031).
   const onCommercialSite = { ...account, jobs: account.jobs.map((j) => ({ ...j, customer_address_id: 'a1' })) }
@@ -124,7 +124,7 @@ describe('buildLegalPacket', () => {
   it('assembles the account: contacts, ledger in date order, totals, aging, primary invoice', () => {
     const packet = buildLegalPacket(
       baseInput(account, {
-        customer: { id: 'tle', name: 'The Reading Corner', address: '15054 State Hwy 71, Bee Cave, TX', contact_info: { phone: '512-555-0100' }, customer_type: 'commercial', payment_terms: 'no_new_work_past_promise', payment_terms_note: null },
+        customer: { id: 'tle', name: 'The Reading Corner', address: '71490 State Hwy 71, Bee Cave, TX', contact_info: { phone: '512-555-0100' }, customer_type: 'commercial', payment_terms: 'no_new_work_past_promise', payment_terms_note: null },
         contacts: [{ name: 'Aaron', email: 'aaron@tle.test', phone: null, note: null }],
         users: [{ id: 'u-taunya', name: 'Taunya' }],
       }),

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The row chip (v2.3769): a task sent from a job — `{{1:1016 · Mission faucet}} — <task>`
+ * The row chip (v2.3769): a task sent from a job — `{{1:1016 · Marsden faucet}} — <task>`
  * with the job door as link [1] — renders the job as a chip and drops the dash;
  * every other token keeps today's underlined link.
  */
@@ -13,12 +13,12 @@ const JOB_URL = 'https://clicktooling.com/jobs?jobDetail=0060850d-ab27-4bd6-a67f
 describe('ChecklistTitleWithLinks job chip (v2.3769)', () => {
   it('renders a job-door token as the chip — number badge, name, opens the job — and drops the dash', () => {
     const { container } = render(
-      <ChecklistTitleWithLinks title="{{1:1016 · Mission faucet}} — Pick up the Moen cartridge" links={[JOB_URL]} />
+      <ChecklistTitleWithLinks title="{{1:1016 · Marsden faucet}} — Pick up the Moen cartridge" links={[JOB_URL]} />
     )
     const chip = screen.getByTestId('checklist-job-chip') as HTMLAnchorElement
     expect(chip.getAttribute('href')).toBe(JOB_URL)
     expect(chip.textContent).toContain('1016')
-    expect(chip.textContent).toContain('Mission faucet')
+    expect(chip.textContent).toContain('Marsden faucet')
     expect(chip.style.textDecoration).toBe('none')
     expect(container.textContent).not.toContain('—')
     expect(container.textContent).toContain('Pick up the Moen cartridge')
@@ -42,8 +42,8 @@ describe('ChecklistTitleWithLinks job chip (v2.3769)', () => {
     expect(screen.queryByTestId('checklist-job-chip')).toBeNull()
     expect(container.querySelector('a')?.textContent).toBe('[1]')
     cleanup()
-    const plain = render(<ChecklistTitleWithLinks title="Call Structura about the Friday pour" links={[]} />)
-    expect(plain.container.textContent).toBe('Call Structura about the Friday pour')
+    const plain = render(<ChecklistTitleWithLinks title="Call Sheffield about the Friday pour" links={[]} />)
+    expect(plain.container.textContent).toBe('Call Sheffield about the Friday pour')
     cleanup()
   })
 })

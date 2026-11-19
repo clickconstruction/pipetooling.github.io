@@ -62,7 +62,7 @@ Your own **Open customer link** from the office does not count as an open. Mail-
 A city or a company routes a quote to several people. Only the addressee has the link. Give the rest a file.
 
 1. Open the sent estimate.
-2. Press {{button:outline|Download PDF}} beside Copy customer link. The file saves as *Estimate 175 - City of Seguin.pdf*.
+2. Press {{button:outline|Download PDF}} beside Copy customer link. The file saves as *Estimate 175 - City of Sefton.pdf*.
 3. Attach the file to your own email, or hand it over.
 
 The PDF reads as the customer page does. It shows the title, the address, the good-through day, every option with its lines and total, and the terms. The link to approve is not in the file. The last line says to approve from the link in the email. The download is filed as a sent copy. It shows under **Sent from this job** on the job's Documents tab once the estimate has a job.

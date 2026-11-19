@@ -112,7 +112,7 @@ describe('the site address', () => {
     expect(sharedAddressWords(typed)).toBe('Gray Fox Trail, Neeses, SC')
     expect(stateUppercased('Gray Fox Trail, Neeses, sc 29107')).toBe('Gray Fox Trail, Neeses, SC 29107')
     expect(stateUppercased('5501 Balcones Dr, Austin, TX')).toBe('5501 Balcones Dr, Austin, TX')
-    expect(stateUppercased('12921 FM 20, Kingsbury')).toBe('12921 FM 20, Kingsbury')
+    expect(stateUppercased('62552 FM 20, Kingsbury')).toBe('62552 FM 20, Kingsbury')
     expect(stateUppercased('Gray Fox Trail')).toBe('Gray Fox Trail')
   })
   it('addressSearchPattern keeps the words before the first street suffix, at most three', () => {

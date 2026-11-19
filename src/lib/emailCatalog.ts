@@ -94,7 +94,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     sender: 'send-stripe-invoice',
     editable: { kind: 'hardcoded' },
     attachment: 'the recipient’s statement QR code inline, when they have a statement',
-    subjectExample: 'Copy of invoice #1013-2609121030 — J1013 · Peterson Pretest',
+    subjectExample: 'Copy of invoice #1013-2609121030 — J1013 · Pemberton Pretest',
     variants: ['one email per address on the bill’s copy list, sent beside the payer’s bill email (v2.3359)', 'test-mode bill ("[Test] …", one copy to whoever pressed Send, none to the copy list)'],
   },
   {
@@ -106,7 +106,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     builtWhere: 'client',
     sender: 'send-test-report',
     editable: { kind: 'hardcoded' },
-    subjectExample: 'Sewer Pre-Test Hydrostatic Test Report — 112 Seidel St',
+    subjectExample: 'Sewer Pre-Test Hydrostatic Test Report — 294 Sandoval St',
     variants: ['re-send (a new PDF version, the old one kept)'],
   },
   {
@@ -162,7 +162,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     builtWhere: 'server',
     sender: 'legal-notify-dispatch',
     editable: { kind: 'hardcoded' },
-    subjectExample: 'New account referred: The Learning Experience',
+    subjectExample: 'New account referred: The Lockhart Emmerich',
     variants: ['office answered your question (with the question)', 'the office asks / asks your sign-off', 'a note from the office', 'payment applied', 'fee seen (digest only)', 'pulled back (with the reason)'],
   },
   {
@@ -354,15 +354,15 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     builtWhere: 'server',
     sender: 'accept-estimate · sign-bid-room',
     editable: { kind: 'hardcoded' },
-    subjectExample: 'Knight Contracting signed $56,343 · {{project}}',
+    subjectExample: 'Kirby Contracting signed $56,343 · {{project}}',
     variants: ['an accepted estimate ("Dana Ruiz signed $4,250", the work named only when someone typed a title)'],
     preview: ({ origin }) =>
       buildSignedAgreementEmail({
         kind: 'bid',
         estimateNumber: 412,
         title: 'Hunter Road Sound Studio',
-        projectAddress: '2530 Hunter Rd, San Marcos, TX 78666',
-        customerName: 'Knight Contracting',
+        projectAddress: '4455 Hadley Rd, San Marcos, TX 78666',
+        customerName: 'Kirby Contracting',
         signerName: 'Mark Knight',
         optionName: 'To Plans',
         totalCents: 5_634_300,
@@ -480,7 +480,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     builtWhere: 'server',
     sender: 'mercury-webhook',
     editable: { kind: 'hardcoded' },
-    subjectExample: 'Check returned · $13,680 · J878 Take 5 – Seguin · Insufficient funds',
+    subjectExample: 'Check returned · $13,680 · J878 Tanner 5 – Sefton · Insufficient funds',
   },
   {
     id: 'money_waiting',

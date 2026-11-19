@@ -76,7 +76,7 @@ describe('bidPermitNews', () => {
       [
         bid({ outcome: 'lost' }),
         bid({ id: 'b2', project_name: 'ZZ Shadow MILL STREET LOFTS' }),
-        bid({ id: 'b3', address: '3798 Kyle Crossing Kyle, TX 78640' }),
+        bid({ id: 'b3', address: '8030 Kyle Crossing Kyle, TX 78640' }),
         bid({ id: 'b4', address: '2210 Larkspur Dr, San Antonio, TX' }),
         bid({ id: 'b5', address: 'Loop 1604 at Oak Hollow' }),
       ],

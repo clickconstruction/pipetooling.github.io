@@ -14,7 +14,7 @@ afterEach(cleanup)
 const NOTE = 'Low bid was $63,500. There were 12 bidders. Click was the highest.'
 const pk = (name: string, outcome: string | null, versions: Array<{ loss_category?: string | null; outcome_note?: string | null }>, sharedLetter = false) => ({ name, outcome, versions, sharedLetter })
 const BP391 = [
-  pk('Structura, Inc. – San Antonio', 'lost', [{ loss_category: 'gc_lost', outcome_note: null }]),
+  pk('Sheffield, Inc. – San Antonio', 'lost', [{ loss_category: 'gc_lost', outcome_note: null }]),
   pk('PlanHub - Subcontractor Prime Opportunity', 'lost', [{ loss_category: 'price', outcome_note: NOTE }]),
   pk('Wrenman Commercial', null, [], true),
 ]
@@ -23,7 +23,7 @@ describe('BidBoardLostStripReason', () => {
   it("BP391: every GC card carries a reason — one line per GC, the note under PlanHub's, no nudge and no chips", () => {
     renderWithProviders(<BidBoardLostStripReason bid={{ id: 'b391', loss_category: null, loss_reason: null }} packets={BP391} saving={false} onSelect={() => {}} />)
     const lines = screen.getByTestId('lost-strip-gc-lines')
-    expect(lines.textContent).toContain('Structura, Inc. – San Antonio GC lost the project')
+    expect(lines.textContent).toContain('Sheffield, Inc. – San Antonio GC lost the project')
     expect(lines.textContent).toContain('PlanHub - Subcontractor Prime Opportunity Price too high')
     expect(lines.textContent).toContain(NOTE)
     expect(screen.queryByText(/Add why/)).toBeNull()
@@ -48,12 +48,12 @@ describe('BidBoardLostStripReason', () => {
     renderWithProviders(
       <BidBoardLostStripReason
         bid={{ id: 'b3', loss_category: null, loss_reason: null }}
-        packets={[pk('Structura', 'lost', [{ loss_category: 'gc_lost' }]), pk('Brund & Assoc.', 'lost', [{ loss_category: null }])]}
+        packets={[pk('Sheffield', 'lost', [{ loss_category: 'gc_lost' }]), pk('Brund & Assoc.', 'lost', [{ loss_category: null }])]}
         saving={false}
         onSelect={() => {}}
       />,
     )
-    expect(screen.getByTestId('lost-strip-gc-lines').textContent).toContain('Structura GC lost the project')
+    expect(screen.getByTestId('lost-strip-gc-lines').textContent).toContain('Sheffield GC lost the project')
     expect(screen.getByText(/Still no reason from Brund & Assoc\./)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Price too high' })).toBeTruthy()
   })

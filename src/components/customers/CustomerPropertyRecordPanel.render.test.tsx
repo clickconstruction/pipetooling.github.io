@@ -33,7 +33,7 @@ vi.mock('../../lib/customers/propertyLookupClient', async () => {
 
 afterEach(cleanup)
 
-const lookedUp = { ...emptyPropertyDraft('1200 Ilka Rd, Seguin, TX 78155'), county: 'Guadalupe', parcel_looked_up_at: '2026-10-06T12:00:00Z' }
+const lookedUp = { ...emptyPropertyDraft('5171 Irving Rd, Seguin, TX 78155'), county: 'Guadalupe', parcel_looked_up_at: '2026-10-06T12:00:00Z' }
 
 describe('CustomerPropertyRecordPanel', () => {
   it('opens the paste box first when asked and the roll left the legal description blank; reads a hidden-exemptions page as unknown', () => {

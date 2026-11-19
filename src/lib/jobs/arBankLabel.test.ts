@@ -80,9 +80,9 @@ describe('arAppliedToast', () => {
 describe('arAppliedIncomeFix (v2.4369 Book it as Income)', () => {
   const taxes = { labelName: 'Taxes and Licenses', labelDefaultKey: 'taxes_licenses' }
   it('a deposit that paid a bill under another label: the words, with the rule when a rule did it', () => {
-    expect(arAppliedIncomeFix(taxes, 4890, 'City of Seguin - Taxes and Licenses')).toEqual({
+    expect(arAppliedIncomeFix(taxes, 4890, 'City of Sefton - Taxes and Licenses')).toEqual({
       text: 'Banking books it as Taxes and Licenses. It paid a bill, so it is income.',
-      ruleLine: 'Your rule City of Seguin labelled it. In Banking, that rule can be limited to money going out.',
+      ruleLine: 'Your rule City of Sefton labelled it. In Banking, that rule can be limited to money going out.',
     })
     expect(arAppliedIncomeFix(taxes, 4890, null)?.ruleLine).toBeNull()
   })

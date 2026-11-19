@@ -17,7 +17,7 @@ describe('weeklyMovementEmail (the report’s renderer, lifted v2.4172)', () => 
     expect(t.split('\n')[1]).toBe('6 moves · 5 jobs')
     expect(t).toContain('Moved to Billed · 2 jobs · $90,380.00')
     expect(t).toContain('- 1041 · Cedar Bend Apartments — rough-in — Thu — Malachi Sample — $86,000.00')
-    expect(t).toContain('Sent back · 1\n- 1039 · Structura — pretest — Fri · Ready to bill → Working — Wendi Douglas')
+    expect(t).toContain('Sent back · 1\n- 1039 · Sheffield — pretest — Fri · Ready to bill → Working — Wendi Douglas')
     expect(t.indexOf('Moved to Working')).toBeLessThan(t.indexOf('Moved to Billed'))
   })
   it('html has the stage sections, the send-back arrow, the sender; an empty week says so', () => {

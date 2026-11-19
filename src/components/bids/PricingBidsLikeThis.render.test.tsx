@@ -96,7 +96,7 @@ describe('PricingBidsLikeThis', () => {
   })
 
   it('renders nothing on a bid with no price and no margin yet', () => {
-    const { container } = render(<PricingBidsLikeThis history={[bid('won', 30), bid('won', 45), bid('lost', 50)]} currentBidId="b1" currentPrice={0} currentMargin={null} gcCustomerId="gc9" gcName="City of Seguin" />)
+    const { container } = render(<PricingBidsLikeThis history={[bid('won', 30), bid('won', 45), bid('lost', 50)]} currentBidId="b1" currentPrice={0} currentMargin={null} gcCustomerId="gc9" gcName="City of Sefton" />)
     expect(container.textContent).toBe('')
   })
 

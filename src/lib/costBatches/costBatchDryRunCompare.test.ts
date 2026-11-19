@@ -63,11 +63,11 @@ describe('compareDryRunToPlan', () => {
 
   it('flags a cent of difference, a count, and a job only one side names', () => {
     const dry = parseCostBatchApplyResult({ batch_id: null, dry_run: true, op_count: 4, by_job: { [A]: { allocated: 84.31, clock_sessions: 1, notes: 1 }, ['44444444-4444-4444-8444-444444444444']: { notes: 1 } } })!
-    const c = compareDryRunToPlan(plan, dry, (id) => (id === A ? 'Rough In' : id === B ? 'Diamondback' : 'Stray'))
+    const c = compareDryRunToPlan(plan, dry, (id) => (id === A ? 'Rough In' : id === B ? 'Davenport' : 'Stray'))
     expect(c.matches).toBe(false)
     expect(c.problems).toEqual([
       'Rough In · Allocated: $84.30 planned, $84.31 in the dry run.',
-      'The plan names Diamondback, which the dry run did not touch.',
+      'The plan names Davenport, which the dry run did not touch.',
       'The dry run touched Stray, which the plan does not name.',
       'Op count: 5 planned, 4 in the dry run.',
     ])

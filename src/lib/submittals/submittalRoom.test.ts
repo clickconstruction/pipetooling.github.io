@@ -95,7 +95,7 @@ describe('stage 5a — the thread', () => {
     expect(summarizeThread([ask, reply].map((m) => parseRoomMessage(m)!), tz)).toBe('2 entries · last: you answered Sep 17')
     // 2026-10-03 · an answer the office typed in, or the robot read, is not the room deciding.
     const line = (body: string) => ({ id: 'x', at: '2026-10-02T20:00:00Z', authorKind: 'system' as const, authorName: null, body, kind: 'decision' as const, revNumber: 1, tags: [] })
-    expect(summarizeThread([line("from structura's file, entered by the office · 1 row · 1 reject")], tz)).toBe('1 entry · last: the office entered their answers Oct 2')
+    expect(summarizeThread([line("from sheffield's file, entered by the office · 1 row · 1 reject")], tz)).toBe('1 entry · last: the office entered their answers Oct 2')
     expect(summarizeThread([line("from Dana Whitfield's file, read by the robot, confirmed by the office · 2 rows · 2 approve")], tz)).toBe('1 entry · last: the robot read their answers Oct 2')
     expect(summarizeThread([line('Dana Whitfield decided 3 rows')], tz)).toBe('1 entry · last: the room decided Oct 2')
   })

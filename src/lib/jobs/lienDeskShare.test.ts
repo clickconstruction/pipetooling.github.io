@@ -73,7 +73,7 @@ const data = {
   summary: summarizeLienDeskForNeedsYou(queue),
   affidavits: buildLienAffidavitQueue(affidavitRows, [], TODAY),
   retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
-  jobsById: Object.fromEntries([job(878, 'Tune 5- Seguin'), job(273, 'Dunmere (Linmoor)'), { ...job(650, 'AXO Schertz'), customer_address_id: 'addr-650' }, job(927, 'Mike Holmby- Candelria'), job(801, 'Mailed one'), job(802, 'Approved one'), job(803, 'Gone one'), job(838, 'Bruce Hall'), job(881, 'Dunmere Mallin')].map((j) => [j.id, j])),
+  jobsById: Object.fromEntries([job(878, 'Tune 5- Seguin'), job(273, 'Dunmere (Linmoor)'), { ...job(650, 'AXO Schertz'), customer_address_id: 'addr-650' }, job(927, 'Mike Holmby- Candelria'), job(801, 'Mailed one'), job(802, 'Approved one'), job(803, 'Gone one'), job(838, 'Blake Hendry'), job(881, 'Dunmere Mallin')].map((j) => [j.id, j])),
   // AXO Schertz is commercial: its houses' windows run on the 3rd month (a kind not set would date them a month earlier, v2.5031).
   addressesById: { 'addr-650': { id: 'addr-650', property_kind: 'non_residential' } },
   gcsById: {
@@ -119,7 +119,7 @@ describe('buildLienStatusPayload — the desk folded into the message (v2.4311)'
     // The Affidavits tab's own order: soonest first, then the most money.
     expect(p.liens).toEqual([
       { number: '881', name: 'Dunmere Mallin', gc: 'RLC- Dunmere Mallin', owed: 1050, byYmd: '2026-10-15', needs: ['notice'] },
-      { number: '838', name: 'Bruce Hall', gc: '', owed: 350, byYmd: '2026-10-15', needs: ['owner', 'legal'] },
+      { number: '838', name: 'Blake Hendry', gc: '', owed: 350, byYmd: '2026-10-15', needs: ['owner', 'legal'] },
     ])
   })
 

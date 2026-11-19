@@ -76,8 +76,8 @@ vi.mock('../components/jobs/LienInstrumentsModal', () => ({
   },
 }))
 
-const job226 = () => makeJob({ id: 'j226', hcp_number: '226', job_name: 'Dudley Mason', status: 'billed', last_work_date: '2026-02-11', lien_last_work_on: null }) as JobWithDetails
-const job608 = () => makeJob({ id: 'j608', hcp_number: '608', job_name: 'Dudley Mason', status: 'billed', last_work_date: '2026-04-02', lien_last_work_on: null }) as JobWithDetails
+const job226 = () => makeJob({ id: 'j226', hcp_number: '226', job_name: 'Della Mackay', status: 'billed', last_work_date: '2026-02-11', lien_last_work_on: null }) as JobWithDetails
+const job608 = () => makeJob({ id: 'j608', hcp_number: '608', job_name: 'Della Mackay', status: 'billed', last_work_date: '2026-04-02', lien_last_work_on: null }) as JobWithDetails
 const SAVED = { last_work_date: '2026-02-11', lien_last_work_on: '2026-09-04', lien_last_work_note: 'Went back for the valve', lien_last_work_set_at: '2026-11-13T20:00:00+00:00', lien_last_work_set_by: 'u-office' }
 
 function Harness() {

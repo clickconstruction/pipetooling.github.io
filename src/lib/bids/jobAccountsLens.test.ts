@@ -31,7 +31,7 @@ describe('buildJobAccountsLens', () => {
   ])
   const bids = [
     bid({}),
-    bid({ id: 'b375', label: 'b375', projectName: 'SkyLab BA-02N', gcName: 'Structura', startDate: '2026-10-07' }),
+    bid({ id: 'b375', label: 'b375', projectName: 'SkyLab BA-02N', gcName: 'Sheffield', startDate: '2026-10-07' }),
     bid({ id: 'b412', label: 'b412', projectName: 'Vaughn residence', gcName: 'Dunmere Mallin', estimatorName: 'Bill', estimatorUserId: 'u-bill', startDate: '2026-09-24' }),
     bid({ id: 'b402', label: 'b402', projectName: 'Tune 5 · Buda', gcName: 'Selwick GC', estimatorName: 'Wendi', estimatorUserId: 'u-wendi', startDate: null, wonDate: '2026-09-13' }),
     bid({ id: 'b300', label: 'b300', projectName: 'Done job' }),

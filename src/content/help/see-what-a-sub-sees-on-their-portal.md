@@ -41,7 +41,7 @@ Every sub sheet sits at one of three stages. The portal draws them as a four-dot
 Move a sheet from the **Where it stands** rail on **Jobs → Subs → Pay**. The **→** beside the rail advances one stage. Clicking the rail's current dot opens all three, so you can jump or step back. The same control sits in the sheet editor's *Shown on the sub's portal* box.
 
 :::example The sub tells you first
-While a sheet is *Waiting on work*, the sub sees {{button:green|✓ My work here is done}} on that job. Pressing it (with an optional note — "Cleanout is behind the water heater — gate code 4471") moves the sheet to *Waiting on inspection* by itself. You'll see **Ready to walk — Danny Vasquez · 1004 162 Forest Drive** in the dispatch inbox, and the chip on Sub Labor reads *Waiting on inspection · sub* with their note behind ✎.
+While a sheet is *Waiting on work*, the sub sees {{button:green|✓ My work here is done}} on that job. Pressing it (with an optional note — "Cleanout is behind the water heater — gate code 4471") moves the sheet to *Waiting on inspection* by itself. You'll see **Ready to walk — Danny Vasquez · 1004 785 Forest Drive** in the dispatch inbox, and the chip on Sub Labor reads *Waiting on inspection · sub* with their note behind ✎.
 :::
 
 **A sheet moves itself when the facts do.** The sub may report **100%** from the portal. Or the signed work order's last day may pass. Either way, the rail shows {{chip:purple|Waiting on inspection}} on its own, with a small ***· auto*** mark. Nobody has to click. If you move it back to *Waiting on work* by hand after that, your call stays. *Waiting on customer* is still yours to set once the inspection passes.

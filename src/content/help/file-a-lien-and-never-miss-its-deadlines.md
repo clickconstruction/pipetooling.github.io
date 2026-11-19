@@ -84,8 +84,8 @@ The roll lags sales and carries no exemptions. So the CAD link sits on every row
 
 :::example The Property record row on a GC job
 **The appraisal roll's answer for 9703 Linmor Hl** · Bexar Appraisal District · 2025 · *Check this parcel on Bexar CAD ↗*
-*Owner of record, mails to* **Karrow Ulric & Barrowby Shelmina** · 3203 Spider Lily · San Antonio, TX 78258
-*Legal* CB 4696A (Cantera Hills UT-3), Block 3 Lot 35 · *County* Bexar
+*Owner of record, mails to* **Karrow Ulric & Barrowby Shelmina** · 5913 Stella Leah · San Antonio, TX 78258
+*Legal* CB 7474A (Carmody Hills UT-3), Block 3 Lot 35 · *County* Bexar
 {{button:blue|Save this owner}} *Not right? Paste the CAD page…*
 :::
 

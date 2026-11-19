@@ -136,7 +136,7 @@ export function samplePeopleWeekPayload(todayYmd: string): PeopleWeekPayload {
           { title: 'Clear the back half of the floor', from_percent: 25, to_percent: 75, done: false, lines_ticked: 0, lines_total: 0, photos: 1, last_words: 'puddy and the glue, Thursday' },
         ],
         roadmap: [{ task_title: 'Clear the back half of the floor', stage_title: 'Workout Facility Floors', roadmap_title: 'Farm 1', percent: 75, done: false }],
-        jobs: [{ hcp_number: '1105', customer_name: 'Madison Park kitchen', pct_complete: 65, sessions: 3, reports: 2 }],
+        jobs: [{ hcp_number: '1105', customer_name: 'Morris Park kitchen', pct_complete: 65, sessions: 3, reports: 2 }],
         stuck: [],
       },
       {

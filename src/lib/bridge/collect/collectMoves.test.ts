@@ -16,13 +16,13 @@ const speeds: PaySpeedData = {
   company: { medianDays: 7, samples: 286 },
   customers: { rlc: { medianDays: 35, samples: 4 }, halden: { medianDays: 74, samples: 1 }, handi: { medianDays: 6, samples: 10 }, kestrin: { medianDays: 30, samples: 31 } },
   segments: { residential: { medianDays: 2, samples: 136 }, commercial: { medianDays: 12, samples: 150 } },
-  customerTypes: { structura: 'commercial', rlc: 'commercial', southern: 'commercial', halden: 'commercial', handi: 'commercial', kestrin: 'commercial' },
+  customerTypes: { sheffield: 'commercial', rlc: 'commercial', southern: 'commercial', halden: 'commercial', handi: 'commercial', kestrin: 'commercial' },
   receipts: {},
   quality: null,
 }
 const bill = (key: string, payerId: string, payerName: string, billedYmd: string, usd: number, over: Partial<CollectBill> = {}): CollectBill => ({ key, jobId: `j-${key}`, payerId, payerName, billedYmd, usd, ...over })
 const bills: CollectBill[] = [
-  bill('skylab', 'structura', 'Structura, Inc. – Austin', '2026-09-24', 103_386, { sentFromHere: false }),
+  bill('skylab', 'sheffield', 'Sheffield, Inc. – Austin', '2026-09-24', 103_386, { sentFromHere: false }),
   ...[13_420, 9_800, 8_780, 7_902, 3_500, 3_500, 2_650, 2_245].map((usd, i) => bill(`rlc-${i}`, 'rlc', 'RLC- Dunmere Mallin', i === 0 ? '2026-03-16' : '2026-08-18', usd, i === 2 ? { billedYmd: '2026-09-21', sentFromHere: false } : {})),
   bill('sp', 'southern', 'Southern Pine Construction', '2026-09-16', 38_625, { sentFromHere: false }),
   bill('tfh', 'halden', 'TF Halden', '2026-09-16', 29_323, { sentFromHere: false }),
@@ -48,7 +48,7 @@ describe('collectMoveFor (v2.5854)', () => {
     plain(m.opener)
   })
   it('asks a GC for the pay date on a hand-marked bill, before or after it is due', () => {
-    const s = collectMoveFor(payer('Structura, Inc. – Austin'), opts)
+    const s = collectMoveFor(payer('Sheffield, Inc. – Austin'), opts)
     expect(s.kind).toBe(s.title === 'Call for the pay date' ? 'call_date' : 'call_payapp')
     expect(s.opener).toBe('Say: the pay application for $103k, marked billed here Sep 24. When did it go in, is it approved, and which pay run is it on?')
     plain(s.opener)
@@ -76,12 +76,12 @@ describe('collectMoveFor (v2.5854)', () => {
   })
   it('builds the sheet: calls, statements, the ask, the money that pays itself; the text', () => {
     const sheet = buildCollectSheet(cut, (p) => collectMoveFor(p, opts))
-    // The cut is four payers here: Structura, RLC, Southern Pine and TF Halden hold over nine tenths.
+    // The cut is four payers here: Sheffield, RLC, Southern Pine and TF Halden hold over nine tenths.
     expect(sheet.rows.map((r) => r.move.kind)).toEqual(['call_date', 'statement_call', 'call_promise', 'call_date'])
     expect(sheet.calls).toBe(4)
     expect(sheet.statements).toBe(0)
     expect(sheet.askUsd).toBe(sheet.rows.reduce((s, r) => s + r.move.askUsd, 0))
-    // Structura's $103k is not yet due on an account with nothing late: it pays itself.
+    // Sheffield's $103k is not yet due on an account with nothing late: it pays itself.
     expect(sheet.paysItselfUsd).toBe(103_386)
     const text = collectSheetText(sheet, 'The Collect desk, Sun, Oct 25')
     expect(text.split('\n')[0]).toBe('The Collect desk, Sun, Oct 25')
@@ -96,7 +96,7 @@ describe('collectDecisions (v2.5854)', () => {
     const d = collectDecisions(cut, opts)
     expect(d.map((x) => x.kind)).toEqual(['gc_record', 'affidavit', 'terms'])
     // One job: the door opens its Edit Job (v2.5873); it opened the whole board.
-    expect(d[0]).toMatchObject({ head: 'Is Structura, Inc. – Austin the GC on this job?', door: { label: 'Open the job', href: '/jobs?edit=j-skylab' }, usd: 103_386 })
+    expect(d[0]).toMatchObject({ head: 'Is Sheffield, Inc. – Austin the GC on this job?', door: { label: 'Open the job', href: '/jobs?edit=j-skylab' }, usd: 103_386 })
     expect(d[1]).toMatchObject({ head: 'File the RLC- Dunmere Mallin lien by Nov 16.', door: { href: '/lien?j-rlc-0' } })
     expect(d[2]).toMatchObject({ head: 'Terms for TF Halden on the next bid.', door: { href: '/customers/halden' } })
     for (const x of d) {

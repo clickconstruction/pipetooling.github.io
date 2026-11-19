@@ -15,7 +15,7 @@ const PREFIX_MAP: LedgerPrefixMap = {
 function bar(overrides: Partial<BarSearchInput> = {}): BarSearchInput {
   return {
     hcpNumber: '740',
-    jobName: 'San Marcos Housing Authority',
+    jobName: 'San Macrae Housing Authority',
     jobAddress: '123 Main St, San Marcos, TX',
     serviceTypeId: PLUMBING_ID,
     ...overrides,
@@ -46,7 +46,7 @@ describe('barMatchesSearch', () => {
   it('matches against the full display label (prefix + name)', () => {
     expect(barMatchesSearch(bar(), 'JP740', PREFIX_MAP)).toBe(true)
     expect(barMatchesSearch(bar(), 'San Marcos', PREFIX_MAP)).toBe(true)
-    expect(barMatchesSearch(bar(), 'jp740 · san marcos', PREFIX_MAP)).toBe(true)
+    expect(barMatchesSearch(bar(), 'jp740 · san macrae', PREFIX_MAP)).toBe(true)
   })
 
   it('matches against the raw HCP number alone', () => {
@@ -104,9 +104,9 @@ describe('barMatchesSearch', () => {
 })
 
 describe('filterBarsBySearch', () => {
-  const A = bar({ hcpNumber: '740', jobName: 'San Marcos Housing Authority' })
+  const A = bar({ hcpNumber: '740', jobName: 'San Macrae Housing Authority' })
   const B = bar({ hcpNumber: '251', jobName: 'Michael Palvern Residence', jobAddress: '99 Pecan' })
-  const C = bar({ hcpNumber: '900', jobName: 'Acme Office', jobAddress: '12921 FM 20 Kingsbury TX' })
+  const C = bar({ hcpNumber: '900', jobName: 'Acme Office', jobAddress: '62552 FM 20 Kingsbury TX' })
 
   it('returns the same array reference when the query is empty', () => {
     const input = [A, B, C]
@@ -117,8 +117,8 @@ describe('filterBarsBySearch', () => {
   it('filters down to matching bars', () => {
     expect(filterBarsBySearch([A, B, C], '251', PREFIX_MAP)).toEqual([B])
     expect(filterBarsBySearch([A, B, C], 'KINGSBURY', PREFIX_MAP)).toEqual([C])
-    // 'Marcos' only appears in A's name
-    expect(filterBarsBySearch([A, B, C], 'Marcos', PREFIX_MAP)).toEqual([A])
+    // 'Macrae' only appears in A's name
+    expect(filterBarsBySearch([A, B, C], 'Macrae', PREFIX_MAP)).toEqual([A])
   })
 
   it('preserves input order in results', () => {

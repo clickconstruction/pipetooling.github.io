@@ -170,7 +170,7 @@ Under the rows, a line reads what the GC's page will say for them as they stand.
 - Sharing Rev N+1 later never mints a new link. The same address now shows the new revision. The earlier ones sit under it as the record.
 
 :::example The link into the chain
-Wendi taps Share on Rev 2, names Dana Whitfield (architect) from the email thread, ticks Logan at Structura as watching, and pastes the room link into her reply to the chain. Two days later the tab reads *opened 5×*, Dana under it as *identified via the room link*, and one open by someone who did not say.
+Wendi taps Share on Rev 2, names Dana Whitfield (architect) from the email thread, ticks Logan at Sheffield as watching, and pastes the room link into her reply to the chain. Two days later the tab reads *opened 5×*, Dana under it as *identified via the room link*, and one open by someone who did not say.
 :::
 
 ### The thread

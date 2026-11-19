@@ -62,7 +62,7 @@ vi.mock('../lib/supabase', async () => {
     bids: () => [{
       id: 'bid-1',
       bid_number: '482',
-      project_name: 'Jakes Burgers',
+      project_name: 'Jarvis Burgers',
       bid_value: 100000,
       outcome: null,
       bid_due_date: '2026-08-01',
@@ -144,7 +144,7 @@ const onByStatus = () => screen.queryByText(followupLensCaption('submission-foll
 async function landOnBoard(role: string) {
   renderBidsAt('/bids?tab=bid-board', role)
   await waitFor(() => expect(document.querySelector('[data-tabkey="bid-board"]')).toBeTruthy())
-  await waitFor(() => expect(screen.getAllByText(/Jakes Burgers/).length).toBeGreaterThan(0))
+  await waitFor(() => expect(screen.getAllByText(/Jarvis Burgers/).length).toBeGreaterThan(0))
   await settle()
 }
 
@@ -172,7 +172,7 @@ describe('Bids — the By builder lens’s View submissions door', () => {
   it.each(BIDS_ROLES.filter((role) => bidsTabOpenFor('builder-review', role)))('%s: the glass is drawn only when By status stands for the role', async (role) => {
     renderBidsAt('/bids?tab=builder-review', role)
     await waitFor(() => expect(screen.getByText(followupLensCaption('builder-review'))).toBeTruthy())
-    await waitFor(() => expect(screen.getAllByText(/Jakes Burgers/).length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByText(/Jarvis Burgers/).length).toBeGreaterThan(0))
     await settle()
     const doors = viewSubmissionsDoors()
     if (!bidsTabOpenFor('submission-followup', role)) {

@@ -176,7 +176,7 @@ describe('the write check', () => {
 
 describe('the tree under the customer (v2.6284)', () => {
   it('names a customer’s folder by the customer, Drive-safe, or by the id when the name is empty; the apart form adds the id', () => {
-    expect(customerFolderName({ id: '30d29df1-16ca-4834-a47f-5f7baa1617fa', name: ' Achilles-  Austin ' })).toBe('Achilles- Austin')
+    expect(customerFolderName({ id: '30d29df1-16ca-4834-a47f-5f7baa1617fa', name: ' Ashdown-  Austin ' })).toBe('Ashdown- Austin')
     expect(customerFolderName({ id: '30d29df1-16ca-4834-a47f-5f7baa1617fa', name: '' })).toBe('Customer 30d29df1')
     expect(customerFolderName({ id: '30d29df1-16ca-4834-a47f-5f7baa1617fa', name: null })).toBe('Customer 30d29df1')
     expect(customerFolderNameApart({ id: '30d29df1-16ca-4834-a47f-5f7baa1617fa', name: 'Smith' })).toBe('Smith · 30d29df1')

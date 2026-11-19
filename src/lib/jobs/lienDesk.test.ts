@@ -217,7 +217,7 @@ describe('buildLienDeskQueue · a job the RPC no longer lists keeps the job’s 
 
   it('the gates then read the GC green: the fix the desk shows on 890', () => {
     const q = buildLienDeskQueue([], [sent], {}, '2026-11-02', jobs)
-    const gcsById: Record<string, { name: string; address: string }> = { 'gc-rlc-dunmere': { name: 'RLC- Dunmere Mallin', address: '574 Co Rd 660, Devine TX 78016' } }
+    const gcsById: Record<string, { name: string; address: string }> = { 'gc-rlc-dunmere': { name: 'RLC- Dunmere Mallin', address: '454 Co Rd 660, Devine TX 78016' } }
     const gc = gcsById[q.entries[0]!.gcCustomerId ?? '']
     const { gates } = buildLienDeskGates({ ownerName: 'Rilvo Sorn Zelmar', ownerMailingAddress: '628 Tarrow Rd, San Antonio, TX 78209', gcName: gc?.name ?? '', gcAddress: gc?.address ?? '', propertyKind: 'residential', county: 'Bexar', monthLabels: [], pickedMonthsCount: 0, pendingSessions: 0 })
     const gcGate = gates.find((g) => g.key === 'gc')!

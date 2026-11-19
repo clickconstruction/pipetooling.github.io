@@ -23,7 +23,7 @@ vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn(), recordN
 
 const NOW = new Date('2026-10-25T16:00:00Z')
 
-function harness(customerEmail: string | null = 'ap@structura.example') {
+function harness(customerEmail: string | null = 'ap@sheffield.example') {
   const papers: unknown[] = []
   const notNeeded: unknown[] = []
   const undone: string[] = []
@@ -41,7 +41,7 @@ function harness(customerEmail: string | null = 'ap@structura.example') {
     },
   }
   let rows: FillInRow[] = contractMissingFillInRows({
-    jobs: [{ id: 'j-7', bid_id: null, status: 'working', revenue: 249_716, hcp_number: '1007', click_number: null, job_name: 'SKYLAB BA-02N', customer_name: 'Structura, Inc.', job_address: '1 Rocket Rd', customer_email: customerEmail }],
+    jobs: [{ id: 'j-7', bid_id: null, status: 'working', revenue: 249_716, hcp_number: '1007', click_number: null, job_name: 'SKYLAB BA-02N', customer_name: 'Sheffield, Inc.', job_address: '9 Rowan Rd', customer_email: customerEmail }],
     contracts: [],
     estimates: [],
     now: NOW,
@@ -89,7 +89,7 @@ describe('NeedsYouFillInDeck · contracts missing', () => {
     const h = harness()
     h.render()
     await settle()
-    expect(screen.getByText('#1007 SKYLAB BA-02N · Structura, Inc. · $249,716 · no contract on file')).toBeTruthy()
+    expect(screen.getByText('#1007 SKYLAB BA-02N · Sheffield, Inc. · $249,716 · no contract on file')).toBeTruthy()
     expect(screen.getByText('Working · $249,716 of work on no signed agreement.')).toBeTruthy()
     expect(screen.getByText(/press Send it from the sweep/)).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Save and next' }) as HTMLButtonElement).disabled).toBe(true)
@@ -121,13 +121,13 @@ describe('NeedsYouFillInDeck · contracts missing', () => {
     h.render()
     await settle()
     fireEvent.click(screen.getByRole('radio', { name: /Signed on paper/ }))
-    expect((screen.getByLabelText('Who signed') as HTMLInputElement).value).toBe('Structura, Inc.')
+    expect((screen.getByLabelText('Who signed') as HTMLInputElement).value).toBe('Sheffield, Inc.')
     fireEvent.change(screen.getByLabelText('Signed on'), { target: { value: '2026-10-09' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save and next' }))
     await waitFor(() => expect(h.papers.length).toBe(1))
-    expect(h.papers[0]).toMatchObject({ choice: 'paper', jobId: 'j-7', signerName: 'Structura, Inc.', signedOn: '2026-10-09' })
+    expect(h.papers[0]).toMatchObject({ choice: 'paper', jobId: 'j-7', signerName: 'Sheffield, Inc.', signedOn: '2026-10-09' })
     await settle()
-    expect(trail()).toContain('signed on paper by Structura, Inc. · on file as signed')
+    expect(trail()).toContain('signed on paper by Sheffield, Inc. · on file as signed')
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
   })
 })

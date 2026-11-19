@@ -352,7 +352,7 @@ describe('sub labor revenue share via equivalent hours (v2.974)', () => {
 
 describe('loose name resolution (B8, J8-F2)', () => {
   const roster: CrewPnlRosterPerson[] = [
-    { id: 'per-jose', name: 'José Luis García', accountUserId: null },
+    { id: 'per-joan', name: 'Joán Luis Goodwín', accountUserId: null },
     { id: 'per-mike', name: 'Mike Z', accountUserId: 'user-mike' },
     { id: 'per-sr', name: 'Tom Reed Sr', accountUserId: null },
     { id: 'per-jr', name: 'Tom Reed Jr', accountUserId: null },
@@ -360,20 +360,20 @@ describe('loose name resolution (B8, J8-F2)', () => {
   ]
 
   it('looseCrewPnlName drops diacritics and punctuation and collapses spaces', () => {
-    expect(looseCrewPnlName('  José  Luis García. ')).toBe('jose luis garcia')
+    expect(looseCrewPnlName('  Joán  Luis Goodwín. ')).toBe('joan luis goodwin')
     expect(looseCrewPnlName("O'Brien, Pat")).toBe('o brien pat')
     expect(looseCrewPnlName(null)).toBe('')
   })
 
   it('a spelling that differs only by accents or punctuation lands on the roster person', () => {
-    expect(resolveCrewPnlNameLoosely('jose luis garcia', roster)?.id).toBe('per-jose')
-    expect(resolveCrewPnlNameLoosely('Jose Luis Garcia.', roster)?.id).toBe('per-jose')
+    expect(resolveCrewPnlNameLoosely('joan luis goodwin', roster)?.id).toBe('per-joan')
+    expect(resolveCrewPnlNameLoosely('Joan Luis Goodwin.', roster)?.id).toBe('per-joan')
   })
 
   it('a shorter or reordered spelling merges when only one roster name contains it', () => {
-    expect(resolveCrewPnlNameLoosely('Jose Garcia', roster)?.id).toBe('per-jose')
-    expect(resolveCrewPnlNameLoosely('Garcia, Jose', roster)?.id).toBe('per-jose')
-    expect(resolveCrewPnlNameLoosely('J. Garcia', roster)?.id).toBe('per-jose')
+    expect(resolveCrewPnlNameLoosely('Joan Goodwin', roster)?.id).toBe('per-joan')
+    expect(resolveCrewPnlNameLoosely('Goodwin, Joan', roster)?.id).toBe('per-joan')
+    expect(resolveCrewPnlNameLoosely('J. Goodwin', roster)?.id).toBe('per-joan')
     // The free text may also be the longer one.
     expect(resolveCrewPnlNameLoosely('Mike Z (sub)', roster)?.id).toBe('per-mike')
   })
@@ -384,17 +384,17 @@ describe('loose name resolution (B8, J8-F2)', () => {
   })
 
   it('single first names never merge by containment; a lone roster name matches only by loose equality', () => {
-    expect(resolveCrewPnlNameLoosely('Jose', roster)).toBeNull()
-    expect(resolveCrewPnlNameLoosely('Garcia', roster)).toBeNull()
+    expect(resolveCrewPnlNameLoosely('Joan', roster)).toBeNull()
+    expect(resolveCrewPnlNameLoosely('Goodwin', roster)).toBeNull()
     expect(resolveCrewPnlNameLoosely('MARCO', roster)?.id).toBe('per-solo')
     expect(resolveCrewPnlNameLoosely('Marco Polo', roster)).toBeNull()
   })
 
   it('the resolver keys a loose match on the roster person and shows the roster spelling', () => {
     const r = buildCrewPnlPersonResolver(roster)
-    const k = r.keyForName('jose garcia')
-    expect(k).toBe('p:per-jose')
-    expect(r.displayName(k)).toBe('José Luis García')
+    const k = r.keyForName('joan goodwin')
+    expect(k).toBe('p:per-joan')
+    expect(r.displayName(k)).toBe('Joán Luis Goodwín')
     expect(r.isUnmatched(k)).toBe(false)
     const amb = r.keyForName('Tom Reed')
     expect(amb).toBe('n:tom reed')
@@ -404,14 +404,14 @@ describe('loose name resolution (B8, J8-F2)', () => {
   it('one person stays one row: a sub sheet under a loose spelling merges into the clocked row', () => {
     const s = buildCrewPnlSummary({
       jobs: [job({ id: 'j1', revenue: 1000 })],
-      teamLabor: [{ jobId: 'j1', breakdown: [{ personName: 'José Luis García', byWorkDate: [{ workDate: '2026-06-01', hours: 10, cost: 300 }] }] }],
-      subLabor: [{ id: 's1', jobId: 'j1', jobLabel: 'Sub sheet 769', jobDate: '2026-06-02', assignedNames: ['Garcia, Jose'], cost: 500, hours: 0 }],
+      teamLabor: [{ jobId: 'j1', breakdown: [{ personName: 'Joán Luis Goodwín', byWorkDate: [{ workDate: '2026-06-01', hours: 10, cost: 300 }] }] }],
+      subLabor: [{ id: 's1', jobId: 'j1', jobLabel: 'Sub sheet 769', jobDate: '2026-06-02', assignedNames: ['Goodwin, Joan'], cost: 500, hours: 0 }],
       people: roster,
       range: ALL,
       subLaborEquivalentRate: 50,
     })
     expect(s.rows).toHaveLength(1)
-    expect(s.rows[0]?.key).toBe('p:per-jose')
+    expect(s.rows[0]?.key).toBe('p:per-joan')
     expect(s.rows[0]?.unmatched).toBe(false)
     expect(s.rows[0]?.perJob.map((l) => l.kind)).toEqual(['crew', 'sub'])
   })

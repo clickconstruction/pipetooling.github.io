@@ -22,7 +22,7 @@ const GREG_EMAIL: ContactPoint = { kind: 'email', address: 'greg@hillside.exampl
 const ANA_EMAIL: ContactPoint = { kind: 'email', address: 'ana@hillside.example', words: 'ana@hillside.example' }
 const DANA_EMAIL: ContactPoint = { kind: 'email', address: 'Dana@Hillside.example', words: 'Dana@Hillside.example' }
 const CELL: ContactPoint = { kind: 'phone', number: '(832) 871-4166', ext: '121', words: '(832) 871-4166 ext. 121' }
-const OFFICE: ContactPoint = { kind: 'address', words: '4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477' }
+const OFFICE: ContactPoint = { kind: 'address', words: '6582 Brockman Dr. Suite 102 Stafford, TX, 77477' }
 
 function fakeIo(more: Partial<BodyContactsIo> = {}): BodyContactsIo {
   return {
@@ -103,7 +103,7 @@ describe('useContactPointActs: a press on a number or an address in a message’
     expect(screen.getByText('Undone. Nothing was written.')).toBeTruthy()
     expect(deferredLineCount()).toBe(0)
     fireEvent.click(screen.getByText('map'))
-    await waitFor(() => expect(io.writeLine).toHaveBeenCalledWith('c-greg', "Grace opened the map for 4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477 from Greg's email of Oct 2."))
+    await waitFor(() => expect(io.writeLine).toHaveBeenCalledWith('c-greg', "Grace opened the map for 6582 Brockman Dr. Suite 102 Stafford, TX, 77477 from Greg's email of Oct 2."))
     expect(io.writeLine).toHaveBeenCalledTimes(1)
     cleanup()
     const refused = fakeIo({ writeLine: vi.fn(async () => Promise.reject(new Error('Could not write the line on the thread.'))) })

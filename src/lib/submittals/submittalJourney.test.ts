@@ -76,8 +76,8 @@ describe('submittalJourney', () => {
   })
 
   it('2026-10-03 · rows sent back while others have no answer: the button and the line say both go on', () => {
-    const i = { ...base, rev: draft({ number: 1, status: 'shared', packageBuilt: true }), room: { status: 'open', opens: 2, identified: ['structura'] }, decisions: { decided: 4, approved: 0, open: 9, noAnswer: 10, sentBack: 4, byName: ['structura'] } }
-    expect(submittalJourney(i).next).toEqual({ kind: 'next', text: 'structura sent 4 rows back. 10 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.', action: 'resubmit', actionLabel: 'Start a Rev 2 draft…' })
+    const i = { ...base, rev: draft({ number: 1, status: 'shared', packageBuilt: true }), room: { status: 'open', opens: 2, identified: ['sheffield'] }, decisions: { decided: 4, approved: 0, open: 9, noAnswer: 10, sentBack: 4, byName: ['sheffield'] } }
+    expect(submittalJourney(i).next).toEqual({ kind: 'next', text: 'sheffield sent 4 rows back. 10 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.', action: 'resubmit', actionLabel: 'Start a Rev 2 draft…' })
   })
 
   it('every row approved → done; some still open → waiting', () => {
@@ -92,9 +92,9 @@ describe('submittalJourney', () => {
 
   it('2026-10-03 · answers typed on a draft light Their call and Resubmit, and rows sent back are the next thing to do', () => {
     // BP375: a draft sent by email. Six rows still need a cut sheet, four were sent back, ten have no answer.
-    const bp375 = { ...base, rev: draft({ number: 1, rows: 14, sheetsNeeded: 6 }), decisions: { decided: 4, approved: 0, open: 9, noAnswer: 10, sentBack: 4, byName: ['structura'] } }
+    const bp375 = { ...base, rev: draft({ number: 1, rows: 14, sheetsNeeded: 6 }), decisions: { decided: 4, approved: 0, open: 9, noAnswer: 10, sentBack: 4, byName: ['sheffield'] } }
     expect(statuses(bp375)).toBe('done,done,current,later,later,waiting,current,later')
-    expect(submittalJourney(bp375).next).toEqual({ kind: 'next', text: 'structura sent 4 rows back. 10 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.', action: 'resubmit', actionLabel: 'Start a Rev 2 draft…' })
+    expect(submittalJourney(bp375).next).toEqual({ kind: 'next', text: 'sheffield sent 4 rows back. 10 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.', action: 'resubmit', actionLabel: 'Start a Rev 2 draft…' })
     // Step 7's button is past building once the GC has answered.
     expect(stageGate(submittalJourney(bp375).stages, 'resubmit')).toEqual({ on: true, why: null })
     // Punch list #84 · the Next revision loop shows while Resubmit is the live step on the newest revision, and only then.
@@ -104,24 +104,24 @@ describe('submittalJourney', () => {
     expect(showNextRevisionLoop([], true)).toBe(false)
     // 2026-10-05 · step 6 counts the sink with no product apart from the nine waiting on the reviewer; so does this line.
     const apart = submittalJourney({ ...bp375, decisions: { ...bp375.decisions, noProduct: 1 } }).next
-    expect(apart.text).toBe('structura sent 4 rows back. 9 rows still have no answer. 1 row has no product yet. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')
+    expect(apart.text).toBe('sheffield sent 4 rows back. 9 rows still have no answer. 1 row has no product yet. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')
     // Share was never done in the app, and its button stays held until the package is built.
     expect(stageGate(submittalJourney(bp375).stages, 'share').on).toBe(false)
     // Every row sent back, none waiting: Their call is done.
-    expect(statuses({ ...bp375, decisions: { decided: 14, approved: 10, open: 0, noAnswer: 0, sentBack: 4, byName: ['structura'] } })).toBe('done,done,current,later,later,done,current,current')
+    expect(statuses({ ...bp375, decisions: { decided: 14, approved: 10, open: 0, noAnswer: 0, sentBack: 4, byName: ['sheffield'] } })).toBe('done,done,current,later,later,done,current,current')
   })
 
   it('2026-10-03 · a draft with some rows approved and the rest still with the GC keeps its own next thing, with Their call waiting', () => {
-    const some = { ...base, rev: draft({ number: 1, rows: 14, sheetsNeeded: 6 }), decisions: { decided: 5, approved: 5, open: 9, noAnswer: 9, sentBack: 0, byName: ['structura'] } }
+    const some = { ...base, rev: draft({ number: 1, rows: 14, sheetsNeeded: 6 }), decisions: { decided: 5, approved: 5, open: 9, noAnswer: 9, sentBack: 0, byName: ['sheffield'] } }
     // Since 2026-10-04 the package pill is live too: no row owes a reason.
     expect(statuses(some)).toBe('done,done,current,current,later,waiting,later,current')
     expect(submittalJourney(some).next).toMatchObject({ kind: 'next', action: 'drop_vendor_pdf', text: expect.stringMatching(/^6 rows still need a cut sheet/) })
   })
 
   it('2026-10-03 · a draft the GC approved whole by email is done: next is the order log', () => {
-    const all = { ...base, rev: draft({ number: 1, rows: 14, sheetsNeeded: 6 }), decisions: { decided: 14, approved: 14, open: 0, noAnswer: 0, sentBack: 0, byName: ['structura'] } }
+    const all = { ...base, rev: draft({ number: 1, rows: 14, sheetsNeeded: 6 }), decisions: { decided: 14, approved: 14, open: 0, noAnswer: 0, sentBack: 0, byName: ['sheffield'] } }
     expect(statuses(all)).toBe('done,done,current,later,later,done,done,current')
-    expect(submittalJourney(all).next).toEqual({ kind: 'done', text: 'structura approved every row. Next is the order log, Step 8.', action: null, actionLabel: null })
+    expect(submittalJourney(all).next).toEqual({ kind: 'done', text: 'sheffield approved every row. Next is the order log, Step 8.', action: null, actionLabel: null })
   })
 
   it('v2.4705 · a draft sent by email lights Share as done, and a replaced one says it was sent outside the app', () => {
@@ -227,7 +227,7 @@ describe('2026-10-04 · a cut sheet no longer holds the package', () => {
   })
 
   it('a draft answered by email leaves the Package pill unlit, and its buttons follow the draft’s own facts', () => {
-    const answered = { ...base, rev: draft({ rows: 14, sheetsNeeded: 6 }), decisions: { decided: 4, approved: 0, open: 9, noAnswer: 10, sentBack: 4, byName: ['structura'] } }
+    const answered = { ...base, rev: draft({ rows: 14, sheetsNeeded: 6 }), decisions: { decided: 4, approved: 0, open: 9, noAnswer: 10, sentBack: 4, byName: ['sheffield'] } }
     const stages = submittalJourney(answered).stages
     expect(stages.find((st) => st.key === 'package')!.status).toBe('later')
     expect(stageGate(stages, 'package').on).toBe(false)

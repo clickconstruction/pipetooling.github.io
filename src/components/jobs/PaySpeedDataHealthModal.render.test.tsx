@@ -42,7 +42,7 @@ const TXNS = {
       customerName: 'Michael Palvern',
       jobId: 'j1',
       jobName: 'Michael Palvern',
-      address: '180 Go Away Rd, Blanco, TX',
+      address: '719 Go Away Rd, Blanco, TX',
       invoiceId: 'i1',
       billedYmd: '2026-03-10',
       gapDays: 2,
@@ -91,7 +91,7 @@ const TXNS = {
       customerName: 'Tyler Morby',
       jobId: 'j4',
       jobName: 'Yobo Studio',
-      address: '3556 FM 78 # 103, McQuenny, TX',
+      address: '4943 FM 78 # 103, McQuenny, TX',
       invoiceId: 'i8',
       billedYmd: '2026-08-19',
       gapDays: null,
@@ -143,7 +143,7 @@ describe('PaySpeedDataHealthModal', () => {
     expect(screen.getByText('no bill date')).toBeTruthy()
     expect(screen.getByText('billed after paid')).toBeTruthy()
     expect(screen.getByText('Missing info · 3')).toBeTruthy()
-    expect(screen.getByText('180 Go Away Rd, Blanco, TX')).toBeTruthy()
+    expect(screen.getByText('719 Go Away Rd, Blanco, TX')).toBeTruthy()
     // the bad date's hover says why it can't be right
     expect(screen.getByTitle(/recorded bill date is after the payment/)).toBeTruthy()
     // read-only viewers get no inline editor

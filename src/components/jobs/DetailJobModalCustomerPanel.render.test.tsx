@@ -37,7 +37,7 @@ afterEach(() => {
 describe('DetailJobModalCustomerPanel — the portal globe', () => {
   it('renders the globe beside the customer name when the job has a customer id', () => {
     renderWithProviders(
-      <DetailJobModalCustomerPanel customerName="Dead Level Foundation" customerId="cust-1" customerPhone="(210) 590-5150" customerEmail="deadlevelfoundation@example.com" />,
+      <DetailJobModalCustomerPanel customerName="Dead Level Foundation" customerId="cust-1" customerPhone="(210) 555-0161" customerEmail="deadlevelfoundation@example.com" />,
     )
     const globe = screen.getByTestId('portal-globe')
     expect(globe.getAttribute('data-customer-id')).toBe('cust-1')
@@ -116,8 +116,8 @@ describe('DetailJobModalCustomerPanel — the email chip through the office (#12
   })
 
   it('the ☎ chip still dials from the person’s own phone', () => {
-    renderWithProviders(<DetailJobModalCustomerPanel customerName="Dead Level Foundation" customerId={null} customerPhone="(210) 590-5150" customerEmail={null} />)
+    renderWithProviders(<DetailJobModalCustomerPanel customerName="Dead Level Foundation" customerId={null} customerPhone="(210) 555-0161" customerEmail={null} />)
     fireEvent.click(screen.getByLabelText('Customer phone — call number'))
-    expect(io.opened).toEqual(['tel:(210) 590-5150'])
+    expect(io.opened).toEqual(['tel:(210) 555-0161'])
   })
 })

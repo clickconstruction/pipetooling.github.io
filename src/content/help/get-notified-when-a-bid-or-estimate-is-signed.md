@@ -16,7 +16,7 @@ Open **Settings → Emails & reports → Signed agreements.** With no one picked
 :::example What the email says
 Subject: **Kestrin Contracting signed $56,343 · Hunter Road Sound Studio** (an estimate reads **Dana Ruiz signed $4,250 · Second-floor rough-in**, or just **Dana Ruiz signed $4,250**, with the work added only when the estimate's title names it); the inbox preview line says whether the job exists yet.
 
-**Mark Kestrin signed the proposal for Hunter Road Sound Studio** · Kestrin Contracting · 2530 Hunter Rd · Sept 4, 2026 · 9:12 AM — **To Plans · $56,343.00** — {{button:blue|Open the signed record}} {{button:amber|Create the job}}
+**Mark Kestrin signed the proposal for Hunter Road Sound Studio** · Kestrin Contracting · 4455 Hadley Rd · Sept 4, 2026 · 9:12 AM — **To Plans · $56,343.00** — {{button:blue|Open the signed record}} {{button:amber|Create the job}}
 :::
 
 ## Creating the job

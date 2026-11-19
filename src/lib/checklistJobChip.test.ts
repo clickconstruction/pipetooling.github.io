@@ -16,7 +16,7 @@ describe('checklistJobChip (v2.3769)', () => {
   })
 
   it('splits the label into the number badge and the name', () => {
-    expect(splitJobLinkLabel('1016 · Mission faucet')).toEqual({ number: '1016', name: 'Mission faucet' })
+    expect(splitJobLinkLabel('1016 · Marsden faucet')).toEqual({ number: '1016', name: 'Marsden faucet' })
     expect(splitJobLinkLabel('C42 · Corl pool & windows')).toEqual({ number: 'C42', name: 'Corl pool & windows' })
     expect(splitJobLinkLabel('— · Job')).toEqual({ number: null, name: 'Job' })
     expect(splitJobLinkLabel('Just a name')).toEqual({ number: null, name: 'Just a name' })

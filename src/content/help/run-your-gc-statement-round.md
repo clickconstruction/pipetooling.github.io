@@ -43,7 +43,7 @@ Under the track, **one row per GC**:
 **Account Man Malachi** · 3 GCs · $96,000 — 2 to do
 › Lowbeck Contracting {{chip:gray|no word yet}} · $22,000 · 4 jobs · oldest 19d — ◉ Check · ○ Send · ○ Word {{button:blue|Check bills}}
 › Kestrin Contracting {{chip:yellow|warm · Sep 18}} · $26,000 · 4 jobs · oldest 41d — ✓ Checked · ◉ Send · ○ Word {{button:blue|Send}}
-› Structura {{chip:yellow|warm · Sep 25}} · $48,000 · 12 jobs · oldest 58d — ✓ Checked · ✓ Sent Thu · ✓ warm {{chip:green|✓ Done}}
+› Sheffield {{chip:yellow|warm · Sep 25}} · $48,000 · 12 jobs · oldest 58d — ✓ Checked · ✓ Sent Thu · ✓ warm {{chip:green|✓ Done}}
 :::
 
 - **Account Man Malachi** holds the GCs Malachi is the account man for. That is the standing pick on the GC, else the account manager on most of its jobs. Your own read ***Account Man Taunya (you)***. A GC with neither sits under the **leader**. Its opened row says *the leader, by default*, and you tap **pick an account man** there. The choice sticks week to week. GCs owing under $10,000 sit in their account man's section like any other. They are marked *word optional* in the heading. You check and send them. The word is optional. Nothing is nobody's. A GC that owes only in Collections has a statement and no steps. It sits under **Nothing to check this week** with the **Not billed to a GC** bucket.

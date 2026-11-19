@@ -256,7 +256,7 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
   it('draws the signature’s number, address and street address as presses, the tracking links as links (v2.6513)', () => {
     const m: ThreadMessage = {
       ...line('m-greg-email-in'),
-      body: `Thank you.\nGlenn Gelwin\n[image: phone] (832) 871-4166 ext. 121\n[image: email] glenn@marrexbuilders.example <https://server.utags.co/gLCOFBOU>\n[image: company-address] 4150 Bluebonnet Dr. Suite 102 Stafford, TX, 77477\n[image: instagram] <https://server.utags.co/yhmOAqla>`,
+      body: `Thank you.\nGlenn Gelwin\n[image: phone] (832) 871-4166 ext. 121\n[image: email] glenn@marrexbuilders.example <https://server.utags.co/gLCOFBOU>\n[image: company-address] 6582 Brockman Dr. Suite 102 Stafford, TX, 77477\n[image: instagram] <https://server.utags.co/yhmOAqla>`,
       files: [],
     }
     const acts = { onCall: vi.fn(), onReply: vi.fn(), onMap: vi.fn() }
@@ -274,7 +274,7 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
     fireEvent.click(within(full).getByTestId('body-email'))
     expect(acts.onReply).toHaveBeenCalledWith(expect.objectContaining({ kind: 'email', address: 'glenn@marrexbuilders.example' }), 'email')
     const map = within(full).getByTestId('body-map') as HTMLAnchorElement
-    expect(map.getAttribute('href')).toBe('https://www.google.com/maps/search/?api=1&query=4150%20Bluebonnet%20Dr.%20Suite%20102%20Stafford%2C%20TX%2C%2077477')
+    expect(map.getAttribute('href')).toBe('https://www.google.com/maps/search/?api=1&query=6582%20Brockman%20Dr.%20Suite%20102%20Stafford%2C%20TX%2C%2077477')
     expect(map.getAttribute('target')).toBe('_blank')
     fireEvent.click(map)
     expect(acts.onMap).toHaveBeenCalledWith(expect.objectContaining({ kind: 'address' }))

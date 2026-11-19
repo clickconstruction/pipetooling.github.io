@@ -14,7 +14,7 @@ const snapshot = {
   acknowledgements: ['My insurance certificate stays current for the whole job.'],
   bond: 'none',
   specialProvisions: 'Owner supplies the water heater.',
-  facts: { jobLabel: 'J977', jobAddress: '415 Stonewick Way, Austin TX', customerName: 'Hospital', trade: 'Plumbing', recordId: 'WO-977-01', issuedOn: '2026-09-04', issuerName: 'Maria Mendez', issuerTitle: 'Project Coordinator', subCompany: 'Kraja Mechanical LLC', msaSignedOn: '2026-01-12' },
+  facts: { jobLabel: 'J977', jobAddress: '415 Stonewick Way, Austin TX', customerName: 'Hospital', trade: 'Plumbing', recordId: 'WO-977-01', issuedOn: '2026-09-04', issuerName: 'Marla Marlowe', issuerTitle: 'Project Coordinator', subCompany: 'Kraja Mechanical LLC', msaSignedOn: '2026-01-12' },
 }
 
 const issuer = { companyName: 'Click Plumbing', companyLine: 'Plumbing, Electrical, and HVAC', address: '5501 Balcones Dr., Austin TX', phone: '(512) 360-0599' }
@@ -45,7 +45,7 @@ describe('buildWorkOrderDocument', () => {
       'Insurance requirements; expires Mar 1, 2027',
       'Master Subcontract Agreement, signed Jan 12, 2026',
     ])
-    expect(doc.signatures.issuer).toEqual({ name: 'Maria Mendez', title: 'Project Coordinator', on: 'Sep 4, 2026' })
+    expect(doc.signatures.issuer).toEqual({ name: 'Marla Marlowe', title: 'Project Coordinator', on: 'Sep 4, 2026' })
     expect(doc.signatures.sub.name).toBeNull()
   })
 

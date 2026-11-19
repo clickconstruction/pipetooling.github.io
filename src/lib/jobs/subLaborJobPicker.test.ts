@@ -17,7 +17,7 @@ const keith = {
   click_number: null,
   job_name: 'Keith Stadlow',
   customer_name: 'Keith Stadlow',
-  job_address: '106 Lenz Dr, Seguin, TX',
+  job_address: '115 Larkin Dr, Seguin, TX',
 }
 const clickOnly = {
   id: 'j2',
@@ -85,7 +85,7 @@ describe('subLaborAssignPickerRows (v2.1618 standard picker)', () => {
     expect(rows.map((r) => r.id)).toEqual(['j1', 'j2'])
     expect(rows[0]?.status).toBe('working')
     expect(rows[0]?.serviceTypeName).toBe('Plumbing')
-    expect(rows[0]?.subline).toContain('106 Lenz Dr')
+    expect(rows[0]?.subline).toContain('115 Larkin Dr')
     expect(rows[1]?.status).toBe('paid')
   })
 

@@ -111,7 +111,7 @@ Owner ID: 9`)
       'Type:\tR\tZoning:',
       'Property Use:\t',
       'Location',
-      'Situs Address:\t1200 ILKA RD',
+      'Situs Address:\t5171 IRVING RD',
       'Map ID:\tM-12\tMapsco:',
       'Legal Description:\tABS: 131 SUR: BENJAMIN FUQUA 1.2260 AC',
       'Abstract/Subdivision:\tG_A0131',
@@ -131,7 +131,7 @@ Owner ID: 9`)
     expect(r.legalDescription).toBe('ABS: 131 SUR: BENJAMIN FUQUA 1.2260 AC')
     expect(r.ownerName).toBe('HALL BRUCE & REBECCA')
     expect(r.mailingAddress).toBe('P O BOX 1225, MINERALWELLS, TX 76068')
-    expect(r.situsAddress).toBe('1200 ILKA RD')
+    expect(r.situsAddress).toBe('5171 IRVING RD')
     expect(r.homestead).toBe('unknown')
   })
 })

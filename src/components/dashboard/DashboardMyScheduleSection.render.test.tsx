@@ -65,7 +65,7 @@ function meta(over: Partial<SubScheduleJobMeta> = {}): SubScheduleJobMeta {
     job_pictures_link: PICTURES_URL,
     hcp_number: '000',
     click_number: null,
-    job_address: '12921 FM 20 Kingsbury TX',
+    job_address: '62552 FM 20 Kingsbury TX',
     ...over,
   }
 }

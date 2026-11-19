@@ -96,10 +96,10 @@ describe('the jobs we priced for a GC', () => {
     bid({ id: 'b2', bid_number: '501', project_name: 'Pecan Grove Pharmacy', address: '88 Harbor St, San Antonio, TX 78205', bid_date_sent: '2026-10-14' }),
     bid({ id: 'b3', bid_number: '488', project_name: 'Harbor Street Offices', address: '310 Alder Row, San Antonio, TX', bid_date_sent: '2026-09-30' }),
     bid({ id: 'b4', bid_number: '470', project_name: 'Juniper Court Retail', address: '2210 Larkspur Dr, San Antonio, TX', outcome: 'lost', bid_date_sent: '2026-08-01' }),
-    bid({ id: 'b5', bid_number: '455', project_name: 'Cedar Bend Clinic', address: '3798 Kyle Crossing Kyle, TX 78640', outcome: 'won', bid_date_sent: '2026-07-01' }),
+    bid({ id: 'b5', bid_number: '455', project_name: 'Cedar Bend Clinic', address: '8030 Kyle Crossing Kyle, TX 78640', outcome: 'won', bid_date_sent: '2026-07-01' }),
     bid({ id: 'b6', bid_number: '450', project_name: 'Oak Hollow Retail', address: 'Loop 1604 at Oak Hollow', bid_date_sent: '2026-06-01' }),
     bid({ id: 'b7', bid_number: '449', project_name: 'ZZ Shadow MILL STREET LOFTS', address: '4120 Mill Street, San Antonio, TX 78215' }),
-    bid({ id: 'b8', bid_number: '440', project_name: 'Larkspur Dental', address: '709 Laurel St, Bastrop TX 78602', bid_date_sent: '2026-05-01' }),
+    bid({ id: 'b8', bid_number: '440', project_name: 'Larkspur Dental', address: '981 Lloyd St, Bastrop TX 78602', bid_date_sent: '2026-05-01' }),
   ]
   const permits = new Map([
     ['San Antonio', [permit(), permit({ ...general, id: 'p5', address: '88 HARBOR ST' }), permit({ id: 'p6', address: '310 ALDER ROW', stage: 'issued', permit_type: 'Comm New Building Permit', work_type: 'New commercial', issued_on: '2026-11-03', project_name: 'HARBOR OFFICES' })]],

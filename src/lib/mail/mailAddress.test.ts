@@ -13,9 +13,9 @@ describe('a mail piece’s party (the Docsmit train, PR 1)', () => {
 
   it('the one-line address becomes the provider’s lines, with a suite on line 2 and the label CSV’s no-comma rule', () => {
     expect(mailPartyAddress('17300 IH 35 N, Schertz, TX 78154')).toEqual({ address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postalCode: '78154' })
-    expect(mailPartyAddress('9993 IH 10 West Suite 102, San Antonio, TX 78230')).toEqual({ address1: '9993 IH 10 West', address2: 'Suite 102', city: 'San Antonio', state: 'TX', postalCode: '78230' })
+    expect(mailPartyAddress('1130 IH 10 West Suite 102, San Antonio, TX 78230')).toEqual({ address1: '1130 IH 10 West', address2: 'Suite 102', city: 'San Antonio', state: 'TX', postalCode: '78230' })
     expect(mailPartyAddress('50 Journal Square, 8th Fl, Jersey City, NJ 07306-1234')).toEqual({ address1: '50 Journal Square', address2: '8th Fl', city: 'Jersey City', state: 'NJ', postalCode: '07306-1234' })
-    expect(mailPartyAddress('311 E Illinois Ave. Palatine, Il 60067')).toEqual({ address1: '311 E Illinois Ave.', address2: '', city: 'Palatine', state: 'IL', postalCode: '60067' })
+    expect(mailPartyAddress('295 E Ibsen Ave. Palatine, Il 60067')).toEqual({ address1: '295 E Ibsen Ave.', address2: '', city: 'Palatine', state: 'IL', postalCode: '60067' })
     expect(mailPartyAddress('')).toEqual({ address1: '', address2: '', city: '', state: '', postalCode: '' })
   })
 

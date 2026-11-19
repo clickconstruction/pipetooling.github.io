@@ -30,8 +30,8 @@ describe('suggestAddressComma', () => {
       fixed: '1200 Kelby Fort Blvd, Round Rock, TX 78665',
       city: 'Round Rock',
     })
-    expect(suggestAddressComma('4110 N Main St Taylor, TX 76574')).toEqual({
-      fixed: '4110 N Main St, Taylor, TX 76574',
+    expect(suggestAddressComma('3852 N Main St Taylor, TX 76574')).toEqual({
+      fixed: '3852 N Main St, Taylor, TX 76574',
       city: 'Taylor',
     })
   })
@@ -40,20 +40,20 @@ describe('suggestAddressComma', () => {
       fixed: '150 E Sonmere Blvd 200B, San Antonio, TX 78258',
       city: 'San Antonio',
     })
-    expect(suggestAddressComma('13100 W State Hwy 29 Liberty Hill, TX 78642')).toEqual({
-      fixed: '13100 W State Hwy 29, Liberty Hill, TX 78642',
+    expect(suggestAddressComma('80196 W State Hwy 29 Liberty Hill, TX 78642')).toEqual({
+      fixed: '80196 W State Hwy 29, Liberty Hill, TX 78642',
       city: 'Liberty Hill',
     })
   })
   it('normalizes state casing but keeps the zip exactly as typed', () => {
-    expect(suggestAddressComma('4110 N Main St Taylor Tx 78654')).toEqual({
-      fixed: '4110 N Main St, Taylor, TX 78654',
+    expect(suggestAddressComma('3852 N Main St Taylor Tx 78654')).toEqual({
+      fixed: '3852 N Main St, Taylor, TX 78654',
       city: 'Taylor',
     })
   })
   it('works with no state/zip tail at all', () => {
-    expect(suggestAddressComma('4110 N Main St Taylor')).toEqual({
-      fixed: '4110 N Main St, Taylor',
+    expect(suggestAddressComma('3852 N Main St Taylor')).toEqual({
+      fixed: '3852 N Main St, Taylor',
       city: 'Taylor',
     })
   })

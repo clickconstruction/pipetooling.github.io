@@ -133,7 +133,7 @@ describe('JobContractAfterCreatePrompt', () => {
       proposalFromLookupPayload(a, {
         ok: true,
         county_geocoder: 'Guadalupe',
-        parcel: { propId: '9', ownerName: 'TC/JP SEGUIN 2019 LLC', nameCare: '', legalDescription: 'ABS 1', situsAddress: '410 TX-123, SEGUIN, TX', mailingAddress: '1 MAIN ST, AUSTIN, TX', county: 'Guadalupe', source: 'Guadalupe Appraisal District', taxYear: '2025' },
+        parcel: { propId: '9', ownerName: 'TN/JT SEFTON 7852 LLC', nameCare: '', legalDescription: 'ABS 1', situsAddress: '410 TX-123, SEGUIN, TX', mailingAddress: '1 MAIN ST, AUSTIN, TX', county: 'Guadalupe', source: 'Guadalupe Appraisal District', taxYear: '2025' },
       }),
     )
     renderWithProviders(<JobContractAfterCreatePrompt jobId="j1" onClose={() => {}} />)
@@ -145,7 +145,7 @@ describe('JobContractAfterCreatePrompt', () => {
     await waitFor(() => expect(screen.queryByTestId('builder-question')).toBeNull())
     expect(updateSpy).toHaveBeenCalledWith({ gc_customer_id: 'c-sp' })
     await waitFor(() => expect(screen.getByTestId('owner-lookup-box').getAttribute('data-state')).toBe('found'))
-    expect(screen.getByTestId('owner-lookup-owner').textContent).toContain('Seguin 2019')
+    expect(screen.getByTestId('owner-lookup-owner').textContent).toContain('Sefton 7852')
     // The contract doors are still there beneath.
     expect(screen.getByText('Send our agreement')).toBeTruthy()
   })

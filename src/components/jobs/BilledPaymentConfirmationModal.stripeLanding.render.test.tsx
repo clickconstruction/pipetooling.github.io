@@ -50,7 +50,7 @@ const invoice = {
   external_send_channel: 'stripe',
   hosted_invoice_url: 'https://invoice.stripe.com/i/x',
   sent_to_customer_at: '2026-08-04T12:00:00Z',
-  job: { id: 'job102', hcp_number: '', click_number: '102', job_name: 'Samantha Coyle', revenue: 8355, payments_made: 3000 },
+  job: { id: 'job102', hcp_number: '', click_number: '102', job_name: 'Sheila Cadwell', revenue: 8355, payments_made: 3000 },
 } as unknown as InvoiceWithJobLike
 
 function renderWindow(onSuccess: () => void, onClose: () => void = () => {}) {

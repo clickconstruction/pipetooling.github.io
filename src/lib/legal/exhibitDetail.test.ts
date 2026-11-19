@@ -13,7 +13,7 @@ const source = (over: Partial<ExhibitSource> = {}): ExhibitSource => ({
       { ymd: '2026-04-13', jobLabel: '717', kind: 'invoice', text: 'Invoice · sent through Housecall Pro', amount: 7502 },
       { ymd: '2026-05-02', jobLabel: '717', kind: 'payment', text: 'Payment', amount: -500 },
     ],
-    properties: [{ address: '15054 State Hwy 71', owner: 'TLE Holdings', source: 'record' }, { address: '15054 State Hwy 71', owner: '', source: 'job_address' }],
+    properties: [{ address: '71490 State Hwy 71', owner: 'TLE Holdings', source: 'record' }, { address: '71490 State Hwy 71', owner: '', source: 'job_address' }],
   },
   paper: { agreements: [], demandLetters: [], lienFilings: [] },
   theirWord: {
@@ -70,7 +70,7 @@ describe('exhibitDetails', () => {
 
   it('leaves the job address out of the property record, as the count does', () => {
     const d = exhibitDetails(source({ exhibits: [{ letter: 'A', title: 'Property record', count: 1 }] }))
-    expect(d[0]?.lines).toEqual(['15054 State Hwy 71 · owner TLE Holdings'])
+    expect(d[0]?.lines).toEqual(['71490 State Hwy 71 · owner TLE Holdings'])
   })
 })
 

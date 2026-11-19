@@ -197,7 +197,7 @@ describe('BidPickerStandardList', () => {
     const WITH_ROBOTS: BidWithBuilder[] = [
       ...ROWS,
       bid({ id: 'z1', bid_number: '499', project_name: 'ZZ Shadow SKYLAB BA02' }),
-      bid({ id: 'z2', bid_number: '498', project_name: 'ZZ Twin MPH STAGE', bid_date_sent: '2026-09-20' }),
+      bid({ id: 'z2', bid_number: '498', project_name: 'ZZ Twin MCK STAGE', bid_date_sent: '2026-09-20' }),
       bid({ id: 'z3', bid_number: '398', project_name: 'ZZ Test' }),
     ]
 

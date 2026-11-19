@@ -6,7 +6,7 @@ describe('emailLogStreamForSubject', () => {
     expect(emailLogStreamForSubject('Job activity summary — week 2026-08-09 to 2026-08-15')).toBe('digest')
     expect(emailLogStreamForSubject('Job activity summary — 2026-08-14')).toBe('digest')
     expect(emailLogStreamForSubject('Billed awaiting payment — Mon, Aug 17, 2026 — $101,969 due')).toBe('billed')
-    expect(emailLogStreamForSubject('Paid in full — 633 · Adam Jarrett — $300.00')).toBe('paid')
+    expect(emailLogStreamForSubject('Paid in full — 633 · Alan Joyner — $300.00')).toBe('paid')
     expect(emailLogStreamForSubject('Payment progress — 804 · Selwick GC — $1,000.00 of $5,000.00 paid')).toBe('payment')
     expect(emailLogStreamForSubject('Not paid — 812 · Some Job')).toBe('payment')
     expect(emailLogStreamForSubject('Dispatch schedule — 2026-08-18 (America/Chicago)')).toBe('schedule_day')

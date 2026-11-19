@@ -16,7 +16,7 @@ const args = {
   jobName: 'Penmoor demo',
   jobAddress: '4114 Pen Moor Rd, San Antonio, TX',
   customerName: 'Hank Ibarra',
-  customerPhone: '(210) 889-1901',
+  customerPhone: '(210) 555-0188',
   customerEmail: 'hank@example.com',
   customerAddress: '99 Mailing Ln, San Antonio, TX',
   customerType: null as string | null,

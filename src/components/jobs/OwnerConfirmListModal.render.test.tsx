@@ -72,7 +72,7 @@ const ROWS: OwnerToConfirmRow[] = [
 
 function wireLookups() {
   lookupMock.mockImplementation(async (address: string) => {
-    if (address.startsWith('5498')) return proposalFromLookupPayload(address, payload('SAMPLE STATION LTD', '4040 BROADWAY STE 600, SAN ANTONIO, TX 78209', '5498 CINDER VALLEY DR, SCHERTZ, TX'))
+    if (address.startsWith('5498')) return proposalFromLookupPayload(address, payload('SAMPLE STATION LTD', '3342 BRAMWELL STE 600, SAN ANTONIO, TX 78209', '5498 CINDER VALLEY DR, SCHERTZ, TX'))
     if (address.startsWith('1200')) return proposalFromLookupPayload(address, payload('CITY OF ROUND ROCK', '221 E MAIN ST, ROUND ROCK, TX 78664', '1200 KELBY FORT BLVD, ROUND ROCK, TX'))
     return proposalFromLookupPayload(address, { ok: true, county_geocoder: 'Blanco', parcel: null, parcel_error: 'no parcel' })
   })

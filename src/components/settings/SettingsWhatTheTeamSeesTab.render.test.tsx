@@ -79,7 +79,7 @@ describe('SettingsWhatTheTeamSeesTab', () => {
     await mount()
     fireEvent.click(within(screen.getByTestId('wtts-row-money_waiting')).getByRole('button', { name: 'Money waiting' }))
     expect(screen.getByTestId('wtts-expanded').textContent).toContain('Subject: Money waiting — 3 customers off pace, $51,220 open')
-    expect(screen.getByTitle('Money waiting').getAttribute('srcdoc')).toContain('Structura')
+    expect(screen.getByTitle('Money waiting').getAttribute('srcdoc')).toContain('Sheffield')
     fireEvent.click(screen.getByRole('button', { name: /Show the real one/ }))
     const frame = await screen.findByTitle('Money waiting — real')
     expect(frame.getAttribute('srcdoc')).toBe('<p>money waiting, live</p>')

@@ -290,7 +290,7 @@ describe('updates', () => {
   })
 
   const letterhead = { companyName: 'Click Plumbing and Electrical', tagline: 'Plumbing, Electrical, and HVAC', phone: '(512) 360-0599', mailingAddress: '5501 Balcones Dr A141 Austin TX 78731', logoDataUrl: 'data:image/png;base64,AAAA' }
-  const letter = { bidLabel: 'B482 Shipley Do-Nuts', companyName: 'Click Plumbing and Electrical', stageDates, letterhead, projectAddress: '4410 Fredericksburg Rd, San Antonio TX', gcName: 'Structura', preparedBy: 'Wendi Aguilar', roomUrl: 'https://pipetooling.com/submittal?t=abc', roomQrSvg: '<svg data-qr="1"></svg>' }
+  const letter = { bidLabel: 'B482 Shipley Do-Nuts', companyName: 'Click Plumbing and Electrical', stageDates, letterhead, projectAddress: '4410 Fredericksburg Rd, San Antonio TX', gcName: 'Sheffield', preparedBy: 'Wendi Aguilar', roomUrl: 'https://pipetooling.com/submittal?t=abc', roomQrSvg: '<svg data-qr="1"></svg>' }
 
   it('prints an update as a letter to the GC: letterhead, To, the asks first, rows by stage, changed rows marked, the room code, the estimator’s line', () => {
     const changes = diffProcurementLog(snapshotRows(before), after)
@@ -300,7 +300,7 @@ describe('updates', () => {
     expect(html).toContain('September 28, 2026 · changes since September 21, 2026 marked')
     expect(html).toContain('src="data:image/png;base64,AAAA"')
     expect(html).toContain('Plumbing, Electrical, and HVAC')
-    expect(html).toContain('<b>To</b>Structura')
+    expect(html).toContain('<b>To</b>Sheffield')
     expect(html).toContain('4410 Fredericksburg Rd, San Antonio TX')
     expect(html).toContain('<b>Schedule you gave us</b>Rough In Oct 6 · Top Out Oct 27 · Trim Set Nov 17')
     expect(html).toContain('<b>From</b>Wendi Aguilar · Click Plumbing and Electrical · (512) 360-0599')

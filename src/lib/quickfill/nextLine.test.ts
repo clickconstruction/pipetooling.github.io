@@ -28,7 +28,7 @@ describe('nextLine · the first row and its verb (punch list #176, change 2)', (
   it('Billed Awaiting leans on the customer whose bill has waited longest, not the one who owes most', () => {
     expect(
       billedAwaitingNextLine([
-        { customerName: 'Structura, Inc.', total: 103386.4, worstAgeDays: 31 },
+        { customerName: 'Sheffield, Inc.', total: 103386.4, worstAgeDays: 31 },
         { customerName: 'TF Halden', total: 29323, worstAgeDays: 38 },
       ]),
     ).toBe('Lean on TF Halden · $29,323 · 38 days')
@@ -110,7 +110,7 @@ describe('nextLine · the first row and its verb (punch list #176, change 2)', (
 
   it('Texts replies first, then calls about a text that never arrived; Email clears the box most past the limit', () => {
     expect(textsNextLine({ needsReply: [{ name: 'Megan Corbray', waiting: 'waiting 2 h' }], notDelivered: [] })).toBe('Reply to Megan Corbray · waiting 2 h')
-    expect(textsNextLine({ needsReply: [], notDelivered: [{ name: 'Tom Coyle' }] })).toBe('Call Tom Coyle · the text never arrived')
+    expect(textsNextLine({ needsReply: [], notDelivered: [{ name: 'Toby Cadwell' }] })).toBe('Call Toby Cadwell · the text never arrived')
     expect(textsNextLine({ needsReply: [], notDelivered: [] })).toBeNull()
     expect(
       emailNextLine(
