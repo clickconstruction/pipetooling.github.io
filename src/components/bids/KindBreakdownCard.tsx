@@ -6,6 +6,8 @@ type Props = {
   /** The Workbench's effective rows with their kinds. */
   rows: ReadonlyArray<CompositionRowInput>
   marginColor: (m: number | null) => string
+  /** The grip that drags a kind's line onto the calculator, drawn before its name; absent while the calculator is folded. */
+  gripFor?: (kind: CompositionBucketKind) => React.ReactNode
 }
 
 const COLORS: Record<CompositionBucketKind, string> = {
@@ -26,7 +28,7 @@ const pct = (m: number | null) => (m == null ? '—' : `${Math.round(m * 1000) /
  * kind is the row's chip (the app's guess until set). This is the composition bar's
  * arithmetic (`buildPricingComposition`) drawn as the other two cards are.
  */
-export function KindBreakdownCard({ rows, marginColor }: Props) {
+export function KindBreakdownCard({ rows, marginColor, gripFor }: Props) {
   const comp = buildPricingComposition(rows)
   if (comp.buckets.length === 0 || comp.totalRevenue <= 0) return null
   const cell = (s: React.CSSProperties = {}): React.CSSProperties => ({ padding: '0.4rem 0.3rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top', ...s })
@@ -52,6 +54,7 @@ export function KindBreakdownCard({ rows, marginColor }: Props) {
             {comp.buckets.map((b) => (
               <tr key={b.kind}>
                 <td style={cell()}>
+                  {gripFor?.(b.kind) ?? null}
                   <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 2, marginRight: 6, background: COLORS[b.kind], verticalAlign: 0 }} />
                   <span style={{ fontWeight: 600 }}>{b.name}</span>
                   <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', fontWeight: 400, color: 'var(--text-muted)' }}>

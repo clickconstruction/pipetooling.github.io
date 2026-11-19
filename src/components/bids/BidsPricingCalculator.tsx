@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import {
+  applyNamed,
   applyPaste,
   appendEntry,
   deserializeTape,
@@ -22,7 +23,8 @@ import {
   type CalcState,
   type TapeEntry,
 } from '../../lib/tapeCalculator'
-import { tapeAnswerSendable, usePricingTapeSink, type TapeSendTo } from '../../lib/bids/pricingTapeBridge'
+import { setPricingTapeOpen, tapeAnswerSendable, usePricingTapeSink, type TapeSendTo } from '../../lib/bids/pricingTapeBridge'
+import { TAPE_DRAG_TYPE, liveTapeNumbers, parseTapeLine, tapeSourceFor, type TapeDragLine, type TapeDragNumber } from '../../lib/bids/tapeDrag'
 
 /**
  * The Pricing Tape (v2.2359): a floating tape calculator for Bids → Pricing.
@@ -119,9 +121,38 @@ export function BidsPricingCalculator() {
     const fromTape = calc.justEvaluated && last && Math.abs(last.result - value) < 0.005
     // The window's boxes take the keys now.
     setArmed(false)
-    tapeSink.send({ value, words: fromTape ? `${last.expr} = ${formatAmount(last.result)}` : formatTyped(calc.current), rule: null }, to)
+    // A line that was one named group times a number carries its rule (`tapeRuleOf`): the Percent row it can be.
+    tapeSink.send({ value, words: fromTape ? `${last.expr} = ${formatAmount(last.result)}` : formatTyped(calc.current), rule: fromTape ? (last.rule ?? null) : null }, to)
   }
   const canSend = tapeSink != null && tapeAnswerSendable(parseFloat(calc.current) || 0)
+
+  // A line of the bid dragged in (`lib/bids/tapeDrag.ts`): the tape's place asks which of its numbers, and
+  // the pick lands on the display with its name. The Workbench draws its grips while this is unfolded.
+  const [dropHot, setDropHot] = useState(false)
+  const [asking, setAsking] = useState<TapeDragLine | null>(null)
+  useEffect(() => {
+    setPricingTapeOpen(open && !narrow)
+    return () => setPricingTapeOpen(false)
+  }, [open, narrow])
+  const takeNumber = (line: TapeDragLine, number: TapeDragNumber) => {
+    if (number.value == null || number.hold != null) return
+    const { state, entry } = applyNamed(calcRef.current, tapeSourceFor(line, number), number.value, Date.now())
+    setCalc(state)
+    if (entry) persistEntries(appendEntry(entriesRef.current, entry))
+    setAsking(null)
+    setArmed(true)
+  }
+  const isTapeLineDrag = (e: React.DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes(TAPE_DRAG_TYPE)
+  const dropTapeLine = (e: React.DragEvent) => {
+    setDropHot(false)
+    const line = parseTapeLine(e.dataTransfer?.getData(TAPE_DRAG_TYPE))
+    if (!line) return
+    e.preventDefault()
+    const live = liveTapeNumbers(line)
+    // One number to give needs no question.
+    if (live.length === 1 && line.numbers.length === 1) takeNumber(line, live[0]!)
+    else setAsking(line)
+  }
 
   const openCalc = useCallback(() => {
     setOpenPersisted(true)
@@ -366,7 +397,9 @@ export function BidsPricingCalculator() {
       : armed && calc.justEvaluated && entries.length > 0
         ? 'type a word to label this line'
         : armed && calc.current === '0' && !calc.pending
-          ? '⌘V to paste · type to calculate'
+          ? tapeSink
+            ? 'drag a line in · ⌘V to paste · type to calculate'
+            : '⌘V to paste · type to calculate'
           : ' '
   const hintIsGhost = calc.exprParts.length === 0 && hint !== ' '
 
@@ -379,6 +412,16 @@ export function BidsPricingCalculator() {
           setArmed(true)
         }
       }}
+      onDragOver={(e) => {
+        if (!isTapeLineDrag(e)) return
+        e.preventDefault()
+        if (!dropHot) setDropHot(true)
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+        setDropHot(false)
+      }}
+      onDrop={dropTapeLine}
       style={{
         ...corner,
         width: 296,
@@ -477,6 +520,36 @@ export function BidsPricingCalculator() {
         />
       </div>
 
+      {asking ? (
+        <div data-testid="tape-ask" style={{ margin: '8px 10px 0', padding: 10, background: 'var(--bg-amber-tint)', border: '1.5px solid #d97706', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-strong)' }}>
+            {asking.label} · {asking.sub}. Which number?
+          </span>
+          {asking.numbers.map((n) => {
+            const dead = n.value == null || n.hold != null
+            return (
+              <button
+                key={n.key}
+                type="button"
+                disabled={dead}
+                title={n.hold ?? undefined}
+                onClick={() => takeNumber(asking, n)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%', font: 'inherit', fontSize: '0.82rem', fontWeight: dead ? 400 : 700, textAlign: 'left', height: 40, padding: '0 10px', borderRadius: 8, border: dead ? '1px solid var(--border)' : '1px solid var(--border-strong)', background: dead ? DEAD_PRESS_FILL : 'var(--surface)', color: dead ? DEAD_PRESS_TEXT : 'var(--text-strong)', cursor: dead ? 'default' : 'pointer', fontVariantNumeric: 'tabular-nums' }}
+              >
+                <span>{n.label}</span>
+                <span>{n.display}</span>
+              </button>
+            )
+          })}
+          <button type="button" onClick={() => setAsking(null)} style={{ alignSelf: 'flex-end', font: 'inherit', fontSize: '0.75rem', color: 'var(--text-700)', background: 'none', border: 'none', padding: '4px 2px', cursor: 'pointer' }}>
+            Never mind
+          </button>
+        </div>
+      ) : dropHot ? (
+        <div data-testid="tape-drop" style={{ height: 150, margin: '8px 10px 0', padding: 10, boxSizing: 'border-box', background: 'var(--bg-amber-tint)', border: '2px dashed #d97706', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-amber-700)' }}>
+          Drop the line here
+        </div>
+      ) : null}
       <div
         ref={tapeScrollRef}
         style={{
@@ -490,6 +563,7 @@ export function BidsPricingCalculator() {
           maskImage: 'linear-gradient(to bottom, transparent 0, black 26px)',
           WebkitMaskImage:
             'linear-gradient(to bottom, transparent 0, black 26px)',
+          display: asking || dropHot ? 'none' : undefined,
         }}
       >
         {shown.length === 0 ? (

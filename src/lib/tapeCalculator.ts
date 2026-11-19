@@ -10,6 +10,16 @@
 
 export type CalcOp = '+' | '−' | '×' | '÷'
 
+/**
+ * A number that came from the bid, dragged onto the calculator: "Pipe revenue", "WC count".
+ * `sourceKey` names a group of rows a Percent row can follow (`kind:pipe`, `tag:water`); it is
+ * null for one row's number, which no rule can read.
+ */
+export type TapeSource = { words: string; basis: 'revenue' | 'cost' | 'count' | 'other'; sourceKey: string | null }
+
+/** The rule behind an answer: a named group's revenue or cost times a number, as a percent. */
+export type TapeRule = { pct: number; basis: 'revenue' | 'cost'; sourceKey: string }
+
 export type TapeEntry = {
   id: string
   expr: string
@@ -17,6 +27,10 @@ export type TapeEntry = {
   /** epoch ms */
   at: number
   note?: string
+  /** The line is a named number dropped in, not a sum. */
+  source?: TapeSource
+  /** The line is one named group times a number: the Percent row it could be. */
+  rule?: TapeRule
 }
 
 export type CalcState = {
@@ -27,6 +41,10 @@ export type CalcState = {
   exprParts: string[]
   /** true right after `=` (or a paste-sum / rollback) — next digit starts fresh */
   justEvaluated: boolean
+  /** The number on the display is this named number, untouched since it was dropped in. */
+  named?: TapeSource | null
+  /** The first number of the pending sum was this named number. */
+  firstNamed?: TapeSource | null
 }
 
 export const initialCalcState: CalcState = {
@@ -65,15 +83,19 @@ export function applyOp(a: number, op: CalcOp, b: number): number {
 }
 
 export function pressDigit(state: CalcState, d: string): CalcState {
+  // A digit starts or changes a typed number, so the display is no longer the named one.
   const base = state.justEvaluated
-    ? { ...state, current: '0', justEvaluated: false }
-    : state
+    ? { ...state, current: '0', justEvaluated: false, named: null }
+    : { ...state, named: null }
   if (d === '.') {
     if (base.current.includes('.')) return base
     return { ...base, current: base.current + '.' }
   }
   return { ...base, current: base.current === '0' ? d : base.current + d }
 }
+
+/** The display as the tape prints it: the named number's words, else the typed number. */
+const operandWords = (state: CalcState): string => state.named?.words ?? formatTyped(state.current)
 
 export function pressOp(state: CalcState, op: CalcOp): CalcState {
   const v = parseFloat(state.current) || 0
@@ -83,9 +105,30 @@ export function pressOp(state: CalcState, op: CalcOp): CalcState {
   return {
     current: '0',
     pending,
-    exprParts: [...state.exprParts, formatTyped(state.current), op],
+    exprParts: [...state.exprParts, operandWords(state), op],
     justEvaluated: false,
+    named: null,
+    // Only the first number of a sum of two can be the group a rule follows.
+    firstNamed: state.pending ? null : (state.named ?? null),
   }
+}
+
+/**
+ * The rule behind a sum, when it is exactly one named group's revenue or cost times one plain
+ * number, in either order: `Pipe revenue × 0.4` is 40% of the pipe's revenue. Anything else,
+ * a third number, a plus, a count, one row's number, has no rule.
+ */
+export function tapeRuleOf(state: CalcState): TapeRule | null {
+  if (!state.pending || state.pending.op !== '×' || state.exprParts.length !== 2) return null
+  const first = state.firstNamed ?? null
+  const second = state.named ?? null
+  if ((first == null) === (second == null)) return null
+  const group = (first ?? second) as TapeSource
+  if (!group.sourceKey || (group.basis !== 'revenue' && group.basis !== 'cost')) return null
+  const factor = first ? parseFloat(state.current) || 0 : state.pending.acc
+  const pct = Math.round(factor * 100 * 1000) / 1000
+  if (!Number.isFinite(pct) || pct <= 0 || pct > 1000) return null
+  return { pct, basis: group.basis, sourceKey: group.sourceKey }
 }
 
 export function pressEquals(
@@ -95,11 +138,13 @@ export function pressEquals(
   if (!state.pending) return { state, entry: null }
   const v = parseFloat(state.current) || 0
   const result = applyOp(state.pending.acc, state.pending.op, v)
+  const rule = tapeRuleOf(state)
   const entry: TapeEntry = {
     id: `${now}-${Math.floor(Math.random() * 1e6)}`,
-    expr: [...state.exprParts, formatTyped(state.current)].join(' '),
+    expr: [...state.exprParts, operandWords(state)].join(' '),
     result,
     at: now,
+    ...(rule ? { rule } : {}),
   }
   return {
     state: {
@@ -107,6 +152,8 @@ export function pressEquals(
       pending: null,
       exprParts: [],
       justEvaluated: true,
+      named: null,
+      firstNamed: null,
     },
     entry,
   }
@@ -121,6 +168,7 @@ export function pressBackspace(state: CalcState): CalcState {
   return {
     ...state,
     current: state.current.length > 1 ? state.current.slice(0, -1) : '0',
+    named: null,
   }
 }
 
@@ -129,17 +177,37 @@ export function pressPercent(state: CalcState): CalcState {
     ...state,
     current: String(round10((parseFloat(state.current) || 0) / 100)),
     justEvaluated: false,
+    named: null,
   }
 }
 
-/** Load a tape entry's result back into the display as the start of the next calculation. */
+/** Load a tape entry's result back into the display as the start of the next calculation. A named line comes back named. */
 export function rollBackTo(entry: TapeEntry): CalcState {
   return {
     current: String(entry.result),
     pending: null,
     exprParts: [],
     justEvaluated: true,
+    named: entry.source ?? null,
+    firstNamed: null,
   }
+}
+
+/**
+ * A number dragged in from the bid. With nothing pending it prints its own line and stands on
+ * the display, named, ready for `× .4 =`. In the middle of a sum it is the next number, named.
+ */
+export function applyNamed(
+  state: CalcState,
+  source: TapeSource,
+  value: number,
+  now: number,
+): { state: CalcState; entry: TapeEntry | null } {
+  if (!Number.isFinite(value)) return { state, entry: null }
+  const current = String(round10(value))
+  if (state.pending) return { state: { ...state, current, justEvaluated: false, named: source }, entry: null }
+  const entry: TapeEntry = { id: `${now}-${Math.floor(Math.random() * 1e6)}`, expr: source.words, result: value, at: now, source }
+  return { state: { current, pending: null, exprParts: [], justEvaluated: true, named: source, firstNamed: null }, entry }
 }
 
 /**

@@ -2,7 +2,7 @@
 title: use the pricing tape calculator
 category: Bids & Estimating
 roles: dev, master_technician, assistant, estimator, primary
-keywords: calculator, pricing, tape, ledger, history, notes, paste, clipboard, sum, bids, margin, math, put on a row, make a new row, send the answer, percent row
+keywords: calculator, pricing, tape, ledger, history, notes, paste, clipboard, sum, bids, margin, math, put on a row, make a new row, send the answer, percent row, drag a row, drag a line, which number, grip
 ---
 On **Bids → Pricing** on a desktop, a small calculator icon floats in the bottom-right corner. You click it and the **Pricing Tape** unfolds, a calculator with a paper-tape history.
 
@@ -41,6 +41,19 @@ With the calculator armed, you paste with **⌘V**. There are no buttons. Pastin
 - **One number**, even "$1,599.03", lands in the display as if you typed it. The number is ready to chain: paste, then `×8=`.
 - **A column of prices** from a spreadsheet or submittal sums into one tape line. Every number it used is printed, so a stray grab is visible, never silent. Part codes like "WH-1" are ignored. Accounting negatives like *"(617.97)"* subtract.
 - **Copy out**: you click the big result and it shows {{chip:green|Copied ✓}}. Then you paste it wherever it goes next.
+
+## Drag a line of the bid in
+
+While the calculator is open, every row of the table shows a small grip of six dots. Each line of the **Kind breakdown** card shows one too.
+
+1. Drag a grip onto the calculator. The tape's place reads *Drop the line here*.
+2. Let go. The calculator asks **Which number?** and shows each number the line has.
+3. Press one, like {{button:outline|Revenue $6,200.00}}. The number lands on the display with its name.
+4. Do the math. Type `× .4 =` for 40 percent.
+
+The tape prints the name in the line, like *Pipe revenue × 0.4*. A number the line does not have is grey, with the reason in its hover. **Never mind** closes the question.
+
+A **Kind breakdown** line stands for a group of rows. The group's revenue or cost times one number is a rule. {{button:blue|Make a new row…}} then opens the window with that rule in it, and the new row follows the group. A count, or one row's number, is sent as a plain number.
 
 ## Send the answer to a Pricing row
 

@@ -9,7 +9,8 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 
 vi.mock('../../hooks/useNarrowViewport640', () => ({ useNarrowViewport640: () => false }))
 
-import { setPricingTapeSink } from '../../lib/bids/pricingTapeBridge'
+import { getPricingTapeOpen, setPricingTapeSink } from '../../lib/bids/pricingTapeBridge'
+import { TAPE_DRAG_TYPE, serializeTapeLine, type TapeDragLine } from '../../lib/bids/tapeDrag'
 import { BidsPricingCalculator } from './BidsPricingCalculator'
 
 const press = (...keys: string[]) => {
@@ -70,5 +71,76 @@ describe('BidsPricingCalculator: sending the answer to Pricing', () => {
     expect(sendNew().disabled).toBe(true)
     fireEvent.click(sendNew())
     expect(send).not.toHaveBeenCalled()
+  })
+})
+
+describe('BidsPricingCalculator: a line of the bid dragged in', () => {
+  const PIPE: TapeDragLine = {
+    label: 'Pipe',
+    sub: '5 rows',
+    sourceKey: 'kind:pipe',
+    numbers: [
+      { key: 'revenue', label: 'Revenue', value: 6200, display: '$6,200.00', hold: null },
+      { key: 'count', label: 'Count', value: 300, display: '300 ft', hold: null },
+      { key: 'cost', label: 'Cost', value: null, display: 'none on these rows', hold: 'These rows carry no takeoff cost yet' },
+    ],
+  }
+  const carrying = (text: string, type = TAPE_DRAG_TYPE) => ({ dataTransfer: { types: [type], getData: (t: string) => (t === type ? text : '') } })
+  const panel = () => screen.getByText('Calculator').closest('div')!.parentElement as HTMLElement
+  const dropLine = (line: TapeDragLine = PIPE) => fireEvent.drop(panel(), carrying(serializeTapeLine(line)))
+
+  it('says it is unfolded, so the Workbench can draw its grips, and says so no more once folded', () => {
+    render(<BidsPricingCalculator />)
+    expect(getPricingTapeOpen()).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Tuck the calculator away' }))
+    expect(getPricingTapeOpen()).toBe(false)
+  })
+
+  it('shows where to drop while a line is over it, and takes nothing that is not a line of the bid', () => {
+    render(<BidsPricingCalculator />)
+    fireEvent.dragOver(panel(), carrying('x', 'text/plain'))
+    expect(screen.queryByTestId('tape-drop')).toBeNull()
+    fireEvent.dragOver(panel(), carrying(serializeTapeLine(PIPE)))
+    expect(screen.getByTestId('tape-drop').textContent).toBe('Drop the line here')
+    fireEvent.drop(panel(), carrying('not a line'))
+    expect(screen.queryByTestId('tape-drop')).toBeNull()
+    expect(screen.queryByTestId('tape-ask')).toBeNull()
+  })
+
+  it('asks which number in the tape’s place, with a dead press where the line has none', () => {
+    render(<BidsPricingCalculator />)
+    dropLine()
+    const ask = within(screen.getByTestId('tape-ask'))
+    expect(ask.getByText('Pipe · 5 rows. Which number?')).toBeTruthy()
+    expect((ask.getByRole('button', { name: 'Revenue $6,200.00' }) as HTMLButtonElement).disabled).toBe(false)
+    expect((ask.getByRole('button', { name: 'Count 300 ft' }) as HTMLButtonElement).disabled).toBe(false)
+    expect((ask.getByRole('button', { name: 'Cost none on these rows' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(ask.getByRole('button', { name: 'Never mind' }))
+    expect(screen.queryByTestId('tape-ask')).toBeNull()
+  })
+
+  it('the picked number lands on the tape with its name, and × .4 = sends the rule behind the answer', () => {
+    const send = vi.fn()
+    render(<BidsPricingCalculator />)
+    act(() => setPricingTapeSink({ send }))
+    dropLine()
+    fireEvent.click(within(screen.getByTestId('tape-ask')).getByRole('button', { name: 'Revenue $6,200.00' }))
+    expect(screen.queryByTestId('tape-ask')).toBeNull()
+    expect(screen.getByText('Pipe revenue =')).toBeTruthy()
+    press('×', '.', '4', '=')
+    expect(screen.getByText('Pipe revenue × 0.4 =')).toBeTruthy()
+    fireEvent.click(sendNew())
+    expect(send).toHaveBeenCalledWith({ value: 2480, words: 'Pipe revenue × 0.4 = 2,480', rule: { pct: 40, basis: 'revenue', sourceKey: 'kind:pipe' } }, 'new-row')
+  })
+
+  it('a count carries no rule: the answer is sent as a plain number', () => {
+    const send = vi.fn()
+    render(<BidsPricingCalculator />)
+    act(() => setPricingTapeSink({ send }))
+    dropLine()
+    fireEvent.click(within(screen.getByTestId('tape-ask')).getByRole('button', { name: 'Count 300 ft' }))
+    press('×', '2', '=')
+    fireEvent.click(sendNew())
+    expect(send).toHaveBeenCalledWith({ value: 600, words: 'Pipe count × 2 = 600', rule: null }, 'new-row')
   })
 })

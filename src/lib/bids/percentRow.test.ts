@@ -214,6 +214,12 @@ describe('the window', () => {
     expect(p.target?.id).toBe('conn')
   })
 
+  it('until a percent is typed the bid reads as it stands, with the row\'s old price still in it', () => {
+    const typed = connections({ rule: null, priced: true, unitPrice: 2000, revenue: 2000 })
+    const p = percentWindowPreview({ rows: [...BID, typed], self: typed, value: value({ pct: '' }) })
+    expect(p).toMatchObject({ answer: null, bidRevenueBefore: 17200, bidRevenueAfter: 17200, hold: 'Type a percent above 0.' })
+  })
+
   it('a name typed for a new row that is already on the bid sets that row, whatever its letters\' case', () => {
     const typed = connections({ rule: null, priced: true, unitPrice: 2000, revenue: 2000 })
     const p = percentWindowPreview({ rows: [...BID, typed], self: null, value: value({ name: ' connections ' }) })

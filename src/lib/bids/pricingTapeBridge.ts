@@ -50,6 +50,24 @@ export function usePricingTapeSink(): PricingTapeSink | null {
   return useSyncExternalStore(subscribe, getPricingTapeSink, () => null)
 }
 
+let tapeOpen = false
+
+/** The calculator says whether it is unfolded: the Workbench draws its drag grips only while a line has somewhere to land. */
+export function setPricingTapeOpen(open: boolean): void {
+  if (tapeOpen === open) return
+  tapeOpen = open
+  for (const l of listeners) l()
+}
+
+export function getPricingTapeOpen(): boolean {
+  return tapeOpen
+}
+
+/** Whether the calculator is unfolded, as the Workbench reads it. */
+export function usePricingTapeOpen(): boolean {
+  return useSyncExternalStore(subscribe, getPricingTapeOpen, () => false)
+}
+
 /** An answer worth sending: a number of zero or more. A negative or a broken result stays on the tape. */
 export function tapeAnswerSendable(value: number): boolean {
   return Number.isFinite(value) && value >= 0

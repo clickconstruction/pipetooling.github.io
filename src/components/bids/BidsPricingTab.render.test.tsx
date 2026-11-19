@@ -14,7 +14,7 @@
  * the tab draws itself. A cut that moves one of these out must leave every case green.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 /** The rows a case hands the tab's own reads, by table, and every write the tab sends, in order. */
 const db = vi.hoisted(() => ({
@@ -104,6 +104,8 @@ vi.mock('../../hooks/useRobotFixtures', () => ({
 import { BidsPricingTab } from './BidsPricingTab'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { scenarioPricingRows } from '../../lib/bids/scenarioPricingRows'
+import { getPricingTapeSink, setPricingTapeOpen } from '../../lib/bids/pricingTapeBridge'
+import { TAPE_DRAG_TYPE, parseTapeLine } from '../../lib/bids/tapeDrag'
 
 type Props = Parameters<typeof BidsPricingTab>[0]
 type Bid = NonNullable<Props['selectedBidForPricing']>
@@ -659,6 +661,43 @@ describe('BidsPricingTab render smoke', () => {
         payload: { bid_id: 'bid-1', bid_version_id: null, fixture: 'Connections', count: 1, unit: 'ea', sequence_order: 1, kind: 'fitting', percent_rule: { pct: 10, basis: 'revenue', source: { kind: 'fixture' } } },
       }),
     )
+  })
+
+  it('while the calculator is unfolded every grid row wears a grip that carries its numbers, and the Kind lines theirs', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps({ pricingCountRows: KIND_ROWS })} />)
+    await settle()
+    expect(document.querySelectorAll('[data-tape-grip]')).toHaveLength(0)
+    act(() => setPricingTapeOpen(true))
+    const grips = [...grid().querySelectorAll('[data-tape-grip]')]
+    expect(grips.map((g) => g.getAttribute('data-tape-grip'))).toEqual(['Water closet', 'Lavatory', 'Floor drain'])
+    const carried: Record<string, string> = {}
+    fireEvent.dragStart(grips[0]!, { dataTransfer: { setData: (type: string, text: string) => void (carried[type] = text), effectAllowed: 'none' } })
+    const line = parseTapeLine(carried[TAPE_DRAG_TYPE])
+    expect(line).toMatchObject({ label: 'Water closet', sub: 'a row', sourceKey: null })
+    expect(line?.numbers.find((n) => n.key === 'revenue')).toMatchObject({ value: 4800, display: '$4,800.00' })
+    // The Kind breakdown's lines carry the group a rule can follow.
+    const kinds = [...document.querySelectorAll('[data-tape-grip]')].map((g) => g.getAttribute('data-tape-grip')).filter((n) => n === 'Fixtures' || n === 'Fittings')
+    expect(kinds).toEqual(['Fixtures', 'Fittings'])
+    act(() => setPricingTapeOpen(false))
+    expect(document.querySelectorAll('[data-tape-grip]')).toHaveLength(0)
+  })
+
+  it('the calculator’s answer opens the window: Make a new row… on a name box, Put on a row… on the list of rows', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps({ pricingCountRows: KIND_ROWS })} />)
+    await settle()
+    const sink = getPricingTapeSink()
+    expect(sink).not.toBeNull()
+    act(() => sink!.send({ value: 680, words: 'Fixtures revenue × 0.1 = 680', rule: { pct: 10, basis: 'revenue', sourceKey: 'kind:fixture' } }, 'new-row'))
+    let win = screen.getByRole('dialog', { name: 'Percent row' })
+    expect(within(win).getByTestId('percent-row-from-tape').textContent).toBe('From the tape: Fixtures revenue × 0.1 = 680')
+    expect(within(win).getByText('10% of Fixtures revenue · $6,800.00')).toBeTruthy()
+    expect(within(win).getByRole('button', { name: 'Add Connections at $680.00' })).toBeTruthy()
+    fireEvent.click(within(win).getByRole('button', { name: 'Cancel' }))
+    act(() => sink!.send({ value: 900, words: '900', rule: null }, 'row'))
+    win = screen.getByRole('dialog', { name: 'Percent row' })
+    expect(within(win).queryByLabelText('Name')).toBeNull()
+    fireEvent.change(within(win).getByLabelText('Row'), { target: { value: 'cr-fd' } })
+    expect(within(win).getByRole('button', { name: 'Set Floor drain to $900.00' })).toBeTruthy()
   })
 
   it('a sent bid refuses ＋ Percent row with the lock\'s words', async () => {
