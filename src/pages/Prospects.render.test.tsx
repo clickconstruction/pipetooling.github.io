@@ -389,6 +389,19 @@ describe('the address picks the tab and the lane (dev)', () => {
     await waitFor(() => expect(where()).toBe('/prospects?tab=permits'))
   })
 
+  it('marks the lit pill, so the row can bring it into view on a phone (v2.7878)', async () => {
+    const litPills = () => screen.getAllByRole('button').filter((b) => b.getAttribute('aria-current') === 'true').map((b) => b.textContent)
+    const permits = open('/prospects?tab=permits')
+    expect(await screen.findByTestId('permits-tab')).toBeTruthy()
+    expect(litPills()).toEqual(['Permits'])
+    permits.unmount()
+    open('/prospects?tab=team')
+    expect(await screen.findByTestId('hiring-tab')).toBeTruthy()
+    expect(litPills()).toEqual(['Hiring'])
+    fireEvent.click(screen.getByRole('button', { name: 'Subs' }))
+    await waitFor(() => expect(litPills()).toEqual(['Subs']))
+  })
+
   it('the lane pills move the deck to another kind and keep the sub-tab', async () => {
     await deck('/prospects?tab=follow-up')
     press('Subs')

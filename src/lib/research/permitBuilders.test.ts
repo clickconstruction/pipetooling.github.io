@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ResearchPermitRow } from './permitResearch'
+import { plainWordsFailures } from '../plainWords'
 import {
   builderChipCounts,
   builderLine,
@@ -7,9 +8,12 @@ import {
   builderNameOfPermit,
   buildersShowing,
   closedChipCounts,
+  closedEmptyWords,
   closedRows,
   funnelLines,
   funnelTiles,
+  funnelTilesAcross,
+  openingClosedWhy,
   funnelVerdict,
   keptByWords,
   keptChipCounts,
@@ -110,6 +114,28 @@ describe('the four places (punch list #302)', () => {
     expect(pursuingRows([row({ id: 'a', verdict: 'approach', verdict_at: '2026-11-08T00:00:00Z' }), row({ id: 'b', verdict: 'approach', verdict_at: '2026-11-09T00:00:00Z' })], 0).map((r) => r.id)).toEqual(['b', 'a'])
   })
 
+  it('Closed opens on the first chip that holds a permit (v2.7878)', () => {
+    // New Braunfels on 2026-11-18: five closed, every one under Has a plumber.
+    expect(openingClosedWhy({ passed: 0, plumber: 5, not_pursuing: 0 })).toBe('plumber')
+    expect(openingClosedWhy({ passed: 0, plumber: 0, not_pursuing: 2 })).toBe('not_pursuing')
+    // The chips' own order decides between two that hold rows.
+    expect(openingClosedWhy({ passed: 0, plumber: 3, not_pursuing: 2 })).toBe('plumber')
+    expect(openingClosedWhy({ passed: 1, plumber: 5, not_pursuing: 2 })).toBe('passed')
+    expect(openingClosedWhy({ passed: 0, plumber: 0, not_pursuing: 0 })).toBe('passed')
+  })
+
+  it('an empty Closed chip says what fills it, and blames a search only when there is one (v2.7878)', () => {
+    expect(closedEmptyWords('passed', '')).toEqual({ words: { main: 'No passed permits yet.', next: 'Pass on the skim', tail: 'adds the first.' }, door: 'skim' })
+    expect(closedEmptyWords('not_pursuing', '  ')).toEqual({ words: { main: 'No permits marked not pursuing yet.', next: 'Not pursuing on a permit you are investigating', tail: 'adds the first.' }, door: 'investigating' })
+    expect(closedEmptyWords('plumber', '')).toEqual({ words: { main: 'No permits with a plumber yet.', next: '', tail: 'The nightly pull adds a permit here once the city shows its plumbing permit.' }, door: null })
+    for (const why of ['passed', 'plumber', 'not_pursuing'] as const) {
+      expect(closedEmptyWords(why, 'kiln')).toEqual({ words: { main: 'No closed permits match ‘kiln’.', next: 'Clear the search', tail: '' }, door: 'search' })
+      const { words } = closedEmptyWords(why, '')
+      expect(words.main).not.toContain('filters')
+      expect(plainWordsFailures([words.main, `${words.next} ${words.tail}`.trim()].join(' '))).toEqual([])
+    }
+  })
+
   it('writes a close-out a reader can read and a count can count', () => {
     expect(notPursuingVerdict('np_no_answer')).toEqual({ reason: 'Not pursuing: could not reach anyone.', reasonCode: 'np_no_answer' })
     expect(pursueReason('this_job')).toBe('Pursued for this job.')
@@ -205,6 +231,8 @@ describe('the nudge and the count', () => {
       pursue_for: [{ code: 'this_job', n: 4 }, { code: 'next_jobs', n: 3 }],
     }
     expect(funnelTiles(f).map((t) => `${t.n} ${t.words}`)).toEqual(['212 arrived', '198 skimmed', '31 investigating', '7 pursuing', '3 bid', '1 won'])
+    // A phone draws the six as two rows of three (v2.7878): six across cut *investigating*.
+    expect([funnelTilesAcross(true), funnelTilesAcross(false)]).toEqual([3, 6])
     expect(funnelLines(f)).toEqual([
       { label: 'Skimmed by', words: 'Sam 120 · Jordan 69 · Casey 9' },
       { label: 'Passed, why', words: 'not our work 88 · too small 41 · no reason given 16 · could not reach anyone 2' },
