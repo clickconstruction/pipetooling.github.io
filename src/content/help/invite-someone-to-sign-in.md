@@ -2,7 +2,7 @@
 title: invite someone to sign in
 category: Getting Started
 roles: dev
-keywords: invite, invite via email, new user, new hire, add user, manually add user, set a password, create login, role, choose a role, training mode, read only, accounts, attach a login, no login, remove a login, take a login away
+keywords: invite, invite via email, new user, new hire, add user, manually add user, set a password, create login, role, choose a role, training mode, read only, accounts, attach a login, attach with a password, no email, no login, remove a login, take a login away
 order: 41
 ---
 You invite a new hire by email and they choose their own password. Or you set a password now and hand it over.
@@ -40,6 +40,16 @@ A person added without an email has no login. The person's row on People → Use
 3. Type their email and press {{button:blue|Attach and send the sign-in email}}.
 
 The login lands on the same person. The person's hours, Charged as and pay stay where they are. The email carries a link that signs them in, and they choose a password from it.
+
+### Attach with a password and no email
+
+Use this when the person will not open an email. The same form asks *How they sign in*.
+
+1. Pick **Set a password now**.
+2. Type the password in **Password** and again in **Type it again**.
+3. Press {{button:blue|Attach with this password}}.
+
+No email goes out. You give them the password in person or by phone. They sign in with their email and that password.
 
 Only a dev can attach a login. An invite to that address from the Hire form is refused, and the refusal points you here. Nobody is made twice.
 

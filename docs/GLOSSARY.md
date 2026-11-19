@@ -2188,6 +2188,7 @@ Such a person holds clock sessions, a Charged as, pay, paperwork and a portal fr
 the chip on their Users row, the *no login* fact on their rail, the Account lens's sign-in column, the desk header's dot and Who counts as what all read the column.
 **Attach a login** (the desk's Login row, or the row's ⋯, dev only, v2.6518;
 since v2.6789 also the Hire form's end and the roster form's *Also attach a login* box) creates the sign-in on the same id, so nothing that points at the person moves;
+since v2.7901 the desk's form asks *How they sign in*, **Email them a link** (the sign-in email) or **Set a password now** (typed twice, **Attach with this password**, no email: `attachFormProblem` in `src/lib/people/attachLogin.ts`);
 deleting the sign-in detaches it (`on_auth_user_deleted`) and the person stays — the desk's Sign-in row's **Remove the login…** (dev, v2.6532, punch list #266, `detach-login` by the row's id) is the press, with *Attach a login…* the way back on the same id.
 A person made by mistake is deleted, not archived, while nothing points at them yet: **Delete…** on the desk's Status row or the row's ⋯ (v2.6789, `delete_fresh_person`, [ACCESS_CONTROL.md](./ACCESS_CONTROL.md)).
 The three hide flags (sample, twin, walk tester) never cover a person with no login: every roster, crew, approval and pay list shows them;
