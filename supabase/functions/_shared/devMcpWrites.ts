@@ -36,6 +36,7 @@ import { accountInput, isAccountVerb, loginInput, passwordResetInput } from './d
 import { isTwinVerb, twinInput } from './devMcpTwin.ts'
 import { isTwinKeyVerb, twinKeyCommitment, twinKeyInput } from './devMcpTwinKey.ts'
 import { isTwinRungVerb, twinRungInput } from './devMcpTwinRung.ts'
+import { calibrationStandardInput, isCalibrationStandardVerb } from './devMcpCalibrationStandard.ts'
 import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
 import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { isBillVerb } from './devMcpBill.ts'
@@ -284,6 +285,12 @@ export const WRITE_VERBS = {
   // live keys (devMcpTwinRung.ts). Rung 3 is not built and is refused in words.
   plan_twin_rung: { rpc: null, step: 'plan' },
   apply_twin_rung: { rpc: null, step: 'apply' },
+  // v2.7934 / 0.110.0: a person made a calibration standard, or no longer one, as the ★ Calibration standard card at
+  // Settings → Digital twins does — calibration_standard on the person's own users row, as the dev under the users
+  // table's dev update policy; no wrapper, so rpc is null — the dry run is the server's read of the person, of every
+  // standard and of the scored shadow runs that name the person as teacher (devMcpCalibrationStandard.ts).
+  plan_calibration_standard: { rpc: null, step: 'plan' },
+  apply_calibration_standard: { rpc: null, step: 'apply' },
   // v2.7821 / 0.102.0: the pay setup of a person who exists, as their sheet's Pay & schedule saves it — the wage,
   // Salaried, the employment dates, the salaried workday's start — through set_pay_config as the dev (the audited door:
   // pay_admin_events keeps before and after), the desk's PATCH on people and the Hire form's template row; no wrapper,
@@ -576,6 +583,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isJobVerb(verb)) {
     // v2.6790: the shape check is devMcpJobs'; the dry run is the server's read of the customer and the rest, not an RPC's.
     const built = verb === 'plan_job' || verb === 'apply_job' ? jobInput(verb, input) : jobUpdateInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isCalibrationStandardVerb(verb)) {
+    // v2.7934: the shape check is devMcpCalibrationStandard's; the dry run is the server's read of the person and the standards.
+    const built = calibrationStandardInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1650,6 +1663,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_submittal_rows' || verb === 'apply_submittal_log') return `Nothing written: this plan was already applied on this bid${when}. get_submittals reads it back; a further change needs a new plan from the bid as it stands.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
   // v2.6792: the account verbs' plans commit to the row as it read, so a landed change hashes differently; this answers the odd replay.
+  if (verb === 'apply_calibration_standard') return `Nothing written: this plan was already applied${when}. The person stands as it named them; plan_calibration_standard names the standards as they stand.`
   if (verb === 'apply_twin_rung') return `Nothing written: this plan was already applied${when}. The twin stands on the rung it named; plan_twin lists the fleet with each twin's rung.`
   if (verb === 'apply_twin_key_revoke') return `Nothing written: this plan was already applied${when}. The key is revoked; read_twin_keys lists the twin's keys as they stand.`
   if (verb === 'apply_twin') return `Nothing written: this plan was already applied${when}. The twin it made stands in the fleet; plan_twin lists the fleet and plans the next seat.`

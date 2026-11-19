@@ -139,9 +139,9 @@ describe('the pair and what it stands on', () => {
     }
     expect(isLienFilingVerb('plan_affidavit_draft')).toBe(false)
     expect(planVerbFor('apply_lien_filing')).toBe('plan_lien_filing')
-    expect(Object.keys(WRITE_VERBS)).toHaveLength(133)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.109.0'")
-    expect(SERVER).toContain('Writes are one hundred and thirty-three verbs and nothing else:')
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(135)
+    expect(SERVER).toContain("const SERVER_VERSION = '0.110.0'")
+    expect(SERVER).toContain('Writes are one hundred and thirty-five verbs and nothing else:')
     expect(SERVER).toContain("plan_lien_filing → apply_lien_filing (a filed lien affidavit recorded as the job's Lien window records it once the clerk has stamped it")
     expect(README).toContain('`plan_lien_filing(filing \\| filings)` · `apply_lien_filing(filing, plan_hash)`')
     expect(README).toContain("one hundred and eleven since v2.7511's recorded lien filing")
