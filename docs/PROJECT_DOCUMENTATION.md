@@ -2909,7 +2909,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - **assistant**: Create/edit projects, view/update workflows (assigned stages only), full access to Bids
 - **subcontractor**: Dashboard and Calendar only
 - **estimator**: Bids + Materials focused; no Customers/Projects/People; the money of the jobs they sold, as one of the job's people (v2.5646)
-- **primary**: Materials, Jobs Reports, bid documents (RFI/CO/Lien Release); the paid verbs on their own jobs only (v2.5655)
+- **primary**: Materials, Jobs Reports (the reports of the jobs they are the account manager or listed superintendent of, and their own, v2.7906), bid documents (RFI/CO/Lien Release); the paid verbs on their own jobs only (v2.5655)
 - **superintendent**: Runs assigned projects; manages subs; no People page
 - **helpers**: Subcontractor-like field role (`helpers_service_type_ids` scoping)
 - **controller**: Assistant-like plus dev-level financial visibility (Payroll, wages)

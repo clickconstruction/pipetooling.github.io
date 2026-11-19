@@ -75,7 +75,7 @@ Press the name on a line.
 - A signed contract, warranty or their paper opens the Contract window on that record.
 - A contract that is still out opens as a preview in its own window.
 - A signed staff, sub or partner agreement opens its signed record.
-- One that is still waiting opens People, on Contracts, at that paper.
+- One that is still waiting opens People, on Contracts, at that paper. The person's papers are open and that paper's line is marked. Press **Resend** on the line to send it again.
 - A work order opens the work order window.
 - A GC project's paper opens the GC page.
 

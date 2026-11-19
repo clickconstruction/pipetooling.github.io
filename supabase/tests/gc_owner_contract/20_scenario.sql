@@ -352,11 +352,12 @@ SELECT goc.same('Undo on paper takes the day and the price', (
   FROM public.gc_projects WHERE project_id = '00000000-0000-0000-0000-0000000009a4'), 'unsigned 0');
 RESET ROLE;
 
--- 9 · The e-sign ledger takes our contract, and still takes every record type it took before.
+-- 9 · The e-sign ledger takes our contract, and still takes every record type it took before and every one added
+-- since (v2.7924: a later restatement of the check had dropped ours, and this line read a list of its own).
 INSERT INTO public.esign_consents (record_type, record_id, consent_version, lang, audience, document_noun, clause_text, printed_name, method)
 SELECT t, (SELECT id FROM goc.ids WHERE k = 's2'), 1, 'en', 'customer', 'contract', 'I agree to sign electronically.', 'Pat Owner', 'draw'
-FROM unnest(ARRAY['gc_owner_contract', 'estimate', 'job_contract', 'person_contract_document', 'step_commitment', 'bid_proposal_room', 'lien_owner_record_request', 'gc_sow', 'gc_draw', 'gc_trade_change']) AS t;
-SELECT goc.same('the ledger kept all ten', (SELECT count(*)::text FROM public.esign_consents WHERE record_id = (SELECT id FROM goc.ids WHERE k = 's2')), '10');
+FROM unnest(ARRAY['gc_owner_contract', 'estimate', 'job_contract', 'person_contract_document', 'step_commitment', 'bid_proposal_room', 'lien_owner_record_request', 'gc_sow', 'gc_draw', 'gc_trade_change', 'hours_statement']) AS t;
+SELECT goc.same('the ledger kept all eleven', (SELECT count(*)::text FROM public.esign_consents WHERE record_id = (SELECT id FROM goc.ids WHERE k = 's2')), '11');
 SELECT goc.refused('a record type it never had', $q$INSERT INTO public.esign_consents (record_type, record_id, consent_version, lang, audience, document_noun, clause_text) VALUES ('gc_nonsense', gen_random_uuid(), 1, 'en', 'customer', 'x', 'x')$q$,
   'new row for relation "esign_consents" violates check constraint "esign_consents_record_type_check"');
 

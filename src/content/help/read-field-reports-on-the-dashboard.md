@@ -2,12 +2,20 @@
 title: read field reports on the dashboard
 category: Office
 roles: dev, master_technician, assistant, primary
-keywords: recent reports, unread, new reports, opened, done, mark all opened, report inbox, field report, status report
+keywords: recent reports, unread, new reports, opened, done, mark all opened, report inbox, field report, status report, primary, account manager, superintendent, my jobs, missing reports, whose reports
 order: 86
 ---
 The Dashboard's Recent Reports section is an inbox for the crew's latest field reports. A field report is what a tech files from the job.
 
 A blue {{chip:blue|N new}} badge on the **Recent Reports** header counts what you haven't seen yet. It's the same on every device. So reading on your phone clears it on the office computer too.
+
+## Whose reports you see
+
+A leader and the office see every report.
+
+A primary sees the reports on their own jobs. A job is yours when you are its account manager. A job is also yours when its project lists you as the superintendent. You also see every report you wrote, on any job.
+
+The badge counts only the reports you can see. So does {{button:outline|Mark all opened}}. A line over the list says whose reports it holds.
 
 ## The three states
 

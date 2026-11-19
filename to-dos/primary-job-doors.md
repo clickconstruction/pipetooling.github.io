@@ -3,7 +3,7 @@ name: "A primary's job doors: the ones the scope never reached"
 number: 400
 mockup: not required — it narrows database doors and changes no screen
 group: gated
-status: audited 2026-11-19 on a whole-schema bed · nothing built · waiting on five calls from the owner
+status: built 2026-11-19 on the owner's word · five PRs open, none merged or pushed · two families left open with a reason each
 summary: >
   A primary has been held to their own jobs since v2.2177, but only where the tables' restrictive
   policies can see. Functions that run as the owner, and the policies that call them, still ask
@@ -11,10 +11,10 @@ summary: >
   named. Through them a primary on no job reads another job's money lines, photos and test
   papers, and can write down or delete its bill. No screen of theirs asks, so this is a hole at
   the API. The card lists every door, what it gives, and the predicate proposed for it.
-next: The owner answers the five calls below. Then PR 1, the money verbs, on the rule v2.5655 already set.
+next: Merge each PR and push its migration. #8877 goes before PR 3. Then the two new calls under What was built.
 size: L as a train of five (M · M · S · M · S)
-blocker: The owner's five calls. PR #8877 (v2.7906) on main first, since two PRs reuse its predicate.
-opinion: build — PR 1 needs no call, it is the rule the paid verbs already follow; the rest wait on the calls
+blocker: PR #8877 (v2.7906) on main and pushed before PR 3, which reuses its predicate and is stacked on it.
+opinion: ship the five as built; they are narrower than this card in two places, and both are safer for it
 ---
 
 # A primary's job doors: the ones the scope never reached
@@ -226,6 +226,46 @@ primary on a crew who owes a paper is not locked out the way a helper on that cr
   caller on purpose.
 - `messages` for the tech's door asks `messages_tech_on_job`: on the job's crew or schedule.
 - The paid verbs of v2.5655, the money strips and the report lists of #8877.
+
+## What was built
+
+The owner read this card on 2026-11-19 and said to build the whole train. Five PRs are open. Each is one migration
+with its page, a bed in `scripts/sql-beds.txt` and `docs/ACCESS_CONTROL.md` amended in place. Every function body
+was compared with prod's live definition before its PR opened and matched it but for the one clause. Nothing is
+merged and nothing is pushed.
+
+| PR | Version | What it holds |
+|---|---|---|
+| #8896 | v2.7921 | Family 1. Seven money verbs take `is_job_people`. Three estimate verbs take `primary_can_access_estimate`. |
+| #8904 | v2.7929 | Family 2. `can_read_job_activity`, the supply house bill and part reads, a payment's lines. |
+| #8907 | v2.7936 | Families 4 and 5, in part. Photo notes, the first look tied to a job, the crew's position, `job-photos`. Stacked on #8877. |
+| #8898 | v2.7926 | Family 6. Test papers. |
+| #8905 | v2.7931 | Family 3, in part. The bank payments desk, returned checks and disputes, the pay speed lines, the GC review week. |
+| #8895 | v2.7925 | Family 7, by the session that fixes who may call the schedule share reads. |
+
+Four things came out differently from the tables above.
+
+1. **`apply_job_discount` and `log_job_discount_event` were never doors.** Their role list has no primary in it.
+   `trip_put_on_job_line` and the request for a supply house account are held by PR 2, through the activity gate.
+2. **The stage checklist stays open.** Family 4 proposed a fence on its answers, records and skips. The photo
+   checklist of a field report reads the job's skips and the live answer row before it writes one. With a fence,
+   a primary reporting on a job that is not theirs would fail to save. PR 3 holds the photo notes, the first
+   look, the crew's position and the Drive photos, and leaves the checklist tables and their bucket alone.
+3. **Four "who pays when" reads stay open.** Family 3 said no screen of a primary's reaches them. The client
+   search this card asked for found one. The Bill tab of a primary's own job draws its expected-pay dates, its
+   pay calendar and its returned-checks warning from `get_billed_customer_pay_speeds`,
+   `list_job_promised_pay_dates`, `can_read_payment_promises()` and `list_ar_returned_check_payers`. PR 5 closes
+   the desks and leaves these four.
+4. **Documents → Photos was never a leak.** It reads a view that joins the jobs table as the caller, so it
+   already held to the jobs a primary account-manages.
+
+Two new calls for the owner come out of that.
+
+- **The stage checklist on a job that is not theirs.** Holding it means the report form writes its checklist
+  answers through a function of its own, so the table can be fenced behind it. Is that worth building?
+- **Every payer's pay speed, promise and returned check.** A primary reads them for the whole company, to date
+  the bills on their own jobs. Should they read only the payers of their own jobs? That needs a rule over
+  payers, which does not exist yet.
 
 ## The five calls for the owner
 

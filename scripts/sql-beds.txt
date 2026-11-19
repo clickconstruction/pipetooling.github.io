@@ -45,6 +45,7 @@ customer-money-strip
 paid-claims-read
 my-money-strip
 primary-paid-verbs
+primary-money-verbs
 bid-jobs-opened
 messages-follow-up
 messages-spine
@@ -139,9 +140,11 @@ sub-papers
 job-lien-path-answer
 job-required-papers
 trips
+primary-test-papers
 job-papers-lock
 job-papers-lists
 dashboard-view
 job-finish-calls
 salaried-week
+primary-scope-reports
 schedule-reads-gate

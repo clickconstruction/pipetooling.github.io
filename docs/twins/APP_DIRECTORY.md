@@ -302,8 +302,8 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
 - `?tab=change-order` / `?tab=lien-release` — bid-scoped paperwork tools; `?tab=lien-release` keeps every waiver that goes out on the bid (**Already on this bid**, v2.5958), and a held assistant or estimator gets **Sign with his code** for the leader at the screen (`/help?g=make-a-lien-waiver-from-a-bid`).
 
 ### /jobs — Jobs (the operations hub)
-Tabs via `?tab=`. Roles: dev, master, assistant, controller; primary = Reports+Billing on
-Account-Man jobs; superintendent = Reports + Subs (Pay only); no subs/helpers/estimator.
+Tabs via `?tab=`. Roles: dev, master, assistant, controller; primary = Reports only, and only the reports
+on jobs they are the account manager or listed superintendent of plus their own (v2.7906); superintendent = Reports + Subs (Pay only); no subs/helpers/estimator.
 - `?tab=stages` — **Stages**: pipeline sections Waiting / Working / Ready to Bill / Billed
   Awaiting Payment / Collections. Job rows: activity thread, % complete, dispatch, Edit Job,
   Bill Customer on RTB. New Job button (imports from a bid — multi-GC bids ask which GC won).
@@ -523,8 +523,8 @@ Roles: dev, master, assistant, controller, estimator.
   No Templates (the owner's and a dev's); no Partnerships (dev-only).
 - **subcontractor / helpers**: Dashboard · Calendar · Checklist · Tally · Settings · Help
   (+ Job/Dispatch modes from the header where dispatched). Everything else → `/dashboard`.
-- **primary**: Dashboard · Materials · Estimates · Documents · Jobs (Reports/Billing,
-  own Account-Man jobs) · Bids · Calendar · Checklist · Tally · Settings · Help.
+- **primary**: Dashboard · Materials · Estimates · Documents · Jobs (Reports only: their own
+  jobs' reports and the ones they wrote) · Bids · Calendar · Checklist · Tally · Settings · Help.
 - **superintendent**: Dashboard · Projects · Workflow · Jobs (Reports, Sub Ledger) ·
   Dispatch · Bids (draft tabs) · Materials · Estimates · Documents · Calendar · Checklist ·
   Tally · Settings · Help.

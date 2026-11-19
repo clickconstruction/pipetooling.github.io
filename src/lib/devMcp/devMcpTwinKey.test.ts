@@ -5,6 +5,7 @@ import {
   TWIN_KEY_TWIN_SELECT,
   isTwinKeyVerb,
   twinKeyAppliedWords,
+  twinKeyCommitment,
   twinKeyDryRun,
   twinKeyFacts,
   twinKeyInput,
@@ -153,6 +154,23 @@ describe('a twin\'s keys from the dev seat (v2.7900)', () => {
     expect(await planHash('apply_twin_key_revoke', p, oneMore.reply)).not.toBe(hash)
   })
 
+  it('a key used between plan and apply does not move the hash: the plan shows its usage dates and commits to none (v2.7918)', async () => {
+    const p = { twin: EMAIL, label: 'Office Mac' }
+    const before = twinKeyDryRun(p, twin, KEYS)
+    // twin-mcp stamps last_seen_at once a minute while a robot works, twin-login stamps last_used_at at each sign-in.
+    const worked = twinKeyDryRun(p, twin, KEYS.map((k) => (k.revoked_at ? k : { ...k, last_seen_at: '2026-11-19T03:01:00Z', last_used_at: '2026-11-19T03:00:00Z' })))
+    if (!before.ok || !worked.ok) throw new Error('dry run refused')
+    expect(JSON.stringify(worked.reply)).toContain('2026-11-19T03:01:00Z') // still shown
+    expect(before.reply).not.toEqual(worked.reply)
+    expect(await planHash('apply_twin_key_revoke', p, worked.reply)).toBe(await planHash('plan_twin_key_revoke', p, before.reply))
+    expect(twinKeyCommitment((worked.reply.revoke as unknown[]))).toEqual((worked.reply.revoke as Array<Record<string, unknown>>).map(({ last_used_at: _u, last_seen_at: _s, ...rest }) => rest))
+    expect(twinKeyCommitment(undefined)).toBeNull()
+    // The dates are the only thing left out: a key whose rounds were stopped since still moves it.
+    const stopped = twinKeyDryRun(p, twin, KEYS.map((k) => (k.id === KEYS[0]!.id ? { ...k, stopped_at: '2026-11-19T03:02:00Z' } : k)))
+    if (!stopped.ok) throw new Error('dry run refused')
+    expect(await planHash('apply_twin_key_revoke', p, stopped.reply)).not.toBe(await planHash('plan_twin_key_revoke', p, before.reply))
+  })
+
   it('the write is the panel\'s, and the closing line names what was cut off and what was held', () => {
     expect(twinKeyRevokePatch('2026-11-19T02:00:00Z')).toEqual({ revoked_at: '2026-11-19T02:00:00Z' })
     expect(PANEL).toContain(".update({ revoked_at: new Date().toISOString() })\n        .eq('id', c.id)")
@@ -186,23 +204,23 @@ describe('a twin\'s keys from the dev seat (v2.7900)', () => {
       expect(SERVER).toContain(`case '${verb}':`)
     }
     const from = SERVER.indexOf("case 'read_twin_keys':")
-    const branch = SERVER.slice(from, SERVER.indexOf("case 'plan_pay_setup':", from))
+    const branch = SERVER.slice(from, SERVER.indexOf("case 'plan_twin_rung':", from))
     expect(branch).toContain("if (who.role !== 'dev') return refused('read_twin_keys is for devs")
     expect(branch).toContain("if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)")
     // Every read of the table in the seat goes through the one column list, and the write asks for the id alone.
     const reads = SERVER.match(/restGet\(session, 'twin_credentials', `select=([^&`]+)/g) ?? []
-    expect(reads).toHaveLength(2)
-    for (const r of reads) expect(r).toContain('select=${TWIN_KEY_SELECT}')
+    // v2.7918: the rung pair reads the twin's live keys by its own, shorter list (devMcpTwinRung.test.ts).
+    expect(reads.map((r) => /select=\$\{(\w+)\}/.exec(r)?.[1])).toEqual(['TWIN_KEY_SELECT', 'TWIN_KEY_SELECT', 'TWIN_RUNG_KEY_SELECT'])
     expect(branch).toContain("await restRows(session, 'PATCH', 'twin_credentials', `id=eq.${key.id}&revoked_at=is.null&select=id`, patch, 'return=representation')")
     expect(SERVER.match(/rest(Rows|Post)\(session, '(PATCH|POST|DELETE)', 'twin_credentials'/g)).toHaveLength(1) // one write of the table, and it is this one
     expect(branch).not.toContain('token_hash')
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.107.0'")
-    expect(SERVER).toContain('Writes are one hundred and thirty-one verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.108.0'")
+    expect(SERVER).toContain('Writes are one hundred and thirty-three verbs and nothing else')
     expect(SERVER).toContain('plan_twin_key_revoke → apply_twin_key_revoke (a twin')
     expect(README).toContain('| `read_twin_keys(twin?)` · `plan_twin_key_revoke(revoke)` · `apply_twin_key_revoke(revoke, plan_hash)` |')
     expect(README).toContain("one hundred and thirty-one since v2.7900's key revoke")
-    expect(README).toContain('one hundred and thirty-one `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('one hundred and thirty-three `plan_` / `apply_` / `revert_` verbs')
     expect(EDGE).toContain("v2.7900 (server 0.107.0) — a twin's keys listed, and one cut off")
   })
 })
