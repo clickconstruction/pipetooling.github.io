@@ -154,7 +154,7 @@ An approved affidavit that a property fact holds stands in **Ready to file**. Fo
 
 A bin's count leaves a held paper out. So the count is the number the bin's press takes. A bin can read 0 and still show a held chip. In the list, a held paper's row starts with the bin's name and *held*.
 
-Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. It also counts jobs where retainage looks held and none is recorded, like *2 look held, not on the job*. The retainage list on **By paper** has the rows.
+Retainage is one line under the notices. It counts the retainage notices by stage, like *1 to send*. It also counts jobs where retainage looks held and none is recorded, like *2 look held, not on the job*. The retainage list on **By paper** has the rows. The line ends in *Open ›*. Press it and that list opens, whole, with nothing in the find box.
 
 ## A window that has closed
 

@@ -3793,6 +3793,24 @@ describe('LienDesk retainage (v2.3753)', () => {
     expect(screen.getByRole('tab', { name: 'Retainage notices · 2' })).toBeTruthy()
   })
 
+  it('the Board’s Retainage line ends in Open ›, the door to the Retainage list whole (the owner’s pick of 2026-11-18)', async () => {
+    const d = data([], [], true)
+    d.retainageUnrecorded = [{ jobId: 'j-held', label: 'C2041', name: 'Cedar Hollow Clinic', heldBy: 'Bluebonnet Commercial Builders', status: 'billed', suggestion: { held: 2460, percent: 10, billCount: 3, billIds: ['a', 'b', 'c'] }, noteDay: null }]
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={d} initialKind="next" />)
+    await settle()
+    // The line's words are as they were; the door stands after them, in the same row.
+    expect(document.querySelector('[data-lien-board-retainage]')?.textContent).toBe('Retainage · 1 looks held, not on the job')
+    const door = document.querySelector('[data-lien-board-retainage-row] [data-lien-board-retainage-door]') as HTMLButtonElement
+    expect(door.textContent).toBe('Open ›')
+    expect(document.querySelector('[data-lien-retainage-list]')).toBeNull()
+    fireEvent.click(door)
+    await settle()
+    // By paper on the Retainage list, with the job the line counted above the piles and no row ringed.
+    const list = document.querySelector('[data-lien-retainage-list]') as HTMLElement
+    expect(within(list).getAllByTestId('lien-retainage-unrecorded-row').map((n) => [n.getAttribute('data-job-id'), n.getAttribute('data-focused')])).toEqual([['j-held', 'no']])
+    expect(screen.getByRole('tab', { name: 'Retainage notices · 1' })).toBeTruthy()
+  })
+
   it('the notice pane names the retainage inside the claim once the job records it, and offers the door when it does not', () => {
     const withRetainage = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
     withRetainage.jobsById.j650!.lien_retainage_held = 1_760

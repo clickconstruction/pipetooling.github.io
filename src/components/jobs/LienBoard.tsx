@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { lienBoardBinCount, lienBoardBinsShown, lienBoardDoorWords, lienBoardHoldWords, lienBoardUnreadWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
 import type { LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
+import { LIEN_BOARD_RETAINAGE_DOOR_HINT, lienBoardRetainageDoor } from '../../lib/jobs/lienBoardRetainageDoor'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { LIEN_BOARD_DAY_LINE_DOOR } from '../../lib/jobs/lienBoardDayLine'
 import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
@@ -411,6 +412,7 @@ export default function LienBoard({
   onLayout,
   cardFor,
   prints,
+  onRetainage,
 }: {
   board: LienBoardModel
   isMobile: boolean
@@ -455,6 +457,8 @@ export default function LienBoard({
     onNote: (side: LienBoardPrintSide) => void
     busy?: boolean
   } | null
+  /** The Retainage line's door (the owner's pick of 2026-11-18): the desk opens By paper on the Retainage list. Absent, the line is words alone. */
+  onRetainage?: () => void
 }) {
   const gridRef = useRef<HTMLDivElement | null>(null)
   const [stacked, setStacked] = useState<boolean>(isMobile)
@@ -582,7 +586,21 @@ export default function LienBoard({
     )
   }
 
-  const retainage = board.retainageLine ? <div data-lien-board-retainage style={{ fontSize: '0.78rem', color: 'var(--text-muted)', padding: '2px 4px' }}>{board.retainageLine}</div> : null
+  // Retainage has no bin and no chip: its one line ends in the door to its list (`lienBoardRetainageDoor.ts`).
+  const retainageLine = lienBoardRetainageDoor(board.retainageLine, Boolean(onRetainage))
+  const retainage = retainageLine ? (
+    <div data-lien-board-retainage-row style={{ fontSize: '0.78rem', color: 'var(--text-muted)', padding: '2px 4px' }}>
+      <span data-lien-board-retainage>{retainageLine.words}</span>
+      {retainageLine.door ? (
+        <>
+          {' · '}
+          <button type="button" className="lienJobDoor" data-lien-board-retainage-door onClick={onRetainage} title={LIEN_BOARD_RETAINAGE_DOOR_HINT} aria-label={LIEN_BOARD_RETAINAGE_DOOR_HINT} style={{ ...LINE_DOOR, minHeight: isMobile ? 32 : undefined }}>
+            {retainageLine.door} ›
+          </button>
+        </>
+      ) : null}
+    </div>
+  ) : null
   const pickWords = pick ? lienBoardPickWords(pick, shown ?? 0) : null
 
   return (
