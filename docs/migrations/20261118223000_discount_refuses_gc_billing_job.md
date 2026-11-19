@@ -31,4 +31,8 @@ No DDL beyond the `CREATE OR REPLACE`. The file starts with `SET lock_timeout = 
 
 ## Applied
 
-Not yet. `supabase db push` after the merge.
+2026-11-18 (01:05 UTC on the 19th), by `scripts/db-push.sh`, in the same push as `20261118213000`. The drift check after it read every file applied.
+
+## Verified on prod
+
+A read of the function's own text on prod found the refusal. No GC project had a billing job that day, so the refusal could not be met with a real job. The trips bed holds it, on a made-up GC billing job.
