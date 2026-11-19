@@ -34,6 +34,7 @@ import { isPersonReportVerb, personReportInput } from './devMcpPersonReport.ts'
 import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
 import { accountInput, isAccountVerb, loginInput, passwordResetInput } from './devMcpAccount.ts'
 import { isTwinVerb, twinInput } from './devMcpTwin.ts'
+import { isTwinKeyVerb, twinKeyInput } from './devMcpTwinKey.ts'
 import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
 import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { isBillVerb } from './devMcpBill.ts'
@@ -270,6 +271,12 @@ export const WRITE_VERBS = {
   // of any row wearing the next seat's address (devMcpTwin.ts). It makes no key: mint_twin_setup_code does.
   plan_twin: { rpc: null, step: 'plan' },
   apply_twin: { rpc: null, step: 'apply' },
+  // v2.7900 / 0.106.0: a twin's key cut off as Revoke on the twin's row at Settings → Digital twins cuts it off —
+  // revoked_at on the key's own twin_credentials row, as the dev under the table's dev-only RLS; no wrapper, so rpc is
+  // null — the dry run is the server's read of the twin and its keys by a column list that never names token_hash
+  // (devMcpTwinKey.ts). read_twin_keys, the list beside it, writes nothing and is not counted here.
+  plan_twin_key_revoke: { rpc: null, step: 'plan' },
+  apply_twin_key_revoke: { rpc: null, step: 'apply' },
   // v2.7821 / 0.102.0: the pay setup of a person who exists, as their sheet's Pay & schedule saves it — the wage,
   // Salaried, the employment dates, the salaried workday's start — through set_pay_config as the dev (the audited door:
   // pay_admin_events keeps before and after), the desk's PATCH on people and the Hire form's template row; no wrapper,
@@ -562,6 +569,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isJobVerb(verb)) {
     // v2.6790: the shape check is devMcpJobs'; the dry run is the server's read of the customer and the rest, not an RPC's.
     const built = verb === 'plan_job' || verb === 'apply_job' ? jobInput(verb, input) : jobUpdateInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isTwinKeyVerb(verb)) {
+    // v2.7900: the shape check is devMcpTwinKey's; the dry run is the server's read of the twin and its keys.
+    const built = twinKeyInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1618,6 +1631,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_submittal_rows' || verb === 'apply_submittal_log') return `Nothing written: this plan was already applied on this bid${when}. get_submittals reads it back; a further change needs a new plan from the bid as it stands.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
   // v2.6792: the account verbs' plans commit to the row as it read, so a landed change hashes differently; this answers the odd replay.
+  if (verb === 'apply_twin_key_revoke') return `Nothing written: this plan was already applied${when}. The key is revoked; read_twin_keys lists the twin's keys as they stand.`
   if (verb === 'apply_twin') return `Nothing written: this plan was already applied${when}. The twin it made stands in the fleet; plan_twin lists the fleet and plans the next seat.`
   if (verb === 'apply_account') return `Nothing written: this plan was already applied${when}. get_login_state names the account as it reads now; plan again from that for a further change.`
   if (verb === 'apply_login') return `Nothing written: this plan was already applied${when}. get_login_state says whether the login stands and when the email went; plan_password_reset sends a fresh link.`
