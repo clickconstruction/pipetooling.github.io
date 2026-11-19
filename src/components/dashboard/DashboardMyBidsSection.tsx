@@ -16,6 +16,7 @@ import {
   collectMyBidNoteAuthorIds,
   formatMyBidPreviewDate,
   formatRelativeCompactAgo,
+  myBidsStartsOpen,
   truncateMyBidNotePreview,
   type MyBidBaseRow,
   type MyBidCustomerContactRow,
@@ -30,12 +31,10 @@ import { MY_BIDS_UNSENT_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 export function DashboardMyBidsSection({
   authUserId,
   role,
-  isMobile,
   onContentVisibleChange,
 }: {
   authUserId: string | undefined
   role: UserRole | null
-  isMobile: boolean
   /** Reports the data half of the section's render gate so the parent's SectionDock entry can mirror it. */
   onContentVisibleChange: (visible: boolean) => void
 }) {
@@ -48,7 +47,7 @@ export function DashboardMyBidsSection({
   const [hiddenBidsExpanded, setHiddenBidsExpanded] = useState(false)
   const [sentBidsExpanded, setSentBidsExpanded] = useState(false)
   const myBidsPrimaryCollapseAppliedRef = useRef(false)
-  const [myBidsSectionExpanded, setMyBidsSectionExpanded] = useState(role === 'primary' ? false : true)
+  const [myBidsSectionExpanded, setMyBidsSectionExpanded] = useState(() => myBidsStartsOpen(role))
   const [myBidOthersVisibleLimits, setMyBidOthersVisibleLimits] = useState<
     Record<string, { bid: number; customer: number }>
   >({})
@@ -69,7 +68,7 @@ export function DashboardMyBidsSection({
   )
 
   useEffect(() => {
-    if (role !== 'primary' || myBidsPrimaryCollapseAppliedRef.current) return
+    if (myBidsStartsOpen(role) || myBidsPrimaryCollapseAppliedRef.current) return
     setMyBidsSectionExpanded(false)
     myBidsPrimaryCollapseAppliedRef.current = true
   }, [role])
@@ -297,70 +296,66 @@ export function DashboardMyBidsSection({
             border: '1px solid var(--border)',
             borderRadius: 8,
             background: 'var(--surface)',
-            padding: isMobile || myBidsSectionExpanded ? '0.85rem 1rem 1rem' : '0.85rem 1rem',
+            padding: myBidsSectionExpanded ? '0.85rem 1rem 1rem' : '0.85rem 1rem',
             marginBottom: '1rem',
             scrollMarginTop: 8,
           }}
         >
+          {/* One heading at every width. A phone had no fold at all until the owner's
+              ask of 2026-11-19, so a primary's 24 bids stood open there; New Bid
+              stays beside the heading while the list is folded. */}
           <div
             style={{
               display: 'flex',
-              justifyContent: !isMobile && !myBidsSectionExpanded ? 'flex-start' : 'space-between',
+              justifyContent: 'space-between',
               alignItems: 'center',
               flexWrap: 'wrap',
               gap: '0.5rem',
-              marginBottom: !isMobile && !myBidsSectionExpanded ? 0 : '0.5rem',
+              marginBottom: myBidsSectionExpanded ? '0.5rem' : 0,
             }}
           >
-            {isMobile ? (
+            <button
+              type="button"
+              onClick={() => setMyBidsSectionExpanded((prev) => !prev)}
+              aria-expanded={myBidsSectionExpanded}
+              aria-label={
+                myBidsLoading
+                  ? 'My Bids, loading'
+                  : `My Bids, ${myBidsVisibleCount} ${myBidsVisibleCount === 1 ? 'bid' : 'bids'}`
+              }
+              style={{
+                margin: 0,
+                padding: 0,
+                minHeight: 32,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+            >
+              <span aria-hidden>{myBidsSectionExpanded ? '▼' : '▶'}</span>
               <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
                 {myBidsLoading ? 'My Bids' : `My Bids (${myBidsVisibleCount})`}
               </h2>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setMyBidsSectionExpanded((prev) => !prev)}
-                aria-expanded={myBidsSectionExpanded}
-                aria-label={
-                  myBidsLoading
-                    ? 'My Bids, loading'
-                    : `My Bids, ${myBidsVisibleCount} ${myBidsVisibleCount === 1 ? 'bid' : 'bids'}`
-                }
-                style={{
-                  margin: 0,
-                  padding: 0,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                }}
-              >
-                <span aria-hidden>{myBidsSectionExpanded ? '▼' : '▶'}</span>
-                <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
-                  {myBidsLoading ? 'My Bids' : `My Bids (${myBidsVisibleCount})`}
-                </h2>
-              </button>
-            )}
-            {(isMobile || myBidsSectionExpanded) && (
-              <Link
-                to="/bids?new=true"
-                style={{
-                  padding: '0.35rem 0.75rem',
-                  background: '#2563eb',
-                  color: 'white',
-                  borderRadius: 6,
-                  textDecoration: 'none',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                }}
-              >
-                New Bid
-              </Link>
-            )}
+            </button>
+            <Link
+              to="/bids?new=true"
+              style={{
+                padding: '0.35rem 0.75rem',
+                background: '#2563eb',
+                color: 'white',
+                borderRadius: 6,
+                textDecoration: 'none',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+              }}
+            >
+              New Bid
+            </Link>
           </div>
-          {(isMobile || myBidsSectionExpanded) && (myBidsLoading ? (
+          {myBidsSectionExpanded && (myBidsLoading ? (
             <MyBidsSectionSkeleton />
           ) : (
             <>

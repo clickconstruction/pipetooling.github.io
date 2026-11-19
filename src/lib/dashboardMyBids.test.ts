@@ -7,6 +7,7 @@ import {
   formatRelativeCompactAgo,
   isMyBidStreamUnread,
   myBidRolesForUser,
+  myBidsStartsOpen,
   truncateMyBidNotePreview,
   type MyBidBaseRow,
   type MyBidCustomerContactRow,
@@ -235,5 +236,22 @@ describe('buildMyBidRows', () => {
       userId: 'me',
     })
     expect(rows[0]!.unreadBidNotes).toBe(true)
+  })
+})
+
+describe('myBidsStartsOpen', () => {
+  it('folds the card for a primary', () => {
+    expect(myBidsStartsOpen('primary')).toBe(false)
+  })
+
+  it('opens it for every other role that has the card', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator']) {
+      expect(myBidsStartsOpen(role)).toBe(true)
+    }
+  })
+
+  it('reads a role that has not arrived as open, so the card folds only once primary hydrates', () => {
+    expect(myBidsStartsOpen(null)).toBe(true)
+    expect(myBidsStartsOpen(undefined)).toBe(true)
   })
 })

@@ -244,7 +244,8 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and twenty-nine verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-nine since v2.7879, whose twin pair makes a digital twin through the Digital twins panel's own doors as the dev, `create-user`, `ct-bridge` and `tt-bridge` each holding its own dev gate and the twin flags set under the dev's RLS, with no new role and no new policy;
+The one write path (v2.3722) is one hundred and thirty-one verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and thirty-one since v2.7900, whose key revoke is the Digital twins panel's own update of `revoked_at` on the key's `twin_credentials` row under the table's dev-only RLS, with `read_twin_keys` reading that table by a column list that never names `token_hash`, no new role and no new policy;
+one hundred and twenty-nine since v2.7879, whose twin pair makes a digital twin through the Digital twins panel's own doors as the dev, `create-user`, `ct-bridge` and `tt-bridge` each holding its own dev gate and the twin flags set under the dev's RLS, with no new role and no new policy;
 one hundred and twenty-seven since v2.7823, whose task close is the card's own `task_no_longer_applies` called as the dev, the function's own gate holding (the office or a person the task is given to), with no new role and no new policy;
 one hundred and twenty-five since v2.7821, whose pay setup pair is told further down, where this section says *Since v2.7821*;
 one hundred and twenty-three since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
@@ -956,7 +957,7 @@ the job's History line for a close (`lien_notice_closed_paid`) is written by the
 and `sign_lien_desk_item_with_code` stamps the signer's full name since `20261116110000` (a leader's *Full name and title* up to the first comma, a dev's account name), its callers, its lock and its grant to `authenticated` unchanged.
 **Back from the clerk** adds none (v2.7856): it inserts the Lien window's own `job_lien_filings` row as the person signed in, under that table's insert policy (`created_by = auth.uid()`, the office set), and its door is drawn for the office alone.
 **Voiding a filed lien adds no policy and opens one move in the guard** (v2.7892, `20261119020000`): the void is still one UPDATE of `job_lien_filings.voided_at` under that table's update policy, and the SECURITY DEFINER trigger `job_lien_filing_void_restores_paper` moves the affidavit paper tied to it back, with EXECUTE on its function revoked from clients.
-`job_lien_desk_items_guard` no longer reads that move as a new approval: for an affidavit paper, `sent` back to `approved` passes for any office role while the filing it was tied to is voided and `approved_at`, `approved_by` and `approval_mode` are untouched.
+`job_lien_desk_items_guard` no longer reads that move as a new approval: for an affidavit paper, and for a notice since v2.7911 (`20261119050000`), `sent` back to `approved` passes for any office role while the filing it was tied to is voided and `approved_at`, `approved_by` and `approval_mode` are untouched.
 A `sent` paper with a live filing, and a move that changes who approved, when or how, are still a new approval, so a `leader` approval is still a master's or a dev's alone.
 The copies window's writes add none either (v2.7846): a *Mailed* tick is one UPDATE of `served_at` and `sends`, and a changed document number is one UPDATE of `recording_number`, each on the filing's own `job_lien_filings` row under that table's update policy, for the office set that already records a mailing.
 
@@ -2829,7 +2830,7 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
   **primary** defaults **collapsed** and does **not** auto-expand when reports are unread (**`RECENT_FEATURES`** **v2.494**)
 - **My Bids** section (estimator/account-manager bids);
   title **My Bids (`n`)** after load;
-  **primary** defaults **collapsed** (**`RECENT_FEATURES`** **v2.494**)
+  **primary** defaults **collapsed** at every width, a phone included since v2.7905, with **New Bid** beside the heading while folded (**`RECENT_FEATURES`** **v2.494**)
 **Unallocated bank deposits** — **Dashboard** blue banner uses **`canRoleSeeArBankUnallocatedDashboardBanner`** (**dev** + **assistant** only;
 **master_technician** does not — **`RECENT_FEATURES`** **v2.497**).
 **Quickfill** / **`/accounts-receivable`** still use **`canRoleSeeArBankUnallocatedOrgNudge`** (**dev**, **master_technician**, **assistant**;

@@ -968,9 +968,9 @@ export default function LienFilingTabs({
         onChanged()
         return
       }
-      // v2.7892: the database puts a filed affidavit's paper back in the same step, and the words say where it went.
+      // v2.7892, a notice since v2.7911: the database puts the record's paper back in the same step, and the words say where it went.
       const outcome = await voidLienFiling({ id: f.id, kind: f.kind })
-      showToast(lienVoidPaperWords(outcome), lienVoidPaperStuck(outcome) ? 'error' : 'success')
+      showToast(lienVoidPaperWords(outcome, f.kind), lienVoidPaperStuck(outcome) ? 'error' : 'success')
       setVoidPendingId(null)
       onChanged()
     } catch (e) {

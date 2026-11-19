@@ -39,7 +39,7 @@ So the trigger's move passes under any office sign-in, including an assistant's 
 
 - A `sent` paper whose filing is live cannot be moved to `approved` by the office. That is still a new approval.
 - A move that changes who approved, when or how is still a new approval.
-- A § 53.056 notice's filing moves nothing. The trigger and the guard's block are for kind `affidavit`.
+- A § 53.056 notice's filing moves nothing. The trigger and the guard's block are for kind `affidavit`. Since [`20261119050000`](./20261119050000_lien_void_puts_notice_back.md) a notice is put back too.
 - A void of a filing with no paper tied to it, and a second write of `voided_at` on a filing already voided, move nothing.
 - No policy changes. The void is still one UPDATE of `job_lien_filings` under that table's update policy. The paper's move is made by the trigger as its owner.
 - A paper the leader was holding when the lien was recorded goes back to `approved`, not to his hold: the status before `sent` is not stored.

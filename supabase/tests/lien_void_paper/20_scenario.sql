@@ -1,4 +1,5 @@
--- Voiding a filed lien affidavit puts its paper back (v2.7892, migration *_lien_void_puts_paper_back).
+-- Voiding a filed lien affidavit puts its paper back (v2.7892, migration *_lien_void_puts_paper_back), and so does
+-- voiding a § 53.056 notice's record (v2.7911, migration *_lien_void_puts_notice_back).
 -- The office's own writes under its own sign-in and RLS: the filing recorded (an INSERT into job_lien_filings), the
 -- paper marked sent (markLienDeskItemSent's UPDATE), the filing voided (voidFiling's UPDATE). The fixture is made as
 -- postgres, signed in as the leader where his approval is on the paper; everything rolls back.
@@ -50,6 +51,12 @@ CREATE FUNCTION lvp.record(n integer) RETURNS text LANGUAGE sql AS $$
     'INSERT INTO public.job_lien_filings (id, job_id, kind, amount, filed_at, county, recording_number, created_by) VALUES (%L, %L, ''affidavit'', 0, ''2026-11-16'', ''ZZ TEST'', %L, auth.uid())',
     lvp.id('d', n), lvp.id('b', n), 'ZZ-TEST-' || n))
 $$;
+-- The office records job N's notice as mailed: the record that names its month, as the signed-in user.
+CREATE FUNCTION lvp.record_notice(n integer) RETURNS text LANGUAGE sql AS $$
+  SELECT lvp.try(format(
+    'INSERT INTO public.job_lien_filings (id, job_id, kind, amount, months_covered, created_by) VALUES (%L, %L, ''notice_53_056'', 0, ''{2026-09}'', auth.uid())',
+    lvp.id('d', n), lvp.id('b', n)))
+$$;
 -- markLienDeskItemSent's write (src/lib/jobs/lienDeskIo.ts): paper N sent, tied to filing F.
 CREATE FUNCTION lvp.mark_sent(n integer, f integer) RETURNS text LANGUAGE sql AS $$
   SELECT lvp.try(format('UPDATE public.job_lien_desk_items SET status = ''sent'', sent_filing_id = %L WHERE id = %L', lvp.id('d', f), lvp.id('c', n)))
@@ -66,6 +73,8 @@ CREATE FUNCTION lvp.paper(n integer) RETURNS text LANGUAGE sql VOLATILE SECURITY
       || ' / ' || CASE WHEN i.approved_at IS NULL THEN 'no day' WHEN i.approved_at = '2026-11-10 10:00:00+00'::timestamptz THEN 'his day' ELSE 'another day' END
       || ' / ' || CASE WHEN i.sent_filing_id IS NULL THEN 'no tie' ELSE 'tied' END
       || ' / ' || CASE WHEN i.sent_at IS NULL THEN 'no sent day' ELSE 'sent day' END
+      || CASE WHEN i.printed_at IS NULL THEN '' ELSE ' / printed' END
+      || CASE WHEN i.signed_at IS NULL THEN '' ELSE ' / signed by ' || coalesce(i.signer_printed_name, '-') END
       || CASE WHEN i.voided_at IS NULL THEN '' ELSE ' / set aside' END
       || CASE WHEN i.word_note <> '' THEN ' / "' || i.word_note || '"' ELSE '' END
     FROM public.job_lien_desk_items i WHERE i.id = lvp.id('c', n)), 'no row')
@@ -73,11 +82,11 @@ $$;
 GRANT USAGE ON SCHEMA lvp TO anon, authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA lvp TO anon, authenticated, service_role;
 
--- Nine jobs. A paper is c<N> on job b<N>; its filing is d<N>.
+-- Fourteen jobs. A paper is c<N> on job b<N>; its filing is d<N>.
 INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000000f8e01', 'Void Plumbing');
 INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number, job_name, customer_name, bill_to_party, revenue, payments_made, status)
 SELECT lvp.id('b', n), '00000000-0000-0000-0000-0000000f8a01', '00000000-0000-0000-0000-0000000f8e01', (88900 + n)::text, 'ZZ Test Void Job ' || n, 'ZZ Test GC', 'gc', 38625, 34825, 'billed'
-FROM generate_series(1, 9) AS n;
+FROM generate_series(1, 14) AS n;
 
 -- The papers. The leader's approvals are made under his own sign-in, as the guard asks, on a fixed day.
 SELECT lvp.as_user('00000000-0000-0000-0000-0000000f8a01');
@@ -93,8 +102,18 @@ INSERT INTO public.job_lien_desk_items (id, job_id, kind, status, approval_mode,
   (lvp.id('c', 3), lvp.id('b', 3), 'affidavit', 'drafted', NULL, NULL, NULL, '', '', '00000000-0000-0000-0000-0000000f8a02'),
   -- 4: approved by his own press; a newer draft comes to the same job after it is filed.
   (lvp.id('c', 4), lvp.id('b', 4), 'affidavit', 'approved', 'leader', '00000000-0000-0000-0000-0000000f8a01', '2026-11-10 10:00:00+00', '', '', '00000000-0000-0000-0000-0000000f8a02'),
-  -- 6: a notice, approved by his own press.
-  (lvp.id('c', 6), lvp.id('b', 6), 'notice_53_056', 'approved', 'leader', '00000000-0000-0000-0000-0000000f8a01', '2026-11-10 10:00:00+00', '', '', '00000000-0000-0000-0000-0000000f8a02');
+  -- 12, 13: notices approved by his own press, for the newer paper and the check by hand. 14: an affidavit, on a job
+  -- that also holds a notice draft.
+  (lvp.id('c', 12), lvp.id('b', 12), 'notice_53_056', 'approved', 'leader', '00000000-0000-0000-0000-0000000f8a01', '2026-11-10 10:00:00+00', '', '', '00000000-0000-0000-0000-0000000f8a02'),
+  (lvp.id('c', 13), lvp.id('b', 13), 'notice_53_056', 'approved', 'leader', '00000000-0000-0000-0000-0000000f8a01', '2026-11-10 10:00:00+00', '', '', '00000000-0000-0000-0000-0000000f8a02'),
+  (lvp.id('c', 14), lvp.id('b', 14), 'affidavit', 'approved', 'leader', '00000000-0000-0000-0000-0000000f8a01', '2026-11-10 10:00:00+00', '', '', '00000000-0000-0000-0000-0000000f8a02'),
+  -- 10: a notice approved on his spoken word. 11: a notice never approved, recorded as already sent.
+  (lvp.id('c', 10), lvp.id('b', 10), 'notice_53_056', 'approved', 'word', '00000000-0000-0000-0000-0000000f8a02', '2026-11-10 10:00:00+00', 'He said mail it', 'phone', '00000000-0000-0000-0000-0000000f8a02'),
+  (lvp.id('c', 11), lvp.id('b', 11), 'notice_53_056', 'drafted', NULL, NULL, NULL, '', '', '00000000-0000-0000-0000-0000000f8a02'),
+  (lvp.id('c', 24), lvp.id('b', 14), 'notice_53_056', 'drafted', NULL, NULL, NULL, '', '', '00000000-0000-0000-0000-0000000f8a02');
+-- 6: a notice approved by his own press, signed by him and printed, as a notice stands when its mailing is recorded.
+INSERT INTO public.job_lien_desk_items (id, job_id, kind, months, status, approval_mode, approved_by, approved_at, drafted_by, printed_at, signed_at, signed_by, signer_signature_mode, signer_printed_name) VALUES
+  (lvp.id('c', 6), lvp.id('b', 6), 'notice_53_056', '{2026-09}', 'approved', 'leader', '00000000-0000-0000-0000-0000000f8a01', '2026-11-10 10:00:00+00', '00000000-0000-0000-0000-0000000f8a02', '2026-11-11 10:00:00+00', '2026-11-10 11:00:00+00', '00000000-0000-0000-0000-0000000f8a01', 'type', 'Malachi Whites');
 -- Job 6's notice on record, and job 9's filed affidavit with no paper on the desk.
 INSERT INTO public.job_lien_filings (id, job_id, kind, amount, months_covered, created_by) VALUES
   (lvp.id('d', 6), lvp.id('b', 6), 'notice_53_056', 0, '{2026-08}', '00000000-0000-0000-0000-0000000f8a02');
@@ -133,10 +152,7 @@ SELECT lvp.same('job 4 voided', lvp.void(4), 'ok 1');
 SELECT lvp.same('the old paper is set aside, still naming the filing it became', lvp.paper(4), 'sent / leader / by Malachi / his day / tied / sent day / set aside');
 SELECT lvp.same('the newer draft is untouched', lvp.paper(40), 'drafted / - / by - / no day / no tie / no sent day');
 
--- ---------- 5 · a notice's filing moves nothing; a lien with no paper voids cleanly; a second void changes nothing ----------
-SELECT lvp.same('the notice paper sent', lvp.mark_sent(6, 6), 'ok 1');
-SELECT lvp.same('the notice filing voided', lvp.void(6), 'ok 1');
-SELECT lvp.same('the notice paper stays sent', lvp.paper(6), 'sent / leader / by Malachi / his day / tied / sent day');
+-- ---------- 5 · what moves nothing: a lien with no paper on the desk, and a second void ----------
 SELECT lvp.same('a filed lien with no paper on the desk voids', lvp.void(9), 'ok 1');
 SELECT lvp.same('voiding job 1 again reaches the row', lvp.void(1), 'ok 1');
 SELECT lvp.same('and its paper stays where the first void put it', lvp.paper(1), 'approved / leader / by Malachi / his day / no tie / no sent day');
@@ -166,14 +182,41 @@ SELECT lvp.same('the paper is marked sent again', lvp.mark_sent(7, 70), 'ok 1');
 SELECT lvp.same('sent and tied to the second filing', lvp.paper(7), 'sent / leader / by Malachi / his day / tied / sent day');
 SELECT lvp.same('the second filing voided', lvp.void(70), 'ok 1');
 SELECT lvp.same('and the paper is back once more', lvp.paper(7), 'approved / leader / by Malachi / his day / no tie / no sent day');
+
+-- ---------- 8 · a notice's record voided puts the notice back (v2.7911) ----------
+-- Job 6's notice is on record from the fixture (d6). It was signed and printed before its mailing was recorded.
+SELECT lvp.same('the notice paper sent', lvp.mark_sent(6, 6), 'ok 1');
+SELECT lvp.same('sent, tied, still signed and printed', lvp.paper(6), 'sent / leader / by Malachi / his day / tied / sent day / printed / signed by Malachi Whites');
+SELECT lvp.same('Rosa voids the notice''s record', lvp.void(6), 'ok 1');
+SELECT lvp.same('the notice is approved again, by him, signed and printed as it was, with no tie and no sent day',
+  lvp.paper(6), 'approved / leader / by Malachi / his day / no tie / no sent day / printed / signed by Malachi Whites');
+SELECT lvp.same('a notice on his word: recorded, sent, voided', lvp.record_notice(10) || ', ' || lvp.mark_sent(10, 10) || ', ' || lvp.void(10), 'ok 1, ok 1, ok 1');
+SELECT lvp.same('the word and who wrote it down stand', lvp.paper(10), 'approved / word / by Rosa / his day / no tie / no sent day / "He said mail it"');
+SELECT lvp.same('a notice nobody approved: recorded as already sent, then voided', lvp.record_notice(11) || ', ' || lvp.mark_sent(11, 11) || ', ' || lvp.void(11), 'ok 1, ok 1, ok 1');
+SELECT lvp.same('a draft again, approved by nobody', lvp.paper(11), 'drafted / - / by - / no day / no tie / no sent day');
+SELECT lvp.same('job 12''s notice recorded and sent', lvp.record_notice(12) || ', ' || lvp.mark_sent(12, 12), 'ok 1, ok 1');
+SELECT lvp.same('a second notice draft on job 12, allowed while the first is sent',
+  lvp.try(format('INSERT INTO public.job_lien_desk_items (id, job_id, kind, status, drafted_by) VALUES (%L, %L, ''notice_53_056'', ''drafted'', auth.uid())', lvp.id('c', 21), lvp.id('b', 12))), 'ok 1');
+SELECT lvp.same('job 12''s record voided', lvp.void(12), 'ok 1');
+SELECT lvp.same('the old notice is set aside', lvp.paper(12), 'sent / leader / by Malachi / his day / tied / sent day / set aside');
+SELECT lvp.same('the newer notice draft is untouched', lvp.paper(21), 'drafted / - / by - / no day / no tie / no sent day');
+-- A paper of another kind on the job does not set the paper aside: job 14 holds a notice draft beside its lien.
+SELECT lvp.same('job 14''s lien recorded, sent, voided', lvp.record(14) || ', ' || lvp.mark_sent(14, 14) || ', ' || lvp.void(14), 'ok 1, ok 1, ok 1');
+SELECT lvp.same('its lien paper is approved again beside the notice draft', lvp.paper(14) || ' | ' || lvp.paper(24),
+  'approved / leader / by Malachi / his day / no tie / no sent day | drafted / - / by - / no day / no tie / no sent day');
+-- By hand, a notice is as an affidavit is.
+SELECT lvp.same('job 13''s notice recorded and sent', lvp.record_notice(13) || ', ' || lvp.mark_sent(13, 13), 'ok 1, ok 1');
+SELECT lvp.same('the office cannot move a sent notice back to approved while its record is live',
+  lvp.try(format('UPDATE public.job_lien_desk_items SET status = ''approved'', sent_filing_id = NULL, sent_at = NULL WHERE id = %L', lvp.id('c', 13))), '42501');
+SELECT lvp.same('so it stays sent', lvp.paper(13), 'sent / leader / by Malachi / his day / tied / sent day');
 RESET ROLE;
 
--- ---------- 8 · as shipped ----------
+-- ---------- 9 · as shipped ----------
 SELECT lvp.same('nobody calls the trigger''s function', (
   has_function_privilege('anon', 'public.job_lien_filing_void_restores_paper()', 'EXECUTE')::text || '/'
     || has_function_privilege('authenticated', 'public.job_lien_filing_void_restores_paper()', 'EXECUTE')::text),
   'false/false');
-SELECT lvp.same('one trigger, on a void of an affidavit', (
+SELECT lvp.same('one trigger, on a void of an affidavit or a notice', (
   SELECT count(*)::text || ' ' || bool_and(t.tgenabled = 'O')::text
   FROM pg_trigger t
   WHERE t.tgrelid = 'public.job_lien_filings'::regclass AND t.tgname = 'job_lien_filing_void_restores_paper' AND NOT t.tgisinternal),

@@ -143,14 +143,14 @@ A mail that came after the save may not be on the job yet. Its row in the list s
 
 ### When a developer saves your mail for you
 
-The app tells you. Nothing is sent to your inbox, and you get no push.
+The app keeps a record for you. Nothing is sent to your inbox, and you get no push. Nothing shows on the Dashboard.
 
-- On the Dashboard, the **Needs you** card shows a line under *Your mail*. It names the developer, how many conversations, and the job.
-- On a phone, the same line is under the **Inbox** tab.
-- The line stays for seven days. Press **See the record** to open it.
-- The record itself stays under Settings, on the **Activity logs** tab. Only you can read it.
+- Open Settings, then the **Activity logs** tab.
+- Look under **Most recent notifications**. The row wears the badge *In the app*.
+- The row names the developer, how many conversations, and the job.
+- Only you can read it.
 
-Several conversations saved close together show as one line with a count.
+Several conversations saved close together show as one row with a count.
 
 ## Mail you send lands by itself
 

@@ -85,8 +85,6 @@ export type NeedsYouSource =
   // v2.6098 (punch list #178): the Customers line and Today's sends, sources of their own so the Messages station can carry them.
   | 'customerMessages'
   | 'todaysSends'
-  // The owner is told (v2.7068): someone else saved the viewer's mail onto a job, through the dev seat.
-  | 'mailSaved'
   // Tagged job notes (punch list #363): the job notes that tagged the viewer, whoever they are.
   | 'taggedNotes'
   // Papers before a job opens: the jobs that wait on the viewer's signature, whoever they are.
@@ -149,7 +147,6 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'awayBackDay',
   'customerMessages',
   'todaysSends',
-  'mailSaved',
   'taggedNotes',
   'jobPapers',
 ]
@@ -248,9 +245,6 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
       return canTagInJobNotes(role)
     case 'jobPapers':
       // Papers before a job opens: everyone signs, the office too, so the line is anyone's who owes a paper.
-      return role != null
-    case 'mailSaved':
-      // The owner is told (v2.7068): whoever's mail it was, a field role too; each person reads only their own notices.
       return role != null
     case 'awayBackDay':
       // The day back (punch list #256 PR 9): the office set; `away_notes` reads empty for a master who is not pay-approved.

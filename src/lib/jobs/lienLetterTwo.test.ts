@@ -40,6 +40,14 @@ describe('the attorney’s letter — the clock on a sent notice', () => {
     expect(letterTwoStatus({ items: [item({ id: 'd', status: 'drafted' })], openBalance: 9_800, todayYmd: TODAY }).state).toBe('none')
   })
 
+  it('a notice whose record was voided is put back to approved, and its clock stops (v2.7911)', () => {
+    // As the database leaves the paper when its record is voided: approved again, its sent day cleared.
+    const putBack = item({ id: 'first', status: 'approved', sent_at: null, fields: { notice, gcEmail: '' } })
+    expect(letterTwoStatus({ items: [putBack], openBalance: 9_800, todayYmd: '2026-09-19' }).state).toBe('none')
+    // Left as sent, which is how a void left it until then, the same paper came overdue with no notice on record.
+    expect(letterTwoStatus({ items: [first], openBalance: 9_800, todayYmd: '2026-09-19' }).state).toBe('overdue')
+  })
+
   it('summarizes every job for the Dashboard, by the job’s own balance', () => {
     const byJob = letterTwoByJobFrom([first, item({ ...first, id: 'other', job_id: 'j2' })], (id) => (id === 'j2' ? 0 : 9_800), TODAY)
     expect(Object.keys(byJob).sort()).toEqual(['j2', 'j377'])
