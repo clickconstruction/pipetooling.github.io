@@ -13,7 +13,7 @@
  * than one lien is held until a person says it is this lien alone.
  *
  * The stack is in envelope order behind one mail sheet: the sheet stays in the office, lists every envelope in the
- * order it comes off the printer, and has a blank for each certified mail number. Pure; `lienServePdf.ts` draws the
+ * order it comes off the printer, and has boxes for each certified mail number. Pure; `lienServePdf.ts` draws the
  * sheet and the stack and `lienServePrintIo.ts` prints and files.
  */
 import { batchWords, type BatchWords } from '../batchWords'
@@ -222,15 +222,49 @@ export const LIEN_SERVE_SHEET_WORDS = {
   stackWithLetter: 'Each envelope takes its letter and the clerk’s stamped copy behind it. They come off the printer in the order below.',
   stackNoLetter: 'Each envelope takes one clerk’s stamped copy. They come off the printer in the order below.',
   steps: [
-    'Mail each envelope by certified mail. Write its number in the last column.',
+    'Mail each envelope by certified mail. Write its number in the boxes under its line.',
     'In the app, open the Lien desk. Press Enter mail numbers on Filed · copies to mail, or on the job’s own line. Type the day mailed and each number.',
   ],
-  columns: ['#', 'Job', 'Copy to', 'Name and address on the envelope', 'Pages', 'Mail by', 'Certified mail number'],
+  /** The name and address come last and take the rest of the line, so a long name stays on one line. */
+  columns: ['#', 'Job', 'Copy to', 'Pages', 'Mail by', 'Name and address on the envelope'],
+  /** The label beside the boxes under each envelope's line. */
+  numberLabel: 'Certified mail number',
   held: 'Not in this print',
 } as const
 
+/** A certified mail number as the post office's label prints it: five groups of four digits. The sheet draws a box for each group. */
+export const LIEN_CERTIFIED_NUMBER_GROUPS = 5
+export const LIEN_CERTIFIED_NUMBER_DIGITS = 4
+
+const STATE_ZIP = /^[A-Za-z]{2}\.?\s+\d{5}(-\d{4})?$/
+const ZIP = /^\d{5}(-\d{4})?$/
+const CITY_STATE_ZIP = /^\S.*\s[A-Za-z]{2}\.?\s+\d{5}(-\d{4})?$/
+const COUNTRY = /^(usa|u\.s\.a\.|us|united states|united states of america)$/i
+
+/**
+ * An address as an envelope carries it: the street on one line and the city, state and ZIP on the next. An address
+ * typed on lines keeps its last line as the city line. One the kernel cannot split (no state and ZIP at its end) stays
+ * whole on one line, so nothing is guessed onto the wrong line.
+ */
+export function lienEnvelopeAddressLines(address: string): string[] {
+  const typed = (address ?? '').split(/\r?\n/).map((l) => l.trim().replace(/,$/, '').trim()).filter(Boolean)
+  if (typed.length === 0) return []
+  if (typed.length > 1) return [typed.slice(0, -1).join(', '), typed[typed.length - 1]!]
+  const parts = typed[0]!.split(',').map((p) => p.trim()).filter(Boolean)
+  if (parts.length > 1 && COUNTRY.test(parts[parts.length - 1]!)) parts.pop()
+  const n = parts.length
+  const last = parts[n - 1] ?? ''
+  // 12 Example St, Suite 4, Buda, TX 78610
+  if (n >= 3 && STATE_ZIP.test(last)) return [parts.slice(0, n - 2).join(', '), `${parts[n - 2]}, ${last}`]
+  // 12 Example St, Buda, TX, 78610
+  if (n >= 4 && ZIP.test(last) && /^[A-Za-z]{2}\.?$/.test(parts[n - 2]!)) return [parts.slice(0, n - 3).join(', '), `${parts[n - 3]}, ${parts[n - 2]} ${last}`]
+  // 12 Example St, Buda TX 78610
+  if (n >= 2 && CITY_STATE_ZIP.test(last)) return [parts.slice(0, n - 1).join(', '), last]
+  return [parts.join(', ')]
+}
+
 /** One envelope's line on the mail sheet. */
-export type LienServeSheetRow = { n: number; job: string; to: string; name: string; address: string; pages: string; mailBy: string }
+export type LienServeSheetRow = { n: number; job: string; to: string; name: string; address: string; /** The address as the envelope carries it (`lienEnvelopeAddressLines`). */ addressLines: string[]; pages: string; mailBy: string }
 
 /** The mail sheet as the print draws it (`lienServePdf.ts`): its words, every envelope in the stack's order and what was left out. */
 export type LienServeSheet = {
@@ -241,6 +275,8 @@ export type LienServeSheet = {
   stepsHead: string
   steps: string[]
   columns: readonly string[]
+  /** The label beside each envelope's boxes for its certified mail number. */
+  numberLabel: string
   rows: LienServeSheetRow[]
   heldHead: string
   held: Array<{ job: string; words: string; act: string }>
@@ -248,8 +284,8 @@ export type LienServeSheet = {
 }
 
 /**
- * The mail sheet: every envelope in the stack's order with how many pages it takes and a blank for its certified
- * mail number, then what was left out with its reason. The pages are the letter's one and the stamped copy's own, so
+ * The mail sheet: every envelope in the stack's order with how many pages it takes and, on a line of its own under
+ * it, the boxes for its certified mail number, then what was left out with its reason. The pages are the letter's one and the stamped copy's own, so
  * the office can split the stack without reading it. `notPrinted` adds a lien the run could not put in the stack
  * after all, with the reason.
  */
@@ -259,7 +295,7 @@ export function lienServeMailSheet(run: Pick<LienServeRun, 'ready' | 'held'>, op
     const pages = r.file.pages + (opts.letter && r.letter ? 1 : 0)
     return r.envelopes.map((e) => {
       n += 1
-      return { n, job: r.job.jobLabel, to: TO_SHORT[e.recipient], name: e.name, address: e.address, pages: lienCopyPagesWords(pages).replace(/ pages?$/, ''), mailBy: r.clock.serveDue ? `${formatYmdMonthDay(r.clock.serveDue)}${r.clock.late ? ' · late' : ''}` : '' }
+      return { n, job: r.job.jobLabel, to: TO_SHORT[e.recipient], name: e.name, address: e.address, addressLines: lienEnvelopeAddressLines(e.address), pages: lienCopyPagesWords(pages).replace(/ pages?$/, ''), mailBy: r.clock.serveDue ? `${formatYmdMonthDay(r.clock.serveDue)}${r.clock.late ? ' · late' : ''}` : '' }
     })
   })
   const anyLetter = opts.letter && run.ready.some((r) => r.letter)
@@ -272,6 +308,7 @@ export function lienServeMailSheet(run: Pick<LienServeRun, 'ready' | 'held'>, op
     stepsHead: LIEN_SERVE_SHEET_WORDS.stepsHead,
     steps: [anyLetter ? LIEN_SERVE_SHEET_WORDS.stackWithLetter : LIEN_SERVE_SHEET_WORDS.stackNoLetter, ...LIEN_SERVE_SHEET_WORDS.steps],
     columns: LIEN_SERVE_SHEET_WORDS.columns,
+    numberLabel: LIEN_SERVE_SHEET_WORDS.numberLabel,
     rows,
     heldHead: LIEN_SERVE_SHEET_WORDS.held,
     held: [

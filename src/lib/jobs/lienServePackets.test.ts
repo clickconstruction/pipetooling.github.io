@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobLienFilingRow } from './lienDeadlines'
-import { lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServeMailSheet, lienServePlan, lienServePlanRead, lienServePlanWords, lienServeRunWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
+import { LIEN_CERTIFIED_NUMBER_DIGITS, LIEN_CERTIFIED_NUMBER_GROUPS, lienEnvelopeAddressLines, lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServeMailSheet, lienServePlan, lienServePlanRead, lienServePlanWords, lienServeRunWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
 import { LIEN_COPY_BROKEN_HOLD, type LienCopyRead } from './lienStampedCopy'
 import { lienServedCopySentTitle } from '../jobsDocuments/lienServedCopy'
 import { lienServeStageCounts, lienServeStageDoorWords } from './lienServeStage'
@@ -182,6 +182,31 @@ describe('the plan once the saved copies are read', () => {
   })
 })
 
+describe('lienEnvelopeAddressLines — the street, then the city, state and ZIP', () => {
+  it('splits before the city, and keeps a suite on the street’s line', () => {
+    expect(lienEnvelopeAddressLines('88 Sample Ridge Rd, Austin, TX 78700')).toEqual(['88 Sample Ridge Rd', 'Austin, TX 78700'])
+    expect(lienEnvelopeAddressLines('12 Example Pkwy, Suite 400, Buda, TX 78610-1234')).toEqual(['12 Example Pkwy, Suite 400', 'Buda, TX 78610-1234'])
+    expect(lienEnvelopeAddressLines('PO Box 100, Kyle, TX 78640')).toEqual(['PO Box 100', 'Kyle, TX 78640'])
+  })
+
+  it('reads the other ways an address is typed', () => {
+    expect(lienEnvelopeAddressLines('12 Example Pkwy, Buda, TX, 78610')).toEqual(['12 Example Pkwy', 'Buda, TX 78610'])
+    expect(lienEnvelopeAddressLines('12 Example Pkwy, Buda TX 78610')).toEqual(['12 Example Pkwy', 'Buda TX 78610'])
+    expect(lienEnvelopeAddressLines('12 Example Pkwy, Buda, TX 78610, USA')).toEqual(['12 Example Pkwy', 'Buda, TX 78610'])
+    expect(lienEnvelopeAddressLines('12 Example Pkwy\nSuite 400\nBuda, TX 78610')).toEqual(['12 Example Pkwy, Suite 400', 'Buda, TX 78610'])
+  })
+
+  it('leaves whole an address it cannot split, and guesses nothing', () => {
+    expect(lienEnvelopeAddressLines('12 Example Pkwy Buda, TX 78610')).toEqual(['12 Example Pkwy Buda, TX 78610'])
+    expect(lienEnvelopeAddressLines('12 Example Pkwy, Buda')).toEqual(['12 Example Pkwy, Buda'])
+    expect(lienEnvelopeAddressLines('  ')).toEqual([])
+  })
+
+  it('counts a certified mail number as five groups of four digits', () => {
+    expect([LIEN_CERTIFIED_NUMBER_GROUPS, LIEN_CERTIFIED_NUMBER_DIGITS]).toEqual([5, 4])
+  })
+})
+
 describe('the mail sheet', () => {
   const ok = (pages: number): LienCopyRead => ({ state: 'ok', file: { kind: 'pdf', pages, bytes: 450_000, sha256: 'abc' } })
   const plan = lienServePlan([job('2291'), job('2104', { serve_due: '2026-11-11', fields: { ...FIELDS, isSub: false } }, { isSub: false }), job('2340', { recording_number: '' })], CTX)
@@ -196,11 +221,14 @@ describe('the mail sheet', () => {
       [2, '2291 · Sample Job', 'Owner', '3', 'Nov 18'],
       [3, '2291 · Sample Job', 'Original contractor', '3', 'Nov 18'],
     ])
-    expect(sheet.rows[0]).toMatchObject({ name: 'Hollow Creek Holdings LLC', address: '88 Sample Ridge Rd, Austin, TX 78700' })
+    expect(sheet.rows[0]).toMatchObject({ name: 'Hollow Creek Holdings LLC', address: '88 Sample Ridge Rd, Austin, TX 78700', addressLines: ['88 Sample Ridge Rd', 'Austin, TX 78700'] })
     expect(sheet.held).toEqual([{ job: '2340 · Sample Job', words: 'Not printed: no recording number yet.', act: 'Type the number the clerk gave.' }])
     expect(sheet.steps[0]).toBe('Each envelope takes its letter and the clerk’s stamped copy behind it. They come off the printer in the order below.')
     expect(sheet.foot).toEqual(['Mail sheet printed November 16, 2026', 'The first letter is the next page'])
-    expect(sheet.columns).toEqual(['#', 'Job', 'Copy to', 'Name and address on the envelope', 'Pages', 'Mail by', 'Certified mail number'])
+    // The name and address come last, with the rest of the line. The certified mail number is no column: its boxes sit under each line.
+    expect(sheet.columns).toEqual(['#', 'Job', 'Copy to', 'Pages', 'Mail by', 'Name and address on the envelope'])
+    expect(sheet.numberLabel).toBe('Certified mail number')
+    expect(sheet.steps[1]).toBe('Mail each envelope by certified mail. Write its number in the boxes under its line.')
   })
 
   it('counts the stamped copy alone when the letters are left out, and says so', () => {

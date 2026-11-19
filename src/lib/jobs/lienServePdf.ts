@@ -12,7 +12,7 @@
  * The rules a saved copy is read by are `lienStampedCopy.ts`; the sheet's words are `lienServeMailSheet`.
  */
 import type { PDFDocument, PDFFont, PDFPage } from 'pdf-lib'
-import type { LienServeSheet } from './lienServePackets'
+import { LIEN_CERTIFIED_NUMBER_DIGITS, LIEN_CERTIFIED_NUMBER_GROUPS, type LienServeSheet } from './lienServePackets'
 import { LIEN_COPY_BROKEN_HOLD, LIEN_COPY_NOT_PRINTABLE_HOLD, lienCopyKind, type LienCopyKind, type LienCopyRead } from './lienStampedCopy'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
@@ -145,7 +145,21 @@ const FLAG: [number, number, number] = [0.6, 0.11, 0.11]
 const BAND: [number, number, number] = [0.95, 0.96, 0.97]
 
 /** Column widths in points, in the order of `LienServeSheet.columns`; they add up to the page's width less its margins. */
-const COLS = [18, 104, 60, 162, 32, 50, 114] as const
+const COLS = [18, 100, 56, 30, 64, 272] as const
+
+/** The boxes for a certified mail number under an envelope's line: one for each group of four digits, wide enough to write in. */
+const NUMBER_BOX = { w: 54, h: 15, gap: 7 } as const
+/** The name's size, and the smallest it shrinks to before it wraps: a long name stays on one line, as the envelope carries it. */
+const NAME_SIZE = 8.5
+const NAME_SMALLEST = 7
+
+/** The largest size from `size` down to `smallest` at which `text` fits `width` on one line; `smallest` when none does. */
+function fitSize(font: PDFFont, text: string, size: number, smallest: number, width: number): number {
+  const safe = fontSafe(font, text)
+  let at = size
+  while (at > smallest && font.widthOfTextAtSize(safe, at) > width) at = Math.round((at - 0.25) * 100) / 100
+  return at
+}
 
 /** Text the standard fonts can draw: a letter with an accent loses it, and anything else unknown reads `?`. */
 function fontSafe(font: PDFFont, text: string): string {
@@ -258,19 +272,37 @@ export async function drawLienMailSheet(doc: PDFDocument, sheet: LienServeSheet)
   for (const row of sheet.rows) {
     const job = wrap(bold, row.job, 8.5, COLS[1] - 6)
     const to = wrap(regular, row.to, 8.5, COLS[2] - 6)
-    const name = wrap(bold, row.name, 8.5, COLS[3] - 6)
-    const address = wrap(regular, row.address, 8.5, COLS[3] - 6)
+    // The name and address take the last column: the name on one line, shrunk a little before it wraps, then the
+    // street, then the city, state and ZIP, as the envelope carries them.
+    const wide = COLS[5] - 6
+    const nameSize = fitSize(bold, row.name, NAME_SIZE, NAME_SMALLEST, wide)
+    const name = wrap(bold, row.name, nameSize, wide)
+    const address = (row.addressLines.length > 0 ? row.addressLines : [row.address]).flatMap((l) => wrap(regular, l, 8.5, wide))
     const lines = Math.max(job.length, to.length, name.length + address.length, 2)
-    const h = lines * 10.5 + 9
+    const words = lines * 10.5 + 5
+    // The envelope's line and its number boxes stay on one page.
+    const h = words + NUMBER_BOX.h + 8
     room(h)
     const top = y - 11.5
     text(String(row.n), colX(0) + 3, top)
     job.forEach((l, i) => text(l, colX(1) + 3, top - i * 10.5, { font: bold }))
     to.forEach((l, i) => text(l, colX(2) + 3, top - i * 10.5))
-    name.forEach((l, i) => text(l, colX(3) + 3, top - i * 10.5, { font: bold }))
-    address.forEach((l, i) => text(l, colX(3) + 3, top - (name.length + i) * 10.5))
-    text(row.pages, colX(4) + 3, top)
-    text(row.mailBy, colX(5) + 3, top, row.mailBy.includes('late') ? { font: bold, color: FLAG } : {})
+    text(row.pages, colX(3) + 3, top)
+    text(row.mailBy, colX(4) + 3, top, row.mailBy.includes('late') ? { font: bold, color: FLAG } : {})
+    name.forEach((l, i) => text(l, colX(5) + 3, top - i * 10.5, { font: bold, size: nameSize }))
+    address.forEach((l, i) => text(l, colX(5) + 3, top - (name.length + i) * 10.5))
+    // Under it, the certified mail number: a box for each group of four digits, with a tick between the digits.
+    const boxY = y - words - NUMBER_BOX.h
+    const label = sheet.numberLabel.toUpperCase()
+    const boxesW = LIEN_CERTIFIED_NUMBER_GROUPS * NUMBER_BOX.w + (LIEN_CERTIFIED_NUMBER_GROUPS - 1) * NUMBER_BOX.gap
+    const boxX = PAGE_W - MARGIN - boxesW
+    text(label, boxX - 8 - bold.widthOfTextAtSize(fontSafe(bold, label), 6.2), boxY + 5, { font: bold, size: 6.2, color: MUTED })
+    for (let g = 0; g < LIEN_CERTIFIED_NUMBER_GROUPS; g += 1) {
+      const x = boxX + g * (NUMBER_BOX.w + NUMBER_BOX.gap)
+      page.drawRectangle({ x, y: boxY, width: NUMBER_BOX.w, height: NUMBER_BOX.h, borderColor: rgb(MUTED), borderWidth: 0.8 })
+      const cell = NUMBER_BOX.w / LIEN_CERTIFIED_NUMBER_DIGITS
+      for (let d = 1; d < LIEN_CERTIFIED_NUMBER_DIGITS; d += 1) page.drawLine({ start: { x: x + d * cell, y: boxY }, end: { x: x + d * cell, y: boxY + 4 }, thickness: 0.5, color: rgb(RULE) })
+    }
     y -= h
     rule(y)
   }
