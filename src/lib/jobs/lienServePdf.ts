@@ -64,11 +64,23 @@ export type LienServePdfOut = {
   failed: Array<{ key: string; reason: string }>
 }
 
+/**
+ * What the file asks of a print window that listens: one side of the paper, since an envelope's pages are in order and
+ * may be an odd number, and each page at its own size, so a stamped page is not shrunk to fit. A hint, not a lock: the
+ * screen says *Print on one side of the paper* too.
+ */
+function printAsItIs(doc: PDFDocument, lib: Awaited<ReturnType<typeof loadPdfLib>>): void {
+  const prefs = doc.catalog.getOrCreateViewerPreferences()
+  prefs.setDuplex(lib.Duplex.Simplex)
+  prefs.setPrintScaling(lib.PrintScaling.None)
+}
+
 /** One lien's papers as a PDF of their own: for each envelope the letter, then every page of the stamped copy. */
 export async function buildLienServeJobPdf(job: LienServePdfJob): Promise<Uint8Array> {
   const lib = await loadPdfLib()
   const out = await lib.PDFDocument.create()
   out.setTitle(job.title)
+  printAsItIs(out, lib)
   const scan = job.copy.kind === 'pdf' ? await lib.PDFDocument.load(job.copy.bytes) : null
   const picture = job.copy.kind === 'jpeg' ? await out.embedJpg(job.copy.bytes) : job.copy.kind === 'png' ? await out.embedPng(job.copy.bytes) : null
   if (job.envelopes.length === 0) throw new Error('This lien has no envelope.')
@@ -112,6 +124,7 @@ export async function buildLienServeStackPdf(input: { jobs: ReadonlyArray<LienSe
   if (built.length === 0) return { stack: null, jobs: [], failed }
   const stack = await lib.PDFDocument.create()
   stack.setTitle(input.title)
+  printAsItIs(stack, lib)
   await drawLienMailSheet(stack, input.sheet(failed))
   for (const job of built) {
     const doc = await lib.PDFDocument.load(job.bytes)
