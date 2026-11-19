@@ -151,7 +151,7 @@ It is the pattern to copy.
 
 - **The Dashboard's Needs you card** (`DashboardNeedsYouCard.tsx` over `buildNeedsYouItems` in
   `src/lib/dashboardNeedsYou.ts`): a closed list of about 75 kinds of row, most of them counts for
-  the office. Two are per-person notices open to every role, `while-off` and `mail-saved`. A new
+  the office. One is a per-person notice open to every role, `while-off`. A new
   kind needs a key, a rank, an actor, a source with its role gate, an input and a door, each in a
   file the typecheck holds.
 - **The checklist and tasks** (`checklist_items`, the New task window `ChecklistAddModal`): an
