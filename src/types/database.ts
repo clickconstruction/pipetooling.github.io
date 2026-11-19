@@ -51582,6 +51582,15 @@ export type Database = {
       trip_days_ok: { Args: { p_days: Json }; Returns: boolean }
       trip_deleted_list: { Args: { p_development_id: string }; Returns: Json }
       trip_is_mine: { Args: { p_trip_id: string }; Returns: boolean }
+      trip_join: {
+        Args: { p_dry_run?: boolean; p_next_trip_id: string; p_trip_id: string }
+        Returns: Json
+      }
+      trip_join_line: {
+        Args: { p_move?: boolean; p_next_trip_id: string; p_trip_id: string }
+        Returns: string
+      }
+      trip_next_id: { Args: { p_trip_id: string }; Returns: string }
       trip_phone: { Args: { p: Json }; Returns: Json }
       trip_phone_state: { Args: { p_job_id: string }; Returns: Json }
       trip_put_on_job_line: {
