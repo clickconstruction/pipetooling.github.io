@@ -83,7 +83,7 @@ activeTab: 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity' (Pro
 stage:     'screen' | 'interview' | 'tryout' | 'hire' | 'review'          (TeamProspectsTab 806; HiringStage in lib/hiring/sharedHiringTab.ts)
 ```
 
-The top row (1284–1305) draws five pills: **Customers**, **Jobs to GC** and **Subs** (one per `PROSPECT_KINDS`, each sets `kind` through `setKindTab`, 1287–1291), then **Hiring** (1293) and **Permits** (1298). The second row (1307–1366) shows under the three lanes only: **Follow Up**, **Board** (Subs only), **Prospect List**, **Convert** (Customers only, 1332–1343), **Activity** (dev and assistant-like, 1344–1355), and the **New Prospect** button (1356–1364).
+The top row (1290–1311) draws five pills: **Customers**, **Jobs to GC** and **Subs** (one per `PROSPECT_KINDS`, each sets `kind` through `setKindTab`, 1293–1297), then **Hiring** (1299) and **Permits** (1304). The pills scroll sideways beside the title on a phone; the lit one carries `aria-current` and [`useLitPillInView`](../src/hooks/useLitPillInView.ts) moves the row, never the page, to show it. The second row (1307–1366) shows under the three lanes only: **Follow Up**, **Board** (Subs only), **Prospect List**, **Convert** (Customers only, 1332–1343), **Activity** (dev and assistant-like, 1344–1355), and the **New Prospect** button (1356–1364).
 
 | Tab | Shows on | Owns |
 |---|---|---|

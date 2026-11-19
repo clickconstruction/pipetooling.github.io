@@ -4,6 +4,7 @@
  * Builders list and a builder's mark, the nudge and the count. No React, no Supabase.
  */
 import { contactParts } from '../../../supabase/functions/_shared/permitLookup'
+import { emptyWords, type EmptyWords } from '../emptyWords'
 import { plumbingOnFile, rowsAboveFloor, type BuilderMarkValue, type PursueFor, type ResearchPermitRow, type ValueFloor } from './permitResearch'
 import { daysBetween, type BuilderMark, type SkimAnswer, type SkimContext } from './permitSkim'
 
@@ -118,6 +119,33 @@ export function closedRows(rows: readonly ResearchPermitRow[], floor: ValueFloor
 
 export function closedChipCounts(rows: readonly ResearchPermitRow[], floor: ValueFloor): Record<ClosedWhy, number> {
   return { passed: closedRows(rows, floor, 'passed', '').length, not_pursuing: closedRows(rows, floor, 'not_pursuing', '').length, plumber: closedRows(rows, floor, 'plumber', '').length }
+}
+
+/** The Closed chips, in the order they are drawn. */
+export const CLOSED_CHIPS: readonly ClosedWhy[] = ['passed', 'plumber', 'not_pursuing']
+
+/**
+ * The chip Closed opens on (v2.7878): the first, in the order drawn, that holds a permit. Closed
+ * used to open on Passed whatever it held, so a city whose closed permits all had a plumber opened
+ * on an empty list. Passed when nothing is closed yet.
+ */
+export function openingClosedWhy(counts: Record<ClosedWhy, number>): ClosedWhy {
+  return CLOSED_CHIPS.find((w) => counts[w] > 0) ?? 'passed'
+}
+
+/** Where an empty Closed list's press leads: it clears the search, or opens the list that fills this one. */
+export type ClosedEmptyDoor = 'search' | 'skim' | 'investigating'
+
+/**
+ * What an empty Closed list says (v2.7878). A search that finds nothing offers to clear it. A chip
+ * that simply holds nothing says what fills it: a pass on the skim, a drop from Investigating, or
+ * the city's feed, which no press of ours hurries. It never blames filters when none is set.
+ */
+export function closedEmptyWords(why: ClosedWhy, search: string): { words: EmptyWords; door: ClosedEmptyDoor | null } {
+  if (search.trim() !== '') return { words: emptyWords({ kind: 'filter', noun: 'closed permits', query: search }), door: 'search' }
+  if (why === 'passed') return { words: emptyWords({ kind: 'make', noun: 'passed permits', control: 'Pass on the skim' }), door: 'skim' }
+  if (why === 'not_pursuing') return { words: emptyWords({ kind: 'make', noun: 'permits marked not pursuing', control: 'Not pursuing on a permit you are investigating' }), door: 'investigating' }
+  return { words: { main: 'No permits with a plumber yet.', next: '', tail: 'The nightly pull adds a permit here once the city shows its plumbing permit.' }, door: null }
 }
 
 /** Under a kept row: who kept it, for whom, and when. */
@@ -349,6 +377,14 @@ export function funnelTiles(f: PermitFunnel): Array<{ n: number; words: string }
     { n: f.bid, words: 'bid' },
     { n: f.won, words: 'won' },
   ]
+}
+
+/**
+ * How many of the six tiles sit in a row (v2.7878): all six on a desk, three on a phone. Six across
+ * at 375 px left each tile 42 px for its word, and *investigating* needs 67.
+ */
+export function funnelTilesAcross(isMobile: boolean): number {
+  return isMobile ? 3 : 6
 }
 
 function counted(lines: readonly FunnelLine[] | null | undefined, words: (l: FunnelLine) => string): string | null {

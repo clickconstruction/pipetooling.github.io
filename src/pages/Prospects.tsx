@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { useLitPillInView } from '../hooks/useLitPillInView'
 import { prospectsPagePadding } from '../lib/prospects/pagePadding'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { isOwnerOrDev } from '../lib/doorRoles'
@@ -1257,6 +1258,11 @@ export default function Prospects() {
 
   const canAccessFollowUp = !!authUser && canAccessProspectPipeline(authRole, estimatorProspectsAccess)
 
+  // The pills scroll sideways on a phone, and the lit one can sit past the edge (v2.7878): the row
+  // moves to show it when the page opens, when the tab changes and when a pill comes or goes.
+  const pillRowRef = useRef<HTMLDivElement>(null)
+  useLitPillInView(pillRowRef, [topTab, kind, canAccessFollowUp, canOpenHiring, canResearch, authLoading, isMobile].join(':'))
+
   if (authLoading) {
     return (
       <div style={{ padding: '1rem 1.5rem' }}>
@@ -1282,20 +1288,20 @@ export default function Prospects() {
     <div style={{ padding: prospectsPagePadding(isMobile) }}>
       {/* Tabs left, page title right — same top-row pattern as Jobs / People */}
       <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', marginBottom: isMobile ? '0.5rem' : '1rem', overflow: 'hidden' }}>
-        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div ref={pillRowRef} style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'max-content' }}>
             {canAccessFollowUp && PROSPECT_KINDS.map((k) => (
-              <button key={k} type="button" onClick={() => setKindTab(k)} style={pageTabStyle(topTab === 'customers' && kind === k)}>
+              <button key={k} type="button" aria-current={topTab === 'customers' && kind === k ? 'true' : undefined} onClick={() => setKindTab(k)} style={pageTabStyle(topTab === 'customers' && kind === k)}>
                 {PROSPECT_KIND_WORDS[k].tab}
               </button>
             ))}
             {canOpenHiring && (
-              <button type="button" onClick={openTeamTab} style={pageTabStyle(topTab === 'team')}>
+              <button type="button" aria-current={topTab === 'team' ? 'true' : undefined} onClick={openTeamTab} style={pageTabStyle(topTab === 'team')}>
                 Hiring
               </button>
             )}
             {canResearch && (
-              <button type="button" onClick={openResearchTab} style={pageTabStyle(topTab === 'research')}>
+              <button type="button" aria-current={topTab === 'research' ? 'true' : undefined} onClick={openResearchTab} style={pageTabStyle(topTab === 'research')}>
                 Permits
               </button>
             )}
