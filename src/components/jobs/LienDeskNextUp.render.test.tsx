@@ -617,7 +617,9 @@ describe('LienDeskNextUp · a computer’s list follows the Board (v2.7456, punc
 
   it('one group a bin in the Board’s order, each head with its papers and what they owe, under one head for what needs you now', () => {
     draw()
-    expect(document.querySelector('[data-lien-next-up-now-head]')!.textContent).toBe('Needs you now · 5')
+    // The head names its unit and says where the rest are (the owner's pick of 2026-11-18): five papers now, one under Later.
+    expect(document.querySelector('[data-lien-next-up-now-head]')!.textContent).toBe('Needs you now · 5 papers1 more under Later')
+    expect(document.querySelector('[data-lien-next-up-now-later]')!.textContent).toBe('1 more under Later')
     expect(document.querySelector('[data-lien-next-up-now-total]')!.textContent).toBe('$22,800')
     const heads = Array.from(document.querySelectorAll('[data-lien-next-up-part-head]')).map((h) => h.textContent)
     expect(heads).toEqual(['To send for Master approval · 1 notice', 'Awaiting Master approval · 1 notice · waiting on Malachi', 'Ready to file · 3 affidavits'])
