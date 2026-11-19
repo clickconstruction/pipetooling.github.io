@@ -177,14 +177,6 @@ export function registerPaintedMapLink(mapId: string, code: string): Promise<{ c
     )
 }
 
-/**
- * Share a link and wait for it: the door for a press that has nothing to hand a phone until the link is made
- * (the Saved band's row). The phone still picks the code. Throws with the reason in words.
- */
-export function mintPaintedMapLink(mapId: string): Promise<{ code: string; endsOn: string | null }> {
-  return registerPaintedMapLink(mapId, pickPaintedMapLinkCode())
-}
-
 /** End this link now: one link, or every open link of the map. How many were ended. Throws with the reason in words. */
 export async function endPaintedMapLinks(mapId: string, linkId?: string | null): Promise<number> {
   const res = await desk({ action: 'desk.end', mapId, ...(linkId ? { linkId } : {}) })
