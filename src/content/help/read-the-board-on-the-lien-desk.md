@@ -11,9 +11,9 @@ The Lien desk opens on its To do view. The Board sits across the top of that vie
 
 The first tile counts what is due by the next day. It reads like *21 by Monday*, then how many are to file and how many are to send. A red line under it says how many will not make that day as they stand. A paper will not make its day when it has more stages left than working days. Press the red line and the list shows only those papers.
 
-The second tile counts everything waiting on the leader, by name. Its small line names the two parts, like *1 to approve · 7 to sign*. **To approve** is a paper the office sent for approval. **To sign** is an approved notice with no signature on it yet. Those notices stand in their own bin, *Approved · to sign*. Press the tile and the list shows only those rows.
+The second tile counts everything waiting on the leader, by name. Its small line names the two parts, like *1 to approve · 7 to sign*. **To approve** is a paper the office sent for approval. **To sign** is an approved notice with no signature on it yet. Those notices stand in their own bin, *Approved · to sign*. The tile says *Show them ›* at its top right. Press the tile and the list shows only those rows. The tile then says *Show every row ›*. Press it again and the list is whole.
 
-The third tile counts the approved notices that can print, and the printed ones still to mail. Its small line says how many are to print and how many are to mail. A notice that waits on a signature is on the second tile, not this one. Press the tile and the run opens. The same press stands in the bin under it. Read [a press beside the bin name](#a-press-beside-the-bin-name).
+The third tile counts the approved notices that can print, and the printed ones still to mail. Its small line says how many are to print and how many are to mail. A notice that waits on a signature is on the second tile, not this one. The tile says *Open the run ›* at its top right. Press the tile and the run opens. The same press stands in the bin under it. Read [a press beside the bin name](#a-press-beside-the-bin-name).
 
 The fourth tile is the money still unpaid on the desk. Each job counts once.
 
