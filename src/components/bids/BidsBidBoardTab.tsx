@@ -131,6 +131,8 @@ type BidsBidBoardTabProps = {
   showEstimatingHealth?: boolean
   /** Permit news (punch list #307): the strip and the row's chip, for the people who read Prospects → Permits. Off when not passed. */
   showPermitNews?: boolean
+  /** Permit news is the reader's own (punch list #401): which bids are theirs, the Plumbing trade a plumbing permit is news on, and whether the reader is the office, who keeps one quiet line for everyone else's. */
+  permitNewsReader?: { isMine: (bid: BidWithBuilder) => boolean; plumbingServiceTypeId: string | null; office: boolean }
   /** The map card and its Map pill — off on the Robot Board, where ZZ shells have no office geography worth a map. */
   showMap?: boolean
   /** v2.2741: jobs made from this bid's signed proposal (only passed for roles that can open Jobs). */
@@ -281,6 +283,7 @@ export function BidsBidBoardTab({
   canSeeEstimatingLabor = false,
   showEstimatingHealth = true,
   showPermitNews = false,
+  permitNewsReader,
   showMap = true,
   jobsByBidId,
   budgetChips,
@@ -332,7 +335,7 @@ export function BidsBidBoardTab({
   // What the city has on each undecided bid's address: one read for the board (punch list #307).
   // The names that are us on a plumbing permit (Settings → Company): our own permit reads ours, never another name.
   const ourPermitNames = useOurPermitNames(showPermitNews)
-  const permitNews = useBidPermitNews(bids, showPermitNews, ourPermitNames)
+  const permitNews = useBidPermitNews(bids, showPermitNews, ourPermitNames, permitNewsReader?.plumbingServiceTypeId ?? null)
   // The development on bids (punch list #208, v2.6019): the house filter beside the search, the
   // Pipeline's house filter mirrored — it appears once any bid on the board has a development.
   const [developmentFilter, setDevelopmentFilter] = useState('')
@@ -2018,6 +2021,8 @@ export function BidsBidBoardTab({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <BidBoardPermitNews
             news={permitNews.news}
+            isMine={permitNewsReader ? (bidId) => { const bid = bids.find((b) => b.id === bidId); return bid != null && permitNewsReader.isMine(bid) } : undefined}
+            othersAlone={permitNewsReader?.office ?? false}
             onOpenBid={(bidId) => {
               const bid = bids.find((b) => b.id === bidId)
               if (bid) onEditBid(bid)
