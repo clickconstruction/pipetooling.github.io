@@ -1,6 +1,5 @@
 import type { NeedsYouItem } from './dashboardNeedsYou'
 import { CUSTOMER_MESSAGES_HREF } from './dashboardNeedsYou'
-import { MAIL_SAVED_DOOR } from './myMail/savedForYou'
 import { lienWindowHref } from './jobs/stagesDeepLinks'
 import { LIEN_DESK_PATH, lienDeskHref } from './lien/lienDeskRoute'
 import { roadmapPath } from './roadmapVisibility'
@@ -101,9 +100,6 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'> & Partial<Pick<Need
     case 'tagged-notes':
       // Tagged job notes (punch list #363): the list in place, since the crew has no Pipeline to open.
       return { kind: 'window', window: 'tagged-notes' }
-    case 'mail-saved':
-      // The owner is told (v2.7068): the person's own record under Settings, which every role can open.
-      return href(MAIL_SAVED_DOOR)
     case 'while-off':
       // While you were off (v2.6060): the first line still waiting, at the line; Messages when none was read.
       return href(d.whileOffFirst ? messagesThreadHref(d.whileOffFirst.contactId, d.whileOffFirst.messageId) : '/messages')
