@@ -142,9 +142,10 @@ export function myScheduleDayEmptyWords(day: 'today' | 'tomorrow', addJob: Press
 
 /**
  * Recent Reports with no report yet. A person who only files reports writes them from the card
- * above; everyone else gets Jobs → Reports, where New report is.
+ * above; everyone else gets Jobs → Reports, where New report is. A primary reads their own jobs'
+ * reports alone, so their empty list says whose reports it waits for.
  */
-export function recentReportsEmptyWords(reportsOnly: boolean): EmptyStateWords {
+export function recentReportsEmptyWords(reportsOnly: boolean, ownJobsOnly = false): EmptyStateWords {
   if (reportsOnly) return { main: 'No reports yet.', tail: 'Create one above.' }
-  return { main: 'No reports yet.', next: { label: 'Reports', to: JOBS_REPORTS_PATH }, tail: 'is where you write one.' }
+  return { main: ownJobsOnly ? 'No reports on your jobs yet.' : 'No reports yet.', next: { label: 'Reports', to: JOBS_REPORTS_PATH }, tail: 'is where you write one.' }
 }

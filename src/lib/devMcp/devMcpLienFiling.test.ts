@@ -139,9 +139,9 @@ describe('the pair and what it stands on', () => {
     }
     expect(isLienFilingVerb('plan_affidavit_draft')).toBe(false)
     expect(planVerbFor('apply_lien_filing')).toBe('plan_lien_filing')
-    expect(Object.keys(WRITE_VERBS)).toHaveLength(131)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.107.0'")
-    expect(SERVER).toContain('Writes are one hundred and thirty-one verbs and nothing else:')
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(133)
+    expect(SERVER).toContain("const SERVER_VERSION = '0.108.0'")
+    expect(SERVER).toContain('Writes are one hundred and thirty-three verbs and nothing else:')
     expect(SERVER).toContain("plan_lien_filing → apply_lien_filing (a filed lien affidavit recorded as the job's Lien window records it once the clerk has stamped it")
     expect(README).toContain('`plan_lien_filing(filing \\| filings)` · `apply_lien_filing(filing, plan_hash)`')
     expect(README).toContain("one hundred and eleven since v2.7511's recorded lien filing")
@@ -402,6 +402,34 @@ describe('lienFilingDryRun — a paper that matches the desk', () => {
   })
 })
 
+describe('lienFilingDryRun — what the print of the copies does with the record (v2.7916: the copy is the stamped scan)', () => {
+  it('says a filing with no saved copy is held at the print, and never says the copy is redrawn', () => {
+    const dry = ready(shaped({ scan: undefined }), world())
+    const file = String((dry.reply.writes as { file: unknown }).file)
+    expect(file).toContain('recorded with no saved copy')
+    expect(file).toContain('Print the copies to mail holds this lien until then, since the copy it mails is the saved stamped scan')
+    expect(JSON.stringify(dry.reply)).not.toMatch(/redraw|photocopy/)
+  })
+
+  it('says a snapshot with no owner prints the stamped copy with no cover letter', () => {
+    const w = world({ address: { ...world().address!, owner_name: '', owner_company: '' } })
+    const dry = lienFilingDryRun(shaped({ paper_states: { claim: 4180, months: ['2026-09'], notice_sent_on: ['2026-10-09'] }, accept_differences: true }), w, WHO, TODAY)
+    if (!dry.ok) throw new Error(dry.refused)
+    const reply = dry.reply as Record<string, unknown>
+    expect(reply.no_cover_letter).toBe('The snapshot has no ownerName, so Print the copies to mail prints this lien’s stamped copy with no cover letter in front.')
+    expect(reply).not.toHaveProperty('no_copy_to_print')
+  })
+
+  it('keeps the seat’s description and its README off the redraw', () => {
+    expect(SERVER).toContain("Print the copies to mail mails the saved copy itself, the clerk's stamped scan")
+    expect(README).toContain("*Print the copies to mail* mails the filing's saved copy, the clerk's stamped scan")
+    for (const words of [SERVER, README]) {
+      expect(words).not.toMatch(/Print the copies to mail\*? redraws/)
+      expect(words).not.toContain('mail a photocopy')
+    }
+  })
+})
+
 describe('lienFilingDryRun — a paper the desk disagrees with', () => {
   it('holds on the claim, the months and the notice day, each with its door, and carries no write', () => {
     const p = shaped({ paper_states: { claim: 4500, months: ['2026-08', '2026-09'], notice_sent_on: ['2026-10-12'] } })
@@ -412,7 +440,10 @@ describe('lienFilingDryRun — a paper the desk disagrees with', () => {
     expect(reply.differences[1]).toMatchObject({ paper: '2026-08, 2026-09', desk: '2026-09' })
     expect(reply.differences[2]!.door).toContain('plan_notice_by_hand')
     expect(reply.held_because).toContain('accept_differences: true')
-    expect(reply.held_because).toContain('mail a photocopy of the scan')
+    // The copy in the envelope is the stamped scan; of the three, the cover letter states the claim alone.
+    expect(reply.held_because).toContain('mails the filing’s saved copy, the clerk’s stamped scan')
+    expect(reply.held_because).toContain('recorded as it stands, would not say what the paper says on claim: leave the letter out')
+    expect(reply.held_because).not.toMatch(/redraw|photocopy/)
     expect(lienFilingDryRun(p, world(), WHO, TODAY)).not.toHaveProperty('write')
   })
 
@@ -535,10 +566,15 @@ describe('lienFilingDryRun — a paper already on record (v2.7837)', () => {
     expect(reply.agrees).toBe(false)
     expect(reply.differences).toEqual([{ what: 'months', paper: 'August 2026', record: 'September 2026' }])
     expect(reply.says).toContain('The record and the paper differ on months.')
-    expect(reply.copy_to_mail).toContain('mail a photocopy of the stamped scan')
+    // The months are on the stamped page and nowhere in the cover letter: the copy is right and so is the letter.
+    expect(reply.copy_to_mail).toContain('the copy in the envelope is the filed paper whatever the record says')
+    expect(reply.copy_to_mail).not.toContain('cover letter')
+    expect(reply.copy_to_mail).not.toMatch(/redraw|photocopy/)
     const many = check(shaped({ county: 'Elm', filed_on: '2026-11-13', paper_states: { claim: 4500, months: ['2026-09'], notice_sent_on: ['2026-10-01', '2026-10-09'], property_address: '9 Other St', legal_description: 'LOT 9', owner: 'Someone Else' } }), w())
     expect(many.differences.map((d) => d.what)).toEqual(['claim', 'months', 'notice_day', 'property_address', 'legal_description', 'owner', 'county', 'filed_on'].filter((x) => x !== 'months'))
-    // A day or a county that is not the record's changes no word of the copy.
+    // The cover letter states the claim, the property and the owner, so those three are the ones it would get wrong.
+    expect(many.copy_to_mail).toContain('would not say what the paper says on claim, property_address, owner: leave the letter out')
+    // A day or a county that is not the record's changes no word of the paper.
     expect(check(shaped({ filed_on: '2026-11-13' }), w())).not.toHaveProperty('copy_to_mail')
   })
 

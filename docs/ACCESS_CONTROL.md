@@ -86,6 +86,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
    scoped via `helpers_service_type_ids` (same semantics as `subcontractor_service_type_ids`)
 6. **estimator** - Bid estimation specialists
 7. **primary** - Materials and job reports specialist, **scoped to their own work since v2.2174–2177**: bids they are estimator/account manager/creator of, estimates they created or on jobs they are Account Man for, jobs they are Account Man for;
+   reports of the jobs they are the account manager of or listed as superintendent on, and the reports they wrote, since v2.7906;
    Jobs page shows the Reports tab only;
    Dashboard with Recent Reports, My Bids and Send task
 8. **superintendent** - Run jobs, manage subcontractors, draft bids (assigned projects only — DB-enforced on every project surface since v2.2836;
@@ -244,7 +245,8 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and thirty-one verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and thirty-one since v2.7900, whose key revoke is the Digital twins panel's own update of `revoked_at` on the key's `twin_credentials` row under the table's dev-only RLS, with `read_twin_keys` reading that table by a column list that never names `token_hash`, no new role and no new policy;
+The one write path (v2.3722) is one hundred and thirty-three verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and thirty-three since v2.7918, whose rung pair is the Digital twins panel's own update of `read_only` on a twin's `users` row under the table's dev update policy, held to a row that is a twin, with no new role and no new policy;
+one hundred and thirty-one since v2.7900, whose key revoke is the Digital twins panel's own update of `revoked_at` on the key's `twin_credentials` row under the table's dev-only RLS, with `read_twin_keys` reading that table by a column list that never names `token_hash`, no new role and no new policy;
 one hundred and twenty-nine since v2.7879, whose twin pair makes a digital twin through the Digital twins panel's own doors as the dev, `create-user`, `ct-bridge` and `tt-bridge` each holding its own dev gate and the twin flags set under the dev's RLS, with no new role and no new policy;
 one hundred and twenty-seven since v2.7823, whose task close is the card's own `task_no_longer_applies` called as the dev, the function's own gate holding (the office or a person the task is given to), with no new role and no new policy;
 one hundred and twenty-five since v2.7821, whose pay setup pair is told further down, where this section says *Since v2.7821*;
@@ -840,7 +842,8 @@ Read-only training mode and the twin write fence apply.
 `job_test_reports` (hydrostatic / pinpoint / gas) follows the job's own children: **read** dev · master · assistant-like · primary;
 **insert / update** dev · master · assistant-like;
 **delete** the same set and only while `status = 'draft'` — a sent report is a record.
-Every policy also requires `can_reach_job_for_test_report(job_id)` (the `jobs_ledger_fixtures` job predicate: master own, dev, primary, adoption either way, `assistants_share_master`).
+Every policy also requires `can_reach_job_for_test_report(job_id)` (the `jobs_ledger_fixtures` job predicate: master own, dev, adoption either way, `assistants_share_master`, and a primary on the jobs they account-manage: since v2.7926, punch list #400, the primary leg asks `primary_can_access_job`, `20261119103000_primary_test_papers.sql`, the SQL bed `primary-test-papers`;
+before it any primary read every job's paper and its PDF).
 The Stages door (`TestReportModal`) and Settings → Jobs, bills and liens → Test reports (the certifier and the paper's text, `app_settings.test_report_settings_v1`) show to dev / master / assistant-like.
 **Send** (v2.3301, `send-test-report`): Bearer JWT, the row is read and stamped through the caller's own client, so the same UPDATE policy decides who may send;
 the stored PDF lives in the private `job-test-reports` bucket;
@@ -1897,6 +1900,7 @@ Both new tables are RLS-enabled and carry the read-only (training mode) blocks.
 `esign_consents` holds the exact ESIGN / Texas UETA consent words a signer saw (version, language, clause text) plus name, method, time, IP and device, one row per signature from the public signing functions.
 **SELECT**: `is_master_or_dev() OR is_office_or_estimator()` (dev · leaders · assistant · controller · estimator).
 **No client write policy** — only `accept-estimate`, `accept-contract`, `sign-job-contract`, `sign-bid-room` and `submit-sub-portal` insert, with the service role.
+`record_type` is held by `esign_consents_record_type_check`, whose newest restatement must list every kind a function writes (`src/lib/esignConsentKinds.test.ts`, v2.7924).
 Subs, helpers, primaries and superintendents do not read it;
 the signed rows they can already see keep their own `signer_consented_at`.
 
@@ -2775,7 +2779,8 @@ The window's **Open your portal** is drawn only while the person has a live port
 
 **Purpose**: Materials and job reports specialist.
 **Scoped to their own work (owner rule 2026-08-23, v2.2174–2177;
-since v2.5655, punch list #129, the SECURITY DEFINER paid verbs too — `mark_job_paid`, `mark_invoice_paid`, `apply_mercury_bank_payment_allocations`, `remove_jobs_ledger_payment_and_reconcile`, `record_job_tip_from_deposit` — each holding a primary to `is_job_people(j.id)` in the job's own check, `20261019120000_primary_paid_verbs.sql`)** — enforced by RESTRICTIVE `primary_scope_*` RLS policies that only bite for `primary` (helpers `is_primary()`, `primary_can_access_bid/job/estimate()`;
+since v2.5655, punch list #129, the SECURITY DEFINER paid verbs too — `mark_job_paid`, `mark_invoice_paid`, `apply_mercury_bank_payment_allocations`, `remove_jobs_ledger_payment_and_reconcile`, `record_job_tip_from_deposit` — each holding a primary to `is_job_people(j.id)` in the job's own check, `20261019120000_primary_paid_verbs.sql`;
+since v2.7921, punch list #400, the money verbs that pass missed too — `apply_agreed_write_down_to_billed_invoice`, `delete_billed_invoice_on_send_back`, `delete_marked_paid_invoice_without_payment`, `delete_ready_to_bill_invoice`, `revert_stripe_oob_invoice_payment`, `move_jobs_ledger_payment` on both jobs and the paid to billed leg of `update_job_status` by the same clause, and `apply_estimate_to_job` and `create_job_from_estimate` by `primary_can_access_estimate`, `20261119100000_primary_money_verbs.sql`, the SQL bed `primary-money-verbs`)** — enforced by RESTRICTIVE `primary_scope_*` RLS policies that only bite for `primary` (helpers `is_primary()`, `primary_can_access_bid/job/estimate()`;
 migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_estimates`, `20260823172141_primary_scope_jobs`):
 - **Bids**: only bids where they are the estimator, the account manager, or the creator (`bids.estimator_id` / `account_manager_id` / `created_by`), across the whole bids family (versions, pricing, counts, takeoff, cost estimates, submissions).
   The Bid Board adds the same filter client-side.
@@ -2784,7 +2789,14 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
 - **Jobs**: only jobs where `jobs_ledger.account_manager_user_id` is them (+ all job child tables).
   The Jobs page shows the **Reports tab only** (`Jobs.tsx` `primaryTabs = ['reports']`;
   deep links rewrite).
-  **Reports themselves are not scoped** (D1): `reports` policies untouched, `list_reports_with_job_info` / `search_jobs_for_reports` are SECURITY DEFINER.
+  **Reports are scoped since v2.7906** (the owner's word of 2026-11-19;
+  `20261119040000_primary_scope_reports.sql`, the SQL bed `primary-scope-reports`): a primary reads a report when its job names them as account manager (`primary_can_access_job`) or lists them as superintendent, or when they wrote it.
+  A job lists its superintendent through its project: `project_superintendents`, or `gc_projects.superintendent_user_id`.
+  A report on a project alone opens to that project's listed superintendent, and a report on a bid alone to the bid's own primary (`primary_can_access_bid`).
+  The one predicate is `primary_can_read_report(job, project, bid, author)`, read behind `NOT is_primary()` by the RESTRICTIVE `primary_scope_reports` policy (every direct read, the invoker functions and the realtime feed) and by `list_reports_with_job_info`, `list_reports_for_job_ledger`, `list_reports_for_bid` and the newest-report percent in `list_job_crew_position`, each SECURITY DEFINER.
+  A report's photos follow: `primary_scope_report_photos` on `report_photos` and the `report-photos` bucket's read policy open a primary's own shot or a job whose reports they read (`primary_can_read_job_reports`).
+  `list_my_reports` is the caller's own and is untouched, and so is the New-report job picker (`search_jobs_for_reports`).
+  The two office-picked email streams (`report_email`, `report_digest`) send what the office subscribes a person to and are not filtered by this rule.
 - **Documents**: the page is a ledger view over jobs/estimates/bids, so it inherits the scoping;
   the Jobs tab adds an explicit Account-Man filter.
 - Materials adoption via `master_primaries` is unchanged, but adding materials to a job now requires being its Account Man (the `jobs_ledger_materials` rows are scoped).
@@ -2818,15 +2830,17 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
 - Price history viewing
 
 **Jobs - Reports tab only**:
-- **Reports tab**: View all reports via `list_reports_with_job_info` RPC;
-  SELECT, INSERT, UPDATE on reports (delete restricted to the owner and devs, behind the typed word DELETE since v2.6765).
-  New-report job picker (`search_jobs_for_reports`, SECURITY DEFINER) still offers every job.
+- **Reports tab**: View the reports of their own jobs and the ones they wrote via `list_reports_with_job_info` RPC (v2.7906;
+  a line over the list says so, `reportsScopeLine`);
+  SELECT, INSERT, UPDATE on those reports (delete restricted to the owner and devs, behind the typed word DELETE since v2.6765).
+  New-report job picker (`search_jobs_for_reports`, SECURITY DEFINER) still offers every job, and a report they write on any job stays theirs to read.
 - Billing, Sub Sheet Ledger, Crew P&L hidden (`Jobs.tsx` primary gate;
   `?tab=` deep links rewrite to `reports`)
 - Direct `jobs_ledger` reads (Edit Job, Documents → Jobs) return only Account-Man jobs (v2.2177)
 
 **Dashboard**:
-- Recent Reports section (same as masters);
+- Recent Reports section, listing and counting only the reports the primary reads (v2.7906;
+  the card's counts are the list the database answers);
   **primary** defaults **collapsed** and does **not** auto-expand when reports are unread (**`RECENT_FEATURES`** **v2.494**)
 - **My Bids** section (estimator/account-manager bids);
   title **My Bids (`n`)** after load;
@@ -2995,7 +3009,7 @@ before that, the 3-arg `can_access_project_row` the `projects` policy calls stil
 | **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ assigned only (RLS, v2.2836) |
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ (route dropped v2.2836; since v2.2920 the steps SELECT policy has a primary branch — adopted/shared project via `can_access_project_via_step`, or the step's assignee — so a primary's Dashboard **Assigned Stages** fills, but the route stays off pending a nav decision) | ✅ limited, assigned projects only (RLS, v2.2836) |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
-| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports tab only (`Jobs.tsx` `primaryTabs`); job rows limited to Account-Man jobs (v2.2177) | ✅ Reports + Sub Ledger |
+| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports tab only (`Jobs.tsx` `primaryTabs`); job rows limited to Account-Man jobs (v2.2177), reports to their own jobs' and their own (v2.7906) | ✅ Reports + Sub Ledger |
 | **Dispatch** (`/schedule-dispatch`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ week grid (same `job_schedule_blocks` rules; **+ → Linked copy** / **Linked** crew rows; DnD reassign **solo** legs only) |
 | **Banking** | ✅ full Mercury (Ledger + User Sort + Drag Sort + **Accounting** + **Card Review** (`?tab=card_review`; the old `user_review` key is a read-only alias since v2.2899) + **Category Review** + **Reconciliation** + **Cost batches** (`?tab=cost_batches`, dev-only, v2.6115: every cost batch with Revert; the move itself is made from the job window's Costs tab) + Configuration + sync); RLS SELECT on **`mercury_transactions`** + nicknames; org-wide **`mercury_drag_sort_labels`** / **`mercury_transaction_drag_sort_assignments`** (Drag Sort / Accounting approvals); **`mercury_accounting_label_rules`** / **`mercury_accounting_label_suggestions`** (**Accounting** tab, banking-staff RLS); **Stripe** segment (a dev's and the controller's since v2.6761, punch list #188 row 51; dev-only before): **Invoices** (`jobs_ledger_invoices` + job embed, rows without **`stripe_invoice_id`** highlighted) and **Data** (`stripe_webhook_events` webhook log) | ✅ the staff tabs, without the controller's Ledger and Stripe (`canAccessBanking` = dev / master_technician / controller — [`src/lib/bankingAccess.ts`](../src/lib/bankingAccess.ts), v2.3305) | ❌ **since v2.3305 — Banking is controller and above.** A plain assistant has no gear-menu link, is bounced off `/banking` by the route guard, never sees the label-approvals Needs You card, and the Banking-only data refuses the session (`is_banking_staff()`, the Accounting-tab RPCs, nickname edits, both Mercury edge functions). **Controller ✅**: **User Sort** + **Drag Sort** + **Accounting** + **Card Review** + **Category Review** + **Reconciliation** and, since v2.6761, **Ledger** with its **Configuration** and the **Stripe** segment (no sync); read **`mercury_transactions`** + nicknames; edit `mercury_debit_card_nicknames`; rules/suggestions/approvals per banking-staff policies. Assistants keep the shared Mercury data the Jobs board, Job Parts Tally and AR read (`is_office_staff()` policies + the `mercury_transactions` assistant SELECT) | ❌ | ❌ | ❌ | ❌ |
 
