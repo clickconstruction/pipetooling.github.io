@@ -49,6 +49,7 @@ import { isNoticeByHandVerb, noticeByHandInput } from './devMcpNoticeByHand.ts'
 import { affidavitDraftInput, isAffidavitDraftVerb } from './devMcpAffidavitDraft.ts'
 import { isLienFilingVerb, lienFilingApplyInput, lienFilingPlanInput } from './devMcpLienFiling.ts'
 import { isLienServiceVerb, lienServiceApplyInput, lienServicePlanInput } from './devMcpLienService.ts'
+import { isLienReceiptOffVerb, lienReceiptOffApplyInput, lienReceiptOffPlanInput } from './devMcpLienReceiptOff.ts'
 import { isNoticeNumbersVerb, noticeNumbersApplyInput, noticeNumbersPlanInput } from './devMcpNoticeNumbers.ts'
 import { isSubmittalVerb, submittalInput } from './devMcpSubmittals.ts'
 import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
@@ -256,6 +257,12 @@ export const WRITE_VERBS = {
   // each hashed on its own; one an apply.
   plan_lien_service: { rpc: null, step: 'plan' },
   apply_lien_service: { rpc: null, step: 'apply' },
+  // v2.7909 / 0.113.0: a wrong mail receipt taken off a filed affidavit's copy, as Take off on the copy's receipt does
+  // it: the receipt's link gone from that copy's send on the filing's own row, as the dev under RLS, and the file then
+  // sent to Drive's trash through drive-link's own door. The day served is never written. rpc is null, the dry run the
+  // server's read of the job and its filed affidavit (devMcpLienReceiptOff.ts). One or several a plan, one an apply.
+  plan_lien_receipt_off: { rpc: null, step: 'plan' },
+  apply_lien_receipt_off: { rpc: null, step: 'apply' },
   // v2.6792 (punch list #260's seat door): a teammate's account made and worked with until they are signed in — the
   // row made, renamed, its role or address changed (plan_account), a login attached with the sign-in email or a password,
   // or removed (plan_login), the recovery email or a dictated password (plan_password_reset) — through the edge functions
@@ -545,6 +552,17 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
       return { ok: true, rpc: null, step, body: { p: { services: built.services } }, dryRunBody: null, target: built.target, planHash }
     }
     const built = lienServiceApplyInput(input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash: built.planHash }
+  }
+  if (isLienReceiptOffVerb(verb)) {
+    // v2.7909: the shape check is devMcpLienReceiptOff's. A plan carries its filings, each shaped on its own; an apply carries one and its own hash.
+    if (step === 'plan') {
+      const built = lienReceiptOffPlanInput(input)
+      if (!built.ok) return built
+      return { ok: true, rpc: null, step, body: { p: { receipts: built.receipts } }, dryRunBody: null, target: built.target, planHash }
+    }
+    const built = lienReceiptOffApplyInput(input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash: built.planHash }
   }
@@ -1680,6 +1698,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_robot_book_price') return `Nothing written: this plan was already applied${when}. The prices stand as it set them; the twin seat's get_robot_book lists the book, and a further change needs a new plan.`
   if (verb === 'apply_calibration_standard') return `Nothing written: this plan was already applied${when}. The person stands as it named them; plan_calibration_standard names the standards as they stand.`
   if (verb === 'apply_twin_rung') return `Nothing written: this plan was already applied${when}. The twin stands on the rung it named; plan_twin lists the fleet with each twin's rung.`
+  if (verb === 'apply_lien_receipt_off') return `Nothing written: this plan was already applied${when}. The receipt is off the filing; read_lien_filings shows each copy's proof as it stands.`
   if (verb === 'apply_twin_key_revoke') return `Nothing written: this plan was already applied${when}. The key is revoked; read_twin_keys lists the twin's keys as they stand.`
   if (verb === 'apply_twin') return `Nothing written: this plan was already applied${when}. The twin it made stands in the fleet; plan_twin lists the fleet and plans the next seat.`
   if (verb === 'apply_account') return `Nothing written: this plan was already applied${when}. get_login_state names the account as it reads now; plan again from that for a further change.`
