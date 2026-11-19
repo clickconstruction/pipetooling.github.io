@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useId, useMemo, useState, type KeyboardEvent } from 'react'
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -48,6 +48,7 @@ import {
   type QuickSendPlan,
   resolveQuickSendSource,
 } from '../../lib/contractsQuickSend'
+import { contractsDocLanding, contractsDocLinkId, contractsDocOffRosterWords } from '../../lib/contractsDocLink'
 import { ContractQuickSendPicker } from './ContractQuickSendPicker'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { useAuth } from '../../hooks/useAuth'
@@ -266,13 +267,14 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
   const [twoPartyTemplateIds, setTwoPartyTemplateIds] = useState<Set<string>>(() => new Set())
   const [officeModalDocId, setOfficeModalDocId] = useState<string | null>(null)
 
-  // Deep link from the signing page's thank-you (PR 8): /people?tab=contracts&doc=<id> opens that record.
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const id = new URLSearchParams(window.location.search).get('doc')
-    if (id && /^[0-9a-f-]{36}$/i.test(id)) setContractSignedRecordModalDocId(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
-  }, [])
+  // Deep link /people?tab=contracts&doc=<id>: read off the address once, on mount, and answered once the papers are
+  // read (the effect below the roster filter). A signed paper opens its signed record, as the signing page's thank-you
+  // expects; one that is not signed opens its own row, marked, where Send and Resend are (v2.7924).
+  const contractsDocLinkIdOnMount = useRef(typeof window === 'undefined' ? null : contractsDocLinkId(window.location.search))
+  const contractsDocLinkAnswered = useRef(false)
+  const [contractsLoadedOnce, setContractsLoadedOnce] = useState(false)
+  /** The paper a deep link landed on: its row is marked until the tab is left. */
+  const [contractsMarkedDocId, setContractsMarkedDocId] = useState<string | null>(null)
   const [contractAddBookPickedRowId, setContractAddBookPickedRowId] = useState<string | null>(null)
   const [contractAddBookCustomizeOpen, setContractAddBookCustomizeOpen] = useState(false)
   const [contractDocumentFormDashboardPrompt, setContractDocumentFormDashboardPrompt] = useState(false)
@@ -673,6 +675,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       // A trade partner company's papers (GC mode, B6-b-i) share the table but are no one's here: never listed, never counted.
       setPersonContractDocuments(((documentsRes.data ?? []) as unknown as PersonContractDocument[]).filter((d) => !isCompanyPaperName(d.person_name)))
     }
+    setContractsLoadedOnce(true)
   }
 
   function getAggregateStatus(docs: PersonContractTableRow[]): 'red' | 'yellow' | 'green' | null {
@@ -862,8 +865,9 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
     return inserted.id
   }
 
-  /** Agreements-panel row click: select the person, un-hide them if the filter would, and scroll their row into view. */
-  const jumpToContractsPerson = (personName: string) => {
+  /** Agreements-panel row click: select the person, un-hide them if the filter would, and scroll their row into view.
+   *  With a paper's id (a deep link, v2.7924) the scroll goes to that paper's row instead. */
+  const jumpToContractsPerson = (personName: string, docId?: string) => {
     setSelectedContractsPersonName(personName)
     if (contractsArchivedNames.includes(personName)) setContractsArchivedSectionOpen(true)
     if (
@@ -873,9 +877,19 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       setContractsRosterFilter('everyone')
     }
     window.setTimeout(() => {
-      document.querySelector(`[data-contracts-person-row="${CSS.escape(personName)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      const paperRow = docId ? document.querySelector(`[data-contract-doc-row="${CSS.escape(docId)}"]`) : null
+      const row = paperRow ?? document.querySelector(`[data-contracts-person-row="${CSS.escape(personName)}"]`)
+      // A deep link arrives from another page, so its row is simply there: no glide, which a tab opened in the
+      // background never runs.
+      row?.scrollIntoView({ block: 'center', behavior: paperRow ? 'auto' : 'smooth' })
     }, 60)
   }
+
+  /** The marks a deep link's paper carries on its row, card or table line. */
+  const contractDocRowMark = (docId: string | null | undefined) =>
+    docId && docId === contractsMarkedDocId
+      ? ({ 'aria-current': 'true', style: { background: 'var(--bg-blue-tint)', outline: '2px solid #2563eb', outlineOffset: -2 } } as const)
+      : null
 
   /** Actions cluster for one document row — shared verbatim by the desktop table cell and the narrow-viewport cards (v2.1405). */
   const renderContractDocActions = (personName: string, document_name: string, doc: PersonContractDocument | null) => (
@@ -1208,6 +1222,26 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       /* per-device preference only */
     }
   }
+
+  // The deep link's answer (see contractsDocLinkIdOnMount): once, after the first read of the papers.
+  useEffect(() => {
+    if (contractsDocLinkAnswered.current) return
+    const landing = contractsDocLanding({
+      docId: contractsDocLinkIdOnMount.current,
+      loaded: contractsLoadedOnce,
+      documents: personContractDocuments,
+      activeNames: contractsNames.active,
+      archivedNames: contractsNames.archived,
+    })
+    if (landing.kind === 'wait') return
+    contractsDocLinkAnswered.current = true
+    if (landing.kind === 'signed-record') setContractSignedRecordModalDocId(landing.documentId)
+    else if (landing.kind === 'paper-row') {
+      setContractsMarkedDocId(landing.documentId)
+      jumpToContractsPerson(landing.personName, landing.documentId)
+    } else if (landing.kind === 'off-roster') setContractsError(contractsDocOffRosterWords(landing))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- answered once; the jump reads the roster of that pass
+  }, [contractsLoadedOnce, personContractDocuments, contractsNames])
 
   const contractsPersonNamesFiltered = useMemo(() => {
     if (!contractsSearchNormalized) {
@@ -2243,7 +2277,9 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                                           return (
                                             <div
                                               key={`${document_name}-${lineageId ?? 'none'}-${doc?.id ?? 'pending'}`}
-                                              style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.75rem' }}
+                                              data-contract-doc-row={doc?.id}
+                                              aria-current={contractDocRowMark(doc?.id)?.['aria-current']}
+                                              style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.75rem', ...contractDocRowMark(doc?.id)?.style }}
                                             >
                                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                 <span style={{ flex: 1, minWidth: 0, fontWeight: 500, overflowWrap: 'anywhere' }}>{document_name}</span>
@@ -2283,7 +2319,9 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                                             return (
                                             <tr
                                               key={`${document_name}-${lineageId ?? 'none'}-${doc?.id ?? 'pending'}`}
-                                              style={{ borderBottom: '1px solid var(--border)' }}
+                                              data-contract-doc-row={doc?.id}
+                                              aria-current={contractDocRowMark(doc?.id)?.['aria-current']}
+                                              style={{ borderBottom: '1px solid var(--border)', ...contractDocRowMark(doc?.id)?.style }}
                                             >
                                               <td style={{ padding: '0.5rem' }}>
                                                 {templateNames.length > 0 && (
