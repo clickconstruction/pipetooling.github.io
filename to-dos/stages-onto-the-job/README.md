@@ -2,7 +2,7 @@
 name: "Stages onto the job: a won bid offers its stages as the job's lines, and the superintendent gets a way in"
 number: 397
 group: ready
-status: asked 2026-11-18 · reviewed, drawn and planned the same day · the owner's word *build on defaults, build it all* · PR 2, the rule file, shipped (v2.7822) · PR 3, the window on New Job, and PR 4, the same offer on a job that exists, open and walked with a write on ZZ rows · PR 1, the Workflow page, open from its own session · PR 6, one reader for a stage's name, open with its migration on the owner's pick *B, with migration* · PR 5 waits for punch list #396's open PRs · PR 7 held by the owner's default
+status: asked 2026-11-18 · reviewed, drawn and planned the same day · the owner's word *build on defaults, build it all* · shipped: PR 1 the Workflow page (v2.7838), PR 2 the rule file (v2.7822), PR 3 the window on New Job (v2.7831) · PR 4, the same offer on a job that exists, open and walked with a write on ZZ rows · PR 6, one reader for a stage's name, open with its migration on the owner's pick *B, with migration* · PR 5 waits for punch list #396's open PRs · PR 7 held by the owner's default
 summary: >
   The app calls five things a stage, and only the Pipeline's is used on every job. Everything new that
   reads a job's stages (the pace card's rail, the Projects board, the stage checklists, Before we start)
@@ -156,7 +156,7 @@ PR 3 should land before #382's fourth PR, *The list on a stage*, so that list ha
 
 ## Where it stands
 
-PR 2 is on `claude/stages-rule` with this card. PR 3 is on `claude/stages-offer`, stacked on it.
+PRs 1, 2 and 3 are on main. PR 4 is on `claude/stages-existing-job`. PR 6 is on `claude/stage-name-one-reader` with one migration to push after it lands.
 
 PR 3's walk, 2026-11-18, on the dev server with the ZZ bid, reading only: the window opened, **Bring 4 stages** laid four Any time lines into Line Items, and the form was closed unsaved. The walk caught one flaw before it shipped. A stage the Labor tab put at 23 h read 15 h on its line, because every reader of a line works hours out at the company's rate. The rule now values the hours at that rate, so a line reads the bid's own hours back, within a percent of its price.
 
