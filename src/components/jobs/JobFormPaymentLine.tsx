@@ -100,7 +100,7 @@ function menuItem(opts: { danger?: boolean; disabled?: boolean; on?: boolean } =
     cursor: opts.disabled ? 'not-allowed' : 'pointer',
     opacity: opts.disabled ? 0.55 : 1,
     fontSize: '0.8125rem',
-    font: 'inherit',
+    fontFamily: 'inherit',
     color: opts.danger ? 'var(--text-red-600)' : 'var(--text-base)',
   }
 }

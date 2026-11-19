@@ -144,7 +144,7 @@ export function DraftPayrollSalaryChip({ week }: { week?: readonly number[] }) {
 
 /** The amber dot: *● 2 waiting*, a press to the Hours tab when the person can open it. */
 export function DraftPayrollPendingDot({ n, onPress }: { n: number; onPress?: () => void }) {
-  const style: CSSProperties = { ...CHIP, background: 'var(--bg-amber-100)', border: '1px solid #f59e0b', color: 'var(--text-amber-800)', cursor: onPress ? 'pointer' : 'default', font: 'inherit', fontSize: '0.66rem', fontWeight: 600, lineHeight: 1.6 }
+  const style: CSSProperties = { ...CHIP, background: 'var(--bg-amber-100)', border: '1px solid #f59e0b', color: 'var(--text-amber-800)', cursor: onPress ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: '0.66rem', fontWeight: 600, lineHeight: 1.6 }
   const words = (
     <>
       <span aria-hidden style={{ color: '#f59e0b' }}>●</span> {pendingDotWords(n)}

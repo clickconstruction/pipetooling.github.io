@@ -39,7 +39,7 @@ const STRIP_DOT: Record<StripLine['tone'], string> = { r: 'var(--text-red-700)',
 
 const PRESS_WORDS: Record<Exclude<CellPress, null>, string> = { open: 'Open', ask: 'Ask for it', send: 'Send it', remind: 'Remind them' }
 
-const smallBtn: CSSProperties = { border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 8, padding: '0.2rem 0.6rem', fontSize: '0.8rem', cursor: 'pointer', font: 'inherit', color: 'inherit', whiteSpace: 'nowrap' }
+const smallBtn: CSSProperties = { border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 8, padding: '0.2rem 0.6rem', fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit', color: 'inherit', whiteSpace: 'nowrap' }
 
 const LEGEND: [CellMark, string][] = [
   ['done', 'done, with its day'],
@@ -121,7 +121,7 @@ export function GcJobPapersWindow({
               aria-pressed={!!p.key && filter === p.key}
               disabled={!p.key}
               onClick={() => p.key && setFilter(filter === p.key ? null : p.key)}
-              style={{ ...PILL[p.tone], border: 'none', borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.78rem', fontWeight: 600, cursor: p.key ? 'pointer' : 'default', outline: p.key && filter === p.key ? '2px solid currentColor' : 'none', font: 'inherit' }}
+              style={{ ...PILL[p.tone], border: 'none', borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.78rem', fontWeight: 600, cursor: p.key ? 'pointer' : 'default', outline: p.key && filter === p.key ? '2px solid currentColor' : 'none', fontFamily: 'inherit' }}
             >
               {p.words}
             </button>

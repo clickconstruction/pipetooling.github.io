@@ -261,7 +261,7 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
         <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} mode="chart" />
       ) : null}
       <div>
-        <button type="button" onClick={toggleDetail} aria-expanded={detailOpen} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.7rem', fontSize: '0.78rem', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit' }} data-testid="costs-detail-toggle">
+        <button type="button" onClick={toggleDetail} aria-expanded={detailOpen} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.7rem', fontSize: '0.78rem', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit' }} data-testid="costs-detail-toggle">
           {detailOpen ? 'Hide' : 'Show'} the timeline · daily spend {detailOpen ? '▴' : '▾'}
         </button>
         {detailOpen ? (

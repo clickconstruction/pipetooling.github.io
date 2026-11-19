@@ -53,7 +53,7 @@ function chip(active: boolean): CSSProperties {
     color: active ? '#fff' : 'var(--text-700)',
     fontWeight: active ? 700 : 500,
     cursor: 'pointer',
-    font: 'inherit',
+    fontFamily: 'inherit',
     lineHeight: 1.3,
   }
 }
@@ -197,7 +197,7 @@ export default function JobHistoryCrewCalendar({ calendar, namesById, todayYmd, 
                       fontSize: '0.8125rem',
                       fontWeight: 800,
                       padding: 0,
-                      font: 'inherit',
+                      fontFamily: 'inherit',
                       opacity: d.dimmed ? 0.28 : 1,
                       boxShadow: d.today ? 'inset 0 0 0 2px var(--text-link)' : undefined,
                       backgroundImage: d.open ? 'linear-gradient(135deg, var(--text-amber-800) 0 6px, transparent 6px)' : undefined,

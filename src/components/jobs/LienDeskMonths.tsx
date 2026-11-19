@@ -233,7 +233,7 @@ export default function LienDeskMonths({
                   <div style={faint}>
                     {onCount ? `${onCount} ${onCount === 1 ? 'month' : 'months'}` : null}
                     {onCount && onPreviewThis ? ' · ' : null}
-                    {onPreviewThis ? <button type="button" onClick={onPreviewThis} style={{ border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', font: 'inherit', padding: 0 }}>Preview ›</button> : null}
+                    {onPreviewThis ? <button type="button" onClick={onPreviewThis} style={{ border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Preview ›</button> : null}
                   </div>
                 </td>
               </tr>
@@ -261,7 +261,7 @@ export default function LienDeskMonths({
         </div>
         <div style={{ display: 'grid', gap: '0.3rem', alignContent: 'start', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           {tail}
-          {onRecordByHand ? <div><strong style={{ color: 'var(--text-700)' }}>A paper that went out by hand?</strong> <button type="button" onClick={onRecordByHand} data-lien-desk-by-hand style={{ border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', font: 'inherit', padding: 0 }}>Record it…</button> — it becomes a column here.</div> : null}
+          {onRecordByHand ? <div><strong style={{ color: 'var(--text-700)' }}>A paper that went out by hand?</strong> <button type="button" onClick={onRecordByHand} data-lien-desk-by-hand style={{ border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>Record it…</button> — it becomes a column here.</div> : null}
           {onCount > 1 && grid.earliestOpen ? <div className="lienMonthsNote" style={{ margin: 0 }}>One notice can cover several months. <strong style={{ color: 'var(--text-700)' }}>{formatYmdMonthDay(grid.earliestOpen)}</strong> is the date this one has to beat.</div> : null}
           {grid.rows.some((r) => r.thisNotice.info) ? <div>{grid.rows.filter((r) => r.thisNotice.info).map((r) => workMonthShort(r.month)).join(', ')} closed with nothing sent — named on this notice as information only.</div> : null}
           {grid.lateUntil && grid.rows.some((r) => r.thisNotice.late) ? <div data-lien-months-late>{grid.rows.filter((r) => r.thisNotice.late).map((r) => workMonthShort(r.month)).join(', ')} closed with nothing sent — claimed on this notice late; the affidavit can follow by <strong style={{ color: 'var(--text-700)' }}>{formatYmdMonthDay(grid.lateUntil)}</strong>.</div> : null}

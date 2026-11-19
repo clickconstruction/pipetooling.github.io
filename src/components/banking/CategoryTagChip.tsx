@@ -51,7 +51,7 @@ export function CategoryTagChip({
   )
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} aria-pressed={selected} title={title} style={{ ...style, cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', fontWeight: 600 }}>
+      <button type="button" onClick={onClick} aria-pressed={selected} title={title} style={{ ...style, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600 }}>
         {inner}
       </button>
     )

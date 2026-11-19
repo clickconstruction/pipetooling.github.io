@@ -231,7 +231,7 @@ export function TakeoffCostRailView({
                 {noCostCount} fixture{noCostCount === 1 ? '' : 's'} carr{noCostCount === 1 ? 'ies' : 'y'} no material cost — Pricing shows {noCostCount === 1 ? 'it' : 'them'} as "no cost"
               </div>
             ) : null}
-            <button type="button" onClick={() => setShowUnitCosts((v) => !v)} style={{ ...kv, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-blue-700)', font: 'inherit', fontSize: '0.8rem' }}>
+            <button type="button" onClick={() => setShowUnitCosts((v) => !v)} style={{ ...kv, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-blue-700)', fontFamily: 'inherit', fontSize: '0.8rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>Per-fixture unit costs</span>
               <span>{showUnitCosts ? 'hide' : 'show'}</span>
             </button>

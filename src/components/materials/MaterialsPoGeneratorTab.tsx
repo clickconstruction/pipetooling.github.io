@@ -717,14 +717,14 @@ export function MaterialsPoGeneratorTab({
                     () => showToast('Copy failed', 'error'),
                   )
                 }}
-                style={{ padding: '0.4rem 0.9rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.875rem' }}
+                style={{ padding: '0.4rem 0.9rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem' }}
               >
                 Copy
               </button>
               <button
                 type="button"
                 onClick={() => setPoGenResult(null)}
-                style={{ padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-strong)', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.875rem' }}
+                style={{ padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-strong)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.875rem' }}
               >
                 Done
               </button>

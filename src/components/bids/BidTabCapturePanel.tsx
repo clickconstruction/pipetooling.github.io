@@ -25,7 +25,7 @@ const fieldInputStyle: CSSProperties = {
   fontSize: '0.8125rem',
   background: 'var(--surface)',
   color: 'var(--text-strong)',
-  font: 'inherit',
+  fontFamily: 'inherit',
   fontVariantNumeric: 'tabular-nums',
 }
 
@@ -120,7 +120,7 @@ export function BidTabCapturePanel({ ourValue, initial, saving, onSave, secondar
                   fontSize: '0.72rem',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  font: 'inherit',
+                  fontFamily: 'inherit',
                   border: mode === m ? '2px solid #2563eb' : '1px solid var(--border-strong)',
                   background: mode === m ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
                   color: mode === m ? 'var(--text-blue-700)' : 'var(--text-muted)',
@@ -196,7 +196,7 @@ export function BidTabCapturePanel({ ourValue, initial, saving, onSave, secondar
                         <button
                           type="button"
                           onClick={() => setPasteEntries((prev) => markEntryOurs(prev, draftIndex))}
-                          style={{ fontSize: '0.7rem', padding: '0.08rem 0.5rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap', font: 'inherit' }}
+                          style={{ fontSize: '0.7rem', padding: '0.08rem 0.5rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit' }}
                         >
                           ours?
                         </button>
@@ -234,7 +234,7 @@ export function BidTabCapturePanel({ ourValue, initial, saving, onSave, secondar
                 color: '#fff',
                 cursor: saving || pasteEntries.length === 0 ? 'not-allowed' : 'pointer',
                 opacity: saving || pasteEntries.length === 0 ? 0.55 : 1,
-                font: 'inherit',
+                fontFamily: 'inherit',
               }}
             >
               {saving ? 'Saving…' : 'Save tab'}
@@ -243,7 +243,7 @@ export function BidTabCapturePanel({ ourValue, initial, saving, onSave, secondar
               type="button"
               disabled={saving}
               onClick={onSecondary}
-              style={{ padding: '0.35rem 0.7rem', fontSize: '0.8125rem', border: '1px solid var(--border)', borderRadius: 6, background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit' }}
+              style={{ padding: '0.35rem 0.7rem', fontSize: '0.8125rem', border: '1px solid var(--border)', borderRadius: 6, background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               {secondaryLabel}
             </button>
@@ -323,7 +323,7 @@ export function BidTabCapturePanel({ ourValue, initial, saving, onSave, secondar
             color: '#fff',
             cursor: saving || !canSave ? 'not-allowed' : 'pointer',
             opacity: saving || !canSave ? 0.55 : 1,
-            font: 'inherit',
+            fontFamily: 'inherit',
           }}
         >
           {saving ? 'Saving…' : 'Save bid tab'}
@@ -340,7 +340,7 @@ export function BidTabCapturePanel({ ourValue, initial, saving, onSave, secondar
             background: 'transparent',
             color: 'var(--text-muted)',
             cursor: 'pointer',
-            font: 'inherit',
+            fontFamily: 'inherit',
           }}
         >
           {secondaryLabel}
@@ -360,7 +360,7 @@ export function BidTabCapturePanel({ ourValue, initial, saving, onSave, secondar
               color: 'var(--text-red-800)',
               textDecoration: 'underline',
               cursor: 'pointer',
-              font: 'inherit',
+              fontFamily: 'inherit',
             }}
           >
             Remove bid tab

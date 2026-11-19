@@ -322,7 +322,7 @@ function MarketSummary({ step, error, reading, breakouts, onOpenPart }: { step: 
                 aria-haspopup="dialog"
                 aria-label={breakoutPressLabel(f.value, f.words)}
                 onClick={() => onOpenPart(f.key as 'bids' | 'estimates')}
-                style={{ ...tile, display: 'block', width: '100%', minHeight: 56, font: 'inherit', textAlign: 'left', background: 'var(--surface)', cursor: 'pointer' }}
+                style={{ ...tile, display: 'block', width: '100%', minHeight: 56, fontFamily: 'inherit', textAlign: 'left', background: 'var(--surface)', cursor: 'pointer' }}
                 data-testid="bridge-market-figure"
               >
                 <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>

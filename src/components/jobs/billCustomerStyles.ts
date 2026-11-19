@@ -89,6 +89,6 @@ export const BILL_CUSTOMER_PHYSICAL_DATE_LINK_BUTTON_STYLE: CSSProperties = {
   border: 'none',
   cursor: 'pointer',
   padding: 0,
-  font: 'inherit',
+  fontFamily: 'inherit',
   textAlign: 'left',
 }

@@ -129,7 +129,7 @@ function tabStyle(active: boolean): CSSProperties {
     color: active ? 'var(--text-strong)' : 'var(--text-muted)',
     cursor: 'pointer',
     fontWeight: active ? 700 : 500,
-    font: 'inherit',
+    fontFamily: 'inherit',
     fontSize: '0.75rem',
     whiteSpace: 'nowrap',
   }

@@ -11,7 +11,7 @@ import { useInRouterContext, useNavigate } from 'react-router-dom'
 import { describeBidSubmittal } from '../../lib/submittals/bidSubmittalSummary'
 import { useBidSubmittalSummary } from '../../hooks/useBidSubmittalSummary'
 
-const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', borderRadius: 6, padding: '0.05rem 0.5rem', fontSize: '0.72rem', fontWeight: 600, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', font: 'inherit' }
+const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', borderRadius: 6, padding: '0.05rem 0.5rem', fontSize: '0.72rem', fontWeight: 600, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', fontFamily: 'inherit' }
 
 /** The door: a router navigation inside the app; a plain link where no Router wraps the block (a modal rendered on its own, a test). */
 function RouterDoor({ href, style, children }: { href: string; style: CSSProperties; children: React.ReactNode }) {

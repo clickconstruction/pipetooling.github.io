@@ -45,7 +45,7 @@ const CHIP = (on: boolean): CSSProperties => ({
   color: on ? 'var(--text-blue-700)' : 'var(--text-600)',
   cursor: 'pointer',
   whiteSpace: 'nowrap',
-  font: 'inherit',
+  fontFamily: 'inherit',
 })
 const SMALL_CHIP = (on: boolean): CSSProperties => ({ ...CHIP(on), padding: '0.15rem 0.5rem', fontSize: '0.72rem' })
 const GRADE: CSSProperties = { display: 'inline-block', padding: '0.1rem 0.5rem', borderRadius: 999, fontSize: '0.72rem', border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-600)', whiteSpace: 'nowrap' }

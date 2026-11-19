@@ -37,7 +37,7 @@ const thNum: CSSProperties = { ...th, textAlign: 'right' }
 const td: CSSProperties = { padding: '0.3rem 0.5rem', borderBottom: '1px solid var(--border)', color: 'var(--text-base)', verticalAlign: 'top' }
 const tdNum: CSSProperties = { ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 const tdMuted: CSSProperties = { ...td, color: 'var(--text-muted)' }
-const smallButton: CSSProperties = { padding: '0.2rem 0.6rem', fontSize: '0.75rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontWeight: 600 }
+const smallButton: CSSProperties = { padding: '0.2rem 0.6rem', fontSize: '0.75rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontFamily: 'inherit', fontWeight: 600 }
 const quiet: CSSProperties = { margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }
 const holdWords: CSSProperties = { margin: 0, fontSize: '0.75rem', color: 'var(--text-amber-800)' }
 

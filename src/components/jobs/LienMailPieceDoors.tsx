@@ -65,7 +65,7 @@ export default function LienMailPieceDoors({ piece, jobNumber, onChanged }: { pi
   }
 
   const door = (words: string, onClick: () => void, on = false, disabled = false) => (
-    <button type="button" onClick={onClick} disabled={busy || disabled} style={{ border: 'none', background: 'none', color: on ? 'var(--text-blue-700)' : 'var(--text-link)', fontWeight: 700, cursor: busy || disabled ? 'default' : 'pointer', padding: 0, font: 'inherit', opacity: busy || disabled ? 0.6 : 1 }}>
+    <button type="button" onClick={onClick} disabled={busy || disabled} style={{ border: 'none', background: 'none', color: on ? 'var(--text-blue-700)' : 'var(--text-link)', fontWeight: 700, cursor: busy || disabled ? 'default' : 'pointer', padding: 0, fontFamily: 'inherit', opacity: busy || disabled ? 0.6 : 1 }}>
       {words}
     </button>
   )

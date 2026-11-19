@@ -1100,8 +1100,8 @@ export function JobsGcReviewModal({
                   title={`${mark ? describeRoundMark(mark, markWhenLabel(mark.acted_at)) + '\n' : ''}See every send on record for ${g.gcName}`}
                   style={
                     thisWeek
-                      ? { display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, border: 'none', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', whiteSpace: 'nowrap', cursor: 'pointer', font: 'inherit' }
-                      : { padding: 0, border: 'none', background: 'none', fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', cursor: 'pointer', font: 'inherit', textDecoration: 'underline dotted' }
+                      ? { display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, border: 'none', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', whiteSpace: 'nowrap', cursor: 'pointer', fontFamily: 'inherit' }
+                      : { padding: 0, border: 'none', background: 'none', fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline dotted' }
                   }
                 >
                   {thisWeek ? 'Sent' : 'last sent'} {when}

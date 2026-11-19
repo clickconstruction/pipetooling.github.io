@@ -33,7 +33,7 @@ const actionBtn: CSSProperties = {
   color: 'var(--text-700)',
   cursor: 'pointer',
   textAlign: 'center',
-  font: 'inherit',
+  fontFamily: 'inherit',
 }
 
 export function MyTimeSegmentMergeDirectionModal({
@@ -170,7 +170,7 @@ export function MyTimeSegmentMergeDirectionModal({
             background: 'var(--bg-subtle)',
             color: 'var(--text-600)',
             cursor: 'pointer',
-            font: 'inherit',
+            fontFamily: 'inherit',
           }}
         >
           Cancel

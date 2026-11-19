@@ -49,7 +49,7 @@ function BillApplyChips({
             background: c.matchesAmount ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)',
             textAlign: 'left',
             lineHeight: 1.3,
-            font: 'inherit',
+            fontFamily: 'inherit',
           }}
         >
           <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>
@@ -358,7 +358,7 @@ export function JobFormPaymentsTable({
                           fontSize: '0.72rem',
                           fontWeight: 600,
                           cursor: 'pointer',
-                          font: 'inherit',
+                          fontFamily: 'inherit',
                         }}
                       >
                         ⚠ Not applied — pick bill
@@ -421,7 +421,7 @@ export function JobFormPaymentsTable({
                               fontSize: '0.75rem',
                               fontWeight: 600,
                               cursor: 'pointer',
-                              font: 'inherit',
+                              fontFamily: 'inherit',
                             }}
                           >
                             Record on the ${formatCurrency(Number(inv.amount ?? 0))} bill →

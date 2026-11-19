@@ -12,7 +12,7 @@ import type { Researcher } from './PermitSkimDeck'
  */
 export type PermitCloseOut = { kind: 'pursue'; pursueFor: PursueFor; forUserId: string | null; role: PermitLeadRole } | { kind: 'not_pursuing'; code: NotPursuingCode }
 
-const chip = (on: boolean): CSSProperties => ({ padding: '7px 12px', borderRadius: 999, fontSize: '0.8125rem', border: `1px solid ${on ? '#2563eb' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text)', fontWeight: on ? 600 : 400, minHeight: 36, cursor: 'pointer', font: 'inherit' })
+const chip = (on: boolean): CSSProperties => ({ padding: '7px 12px', borderRadius: 999, fontSize: '0.8125rem', border: `1px solid ${on ? '#2563eb' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text)', fontWeight: on ? 600 : 400, minHeight: 36, cursor: 'pointer', fontFamily: 'inherit' })
 const label: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '14px 0 6px' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem' }
 

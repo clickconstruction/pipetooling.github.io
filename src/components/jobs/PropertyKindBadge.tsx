@@ -100,7 +100,7 @@ export default function PropertyKindBadge({
         aria-label={badge.label}
         title={badge.title}
         onClick={() => setOpen((v) => !v)}
-        style={{ ...circle, verticalAlign: undefined, border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.625rem', fontWeight: 700 }}
+        style={{ ...circle, verticalAlign: undefined, border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.625rem', fontWeight: 700 }}
       >
         {badge.letter}
       </button>

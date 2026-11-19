@@ -115,6 +115,26 @@ describe('Builders, Our bids', () => {
   })
 })
 
+describe('Builders, the chips', () => {
+  it('draws the lit chip bold at the chip size from the first draw, and moves the weight with a press (v2.7907)', async () => {
+    draw()
+    const all = await screen.findByRole('button', { name: /^All \d/ })
+    const never = screen.getByRole('button', { name: /^3 or more permits and never bid/ })
+    expect(all.getAttribute('aria-pressed')).toBe('true')
+    // The whole-font shorthand came last in the style and reset both. jsdom drops the shorthand, so the family is the tell.
+    expect(all.style.fontFamily).toBe('inherit')
+    expect(all.style.fontWeight).toBe('600')
+    expect(all.style.fontSize).toBe('0.78rem')
+    expect(never.style.fontWeight).toBe('400')
+    const warned = vi.spyOn(console, 'error').mockImplementation(() => {})
+    fireEvent.click(never)
+    expect(never.style.fontWeight).toBe('600')
+    expect(all.style.fontWeight).toBe('400')
+    expect(warned).not.toHaveBeenCalled()
+    warned.mockRestore()
+  })
+})
+
 describe('the builder’s sheet, the answer on a name', () => {
   it('shows which customer the name is tied to with whose word, and takes it back on the row it was written on', async () => {
     answersIo.loadBuilderAnswersGround.mockResolvedValue(ground([tie()]))

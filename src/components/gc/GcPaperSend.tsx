@@ -133,7 +133,7 @@ export function GcPaperSend({
           rows={2}
           placeholder={lang === 'es' ? 'Optional. They read Spanish: write it in Spanish, it goes in as typed.' : 'Optional. Added to the email.'}
           aria-label="Your line, added to the email"
-          style={{ ...input, width: '100%', boxSizing: 'border-box', resize: 'vertical', font: 'inherit', fontSize: '0.88rem' }}
+          style={{ ...input, width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.88rem' }}
         />
       </label>
       {email ? (

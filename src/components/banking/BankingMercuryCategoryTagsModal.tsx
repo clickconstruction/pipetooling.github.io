@@ -35,7 +35,7 @@ const btn: CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 6,
   cursor: 'pointer',
-  font: 'inherit',
+  fontFamily: 'inherit',
 }
 const primaryBtn: CSSProperties = { ...btn, background: '#2563eb', color: '#fff', border: '1px solid #2563eb' }
 const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }

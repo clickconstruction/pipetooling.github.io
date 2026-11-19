@@ -244,7 +244,7 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer, 
         ) : null}
 
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
-          <button type="button" onClick={() => { onClose(); onEditBid(bid, firstFix ? { focus: firstFix } : undefined) }} style={{ padding: '0.45rem 0.85rem', border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }}>
+          <button type="button" onClick={() => { onClose(); onEditBid(bid, firstFix ? { focus: firstFix } : undefined) }} style={{ padding: '0.45rem 0.85rem', border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.85rem' }}>
             Edit bid
           </button>
           <button type="button" onClick={onClose} style={{ padding: '0.45rem 0.85rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-subtle)', color: 'inherit', cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }}>

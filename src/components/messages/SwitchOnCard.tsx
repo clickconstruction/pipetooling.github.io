@@ -29,7 +29,7 @@ const keepLater = (iso: string) => {
   }
 }
 
-const line: CSSProperties = { border: '1px solid var(--border-amber-soft)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 999, padding: '0.25rem 0.8rem', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', font: 'inherit' }
+const line: CSSProperties = { border: '1px solid var(--border-amber-soft)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 999, padding: '0.25rem 0.8rem', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }
 const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', display: 'grid', gap: '0.5rem', background: 'var(--surface)', maxWidth: 720 }
 const quiet: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.2rem 0.7rem', background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }
 

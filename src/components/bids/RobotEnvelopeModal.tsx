@@ -398,7 +398,7 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
             Later
           </button>
           {canVerdict ? (
-            <button type="button" onClick={() => void finish()} disabled={busy === 'finish'} style={{ padding: '0.45rem 0.9rem', border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.82rem' }}>
+            <button type="button" onClick={() => void finish()} disabled={busy === 'finish'} style={{ padding: '0.45rem 0.9rem', border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.82rem' }}>
               {busy === 'finish' ? 'Finishing…' : 'Finish audit'}
             </button>
           ) : null}

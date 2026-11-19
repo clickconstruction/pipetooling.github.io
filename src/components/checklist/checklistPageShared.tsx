@@ -70,7 +70,7 @@ export function roadmapGoalChip(
         e.stopPropagation()
         onOpen(taskId)
       }}
-      style={{ ...chipStyle, font: 'inherit', ...{ fontSize: chipStyle.fontSize, fontWeight: chipStyle.fontWeight }, border: 'none', cursor: 'pointer' }}
+      style={{ ...chipStyle, fontFamily: 'inherit', ...{ fontSize: chipStyle.fontSize, fontWeight: chipStyle.fontWeight }, border: 'none', cursor: 'pointer' }}
     >
       {label}
     </button>

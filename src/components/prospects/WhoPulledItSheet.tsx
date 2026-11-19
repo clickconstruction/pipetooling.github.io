@@ -23,7 +23,7 @@ const sectionTitle: CSSProperties = { fontWeight: 600, fontSize: '0.875rem', mar
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem' }
 const line: CSSProperties = { fontSize: '0.875rem', lineHeight: 1.5 }
 const linkStyle: CSSProperties = { color: 'var(--text-link)' }
-const smallPress: CSSProperties = { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: '0.8125rem', minHeight: 34, cursor: 'pointer', font: 'inherit' }
+const smallPress: CSSProperties = { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px', fontSize: '0.8125rem', minHeight: 34, cursor: 'pointer', fontFamily: 'inherit' }
 
 type Loadable<F> = { state: 'loading' } | { state: 'done'; answer: LookupAnswer<F> } | { state: 'failed'; message: string }
 

@@ -22,7 +22,7 @@ const card: CSSProperties = { marginBottom: '2rem', border: '1px solid var(--bor
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', margin: 0 }
 const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.1rem 0.55rem', borderRadius: 999, background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)', fontSize: '0.8125rem', fontWeight: 600 }
 const quiet: CSSProperties = { border: 0, background: 'none', padding: 0, font: 'inherit', cursor: 'pointer', color: 'var(--text-muted)' }
-const smallButton: CSSProperties = { padding: '0.2rem 0.6rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit' }
+const smallButton: CSSProperties = { padding: '0.2rem 0.6rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', fontFamily: 'inherit' }
 
 export function MyMailCard({ role, userId: userIdProp, io: ioProp }: { role: UserRole | null | undefined; userId?: string; io?: MyMailSettingIo }) {
   const { showToast } = useToastContext()
@@ -121,7 +121,7 @@ export function MyMailCard({ role, userId: userIdProp, io: ioProp }: { role: Use
                   </span>
                 ))}
                 {adding === null ? (
-                  <button type="button" disabled={busy || !loaded.ready} onClick={() => setAdding('')} style={{ ...chip, borderStyle: 'dashed', color: 'var(--text-muted)', background: 'var(--surface)', cursor: busy || !loaded.ready ? 'default' : 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
+                  <button type="button" disabled={busy || !loaded.ready} onClick={() => setAdding('')} style={{ ...chip, borderStyle: 'dashed', color: 'var(--text-muted)', background: 'var(--surface)', cursor: busy || !loaded.ready ? 'default' : 'pointer', fontFamily: 'inherit', fontSize: '0.8125rem' }}>
                     {W.addLabel}
                   </button>
                 ) : (

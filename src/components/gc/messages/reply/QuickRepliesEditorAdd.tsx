@@ -159,7 +159,7 @@ export function QuickRepliesEditorAdd({
         rows={2}
         placeholder={EDITOR_WORDS.addPlaceholder}
         onChange={(e) => setText(e.target.value)}
-        style={{ ...input, resize: 'vertical', font: 'inherit' }}
+        style={{ ...input, resize: 'vertical', fontFamily: 'inherit' }}
       />
       <QuickReplyTagFields tags={tags} steps={steps} onTags={setSet} disabled={busy} aside={guessWords(text, set !== null)} />
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>

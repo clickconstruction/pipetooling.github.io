@@ -48,9 +48,9 @@ type Props = {
   style?: CSSProperties
 }
 
-const btn: CSSProperties = { padding: '0.4rem 0.9rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', fontWeight: 600, font: 'inherit' }
+const btn: CSSProperties = { padding: '0.4rem 0.9rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', color: 'white', border: '1px solid #2563eb' }
-const linkBtn: CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.75rem', color: 'var(--text-link)', fontWeight: 600, font: 'inherit' }
+const linkBtn: CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.75rem', color: 'var(--text-link)', fontWeight: 600, fontFamily: 'inherit' }
 
 function chipStyle(tone: ReadsAsChip['tone']): CSSProperties {
   const base: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, borderRadius: 6, padding: '0.05rem 0.45rem', whiteSpace: 'nowrap' }

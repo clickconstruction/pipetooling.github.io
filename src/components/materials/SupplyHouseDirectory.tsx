@@ -75,7 +75,7 @@ function bidRefLabel(bid: RequestRow['bid']): string | null {
 const th: CSSProperties = { padding: '0.7rem 0.75rem', textAlign: 'left', fontWeight: 700, fontSize: '0.875rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }
 const td: CSSProperties = { padding: '0.7rem 0.75rem', verticalAlign: 'top', fontSize: '0.875rem', borderBottom: '1px solid var(--border)' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
-const editBtn: CSSProperties = { padding: '0.25rem 0.6rem', fontSize: '0.8125rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-base)', font: 'inherit' }
+const editBtn: CSSProperties = { padding: '0.25rem 0.6rem', fontSize: '0.8125rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-base)', fontFamily: 'inherit' }
 const panel: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }
 const panelTitle: CSSProperties = { margin: 0, fontSize: '0.875rem', fontWeight: 600 }
 
@@ -385,7 +385,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
                 type="button"
                 aria-pressed={on}
                 onClick={() => setSelectedTrades((prev) => { const base = new Set(prev ?? effectiveTrades); if (base.has(t.id)) base.delete(t.id); else base.add(t.id); return base })}
-                style={{ padding: '0.3rem 0.7rem', borderRadius: 999, border: `1px solid ${on ? '#3b82f6' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', fontWeight: on ? 600 : 400, fontSize: '0.8125rem', cursor: 'pointer', font: 'inherit' }}
+                style={{ padding: '0.3rem 0.7rem', borderRadius: 999, border: `1px solid ${on ? '#3b82f6' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', fontWeight: on ? 600 : 400, fontSize: '0.8125rem', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 {t.name}
               </button>

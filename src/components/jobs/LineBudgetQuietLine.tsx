@@ -30,7 +30,7 @@ const usd0 = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
 const LABOR = '#2563eb'
 const MATERIALS = '#f59e0b'
 
-const quiet: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 3, fontSize: '0.7rem', color: 'var(--text-muted)', background: 'none', border: 'none', padding: '2px 4px 2px 0', textAlign: 'left', cursor: 'pointer', font: 'inherit', borderRadius: 4, maxWidth: '100%', minWidth: 0 }
+const quiet: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 3, fontSize: '0.7rem', color: 'var(--text-muted)', background: 'none', border: 'none', padding: '2px 4px 2px 0', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', borderRadius: 4, maxWidth: '100%', minWidth: 0 }
 const barWrap: CSSProperties = { display: 'inline-flex', width: 56, height: 5, borderRadius: 3, overflow: 'hidden', background: 'var(--border)', flexShrink: 0 }
 const panel: CSSProperties = { margin: '0 0 6px', padding: '0.6rem 0.75rem', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', display: 'grid', gap: 8 }
 const rowGrid: CSSProperties = { display: 'grid', gridTemplateColumns: '72px minmax(0, 1fr) 56px minmax(110px, auto)', gap: 10, alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }
