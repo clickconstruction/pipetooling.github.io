@@ -376,6 +376,7 @@ Predicates are the edge functions' `_shared` twins (`paidJobBillGuard`, `portalB
 The company's one cold-call deck for companies we want something from, one card at a time (Follow Up), with the Prospect List, the Activity report and, on Customers, Convert;
 the Hiring board is the fourth top tab (next entry) and **Permits** the fifth (v2.6782, punch list #292: the permit ledger, opening since v2.6830 (punch list #302) on a skim of one permit at a time with Investigate or Pass, five cities since v2.6861, open to the office and every estimator, named Research until v2.6787;
 guide *research the permits a city issues and find work to bid*).
+A city on Permits is **quiet** (v2.7880, `permitQuiet.ts`) when its newest permit day is more than 7 days back, 10 for San Antonio, while our own pull ran clean inside two days: the city picker then reads *quiet since* that day, and never when the pull itself stopped.
 Since v2.5559 (punch list #110) the deck finds three **kinds** of company, one `prospects.kind`: **Customers** (a GC or an owner who could send us plans for our trades;
 every row before then), **Jobs to GC** (an owner, developer, architect or owner's rep with a job we could build as the GC;
 `company_role`, and `customer_id` when they are a customer already) and **Subs** (a company that does a trade we buy out;

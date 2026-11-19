@@ -15,6 +15,7 @@ import type { BuilderKind, BuilderRow, PermitFunnel } from './permitBuilders'
 import type { CompanyFacts, ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
 import { BUILDER_PERMIT_DAYS, type SitePermit } from './permitPublic'
 import { recordsStartOf } from './permitReach'
+import { newestPermitDay } from './permitQuiet'
 
 function failed(error: unknown, doing: string): never {
   throw new Error(`Could not ${doing}: ${formatErrorMessage(error)}`)
@@ -88,6 +89,20 @@ export async function loadLatestPull(city: string): Promise<LatestPull> {
     if (r.error && !firstError) firstError = r.error
   }
   return { ranAt, error: firstError }
+}
+
+/**
+ * The newest day a city's permits carry (v2.7880): the newest submitted and the newest issued,
+ * neither past today, one row each. Null for a city with no permit yet.
+ */
+export async function loadNewestPermitDay(city: string, todayYmd: string): Promise<string | null> {
+  const newestOf = async (column: 'submitted_on' | 'issued_on'): Promise<string | null> => {
+    const { data, error } = await supabase.from('permits').select(column).eq('city', city).lte(column, todayYmd).order(column, { ascending: false }).limit(1)
+    if (error) failed(error, 'read the newest permit day')
+    return ((data ?? []) as Array<Partial<Record<typeof column, string | null>>>)[0]?.[column] ?? null
+  }
+  const [submitted, issued] = await Promise.all([newestOf('submitted_on'), newestOf('issued_on')])
+  return newestPermitDay([submitted, issued], todayYmd)
 }
 
 export async function recordVerdict(input: {
