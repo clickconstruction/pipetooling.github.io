@@ -43,6 +43,7 @@ bid-money-strip
 paid-claim
 customer-money-strip
 paid-claims-read
+primary-money-reads
 my-money-strip
 primary-paid-verbs
 bid-jobs-opened

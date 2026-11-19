@@ -91,6 +91,7 @@
     "test:pg:paid-claim": "bash scripts/pgtest-paid-claim.sh",
     "test:pg:customer-money-strip": "bash scripts/pgtest-customer-money-strip.sh",
     "test:pg:paid-claims-read": "bash scripts/pgtest-paid-claims-read.sh",
+    "test:pg:primary-money-reads": "bash scripts/pgtest-primary-money-reads.sh",
     "test:pg:my-money-strip": "bash scripts/pgtest-my-money-strip.sh",
     "test:pg:dashboard-view": "bash scripts/pgtest-dashboard-view.sh",
     "test:pg:job-finish-calls": "bash scripts/pgtest-job-finish-calls.sh",
