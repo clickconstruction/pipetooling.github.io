@@ -2,12 +2,12 @@
 title: find an agreement we sent or signed
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent
+keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase
 where: /documents?tab=agreements
 ---
 The Agreements tab lists every agreement in one place. It holds job contracts, warranties, a GC's own paper, staff and sub agreements, partner agreements and sub work orders.
 
-The newest is on top. Nothing is made or changed here. A press opens the window each agreement already has.
+The newest is on top. A press opens the window each agreement already has. A paper that waits on a signature can be sent again from its own line.
 
 ## Open the list
 
@@ -60,7 +60,36 @@ Press a chip in the first row. **All** shows every kind. The others are **Job co
 
 Press **Waiting on a signature** in the second row. The number on that chip is how many are out and not signed.
 
-This is the list to chase. Open one to send it again from its own window.
+This is the list to chase. A staff, sub or partner paper that waits has two presses on its line.
+
+:::example A line that waits
+{{chip:yellow|Staff}} **Employee handbook**, with Priya Nair. {{chip:yellow|never opened}} Sent Nov 3. {{button:outline|Send again}} {{button:outline|Copy the signing link}}
+:::
+
+## Send a waiting paper again
+
+1. Press **Send again** on the paper's line.
+2. Check the address under **Signer email**. The address is filled in from the person's record.
+3. Press **Send the email again**.
+
+The person gets an email with a new signing link. The link sent before stops working.
+
+## Copy a signing link to text
+
+Use this when the person reads texts and not email.
+
+1. Press **Copy the signing link** on the paper's line.
+2. Read the note. The note says the link sent before stops working.
+3. Press **Make and copy the link**.
+4. Paste the link into a text to the person.
+
+Nothing is emailed. The link works for 14 days.
+
+## Chase a job contract
+
+Press the name of a contract that waits. The Contract window opens.
+
+Press **Resend email** there to send it again. **Void & redo** starts it over. **File the signed copy** files a paper they signed by hand.
 
 ## See a voided one
 
@@ -73,7 +102,8 @@ Press **Voided or ended** to see them. That chip also holds a declined or cancel
 Press the name on a line.
 
 - A signed contract, warranty or their paper opens the Contract window on that record.
-- A contract that is still out opens as a preview in its own window.
+- A contract that waits on a signature opens the Contract window too.
+- A voided contract opens as a preview in its own window.
 - A signed staff, sub or partner agreement opens its signed record.
 - One that is still waiting opens People, on Contracts, at that paper. The person's papers are open and that paper's line is marked. Press **Resend** on the line to send it again.
 - A work order opens the work order window.

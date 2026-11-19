@@ -82,6 +82,15 @@ export type ResearchPermitRow = {
   /** The builder's commercial building permits in the last year, and how many have no plumbing permit. */
   builder_permits?: number | null
   builder_open?: number | null
+  /**
+   * From `research_permits_v3` (migration *_permit_plumbing_nearby); absent on a row an older read
+   * returned. On a row with no plumbing permit of its own: the plumbing permits at its street address
+   * that do not count for it, how many and the newest one's day, name and work.
+   */
+  plumbing_nearby?: number | null
+  plumbing_nearby_on?: string | null
+  plumbing_nearby_by?: string | null
+  plumbing_nearby_what?: string | null
 }
 
 /** What the list shows: the rows waiting on a look are the default; the rest are lenses on the same rows. */
@@ -123,11 +132,32 @@ export function rowLens(row: Pick<ResearchPermitRow, 'plumber' | 'plumber_permit
   return plumbingOnFile(row) ? 'taken' : 'waiting'
 }
 
-/** The Plumber cell's words: the plumber's name, or the permit on file with no name, or none yet. */
-export function plumberWords(row: Pick<ResearchPermitRow, 'plumber' | 'plumber_permit_on'>): { kind: 'named' | 'unnamed' | 'none'; chip: string; under: string | null } {
-  if (row.plumber) return { kind: 'named', chip: row.plumber, under: `plumbing permit ${shortDay(row.plumber_permit_on)}` }
-  if (row.plumber_permit_on) return { kind: 'unnamed', chip: 'on file, no plumber named', under: `pulled under the applicant's own name, ${shortDay(row.plumber_permit_on)}` }
-  return { kind: 'none', chip: 'none yet', under: null }
+type NearbyPlumbing = Pick<ResearchPermitRow, 'plumbing_nearby' | 'plumbing_nearby_on' | 'plumbing_nearby_by' | 'plumbing_nearby_what'>
+
+/**
+ * A plumbing permit at the row's street address that does not count as the row's own (v2.7935).
+ * San Antonio issues a job's plumbing permit on the job's own number, so one on another number is
+ * a separate job, often another tenant's. The row still reads as open, and this says what sits
+ * there for the skimmer to judge. Short for a table cell; `long` for a card or a sheet, with the
+ * work the permit names. Null when nothing sits there.
+ */
+export function nearbyPlumbingWords(row: NearbyPlumbing, long = false, todayYmd: string = todayYmdInAppTz()): string | null {
+  const n = row.plumbing_nearby ?? 0
+  if (n <= 0) return null
+  const day = row.plumbing_nearby_on ? shortDay(row.plumbing_nearby_on, todayYmd) : null
+  const by = row.plumbing_nearby_by?.trim() || null
+  const more = n - 1
+  if (!long) return `at this address, not counted: ${[by ?? 'a plumbing permit', day].filter(Boolean).join(', ')}${more > 0 ? `, and ${more} more` : ''}`
+  const what = row.plumbing_nearby_what?.trim() || null
+  const first = `A plumbing permit at this address ${by ? `lists ${by}` : 'is on another number'}${day ? `, ${day}` : ''}${what ? `, for ${what}` : ''}.`
+  return `${first} It is not counted as this job's.${more > 0 ? ` ${more} more ${more === 1 ? 'is' : 'are'} at this address.` : ''}`
+}
+
+/** The Plumber cell's words: the plumber's name, or the permit on file with no name, or none yet with what sits at the address uncounted. */
+export function plumberWords(row: Pick<ResearchPermitRow, 'plumber' | 'plumber_permit_on'> & NearbyPlumbing, todayYmd: string = todayYmdInAppTz()): { kind: 'named' | 'unnamed' | 'none'; chip: string; under: string | null } {
+  if (row.plumber) return { kind: 'named', chip: row.plumber, under: `plumbing permit ${shortDay(row.plumber_permit_on, todayYmd)}` }
+  if (row.plumber_permit_on) return { kind: 'unnamed', chip: 'on file, no plumber named', under: `pulled under the applicant's own name, ${shortDay(row.plumber_permit_on, todayYmd)}` }
+  return { kind: 'none', chip: 'none yet', under: nearbyPlumbingWords(row, false, todayYmd) }
 }
 
 export function rowsShowing(rows: readonly ResearchPermitRow[], showing: ResearchShowing): ResearchPermitRow[] {

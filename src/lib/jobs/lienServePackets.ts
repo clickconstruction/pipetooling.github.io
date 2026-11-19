@@ -18,6 +18,7 @@
  */
 import { batchWords, type BatchWords } from '../batchWords'
 import { lienServeHolds, lienServeLetterDrawable, lienServeRecipients, type LienServeFacts, type LienServeHold, type LienServeRecipient } from '../jobsDocuments/lienServedCopy'
+import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import type { JobLienFilingRow } from './lienDeadlines'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type JobPropertyOwnerLike } from './lienProperty'
@@ -33,7 +34,7 @@ export type LienServeJob = { jobId: string; jobNumber: string; jobLabel: string;
 /** The desk's own data, as much of it as this reads. */
 export type LienServeDeskData = {
   filingsByJob: Readonly<Record<string, ReadonlyArray<JobLienFilingRow>>>
-  jobsById: Readonly<Record<string, { hcp_number: string; job_name: string | null; gc_customer_id: string | null; customer_address_id: string | null } | undefined>>
+  jobsById: Readonly<Record<string, { hcp_number: string | null; click_number?: string | null; job_name: string | null; gc_customer_id: string | null; customer_address_id: string | null } | undefined>>
   addressesById: Readonly<Record<string, Parameters<typeof resolveLienProperty>[0]>>
   ownerByJob: Readonly<Record<string, JobPropertyOwnerLike | undefined>>
   gcsById: Readonly<Record<string, { name: string; address: string } | undefined>>
@@ -45,7 +46,8 @@ function serveJobOf(data: LienServeDeskData, jobId: string, filing: JobLienFilin
   const address = job?.customer_address_id ? (data.addressesById[job.customer_address_id] ?? null) : null
   const owner = resolveLienProperty(address, data.ownerByJob[jobId] ?? null).owner
   const gc = job?.gc_customer_id ? data.gcsById[job.gc_customer_id] : undefined
-  const jobNumber = (job?.hcp_number ?? '').trim()
+  // The job's number as the rest of the desk reads it (v2.7943): the HCP number, else the Click number of a job made in the app.
+  const jobNumber = effectiveJobLedgerNumber(job?.hcp_number, job?.click_number)
   return {
     jobId,
     jobNumber,

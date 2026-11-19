@@ -128,12 +128,6 @@ export function historyShortDate(ymd: string): string {
   return `${Number(m[1])}/${Number(m[2])}`
 }
 
-/**
- * The wide screen's line where the grid would be, when the window holds one-off tasks and no repeating one. The tab
- * wrote it inline until its move (v2.7754); the words are the same.
- */
-export const HISTORY_NO_REPEATING_WORDS = 'No repeating tasks in this range.'
-
 /** The key of one cell of the grid: a task on a day. */
 export function historyCellKey(itemId: string, date: string): string {
   return `${itemId}-${date}`

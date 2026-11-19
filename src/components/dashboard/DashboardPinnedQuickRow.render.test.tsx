@@ -94,7 +94,7 @@ describe('DashboardPinnedQuickRow · Paint a map (punch list #392)', () => {
     const wide = document.querySelector('[data-paint-a-map-press="wide"]') as HTMLElement
     expect(wide).toBeTruthy()
     // The stub's day is empty, so the second line says the person picks.
-    expect(wide.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('On your last job, or one you pick')
+    expect(wide.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('On your next or last job, or a pick')
     expect(document.querySelector('[data-paint-a-map-press="square"]')).toBeNull()
   })
 

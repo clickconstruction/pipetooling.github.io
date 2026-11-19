@@ -80,7 +80,8 @@ estimator's hours and her corpus, and every planned item optimizes one of the tw
   `apply_twin` on the dev seat, v2.7879), tokens (listed and revoked from the dev seat too,
   `read_twin_keys` and `plan_twin_key_revoke`, v2.7900), rungs (moved from the dev seat too,
   `plan_twin_rung`, v2.7918),
-  CT/TT-seat status, the calibration standard; the fresh-key card carries **Copy Desktop
+  CT/TT-seat status, the calibration standard (set from the dev seat too,
+  `plan_calibration_standard`, v2.7934); the fresh-key card carries **Copy Desktop
   setup command**. Running and watching moved to Bids → 🤖 Robots → **Console** (v2.3224).
 - **Robot fixtures, the ground (v2.6180, punch list #221, PR 1 of five)**: after `paste_counts` a
   round calls `put_fixtures` once — every fixture tag with its backing text, pins, check and the

@@ -41,6 +41,9 @@ INSERT INTO public.permits (id, city, source, permit_number, permit_type, kind, 
   ('00000000-0000-0000-0000-0000003020e1', 'Elm City', 'bed', 'EC-1', 'Comm Remodel Permit', 'building', 'issued', false, 'Commercial remodel', '4 ELM ST', '4 elm st', CURRENT_DATE - 5, NULL, 'Pat Lime, Lime Build', 'limebuild'),
   ('00000000-0000-0000-0000-0000003020e2', 'Elm City', 'bed', 'EC-P1', 'Plumbing Permit', 'plumbing', 'issued', false, 'Plumbing', '4 ELM ST', '4 elm st', NULL, CURRENT_DATE - 2, 'Wren Plumbing', 'wrenplumbing');
 
+-- The plumber's own permit at 800 Tower Blvd says what the work is.
+UPDATE public.permits SET project_name = 'Water heater, suite 210' WHERE id = '00000000-0000-0000-0000-0000003020d4';
+
 -- COM-1 arrived three days ago; the rest arrived now.
 UPDATE public.permits SET first_seen_at = now() - interval '3 days' WHERE id = '00000000-0000-0000-0000-0000003020b1';
 
@@ -102,6 +105,23 @@ SELECT ps.same('where plumbers pull their own permits the address still ties the
   (SELECT permit_number || ':' || builder_permits || '/' || builder_open || ':' || COALESCE(plumber, 'none') FROM public.research_permits_v2('Elm City', CURRENT_DATE - 60, false))
   || ' ' || (SELECT key || ':' || permits || '/' || open || ':' || COALESCE(plumber, 'nobody') || 'x' || plumber_jobs FROM public.research_builders('Elm City')),
   'EC-1:1/0:Wren Plumbing limebuild:1/0:Wren Plumbingx1');
+
+-- What does not count is still said (migration *_permit_plumbing_nearby): the open San Antonio row carries the two
+-- permits at its address inside the 30 days, the newest first, and never the year-old one. A row with a plumbing
+-- permit of its own carries none, and neither does a city where the address always ties.
+SELECT ps.same('v3 says what sits at an open row''s address uncounted',
+  (SELECT string_agg(permit_number || ':' || plumbing_nearby || ':' || COALESCE(plumbing_nearby_by, '-') || ':' || COALESCE((CURRENT_DATE - plumbing_nearby_on)::text, '-') || ':' || COALESCE(plumbing_nearby_what, '-'), ' ' ORDER BY filed_on DESC)
+   FROM public.research_permits_v3('San Antonio', CURRENT_DATE - 60, false)),
+  'SA-APP-1:2:Quill Plumbing:2:Water heater, suite 210 SA-PMT-2:0:-:-:- SA-PMT-9:0:-:-:- SA-APP-2:0:-:-:-');
+SELECT ps.same('v3 is v2 with those four columns and nothing else moved',
+  (SELECT count(*)::text FROM (
+     SELECT to_jsonb(v3) - 'plumbing_nearby' - 'plumbing_nearby_on' - 'plumbing_nearby_by' - 'plumbing_nearby_what' AS j FROM public.research_permits_v3('San Antonio', CURRENT_DATE - 60, false) v3
+     EXCEPT
+     SELECT to_jsonb(v2) FROM public.research_permits_v2('San Antonio', CURRENT_DATE - 60, false) v2) d)
+  || '/' || (SELECT count(*)::text FROM public.research_permits_v3('Skim City', CURRENT_DATE - 30, false)),
+  '0/3');
+SELECT ps.same('where the address always ties, nothing is left uncounted',
+  (SELECT permit_number || ':' || COALESCE(plumber, 'none') || ':' || plumbing_nearby FROM public.research_permits_v3('Elm City', CURRENT_DATE - 60, false)), 'EC-1:Wren Plumbing:0');
 
 -- A keep handed to Sam, with its reason code.
 INSERT INTO public.permit_verdicts (permit_id, verdict, reason, reason_code, for_user_id, decided_by, decided_at)
@@ -182,7 +202,7 @@ RESET ROLE;
 SELECT ps.same('both tables carry the read-only fence',
   (SELECT count(DISTINCT tablename)::text FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('builders', 'builder_marks') AND permissive = 'RESTRICTIVE'), '2');
 SELECT ps.same('anon runs none of the new functions',
-  (SELECT count(*)::text FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('research_permits_v2', 'research_builders', 'permit_funnel', 'permit_set_builder_keys', 'permit_skim_wait', 'permit_address_plumbing_counts') AND has_function_privilege('anon', p.oid, 'EXECUTE')), '0');
+  (SELECT count(*)::text FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('research_permits_v2', 'research_builders', 'permit_funnel', 'permit_set_builder_keys', 'permit_skim_wait', 'permit_address_plumbing_counts', 'research_permits_v3') AND has_function_privilege('anon', p.oid, 'EXECUTE')), '0');
 
 DO $$ BEGIN RAISE NOTICE 'permit_skim PASSED'; END $$;
 ROLLBACK;

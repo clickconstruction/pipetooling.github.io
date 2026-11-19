@@ -1717,6 +1717,8 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "primary_can_access_bid": [{"args":{"p_bid_id":"string"},"returns":"boolean"}],
   "primary_can_access_estimate": [{"args":{"p_estimate_id":"string"},"returns":"boolean"}],
   "primary_can_access_job": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
+  "primary_can_read_job_reports": [{"args":{"p_job_id":"string"},"returns":"boolean"}],
+  "primary_can_read_report": [{"args":{"p_bid_id":"string","p_created_by":"string","p_job_ledger_id":"string","p_project_id":"string"},"returns":"boolean"}],
   "promote_bid_gc": [{"args":{"p_bid_id":"string","p_new_gc_id":"string","p_old_gc_stays?":"boolean"},"returns":"undefined"}],
   "promote_stage_checklist_item": [{"args":{"p_item_id":"string"},"returns":"{ asks_photo: boolean created_at: string created_by: string | null created_by_name: string fixture_id: string | null id: string job_id: string | null needs_sign…"}],
   "publish_co_to_bid_room": [{"args":{"p_estimate_id":"string","p_room_id":"string"},"returns":"undefined"}],

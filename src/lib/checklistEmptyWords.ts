@@ -27,11 +27,27 @@ export function checklistTodayEmptyWords(showUpcoming: Press | null): EmptyState
 /** The dev's Upcoming fold with nothing dated ahead. */
 export const CHECKLIST_UPCOMING_EMPTY: EmptyStateWords = { main: 'Nothing scheduled ahead.' }
 
+/** The picked months as History says them: *the last month*, *the last 6 months*. */
+function historySpan(monthsBack: number): string {
+  return monthsBack === 1 ? 'the last month' : `the last ${monthsBack} months`
+}
+
+/** History's line with its press: Show 12 months widens the range, until it is already a year. */
+function historyWords(main: string, monthsBack: number, showYear: Press): EmptyStateWords {
+  return monthsBack < HISTORY_MONTHS_MAX ? { main, next: { label: `Show ${HISTORY_MONTHS_MAX} months`, onPress: showYear } } : { main }
+}
+
 /** History with nothing in the picked months: Show 12 months widens the range, until it is already a year. */
 export function checklistHistoryEmptyWords(monthsBack: number, showYear: Press): EmptyStateWords {
-  const span = monthsBack === 1 ? 'the last month' : `the last ${monthsBack} months`
-  const main = `No checklist history in ${span}.`
-  return monthsBack < HISTORY_MONTHS_MAX ? { main, next: { label: `Show ${HISTORY_MONTHS_MAX} months`, onPress: showYear } } : { main }
+  return historyWords(`No checklist history in ${historySpan(monthsBack)}.`, monthsBack, showYear)
+}
+
+/**
+ * History's wide screen when the picked months hold one-off tasks and no repeating one: the line stands where the
+ * grid would, over the one-off ledger, with the same press.
+ */
+export function checklistHistoryNoRepeatingWords(monthsBack: number, showYear: Press): EmptyStateWords {
+  return historyWords(`No repeating tasks in ${historySpan(monthsBack)}.`, monthsBack, showYear)
 }
 
 /** Outstanding with nothing in the picked range: the good state, said for that range. */

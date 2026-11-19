@@ -19,6 +19,12 @@
 //     stamps, as the form's clear does.
 //   · a bid with versions. There Sent and Won / Lost live per GC (BidGcSentPanel, setGcPacketOutcome) and the bid's
 //     own date and outcome are roll-ups; the form locks them, so the plan refuses them and names the panel.
+//
+// Since v2.7928 it also changes the three columns the robots' queue reads off a bid, which Edit Bid has no field for:
+// backtest_axis and holdout, as the Robots Queue's assign axis and Hold out presses write them (BidsRobotQueueTab
+// assignAxis, setHoldout), and robot_requested_at with robot_requested_by, as the robot icon on the Bid Board writes
+// them (useBidRobotLayer toggleRobotRequest). The stamp's moment is the apply's own, so the plan carries a marker in
+// its place (BID_STAMP_NOW) and the hash never holds a clock.
 // Pure: no env reads, no network; the reads come in through one small interface so the tests run over a recording fake
 // (src/lib/devMcp/devMcpBidUpdate.test.ts).
 
@@ -27,6 +33,7 @@ import { noonInAppTz } from './devMcpActivityNote.ts'
 import { BID_LOSS_CATEGORIES, LOSS_UNCATEGORIZED_NUDGE, bidLossCategoryLabel, isBidLossCategoryKey } from './gcKernels/lib/bidLossCategories.ts'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from './gcKernels/lib/bids/submissionSections.ts'
 import { buildOutcomeChangeBidNoteBody } from './gcKernels/lib/outcomeChangeBidNote.ts'
+import { shadowHold, shadowHoldWords, type ShadowCandidateBid } from './shadowEligibility.ts'
 
 export const BID_UPDATE_VERBS = ['plan_bid_update', 'apply_bid_update'] as const
 export type BidUpdateVerb = (typeof BID_UPDATE_VERBS)[number]
@@ -54,7 +61,17 @@ export const SENT_STAMP_COLUMNS = [
   'bid_date_sent_ack_phone_at', 'bid_date_sent_ack_phone_by', 'bid_date_sent_ack_honesty_at', 'bid_date_sent_ack_honesty_by',
 ] as const
 
-/** The columns the verb changes: Edit Bid's (buildBidSavePayload), and the decided day. */
+/**
+ * The columns the robots' queue reads off a bid (v2.7928): the axis a backtest of it would feed, whether it is held out
+ * of practice, and the front-of-the-line stamp. Edit Bid has no field for them: the Robots Queue and the Bid Board's
+ * robot icon write them.
+ */
+export const ROBOT_COLUMNS = ['backtest_axis', 'holdout', 'robot_requested_at'] as const
+
+/** What stands in a plan for the moment the apply stamps: the plan and its hash never carry a clock. */
+export const BID_STAMP_NOW = 'now()'
+
+/** The columns the verb changes: Edit Bid's (buildBidSavePayload), the decided day, and the robots' three. */
 export const BID_UPDATE_COLUMNS = [
   'project_name', 'address', 'customer_id', 'project_id', 'development_id', 'service_type_id', 'estimator_id', 'account_manager_id',
   'bid_due_date', 'bid_due_time', 'estimated_job_start_date', 'design_drawing_plan_date',
@@ -63,15 +80,16 @@ export const BID_UPDATE_COLUMNS = [
   'gc_contact_name', 'gc_contact_phone', 'gc_contact_email',
   'drive_link', 'plans_link', 'count_tooling_plans_link', 'bid_submission_link', 'itb_links',
   'distance_from_office', 'robot_opt_out', 'notes',
+  ...ROBOT_COLUMNS,
 ] as const
 export type BidUpdateColumn = (typeof BID_UPDATE_COLUMNS)[number]
 const COLUMN_SET: ReadonlySet<string> = new Set(BID_UPDATE_COLUMNS)
 
 /** The columns that move only because another did: the form writes each with its driver (bidUpdatePrune FIELD_GROUPS). */
-export const RIDE_COLUMNS = ['gc_builder_id', 'accepted_alternate_tags', 'declined_alternate_tags', ...SENT_STAMP_COLUMNS] as const
+export const RIDE_COLUMNS = ['gc_builder_id', 'accepted_alternate_tags', 'declined_alternate_tags', 'robot_requested_by', ...SENT_STAMP_COLUMNS] as const
 
 /** The bids columns the bid's History does NOT record (not in bid_changes_bid_columns(), migration 20261007060000). */
-export const UNTRACKED_COLUMNS: ReadonlySet<string> = new Set(['development_id', 'robot_opt_out', ...SENT_STAMP_COLUMNS])
+export const UNTRACKED_COLUMNS: ReadonlySet<string> = new Set(['development_id', 'robot_opt_out', ...ROBOT_COLUMNS, 'robot_requested_by', ...SENT_STAMP_COLUMNS])
 
 /** The id columns, with the table each names, its name column and the verb that finds one. */
 const ID_COLUMNS: Readonly<Record<string, { table: string; name: string; finder: string }>> = {
@@ -89,7 +107,7 @@ const MONEY_COLUMNS: ReadonlySet<string> = new Set(['bid_value', 'agreed_value',
 const LINK_COLUMNS: ReadonlySet<string> = new Set(['drive_link', 'plans_link', 'count_tooling_plans_link', 'bid_submission_link'])
 /** The columns the form will not save blank: Project Name and Service Type (useBidEditForm missingFields). */
 const REQUIRED: ReadonlySet<string> = new Set(['project_name', 'service_type_id'])
-const TEXT_MAX: Readonly<Record<string, number>> = { project_name: 120, address: 300, submitted_to: 300, loss_reason: 2000, gc_contact_name: 200, gc_contact_phone: 40, gc_contact_email: 200, notes: 8000 }
+const TEXT_MAX: Readonly<Record<string, number>> = { project_name: 120, address: 300, submitted_to: 300, loss_reason: 2000, gc_contact_name: 200, gc_contact_phone: 40, gc_contact_email: 200, notes: 8000, backtest_axis: 80 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -109,7 +127,7 @@ export type BidUpdateInput = { ok: true; p: BidUpdatePayload; target: string; pl
 
 const LOSS_KEYS = BID_LOSS_CATEGORIES.map((c) => c.key)
 
-const SHAPE = `needs update — { bid_id (a bids.id — find_bid), set ({ column: value } over Edit Bid's columns; null clears one that may be blank): project_name, address, customer_id (the GC — find_customer), project_id, development_id, service_type_id, estimator_id, account_manager_id (find_person), bid_due_date, bid_due_time (HH:MM), estimated_job_start_date, design_drawing_plan_date, bid_value, agreed_value, profit (dollars), bid_date_sent (YYYY-MM-DD, never ahead of today), submitted_to (who it went to), outcome (won | lost | started_or_complete, or null for open), outcome_at (YYYY-MM-DD, the day it was decided, never ahead of today; left out, the database stamps now), loss_category (${LOSS_KEYS.join(' | ')}), loss_reason, gc_contact_name, gc_contact_phone, gc_contact_email, drive_link, plans_link, count_tooling_plans_link, bid_submission_link (https://…), itb_links ([https://…]), distance_from_office (miles), robot_opt_out (true | false), notes }.`
+const SHAPE = `needs update — { bid_id (a bids.id — find_bid), set ({ column: value } over Edit Bid's columns; null clears one that may be blank): project_name, address, customer_id (the GC — find_customer), project_id, development_id, service_type_id, estimator_id, account_manager_id (find_person), bid_due_date, bid_due_time (HH:MM), estimated_job_start_date, design_drawing_plan_date, bid_value, agreed_value, profit (dollars), bid_date_sent (YYYY-MM-DD, never ahead of today), submitted_to (who it went to), outcome (won | lost | started_or_complete, or null for open), outcome_at (YYYY-MM-DD, the day it was decided, never ahead of today; left out, the database stamps now), loss_category (${LOSS_KEYS.join(' | ')}), loss_reason, gc_contact_name, gc_contact_phone, gc_contact_email, drive_link, plans_link, count_tooling_plans_link, bid_submission_link (https://…), itb_links ([https://…]), distance_from_office (miles), robot_opt_out (true | false), notes, and the three the robots' queue reads: backtest_axis (the axis a backtest of it would feed, as the Robots Queue's assign axis writes it), holdout (true | false, held out of practice), robot_requested_at (true puts it at the front of the next robot batch, stamped now as you; false withdraws the ask) }.`
 
 /** A real calendar day, written YYYY-MM-DD. */
 function isDay(v: string): boolean {
@@ -122,12 +140,17 @@ function isDay(v: string): boolean {
 function checkColumn(verb: string, column: BidUpdateColumn, raw: unknown, today: string): { ok: true; value: BidUpdateValue } | { ok: false; error: string } {
   if (raw === null || (typeof raw === 'string' && !raw.trim() && column !== 'outcome')) {
     if (REQUIRED.has(column)) return { ok: false, error: `${verb}: ${column} cannot be cleared — the form will not save a bid without it.` }
-    if (column === 'robot_opt_out') return { ok: false, error: `${verb}: robot_opt_out is true or false.` }
+    if (column === 'robot_opt_out' || column === 'holdout') return { ok: false, error: `${verb}: ${column} is true or false.` }
     return { ok: true, value: column === 'itb_links' ? [] : null }
   }
-  if (column === 'robot_opt_out') {
-    if (typeof raw !== 'boolean') return { ok: false, error: `${verb}: robot_opt_out is true or false.` }
+  if (column === 'robot_opt_out' || column === 'holdout') {
+    if (typeof raw !== 'boolean') return { ok: false, error: `${verb}: ${column} is true or false.` }
     return { ok: true, value: raw }
+  }
+  if (column === 'robot_requested_at') {
+    // The moment is the apply's to stamp, as the robot icon stamps its own press: never a time the caller gives.
+    if (typeof raw !== 'boolean') return { ok: false, error: `${verb}: robot_requested_at is true (the front of the next robot batch, stamped at the apply as you) or false (the ask withdrawn). The time is not yours to give.` }
+    return { ok: true, value: raw ? true : null }
   }
   if (MONEY_COLUMNS.has(column)) {
     const n = typeof raw === 'number' ? raw : typeof raw === 'string' && /^-?\d+(\.\d{1,2})?$/.test(raw.trim()) ? Number(raw.trim()) : NaN
@@ -232,10 +255,19 @@ export type BidUpdateWorld = {
   jobs: LinkedJob[]
   /** The rows the new ids name, by column: null when not visible. */
   named: Partial<Record<BidUpdateColumn, { id: string; name: string | null } | null>>
+  /** The axes in use (v2.7928), read when the plan names one: off the runs' scores, the shadow runs and other bids. Null when not read, or when a read was refused. */
+  axes?: string[] | null
 }
 
 /** Every bids column the dry run reads. */
-export const BID_READ_COLUMNS = ['id', 'bid_number', 'updated_at', 'working_board_archived_at', ...BID_UPDATE_COLUMNS, ...RIDE_COLUMNS] as const
+export const BID_READ_COLUMNS = ['id', 'bid_number', 'updated_at', 'created_at', 'working_board_archived_at', 'plans_robot_readable', ...BID_UPDATE_COLUMNS, ...RIDE_COLUMNS] as const
+
+/** Where an axis lives before a bid carries it: each table with the column that holds it (buildAxisCards reads the first two). */
+export const AXIS_SOURCES = [
+  { table: 'twin_run_scores', column: 'axis' },
+  { table: 'twin_shadow_runs', column: 'axis' },
+  { table: 'bids', column: 'backtest_axis' },
+] as const
 
 /** The reads the dry run needs, in one place, so the test pins the queries the door will see. */
 export async function readBidUpdateWorld(reads: BidReads, p: BidUpdatePayload, me: BidUpdateWorld['me']): Promise<BidUpdateWorld> {
@@ -254,7 +286,18 @@ export async function readBidUpdateWorld(reads: BidReads, p: BidUpdatePayload, m
       named[column as BidUpdateColumn] = row ? { id: String(row.id), name: typeof row[spec.name] === 'string' ? (row[spec.name] as string) : null } : null
     }),
   )
-  return { me, bid, hasVersions: versions.length > 0, jobs, named }
+  // The axes in use, only when the plan names one: a typed axis that matches none starts a group of its own on the
+  // Queue, and the plan says so. Fail-soft: a refused read leaves the plan without the list, never without the bid.
+  let axes: string[] | null = null
+  if (typeof p.set.backtest_axis === 'string') {
+    try {
+      const found = await Promise.all(AXIS_SOURCES.map((src) => reads.rows(src.table, `select=${src.column}&${src.column}=not.is.null&limit=1000`).then((rows) => rows.map((r) => r[src.column]))))
+      axes = [...new Set(found.flat().filter((a): a is string => typeof a === 'string' && !!a.trim()).map((a) => a.trim()))].sort()
+    } catch {
+      axes = null
+    }
+  }
+  return { me, bid, hasVersions: versions.length > 0, jobs, named, axes }
 }
 
 // ── the dry run ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -287,7 +330,9 @@ export function holdsValue(column: string, before: unknown, after: unknown): boo
   if (column === 'outcome_at') return dayOf(before) === dayOf(after)
   if (column === 'bid_due_time') return (typeof before === 'string' ? before.slice(0, 5) : null) === (typeof after === 'string' ? after.slice(0, 5) : null)
   if (MONEY_COLUMNS.has(column)) return (before == null ? null : Number(before)) === (after == null ? null : Number(after))
-  if (column === 'robot_opt_out') return (before === true) === (after === true)
+  if (column === 'robot_opt_out' || column === 'holdout') return (before === true) === (after === true)
+  // The front-of-the-line stamp is asked or not asked: its moment is never compared.
+  if (column === 'robot_requested_at') return (before != null && before !== '' && before !== false) === (after != null && after !== '' && after !== false)
   const blank = (v: unknown) => (v == null || v === '' ? null : v)
   return blank(before) === blank(after)
 }
@@ -304,7 +349,7 @@ const section = (outcome: unknown, sent: unknown): string => {
  * not visible, an id whose row is not visible, a per-GC bid's own Sent and Won / Lost, a loss reason on a bid that is
  * not lost, a decided day with no decision, a due time with no due date, and a plan that changes nothing.
  */
-export function bidUpdateDryRun(p: BidUpdatePayload, world: BidUpdateWorld): DryRun {
+export function bidUpdateDryRun(p: BidUpdatePayload, world: BidUpdateWorld, today?: string): DryRun {
   const bid = world.bid
   if (!bid) return { ok: false, refused: `No bid ${p.bid_id} is visible to you — find_bid resolves a number or a name.` }
   const label = bidLabel(bid)
@@ -352,6 +397,12 @@ export function bidUpdateDryRun(p: BidUpdatePayload, world: BidUpdateWorld): Dry
     if (!has(column) || !moves(column)) continue
     // A cleared decided day on a bid that stops being decided is the trigger's own work: nothing to send.
     if (column === 'outcome_at' && set.outcome_at == null) continue
+    if (column === 'robot_requested_at') {
+      // Asked: the marker stands for the apply's own moment. Withdrawn: null, as the icon's second press writes it.
+      const asked = set[column] === true
+      change({ column, before: before(column), after: asked ? BID_STAMP_NOW : null, ...(asked ? { why: 'the apply stamps its own moment, as the robot icon stamps its press' } : {}) }, asked ? BID_STAMP_NOW : null)
+      continue
+    }
     const row = world.named[column]
     const value = set[column]
     change({ column, before: column === 'outcome_at' ? dayOf(before(column)) : before(column), after: value, ...(row ? { named: row.name } : {}) }, column === 'outcome_at' ? noonInAppTz(value as string) : value)
@@ -373,6 +424,7 @@ export function bidUpdateDryRun(p: BidUpdatePayload, world: BidUpdateWorld): Dry
       ride('declined_alternate_tags', [], 'outcome', 'only a won bid carries the alternates they declined')
     }
   }
+  if (moves('robot_requested_at')) ride('robot_requested_by', set.robot_requested_at === true ? world.me.userId : null, 'robot_requested_at', 'the ask carries who asked, as the robot icon on the Bid Board writes it')
   const stamped = SENT_STAMP_COLUMNS.some((c) => before(c) != null)
   if (moves('bid_date_sent') && !sentAfter) for (const c of SENT_STAMP_COLUMNS) ride(c, null, 'bid_date_sent', 'clearing the sent date clears the checklist that confirmed it, as Edit Bid does')
 
@@ -415,6 +467,37 @@ export function bidUpdateDryRun(p: BidUpdatePayload, world: BidUpdateWorld): Dry
     if (sentAfter && stamped) warnings.push(`A person confirmed the sent checklist for ${sentBefore ?? 'an earlier date'}. Their stamps stay on the bid, given for that date and not for ${sentAfter}.`)
   }
   if (sentAfter && after('bid_value') != null && (moves('bid_date_sent') || moves('bid_value'))) after_write.push('With a sent date and a value on the bid, the database scores any locked robot shadow of it against the value (bids_score_shadow_on_send).')
+  // ── the robots' three (v2.7928) ──
+  if (moves('robot_requested_at')) {
+    if (set.robot_requested_at === true) {
+      after_write.push('It goes to the front of the next robot batch, as the robot icon on the Bid Board puts it: the rounds take an asked bid first, the oldest ask first, and no age limit holds one.')
+      // What still holds it, off the row as it would read: the queue's own rule, without the two checks that need another table.
+      const row = { ...bid, ...patch, robot_requested_at: 'asked' } as unknown as ShadowCandidateBid
+      const reason = today ? shadowHold(row, { plumbingServiceTypeId: null, nowMs: 0, todayYmd: today, runStatusFor: () => null }) : null
+      if (reason) warnings.push(`The rounds would still pass it over: ${shadowHoldWords(reason)} The ask stays on the bid until that changes.`)
+      else after_write.push('Two holds are not checked here: another trade\'s bid, and a robot bid already on it. get_shadow_queue on the twin seat says where it stands.')
+    } else after_write.push('The ask is withdrawn, as the icon\'s second press withdraws it: the bid goes back in line with the others.')
+  }
+  if (moves('holdout')) {
+    if (set.holdout === true) {
+      after_write.push('The robots never practise on a holdout: the twin seat\'s open_backtest refuses it unless an operator orders a gate run, next_backtest skips it, and the Queue lists it under its axis as held out.')
+      if (!outcomeAfter) warnings.push(`A holdout is a decided reference kept for the gates, and ${label} has no outcome, so no backtest would open it today either way.`)
+    } else after_write.push('It is released to practice: a backtest may open it again.')
+  }
+  if (moves('backtest_axis')) {
+    const axis = typeof set.backtest_axis === 'string' ? set.backtest_axis : null
+    if (!axis) after_write.push('It goes back to the Queue\'s unclassified group.')
+    else {
+      after_write.push(`The Queue's backtest candidates group it under "${axis}", the axis whose streak a backtest of it would feed.`)
+      const known = world.axes ?? null
+      if (known && !known.includes(axis)) {
+        const near = known.find((a) => a.toLowerCase().replace(/\s+/g, ' ') === axis.toLowerCase().replace(/\s+/g, ' '))
+        warnings.push(near
+          ? `No run and no other bid carries "${axis}", and "${near}" is in use: an axis is matched letter for letter, so this one would start a group of its own.`
+          : `No run and no other bid carries "${axis}" yet, so it starts a group of its own. ${known.length ? `The axes in use: ${known.join(', ')}.` : 'No axis is in use yet.'}`)
+      } else if (!known) warnings.push('The axes in use could not be read, so check the spelling against the Queue: an axis is matched letter for letter.')
+    }
+  }
   const tracked = changes.filter((c) => !UNTRACKED_COLUMNS.has(c.column)).map((c) => c.column)
   const untracked = changes.filter((c) => UNTRACKED_COLUMNS.has(c.column)).map((c) => c.column)
   if (tracked.length) after_write.push(`The bid's History records ${tracked.join(', ')} under your name (bid_changes, by the database's trigger).${untracked.length ? ` It does not record ${untracked.join(', ')}.` : ''}`)
@@ -440,6 +523,11 @@ export function bidUpdateDryRun(p: BidUpdatePayload, world: BidUpdateWorld): Dry
       ],
     },
   }
+}
+
+/** The patch as the apply sends it: the front-of-the-line marker becomes the moment of the write, and nothing else moves. */
+export function bidUpdateWritePatch(patch: Json, nowIso: string): Json {
+  return patch.robot_requested_at === BID_STAMP_NOW ? { ...patch, robot_requested_at: nowIso } : patch
 }
 
 /** The row that carries the outcome line: Edit Bid's own insert (useBidEditController, contact_method null so last_contact does not move). */

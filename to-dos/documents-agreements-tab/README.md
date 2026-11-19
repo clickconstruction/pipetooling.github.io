@@ -2,7 +2,7 @@
 name: "Documents: an Agreements tab, every agreement the app makes in one list"
 number: 376
 group: close
-status: asked 2026-11-17 · the owner took all seven picks and said build the whole train the same day · all five built and live: the rules v2.7604, the view and the read v2.7612, the tab v2.7617, Search v2.7620, GC mode’s three kinds v2.7625 · both migrations pushed 2026-11-17 and 2026-11-18 · checked on the live list in a local build, in the live build’s files, and by role through the dev seat · left: the owner’s own look
+status: asked 2026-11-17 · the owner took all seven picks and said build the whole train the same day · all five built and live: the rules v2.7604, the view and the read v2.7612, the tab v2.7617, Search v2.7620, GC mode’s three kinds v2.7625 · both migrations pushed 2026-11-17 and 2026-11-18 · checked on the live list in a local build, in the live build’s files, and by role through the dev seat · asked again 2026-11-19 to finish the section so the office manages a paper there · a second train of three: a waiting line acts where it sits v2.7932, then send a paper from the tab, then the Contract library door · left: the rest of that train, and the owner’s own look
 summary: >
   The owner looked for agreements on the Documents page and found none. The page has ten tabs and
   none lists agreements. A job's signed paper shows only as a line under its job on the Jobs tab,
@@ -12,10 +12,10 @@ summary: >
   press opens the window that kind already has. The list is one database view over the tables that
   hold agreements, so each table's own row security decides what a reader sees, and nobody reads a
   paper here that they cannot read today. It renames nothing: Contract under a job stays.
-next: The owner opens Documents → Agreements, and types a name on the Search tab, and says retire it. No statement of work and no owner contract send exists yet, so a GC line is proven by the database test until one is sent. Call 7’s card is #377.
-size: M as a train of five (S · M · M · S · S)
+next: The second train’s next PR, sending a paper from the tab. Then the owner opens Documents → Agreements, presses Send again on a waiting line, and types a name on the Search tab. No statement of work and no owner contract send exists yet, so a GC line is proven by the database test until one is sent. Call 7’s card is #377.
+size: M as a train of five (S · M · M · S · S), then M as a second train of three (M · M · S)
 blocker: None.
-ver: v2.7604 · v2.7612 · v2.7617 · v2.7620 · v2.7625
+ver: v2.7604 · v2.7612 · v2.7617 · v2.7620 · v2.7625 · v2.7932
 opinion: build — the papers exist and the office already reads them in four places; the tab is a read over what is there, with no new table and no change to who can see what
 ---
 
@@ -99,8 +99,9 @@ there. The estimator reads work orders only, where they make them.
 ### Where the signed file is
 
 A signed job contract's PDF is in Supabase storage (`job-contract-documents`), and its emailed copy is a
-`sent_documents` row. Nothing goes to Google Drive or the file index, so **Find a file** cannot find it.
-The only Drive link is one the office types (`signed_document_url`). A person's signed form is in a
+`sent_documents` row. When this was read nothing went to Google Drive or the file index. Card #377 changed
+that: a signed job contract is now filed in its job's Drive folder, under Team only › Contracts, and
+**Find a file** finds it. The office can still type a Drive link of its own (`signed_document_url`). A person's signed form is in a
 service-only bucket and opens through `open-contract-form-pdf`. A work order and a statement of work have
 no stored PDF: the page is rebuilt from the row.
 
@@ -149,11 +150,11 @@ No new viewer. Each kind opens the window it has today.
 
 | Line | Opens |
 |---|---|
-| Contract, warranty, their paper, signed paper | `JobContractModal` on that record after `fetchJobWithDetailsById`, the same door the Jobs tab's line uses; an unsigned one opens the same preview that line opens |
+| Contract, warranty, their paper, signed paper | `JobContractModal` on that record after `fetchJobWithDetailsById`, the same door the Jobs tab's line uses. Since v2.7932 one that waits on a signature opens the window too, where it is sent again or voided. A voided one opens the preview of the page that went out, since the window never opens on a voided record |
 | A person's agreement, signed | `PersonContractSignedRecordModal` with the document's id |
-| A person's agreement, waiting | `/people?tab=contracts&doc=<id>`, the door the signing page already uses |
+| A person's agreement, waiting | `/people?tab=contracts&doc=<id>`, the door the signing page already uses. Since v2.7932 its line also carries **Send again** and **Copy the signing link** |
 | Work order | `WorkOrderAssemblerModal` with that job and `initial.commitmentId`, read only once sent |
-| Owner contract, statement of work, trade company agreement | The GC project or the company. The exact address is checked in PR 5 |
+| Owner contract, statement of work, trade company agreement | The GC page, `/gc`. GC mode has no address that opens one project, so PR 5 opens the page. A trade company's signed agreement opens its signed record |
 
 ### The read
 
@@ -217,6 +218,28 @@ Each step is one PR, with its release note and fragment. Nothing is built until 
    agreement join the view as three more branches, with the GC projects chip. Each shows only to the
    roles GC mode gives it to.
 
+## The second train: manage a paper here, not only find it
+
+Asked 2026-11-19, in the owner's words:
+
+> can you work on finishing getting an agreements section in documents?
+
+A look the same day found the tab was a read with doors. It found, filtered and opened, and it could not
+send, send again or reach the Contract Book. Those lived only on People → Contracts and on a job's Contract
+window. This train puts them on the tab. Nothing leaves People → Contracts and no page is renamed: both
+pages keep a door. The seven picks above stand as taken. Row security still decides what a reader sees, and
+there is no migration.
+
+1. **A waiting line acts where it sits (M), v2.7932.** A staff, sub or partner paper that waits carries
+   **Send again** and **Copy the signing link**. Both go through `send-contract-for-signature`, the sender
+   People uses, whose Send for signature window was lifted into a shared file for this. A job contract that
+   waits opens its real Contract window, where **Resend email**, **Void & redo** and **File the signed copy**
+   are. A voided one keeps the preview. Walked on the live list, and for real on a ZZ Test person.
+2. **Send a paper from the tab (M).** One press that picks a paper from the Contract Book and a person, and
+   sends it through People's quick send.
+3. **The Contract library from the tab (S).** A door that opens the Contract library window in place, with
+   the role rules it has on People.
+
 ## Left out on purpose
 
 - **Drafts.** A draft stays in the window that made it, as on every Documents tab today (call 6, settled).
@@ -228,8 +251,8 @@ Each step is one PR, with its release note and fragment. Nothing is built until 
 - **A machine rental's agreement number** and **in-kind arrangements**.
 - **Any change to row security**, and any new viewer or new table.
 - **The Jobs tab.** Its contract lines, its 200-job read and its search stay as they are.
-- **The follow-up, as its own card (call 7):** a signed job contract is not saved to Google Drive or the
-  file index, so Find a file cannot find it.
+- **The follow-up, as its own card (call 7):** a signed job contract was not saved to Google Drive or the
+  file index, so Find a file could not find it. Card #377 built that.
 
 ## The owner's calls, settled 2026-11-17
 

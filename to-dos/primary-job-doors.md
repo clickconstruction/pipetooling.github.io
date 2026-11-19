@@ -3,7 +3,7 @@ name: "A primary's job doors: the ones the scope never reached"
 number: 400
 mockup: not required — it narrows database doors and changes no screen
 group: gated
-status: built 2026-11-19 on the owner's word · five PRs open, none merged or pushed · two families left open with a reason each
+status: live on prod 2026-11-19 · five PRs merged and pushed, `job-photos` deployed · two families left open, each a call for the owner
 summary: >
   A primary has been held to their own jobs since v2.2177, but only where the tables' restrictive
   policies can see. Functions that run as the owner, and the policies that call them, still ask
@@ -11,10 +11,10 @@ summary: >
   named. Through them a primary on no job reads another job's money lines, photos and test
   papers, and can write down or delete its bill. No screen of theirs asks, so this is a hole at
   the API. The card lists every door, what it gives, and the predicate proposed for it.
-next: Merge each PR and push its migration. #8877 goes before PR 3. Then the two new calls under What was built.
+next: The owner answers the two new calls under What was built. #8895, the schedule share reads, is still to merge.
 size: L as a train of five (M · M · S · M · S)
-blocker: PR #8877 (v2.7906) on main and pushed before PR 3, which reuses its predicate and is stacked on it.
-opinion: ship the five as built; they are narrower than this card in two places, and both are safer for it
+blocker: The owner's two new calls.
+opinion: leave the stage checklist as it is; ask the owner about the payers, since that read is company-wide
 ---
 
 # A primary's job doors: the ones the scope never reached
@@ -229,10 +229,10 @@ primary on a crew who owes a paper is not locked out the way a helper on that cr
 
 ## What was built
 
-The owner read this card on 2026-11-19 and said to build the whole train. Five PRs are open. Each is one migration
+The owner read this card on 2026-11-19 and said to build the whole train, then to merge and push it. Five PRs merged that day. Each is one migration
 with its page, a bed in `scripts/sql-beds.txt` and `docs/ACCESS_CONTROL.md` amended in place. Every function body
-was compared with prod's live definition before its PR opened and matched it but for the one clause. Nothing is
-merged and nothing is pushed.
+was compared with prod's live definition before its PR opened and matched it but for the one clause. All five
+migrations are on prod, checked there read-only after each push, and `job-photos` is deployed. #8895 is still open.
 
 | PR | Version | What it holds |
 |---|---|---|

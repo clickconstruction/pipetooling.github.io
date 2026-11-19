@@ -49828,6 +49828,19 @@ export type Database = {
         Returns: boolean
       }
       primary_can_access_job: { Args: { p_job_id: string }; Returns: boolean }
+      primary_can_read_job_reports: {
+        Args: { p_job_id: string }
+        Returns: boolean
+      }
+      primary_can_read_report: {
+        Args: {
+          p_bid_id: string
+          p_created_by: string
+          p_job_ledger_id: string
+          p_project_id: string
+        }
+        Returns: boolean
+      }
       promote_bid_gc: {
         Args: {
           p_bid_id: string

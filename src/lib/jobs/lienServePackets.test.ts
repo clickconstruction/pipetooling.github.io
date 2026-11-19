@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { JobLienFilingRow } from './lienDeadlines'
 import { LIEN_CERTIFIED_NUMBER_DIGITS, LIEN_CERTIFIED_NUMBER_GROUPS, lienEnvelopeAddressLines, lienServeDivider, lienServeReturnAddress, lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServeMailSheet, lienServePlan, lienServePlanRead, lienServePlanWords, lienServeRunWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
 import { LIEN_COPY_BROKEN_HOLD, type LienCopyRead } from './lienStampedCopy'
+import { lienServedCopySentTitle } from '../jobsDocuments/lienServedCopy'
 import { lienServeStageCounts, lienServeStageDoorWords } from './lienServeStage'
 
 // Every name, address and figure here is made up.
@@ -302,6 +303,31 @@ describe('lienServeJobsFromDesk', () => {
     ])
     expect(jobs[0]?.to).toEqual({ owner: { name: 'Hollow Creek Holdings LLC', address: '500 New Owner Blvd, Austin, TX 78701' }, contractor: { name: 'Brightline Builders', address: '12 Example Pkwy, Buda, TX 78610' } })
     expect(jobs[1]?.to?.contractor).toBeNull()
+  })
+
+  it('reads a job made in the app by its Click number, on the label, the mail sheet and the kept copy', () => {
+    const clicked: LienServeDeskData = {
+      ...data,
+      filingsByJob: { 'job-7': [filing('7')], 'job-8': [filing('8')], 'job-9': [filing('9')] },
+      jobsById: {
+        // A job with no HCP number, one with both (HCP wins), and one with neither.
+        'job-7': { hcp_number: '', click_number: '863', job_name: 'Maple Court Service Visit', gc_customer_id: null, customer_address_id: null },
+        'job-8': { hcp_number: '2104', click_number: '880', job_name: 'Cedar Hollow Lofts', gc_customer_id: null, customer_address_id: null },
+        'job-9': { hcp_number: null, click_number: null, job_name: 'Sample Ridge Office', gc_customer_id: null, customer_address_id: null },
+      },
+    }
+    const jobs = lienServeJobsFromDesk(clicked)
+    expect(jobs.map((j) => [j.jobNumber, j.jobLabel])).toEqual([
+      ['863', '863 · Maple Court Service Visit'],
+      ['2104', '2104 · Cedar Hollow Lofts'],
+      ['', 'Sample Ridge Office'],
+    ])
+    expect(lienServedCopySentTitle(jobs[0]!.jobNumber)).toBe('Copy of lien affidavit — Job 863')
+    const plan = lienServePlan(jobs, { todayYmd: '2026-11-14', phone: '512-555-0100' })
+    const reads: Record<string, LienCopyRead> = Object.fromEntries(plan.ready.map((r) => [r.job.filing.id, { state: 'ok', file: { kind: 'pdf', pages: 2, bytes: 90_000, sha256: 'ab' } }]))
+    const sheet = lienServeMailSheet(lienServePlanRead(plan, reads), { printedOn: 'November 14, 2026', letter: true })
+    expect(sheet.rows.length).toBeGreaterThan(0)
+    expect([...new Set([...sheet.rows.map((r) => r.job), ...sheet.held.map((h) => h.job)])].sort()).toEqual(['2104 · Cedar Hollow Lofts', '863 · Maple Court Service Visit', 'Sample Ridge Office'])
   })
 
   it('lists the mailed liens the window still shows, the newest mailing first, and none that are voided or unserved', () => {

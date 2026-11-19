@@ -69,7 +69,7 @@ describe('PaintAMapPress · wide (Job Mode)', () => {
   it('with no job today, says the person picks, and opens the sheet on no job', async () => {
     render(<PaintAMapPress userId="u1" role="subcontractor" shape="wide" load={async () => nothing} now={() => TEN_AM} />)
     await settle()
-    expect(document.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('On your last job, or one you pick')
+    expect(document.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('On your next or last job, or a pick')
     fireEvent.click(document.querySelector('[data-paint-a-map-press="wide"]')!)
     await settle()
     expect(asks[0]).toMatchObject({ kind: 'start', home: { jobId: null } })
@@ -90,7 +90,7 @@ describe('PaintAMapPress · wide (Job Mode)', () => {
       </UpdateFocusOpenerBridgeProvider>,
     )
     await settle()
-    expect(document.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('On your last job, or one you pick')
+    expect(document.querySelector('[data-paint-a-map-press-line]')?.textContent).toBe('On your next or last job, or a pick')
     day = { clock: { job: pinto }, todayStops: [] }
     act(() => tell())
     await settle()
