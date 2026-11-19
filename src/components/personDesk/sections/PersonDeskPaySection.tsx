@@ -122,7 +122,9 @@ export function PersonDeskPaySection({
     let datesSaved = false
     try {
       if (plan.datesChanged && personId) {
-        const { error } = await supabase.from('people').update({ start_date: plan.dates.start, end_date: plan.dates.end }).eq('id', personId)
+        // The dev seat's apply makes this same write, and a test holds the two to one line (devMcpPaySetup.test.ts).
+        const { start, end } = plan.dates
+        const { error } = await supabase.from('people').update({ start_date: start, end_date: end }).eq('id', personId)
         if (error) throw error
         datesSaved = true
       }
