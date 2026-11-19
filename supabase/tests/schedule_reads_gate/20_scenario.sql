@@ -4,7 +4,9 @@
 -- service role with no login reads both for anyone, and every other caller is refused with 42501. What each person
 -- reads for himself is what he read before, but for a primary: named as the viewer or the recipient he is held to
 -- the blocks assigned to him and the jobs he is the account manager of, the rule the table holds him to (punch list
--- #400, family 7). Fixtures are written as postgres; reads run as each user; everything rolls back. Raises on the first failed assertion; ends with "schedule_reads_gate PASSED". See
+-- #400, family 7). And a read answers the same whoever asks it: the person himself, the office previewing him and
+-- the service role get one answer, since the office leg asks about the named person and no longer about the caller.
+-- Fixtures are written as postgres; reads run as each user; everything rolls back. Raises on the first failed assertion; ends with "schedule_reads_gate PASSED". See
 -- scripts/pgtest-schedule-reads-gate.sh. Never against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
@@ -64,10 +66,23 @@ CREATE FUNCTION sg.table_jobs() RETURNS text LANGUAGE sql AS $$
   -- The number is read off the fixture's id: the jobs table would hide a job the caller is only scheduled on.
   SELECT coalesce(string_agg(DISTINCT 'J3' || right(b.job_id::text, 1) || '0', ' ' ORDER BY 'J3' || right(b.job_id::text, 1) || '0'), '')
   FROM public.job_schedule_blocks b
-  WHERE b.work_date = public.app_today() AND b.job_id IN (sg.id('41'), sg.id('42'), sg.id('43'), sg.id('44'), sg.id('45'))
+  WHERE b.work_date = public.app_today() AND b.job_id IN (sg.id('41'), sg.id('42'), sg.id('43'), sg.id('44'), sg.id('45'), sg.id('46'))
+$$;
+-- Every fixture person's answer on each read, in one line. Only a caller who may name anyone can ask it.
+CREATE FUNCTION sg.mail_all() RETURNS text LANGUAGE sql AS $$
+  SELECT string_agg(split_part(u.name, ' ', 1) || '=' || sg.mail_jobs(u.id), '; ' ORDER BY u.name) FROM public.users u WHERE u.name LIKE '% Sgb'
+$$;
+CREATE FUNCTION sg.share_all() RETURNS text LANGUAGE sql AS $$
+  SELECT string_agg(split_part(u.name, ' ', 1) || '=' || sg.share_jobs(u.id), '; ' ORDER BY u.name) FROM public.users u WHERE u.name LIKE '% Sgb'
 $$;
 CREATE FUNCTION sg.table_rows() RETURNS text LANGUAGE sql AS $$
   SELECT count(*)::text FROM public.job_schedule_blocks b WHERE b.job_id = sg.id('41')
+$$;
+-- What each person reads on either read, whoever asks: the office and the superintendent every job, the helper the
+-- jobs he is scheduled on, the primary the job he manages and the one he is scheduled on.
+CREATE FUNCTION sg.answers() RETURNS text LANGUAGE sql IMMUTABLE AS $$
+  SELECT 'Ana=J310 J320 J330 J340 J350 J360; Cora=J310 J320 J330 J340 J350 J360; Hal=; Max=J310 J320 J330 J340 J350 J360; '
+    || 'Mo=J310 J320 J330 J340 J350 J360; Pat=J310 J330; Pru=; Sam=J310 J320 J340 J350 J360; Sue=J310 J320 J330 J340 J350 J360'
 $$;
 GRANT USAGE ON SCHEMA sg TO authenticated, anon, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA sg TO authenticated, anon, service_role;
@@ -75,10 +90,10 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA sg TO authenticated, anon, service_role
 -- Mo owns the jobs, Ana is an assistant, Cora keeps the books, Sue runs his sites, Sam is scheduled on every job
 -- today and Hal is on no job. Pat is a primary: the account manager of J310, scheduled himself on J330, on the crew
 -- of J340 with no block of his own, and nothing to J320 or to J350, which sits in Mo's project. Pru is a primary on
--- nothing.
+-- nothing. Max is a second master, and J360 is his: no project, nobody's but his and the office's.
 INSERT INTO auth.users (id, email) VALUES
   (sg.id('01'), 'mo@sg.test'), (sg.id('02'), 'ana@sg.test'), (sg.id('03'), 'cora@sg.test'), (sg.id('04'), 'sue@sg.test'),
-  (sg.id('05'), 'pat@sg.test'), (sg.id('06'), 'sam@sg.test'), (sg.id('07'), 'hal@sg.test'), (sg.id('08'), 'pru@sg.test');
+  (sg.id('05'), 'pat@sg.test'), (sg.id('06'), 'sam@sg.test'), (sg.id('07'), 'hal@sg.test'), (sg.id('08'), 'pru@sg.test'), (sg.id('09'), 'max@sg.test');
 INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VALUES
   (sg.id('01'), 'mo@sg.test', 'Mo Sgb', 'master_technician', false, false),
   (sg.id('02'), 'ana@sg.test', 'Ana Sgb', 'assistant', false, false),
@@ -87,7 +102,8 @@ INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VAL
   (sg.id('05'), 'pat@sg.test', 'Pat Sgb', 'primary', false, false),
   (sg.id('06'), 'sam@sg.test', 'Sam Sgb', 'helpers', false, false),
   (sg.id('07'), 'hal@sg.test', 'Hal Sgb', 'helpers', false, false),
-  (sg.id('08'), 'pru@sg.test', 'Pru Sgb', 'primary', false, false)
+  (sg.id('08'), 'pru@sg.test', 'Pru Sgb', 'primary', false, false),
+  (sg.id('09'), 'max@sg.test', 'Max Sgb', 'master_technician', false, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
 INSERT INTO public.master_superintendents (master_id, superintendent_id) VALUES (sg.id('01'), sg.id('04')) ON CONFLICT DO NOTHING;
 INSERT INTO public.service_types (id, name) VALUES (sg.id('31'), 'Sgb Plumbing');
@@ -98,13 +114,15 @@ INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number,
   (sg.id('42'), sg.id('01'), sg.id('31'), 'J320', 'Quarry repipe', '1200 Quarry Rd', 'Dana Whitfield', 'customer', 900, 0, 'working', NULL, NULL, NULL),
   (sg.id('43'), sg.id('01'), sg.id('31'), 'J330', 'Marsh drain line', '4 Marsh Ln', 'Dana Whitfield', 'customer', 900, 0, 'working', NULL, NULL, NULL),
   (sg.id('44'), sg.id('01'), sg.id('31'), 'J340', 'Cedar rough-in', '9 Cedar Way', 'Dana Whitfield', 'customer', 900, 0, 'working', NULL, NULL, NULL),
-  (sg.id('45'), sg.id('01'), sg.id('31'), 'J350', 'Ridge top-out', '61 Ridge Rd', 'Dana Whitfield', 'customer', 900, 0, 'working', NULL, NULL, sg.id('51'));
+  (sg.id('45'), sg.id('01'), sg.id('31'), 'J350', 'Ridge top-out', '61 Ridge Rd', 'Dana Whitfield', 'customer', 900, 0, 'working', NULL, NULL, sg.id('51')),
+  (sg.id('46'), sg.id('09'), sg.id('31'), 'J360', 'Birch gas line', '7 Birch Ct', 'Dana Whitfield', 'customer', 900, 0, 'working', NULL, NULL, NULL);
 INSERT INTO public.job_schedule_blocks (job_id, assignee_user_id, work_date, time_start, time_end) VALUES
   (sg.id('41'), sg.id('06'), public.app_today(), '08:00', '09:00'),
   (sg.id('42'), sg.id('06'), public.app_today(), '09:00', '10:00'),
   (sg.id('43'), sg.id('05'), public.app_today(), '10:00', '11:00'),
   (sg.id('44'), sg.id('06'), public.app_today(), '11:00', '12:00'),
-  (sg.id('45'), sg.id('06'), public.app_today(), '13:00', '14:00');
+  (sg.id('45'), sg.id('06'), public.app_today(), '13:00', '14:00'),
+  (sg.id('46'), sg.id('06'), public.app_today(), '14:00', '15:00');
 INSERT INTO public.jobs_ledger_team_members (job_id, user_id) VALUES (sg.id('44'), sg.id('05')) ON CONFLICT DO NOTHING;
 
 -- 0 · The grants: the gate is called from inside the two reads alone, and the public key reaches neither read.
@@ -138,6 +156,7 @@ SELECT sg.as_user(sg.id('06'));
 SET LOCAL ROLE authenticated;
 SELECT sg.same('Sam''s own shared schedule names his job', sg.share(sg.id('06')), 'J310:Linden water heater:88 Linden Ct:Sam Sgb');
 SELECT sg.same('Sam''s own day email names his job', sg.mail(sg.id('06')), 'J310:Linden water heater:88 Linden Ct:Sam Sgb');
+SELECT sg.same('Sam reads the jobs he is scheduled on, on both reads', sg.share_jobs(sg.id('06')) || '|' || sg.mail_jobs(sg.id('06')), 'J310 J320 J340 J350 J360|J310 J320 J340 J350 J360');
 SELECT sg.refused('Sam names the master on the day email', format('SELECT sg.mail(%L)', sg.id('01')), 'your own schedule');
 RESET ROLE;
 
@@ -146,6 +165,7 @@ SELECT sg.as_user(sg.id('04'));
 SET LOCAL ROLE authenticated;
 SELECT sg.same('Sue''s own shared schedule names her master''s job', sg.share(sg.id('04')), 'J310:Linden water heater:88 Linden Ct:Sam Sgb');
 SELECT sg.same('Sue''s own day email names it', sg.mail(sg.id('04')), 'J310:Linden water heater:88 Linden Ct:Sam Sgb');
+SELECT sg.same('Sue reads every job on both reads', sg.share_jobs(sg.id('04')) || '|' || sg.mail_jobs(sg.id('04')), 'J310 J320 J330 J340 J350 J360|J310 J320 J330 J340 J350 J360');
 SELECT sg.refused('Sue names Sam on the day email', format('SELECT sg.mail(%L)', sg.id('06')), 'your own schedule');
 SELECT sg.refused('Sue names the master on the shared schedule', format('SELECT sg.share(%L)', sg.id('01')), 'your own schedule');
 RESET ROLE;
@@ -165,19 +185,23 @@ SET LOCAL ROLE authenticated;
 SELECT sg.same('Pru, a primary on nothing, reads no job in the table or in either read', sg.table_jobs() || '|' || sg.share_jobs(sg.id('08')) || '|' || sg.mail_jobs(sg.id('08')), '||');
 RESET ROLE;
 
--- 5 · The office previews the day email of the person it picks: the master, his assistant and the controller.
+-- 5 · The office previews the day email of the person it picks: the master, an assistant and the controller. The
+--     preview is that person's answer, not the office's own.
 SELECT sg.as_user(sg.id('01'));
 SET LOCAL ROLE authenticated;
 SELECT sg.same('Mo previews Sam''s day email', sg.mail(sg.id('06')), 'J310:Linden water heater:88 Linden Ct:Sam Sgb');
 SELECT sg.same('Mo''s own shared schedule names his job', sg.share(sg.id('01')), 'J310:Linden water heater:88 Linden Ct:Sam Sgb');
-SELECT sg.same('Mo reads every job for himself, as before', sg.share_jobs(sg.id('01')) || '|' || sg.mail_jobs(sg.id('01')), 'J310 J320 J330 J340 J350|J310 J320 J330 J340 J350');
+SELECT sg.same('Mo reads every job for himself, the other master''s too', sg.share_jobs(sg.id('01')) || '|' || sg.mail_jobs(sg.id('01')) || '|' || sg.table_jobs(), 'J310 J320 J330 J340 J350 J360|J310 J320 J330 J340 J350 J360|J310 J320 J330 J340 J350 J360');
+SELECT sg.same('Mo previews Hal''s day email, which names no job', sg.mail_jobs(sg.id('07')), '');
+SELECT sg.same('Mo previews Sam''s: the jobs Sam is scheduled on and no other', sg.mail_jobs(sg.id('06')), 'J310 J320 J340 J350 J360');
 SELECT sg.same('Mo previews Pat''s day email: Pat''s two jobs', sg.mail_jobs(sg.id('05')), 'J310 J330');
-SELECT sg.same('and Pru''s, which names no job', sg.mail_jobs(sg.id('08')), '');
+SELECT sg.same('the master''s preview of every person is what each will be sent', sg.mail_all(), sg.answers());
 SELECT sg.refused('the shared schedule has no office leg: Mo names Sam', format('SELECT sg.share(%L)', sg.id('06')), 'your own schedule');
 RESET ROLE;
 SELECT sg.as_user(sg.id('02'));
 SET LOCAL ROLE authenticated;
 SELECT sg.same('Ana the assistant previews Sam''s day email', sg.mail(sg.id('06')), 'J310:Linden water heater:88 Linden Ct:Sam Sgb');
+SELECT sg.same('the assistant''s preview of every person is the same', sg.mail_all(), sg.answers());
 SELECT sg.same('Ana''s own shared schedule names her master''s job', sg.share(sg.id('02')), 'J310:Linden water heater:88 Linden Ct:Sam Sgb');
 SELECT sg.refused('Ana names the master on the shared schedule', format('SELECT sg.share(%L)', sg.id('01')), 'your own schedule');
 RESET ROLE;
@@ -186,14 +210,15 @@ SET LOCAL ROLE authenticated;
 SELECT sg.same('Cora the controller previews Sam''s day email', sg.mail(sg.id('06')), 'J310:Linden water heater:88 Linden Ct:Sam Sgb');
 RESET ROLE;
 
--- 6 · The dispatch functions read with the service key and no login: anyone's schedule, as before.
+-- 6 · The dispatch functions read with the service key and no login: anyone's schedule, the same answer the person
+--     and the office's preview get.
 SELECT sg.no_login('service_role');
 SET LOCAL ROLE service_role;
 SELECT sg.same('the service role reads Sam''s day email', sg.mail(sg.id('06')), 'J310:Linden water heater:88 Linden Ct:Sam Sgb');
 SELECT sg.same('the service role reads the master''s shared schedule', sg.share(sg.id('01')), 'J310:Linden water heater:88 Linden Ct:Sam Sgb');
 SELECT sg.same('and Hal''s, which is empty', sg.share(sg.id('07')) || '|' || sg.mail(sg.id('07')), '|');
-SELECT sg.same('the service role reads Pat''s two jobs on both, and no job for Pru', sg.share_jobs(sg.id('05')) || '|' || sg.mail_jobs(sg.id('05')) || '|' || sg.share_jobs(sg.id('08')) || sg.mail_jobs(sg.id('08')), 'J310 J330|J310 J330|');
-SELECT sg.same('every other role reads as before: the superintendent, the assistant and the helper', sg.share_jobs(sg.id('04')) || '|' || sg.mail_jobs(sg.id('02')) || '|' || sg.mail_jobs(sg.id('06')), 'J310 J320 J330 J340 J350|J310 J320 J330 J340 J350|J310 J320 J340 J350');
+SELECT sg.same('the service role reads the same answer for every person on the day email', sg.mail_all(), sg.answers());
+SELECT sg.same('and on the shared schedule', sg.share_all(), sg.answers());
 RESET ROLE;
 
 -- 7 · No login and no service key: refused, whatever role the token names.

@@ -16,13 +16,20 @@ SET lock_timeout = '3s';
 -- the viewer or the recipient is held to the blocks assigned to him and the jobs he is the account manager of
 -- (jobs_ledger.account_manager_user_id), the rule the table job_schedule_blocks already holds him to through
 -- primary_scope_jobs_ledger. It is written inline because these reads ask about a named person, not auth.uid().
--- Every other role's legs, and the bid blocks, are as they were.
+--
+-- One leg is put right. Both bodies asked assistants_share_master(<the named person>, the job's master), which has
+-- ignored its arguments since 20260907160000 and answers is_office_staff() for the CALLER. So the read's answer
+-- changed with who asked: the office previewing a person's day email saw every job's blocks, and the email, read
+-- with the service key, held that person's own. The leg now asks the named person's role, the four is_office_staff()
+-- names, so a read answers the same for the person, for the office previewing him and for the dispatch. An office
+-- person named reads every job's blocks, as the table's rule gives him. Every other leg, and the bid blocks, are as
+-- they were.
 --
 -- Both functions are replaced from their live definitions (pg_get_functiondef on a copy of the whole schema, the same
--- bodies as 20261118020000) with the gate's statement in front of the read and the primary's clause round the job
--- legs. No name, argument or returned column changes, and every caller in the app already asks within the gate's
--- rule, so this is safe on either side of a client deploy. The grants are restated by name: authenticated and the
--- service role, never anon.
+-- bodies as 20261118020000) with the gate's statement in front of the read, the primary's clause round the job legs
+-- and the office leg asked about the named person. No name, argument or returned column changes, and every caller in
+-- the app already asks within the gate's rule, so this is safe on either side of a client deploy. The grants are
+-- restated by name: authenticated and the service role, never anon.
 -- No CREATE TABLE. Idempotent: CREATE OR REPLACE and grants that name every role.
 
 -- 1) The gate. p_office_reads_anyone is true for the read whose senders may name another person.
@@ -115,7 +122,10 @@ AS $function$
           SELECT 1 FROM public.master_assistants
           WHERE master_id = jl.master_user_id AND assistant_id = p_recipient
         )
-        OR public.assistants_share_master(p_recipient, jl.master_user_id)
+        -- The office reads every job's blocks, asked about the named person. assistants_share_master answered for
+        -- the caller here, whoever was named.
+        OR EXISTS (SELECT 1 FROM public.users WHERE id = p_recipient
+                   AND role IN ('dev', 'master_technician', 'assistant', 'controller'))
         OR EXISTS (
           SELECT 1 FROM public.jobs_ledger_team_members jtm
           WHERE jtm.job_id = jl.id AND jtm.user_id = p_recipient
@@ -192,7 +202,10 @@ AS $function$
           SELECT 1 FROM public.master_assistants
           WHERE master_id = jl.master_user_id AND assistant_id = p_viewer
         )
-        OR public.assistants_share_master(p_viewer, jl.master_user_id)
+        -- The office reads every job's blocks, asked about the named person. assistants_share_master answered for
+        -- the caller here, whoever was named.
+        OR EXISTS (SELECT 1 FROM public.users WHERE id = p_viewer
+                   AND role IN ('dev', 'master_technician', 'assistant', 'controller'))
         OR EXISTS (
           SELECT 1 FROM public.jobs_ledger_team_members jtm
           WHERE jtm.job_id = jl.id AND jtm.user_id = p_viewer
