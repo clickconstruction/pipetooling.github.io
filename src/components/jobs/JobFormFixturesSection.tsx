@@ -70,6 +70,13 @@ type JobFormFixturesSectionProps = {
   invoiceStatusById?: Record<string, string>
   /** Opens the Multiple Segment Generator modal (v2.1071). */
   onOpenSegmentGenerator: () => void
+  /**
+   * A job from a bid still on one clean line (punch list #397, PR 4): the link that offers the
+   * bid's stages in its place, beside Multiple Segment Generator. Null = nothing to offer.
+   */
+  bringStages?: { label: string; onPress: () => void } | null
+  /** Why that offer is held, with the door that still works; drawn under the title row. */
+  bringStagesHeld?: string | null
   /** Opens the all-line-items Stripe preview dialog (v2.1223, title-row trigger). */
   onOpenStripeFixturePreview: () => void
   /** Live sum of the line items — shown as the running "Job Total" at the top right. */
@@ -127,6 +134,8 @@ export function JobFormFixturesSection({
   moveFixtureRow,
   invoiceStatusById = {},
   onOpenSegmentGenerator,
+  bringStages = null,
+  bringStagesHeld = null,
   onOpenStripeFixturePreview,
   jobTotalDollars,
   riderRows,
@@ -143,6 +152,21 @@ export function JobFormFixturesSection({
   // On touch every control in the row is 44 px (`.jobLineItems--stacked` in
   // index.css).
   const narrowViewport = useNarrowViewport640()
+  // The quiet links at the right of the title row: a text link at a desk, a 40 px outlined press on a phone.
+  const titleLinkStyle: CSSProperties = {
+    padding: narrowViewport ? '0 0.7rem' : 0,
+    minHeight: narrowViewport ? 40 : undefined,
+    background: 'transparent',
+    border: narrowViewport ? '1px solid var(--border-strong)' : 'none',
+    borderRadius: narrowViewport ? 8 : 0,
+    color: 'var(--text-link)',
+    textDecoration: narrowViewport ? 'none' : 'underline',
+    fontSize: narrowViewport ? '0.875rem' : '0.75rem',
+    fontWeight: narrowViewport ? 600 : undefined,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+  }
   // Punch list #355 F (v2.7284): on a phone a row's ⋯ holds Move up, Move down and Remove, so no 24 px trash sits beside the price.
   const [menuRowId, setMenuRowId] = useState<string | null>(null)
   // Line budgets (punch list #234): only a project carries them — a job priced before the
@@ -228,28 +252,22 @@ export function JobFormFixturesSection({
                 helper retired (owner call, v2.1699 — the help guide covers it). */}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.15rem' }}>
               <span style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)' }}>① Line Items</span>
-              <button
-                type="button"
-                onClick={onOpenSegmentGenerator}
-                style={{
-                  marginLeft: 'auto',
-                  padding: narrowViewport ? '0 0.7rem' : 0,
-                  minHeight: narrowViewport ? 40 : undefined,
-                  background: 'transparent',
-                  border: narrowViewport ? '1px solid var(--border-strong)' : 'none',
-                  borderRadius: narrowViewport ? 8 : 0,
-                  color: 'var(--text-link)',
-                  textDecoration: narrowViewport ? 'none' : 'underline',
-                  fontSize: narrowViewport ? '0.875rem' : '0.75rem',
-                  fontWeight: narrowViewport ? 600 : undefined,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Multiple Segment Generator
-              </button>
+              <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {bringStages ? (
+                  <button type="button" data-testid="bring-bid-stages" onClick={bringStages.onPress} style={titleLinkStyle}>
+                    {bringStages.label}
+                  </button>
+                ) : null}
+                <button type="button" onClick={onOpenSegmentGenerator} style={titleLinkStyle}>
+                  Multiple Segment Generator
+                </button>
+              </span>
             </div>
+            {bringStagesHeld ? (
+              <p data-testid="bring-bid-stages-held" style={{ margin: '0 0 0.35rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {bringStagesHeld}
+              </p>
+            ) : null}
             <table
               className={narrowViewport ? 'jobLineItems jobLineItems--stacked' : 'jobLineItems'}
               style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}

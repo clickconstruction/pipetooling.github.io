@@ -125,4 +125,22 @@ describe('BidCarryWindow', () => {
     fireEvent.click(screen.getByTestId('bid-carry-zero'))
     expect(text()).not.toContain('records it on the bid')
   })
+
+  it('on a job that exists, offers the stages in place of the one line or nothing', () => {
+    const onAnswer = open({ mode: 'split', lineName: 'Bid price', agreedValue: null })
+    const text = screen.getByRole('dialog').textContent ?? ''
+    expect(text).toContain('Bring B482’s stages onto this job?')
+    expect(text).toContain('They take the place of the one line, Bid price, at $48,000.00.')
+    expect(text).toContain('The job saves its lines as you change them, so this is saved with it.')
+    expect(screen.queryByTestId('bid-carry-one')).toBeNull()
+    expect(screen.queryByTestId('bid-carry-zero')).toBeNull()
+    expect(text).not.toContain('records it on the bid')
+    fireEvent.click(screen.getByRole('button', { name: 'Keep one line' }))
+    expect(onAnswer).toHaveBeenLastCalledWith({ choice: 'cancel' })
+    fireEvent.click(confirm())
+    const answer = onAnswer.mock.calls[1]![0]
+    expect(answer.choice).toBe('stages')
+    if (answer.choice !== 'stages') return
+    expect(answer.lines[0]!.line_description).toBe('B482 · Oak Ridge — 30% of the line it took the place of')
+  })
 })
