@@ -228,7 +228,8 @@ export function percentWindowPreview(args: {
       : fromRule
   const ruleToSave = value.follow ? rule : null
   const bidRevenueBefore = round2(rows.reduce((s, r) => s + r.revenue, 0))
-  const bidRevenueAfter = round2(bidRevenueBefore - (self?.revenue ?? 0) + (answer?.revenue ?? 0))
+  // Until there is an answer nothing would change: a row already on the bid keeps its price in the bid's total.
+  const bidRevenueAfter = answer ? round2(bidRevenueBefore - (self?.revenue ?? 0) + answer.revenue) : bidRevenueBefore
   const hold =
     args.pickRow && !self
       ? 'Pick the row first.'
