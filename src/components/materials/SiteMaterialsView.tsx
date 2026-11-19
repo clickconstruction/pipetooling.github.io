@@ -30,7 +30,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { askReasonWords, joinedTies, orderedPair, samePartAsks, tieCanon, tieFor, tieNamesWords, type PartTie, type SamePartAsk, type TieVerdict } from '../../lib/materials/partTies'
 import { containerLines, lastCountWords, type Movement } from '../../lib/materials/onSite'
 import { serverLines } from '../../lib/materials/onSiteServerSummary'
-import { addSitePrice, listContainerMoves, listContainers, listMovements, listPlaces, listSitePrices, loadBookPrices, priceForScope, removeSitePrice, serverSummary, setScopeTies, sitePricingAvailable } from '../../lib/materials/onSiteStore'
+import { addSitePrice, listContainerMoves, listContainers, loadJob, listMovements, listPlaces, listSitePrices, loadBookPrices, priceForScope, removeSitePrice, serverSummary, setScopeTies, sitePricingAvailable } from '../../lib/materials/onSiteStore'
 import { priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { searchBookParts, type BookPartHit } from '../../lib/materials/bookSearchIo'
 import { lensChipWords, rowWorth, siteWorth, worthWords, type PriceLens, type RowWorth } from '../../lib/materials/siteWorth'
@@ -60,6 +60,8 @@ type Props = {
   byName?: string
   /** The viewer reads the site's presses by person: the office's roles, never a crew's. */
   canSeePeople?: boolean
+  /** The viewer answers presses on the By person look: a dev. */
+  canAnswerPresses?: boolean
   /** The parts book's search behind **This is a parts-book part**; a test hands in its own. */
   searchBook?: (term: string) => Promise<BookPartHit[]>
 }
@@ -108,7 +110,7 @@ function Tile({ label, big, small, tone, on, onPress }: { label: string; big: Re
   )
 }
 
-export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backLabel, boxHref, developmentHref, loading, canTie = false, byName = '', canSeePeople = false, searchBook = searchBookParts }: Props) {
+export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backLabel, boxHref, developmentHref, loading, canTie = false, byName = '', canSeePeople = false, canAnswerPresses = false, searchBook = searchBookParts }: Props) {
   const now = new Date()
   /** By part or by place, as the device remembers it; By person is the office's and is never remembered. */
   const [view, setView] = useState<SiteView | 'person'>(() => readSiteView())
@@ -391,7 +393,7 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
           ) : shownRows.map((r) => <PartRow key={r.key} row={r} open={open.has(r.key)} onToggle={() => toggleRow(r.key)} boxHref={boxHref} now={now} ask={askOf.get(r.key)} joined={joinedTies(r, ties.ties)} canTie={canTie && ties.available} busy={busy} onAnswer={answer} onUndo={undo} worth={worth ? rowWorth(r, priceFor) : null} unpriced={unpricedKeys.has(r.key)} today={today} priced={showMoney ? rowSitePrices(r, sitePrices) : []} onUndoPrice={(id) => void undoPrice(id)} onTieBook={(row, part) => void tieBook(row, part)} searchBook={searchBook} />)}
         </div>
       ) : view === 'person' && canSeePeople ? (
-        <SitePeopleView siteId={site.id} jobs={jobs} movements={movements} containerMoves={jobs.flatMap((j) => listContainerMoves(j.id))} containers={rollup.flatMap((j) => j.containers)} places={rollup.flatMap((j) => j.places)} boxHref={boxHref} loading={loading} />
+        <SitePeopleView siteId={site.id} jobs={jobs} movements={movements} containerMoves={jobs.flatMap((j) => listContainerMoves(j.id))} containers={rollup.flatMap((j) => j.containers)} places={rollup.flatMap((j) => j.places)} boxHref={boxHref} loading={loading} canAnswer={canAnswerPresses} onLedgerChanged={(ids) => { for (const id of ids) void loadJob(id, { force: true, quiet: true }) }} />
       ) : (
         <div style={{ display: 'grid', gap: '0.75rem' }}>
           {sections.length === 0 ? <div style={sec}><EmptyState compact main={loading ? 'Reading the boxes…' : 'No cage or box is on this site yet.'} tail={loading ? undefined : 'A job’s Materials page is where the first is added.'} /></div> : null}

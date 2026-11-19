@@ -34,9 +34,10 @@ const boxHref = (jobId: string, boxId: string) => `/jobs?tab=materials&job=${job
 
 const noTrail: SiteTrail = { boxChanges: [], boxRenames: [], removedAnswers: [] }
 const readNothing = async () => noTrail
+const readNoAnswers = async () => ({ answers: [], takenBack: [] })
 
 function draw(over: Partial<Parameters<typeof SitePeopleView>[0]> = {}) {
-  return renderWithProviders(<SitePeopleView siteId="dev1" readTrail={readNothing} jobs={jobs} movements={movements} containerMoves={moves} containers={containers} places={places} boxHref={boxHref} {...over} />)
+  return renderWithProviders(<SitePeopleView siteId="dev1" readTrail={readNothing} readAnswers={readNoAnswers} jobs={jobs} movements={movements} containerMoves={moves} containers={containers} places={places} boxHref={boxHref} {...over} />)
 }
 
 describe('SitePeopleView', () => {
@@ -127,3 +128,87 @@ describe('SitePeopleView', () => {
     await waitFor(() => expect(screen.queryByTestId('site-people-trail-error')).toBeNull())
   })
 })
+
+describe('SitePeopleView, answers to a press', () => {
+  const dialog = () => within(screen.getByRole('dialog'))
+
+  it('lets a dev pick presses, shows what a take-back does to the number, and writes each answer with the reason', async () => {
+    const give = vi.fn(async () => {})
+    const readAnswers = vi.fn(async () => ({ answers: [], takenBack: [] }))
+    const onLedgerChanged = vi.fn()
+    draw({ canAnswer: true, give, readAnswers, onLedgerChanged })
+    // A box move is not a ledger row: it takes no answer.
+    expect(screen.getAllByRole('checkbox')).toHaveLength(4)
+    fireEvent.click(screen.getByLabelText('Pick Count 2" PVC 90'))
+    fireEvent.click(screen.getAllByLabelText('Pick Taken 2" PVC 90')[0] as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Answer 2 presses…' }))
+    // The window offers a second count for the count and a mark for the take. The dev takes the count back instead.
+    const picks = dialog().getAllByRole('combobox') as HTMLSelectElement[]
+    expect(picks.map((p) => p.value)).toEqual(['second_count', 'mark'])
+    fireEvent.change(picks[0] as HTMLSelectElement, { target: { value: 'take_back' } })
+    expect(screen.getByTestId('answer-plan').textContent).toContain('2" PVC 90 in G22')
+    expect(screen.getByTestId('answer-plan').textContent).toContain('2 → 6')
+    const go = dialog().getByRole('button', { name: 'Take back 1, mark 1' }) as HTMLButtonElement
+    expect(go.disabled).toBe(true)
+    fireEvent.change(dialog().getByRole('textbox'), { target: { value: 'counted without the office' } })
+    fireEvent.click(go)
+    await waitFor(() => expect(give).toHaveBeenCalledTimes(2))
+    expect(give).toHaveBeenCalledWith('m004', 'taken_back', 'counted without the office')
+    expect(give).toHaveBeenCalledWith('m003', 'marked', 'counted without the office')
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(onLedgerChanged).toHaveBeenCalledWith(['j1'])
+    await waitFor(() => expect(readAnswers).toHaveBeenCalledTimes(2))
+    expect(screen.queryByTestId('site-people-answer-bar')).toBeNull()
+  })
+
+  it('keeps a press picked when its answer is refused', async () => {
+    const give = vi.fn(async () => {
+      throw { message: 'new row violates row-level security policy' }
+    })
+    draw({ canAnswer: true, give })
+    fireEvent.click(screen.getAllByLabelText('Pick Taken 2" PVC 90')[0] as HTMLElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Answer 1 press…' }))
+    fireEvent.change(dialog().getByRole('textbox'), { target: { value: 'no note' } })
+    fireEvent.click(dialog().getByRole('button', { name: 'Mark 1' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(screen.getByRole('button', { name: 'Answer 1 press…' })).toBeTruthy()
+  })
+
+  const answered = async () => ({
+    answers: [
+      { id: 'a1', movementId: 'm003', answer: 'marked' as const, why: 'taken with no note', byName: 'Dana K.', at: '2026-11-18T15:05:00' },
+      { id: 'a2', movementId: 'm900', answer: 'taken_back' as const, why: 'added by mistake', byName: 'Dana K.', at: '2026-11-18T15:06:00' },
+    ],
+    takenBack: [{ ...movements[1], id: 'm900', quantity: 7, at: '2026-11-18T12:00:00', note: '' } as Movement],
+  })
+
+  it('shows the office each answer and the press taken back, struck through, with no press to change them', async () => {
+    draw({ readAnswers: answered })
+    await waitFor(() => expect(screen.getByText('marked not allowed by Dana K.')).toBeTruthy())
+    expect(screen.getByText('taken back by Dana K.')).toBeTruthy()
+    const row = screen.getByText('taken back by Dana K.').closest('tr') as HTMLElement
+    expect(row.getAttribute('data-answer')).toBe('taken_back')
+    expect(within(row).getByText('−7').style.textDecoration).toBe('line-through')
+    // The press taken back is in no figure: 30 and 4 taken, as before.
+    expect(screen.getByTestId('site-people-tiles').textContent).toContain('34pieces taken or used · 4 marked not allowed')
+    expect(screen.queryByRole('button', { name: 'Let it stand…' })).toBeNull()
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
+  })
+
+  it('lets a dev let a press stand again, with a reason', async () => {
+    const withdraw = vi.fn(async () => {})
+    const onLedgerChanged = vi.fn()
+    draw({ canAnswer: true, readAnswers: answered, withdraw, onLedgerChanged })
+    fireEvent.click(await screen.findByRole('button', { name: 'Let it stand…' }))
+    const go = dialog().getByRole('button', { name: 'Let the press stand' }) as HTMLButtonElement
+    expect(go.disabled).toBe(true)
+    fireEvent.change(dialog().getByRole('textbox'), { target: { value: 'it was right' } })
+    fireEvent.click(go)
+    await waitFor(() => expect(withdraw).toHaveBeenCalledWith('a2', 'it was right'))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(onLedgerChanged).toHaveBeenCalledWith(['j1'])
+    // An answered press takes no second answer: only the three with none can be picked.
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3)
+  })
+})
+

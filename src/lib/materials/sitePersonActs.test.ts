@@ -126,8 +126,8 @@ describe('the list’s figures and filters', () => {
 
   it('counts the presses, the days, the pieces that left, the boxes and the acts worth a look', () => {
     const sam = filterActs(acts, { person: 'sam r.', kind: null, lookOnly: false })
-    expect(actTiles(sam)).toEqual({ presses: 4, days: 2, pieces: 46, boxes: 2, look: 2 })
-    expect(actTiles([])).toEqual({ presses: 0, days: 0, pieces: 0, boxes: 0, look: 0 })
+    expect(actTiles(sam)).toEqual({ presses: 4, days: 2, pieces: 46, boxes: 2, look: 2, markedPieces: 0 })
+    expect(actTiles([])).toEqual({ presses: 0, days: 0, pieces: 0, boxes: 0, look: 0, markedPieces: 0 })
   })
 
   it('groups the acts by day, newest day first', () => {
@@ -201,5 +201,28 @@ describe('outsideProcess', () => {
     expect(why('box_changed')).toBe('changed a box')
     expect(why('box_renamed')).toBe('renamed a box')
     expect(why('answer_removed')).toBe('took an answer off')
+  })
+})
+
+describe('answers to a press', () => {
+  const take = row({ reason: 'taken', qty: 16, from: 'g40', at: '2026-11-18T11:02:00Z', by: 'Sam R.' })
+  const count = row({ reason: 'counted', qty: 12, from: 'g22', at: '2026-11-18T19:52:00Z', by: 'Sam R.' })
+  const acts = sitePersonActs({
+    jobs, movements: [take], containerMoves: [], containers, places,
+    takenBack: [count, take],
+    answers: [
+      { id: 'a1', movementId: take.id, answer: 'marked', why: 'no note', byName: 'Dana K.', at: '2026-11-18T21:05:00Z' },
+      { id: 'a2', movementId: count.id, answer: 'taken_back', why: 'counted without the office', byName: 'Dana K.', at: '2026-11-18T21:05:00Z' },
+    ],
+  }, day)
+
+  it('keeps a marked press in the figures and carries its answer', () => {
+    expect(acts[1]).toMatchObject({ kind: 'taken', pieces: 16, looks: ['no_note'], answer: { answer: 'marked', why: 'no note', byName: 'Dana K.' } })
+    expect(actTiles(acts)).toMatchObject({ presses: 2, pieces: 16, markedPieces: 16, look: 1 })
+  })
+
+  it('draws a press taken back once, in no figure and with no chip', () => {
+    expect(acts).toHaveLength(2)
+    expect(acts[0]).toMatchObject({ kind: 'counted', qty: '12', pieces: 0, looks: [], where: 'G22 · Arena', answer: { answer: 'taken_back', why: 'counted without the office' } })
   })
 })
