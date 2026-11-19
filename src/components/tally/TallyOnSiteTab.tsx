@@ -1,9 +1,10 @@
 /**
  * Materials on site, the field's tab on the Job Parts Tally (punch list #209): the job's containers
  * as big cards, a search across the site, a container's lines with four presses each (Used,
- * Move to…, Can't find, Short), Count this box one line at a time, Add a part. Every press but
- * Short writes a movement row through the store; nothing types a number over another. Short
- * (v2.6742) files the Job Parts Tally's own request for more (`lib/materials/shortRequest.ts`). The rows live in
+ * Move to…, Can't find, Ask for more), Count this box one line at a time, Add a part. A box's own
+ * screen is `OnSiteBoxScreen.tsx` (punch list #398); its sheets and writes are here. Every press but
+ * Ask for more writes a movement row through the store; nothing types a number over another. Ask for
+ * more (v2.6742, named Short until #398) files the Job Parts Tally's own request for more (`lib/materials/shortRequest.ts`). The rows live in
  * the on-site tables, read and written through `lib/materials/onSiteStore.ts`.
  *
  * Since punch list #304 the tab reaches past one job: the search has *This job · Every job* (the store's desk load,
@@ -25,6 +26,8 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sheet } from './OnSiteSheet'
+import OnSiteBoxScreen from './OnSiteBoxScreen'
+import { moreRows, moreTitle, type MoreKey } from '../../lib/materials/boxScreen'
 import StickerNewSheet from './StickerNewSheet'
 import StickersOnBoxes from '../materials/StickersOnBoxes'
 import { ON_BOXES_LABEL } from '../../lib/materials/stickersOnBoxes'
@@ -37,7 +40,7 @@ import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressFor
 import type { OnSiteMapPin } from '../materials/OnSiteMap'
 import { requestMyLocation, type LatLng, type MyFix } from '../../lib/materials/myLocation'
 import { taskPlaceSheetAccuracy } from '../../lib/tasks/taskPlace'
-import { WHERE_IS_IT_PRESS, boxPinShort, whereIsBoxTitle } from '../../lib/materials/whereIsBox'
+import { boxPinShort, whereIsBoxTitle } from '../../lib/materials/whereIsBox'
 import WhereIsBox from '../materials/WhereIsBox'
 import PinAskStrip from '../materials/PinAskStrip'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
@@ -69,7 +72,7 @@ import { countWalkAt, countWalkCantFindWords, countWalkKeys } from '../../lib/ma
 import { stepperKeeps, stepperTyped } from '../../lib/materials/stepperInput'
 import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
 import { addPressLabel, boxNameVerdict, nextFreeName, siteBoxesFor, type SiteBox } from '../../lib/materials/boxName'
-import { BOX_LINE_FIELD_LABEL, BOX_LINE_FROM_PARTS, BOX_LINE_LATER_NOTE, BOX_LINE_MAX, BOX_LINE_SAID_NOTE, addedLineVerdict, boxLineFromParts, boxLineOf, boxLinePressLabel, boxLineSavedWords, boxLineVerdict, lineFieldValue, nameWordsNote, sayItBetterPress, sayItBetterSub, sayItBetterTitle, type BoxLine } from '../../lib/materials/boxLine'
+import { BOX_LINE_FIELD_LABEL, BOX_LINE_LATER_NOTE, BOX_LINE_MAX, addedLineVerdict, boxLineFromParts, boxLineOf, boxLinePressLabel, boxLineSavedWords, boxLineVerdict, lineFieldValue, nameWordsNote, sayItBetterSub, sayItBetterTitle, type BoxLine } from '../../lib/materials/boxLine'
 import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMemory'
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
@@ -129,19 +132,8 @@ const quiet: CSSProperties = { background: 'none', border: 'none', padding: 0, m
 const card: CSSProperties = { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: '0.75rem 0.9rem' }
 const input: CSSProperties = { width: '100%', minHeight: TOUCH_MIN, padding: '0.6rem 0.9rem', fontSize: '1rem', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.85rem' }
-/** A print the box's page offers: a pill at thumb height with the printer glyph. It opens the print window here, on the rows the tab already holds (punch list #304). */
-const paperPress: CSSProperties = { ...btn, borderRadius: 999, justifyContent: 'center', gap: '0.4rem', textDecoration: 'none', fontSize: '0.9rem', padding: '0 0.6rem', whiteSpace: 'nowrap' }
 /** The search's reach: this job, or every job the viewer may open. */
 const scopePill = (on: boolean): CSSProperties => ({ minHeight: 40, padding: '0 0.8rem', border: 'none', background: on ? 'var(--text-strong)' : 'var(--surface)', color: on ? 'var(--surface)' : 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' })
-function PrinterGlyph() {
-  return (
-    <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}>
-      <path d="M6 9V3h12v6" />
-      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-      <rect x="6" y="14" width="12" height="7" />
-    </svg>
-  )
-}
 /** Take from a box: a run left on a box, offered again. */
 const leftStrip: CSSProperties = { display: 'grid', gap: '0.5rem', padding: '0.6rem 0.75rem', borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', color: 'var(--text-strong)' }
 /** The press that stays at the bottom of a box's screen and of the run's, above the app's own bottom bar. */
@@ -160,6 +152,8 @@ type Sheet =
   | { kind: 'take-other'; container: Container }
   | { kind: 'add-container'; moveAfter: { line: ContainerLine; qty: number; from: Container } | null }
   | { kind: 'retire'; container: Container }
+  /** More (punch list #398): the rare presses of a box behind one press. */
+  | { kind: 'more'; container: Container }
   | { kind: 'edit-box'; container: Container }
   /** Say it better (punch list #351, PR 2): a person's own words for what is in the box. */
   | { kind: 'say-line'; container: Container }
@@ -836,98 +830,69 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const touched = ls.reduce<{ at: string; by: string } | null>((best, l) => (l.lastTouchedAt && (!best || l.lastTouchedAt > best.at) ? { at: l.lastTouchedAt, by: l.lastTouchedBy ?? '' } : best), null)
   const boxLineNow = boxLineOf(container, lines)
   const leftRun = unsorted ? null : readTakeRun(jobId, container.id, Date.now())
+  /** A row of More: each opens the sheet or the print window the tab already has. */
+  const more = (key: MoreKey) => {
+    if (key === 'edit') setSheet({ kind: 'edit-box', container })
+    else if (key === 'say') setSheet({ kind: 'say-line', container })
+    else if (key === 'move') setSheet({ kind: 'move-box', container })
+    else if (key === 'retire') setSheet({ kind: 'retire', container })
+    else if (key === 'copy') { setSheet(null); void navigator.clipboard.writeText(boxClipboardWords(container.id)).then(() => showToast(copiedLabelWords(container.id), 'success'), (e: unknown) => showToast(`The code did not copy: ${formatErrorMessage(e)}`, 'error')) }
+    else { setSheet(null); setPaper({ kind: key, id: container.id }) }
+  }
   const loosePhotos = photos.filter((p) => !p.takeId)
   const leftRunWords = leftRun ? takeLeftWords(leftRun, container.label) : { main: '', sub: '', go: '', drop: '' }
   return (
     <div style={{ display: 'grid', gap: '0.75rem' }}>
-      {header}
-      {/* Take from a box: a run started on this box and left, offered again. After twelve hours it is forgotten. */}
-      {leftRun ? (
-        <div role="group" aria-label={leftRunWords.main} style={leftStrip} data-testid="on-site-take-left">
-          <span><b>{leftRunWords.main}</b> {leftRunWords.sub}</span>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button type="button" style={btnPrimary} onClick={() => resumeTake(container, leftRun)}>{leftRun.savedAt ? <CameraGlyph size={16} /> : null}{leftRunWords.go}</button>
-            <button type="button" style={btn} onClick={() => dropTake(container, leftRun)}>{leftRunWords.drop}</button>
-          </div>
-        </div>
-      ) : null}
-      {pinAsk === container.id && boxWantsPin(container, now) ? <PinAskStrip container={container} byName={byName} onPinned={(words) => { setPinAsk(null); showToast(words, 'success') }} onLater={() => setPinAsk(null)} /> : null}
-      {/* What is in it (punch list #351, PR 2): the app's line from the parts until a person says it better. Never Unsorted, the app's own row. */}
-      {container.kind !== 'unsorted' ? (
-        <div style={{ display: 'grid', gap: '0.2rem' }} data-testid="on-site-box-line" data-by={boxLineNow.by}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {boxLineNow.text ? <span style={{ fontWeight: 600, fontSize: '1.05rem', minWidth: 0, overflowWrap: 'anywhere' }}>{boxLineNow.text}</span> : null}
-            {boxLineNow.by === 'app' ? <span style={{ ...muted, fontSize: '0.75rem' }}>{BOX_LINE_FROM_PARTS}</span> : null}
-            <button type="button" style={{ ...chip, marginLeft: boxLineNow.text ? 'auto' : 0, flex: 'none' }} aria-label={`${sayItBetterPress(boxLineNow)}: ${sayItBetterTitle(container)}`} onClick={() => setSheet({ kind: 'say-line', container })}>{sayItBetterPress(boxLineNow)}</button>
-          </div>
-          {boxLineNow.by === 'person' ? <span style={muted}>{BOX_LINE_SAID_NOTE}</span> : null}
-        </div>
-      ) : null}
-      {container.kind !== 'unsorted' ? (
-        <div style={{ display: 'grid', gap: '0.35rem', ...muted }}>
-          <span>At <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{placeName(places, container.locationId)}</b>{container.where ? `, ${container.where}` : ''}{boxPinShort(container, new Date()) ? ` · ${boxPinShort(container, new Date())}` : ''}</span>
-          {/* Three chips on one line at 375 (v2.6229): a three-column grid and short words; the words that were cut live on the chips' aria-labels. */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.4rem' }}>
-            <button type="button" style={chip} aria-label={`Move ${container.label} to another place`} onClick={() => setSheet({ kind: 'move-box', container })}>Move box</button>
-            {/* Where is it? (punch list #372): one chip, pinned or not. The map to drag lives inside its sheet as Move the pin by hand. */}
-            <button type="button" style={{ ...chip, gap: '0.3rem' }} aria-label={whereIsBoxTitle(container.label)} onClick={() => setSheet({ kind: 'where', container })}><span aria-hidden>◎</span>{WHERE_IS_IT_PRESS}</button>
-            <PhotoPress jobId={jobId} containerId={container.id} containerLabel={container.label} after={after} byUserId={byUserId} byName={byName} onToast={showToast} onTaken={() => offerPin(container)} style={{ ...chip, gap: '0.35rem', ...(after ? { borderColor: BLUE, color: BLUE } : {}) }} />
-          </div>
-        </div>
-      ) : null}
-      {/* A take's two photos are drawn with their take, under the parts (v2.7828); the box's other photos stay here. */}
-      {loosePhotos.length > 0 ? <BoxPhotos photos={loosePhotos} canAct onToast={showToast} /> : null}
-      {countWalkKeys(ls).length > 0 && container.kind !== 'unsorted' ? <button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setView({ kind: 'count', id: container.id, keys: countWalkKeys(ls), index: 0, corrected: 0 })}>Count this box</button> : null}
-      {ls.length === 0 ? <EmptyState compact main={`Nothing in ${container.label} yet.`} next={{ label: `Add a part to ${container.label}`, onPress: () => setSheet({ kind: 'add-part', container }) }} tail="adds the first, or move one in from another container." /> : null}
-      {ls.map((l) => (
-        <div key={l.partKey} style={{ ...card, borderColor: l.cannotFindSinceCount > 0 || (l.lastCountDiff ?? 0) < 0 ? 'var(--text-amber-800)' : 'var(--border)', display: 'grid', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem' }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 600 }}>{l.partName}</div>
-              <div style={muted}>
-                {l.manufacturer ?? ''}
-                {l.cannotFindSinceCount > 0 ? ` · ${l.cannotFindSinceCount} can't find` : ''}
-                {(l.lastCountDiff ?? 0) < 0 ? ` · ${-(l.lastCountDiff ?? 0)} missing at the last count` : ''}
+      {/* The box's own screen (punch list #398): its parts first, then four tiles that carry their facts. The rare presses are behind More. */}
+      <OnSiteBoxScreen
+        container={container}
+        lines={ls}
+        stickers={stickersOn(container)}
+        said={boxLineNow.by === 'person' ? boxLineNow.text : ''}
+        now={now}
+        lastCount={last}
+        place={container.locationId ? placeName(places, container.locationId) : null}
+        pin={boxPinShort(container, now)}
+        photos={loosePhotos}
+        after={after}
+        narrow={narrow}
+        strips={
+          <>
+            {/* Take from a box: a run started on this box and left, offered again. After twelve hours it is forgotten. */}
+            {leftRun ? (
+              <div role="group" aria-label={leftRunWords.main} style={leftStrip} data-testid="on-site-take-left">
+                <span><b>{leftRunWords.main}</b> {leftRunWords.sub}</span>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button type="button" style={btnPrimary} onClick={() => resumeTake(container, leftRun)}>{leftRun.savedAt ? <CameraGlyph size={16} /> : null}{leftRunWords.go}</button>
+                  <button type="button" style={btn} onClick={() => dropTake(container, leftRun)}>{leftRunWords.drop}</button>
+                </div>
               </div>
-            </div>
-            <div style={{ marginLeft: 'auto', fontSize: '1.7rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{l.onHand}</div>
+            ) : null}
+            {pinAsk === container.id && boxWantsPin(container, now) ? <PinAskStrip container={container} byName={byName} onPinned={(words) => { setPinAsk(null); showToast(words, 'success') }} onLater={() => setPinAsk(null)} /> : null}
+          </>
+        }
+        photoTile={(tile) => <PhotoPress jobId={jobId} containerId={container.id} containerLabel={container.label} after={after} byUserId={byUserId} byName={byName} onToast={showToast} onTaken={() => offerPin(container)} style={tile.style} fact={tile.fact} factStyle={tile.factStyle} />}
+        filed={loosePhotos.length > 0 ? <BoxPhotos photos={loosePhotos} canAct quiet onToast={showToast} /> : null}
+        takes={<BoxTakes jobId={jobId} containerId={container.id} containerLabel={container.label} />}
+        onBack={() => { setSheet(null); setView({ kind: 'containers' }) }}
+        onMore={() => setSheet({ kind: 'more', container })}
+        onCount={() => setView({ kind: 'count', id: container.id, keys: countWalkKeys(ls), index: 0, corrected: 0 })}
+        onAddPart={() => setSheet({ kind: 'add-part', container })}
+        onWhere={() => setSheet({ kind: 'where', container })}
+        onPart={(press, l) => setSheet(press === 'short' ? { kind: 'short', line: l, container } : press === 'used' || press === 'cannot_find' ? { kind: 'qty', reason: press, line: l, container } : { kind: 'move', line: l, container })}
+      />
+      {sheet?.kind === 'more' ? (
+        <Sheet title={moreTitle(container.label)} onClose={() => setSheet(null)}>
+          <div style={{ display: 'grid', gap: '0.4rem' }} data-testid="on-site-box-more">
+            {moreRows(container, boxLineNow).map((r) => (
+              <button key={r.key} type="button" style={{ ...btn, ...btnBlock, minHeight: 54, justifyContent: 'space-between', textAlign: 'left', gap: '0.75rem', ...(r.apart ? { marginTop: '0.6rem', borderColor: 'var(--border)' } : {}) }} onClick={() => more(r.key)}>
+                <span style={{ display: 'grid', minWidth: 0 }}><span>{r.title}</span><span style={{ ...muted, fontWeight: 500, fontSize: '0.8rem' }}>{r.sub}</span></span>
+                {r.key === 'copy' ? null : <span aria-hidden style={{ color: 'var(--text-faint)' }}>›</span>}
+              </button>
+            ))}
+            {touched ? <p style={{ ...muted, fontSize: '0.75rem', margin: 0 }}>Last touched {new Date(touched.at).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })} by {touched.by}.</p> : null}
           </div>
-          {l.onHand <= 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={muted}>{container.label} has none left.</span>
-              {/* Short (v2.6742): a line with none left is the one most often short, so the ask stays. */}
-              <button type="button" style={{ ...btn, minHeight: 40, padding: '0 0.7rem', fontSize: '0.8rem', marginLeft: 'auto', borderColor: BLUE, color: BLUE }} onClick={() => setSheet({ kind: 'short', line: l, container })}>Short</button>
-            </div>
-          ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: '0.3rem' }}>
-            {unsorted ? <button type="button" style={{ ...btn, padding: '0 0.15rem', fontSize: '0.8rem', minWidth: 0, borderColor: BLUE, color: BLUE }} disabled={l.onHand <= 0} onClick={() => setSheet({ kind: 'move', line: l, container })}>Put in…</button> : null}
-            <button type="button" style={{ ...btn, padding: '0 0.15rem', fontSize: '0.8rem', minWidth: 0 }} disabled={l.onHand <= 0} onClick={() => setSheet({ kind: 'qty', reason: 'used', line: l, container })}>Used</button>
-            {!unsorted ? <button type="button" style={{ ...btn, padding: '0 0.15rem', fontSize: '0.8rem', minWidth: 0 }} disabled={l.onHand <= 0} onClick={() => setSheet({ kind: 'move', line: l, container })}>Move to…</button> : null}
-            <button type="button" style={{ ...btn, padding: '0 0.15rem', fontSize: '0.8rem', minWidth: 0, color: 'var(--text-amber-800)', borderColor: 'var(--text-amber-800)' }} disabled={l.onHand <= 0} onClick={() => setSheet({ kind: 'qty', reason: 'cannot_find', line: l, container })}>Can't find</button>
-            {/* Short (v2.6742): the Job Parts Tally's request for more, filed from the line, so what we have and what we need are one screen. */}
-            <button type="button" style={{ ...btn, padding: '0 0.15rem', fontSize: '0.8rem', minWidth: 0, borderColor: BLUE, color: BLUE }} onClick={() => setSheet({ kind: 'short', line: l, container })}>Short</button>
-          </div>
-          )}
-        </div>
-      ))}
-      <button type="button" style={{ ...btn, ...btnBlock }} onClick={() => setSheet({ kind: 'add-part', container })}>Add a part to {container.label}</button>
-      {/* What was taken from this box, with its pictures (v2.7828): under the parts, which a person at the box reads first. */}
-      <BoxTakes jobId={jobId} containerId={container.id} containerLabel={container.label} />
-      {container.kind !== 'unsorted' ? (
-        /* The box's paper and its retirement (v2.6366): the two prints are a pair of pill presses with the printer glyph, one row under a caption, and Retire sits apart on its own line so a thumb reaching for a print never lands on it. Both print here since punch list #304: the office page they used to open is not every role's. */
-        <div style={{ display: 'grid', gap: '0.5rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
-          <span style={muted}>Paper for {container.label}</span>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.4rem' }}>
-            <button type="button" aria-label={`Print the label for ${container.label}`} style={paperPress} onClick={() => setPaper({ kind: 'label', id: container.id })}><PrinterGlyph />Print the label</button>
-            <button type="button" aria-label={`Print the manifest for ${container.label}`} style={paperPress} onClick={() => setPaper({ kind: 'manifest', id: container.id })}><PrinterGlyph />Print the manifest</button>
-          </div>
-          {/* v2.6800 (punch list #294): the label's address on the clipboard, for a QR typed into Brother's phone app at the cage; the printer reads the dash either way. */}
-          <button type="button" aria-label={`Copy the label code for ${container.label}`} style={{ ...paperPress, width: '100%' }} onClick={() => { void navigator.clipboard.writeText(boxClipboardWords(container.id)).then(() => showToast(copiedLabelWords(container.id), 'success'), (e: unknown) => showToast(`The code did not copy: ${formatErrorMessage(e)}`, 'error')) }}>Copy the label code</button>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', ...muted }}>
-            <span>Done with this {container.kind === 'cage' ? 'cage' : 'box'}?</span>
-            <button type="button" style={{ ...quiet, color: 'var(--text-muted)', fontSize: '0.9rem' }} onClick={() => setSheet({ kind: 'retire', container })}>Retire {container.label}</button>
-          </div>
-        </div>
+        </Sheet>
       ) : null}
 
       {sheet?.kind === 'short' ? (
@@ -1003,7 +968,6 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
           <span style={{ ...muted, textAlign: 'center' }}>The camera opens for a photo of {container.label} as found.</span>
         </div>
       ) : null}
-      {touched ? <p style={{ ...muted, fontSize: '0.75rem', margin: 0 }}>Last touched {new Date(touched.at).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })} by {touched.by}.</p> : null}
     </div>
   )
 }

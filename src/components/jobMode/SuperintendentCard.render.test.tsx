@@ -16,6 +16,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import SuperintendentCard from './SuperintendentCard'
 import { renderWithProviders, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 import type { ProjectBoardJob } from '../../lib/jobs/projectBoardRead'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 const fixtures = [
   { id: 'r', name: 'Rough In', stage_kind: 'order', line_kind: 'fixture', line_unit_price: 9000, count: 1, progress_pct: 100, sequence_order: 1 },
@@ -79,6 +80,19 @@ vi.mock('../../hooks/useExpectedHours', () => ({
 let noteTags: Map<string, unknown[]> = new Map()
 vi.mock('../../hooks/useJobNoteTags', () => ({ useJobNoteTags: () => noteTags }))
 vi.mock('./AskMasterSheet', () => ({ AskMasterSheet: ({ facts }: { facts: { pct: number | null; hoursWords: string | null; finishWords: string | null; stage?: string | null } }) => <div data-testid="ask-master-sheet">{`${facts.pct}|${facts.hoursWords}|${facts.finishWords}|${facts.stage}`}</div> }))
+// My finish date (punch list #396 PR 3): what was said on the job, and the one write.
+let finishCalls: unknown[] = []
+let finishReadFails = false
+const finishSaved: unknown[] = []
+vi.mock('../../lib/jobMode/finishCallIo', () => ({
+  loadFinishCalls: () => (finishReadFails ? Promise.reject({ message: 'relation does not exist', code: '42P01' }) : Promise.resolve(finishCalls)),
+  saveFinishCall: (input: { jobId: string; finishOn: string; planWas: string | null; why: string | null }) => {
+    finishSaved.push(input)
+    finishCalls = [{ userId: SMOKE_AUTH_USER_ID, finishOn: input.finishOn, planWas: input.planWas, why: input.why, createdAt: new Date().toISOString() }, ...finishCalls]
+    return Promise.resolve()
+  },
+}))
+vi.mock('./FinishDateSheet', () => ({ FinishDateSheet: ({ plannedYmd, saidYmd }: { plannedYmd: string | null; saidYmd: string | null }) => <div data-testid="finish-date-sheet">{`${plannedYmd}|${saidYmd}`}</div> }))
 vi.mock('../stageChecklists/StageChecklistSheet', () => ({ StageChecklistSheet: ({ stage }: { stage: { name: string } }) => <div data-testid="checklist-sheet">{stage.name}</div> }))
 // The Scoreboard's read: the office's sign-off and the subs' sheet hours ride it onto the card's line (the second walk's slips 3 and 4).
 let scoreRead: unknown = null
@@ -91,6 +105,9 @@ describe('SuperintendentCard', () => {
     target = null
     scoreRead = null
     noteTags = new Map()
+    finishCalls = []
+    finishReadFails = false
+    finishSaved.length = 0
     asked.length = 0
   })
 
@@ -221,6 +238,45 @@ describe('SuperintendentCard', () => {
     noteTags = new Map([['n1', [{ noteId: 'n1', taggedUserId: 'm1', taggedName: 'Dana Whitfield', taggerUserId: SMOKE_AUTH_USER_ID, createdAt: new Date().toISOString(), clearedAt: null, clearedHow: null }]]])
     renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
     expect((await screen.findByTestId('pace-asked')).textContent).toBe('Waiting on Dana.')
+  })
+
+  it('My finish date: the press opens the window, and his day is a row on the rail’s foot (punch list #396 PR 3)', async () => {
+    // A plan far enough off that the card has nothing to ask.
+    answer = async () => ({ readsWages: false, jobs: [project({ labor: [], pct_complete: 25, spentPct: null, budgetKind: 'bid', budgetHours: 70, plannedFinish: '2099-01-02' })] })
+    finishCalls = [{ userId: SMOKE_AUTH_USER_ID, finishOn: '2099-01-05', planWas: '2099-01-02', why: 'Waiting on the inspector', createdAt: '2026-11-01T15:00:00Z' }]
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    await screen.findByTestId('superintendent-line')
+    const said = await screen.findByTestId('pace-rail-said')
+    expect(said.textContent).toContain('You said')
+    expect(said.textContent).toContain('Mon, Jan 5')
+    expect(said.textContent).toContain('Waiting on the inspector')
+    expect(screen.queryByTestId('pace-finish-ask')).toBeNull()
+    fireEvent.click(screen.getByTestId('pace-finish-date'))
+    // The window opens on the plan and on his last word.
+    expect(screen.getByTestId('finish-date-sheet').textContent).toBe('2099-01-02|2099-01-05')
+  })
+
+  it('the card asks when the plan’s day has come, and Yes says that day in his name', async () => {
+    // The plan's day is today, by the app's own calendar.
+    const planYmd = todayYmdInAppTz()
+    answer = async () => ({ readsWages: false, jobs: [project({ labor: [], pct_complete: 25, spentPct: null, budgetKind: 'bid', budgetHours: 70, plannedFinish: planYmd })] })
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    const askBox = await screen.findByTestId('pace-finish-ask')
+    expect(askBox.textContent).toMatch(/^Still finishing \w{3}, \w{3} \d{1,2}\?/)
+    fireEvent.click(screen.getByTestId('pace-finish-yes'))
+    await waitFor(() => expect(finishSaved).toEqual([{ jobId: 'job-1', finishOn: planYmd, planWas: planYmd, why: null }]))
+    // Said today: the question is answered for the day, and his word is on the rail.
+    await waitFor(() => expect(screen.queryByTestId('pace-finish-ask')).toBeNull())
+    expect((await screen.findByTestId('pace-rail-said')).textContent).toContain('You said')
+  })
+
+  it('a finish date read that fails leaves the card whole, with the press still there', async () => {
+    finishReadFails = true
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    await screen.findByTestId('superintendent-line')
+    expect(screen.getByTestId('pace-rail')).toBeTruthy()
+    expect(screen.queryByTestId('pace-rail-said')).toBeNull()
+    expect(screen.getByTestId('pace-finish-date').textContent).toBe('My finish date')
   })
 
   it('reads the target the office set as its budget, in words', async () => {

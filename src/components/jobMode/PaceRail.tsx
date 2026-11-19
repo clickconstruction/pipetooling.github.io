@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { PACE_CARD_WORDS, type PaceRail as PaceRailRows } from '../../lib/jobMode/paceCard'
 import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
+import { FINISH_CALL_WORDS } from '../../lib/jobMode/finishCall'
 
 /**
  * The pace card's rail (punch list #396): the job's stages top to bottom, done, now and next, ending in the
@@ -17,12 +18,14 @@ const LINK: CSSProperties = { position: 'absolute', left: 10, top: 31, bottom: -
 const SIDE: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }
 const BLUE = '#2563eb'
 
-export function PaceRail({ rail, finish, onSetPct }: {
+export function PaceRail({ rail, finish, said, onSetPct }: {
   rail: PaceRailRows
   finish: { planned: string | null; atPace: { words: string; tone: 'ahead' | 'behind' } | null }
+  /** His own finish day and what is in the way (My finish date, PR 3), once he has said one. */
+  said?: { day: string; why: string | null } | null
   onSetPct: () => void
 }) {
-  const feet = (finish.planned ? 1 : 0) + (finish.atPace ? 1 : 0)
+  const feet = (finish.planned ? 1 : 0) + (said ? 1 : 0) + (finish.atPace ? 1 : 0)
   return (
     <div data-testid="pace-rail" data-from={rail.from} style={{ display: 'grid' }}>
       {rail.rows.map((row, i) => {
@@ -51,10 +54,21 @@ export function PaceRail({ rail, finish, onSetPct }: {
       })}
       {finish.planned ? (
         <div data-testid="pace-rail-finish" style={ROW}>
-          {finish.atPace ? <span aria-hidden="true" style={LINK} /> : null}
+          {finish.atPace || said ? <span aria-hidden="true" style={LINK} /> : null}
           <span aria-hidden="true" style={{ ...DOT, borderColor: 'var(--text-green-700)', color: 'var(--text-green-700)' }}>⚑</span>
           <span style={{ minWidth: 0, fontSize: '0.95rem', fontWeight: 600, color: finish.atPace?.tone === 'behind' ? 'var(--text-muted)' : 'var(--text-green-700)' }}>{PACE_CARD_WORDS.finish}</span>
           <span style={{ ...SIDE, fontSize: '0.9rem', fontWeight: 600, color: finish.atPace?.tone === 'behind' ? 'var(--text-muted)' : 'var(--text-green-700)' }}>{finish.planned}</span>
+        </div>
+      ) : null}
+      {said ? (
+        <div data-testid="pace-rail-said" style={ROW}>
+          {finish.atPace ? <span aria-hidden="true" style={LINK} /> : null}
+          <span aria-hidden="true" style={{ ...DOT, borderColor: BLUE, color: BLUE }}>✎</span>
+          <span style={{ minWidth: 0, fontSize: '0.95rem', fontWeight: 600, overflowWrap: 'anywhere' }}>
+            {FINISH_CALL_WORDS.said}
+            {said.why ? <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>{said.why}</span> : null}
+          </span>
+          <span style={{ ...SIDE, fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)' }}>{said.day}</span>
         </div>
       ) : null}
       {finish.atPace ? (
