@@ -2,7 +2,7 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
   version: 'v2.7894',
-  date: '2026-11-18',
+  date: '2026-11-19',
   title: 'Painted maps: the Saved band’s Text it from my phone… opens Messages at once and no longer says it did not',
   kind: 'fix',
   highlights: [

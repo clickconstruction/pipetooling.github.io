@@ -267,7 +267,8 @@ the address is known at the moment of the press and nothing waits.
   with no question, because the link came back fast. The band then read *The link is ready. Press
   Open Messages.* though Messages had opened. That is the false note v2.7863 took out of the
   sheet. **Fixed in v2.7894:** the band asks the server the sheet's question, hands the phone its
-  text inside the press on a yes, and listens for the page being left.
+  text inside the press on a yes, and listens for the page being left. Walked on the same
+  simulator after: Messages opened, and back in Safari the band said nothing false.
 - **[#345](../paint-a-map/README.md).** Its rule for copies and its privacy sentences are the list
   above. Nothing on the `/way` page changes.
 - **#393 (closed 2026-11-18, in [the Closed lines](../README.md)).** It worked in the map's window
