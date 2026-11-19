@@ -193,6 +193,8 @@ export type PercentWindowPreview = {
   hold: string | null
   /** The press, naming what it will do. */
   label: string
+  /** The number goes on a row already here and none is picked yet: there is no row to draw. */
+  awaitingPick: boolean
 }
 
 /**
@@ -228,10 +230,11 @@ export function percentWindowPreview(args: {
       : fromRule
   const ruleToSave = value.follow ? rule : null
   const bidRevenueBefore = round2(rows.reduce((s, r) => s + r.revenue, 0))
-  // Until there is an answer nothing would change: a row already on the bid keeps its price in the bid's total.
-  const bidRevenueAfter = answer ? round2(bidRevenueBefore - (self?.revenue ?? 0) + answer.revenue) : bidRevenueBefore
+  const awaitingPick = args.pickRow === true && !self
+  // Until there is an answer and a row for it nothing would change: the bid reads as it stands.
+  const bidRevenueAfter = answer && !awaitingPick ? round2(bidRevenueBefore - (self?.revenue ?? 0) + answer.revenue) : bidRevenueBefore
   const hold =
-    args.pickRow && !self
+    awaitingPick
       ? 'Pick the row first.'
       : name === '' && !self
         ? 'Name the row first.'
@@ -242,8 +245,19 @@ export function percentWindowPreview(args: {
           : null
   const money = answer ? `$${formatCurrency(answer.revenue)}` : ''
   const shown = self ? self.name : name
-  const label = answer == null ? (self ? `Set ${shown || 'the row'}` : `Add ${shown || 'the row'}`) : self ? `Set ${shown} to ${money}` : `Add ${shown} at ${money}`
-  return { rule, ruleToSave, answer, chip: ruleToSave && fromRule ? percentRuleChip(ruleToSave, fromRule.base) : null, bidRevenueBefore, bidRevenueAfter, target: self, hold, label }
+  // With a row still to pick the press sets a row, it never adds one.
+  const label = awaitingPick
+    ? answer == null
+      ? 'Set a row'
+      : `Set a row to ${money}`
+    : answer == null
+      ? self
+        ? `Set ${shown || 'the row'}`
+        : `Add ${shown || 'the row'}`
+      : self
+        ? `Set ${shown} to ${money}`
+        : `Add ${shown} at ${money}`
+  return { rule, ruleToSave, answer, chip: ruleToSave && fromRule ? percentRuleChip(ruleToSave, fromRule.base) : null, bidRevenueBefore, bidRevenueAfter, target: self, hold, label, awaitingPick }
 }
 
 /** What this device keeps of the last rule made, so the window opens filled with it. */
