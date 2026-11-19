@@ -1999,7 +1999,7 @@ A training-mode account cannot sign, since starting a paper is a write.
 ### Checks that came back — the case (v2.4320, `20261001230000_ar_returned_check_cases.sql`)
 - **What**: `mercury_transaction_ar_returned` grows into the case of a returned check (source, reason, opened, closed, replaced by).
   Its four existing RLS policies (the AR roles) are unchanged.
-- **Who**: `list_ar_return_cases()` — dev, master_technician, assistant, controller, primary, and the service role (the notifier);
+- **Who**: `list_ar_return_cases()` — dev, master_technician, assistant, controller, and the service role (the notifier), and no longer `primary` since v2.7931 (punch list #400, `20261119104000_primary_money_desks.sql`);
   revoked from `anon`.
   `open_ar_rejected_check_cases()` — service role only (the hourly `ar-returned-checks`, `X-Cron-Secret`).
   The opening trigger function is revoked from every client role.
@@ -2157,7 +2157,7 @@ A training-mode account cannot sign, since starting a paper is a write.
   Use Stripe / out-of-band reversal flows for hosted invoice payments.
 
 ### Accounts Receivable close-out books the label (`close_out_ar_deposit`, v2.4363)
-- **Who**: the AR roles of `set_mercury_transaction_ar_closed` — office staff (`is_office_staff()`) and **`primary`**;
+- **Who**: the AR roles of `set_mercury_transaction_ar_closed` — office staff (`is_office_staff()`), and no longer `primary` since v2.7931 (punch list #400: the bank payments desk, returned checks and disputes, the pay speed lines and the GC review week take no job and no screen of a primary's opens them, so the role came out of each list, `20261119104000_primary_money_desks.sql`, the SQL bed `primary-money-desks`);
   `ar_deposit_booking` (the read) the same.
   Both SECURITY DEFINER.
 - **What it widens**: for the one deposit being closed out, it writes the Banking label and may **approve that deposit's own waiting rule match** — an assistant cannot Approve on Banking → Accounting (`bulk_approve_accounting_label_suggestions` is dev · master · controller).
@@ -2328,7 +2328,8 @@ A training-mode account cannot sign, since starting a paper is a write.
 - Jobs page — Stages tab: Billed Awaiting Payment section with Total by Name modal;
   **Combine / Separate** (toolbar **right**, after **Total by Name**) — **[`JobsCombineSeparateModal`](../src/components/jobs/JobsCombineSeparateModal.tsx)** (**`RECENT_FEATURES.md`** **v2.516**);
   RPCs enforce staff + job access
-- Jobs page — Stages tab: **expected-payment chips + Payment forecast** (v2.1924–v2.1925) readable by dev / master / assistant-like / primary (`get_billed_customer_pay_speeds`, which the controller reads too since v2.5029 and the Customers list once per load for its *pays in* caption since v2.5767, hidden with the rest of the money by `moneyHiddenByRls`, and the Development page's Money look reads it cut to the site's own payers since v2.6739, through `get_customer_pay_speeds(p_customer_ids)`, a SECURITY INVOKER wrapper whose gate is the parent's;
+- Jobs page — Stages tab: **expected-payment chips + Payment forecast** (v2.1924–v2.1925) readable by dev / master / assistant-like / primary (the Bill tab of a primary's own job draws its expected-pay dates from them, which is why v2.7931 left these reads and `can_read_payment_promises()` open to the role;
+  `get_billed_customer_pay_speeds`, which the controller reads too since v2.5029 and the Customers list once per load for its *pays in* caption since v2.5767, hidden with the rest of the money by `moneyHiddenByRls`, and the Development page's Money look reads it cut to the site's own payers since v2.6739, through `get_customer_pay_speeds(p_customer_ids)`, a SECURITY INVOKER wrapper whose gate is the parent's;
   `list_job_promised_pay_dates`);
   **mark promised date** (v2.1926, `set_job_promised_pay_date`) and **Fix bill lines** (v2.1933, `create_billed_shell_invoice`) writable by dev / master / assistant-like only — primary reads but cannot write.
   The same two role sets are named as SQL gates in v2.3280 (`can_write_payment_promises()` / `can_read_payment_promises()`;
