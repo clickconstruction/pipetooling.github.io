@@ -131,9 +131,10 @@ for (const { path, marker, within, settle } of PAGES) {
 }
 
 /**
- * The narrowest phone (v2.6109). The Bid Board's tools row is the search, the development filter
- * and a group of presses. On a phone the search takes a line and the group wraps its own presses
- * when they are wider than the column (v2.7912), which the 288 px column of a 320 screen shows first.
+ * The narrowest phone (v2.6109). The Bid Board's tools row is the search, the development filter,
+ * the ask to rate a GC and a group of presses. On a phone the search takes a line and the group
+ * wraps its own presses when they are wider than the column (v2.7912), which the 288 px column of
+ * a 320 screen shows first.
  */
 const NARROW_PHONE = { width: 320, height: 740 }
 
@@ -145,6 +146,25 @@ test('no sideways overflow at 320px: /bids?tab=bid-board', async ({ page }) => {
   await networkQuiet()
   await expectNoSidewaysOverflow(page, '/bids?tab=bid-board @ 320px')
 })
+
+/**
+ * A tablet held upright and a small laptop (v2.7927). Over 660 px the tools row drew on one line
+ * that never wrapped: its worded presses left the search 18 px wide and ran 125 px past a 768
+ * screen. The presses now fold to their icons, and take a second line before the row spills.
+ */
+for (const size of [
+  { width: 768, height: 1024 },
+  { width: 1024, height: 768 },
+]) {
+  test(`no sideways overflow at ${size.width}px: /bids?tab=bid-board`, async ({ page }) => {
+    await page.setViewportSize(size)
+    const networkQuiet = watchNetworkQuiet(page)
+    await page.goto('/bids?tab=bid-board')
+    await expect(page.locator('main')).toContainText(/Bid Board/, { timeout: 20000 })
+    await networkQuiet()
+    await expectNoSidewaysOverflow(page, `/bids?tab=bid-board @ ${size.width}px`)
+  })
+}
 
 /**
  * Job Parts Tally's three tabs share one row at the page's full width on every tab (v2.6117). The page

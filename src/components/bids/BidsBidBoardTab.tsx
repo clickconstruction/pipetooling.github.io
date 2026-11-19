@@ -41,6 +41,7 @@ import { BID_LINK_ICON_PATHS } from '../../lib/bids/bidLinkIconPaths'
 import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
 import { bidBoardDueCellParts, bidBoardLastContactParts, bidBoardNoDueDateParts, bidBoardSentLabel, DUE_SOON_WINDOW_DAYS, UNSENT_NO_DUE_DATE_RED_AFTER_DAYS, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
+import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
 import { useGcDifficultyStandings } from '../../hooks/useGcDifficultyStandings'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import GcDifficultyChip from './GcDifficultyChip'
@@ -55,7 +56,17 @@ import { useBidScoreReadiness } from '../../hooks/useBidScoreReadiness'
 import BidDifficultyPriceModal from './BidDifficultyPriceModal'
 import { useDifficultyPrice } from '../../hooks/useDifficultyPrice'
 import { DIFFICULTY_PRICE_WORDS, difficultyCanRate } from '../../lib/bids/difficultyPrice'
-import { bidBoardSearchPlaceholder, bidBoardToolsGroupStyle, bidBoardToolsRowLayout } from '../../lib/bidBoardToolsRow'
+import {
+  bidBoardSearchPlaceholder,
+  bidBoardToolsAskStyle,
+  bidBoardToolsFilterStyle,
+  bidBoardToolsGroupStyle,
+  bidBoardToolsMarkedStyle,
+  bidBoardToolsPressStyle,
+  bidBoardToolsRowLayout,
+  bidBoardToolsRowStyle,
+  bidBoardToolsSearchStyle,
+} from '../../lib/bidBoardToolsRow'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { bidSentCounts, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
 import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
@@ -391,7 +402,10 @@ export function BidsBidBoardTab({
   const [rateSheetBid, setRateSheetBid] = useState<BidWithBuilder | null>(null)
   // v2.6109: under 366 px the tools row cannot hold its fixed parts on one line, so it wraps.
   // On a phone the search takes its own line (`bidBoardToolsRow.ts`); the cards' width is the phone's.
-  const toolsRow = bidBoardToolsRowLayout(narrowViewport)
+  // The tools row draws by its own measured width and by whether the ask to rate a GC is open (v2.7927).
+  const [toolsRowRef, toolsRowWidth] = useMeasuredWidth<HTMLDivElement>()
+  const [toolsAskOpen, setToolsAskOpen] = useState(false)
+  const toolsRow = bidBoardToolsRowLayout({ phone: narrowViewport, rowWidth: toolsRowWidth, askOpen: toolsAskOpen })
   const [sectionShowAll, setSectionShowAll] = useState<Record<CappedSectionKey, boolean>>({
     pending: false,
     lost: false,
@@ -1854,26 +1868,20 @@ export function BidsBidBoardTab({
 
   return (
     <div>
-      {/* Board tools row: on a desk the search grows and Archived + Reply book + Customer review sit to its
-          right on one line, the search shrinking first. On a phone (`bidBoardToolsRow.ts`) the search takes
-          the first line whole — shrunk beside the presses it drew 18 px wide, no search at all — and the
-          development filter and the press group share the next line, the group kept to the right. Reply
-          book and Customer review are their icons there, and a group wider than its line wraps. */}
-      <div style={{ display: 'flex', flexWrap: toolsRow.rowWrap, gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+      {/* Board tools row (`bidBoardToolsRow.ts`): the search, the development filter, the ask to rate a GC when
+          one is open, then Marked, Archived, Pricing rules, Reply book and Customer review. Every control is 36 px.
+          The three book presses fold to their icons before the search is squeezed, and the row wraps before it
+          spills. On a phone the search takes the first line whole and the ask shares the filter's line. */}
+      <div ref={toolsRowRef} data-bid-board-tools-row style={bidBoardToolsRowStyle()}>
         <input
           type="text"
           placeholder={bidBoardSearchPlaceholder(narrowViewport)}
           value={bidBoardSearchQuery}
           onChange={(e) => setBidBoardSearchQuery(e.target.value)}
-          /* height matches the Archived / Customer review buttons beside it
-             (owner call, v2.1709) — the input's taller line box stuck out. */
-          style={{ flex: toolsRow.searchFlex, minWidth: 0, height: 36, padding: '0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
+          style={bidBoardToolsSearchStyle(narrowViewport)}
         />
         {developmentOptions.length > 0 ? (
-          <label
-            title="Filter the Bid Board by development"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0, minWidth: 0, maxWidth: narrowViewport ? '7.5rem' : '13rem' }}
-          >
+          <label title="Filter the Bid Board by development" style={bidBoardToolsFilterStyle(narrowViewport)}>
             <DevelopmentHouseIcon size={14} style={{ flexShrink: 0, color: developmentFilter ? 'var(--text-link)' : 'var(--text-muted)' }} />
             <select
               aria-label="Filter the Bid Board by development"
@@ -1902,93 +1910,55 @@ export function BidsBidBoardTab({
             </select>
           </label>
         ) : null}
-        <div data-bid-board-tools-group style={bidBoardToolsGroupStyle(narrowViewport)}>
-          <MarkedBidsToggle compact={narrowViewport} />
+        {/* #357 PR 5: the asks at the end of a job, for the job's master; nothing with none open. It leads the presses. */}
+        <GcDifficultyAsksPress style={bidBoardToolsAskStyle(narrowViewport)} onOpenChange={setToolsAskOpen} />
+        <div data-bid-board-tools-group style={bidBoardToolsGroupStyle()}>
+          <MarkedBidsToggle compact={toolsRow.markedCompact} style={bidBoardToolsMarkedStyle(toolsRow.markedCompact)} />
           <button
             type="button"
             onClick={() => setWorkingBoardArchivedModalOpen(true)}
             title="Archived bids"
             aria-label={`Archived bids${workingBoardArchivedBids.length > 0 ? ` (${workingBoardArchivedBids.length})` : ''}`}
-            style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            style={bidBoardToolsPressStyle(false)}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
               <path d="M64 128C64 110.3 78.3 96 96 96L544 96C561.7 96 576 110.3 576 128L576 160C576 177.7 561.7 192 544 192L96 192C78.3 192 64 177.7 64 160L64 128zM96 240L544 240L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 240zM248 304C234.7 304 224 314.7 224 328C224 341.3 234.7 352 248 352L392 352C405.3 352 416 341.3 416 328C416 314.7 405.3 304 392 304L248 304z" />
             </svg>
             {workingBoardArchivedBids.length > 0 ? `(${workingBoardArchivedBids.length})` : ''}
           </button>
-          {/* #357 PR 5: the asks at the end of a job, for the job's master; nothing with none open. */}
-          <GcDifficultyAsksPress style={{ padding: narrowViewport ? '0.5rem 0.6rem' : '0.5rem 1rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap', font: 'inherit', fontWeight: 600 }} />
           <button
             type="button"
             onClick={() => setPricingRulesOpen(true)}
             title="Pricing rules: what a GC's difficulty rating costs on a bid"
             aria-label={DIFFICULTY_PRICE_WORDS.door}
-            style={{
-              padding: narrowViewport ? '0.5rem 0.6rem' : '0.5rem 1rem',
-              background: 'var(--bg-muted)',
-              border: '1px solid var(--border-strong)',
-              borderRadius: 4,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-            }}
+            style={bidBoardToolsPressStyle(!toolsRow.words)}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'block' }}>
               <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
             </svg>
-            {narrowViewport ? null : DIFFICULTY_PRICE_WORDS.door}
+            {toolsRow.words ? DIFFICULTY_PRICE_WORDS.door : null}
           </button>
           <button
             type="button"
             onClick={() => setReplyBookOpen(true)}
             title="Reply book: wording the team reuses"
             aria-label={`Reply book${replyBook.entries.length > 0 ? ` (${replyBook.entries.length})` : ''}`}
-            style={{
-              padding: narrowViewport ? '0.5rem 0.6rem' : '0.5rem 1rem',
-              background: 'var(--bg-muted)',
-              border: '1px solid var(--border-strong)',
-              borderRadius: 4,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-            }}
+            style={bidBoardToolsPressStyle(!toolsRow.words)}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'block' }}>
               <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               <path d="M8 8h8M8 12h5" />
             </svg>
-            {narrowViewport ? null : 'Reply book'}
-            {!narrowViewport && replyBook.entries.length > 0 ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({replyBook.entries.length})</span> : null}
+            {toolsRow.words ? 'Reply book' : null}
+            {toolsRow.words && replyBook.entries.length > 0 ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({replyBook.entries.length})</span> : null}
           </button>
-          <button
-            type="button"
-            onClick={() => setCustomerReviewOpen(true)}
-            title="Customer review"
-            aria-label="Customer review"
-            style={{
-              padding: narrowViewport ? '0.5rem 0.6rem' : '0.5rem 1rem',
-              background: 'var(--bg-muted)',
-              border: '1px solid var(--border-strong)',
-              borderRadius: 4,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              display: 'inline-flex',
-              alignItems: 'center',
-            }}
-          >
-            {narrowViewport ? (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'block' }}>
-                <circle cx="9" cy="8" r="3.5" />
-                <path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.900 1.900 6.500 5.500" />
-                <path d="M16 4.800a3.500 3.500 0 0 1 0 6.400M18.500 14.900c1.700.8 2.700 2.500 3 5.100" />
-              </svg>
-            ) : (
-              'Customer review'
-            )}
+          <button type="button" onClick={() => setCustomerReviewOpen(true)} title="Customer review" aria-label="Customer review" style={bidBoardToolsPressStyle(!toolsRow.words)}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'block' }}>
+              <circle cx="9" cy="8" r="3.5" />
+              <path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.900 1.900 6.500 5.500" />
+              <path d="M16 4.800a3.500 3.500 0 0 1 0 6.400M18.500 14.900c1.700.8 2.700 2.500 3 5.100" />
+            </svg>
+            {toolsRow.words ? 'Customer review' : null}
           </button>
         </div>
       </div>
