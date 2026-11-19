@@ -150,6 +150,13 @@ describe('the two answers', () => {
     expect(caughtUpWords(9, 32)).toBe('You answered 41 just now: 9 to investigate, 32 passed. The next pull is tomorrow at 5:30 AM.')
     expect(caughtUpWords(0, 0)).toBe('Every permit the feed brought has an answer. The next pull is tomorrow at 5:30 AM.')
     expect(digInWords(14)).toBe('Dig in · 14 to investigate')
+  })
+
+  it('does not promise permits tomorrow in a city that has stopped publishing', () => {
+    const quiet = { city: 'New Braunfels', since: '2026-11-03' }
+    expect(caughtUpWords(0, 0, quiet, '2026-11-19')).toBe('Every permit the feed brought has an answer. New Braunfels has published nothing since Nov 3. Our pull still runs every morning at 5:30 AM.')
+    expect(caughtUpWords(2, 5, quiet, '2026-11-19')).toBe('You answered 7 just now: 2 to investigate, 5 passed. New Braunfels has published nothing since Nov 3. Our pull still runs every morning at 5:30 AM.')
+    expect(caughtUpWords(0, 0, null)).toBe('Every permit the feed brought has an answer. The next pull is tomorrow at 5:30 AM.')
     expect(digInWords(0)).toBeNull()
   })
 })

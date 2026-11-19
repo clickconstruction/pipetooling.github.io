@@ -246,6 +246,14 @@ export function builderCountWords(row: Pick<BuilderRow, 'permits' | 'open'>, rea
 }
 
 /**
+ * Whether a city's permits name a plumber on any builder's job. San Antonio's never do (v2.7922),
+ * and then every row of the plumber column would read the same words: Builders leaves it out.
+ */
+export function cityNamesPlumbers(rows: ReadonlyArray<Pick<BuilderRow, 'plumber'>>): boolean {
+  return rows.some((r) => (r.plumber ?? '').trim() !== '')
+}
+
+/**
  * "Blue Heron Plumbing on 2", "not named on the permits" or "nobody yet". San Antonio issues a
  * job's plumbing permit under the applicant's own name, so a builder there has jobs with a plumbing
  * permit and no plumber the feed can name: that is not "nobody".

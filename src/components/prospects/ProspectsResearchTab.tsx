@@ -546,7 +546,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       )}
 
       {view === 'skim' && (
-        <PermitSkimDeck authUserId={authUserId} city={city} floor={floor} todayYmd={todayYmd} isMobile={isMobile} rows={allRows} loading={allLoading} error={allError} researchers={researchers} onReload={() => void loadAll()} onAnswered={patchRow} onDigIn={() => setView('kept')} onLive={setSkimLive} onSecondLook={() => setView('second')} />
+        <PermitSkimDeck authUserId={authUserId} city={city} quietSince={cityIsQuiet ? (quietByCity[city]?.newestDay ?? null) : null} floor={floor} todayYmd={todayYmd} isMobile={isMobile} rows={allRows} loading={allLoading} error={allError} researchers={researchers} onReload={() => void loadAll()} onAnswered={patchRow} onDigIn={() => setView('kept')} onLive={setSkimLive} onSecondLook={() => setView('second')} />
       )}
       {view === 'second' && (
         <PermitSkimDeck key="second" mode="second" authUserId={authUserId} city={city} floor={floor} todayYmd={todayYmd} isMobile={isMobile} rows={allRows} loading={allLoading} error={allError} researchers={researchers} onReload={() => void loadAll()} onAnswered={patchRow} onDigIn={() => setView('kept')} onLive={setSkimLive} />

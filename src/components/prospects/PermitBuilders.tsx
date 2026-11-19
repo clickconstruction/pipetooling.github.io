@@ -18,6 +18,7 @@ import {
   markHold,
   ourBidsWords,
   plumberUsedWords,
+  cityNamesPlumbers,
   type BuilderKind,
   type BuilderRow,
   type BuilderShowing,
@@ -129,6 +130,8 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
   }
   const counts = useMemo(() => builderChipCounts(all), [all])
   const list = useMemo(() => buildersShowing(all, showing, search), [all, showing, search])
+  // Where no builder's permits name a plumber the column would say one thing on every row: left out.
+  const namesPlumbers = useMemo(() => cityNamesPlumbers(all), [all])
   const open = useMemo(() => all.find((r) => r.key === openKey) ?? null, [all, openKey])
 
   if (loading && rows == null) return <div style={muted}>Reading the builders…</div>
@@ -214,7 +217,8 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
               </span>
               <span style={{ fontSize: '0.8125rem' }}>{builderCountWords(r, reachSays)}</span>
               <span style={muted}>
-                Our bids: {ourBidsWords(r)} · Plumber: {plumberUsedWords(r)}
+                Our bids: {ourBidsWords(r)}
+                {namesPlumbers ? ` · Plumber: ${plumberUsedWords(r)}` : ''}
               </span>
             </button>
           ))}
@@ -230,7 +234,7 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
                 <th style={{ ...th, textAlign: 'right' }}>Without a plumber</th>
                 <th style={th}>Last permit</th>
                 <th style={th}>Our bids</th>
-                <th style={th}>Plumber they use</th>
+                {namesPlumbers && <th style={th}>Plumber they use</th>}
               </tr>
             </thead>
             <tbody>
@@ -262,7 +266,7 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
                       </>
                     )}
                   </td>
-                  <td style={td}>{plumberUsedWords(r)}</td>
+                  {namesPlumbers && <td style={td}>{plumberUsedWords(r)}</td>}
                 </tr>
               ))}
             </tbody>
@@ -277,6 +281,7 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
           authUserId={authUserId}
           todayYmd={todayYmd}
           reach={reach}
+          namesPlumbers={namesPlumbers}
           ground={ground}
           onAnswered={answers.reload}
           onClose={() => setOpenKey(null)}
@@ -291,7 +296,7 @@ export function PermitBuilders({ city, authUserId, todayYmd, isMobile, onChanged
 }
 
 /** One builder: our mark with its reason, what kind of company it is, our bids with it, and its permits. */
-function BuilderSheet({ row, city, authUserId, todayYmd, reach, ground, onAnswered, onClose, onSaved }: { row: BuilderRow; city: string; authUserId: string; todayYmd: string; reach: RecordsReach; /** The answers on names. Null before they are read, and before the table is on the database: the section is not drawn. */ ground: BuilderAnswersGround | null; onAnswered: () => void; onClose: () => void; onSaved: () => void }) {
+function BuilderSheet({ row, city, authUserId, todayYmd, reach, namesPlumbers, ground, onAnswered, onClose, onSaved }: { row: BuilderRow; city: string; authUserId: string; todayYmd: string; reach: RecordsReach; /** False where no builder's permits in the city name a plumber: the sheet says nothing of one. */ namesPlumbers: boolean; /** The answers on names. Null before they are read, and before the table is on the database: the section is not drawn. */ ground: BuilderAnswersGround | null; onAnswered: () => void; onClose: () => void; onSaved: () => void }) {
   const { showToast } = useToastContext()
   const name = builderName(row)
   const [mark, setMark] = useState<BuilderMarkValue | 'none'>(row.mark ?? 'none')
@@ -411,7 +416,7 @@ function BuilderSheet({ row, city, authUserId, todayYmd, reach, ground, onAnswer
           <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>In our books</div>
           <div style={{ fontSize: '0.875rem' }}>
             Our bids: {ourBidsWords(row)}
-            {row.last_bid_on ? `, the last on ${shortDay(row.last_bid_on)}` : ''}. Plumber they use: {plumberUsedWords(row)}.
+            {row.last_bid_on ? `, the last on ${shortDay(row.last_bid_on)}` : ''}.{namesPlumbers ? ` Plumber they use: ${plumberUsedWords(row)}.` : ''}
           </div>
           {byWordWords(row) && <div style={{ fontSize: '0.875rem', marginTop: 2 }}>{byWordWords(row)}</div>}
           <div style={{ ...muted, marginTop: 4 }}>People and calls are kept on the lead a pursued permit makes, on its calling deck.</div>

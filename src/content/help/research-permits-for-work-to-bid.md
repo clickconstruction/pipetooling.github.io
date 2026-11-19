@@ -29,7 +29,7 @@ New Braunfels · quiet since Nov 3
 
 :::
 
-A city can stop publishing while our pull still runs every morning. Its row then reads **quiet since** and the day it stopped. The box turns amber while that city is on screen.
+A city can stop publishing while our pull still runs every morning. Its row then reads **quiet since** and the day it stopped. The box turns amber while that city is on screen. A caught-up skim in that city says the same. It does not promise permits tomorrow.
 
 A quiet city's list is only as new as that day. Press an address, then press **Open the city's permit search** to look for newer permits.
 
@@ -133,7 +133,7 @@ When the skim is caught up, it offers this deck too.
 
 ## Know the builders
 
-Press **Builders**. The list shows every name on a commercial permit we can see. While a city's records reach less than a year, a line over the list says the day they start. **Read back to** shows beside it only while San Antonio's records start after January 2025. The press reads about three more months. Older permits count for a builder. They never land on the skim. Each row says how many permits the name is on and how many have no plumber yet. It also shows our bids with them and the plumber they use. **not named on the permits** means their jobs have plumbing permits, all under the builder's own name. **Our bids** counts a customer with the same name, and a customer someone tied to the name.
+Press **Builders**. The list shows every name on a commercial permit we can see. While a city's records reach less than a year, a line over the list says the day they start. **Read back to** shows beside it only while San Antonio's records start after January 2025. The press reads about three more months. Older permits count for a builder. They never land on the skim. Each row says how many permits the name is on and how many have no plumber yet. It also shows our bids with them and the plumber they use. **not named on the permits** means their jobs have plumbing permits, all under the builder's own name. San Antonio's permits never name a plumber. So the list leaves the plumber out there. **Our bids** counts a customer with the same name, and a customer someone tied to the name.
 
 Press **3 or more permits and never bid** to see who to get to know.
 
