@@ -1229,6 +1229,9 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   **Open Change orders** on a job held that way is drawn for the GC money team alone (dev, master_technician, controller: `canSeeGcMoney`), since Change orders are theirs, and an assistant is told who writes the change order.
   A training account, a digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
   The line is read and changed under the line table's own policies, like any line, and deleting the trip clears the mark and leaves the line.
+- **Split in two** (v2.7891, `docs/migrations/20261119010000_trip_split.md`): **`trip_split(trip, from_day, dry_run)`** cuts a trip at a day into two, for the trips office: dev, master_technician, assistant, controller, primary.
+  It is a SECURITY INVOKER that writes through `trip_save` twice in one call, so the trips tables' own policies refuse a training account, a digital twin and an archived caller, and a person on the trip who is not in the office cannot split it.
+  The press is drawn for the reader who can change the trip.
 - **Deleted trips** (v2.7800, `docs/migrations/20261118100000_trips_deleted.md`): a deleted trip is kept in `deleted_records_archive`, its row, its people and its jobs under the trip's id.
   The people and the jobs are kept only when the trip itself went, so a save that rewrites them and a deleted job that takes its link leave nothing.
   **`trip_deleted_list(site)`**, a SECURITY DEFINER, reads a site's deleted trips that nothing has put back, for the trips office alone: dev, master_technician, assistant, controller and primary.

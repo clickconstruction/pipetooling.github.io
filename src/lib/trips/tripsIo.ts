@@ -57,6 +57,21 @@ export async function saveTrip(record: TripRecord): Promise<number | null> {
   return tripNumberOf((data as { trip_number?: unknown } | null)?.trip_number)
 }
 
+/**
+ * Split a trip in two at a day, through `trip_split` (migration 20261119010000): the trip keeps its id, its number
+ * and every day before the day, and a new trip takes the day and every day after it. One call, so both land or
+ * neither does. The function says what it cannot take in plain words (a day that leaves a half empty, a trip that
+ * is gone), so that refusal is thrown as those words alone. Anything else is thrown as it came. The reply is
+ * handed back as it came: `parseTripSplitReply` reads it.
+ */
+export async function splitTrip(tripId: string, fromDay: string): Promise<unknown> {
+  const { data, error } = await db.rpc('trip_split', { p_trip_id: tripId, p_from_day: fromDay, p_dry_run: false })
+  if (!error) return data as unknown
+  const refusal = error as { code?: string; message?: string }
+  if (refusal.code === '22023' && refusal.message?.trim()) throw new Error(refusal.message.trim())
+  throw error
+}
+
 /** Delete a trip with its people and its jobs. No clock row, bill or cost hangs on a trip. */
 export async function deleteTrip(id: string): Promise<void> {
   const { error } = await db.from('trips').delete().eq('id', id)

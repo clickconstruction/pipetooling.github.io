@@ -279,3 +279,33 @@ describe('useSiteTrips: how far is far (v2.7888, the one setting)', () => {
   })
 })
 
+describe('useSiteTrips: Split in two (v2.7891)', () => {
+  it('splits through the io, hands back the trip kept and the trip made, and reads the trips again', async () => {
+    const io = makeIo({ split: vi.fn(async () => ({ dry_run: false, did: 'split', trip_id: 't5', trip_number: 5, new_trip_id: 't9', new_trip_number: 9 })) })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.records).toEqual([lifts]))
+    expect(io.readTrips).toHaveBeenCalledTimes(1)
+    let reply: unknown
+    await act(async () => {
+      reply = await result.current.split('t5', '2026-11-03')
+    })
+    expect(io.split).toHaveBeenCalledWith('t5', '2026-11-03')
+    expect(reply).toEqual({ tripId: 't5', tripNumber: 5, newTripId: 't9', newTripNumber: 9 })
+    await waitFor(() => expect(io.readTrips).toHaveBeenCalledTimes(2))
+  })
+
+  it('passes a refusal on with its words, and reads nothing again', async () => {
+    const io = makeIo({ split: vi.fn(async () => Promise.reject(new Error('Pick a later day. No day of this trip is before 2026-10-30.'))) })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.records).toEqual([lifts]))
+    await expect(result.current.split('t5', '2026-10-30')).rejects.toThrow('Pick a later day.')
+    expect(io.readTrips).toHaveBeenCalledTimes(1)
+  })
+
+  it('says so on a screen that was handed no split', async () => {
+    const { result } = draw(makeIo())
+    await waitFor(() => expect(result.current.records).toEqual([lifts]))
+    await expect(result.current.split('t5', '2026-11-03')).rejects.toThrow('This screen cannot split a trip.')
+  })
+})
+
