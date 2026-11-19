@@ -62,6 +62,7 @@ import { shootBoxPhoto } from '../../lib/materials/boxPhotoShoot'
 import { TAKE_MAX, newTakeRun, takeAddExtra, takeDoneWords, takeIsOnePart, takeLeftWords, takeLineHint, takeMark, takePhotoWords, takeQuicks, takeRemoveExtra, takeRows, takeSaveLabel, takeSaved, takeStartLabel, takeTotal, type TakePhotoKind, type TakeRun } from '../../lib/materials/takeRun'
 import { forgetTakeRun, keepTakeRun, readTakeRun, readTakeRuns } from '../../lib/materials/takeRunMemory'
 import type { PhotoNote } from '../../lib/materials/photo'
+import BoxTakes from '../materials/BoxTakes'
 import { FlowRow } from '../materials/FlowRow'
 import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { countWalkAt, countWalkCantFindWords, countWalkKeys } from '../../lib/materials/countWalk'
@@ -835,6 +836,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const touched = ls.reduce<{ at: string; by: string } | null>((best, l) => (l.lastTouchedAt && (!best || l.lastTouchedAt > best.at) ? { at: l.lastTouchedAt, by: l.lastTouchedBy ?? '' } : best), null)
   const boxLineNow = boxLineOf(container, lines)
   const leftRun = unsorted ? null : readTakeRun(jobId, container.id, Date.now())
+  const loosePhotos = photos.filter((p) => !p.takeId)
   const leftRunWords = leftRun ? takeLeftWords(leftRun, container.label) : { main: '', sub: '', go: '', drop: '' }
   return (
     <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -873,7 +875,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
           </div>
         </div>
       ) : null}
-      {photos.length > 0 ? <BoxPhotos photos={photos} canAct onToast={showToast} /> : null}
+      {/* A take's two photos are drawn with their take, under the parts (v2.7828); the box's other photos stay here. */}
+      {loosePhotos.length > 0 ? <BoxPhotos photos={loosePhotos} canAct onToast={showToast} /> : null}
       {countWalkKeys(ls).length > 0 && container.kind !== 'unsorted' ? <button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => setView({ kind: 'count', id: container.id, keys: countWalkKeys(ls), index: 0, corrected: 0 })}>Count this box</button> : null}
       {ls.length === 0 ? <EmptyState compact main={`Nothing in ${container.label} yet.`} next={{ label: `Add a part to ${container.label}`, onPress: () => setSheet({ kind: 'add-part', container }) }} tail="adds the first, or move one in from another container." /> : null}
       {ls.map((l) => (
@@ -908,6 +911,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         </div>
       ))}
       <button type="button" style={{ ...btn, ...btnBlock }} onClick={() => setSheet({ kind: 'add-part', container })}>Add a part to {container.label}</button>
+      {/* What was taken from this box, with its pictures (v2.7828): under the parts, which a person at the box reads first. */}
+      <BoxTakes jobId={jobId} containerId={container.id} containerLabel={container.label} />
       {container.kind !== 'unsorted' ? (
         /* The box's paper and its retirement (v2.6366): the two prints are a pair of pill presses with the printer glyph, one row under a caption, and Retire sits apart on its own line so a thumb reaching for a print never lands on it. Both print here since punch list #304: the office page they used to open is not every role's. */
         <div style={{ display: 'grid', gap: '0.5rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
