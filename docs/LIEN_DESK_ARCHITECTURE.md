@@ -133,6 +133,7 @@ last_updated: 2026-11-18
 > Since v2.7852 the affidavits' *To send for Master approval* keeps the same rule: a paper the batch send leaves (`lienAffidavitSendReady` in `lienAffidavitSendReady.ts`, the send plan's own test) has `unread` on its chip, a dashed edge and a ○ mark (`data-unread`, `data-lien-board-unread-mark`), stands after the ones the send takes and before any held one, and is left out of the count.
 > `lienBoardForLeader` leaves a held chip out of the leader's batch, and `lienBoardRowStage` and the chip's card say *Ready to file · held* (`lienBoardHeldWords`).
 > Since v2.7845 (the owner's ask of 2026-11-18) a folded bin's name and count are quiet: `Bin` spreads `LIEN_BOARD_QUIET_HEAD` (`var(--text-muted)`, weight 600) onto both from the same `folded` flag that draws the dashed edge, so the edge and the grey name cannot disagree, and an empty bin with a live press is not folded and keeps its name at full strength.
+> Since v2.7893 (the owner's pick of 2026-11-18) `column` draws both headings in `LIEN_BOARD_COLUMN_HEAD_COLOR` (`var(--text-muted)`), blue and red until then, so no heading on the Board is red.
 
 > **v2.7461 (what was mailed, kept with the notice;
 > the owner's ask of 2026-11-16, one file per notice):** [`lienMailedCopies.ts`](../src/lib/jobs/lienMailedCopies.ts) is the kernel: the list as stored (`parseLienMailedCopies`, `lienMailedCopiesWith`), the file a row takes (`lienMailedCopyProblem`, `LIEN_MAILED_COPY_ACCEPT`), its name in Drive (`lienMailedCopyName`), the record's saved copy (`lienMailedCopyDocument`) and the words.
