@@ -81,15 +81,29 @@ beforeEach(() => {
 })
 afterEach(() => cleanup())
 
+/** A part's presses are one tap in (punch list #398): open the part, then find the press. */
+async function partPress(press: string, part: RegExp = /ZZ test elbow/) {
+  fireEvent.click(await screen.findByRole('button', { name: part }))
+  return screen.getByRole('button', { name: press })
+}
+/** The rare presses are behind More (punch list #398): open it, then press the row that starts with these words. */
+async function moreRow(words: string) {
+  fireEvent.click(await screen.findByRole('button', { name: /^More for A2/ }))
+  fireEvent.click(within(screen.getByTestId('on-site-box-more')).getByRole('button', { name: new RegExp(`^${words}`) }))
+}
+
 function open() {
   renderWithProviders(<TallyOnSiteTab jobs={jobs} jobsLoading={false} selectedJobId="j1" onPickJob={() => {}} byUserId="u1" byName="Mateo" searchParts={async () => []} initialContainerId="a2" />)
 }
 
-describe('TallyOnSiteTab · the Short press', () => {
+describe('TallyOnSiteTab · Ask for more, the press that read Short', () => {
   it('files the Tally’s request for more from the line, in the presser’s name, and says where the office reads it', async () => {
     open()
-    const short = await screen.findByRole('button', { name: 'Short' })
-    fireEvent.click(short)
+    // No part's presses stand on the first screen.
+    await screen.findByRole('button', { name: /ZZ test elbow/ })
+    expect(screen.queryByRole('button', { name: 'Ask for more' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Short' })).toBeNull()
+    fireEvent.click(await partPress('Ask for more'))
     expect(screen.getByText('How many more do you need?')).toBeTruthy()
     expect(screen.getByText('A2 has 8. The office gets a request for 1 more.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '5' }))
@@ -99,19 +113,19 @@ describe('TallyOnSiteTab · the Short press', () => {
     await waitFor(() => expect(screen.getByText("Asked the office for 5 more ZZ test elbow. The request is on the job's Parts tab.")).toBeTruthy())
   })
 
-  it('a line with none left keeps Short beside its words', async () => {
+  it('a line with none left keeps Ask for more beside its words', async () => {
     // Two delivered and none found at the count: the line stays listed for its shortfall, with nothing on hand.
     store.movements = [mv({ reason: 'delivered', quantity: 2, at: '2026-11-01T10:00:00Z', toContainerId: 'a2' }), mv({ reason: 'counted', quantity: 0, at: '2026-11-08T10:00:00Z', fromContainerId: 'a2' })]
     open()
-    expect(await screen.findByText('A2 has none left.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Short' })).toBeTruthy()
+    expect(await partPress('Ask for more')).toBeTruthy()
+    expect(screen.getByText('A2 has none left.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Used' })).toBeNull()
   })
 
   it('a refusal by the table names what to tell the office instead', async () => {
     io.send.mockRejectedValueOnce(new Error('new row violates row-level security policy for table "jobs_tally_parts"'))
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'Short' }))
+    fireEvent.click(await partPress('Ask for more'))
     fireEvent.click(screen.getByRole('button', { name: 'Ask the office for 1' }))
     await waitFor(() => expect(screen.getByText('Only the office can file a parts request on this job. Tell them: 1 more ZZ test elbow.')).toBeTruthy())
   })
@@ -173,12 +187,12 @@ describe('TallyOnSiteTab · past one job (punch list #304)', () => {
 
   it('a box prints its label and its manifest here, with no link to the office page', async () => {
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'Print the label for A2' }))
+    await moreRow('Print the label')
     expect(screen.getAllByTestId('labels-sheet')).toHaveLength(1)
     expect(screen.getByTestId('labels-print').textContent).toBe('Print 1 label')
     expect(document.querySelector('a[href*="/jobs?tab=materials"]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Print the manifest for A2' }))
+    await moreRow('Print the manifest')
     expect(screen.getByRole('dialog', { name: /manifest/i })).toBeTruthy()
   })
 })
@@ -210,11 +224,15 @@ describe('TallyOnSiteTab · Add a part offers the names the job already has (pun
 })
 
 describe('TallyOnSiteTab · Where is it? (punch list #372)', () => {
-  it('the box screen’s middle chip opens the sheet, which says what the app knows', async () => {
+  it('the box screen’s Where is it? tile says the place and opens the sheet, which says what the app knows', async () => {
     open()
     // One chip, pinned or not: the old Pin on map press is gone from the box screen.
     expect(screen.queryByRole('button', { name: /Pin on map|On the map/ })).toBeNull()
-    fireEvent.click(await screen.findByRole('button', { name: 'Where is A2?' }))
+    const tile = await screen.findByRole('button', { name: 'Where is A2?' })
+    expect(tile.textContent).toBe('Where is it?No place yet')
+    // A box with no photo of its own draws no caption for them.
+    expect(screen.queryByText('Photos')).toBeNull()
+    fireEvent.click(tile)
     const sheet = screen.getByRole('dialog', { name: 'Where is A2?' })
     expect(sheet.textContent).toContain('Nobody has pinned A2.')
     expect(sheet.textContent).toContain('It has no place yet.')
@@ -234,7 +252,7 @@ describe('TallyOnSiteTab · Count this box walks every line (v2.7161)', () => {
     }) as never)
     store.movements = ['ZZ part a', 'ZZ part b', 'ZZ part c'].map((partName, i) => mv({ partName, reason: 'delivered', quantity: 5 + i, at: `2026-11-01T10:0${i}:00Z`, toContainerId: 'a2' }))
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'Count this box' }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Count A2/ }))
     expect(screen.getByText('ZZ part a')).toBeTruthy()
     expect(screen.getByText('1 of 3')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Not in A2 any more' }))
@@ -263,8 +281,8 @@ describe('TallyOnSiteTab · small things on the phone (v2.7252)', () => {
     // Three came in and all three could not be found: none on hand, and the mark on the line.
     store.movements = [mv({ reason: 'delivered', quantity: 3, at: '2026-11-01T10:00:00Z', toContainerId: 'a2' }), mv({ reason: 'cannot_find', quantity: 3, at: '2026-11-05T10:00:00Z', fromContainerId: 'a2' })]
     open()
-    // The box's only line has none on hand. Before, the box had no Count this box at all.
-    fireEvent.click(await screen.findByRole('button', { name: 'Count this box' }))
+    // The box's only line has none on hand. Before, the box had no Count press at all.
+    fireEvent.click(await screen.findByRole('button', { name: /^Count A2/ }))
     expect(screen.getByText('1 of 1')).toBeTruthy()
     expect(screen.getByTestId('count-walk-cant-find').textContent).toBe("3 marked can't find. Your count clears the mark.")
     fireEvent.click(screen.getByRole('button', { name: '0 is right' }))
@@ -275,7 +293,7 @@ describe('TallyOnSiteTab · small things on the phone (v2.7252)', () => {
 
   it('the number field can be cleared and typed over, where it snapped back to 1', async () => {
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'Used' }))
+    fireEvent.click(await partPress('Used'))
     const field = screen.getByLabelText('How many') as HTMLInputElement
     expect(field.value).toBe('1')
     // Cleared, it stays empty: the 1 used to come back at once, so the next key made 12.
@@ -296,7 +314,7 @@ describe('TallyOnSiteTab · small things on the phone (v2.7252)', () => {
 })
 
 describe('what is in a box, on a line of its own (punch list #351, PR 2)', () => {
-  it('the list row and the box’s screen read the app’s line from the parts, and Say it better sends a person’s words', async () => {
+  it('the list row reads the app’s line from the parts, the box’s own screen does not repeat it, and Say it better in More sends a person’s words', async () => {
     const storeMock = await import('../../lib/materials/onSiteStore')
     vi.mocked(storeMock.sayBoxLine).mockClear()
     renderWithProviders(<TallyOnSiteTab jobs={jobs} jobsLoading={false} selectedJobId="j1" onPickJob={() => {}} byUserId="u1" byName="Mateo" searchParts={async () => []} initialContainerId={null} />)
@@ -305,10 +323,14 @@ describe('what is in a box, on a line of its own (punch list #351, PR 2)', () =>
     expect(row.textContent).toBe('ZZ test elbow · 8')
     expect(row.getAttribute('data-by')).toBe('app')
     fireEvent.click(row)
-    const line = await screen.findByTestId('on-site-box-line')
-    expect(line.textContent).toContain('ZZ test elbow · 8')
-    expect(line.textContent).toContain('from its parts')
-    fireEvent.click(within(line).getByRole('button', { name: 'Say it better: What is in A2' }))
+    // The part's own row says it once (punch list #398): no line of the app's over it.
+    await screen.findByRole('button', { name: /ZZ test elbow/ })
+    expect(screen.queryByTestId('on-site-box-said')).toBeNull()
+    expect(screen.queryByText('from its parts')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^More for A2/ }))
+    const say = within(screen.getByTestId('on-site-box-more')).getByRole('button', { name: /^Say it better/ })
+    expect(say.textContent).toContain('Now: ZZ test elbow · 8, from its parts')
+    fireEvent.click(say)
     const sheet = screen.getByRole('dialog', { name: 'What is in A2' })
     const press = within(sheet).getByRole('button', { name: 'Save the line' }) as HTMLButtonElement
     expect(press.disabled).toBe(true)
@@ -324,11 +346,12 @@ describe('what is in a box, on a line of its own (punch list #351, PR 2)', () =>
     vi.mocked(storeMock.sayBoxLine).mockClear()
     store.containers = [{ ...box, said: 'PVC fittings, mixed' }]
     open()
-    const line = await screen.findByTestId('on-site-box-line')
-    expect(line.getAttribute('data-by')).toBe('person')
-    expect(line.textContent).toContain('PVC fittings, mixed')
-    expect(line.textContent).toContain('In a person’s words. The parts under it still count.')
-    fireEvent.click(within(line).getByRole('button', { name: /Say it better/ }))
+    // A person's own words show under the box's name.
+    expect((await screen.findByTestId('on-site-box-said')).textContent).toBe('PVC fittings, mixed')
+    fireEvent.click(screen.getByRole('button', { name: /^More for A2/ }))
+    const say = within(screen.getByTestId('on-site-box-more')).getByRole('button', { name: /^Say it better/ })
+    expect(say.textContent).toContain('Now: PVC fittings, mixed, in a person’s words')
+    fireEvent.click(say)
     const sheet = screen.getByRole('dialog', { name: 'What is in A2' })
     // The empty field shows what the box reads once the words are gone: the app's own line.
     expect((within(sheet).getByLabelText('What is in it') as HTMLInputElement).placeholder).toBe('ZZ test elbow · 8')
@@ -387,19 +410,19 @@ describe('TallyOnSiteTab · the stickers beside a box’s name (punch list #329,
   it('a sticker printed with the box’s own name says nothing beside it', async () => {
     stuck.marks = new Map([['a2', [{ number: 159, boxName: 'A2' }]]])
     open()
-    await screen.findByRole('button', { name: 'Short' })
+    await screen.findByRole('button', { name: /ZZ test elbow/ })
     expect(screen.queryByTestId('on-site-box-header-stickers')).toBeNull()
   })
 
   it('a sticker printed with another name says so, and one with no name says nothing (v2.7438: no running number)', async () => {
     stuck.marks = new Map([['a2', [{ number: 159, boxName: 'A1' }, { number: 147 }]]])
     open()
-    await screen.findByRole('button', { name: 'Short' })
-    expect(screen.getByTestId('on-site-box-header-stickers').textContent).toBe(' · sticker reads A1')
+    await screen.findByRole('button', { name: /ZZ test elbow/ })
+    expect(screen.getByTestId('on-site-box-header-stickers').textContent).toBe('sticker reads A1')
     cleanup()
     stuck.marks = new Map([['a2', [{ number: 147 }]]])
     open()
-    await screen.findByRole('button', { name: 'Short' })
+    await screen.findByRole('button', { name: /ZZ test elbow/ })
     expect(screen.queryByTestId('on-site-box-header-stickers')).toBeNull()
   })
 })
@@ -445,7 +468,7 @@ describe('TallyOnSiteTab · Pin A2 where you stand? (punch list #372, step 3)', 
     }) as never)
     store.movements = [mv({ partName: 'ZZ part a', reason: 'delivered', quantity: 5, at: '2026-11-01T10:00:00Z', toContainerId: 'a2' })]
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'Count this box' }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Count A2/ }))
     fireEvent.click(screen.getByRole('button', { name: '5 is right' }))
   }
 
@@ -467,7 +490,7 @@ describe('TallyOnSiteTab · Pin A2 where you stand? (punch list #372, step 3)', 
     await countA2()
     fireEvent.click(await screen.findByRole('button', { name: 'Not now' }))
     expect(screen.queryByTestId('pin-ask')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Count this box' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Count A2/ }))
     fireEvent.click(screen.getByRole('button', { name: '5 is right' }))
     expect(screen.queryByTestId('pin-ask')).toBeNull()
   })

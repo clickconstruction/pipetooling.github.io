@@ -143,6 +143,16 @@ const STRINGS = {
     en: 'Queued for the pay run — the date is right below.',
     es: 'En cola para la corrida de pago — la fecha está justo abajo.',
   },
+  // The customer paid (punch list #388, step 2): the bill this sheet rides on is paid in full and the
+  // office has not given the sheet a pay run day yet. The day and no amount; the payer is never named.
+  chipCustomerPaid: { en: 'Customer paid {date}', es: 'El cliente pagó el {date}' },
+  stageCustomerPaidLead: { en: 'The customer paid on {date}.', es: 'El cliente pagó el {date}.' },
+  stageCustomerPaidNext: {
+    en: 'Your payment is next. We will give it a pay run day.',
+    es: 'Su pago es el siguiente. Le pondremos su fecha de pago.',
+  },
+  stageCustomerPaidNextHeld: { en: 'Your payment is next.', es: 'Su pago es el siguiente.' },
+  payHoldLabel: { en: 'On hold:', es: 'En espera:' },
   // ── Sheet work orders (v2.2789): exclusions, referenced documents, confirmations, the signed record ──
   exclusionsLabel: { en: 'Not included', es: 'No incluido' },
   attachedByReference: { en: 'Also part of this work order', es: 'También forma parte de esta orden' },

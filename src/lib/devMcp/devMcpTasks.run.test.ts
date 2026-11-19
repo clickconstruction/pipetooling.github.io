@@ -48,6 +48,9 @@ const world = {
   refusePut: false,
   /** The photo bucket refuses every removal. */
   refuseRemove: false,
+  /** The pushes asked of send-checklist-notification, and whether the next one fails. */
+  pushes: [] as Row[],
+  refusePush: false,
 }
 
 function matches(row: Row, key: string, expr: string): boolean {
@@ -86,6 +89,16 @@ async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
     const table = path.slice('/rest/v1/'.length)
     if (method === 'GET') return json(filtered(table, query))
     const body = init?.body ? JSON.parse(String(init.body)) : null
+    if (table === 'rpc/task_no_longer_applies' && method === 'POST') {
+      // The card's own function, as the database runs it: the day row complete, then the completed and dropped lines.
+      world.writes.push({ method, table, query, body, prefer: '' })
+      const day = (world.tables.checklist_instances ?? []).find((r) => r.id === (body as Row).p_instance_id)
+      if (!day) return json({ message: 'That task is gone.' }, 404)
+      if (day.completed_at) return json({ message: 'This task is already done.' }, 409)
+      Object.assign(day, { completed_at: '2026-11-17T18:00:00Z', completed_by_user_id: DEV })
+      world.tables.checklist_instance_events = [...(world.tables.checklist_instance_events ?? []), { instance_id: day.id, event_type: 'completed', actor_user_id: DEV, body: '' }, { instance_id: day.id, event_type: 'dropped', actor_user_id: DEV, body: (body as Row).p_reason }]
+      return json({ ok: true })
+    }
     const prefer = String((init?.headers as Record<string, string> | undefined)?.Prefer ?? '')
     world.writes.push({ method, table, query, body, prefer })
     if (method === 'POST') {
@@ -107,6 +120,10 @@ async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
       world.tables[table] = (world.tables[table] ?? []).filter((r) => !hit.includes(r))
       return json(hit.map((r) => ({ id: r.id })))
     }
+  }
+  if (path === '/functions/v1/send-checklist-notification' && method === 'POST') {
+    world.pushes.push(JSON.parse(String(init?.body)) as Row)
+    return world.refusePush ? json({ error: 'no devices' }, 500) : json({ ok: true })
   }
   const OBJECT = '/storage/v1/object/'
   if (path.startsWith(`${OBJECT}upload/sign/dev-seat-staging/`)) {
@@ -242,6 +259,8 @@ beforeEach(() => {
   world.storage = []
   world.refusePut = false
   world.refuseRemove = false
+  world.pushes = []
+  world.refusePush = false
   world.writes = []
   world.log = []
   world.refuse = {}
@@ -820,5 +839,134 @@ describe('what an independent review found, on the photo (v2.7592)', () => {
     await call('apply_task_photo', { photo: { task: ROADMAP_ITEM, remove: true }, plan_hash: plan.body!.plan_hash })
     expect(world.writes.map((w) => `${w.table} ${w.query}`)).toEqual([`checklist_items id=eq.${ROADMAP_ITEM}&select=id`])
     expect(own.spot_photo_path).toBeNull()
+  })
+})
+
+describe('plan_task_close → apply_task_close', () => {
+  const WHY = 'ZZ never reported back that it was done'
+  const dayOf = (id: string) => (world.tables.checklist_instances as Row[]).find((r) => r.id === id)!
+  const threadOf = (id: string) => (world.tables.checklist_instance_events as Row[]).filter((r) => r.instance_id === id).map((r) => `${r.event_type}:${r.body}`)
+
+  it('a plan writes nothing, and names the task, its people, the day and the words the thread will keep', async () => {
+    const out = await call('plan_task_close', { close: { task: OLD_TASK, why: `  ${WHY}  ` } })
+    expect(out.isError).toBe(false)
+    expect(world.writes).toEqual([])
+    expect(world.pushes).toEqual([])
+    expect(out.body).toMatchObject({
+      task: { id: OLD_TASK, words: 'ZZ walk the yard' },
+      for: ['ZZ Ana Field'],
+      given_by: 'Dev Person',
+      day: '2026-11-10',
+      day_row: OLD_DAY,
+      why: WHY,
+      reads: `"ZZ walk the yard" closes as no longer applying: ${WHY}`,
+      stamped_at_apply: ['the moment it closes'],
+    })
+    expect(String(out.body!.tells)).toBe('Nobody is told: you gave this task, and the people it is for get no push.')
+    expect(String(out.body!.what_it_is)).toContain('It is not a completion by the person the task is for')
+    expect(String(out.body!.plan_hash)).toMatch(/^[0-9a-f]{64}$/)
+    expect(dayOf(OLD_DAY).completed_at).toBeNull()
+  })
+
+  it('an apply calls the card\'s own function once, and the thread reads completed, then why', async () => {
+    const close = { task: OLD_TASK, why: WHY }
+    const plan = await call('plan_task_close', { close })
+    const out = await call('apply_task_close', { close, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    expect(world.writes).toEqual([{ method: 'POST', table: 'rpc/task_no_longer_applies', query: '', body: { p_instance_id: OLD_DAY, p_reason: WHY }, prefer: '' }])
+    expect(dayOf(OLD_DAY)).toMatchObject({ completed_at: '2026-11-17T18:00:00Z', completed_by_user_id: DEV })
+    expect(threadOf(OLD_DAY).slice(-2)).toEqual(['completed:', `dropped:${WHY}`])
+    expect(out.body).toMatchObject({ task_id: OLD_TASK, day: '2026-11-10', closed_at: '2026-11-17T18:00:00Z' })
+    expect(out.body!.told).toBeUndefined()
+    // The dev gave this task, so nobody is pushed.
+    expect(world.pushes).toEqual([])
+  })
+
+  it('the same plan applied twice is refused by the task\'s own state, and writes nothing more', async () => {
+    const close = { task: OLD_TASK, why: WHY }
+    const plan = await call('plan_task_close', { close })
+    await call('apply_task_close', { close, plan_hash: plan.body!.plan_hash })
+    world.writes = []
+    const again = await call('apply_task_close', { close, plan_hash: plan.body!.plan_hash })
+    expect(again.isError).toBe(true)
+    expect(again.text).toContain('already done')
+    expect(world.writes).toEqual([])
+  })
+
+  it('whoever gave the task is told by the card\'s own push, and the people it is for are not', async () => {
+    ;(world.tables.checklist_items as Row[]).find((r) => r.id === OLD_TASK)!.created_by_user_id = BEN
+    const close = { task: 'walk the yard', why: WHY }
+    const plan = await call('plan_task_close', { close })
+    expect(plan.body).toMatchObject({ given_by: 'ZZ Ben Field' })
+    expect(String(plan.body!.tells)).toContain('ZZ Ben Field gave this task and is told by a push')
+    expect(world.pushes).toEqual([])
+    const out = await call('apply_task_close', { close, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    expect(world.pushes).toEqual([{ recipient_user_id: BEN, push_title: 'A task was closed', push_body: `Dev Person closed "ZZ walk the yard" as no longer applying: ${WHY}`, push_url: '/checklist', tag: `checklist-${OLD_DAY}` }])
+    expect(out.body!.told).toBe('ZZ Ben Field was sent the push.')
+  })
+
+  it('a push that does not go is named, and the close stands', async () => {
+    ;(world.tables.checklist_items as Row[]).find((r) => r.id === OLD_TASK)!.created_by_user_id = BEN
+    world.refusePush = true
+    const close = { task: OLD_TASK, why: WHY }
+    const plan = await call('plan_task_close', { close })
+    const out = await call('apply_task_close', { close, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(false)
+    expect(String(out.body!.told)).toContain('was not told')
+    expect(dayOf(OLD_DAY).completed_at).toBe('2026-11-17T18:00:00Z')
+  })
+
+  it('a task that changed since the plan is refused, and nothing is written', async () => {
+    const close = { task: OLD_TASK, why: WHY }
+    const plan = await call('plan_task_close', { close })
+    ;(world.tables.checklist_items as Row[]).find((r) => r.id === OLD_TASK)!.title = 'ZZ walk the whole yard'
+    const out = await call('apply_task_close', { close, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(true)
+    expect(world.writes).toEqual([])
+    expect(dayOf(OLD_DAY).completed_at).toBeNull()
+  })
+
+  it('refuses what the function refuses, before any write: a repeat, a roadmap task, a vehicle task, a day already done', async () => {
+    const item = (world.tables.checklist_items as Row[]).find((r) => r.id === OLD_TASK)!
+    const refusalOf = async (): Promise<string> => {
+      const out = await call('plan_task_close', { close: { task: OLD_TASK, why: WHY } })
+      expect(out.isError).toBe(true)
+      return out.text
+    }
+    item.repeat_type = 'days_of_week'
+    expect(await refusalOf()).toContain('repeats')
+    item.repeat_type = 'once'
+    item.roadmap_group_task_id = ROADMAP_TASK
+    expect(await refusalOf()).toContain('belongs to a roadmap')
+    item.roadmap_group_task_id = null
+    world.tables.vehicle_maintenance_tasks = [{ id: 'v1', checklist_instance_id: OLD_DAY }]
+    expect(await refusalOf()).toContain('vehicle task')
+    world.tables.vehicle_maintenance_tasks = []
+    dayOf(OLD_DAY).completed_at = '2026-11-11T15:00:00Z'
+    expect(await refusalOf()).toContain('already done')
+    expect(world.writes).toEqual([])
+  })
+
+  it('refuses a reason too short and one past the function\'s limit, where the function would cut it without a word', async () => {
+    const short = await call('plan_task_close', { close: { task: OLD_TASK, why: ' a ' } })
+    expect(short.isError).toBe(true)
+    expect(short.text).toContain('Say why in a few words.')
+    const long = await call('plan_task_close', { close: { task: OLD_TASK, why: 'z'.repeat(201) } })
+    expect(long.isError).toBe(true)
+    expect(long.text).toContain('201 characters; the most is 200')
+    expect(world.writes).toEqual([])
+  })
+
+  it('the function\'s own refusal at the apply is said in its words', async () => {
+    const close = { task: OLD_TASK, why: WHY }
+    const plan = await call('plan_task_close', { close })
+    // The day closes between the server's read and its write: the function answers, not the plan.
+    const realFilter = dayOf(OLD_DAY)
+    const seen = { n: 0 }
+    Object.defineProperty(realFilter, 'completed_at', { configurable: true, get: () => (seen.n++ < 1 ? null : '2026-11-17T17:59:00Z'), set: () => {} })
+    const out = await call('apply_task_close', { close, plan_hash: plan.body!.plan_hash })
+    expect(out.isError).toBe(true)
+    expect(out.text).toContain('This task is already done.')
   })
 })

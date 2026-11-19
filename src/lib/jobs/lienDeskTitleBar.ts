@@ -36,6 +36,25 @@
  * tightening up the buttons"*, and his pick of three drawn, *"Build A"*) the three views after the title read *Date*,
  * *Paper* and *Job* on a computer (`lienDeskViewTab`) and a tab's side padding is 8 px where it was 10
  * (`.lienDeskKindTab`, By paper's three tabs with it), so the views are 68 px shorter and the paper tabs 12.
+ *
+ * Since v2.7789 (the owner's ask of 2026-11-18, his screenshot of By paper with a box around the paper tabs and one
+ * around the empty stretch of the title line: *"when it can fit, I would like to move this section up into this space,
+ * but when it cant fit it should wrap like it has been"*) the three paper tabs sit on the title line, between the views
+ * and the tools, when the measured line holds the way back, the views, the papers and the presses
+ * (`lienDeskPapersFit`). The piles and *Put a GC on notice…* stay on the line under, and a bar with neither is one
+ * line. A line too narrow keeps the papers leading the second line, by this rule and not by wrapping.
+ *
+ * Since v2.7806 (the owner's words of 2026-11-18, *"I don't think I wanna see it in the header"*, and his pick of three
+ * places drawn, *"Build 2"*) *Put a GC on notice…* is no part of the bar on a computer: a job with a GC draws the press
+ * beside the GC's name on its own notice (`lienGcNoticePress` in `lienDeskGcPicker.ts`). The second line's right span
+ * is the tool row alone, drawn only where the title line has no room for it, and Monthly notices with the papers up is
+ * one line. A phone keeps the picker as a row of More.
+ *
+ * Since v2.7874 (the owner's *"please take care of"* of 2026-11-18, on the band this file's v2.7789 left as measured)
+ * the tighter bar of `index.css` runs to 1,279 px of window where it ran to 1,131 (`LIEN_DESK_TIGHT_BAR_MAX_PX`). From
+ * 1,132 to 1,175 px the roomier bar had no room for the paper tabs on the title line while the tighter one just under
+ * it did, so a window that widened put the papers back on the second line. The tighter bar now holds them from about
+ * 1,100 px to 1,279, and the roomier one from 1,280 up, with three-figure counts on every tab too.
  */
 
 /**
@@ -53,7 +72,7 @@
  * And again on 2026-11-18 (v2.7784), the same way, as *Date*, *Paper* and *Job* with 8 px of side padding: 316 px as
  * *⏱ Lien desk · 888 to do* (315.5; the tab itself 178.8), 304.9 with that day's *35 to do* and 234.8 with the name
  * alone. Until then the three read *By date*, *By paper* and *By job* at 10 px, 383 px with the three-figure count, so
- * the line is 67 px shorter. A window from 641 to 1,131 px draws the tabs at 7 px (`index.css`), 296.9 with *35 to do*.
+ * the line is 67 px shorter. A window from 641 to 1,279 px (1,131 until v2.7874) draws the tabs at 7 px (`index.css`), 296.9 with *35 to do*.
  */
 export const LIEN_DESK_TITLE_LINE_PARTS = { back: 98, views: 316, presses: 231, tools: 231, gap: 14.4, chrome: 88 } as const
 
@@ -68,6 +87,25 @@ export const LIEN_DESK_TITLE_LINE_PARTS = { back: 98, views: 316, presses: 231, 
  * line 6 px over the border; `chrome` is unchanged, since the side padding is still 20 px.
  */
 export const LIEN_DESK_TITLE_BAR_ROW_GAP_PX = 6
+
+/**
+ * The widest window that draws the tighter bar, in px (v2.7874). From 641 px to this, `index.css` closes the bar's
+ * column gap to 8 px, draws a tab's side padding at 7 and shows Share as its icon; a wider window draws the roomier
+ * bar. It was 1,131 until v2.7874. `lienDeskTitleBar.test.ts` holds `index.css` to this number and proves that both
+ * bars hold the paper tabs on the title line at the edge between them, so no window puts them back under as it widens.
+ */
+export const LIEN_DESK_TIGHT_BAR_MAX_PX = 1279
+
+/**
+ * The title line at its longest in each bar, in px, measured on the live desk on 2026-11-18 at 1,279 and 1,280 px of
+ * window with three-figure counts written into the first tab and all three paper tabs: the way back, the views, the
+ * paper tabs, the four presses and the bar's column gap. The tighter bar's Share is its icon, 43 px narrower. With
+ * that day's two-figure counts the tighter bar's views were 297.3 and its paper tabs 403.2.
+ */
+export const LIEN_DESK_TITLE_LINE_WIDEST = {
+  tight: { back: 98, views: 308, papers: 445, presses: 189, gap: 8 },
+  roomy: { back: 98, views: 316, papers: 451, presses: 231, gap: 14.4 },
+} as const
 
 /** The window width the title line needs to hold these parts on one line. */
 export function lienDeskTitleLineNeeds(parts: { back: number; views: number; tools: number; gap: number; chrome: number }): number {
@@ -149,6 +187,27 @@ export function lienDeskTitleLineFit(width: number, p: LienDeskTitleLineParts): 
   return lienDeskTitleLineNeeds({ back: p.back, views: p.views, tools: p.presses, gap: p.gap, chrome: p.chrome }) <= width ? 'all' : 'none'
 }
 
+/** Where By paper's three paper tabs sit on a computer (v2.7789): on the title line, between the views and the tools, or leading the second line, as since v2.3817. */
+export type LienDeskPapersFit = 'title_line' | 'second_line'
+
+/** The width the title line needs to hold the paper tabs too: the way back, the views, the papers and the presses, a gap between each pair, and the chrome. */
+export function lienDeskTitleLineWithPapersNeeds(p: LienDeskTitleLineParts, papers: number): number {
+  const pieces = [p.back, p.views, papers, p.presses].filter((w) => w > 0)
+  return pieces.reduce((sum, w) => sum + w, 0) + p.gap * Math.max(0, pieces.length - 1) + p.chrome
+}
+
+/**
+ * Whether the paper tabs fit on a title line `width` px wide (v2.7789): `title_line` when the line holds the way back,
+ * the views, the papers and the four presses, `second_line` otherwise. `papers` is the tab row's measured width, the
+ * same on either line. Papers with no width (off By paper, or not laid out yet) stay on the second line, so a bar that
+ * could not be read never moves them. A line that holds the papers holds the presses, so this is never `title_line`
+ * where `lienDeskTitleLineFit` is `none`.
+ */
+export function lienDeskPapersFit(width: number, p: LienDeskTitleLineParts, papers: number): LienDeskPapersFit {
+  if (!(papers > 0)) return 'second_line'
+  return lienDeskTitleLineWithPapersNeeds(p, papers) <= width ? 'title_line' : 'second_line'
+}
+
 /**
  * The title line as the bar drew it: its content width and its parts, read off the DOM (v2.7277). Null while the bar
  * has no width (not laid out yet, or jsdom), so the caller keeps the two steady lines. The bar reads a computer's line alone: a phone has its own rows. The parts are read wherever they
@@ -191,15 +250,17 @@ function readLienDeskBarLine(bar: HTMLElement): { width: number; cs: CSSStyleDec
  * What the pile line holds at its widest, in px, measured on the live desk on 2026-11-15: the three kinds of paper
  * with two-figure counts (*Monthly notices · 21 · Lien affidavits · 22 · Retainage notices · 1*), Affidavits' three
  * piles (*Needs the property facts · 7 · To draft · 3 · Ready to file · 12*, with the bar's gap between), and the right
- * span at its fullest — *⚠ Put a GC on notice…* (166) and the four presses (231) with the span's 0.6rem gap, and
- * until v2.7780 the owner-records door (199) between them — which Monthly notices draws in a window whose title line
- * has no room for the presses. `gap` is the bar's column gap, as on the title line. The paper tabs were measured again
+ * span at its fullest, the four presses (231), which every kind of paper draws in a window whose title line has no
+ * room for them. Until v2.7806 *⚠ Put a GC on notice…* (166) led the span on Monthly notices with the span's 0.6rem
+ * gap, 406.6 in all, and until v2.7780 the owner-records door (199) sat between them. `gap` is the bar's column gap,
+ * as on the title line. The paper tabs were measured again
  * on 2026-11-18 (v2.7784) at 8 px of side padding, with the same three counts written in: 411 px (410.9), where 10 px
- * drew 423.
+ * drew 423. That day Lien affidavits drew five or six pile chips, 814 to 923 px, which is why its piles fell under the
+ * paper tabs in most windows until v2.7789 took the papers up.
  */
-export const LIEN_DESK_PILE_LINE_PARTS = { papers: 411, piles: 427, gcDoor: 166, presses: 231, rightGap: 9.6, right: 406.6, gap: 14.4 } as const
+export const LIEN_DESK_PILE_LINE_PARTS = { papers: 411, piles: 427, presses: 231, right: 231, gap: 14.4 } as const
 
-/** The parts of the pile line as drawn, in px: a part that is not there is 0 (Monthly notices has no piles; the leader's line has no right span). */
+/** The parts of the pile line as drawn, in px: a part that is not there is 0 (Monthly notices has no piles; a line whose tools are up on the title line has no right span). */
 export type LienDeskPileLineParts = { papers: number; piles: number; right: number; gap: number }
 
 /** Whether the right span ends the pile line, or falls under the piles as one piece, right-aligned (v2.7311). */
@@ -211,16 +272,21 @@ export function lienDeskPileLineNeeds(p: LienDeskPileLineParts): number {
   return pieces.reduce((sum, w) => sum + w, 0) + p.gap * Math.max(0, pieces.length - 1)
 }
 
-/** Which shape a pile line `width` px wide takes (v2.7311): the span at its right end when the parts fit, under the piles when they do not. */
-export function lienDeskPileLineFit(width: number, p: LienDeskPileLineParts): LienDeskPileLineFit {
-  return lienDeskPileLineNeeds(p) <= width ? 'one_line' : 'right_below'
+/**
+ * Which shape a pile line `width` px wide takes (v2.7311): the span at its right end when the parts fit, under the piles
+ * when they do not. With the papers up on the title line (v2.7789, `papers: 'title_line'`) they are no part of this
+ * line, whatever the reader measured: the line is the piles and the span.
+ */
+export function lienDeskPileLineFit(width: number, p: LienDeskPileLineParts, papers: LienDeskPapersFit = 'second_line'): LienDeskPileLineFit {
+  return lienDeskPileLineNeeds(papers === 'title_line' ? { ...p, papers: 0 } : p) <= width ? 'one_line' : 'right_below'
 }
 
 /**
  * The pile line as the bar drew it (v2.7311): its content width and its parts, read off the DOM — the paper tabs, the
  * `data-lien-desk-piles` span and the `data-lien-desk-right` span, each 0 when not drawn. Null while the bar has no
  * width (not laid out yet, or jsdom), so the caller keeps the one line. The span is read wherever it sits: its width is
- * the same at the line's end and under the piles.
+ * the same at the line's end and under the piles. So are the paper tabs, which the reader measures on either line
+ * (v2.7789): `lienDeskPapersFit` takes their width from here.
  */
 export function readLienDeskPileLine(bar: HTMLElement): { width: number; parts: LienDeskPileLineParts } | null {
   const line = readLienDeskBarLine(bar)
@@ -242,26 +308,33 @@ export type LienDeskTitleBarLayout = {
   tools: 'more' | 'title_line' | 'second_line'
   /** Whether the bar breaks after the title line. */
   breakLine: boolean
-  /** Whether the second line's right span is drawn. Empty, it would still take a column gap and push the tools off the edge. */
+  /** Whether the second line's right span is drawn: on a computer the tool row, where the title line has no room for it (alone since v2.7806). Empty, it would still take a column gap and push the tools off the edge. */
   rightSpan: boolean
   /** Whether the pile line breaks before its right span, so the span falls under the piles as one piece (v2.7311). Only on By paper on a computer. */
   pileBreak: boolean
+  /** Where By paper's three paper tabs are drawn (v2.7789): on the title line between the views and the tools, or leading the second line. Null off By paper. */
+  papers: LienDeskPapersFit | null
 }
 
 /**
  * The title bar's shape. `fit` is what the title line holds at its end (`lienDeskTitleLineFit`); `pileFit` whether the
  * pile line holds its right span (`lienDeskPileLineFit`); `paperShown` is By paper, whose three kinds of paper lead the
- * second line; `gcNotice` is *Put a GC on notice…*, the second line's own door. Until v2.7780 a desk with the
- * owner-records door kept a second line on every view, for the door (v2.7277, v2.7311).
+ * second line. Until v2.7780 a desk with the owner-records door kept a second line on every view, for the door
+ * (v2.7277, v2.7311), and until v2.7806 `gcNotice`, *Put a GC on notice…*, kept one on Monthly notices.
+ *
+ * Since v2.7789 `papersFit` is whether the title line holds the paper tabs too (`lienDeskPapersFit`) and `piles`
+ * whether the view draws pile chips (Lien affidavits and Retainage notices with a pile to show). With the papers up,
+ * the second line is the piles, and a bar with none is one line.
  */
-export function lienDeskTitleBarLayout(o: { isMobile: boolean; fit: LienDeskTitleLineFit; pileFit: LienDeskPileLineFit; paperShown: boolean; gcNotice: boolean }): LienDeskTitleBarLayout {
+export function lienDeskTitleBarLayout(o: { isMobile: boolean; fit: LienDeskTitleLineFit; pileFit: LienDeskPileLineFit; papersFit: LienDeskPapersFit; paperShown: boolean; piles: boolean }): LienDeskTitleBarLayout {
+  const papersBelow = o.paperShown ? ('second_line' as const) : null
   // A phone (punch list #352, PR 1): the tools are rows of More, the break comes only with the paper tabs, and the span holds the GC picker's sheet.
-  if (o.isMobile) return { tools: 'more', breakLine: o.paperShown, rightSpan: true, pileBreak: false }
-  // The pile line's break (v2.7311): only where the span is drawn on By paper and the measured line cannot hold it beside the piles.
-  const pileBreak = (rightSpan: boolean) => rightSpan && o.paperShown && o.pileFit === 'right_below'
-  // The two steady lines of v2.6569: the break is always there and the tools end the second line.
-  if (o.fit === 'none') return { tools: 'second_line', breakLine: true, rightSpan: true, pileBreak: pileBreak(true) }
-  // One line: a second comes only with By paper, for the paper tabs, the piles and the GC door.
-  const rightSpan = o.paperShown && o.gcNotice
-  return { tools: 'title_line', breakLine: o.paperShown, rightSpan, pileBreak: pileBreak(rightSpan) }
+  if (o.isMobile) return { tools: 'more', breakLine: o.paperShown, rightSpan: true, pileBreak: false, papers: papersBelow }
+  // The two steady lines of v2.6569: the break is always there and the tools end the second line. On By paper the span falls under the piles as one piece when the measured line cannot hold both (v2.7311).
+  if (o.fit === 'none') return { tools: 'second_line', breakLine: true, rightSpan: true, pileBreak: o.paperShown && o.pileFit === 'right_below', papers: papersBelow }
+  // The tools are up, so the second line has no span (v2.7806) and never breaks before one.
+  // The papers ride the title line (v2.7789): a second line comes only for the piles.
+  if (o.paperShown && o.papersFit === 'title_line') return { tools: 'title_line', breakLine: o.piles, rightSpan: false, pileBreak: false, papers: 'title_line' }
+  // One line: a second comes only with By paper, for the paper tabs and the piles.
+  return { tools: 'title_line', breakLine: o.paperShown, rightSpan: false, pileBreak: false, papers: papersBelow }
 }

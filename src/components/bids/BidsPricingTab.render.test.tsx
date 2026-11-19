@@ -601,4 +601,70 @@ describe('BidsPricingTab render smoke', () => {
     expect((within(win).getByRole('combobox') as HTMLSelectElement).value).toBe(PRICING_ID)
     expect((within(win).getByRole('checkbox') as HTMLInputElement).checked).toBe(true)
   })
+
+  // The Percent row: a row priced as a percent of other rows. Two fixtures sell for $6,800.00; the floor drains are the row.
+  const KIND_ROWS = COUNT_ROWS.map((r) => ({ ...r, kind: r.id === 'cr-fd' ? 'fitting' : 'fixture' })) as unknown as Props['pricingCountRows']
+  const RULE_ROWS = KIND_ROWS.map((r) => (r.id === 'cr-fd' ? { ...r, percent_rule: { pct: 10, basis: 'revenue', source: { kind: 'fixture' } } } : r)) as unknown as Props['pricingCountRows']
+  const priceWrites = () => db.writes.filter((w) => w.table === 'bid_count_row_custom_prices')
+
+  it('a row with a percent rule wears its chip, and the Workbench writes the price its rule comes to', async () => {
+    const loadBidPricingAssignments = vi.fn(async () => {})
+    renderWithProviders(<BidsPricingTab {...pricedProps({ pricingCountRows: RULE_ROWS, loadBidPricingAssignments })} />)
+    await settle()
+    expect(within(grid()).getByText('10% of Fixtures revenue · $6,800.00')).toBeTruthy()
+    // 10% of $6,800.00 is $680.00, over three floor drains.
+    await waitFor(() => expect(priceWrites()).toEqual([{ table: 'bid_count_row_custom_prices', op: 'insert', payload: { bid_id: 'bid-1', count_row_id: 'cr-fd', price_book_version_id: PRICING_ID, unit_price: 226.67 } }]))
+    await waitFor(() => expect(loadBidPricingAssignments).toHaveBeenCalledWith('bid-1', PRICING_ID))
+  })
+
+  it('on a sent bid a rule row keeps the price it went out with: the chip says so and nothing is written', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps({ pricingCountRows: RULE_ROWS }, makeBid({ bid_date_sent: '2026-07-01', bid_value: 6800 }))} />)
+    await settle()
+    expect(within(grid()).getByText('10% of Fixtures revenue · kept as sent')).toBeTruthy()
+    expect(priceWrites()).toEqual([])
+  })
+
+  it('a price typed over a rule row drops its rule first, then saves the typed price', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps({ pricingCountRows: RULE_ROWS })} />)
+    await settle()
+    await waitFor(() => expect(priceWrites()).toHaveLength(1))
+    db.writes = []
+    const box = screen.getByLabelText('Sale price per unit for Floor drain')
+    fireEvent.focus(box)
+    fireEvent.change(box, { target: { value: '300' } })
+    fireEvent.blur(box)
+    await waitFor(() => expect(priceWrites()).toHaveLength(1))
+    expect(db.writes.slice(0, 2)).toEqual([
+      { table: 'bids_count_rows', op: 'update', payload: { percent_rule: null } },
+      { table: 'bid_count_row_custom_prices', op: 'insert', payload: { bid_id: 'bid-1', count_row_id: 'cr-fd', price_book_version_id: PRICING_ID, unit_price: 300 } },
+    ])
+    await waitFor(() => expect(within(grid()).queryByText(/10% of Fixtures revenue/)).toBeNull())
+  })
+
+  it('＋ Percent row opens the window with the new row drawn live, and its press adds the row to the counts', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps({ pricingCountRows: KIND_ROWS })} />)
+    await settle()
+    fireEvent.click(button('＋ Percent row'))
+    const win = screen.getByRole('dialog', { name: 'Percent row' })
+    // The first time the app suggests no percent of its own.
+    expect((within(win).getByRole('button', { name: 'Add Connections' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(within(win).getByLabelText('Percent'), { target: { value: '10' } })
+    fireEvent.change(within(win).getByLabelText('Rows'), { target: { value: 'kind:fixture' } })
+    expect(within(win).getByText('10% of Fixtures revenue · $6,800.00')).toBeTruthy()
+    fireEvent.click(within(win).getByRole('button', { name: 'Add Connections at $680.00' }))
+    await waitFor(() =>
+      expect(db.writes.find((w) => w.table === 'bids_count_rows')).toEqual({
+        table: 'bids_count_rows',
+        op: 'insert',
+        payload: { bid_id: 'bid-1', bid_version_id: null, fixture: 'Connections', count: 1, unit: 'ea', sequence_order: 1, kind: 'fitting', percent_rule: { pct: 10, basis: 'revenue', source: { kind: 'fixture' } } },
+      }),
+    )
+  })
+
+  it('a sent bid refuses ＋ Percent row with the lock\'s words', async () => {
+    renderWithProviders(<BidsPricingTab {...pricedProps({ pricingCountRows: KIND_ROWS }, makeBid({ bid_date_sent: '2026-07-01', bid_value: 6800 }))} />)
+    await settle()
+    fireEvent.click(button('＋ Percent row'))
+    expect(screen.queryByRole('dialog', { name: 'Percent row' })).toBeNull()
+  })
 })

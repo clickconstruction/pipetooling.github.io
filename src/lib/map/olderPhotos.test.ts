@@ -1,17 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
-  defaultOlderPhotoRelease,
   googleEarthUrl,
   isNewPhoto,
   nextWalkIndex,
   olderPhotoChoices,
+  olderPhotosForAsk,
   olderPhotosFrame,
   olderPhotosSettled,
   parseWaybackReleases,
   readKeptOlderPhotos,
   readTakenYmd,
   readTilemapAnswer,
-  shownOlderPhoto,
   tileCentre,
   tileForSpot,
   waybackMetadataLayerId,
@@ -191,21 +190,6 @@ describe('olderPhotoChoices', () => {
     ]
     expect(olderPhotoChoices(two).map((c) => c.label)).toEqual(['Before Jun 6, 2018', 'Before Jun 20, 2018'])
   })
-
-  it('opens on the walk’s second stop, and on the only one when there is one', () => {
-    expect(defaultOlderPhotoRelease(found)).toBe(800)
-    expect(defaultOlderPhotoRelease(found.slice(0, 1))).toBe(900)
-    expect(defaultOlderPhotoRelease([])).toBeNull()
-  })
-
-  it('shows the pick while it is on the list, else the default, and follows a pick into the photograph it joined', () => {
-    const choices = olderPhotoChoices(found)
-    expect(shownOlderPhoto(choices, 500, 800)?.release).toBe(500)
-    expect(shownOlderPhoto(choices, 650, 800)?.release).toBe(700)
-    expect(shownOlderPhoto(choices, 12345, 800)?.release).toBe(800)
-    expect(shownOlderPhoto(choices, null, null)?.release).toBe(800)
-    expect(shownOlderPhoto([], 500, 800)).toBeNull()
-  })
 })
 
 describe('keeping a walk on the device', () => {
@@ -235,5 +219,25 @@ describe('keeping a walk on the device', () => {
     expect(readKeptOlderPhotos(JSON.stringify({ at: '2026-11-17', found: [] }), '2026-11-17')).toBeNull()
     expect(readKeptOlderPhotos(JSON.stringify({ at: '2026-11-17', found: [{ release: 'x', publishedYmd: '2020-01-01', takenYmd: '2019-01-01' }] }), '2026-11-17')).toBeNull()
     expect(readKeptOlderPhotos(JSON.stringify({ at: '2026-11-17', found: [{ release: 5, publishedYmd: '2020-01-01', takenYmd: null }] }), '2026-11-17')).toBeNull()
+  })
+})
+
+describe('what is shown for the tile asked about now (v2.7870)', () => {
+  const held = [{ release: 900, publishedYmd: '2026-10-29', size: 5, takenYmd: '2023-10-08' }]
+
+  it('is what is held when it was walked for that tile', () => {
+    expect(olderPhotosForAsk('17/1/2', { key: '17/1/2', found: held, looking: 'days' })).toEqual({ found: held, looking: 'days' })
+    expect(olderPhotosForAsk('17/1/2', { key: '17/1/2', found: [], looking: null })).toEqual({ found: [], looking: null })
+  })
+
+  it('is a walk under way, never an empty archive, in the frame before the walk begins', () => {
+    // Time was just pressed: nothing is held yet.
+    expect(olderPhotosForAsk('17/1/2', { key: null, found: [], looking: null })).toEqual({ found: [], looking: 'walk' })
+    // Another dot was just pressed: what is held is the last tile's finished walk.
+    expect(olderPhotosForAsk('17/9/9', { key: '17/1/2', found: held, looking: null })).toEqual({ found: [], looking: 'walk' })
+  })
+
+  it('is nothing, and not looking, with no tile asked about', () => {
+    expect(olderPhotosForAsk(null, { key: '17/1/2', found: held, looking: 'days' })).toEqual({ found: [], looking: null })
   })
 })

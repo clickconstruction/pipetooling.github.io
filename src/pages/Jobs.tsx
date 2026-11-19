@@ -58,6 +58,7 @@ import {
 } from '../components/jobs/JobSummaryCostCellDrilldownModal'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { useSubLaborLedger } from '../hooks/useSubLaborLedger'
+import { useDrawBillPick } from '../hooks/useDrawBillPick'
 import { JobsTeamTab } from '../components/jobs/JobsTeamTab'
 import { loadTeamLaborData as fetchTeamLaborRows, type TeamLaborRow } from '../utils/teamLabor'
 import type { Database } from '../types/database'
@@ -309,6 +310,8 @@ export default function Jobs() {
   const [customers, setCustomers] = useState<CustomerRow[]>([])
 
   // Sub Sheet Ledger state (the payment/backcharge/edit-payment modal states moved to SubLaborPaymentModals in v2.824)
+  // v2.7835: which bill a sheet rides on, asked on the move to Waiting on customer. Its window is drawn below.
+  const drawBill = useDrawBillPick()
   const [editingLaborJob, setEditingLaborJob] = useState<LaborJob | null>(null)
   const [driveMileageCost, setDriveMileageCost] = useState<number | null>(null)
   const [driveTimePerMile, setDriveTimePerMile] = useState<number | null>(null)
@@ -340,6 +343,7 @@ export default function Jobs() {
     authUserId: authUser?.id,
     authUserName: authProfileName,
     setError,
+    drawBill,
     // Keep the open Edit Sub Labor modal in sync after each ledger reload.
     onLaborJobsReloaded: (mappedJobs) => {
       setEditingLaborJob((prev) => {
@@ -2305,6 +2309,7 @@ export default function Jobs() {
 
 
 
+      {drawBill.host}
       <SubLaborPaymentModals
         ref={subLaborPaymentModalsRef}
         recordLaborJobPayment={recordLaborJobPayment}

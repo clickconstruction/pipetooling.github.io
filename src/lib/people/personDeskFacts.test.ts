@@ -48,7 +48,7 @@ const argsOf = (steps: Step[], m: string) => steps.filter((s) => s.method === m)
 const isHead = (steps: Step[]) => steps.some((s) => s.method === 'select' && (s.args[1] as { head?: boolean } | undefined)?.head === true)
 const q = (table: string) => queries.find((x) => x.table === table)
 const key = (over: Partial<PersonKey> = {}): PersonKey => ({ userId: 'u1', personId: 'p1', payName: 'Ana', displayName: 'Ana', email: null, role: 'technician', personKind: 'employee', isSub: false, ...over }) as PersonKey
-const payRow = { hourly_wage: 30, office_hourly_wage: null, is_salary: null, record_hours_but_salary: true }
+const payRow = { hourly_wage: 30, office_hourly_wage: null, is_salary: null, record_hours_but_salary: true, salaried_week_hours: [0, 6, 6, 6, 6, 4, 0] }
 const employeeData: Record<string, unknown> = {
   people_pay_config: payRow,
   clock_sessions: [{ id: 'open-1' }],
@@ -72,7 +72,7 @@ describe('loadPayConfigFacts', () => {
   it('reads the pay row by name; no name → null, no row → exists:false, a row → mapped with booleans coerced, a read error → null (unknown)', async () => {
     expect(await loadPayConfigFacts(null)).toBeNull()
     expect(queries).toHaveLength(0)
-    expect(await loadPayConfigFacts('Ana')).toEqual({ exists: true, hourlyWage: 30, officeWage: null, isSalary: false, recordHoursButSalary: true })
+    expect(await loadPayConfigFacts('Ana')).toEqual({ exists: true, hourlyWage: 30, officeWage: null, isSalary: false, recordHoursButSalary: true, salariedWeek: [0, 6, 6, 6, 6, 4, 0] })
     expect(argsOf(q('people_pay_config')!.steps, 'eq')).toEqual([['person_name', 'Ana']])
     expect(q('people_pay_config')!.steps.some((s) => s.method === 'maybeSingle')).toBe(true)
     route = () => ({ data: null, error: null })

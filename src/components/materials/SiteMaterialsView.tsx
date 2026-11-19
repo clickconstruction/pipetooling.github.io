@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
+import SitePeopleView from './SitePeopleView'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { useToastContext } from '../../contexts/ToastContext'
 import { usePartTies } from '../../hooks/usePartTies'
@@ -29,7 +30,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { askReasonWords, joinedTies, orderedPair, samePartAsks, tieCanon, tieFor, tieNamesWords, type PartTie, type SamePartAsk, type TieVerdict } from '../../lib/materials/partTies'
 import { containerLines, lastCountWords, type Movement } from '../../lib/materials/onSite'
 import { serverLines } from '../../lib/materials/onSiteServerSummary'
-import { addSitePrice, listContainers, listMovements, listPlaces, listSitePrices, loadBookPrices, priceForScope, removeSitePrice, serverSummary, setScopeTies, sitePricingAvailable } from '../../lib/materials/onSiteStore'
+import { addSitePrice, listContainerMoves, listContainers, listMovements, listPlaces, listSitePrices, loadBookPrices, priceForScope, removeSitePrice, serverSummary, setScopeTies, sitePricingAvailable } from '../../lib/materials/onSiteStore'
 import { priceTitle, priceWords } from '../../lib/materials/bookPrice'
 import { searchBookParts, type BookPartHit } from '../../lib/materials/bookSearchIo'
 import { lensChipWords, rowWorth, siteWorth, worthWords, type PriceLens, type RowWorth } from '../../lib/materials/siteWorth'
@@ -57,6 +58,8 @@ type Props = {
   canTie?: boolean
   /** Who an answer is recorded under. */
   byName?: string
+  /** The viewer reads the site's presses by person: the office's roles, never a crew's. */
+  canSeePeople?: boolean
   /** The parts book's search behind **This is a parts-book part**; a test hands in its own. */
   searchBook?: (term: string) => Promise<BookPartHit[]>
 }
@@ -105,9 +108,10 @@ function Tile({ label, big, small, tone, on, onPress }: { label: string; big: Re
   )
 }
 
-export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backLabel, boxHref, developmentHref, loading, canTie = false, byName = '', searchBook = searchBookParts }: Props) {
+export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backLabel, boxHref, developmentHref, loading, canTie = false, byName = '', canSeePeople = false, searchBook = searchBookParts }: Props) {
   const now = new Date()
-  const [view, setView] = useState<SiteView>(() => readSiteView())
+  /** By part or by place, as the device remembers it; By person is the office's and is never remembered. */
+  const [view, setView] = useState<SiteView | 'person'>(() => readSiteView())
   const [filter, setFilter] = useState<SiteFilter>('all')
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set())
@@ -186,9 +190,9 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
   const last = lastRecordedWords(glance)
   const quiet = glance.quietDays != null && glance.quietDays >= QUIET_DAYS
 
-  const pickView = (v: SiteView) => {
+  const pickView = (v: SiteView | 'person') => {
     setView(v)
-    writeSiteView(v)
+    if (v !== 'person') writeSiteView(v)
   }
   const toggleFilter = (f: SiteFilter) => {
     setFilter((cur) => (cur === f ? 'all' : f))
@@ -330,6 +334,7 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
         <span role="group" aria-label="How the list reads" style={{ display: 'inline-flex', gap: '0.35rem' }}>
           <button type="button" aria-pressed={view === 'part'} style={pill(view === 'part')} onClick={() => pickView('part')}>By part</button>
           <button type="button" aria-pressed={view === 'place'} style={pill(view === 'place')} onClick={() => pickView('place')}>By place</button>
+          {canSeePeople ? <button type="button" aria-pressed={view === 'person'} style={pill(view === 'person')} onClick={() => pickView('person')} title="Every press on this site, by who made it.">By person</button> : null}
         </span>
         {view === 'part' && asks.length > 0 ? (
           <button type="button" aria-pressed={asksOnly} style={{ ...pill(asksOnly), ...(asksOnly ? {} : { borderColor: 'var(--text-link)', color: 'var(--text-link)' }) }} onClick={() => setAsksOnly((v) => !v)} title="Names that are nearly the same. Say once whether each pair is one part.">
@@ -385,6 +390,8 @@ export default function SiteMaterialsView({ site, jobs, showMoney, onBack, backL
                     : <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'parts on this site', query: query.trim() }), { onPress: clear })} />
           ) : shownRows.map((r) => <PartRow key={r.key} row={r} open={open.has(r.key)} onToggle={() => toggleRow(r.key)} boxHref={boxHref} now={now} ask={askOf.get(r.key)} joined={joinedTies(r, ties.ties)} canTie={canTie && ties.available} busy={busy} onAnswer={answer} onUndo={undo} worth={worth ? rowWorth(r, priceFor) : null} unpriced={unpricedKeys.has(r.key)} today={today} priced={showMoney ? rowSitePrices(r, sitePrices) : []} onUndoPrice={(id) => void undoPrice(id)} onTieBook={(row, part) => void tieBook(row, part)} searchBook={searchBook} />)}
         </div>
+      ) : view === 'person' && canSeePeople ? (
+        <SitePeopleView siteId={site.id} jobs={jobs} movements={movements} containerMoves={jobs.flatMap((j) => listContainerMoves(j.id))} containers={rollup.flatMap((j) => j.containers)} places={rollup.flatMap((j) => j.places)} boxHref={boxHref} loading={loading} />
       ) : (
         <div style={{ display: 'grid', gap: '0.75rem' }}>
           {sections.length === 0 ? <div style={sec}><EmptyState compact main={loading ? 'Reading the boxes…' : 'No cage or box is on this site yet.'} tail={loading ? undefined : 'A job’s Materials page is where the first is added.'} /></div> : null}

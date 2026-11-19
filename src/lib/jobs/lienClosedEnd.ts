@@ -1,7 +1,8 @@
+import { countedLabel } from '../batchWords'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { formatUsdNoCents } from './jobFormatting'
 import { lienCommercialClock } from './lienDeadlines'
-import type { LienDeskEntry } from './lienDesk'
+import { isLienOffice, type LienDeskEntry } from './lienDesk'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import { describeNoticeMonths } from './lienNoticeMonthWords'
 import { lienPublicNotListedWhy } from './lienPublicProperty'
@@ -252,9 +253,29 @@ export function lienClosedKeepToast(f: Pick<LienClosedFacts, 'number' | 'collect
   return r.onAttorneyList ? { words: `${head} It is in Collections.`, tone: 'success' } : { words: head, tone: 'success' }
 }
 
-export function lienClosedLetGoToast(number: string): string {
-  return `${number} is marked Uncollectible. It is off the Lien desk.`
+/** The toast after *Let it go*: the mark stands, and a Stripe invoice that could not be marked is said, since the mark here is never undone for it. */
+export function lienClosedLetGoToast(number: string, stripe: ReadonlyArray<string> = []): { words: string; tone: 'success' | 'warning' } {
+  const head = `${number} is marked Uncollectible. It is off the Lien desk.`
+  if (stripe.length === 0) return { words: head, tone: 'success' }
+  const why = stripe.join('; ')
+  return { words: `${head} Stripe could not be marked: ${why}${/[.!?]$/.test(why) ? '' : '.'}`, tone: 'warning' }
 }
+
+/** The second step of *Let it go*: the mark is deliberate, so the press asks once more and names the act. */
+export function lienClosedLetGoConfirm(number: string): { ask: string; yes: string; no: string } {
+  return { ask: `Mark ${number} Uncollectible? It leaves every total. The Pipeline can put it back in Collections.`, yes: `Yes, mark ${number} Uncollectible`, no: 'Not yet' }
+}
+
+/** The closed bin's press on its title line: the window opens on its first paper and walks the rest. */
+export function lienClosedAnswerPress(n: number): string {
+  return `${countedLabel('Answer', n)} ›`
+}
+
+/** The person's own words, kept with the answer. */
+export const LIEN_CLOSED_NOTE_LABEL = 'A note to keep on the job'
+export const LIEN_CLOSED_NOTE_EXAMPLE = 'For example: the builder says the check goes out in January.'
+/** Under the answers: what is kept, whoever answers. */
+export const LIEN_CLOSED_KEPT_WORDS = 'Your name and today are kept on the job with the answer.'
 
 export function lienClosedRecordToast(number: string, months: ReadonlyArray<string>): string {
   return `Recorded. No notice goes for ${describeNoticeMonths(months)} on ${number}.`
@@ -284,5 +305,32 @@ export function lienClosedDates(notice: LienDeskEntry | null | undefined, affida
     source: affidavit ? sourceOf({ byHand: affidavit.lastMonthByHand, fromBill: affidavit.lastMonthFromBill, fromCreation: affidavit.lastMonthFromCreation }) : sourceOf({ byHand: notice?.datedByHand, fromBill: notice?.datedFromBill, fromCreation: notice?.datedFromCreation }),
     commercial: lienCommercialClock(affidavit?.propertyKind ?? notice?.propertyKind ?? ''),
     hasPaper: status === 'awaiting_approval' || status === 'approved' || status === 'held',
+  }
+}
+
+/** The window's facts for one job, off the rows the desk already holds. `role` is the viewer's; `lastWorkDoor` says the desk can open the last day of work. */
+export function lienClosedFacts(input: {
+  number: string
+  name: string
+  gcName: string
+  unpaid: number
+  notice: LienDeskEntry | null | undefined
+  affidavit: LienAffidavitEntry | null | undefined
+  collectionsSince: string | null | undefined
+  status: string | null | undefined
+  role: string | null | undefined
+  lastWorkDoor: boolean
+}): LienClosedFacts {
+  const office = isLienOffice(input.role)
+  return {
+    number: input.number,
+    name: input.name.trim(),
+    gcName: input.gcName.trim(),
+    unpaid: input.unpaid,
+    ...lienClosedDates(input.notice, input.affidavit),
+    collectionsSince: input.collectionsSince ?? null,
+    status: input.status ?? null,
+    canAnswer: office,
+    canSetLastWork: office && input.lastWorkDoor,
   }
 }

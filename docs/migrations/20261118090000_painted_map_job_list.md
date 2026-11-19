@@ -42,3 +42,5 @@ Nothing changes. The policies on `painted_maps` are by row and do not read the c
 ## Order
 
 Additive and idempotent. No `CREATE TABLE`, so no fence calls. The lock is an `ALTER TABLE` that adds a column with a constant default, which rewrites no row, under the 3 second timeout. The push can come any time after the merge. **The client that follows must not merge before the push**: it names the column in the read of every map.
+
+**Applied** to prod by 2026-11-18: the dev seat's `check_migration_ledger` read 1,380 versions applied against 1,381 local files, this version among them and `20261118190000` alone still to push (read in the docs pass after #8710).

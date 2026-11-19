@@ -20,7 +20,7 @@ import {
   type SubPortalLang,
   type SubPortalStringKey,
 } from '../lib/subPortal/subPortalI18n'
-import { isSubPortalSheetQueued, subPortalRailStep } from '../lib/subPortal/subPortalRail'
+import { isSubPortalSheetQueued, subPortalCustomerPaidDay, subPortalRailStep } from '../lib/subPortal/subPortalRail'
 import { SUB_PORTAL_FOCUS_PARAM, isSubPortalFocused, parseSubPortalFocus, subPortalFocusDomId, type SubPortalFocus } from '../lib/subPortal/subPortalFocus'
 import { PlansPill, SubPortalGuideButton, SubPortalGuideSheet } from '../components/subPortal/SubPortalGuide'
 import { SubPortalDatePicker } from '../components/subPortal/SubPortalDatePicker'
@@ -915,17 +915,24 @@ function SheetCard({
     }
   }
 
-  const payWhenParts: string[] = []
-  if (sheet.payableAfter) payWhenParts.push(t('payableAfter', { date: formatSubPortalDate(sheet.payableAfter, lang) }))
-  if (sheet.payHoldReason) payWhenParts.push(sheet.payHoldReason)
-
   // The fourth dot (v2.2854): Waiting on customer + a payable-after date = the
   // office has promised a pay run; the calendar is all that is left.
   const queued = isSubPortalSheetQueued({ stage, payableAfter: sheet.payableAfter })
+  // The customer paid (punch list #388, step 2): the bill this sheet rides on is paid in full and no pay
+  // run day is set yet. Queued wins, since a promised day says more than the payment behind it.
+  const customerPaid = subPortalCustomerPaidDay({ stage, payableAfter: sheet.payableAfter, customerPaidOn: sheet.customerPaidOn })
+  const customerPaidLabel = customerPaid ? formatSubPortalDate(customerPaid, lang) : null
+
+  const payWhenParts: string[] = []
+  if (sheet.payableAfter) payWhenParts.push(t('payableAfter', { date: formatSubPortalDate(sheet.payableAfter, lang) }))
+  // Once the customer has paid, the hold's reason sits right under that sentence, never apart from it.
+  if (sheet.payHoldReason && !customerPaid) payWhenParts.push(sheet.payHoldReason)
   const stageIndex = subPortalRailStep({ stage, payableAfter: sheet.payableAfter })
   const railLabels = [t('railWork'), t('railWalk'), t('railCustomer'), t('railPaid')]
   const chip = queued
     ? { label: payRunDayLabel ? t('chipQueued', { day: payRunDayLabel }) : t('chipQueuedNoDay'), bg: '#e8f3ea', fg: PAPER_GREEN }
+    : customerPaidLabel
+      ? { label: t('chipCustomerPaid', { date: customerPaidLabel }), bg: '#e8f3ea', fg: PAPER_GREEN }
     : stage === 'working'
       ? { label: t('inProgress'), bg: '#e7effa', fg: '#1d4e89' }
       : stage === 'walkthrough'
@@ -1116,8 +1123,21 @@ function SheetCard({
           ))}
         </div>
         <div style={{ marginTop: 8, fontSize: 12.5, color: MUTED, borderTop: `1px solid ${HAIR}`, paddingTop: 8, lineHeight: 1.5 }}>
-          {ui.kind === 'done' ? <strong style={{ color: PAPER_GREEN }}>{t('workDoneThanks')}</strong> : sentence}
+          {ui.kind === 'done' ? (
+            <strong style={{ color: PAPER_GREEN }}>{t('workDoneThanks')}</strong>
+          ) : customerPaidLabel ? (
+            <span data-testid="sub-portal-customer-paid">
+              <strong style={{ color: INK }}>{t('stageCustomerPaidLead', { date: customerPaidLabel })}</strong> {t(sheet.payHoldReason ? 'stageCustomerPaidNextHeld' : 'stageCustomerPaidNext')}
+            </span>
+          ) : (
+            sentence
+          )}
         </div>
+        {customerPaidLabel && sheet.payHoldReason ? (
+          <div data-testid="sub-portal-customer-paid-hold" style={{ marginTop: 6, fontSize: 12.5, color: MUTED, lineHeight: 1.5 }}>
+            <strong style={{ color: COPPER }}>{t('payHoldLabel')}</strong> {sheet.payHoldReason}
+          </div>
+        ) : null}
         {payWhenParts.length > 0 && (
           <div style={{ marginTop: 6, fontSize: 12, color: MUTED, lineHeight: 1.5 }}>
             <strong style={{ color: PAPER_GREEN }}>{payWhenParts[0]}</strong>

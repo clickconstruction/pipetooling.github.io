@@ -16,6 +16,8 @@ import {
   lienBoardStagesLeft,
   lienBoardAtRisk,
   lienBoardBinCount,
+  lienBoardUnreadBinWords,
+  lienBoardUnreadWords,
   lienBoardBinsShown,
   lienBoardChipFor,
   lienBoardDoorWords,
@@ -27,6 +29,8 @@ import {
   lienBoardLeaderPick,
   lienBoardLeaderWaits,
   lienBoardPick,
+  lienBoardSignSplit,
+  lienBoardPileWords,
   lienBoardPickWords,
   lienBoardRetainageLine,
   lienBoardRiskPapers,
@@ -73,10 +77,11 @@ describe('buildLienBoard — the bins', () => {
     const board = build({})
     expect(board.notices.map((b) => b.stage)).toEqual(LIEN_BOARD_NOTICE_STAGES)
     expect(board.affidavits.map((b) => b.stage)).toEqual(LIEN_BOARD_AFFIDAVIT_STAGES)
-    expect(board.notices.map((b) => b.label)).toEqual(['Needs the owner', 'To send for Master approval', 'Awaiting Master approval', 'Approved · to sign', 'Approved · to print', 'Approved · to mail', 'Sent', 'Missed'])
-    expect(board.affidavits.map((b) => b.label)).toEqual(['Needs the property facts', 'Waiting on its notice', 'To send for Master approval', 'Awaiting Master approval', 'Ready to file', 'Filed · copies to mail', 'Served', 'Missed'])
-    expect(board.notices.filter((b) => b.beside).map((b) => b.stage)).toEqual(['missed'])
-    expect(board.affidavits.filter((b) => b.beside).map((b) => b.stage)).toEqual(['missed'])
+    expect(board.notices.map((b) => b.label)).toEqual(['Needs the owner', 'To send for Master approval', 'Awaiting Master approval', 'Approved · to sign', 'Approved · to print', 'Approved · to mail', 'Sent', 'Window closed · no notice'])
+    expect(board.affidavits.map((b) => b.label)).toEqual(['Needs the property facts', 'Waiting on its notice', 'To send for Master approval', 'Awaiting Master approval', 'Ready to file', 'Filed · copies to mail', 'Served', 'Lien day passed · not filed'])
+    // No bin stands beside a column: Held is drawn where its paper stopped, and the closed end stands at the column's foot.
+    expect(board.notices.filter((b) => b.closed).map((b) => b.stage)).toEqual(['missed'])
+    expect(board.affidavits.filter((b) => b.closed).map((b) => b.key)).toEqual(['affidavit:missed'])
     expect(board.empty).toBe(true)
   })
   it('puts every notice pile in its bin: To draft reads To send for Master approval, an approved one is Approved · to print and a printed one Approved · to mail', () => {
@@ -89,7 +94,7 @@ describe('buildLienBoard — the bins', () => {
         notice('5', 'printed', { item: item('i5', 'approved', { printed_at: '2026-11-14T10:00:00Z' }) }),
         notice('6', 'sent'),
         notice('7', 'held'),
-        notice('8', 'missed'),
+        notice('8', 'missed', { missedUnrecorded: ['2026-08'] }),
       ],
     })
     const at = (stage: string) => bin(board, `notice:${stage}`).chips.map((c) => c.label)
@@ -103,6 +108,39 @@ describe('buildLienBoard — the bins', () => {
     expect(at('in_mail')).toEqual(['JP5'])
     expect(at('sent')).toEqual(['JP6'])
     expect(at('missed')).toEqual(['JP8'])
+  })
+  it('the closed end: a closed job stands there until its months are recorded, quiet, and one a late notice can save is marked', () => {
+    const board = build({
+      notices: [
+        // Every month closed, one unrecorded, the lien day ahead: a late notice can still go.
+        notice('1', 'missed', { missedUnrecorded: ['2026-08'], affidavitDay: '2026-12-15', affidavitDaysLeft: 30 }),
+        // The lien day passed too.
+        notice('2', 'missed', { missedUnrecorded: ['2026-07'], affidavitDay: '2026-11-10', affidavitDaysLeft: -5 }),
+        // Someone recorded its months closed: it has its answer, so it has no chip.
+        notice('3', 'missed', { missedMonths: ['2026-07'], missedUnrecorded: [] }),
+      ],
+      affidavits: [affidavit('2', 'missed', { deadline: '2026-11-10', daysLeft: -5 })],
+    })
+    const closed = bin(board, 'notice:missed')
+    expect(closed.label).toBe('Window closed · no notice')
+    expect(closed.closed).toBe(true)
+    expect(closed.chips.map((c) => [c.label, c.urgency, c.atRisk, c.lateNotice ?? false])).toEqual([['JP1', 'later', false, true], ['JP2', 'later', false, false]])
+    expect(board.notices.flatMap((b) => b.chips).map((c) => c.jobId)).not.toContain('3')
+    // The affidavits' closed end: past its day, never red, never at risk.
+    const gone = bin(board, 'affidavit:missed')
+    expect(gone.label).toBe('Lien day passed · not filed')
+    expect(gone.chips.map((c) => [c.label, c.urgency, c.atRisk, c.daysLeft])).toEqual([['JP2', 'later', false, -5]])
+    expect(gone.chips[0]!.destination).toEqual({ kind: 'closed', jobId: '2' })
+    // Drawn only while a job is in it.
+    expect(lienBoardBinsShown(board.notices).map((b) => b.stage)).toContain('missed')
+    expect(lienBoardBinsShown(build({}).notices).map((b) => b.stage)).not.toContain('missed')
+    expect(lienBoardBinsShown(build({}).affidavits).map((b) => b.stage)).not.toContain('missed')
+    // The tiles count papers still to send or file: none of these.
+    expect(board.tiles[0]!.figure).toBe('0')
+    expect(board.tiles[0]!.line).toBeNull()
+    // The property card names a missed pile in the bin's words.
+    expect(lienBoardPileWords('notice', 'missed')).toBe('Window closed · no notice')
+    expect(lienBoardPileWords('affidavit', 'missed')).toBe('Lien day passed · not filed')
   })
   it('puts every affidavit pile in its bin', () => {
     // A filed affidavit with its copies still to mail stands apart from one that is served (punch list #366).
@@ -118,12 +156,14 @@ describe('buildLienBoard — the bins', () => {
     expect(bin(board, 'notice:to_send').chips.map((c) => c.label)).toEqual(['JP2', 'JP10', 'JP30', 'JP9'])
     expect(compareLienBoardChips({ dueYmd: null, label: 'a' }, { dueYmd: null, label: 'b' })).toBeLessThan(0)
   })
-  it('shows Missed only while a job is in it, and a held paper adds no bin', () => {
+  it('shows the closed end only while a job with an unrecorded closed month is in it, and a held paper adds no bin', () => {
     const none = build({ notices: [notice('1', 'to_draft')] })
     expect(lienBoardBinsShown(none.notices).map((b) => b.stage)).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent'])
     const held = build({ notices: [notice('1', 'held')] })
     expect(lienBoardBinsShown(held.notices).map((b) => b.stage)).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent'])
-    const missed = build({ notices: [notice('1', 'missed')] })
+    const missed = build({ notices: [notice('1', 'missed', { missedUnrecorded: ['2026-08'] })] })
+    // Recorded closed, the job has its answer: no chip, so no bin.
+    expect(lienBoardBinsShown(build({ notices: [notice('1', 'missed')] }).notices).map((b) => b.stage)).not.toContain('missed')
     expect(lienBoardBinsShown(missed.notices).map((b) => b.stage)).toEqual(['needs_owner', 'to_send', 'awaiting', 'to_sign', 'to_print', 'in_mail', 'sent', 'missed'])
   })
   it('lights no bin as the busiest (v2.7714): the blue edge is the component’s, on a bin whose press is live', () => {
@@ -135,7 +175,7 @@ describe('buildLienBoard — the bins', () => {
 
 describe('buildLienBoard — the chips', () => {
   it('names the desk door for each notice stage', () => {
-    const board = build({ notices: [notice('1', 'needs_owner'), notice('2', 'to_draft'), notice('3', 'awaiting'), notice('4', 'printed', { item: item('i4', 'approved', { printed_at: '2026-11-14T10:00:00Z' }) }), notice('5', 'sent'), notice('6', 'held'), notice('7', 'missed'), notice('8', 'ready', { item: signedItem('i8') }), notice('9', 'ready'), notice('10', 'ready', { item: item('i10', 'approved') })] })
+    const board = build({ notices: [notice('1', 'needs_owner'), notice('2', 'to_draft'), notice('3', 'awaiting'), notice('4', 'printed', { item: item('i4', 'approved', { printed_at: '2026-11-14T10:00:00Z' }) }), notice('5', 'sent'), notice('6', 'held'), notice('7', 'missed', { missedUnrecorded: ['2026-08'] }), notice('8', 'ready', { item: signedItem('i8') }), notice('9', 'ready'), notice('10', 'ready', { item: item('i10', 'approved') })] })
     const dest = (stage: string) => bin(board, `notice:${stage}`).chips[0]!.destination
     expect(dest('needs_owner')).toEqual({ kind: 'property', jobId: '1', focus: 'owner' })
     expect(dest('to_send')).toEqual({ kind: 'paper', tab: 'notices', jobId: '2' })
@@ -149,7 +189,8 @@ describe('buildLienBoard — the chips', () => {
     expect(dest('sent')).toEqual({ kind: 'paper', tab: 'notices', jobId: '5' })
     // A held notice stands in Awaiting Master approval and opens the notice, as it did from its own bin.
     expect(bin(board, 'notice:awaiting').chips.find((c) => c.held)!.destination).toEqual({ kind: 'paper', tab: 'notices', jobId: '6' })
-    expect(dest('missed')).toEqual({ kind: 'paper', tab: 'notices', jobId: '7' })
+    // A chip at the closed end opens the window that says what closed and asks what to do.
+    expect(dest('missed')).toEqual({ kind: 'closed', jobId: '7' })
   })
   it('names the desk door for each affidavit stage: the property line that is missing, the notice when it is the one gate left, the Lien window once filed', () => {
     const board = build({
@@ -206,11 +247,12 @@ describe('buildLienBoard — the chips', () => {
     expect(lienBoardUrgency(null, false)).toBe('later')
     // The day wins over the wait: the bin already says it waits.
     expect(lienBoardUrgency(1, true)).toBe('day')
-    const board = build({ notices: [notice('1', 'awaiting', { earliestDeadline: '2026-12-15', daysLeft: 30 }), notice('2', 'sent', { earliestDeadline: '2026-11-16', daysLeft: 1 }), notice('3', 'missed', { earliestDeadline: '2026-10-15', daysLeft: -31 })] })
+    const board = build({ notices: [notice('1', 'awaiting', { earliestDeadline: '2026-12-15', daysLeft: 30 }), notice('2', 'sent', { earliestDeadline: '2026-11-16', daysLeft: 1 }), notice('3', 'missed', { earliestDeadline: '2026-10-15', daysLeft: -31, missedUnrecorded: ['2026-08'] })] })
     expect(bin(board, 'notice:awaiting').chips[0]!.urgency).toBe('waiting')
     // A sent notice is done: never red, whatever its month's day was.
     expect(bin(board, 'notice:sent').chips[0]!.urgency).toBe('later')
-    expect(bin(board, 'notice:missed').chips[0]!.urgency).toBe('day')
+    // A closed end is quiet: nothing there can be rushed, so its chip is never red.
+    expect(bin(board, 'notice:missed').chips[0]!.urgency).toBe('later')
   })
   it('counts the working days left from today through the day, and marks a chip at risk when its stages outrun them', () => {
     // Friday the 13th to Monday the 16th: Friday and Monday.
@@ -356,7 +398,7 @@ describe('buildLienBoard — the tiles', () => {
         expect(t.label.split(/\s+/).length).toBeLessThanOrEqual(PLAIN_WORDS_MAX_SENTENCE_WORDS)
       }
       if (board.retainageLine) expect(board.retainageLine.split(/\s+/).length).toBeLessThanOrEqual(PLAIN_WORDS_MAX_SENTENCE_WORDS)
-      for (const b of [...board.notices, ...board.affidavits]) expect(b.label.split(/\s+/).length).toBeLessThanOrEqual(5)
+      for (const b of [...board.notices, ...board.affidavits]) expect(b.label.split(/\s+/).length).toBeLessThanOrEqual(6)
     }
   })
 })
@@ -423,6 +465,31 @@ describe('the arrows, the day words, the retainage line, the dots and the leader
     expect(none.chips).toEqual([])
     for (const v of [view, mine, notices]) if (v.press.foot) expect(plainWordsFailures(v.press.foot)).toEqual([])
   })
+  it('Approved · to sign splits by whose signature each notice waits on: the viewer’s own are the jobs he leads, the rest another leader’s (v2.7853)', () => {
+    const board = build({
+      notices: [
+        notice('1', 'ready', { item: item('i1', 'approved') }),
+        notice('2', 'ready', { item: item('i2', 'approved') }),
+        notice('3', 'ready', { item: item('i3', 'approved') }),
+        // Signed: it stands in Approved · to print and is nobody's to sign.
+        notice('4', 'ready', { item: signedItem('i4') }),
+        // Awaiting approval: not yet a notice to sign.
+        notice('5', 'awaiting'),
+      ],
+    })
+    const split = lienBoardSignSplit(board, (jobId) => jobId === '1' || jobId === '3' || jobId === '4' || jobId === '5')
+    expect(split.mine.map((c) => c.label)).toEqual(['JP1', 'JP3'])
+    expect(split.others.map((c) => c.label)).toEqual(['JP2'])
+    // The two parts are the bin's own count, so the press and its line add up to the number beside the bin's name.
+    expect(split.mine.length + split.others.length).toBe(lienBoardBinCount(bin(board, 'notice:to_sign')))
+    // A leader who leads none of them has none to sign: the press that read *Sign 3 notices* for him is gone.
+    const none = lienBoardSignSplit(board, () => false)
+    expect(none.mine).toEqual([])
+    expect(none.others).toHaveLength(3)
+    // Every job his: nothing waits on another leader.
+    expect(lienBoardSignSplit(board, () => true).others).toEqual([])
+    expect(lienBoardSignSplit(build({}), () => true)).toEqual({ mine: [], others: [] })
+  })
   it('a pressed bin narrows the list to its jobs, a run row for one of their GCs, and the words say what shows (the picture and the queue)', () => {
     const board = build({ notices: [notice('1', 'to_draft'), notice('2', 'to_draft', { gcCustomerId: 'gc9' }), notice('3', 'awaiting')], affidavits: [affidavit('4', 'awaiting'), affidavit('5', 'ready')] })
     const pick = lienBoardPick(board, ['notice:to_send'])
@@ -460,9 +527,10 @@ describe('the arrows, the day words, the retainage line, the dots and the leader
     expect(lienBoardDoorWords({ kind: 'paper', tab: 'affidavits', jobId: '1' })).toBe('Open the affidavit')
     expect(lienBoardDoorWords({ kind: 'run', itemId: 'i2', jobId: '2' })).toBe('Open the run on this envelope')
     expect(lienBoardDoorWords({ kind: 'lienWindow', jobId: '3' })).toBe('Open the job’s Lien window')
+    expect(lienBoardDoorWords({ kind: 'closed', jobId: '3' })).toBe('See what closed and answer it')
   })
   it('the words constant holds every bin name once', () => {
-    expect(Object.keys(LIEN_BOARD_WORDS).sort()).toEqual(['awaiting', 'filed', 'held', 'in_mail', 'missed', 'needs_notice', 'needs_owner', 'needs_property', 'ready', 'sent', 'served', 'to_print', 'to_send', 'to_sign'])
+    expect(Object.keys(LIEN_BOARD_WORDS).sort()).toEqual(['awaiting', 'filed', 'held', 'in_mail', 'needs_notice', 'needs_owner', 'needs_property', 'ready', 'sent', 'served', 'to_print', 'to_send', 'to_sign'])
   })
 })
 
@@ -763,6 +831,35 @@ describe('buildLienBoard — a held paper stands in the bin of the stage it is s
   })
 })
 
+describe('buildLienBoard — an affidavit nobody has read, in To send for Master approval (v2.7852)', () => {
+  it('marks the papers the batch send leaves, counts the ones it takes, and stands them after those', () => {
+    const board = build({
+      affidavits: [
+        affidavit('21', 'to_draft', { deadline: '2026-11-18', daysLeft: 3 }),
+        affidavit('22', 'to_draft'),
+        affidavit('23', 'to_draft', { item: item('a23', 'drafted') }),
+        affidavit('24', 'ready', { item: item('a24', 'approved') }),
+      ],
+    })
+    const toSend = bin(board, 'affidavit:to_send')
+    expect(toSend.chips.map((c) => [c.jobId, c.unread ?? false])).toEqual([['23', false], ['21', true], ['22', true]])
+    expect(lienBoardBinCount(toSend)).toBe(1)
+    expect(lienBoardUnreadWords(toSend.chips[1]!)).toBe('nobody has read it yet')
+    expect(lienBoardUnreadWords(toSend.chips[0]!)).toBe('')
+    expect(lienBoardUnreadBinWords('To send for Master approval')).toBe('To send for Master approval · not read yet')
+    // Its stage, its door and its stages left are what they were: only the count and the order say it waits to be read.
+    expect(toSend.chips[1]!.stage).toBe('to_send')
+    expect(toSend.chips[1]!.held).toBeUndefined()
+    // No other bin marks a paper unread: Ready to file's is whole.
+    expect(bin(board, 'affidavit:ready').chips.every((c) => !c.unread)).toBe(true)
+  })
+  it('a notice to send is never marked: the notices have no batch send on the Board', () => {
+    const board = build({ notices: [notice('1', 'to_draft'), notice('2', 'to_draft')] })
+    expect(bin(board, 'notice:to_send').chips.every((c) => !c.unread)).toBe(true)
+    expect(lienBoardBinCount(bin(board, 'notice:to_send'))).toBe(2)
+  })
+})
+
 describe('a filed lien’s copies on the Board (punch list #366)', () => {
   const board = build({
     affidavits: [affidavit('1', 'filed', { deadline: '2026-12-15', daysLeft: 30 }), affidavit('2', 'filed'), affidavit('3', 'filed')],
@@ -811,7 +908,7 @@ describe('signing has its own bin, Approved · to sign (v2.7712, punch list #383
     expect(lienBoardStagesLeft(toSign, 'Malachi')).toEqual(['Malachi signs it', 'Print it, mail it and enter its mail number'])
     expect(lienBoardStagesLeft(toPrint, 'Malachi')).toEqual(['Print it, mail it and enter its mail number'])
     // The bin stands in the flow, between the leader's approval and the print, so an arrow runs into it and out of it.
-    expect(bin(board, 'notice:to_sign').beside).toBeFalsy()
+    expect(bin(board, 'notice:to_sign').closed).toBe(false)
   })
   it('the print bin holds exactly what the print takes, and the third tile counts the same papers', () => {
     const board = build({ notices: [notice('1', 'ready', { item: item('i1', 'approved') }), notice('2', 'ready', { item: item('i2', 'approved') }), notice('3', 'ready', { item: signedItem('i3') }), notice('4', 'printed', { item: signedItem('i4', PRINTED) })] })

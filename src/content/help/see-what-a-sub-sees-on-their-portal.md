@@ -2,7 +2,7 @@
 title: see what a sub sees on their portal
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: sub portal, subcontractor portal, got it, something is wrong, received, mark answered, statements, statement of account, work statement, payment record, still open, work and pay, what the sub sees, how do i get paid, backcharge memo, pay run, paperwork, plans, stage, inspection, work done, waiting on customer, queued, window, pick a start day, days off, progress, percent
+keywords: which bill does this sheet ride on, request the draw, no bill tied, sub portal, subcontractor portal, got it, something is wrong, received, mark answered, statements, statement of account, work statement, payment record, still open, work and pay, what the sub sees, how do i get paid, backcharge memo, pay run, paperwork, plans, stage, inspection, work done, waiting on customer, queued, window, pick a start day, days off, progress, percent
 ---
 A sub's portal shows their jobs, their pay and their paperwork. Each job card says in one sentence what stands between them and the money.
 
@@ -33,6 +33,7 @@ Every sub sheet sits at one of three stages. The portal draws them as a four-dot
 | {{chip:yellow|Waiting on work}} | "Finish the work, so we can call it in for inspection." |
 | {{chip:purple|Waiting on inspection}} | *"You told us the work's done Sep 4. We've called it in for inspection — a short punch list may come first."* |
 | {{chip:blue|Waiting on customer}} | *"Passed inspection Sep 6. Draw requested from the customer — their payment is the last thing between you and this money…"* |
+| {{chip:blue|Waiting on customer}}, and the customer paid the sheet's bill | A green {{chip:green|Customer paid Nov 12}} chip: *"The customer paid on Nov 12. Your payment is next. We will give it a pay run day."* |
 | {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with a green {{chip:green|Queued for Friday}} chip: *"Queued for the pay run — the date is right below."* |
 | {{chip:green|Paid}} | The card leaves *Your jobs*. Paid sets itself when the balance hits $0. |
 
@@ -45,6 +46,38 @@ While a sheet is *Waiting on work*, the sub sees {{button:green|✓ My work here
 **A sheet moves itself when the facts do.** The sub may report **100%** from the portal. Or the signed work order's last day may pass. Either way, the rail shows {{chip:purple|Waiting on inspection}} on its own, with a small ***· auto*** mark. Nobody has to click. If you move it back to *Waiting on work* by hand after that, your call stays. *Waiting on customer* is still yours to set once the inspection passes.
 
 Every move, yours or the sub's, writes a **Sub labor** line on the job's Activity feed. The line says who moved the sheet, from what to what, and the note. So the history is always on the job.
+
+## Tie a waiting sheet to one bill
+
+A sheet that is *Waiting on customer* rides on one of the job's bills. The sheet waits on that bill's payment.
+
+The sub's page says the customer paid when that bill is paid in full. The page shows the day and never the amount. A part payment changes nothing on their page.
+
+A bill is open until it is paid. A bill you have not sent yet counts as open.
+
+- **The job has one open bill.** The sheet is tied to it when you move the sheet. You are not asked.
+- **The job has several open bills.** A window asks **Which bill does this sheet ride on?** Pick the bill, then press {{button:blue|Request the draw}}.
+- **The job has no open bill.** The sheet moves and rides on no bill.
+
+The window also offers **No bill**. Pressing **Cancel** leaves the sheet where it was.
+
+The sheet's row on **Jobs → Subs → Pay** says which bill it rides on, under the rail. A sheet with no bill reads *No bill tied*. Press that line to pick the bill, change it or clear it.
+
+Moving the sheet back a stage clears the bill. Deleting the bill clears it too.
+
+The sub does not see which bill the sheet rides on.
+
+## When the customer pays
+
+You record the customer's payment on the bill as you always do. Nothing more is needed for the sub's page.
+
+- **Their page changes by itself.** The chip reads *Customer paid* with the day. The sentence says their payment is next.
+- **Your row says what they read.** Under the rail it reads *Sub sees: Customer paid Nov 12*.
+- **Set a payable-after date next.** Their page then reads *Queued for* that day.
+- **After two days with no date the row turns amber.** It reads *Customer paid Nov 9 · not queued, 3 days*. The sub can see the day, so you see the same clock.
+- **A hold shows under their sentence.** Type the reason in *Why the wait*. The sub reads it right under *The customer paid*. A held sheet's row stays grey.
+
+A sheet with no bill tied never says the customer paid. Its page stays on *Draw requested* until you queue the payment.
 
 ## What they see when an offer has a window
 

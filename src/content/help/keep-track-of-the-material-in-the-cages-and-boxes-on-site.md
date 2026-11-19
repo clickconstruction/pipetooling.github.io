@@ -2,7 +2,7 @@
 title: keep track of the material in the cages and boxes on site
 category: Field Work
 roles: all
-keywords: materials on site, on site, materials page, track, where is it, find a box, lost box, lost cage, i found it, show where i am, move the pin by hand, sticker, reserved sticker, blank sticker, stick a sticker on a box, sticker is new, it is on a box i know, it is a new box, sticker name, named sticker, your jobs with boxes, find a part on any job, every job, this job, look on every job, scan a label, print the label, print the manifest, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask the office for more, parts request, missing, photo of a box, box label, qr code, prts.co
+keywords: materials on site, on site, take from a box, take parts out, photo before and after, as found, materials page, track, where is it, find a box, lost box, lost cage, i found it, show where i am, move the pin by hand, sticker, reserved sticker, blank sticker, stick a sticker on a box, sticker is new, it is on a box i know, it is a new box, sticker name, named sticker, your jobs with boxes, find a part on any job, every job, this job, look on every job, scan a label, print the label, print the manifest, cage, box, stencil, unsorted, put away, count this box, can't find, short, ask for more, ask the office for more, more, tap a part, parts request, missing, photo of a box, box label, qr code, prts.co
 order: 66
 ---
 On a big job the material lives in stencilled cages and boxes left on the site. The On site tab on the Tally keeps what is in each one. The office then knows what is there, what was used and what walked away.
@@ -37,20 +37,48 @@ A delivery the office lands waits in **Unsorted**. Tap it, then tap {{button:out
 
 ## Use a part, move it or say you can't find it
 
-Tap a box to open it. Each line has four presses.
+Tap a box to open it. Its parts are listed with their numbers. Tap a part and four presses open under it. Tap the part again to close them.
 
 - {{button:outline|Used}} takes the number you used out of the box.
 - {{button:outline|Move to…}} puts some in another box, back to the supply house, to the truck or marks them damaged.
 - {{button:outline-amber|Can't find}} says the box should have it and it is not there. The office sees it that day.
-- {{button:outline-blue|Short}} asks the office for more. Type how many more you need and tap **Ask the office for 4**. The request lands on the job's Parts tab, the same as Send to Office. A part from the parts book also gets a draft purchase order. A line with none left keeps Short beside its words.
+- {{button:outline|Ask for more}} asks the office for more. Type how many more you need and tap **Ask the office for 4**. The request lands on the job's Parts tab, the same as Send to Office. A part from the parts book also gets a draft purchase order. A part with none left keeps Ask for more alone.
 
 The office and a job's primary can file that request. A helper or a subcontractor reads **Only the office can file a parts request on this job.** The message then gives the words to tell the office.
 
-Every press but Short is one row in the ledger. A wrong press gets a new press. Nothing is edited. Short writes a request, not a row in the box.
+Every press but Ask for more is one row in the ledger. A wrong press gets a new press. Nothing is edited. Ask for more writes a request, not a row in the box.
+
+## Take parts out of a box
+
+When you take parts out of a cage or box, the app asks for two photos. One shows the box as you found it. One shows the box after. Between them you say what you took.
+
+Open the box. Scanning its label opens it for you. Tap {{button:blue|Take from G12}} at the bottom of the screen. The camera opens. Take a photo of the box as you found it and tap Use Photo.
+
+Most boxes hold one kind of part. For those the screen asks **How many are you taking?** It starts on 1. Tap **+** or a quick number to change it. Tap **All 24** to take every piece.
+
+A box with more than one part lists what it holds. Tap a part to take one. Tap it again to take one more. Quick numbers show under a part you tapped. Tap one to set the count.
+
+Did you take a part the list does not show? Tap **Something not on the list…** and name it.
+
+Then tap the press at the bottom. It reads your count, like **Take 3 from G12**. The take is saved at once. The camera opens again. Take a photo of the box after and tap Use Photo. You are done.
+
+You can skip a photo. Close the camera with no shot and the app goes on. The screen reads **G12 has no photo as found.** Tap **Take the photo** to try again. After the take, tap **Finish without it** to leave the second photo out. The office sees which photo is missing.
+
+If you walk away, the box keeps your take for twelve hours. It reads *You started a take from G12 at 2:14 PM.* Tap **Finish it** to go on. Tap **Nothing taken** to put it away.
+
+With no signal the take and its photos are kept on the phone. They send by themselves when the signal is back.
+
+The app's number never stops you. If you take more than the app counted, the rest is recorded as found.
+
+While a box is open, the Tally's tabs are put away. Tap **‹** to go back to the boxes and the tabs.
+
+**Used** on a part's line still works. It takes parts out with no photo.
+
+The box then shows **Taken from G12**. Each take reads who took what, with its pictures side by side. Tap a picture to open it whole. Everyone on the job sees them.
 
 ## Count a box
 
-A box is due a count after two weeks. Tap {{button:blue|Count this box}} and walk the lines. The walk shows every line that has parts, one at a time. A line marked can't find is in the walk too, even with none left. Your count clears the mark.
+A box is due a count after two weeks. Under the parts, tap {{button:outline|Count A1}} and walk the lines. The press says when the box was last counted. The press turns amber when a count is due. The walk shows every line that has parts, one at a time. A line marked can't find is in the walk too, even with none left. Your count clears the mark.
 
 Tap **25 is right** when the number matches. Type the number when it does not. Tap **Skip this line** to leave a line as it is. Tap **Not in A1 any more** when the part is gone from the box.
 
@@ -64,9 +92,11 @@ Type the part's name. **Already on this job** lists the names the job has, with 
 
 ## Take a photo
 
-On a box, tap {{button:outline|Photo}}. For ten minutes after a count, an added part or a put away the button is blue. A put away lights the box the parts went into. The picture is named for what it followed. Shoot and tap Use Photo. The phone shrinks the picture and files it in the job's Drive folder by itself.
+On a box, tap {{button:outline|Photo}} under the parts. The press says how many photos the box has. For ten minutes after a count, an added part or a put away the press is outlined in blue. The press then says what the photo will show, like Of A1 as you counted it. A put away lights the box the parts went into. The picture is named for what it followed. Shoot and tap Use Photo. The phone shrinks the picture and files it in the job's Drive folder by itself.
 
-With no signal the photo stays on the phone. Tap **Send now** when you have signal again, or **Share instead** to send it another way.
+The picture shows on the box for everyone on the job. Tap a picture to open it whole. Tap **Close the photo** to go back. A dashed square means the picture is still on the phone that took it.
+
+With no signal the photo stays on the phone. It sends by itself when the signal is back. Tap **Send now** to send it at once. Tap **Share instead** to send it another way.
 
 ## With no signal
 
@@ -82,9 +112,9 @@ Read [keep working when the signal drops](/help/keep-working-when-the-signal-dro
 
 Every box has one line that says what is in it. You never have to type it. Add a part and the app writes the line by itself. A box with one kind of part reads its name and count, like *Kohler toilets · 24*. A mixed box reads how many parts it holds and names the two it holds most of.
 
-The line shows under the box's name on the list and on the office page. Open a box and the line is under its name. A line the app wrote is marked *from its parts*.
+The line shows under the box's name on the list and on the office page. Open a box and your own words show under its name. A line the app wrote does not show there, because the parts are listed under the name.
 
-Tap {{button:outline|Say it better}} to put the line in your own words, like PVC fittings, mixed. Then tap {{button:blue|Save the line}}. Your words show from then on. The parts under them still count.
+Tap {{button:outline|More}} beside the box's name. Then tap **Say it better** to put the line in your own words, like PVC fittings, mixed. Then tap {{button:blue|Save the line}}. Your words show from then on. The parts under them still count.
 
 To hand the line back to the app, clear your words. Then tap {{button:blue|Use the app’s line}}. An empty box has no line yet. Tap **Say what is in it** to give it one.
 
@@ -92,7 +122,7 @@ Search finds a box by your words too. Type toilets and the box that says Kohler 
 
 ## Find a box on the site
 
-On a box, tap {{button:outline|Where is it?}}. The sheet says what the app knows. The words name the place and the note. The words say who pinned the box and on what day. Under the words is the newest photo, then the site from above with the box's pin.
+On a box, tap {{button:outline|Where is it?}} under the parts. The press names the box's place. The sheet says what the app knows. The words name the place and the note. The words say who pinned the box and on what day. Under the words is the newest photo, then the site from above with the box's pin.
 
 Tap {{button:blue|Show where I am}} to see your own dot and a dashed line to the pin. The sheet says about how far the pin is and which way. The line is straight. The line knows no fence, wall or gate. Indoors the phone is unsure, so go by the place, the note and the photo. Your dot stays on your phone. The dot moves while the sheet is open and the screen is on.
 
@@ -108,6 +138,8 @@ To have someone else find the box, tap {{button:outline|Send someone to it}}. Th
 
 A pin older than 30 days carries a caution, since boxes get moved. Tap **Directions** for the drive to the pin. Tap **Map** on the tab to see every pinned box on the site.
 
+The site map has **Satellite**, **Streets** and **Time**. Tap **Time** to see the site on earlier days. The press is not there while you drag a pin into place. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) shows how.
+
 ## Scan a label
 
 A printed label carries a code. Point your camera at it and the box opens. A label prints on a sheet of paper or on a strip of tape.
@@ -116,7 +148,7 @@ A label printed before November 11, 2026 can open a web search on an iPhone. Pri
 
 A label the camera cannot read still opens. Tap **Scan a label** beside the search and type the eight characters under the code. Tap {{button:blue|Open the box}}. A box on another job opens on that job. A sticker's code works the same way. The sticker's box opens, or a reserved sticker opens the sheet that puts it on a box.
 
-To print one box's label, open the box and tap **Print the label** under its parts. The label window opens right there. A whole job's labels print from Materials, with **Print labels** at the right end of the tabs. The office, an estimator, a primary and a superintendent have that press.
+To print one box's label, open the box, tap **More** and tap **Print the label**. The label window opens right there. A whole job's labels print from Materials, with **Print labels** at the right end of the tabs. The office, an estimator, a primary and a superintendent have that press.
 
 Under the code is its short address, like prts.co/b/4F2A-9C18. Read it out with the dash. Typed with or without the dash, it opens the same box.
 
@@ -168,7 +200,7 @@ A box with more than one side needs more than one strip. Set **Copies of each** 
 
 After the first print the window opens on tape on that computer. Press **Change** to pick paper again. Press **Printer setup** to read the three steps again.
 
-Printing at the cage from Brother's phone app? Under a box's parts, press **Copy the label code**. The address goes on the clipboard. Paste it into the Brother app as a QR code and print. The office can also press **Export the labels as a CSV** in the Labels window. That file has one row per box for a label editor.
+Printing at the cage from Brother's phone app? On a box, press **More** and then **Copy the label code**. The address goes on the clipboard. Paste it into the Brother app as a QR code and print. The office can also press **Export the labels as a CSV** in the Labels window. That file has one row per box for a label editor.
 
 Signed out, the scan still opens a page. The page does not say what is in the box. The top is a dark plate with the company's name. Under the name is the box's name in large letters, with its code beside it. The page never names the job.
 
@@ -180,11 +212,11 @@ To see what is in the box, press **Sign in to see what is inside**. The press ha
 
 A label from a retired box says so and offers **Scan another label**. Signed in, it names the box and the day it left. Open prts.co with nothing after it and you get **Scan a label**. There you can type a code.
 
-A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The manifest window opens right there. Write what you add on the page's ruled lines, and press it in the app too.
+A box can also carry a manifest, a laminated page that lists what is in it. On a box, press **More** and then **Print the manifest**. The manifest window opens right there. Write what you add on the page's ruled lines, and press it in the app too.
 
 ## Change a box's name or kind
 
-A name typed wrong, or a pile saved as a cage, is fixed on the box. Open the box and tap {{button:outline|Edit}} beside its name. On the office page, press a box's name or the **Edit** press beside it.
+A name typed wrong, or a pile saved as a cage, is fixed on the box. Open the box and tap {{button:outline|More}} beside its name. Then tap **Edit A1**. On the office page, press a box's name or the **Edit** press beside it.
 
 - **Its name** takes a new name. A name another box on the site carries is refused.
 - **How it sits** is Cage, Box or Loose pile. A pallet is a loose pile, and so is a thing too big for a box.
@@ -204,6 +236,6 @@ Rename a box only when the same things are inside. For different things, retire 
 
 ## Retire a box
 
-When a cage or box leaves the job, open it and press **Retire G4** under Done with this box. The app refuses while parts are still in it. Move them or mark them used first.
+When a cage or box leaves the job, open it and press **More**. **Retire G4** is the last row. The app refuses while parts are still in it. Move them or mark them used first.
 
 Retired by mistake? The toast that says G4 retired carries **Undo** for one minute. Press it and G4 is back with its label working. After the minute, the office brings it back from the Retired fold on Jobs → Materials.

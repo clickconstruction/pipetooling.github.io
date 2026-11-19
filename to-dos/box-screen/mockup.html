@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A box's own screen · punch list #398</title>
+<style>body{margin:0}img{max-width:100%}</style>
+
+<style>
+/* Layout: one reading column of 68ch; the before is a marked picture beside its notes; the after is a row of phones drawn in the app's own tokens. */
+:root {
+  --ground: #eef0f3; --panel: #ffffff; --panel-2: #f6f7f9; --ink: #141a24; --ink-2: #5a6474; --rule: #cfd5dd;
+  --accent: #2563eb; --accent-ink: #1d4ed8; --accent-tint: #e8f0fe;
+  --hold: #92400e; --hold-tint: #fdf3d7; --ok: #15803d; --ok-tint: #e6f6ec;
+  --plate: #23272e; --plate-ink: #f4d35e; --mark: #c2410c; --mark-ink: #ffffff;
+  --display: 'Archivo', 'Helvetica Neue', Arial, sans-serif; --body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; --stencil: 'Saira Stencil One', 'Archivo', Impact, sans-serif;
+  /* The app's own tokens, from src/index.css, for the phones */
+  --a-page: #f0f2f5; --a-surface: #ffffff; --a-subtle: #f9fafb; --a-border: #cfd4db; --a-border-strong: #aab2bd;
+  --a-strong: #111827; --a-700: #374151; --a-muted: #6b7280; --a-faint: #767f8d; --a-link: #2563eb;
+  --a-blue-tint: #eff6ff; --a-amber-700: #b45309; --a-amber-800: #92400e; --a-amber-tint: #fffbeb;
+  --a-veil: rgba(8, 12, 20, 0.5);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --ground: #10151d; --panel: #1a212c; --panel-2: #151b25; --ink: #eef1f5; --ink-2: #9aa5b5; --rule: #313a48;
+  --accent: #3b82f6; --accent-ink: #93c5fd; --accent-tint: #1b2c4d;
+  --hold: #fcd34d; --hold-tint: #3a2f11; --ok: #4ade80; --ok-tint: #12301f;
+  --plate: #0b0e13; --plate-ink: #f4d35e; --mark: #ea580c; --mark-ink: #ffffff;
+  --a-page: #111827; --a-surface: #1f2937; --a-subtle: #18212f; --a-border: #374151; --a-border-strong: #4b5563;
+  --a-strong: #f9fafb; --a-700: #d1d5db; --a-muted: #9ca3af; --a-faint: #8892a3; --a-link: #60a5fa;
+  --a-blue-tint: #1e3358; --a-amber-700: #fbbf24; --a-amber-800: #fcd34d; --a-amber-tint: #3a2f11;
+  --a-veil: rgba(0, 0, 0, 0.6);
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --ground: #10151d; --panel: #1a212c; --panel-2: #151b25; --ink: #eef1f5; --ink-2: #9aa5b5; --rule: #313a48;
+  --accent: #3b82f6; --accent-ink: #93c5fd; --accent-tint: #1b2c4d;
+  --hold: #fcd34d; --hold-tint: #3a2f11; --ok: #4ade80; --ok-tint: #12301f;
+  --plate: #0b0e13; --plate-ink: #f4d35e; --mark: #ea580c; --mark-ink: #ffffff;
+  --a-page: #111827; --a-surface: #1f2937; --a-subtle: #18212f; --a-border: #374151; --a-border-strong: #4b5563;
+  --a-strong: #f9fafb; --a-700: #d1d5db; --a-muted: #9ca3af; --a-faint: #8892a3; --a-link: #60a5fa;
+  --a-blue-tint: #1e3358; --a-amber-700: #fbbf24; --a-amber-800: #fcd34d; --a-amber-tint: #3a2f11;
+  --a-veil: rgba(0, 0, 0, 0.6);
+  color-scheme: dark }
+
+body { background: var(--ground); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1200px; margin: 0 auto; padding-block: 28px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 48px; grid-template-columns: minmax(0, 1fr); }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 1.5rem; font-weight: 700; }
+h3 { font-size: 1.05rem; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--accent-ink); }
+.read { max-width: 68ch; }
+div.read { display: grid; gap: 12px; }
+.eyebrow { font-size: 0.75rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+.muted { color: var(--ink-2); }
+.small { font-size: 0.875rem; }
+section { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+.sec-head { display: grid; gap: 6px; }
+b, strong { font-weight: 600; }
+.press { font-weight: 600; white-space: nowrap; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* header */
+.top { display: grid; gap: 18px; }
+.plate { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; background: var(--plate); color: var(--plate-ink); font-family: var(--stencil); font-size: 1.5rem; letter-spacing: 0.06em; padding: 4px 14px; border-radius: 4px; justify-self: start; line-height: 1.2; }
+.plate span { font-family: var(--body); font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase; color: #c8ced8; font-weight: 600; }
+.lede { font-size: 1.125rem; max-width: 64ch; }
+.tally { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--rule); }
+.tally > div { padding: 14px 16px 14px 0; display: grid; gap: 2px; align-content: start; }
+.tally .fig { font-family: var(--display); font-weight: 800; font-size: 2.1rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.tally .fig small { font-size: 1rem; font-weight: 600; color: var(--ink-2); font-family: var(--body); }
+.tally .pick .fig { color: var(--accent-ink); }
+
+/* the before: a marked picture beside its notes */
+.before { display: grid; grid-template-columns: minmax(0, 390px) minmax(0, 1fr); gap: 36px; align-items: start; }
+@media (max-width: 860px) { .before { grid-template-columns: minmax(0, 1fr); } }
+.shot-wrap { position: relative; width: 100%; max-width: 390px; justify-self: center; margin: 0 12px 0 0; }
+.shot-wrap img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 10px; }
+.mark { position: absolute; left: 2.6%; width: 94.8%; border: 2px solid var(--mark); border-radius: 8px; pointer-events: none; }
+.pin { display: inline-flex; align-items: center; justify-content: center; min-width: 1.6rem; height: 1.6rem; padding: 0 5px; border-radius: 999px; background: var(--mark); color: var(--mark-ink); font-weight: 700; font-size: 0.8rem; font-variant-numeric: tabular-nums; flex: none; }
+.mark .pin { position: absolute; right: -12px; top: -12px; }
+.fold { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--plate); pointer-events: none; }
+.fold span { position: absolute; right: 26px; top: -22px; background: var(--plate); color: #f3f4f6; font-size: 0.68rem; font-weight: 600; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
+.finds { display: grid; gap: 0; padding: 0; margin: 0; list-style: none; border-top: 1px solid var(--rule); }
+.finds li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); align-items: start; }
+.finds li > div { display: grid; gap: 3px; }
+.finds .pin.plain { background: var(--panel); color: var(--ink-2); border: 1px solid var(--rule); }
+
+/* tables */
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 0.925rem; }
+th, td { text-align: left; padding: 9px 14px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; border-bottom: 2px solid var(--ink); }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.grp td { font-family: var(--display); font-weight: 700; padding-top: 16px; border-bottom: 1px solid var(--ink); }
+td.sm { color: var(--mark); font-weight: 600; }
+.tag { display: inline-block; font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 700; padding: 2px 8px; border-radius: 3px; background: var(--panel-2); border: 1px solid var(--rule); color: var(--ink-2); white-space: nowrap; }
+.tag.pick { background: var(--accent-tint); border-color: var(--accent); color: var(--accent-ink); }
+.tag.amber { background: var(--hold-tint); border-color: var(--hold); color: var(--hold); }
+.tag.green { background: var(--ok-tint); border-color: var(--ok); color: var(--ok); }
+
+/* the phones */
+.phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 372px)); gap: 32px 24px; justify-content: center; align-items: start; }
+.phone-col { display: grid; gap: 12px; align-content: start; grid-template-columns: minmax(0, 1fr); }
+.phone-col h3 { font-family: var(--body); font-size: 1rem; }
+.phone { box-sizing: border-box; width: 100%; max-width: 372px; height: 760px; border-radius: 34px; border: 8px solid var(--plate); background: var(--a-page); overflow: hidden; position: relative; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: var(--a-strong); font-size: 15px; line-height: 1.35; }
+.phone.short { height: 600px; }
+.scr { height: 100%; display: flex; flex-direction: column; }
+.a-bar { flex: 0 0 auto; height: 58px; background: var(--a-surface); border-bottom: 1px solid var(--a-border); display: flex; align-items: center; gap: 14px; padding: 0 16px; }
+.a-bar i { width: 20px; height: 20px; border-radius: 5px; background: var(--a-border); display: block; }
+.a-bar i.f { margin-left: auto; }
+.scr-body { flex: 1 1 auto; overflow-y: auto; padding: 12px 14px 14px; display: grid; gap: 10px; align-content: start; grid-template-columns: minmax(0, 1fr); }
+.scr-foot { flex: 0 0 auto; padding: 10px 14px 14px; background: var(--a-surface); border-top: 1px solid var(--a-border); display: grid; gap: 6px; }
+.a-btn { min-height: 48px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--a-border-strong); background: var(--a-surface); color: var(--a-strong); font-weight: 600; font-size: 0.95rem; display: inline-flex; align-items: center; justify-content: center; gap: 7px; text-align: center; }
+.a-btn.block { display: flex; width: 100%; box-sizing: border-box; }
+.a-btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+.a-btn.tall { min-height: 56px; font-size: 1.05rem; }
+.a-btn.amber { color: var(--a-amber-800); border-color: var(--a-amber-800); }
+.a-btn.sm { font-size: 0.85rem; padding: 0 6px; }
+.a-muted { color: var(--a-muted); font-size: 0.85rem; }
+.a-due { color: var(--a-amber-700); font-weight: 600; }
+.a-head { display: flex; align-items: center; gap: 10px; }
+.a-back { width: 48px; height: 48px; flex: none; border-radius: 8px; border: 1px solid var(--a-border-strong); background: var(--a-surface); color: var(--a-strong); font-size: 1.25rem; display: inline-flex; align-items: center; justify-content: center; }
+.a-title { min-width: 0; display: grid; }
+.a-title b { font-size: 1.5rem; font-weight: 800; letter-spacing: 0.01em; line-height: 1.1; }
+.a-title b span { font-size: 0.8rem; font-weight: 600; color: var(--a-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-left: 6px; }
+.a-title em { font-style: normal; font-weight: 600; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.a-more { margin-left: auto; flex: none; }
+.a-where { min-height: 48px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--a-border); background: var(--a-surface); display: flex; align-items: center; gap: 8px; }
+.a-where .w { min-width: 0; display: grid; }
+.a-where .w b { font-weight: 600; }
+.a-where .go { margin-left: auto; flex: none; color: var(--a-link); font-weight: 600; font-size: 0.88rem; white-space: nowrap; }
+.a-cap { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; color: var(--a-muted); margin-top: 2px; }
+.a-cap span { text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 0.85rem; }
+.a-card { background: var(--a-surface); border: 1px solid var(--a-border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 9px; }
+.a-card.warn { border-color: var(--a-amber-800); }
+.a-line-top { display: flex; align-items: baseline; gap: 10px; }
+.a-line-top .nm { font-weight: 600; min-width: 0; }
+.a-line-top .q { margin-left: auto; font-size: 1.8rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.a-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.a-grid2 .a-btn { min-height: 52px; }
+.a-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.a-row { width: 100%; box-sizing: border-box; min-height: 56px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--a-border); background: var(--a-surface); color: var(--a-strong); font: inherit; text-align: left; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.a-row.warn { border-color: var(--a-amber-800); }
+.a-row .nm { font-weight: 600; min-width: 0; display: grid; }
+.a-row .nm small { font-size: 0.8rem; font-weight: 600; color: var(--a-amber-700); }
+.a-row .q { margin-left: auto; font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; flex: none; }
+.a-row .ch { color: var(--a-faint); font-size: 1.1rem; flex: none; width: 14px; text-align: center; }
+.a-row:focus-visible, .ctl button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.a-open { margin-top: -4px; }
+.a-strip { display: flex; gap: 8px; align-items: flex-start; }
+.a-shot { display: grid; gap: 3px; flex: none; }
+.a-shot svg { width: 72px; height: 54px; border-radius: 8px; border: 1px solid var(--a-border); display: block; }
+.a-shot span { font-size: 0.7rem; color: var(--a-muted); line-height: 1.2; }
+.a-take { display: grid; gap: 6px; }
+.a-take .pair { display: flex; gap: 8px; }
+.veil { position: absolute; inset: 0; background: var(--a-veil); display: flex; align-items: flex-end; }
+.sheet { width: 100%; box-sizing: border-box; background: var(--a-surface); border-radius: 18px 18px 0 0; padding: 14px 14px 18px; display: grid; gap: 8px; }
+.sheet h4 { margin: 0 0 2px; font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; }
+.sheet h4 span { margin-left: auto; color: var(--a-muted); font-size: 1.2rem; font-weight: 500; }
+.m-row { min-height: 54px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--a-border-strong); display: flex; align-items: center; gap: 10px; }
+.m-row div { display: grid; min-width: 0; }
+.m-row b { font-weight: 600; }
+.m-row small { color: var(--a-muted); font-size: 0.8rem; }
+.m-row i { margin-left: auto; font-style: normal; color: var(--a-faint); }
+.m-sep { border-top: 1px solid var(--a-border); margin: 4px 0 0; padding-top: 8px; }
+.m-row.quiet { border-color: var(--a-border); }
+.new { box-shadow: 0 0 0 2px var(--ok); }
+.key { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.85rem; color: var(--ink-2); }
+.key span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.key .k-new::before { box-shadow: 0 0 0 2px var(--ok); }
+.key .k-build::before { background: #2563eb; }
+.notes { display: grid; gap: 8px; padding: 0; margin: 0; list-style: none; font-size: 0.9rem; }
+.notes li { padding-left: 14px; border-left: 3px solid var(--rule); }
+
+/* answers, calls */
+.answers { display: grid; gap: 0; border-top: 1px solid var(--rule); }
+.answers > div { padding: 14px 0; border-bottom: 1px solid var(--rule); display: grid; grid-template-columns: minmax(0, 230px) minmax(0, 1fr); gap: 6px 24px; }
+.answers h3 { font-family: var(--body); font-size: 1rem; }
+@media (max-width: 640px) { .answers > div { grid-template-columns: minmax(0, 1fr); } }
+.calls { counter-reset: call; display: grid; gap: 0; border-top: 1px solid var(--rule); padding: 0; margin: 0; list-style: none; }
+.calls li { counter-increment: call; padding: 14px 0 14px 44px; border-bottom: 1px solid var(--rule); position: relative; display: grid; gap: 4px; max-width: 80ch; }
+.calls li::before { content: counter(call); position: absolute; left: 0; top: 13px; font-family: var(--display); font-weight: 800; font-size: 1.4rem; color: var(--ink-2); }
+.calls .q { font-weight: 600; }
+.calls .a b { color: var(--accent-ink); }
+.alt { display: grid; grid-template-columns: minmax(0, 330px) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 860px) { .alt { grid-template-columns: minmax(0, 1fr); } .alt .phone { justify-self: center; } }
+.limits { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; max-width: 76ch; }
+.limits li { padding-left: 16px; border-left: 3px solid var(--rule); }
+
+
+.t-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.t-top b { font-size: 1.15rem; }
+.t-link { color: var(--a-link); font-size: 0.85rem; }
+.t-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--a-border); font-size: 0.8rem; color: var(--a-muted); text-align: center; }
+.t-tabs span { padding: 10px 2px; display: flex; align-items: center; justify-content: center; }
+.t-tabs .on { background: #2563eb; color: #fff; font-weight: 700; border-radius: 4px 4px 0 0; }
+.a-chip { min-height: 36px; box-sizing: border-box; padding: 0 8px; border-radius: 999px; border: 1px solid var(--a-border-strong); background: var(--a-surface); font-weight: 600; font-size: 0.8rem; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.a-grid3 .a-chip { flex: 1 1 auto; }
+.a-four { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.a-four .a-btn { padding: 0 2px; font-size: 0.78rem; min-width: 0; }
+.a-dash { width: 56px; height: 56px; border-radius: 8px; border: 1px dashed var(--a-border-strong); flex: none; }
+/* second pass */
+[hidden] { display: none !important; }
+.phone.real { height: 786px; }
+.phone.real > img { display: block; width: 100%; height: auto; }
+.a-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.a-tile { min-height: 60px; box-sizing: border-box; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--a-border-strong); background: var(--a-surface); display: grid; gap: 2px; align-content: center; }
+.a-tile b { font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 6px; }
+.a-tile small { color: var(--a-muted); font-size: 0.78rem; line-height: 1.25; }
+.a-tile.due { border-color: var(--a-amber-800); background: var(--a-amber-tint); }
+.a-tile.due b { color: var(--a-amber-800); }
+.a-tile.due small { color: var(--a-amber-700); font-weight: 600; }
+.a-tile.fresh { border-color: #2563eb; box-shadow: inset 0 0 0 1px #2563eb; }
+.a-tile.fresh b { color: var(--a-link); }
+.g { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.a-ask { border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; border: 1px solid var(--a-border); background: var(--a-blue-tint); }
+.a-ask .row { display: flex; gap: 8px; }
+.a-empty { border: 1px dashed var(--a-border-strong); border-radius: 10px; padding: 14px 12px; display: grid; gap: 8px; text-align: center; }
+.trip { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 372px)); gap: 32px 24px; justify-content: center; align-items: start; }
+.trip figure { margin: 0; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+.trip figcaption { display: grid; gap: 2px; }
+.trip .n { font-family: var(--display); font-weight: 800; font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.trip .n small { font-family: var(--body); font-size: 0.95rem; font-weight: 600; color: var(--ink-2); }
+.trip .pick .n { color: var(--accent-ink); }
+.depth { height: 8px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--rule); overflow: hidden; }
+.depth i { display: block; height: 100%; background: var(--ink-2); }
+.pick .depth i { background: var(--accent); }
+.found { display: grid; gap: 40px; grid-template-columns: minmax(0, 1fr); }
+.found > div { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+.found h3 { display: flex; gap: 10px; align-items: baseline; }
+.found h3 span { font-family: var(--display); font-weight: 800; color: var(--ink-2); }
+.scale { display: grid; grid-template-columns: minmax(120px, 1fr) repeat(3, minmax(0, 190px)); gap: 14px 18px; align-items: center; min-width: 620px; }
+.scale .h { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; border-bottom: 2px solid var(--ink); padding-bottom: 6px; align-self: end; }
+.scale .l b { display: block; }
+.scale .l span { color: var(--ink-2); font-size: 0.85rem; }
+.scale .c { display: grid; gap: 4px; justify-items: start; }
+.scale .c small { color: var(--ink-2); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.box { border: 2px solid var(--ink-2); border-radius: 4px; background: var(--panel); box-sizing: border-box; }
+.box.now { border-color: var(--accent); background: var(--accent-tint); }
+.box.bad { border-color: var(--mark); }
+.box.in { border-style: dashed; }
+.duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; max-width: 760px; }
+.frag { background: var(--a-page); border: 1px solid var(--rule); border-radius: 12px; padding: 14px; display: grid; gap: 10px; align-content: start; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: var(--a-strong); font-size: 15px; line-height: 1.35; }
+.frag-lab { font-family: var(--body); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; color: var(--ink-2); }
+.taken { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; list-style: none; }
+.taken li { font-size: 0.875rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--ok); background: var(--ok-tint); color: var(--ok); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="cage" viewBox="0 0 72 54">
+    <rect width="72" height="54" fill="#8a8479"/><rect x="5" y="6" width="62" height="44" fill="#5d584f"/>
+    <g fill="#e7e2d6"><rect x="10" y="30" width="12" height="14" rx="2"/><rect x="25" y="26" width="12" height="18" rx="2"/><rect x="40" y="32" width="12" height="12" rx="2"/><rect x="18" y="14" width="12" height="10" rx="2"/><rect x="46" y="16" width="12" height="12" rx="2"/></g>
+    <g stroke="#c9c4b8" stroke-width="1" opacity="0.75"><path d="M5 17H67M5 28H67M5 39H67M17 6V50M29 6V50M41 6V50M53 6V50"/></g>
+  </symbol>
+  <symbol id="cage2" viewBox="0 0 72 54">
+    <rect width="72" height="54" fill="#8a8479"/><rect x="5" y="6" width="62" height="44" fill="#5d584f"/>
+    <g fill="#e7e2d6"><rect x="10" y="30" width="12" height="14" rx="2"/><rect x="40" y="32" width="12" height="12" rx="2"/><rect x="46" y="16" width="12" height="12" rx="2"/></g>
+    <g stroke="#c9c4b8" stroke-width="1" opacity="0.75"><path d="M5 17H67M5 28H67M5 39H67M17 6V50M29 6V50M41 6V50M53 6V50"/></g>
+  </symbol>
+</svg>
+
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="g-cam" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="g-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+  <symbol id="g-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="g-pin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/></symbol>
+</svg>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="plate">G76 <span>Materials on site · a look and a design · punch list #398 · second pass · 18 Nov 2026</span></div>
+  <h1>A box's own screen</h1>
+  <p class="lede">Is this the best we can do? Not as first drawn. The first pass gave the smallest presses to what the crews do most. The second pass sizes each press by how often it is used.</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">The second pass · your six picks taken as given</span><h2>The same box, three times</h2><p class="muted read">One box on a 390 by 844 phone, three times. The first is today's screen, redrawn with made-up names. The other two are drawn on top of the Take from a box design. Tap the part on the third.</p></div>
+  <div class="trip">
+    <figure>
+      <figcaption><span class="eyebrow">Today</span><span class="n">22 <small>presses</small></span><span class="small muted">The part starts 71% of the way down</span><div class="depth" aria-hidden="true"><i style="width:71%"></i></div></figcaption>
+      <div class="phone real"><div class="scr">
+        <div class="a-bar" aria-hidden="true"><i></i><i></i><i></i><i class="f"></i><i></i><i></i></div>
+        <div class="scr-body" style="overflow:hidden" data-today>
+          <div class="t-top"><span class="t-link">← Dashboard</span><b>Job Parts Tally</b></div>
+          <div class="t-tabs"><span class="on">On site</span><span>Transactions</span><span>Materials Estimate</span></div>
+          <span class="a-btn primary block" style="min-height:41px">Photo of a ticket</span>
+          <div class="t-link" style="text-align:center;font-size:0.75rem">or choose a photo or a PDF you already have</div>
+          <div class="a-head"><span class="a-back">‹</span><div class="a-title"><b style="font-size:1.2rem">G76 · cage</b><span class="a-muted">1 parts · counted yesterday by Dana</span></div><span class="a-chip" style="margin-left:auto">Edit</span></div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><b>3/4 in. copper tee · 8</b><span class="a-muted" style="font-size:0.75rem">from its parts</span><span class="a-chip" style="margin-left:auto">Say it better</span></div>
+          <div class="a-muted">At <b style="color:var(--a-strong)">Laydown yard</b></div>
+          <div class="a-grid3"><span class="a-chip">Move box</span><span class="a-chip">◎ Where is it?</span><span class="a-chip">Photo</span></div>
+          <div style="display:flex;gap:8px;align-items:center"><span class="a-dash" aria-hidden="true"></span><span class="a-muted" style="font-size:0.8rem">in the job's folder<br>14 KB · Dana</span></div>
+          <span class="a-btn primary block">Count this box</span>
+          <div class="a-card" data-part><div class="a-line-top"><span class="nm">3/4 in. copper tee</span><span class="q">8</span></div><div class="a-four"><span class="a-btn">Used</span><span class="a-btn">Move to…</span><span class="a-btn amber">Can't find</span><span class="a-btn" style="color:var(--a-link);border-color:var(--a-link)">Short</span></div></div>
+          <span class="a-btn block">Add a part to G76</span>
+          <div class="a-muted">Paper for G76</div>
+          <div class="a-grid2"><span class="a-btn" style="border-radius:999px;min-height:48px">Print the label</span><span class="a-btn" style="border-radius:999px;min-height:48px">Print the manifest</span></div>
+        </div>
+      </div></div>
+    </figure>
+    <figure>
+      <figcaption><span class="eyebrow">First pass</span><span class="n">11 <small>presses</small></span><span class="small muted">The part starts 30% of the way down</span><div class="depth" aria-hidden="true"><i style="width:30%"></i></div></figcaption>
+      <div class="phone real" data-m="p1"><div class="scr">
+        <div class="a-bar" aria-hidden="true"><i></i><i></i><i></i><i class="f"></i><i></i><i></i></div>
+        <div class="scr-body">
+          <div class="a-head"><span class="a-back">‹</span><div class="a-title"><b>G76<span>cage</span></b></div><span class="a-btn a-more">⋯ More</span></div>
+          <div class="a-where"><span aria-hidden="true">◎</span><div class="w"><b>Laydown yard</b><span class="a-muted">No pin yet</span></div><span class="go">Where is it? ›</span></div>
+          <div class="a-cap">In G76 <span>Counted yesterday by Dana</span></div>
+          <div class="a-card" data-part>
+            <div class="a-line-top"><span class="nm">3/4 in. copper tee</span><span class="q">8</span></div>
+            <div class="a-grid2"><span class="a-btn">Used</span><span class="a-btn">Move to…</span><span class="a-btn amber">Can't find</span><span class="a-btn">Ask for more</span></div>
+          </div>
+          <div class="a-grid3"><span class="a-btn sm">+ Add a part</span><span class="a-btn sm">Count G76</span><span class="a-btn sm">Photo</span></div>
+          <div class="a-cap">Photos and takes</div>
+          <div class="a-strip"><div class="a-shot"><svg aria-label="A photo of the cage"><use href="#cage"/></svg><span>Nov 17 · Dana<br>after Count</span></div></div>
+        </div>
+        <div class="scr-foot"><span class="a-btn primary block tall">Take from G76</span><div class="a-muted" style="text-align:center">The camera opens. Take a photo of G76 as you found it.</div></div>
+      </div></div>
+    </figure>
+    <figure class="pick">
+      <figcaption><span class="eyebrow">Second pass</span><span class="n">8 <small>presses</small></span><span class="small muted">The part starts 21% of the way down</span><div class="depth" aria-hidden="true"><i style="width:21%"></i></div></figcaption>
+      <div class="phone real" data-m="p2"><div class="scr">
+        <div class="a-bar" aria-hidden="true"><i></i><i></i><i></i><i class="f"></i><i></i><i></i></div>
+        <div class="scr-body" data-acc>
+          <div class="a-head"><span class="a-back">‹</span><div class="a-title"><b>G76<span>cage</span></b></div><span class="a-btn a-more">⋯ More</span></div>
+          <div class="a-cap">In G76</div>
+          <button type="button" class="a-row" aria-expanded="false" data-part><span class="nm">3/4 in. copper tee</span><span class="q">8</span><span class="ch" aria-hidden="true">▾</span></button>
+          <div class="a-grid2 a-open" hidden><span class="a-btn">Used</span><span class="a-btn">Move to…</span><span class="a-btn amber">Can't find</span><span class="a-btn">Ask for more</span></div>
+          <div class="a-muted">Tap a part if some are missing, moved or needed.</div>
+          <div class="a-tiles">
+            <div class="a-tile"><b><svg class="g"><use href="#g-check"/></svg>Count G76</b><small>Counted yesterday by Dana</small></div>
+            <div class="a-tile"><b><svg class="g"><use href="#g-cam"/></svg>Photo</b><small>1 so far, Nov 17</small></div>
+            <div class="a-tile"><b><svg class="g"><use href="#g-plus"/></svg>Add a part</b><small>1 kind in G76 now</small></div>
+            <div class="a-tile"><b><svg class="g"><use href="#g-pin"/></svg>Where is it?</b><small>Laydown yard, no pin yet</small></div>
+          </div>
+          <div class="a-cap">Photos and takes</div>
+          <div class="a-strip"><div class="a-shot"><svg aria-label="A photo of the cage"><use href="#cage"/></svg><span>Nov 17 · Dana<br>after Count</span></div></div>
+        </div>
+        <div class="scr-foot"><span class="a-btn primary block tall">Take from G76</span><div class="a-muted" style="text-align:center">The camera opens. Take a photo of G76 as you found it.</div></div>
+      </div></div>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">What the second pass found</span><h2>Three faults in the first pass, each shown</h2></div>
+  <div class="found">
+
+    <div>
+      <h3><span>1</span>The most used presses were the smallest</h3>
+      <p class="read muted">Each press below is drawn at half its real size. The count beside its name is how often the crews have pressed it, from the whole ledger. The first pass shrank Count to a third of its size and gave the room to presses used three times.</p>
+      <div class="scroll"><div class="scale">
+        <span></span><span class="h">Today</span><span class="h">First pass</span><span class="h">Second pass</span>
+        <div class="l"><b>Count</b><span>162 times</span></div>
+        <div class="c"><div class="box" style="width:171px;height:24px"></div><small>342 × 48</small></div>
+        <div class="c"><div class="box bad" style="width:55px;height:24px"></div><small>110 × 48</small></div>
+        <div class="c"><div class="box now" style="width:84px;height:36px"></div><small>167 × 72</small></div>
+        <div class="l"><b>Photo</b><span>94 times</span></div>
+        <div class="c"><div class="box" style="width:55px;height:18px"></div><small>110 × 36</small></div>
+        <div class="c"><div class="box" style="width:55px;height:24px"></div><small>110 × 48</small></div>
+        <div class="c"><div class="box now" style="width:84px;height:36px"></div><small>167 × 72</small></div>
+        <div class="l"><b>Used</b><span>3 times</span></div>
+        <div class="c"><div class="box" style="width:37px;height:24px"></div><small>74 × 48</small></div>
+        <div class="c"><div class="box bad" style="width:76px;height:26px"></div><small>152 × 52</small></div>
+        <div class="c"><div class="box now in" style="width:76px;height:26px"></div><small>152 × 52, one tap in</small></div>
+        <div class="l"><b>Can't find</b><span>1 time</span></div>
+        <div class="c"><div class="box" style="width:37px;height:24px"></div><small>74 × 48</small></div>
+        <div class="c"><div class="box bad" style="width:76px;height:26px"></div><small>152 × 52</small></div>
+        <div class="c"><div class="box now in" style="width:76px;height:26px"></div><small>152 × 52, one tap in</small></div>
+      </div></div>
+    </div>
+
+    <div>
+      <h3><span>2</span>A fact sat in one place and its press in another</h3>
+      <div class="duo">
+        <div><div class="frag-lab">First pass</div><div class="frag"><div class="a-cap">In G76 <span>Counted yesterday by Dana</span></div><div class="a-muted" style="text-align:center">· · · the part's card between them · · ·</div><div class="a-grid3"><span class="a-btn sm">+ Add a part</span><span class="a-btn sm">Count G76</span><span class="a-btn sm">Photo</span></div></div></div>
+        <div><div class="frag-lab">Second pass</div><div class="frag"><div class="a-tiles"><div class="a-tile"><b><svg class="g"><use href="#g-check"/></svg>Count G76</b><small>Counted yesterday by Dana</small></div><div class="a-tile due"><b><svg class="g"><use href="#g-check"/></svg>Count G12</b><small>Due. Last counted 16 days ago</small></div></div></div></div>
+      </div>
+      <p class="read muted">Each press about the box now carries its own fact. Count says when. Photo says how many. Where is it? says the place. One glance reads the box, and the same tile acts on it.</p>
+    </div>
+
+    <div>
+      <h3><span>3</span>A press for someone who is not there yet stood above the parts</h3>
+      <div class="duo">
+        <div><div class="frag-lab">First pass · the part starts 30% down</div><div class="frag"><div class="a-head"><span class="a-back">‹</span><div class="a-title"><b>G76<span>cage</span></b></div><span class="a-btn a-more">⋯ More</span></div><div class="a-where"><span aria-hidden="true">◎</span><div class="w"><b>Laydown yard</b><span class="a-muted">No pin yet</span></div><span class="go">Where is it? ›</span></div><div class="a-cap">In G76 <span>Counted yesterday by Dana</span></div><div class="a-row" style="cursor:default"><span class="nm">3/4 in. copper tee</span><span class="q">8</span></div></div></div>
+        <div><div class="frag-lab">Second pass · the part starts 21% down</div><div class="frag"><div class="a-head"><span class="a-back">‹</span><div class="a-title"><b>G76<span>cage</span></b></div><span class="a-btn a-more">⋯ More</span></div><div class="a-cap">In G76</div><div class="a-row" style="cursor:default"><span class="nm">3/4 in. copper tee</span><span class="q">8</span><span class="ch" aria-hidden="true">▾</span></div></div></div>
+      </div>
+      <p class="read muted">A person at the cage has found it. <span class="press">Where is it?</span> is now one of the four tiles under the parts, with the place written on it.</p>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">The second pass in each state</span><h2>What the screen does</h2><p class="muted read">Five moments of the same screen. Nothing here is a new sheet. Each sheet behind a press is the one the app has today.</p></div>
+  <div class="trip">
+    <figure>
+      <figcaption><b>A mixed box, count due</b><span class="small muted">Five numbers and four tiles fit one screen with every part closed. Tap a part.</span></figcaption>
+      <div class="phone real" data-m="g2"><div class="scr">
+        <div class="a-bar" aria-hidden="true"><i></i><i></i><i></i><i class="f"></i><i></i><i></i></div>
+        <div class="scr-body" data-acc>
+          <div class="a-head"><span class="a-back">‹</span><div class="a-title"><b>G12<span>cage</span></b><em>PVC fittings, mixed</em></div><span class="a-btn a-more">⋯ More</span></div>
+          <div class="a-cap">In G12</div>
+          <button type="button" class="a-row" aria-expanded="false" data-part><span class="nm">2 in. PVC coupling</span><span class="q">31</span><span class="ch" aria-hidden="true">▾</span></button>
+          <button type="button" class="a-row warn" aria-expanded="false"><span class="nm">2 in. PVC 90 elbow<small>2 missing at the last count</small></span><span class="q">14</span><span class="ch" aria-hidden="true">▾</span></button>
+          <button type="button" class="a-row" aria-expanded="false"><span class="nm">2 in. test cap</span><span class="q">9</span><span class="ch" aria-hidden="true">▾</span></button>
+          <button type="button" class="a-row" aria-expanded="false"><span class="nm">3 in. PVC tee</span><span class="q">6</span><span class="ch" aria-hidden="true">▾</span></button>
+          <button type="button" class="a-row" aria-expanded="false"><span class="nm">2 in. pipe hanger</span><span class="q">1</span><span class="ch" aria-hidden="true">▾</span></button>
+          <div class="a-grid2 a-open" hidden><span class="a-btn">Used</span><span class="a-btn">Move to…</span><span class="a-btn amber">Can't find</span><span class="a-btn">Ask for more</span></div>
+          <div class="a-tiles">
+            <div class="a-tile due"><b><svg class="g"><use href="#g-check"/></svg>Count G12</b><small>Due. Last counted 16 days ago</small></div>
+            <div class="a-tile"><b><svg class="g"><use href="#g-cam"/></svg>Photo</b><small>4 so far, Nov 12</small></div>
+            <div class="a-tile"><b><svg class="g"><use href="#g-plus"/></svg>Add a part</b><small>5 kinds in G12 now</small></div>
+            <div class="a-tile"><b><svg class="g"><use href="#g-pin"/></svg>Where is it?</b><small>Level 2, by the north stair</small></div>
+          </div>
+          <div class="a-cap">Photos and takes</div>
+          <div class="a-card a-take"><div><b>Mateo took 7</b> <span class="a-muted">Wed 2:16 PM</span></div><div class="pair"><div class="a-shot"><svg aria-label="The cage as found"><use href="#cage"/></svg><span>As found</span></div><div class="a-shot"><svg aria-label="The cage after the take"><use href="#cage2"/></svg><span>After</span></div></div></div>
+        </div>
+        <div class="scr-foot"><span class="a-btn primary block tall">Take from G12</span><div class="a-muted" style="text-align:center">The camera opens. Take a photo of G12 as you found it.</div></div>
+      </div></div>
+        </figure>
+    <figure>
+      <figcaption><b>A part, tapped</b><span class="small muted">Its four presses open under it, at glove size. Tap again to close.</span></figcaption>
+      <div class="phone"><div class="scr">
+        <div class="a-bar" aria-hidden="true"><i></i><i></i><i></i><i class="f"></i><i></i><i></i></div>
+        <div class="scr-body">
+          <div class="a-head"><span class="a-back">‹</span><div class="a-title"><b>G76<span>cage</span></b></div><span class="a-btn a-more">⋯ More</span></div>
+          <div class="a-cap">In G76</div>
+          <div class="a-row"><span class="nm">3/4 in. copper tee</span><span class="q">8</span><span class="ch" aria-hidden="true">▴</span></div>
+          <div class="a-grid2 a-open"><span class="a-btn">Used</span><span class="a-btn">Move to…</span><span class="a-btn amber">Can't find</span><span class="a-btn">Ask for more</span></div>
+          <div class="a-tiles">
+            <div class="a-tile"><b><svg class="g"><use href="#g-check"/></svg>Count G76</b><small>Counted yesterday by Dana</small></div>
+            <div class="a-tile"><b><svg class="g"><use href="#g-cam"/></svg>Photo</b><small>1 so far, Nov 17</small></div>
+            <div class="a-tile"><b><svg class="g"><use href="#g-plus"/></svg>Add a part</b><small>1 kind in G76 now</small></div>
+            <div class="a-tile"><b><svg class="g"><use href="#g-pin"/></svg>Where is it?</b><small>Laydown yard, no pin yet</small></div>
+          </div>
+        </div>
+        <div class="scr-foot"><span class="a-btn primary block tall">Take from G76</span></div>
+      </div></div>
+    </figure>
+    <figure>
+      <figcaption><b>Just counted</b><span class="small muted">Today the Photo chip turns blue for ten minutes and says nothing. Here the tile says why.</span></figcaption>
+      <div class="phone"><div class="scr">
+        <div class="a-bar" aria-hidden="true"><i></i><i></i><i></i><i class="f"></i><i></i><i></i></div>
+        <div class="scr-body">
+          <div class="a-head"><span class="a-back">‹</span><div class="a-title"><b>G76<span>cage</span></b></div><span class="a-btn a-more">⋯ More</span></div>
+          <div class="a-ask"><div><b>Pin G76 where you stand?</b></div><div class="row"><span class="a-btn primary">Pin it here</span><span class="a-btn">Not now</span></div></div>
+          <div class="a-cap">In G76</div>
+          <div class="a-row"><span class="nm">3/4 in. copper tee</span><span class="q">8</span><span class="ch" aria-hidden="true">▾</span></div>
+          <div class="a-tiles">
+            <div class="a-tile"><b><svg class="g"><use href="#g-check"/></svg>Count G76</b><small>Counted just now by you</small></div>
+            <div class="a-tile fresh"><b><svg class="g"><use href="#g-cam"/></svg>Photo</b><small>Of G76 as you counted it</small></div>
+            <div class="a-tile"><b><svg class="g"><use href="#g-plus"/></svg>Add a part</b><small>1 kind in G76 now</small></div>
+            <div class="a-tile"><b><svg class="g"><use href="#g-pin"/></svg>Where is it?</b><small>Laydown yard, no pin yet</small></div>
+          </div>
+        </div>
+        <div class="scr-foot"><span class="a-btn primary block tall">Take from G76</span></div>
+      </div></div>
+    </figure>
+    <figure>
+      <figcaption><b>An empty box</b><span class="small muted">One press adds the first part. Today the screen offers it twice.</span></figcaption>
+      <div class="phone"><div class="scr">
+        <div class="a-bar" aria-hidden="true"><i></i><i></i><i></i><i class="f"></i><i></i><i></i></div>
+        <div class="scr-body">
+          <div class="a-head"><span class="a-back">‹</span><div class="a-title"><b>G77<span>cage</span></b></div><span class="a-btn a-more">⋯ More</span></div>
+          <div class="a-cap">In G77</div>
+          <div class="a-empty"><b>Nothing in G77 yet.</b><span class="a-btn block">+ Add a part to G77</span><span class="a-muted">Or move one in from another box.</span></div>
+          <div class="a-tiles">
+            <div class="a-tile"><b><svg class="g"><use href="#g-cam"/></svg>Photo</b><small>1 so far, Nov 14</small></div>
+            <div class="a-tile"><b><svg class="g"><use href="#g-pin"/></svg>Where is it?</b><small>No place yet</small></div>
+          </div>
+        </div>
+      </div></div>
+    </figure>
+    <figure>
+      <figcaption><b>More, open</b><span class="small muted">The rare and the office's, seven rows behind one press. As in the first pass.</span></figcaption>
+      <div class="phone"><div class="scr">
+        <div class="a-bar" aria-hidden="true"><i></i><i></i><i></i><i class="f"></i><i></i><i></i></div>
+        <div class="scr-body">
+          <div class="a-head"><span class="a-back">‹</span><div class="a-title"><b>G76<span>cage</span></b></div><span class="a-btn a-more">⋯ More</span></div>
+        </div>
+      </div>
+      <div class="veil"><div class="sheet">
+        <h4>More for G76<span aria-hidden="true">×</span></h4>
+        <div class="m-row"><div><b>Edit G76</b><small>Its name, how it sits, where exactly</small></div><i>›</i></div>
+        <div class="m-row"><div><b>Say what is in it</b><small>Now: 3/4 in. copper tee · 8, from its parts</small></div><i>›</i></div>
+        <div class="m-row"><div><b>Move G76</b><small>To another place on this site</small></div><i>›</i></div>
+        <div class="m-row"><div><b>Print the label</b><small>Paper sheet or Brother tape</small></div><i>›</i></div>
+        <div class="m-row"><div><b>Print the manifest</b><small>A page that lists what is in it</small></div><i>›</i></div>
+        <div class="m-row"><div><b>Copy the label code</b><small>For Brother's phone app</small></div></div>
+        <div class="m-sep"><div class="m-row quiet"><div><b>Retire G76</b><small>When the cage leaves the job</small></div><i>›</i></div></div>
+        <div class="a-muted" style="font-size:0.75rem">Last touched Tue 11:02 AM by Dana.</div>
+      </div></div></div>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">Your calls</span><h2>Six taken, one new</h2></div>
+  <ul class="taken" aria-label="The six picks taken as given">
+    <li>✓ Rare presses behind More</li><li>✓ Short becomes Ask for more</li><li>✓ The app's line leaves the box's screen</li><li>✓ A mixed box's lines start closed</li><li>✓ Take is the only blue</li><li>✓ The Tally's title row folds</li>
+  </ul>
+  <ol class="calls">
+    <li><span class="q">On the usual box, does the part's line start closed too, with its four presses one tap in?</span><span class="a"><b>Yes.</b> This changes the fourth pick, which kept that one line open. Every box then works the same way, and the room goes to Count and Photo. The cost is one more tap for Can't find, which the ledger shows pressed once.</span></li>
+  </ol>
+  <p class="read muted small">If you would keep the line open on the usual box, the first pass's card stands and the four tiles sit under it. Everything else in the second pass still holds.</p>
+</section>
+<section>
+  <div class="sec-head"><span class="eyebrow">Today, in detail</span><h2>The screen today, and why it is hard to follow</h2><p class="muted read">Measured in the running app at 390 by 844 on a test job, with every write refused in the browser. The names here are made up.</p></div>
+  <div>
+    
+    <ul class="finds">
+      <li><span class="pin">1</span><div><b>The top third is not about this box.</b><span>Six presses belong to the Tally. The brightest thing on the screen is <span class="press">Photo of a ticket</span>, which is for a supply house receipt. The other build folds five of the six away.</span></div></li>
+      <li><span class="pin">2</span><div><b>The box says what is in it three times.</b><span><i>1 parts</i> under the name, then <i>3/4 in. copper tee · 8, from its parts</i>, then the card that reads 3/4 in. copper tee and 8. On 81 of 93 live boxes the line and the card are the same words. Two small presses sit here, <span class="press">Edit</span> at 42 by 36 and <span class="press">Say it better</span> at 94 by 36.</span></div></li>
+      <li><span class="pin">3</span><div><b>One row of chips does three unlike jobs.</b><span><span class="press">Move box</span> changes the record. <span class="press">Where is it?</span> is for someone who has not found the box yet. <span class="press">Photo</span> opens the camera. All three are 36 high. Under them the dashed square reads as an empty slot, and <i>14 KB</i> tells a crew nothing.</span></div></li>
+      <li><span class="pin">4</span><div><b>The big blue press is the same whether a count is due or not.</b><span>This box was counted yesterday. <span class="press">Count this box</span> is still the loudest press about the box, and it stands between the person and the parts.</span></div></li>
+      <li><span class="pin">5</span><div><b>The parts, the point of the screen, start at 600 of 844.</b><span>Four presses of 74 by 48 sit 5 px apart with 13 px words. <span class="press">Short</span> does not say what it does. It asks the office for more. The guide uses the same word for a count that comes up missing, and <span class="press">Can't find</span> is its neighbour.</span></div></li>
+      <li><span class="pin">6</span><div><b>Office work has a third of the box's presses.</b><span>Three prints, a copy and <span class="press">Retire G76</span> stand at the weight of <span class="press">Add a part</span>. The fold cuts through them. <i>Last touched</i> at the very bottom repeats the count line at the top.</span></div></li>
+      <li><span class="pin plain">+</span><div><b>Three nouns for one thing, and one verb for two.</b><span>The title says cage. The presses say box. The back press and the empty state say container. <span class="press">Move box</span> moves the steel, and <span class="press">Move to…</span> moves parts.</span></div></li>
+      <li><span class="pin plain">+</span><div><b>Two presses open what a third already holds.</b><span><span class="press">Edit</span> opens a window with <i>What is in it</i> and <i>Which place on site</i>. Those are the fields behind <span class="press">Say it better</span> and <span class="press">Move box</span>.</span></div></li>
+      <li><span class="pin plain">+</span><div><b>An empty box offers the same press twice.</b><span>G77 reads <i>Nothing in G77 yet</i> with a link named Add a part to G77, and a button with the same name under it.</span></div></li>
+    </ul>
+  </div>
+
+  <div class="read"><h3>Every press on the screen, and what it is for</h3><p class="muted small">Sizes measured in the running app. The counts in the last column are the whole ledger, as the Take from a box look measured it today: 162 counts, 94 box photos, 3 presses of Used, 1 of Can't find.</p></div>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Press</th><th>What it is for</th><th>Size</th><th>How often</th><th>In the second pass</th></tr></thead>
+    <tbody>
+      <tr class="grp"><td colspan="5">The Tally's own, 6</td></tr>
+      <tr><td>← Dashboard</td><td>Leaves the Tally</td><td class="n sm">87 × 21</td><td></td><td>Folds while a box is open. The app's bar has Home</td></tr>
+      <tr><td>On site · Transactions · Materials Estimate</td><td>The Tally's three tabs</td><td class="n sm">114 × 40</td><td></td><td>Folded by the other build</td></tr>
+      <tr><td>Photo of a ticket</td><td>A supply house receipt, for card sorting</td><td class="n sm">342 × 41</td><td></td><td>Folded by the other build</td></tr>
+      <tr><td>or choose a photo or a PDF…</td><td>The same, from the phone's files</td><td class="n sm">252 × 15</td><td></td><td>Folded by the other build</td></tr>
+      <tr class="grp"><td colspan="5">The box's own, 16</td></tr>
+      <tr><td>‹</td><td>Back to the job's boxes</td><td class="n">48 × 48</td><td>every visit</td><td>Stays</td></tr>
+      <tr><td>Edit</td><td>Its name, how it sits, what is in it, where exactly, its place</td><td class="n sm">42 × 36</td><td>rare</td><td>Behind <b>More</b>, as Edit G76</td></tr>
+      <tr><td>Say it better</td><td>Your own words for what is in it</td><td class="n sm">94 × 36</td><td>rare</td><td>Behind <b>More</b>. A person's words show under the name</td></tr>
+      <tr><td>Move box</td><td>The cage itself went to another place</td><td class="n sm">110 × 36</td><td>rare</td><td>Behind <b>More</b>, as Move G76. Still inside Where is it?</td></tr>
+      <tr><td>Where is it?</td><td>What the app knows of where it stands, and its pin</td><td class="n sm">110 × 36</td><td>before you arrive</td><td>A tile under the parts that names the place, 167 × 72</td></tr>
+      <tr><td>Photo</td><td>The camera, for a picture of the box</td><td class="n sm">110 × 36</td><td class="n">94</td><td>A tile under the parts, 167 × 72</td></tr>
+      <tr><td>Count this box</td><td>Walk each line and confirm its number. Due after two weeks</td><td class="n">342 × 48</td><td class="n">162</td><td><b>Count G76</b>, a tile that says when it was counted. Amber when due, never blue</td></tr>
+      <tr><td>Used</td><td>Take some out as used</td><td class="n">74 × 48</td><td class="n">3</td><td>One tap in, on the part, until Take replaces it. 152 × 52</td></tr>
+      <tr><td>Move to…</td><td>Some to another box, the truck, the shop, the supply house or scrap</td><td class="n">74 × 48</td><td class="n">about 1</td><td>One tap in, on the part. 152 × 52</td></tr>
+      <tr><td>Can't find</td><td>The box should hold it and does not. The office sees it that day</td><td class="n">74 × 48</td><td class="n">1</td><td>One tap in, on the part. 152 × 52</td></tr>
+      <tr><td>Short</td><td>Asks the office for more</td><td class="n">74 × 48</td><td>not in the ledger</td><td>Renamed <b>Ask for more</b>. One tap in, on the part</td></tr>
+      <tr><td>Add a part to G76</td><td>A part that came with no delivery</td><td class="n">342 × 48</td><td>stocking</td><td><b>Add a part</b>, a tile under the parts</td></tr>
+      <tr><td>Print the label</td><td>The box's label, on paper or tape</td><td class="n">168 × 48</td><td>rare</td><td>Behind <b>More</b></td></tr>
+      <tr><td>Print the manifest</td><td>A page that lists what is in it</td><td class="n">168 × 48</td><td>rare</td><td>Behind <b>More</b></td></tr>
+      <tr><td>Copy the label code</td><td>The label's address, for Brother's phone app</td><td class="n">342 × 48</td><td>rare</td><td>Behind <b>More</b></td></tr>
+      <tr><td>Retire G76</td><td>The cage leaves the job</td><td class="n sm">68 × 36</td><td>once a box</td><td>Behind <b>More</b>, apart at the bottom</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="small muted read">Sizes in orange are under the app's 48 px press. Each extra kind of part adds four presses, so a box with five kinds shows 32 of its own today.</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">What changed from today</span><h2>Moved, renamed and folded away</h2></div>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>What</th><th>Change</th><th>Why, in one line</th></tr></thead>
+    <tbody>
+      <tr class="grp"><td colspan="3">Moved</td></tr>
+      <tr><td>The parts</td><td>Up, from 71% of the way down to 21% as drawn</td><td>What is in the box is what the screen is for.</td></tr>
+      <tr><td>Count, Photo, Add a part, Where is it?</td><td>Four tiles under the parts, 167 by 72, each with its fact</td><td>Size follows use, and the fact rides on its press.</td></tr>
+      <tr><td>The four line presses</td><td>One tap in, on the part, two by two at 152 by 52</td><td>Pressed five times in 167 ledger rows. A glove still gets the width.</td></tr>
+      <tr><td>The box's photo</td><td>Under the tiles, in one strip with the takes and their pairs</td><td>Pictures and takes are one history of the box.</td></tr>
+      <tr><td>When it was counted, and where it stands</td><td>Onto the Count tile and the Where is it? tile</td><td>Read once, where you act on it.</td></tr>
+      <tr class="grp"><td colspan="3">Renamed</td></tr>
+      <tr><td>Short</td><td><b>Ask for more</b></td><td>It asks the office for more, and its own sheet already says Ask the office for 4.</td></tr>
+      <tr><td>Count this box</td><td><b>Count G76</b></td><td>The name on the steel, the way Take from G76 says it.</td></tr>
+      <tr><td>Move box</td><td><b>Move G76</b></td><td>It cannot be read as Move to…, which moves parts.</td></tr>
+      <tr><td>Add a part to G76</td><td><b>Add a part</b></td><td>The tile says which box under it.</td></tr>
+      <tr><td>cage, box, container</td><td>The box's own name on every press</td><td>One name for one thing. The kind stays as a small word beside the name.</td></tr>
+      <tr><td>1 parts</td><td><i>1 kind in G76 now</i>, on the Add a part tile</td><td>The row already says the part and its number.</td></tr>
+      <tr class="grp"><td colspan="3">Folded away</td></tr>
+      <tr><td>Edit, Say it better, Move box</td><td>Behind More</td><td>Rare, and Edit's window already holds the other two as fields.</td></tr>
+      <tr><td>Print the label, Print the manifest, Copy the label code</td><td>Behind More</td><td>Office and setup work on a crew's screen.</td></tr>
+      <tr><td>Retire G76 and <i>Done with this cage?</i></td><td>Behind More, apart at the bottom</td><td>Pressed once in a box's life.</td></tr>
+      <tr><td>The app's own line, <i>3/4 in. copper tee · 8, from its parts</i></td><td>Off this screen. Still on the list, the labels and the office page</td><td>On this screen it repeats the row under it.</td></tr>
+      <tr><td><i>in the job's folder, 14 KB</i></td><td>Gone. A photo still on the phone keeps its amber words and Send now</td><td>A filed photo needs no words. A stuck one does.</td></tr>
+      <tr><td>Last touched Tue 11:02 AM by Dana</td><td>Into More</td><td>It repeats the count's words.</td></tr>
+      <tr><td>Blue on Count this box and on Short</td><td>Gone. Take from G76 is the only blue</td><td>One colour for the one press under the thumb.</td></tr>
+      <tr><td>The second Add a part on an empty box</td><td>Gone. The empty state's own press is the press</td><td>Said once.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="read">
+    <h3>Where this changes what the Take from a box build does</h3>
+    <p>Nothing here undoes that build. Its press, its run, its photos and its takes stand as drawn. Four things shift around them.</p>
+  </div>
+  <ul class="limits">
+    <li><b>The Tally's title row folds too.</b> That build folds the tabs and the ticket press. This look also folds <i>← Dashboard</i> and <i>Job Parts Tally</i> while a box is open. If its code already does, nothing changes.</li>
+    <li><b>The chips and the four line presses are regrouped.</b> That build leaves them as they are today. Same presses and same sheets, in new places.</li>
+    <li><b>Photos and takes become one strip under the tiles.</b> That build draws a box's photos where the dashed square is, and its last takes as their own card.</li>
+    <li><b>Used stays, as that build decided.</b> When Take replaces it, an open part shows three presses in one row.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">Weighed again, and still not picked</span><h2>Two other ways, and the smallest step</h2></div>
+  <div class="alt">
+    <div class="phone-col">
+      <div class="phone short"><div class="scr">
+        <div class="a-bar" aria-hidden="true"><i></i><i></i><i></i><i class="f"></i><i></i><i></i></div>
+        <div class="scr-body">
+          <div class="a-head"><span class="a-back">‹</span><div class="a-title"><b>G76<span>cage</span></b></div><span class="a-btn a-more">⋯ More</span></div>
+          <div class="a-cap">In G76 <span>Counted yesterday by Dana</span></div>
+          <div class="a-row" style="cursor:default"><span class="nm">3/4 in. copper tee</span><span class="q">8</span><span class="ch" aria-hidden="true">▾</span></div>
+        </div>
+        <div class="scr-foot" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.7fr);gap:6px"><span class="a-btn sm tall">Count</span><span class="a-btn sm tall">Photo</span><span class="a-btn primary sm tall">Take from G76</span></div>
+      </div></div>
+    </div>
+    <div class="read">
+      <div><span class="tag">Not picked</span></div>
+      <h3>A bar under the thumb: Count, Photo and Take in one row</h3>
+      <p>The second pass took this drawing's best idea, the closed part. It did not take the bar. Photo and Take both open the camera, and here they sit side by side under the thumb. That is the wrong photo press again, the one the other build is taking away.</p>
+      <div><span class="tag">Not picked</span></div>
+      <h3>The box's photo large at the top</h3>
+      <p>A picture says which box faster than a name. But a person at the cage is looking at the cage. The picture helps someone who is not there yet, and <span class="press">Where is it?</span> already opens on it.</p>
+      <div><span class="tag green">Smallest version · one PR · S</span></div>
+      <h3>Fold the rare presses behind More, and move nothing else</h3>
+      <p>Edit, Say it better, Move box, the three paper presses and Retire go behind one <span class="press">More</span> press. The box's line hides where it repeats the card, and <i>1 parts</i> is fixed. That alone takes the box's own presses from 17 to 11. It is the first PR of the full design, so nothing is thrown away.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">Size</span><h2>M as two small PRs, after the Take from a box train</h2><p class="muted read">Client only. No migration, no edge function, no new table. Both PRs write <code>TallyOnSiteTab.tsx</code>, which that train is changing now, so neither starts until its four PRs are on main. Each is then cut from fresh main. The second pass did not change the size.</p></div>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>PR</th><th>What</th><th>Size</th><th>Waits for</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1 · the smallest step</td><td>The More sheet with its seven rows. The app's line off the box's screen. <i>1 parts</i> fixed, one name for the box, the empty box's press said once. A small kernel for the screen's words with tests, a render smoke, the guide, a release note.</td><td class="n">S</td><td>The train's PRs 3 and 4</td></tr>
+      <tr><td class="n">2 · the regroup</td><td>The parts first, closed until tapped. The four tiles with their facts, Count's amber and Photo's blue after a count. Photos and takes as one strip. Short renamed, in the press, its words file and the guide. The title row's fold. Render smokes at 375 and 320 wide.</td><td class="n">M</td><td>PR 1, and the train's PR 4 for the strip</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="small muted read">Nothing can go first. The guide describes the screen as built, so it moves with each PR.</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">Limits of this look</span><h2>Not read, or not verified</h2></div>
+  <ul class="limits">
+    <li><b>No crew member's screen, and no crew member asked.</b> The screen was walked as the dev. Sizing by use rests on the ledger's counts, which describe one site walked mostly by one person.</li>
+    <li><b>The closed part is a bet.</b> Can't find was pressed once when it was in plain sight. Nobody knows whether a tap more will cost reports, or whether a clearer screen will bring more.</li>
+    <li><b>A real mixed box was not walked.</b> The test job holds one box with one part and two empty ones. G12 is drawn from the code and made-up parts. Five kinds and the four tiles fit one screen as drawn, with 6 px to spare and every part closed. An open part, or a sixth kind, pushes the tiles down.</li>
+    <li><b>The second and third phones are drawings.</b> Their press counts and where the part starts are measured on the drawings, not on a build.</li>
+    <li><b>The other build is a design, not code.</b> Where its code differs, such as the title row or an empty box's Take press, the drawing shifts with it.</li>
+    <li><b>The camera.</b> A headless browser cannot open one. Photo and Take are read from the code and the design.</li>
+    <li><b>Two sheets were not pictured.</b> Where is it? and Move box did not open in the walk's script. Both were read in the code.</li>
+    <li><b>Unsorted.</b> Its parts carry <span class="press">Put in…</span>, which is the whole point of that screen. There the part should open by itself. It was not drawn.</li>
+    <li><b>Not in this look.</b> Damaged and Back to the supply house sit under <span class="press">Move to…</span>, where a person with a cracked fitting may not look.</li>
+    <li><b>Widths.</b> Today's screen was walked at 390 by 844 and 430 by 932 in light, and at 390 in dark. Not at 320 wide, and not with large text.</li>
+  </ul>
+</section>
+
+</div>
+
+<script>
+(function () {
+  document.querySelectorAll('[data-acc]').forEach(function (box) {
+    var grid = box.querySelector('.a-open');
+    box.addEventListener('click', function (e) {
+      var row = e.target.closest('.a-row');
+      if (!row || !grid) return;
+      var wasOpen = row.getAttribute('aria-expanded') === 'true';
+      box.querySelectorAll('.a-row').forEach(function (r) { r.setAttribute('aria-expanded', 'false'); r.querySelector('.ch').textContent = '▾'; });
+      if (wasOpen) { grid.hidden = true; return; }
+      row.setAttribute('aria-expanded', 'true');
+      row.querySelector('.ch').textContent = '▴';
+      row.after(grid);
+      grid.hidden = false;
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -39,6 +39,7 @@ import { isBillVerb } from './devMcpBill.ts'
 import { isJobMarkVerb, jobMarkInput } from './devMcpJobMarks.ts'
 import { isPropertyRecordVerb, propertyRecordInput } from './devMcpPropertyRecord.ts'
 import { isLastWorkDayVerb, lastWorkDayInput } from './devMcpLastWorkDay.ts'
+import { isPaySetupVerb, paySetupInput } from './devMcpPaySetup.ts'
 import { isNoticeByHandVerb, noticeByHandInput } from './devMcpNoticeByHand.ts'
 import { affidavitDraftInput, isAffidavitDraftVerb } from './devMcpAffidavitDraft.ts'
 import { isLienFilingVerb, lienFilingApplyInput, lienFilingPlanInput } from './devMcpLienFiling.ts'
@@ -49,6 +50,7 @@ import { activityNoteInput, isActivityNoteVerb } from './devMcpActivityNote.ts'
 import { isTaskVerb, taskInput } from './devMcpTasks.ts'
 import { isTaskPlaceVerb, taskPlaceInput } from './devMcpTaskPlace.ts'
 import { isTaskPhotoVerb, taskPhotoInput } from './devMcpTaskPhoto.ts'
+import { isTaskCloseVerb, taskCloseInput } from './devMcpTaskClose.ts'
 import { isTripVerb, tripInput } from './devMcpTrips.ts'
 import { hasSmallEdits, sectionOpsForRpc } from './devMcpDocEdits.ts'
 import { isJobPaymentVerb, jobPaymentInput } from './devMcpJobPayment.ts'
@@ -261,6 +263,12 @@ export const WRITE_VERBS = {
   apply_login: { rpc: null, step: 'apply' },
   plan_password_reset: { rpc: null, step: 'plan' },
   apply_password_reset: { rpc: null, step: 'apply' },
+  // v2.7821 / 0.102.0: the pay setup of a person who exists, as their sheet's Pay & schedule saves it — the wage,
+  // Salaried, the employment dates, the salaried workday's start — through set_pay_config as the dev (the audited door:
+  // pay_admin_events keeps before and after), the desk's PATCH on people and the Hire form's template row; no wrapper,
+  // so rpc is null — the dry run is the server's read of the pay row, the dates and the template (devMcpPaySetup.ts).
+  plan_pay_setup: { rpc: null, step: 'plan' },
+  apply_pay_setup: { rpc: null, step: 'apply' },
   // v2.6804 / 0.51.0: submittals — rows onto a bid's draft revision (one or many, added or changed by tag) and the
   // order log's facts on its lines (ordered, PO, expected, delivered, a note), the rows Bids → Submittals writes under
   // RLS; no RPC exists for either, so rpc is null — the dry run is the server's read of the bid's submittal world
@@ -348,6 +356,12 @@ export const WRITE_VERBS = {
   // (devMcpTaskPhoto.ts). The file is a staged upload: the plan commits to its size and sha256.
   plan_task_photo: { rpc: null, step: 'plan' },
   apply_task_photo: { rpc: null, step: 'apply' },
+  // v2.7823 / 0.104.0: a one-time task closed without the work done, as the card's More → No longer applies closes it:
+  // the day row marked complete and a dropped line with the reason, through the card's own task_no_longer_applies as the
+  // dev. rpc is null here because the dry run is the server's read of the task and its day rows (devMcpTaskClose.ts),
+  // not a wrapper's; the apply POSTs the function. Whoever gave the task is told, as the press tells them.
+  plan_task_close: { rpc: null, step: 'plan' },
+  apply_task_close: { rpc: null, step: 'apply' },
   // v2.7687 / 0.99.0: the mail number of each envelope of a lien notice already on record, as the desk's add the
   // number › writes it — `sends` on the filing's own row through withTracking, and a number already there replaced or
   // taken off; rpc is null, the dry run the server's read of the job and its notices (devMcpNoticeNumbers.ts). One or
@@ -550,9 +564,21 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
+  if (isPaySetupVerb(verb)) {
+    // v2.7821: the shape check is devMcpPaySetup's; the dry run is the server's read of the pay row, the roster row's dates and the workday template.
+    const built = paySetupInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
   if (isSubmittalVerb(verb)) {
     // v2.6804: the shape check is devMcpSubmittals'; the dry run is the server's read of the bid's submittal world.
     const built = submittalInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isTaskCloseVerb(verb)) {
+    // v2.7823: the shape check is devMcpTaskClose's; the dry run is the server's read of the task and its day rows.
+    const built = taskCloseInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1524,9 +1550,11 @@ export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
  * says change, so the hash refuses the replay; a change applied twice saves the same trip over itself and makes no
  * second thing. The log's rule would only refuse a trip deleted in the app and filed again, or one put back the way it
  * read before.
+ * A task closed as no longer applying (v2.7823) is refused a second time by its day row, which is already done; the
+ * log would only turn away a task closed, reopened in the app and closed again for the same reason.
  */
 export function stateGuarded(verb: string): boolean {
-  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count' || verb === 'apply_materials_move' || verb === 'apply_container_edit' || verb === 'apply_part_rename' || verb === 'apply_task' || verb === 'apply_task_place' || verb === 'apply_task_photo' || verb === 'apply_trip'
+  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count' || verb === 'apply_materials_move' || verb === 'apply_container_edit' || verb === 'apply_part_rename' || verb === 'apply_task' || verb === 'apply_task_place' || verb === 'apply_task_photo' || verb === 'apply_task_close' || verb === 'apply_trip'
 }
 
 /**

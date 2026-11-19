@@ -89,6 +89,32 @@ Nothing on this screen changes a count. A count and a correction stay on the job
 
 Press **Print the material location report** at the top to print the site. The [report](/help/print-the-material-location-report) opens on the site's Development page. The report's **By part** chip prints this same list.
 
+## See what one person did on a site
+
+Open a site and press **By person**. The list turns into every press on the site, newest first, a day at a time.
+
+Pick a name under **Person** to read one person's presses alone. A line beside the name says when that person last pressed.
+
+Each row says when, what, the part, how many, where and the note. A count reads what the app expected against what was found, like *40 → 12*. Press the box's name to open that box.
+
+Four figures sit over the list. They count the presses, the pieces taken or used, the boxes pressed on and the presses worth a look.
+
+A press worth a look wears an amber chip. A first count of a line wears none. The first part added to a line wears none. A count that found what the app expected wears none.
+
+- **count changed the number** is a count that changed a number the app already had.
+- **added by hand** is a part added to a line that already had a number, with no invoice or PO.
+- **no note** is a take or a use that does not say where the material went.
+
+Press **Worth a look only** to read those rows alone. Pick a kind under **Kind of press** to read one kind, like *Taken*.
+
+A box moved from one place to another is in the list too. It reads *Moved a box*.
+
+So is a box someone retired, brought back, renamed or changed. The note says what it read before and after.
+
+A price or a join that someone took off is in the list. It reads *Removed a price* or *Undid a join*.
+
+**By person** is for the office. Nothing on it changes a count.
+
 ## Read the row
 
 The job's number sits at the top of the page, before its name. Press the number to open the job window.
@@ -134,6 +160,22 @@ On the Materials desk, a site that holds boxes under two jobs has the same press
 The table holds one row per part. It reads what was bought and what was added on site. Then what was used, returned, taken or damaged, and what the crew could not find. Then what is still on site and what walked away. Below it, **Reported this week** lists each short count and each Can't find with the person and the day.
 
 The money uses the parts book's price. Beside each figure a small chip reads {{chip:gray|parts book · checked Oct 3}}, the day someone last checked that price. The chip turns amber when the check is older than 90 days. Then the price typed off the invoice that landed the part stands in, and the chip reads {{chip:gray|invoice price}}. A part typed in by name on site has no page in the book, so it keeps the invoice price. A part with no price at all shows its count alone.
+
+## See what was taken, with its photos
+
+On the phone a person takes parts out with **Take from G12**. The run asks for a photo of the box as found and a photo after. Read [keep track of the material in the cages and boxes on site](/help/keep-track-of-the-material-in-the-cages-and-boxes-on-site#take-parts-out-of-a-box) for the crew's side.
+
+Press the {{chip:gray|used}} figure to open History. **Takes** sits at the top. Each take is one card. It reads the box, who took the parts, how many and when. Under that it lists the parts.
+
+The pictures sit side by side. The first is the box as the person before left it. The second is the box as this person found it. The third is the box after. Press a picture to open it whole.
+
+A chip says what is missing. {{chip:green|Both photos}} is a whole take. {{chip:yellow|No photo after}} means the person skipped that photo. {{chip:yellow|Nothing marked}} means a photo was taken and no part was marked.
+
+Press **A photo missing** to see only those takes. Press **All takes** to see every one again.
+
+If the first two pictures differ, someone went into the box between the two takes. No press recorded it. The app does not compare the pictures. You look.
+
+A short count leads here too. On **Missing**, a short count reads a press like **3 takes before this count**. Press it. History opens on that box's takes alone, with their pictures. Press **Show every box** to see the rest.
 
 ## Land a delivery
 

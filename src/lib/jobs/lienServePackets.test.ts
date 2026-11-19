@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { JobLienFilingRow } from './lienDeadlines'
-import { lienServeBatchPrint, lienServeClock, lienServeDoorWords, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailSheetHtml, lienServePlan, lienServePlanWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
+import { lienServeBatchPrint, lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServeMailSheetHtml, lienServePlan, lienServePlanWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
+import { lienServeStageCounts, lienServeStageDoorWords } from './lienServeStage'
 
 // Every name, address and figure here is made up.
 const FIELDS = {
@@ -107,10 +108,18 @@ describe('lienServePlanWords', () => {
     expect(words([job('1', { serve_due: '2026-11-11' })]).late).toBe('1 is past its day. Mail it today.')
   })
 
-  it('names the door to the window by every lien that owes its copies, held ones too', () => {
-    const door = (jobs: LienServeJob[]) => lienServeDoorWords(lienServePlan(jobs, CTX))
-    expect(door([job('1'), job('2'), job('3', { recording_number: '' })])).toBe('Mail 3 liens’ copies ›')
-    expect(door([job('1')])).toBe('Mail 1 lien’s copies ›')
+  it('names the door to the window by the stage the copies are at (`lienServeStage.ts`)', () => {
+    const door = (jobs: LienServeJob[], printed: string[] = []) => lienServeStageDoorWords(lienServeStageCounts(lienServePlan(jobs, CTX), printed))?.label ?? ''
+    // Nothing printed: the print, counting the liens that can print. A held one cannot.
+    expect(door([job('1'), job('2'), job('3', { recording_number: '' })])).toBe('Print 2 · Enter mail numbers 1 ›')
+    expect(door([job('1'), job('2')])).toBe('Print 2 liens’ copies ›')
+    expect(door([job('1')])).toBe('Print 1 lien’s copies ›')
+    // Every lien that can print has: the numbers, counting every lien still owed its day, the held one too.
+    const ids = (jobs: LienServeJob[]) => jobs.map((j) => j.filing.id)
+    const three = [job('1'), job('2'), job('3', { recording_number: '' })]
+    expect(door(three, ids(three).slice(0, 2))).toBe('Enter mail numbers · 3 ›')
+    // One still to print: the door names both halves.
+    expect(door(three, ids(three).slice(0, 1))).toBe('Print 1 · Enter mail numbers 2 ›')
     expect(door([])).toBe('')
   })
 
@@ -200,5 +209,13 @@ describe('lienServeJobsFromDesk', () => {
     ])
     expect(jobs[0]?.to).toEqual({ owner: { name: 'Hollow Creek Holdings LLC', address: '500 New Owner Blvd, Austin, TX 78701' }, contractor: { name: 'Brightline Builders', address: '12 Example Pkwy, Buda, TX 78610' } })
     expect(jobs[1]?.to?.contractor).toBeNull()
+  })
+
+  it('lists the mailed liens the window still shows, the newest mailing first, and none that are voided or unserved', () => {
+    const more: LienServeDeskData = { ...data, filingsByJob: { ...data.filingsByJob, 'job-5': [filing('5', { served_at: '2026-11-16' })], 'job-6': [filing('6', { served_at: '2026-11-15', voided_at: '2026-11-16T00:00:00Z' })] } }
+    expect(lienServeMailedJobsFromDesk(more, () => true).map((j) => j.filing.id)).toEqual(['5', '2'])
+    // The window's own test: only a lien that still lacks a number or a receipt.
+    expect(lienServeMailedJobsFromDesk(more, (j) => j.filing.id === '2').map((j) => j.filing.id)).toEqual(['2'])
+    expect(lienServeMailedJobsFromDesk(data, () => false)).toEqual([])
   })
 })

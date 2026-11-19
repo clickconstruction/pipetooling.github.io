@@ -29,7 +29,7 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
 import { useJobFollowupQuietDays } from '../../hooks/useJobFollowupQuietDays'
 import { useBankReturnedPaymentsNudge } from '../../hooks/useBankReturnedPaymentsNudge'
-import { bankReturnedBadgeTitle, bankReturnedBadgeWords, bankReturnedByJob } from '../../lib/jobs/bankReturnedDeposits'
+import { bankReturnedByJob } from '../../lib/jobs/bankReturnedDeposits'
 import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
 import type { LienPayRunway as LienPayRunwayModel } from '../../lib/jobs/lienPayRunway'
 import { billedLienClockJobsOf, lienRunwayForJob, paceContextPayerIds } from '../../lib/jobs/lienCalendarRows'
@@ -66,8 +66,6 @@ import {
   buildBilledAgingBuckets,
   buildBilledNoLineBucket,
   effectiveInvoiceEstBillDate,
-  stageRowBilledAgeDays,
-  stageRowBilledAgeReference,
   billedRowsRemainingTotal,
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
@@ -85,9 +83,7 @@ import { paceContextFor, paceInputFor, sentFromHereOf } from '../../lib/jobs/pay
 import { buildBilledDatesLedger } from '../../lib/jobs/billedDatesLedger'
 import BilledDatesLedger from './BilledDatesLedger'
 import type { BilledRowBillLine } from './JobsStagesUnifiedTable'
-import JobContractModal from './JobContractModal'
-import AddJobContractSheet from './AddJobContractSheet'
-import { jobNumberLabel, streetOf } from '../../lib/jobs/jobContractCovers'
+import { jobNumberLabel } from '../../lib/jobs/jobContractCovers'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useJobCrewPositions } from '../../hooks/useJobCrewPositions'
 import { useStageChecklistStates } from '../../hooks/useStageChecklistStates'
@@ -95,7 +91,6 @@ import { stageChecklistMarks, type MarkFixture } from '../../lib/jobs/stageCheck
 import { countJobsWithChecklistLeft, doorJobLabel, filterJobsByChecklistLeft } from '../../lib/jobs/pipelineChecklistDoor'
 import { PipelineChecklistSheet } from '../stageChecklists/PipelineChecklistSheet'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
-import JobsContractSweepModal from './JobsContractSweepModal'
 import {
   filterJobsByContractCoverage,
   isContractGap,
@@ -187,6 +182,8 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { UserRow } from '../../pages/Jobs'
 import type { OpenEditJobOptions } from '../../contexts/JobFormModalContext'
 import { StagesReturnEditBanner } from './StagesReturnEditBanner'
+import { StagesBilledRowExtras } from './StagesBilledRowExtras'
+import { StagesContractWindows } from './StagesContractWindows'
 import { DELETE_DRAFT_BILL_LABEL } from '../../lib/deleteDraftBillLabel'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildLienNextUp } from '../../lib/jobs/lienNextUp'
@@ -1283,69 +1280,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     (row: StageRow): BilledRowBillLine | null => {
       // v2.4168: no words under the bar on a Billed row — the dates block under
       // the legend tells the bill's story. What stays here is the alert by the
-      // buttons: the bank-returned ⚠ and a job-shell row's pill (no bill line, so
-      // nothing to age — v2.1931), with its own They said… since the ledger has
-      // no money row to click on a shell.
-      const shell = row.kind === 'job'
-      const promise = promisedPayDates?.[row.job.id] ?? null
+      // buttons, drawn by `StagesBilledRowExtras` (the map's step 23): the bank-returned ⚠ and a job-shell row's pill.
       const bankRet = bankReturnedByJobId.get(row.job.id) ?? null
-      const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
-      const label = `${number} · ${(row.job.job_name ?? '').trim() || 'Job'}`
-      // B6 / J4-10: a Collections shell has a clock the office set — the flag
-      // day — so it ages from there instead of wearing "can't age" forever.
-      const collectionsRef = shell ? stageRowBilledAgeReference(row) : null
-      const collectionsDays = collectionsRef?.source === 'collections' ? stageRowBilledAgeDays(row) : null
-      const openPromise = () =>
-        setPromisedPayModalJob({
-          jobId: row.job.id,
-          jobLabel: label,
-          initialYmd: promise?.promisedYmd ?? null,
-        })
-      if (!shell && !bankRet) return { extras: null }
-      const extras = (
-        <>
-          {bankRet ? (
-            <button
-              type="button"
-              data-testid={`stages-bank-returned-${row.job.id}`}
-              title={bankReturnedBadgeTitle(bankRet)}
-              onClick={(e) => {
-                e.stopPropagation()
-                openPaymentsReceived(row.job)
-              }}
-              style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 9px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-red-800)', background: 'var(--bg-red-tint)', border: '1px solid #fecaca', cursor: 'pointer', whiteSpace: 'nowrap' }}
-            >
-              ⚠ {bankReturnedBadgeWords(bankRet)}
-            </button>
-          ) : null}
-          {shell && collectionsRef?.source === 'collections' ? (
-            <span
-              title={`Flagged difficult to collect ${collectionsRef.ymd}. Nothing is on a bill line, so the clock runs from the flag — Bill Customer or Edit Job creates the line`}
-              style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 9px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}
-            >
-              {collectionsDays == null ? 'In Collections' : `In Collections ${collectionsDays} day${collectionsDays === 1 ? '' : 's'}`} · no bill line
-            </span>
-          ) : shell ? (
-            <span
-              title="This billed job's open money is on no bill line, so it can't age, be chased, or be forecast — Bill Customer or Edit Job creates the line"
-              style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 9px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}
-            >
-              No bill line
-            </span>
-          ) : null}
-          {shell && canMarkPromisedPay ? (
-            <button
-              type="button"
-              onClick={openPromise}
-              title="Record the payment date the customer named, who said it and how — it overrides the estimate, and every date they name stays on record"
-              style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.7rem', color: 'var(--text-muted)', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
-            >
-              {promise ? 'They said… (new date)' : 'They said…'}
-            </button>
-          ) : null}
-        </>
-      )
-      return { extras }
+      if (row.kind !== 'job' && !bankRet) return { extras: null }
+      return {
+        extras: (
+          <StagesBilledRowExtras
+            row={row}
+            promise={promisedPayDates?.[row.job.id] ?? null}
+            bankReturned={bankRet}
+            canMarkPromisedPay={canMarkPromisedPay}
+            onOpenPayments={openPaymentsReceived}
+            onOpenPromise={setPromisedPayModalJob}
+          />
+        ),
+      }
     },
     [promisedPayDates, canMarkPromisedPay, bankReturnedByJobId, openPaymentsReceived],
   )
@@ -2638,6 +2587,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     loadJobs,
     jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
     onOpenJobContract: openContractChip,
+    legalMatterByJobId: legalMatters.byJobId,
     propertyKindByJobId: propertyKinds.byJobId,
     onPropertyKindSaved: propertyKinds.setKind,
     propertyLinkByJobId: propertyKinds.linkByJobId,
@@ -4733,48 +4683,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         signerNameFallback={lienDeskSignerFor(lienReleaseModal?.job?.master_user_id ?? null)}
         onIssued={() => void loadLienReleaseJobIds()}
       />
-      <JobContractModal
-        open={jobContractModalJob != null}
-        onClose={() => setJobContractModalJob(null)}
-        job={jobContractModalJob}
-        onChanged={() => void loadJobContractCoverage()}
-        onJobChanged={() => void loadJobs()}
-        onEditJob={(j) => openEdit(j)}
-        coverage={jobContractModalJob ? jobContractCoverageByJobId.get(jobContractModalJob.id) ?? null : null}
-      />
-      {gcPaperSheetJob ? (
-        <AddJobContractSheet
-          open
-          mode="add"
-          onClose={() => setGcPaperSheetJob(null)}
-          onDone={() => {
-            void loadJobContractCoverage()
-            window.dispatchEvent(new Event('job-contract-changed'))
-          }}
-          anchorJob={{ id: gcPaperSheetJob.id, num: jobNumberLabel(gcPaperSheetJob), where: streetOf(gcPaperSheetJob.job_address) }}
-          partyIds={[gcPaperSheetJob.gc_customer_id].filter((x): x is string => Boolean(x))}
-          signerName={(gcPaperSheetJob.gcCustomer?.name ?? '').trim()}
-          subtitle={`Job ${jobNumberLabel(gcPaperSheetJob)} · ${(gcPaperSheetJob.gcCustomer?.name ?? '').trim() || 'the GC'}'s subcontract`}
-          onOpenContractWindow={() => {
-            const j = gcPaperSheetJob
-            setGcPaperSheetJob(null)
-            setJobContractModalJob(j)
-          }}
-        />
-      ) : null}
-      <JobsContractSweepModal
-        open={contractSweepOpen}
-        onClose={() => setContractSweepOpen(false)}
+      {/* The three contract windows (`StagesContractWindows`, the map's step 24); their open states stay here. */}
+      <StagesContractWindows
+        jobContractModalJob={jobContractModalJob}
+        setJobContractModalJob={setJobContractModalJob}
+        gcPaperSheetJob={gcPaperSheetJob}
+        setGcPaperSheetJob={setGcPaperSheetJob}
+        contractSweepOpen={contractSweepOpen}
+        setContractSweepOpen={setContractSweepOpen}
         jobs={jobs}
-        coverage={jobContractCoverageByJobId}
-        floorCents={contractFloorCents}
-        onEditJob={(j) => openEdit(j)}
-        onSent={() => void loadJobContractCoverage()}
-        onJobChanged={() => void loadJobs()}
-        onFilterBoard={() => {
-          setContractSweepOpen(false)
-          setStagesContractFilter('missing')
-        }}
+        jobContractCoverageByJobId={jobContractCoverageByJobId}
+        contractFloorCents={contractFloorCents}
+        loadJobContractCoverage={loadJobContractCoverage}
+        loadJobs={loadJobs}
+        openEdit={openEdit}
+        setStagesContractFilter={setStagesContractFilter}
       />
       {checklistDoorJob ? (
         <PipelineChecklistSheet

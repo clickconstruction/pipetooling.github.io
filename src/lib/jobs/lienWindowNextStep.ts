@@ -12,6 +12,7 @@
  * is worked on the desk's Affidavits list, so that step's button opens the desk there. One
  * held by a fact stays on this window's tab, which lists the facts with their doors.
  */
+import { LIEN_SERVE_STAGE_WORDS, type LienServeStage } from './lienServeStage'
 import type { LienTimelineNext, LienTimelineWaitingOn } from './lienTimeline'
 import type { StagesLienWindowTab } from './stagesDeepLinks'
 
@@ -49,7 +50,7 @@ export function lienNextStepDaysWords(daysLeft: number | null): string {
 
 const WHO: Record<string, string> = { ours: '', gc: 'the GC', owner: 'the owner', county: 'the county', counsel: 'counsel' }
 
-export function lienWindowNextStep(next: LienTimelineNext, waitingOn: LienTimelineWaitingOn | null): LienWindowNextStep {
+export function lienWindowNextStep(next: LienTimelineNext, waitingOn: LienTimelineWaitingOn | null, /** Where a filed lien's copies stand (`lienServeStage.ts`); absent reads as still to print. */ serveStage?: LienServeStage | null): LienWindowNextStep {
   let button: LienWindowNextStep['button'] = null
   switch (next.kind) {
     case 'notice':
@@ -66,7 +67,8 @@ export function lienWindowNextStep(next: LienTimelineNext, waitingOn: LienTimeli
           : { label: 'Go to the affidavit', door: { to: 'tab', tab: 'affidavit' } }
       break
     case 'serve':
-      button = { label: 'Record the service', door: { to: 'tab', tab: 'affidavit' } }
+      // The step's stage names the press, as on the desk's doors. *Record the service* until v2.7816.
+      button = { label: LIEN_SERVE_STAGE_WORDS[serveStage ?? 'print'], door: { to: 'tab', tab: 'affidavit' } }
       break
     case 'release':
       button = { label: 'Go to the release of record', door: { to: 'tab', tab: 'release_record' } }

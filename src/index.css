@@ -2866,6 +2866,23 @@ body.my-time-boundary-dragging {
 .pins-map-pulse-halo { animation: pins-map-pulse-halo 1.1s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { .pins-map-pulse-halo { animation: none; stroke-width: 5; stroke-opacity: 0.75; } }
 
+/* Time on a map (punch list #395): the row of dates under a map. The sentence sits beside the dates
+   where the row is wide and over them where it is narrow, measured on the row and not the window:
+   a map can be one column of a wide card. The dates are one line that slides sideways, with no bar
+   of its own and a fade at each end to show there is more. */
+.mapTimeRow { container-type: inline-size; border-top: 1px solid var(--border); background: var(--surface); min-width: 0; }
+.mapTimeRowBody { padding: 0.45rem 0.6rem 0.5rem; display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
+.mapTimeRowWords { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.mapTimeRowLine { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.mapTimeScroll { position: relative; flex: 1 1 0; min-width: 0; display: flex; gap: 6px; overflow-x: auto; padding: 1px 12px; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, black 12px, black calc(100% - 12px), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, black 12px, black calc(100% - 12px), transparent 100%); }
+.mapTimeScroll::-webkit-scrollbar { display: none; }
+@container (min-width: 860px) {
+  .mapTimeRowBody { flex-direction: row; align-items: center; gap: 0.75rem; }
+  .mapTimeRowWords { flex: 0 1 auto; max-width: 40%; }
+  .mapTimeRowLine { flex: 1 1 0; }
+}
+
 /* Bid flow landing (v2.3216): a step on the strip opened its door — ring the field it lands on, then fade. */
 @keyframes bid-flow-landing-fade {
   0% { outline-color: #2563eb; box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.22); }
@@ -4382,7 +4399,7 @@ body.my-time-boundary-dragging {
 }
 /* The Lien desk's card does the same for its Already mailed sheet (v2.4446); its own max-height still caps it. */
 [data-lien-desk-panel]:has([data-lien-record-sheet]) { height: 100%; }
-/* The Lien desk's title bar (v2.4355): the title, the tabs and the doors are spaced by the column gap. On a desk narrower than 1,100 px (a window under 1,132 px; a phone keeps its own layout) the gaps close up, the tabs narrow and Share shows its icon, its word still the button's name, so the bar keeps one line. A viewport query on purpose: a container query on the bar would trap the fixed Share sheet inside it. */
+/* The Lien desk's title bar (v2.4355): the title, the tabs and the doors are spaced by the column gap. On a desk narrower than 1,100 px (a window under 1,132 px; a phone keeps its own layout) the gaps close up, the tabs narrow and Share shows its icon, its word still the button's name, so the bar keeps one line. A viewport query on purpose: a container query on the bar would trap the fixed Share sheet inside it. The tighter bar ran to 1,131 px until v2.7874; it runs to 1,279 (`LIEN_DESK_TIGHT_BAR_MAX_PX` in `lienDeskTitleBar.ts`, held to this rule by its test) so By paper's paper tabs never fall back to the second line as a window widens: from 1,132 to 1,175 px the roomier bar had no room for them on the title line while the tighter one just under it did. */
 .lienDeskTitleBar { gap: 0.4rem 0.9rem; }
 .lienDeskKindTab { padding: 2px 8px; }
 /* On a computer the bar's lines sit 6 px apart by each item's 3 px block margins and not the row gap, which the bar sets to 0 (v2.7322, the owner's three boxes of 2026-11-15): a 0-height break on a line of its own took the row gap on each side, 14.4 px between the title line and the pile line. The breaks carry no margin, so a break between two lines is the same 6 px as a line that wraps by itself (the run under the title at the 768 px tablet). The half is `LIEN_DESK_TITLE_BAR_ROW_GAP_PX` in `lienDeskTitleBar.ts`. */
@@ -4390,7 +4407,7 @@ body.my-time-boundary-dragging {
   .lienDeskTitleBar > * { margin-block: 3px; }
   .lienDeskTitleBar > [data-lien-desk-header-break], .lienDeskTitleBar > [data-lien-desk-pile-break] { margin-block: 0; }
 }
-@media (min-width: 641px) and (max-width: 1131px) {
+@media (min-width: 641px) and (max-width: 1279px) {
   .lienDeskTitleBar { column-gap: 0.5rem; }
   .lienDeskKindTab { padding: 2px 7px; }
   .lienDeskShareWord { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -7337,7 +7354,7 @@ button.developmentCountChip:focus-visible {
 
 /* The Lien desk's Board (v2.7332, the owner's ask of 2026-11-15): two columns of bins at the top of To do, every job a chip in the bin of its stage. */
 .lienBoardBin { display: grid; gap: 6px; padding: 7px 9px 8px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); min-width: 0; }
-.lienBoardBin[data-beside='yes'] { border-style: dashed; }
+.lienBoardBin[data-closed='yes'] { border-style: dashed; border-color: var(--border-strong); background: transparent; }
 .lienBoardBinHead { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 0; border: none; background: none; font: inherit; font-size: 0.78rem; font-weight: 700; color: var(--text-700); text-align: left; min-width: 0; }
 button.lienBoardBinHead { cursor: pointer; border-radius: 5px; }
 button.lienBoardBinHead:hover > span:first-child, button.lienBoardBinHead:focus-visible > span:first-child { text-decoration: underline; text-underline-offset: 3px; }

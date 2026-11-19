@@ -15,8 +15,10 @@
  * legend chips toggle sections on the map only, never on the board. Paid
  * starts off, and because the board loads Paid rows on demand, the Paid chip
  * asks the board to load them the first time it is turned on. The office
- * anchor and its 25 / 50 mile rings, the geocode cache, clustering and the
- * Google / OpenStreetMap provider rule are the Bid Board map's, shared.
+ * anchor and its 25 / 50 mile rings, the geocode cache and clustering are the
+ * Bid Board map's, shared. The Google / OpenStreetMap provider rule, the
+ * Satellite and Streets switch and the Time press are the shared
+ * `PinsMapFrame`'s (punch list #395).
  *
  * v2.3397: the rail on the right (`JobsMapRail`) — distance buckets that
  * double as pin filters with the dollars still to collect, the ask-for-money
@@ -37,8 +39,9 @@
  * wears a violet ring, the popup says how many, the rail says how many people
  * on how many jobs. The day is today, or the As-of day when rewound.
  */
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { JobsMapRail } from './JobsMapRail'
+import { PinsMapFrame } from '../map/PinsMapFrame'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import { loadJobsMapHistory } from '../../lib/jobs/loadJobsMapHistory'
@@ -55,12 +58,12 @@ import {
   jobsMapJobsAsOf,
   jobsMapSinceThen,
   jobsMapSinceThenLine,
+  jobsMapTimePinsWords,
   type JobsMapHistory,
 } from '../../lib/jobs/jobsMapAsOf'
 import { DEFAULT_DISTANCE_BUCKETS, jobsMapPinsInBuckets, jobsMapRail, type DistanceBucketKey, type DistanceBucketVisibility } from '../../lib/jobs/jobsMapRail'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { useAddressGeocodeCoords, type AddressToGeocode } from '../../hooks/useAddressGeocodeCoords'
-import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { BID_BOARD_MAP_RING_MILES, bidBoardMapHomeFitPoints } from '../../lib/bids/bidBoardMap'
@@ -90,8 +93,6 @@ import {
 import type { MapCanvasAnchor, MapCanvasPin } from '../../lib/map/mapCanvasTypes'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
-const PinsMapCanvas = lazy(() => import('../map/PinsMapCanvas'))
-const PinsMapGoogleCanvas = lazy(() => import('../map/PinsMapGoogleCanvas'))
 
 const LINK_BUTTON_STYLE: React.CSSProperties = {
   background: 'none',
@@ -338,14 +339,6 @@ export function JobsMapCard({
   const [fitSignal, setFitSignal] = useState(0)
   // The map opens on the office's region (pins within the outer ring); Fit all widens to every pin.
   const [fitAll, setFitAll] = useState(false)
-  // Google Maps when a browser key is configured and the API loads; OpenStreetMap otherwise.
-  // A failure is sticky for this page so a bad key never flickers (v2.3145).
-  const [googleFailed, setGoogleFailed] = useState(false)
-  const provider = resolveDashboardMapProvider({ key: googleMapsBrowserKey(), googleFailed })
-  const googleUnavailable = useCallback((reason: string) => {
-    console.warn(`[jobs map] Google Maps unavailable, using OpenStreetMap — ${reason}`)
-    setGoogleFailed(true)
-  }, [])
 
   // As of (v2.3398): the slider's world. Nothing loads until the toggle is on.
   const [asOfOn, setAsOfOn] = useState(false)
@@ -642,55 +635,29 @@ export function JobsMapCard({
 
           {/* Map on the left, the rail on the right — the empty land becomes numbers. Phones stack. */}
           <div style={isMobile ? { display: 'flex', flexDirection: 'column', gap: '0.5rem' } : { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: '0.6rem', alignItems: 'stretch' }}>
-          <div
-            // isolation contains Leaflet's internal z-indexes (panes 200–700, controls 1000) so they can't paint over the sticky section strip
-            style={{ position: 'relative', height: mapHeight, borderRadius: 4, overflow: 'hidden', isolation: 'isolate', background: 'var(--bg-muted)' }}
-          >
-            {canvasPins.length > 0 ? (
-              <Suspense fallback={<div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading map…</div>}>
-                {provider === 'google' ? (
-                  <PinsMapGoogleCanvas
-                    apiKey={googleMapsBrowserKey()}
-                    onUnavailable={googleUnavailable}
-                    pins={canvasPins}
-                    selectedId={selectedId}
-                    onSelect={select}
-                    renderPopup={renderPopup}
-                    fitSignal={fitSignal}
-                    height={mapHeight}
-                    isMobile={isMobile}
-                    anchor={canvasAnchor}
-                    fitPoints={fitPoints}
-                    cluster={clustered}
-                    clusterRingPriority={CLUSTER_RING_PRIORITY}
-                    pulseId={isMobile ? null : pulseId}
-                    // The card sits in the board's scroll: the wheel scrolls the page until the map is clicked
-                    scrollZoomAfterClick
-                    // Leaflet / Google ignore a height change after mount — remount when the form flips
-                    key={isMobile ? 'phone' : 'desktop'}
-                  />
-                ) : (
-                  <PinsMapCanvas
-                    pins={canvasPins}
-                    selectedId={selectedId}
-                    onSelect={select}
-                    renderPopup={renderPopup}
-                    fitSignal={fitSignal}
-                    height={mapHeight}
-                    isMobile={isMobile}
-                    anchor={canvasAnchor}
-                    fitPoints={fitPoints}
-                    cluster={clustered}
-                    clusterRingPriority={CLUSTER_RING_PRIORITY}
-                    pulseId={isMobile ? null : pulseId}
-                    // The card sits in the board's scroll: the wheel scrolls the page until the map is clicked
-                    scrollZoomAfterClick
-                    // Leaflet / Google ignore a height change after mount — remount when the form flips
-                    key={isMobile ? 'phone' : 'desktop'}
-                  />
-                )}
-              </Suspense>
-            ) : (
+          {canvasPins.length > 0 ? (
+            <PinsMapFrame
+              surface="jobs-map"
+              style={{ borderRadius: 4, overflow: 'hidden' }}
+              pins={canvasPins}
+              selectedId={selectedId}
+              onSelect={select}
+              renderPopup={renderPopup}
+              fitSignal={fitSignal}
+              height={mapHeight}
+              isMobile={isMobile}
+              anchor={canvasAnchor}
+              fitPoints={fitPoints}
+              cluster={clustered}
+              clusterRingPriority={CLUSTER_RING_PRIORITY}
+              pulseId={isMobile ? null : pulseId}
+              // Two clocks on one card: As of moves the pins and Time moves the photograph, so the row names the pins' own day
+              timeDotsWords={jobsMapTimePinsWords(rewound ? formatStagesNextDateLabel(asOfYmd) : null)}
+              // The card sits in the board's scroll: the wheel scrolls the page until the map is clicked
+              scrollZoomAfterClick
+            />
+          ) : (
+            <div style={{ position: 'relative', height: mapHeight, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-muted)' }}>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 {hiddenSectionsWithPins
                   ? 'Every section is turned off — tap a section above to show its pins.'
@@ -698,8 +665,8 @@ export function JobsMapCard({
                     ? 'Placing jobs on the map…'
                     : 'None of these jobs has a map location yet.'}
               </div>
-            )}
-          </div>
+            </div>
+          )}
           {!isMobile ? (
             <JobsMapRail
               rail={rail}

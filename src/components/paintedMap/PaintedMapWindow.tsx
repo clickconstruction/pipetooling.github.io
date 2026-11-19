@@ -50,7 +50,8 @@ import {
   type PaintedMeasuredHow,
   type PaintedPlace,
 } from '../../lib/paintedMap/paintedMap'
-import { paintedMapsChanged, type PaintedMapHome } from '../../lib/paintedMap/paintedMapDoor'
+import { JOB_LIST_WORDS, jobListPlaces, jobListsOf, placeLetter, type JobPlace } from '../../lib/paintedMap/paintedJobList'
+import { onPaintedMapsChanged, openPaintedMap, paintedMapsChanged, type PaintedMapHome } from '../../lib/paintedMap/paintedMapDoor'
 import {
   addPaintedLine,
   addPaintedPlace,
@@ -59,6 +60,7 @@ import {
   deletePaintedMap,
   deletePaintedPlace,
   loadPaintedMap,
+  loadPaintedMapsFor,
   loadPainterNames,
   paintedPlacePhotoUrls,
   removePaintedPlacePhotoFile,
@@ -79,12 +81,16 @@ import { taskPlaceAccuracyWords } from '../../lib/tasks/taskPlace'
 import { walkThrowAwayWords } from '../../lib/paintedMap/paintedWalkWords'
 import { PAINTED_MAP_SHEET_Z, PAINTED_MAP_WINDOW_Z } from '../../lib/windowLayers'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
-import type { PaintedCanvasDot, PaintedCanvasDraft } from './PaintedMapCanvas'
-import { CostBatchJobPicker } from '../costBatches/CostBatchJobPicker'
+import type { PaintedCanvasDot, PaintedCanvasDraft, PaintedCanvasPlace } from './PaintedMapCanvas'
+import { PaintAMapJobPicker } from './PaintAMapJobPicker'
 import { PaintedMapShareSheet } from './PaintedMapShareSheet'
+import { PaintedMapSavedBand } from './PaintedMapSavedBand'
+import { paintedMapSavedOffersText, paintedMapSavedWords } from '../../lib/paintedMap/paintedMapSaved'
+import { isPhoneDevice } from '../../lib/quo/dial'
 import type { PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
 import { PaintedPlaceMark } from './PaintedPlaceMark'
 import { PaintedPlacePanel, type PaintedPlacePhotoChoice } from './PaintedPlacePanel'
+import { PaintedPlaceShare } from './PaintedPlaceShare'
 import { PaintedWalkPanel } from './PaintedWalkPanel'
 import { PaintedWalkReview } from './PaintedWalkReview'
 import { PAINT_SWATCH } from './paintedMapLook'
@@ -92,7 +98,7 @@ import { PAINT_SWATCH } from './paintedMapLook'
 const PaintedMapCanvasLazy = lazy(() => import('./PaintedMapCanvas'))
 
 /** A map that is about to be made: named on the start sheet, saved with its first line. */
-export type PaintedMapToStart = { id: string; name: string; words: string; home: PaintedMapHome; /** What the painter starts with: a line drawn by hand (the default), a place, or a walk. */ first?: 'line' | 'place' | 'walk' }
+export type PaintedMapToStart = { id: string; name: string; words: string; home: PaintedMapHome; /** What the painter starts with: a line drawn by hand (the default), a place, or a walk. */ first?: 'line' | 'place' | 'walk'; /** The job's own list of places (#393): it holds places only. */ jobList?: boolean }
 
 /** What is kept on the phone beside a walk, so its window can open again after a reload. */
 export type KeptPaintedWalk = { mapId: string; start: PaintedMapToStart | null; address: string | null; pending: WalkStroke[] }
@@ -106,6 +112,8 @@ type Props = {
   address?: string | null
   /** Where the map opens when nothing is on it, for a caller that already knows the point. */
   center?: PaintedPoint | null
+  /** A saved map opened by a press that adds a place: the place panel opens once the map has. */
+  openOn?: 'place' | null
   onClose: () => void
 }
 
@@ -151,11 +159,21 @@ function cornerWords(points: ReadonlyArray<PaintedPoint>, index: number): string
   return parts.length > 0 ? parts.join(', ') : null
 }
 
-export function PaintedMapWindow({ ask, kept = null, address = null, center: givenCenter = null, onClose }: Props) {
+export function PaintedMapWindow({ ask, kept = null, address = null, center: givenCenter = null, openOn = null, onClose }: Props) {
   const { user, role } = useAuth()
   const phone = useIsMobile()
   const isTopmost = useModalStackEntry()
   const starting = 'start' in ask ? ask.start : null
+  // The Saved band (punch list #392, step 3): a save landed in this window, so it says so and offers the text press.
+  const [savedHere, setSavedHere] = useState(false)
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  /** A real phone, where the person's own Messages can be opened. A narrow desk window is not one. */
+  const [onPhoneDevice] = useState(() => typeof navigator !== 'undefined' && isPhoneDevice(navigator.userAgent, navigator.maxTouchPoints))
+  /** A save landed: the band shows, and the panel goes back to its top so the band and its press are in view. */
+  const saveLanded = () => {
+    setSavedHere(true)
+    window.requestAnimationFrame(() => panelRef.current?.scrollTo?.({ top: 0 }))
+  }
   const askedId = 'mapId' in ask ? ask.mapId : null
 
   const [whole, setWhole] = useState<PaintedMapWhole | null>(null)
@@ -224,9 +242,36 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     }
   }, [found, givenCenter, placeFirst])
 
-  const map: PaintedMap | null = whole?.map ?? (starting ? { id: starting.id, name: starting.name, words: starting.words, jobId: starting.home.jobId ?? null, developmentId: starting.home.jobId ? null : (starting.home.developmentId ?? null), createdBy: user?.id ?? null, createdAt: new Date().toISOString() } : null)
+  const map: PaintedMap | null = whole?.map ?? (starting ? { id: starting.id, name: starting.name, words: starting.words, jobId: starting.home.jobId ?? null, developmentId: starting.home.jobId ? null : (starting.home.developmentId ?? null), jobList: starting.jobList === true && !!starting.home.jobId, createdBy: user?.id ?? null, createdAt: new Date().toISOString() } : null)
   const lines = useMemo(() => whole?.lines ?? [], [whole])
   const places = useMemo(() => numberedPlaces(whole?.places ?? []), [whole])
+  // A job's own list of places (#393): this map is it, or this map is on a job that has one.
+  const isList = map?.jobList === true
+  const mapJobId = map?.jobId ?? null
+  // Every place kept on the map's job, lettered. Read beside the map, and again whenever a painted map changes.
+  const [jobPlaces, setJobPlaces] = useState<JobPlace[]>([])
+  useEffect(() => {
+    if (!mapJobId) {
+      setJobPlaces([])
+      return
+    }
+    let gone = false
+    const read = async () => {
+      const res = await loadPaintedMapsFor({ jobId: mapJobId })
+      if (gone || !res.ok) return
+      const lists = jobListsOf(res.value.map((w) => w.map), mapJobId)
+      setJobPlaces(jobListPlaces(lists.map((l) => res.value.find((w) => w.map.id === l.id)!)))
+    }
+    void read()
+    const stop = onPaintedMapsChanged(() => void read())
+    return () => {
+      gone = true
+      stop()
+    }
+  }, [mapJobId])
+  // On the list itself a place wears its letter. On another map of the job the list's places come as a second layer.
+  const letterOf = useMemo(() => new Map(jobPlaces.map((p) => [p.id, p.letter])), [jobPlaces])
+  const overlay = useMemo(() => (isList ? [] : jobPlaces), [isList, jobPlaces])
 
   const load = useCallback(async (mapId: string) => {
     setLoading(true)
@@ -285,10 +330,13 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
 
   const mine = (by: string | null) => !!user?.id && (by === user.id || isOfficeRole(role))
   const canChangeMap = !!map && mine(map.createdBy)
+  // A link is its maker's and the office's to hand out, and a map with nothing on it has nothing to show.
+  const mayShareMap = saved && canChangeMap && (lines.length > 0 || places.length > 0)
+  const openShare = () => setSharing(true)
 
   // What a dragged corner catches: every place, and the two ends of every other line.
   const targets = useMemo<SnapTarget[]>(() => {
-    const out: SnapTarget[] = places.map((p) => ({ id: `place:${p.id}`, label: p.name, lat: p.lat, lng: p.lng }))
+    const out: SnapTarget[] = [...places, ...overlay].map((p) => ({ id: `place:${p.id}`, label: p.name, lat: p.lat, lng: p.lng }))
     for (const [i, l] of lines.entries()) {
       if (reshaping && l.id === reshaping.id) continue
       const name = l.label || `line ${i + 1}`
@@ -298,7 +346,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
       if (last) out.push({ id: `end:${l.id}`, label: `the end of ${name}`, ...last })
     }
     return out
-  }, [places, lines, reshaping])
+  }, [places, overlay, lines, reshaping])
 
   const canvasDraft = useMemo<PaintedCanvasDraft | null>(
     () =>
@@ -383,6 +431,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     }
     if (!names.has(user.id)) setNames(await loadPainterNames([user.id, ...names.keys()]))
     setMode('view')
+    saveLanded()
   }
 
   const startDrawing = () => {
@@ -410,7 +459,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const ensureSaved = async (): Promise<PaintedMapWhole | null> => {
     if (!map || !user?.id) return null
     if (saved && whole) return whole
-    const made = await createPaintedMap({ id: map.id, name: map.name, words: map.words, jobId: map.jobId, developmentId: map.developmentId, by: user.id })
+    const made = await createPaintedMap({ id: map.id, name: map.name, words: map.words, jobId: map.jobId, developmentId: map.developmentId, jobList: map.jobList === true, by: user.id })
     if (!made.ok) {
       setError(made.error)
       return null
@@ -454,6 +503,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     if (user.id && !names.has(user.id)) setNames(await loadPainterNames([user.id, ...names.keys()]))
     paintedMapsChanged()
     stopDrawing()
+    saveLanded()
   }
 
   /** A place added during a walk: the dot starts where the phone last was, with how sure it was. The walk keeps painting. */
@@ -559,6 +609,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     if (!names.has(user.id)) setNames(await loadPainterNames([user.id, ...names.keys()]))
     paintedMapsChanged()
     stopPlacing(true)
+    saveLanded()
   }
 
   const saveMeasure = async () => {
@@ -614,12 +665,13 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     setError(null)
     const res = await putPaintedMapOnJob(map.id, jobId)
     setBusy(false)
+    // The picker closes either way: a refusal is said on the map's own panel, which the picker covers.
+    setHoming(false)
     if (!res.ok) {
       setError(res.error)
       return
     }
     setWhole((w) => (w ? { ...w, map: res.value } : w))
-    setHoming(false)
     paintedMapsChanged()
   }
 
@@ -722,6 +774,14 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const start = map ? mapStart(lines, whole?.places ?? []) : null
   const directions = start ? directionsUrlForPoint(start.lat, start.lng) : null
   const summary = mapSummaryWords(lines, places.length)
+  // The job's words are known when the map was started in this window. A map opened later says it is on its job.
+  const savedBand =
+    savedHere && saved && map && !isList
+      ? {
+          ...paintedMapSavedWords({ jobLabel: starting?.home.jobId && starting.home.jobId === map.jobId ? starting.home.label : null, developmentLabel: starting?.home.developmentId && starting.home.developmentId === map.developmentId ? starting.home.developmentLabel : null, onJob: !!map.jobId, onDevelopment: !map.jobId && !!map.developmentId, summary }),
+          offersText: paintedMapSavedOffersText({ phone: onPhoneDevice, mayShare: canChangeMap, hasSomething: lines.length > 0 || places.length > 0 }),
+        }
+      : null
   const paintedBy = map && saved ? paintedByWords(map.createdBy ? (names.get(map.createdBy) ?? null) : null, formatDenverCalendarDayShort(Date.parse(map.createdAt))) : null
   const pickedWords = mode === 'draw' && glass ? null : mode === 'draw' && draft.picked != null ? cornerWords(draft.points, draft.picked) : null
   const emptyAndNowhere = mode === 'draw' && draft.points.length === 0 && lines.length === 0 && places.length === 0 && !center && !fly
@@ -732,10 +792,28 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     [mode, placing],
   )
   // The place whose dot is being moved is the blue dot now, not also its numbered one.
-  const canvasPlaces = useMemo(() => places.filter((p) => !(mode === 'place' && placing?.place && p.id === placing.place.id)), [places, mode, placing])
+  const canvasPlaces = useMemo<PaintedCanvasPlace[]>(
+    () => [
+      ...places.filter((p) => !(mode === 'place' && placing?.place && p.id === placing.place.id)).map((p) => (isList ? { ...p, letter: letterOf.get(p.id) ?? placeLetter(p.number) } : p)),
+      ...overlay.map((p) => ({ ...p, fromJob: true })),
+    ],
+    [places, mode, placing, isList, letterOf, overlay],
+  )
+  const [viewReady, setViewReady] = useState(false)
   const onView = useCallback((c: PaintedPoint) => {
     viewCenter.current = c
+    setViewReady(true)
   }, [])
+  // A saved map opened by a press that adds a place (＋ Place on this job): the panel opens once, when the map is read
+  // and has said where it is looking, so the dot starts in the middle of what shows.
+  const openedOn = useRef(false)
+  useEffect(() => {
+    if (openOn !== 'place' || openedOn.current || !whole || mode !== 'view' || !viewReady) return
+    openedOn.current = true
+    startPlace()
+    // startPlace reads the map as loaded and the view's own ref: it runs once, when both are ready.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openOn, whole, mode, viewReady])
 
   const canvasLines = useMemo(
     () => [
@@ -800,7 +878,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
           <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: phone ? 'column' : 'row' }}>
             <div style={{ flex: phone ? '1 1 46%' : '1 1 60%', minHeight: phone ? 260 : 420, minWidth: 0, position: 'relative' }}>
               <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
-                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={setPickedPlace} />
+                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={setPickedPlace} time={mode === 'view' ? { name: title } : null} />
               </Suspense>
               {mode === 'place' ? (
                 <div style={{ position: 'absolute', left: 8, right: 8, bottom: 26, zIndex: 600, pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
@@ -816,7 +894,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
               ) : null}
             </div>
 
-            <div style={{ flex: phone ? '0 1 auto' : '0 0 360px', maxHeight: phone ? '54%' : undefined, overflowY: 'auto', borderTop: phone ? '1px solid var(--border)' : undefined, borderLeft: phone ? undefined : '1px solid var(--border)', padding: '0.75rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px))', display: 'grid', gap: '0.65rem', alignContent: 'start' }}>
+            <div ref={panelRef} style={{ flex: phone ? '0 1 auto' : '0 0 360px', maxHeight: phone ? '54%' : undefined, overflowY: 'auto', borderTop: phone ? '1px solid var(--border)' : undefined, borderLeft: phone ? undefined : '1px solid var(--border)', padding: '0.75rem 1rem calc(0.85rem + env(safe-area-inset-bottom, 0px))', display: 'grid', gap: '0.65rem', alignContent: 'start' }}>
               {mapFailed ? <p role="status" style={note}>The picture did not load. There may be no signal here. The line still draws.</p> : null}
               {error ? <p role="alert" data-painted-error style={note}>{error}</p> : null}
 
@@ -920,28 +998,34 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                     </div>
                   ) : (
                     <div style={{ display: 'grid', gap: '0.2rem' }}>
+                      {isList ? <p data-painted-job-list style={{ margin: 0, fontSize: '0.9375rem', color: 'var(--text-base)' }}>{JOB_LIST_WORDS.onEvery}</p> : null}
                       {map.words ? <p style={{ margin: 0, fontSize: '0.9375rem', color: 'var(--text-base)' }}>{map.words}</p> : null}
-                      {summary ? <p data-painted-summary style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-700)' }}>{summary.charAt(0).toUpperCase() + summary.slice(1)}</p> : null}
+                      {/* The Saved band says the summary itself: it is not said twice. */}
+                      {summary && !savedBand ? <p data-painted-summary style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-700)' }}>{summary.charAt(0).toUpperCase() + summary.slice(1)}</p> : null}
                       {paintedBy ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{paintedBy}</p> : null}
                     </div>
                   )}
 
+                  {savedBand ? <PaintedMapSavedBand mapId={map.id} mapName={map.name} head={savedBand.head} under={savedBand.under} offersText={savedBand.offersText} /> : null}
+
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <button type="button" data-painted-draw style={bluePress} onClick={startDrawing}>Draw a line</button>
-                    {canWalk ? <button type="button" data-painted-walk-start style={press} onClick={startWalking}>Walk or drive a line</button> : null}
-                    <button type="button" data-painted-place style={press} onClick={startPlace}>＋ Place</button>
-                    {directions ? (
+                    {/* A job's own list holds places only: no line is drawn or walked on it. */}
+                    {/* One blue press on the screen: while the band offers its text press, Draw a line is plain. */}
+                    {isList ? null : <button type="button" data-painted-draw style={savedBand?.offersText ? press : bluePress} onClick={startDrawing}>Draw a line</button>}
+                    {canWalk && !isList ? <button type="button" data-painted-walk-start style={press} onClick={startWalking}>Walk or drive a line</button> : null}
+                    <button type="button" data-painted-place style={isList && !savedBand?.offersText ? bluePress : press} onClick={startPlace}>＋ Place</button>
+                    {directions && !isList ? (
                       <button type="button" style={press} onClick={() => openInExternalBrowser(directions)}>Directions to the start</button>
                     ) : null}
                     {/* A link is its maker's and the office's to hand out, and a map with nothing on it has nothing to show. */}
-                    {saved && canChangeMap && (lines.length > 0 || places.length > 0) ? (
+                    {mayShareMap ? (
                       <button type="button" data-painted-share style={press} onClick={() => setSharing(true)}>Share</button>
                     ) : null}
                   </div>
 
                   {lines.length === 0 && places.length === 0 ? (
                     <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-700)' }}>
-                      Nothing is painted on this map yet. Press Draw a line or ＋ Place to start it.{saved ? '' : ' The map is saved with its first line or place.'}
+                      {isList ? JOB_LIST_WORDS.none : `Nothing is painted on this map yet. Press Draw a line or ＋ Place to start it.${saved ? '' : ' The map is saved with its first line or place.'}`}
                     </p>
                   ) : lines.length === 0 ? null : (
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
@@ -1008,7 +1092,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                         const sure = taskPlaceAccuracyWords(p.accuracyM)
                         return (
                           <div key={p.id} data-painted-place-row data-picked={pickedPlace === p.id ? 'true' : undefined} style={{ borderWidth: pickedPlace === p.id ? 2 : 1, borderStyle: 'solid', borderColor: pickedPlace === p.id ? '#2563eb' : 'var(--border)', borderRadius: 10, padding: '0.55rem 0.7rem', display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '0.15rem 0.6rem', alignItems: 'start' }}>
-                            <PaintedPlaceMark number={p.number} kind={p.kind} size={28} style={{ gridRow: '1 / 4' }} />
+                            <PaintedPlaceMark number={isList ? (letterOf.get(p.id) ?? placeLetter(p.number)) : p.number} kind={p.kind} size={28} style={{ gridRow: '1 / 4' }} />
                             <b style={{ fontSize: '0.9375rem' }}>{p.name}</b>
                             {url ? (
                               <button type="button" aria-label={`Open the photo of ${p.name}`} onClick={() => setViewing(url)} style={{ gridRow: '1 / 4', gridColumn: 3, padding: 0, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--bg-muted)', cursor: 'pointer', width: 72, height: 54 }}>
@@ -1026,29 +1110,69 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                                 </>
                               ) : null}
                             </span>
+                            {/* One place, sent to someone: anyone who sees it may (`paintedPlaceShare.ts`). Send more… offers its photo, every place here, and the map to whoever may share it. */}
+                            <span style={{ gridColumn: 2 }}>
+                              <PaintedPlaceShare place={p} more={{ set: places, setKind: isList ? 'job' : 'map', photoPath: p.photoPath, onShareMap: mayShareMap ? openShare : undefined, list: isList }} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 }} />
+                            </span>
                           </div>
                         )
                       })}
                     </div>
                   ) : null}
 
-                  {canChangeMap && saved && !map.jobId && !map.developmentId ? (
-                    <div data-painted-no-home style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem', color: 'var(--text-700)', background: 'var(--bg-muted)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
-                      <span>This map is on no job. Only you and the office can open it.</span>
-                      {homing ? (
-                        <>
-                          <CostBatchJobPicker title="Which job is it for?" autoFocus onPick={(job) => void putOnJob(job.id)} />
-                          <button type="button" style={quiet} onClick={() => setHoming(false)}>Leave it on no job</button>
-                        </>
-                      ) : (
-                        <button type="button" data-painted-put-on-job style={{ ...quiet, justifySelf: 'start' }} disabled={busy} onClick={() => setHoming(true)}>Put it on a job…</button>
-                      )}
+                  {overlay.length > 0 ? (
+                    // The places kept on the job (#393): drawn on this map with a letter and a dashed ring, and changed on the job's own list.
+                    <div data-painted-job-places style={{ display: 'grid', gap: '0.5rem' }}>
+                      <h3 style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{JOB_LIST_WORDS.heading}</h3>
+                      {overlay.map((p) => (
+                        <div key={p.id} data-painted-job-place-row data-picked={pickedPlace === p.id ? 'true' : undefined} style={{ borderWidth: pickedPlace === p.id ? 2 : 1, borderStyle: pickedPlace === p.id ? 'solid' : 'dashed', borderColor: pickedPlace === p.id ? '#2563eb' : 'var(--border-strong)', borderRadius: 10, padding: '0.55rem 0.7rem', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.15rem 0.6rem', alignItems: 'start' }}>
+                          <PaintedPlaceMark number={p.letter} kind={p.kind} size={28} dashed style={{ gridRow: '1 / 4' }} />
+                          <b style={{ fontSize: '0.9375rem' }}>{p.name}</b>
+                          {p.words ? <span style={{ gridColumn: 2, fontSize: '0.875rem', color: 'var(--text-base)' }}>{p.words}</span> : null}
+                          <span style={{ gridColumn: 2 }}>
+                            <PaintedPlaceShare place={p} more={{ set: overlay, setKind: 'job', photoPath: p.photoPath }} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 32 }} />
+                          </span>
+                        </div>
+                      ))}
+                      <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                        {JOB_LIST_WORDS.kept} {JOB_LIST_WORDS.notOnALink}
+                      </p>
+                      <button
+                        type="button"
+                        data-painted-open-job-list
+                        style={{ ...quiet, justifySelf: 'start' }}
+                        onClick={() => {
+                          const listId = overlay[0]?.mapId
+                          if (!listId) return
+                          // This window closes first, so whoever opened it hears that it did, and then the list opens.
+                          onClose()
+                          window.setTimeout(() => openPaintedMap(listId, address), 0)
+                        }}
+                      >
+                        {JOB_LIST_WORDS.open}
+                      </button>
                     </div>
                   ) : null}
 
-                  {canChangeMap && saved && !renaming ? (
+                  {canChangeMap && saved && !map.jobId && !map.developmentId ? (
+                    <div data-painted-no-home style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem', color: 'var(--text-700)', background: 'var(--bg-muted)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
+                      <span>This map is on no job. Only you and the office can open it.</span>
+                      <button type="button" data-painted-put-on-job style={{ ...quiet, justifySelf: 'start' }} disabled={busy} onClick={() => setHoming(true)}>Put it on a job…</button>
+                    </div>
+                  ) : null}
+
+                  {isList ? (
+                    // The job's list keeps its name, and holds other people's places: throwing it away is the office's alone.
+                    saved && isOfficeRole(role) ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.9rem', paddingTop: '0.25rem', borderTop: '1px solid var(--border)' }}>
+                        <button type="button" data-painted-throw-list style={quiet} onClick={() => setConfirm({ kind: 'map' })}>{JOB_LIST_WORDS.throwAway.press}</button>
+                      </div>
+                    ) : null
+                  ) : canChangeMap && saved && !renaming ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.9rem', paddingTop: '0.25rem', borderTop: '1px solid var(--border)' }}>
                       <button type="button" style={quiet} onClick={() => setRenaming({ name: map.name, words: map.words })}>Rename this map</button>
+                      {/* A map painted on the wrong job (punch list #392): its maker or the office moves it. A map for every lot stays the site's. */}
+                      {map.jobId ? <button type="button" data-painted-move-job style={quiet} disabled={busy} onClick={() => setHoming(true)}>Move it to another job…</button> : null}
                       <button type="button" style={quiet} onClick={() => setConfirm({ kind: 'map' })}>Throw this map away</button>
                     </div>
                   ) : null}
@@ -1063,15 +1187,16 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     {confirm ? (
       <ConfirmDialog
         zIndex={PAINTED_MAP_SHEET_Z + 60}
-        title={CONFIRM_WORDS[confirm.kind].title}
-        body={confirm.kind === 'walk' ? walkThrowAwayWords(saved) : CONFIRM_WORDS[confirm.kind].body}
-        confirmLabel={CONFIRM_WORDS[confirm.kind].confirm}
+        title={confirm.kind === 'map' && isList ? JOB_LIST_WORDS.throwAway.title : CONFIRM_WORDS[confirm.kind].title}
+        body={confirm.kind === 'walk' ? walkThrowAwayWords(saved) : confirm.kind === 'map' && isList ? JOB_LIST_WORDS.throwAway.body : CONFIRM_WORDS[confirm.kind].body}
+        confirmLabel={confirm.kind === 'map' && isList ? JOB_LIST_WORDS.throwAway.confirm : CONFIRM_WORDS[confirm.kind].confirm}
         cancelLabel={CONFIRM_WORDS[confirm.kind].cancel}
         {...(confirm.kind === 'leaveWalk' && CONFIRM_WORDS.leaveWalk.keep ? { keep: { label: CONFIRM_WORDS.leaveWalk.keep, onPress: closeAndKeepWalk } } : {})}
         onConfirm={() => void confirmed()}
         onCancel={() => setConfirm(null)}
       />
     ) : null}
+    {homing && map && user?.id ? <PaintAMapJobPicker userId={user.id} mode={map.jobId ? 'move' : 'pick'} excludeJobId={map.jobId} onPick={(job) => void putOnJob(job.id)} onClose={() => setHoming(false)} /> : null}
     {sharing && map ? <PaintedMapShareSheet mapId={map.id} mapName={map.name} whole={{ map: { id: map.id, name: map.name, words: map.words, jobId: map.jobId }, lines, places }} mayText={jobBoxOffered(role)} jobId={map.jobId} onClose={() => setSharing(false)} /> : null}
     {viewing ? (
       <div role="dialog" aria-modal="true" aria-label="The photo of the place" data-painted-photo-view style={{ position: 'fixed', inset: 0, zIndex: PAINTED_MAP_SHEET_Z, background: 'rgba(0,0,0,0.88)', display: 'grid', placeItems: 'center', padding: 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }} onClick={() => setViewing(null)}>

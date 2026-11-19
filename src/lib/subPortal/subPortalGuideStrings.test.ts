@@ -30,7 +30,8 @@ describe('subPortalGuide', () => {
   it('the two languages have exactly the same shape — every key, every step, every fact, every coming-soon item', () => {
     expect(shape(ES)).toEqual(shape(EN))
     expect(EN.steps).toHaveLength(4)
-    expect(EN.steps.map((s) => s.facts.length)).toEqual([2, 3, 3, 2])
+    // The third step gained a fact in v2.7843: the card says when the customer pays (punch list #388).
+    expect(EN.steps.map((s) => s.facts.length)).toEqual([2, 3, 4, 2])
     expect(EN.comingSoon.items).toHaveLength(2)
   })
 

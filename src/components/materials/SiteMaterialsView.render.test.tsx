@@ -7,11 +7,14 @@
  * role that does not read it, and the empty site.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeUseAuthValue, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { Container, Movement, MovementReason, Place } from '../../lib/materials/onSite'
 import { readSiteView } from '../../lib/materials/siteMaterialsViewPrefs'
 import SiteMaterialsView from './SiteMaterialsView'
+
+// The By person look's own read: nothing on the trail here, and no call to the database.
+vi.mock('../../lib/materials/sitePeopleTrailIo', () => ({ fetchSiteTrail: async () => ({ boxChanges: [], boxRenames: [], removedAnswers: [] }) }))
 
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => makeUseAuthValue({ role: 'dev' }),
@@ -36,6 +39,7 @@ vi.mock('../../lib/materials/onSiteStore', async () => {
     listContainers: (id: string) => store.containers[id] ?? [],
     listPlaces: (id: string) => store.places[id] ?? [],
     listMovements: (id: string) => store.movements[id] ?? [],
+    listContainerMoves: () => [],
     serverSummary: () => null,
     priceOf: (key: string) => (key === 'text:1/2" pex drop ear' ? 4 : null),
     priceOfJob: (_jobId: string, key: string) => (key === 'text:1/2" pex drop ear' ? 4 : null),
@@ -525,5 +529,19 @@ describe('SiteMaterialsView', () => {
     fireEvent.click(tied)
     fireEvent.click(within(screen.getByTestId('names-joined-here')).getByRole('button', { name: /^Undo joining/ }))
     await waitFor(() => expect(screen.queryByRole('button', { name: /2 PVC 90 DWV/ })).toBeNull())
+  })
+
+  it('offers By person to the office alone, and the device never remembers it', () => {
+    renderWithProviders(<SiteMaterialsView site={{ id: 'dev1', name: 'Juniper Ridge' }} jobs={jobs} showMoney onBack={() => {}} backLabel="On site" boxHref={() => '/'} />)
+    expect(screen.queryByRole('button', { name: 'By person' })).toBeNull()
+    cleanup()
+    renderWithProviders(<SiteMaterialsView site={{ id: 'dev1', name: 'Juniper Ridge' }} jobs={jobs} showMoney canSeePeople onBack={() => {}} backLabel="Materials desk" boxHref={() => '/'} />)
+    const before = readSiteView()
+    fireEvent.click(screen.getByRole('button', { name: 'By person' }))
+    expect(screen.getByTestId('site-people')).toBeTruthy()
+    expect(screen.getByLabelText('Person')).toBeTruthy()
+    expect(readSiteView()).toBe(before)
+    fireEvent.click(screen.getByRole('button', { name: 'By part' }))
+    expect(screen.queryByTestId('site-people')).toBeNull()
   })
 })

@@ -10,7 +10,7 @@ covers:
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
 sections: What this surface is; Shared substrate; Master summary table; DashboardTeamActiveClockStrip regions; ClockInOutButton regions; Stage-A pure-logic inventory; Test coverage; Preserve-quirks list; Recommended extraction order
-last_updated: 2026-11-07
+last_updated: 2026-11-18
 ---
 
 ## What this surface is
@@ -133,7 +133,7 @@ Because they are components, regions are gated by **state/props**, not an `activ
 
 ### S7 — Attached modals
 
-`CopyDayJobMixModal` (3013–3024; opened from S4 rows in copy mode; `copyDayJobMixModal` state 934; passes `clockedInTodayRows` + `nowMs`), `ScheduleDayEmailModal` (3025–3035; S6; needs `authUserId`), `ReportViewModal` (3036–3041; S5), lazy [`ClockedInMapModal`](../src/components/map/ClockedInMapModal.tsx) (3053–3066; 578 lines; S6 Map button; gets `sessions`, `prefixMap`, `nowMs`, `openJobDetailFromSessionEmbeds`, `onJobBidSaved`/`onJobBidAssignError`, `clockStripWorkDateYmd`). All **extracted components**; only open-state and mounting live here. They stay mounted at strip level. (`QuickAssignSheet` and `ManagePersonDayModal` belong to S3.) Tests: `ClockedInMapModal.render.test.tsx` (7) + `clockedInMap.test.ts` (9) + `clockedInMapTravel.test.ts` (9), `ReportViewModal.render.test.tsx`, `dayJobMixPercentages.test.ts` / `dayJobMixApply.test.ts` for the copy-mix kernels.
+`CopyDayJobMixModal` (3013–3024; opened from S4 rows in copy mode; `copyDayJobMixModal` state 934; passes `clockedInTodayRows` + `nowMs`), `ScheduleDayEmailModal` (3025–3035; S6; needs `authUserId`), `ReportViewModal` (3036–3041; S5), lazy [`ClockedInMapModal`](../src/components/map/ClockedInMapModal.tsx) (3053–3066; 582 lines, in the shared `PinsMapFrame` since v2.7815; S6 Map button; gets `sessions`, `prefixMap`, `nowMs`, `openJobDetailFromSessionEmbeds`, `onJobBidSaved`/`onJobBidAssignError`, `clockStripWorkDateYmd`). All **extracted components**; only open-state and mounting live here. They stay mounted at strip level. (`QuickAssignSheet` and `ManagePersonDayModal` belong to S3.) Tests: `ClockedInMapModal.render.test.tsx` (9) + `clockedInMap.test.ts` (9) + `clockedInMapTravel.test.ts` (9), `ReportViewModal.render.test.tsx`, `dayJobMixPercentages.test.ts` / `dayJobMixApply.test.ts` for the copy-mix kernels.
 
 ---
 

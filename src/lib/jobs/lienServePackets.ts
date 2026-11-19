@@ -9,7 +9,7 @@
  * The stack is in envelope order behind one mail sheet: the sheet stays in the office, lists every envelope in the
  * order it comes off the printer, and has a blank for each certified mail number. Pure; the caller prints and files.
  */
-import { batchWords, countedLabel, type BatchWords } from '../batchWords'
+import { batchWords, type BatchWords } from '../batchWords'
 import { demandDate } from '../jobsDocuments/demandLetter'
 import { filingDocsPrintHtml, prependToFilingPrintHtml, type FilingDocExtras } from '../jobsDocuments/lienFilingDocuments'
 import { lienServeHolds, lienServePapers, lienServeRecipients, lienServedCopySentTitle, type LienServeFacts, type LienServeHold, type LienServePaper, type LienServeRecipient } from '../jobsDocuments/lienServedCopy'
@@ -38,6 +38,23 @@ export type LienServeDeskData = {
   gcsById: Readonly<Record<string, { name: string; address: string } | undefined>>
 }
 
+/** One filed affidavit as the copies window reads it: the job, and where its envelopes go today. */
+function serveJobOf(data: LienServeDeskData, jobId: string, filing: JobLienFilingRow): LienServeJob {
+  const job = data.jobsById[jobId]
+  const address = job?.customer_address_id ? (data.addressesById[job.customer_address_id] ?? null) : null
+  const owner = resolveLienProperty(address, data.ownerByJob[jobId] ?? null).owner
+  const gc = job?.gc_customer_id ? data.gcsById[job.gc_customer_id] : undefined
+  const jobNumber = (job?.hcp_number ?? '').trim()
+  return {
+    jobId,
+    jobNumber,
+    jobLabel: [jobNumber, (job?.job_name ?? '').trim()].filter(Boolean).join(' · ') || 'A job',
+    filing,
+    isSub: Boolean(job?.gc_customer_id),
+    to: { owner: { name: lienPropertyOwnerDisplayName(owner), address: (owner.mailingAddress ?? '').trim() }, contractor: gc ? { name: gc.name, address: gc.address } : null },
+  }
+}
+
 /**
  * Every filed, unserved, live affidavit on the desk with where its envelopes go today: the property record's owner
  * (the job's own override first, as every lien paper reads it) and the GC's customer record. No read of its own.
@@ -47,22 +64,28 @@ export function lienServeJobsFromDesk(data: LienServeDeskData): LienServeJob[] {
   for (const [jobId, filings] of Object.entries(data.filingsByJob)) {
     for (const filing of filings) {
       if (filing.kind !== 'affidavit' || !filing.filed_at || filing.served_at || filing.voided_at) continue
-      const job = data.jobsById[jobId]
-      const address = job?.customer_address_id ? (data.addressesById[job.customer_address_id] ?? null) : null
-      const owner = resolveLienProperty(address, data.ownerByJob[jobId] ?? null).owner
-      const gc = job?.gc_customer_id ? data.gcsById[job.gc_customer_id] : undefined
-      const jobNumber = (job?.hcp_number ?? '').trim()
-      out.push({
-        jobId,
-        jobNumber,
-        jobLabel: [jobNumber, (job?.job_name ?? '').trim()].filter(Boolean).join(' · ') || 'A job',
-        filing,
-        isSub: Boolean(job?.gc_customer_id),
-        to: { owner: { name: lienPropertyOwnerDisplayName(owner), address: (owner.mailingAddress ?? '').trim() }, contractor: gc ? { name: gc.name, address: gc.address } : null },
-      })
+      out.push(serveJobOf(data, jobId, filing))
     }
   }
   return out
+}
+
+/**
+ * Every filed affidavit whose mailing day is on record and that `still` says is worth showing (the copies window
+ * hands `lienServeProofMissing`: a copy still lacks its number or its receipt). The *Mailed* tick saves itself since
+ * v2.7846, so a lien ticked on the owner's number would otherwise be gone from the window before the contractor's
+ * number went in. These stand under the liens that owe their copies and are not counted with them.
+ */
+export function lienServeMailedJobsFromDesk(data: LienServeDeskData, still: (job: LienServeJob) => boolean): LienServeJob[] {
+  const out: LienServeJob[] = []
+  for (const [jobId, filings] of Object.entries(data.filingsByJob)) {
+    for (const filing of filings) {
+      if (filing.kind !== 'affidavit' || !filing.filed_at || !filing.served_at || filing.voided_at) continue
+      const job = serveJobOf(data, jobId, filing)
+      if (still(job)) out.push(job)
+    }
+  }
+  return out.sort((a, b) => String(b.filing.served_at ?? '').localeCompare(String(a.filing.served_at ?? '')) || a.jobLabel.localeCompare(b.jobLabel, undefined, { numeric: true }))
 }
 
 export type LienServeReady = { job: LienServeJob; facts: LienServeFacts; envelopes: LienServeRecipient[]; clock: LienServeClock }
@@ -133,16 +156,6 @@ export function lienServePlanWords(plan: Pick<LienServePlan, 'ready' | 'held' | 
   }
 }
 
-/**
- * The door to the window from the Board's bin and from the list's folded row: *Mail 12 liens’ copies ›*. It counts
- * every filed lien that owes its copies, held ones too, since the window is where a held one is fixed and where each
- * is recorded. '' with none.
- */
-export function lienServeDoorWords(plan: Pick<LienServePlan, 'ready' | 'held'>): string {
-  const n = plan.ready.length + plan.held.length
-  return n === 0 ? '' : `${countedLabel('Mail', n, ['lien’s copies', 'liens’ copies'])} ›`
-}
-
 /** One held filing as a line: "2340 · Ortega Residence: no recording number yet." */
 export function lienServeHeldLine(h: LienServeHeld): string {
   return `${h.job.jobLabel}: ${h.holds.map((x) => x.words).join(', ')}.`
@@ -155,7 +168,7 @@ export const LIEN_SERVE_SHEET_WORDS = {
   steps: [
     'Each envelope takes its letter and the copy behind it. They come off the printer in the order below.',
     'Mail each envelope by certified mail. Write its number in the last column.',
-    'In the app, open the Lien desk and press Enter mail numbers. Type the day mailed and each number.',
+    'In the app, open the Lien desk. Press Enter mail numbers on Filed · copies to mail, or on the job’s own line. Type the day mailed and each number.',
   ],
   held: 'Not in this print',
 } as const

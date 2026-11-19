@@ -18,6 +18,7 @@
  * The floor is the first day the Pipeline recorded a move; before it the
  * table cannot say where a job stood.
  */
+import { MAP_TIME_PINS_WORDS } from '../map/mapTime'
 import { ymdAddDays } from '../../utils/dateUtils'
 import { normalizeAddressForGeocodeKey } from '../map/normalizeAddressForGeocode'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -251,6 +252,16 @@ export function jobsMapDaysBackLabel(daysBack: number): string {
   if (daysBack <= 0) return ''
   if (daysBack % 7 === 0 && daysBack < 60) return `${daysBack / 7} wk ago`
   return `${daysBack} d ago`
+}
+
+/**
+ * What the Time row says about the pins beside an older photograph (punch list #395). The card has
+ * two clocks: As of moves the pins, Time moves the photograph, and neither follows the other. So the
+ * row names the pins' own day. `asOfDayLabel` is the rewound day as the As of row prints it, or
+ * nothing when the pins are today's.
+ */
+export function jobsMapTimePinsWords(asOfDayLabel: string | null): string {
+  return asOfDayLabel ? `The pins are as of ${asOfDayLabel}.` : MAP_TIME_PINS_WORDS
 }
 
 /** One tick of Play: a day closer to today. */

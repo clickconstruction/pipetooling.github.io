@@ -67,7 +67,7 @@ const lifts: TripRecord = { ...newTripRecord({ id: 't5', developmentId: 'dev-zz'
 // The same trip with the number the database handed out.
 const trip5: TripRecord = { ...lifts, tripNumber: 5 }
 function trips(over: Partial<SiteTripsState>): SiteTripsState {
-  return { records: [], failure: null, miles: null, sitePoint: null, sitePointKnown: true, shows: false, roster: [], punches: [], punchesFailed: false, dismissals: [], names: new Map(), askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), dismiss: vi.fn(async () => []), undismiss: vi.fn(async () => undefined), ...over }
+  return { records: [], failure: null, miles: null, sitePoint: null, sitePointKnown: true, shows: false, deleted: [], deletedKnown: true, deletedFailed: false, roster: [], punches: [], punchesFailed: false, dismissals: [], names: new Map(), askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), dismiss: vi.fn(async () => []), undismiss: vi.fn(async () => undefined), ...over }
 }
 function job(over: Partial<MemberJob> & { id: string }): MemberJob {
   return {

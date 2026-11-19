@@ -1,11 +1,9 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { MapCanvasAnchor, MapCanvasPin } from '../../lib/map/mapCanvasTypes'
-import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
+import { MAP_TIME_PINS_WORDS } from '../../lib/map/mapTime'
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
 import { LENS_PIN_COLOR, RESEARCH_SHOWING_WORDS, researchPins, rowLens, shortDay, workWords, type ResearchPermitRow } from '../../lib/research/permitResearch'
-
-const PinsMapCanvas = lazy(() => import('../map/PinsMapCanvas'))
-const PinsMapGoogleCanvas = lazy(() => import('../map/PinsMapGoogleCanvas'))
+import { PinsMapFrame } from '../map/PinsMapFrame'
 
 /**
  * Research (punch list #292, PR 2): the map lens on the ledger's rows. The same pins canvas the
@@ -33,12 +31,6 @@ export function ResearchMapCard({
   noPinsWords?: string
 }) {
   const [fitSignal, setFitSignal] = useState(0)
-  const [googleFailed, setGoogleFailed] = useState(false)
-  const provider = resolveDashboardMapProvider({ key: googleMapsBrowserKey(), googleFailed })
-  const googleUnavailable = useCallback((reason: string) => {
-    console.warn(`[research map] Google Maps unavailable, using OpenStreetMap — ${reason}`)
-    setGoogleFailed(true)
-  }, [])
   const anchor = useOfficeAnchor(true)
   const canvasAnchor = useMemo<MapCanvasAnchor | null>(() => (anchor ? { lat: anchor.lat, lng: anchor.lng, label: 'Office', ringMiles: [25, 50] } : null), [anchor])
   const pins = useMemo<MapCanvasPin[]>(() => researchPins(rows), [rows])
@@ -85,21 +77,15 @@ export function ResearchMapCard({
         </button>
       </div>
       <div style={isMobile ? { display: 'flex', flexDirection: 'column', gap: '0.5rem' } : { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: '0.6rem', alignItems: 'stretch' }}>
-        <div style={{ position: 'relative', height: mapHeight, borderRadius: 8, overflow: 'hidden', isolation: 'isolate', background: 'var(--bg-muted)', border: '1px solid var(--border)' }}>
-          {pins.length > 0 ? (
-            <Suspense fallback={<div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading map…</div>}>
-              {provider === 'google' ? (
-                <PinsMapGoogleCanvas apiKey={googleMapsBrowserKey()} onUnavailable={googleUnavailable} pins={pins} selectedId={selectedId} onSelect={onSelect} renderPopup={renderPopup} fitSignal={fitSignal} height={mapHeight} isMobile={isMobile} anchor={canvasAnchor} cluster scrollZoomAfterClick key={isMobile ? 'phone' : 'desktop'} />
-              ) : (
-                <PinsMapCanvas pins={pins} selectedId={selectedId} onSelect={onSelect} renderPopup={renderPopup} fitSignal={fitSignal} height={mapHeight} isMobile={isMobile} anchor={canvasAnchor} cluster scrollZoomAfterClick key={isMobile ? 'phone' : 'desktop'} />
-              )}
-            </Suspense>
-          ) : (
+        {pins.length > 0 ? (
+          <PinsMapFrame surface="research-map" style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }} pins={pins} selectedId={selectedId} onSelect={onSelect} renderPopup={renderPopup} fitSignal={fitSignal} height={mapHeight} isMobile={isMobile} anchor={canvasAnchor} cluster timeDotsWords={MAP_TIME_PINS_WORDS} scrollZoomAfterClick />
+        ) : (
+          <div style={{ position: 'relative', height: mapHeight, borderRadius: 8, overflow: 'hidden', background: 'var(--bg-muted)', border: '1px solid var(--border)' }}>
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {noPinsWords ?? 'Nothing to place on this lens. Pick another under Showing, or widen the window.'}
             </div>
-          )}
-        </div>
+          </div>
+        )}
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.9rem', background: 'var(--surface)', minHeight: isMobile ? undefined : mapHeight, boxSizing: 'border-box' }}>
           {children ?? <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Click a pin to read its permit here.</div>}
         </div>

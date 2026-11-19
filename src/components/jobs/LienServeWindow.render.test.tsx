@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 /**
  * Serve the filed liens (punch list #366, steps 3 and 4): one window prints every filed lien's copies behind a mail
- * sheet, holds what cannot print with its reason, and records the day and the mail numbers of every ticked lien.
+ * sheet, holds what cannot print with its reason, and keeps each mail number, each receipt, each *Mailed* tick and each
+ * document number the moment it is added (v2.7846): no press records anything.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import type { LienServeJob } from '../../lib/jobs/lienServePackets'
-import type { LienServeWrite } from '../../lib/jobs/lienServeNumbers'
 import LienServeWindow from './LienServeWindow'
 
 const prints: string[] = []
@@ -79,15 +79,19 @@ const job = (number: string, over: Record<string, unknown> = {}): LienServeJob =
 const JOBS = [job('2291'), job('2104', { serve_due: '2026-11-11' }), job('2340', { recording_number: '' })]
 const issuer = { companyName: 'Sample Plumbing LLC', addressText: 'PO Box 100\nMarlow, TX 78000', phone: '(512) 555-0142', email: '', licenseLine: '' } as never
 
+/** The filing's sends as a kept proof leaves them: the write's own answer, which the window remembers. */
+const keepFake = () => vi.fn(async (args: { filingId: string; recipient: string; proof: { tracking?: string; receiptUrl?: string } }) => [{ recipient: args.recipient, method: 'certified_mail', tracking: args.proof.tracking ?? '', ...(args.proof.receiptUrl ? { receipt_url: args.proof.receiptUrl } : {}) }])
+
 function open(over: Partial<Parameters<typeof LienServeWindow>[0]> = {}) {
-  const props = { jobs: JOBS, todayYmd: '2026-11-16', issuer, onOpenJob: vi.fn(), onChanged: vi.fn(), onClose: vi.fn(), record: vi.fn(async (writes: ReadonlyArray<LienServeWrite>) => ({ done: [...writes], failed: [] })), ...over }
+  const props = { jobs: JOBS, todayYmd: '2026-11-16', issuer, onOpenJob: vi.fn(), onChanged: vi.fn(), onClose: vi.fn(), keep: keepFake() as never, mark: vi.fn(async () => []), saveNumber: vi.fn(async () => {}), ...over }
   renderWithProviders(<LienServeWindow {...props} />)
   return props
 }
+const box = (name: string) => screen.getByRole('checkbox', { name }) as HTMLInputElement
 
 describe('LienServeWindow', () => {
   it('opened from a stop window’s card, lands on that job’s copy: its line is lit and the cursor is in its number', () => {
-    open({ land: { jobId: 'job-2104', recipient: 'original_contractor', lack: 'number' } })
+    open({ land: { part: 'numbers', jobId: 'job-2104', recipient: 'original_contractor', cursor: true } })
     const lit = document.querySelectorAll('[data-landed="yes"]')
     expect(lit).toHaveLength(1)
     expect(lit[0]!.getAttribute('data-lien-serve-envelope')).toBe('original_contractor')
@@ -98,6 +102,21 @@ describe('LienServeWindow', () => {
   it('opened from its own press, lights nothing', () => {
     open()
     expect(document.querySelectorAll('[data-landed="yes"]')).toHaveLength(0)
+  })
+
+  it('opened by a door that said Print, lights the print half, and by one that said Enter mail numbers, the numbers’ heading', () => {
+    open({ land: { part: 'print' } })
+    expect(document.querySelector('[data-landed="yes"]')?.hasAttribute('data-lien-serve-print-part')).toBe(true)
+    cleanup()
+    open({ land: { part: 'numbers' } })
+    expect(document.querySelector('[data-landed="yes"]')?.textContent).toBe('2 · After the post office: enter mail numbers')
+  })
+
+  it('a print tells the desk which liens’ copies went to the printer', () => {
+    const onPrinted = vi.fn()
+    open({ onPrinted })
+    fireEvent.click(screen.getByRole('button', { name: 'Print 2 liens’ copies · 1 held ▸' }))
+    expect(onPrinted).toHaveBeenCalledWith(['f-2104', 'f-2291'])
   })
 
   it('says how many filed liens owe their copies, the soonest day, and what is late', () => {
@@ -121,30 +140,105 @@ describe('LienServeWindow', () => {
     const held = within(document.querySelector('[data-lien-serve-held-list]') as HTMLElement)
     expect(held.getByText('2340 · Sample Job')).toBeTruthy()
     expect(held.getByText('no recording number yet.')).toBeTruthy()
-    fireEvent.click(held.getByRole('button', { name: 'Open the Lien window' }))
+    // Held for its number alone: the door is its own card's box, not another window.
+    expect(held.queryByRole('button', { name: 'Open the Lien window' })).toBeNull()
+    fireEvent.click(held.getByRole('button', { name: 'Type it on its card ›' }))
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Job 2340, document number' }))
+    expect(props.onOpenJob).not.toHaveBeenCalled()
+  })
+
+  it('a lien held for an address still opens its Lien window', () => {
+    const props = open({ jobs: [job('2340', { fields: { ...FIELDS, ownerAddress: '' } })] })
+    fireEvent.click(within(document.querySelector('[data-lien-serve-held-list]') as HTMLElement).getByRole('button', { name: 'Open the Lien window' }))
     expect(props.onOpenJob).toHaveBeenCalledWith('job-2340')
   })
 
-  it('records only the liens that are ticked, with the day and each number', async () => {
+  it('has no Record press: a tick writes the Mailed on day to that lien at once, and an untick takes it back', async () => {
     const props = open()
-    const press = () => document.querySelector('[data-lien-serve-record]') as HTMLButtonElement
-    expect(press().disabled).toBe(true)
-    expect(screen.getByText('Tick Mailed on each lien whose copies went out, or type a mail number.')).toBeTruthy()
-    // Typing a number ticks its lien.
-    fireEvent.change(screen.getByRole('textbox', { name: 'Job 2104, owner, certified mail number' }), { target: { value: '9589 0001' } })
-    expect((screen.getByRole('checkbox', { name: 'Job 2104, mailed' }) as HTMLInputElement).checked).toBe(true)
-    // A lien mailed with no number yet is ticked by hand.
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Job 2340, mailed' }))
+    expect(document.querySelector('[data-lien-serve-record]')).toBeNull()
+    expect(document.querySelector('[data-lien-serve-foot]')?.textContent).toBe('Everything here is saved as you go.')
     fireEvent.change(screen.getByLabelText('Mailed on'), { target: { value: '2026-11-15' } })
-    expect(press().textContent).toBe('Record 2 liens served')
-    fireEvent.click(press())
-    await waitFor(() => expect(props.onChanged).toHaveBeenCalledTimes(1))
-    expect(props.record).toHaveBeenCalledWith([
-      { filingId: 'f-2104', jobId: 'job-2104', jobLabel: '2104 · Sample Job', servedOn: '2026-11-15', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9589 0001', sent_on: '2026-11-15' }] },
-      { filingId: 'f-2340', jobId: 'job-2340', jobLabel: '2340 · Sample Job', servedOn: '2026-11-15', sends: [] },
-    ])
-    // One lien is still to record, so the window stays.
-    expect(props.onClose).not.toHaveBeenCalled()
+    fireEvent.click(box('Job 2340, mailed'))
+    await waitFor(() => expect(props.mark).toHaveBeenCalledWith({ filingId: 'f-2340', servedOn: '2026-11-15' }))
+    const row = document.querySelector('[data-lien-serve-row="2340"]') as HTMLElement
+    await waitFor(() => expect(row.querySelector('[data-lien-serve-mailed-said="ok"]')?.textContent).toBe('Mailed Nov 15. Saved.'))
+    expect(row.getAttribute('data-lien-serve-mailed')).toBe('yes')
+    expect(within(row).getByText('mailed Nov 15')).toBeTruthy()
+    // The other liens are untouched.
+    expect(box('Job 2104, mailed').checked).toBe(false)
+    expect(props.mark).toHaveBeenCalledTimes(1)
+    fireEvent.click(box('Job 2340, mailed'))
+    await waitFor(() => expect(props.mark).toHaveBeenLastCalledWith({ filingId: 'f-2340', servedOn: null }))
+    await waitFor(() => expect(row.querySelector('[data-lien-serve-mailed-said="ok"]')?.textContent).toBe('Not mailed. Saved.'))
+    expect(box('Job 2340, mailed').checked).toBe(false)
+    // The desk reads again once, on the way out.
+    expect(props.onChanged).not.toHaveBeenCalled()
+    fireEvent.click(document.querySelector('[data-lien-serve-close]') as HTMLButtonElement)
+    expect(props.onChanged).toHaveBeenCalledTimes(1)
+  })
+
+  it('a mail number ticks Mailed once it is kept, and writes the day', async () => {
+    const props = open()
+    const number = screen.getByRole('textbox', { name: 'Job 2104, owner, certified mail number' })
+    fireEvent.change(number, { target: { value: '9589 0001' } })
+    // Typing alone ticks nothing: the number is kept when the box is left.
+    expect(box('Job 2104, mailed').checked).toBe(false)
+    fireEvent.blur(number)
+    await waitFor(() => expect(props.mark).toHaveBeenCalledWith({ filingId: 'f-2104', servedOn: '2026-11-16' }))
+    await waitFor(() => expect(box('Job 2104, mailed').checked).toBe(true))
+    expect(document.querySelector('[data-lien-serve-row="2104"] [data-lien-serve-mailed-said="ok"]')?.textContent).toBe('Mailed Nov 16. Saved.')
+  })
+
+  it('a receipt with no number ticks nothing, and the card says what to do when the envelopes go out', async () => {
+    const receipt = 'https://drive.google.com/file/d/made-up-receipt-1/view'
+    const props = open({ jobs: [job('2104', { sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '', receipt_url: receipt }] })] })
+    expect(box('Job 2104, mailed').checked).toBe(false)
+    expect(document.querySelector('[data-lien-serve-row="2104"] [data-lien-serve-tick-when]')?.textContent).toBe('Kept on this lien. Tick Mailed when its envelopes have gone out.')
+    expect(props.mark).not.toHaveBeenCalled()
+  })
+
+  it('a box a hand unticked is left alone by a number typed later', async () => {
+    const props = open()
+    fireEvent.click(box('Job 2104, mailed'))
+    await waitFor(() => expect(props.mark).toHaveBeenCalledTimes(1))
+    fireEvent.click(box('Job 2104, mailed'))
+    await waitFor(() => expect(props.mark).toHaveBeenCalledTimes(2))
+    const number = screen.getByRole('textbox', { name: 'Job 2104, owner, certified mail number' })
+    fireEvent.change(number, { target: { value: '9589 0001' } })
+    fireEvent.blur(number)
+    await waitFor(() => expect(props.keep).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(document.querySelector('[data-lien-serve-row="2104"] [data-lien-serve-kept="owner"]')).not.toBeNull())
+    expect(props.mark).toHaveBeenCalledTimes(2)
+    expect(box('Job 2104, mailed').checked).toBe(false)
+  })
+
+  it('refuses a tick in words while Mailed on holds no day', async () => {
+    const props = open()
+    fireEvent.change(screen.getByLabelText('Mailed on'), { target: { value: '' } })
+    fireEvent.click(box('Job 2291, mailed'))
+    expect(document.querySelector('[data-lien-serve-row="2291"] [data-lien-serve-mailed-said="bad"]')?.textContent).toBe('Set the day the copies were mailed.')
+    expect(props.mark).not.toHaveBeenCalled()
+    expect(box('Job 2291, mailed').checked).toBe(false)
+  })
+
+  it('puts the box back and says why when the tick did not land', async () => {
+    const mark = vi.fn(async () => {
+      throw { message: 'permission denied for table job_lien_filings' }
+    })
+    open({ mark: mark as never })
+    fireEvent.click(box('Job 2291, mailed'))
+    await waitFor(() => expect(document.querySelector('[data-lien-serve-row="2291"] [data-lien-serve-mailed-said="bad"]')?.textContent).toBe('Not saved: permission denied for table job_lien_filings. The box is back as the lien holds it.'))
+    expect(box('Job 2291, mailed').checked).toBe(false)
+  })
+
+  it('shows a mailed lien that still lacks a receipt under the rest, ticked, with its day', () => {
+    open({ mailed: [job('2400', { served_at: '2026-11-15', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9589 0009', sent_on: '2026-11-15' }] })] })
+    expect(document.querySelector('[data-lien-serve-mailed-head]')?.textContent).toBe('Mailed')
+    const row = document.querySelector('[data-lien-serve-row="2400"]') as HTMLElement
+    expect(box('Job 2400, mailed').checked).toBe(true)
+    expect(within(row).getByText('mailed Nov 15')).toBeTruthy()
+    // It is not one of the liens that owe their copies.
+    expect(screen.getByText('3 filed liens owe their copies. The soonest was due Nov 11.')).toBeTruthy()
   })
 
   it('moves to the next envelope on Enter, as a scanner ends its number', () => {
@@ -154,23 +248,6 @@ describe('LienServeWindow', () => {
     first.focus()
     fireEvent.keyDown(first, { key: 'Enter' })
     expect(document.activeElement).toBe(second)
-  })
-
-  it('keeps a lien that did not record in the list with its reason', async () => {
-    const record = vi.fn(async (writes: ReadonlyArray<LienServeWrite>) => ({ done: [], failed: writes.map((write) => ({ write, reason: 'permission denied for table job_lien_filings' })) }))
-    const props = open({ record })
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Job 2291, mailed' }))
-    fireEvent.click(document.querySelector('[data-lien-serve-record]') as HTMLButtonElement)
-    await waitFor(() => expect(screen.getByText('Not recorded: permission denied for table job_lien_filings')).toBeTruthy())
-    expect(props.onChanged).not.toHaveBeenCalled()
-    expect(props.onClose).not.toHaveBeenCalled()
-  })
-
-  it('closes once every lien is recorded', async () => {
-    const props = open({ jobs: [job('2291')] })
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Job 2291, mailed' }))
-    fireEvent.click(document.querySelector('[data-lien-serve-record]') as HTMLButtonElement)
-    await waitFor(() => expect(props.onClose).toHaveBeenCalledTimes(1))
   })
 
   it('has a dead print press and says so when every lien is held', () => {
@@ -193,16 +270,16 @@ describe('LienServeWindow', () => {
     expect(document.querySelector('[data-lien-serve-scans-part]')).toBeNull()
   })
   it('keeps a number on its lien when the box is left, and a receipt taken off too', async () => {
-    const keep = vi.fn(async (args: { filingId: string; recipient: string; proof: { tracking?: string; receiptUrl?: string } }) => [{ recipient: args.recipient, method: 'certified_mail', tracking: args.proof.tracking ?? '', ...(args.proof.receiptUrl ? { receipt_url: args.proof.receiptUrl } : {}) }])
+    const keep = keepFake()
     const props = open({ keep: keep as never })
-    expect(document.querySelector('[data-lien-serve-kept-lead]')?.textContent).toBe('Saved as you go. Each receipt and number is kept on its lien the moment you add it. Record sets the day mailed.')
-    const box = screen.getByRole('textbox', { name: 'Job 2104, owner, certified mail number' })
-    fireEvent.change(box, { target: { value: '9589 0001' } })
-    fireEvent.blur(box)
+    expect(document.querySelector('[data-lien-serve-kept-lead]')?.textContent).toBe('Saved as you go. Each receipt, number and tick is kept on its lien the moment you add it. Nothing here waits on a button.')
+    const number = screen.getByRole('textbox', { name: 'Job 2104, owner, certified mail number' })
+    fireEvent.change(number, { target: { value: '9589 0001' } })
+    fireEvent.blur(number)
     await waitFor(() => expect(keep).toHaveBeenCalledWith({ filingId: 'f-2104', recipient: 'owner', proof: { tracking: '9589 0001', receiptUrl: '' } }))
     await waitFor(() => expect(document.querySelector('[data-lien-serve-row="2104"] [data-lien-serve-kept="owner"]')?.textContent).toBe('Kept on this lien.'))
     // Leaving the box again with nothing new writes nothing.
-    fireEvent.blur(box)
+    fireEvent.blur(number)
     expect(keep).toHaveBeenCalledTimes(1)
     // The desk reads again once on the way out.
     expect(props.onChanged).not.toHaveBeenCalled()
@@ -241,20 +318,130 @@ describe('LienServeWindow', () => {
     const owner = document.querySelector('[data-lien-serve-row="2104"] [data-lien-serve-envelope="owner"]') as HTMLElement
     fireEvent.click(within(owner).getByRole('button', { name: 'Take off' }))
     fireEvent.click(within(owner).getByRole('button', { name: 'Take it off' }))
-    await waitFor(() => expect(owner.querySelector('[data-lien-serve-not-kept="owner"]')?.textContent).toBe('Not kept yet: The network dropped. Record saves it with the day.'))
+    await waitFor(() => expect(owner.querySelector('[data-lien-serve-not-kept="owner"]')?.textContent).toBe('Not kept yet: The network dropped. Click the box and leave it to try again.'))
     expect(order).toEqual([])
     expect(owner.querySelector('[data-lien-receipt-off]')).toBeNull()
   })
 
-  it('says why a number was not kept, and that Record still saves it', async () => {
+  it('says why a number was not kept, and ticks nothing on a number the lien does not hold', async () => {
     const keep = vi.fn(async () => {
       throw new Error('The network dropped.')
     })
     open({ keep: keep as never })
-    const box = screen.getByRole('textbox', { name: 'Job 2291, owner, certified mail number' })
-    fireEvent.change(box, { target: { value: '9589 0002' } })
-    fireEvent.blur(box)
-    await waitFor(() => expect(document.querySelector('[data-lien-serve-row="2291"] [data-lien-serve-not-kept="owner"]')?.textContent).toBe('Not kept yet: The network dropped. Record saves it with the day.'))
-    expect((document.querySelector('[data-lien-serve-record]') as HTMLButtonElement).disabled).toBe(false)
+    const number = screen.getByRole('textbox', { name: 'Job 2291, owner, certified mail number' })
+    fireEvent.change(number, { target: { value: '9589 0002' } })
+    fireEvent.blur(number)
+    await waitFor(() => expect(document.querySelector('[data-lien-serve-row="2291"] [data-lien-serve-not-kept="owner"]')?.textContent).toBe('Not kept yet: The network dropped. Click the box and leave it to try again.'))
+    expect(box('Job 2291, mailed').checked).toBe(false)
+  })
+
+  it('has a door to Back from the clerk while approved liens are not on record as filed, and none otherwise', () => {
+    const onPress = vi.fn()
+    open({ filingsDoor: { label: 'Enter document numbers · 3 ›', count: 3, onPress } })
+    const door = document.querySelector('[data-lien-serve-filings-door]') as HTMLElement
+    expect(door.textContent).toContain('3 approved liens are not on record as filed yet.')
+    fireEvent.click(within(door).getByRole('button', { name: 'Enter document numbers · 3 ›' }))
+    expect(onPress).toHaveBeenCalledTimes(1)
+    cleanup()
+    open()
+    expect(document.querySelector('[data-lien-serve-filings-door]')).toBeNull()
+  })
+
+  it('names the receipt for the post office: Add the mail receipt, and the number on the mail receipt', () => {
+    open()
+    const owner = document.querySelector('[data-lien-serve-row="2291"] [data-lien-serve-envelope="owner"]') as HTMLElement
+    expect(within(owner).getByRole('button', { name: 'Add the mail receipt' })).toBeTruthy()
+    expect(within(owner).getByText('The post office’s slip for this envelope. A photo or a PDF.')).toBeTruthy()
+    expect((within(owner).getByRole('textbox') as HTMLInputElement).placeholder).toBe('the number on the mail receipt')
+  })
+
+  it('asks before it keeps a file that looks like the lien as a mail receipt, and sends nothing until the answer', async () => {
+    const keep = keepFake()
+    open({ keep: keep as never })
+    const owner = document.querySelector('[data-lien-serve-row="2291"] [data-lien-serve-envelope="owner"]') as HTMLElement
+    const pick = () => fireEvent.change(owner.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(['%PDF-made-up'], 'J2291 Lien (2026-2291).pdf', { type: 'application/pdf' })] } })
+    pick()
+    const doubt = await waitFor(() => owner.querySelector('[data-lien-receipt-doubt]') as HTMLElement)
+    expect(doubt.textContent).toContain('This looks like the lien, not a mail receipt. Its name holds this lien’s document number. Nothing was saved yet.')
+    expect(keep).not.toHaveBeenCalled()
+    fireEvent.click(within(doubt).getByRole('button', { name: 'Leave it out' }))
+    expect(owner.querySelector('[data-lien-receipt-doubt]')).toBeNull()
+    expect(keep).not.toHaveBeenCalled()
+    // The reader's word sends it: a scan can be named anything.
+    pick()
+    fireEvent.click(within(await waitFor(() => owner.querySelector('[data-lien-receipt-doubt]') as HTMLElement)).getByRole('button', { name: 'It is the mail receipt' }))
+    await waitFor(() => expect(keep).toHaveBeenCalledWith({ filingId: 'f-2291', recipient: 'owner', proof: { tracking: '', receiptUrl: 'https://drive.example/made-up' } }))
+    await waitFor(() => expect(within(owner).getByText('✓ Mail receipt saved')).toBeTruthy())
+    // A file alone ticks nothing.
+    expect(box('Job 2291, mailed').checked).toBe(false)
+  })
+
+  it('asks before the second envelope takes the file the first one just took', async () => {
+    const keep = keepFake()
+    open({ keep: keep as never })
+    const row = document.querySelector('[data-lien-serve-row="2291"]') as HTMLElement
+    const pickFor = (copy: string) => fireEvent.change(row.querySelector(`[data-lien-serve-envelope="${copy}"] input[type="file"]`) as HTMLInputElement, { target: { files: [new File(['made-up scan'], 'scan 12.pdf', { type: 'application/pdf' })] } })
+    pickFor('owner')
+    await waitFor(() => expect(keep).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(row.querySelector('[data-lien-serve-envelope="owner"] [data-lien-receipt-saved]')).not.toBeNull())
+    pickFor('original_contractor')
+    const doubt = await waitFor(() => row.querySelector('[data-lien-serve-envelope="original_contractor"] [data-lien-receipt-doubt]') as HTMLElement)
+    expect(doubt.textContent).toContain('This is the same file as this lien’s other envelope. Each envelope has its own receipt.')
+    expect(keep).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows each lien’s document number, county, day filed and stamped lien on its card', () => {
+    open({ jobs: [job('2291', { document_url: 'https://drive.google.com/file/d/made-up-scan/view' }), job('2104')] })
+    const doc = (n: string) => document.querySelector(`[data-lien-serve-doc="${n}"]`) as HTMLElement
+    expect(doc('2291').textContent).toContain('Document no. 2026-2291 · Alder County · filed Nov 13')
+    expect(within(doc('2291')).getByRole('link', { name: 'Job 2291, open the stamped lien' }).getAttribute('href')).toBe('https://drive.google.com/file/d/made-up-scan/view')
+    expect(doc('2104').querySelector('[data-lien-serve-stamped]')?.textContent).toBe('No stamped lien kept yet.')
+  })
+
+  it('Change opens the number, a clean one is saved when the box is left, and the desk reads again at once', async () => {
+    const props = open({ docKnown: [{ filingId: 'f-2291', county: 'Alder', number: '2026-2291', filedYmd: '2026-11-13', jobLabel: '2291 · Sample Job' }, { filingId: 'f-2104', county: 'Alder', number: '2026-2104', filedYmd: '2026-11-13', jobLabel: '2104 · Sample Job' }] })
+    fireEvent.click(screen.getByRole('button', { name: 'Job 2291, change the document number' }))
+    const input = screen.getByRole('textbox', { name: 'Job 2291, document number' }) as HTMLInputElement
+    expect(input.value).toBe('2026-2291')
+    fireEvent.change(input, { target: { value: ' 2026-2292 ' } })
+    fireEvent.blur(input)
+    await waitFor(() => expect(props.saveNumber).toHaveBeenCalledWith({ filingId: 'f-2291', number: '2026-2292' }))
+    await waitFor(() => expect(document.querySelector('[data-lien-serve-doc="2291"] [data-lien-serve-doc-number]')?.textContent).toBe('2026-2292'))
+    expect(document.querySelector('[data-lien-serve-doc="2291"] [data-lien-serve-doc-said="ok"]')?.textContent?.trim()).toBe('Number saved.')
+    expect(props.onChanged).toHaveBeenCalledTimes(1)
+  })
+
+  it('holds a number another lien holds, asks about an odd one, and saves that on the reader’s word', async () => {
+    const props = open({ docKnown: [{ filingId: 'f-2291', county: 'Alder', number: '2026-2291', filedYmd: '2026-11-13', jobLabel: '2291 · Sample Job' }, { filingId: 'f-2104', county: 'Alder', number: '2026-2104', filedYmd: '2026-11-13', jobLabel: '2104 · Sample Job' }] })
+    // The lien with no number takes it on its own card.
+    const input = screen.getByRole('textbox', { name: 'Job 2340, document number' }) as HTMLInputElement
+    expect(document.querySelector('[data-lien-serve-doc="2340"]')?.textContent).toContain('No document number yet.')
+    fireEvent.change(input, { target: { value: '2026 2104' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() => expect(document.querySelector('[data-lien-serve-doc="2340"] [data-lien-serve-doc-said="bad"]')?.textContent?.trim()).toBe('2104 · Sample Job holds this number too. Two liens cannot share one. Check both stamps.'))
+    expect(props.saveNumber).not.toHaveBeenCalled()
+    fireEvent.change(input, { target: { value: '2026-234' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    const said = await waitFor(() => document.querySelector('[data-lien-serve-doc="2340"] [data-lien-serve-doc-said="warn"]') as HTMLElement)
+    expect(said.textContent).toContain('Alder County’s numbers on record have 8 digits and start with the year filed. This one has 7 digits. Check it against the stamp.')
+    expect(props.saveNumber).not.toHaveBeenCalled()
+    fireEvent.click(within(said).getByRole('button', { name: 'Save it anyway' }))
+    await waitFor(() => expect(props.saveNumber).toHaveBeenCalledWith({ filingId: 'f-2340', number: '2026-234' }))
+  })
+
+  it('says to print again when a number changes on a lien whose copies were printed, and why a number did not save', async () => {
+    const known = [{ filingId: 'f-2291', county: 'Alder', number: '2026-2291', filedYmd: '2026-11-13', jobLabel: '2291 · Sample Job' }]
+    const saveNumber = vi.fn(async (args: { number: string }) => {
+      if (args.number === '2026-2299') throw { message: 'permission denied for table job_lien_filings' }
+    })
+    open({ docKnown: known, printed: new Set(['f-2291']), saveNumber: saveNumber as never })
+    fireEvent.click(screen.getByRole('button', { name: 'Job 2291, change the document number' }))
+    const input = () => screen.getByRole('textbox', { name: 'Job 2291, document number' })
+    fireEvent.change(input(), { target: { value: '2026-2299' } })
+    fireEvent.keyDown(input(), { key: 'Enter' })
+    await waitFor(() => expect(document.querySelector('[data-lien-serve-doc="2291"] [data-lien-serve-doc-said="bad"]')?.textContent?.trim()).toBe('Not saved: permission denied for table job_lien_filings. The box still holds what you typed.'))
+    fireEvent.change(input(), { target: { value: '2026-2292' } })
+    fireEvent.keyDown(input(), { key: 'Enter' })
+    await waitFor(() => expect(document.querySelector('[data-lien-serve-doc="2291"] [data-lien-serve-doc-said="warn"]')?.textContent?.trim()).toBe('Number saved. Its copies were printed with the old number. Print them again.'))
   })
 })
