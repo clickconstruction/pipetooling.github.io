@@ -10,6 +10,10 @@
  * Both answer every id for a recipient who is not a primary. An outside address is narrowed only when it is a
  * primary's own account address, which My email subscriptions already lists as that primary's.
  *
+ * The digest also lists each job's crew time (hours, clock notes, cost). `report_jobs_open_to_user(user, job ids)`
+ * answers which jobs' crew time a recipient may be sent: every job unless they are a primary, and then the jobs whose
+ * reports they read.
+ *
  * When the question fails (the functions are not on the database yet, the network drops) this file does not guess
  * the rule. It reads who the primaries are, one plain read of `users`. A recipient who is not one is sent everything,
  * as before the rule. A primary, or anyone when that read fails too, is sent nothing: a held report is not logged as
@@ -18,7 +22,7 @@
  * It imports nothing, and `admin` is typed by the calls it makes, so a function that imports it takes on no other file.
  */
 
-/** The service-role client, as far as this file reads it: the two `rpc` calls and one read of `users`. */
+/** The service-role client, as far as this file reads it: the three `rpc` calls and one read of `users`. */
 export interface ReportScopeAdmin {
   rpc(fn: string, args?: Record<string, unknown>): PromiseLike<{ data: unknown; error: { message: string } | null }>
   /** Not the read's own chain: checking supabase-js's client against one runs past TypeScript's instantiation limit (see `reportSubject.ts`). */
@@ -61,18 +65,10 @@ async function recipientIsPrimary(admin: ReportScopeAdmin, userId: string | null
 }
 
 /**
- * Of `reportIds`, the ones that recipient may be sent. Every one for a recipient who is not a primary, and when no
- * recipient is named. With no report nothing is asked.
+ * One question to the database, and what to do when it has no answer. `ids` are distinct and not empty, and one of
+ * `userId` and `email` is given. The answer is kept to the ids asked.
  */
-export async function reportsOpenToRecipient(admin: ReportScopeAdmin, recipient: ReportRecipient, reportIds: readonly string[]): Promise<Set<string>> {
-  const ids = [...new Set(reportIds)]
-  if (ids.length === 0) return new Set()
-  const userId = recipient.userId?.trim() || null
-  const email = userId ? null : recipient.email?.trim() || null
-  if (!userId && !email) return new Set(ids)
-
-  const fn = userId ? 'reports_open_to_user' : 'reports_open_to_address'
-  const args = userId ? { p_user_id: userId, p_report_ids: ids } : { p_email: email, p_report_ids: ids }
+async function openTo(admin: ReportScopeAdmin, fn: string, args: Record<string, unknown>, ids: readonly string[], userId: string | null, email: string | null): Promise<Set<string>> {
   let why: string
   try {
     const { data, error } = await admin.rpc(fn, args)
@@ -92,6 +88,41 @@ export async function reportsOpenToRecipient(admin: ReportScopeAdmin, recipient:
   }
   console.error(`${fn} failed (${why}). ${primary ? 'The recipient is a primary' : 'Who the primaries are did not read either'}: nothing is sent to this recipient.`)
   return new Set()
+}
+
+/**
+ * Of `reportIds`, the ones that recipient may be sent. Every one for a recipient who is not a primary, and when no
+ * recipient is named. With no report nothing is asked.
+ */
+export async function reportsOpenToRecipient(admin: ReportScopeAdmin, recipient: ReportRecipient, reportIds: readonly string[]): Promise<Set<string>> {
+  const ids = [...new Set(reportIds)]
+  if (ids.length === 0) return new Set()
+  const userId = recipient.userId?.trim() || null
+  const email = userId ? null : recipient.email?.trim() || null
+  if (!userId && !email) return new Set(ids)
+  return userId
+    ? openTo(admin, 'reports_open_to_user', { p_user_id: userId, p_report_ids: ids }, ids, userId, null)
+    : openTo(admin, 'reports_open_to_address', { p_email: email, p_report_ids: ids }, ids, null, email)
+}
+
+/**
+ * Of `jobIds`, the jobs whose crew time (hours, clock notes, cost) that user may be sent in the digest. Every one for
+ * a user who is not a primary, and when no user is named. With no job nothing is asked.
+ */
+export async function reportJobsOpenToUser(admin: ReportScopeAdmin, userId: string | null | undefined, jobIds: readonly string[]): Promise<Set<string>> {
+  const ids = [...new Set(jobIds)]
+  if (ids.length === 0) return new Set()
+  const who = userId?.trim() || null
+  if (!who) return new Set(ids)
+  return openTo(admin, 'report_jobs_open_to_user', { p_user_id: who, p_job_ids: ids }, ids, who, null)
+}
+
+/** The rows of `rows` on a job whose crew time that user may be sent, in their order. A row on no job is not sent. */
+export async function rowsOnJobsOpenToUser<T extends { job_ledger_id: string | null }>(admin: ReportScopeAdmin, userId: string | null | undefined, rows: readonly T[]): Promise<T[]> {
+  const onJob = rows.filter((r): r is T & { job_ledger_id: string } => !!r.job_ledger_id)
+  if (onJob.length === 0) return []
+  const open = await reportJobsOpenToUser(admin, userId, onJob.map((r) => r.job_ledger_id))
+  return onJob.filter((r) => open.has(r.job_ledger_id))
 }
 
 /** The people a notice about that one report may go to: the ids who read it, in the order given. */

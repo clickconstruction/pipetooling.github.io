@@ -2792,6 +2792,7 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
   `list_my_reports` is the caller's own and is untouched, and so is the New-report job picker (`search_jobs_for_reports`).
   The two office-picked email streams (`report_email`, `report_digest`) and the push on a new report follow the same rule since v2.7914: each asks `reports_open_to_user(user, report ids)` about the recipient it names (service role only, `20261119060000_primary_reports_named_user.sql`), so a primary the office subscribes is sent only the reports they read in the app.
   An outside address is narrowed only when it is a primary's own account address (`reports_open_to_address`).
+  The digest's crew time (hours, clock notes, optional cost) goes to a primary only for the jobs whose reports they read, as account manager or listed superintendent (`report_jobs_open_to_user`).
   The rule's one body is `primary_user_can_read_report(user, job, project, bid, author)`, which `primary_can_read_report` asks about `auth.uid()`.
 - **Documents**: the page is a ledger view over jobs/estimates/bids, so it inherits the scoping;
   the Jobs tab adds an explicit Account-Man filter.

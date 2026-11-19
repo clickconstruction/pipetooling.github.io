@@ -208,7 +208,7 @@ SELECT psr.same('Sam, the helper, reads the reports he wrote', psr.tags_list(), 
 -- 5 · The same rule about a NAMED user (migration *_primary_reports_named_user): what the senders that read with the
 --     service role ask (send-report-email, the digest, the push). Luis reads by name exactly what he reads signed in,
 --     Pat reads none, and everyone who is not a primary reads every report named. The helpers are definer functions,
---     owned by the bed's superuser, because the three functions are service role only.
+--     owned by the bed's superuser, because the functions asked are service role only.
 RESET ROLE;
 -- B3: Luis is the estimator. B4: Luis made it. With B1 (account manager) they are part 1's three ways onto a bid.
 INSERT INTO public.bids (id, created_by, service_type_id, project_name, estimator_id) VALUES
@@ -237,6 +237,11 @@ $$;
 CREATE FUNCTION psr.bid_by_name(p_user uuid, p_bid uuid) RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
   SELECT public.primary_user_can_read_report(p_user, NULL, NULL, p_bid, NULL)
 $$;
+-- Of the bed's four jobs, the ones whose crew time the digest may send that user.
+CREATE FUNCTION psr.jobs_by_name(p_user uuid) RETURNS text LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT coalesce(string_agg(right(j::text, 2), ' ' ORDER BY j), 'none')
+  FROM unnest(public.report_jobs_open_to_user(p_user, ARRAY['00000000-0000-0000-0000-00000005cf01', '00000000-0000-0000-0000-00000005cf02', '00000000-0000-0000-0000-00000005cf03', '00000000-0000-0000-0000-00000005cf04']::uuid[])) j
+$$;
 CREATE FUNCTION psr.may_run(p_role text, p_fn text) RETURNS text LANGUAGE sql AS $$
   SELECT has_function_privilege(p_role, p_fn, 'EXECUTE')::text
 $$;
@@ -257,7 +262,26 @@ SELECT psr.same('whatever its case and spaces', psr.by_address('  Luis@Reports.T
 SELECT psr.same('Pat''s own address reads none', psr.by_address('pat@reports.test'), 'none');
 SELECT psr.same('a GC''s inbox is sent every report', psr.by_address('ap@builder.test'), 'R1 R10 R2 R3 R4 R5 R6 R7 R8 R9');
 SELECT psr.same('the master''s own address is sent every report', psr.by_address('mo@reports.test'), 'R1 R10 R2 R3 R4 R5 R6 R7 R8 R9');
+-- The digest's crew time (hours, clock notes, cost) goes with the jobs whose reports a primary reads: Luis is the
+-- account manager of 01 and a listed superintendent on the projects of 02 and 04. He wrote a report on 03 too (R5), and
+-- that does not open its crew time. Everyone who is not a primary is sent every job's.
+SELECT psr.same('crew time by name, Luis: his job and the two he superintends', psr.jobs_by_name('00000000-0000-0000-0000-00000005ca04'), '01 02 04');
+SELECT psr.same('crew time by name, Pat: none', psr.jobs_by_name('00000000-0000-0000-0000-00000005ca05'), 'none');
+SELECT psr.same('crew time by name, Mo the master: every job', psr.jobs_by_name('00000000-0000-0000-0000-00000005ca07'), '01 02 03 04');
+SELECT psr.same('crew time by name, Rosa the assistant: every job', psr.jobs_by_name('00000000-0000-0000-0000-00000005ca03'), '01 02 03 04');
+SELECT psr.same('crew time by name, a role that is not primary is not narrowed: Sue', psr.jobs_by_name('00000000-0000-0000-0000-00000005ca09'), '01 02 03 04');
+SELECT psr.same('crew time by name, nobody: none', psr.jobs_by_name(NULL), 'none');
+SELECT psr.same('crew time by name, an id with no user: none', psr.jobs_by_name('00000000-0000-0000-0000-00000005caff'), 'none');
+SELECT psr.same('no jobs named, none answered', cardinality(public.report_jobs_open_to_user('00000000-0000-0000-0000-00000005ca04', '{}'::uuid[]))::text, '0');
+SELECT psr.same('a job id that is no job is not handed to a primary', cardinality(public.report_jobs_open_to_user('00000000-0000-0000-0000-00000005ca04', ARRAY['00000000-0000-0000-0000-00000005cfff']::uuid[]))::text, '0');
+SELECT psr.same('the crew time jobs are the jobs whose reports open by name', psr.jobs_by_name('00000000-0000-0000-0000-00000005ca04'), (
+  SELECT coalesce(string_agg(right(j::text, 2), ' ' ORDER BY j), 'none')
+  FROM unnest(ARRAY['00000000-0000-0000-0000-00000005cf01', '00000000-0000-0000-0000-00000005cf02', '00000000-0000-0000-0000-00000005cf03', '00000000-0000-0000-0000-00000005cf04']::uuid[]) j
+  WHERE psr.job_by_name('00000000-0000-0000-0000-00000005ca04', j)));
 -- Service role only: a signed-in user cannot ask about somebody else.
+SELECT psr.same('report_jobs_open_to_user: not authenticated', psr.may_run('authenticated', 'public.report_jobs_open_to_user(uuid, uuid[])'), 'false');
+SELECT psr.same('report_jobs_open_to_user: not anon', psr.may_run('anon', 'public.report_jobs_open_to_user(uuid, uuid[])'), 'false');
+SELECT psr.same('report_jobs_open_to_user: the service role', psr.may_run('service_role', 'public.report_jobs_open_to_user(uuid, uuid[])'), 'true');
 SELECT psr.same('reports_open_to_user: not authenticated', psr.may_run('authenticated', 'public.reports_open_to_user(uuid, uuid[])'), 'false');
 SELECT psr.same('reports_open_to_user: not anon', psr.may_run('anon', 'public.reports_open_to_user(uuid, uuid[])'), 'false');
 SELECT psr.same('reports_open_to_user: the service role', psr.may_run('service_role', 'public.reports_open_to_user(uuid, uuid[])'), 'true');

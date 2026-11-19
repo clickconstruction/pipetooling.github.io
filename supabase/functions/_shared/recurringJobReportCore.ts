@@ -17,7 +17,7 @@ import { addDaysToYmd } from './recurringJobReportTimezone.ts'
 import { APP_CALENDAR_TZ } from './appTimeZone.ts'
 import { EMAIL_FROM } from './emailFrom.ts'
 import { logEmailSendBestEffort } from './logEmailSend.ts'
-import { rowsOpenToRecipient } from './primaryReportScope.ts'
+import { rowsOnJobsOpenToUser, rowsOpenToRecipient } from './primaryReportScope.ts'
 
 export type ActivityScopeMode =
   | 'calendar_yesterday'
@@ -222,7 +222,7 @@ export async function buildRecurringJobReportPayload(
 
   const jobById = new Map(masterJobs.map((j) => [j.id, j]))
 
-  const sessions: SessionRow[] = []
+  const sessionsRead: SessionRow[] = []
   for (let i = 0; i < masterIds.length; i += ID_CHUNK) {
     const chunk = masterIds.slice(i, i + ID_CHUNK)
     const q = admin
@@ -236,7 +236,7 @@ export async function buildRecurringJobReportPayload(
       .is('revoked_at', null)
       .is('rejected_at', null)
     const { data } = await q
-    sessions.push(...((data ?? []) as SessionRow[]))
+    sessionsRead.push(...((data ?? []) as SessionRow[]))
   }
 
   const reportsRead: Array<Omit<ReportRow, 'report_templates'>> = []
@@ -256,6 +256,10 @@ export async function buildRecurringJobReportPayload(
   // one recipient's, so a recipient who is a primary gets the reports they read in the app and no other. Everyone
   // else gets every report read above. A job that had only such reports in the window drops out with them.
   const reportsBare = await rowsOpenToRecipient(admin, { userId: recipientUserId }, reportsRead)
+  // The crew's time on a job (hours, clock notes, cost) follows the same jobs: a primary is sent it for the jobs
+  // whose reports they read, as account manager or listed superintendent. A job they only wrote a report on keeps
+  // that report in their copy, with no crew time under it. Everyone else gets every session read above.
+  const sessions = await rowsOnJobsOpenToUser(admin, recipientUserId, sessionsRead)
 
   const jobIdsSet = new Set<string>()
   for (const s of sessions) {

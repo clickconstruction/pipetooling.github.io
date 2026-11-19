@@ -53,6 +53,8 @@ A primary reads only the reports on their own jobs in the app. Their email follo
 
 A primary on this list gets a report when its job names them as account manager. They also get it when the job's project lists them as superintendent. They always get a report they wrote. Every other report is left out of their email and of their digest.
 
+A digest also lists the crew's hours, notes and costs under each job. A primary gets those only for the jobs they manage or superintend. A job they only wrote a report on shows that report with no hours.
+
 **Send now** says how many reports it left out for this reason. A report left out is not marked as sent. This is also so when you typed the primary's own address instead of picking them. Everyone else on the list gets what they got before.
 
 ## Turn a person off or remove them

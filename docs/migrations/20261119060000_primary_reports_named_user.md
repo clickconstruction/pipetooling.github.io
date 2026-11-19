@@ -18,8 +18,9 @@ The field report emails (`send-report-email`), the digest (`recurring-job-report
 | `primary_can_read_report(job, project, bid, author)` | Replaced. One line: `primary_user_can_read_report(auth.uid(), ...)`. Name, arguments, grants and answers unchanged. |
 | `reports_open_to_user(user, report ids)` | New. Of the ids given, the ones that user reads in the app. Every id for a user who is not a primary. None for no user, or an id with no `users` row. `SECURITY DEFINER`, `service_role` only. |
 | `reports_open_to_address(address, report ids)` | New. The same for an outside address of `report_email_subscriptions`. Every id, unless the address is a primary's own account address (`lower(trim(users.email))`, the match `get_my_email_schedule` makes); then that primary's reports. `SECURITY DEFINER`, `service_role` only. |
+| `report_jobs_open_to_user(user, job ids)` | New. Of the job ids given, the ones whose crew time (hours, clock notes, cost) the digest may send that user. Every id for a user who is not a primary; for a primary, the jobs `primary_user_can_read_job_reports` passes. None for no user, or an id with no `users` row. `SECURITY DEFINER`, `service_role` only. |
 
-EXECUTE is revoked from `PUBLIC`, `anon` and `authenticated` by name on the four new functions. A signed-in user cannot ask what somebody else reads.
+EXECUTE is revoked from `PUBLIC`, `anon` and `authenticated` by name on the five new functions. A signed-in user cannot ask what somebody else reads.
 
 ## One statement, and the two lines restated
 
@@ -33,11 +34,11 @@ The two functions replaced were made by part 4, one file earlier, and neither wa
 
 1. **A role that is not primary is not narrowed.** `reports_open_to_user` answers every id for a superintendent or a helper. The office picks who a stream goes to, and those roles' own doors are not the owner's sentence. Only dev, master, assistant and controller manage the lists.
 2. **A primary's own address typed as an outside address is that primary.** Otherwise typing the address would send what picking the person does not. Every other outside address, a GC's or an owner's inbox, is sent what it was.
-3. **The digest's clock rows are untouched.** The crew's hours, notes and optional costs on a job are not field reports, and the owner's sentence names reports. A primary on a digest still gets those rows for every job of the schedule's master. Parts 1 to 3 hold a primary to their own jobs in the app, so this is the next door to look at.
+3. **The digest's crew time follows the jobs whose reports a primary reads.** The crew's hours, clock notes and optional costs on a job are not field reports, so the owner's sentence does not name them. The digest is one email, though, and it now has one job rule: a primary is sent a job's crew time when they read that job's reports, as account manager or listed superintendent (`report_jobs_open_to_user`, over `primary_user_can_read_job_reports`). A job they only wrote a report on keeps that report in their copy, with no crew time under it. The narrower choice would be the account manager alone, the test parts 1 to 3 make for the job's own row; it is one line in `report_jobs_open_to_user`.
 
 ## The bed
 
-`npm run test:pg:primary-scope-reports` (`scripts/pgtest-primary-scope-reports.sh`, part 5 of `supabase/tests/primary_scope_reports/20_scenario.sql`). The runner applies part 4 and then this file a second time each, in that order. Part 5 asks by name: the primary reads exactly the reports he reads signed in, from the table and from the list. A primary on nothing reads none. The master, the assistant and a superintendent read every report named. No user and an unknown id read none. The primary's own address, in any case and with spaces, reads as he does; a GC's inbox and the master's address read every report. The four new functions refuse `authenticated` and `anon`. Every job `primary_can_access_job` passes opens by name, and the bids `primary_can_access_bid` passes (account manager, estimator, creator) are the bids that open by name, no more and no fewer.
+`npm run test:pg:primary-scope-reports` (`scripts/pgtest-primary-scope-reports.sh`, part 5 of `supabase/tests/primary_scope_reports/20_scenario.sql`). The runner applies part 4 and then this file a second time each, in that order. Part 5 asks by name: the primary reads exactly the reports he reads signed in, from the table and from the list. A primary on nothing reads none. The master, the assistant and a superintendent read every report named. No user and an unknown id read none. The crew time opens by name for the same jobs: the primary's own job and the two he superintends, not the job he only wrote a report on; none for a primary on nothing; every job for everyone else. The primary's own address, in any case and with spaces, reads as he does; a GC's inbox and the master's address read every report. The new functions refuse `authenticated` and `anon`. Every job `primary_can_access_job` passes opens by name, and the bids `primary_can_access_bid` passes (account manager, estimator, creator) are the bids that open by name, no more and no fewer.
 
 ## Verify
 
@@ -46,10 +47,10 @@ Read-only on prod after the push, as the dev:
 ```sql
 select p.oid::regprocedure, p.proacl
 from pg_proc p
-where p.proname in ('reports_open_to_user', 'reports_open_to_address', 'primary_user_can_read_report', 'primary_user_can_read_job_reports');
+where p.proname in ('reports_open_to_user', 'reports_open_to_address', 'report_jobs_open_to_user', 'primary_user_can_read_report', 'primary_user_can_read_job_reports');
 ```
 
-Four functions, each with `service_role` and neither `anon` nor `authenticated`. Then open the Dashboard with View as, Sample primary: the Recent Reports card reads as it did after part 4, since the two predicates answer as before.
+Five functions, each with `service_role` and neither `anon` nor `authenticated`. Then open the Dashboard with View as, Sample primary: the Recent Reports card reads as it did after part 4, since the two predicates answer as before.
 
 ## Deploy order
 

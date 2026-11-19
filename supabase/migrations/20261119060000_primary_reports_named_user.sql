@@ -16,6 +16,9 @@ SET lock_timeout = '3s';
 --      who is not a primary; none for no user or a user with no row. Service role only. The senders ask it.
 --      reports_open_to_address(address, report ids): the same for an outside address, which is narrowed only when it
 --      is a primary's own account address. Service role only.
+--      report_jobs_open_to_user(user, job ids): of the jobs named, the ones whose reports that user reads, by (1)'s
+--      job test and no other. Every one for a user who is not a primary. Service role only. The digest asks it before
+--      it puts a job's crew time (hours, clock notes, cost) in a primary's copy.
 --
 -- One statement, and the two lines that are restated. The report rule lives in (1) and nowhere else: the app's reads
 -- and the senders' both end there. Two of its legs come from parts 1 to 3, where they are written for the caller:
@@ -172,3 +175,30 @@ COMMENT ON FUNCTION public.reports_open_to_address(text, uuid[]) IS
   'Primary scoping, reports, for send-report-email''s outside addresses: of the report ids given, the ones that may go to that address. Every id unless the address is a primary''s own account address (lower(trim(users.email)), the match get_my_email_schedule makes); then the ids primary_user_can_read_report passes for that primary. Service role only.';
 REVOKE ALL ON FUNCTION public.reports_open_to_address(text, uuid[]) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reports_open_to_address(text, uuid[]) TO service_role;
+
+-- The digest carries more than reports: under each job it lists the crew's hours, their clock notes and, when the
+-- office ticked it, what those hours cost. That is the job's own business, so a primary is sent it for the jobs
+-- whose reports they read (primary_user_can_read_job_reports, the job test of the rule above: account manager, or
+-- listed as superintendent on the job's project) and for no other. A job they only wrote a report on still shows
+-- that report in their copy, with no crew time under it. Every job for a user who is not a primary; none for no
+-- user, or an id with no users row. The order of the answer is not the order asked.
+CREATE OR REPLACE FUNCTION public.report_jobs_open_to_user(p_user_id uuid, p_job_ids uuid[]) RETURNS uuid[]
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path = public
+    AS $$
+  SELECT CASE
+    WHEN p_user_id IS NULL OR p_job_ids IS NULL THEN '{}'::uuid[]
+    WHEN NOT EXISTS (SELECT 1 FROM public.users u WHERE u.id = p_user_id) THEN '{}'::uuid[]
+    WHEN NOT EXISTS (SELECT 1 FROM public.users u WHERE u.id = p_user_id AND u.role = 'primary') THEN p_job_ids
+    ELSE coalesce((
+      SELECT array_agg(j.id)
+      FROM public.jobs_ledger j
+      WHERE j.id = ANY (p_job_ids)
+        AND public.primary_user_can_read_job_reports(p_user_id, j.id)
+    ), '{}'::uuid[])
+  END;
+$$;
+COMMENT ON FUNCTION public.report_jobs_open_to_user(uuid, uuid[]) IS
+  'Primary scoping, reports, for the recurring job report digest: of the job ids given, the ones whose crew time (hours, clock notes, cost) the named user may be sent. Every id for a user who is not a primary; for a primary, the jobs primary_user_can_read_job_reports passes (account manager, or listed superintendent on the job''s project); none for no user or an id with no users row. Service role only.';
+REVOKE ALL ON FUNCTION public.report_jobs_open_to_user(uuid, uuid[]) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.report_jobs_open_to_user(uuid, uuid[]) TO service_role;

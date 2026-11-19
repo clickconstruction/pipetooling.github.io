@@ -2,7 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   recipientsWhoReadReport,
+  reportJobsOpenToUser,
   reportsOpenToRecipient,
+  rowsOnJobsOpenToUser,
   rowsOpenToRecipient,
   sameAddress,
   type ReportScopeAdmin,
@@ -10,20 +12,20 @@ import {
 
 // A primary reads their own jobs' reports (the owner's word of 2026-11-19), asked about a named recipient by the
 // senders that read with the service role. The database's answer is faked here; the SQL bed primary-scope-reports
-// holds the rule itself (`reports_open_to_user`, `reports_open_to_address`).
+// holds the rule itself (`reports_open_to_user`, `reports_open_to_address`, `report_jobs_open_to_user`).
 
 type Answer = { data: unknown; error: { message: string } | null }
 type Call = { fn: string; args: Record<string, unknown> }
-type Primary = { id: string; email: string; reads: string[] }
+type Primary = { id: string; email: string; reads: string[]; jobs: string[] }
 
 /** The real client is one of these: a function passes its service-role client as it is. Checked by the compiler alone. */
 export const takesTheRealClient: (client: SupabaseClient) => ReportScopeAdmin = (client) => client
 
-const LUIS: Primary = { id: 'luis', email: 'luis@click.test', reads: ['r1', 'r2'] }
-const PAT: Primary = { id: 'pat', email: 'pat@click.test', reads: [] }
+const LUIS: Primary = { id: 'luis', email: 'luis@click.test', reads: ['r1', 'r2'], jobs: ['j1'] }
+const PAT: Primary = { id: 'pat', email: 'pat@click.test', reads: [], jobs: [] }
 
 /**
- * A service-role client over two primaries. `rpc` answers as the two functions do: every id for a recipient who is
+ * A service-role client over two primaries. `rpc` answers as the three functions do: every id for a recipient who is
  * not a primary. `rpcFails` makes both functions refuse; `usersFails` makes the read of the primaries refuse.
  */
 function adminOf(opts: { rpcFails?: string | 'throws'; usersFails?: boolean; calls?: Call[]; reads?: string[] } = {}): ReportScopeAdmin {
@@ -33,6 +35,11 @@ function adminOf(opts: { rpcFails?: string | 'throws'; usersFails?: boolean; cal
       opts.calls?.push({ fn, args })
       if (opts.rpcFails === 'throws') return Promise.reject(new Error('network down'))
       if (opts.rpcFails) return Promise.resolve<Answer>({ data: null, error: { message: opts.rpcFails } })
+      if (fn === 'report_jobs_open_to_user') {
+        const jobs = args.p_job_ids as string[]
+        const primary = primaries.find((p) => p.id === args.p_user_id)
+        return Promise.resolve<Answer>({ data: primary ? jobs.filter((id) => primary.jobs.includes(id)) : jobs, error: null })
+      }
       const ids = args.p_report_ids as string[]
       const who =
         fn === 'reports_open_to_user'
@@ -163,6 +170,49 @@ describe('primaryReportScope: the two shapes the senders use', () => {
     expect(calls).toHaveLength(2)
     expect(await rowsOpenToRecipient(adminOf({ calls }), { userId: 'luis' }, [])).toEqual([])
     expect(calls).toHaveLength(2)
+  })
+})
+
+describe('primaryReportScope: the crew time in the digest', () => {
+  it('a primary is sent the crew time of the jobs whose reports they read, and everyone else every job', async () => {
+    expect(sorted(await reportJobsOpenToUser(adminOf(), 'luis', ['j1', 'j2']))).toEqual(['j1'])
+    expect(sorted(await reportJobsOpenToUser(adminOf(), 'pat', ['j1', 'j2']))).toEqual([])
+    expect(sorted(await reportJobsOpenToUser(adminOf(), 'the-master', ['j1', 'j2']))).toEqual(['j1', 'j2'])
+  })
+
+  it('asks about the user with each job once, and asks nothing with no job or no user', async () => {
+    const calls: Call[] = []
+    const admin = adminOf({ calls })
+    await reportJobsOpenToUser(admin, ' luis ', ['j1', 'j1', 'j2'])
+    expect(calls).toEqual([{ fn: 'report_jobs_open_to_user', args: { p_user_id: 'luis', p_job_ids: ['j1', 'j2'] } }])
+    expect(sorted(await reportJobsOpenToUser(admin, 'luis', []))).toEqual([])
+    expect(sorted(await reportJobsOpenToUser(admin, null, ['j1']))).toEqual(['j1'])
+    expect(calls).toHaveLength(1)
+  })
+
+  it('the sessions kept are the ones on those jobs, in their order, and a session on no job is dropped', async () => {
+    const calls: Call[] = []
+    const sessions = [
+      { id: 's1', job_ledger_id: 'j2' },
+      { id: 's2', job_ledger_id: 'j1' },
+      { id: 's3', job_ledger_id: null },
+      { id: 's4', job_ledger_id: 'j1' },
+    ]
+    expect((await rowsOnJobsOpenToUser(adminOf({ calls }), 'luis', sessions)).map((s) => s.id)).toEqual(['s2', 's4'])
+    expect((await rowsOnJobsOpenToUser(adminOf({ calls }), 'the-master', sessions)).map((s) => s.id)).toEqual(['s1', 's2', 's4'])
+    expect((await rowsOnJobsOpenToUser(adminOf({ calls }), 'pat', sessions)).map((s) => s.id)).toEqual([])
+    expect(calls.map((c) => c.args.p_job_ids)).toEqual([['j2', 'j1'], ['j2', 'j1'], ['j2', 'j1']])
+    expect(await rowsOnJobsOpenToUser(adminOf({ calls }), 'luis', [{ id: 's3', job_ledger_id: null }])).toEqual([])
+    expect(calls).toHaveLength(3)
+  })
+
+  it('when the question fails a primary is sent no crew time, and everyone else all of it', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const missing = 'function public.report_jobs_open_to_user(uuid, uuid[]) does not exist'
+    expect(sorted(await reportJobsOpenToUser(adminOf({ rpcFails: missing }), 'luis', ['j1']))).toEqual([])
+    expect(sorted(await reportJobsOpenToUser(adminOf({ rpcFails: missing }), 'the-master', ['j1']))).toEqual(['j1'])
+    expect(log.mock.calls[0]![0]).toContain(missing)
+    expect(sorted(await reportJobsOpenToUser(adminOf({ rpcFails: missing, usersFails: true }), 'the-master', ['j1']))).toEqual([])
   })
 })
 
