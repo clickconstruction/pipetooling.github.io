@@ -50,12 +50,11 @@ import type { PersonContactInfo } from '../components/workflow/PersonDisplayWith
 import { PersonContactModal } from '../components/workflow/PersonContactModal'
 import { EmptyState } from '../components/EmptyState'
 import { emptyWordsWithPress } from '../lib/emptyWords'
-import { canStartWorkflow, noWorkflowWords } from '../lib/workflow/workflowStart'
+import { NO_WORKFLOW_TO_SAVE_ON, canStartWorkflow, noWorkflowWords } from '../lib/workflow/workflowStart'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import type { Database } from '../types/database'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
-type Workflow = Database['public']['Tables']['project_workflows']['Row']
 type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
 
 export default function Workflow() {
@@ -69,7 +68,6 @@ export default function Workflow() {
   const {
     project,
     workflow,
-    setWorkflow,
     steps,
     setSteps,
     loading,
@@ -77,7 +75,6 @@ export default function Workflow() {
     error,
     setError,
     lineItems,
-    ensureWorkflow,
     startWorkflow,
     startingWorkflow,
     gcProjectId,
@@ -126,9 +123,9 @@ export default function Workflow() {
   const canSeePrivateNotesAndApprove = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
   const canAssignSuperintendents = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole)
   const projectionsApi =
-    useWorkflowProjections({ workflowId: workflow?.id, projectId, userRole, ensureWorkflow, onError: setError })
+    useWorkflowProjections({ workflowId: workflow?.id, userRole, onError: setError })
   const { projections, editingProjection, setEditingProjection, openEditProjection, saveProjection, deleteProjection } = projectionsApi
-  const templatesApi = useWorkflowTemplates(engine, projectId)
+  const templatesApi = useWorkflowTemplates(engine)
   const superintendents = useProjectSuperintendents(projectId, canAssignSuperintendents, setError)
   // "+ Create Job" was a dead door for superintendents (v2.2848): the jobs_ledger INSERT policy refuses them.
   const canCreateJobs = canCreateJobsLedgerRow(userRole)
@@ -249,13 +246,10 @@ export default function Workflow() {
   }
 
   async function copyStep(step: Step) {
-    // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId: string | null = workflow?.id ?? null
-    if (!workflowId && projectId) {
-      workflowId = await ensureWorkflow(projectId)
-    }
+    // A step card is drawn only on a workflow, so there is always one in hand.
+    const workflowId = workflow?.id ?? null
     if (!workflowId) {
-      setError('Workflow not found. Please refresh the page.')
+      setError(NO_WORKFLOW_TO_SAVE_ON)
       return
     }
     // Find the current step's position
@@ -323,25 +317,10 @@ export default function Workflow() {
   }
 
   async function saveStep(p: { name: string; assigned_to_name: string; assigned_person_id?: string | null; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }) {
-    // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId: string | null = workflow?.id ?? null
-    if (!workflowId && projectId) {
-      workflowId = await ensureWorkflow(projectId)
-      console.log(`saveStep: Using workflow_id ${workflowId} from ensureWorkflow for project ${projectId}`)
-      // Ensure workflow state matches the returned workflow_id
-      if (workflowId && workflow?.id !== workflowId) {
-        // State might be out of sync, reload workflow to ensure consistency
-        const { data: wf } = await supabase.from('project_workflows').select('*').eq('id', workflowId).single()
-        if (wf) {
-          setWorkflow(wf as Workflow)
-          console.log(`saveStep: Updated workflow state to match workflow_id ${workflowId}`)
-        }
-      }
-    } else {
-      console.log(`saveStep: Using workflow_id ${workflowId} from state for project ${projectId}`)
-    }
+    // Add step and a card's Edit are drawn only on a workflow, so there is always one in hand.
+    const workflowId = workflow?.id ?? null
     if (!workflowId) {
-      setError('Workflow not found. Please refresh the page.')
+      setError(NO_WORKFLOW_TO_SAVE_ON)
       return
     }
     setError(null)

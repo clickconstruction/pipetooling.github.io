@@ -11,9 +11,15 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
+import type { UserRole } from './useAuth'
 import { WORKFLOW_ASSIGNABLE_USER_ROLES, buildWorkflowUserRoster } from '../lib/workflow/stepAssignment'
 
-export type WorkflowViewerRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'superintendent'
+/**
+ * The viewer's role as their `users` row holds it: any role of the app. It was a list of six that
+ * left out controller, estimator and primary, though the row is read uncast and a controller
+ * reaches the page and manages steps (`isAssistantLike`).
+ */
+export type WorkflowViewerRole = UserRole
 
 export type WorkflowRoster = {
   /** Null until the viewer's own row has been read. */
@@ -48,7 +54,7 @@ export function useWorkflowRoster(authUserId: string | undefined): WorkflowRoste
         .eq('id', authUserId)
         .single()
       if (userData) {
-        setUserRole((userData as { role: 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'superintendent' }).role)
+        setUserRole((userData as { role: WorkflowViewerRole }).role)
         const userName = (userData as { name: string | null; email: string | null }).name || (userData as { name: string | null; email: string | null }).email
         setCurrentUserName(userName)
       }

@@ -10,6 +10,8 @@
  * v2.5108 a load that leaves nothing to draw (a failed first steps read, a subcontractor with no
  * step here) lands in `loadError`, which the page shows instead of itself; every other failure,
  * a failed re-read after a write among them, stays in `error`, which the page shows as a banner.
+ * A failed read names what could not be loaded and then its reason (`workflowReadFailure`): the
+ * stand-in answers as PostgREST does, a plain object with a code.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, screen, waitFor } from '@testing-library/react'
@@ -60,13 +62,14 @@ const stepRows = [
   { id: 's3', workflow_id: 'w1', name: 'Trim', sequence_order: 3, status: 'pending', assigned_to_name: null },
 ]
 
-type Opts = { workflows?: unknown[]; insertFails?: boolean; insertRefused?: boolean; gc?: boolean; lineItems?: Res; updateFailsFor?: string; stepsReadFails?: boolean }
+type Opts = { workflows?: unknown[]; workflowsReadFails?: boolean; projectReadFails?: Res; insertFails?: boolean; insertRefused?: boolean; gc?: boolean; lineItems?: Res; updateFailsFor?: string; stepsReadFails?: boolean }
 function world(opts: Opts = {}) {
   let workflows = opts.workflows ?? [{ id: 'w1', project_id: 'p1' }]
   route = (table, steps) => {
     const single = has(steps, 'single')
     switch (table) {
       case 'projects':
+        if (opts.projectReadFails) return opts.projectReadFails
         return ok(single ? { id: 'p1', name: 'Elm Street' } : [{ id: 'p1', name: 'Elm Street' }])
       case 'project_workflows':
         if (has(steps, 'insert')) {
@@ -80,12 +83,13 @@ function world(opts: Opts = {}) {
           workflows = [row]
           return ok(row)
         }
+        if (opts.workflowsReadFails) return fail('permission denied for table project_workflows', '42501')
         return ok(single ? workflows[0] : workflows)
       case 'project_workflow_steps': {
         if (has(steps, 'update')) {
           return eqOf(steps, 'id') === opts.updateFailsFor ? fail('rls') : ok(null)
         }
-        if (opts.stepsReadFails) return fail('timeout')
+        if (opts.stepsReadFails) return fail('canceling statement due to statement timeout', '57014')
         const who = eqOf(steps, 'assigned_to_name')
         return ok(stepRows.filter((s) => who === undefined || s.assigned_to_name === who))
       }
@@ -153,6 +157,12 @@ describe('useWorkflowStepsEngine', () => {
     cleanup()
     queries.length = 0
     world()
+    // A controller is assistant-like, and the viewer's role type admits one.
+    renderWithProviders(<Probe role="controller" />)
+    await screen.findByText(/items:s1,s2 error:-$/)
+    cleanup()
+    queries.length = 0
+    world()
     // A helper is subcontractor-like: their own steps only, and no line items.
     renderWithProviders(<Probe role="helpers" name="Sam Sub" />)
     await screen.findByText(/^wf:w1 steps:s1 items:- /)
@@ -169,9 +179,9 @@ describe('useWorkflowStepsEngine', () => {
     await new Promise((r) => setTimeout(r, 80))
     expect(screen.getByTestId('e').textContent).toMatch(/error:-$/)
     cleanup()
-    world({ lineItems: fail('timeout') })
+    world({ lineItems: fail('canceling statement due to statement timeout', '57014') })
     renderWithProviders(<Probe role="dev" />)
-    await screen.findByText(/error:Failed to load line items: timeout$/)
+    await screen.findByText(/error:The line items could not be loaded: canceling statement due to statement timeout$/)
   })
 
   it('filters a subcontractor’s read to their own name, and refuses a workflow with none of theirs', async () => {
@@ -190,8 +200,23 @@ describe('useWorkflowStepsEngine', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     world({ stepsReadFails: true })
     renderWithProviders(<Probe role="dev" />)
-    await screen.findByText('load:Failed to load steps: timeout')
+    await screen.findByText('load:The steps could not be loaded: canceling statement due to statement timeout')
     expect(screen.getByTestId('e').textContent).toMatch(/error:-$/)
+  })
+
+  it('a project the viewer cannot read says so in plain words, never the server’s raw text', async () => {
+    world({ projectReadFails: fail('JSON object requested, multiple (or no) rows returned', 'PGRST116') })
+    renderWithProviders(<Probe role="superintendent" />)
+    await waitFor(() => expect(screen.getByTestId('load').textContent).toMatch(/^load:The project could not be loaded\. \S/))
+    expect(screen.getByTestId('load').textContent).not.toContain('JSON object requested')
+  })
+
+  it('a refused read of the workflow says no access under its own lead', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    world({ workflowsReadFails: true })
+    renderWithProviders(<Probe role="dev" />)
+    await waitFor(() => expect(screen.getByTestId('load').textContent).toMatch(/^load:The workflow could not be loaded\. \S/))
+    expect(screen.getByTestId('load').textContent).not.toContain('permission denied for table')
   })
 
   it('opening a project with no workflow makes none: the open only reads (punch list #397 PR 1)', async () => {
@@ -331,7 +356,7 @@ describe('useWorkflowStepsEngine', () => {
     await act(async () => {
       await latest.refreshSteps()
     })
-    expect(screen.getByTestId('e').textContent).toMatch(/^wf:w1 steps:s1,s2,s3 .* error:Failed to load steps: timeout$/)
+    expect(screen.getByTestId('e').textContent).toMatch(/^wf:w1 steps:s1,s2,s3 .* error:The steps could not be loaded: canceling statement due to statement timeout$/)
     expect(screen.getByTestId('load').textContent).toBe('load:-')
   })
 
