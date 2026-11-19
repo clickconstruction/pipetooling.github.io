@@ -19,6 +19,8 @@ A box moved, retired or renamed has no tick box. See [Put a box change back](#pu
 
 The window offers one answer for each press. Change it when it does not fit.
 
+Each press in the window shows the day and time it was made. A press with a note shows the note too.
+
 :::cards
 
 :::card Take it back

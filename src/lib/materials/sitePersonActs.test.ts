@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { Container, ContainerMove, Movement, MovementReason, Place } from './onSite'
-import { actDays, actPeople, actTiles, filterActs, localDayOf, openedNotPressed, outsideProcess, personKeyOf, sitePersonActs, withWatch } from './sitePersonActs'
+import { actDays, actPeople, actStampWords, actTiles, filterActs, localDayOf, openedNotPressed, outsideProcess, personKeyOf, sitePersonActs, withWatch } from './sitePersonActs'
 
 // A made-up site, Cedar Ridge: two jobs, two places.
 const day = (iso: string) => iso.slice(0, 10)
@@ -138,6 +138,16 @@ describe('the list’s figures and filters', () => {
   it('reads a time as the device’s own day, and nothing for a time that is not one', () => {
     expect(localDayOf('2026-11-18T12:00:00')).toBe('2026-11-18')
     expect(localDayOf('not a time')).toBe('')
+  })
+
+  it('names a press by its day and minute, so two a minute apart read apart, and nothing for a time that is not one', () => {
+    const first = actStampWords('2026-11-19T13:25:00')
+    const second = actStampWords('2026-11-19T13:26:00')
+    expect(first).toContain('Nov 19')
+    expect(first).toContain('1:25')
+    expect(second).toContain('1:26')
+    expect(first).not.toBe(second)
+    expect(actStampWords('not a time')).toBe('')
   })
 })
 
