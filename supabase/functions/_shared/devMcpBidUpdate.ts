@@ -34,6 +34,7 @@ import { BID_LOSS_CATEGORIES, LOSS_UNCATEGORIZED_NUDGE, bidLossCategoryLabel, is
 import { getSubmissionSectionKey, type SubmissionSectionKey } from './gcKernels/lib/bids/submissionSections.ts'
 import { buildOutcomeChangeBidNoteBody } from './gcKernels/lib/outcomeChangeBidNote.ts'
 import { shadowHold, shadowHoldWords, type ShadowCandidateBid } from './shadowEligibility.ts'
+import { SHADOW_RUNS_READ } from './devMcpShadowRuns.ts'
 
 export const BID_UPDATE_VERBS = ['plan_bid_update', 'apply_bid_update'] as const
 export type BidUpdateVerb = (typeof BID_UPDATE_VERBS)[number]
@@ -262,10 +263,14 @@ export type BidUpdateWorld = {
 /** Every bids column the dry run reads. */
 export const BID_READ_COLUMNS = ['id', 'bid_number', 'updated_at', 'created_at', 'working_board_archived_at', 'plans_robot_readable', ...BID_UPDATE_COLUMNS, ...RIDE_COLUMNS] as const
 
-/** Where an axis lives before a bid carries it: each table with the column that holds it (buildAxisCards reads the first two). */
+/**
+ * Where an axis lives before a bid carries it: each source with the column that holds it (buildAxisCards reads the
+ * first two). The shadow runs are read through the staff RPC since v2.7947: the table answers a signed-in person no
+ * rows (devMcpShadowRuns.ts).
+ */
 export const AXIS_SOURCES = [
   { table: 'twin_run_scores', column: 'axis' },
-  { table: 'twin_shadow_runs', column: 'axis' },
+  { table: SHADOW_RUNS_READ, column: 'axis' },
   { table: 'bids', column: 'backtest_axis' },
 ] as const
 

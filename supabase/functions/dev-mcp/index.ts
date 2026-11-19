@@ -83,7 +83,7 @@ import { TWIN_FLEET_SELECT, TWIN_HOLDER_SELECT, twinAppliedWords, twinBridgeBody
 import { ctTwinSeatEmail, ttTwinSeatEmail } from '../_shared/twinSeat.ts'
 import { TWIN_KEY_SELECT, TWIN_KEY_TWIN_SELECT, twinKeyAppliedWords, twinKeyDryRun, twinKeyRevokePatch, twinKeysReading, twinRef, twinRefQuery, type TwinKeyPayload, type TwinKeyRow, type TwinKeyStep, type TwinKeyTwinRow } from '../_shared/devMcpTwinKey.ts'
 import { TWIN_RUNG_KEY_SELECT, TWIN_RUNG_TWIN_SELECT, twinRungAppliedWords, twinRungDryRun, twinRungPatch, twinRungPatchQuery, type TwinRungKeyRow, type TwinRungPayload, type TwinRungTwinRow } from '../_shared/devMcpTwinRung.ts'
-import { CALIBRATION_PERSON_SELECT, CALIBRATION_RUN_SELECT, CALIBRATION_RUNS_LIMIT, calibrationStandardAppliedWords, calibrationStandardDryRun, calibrationStandardPatch, calibrationStandardPatchQuery, type CalibrationPersonRow, type CalibrationRunRow, type CalibrationStandardPayload } from '../_shared/devMcpCalibrationStandard.ts'
+import { CALIBRATION_PERSON_SELECT, CALIBRATION_RUNS_QUERY, CALIBRATION_RUNS_SOURCE, calibrationStandardAppliedWords, calibrationStandardDryRun, calibrationStandardPatch, calibrationStandardPatchQuery, type CalibrationPersonRow, type CalibrationRunRow, type CalibrationStandardPayload } from '../_shared/devMcpCalibrationStandard.ts'
 import { readRobotBookWorld, robotBookAppliedWords, robotBookLogLine, robotBookPriceDryRun, robotBookPricePatch, robotBookPricePatchQuery, robotBookStepWords, type RobotBookChange, type RobotBookPricePayload, type RobotBookReads, type RobotBookStep } from '../_shared/devMcpRobotBookPrice.ts'
 import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitment, backfillJobPassedReply, backfillJobsQuery, backfillPlanReply, cursorLostWords, nextBackfillJob, parseBackfillPlan, statusReading, type BackfillJob, personBackfillApplyReply, personBackfillCommitment, personBackfillPlanReply, recordsBatch, type PersonBackfillFile } from '../_shared/devMcpIndexBackfill.ts'
 
@@ -516,7 +516,14 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // given), an unknown name is held and the rest go on. The book keeps no history, so a reason is required and the
 // apply's line in dev_mcp_calls carries each price before and after. No wrapper RPC, no migration
 // (_shared/devMcpRobotBookPrice.ts).
-const SERVER_VERSION = '0.111.0'
+// 0.112.0 (v2.7947, found on the first live dry runs of 0.111.0, 2026-11-19): three plans read twin_shadow_runs as
+// the dev, and that table has had no read policy for a signed-in person since migration 20260901010000, so each read
+// answered no rows and no error. plan_calibration_standard said no scored run named the person where twenty did;
+// plan_robot_book_price counted no locked robot bid; plan_bid_update's axes in use missed the runs'. All three now
+// read through the staff RPC, list_shadow_runs() (_shared/devMcpShadowRuns.ts): a person's runs by the teacher's
+// name on the run, a locked robot bid by its bid number, since the RPC gives neither id. A refused read of the runs
+// is said, never counted as none. No new verb, no migration.
+const SERVER_VERSION = '0.112.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -5149,7 +5156,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const standardsRead = await restGet(session, 'users', `select=${CALIBRATION_PERSON_SELECT}&calibration_standard=is.true&order=name&limit=200`)
       if (!standardsRead.ok || !Array.isArray(standardsRead.body)) return refused(`The standards could not be read: ${restError(standardsRead.status, standardsRead.body)}`, { target: built.target })
       // Fail-soft: a refused read of the runs leaves the count out and the plan says so; it never hides the person.
-      const runsRead = await restGet(session, 'twin_shadow_runs', `select=${CALIBRATION_RUN_SELECT}&status=eq.scored&teacher_user_id=eq.${p.person}&limit=${CALIBRATION_RUNS_LIMIT}`)
+      // v2.7947: through the staff RPC. The table itself answers a signed-in person no rows, so a read of it counted zero.
+      const runsRead = await restGet(session, CALIBRATION_RUNS_SOURCE, CALIBRATION_RUNS_QUERY)
       const runs = runsRead.ok && Array.isArray(runsRead.body) ? (runsRead.body as CalibrationRunRow[]) : null
       const dry = calibrationStandardDryRun(p, { person: (personRead.body[0] as CalibrationPersonRow | undefined) ?? null, standards: standardsRead.body as CalibrationPersonRow[], runs })
       if (!dry.ok) return refused(dry.refused, { target: built.target })
