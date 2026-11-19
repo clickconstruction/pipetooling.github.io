@@ -20191,9 +20191,11 @@ export type Database = {
           height: number
           id: string
           job_id: string
+          kind: string | null
           refile_due_at: string | null
           status: string
           storage_path: string | null
+          take_id: string | null
           taken_at: string
           width: number
           words: string
@@ -20210,9 +20212,11 @@ export type Database = {
           height?: number
           id?: string
           job_id: string
+          kind?: string | null
           refile_due_at?: string | null
           status?: string
           storage_path?: string | null
+          take_id?: string | null
           taken_at?: string
           width?: number
           words?: string
@@ -20229,9 +20233,11 @@ export type Database = {
           height?: number
           id?: string
           job_id?: string
+          kind?: string | null
           refile_due_at?: string | null
           status?: string
           storage_path?: string | null
+          take_id?: string | null
           taken_at?: string
           width?: number
           words?: string
@@ -22159,6 +22165,7 @@ export type Database = {
           reason: string
           recorded_at: string | null
           source: string | null
+          take_id: string | null
           to_container_id: string | null
         }
         Insert: {
@@ -22177,6 +22184,7 @@ export type Database = {
           reason: string
           recorded_at?: string | null
           source?: string | null
+          take_id?: string | null
           to_container_id?: string | null
         }
         Update: {
@@ -22195,6 +22203,7 @@ export type Database = {
           reason?: string
           recorded_at?: string | null
           source?: string | null
+          take_id?: string | null
           to_container_id?: string | null
         }
         Relationships: [

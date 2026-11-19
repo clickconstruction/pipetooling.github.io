@@ -60,7 +60,7 @@ On a phone the top of the desk is one row. The row holds the way back, the desk'
 Press {{button:outline|⋯}} to open **More**. More holds the door to the run. It also holds the doors that sit in the top bar on a computer.
 
 - **Print and mail** or **Enter mail numbers**, with its count. It shows while a notice waits. The {{button:outline|⋯}} button wears the same count.
-- **Put a GC on notice…** shows while **Monthly notices** is open.
+- **Put a GC on notice…** shows while **Monthly notices** is open. A computer has it on the job's own notice instead.
 - **§ Rules** opens the Texas lien rules.
 - **An owner is calling** opens what to say.
 - **What this desk holds** names each part of the desk.
@@ -581,13 +581,14 @@ The pane's **payment bond** line says whether a bond is on the project. Check it
 
 ## A GC in trouble
 
-When one GC stops paying everywhere at once, a month at a time is too slow. **Put a GC on notice** sends § 53.056 notices to the owners of every unpaid job under that GC. It names every month not yet noticed, in one run. Three doors open it with the GC already picked.
+When one GC stops paying everywhere at once, a month at a time is too slow. **Put a GC on notice** sends § 53.056 notices to the owners of every unpaid job under that GC. It names every month not yet noticed, in one run. These doors open it with the GC already picked.
 
 - **Jobs, Pipeline, ⋯ Pipeline tools**, with the board filtered to one GC, shows {{button:amber|⚠ Put <GC> on notice…}}.
-- **The desk's title bar** has {{button:amber|⚠ Put a GC on notice…}} on its second line. It opens a picker of the GCs with notices due in the next 30 days, most money first. Each row shows the dollars, the jobs, the first window to close and what is stuck. A GC whose windows have all closed sits greyed under **Nothing left to claim**. It still opens, for the attorney’s letter and the grid.
+- **A job's own notice** on the desk has {{button:amber|⚠ Put on notice…}} beside the GC's name. Open **Monthly notices** and pick a job with that GC. The press opens the run for that job's GC.
+- **On a phone**, **More** has **Put a GC on notice…** while **Monthly notices** is open. It opens a list of the GCs with notices due in the next 30 days, most money first. Each row shows the dollars, the jobs, the first window to close and what is stuck. A GC whose windows have all closed sits greyed under **Nothing left to claim**. It still opens, for the attorney’s letter and the grid.
 - **Bids, Customer review** has {{button:amber|⚠ Put on notice…}} beside *set terms…* on the GC's row.
 
-The run covers every unpaid job with the GC, not only the ones the picker counts.
+The run covers every unpaid job with the GC, not only the job you opened it from.
 
 **Jobs with unpaid work under this GC** sits above the steps. It lists every job with unpaid work under the GC, grouped by its stage. Each job shows its line items, its money and the Pipeline's progress bar. A chip flags anything that looks wrong, in the Pipeline's words. A job may be marked Waiting while a bill is out, for example. The chip opens the job over the run, on the field that fixes it. Close the job, and the run comes back where you left it. Fix the record first, because a notice claims what the record says.
 

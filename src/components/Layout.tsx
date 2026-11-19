@@ -21,6 +21,7 @@ import AddTaskShortcutBanner from './AddTaskShortcutBanner'
 import { CustomerWaitingBanner } from './CustomerWaitingBanner'
 import { AppHealthStrip } from './AppHealthStrip'
 import { useOutboxReplay } from '../hooks/useOutboxReplay'
+import { useKeptBoxPhotos } from '../hooks/useKeptBoxPhotos'
 import { CustomerWaitingProvider } from '../contexts/CustomerWaitingContext'
 import AssistantReadyToBillBanner from './AssistantReadyToBillBanner'
 import CustomerContactCardIcon from './icons/CustomerContactCardIcon'
@@ -159,6 +160,8 @@ export default function Layout() {
   const isDigitalTwin = useIsDigitalTwin()
   // The outbox's one sender (punch list #163 PR 2): queued presses go out in order when the signal returns.
   const outboxReplay = useOutboxReplay(authUser?.id)
+  // A box photo kept with no signal sends by itself (Take from a box).
+  useKeptBoxPhotos(authUser?.id)
   // Partner nav (v2.2165): the Statement link shows only for accounts with a live partnership.
   const partnerNav = useIsPartner(role, authUser?.id)
   const ownLogbookShown = useOwnLogbookShown(authUser?.id)

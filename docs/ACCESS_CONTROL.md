@@ -908,6 +908,8 @@ a `'public'` answer puts the ticked jobs on the attorney's list through `set_job
 **Is this job on the lien path?**
 (v2.7504, `20261117080000_job_lien_path_answer.sql`): the answer on a job (`jobs_ledger.lien_path_answer`) is written only by `set_job_lien_path_answer`, for the same four roles;
 it asks a reason to take a job off the path and to put it back, and can put the job on the attorney's list through the same flag.
+**A window that has closed** (v2.7801, `LienClosedWindow`): the Board's closed window adds no write and no policy, so its three presses are refused or allowed by the functions they call, *Keep collecting* by `set_job_lien_path_answer`, *Let it go* by `set_job_collections_flag` and `set_job_uncollectible`, *Record it closed* by the insert policy on `job_lien_desk_items`;
+the client draws them live for the lien office alone (`isLienOffice`: dev · master · assistant · controller) and dead with *The office answers this.* for anyone else, who still reads the window.
 The approval guard trigger decides who may approve: `approval_mode = 'leader'` requires the caller to be a **master or dev** (an assistant's update is refused with 42501) — and since v2.5082 (migration `20261010020000`) the same guard decides who may **sign**: a newly set `signed_at` needs `signed_by` with role master or dev, and unless the write is under that signer's own sign-in it must say `signed_on_device_of = auth.uid()` with mode `draw`, so the office can never place his name (`signLienDeskItem`) — or, since v2.5788 (migration `20261023150000`), mode `code`: the leader's own **signing code** (four to six digits, set by himself under Settings → Your account through `set_lien_sign_code`, master / dev only;
 `user_sign_codes` has no policies and no grants, only its five SECURITY DEFINER functions reach it — since v2.5924 `check_lien_sign_code`, the shared checker that owns the counter writes, EXECUTE revoked from clients, which `sign_lien_release_with_code` goes through) typed on the signed-in user's screen and checked by `sign_lien_desk_item_with_code` (callable by the office set, not in training mode;
 five wrong codes lock it fifteen minutes;
@@ -1052,6 +1054,10 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   since v2.6852 the phone's box screen prints a box's label and manifest in the tab for every role on the job, where its two presses used to open `/jobs?tab=materials`, which only the office may open.
 - **A site's materials on one screen** (v2.7074, punch list #330): `?site=<development id>` on the On site tab and on Jobs → Materials draws every part across the site's jobs from the rows the desk already read, so the gate above decides it and a job the reader may not touch adds nothing.
   Since v2.7818 the screen's **By person** look, every press and box move on the site by who made it, is offered at the desk's mount to dev, master_technician, assistant and controller alone (`isOfficeRole`), a client gate over rows those roles already read, and the crew's mount never offers it.
+- **Who changed a box** (v2.7825, `20261118140000_on_site_box_changes.sql`): `job_container_changes` is read by the on-site gate on the box's job, as `job_container_names` is, and written by its trigger alone.
+  `on_site_removed_answers`, a part tie or a site price deleted, is read by `on_site_can_tie_parts()` with `on_site_can_read_ties()` and written by its trigger alone.
+- **A watch on one person** (v2.7825, `20261118150000_person_watches.sql`): `person_watches` and `watched_box_opens` are read by devs alone (`is_dev()`), and a dev inserts and updates a watch and never deletes one.
+  `on_site_note_box_open(uuid)` is granted to every signed-in caller, writes only for a caller with a live watch and answers nothing either way, so no caller learns from it whether they are watched.
   The office and a primary reach it through the desk's site row and read the week's missing money, as on the desk;
   a primary and a superintendent get a site row over their jobs on Materials → On site, with no money and the phone screen as each box's door;
   an estimator gets no site row.
@@ -1217,6 +1223,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   A digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
   Putting a trip back is `trip_save` under the trip's own id, under the trips tables' own policies, so no new write exists.
   A trip made again settles its archive rows (`trips_settle_archive`), so the dev's Recently deleted never offers a living trip.
+  Since v2.7860 (`docs/migrations/20261118203000_trip_line_tie.md`) the trip's capture keeps the id of the line it held, and the same trigger ties that line to the trip made again, as a SECURITY DEFINER, only when the line is still there and tied to no trip.
 
 ### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
 

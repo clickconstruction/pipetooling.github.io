@@ -16,21 +16,17 @@ const options = [gc('a', { needOwner: 1, awaiting: 1 }), gc('b', { policy: 'send
 
 afterEach(() => cleanup())
 
-describe('LienDeskGcPicker', () => {
+describe('LienDeskGcPicker, a phone’s sheet (a computer’s door left the title bar in v2.7806)', () => {
   const draw = (over: Partial<Parameters<typeof LienDeskGcPicker>[0]> = {}) => {
-    const props = { isMobile: false, open: true, onToggle: vi.fn(), onClose: vi.fn(), options, onPick: vi.fn(), ...over }
+    const props = { open: true, onClose: vi.fn(), options, onPick: vi.fn(), ...over }
     render(<LienDeskGcPicker {...props} />)
     return props
   }
 
-  it('closed, a computer shows the door alone and its press toggles the menu', () => {
-    const props = draw({ open: false })
+  it('closed, it draws nothing: no door of its own, and no sheet', () => {
+    draw({ open: false })
     expect(document.querySelector('[data-lien-gc-picker]')).toBeNull()
-    const door = document.querySelector('button[aria-haspopup="menu"]') as HTMLButtonElement
-    expect(door.textContent).toContain('Put a GC on notice…')
-    expect(door.getAttribute('aria-expanded')).toBe('false')
-    fireEvent.click(door)
-    expect(props.onToggle).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('button')).toBeNull()
   })
 
   it('open, lists one row a GC with what is stuck on it', () => {
@@ -63,10 +59,13 @@ describe('LienDeskGcPicker', () => {
     expect(props.onPick).toHaveBeenCalledWith('b')
   })
 
-  it('a phone has no door here, and the menu still opens as a sheet', () => {
-    draw({ isMobile: true })
+  it('open, it is a sheet with no door over it, and a press outside closes it', () => {
+    const props = draw()
     expect(document.querySelector('button[aria-haspopup="menu"]')).toBeNull()
-    expect(document.querySelector('[data-lien-gc-picker]')).not.toBeNull()
+    const sheet = document.querySelector('[data-lien-gc-picker]') as HTMLElement
+    expect(sheet.style.position).toBe('fixed')
+    fireEvent.click(sheet.previousElementSibling as HTMLElement)
+    expect(props.onClose).toHaveBeenCalledTimes(1)
   })
 })
 

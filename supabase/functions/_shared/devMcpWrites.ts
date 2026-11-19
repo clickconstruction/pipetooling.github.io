@@ -356,7 +356,7 @@ export const WRITE_VERBS = {
   // (devMcpTaskPhoto.ts). The file is a staged upload: the plan commits to its size and sha256.
   plan_task_photo: { rpc: null, step: 'plan' },
   apply_task_photo: { rpc: null, step: 'apply' },
-  // v2.7823 / 0.103.0: a one-time task closed without the work done, as the card's More → No longer applies closes it:
+  // v2.7823 / 0.104.0: a one-time task closed without the work done, as the card's More → No longer applies closes it:
   // the day row marked complete and a dropped line with the reason, through the card's own task_no_longer_applies as the
   // dev. rpc is null here because the dry run is the server's read of the task and its day rows (devMcpTaskClose.ts),
   // not a wrapper's; the apply POSTs the function. Whoever gave the task is told, as the press tells them.

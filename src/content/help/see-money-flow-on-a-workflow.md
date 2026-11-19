@@ -15,6 +15,8 @@ Projections used to live only in the panel at the top of the Workflow page. Now 
 2. Fill the label, memo, and amount as usual.
 3. Under **Attach to step**, pick the step. Then choose **Before the step** or **After the step**.
 
+A project may have no workflow yet. The page says so. Press **Start a workflow** there first. Then add your projection.
+
 You can leave "Not attached" instead. Then the projection behaves exactly as before and lives only in the top panel. The top panel's **Projections / Ledger / Left** totals include anchored and unanchored projections alike.
 
 ## Reading the flow

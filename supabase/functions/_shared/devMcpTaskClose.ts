@@ -1,4 +1,4 @@
-// A task closed without the work done, from the dev seat (v2.7823 / 0.103.0, the fourth of the task verbs). The card's
+// A task closed without the work done, from the dev seat (v2.7823 / 0.104.0, the fourth of the task verbs). The card's
 // More offers *No longer applies* on a one-time task (src/lib/tasks/taskDrop.ts, punch list #369): the person says why,
 // the day row is marked complete and the thread reads completed, then a dropped line with the reason. That press is one
 // function, `task_no_longer_applies` (migration 20261117120000), which holds every rule: the office or a person the
