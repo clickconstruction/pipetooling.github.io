@@ -117,7 +117,7 @@ export function projectLabel(row: Pick<ProjectRow, 'hcp_number' | 'click_number'
   return `${projectNumber(row)} · ${(row.job_name ?? '').trim() || 'Untitled job'}`
 }
 
-export type ProjectStage = { name: string; hours: number; laborUsd: number; pctDone: number | null }
+export type ProjectStage = { /** The stage's line (`jobs_ledger_fixtures.id`), or `other` for the lines folded into one piece; the pace card's rail finds the stage's checklist by it. */ id: string; name: string; hours: number; laborUsd: number; pctDone: number | null }
 
 export type ProjectPace = {
   input: SuperintendentLineInput
@@ -170,7 +170,7 @@ export function projectPace(args: {
   )
   const stages: ProjectStage[] = shares.map((s) => {
     const hours = (s.sharePct / 100) * budgetEdge
-    return { name: s.name, hours, laborUsd: hours * settings.rateUsd, pctDone: s.pctDone }
+    return { id: s.id, name: s.name, hours, laborUsd: hours * settings.rateUsd, pctDone: s.pctDone }
   })
   const t = args.target ?? null
   const input: SuperintendentLineInput = {

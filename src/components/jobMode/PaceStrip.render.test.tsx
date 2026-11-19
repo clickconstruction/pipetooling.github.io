@@ -35,7 +35,9 @@ describe('PaceStrip', () => {
     expect(screen.getByText('+2 d')).toBeTruthy()
     expect(screen.getByText(/done 60%/)).toBeTruthy()
     expect(screen.getByText(/hours 40% · 3 days, tap one/)).toBeTruthy()
-    expect(screen.getByText(/3 stages, hover one/)).toBeTruthy()
+    // The count is a press since punch list #397 PR 5: a phone cannot hover, so it lists the stages instead.
+    expect(screen.getByTestId('pace-stage-list-press').textContent).toBe('3 stages ▾')
+    expect(screen.queryByTestId('pace-stage-list')).toBeNull()
     expect(screen.getByText(/money 50%/)).toBeTruthy()
     fireEvent.click(screen.getAllByTestId('pace-day')[2]!)
     expect(onDay).toHaveBeenCalledWith('2026-10-22')
@@ -89,8 +91,11 @@ describe('PaceStrip', () => {
     try {
       const onHover = vi.fn()
       render(<PaceStrip line={line} hoursBudget={200} days={days} stages={stages} onDayHover={onHover} />)
-      expect(screen.getByText(/3 stages$/)).toBeTruthy()
+      // On a touch screen the count is the way in: a press that lists the stages (punch list #397 PR 5).
+      expect(screen.getByTestId('pace-stage-list-press').textContent).toBe('3 stages ▾')
       expect(screen.queryByText(/hover one/)).toBeNull()
+      fireEvent.click(screen.getByTestId('pace-stage-list-press'))
+      expect(screen.getAllByTestId('pace-stage-list-row')).toHaveLength(3)
       const bar = screen.getAllByTestId('pace-stage-end')[0]! as HTMLElement
       expect(bar.style.pointerEvents).toBe('none')
       fireEvent.mouseEnter(bar)
@@ -117,5 +122,21 @@ describe('PaceStrip', () => {
     render(<PaceStrip line={plain} hoursBudget={200} days={[{ ymd: '2026-10-20', hours: 100 }]} />)
     expect(screen.getByText(/1 day, tap one/)).toBeTruthy()
     expect(screen.getByText(/hours 50% · 4 d at 24 h\?/)).toBeTruthy()
+  })
+
+  it('lists the stages under the legend when the count is pressed, and folds them again (punch list #397 PR 5)', () => {
+    render(<PaceStrip line={line} hoursBudget={200} days={days} stages={stages} />)
+    fireEvent.click(screen.getByTestId('pace-stage-list-press'))
+    expect(screen.getByTestId('pace-stage-list-press').getAttribute('aria-expanded')).toBe('true')
+    const rows = screen.getAllByTestId('pace-stage-list-row').map((r) => r.textContent)
+    expect(rows).toHaveLength(3)
+    for (const r of rows) expect(r).toMatch(/\d+ h(\d+%|not reported)$/)
+    fireEvent.click(screen.getByTestId('pace-stage-list-press'))
+    expect(screen.queryByTestId('pace-stage-list')).toBeNull()
+  })
+
+  it('draws no stage list press when the stages are named under the strip', () => {
+    render(<PaceStrip line={line} hoursBudget={200} days={days} stages={stages} stageWords />)
+    expect(screen.queryByTestId('pace-stage-list-press')).toBeNull()
   })
 })

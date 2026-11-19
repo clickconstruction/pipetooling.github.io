@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobStageChecklists } from '../../hooks/useJobStageChecklists'
 import { useExpectedHours } from '../../hooks/useExpectedHours'
@@ -25,7 +26,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { ASK_MASTER_WORDS, askedLine } from '../../lib/jobMode/askMaster'
 import { canTagInJobNotes } from '../../lib/jobs/noteTags'
 import { useJobNoteTags } from '../../hooks/useJobNoteTags'
-import { PACE_CARD_WORDS, paceDayWords, paceDaysLeftWords, paceFinish, paceHours, paceRowNote, paceStageRail } from '../../lib/jobMode/paceCard'
+import { PACE_CARD_WORDS, paceDayWords, paceDaysLeftWords, paceFinish, paceHours, paceRowNote, paceStageCheck, paceStageRail } from '../../lib/jobMode/paceCard'
 import { JobModeShortRow } from './JobModeShortRow'
 import { JOB_MODE_SHORT_WORDS } from '../../lib/jobMode/jobModeShort'
 import { DayDetailsModal } from './DayDetailsModal'
@@ -149,6 +150,15 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
   const headColor = line.tone === 'ahead' ? 'var(--text-green-700)' : line.tone === 'behind' ? 'var(--text-red-700)' : 'var(--text-700)'
   const label = projectLabel(job)
   const rail = paceStageRail(pace.stages, pace.input.pctDone)
+  // Each stage's checklist on its rail row (punch list #397, PR 5): the rail's rows are the pace's stages in order,
+  // and a stage is its line, so its checklist is found by the line's id. A stage with no question is no press.
+  const railChecks = rail
+    ? pace.stages.map((s) => {
+        const row = rows.find((r) => r.fixtureId === s.id) ?? null
+        const check = row ? paceStageCheck(row.state) : null
+        return row && check ? { ...check, onOpen: () => setSheet(row) } : null
+      })
+    : undefined
   const finish = paceFinish({ plannedFinishYmd: pace.input.plannedFinishYmd, days: line.days, tone: line.tone })
   const hours = paceHours({ hoursUsed: pace.input.hoursUsed, subHours: pace.input.subHours ?? null, hoursBudget: pace.input.hoursBudget })
   const daysLeft = paceDaysLeftWords(line.daysLeft)
@@ -220,7 +230,7 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
         </div>
       ) : null}
       {rail ? (
-        <PaceRail rail={rail} finish={finish} said={said} onSetPct={setPct} />
+        <PaceRail rail={rail} finish={finish} said={said} onSetPct={setPct} checks={railChecks} />
       ) : (
         <PaceBar testId="pace-work" label={PACE_CARD_WORDS.work} words={`${Math.round(line.donePct)}%`} fillPct={line.donePct} color="#2563eb" />
       )}
@@ -257,9 +267,15 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
         </div>
         {asked ? <div data-testid="pace-asked" data-waiting={asked.waiting ? '' : undefined} style={{ fontSize: '0.8rem', color: asked.waiting ? 'var(--text-muted)' : 'var(--text-green-700)' }}>{asked.words}</div> : null}
       </div>
-      <button type="button" data-testid="pace-figured" aria-expanded={figuredOpen} onClick={() => setFiguredOpen((o) => !o)} style={{ justifySelf: 'start', minHeight: PHONE_PRESS_MIN_HEIGHT, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
-        {PACE_CARD_WORDS.figured} {figuredOpen ? '▴' : '▾'}
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <button type="button" data-testid="pace-figured" aria-expanded={figuredOpen} onClick={() => setFiguredOpen((o) => !o)} style={{ justifySelf: 'start', minHeight: PHONE_PRESS_MIN_HEIGHT, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+          {PACE_CARD_WORDS.figured} {figuredOpen ? '▴' : '▾'}
+        </button>
+        {/* The door from this project to every project (punch list #397, PR 5): the board opened for a superintendent, and only the search led to it. */}
+        <Link to="/projects-board" data-testid="pace-all-projects" style={{ minHeight: PHONE_PRESS_MIN_HEIGHT, display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)', fontSize: '0.82rem', textDecoration: 'none' }}>
+          {PACE_CARD_WORDS.allProjects}
+        </Link>
+      </div>
       {figuredOpen ? (
         <div data-testid="pace-figured-body" style={{ display: 'grid', gap: 8, minWidth: 0 }}>
           <div style={muted}>{jobNameWithPlainDates(label)} · {line.hoursWords}</div>

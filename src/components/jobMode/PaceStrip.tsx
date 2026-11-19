@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import type { SuperintendentLine } from '../../lib/jobs/superintendentLine'
+import { PACE_CARD_WORDS, paceStageList } from '../../lib/jobMode/paceCard'
 
 /**
  * The pace strip (punch list #242, PR 1): one picture instead of three
@@ -103,6 +104,7 @@ export function PaceStrip({ line, hoursBudget, targetHours, days = [], stages = 
     })
   }
   const [stageHover, setStageHover] = useState<{ index: number; x: number; y: number } | null>(null)
+  const [stagesOpen, setStagesOpen] = useState(false)
   const hovers = canHover()
   const dayHover = hovers ? onDayHover : undefined
   // A line's name can be a paragraph; the strip shows its first words.
@@ -178,8 +180,31 @@ export function PaceStrip({ line, hoursBudget, targetHours, days = [], stages = 
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)', gap: 6, flexWrap: 'wrap' }}>
           <span><i style={{ display: 'inline-block', width: 8, height: 8, background: '#2563eb', borderRadius: 2, marginRight: 4 }} />done {Math.round(done)}%</span>
           <span><i style={{ display: 'inline-block', width: 8, height: 8, background: '#f59e0b', borderRadius: 2, marginRight: 4 }} />hours {Math.round(line.hoursPct)}%{drawn ? ` · ${segments.length} day${segments.length === 1 ? '' : 's'}, tap one` : line.daysUsed != null && line.daysUsed > 0 ? ` · ${Math.round(line.daysUsed)} d at ${Math.round(line.hoursPerDay)} h?` : ''}</span>
-          {pieces.length && !stageWords ? <span><i style={{ display: 'inline-block', width: 8, height: 8, border: '1px solid var(--text-muted)', borderRadius: 2, marginRight: 4, boxSizing: 'border-box' }} />{pieces.length} stages{hovers ? ', hover one' : ''}</span> : null}
+          {pieces.length && !stageWords ? (
+            <button
+              type="button"
+              data-testid="pace-stage-list-press"
+              aria-expanded={stagesOpen}
+              onClick={() => setStagesOpen((o) => !o)}
+              style={{ font: 'inherit', fontSize: 'inherit', color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+            >
+              <i style={{ display: 'inline-block', width: 8, height: 8, border: '1px solid var(--text-muted)', borderRadius: 2, marginRight: 4, boxSizing: 'border-box' }} />
+              {PACE_CARD_WORDS.stagesCount(pieces.length)} {stagesOpen ? '▴' : '▾'}
+            </button>
+          ) : null}
           {moneyPct != null ? <span style={{ color: line.money?.leads ? 'var(--text-red-700)' : undefined }}><i style={{ display: 'inline-block', width: 8, height: 3, background: line.money?.leads ? '#b91c1c' : 'var(--text-muted)', marginRight: 4, verticalAlign: 'middle' }} />money {moneyPct}%</span> : null}
+        </div>
+      ) : null}
+      {/* The stages as a list (punch list #397, PR 5): a stage's card opens on hover, and a phone has none. */}
+      {!compact && stagesOpen && pieces.length && !stageWords ? (
+        <div data-testid="pace-stage-list" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', gap: '2px 12px', fontSize: '0.76rem', fontVariantNumeric: 'tabular-nums' }}>
+          {paceStageList(stages).map((r, i) => (
+            <span key={`${r.name}-${i}`} data-testid="pace-stage-list-row" style={{ display: 'contents' }}>
+              <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{shortName(r.name)}</span>
+              <span style={{ textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{r.hours}</span>
+              <span style={{ textAlign: 'right', whiteSpace: 'nowrap', color: r.reported ? 'var(--text-link)' : 'var(--text-muted)', fontWeight: r.reported ? 700 : 400 }}>{r.pct}</span>
+            </span>
+          ))}
         </div>
       ) : null}
     </div>

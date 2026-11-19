@@ -7732,6 +7732,9 @@ Every role reads one server read, `list_project_board`, so no role's own RLS can
 The money budget is the Burn's: a baseline counts only with a labor and a materials figure, else the price at 35% margin.
 Since **v2.6352** the leader and a dev also read it on the Dashboard as the **Projects** line under Money in (`DashboardProjectsStrip`): closed, the counts and the worst project;
 open, the same cards.
+Since **v2.7885** (punch list #397 PR 5) a superintendent reads the same line on his Dashboard, above Recent reports, and sets nothing on it.
+The pace card's rail carries each stage's checklist as a press, and its foot a door, **All projects**, to the board.
+The strip's stage count is a press that lists the stages, since a phone cannot hover.
 Guide *see where every project stands and set its expected hours*.
 Since **v2.6665** (punch list #234 PR 2) a project leaves award with a **planned finish** frozen beside its hours on `job_budgets` (`planned_start` · `planned_finish` · `planned_source` rough · assumed · typed · `planned_detail`;
 `lib/jobs/plannedFinish.ts`: the GC project's kept rough schedule, else the start the bid assumed plus the baseline hours at 24 crew hours a day in working days, a weekend start counting from the Monday after it since **v2.6737**, else a typed day, picked on the New Job award block, written by `award_job_baseline`'s eighth argument or later from the Costs strip's **Freeze the planned finish**), which `list_project_board` returns and the superintendent's line reads as *Planned finish Nov 14.

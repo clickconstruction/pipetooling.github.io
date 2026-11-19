@@ -303,6 +303,26 @@ describe('SuperintendentCard', () => {
     expect(day.textContent).not.toContain('Bought that day')
   })
 
+  it('a stage with questions is a press on the rail that opens its checklist; a stage with none stays words (punch list #397 PR 5)', async () => {
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    await waitFor(() => expect(screen.getByTestId('pace-rail')).toBeTruthy())
+    const presses = screen.getAllByTestId('pace-rail-check')
+    expect(presses.map((b) => b.textContent)).toEqual(['Rough In, done. Checklist, 2 of 2 answered ›', 'Top Out, in hand. Checklist, 1 of 3 answered ›'])
+    // Trim Set has no question, so it is no press.
+    expect(screen.getAllByTestId('pace-rail-stage')[2]!.querySelector('button')).toBeNull()
+    expect(screen.queryByTestId('checklist-sheet')).toBeNull()
+    fireEvent.click(presses[1]!)
+    expect(screen.getByTestId('checklist-sheet').textContent).toBe('Top Out')
+  })
+
+  it('carries a door to every project (punch list #397 PR 5)', async () => {
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    await waitFor(() => expect(screen.getByTestId('pace-all-projects')).toBeTruthy())
+    const door = screen.getByTestId('pace-all-projects')
+    expect(door.textContent).toBe('All projects ›')
+    expect(door.getAttribute('href')).toBe('/projects-board')
+  })
+
   it('says nothing for a job that is not a project', async () => {
     answer = async () => ({ readsWages: false, jobs: [project({ revenue: 9000, fixtures: [{ id: 'x', name: 'Repipe', stage_kind: 'any', line_kind: 'fixture', line_unit_price: 9000, count: 1, progress_pct: null, sequence_order: 1 }] })] })
     renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)

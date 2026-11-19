@@ -136,6 +136,7 @@ import { DashboardBillingPipelineSection } from '../components/dashboard/Dashboa
 import { DashboardAssignedJobsSection } from '../components/dashboard/DashboardAssignedJobsSection'
 import { DashboardJobsMapCard } from '../components/dashboard/DashboardJobsMapCard'
 import { DashboardSuperintendentJobsSection } from '../components/dashboard/DashboardSuperintendentJobsSection'
+import DashboardProjectsStrip from '../components/dashboard/DashboardProjectsStrip'
 import { recordNavClick } from '../lib/navClickTelemetry'
 
 const DashboardMyTeamSection = lazy(() => import('../components/DashboardMyTeamSection'))
@@ -1795,6 +1796,9 @@ export default function Dashboard() {
           {myInboxCard}
         </>
       )}
+      {/* The Projects bar for a superintendent (punch list #397, PR 5). The leader and a dev have it under Money in; a
+          superintendent has no money section, and the board opened for him with no door but the search. He reads it and sets nothing. */}
+      {role === 'superintendent' ? <DashboardProjectsStrip /> : null}
       <DashboardMyBidsSection
         authUserId={authUser?.id}
         role={role}

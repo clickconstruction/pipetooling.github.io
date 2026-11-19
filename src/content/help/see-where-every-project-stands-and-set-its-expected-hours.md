@@ -29,6 +29,7 @@ The worst project comes first. A card with a red edge is behind. A green edge is
 
 - The amber pieces are the real days. Each piece is as wide as that day's hours. The pieces turn red when the job is behind.
 - The faint ticks past the days are the days left at this crew's pace.
+- Under the track, press the stage count, such as **3 stages**. It lists each stage with its hours and its percent.
 - The blue mark is the work done, with a chip beside it. {{chip:green|+2 d}} means two days ahead. {{chip:red|−3 d}} means three days behind. {{chip:gray|on pace}} means the hours and the work agree.
 - The thin line along the bottom is the money spent. It turns red when the money runs ten points ahead of the work.
 - The bars across the track are the stages. Hover a bar to read the stage's name and the budget to reach it.
