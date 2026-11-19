@@ -234,7 +234,7 @@ async function call(name: string, args: Row): Promise<{ isError: boolean; text: 
 const filing = (over: Row = {}): Row => ({
   job_id: JOB,
   county: 'Marlow',
-  recording_number: '20260222921',
+  recording_number: '20269990001',
   filed_on: '2026-11-16',
   scan: { name: 'maple-court.pdf', size_bytes: PDF.length, sha256: PDF_SHA },
   paper_states: { claim: 4180, months: ['2026-09'], notice_sent_on: ['2026-10-09'], property_address: '14 Maple Ct, Marlow, TX 78000', owner: 'Pat Sample' },
@@ -248,7 +248,7 @@ const stagePath = () => `${STAGE}${PDF_SHA.slice(0, 32)}.pdf`
 
 describe('plan_lien_filing — a visit to the clerk', () => {
   it('judges each filing on its own, writes nothing, and signs an upload for the ready one alone', async () => {
-    const birch = filing({ job_id: JOB_B, recording_number: '20260222922', scan: { name: 'birch.pdf', size_bytes: 9, sha256: 'd'.repeat(64) }, paper_states: { claim: 2650, months: ['2026-08', '2026-09'] }, matched_because: 'The paper names 22 Birch Ln and swears $2,650.00.' })
+    const birch = filing({ job_id: JOB_B, recording_number: '20269990002', scan: { name: 'birch.pdf', size_bytes: 9, sha256: 'd'.repeat(64) }, paper_states: { claim: 2650, months: ['2026-08', '2026-09'] }, matched_because: 'The paper names 22 Birch Ln and swears $2,650.00.' })
     const out = await call('plan_lien_filing', { filings: [filing(), birch, { job_id: 'nope' }] })
     expect(out.isError).toBe(false)
     expect(out.body!.filings).toBe('3 filings: 1 ready, 1 held on differences, 1 refused.')
@@ -301,7 +301,7 @@ describe('apply_lien_filing — one filing', () => {
     // The row first, then the desk's item, then the scan's link: a Drive door that fails never leaves a file with no filing.
     const [insert, patch, link] = world.writes
     expect(insert).toMatchObject({ method: 'POST', table: 'job_lien_filings' })
-    expect(insert!.body).toMatchObject({ job_id: JOB, created_by: DEV, kind: 'affidavit', amount: 4180, county: 'Marlow', recording_number: '20260222921', filed_at: '2026-11-16', serve_due: '2026-11-23' })
+    expect(insert!.body).toMatchObject({ job_id: JOB, created_by: DEV, kind: 'affidavit', amount: 4180, county: 'Marlow', recording_number: '20269990001', filed_at: '2026-11-16', serve_due: '2026-11-23' })
     expect(Object.keys(insert!.body as Row).sort()).toEqual(['amount', 'county', 'created_by', 'fields', 'filed_at', 'job_id', 'kind', 'recording_number', 'serve_due'])
     expect(patch).toMatchObject({ method: 'PATCH', table: 'job_lien_desk_items', query: `id=eq.${ITEM}&kind=eq.affidavit&status=eq.approved&select=id`, body: { status: 'sent', sent_filing_id: 'new-1' } })
     expect(link).toEqual({ method: 'PATCH', table: 'job_lien_filings', query: 'id=eq.new-1&document_url=eq.&select=id', body: { document_url: NEW_URL, document_note: LIEN_CLERK_SCAN_NOTE } })
@@ -310,7 +310,7 @@ describe('apply_lien_filing — one filing', () => {
     expect(world.tables.job_lien_desk_items!.find((i) => i.id === ITEM)).toMatchObject({ status: 'sent', sent_filing_id: 'new-1' })
     expect(lastLog()).toMatchObject({ verb: 'apply_lien_filing', status: 'ok', target: JOB })
     // The log keeps the hash and the clerk's facts, never the long words: one apply per plan reads the hash back.
-    expect(lastLog()!.args).toEqual({ filing: { job_id: JOB, county: 'Marlow', recording_number: '20260222921', filed_on: '2026-11-16', scan: f.scan, saved_copy: null, filed_outside_the_desk: false, accept_differences: false }, plan_hash: hash })
+    expect(lastLog()!.args).toEqual({ filing: { job_id: JOB, county: 'Marlow', recording_number: '20269990001', filed_on: '2026-11-16', scan: f.scan, saved_copy: null, filed_outside_the_desk: false, accept_differences: false }, plan_hash: hash })
   })
 
   it('cannot land twice: the job now holds its filing, and the other job is untouched', async () => {
@@ -320,7 +320,7 @@ describe('apply_lien_filing — one filing', () => {
     world.staged[stagePath()] = PDF
     const again = await call('apply_lien_filing', { filing: f, plan_hash: hash })
     expect(again.isError).toBe(true)
-    expect(again.text).toContain('JP2291: instrument 20260222921 is on record, filed 2026-11-16 in Marlow County')
+    expect(again.text).toContain('JP2291: instrument 20269990001 is on record, filed 2026-11-16 in Marlow County')
     expect(again.text).toContain('There is nothing to apply.')
     expect(world.writes).toHaveLength(3)
     expect(world.drive).toHaveLength(1)
@@ -431,7 +431,7 @@ describe('apply_lien_filing — one filing', () => {
   })
 
   it('the same instrument number on another job is refused however it was punctuated', async () => {
-    world.tables.job_lien_filings!.push({ id: 'other', job_id: JOB_B, kind: 'affidavit', filed_at: '2026-11-16', recording_number: '2026-0222921', county: 'Marlow', document_url: '', voided_at: null, created_at: '2026-11-16T17:00:00Z' })
+    world.tables.job_lien_filings!.push({ id: 'other', job_id: JOB_B, kind: 'affidavit', filed_at: '2026-11-16', recording_number: '2026-9990001', county: 'Marlow', document_url: '', voided_at: null, created_at: '2026-11-16T17:00:00Z' })
     const out = await call('plan_lien_filing', { filing: filing() })
     expect((out.body!.entries as Row[])[0]).toMatchObject({ status: 'refused', why: expect.stringContaining('is already on JP2304') })
   })
@@ -448,7 +448,7 @@ describe('apply_lien_filing — one filing', () => {
   })
 
   it('a filing already on record with no saved copy takes the scan alone', async () => {
-    world.tables.job_lien_filings!.push({ id: 'on-file', job_id: JOB, kind: 'affidavit', months_covered: [], sends: [], filed_at: '2026-11-16', recording_number: '2026 0222921', county: 'Marlow', document_url: '', document_note: '', serve_due: '2026-11-23', served_at: null, voided_at: null, created_at: '2026-11-16T17:00:00Z' })
+    world.tables.job_lien_filings!.push({ id: 'on-file', job_id: JOB, kind: 'affidavit', months_covered: [], sends: [], filed_at: '2026-11-16', recording_number: '2026 9990001', county: 'Marlow', document_url: '', document_note: '', serve_due: '2026-11-23', served_at: null, voided_at: null, created_at: '2026-11-16T17:00:00Z' })
     world.tables.job_lien_desk_items!.find((i) => i.id === ITEM)!.status = 'sent'
     const { f, hash } = await planned()
     world.staged[stagePath()] = PDF
@@ -460,7 +460,7 @@ describe('apply_lien_filing — one filing', () => {
 
 describe('a paper already on record (v2.7837)', () => {
   const FIELDS = { isSub: true, workMonthsWords: 'September 2026', noticesSentWords: 'certified mail on October 9, 2026', propertyAddress: '14 Maple Ct, Marlow, TX 78000', legalDescription: 'LOT 4 BLK 7', ownerName: 'Pat Sample', unpaidAmount: '4180.00' }
-  const onFile = (over: Row = {}): Row => ({ id: 'on-file', job_id: JOB, kind: 'affidavit', months_covered: [], sends: [], filed_at: '2026-11-16', recording_number: '2026 0222921', county: 'Marlow', document_url: OLD_URL, document_note: LIEN_CLERK_SCAN_NOTE, serve_due: '2026-11-23', served_at: null, voided_at: null, created_at: '2026-11-16T17:00:00Z', amount: 4180, fields: FIELDS, ...over })
+  const onFile = (over: Row = {}): Row => ({ id: 'on-file', job_id: JOB, kind: 'affidavit', months_covered: [], sends: [], filed_at: '2026-11-16', recording_number: '2026 9990001', county: 'Marlow', document_url: OLD_URL, document_note: LIEN_CLERK_SCAN_NOTE, serve_due: '2026-11-23', served_at: null, voided_at: null, created_at: '2026-11-16T17:00:00Z', amount: 4180, fields: FIELDS, ...over })
   const REPLACE = { replace_saved_copy: true, replace_because: 'The copy on record is the whole stack, not this lien’s two pages.' }
   beforeEach(() => {
     world.tables.job_lien_filings!.push(onFile())
@@ -469,7 +469,7 @@ describe('a paper already on record (v2.7837)', () => {
 
   it('a plan checks the paper against the record, signs nothing and writes nothing', async () => {
     const august = filing({ paper_states: { claim: 4180, months: ['2026-08'], notice_sent_on: ['2026-10-09'], property_address: '14 Maple Ct, Marlow, TX 78000', owner: 'Pat Sample' } })
-    const birch = filing({ job_id: JOB_B, recording_number: '20260222922', scan: { name: 'birch.pdf', size_bytes: 9, sha256: 'd'.repeat(64) }, paper_states: { claim: 4180, months: ['2026-09'], notice_sent_on: ['2026-10-09'] }, matched_because: 'The paper names 22 Birch Ln and swears $4,180.00.' })
+    const birch = filing({ job_id: JOB_B, recording_number: '20269990002', scan: { name: 'birch.pdf', size_bytes: 9, sha256: 'd'.repeat(64) }, paper_states: { claim: 4180, months: ['2026-09'], notice_sent_on: ['2026-10-09'] }, matched_because: 'The paper names 22 Birch Ln and swears $4,180.00.' })
     const out = await call('plan_lien_filing', { filings: [august, birch] })
     expect(out.isError).toBe(false)
     expect(out.body!.filings).toBe('2 filings: 1 ready, 1 already on record (1 whose record and paper differ).')
