@@ -5,7 +5,7 @@ import { jobBillingContextFromJob } from './jobBillingContext'
 import { buildPhysicalInvoiceDetailFromJob, jobContextForPhysicalDoc } from './physicalInvoiceJobContext'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { billFeeLines } from './jobs/arReturnCaseFee'
-import { billedInvoiceBillTo } from './jobs/billToParty'
+import { billedInvoiceBillTo } from './jobs/billedInvoiceBillTo'
 
 type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
