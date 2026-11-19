@@ -16,6 +16,14 @@ describe('bidStageOfLine (v2.5046)', () => {
   it('a line that names no stage, or two, maps to none', () => {
     for (const n of ['Plumbing per plans', 'Job total (migrated)', 'Lift', 'Repair broken main, post test', 'Rough and top out', 'Laptop', '', null]) expect(bidStageOfLine(n)).toBeNull()
   })
+  it('reads through the job’s own reader (punch list #397, PR 6): the start of the name, with ground and final in their bid stage', () => {
+    expect(bidStageOfLine('Underground')).toBe('rough')
+    expect(bidStageOfLine('Final')).toBe('trim')
+    expect(bidStageOfLine('Set trim')).toBe('trim')
+    expect(bidStageOfLine('Stage 2 — Top Out')).toBe('top')
+    // A stage's word in the middle of a service line used to read as that stage.
+    for (const n of ['Installed shower trim and reset toilet', 'Half bath trim out', 'Trip charge for a dry run to start rough in', 'Rough in, top out and trim']) expect(bidStageOfLine(n)).toBeNull()
+  })
 })
 
 describe('stageEarnedValue (v2.5046)', () => {

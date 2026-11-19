@@ -38,6 +38,42 @@ describe('affidavit gates and piles', () => {
     expect(affidavitGates(row({ job_id: 'c', homestead: true })).find((g) => g.key === 'homestead')?.ok).toBe(false)
   })
 
+  it('a paper not filed whose day has passed is Missed whatever its status, and a recorded filing wins', () => {
+    const past = '2026-09-01'
+    const rows = [
+      row({ job_id: 'sent', deadline: past }),
+      row({ job_id: 'approved', deadline: past }),
+      row({ job_id: 'gateHeld', deadline: past, has_legal: false }),
+      row({ job_id: 'held', deadline: past }),
+      row({ job_id: 'drafted', deadline: past }),
+      row({ job_id: 'filedLate', deadline: past }),
+      row({ job_id: 'onFile', deadline: past, filed: true }),
+      // On its last day it can still be filed.
+      row({ job_id: 'lastDay', deadline: TODAY }),
+    ]
+    const items = [
+      item({ job_id: 'sent', status: 'awaiting_approval' }),
+      item({ job_id: 'approved', status: 'approved', approval_mode: 'leader' }),
+      item({ job_id: 'gateHeld', status: 'approved', approval_mode: 'leader' }),
+      item({ job_id: 'held', status: 'held', hold_reason: 'call_first', hold_until: '2026-09-12' }),
+      item({ job_id: 'drafted', status: 'draft' }),
+      item({ job_id: 'filedLate', status: 'sent', sent_at: `${TODAY}T15:00:00Z` }),
+      item({ job_id: 'onFile', status: 'approved', approval_mode: 'leader' }),
+      item({ job_id: 'lastDay', status: 'approved', approval_mode: 'leader' }),
+    ]
+    const q = buildLienAffidavitQueue(rows, items, TODAY)
+    const of = (id: string) => q.entries.find((e) => e.jobId === id)!
+    for (const id of ['sent', 'approved', 'gateHeld', 'held', 'drafted']) expect([id, of(id).pile]).toEqual([id, 'missed'])
+    // The paper is still there under the pile: nothing is voided, and the batch print reads Ready to file alone.
+    expect(of('approved').item?.status).toBe('approved')
+    expect(lienAffidavitGateHeld(of('gateHeld'))).toBe(false)
+    // Recorded as filed, on the desk item or on the job: never Missed.
+    expect(of('filedLate').pile).toBe('filed')
+    expect(of('onFile').pile).toBe('ready')
+    expect(of('lastDay').pile).toBe('ready')
+    expect(q.counts.missed).toBe(5)
+  })
+
   it('piles: property facts first, then to draft; items decide the rest; filed and missed are the record', () => {
     const rows = [
       row({ job_id: 'ok' }),

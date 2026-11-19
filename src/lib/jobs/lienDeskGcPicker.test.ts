@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienGcPickerOptions, lienGcPickerCloseWords } from './lienDeskGcPicker'
+import { buildLienGcPickerOptions, LIEN_GC_NOTICE_HINT, lienGcNoticePress, lienGcPickerCloseWords } from './lienDeskGcPicker'
 import type { LienDeskEntry } from './lienDesk'
 
 function entry(over: Partial<LienDeskEntry> & { jobId: string; gcCustomerId: string }): LienDeskEntry {
@@ -80,5 +80,27 @@ describe('buildLienGcPickerOptions', () => {
   })
   it('names a GC it cannot find "GC"', () => {
     expect(buildLienGcPickerOptions([entry({ jobId: 'x', gcCustomerId: 'nope' })], {})[0]!.name).toBe('GC')
+  })
+})
+
+describe('the press beside the GC’s name on a job’s own notice (v2.7806, the owner’s pick: off the header, on the job)', () => {
+  const office = { office: true, handed: true, isMobile: false, gcId: 'gc-1', gcName: 'ZZ Test Builder' }
+
+  it('the office on a computer gets the press for the job’s GC: short words beside the name, the GC in its accessible name', () => {
+    expect(lienGcNoticePress(office)).toEqual({ gcId: 'gc-1', words: 'Put on notice…', name: 'Put ZZ Test Builder on notice…', hint: LIEN_GC_NOTICE_HINT })
+    expect(LIEN_GC_NOTICE_HINT).toContain('one approved run')
+  })
+
+  it('a GC with no name on file is still named', () => {
+    expect(lienGcNoticePress({ ...office, gcName: '  ' })!.name).toBe('Put this GC on notice…')
+    expect(lienGcNoticePress({ ...office, gcName: null })!.name).toBe('Put this GC on notice…')
+  })
+
+  it('no press for a job with no GC, a reader who is not the office, a desk handed no run window, or a phone, which keeps More', () => {
+    expect(lienGcNoticePress({ ...office, gcId: null })).toBeNull()
+    expect(lienGcNoticePress({ ...office, gcId: '' })).toBeNull()
+    expect(lienGcNoticePress({ ...office, office: false })).toBeNull()
+    expect(lienGcNoticePress({ ...office, handed: false })).toBeNull()
+    expect(lienGcNoticePress({ ...office, isMobile: true })).toBeNull()
   })
 })

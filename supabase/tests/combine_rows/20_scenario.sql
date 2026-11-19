@@ -306,6 +306,16 @@ INSERT INTO public.schedule_block_events (block_id, job_id, change) VALUES ('000
 INSERT INTO public.job_charge_adjustments (id, job_id, kind, target, made_by) VALUES ('00000000-0000-0000-0000-0000002523c2', '00000000-0000-0000-0000-000000252b03', 'day_off', '2026-10-01', '00000000-0000-0000-0000-000000252a01');
 INSERT INTO public.job_charge_statements (id, record_id, job_ledger_id, period_start, period_end) VALUES ('00000000-0000-0000-0000-0000002523c3', 'SC-9103-1', '00000000-0000-0000-0000-000000252b03', '2026-10-01', '2026-10-07');
 
+-- Two trips on the bed's development (the trip record, #379). The first names the source job alone. The second
+-- names both jobs, so its link to the target is already there.
+INSERT INTO public.trips (id, development_id, purpose) VALUES
+  ('00000000-0000-0000-0000-0000002523d1', '00000000-0000-0000-0000-0000002523a2', 'Combine bed trip one'),
+  ('00000000-0000-0000-0000-0000002523d2', '00000000-0000-0000-0000-0000002523a2', 'Combine bed trip two');
+INSERT INTO public.trip_jobs (trip_id, job_id) VALUES
+  ('00000000-0000-0000-0000-0000002523d1', '00000000-0000-0000-0000-000000252b03'),
+  ('00000000-0000-0000-0000-0000002523d2', '00000000-0000-0000-0000-000000252b03'),
+  ('00000000-0000-0000-0000-0000002523d2', '00000000-0000-0000-0000-000000252b01');
+
 -- 3a. Both jobs hold a live work order for Pat: the combine holds, says so, and moves nothing.
 SELECT cr.as_user('00000000-0000-0000-0000-000000252a01');
 SET LOCAL ROLE authenticated;
@@ -485,6 +495,9 @@ SELECT cr.same('a try-out verdict moved', (SELECT job_ledger_id::text FROM publi
 SELECT cr.same('a GC project''s billing job moved under the guard', (SELECT billing_job_id::text FROM public.gc_projects WHERE project_id = '00000000-0000-0000-0000-0000002523a4'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('our crew''s trade job moved under the guard', (SELECT job_ledger_id::text FROM public.gc_trade_packages WHERE id = '00000000-0000-0000-0000-0000002523a5'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('the general conditions job moved', (SELECT general_conditions_job_id::text FROM public.gc_project_money WHERE project_id = '00000000-0000-0000-0000-0000002523a4'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a trip''s job link moved', (SELECT string_agg(job_id::text, ',') FROM public.trip_jobs WHERE trip_id = '00000000-0000-0000-0000-0000002523d1'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a trip that named both jobs keeps one link', (SELECT string_agg(job_id::text, ',') FROM public.trip_jobs WHERE trip_id = '00000000-0000-0000-0000-0000002523d2'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('both trips are still there, and no link was kept as a deleted trip''s', (SELECT count(*)::text FROM public.trips WHERE id IN ('00000000-0000-0000-0000-0000002523d1', '00000000-0000-0000-0000-0000002523d2')) || ' ' || (SELECT count(*)::text FROM public.deleted_records_archive WHERE table_name = 'trip_jobs' AND group_key IN ('00000000-0000-0000-0000-0000002523d1', '00000000-0000-0000-0000-0000002523d2')), '2 0');
 SELECT cr.same('a Stripe case moved', (SELECT job_id::text FROM public.ar_stripe_cases WHERE id = '00000000-0000-0000-0000-0000002523bc'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('a returned-check case moved', (SELECT job_id::text FROM public.ar_unbanked_check_cases WHERE id = '00000000-0000-0000-0000-0000002523bd'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('a rating ask moved', (SELECT job_id::text FROM public.customer_ratings WHERE id = '00000000-0000-0000-0000-0000002523bf'), '00000000-0000-0000-0000-000000252b01');

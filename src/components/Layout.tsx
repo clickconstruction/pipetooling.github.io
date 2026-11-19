@@ -21,6 +21,7 @@ import AddTaskShortcutBanner from './AddTaskShortcutBanner'
 import { CustomerWaitingBanner } from './CustomerWaitingBanner'
 import { AppHealthStrip } from './AppHealthStrip'
 import { useOutboxReplay } from '../hooks/useOutboxReplay'
+import { useKeptBoxPhotos } from '../hooks/useKeptBoxPhotos'
 import { CustomerWaitingProvider } from '../contexts/CustomerWaitingContext'
 import AssistantReadyToBillBanner from './AssistantReadyToBillBanner'
 import CustomerContactCardIcon from './icons/CustomerContactCardIcon'
@@ -136,9 +137,13 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 const IMPERSONATION_KEY = 'impersonation_original'
 
 const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
+// The height above and each press's icon are in em, so the type size is part of the size and lives here.
+// A link takes the page's 1rem where a button takes 0.875rem, which drew the green phone bigger than its neighbours.
+const HEADER_ACTION_BUTTON_FONT_SIZE = '0.875rem'
 
 const headerActionButtonBase = {
   height: HEADER_ACTION_BUTTON_HEIGHT,
+  fontSize: HEADER_ACTION_BUTTON_FONT_SIZE,
   boxSizing: 'border-box' as const,
   display: 'inline-flex' as const,
   alignItems: 'center' as const,
@@ -155,6 +160,8 @@ export default function Layout() {
   const isDigitalTwin = useIsDigitalTwin()
   // The outbox's one sender (punch list #163 PR 2): queued presses go out in order when the signal returns.
   const outboxReplay = useOutboxReplay(authUser?.id)
+  // A box photo kept with no signal sends by itself (Take from a box).
+  useKeptBoxPhotos(authUser?.id)
   // Partner nav (v2.2165): the Statement link shows only for accounts with a live partnership.
   const partnerNav = useIsPartner(role, authUser?.id)
   const ownLogbookShown = useOwnLogbookShown(authUser?.id)

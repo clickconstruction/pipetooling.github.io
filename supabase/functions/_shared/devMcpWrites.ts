@@ -39,6 +39,7 @@ import { isBillVerb } from './devMcpBill.ts'
 import { isJobMarkVerb, jobMarkInput } from './devMcpJobMarks.ts'
 import { isPropertyRecordVerb, propertyRecordInput } from './devMcpPropertyRecord.ts'
 import { isLastWorkDayVerb, lastWorkDayInput } from './devMcpLastWorkDay.ts'
+import { isPaySetupVerb, paySetupInput } from './devMcpPaySetup.ts'
 import { isNoticeByHandVerb, noticeByHandInput } from './devMcpNoticeByHand.ts'
 import { affidavitDraftInput, isAffidavitDraftVerb } from './devMcpAffidavitDraft.ts'
 import { isLienFilingVerb, lienFilingApplyInput, lienFilingPlanInput } from './devMcpLienFiling.ts'
@@ -261,6 +262,12 @@ export const WRITE_VERBS = {
   apply_login: { rpc: null, step: 'apply' },
   plan_password_reset: { rpc: null, step: 'plan' },
   apply_password_reset: { rpc: null, step: 'apply' },
+  // v2.7821 / 0.102.0: the pay setup of a person who exists, as their sheet's Pay & schedule saves it — the wage,
+  // Salaried, the employment dates, the salaried workday's start — through set_pay_config as the dev (the audited door:
+  // pay_admin_events keeps before and after), the desk's PATCH on people and the Hire form's template row; no wrapper,
+  // so rpc is null — the dry run is the server's read of the pay row, the dates and the template (devMcpPaySetup.ts).
+  plan_pay_setup: { rpc: null, step: 'plan' },
+  apply_pay_setup: { rpc: null, step: 'apply' },
   // v2.6804 / 0.51.0: submittals — rows onto a bid's draft revision (one or many, added or changed by tag) and the
   // order log's facts on its lines (ordered, PO, expected, delivered, a note), the rows Bids → Submittals writes under
   // RLS; no RPC exists for either, so rpc is null — the dry run is the server's read of the bid's submittal world
@@ -547,6 +554,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isAccountVerb(verb)) {
     // v2.6792: the shape check is devMcpAccount's; the dry run is the server's read of the account, its roster row and the auth stamps.
     const built = verb === 'plan_account' || verb === 'apply_account' ? accountInput(verb, input, todayYmd()) : verb === 'plan_login' || verb === 'apply_login' ? loginInput(verb, input) : passwordResetInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isPaySetupVerb(verb)) {
+    // v2.7821: the shape check is devMcpPaySetup's; the dry run is the server's read of the pay row, the roster row's dates and the workday template.
+    const built = paySetupInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }

@@ -165,6 +165,8 @@ Press **Map** beside **Ledger**. The same rows draw as pins, coloured by their l
 
 Click a pin to read the permit beside the map. Press {{button:blue|Decide…}} there the same as on the ledger.
 
+The map has **Satellite**, **Streets** and **Time**. Click a pin, then press **Time** to see that lot on earlier days. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) shows how.
+
 ## See everything about the building
 
 Press an address. A sheet named **The building** opens with four parts.

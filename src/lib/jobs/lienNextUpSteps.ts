@@ -11,6 +11,7 @@ import type { LienNextUpKind, LienNextUpRow } from './lienNextUp'
 import { lienOfferApprovedWords, type LienPayOffer } from './lienPayOffer'
 import { LIEN_REMINDER_SHORT, LIEN_REMINDER_STEPS, lienReminderLadderItems } from './lienReminders'
 import { LIEN_RUN_ACT } from './lienRunWords'
+import { LIEN_SERVE_STAGE_WORDS } from './lienServeStage'
 
 /** The three kinds of paper, and the REMINDERS ladder a sent notice walks (punch list #262). */
 export type LienStepLadder = LienNextUpKind | 'reminder'
@@ -143,7 +144,7 @@ function ladderItems(ladder: LienStepLadder, at: LienStepN, f: LienStepFacts): L
 }
 
 /** A row beside the ladder: its state, written as two rungs so the card keeps its shape. */
-function besideItems(row: Pick<LienNextUpRow, 'action' | 'sub'>): { items: LienStepCardItem[]; foot: string } {
+function besideItems(row: Pick<LienNextUpRow, 'action' | 'sub' | 'serveStage'>): { items: LienStepCardItem[]; foot: string } {
   switch (row.action) {
     case 'note_missed':
       return {
@@ -189,7 +190,9 @@ function besideItems(row: Pick<LienNextUpRow, 'action' | 'sub'>): { items: LienS
       return {
         items: [
           { state: 'done', title: 'Filed', detail: 'The affidavit is on record with the county clerk.' },
-          { state: 'now', title: 'Record service', detail: 'The owner must be served within five days of filing. Record when and how.' },
+          // The step's two halves by their names on the desk (`lienServeStage.ts`): the print, then the mail numbers.
+          { state: row.serveStage === 'record' ? 'done' : 'now', title: LIEN_SERVE_STAGE_WORDS.print, detail: 'A copy goes to the owner, and to the GC on a job under one, within five days of filing.' },
+          { state: row.serveStage === 'record' ? 'now' : 'todo', title: LIEN_SERVE_STAGE_WORDS.record, detail: 'After the post office: the day mailed, each certified mail number and its receipt.' },
         ],
         foot: 'After step 4 · service owed',
       }

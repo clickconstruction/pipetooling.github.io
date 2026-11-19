@@ -897,9 +897,10 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       severity: 'red',
       kicker: 'Lien filings',
       title: n === 1 ? 'A filed lien has not been served' : `${n} filed liens have not been served`,
-      detail: `A copy of the filed affidavit must reach the owner and contractor by the 5th day after filing (§ 53.055) — the ${n === 1 ? 'deadline is' : 'earliest deadline is'} ${worst}. Record the service in the job's Lien window.`,
+      detail: `A copy of the filed affidavit must reach the owner and contractor by the 5th day after filing (§ 53.055) — the ${n === 1 ? 'deadline is' : 'earliest deadline is'} ${worst}. Print the copies and enter their mail numbers in the job's Lien window.`,
       figure: String(n),
-      actionLabel: 'Record service',
+      // The card cannot tell whether the copies are printed, so its press names where it goes (v2.7816). *Record service* before.
+      actionLabel: 'Open the Lien window',
     })
   }
 

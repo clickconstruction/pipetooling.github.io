@@ -81,12 +81,17 @@ import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { lienRunEntriesFor, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { lienBoardChipFor, lienBoardDoorWords, lienBoardLeaderBinPress, lienBoardPickWords, lienBoardRowInPick, type LienBoardBinKey, type LienBoardChip, type LienBoardKind } from '../../lib/jobs/lienBoard'
 import { lienBinFolds } from '../../lib/jobs/lienNextUpByBin'
+import LienClosedWindow, { type LienClosedPaper } from './LienClosedWindow'
+import { buildLienClosedWindow, lienClosedAnswerPress, lienClosedFacts } from '../../lib/jobs/lienClosedEnd'
 import { LIEN_BOARD_USUAL_STACK, lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor, type LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { useLienPileHeads } from './LienPileHeads'
 import LienBoard, { type LienBoardBinPress } from './LienBoard'
 import { lienScanTargetsFromDesk } from '../../lib/jobs/lienScanBatch'
-import { lienServeDoorWords, lienServeJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
+import { lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
+import { lienServeProofMissing } from '../../lib/jobs/lienServeNumbers'
+import { lienDocKnownFromFilings } from '../../lib/jobs/lienDocNumber'
+import { lienServeStage, lienServeStageCounts, lienServeStageDoorWords, type LienServeLanding } from '../../lib/jobs/lienServeStage'
 import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
 import { LienOffPathBinView } from './LienOffPathBoardParts'
 import { EmptyState } from '../EmptyState'
@@ -145,7 +150,7 @@ import { LienDeskAwaitingFooter, LienDeskHeldFooter, LienDeskPrintedFooter, Lien
 import { LienDeskSentFooter } from './LienDeskSentFooter'
 import LienFilingMailProof from './LienFilingMailProof'
 import { lienMailProof } from '../../lib/jobs/lienMailProof'
-import { lienMailProofDoorPress, lienMailProofOwnerGap, type LienMailProofLanding, type LienMailProofOpeners } from '../../lib/jobs/lienMailProofDoor'
+import { lienMailProofDoorPress, lienMailProofOwnerGap, lienMailProofServeLanding, type LienMailProofLanding, type LienMailProofOpeners } from '../../lib/jobs/lienMailProofDoor'
 import { useLienCodeSigner } from './useLienCodeSigner'
 import { useLienDeskPayPage } from './useLienDeskPayPage'
 import { useLienDeskRunner } from './useLienDeskRunner'
@@ -681,7 +686,7 @@ export default function LienDesk({
     [data, supplierMarks],
   )
   // The Calendar's "Draft the N" (v2.4153): the notice list narrows to those jobs until the chip is cleared.
-  const [calendarJobFilter, setCalendarJobFilter] = useState<{ ymd: string; jobIds: ReadonlySet<string> } | null>(null)
+  const [calendarJobFilter, setCalendarJobFilter] = useState<{ ymd: string; jobIds: ReadonlySet<string>; words?: string } | null>(null)
   // Deliveries (the Docsmit train, 6b): the Sent pile narrowed to the notices mailed through the provider, each row's tail saying where its envelopes are.
   const [deliveriesOnly, setDeliveriesOnly] = useState(false)
   const mailedJobIds = useMemo(() => jobsWithMailPieces(entries, data?.mailPiecesByFiling ?? {}), [entries, data?.mailPiecesByFiling])
@@ -790,6 +795,11 @@ export default function LienDesk({
   const courtesyByJob = useMemo(() => (data ? courtesyByJobFrom({ todayYmd, letterTwoByJob: data.letterTwoByJob, items: data.items, entries: data.queue.entries, jobsById: data.jobsById, addressesById: data.addressesById, affidavits: data.affidavits.entries, filingsByJob: data.filingsByJob, paymentsByJob: data.paymentsByJob, promisesByJob: data.promisesByJob, repliedAtByJob: data.courtesyRepliedAtByJob }) : {}), [data, todayYmd])
   // To do (punch list #82; Next up until v2.4630, Do now until v2.7207): the queues this desk already holds, folded into one ordered list. No read of its own.
   // The REMINDERS strip (punch list #262): every sent notice's rung from the two statuses above; the To do rail draws its counts, a rung pressed lists its names. No read of its own.
+  // Which filed liens' copies were printed (`lienServeStage.ts`): the desk's read, and what the copies window printed since.
+  // Every door to those copies reads its stage's name from this: *Print the copies to mail*, then *Enter mail numbers*.
+  const [servePrintedNow, setServePrintedNow] = useState<string[]>([])
+  const servePrintedRead = data?.servePrintedFilingIds
+  const servePrinted = useMemo(() => new Set([...(servePrintedRead ?? []), ...servePrintedNow]), [servePrintedRead, servePrintedNow])
   // Filed affidavits not yet served (§ 53.055): To do's record-service rows.
   const serveDue = useMemo(
     () =>
@@ -797,16 +807,22 @@ export default function LienDesk({
         ? Object.values(data.filingsByJob)
             .flat()
             .filter((f) => f.kind === 'affidavit' && f.filed_at && !f.served_at && !f.voided_at && f.serve_due)
-            .map((f) => ({ jobId: f.job_id, serveDue: f.serve_due as string }))
+            .map((f) => ({ jobId: f.job_id, serveDue: f.serve_due as string, stage: lienServeStage(f, servePrinted) }))
         : [],
-    [data],
+    [data, servePrinted],
   )
   // The same filings with where each envelope goes today, for the window that serves them together (punch list #366). No read of its own.
   const serveJobs = useMemo(() => (data ? lienServeJobsFromDesk(data) : []), [data])
+  // The mailed liens that window still shows (v2.7846): its tick saves itself, so a lien ticked on one envelope's number stays until both have a number and a receipt.
+  const serveMailedJobs = useMemo(() => (data ? lienServeMailedJobsFromDesk(data, lienServeProofMissing) : []), [data])
+  // Every filed lien's document number, for the check on one typed in that window (`lienDocNumber.ts`).
+  const docKnown = useMemo(() => (data ? lienDocKnownFromFilings(data.filingsByJob, (jobId) => [(data.jobsById[jobId]?.hcp_number ?? '').trim(), (data.jobsById[jobId]?.job_name ?? '').trim()].filter(Boolean).join(' · ')) : []), [data])
   // Every filed affidavit a scan can go to, for the window that takes several at once (punch list #366). No read of its own.
   const scanTargets = useMemo(() => (data ? lienScanTargetsFromDesk(data) : []), [data])
-  // The door to that window, as the Board's bin and the list's folded row say it: *Mail 12 liens’ copies ›*. '' with none.
-  const serveDoor = useMemo(() => lienServeDoorWords(lienServePlan(serveJobs, { todayYmd, phone: issuer?.phone ?? '' })), [serveJobs, todayYmd, issuer?.phone])
+  // The door to that window, as the Board's bin and the list's folded row say it, named for the stage the copies are at:
+  // *Print 9 liens’ copies ›* with none printed, *Enter mail numbers · 12 ›* with all, and both halves named with some of each. Null with none.
+  const serveDoorAt = useMemo(() => lienServeStageDoorWords(lienServeStageCounts(lienServePlan(serveJobs, { todayYmd, phone: issuer?.phone ?? '' }), servePrinted)), [serveJobs, todayYmd, issuer?.phone, servePrinted])
+  const serveDoor = serveDoorAt?.label ?? ''
   // By date (v2.7571): the To do rows, the Board, its picks, the leader's press and the reminder live in `useLienDeskBoard`.
   const {
     nextUpRows,
@@ -816,6 +832,7 @@ export default function LienDesk({
     publicBin,
     offPathBin,
     leaderView,
+    signSplit,
     approvingLot,
     approveTheLot,
     boardPick,
@@ -871,7 +888,30 @@ export default function LienDesk({
   // The affidavit pane's gate doors open the same window over the desk (v2.4724).
   const [paneFix, setPaneFix] = useState<{ jobId: string; focus: 'owner' | 'owner_address' | 'legal' | 'homestead_answer' } | null>(null)
   // The copy a stop window's card opened the copies window on (`lienMailProofDoor.ts`); forgotten when that window closes.
-  const [serveLand, setServeLand] = useState<LienMailProofLanding | null>(null)
+  const [serveLand, setServeLand] = useState<LienServeLanding | null>(null)
+  /** The copies window from the bin's press or the folded row: opened on the half its name says. */
+  const openServeAll = () => {
+    // A door that names both halves opens the window at its top, where both are in reach.
+    setServeLand(serveDoorAt?.stage === 'record' ? { part: 'numbers' } : serveDoorAt?.stage === 'print' ? { part: 'print' } : null)
+    setServeOpen(true)
+  }
+  /**
+   * A door to one filed lien's copies (a To do row, the band, the pane's footer), landed on the half its name says
+   * (`lienServeStage.ts`). Printed: the copies window at that job's line, the cursor in its number. Still to print: the
+   * copies window's print half when two or more liens are owed, since one stack serves them all (punch list #366), and
+   * the job's own **Print the copies to mail** press when it is the only one. Anyone but the office opens the Lien window.
+   */
+  const openServeFor = (jobId: string) => {
+    const lien = office ? serveJobs.find((j) => j.jobId === jobId) : undefined
+    if (lien && lienServeStage(lien.filing, servePrinted) === 'record') {
+      setServeLand({ part: 'numbers', jobId, recipient: 'owner', cursor: true })
+      setServeOpen(true)
+    } else if (lien && serveJobs.length >= 2) {
+      setServeLand({ part: 'print' })
+      setServeOpen(true)
+    } else if (lien && onOpenLienProof) onOpenLienProof({ jobId, filingId: lien.filing.id, paper: 'affidavit', recipient: 'owner', lack: 'print' })
+    else (onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)
+  }
   const [paperFilledFrom, setPaperFilledFrom] = useState<{ key: string; gaps: ReadonlyArray<LienPaperGap> } | null>(null)
   // A fix can move the row (a whole property turns "Fix the property" into "Draft affidavit"): the paper stays on it by key.
   useEffect(() => {
@@ -1011,9 +1051,9 @@ export default function LienDesk({
         return
       }
     }
-    // Two or more filed liens owe their copies: the row opens the window that prints and records them together (punch list #366). One alone keeps its own Lien window.
-    if (row.action === 'record_service' && office && serveJobs.length >= 2) {
-      setServeOpen(true)
+    // A filed lien's copies: the row lands on the half its press names (`openServeFor`). The folded row opens the window for them all.
+    if (row.action === 'record_service' && t.open !== 'serve_copies' && row.jobId) {
+      openServeFor(row.jobId)
       return
     }
     if (t.open === 'run') {
@@ -1027,7 +1067,7 @@ export default function LienDesk({
     } else if (t.open === 'notice_record_months') {
       void correctNoticeMonths(t.jobId, t.months)
     } else if (t.open === 'serve_copies') {
-      setServeOpen(true)
+      openServeAll()
     } else if (t.open === 'affidavit_pile') {
       // A folded row's press (punch list #362, step 4): the Affidavits list at that pile, where the batch press of the same name stands.
       setAffHeldOnlyPicked(false)
@@ -1068,6 +1108,31 @@ export default function LienDesk({
       }
     }
   }
+  // The closed end's window (`LienClosedWindow`): the papers it walks, and the one it opened on.
+  const [closedWalk, setClosedWalk] = useState<{ jobIds: string[]; start: string } | null>(null)
+  const closedBinJobs = (bin: LienBoardBinKey): string[] => (board ? [...board.notices, ...board.affidavits].find((b) => b.key === bin)?.chips.map((c) => c.jobId) ?? [] : [])
+  /** One job as the window needs it, off the rows the desk holds; null once the job is at no closed end. */
+  const closedPaperFor = (jobId: string): LienClosedPaper | null => {
+    if (!data) return null
+    const closedJob = data.jobsById[jobId]
+    const notice = data.queue.entries.find((e) => e.jobId === jobId) ?? null
+    const affidavit = data.affidavits.entries.find((e) => e.jobId === jobId) ?? null
+    if (!closedJob || (!notice && !affidavit)) return null
+    const gcId = closedJob.gc_customer_id ?? notice?.gcCustomerId ?? affidavit?.gcCustomerId ?? null
+    const facts = lienClosedFacts({
+      number: effectiveJobLedgerNumber(closedJob.hcp_number, closedJob.click_number) || '—',
+      name: closedJob.job_name ?? '',
+      gcName: gcId ? (data.gcsById[gcId]?.name ?? '') : '',
+      unpaid: affidavit?.openBalance ?? notice?.openBalance ?? 0,
+      notice,
+      affidavit,
+      collectionsSince: closedJob.collections_at,
+      status: closedJob.status,
+      role: authRole,
+      lastWorkDoor: Boolean(onOpenCalendarLastWork),
+    })
+    return buildLienClosedWindow(facts) ? { jobId, facts, gcCustomerId: gcId, customerId: closedJob.customer_id ?? null } : null
+  }
   /**
    * A chip's press on the Board, or a job number's anywhere on the desk (v2.7333): the desk's own door for the paper's
    * stage. The property record and the run open over To do, so closing them is the way back; a paper opens through the
@@ -1085,6 +1150,9 @@ export default function LienDesk({
       setRunOpen(true)
     } else if (d.kind === 'lienWindow') {
       ;(onOpenLienAffidavit ?? onOpenLienInstruments)(d.jobId)
+    } else if (d.kind === 'closed') {
+      // A chip at a closed end opens the window that says what closed and asks what to do; it walks its bin from this paper.
+      setClosedWalk({ jobIds: closedBinJobs(chip.bin), start: d.jobId })
     } else if (d.tab === 'affidavits') {
       onZoomAddress?.({ kind: 'affidavit', job: d.jobId, pile: null })
       setKind('affidavit')
@@ -1727,9 +1795,15 @@ export default function LienDesk({
     setPile('ready')
   }
   // Approved · to sign's press (v2.7712): the office's reminder to the leader, the same press as To do's waiting rows carry
-  // (v2.7491), or for a master, whose own the signature is, the door to the approved notices where he signs each.
-  const signDoor = office && authRole === 'master_technician' ? lienBoardSignDoor(readyWaits) : null
-  const signRemind = office && authRole !== 'master_technician' && reminderWords && reminderPlan && reminderPlan.signatures.length > 0 ? reminderWords : null
+  // (v2.7491), or for a leader, whose own the signature is, the door to the approved notices where he signs each.
+  // The door counts the notices on the jobs he leads (v2.7853), and By paper opens narrowed to those, so the press and
+  // the list are one number. A leader who leads none of them, a master or a dev, reads the office's reminder.
+  const signDoor = office && signSplit ? lienBoardSignDoor({ mine: signSplit.mine.length, others: signSplit.others, othersLeader: signSplit.othersLeader }) : null
+  const showNoticesToSign = () => {
+    showUnsignedNotices()
+    if (signDoor && signSplit) setCalendarJobFilter({ ymd: todayYmd, jobIds: new Set(signSplit.mine), words: signDoor.list })
+  }
+  const signRemind = office && !signDoor && reminderWords && reminderPlan && reminderPlan.signatures.length > 0 ? reminderWords : null
   // The presses that stand on a bin's title line beside the two prints (v2.7708): the run again on Approved · to mail while
   // notices still wait to print, the liens' copies on Filed · copies to mail (punch list #366), and the leader's one press
   // on his Awaiting Master approval bin, which stood under his own two bins until the switch to them was retired.
@@ -1744,11 +1818,13 @@ export default function LienDesk({
   const mailNumbersPress = office ? lienBoardMailNumbersPress({ toPrint: (counts?.ready ?? 0) + retReady, printed: counts?.printed ?? 0 }) : null
   const leaderBinPress = leaderView ? lienBoardLeaderBinPress(leaderView) : null
   const boardBinPress: Partial<Record<LienBoardBinKey, LienBoardBinPress>> = {
-    ...(signDoor ? { 'notice:to_sign': { label: signDoor.label, onPress: showUnsignedNotices, filled: true, title: 'Open the approved notices. Each takes your signature on its own pane.', marks: { 'data-lien-board-sign': 'yes' } } } : null),
+    ...(signDoor ? { 'notice:to_sign': { label: signDoor.label, onPress: showNoticesToSign, filled: true, title: 'Open the approved notices on the jobs you lead. Each takes your signature on its own pane.', lines: signDoor.line ? [{ key: 'others', words: signDoor.line, marks: { 'data-lien-board-sign-others': 'yes' } }] : [], marks: { 'data-lien-board-sign': 'yes' } } } : null),
     ...(signRemind ? { 'notice:to_sign': { label: reminding ? 'Reminding…' : signRemind.dead ? signRemind.button : `${signRemind.button} ›`, onPress: () => void remindLeader(), dead: signRemind.dead || reminding, quiet: true, marks: { 'data-lien-board-remind': 'yes' } } } : null),
     ...(sendDoor ? { 'affidavit:to_send': { label: sendDoor.label, onPress: showAffidavitsToSend, title: 'Open the affidavits to send, where one press sends every paper someone has read', marks: { 'data-lien-board-send': 'yes' } } } : null),
     ...(mailNumbersPress ? { 'notice:in_mail': { label: mailNumbersPress.label, onPress: openWholeRun, title: 'Open the run to type each printed notice’s mail number' } } : null),
-    ...(office && serveDoor ? { 'affidavit:filed': { label: serveDoor, onPress: () => setServeOpen(true), title: 'Print the copies each filed lien owes, then enter their mail numbers' } } : null),
+    ...(office && serveDoor ? { 'affidavit:filed': { label: serveDoor, onPress: openServeAll, title: 'Print the copies each filed lien owes, then enter their mail numbers' } } : null),
+    // Each closed end's press: the window opens on the bin's first paper and walks the rest. `quiet`, since nothing there can be rushed.
+    ...Object.fromEntries((['notice:missed', 'affidavit:missed'] as const).map((key) => [key, closedBinJobs(key)] as const).filter(([, ids]) => ids.length > 0).map(([key, ids]) => [key, { label: lienClosedAnswerPress(ids.length), onPress: () => setClosedWalk({ jobIds: ids, start: ids[0]! }), quiet: true, title: 'See what closed on each one and answer it', marks: { 'data-lien-board-closed-press': key } }])),
     ...(leaderBinPress ? { 'affidavit:awaiting': { label: approvingLot ? 'Approving…' : leaderBinPress.label, onPress: () => void approveTheLot(), filled: true, dead: leaderBinPress.dead || approvingLot, lines: leaderBinPress.line ? [{ key: 'late', words: leaderBinPress.line }] : [], marks: { 'data-lien-board-approve': 'yes' } } } : null),
   }
   // What a print leaves out, by its door: the approved notices on By paper, where a row says it is unsigned; the affidavits in
@@ -1774,11 +1850,9 @@ export default function LienDesk({
   const gcNoticeShown = kind === 'notice' && office && !!onPutGcOnNotice && gcPickerOptions.length > 0
   const recordsDoorShown = office && !!onOpenOwnerRecords
   // What the title bar has room for, measured from the bar it drew (`useLienDeskTitleBarFit`, v2.7586).
-  const { titleBarRef, titleLineFit, pileLineFit } = useLienDeskTitleBarFit({ isMobile, paperShown, gcNoticeShown, kind })
+  const { titleBarRef, titleLineFit, pileLineFit, papersFit } = useLienDeskTitleBarFit({ isMobile, paperShown, kind })
   // The first tab's words (v2.7465): on a computer the page's name and the count, on a phone *To do · N* under the title's own row.
   const firstTab = lienDeskFirstTab({ isMobile, count: data ? lienNextUpCount(nextUpRows) : null })
-  // The title bar's shape on this screen: where the tools sit, whether it has a second line, and whether that line breaks before its span (v2.7213, v2.7277, v2.7311; no door of its own since v2.7780).
-  const titleBar = lienDeskTitleBarLayout({ isMobile, fit: titleLineFit, pileFit: pileLineFit, paperShown, gcNotice: gcNoticeShown })
   const moreRun = runDoorShown ? { label: runDoor.label, count: runDoor.count, hint: runDoorHint } : null
   const moreRows = lienDeskMoreRows({ run: moreRun, gcNotice: gcNoticeShown, legendLabel: LIEN_DESK_LEGEND.label, caller: office, share: !!data, ownerRecords: recordsDoorShown })
   const moreButton = lienDeskMoreButton(moreRun)
@@ -2061,6 +2135,7 @@ export default function LienDesk({
           rows: data.rows,
           items: data.items,
           filings: data.filingsByJob[selected.jobId] ?? [],
+          servePrinted,
           entry: selected,
           affidavit: data.affidavits.entries.find((e) => e.jobId === selected.jobId) ?? null,
           retainage: lienRetainageClockFromDesk(data, selected.jobId),
@@ -2081,7 +2156,7 @@ export default function LienDesk({
       ? {}
       : {
           property: (l) => setPaneFix({ jobId: l.jobId, focus: l.lack === 'owner_address' ? 'owner_address' : 'owner' }),
-          ...(serveJobs.some((j) => j.filing.id === filingId) ? { serve: (l: LienMailProofLanding) => { setServeLand(l); setServeOpen(true) } } : null),
+          ...(serveJobs.some((j) => j.filing.id === filingId) ? { serve: (l: LienMailProofLanding) => { setServeLand(lienMailProofServeLanding(l)); setServeOpen(true) } } : null),
           ...(onOpenLienProof ? { lien_window: onOpenLienProof } : null),
         }
   // A stop's paper (v2.4793): what the window shows for each stop of the selected job's timeline. The notice's pages are the pane's
@@ -2101,7 +2176,7 @@ export default function LienDesk({
       const page = filingSnapshotPage(f, { issuer, jobNumber: jobNo })
       // What went out (`lienMailProof.ts`): the mailed files off the notice's own item, and each envelope's receipt.
       const proof = lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, mailedCopies: data.items.find((it) => it.sent_filing_id === f.id)?.mailed_copies, servedAt: f.served_at, hasContractor: Boolean(selected.gcCustomerId) })
-      const proofDoor = proof ? lienMailProofDoorPress({ jobId, filingId: f.id, paper: proof.paper, served: Boolean(f.served_at), ownerGap: lienMailProofOwnerGap({ name: ownerName, mailingAddress: property.owner.mailingAddress }) }, proofOpeners(f.id), () => setStopOpen(null)) : null
+      const proofDoor = proof ? lienMailProofDoorPress({ jobId, filingId: f.id, paper: proof.paper, served: Boolean(f.served_at), printed: lienServeStage(f, servePrinted) === 'record', ownerGap: lienMailProofOwnerGap({ name: ownerName, mailingAddress: property.owner.mailingAddress }) }, proofOpeners(f.id), () => setStopOpen(null)) : null
       return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof, proofDoor }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
     }
     const kind = lienStopPaperKind(step)
@@ -2266,6 +2341,7 @@ export default function LienDesk({
         setRetSelectedJobId(jobId)
         return
       case 'serve':
+        return openServeFor(jobId)
       case 'release':
         return (onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)
       case 'legal_desk':
@@ -2292,7 +2368,7 @@ export default function LienDesk({
     }
   }
   // The notice pane (`LienDeskNoticePane`, v2.7619) reads the desk through one object, built here on every render.
-  const paneCtx: LienNoticePaneContext = { data, todayYmd, authUserId, authName, onChanged, onOpenEditJob, onOpenJob, onCalendarChanged, isMobile, leader, office, setCheckedMonths, coverNote, setCoverNote, housesInLetter, setHousesInLetter, releaseId, setByHandOpen, rulePick, setRulePick, detailsOpen, setDetailsOpen, busy, run, touchDraft, editing, setEditing, paperRef, editInputRef, payEditing, setPayEditing, payPaperRef, payInputRef, claimOpenSignal, paneScrolled, setPaneScrolled, stripRef, paneRef, activeGate, pickGate, kindOpen, setKindOpen, kindBusy, setNoticeFootHome, entries, suppliers, selected, job, gc, address, property, ownerName, stopOpen, setStopOpen, pickKind, promise, gcHasPriorNotice, wm, item, storedDraft, months, monthsList, openBalance, supplierJob, correction, lastSentAt, claimed, wordingDiff, wordingEditedBy, wordingLocked, paneSignature, signClearedLine, docHtml, onPaperClick, commitEdit, claimNumber, noticeRelease, releaseHtml, coverHtml, payPage, claimBills, unbilled, billFromHere, billWhy, payChangedCount, payHtml, onPayPaperClick, commitPayEdit, pageTotal, noticePageNumber, noteMissed, gcOpenTotal, toggleRelease, partedBandNode, saveRule, openPreview, counts, relightPages, pageLabel, monthCards, monthGrid, gates, gateVerdict, gateByKey, gatesFold, timeline, stopPaperFor, footInPane, stripChips, pressStripChip, stripChipStyle, simpleApprove, bandAct, onBandAct, paneHead, goToSection, relightPane }
+  const paneCtx: LienNoticePaneContext = { data, todayYmd, authUserId, authName, onChanged, onOpenEditJob, onOpenJob, onPutGcOnNotice, onCalendarChanged, isMobile, leader, office, setCheckedMonths, coverNote, setCoverNote, housesInLetter, setHousesInLetter, releaseId, setByHandOpen, rulePick, setRulePick, detailsOpen, setDetailsOpen, busy, run, touchDraft, editing, setEditing, paperRef, editInputRef, payEditing, setPayEditing, payPaperRef, payInputRef, claimOpenSignal, paneScrolled, setPaneScrolled, stripRef, paneRef, activeGate, pickGate, kindOpen, setKindOpen, kindBusy, setNoticeFootHome, entries, suppliers, selected, job, gc, address, property, ownerName, stopOpen, setStopOpen, pickKind, promise, gcHasPriorNotice, wm, item, storedDraft, months, monthsList, openBalance, supplierJob, correction, lastSentAt, claimed, wordingDiff, wordingEditedBy, wordingLocked, paneSignature, signClearedLine, docHtml, onPaperClick, commitEdit, claimNumber, noticeRelease, releaseHtml, coverHtml, payPage, claimBills, unbilled, billFromHere, billWhy, payChangedCount, payHtml, onPayPaperClick, commitPayEdit, pageTotal, noticePageNumber, noteMissed, gcOpenTotal, toggleRelease, partedBandNode, saveRule, openPreview, counts, relightPages, pageLabel, monthCards, monthGrid, gates, gateVerdict, gateByKey, gatesFold, timeline, stopPaperFor, footInPane, stripChips, pressStripChip, stripChipStyle, simpleApprove, bandAct, onBandAct, paneHead, goToSection, relightPane }
   // The address named a job the list in view does not hold (v2.7744): the note in the pane's place, with the list the
   // job is on and its Lien window as the ways on. On one column it tops the list, since no pane is open to hold it.
   const offListNote = offList ? (
@@ -2335,6 +2411,10 @@ export default function LienDesk({
     const on = retPile === p.key
     return [pileChip(p.key, p.label, n, on, () => setRetPile(on ? null : p.key))]
   })
+  // The pile chips in the header on a computer: Lien affidavits' or Retainage notices', when a pile has a chip to draw.
+  const headerPileChips = !isMobile && (kind === 'retainage' || kind === 'affidavit') ? (kind === 'retainage' ? retPileChips : affPileChips) : []
+  // The title bar's shape on this screen: where the tools and the paper tabs sit, whether it has a second line, and whether that line breaks before its span (v2.7213, v2.7277, v2.7311; no door of its own since v2.7780; the papers up on the title line where it has room since v2.7789).
+  const titleBar = lienDeskTitleBarLayout({ isMobile, fit: titleLineFit, pileFit: pileLineFit, papersFit, paperShown, piles: headerPileChips.length > 0 })
   // On a phone the chips are one strip that slides sideways, the first thing in the list's own scroller.
   const pileStrip = (chips: ReactNode[]) => (isMobile && chips.length > 0 ? <div data-lien-desk-piles style={{ display: 'flex', gap: 8, padding: '8px 12px', overflowX: 'auto', borderBottom: '1px solid var(--border)' }}>{chips}</div> : null)
 
@@ -2386,6 +2466,8 @@ export default function LienDesk({
         onOpenLienContract={(jobId) => onOpenEditJob(jobId, 'lien-contract')}
         onOpenLienAffidavit={(jobId) => (onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)}
         proofOpeners={proofOpeners}
+        servePrinted={servePrinted}
+        onServe={openServeFor}
         onOpenLegalDesk={onOpenLegalDesk}
         onShowNotices={(jobId) => {
           setKind('notice')
@@ -2722,6 +2804,10 @@ export default function LienDesk({
     : kind === 'notice' && footer ? (footInPane ? (noticeFootHome ? createPortal(noticeFooterStrip, noticeFootHome) : null) : noticeFooterStrip)
     : null
   const paneColumn = (node: ReactNode) => (footerHome.column ? <div data-lien-desk-pane-column style={footerHome.column}>{node}{paneFooter}</div> : node)
+  // By paper's three paper tabs, drawn on the title line or leading the second (`titleBar.papers`, v2.7789).
+  const paperTabs = paperShown ? (
+    <LienDeskPaperTabs isMobile={isMobile} kind={kind} toolsOnTitleLine={titleBar.tools === 'title_line'} onTitleLine={titleBar.papers === 'title_line'} noticeCount={counts ? entries.filter((e) => e.pile !== 'sent').length : null} affCount={data ? affCount : null} retCount={data ? retCount : null} onPick={setKind} />
+  ) : null
   return (
     <section aria-label="Lien desk" data-lien-desk-page style={{ display: 'contents' }}>
       <div style={panelStyle} data-lien-desk-panel="page">
@@ -2761,6 +2847,8 @@ export default function LienDesk({
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
           {/* Four views: To do, By date, By paper, By job. The first three are punch list #82, PR 5 (named Next up, Calendar, All paper until v2.4630 and Do now, Deadlines, All filings until v2.7207, the owner's pick: the first is the work, the other two the same jobs sorted two ways; only To do carries a count). By paper holds the three papers' lists as a second row. By job is the list that was Timeline in that row until v2.7219, the owner's pick of 2026-11-13: it is every job's path, not a kind of paper. */}
           <LienDeskViewTabs kindTabs={kindTabs} isMobile={isMobile} kind={kind} paperShown={paperShown} firstTab={firstTab} onTitle={() => { setKind('next'); bringBoard() }} onPick={(v) => setKind(v === 'paper' ? lastPaperKind : v)} />
+          {/* By paper's three paper tabs ride the title line, between the views and the tools, when the measured line holds them all (v2.7789, the owner's ask of 2026-11-18: "when it can fit, I would like to move this section up into this space, but when it cant fit it should wrap like it has been"). `lienDeskPapersFit` decides, never a wrap. */}
+          {titleBar.papers === 'title_line' ? paperTabs : null}
           {/* In a window wide enough for both (v2.7213, the owner's screenshot at 1,846 px) the tools end the title line, pushed right: nothing is hidden and the bar loses its half-empty second line. */}
           {/* The owner-records door was a tool here, then under the presses (v2.7277, v2.7311), until v2.7780: it is a row of the window ☎ opens. */}
           {titleBar.tools === 'title_line' ? (
@@ -2780,12 +2868,11 @@ export default function LienDesk({
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}
           {/* With the tools up on the title line (v2.7213) the paper tabs are the tallest thing some kinds have here: 2px above and below keeps this line as tall as it is with the GC door, so the bar does not move between Notices and Affidavits. */}
-          {paperShown ? (
-            <LienDeskPaperTabs isMobile={isMobile} kind={kind} toolsOnTitleLine={titleBar.tools === 'title_line'} noticeCount={counts ? entries.filter((e) => e.pile !== 'sent').length : null} affCount={data ? affCount : null} retCount={data ? retCount : null} onPick={setKind} />
-          ) : null}
+          {/* The papers lead the second line where the title line has no room for them, as since v2.3817, and always on a phone. */}
+          {titleBar.papers === 'second_line' ? paperTabs : null}
           {/* The pile chips: in the header on a computer, one span so the pile line can be measured (v2.7311); on a phone a strip at the top of the list, where they scroll away with it (punch list #352, PR 1). The span's own wrapped rows keep the bar's 6 px (v2.7322), since the bar's row gap is 0 now. */}
-          {!isMobile && (kind === 'retainage' || kind === 'affidavit') && (kind === 'retainage' ? retPileChips : affPileChips).length > 0 ? (
-            <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', rowGap: LIEN_DESK_TITLE_BAR_ROW_GAP_PX, columnGap: 'inherit', minWidth: 0 }}>{kind === 'retainage' ? retPileChips : affPileChips}</span>
+          {headerPileChips.length > 0 ? (
+            <span data-lien-desk-piles style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', rowGap: LIEN_DESK_TITLE_BAR_ROW_GAP_PX, columnGap: 'inherit', minWidth: 0 }}>{headerPileChips}</span>
           ) : null}
           {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, To do doors) and the title offers *every pile* (*show every pile* until v2.7434). */}
           {/* The right end of the second line (v2.4629): Put a GC on notice, then on a computer the tools when the title line has no room for them (v2.6569), in one span pushed right — into the title bar's right padding, so the tools end under × and not a toggle's width short of it. On a phone it holds the GC picker. */}
@@ -2793,8 +2880,9 @@ export default function LienDesk({
           {/* A pile line too narrow for the piles and the span together breaks here (v2.7311), so the span falls under the piles as one piece, right-aligned, by the measured rule and not by wrapping. */}
           {titleBar.pileBreak ? <span aria-hidden data-lien-desk-pile-break style={{ flexBasis: '100%', height: 0 }} /> : null}
           {titleBar.rightSpan ? <span data-lien-desk-right style={{ marginLeft: 'auto', marginRight: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
-          {gcNoticeShown && onPutGcOnNotice ? (
-            <LienDeskGcPicker isMobile={isMobile} open={gcPickerOpen} onToggle={() => setGcPickerOpen((o) => !o)} onClose={() => setGcPickerOpen(false)} options={gcPickerOptions} onPick={onPutGcOnNotice} />
+          {/* A phone's GC picker, the sheet More opens. On a computer the door left the bar in v2.7806: the press is beside the GC's name on the job's own notice (`lienGcNoticePress`, drawn by `LienDeskNoticePane`). */}
+          {isMobile && gcNoticeShown && onPutGcOnNotice ? (
+            <LienDeskGcPicker open={gcPickerOpen} onClose={() => setGcPickerOpen(false)} options={gcPickerOptions} onPick={onPutGcOnNotice} />
           ) : null}
           {titleBar.tools === 'second_line' ? headerTools : null}
           </span> : null}
@@ -2832,8 +2920,12 @@ export default function LienDesk({
             issuer={issuer}
             windows={windows}
             serveJobs={serveJobs}
+            serveMailedJobs={serveMailedJobs}
+            docKnown={docKnown}
+            servePrinted={servePrinted}
             serveLand={serveLand}
             onServeClosed={() => setServeLand(null)}
+            onServePrinted={(ids) => setServePrintedNow((cur) => [...cur, ...ids])}
             scanTargets={scanTargets}
             paneFix={paneFix}
             onClosePaneFix={() => setPaneFix(null)}
@@ -2847,6 +2939,26 @@ export default function LienDesk({
             onOpenAffidavit={(jobId) => (onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)}
             onOpenJobPaper={openJobPaper}
           />
+          {closedWalk ? (
+            <LienClosedWindow
+              key={closedWalk.start}
+              jobIds={closedWalk.jobIds}
+              startJobId={closedWalk.start}
+              paperFor={closedPaperFor}
+              authUserId={authUserId}
+              authName={authName}
+              authRole={authRole}
+              zIndex={805}
+              onClose={() => setClosedWalk(null)}
+              onChanged={onChanged}
+              onSetLastWork={(jobId) => onOpenCalendarLastWork?.(jobId)}
+              onRecordFiling={(jobId) => (onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)}
+              onDraftLateNotice={(jobId) => {
+                const chip = board ? lienBoardChipFor(board, jobId, 'notice') : null
+                if (chip) zoomTo({ ...chip, destination: { kind: 'paper', tab: 'notices', jobId } })
+              }}
+            />
+          ) : null}
           {paperFix && data ? (() => {
             const entry = paperEntries[paperFix.index]
             const row = paperRows[paperFix.index]

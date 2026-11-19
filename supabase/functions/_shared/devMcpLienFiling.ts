@@ -20,6 +20,13 @@
 // A plan takes one filing or a whole visit to the clerk. Each filing gets its own verdict and its own plan hash, and
 // an apply takes one: a filing that is held or fails never stops the rest.
 //
+// A paper already on record (v2.7837, the owner, 2026-11-18, with the clerk's stamped stacks in hand: "help me file
+// them carefully, testing along the way"): every lien in the stacks was on record already, and the seat answered each
+// with a refusal. It now answers `on_record` and reads what the caller read off the paper against the paper the record
+// keeps: the claim, the months, the notice day, the property, the owner, the county and the day. Nothing is written.
+// And a saved copy that is the wrong file gives way to the right one: `replace_saved_copy: true` with
+// `replace_because`, the Filings list's *change the saved copy*, with the old file sent to Drive's trash.
+//
 // The scan reaches the server as a staged upload (the route plan_file_plans opened): the plan commits to the file's
 // name, size and sha256 and the server hands back a signed upload address; apply reads the staged copy back and files
 // it only when it is those bytes. The staging and the Drive put are the server's; this file is the pure half.
@@ -99,10 +106,14 @@ export type LienFilingPayload = {
   matched_because: string
   filed_outside_the_desk: boolean
   accept_differences: boolean
+  /** The filing on record carries a saved copy and this scan or link takes its place: the Filings list's *change the saved copy*. */
+  replace_saved_copy: boolean
+  /** One line on why the copy on record is the wrong file, read back in the plan and kept in the call log. */
+  replace_because: string
 }
 
 const SHAPE =
-  'a filing is { job_id (a jobs_ledger.id — find_job), county (the clerk’s county, as stamped), recording_number (the instrument number), filed_on (YYYY-MM-DD, the day the clerk recorded it), scan?: { name, size_bytes, sha256 } (the stamped copy as a file on your machine; one file, one lien) | saved_copy?: { link, note? } (a link to where the paper already lives), paper_states: { claim (dollars, as the paper swears), months?: [YYYY-MM], notice_sent_on?: [YYYY-MM-DD], property_address?, legal_description?, owner? }, matched_because (one line: why this paper is this job’s), filed_outside_the_desk?, accept_differences? }'
+  'a filing is { job_id (a jobs_ledger.id — find_job), county (the clerk’s county, as stamped), recording_number (the instrument number), filed_on (YYYY-MM-DD, the day the clerk recorded it), scan?: { name, size_bytes, sha256 } (the stamped copy as a file on your machine; one file, one lien) | saved_copy?: { link, note? } (a link to where the paper already lives), paper_states: { claim (dollars, as the paper swears), months?: [YYYY-MM], notice_sent_on?: [YYYY-MM-DD], property_address?, legal_description?, owner? }, matched_because (one line: why this paper is this job’s), filed_outside_the_desk?, accept_differences?, replace_saved_copy? (true: this scan or link takes the place of the saved copy a filing on record carries), replace_because? (one line: why the copy on record is the wrong file) }'
 
 function ymdList(v: unknown, re: RegExp): string[] | null | 'bad' {
   if (v === undefined || v === null) return null
@@ -161,6 +172,11 @@ export function lienFilingShape(src: unknown): { ok: true; p: LienFilingPayload 
   const because = str(f.matched_because)
   if (because.length < 10 || because.length > 400) return { ok: false, error: 'matched_because says in one line why this paper is this job’s (the address on the paper, the owner, the claim), 10 to 400 characters.' }
   const text = (v: unknown): string | null => (str(v) ? str(v).slice(0, 600) : null)
+  const replace = f.replace_saved_copy === true
+  const replaceBecause = str(f.replace_because)
+  if (replace && !scan && !savedCopy) return { ok: false, error: 'replace_saved_copy puts a file in place of the saved copy on record: send scan (the right file on your machine) or saved_copy (a link to it) with it.' }
+  if (replace && (replaceBecause.length < 10 || replaceBecause.length > 300)) return { ok: false, error: 'replace_saved_copy needs replace_because: one line on why the copy on record is the wrong file (it holds another job’s pages, it is the unsigned draft), 10 to 300 characters.' }
+  if (!replace && replaceBecause) return { ok: false, error: 'replace_because goes with replace_saved_copy: true. Leave both out to check a paper against its record.' }
   return {
     ok: true,
     p: {
@@ -175,6 +191,8 @@ export function lienFilingShape(src: unknown): { ok: true; p: LienFilingPayload 
       matched_because: because,
       filed_outside_the_desk: f.filed_outside_the_desk === true,
       accept_differences: f.accept_differences === true,
+      replace_saved_copy: replace,
+      replace_because: replaceBecause,
     },
   }
 }
@@ -243,10 +261,10 @@ export type LienFilingJob = {
   lien_last_work_on?: string | null
 }
 export const LIEN_FILING_JOB_COLS = 'id,job_name,job_address,hcp_number,click_number,customer_name,customer_address_id,gc_customer_id,master_user_id,service_type_id,revenue,payments_made,first_work_date,last_work_date,lien_last_work_on'
-export const LIEN_FILING_FILING_COLS = 'id,job_id,kind,months_covered,sends,filed_at,recording_number,county,document_url,document_note,served_at,serve_due,created_at'
+export const LIEN_FILING_FILING_COLS = 'id,job_id,kind,months_covered,sends,filed_at,recording_number,county,document_url,document_note,served_at,serve_due,created_at,amount,fields'
 
 /** A live filing as the plan reads it. */
-export type LienFilingOnRecord = { id: string; job_id: string; kind: string; months_covered: string[]; sends: unknown; filed_at: string | null; recording_number: string; county: string; document_url: string; serve_due: string | null; served_at: string | null }
+export type LienFilingOnRecord = { id: string; job_id: string; kind: string; months_covered: string[]; sends: unknown; filed_at: string | null; recording_number: string; county: string; document_url: string; serve_due: string | null; served_at: string | null; amount: number; fields: Json | null }
 
 export type LienFilingWorld = {
   job: LienFilingJob | null
@@ -299,6 +317,8 @@ const filingOnRecord = (r: Json): LienFilingOnRecord => ({
   document_url: str(r.document_url),
   serve_due: str(r.serve_due) || null,
   served_at: str(r.served_at) || null,
+  amount: num(r.amount),
+  fields: obj(r.fields),
 })
 
 export async function readLienFilingWorld(reads: LienFilingReads, p: LienFilingPayload): Promise<LienFilingWorld> {
@@ -353,14 +373,17 @@ export type LienFilingDifference = { what: 'claim' | 'months' | 'notice_day' | '
 export type LienFilingWrite =
   | { kind: 'record'; row: Json; item: { id: string; from: string; patch: Json } | null; scan: { name: string; mime: string; size_bytes: number; sha256: string } | null }
   /** A filing already on record with this number and no saved copy: the scan alone, as the Filings list's upload does. */
-  | { kind: 'attach_scan'; filingId: string; scan: { name: string; mime: string; size_bytes: number; sha256: string } }
+  /** `replaces` is the link the filing carries now, when the call puts this file in its place: the write is held to it. */
+  | { kind: 'attach_scan'; filingId: string; scan: { name: string; mime: string; size_bytes: number; sha256: string }; replaces?: string }
   /** The same filing, and a link to a copy that is already in Drive: the Filings list's *link the saved copy*. */
-  | { kind: 'attach_link'; filingId: string; link: { url: string; note: string } }
+  | { kind: 'attach_link'; filingId: string; link: { url: string; note: string }; replaces?: string }
 
 export type LienFilingDryRun =
   | { ok: true; status: 'ready'; reply: Json; write: LienFilingWrite }
   /** Planned, and held on differences the call has not accepted: it carries no hash, so nothing can apply it. */
   | { ok: true; status: 'held'; reply: Json }
+  /** The paper is already on record and the call asks for no change: the record read against the paper, nothing to apply. */
+  | { ok: true; status: 'on_record'; reply: Json }
   | { ok: false; refused: string }
 
 const ITEM_STATUS_WORDS: Record<string, string> = {
@@ -411,6 +434,66 @@ export function lienFilingDifferences(p: LienFilingPayload, desk: { claim: numbe
   return { differences: out, notChecked }
 }
 
+/** One thing the paper says that the record on file does not. */
+export type LienRecordDifference = { what: 'claim' | 'months' | 'notice_day' | 'property_address' | 'legal_description' | 'owner' | 'county' | 'filed_on'; paper: string; record: string }
+
+const MONTH_NAMES = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+/** The days a sentence names, as the papers write them ("September 22, 2026 and October 14, 2026"), oldest first. */
+export function daysInWords(words: string): string[] {
+  const out: string[] = []
+  for (const m of words.matchAll(/([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})/g)) {
+    const month = MONTH_NAMES.indexOf(m[1]!.toLowerCase())
+    if (month < 0) continue
+    const ymd = `${m[3]}-${String(month + 1).padStart(2, '0')}-${m[2]!.padStart(2, '0')}`
+    if (!out.includes(ymd)) out.push(ymd)
+  }
+  return out.sort()
+}
+
+/**
+ * What the caller read off the paper against the paper the record keeps: the filing's own claim, county and day, and
+ * the snapshot of the affidavit it was recorded with (`fields`). The snapshot is what *Print the copies to mail*
+ * redraws, so a difference here is a copy that would not match the filed paper. A fact the caller did not send, or the
+ * snapshot does not hold (an earlier form names no months), is named and not compared.
+ */
+export function lienFilingRecordCheck(p: LienFilingPayload, record: LienFilingOnRecord): { differences: LienRecordDifference[]; notChecked: string[]; paperOnRecord: Json } {
+  const out: LienRecordDifference[] = []
+  const notChecked: string[] = []
+  const paper = p.paper_states
+  const f = record.fields ?? {}
+  const kept = (k: string): string => str(f[k])
+  const monthsWords = kept('workMonthsWords')
+  const noticeWords = kept('noticesSentWords')
+  if (Math.abs(paper.claim - record.amount) > 0.005) out.push({ what: 'claim', paper: usd(paper.claim), record: usd(record.amount) })
+  if (paper.months === null) notChecked.push('months')
+  else if (!monthsWords) {
+    if (paper.months.length > 0) notChecked.push('months (the record’s paper names none)')
+  } else if (!sameWords(describeNoticeMonths(paper.months), monthsWords)) out.push({ what: 'months', paper: describeNoticeMonths(paper.months) || 'none', record: monthsWords })
+  if (paper.notice_sent_on === null) notChecked.push('notice_sent_on')
+  else if (!noticeWords) {
+    if (paper.notice_sent_on.length > 0) notChecked.push('notice_sent_on (the record’s paper names no notice)')
+  } else if (paper.notice_sent_on.join(',') !== daysInWords(noticeWords).join(',')) out.push({ what: 'notice_day', paper: list(paper.notice_sent_on), record: noticeWords })
+  const address = kept('propertyAddress')
+  if (paper.property_address === null) notChecked.push('property_address')
+  else if (!sameWords(paper.property_address, address) && !sameWords(streetLine(paper.property_address), streetLine(address))) out.push({ what: 'property_address', paper: paper.property_address, record: address || 'none' })
+  const legal = kept('legalDescription')
+  if (paper.legal_description === null) notChecked.push('legal_description')
+  else if (!sameWords(paper.legal_description, legal)) out.push({ what: 'legal_description', paper: paper.legal_description, record: legal || 'none' })
+  const owner = kept('ownerName')
+  if (paper.owner === null) notChecked.push('owner')
+  else if (!sameWords(paper.owner, owner)) out.push({ what: 'owner', paper: paper.owner, record: owner || 'none' })
+  if (record.county && countyKey(p.county) !== countyKey(record.county)) out.push({ what: 'county', paper: p.county, record: record.county })
+  if (record.filed_at !== p.filed_on) out.push({ what: 'filed_on', paper: p.filed_on, record: record.filed_at ?? 'no day' })
+  return {
+    differences: out,
+    notChecked,
+    paperOnRecord: { claim: record.amount, months_words: monthsWords || null, notice_to_the_owner: noticeWords || null, property_address: address || null, legal_description: legal || null, owner: owner || null, county: record.county || null },
+  }
+}
+
+/** The differences that change the words of the copy *Print the copies to mail* redraws. */
+const COPY_WORDS: ReadonlyArray<LienRecordDifference['what']> = ['claim', 'months', 'notice_day', 'property_address', 'legal_description', 'owner']
+
 const NOT_DONE = 'A record alone. No copy is mailed and nobody is told: the copies to the owner and the original contractor are due by the serve-by day, and plan_lien_service records them once they are mailed. No line lands on the job’s Activity: the table’s trigger posts notices, not affidavits.'
 
 /**
@@ -436,24 +519,42 @@ export function lienFilingDryRun(p: LienFilingPayload, world: LienFilingWorld, w
   const onFile = world.filings.filter((f) => f.kind === 'affidavit' && f.filed_at)
   if (onFile.length > 0) {
     const same = onFile.find((f) => recordingKey(f.recording_number) === recordingKey(p.recording_number))
-    if (same && !same.document_url && (scan || p.saved_copy)) {
+    const check = same ? lienFilingRecordCheck(p, same) : null
+    const checked = check
+      ? {
+          paper_on_record: check.paperOnRecord,
+          paper_as_you_read_it: p.paper_states,
+          agrees: check.differences.length === 0,
+          differences: check.differences,
+          ...(check.notChecked.length > 0 ? { not_checked: `Not compared: ${check.notChecked.join(', ')}.` } : {}),
+          ...(check.differences.some((d) => COPY_WORDS.includes(d.what)) ? { copy_to_mail: 'Print the copies to mail redraws the copy from the record, so its copy would not say what the filed paper says: mail a photocopy of the stamped scan. Neither the seat nor the app changes a recorded paper’s words; a record voided and made again on the job’s Lien window reads the desk as it stands that day.' } : {}),
+        }
+      : {}
+    // The copy the filing carries gives way only when the call says so, with its reason: the Filings list's *change the saved copy*.
+    const replaces = same && same.document_url && p.replace_saved_copy && (scan || p.saved_copy) ? same.document_url : null
+    if (same && (scan || p.saved_copy) && (!same.document_url || replaces)) {
       if (same.filed_at !== p.filed_on || (same.county && countyKey(same.county) !== countyKey(p.county))) return { ok: false, refused: `${label}: instrument ${p.recording_number} is on record for this job as filed ${same.filed_at} in ${same.county || 'no county'}, not ${p.filed_on} in ${p.county}. Check the stamp; the record’s day and county are changed on the job’s Lien window.` }
-      const onRecord = { id: same.id, recording_number: same.recording_number, county: same.county, filed_on: same.filed_at, serve_by: same.serve_due, served_on: same.served_at }
+      if (replaces && p.saved_copy && normalizeDocumentUrl(replaces) === p.saved_copy.link) return { ok: false, refused: `${label}: the filing already carries that link as its saved copy. Nothing to replace.` }
+      const onRecord = { id: same.id, recording_number: same.recording_number, county: same.county, filed_on: same.filed_at, serve_by: same.serve_due, served_on: same.served_at, ...(replaces ? { saved_copy: replaces } : {}) }
+      const swap = replaces ? { replaces, replace_because: p.replace_because, old_copy: 'Once the filing carries the new copy, the old file goes to Drive’s trash when it sits in this job’s Sent by us folder and no lien record names it. Drive keeps it 30 days. A file anywhere else is left where it is.' } : {}
+      const was = replaces ? 'carries a saved copy that this call replaces' : 'is already on record with no saved copy'
       if (scan) {
         return {
           ok: true,
           status: 'ready',
-          write: { kind: 'attach_scan', filingId: same.id, scan },
+          write: { kind: 'attach_scan', filingId: same.id, scan, ...(replaces ? { replaces } : {}) },
           reply: {
             action: 'lien_filing',
-            mode: 'attach_scan',
+            mode: replaces ? 'replace_scan' : 'attach_scan',
             status: 'ready',
             job: jobFacts(job, world, label),
             matched_because: p.matched_because,
             filing_on_record: onRecord,
+            ...checked,
+            ...swap,
             file: { lands_in: LIEN_SCAN_LANDING_WORDS, name: scan.name, mime: scan.mime, size_bytes: scan.size_bytes, sha256: scan.sha256 },
             writes: { saved_copy_on_filing: same.id, note: LIEN_CLERK_SCAN_NOTE },
-            says: `${label}: instrument ${p.recording_number} is already on record with no saved copy. The scan lands in ${LIEN_SCAN_LANDING_WORDS} as ${scan.name} and becomes the filing’s saved copy. Nothing else on the filing changes.`,
+            says: `${label}: instrument ${p.recording_number} ${was}. The scan lands in ${LIEN_SCAN_LANDING_WORDS} as ${scan.name} and becomes the filing’s saved copy. Nothing else on the filing changes.`,
           },
         }
       }
@@ -461,22 +562,48 @@ export function lienFilingDryRun(p: LienFilingPayload, world: LienFilingWorld, w
       return {
         ok: true,
         status: 'ready',
-        write: { kind: 'attach_link', filingId: same.id, link },
+        write: { kind: 'attach_link', filingId: same.id, link, ...(replaces ? { replaces } : {}) },
         reply: {
           action: 'lien_filing',
-          mode: 'attach_link',
+          mode: replaces ? 'replace_link' : 'attach_link',
           status: 'ready',
           job: jobFacts(job, world, label),
           matched_because: p.matched_because,
           filing_on_record: onRecord,
+          ...checked,
+          ...swap,
           writes: { saved_copy_on_filing: same.id, link: link.url, note: link.note },
-          says: `${label}: instrument ${p.recording_number} is already on record with no saved copy. The link becomes the filing’s saved copy; no file is uploaded. Nothing else on the filing changes.`,
+          says: `${label}: instrument ${p.recording_number} ${was}. The link becomes the filing’s saved copy; no file is uploaded. Nothing else on the filing changes.`,
         },
       }
     }
-    const first = same ?? onFile[0]!
-    return { ok: false, refused: `${label}: an affidavit is already on file for this job (instrument ${first.recording_number || 'no number'}, filed ${first.filed_at}${first.document_url ? ', with its saved copy' : same ? ', with no saved copy: send scan or saved_copy to add it' : ''}). One affidavit a job: a second filing is not recorded here. A record made in error is voided on the job’s Lien window first.` }
+    if (same && check) {
+      // The paper is this job's filing on record and the call changes nothing: the record read against the paper.
+      const differ = check.differences.map((d) => d.what)
+      const stands = `${label}: instrument ${same.recording_number} is on record, filed ${same.filed_at} in ${same.county || 'no county'} County`
+      return {
+        ok: true,
+        status: 'on_record',
+        reply: {
+          action: 'lien_filing',
+          mode: 'check',
+          status: 'on_record',
+          job: jobFacts(job, world, label),
+          matched_because: p.matched_because,
+          filing_on_record: { id: same.id, recording_number: same.recording_number, county: same.county, filed_on: same.filed_at, serve_by: same.serve_due, served_on: same.served_at, saved_copy: same.document_url || null },
+          ...checked,
+          writes: 'nothing: a check alone, with no plan_hash',
+          says: differ.length === 0 ? `${stands}, and its record says what the paper says.` : `${stands}. The record and the paper differ on ${differ.join(', ')}.`,
+          next: same.document_url
+            ? 'One affidavit a job: nothing more is recorded. To put another file in place of the saved copy, plan again with replace_saved_copy: true and replace_because.'
+            : 'The filing has no saved copy: plan again with scan (the file) or saved_copy (a link) to add it.',
+        },
+      }
+    }
+    const first = onFile[0]!
+    return { ok: false, refused: `${label}: an affidavit is already on file for this job (instrument ${first.recording_number || 'no number'}, filed ${first.filed_at}${first.document_url ? ', with its saved copy' : ''}), and it is not instrument ${p.recording_number}. One affidavit a job: a second filing is not recorded here. A record made in error is voided on the job’s Lien window first.` }
   }
+  if (p.replace_saved_copy) return { ok: false, refused: `${label}: replace_saved_copy is for a filing already on record, and this job holds none with instrument ${p.recording_number}. Leave it out to record the filing.` }
   if (world.sameNumber.length > 0) {
     const other = world.sameNumber[0]!
     return { ok: false, refused: `${label}: instrument ${p.recording_number} is already on ${other.job_label} (filed ${other.filed_at ?? 'no day'}${other.county ? `, ${other.county}` : ''}). A clerk gives one number to one paper: check which job the paper is for. Nothing is recorded.` }
@@ -677,6 +804,8 @@ export function lienFilingPlanReply(entries: ReadonlyArray<Json>): Json {
   const ready = count('ready')
   const held = count('held')
   const refused = count('refused')
+  const onRecord = count('on_record')
+  const differ = entries.filter((e) => e.status === 'on_record' && e.agrees === false).length
   const many = entries.length > 1
   const shown = entries.map((e) => {
     const writes = obj(e.writes)
@@ -685,16 +814,33 @@ export function lienFilingPlanReply(entries: ReadonlyArray<Json>): Json {
     const { fields: _fields, ...rest } = filing
     return { ...e, writes: { ...writes, filing: { ...rest, fields: 'the paper as the desk reads it, above (plan this filing alone to read the whole snapshot)' } } }
   })
-  const parts = [`${ready} ready`, ...(held > 0 ? [`${held} held on differences`] : []), ...(refused > 0 ? [`${refused} refused`] : [])]
+  const parts = [`${ready} ready`, ...(held > 0 ? [`${held} held on differences`] : []), ...(onRecord > 0 ? [`${onRecord} already on record${differ > 0 ? ` (${differ} whose record and paper differ)` : ''}`] : []), ...(refused > 0 ? [`${refused} refused`] : [])]
   return {
     filings: `${entries.length} ${entries.length === 1 ? 'filing' : 'filings'}: ${parts.join(', ')}.`,
     next:
       `Read each entry against its paper before anything is applied: the job, the address, the owner and the claim. ` +
       (ready > 0 ? `For each ready entry, PUT its file to its upload_url when it has one, then call apply_lien_filing with filing (that entry as you sent it) and that entry’s own plan_hash. One apply a filing: one that fails never stops the rest. ` : '') +
       (held > 0 ? `A held entry carries no plan_hash: show its differences to the person, fix each through its door and plan again, or plan again with accept_differences: true. ` : '') +
+      (onRecord > 0 ? `An entry already on record writes nothing and carries no plan_hash: read its differences to the person. ` : '') +
       (refused > 0 ? `A refused entry says why. ` : '') +
       'apply runs the dry run again first: if anything changed, the hash no longer matches and nothing is written.',
     entries: shown,
+  }
+}
+
+/** The facts of the file a filing's saved copy points at, as the plan shows them beside the scan the caller sent. */
+export function savedCopyFileWords(file: { name: string; size_bytes: number | null; sha256: string | null; trashed: boolean; path: string[] }, scan: LienFilingScan | null): Json {
+  const same = scan && file.sha256 ? file.sha256.toLowerCase() === scan.sha256 : null
+  return {
+    name: file.name,
+    size_bytes: file.size_bytes,
+    in: file.path.slice(-3).join(' › ') || null,
+    ...(file.trashed ? { trashed: 'This file is in Drive’s trash.' } : {}),
+    ...(same === null
+      ? {}
+      : same
+        ? { against_your_scan: 'the same bytes as the file you sent' }
+        : { against_your_scan: `not the bytes you sent: ${file.size_bytes ?? 'an unknown number of'} bytes on record against your ${scan!.size_bytes}. A split of the same pages differs by a few hundred bytes. A file several times the size holds more than this lien’s pages.` }),
   }
 }
 
@@ -732,6 +878,8 @@ export type LienFilingOutcome = {
   scanFailed?: string | null
   /** Other live filed affidavits found on the job after the write: a second record that landed beside this one. */
   duplicates?: string[]
+  /** The file the filing carried before a replace: in Drive's trash, or left where it is with the reason. */
+  oldCopy?: 'trashed' | { left: string } | null
 }
 
 /** The apply's reply for a recorded filing: what landed, what did not and the press that comes next. */
@@ -739,16 +887,24 @@ export function lienFilingAppliedWords(p: LienFilingPayload, label: string, writ
   if (!out.filing) return { action: p.action, ok: false, why: `${label}: no filing row came back (RLS let none through, or the write was refused). Nothing else was written. Plan again.` }
   const itemFailed = typeof out.item === 'object'
   const attach = write.kind !== 'record'
+  const replaces = write.kind === 'record' ? null : write.replaces ?? null
   // A file that is in Drive is never uploaded twice: the plan that finishes the job carries its link.
-  const finish = out.file ? `Plan this filing again with saved_copy: { link: "${out.file.url}" } in place of scan: a filing on record with no saved copy takes the link alone, and the file is not uploaded twice.` : 'Plan this filing again with the same recording number and the scan: a filing on record with no saved copy takes the scan alone.'
+  const finish = replaces
+    ? out.file
+      ? `The filing still carries the copy it had. Plan again with replace_saved_copy: true and saved_copy: { link: "${out.file.url}" } in place of scan: the file is not uploaded twice.`
+      : 'The filing still carries the copy it had. Plan the replace again.'
+    : out.file
+      ? `Plan this filing again with saved_copy: { link: "${out.file.url}" } in place of scan: a filing on record with no saved copy takes the link alone, and the file is not uploaded twice.`
+      : 'Plan this filing again with the same recording number and the scan: a filing on record with no saved copy takes the scan alone.'
   return {
     action: p.action,
     ok: true,
     filing_id: out.filing.id,
-    wrote: write.kind === 'attach_scan' ? 'the scan, as the saved copy of the filing on record' : write.kind === 'attach_link' ? 'the link, as the saved copy of the filing on record' : 'the filing',
+    wrote: write.kind === 'attach_scan' ? `the scan, ${replaces ? 'in place of the saved copy the filing carried' : 'as the saved copy of the filing on record'}` : write.kind === 'attach_link' ? `the link, ${replaces ? 'in place of the saved copy the filing carried' : 'as the saved copy of the filing on record'}` : 'the filing',
     serve_by: out.filing.serve_due,
     saved_copy: out.filing.document_url || null,
     ...(out.file ? { file: out.file } : {}),
+    ...(replaces && !out.scanFailed ? { old_copy: { was: replaces, now: out.oldCopy === 'trashed' ? 'in Drive’s trash, where Drive keeps it 30 days' : `left where it is: ${out.oldCopy && typeof out.oldCopy === 'object' ? out.oldCopy.left : 'the file was not looked at'}` } } : {}),
     ...(attach ? {} : { desk_item: out.item }),
     ...(out.scanFailed ? { saved_copy_not_added: `${attach ? 'The filing stands as it was' : 'The filing is recorded'}, and its scan is not its saved copy: ${out.scanFailed}. ${finish}` } : {}),
     ...(itemFailed ? { desk_item_not_marked: `The filing is recorded, and the desk’s affidavit item was not marked sent: ${(out.item as { failed: string }).failed}. Opening the job’s Lien window runs the same mark.` } : {}),
@@ -756,8 +912,8 @@ export function lienFilingAppliedWords(p: LienFilingPayload, label: string, writ
     ...(out.stagedRemoved === false ? { staged_copy_left: 'The staged copy could not be removed. It is private to you.' } : {}),
     next: attach
       ? out.scanFailed
-        ? `${label}: the saved copy was not added. ${finish}`
-        : `${label}: the filing has its saved copy. Nothing else on the filing changed.`
+        ? `${label}: the saved copy was not ${replaces ? 'replaced' : 'added'}. ${finish}`
+        : `${label}: the filing has its ${replaces ? 'new ' : ''}saved copy. Nothing else on the filing changed.`
       : `${label}: filed ${p.filed_on}, instrument ${p.recording_number}. Mail the copies by ${out.filing.serve_due ?? 'the serve-by day'} (the Lien desk’s Mail the copies prints them), then plan_lien_service records the day and the certified mail numbers.`,
   }
 }

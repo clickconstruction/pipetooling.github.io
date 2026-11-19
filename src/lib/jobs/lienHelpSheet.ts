@@ -253,7 +253,7 @@ export function lienHelpAfterSteps(clerkCounty: string, hasContractor: boolean, 
       : 'The same day, open the job on the Lien desk. Press <strong>Open the affidavit tab ›</strong>, then <strong>Record filing…</strong>, and type both.',
     `${hasContractor ? 'Mail a copy by certified mail to the owner and to the original contractor.' : 'Mail a copy by certified mail to the owner.'} The app shows the last day to mail. Mail by ${WRITE}`,
     // The form takes the day the copies went out, and since punch list #314's change 5 each copy's certified mail number and a photo of its receipt.
-    `${hasCode ? 'Scan the code again. ' : ''}Press <strong>Record service…</strong> and set the day the copies were mailed. Type each certified mail number and take a photo of each receipt.`,
+    `${hasCode ? 'Scan the code again. ' : ''}Press <strong>Enter mail numbers…</strong> and set the day the copies were mailed. Type each certified mail number and take a photo of each receipt.`,
     'Keep the clerk’s stamped copy and the certified mail receipts with the job.',
   ]
 }
@@ -261,12 +261,12 @@ export function lienHelpAfterSteps(clerkCounty: string, hasContractor: boolean, 
 /** The same steps in a few words each, for the guide copy's side column. */
 export function lienHelpAfterStepsShort(clerkCounty: string, hasContractor: boolean): string[] {
   const clerk = clerkCounty.trim() ? `${clerkCounty.trim()} County Clerk` : 'County Clerk of the property’s county'
-  return [`File with the <strong>${esc(clerk)}</strong>.`, 'In the app: <strong>Record filing…</strong>', hasContractor ? 'Mail copies to the owner and the contractor.' : 'Mail a copy to the owner.', 'In the app: <strong>Record service…</strong>']
+  return [`File with the <strong>${esc(clerk)}</strong>.`, 'In the app: <strong>Record filing…</strong>', hasContractor ? 'Mail copies to the owner and the contractor.' : 'Mail a copy to the owner.', 'In the app: <strong>Enter mail numbers…</strong>']
 }
 
 /**
  * The batch sheet's steps after the notary. With a code on the sheet the phone lands on the Affidavits list, each job a
- * press from its own affidavit tab. Record service… asks for each copy's mail number and receipt photo, so the step does.
+ * press from its own affidavit tab. Enter mail numbers… asks for each copy's mail number and receipt photo, so the step does.
  */
 export function lienHelpBatchAfterSteps(hasCode = false): string[] {
   return [
@@ -275,7 +275,7 @@ export function lienHelpBatchAfterSteps(hasCode = false): string[] {
       ? 'The same day, scan the code with a phone. It opens the Affidavits list. On each job press <strong>Open the affidavit tab ›</strong>, then <strong>Record filing…</strong>, and type both.'
       : 'The same day, open the job on the Lien desk. Press <strong>Open the affidavit tab ›</strong>, then <strong>Record filing…</strong>.',
     'Mail a copy by certified mail to each name on the row. The app shows the last day to mail.',
-    `${hasCode ? 'Scan the code again. On each job press' : 'Press'} <strong>Record service…</strong> and set the day the copies were mailed. Type each mail number and take a photo of each receipt. Tick the row. Keep the receipts with the job.`,
+    `${hasCode ? 'Scan the code again. On each job press' : 'Press'} <strong>Enter mail numbers…</strong> and set the day the copies were mailed. Type each mail number and take a photo of each receipt. Tick the row. Keep the receipts with the job.`,
   ]
 }
 

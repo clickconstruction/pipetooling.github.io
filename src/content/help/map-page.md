@@ -2,7 +2,7 @@
 title: see jobs, bids, and estimates on the map
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: map, pins, geocode, bid stages, lost bids, filter map, draw area, legend
+keywords: map, pins, satellite, streets, time, older photos, geocode, bid stages, lost bids, filter map, draw area, legend
 order: 30
 ---
 You open the Map page to see every job, bid and estimate that has an address. Each pin's color says what kind of record it is.
@@ -36,6 +36,12 @@ Turn off every stage chip except {{chip:yellow|Lost}} to see where lost work clu
 :::
 
 You click a bid pin to see its stage in the popup.
+
+## Satellite, Streets and Time
+
+Three presses sit at the top right of the map. **Streets** is the road map the page opens on. **Satellite** is a photo from above.
+
+Click a pin, then press **Time** to see that place on earlier days. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) shows how.
 
 ## Draw an area
 

@@ -79,6 +79,8 @@ import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage } from '../../lib/jobs/lienStopPaperPages'
 import { lienMailProof } from '../../lib/jobs/lienMailProof'
 import { lienMailProofDoorPress, lienMailProofWindowTab, type LienMailProofLanding } from '../../lib/jobs/lienMailProofDoor'
+import { lienServeStage } from '../../lib/jobs/lienServeStage'
+import { readLienCopyPrints } from '../../lib/jobs/lienServePrintsIo'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
@@ -204,6 +206,19 @@ export default function LienInstrumentsModal({
   useEffect(() => {
     setLand(open && landOnOpen ? { ...landOnOpen, at: Date.now() } : null)
   }, [open, landOnOpen])
+  // Whether the filed lien's copies were printed (`lienServeStage.ts`): one read when its filing comes, and this window's own print since.
+  const [servePrinted, setServePrinted] = useState<string[]>([])
+  const unservedLienId = filings.find((f) => f.kind === 'affidavit' && !f.voided_at && f.filed_at && !f.served_at)?.id ?? null
+  useEffect(() => {
+    if (!open || !unservedLienId) return
+    let on = true
+    void readLienCopyPrints([unservedLienId]).then((ids) => {
+      if (on && ids.length) setServePrinted((cur) => [...new Set([...cur, ...ids])])
+    })
+    return () => {
+      on = false
+    }
+  }, [open, unservedLienId])
   // The job's property: the record its own row names, read at open on its own; null while the read is out.
   const [property, setProperty] = useState<JobPropertyRead | null>(null)
   const linkedAddress = property?.record ?? null
@@ -885,6 +900,7 @@ export default function LienInstrumentsModal({
         ? buildLienTimelineFromWindow({
             workMonths: windowWorkMonths?.[job.id] ?? null,
             filings,
+            servePrinted,
             // v2.4735: the day set by hand reaches the window's timeline too (it read the clock hours and the creation day only).
             job: { id: job.id, created_at: job.created_at ?? null, last_work_date: lastWorkJob?.last_work_date ?? null, lien_contract_ended_on: (job as { lien_contract_ended_on?: string | null }).lien_contract_ended_on ?? null, lien_last_work_on: lastWorkJob?.lien_last_work_on ?? null, invoices: job.invoices ?? null },
             isSub,
@@ -922,7 +938,7 @@ export default function LienInstrumentsModal({
       // window has no property record of its own, and its service step names a missing address under its press.
       const proofDoor = proof
         ? lienMailProofDoorPress(
-            { jobId: job.id, filingId: f.id, paper: proof.paper, served: Boolean(f.served_at), ownerGap: null },
+            { jobId: job.id, filingId: f.id, paper: proof.paper, served: Boolean(f.served_at), printed: lienServeStage(f, servePrinted) === 'record', ownerGap: null },
             isLienOffice(authRole) ? { lien_window: (l) => { setActiveTab(lienMailProofWindowTab(l.paper)); setLand({ ...l, at: Date.now() }) } } : {},
             () => setStopOpen(null),
           )
@@ -1169,7 +1185,10 @@ export default function LienInstrumentsModal({
   )
 
   // The next step, named (punch list #82): the timeline's own Next on the path, with the one door that goes there.
-  const nextStep = timeline ? lienWindowNextStep(timeline.next, timeline.waitingOn) : null
+  // The filed lien whose copies are owed, and where they stand (`lienServeStage.ts`): the next step's press reads that stage and lands on its half.
+  const unservedLien = filings.find((f) => f.id === unservedLienId) ?? null
+  const serveStageNow = unservedLien ? lienServeStage(unservedLien, servePrinted) : null
+  const nextStep = timeline ? lienWindowNextStep(timeline.next, timeline.waitingOn, serveStageNow) : null
   const nextDoor = nextStep?.button?.door ?? null
   const nextStepButton =
     nextStep?.button && nextDoor && (nextDoor.to === 'tab' || onOpenLienDesk) ? (
@@ -1177,8 +1196,11 @@ export default function LienInstrumentsModal({
         type="button"
         data-lien-window-next-step-button
         onClick={() => {
-          if (nextDoor.to === 'tab') setActiveTab(nextDoor.tab)
-          else if (job) onOpenLienDesk?.(job.id, nextDoor.kind)
+          if (nextDoor.to === 'tab') {
+            setActiveTab(nextDoor.tab)
+            // The copies' step lands on the half its name says: the print press, or the form at the owner's number.
+            if (timeline?.next.kind === 'serve' && job && unservedLien && serveStageNow) setLand({ jobId: job.id, filingId: unservedLien.id, paper: 'affidavit', recipient: 'owner', lack: serveStageNow === 'print' ? 'print' : 'number', at: Date.now() })
+          } else if (job) onOpenLienDesk?.(job.id, nextDoor.kind)
         }}
         style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', ...(isMobile ? { width: '100%', padding: '9px 14px' } : {}) }}
       >
@@ -1918,6 +1940,11 @@ export default function LienInstrumentsModal({
             affidavitFormUnread={affidavitFormRead.failed}
             noticeMonths={noticeMonths ?? null}
             land={land}
+            // The copies went to the printer here: this window's card reads the next stage at once, and the opener reads again once the print is filed.
+            onServePrinted={(id) => {
+              setServePrinted((cur) => [...cur, id])
+              window.setTimeout(() => onRecorded?.(), 2500)
+            }}
             // v2.7516: an approved notice on the desk is the paper to print; the tab says so and offers the door.
             deskNoticeState={deskNoticeState}
             onOpenDeskNotice={onOpenLienDesk && job ? () => onOpenLienDesk(job.id, 'notice') : undefined}

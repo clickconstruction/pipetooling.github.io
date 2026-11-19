@@ -20191,9 +20191,11 @@ export type Database = {
           height: number
           id: string
           job_id: string
+          kind: string | null
           refile_due_at: string | null
           status: string
           storage_path: string | null
+          take_id: string | null
           taken_at: string
           width: number
           words: string
@@ -20210,9 +20212,11 @@ export type Database = {
           height?: number
           id?: string
           job_id: string
+          kind?: string | null
           refile_due_at?: string | null
           status?: string
           storage_path?: string | null
+          take_id?: string | null
           taken_at?: string
           width?: number
           words?: string
@@ -20229,9 +20233,11 @@ export type Database = {
           height?: number
           id?: string
           job_id?: string
+          kind?: string | null
           refile_due_at?: string | null
           status?: string
           storage_path?: string | null
+          take_id?: string | null
           taken_at?: string
           width?: number
           words?: string
@@ -21333,6 +21339,51 @@ export type Database = {
           },
         ]
       }
+      job_finish_calls: {
+        Row: {
+          created_at: string
+          finish_on: string
+          id: string
+          job_id: string
+          plan_was: string | null
+          user_id: string
+          why: string | null
+        }
+        Insert: {
+          created_at?: string
+          finish_on: string
+          id?: string
+          job_id: string
+          plan_was?: string | null
+          user_id?: string
+          why?: string | null
+        }
+        Update: {
+          created_at?: string
+          finish_on?: string
+          id?: string
+          job_id?: string
+          plan_was?: string | null
+          user_id?: string
+          why?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_finish_calls_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_finish_calls_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_followup_reviews: {
         Row: {
           id: string
@@ -22114,6 +22165,7 @@ export type Database = {
           reason: string
           recorded_at: string | null
           source: string | null
+          take_id: string | null
           to_container_id: string | null
         }
         Insert: {
@@ -22132,6 +22184,7 @@ export type Database = {
           reason: string
           recorded_at?: string | null
           source?: string | null
+          take_id?: string | null
           to_container_id?: string | null
         }
         Update: {
@@ -22150,6 +22203,7 @@ export type Database = {
           reason?: string
           recorded_at?: string | null
           source?: string | null
+          take_id?: string | null
           to_container_id?: string | null
         }
         Relationships: [
@@ -30151,6 +30205,7 @@ export type Database = {
           development_id: string | null
           id: string
           job_id: string | null
+          job_list: boolean
           name: string
           words: string
         }
@@ -30160,6 +30215,7 @@ export type Database = {
           development_id?: string | null
           id?: string
           job_id?: string | null
+          job_list?: boolean
           name: string
           words?: string
         }
@@ -30169,6 +30225,7 @@ export type Database = {
           development_id?: string | null
           id?: string
           job_id?: string | null
+          job_list?: boolean
           name?: string
           words?: string
         }
@@ -50978,6 +51035,7 @@ export type Database = {
       }
       trip_crew_on_job: { Args: { p_job_id: string }; Returns: boolean }
       trip_days_ok: { Args: { p_days: Json }; Returns: boolean }
+      trip_deleted_list: { Args: { p_development_id: string }; Returns: Json }
       trip_is_mine: { Args: { p_trip_id: string }; Returns: boolean }
       trip_phone: { Args: { p: Json }; Returns: Json }
       trip_phone_state: { Args: { p_job_id: string }; Returns: Json }

@@ -48,7 +48,7 @@ The top of the desk has four tabs. The first is **To do**, the work. On a comput
 
 - **To do** is the list of what to do now.
 - **By date** sorts the jobs by when each deadline falls.
-- **By paper** sorts them by the kind of paper. Each paper shows its state. A second row of tabs appears under it. They are **Monthly notices**, **Lien affidavits** and **Retainage notices**.
+- **By paper** sorts them by the kind of paper. Each paper shows its state. Three more tabs appear. They are **Monthly notices**, **Lien affidavits** and **Retainage notices**. In a wide window they sit beside the four tabs. In a narrower window, and on a phone, they sit in a row under them.
 - **By job** lists every job with its whole path. The job with the nearest date comes first.
 
 **By paper** reopens on the tab you last used there. This guide names those three tabs often. Each one sits under **By paper**.
@@ -60,7 +60,7 @@ On a phone the top of the desk is one row. The row holds the way back, the desk'
 Press {{button:outline|⋯}} to open **More**. More holds the door to the run. It also holds the doors that sit in the top bar on a computer.
 
 - **Print and mail** or **Enter mail numbers**, with its count. It shows while a notice waits. The {{button:outline|⋯}} button wears the same count.
-- **Put a GC on notice…** shows while **Monthly notices** is open.
+- **Put a GC on notice…** shows while **Monthly notices** is open. A computer has it on the job's own notice instead.
 - **§ Rules** opens the Texas lien rules.
 - **An owner is calling** opens what to say.
 - **What this desk holds** names each part of the desk.
@@ -486,7 +486,7 @@ Nothing moves to Sent without its tracking number. The **Saved copy** boxes unde
 
 **See what went out.** Open a sent notice from **By paper**, under **Sent**. Under its facts a block reads **What went out**. It lists each mailed file by name. Press a name to open it in Drive. Under the files, each envelope shows its mail number and its receipt. A chip counts the proof, like *Mail proof: 2 of 3 on file*. A blue line that starts with **Next:** names the one thing still missing. Press {{button:outline|Add the receipt}} on an envelope to add its receipt now. Press {{button:outline|Add another}} to add one more mailed file. The same block shows in the job's Lien window, under each row of *Filings on this job*. It also shows beside the paper when you press a sent stop on the job's path.
 
-**Go to what a copy is missing.** Press a stop's title on the job's path. In the window, look at **What went out**. A recipient's card that is missing something has a press on that line. {{button:blue|Mail this copy ›}} opens **Filed liens: copies to mail** at that job's line. {{button:blue|Enter the mail number ›}} and {{button:blue|Add the receipt ›}} open the place where that piece is entered. For a filed lien that still owes its copies, that is the same window. For any other paper it is the job's Lien window, at that paper's row. {{button:blue|Enter the owner of record ›}} shows when the property record has no owner yet. It opens that record at the owner's line. The stop's window closes and the page scrolls to the spot. The spot is lit for a moment. Close the place you landed on to return to the job's paper. A card with its number and its receipt on file has no press. The press is for the office.
+**Go to what a copy is missing.** Press a stop's title on the job's path. In the window, look at **What went out**. A recipient's card that is missing something has a press on that line. {{button:blue|Print the copies to mail ›}} shows while a filed lien's copies are not printed. It opens the half of **Filed liens: copies to mail** that prints. After the print the card reads {{button:blue|Enter the mail number ›}}. That press and {{button:blue|Add the receipt ›}} open the place where that piece is entered. For a filed lien that still owes its copies, that is the job's line in the same window. For any other paper it is the job's Lien window, at that paper's row. {{button:blue|Enter the owner of record ›}} shows when the property record has no owner yet. It opens that record at the owner's line. The stop's window closes and the page scrolls to the spot. The spot is lit for a moment. Close the place you landed on to return to the job's paper. A card with its number and its receipt on file has no press. The press is for the office.
 
 A printed notice waits on the desk in {{chip:yellow|Approved · to mail}}. Open it and press {{button:blue|Enter mail numbers · N ▸}} to go back to the run. The journey then shows **Print** as done and **Mail and record** as the step it is on. Under More the print button reads **Print it again**, for a lost copy only. If the notice was never mailed, press {{button:outline|Back to Approved · to print}}. The approval stands. A signature on the notice comes off, so a signed notice asks first. Press {{button:blue|Take back the notice}} and the leader signs it again.
 
@@ -581,13 +581,14 @@ The pane's **payment bond** line says whether a bond is on the project. Check it
 
 ## A GC in trouble
 
-When one GC stops paying everywhere at once, a month at a time is too slow. **Put a GC on notice** sends § 53.056 notices to the owners of every unpaid job under that GC. It names every month not yet noticed, in one run. Three doors open it with the GC already picked.
+When one GC stops paying everywhere at once, a month at a time is too slow. **Put a GC on notice** sends § 53.056 notices to the owners of every unpaid job under that GC. It names every month not yet noticed, in one run. These doors open it with the GC already picked.
 
 - **Jobs, Pipeline, ⋯ Pipeline tools**, with the board filtered to one GC, shows {{button:amber|⚠ Put <GC> on notice…}}.
-- **The desk's title bar** has {{button:amber|⚠ Put a GC on notice…}} on its second line. It opens a picker of the GCs with notices due in the next 30 days, most money first. Each row shows the dollars, the jobs, the first window to close and what is stuck. A GC whose windows have all closed sits greyed under **Nothing left to claim**. It still opens, for the attorney’s letter and the grid.
+- **A job's own notice** on the desk has {{button:amber|⚠ Put on notice…}} beside the GC's name. Open **Monthly notices** and pick a job with that GC. The press opens the run for that job's GC.
+- **On a phone**, **More** has **Put a GC on notice…** while **Monthly notices** is open. It opens a list of the GCs with notices due in the next 30 days, most money first. Each row shows the dollars, the jobs, the first window to close and what is stuck. A GC whose windows have all closed sits greyed under **Nothing left to claim**. It still opens, for the attorney’s letter and the grid.
 - **Bids, Customer review** has {{button:amber|⚠ Put on notice…}} beside *set terms…* on the GC's row.
 
-The run covers every unpaid job with the GC, not only the ones the picker counts.
+The run covers every unpaid job with the GC, not only the job you opened it from.
 
 **Jobs with unpaid work under this GC** sits above the steps. It lists every job with unpaid work under the GC, grouped by its stage. Each job shows its line items, its money and the Pipeline's progress bar. A chip flags anything that looks wrong, in the Pipeline's words. A job may be marked Waiting while a bill is out, for example. The chip opens the job over the run, on the field that fixes it. Close the job, and the run comes back where you left it. Fix the record first, because a notice claims what the record says.
 

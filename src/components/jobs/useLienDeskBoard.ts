@@ -21,6 +21,7 @@ import {
   lienBoardRowBin,
   lienBoardRowRisk,
   lienBoardRowStage,
+  lienBoardSignSplit,
 } from '../../lib/jobs/lienBoard'
 import { lienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 import type { CourtesyStatus } from '../../lib/jobs/lienCourtesyNotice'
@@ -155,6 +156,14 @@ export function useLienDeskBoard({ data, todayYmd, authRole, authUserId, leaderN
   // The leader's press (v2.7334): one counted press for the affidavits that wait on him, on the jobs he leads. Since v2.7708
   // every viewer reads every bin, and the press stands on his Awaiting Master approval bin's title line.
   const leaderView = useMemo(() => (board && leader ? lienBoardForLeader(board, { leads: (jobId) => lienViewerLeadsJob({ role: authRole, viewerUserId: authUserId, masterUserId: (id) => data?.jobsById[id]?.master_user_id ?? null }, jobId) }) : null), [board, leader, authRole, authUserId, data])
+  // Approved · to sign by whose signature each notice waits on (v2.7853): a leader's *Sign N notices ›* counts the jobs he
+  // leads, the rule his *Approve N affidavits* counts by. `othersLeader` is the one leader the rest wait on, when they share one.
+  const signSplit = useMemo(() => {
+    if (!board || !leader) return null
+    const split = lienBoardSignSplit(board, (jobId) => lienViewerLeadsJob({ role: authRole, viewerUserId: authUserId, masterUserId: (id) => data?.jobsById[id]?.master_user_id ?? null }, jobId))
+    const names = new Set(split.others.map((c) => leaderNameFor?.(data?.jobsById[c.jobId]?.master_user_id ?? null)?.trim() || ''))
+    return { mine: split.mine.map((c) => c.jobId), others: split.others.length, othersLeader: names.size === 1 ? [...names][0] || null : null }
+  }, [board, leader, authRole, authUserId, data, leaderNameFor])
   const [approvingLot, setApprovingLot] = useState(false)
   /**
    * The leader's one press (v2.7334): approves every affidavit that waits on him inside its window, one by one, keeps
@@ -381,6 +390,7 @@ export function useLienDeskBoard({ data, todayYmd, authRole, authUserId, leaderN
     publicBin,
     offPathBin,
     leaderView,
+    signSplit,
     approvingLot,
     approveTheLot,
     boardPick,

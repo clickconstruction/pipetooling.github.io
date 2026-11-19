@@ -2,7 +2,7 @@
 title: review my team's completed tasks
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: checklist review, stuck, who is stuck, sorted, sign off, dismiss, reopen, teams inbox, completed tasks, subordinates, map, where the open tasks are, place, who is where, older photos, satellite, history, google earth
+keywords: checklist review, stuck, who is stuck, sorted, sign off, dismiss, reopen, teams inbox, completed tasks, subordinates, map, where the open tasks are, place, who is where, time, older photos, earlier day, satellite, history, google earth
 order: 41
 ---
 When someone finishes a checklist task you assigned, it lands in Checklist review. You sign it off there, or send it back with a comment.
@@ -57,18 +57,15 @@ The map shows where the tasks are. It does not show where a person is, and it as
 
 Use it before you hand out the day. Two people sent to the same corner show up as one navy dot.
 
-## See older photos of a place
+## See a place on an earlier day
 
-Tap **Older photos** on the map. The map changes to a photo archive and moves in close on one place.
+Tap a dot, then tap **Time** on the map. The map moves in close on that place.
 
-- The archive shows the place of the dot you opened. With no dot open, it shows the first place.
-- Each date under the map is one photo. Tap a date to see the place on that day.
-- A date reads **Before** a month while the archive finds the day the photo was taken.
-- Tap **Back to today** to return to the Google map.
+- A row of dates opens under the map. Tap a date to see the place on that day.
+- Tap **Today** at the right end of the row to see today's photo again.
+- Tap **Time** again to return to the map of every dot.
 
-The older photos come from Esri, not from Google. Each place has its own dates.
-
-Google shows its own older photos only in Google Earth. Tap **Open this spot in Google Earth** to see them there.
+Time goes away when you leave the screen. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) has the rest.
 
 ## Your people on the Dashboard
 

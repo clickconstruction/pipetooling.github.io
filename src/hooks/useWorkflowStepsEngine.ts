@@ -19,6 +19,8 @@ import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLi
 import type { StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
 import type { StepCommitmentRow } from '../lib/workflow/stepCommitments'
 import { sendStepLifecycleNotifications } from '../lib/workflow/stepLifecycleNotifications'
+import { START_WORKFLOW_FAILED, newWorkflowRow, workflowFindStep } from '../lib/workflow/workflowStart'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 type Project = Database['public']['Tables']['projects']['Row']
@@ -54,6 +56,8 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
   const [lineItems, setLineItems] = useState<Record<string, LineItem[]>>({})
   /** Set when the project is a GC project (v2.4846): it gets no plumbing workflow, and the page says where it lives. */
   const [gcProjectId, setGcProjectId] = useState<string | null>(null)
+  /** The **Start a workflow** press is running (punch list #397 PR 1). */
+  const [startingWorkflow, setStartingWorkflow] = useState(false)
 
   const canManageStages = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
 
@@ -67,6 +71,83 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
   // refresh after a write, keeps the last steps and goes to `error` (the banner), not `loadError`.
   const stepsDrawn = useRef(false)
 
+  /**
+   * The project's workflow, read with its GC row, and what a project with none gets (punch list
+   * #397 PR 1, `workflowFindStep`). The open reads and stops: no workflow draws the page's empty
+   * state. Only a person's press (`pressed`) inserts one. An open's failure leaves nothing to draw
+   * (`loadError`); a press's failure keeps the page it was pressed on (`error`, the banner).
+   */
+  async function findOrStartWorkflow(pid: string, pressed: boolean): Promise<string | null> {
+    const fail = pressed ? setError : setLoadError
+    // A GC project is read alongside (v2.4846): opening one here must not file it as a plumbing
+    // job with an empty workflow. RLS shows the gc_projects row to the GC team only, and no other
+    // role reaches a GC project's projects row.
+    const [{ data: wfs, error: queryError }, { data: gcRow }] = await Promise.all([
+      supabase.from('project_workflows').select('*').eq('project_id', pid),
+      supabase.from('gc_projects').select('project_id').eq('project_id', pid).maybeSingle(),
+    ])
+    if (queryError) {
+      console.error('Error querying workflows:', queryError)
+      fail(`Failed to load workflow: ${queryError.message}`)
+      return null
+    }
+    const step = workflowFindStep({ found: Boolean(wfs && wfs.length > 0), isGcProject: Boolean(gcRow), pressed })
+    if (step === 'use') {
+      // Use the first workflow found (should only be one per project)
+      const existingWorkflow = wfs![0] as Workflow
+      setWorkflow(existingWorkflow)
+      console.log(`Found existing workflow ${existingWorkflow.id} for project ${pid}`)
+      return existingWorkflow.id
+    }
+    if (step === 'gc') {
+      setGcProjectId(pid)
+      return null
+    }
+    if (step === 'empty') return null
+    // No workflow exists and a press needs one: create it.
+    const { data: proj, error: projError } = await supabase.from('projects').select('name').eq('id', pid).single()
+    if (projError) {
+      console.error('Error loading project:', projError)
+      fail(`Failed to load project: ${projError.message}`)
+      return null
+    }
+    const { data: inserted, error: insertError } = await supabase
+      .from('project_workflows')
+      .insert(newWorkflowRow(pid, (proj as { name?: string | null } | null)?.name))
+      .select()
+      .single()
+    if (insertError) {
+      // If insert failed, it might be because another call created it concurrently
+      // Query again to find the existing workflow
+      console.log(`Insert failed for project ${pid}, querying again:`, insertError.message)
+      const { data: wfsRetry } = await supabase.from('project_workflows').select('*').eq('project_id', pid)
+      if (wfsRetry && wfsRetry.length > 0) {
+        // Found it! Another call must have created it
+        const existingWorkflow = wfsRetry[0] as Workflow
+        setWorkflow(existingWorkflow)
+        console.log(`Found existing workflow ${existingWorkflow.id} for project ${pid} (after insert conflict)`)
+        return existingWorkflow.id
+      }
+      // Still not found: the insert's own reason is what the person reads.
+      console.error('Error creating workflow:', insertError)
+      fail(formatErrorMessage(insertError, START_WORKFLOW_FAILED))
+      return null
+    }
+    const w = inserted as Workflow
+    setWorkflow(w)
+    console.log(`Created new workflow ${w.id} for project ${pid}`)
+    return w.id
+  }
+
+  /** The open's finder: it reads, and a project with no workflow stays without one. */
+  function findWorkflow(pid: string): Promise<string | null> {
+    return findOrStartWorkflow(pid, false)
+  }
+
+  /**
+   * A press's finder: the project's workflow, made when there is none. Only a person's press calls
+   * it (Start a workflow, a first step, a template, a projection), never a load or a re-read.
+   */
   async function ensureWorkflow(pid: string) {
     // Check if there's already a pending call for this project
     const existingPromise = ensureWorkflowPromises.current.get(pid)
@@ -74,76 +155,31 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
       console.log(`Waiting for existing ensureWorkflow call for project ${pid}`)
       return existingPromise
     }
-    
+
     // Create new promise and store it
     const promise = (async (): Promise<string | null> => {
       try {
-        // First, try to find existing workflow. A GC project is read alongside (v2.4846): opening one
-        // here must not file it as a plumbing job with an empty workflow. RLS shows the gc_projects
-        // row to the GC team only, and no other role reaches a GC project's projects row.
-        const [{ data: wfs, error: queryError }, { data: gcRow }] = await Promise.all([
-          supabase.from('project_workflows').select('*').eq('project_id', pid),
-          supabase.from('gc_projects').select('project_id').eq('project_id', pid).maybeSingle(),
-        ])
-        if (queryError) {
-          console.error('Error querying workflows:', queryError)
-          setLoadError(`Failed to load workflow: ${queryError.message}`)
-          return null
-        }
-        if (wfs && wfs.length > 0) {
-          // Use the first workflow found (should only be one per project)
-          const existingWorkflow = wfs[0] as Workflow
-          setWorkflow(existingWorkflow)
-          console.log(`Found existing workflow ${existingWorkflow.id} for project ${pid}`)
-          return existingWorkflow.id
-        }
-        if (gcRow) {
-          setGcProjectId(pid)
-          return null
-        }
-        // No workflow exists, create one
-        const { data: proj, error: projError } = await supabase.from('projects').select('name').eq('id', pid).single()
-        if (projError) {
-          console.error('Error loading project:', projError)
-          setLoadError(`Failed to load project: ${projError.message}`)
-          return null
-        }
-        const name = (proj as { name?: string } | null)?.name ? `${(proj as { name: string }).name} workflow` : 'Workflow'
-        const { data: inserted, error: insertError } = await supabase.from('project_workflows').insert({ project_id: pid, name, status: 'draft' }).select().single()
-        if (insertError) {
-          // If insert failed, it might be because another call created it concurrently
-          // Query again to find the existing workflow
-          console.log(`Insert failed for project ${pid}, querying again:`, insertError.message)
-          const { data: wfsRetry, error: retryError } = await supabase.from('project_workflows').select('*').eq('project_id', pid)
-          if (retryError) {
-            console.error('Error querying workflows on retry:', retryError)
-            setLoadError(`Failed to create workflow: ${insertError.message}`)
-            return null
-          }
-          if (wfsRetry && wfsRetry.length > 0) {
-            // Found it! Another call must have created it
-            const existingWorkflow = wfsRetry[0] as Workflow
-            setWorkflow(existingWorkflow)
-            console.log(`Found existing workflow ${existingWorkflow.id} for project ${pid} (after insert conflict)`)
-            return existingWorkflow.id
-          }
-          // Still not found, return error
-          console.error('Error creating workflow:', insertError)
-          setLoadError(`Failed to create workflow: ${insertError.message}`)
-          return null
-        }
-        const w = inserted as Workflow
-        setWorkflow(w)
-        console.log(`Created new workflow ${w.id} for project ${pid}`)
-        return w.id
+        return await findOrStartWorkflow(pid, true)
       } finally {
         // Remove from map when done (success or failure)
         ensureWorkflowPromises.current.delete(pid)
       }
     })()
-    
+
     ensureWorkflowPromises.current.set(pid, promise)
     return promise
+  }
+
+  /** The empty state's press: make the workflow; the load effect then reads its steps as on any open. */
+  async function startWorkflow(): Promise<void> {
+    if (!projectId) return
+    setError(null)
+    setStartingWorkflow(true)
+    try {
+      await ensureWorkflow(projectId)
+    } finally {
+      setStartingWorkflow(false)
+    }
   }
 
   async function loadProject(pid: string): Promise<boolean> {
@@ -350,10 +386,11 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
         lastLoadedWorkflowId.current = null
         stepsDrawn.current = false
       }
-      // Run loadProject and ensureWorkflow in parallel (saves ~1 round-trip)
+      // Run loadProject and findWorkflow in parallel (saves ~1 round-trip). The open only reads
+      // (punch list #397 PR 1): a project with no workflow comes back null and the page says so.
       const [projectOk, wfIdOrNull] = await Promise.all([
         loadProject(projectId),
-        workflow?.id ? Promise.resolve(workflow.id) : ensureWorkflow(projectId),
+        workflow?.id ? Promise.resolve(workflow.id) : findWorkflow(projectId),
       ])
       if (cancelled) return
       if (!projectOk) return
@@ -390,8 +427,9 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
   async function refreshSteps(): Promise<string | null> {
     let workflowId: string | null = workflow?.id ?? null
     if (!workflowId && projectId) {
-      workflowId = await ensureWorkflow(projectId)
-      console.log(`refreshSteps: Using workflow_id ${workflowId} from ensureWorkflow for project ${projectId}`)
+      // A re-read never makes a workflow: it reads the one a press just made, or finds none.
+      workflowId = await findWorkflow(projectId)
+      console.log(`refreshSteps: Using workflow_id ${workflowId} from findWorkflow for project ${projectId}`)
       // Ensure workflow state matches the returned workflow_id
       if (workflowId && workflow?.id !== workflowId) {
         // State might be out of sync, reload workflow to ensure consistency
@@ -518,6 +556,8 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
     commitmentsByStep,
     commitmentPaymentsByLaborJobId,
     ensureWorkflow,
+    startWorkflow,
+    startingWorkflow,
     gcProjectId,
     loadProject,
     loadLineItemsForSteps,

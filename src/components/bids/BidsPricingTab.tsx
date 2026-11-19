@@ -20,6 +20,9 @@ import { markupToolRows, taxToolRows, weightedMarkupOf } from '../../lib/bids/ro
 import { rowKindOf } from '../../lib/bids/rowKinds'
 import { allRowTags, withKind, withTag, withoutTag } from '../../lib/bids/rowMarksEdits'
 import { usePricingRowMarks } from '../../hooks/usePricingRowMarks'
+import { usePercentRows } from '../../hooks/usePercentRows'
+import { percentRowAnswer, percentRuleChip, percentRuleWords, percentWindowStart } from '../../lib/bids/percentRow'
+import { PercentRowWindow, PercentRuleChipMark } from './PercentRowWindow'
 import { costEstimateLaborRowHours } from '../../lib/bidPricingRowCalculations'
 import { workbenchEffectiveRows, workbenchEffectiveTotals } from '../../lib/bids/workbenchEffectiveRows'
 import { parseSplitDollars, rowPriceSplit } from '../../lib/bids/rowPriceSplit'
@@ -1914,7 +1917,8 @@ export function BidsPricingTab({
       rowCost: r.cost,
       // A row nothing prices is unpriced; a saved $0 is a price the solver may move like any other (v2.6001, amending v2.2396).
       unitPrice: wbPreview?.[r.countRow.id] ?? (r.priced ? r.unitPrice : null),
-      locked: r.isFixedPrice || wbLocks.has(r.countRow.id),
+      // A row with a percent rule is held: its price is its rule's, and the Workbench re-writes it.
+      locked: r.isFixedPrice || wbLocks.has(r.countRow.id) || percentRows.ruleRowIds.has(r.countRow.id),
       group_tag: r.countRow.group_tag ?? null,
     }))
     // v2.4202: the scope — the base, one alternate or the whole bid; the overhead follows pro rata.
@@ -2033,6 +2037,12 @@ export function BidsPricingTab({
       return
     }
     setSavingUnitPriceOverride(countRowId)
+    // A price typed over a percent row: the rule is dropped first, so her number stands and nothing re-writes it.
+    if (percentRows.ruleRowIds.has(countRowId) && !(await percentRows.dropRuleForTypedPrice(countRowId, row?.countRow.fixture ?? 'The row'))) {
+      setSavingUnitPriceOverride(null)
+      clearDraft()
+      return
+    }
     const err = await writeUnitPriceOverrideRow(countRowId, v)
     if (err) {
       setError(err.message)
@@ -2196,6 +2206,27 @@ export function BidsPricingTab({
   // saved prices, and whether this is the customer-facing price of the bid's own GC. Every commit.
   // v2.5671: nothing to stamp while the open price loads — the strip still holds the price you left.
   const derivedNow = selectedBidForPricing && !pricesLoading ? derivePricingWorkbench() : null
+  // The Percent row: a row priced as a percent of other rows (Connections at 40% of the pipe). Each rule row's price is
+  // an ordinary saved price the Workbench re-writes while the bid is unsent; the numbers are `lib/bids/percentRow.ts`.
+  const percentRows = usePercentRows({
+    bidId: selectedBidForPricing?.id ?? null,
+    // The version whose rows are on screen: a new row joins them.
+    bidVersionId: pricingCountRows[0]?.bid_version_id ?? selectedBidVersionId ?? null,
+    pricingVersionId: selectedPricingVersionId,
+    pricingCountRows,
+    derivedRows: derivedNow?.rows ?? null,
+    rowMarks,
+    mayFollow: derivedNow != null && !selectedBidForPricing?.bid_date_sent,
+    mayWrite: derivedNow != null && pricingLock !== 'locked',
+    guardPricingWrite: guardPriceRowsWrite,
+    writePrice: (countRowId, unitPrice) => writeUnitPriceOverrideRow(countRowId, unitPrice, BID_ACTIONS.percentRow),
+    afterPriceWrites: async () => {
+      const bidId = selectedBidForPricing?.id
+      if (bidId && selectedPricingVersionId) await loadBidPricingAssignments(bidId, selectedPricingVersionId)
+      await freezeSharedPricingAfterWrite()
+    },
+    reloadRows: reloadPricingForBid,
+  })
   // #357 PR 4: the GC's rating as cost lines, pinned on the bid; written once the numbers are settled (`ready`).
   // #357 PR 6: the bid's own picks (the site), priced with the GC's rating into the same lines.
   const bidOwnPicks = useBidDifficultyPicks(selectedBidForPricing?.id ?? null)
@@ -3307,6 +3338,9 @@ export function BidsPricingTab({
                             if (t) selectPanelVersion(t)
                           }}
                           onFill={() => void fillMatchingBookEntries(bookMatches)}
+                          onPercentRow={() => {
+                            if (guardPriceRowsWrite()) percentRows.openNew()
+                          }}
                         />
                       )
                     })()}
@@ -3475,7 +3509,29 @@ export function BidsPricingTab({
                                   })()}
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', minWidth: '9rem' }} onClick={(e) => e.stopPropagation()}>
-                                  {r.entry ? (
+                                  {percentRows.rules[r.countRow.id] ? (() => {
+                                    // The row's rule in place of a book entry: what it is a percent of, and that sum over saved prices.
+                                    const rule = percentRows.rules[r.countRow.id]!
+                                    const sent = !!selectedBidForPricing?.bid_date_sent
+                                    const base = percentRows.gridRows ? percentRowAnswer(percentRows.gridRows, rule, { id: r.countRow.id, count: r.count, isFixedPrice: r.isFixedPrice }).base : null
+                                    const words = sent || base == null ? `${percentRuleWords(rule)}${sent ? ' · kept as sent' : ''}` : percentRuleChip(rule, base)
+                                    return (
+                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (guardPriceRowsWrite()) percentRows.openForRow(r.countRow.id)
+                                          }}
+                                          title={sent ? 'This bid is sent, so the row keeps the price it went out with' : 'This row follows those rows until the bid is sent. Press to change its rule'}
+                                          aria-label={`${r.countRow.fixture ?? 'This row'} is ${percentRuleWords(rule)}. Change its rule`}
+                                          style={{ font: 'inherit', border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
+                                        >
+                                          <PercentRuleChipMark words={words} muted={sent} />
+                                        </button>
+                                        {percentRows.followed[r.countRow.id] ? <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-green-700)' }}>followed · saved ✓</span> : null}
+                                      </span>
+                                    )
+                                  })() : r.entry ? (
                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'var(--bg-blue-tint)', border: '1px solid var(--border)', color: 'var(--text-blue-700)', borderRadius: 6, padding: '0.1rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
                                       {r.entry.fixture_types?.name ?? 'entry'} · ${formatCurrency(Number(r.entry.total_price) || 0)}
                                       <button
@@ -4064,6 +4120,27 @@ export function BidsPricingTab({
           }}
         />
       ) : null}
+      {percentRows.windowTarget && percentRows.gridRows
+        ? (() => {
+            // The Percent row window: ＋ Percent row opens it on a new row, a row's chip on that row.
+            const target = percentRows.windowTarget
+            const self = target.rowId ? (percentRows.gridRows.find((g) => g.id === target.rowId) ?? null) : null
+            return (
+              <PercentRowWindow
+                key={`${target.rowId ?? 'new'}:${target.from?.words ?? ''}`}
+                rows={percentRows.gridRows}
+                self={self}
+                start={percentWindowStart({ rows: percentRows.gridRows, self, last: percentRows.last, from: target.from })}
+                from={target.from}
+                sent={!!selectedBidForPricing?.bid_date_sent}
+                narrow={narrowViewport640}
+                busy={percentRows.busy}
+                onClose={percentRows.closeWindow}
+                onSubmit={(value, preview) => void percentRows.submit(value, preview)}
+              />
+            )
+          })()
+        : null}
       {starChooser && selectedBidForPricing ? (
         <PricingStarChooserDialog
           action={starChooser}

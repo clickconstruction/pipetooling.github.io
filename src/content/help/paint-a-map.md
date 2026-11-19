@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -183,6 +183,65 @@ Never type a gate code or a lock code on a place. Anyone the map is shared with 
 To change a place you set, press **Change this place** beside it. Drag its dot, change its words or take another photo. Then press {{button:blue|Save the place}}. **Remove this place** takes it off the map for everyone.
 
 Press a photo in the list to see it large.
+
+## Send one place to someone
+
+Each place has a press of its own for this. You do not share the whole map.
+
+On a phone, press **Text this place…** beside the place. Messages opens with the words already written. You pick who gets it.
+
+The text says what the place is and the word you left on it. It ends with a map link to the exact spot.
+
+Whoever gets it presses the link. A map app opens with a dot on the spot. They need no sign-in and give no name.
+
+They see that one spot. They do not see the painted map or its other places.
+
+At a desk the press reads **Copy this place**. It copies the same words. Paste them into a text or an email.
+
+Anyone who can see a place can send it. To send the whole map, press {{button:outline|Share}}.
+
+## Send more than the spot
+
+**Text this place…** sends the spot. It does not send the photo. A place with a photo says so under the press.
+
+To send more, press **Send more…** beside it. A short sheet opens. It shows only the ways that fit this place.
+
+- **This place with its photo.** Your phone's share sheet opens with the photo and the words. Pick Messages. Then pick who gets it.
+- **All 3 places on this job.** Messages opens with every place in one text. Each place has its own map link. The press names your own count.
+- **The whole map.** The Share sheet opens. From there you send a link to the painted map.
+
+The photo's way shows on a phone, for a place that has a photo.
+
+The way for every place shows when there are two places or more. At a desk it copies them.
+
+**The whole map** shows if you painted the map or work in the office.
+
+Nobody who gets a photo or the places needs a sign-in. A link to the whole map asks for their name first.
+
+Some places have no **Send more…**. That place has no photo, stands alone, and is on a map you cannot share.
+
+## Keep a place on the job
+
+Some spots matter on every map of a job. The gate is one. The meter is another. Keep those on the job itself.
+
+1. Open the job. Under its address, press {{button:outline|＋ Place on this job}}.
+2. Drag the blue dot onto the spot.
+3. Press what it is, such as {{chip:gray|Gate}}.
+4. Press {{button:blue|Add this place}}.
+
+You do not paint a map first. The job now has a line named **Places on this job**. Press it to see them all.
+
+A place on the job wears a letter. A place on one map wears a number.
+
+Every painted map of the job shows the job's places. They have a dashed ring and sit under **On this job**. To change one, press **Open Places on this job**.
+
+A link or a copy of a painted map does not carry the job's places. To send them, open **Places on this job** and press {{button:outline|Share}}.
+
+Anyone can change or remove a place they set. Only the office can throw the whole list away.
+
+:::example What is where on Lot 14
+＋ Place on this job → {{chip:gray|Gate}} → **Add this place**. Then {{chip:gray|Meter}}, then {{chip:gray|Hazard}} for the open trench.
+:::
 
 ## Read a length
 
@@ -405,3 +464,11 @@ A file draws no mark. A place's kind is written in its name, such as *Hazard: Op
 The view from above can be a year or two old. A new development may show as a bare field.
 
 Walk or drive the way once, and the line shows what the picture does not.
+
+## See the ground on an earlier day
+
+Open a saved map. Press **Time** beside **From above** and **Streets**. A row of dates opens under the map.
+
+Press a date to see the ground on that day, with the lines over it. Press **Today** to see today's picture again.
+
+**Time** is for reading a map. The press goes away while you draw a line or place a dot. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) has the rest.

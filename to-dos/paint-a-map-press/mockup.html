@@ -159,6 +159,18 @@
   .quick { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
   .quick a { padding: 0.75rem 1.25rem; background: #2563eb; color: #fff; border-radius: 8px; font-weight: 600; font-size: 1rem; text-decoration: none; }
 
+  /* A leader's phone (added 2026-11-18): the full Dashboard's square row at 375 wide, at the app's own 8px gutter. */
+  .page.real { padding: 12px 8px 0; }
+  .clockStack { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .clockOut, .focus { flex: 1 1 220px; min-width: 0; min-height: 48px; padding: 0.5rem 1rem; border: none; border-radius: 8px; color: #fff; font-weight: 600; font-size: 1rem; font-variant-numeric: tabular-nums; }
+  .clockOut { background: #dc2626; }
+  .focus { background: #2563eb; }
+  .jobReportSq.tall, .paintSq.tall { align-self: stretch; }
+  .paintLine { display: flex; align-items: center; gap: 0.45rem; min-height: 44px; margin: -0.5rem 0 0.75rem; padding: 0 0.25rem; font-size: 0.9375rem; font-weight: 600; color: var(--text-link); text-decoration: underline; text-underline-offset: 3px; border-radius: 6px; width: max-content; }
+  .schedCard { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.75rem; }
+  .schedCard b { font-size: 1.15rem; }
+  .schedCard p { margin: 0.6rem 0 0; text-align: center; color: var(--text-muted); font-size: 0.9375rem; }
+
   /* One state alone, for a screenshot: ?s=<id>. */
   body.single { background: var(--bg-page); }
   body.single .board { padding: 0; gap: 0; }
@@ -270,6 +282,63 @@
         <div class="fold">My Inbox<span>›</span></div>
         <div class="fold">Your people<span>›</span></div>
         <div class="fold">My Schedule<span>›</span></div>
+        <div class="ghost">The rest of the Dashboard, as today</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3b to 3d. A leader's phone, added 2026-11-18 after a walk of the live flow as the Sample leader. -->
+  <div class="cell" id="leader-phone">
+    <div class="cap">3b · A leader's Dashboard on a phone, clocked out<small>A leader's phone keeps the squares: Tally, the clock, Job Report. Paint a map is a fourth square. The clock goes from 231 to 151 wide and Clock In still fits.</small></div>
+    <div class="phone">
+      <div class="chrome"><b>PipeTooling</b><div class="sp"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></div></div>
+      <div class="page real">
+        <div class="actionRow" style="position:relative">
+          <div class="tally"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#receipt"/></svg></div>
+          <button class="clockIn" data-measure="clock">Clock In</button>
+          <button class="jobReportSq">Job<br>Report</button>
+          <button class="paintSq new"><span class="swatch"></span>Paint<br>a map</button>
+          <span class="newTag" style="right:16px; top:52px">new</span>
+        </div>
+        <div class="schedCard"><b>My Schedule</b><p>Nothing scheduled today.</p></div>
+        <div class="fold">Needs you<span>3 things</span></div>
+        <div class="ghost">The rest of the Dashboard, as today</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cell" id="leader-phone-clocked">
+    <div class="cap">3c · The same phone, clocked in<small>The fourth square costs the clock its one line: the time and Clock Out break onto two lines, and the row grows 4 px. Nothing is cut off.</small></div>
+    <div class="phone">
+      <div class="chrome"><b>PipeTooling</b><div class="sp"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></div></div>
+      <div class="page real">
+        <div class="actionRow" style="position:relative">
+          <div class="tally"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#receipt"/></svg></div>
+          <div class="clockStack"><button class="clockOut" data-measure="clock">02:15:08 Clock Out</button><button class="focus">Update Focus</button></div>
+          <button class="jobReportSq tall">Job<br>Report</button>
+          <button class="paintSq tall new"><span class="swatch"></span>Paint<br>a map</button>
+          <span class="newTag" style="right:6px; top:-11px">new</span>
+        </div>
+        <div class="schedCard"><b>My Schedule</b><p>Nothing scheduled today.</p></div>
+        <div class="fold">Needs you<span>3 things</span></div>
+        <div class="ghost">The rest of the Dashboard, as today</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cell" id="leader-phone-link">
+    <div class="cap">3d · The other choice: a line under the row<small>The row stays as it is today and the clock keeps its one line. Paint a map is a link under it, as on the office's phone. It is quieter than a square.</small></div>
+    <div class="phone">
+      <div class="chrome"><b>PipeTooling</b><div class="sp"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></div></div>
+      <div class="page real">
+        <div class="actionRow">
+          <div class="tally"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#receipt"/></svg></div>
+          <div class="clockStack"><button class="clockOut" data-measure="clock">02:15:08 Clock Out</button><button class="focus">Update Focus</button></div>
+          <button class="jobReportSq tall">Job<br>Report</button>
+        </div>
+        <div style="position:relative"><a class="paintLine new"><span class="swatch" style="width:16px"></span>Paint a map</a><span class="newTag" style="left:150px; top:2px">new</span></div>
+        <div class="schedCard"><b>My Schedule</b><p>Nothing scheduled today.</p></div>
+        <div class="fold">Needs you<span>3 things</span></div>
         <div class="ghost">The rest of the Dashboard, as today</div>
       </div>
     </div>

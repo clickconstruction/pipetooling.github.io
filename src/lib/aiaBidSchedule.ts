@@ -1,6 +1,6 @@
 import { type SovLine, lineSplit, scaleLinesToContract } from './bidDocuments/sovLines'
 import type { SovStageSplit } from './bidDocuments/sovLaborMaterial'
-import { stageRank } from './jobs/stageRecognition'
+import { stageGroupOfRank, stageRank } from './jobs/stageRecognition'
 import { type PayApplicationLine, type PayApplicationLineStage, cents, linePercentDone } from './aiaPayApplicationLines'
 
 /**
@@ -72,7 +72,8 @@ type JobStageLine = { name: string | null; count: number | null; line_unit_price
 export function bidStageOfJobLine(name: string | null | undefined): PayApplicationLineStage | null {
   const rank = stageRank(name)
   if (rank == null) return null
-  return rank <= 1 ? 'rough_in' : rank === 2 ? 'top_out' : 'trim_set'
+  const group = stageGroupOfRank(rank)
+  return group === 'rough' ? 'rough_in' : group === 'top' ? 'top_out' : 'trim_set'
 }
 
 /**

@@ -51,6 +51,12 @@ describe('bidActionHeader · the brush and a book switch (punch list #73 PR 5)',
     expect(BID_APP_ACTIONS).not.toContain(BID_ACTIONS.bookSwitch)
   })
 
+  it('the Percent row has a tag of its own, read as the person’s', () => {
+    expect(BID_ACTIONS.percentRow).toBe('percent-row')
+    expect(BID_ACTION_SHAPE.test(BID_ACTIONS.percentRow)).toBe(true)
+    expect(BID_APP_ACTIONS).not.toContain(BID_ACTIONS.percentRow)
+  })
+
   it('withBidActionIf tags only when there is an action', () => {
     const setHeader = vi.fn()
     const query = { setHeader: (name: string, value: string) => { setHeader(name, value); return query } }
