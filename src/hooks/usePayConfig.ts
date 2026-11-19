@@ -6,7 +6,18 @@ import { resolvePersonIdFromRosterName } from '../lib/payPersonSubject'
 import { buildPayConfigById } from '../lib/people/payConfigLookup'
 import type { PayConfigRow } from '../types/peoplePayConfig'
 import { parseVehicleArrangement } from '../lib/people/wheels'
+import { salariedWeekOf } from '../lib/salariedEffectiveHours'
 import type { Person, UserRow } from './usePeopleRoster'
+
+/**
+ * The Pay lens never edits a salaried week, so its saves leave the column out. An upsert that named it would write
+ * back the week as this page loaded it, over a newer one set on the person's sheet.
+ */
+function withoutWeek<T extends object>(row: T): Omit<T, 'salaried_week_hours'> {
+  const rest: T & { salaried_week_hours?: unknown } = { ...row }
+  delete rest.salaried_week_hours
+  return rest
+}
 
 export interface UsePayConfigDeps {
   canAccessPay: boolean
@@ -94,6 +105,7 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
         vehicle_rate_override: raw.vehicle_rate_override ?? null,
         is_salary: !!raw.is_salary,
         record_hours_but_salary: !!raw.record_hours_but_salary,
+        salaried_week_hours: [...salariedWeekOf(raw)],
       }
       map[r.person_name] = r
       persistedSalary[r.person_name] = { is_salary: r.is_salary }
@@ -172,7 +184,7 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
       setPayConfigSaving(true)
       const toSave = payConfigRef.current[personName] ?? full
       const prevPersistedSalary = lastPersistedPayConfigRef.current[personName]?.is_salary === true
-      const { error } = await supabase.from('people_pay_config').upsert(toSave, { onConflict: 'person_name' })
+      const { error } = await supabase.from('people_pay_config').upsert(withoutWeek(toSave), { onConflict: 'person_name' })
       if (error) {
         setError(error.message)
       } else {
@@ -245,7 +257,7 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
       const draftVal = payConfigDraftRef.current[personName]
       const finalWage = draftVal !== undefined ? (draftVal === '' ? null : parseFloat(draftVal) || null) : (payConfigRef.current[personName]?.hourly_wage ?? null)
       const toSave = { ...(payConfigRef.current[personName] ?? full), hourly_wage: finalWage }
-      const { error } = await supabase.from('people_pay_config').upsert(toSave, { onConflict: 'person_name' })
+      const { error } = await supabase.from('people_pay_config').upsert(withoutWeek(toSave), { onConflict: 'person_name' })
       if (error) setError(error.message)
       else {
         lastPersistedPayConfigRef.current[personName] = { is_salary: !!toSave.is_salary }
@@ -291,7 +303,7 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
             : parseFloat(draftVal) || null
           : payConfigRef.current[personName]?.office_hourly_wage ?? null
       const toSave = { ...(payConfigRef.current[personName] ?? full), office_hourly_wage: finalWage }
-      const { error } = await supabase.from('people_pay_config').upsert(toSave, { onConflict: 'person_name' })
+      const { error } = await supabase.from('people_pay_config').upsert(withoutWeek(toSave), { onConflict: 'person_name' })
       if (error) setError(error.message)
       else {
         lastPersistedPayConfigRef.current[personName] = { is_salary: !!toSave.is_salary }

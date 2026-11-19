@@ -52,6 +52,8 @@ import { openPaintedMap } from '../../lib/paintedMap/paintedMapDoor'
 import SiteMaterialsView from '../materials/SiteMaterialsView'
 import { photoMarkWords } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
+import TakesPanel from '../materials/TakesPanel'
+import { takesBefore, takesBeforeLabel, takesOf } from '../../lib/materials/takes'
 import { FlowRow } from '../materials/FlowRow'
 import ManifestPrintModal from '../materials/ManifestPrintModal'
 import LabelsPrintModal from '../materials/LabelsPrintModal'
@@ -62,6 +64,7 @@ import StickersOnBoxes from '../materials/StickersOnBoxes'
 import { ON_BOXES_LABEL, onBoxesPrefill, onBoxesToast } from '../../lib/materials/stickersOnBoxes'
 import OnSiteMoveJobModal from '../materials/OnSiteMoveJobModal'
 import { canMoveOnSite, MOVE_JOB_LABEL, MOVE_JOB_WHO, type MoveJobChoice } from '../../lib/materials/onSiteMoveJob'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { canMintStickers, PRINT_STICKERS_LABEL, STICKER_MINT_WHO } from '../../lib/materials/stickerRun'
 import { BoxWindow } from '../materials/BoxTabs'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
@@ -258,6 +261,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
           boxHref={jobHref}
           developmentHref={`/developments/${siteId}`}
           canTie
+          canSeePeople={isOfficeRole(role)}
           byName={byName}
           loading={(desk.loading && !desk.loaded) || !sites.loaded}
         />
@@ -486,6 +490,8 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const namesListId = `on-site-names-${jobId}`
   const knownNames = onHandNames(lines, containers)
   const [section, setSection] = useState<'onsite' | 'missing' | 'deliveries' | 'history'>('onsite')
+  /** Take from a box (v2.7828): the box whose takes History is narrowed to, set by a short count's press. */
+  const [takesBox, setTakesBox] = useState<string | null>(null)
   /** The green pill's two views: the list of boxes, or the site map (#209: the map is a view of On site, not a fifth step). */
   const [onSiteView, setOnSiteView] = useState<'list' | 'parts' | 'map'>('list')
   // By part (punch list #330): this job's parts as the site's screen rolls them up, with the names a person joined there.
@@ -703,6 +709,7 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
   const [correcting, setCorrecting] = useState<{ line: ContainerLine; value: string } | null>(null)
   const [editingBoxId, setEditingBoxId] = useState<string | null>(null)
   const byLabel = (id: string | null) => containers.find((c) => c.id === id)?.label ?? (id ? 'a retired container' : '')
+  const takes = takesOf(movements, photos)
   const people = [...new Set(movements.map((m) => m.byName))].sort()
   const since = new Date(now.getTime() - sinceDays * 86_400_000).toISOString()
   const missingRows = diffs.filter((d) => d.at >= since && d.diff !== 0)
@@ -916,7 +923,11 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                     <td style={{ ...td, ...num }}>{d.counted}</td>
                     <td style={{ ...td, ...num, fontWeight: 700 }}>{d.diff < 0 ? -d.diff : <span style={chip('blue')}>{d.diff} found</span>}</td>
                     <td style={{ ...td, ...num }}>{m == null ? <span style={muted}>{price == null ? 'no price' : ''}</span> : <><Money n={m} /> <PriceChip jobId={jobId} partKey={d.partKey} /></>}</td>
-                    <td style={{ ...td, whiteSpace: 'nowrap' }}>{d.byName} <Stamp iso={d.at} inline /></td>
+                    <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                      {d.byName} <Stamp iso={d.at} inline />
+                      {/* Take from a box (v2.7828): a count that came up short opens the takes that left the box before it, with their pictures. */}
+                      {d.diff < 0 && takesBefore(takes, d.containerId, d.at).length > 0 ? <><br /><button type="button" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', fontSize: '0.8rem', cursor: 'pointer' }} onClick={() => { setTakesBox(d.containerId); setSection('history') }} data-testid="missing-takes-door">{takesBeforeLabel(takesBefore(takes, d.containerId, d.at).length)}</button></> : null}
+                    </td>
                   </tr>
                 )
               })}
@@ -1052,6 +1063,17 @@ function JobView({ jobId, siteId, siteName, onOpenSite, job, byUserId, byName, o
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      ) : null}
+
+      {section === 'history' ? (
+        <div style={sec} data-testid="materials-takes">
+          <h3 style={secH}>Takes · parts taken out of a box, with a photo before and after
+            {takesBox ? <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500, fontSize: '0.8rem' }}>Only {byLabel(takesBox)}<button type="button" style={{ ...btn, minHeight: 28, fontSize: '0.75rem' }} onClick={() => setTakesBox(null)}>Show every box</button></span> : null}
+          </h3>
+          <div style={{ padding: '0.75rem 0.9rem' }}>
+            <TakesPanel takes={takesBox ? takes.filter((t) => t.containerId === takesBox) : takes} all={takes} labelOf={byLabel} filters />
           </div>
         </div>
       ) : null}

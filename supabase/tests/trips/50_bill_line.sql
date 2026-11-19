@@ -4,7 +4,7 @@
 -- the amount and the name; a dry run that writes nothing; the line, its position, the total with the riders and the
 -- History row; a second press answered as a duplicate; a site's job joining the trip's jobs; a job that holds its
 -- own trip; a save that renames the line and keeps the mark; a deleted line that frees the trip; and a deleted trip
--- that leaves the line. Fixtures are written as postgres; presses run as each user; everything rolls back. Raises on
+-- that leaves the line; and Add discount, which refuses the GC desk's billing job too. Fixtures are written as postgres; presses run as each user; everything rolls back. Raises on
 -- the first failed assertion; ends with "trips bill line PASSED". See scripts/pgtest-trips.sh. Never against prod.
 -- Every name and figure here is made up.
 \set ON_ERROR_STOP 1
@@ -256,6 +256,16 @@ SELECT tbl.same('the new line took the position past the highest', (SELECT seque
 -- 11 · Delete the trip and the line stays with its words, its price and its place; only the mark goes.
 DELETE FROM public.trips WHERE id = '00000000-0000-0000-0000-0000003910e1';
 SELECT tbl.same('the line outlives its trip, unmarked, and the total is as it was', tbl.lines('00000000-0000-0000-0000-0000003910b1') || ' / ' || (SELECT line_description FROM public.jobs_ledger_fixtures WHERE job_id = '00000000-0000-0000-0000-0000003910b1' AND sequence_order = 8), '0:Bid price 184000.00 | 7:Loyalty discount -4000.00 | 8:Trip 1, crew of 4, Nov 2 to Nov 8 6800.00 = 186850.00 / Reset the riser the framers moved. Asked by Walt, by phone.');
+
+-- 12 · Add discount (migration *_discount_refuses_gc_billing_job): the GC desk's billing job takes no discount line
+-- either, and keeps its total. Any other job takes one as before.
+RESET ROLE;
+SELECT tbl.as_user('00000000-0000-0000-0000-0000003910a1');
+SET LOCAL ROLE authenticated;
+SELECT tbl.refused('a discount on the GC desk''s billing job', $q$SELECT public.apply_job_discount('00000000-0000-0000-0000-0000003910b5', 'Goodwill', NULL, 100, NULL, NULL)$q$, 'This job is billed from Owner Billing on the GC desk. Its price changes only by a signed change order');
+SELECT tbl.same('a discount on another job is taken as before', (SELECT r->>'ok' FROM public.apply_job_discount('00000000-0000-0000-0000-0000003910b2', 'Goodwill', NULL, 100, NULL, NULL) AS r), 'true');
+RESET ROLE;
+SELECT tbl.same('the GC billing job keeps its total and gains no line', (SELECT (j.revenue = 900000)::text || ' ' || (SELECT count(*) FROM public.jobs_ledger_fixtures f WHERE f.job_id = j.id)::text FROM public.jobs_ledger j WHERE j.id = '00000000-0000-0000-0000-0000003910b5'), 'true 0');
 
 DO $$ BEGIN RAISE NOTICE 'trips bill line PASSED'; END $$;
 ROLLBACK;

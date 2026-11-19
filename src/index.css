@@ -7354,7 +7354,7 @@ button.developmentCountChip:focus-visible {
 
 /* The Lien desk's Board (v2.7332, the owner's ask of 2026-11-15): two columns of bins at the top of To do, every job a chip in the bin of its stage. */
 .lienBoardBin { display: grid; gap: 6px; padding: 7px 9px 8px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); min-width: 0; }
-.lienBoardBin[data-beside='yes'] { border-style: dashed; }
+.lienBoardBin[data-closed='yes'] { border-style: dashed; border-color: var(--border-strong); background: transparent; }
 .lienBoardBinHead { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 0; border: none; background: none; font: inherit; font-size: 0.78rem; font-weight: 700; color: var(--text-700); text-align: left; min-width: 0; }
 button.lienBoardBinHead { cursor: pointer; border-radius: 5px; }
 button.lienBoardBinHead:hover > span:first-child, button.lienBoardBinHead:focus-visible > span:first-child { text-decoration: underline; text-underline-offset: 3px; }

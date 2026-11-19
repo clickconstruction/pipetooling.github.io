@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { LOOK_CANT_TITLE, LOOK_LINE_LEAD, lookAllowsPress, lookCantLines, lookFirstName, lookIsField, lookKeyPresses, lookLine, lookOffersViewAs, lookPressLabel, lookPressTitle, lookReadAtWords, lookViewAsConfirm, lookViewAsFailed, lookViewAsLabel, lookViewAsLead, lookViewAsTail, lookWindowTitle, type LookViewAsAsk } from './taskLook'
+import { LOOK_CANT_TITLE, LOOK_LINE_LEAD, lookAllowsPress, lookCantLines, lookFirstName, lookIsField, lookKeyPresses, lookLine, lookOffersViewAs, lookPressLabel, lookPressTitle, lookReadAtWords, lookViewAsConfirm, lookViewAsFailed, lookViewAsLabel, lookViewAsLanding, lookViewAsLead, lookViewAsTail, lookWindowTitle, type LookViewAsAsk } from './taskLook'
 
 describe('the words of a look', () => {
   it('names the person by their first name on the press', () => {
@@ -57,6 +57,10 @@ describe('the door from a look to View as', () => {
     expect(lookViewAsConfirm('Dana Whitlow')).toEqual({ message: 'Sign in as Dana Whitlow? The app records it. Exit brings you back to this page.', confirmLabel: 'View as Dana' })
     expect(lookViewAsConfirm('').message).toBe('Sign in as them? The app records it. Exit brings you back to this page.')
     expect(lookViewAsFailed('Dana Whitlow')).toBe('Could not sign in as Dana')
+  })
+
+  it('lands on the person’s Today, whatever tab the dev pressed from', () => {
+    expect(lookViewAsLanding('https://example.test')).toBe('https://example.test/checklist?tab=today')
   })
 
   it('every line is plain words', () => {

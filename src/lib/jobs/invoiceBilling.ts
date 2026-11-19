@@ -230,6 +230,13 @@ export function billedStageRowHasNoBillLine(r: StageRow): boolean {
   return !r.inv.billed_at?.trim() && effectiveInvoiceEstBillDate(r.inv) == null
 }
 
+/**
+ * The pill a billed job-shell row wears on the Pipeline (`StagesBilledRowExtras`). It is a status of the row, not an
+ * empty list, and its title names the press (Bill Customer or Edit Job creates the line). A named constant since
+ * v2.7764: the pill moved out of the tab word for word, and `check:empty-words` reads a moved line as a written one.
+ */
+export const BILLED_SHELL_NO_BILL_LINE = 'No bill line'
+
 /** Count + open dollars of the no-bill-line cohort among the board's billed rows (the "No line" chip). */
 export function buildBilledNoLineBucket(rows: StageRow[]): { count: number; sum: number } {
   let count = 0

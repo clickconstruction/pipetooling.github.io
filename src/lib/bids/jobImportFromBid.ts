@@ -3,7 +3,6 @@
  * the office is asked. Pure — the job form reads the bid, its versions and its sends, asks its
  * two questions and writes; everything it decides in between is here.
  */
-import { formatCurrency } from '../jobs/jobFormMoney'
 import { resolveWinningPacket, type GcPacket } from './gcPackets'
 
 /** A GC the import can be for. Same shape as the winning-GC picker's option. */
@@ -82,23 +81,19 @@ export function bidImportCarry(args: { agreedValueRaw: number | string | null | 
   return { agreedValue, carryValue }
 }
 
-/** "Start the job at $X?" — the one question, and what Yes and No do. */
-export function bidImportCarryQuestion(args: {
-  carryValue: number
+/**
+ * Whose figure the carried value is, for the window that asks how it comes onto the job (punch
+ * list #397; until then one two-button question asked "Start the job at $X?"): the bid's agreed
+ * value, or what the chosen GC was sent on it.
+ */
+export function bidImportWhoseFigure(args: {
   agreedValue: number | null
   bid: BidNaming
   /** The chosen GC's name, else the bid's. */
   gcName: string | null | undefined
-}): { title: string; message: string; confirmLabel: string; cancelLabel: string } {
-  const { carryValue, agreedValue } = args
+}): string {
   const bidLabel = bidImportLabel(args.bid, 'the bid')
-  const whoseFigure = agreedValue != null ? `${bidLabel}'s agreed value` : `what ${(args.gcName ?? '').trim() || 'the GC'} was sent on ${bidLabel}`
-  return {
-    title: `Start the job at $${formatCurrency(carryValue)}?`,
-    message: `That's ${whoseFigure}. Yes puts it on the job as the first line item${agreedValue == null ? ' and records it on the bid as the agreed value' : ''}; No starts the job at $0 and writes nothing.`,
-    confirmLabel: `Carry $${formatCurrency(carryValue)} over`,
-    cancelLabel: 'Start at $0',
-  }
+  return args.agreedValue != null ? `${bidLabel}’s agreed value` : `what ${(args.gcName ?? '').trim() || 'the GC'} was sent on ${bidLabel}`
 }
 
 /** The line item a carried figure becomes. The caller gives it an id. */

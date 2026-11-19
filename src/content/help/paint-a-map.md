@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -12,19 +12,52 @@ Anyone who can open a job can paint a map for it.
 
 ## Start a map
 
-A painted map sits wherever the app shows an address.
+The Dashboard has a {{button:outline|Paint a map}} press near the top. You do not have to be clocked in to see it.
+
+- In Job Mode the press sits beside the tally button. It says which job the map is for.
+- On the office's phone the press is a link under the clock.
+- Everywhere else the press is a square after **Job Report**.
+
+Press {{button:outline|Paint a map}}. The **Paint a map** sheet opens.
+
+The app sets the job when it knows it. Clocked in, that is the job you are clocked onto. Otherwise it is the stop you are at today, or the next one.
+
+The sheet names the job under **For**. Press **Change the job** if the app picked the wrong one.
+
+### When the app does not know the job
+
+Every painted map is on a job. With no clock and no stop today, **Which job is it for?** opens first.
+
+- **Today** lists the jobs on your schedule today.
+- **Lately** lists the jobs you clocked onto in the last few weeks.
+- **Or search every job** finds any other job by its number, name or address.
+
+Press a job. The **Paint a map** sheet opens on it.
+
+Standing on the site? Press **Find the jobs near me**. Your phone asks to share where you are. Say yes.
+
+**Near you** then lists the closest jobs first, with how far each is. Your phone is read once, on that press.
+
+The list holds only jobs whose address the app has placed on a map. Search for any job it leaves out.
+
+A job you are not on shows grey. You cannot paint a map for it. Ask the office to put you on the job.
+
+### From a job
+
+A painted map also sits wherever the app shows an address.
 
 - On a job's window, look under the address at the top.
 - On your own job card in Job Mode, look above the customer's lines.
 - On a development's page, look under its address.
 
-Press {{button:outline|＋ Paint a map}}.
+Press {{button:outline|＋ Paint a map}}. The same sheet opens, on that job.
 
-The **Paint a map** sheet opens.
+### The sheet
 
-1. Type what the map is, or press a name such as {{chip:gray|The way in}}.
-2. Type a line for whoever opens it, if a line would help.
-3. Pick how to start.
+1. Check the job under **For**.
+2. Type what the map is, or press a name such as {{chip:gray|The way in}}.
+3. Type a line for whoever opens it, if a line would help.
+4. Pick how to start.
 
 - {{button:red|Walk or drive it}} paints the line as you move.
 - {{button:blue|Draw it by hand}} lets you press the line out on the map.
@@ -36,15 +69,25 @@ A job in a development has two choices under **For**. Press the job's name to pa
 
 A map started on a development's page is for every lot. It shows on each job in the development.
 
-### With no job open
+### From the search
 
 Press the search button at the top of the app and type **paint**. Press **Paint a map**.
 
-The sheet opens on no job. Press **Pick the job it is for** and search for the job.
+**Which job is it for?** opens, as it does from the Dashboard.
 
-You can also leave it on no job and paint first. Only you and the office can open a map on no job.
+### Picking a job with no signal
+
+The list of jobs cannot be read with no signal. The app says so and tries again by itself.
+
+Press **Paint now and pick the job later** to paint anyway. Only you and the office can open a map on no job.
 
 Open that map later and press **Put it on a job…** to give it one.
+
+### A map on the wrong job
+
+Open the map and press **Move it to another job…**. Press the job it belongs on.
+
+The press shows for whoever painted the map, and for the office.
 
 ## Walk or drive the line
 
@@ -200,6 +243,26 @@ At a desk the press reads **Copy this place**. It copies the same words. Paste t
 
 Anyone who can see a place can send it. To send the whole map, press {{button:outline|Share}}.
 
+## Send more than the spot
+
+**Text this place…** sends the spot. It does not send the photo. A place with a photo says so under the press.
+
+To send more, press **Send more…** beside it. A short sheet opens. It shows only the ways that fit this place.
+
+- **This place with its photo.** Your phone's share sheet opens with the photo and the words. Pick Messages. Then pick who gets it.
+- **All 3 places on this job.** Messages opens with every place in one text. Each place has its own map link. The press names your own count.
+- **The whole map.** The Share sheet opens. From there you send a link to the painted map.
+
+The photo's way shows on a phone, for a place that has a photo.
+
+The way for every place shows when there are two places or more. At a desk it copies them.
+
+**The whole map** shows if you painted the map or work in the office.
+
+Nobody who gets a photo or the places needs a sign-in. A link to the whole map asks for their name first.
+
+Some places have no **Send more…**. That place has no photo, stands alone, and is on a map you cannot share.
+
 ## Keep a place on the job
 
 Some spots matter on every map of a job. The gate is one. The meter is another. Keep those on the job itself.
@@ -309,6 +372,16 @@ The office can change any line and any map.
 ## Share a map
 
 A painted map can go to someone outside the company. A customer, a delivery driver or another trade opens it with no sign-in.
+
+### Right after you save
+
+The map says **Saved** in a green band as soon as a save lands. The band says where the map is and who can open it.
+
+On a phone, {{button:blue|Text it from my phone…}} sits under the band. Press it to text the map without opening **Share**.
+
+The press shows for whoever painted the map, and for the office.
+
+### From the Share sheet
 
 Open the map and press {{button:outline|Share}}. The press shows for whoever painted the map, and for the office.
 
@@ -444,3 +517,11 @@ A file draws no mark. A place's kind is written in its name, such as *Hazard: Op
 The view from above can be a year or two old. A new development may show as a bare field.
 
 Walk or drive the way once, and the line shows what the picture does not.
+
+## See the ground on an earlier day
+
+Open a saved map. Press **Time** beside **From above** and **Streets**. A row of dates opens under the map.
+
+Press a date to see the ground on that day, with the lines over it. Press **Today** to see today's picture again.
+
+**Time** is for reading a map. The press goes away while you draw a line or place a dot. [See a place on a map on an earlier day](/help/see-a-place-on-an-earlier-day) has the rest.

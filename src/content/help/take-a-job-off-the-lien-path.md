@@ -49,7 +49,9 @@ A job can go on the attorney's list only once it is billed. The window says so b
 
 ## Find the jobs that are off the path
 
-The Board has a bin under the affidavits, {{chip:gray|Off the lien path}}. Each row gives the job and what it still owes. The row names the GC, who took the job off, and the day. The row says whether the job is with the attorney. The reason sits on its own line.
+The Board has a bin under the affidavits, {{chip:gray|Off the lien path}}. It opens folded to one line, with the number of jobs and the money they owe. Press {{button:outline|Show ▾}} on that line to open it.
+
+Each row gives the job and what it still owes. The row names the GC, who took the job off, and the day. The row says whether the job is with the attorney. The reason sits on its own line.
 
 A job that owes nothing and has no lien paper is not listed.
 
@@ -59,10 +61,11 @@ The job's own Lien window still opens. An amber note at its top says the job is 
 
 :::steps
 
-1. Find the job in {{chip:gray|Off the lien path}}. Press {{button:outline|Put it back…}} on its row.
-2. Read why it came off, who took it off, and the day.
-3. Type why it goes back.
-4. Press the blue button, like {{button:blue|Put 977 back on the lien path}}.
+1. Find {{chip:gray|Off the lien path}} on the Board. Press {{button:outline|Show ▾}} to open it.
+2. Find the job. Press {{button:outline|Put it back…}} on its row.
+3. Read why it came off, who took it off, and the day.
+4. Type why it goes back.
+5. Press the blue button, like {{button:blue|Put 977 back on the lien path}}.
 
 :::
 

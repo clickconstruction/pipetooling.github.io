@@ -4,36 +4,38 @@
  * Plots the viewer's active jobs: team-assigned jobs (the Assigned Jobs rows)
  * plus, for a superintendent, the jobs on their assigned projects. Mounts
  * above the Assigned Jobs section; renders nothing when there is no job to
- * show. The Leaflet canvas is lazy (`DashboardJobsMapCanvas`) so the Dashboard
- * bundle stays map-free; coordinates come from `useDashboardJobsMapPins`.
+ * show. It draws in the shared `PinsMapFrame` (punch list #395), which loads its
+ * canvases lazily so the Dashboard bundle stays map-free, and holds the Google /
+ * OpenStreetMap rule, the Satellite and Streets switch and the Time press;
+ * coordinates come from `useDashboardJobsMapPins`.
  *
  * Interactions: a pin opens the same read-only / tabbed job window the job
  * rows open (`openJobDetailFromDashboardJobRow`); Directions is the rows'
  * Google Maps link via `openInExternalBrowser`; Hide map is a per-device
  * preference; Fit all re-centers on every pin.
  */
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { UserRole } from '../../hooks/useAuth'
 import { useDashboardJobsMapPins } from '../../hooks/useDashboardJobsMapPins'
 import {
   DASHBOARD_JOBS_MAP_STATUS_COLOR,
+  dashboardJobsMapCanvasPins,
   dashboardJobsMapDetailLine,
   dashboardJobsMapDirectionsUrl,
   dashboardJobsMapLegend,
   dashboardJobsMapUnmappedLine,
-  googleMapsBrowserKey,
   readDashboardJobsMapHidden,
-  resolveDashboardMapProvider,
   writeDashboardJobsMapHidden,
   type DashboardJobsMapJob,
   type DashboardJobsMapPin,
 } from '../../lib/dashboardJobsMap'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
+import { MAP_TIME_PINS_WORDS } from '../../lib/map/mapTime'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { EmptyState } from '../EmptyState'
+import { PinsMapFrame } from '../map/PinsMapFrame'
+import { DashboardJobsMapPopupBody } from './DashboardJobsMapPopupBody'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
-
-const DashboardJobsMapCanvas = lazy(() => import('./DashboardJobsMapCanvas'))
-const DashboardJobsMapGoogleCanvas = lazy(() => import('./DashboardJobsMapGoogleCanvas'))
 
 const OUTLINE_BUTTON_STYLE: React.CSSProperties = {
   padding: '0.35rem 0.75rem',
@@ -97,14 +99,6 @@ export function DashboardJobsMapCard({
   const [hidden, setHidden] = useState<boolean>(() => readDashboardJobsMapHidden())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [fitSignal, setFitSignal] = useState(0)
-  // v2.3145: Google Maps when a browser key is configured and the API loads; OpenStreetMap
-  // otherwise. A failure is sticky for this page so a bad key never flickers.
-  const [googleFailed, setGoogleFailed] = useState(false)
-  const provider = resolveDashboardMapProvider({ key: googleMapsBrowserKey(), googleFailed })
-  const googleUnavailable = useCallback((reason: string) => {
-    console.warn(`[jobs map] Google Maps unavailable, using OpenStreetMap — ${reason}`)
-    setGoogleFailed(true)
-  }, [])
   const { pins, unmapped, noAddress, resolving, total } = useDashboardJobsMapPins(assignedJobs, superintendentJobs, !hidden)
 
   const legend = useMemo(() => dashboardJobsMapLegend(pins), [pins])
@@ -121,6 +115,15 @@ export function DashboardJobsMapCard({
   }, [])
   const openJob = useCallback((p: DashboardJobsMapPin | DashboardJobsMapJob) => openJobDetailFromDashboardJobRow(p.row), [openJobDetailFromDashboardJobRow])
   const directions = useCallback((p: DashboardJobsMapPin | DashboardJobsMapJob) => openInExternalBrowser(dashboardJobsMapDirectionsUrl(p.address)), [])
+  // Job pins as the shared canvas draws them, in the Jobs status colors, and the popup body for one.
+  const canvasPins = useMemo(() => dashboardJobsMapCanvasPins(pins), [pins])
+  const renderPopup = useCallback(
+    (id: string) => {
+      const p = pins.find((x) => x.id === id)
+      return p ? <DashboardJobsMapPopupBody pin={p} onOpenJob={openJob} onDirections={directions} /> : null
+    },
+    [pins, openJob, directions],
+  )
 
   if (role == null) return null
   if (!loading && total === 0) return null
@@ -168,48 +171,26 @@ export function DashboardJobsMapCard({
 
           {loading && pins.length === 0 ? (
             <DashboardListRowSkeleton rows={2} />
+          ) : pins.length > 0 ? (
+            <PinsMapFrame
+              surface="dashboard-jobs-map"
+              style={{ borderRadius: isMobile ? 10 : 6, overflow: 'hidden', border: '1px solid var(--border)' }}
+              pins={canvasPins}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              renderPopup={renderPopup}
+              fitSignal={fitSignal}
+              height={mapHeight}
+              isMobile={isMobile}
+              timeDotsWords={MAP_TIME_PINS_WORDS}
+              // The card sits in the Dashboard's scroll: the wheel scrolls the page until the map is clicked
+              scrollZoomAfterClick
+            />
           ) : (
-            <div
-              // isolation contains Leaflet's internal z-indexes (panes 200–700, controls 1000) so they can't paint over header dropdowns
-              style={{ position: 'relative', height: mapHeight, borderRadius: isMobile ? 10 : 6, overflow: 'hidden', border: '1px solid var(--border)', isolation: 'isolate', background: 'var(--bg-muted)' }}
-            >
-              {pins.length > 0 ? (
-                <Suspense fallback={<div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading map…</div>}>
-                  {provider === 'google' ? (
-                    <DashboardJobsMapGoogleCanvas
-                      apiKey={googleMapsBrowserKey()}
-                      onUnavailable={googleUnavailable}
-                      pins={pins}
-                      selectedId={selectedId}
-                      onSelect={setSelectedId}
-                      onOpenJob={openJob}
-                      onDirections={directions}
-                      fitSignal={fitSignal}
-                      height={mapHeight}
-                      isMobile={isMobile}
-                      // The card sits in the Dashboard's scroll: the wheel scrolls the page until the map is clicked
-                      scrollZoomAfterClick
-                    />
-                  ) : (
-                    <DashboardJobsMapCanvas
-                      pins={pins}
-                      selectedId={selectedId}
-                      onSelect={setSelectedId}
-                      onOpenJob={openJob}
-                      onDirections={directions}
-                      fitSignal={fitSignal}
-                      height={mapHeight}
-                      isMobile={isMobile}
-                      // The card sits in the Dashboard's scroll: the wheel scrolls the page until the map is clicked
-                      scrollZoomAfterClick
-                    />
-                  )}
-                </Suspense>
-              ) : (
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  {resolving ? 'Finding your jobs on the map…' : 'None of your jobs has a map location yet.'}
-                </div>
-              )}
+            <div style={{ position: 'relative', height: mapHeight, borderRadius: isMobile ? 10 : 6, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--bg-muted)' }}>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                {resolving ? 'Finding your jobs on the map…' : <EmptyState compact main="None of your jobs has a map location yet." />}
+              </div>
             </div>
           )}
 

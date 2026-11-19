@@ -94,7 +94,7 @@ export function MapTimeRow({ time, isMobile, surface, dotsWords }: { time: MapTi
             <OfflineRetryPanel failure={photos.failure} onRetry={photos.retry} surface={`${surface}-time`} idempotent busy={photos.looking != null} style={{ margin: 0 }} />
           ) : (
             <p data-map-time-caption style={words}>
-              {mapTimeCaption({ spotName: spot.name, today: time.today, olderCount, shown, walking, dotsWords })}
+              {mapTimeCaption({ spotName: spot.name, today: time.today, olderCount, shown, looking: photos.looking != null, dotsWords })}
             </p>
           )}
           {/* A date whose own sentence already says its day is being found needs no second line. */}

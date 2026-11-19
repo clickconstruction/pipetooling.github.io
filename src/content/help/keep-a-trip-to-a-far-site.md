@@ -2,7 +2,7 @@
 title: keep a trip to a site away from home
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: trip, trips, deleted trips, put back, put a trip back, undo a deleted trip, restore a trip, put on a bill, bill a trip, a trip's line, extra trip, bill the 1 picked, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log, trip number, number, trip 1, trip 5, copy link, link to a trip, open a trip
+keywords: trip, trips, extra trips not on a bill, bill tab trips, add a trip from a job, deleted trips, put back, put a trip back, undo a deleted trip, restore a trip, put on a bill, bill a trip, a trip's line, extra trip, bill the 1 picked, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log, trip number, number, trip 1, trip 5, copy link, link to a trip, open a trip
 order: 76
 ---
 A trip is one going out to a site away from home and coming back. You keep it on the site's Development page, apart from the hours on its jobs.
@@ -202,7 +202,7 @@ After that minute the trip waits under **Deleted trips** for 90 days.
 
 Deleting a trip changes no clock row, no bill and no cost.
 
-A trip on a job's lines leaves its line on the job. **Undo** puts the trip back without its tie to that line.
+A trip on a job's lines leaves its line on the job. **Undo** puts the trip back and ties it to that line again.
 
 ## Put a deleted trip back
 
@@ -216,7 +216,7 @@ The trip comes back with who went, its days and the number it had. No clock row,
 
 A job the trip named may have been deleted since. The line says so. The trip then comes back without that job.
 
-A trip on a job's lines comes back without its tie to that line.
+A trip on a job's lines comes back tied to that line again. A line that was removed since is not made again.
 
 A site whose only trip was deleted still shows its Trips look. You can put the trip back from there.
 
@@ -252,6 +252,25 @@ The window says so under **Job**. Put the trip's amount on a change order instea
 A leader or the controller presses {{button:outline|Open Change orders}} there to write one.
 
 A dev or a controller sees **What it cost** under the amount. Nobody else sees a cost.
+
+## Put a trip on a bill from the job
+
+You do not have to open the site's page. The job's own window lists its unbilled trips.
+
+1. Open the job and press **Bill**.
+2. Find **Extra trips not on a bill** under **Line Items**.
+3. Press {{button:outline|Put on a bill}} beside the trip.
+4. Type the **Amount** and check the line. Press {{button:blue|Add the line · $6,800}}.
+
+The line joins the job's lines and is picked for you. Press **Bill the 1 picked** to bill it alone.
+
+The list shows a trip marked **Extra** that names this job. It also shows one that names no job yet.
+
+A planned trip is listed with no press. It can go on a bill once it has gone out.
+
+Was the trip never kept? Press {{button:outline|+ Trip}} in the same place. The sheet opens with this job picked and **Billing** on **Extra**.
+
+The list shows only on a job that is in a development.
 
 ## Read where a trip's money stands
 

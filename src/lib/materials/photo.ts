@@ -32,6 +32,10 @@ export type PhotoNote = {
   failWhy?: string | null
   /** What the shot is of, as the file is named: "A1 after Count". */
   words?: string
+  /** Take from a box (v2.7824): the box as found or after the parts left; null or absent for a photo outside a take. */
+  kind?: 'before' | 'after' | null
+  /** The take this photo belongs to, shared with the take's ledger rows (`takeRun.ts`). */
+  takeId?: string | null
 }
 
 export function photoStatusWords(status: PhotoStatus): string {
@@ -57,7 +61,12 @@ export function photoWords(containerLabel: string, after: string | null): string
 
 /** The file's name in the job's Drive folder, as the sweep would name it: day, who, what. */
 export function photoFileName(input: { at: string; byName: string; containerLabel: string; after: string | null; mime: string | null }): string {
-  return photoDriveName({ at: input.at, sender: input.byName, fileName: 'photo', mime: input.mime || 'image/jpeg', words: photoWords(input.containerLabel, input.after), place: 1 })
+  return photoFileNameOf({ at: input.at, byName: input.byName, words: photoWords(input.containerLabel, input.after), mime: input.mime })
+}
+
+/** The same name from words already said, for a take's photos: "2026-11-18 Jordan · G12 as found.jpg". */
+export function photoFileNameOf(input: { at: string; byName: string; words: string; mime: string | null }): string {
+  return photoDriveName({ at: input.at, sender: input.byName, fileName: 'photo', mime: input.mime || 'image/jpeg', words: input.words, place: 1 })
 }
 
 /** The mark on a box: "1 photo today by Jordan", "3 photos, last 2 days ago by Jordan"; nothing when none. */

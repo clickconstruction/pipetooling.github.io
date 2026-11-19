@@ -13,19 +13,21 @@
  * named, never guessed into one. A stage nobody has reported reads unknown, never 0%. Pure.
  */
 
+import { stageGroupOfRank, stageRank } from '../jobs/stageRecognition'
+
 export type BidStage = 'rough' | 'top' | 'trim'
 export const BID_STAGES: readonly BidStage[] = ['rough', 'top', 'trim']
 export const BID_STAGE_LABELS: Record<BidStage, string> = { rough: 'Rough-in', top: 'Top-out', trim: 'Trim' }
 
-/** The bid stage a staged billing line's name means; null when it names none. */
+/**
+ * The bid stage a staged billing line's name means; null when it names none, or more than one.
+ * It reads through the job's own reader (`stageRank`) since punch list #397, PR 6. Until then it
+ * kept a rule of its own that found the word anywhere in the name, so "installed shower trim"
+ * read as Trim, and Final and Underground read as nothing.
+ */
 export function bidStageOfLine(name: string | null | undefined): BidStage | null {
-  const n = (name ?? '').toLowerCase()
-  const hits: BidStage[] = []
-  if (/\brough/.test(n)) hits.push('rough')
-  if (/\btop[\s-]*out\b|\btopout\b/.test(n)) hits.push('top')
-  if (/\btrim\b|\bfinish\b/.test(n)) hits.push('trim')
-  // "Rough and top out" is two stages on one line: it can stand for neither alone.
-  return hits.length === 1 ? hits[0]! : null
+  const rank = stageRank(name)
+  return rank == null ? null : stageGroupOfRank(rank)
 }
 
 export type StageLine = { name: string; weightPct: number; progressPct: number | null }

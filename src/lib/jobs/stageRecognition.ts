@@ -26,7 +26,37 @@
 
 export type StageRank = 0 | 1 | 2 | 3 | 4
 
-/** Ground / pre-pour → rough → top out → trim → final. `null` = not a stage word. */
+/** The bid's three stages, which is as fine as a job line's name is ever read: ground and rough, top out, trim and final. */
+export type StageGroup = 'rough' | 'top' | 'trim'
+
+/** The bid stage a rank falls in: ground and rough are Rough In, top out is Top Out, trim and final are Trim Set. */
+export function stageGroupOfRank(rank: StageRank): StageGroup {
+  return rank <= 1 ? 'rough' : rank === 2 ? 'top' : 'trim'
+}
+
+/** A stage's word anywhere in a name, by group. These never give a line a stage; they only say a second stage is named. */
+const GROUP_WORDS: Record<StageGroup, RegExp> = {
+  rough: /\b(under\s*ground|under\s*slab|ground\s*work|groundwork|pre[\s-]?pour|slab)\b|\brough/,
+  top: /\b(top|stack)[\s-]?out\b/,
+  trim: /\b(trim|finish(es|ing)?|final|punch)\b/,
+}
+
+/**
+ * Ground / pre-pour → rough → top out → trim → final. `null` = not a stage word.
+ *
+ * The one reader of a stage's name (punch list #397, PR 6). The bid's side used to keep its own
+ * (`bidStageOfLine`), which found the word anywhere in the name, so a service line such as
+ * "installed shower trim" read as the Trim stage. It reads through this now. The database keeps
+ * the same rule for filing a checklist as a record (`stage_checklist_kind_of`), and one table of
+ * names, `STAGE_NAME_TABLE` in the test beside this file, holds the two in step.
+ *
+ * The rule:
+ *   - the START of the name gives the stage, after a leading "Stage 2 —" or "3." is dropped;
+ *   - "Set trim" is the trim stage said the other way round;
+ *   - a name that also holds the word of a DIFFERENT bid stage stands for none: "Rough in, top
+ *     out and trim" is the whole job on one line, not its rough-in. Words of the same bid stage
+ *     may sit together ("Rough in and underground", "Trim and final").
+ */
 export function stageRank(name: string | null | undefined): StageRank | null {
   const n = (name ?? '')
     .trim()
@@ -34,12 +64,16 @@ export function stageRank(name: string | null | undefined): StageRank | null {
     .replace(/^(stage|phase|step)\s*\d+\s*[-–—:.]?\s*/, '')
     .replace(/^\d+\s*[-–—:.)]\s*/, '')
   if (!n) return null
-  if (/^(under\s*ground|under\s*slab|ground\s*work|groundwork|pre[\s-]?pour|slab)\b/.test(n)) return 0
-  if (/^rough/.test(n)) return 1
-  if (/^(top|stack)[\s-]?out/.test(n)) return 2
-  if (/^(trim|finish(es|ing)?)\b/.test(n)) return 3
-  if (/^(final|punch)\b/.test(n)) return 4
-  return null
+  let rank: StageRank | null = null
+  if (/^(under\s*ground|under\s*slab|ground\s*work|groundwork|pre[\s-]?pour|slab)\b/.test(n)) rank = 0
+  else if (/^rough/.test(n)) rank = 1
+  else if (/^(top|stack)[\s-]?out/.test(n)) rank = 2
+  else if (/^(trim|finish(es|ing)?)\b/.test(n) || /^set\s+trim\b/.test(n)) rank = 3
+  else if (/^(final|punch)\b/.test(n)) rank = 4
+  if (rank == null) return null
+  const own = stageGroupOfRank(rank)
+  for (const g of ['rough', 'top', 'trim'] as const) if (g !== own && GROUP_WORDS[g].test(n)) return null
+  return rank
 }
 
 export type RecognizableFixture = {

@@ -101,6 +101,13 @@ export function lookViewAsConfirm(name: string | null | undefined): { message: s
   const whole = (name ?? '').trim() || 'them'
   return { message: `Sign in as ${whole}? The app records it. Exit brings you back to this page.`, confirmLabel: lookViewAsLabel(name) }
 }
+/**
+ * Where the sign-in lands: the person's own Today, the screen the look drew. The dev pressed from Review, which a crew
+ * role is not drawn, and Exit still returns to the page the dev left.
+ */
+export function lookViewAsLanding(origin: string): string {
+  return `${origin}/checklist?tab=today`
+}
 export function lookViewAsFailed(name: string | null | undefined): string {
   return `Could not sign in as ${lookFirstName(name)}`
 }

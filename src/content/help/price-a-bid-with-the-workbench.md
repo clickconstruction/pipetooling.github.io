@@ -2,7 +2,7 @@
 title: price a bid with the Workbench
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: history, what changed, who changed it, undo, take back an import, pricing, workbench, fixtures, pipe, fittings, line feet, counts, what the bid is made of, margin, target, solver, preview, apply, locked, pinned, unpriced, coverage, GC, packet, price option, alternate, versions, price book, book copy, book entry, price didn't change, price not updating, bids like this, this size, this GC, win or lose on price, history, priced margin, kept on the bid, went out at
+keywords: percent row, percent of pipe, connections, fittings as a percent, 40 percent, follows the pipe, history, what changed, who changed it, undo, take back an import, pricing, workbench, fixtures, pipe, fittings, line feet, counts, what the bid is made of, margin, target, solver, preview, apply, locked, pinned, unpriced, coverage, GC, packet, price option, alternate, versions, price book, book copy, book entry, price didn't change, price not updating, bids like this, this size, this GC, win or lose on price, history, priced margin, kept on the bid, went out at
 order: 94
 ---
 The Bids → Pricing tab is the **Workbench**, built for pricing to a target. The classic Old grid and its Old / New pills retired in September 2026. Everything they did lives in the Workbench.
@@ -50,6 +50,34 @@ You click the book chip, {{chip:gray|WENDI · 111 entries ▸}}. The price book 
 3. **📌 Pin** any row to hold its price while the rest re-solve. Fixed-price rows are always held. Rows with no Takeoffs cost are never auto-priced. While a solve is pending, a banner counts them. It reads *23/39 have no cost: their $26,156.17 is unaffected*. It can filter to just those rows.
 4. The **ⓘ at the end of any row** opens its **Margin breakdown**. That is sale, materials, tax, labor, profit, and margin for that fixture. It has jump chips: ***# Counts · 📐 Takeoffs · 🛠 Labor***. They take you straight to the tab a number comes from, bid in hand. They land on **that fixture's row**, scrolled into view and flashed for a moment. So it is clear where you are. The row may not exist yet over there, with no labor row or no assembly. Then the tab still opens and a note says so. Only the ⓘ opens it. So clicking around the row while you price never pops it up.
 5. The **margin brush** lives left of Solver ›. Press **🖌 Margin ›** and a purple ring unfolds. It has the margin box and your recent margins, with the loaded one lit solid purple. Your cursor becomes the brush. You **press and sweep across rows**. Every row the brush crosses is priced at that margin the instant it is touched. One motion, many rows, totals moving as you go. Rows you have held with 📌, fixed-price rows, and rows with no Takeoffs cost are never painted. You let go and the sweep saves in one batch. **↩ Undo sweep** takes the whole stroke back. **‹** or Esc puts the brush down. The margin math is the same as everywhere else. It is cost divided by one minus the margin, in whole dollars. The margin you sweep with becomes your top recent chip.
+
+## Price a row as a percent of other rows
+
+Some rows are a share of other rows. Connections priced at 40% of the pipe is one.
+
+1. Press {{button:outline|＋ Percent row}} above the table.
+2. The window draws the new row at its top, as the table will show it.
+3. Type a name, then type a percent.
+4. Pick **Revenue** or **Cost**. Each one shows its number for the rows you picked.
+5. Pick the rows under **Rows**. The list holds each kind of row on the bid, then each tag.
+6. The button says what it will do, like {{button:blue|Add Connections at $2,480.00}}. Press it.
+
+The row lands at the end of the table with a count of 1. The Counts tab gains the row too. The row's **Book entry** column shows the rule, like {{chip:blue|40% of Pipe revenue · $6,200.00}}.
+
+**The row follows its rows.** Change a footage or a pipe price and the row's price moves with it. The Workbench saves the new price by itself. The solver holds the row, as it holds a pinned row. A rule never reads a row that has a rule of its own.
+
+The row stops following when the bid is marked sent. The row's chip then reads *kept as sent*.
+
+- Press the chip to change the percent, the number or the rows.
+- Type a price over the row to drop the rule. Your typed price stands.
+- Untick **Keep following these rows until the bid is sent** to set the price once, with no rule.
+- Type the name of a row already on the bid to set that row. The window says so.
+
+The window opens filled with the last rule you made on this device. The first time, the percent is empty.
+
+:::example Connections on a small bid
+Five pipe rows sell for $6,200.00. Connections at 40% is $2,480.00. One pipe row grows by 30 feet at $20 a foot. The pipe is now $6,800.00 and Connections is $2,720.00.
+:::
 
 ## Typed prices save themselves; the solver previews
 

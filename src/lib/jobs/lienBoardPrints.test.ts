@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { plainWordsFailures } from '../plainWords'
 import { LIEN_BOARD_USUAL_STACK, lienBoardAffidavitPrint, lienBoardMailNumbersPress, lienBoardNoticePrint, lienBoardSendDoor, lienBoardSignDoor, lienBoardStackNote } from './lienBoardPrints'
 
 describe('lienBoardNoticePrint — the print under the notices’ column (v2.7470, punch list #362)', () => {
@@ -34,9 +35,24 @@ describe('lienBoardNoticePrint — the print under the notices’ column (v2.747
     expect(lienBoardNoticePrint({ toPrint: 2, waits: 5, printed: 0 })).toMatchObject({ dead: true, short: { left: '2 wait' } })
   })
   it('the leader’s door on Approved · to sign names the notices that take his signature, and is null with none (v2.7712)', () => {
-    expect(lienBoardSignDoor(7)).toEqual({ label: 'Sign 7 notices ›' })
-    expect(lienBoardSignDoor(1)).toEqual({ label: 'Sign 1 notice ›' })
-    expect(lienBoardSignDoor(0)).toBeNull()
+    expect(lienBoardSignDoor({ mine: 7 })).toEqual({ label: 'Sign 7 notices ›', line: null, list: 'Only the notices that take your signature' })
+    expect(lienBoardSignDoor({ mine: 1 })).toEqual({ label: 'Sign 1 notice ›', line: null, list: 'Only the notice that takes your signature' })
+    expect(lienBoardSignDoor({ mine: 0 })).toBeNull()
+  })
+  it('the door counts his own notices alone, and one line says how many wait on another leader, by name when they share one (v2.7853)', () => {
+    // The bin reads 7: the press takes 3 and the line names the other 4, so the three numbers are one.
+    expect(lienBoardSignDoor({ mine: 3, others: 4, othersLeader: 'Malachi Whites' })).toEqual({ label: 'Sign 3 notices ›', line: '4 wait on Malachi.', list: 'Only the notices that take your signature' })
+    expect(lienBoardSignDoor({ mine: 1, others: 1, othersLeader: 'Malachi' })!.line).toBe('1 waits on Malachi.')
+    // More than one other leader, or none named: the line still says they are not his.
+    expect(lienBoardSignDoor({ mine: 2, others: 5, othersLeader: null })!.line).toBe('5 wait on another leader.')
+    expect(lienBoardSignDoor({ mine: 2, others: 1, othersLeader: '  ' })!.line).toBe('1 waits on another leader.')
+    // He leads none of them: no door of his, whatever waits on someone else. The bin then carries the office's reminder.
+    expect(lienBoardSignDoor({ mine: 0, others: 7, othersLeader: 'Malachi' })).toBeNull()
+    for (const c of [{ mine: 3, others: 4, othersLeader: 'Malachi' }, { mine: 2, others: 5, othersLeader: null }, { mine: 1, others: 1 }]) {
+      const door = lienBoardSignDoor(c)!
+      expect(plainWordsFailures(door.line!)).toEqual([])
+      expect(plainWordsFailures(door.list)).toEqual([])
+    }
   })
   it('the door on the affidavits’ To send bin counts what the batch send takes, and is null with none (v2.7714)', () => {
     expect(lienBoardSendDoor(5)).toEqual({ label: 'Send 5 for approval ›' })

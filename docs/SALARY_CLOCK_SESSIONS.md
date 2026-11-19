@@ -34,10 +34,10 @@ Salaried users get **auto materialized** `clock_sessions` rows with `origin = 's
 The materialized `salary_schedule` sessions above drive the **calendar/On-Shift display**. They do **not** drive payroll math. The per-person flags live on `people_pay_config`:
 
 - **`is_salary`** — the flag. Payroll/costing uses the flat 8/0 credit (8 h weekdays, 0 weekends).
+- **`salaried_week_hours`** — the paid hours of each day of this person's salaried week (v2.7826, migration `20261118160000`): seven numbers, Sunday first, in quarter hours, 0 for a day off, 8 on the five weekdays by default. Since v2.7829 the payroll tier pays a day its hours in this week in place of the flat 8/0 (`salariedWeekOf` in `salariedEffectiveHours.ts`, carried on the payroll window as `week`), so a Saturday pays when the week says so and a weekday the week leaves out pays nothing. The cost tier and the workday template still carry the 8 until their own PRs, and no screen sets the column until they do.
 - **`record_hours_but_salary`** — lets a salaried person still **log** hours that show on the Hours surfaces; **costing stays on the flat 8/0** regardless.
 
-There is **no** stored salary amount or per-person daily-hours override; the 8 h/day is fixed
-(pay = `hourly_wage` × credited hours).
+There is **no** stored salary amount: pay = `hourly_wage` × credited hours, and the Pay & schedule card works the weekly figure out from the wage and the week (`salariedWeekLine`).
 
 **Two rule tiers since 2026-07-13 (Employment tab series, PRs #266–#272):**
 

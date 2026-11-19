@@ -39,11 +39,14 @@ import { useJobPropertyCandidates } from '../../hooks/useJobPropertyCandidates'
 import { useStandingDiscountOffer } from '../../hooks/useStandingDiscountOffer'
 import { useJobFormInvoiceActions } from '../../hooks/useJobFormInvoiceActions'
 import { useJobFormImport, type JobImportWinningGcPick } from '../../hooks/useJobFormImport'
+import { BidCarryWindow } from './BidCarryWindow'
 import { useDevelopmentAddressSuggestion } from '../../hooks/useDevelopmentAddressSuggestion'
 import { DevelopmentAddressSuggestionLine } from '../developments/DevelopmentAddressSuggestionLine'
 import { useJobFormPaymentActions } from '../../hooks/useJobFormPaymentActions'
 import { useJobFormAutosaveEngine } from '../../hooks/useJobFormAutosaveEngine'
 import { useLineTrips } from '../../hooks/useLineTrips'
+import { JobBillTrips } from '../trips/JobBillTrips'
+import { seesJobBillTrips } from '../../lib/trips/jobBillTrips'
 import { tripHref } from '../../lib/trips/jobTrips'
 import { JobFormBillJobAccountNote } from './JobFormBillJobAccountNote'
 import { sumHazmatRiderFees } from '../../lib/hazmatIncidents'
@@ -90,7 +93,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { JOB_CREATED_FROM_BID_EVENT, jobCreatedTelemetryTarget, type JobCreatedFromBidDetail } from '../../lib/bids/wonMomentActions'
 import { closeOpenJobFromBidRequests } from '../../lib/bids/openJobFromBidDispatchRequest'
-import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { effectiveJobLedgerNumber, formatJobLedgerNumberLabel, resolveJobLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
 import {
   resolveDevelopmentIdForJobPayload,
   validateNewDevelopmentName,
@@ -760,16 +763,8 @@ export default function JobFormModal({
   // ② Invoices segment bar (v2.1070): which unbilled line items are picked
   // for the next "create invoice from selected segments" action.
   const [selectedSegmentIds, setSelectedSegmentIds] = useState<Set<string>>(new Set())
-  // Opened with lines already picked (punch list #391): once the job is in, tick the ones that can be ticked
-  // by hand, one time. `applyEditJob` clears the ticks on load, so this waits for `initDone`.
-  const pickLinesSeededRef = useRef(false)
-  useEffect(() => {
-    if (pickLinesSeededRef.current || !initDone || !pickLineIdsInitial?.length) return
-    pickLinesSeededRef.current = true
-    const ids = pickedLineIdsToSeed(pickLineIdsInitial, billTabLineRows)
-    if (ids.length === 0) return
-    setSelectedSegmentIds(new Set(ids))
-    // Land on the press that takes the picked lines, Bill the N picked, once the Bill tab has drawn it.
+  // Land on the press that takes the picked lines, Bill the N picked, once the Bill tab has drawn it.
+  const landOnBillPicked = useCallback(() => {
     let tries = 0
     const tick = window.setInterval(() => {
       const el = document.querySelector<HTMLElement>('.jobMoneyPickedBtn')
@@ -779,7 +774,29 @@ export default function JobFormModal({
         el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       } else if (tries >= 50) window.clearInterval(tick)
     }, 100)
-  }, [initDone, pickLineIdsInitial, billTabLineRows])
+  }, [])
+  // Opened with lines already picked (punch list #391): once the job is in, tick the ones that can be ticked
+  // by hand, one time. `applyEditJob` clears the ticks on load, so this waits for `initDone`.
+  const pickLinesSeededRef = useRef(false)
+  useEffect(() => {
+    if (pickLinesSeededRef.current || !initDone || !pickLineIdsInitial?.length) return
+    pickLinesSeededRef.current = true
+    const ids = pickedLineIdsToSeed(pickLineIdsInitial, billTabLineRows)
+    if (ids.length === 0) return
+    setSelectedSegmentIds(new Set(ids))
+    landOnBillPicked()
+  }, [initDone, pickLineIdsInitial, billTabLineRows, landOnBillPicked])
+  // A trip put on a bill from this tab's own strip: the line was added in the database, so the lines are read again
+  // and the new one is ticked once the Bill tab lists it, as when the window is opened with a line picked.
+  const [tripLinePick, setTripLinePick] = useState<string | null>(null)
+  useEffect(() => {
+    if (!tripLinePick || !billTabLineRows.some((l) => l.key === tripLinePick)) return
+    setTripLinePick(null)
+    const ids = pickedLineIdsToSeed([tripLinePick], billTabLineRows)
+    if (ids.length === 0) return
+    setSelectedSegmentIds(new Set(ids))
+    landOnBillPicked()
+  }, [tripLinePick, billTabLineRows, landOnBillPicked])
   // The door back from a trip's line to its trip (punch list #391, PR 4): the job's lines as the database
   // gave them say which came from a trip. The door closes this window as any close does, then opens the trip.
   const lineTripDoorTargets = useLineTrips(editing?.fixtures ?? NO_LINE_TRIP_ROWS, mode === 'edit' && !!editing)
@@ -975,6 +992,20 @@ export default function JobFormModal({
     developments,
     onSavedRef,
   })
+  // The Bill tab's trips strip: this job as its windows name it, the site's name, and what follows a line it adds.
+  const billTripsJob = useMemo(
+    () => ({ id: editing?.id ?? '', label: editing ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(editing.service_type_id, prefixMap), editing.hcp_number, editing.click_number) : '', name: (editing?.job_name ?? '').trim() }),
+    [editing, prefixMap],
+  )
+  const billTripsSiteName = useMemo(() => developments.find((d) => d.id === developmentId)?.name?.trim() ?? '', [developments, developmentId])
+  const tripLineAdded = useCallback(
+    async (fixtureId: string) => {
+      if (!editing?.id) return
+      await rehydrateFixturesFromDb(editing.id)
+      setTripLinePick(fixtureId)
+    },
+    [editing?.id, rehydrateFixturesFromDb],
+  )
 
   // ---- Undo-to-opened (v2.1081) --------------------------------------------
   // Snapshot every slice's form state on hydrate, re-based whenever the job's
@@ -1716,7 +1747,7 @@ export default function JobFormModal({
 
   // The New Job imports (the Job form map's order #7): a bid or an estimate fills the form. The
   // picker's open pick stays here — the Escape gate reads it.
-  const { cancelBidImport, applyPrefillFromBid, handleWinningGcPick, applyPrefillFromEstimate } = useJobFormImport({
+  const { cancelBidImport, applyPrefillFromBid, handleWinningGcPick, applyPrefillFromEstimate, bidCarryAsk, answerBidCarry } = useJobFormImport({
     authUserId: authUser?.id,
     authRole,
     customers,
@@ -2963,6 +2994,10 @@ export default function JobFormModal({
             isProject={kindRead.kind === 'project'}
             tripDoors={lineTripDoors}
           />
+          {/* Extra trips nothing has billed, with Put on a bill and + Trip: on a job in a development, for the roles that read every trip. */}
+          {embedded && mode === 'edit' && editing?.id && developmentId && seesJobBillTrips(authRole) ? (
+            <JobBillTrips job={billTripsJob} developmentId={developmentId} siteName={billTripsSiteName} role={authRole} todayYmd={stagePlanToday} onLineAdded={tripLineAdded} linesSaved={billingAutosaveStatus} />
+          ) : null}
           </div>
           {/* Job window (v2.1687): no divider and no "Billing" title — the Bill
               tab reads as ONE section from Line Items down. The standalone/New
@@ -3390,6 +3425,7 @@ export default function JobFormModal({
           }}
         />
       )}
+      {bidCarryAsk && <BidCarryWindow ask={bidCarryAsk} onAnswer={answerBidCarry} />}
       {segmentGeneratorOpen && (
         <MultipleSegmentGeneratorModal
           open={segmentGeneratorOpen}

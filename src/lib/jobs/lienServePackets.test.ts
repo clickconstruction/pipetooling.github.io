@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobLienFilingRow } from './lienDeadlines'
-import { lienServeBatchPrint, lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailSheetHtml, lienServePlan, lienServePlanWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
+import { lienServeBatchPrint, lienServeClock, lienServeHeldLine, lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServeMailSheetHtml, lienServePlan, lienServePlanWords, type LienServeDeskData, type LienServeJob } from './lienServePackets'
 import { lienServeStageCounts, lienServeStageDoorWords } from './lienServeStage'
 
 // Every name, address and figure here is made up.
@@ -209,5 +209,13 @@ describe('lienServeJobsFromDesk', () => {
     ])
     expect(jobs[0]?.to).toEqual({ owner: { name: 'Hollow Creek Holdings LLC', address: '500 New Owner Blvd, Austin, TX 78701' }, contractor: { name: 'Brightline Builders', address: '12 Example Pkwy, Buda, TX 78610' } })
     expect(jobs[1]?.to?.contractor).toBeNull()
+  })
+
+  it('lists the mailed liens the window still shows, the newest mailing first, and none that are voided or unserved', () => {
+    const more: LienServeDeskData = { ...data, filingsByJob: { ...data.filingsByJob, 'job-5': [filing('5', { served_at: '2026-11-16' })], 'job-6': [filing('6', { served_at: '2026-11-15', voided_at: '2026-11-16T00:00:00Z' })] } }
+    expect(lienServeMailedJobsFromDesk(more, () => true).map((j) => j.filing.id)).toEqual(['5', '2'])
+    // The window's own test: only a lien that still lacks a number or a receipt.
+    expect(lienServeMailedJobsFromDesk(more, (j) => j.filing.id === '2').map((j) => j.filing.id)).toEqual(['2'])
+    expect(lienServeMailedJobsFromDesk(data, () => false)).toEqual([])
   })
 })

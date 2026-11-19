@@ -10,6 +10,7 @@ import LienPropertyCard from './LienPropertyCard'
 import LienPublicPropertyWindow from './LienPublicPropertyWindow'
 import LienPublicPutBackWindow from './LienPublicPutBackWindow'
 import LienScanBatchWindow from './LienScanBatchWindow'
+import type { LienDocKnown } from '../../lib/jobs/lienDocNumber'
 import LienServeWindow from './LienServeWindow'
 import type { LienDeskWindowFlags } from './useLienDeskWindows'
 import type { LienServeLanding } from '../../lib/jobs/lienServeStage'
@@ -28,6 +29,9 @@ export function LienDeskWindows({
   issuer,
   windows,
   serveJobs,
+  serveMailedJobs,
+  docKnown,
+  servePrinted,
   serveLand = null,
   onServeClosed,
   onServePrinted,
@@ -51,6 +55,12 @@ export function LienDeskWindows({
   /** The five flags the Board raises, with their setters. */
   windows: LienDeskWindowFlags
   serveJobs: LienServeJob[]
+  /** The mailed liens the copies window still shows: a copy lacks its number or its receipt. */
+  serveMailedJobs?: LienServeJob[]
+  /** Every filed lien's document number on the desk, for the check on a typed one. */
+  docKnown?: LienDocKnown[]
+  /** The filings whose copies a print is filed for. */
+  servePrinted?: ReadonlySet<string>
   /** Where the copies window opens, from the door that opened it (`lienServeStage.ts`); null opens it at the top. */
   serveLand?: LienServeLanding | null
   /** The copies window sent these filings' copies to the printer. */
@@ -97,6 +107,9 @@ export function LienDeskWindows({
     {serveOpen ? (
       <LienServeWindow
         jobs={serveJobs}
+        mailed={serveMailedJobs}
+        docKnown={docKnown}
+        printed={servePrinted}
         todayYmd={todayYmd}
         issuer={issuer}
         isMobile={isMobile}

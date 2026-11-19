@@ -28,6 +28,7 @@ import {
 } from '../../lib/jobModePickCurrentNext'
 import { buildJobModeDayRail, type JobModeDayRailRow } from '../../lib/jobModeDayRail'
 import { fillScheduledJobLabels, type ScheduledJobLabelSource } from '../../lib/jobMode/scheduledJobLabels'
+import { jobNameWithPlainDates } from '../../lib/jobNameDate'
 import { OnMyWaySheet, type OnMyWayDestination } from './OnMyWaySheet'
 import { ImHereSheet } from './ImHereSheet'
 import { legOf, legWords, type TravelFacts } from '../../lib/jobMode/onMyWay'
@@ -740,7 +741,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           <div style={headerNum}>
             {num}
             <span style={headerNumNameSep}>|</span>
-            <span style={headerName}>{maskedJobs.has(cb.job_id) ? 'Papers to sign' : safeTrim(cb.job_name) || '—'}</span>
+            <span style={headerName}>{maskedJobs.has(cb.job_id) ? 'Papers to sign' : jobNameWithPlainDates(safeTrim(cb.job_name)) || '—'}</span>
           </div>
           <div style={headerAddr}>{maskedJobs.has(cb.job_id) ? 'Sign them below and the job opens.' : safeTrim(cb.job_address) || '—'}</div>
           {legLine}
@@ -755,7 +756,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           <div style={headerNum}>
             {num}
             <span style={headerNumNameSep}>|</span>
-            <span style={headerName}>{maskedJobs.has(currentJobInfo.id) ? 'Papers to sign' : safeTrim(currentJobInfo.job_name) || '—'}</span>
+            <span style={headerName}>{maskedJobs.has(currentJobInfo.id) ? 'Papers to sign' : jobNameWithPlainDates(safeTrim(currentJobInfo.job_name)) || '—'}</span>
           </div>
           <div style={headerAddr}>{maskedJobs.has(currentJobInfo.id) ? 'Sign them below and the job opens.' : safeTrim(currentJobInfo.job_address) || '—'}</div>
           {legLine}
@@ -801,7 +802,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           <div style={headerNum}>
             {num}
             <span style={headerNumNameSep}>|</span>
-            <span style={headerName}>{maskedJobs.has(nb.job_id) ? 'Papers to sign' : safeTrim(nb.job_name) || '—'}</span>
+            <span style={headerName}>{maskedJobs.has(nb.job_id) ? 'Papers to sign' : jobNameWithPlainDates(safeTrim(nb.job_name)) || '—'}</span>
           </div>
           <div style={headerAddr}>{maskedJobs.has(nb.job_id) ? 'Sign them below and the job opens.' : safeTrim(nb.job_address) || '—'}</div>
         </div>
@@ -1179,6 +1180,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               )
             const num = jobNumberLabel(row.block.service_type_id, row.block.hcp_number, row.block.click_number)
             const name = safeTrim(row.block.job_name) || '—'
+            // The row's words: a date typed into the name reads as the day and the month and day. `name` stays for what a window saves.
+            const shownName = jobNameWithPlainDates(name)
             return (
               <Fragment key={row.block.job_id}>
               <button
@@ -1190,8 +1193,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
                   locked
                     ? `Sign the papers for ${num}`
                     : tappable
-                    ? `Go to ${num} ${name}`
-                    : `${num} ${name} — ${row.status === 'current' ? 'current job' : 'done'}`
+                    ? `Go to ${num} ${shownName}`
+                    : `${num} ${shownName} — ${row.status === 'current' ? 'current job' : 'done'}`
                 }
                 style={{
                   ...railRowBase,
@@ -1215,7 +1218,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {locked ? <LockedJobLine jobId={row.block.job_id} /> : `${num} · ${name}`}
+                  {locked ? <LockedJobLine jobId={row.block.job_id} /> : `${num} · ${shownName}`}
                 </span>
                 {row.status === 'current' ? (
                   <span style={{ ...railFlagStyle, color: '#16a34a' }}>NOW</span>
@@ -1374,7 +1377,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         }
         if (!detailsTarget) return null
         // The superintendent's line (punch list #242, PR 4): his project's pace from the same kernel as the office's Projects board.
-        const paceCard = role === 'superintendent' ? <SuperintendentCard key={`line-${detailsTarget.id}`} jobId={detailsTarget.id} rev={jobUpdatesRev} onSetPct={setPctJob} short={short} /> : null
+        const paceCard = role === 'superintendent' ? <SuperintendentCard key={`line-${detailsTarget.id}`} jobId={detailsTarget.id} rev={jobUpdatesRev} onSetPct={setPctJob} short={short} onAsked={() => setJobUpdatesRev((n) => n + 1)} /> : null
         const details = (
           <JobModeDetailsSection
             key={detailsTarget.id}
