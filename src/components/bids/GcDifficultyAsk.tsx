@@ -9,7 +9,7 @@
  * *Rate them* opens the sheet with the job named; a save answers every open ask for that GC. *Not now* puts the ask
  * away for good, for those jobs, and says so. Nothing draws for anyone with no open ask.
  */
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useOptionalAuth } from '../../hooks/useAuth'
@@ -108,7 +108,7 @@ export function GcDifficultyAskLine({ jobId, io, sheetIo }: { jobId: string | nu
 }
 
 /** On the Bid Board's tools row: nothing with no open ask, else the press and the short list behind it. */
-export function GcDifficultyAsksPress({ style, io, sheetIo }: { style?: CSSProperties; io?: GcDifficultyAskIo; sheetIo?: RateSheetIo }) {
+export function GcDifficultyAsksPress({ style, io, sheetIo, onOpenChange }: { style?: CSSProperties; io?: GcDifficultyAskIo; sheetIo?: RateSheetIo; onOpenChange?: (open: boolean) => void }) {
   const { showToast } = useToastContext()
   const role = useOptionalAuth()?.role
   const asked = useAsked(role)
@@ -116,7 +116,12 @@ export function GcDifficultyAsksPress({ style, io, sheetIo }: { style?: CSSPrope
   const groups = gcDifficultyAskGroups(state.asks)
   const [listOpen, setListOpen] = useState(false)
   const [rating, setRating] = useState<string | null>(null)
-  if (groups.length === 0) return null
+  // The row that holds the press lays itself out by whether it draws (v2.7927).
+  const draws = groups.length > 0
+  useEffect(() => {
+    onOpenChange?.(draws)
+  }, [draws, onOpenChange])
+  if (!draws) return null
   const ratingGroup = groups.find((g) => g.customerId === rating) ?? null
   const putAway = async (customerId: string) => {
     const g = groups.find((x) => x.customerId === customerId)
