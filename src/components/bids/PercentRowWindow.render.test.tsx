@@ -135,6 +135,13 @@ describe('PercentRowWindow', () => {
     const calls = setup({ last: null, from, pickRow: true, start: percentWindowStart({ rows: BID, self: null, last: null, from, pickRow: true }) })
     expect(screen.queryByLabelText('Name')).toBeNull()
     expect(screen.getByRole('status').textContent).toBe('Pick the row first.')
+    // No row yet, so no row is drawn: the strip asks for one, the bid reads as it stands and the dead press never says Add.
+    expect(drawn().getByText('Pick a row below')).toBeTruthy()
+    expect(drawn().getByText('The row, as Pricing will show it')).toBeTruthy()
+    expect(screen.queryByLabelText('The new row’s kind')).toBeNull()
+    expect(drawn().queryByText('$16,100.00')).toBeNull()
+    expect(drawn().getByText('$15,200.00')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Set a row to $900.00' }) as HTMLButtonElement).disabled).toBe(true)
     const list = screen.getByLabelText('Row') as HTMLSelectElement
     expect([...list.options].map((o) => o.textContent)).toEqual(['Pick a row on this bid…', 'WC · now $5,000.00', 'LAV · now $4,000.00', 'ft of 3/4IN WATER · now $1,800.00', 'ft of 1/2IN WATER · now $1,200.00', 'ft of 2IN VENT · now $1,000.00', 'ft of 4IN WASTE · now $1,800.00', 'ft of 3IN WASTE · now $400.00'])
     fireEvent.change(list, { target: { value: 'lav' } })
