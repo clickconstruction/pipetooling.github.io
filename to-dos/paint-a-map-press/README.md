@@ -2,7 +2,7 @@
 name: "Paint a map from the Dashboard: a press that is always there, and every map on a job"
 number: 392
 group: close
-status: asked 2026-11-17 · designed, drawn and rendered the same day (ten states at a phone's width and one at a desk) · shown to the owner with nine calls, each with a pick · nothing built · carded the same evening at the owner's word · the Share sheet was built apart as #394 on 2026-11-18 (v2.7788 · 7790) · walked the same day as a leader on a phone, and the missing Dashboard press was the walk's worst snag · a leader's phone drawn the same day (three states), a tenth call added with a pick, and the plan's order changed so the Saved band comes before the picker · the owner's word the same day (*Yes, build it*) · the kernel and the press built the same day (v2.7859), walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark · the Saved band built the same day (v2.7866), walked the same way on a made-up map on no job, thrown away after · the picker built the same day (v2.7868), walked with made-up jobs answered to its reads and nothing saved · Find the jobs near me built the same day (v2.7869), pressed live from a made-up spot beside the test jobs · every step built · merged 2026-11-18 as one PR (#8814) · the Saved band's press was a step behind the Share sheet's, and #394's session brings it in line in #8856: Messages opens inside the press, and a false note is taken back · not yet tried on a real phone · the owner opened the picker on 2026-11-19 with nothing on his schedule and no clock, met an empty window and asked for his last jobs there · the rows were read, the window drawn three ways at a phone's width and a desk's, light and dark, and shown to him with four calls · none of that is built
+status: asked 2026-11-17 · designed, drawn and rendered the same day (ten states at a phone's width and one at a desk) · shown to the owner with nine calls, each with a pick · nothing built · carded the same evening at the owner's word · the Share sheet was built apart as #394 on 2026-11-18 (v2.7788 · 7790) · walked the same day as a leader on a phone, and the missing Dashboard press was the walk's worst snag · a leader's phone drawn the same day (three states), a tenth call added with a pick, and the plan's order changed so the Saved band comes before the picker · the owner's word the same day (*Yes, build it*) · the kernel and the press built the same day (v2.7859), walked on a local server in a headless Chrome at a phone's width and a desk's, light and dark · the Saved band built the same day (v2.7866), walked the same way on a made-up map on no job, thrown away after · the picker built the same day (v2.7868), walked with made-up jobs answered to its reads and nothing saved · Find the jobs near me built the same day (v2.7869), pressed live from a made-up spot beside the test jobs · every step built · merged 2026-11-18 as one PR (#8814) · the Saved band's press was a step behind the Share sheet's, and #394's session brings it in line in #8856: Messages opens inside the press, and a false note is taken back · not yet tried on a real phone · the owner opened the picker on 2026-11-19 with nothing on his schedule and no clock, met an empty window and asked for his last jobs there · the rows were read, the window drawn three ways at a phone's width and a desk's, light and dark, and shown to him with four calls · his word the same day (*I like C and then if they click to change the job it should show B*) · built the same day as one change (v2.7915): the sheet opens on the last job, and Change the job opens the refitted picker with Your last jobs · walked on a local server as the owner at a desk's width and a phone's, nothing saved
 summary: >
   The owner wants anyone to make a one-off map and text it from the Dashboard, clocked in or not,
   with a job today or not. Every map must be tied to a job, and picking the job must be easy.
@@ -13,10 +13,10 @@ summary: >
   today's jobs and the jobs they were on lately. After Save, one press opens the phone's own
   Messages with the link written. A map that takes seven presses and two bouts of typing today
   takes four.
-next: The owner picks a window for the picker (calls 12 to 15, the mock-up is picker-mockup.html), and it is built on his word. Also: walk it on a real iPhone and a real Android phone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band, together with #394's walk. The owner answers call 11, the two short pages. Then delete this card.
-size: L as a train of five (S · M · S · L · S), all built; left: the walk on two real phones (XS), call 11, and the picker's last jobs (S, then S, then S with a migration)
-blocker: The owner's pick on calls 12 to 15, a real phone in a hand, and his answer to call 11.
-ver: v2.7859 · 7866 · 7868 · 7869
+next: The owner answers calls 14 and 15 on the picker's last jobs. Walk it on a real iPhone and a real Android phone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band, together with #394's walk. The owner answers call 11, the two short pages. Then delete this card.
+size: L as a train of five (S · M · S · L · S), all built; left: the walk on two real phones (XS), call 11, and the office's changed jobs if call 14 is a yes (S with a migration)
+blocker: A real phone in a hand, and the owner's answers to calls 11, 14 and 15.
+ver: v2.7859 · 7866 · 7868 · 7869 · 7915
 opinion: built as carded, with two changes said on the card — the phone walk is left, and the picker should never open on an empty list
 ---
 
@@ -219,6 +219,19 @@ What the rows say:
 - **C, skip the question.** The press opens the start sheet on the last job, with **Change the
   job**. One press fewer when the guess is right.
 
+**The owner's pick, 2026-11-19:** *I like C and then if they click to change the job it should
+show B.* **Built, v2.7915**, as one change. Two things differ from what was drawn:
+
+- **The order.** The mock-up put the team after every job with a day. On the owner's own rows that
+  put April's jobs above the ones he joined this month. A job is now placed by its newest sign,
+  and a team's sign is the day the person joined it. A job is still named by its best sign, so a
+  clock says its day and a team says *on the team*. The guess is unchanged: the newest clock or
+  scheduled day, never the team.
+- **The guess is made in the sheet, for every door.** The Dashboard's press, the header's search
+  and the Documents tab all open the sheet with no job, so all three open on the last job. The
+  sheet asks first only when a job is on today's schedule or the person has no clock and no
+  scheduled day. Job Mode's wide press says *On your last job, or one you pick*.
+
 ### Is this the best we can do?
 
 Asked after the render, at 375 by 812 and 1180 by 720, light and dark. Nothing ran off the side of
@@ -280,9 +293,11 @@ sits, and that is not yet tried on a real phone.
     the job's own **＋ Paint a map** is one fold away on Job Mode's short card. The other choice
     is one more line on each short page.
 12. **The picker's window: A, B or C** (2026-11-19, `picker-mockup.html`). B, built as two changes:
-    the list first, since it is what was asked, then the refit.
+    the list first, since it is what was asked, then the refit. **The owner picked C, with B
+    behind Change the job. Built, v2.7915.**
 13. **What "was on" counts.** Clocked onto at any age, on the schedule on a past day, then on the
-    team, in that order. A row that is not a clock says so.
+    team, in that order. A row that is not a clock says so. **Built as picked, v2.7915**, with the
+    list's order by each job's newest sign.
 14. **The jobs an office person changed in the app.** Yes, as a third step, since it is the
     truest list for the office: Taunya changed 52 jobs in ten days and is on the team of 4. Its
     cost is one index on `job_activity_events`, a migration.
@@ -337,14 +352,15 @@ sits, and that is not yet tried on a real phone.
    five miles, nearest first, up to six, each with how far. A job under Near you is not said again
    under Today or Lately. The list says it holds only jobs the app has placed.
 
-6. **Your last jobs** (S), on the owner's pick of call 12. The rule for which list shows, its
-   order and its cap in `paintedMapJobPicker.ts` with tests. The second read in
-   `paintedMapJobPickerIo.ts`, made only when the first leaves fewer than six rows. Render smokes
-   for the empty case and the filled one. The guide, the Glossary's line, a release note and a
-   fragment. No migration.
-7. **The window refitted** (S), if the pick is B: the search on top with **Near me** beside it,
-   the desk's window, and the words that say *phone* at a desk.
-8. **The office's changed jobs** (S, one migration), on call 14.
+6. **Your last jobs** (S). **Built, v2.7915.** The list's order, its names and its cap in
+   `paintedMapJobPicker.ts` with tests. The three reads in `paintedMapJobPickerIo.ts` are made at
+   once on every open, not only when the list is short: one rule, one order, and seven reads
+   where there were five. The guide, the Glossary's lines, a release note and a fragment. No
+   migration.
+7. **The window refitted** (S). **Built, v2.7915**, with step 6: the search on top with **Near
+   me** beside it, the desk's window for the picker and the start sheet, and no *phone* in the
+   words at a desk. The sheet opens on the last job (`pickerGuess`).
+8. **The office's changed jobs** (S, one migration), on call 14. Not built.
 
 The Saved band was fourth and the picker third until 2026-11-18. The band is small and is where a
 saved map still loses people, so it goes first. That puts the rule that every map is tied to a job
