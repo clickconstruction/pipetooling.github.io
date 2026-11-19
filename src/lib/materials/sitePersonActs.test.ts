@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { Container, ContainerMove, Movement, MovementReason, Place } from './onSite'
-import { actDays, actPeople, actTiles, filterActs, localDayOf, outsideProcess, personKeyOf, sitePersonActs } from './sitePersonActs'
+import { actDays, actPeople, actTiles, filterActs, localDayOf, openedNotPressed, outsideProcess, personKeyOf, sitePersonActs, withWatch } from './sitePersonActs'
 
 // A made-up site, Cedar Ridge: two jobs, two places.
 const day = (iso: string) => iso.slice(0, 10)
@@ -126,8 +126,8 @@ describe('the list’s figures and filters', () => {
 
   it('counts the presses, the days, the pieces that left, the boxes and the acts worth a look', () => {
     const sam = filterActs(acts, { person: 'sam r.', kind: null, lookOnly: false })
-    expect(actTiles(sam)).toEqual({ presses: 4, days: 2, pieces: 46, boxes: 2, look: 2, markedPieces: 0 })
-    expect(actTiles([])).toEqual({ presses: 0, days: 0, pieces: 0, boxes: 0, look: 0, markedPieces: 0 })
+    expect(actTiles(sam)).toEqual({ presses: 4, days: 2, pieces: 46, boxes: 2, look: 2, markedPieces: 0, outside: 0 })
+    expect(actTiles([])).toEqual({ presses: 0, days: 0, pieces: 0, boxes: 0, look: 0, markedPieces: 0, outside: 0 })
   })
 
   it('groups the acts by day, newest day first', () => {
@@ -224,5 +224,56 @@ describe('answers to a press', () => {
   it('draws a press taken back once, in no figure and with no chip', () => {
     expect(acts).toHaveLength(2)
     expect(acts[0]).toMatchObject({ kind: 'counted', qty: '12', pieces: 0, looks: [], where: 'G22 · Arena', answer: { answer: 'taken_back', why: 'counted without the office' } })
+  })
+})
+
+describe('a watch', () => {
+  const u = (id: string, m: Movement): Movement => ({ ...m, byUserId: id })
+  const acts = sitePersonActs({
+    jobs, containers, places,
+    movements: [
+      u('u-sam', row({ reason: 'delivered', qty: 40, to: 'g22', at: '2026-11-16T15:00:00Z', by: 'Sam R.', source: 'INV-1' })),
+      u('u-sam', row({ reason: 'taken', qty: 10, from: 'g22', at: '2026-11-17T15:00:00Z', by: 'Sam R.', note: 'lodge' })),
+      u('u-sam', row({ reason: 'taken', qty: 4, from: 'g22', at: '2026-11-18T11:00:00Z', by: 'Sam R.' })),
+      u('u-dana', row({ reason: 'counted', qty: 26, from: 'g22', at: '2026-11-18T12:00:00Z', by: 'Dana K.' })),
+    ],
+    containerMoves: [{ id: 'cm1', jobId: 'j1', containerId: 'g40', fromLocationId: 'p1', toLocationId: 'p2', byName: 'Sam R.', at: '2026-11-18T10:48:00Z' }],
+    boxChanges: [{ id: 'c1', containerId: 'g40', what: 'retired', oldValue: '', newValue: '', byName: 'sam r.', at: '2026-11-18T13:00:00Z' }],
+  }, day)
+
+  it('collects the logins behind a name', () => {
+    expect(actPeople(acts).map((p) => [p.key, p.userIds])).toEqual([['sam r.', ['u-sam']], ['dana k.', ['u-dana']]])
+  })
+
+  it('says what is outside the process for the watched person alone, a box change by name included', () => {
+    const watched = withWatch(acts, new Set(['u-sam']))
+    expect(watched.map((a) => [a.who, a.kind, a.outside])).toEqual([
+      ['sam r.', 'box_retired', 'retired a box'],
+      ['Dana K.', 'counted', null],
+      ['Sam R.', 'taken', 'no note'],
+      ['Sam R.', 'box_moved', null],
+      ['Sam R.', 'taken', null],
+      ['Sam R.', 'delivered', 'adding a part is the office’s'],
+    ])
+    expect(actTiles(watched)).toMatchObject({ outside: 3, look: 3 })
+    expect(filterActs(watched, { person: 'sam r.', kind: null, lookOnly: true })).toHaveLength(3)
+  })
+
+  it('changes nothing when nobody on the site is watched', () => {
+    expect(withWatch(acts, new Set()).every((a) => a.outside === null)).toBe(true)
+    expect(withWatch(acts, new Set(['u-other'])).every((a) => a.outside === null)).toBe(true)
+  })
+
+  it('lists the boxes opened since the watch began and never pressed on', () => {
+    const sam = filterActs(acts, { person: 'sam r.', kind: null, lookOnly: false })
+    const opens = [
+      { containerId: 'b7', at: '2026-11-18T09:00:00Z' },
+      { containerId: 'g22', at: '2026-11-18T09:30:00Z' },
+      { containerId: 'b7', at: '2026-11-18T14:00:00Z' },
+      { containerId: 'g9', at: '2026-11-17T08:00:00Z' },
+    ]
+    // G22 and G40 were pressed on after the watch began. G9 was opened before it.
+    expect(openedNotPressed(opens, sam, '2026-11-18T00:00:00Z')).toEqual(['b7'])
+    expect(openedNotPressed(opens, sam, '2026-11-17T00:00:00Z')).toEqual(['g9', 'b7'])
   })
 })

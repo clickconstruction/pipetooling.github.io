@@ -6788,6 +6788,7 @@ A task's place has a sheet of the same name, which is a different thing: there t
 ### A site's materials (punch list #330)
 Everything in the cages and boxes of one **site**, a development's jobs, on one screen (v2.7074): `?site=<development id>` on Materials → On site and Jobs → Materials, opened from the desk's **site row**, the Development page's **Open the site’s materials** or a field role's **Open the site**.
 **By person** (v2.7818) is the screen's third look, for the office: every press and box move on the site by who made it, a day at a time, with an amber chip on a press **worth a look** (a count that changed a number the app already had, a part added by hand to a line that already had a number, a take or a use with no note).
+**A watch** (v2.7839) is a dev's mark on one person: their presses outside the process read in red on By person, and the boxes they open on a screen are kept, while they see nothing different.
 **An answer to a press** (v2.7834) is a dev's word on a press that should not stand: *taken back* (in no number, struck through), *marked not allowed* (the numbers keep it) or a second count asked for, each with a reason and withdrawn, never deleted.
 **Last recorded** is the newest press on any line of the site, amber after seven quiet days.
 **By part** is the **roll-up**: one row per part across the site's jobs with its total and the boxes that hold it.

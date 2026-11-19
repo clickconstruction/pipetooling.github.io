@@ -77,6 +77,7 @@ import { readLastBoxKind, rememberBoxKind } from '../../lib/materials/boxKindMem
 import { useSiteBoxNames } from '../../hooks/useSiteBoxNames'
 import { matchOnHandNames, onHandNames, onHandNameWords, type OnHandName } from '../../lib/materials/onSiteNames'
 import { addContainer, addMovement, addPlace, listContainerMoves, listContainers, listMovements, listPhotos, listPlaces, loadJob, moveContainer, newId, pinContainer, resolveBoxCode, retireContainer, sayBoxLine, setOnSiteErrorHandler, unretireContainer, refreshJob } from '../../lib/materials/onSiteStore'
+import { noteBoxOpen } from '../../lib/people/personWatchIo'
 import { broughtBackWords, retiredWords, UNDO_RETIRE_MS, undoRetireLabel, unretireVerdict } from '../../lib/materials/unretire'
 import { BOX_KIND_CHOICES, BOX_WHERE_MAX, boxKindWords, editBoxTitle, type BoxKindChoice } from '../../lib/materials/editBox'
 import BoxTabs from '../materials/BoxTabs'
@@ -356,6 +357,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   // The box on screen, its count walk included: the page keeps it on the address, so a reload or Back comes back to it.
   const openContainerId = view.kind === 'containers' ? null : view.id
   useEffect(() => { onOpenContainer?.(openContainerId) }, [openContainerId, onOpenContainer])
+  // Every box opened is told to the office's quiet log, which keeps it for a watched person alone (`personWatchIo.ts`).
+  useEffect(() => { noteBoxOpen(openContainerId) }, [openContainerId])
 
   if (jobsLoading) return <p style={muted}>Loading jobs…</p>
   if (jobs.length === 0) return <p style={muted}>No jobs assigned. Ask your supervisor to add you as a team member on a job.</p>

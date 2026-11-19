@@ -15,9 +15,10 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { fetchSiteAnswers, giveAnswer, withdrawAnswer, type SiteAnswers, type SiteAnswersReader } from '../../lib/materials/pressAnswersIo'
 import { isAnswerable } from '../../lib/materials/pressAnswers'
 import { useToastContext } from '../../contexts/ToastContext'
+import { fetchLiveWatches, fetchWatchedOpens, type PersonWatch, type WatchedOpen } from '../../lib/people/personWatchIo'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import PressAnswerWindow, { AnswerWithdrawWindow, type AnswerOutcome } from './PressAnswerWindow'
-import { ACT_KINDS, LOOK_WORDS, actDays, actPeople, actTiles, countWords, filterActs, sitePersonActs, type ActKind } from '../../lib/materials/sitePersonActs'
+import { ACT_KINDS, LOOK_WORDS, actDays, actPeople, actTiles, countWords, filterActs, openedNotPressed, sitePersonActs, withWatch, type ActKind } from '../../lib/materials/sitePersonActs'
 
 type Props = {
   /** The site, a development: the scope its part ties and prices stand on. */
@@ -41,6 +42,9 @@ type Props = {
   withdraw?: typeof withdrawAnswer
   /** A take-back or its withdrawal changed these jobs' ledgers: the desk reads them again. */
   onLedgerChanged?: (jobIds: string[]) => void
+  /** The live watches and a watch's opened boxes: a dev's reads, nothing for anyone else. A test hands in its own. */
+  readWatches?: () => Promise<PersonWatch[]>
+  readOpens?: (watchId: string) => Promise<WatchedOpen[]>
 }
 
 /** How many acts the list draws before it asks: a long site stays quick to open. */
@@ -56,6 +60,7 @@ const tileBig: CSSProperties = { fontSize: '1.15rem', fontWeight: 800, lineHeigh
 const th: CSSProperties = { textAlign: 'left', padding: '0.4rem 0.6rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
 const td: CSSProperties = { padding: '0.35rem 0.6rem', fontSize: '0.85rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top', color: 'var(--text-strong)' }
 const num: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
+const chipAmberSolid: CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 0.5rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 700, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--text-amber-800)', whiteSpace: 'nowrap' }
 const struck: CSSProperties = { textDecoration: 'line-through', color: 'var(--text-muted)' }
 const chipGrey: CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 0.45rem', marginRight: 4, borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, borderWidth: 1, borderStyle: 'solid', whiteSpace: 'nowrap', background: 'var(--bg-subtle)', color: 'var(--text-muted)', borderColor: 'var(--border)' }
 const chipRed: CSSProperties = { ...chipGrey, background: 'var(--surface)', color: 'var(--text-red-700)', borderColor: 'var(--text-red-700)' }
@@ -72,7 +77,7 @@ function stampWords(iso: string): string {
   return `${new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}, ${timeWords(iso)}`
 }
 
-export default function SitePeopleView({ siteId, jobs, movements, containerMoves, containers, places, boxHref, loading, readTrail = fetchSiteTrail, canAnswer = false, readAnswers = fetchSiteAnswers, give = giveAnswer, withdraw = withdrawAnswer, onLedgerChanged }: Props) {
+export default function SitePeopleView({ siteId, jobs, movements, containerMoves, containers, places, boxHref, loading, readTrail = fetchSiteTrail, canAnswer = false, readAnswers = fetchSiteAnswers, give = giveAnswer, withdraw = withdrawAnswer, onLedgerChanged, readWatches = fetchLiveWatches, readOpens = fetchWatchedOpens }: Props) {
   const [person, setPerson] = useState('')
   const [kind, setKind] = useState<ActKind | ''>('')
   const [lookOnly, setLookOnly] = useState(false)
@@ -124,12 +129,35 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
   const { showToast } = useToastContext()
   const addTask = useChecklistAddModal()
 
+  /** The live watches: a dev's read. Anyone else gets none, and the look draws as it does for everyone. */
+  const [watches, setWatches] = useState<PersonWatch[]>([])
+  const [watchError, setWatchError] = useState<string | null>(null)
+  useEffect(() => {
+    let live = true
+    Promise.resolve()
+      .then(() => readWatches())
+      .then((w) => {
+        if (live) setWatches(w)
+      })
+      .catch((e: unknown) => {
+        if (live) setWatchError(formatErrorMessage(e, 'The watches did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [readWatches])
+
   const acts = useMemo(
-    () => sitePersonActs({ jobs, movements, containerMoves, containers, places, boxChanges: trail?.boxChanges, boxRenames: trail?.boxRenames, removedAnswers: trail?.removedAnswers, answers: answers?.answers, takenBack: answers?.takenBack }),
-    [jobs, movements, containerMoves, containers, places, trail, answers],
+    () =>
+      withWatch(
+        sitePersonActs({ jobs, movements, containerMoves, containers, places, boxChanges: trail?.boxChanges, boxRenames: trail?.boxRenames, removedAnswers: trail?.removedAnswers, answers: answers?.answers, takenBack: answers?.takenBack }),
+        new Set(watches.map((w) => w.userId)),
+      ),
+    [jobs, movements, containerMoves, containers, places, trail, answers, watches],
   )
   const people = useMemo(() => actPeople(acts), [acts])
   const picked = people.find((p) => p.key === person) ?? null
+  const pickedWatch = picked ? watches.find((w) => picked.userIds.includes(w.userId)) ?? null : null
   const shown = filterActs(acts, { person: picked ? picked.key : null, kind: kind || null, lookOnly })
   const tiles = actTiles(shown)
   const drawn = all ? shown : shown.slice(0, PEOPLE_FIRST_ROWS)
@@ -141,6 +169,26 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
     setLookOnly(false)
   }
   const manyJobs = jobs.length > 1
+  /** The boxes the watched person opened on a screen since the watch began and never pressed on. */
+  const [opens, setOpens] = useState<WatchedOpen[]>([])
+  const watchId = pickedWatch?.id ?? null
+  useEffect(() => {
+    let live = true
+    setOpens([])
+    if (!watchId) return
+    Promise.resolve()
+      .then(() => readOpens(watchId))
+      .then((o) => {
+        if (live) setOpens(o)
+      })
+      .catch(() => {
+        /* the strip is left out; the presses still draw */
+      })
+    return () => {
+      live = false
+    }
+  }, [watchId, readOpens])
+  const quietBoxes = pickedWatch && picked ? openedNotPressed(opens, acts.filter((a) => a.personKey === picked.key), pickedWatch.setAt) : []
   const canPick = (a: (typeof acts)[number]) => canAnswer && isAnswerable(a.kind) && !a.answer
   const pickedActs = acts.filter((a) => pickedIds.has(a.id) && canPick(a))
   const togglePick = (id: string) =>
@@ -183,9 +231,10 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
           <option value="">Every press</option>
           {ACT_KINDS.map((k) => <option key={k.kind} value={k.kind}>{k.words}</option>)}
         </select>
-        <button type="button" aria-pressed={lookOnly} style={{ ...btn, ...(lookOnly ? btnOn : {}) }} onClick={() => setLookOnly((v) => !v)} title="A count that changed a number, a part added by hand to a line that already had a number, and a take or a use with no note.">
-          Worth a look only
+        <button type="button" aria-pressed={lookOnly} style={{ ...btn, ...(lookOnly ? btnOn : {}) }} onClick={() => setLookOnly((v) => !v)} title={pickedWatch ? 'What a watched person does that is the office’s to do, and a take or a use with no note.' : 'A count that changed a number, a part added by hand to a line that already had a number, and a take or a use with no note.'}>
+          {pickedWatch ? 'Outside the process only' : 'Worth a look only'}
         </button>
+        {pickedWatch ? <span style={chipAmberSolid} title={pickedWatch.why || undefined} data-testid="site-people-watched">Watched since {new Date(pickedWatch.setAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span> : null}
         {picked ? <span style={muted} data-testid="site-people-last">{picked.name} · last press {stampWords(picked.lastAt)}</span> : null}
       </div>
 
@@ -207,9 +256,22 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
         <div style={tile}><span style={tileBig}>{tiles.presses.toLocaleString('en-US')}</span><span style={muted}>{tiles.presses === 1 ? 'press' : 'presses'} over {countWords(tiles.days, 'day', 'days')}</span></div>
         <div style={tile}><span style={tileBig}>{tiles.pieces.toLocaleString('en-US')}</span><span style={muted}>{tiles.pieces === 1 ? 'piece' : 'pieces'} taken or used{tiles.markedPieces > 0 ? ` · ${tiles.markedPieces.toLocaleString('en-US')} marked not allowed` : ''}</span></div>
         <div style={tile}><span style={tileBig}>{tiles.boxes.toLocaleString('en-US')}</span><span style={muted}>{tiles.boxes === 1 ? 'box' : 'boxes'} pressed on</span></div>
-        <div style={tile}><span style={{ ...tileBig, ...(tiles.look > 0 ? { color: 'var(--text-amber-800)' } : {}) }}>{tiles.look.toLocaleString('en-US')}</span><span style={muted}>worth a look</span></div>
+        <div style={tile}><span style={{ ...tileBig, ...(tiles.look > 0 ? { color: 'var(--text-amber-800)' } : {}) }}>{tiles.look.toLocaleString('en-US')}</span><span style={muted}>{pickedWatch ? 'outside the process' : 'worth a look'}</span></div>
       </div>
 
+      {watchError && canAnswer ? (
+        <div role="status" style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderBottom: '1px solid var(--border)' }}>A watch is not marked in this list. {watchError}</div>
+      ) : null}
+      {quietBoxes.length > 0 && picked ? (
+        <div style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderBottom: '1px solid var(--border)' }} data-testid="site-people-quiet-boxes">
+          <strong>{picked.name} opened {countWords(quietBoxes.length, 'box', 'boxes')} and pressed nothing:</strong>{' '}
+          {quietBoxes.map((id, i) => {
+            const c = containers.find((b) => b.id === id)
+            return <span key={id}>{i > 0 ? ', ' : ''}{c ? <Link to={boxHref(c.jobId, c.id)} style={{ color: 'inherit', fontWeight: 700 }}>{c.label}</Link> : 'a box no longer listed'}</span>
+          })}
+          . A count is the only way to know what left them.
+        </div>
+      ) : null}
       {shown.length === 0 ? (
         loading
           ? <EmptyState compact main="Reading the boxes…" />
@@ -251,7 +313,7 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
                     </td>
                     {picked ? null : <td style={{ ...td, whiteSpace: 'nowrap' }}>{a.who}</td>}
                     <td style={td}>
-                      {a.looks.map((l) => <span key={l} style={chip} title={LOOK_WORDS[l].why}>{LOOK_WORDS[l].chip}</span>)}
+                      {a.outside ? <span style={chipRed}>{a.outside}</span> : a.looks.map((l) => <span key={l} style={chip} title={LOOK_WORDS[l].why}>{LOOK_WORDS[l].chip}</span>)}
                       {a.note}
                       {a.answer ? (
                         <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>

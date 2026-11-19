@@ -29,6 +29,7 @@ import { MergeDuplicateDialog } from './MergeDuplicateDialog'
 import { useHiringColumnShares } from '../../../hooks/useHiringColumnShares'
 import { sharedColumnsLine } from '../../../lib/hiring/columnShares'
 import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, DeskRow, DeskSection, LockTag, deskBtn } from '../personDeskShared'
+import PersonWatchRow from './PersonWatchRow'
 import type { UserRole } from '../../../hooks/useAuth'
 import { humanRoleLabel } from '../../../lib/roleLabels'
 import { formatErrorMessage } from '../../../utils/errorHandling'
@@ -589,6 +590,7 @@ export function PersonDeskAccessSection({
         </label>
       </DeskRow>
       )}
+      {viewer.isDev && !isSelf && !noLogin ? <PersonWatchRow userId={u.id} name={(u.name ?? '').trim().split(/\s+/)[0] || 'this person'} viewerUserId={viewerUserId} /> : null}
 
       {noLogin ? null : (
       <DeskRow
