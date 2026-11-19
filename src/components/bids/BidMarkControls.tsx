@@ -18,7 +18,7 @@
  *
  * All read the store directly; nothing is threaded through the nine hosts.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useCloseOnOutsideClick } from '../../hooks/useCloseOnOutsideClick'
@@ -285,7 +285,7 @@ export function BidMarkRequestCard({
   )
 }
 
-export function MarkedBidsToggle({ compact = false }: { compact?: boolean }) {
+export function MarkedBidsToggle({ compact = false, style }: { compact?: boolean; style?: CSSProperties }) {
   const { marks, onlyMarked, forMe } = useBidMarkRequests()
   const forYou = forMe.size
   let count = bidMarkCount(marks)
@@ -301,7 +301,7 @@ export function MarkedBidsToggle({ compact = false }: { compact?: boolean }) {
       onClick={() => setOnlyMarkedBids(!onlyMarked)}
       className="bid-mark-toggle"
       data-on={onlyMarked ? 'true' : undefined}
-      style={compact ? { padding: '0.5rem 0.6rem' } : undefined}
+      style={{ ...(compact ? { padding: '0.5rem 0.6rem' } : null), ...style }}
     >
       <span aria-hidden="true" className="bid-mark-toggle__dot" />
       {compact ? null : 'Marked'}

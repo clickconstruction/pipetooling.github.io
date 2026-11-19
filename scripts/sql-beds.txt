@@ -9,6 +9,7 @@ bid-changes
 stage-kind
 ar-unbanked-checks
 ar-stripe-cases
+primary-money-desks
 gc-building
 gc-owner-billing
 portal-customer-lines
@@ -43,6 +44,7 @@ bid-money-strip
 paid-claim
 customer-money-strip
 paid-claims-read
+primary-money-reads
 my-money-strip
 primary-paid-verbs
 primary-money-verbs
@@ -143,8 +145,9 @@ trips
 primary-test-papers
 job-papers-lock
 job-papers-lists
+schedule-reads-gate
 dashboard-view
 job-finish-calls
 salaried-week
 primary-scope-reports
-schedule-reads-gate
+primary-scope-job-photos

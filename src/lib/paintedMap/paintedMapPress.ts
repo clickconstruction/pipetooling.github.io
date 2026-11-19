@@ -10,7 +10,9 @@
  * (`pickerGuess` in `paintedMapJobPicker.ts`).
  *
  * A clock on the office, on a bid or on a billing-only job is not a job to paint a map for: the
- * person is at a desk, or the job is a line on a bill with no site of its own.
+ * person is at a desk, or the job is a line on a bill with no site of its own. The company's office
+ * job (People → Overhead) is the same: it is on the office's schedule every day, and the press
+ * never lands on it.
  */
 import type { PaintedMapHome } from './paintedMapDoor'
 
@@ -23,6 +25,8 @@ export type PaintPressJob = {
   address: string | null
   /** A job that is only a line on a bill. Never landed on. */
   billingOnly?: boolean | null
+  /** The company's office job, where the office clocks its day. Never landed on, and no list offers it. */
+  office?: boolean | null
 }
 
 /** The person's open clock: the job it is on, or none for the office or a bid. `null` is not clocked in. */
@@ -44,7 +48,7 @@ function minutesOf(pgTime: string): number {
   return Number(m[1]) * 60 + Number(m[2])
 }
 
-const paintable = (job: PaintPressJob | null | undefined): job is PaintPressJob => !!job && !!job.id && !job.billingOnly
+const paintable = (job: PaintPressJob | null | undefined): job is PaintPressJob => !!job && !!job.id && !job.billingOnly && !job.office
 
 /**
  * The job the press lands on.

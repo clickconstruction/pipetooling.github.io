@@ -82,6 +82,12 @@ export function siteCountWords(count: number, street: string): string {
   return `${count} permit${count === 1 ? '' : 's'} we can see on ${street}`
 }
 
+/** The line under the site's list when the street number also holds permits that name another suite (punch list #401). Null when there are none. */
+export function otherSuiteWords(count: number): string | null {
+  if (count <= 0) return null
+  return count === 1 ? '1 more permit on this street number names another suite. It is left out.' : `${count} more permits on this street number name another suite. They are left out.`
+}
+
 export type SiteTile = { label: string; value: string; note: string | null }
 
 const usd0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })

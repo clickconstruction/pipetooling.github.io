@@ -10,20 +10,22 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { requestMyFix, type MyFixFailure } from '../materials/myLocation'
-import { PICKER_LAST_READ, pickerLastOrder, pickerNearBox, pickerNearJobsFilter, pickerNearestPlaced, pickerPaintable, type PickerJob, type PickerLast, type PickerMark, type PickerPlaced, type PickerPoint } from './paintedMapJobPicker'
+import { PICKER_SOON_DAYS, pickerDayPlus, pickerNearBox, pickerNearJobsFilter, pickerNearestPlaced, pickerPaintable, pickerPlan, type PickerJob, type PickerLast, type PickerPlaced, type PickerPoint, type PickerSoon } from './paintedMapJobPicker'
 import type { PaintPressStop } from './paintedMapPress'
-import { loadPaintPressDay } from './paintedMapPressIo'
+import { loadPaintOfficeJobId, loadPaintPressDay } from './paintedMapPressIo'
 
 /** How many of the person's newest clocks are read for Your last jobs. There is no day past which a clock is too old. */
 export const PICKER_CLOCKS_READ = 300
-/** How many of their newest past days on the schedule. */
-export const PICKER_BLOCKS_READ = 200
+/** How many of their days on the schedule, from two weeks ahead back. The days ahead are Coming up, the days behind are last jobs. */
+export const PICKER_BLOCKS_READ = 260
+/** How many of the newest changes they made to a job in the app (the job's activity record). */
+export const PICKER_CHANGES_READ = 200
 /** How many of the teams they joined last. */
 export const PICKER_TEAMS_READ = 60
 /** How many search hits the picker lists. */
 export const PICKER_SEARCH_MAX = 30
 
-export type PickerLists = { todayStops: PaintPressStop[]; last: PickerLast[]; paintable: Set<string>; todayYmd: string }
+export type PickerLists = { todayStops: PaintPressStop[]; soon?: PickerSoon[]; last: PickerLast[]; paintable: Set<string>; todayYmd: string }
 
 type JobRow = { id: string; hcp_number: string | null; job_name: string | null; job_address: string | null; billing_only?: boolean | null; development_id?: string | null }
 
@@ -43,16 +45,21 @@ async function readJobs(ids: readonly string[], userId: string): Promise<{ visib
 }
 
 /**
- * Today's stops and the person's last jobs, with which of them the person may paint on. A last job
- * is one they clocked onto, one that was on their schedule on a past day, or one whose team they
- * are on. The three are read at once, each by an index on the person. The first
- * `PICKER_LAST_READ` jobs in the list's own order are then read whole, in the two batched selects.
- * `last` comes back in that order, which `pickerSections` keeps.
+ * Today's stops, the jobs coming up and the person's last jobs, with which of them the person may
+ * paint on. A last job is one they clocked onto, one that was on their schedule on a past day,
+ * one they changed in the app, or one whose team they are on. The four are read at once, each by
+ * an index on the person. One read of the schedule gives both the days ahead and the days behind.
+ * The first `PICKER_LAST_READ` jobs in the list's own order are then read whole, in the two
+ * batched selects. `last` comes back in that order, which `pickerSections` keeps.
+ *
+ * The changes are the job's activity record, read by who made them. That read is the one that may
+ * fail by itself, since its rule is checked a row at a time, and the list is honest without it.
  */
 export async function loadPickerLists(userId: string, nowMs: number = Date.now()): Promise<PickerLists> {
   const todayYmd = denverCalendarDayKey(nowMs)
-  const [day, sessions, blocks, teams] = await Promise.all([
+  const [day, officeJobId, sessions, blocks, teams, changes] = await Promise.all([
     loadPaintPressDay(userId, nowMs),
+    loadPaintOfficeJobId(),
     withSupabaseRetry(
       async () =>
         supabase
@@ -67,41 +74,57 @@ export async function loadPickerLists(userId: string, nowMs: number = Date.now()
       'load clock sessions for last jobs',
     ),
     withSupabaseRetry(
-      async () => supabase.from('job_schedule_blocks').select('job_id, work_date').eq('assignee_user_id', userId).lt('work_date', todayYmd).order('work_date', { ascending: false }).limit(PICKER_BLOCKS_READ),
-      'load past schedule for last jobs',
+      async () =>
+        supabase
+          .from('job_schedule_blocks')
+          .select('job_id, work_date')
+          .eq('assignee_user_id', userId)
+          .lte('work_date', pickerDayPlus(todayYmd, PICKER_SOON_DAYS))
+          .order('work_date', { ascending: false })
+          .limit(PICKER_BLOCKS_READ),
+      'load schedule for last jobs',
     ),
     withSupabaseRetry(
       async () => supabase.from('jobs_ledger_team_members').select('job_id, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(PICKER_TEAMS_READ),
       'load job teams for last jobs',
     ),
+    withSupabaseRetry(
+      async () => supabase.from('job_activity_events').select('job_id, occurred_at').eq('actor_user_id', userId).order('occurred_at', { ascending: false }).limit(PICKER_CHANGES_READ),
+      'load changed jobs for last jobs',
+    ).catch(() => null),
   ])
-  const marks: PickerMark[] = []
-  for (const r of (sessions ?? []) as Array<{ job_ledger_id: string | null; work_date: string }>) if (r?.job_ledger_id) marks.push({ jobId: r.job_ledger_id, how: 'clock', day: r.work_date })
-  for (const r of (blocks ?? []) as Array<{ job_id: string | null; work_date: string }>) if (r?.job_id) marks.push({ jobId: r.job_id, how: 'schedule', day: r.work_date })
-  // A team's day is the day the person joined it, on the company's calendar. It places the job in the list and is never shown.
-  for (const r of (teams ?? []) as Array<{ job_id: string | null; created_at: string | null }>) {
-    if (!r?.job_id) continue
-    const joined = r.created_at ? Date.parse(r.created_at) : Number.NaN
-    marks.push({ jobId: r.job_id, how: 'team', day: Number.isFinite(joined) ? denverCalendarDayKey(joined) : null })
+  /** A moment as its day on the company's calendar. */
+  const dayOf = (iso: string | null): string | null => {
+    const at = iso ? Date.parse(iso) : Number.NaN
+    return Number.isFinite(at) ? denverCalendarDayKey(at) : null
   }
   const stopIds = day.todayStops.map((s) => s.job.id)
-  const onToday = new Set(stopIds)
-  const all = pickerLastOrder(marks).filter((m) => !onToday.has(m.jobId))
-  const order = all.slice(0, PICKER_LAST_READ)
-  // The job the start sheet may open on is the newest with a clock or a scheduled day. It is read even when newer teams fill the list.
-  const dated = all.filter((m) => m.how !== 'team').sort((a, b) => (a.day! < b.day! ? 1 : a.day! > b.day! ? -1 : 0))[0]
-  if (dated && !order.includes(dated)) order.push(dated)
-  const { visible, team } = await readJobs([...stopIds, ...order.map((m) => m.jobId)], userId)
-  // A stop's job as the job read has it, so a lot carries its development.
-  const todayStops = day.todayStops.map((s) => ({ ...s, job: visible.get(s.job.id) ?? s.job }))
+  const { order, soon: ahead } = pickerPlan({
+    todayYmd,
+    officeJobId,
+    todayJobIds: stopIds,
+    clocks: ((sessions ?? []) as Array<{ job_ledger_id: string | null; work_date: string }>).map((r) => ({ jobId: r.job_ledger_id, day: r.work_date })),
+    blocks: ((blocks ?? []) as Array<{ job_id: string | null; work_date: string }>).map((r) => ({ jobId: r.job_id, day: r.work_date })),
+    changes: ((changes ?? []) as Array<{ job_id: string | null; occurred_at: string | null }>).map((r) => ({ jobId: r.job_id, day: dayOf(r.occurred_at) })),
+    // A team's day is the day the person joined it. It places the job in the list and is never shown.
+    teams: ((teams ?? []) as Array<{ job_id: string | null; created_at: string | null }>).map((r) => ({ jobId: r.job_id, day: dayOf(r.created_at) })),
+  })
+  const { visible, team } = await readJobs([...stopIds, ...ahead.map((a) => a.jobId), ...order.map((m) => m.jobId)], userId)
+  // A stop's job as the job read has it, so a lot carries its development. The office job keeps its mark.
+  const todayStops = day.todayStops.map((s) => ({ ...s, job: { ...(visible.get(s.job.id) ?? s.job), office: s.job.office } }))
+  /** A job on whose team the person is, and cannot read: still theirs, with no words to show. */
+  const jobFor = (id: string): PickerJob | null => visible.get(id) ?? (team.has(id) ? { id, number: null, name: null, address: null } : null)
+  const soon: PickerSoon[] = []
+  for (const a of ahead) {
+    const job = jobFor(a.jobId)
+    if (job) soon.push({ job, day: a.day })
+  }
   const last: PickerLast[] = []
   for (const m of order) {
-    const job = visible.get(m.jobId)
-    // A job on whose team the person is, and cannot read: still theirs, with no words to show.
-    if (job) last.push({ job, how: m.how, day: m.day })
-    else if (team.has(m.jobId)) last.push({ job: { id: m.jobId, number: null, name: null, address: null }, how: m.how, day: m.day })
+    const job = jobFor(m.jobId)
+    if (job) last.push({ job, how: m.how, day: m.day, there: m.there ?? null })
   }
-  return { todayStops, last, paintable: pickerPaintable(visible.keys(), team), todayYmd }
+  return { todayStops, soon, last, paintable: pickerPaintable(visible.keys(), team), todayYmd }
 }
 
 /** The app's job search, billing-only jobs left out, with which hits the person may paint on. */

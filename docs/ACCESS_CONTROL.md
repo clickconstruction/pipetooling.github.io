@@ -893,6 +893,7 @@ Pay stubs are never filed here.
 The view is `security_invoker` and has no policy of its own, so each branch answers under its own table's read: `job_contracts` and `person_contract_documents` the office, `step_commitments` also the estimator, a superintendent on their own jobs and the sub named on the row.
 Since v2.7625 GC mode's papers are in it under the same rule: `gc_owner_contract_sends` answers a dev, `gc_sows` a dev, the owner and the controller, and a trade company's agreement the office, so under the **GC projects** chip an assistant sees a company's agreement alone.
 No policy changed for it, and nobody reads a paper through it that they could not read before.
+Since v2.7932 a waiting staff, sub or partner line carries **Send again** and **Copy the signing link**: both call `send-contract-for-signature` as the reader, which reads the paper under the caller's own policy and refuses one it cannot read.
 Since v2.7726 a person's copy of a paper a job requires is in it with its job, under the same read as every person's agreement: the office.
 `estimator`, `primary` and `superintendent` open `/documents` without the tab, and an old link to `?tab=agreements` shows them Estimates.
 
@@ -1368,6 +1369,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Since v2.6359 (punch list #244) a fifth branch, `job`, reads `job_photo_notes` under that table's own gate;
   since v2.6635 (punch list #273, `20261107093000_uploaded_photos_task_branch.sql`) a sixth, `task`, reads `task_photos` under `can_see_checklist_instance` with no job, the card's title as the caption and the joins on the card's tables left, so a title the reader may not see never hides the shot.
 - **`job_photo_notes`** (punch list #244, `docs/migrations/20261102171500_job_photo_notes.md`, v2.6359): **read / insert** by whoever may stamp the job's stages, `can_report_stage_progress(job_id)`;
+  a primary passes that gate on any job, so since v2.7936 (punch list #400, `20261119102000_primary_scope_job_photos.sql`, the SQL bed `primary-scope-job-photos`) the RESTRICTIVE `primary_scope_job_photo_notes` policy and the bucket's read policy hold a primary to their own shot, a job whose reports they read (`primary_can_read_job_reports`) or a job whose crew or schedule they are on (`helper_on_job`);
   **update** (the words, the stage) by the taker, or by the office and the estimator (`is_office_or_estimator`), so the office may fix a photo's description later;
   **delete** by the taker only while `added_at` is null (a window closed without the press discards its shots;
   an added photo stays, Drive is its home).
@@ -1999,7 +2001,7 @@ A training-mode account cannot sign, since starting a paper is a write.
 ### Checks that came back — the case (v2.4320, `20261001230000_ar_returned_check_cases.sql`)
 - **What**: `mercury_transaction_ar_returned` grows into the case of a returned check (source, reason, opened, closed, replaced by).
   Its four existing RLS policies (the AR roles) are unchanged.
-- **Who**: `list_ar_return_cases()` — dev, master_technician, assistant, controller, primary, and the service role (the notifier);
+- **Who**: `list_ar_return_cases()` — dev, master_technician, assistant, controller, and the service role (the notifier), and no longer `primary` since v2.7931 (punch list #400, `20261119104000_primary_money_desks.sql`);
   revoked from `anon`.
   `open_ar_rejected_check_cases()` — service role only (the hourly `ar-returned-checks`, `X-Cron-Secret`).
   The opening trigger function is revoked from every client role.
@@ -2157,7 +2159,7 @@ A training-mode account cannot sign, since starting a paper is a write.
   Use Stripe / out-of-band reversal flows for hosted invoice payments.
 
 ### Accounts Receivable close-out books the label (`close_out_ar_deposit`, v2.4363)
-- **Who**: the AR roles of `set_mercury_transaction_ar_closed` — office staff (`is_office_staff()`) and **`primary`**;
+- **Who**: the AR roles of `set_mercury_transaction_ar_closed` — office staff (`is_office_staff()`), and no longer `primary` since v2.7931 (punch list #400: the bank payments desk, returned checks and disputes, the pay speed lines and the GC review week take no job and no screen of a primary's opens them, so the role came out of each list, `20261119104000_primary_money_desks.sql`, the SQL bed `primary-money-desks`);
   `ar_deposit_booking` (the read) the same.
   Both SECURITY DEFINER.
 - **What it widens**: for the one deposit being closed out, it writes the Banking label and may **approve that deposit's own waiting rule match** — an assistant cannot Approve on Banking → Accounting (`bulk_approve_accounting_label_suggestions` is dev · master · controller).
@@ -2329,7 +2331,8 @@ A training-mode account cannot sign, since starting a paper is a write.
 - Jobs page — Stages tab: Billed Awaiting Payment section with Total by Name modal;
   **Combine / Separate** (toolbar **right**, after **Total by Name**) — **[`JobsCombineSeparateModal`](../src/components/jobs/JobsCombineSeparateModal.tsx)** (**`RECENT_FEATURES.md`** **v2.516**);
   RPCs enforce staff + job access
-- Jobs page — Stages tab: **expected-payment chips + Payment forecast** (v2.1924–v2.1925) readable by dev / master / assistant-like / primary (`get_billed_customer_pay_speeds`, which the controller reads too since v2.5029 and the Customers list once per load for its *pays in* caption since v2.5767, hidden with the rest of the money by `moneyHiddenByRls`, and the Development page's Money look reads it cut to the site's own payers since v2.6739, through `get_customer_pay_speeds(p_customer_ids)`, a SECURITY INVOKER wrapper whose gate is the parent's;
+- Jobs page — Stages tab: **expected-payment chips + Payment forecast** (v2.1924–v2.1925) readable by dev / master / assistant-like / primary (the Bill tab of a primary's own job draws its expected-pay dates from them, which is why v2.7931 left these reads and `can_read_payment_promises()` open to the role;
+  `get_billed_customer_pay_speeds`, which the controller reads too since v2.5029 and the Customers list once per load for its *pays in* caption since v2.5767, hidden with the rest of the money by `moneyHiddenByRls`, and the Development page's Money look reads it cut to the site's own payers since v2.6739, through `get_customer_pay_speeds(p_customer_ids)`, a SECURITY INVOKER wrapper whose gate is the parent's;
   `list_job_promised_pay_dates`);
   **mark promised date** (v2.1926, `set_job_promised_pay_date`) and **Fix bill lines** (v2.1933, `create_billed_shell_invoice`) writable by dev / master / assistant-like only — primary reads but cannot write.
   The same two role sets are named as SQL gates in v2.3280 (`can_write_payment_promises()` / `can_read_payment_promises()`;
@@ -2518,6 +2521,7 @@ A training-mode account cannot sign, since starting a paper is a write.
   Since v2.6866 (punch list #307) the same people see two blocks in a bid's Edit window, drawn only for `canResearchPermits` roles and read through `bid_site_permits` under the same row security: **This site** under the address and **What we can see about** the GC under its card.
   Since v2.6872 the same people may answer who a permit's name is, under a bid's site permit and since v2.6963 on a builder's sheet on Builders, where a take-back is one more insert: `builder_customer_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete.
   The same `canResearchPermits` roles alone see the Bid Board's **Permit news on your bids** strip and its row chips (v2.6870, `showPermitNews` from `Bids.tsx`) and the customer page's **Names on permits** card (v2.6886).
+  Since v2.7923 the strip lists the reader's own bids (`isMyBid`), and only an office reader keeps the one folded line for everyone else's when they have none of their own.
   Which names are us on a plumbing permit (v2.6959) is not theirs to say: the list is the owner's with a dev, the *Company → Our names on plumbing permits* row of the Settings table below.
 - **Three kinds of prospect** (v2.5559, `20261015040000_prospect_kinds.sql`): `prospects.kind` (customer · gc_lead · sub) and each kind's facts (`source`;
   `trades`, `max_miles`, `lang`;
@@ -2796,6 +2800,8 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
   A report on a project alone opens to that project's listed superintendent, and a report on a bid alone to the bid's own primary (`primary_can_access_bid`).
   The one predicate is `primary_can_read_report(job, project, bid, author)`, read behind `NOT is_primary()` by the RESTRICTIVE `primary_scope_reports` policy (every direct read, the invoker functions and the realtime feed) and by `list_reports_with_job_info`, `list_reports_for_job_ledger`, `list_reports_for_bid` and the newest-report percent in `list_job_crew_position`, each SECURITY DEFINER.
   A report's photos follow: `primary_scope_report_photos` on `report_photos` and the `report-photos` bucket's read policy open a primary's own shot or a job whose reports they read (`primary_can_read_job_reports`).
+  Since v2.7936 (punch list #400) the same rule, with the crew's claim beside it (`helper_on_job`: on the job's team, or on its schedule this week or last), holds a primary's read of `job_photo_notes` and their files, of a first look tied to a job (`first_looks_select_job_team`, and through it `first_look_files` and the `first-look-files` bucket), of every column of `list_job_crew_position` and of the `job-photos` edge function.
+  The stage checklist tables and `list_job_stage_progress` stay open to a primary on any job, because the photo checklist of a field report reads them before it writes them.
   `list_my_reports` is the caller's own and is untouched, and so is the New-report job picker (`search_jobs_for_reports`).
   The two office-picked email streams (`report_email`, `report_digest`) send what the office subscribes a person to and are not filtered by this rule.
 - **Documents**: the page is a ledger view over jobs/estimates/bids, so it inherits the scoping;
@@ -3981,7 +3987,7 @@ The office's two overrides — `legal_firm_set_paused`, `legal_firm_recipient_re
 
 ## Job accounts at a supply house (v2.3423)
 
-`job_supply_house_accounts` (one row per job × house: requested · open · not needed) is **readable by anyone who can read the job's operational activity** — `can_read_job_activity(job_id, false)`: dev, the job's master, adopted / shared assistants, primaries, and the crew on the job's team — because the field reads the status at the counter (PR 2's strip).
+`job_supply_house_accounts` (one row per job × house: requested · open · not needed) is **readable by anyone who can read the job's operational activity** — `can_read_job_activity(job_id, false)`: dev, the job's master, adopted / shared assistants, a primary who is one of the job's people (`is_job_people`, since v2.7929, punch list #400: before it any primary passed, and with money lines too), and the crew on the job's team — because the field reads the status at the counter (PR 2's strip).
 **Writes:** the office (`is_office_staff()`: dev, master_technician, assistant, controller) inserts, updates and deletes any status;
 any job reader may insert a `requested` row attributed to themselves (`requested_by = auth.uid()`) — the field's one-tap ask.
 Marking an account opened or not needed is office-only, and so are **Change this…** and **Take the mark off** on a not-needed chip's sheet (v2.7345, the client's `isOfficeRole`;

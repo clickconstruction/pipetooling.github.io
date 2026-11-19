@@ -1,11 +1,13 @@
 /**
  * Bids and permits (punch list #307, PR 1): a bid's address read the way a city's permit feed
  * writes one, so the bid can be asked "what does the city hold on this site?". A bid's address is
- * one line of free text; the feed's is a street with no suite, sometimes with the street type
- * spelled out, sometimes with none, a highway by its number alone (Loop 1604 is "n 1604 w"). So
- * neither side is trusted to be tidy: both are read into the same shape (the house number, the
- * street's words in any order, the street type when there is one) and compared there. Exact on
- * that shape and nothing fuzzier — a wrong join is worse than a missed one.
+ * one line of free text; the feed's is a street, in some cities with its suite and in others with
+ * none, sometimes with the street type spelled out, sometimes with none, a highway by its number
+ * alone (Loop 1604 is "n 1604 w"). So neither side is trusted to be tidy: both are read into the
+ * same shape (the house number, the street's words in any order, the street type when there is
+ * one) and compared there. Exact on that shape and nothing fuzzier — a wrong join is worse than
+ * a missed one. The suite is read beside that shape (`unitsOf`): when the bid and the permit both
+ * name one and they differ, the permit is another tenant's (punch list #401).
  *
  * Every line this file writes says what we can see, never what a builder did: the city, the
  * first day of the records, "seen", "on this address". No React, no Supabase.
@@ -29,8 +31,8 @@ export type SiteCanon = {
 export type UnreadableWhy = 'empty' | 'no_number' | 'no_street' | 'crossing' | 'no_city'
 
 export type BidSite =
-  /** A street address in a city whose permits we read. `number` is what a read asks the table for. */
-  | { kind: 'site'; city: string; number: string; street: string; canon: SiteCanon }
+  /** A street address in a city whose permits we read. `number` is what a read asks the table for. `units` is the suite the line names, when it names one. */
+  | { kind: 'site'; city: string; number: string; street: string; canon: SiteCanon; units?: string[] | null }
   /** A town whose permits we do not read. Null when the line names a state or a zip and no town we can pick out. */
   | { kind: 'not_read'; town: string | null }
   /** Not a street address a permit could sit on. */
@@ -119,6 +121,69 @@ export function sameSite(a: SiteCanon, b: SiteCanon): boolean {
   return a.type == null || b.type == null || a.type === b.type
 }
 
+/** Where a line starts naming its suite: "Suite 255", "STE 113", "UNIT 143", "#4", San Antonio's "Unit No: 130". */
+const UNIT_HEAD = /(?:^|[\s,;(])(?:(?:suite|ste|unit|apt|space|spc|room)\b\.?(?:\s*(?:no|number)\b\.?)?\s*:?\s*#?|#)\s*(.*)$/i
+/** A suite as a line writes one: it carries a digit ("255", "214b", "b1", "100-110"), or it is one letter ("A"). */
+const UNIT_TOKEN = /^(?:[a-z]{0,2}\d[a-z0-9]*(?:-[a-z0-9]+)?|[a-z])$/
+/** Austin writes a whole floor as a unit, "UNIT FL17". A floor holds many suites, so it names none. */
+const FLOOR_TOKEN = /^fl(?:oor)?\d+$/
+
+/**
+ * The suites a line names, or null when it names none. A bid writes "Suite 255" or "#4" after its
+ * street; a feed writes "UNIT 143" or "STE 113" in the address; San Antonio writes "Unit No: 130"
+ * in the project line, and "Unit No: N/A" when there is none. More than one comes back as a list
+ * ("101, 102"). A building is not a suite: suite 100 is in every building of a centre.
+ */
+export function unitsOf(line: string | null | undefined): string[] | null {
+  const m = (line ?? '').match(UNIT_HEAD)
+  if (!m) return null
+  const out: string[] = []
+  for (const raw of (m[1] as string).toLowerCase().split(/[\s,;&]+/)) {
+    const t = raw.replace(/[.)]+$/, '')
+    if (t === '') continue
+    if (t === 'and' && out.length > 0) continue
+    if (out.length === 0 && /^n\/?a$/.test(t)) return null
+    // After the first, only a number goes on the list: "Suite A San Antonio" is suite A.
+    if (!UNIT_TOKEN.test(t) || (out.length > 0 && !/\d/.test(t))) break
+    if (FLOOR_TOKEN.test(t)) continue
+    out.push(t.replace(/^0+(?=\d)/, ''))
+  }
+  return out.length > 0 ? out : null
+}
+
+/** San Antonio's project line, and no other free text: "Building No: 2; Unit No: 130". */
+function unitNoOf(projectName: string | null | undefined): string[] | null {
+  const m = (projectName ?? '').match(/\bunit\s+no\b\.?\s*:.*$/i)
+  return m ? unitsOf(m[0]) : null
+}
+
+function rangeOf(unit: string): [number, number] | null {
+  const m = unit.match(/^(\d+)(?:-(\d+))?$/)
+  if (!m) return null
+  const from = Number(m[1])
+  const to = m[2] == null ? from : Number(m[2])
+  return to >= from ? [from, to] : [from, from]
+}
+
+/** One suite, written two ways: the same words, "214" and "214b", or a number inside a run ("105" in "100-110"). */
+function oneUnit(a: string, b: string): boolean {
+  if (a === b) return true
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a]
+  if (/^\d+$/.test(short) && long.length === short.length + 1 && long.startsWith(short) && /[a-z]$/.test(long)) return true
+  const [ra, rb] = [rangeOf(a), rangeOf(b)]
+  return ra != null && rb != null && ra[0] <= rb[1] && rb[0] <= ra[1]
+}
+
+/**
+ * Both lines name a suite and they share none: the permit is another tenant's, on the same street
+ * number. It says nothing when either line names no suite, since a shell permit and a bid typed
+ * without its suite both sit on the whole address.
+ */
+export function onAnotherUnit(a: readonly string[] | null | undefined, b: readonly string[] | null | undefined): boolean {
+  if (!a || !b || a.length === 0 || b.length === 0) return false
+  return !a.some((x) => b.some((y) => oneUnit(x, y)))
+}
+
 /** The town a line names, when it can be picked out: the part after the last comma, else the words after the street's type or route number. */
 function townOf(head: string): string | null {
   const clean = (t: string) => {
@@ -177,7 +242,8 @@ export function readBidAddress(address: string | null | undefined, readCities: r
   }
 
   // The street: before the city, before the first comma, before a suite or a building.
-  const streetPart = (head.slice(0, head.length - city.length).replace(/[\s,]+$/, '').split(',')[0] ?? '')
+  const beforeCity = head.slice(0, head.length - city.length).replace(/[\s,]+$/, '')
+  const streetPart = (beforeCity.split(',')[0] ?? '')
     .replace(new RegExp(`\\s+(?:${UNIT_WORDS}\\b|#).*$`, 'i'), '')
     .trim()
   if (streetPart === '') return { kind: 'unreadable', why: 'no_number', reads }
@@ -188,7 +254,7 @@ export function readBidAddress(address: string | null | undefined, readCities: r
   if (rest.toLowerCase().split(/\s+/).some((t) => CROSSING_WORDS.has(t))) return { kind: 'unreadable', why: 'crossing', reads }
   const canon = canonOfStreet(streetPart)
   if (!canon) return { kind: 'unreadable', why: 'no_street', reads }
-  return { kind: 'site', city, number: canon.number, street: streetPart, canon }
+  return { kind: 'site', city, number: canon.number, street: streetPart, canon, units: unitsOf(beforeCity) }
 }
 
 /** What the kernel needs of a permit: the feed's street, what it is, its days, the project name and who the city lists. */
@@ -206,22 +272,36 @@ export type BidSitePermit = {
   contact: string | null
 }
 
-/**
- * The permits of one city that sit on a bid's site, each once. A read narrows by the house
- * number; this decides. The city's two feeds can both carry one permit (the application and the
- * issued permit share a number and a type): the issued row stands for it.
- */
-export function permitsOnSite<P extends Pick<BidSitePermit, 'address' | 'id'> & Partial<Pick<BidSitePermit, 'permit_number' | 'permit_type' | 'stage'>>>(site: BidSite, permits: readonly P[]): P[] {
+type SiteMatchPermit = Pick<BidSitePermit, 'address' | 'id'> & Partial<Pick<BidSitePermit, 'permit_number' | 'permit_type' | 'stage' | 'project_name'>>
+
+/** The permits on a site's street number, each once: the ones on the bid's site, or the ones another suite holds. */
+function permitsOnStreet<P extends SiteMatchPermit>(site: BidSite, permits: readonly P[], anotherUnit: boolean): P[] {
   if (site.kind !== 'site') return []
   const byPermit = new Map<string, P>()
   for (const p of permits) {
     const canon = canonOfStreet(p.address)
     if (canon == null || !sameSite(site.canon, canon)) continue
+    if (onAnotherUnit(site.units, unitsOf(p.address) ?? unitNoOf(p.project_name)) !== anotherUnit) continue
     const key = p.permit_number ? `${p.permit_number}|${p.permit_type ?? ''}` : p.id
     const held = byPermit.get(key)
     if (!held || (held.stage !== 'issued' && p.stage === 'issued')) byPermit.set(key, p)
   }
   return [...byPermit.values()]
+}
+
+/**
+ * The permits of one city that sit on a bid's site, each once. A read narrows by the house
+ * number; this decides. The city's two feeds can both carry one permit (the application and the
+ * issued permit share a number and a type): the issued row stands for it. A permit that names a
+ * different suite than the bid is another tenant's and is left out (punch list #401).
+ */
+export function permitsOnSite<P extends SiteMatchPermit>(site: BidSite, permits: readonly P[]): P[] {
+  return permitsOnStreet(site, permits, false)
+}
+
+/** The permits on the bid's street number that name another suite, each once: what `permitsOnSite` leaves out, so a list can say how many. */
+export function permitsOnOtherUnits<P extends SiteMatchPermit>(site: BidSite, permits: readonly P[]): P[] {
+  return permitsOnStreet(site, permits, true)
 }
 
 /**

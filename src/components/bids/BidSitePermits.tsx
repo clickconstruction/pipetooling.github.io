@@ -5,8 +5,8 @@ import { usePermitRecordsStart } from '../../hooks/usePermitRecordsStart'
 import { useOurPermitNames } from '../../hooks/useOurPermitNames'
 import { ROBOT_BID_RE } from '../../lib/bids/bidPursuit'
 import { RESEARCH_CITIES } from '../../lib/research/permitResearch'
-import { bidSiteWords, leadPermit, permitsOnSite, readBidAddress, siteSourceLine } from '../../lib/research/bidSite'
-import { siteCountWords, sitePermitLines, siteTiles, type SitePermitRow } from '../../lib/research/bidSitePanel'
+import { bidSiteWords, leadPermit, permitsOnOtherUnits, permitsOnSite, readBidAddress, siteSourceLine } from '../../lib/research/bidSite'
+import { otherSuiteWords, siteCountWords, sitePermitLines, siteTiles, type SitePermitRow } from '../../lib/research/bidSitePanel'
 import { loadPermitsByHouseNumber } from '../../lib/research/bidSiteIo'
 import { PermitChip } from './PermitChip'
 import { BidNameQuestion } from './BidNameQuestion'
@@ -78,6 +78,8 @@ export function BidSitePermits({
   }, [city, number])
 
   const onSite = useMemo(() => (loaded.state === 'done' ? permitsOnSite(site, loaded.rows) : []), [loaded, site])
+  // A permit that names a different suite than the bid is another tenant's: left out of the list, and counted so the list says so.
+  const otherSuites = useMemo(() => (loaded.state === 'done' ? otherSuiteWords(permitsOnOtherUnits(site, loaded.rows).length) : null), [loaded, site])
   if (ROBOT_BID_RE.test(projectName)) return null
 
   const box: CSSProperties = { marginTop: '0.9rem', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'grid', gap: 8, minWidth: 0 }
@@ -155,6 +157,7 @@ export function BidSitePermits({
           )}
         </>
       )}
+      {otherSuites && <div style={muted}>{otherSuites}</div>}
       {site.kind === 'site' && <div style={muted}>{siteSourceLine(site.city, recordsStart, today)}</div>}
     </div>
   )

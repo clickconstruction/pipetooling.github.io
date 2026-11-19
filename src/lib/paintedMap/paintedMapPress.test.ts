@@ -50,6 +50,13 @@ describe('paintPressLanding', () => {
     expect(paintPressLanding({ clock: null, todayStops: shuffled, nowMinutes: at(6) })).toMatchObject({ job: marlowe })
   })
 
+  it('the company’s office job is never landed on, by a clock or by the schedule', () => {
+    const office: PaintPressJob = { id: 'j-office', number: '000', name: 'Office', address: null, office: true }
+    // The office is on its own schedule every day. That is a pick, and the sheet then opens on the last job.
+    expect(paintPressLanding({ clock: null, todayStops: [stop(office, '08:00:00', '17:00:00')], nowMinutes: at(10) })).toEqual({ kind: 'pick' })
+    expect(paintPressLanding({ clock: { job: office }, todayStops: [stop(office, '08:00:00', '17:00:00'), stop(cedar, '13:00:00', '14:00:00')], nowMinutes: at(10) })).toMatchObject({ job: cedar, why: 'schedule' })
+  })
+
   it('a billing-only stop is skipped, and a day of them is a pick', () => {
     expect(paintPressLanding({ clock: null, todayStops: [stop(billing, '07:00:00', '08:00:00'), stop(cedar, '09:00:00', '10:00:00')], nowMinutes: at(6) })).toMatchObject({ job: cedar })
     expect(paintPressLanding({ clock: null, todayStops: [stop(billing, '07:00:00', '08:00:00')], nowMinutes: at(6) })).toEqual({ kind: 'pick' })

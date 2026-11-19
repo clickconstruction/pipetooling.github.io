@@ -94,7 +94,7 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose, loadLists =
       .then((got) => {
         if (!live) return
         setLists(got)
-        const guess = pickerGuess(pickerSections({ todayStops: got.todayStops, last: got.last, todayYmd: got.todayYmd, paintable: got.paintable }))
+        const guess = pickerGuess(pickerSections({ todayStops: got.todayStops, soon: got.soon, last: got.last, todayYmd: got.todayYmd, paintable: got.paintable }))
         if (guess) {
           setPicked((had) => had ?? guess.job)
           setGuessWords(pickerGuessWords(guess, got.todayYmd))

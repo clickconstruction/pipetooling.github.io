@@ -158,4 +158,18 @@ describe('GcDifficultyAsksPress', () => {
     await waitFor(() => expect(none.loadOpen).toHaveBeenCalled())
     expect(container.textContent).toBe('')
   })
+
+  it('tells the row that holds it whether it draws, so the row can lay itself out (v2.7927)', async () => {
+    const open = vi.fn()
+    renderWithProviders(<GcDifficultyAsksPress io={askIo()} sheetIo={sheetIo()} onOpenChange={open} />)
+    await screen.findByTestId('gc-difficulty-asks-press')
+    expect(open).toHaveBeenLastCalledWith(true)
+    cleanup()
+    const closed = vi.fn()
+    const none = askIo([])
+    renderWithProviders(<GcDifficultyAsksPress io={none} sheetIo={sheetIo()} onOpenChange={closed} />)
+    await waitFor(() => expect(none.loadOpen).toHaveBeenCalled())
+    expect(closed).toHaveBeenLastCalledWith(false)
+    expect(closed).not.toHaveBeenCalledWith(true)
+  })
 })
