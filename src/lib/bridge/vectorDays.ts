@@ -333,7 +333,7 @@ export function buildVectorDayCells(input: {
     const w = wageByUser.get(userId)
     for (const cell of days.values()) {
       if (w?.isSalary) {
-        const flat = salariedFlatDayHours(cell.start) * num(w.fieldWage ?? w.officeWage)
+        const flat = salariedFlatDayHours(cell.start, w.week) * num(w.fieldWage ?? w.officeWage)
         if (cell.fieldHours > 0) {
           cell.laborUsd = flat
           cell.officeLaborUsd = 0

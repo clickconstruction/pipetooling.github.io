@@ -103,3 +103,17 @@ describe('the hours alone, for a reader the clock is closed to (v2.6457)', () =>
     expect(allocateSiteLabor({ jobIds: ['j1'], crewRows: crew, hoursRows: hours, config }).daysKnown).toBe(true)
   })
 })
+
+describe('a salaried crew day on a site reads the person\'s own week', () => {
+  const week = [0, 6, 6, 6, 6, 6, 8]
+  it('crewDayHours pays that weekday\'s hours, a Saturday included when the week says so', () => {
+    expect(crewDayHours({ is_salary: true, salaried_week_hours: week }, crew[2]!, {})).toBe(6)
+    expect(crewDayHours({ is_salary: true, salaried_week_hours: week }, crew[3]!, {})).toBe(8)
+  })
+
+  it('the site\'s labor adds those hours at the wage', () => {
+    const own = { 'id:p-mateo': { hourly_wage: 30, is_salary: true, salaried_week_hours: week }, Mateo: { hourly_wage: 30, is_salary: true, salaried_week_hours: week } }
+    const out = allocateSiteLabor({ jobIds: ['j1'], crewRows: [crew[2]!, crew[3]!], hoursRows: [], config: own })
+    expect(out.byJobId.get('j1')!.hours).toBe(14)
+  })
+})

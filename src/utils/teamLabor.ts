@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { salariedFlatDayHours, salariedWeekOf } from '../lib/salariedEffectiveHours'
 import { fetchAllRows } from '../lib/supabasePaging'
 import { localCalendarDayKey } from './dateUtils'
 
@@ -77,23 +78,32 @@ export type TeamLaborBidRow = {
  * `hourly_wage` comes from a direct select that RLS empties for assistants, so labor DOLLARS
  * read $0 for them by design (surfaces that would show those dollars are role-gated anyway).
  */
+/** One person's pay as the labor readers need it: the wage, the salaried flag and, for a salaried person, their week
+ * (seven numbers, Sunday first, straight off `list_people_pay_flags`; `salariedWeekOf` reads it, 8 h Mon–Fri when missing). */
+export type LaborPayConfig = { hourly_wage: number; is_salary: boolean; salaried_week_hours?: readonly number[] | null }
+
+/** A crew day's hours for cost: a salaried person's day in their own week, an hourly person's recorded hours. */
+export function laborDayHours(cfg: Pick<LaborPayConfig, 'is_salary' | 'salaried_week_hours'> | undefined, workDate: string, recordedHours: number): number {
+  return cfg?.is_salary ? salariedFlatDayHours(workDate, salariedWeekOf(cfg)) : recordedHours
+}
+
 export async function fetchLaborPayConfigMap(
   supabase: SupabaseClient,
   personNames?: string[],
-): Promise<Record<string, { hourly_wage: number; is_salary: boolean }>> {
+): Promise<Record<string, LaborPayConfig>> {
   const wageQuery = supabase.from('people_pay_config').select('person_name, person_id, hourly_wage')
   const [flagsRes, wageRes] = await Promise.all([
     supabase.rpc('list_people_pay_flags'),
     personNames ? wageQuery.in('person_name', personNames) : wageQuery,
   ])
-  const map: Record<string, { hourly_wage: number; is_salary: boolean }> = {}
+  const map: Record<string, LaborPayConfig> = {}
   // v2.1123 (identity C1-2): the flags RPC returns person_id — seed the
   // 'id:<uuid>' entries directly so salary flags resolve id-first too (a
   // roster-vs-pay-config name disagreement can no longer drop the 8/0 rule).
-  for (const f of (flagsRes.data ?? []) as Array<{ person_name: string; person_id: string | null; is_salary: boolean | null }>) {
-    map[f.person_name] = { hourly_wage: 0, is_salary: f.is_salary ?? false }
+  for (const f of (flagsRes.data ?? []) as Array<{ person_name: string; person_id: string | null; is_salary: boolean | null; salaried_week_hours?: readonly number[] | null }>) {
+    map[f.person_name] = { hourly_wage: 0, is_salary: f.is_salary ?? false, salaried_week_hours: f.salaried_week_hours ?? null }
     if (f.person_id) {
-      map[`id:${f.person_id}`] = { hourly_wage: 0, is_salary: f.is_salary ?? false }
+      map[`id:${f.person_id}`] = { hourly_wage: 0, is_salary: f.is_salary ?? false, salaried_week_hours: f.salaried_week_hours ?? null }
     }
   }
   // v2.1012 (identity Phase C-4): wages also indexed by person_id under 'id:<uuid>'
@@ -102,11 +112,11 @@ export async function fetchLaborPayConfigMap(
   // an id-seeded is_salary from the flags loop (C1-2); the name-row flag is
   // only the default for wage rows whose person_id the RPC did not return.
   for (const w of (wageRes.data ?? []) as Array<{ person_name: string; person_id: string | null; hourly_wage: number | null }>) {
-    const cur = map[w.person_name] ?? { hourly_wage: 0, is_salary: false }
+    const cur: LaborPayConfig = map[w.person_name] ?? { hourly_wage: 0, is_salary: false }
     cur.hourly_wage = w.hourly_wage ?? 0
     map[w.person_name] = cur
     if (w.person_id) {
-      const viaId = map[`id:${w.person_id}`] ?? { hourly_wage: 0, is_salary: cur.is_salary }
+      const viaId: LaborPayConfig = map[`id:${w.person_id}`] ?? { hourly_wage: 0, is_salary: cur.is_salary, salaried_week_hours: cur.salaried_week_hours ?? null }
       viaId.hourly_wage = w.hourly_wage ?? 0
       map[`id:${w.person_id}`] = viaId
     }
@@ -191,8 +201,7 @@ export async function loadTeamLaborData(
   for (const r of crewRows) {
     const assignments = getCrewJobAssignments(r.person_name, r.work_date)
     const cfg = ('person_id' in r && r.person_id ? configMap[`id:${r.person_id}`] : undefined) ?? configMap[r.person_name]
-    const day = new Date(r.work_date + 'T12:00:00').getDay()
-    const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : hoursForCrewRow(hoursMap, r)
+    const hours = laborDayHours(cfg, r.work_date, hoursForCrewRow(hoursMap, r))
     const rate = cfg?.hourly_wage ?? 0
     for (const a of assignments) {
       if (!jobAgg[a.job_id]) jobAgg[a.job_id] = { people: new Set(), hoursByPerson: {}, costByPerson: {} }
@@ -295,8 +304,7 @@ export async function fetchTeamLaborBreakdownForJob(
   for (const r of crewRows) {
     const assignments = Array.isArray(r.job_assignments) ? r.job_assignments : []
     const cfg = ('person_id' in r && r.person_id ? configMap[`id:${r.person_id}`] : undefined) ?? configMap[r.person_name]
-    const day = new Date(r.work_date + 'T12:00:00').getDay()
-    const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : hoursForCrewRow(hoursMap, r)
+    const hours = laborDayHours(cfg, r.work_date, hoursForCrewRow(hoursMap, r))
     const rate = cfg?.hourly_wage ?? 0
     for (const a of assignments) {
       if (a.job_id !== jobId) continue
@@ -367,8 +375,7 @@ export async function loadTeamLaborDataForBids(
   for (const r of crewRows) {
     const assignments = getCrewBidAssignments(r.person_name, r.work_date)
     const cfg = ('person_id' in r && r.person_id ? configMap[`id:${r.person_id}`] : undefined) ?? configMap[r.person_name]
-    const day = new Date(r.work_date + 'T12:00:00').getDay()
-    const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : hoursForCrewRow(hoursMap, r)
+    const hours = laborDayHours(cfg, r.work_date, hoursForCrewRow(hoursMap, r))
     const rate = cfg?.hourly_wage ?? 0
     for (const a of assignments) {
       if (!bidAgg[a.bid_id]) bidAgg[a.bid_id] = { people: new Set(), hoursByPerson: {}, costByPerson: {} }
