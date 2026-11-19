@@ -177,7 +177,8 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose, loadLists =
             onClose()
           }}
         >
-          <div role="dialog" aria-modal="true" aria-label="Paint a map" onClick={(e) => e.stopPropagation()} style={frame.sheet}>
+          {/* At a desk the picker hangs at this sheet's own height and is shorter, so the sheet would show under it. It is kept, with what was typed, and not drawn. */}
+          <div role="dialog" aria-modal="true" aria-label="Paint a map" onClick={(e) => e.stopPropagation()} style={picking && desk ? { ...frame.sheet, visibility: 'hidden' } : frame.sheet}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1rem', borderBottom: '1px solid var(--border)' }}>
               <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Paint a map</h2>
               <button type="button" onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.9375rem', minHeight: 40, padding: '0 0.25rem' }}>

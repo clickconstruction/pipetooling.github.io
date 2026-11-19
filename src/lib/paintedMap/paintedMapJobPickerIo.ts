@@ -47,6 +47,7 @@ async function readJobs(ids: readonly string[], userId: string): Promise<{ visib
  * is one they clocked onto, one that was on their schedule on a past day, or one whose team they
  * are on. The three are read at once, each by an index on the person. The first
  * `PICKER_LAST_READ` jobs in the list's own order are then read whole, in the two batched selects.
+ * `last` comes back in that order, which `pickerSections` keeps.
  */
 export async function loadPickerLists(userId: string, nowMs: number = Date.now()): Promise<PickerLists> {
   const todayYmd = denverCalendarDayKey(nowMs)
@@ -77,10 +78,19 @@ export async function loadPickerLists(userId: string, nowMs: number = Date.now()
   const marks: PickerMark[] = []
   for (const r of (sessions ?? []) as Array<{ job_ledger_id: string | null; work_date: string }>) if (r?.job_ledger_id) marks.push({ jobId: r.job_ledger_id, how: 'clock', day: r.work_date })
   for (const r of (blocks ?? []) as Array<{ job_id: string | null; work_date: string }>) if (r?.job_id) marks.push({ jobId: r.job_id, how: 'schedule', day: r.work_date })
-  for (const r of (teams ?? []) as Array<{ job_id: string | null }>) if (r?.job_id) marks.push({ jobId: r.job_id, how: 'team', day: null })
+  // A team's day is the day the person joined it, on the company's calendar. It places the job in the list and is never shown.
+  for (const r of (teams ?? []) as Array<{ job_id: string | null; created_at: string | null }>) {
+    if (!r?.job_id) continue
+    const joined = r.created_at ? Date.parse(r.created_at) : Number.NaN
+    marks.push({ jobId: r.job_id, how: 'team', day: Number.isFinite(joined) ? denverCalendarDayKey(joined) : null })
+  }
   const stopIds = day.todayStops.map((s) => s.job.id)
   const onToday = new Set(stopIds)
-  const order = pickerLastOrder(marks).filter((m) => !onToday.has(m.jobId)).slice(0, PICKER_LAST_READ)
+  const all = pickerLastOrder(marks).filter((m) => !onToday.has(m.jobId))
+  const order = all.slice(0, PICKER_LAST_READ)
+  // The job the start sheet may open on is the newest with a clock or a scheduled day. It is read even when newer teams fill the list.
+  const dated = all.filter((m) => m.how !== 'team').sort((a, b) => (a.day! < b.day! ? 1 : a.day! > b.day! ? -1 : 0))[0]
+  if (dated && !order.includes(dated)) order.push(dated)
   const { visible, team } = await readJobs([...stopIds, ...order.map((m) => m.jobId)], userId)
   // A stop's job as the job read has it, so a lot carries its development.
   const todayStops = day.todayStops.map((s) => ({ ...s, job: visible.get(s.job.id) ?? s.job }))

@@ -9,9 +9,12 @@
  * Your last jobs never runs short while the person has been on six (the owner's word of
  * 2026-11-19, after he opened the picker on an empty list). It is read three ways, each a sign the
  * person was on the job: they clocked onto it, it was on their schedule on a past day, or they are
- * on its team. A clock or a scheduled day carries its day, and the newest leads. The team carries
- * none, so it fills what is left. A row that is not a clock says how the app knows, since a job on
- * a schedule does not prove the person went.
+ * on its team. Each sign has a day, the team's being the day they joined it, and the list runs
+ * newest first by a job's newest sign. So a job the office put the person on last week is above
+ * one they clocked onto in spring. A row is named by its best sign: a clock says its day, a
+ * scheduled day says *scheduled* over it, and a job known by its team alone says *on the team*. A
+ * row that is not a clock says how the app knows, since a job on a schedule does not prove the
+ * person went.
  *
  * When the app is told no job and the person has a last job with a day, the start sheet opens on
  * it with no question (`pickerGuess`), and **Change the job** opens this picker.
@@ -32,10 +35,10 @@ export type PickerJob = PaintPressJob & { developmentId?: string | null }
 /** How the app knows a person was on a job: they clocked onto it, it was on their schedule on a past day, or they are on its team. */
 export type PickerLastHow = 'clock' | 'schedule' | 'team'
 
-/** One sign a person was on a job. `day` is the day (`2026-11-17`), and none for the team. */
+/** One sign a person was on a job, and its day (`2026-11-17`). The team's day is the day they joined, when it is known. */
 export type PickerMark = { jobId: string; how: PickerLastHow; day: string | null }
 
-/** A job the person was on, the last day they were, and how the app knows. */
+/** A job the person was on, named by its best sign: how the app knows, and that sign's day. A list of these is in the order `pickerLastOrder` gave. */
 export type PickerLast = { job: PickerJob; how: PickerLastHow; day: string | null }
 
 export type PickerRow = {
@@ -54,7 +57,12 @@ export type PickerRow = {
   paintable: boolean
 }
 
-export type PickerSections = { today: PickerRow[]; last: PickerRow[] }
+export type PickerSections = {
+  today: PickerRow[]
+  last: PickerRow[]
+  /** The job the start sheet opens on with no question (`pickerGuess`), or none. */
+  guess: PickerRow | null
+}
 
 /** How many jobs Your last jobs holds. Past this a person searches. */
 export const PICKER_LAST_MAX = 6
@@ -140,49 +148,73 @@ const rowOf = (job: PickerJob, tag: string | null, paintable: boolean): PickerRo
 const HOW_RANK: Record<PickerLastHow, number> = { clock: 0, schedule: 1, team: 2 }
 
 /**
- * Each job once, at its strongest sign, in the order Your last jobs lists them. A day beats no
- * day. Of two days the later wins, and on one day a clock beats the schedule. Then the list:
- * the jobs with a day, newest first, and after them the team's jobs in the order they were read.
+ * Each job once, in the order Your last jobs lists them.
+ *
+ * - **Placed by its newest sign.** A clock, a scheduled day and the day the person joined the team
+ *   each count, so a job the office put them on last week is above one they clocked onto in
+ *   spring. A job with no day at all comes last, in the order read.
+ * - **Named by its best sign.** A clock or a scheduled day beats the team. Of two such days the
+ *   later wins, and on one day a clock beats the schedule. A job known by its team alone is named
+ *   by the team, and keeps the day they joined for its place.
+ *
  * A clock or a scheduled day that is not a day is no sign at all.
  */
 export function pickerLastOrder(marks: ReadonlyArray<PickerMark>): PickerMark[] {
-  const best = new Map<string, { mark: PickerMark; at: number | null; i: number }>()
+  type Held = { jobId: string; how: PickerLastHow; day: string | null; at: number | null; newest: number | null; i: number }
+  const held = new Map<string, Held>()
   marks.forEach((m, i) => {
     if (!m?.jobId) return
-    const at = m.how === 'team' ? null : dayNumber(m.day ?? '')
+    const at = dayNumber(m.day ?? '')
     if (m.how !== 'team' && at == null) return
-    const mark: PickerMark = { jobId: m.jobId, how: m.how, day: at == null ? null : m.day }
-    const had = best.get(m.jobId)
+    const day = at == null ? null : m.day
+    const had = held.get(m.jobId)
     if (!had) {
-      best.set(m.jobId, { mark, at, i })
+      held.set(m.jobId, { jobId: m.jobId, how: m.how, day, at, newest: at, i })
       return
     }
-    const wins = at != null && (had.at == null || at > had.at || (at === had.at && HOW_RANK[m.how] < HOW_RANK[had.mark.how]))
-    if (wins) best.set(m.jobId, { mark, at, i: had.i })
+    if (at != null && (had.newest == null || at > had.newest)) had.newest = at
+    // The name: a dated clock or schedule over the team, the later day, a clock on one day.
+    const dated = m.how !== 'team'
+    const hadDated = had.how !== 'team'
+    const wins = dated && (!hadDated || at! > had.at! || (at === had.at && HOW_RANK[m.how] < HOW_RANK[had.how]))
+    if (wins) {
+      had.how = m.how
+      had.day = day
+      had.at = at
+    } else if (!dated && !hadDated && had.at == null && at != null) {
+      // Two team rows for one job: the one with a day.
+      had.day = day
+      had.at = at
+    }
   })
-  return [...best.values()]
+  return [...held.values()]
     .sort((a, b) => {
-      if (a.at != null && b.at != null) return b.at - a.at || HOW_RANK[a.mark.how] - HOW_RANK[b.mark.how] || a.i - b.i
-      if (a.at != null) return -1
-      if (b.at != null) return 1
+      if (a.newest != null && b.newest != null) return b.newest - a.newest || HOW_RANK[a.how] - HOW_RANK[b.how] || a.i - b.i
+      if (a.newest != null) return -1
+      if (b.newest != null) return 1
       return a.i - b.i
     })
-    .map((x) => x.mark)
+    .map((h) => ({ jobId: h.jobId, how: h.how, day: h.day }))
 }
 
 /** A last job as a row: a clock says its day, a scheduled day says so over it, the team says it is the team. */
 function lastRowOf(l: PickerLast, todayYmd: string): PickerRow {
-  const day = l.day ? pickerDayWords(l.day, todayYmd) : ''
+  const day = l.how !== 'team' && l.day ? pickerDayWords(l.day, todayYmd) : ''
   const row = rowOf(l.job, l.how === 'team' ? PICKER_WORDS.team : day, true)
   return { ...row, how: l.how === 'schedule' && day ? PICKER_WORDS.scheduled : null, last: { how: l.how, day: l.day } }
 }
 
 /**
- * The picker's two lists. Today's stops in order of start, each job once. Then Your last jobs
- * (`pickerLastOrder`), without the ones already under Today, held to `PICKER_LAST_MAX`. A
- * billing-only job is in neither: it has no site. A job the person may not paint on is left out of
- * both, since these lists are offers and an offer that cannot be taken is noise. A day ahead of
- * today is no last day, so its job is left out too.
+ * The picker's two lists, and the job the start sheet may open on. Today's stops in order of
+ * start, each job once. Then Your last jobs, in the order they are handed in (`pickerLastOrder`),
+ * each job once, without the ones already under Today, held to `PICKER_LAST_MAX`. A billing-only
+ * job is in neither: it has no site. A job the person may not paint on is left out of both, since
+ * these lists are offers and an offer that cannot be taken is noise. A clock or a scheduled day
+ * ahead of today is no last day, so its job is left out too.
+ *
+ * The guess is the job with the newest clock or scheduled day, wherever it sits in the list. There
+ * is none when a job is on today's schedule, since the person is then asked which. There is none
+ * from the team alone, which says nothing of when the person was there.
  */
 export function pickerSections(input: { todayStops: ReadonlyArray<PaintPressStop>; last: ReadonlyArray<PickerLast>; todayYmd: string; paintable: ReadonlySet<string> }): PickerSections {
   const ok = (job: PickerJob) => !!job.id && !job.billingOnly && input.paintable.has(job.id)
@@ -194,29 +226,26 @@ export function pickerSections(input: { todayStops: ReadonlyArray<PaintPressStop
     seen.add(s.job.id)
     today.push(rowOf(s.job, pickerStopWords(s.timeStart), true))
   }
-  const jobs = new Map<string, PickerJob>()
-  for (const l of input.last) if (l?.job?.id && !jobs.has(l.job.id)) jobs.set(l.job.id, l.job)
   const last: PickerRow[] = []
-  for (const m of pickerLastOrder(input.last.map((l) => ({ jobId: l.job?.id ?? '', how: l.how, day: l.day })))) {
-    if (last.length >= PICKER_LAST_MAX) break
-    const job = jobs.get(m.jobId)
-    if (!job || !ok(job) || seen.has(job.id)) continue
-    if (m.day && m.day > input.todayYmd) continue
-    seen.add(job.id)
-    last.push(lastRowOf({ job, how: m.how, day: m.day }, input.todayYmd))
+  let best: PickerLast | null = null
+  for (const l of input.last) {
+    if (!l?.job || !ok(l.job) || seen.has(l.job.id)) continue
+    const dated = l.how !== 'team'
+    if (dated && (!l.day || l.day > input.todayYmd)) continue
+    seen.add(l.job.id)
+    if (last.length < PICKER_LAST_MAX) last.push(lastRowOf(l, input.todayYmd))
+    if (dated && (!best || l.day! > best.day! || (l.day === best.day && HOW_RANK[l.how] < HOW_RANK[best.how]))) best = l
   }
-  return { today, last }
+  return { today, last, guess: today.length === 0 && best ? lastRowOf(best, input.todayYmd) : null }
 }
 
 /**
  * The job the start sheet opens on when the app is told none: the newest job the person clocked
- * onto or had on their schedule. None when a job is on today's schedule, since the person is then
- * asked which. None from the team alone, which says nothing of when.
+ * onto or had on their schedule. None when a job is on today's schedule, and none from the team
+ * alone (`pickerSections`).
  */
 export function pickerGuess(sections: PickerSections): PickerRow | null {
-  if (sections.today.length > 0) return null
-  const first = sections.last[0]
-  return first?.last?.day && first.last.how !== 'team' ? first : null
+  return sections.guess
 }
 
 /** Under *For* on a sheet the app opened on a guess: `The last job you clocked onto, Friday.` */

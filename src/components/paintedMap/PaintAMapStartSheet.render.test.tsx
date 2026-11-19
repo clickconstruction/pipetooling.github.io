@@ -141,15 +141,23 @@ describe('PaintAMapStartSheet', () => {
     expect(document.querySelector('[data-paint-a-map-guess]')).toBeNull()
   })
 
-  it('is a sheet on a phone and a window at a desk', async () => {
+  it('is a sheet on a phone and a window at a desk, where it is not drawn behind the picker', async () => {
     const phone = render(<PaintAMapStartSheet home={{ jobId: 'j1', developmentId: null, label: 'J100 · First Lot' }} onStart={() => {}} onClose={() => {}} />)
     expect(document.querySelector('[data-paint-a-map-start]')?.getAttribute('data-paint-a-map-shape')).toBe('sheet')
     phone.unmount()
     setDesk(true)
-    render(<PaintAMapStartSheet home={{ jobId: 'j1', developmentId: null, label: 'J100 · First Lot' }} onStart={() => {}} onClose={() => {}} />)
+    render(<PaintAMapStartSheet home={{ jobId: 'j1', developmentId: null, label: 'J100 · First Lot', canChangeJob: true }} onStart={() => {}} onClose={() => {}} />)
     const scrim = document.querySelector('[data-paint-a-map-start]') as HTMLElement
     expect(scrim.getAttribute('data-paint-a-map-shape')).toBe('window')
     expect(scrim.style.alignItems).toBe('flex-start')
+    // The picker hangs at the same height and is shorter, so the sheet behind it is kept and not drawn.
+    fireEvent.change(screen.getByLabelText('What is it?'), { target: { value: 'The back gate' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Change the job' }))
+    const sheet = scrim.querySelector('[role=dialog]') as HTMLElement
+    expect(sheet.style.visibility).toBe('hidden')
+    fireEvent.click(screen.getByRole('button', { name: 'cancel the picker' }))
+    expect(sheet.style.visibility).toBe('')
+    expect((screen.getByLabelText('What is it?') as HTMLInputElement).value).toBe('The back gate')
   })
 
   it('a job pressed opens the sheet on it, with For at the top, and starts the map there', async () => {

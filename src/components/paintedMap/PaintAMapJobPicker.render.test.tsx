@@ -129,10 +129,11 @@ describe('PaintAMapJobPicker', () => {
     const io = makeIo({
       lists: vi.fn(async () => ({
         todayStops: [],
+        // In the list's own order, as the read hands them on.
         last: [
-          { job: finch, how: 'team' as const, day: null },
-          { job: hadley, how: 'clock' as const, day: '2026-09-18' },
           { job: marlowe, how: 'schedule' as const, day: '2026-11-10' },
+          { job: hadley, how: 'clock' as const, day: '2026-09-18' },
+          { job: finch, how: 'team' as const, day: '2026-08-01' },
         ],
         paintable: new Set([finch.id, hadley.id, marlowe.id]),
         todayYmd: '2026-11-19',
