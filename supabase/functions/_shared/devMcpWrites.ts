@@ -34,7 +34,8 @@ import { isPersonReportVerb, personReportInput } from './devMcpPersonReport.ts'
 import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
 import { accountInput, isAccountVerb, loginInput, passwordResetInput } from './devMcpAccount.ts'
 import { isTwinVerb, twinInput } from './devMcpTwin.ts'
-import { isTwinKeyVerb, twinKeyInput } from './devMcpTwinKey.ts'
+import { isTwinKeyVerb, twinKeyCommitment, twinKeyInput } from './devMcpTwinKey.ts'
+import { isTwinRungVerb, twinRungInput } from './devMcpTwinRung.ts'
 import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
 import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { isBillVerb } from './devMcpBill.ts'
@@ -277,6 +278,12 @@ export const WRITE_VERBS = {
   // (devMcpTwinKey.ts). read_twin_keys, the list beside it, writes nothing and is not counted here.
   plan_twin_key_revoke: { rpc: null, step: 'plan' },
   apply_twin_key_revoke: { rpc: null, step: 'apply' },
+  // v2.7918 / 0.108.0: a twin moved between rung 1 (read-only) and rung 2 (fenced writes) as Graduate ↑ and Back ↓ on
+  // the twin's row at Settings → Digital twins move it — read_only on the twin's own users row, as the dev under the
+  // users table's dev update policy; no wrapper, so rpc is null — the dry run is the server's read of the twin and its
+  // live keys (devMcpTwinRung.ts). Rung 3 is not built and is refused in words.
+  plan_twin_rung: { rpc: null, step: 'plan' },
+  apply_twin_rung: { rpc: null, step: 'apply' },
   // v2.7821 / 0.102.0: the pay setup of a person who exists, as their sheet's Pay & schedule saves it — the wage,
   // Salaried, the employment dates, the salaried workday's start — through set_pay_config as the dev (the audited door:
   // pay_admin_events keeps before and after), the desk's PATCH on people and the Hire form's template row; no wrapper,
@@ -569,6 +576,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isJobVerb(verb)) {
     // v2.6790: the shape check is devMcpJobs'; the dry run is the server's read of the customer and the rest, not an RPC's.
     const built = verb === 'plan_job' || verb === 'apply_job' ? jobInput(verb, input) : jobUpdateInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isTwinRungVerb(verb)) {
+    // v2.7918: the shape check is devMcpTwinRung's; the dry run is the server's read of the twin and its live keys.
+    const built = twinRungInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1495,8 +1508,9 @@ export function canonicalJson(value: unknown): string {
  * so with the stamp in, no approve plan could ever apply (the fifty of 2026-11-04 hashed three
  * ways in three runs). For a person's document (v2.6948): the reply whole, the named document's
  * `archived_at` as whether it is archived and never when — an archive's dry run answers with its
- * own now(), the same fault, and the instant before is still held under `changes`. For an HR
- * entry the whole reply is stable.
+ * own now(), the same fault, and the instant before is still held under `changes`. For a twin's
+ * key revoke (v2.7918): the reply whole, each key without its two usage dates, which move while
+ * its robot works. For an HR entry the whole reply is stable.
  */
 export function planCommitment(verb: WriteVerb, reply: unknown): unknown {
   const r = obj(reply)
@@ -1511,6 +1525,11 @@ export function planCommitment(verb: WriteVerb, reply: unknown): unknown {
   }
   if (verb === 'plan_person_doc' || verb === 'apply_person_doc') {
     return { ...rest, document: personDocCommitment(r.document) }
+  }
+  if (verb === 'plan_twin_key_revoke' || verb === 'apply_twin_key_revoke') {
+    // v2.7918: a key's usage dates move while its robot works (twin-mcp stamps last_seen_at once a minute), so the
+    // plan commits to each key by its id, label and state and leaves the dates out.
+    return { ...rest, revoke: twinKeyCommitment(r.revoke), stays_live: twinKeyCommitment(r.stays_live) }
   }
   return rest
 }
@@ -1631,6 +1650,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_submittal_rows' || verb === 'apply_submittal_log') return `Nothing written: this plan was already applied on this bid${when}. get_submittals reads it back; a further change needs a new plan from the bid as it stands.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
   // v2.6792: the account verbs' plans commit to the row as it read, so a landed change hashes differently; this answers the odd replay.
+  if (verb === 'apply_twin_rung') return `Nothing written: this plan was already applied${when}. The twin stands on the rung it named; plan_twin lists the fleet with each twin's rung.`
   if (verb === 'apply_twin_key_revoke') return `Nothing written: this plan was already applied${when}. The key is revoked; read_twin_keys lists the twin's keys as they stand.`
   if (verb === 'apply_twin') return `Nothing written: this plan was already applied${when}. The twin it made stands in the fleet; plan_twin lists the fleet and plans the next seat.`
   if (verb === 'apply_account') return `Nothing written: this plan was already applied${when}. get_login_state names the account as it reads now; plan again from that for a further change.`
