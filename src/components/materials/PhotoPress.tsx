@@ -14,6 +14,7 @@ import { photoStatusWords, photoWords, type PhotoNote } from '../../lib/material
 import { readBoxPhotoBytes } from '../../lib/materials/boxPhotoBytesIo'
 import { boxPhotoMissingWords, boxPhotoOpenLabel } from '../../lib/materials/boxPhotoSource'
 import { bytesWords } from '../../lib/materials/photoShrink'
+import { boxPhotoDayWords } from '../../lib/materials/boxScreen'
 import { canSharePhoto, downloadFile, sharePhoto } from '../../lib/materials/photoShare'
 import { sendBoxPhoto } from '../../lib/materials/photoUpload'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -29,7 +30,7 @@ export function CameraGlyph({ size = 14 }: { size?: number }) {
 
 type Toast = (m: string, t: 'success' | 'info' | 'error') => void
 
-export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId, byName, onToast, onTaken, style }: {
+export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId, byName, onToast, onTaken, style, fact, factStyle }: {
   jobId: string
   containerId: string
   containerLabel: string
@@ -41,6 +42,9 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
   /** A shot was kept, on its way or on this phone: the person stands at the box (the pin ask, punch list #372). */
   onTaken?: () => void
   style?: CSSProperties
+  /** On a box's own screen the press is a tile (punch list #398): what it has, or what a photo now would be of, under its name. */
+  fact?: string
+  factStyle?: CSSProperties
 }) {
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -72,8 +76,7 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
   return (
     <>
       <button type="button" style={style} disabled={busy != null} aria-label={`${busy ?? ofWhat}: open the camera; the picture goes to the job's Drive folder by itself`} title="Opens the camera. The picture is shrunk on the phone and filed in the job's Drive folder, named for this box." onClick={() => input.current?.click()}>
-        <CameraGlyph />
-        {label}
+        {fact == null ? <><CameraGlyph />{label}</> : <><span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, fontSize: '0.95rem' }}><CameraGlyph size={16} />{label}</span><span style={factStyle}>{fact}</span></>}
       </button>
       <input ref={input} type="file" accept="image/*" capture="environment" onChange={onFile} tabIndex={-1} aria-hidden style={{ display: 'none' }} />
     </>
@@ -81,7 +84,7 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
 }
 
 /** The box's photos as thumbnails with their status; on the phone a kept shot offers Send now and Share instead. */
-export function BoxPhotos({ photos, canAct, onToast, size = 56 }: { photos: PhotoNote[]; canAct: boolean; onToast?: Toast; size?: number }) {
+export function BoxPhotos({ photos, canAct, onToast, size = 56, quiet = false }: { photos: PhotoNote[]; canAct: boolean; onToast?: Toast; size?: number; /** A filed photo says its day and who took it, never where it is or its size (punch list #398). */ quiet?: boolean }) {
   // The picture comes from the first place that holds it (`boxPhotoBytesIo.ts`); the bytes are kept beside the url
   // when this phone has them, so Send now and Share instead can run inside the press.
   const [loaded, setLoaded] = useState<Record<string, { url: string; blob: Blob | null }>>({})
@@ -156,10 +159,10 @@ export function BoxPhotos({ photos, canAct, onToast, size = 56 }: { photos: Phot
                 <span title={missing[p.id] ? boxPhotoMissingWords(p) : undefined} data-testid="box-photo-none" style={{ width: size, height: size, flex: 'none', borderRadius: 8, border: '1px dashed var(--border-strong)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)' }}><CameraGlyph size={18} /></span>
               )}
               <span style={{ fontSize: '0.8rem', color: p.status === 'on-phone' ? 'var(--text-amber-700)' : 'var(--text-muted)', fontWeight: p.status === 'on-phone' ? 600 : 500, lineHeight: 1.25 }}>
-                {words}
+                {quiet && p.status === 'filed' ? boxPhotoDayWords(p) : words}
                 {p.failWhy && p.status !== 'filed' ? <><br /><span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>{p.failWhy}</span></> : null}
                 <br />
-                <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>{bytesWords(p.bytes)} · {p.byName}</span>
+                <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>{quiet && p.status === 'filed' ? p.byName : `${bytesWords(p.bytes)} · ${p.byName}`}</span>
               </span>
             </div>
             {canAct && p.status === 'on-phone' ? (

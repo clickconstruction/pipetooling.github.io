@@ -177,9 +177,9 @@ the wiring into `TallyOnSiteTab.tsx` and `JobTally.tsx` waits.
 
 ## Where it stands
 
-2026-11-18: designed, drawn twice and approved the same day. Nothing is built. Take from a box has
-its steps 1 and 2 open (#8764, #8765), step 3 as a draft (#8770) and step 4 not yet opened. Its
-session knows this build waits on it and was asked to draw step 4's takes as their own component.
+2026-11-18: designed, drawn twice and approved the same day. Built as one PR in v2.7873, on top of
+Take from a box (v2.7824 the run, v2.7828 the takes). The card stays until the owner has seen the
+screen on a phone.
 
 **Not verified by the look**: no crew role's screen was walked, and no crew member was asked. The
 closed row is a bet: Can't find was pressed once when it stood in plain sight. A real mixed box

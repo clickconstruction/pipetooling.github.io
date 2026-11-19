@@ -6762,8 +6762,13 @@ A box photo's file **follows its job** in Drive (v2.6885 the seat's move, v2.691
 Its press, **Take from G12**, stays at the bottom of the phone's box screen, and its save press names its count, as **Take 3 from G12**.
 A **take** is not a row: it is an id minted on the phone and written on each ledger row and box photo the run makes (`take_id`, and `kind` on the photo, `docs/migrations/20261118130000_box_takes.md`).
 A take's photos are asked for and never required, and the take is saved before the photo after (`src/lib/materials/takeRun.ts`).
+**A box's own screen** on the phone (v2.7873, punch list #398) reads top to bottom: the box's name with **More**, its parts as closed rows with their numbers, four tiles, its photos and takes, and **Take from G12** (`OnSiteBoxScreen.tsx` over `boxScreen.ts`).
+A tap on a part opens its presses under it, one part at a time: **Used**, **Move to…**, **Can't find** and **Ask for more**.
+**Ask for more** is the press that read **Short** until v2.7873: it asks the office for more of a part and writes no movement.
+The four **tiles** each say their own fact: **Count G12** when the box was last counted and by whom, **Photo** how many it has, **Add a part** how many kinds it holds, **Where is it?** its place and its pin.
+**More** on a box holds what a crew member rarely needs: Edit, Say it better, Move, Print the label, Print the manifest, Copy the label code and Retire, with the line that says who last touched the box.
 **Where is it?** on a box (v2.7575, punch list #372) is the press that says where a cage or box stands and draws the way to it.
-It is the middle chip on the phone's box screen, in place of *Pin on map*, and the third tab of the office's box window (`WhereIsBox.tsx` over `whereIsBox.ts`).
+It is a tile under the parts on the phone's box screen since v2.7873, the middle chip before that, in place of *Pin on map*, and the third tab of the office's box window (`WhereIsBox.tsx` over `whereIsBox.ts`).
 It says the place, the where note, and the **pin** with its day, its person and the phone's margin, which the pin has kept since v2.7573 (`pinned_at`, `pinned_by_name`, `pin_accuracy_m`).
 **Show where I am** draws the reader's own dot and a dashed straight line to the pin, with the distance said as *about* and the phone's margin beside it.
 The dot is drawn on the phone and sent nowhere.
