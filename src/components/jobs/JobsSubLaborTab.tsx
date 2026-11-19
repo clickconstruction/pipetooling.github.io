@@ -269,7 +269,8 @@ export default function JobsSubLaborTab({
           ? teamSheetPayWhen(job, open, today)
           : sheetPayWhen({ stage: eff.stage, payableAfter: job.payable_after ?? null, payHoldReason: job.pay_hold_reason ?? null, bills, gap: rail.gap, crew, balance: bal.balance, unpriced, todayYmd: today })
       // v2.7835: the bill the sheet rides on, read on the stored stage: the database ties on that one, never on a derived one.
-      const drawTie = drawTieRowWords({ stage: job.stage, drawInvoiceId: job.draw_invoice_id ?? null, bills: (inv as DrawBill[] | null) ?? null })
+      // v2.7843: named from the bills the ledger read for this sheet, then from the page's own job when it holds them.
+      const drawTie = drawTieRowWords({ stage: job.stage, drawInvoiceId: job.draw_invoice_id ?? null, bills: job.draw_bills ?? (inv as DrawBill[] | null) ?? null })
       // v2.7843: what the sub reads once the customer has paid that bill, and the office's clock on it.
       const subSees = subSeesCustomerPaid({ stage: job.stage, customerPaidOn: job.customer_paid_on ?? null, payableAfter: job.payable_after ?? null, payHoldReason: job.pay_hold_reason ?? null, todayYmd: today })
       return { coverage, rail, next, crew, team, jobId: pipelineJob?.id ?? null, personId, parties, payWhen, stageView, drawTie, subSees }

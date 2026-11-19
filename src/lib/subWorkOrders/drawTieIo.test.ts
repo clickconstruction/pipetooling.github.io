@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { loadCustomerPaidDays, loadDrawTieSheet, loadDrawTies, saveDrawBill } from './drawTieIo'
+import { loadCustomerPaidDays, loadDrawBillsByJob, loadDrawTieSheet, loadDrawTies, saveDrawBill } from './drawTieIo'
 
 type Db = Parameters<typeof loadDrawTies>[0]
 type Answer = { data: unknown; error: { code?: string; message: string } | null }
@@ -95,5 +95,29 @@ describe('the day the customer paid each tied sheet’s bill (step 2)', () => {
     expect((await loadCustomerPaidDays(dbOf({ jobs_ledger_invoices: { data: null, error: { message: 'permission denied' } }, jobs_ledger_payments: payments }), ties)).size).toBe(0)
     const throwing = { from: () => ({ select: () => ({}) }) } as unknown as Db
     await expect(loadCustomerPaidDays(throwing, ties)).resolves.toEqual(new Map())
+  })
+})
+
+describe('the bills of the tied sheets’ jobs', () => {
+  const rows = [
+    { id: 'b1', job_id: 'j1', status: 'paid', sequence_order: 0, billed_at: null, amount: 100, created_at: null },
+    { id: 'b2', job_id: 'j1', status: 'billed', sequence_order: 1, billed_at: null, amount: 200, created_at: null },
+    { id: 'b3', job_id: 'j2', status: 'ready_to_bill', sequence_order: 0, billed_at: null, amount: 300, created_at: null },
+  ]
+
+  it('groups them by job, without the job’s id on each bill', async () => {
+    const byJob = await loadDrawBillsByJob(dbOf({ jobs_ledger_invoices: { data: rows, error: null } }), ['j1', 'j2', 'j1', ''])
+    expect(byJob.get('j1')?.map((b) => b.id)).toEqual(['b1', 'b2'])
+    expect(byJob.get('j2')).toEqual([{ id: 'b3', status: 'ready_to_bill', sequence_order: 0, billed_at: null, amount: 300, created_at: null }])
+  })
+
+  it('reads nothing for no job, and is empty when the read is refused or throws', async () => {
+    const db = dbOf({})
+    const from = vi.spyOn(db, 'from')
+    expect((await loadDrawBillsByJob(db, [])).size).toBe(0)
+    expect(from).not.toHaveBeenCalled()
+    expect((await loadDrawBillsByJob(dbOf({ jobs_ledger_invoices: { data: null, error: { message: 'permission denied' } } }), ['j1'])).size).toBe(0)
+    const throwing = { from: () => ({ select: () => ({}) }) } as unknown as Db
+    await expect(loadDrawBillsByJob(throwing, ['j1'])).resolves.toEqual(new Map())
   })
 })

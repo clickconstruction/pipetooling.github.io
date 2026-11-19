@@ -8,7 +8,8 @@ import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
 import type { SubSheetStage } from '../lib/subSheetStage'
 import type { SetSubSheetStageResult } from '../types/database-functions'
 import type { DrawBillAnswer } from './useDrawBillPick'
-import { loadCustomerPaidDays, loadDrawTieSheet, loadDrawTies } from '../lib/subWorkOrders/drawTieIo'
+import { loadCustomerPaidDays, loadDrawBillsByJob, loadDrawTieSheet, loadDrawTies } from '../lib/subWorkOrders/drawTieIo'
+import type { DrawBill } from '../lib/subWorkOrders/drawTie'
 
 /**
  * Sub Labor ledger + payments engine (Jobs.tsx decomposition seam — see
@@ -263,10 +264,13 @@ export function useSubLaborLedger({
       const drawTies = await loadDrawTies(supabase)
       // v2.7843: the day the customer paid each tied bill in full, by the rule the sub's page reads.
       const customerPaid = await loadCustomerPaidDays(supabase, drawTies)
+      // The tied sheets' jobs' bills, so the row names its bill whatever jobs the page has loaded.
+      const drawBillsByJob = await loadDrawBillsByJob(supabase, (jobs as LaborJob[]).filter((j) => drawTies.has(j.id)).map((j) => j.job_ledger_id ?? ''))
       const mappedJobs = (jobs as LaborJob[]).map((j) => ({
         ...j,
         draw_invoice_id: drawTies.get(j.id) ?? null,
         customer_paid_on: customerPaid.get(j.id) ?? null,
+        draw_bills: drawTies.has(j.id) && j.job_ledger_id ? (drawBillsByJob.get(j.job_ledger_id) ?? null) : null,
         items: itemsByJob.get(j.id) ?? [],
         payments: paymentsByJob.get(j.id) ?? [],
         payment_events: eventsByJob.get(j.id) ?? [],
@@ -319,16 +323,19 @@ export function useSubLaborLedger({
     // The tie as the database holds it now: the office's pick, or the job's one open bill tied by the move itself.
     let drawInvoiceId: string | null = null
     let customerPaidOn: string | null = null
+    let drawBills: DrawBill[] | null = null
     if (stage === 'customer_pay') {
       await drawBill?.tieAfterMove(jobId, answer)
-      drawInvoiceId = (await loadDrawTieSheet(supabase, jobId).catch(() => null))?.drawInvoiceId ?? null
+      const tied = await loadDrawTieSheet(supabase, jobId).catch(() => null)
+      drawInvoiceId = tied?.drawInvoiceId ?? null
+      drawBills = drawInvoiceId ? (tied?.bills ?? null) : null
       // A bill already paid in full may be tied: the sub's page then says paid at once, and so does the row.
       if (drawInvoiceId) customerPaidOn = (await loadCustomerPaidDays(supabase, new Map([[jobId, drawInvoiceId]]))).get(jobId) ?? null
     }
     setLaborJobs((prev) =>
       prev.map((j) =>
         j.id === jobId
-          ? { ...j, stage, stage_changed_at: new Date().toISOString(), stage_changed_by: authUserId ?? null, stage_source: 'office', stage_note: null, stage_changed_by_name: authUserName ?? null, draw_invoice_id: drawInvoiceId, customer_paid_on: customerPaidOn }
+          ? { ...j, stage, stage_changed_at: new Date().toISOString(), stage_changed_by: authUserId ?? null, stage_source: 'office', stage_note: null, stage_changed_by_name: authUserName ?? null, draw_invoice_id: drawInvoiceId, customer_paid_on: customerPaidOn, draw_bills: drawBills }
           : j,
       ),
     )

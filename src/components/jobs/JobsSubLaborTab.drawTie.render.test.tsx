@@ -78,6 +78,18 @@ describe('JobsSubLaborTab · the bill a waiting sheet rides on', () => {
     expect(line.getAttribute('aria-label')).toBe('Rides on bill 1 of 2. Change the bill this sheet rides on')
   })
 
+  it('names the bill from the bills read with the ledger, when the page holds no job for the sheet (v2.7843)', async () => {
+    renderWithProviders(<JobsSubLaborTab {...props({ jobs: [], laborJobs: [sheet({ stage: 'customer_pay', draw_invoice_id: 'b2', draw_bills: BILLS })] })} />)
+    await settle()
+    expect(screen.getByTestId('sheet-draw-tie').textContent).toBe('Rides on bill 2 of 2')
+  })
+
+  it('still says tied when neither holds the bills', async () => {
+    renderWithProviders(<JobsSubLaborTab {...props({ jobs: [], laborJobs: [sheet({ stage: 'customer_pay', draw_invoice_id: 'b2' })] })} />)
+    await settle()
+    expect(screen.getByTestId('sheet-draw-tie').textContent).toBe('Rides on a bill')
+  })
+
   it('says nothing on a sheet that is not waiting on the customer', async () => {
     renderWithProviders(<JobsSubLaborTab {...props({ laborJobs: [sheet({ stage: 'walkthrough', draw_invoice_id: null })] })} />)
     await settle()

@@ -121,7 +121,10 @@ Test rows: the test sub and a ZZ TEST job. Never a real sub's page.
 
 2026-11-18. **Steps 1 and 2 are built.** Step 3, the usual pay time, is not.
 
-- **Step 1, the tie** (v2.7835, migration `20261118180000_sub_sheet_draw_invoice.sql`): `docs/recent-features/v2.7835.md`.
+- **Step 1, the tie** (v2.7835, migration `20261118180000_sub_sheet_draw_invoice.sql`): `docs/recent-features/v2.7835.md`. Merged, pushed and walked on prod on 2026-11-18.
+  - **The walk**, on the test sub's sheet and ZZ TEST job 1064, through the page's own presses: the window before the move with the sent bill picked, **Request the draw**, the tie changed from the row, the tied bill deleted, the one open bill tied by the move itself with no window, **No bill**, a move back, and the pick refused off the stage. The database was read after every press.
+  - **Put back:** the sheet, field for field, and the job's bills. The walk added one $1 draft bill and deleted it.
+  - **Left on prod, since the app cannot delete them:** six *Sub labor* lines on ZZ TEST job 1064's Activity feed, one per stage move.
 - **Step 2, customer paid on the page** (v2.7843): `docs/recent-features/v2.7843.md`. The owner read its Spanish, side by side with the English, on 2026-11-18 before it merged: *Reads right*.
 - **`sub-portal` is not deployed with step 2 yet.** Until it is, the page reads as it did: the client draws the new state only from a day the function sends. The deploy waits on a go that names it.
 
@@ -130,6 +133,7 @@ Test rows: the test sub and a ZZ TEST job. Never a real sub's page.
 - **A bill is open until it is paid.** A draft bill counts, as the mock-up's window shows. So a job with one sent bill and money left to bill has two open bills, and the office is asked. The window leans to the one sent bill.
 - **The office's word is bill, not draw.** The window says *Bill 2 of 3*, as the lien desk and the owner's records do.
 - **No backfill was needed.** No sheet was waiting on the customer when the tie landed.
+- **The row reads its own bills.** The first walk showed *Rides on a bill*, since the Pay view knew the job's name and not its bills. Step 2 reads the tied sheets' jobs' bills with the ledger, so the row says *Rides on bill 1 of 2*.
 - **Paid in full is the bill's own status.** The office's payment writers turn a bill to `paid` only when the payments on it reach its amount. The day is the latest `paid_on` on that bill. A paid bill with no dated payment says nothing.
 - **Queued wins over paid.** A sheet with a payable-after date reads *Queued for* its day, as before.
 - **A held sheet stays grey on the office's row.** The amber clock is for a paid sheet nobody has answered. A hold is an answer, and the sub reads its reason.

@@ -59,6 +59,29 @@ export async function loadDrawTies(db: Db): Promise<Map<string, string>> {
 }
 
 /**
+ * Every bill of the given jobs, by job id: what the office's row needs to name the bill a sheet rides on
+ * (*Rides on bill 2 of 3*) without leaning on whatever list of jobs the screen happens to hold. On prod the
+ * first walk showed why: the Pay view knew the test job's name and not its bills, and the row could only
+ * say *Rides on a bill*. Empty when the read fails in any way.
+ */
+export async function loadDrawBillsByJob(db: Db, jobIds: readonly string[]): Promise<Map<string, DrawBill[]>> {
+  const out = new Map<string, DrawBill[]>()
+  const ids = [...new Set(jobIds.filter(Boolean))]
+  if (ids.length === 0) return out
+  try {
+    const res = (await db.from('jobs_ledger_invoices').select('id, job_id, status, sequence_order, billed_at, amount, created_at').in('job_id', ids).limit(1000)) as {
+      data: Array<DrawBill & { job_id: string }> | null
+      error: CodedError | null
+    }
+    if (res.error) return out
+    for (const { job_id, ...bill } of res.data ?? []) out.set(job_id, [...(out.get(job_id) ?? []), bill])
+  } catch {
+    // No names for the bills. The row still says the sheet is tied.
+  }
+  return out
+}
+
+/**
  * The day the customer paid each tied sheet's bill in full, by sheet id (step 2): the same rule the sub's page
  * reads, `customerPaidDays`, on the same rows. A tie reaches here only from a sheet at Waiting on customer,
  * since the database clears it everywhere else. Empty when a read fails in any way.
