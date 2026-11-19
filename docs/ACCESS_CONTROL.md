@@ -1368,6 +1368,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   Since v2.6359 (punch list #244) a fifth branch, `job`, reads `job_photo_notes` under that table's own gate;
   since v2.6635 (punch list #273, `20261107093000_uploaded_photos_task_branch.sql`) a sixth, `task`, reads `task_photos` under `can_see_checklist_instance` with no job, the card's title as the caption and the joins on the card's tables left, so a title the reader may not see never hides the shot.
 - **`job_photo_notes`** (punch list #244, `docs/migrations/20261102171500_job_photo_notes.md`, v2.6359): **read / insert** by whoever may stamp the job's stages, `can_report_stage_progress(job_id)`;
+  a primary passes that gate on any job, so since v2.7936 (punch list #400, `20261119102000_primary_scope_job_photos.sql`, the SQL bed `primary-scope-job-photos`) the RESTRICTIVE `primary_scope_job_photo_notes` policy and the bucket's read policy hold a primary to their own shot, a job whose reports they read (`primary_can_read_job_reports`) or a job whose crew or schedule they are on (`helper_on_job`);
   **update** (the words, the stage) by the taker, or by the office and the estimator (`is_office_or_estimator`), so the office may fix a photo's description later;
   **delete** by the taker only while `added_at` is null (a window closed without the press discards its shots;
   an added photo stays, Drive is its home).
@@ -2795,6 +2796,8 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
   A report on a project alone opens to that project's listed superintendent, and a report on a bid alone to the bid's own primary (`primary_can_access_bid`).
   The one predicate is `primary_can_read_report(job, project, bid, author)`, read behind `NOT is_primary()` by the RESTRICTIVE `primary_scope_reports` policy (every direct read, the invoker functions and the realtime feed) and by `list_reports_with_job_info`, `list_reports_for_job_ledger`, `list_reports_for_bid` and the newest-report percent in `list_job_crew_position`, each SECURITY DEFINER.
   A report's photos follow: `primary_scope_report_photos` on `report_photos` and the `report-photos` bucket's read policy open a primary's own shot or a job whose reports they read (`primary_can_read_job_reports`).
+  Since v2.7936 (punch list #400) the same rule, with the crew's claim beside it (`helper_on_job`: on the job's team, or on its schedule this week or last), holds a primary's read of `job_photo_notes` and their files, of a first look tied to a job (`first_looks_select_job_team`, and through it `first_look_files` and the `first-look-files` bucket), of every column of `list_job_crew_position` and of the `job-photos` edge function.
+  The stage checklist tables and `list_job_stage_progress` stay open to a primary on any job, because the photo checklist of a field report reads them before it writes them.
   `list_my_reports` is the caller's own and is untouched, and so is the New-report job picker (`search_jobs_for_reports`).
   The two office-picked email streams (`report_email`, `report_digest`) send what the office subscribes a person to and are not filtered by this rule.
 - **Documents**: the page is a ledger view over jobs/estimates/bids, so it inherits the scoping;
