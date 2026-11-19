@@ -1211,6 +1211,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   **`trip_phone_state(job)`** tells that same caller the job's site, their own open trip there, and crewmates' open trips by first name and first day, since a crew member reads no trip row they are not on.
   A training account, a digital twin and an archived caller are refused by the functions themselves, because a definer stands behind the tables' fences.
 - **The trip's number** (v2.7703, `docs/migrations/20261118040000_trip_numbers.md`): `trips.trip_number` is handed out by the `trips_take_number` trigger, a SECURITY DEFINER, and held through every update, so no role sets or changes it.
+  Since v2.7884 the trigger hands a trip that moves to another home a number there, and no role names that number either (`docs/migrations/20261118233000_combine_carries_job_held_trip.md`).
   **`trip_number_counters`** has row security on, no policy and no grant: nobody reads or writes it but that trigger.
 - **Put on a bill** (v2.7756, punch list #391, `docs/migrations/20261118060000_trip_bill_line.md`): `jobs_ledger_fixtures.trip_id` is the trip a line came from, and one function sets it.
   **`trip_put_on_job_line(trip, job, amount, name, words, dry_run)`**, a SECURITY DEFINER, writes one work line for a trip marked Extra, the job's total and one History row, for the four roles that may add a discount to a job: dev, master_technician, assistant and controller.

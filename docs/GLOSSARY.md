@@ -3783,6 +3783,8 @@ Since v2.7860 a trip made again under its own id is tied to the line it held whe
 **Put back** saves a deleted trip again under its own id through the trip's own save, so it returns with who went, its days and its number, and a job deleted since is left out and said.
 A site whose only trip was deleted still shows its look, and the delete's question says the trip waits under Deleted trips after its minute of Undo.
 Since v2.7861 a job combine carries a trip's job links to the job that is kept (`migrate_job_ledger_costs_and_delete`), where before they went with the job that was deleted.
+Since v2.7884 it also carries a trip the deleted job held by itself: the trip goes to the kept job's development when it is in one, and to the kept job when it is in none.
+A trip that moves home this way keeps its number when the new home never handed that number out, and takes the new home's next number otherwise (`trips_take_number`).
 A job billed from the GC desk (a GC project's billing job) is never offered in that window since v2.7769, the owner's answer of 2026-11-18: its price grows only by a signed change order, so the window says so and **Open Change orders** opens that project's Change orders for the GC money team (`tripBillJobChoices`'s `held`, `changeOrdersHref`).
 Since v2.7862 Bill Customer's **− Add discount** is not offered on a job billed from the GC desk either: the function refuses it, and the window says a discount goes on a signed change order there (`lib/jobs/gcBillingJobDiscount.ts`).
 Access: `ACCESS_CONTROL.md`, *Trips*.
