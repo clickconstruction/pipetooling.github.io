@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { Container, ContainerMove, Movement, MovementReason, Place } from './onSite'
-import { actDays, actPeople, actTiles, filterActs, localDayOf, personKeyOf, sitePersonActs } from './sitePersonActs'
+import { actDays, actPeople, actTiles, filterActs, localDayOf, outsideProcess, personKeyOf, sitePersonActs } from './sitePersonActs'
 
 // A made-up site, Cedar Ridge: two jobs, two places.
 const day = (iso: string) => iso.slice(0, 10)
@@ -138,5 +138,68 @@ describe('the list’s figures and filters', () => {
   it('reads a time as the device’s own day, and nothing for a time that is not one', () => {
     expect(localDayOf('2026-11-18T12:00:00')).toBe('2026-11-18')
     expect(localDayOf('not a time')).toBe('')
+  })
+})
+
+describe('the trail that is not the ledger', () => {
+  const acts = sitePersonActs({
+    jobs, movements: [], containerMoves: [], containers, places,
+    boxChanges: [
+      { id: 'c1', containerId: 'g22', what: 'retired', oldValue: '', newValue: '', byName: 'Sam R.', at: '2026-11-18T19:50:00Z' },
+      { id: 'c2', containerId: 'g22', what: 'brought_back', oldValue: '', newValue: '', byName: 'Dana K.', at: '2026-11-18T21:05:00Z' },
+      { id: 'c3', containerId: 'g40', what: 'where', oldValue: '', newValue: 'by the north fence', byName: 'Sam R.', at: '2026-11-18T12:00:00Z' },
+      { id: 'c4', containerId: 'gone', what: 'kind', oldValue: 'box', newValue: 'cage', byName: '', at: '2026-11-18T11:00:00Z' },
+    ],
+    boxRenames: [{ id: 'n1', containerId: 'g40', oldLabel: 'G4', newLabel: 'G40', byName: 'Sam R.', at: '2026-11-18T10:00:00Z' }],
+    removedAnswers: [
+      { id: 'r1', answer: 'price', jobId: 'j1', words: '2 PVC 90, $4.50', byName: 'Sam R.', at: '2026-11-18T09:00:00Z' },
+      { id: 'r2', answer: 'tie', jobId: null, words: '2 PVC 90 and 2 inch 90', byName: 'Sam R.', at: '2026-11-18T08:00:00Z' },
+    ],
+  }, day)
+
+  it('reads each change to a box with who made it, newest first', () => {
+    expect(acts.map((a) => [a.what, a.who, a.where, a.note])).toEqual([
+      ['Brought a box back', 'Dana K.', 'G22 · Arena', ''],
+      ['Retired a box', 'Sam R.', 'G22 · Arena', ''],
+      ['Changed a box', 'Sam R.', 'G40 · Arena', 'where: nothing → by the north fence'],
+      ['Changed a box', 'No name on the row', 'a box no longer listed', 'kind: box → cage'],
+      ['Renamed a box', 'Sam R.', 'G40 · Arena', 'G4 → G40'],
+      ['Removed a price', 'Sam R.', '', ''],
+      ['Undid a join', 'Sam R.', '', ''],
+    ])
+  })
+
+  it('opens a box that is still listed, names the job, and wears no chip', () => {
+    expect(acts[1]).toMatchObject({ kind: 'box_retired', boxId: 'g22', jobId: 'j1', jobLabel: 'J101 · Rough in', looks: [], pieces: 0, qty: '' })
+    expect(acts[3]).toMatchObject({ boxId: null, jobId: '' })
+    expect(acts[5]).toMatchObject({ kind: 'answer_removed', part: '2 PVC 90, $4.50', jobLabel: 'J101 · Rough in', boxIds: [] })
+    expect(acts[6]).toMatchObject({ part: '2 PVC 90 and 2 inch 90', jobLabel: '' })
+  })
+
+  it('narrows to one kind of change', () => {
+    expect(filterActs(acts, { person: null, kind: 'box_changed', lookOnly: false })).toHaveLength(2)
+    expect(filterActs(acts, { person: 'sam r.', kind: 'answer_removed', lookOnly: false })).toHaveLength(2)
+  })
+})
+
+describe('outsideProcess', () => {
+  it('says why an act is outside a watched person’s process, and nothing when it is inside', () => {
+    const why = (kind: Parameters<typeof outsideProcess>[0]['kind'], note = '') => outsideProcess({ kind, note })
+    expect(why('taken', 'lodge kitchen')).toBeNull()
+    expect(why('used', 'decon room')).toBeNull()
+    expect(why('returned')).toBeNull()
+    expect(why('moved')).toBeNull()
+    expect(why('box_moved')).toBeNull()
+    expect(why('cannot_find')).toBeNull()
+    expect(why('damaged')).toBeNull()
+    expect(why('taken')).toBe('no note')
+    expect(why('used', '  ')).toBe('no note')
+    expect(why('counted')).toBe('a count is the office’s')
+    expect(why('delivered')).toBe('adding a part is the office’s')
+    expect(why('box_retired')).toBe('retired a box')
+    expect(why('box_brought_back')).toBe('brought a box back')
+    expect(why('box_changed')).toBe('changed a box')
+    expect(why('box_renamed')).toBe('renamed a box')
+    expect(why('answer_removed')).toBe('took an answer off')
   })
 })
