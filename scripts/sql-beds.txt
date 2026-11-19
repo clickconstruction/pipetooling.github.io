@@ -144,3 +144,4 @@ job-papers-lists
 dashboard-view
 job-finish-calls
 salaried-week
+schedule-reads-gate

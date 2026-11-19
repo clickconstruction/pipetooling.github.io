@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-11-18
+last_updated: 2026-11-19
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -2207,8 +2207,9 @@ A training-mode account cannot sign, since starting a paper is a write.
   The list (`team_leader_assignments`) and every RLS / RPC branch that read it were dropped in v2.5088 (migration `20261010022000`).
 - **Dashboard → Rejected sessions (all users)**: org-wide rejected clock sessions for review (same delete as People → Hours)
 - **Dashboard → Clock strip — Email schedule** (`ScheduleDayEmailModal`): **dev** may queue a dispatch-schedule email for **any non-archived user** (`schedule_day_email_requests`;
-  RLS **`schedule_day_email_requests_insert_dev_any_recipient`**);
+  RLS **`schedule_day_email_requests_insert_dev_any_recipient`**), and so may the rest of the office since v2.6758 (**`schedule_day_email_requests_insert_office_any_recipient`**);
   other staff may queue **only for self**.
+  The window's preview reads under the same rule (**Job schedule blocks** below, *The schedule emails' reads*).
   See **`RECENT_FEATURES.md`** (e.g. v2.523).
 - **People page tab groups** (v2.2811): six top-level tabs — People, Pay, Paperwork, Fleet & Housing, Review (the owner or a dev since v2.6757, punch list #188 row 2;
   the header's Review icon the same;
@@ -3428,6 +3429,12 @@ each leg remains a normal row for RLS (assignee still scopes read where applicab
 
 **Calendar / Preview**: Assignees see their blocks;
 **`list_assigned_jobs_for_dashboard`** includes **`project_id`** for mapping workflow context to team jobs on the Preview modal.
+
+**The schedule emails' reads** (v2.7925, `20261119070000_schedule_reads_ask_who_calls.sql`): `list_schedule_blocks_for_share` and `list_job_schedule_blocks_for_schedule_email` run as their definer and answer the SELECT rule above about a named person, so each asks `schedule_read_gate` who is calling before it reads.
+The service role with no login reads both for anyone, which is how `schedule-share-dispatch` and `schedule-day-email-dispatch` read.
+A signed-in caller reads both for himself.
+The office (`is_office_staff()`) also reads the day's email for anyone, the roles that may send it to another user.
+Anyone else is refused with `42501`, and the public key holds neither function.
 
 ### Master-Assistant Adoption
 
