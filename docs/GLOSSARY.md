@@ -3738,6 +3738,7 @@ A trip is people, and for each person their days, and each day is one of three k
 A day off in the middle is a day that is not there.
 Where a trip stands, **Planned**, **Out now** or **Back**, is read from its days and today and is never typed.
 Each trip also has a short number on its site, **Trip 5**, handed out by the database when the trip is made (v2.7703, `trips.trip_number`): never typed, never changed, and never given to another trip, so a bill that cites it means one trip for good.
+Since v2.7886 the dev seat's `read_trips` gives each trip that number (`trip_number`), and `plan_trip` and `apply_trip` name it in their replies.
 A trip may also say what it was for, who asked for it (us or them), how it went, the jobs its work goes on and its billing (**Inside the price**, **Extra**, **Ours**), and all of that can wait.
 A trip is a reading laid over the clock: saving, changing or deleting one changes no clock row, bill or cost.
 A trip's number on its site, **Trip 5**, leads the trip wherever the app names one since v2.7707, built in one place (`tripName` in `lib/trips/tripsLook.ts`) and never an input: the look's row, the open trip's heading, the strip's bar, the delete's question and its toasts, the two History lines (*Trip 5 out*, *Trip 5 back*), the Job window's line, the Plans by date card and list, the Scoreboard's row and the trip log's blocks.

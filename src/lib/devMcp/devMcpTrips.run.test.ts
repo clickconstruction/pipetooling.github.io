@@ -53,22 +53,28 @@ function filtered(table: string, query: string): Row[] {
 }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
-/** trip_save as the migration's function answers (20261117234500): the counts, add or change, and a whole save. */
+/**
+ * trip_save as the migration's function answers (20261117234500): the counts, add or change, and a whole save. Since
+ * 20261118040000 it names the trip's number: the one a kept trip has, null on a dry run of a new one, and the next on
+ * its site when one is added.
+ */
 function tripSave(p: Row, dry: boolean): Row {
   const people = (p.people as Array<{ name: string; person_id?: string; user_id?: string; days: Record<string, string> }>) ?? []
   const jobs = [...new Set((p.job_ids as string[]) ?? [])]
   const days = people.flatMap((x) => Object.keys(x.days)).sort()
   const id = String(p.id ?? 'a-random-id')
-  const exists = (world.tables.trips ?? []).some((t) => t.id === id)
+  const was = (world.tables.trips ?? []).find((t) => t.id === id)
+  const exists = !!was
+  const number = was ? Number(was.trip_number) : (world.tables.trips ?? []).length + 1
   const counts = { trip_id: id, people: people.length, person_days: days.length, first_day: days[0] ?? null, last_day: days[days.length - 1] ?? null, jobs: jobs.length }
-  if (dry) return { dry_run: true, would: exists ? 'change' : 'add', ...counts }
+  if (dry) return { dry_run: true, would: exists ? 'change' : 'add', ...counts, trip_number: exists ? number : null }
   const words = { development_id: p.development_id ?? null, job_id: p.job_id ?? null, purpose: p.purpose ?? '', asked_by: p.asked_by ?? null, asked_who: p.asked_who ?? '', asked_how: p.asked_how ?? '', outcome: p.outcome ?? '', billing: p.billing ?? null }
   world.tables.trips = exists
     ? world.tables.trips!.map((t) => (t.id === id ? { ...t, ...words, updated_at: '2026-11-17T18:00:00Z' } : t))
-    : [...(world.tables.trips ?? []), { id, ...words, via: p.via ?? 'app', agent_label: p.agent_label ?? null, created_at: '2026-11-17T18:00:00Z', updated_at: '2026-11-17T18:00:00Z' }]
+    : [...(world.tables.trips ?? []), { id, trip_number: number, ...words, via: p.via ?? 'app', agent_label: p.agent_label ?? null, created_at: '2026-11-17T18:00:00Z', updated_at: '2026-11-17T18:00:00Z' }]
   world.tables.trip_people = [...(world.tables.trip_people ?? []).filter((x) => x.trip_id !== id), ...people.map((x) => ({ trip_id: id, person_id: x.person_id ?? null, user_id: x.user_id ?? null, person_name: x.name, days: x.days }))]
   world.tables.trip_jobs = [...(world.tables.trip_jobs ?? []).filter((x) => x.trip_id !== id), ...jobs.map((job_id) => ({ trip_id: id, job_id }))]
-  return { dry_run: false, did: exists ? 'changed' : 'added', ...counts }
+  return { dry_run: false, did: exists ? 'changed' : 'added', ...counts, trip_number: number }
 }
 
 async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -222,7 +228,7 @@ describe('plan_trip → apply_trip, through the function', () => {
     const plan = await call('plan_trip', { trip: TRIP })
     const done = await call('apply_trip', { trip: TRIP, plan_hash: plan.body!.plan_hash })
     expect(done.isError).toBe(false)
-    expect(done.body).toMatchObject({ did: 'added', trip_id: plan.body!.trip_id, people: 3, reads: 'Added a trip to Heron Point: 3 people, 2026-10-29 to 2026-11-03.' })
+    expect(done.body).toMatchObject({ did: 'added', trip_id: plan.body!.trip_id, people: 3, trip_number: 1, reads: 'Added a trip to Heron Point: 3 people, 2026-10-29 to 2026-11-03. It is Trip 1.' })
     expect(realSaves()).toHaveLength(1)
     expect(realSaves()[0]!.p).toMatchObject({
       id: plan.body!.trip_id,
@@ -240,7 +246,7 @@ describe('plan_trip → apply_trip, through the function', () => {
     const read = await call('read_trips', { development_id: SITE })
     expect(read.isError).toBe(false)
     expect(read.body).toMatchObject({ count: 1, today: '2026-11-17', on: { kind: 'development', id: SITE, name: 'Heron Point' }, reading: '1 trip on Heron Point: 1 back. In the order they went out.' })
-    expect((read.body!.trips as Row[])[0]).toMatchObject({ id: plan.body!.trip_id, first_day: '2026-10-29', last_day: '2026-11-03', standing: 'back', days: { site: 2, road: 2, ready: 1, days: 5 }, via: 'mcp', agent_label: 'the ledger robot', billing: 'extra', asked_by: 'them', job_ids: [JOB] })
+    expect((read.body!.trips as Row[])[0]).toMatchObject({ id: plan.body!.trip_id, trip_number: 1, first_day: '2026-10-29', last_day: '2026-11-03', standing: 'back', days: { site: 2, road: 2, ready: 1, days: 5 }, via: 'mcp', agent_label: 'the ledger robot', billing: 'extra', asked_by: 'them', job_ids: [JOB] })
     expect(((read.body!.trips as Row[])[0]!.people as Row[]).map((x) => x.name)).toEqual(['Dana', 'Luis', 'Ray'])
     // The job's door finds it too: its work goes on that job.
     expect((await call('read_trips', { job_id: JOB })).body).toMatchObject({ count: 1, on: { kind: 'job', name: 'Heron Point rough in' } })
@@ -293,16 +299,17 @@ describe('plan_trip → apply_trip, through the function', () => {
     expect(second.body).toMatchObject({ would: 'add' })
     expect(second.body!.trip_id).not.toBe(id)
     expect(second.body!.overlaps).toEqual([
-      { trip_id: id, name: 'Dana', days: 5, first_day: '2026-10-29', last_day: '2026-11-03' },
-      { trip_id: id, name: 'Luis', days: 2, first_day: '2026-10-31', last_day: '2026-11-02' },
-      { trip_id: id, name: 'Ray', days: 1, first_day: '2026-10-31', last_day: '2026-10-31' },
+      { trip_id: id, trip_number: 1, name: 'Dana', days: 5, first_day: '2026-10-29', last_day: '2026-11-03' },
+      { trip_id: id, trip_number: 1, name: 'Luis', days: 2, first_day: '2026-10-31', last_day: '2026-11-02' },
+      { trip_id: id, trip_number: 1, name: 'Ray', days: 1, first_day: '2026-10-31', last_day: '2026-10-31' },
     ])
     // The same change under the trip's id: one trip, changed.
     const change = await call('plan_trip', { trip: { ...TRIP, id, outcome: 'Passed.' } })
-    expect(change.body).toMatchObject({ would: 'change', trip_id: id })
+    expect(change.body).toMatchObject({ would: 'change', trip_id: id, trip: { trip_number: 1 } })
     expect(change.body).not.toHaveProperty('overlaps')
     const done = await call('apply_trip', { trip: { ...TRIP, id, outcome: 'Passed.' }, plan_hash: change.body!.plan_hash })
-    expect(done.body).toMatchObject({ did: 'changed', trip_id: id })
+    expect(done.body).toMatchObject({ did: 'changed', trip_id: id, trip_number: 1 })
+    expect(String(done.body!.reads)).toContain('It is Trip 1.')
     expect(world.tables.trips).toHaveLength(1)
     expect(world.tables.trips![0]).toMatchObject({ id, outcome: 'Passed.' })
   })
