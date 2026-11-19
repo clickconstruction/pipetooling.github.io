@@ -16,6 +16,8 @@ import {
   lienBoardStagesLeft,
   lienBoardAtRisk,
   lienBoardBinCount,
+  lienBoardUnreadBinWords,
+  lienBoardUnreadWords,
   lienBoardBinsShown,
   lienBoardChipFor,
   lienBoardDoorWords,
@@ -826,6 +828,35 @@ describe('buildLienBoard — a held paper stands in the bin of the stage it is s
     expect(byLeader.gateHeld).toBeUndefined()
     expect(byLeader.destination).toEqual({ kind: 'paper', tab: 'affidavits', jobId: '8' })
     expect(lienBoardStagesLeft(byLeader, 'Malachi')).toEqual(['Malachi approves it', 'Notarize it and file it with the county'])
+  })
+})
+
+describe('buildLienBoard — an affidavit nobody has read, in To send for Master approval (v2.7852)', () => {
+  it('marks the papers the batch send leaves, counts the ones it takes, and stands them after those', () => {
+    const board = build({
+      affidavits: [
+        affidavit('21', 'to_draft', { deadline: '2026-11-18', daysLeft: 3 }),
+        affidavit('22', 'to_draft'),
+        affidavit('23', 'to_draft', { item: item('a23', 'drafted') }),
+        affidavit('24', 'ready', { item: item('a24', 'approved') }),
+      ],
+    })
+    const toSend = bin(board, 'affidavit:to_send')
+    expect(toSend.chips.map((c) => [c.jobId, c.unread ?? false])).toEqual([['23', false], ['21', true], ['22', true]])
+    expect(lienBoardBinCount(toSend)).toBe(1)
+    expect(lienBoardUnreadWords(toSend.chips[1]!)).toBe('nobody has read it yet')
+    expect(lienBoardUnreadWords(toSend.chips[0]!)).toBe('')
+    expect(lienBoardUnreadBinWords('To send for Master approval')).toBe('To send for Master approval · not read yet')
+    // Its stage, its door and its stages left are what they were: only the count and the order say it waits to be read.
+    expect(toSend.chips[1]!.stage).toBe('to_send')
+    expect(toSend.chips[1]!.held).toBeUndefined()
+    // No other bin marks a paper unread: Ready to file's is whole.
+    expect(bin(board, 'affidavit:ready').chips.every((c) => !c.unread)).toBe(true)
+  })
+  it('a notice to send is never marked: the notices have no batch send on the Board', () => {
+    const board = build({ notices: [notice('1', 'to_draft'), notice('2', 'to_draft')] })
+    expect(bin(board, 'notice:to_send').chips.every((c) => !c.unread)).toBe(true)
+    expect(lienBoardBinCount(bin(board, 'notice:to_send'))).toBe(2)
   })
 })
 

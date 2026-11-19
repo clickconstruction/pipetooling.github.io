@@ -11,6 +11,7 @@ import { lienAffidavitFormForItem } from './lienAffidavitForm'
 import { submitOutcome, type LienNoticePolicy, type LienSubmitOutcome } from './lienDesk'
 import { lienAffidavitFootBlockedSentence } from './lienDeskGates'
 import { lienAffidavitGateHeld, type LienAffidavitEntry } from './lienDeskAffidavits'
+import { lienAffidavitSendReady } from './lienAffidavitSendReady'
 
 /**
  * Two presses on the Affidavits list (punch list #305, v2.6918), for re-issuing a month's affidavits on the short
@@ -54,7 +55,7 @@ export type LienAffidavitSendPlan<E extends SendEntry = SendEntry> = {
 export function lienAffidavitSendPlan<E extends SendEntry>(entries: ReadonlyArray<E>, ctx: LienAffidavitSendContext): LienAffidavitSendPlan<E> {
   const toDraft = entries.filter((e) => e.pile === 'to_draft')
   return {
-    ready: toDraft.filter((e) => e.item != null && e.item.status === 'drafted').map((entry) => ({ entry, outcome: lienAffidavitSubmitOutcome(entry, ctx) })),
+    ready: toDraft.filter(lienAffidavitSendReady).map((entry) => ({ entry, outcome: lienAffidavitSubmitOutcome(entry, ctx) })),
     held: toDraft.filter((e) => e.item == null),
   }
 }

@@ -42,6 +42,8 @@ A chip with a red mark after its number will not make its day as it stands. It h
 
 A chip with a dashed edge and a ‖ mark is held. Its colour still says how soon its day is. [Held papers](#held-papers-and-retainage) says where it stands.
 
+A chip with a dashed edge and a ○ mark is an affidavit nobody has read yet. Press it to open the paper and read it.
+
 A job that needs its owner stands in both columns. Point at either chip and both light up. One press on the owner clears both.
 
 An affidavit in **Waiting on its notice** lights with its notice chip the same way. The notice chip shows where the notice stands.
@@ -87,7 +89,7 @@ On *Approved · to mail* the press reads like {{button:outline|Enter mail number
 
 On **Ready to file** the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. An approved paper that a fact holds stands in the bin too, after the ones that print. It has a dashed edge and a ‖ mark. The print leaves it out, and so does the bin's count. A paper on the earlier form has no mark, and the print leaves it out too. A line under the bin's name counts those, like *1 on the earlier form*. Press **See it ›** to open them. The help sheet and the notice records print in front of the stack. The bin says nothing of that while it is so. If someone changed those pages on this computer, a second line says so, like *Prints without the help sheet*. Press **Put it back ›** and the usual pages print again. You tick those pages on the affidavits list, over its rows.
 
-On the affidavits' **To send for Master approval** the press reads like {{button:outline|Send 5 for approval ›}}. It opens the affidavits list at that pile. One press there sends every paper someone has read.
+On the affidavits' **To send for Master approval** the press reads like {{button:outline|Send 5 for approval ›}}. It opens the affidavits list at that pile. One press there sends every paper someone has read. The bin's count is the same number. A paper nobody has read stands after those, with a dashed edge and a ○ mark. The send leaves it out, and so does the count. Press its chip to open it and read it.
 
 On *Filed · copies to mail* the press reads like {{button:outline|Print 10 liens' copies ›}}. It opens the window that prints each lien's copies. Once they are printed it reads like {{button:outline|Enter mail numbers · 10 ›}}. Then it opens the same window on the mail numbers.
 
