@@ -106,12 +106,24 @@ describe('the run', () => {
         expect(drawn.filter((t) => t === `${n} Example St`)).toHaveLength(2) // once on the sheet, once on the divider's face
       }
       expect(drawn.filter((t) => t === 'Do not mail this page.')).toHaveLength(3)
+      // On a divider the red box's two lines and the pull line are centred on the page.
+      const at = words.mock.calls.map(([t, o]) => ({ t, x: Number(o?.x), y: Number(o?.y), size: Number(o?.size), font: o?.font }))
+      const centre = (d: { t: string; x: number; size: number; font: unknown }) => d.x + (d.font as { widthOfTextAtSize(t: string, s: number): number }).widthOfTextAtSize(d.t, d.size) / 2
+      for (const t of ['Do not mail this page.', 'Mail only the 3 pages behind it. They stop at the next divider, envelope 2.', 'Pull this page out before you seal the envelope. It stays on the desk with the mail sheet.']) {
+        expect(centre(at.find((d) => d.t === t)!)).toBeCloseTo(306, 1)
+      }
+      // The three things to tick are one under the other, in the order they are done.
+      const ticks = ['Envelope written as drawn', '3 pages in the envelope', 'Number written at #1 on the mail sheet'].map((t) => at.find((d) => d.t === t)!)
+      expect(new Set(ticks.map((d) => d.x)).size).toBe(1)
+      expect(ticks[0]!.y).toBeGreaterThan(ticks[1]!.y)
+      expect(ticks[1]!.y).toBeGreaterThan(ticks[2]!.y)
       expect(drawn.filter((t) => t === 'DIVIDER · DO NOT MAIL THIS PAGE')).toHaveLength(3)
       expect(drawn).toContain('Mail only the 3 pages behind it. They stop at the next divider, envelope 2.')
       expect(drawn).toContain('Mail only the 3 pages behind it. They are the last pages of this print.')
-      // The return address and the certified line are on each face.
+      // The return address is on each face. The face carries no certified mail line: the label is the post office's,
+      // and the number's home is the mail sheet's boxes.
       expect(drawn.filter((t) => t === 'Sample Plumbing LLC')).toHaveLength(3)
-      expect(drawn.filter((t) => t === 'CERTIFIED MAIL · RETURN RECEIPT REQUESTED')).toHaveLength(3)
+      expect(drawn.some((t) => /return receipt|article no/i.test(t))).toBe(false)
     } finally {
       words.mockRestore()
     }

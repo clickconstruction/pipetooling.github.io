@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'feature',
   highlights: [
     'A divider page now prints in front of each envelope’s pages. It carries the envelope’s number, the same number as its line on the mail sheet.',
-    'It draws the envelope’s face: your return address, the certified mail line, and the name and address to copy by eye.',
+    'It draws the envelope’s face: your return address, and the name and address to copy by eye.',
     'It says Do not mail this page, and that the pages to mail stop at the next divider.',
     'The divider stays on the desk. The copy kept on each job is still only what went in the envelope.',
   ],

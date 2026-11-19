@@ -235,14 +235,14 @@ export const LIEN_SERVE_SHEET_WORDS = {
  * The divider in front of each envelope's pages (the owner, 2026-11-19, after a 22-envelope print: "to avoid the
  * possible situation where someone might get confused and put the wrong thing in the wrong envelope"). It carries the
  * envelope's number on the mail sheet and the envelope's face, and it stays on the desk, as the notice run's divider
- * does (`runDividerHtml`).
+ * does (`runDividerHtml`). The face is what a person writes: the return address and the name and address. It carries
+ * no certified mail line (the owner, 2026-11-19): the post office's label says that, the number's home is the mail
+ * sheet's boxes, and whether a return receipt is asked for is not this page's to say.
  */
 export const LIEN_SERVE_DIVIDER_WORDS = {
   tag: 'Divider · do not mail this page',
   stop: 'Do not mail this page.',
   face: 'The envelope’s face. Write or print the envelope like this.',
-  certified: 'CERTIFIED MAIL · RETURN RECEIPT REQUESTED',
-  article: 'Article no. ____ ____ ____ ____ ____',
   pull: 'Pull this page out before you seal the envelope. It stays on the desk with the mail sheet.',
   stays: 'stays on the desk',
 } as const

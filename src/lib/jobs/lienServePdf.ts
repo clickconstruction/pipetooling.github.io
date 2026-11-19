@@ -372,9 +372,9 @@ const FACE_H = 223
 
 /**
  * One divider page at the end of `doc`: a black band along the top edge so it shows in the stack, the envelope's
- * number large as the mail sheet lists it, *Do not mail this page* and where the envelope's pages stop, the envelope's
- * face to copy by eye (the return address, the certified mail line, the name and address as `row` carries them), and
- * three things to tick. It is the lien copies' twin of the notice run's divider (`runDividerHtml`).
+ * number large as the mail sheet lists it, *Do not mail this page* and where the envelope's pages stop (centred), the envelope's
+ * face to copy by eye (the return address, and the name and address as `row` carries them), and
+ * three things to tick one under the other, then the centred line that it is pulled before sealing. It is the lien copies' twin of the notice run's divider (`runDividerHtml`).
  */
 export async function drawLienEnvelopeDivider(doc: PDFDocument, row: LienServeSheetRow, sheet: Pick<LienServeSheet, 'rows' | 'from'>): Promise<void> {
   const lib = await loadPdfLib()
@@ -392,6 +392,10 @@ export async function drawLienEnvelopeDivider(doc: PDFDocument, row: LienServeSh
   const textRight = (s: string, at: number, opt: { font?: PDFFont; size?: number; color?: [number, number, number] } = {}) => {
     const font = opt.font ?? regular
     text(s, right - font.widthOfTextAtSize(fontSafe(font, s), opt.size ?? 10), at, opt)
+  }
+  const textCentre = (s: string, at: number, opt: { font?: PDFFont; size?: number; color?: [number, number, number] } = {}) => {
+    const font = opt.font ?? regular
+    text(s, (PAGE_W - font.widthOfTextAtSize(fontSafe(font, s), opt.size ?? 10)) / 2, at, opt)
   }
   let y = PAGE_H - MARGIN
 
@@ -415,8 +419,8 @@ export async function drawLienEnvelopeDivider(doc: PDFDocument, row: LienServeSh
   y -= 22
   const stopH = 50
   page.drawRectangle({ x: MARGIN, y: y - stopH, width, height: stopH, borderColor: rgb(FLAG), borderWidth: 1.6 })
-  text(d.stop, MARGIN + 12, y - 21, { font: bold, size: 15, color: FLAG })
-  text(d.behind, MARGIN + 12, y - 39, { size: 11 })
+  textCentre(d.stop, y - 21, { font: bold, size: 15, color: FLAG })
+  textCentre(d.behind, y - 39, { size: 11 })
   y -= stopH + 26
 
   // The envelope's face.
@@ -425,13 +429,11 @@ export async function drawLienEnvelopeDivider(doc: PDFDocument, row: LienServeSh
   const faceTop = y
   page.drawRectangle({ x: MARGIN, y: faceTop - FACE_H, width, height: FACE_H, borderColor: rgb(MUTED), borderWidth: 1 })
   let at = faceTop - 20
+  // The return address, top left. Nothing else is in that corner: the certified label is the post office's.
   sheet.from.slice(0, 4).forEach((line, i) => {
     text(line, MARGIN + 14, at, i === 0 ? { font: bold, size: 9 } : { size: 9 })
     at -= 11.5
   })
-  at -= 12
-  text(LIEN_SERVE_DIVIDER_WORDS.certified, MARGIN + 14, at, { font: bold, size: 7.2 })
-  text(LIEN_SERVE_DIVIDER_WORDS.article, MARGIN + 14, at - 11, { size: 7.5, color: MUTED })
   // The name and address sit right of the middle, as an envelope carries them.
   const toX = MARGIN + width * 0.36
   const toW = right - toX - 14
@@ -448,17 +450,16 @@ export async function drawLienEnvelopeDivider(doc: PDFDocument, row: LienServeSh
   text(d.faceFoot, right - 10 - regular.widthOfTextAtSize(fontSafe(regular, d.faceFoot), 7), faceTop - FACE_H + 7, { size: 7, color: MUTED })
   y = faceTop - FACE_H - 30
 
-  // Three things to tick.
-  let x = MARGIN
+  // Three things to tick, one under the other, in the order they are done.
   for (const tick of d.ticks) {
-    page.drawRectangle({ x, y: y - 1.5, width: 10, height: 10, borderColor: rgb(MUTED), borderWidth: 0.9 })
-    text(tick, x + 16, y, { size: 10 })
-    x += 16 + regular.widthOfTextAtSize(fontSafe(regular, tick), 10) + 22
+    page.drawRectangle({ x: MARGIN, y: y - 2, width: 11, height: 11, borderColor: rgb(MUTED), borderWidth: 0.9 })
+    text(tick, MARGIN + 19, y, { size: 11 })
+    y -= 21
   }
-  y -= 26
+  y -= 5
   page.drawLine({ start: { x: MARGIN, y }, end: { x: right, y }, thickness: 0.6, color: rgb(RULE) })
-  y -= 16
-  wrap(regular, d.pull, 9.5, width).forEach((line, i) => text(line, MARGIN, y - i * 12, { size: 9.5, color: MUTED }))
+  y -= 18
+  wrap(regular, d.pull, 10, width).forEach((line, i) => textCentre(line, y - i * 12.5, { size: 10, color: MUTED }))
 
   // The foot: which divider this is, and that it stays.
   const footSize = 7
