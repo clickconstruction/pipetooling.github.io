@@ -2,9 +2,9 @@
  * Bids and permits (punch list #307, PR 5): permit news on the Bid Board. A permit changes what
  * a person does mostly after the bid is sent, and nobody opens a sent bid to look: so the board
  * says it. For every bid not yet won or lost on a street address in a city we read, a chip on the
- * row says what the city has on the address, and a strip above the board carries what is new: a
- * general plumbing permit that lists another name, a building permit just issued, an
- * application just filed. A general plumbing permit that lists one of our own names (`ourNames.ts`)
+ * row says what the city has on the address, and Followup's Permit news lens carries what is new
+ * (punch list #401; a strip above the board until then): a general plumbing permit that lists
+ * another name, a building permit just issued, an application just filed. A general plumbing permit that lists one of our own names (`ourNames.ts`)
  * reads as ours, never as another name. It marks nothing by itself. No React, no Supabase.
  */
 import { shortDay, shortMoney, sqFtWords } from './permitResearch'
@@ -209,27 +209,6 @@ export function bidPermitNews(
   takenOff.sort((a, b) => b.at.localeCompare(a.at) || a.title.localeCompare(b.title))
   return { chips, news, takenOff }
 }
-
-/** "Permit news on your bids". The count sits beside it. */
-export const NEWS_TITLE = 'Permit news on your bids'
-
-/** The strip's second, quiet list: the lines on bids that are not the reader's. */
-export const OTHERS_NEWS_TITLE = 'Permit news on other people’s bids'
-
-/**
- * The news for one reader (punch list #401): the lines on their own bids, and everyone else's
- * apart. `isMine` is the board's own answer (you estimate it, you manage it, or it was marked for
- * you). The order within each list is the kernel's.
- */
-export function newsForReader(news: readonly NewsItem[], isMine: (bidId: string) => boolean): { mine: NewsItem[]; others: NewsItem[] } {
-  const mine: NewsItem[] = []
-  const others: NewsItem[] = []
-  for (const n of news) (isMine(n.bidId) ? mine : others).push(n)
-  return { mine, others }
-}
-
-/** The second press on a plumbing line of a sent bid. */
-export const MARK_LOST_LABEL = 'Mark lost…'
 
 /** One reader's side of the permit news: what is new, what was answered and still stands, and what was taken off a bid. */
 export type PermitInboxSide = { fresh: NewsItem[]; standing: NewsItem[]; takenOff: TakenOffPermit[] }

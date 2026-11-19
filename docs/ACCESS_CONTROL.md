@@ -2521,8 +2521,9 @@ A training-mode account cannot sign, since starting a paper is a write.
   `permit_set_builder_keys` runs as the service role alone.
   Since v2.6866 (punch list #307) the same people see two blocks in a bid's Edit window, drawn only for `canResearchPermits` roles and read through `bid_site_permits` under the same row security: **This site** under the address and **What we can see about** the GC under its card.
   Since v2.6872 the same people may answer who a permit's name is, under a bid's site permit and since v2.6963 on a builder's sheet on Builders, where a take-back is one more insert: `builder_customer_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete.
-  The same `canResearchPermits` roles alone see the Bid Board's **Permit news on your bids** strip and its row chips (v2.6870, `showPermitNews` from `Bids.tsx`) and the customer page's **Names on permits** card (v2.6886).
-  Since v2.7923 the strip lists the reader's own bids (`isMyBid`), and only an office reader keeps the one folded line for everyone else's when they have none of their own.
+  The same `canResearchPermits` roles alone see the Bid Board's permit chips on its rows (v2.6870, `permitChips` from `Bids.tsx`) and the customer page's **Names on permits** card (v2.6886).
+  Since v2.7941 the same roles read the news on **Followup → Permit news** (`?tab=permit-news`), where the red count and the first list are the reader's own bids (`isMyBid`) and **Everyone's** lists the rest.
+  A superintendent is turned away from that lens with the other office lenses, and a primary by its own allowlist.
   Since v2.7940 the same people may say whether a permit on a bid's address is that bid's job: `bid_permit_answers` reads and inserts to `user_can_research_permits()`, an insert only as oneself, with no update or delete, and a take-back is one more insert.
   Which names are us on a plumbing permit (v2.6959) is not theirs to say: the list is the owner's with a dev, the *Company → Our names on plumbing permits* row of the Settings table below.
 - **Three kinds of prospect** (v2.5559, `20261015040000_prospect_kinds.sql`): `prospects.kind` (customer · gc_lead · sub) and each kind's facts (`source`;

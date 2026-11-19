@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BEFORE_BID_DAYS, bidPermitNews, newsForReader, permitInbox, permitRefOf, permitShortWords, type NewsBid } from './bidPermitNews'
+import { BEFORE_BID_DAYS, bidPermitNews, permitInbox, permitRefOf, permitShortWords, type NewsBid } from './bidPermitNews'
 import { foldPermitAnswers, type PermitAnswerRow } from './bidPermitAnswers'
 import type { SitePermitRow } from './bidSitePanel'
 
@@ -161,16 +161,6 @@ describe('a line that is not true of the bid', () => {
     expect(both.news.map((n) => [n.kind, n.markLost])).toEqual([['applied', false]])
     // Until the trades load, the trade is not checked.
     expect(bidPermitNews([electrical], new Map([['San Antonio', [plumbingPermit()]]]), READ, TODAY).news.map((n) => n.kind)).toEqual(['plumbing'])
-  })
-
-  it('splits the news by reader: your own bids’ lines, and everyone else’s apart', () => {
-    const mineBid = sentBid()
-    const theirs = sentBid({ id: 'b2', bid_number: '488', project_name: 'Harbor Street Offices', address: '88 Harbor St, San Antonio, TX' })
-    const { news } = read([mineBid, theirs], [plumbingPermit(), plumbingPermit({ id: 'p9', permit_number: 'PLB-9', address: '88 HARBOR ST' })])
-    const split = newsForReader(news, (id) => id === 'b1')
-    expect(split.mine.map((n) => n.bidId)).toEqual(['b1'])
-    expect(split.others.map((n) => n.bidId)).toEqual(['b2'])
-    expect(newsForReader(news, () => false)).toEqual({ mine: [], others: news })
   })
 })
 

@@ -17,8 +17,9 @@ const io = vi.hoisted(() => ({ loadPermitsByHouseNumber: vi.fn(), loadBidsOfCust
 const names = vi.hoisted(() => ({ loadOurNames: vi.fn(), onOurNamesChanged: vi.fn(), changeOurNames: vi.fn() }))
 vi.mock('../lib/research/bidSiteIo', () => io)
 vi.mock('../lib/research/ourNamesIo', () => names)
+// The news hook also reads the answers on a line (punch list #401). None here.
+vi.mock('../lib/research/bidPermitAnswersIo', () => ({ loadPermitAnswers: async () => [], onPermitAnswered: () => () => {}, recordPermitAnswer: async () => {} }))
 
-import { BidBoardPermitNews } from '../components/bids/BidBoardPermitNews'
 import { PermitChip } from '../components/bids/PermitChip'
 import { useBidPermitNews } from './useBidPermitNews'
 import { useOurPermitNames } from './useOurPermitNames'
@@ -32,13 +33,15 @@ const building: SitePermitRow = {
 const plumbing: SitePermitRow = { ...building, id: 'p2', permit_number: 'PLB-1', kind: 'plumbing', permit_type: 'Plumbing General Permit', work_type: 'Plumbing General', stage: 'issued', submitted_on: null, issued_on: RECENT, project_name: null, contact: 'BLUE HERON PLUMBING', builder_key: 'blueheronplumbing' }
 const bid: NewsBid = { id: 'b1', bid_number: '512', project_name: 'Mill Street Lofts, Building C', address: '4120 Mill Street, San Antonio, TX 78215', outcome: null, bid_date_sent: null, last_contact: null }
 
-/** The board's wiring in small, as `BidsBidBoardTab` has it: the names, the news hook, the strip and one row's chip. */
+/** The page's wiring in small, as `Bids.tsx` has it: the names, the news hook, each line's words and one row's chip. */
 function Board({ enabled = true }: { enabled?: boolean }) {
   const ourNames = useOurPermitNames(enabled)
   const permitNews = useBidPermitNews([bid], enabled, ourNames)
   return (
     <div>
-      <BidBoardPermitNews news={permitNews.news} onOpenBid={() => {}} />
+      {permitNews.news.map((n) => (
+        <p key={n.kind}>{n.words}</p>
+      ))}
       <div data-testid="row">{permitNews.chips.get(bid.id) ? <PermitChip chip={permitNews.chips.get(bid.id)!} /> : 'no chip'}</div>
     </div>
   )

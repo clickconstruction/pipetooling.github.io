@@ -3461,6 +3461,14 @@ the chase lives here.
 Kernel `src/lib/bids/callQueue.ts`;
 component `BidsCallQueueTab.tsx`.
 
+### Permit news (Bids → Followup)
+
+The lens that lists what a city filed on the addresses of the bids not yet won or lost (`BidsPermitNewsLens`, v2.7941, punch list #401).
+A card is one bid and one permit: another name on a plumbing permit, our own plumbing permit, a building permit issued, or an application filed.
+Each card takes one press: **We lost it…** (the bid's own outcome), **Still waiting** or **Got it** (`this_job`), or **Not our job** (`not_this_job`, off the bid for everyone).
+The red count beside **Followup** is the reader's own bids' cards that nobody has answered.
+Until v2.7941 the same lines were a strip above the Bid Board, *Permit news on your bids*.
+
 ### Call-again day (bid follow-up date)
 The day an open bid is next due for a call (v2.4419 database, v2.4420 Call queue;
 punch list #80).
