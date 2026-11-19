@@ -25,10 +25,11 @@ const sheet = (rows: number, held = 0): LienServeSheet => ({
   steps: ['Each envelope takes its letter and the clerk’s stamped copy behind it. They come off the printer in the order below.', 'Mail each envelope by certified mail. Write its number in the boxes under its line.', 'In the app, open the Lien desk.'],
   columns: ['#', 'Job', 'Copy to', 'Pages', 'Mail by', 'Name and address on the envelope'],
   numberLabel: 'Certified mail number',
+  from: ['Sample Plumbing LLC', 'PO Box 100', 'Kyle, TX 78640'],
   rows: Array.from({ length: rows }, (_, i) => ({ n: i + 1, job: `22${i} · Sample Job with a long name that wraps`, to: i % 2 ? 'Original contractor' : 'Owner', name: 'Hollow Creek Holdings LLC — Peña & Søn', address: '88 Sample Ridge Rd, Suite 400, Austin, TX 78700', addressLines: ['88 Sample Ridge Rd, Suite 400', 'Austin, TX 78700'], pages: '3', mailBy: i === 0 ? 'Nov 11 · late' : 'Nov 23' })),
   heldHead: 'Not in this print',
   held: Array.from({ length: held }, (_, i) => ({ job: `23${i} · Held Job`, words: 'Not printed: no stamped copy saved.', act: 'Add the clerk’s stamped scan on the job’s Lien window.' })),
-  foot: ['Mail sheet printed November 19, 2026', 'The first letter is the next page'],
+  foot: ['Mail sheet printed November 19, 2026', 'The first envelope’s divider is the next page'],
 })
 
 describe('inspectLienCopy', () => {
@@ -80,13 +81,47 @@ describe('the run', () => {
   it('is the mail sheet, then every lien’s papers in order, and each lien’s own file is what the stack holds', async () => {
     const out = await buildLienServeStackPdf({ jobs: [await job('a', 300), await job('b', 500, 3, 1)], sheet: () => sheet(3), title: 'Copies of 2 filed lien affidavits' })
     expect(out.failed).toEqual([])
-    expect(out.jobs.map((j) => [j.key, j.pages])).toEqual([['a', 6], ['b', 4]])
+    // Each lien's own file is its papers alone. The dividers are counted beside it and are in the stack alone.
+    expect(out.jobs.map((j) => [j.key, j.pages, j.dividers])).toEqual([['a', 6, 2], ['b', 4, 1]])
     const a = await widths(out.jobs[0]!.blob)
     const b = await widths(out.jobs[1]!.blob)
     expect(a).toEqual([201, 301, 302, 211, 301, 302])
     expect(b).toEqual([401, 501, 502, 503])
-    // The sheet is one letter page in front. Behind it, page for page, are the files kept on the jobs.
-    expect(await widths(out.stack!)).toEqual([612, ...a, ...b])
+    // The sheet is one letter page in front. Behind it each envelope has a divider, a letter page, and then, page
+    // for page, its part of the file kept on the job.
+    expect(await widths(out.stack!)).toEqual([612, 612, ...a.slice(0, 3), 612, ...a.slice(3), 612, ...b])
+  })
+
+  it('draws each divider from the sheet’s own line for that envelope, in the stack’s order', async () => {
+    const words = vi.spyOn(PDFPage.prototype, 'drawText')
+    try {
+      const s = sheet(3)
+      s.rows.forEach((r, i) => { r.name = `Sample Reader ${i + 1}`; r.addressLines = [`${i + 1} Example St`, 'Buda, TX 78610'] })
+      const out = await buildLienServeStackPdf({ jobs: [await job('a', 300), await job('b', 500, 3, 1)], sheet: () => s, title: 't' })
+      expect(out.failed).toEqual([])
+      const drawn = words.mock.calls.map(([t]) => t)
+      for (const n of [1, 2, 3]) {
+        expect(drawn).toContain(`#${n} on the mail sheet`)
+        expect(drawn).toContain(`Envelope ${n} of 3 · ${n % 2 ? 'Owner' : 'Original contractor'}`)
+        expect(drawn.filter((t) => t === `${n} Example St`)).toHaveLength(2) // once on the sheet, once on the divider's face
+      }
+      expect(drawn.filter((t) => t === 'Do not mail this page.')).toHaveLength(3)
+      expect(drawn.filter((t) => t === 'DIVIDER · DO NOT MAIL THIS PAGE')).toHaveLength(3)
+      expect(drawn).toContain('Mail only the 3 pages behind it. They stop at the next divider, envelope 2.')
+      expect(drawn).toContain('Mail only the 3 pages behind it. They are the last pages of this print.')
+      // The return address and the certified line are on each face.
+      expect(drawn.filter((t) => t === 'Sample Plumbing LLC')).toHaveLength(3)
+      expect(drawn.filter((t) => t === 'CERTIFIED MAIL · RETURN RECEIPT REQUESTED')).toHaveLength(3)
+    } finally {
+      words.mockRestore()
+    }
+  })
+
+  it('draws no divider when the sheet does not list exactly the envelopes behind it', async () => {
+    // Two liens of two envelopes are four envelopes; a sheet of three lines cannot say whose each divider is.
+    const out = await buildLienServeStackPdf({ jobs: [await job('a', 300), await job('b', 500)], sheet: () => sheet(3), title: 't' })
+    expect(out.jobs.map((j) => j.dividers)).toEqual([0, 0])
+    expect(await widths(out.stack!)).toEqual([612, ...(await widths(out.jobs[0]!.blob)), ...(await widths(out.jobs[1]!.blob))])
   })
 
   it('goes on past a lien whose papers cannot be put together, and tells the sheet which', async () => {
@@ -96,7 +131,8 @@ describe('the run', () => {
     expect(out.jobs.map((j) => j.key)).toEqual(['a'])
     expect(out.failed.map((f) => f.key)).toEqual(['bad'])
     expect(told.map((f) => f.key)).toEqual(['bad'])
-    expect((await widths(out.stack!)).length).toBe(1 + 6)
+    // The sheet, then the one lien that built: two envelopes, each a divider and three pages.
+    expect((await widths(out.stack!)).length).toBe(1 + 2 + 6)
   })
 
   it('makes no stack when no lien’s papers could be built', async () => {

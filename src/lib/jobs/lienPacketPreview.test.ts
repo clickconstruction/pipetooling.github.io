@@ -158,6 +158,12 @@ describe('lienPacketReport', () => {
     expect(lines.slice(5)).toEqual(['  pages 1–2 · Mail sheet', '  pages 3–4 · 2340 · Ortega Residence · 2 envelopes, each 1 stamped page, no letter'])
   })
 
+  it('counts the divider in front of each envelope in the file’s pages, and names it', () => {
+    // A one-page sheet, then two envelopes of a divider, a letter and two stamped pages each.
+    const lines = lienPacketReport({ path: '/private/tmp/scratch/packet.pdf', pages: 9, letter: true, ready: [{ ...ready(ORTEGA, 2, 2), dividers: 2 }], held: [], notPrinted: [], notOnList: [] })
+    expect(lines.slice(5)).toEqual(['  page 1 · Mail sheet', '  pages 2–9 · 2340 · Ortega Residence · 2 envelopes, each a divider, a letter and 2 stamped pages'])
+  })
+
   it('says a filing that keeps no letter prints its copy alone, though the letter was asked for', () => {
     const lines = lienPacketReport({ path: '/private/tmp/scratch/packet.pdf', pages: 3, letter: true, ready: [ready(ORTEGA, 1, 2, false)], held: [], notPrinted: [], notOnList: [] })
     expect(lines[6]).toBe('  pages 2–3 · 2340 · Ortega Residence · 1 envelope, each 2 stamped pages, no letter')

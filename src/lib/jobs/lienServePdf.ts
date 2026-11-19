@@ -12,7 +12,7 @@
  * The rules a saved copy is read by are `lienStampedCopy.ts`; the sheet's words are `lienServeMailSheet`.
  */
 import type { PDFDocument, PDFFont, PDFPage } from 'pdf-lib'
-import { LIEN_CERTIFIED_NUMBER_DIGITS, LIEN_CERTIFIED_NUMBER_GROUPS, type LienServeSheet } from './lienServePackets'
+import { LIEN_CERTIFIED_NUMBER_DIGITS, LIEN_CERTIFIED_NUMBER_GROUPS, LIEN_SERVE_DIVIDER_WORDS, lienServeDivider, type LienServeSheet, type LienServeSheetRow } from './lienServePackets'
 import { LIEN_COPY_BROKEN_HOLD, LIEN_COPY_NOT_PRINTABLE_HOLD, lienCopyKind, type LienCopyKind, type LienCopyRead } from './lienStampedCopy'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
@@ -54,7 +54,8 @@ export async function inspectLienCopy(bytes: Uint8Array): Promise<LienCopyRead> 
 /** One lien's papers for the print: a letter for each envelope (null prints the copy alone), and the stamped copy. */
 export type LienServePdfJob = { key: string; title: string; envelopes: ReadonlyArray<{ letter: Blob | null }>; copy: { kind: LienCopyKind; bytes: Uint8Array } }
 
-export type LienServePdfBuilt = { key: string; blob: Blob; pages: number }
+/** `pages` are the lien's own papers, the file kept on its job. `dividers` are the divider pages the stack puts in front of its envelopes; they are in the stack alone. */
+export type LienServePdfBuilt = { key: string; blob: Blob; pages: number; dividers: number }
 export type LienServePdfOut = {
   /** The whole run: the mail sheet, then every lien's papers. Null when no lien's papers could be built. */
   stack: Blob | null
@@ -77,6 +78,12 @@ function printAsItIs(doc: PDFDocument, lib: Awaited<ReturnType<typeof loadPdfLib
 
 /** One lien's papers as a PDF of their own: for each envelope the letter, then every page of the stamped copy. */
 export async function buildLienServeJobPdf(job: LienServePdfJob): Promise<Uint8Array> {
+  return (await buildJobPapers(job)).bytes
+}
+
+/** The same, with how many pages each envelope takes, in order, so the stack can put a divider in front of each. */
+async function buildJobPapers(job: LienServePdfJob): Promise<{ bytes: Uint8Array; envelopePages: number[] }> {
+  const envelopePages: number[] = []
   const lib = await loadPdfLib()
   const out = await lib.PDFDocument.create()
   out.setTitle(job.title)
@@ -85,6 +92,7 @@ export async function buildLienServeJobPdf(job: LienServePdfJob): Promise<Uint8A
   const picture = job.copy.kind === 'jpeg' ? await out.embedJpg(job.copy.bytes) : job.copy.kind === 'png' ? await out.embedPng(job.copy.bytes) : null
   if (job.envelopes.length === 0) throw new Error('This lien has no envelope.')
   for (const envelope of job.envelopes) {
+    const before = out.getPageCount()
     if (envelope.letter) {
       const letter = await lib.PDFDocument.load(await envelope.letter.arrayBuffer())
       for (const page of await out.copyPages(letter, letter.getPageIndices())) out.addPage(page)
@@ -100,8 +108,9 @@ export async function buildLienServeJobPdf(job: LienServePdfJob): Promise<Uint8A
       const h = picture.height * scale
       page.drawImage(picture, { x: (PAGE_W - w) / 2, y: (PAGE_H - h) / 2, width: w, height: h })
     }
+    envelopePages.push(out.getPageCount() - before)
   }
-  return out.save()
+  return { bytes: await out.save(), envelopePages }
 }
 
 /**
@@ -110,13 +119,13 @@ export async function buildLienServeJobPdf(job: LienServePdfJob): Promise<Uint8A
  */
 export async function buildLienServeStackPdf(input: { jobs: ReadonlyArray<LienServePdfJob>; sheet: (failed: ReadonlyArray<{ key: string; reason: string }>) => LienServeSheet; title: string; autoPrint?: boolean }): Promise<LienServePdfOut> {
   const lib = await loadPdfLib()
-  const built: Array<LienServePdfBuilt & { bytes: Uint8Array }> = []
+  const built: Array<LienServePdfBuilt & { bytes: Uint8Array; envelopePages: number[] }> = []
   const failed: Array<{ key: string; reason: string }> = []
   for (const job of input.jobs) {
     try {
-      const bytes = await buildLienServeJobPdf(job)
+      const { bytes, envelopePages } = await buildJobPapers(job)
       const pages = (await lib.PDFDocument.load(bytes)).getPageCount()
-      built.push({ key: job.key, bytes, pages, blob: new Blob([bytes as BlobPart], { type: 'application/pdf' }) })
+      built.push({ key: job.key, bytes, pages, dividers: 0, envelopePages, blob: new Blob([bytes as BlobPart], { type: 'application/pdf' }) })
     } catch (e) {
       failed.push({ key: job.key, reason: formatErrorMessage(e, 'its papers could not be put together') })
     }
@@ -125,14 +134,30 @@ export async function buildLienServeStackPdf(input: { jobs: ReadonlyArray<LienSe
   const stack = await lib.PDFDocument.create()
   stack.setTitle(input.title)
   printAsItIs(stack, lib)
-  await drawLienMailSheet(stack, input.sheet(failed))
+  const sheet = input.sheet(failed)
+  await drawLienMailSheet(stack, sheet)
+  // A divider in front of each envelope, drawn from the sheet's own line for it, so its number and its face are the
+  // sheet's. They are drawn only when the sheet lists exactly the envelopes behind it: a divider with another
+  // envelope's address would be worse than none.
+  const dividers = sheet.rows.length === built.reduce((n, job) => n + job.envelopePages.length, 0)
+  let row = 0
   for (const job of built) {
     const doc = await lib.PDFDocument.load(job.bytes)
-    for (const page of await stack.copyPages(doc, doc.getPageIndices())) stack.addPage(page)
+    let at = 0
+    for (const count of job.envelopePages) {
+      if (dividers) {
+        await drawLienEnvelopeDivider(stack, sheet.rows[row]!, sheet)
+        job.dividers += 1
+      }
+      row += 1
+      const indices = Array.from({ length: count }, (_, i) => at + i)
+      for (const page of await stack.copyPages(doc, indices)) stack.addPage(page)
+      at += count
+    }
   }
   if (input.autoPrint) stack.catalog.set(lib.PDFName.of('OpenAction'), stack.context.obj({ Type: 'Action', S: 'Named', N: 'Print' }))
   const bytes = await stack.save()
-  return { stack: new Blob([bytes as BlobPart], { type: 'application/pdf' }), jobs: built.map(({ key, blob, pages }) => ({ key, blob, pages })), failed }
+  return { stack: new Blob([bytes as BlobPart], { type: 'application/pdf' }), jobs: built.map(({ key, blob, pages, dividers }) => ({ key, blob, pages, dividers })), failed }
 }
 
 // ── The mail sheet, drawn ───────────────────────────────────────────────────────────────────────────────────────
@@ -338,4 +363,106 @@ export async function drawLienMailSheet(doc: PDFDocument, sheet: LienServeSheet)
     text(left, MARGIN, MARGIN - 8, { size: 7, color: MUTED })
     if (i === pages.length - 1) text(sheet.foot[1], PAGE_W - MARGIN - regular.widthOfTextAtSize(fontSafe(regular, sheet.foot[1]), 7), MARGIN - 8, { size: 7, color: MUTED })
   })
+}
+
+// ── The divider in front of an envelope, drawn ──────────────────────────────────────────────────────────────────
+
+/** The envelope's face on the divider: the height of a business envelope against the page's width, in points. */
+const FACE_H = 223
+
+/**
+ * One divider page at the end of `doc`: a black band along the top edge so it shows in the stack, the envelope's
+ * number large as the mail sheet lists it, *Do not mail this page* and where the envelope's pages stop, the envelope's
+ * face to copy by eye (the return address, the certified mail line, the name and address as `row` carries them), and
+ * three things to tick. It is the lien copies' twin of the notice run's divider (`runDividerHtml`).
+ */
+export async function drawLienEnvelopeDivider(doc: PDFDocument, row: LienServeSheetRow, sheet: Pick<LienServeSheet, 'rows' | 'from'>): Promise<void> {
+  const lib = await loadPdfLib()
+  const regular = await doc.embedFont(lib.StandardFonts.Helvetica)
+  const bold = await doc.embedFont(lib.StandardFonts.HelveticaBold)
+  const rgb = (c: [number, number, number]) => lib.rgb(c[0], c[1], c[2])
+  const d = lienServeDivider(row, sheet.rows.length)
+  const page = doc.addPage([PAGE_W, PAGE_H])
+  const width = PAGE_W - MARGIN * 2
+  const right = PAGE_W - MARGIN
+  const text = (s: string, x: number, at: number, opt: { font?: PDFFont; size?: number; color?: [number, number, number] } = {}) => {
+    const font = opt.font ?? regular
+    page.drawText(fontSafe(font, s), { x, y: at, size: opt.size ?? 10, font, color: rgb(opt.color ?? INK) })
+  }
+  const textRight = (s: string, at: number, opt: { font?: PDFFont; size?: number; color?: [number, number, number] } = {}) => {
+    const font = opt.font ?? regular
+    text(s, right - font.widthOfTextAtSize(fontSafe(font, s), opt.size ?? 10), at, opt)
+  }
+  let y = PAGE_H - MARGIN
+
+  // The band, then what the page is.
+  page.drawRectangle({ x: MARGIN, y: y - 16, width, height: 16, color: rgb(INK) })
+  y -= 34
+  text(LIEN_SERVE_DIVIDER_WORDS.tag.toUpperCase(), MARGIN, y, { font: bold, size: 10, color: FLAG })
+
+  // The number, large, with whose envelope it is beside it.
+  y -= 62
+  text(d.number, MARGIN, y, { font: bold, size: 64 })
+  const numberW = bold.widthOfTextAtSize(d.number, 64)
+  text(d.of, MARGIN + numberW + 12, y + 24, { size: 14, color: MUTED })
+  text(`#${d.n} on the mail sheet`, MARGIN + numberW + 12, y + 6, { size: 10, color: MUTED })
+  textRight(d.who, y + 34, { font: bold, size: 14 })
+  const jobSize = fitSize(regular, d.job, 10, 7, width * 0.5)
+  textRight(wrap(regular, d.job, jobSize, width * 0.5)[0] ?? '', y + 19, { size: jobSize })
+  if (d.mailBy) textRight(d.mailBy, y + 4, d.late ? { font: bold, size: 10, color: FLAG } : { size: 10 })
+
+  // Do not mail this page, and where the envelope's pages stop.
+  y -= 22
+  const stopH = 50
+  page.drawRectangle({ x: MARGIN, y: y - stopH, width, height: stopH, borderColor: rgb(FLAG), borderWidth: 1.6 })
+  text(d.stop, MARGIN + 12, y - 21, { font: bold, size: 15, color: FLAG })
+  text(d.behind, MARGIN + 12, y - 39, { size: 11 })
+  y -= stopH + 26
+
+  // The envelope's face.
+  text(LIEN_SERVE_DIVIDER_WORDS.face.toUpperCase(), MARGIN, y, { font: bold, size: 6.6, color: MUTED })
+  y -= 8
+  const faceTop = y
+  page.drawRectangle({ x: MARGIN, y: faceTop - FACE_H, width, height: FACE_H, borderColor: rgb(MUTED), borderWidth: 1 })
+  let at = faceTop - 20
+  sheet.from.slice(0, 4).forEach((line, i) => {
+    text(line, MARGIN + 14, at, i === 0 ? { font: bold, size: 9 } : { size: 9 })
+    at -= 11.5
+  })
+  at -= 12
+  text(LIEN_SERVE_DIVIDER_WORDS.certified, MARGIN + 14, at, { font: bold, size: 7.2 })
+  text(LIEN_SERVE_DIVIDER_WORDS.article, MARGIN + 14, at - 11, { size: 7.5, color: MUTED })
+  // The name and address sit right of the middle, as an envelope carries them.
+  const toX = MARGIN + width * 0.36
+  const toW = right - toX - 14
+  let toY = faceTop - 104
+  const nameSize = fitSize(bold, row.name, 13, 9, toW)
+  for (const line of wrap(bold, row.name, nameSize, toW)) {
+    text(line, toX, toY, { font: bold, size: nameSize })
+    toY -= nameSize + 3.5
+  }
+  for (const line of (row.addressLines.length > 0 ? row.addressLines : [row.address]).flatMap((l) => wrap(regular, l, 12, toW))) {
+    text(line, toX, toY, { size: 12 })
+    toY -= 15.5
+  }
+  text(d.faceFoot, right - 10 - regular.widthOfTextAtSize(fontSafe(regular, d.faceFoot), 7), faceTop - FACE_H + 7, { size: 7, color: MUTED })
+  y = faceTop - FACE_H - 30
+
+  // Three things to tick.
+  let x = MARGIN
+  for (const tick of d.ticks) {
+    page.drawRectangle({ x, y: y - 1.5, width: 10, height: 10, borderColor: rgb(MUTED), borderWidth: 0.9 })
+    text(tick, x + 16, y, { size: 10 })
+    x += 16 + regular.widthOfTextAtSize(fontSafe(regular, tick), 10) + 22
+  }
+  y -= 26
+  page.drawLine({ start: { x: MARGIN, y }, end: { x: right, y }, thickness: 0.6, color: rgb(RULE) })
+  y -= 16
+  wrap(regular, d.pull, 9.5, width).forEach((line, i) => text(line, MARGIN, y - i * 12, { size: 9.5, color: MUTED }))
+
+  // The foot: which divider this is, and that it stays.
+  const footSize = 7
+  const footLeft = wrap(regular, d.foot[0], footSize, width - 90)[0] ?? ''
+  text(footLeft, MARGIN, MARGIN - 8, { size: footSize, color: MUTED })
+  textRight(d.foot[1], MARGIN - 8, { size: footSize, color: MUTED })
 }
