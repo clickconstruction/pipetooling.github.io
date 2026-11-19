@@ -465,6 +465,27 @@ describe('LienBoard · every press on its bin’s title line (v2.7708, punch lis
     expect(h.onNote).toHaveBeenCalledTimes(1)
   })
 
+  it('Back from the clerk (v2.7856): its door is a line under the print on Ready to file, and the bin’s own press where no print takes the line', () => {
+    const onPress = vi.fn()
+    const door = { label: 'Enter document numbers · 3 ›', onPress, under: [{ key: 'filings', words: 'Back from the clerk?', tone: 'muted' as const, doors: [{ key: 'filings', label: 'Enter document numbers · 3 ›', onPress }] }] }
+    const b = board({ affidavits: [affidavit('8', 'ready')] })
+    render(<LienBoard board={b} isMobile={false} columnsOnly binPress={{ 'affidavit:ready': door }} prints={{ notice: null, affidavit: lienBoardAffidavitPrint({ ready: 3, held: 0, earlierForm: 0, stack: LIEN_BOARD_USUAL_STACK }), ...handlers() }} />)
+    const ready = document.querySelector('[data-lien-board-bin="affidavit:ready"]') as HTMLElement
+    // The print keeps the title line. The door stands on a line of its own under it.
+    expect(within(ready.querySelector('[data-lien-board-bin-title]') as HTMLElement).getByRole('button', { name: 'Print 3 for notarization' })).toBeTruthy()
+    const line = ready.querySelector('[data-lien-board-bin-line]') as HTMLElement
+    expect(line.textContent).toContain('Back from the clerk?')
+    fireEvent.click(within(line).getByRole('button', { name: 'Enter document numbers · 3 ›' }))
+    expect(onPress).toHaveBeenCalledTimes(1)
+    cleanup()
+    // With no print on the bin, the door is the bin's own press and draws no line.
+    render(<LienBoard board={b} isMobile={false} columnsOnly binPress={{ 'affidavit:ready': door }} />)
+    const alone = document.querySelector('[data-lien-board-bin="affidavit:ready"]') as HTMLElement
+    expect(alone.querySelector('[data-lien-board-bin-line]')).toBeNull()
+    fireEvent.click(within(alone).getByRole('button', { name: 'Enter document numbers · 3 ›' }))
+    expect(onPress).toHaveBeenCalledTimes(2)
+  })
+
   it('the usual stack draws no line under Ready to file, and neither does a held paper: the bin is its name, its count, its press and its chips', () => {
     const b = board({ affidavits: [affidavit('8', 'ready')] })
     render(<LienBoard board={b} isMobile={false} columnsOnly prints={{ notice: null, affidavit: lienBoardAffidavitPrint({ ready: 10, held: 2, earlierForm: 0, stack: LIEN_BOARD_USUAL_STACK }), ...handlers() }} />)

@@ -104,7 +104,8 @@ import LienPaperPropertyWindow from './LienPaperPropertyWindow'
 import LienPaperGcWindow from './LienPaperGcWindow'
 import LienPaperPreviewOverlay, { type LienPaperPreviewEntry } from './LienPaperPreviewOverlay'
 import { type LienStopPaper } from './LienStopPaperWindow'
-import { affidavitStopPages, filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
+import { affidavitStopPages, filingSnapshotPage, lienDeskAffidavitFieldsFor, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
+import { LIEN_FILING_BATCH_WORDS, lienFilingDoorWords, lienFilingTargets } from '../../lib/jobs/lienFilingBatch'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
@@ -817,7 +818,21 @@ export default function LienDesk({
   // The mailed liens that window still shows (v2.7846): its tick saves itself, so a lien ticked on one envelope's number stays until both have a number and a receipt.
   const serveMailedJobs = useMemo(() => (data ? lienServeMailedJobsFromDesk(data, lienServeProofMissing) : []), [data])
   // Every filed lien's document number, for the check on one typed in that window (`lienDocNumber.ts`).
-  const docKnown = useMemo(() => (data ? lienDocKnownFromFilings(data.filingsByJob, (jobId) => [(data.jobsById[jobId]?.hcp_number ?? '').trim(), (data.jobsById[jobId]?.job_name ?? '').trim()].filter(Boolean).join(' · ')) : []), [data])
+  const docKnown = useMemo(() => (data ? lienDocKnownFromFilings(data.filingsByJob, (jobId) => jobLabel(data.jobsById[jobId], jobId)) : []), [data])
+  // Back from the clerk (v2.7856): the liens in Ready to file, each with the paper the desk draws for it, for the office that records a filing.
+  const filingTargets = useMemo(
+    () =>
+      data && office
+        ? lienFilingTargets({
+            entries: data.affidavits.entries,
+            jobNumber: (jobId) => jobNumberOf(data.jobsById[jobId], jobId),
+            jobLabel: (jobId) => jobLabel(data.jobsById[jobId], jobId),
+            fieldsFor: (jobId) => lienDeskAffidavitFieldsFor({ data, jobId, issuer, signerNameFor, todayYmd }) as Record<string, unknown> | null,
+          })
+        : [],
+    [data, office, issuer, signerNameFor, todayYmd],
+  )
+  const filingsDoor = lienFilingDoorWords(filingTargets.length)
   // Every filed affidavit a scan can go to, for the window that takes several at once (punch list #366). No read of its own.
   const scanTargets = useMemo(() => (data ? lienScanTargetsFromDesk(data) : []), [data])
   // The door to that window, as the Board's bin and the list's folded row say it, named for the stage the copies are at:
@@ -891,6 +906,7 @@ export default function LienDesk({
   // The copy a stop window's card opened the copies window on (`lienMailProofDoor.ts`); forgotten when that window closes.
   const [serveLand, setServeLand] = useState<LienServeLanding | null>(null)
   /** The copies window from the bin's press or the folded row: opened on the half its name says. */
+  const openFilings = () => windows.setFilingsOpen(true)
   const openServeAll = () => {
     // A door that names both halves opens the window at its top, where both are in reach.
     setServeLand(serveDoorAt?.stage === 'record' ? { part: 'numbers' } : serveDoorAt?.stage === 'print' ? { part: 'print' } : null)
@@ -1826,6 +1842,18 @@ export default function LienDesk({
     ...(office && serveDoor ? { 'affidavit:filed': { label: serveDoor, onPress: openServeAll, title: 'Print the copies each filed lien owes, then enter their mail numbers' } } : null),
     // Each closed end's press: the window opens on the bin's first paper and walks the rest. `quiet`, since nothing there can be rushed.
     ...Object.fromEntries((['notice:missed', 'affidavit:missed'] as const).map((key) => [key, closedBinJobs(key)] as const).filter(([, ids]) => ids.length > 0).map(([key, ids]) => [key, { label: lienClosedAnswerPress(ids.length), onPress: () => setClosedWalk({ jobIds: ids, start: ids[0]! }), quiet: true, title: 'See what closed on each one and answer it', marks: { 'data-lien-board-closed-press': key } }])),
+    // Back from the clerk (v2.7856): the press itself where no print takes the line, and a line under the print where one does.
+    ...(filingsDoor
+      ? {
+          'affidavit:ready': {
+            label: filingsDoor,
+            onPress: openFilings,
+            title: 'Record each filed lien with the number the County Clerk stamped on it',
+            marks: { 'data-lien-board-filings': 'yes' },
+            under: [{ key: 'filings', words: LIEN_FILING_BATCH_WORDS.boardAsk, tone: 'muted' as const, marks: { 'data-lien-board-filings-line': 'yes' }, doors: [{ key: 'filings', label: filingsDoor, onPress: openFilings, marks: { 'data-lien-board-filings-door': 'yes' } }] }],
+          },
+        }
+      : null),
     ...(leaderBinPress ? { 'affidavit:awaiting': { label: approvingLot ? 'Approving…' : leaderBinPress.label, onPress: () => void approveTheLot(), filled: true, dead: leaderBinPress.dead || approvingLot, lines: leaderBinPress.line ? [{ key: 'late', words: leaderBinPress.line }] : [], marks: { 'data-lien-board-approve': 'yes' } } } : null),
   }
   // What a print leaves out, by its door: the approved notices on By paper, where a row says it is unsigned; the affidavits in
@@ -2924,6 +2952,8 @@ export default function LienDesk({
             serveMailedJobs={serveMailedJobs}
             docKnown={docKnown}
             servePrinted={servePrinted}
+            filingTargets={filingTargets}
+            authUserId={authUserId}
             serveLand={serveLand}
             onServeClosed={() => setServeLand(null)}
             onServePrinted={(ids) => setServePrintedNow((cur) => [...cur, ...ids])}

@@ -42,6 +42,27 @@ export function openPhoneMessages(href: string, waitMs: number = PAINTED_MAP_MES
 }
 
 /**
+ * Calls back whenever the page is left, hidden or blurred, or comes back from that. The wait in
+ * `openPhoneMessages` can end before a slow phone has switched apps: an iPhone simulator took
+ * longer than the wait on a press that did open Messages, and the sheet then said it had not. So
+ * the sheet also listens here, and takes those words back the moment the page is left at all.
+ * Returns the call that stops listening.
+ */
+export function onPageLeft(listener: () => void): () => void {
+  document.addEventListener('visibilitychange', listener)
+  window.addEventListener('pagehide', listener)
+  window.addEventListener('blur', listener)
+  return () => {
+    document.removeEventListener('visibilitychange', listener)
+    window.removeEventListener('pagehide', listener)
+    window.removeEventListener('blur', listener)
+  }
+}
+
+/** How long after a press a page being left still counts as that press opening Messages. */
+export const PAINTED_MAP_MESSAGES_LATE_MS = 60_000
+
+/**
  * Copies an address that is still being made. Safari lets a page copy after a wait only when the
  * clipboard was handed a promise inside the press, so this must be called before anything is
  * awaited. Other browsers take the plain write once the address is known. True when it was copied.

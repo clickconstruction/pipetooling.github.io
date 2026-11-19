@@ -1495,6 +1495,8 @@ My Schedule and My day the same through `withKnownScheduledJobMeta`), and the Cu
 Since v2.7797 (punch list #396) the card's face is shown, not told: the job's stages top to bottom as a rail that ends in the finish day ([`PaceRail`](../src/components/jobMode/PaceRail.tsx)), the hours as one bar and **Set the %** on the stage in hand, with everything the card used to say behind **How this is figured** (`lib/jobMode/paceCard.ts`).
 The short page's folded pace line carries two thin bars and the finish day.
 **Ask a master** on the card (v2.7803, [`AskMasterSheet`](../src/components/jobMode/AskMasterSheet.tsx), `lib/jobMode/askMaster.ts`) posts a tagged job note to the master on the job with the card's numbers attached, and the card says who the question waits on. → *Tagged job notes*.
+**My finish date** on the card (v2.7808, [`FinishDateSheet`](../src/components/jobMode/FinishDateSheet.tsx), `lib/jobMode/finishCall.ts`) keeps his own finish day as a row of `job_finish_calls`, shows it on the rail as **You said**, and asks *Still finishing?* two days before the day in force.
+It moves neither the planned finish nor the score.
 
 **Behavior** — clock-driven advance through today's `job_schedule_blocks`:
 
@@ -3091,10 +3093,12 @@ Beside the place the giver may add one **Photo of the spot** (`TaskSpotPhotoFiel
 It shows where tasks are and never where a person is.
 Since v2.7686 it draws on Google Maps through the shared `PinsMapGoogleCanvas`, **Satellite** as Google's `hybrid` and **Streets** as its `roadmap` (`googleMapTypeForLayer` in `lib/map/googleMapType.ts`), and falls back to the Leaflet canvas with no browser key or once Google fails on the page.
 Since v2.7794 (punch list #395) the card draws in the shared frame `PinsMapFrame`, which holds the provider rule, the **Satellite** and **Streets** switch (`MapViewControl`) and **Time**.
+Since v2.7809 *Where my tasks are* draws in it too, on its Leaflet half, where Time looks at a task's place and never at the person's own dot.
 **Time** (v2.7794, which began as **Older photos**, v2.7693) is the press on a map that frames one spot on the photo archive and opens a row of dates under the map (`MapTimeRow`), from Esri's World Imagery Wayback (`lib/map/olderPhotos.ts`, `walkOlderPhotos`).
 The spot is the open dot, or the only dot, and with several dots and none open the row asks for a press on a dot (`mapTimeSpotFromPins` and `MAP_TIME_NO_SPOT_WORDS` in `lib/map/mapTime.ts`).
 **Today** is the right end of that row and is today's photograph of the same ground, so a date and Today are one tile layer apart and the map does not move between them.
 A photograph is named by the day it was taken, and **Before** its publishing month until that day is known.
+Since v2.7870 the row reads *Looking through the archive…* until the walk for the spot asked about is over (`olderPhotosForAsk`), and the sentence over it counts the older photographs only then (`mapTimeCaption`), since two stops taken on one day are one photograph and a running count would fall.
 The Google map is down for as long as Time is on, since Google's terms keep another provider's map off and away from its own, and **Time** again, **Satellite** or **Streets** returns to it.
 Whether Time is on, its spot and its date are kept nowhere (`useMapTime`): they end when the map leaves the screen.
 A map draws in the frame to get all of this, and no doc lists which maps do: each map's own entry or architecture doc says so, and its release fragment says when.
@@ -3162,6 +3166,7 @@ Done opens **Look it over**, where nothing has left the phone, and a walk closed
 Closing the window on an unsaved walk asks **Close the map?** with three presses since v2.7690: **Close, and keep the walk on this phone**, **Close, and throw the walk away**, and **Stay** (`ConfirmDialog`'s `keep`, the blue press over the red one).
 **A shared link** (since v2.7223): **Share** on a map makes a link, `/way/<code>`, that anyone can open with no sign-in until it is ended or ninety days pass (`PaintedMapShareSheet`, the page `PaintedWay`, the `painted-map-link` function, table `painted_map_links`).
 Since v2.7790 the Share sheet has no **Make a link** step (punch list #394): the first press that sends makes the link, **Text it from my phone…** leads on a phone and opens the phone's own Messages with the words written, four tiles sit under it (**Show a code to scan**, **Copy the link**, **Make a picture**, **Send it another way…**), and what a reader meets is one line with **What they see** opening the rest (`paintedMapShare.ts` says which presses are drawn and which leads).
+Since v2.7877 the phone picks the link's code (`pickPaintedMapLinkCode`, `registerPaintedMapLink`), so **Text it from my phone…** opens Messages inside the press while the server is told behind, once `desk.can` has said a link can be made.
 The reader sees the map and nothing else from the app, and **Show where I am** stays on their phone.
 On that page a line's length stands alone on its row, and one sentence under it says how the line was made and, unless the length was measured, that it is a guide for how far and not a measurement (since v2.7408, `wayLineUnderWords` in `paintedWay.ts`: *Drawn by hand, so the length is a guide for how far, not a measurement.*;
 a map of several lines says how under each and the guide once at the foot;
@@ -4087,6 +4092,7 @@ The row's price is an ordinary saved price that the Workbench re-writes from the
 A sent bid keeps the price it went out with, and the row's chip reads *kept as sent*.
 A price typed over the row drops its rule, and the solver holds the row as it holds a pinned one.
 A rule never reads its own row or a row with a rule, so rules cannot chain.
+Since v2.7857 the Pricing Tape's **Put on a row…** and **Make a new row…** open the same window with the calculator's number, through `lib/bids/pricingTapeBridge.ts`.
 Kernel `lib/bids/percentRow.ts`, hook `usePercentRows.ts`, window `PercentRowWindow.tsx`;
 guide `price-a-bid-with-the-workbench`.
 
@@ -4264,7 +4270,8 @@ With several open bills the office picks the bill in a window ([`SubSheetDrawBil
 The pick is saved by `set_sub_sheet_draw_invoice`, which the writers of `set_sub_sheet_stage` may call: dev, assistant and master.
 A waiting sheet's row on Jobs → Subs → Pay reads *Rides on bill 2 of 3* or *No bill tied*, and that line opens the same window.
 Kernel [`drawTie.ts`](../src/lib/subWorkOrders/drawTie.ts), migration `20261118180000`.
-Nothing on the sub's page reads the tie yet.
+Since v2.7843 the sub's page says *Customer paid* with the day once the tied bill's status is `paid`, by `customerPaidOn` in [`subPortalCustomerPaid.ts`](../supabase/functions/_shared/subPortalCustomerPaid.ts), the day being the latest `paid_on` on that bill.
+The office's row says the same under the tie (*Sub sees: Customer paid Nov 12*) and turns amber past two days with no payable-after date (`subSeesCustomerPaid`), a held sheet staying grey.
 
 ### Followup Sheet
 Printable/downloadable report showing account manager's assigned projects with contact details and submission history.
@@ -6272,6 +6279,9 @@ Since v2.7846 everything on it saves by itself and it has no Record press: a tic
 Since v2.7846 each lien's card shows its **Document number** (the filing's `recording_number`), the county, the day filed and the stamped lien, with **Change** and a check on a typed number (`lienDocNumber.ts`).
 Since v2.7846 its receipt press reads **Add the mail receipt**, and a file that looks like the lien or repeats the other envelope's file is asked about before it is kept (`lienReceiptDoubt`).
 A mailed lien that still lacks a number or a receipt stays in the window under **Mailed** (`lienServeMailedJobsFromDesk`).
+**Back from the clerk: record the filings** (v2.7856, `LienFilingBatchWindow.tsx`, `lienFilingBatch.ts`): the window behind *Enter document numbers · N ›*, a line under the print on the Ready to file bin and a door at the top of the copies window.
+It lists every lien in Ready to file, and each is recorded as filed the moment its document number is typed, by Enter or by leaving its box, as the job's Lien window records one.
+**Choose the stamped liens** sends the clerk's files to their liens by the job number in each name and types in a document number found in the name, which waits for one counted press.
 Its third part, **Add the stamped scans** (v2.7524, `LienScanBatchWindow.tsx`, also `/lien-desk?scans=1`), takes the clerk's stamped scans for every filed lien with no saved copy, one file a lien matched by recording number or job number;
 since v2.7528 a PDF of a whole stack is split in the browser into one PDF a lien, a page at a time (*It holds several liens: split it ›*, `lienScanStack.ts`).
 Since v2.7372 a computer's row is two lines: the job, what it owes and its press, then its bin in the Board's words (the door to the step card the four dots opened), the one thing to know and, on an affidavit, where its notice stands (`lienRowWords.ts`);
@@ -6752,8 +6762,13 @@ A box photo's file **follows its job** in Drive (v2.6885 the seat's move, v2.691
 Its press, **Take from G12**, stays at the bottom of the phone's box screen, and its save press names its count, as **Take 3 from G12**.
 A **take** is not a row: it is an id minted on the phone and written on each ledger row and box photo the run makes (`take_id`, and `kind` on the photo, `docs/migrations/20261118130000_box_takes.md`).
 A take's photos are asked for and never required, and the take is saved before the photo after (`src/lib/materials/takeRun.ts`).
+**A box's own screen** on the phone (v2.7873, punch list #398) reads top to bottom: the box's name with **More**, its parts as closed rows with their numbers, four tiles, its photos and takes, and **Take from G12** (`OnSiteBoxScreen.tsx` over `boxScreen.ts`).
+A tap on a part opens its presses under it, one part at a time: **Used**, **Move to…**, **Can't find** and **Ask for more**.
+**Ask for more** is the press that read **Short** until v2.7873: it asks the office for more of a part and writes no movement.
+The four **tiles** each say their own fact: **Count G12** when the box was last counted and by whom, **Photo** how many it has, **Add a part** how many kinds it holds, **Where is it?** its place and its pin.
+**More** on a box holds what a crew member rarely needs: Edit, Say it better, Move, Print the label, Print the manifest, Copy the label code and Retire, with the line that says who last touched the box.
 **Where is it?** on a box (v2.7575, punch list #372) is the press that says where a cage or box stands and draws the way to it.
-It is the middle chip on the phone's box screen, in place of *Pin on map*, and the third tab of the office's box window (`WhereIsBox.tsx` over `whereIsBox.ts`).
+It is a tile under the parts on the phone's box screen since v2.7873, the middle chip before that, in place of *Pin on map*, and the third tab of the office's box window (`WhereIsBox.tsx` over `whereIsBox.ts`).
 It says the place, the where note, and the **pin** with its day, its person and the phone's margin, which the pin has kept since v2.7573 (`pinned_at`, `pinned_by_name`, `pin_accuracy_m`).
 **Show where I am** draws the reader's own dot and a dashed straight line to the pin, with the distance said as *about* and the phone's margin beside it.
 The dot is drawn on the phone and sent nowhere.
@@ -6771,6 +6786,7 @@ A task's place has a sheet of the same name, which is a different thing: there t
 ### A site's materials (punch list #330)
 Everything in the cages and boxes of one **site**, a development's jobs, on one screen (v2.7074): `?site=<development id>` on Materials → On site and Jobs → Materials, opened from the desk's **site row**, the Development page's **Open the site’s materials** or a field role's **Open the site**.
 **By person** (v2.7818) is the screen's third look, for the office: every press and box move on the site by who made it, a day at a time, with an amber chip on a press **worth a look** (a count that changed a number the app already had, a part added by hand to a line that already had a number, a take or a use with no note).
+**An answer to a press** (v2.7834) is a dev's word on a press that should not stand: *taken back* (in no number, struck through), *marked not allowed* (the numbers keep it) or a second count asked for, each with a reason and withdrawn, never deleted.
 **Last recorded** is the newest press on any line of the site, amber after seven quiet days.
 **By part** is the **roll-up**: one row per part across the site's jobs with its total and the boxes that hold it.
 Two names are one row only when their **words are the same** (`sameWordsKey`: case, spaces, punctuation, the inch mark, word order, a plural;

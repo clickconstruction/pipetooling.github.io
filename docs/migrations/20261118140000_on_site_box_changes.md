@@ -8,3 +8,5 @@ Materials on site: who changed a box, and who took an answer off. The second PR 
 - Nothing here changes what anyone may do. Additive and idempotent. Ends with the four fences.
 
 Apply: `supabase db push` after the merge. No client reads the tables yet, so there is no order to keep.
+
+**Applied** to prod by 2026-11-18: the dev seat's `check_migration_ledger` read 1,380 versions applied against 1,381 local files, this version among them and `20261118190000` alone still to push (read in the docs pass after #8710).

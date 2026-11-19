@@ -11,6 +11,7 @@
  * (`billed`). Pure: no React, no Supabase.
  */
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { daysBetweenYmd } from './sheetRail'
 
 /** One of the job's bills, as `jobs_ledger_invoices` holds it. */
 export type DrawBill = {
@@ -35,16 +36,16 @@ export type DrawBillOption = {
 
 export const DRAW_BILL_WINDOW_TITLE = 'Which bill does this sheet ride on?'
 export const DRAW_BILL_NONE_LABEL = 'No bill'
-export const DRAW_BILL_NONE_DETAIL = 'The sheet rides on no bill. You can pick one later from the sheet’s row.'
+export const DRAW_BILL_NONE_DETAIL = 'Their page stays on Draw requested until you queue the payment. You can pick a bill later from the sheet’s row.'
 /** Under the title when the job holds no bill at all. */
 export const DRAW_BILL_NO_BILLS = 'This job has no bill yet. Make the bill first, then pick it here.'
 export const DRAW_BILL_REQUEST_PRESS = 'Request the draw'
 export const DRAW_BILL_SAVE_PRESS = 'Save the bill'
 
-/** The line under the window's title. */
+/** The line under the window's title: what the pick does on the sub's page (step 2). */
 export function drawBillWindowLead(subName: string): string {
   const who = subName.trim()
-  return who ? `${who}’s sheet waits on this bill’s payment.` : 'This sheet waits on this bill’s payment.'
+  return who ? `${who}’s page will say the customer paid when this bill is paid in full.` : 'The sub’s page will say the customer paid when this bill is paid in full.'
 }
 
 export function drawBillState(status: string | null | undefined): DrawBillState {
@@ -121,4 +122,39 @@ export function drawTieRowWords(input: { stage: string | null | undefined; drawI
   const label = input.bills ? drawBillLabel(input.bills, id) : null
   const text = label == null ? 'Rides on a bill' : label === 'The only bill' ? 'Rides on the only bill' : `Rides on ${label.charAt(0).toLowerCase()}${label.slice(1)}`
   return { text, tied: true, press: 'Change the bill this sheet rides on' }
+}
+
+/** Days a paid sheet may sit with no pay day before the office's row turns amber (the owner's call 5, 2026-11-17). */
+export const CUSTOMER_PAID_QUIET_DAYS = 2
+
+/**
+ * What the sub reads about the customer's payment, said on the office's row (punch list #388, step 2), so
+ * the office reads what the sub reads. Null when the sub's page says nothing new: the customer has not paid
+ * the tied bill in full, or the sheet is already queued for a pay run and the page says Queued.
+ *
+ * Grey is nothing to do. Amber is a sheet the customer paid more than two days ago that has no pay day: the
+ * sub can see the day, so the office sees the same clock. A held sheet stays grey, since the hold is the
+ * office's answer and the sub reads its reason under the sentence.
+ */
+export type SubSeesWords = { text: string; tone: 'grey' | 'amber'; title: string }
+
+export function subSeesCustomerPaid(input: {
+  stage: string | null | undefined
+  customerPaidOn: string | null | undefined
+  payableAfter: string | null | undefined
+  payHoldReason: string | null | undefined
+  todayYmd: string
+}): SubSeesWords | null {
+  if (input.stage !== 'customer_pay') return null
+  const paidOn = (input.customerPaidOn ?? '').trim()
+  if (!paidOn || (input.payableAfter ?? '').trim() !== '') return null
+  const day = formatWorkDateYmdMonthDayShort(paidOn)
+  if ((input.payHoldReason ?? '').trim() !== '') {
+    return { text: `Sub sees: Customer paid ${day} · on hold`, tone: 'grey', title: 'Their page says the customer paid, with the hold’s reason under it.' }
+  }
+  const days = daysBetweenYmd(paidOn, input.todayYmd)
+  if (days > CUSTOMER_PAID_QUIET_DAYS) {
+    return { text: `Customer paid ${day} · not queued, ${days} days`, tone: 'amber', title: 'Their page has said the customer paid since that day. Set a payable-after date to queue it, or type why it waits.' }
+  }
+  return { text: `Sub sees: Customer paid ${day}`, tone: 'grey', title: 'Their page says the customer paid and that their payment is next.' }
 }

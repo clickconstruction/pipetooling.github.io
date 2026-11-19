@@ -718,7 +718,7 @@ export function lienFilingDryRun(p: LienFilingPayload, world: LienFilingWorld, w
     paper_as_you_read_it: p.paper_states,
     differences,
     ...(notChecked.length > 0 ? { not_checked: `You sent no ${notChecked.join(', ')} from the paper, so ${notChecked.length === 1 ? 'it was' : 'they were'} not compared.` } : {}),
-    ...(blanks.length > 0 ? { no_copy_to_print: `The snapshot has no ${blanks.join(', ')}, so Mail the copies will not redraw this affidavit: mail a photocopy of the filed paper.` } : {}),
+    ...(blanks.length > 0 ? { no_copy_to_print: `The snapshot has no ${blanks.join(', ')}, so Print the copies to mail will not redraw this affidavit: mail a photocopy of the filed paper.` } : {}),
     writes: {
       filing: row,
       desk_item: item ? { id: item.id, from: item.from, to: 'sent', sent_at: sentAt ?? 'the moment of the write' } : 'none: the desk holds no affidavit item short of sent for this job',
@@ -734,7 +734,7 @@ export function lienFilingDryRun(p: LienFilingPayload, world: LienFilingWorld, w
       reply: {
         ...reply,
         status: 'held',
-        held_because: `The paper and the desk differ on ${differences.map((d) => d.what).join(', ')}. Fix each through its door and plan again, or plan again with accept_differences: true to record the filing as the desk reads it.${differences.some((d) => d.what === 'claim' || d.what === 'months' || d.what === 'notice_day') ? ' Recorded as it stands, the copy Mail the copies redraws would not match the filed paper: mail a photocopy of the scan instead.' : ''}`,
+        held_because: `The paper and the desk differ on ${differences.map((d) => d.what).join(', ')}. Fix each through its door and plan again, or plan again with accept_differences: true to record the filing as the desk reads it.${differences.some((d) => d.what === 'claim' || d.what === 'months' || d.what === 'notice_day') ? ' Recorded as it stands, the copy Print the copies to mail redraws would not match the filed paper: mail a photocopy of the scan instead.' : ''}`,
       },
     }
   }
@@ -914,6 +914,6 @@ export function lienFilingAppliedWords(p: LienFilingPayload, label: string, writ
       ? out.scanFailed
         ? `${label}: the saved copy was not ${replaces ? 'replaced' : 'added'}. ${finish}`
         : `${label}: the filing has its ${replaces ? 'new ' : ''}saved copy. Nothing else on the filing changed.`
-      : `${label}: filed ${p.filed_on}, instrument ${p.recording_number}. Mail the copies by ${out.filing.serve_due ?? 'the serve-by day'} (the Lien desk’s Mail the copies prints them), then plan_lien_service records the day and the certified mail numbers.`,
+      : `${label}: filed ${p.filed_on}, instrument ${p.recording_number}. Mail the copies by ${out.filing.serve_due ?? 'the serve-by day'} (the Lien desk’s Print the copies to mail prints them), then plan_lien_service records the day and the certified mail numbers.`,
   }
 }

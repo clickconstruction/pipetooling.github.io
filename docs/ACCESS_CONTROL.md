@@ -954,6 +954,7 @@ a pen signature recorded from a draft or an awaiting notice approves it in mode 
 the run's **Close N paid notices…** sets `voided_at` and `fields.runClosedPaid` on a live `notice_53_056` item row by row through the items' own update policy;
 the job's History line for a close (`lien_notice_closed_paid`) is written by the SECURITY DEFINER trigger `job_lien_desk_items_closed_paid_to_activity` (`20261115233000`), since `job_activity_events` takes no client insert, and EXECUTE on both of its functions is revoked from clients;
 and `sign_lien_desk_item_with_code` stamps the signer's full name since `20261116110000` (a leader's *Full name and title* up to the first comma, a dev's account name), its callers, its lock and its grant to `authenticated` unchanged.
+**Back from the clerk** adds none (v2.7856): it inserts the Lien window's own `job_lien_filings` row as the person signed in, under that table's insert policy (`created_by = auth.uid()`, the office set), and its door is drawn for the office alone.
 The copies window's writes add none either (v2.7846): a *Mailed* tick is one UPDATE of `served_at` and `sends`, and a changed document number is one UPDATE of `recording_number`, each on the filing's own `job_lien_filings` row under that table's update policy, for the office set that already records a mailing.
 
 **Certified mail pieces** (v2.5379, `20261013120000_mail_pieces.sql`, the Docsmit train — [`DOCSMIT_LIEN_RUN_PLAN.md`](./DOCSMIT_LIEN_RUN_PLAN.md)): `mail_pieces` — **read / insert / update** the office (`is_office_staff() OR is_dev() OR is_assistant()`) or the master of the piece's job (`jobs_ledger.master_user_id`);
@@ -1062,6 +1063,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   `on_site_note_box_open(uuid)` is granted to every signed-in caller, writes only for a caller with a live watch and answers nothing either way, so no caller learns from it whether they are watched.
 - **An answer to a press** (v2.7827, `20261118170000_on_site_press_answers.sql`): `job_movement_answers` is read by the office (`on_site_reads_answers()`: dev, master_technician, assistant, controller), a dev inserts one and withdraws one, and nobody deletes one.
   A row with a live taken-back answer is closed to every signed-in read of `job_material_movements` by the RESTRICTIVE policy `job_material_movements_not_taken_back`, a dev's own read included, and `on_site_taken_back_rows(uuid[])` answers those rows to the office alone.
+  Since v2.7834 the By person look offers the tick boxes, **Answer N presses…** and the two withdrawals to a dev alone (`canAnswerPresses`), and draws the answers for the office.
   The office and a primary reach it through the desk's site row and read the week's missing money, as on the desk;
   a primary and a superintendent get a site row over their jobs on Materials → On site, with no money and the phone screen as each box's door;
   an estimator gets no site row.
@@ -3804,7 +3806,7 @@ The Dev doors card (`src/lib/settings/devDoors.ts`) lists each with its link.
 | 103 | People → **Day book**; Bids → **Day book**; the Crew Day line · `/people?tab=day_book` | dev and controller | the owner's decision 2 of 2026-09-22 stands until he says otherwise |
 | 104 | People → **Payroll**, **Offsets**, **Employment**, **Housing** · `/people?tab=pay_stubs` | dev, controller, pay-approved owner | already a role (pay approval); the Tally pay bar reads the same gate |
 | 105 | People → Users → **Invite as user**; Hire → **Send the invite** | dev | makes a login; the edge function holds the line |
-| 106 | People → **Imitate**, and since v2.7786 the **View as <first name>** line in the Task Mode look window on Review (`lookOffersViewAs`, punch list #381); the person desk's **account rows** (role, sign-in email, password, access flags) and **Merge a duplicate…** | dev | a role change or a merge is not undone by a confirm |
+| 106 | People → **Imitate** (drawn only on a person whose login is attached, v2.7813), and since v2.7786 the **View as <first name>** line in the Task Mode look window on Review (`lookOffersViewAs`, punch list #381); the person desk's **account rows** (role, sign-in email, password, access flags) and **Merge a duplicate…** | dev | a role change or a merge is not undone by a confirm |
 | 107 | Person desk → **CountTooling** row | dev | the takeoff tool's seat is a dev's to issue |
 | 108 | Legal desk → **Mark attorney-ready**, **Pull back** · `/jobs?tab=stages&legal=1` | dev | his own call of 2026-09-11; if he reopens it, a typed confirm for himself is the shape |
 | 109 | Lien desk → the **leader's acts** (Sign and approve, Hold, Standing rule, the affidavit and retainage panes, GC on notice) | owner or dev | already the owner's; the leader approves what the office wrote |

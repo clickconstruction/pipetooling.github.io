@@ -23,6 +23,7 @@ vi.mock('../dispatchMode/DispatchModeFooter', () => ({ DISPATCH_MODE_FOOTER_HEIG
 vi.mock('../../lib/subWorkOrders/drawTieIo', () => io)
 
 import { installDomShims, makeLaborJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import JobsSubLaborTab from './JobsSubLaborTab'
 
 beforeAll(installDomShims)
@@ -77,10 +78,54 @@ describe('JobsSubLaborTab · the bill a waiting sheet rides on', () => {
     expect(line.getAttribute('aria-label')).toBe('Rides on bill 1 of 2. Change the bill this sheet rides on')
   })
 
+  it('names the bill from the bills read with the ledger, when the page holds no job for the sheet (v2.7843)', async () => {
+    renderWithProviders(<JobsSubLaborTab {...props({ jobs: [], laborJobs: [sheet({ stage: 'customer_pay', draw_invoice_id: 'b2', draw_bills: BILLS })] })} />)
+    await settle()
+    expect(screen.getByTestId('sheet-draw-tie').textContent).toBe('Rides on bill 2 of 2')
+  })
+
+  it('still says tied when neither holds the bills', async () => {
+    renderWithProviders(<JobsSubLaborTab {...props({ jobs: [], laborJobs: [sheet({ stage: 'customer_pay', draw_invoice_id: 'b2' })] })} />)
+    await settle()
+    expect(screen.getByTestId('sheet-draw-tie').textContent).toBe('Rides on a bill')
+  })
+
   it('says nothing on a sheet that is not waiting on the customer', async () => {
     renderWithProviders(<JobsSubLaborTab {...props({ laborJobs: [sheet({ stage: 'walkthrough', draw_invoice_id: null })] })} />)
     await settle()
     expect(screen.queryByTestId('sheet-draw-tie')).toBeNull()
+  })
+
+  it('says what the sub reads once the customer paid the tied bill, and turns amber past two days unqueued (step 2)', async () => {
+    const today = todayYmdInAppTz()
+    const daysAgo = (n: number) => {
+      const d = new Date(`${today}T12:00:00Z`)
+      d.setUTCDate(d.getUTCDate() - n)
+      return d.toISOString().slice(0, 10)
+    }
+    renderWithProviders(
+      <JobsSubLaborTab
+        {...props({
+          laborJobs: [
+            sheet({ id: 'fresh', stage: 'customer_pay', draw_invoice_id: 'b1', customer_paid_on: daysAgo(1) }),
+            sheet({ id: 'late', stage: 'customer_pay', draw_invoice_id: 'b1', customer_paid_on: daysAgo(5) }),
+            sheet({ id: 'held', stage: 'customer_pay', draw_invoice_id: 'b1', customer_paid_on: daysAgo(5), pay_hold_reason: 'Insurance certificate ran out' }),
+            sheet({ id: 'queued', stage: 'customer_pay', draw_invoice_id: 'b1', customer_paid_on: daysAgo(5), payable_after: today }),
+            sheet({ id: 'unpaid', stage: 'customer_pay', draw_invoice_id: 'b1', customer_paid_on: null }),
+          ],
+        })}
+      />,
+    )
+    await settle()
+    const lines = screen.getAllByTestId('sheet-sub-sees')
+    // One line each for the fresh, the late and the held sheet. The queued and the unpaid sheets say nothing new.
+    expect(lines).toHaveLength(3)
+    const byTone = (tone: string) => lines.filter((l) => l.getAttribute('data-tone') === tone).map((l) => l.textContent ?? '')
+    expect(byTone('amber')).toHaveLength(1)
+    expect(byTone('amber')[0]).toMatch(/^Customer paid .+ · not queued, 5 days$/)
+    expect(byTone('grey')).toHaveLength(2)
+    expect(byTone('grey').some((t) => /^Sub sees: Customer paid [A-Z][a-z]+ \d+$/.test(t))).toBe(true)
+    expect(byTone('grey').some((t) => t.endsWith('· on hold'))).toBe(true)
   })
 
   it('offers the pick on a waiting sheet with no tie, and reloads the ledger after the save', async () => {

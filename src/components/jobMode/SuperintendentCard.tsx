@@ -6,7 +6,7 @@ import { loadProjectBoardRead } from '../../hooks/useProjectsBoard'
 import { useLineBudgetSettings } from '../../hooks/useLineBudgetSettings'
 import { useSuperintendentScores } from '../../hooks/useSuperintendentScores'
 import { bonusWords, daysWords, hoursUnderWords, monthOf, monthRange, superintendentScores } from '../../lib/people/superintendentScores'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { isWorkingProject, projectLabel, projectNumber, projectPace } from '../../lib/jobs/projectsBoard'
 import { laborEventsOf, valueEventsOf, type ProjectBoardJob } from '../../lib/jobs/projectBoardRead'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
@@ -17,10 +17,15 @@ import { PaceStrip } from './PaceStrip'
 import { PaceBar, PaceRail } from './PaceRail'
 import { jobNameWithPlainDates } from '../../lib/jobNameDate'
 import { AskMasterSheet } from './AskMasterSheet'
+import { FinishDateSheet } from './FinishDateSheet'
+import { FINISH_CALL_WORDS, finishAsk, latestFinishCall, saidRow, type FinishCall } from '../../lib/jobMode/finishCall'
+import { loadFinishCalls, saveFinishCall } from '../../lib/jobMode/finishCallIo'
+import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { ASK_MASTER_WORDS, askedLine } from '../../lib/jobMode/askMaster'
 import { canTagInJobNotes } from '../../lib/jobs/noteTags'
 import { useJobNoteTags } from '../../hooks/useJobNoteTags'
-import { PACE_CARD_WORDS, paceDaysLeftWords, paceFinish, paceHours, paceRowNote, paceStageRail } from '../../lib/jobMode/paceCard'
+import { PACE_CARD_WORDS, paceDayWords, paceDaysLeftWords, paceFinish, paceHours, paceRowNote, paceStageRail } from '../../lib/jobMode/paceCard'
 import { JobModeShortRow } from './JobModeShortRow'
 import { JOB_MODE_SHORT_WORDS } from '../../lib/jobMode/jobModeShort'
 import { DayDetailsModal } from './DayDetailsModal'
@@ -49,6 +54,11 @@ import { StageChecklistSheet } from '../stageChecklists/StageChecklistSheet'
  * **Ask a master** (PR 2) opens `AskMasterSheet`: a question to the master on the job, sent as a job note
  * that tags him, with the card's numbers attached. The card then says who the question waits on, and that
  * an answer landed. `onAsked` tells the page a note was posted, so the job's feed reads again.
+ *
+ * **My finish date** (PR 3) opens `FinishDateSheet`: the day he says the job finishes, kept as a row of
+ * `job_finish_calls`. His day is a row on the rail's foot, *You said*. Two days before the day in force, and
+ * when the job is behind before he has said a day, the card asks on top, *Still finishing Fri, Nov 20?*, with
+ * **Yes** and **Pick a day** (`lib/jobMode/finishCall.ts`). It moves neither the plan nor the score.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem' }
 
@@ -88,6 +98,27 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
   const [paceOpen, setPaceOpen] = useState(false)
   const [figuredOpen, setFiguredOpen] = useState(false)
   const [askOpen, setAskOpen] = useState(false)
+  const [finishOpen, setFinishOpen] = useState(false)
+  const [finishCalls, setFinishCalls] = useState<FinishCall[]>([])
+  const [finishRev, setFinishRev] = useState(0)
+  const [finishBusy, setFinishBusy] = useState(false)
+  const { showToast } = useToastContext()
+  // What was said on this job. A read that fails leaves the card as it reads without it: his day is an addition to
+  // a card that is whole, and a refusal here must never take the pace away.
+  useEffect(() => {
+    let alive = true
+    loadFinishCalls(job.id).then(
+      (rows) => {
+        if (alive) setFinishCalls(rows)
+      },
+      () => {
+        if (alive) setFinishCalls([])
+      },
+    )
+    return () => {
+      alive = false
+    }
+  }, [job.id, finishRev])
   const { user, profileName, role } = useAuth()
   // His own question on this job: who it waits on, or that an answer landed.
   const noteTags = useJobNoteTags(canTagInJobNotes(role) ? job.id : null, rev)
@@ -123,6 +154,23 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
   const daysLeft = paceDaysLeftWords(line.daysLeft)
   const hoursColor = line.tone === 'behind' || hours?.over ? '#dc2626' : '#f59e0b'
   const setPct = () => onSetPct({ id: job.id, hcpNumber: projectNumber(job), jobName: job.job_name ?? '', label })
+  const mine = latestFinishCall(finishCalls, user?.id)
+  const said = saidRow(mine)
+  const ask = finishAsk({ plannedYmd: pace.input.plannedFinishYmd, mine, todayYmd: today, saidTodayYmd: mine ? calendarYmdInAppTzFromIso(mine.createdAt) : null, behind: line.tone === 'behind' })
+  // Yes: the day in the question, said again today in his name.
+  const sayYes = async () => {
+    if (!ask || finishBusy) return
+    setFinishBusy(true)
+    try {
+      await saveFinishCall({ jobId: job.id, finishOn: ask.ymd, planWas: pace.input.plannedFinishYmd, why: null })
+      showToast(FINISH_CALL_WORDS.saved(paceDayWords(ask.ymd) ?? ask.ymd), 'success')
+      setFinishRev((n) => n + 1)
+    } catch (e) {
+      showToast(formatErrorMessage(e, FINISH_CALL_WORDS.failed), 'error')
+    } finally {
+      setFinishBusy(false)
+    }
+  }
   // The short page: the headline as a row, with the two thin bars and the finish day. The hooks above still read,
   // so the open card draws at once.
   if (short && !paceOpen) {
@@ -156,14 +204,30 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
           {JOB_MODE_SHORT_WORDS.pace.fold}
         </button>
       ) : null}
+      {ask ? (
+        <div data-testid="pace-finish-ask" style={{ border: '1px solid #2563eb', borderRadius: 10, padding: '0.6rem 0.7rem', display: 'grid', gap: 8, background: 'var(--bg-blue-tint)' }}>
+          <div style={{ fontSize: '1rem', fontWeight: 700 }}>{ask.words}</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {!ask.past ? (
+              <button type="button" data-testid="pace-finish-yes" disabled={finishBusy} onClick={() => void sayYes()} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}>
+                {FINISH_CALL_WORDS.yes}
+              </button>
+            ) : null}
+            <button type="button" data-testid="pace-finish-pick" onClick={() => setFinishOpen(true)} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' }}>
+              {FINISH_CALL_WORDS.pick}
+            </button>
+          </div>
+        </div>
+      ) : null}
       {rail ? (
-        <PaceRail rail={rail} finish={finish} onSetPct={setPct} />
+        <PaceRail rail={rail} finish={finish} said={said} onSetPct={setPct} />
       ) : (
         <PaceBar testId="pace-work" label={PACE_CARD_WORDS.work} words={`${Math.round(line.donePct)}%`} fillPct={line.donePct} color="#2563eb" />
       )}
       {hours ? <PaceBar testId="pace-hours" label={PACE_CARD_WORDS.hours} words={hours.words} fillPct={hours.fillPct} color={hoursColor} /> : null}
       {/* A job with no stages to list has no rail to end in the finish day, so the day is said in words. */}
       {!rail && finish.planned ? <div style={{ fontSize: '0.85rem' }} data-testid="pace-finish-words">{PACE_CARD_WORDS.finish} {finish.planned}{finish.atPace ? `. ${PACE_CARD_WORDS.atPace}, ${finish.atPace.words}.` : '.'}</div> : null}
+      {!rail && said ? <div style={{ fontSize: '0.85rem' }} data-testid="pace-said-words">{FINISH_CALL_WORDS.said} {said.day}.{said.why ? ` ${said.why}` : ''}</div> : null}
       {line.move ? <div style={{ fontSize: '0.85rem' }}>{line.move.why}</div> : null}
       {/* The stage in hand carries Set the % on the rail. With no rail, or when the line asks for a move, the press is here too. */}
       {!rail || (line.move && nextStage) ? (
@@ -180,14 +244,19 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
           ) : null}
         </div>
       ) : null}
-      {canTagInJobNotes(role) ? (
-        <div style={{ display: 'grid', gap: 6 }}>
-          <button type="button" data-testid="pace-ask-master" onClick={() => setAskOpen(true)} style={{ minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+      <div style={{ display: 'grid', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" data-testid="pace-finish-date" onClick={() => setFinishOpen(true)} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+            {FINISH_CALL_WORDS.press}
+          </button>
+          {canTagInJobNotes(role) ? (
+          <button type="button" data-testid="pace-ask-master" onClick={() => setAskOpen(true)} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
             {ASK_MASTER_WORDS.press}
           </button>
-          {asked ? <div data-testid="pace-asked" data-waiting={asked.waiting ? '' : undefined} style={{ fontSize: '0.8rem', color: asked.waiting ? 'var(--text-muted)' : 'var(--text-green-700)' }}>{asked.words}</div> : null}
+          ) : null}
         </div>
-      ) : null}
+        {asked ? <div data-testid="pace-asked" data-waiting={asked.waiting ? '' : undefined} style={{ fontSize: '0.8rem', color: asked.waiting ? 'var(--text-muted)' : 'var(--text-green-700)' }}>{asked.words}</div> : null}
+      </div>
       <button type="button" data-testid="pace-figured" aria-expanded={figuredOpen} onClick={() => setFiguredOpen((o) => !o)} style={{ justifySelf: 'start', minHeight: PHONE_PRESS_MIN_HEIGHT, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
         {PACE_CARD_WORDS.figured} {figuredOpen ? '▴' : '▾'}
       </button>
@@ -212,6 +281,7 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
         </div>
       ) : null}
       {askOpen ? <AskMasterSheet jobId={job.id} facts={{ pct: pace.input.pctDone, hoursWords: hours?.words ?? null, finishWords: finish.planned, stage: rail?.rows.find((r) => r.state === 'now')?.name ?? null }} onClose={() => setAskOpen(false)} onSent={onAsked} /> : null}
+      {finishOpen ? <FinishDateSheet jobId={job.id} plannedYmd={pace.input.plannedFinishYmd} saidYmd={mine?.finishOn ?? null} saidWhy={mine?.why ?? null} onClose={() => setFinishOpen(false)} onSaved={() => setFinishRev((n) => n + 1)} /> : null}
       {day ? <DayDetailsModal jobLabel={label} ymd={day} events={laborEventsOf(job)} valueEvents={valueEventsOf(job)} hoursOnly onClose={() => setDay(null)} /> : null}
       {current ? (
         <StageChecklistSheet

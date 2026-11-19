@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import {
   applyPaste,
   appendEntry,
@@ -21,6 +22,7 @@ import {
   type CalcState,
   type TapeEntry,
 } from '../../lib/tapeCalculator'
+import { tapeAnswerSendable, usePricingTapeSink, type TapeSendTo } from '../../lib/bids/pricingTapeBridge'
 
 /**
  * The Pricing Tape (v2.2359): a floating tape calculator for Bids → Pricing.
@@ -29,6 +31,10 @@ import {
  * Desktop-only; tape and open/closed state persist per device.
  *
  * All math/parse/search logic lives in src/lib/tapeCalculator.ts.
+ *
+ * While a bid's numbers are on the Workbench, two presses under the display send the answer to
+ * Pricing: **Put on a row…** and **Make a new row…** open the Percent row window with it
+ * (`lib/bids/pricingTapeBridge.ts`). With no Workbench on screen they are not drawn.
  */
 const TAPE_STORAGE_KEY = 'pipetooling_pricing_tape_v1'
 const OPEN_STORAGE_KEY = 'pipetooling_pricing_tape_open_v1'
@@ -101,6 +107,21 @@ export function BidsPricingCalculator() {
       /* per-device nicety */
     }
   }, [])
+
+  // The Workbench takes an answer while a bid's numbers are on screen (`pricingTapeBridge`).
+  const tapeSink = usePricingTapeSink()
+  const sendAnswer = (to: TapeSendTo) => {
+    if (!tapeSink) return
+    const value = parseFloat(calc.current) || 0
+    if (!tapeAnswerSendable(value)) return
+    const last = entries[entries.length - 1]
+    // Right after `=` the tape's own line says where the number came from; a typed number is just itself.
+    const fromTape = calc.justEvaluated && last && Math.abs(last.result - value) < 0.005
+    // The window's boxes take the keys now.
+    setArmed(false)
+    tapeSink.send({ value, words: fromTape ? `${last.expr} = ${formatAmount(last.result)}` : formatTyped(calc.current), rule: null }, to)
+  }
+  const canSend = tapeSink != null && tapeAnswerSendable(parseFloat(calc.current) || 0)
 
   const openCalc = useCallback(() => {
     setOpenPersisted(true)
@@ -652,6 +673,40 @@ export function BidsPricingCalculator() {
           </span>
         </div>
       </div>
+
+      {tapeSink ? (
+        <div data-testid="tape-send" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6, padding: '6px 12px 0' }}>
+          {(
+            [
+              ['row', 'Put on a row…', 'Set a row on this bid to this number'],
+              ['new-row', 'Make a new row…', 'Add a row to this bid priced at this number'],
+            ] as const
+          ).map(([to, words, title]) => (
+            <button
+              key={to}
+              type="button"
+              disabled={!canSend}
+              title={canSend ? title : 'A number below zero cannot be a price'}
+              onClick={() => sendAnswer(to)}
+              style={{
+                font: 'inherit',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                height: 40,
+                padding: 0,
+                whiteSpace: 'nowrap',
+                borderRadius: 8,
+                border: canSend ? '1.5px solid #2563eb' : '1.5px solid var(--border)',
+                background: !canSend ? DEAD_PRESS_FILL : to === 'new-row' ? '#2563eb' : 'var(--surface)',
+                color: !canSend ? DEAD_PRESS_TEXT : to === 'new-row' ? '#fff' : 'var(--text-blue-700)',
+                cursor: canSend ? 'pointer' : 'default',
+              }}
+            >
+              {words}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div
         style={{

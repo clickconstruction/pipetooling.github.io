@@ -4762,6 +4762,7 @@ export type Database = {
           id: string
           kind: string | null
           page: string | null
+          percent_rule: Json | null
           plan_tag: string | null
           sequence_order: number
           source_shares: Json | null
@@ -4781,6 +4782,7 @@ export type Database = {
           id?: string
           kind?: string | null
           page?: string | null
+          percent_rule?: Json | null
           plan_tag?: string | null
           sequence_order?: number
           source_shares?: Json | null
@@ -4800,6 +4802,7 @@ export type Database = {
           id?: string
           kind?: string | null
           page?: string | null
+          percent_rule?: Json | null
           plan_tag?: string | null
           sequence_order?: number
           source_shares?: Json | null
@@ -20682,6 +20685,54 @@ export type Database = {
           },
         ]
       }
+      job_container_changes: {
+        Row: {
+          at: string
+          by_name: string
+          by_user_id: string | null
+          container_id: string
+          id: string
+          new_value: string
+          old_value: string
+          what: string
+        }
+        Insert: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          container_id: string
+          id?: string
+          new_value?: string
+          old_value?: string
+          what: string
+        }
+        Update: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          container_id?: string
+          id?: string
+          new_value?: string
+          old_value?: string
+          what?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_container_changes_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_container_changes_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "job_containers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_container_moves: {
         Row: {
           at: string
@@ -29844,6 +29895,61 @@ export type Database = {
           },
         ]
       }
+      on_site_removed_answers: {
+        Row: {
+          answer: string
+          at: string
+          by_name: string
+          by_user_id: string | null
+          development_id: string | null
+          id: string
+          job_id: string | null
+          was: Json
+        }
+        Insert: {
+          answer: string
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          was: Json
+        }
+        Update: {
+          answer?: string
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          was?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "on_site_removed_answers_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "on_site_removed_answers_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "on_site_removed_answers_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_defaults: {
         Row: {
           key: string
@@ -31541,6 +31647,7 @@ export type Database = {
           created_at: string | null
           distance_miles: number | null
           done_at: string | null
+          draw_invoice_id: string | null
           id: string
           invoice_link: string | null
           job_date: string | null
@@ -31571,6 +31678,7 @@ export type Database = {
           created_at?: string | null
           distance_miles?: number | null
           done_at?: string | null
+          draw_invoice_id?: string | null
           id?: string
           invoice_link?: string | null
           job_date?: string | null
@@ -31601,6 +31709,7 @@ export type Database = {
           created_at?: string | null
           distance_miles?: number | null
           done_at?: string | null
+          draw_invoice_id?: string | null
           id?: string
           invoice_link?: string | null
           job_date?: string | null
@@ -31626,6 +31735,13 @@ export type Database = {
           step_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "people_labor_jobs_draw_invoice_id_fkey"
+            columns: ["draw_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "people_labor_jobs_job_ledger_id_fkey"
             columns: ["job_ledger_id"]
@@ -33207,6 +33323,70 @@ export type Database = {
             columns: ["subject_person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_watches: {
+        Row: {
+          id: string
+          lifted_at: string | null
+          lifted_by: string | null
+          lifted_by_name: string
+          lifted_why: string
+          set_at: string
+          set_by: string | null
+          set_by_name: string
+          tell_user_ids: string[]
+          user_id: string
+          why: string
+        }
+        Insert: {
+          id?: string
+          lifted_at?: string | null
+          lifted_by?: string | null
+          lifted_by_name?: string
+          lifted_why?: string
+          set_at?: string
+          set_by?: string | null
+          set_by_name?: string
+          tell_user_ids?: string[]
+          user_id: string
+          why?: string
+        }
+        Update: {
+          id?: string
+          lifted_at?: string | null
+          lifted_by?: string | null
+          lifted_by_name?: string
+          lifted_why?: string
+          set_at?: string
+          set_by?: string | null
+          set_by_name?: string
+          tell_user_ids?: string[]
+          user_id?: string
+          why?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_watches_lifted_by_fkey"
+            columns: ["lifted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_watches_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_watches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -42697,6 +42877,52 @@ export type Database = {
           },
         ]
       }
+      watched_box_opens: {
+        Row: {
+          at: string
+          container_id: string
+          id: string
+          user_id: string
+          watch_id: string
+        }
+        Insert: {
+          at?: string
+          container_id: string
+          id?: string
+          user_id: string
+          watch_id: string
+        }
+        Update: {
+          at?: string
+          container_id?: string
+          id?: string
+          user_id?: string
+          watch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watched_box_opens_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "job_containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watched_box_opens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watched_box_opens_watch_id_fkey"
+            columns: ["watch_id"]
+            isOneToOne: false
+            referencedRelation: "person_watches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_money_email_requests: {
         Row: {
           attempts: number
@@ -47420,6 +47646,27 @@ export type Database = {
         Returns: Json
       }
       license_expiry_notices_sweep: { Args: never; Returns: Json }
+      lien_affidavit_days: {
+        Args: never
+        Returns: {
+          customer_id: string
+          deadline: string
+          desk_item_id: string
+          desk_status: string
+          filed: boolean
+          gc_customer_id: string
+          has_legal: boolean
+          has_owner: boolean
+          homestead: boolean
+          is_sub: boolean
+          job_id: string
+          last_month: string
+          month_source: string
+          noticed: boolean
+          open_balance: number
+          property_kind: string
+        }[]
+      }
       lien_bill_months: {
         Args: { p_job_id: string }
         Returns: {
@@ -48003,6 +48250,27 @@ export type Database = {
           property_kind: string
         }[]
       }
+      list_lien_closed_days: {
+        Args: never
+        Returns: {
+          customer_id: string
+          deadline: string
+          desk_item_id: string
+          desk_status: string
+          filed: boolean
+          gc_customer_id: string
+          has_legal: boolean
+          has_owner: boolean
+          homestead: boolean
+          is_sub: boolean
+          job_id: string
+          last_month: string
+          month_source: string
+          noticed: boolean
+          open_balance: number
+          property_kind: string
+        }[]
+      }
       list_lien_notice_months: {
         Args: { p_within_days?: number }
         Returns: {
@@ -48232,6 +48500,7 @@ export type Database = {
           person_id: string
           person_name: string
           record_hours_but_salary: boolean
+          salaried_week_hours: number[]
           show_in_hours: boolean
         }[]
       }
@@ -49099,6 +49368,10 @@ export type Database = {
       on_site_next_box_name: {
         Args: { p_job_ids: string[]; p_letters?: string }
         Returns: string
+      }
+      on_site_note_box_open: {
+        Args: { p_container_id: string }
+        Returns: undefined
       }
       on_site_site_job_ids: { Args: { p_job_id: string }; Returns: string[] }
       on_site_typed_names_on_hand: {
@@ -50557,6 +50830,10 @@ export type Database = {
       }
       set_sub_portal_slug: {
         Args: { p_person_id: string; p_slug: string }
+        Returns: Json
+      }
+      set_sub_sheet_draw_invoice: {
+        Args: { p_invoice_id: string; p_labor_job_id: string }
         Returns: Json
       }
       set_sub_sheet_portal_fields: {

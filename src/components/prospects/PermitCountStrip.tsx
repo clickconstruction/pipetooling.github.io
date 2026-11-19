@@ -1,15 +1,18 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { funnelLines, funnelTiles, funnelVerdict, type PermitFunnel } from '../../lib/research/permitBuilders'
+import { funnelLines, funnelTiles, funnelTilesAcross, funnelVerdict, type PermitFunnel } from '../../lib/research/permitBuilders'
 import { loadPermitFunnel } from '../../lib/research/permitResearchIo'
 
 /**
  * Permits, the count (punch list #302, PR 8): what arrived this month, what was skimmed and how
  * it was answered, and what became a bid. One strip, so a month in anyone can see whether the
  * skim turns into work or is busywork. Shows nothing until the read exists and answers.
+ *
+ * The six numbers sit in one row on a desk and in two rows of three on a phone (v2.7878): six
+ * across at 375 px left each tile 42 px for its word, and *investigating* needs 67.
  */
 const tile: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '8px 4px', textAlign: 'center', minWidth: 0 }
 
-export function PermitCountStrip({ city, todayYmd, refreshKey }: { city: string; todayYmd: string; /** Changes when an answer is written, so the count reads again. */ refreshKey: number }) {
+export function PermitCountStrip({ city, todayYmd, refreshKey, isMobile = false }: { city: string; todayYmd: string; /** Changes when an answer is written, so the count reads again. */ refreshKey: number; isMobile?: boolean }) {
   const [funnel, setFunnel] = useState<PermitFunnel | null>(null)
   const since = `${todayYmd.slice(0, 8)}01`
 
@@ -31,7 +34,7 @@ export function PermitCountStrip({ city, todayYmd, refreshKey }: { city: string;
   return (
     <section aria-label="The count" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Permits, {month} so far</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 8 }}>
+      <div data-funnel-tiles style={{ display: 'grid', gridTemplateColumns: `repeat(${funnelTilesAcross(isMobile)}, minmax(0, 1fr))`, gap: 8 }}>
         {funnelTiles(funnel).map((t) => (
           <div key={t.words} style={tile}>
             <strong style={{ display: 'block', fontSize: '1.25rem', fontVariantNumeric: 'tabular-nums' }}>{t.n}</strong>

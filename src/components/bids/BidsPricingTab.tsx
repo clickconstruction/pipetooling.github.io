@@ -23,6 +23,7 @@ import { usePricingRowMarks } from '../../hooks/usePricingRowMarks'
 import { usePercentRows } from '../../hooks/usePercentRows'
 import { percentRowAnswer, percentRuleChip, percentRuleWords, percentWindowStart } from '../../lib/bids/percentRow'
 import { PercentRowWindow, PercentRuleChipMark } from './PercentRowWindow'
+import { setPricingTapeSink, type TapeAnswer, type TapeSendTo } from '../../lib/bids/pricingTapeBridge'
 import { costEstimateLaborRowHours } from '../../lib/bidPricingRowCalculations'
 import { workbenchEffectiveRows, workbenchEffectiveTotals } from '../../lib/bids/workbenchEffectiveRows'
 import { parseSplitDollars, rowPriceSplit } from '../../lib/bids/rowPriceSplit'
@@ -2227,6 +2228,21 @@ export function BidsPricingTab({
     },
     reloadRows: reloadPricingForBid,
   })
+  // The Pricing Tape sends its answer here while a bid's numbers are on screen: Put on a row… and Make a new row… open
+  // the Percent row window with it (`lib/bids/pricingTapeBridge.ts`). The calculator is drawn by the page, beside the tab.
+  const tapeSendRef = useRef<(answer: TapeAnswer, to: TapeSendTo) => void>(() => {})
+  tapeSendRef.current = (answer, to) => {
+    if (!guardPriceRowsWrite()) return
+    const from = { revenue: answer.value, pct: answer.rule?.pct ?? null, basis: answer.rule?.basis ?? null, sourceKey: answer.rule?.sourceKey ?? null, words: answer.words }
+    if (to === 'row') percentRows.openPickRow(from)
+    else percentRows.openNew(from)
+  }
+  const tapeMaySend = derivedNow != null
+  useEffect(() => {
+    if (!tapeMaySend) return
+    setPricingTapeSink({ send: (answer, to) => tapeSendRef.current(answer, to) })
+    return () => setPricingTapeSink(null)
+  }, [tapeMaySend])
   // #357 PR 4: the GC's rating as cost lines, pinned on the bid; written once the numbers are settled (`ready`).
   // #357 PR 6: the bid's own picks (the site), priced with the GC's rating into the same lines.
   const bidOwnPicks = useBidDifficultyPicks(selectedBidForPricing?.id ?? null)
@@ -4127,11 +4143,12 @@ export function BidsPricingTab({
             const self = target.rowId ? (percentRows.gridRows.find((g) => g.id === target.rowId) ?? null) : null
             return (
               <PercentRowWindow
-                key={`${target.rowId ?? 'new'}:${target.from?.words ?? ''}`}
+                key={`${target.rowId ?? (target.pickRow ? 'pick' : 'new')}:${target.from?.words ?? ''}`}
                 rows={percentRows.gridRows}
                 self={self}
-                start={percentWindowStart({ rows: percentRows.gridRows, self, last: percentRows.last, from: target.from })}
+                start={percentWindowStart({ rows: percentRows.gridRows, self, last: percentRows.last, from: target.from, pickRow: target.pickRow })}
                 from={target.from}
+                pickRow={target.pickRow}
                 sent={!!selectedBidForPricing?.bid_date_sent}
                 narrow={narrowViewport640}
                 busy={percentRows.busy}

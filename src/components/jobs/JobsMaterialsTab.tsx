@@ -262,6 +262,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
           developmentHref={`/developments/${siteId}`}
           canTie
           canSeePeople={isOfficeRole(role)}
+          canAnswerPresses={role === 'dev'}
           byName={byName}
           loading={(desk.loading && !desk.loaded) || !sites.loaded}
         />

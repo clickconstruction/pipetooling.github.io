@@ -551,13 +551,13 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         ) : allLoading ? (
           <div style={mutedStyle}>Reading the permits…</div>
         ) : (
-          <PermitPlaceList place={view} rows={allRows} floor={floor} me={authUserId} todayYmd={todayYmd} researchers={researchers} busyId={busyId} onOpen={setDigRow} onHandTo={handTo} onPutBack={putBack} onKeep={keepFromPassed} onSkim={() => setView('skim')} isMobile={isMobile} leadDecks={leadDecks} />
+          <PermitPlaceList place={view} rows={allRows} floor={floor} me={authUserId} todayYmd={todayYmd} researchers={researchers} busyId={busyId} onOpen={setDigRow} onHandTo={handTo} onPutBack={putBack} onKeep={keepFromPassed} onSkim={() => setView('skim')} onInvestigating={() => setView('kept')} isMobile={isMobile} leadDecks={leadDecks} />
         ))}
 
       {view === 'builders' && <PermitBuilders city={city} authUserId={authUserId} todayYmd={todayYmd} isMobile={isMobile} onChanged={() => void loadAll()} />}
 
       {/* The month's count is a third heavy read: it waits for the lists, so the card is never held up by it. */}
-      {!wide && !allLoading && <PermitCountStrip city={city} todayYmd={todayYmd} refreshKey={countKey} />}
+      {!wide && !allLoading && <PermitCountStrip city={city} todayYmd={todayYmd} refreshKey={countKey} isMobile={isMobile} />}
 
       {wide && !loading && !error && visible.length === 0 && emptyState()}
 
