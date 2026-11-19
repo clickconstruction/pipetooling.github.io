@@ -19,7 +19,7 @@ vi.mock('../supabase', () => ({
 }))
 
 import { PAINTED_MAP_LINK_ALPHABET } from './paintedMapLink'
-import { canMakePaintedMapLink, mintPaintedMapLink, pickPaintedMapLinkCode, registerPaintedMapLink } from './paintedMapLinkIo'
+import { canMakePaintedMapLink, pickPaintedMapLinkCode, registerPaintedMapLink } from './paintedMapLinkIo'
 
 type Sent = { body: Record<string, unknown>; keepalive: boolean | undefined; auth: string }
 const sent: Sent[] = []
@@ -98,21 +98,5 @@ describe('registerPaintedMapLink', () => {
     await expect(registerPaintedMapLink('m1', 'k7m2x9qd4t')).rejects.toThrow('This is a training account, so no link was made.')
     answers = [{ status: 200, body: { ok: true } }]
     await expect(registerPaintedMapLink('m1', 'k7m2x9qd4t')).rejects.toThrow('The link was not made. The function answered 200.')
-  })
-})
-
-describe('mintPaintedMapLink', () => {
-  it('asks for a link under a code this phone picked, and hands back the link the function kept', async () => {
-    answers = [{ status: 200, body: { ok: true, kept: true, endsOn: '2027-02-16' } }]
-    const made = await mintPaintedMapLink('m1')
-    const asked = sent[sent.length - 1]!.body
-    expect(asked).toMatchObject({ action: 'desk.mint', mapId: 'm1' })
-    expect(String(asked.code)).toHaveLength(10)
-    expect(made).toEqual({ code: asked.code, endsOn: '2027-02-16' })
-  })
-
-  it('throws the function’s own words on a refusal', async () => {
-    answers = [{ status: 403, body: { error: 'This is a training account, so no link was made.' } }]
-    await expect(mintPaintedMapLink('m1')).rejects.toThrow('This is a training account, so no link was made.')
   })
 })

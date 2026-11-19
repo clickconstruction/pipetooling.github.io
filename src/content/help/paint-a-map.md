@@ -379,6 +379,8 @@ The map says **Saved** in a green band as soon as a save lands. The band says wh
 
 On a phone, {{button:blue|Text it from my phone…}} sits under the band. Press it to text the map without opening **Share**.
 
+Messages opens the moment you press. The band tells you if the link in a text will not open. Do not send that text.
+
 The press shows for whoever painted the map, and for the office.
 
 ### From the Share sheet
