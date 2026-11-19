@@ -21,17 +21,17 @@ const jobs: BillPileJob[] = [
   job('jguess', 'working', 10_000, null),
 ]
 const labels = new Map<string, string>([
-  ['j1024', '1024 · Lawver install'],
+  ['j1024', '1024 · Lennox install'],
   ['j1051', '1051 · Patel repipe'],
   ['j1017', '1017 · Tarrow'],
-  ['j1081', '1081 · Adams Pretest'],
+  ['j1081', '1081 · Atwater Pretest'],
   ['j977', '977 · Stonewick'],
   ['j1044', '1044 · B & D Creekside'],
   ['jguess', 'G1 · A guess'],
   ['j473', '473 · Mike Holmby'],
-  ['j1087', '1087 · Edwards Ranch'],
+  ['j1087', '1087 · Ellery Ranch'],
   ['j1046', '1046 · Pretest'],
-  ['j1048', '1048 · Tison per plans'],
+  ['j1048', '1048 · Trask per plans'],
   ['j1007', '1007 · SKYLAB pay app 3'],
   ['j1075', '1075 · DLF Line Repair'],
   ['j804', '804 · Selwick Tire Barn'],
@@ -119,7 +119,7 @@ describe('the Bill desk (v2.5930)', () => {
       ['no-price', 'j1017', '38 h', 'no clock'],
     ])
     expect(desk.leaksUsd).toBe(7_700)
-    expect(desk.leaks[0]!.detail).toBe('1024 Lawver install reads 100% since Sep 19. No bill was ever made.')
+    expect(desk.leaks[0]!.detail).toBe('1024 Lennox install reads 100% since Sep 19. No bill was ever made.')
     expect(desk.leaks[0]!.door).toEqual({ label: 'Bill it', to: '/jobs?tab=billing' })
     expect(desk.leaks[1]!.detail).toBe('1051 Patel repipe billed $5.2k of $8.8k on Oct 2. The rest has no bill and no date.')
     expect(desk.leaks[1]!.proof).toContain('the bills cover $5.2k')
@@ -145,7 +145,7 @@ describe('the Bill desk (v2.5930)', () => {
 
   it('draws the fast lane with the days sat and the cover words, biggest remainder first', () => {
     expect(desk.fast.map((r) => [r.label, r.usd, r.satText, r.coverText, r.late])).toEqual([
-      ['1081 · Adams Pretest', 9_600, 'sat 6 days', 'nothing billed yet', true],
+      ['1081 · Atwater Pretest', 9_600, 'sat 6 days', 'nothing billed yet', true],
       ['977 · Stonewick', 5_400, 'sat 3 days', 'bills cover $4.1k of $9.5k', true],
       ['1044 · B & D Creekside', 3_600, 'sat 2 days', 'payments cover $6.1k of $9.7k', true],
     ])
@@ -166,8 +166,8 @@ describe('the Bill desk (v2.5930)', () => {
     expect(s.weeks.map((w) => w.tone)).toEqual(['none', 'none', 'none', 'none', 'good', 'bad', 'bad', 'none'])
     expect(s.rows.map((r) => [r.bill, r.readyText, r.billedText, r.lagText, r.sentBy, r.cashDaysText])).toEqual([
       ['1046 · Pretest · $1.4k', 'Oct 17', 'Oct 23', '6 days', 'Taunya', '$8.1k·d'],
-      ['1087 · Edwards Ranch · $645', 'Oct 21', 'Oct 21', 'same day', 'Taunya', '0'],
-      ['1048 · Tison per plans · $4.8k', 'Oct 16', 'Oct 16', 'same day', 'Dana', '0'],
+      ['1087 · Ellery Ranch · $645', 'Oct 21', 'Oct 21', 'same day', 'Taunya', '0'],
+      ['1048 · Trask per plans · $4.8k', 'Oct 16', 'Oct 16', 'same day', 'Dana', '0'],
       ['1007 · SKYLAB pay app 3 · $11.8k', 'Oct 10', 'Oct 14', '4 days', 'Taunya', '$47.2k·d'],
       ['473 · Mike Holmby · $1.5k', '—', 'Oct 12', '—', 'by hand', '—'],
       ['1075 · DLF Line Repair · $2.2k', 'Oct 9', 'Oct 9', 'same day', 'Dana', '0'],

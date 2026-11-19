@@ -18,7 +18,7 @@ function target(over: Partial<BankPaymentTarget> & { key: string }): BankPayment
     jobId: `job-${over.key}`,
     hcpNumber: '1015',
     jobName: 'Montelby Post Test',
-    jobAddress: '545 Slippery Rock, Cibolo, TX 78108',
+    jobAddress: '662 Seaton Rock, Cibolo, TX 78108',
     lineKind: 'merged_billed',
     invoiceSequenceOrder: null,
     stripeHosted: false,
@@ -35,7 +35,7 @@ describe('arBilledLineRowParts', () => {
       dollars: '$250.00',
       number: '1015',
       title: 'Montelby Post Test',
-      secondary: 'Arturo Montelby · 545 Slippery Rock, Cibolo, TX 78108 · Billed line',
+      secondary: 'Arturo Montelby · 662 Seaton Rock, Cibolo, TX 78108 · Billed line',
       stripe: false,
     })
   })
@@ -44,7 +44,7 @@ describe('arBilledLineRowParts', () => {
     const p = arBilledLineRowParts(
       target({ key: 'b', jobName: 'Gilbrow Master Bath', customerName: 'Gilbrow', gcName: 'Hargrove Homes', lineKind: 'invoice', invoiceSequenceOrder: 3, stripeHosted: true }),
     )
-    expect(p.secondary).toBe('Hargrove Homes · 545 Slippery Rock, Cibolo, TX 78108 · Invoice #3')
+    expect(p.secondary).toBe('Hargrove Homes · 662 Seaton Rock, Cibolo, TX 78108 · Invoice #3')
     expect(p.stripe).toBe(true)
   })
 

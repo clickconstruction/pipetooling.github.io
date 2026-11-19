@@ -8,18 +8,18 @@ const ACCOUNTS = [
     { id: 'j707', click_number: 707, job_address: '12400 Hwy 71 W, Bee Cave, TX' },
     { id: 'j717', click_number: 717, job_address: '12400 Hwy 71 W, Bee Cave, TX' },
   ]),
-  acc('c:brund', 'Brund & Assoc.', 2028.04, [{ id: 'j891', hcp_number: '891', job_address: '11730 TX-29, Liberty Hill, TX', customer_address_id: 'addr-brund' }]),
+  acc('c:brund', 'Brund & Assoc.', 2028.04, [{ id: 'j891', hcp_number: '891', job_address: '60305 TX-29, Liberty Hill, TX', customer_address_id: 'addr-brund' }]),
   acc('c:rlc', 'RLC- Dunmere Mallin', 1712.5, [{ id: 'j790', click_number: 790, job_address: '628 Tarrow Rd, San Antonio, TX' }], true),
   acc('c:closed', 'Closed Co', 999, [{ id: 'j1', click_number: 1, job_address: '1 Main St, Austin, TX' }]),
 ]
-const GIVEN_UP = [acc('c:hall', 'Bruce Hall', 350, [{ id: 'j838', click_number: 838, job_address: '100 Oak, Seguin, TX' }])]
+const GIVEN_UP = [acc('c:hall', 'Blake Hendry', 350, [{ id: 'j838', click_number: 838, job_address: '100 Oak, Seguin, TX' }])]
 const MATTERS = new Map([
   ['c:tle', { stage: 'referred', closed_at: null, firm_id: 'firm-a', released_at: '2026-10-06T15:00:00Z' }],
   ['c:closed', { stage: 'settled', closed_at: '2026-10-01T00:00:00Z', firm_id: 'firm-a', released_at: '2026-09-01T00:00:00Z' }],
 ])
 const COORDS = new Map([
   ['12400 hwy 71 w, bee cave, tx', { lat: 30.3169, lng: -97.9786 }],
-  ['11730 tx-29, liberty hill, tx', { lat: 30.6583, lng: -97.8876 }],
+  ['60305 tx-29, liberty hill, tx', { lat: 30.6583, lng: -97.8876 }],
   ['628 tarrow rd, san antonio, tx', { lat: 29.4711, lng: -98.4454 }],
 ])
 const countyOf = (lng: number, lat: number) => (lat > 30.5 ? 'Williamson' : lat > 30 ? 'Travis' : lng < -98.3 ? 'Bexar' : 'Guadalupe')
@@ -33,7 +33,7 @@ const cases = shapeMapCases({ accounts: ACCOUNTS, givenUp: GIVEN_UP, byPayerKey:
 
 describe('shapeMapCases', () => {
   it('places each account at its first job, the county from the record else the point, largest first, closed matters off the map', () => {
-    expect(cases.map((c) => c.name)).toEqual(['The Reading Corner', 'Brund & Assoc.', 'RLC- Dunmere Mallin', 'Bruce Hall'])
+    expect(cases.map((c) => c.name)).toEqual(['The Reading Corner', 'Brund & Assoc.', 'RLC- Dunmere Mallin', 'Blake Hendry'])
     const tle = cases[0]!
     expect(tle).toMatchObject({ id: 'c:tle|live', key: 'c:tle', jobLabels: '707 · 717', jobCount: 2, stand: 'firm', note: 'with Snell Law Firm since 10/06', county: 'Travis', countyFrom: 'point', lat: 30.3169 })
     expect(cases[1]).toMatchObject({ stand: 'eyes', note: 'needs a dev’s eyes', county: 'Williamson', countyFrom: 'record', jobLabels: '891' })
@@ -79,7 +79,7 @@ describe('against the county map', () => {
       { firmId: 'firm-b', name: 'Austin firm', count: 0, dollars: 0, moneyWords: '$0.00' },
       { firmId: null, name: 'No firm covers it', count: 2, dollars: 2378.04, moneyWords: '$2,378.04' },
     ])
-    expect(uncoveredWords(cases, assignments)).toBe('2 cases in a county no firm covers · Brund & Assoc. (Williamson) · Bruce Hall (off the map). Color the county for a firm, or the desk cannot release them.')
+    expect(uncoveredWords(cases, assignments)).toBe('2 cases in a county no firm covers · Brund & Assoc. (Williamson) · Blake Hendry (off the map). Color the county for a firm, or the desk cannot release them.')
     expect(uncoveredWords([], assignments)).toBeNull()
   })
 })

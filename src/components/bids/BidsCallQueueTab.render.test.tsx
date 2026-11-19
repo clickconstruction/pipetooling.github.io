@@ -61,7 +61,7 @@ function renderTab(bids: BidWithBuilder[]) {
 describe('BidsCallQueueTab', () => {
   it('renders the header totals and the fixed three-row table', async () => {
     renderTab([
-      bid({ project_name: 'Jakes Burgers', bid_date_sent: '2026-06-01' }), // pending, quiet, tab gettable
+      bid({ project_name: 'Jarvis Burgers', bid_date_sent: '2026-06-01' }), // pending, quiet, tab gettable
       bid({ project_name: 'Animal Hospital', outcome: 'lost', bid_value: 300000 }), // needs reason + tab
     ])
     await settle()

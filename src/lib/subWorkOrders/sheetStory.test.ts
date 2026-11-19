@@ -59,7 +59,7 @@ describe('buildSheetStory — a signed sheet at the walk-through (804)', () => {
       agreed: 1208.97,
       paid: 600,
       open: 608.97,
-      sheet: { assigned_to_name: 'Cale Yarwick', job_number: '804', address: '3915 N Loop 1604 E', job_date: '2026-08-28', created_at: '2026-08-28T19:00:00Z', stage: 'walkthrough', items: [{ fixture: 'Rough-in', is_fixed: true, direct_labor_amount: 1208.97 }], payments: [{ amount: 600, memo: 'first half', payment_date: '2026-09-01' }] },
+      sheet: { assigned_to_name: 'Cale Yarwick', job_number: '804', address: '6873 N Loop 1604 E', job_date: '2026-08-28', created_at: '2026-08-28T19:00:00Z', stage: 'walkthrough', items: [{ fixture: 'Rough-in', is_fixed: true, direct_labor_amount: 1208.97 }], payments: [{ amount: 600, memo: 'first half', payment_date: '2026-09-01' }] },
       job: { hcp_number: '804', customer_name: 'Selwick General', status: 'working', revenue: 9400, billsOut: 0, billsPaid: 0 },
       events: [{ occurred_at: '2026-09-04T22:12:00Z', from: 'working', to: 'walkthrough', source: 'portal', note: 'Cleanout is behind the water heater — gate code 4471', actorName: null }],
       paperwork: { msaSignedOn: '2026-07-02', gcStanding: 'current', coiExpiresOn: '2026-12-31' },
@@ -102,7 +102,7 @@ describe('buildSheetStory — variants', () => {
     expect(rows[1]!.facts.some((f) => f.quote && f.text === '“price is low”')).toBe(true)
   })
   it('crew pay drops the office rows', () => {
-    const rows = buildSheetStory(input({ crewPay: true, agreed: 1000, sheet: { assigned_to_name: 'Abraham | Misses Taunya TESTING', job_number: '1004', address: '162 Forest Drive', job_date: '2026-09-01', created_at: null, stage: 'working' } }))
+    const rows = buildSheetStory(input({ crewPay: true, agreed: 1000, sheet: { assigned_to_name: 'Abraham | Misses Taunya TESTING', job_number: '1004', address: '785 Forest Drive', job_date: '2026-09-01', created_at: null, stage: 'working' } }))
     expect(rows.map((r) => r.key)).toEqual(['work', 'inspection', 'customer_pays', 'paid'])
   })
   it('queued for the pay run reads on Customer pays; paid in full on Paid', () => {

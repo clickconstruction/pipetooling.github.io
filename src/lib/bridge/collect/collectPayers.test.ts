@@ -9,7 +9,7 @@ const speeds: PaySpeedData = {
   company: { medianDays: 7, samples: 286 },
   customers: { rlc: { medianDays: 35, samples: 4 }, halden: { medianDays: 74, samples: 1 }, handi: { medianDays: 6, samples: 10 }, kestrin: { medianDays: 30, samples: 31 } },
   segments: { residential: { medianDays: 2, samples: 136 }, commercial: { medianDays: 12, samples: 150 } },
-  customerTypes: { structura: 'commercial', rlc: 'commercial', southern: 'commercial', halden: 'commercial', handi: 'commercial', kestrin: 'commercial' },
+  customerTypes: { sheffield: 'commercial', rlc: 'commercial', southern: 'commercial', halden: 'commercial', handi: 'commercial', kestrin: 'commercial' },
   receipts: {},
   quality: null,
 }
@@ -18,7 +18,7 @@ const bill = (key: string, payerId: string, payerName: string, billedYmd: string
 
 // Six payers and a tail, in the Monday board's proportions.
 const bills: CollectBill[] = [
-  bill('skylab', 'structura', 'Structura, Inc. – Austin', '2026-09-24', 103_386, { sentFromHere: false }),
+  bill('skylab', 'sheffield', 'Sheffield, Inc. – Austin', '2026-09-24', 103_386, { sentFromHere: false }),
   bill('rlc-a', 'rlc', 'RLC- Dunmere Mallin', '2026-03-16', 13_420),
   bill('rlc-b', 'rlc', 'RLC- Dunmere Mallin', '2026-08-20', 9_800),
   bill('rlc-c', 'rlc', 'RLC- Dunmere Mallin', '2026-09-21', 8_780, { sentFromHere: false }),
@@ -34,7 +34,7 @@ const bills: CollectBill[] = [
   bill('r4', 'gilmere', 'Tommy Gilmere', '2026-08-18', 1_650),
   bill('r5', 'gctest', 'GC Test Owner LLC', '2026-10-10', 4_436),
   bill('r6', 'holmby', 'Michael Holmby', '2026-09-25', 1_499),
-  bill('r7', 'randolph', 'Randolph Field Reality', '2026-09-28', 1_050),
+  bill('r7', 'randolph', 'Randy Field Rafferty', '2026-09-28', 1_050),
   bill('r8', 'lowbeck', 'Lowbeck Contracting', '2026-09-10', 1_000),
   bill('r9', 'misc', 'Someone Else', '2026-10-20', 2_600),
   bill('coll', 'old', 'An old GC', '2026-02-01', 19_522, { inCollections: true }),
@@ -49,13 +49,13 @@ describe('buildCollectPayers (v2.5848)', () => {
   const cut = buildCollectPayers(pile, { touches })
 
   it('groups the bills by payer, biggest first, Collections left out', () => {
-    expect(cut.payers.slice(0, 7).map((p) => p.payerName)).toEqual(['Structura, Inc. – Austin', 'RLC- Dunmere Mallin', 'Southern Pine Construction', 'TF Halden', 'B & D Construction', 'Kestrin Contracting', 'Linwick Renovations'])
+    expect(cut.payers.slice(0, 7).map((p) => p.payerName)).toEqual(['Sheffield, Inc. – Austin', 'RLC- Dunmere Mallin', 'Southern Pine Construction', 'TF Halden', 'B & D Construction', 'Kestrin Contracting', 'Linwick Renovations'])
     expect(cut.payers).toHaveLength(15)
     expect(cut.payers.some((p) => p.payerName === 'An old GC')).toBe(false)
   })
 
   it('cuts the fewest payers that hold nine tenths of the headline, at most six', () => {
-    expect(cut.cut.map((p) => p.payerName)).toEqual(['Structura, Inc. – Austin', 'RLC- Dunmere Mallin', 'Southern Pine Construction', 'TF Halden', 'B & D Construction', 'Kestrin Contracting'])
+    expect(cut.cut.map((p) => p.payerName)).toEqual(['Sheffield, Inc. – Austin', 'RLC- Dunmere Mallin', 'Southern Pine Construction', 'TF Halden', 'B & D Construction', 'Kestrin Contracting'])
     expect(cut.cutUsd).toBe(103_386 + 77_351 + 38_625 + 32_242 + 14_570 + 7_838)
     expect(cut.cutShare).toBeCloseTo(cut.cutUsd / pile.headlineUsd, 9)
     const tail = pile.bills.filter((b) => /^r\d$/.test(b.key))
@@ -64,7 +64,7 @@ describe('buildCollectPayers (v2.5848)', () => {
     const two = buildCollectPayers(pile, { maxCut: 2 })
     expect(two.cut).toHaveLength(2)
     const half = buildCollectPayers(pile, { shareTarget: 0.5 })
-    expect(half.cut.map((p) => p.payerName)).toEqual(['Structura, Inc. – Austin', 'RLC- Dunmere Mallin'])
+    expect(half.cut.map((p) => p.payerName)).toEqual(['Sheffield, Inc. – Austin', 'RLC- Dunmere Mallin'])
   })
 
   it('reads each payer: bills, jobs, the oldest, the pace and its source, the states, the hand-marked share', () => {
@@ -74,8 +74,8 @@ describe('buildCollectPayers (v2.5848)', () => {
     expect(rlc.byState).toMatchObject({ doubtful: 13_420, late: 9_800 + 45_351, notdue: 8_780 })
     expect(rlc.latePileUsd).toBe(9_800 + 45_351)
     expect(rlc.bills.map((b) => b.usd)).toEqual([45_351, 13_420, 9_800, 8_780])
-    const structura = cut.cut[0]!
-    expect(structura).toMatchObject({ isGc: true, paceSource: 'gc', paceDays: 35, worstState: 'notdue', handMarkedUsd: 103_386, promise: { state: 'none', promise: null, usd: 0 } })
+    const sheffield = cut.cut[0]!
+    expect(sheffield).toMatchObject({ isGc: true, paceSource: 'gc', paceDays: 35, worstState: 'notdue', handMarkedUsd: 103_386, promise: { state: 'none', promise: null, usd: 0 } })
   })
 
   it('carries the promise state and the newest chase touch', () => {

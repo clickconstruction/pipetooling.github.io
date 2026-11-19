@@ -32,7 +32,7 @@ describe('parseExtraTxLocalitiesText', () => {
 
 describe('extra locality keywords (v2.1186 dev setting)', () => {
   it('findEarliestTxLocalityIndex matches org-added cities', () => {
-    const addr = '1875 Co Rd 777 Devine TX'
+    const addr = '1948 Co Rd 777 Devine TX'
     expect(findEarliestTxLocalityIndex(addr)).toBe(-1)
     setExtraTxLocalityKeywords(['Devine'])
     expect(findEarliestTxLocalityIndex(addr)).toBe(addr.indexOf('Devine'))
@@ -40,8 +40,8 @@ describe('extra locality keywords (v2.1186 dev setting)', () => {
 
   it('formatAddressTwoLines starts the second line at an org-added city', () => {
     setExtraTxLocalityKeywords(['Devine'])
-    expect(formatAddressTwoLines('1875 Co Rd 777 Devine TX')).toEqual({
-      line1: '1875 Co Rd 777',
+    expect(formatAddressTwoLines('1948 Co Rd 777 Devine TX')).toEqual({
+      line1: '1948 Co Rd 777',
       line2: 'Devine TX',
     })
   })
@@ -50,20 +50,20 @@ describe('extra locality keywords (v2.1186 dev setting)', () => {
     setExtraTxLocalityKeywords(['Devine'])
     // Cibolo joined the built-ins in v2.1458 — the locality split now beats the
     // comma fallback this case originally documented.
-    expect(formatAddressTwoLines('124 Farmview Cibolo, TX')).toEqual({
-      line1: '124 Farmview',
+    expect(formatAddressTwoLines('896 Foxworth Cibolo, TX')).toEqual({
+      line1: '896 Foxworth',
       line2: 'Cibolo, TX',
     })
-    expect(formatAddressTwoLines('720 Bailey St Seguin, TX')).toEqual({
-      line1: '720 Bailey St',
+    expect(formatAddressTwoLines('686 Bellamy St Seguin, TX')).toEqual({
+      line1: '686 Bellamy St',
       line2: 'Seguin, TX',
     })
   })
 
   it('splitJobAddressForPrefill uses extras for the city segment', () => {
     setExtraTxLocalityKeywords(['Devine'])
-    expect(splitJobAddressForPrefill('1875 Co Rd 777 Devine TX 78016')).toEqual({
-      street: '1875 Co Rd 777',
+    expect(splitJobAddressForPrefill('1948 Co Rd 777 Devine TX 78016')).toEqual({
+      street: '1948 Co Rd 777',
       city: 'Devine',
       state: 'TX',
       zip: '78016',

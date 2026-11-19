@@ -3,11 +3,11 @@ import { hiddenRobotsWords, isZzBidName, normalizeHideRobots, splitRobotBids } f
 
 describe('isZzBidName', () => {
   it('a name that starts with the word ZZ, whatever its case or leading space', () => {
-    for (const n of ['ZZ Shadow PATAGONIA - AUSTIN', 'ZZ Twin MPH STAGE (backtest)', 'ZZ Test', 'zz takeoffs test', '  ZZ Shadow X', 'ZZ']) expect(isZzBidName(n)).toBe(true)
+    for (const n of ['ZZ Shadow PENROSE - AUSTIN', 'ZZ Twin MCK STAGE (backtest)', 'ZZ Test', 'zz takeoffs test', '  ZZ Shadow X', 'ZZ']) expect(isZzBidName(n)).toBe(true)
   })
 
   it('a real project is not one, even with ZZ inside it or more Zs in front', () => {
-    for (const n of ['PATAGONIA - AUSTIN', 'ZZZ Corp remodel', 'Pizza ZZ Top', 'Zzyzx Road', '', null, undefined]) expect(isZzBidName(n)).toBe(false)
+    for (const n of ['PENROSE - AUSTIN', 'ZZZ Corp remodel', 'Pizza ZZ Top', 'Zzyzx Road', '', null, undefined]) expect(isZzBidName(n)).toBe(false)
   })
 })
 

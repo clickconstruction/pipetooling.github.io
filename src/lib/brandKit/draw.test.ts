@@ -144,11 +144,11 @@ describe('a person’s facts', () => {
     expect(p).toEqual({ name: 'Renee Castwell', title: '', email: 'renee@example.com', mobile: '(512) 555-0131', office: '(512) 555-0100', photo: null })
   })
   it('prints every number one way, however it was typed', () => {
-    for (const typed of ['617 939 6295', '6179396295', '617-939-6295', '(617) 939-6295', '+1 617 939 6295', '1.617.939.6295']) {
-      expect(kitPhone(typed), typed).toBe('(617) 939-6295')
+    for (const typed of ['617 555 0194', '6175550194', '617-555-0194', '(617) 555-0194', '+1 617 555 0194', '1.617.555.0194']) {
+      expect(kitPhone(typed), typed).toBe('(617) 555-0194')
     }
-    const p = kitPersonFromUser({ name: 'Renee', phone: '617 939 6295' }, '512.360.0599', null)
-    expect([p.mobile, p.office]).toEqual(['(617) 939-6295', '(512) 360-0599'])
+    const p = kitPersonFromUser({ name: 'Renee', phone: '617 555 0194' }, '512.360.0599', null)
+    expect([p.mobile, p.office]).toEqual(['(617) 555-0194', '(512) 360-0599'])
   })
   it('leaves a number that is not ten digits as it was typed, and an empty one empty', () => {
     expect(kitPhone('555-0142')).toBe('555-0142')

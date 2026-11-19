@@ -325,7 +325,7 @@ describe('pay-run date math', () => {
 
 describe('cleanPortalAddress (SP-3)', () => {
   it('strips the literal Null an import left in the address', () => {
-    expect(cleanPortalAddress('9703 Lenox Hl San Antonio, TX Null')).toBe('9703 Lenox Hl San Antonio, TX')
+    expect(cleanPortalAddress('3507 Lister Hl San Antonio, TX Null')).toBe('3507 Lister Hl San Antonio, TX')
     expect(cleanPortalAddress('123 Main St, Null, TX 78201')).toBe('123 Main St, TX 78201')
   })
   it('leaves real addresses alone and trims', () => {

@@ -6,7 +6,7 @@ const base: SignedAgreementEmailInput = {
   kind: 'bid',
   estimateNumber: 412,
   title: 'Hunter Road Sound Studio',
-  projectAddress: '2530 Hunter Rd, San Marcos, TX',
+  projectAddress: '4455 Hadley Rd, San Marcos, TX',
   customerName: 'Kestrin Contracting',
   signerName: 'Mark Kestrin',
   optionName: 'To Plans',

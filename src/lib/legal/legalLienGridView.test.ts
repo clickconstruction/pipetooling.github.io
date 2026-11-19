@@ -96,10 +96,10 @@ describe('legalLienGridCells', () => {
 
   it('an address with no comma is one street line; the extras after the state stay on the city line', () => {
     const src = input()
-    src.jobs = { ...src.jobs, j843: { ...src.jobs['j843']!, address: '214 Beechwood Avenue, Universal City, TX (Lock Box Code 5068)' }, j702: { ...src.jobs['j702']!, address: '8275 Broussard' } }
+    src.jobs = { ...src.jobs, j843: { ...src.jobs['j843']!, address: '494 Bancroft Avenue, Universal City, TX (Lock Box Code 5068)' }, j702: { ...src.jobs['j702']!, address: '6509 Briscoe' } }
     const cells = legalLienGridCells(buildLienTimelineBook(src).rows, TODAY)
-    expect(cells.find((c) => c.jobId === 'j843')).toMatchObject({ street: '214 Beechwood Avenue', cityLine: 'Universal City, TX (Lock Box Code 5068)' })
-    expect(cells.find((c) => c.jobId === 'j702')).toMatchObject({ street: '8275 Broussard', cityLine: '' })
+    expect(cells.find((c) => c.jobId === 'j843')).toMatchObject({ street: '494 Bancroft Avenue', cityLine: 'Universal City, TX (Lock Box Code 5068)' })
+    expect(cells.find((c) => c.jobId === 'j702')).toMatchObject({ street: '6509 Briscoe', cityLine: '' })
   })
 
   it('reads Residential with Homestead or No homestead beneath', () => {

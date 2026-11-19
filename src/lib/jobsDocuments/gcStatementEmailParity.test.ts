@@ -69,11 +69,11 @@ const clientGroup: GcReviewGroup = {
   subtotal: 7_300,
   oldestAgeDays: 45,
   rows: [
-    { key: 'i1', jobId: 'j1', hcp: '916', jobName: 'SVP Manor', jobAddress: '11915 Ring Dr, Manor TX', customerName: 'Kestrin', referenceDateDisplay: 'Jul 21, 2026', referenceYmd: '2026-07-21', referenceIsEstimate: false, ageDays: 45, remaining: 450, inCollections: false, paidBy: PAID_BY_J1, propertyId: 'prop-ring', billed: 1450, billPayments: j1Payments, retainageHeld: null, unmatchedOnJob: 0 },
+    { key: 'i1', jobId: 'j1', hcp: '916', jobName: 'SVP Manor', jobAddress: '52832 Redmond Dr, Manor TX', customerName: 'Kestrin', referenceDateDisplay: 'Jul 21, 2026', referenceYmd: '2026-07-21', referenceIsEstimate: false, ageDays: 45, remaining: 450, inCollections: false, paidBy: PAID_BY_J1, propertyId: 'prop-redmond', billed: 1450, billPayments: j1Payments, retainageHeld: null, unmatchedOnJob: 0 },
     { key: 'j2', jobId: 'j2', hcp: '948', jobName: 'Water Heater', jobAddress: '', customerName: 'Kestrin', referenceDateDisplay: 'Aug 2, 2026 (est.)', referenceYmd: '2026-08-02', referenceIsEstimate: true, ageDays: 30, remaining: 1_200, inCollections: false },
-    { key: 'i3', jobId: 'j3', hcp: '—', jobName: 'Connect sink', jobAddress: '12803 El Dorado, Universal City TX', customerName: 'Kestrin', referenceDateDisplay: 'Aug 30, 2026', referenceYmd: '2026-08-30', referenceIsEstimate: false, ageDays: 6, remaining: 4_000, inCollections: false, paidBy: PAID_BY_J3, propertyId: null, billed: 4000, billPayments: [], retainageHeld: null, unmatchedOnJob: 0 },
-    { key: 'i4', jobId: 'j4', hcp: '951', jobName: 'Kestrin', jobAddress: '11915 Ring Drive, Manor, TX 78653', customerName: 'Kestrin', referenceDateDisplay: 'Aug 20, 2026', referenceYmd: '2026-08-20', referenceIsEstimate: false, ageDays: 16, remaining: 900, inCollections: false, paidBy: PAID_BY_J4, propertyId: 'prop-ring', billed: 900, billPayments: [], retainageHeld: null, unmatchedOnJob: 900 },
-    { key: 'j5', jobId: 'j5', hcp: '960', jobName: 'Gas test', jobAddress: '12803 El Dorado, Universal City, TX', customerName: 'Kestrin', referenceDateDisplay: '—', referenceYmd: null, referenceIsEstimate: false, ageDays: null, remaining: 750, inCollections: false, paidBy: PAID_BY_J5, propertyId: null, billed: null, billPayments: j5Payments, retainageHeld: null, unmatchedOnJob: 0 },
+    { key: 'i3', jobId: 'j3', hcp: '—', jobName: 'Connect sink', jobAddress: '51964 El Dalton, Universal City TX', customerName: 'Kestrin', referenceDateDisplay: 'Aug 30, 2026', referenceYmd: '2026-08-30', referenceIsEstimate: false, ageDays: 6, remaining: 4_000, inCollections: false, paidBy: PAID_BY_J3, propertyId: null, billed: 4000, billPayments: [], retainageHeld: null, unmatchedOnJob: 0 },
+    { key: 'i4', jobId: 'j4', hcp: '951', jobName: 'Kestrin', jobAddress: '52832 Redmond Drive, Manor, TX 78653', customerName: 'Kestrin', referenceDateDisplay: 'Aug 20, 2026', referenceYmd: '2026-08-20', referenceIsEstimate: false, ageDays: 16, remaining: 900, inCollections: false, paidBy: PAID_BY_J4, propertyId: 'prop-redmond', billed: 900, billPayments: [], retainageHeld: null, unmatchedOnJob: 900 },
+    { key: 'j5', jobId: 'j5', hcp: '960', jobName: 'Gas test', jobAddress: '51964 El Dalton, Universal City, TX', customerName: 'Kestrin', referenceDateDisplay: '—', referenceYmd: null, referenceIsEstimate: false, ageDays: null, remaining: 750, inCollections: false, paidBy: PAID_BY_J5, propertyId: null, billed: null, billPayments: j5Payments, retainageHeld: null, unmatchedOnJob: 0 },
   ],
 }
 
@@ -85,17 +85,17 @@ const payloadGroup: GcStatementPayloadGroup = {
   subtotal: 7_300,
   oldest_age_days: 45,
   rows: [
-    { job_id: 'j1', row_key: 'i1', display_number: '916', job_name: 'SVP Manor', job_address: '11915 Ring Dr, Manor TX', customer_name: 'Kestrin', ref_date: '2026-07-21', ref_is_estimate: false, age_days: 45, remaining: 450, in_collections: false, invoice_id: 'i1', invoice_amount: 1450, retainage_held: null, job_bills: j1Bills, job_payments: j1Payments },
+    { job_id: 'j1', row_key: 'i1', display_number: '916', job_name: 'SVP Manor', job_address: '52832 Redmond Dr, Manor TX', customer_name: 'Kestrin', ref_date: '2026-07-21', ref_is_estimate: false, age_days: 45, remaining: 450, in_collections: false, invoice_id: 'i1', invoice_amount: 1450, retainage_held: null, job_bills: j1Bills, job_payments: j1Payments },
     { job_id: 'j2', row_key: 'j2', display_number: '948', job_name: 'Water Heater', job_address: null, customer_name: 'Kestrin', ref_date: '2026-08-02', ref_is_estimate: true, age_days: 30, remaining: 1_200, in_collections: false },
-    { job_id: 'j3', row_key: 'i3', display_number: null, job_name: 'Connect sink', job_address: '12803 El Dorado, Universal City TX', customer_name: 'Kestrin', ref_date: '2026-08-30', ref_is_estimate: false, age_days: 6, remaining: 4_000, in_collections: false, invoice_id: 'i3', invoice_amount: 4000, retainage_held: null, job_bills: j3Bills, job_payments: [] },
-    { job_id: 'j4', row_key: 'i4', display_number: '951', job_name: 'Kestrin', job_address: '11915 Ring Drive, Manor, TX 78653', customer_name: 'Kestrin', ref_date: '2026-08-20', ref_is_estimate: false, age_days: 16, remaining: 900, in_collections: false, invoice_id: 'i4', invoice_amount: 900, retainage_held: null, job_bills: j4Bills, job_payments: j4Payments, job_total: J4_TOTAL },
-    { job_id: 'j5', row_key: 'j5', display_number: '960', job_name: 'Gas test', job_address: '12803 El Dorado, Universal City, TX', customer_name: 'Kestrin', ref_date: null, ref_is_estimate: false, age_days: null, remaining: 750, in_collections: false, invoice_id: null, invoice_amount: null, retainage_held: null, job_bills: [], job_payments: j5Payments },
+    { job_id: 'j3', row_key: 'i3', display_number: null, job_name: 'Connect sink', job_address: '51964 El Dalton, Universal City TX', customer_name: 'Kestrin', ref_date: '2026-08-30', ref_is_estimate: false, age_days: 6, remaining: 4_000, in_collections: false, invoice_id: 'i3', invoice_amount: 4000, retainage_held: null, job_bills: j3Bills, job_payments: [] },
+    { job_id: 'j4', row_key: 'i4', display_number: '951', job_name: 'Kestrin', job_address: '52832 Redmond Drive, Manor, TX 78653', customer_name: 'Kestrin', ref_date: '2026-08-20', ref_is_estimate: false, age_days: 16, remaining: 900, in_collections: false, invoice_id: 'i4', invoice_amount: 900, retainage_held: null, job_bills: j4Bills, job_payments: j4Payments, job_total: J4_TOTAL },
+    { job_id: 'j5', row_key: 'j5', display_number: '960', job_name: 'Gas test', job_address: '51964 El Dalton, Universal City, TX', customer_name: 'Kestrin', ref_date: null, ref_is_estimate: false, age_days: null, remaining: 750, in_collections: false, invoice_id: null, invoice_amount: null, retainage_held: null, job_bills: [], job_payments: j5Payments },
   ],
 }
 /** What the dispatcher reads beside the payload: each job's property record. */
-const PROPERTY_BY_JOB = { j1: 'prop-ring', j2: null, j3: null, j4: 'prop-ring', j5: null }
+const PROPERTY_BY_JOB = { j1: 'prop-redmond', j2: null, j3: null, j4: 'prop-redmond', j5: null }
 /** "Payments we have received" (v2.4260): the block is built once from the checks and handed to both lanes. */
-const RECEIVED = [{ key: 'ref:4821|2026-08-15', onYmd: '2026-08-15', label: 'Check #4821', amount: 1000, where: ['11915 Ring Dr · Job 916'] }]
+const RECEIVED = [{ key: 'ref:4821|2026-08-15', onYmd: '2026-08-15', label: 'Check #4821', amount: 1000, where: ['52832 Redmond Dr · Job 916'] }]
 const RECEIVED_SINCE = '2026-08-06'
 const EXTRAS = { propertyIdByJob: PROPERTY_BY_JOB, qrImgSrc: QR, received: RECEIVED, receivedSinceYmd: RECEIVED_SINCE }
 
@@ -107,14 +107,14 @@ describe('GC statement — the client builders and the dispatcher render the sam
     const client = buildGcStatementEmailHtml(clientGroup, { dateStr: DATE, officePhone: PHONE, portalUrl: PORTAL, introText: INTRO, qrImgSrc: QR, received: RECEIVED, receivedSinceYmd: RECEIVED_SINCE })
     const server = renderGcStatementHtml(payloadGroup, DATE, PHONE, PORTAL, INTRO, EXTRAS)
     expect(client).toBe(server)
-    expect(client).toContain('Check #4821<span style="color:#5b6676"> to 11915 Ring Dr · Job 916</span>')
+    expect(client).toContain('Check #4821<span style="color:#5b6676"> to 52832 Redmond Dr · Job 916</span>')
   })
 
   it('text: the plain-text twins match too', () => {
     const client = buildGcStatementEmailText(clientGroup, { dateStr: DATE, officePhone: PHONE, portalUrl: PORTAL, introText: INTRO, received: RECEIVED, receivedSinceYmd: RECEIVED_SINCE })
     const server = renderGcStatementText(payloadGroup, DATE, PHONE, PORTAL, INTRO, EXTRAS)
     expect(client).toBe(server)
-    expect(client).toContain('- Aug 15 — Check #4821 to 11915 Ring Dr · Job 916 — $1,000.00')
+    expect(client).toContain('- Aug 15 — Check #4821 to 52832 Redmond Dr · Job 916 — $1,000.00')
   })
 
   it('without intro, portal or code (the personal Copy lane) they still match', () => {
@@ -163,15 +163,15 @@ describe('GC statement — the client builders and the dispatcher render the sam
           'Owed now: $7,300.00',
           '5 open bills at 3 properties. $8,550.00 billed, $1,250.00 paid so far.',
           '',
-          // "Ring Dr" and "Ring Drive" are one property record; the heading is the spelling used most, first seen on a tie.
-          '11915 Ring Dr, Manor — $1,350.00',
+          '51964 El Dalton, Universal City — $4,750.00',
+          '- Connect sink — sent Aug 30 — $4,000.00',
+          '- Job 960 · Gas test — sent — — $750.00 ($250.00 paid by ACH on Aug 1, of $1,000.00 billed)',
+          '',
+          // "Redmond Dr" and "Redmond Drive" are one property record; the heading is the spelling used most, first seen on a tie.
+          '52832 Redmond Dr, Manor — $1,350.00',
           '- Job 916 · SVP Manor — sent Jul 21 — $450.00 ($1,000.00 paid by #4821 on Aug 15, of $1,450.00 billed)',
           // Job 951's name is only the customer's; its $900 sits on the job, not the bill — the bill reads owed in full.
           '- Job 951 — sent Aug 20 — $900.00',
-          '',
-          '12803 El Dorado, Universal City — $4,750.00',
-          '- Connect sink — sent Aug 30 — $4,000.00',
-          '- Job 960 · Gas test — sent — — $750.00 ($250.00 paid by ACH on Aug 1, of $1,000.00 billed)',
           '',
           'Water Heater — $1,200.00',
           '- Job 948 — sent Aug 2 (est.) — $1,200.00',
@@ -192,9 +192,9 @@ describe('GC statement — the client builders and the dispatcher render the sam
 
   it('without the property records the dispatcher still groups by cleaned address', () => {
     const text = renderGcStatementText(payloadGroup, DATE)
-    // "Ring Dr" and "Ring Drive" are two addresses until a property record says otherwise.
+    // "Redmond Dr" and "Redmond Drive" are two addresses until a property record says otherwise.
     expect(text).toContain('4 properties.')
-    expect(text).toContain('12803 El Dorado, Universal City — $4,750.00')
+    expect(text).toContain('51964 El Dalton, Universal City — $4,750.00')
   })
 
   it('a payload from before the bill and its payments rode along words no payment', () => {
@@ -238,7 +238,7 @@ describe('GC statement — the client builders and the dispatcher render the sam
 })
 
 describe('the dispatcher reads each job\u2019s total beside the payload (v2.4536)', () => {
-  const row = (job_id: string, over: Record<string, unknown> = {}) => ({ job_id, row_key: 'i4', display_number: '951', job_name: 'Kestrin', job_address: '1 Ring Dr', customer_name: 'Kestrin', ref_date: '2026-08-20', ref_is_estimate: false, age_days: 16, remaining: 900, in_collections: false, invoice_id: 'i4', invoice_amount: 900, retainage_held: null, job_bills: j4Bills, job_payments: j4Payments, ...over })
+  const row = (job_id: string, over: Record<string, unknown> = {}) => ({ job_id, row_key: 'i4', display_number: '951', job_name: 'Kestrin', job_address: '1 Redmond Dr', customer_name: 'Kestrin', ref_date: '2026-08-20', ref_is_estimate: false, age_days: 16, remaining: 900, in_collections: false, invoice_id: 'i4', invoice_amount: 900, retainage_held: null, job_bills: j4Bills, job_payments: j4Payments, ...over })
   const payloadOf = (rows: ReturnType<typeof row>[]) => ({ groups: [{ entity_id: 'gc-1', entity_name: 'Kestrin', is_no_entity: false, job_count: rows.length, subtotal: 900, oldest_age_days: 16, rows }] }) as unknown as GcStatementPayload
 
   it('names each job once, sets the totals it read, and leaves a job it could not read as it came', () => {

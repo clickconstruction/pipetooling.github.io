@@ -41,8 +41,8 @@ Some builders always pay. Dead Level Foundation pays for every pretest. A pretes
 When the owner pays for some of the work and the GC for the rest, keep it on **one job**:
 
 1. Set **Bills go to** to **Split by line** on the Edit tab.
-2. On the **Bill tab → ① Line Items**, every work line gets a **Pays** toggle under its name. It shows {{chip:blue|Tommy Gilmere}} or {{chip:yellow|Wildflower Springs}}. Tag each line. Untagged lines bill the customer.
-3. Click {{button:blue|Make 2 bills by payer — Wildflower Springs $8,400 · Tommy Gilmere $3,150}} on the money card. One Ready-to-Bill draft per payer appears in the **Bills** list, with a Draft chip. Each is already addressed. The tagged lines lock to their draft.
+2. On the **Bill tab → ① Line Items**, every work line gets a **Pays** toggle under its name. It shows {{chip:blue|Tommy Gilmere}} or {{chip:yellow|Whitlock Springs}}. Tag each line. Untagged lines bill the customer.
+3. Click {{button:blue|Make 2 bills by payer — Whitlock Springs $8,400 · Tommy Gilmere $3,150}} on the money card. One Ready-to-Bill draft per payer appears in the **Bills** list, with a Draft chip. Each is already addressed. The tagged lines lock to their draft.
 4. {{button:blue|Send bill…}} on each draft as usual. For the GC's draft, or a Someone else draft, the Bill Customer window names the payer at the top.
 
 Hours, costs, Burn and the Job Summary stay on the one job number. A discount line follows the work it discounts, so it never needs a tag.

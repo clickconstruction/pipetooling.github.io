@@ -55,12 +55,12 @@ function onJob(p: { id: string; user_id: string; job: string; hcp?: string; name
     job_ledger_id: p.job,
     clocked_in_at: p.clocked_in_at ?? '2026-09-22T13:00:00Z',
     notes: p.notes ?? '',
-    jobs_ledger: { hcp_number: p.hcp ?? '1021', click_number: null, job_name: p.name ?? 'Vellano Pinpoint', job_address: p.address === undefined ? '1160 Lago Vista Dr, San Marcos, TX 78666' : p.address },
+    jobs_ledger: { hcp_number: p.hcp ?? '1021', click_number: null, job_name: p.name ?? 'Vellano Pinpoint', job_address: p.address === undefined ? '5057 Lowell Vista Dr, San Marcos, TX 78666' : p.address },
   })
 }
 
-const VELLANO = '1160 Lago Vista Dr, San Marcos, TX 78666'
-const OFFICE_ADDR = '12921 FM 20, Kingsbury, TX 78638'
+const VELLANO = '5057 Lowell Vista Dr, San Marcos, TX 78666'
+const OFFICE_ADDR = '62552 FM 20, Kingsbury, TX 78638'
 
 describe('buildClockedInMap', () => {
   it('regroups sessions by place: two people on one job share a stop, stops sort most people first, then label', () => {

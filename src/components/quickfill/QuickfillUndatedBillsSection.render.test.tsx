@@ -35,10 +35,10 @@ const WORKLIST = {
       amount: 350,
       status: 'paid',
       createdYmd: '2026-08-20',
-      customerName: 'City of Seguin',
+      customerName: 'City of Sefton',
       jobId: 'j1',
-      jobName: 'Seguin Wave Pool',
-      address: '1 Wave Pool Dr, Seguin, TX',
+      jobName: 'Sefton Wilder Pool',
+      address: '9 Wilder Pool Dr, Seguin, TX',
       hcpNumber: '812',
       payments: [{ paidYmd: '2026-08-24', amount: 350 }],
     },
@@ -50,7 +50,7 @@ const WORKLIST = {
       customerName: 'Nick Franlow',
       jobId: 'j2',
       jobName: 'Franlow Water Heater',
-      address: '204 Wingate Court, Seguin, TX',
+      address: '449 Wolcott Court, Seguin, TX',
       hcpNumber: '918',
       payments: [],
     },
@@ -64,7 +64,7 @@ const WORKLIST = {
       customerName: 'Tyler Morby',
       jobId: 'j3',
       jobName: 'Yobo Studio',
-      address: '3556 FM 78 # 103, McQuenny, TX',
+      address: '4943 FM 78 # 103, McQuenny, TX',
       hcpNumber: '955',
       payments: [{ paidYmd: '2026-08-14', amount: 5983 }],
     },
@@ -83,7 +83,7 @@ beforeEach(() => {
 describe('QuickfillUndatedBillsSection', () => {
   it('renders the scope line, clue chips, and HCP identifiers', async () => {
     renderWithProviders(<QuickfillUndatedBillsSection />)
-    expect(await screen.findByText('City of Seguin')).toBeTruthy()
+    expect(await screen.findByText('City of Sefton')).toBeTruthy()
     expect(screen.getByText('2026-08-01')).toBeTruthy()
     expect(screen.getByText('paid 08/24')).toBeTruthy()
     expect(screen.getByText('billed, unpaid · created 08/12')).toBeTruthy()
@@ -126,15 +126,15 @@ describe('QuickfillUndatedBillsSection', () => {
 
   it('filters by search across customer and HCP', async () => {
     renderWithProviders(<QuickfillUndatedBillsSection />)
-    await screen.findByText('City of Seguin')
+    await screen.findByText('City of Sefton')
     fireEvent.change(screen.getByPlaceholderText('Search customer, job, address, or HCP…'), { target: { value: '918' } })
-    expect(screen.queryByText('City of Seguin')).toBeNull()
+    expect(screen.queryByText('City of Sefton')).toBeNull()
     expect(screen.getByText('Nick Franlow')).toBeTruthy()
     // A search that hides every bill quotes itself and offers Clear the search (punch list #184, sweep C).
     fireEvent.change(screen.getByPlaceholderText('Search customer, job, address, or HCP…'), { target: { value: 'zzqq' } })
     expect(document.querySelector('[data-empty-state]')!.textContent).toBe('No bills match ‘zzqq’. Clear the search')
     fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
-    expect(screen.getByText('City of Seguin')).toBeTruthy()
+    expect(screen.getByText('City of Sefton')).toBeTruthy()
   })
 
   describe('oldest first with an age chip (punch list #184 sweep B)', () => {
@@ -146,7 +146,7 @@ describe('QuickfillUndatedBillsSection', () => {
       vi.useFakeTimers({ toFake: ['Date'] })
       vi.setSystemTime(new Date('2026-08-24T17:00:00Z'))
       renderWithProviders(<QuickfillUndatedBillsSection />)
-      await screen.findByText('City of Seguin')
+      await screen.findByText('City of Sefton')
       // i2 made 08/12, i3 made 08/19, i1 made 08/20: their amounts in that order.
       const amounts = screen.getAllByText(/^\$[\d,]+$/).map((n) => n.textContent)
       expect(amounts).toEqual(['$1,711', '$5,983', '$350'])

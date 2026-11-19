@@ -14,7 +14,7 @@ import {
 const request = {
   id: 'req-1',
   from_user_id: 'tech-9',
-  title: 'Add a customer phone number for HCP 846 - David and Diana Uhl',
+  title: 'Add a customer phone number for HCP 846 - Doris and Derek Underhill',
 }
 
 describe('requestClosureNotification', () => {
@@ -23,7 +23,7 @@ describe('requestClosureNotification', () => {
     expect(n.recipientUserId).toBe('tech-9')
     expect(n.body).toEqual({ dispatch_request_id: 'req-1', mode: 'closed', note: 'Added — it is 555-0100' })
     expect(n.pushTitle).toBe('Dispatch answered')
-    expect(n.pushBody).toBe('Handled: Add a customer phone number for HCP 846 - David and Diana Uhl — Added — it is 555-0100')
+    expect(n.pushBody).toBe('Handled: Add a customer phone number for HCP 846 - Doris and Derek Underhill — Added — it is 555-0100')
   })
 
   it('reopen mode reads as a reopen', () => {

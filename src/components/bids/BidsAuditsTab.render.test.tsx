@@ -28,7 +28,7 @@ const audits = [
     updated_at: '2026-08-30T20:00:00Z',
     // v2.4261: a three-sentence confession folds to two.
     self_assessment: 'Counters-first takeoff, registration-gated mains. Every sheet accounted. Least sure about the vent risers on P-201.',
-    bids: { id: 'bid-405', bid_number: '405', project_name: 'ZZ Twin MPH CASA LINDA (backtest)', selected_bid_version_id: null },
+    bids: { id: 'bid-405', bid_number: '405', project_name: 'ZZ Twin MCK COLBY LACHANCE (backtest)', selected_bid_version_id: null },
   },
   {
     id: 'a2',
@@ -59,7 +59,7 @@ const audits = [
     created_by: null,
     created_at: '2026-08-31T23:16:00Z',
     updated_at: '2026-08-31T23:16:00Z',
-    bids: { id: 'bid-422', bid_number: '422', project_name: 'ZZ Twin AISD GARCIA SCHOOL RENOVATION (backtest)', selected_bid_version_id: null },
+    bids: { id: 'bid-422', bid_number: '422', project_name: 'ZZ Twin AWDT GOODWIN SCHOOL RENOVATION (backtest)', selected_bid_version_id: null },
   },
 ]
 
@@ -118,13 +118,13 @@ describe('BidsAuditsTab', () => {
   it('renders the pending card: links, question, note + receipt, Finish audit', async () => {
     renderWithProviders(<BidsAuditsTab authUser={null} myRole="dev" />)
     // v2.4234: rows are named for the job, not the robot's copy.
-    await waitFor(() => expect(screen.getAllByText(/MPH CASA LINDA/).length).toBeGreaterThan(0))
+    await waitFor(() => expect(screen.getAllByText(/MCK COLBY LACHANCE/).length).toBeGreaterThan(0))
     // v2.4295: jsdom is narrower than two panes, where the card is a full-screen panel — nothing
     // opens on its own there (it would cover the sentence, the button and the queue); a row tap opens it.
     await waitFor(() => expect(screen.getByTestId('queue-up-next')).toBeTruthy())
     expect(screen.queryByTestId('audit-card')).toBeNull()
     expect(screen.queryByTestId('queue-now')).toBeNull()
-    fireEvent.click(screen.getAllByTestId('audit-row').find((r) => /MPH CASA LINDA/.test(r.textContent ?? ''))!)
+    fireEvent.click(screen.getAllByTestId('audit-row').find((r) => /MCK COLBY LACHANCE/.test(r.textContent ?? ''))!)
     await waitFor(() => expect(screen.getByText('Open takeoff (CountTooling) ↗')).toBeTruthy())
 
     const ctLink = screen.getByText('Open takeoff (CountTooling) ↗') as HTMLAnchorElement
@@ -151,7 +151,7 @@ describe('BidsAuditsTab', () => {
     // v2.4234: the queue — Now (the open card, its place in the stake order), Up next, Digested folded.
     const now = screen.getByTestId('queue-now')
     expect(now.textContent).toMatch(/Now1 of 2/)
-    expect(now.textContent).toMatch(/MPH CASA LINDA/)
+    expect(now.textContent).toMatch(/MCK COLBY LACHANCE/)
     const upNext = screen.getByTestId('queue-up-next')
     expect(upNext.textContent).toMatch(/by what your verdict unblocks/)
     expect(upNext.querySelectorAll('[data-testid="audit-row"]')).toHaveLength(1)
@@ -164,7 +164,7 @@ describe('BidsAuditsTab', () => {
 
     // v2.2796: the audit with no PT count rows reads "robot still working" on its why line —
     // never "draft $0 · −100% vs ours" — and it did not steal the auto-expand.
-    expect(upNext.textContent).toMatch(/AISD GARCIA SCHOOL RENOVATION.*robot still working · no counts yet/)
+    expect(upNext.textContent).toMatch(/AWDT GOODWIN SCHOOL RENOVATION.*robot still working · no counts yet/)
     expect(screen.getAllByText(/draft \$3,000/).length).toBeGreaterThan(0) // the priced card, not $0
     expect(screen.queryByText(/draft \$0\b/)).toBeNull()
     expect(screen.queryByText(/-100\.0% vs ours/)).toBeNull()
@@ -233,13 +233,13 @@ describe('BidsAuditsTab', () => {
     expect(screen.getByText('Its question')).toBeTruthy()
 
     // v2.4234: the card's Finish names what opens next.
-    expect(screen.getByText('Finish audit → next: AISD GARCIA SCHOOL RENOVATION')).toBeTruthy()
+    expect(screen.getByText('Finish audit → next: AWDT GOODWIN SCHOOL RENOVATION')).toBeTruthy()
   })
 
   it('read-only roles (write RLS mirror) see the card without composers or Finish audit', async () => {
     renderWithProviders(<BidsAuditsTab authUser={null} myRole="superintendent" />)
-    await waitFor(() => expect(screen.getAllByText(/MPH CASA LINDA/).length).toBeGreaterThan(0))
-    fireEvent.click(screen.getAllByTestId('audit-row').find((r) => /MPH CASA LINDA/.test(r.textContent ?? ''))!)
+    await waitFor(() => expect(screen.getAllByText(/MCK COLBY LACHANCE/).length).toBeGreaterThan(0))
+    fireEvent.click(screen.getAllByTestId('audit-row').find((r) => /MCK COLBY LACHANCE/.test(r.textContent ?? ''))!)
 
     // Content still renders… The audit row lands first; the auto-expand is an
     // effect tick later and the notes come back on a second query, so wait for
@@ -267,7 +267,7 @@ describe('BidsAuditsTab · a note left in the evening keeps its day (v2.4470)', 
     try {
       renderWithProviders(<BidsAuditsTab authUser={null} myRole="dev" />)
       await waitFor(() => expect(screen.getAllByTestId('audit-row').length).toBeGreaterThan(0))
-      fireEvent.click(screen.getAllByTestId('audit-row').find((r) => /MPH CASA LINDA/.test(r.textContent ?? ''))!)
+      fireEvent.click(screen.getAllByTestId('audit-row').find((r) => /MCK COLBY LACHANCE/.test(r.textContent ?? ''))!)
       await waitFor(() => expect(screen.getByText('Check the trap arms.')).toBeTruthy())
       expect(screen.getByText('Check the trap arms.').parentElement!.textContent).toContain('staff · 2026-08-30')
     } finally {

@@ -120,7 +120,7 @@ export type SampleFixtureRow = { fixture: string; count: number }
 export const SAMPLE_BID = {
   number: 'B0000',
   projectName: 'Cedar Bend Apartments',
-  projectAddress: '2530 Hunter Rd, San Marcos, TX 78666',
+  projectAddress: '4455 Hadley Rd, San Marcos, TX 78666',
   serviceTypeName: 'Plumbing',
   headerBrand: 'plum' as 'plum' | 'elec',
   options: [

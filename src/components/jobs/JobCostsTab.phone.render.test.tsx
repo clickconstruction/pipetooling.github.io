@@ -93,7 +93,7 @@ describe('Where the money went on a phone', () => {
 
 describe('the dev’s cost-move panel on a phone', () => {
   it('is a fold that draws the panel only when pressed', async () => {
-    renderWithProviders(<JobWindowCostMovePanel job={{ id: '11111111-1111-4111-8111-111111111111', hcp_number: '583', click_number: '', job_name: 'Diamondback', job_address: '1 Catch-all Rd', service_type_id: null } as never} />)
+    renderWithProviders(<JobWindowCostMovePanel job={{ id: '11111111-1111-4111-8111-111111111111', hcp_number: '583', click_number: '', job_name: 'Davenport', job_address: '1 Catch-all Rd', service_type_id: null } as never} />)
     const fold = document.querySelector('[data-cost-move-folded]')
     expect(fold).not.toBeNull()
     const press = screen.getByRole('button', { name: /Move cost rows…/ })

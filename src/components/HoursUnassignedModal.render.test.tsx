@@ -38,7 +38,7 @@ vi.mock('../lib/supabase', () => {
   const RPCS: Record<string, unknown[]> = {
     list_people_pay_flags: [{ person_name: 'Isiah', person_id: null, is_salary: false, record_hours_but_salary: false }],
     search_jobs_ledger: [
-      { id: 'j1', hcp_number: '523', click_number: '523', job_name: 'Mission Flats', job_address: '2100 Independence Dr', service_type_id: null },
+      { id: 'j1', hcp_number: '523', click_number: '523', job_name: 'Mission Flats', job_address: '9345 Iverson Dr', service_type_id: null },
     ],
   }
   function makeBuilder(table: string, listResult: unknown[], singleResult: unknown) {

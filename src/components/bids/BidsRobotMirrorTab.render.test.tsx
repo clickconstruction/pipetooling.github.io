@@ -95,7 +95,7 @@ const humanBids = [
   bid({ id: 'h385', bid_number: '385', project_name: 'Gallenby Park', estimator: { id: 'grace', name: 'Grace', email: 'g@x' } }),
   bid({ id: 'h391', bid_number: '391', project_name: 'RBFCU Potranco', bid_date_sent: '2026-09-01', bid_value: null }),
   bid({ id: 'h397', bid_number: '397', project_name: 'TUNE 5 BROWNSVILLE', bid_date_sent: '2026-09-08', bid_value: 50528 }),
-  bid({ id: 'h201', bid_number: '201', project_name: 'AISD GARCIA SCHOOL RENOVATION', outcome: 'lost', bid_date_sent: '2026-04-24', bid_value: 180357 }),
+  bid({ id: 'h201', bid_number: '201', project_name: 'AWDT GOODWIN SCHOOL RENOVATION', outcome: 'lost', bid_date_sent: '2026-04-24', bid_value: 180357 }),
   bid({ id: 'h380', bid_number: '380', project_name: 'MEDINA VALLEY ISD', plans_link: null, bid_due_date: '2026-09-10' }),
   bid({ id: 'h381', bid_number: '381', project_name: 'MEDINA VALLEY ISD PHASE 2', plans_link: null, bid_due_date: '2026-09-11' }),
   bid({ id: 'h483', bid_number: '483', project_name: 'Laynes Chicken Fingers', bid_due_date: '2026-09-18' }),

@@ -4,7 +4,7 @@ import { buildStripeBillCopyEmail, formatCentsUsd, formatDueDate, stripeBillCopy
 const base = {
   payerName: 'Josh Pettlow',
   jobLabel: 'J1013 · Pettlow Pretest',
-  jobAddress: '390 Pecan Meadows, New Braunfels, TX',
+  jobAddress: '660 Paget Meadows, New Braunfels, TX',
   invoiceNumber: '1013-2609121030',
   amountDueCents: 25000,
   dueDateUnix: Date.UTC(2026, 8, 25, 12) / 1000,
@@ -17,7 +17,7 @@ describe('buildStripeBillCopyEmail', () => {
   it('names the payer, the job, the amount, the due date and the pay link', () => {
     const out = buildStripeBillCopyEmail(base)
     expect(out.subject).toBe('Copy of invoice #1013-2609121030 — J1013 · Pettlow Pretest')
-    expect(out.text).toContain('sent to Josh Pettlow for 390 Pecan Meadows')
+    expect(out.text).toContain('sent to Josh Pettlow for 660 Paget Meadows')
     expect(out.text).toContain('Amount due: $250.00 · Due Sep 25, 2026')
     expect(out.text).toContain(base.hostedInvoiceUrl)
     expect(out.text).toContain(base.invoicePdfUrl)

@@ -38,7 +38,7 @@ describe('retainage inside the claim (v2.3753)', () => {
     expect(parsed?.notice.retainageIncluded).toBe('1760.00')
   })
   it("the retainage cover letter — counsel's rules and counsel's persuasion (v2.3844 · v2.3850): the day, why now, both pots and the owner's risk, the withhold rule, three doors, the GC copied, the closer", () => {
-    const base = { claimantName: 'Click Plumbing and Electrical', gcName: 'Harborline Builders', property: '212 Kettle Dr, Buda, TX', amount: '$4,250.00', contact: 'Malachi Whites, Master Plumber', phone: '(830) 946-0050' }
+    const base = { claimantName: 'Click Plumbing and Electrical', gcName: 'Harborline Builders', property: '212 Kettle Dr, Buda, TX', amount: '$4,250.00', contact: 'Malachi Whites, Master Plumber', phone: '(830) 555-0168' }
     const onlyRetainage = lienRetainageCoverLetter({ ...base, inClaim: false, endedHow: 'terminated', endedOn: 'September 3, 2026', paymentBond: 'no' })
     const paras = onlyRetainage.split('\n\n')
     expect(paras[0]).toBe('To the owner of 212 Kettle Dr, Buda, TX,')
@@ -53,10 +53,10 @@ describe('retainage inside the claim (v2.3753)', () => {
     expect(onlyRetainage).toContain('begins when you receive a copy of our filed lien affidavit (§ 53.081(c)). If the retainage is not paid, we will file that affidavit and send you the copy within five days of recording (§ 53.055). Payments to Harborline Builders after that day can follow the property (§ 53.084).')
     expect(onlyRetainage).toContain('before you release retainage or make a final payment to Harborline Builders. We cannot deposit a joint check, so please do not send one.')
     expect(onlyRetainage).toContain('• Harborline Builders pays us $4,250.00, payable only to Click Plumbing and Electrical.')
-    expect(onlyRetainage).toContain('• You keep $4,250.00 in your hands and call Malachi Whites, Master Plumber, at (830) 946-0050 so we know it is held.')
+    expect(onlyRetainage).toContain('• You keep $4,250.00 in your hands and call Malachi Whites, Master Plumber, at (830) 555-0168 so we know it is held.')
     expect(onlyRetainage).toContain('• If Harborline Builders writes that you may pay Click Plumbing and Electrical directly')
     expect(onlyRetainage).toContain('A copy of this letter and the notice is going to Harborline Builders.')
-    expect(onlyRetainage).toContain('Call Malachi Whites, Master Plumber, at (830) 946-0050 before you release retainage or make a final payment to Harborline Builders. We would rather pick up a check than file a lien on your property.')
+    expect(onlyRetainage).toContain('Call Malachi Whites, Master Plumber, at (830) 555-0168 before you release retainage or make a final payment to Harborline Builders. We would rather pick up a check than file a lien on your property.')
     expect(onlyRetainage).not.toContain('not a claim that you are in default')
     expect(onlyRetainage).not.toContain('the next payment')
     // already named in a § 53.056 notice: the § 53.081 withhold now, and § 53.084 on paying anyway
@@ -87,7 +87,7 @@ describe('retainage inside the claim (v2.3753)', () => {
     expect(buildLienAffidavitFieldsForJob({ ...aff, serviceTypeName: 'HVAC' }).workDescription).toBe('HVAC labor and materials')
     expect(buildLienAffidavitFieldsForJob(aff).workDescription).toBe('Plumbing labor and materials')
     // v2.4719: a job named for its customer never becomes the kind of work.
-    expect(buildLienAffidavitFieldsForJob({ ...aff, jobName: 'Bruce Hall' }).workDescription).toBe('Plumbing labor and materials')
+    expect(buildLienAffidavitFieldsForJob({ ...aff, jobName: 'Blake Hendry' }).workDescription).toBe('Plumbing labor and materials')
   })
 
   it('the short form carries the company’s physical address when Settings hold one (punch list #305)', () => {

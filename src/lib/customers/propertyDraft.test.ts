@@ -44,8 +44,8 @@ describe('the justice precinct on the draft (v2.4771)', () => {
 
 describe('the owner’s email and phone on the draft (v2.6497)', () => {
   const row = {
-    id: 'addr-1', customer_id: 'cust-1', address: '4110 N Main St, Taylor, TX 76574', note: null, sequence_order: 0, created_at: null, updated_at: null,
-    county: 'Williamson', county_source: 'parcel', legal_description: '', property_kind: '', homestead: false, owner_mode: 'building_owner', owner_name: 'Dave Novy Rentals', owner_company: '',
+    id: 'addr-1', customer_id: 'cust-1', address: '3852 N Main St, Taylor, TX 76574', note: null, sequence_order: 0, created_at: null, updated_at: null,
+    county: 'Williamson', county_source: 'parcel', legal_description: '', property_kind: '', homestead: false, owner_mode: 'building_owner', owner_name: 'Drew Nolan Rentals', owner_company: '',
     owner_mailing_address: 'PO Box 28054, Austin, TX 78755', parcel_id: '', parcel_source: '', parcel_tax_year: '', parcel_looked_up_at: null, jp_precinct: '', jp_precinct_at: null, jp_precinct_note: '', jp_precinct_source: '',
     owner_confirmed_at: null, owner_confirmed_by: null, is_primary: false,
   } as CustomerAddressRow

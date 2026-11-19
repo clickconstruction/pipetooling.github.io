@@ -14,8 +14,8 @@ function group(over: Partial<GcReviewGroup> = {}): GcReviewGroup {
         jobId: 'j1',
         hcp: '828',
         jobName: 'Liberty Hill Animal Hospital',
-        jobAddress: '13100 W State Hwy 29, Liberty Hill TX',
-        customerName: 'Rosemary Garza',
+        jobAddress: '80196 W State Hwy 29, Liberty Hill TX',
+        customerName: 'Robin Gilroy',
         referenceDateDisplay: 'Jul 12, 2026',
         ageDays: 19,
         remaining: 658,
@@ -33,7 +33,7 @@ describe('buildGcStatementReportHtml', () => {
   it('single group titles as a GC statement and includes rows + subtotal', () => {
     const html = buildGcStatementReportHtml([group()], { dateStr: '7/31/2026' })
     expect(html).toContain('GC statement — Kestrin Contracting — 7/31/2026')
-    expect(html).toContain('Rosemary Garza')
+    expect(html).toContain('Robin Gilroy')
     expect(html).toContain('828')
     expect(html).toContain('Jul 12, 2026')
     expect(html).toContain('$658.00')

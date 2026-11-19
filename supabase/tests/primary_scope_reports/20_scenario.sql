@@ -43,7 +43,7 @@ INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number,
   ('00000000-0000-0000-0000-00000005cf01', '00000000-0000-0000-0000-00000005ca07', '00000000-0000-0000-0000-00000005cb01', '2101', 'Linda Lou vanity', 'Dana Whitfield', '00000000-0000-0000-0000-00000005cc01', 'customer', 0, 0, 'working', '00000000-0000-0000-0000-00000005ca04', 'primary', NULL),
   ('00000000-0000-0000-0000-00000005cf02', '00000000-0000-0000-0000-00000005ca07', '00000000-0000-0000-0000-00000005cb01', '2102', 'Laurel Field rough', 'Dana Whitfield', '00000000-0000-0000-0000-00000005cc01', 'customer', 0, 0, 'working', NULL, NULL, '00000000-0000-0000-0000-00000005cd02'),
   ('00000000-0000-0000-0000-00000005cf03', '00000000-0000-0000-0000-00000005ca07', '00000000-0000-0000-0000-00000005cb01', '2103', 'Water heater removal', 'Dana Whitfield', '00000000-0000-0000-0000-00000005cc01', 'customer', 0, 0, 'working', NULL, NULL, NULL),
-  ('00000000-0000-0000-0000-00000005cf04', '00000000-0000-0000-0000-00000005ca07', '00000000-0000-0000-0000-00000005cb01', '2104', 'Salzstein filter', 'Dana Whitfield', '00000000-0000-0000-0000-00000005cc01', 'customer', 0, 0, 'working', NULL, NULL, '00000000-0000-0000-0000-00000005cd04');
+  ('00000000-0000-0000-0000-00000005cf04', '00000000-0000-0000-0000-00000005ca07', '00000000-0000-0000-0000-00000005cb01', '2104', 'Thornbury filter', 'Dana Whitfield', '00000000-0000-0000-0000-00000005cc01', 'customer', 0, 0, 'working', NULL, NULL, '00000000-0000-0000-0000-00000005cd04');
 
 -- B1: Luis is the bid's account manager. B2: not his.
 INSERT INTO public.bids (id, created_by, service_type_id, project_name, account_manager_id) VALUES

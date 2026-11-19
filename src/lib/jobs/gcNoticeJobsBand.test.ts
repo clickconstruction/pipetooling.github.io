@@ -12,12 +12,12 @@ function work(lines: Array<[string, number, string | null]>, invoices: Array<[st
 }
 
 // The live run on 2026-09-25 (RLC- Dunmere Mallin), seven of its 22 jobs — the ones that read wrong plus two that read right.
-const J372: GcNoticeBandJobInput = { jobId: '372', status: 'waiting', revenue: 44000, paymentsMade: 17600, pctComplete: 80, lastWorkYmd: null, address: '1780 FM 1343, Castroville, TX 78009', work: work([['Plumbing Per Plans', 44000, null]], [['i1', 17600, 'paid'], ['i2', 17600, 'billed']], [[17600, 'i1']]) }
-const J305: GcNoticeBandJobInput = { jobId: '305', status: 'waiting', revenue: 15400, paymentsMade: 0, pctComplete: 90, lastWorkYmd: null, address: '11224 Kendall Canyon, San Antonio, TX 78255', work: work([['Job total (migrated)', 15400, null]]) }
-const J706: GcNoticeBandJobInput = { jobId: '706', status: 'waiting', revenue: 21000, paymentsMade: 10000, pctComplete: null, lastWorkYmd: '2026-05-26', address: '1875 Co Rd 777, Devine, TX 78016', work: work([['Rough In', 8400, null], ['Top Out', 8400, null], ['Trim Set', 4200, null]], [['i1', 10000, 'paid']], [[10000, 'i1']]) }
-const J651: GcNoticeBandJobInput = { jobId: '651', status: 'working', revenue: 21950, paymentsMade: 8780, pctComplete: null, lastWorkYmd: '2026-05-18', address: '233 Palomino Trail, Natalia, TX', work: work([['Rough In', 8780, null], ['Top Out', 8780, 'i2'], ['Trim Set', 4390, null]], [['i1', 8780, 'paid'], ['i2', 8780, 'billed']], [[8780, 'i1']]) }
-const J868: GcNoticeBandJobInput = { jobId: '868', status: 'billed', revenue: 2650, paymentsMade: 0, pctComplete: null, lastWorkYmd: null, address: '1875 Co Rd 777, Devine, TX 78016', work: work([['Service Visit (HCP #868)', 2650, 'i1']], [['i1', 2650, 'billed']]) }
-const J273: GcNoticeBandJobInput = { jobId: '273', status: 'billed', revenue: 56365, paymentsMade: 38780, pctComplete: 80, lastWorkYmd: '2026-08-26', address: '9703 Lenox Hl San Antonio, TX 78255', work: work([['Job total (migrated)', 52200, null], ['CHANGE ORDER: washing machine', 555, 'i3'], ['Material', 110, 'i3'], ['CHANGE ORDER: gas to fire features', 3500, 'i2']], [['i1', 13420, 'billed'], ['i2', 3500, 'billed'], ['i3', 665, 'billed']]) }
+const J372: GcNoticeBandJobInput = { jobId: '372', status: 'waiting', revenue: 44000, paymentsMade: 17600, pctComplete: 80, lastWorkYmd: null, address: '4815 FM 1343, Castroville, TX 78009', work: work([['Plumbing Per Plans', 44000, null]], [['i1', 17600, 'paid'], ['i2', 17600, 'billed']], [[17600, 'i1']]) }
+const J305: GcNoticeBandJobInput = { jobId: '305', status: 'waiting', revenue: 15400, paymentsMade: 0, pctComplete: 90, lastWorkYmd: null, address: '83263 Kessler Canyon, San Antonio, TX 78255', work: work([['Job total (migrated)', 15400, null]]) }
+const J706: GcNoticeBandJobInput = { jobId: '706', status: 'waiting', revenue: 21000, paymentsMade: 10000, pctComplete: null, lastWorkYmd: '2026-05-26', address: '1948 Co Rd 777, Devine, TX 78016', work: work([['Rough In', 8400, null], ['Top Out', 8400, null], ['Trim Set', 4200, null]], [['i1', 10000, 'paid']], [[10000, 'i1']]) }
+const J651: GcNoticeBandJobInput = { jobId: '651', status: 'working', revenue: 21950, paymentsMade: 8780, pctComplete: null, lastWorkYmd: '2026-05-18', address: '524 Pickford Trail, Natalia, TX', work: work([['Rough In', 8780, null], ['Top Out', 8780, 'i2'], ['Trim Set', 4390, null]], [['i1', 8780, 'paid'], ['i2', 8780, 'billed']], [[8780, 'i1']]) }
+const J868: GcNoticeBandJobInput = { jobId: '868', status: 'billed', revenue: 2650, paymentsMade: 0, pctComplete: null, lastWorkYmd: null, address: '1948 Co Rd 777, Devine, TX 78016', work: work([['Service Visit (HCP #868)', 2650, 'i1']], [['i1', 2650, 'billed']]) }
+const J273: GcNoticeBandJobInput = { jobId: '273', status: 'billed', revenue: 56365, paymentsMade: 38780, pctComplete: 80, lastWorkYmd: '2026-08-26', address: '3507 Lister Hl San Antonio, TX 78255', work: work([['Job total (migrated)', 52200, null], ['CHANGE ORDER: washing machine', 555, 'i3'], ['Material', 110, 'i3'], ['CHANGE ORDER: gas to fire features', 3500, 'i2']], [['i1', 13420, 'billed'], ['i2', 3500, 'billed'], ['i3', 665, 'billed']]) }
 const J258: GcNoticeBandJobInput = { jobId: '258', status: 'billed', revenue: 17800, paymentsMade: 8000, pctComplete: 100, lastWorkYmd: '2026-08-11', address: '628 Tarrow Rd, San Antonio, TX 78209', work: work([['Trim set complete', 17800, null]], [['i1', 8000, 'paid'], ['i2', 9800, 'billed']], [[8000, 'i1']]) }
 
 describe('gcNoticeBandReadings — what looks wrong, in the Pipeline’s words, each naming its door', () => {
@@ -99,10 +99,10 @@ describe('buildGcNoticeBand — the groups and the head line', () => {
   })
   it('biggest open first is one group; by property puts the two Devine jobs together', () => {
     expect(buildGcNoticeBand(jobs, TODAY, 'open').groups.map((g) => g.rows.map((r) => r.jobId))).toEqual([['372', '273', '305', '651', '706', '258', '868']])
-    const byProperty = buildGcNoticeBand(jobs, TODAY, 'property', (id) => (id === '706' ? '1875 Co Rd 777, Devine' : ''))
+    const byProperty = buildGcNoticeBand(jobs, TODAY, 'property', (id) => (id === '706' ? '1948 Co Rd 777, Devine' : ''))
     const devine = byProperty.groups.find((g) => g.rows.some((r) => r.jobId === '706'))!
     expect(devine.rows.map((r) => r.jobId)).toEqual(['706', '868'])
-    expect(devine.label).toBe('1875 Co Rd 777, Devine')
+    expect(devine.label).toBe('1948 Co Rd 777, Devine')
   })
   it('a job with no work read still gets a row, with no lines', () => {
     const band = buildGcNoticeBand([{ ...J258, work: null }], TODAY)

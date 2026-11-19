@@ -25,7 +25,7 @@ const data = {
     j867: job('j867', 'Service Visit', '628 Tarrow Rd, San Antonio, TX', 'addr-tarrow', 'c2', 1710, 0),
   },
   gcsById: { gc1: { id: 'gc1', name: 'RLC- Dunmere Mallin', address: '', email: '', policy: 'ask', policyNote: '' } },
-  ownerByJob: { j273: { owner_mode: 'person', owner_name: 'KARROW ULRIC & BARROWBY SHELMINA', company_name: null, mailing_address: '3203 Spider Lily' }, j867: { owner_mode: 'building_owner', owner_name: 'R. Syed', company_name: 'Tarrow Holdings LLC', mailing_address: null } },
+  ownerByJob: { j273: { owner_mode: 'person', owner_name: 'KARROW ULRIC & BARROWBY SHELMINA', company_name: null, mailing_address: '5913 Stella Leah' }, j867: { owner_mode: 'building_owner', owner_name: 'R. Syed', company_name: 'Tarrow Holdings LLC', mailing_address: null } },
 } as unknown as LienDeskData
 
 describe('ownerRecordsFromDesk', () => {

@@ -107,9 +107,9 @@ describe('negative lines via allowNegative (credits)', () => {
 const docArgs: EstimateChangeOrderDocArgs = {
   documentLabel: 'Change Order #1044',
   customerName: 'Selwick GC',
-  customerAddress: '3915 N Loop 1604 E, San Antonio, TX',
+  customerAddress: '6873 N Loop 1604 E, San Antonio, TX',
   projectLabel: 'J804 · Tire Barn',
-  projectAddress: '3915 N Loop 1604 E, San Antonio, TX',
+  projectAddress: '6873 N Loop 1604 E, San Antonio, TX',
   fields: {
     description_of_change: 'Reroute 2" condensate line <per plan>',
     reason_for_change: 'Owner-directed RTU relocation',

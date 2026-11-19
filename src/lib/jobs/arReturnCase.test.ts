@@ -156,7 +156,7 @@ describe('arReturnCaseView — the case as the pane says it', () => {
       failed_at: '2025-07-11T15:00:00Z',
       opened_at: '2025-07-11T15:00:00Z',
       last_job: null,
-      recorded_payment: { payment_id: 'p7', job_id: 'job-120', job_number: '120', job_name: 'Pete Garza — Install water softener, 5 hose bibs', amount: 2700, paid_on: '2025-07-07', job_revenue: 2700, job_payments_made: 2700 },
+      recorded_payment: { payment_id: 'p7', job_id: 'job-120', job_number: '120', job_name: 'Perry Gilroy — Install water softener, 5 hose bibs', amount: 2700, paid_on: '2025-07-07', job_revenue: 2700, job_payments_made: 2700 },
     }
     const v = arReturnCaseView({ row, trail: [], todayYmd: TODAY })
     expect(v.story.map((s) => `${s.day} ${s.text}`)).toEqual(['Jul 11, 2025 The bank sent it back. Insufficient funds.'])
@@ -229,7 +229,7 @@ describe('the new check', () => {
     expect(arCaseThisReplaces(dep('x', 'DLF', 250, '2026-09-30T15:00:00Z'), [view])).toBeNull()
   })
   it('arPayerKey', () => {
-    expect(arPayerKey('M&M Roofing Co')).toBe(arPayerKey('M & M Roofing'))
+    expect(arPayerKey('M&M Rutledge Co')).toBe(arPayerKey('M & M Rutledge'))
     expect(arPayerKey('DR')).toBeNull()
   })
 })

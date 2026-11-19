@@ -29,8 +29,8 @@ function prospect(overrides: Partial<ListGroupableProspect> & { id: string }): L
 
 describe('filterProspectsForList', () => {
   const rows = [
-    prospect({ id: 'a', company_name: 'Drymoor Construction', contact_name: 'Sarah', phone_number: '979-732-5731', email: 'sarah@drymoor.com' }),
-    prospect({ id: 'b', company_name: 'Capco', contact_name: null, phone_number: '(210) 493-9992', email: null }),
+    prospect({ id: 'a', company_name: 'Drymoor Construction', contact_name: 'Sarah', phone_number: '979-555-0188', email: 'sarah@drymoor.com' }),
+    prospect({ id: 'b', company_name: 'Capco', contact_name: null, phone_number: '(210) 555-0195', email: null }),
   ]
 
   it('returns everything for a blank query', () => {
@@ -40,7 +40,7 @@ describe('filterProspectsForList', () => {
   it('matches company, contact, phone, and email case-insensitively', () => {
     expect(filterProspectsForList(rows, 'DRYM').map((p) => p.id)).toEqual(['a'])
     expect(filterProspectsForList(rows, 'sarah@').map((p) => p.id)).toEqual(['a'])
-    expect(filterProspectsForList(rows, '493-9992').map((p) => p.id)).toEqual(['b'])
+    expect(filterProspectsForList(rows, '555-0195').map((p) => p.id)).toEqual(['b'])
     expect(filterProspectsForList(rows, 'nobody')).toHaveLength(0)
   })
 })

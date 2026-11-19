@@ -163,11 +163,11 @@ describe('buildBilledByCustomerBreakdown', () => {
   })
 
   it('carries the trimmed job address onto each bill (v2.NNNN)', () => {
-    const j = job({ id: 'ja', job_address: '  9703 Lenox Hl, Schertz TX 78154  ' })
+    const j = job({ id: 'ja', job_address: '  3507 Lister Hl, Schertz TX 78154  ' })
     const bare = job({ id: 'jb' }) // no job_address on the row → blank
     const rows = [invRow(j, { id: 'i1', amount: 100 }), invRow(bare, { id: 'i2', amount: 100 })]
     const bills = buildBilledByCustomerBreakdown(rows, NOW)[0]!.bills
-    expect(bills.find((b) => b.invoiceId === 'i1')!.jobAddress).toBe('9703 Lenox Hl, Schertz TX 78154')
+    expect(bills.find((b) => b.invoiceId === 'i1')!.jobAddress).toBe('3507 Lister Hl, Schertz TX 78154')
     expect(bills.find((b) => b.invoiceId === 'i2')!.jobAddress).toBe('')
   })
 

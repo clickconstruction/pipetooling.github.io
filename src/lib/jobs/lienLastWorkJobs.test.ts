@@ -4,7 +4,7 @@ import { buildLienPayRunway } from './lienPayRunway'
 
 type Job = { id: string; job_name: string; last_work_date: string | null; lien_last_work_on: string | null; lien_last_work_note?: string | null; lien_last_work_set_at?: string | null; lien_last_work_set_by?: string | null }
 const jobs = (): Job[] => [
-  { id: 'j226', job_name: 'Dudley Mason', last_work_date: '2026-02-11', lien_last_work_on: null, lien_last_work_note: '' },
+  { id: 'j226', job_name: 'Della Mackay', last_work_date: '2026-02-11', lien_last_work_on: null, lien_last_work_note: '' },
   { id: 'j608', job_name: 'Other', last_work_date: '2026-04-02', lien_last_work_on: null },
 ]
 const SAVED = { last_work_date: '2026-02-11', lien_last_work_on: '2026-09-04', lien_last_work_note: 'went back for the valve', lien_last_work_set_at: '2026-11-13T20:00:00+00:00', lien_last_work_set_by: 'u1' }
@@ -14,7 +14,7 @@ describe('withJobLastWork — a saved last day reaches the list already on scree
     const before = jobs()
     const after = withJobLastWork(before, 'j226', SAVED)
     expect(after).not.toBe(before)
-    expect(after[0]).toEqual({ id: 'j226', job_name: 'Dudley Mason', ...SAVED })
+    expect(after[0]).toEqual({ id: 'j226', job_name: 'Della Mackay', ...SAVED })
     expect(after[1]).toBe(before[1])
     // The list it was given is not written on.
     expect(before[0]!.lien_last_work_on).toBeNull()

@@ -75,7 +75,7 @@ describe('the words around the presses', () => {
   })
 
   it('the log line names what came in, from whom and the day, in the app’s time zone', () => {
-    const line = { who: 'Glenn Gelwin', at: '2026-10-22T15:08:00Z', subject: 'Northeast Bible Church Elementary Building @ San Antonio - Invitation to Bid' }
+    const line = { who: 'Glenn Gelwin', at: '2026-10-22T15:08:00Z', subject: 'Northeast Barlow Church Elementary Building @ San Antonio - Invitation to Bid' }
     expect(putOnBidLogLine(line, 'invitation')).toBe('Invitation to bid came in by email from Glenn Gelwin, Oct 22.')
     expect(putOnBidLogLine(line, 'addendum')).toBe('Addendum came in by email from Glenn Gelwin, Oct 22.')
     expect(putOnBidLogLine({ ...line, subject: 'Re: fixture schedule' }, null)).toBe('An email came in from Glenn Gelwin, Oct 22: Re: fixture schedule.')

@@ -3,7 +3,7 @@ import { COST_BATCH_LABEL_MAX, COST_BATCH_NOTE_MAX, summarizeCostBatchOps } from
 import { buildCostMoveNotes, buildCostMovePlan, costMoveDefaultAllocationNote, costMoveLabel, costMoveSourceNoteBody, costMoveTargetNoteBody, costMoveWhatMoved } from './costMovePlan'
 import type { CostMoveRow } from './costMoveRows'
 
-const SOURCE = { id: '11111111-1111-4111-8111-111111111111', label: 'J583 · Diamondback' }
+const SOURCE = { id: '11111111-1111-4111-8111-111111111111', label: 'J583 · Davenport' }
 const TARGET = { id: '22222222-2222-4222-8222-222222222222', label: 'J629 · ROUGH IN' }
 const USER = '66666666-6666-4666-8666-666666666666'
 const TX = '33333333-3333-4333-8333-333333333333'
@@ -29,7 +29,7 @@ describe('note bodies', () => {
 
   it('writes the target note in the house form, the plan and the no-estimates line', () => {
     expect(costMoveTargetNoteBody(notesInput)).toBe(
-      '2026-10-29 — cost batch: 472 rows moved here from J583 · Diamondback — 381 bank charges ($31,804.23), 10 supply-house invoices and 81 clock sessions. Reason: Owner decision 2026-10-29: the trip rows belong to the rough-in draw. Plan: HCP583-Sort_v4.md No estimates in this batch.',
+      '2026-10-29 — cost batch: 472 rows moved here from J583 · Davenport — 381 bank charges ($31,804.23), 10 supply-house invoices and 81 clock sessions. Reason: Owner decision 2026-10-29: the trip rows belong to the rough-in draw. Plan: HCP583-Sort_v4.md No estimates in this batch.',
     )
   })
 
@@ -54,7 +54,7 @@ describe('note bodies', () => {
 
 describe('label and defaults', () => {
   it('names the move and the day, and cuts a long label', () => {
-    expect(costMoveLabel(SOURCE, TARGET, '2026-10-29')).toBe('Move cost: J583 · Diamondback → J629 · ROUGH IN (2026-10-29)')
+    expect(costMoveLabel(SOURCE, TARGET, '2026-10-29')).toBe('Move cost: J583 · Davenport → J629 · ROUGH IN (2026-10-29)')
     const long = costMoveLabel({ ...SOURCE, label: 'A'.repeat(100) }, { ...TARGET, label: 'B'.repeat(100) }, '2026-10-29')
     expect(long.length).toBe(COST_BATCH_LABEL_MAX)
     expect(costMoveDefaultAllocationNote('2026-10-29')).toBe('Move cost 2026-10-29')
@@ -68,7 +68,7 @@ describe('buildCostMovePlan', () => {
     const plan = buildCostMovePlan(base)
     expect(plan.problems).toEqual([])
     expect(plan.payload).not.toBeNull()
-    expect(plan.payload!.label).toBe('Move cost: J583 · Diamondback → J629 · ROUGH IN (2026-10-29)')
+    expect(plan.payload!.label).toBe('Move cost: J583 · Davenport → J629 · ROUGH IN (2026-10-29)')
     expect(plan.payload!.source_ref).toBe('plan.md')
     expect(plan.payload!.author_user_id).toBe(USER)
     expect(plan.payload!.author_label).toBe('Move cost screen')

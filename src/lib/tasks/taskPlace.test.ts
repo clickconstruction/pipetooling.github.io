@@ -342,7 +342,7 @@ describe('the leader\'s map (PR 7)', () => {
   })
 
   it('reads a title as plain words for a map\'s bar: a job chip keeps its words, an empty title is Task', () => {
-    expect(taskTitlePlain('{{1:1016 · Mission faucet}} — Pick up the cartridge')).toBe('1016 · Mission faucet — Pick up the cartridge')
+    expect(taskTitlePlain('{{1:1016 · Marsden faucet}} — Pick up the cartridge')).toBe('1016 · Marsden faucet — Pick up the cartridge')
     expect(taskTitlePlain('  Grease the   pump bearings ')).toBe('Grease the pump bearings')
     expect(taskTitlePlain(null)).toBe('Task')
   })

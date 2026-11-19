@@ -31,8 +31,8 @@ function makeRow(p: Partial<DashboardTeamAssignedJobRow> = {}): DashboardTeamAss
   return {
     id: 'job-1',
     hcp_number: '846',
-    job_name: 'David and Diana Uhl',
-    job_address: '26138 Park Bend Dr New Braunfels, TX 78132',
+    job_name: 'Doris and Derek Underhill',
+    job_address: '21138 Park Bend Dr New Braunfels, TX 78132',
     google_drive_link: null,
     job_plans_link: null,
     revenue: null,
@@ -66,8 +66,8 @@ describe('DashboardTeamReadyToBillSection', () => {
     await settle()
 
     expect(screen.getByText('Ready to Bill (1)')).toBeTruthy()
-    expect(screen.getByText('846 · David and Diana Uhl')).toBeTruthy()
-    expect(screen.getByText('26138 Park Bend Dr New Braunfels, TX 78132')).toBeTruthy()
+    expect(screen.getByText('846 · Doris and Derek Underhill')).toBeTruthy()
+    expect(screen.getByText('21138 Park Bend Dr New Braunfels, TX 78132')).toBeTruthy()
     expect(screen.queryByText(/^Job:/)).toBeNull()
   })
 

@@ -27,7 +27,7 @@ const part = (id: string, item: string, label: string, seq: number, review_decis
 // BP375's shape: a fixture with a cut sheet, a hand row with none, one with a part rejected, and an order-only fixture.
 const dwh = row({ id: 'dwh', tag: 'DWH-1', submitted_label: 'RHEEM PROPH40', sheet_file: 0, sheet_pages: [6, 7], lead_time_days: 14 })
 const fco = row({ id: 'fco', tag: 'FCO', sequence_order: 2, submitted_label: 'ZURN ZN1400-2NL' })
-const lav = row({ id: 'lav', tag: 'LAV-1, LAV-2', sequence_order: 3, submitted_label: 'A + B', source_count_row_id: 'c-lav', review_decision: 'rejected', reviewed_by_name: 'structura', decision_source: 'entered', decision_entered_by_name: 'Wendi', reviewed_at: '2026-10-02T15:00:00Z' })
+const lav = row({ id: 'lav', tag: 'LAV-1, LAV-2', sequence_order: 3, submitted_label: 'A + B', source_count_row_id: 'c-lav', review_decision: 'rejected', reviewed_by_name: 'sheffield', decision_source: 'entered', decision_entered_by_name: 'Wendi', reviewed_at: '2026-10-02T15:00:00Z' })
 const stops = row({ id: 'stops', tag: 'STOPS', sequence_order: 4, submitted_label: 'BRASSCRAFT', order_only: true })
 const lavParts = [part('sink', 'lav', 'TSL.MON.B.38', 1), part('faucet', 'lav', 'TOTO T25S51E#CP', 2, 'rejected')]
 
@@ -210,7 +210,7 @@ describe('SubmittalRowsTable', () => {
     })
 
     it('a row answered as a whole carries its answer on its line', () => {
-      const approved = { ...fco, review_decision: 'approved', review_note: 'ok as noted', reviewed_by_name: 'structura' } as SubmittalItemRow
+      const approved = { ...fco, review_decision: 'approved', review_note: 'ok as noted', reviewed_by_name: 'sheffield' } as SubmittalItemRow
       mount({ items: [dwh, approved], gcItems: [dwh, approved], orderOnlyItems: [], parts: [], partsOf: new Map() })
       expect(within(screen.getAllByTestId('submittal-row')[1]!).getByTestId('row-answer').textContent).toBe('Approved“ok as noted”')
     })

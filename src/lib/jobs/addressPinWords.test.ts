@@ -6,7 +6,7 @@ describe('addressPinWords (v2.4783)', () => {
     expect(addressLooksWhole('380 TX')).toBe(false)
     expect(addressLooksWhole('410 TX-123, Se')).toBe(true)
     expect(addressLooksWhole('410 TX-123, Seguin, TX 78155')).toBe(true)
-    expect(addressLooksWhole('595 Cardinal Rd Rosanky TX 78953')).toBe(true)
+    expect(addressLooksWhole('958 Cranston Rd Rosanky TX 78953')).toBe(true)
     expect(addressLooksWhole("Zack's House")).toBe(false)
     expect(addressLooksWhole('6288 Rill Rd New Braunfels')).toBe(false)
   })

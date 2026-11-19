@@ -115,8 +115,8 @@ describe('orderForPicking', () => {
       { kind: 'job' as const, id: 'b', label: 'JP955', name: 'Bunker BESS room HVAC' },
       { kind: 'job' as const, id: 'c', label: 'JP765', name: 'ATV building fans' },
       { kind: 'job' as const, id: 'd', label: 'JP956', name: 'ATV building gas line' },
-      { kind: 'job' as const, id: 'e', label: 'JP424', name: 'Diamondback' },
-      { kind: 'job' as const, id: 'f', label: 'JP423', name: 'Diamondback' },
+      { kind: 'job' as const, id: 'e', label: 'JP424', name: 'Davenport' },
+      { kind: 'job' as const, id: 'f', label: 'JP423', name: 'Davenport' },
     ]
     expect(orderForPicking(rows).map((r) => r.id)).toEqual(['c', 'd', 'b', 'f', 'e', 'a'])
   })

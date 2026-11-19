@@ -9,7 +9,7 @@ const filing = (partial: Partial<JobLienFilingRow>): JobLienFilingRow =>
 
 describe('filingSnapshotPage', () => {
   it('rebuilds a mailed notice from the fields the filing stored, with the sends it recorded', () => {
-    const fields = buildLienNoticeFieldsForJob({ jobName: 'Tune 5- Liberty Hill', jobAddress: '11730 TX-29, Liberty Hill, TX 78642', homesteadStatement: false, originalContractorName: 'Brund & Assoc.', openBalance: 27_199, contactPerson: 'Robert Douglas, Master Plumber', issuer: null, todayYmd: '2026-10-03', retainageHeld: null, serviceTypeName: 'Plumbing' })
+    const fields = buildLienNoticeFieldsForJob({ jobName: 'Tune 5- Liberty Hill', jobAddress: '60305 TX-29, Liberty Hill, TX 78642', homesteadStatement: false, originalContractorName: 'Brund & Assoc.', openBalance: 27_199, contactPerson: 'Robert Douglas, Master Plumber', issuer: null, todayYmd: '2026-10-03', retainageHeld: null, serviceTypeName: 'Plumbing' })
     const page = filingSnapshotPage(filing({ fields: fields as unknown as JobLienFilingRow['fields'] }), { issuer: null, jobNumber: '891' })
     expect(page?.key).toBe('filing:f1')
     expect(page?.label).toBe('As it went out · the notice')

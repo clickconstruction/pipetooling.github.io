@@ -93,9 +93,9 @@ describe('payerRecipientFromCustomer', () => {
         id: 'gc-1',
         name: ' Lowbeck Contracting ',
         billing_email: 'invoices@lowbeck.com',
-        contact_info: { email: 'estimating@lowbeck.com', phone: '847-392-4300' },
+        contact_info: { email: 'estimating@lowbeck.com', phone: '847-555-0151' },
       }),
-    ).toEqual({ customerId: 'gc-1', name: 'Lowbeck Contracting', email: 'invoices@lowbeck.com', phone: '847-392-4300' })
+    ).toEqual({ customerId: 'gc-1', name: 'Lowbeck Contracting', email: 'invoices@lowbeck.com', phone: '847-555-0151' })
   })
   it('returns null without a row', () => {
     expect(payerRecipientFromCustomer(null)).toBeNull()
@@ -115,13 +115,13 @@ describe('applyPayerToJobBillingContext', () => {
         customerId: 'gc-1',
         name: 'Lowbeck Contracting',
         email: 'invoices@lowbeck.com',
-        phone: '847-392-4300',
+        phone: '847-555-0151',
       }),
     ).toEqual({
       customer_id: 'gc-1',
       customer_name: 'Lowbeck Contracting',
       customer_email: 'invoices@lowbeck.com',
-      customer_phone: '847-392-4300',
+      customer_phone: '847-555-0151',
     })
   })
   it('keeps the job context when no payer is given, and keeps the job phone when the payer has none', () => {

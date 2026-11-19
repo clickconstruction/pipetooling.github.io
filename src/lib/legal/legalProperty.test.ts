@@ -77,9 +77,9 @@ describe('jobs without a linked record', () => {
     expect(properties[0]?.jobLabels).toEqual(['1042', '1043'])
   })
   it('an exact address match on the payer\'s record is used and said as matched; no match is the job address with a gap the desk can fix', () => {
-    const direct = makeJob({ id: 'j-d', hcp_number: '700', job_address: ' 15054 State Hwy 71,  Bee Cave, TX ', customer_id: 'tle', customer_name: 'TLE', status: 'billed', collections_at: '2026-09-01T15:00:00Z' })
+    const direct = makeJob({ id: 'j-d', hcp_number: '700', job_address: ' 71490 State Hwy 71,  Bee Cave, TX ', customer_id: 'tle', customer_name: 'TLE', status: 'billed', collections_at: '2026-09-01T15:00:00Z' })
     const loose = makeJob({ id: 'j-l', hcp_number: '701', job_address: '1 Nowhere Ln', customer_id: 'tle', customer_name: 'TLE', status: 'billed', collections_at: '2026-09-01T15:00:00Z' })
-    const tleSite = addr({ id: 'tle-site', customer_id: 'tle', address: '15054 State Hwy 71, Bee Cave, TX', county: 'Travis', property_kind: 'non_residential' })
+    const tleSite = addr({ id: 'tle-site', customer_id: 'tle', address: '71490 State Hwy 71, Bee Cave, TX', county: 'Travis', property_kind: 'non_residential' })
     const pk = packetFor([direct, loose], { addresses: [tleSite] })
     const byJob = Object.fromEntries(pk.account.jobs.map((j) => [j.label, j.property]))
     expect(byJob['700']).toEqual(expect.objectContaining({ source: 'matched', county: 'Travis' }))
@@ -131,8 +131,8 @@ describe('the source and the kind, said (integration pass)', () => {
 
 describe('a sub job set up as ours with the owner (punch list #166, v2.5840)', () => {
   const tle = { id: 'tle', name: 'TLE', address: null, contact_info: null, customer_type: 'commercial', payment_terms: null, payment_terms_note: null }
-  const direct = makeJob({ id: 'j-d', hcp_number: '700', job_address: '15054 State Hwy 71, Bee Cave, TX', customer_id: 'tle', customer_name: 'TLE', status: 'billed', collections_at: '2026-09-01T15:00:00Z', customer_address_id: 'tle-site' })
-  const site = addr({ id: 'tle-site', customer_id: 'tle', address: '15054 State Hwy 71, Bee Cave, TX', county: 'Travis', owner_mode: 'building_owner', owner_company: 'Hwy 71 Retail Partners LLC', owner_mailing_address: 'PO Box 4', property_kind: 'non_residential' })
+  const direct = makeJob({ id: 'j-d', hcp_number: '700', job_address: '71490 State Hwy 71, Bee Cave, TX', customer_id: 'tle', customer_name: 'TLE', status: 'billed', collections_at: '2026-09-01T15:00:00Z', customer_address_id: 'tle-site' })
+  const site = addr({ id: 'tle-site', customer_id: 'tle', address: '71490 State Hwy 71, Bee Cave, TX', county: 'Travis', owner_mode: 'building_owner', owner_company: 'Hwy 71 Retail Partners LLC', owner_mailing_address: 'PO Box 4', property_kind: 'non_residential' })
   it('flags a commercial customer with no GC whose owner of record is another party, with the one-press door', () => {
     const pk = packetFor([direct], { customer: tle, addresses: [site], jobAddresses: [site] })
     const gap = pk.gaps.find((g) => g.key === 'subjob:j-d')

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { auditFilterCounts, auditKind, filterAuditList } from './auditListFilter'
 
 const items = [
-  { id: 'a', projectName: 'ZZ Twin BONILLA LAW FIRM (backtest R2)', openQuestions: 12 },
+  { id: 'a', projectName: 'ZZ Twin BENNING LAW FIRM (backtest R2)', openQuestions: 12 },
   { id: 'b', projectName: 'ZZ Shadow PALVERN WINERY', openQuestions: 0 },
   { id: 'c', projectName: 'zz shadow gallenby park', openQuestions: 2 },
   { id: 'd', projectName: null, openQuestions: 0 },

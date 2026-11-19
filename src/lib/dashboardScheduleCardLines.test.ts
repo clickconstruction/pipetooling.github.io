@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { splitScheduleRowLabel, stripAddressZip } from './dashboardScheduleCardLines'
 
 describe('splitScheduleRowLabel', () => {
-  it('splits "925 · Rosemary Garza" into number and name', () => {
-    expect(splitScheduleRowLabel('925 · Rosemary Garza')).toEqual({
+  it('splits "925 · Robin Gilroy" into number and name', () => {
+    expect(splitScheduleRowLabel('925 · Robin Gilroy')).toEqual({
       jobNumber: '925',
-      jobName: 'Rosemary Garza',
+      jobName: 'Robin Gilroy',
     })
   })
 
@@ -20,8 +20,8 @@ describe('splitScheduleRowLabel', () => {
 
 describe('stripAddressZip', () => {
   it('drops a trailing 5-digit zip, keeping the state', () => {
-    expect(stripAddressZip('750 La Paloma Dr, Canyon Lake, TX 78133')).toBe(
-      '750 La Paloma Dr, Canyon Lake, TX',
+    expect(stripAddressZip('369 La Peabody Dr, Canyon Lake, TX 78133')).toBe(
+      '369 La Peabody Dr, Canyon Lake, TX',
     )
   })
 
@@ -30,7 +30,7 @@ describe('stripAddressZip', () => {
   })
 
   it('leaves addresses without a zip alone (and keeps road numbers)', () => {
-    expect(stripAddressZip('373 Atlantis Kyle TX')).toBe('373 Atlantis Kyle TX')
-    expect(stripAddressZip('12921 FM 20')).toBe('12921 FM 20')
+    expect(stripAddressZip('614 Averill Kyle TX')).toBe('614 Averill Kyle TX')
+    expect(stripAddressZip('62552 FM 20')).toBe('62552 FM 20')
   })
 })

@@ -22,8 +22,8 @@ import type { TallyLinkedMercuryRow } from '../../lib/mercuryTxRowFromTally'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 const DAY_JOBS = [
-  { id: 'j1', main: 'JP942 · Spigots replaced', address: '720 Bailey St, Seguin' },
-  { id: 'j2', main: 'JP926 · Dylan Beck PRV', address: '210 Cliffside' },
+  { id: 'j1', main: 'JP942 · Spigots replaced', address: '686 Bellamy St, Seguin' },
+  { id: 'j2', main: 'JP926 · Debra Blakely PRV', address: '279 Coverdale' },
 ]
 
 function row(over: Partial<TallyLinkedMercuryRow> = {}): TallyLinkedMercuryRow {
@@ -79,7 +79,7 @@ describe('TallySortPurchaseModal', () => {
     await waitFor(() => expect(screen.getByText('JP942 · Spigots replaced')).toBeTruthy())
     screen.getByText('JP942 · Spigots replaced').click()
     await waitFor(() => expect(screen.getByText('Assign $90.42 ✓')).toBeTruthy())
-    screen.getByText('JP926 · Dylan Beck PRV').click()
+    screen.getByText('JP926 · Debra Blakely PRV').click()
     await waitFor(() => expect(screen.getByText('Save split · $90.42 ✓')).toBeTruthy())
     const inputs = screen.getAllByLabelText(/Amount for/) as HTMLInputElement[]
     expect(inputs).toHaveLength(2)

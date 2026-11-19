@@ -34,8 +34,8 @@ describe('unnamedOnLine: the same fact on one line of a lane, by the way the lin
 })
 
 describe('firstName: the word a greeting opens on', () => {
-  it("a company's record name keeps no comma (live check 2026-10-20: \"Structura,, this is Wendi\")", () => {
-    expect(firstName({ name: 'Structura, Inc. – Austin', kind: 'customer' })).toBe('Structura')
+  it("a company's record name keeps no comma (live check 2026-10-20: \"Sheffield,, this is Wendi\")", () => {
+    expect(firstName({ name: 'Sheffield, Inc. – Austin', kind: 'customer' })).toBe('Sheffield')
     expect(firstName({ name: 'Dana Whitfield', kind: 'customer' })).toBe('Dana')
     expect(firstName({ name: 'Dr. Priya Raman', kind: 'customer' })).toBe('Dr. Raman')
   })

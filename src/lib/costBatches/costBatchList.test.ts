@@ -85,9 +85,9 @@ describe('summary words', () => {
   })
 
   it('lines each job, the one that received rows first, a note-only job last', () => {
-    expect(costBatchJobLines(byJob, (id) => (id === A ? 'Rough In' : 'Diamondback'))).toEqual([
+    expect(costBatchJobLines(byJob, (id) => (id === A ? 'Rough In' : 'Davenport'))).toEqual([
       { jobId: A, label: 'Rough In', words: 'allocated $31,804.23 · 7 invoices · 77 clock sessions · 1 note' },
-      { jobId: B, label: 'Diamondback', words: '1 note' },
+      { jobId: B, label: 'Davenport', words: '1 note' },
     ])
   })
 })
@@ -115,14 +115,14 @@ describe('sortCostBatchesNewestFirst', () => {
 })
 
 describe('costBatchOpWords', () => {
-  const label = (id: string) => (id === A ? 'J629 · Rough In' : id === B ? 'J583 · Diamondback' : id)
+  const label = (id: string) => (id === A ? 'J629 · Rough In' : id === B ? 'J583 · Davenport' : id)
   it('names each op kind in one line', () => {
-    expect(costBatchOpWords({ opType: 'allocate', target: { tx_id: '3f9a1b2c-0000', job_id: A, from_job_id: B, amount: 84.1 } }, label)).toBe('$84.10 of tx 3f9a1b2c… → J629 · Rough In (from J583 · Diamondback)')
+    expect(costBatchOpWords({ opType: 'allocate', target: { tx_id: '3f9a1b2c-0000', job_id: A, from_job_id: B, amount: 84.1 } }, label)).toBe('$84.10 of tx 3f9a1b2c… → J629 · Rough In (from J583 · Davenport)')
     expect(costBatchOpWords({ opType: 'allocate', target: { tx_id: '3f9a1b2c-0000', job_id: A, amount: '12' } }, label)).toBe('$12.00 of tx 3f9a1b2c… → J629 · Rough In')
-    expect(costBatchOpWords({ opType: 'supply_repoint', target: { invoice_id: '44a1bbbb-1', from_job_id: B, to_job_id: A } }, label)).toBe('invoice 44a1bbbb… J583 · Diamondback → J629 · Rough In')
+    expect(costBatchOpWords({ opType: 'supply_repoint', target: { invoice_id: '44a1bbbb-1', from_job_id: B, to_job_id: A } }, label)).toBe('invoice 44a1bbbb… J583 · Davenport → J629 · Rough In')
     expect(costBatchOpWords({ opType: 'clock_repoint', target: { session_id: '55b2cccc-1', to_job_id: A } }, label)).toBe('session 55b2cccc… → J629 · Rough In')
     expect(costBatchOpWords({ opType: 'other_charge', target: { job_id: A, description: 'ESTIMATE — mobilization', amount: 22857.14 } }, label)).toBe('ESTIMATE — mobilization $22,857.14 on J629 · Rough In')
-    expect(costBatchOpWords({ opType: 'thread_note', target: { job_id: B, body: `2026-10-29 — cost batch: ${'x'.repeat(120)}` } }, label)).toMatch(/^note on J583 · Diamondback: 2026-10-29 — cost batch: x+…$/)
+    expect(costBatchOpWords({ opType: 'thread_note', target: { job_id: B, body: `2026-10-29 — cost batch: ${'x'.repeat(120)}` } }, label)).toMatch(/^note on J583 · Davenport: 2026-10-29 — cost batch: x+…$/)
     expect(costBatchOpWords({ opType: 'mystery', target: {} }, label)).toBe('mystery')
   })
 })

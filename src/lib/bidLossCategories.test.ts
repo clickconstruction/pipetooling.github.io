@@ -66,7 +66,7 @@ describe('groupLossTriageByBuilder', () => {
   })
 
   it('treats free-text junk in category as uncategorized', () => {
-    const groups = groupLossTriageByBuilder([bid({ category: 'fuckin dale sauer' })])
+    const groups = groupLossTriageByBuilder([bid({ category: 'fuckin dean tully' })])
     expect(groups[0]!.needsCount).toBe(1)
   })
 
@@ -177,14 +177,14 @@ describe('lossReasonState — the one "needs a reason" rule over the bid and its
 
   it("BP391 (2026-11-03): the bid's own category is empty, both lost GC packets carry one — categorized from the packets, one line per GC", () => {
     const s = lossReasonState({ loss_category: null, loss_reason: null }, [
-      pk('Structura, Inc. – San Antonio', 'lost', [{ loss_category: 'gc_lost', outcome_note: null }]),
+      pk('Sheffield, Inc. – San Antonio', 'lost', [{ loss_category: 'gc_lost', outcome_note: null }]),
       pk('PlanHub - Subcontractor Prime Opportunity', 'lost', [{ loss_category: 'price', outcome_note: NOTE }, { loss_category: 'price', outcome_note: NOTE }]),
       pk('Wrenman Commercial', null, [], true),
     ])
     expect(s.categorized).toBe(true)
     expect(s.source).toBe('packets')
     expect(s.lines).toEqual([
-      { gcName: 'Structura, Inc. – San Antonio', category: 'gc_lost', label: 'GC lost the project', note: null },
+      { gcName: 'Sheffield, Inc. – San Antonio', category: 'gc_lost', label: 'GC lost the project', note: null },
       { gcName: 'PlanHub - Subcontractor Prime Opportunity', category: 'price', label: 'Price too high', note: NOTE },
     ])
     expect(s.missing).toEqual([])
@@ -200,17 +200,17 @@ describe('lossReasonState — the one "needs a reason" rule over the bid and its
 
   it('one lost GC still without a reason: not categorized, missing names it, the recorded lines still read', () => {
     const s = lossReasonState({ loss_category: null, loss_reason: null }, [
-      pk('Structura', 'lost', [{ loss_category: 'gc_lost' }]),
+      pk('Sheffield', 'lost', [{ loss_category: 'gc_lost' }]),
       pk('Brund & Assoc.', 'lost', [{ loss_category: null }]),
     ])
     expect(s.categorized).toBe(false)
     expect(s.source).toBe('none')
     expect(s.missing).toEqual(['Brund & Assoc.'])
-    expect(s.lines.map((l) => l.gcName)).toEqual(['Structura'])
+    expect(s.lines.map((l) => l.gcName)).toEqual(['Sheffield'])
   })
 
   it("the bid's own category wins and reads as before; the GC lines are still listed for a reader that wants them", () => {
-    const s = lossReasonState({ loss_category: 'project_died', loss_reason: 'shelved till spring' }, [pk('Structura', 'lost', [{ loss_category: 'gc_lost' }])])
+    const s = lossReasonState({ loss_category: 'project_died', loss_reason: 'shelved till spring' }, [pk('Sheffield', 'lost', [{ loss_category: 'gc_lost' }])])
     expect(s).toMatchObject({ categorized: true, source: 'bid', category: 'project_died', note: 'shelved till spring', hasNote: true })
     expect(s.lines.map((l) => l.category)).toEqual(['gc_lost'])
   })
@@ -222,12 +222,12 @@ describe('lossReasonState — the one "needs a reason" rule over the bid and its
   })
 
   it('a shared-letter GC and a GC not marked lost never count either way; a bad category key on a version is no reason', () => {
-    expect(lossReasonState({ loss_category: null }, [pk('Structura', 'lost', [{ loss_category: 'gc_lost' }]), pk('Kestrin', null, [{ loss_category: null }]), pk('Wrenman', null, [], true)]).categorized).toBe(true)
-    expect(lossReasonState({ loss_category: null }, [pk('Structura', 'lost', [{ loss_category: 'nonsense' }])])).toMatchObject({ categorized: false, missing: ['Structura'] })
+    expect(lossReasonState({ loss_category: null }, [pk('Sheffield', 'lost', [{ loss_category: 'gc_lost' }]), pk('Kestrin', null, [{ loss_category: null }]), pk('Wrenman', null, [], true)]).categorized).toBe(true)
+    expect(lossReasonState({ loss_category: null }, [pk('Sheffield', 'lost', [{ loss_category: 'nonsense' }])])).toMatchObject({ categorized: false, missing: ['Sheffield'] })
   })
 
   it('no lost packet and no category: not categorized and nothing named — the chips write the bid', () => {
-    expect(lossReasonState({ loss_category: null }, [pk('Structura', null, [{}])])).toMatchObject({ categorized: false, missing: [], lines: [] })
+    expect(lossReasonState({ loss_category: null }, [pk('Sheffield', null, [{}])])).toMatchObject({ categorized: false, missing: [], lines: [] })
   })
 })
 
@@ -247,7 +247,7 @@ describe('lossReasonPacketsFromVersions — the Dashboard reads versions alone',
 describe('lossReasonWords — the Lost row\'s one-line words', () => {
   it("the bid's own, the GCs' joined, or not recorded", () => {
     expect(lossReasonWords(lossReasonState({ loss_category: 'price', loss_reason: 'cheaper' }))).toBe('Price too high — cheaper')
-    expect(lossReasonWords(lossReasonState({ loss_category: null }, [{ name: 'Structura', outcome: 'lost', versions: [{ loss_category: 'gc_lost' }] }, { name: 'PlanHub', outcome: 'lost', versions: [{ loss_category: 'price' }] }]))).toBe('Structura: GC lost the project; PlanHub: Price too high')
+    expect(lossReasonWords(lossReasonState({ loss_category: null }, [{ name: 'Sheffield', outcome: 'lost', versions: [{ loss_category: 'gc_lost' }] }, { name: 'PlanHub', outcome: 'lost', versions: [{ loss_category: 'price' }] }]))).toBe('Sheffield: GC lost the project; PlanHub: Price too high')
     expect(lossReasonWords(lossReasonState({ loss_category: null, loss_reason: null }))).toBe('not recorded')
     expect(lossReasonWords(lossReasonState({ loss_category: null, loss_reason: 'a note' }))).toBe('a note')
   })

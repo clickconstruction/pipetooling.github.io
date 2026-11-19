@@ -13,7 +13,7 @@ function job(over: Partial<LienCalendarJob> & { r?: Partial<LienRunwayInput> } =
     jobId: 'j',
     number: '1046 PLUM',
     name: 'Pretest',
-    customer: 'Randolph Field Reality',
+    customer: 'Randy Field Rafferty',
     gcId: null,
     gcName: null,
     // Each job at its own street number: jobs at one property are a case of their own (v2.4526).
@@ -46,7 +46,7 @@ const ROWS = [
   // filed by Oct 15, so the job is due this month, not overdue.
   job({ jobId: 'h', name: 'Dunmere Mallin', ...RLC, openBalance: 285, r: { lastWorkYmd: '2026-07-10' } }),
   // Overdue: May's lien window closed Aug 17
-  job({ jobId: 'i', name: 'Samantha Coyle', openBalance: 5355, r: { lastWorkYmd: '2026-05-05' } }),
+  job({ jobId: 'i', name: 'Sheila Cadwell', openBalance: 5355, r: { lastWorkYmd: '2026-05-05' } }),
   // nothing open: not on the board
   job({ jobId: 'z', name: 'Paid', openBalance: 0 }),
 ]
@@ -213,19 +213,19 @@ describe('late in the month and across the new year', () => {
 
 describe('an overdue job is listed with its property (v2.4526)', () => {
   const TARROW = '628 Tarrow Rd, San Antonio, TX 78209'
-  const LENOX = '9703 Lenox Hl San Antonio, TX 78240'
+  const LISTER = '3507 Lister Hl San Antonio, TX 78240'
   const rows = [
-    // RLC, notices due Oct 15: two at Lenox Hl, one at Tarrow Rd, one somewhere else
-    job({ jobId: 'n1', number: '273', ...RLC, openBalance: 17585, address: LENOX }),
-    job({ jobId: 'n2', number: '858', ...RLC, openBalance: 7902, address: '9703 Lenox Hl, San Antonio, TX' }),
+    // RLC, notices due Oct 15: two at Lister Hl, one at Tarrow Rd, one somewhere else
+    job({ jobId: 'n1', number: '273', ...RLC, openBalance: 17585, address: LISTER }),
+    job({ jobId: 'n2', number: '858', ...RLC, openBalance: 7902, address: '3507 Lister Hl, San Antonio, TX' }),
     job({ jobId: 'n3', number: '867', ...RLC, openBalance: 1710, address: TARROW }),
-    job({ jobId: 'n4', number: '868', ...RLC, openBalance: 2650, address: '1875 Co Rd 777, Devine, TX' }),
-    // Overdue: one at Lenox Hl, two at Tarrow Rd, one at a property with nothing ahead. June's notice was due Aug 17 and
+    job({ jobId: 'n4', number: '868', ...RLC, openBalance: 2650, address: '1948 Co Rd 777, Devine, TX' }),
+    // Overdue: one at Lister Hl, two at Tarrow Rd, one at a property with nothing ahead. June's notice was due Aug 17 and
     // its affidavit Sep 15, both behind us, so the lien is gone (a July job would still owe a late notice by Oct 15).
-    job({ jobId: 'o1', number: '881', ...RLC, openBalance: 1050, address: LENOX, r: { lastWorkYmd: '2026-06-10' } }),
+    job({ jobId: 'o1', number: '881', ...RLC, openBalance: 1050, address: LISTER, r: { lastWorkYmd: '2026-06-10' } }),
     job({ jobId: 'o2', number: '226', ...RLC, openBalance: 650, address: TARROW, r: { lastWorkYmd: '2026-05-05' } }),
     job({ jobId: 'o3', number: '608', ...RLC, openBalance: 2245, address: '628 Tarrow Rd', r: { lastWorkYmd: '2026-06-10' } }),
-    job({ jobId: 'o4', number: '186', ...RLC, openBalance: 6200, address: '574 Co Rd 660, Devine TX 78016', r: { lastWorkYmd: '2026-05-05' } }),
+    job({ jobId: 'o4', number: '186', ...RLC, openBalance: 6200, address: '454 Co Rd 660, Devine TX 78016', r: { lastWorkYmd: '2026-05-05' } }),
   ]
   const board = buildLienCalendarBoard(rows, '', TODAY)
   const [overdue, thisMonth] = board.buckets
@@ -256,7 +256,7 @@ describe('an overdue job is listed with its property (v2.4526)', () => {
     expect(g.total).toBe(17585 + 7902 + 1710 + 2650)
     expect(g.sub).toBe('GC · 4 jobs · 4 notices owed · 3 windows closed · 2 at one property')
     expect(lienGroupRows(g).map((r) => (r.kind === 'label' ? `# ${r.label}` : `${r.job.number}${r.closed ? ' closed' : ''}`))).toEqual([
-      '# 9703 Lenox Hl San Antonio',
+      '# 3507 Lister Hl San Antonio',
       '273',
       '858',
       '881 closed',
@@ -279,13 +279,13 @@ describe('an overdue job is listed with its property (v2.4526)', () => {
     expect(tarrow.words).toBe('Lien open on 1 job · $1,710 · lien gone on 2 · $2,895 · $4,605 owed here')
     expect(tarrow.short).toBe('$1,710 lien open · $2,895 lien gone · $4,605 owed')
     expect(tarrow.title).toContain('2 more closed their windows')
-    const lenox = labels.find((r) => r.label.startsWith('9703 Lenox'))!.tally!
-    expect(lenox.words).toBe('Lien open on 2 jobs · $25,487 · lien gone on 1 · $1,050 · $26,537 owed here')
-    expect(lenox.title).toContain('One more closed its window')
+    const lister = labels.find((r) => r.label.startsWith('3507 Lister'))!.tally!
+    expect(lister.words).toBe('Lien open on 2 jobs · $25,487 · lien gone on 1 · $1,050 · $26,537 owed here')
+    expect(lister.title).toContain('One more closed its window')
     // Nothing closed among the group's other properties: the rows already add up.
     expect(labels.find((r) => r.label === 'Other properties')!.tally).toBeNull()
     // The piles are the property's, so every tally's open money is part of the group's total and no gone money is.
-    expect(g.total).toBe(tarrow.open.total + lenox.open.total + 2650)
+    expect(g.total).toBe(tarrow.open.total + lister.open.total + 2650)
   })
 
   it('a property with nothing closed has no tally, and the row’s press names the job', () => {
@@ -319,7 +319,7 @@ describe('an overdue job is listed with its property (v2.4526)', () => {
   it('matches on the linked property record, the typed address, or one address cut short of the other', () => {
     const at = (address: string, addressId: string | null = null) => ({ address, addressId })
     expect(lienSameProperty(at('1 A St', 'addr-1'), at('somewhere else', 'addr-1'))).toBe(true)
-    expect(lienSameProperty(at('9703 Lenox Hl San Antonio, TX 78240'), at('9703 Lenox Hl, San Antonio, TX'))).toBe(true)
+    expect(lienSameProperty(at('3507 Lister Hl San Antonio, TX 78240'), at('3507 Lister Hl, San Antonio, TX'))).toBe(true)
     expect(lienSameProperty(at('628 Tarrow Rd'), at('628 Tarrow Rd, San Antonio, TX 78209'))).toBe(true)
     // A city alone is not a property, a number and one word is too little, and 62 is not 628.
     expect(lienSameProperty(at('San Antonio, TX'), at('San Antonio, TX'))).toBe(false)

@@ -52,12 +52,12 @@ type PropertyCandidate = Parameters<typeof JobFormEditFactRows>[0]['propertyCand
 const OFFICE_PROPERTY: PropertyCandidate = {
   id: 'addr-office',
   customer_id: 'cust-1',
-  address: '574 Co Rd 660, Devine TX 78016',
+  address: '454 Co Rd 660, Devine TX 78016',
   county: 'Medina',
   legal_description: 'ABS 1 SUR 2',
   owner_name: 'Todd Crayle',
   owner_company: '',
-  owner_mailing_address: '574 Co Rd 660, Devine TX 78016',
+  owner_mailing_address: '454 Co Rd 660, Devine TX 78016',
 }
 
 afterEach(cleanup)
@@ -70,7 +70,7 @@ const CUSTOMERS: CustomerRow[] = [
   {
     id: 'cust-1',
     name: 'Todd Crayle',
-    address: '6414 Maverick Oak Dr San Antonio, TX 78240',
+    address: '7032 Merriman Oak Dr San Antonio, TX 78240',
     contact_info: null,
     date_met: null,
     master_user_id: 'master-1',
@@ -95,7 +95,7 @@ function Harness({
   customerAddressId = null,
   customerName = 'Todd Crayle',
   customerEmail = 'Todd@crayleproperties.example',
-  customerPhone = '(210) 415-5375',
+  customerPhone = '(210) 555-0142',
   paperJob = null,
   canAnswerPublicProperty = false,
 }: {
@@ -225,7 +225,7 @@ describe('JobFormEditFactRows', () => {
       expect(screen.getByRole('button', { name: `Edit ${label}` })).toBeTruthy()
     }
     expect(screen.getByText('Abraham, Paige')).toBeTruthy()
-    expect(screen.getByText('(210) 415-5375')).toBeTruthy()
+    expect(screen.getByText('(210) 555-0142')).toBeTruthy()
     // v2.1711: the green "linked" chip is gone — only the amber "Not in Customers" warning ever shows.
     expect(screen.queryByText('linked')).toBeNull()
     // Folders row: the set Files link is inline; Pictures (unset) is absent.
@@ -236,8 +236,8 @@ describe('JobFormEditFactRows', () => {
   it('phone and email values are tap-to-call / tap-to-email links (v2.1705)', async () => {
     renderWithProviders(<Harness />)
     await settle()
-    const phone = screen.getByRole('link', { name: '(210) 415-5375' }) as HTMLAnchorElement
-    expect(phone.getAttribute('href')).toBe('tel:2104155375')
+    const phone = screen.getByRole('link', { name: '(210) 555-0142' }) as HTMLAnchorElement
+    expect(phone.getAttribute('href')).toBe('tel:2105550142')
     const email = screen.getByRole('link', { name: 'Todd@crayleproperties.example' }) as HTMLAnchorElement
     expect(email.getAttribute('href')).toBe('mailto:Todd@crayleproperties.example')
   })
@@ -326,7 +326,7 @@ describe('JobFormEditFactRows', () => {
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Property record' }))
     // The picker still lists the builder's office…
-    expect(screen.getByRole('option', { name: '574 Co Rd 660, Devine TX 78016' })).toBeTruthy()
+    expect(screen.getByRole('option', { name: '454 Co Rd 660, Devine TX 78016' })).toBeTruthy()
     // …and the job address, which is not on it, is one click from becoming a property.
     const add = screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Crayle' })
     fireEvent.click(add)
@@ -371,7 +371,7 @@ describe('JobFormEditFactRows', () => {
   })
 
   it('Property record: the row reads what the lien papers read, each blank in red, and one button opens the record above it (v2.4724)', async () => {
-    const site = { ...OFFICE_PROPERTY, id: 'addr-site', address: '1200 Ilka Rd, Seguin, TX 78155', county: 'Guadalupe', legal_description: '', owner_name: '', owner_mailing_address: '' }
+    const site = { ...OFFICE_PROPERTY, id: 'addr-site', address: '5171 Irving Rd, Seguin, TX 78155', county: 'Guadalupe', legal_description: '', owner_name: '', owner_mailing_address: '' }
     renderWithProviders(<Harness propertyCandidates={[site]} customerAddressId="addr-site" propertyRecordFocus />)
     await settle()
     const facts = screen.getByTestId('property-record-facts')
@@ -452,7 +452,7 @@ describe('JobFormEditFactRows', () => {
       proposalFromLookupPayload(address, {
         ok: true,
         county_geocoder: 'Bexar',
-        parcel: { propId: '1', ownerName: 'KARROW ULRIC & BARROWBY SHELMINA', nameCare: '', legalDescription: 'CB 4696A BLK 3 LOT 35', situsAddress: '10 CASCADE GLN', mailingAddress: '3203 SPIDER LILY, SAN ANTONIO, TX 78258', county: 'Bexar', source: 'Bexar Appraisal District', taxYear: '2025' },
+        parcel: { propId: '1', ownerName: 'KARROW ULRIC & BARROWBY SHELMINA', nameCare: '', legalDescription: 'CB 4696A BLK 3 LOT 35', situsAddress: '10 CASCADE GLN', mailingAddress: '5913 STELLA LEAH, SAN ANTONIO, TX 78258', county: 'Bexar', source: 'Bexar Appraisal District', taxYear: '2025' },
       }),
     )
     const gc = { ...CUSTOMERS[0]!, id: 'gc-1', name: 'RLC- Dunmere Mallin' } as CustomerRow

@@ -102,7 +102,7 @@ describe('bidBoardMapBids', () => {
       [
         bid({
           id: 'a',
-          customers: { name: 'JOERIS - SAN ANTONIO' } as BidWithBuilder['customers'],
+          customers: { name: 'JESSUP - SAN ANTONIO' } as BidWithBuilder['customers'],
           bids_gc_builders: { name: 'ignored when a customer exists' } as BidWithBuilder['bids_gc_builders'],
           estimator: [{ id: 'e1', name: 'Wendi', email: 'wendi@example.com' }],
           distance_from_office: '1,158.5 mi',
@@ -113,7 +113,7 @@ describe('bidBoardMapBids', () => {
       {},
       TODAY,
     )
-    expect(bids[0]).toMatchObject({ gcName: 'JOERIS - SAN ANTONIO', estimatorName: 'Wendi', distanceMiles: 1158.5, valueLabel: '$44k' })
+    expect(bids[0]).toMatchObject({ gcName: 'JESSUP - SAN ANTONIO', estimatorName: 'Wendi', distanceMiles: 1158.5, valueLabel: '$44k' })
     expect(bids[1]).toMatchObject({ gcName: 'Kestrin Contracting', estimatorName: 'grace@example.com', valueLabel: null })
   })
 })
