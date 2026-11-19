@@ -25,6 +25,12 @@ vi.mock('../hooks/useAuth', () => ({
   useOptionalAuth: () => makeUseAuthValue(authState.current),
 }))
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<typeof import('react-router-dom')>()), useParams: () => ({ id: 'dev-zz' }) }))
+// Every read the page makes past its mocked seams (the site's sets, its maps, a trip's lines) answers here with no rows.
+// Without this they went to the network, and the Plans by date chart waited on the sets read failing there (2026-11-18).
+vi.mock('../lib/supabase', async () => {
+  const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
+  return { supabase: makeSupabaseStub() }
+})
 
 const served: { data: DevelopmentPageData | null } = { data: null }
 vi.mock('../lib/developments/fetchDevelopmentPage', () => ({
@@ -83,15 +89,24 @@ function data(): DevelopmentPageData {
   }
 }
 
+// The network, which no case here may reach: a call is refused at once and named when the case ends.
+const reached: string[] = []
 beforeEach(() => {
   window.localStorage.clear()
   tripsState.asked.length = 0
   laborAsked.length = 0
   costsAsked.length = 0
   served.data = data()
+  reached.length = 0
+  vi.stubGlobal('fetch', (input: RequestInfo | URL) => {
+    reached.push(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+    return Promise.reject(new TypeError('this test reaches no network'))
+  })
 })
 afterEach(() => {
   vi.clearAllMocks()
+  vi.unstubAllGlobals()
+  expect(reached).toEqual([])
 })
 
 describe('DevelopmentPage: the Trips look', () => {
