@@ -57,6 +57,15 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  *   POST { action: 'desk.mint', mapId }   → { code, endsOn } a new code, handed out once and kept only as its hash.
  *                                           The caller must read the map under their own row security, and must have
  *                                           painted it or work in the office. A map with nothing on it gets no link.
+ *   POST { action: 'desk.mint', mapId, code } → { ok, kept: true, endsOn } the phone picked the code (punch list #394,
+ *                                           step 3), so the address is known at the press and Messages opens inside
+ *                                           it. The code is ten letters of the link's alphabet, kept only as its
+ *                                           hash, and never sent back. The same phone asking again for the same code
+ *                                           on the same map gets the same answer, so a lost answer can be asked for
+ *                                           twice. A code another link holds is 409 `taken`.
+ *   POST { action: 'desk.can', mapId }    → { ok } whether a link could be made now, with nothing written: the sheet
+ *                                           asks on opening, and hands a text to the phone at once only on a yes.
+ *                                           The refusals are desk.mint's own, with the same words.
  *   POST { action: 'desk.end', mapId, linkId? } → { ok, ended } End this link now: one link, or every open link of
  *                                           the map. The same two may end one.
  *
@@ -302,14 +311,43 @@ async function desk(req: Request, admin: Admin, supabaseUrl: string, body: Recor
     return json({ ok: true, ended: (data ?? []).length })
   }
 
-  // desk.mint
+  // desk.mint and desk.can
+  // The phone's own code, when it picked one. A code that is not ten letters of the alphabet is refused, not replaced:
+  // the phone has already written it into a text.
+  const given = body.code === undefined || body.code === null ? null : paintedMapLinkCode(typeof body.code === 'string' ? body.code : null)
+  if (body.code !== undefined && body.code !== null && !given) return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 400)
+  const givenHash = given ? await sha256(given) : null
+  /** The link that already holds the phone's code, answered: this caller's own open link of this map, or somebody else's. */
+  const heldAnswer = async (hash: string): Promise<Response | null> => {
+    const { data: held, error: heldErr } = await admin.from('painted_map_links').select('map_id, made_by, expires_at, ended_at').eq('code_hash', hash).maybeSingle()
+    if (heldErr) throw new Error(`the link: ${heldErr.message}`)
+    const row = held as { map_id: string; made_by: string | null; expires_at: string; ended_at: string | null } | null
+    if (!row) return null
+    if (row.map_id === mapId && row.made_by === caller.userId && paintedMapLinkOpen(row, nowIso)) return json({ ok: true, kept: true, endsOn: calendarYmdInAppTzFromIso(row.expires_at) })
+    return json({ error: PAINTED_MAP_LINK_WORDS.taken }, 409)
+  }
+  if (givenHash && body.action === 'desk.mint') {
+    // The same phone asking twice for the same code: its first answer was lost on the way back.
+    const again = await heldAnswer(givenHash)
+    if (again) return again
+  }
   const shared = await loadMap(admin, mapId)
   if (!shared) return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 404)
   if (sharedMapIsEmpty(shared)) return json({ error: PAINTED_MAP_LINK_WORDS.empty }, 409)
   const { data: open, error: openErr } = await admin.from('painted_map_links').select('id').eq('map_id', mapId).is('ended_at', null).gt('expires_at', nowIso)
   if (openErr) throw new Error(`the map's links: ${openErr.message}`)
   if ((open ?? []).length >= PAINTED_MAP_LINKS_OPEN_MAX) return json({ error: PAINTED_MAP_LINK_WORDS.tooMany }, 409)
+  // desk.can stops here: every refusal a mint would give has been given, and nothing is written.
+  if (body.action === 'desk.can') return json({ ok: true })
   const expiresAt = paintedMapLinkExpiry(nowIso)
+  if (givenHash) {
+    const { error } = await admin.from('painted_map_links').insert({ map_id: mapId, code_hash: givenHash, made_by: caller.userId, made_at: nowIso, expires_at: expiresAt })
+    // Two asks for one code in the same moment: the other one wrote it, and this one reads what it wrote.
+    if (error?.code === '23505') return (await heldAnswer(givenHash)) ?? json({ error: PAINTED_MAP_LINK_WORDS.taken }, 409)
+    if (error) throw new Error(`the link: ${error.message}`)
+    console.log(JSON.stringify({ event: 'painted_map_link_mint', map: mapId, by: 'phone' }))
+    return json({ ok: true, kept: true, endsOn: calendarYmdInAppTzFromIso(expiresAt) })
+  }
   // A code the table already holds (one chance in 10^14) is minted again.
   for (let attempt = 0; attempt < 3; attempt++) {
     const code = mintPaintedMapLinkCode((n) => crypto.getRandomValues(new Uint8Array(n)))
@@ -337,7 +375,7 @@ serve(async (req) => {
       const parsed: unknown = await req.json().catch(() => null)
       if (!parsed || typeof parsed !== 'object') return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 400)
       const body = parsed as Record<string, unknown>
-      if (body.action === 'desk.mint' || body.action === 'desk.end') return await desk(req, admin, supabaseUrl, body)
+      if (body.action === 'desk.mint' || body.action === 'desk.end' || body.action === 'desk.can') return await desk(req, admin, supabaseUrl, body)
       if (body.action === 'way.open') return await wayOpen(req, admin, supabaseUrl, body, ip)
       if (body.action === 'way.here') return await wayHere(req, admin, body)
       return json({ error: PAINTED_MAP_LINK_WORDS.failed }, 400)

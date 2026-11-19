@@ -21,10 +21,12 @@ const link = vi.hoisted(() => ({ held: false, minted: 0, refuse: null as string 
 vi.mock('../../lib/paintedMap/paintedMapLinkIo', () => ({
   loadPaintedMapVisits: async () => ({ ok: true, value: [] }),
   loadPaintedMapLinks: async () => ({ ok: true, value: link.held || link.minted > 0 ? [{ id: 'link-0', made_at: '2026-11-10T16:00:00Z', expires_at: '2999-01-01T00:00:00Z', ended_at: null, open_count: 0 }] : [] }),
-  mintPaintedMapLink: async () => {
+  canMakePaintedMapLink: async () => false,
+  pickPaintedMapLinkCode: () => 'q7m2kd4x9p',
+  registerPaintedMapLink: async (_mapId: string, code: string) => {
     if (link.refuse) throw new Error(link.refuse)
     link.minted += 1
-    return { code: 'q7m2kd4x9p', endsOn: '2027-02-11' }
+    return { code, endsOn: '2027-02-11' }
   },
   endPaintedMapLinks: async () => 1,
   rememberPaintedMapLink: () => {},

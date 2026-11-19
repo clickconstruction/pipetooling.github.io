@@ -6,7 +6,7 @@
 import { publicFunctionHeaders } from '../customerSampleMode'
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { PAINTED_MAP_LINK_WORDS, type PaintedMapLinkRow, type PaintedMapVisitRow, type SharedPaintedMap } from './paintedMapLink'
+import { PAINTED_MAP_LINK_WORDS, mintPaintedMapLinkCode, type PaintedMapLinkRow, type PaintedMapVisitRow, type SharedPaintedMap } from './paintedMapLink'
 
 // The deployed build's address ends in a slash, the local one does not: both read the same here.
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/+$/, '')
@@ -86,17 +86,26 @@ export const paintedWayIo: PaintedWayIo = {
   },
 }
 
-async function desk(body: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
-  let token = ''
+/** The signed-in session's token, or none: the function then says who may share. */
+async function sessionToken(): Promise<string> {
   try {
     const { data } = await supabase.auth.getSession()
-    token = data.session?.access_token ?? ''
+    return data.session?.access_token ?? ''
   } catch {
     // No session: the function says so.
+    return ''
   }
+}
+
+/** One ask of the function as the signed-in person. `keepalive` lets it finish after the phone has left for another app. */
+function post(token: string, body: Record<string, unknown>, keepalive = false): Promise<Response> {
+  return fetch(FUNCTION_URL, { method: 'POST', keepalive, headers: { apikey: anonKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+}
+
+async function desk(body: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
   let res: Response
   try {
-    res = await fetch(FUNCTION_URL, { method: 'POST', headers: { apikey: anonKey, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    res = await post(await sessionToken(), body)
   } catch {
     throw new Error('No signal. Check the connection and try again.')
   }
@@ -104,11 +113,68 @@ async function desk(body: Record<string, unknown>): Promise<{ status: number; bo
   return { status: res.status, body: isRecord(parsed) ? parsed : {} }
 }
 
-/** Share a link: a new code for the map, handed out once. Throws with the reason in words. */
-export async function mintPaintedMapLink(mapId: string): Promise<{ code: string; endsOn: string | null }> {
-  const res = await desk({ action: 'desk.mint', mapId })
-  if (res.status === 200 && res.body.ok === true && typeof res.body.code === 'string') return { code: res.body.code, endsOn: typeof res.body.endsOn === 'string' ? res.body.endsOn : null }
-  throw new Error(words(res.body, `The link was not made. The function answered ${res.status}.`))
+/**
+ * The session as it was read when the sheet last asked whether a link can be made. Reading it takes a
+ * moment, and a press has none to spare: with this at hand, the ask for a link leaves inside the press.
+ */
+let atHand: { token: string; at: number } | null = null
+const AT_HAND_FOR_MS = 10 * 60_000
+const NO_SIGNAL = 'No signal. Check the connection and try again.'
+
+/** Ten letters this phone picks (punch list #394, step 3), so a link's address is known before the server answers. */
+export function pickPaintedMapLinkCode(): string {
+  return mintPaintedMapLinkCode((n) => crypto.getRandomValues(new Uint8Array(n)))
+}
+
+/**
+ * Whether a link could be made for the map now. Nothing is written. The sheet asks on opening, and hands a
+ * text to the phone at once only on a yes: a text is never written around a link the server would refuse.
+ * False for a refusal, a lost signal, and a function from before the question existed.
+ */
+export async function canMakePaintedMapLink(mapId: string): Promise<boolean> {
+  try {
+    const token = await sessionToken()
+    atHand = token ? { token, at: Date.now() } : null
+    const res = await post(token, { action: 'desk.can', mapId })
+    const parsed: unknown = await res.json().catch(() => null)
+    return res.status === 200 && isRecord(parsed) && parsed.ok === true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Share a link whose code this phone picked. Not an `async` function on purpose: with the session at hand
+ * the ask is on its way before this returns, so it has left the phone before the phone leaves for Messages,
+ * and `keepalive` lets it finish there. A lost signal gets one more try, and the function answers a second
+ * ask for the same code as it did the first. The code in the answer is the phone's own. A function from
+ * before this step makes its own code and hands it back, and that one is the link then.
+ * Throws with the reason in words.
+ */
+export function registerPaintedMapLink(mapId: string, code: string): Promise<{ code: string; endsOn: string | null }> {
+  const body = { action: 'desk.mint', mapId, code }
+  const token = atHand && Date.now() - atHand.at < AT_HAND_FOR_MS ? atHand.token : null
+  const first = token ? post(token, body, true) : sessionToken().then((t) => post(t, body, true))
+  return first
+    .catch(async () => {
+      await new Promise((r) => setTimeout(r, 800))
+      return post(await sessionToken(), body, true)
+    })
+    .then(
+      async (res) => {
+        const parsed: unknown = await res.json().catch(() => null)
+        const answer = isRecord(parsed) ? parsed : {}
+        if (res.status === 200 && answer.ok === true) {
+          const endsOn = typeof answer.endsOn === 'string' ? answer.endsOn : null
+          if (typeof answer.code === 'string') return { code: answer.code, endsOn }
+          if (answer.kept === true) return { code, endsOn }
+        }
+        throw new Error(words(answer, `The link was not made. The function answered ${res.status}.`))
+      },
+      () => {
+        throw new Error(NO_SIGNAL)
+      },
+    )
 }
 
 /** End this link now: one link, or every open link of the map. How many were ended. Throws with the reason in words. */

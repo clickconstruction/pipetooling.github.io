@@ -13,9 +13,13 @@
  * The code is handed out once and the table keeps only its hash. So the device that made a link
  * remembers it, to send it again, and any other device makes a link of its own on its first press.
  *
- * **Text it from my phone…** opens the phone's own Messages with the words written, about a second
- * after the press when the link has to be made first. A phone may refuse that. The sheet then says
- * the link is ready and the same press, now **Open Messages**, works at once.
+ * **Text it from my phone…** opens the phone's own Messages with the words written. The phone picks
+ * the link's code (step 3), so the address is known at the press and Messages opens inside it, while
+ * the server is told behind. That is done only once the server has said a link can be made, asked
+ * when the sheet opens, so a text is never written around a link that would be refused. Without
+ * that yes the link is made first and Messages opens about a second after the press. A phone may
+ * refuse that. The sheet then says the link is ready and the same press, now **Open Messages**,
+ * works at once.
  *
  * **Text the customer…** (v2.7338, renamed here): for the office team, on a map that is on a job,
  * the link goes to the job's customer from the company's number. The press opens the customer's own
@@ -30,7 +34,7 @@ import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { PAINTED_MAP_SHARE_WORDS, linkEndsWords, linkMadeDayWords, paintedMapLinkOpen, paintedMapLinkUrl, visitLine, type PaintedMapLinkRow, type PaintedMapVisitRow } from '../../lib/paintedMap/paintedMapLink'
 import { formatDenverDateTimeShort } from '../../utils/dateUtils'
-import { endPaintedMapLinks, loadPaintedMapLinks, loadPaintedMapVisits, mintPaintedMapLink, rememberPaintedMapLink, rememberedPaintedMapLink } from '../../lib/paintedMap/paintedMapLinkIo'
+import { canMakePaintedMapLink, endPaintedMapLinks, loadPaintedMapLinks, loadPaintedMapVisits, pickPaintedMapLinkCode, registerPaintedMapLink, rememberPaintedMapLink, rememberedPaintedMapLink } from '../../lib/paintedMap/paintedMapLinkIo'
 import { PAINTED_MAP_SHARE_SHEET_WORDS as W, paintedMapEndWords, paintedMapLinksOutWords, paintedMapOwnTextHref, paintedMapShareTileName, paintedMapShareWays, type PaintedMapShareTile } from '../../lib/paintedMap/paintedMapShare'
 import { PAINTED_MAP_MESSAGES_LATE_MS, copyWhenMade, onPageLeft, openPhoneMessages } from '../../lib/paintedMap/paintedMapShareIo'
 import { PAINTED_MAP_TEXT_WORDS, paintedMapTextWords, type PaintedMapTextJob } from '../../lib/paintedMap/paintedMapText'
@@ -115,6 +119,8 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
   /** When the phone was last handed the Messages address, for a page that is left later than the wait. */
   const handedAt = useRef(0)
   const [onPhone] = useState(() => phone ?? isPhoneHere())
+  /** The server said a link can be made, so the phone's own text may leave inside the press. */
+  const [mayHandOff, setMayHandOff] = useState(false)
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
   const ways = paintedMapShareWays({ office: mayText, jobId: jobId === undefined ? (whole?.map.jobId ?? null) : jobId, phone: onPhone, canShare, copies: !!whole })
 
@@ -130,6 +136,16 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
   useEffect(() => {
     void readLinks()
   }, [readLinks])
+
+  // Asked once, on a phone alone: only the phone's own text is handed over inside the press.
+  useEffect(() => {
+    if (!onPhone) return
+    let live = true
+    void canMakePaintedMapLink(mapId).then((yes) => live && setMayHandOff(yes))
+    return () => {
+      live = false
+    }
+  }, [mapId, onPhone])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -170,21 +186,23 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
   }, [mine, links, open.length, mapId])
 
   /**
-   * The link this device sends: the one it holds, or one made now. Two presses in the same moment
-   * share one make. A quiet make (a copy's) says nothing when it fails, since the copy goes on without it.
+   * Starts a link whose code this phone picks. The address is known at once. `registered` settles when
+   * the server has it, with the link as it stands, or with nothing when the server refused or the signal
+   * was lost. The ask for it leaves before this returns. A quiet make (a copy's) says nothing when it
+   * fails, since the copy goes on without it.
    */
-  const ensureLink = (by: Making): Promise<{ url: string; endsOn: string | null } | null> => {
-    if (url && live) return Promise.resolve({ url, endsOn: live.endsOn })
-    if (minting.current) return minting.current
+  const startLink = (by: Making): { url: string; registered: Promise<{ url: string; endsOn: string | null } | null> } => {
+    const picked = pickPaintedMapLinkCode()
     const run = (async () => {
       setMaking(by)
       try {
-        const made = await mintPaintedMapLink(mapId)
-        rememberPaintedMapLink(mapId, made)
+        const made = await registerPaintedMapLink(mapId, picked)
+        const link = { code: made.code, endsOn: made.endsOn }
+        rememberPaintedMapLink(mapId, link)
         // The list from before the press has no open link in it, and against it a link just made would
         // look like one ended elsewhere and be forgotten. So the list is emptied until it is read again.
         setLinks(null)
-        setMine(made)
+        setMine(link)
         void readLinks()
         return { url: paintedMapLinkUrl(origin, made.code), endsOn: made.endsOn }
       } catch (e) {
@@ -196,7 +214,13 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
       }
     })()
     minting.current = run
-    return run
+    return { url: paintedMapLinkUrl(origin, picked), registered: run }
+  }
+
+  /** The link this device sends: the one it holds, or one made now. Two presses in the same moment share one make. */
+  const ensureLink = (by: Making): Promise<{ url: string; endsOn: string | null } | null> => {
+    if (url && live) return Promise.resolve({ url, endsOn: live.endsOn })
+    return minting.current ?? startLink(by).registered
   }
 
   const clearSaid = () => {
@@ -215,6 +239,18 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
     if (making) return
     clearSaid()
     const had = url
+    if (!had && mayHandOff) {
+      // No link is out and the server said one can be made. The ask for it leaves first, then the phone
+      // is handed the address, both inside the press: no wait, and no question from the phone's browser.
+      const started = startLink('own-text')
+      handedAt.current = Date.now()
+      const [left, link] = await Promise.all([openMessages(paintedMapOwnTextHref(mapName, started.url)), started.registered])
+      // The text is already written. A link that was then refused, lost, or made under another code is not the one in it.
+      if (!link) setError((reason) => `${reason ?? 'The link was not made.'} ${W.textLinkDead}`)
+      else if (link.url !== started.url) setError(W.textLinkDead)
+      else if (!left) setError(W.noMessages)
+      return
+    }
     const link = had ? { url: had } : await ensureLink('own-text')
     if (!link) return
     handedAt.current = Date.now()
@@ -417,7 +453,7 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
                 {!foldOpen && copies.said ? <p role="status" data-painted-copies-said style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-green-700)' }}>{copies.said}</p> : null}
 
                 {ways.ownText ? (
-                  <button type="button" data-painted-share-own-text style={making === 'own-text' ? { ...leadPress, ...dead } : leadPress} disabled={making !== null} onClick={() => void ownText()}>
+                  <button type="button" data-painted-share-own-text data-painted-share-at-once={mayHandOff} style={making === 'own-text' ? { ...leadPress, ...dead } : leadPress} disabled={making !== null} onClick={() => void ownText()}>
                     {making === 'own-text' ? (
                       W.making
                     ) : (

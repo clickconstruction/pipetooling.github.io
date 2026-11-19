@@ -19,15 +19,27 @@ const io = vi.hoisted(() => ({
   remembered: null as { code: string; endsOn: string | null } | null,
   calls: [] as string[],
   refuse: null as string | null,
+  /** The server's answer to whether a link can be made: a yes lets the phone's own text leave inside the press. */
+  can: false,
+  /** Holds the server's answer to the ask for a link, to look at the sheet while it is still on its way. */
+  hold: null as Promise<void> | null,
+  /** A function from before step 3 makes its own code and hands it back. */
+  serverCode: null as string | null,
 }))
 vi.mock('../../lib/paintedMap/paintedMapLinkIo', () => ({
   loadPaintedMapLinks: async () => ({ ok: true, value: io.links }),
   loadPaintedMapVisits: async () => ({ ok: true, value: io.visits }),
-  mintPaintedMapLink: async (mapId: string) => {
+  canMakePaintedMapLink: async (mapId: string) => {
+    io.calls.push(`can:${mapId}`)
+    return io.can
+  },
+  pickPaintedMapLinkCode: () => 'q7m2kd4x9p',
+  registerPaintedMapLink: async (mapId: string, code: string) => {
     io.calls.push(`mint:${mapId}`)
+    if (io.hold) await io.hold
     if (io.refuse) throw new Error(io.refuse)
     io.links = [{ id: 'link-1', made_at: '2026-11-13T16:00:00Z', expires_at: '2999-01-01T00:00:00Z', ended_at: null, open_count: 0 }, ...io.links]
-    return { code: 'q7m2kd4x9p', endsOn: '2027-02-11' }
+    return { code: io.serverCode ?? code, endsOn: '2027-02-11' }
   },
   endPaintedMapLinks: async (mapId: string) => {
     io.calls.push(`end:${mapId}`)
@@ -68,6 +80,14 @@ const held = () => {
   io.remembered = { code: 'q7m2kd4x9p', endsOn: '2027-02-11' }
   io.links = [OPEN]
 }
+/** What was asked of the server to make, remember, forget or end a link: every call but the opening question. */
+const made = () => io.calls.filter((c) => !c.startsWith('can:'))
+/** The blue press, once the server's yes has reached the sheet. */
+const atOnce = async () => {
+  const press = await screen.findByRole('button', { name: 'Text it from my phone…' })
+  await waitFor(() => expect(press.getAttribute('data-painted-share-at-once')).toBe('true'))
+  return press
+}
 /** Every word a reader meets on the sheet, counted as the kernel counts. */
 const wordsOnSheet = (): number => {
   const walker = document.createTreeWalker(screen.getByRole('dialog', { name: 'Share this map' }), NodeFilter.SHOW_TEXT)
@@ -94,6 +114,9 @@ afterEach(() => {
   io.remembered = null
   io.calls = []
   io.refuse = null
+  io.can = false
+  io.hold = null
+  io.serverCode = null
   clipboard.text = ''
   clipboard.refuses = false
   phone.hrefs = []
@@ -110,7 +133,7 @@ describe('PaintedMapShareSheet, before a link is out', () => {
     expect(screen.getByText('Anyone with the link can open it. They give their name first.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Make a link' })).toBeNull()
     expect(document.querySelector('[data-painted-share-link]')).toBeNull()
-    expect(io.calls).toEqual([])
+    expect(made()).toEqual([])
   })
 
   it('stays under the count the card set, where the sheet once stood at 163 words', async () => {
@@ -146,7 +169,7 @@ describe('PaintedMapShareSheet, Text it from my phone…', () => {
     sheet()
     fireEvent.click(await screen.findByRole('button', { name: 'Text it from my phone…' }))
     await waitFor(() => expect(phone.hrefs).toEqual([TEXT_HREF]))
-    expect(io.calls).toEqual(['mint:m1', 'remember'])
+    expect(made()).toEqual(['mint:m1', 'remember'])
     await waitFor(() => expect(document.querySelector('[data-painted-share-state]')?.textContent).toContain('One link is out, since Nov 13. Not opened yet.'))
     expect(screen.getByText('The link ends by itself on Feb 11.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Text it from my phone…' })).toBeTruthy()
@@ -158,7 +181,7 @@ describe('PaintedMapShareSheet, Text it from my phone…', () => {
     sheet()
     fireEvent.click(await screen.findByRole('button', { name: 'Text it from my phone…' }))
     await waitFor(() => expect(phone.hrefs).toEqual([TEXT_HREF]))
-    expect(io.calls).toEqual([])
+    expect(made()).toEqual([])
   })
 
   it('says the link is ready and offers Open Messages when the phone would not open it after the wait', async () => {
@@ -226,12 +249,87 @@ describe('PaintedMapShareSheet, Text it from my phone…', () => {
   })
 })
 
+describe('PaintedMapShareSheet, Text it from my phone… once the server has said a link can be made', () => {
+  it('opens Messages inside the press, with the phone’s own code, while the server is still being told', async () => {
+    io.can = true
+    let release = () => {}
+    io.hold = new Promise<void>((resolve) => (release = resolve))
+    sheet()
+    fireEvent.click(await atOnce())
+    // The phone has the text before the link's ask has been answered.
+    await waitFor(() => expect(phone.hrefs).toEqual([TEXT_HREF]))
+    expect(made()).toEqual(['mint:m1'])
+    expect(screen.getByRole('button', { name: 'Making the link…' })).toBeTruthy()
+    release()
+    await waitFor(() => expect(made()).toEqual(['mint:m1', 'remember']))
+    expect(await screen.findByRole('button', { name: 'Text it from my phone…' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Open Messages' })).toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
+    await waitFor(() => expect(document.querySelector('[data-painted-share-state]')?.textContent).toContain('One link is out, since Nov 13. Not opened yet.'))
+  })
+
+  it('says the text’s link will not open when the server then refuses it, and keeps saying so', async () => {
+    io.can = true
+    io.refuse = 'This map has too many links open. End one first.'
+    sheet()
+    fireEvent.click(await atOnce())
+    expect((await screen.findByRole('alert')).textContent).toBe('This map has too many links open. End one first. The link in that text will not open. Do not send it.')
+    expect(phone.hrefs).toEqual([TEXT_HREF])
+    fireEvent(document, new Event('visibilitychange'))
+    expect(screen.getByRole('alert').textContent).toContain('Do not send it.')
+    expect(made()).toEqual(['mint:m1'])
+  })
+
+  it('says so too when a function from before this step made a code of its own, and sends that link from then on', async () => {
+    io.can = true
+    io.serverCode = 'zzzzzzzzzz'
+    sheet()
+    fireEvent.click(await atOnce())
+    expect((await screen.findByRole('alert')).textContent).toBe('The link in that text will not open. Do not send it.')
+    fireEvent.click(screen.getByRole('button', { name: 'Copy the link' }))
+    await waitFor(() => expect(clipboard.text).toBe('https://example.test/way/zzzzzzzzzz'))
+  })
+
+  it('says to copy the link when the phone opened nothing, and takes that back if the page is left after all', async () => {
+    io.can = true
+    phone.opens = false
+    sheet()
+    fireEvent.click(await atOnce())
+    expect((await screen.findByRole('alert')).textContent).toBe('This phone would not open Messages. Copy the link and paste it into a text.')
+    expect(screen.queryByRole('button', { name: 'Open Messages' })).toBeNull()
+    fireEvent(window, new Event('blur'))
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+  })
+
+  it('makes the link first, as before, until the server’s yes has come', async () => {
+    io.can = false
+    sheet()
+    const press = await screen.findByRole('button', { name: 'Text it from my phone…' })
+    await waitFor(() => expect(io.calls).toContain('can:m1'))
+    expect(press.getAttribute('data-painted-share-at-once')).toBe('false')
+    let release = () => {}
+    io.hold = new Promise<void>((resolve) => (release = resolve))
+    fireEvent.click(press)
+    await waitFor(() => expect(made()).toEqual(['mint:m1']))
+    expect(phone.hrefs).toEqual([])
+    release()
+    await waitFor(() => expect(phone.hrefs).toEqual([TEXT_HREF]))
+  })
+
+  it('does not ask the question at a desk, where no text leaves from the phone', async () => {
+    sheet({ phone: false })
+    await screen.findByRole('button', { name: 'Copy the link' })
+    expect(io.calls).toEqual([])
+  })
+})
+
 describe('PaintedMapShareSheet, the tiles', () => {
   it('copies the whole address, making the link first when none is out', async () => {
     sheet()
     fireEvent.click(await screen.findByRole('button', { name: 'Copy the link' }))
     await waitFor(() => expect(clipboard.text).toBe(ADDRESS))
-    expect(io.calls).toEqual(['mint:m1', 'remember'])
+    expect(made()).toEqual(['mint:m1', 'remember'])
     expect(screen.getByRole('status').textContent).toBe('Copied. Paste it into a text or an email.')
     expect(screen.getByRole('button', { name: 'Copied' })).toBeTruthy()
   })
@@ -241,7 +339,7 @@ describe('PaintedMapShareSheet, the tiles', () => {
     sheet()
     fireEvent.click(await screen.findByRole('button', { name: 'Copy the link' }))
     await waitFor(() => expect(clipboard.text).toBe(ADDRESS))
-    expect(io.calls).toEqual([])
+    expect(made()).toEqual([])
   })
 
   it('shows the link to press and hold when the browser will not copy', async () => {
@@ -257,7 +355,7 @@ describe('PaintedMapShareSheet, the tiles', () => {
     sheet()
     fireEvent.click(await screen.findByRole('button', { name: 'Show a code to scan' }))
     await waitFor(() => expect(screen.getByTestId('qr').getAttribute('data-value')).toBe(ADDRESS))
-    expect(io.calls).toEqual(['mint:m1', 'remember'])
+    expect(made()).toEqual(['mint:m1', 'remember'])
     expect(screen.getByText('Point a phone’s camera here')).toBeTruthy()
     expect(document.querySelector('[data-painted-share-link]')?.textContent).toBe('example.test/way/q7m2kd4x9p')
     expect(screen.queryByRole('button', { name: 'Text it from my phone…' })).toBeNull()
@@ -312,7 +410,7 @@ describe('PaintedMapShareSheet, a link that is out', () => {
     expect(screen.queryByText(/A link can be read only on the device that made it/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Copy the link' }))
     await waitFor(() => expect(clipboard.text).toBe(ADDRESS))
-    expect(io.calls).toEqual(['mint:m1', 'remember'])
+    expect(made()).toEqual(['mint:m1', 'remember'])
     await waitFor(() => expect(screen.getByRole('button', { name: 'End all 2 links now' })).toBeTruthy())
   })
 
