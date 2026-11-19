@@ -46,6 +46,23 @@ describe('lienScanTargetsFromDesk', () => {
   })
 })
 
+describe('a job made in the app, with a Click number and no HCP number', () => {
+  const filing = (id: string, job_id: string) => ({ id, job_id, kind: 'affidavit', filed_at: '2026-11-13', voided_at: null, county: 'Hays', recording_number: '', document_url: null }) as never
+
+  it('carries its Click number on its label, and a scan named with that number finds it', () => {
+    const targets = lienScanTargetsFromDesk({
+      filingsByJob: { j1: [filing('a', 'j1')], j2: [filing('b', 'j2')], j3: [filing('c', 'j3')] },
+      jobsById: { j1: { hcp_number: '', click_number: '863', job_name: 'Maple Court Service Visit' }, j2: { hcp_number: '2104', click_number: '880', job_name: 'Cedar Hollow Lofts' }, j3: { hcp_number: null, click_number: null, job_name: 'Sample Ridge Office' } },
+    })
+    expect(targets.map((t) => [t.jobNumber, t.jobLabel])).toEqual([
+      ['', 'Sample Ridge Office'],
+      ['863', '863 · Maple Court Service Visit'],
+      ['2104', '2104 · Cedar Hollow Lofts'],
+    ])
+    expect(lienScanMatches([piece('Job 863 stamped.pdf')], targets)).toEqual({ 'Job 863 stamped.pdf': { filingId: 'a', by: 'job_number' } })
+  })
+})
+
 describe('lienScanMatches', () => {
   it('matches a name that carries the recording number, however the number is punctuated', () => {
     const m = lienScanMatches([piece('doc 20260041877.pdf'), piece('2026-0041870 recorded.pdf')], TARGETS)

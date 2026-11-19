@@ -16,6 +16,7 @@
  * job's folder cannot take stays out with its reason, and the rest are saved. Pure; `lienScanBatchIo.ts` writes.
  */
 import { batchOutcomeWords, batchWords, type BatchOutcome, type BatchWords } from '../batchWords'
+import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import type { JobLienFilingRow } from './lienDeadlines'
 import { lienScanProblem, type LienScanFileLike } from './lienScanFile'
 
@@ -38,7 +39,7 @@ export type LienScanTarget = {
 /** The desk's own data, as much of it as this reads. */
 export type LienScanDeskData = {
   filingsByJob: Readonly<Record<string, ReadonlyArray<JobLienFilingRow>>>
-  jobsById: Readonly<Record<string, { hcp_number: string; job_name: string | null } | undefined>>
+  jobsById: Readonly<Record<string, { hcp_number: string | null; click_number?: string | null; job_name: string | null } | undefined>>
 }
 
 const byNumber = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true })
@@ -53,7 +54,8 @@ export function lienScanTargetsFromDesk(data: LienScanDeskData): LienScanTarget[
     for (const f of filings) {
       if (f.kind !== 'affidavit' || !f.filed_at || f.voided_at) continue
       const job = data.jobsById[jobId]
-      const jobNumber = (job?.hcp_number ?? '').trim()
+      // The job's number as the rest of the desk reads it (v2.7943): the HCP number, else the Click number of a job made in the app.
+      const jobNumber = effectiveJobLedgerNumber(job?.hcp_number, job?.click_number)
       out.push({
         filingId: f.id,
         jobId,
