@@ -6274,6 +6274,7 @@ Since v2.7708 (punch list #383) every batch press stands on the title line of th
 Since v2.7712 **Approved · to sign** is a bin of its own between Awaiting Master approval and Approved · to print: an approved notice the leader has not signed stands there, violet, with the office's **Remind** or the leader's *Sign N notices ›* beside the bin's name, so Approved · to print and the third tile count exactly what the print takes.
 Since v2.7853 the leader's *Sign N notices ›* counts only the notices on the jobs he leads and opens By paper narrowed to those, a line under the bin's name says how many wait on another leader, and a leader who leads none of them reads the office's **Remind**.
 Since v2.7714 the affidavits' To send for Master approval carries *Send N for approval ›*, the door to the affidavits list at that pile.
+Since v2.7898 (the owner's pick of 2026-11-18) the Retainage line under the notices ends in *Open ›*, the door to By paper's Retainage list, whole and with nothing typed in the find box (`lienBoardRetainageDoor.ts`).
 The title bar's door to the run left every view on a computer in v2.7490, so By job has no door to the run;
 a phone keeps the run as the first row of **More**.
 **Filed liens: copies to mail** (v2.7476, punch list #366, `LienServeWindow.tsx`): the window behind *Mail N liens' copies ›* on the Filed · copies to mail bin and its To do rows.
