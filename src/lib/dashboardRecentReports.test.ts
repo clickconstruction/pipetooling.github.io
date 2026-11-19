@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
+import { plainWordsFailures } from './plainWords'
 import {
   formatReportRowTime,
   isDashboardRecentReportsRole,
   openedNotShownCount,
   readIdsWithOwnReports,
+  PRIMARY_REPORTS_SCOPE_LINE,
   recentReportsNewCount,
   reportRowState,
+  reportsScopeLine,
   visibleRecentReports,
   type RecentReportRow,
 } from './dashboardRecentReports'
@@ -136,5 +139,22 @@ describe('isDashboardRecentReportsRole', () => {
     for (const role of ['subcontractor', 'helpers', 'estimator', null, undefined, '']) {
       expect(isDashboardRecentReportsRole(role)).toBe(false)
     }
+  })
+})
+
+describe('reportsScopeLine (a primary reads their own jobs\' reports, 2026-11-19)', () => {
+  it('a primary reads the line that says whose reports the list holds', () => {
+    expect(reportsScopeLine('primary')).toBe(PRIMARY_REPORTS_SCOPE_LINE)
+    expect(PRIMARY_REPORTS_SCOPE_LINE).toBe('You see reports on jobs where you are the account manager or the superintendent, and reports you wrote.')
+  })
+
+  it('every other role reads the list with no line', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'superintendent', 'estimator', 'helpers', 'subcontractor', null, undefined, '']) {
+      expect(reportsScopeLine(role)).toBeNull()
+    }
+  })
+
+  it('the line is plain words', () => {
+    expect(plainWordsFailures(PRIMARY_REPORTS_SCOPE_LINE)).toEqual([])
   })
 })

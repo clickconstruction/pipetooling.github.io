@@ -147,6 +147,11 @@ describe('dashboardEmptyWords: the presses', () => {
     expect(recentReportsEmptyWords(false).next).toEqual({ label: 'Reports', to: JOBS_REPORTS_PATH })
     expect(recentReportsEmptyWords(true)).toEqual({ main: 'No reports yet.', tail: 'Create one above.' })
   })
+
+  it('Recent Reports: a primary reads their own jobs\' reports, so the empty list says whose', () => {
+    expect(recentReportsEmptyWords(false, true)).toEqual({ main: 'No reports on your jobs yet.', next: { label: 'Reports', to: JOBS_REPORTS_PATH }, tail: 'is where you write one.' })
+    expect(recentReportsEmptyWords(false, false).main).toBe('No reports yet.')
+  })
 })
 
 describe('dashboardEmptyWords: plain words', () => {
@@ -180,6 +185,7 @@ describe('dashboardEmptyWords: plain words', () => {
       myScheduleDayEmptyWords('today', noop),
       recentReportsEmptyWords(false),
       recentReportsEmptyWords(true),
+      recentReportsEmptyWords(false, true),
     ]
     for (const w of all) expect(plainWordsFailures(read(w)), read(w)).toEqual([])
   })

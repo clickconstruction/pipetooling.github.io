@@ -16,6 +16,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { reportsScopeLine } from '../../lib/dashboardRecentReports'
 
 const JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES =
   "Customer Files isn't linked for this job yet. Contact Dispatch to have it added."
@@ -442,6 +443,9 @@ export default function JobsReportsTab({
             </div>
           </div>
         )}
+        {reportsScopeLine(authRole) ? (
+          <p data-reports-scope style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{reportsScopeLine(authRole)}</p>
+        ) : null}
         {reportsLoading ? (
           <p style={{ color: 'var(--text-muted)' }}>Loading reports…</p>
         ) : (

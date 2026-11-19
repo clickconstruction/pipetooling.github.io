@@ -89,6 +89,8 @@ Reports live at **Jobs → Reports**, at `/jobs?tab=reports`. The page opens on 
 
 Your own reports are available under **My Reports**. You can edit a report within the edit window, which is two days by default.
 
+A primary sees the reports on their own jobs here, and the ones they wrote. See [whose reports you see](/help/read-field-reports-on-the-dashboard#whose-reports-you-see).
+
 ## Getting notified
 
 Don't poll the Reports tab. Subscribe instead. In **Settings → Your dashboard → Report notifications**, you check the types you want and press {{button:blue|Save report notification preferences}}. You'll get a push the moment one is filed. Enable push notifications first. See Settings Basics.

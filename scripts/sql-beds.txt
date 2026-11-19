@@ -146,3 +146,4 @@ job-papers-lists
 dashboard-view
 job-finish-calls
 salaried-week
+primary-scope-reports
