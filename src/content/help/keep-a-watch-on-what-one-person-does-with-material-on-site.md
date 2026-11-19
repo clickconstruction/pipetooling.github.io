@@ -13,9 +13,21 @@ Open People and press the person's row. Find **Watch on site** under Access & ac
 
 Type the reason under **Why**. The person never sees it.
 
-Leave **Put me on the list to be told** ticked to be on the watch's list. Nobody is told yet. The list is kept for when alerts are sent.
+Leave **Tell me when they press** ticked to get a push on your phone.
 
 Press **Turn on the watch**. The row then says when the watch began and who set it.
+
+## What the app tells you
+
+The app sends three kinds of push. None goes to the person watched.
+
+- One when they make their first press of the day.
+- One for a press outside the process. Several at once come as one push.
+- One in the evening with the day's count.
+
+The app checks every five minutes, so a push can trail the press by a few minutes.
+
+Press the push to open the site's materials. Then press **By person**.
 
 ## Read what they do
 

@@ -1070,6 +1070,9 @@ verify_jwt = false
 [functions.money-waiting-email-dispatch]
 verify_jwt = false
 
+[functions.watch-notify-dispatch]
+verify_jwt = false
+
 [functions.schedule-share-dispatch]
 verify_jwt = false
 
