@@ -173,7 +173,7 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
   // The liens the last print left out after all, each with its reason.
   const [notPrinted, setNotPrinted] = useState<Array<{ jobLabel: string; reason: string }>>([])
 
-  // The liens that owe their copies, the soonest day first: a held lien is still mailed, by photocopy, and still recorded.
+  // The liens that owe their copies, the soonest day first: a held lien keeps its card, so its numbers are entered here once its copies go out.
   // Under them, the mailed ones still shown: the desk's, and any that left its list while this window was open.
   const rows = useMemo(() => {
     const owing: Row[] = [...base.ready.map((r) => ({ job: r.job, clock: r.clock, envelopes: r.envelopes.map((e) => ({ recipient: e.recipient, name: e.name })), mailedRow: false })), ...base.held.map((h) => ({ job: h.job, clock: h.clock, envelopes: [] as Array<{ recipient: ServiceCopy; name: string }>, mailedRow: false }))]

@@ -5582,7 +5582,10 @@ describe('LienDesk · add the stamped scans (punch list #366)', () => {
     await settle()
     expect(screen.queryByTestId('lien-scan-batch-window')).toBeNull()
     fireEvent.click(document.querySelector('[data-lien-board-bin-press="affidavit:filed"]') as HTMLElement)
-    fireEvent.click(within(screen.getByTestId('lien-serve-window')).getByRole('button', { name: 'Add the stamped scans ›' }))
+    // Neither lien has a scan, so each is held with the same door on its own line (v2.7916), beside the window's own.
+    const serve = screen.getByTestId('lien-serve-window')
+    expect(serve.querySelectorAll('[data-lien-serve-held="no_saved_copy"] [data-lien-serve-held-add-scan]')).toHaveLength(2)
+    fireEvent.click(serve.querySelector('[data-lien-serve-add-scans]') as HTMLElement)
     expect(screen.queryByTestId('lien-serve-window')).toBeNull()
     expect(screen.getByTestId('lien-scan-batch-window')).toBeTruthy()
   })
