@@ -208,6 +208,7 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "walk": "vite-node scripts/walk/start.ts",
+    "lien:packet": "vite-node scripts/lien-packet/start.ts",
     "walk:bids": "node scripts/bids-live-walk.mjs",
     "lint": "eslint src --cache --cache-location .cache/eslint/ --cache-strategy content",
     "lint:fix": "eslint src --fix --cache --cache-location .cache/eslint/ --cache-strategy content",
