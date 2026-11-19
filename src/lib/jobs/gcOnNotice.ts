@@ -16,6 +16,7 @@ import { cleanStoredAddress } from '../displayAddress'
 import { claimSplit, claimSplitWords, correctedClaim, type LienClaimCorrection } from './lienClaimCorrection'
 import { filingDeadlineForMonth } from './lienDeadlines'
 import { callLineName, parseLienDeskDraftFields } from './lienNoticeDraft'
+import { oneClosingPeriod } from './nameClosesSentence'
 
 export type GcUnpaidMonthRow = LienNoticeMonthRow & {
   is_billed: boolean
@@ -393,7 +394,8 @@ export function coverLetterKindFor(property: { propertyKind: string; homestead: 
  */
 export function counselCoverLetterTemplate(args: { stored?: string | null; gcName: string; claimantName: string; property: { propertyKind: string; homestead: boolean } | null | undefined }): string {
   const stored = (args.stored ?? '').trim()
-  if (stored) return stored
+  // A letter saved before v2.7957 holds the doubled period after a name that ends in one: it prints with one.
+  if (stored) return oneClosingPeriod(stored, [args.gcName, args.claimantName])
   return defaultGcNoticeCoverLetter({ gcName: args.gcName, claimantName: args.claimantName, kind: coverLetterKindFor(args.property) })
 }
 
@@ -420,6 +422,11 @@ export function affidavitMonthWordFor(propertyKind: string | null | undefined): 
  * own line.
  */
 export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName: string; kind?: CoverLetterKind; gcUnresponsive?: boolean }): string {
+  // A name that ends in a period closes its own sentence (v2.7957): counsel's words below are as counsel wrote them.
+  return oneClosingPeriod(gcNoticeCoverLetterWords(input), [input.gcName, input.claimantName])
+}
+
+function gcNoticeCoverLetterWords(input: { gcName: string; claimantName: string; kind?: CoverLetterKind; gcUnresponsive?: boolean }): string {
   const gc = input.gcName.trim() || 'the general contractor'
   const us = input.claimantName.trim() || 'us'
   const F = COVER_LETTER_FILLS
@@ -506,7 +513,7 @@ export function paidOutOwnerLetter(input: { gcName: string; claimantName: string
   const gc = input.gcName.trim() || 'the general contractor'
   const us = input.claimantName.trim() || 'us'
   const F = COVER_LETTER_FILLS
-  return [
+  const words = [
     `To the owner of ${F.property},`,
     `This page is a cover letter. The enclosed notice is given under Texas Property Code § 53.056.`,
     `We are the ${F.tradeContractor} on your project under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months} and has not responded to us. A copy of this letter goes to ${gc}. ${F.staleNote}`,
@@ -522,6 +529,7 @@ export function paidOutOwnerLetter(input: { gcName: string; claimantName: string
     F.supplyHouses,
     F.conditionalRelease,
   ].join('\n\n')
+  return oneClosingPeriod(words, [input.gcName, input.claimantName])
 }
 
 /** The letter for a second mailing (v2.3760): counsel's paid-out letter, or the unresponsive one. */
