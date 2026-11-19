@@ -729,6 +729,8 @@ export default function JobTally() {
   // and leave it when the person leaves the box (v2.6904), so a reload or Back comes back to the box.
   const jobIds = useMemo(() => jobs.map((j) => j.id), [jobs])
   const onSiteAddress = useOnSiteAddress({ jobIds, onTab: activeTab === 'on-site', selectedJobId, selectJob: setSelectedJobId })
+  /** A box's own screen is open on the On site tab: the page's tabs and its ticket press fold away. */
+  const boxOpen = activeTab === 'on-site' && onSiteAddress.openContainerId != null
 
   const searchPartsForOnSite = useCallback(
     async (term: string): Promise<OnSitePart[]> => {
@@ -975,9 +977,12 @@ export default function JobTally() {
         </div>
       </div>
 
+      {/* While a box is open the page's own tabs and its ticket press fold away (Take from a box, v2.7824): the box's
+          screen starts at the top, and the only camera press on it is the box's own. The box's back press brings them back. */}
       <div
+        data-testid="tally-tabs"
         style={{
-          display: 'flex',
+          display: boxOpen ? 'none' : 'flex',
           alignItems: 'center',
           gap: 0,
           borderBottom: '1px solid var(--border)',
@@ -1030,7 +1035,7 @@ export default function JobTally() {
       </div>
 
       {/* A photo of a supply house ticket, from every tab (punch list #295): the camera first, the job after. */}
-      {authUser?.id ? <TicketPress userId={authUser.id} byName={profileName ?? authUser.email?.split('@')[0] ?? 'someone'} /> : null}
+      {authUser?.id && !boxOpen ? <TicketPress userId={authUser.id} byName={profileName ?? authUser.email?.split('@')[0] ?? 'someone'} /> : null}
 
       {activeTab === 'transactions' && isTallyOffice ? (
         <div role="group" aria-label="Whose card charges" style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.25rem' }}>

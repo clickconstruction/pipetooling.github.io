@@ -2,7 +2,7 @@
 name: "The sub's page: the customer paid, and how long this customer usually takes"
 number: 388
 group: ready
-status: asked 2026-11-17 · the owner took the card's pick on all five calls the same day · nothing built
+status: step 1 of 3, the tie, built 2026-11-18 as v2.7835 · steps 2 and 3 not built · all five calls answered 2026-11-17
 summary: >
   A sub's sheet waits at Draw requested until the customer pays. The page tells the sub that the
   customer's payment is the last thing between them and their money. It then says nothing when the
@@ -11,9 +11,9 @@ summary: >
   records it. While it waits, the page says how long this customer usually takes, as a range in
   weeks. The office's row for the sheet shows the same words, so the office reads what the sub
   reads.
-next: build step 1, the tie, then step 2; start from *Where it stands*
+next: build step 2, customer paid on the page, and show the owner its Spanish before it ships; start from *Where it stands*
 size: M as a train of three (S · M · S)
-blocker: none for step 1. Step 2 ships after the owner reads its Spanish, and each deploy of `sub-portal` waits on a go that names it
+blocker: step 2 ships after the owner reads its Spanish, and each deploy of `sub-portal` waits on a go that names it
 opinion: build — show the customer's payment first, tied to one bill so the page never says paid on a guess; show the pay time as a range in weeks with a floor of five payments, never as the office's raw figure
 mockup: to-dos/sub-page-customer-paid/mockup.html
 ---
@@ -119,13 +119,30 @@ Test rows: the test sub and a ZZ TEST job. Never a real sub's page.
 
 ## Where it stands
 
-2026-11-17. The card and its mock-up are written and the five calls are answered. Nothing is built, and no branch holds work. The owner stopped here for the night, and another session picks it up.
+2026-11-18. **Step 1, the tie, is built** as v2.7835 with migration `20261118180000_sub_sheet_draw_invoice.sql`. Steps 2 and 3 are not built. The sub's page and `sub-portal` have not changed.
 
-- **Start with step 1, the tie.** It changes no sub's page and needs no deploy of `sub-portal`. It carries a migration, so it needs a `supabase db push` after its merge.
-- **Card #371 was built on the same page and the same function the same day.** It is retired. The #371 paragraph under *Closed* in `to-dos/README.md` tells how the walk was done on the test sub and what a walk leaves behind, and the whole card is in git history at the commit that deleted `to-dos/sub-portal-statements/`.
-- **Three gotchas met on #371:**
-  - A `src/lib` file that `supabase/functions/_shared/gcKernels/` holds a copy of must not be moved or edited. The copy changes, and about thirty functions then read as owing a redeploy. Run `npm run gen:edge-kernels` and expect no change under `gcKernels/`.
-  - A SQL bed scenario that makes a helper schema grants the service role its use, or the bed fails in CI. The beds run in CI only.
-  - New words for the sub's page go in `subPortalI18n.ts`, never in `src/lib/gc/portalI18n.ts`, which the copy holds.
-- **Still owed before step 2 ships:** the owner's read of the Spanish, and the new sentences handed to counsel with the one already there.
+**What step 1 made.** `docs/recent-features/v2.7835.md` and `docs/migrations/20261118180000_sub_sheet_draw_invoice.md` have the whole of it.
+
+- **The tie** is `people_labor_jobs.draw_invoice_id`. A trigger on the sheet makes it when the sheet arrives at *Waiting on customer* and the job has exactly one open bill. The same trigger clears it when the sheet leaves that stage.
+- **The pick** is the window *Which bill does this sheet ride on?*, asked before the move when the job has several open bills. `set_sub_sheet_draw_invoice` saves it.
+- **The row** in Jobs → Subs → Pay reads *Rides on bill 2 of 3* or *No bill tied*, and opens the same window.
+
+**Four things step 1 settled that this card left open.** Step 2 builds on them.
+
+- **A bill is open until it is paid.** A draft bill counts, as the mock-up's window shows. So a job with one sent bill and money left to bill has two open bills, and the office is asked. The window leans to the one sent bill.
+- **The office's word is bill, not draw.** The window says *Bill 2 of 3*, as the lien desk and the owner's records do. The mock-up's *Draw 2 of 3* was not kept.
+- **No backfill.** Sheets that were already waiting on the customer on 2026-11-18 have no tie. The office picks one from the sheet's row. Step 2 says nothing new for a sheet until then.
+- **The window's words do not promise the page yet.** Its lead says the sheet waits on the bill's payment. Step 2 changes it to the mock-up's sentence, that the sub's page will say the customer paid.
+
+**Next, step 2.**
+
+- The rule goes under `supabase/functions/_shared/`, beside `subPortalStatement.ts`: the day the tied bill was paid in full. `sub-portal` reads the tied bill's status and its payments' `paid_on`.
+- The office's row changes from *Rides on …* to *Sub sees: …*, with the amber *not queued* after two days. `drawTieRowWords` in `src/lib/subWorkOrders/drawTie.ts` is the line to grow.
+- **Still owed before step 2 ships:** the owner's read of the Spanish, side by side with the English, and the new sentences handed to counsel with the one already there.
 - **Each deploy of `sub-portal`** is staged, described, and goes out only on a go that names it.
+
+**Three gotchas met on #371,** the Statements view built on the same page and function. Its paragraph under *Closed* in `to-dos/README.md` tells how the walk was done on the test sub.
+
+- A `src/lib` file that `supabase/functions/_shared/gcKernels/` holds a copy of must not be moved or edited. The copy changes, and about thirty functions then read as owing a redeploy. Run `npm run gen:edge-kernels` and expect no change under `gcKernels/`.
+- A SQL bed scenario that makes a helper schema grants the service role its use, or the bed fails in CI. The beds run in CI only.
+- New words for the sub's page go in `subPortalI18n.ts`, never in `src/lib/gc/portalI18n.ts`, which the copy holds.

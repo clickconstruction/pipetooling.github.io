@@ -1185,7 +1185,10 @@ export default function LienInstrumentsModal({
   )
 
   // The next step, named (punch list #82): the timeline's own Next on the path, with the one door that goes there.
-  const nextStep = timeline ? lienWindowNextStep(timeline.next, timeline.waitingOn) : null
+  // The filed lien whose copies are owed, and where they stand (`lienServeStage.ts`): the next step's press reads that stage and lands on its half.
+  const unservedLien = filings.find((f) => f.id === unservedLienId) ?? null
+  const serveStageNow = unservedLien ? lienServeStage(unservedLien, servePrinted) : null
+  const nextStep = timeline ? lienWindowNextStep(timeline.next, timeline.waitingOn, serveStageNow) : null
   const nextDoor = nextStep?.button?.door ?? null
   const nextStepButton =
     nextStep?.button && nextDoor && (nextDoor.to === 'tab' || onOpenLienDesk) ? (
@@ -1193,8 +1196,11 @@ export default function LienInstrumentsModal({
         type="button"
         data-lien-window-next-step-button
         onClick={() => {
-          if (nextDoor.to === 'tab') setActiveTab(nextDoor.tab)
-          else if (job) onOpenLienDesk?.(job.id, nextDoor.kind)
+          if (nextDoor.to === 'tab') {
+            setActiveTab(nextDoor.tab)
+            // The copies' step lands on the half its name says: the print press, or the form at the owner's number.
+            if (timeline?.next.kind === 'serve' && job && unservedLien && serveStageNow) setLand({ jobId: job.id, filingId: unservedLien.id, paper: 'affidavit', recipient: 'owner', lack: serveStageNow === 'print' ? 'print' : 'number', at: Date.now() })
+          } else if (job) onOpenLienDesk?.(job.id, nextDoor.kind)
         }}
         style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', ...(isMobile ? { width: '100%', padding: '9px 14px' } : {}) }}
       >

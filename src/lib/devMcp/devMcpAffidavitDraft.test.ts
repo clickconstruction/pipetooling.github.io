@@ -97,9 +97,9 @@ describe('the verbs — in the table, on the server, in the docs', () => {
     }
     expect(isAffidavitDraftVerb('plan_notice_by_hand')).toBe(false)
     expect(planVerbFor('apply_affidavit_draft')).toBe('plan_affidavit_draft')
-    expect(Object.keys(WRITE_VERBS)).toHaveLength(123)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.101.0'")
-    expect(SERVER).toContain('Writes are one hundred and twenty-three verbs and nothing else:')
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(125)
+    expect(SERVER).toContain("const SERVER_VERSION = '0.103.0'")
+    expect(SERVER).toContain('Writes are one hundred and twenty-five verbs and nothing else:')
     expect(SERVER).toContain('plan_affidavit_draft → apply_affidavit_draft (a lien affidavit drafted on the Lien desk as its Affidavits pane saves one')
     expect(README).toContain('`plan_affidavit_draft(affidavit)` · `apply_affidavit_draft(affidavit, plan_hash)`')
     expect(README).toContain("one hundred and nine since v2.7247's affidavit draft")

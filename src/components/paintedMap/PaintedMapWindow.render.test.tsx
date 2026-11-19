@@ -5,7 +5,7 @@
  * length typed in, and lets its maker or the office change it.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { PaintedLine, PaintedMap } from '../../lib/paintedMap/paintedMap'
 import type { PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
 import type { PaintedCanvasDraft } from './PaintedMapCanvas'
@@ -705,7 +705,7 @@ describe('a job\'s own list of places (#393)', () => {
       expect(io.jobReads).toEqual([{ jobId: 'j1' }])
       expect(section.querySelector('h3')?.textContent).toBe('On this job')
       const rows = [...section.querySelectorAll('[data-painted-job-place-row]')]
-      expect(rows.map((r) => r.textContent)).toEqual(['ATruck gateCopy this place', 'BThe slabCopy this place', 'COpen trenchKeep the truck off it.Copy this place'])
+      expect(rows.map((r) => r.textContent)).toEqual(['ATruck gateCopy this placeSend more…', 'BThe slabCopy this placeSend more…', 'COpen trenchKeep the truck off it.Copy this placeSend more…'])
       expect(rows.map((r) => (r.querySelector('[data-place-mark]') as HTMLElement).getAttribute('data-place-mark'))).toEqual(['gate', 'plain', 'hazard'])
       // The plain one's ring is dashed, so it is not taken for the map's own place 1.
       expect((rows[1]!.querySelector('[data-place-mark]') as HTMLElement).style.borderStyle).toBe('dashed')
@@ -714,8 +714,13 @@ describe('a job\'s own list of places (#393)', () => {
       expect((await placeRow()).textContent).toContain('Laydown yard')
       expect(dot('1').getAttribute('data-dot-job')).toBe('no')
       expect([dot('A'), dot('B'), dot('C')].map((d) => d.getAttribute('data-dot-job'))).toEqual(['yes', 'yes', 'yes'])
-      // Nothing here changes a place of the job's: a row can be sent, and the one other press opens the list.
-      expect([...section.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Copy this place', 'Copy this place', 'Copy this place', 'Open Places on this job'])
+      // Nothing here changes a place of the job's: a row can be sent, alone or with more, and the one other press opens the list.
+      expect([...section.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Copy this place', 'Send more…', 'Copy this place', 'Send more…', 'Copy this place', 'Send more…', 'Open Places on this job'])
+      // Send more… from a place of the job's offers the job's places and never this map: its link does not carry them (v2.7844).
+      fireEvent.click(rows[0]!.querySelector('[data-place-send-more]') as HTMLElement)
+      expect([...document.querySelectorAll('[data-send-more]')].map((el) => el.textContent)).toEqual(['All 3 places on this jobCopies 3 map pins'])
+      fireEvent.click(within(screen.getByRole('dialog', { name: 'Send more: Truck gate' })).getByRole('button', { name: 'Close' }))
+      expect(document.querySelector('[data-place-send-more-sheet]')).toBeNull()
       fireEvent.click(screen.getByRole('button', { name: 'Open Places on this job' }))
       expect(closed).toBe(1)
       await waitFor(() => expect(asks).toEqual([{ kind: 'open', mapId: 'list', address: '1 Made Up Road' }]))
@@ -806,4 +811,81 @@ describe('one place, sent to someone (#393)', () => {
     // A name that says its kind is not said twice.
     expect(decodeURIComponent(href.slice('sms:?&body='.length))).toBe('Truck gate.\nhttps://www.google.com/maps/search/?api=1&query=29.500000,-98.200000')
   }))
+})
+
+describe('Send more…, from a place\'s row (v2.7844)', () => {
+  const at = (id: string, name: string, photoPath: string | null = null) => ({ id, mapId: 'm1', name, words: '', lat: 29.5, lng: -98.2, accuracyM: null, photoPath, kind: null, setBy: 'dana', setAt: `2026-11-13T15:0${id.slice(1)}:00Z` })
+  const ways = () => [...document.querySelectorAll('[data-send-more]')].map((el) => el.textContent)
+  const openMore = (row: Element) => fireEvent.click(row.querySelector('[data-place-send-more]') as HTMLElement)
+
+  it('is not drawn on a map\'s one place for someone who may not share the map', async () => {
+    // Dana painted it and I am not the office: I can send the place, and there is nothing more of mine to send.
+    io.whole = { map: MAP, lines: [LINE()], places: [at('p1', 'Truck gate')] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    const row = await placeRow()
+    expect(screen.queryByRole('button', { name: 'Share' })).toBeNull()
+    expect(row.querySelector('[data-place-share="copy"]')).not.toBeNull()
+    expect(row.querySelector('[data-place-send-more]')).toBeNull()
+  })
+
+  it('offers every place of the map to anyone who can see them, and the map only to whoever may share it', async () => {
+    io.whole = { map: MAP, lines: [LINE()], places: [at('p1', 'Truck gate'), at('p2', 'The slab')] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    const row = await placeRow()
+    openMore(row)
+    expect(ways()).toEqual(['Both places on this mapCopies 2 map pins'])
+  })
+
+  it('opens the map\'s own Share from The whole map, for its maker', async () => {
+    auth.value = { user: { id: 'dana' }, role: 'helpers' }
+    io.whole = { map: MAP, lines: [LINE()], places: [at('p1', 'Truck gate'), at('p2', 'The slab')] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    const row = await placeRow()
+    openMore(row)
+    expect(ways()).toEqual(['Both places on this mapCopies 2 map pins', 'The whole mapWith its lines and photos. They give their name first.'])
+    expect(screen.queryByTestId('share-sheet')).toBeNull()
+    fireEvent.click(document.querySelector('[data-send-more="map"]') as HTMLElement)
+    expect(document.querySelector('[data-place-send-more-sheet]')).toBeNull()
+    expect(screen.getByTestId('share-sheet').textContent).toContain('share:m1:The way in for deliveries')
+  })
+
+  it('never offers this map from a place of the job\'s, even to the map\'s maker: its link does not carry that place', async () => {
+    const LIST: PaintedMap = { id: 'list', name: 'Places on this job', words: '', jobId: 'j1', developmentId: null, jobList: true, createdBy: 'dana', createdAt: '2026-11-18T15:00:00Z' }
+    auth.value = { user: { id: 'dana' }, role: 'helpers' }
+    io.whole = { map: MAP, lines: [LINE()], places: [at('p1', 'Laydown yard')] }
+    io.jobWholes = [{ map: MAP, lines: [], places: [] }, { map: LIST, lines: [], places: [at('p2', 'Truck gate'), at('p3', 'The slab')].map((p) => ({ ...p, mapId: 'list' })) }]
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    const jobRow = await waitFor(() => {
+      const el = document.querySelector('[data-painted-job-place-row]')
+      expect(el).not.toBeNull()
+      return el as HTMLElement
+    })
+    // Dana may share this map: her own place's row offers it.
+    expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy()
+    openMore(await placeRow())
+    expect(ways()).toEqual(['The whole mapWith its lines and photos. They give their name first.'])
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Send more: Laydown yard' })).getByRole('button', { name: 'Close' }))
+    openMore(jobRow)
+    expect(ways()).toEqual(['Both places on this jobCopies 2 map pins'])
+  })
+
+  it('says a place\'s photo stays behind, and at a desk offers no way to carry it', async () => {
+    io.whole = { map: MAP, lines: [], places: [at('p1', 'Truck gate', 'm1/gate.jpg')] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    const row = await placeRow()
+    expect(row.querySelector('[data-place-no-photo]')?.textContent).toBe('A copy carries the spot, not the photo.')
+    expect(row.querySelector('[data-place-send-more]')).toBeNull()
+  })
+
+  it('on the job\'s own list, names the places as the job\'s and the map as a list', async () => {
+    const LIST: PaintedMap = { id: 'list', name: 'Places on this job', words: '', jobId: 'j1', developmentId: null, jobList: true, createdBy: 'dana', createdAt: '2026-11-18T15:00:00Z' }
+    auth.value = { user: { id: 'dana' }, role: 'helpers' }
+    const places = [at('p1', 'Truck gate'), at('p2', 'The slab'), at('p3', 'Open trench')].map((p) => ({ ...p, mapId: 'list' }))
+    io.whole = { map: LIST, lines: [], places }
+    io.jobWholes = [{ map: LIST, lines: [], places }]
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} onClose={() => {}} />)
+    const row = await placeRow()
+    openMore(row)
+    expect(ways()).toEqual(['All 3 places on this jobCopies 3 map pins', 'The whole listWith its photos. They give their name first.'])
+  })
 })

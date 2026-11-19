@@ -52,7 +52,7 @@ export function lienHelpGuideCode(): string {
 
 /**
  * Where a cover sheet's code lands: the job's Lien window on the affidavit tab, which has a phone layout. The tab
- * offers **Record filing…** until the paper is on file and **Record service…** after, so one code serves both steps.
+ * offers **Record filing…** until the paper is on file and **Enter mail numbers…** after (*Record service…* until v2.7816), so one code serves both steps.
  */
 export function lienHelpRecordUrl(jobId: string): string {
   return `${APP_ORIGIN}${lienWindowHref(jobId, 'affidavit')}`

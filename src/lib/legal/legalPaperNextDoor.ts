@@ -23,7 +23,8 @@ export function legalPaperNextDoor(next: Pick<LienTimelineNext, 'kind'>): LegalP
     case 'affidavit':
       return { label: 'Go to the affidavit…', to: 'window', tab: 'affidavit' }
     case 'serve':
-      return { label: 'Record the service…', to: 'window', tab: 'affidavit' }
+      // The Lien window's form by its own name (v2.7816). *Record the service…* before.
+      return { label: 'Enter mail numbers…', to: 'window', tab: 'affidavit' }
     case 'release':
       return { label: 'Record the release…', to: 'window', tab: 'release_record' }
     case 'suit':

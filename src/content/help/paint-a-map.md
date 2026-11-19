@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -199,6 +199,26 @@ They see that one spot. They do not see the painted map or its other places.
 At a desk the press reads **Copy this place**. It copies the same words. Paste them into a text or an email.
 
 Anyone who can see a place can send it. To send the whole map, press {{button:outline|Share}}.
+
+## Send more than the spot
+
+**Text this place…** sends the spot. It does not send the photo. A place with a photo says so under the press.
+
+To send more, press **Send more…** beside it. A short sheet opens. It shows only the ways that fit this place.
+
+- **This place with its photo.** Your phone's share sheet opens with the photo and the words. Pick Messages. Then pick who gets it.
+- **All 3 places on this job.** Messages opens with every place in one text. Each place has its own map link. The press names your own count.
+- **The whole map.** The Share sheet opens. From there you send a link to the painted map.
+
+The photo's way shows on a phone, for a place that has a photo.
+
+The way for every place shows when there are two places or more. At a desk it copies them.
+
+**The whole map** shows if you painted the map or work in the office.
+
+Nobody who gets a photo or the places needs a sign-in. A link to the whole map asks for their name first.
+
+Some places have no **Send more…**. That place has no photo, stands alone, and is on a map you cannot share.
 
 ## Keep a place on the job
 

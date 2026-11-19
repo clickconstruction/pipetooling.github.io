@@ -217,7 +217,7 @@ export function accountInput(verb: 'plan_account' | 'apply_account', input: Json
     }
     return { ok: true, p, target: email || name }
   }
-  if (pay) return { ok: false, error: `${verb}: pay goes with new — a wage on a person who exists is changed on their desk's Pay section.` }
+  if (pay) return { ok: false, error: `${verb}: pay goes with new — the wage, Salaried, the employment dates and the workday of a person who exists are changed with plan_pay_setup (or on their sheet's Pay & schedule).` }
   if (!rename && !roleRaw && !emailRaw) return { ok: false, error: `${verb}: name at least one change for ${person}: rename, role or email. ${ACCOUNT_SHAPE}` }
   const p: AccountPayload = { person }
   if (rename) {

@@ -103,10 +103,21 @@ export function lienBoardMailNumbersPress(c: { toPrint: number; printed: number 
 
 /**
  * The leader's press on *Approved · to sign* (v2.7712): the door to the approved notices, where each takes his
- * signature on its own pane. Null with none to sign. The office's press on that bin is its reminder.
+ * signature on its own pane. `mine` is the notices on the jobs he leads, the only ones his signature goes on
+ * (v2.7853; until then the press counted every unsigned notice, whoever led its job). `others` wait on another
+ * leader: the line under the bin's name says so, by his name when they share one, so the bin's count is the press
+ * and the line together. `list` is what By paper says over the narrowed list the door opens. Null when none is his:
+ * the bin then carries the office's reminder.
  */
-export function lienBoardSignDoor(waits: number): { label: string } | null {
-  return waits > 0 ? { label: `${countedLabel('Sign', waits, 'notice')} ›` } : null
+export function lienBoardSignDoor(c: { mine: number; others?: number; othersLeader?: string | null }): { label: string; line: string | null; list: string } | null {
+  if (c.mine <= 0) return null
+  const others = Math.max(0, c.others ?? 0)
+  const who = (c.othersLeader ?? '').trim().split(/\s+/)[0] || 'another leader'
+  return {
+    label: `${countedLabel('Sign', c.mine, 'notice')} ›`,
+    line: others > 0 ? `${others} ${plural(others, 'waits', 'wait')} on ${who}.` : null,
+    list: plural(c.mine, 'Only the notice that takes your signature', 'Only the notices that take your signature'),
+  }
 }
 
 /**

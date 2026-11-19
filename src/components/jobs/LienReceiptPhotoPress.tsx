@@ -4,7 +4,7 @@ import { putJobFolderFile } from '../../lib/jobs/jobFolderAddFileIo'
 import { addFileTooBig } from '../../lib/jobs/jobFolderAddFile'
 import { ADD_FILE_FAILURE_WORDS, addFileCanRetry } from '../../lib/jobs/addFileFailure'
 import { LIEN_SERVICE_PROOF_WORDS, lienReceiptPhotoName, receiptReadWords, type LienReceiptPaper, type LienReceiptPhotoOf } from '../../lib/jobs/lienServiceProof'
-import { LIEN_RECEIPT_ACCEPT, LIEN_RECEIPT_WORDS, lienReceiptFileName, lienReceiptIsPdf, lienReceiptProblem, lienReceiptTakeOffAsk } from '../../lib/jobs/lienReceiptFile'
+import { LIEN_RECEIPT_ACCEPT, LIEN_RECEIPT_WORDS, lienReceiptFileName, lienReceiptIsPdf, lienReceiptProblem, lienReceiptTakeOffAsk, type LienReceiptDoubt } from '../../lib/jobs/lienReceiptFile'
 import { TAKE_OFF_FILE_WORDS, driveFileIdOfUrl, fileTakenOffWords, type FileTakenOff } from '../../lib/jobs/jobFolderTrash'
 import { takeFileToTrash, untrashJobFolderFile } from '../../lib/jobs/jobFolderTrashIo'
 import { readTrackingFromPhoto } from '../../lib/jobs/lienReceiptReadIo'
@@ -37,6 +37,10 @@ import { PhoneSheet } from '../PhoneSheet'
  *
  * A file that does not go up stays in hand (v2.7635): the reason stands under the press, and where a second try can
  * get past it (a lost connection, a busy Drive) **Try again** sends the same file, so nobody takes the photo twice.
+ *
+ * With `doubt` (v2.7846, the copies window) a file that may not be a mail receipt is asked about before it goes
+ * anywhere: the lien's own paper, named with its document number, or the file the other envelope just took. **It is
+ * the mail receipt** sends it, **Leave it out** drops it, and nothing is in Drive until the answer.
  */
 export function LienReceiptPhotoPress({
   jobId,
@@ -50,6 +54,9 @@ export function LienReceiptPhotoPress({
   compact,
   paper = 'affidavit',
   onRead,
+  doubt,
+  onPicked,
+  savedWords,
   read = readTrackingFromPhoto,
   put = putJobFolderFile,
   trash = takeFileToTrash,
@@ -77,6 +84,12 @@ export function LienReceiptPhotoPress({
   paper?: LienReceiptPaper
   /** Read the number off the photo and hand it here; absent, the press only saves the file. */
   onRead?: (tracking: string) => void
+  /** Ask about a file that may not be a mail receipt, before it is sent anywhere (`lienReceiptDoubt`). Null, or absent, sends it. */
+  doubt?: (file: File) => LienReceiptDoubt | null
+  /** The file the record just took, so the caller can tell a second envelope's file from it. */
+  onPicked?: (file: { name: string; size: number }) => void
+  /** The words beside a saved receipt; *Receipt saved* by default. */
+  savedWords?: string
   read?: typeof readTrackingFromPhoto
   put?: typeof putJobFolderFile
   trash?: typeof takeFileToTrash
@@ -89,6 +102,8 @@ export function LienReceiptPhotoPress({
   const [readSaid, setReadSaid] = useState('')
   const [sheet, setSheet] = useState(false)
   const [asking, setAsking] = useState(false)
+  // A file that may not be a mail receipt, held in hand until the reader answers.
+  const [doubted, setDoubted] = useState<{ file: File; words: string } | null>(null)
   // The file that did not go up, with its reason; `retry` is whether the same file can go again.
   const [failed, setFailed] = useState<{ file: File; words: string; retry: boolean } | null>(null)
   // The file whose link just came off, and where it is now: `outcome` is null while the first move is under way.
@@ -148,15 +163,24 @@ export function LienReceiptPhotoPress({
     }
   }
 
-  const take = async (file: File) => {
+  const take = async (file: File, sure = false) => {
     const was = url
     setReadSaid('')
     setFailed(null)
     setOff(null)
+    setDoubted(null)
     const problem = receipt ? lienReceiptProblem(file) : null
     if (problem) {
       setFailed({ file, words: problem, retry: false })
       showToast(problem, 'error')
+      return
+    }
+    const question = !sure && receipt && doubt ? doubt(file) : null
+    if (question) {
+      // Nothing goes to Drive until the reader says what the file is. The picker is cleared so the same file can be picked again.
+      setDoubted({ file, words: question.words })
+      if (input.current) input.current.value = ''
+      if (camera.current) camera.current.value = ''
       return
     }
     setBusy(true)
@@ -180,6 +204,7 @@ export function LienReceiptPhotoPress({
         // The file is in Drive and the caller said why the record did not take it. Sending it again would add a second file.
         landed = false
       }
+      if (landed) onPicked?.({ name: file.name, size: file.size })
       // Replace: the record names the new file, so the one it took the place of goes to Drive's trash.
       const oldId = landed && receipt ? driveFileIdOfUrl(was) : null
       const oldGone = oldId && oldId !== driveFileIdOfUrl(added.url) ? toTrash(was, oldId, 'replace') : null
@@ -253,7 +278,7 @@ export function LienReceiptPhotoPress({
       ) : null}
       {receipt && saved ? (
         <>
-          <span data-lien-receipt-saved style={{ fontSize: compact ? '0.75rem' : '0.875rem', fontWeight: 700, color: 'var(--text-green-800)', ...(compact ? {} : { flexBasis: '100%' }) }}>✓ {LIEN_RECEIPT_WORDS.saved}</span>
+          <span data-lien-receipt-saved style={{ fontSize: compact ? '0.75rem' : '0.875rem', fontWeight: 700, color: 'var(--text-green-800)', ...(compact ? {} : { flexBasis: '100%' }) }}>✓ {savedWords ?? LIEN_RECEIPT_WORDS.saved}</span>
           <a href={url} target="_blank" rel="noreferrer" aria-label="Open the receipt" style={openLink}>
             {compact ? `${LIEN_RECEIPT_WORDS.open} ›` : 'Open the receipt'}
           </a>
@@ -287,6 +312,19 @@ export function LienReceiptPhotoPress({
           </button>
           <button type="button" onClick={() => setAsking(false)} style={{ ...press, color: 'var(--text-strong)' }}>
             {LIEN_RECEIPT_WORDS.keep}
+          </button>
+        </span>
+      ) : null}
+      {doubted && !busy ? (
+        <span role="alert" data-lien-receipt-doubt style={{ flexBasis: '100%', display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.55rem', border: '1px solid var(--border-amber)', borderRadius: 7, background: 'var(--bg-amber-tint)', color: 'var(--text-strong)', fontSize: compact ? '0.75rem' : '0.8125rem' }}>
+          <span>
+            {doubted.words} {LIEN_RECEIPT_WORDS.doubtNothing}
+          </span>
+          <button type="button" data-lien-receipt-doubt-keep onClick={() => void take(doubted.file, true)} style={{ ...press, color: 'var(--text-strong)' }}>
+            {LIEN_RECEIPT_WORDS.doubtKeep}
+          </button>
+          <button type="button" data-lien-receipt-doubt-drop onClick={() => setDoubted(null)} style={{ ...press, color: 'var(--text-strong)' }}>
+            {LIEN_RECEIPT_WORDS.doubtDrop}
           </button>
         </span>
       ) : null}

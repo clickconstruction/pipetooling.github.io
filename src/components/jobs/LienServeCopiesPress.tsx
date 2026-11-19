@@ -32,7 +32,7 @@ const small: CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)' }
  * has the office send to the owner, and to the original contractor on a job that has one, each behind its cover
  * letter. The print counts as a send and is filed on the job (`docs/SENT_COPIES.md`).
  *
- * It sits beside **Record service…**, which is still how the day and the mail numbers go on record. A filing with no
+ * It sits beside **Enter mail numbers…** (*Record service…* until v2.7816), which is still how the day and the mail numbers go on record. A filing with no
  * recording number is held, and the number is typed right here: until now a filing recorded without one had no place
  * to take it. A missing address is fixed on its own record, and the line under the press says which.
  */

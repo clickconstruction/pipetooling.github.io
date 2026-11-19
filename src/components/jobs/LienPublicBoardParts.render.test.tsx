@@ -27,14 +27,59 @@ describe('LienPublicBoardLineView', () => {
   })
 })
 
+/** The box opens folded (punch list #390): press its header to read the rows. */
+const openBin = () => fireEvent.click(document.querySelector('[data-lien-public-bin] [data-lien-bin-fold]') as HTMLButtonElement)
+
 describe('LienPublicBinView', () => {
+  const TWO = () => buildLienPublicBin([job({}), job({ jobId: 'j883', number: '883', name: 'ZZ Test Drains', unpaid: 2918.4, status: 'billed', attorneySince: '2026-11-16T18:00:00Z', papers: [{ kind: 'notice_53_056', status: 'sent', sent_at: '2026-10-08T15:00:00Z' }] })])!
+
+  it('opens folded to one line: the name, the jobs and the money, the rows that need the bond, and Show (punch list #390)', () => {
+    render(<LienPublicBinView bin={TWO()} isMobile={false} onPutBack={vi.fn()} />)
+    const press = document.querySelector('[data-lien-bin-fold]') as HTMLButtonElement
+    expect(press.getAttribute('aria-expanded')).toBe('false')
+    expect(press.getAttribute('data-lien-bin-fold')).toBe('folded')
+    expect(press.textContent).toBe('Public jobs · bond claim2 jobs · $32,241 unpaid2 to get the bondShow ▾')
+    expect(document.querySelector('[data-lien-bin-fold-ask]')!.textContent).toBe('2 to get the bond')
+    // Folded, no row, no chip and no door back is drawn.
+    expect(document.querySelector('[data-lien-public-bin-row]')).toBeNull()
+    expect(document.querySelector('[data-lien-public-bin-chip]')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Put a job back on the lien path…' })).toBeNull()
+  })
+
+  it('a press on the header opens the box, where the chips say what the folded line counted, and a second press folds it', () => {
+    render(<LienPublicBinView bin={TWO()} isMobile={false} onPutBack={vi.fn()} />)
+    openBin()
+    const press = document.querySelector('[data-lien-bin-fold]') as HTMLButtonElement
+    expect(press.getAttribute('aria-expanded')).toBe('true')
+    expect(press.textContent).toBe('Public jobs · bond claim2 jobs · $32,241 unpaidHide ▴')
+    expect(document.querySelector('[data-lien-bin-fold-ask]')).toBeNull()
+    expect(document.getElementById(press.getAttribute('aria-controls')!)!.querySelectorAll('[data-lien-public-bin-row]')).toHaveLength(2)
+    expect(document.querySelectorAll('[data-lien-public-bin-chip]')).toHaveLength(2)
+    openBin()
+    expect(press.getAttribute('aria-expanded')).toBe('false')
+    expect(document.querySelector('[data-lien-public-bin-row]')).toBeNull()
+  })
+
+  it('the amber count is the rows with the chip, not every row', () => {
+    render(<LienPublicBinView bin={buildLienPublicBin([job({}), job({ jobId: 'j9', number: '9', unpaid: 100, bond: 'no' })])!} isMobile={false} onPutBack={null} />)
+    expect(document.querySelector('[data-lien-bin-fold]')!.textContent).toBe('Public jobs · bond claim2 jobs · $29,423 unpaid1 to get the bondShow ▾')
+  })
+
+  it('a box where every bond is known folds with no amber count, and a phone’s press is 44 px tall', () => {
+    render(<LienPublicBinView bin={buildLienPublicBin([job({ bond: 'yes' })])!} isMobile onPutBack={null} />)
+    const press = document.querySelector('[data-lien-bin-fold]') as HTMLButtonElement
+    expect(press.textContent).toBe('Public jobs · bond claim1 job · $29,323 unpaidShow ▾')
+    expect(document.querySelector('[data-lien-bin-fold-ask]')).toBeNull()
+    expect(press.style.minHeight).toBe('44px')
+  })
+
   it('lists each job with its money, the bond chip and where it stands; one property puts back at once', () => {
-    const bin = buildLienPublicBin([job({}), job({ jobId: 'j883', number: '883', name: 'ZZ Test Drains', unpaid: 2918.4, status: 'billed', attorneySince: '2026-11-16T18:00:00Z', papers: [{ kind: 'notice_53_056', status: 'sent', sent_at: '2026-10-08T15:00:00Z' }] })])!
+    const bin = TWO()
     const onPutBack = vi.fn()
     render(<LienPublicBinView bin={bin} isMobile={false} onPutBack={onPutBack} />)
     expect(screen.getByRole('region', { name: 'Public jobs · bond claim' })).toBeTruthy()
-    expect(document.querySelector('[data-lien-public-bin-count]')!.textContent).toBe('2')
-    expect(screen.getByText('$32,241 unpaid')).toBeTruthy()
+    expect(document.querySelector('[data-lien-bin-fold-words]')!.textContent).toBe('2 jobs · $32,241 unpaid')
+    openBin()
     const rows = [...document.querySelectorAll('[data-lien-public-bin-row]')] as HTMLElement[]
     expect(rows.map((r) => r.getAttribute('data-lien-public-bin-row'))).toEqual(['j523', 'j883'])
     expect(rows[0]!.querySelector('[data-lien-public-bin-chip]')!.textContent).toBe('get the bond')
@@ -48,14 +93,29 @@ describe('LienPublicBinView', () => {
     const bin = buildLienPublicBin([job({}), job({ jobId: 'j9', addressId: 'addr-2', number: '9', name: 'ZZ Test School', unpaid: 100 })])!
     const onPutBack = vi.fn()
     render(<LienPublicBinView bin={bin} isMobile={false} onPutBack={onPutBack} />)
+    openBin()
     fireEvent.click(screen.getByRole('button', { name: 'Put a job back on the lien path…' }))
     expect(onPutBack).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Put 9 back…' }))
     expect(onPutBack).toHaveBeenCalledWith('addr-2')
   })
 
+  it('folding the box drops a half-made pick, so it opens again asking nothing', () => {
+    const bin = buildLienPublicBin([job({}), job({ jobId: 'j9', addressId: 'addr-2', number: '9', name: 'ZZ Test School', unpaid: 100 })])!
+    render(<LienPublicBinView bin={bin} isMobile={false} onPutBack={vi.fn()} />)
+    openBin()
+    fireEvent.click(screen.getByRole('button', { name: 'Put a job back on the lien path…' }))
+    expect(screen.getByRole('button', { name: 'Put 9 back…' })).toBeTruthy()
+    openBin()
+    openBin()
+    expect(screen.queryByRole('button', { name: 'Put 9 back…' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Put a job back on the lien path…' })).toBeTruthy()
+  })
+
   it('outside the office the bin reads without a door back', () => {
     render(<LienPublicBinView bin={buildLienPublicBin([job({})])!} isMobile={false} onPutBack={null} />)
+    openBin()
+    expect(document.querySelectorAll('[data-lien-public-bin-row]')).toHaveLength(1)
     expect(screen.queryByRole('button', { name: 'Put a job back on the lien path…' })).toBeNull()
   })
 })

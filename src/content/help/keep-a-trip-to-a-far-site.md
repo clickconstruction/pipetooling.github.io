@@ -202,7 +202,7 @@ After that minute the trip waits under **Deleted trips** for 90 days.
 
 Deleting a trip changes no clock row, no bill and no cost.
 
-A trip on a job's lines leaves its line on the job. **Undo** puts the trip back without its tie to that line.
+A trip on a job's lines leaves its line on the job. **Undo** puts the trip back and ties it to that line again.
 
 ## Put a deleted trip back
 
@@ -216,7 +216,7 @@ The trip comes back with who went, its days and the number it had. No clock row,
 
 A job the trip named may have been deleted since. The line says so. The trip then comes back without that job.
 
-A trip on a job's lines comes back without its tie to that line.
+A trip on a job's lines comes back tied to that line again. A line that was removed since is not made again.
 
 A site whose only trip was deleted still shows its Trips look. You can put the trip back from there.
 

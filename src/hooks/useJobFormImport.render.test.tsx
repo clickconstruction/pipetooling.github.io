@@ -8,7 +8,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import type { SetStateAction } from 'react'
-import { useJobFormImport, type JobFormImportArgs, type JobImportWinningGcPick } from './useJobFormImport'
+import { useJobFormImport, type JobFormImport, type JobFormImportArgs, type JobImportWinningGcPick } from './useJobFormImport'
+import type { BidCarryAnswer, BidCarryAsk } from '../components/jobs/BidCarryWindow'
 import type { FixtureRow } from '../lib/jobs/jobFormTypes'
 
 const db = vi.hoisted(() => ({
@@ -73,6 +74,8 @@ vi.mock('../utils/errorHandling', () => ({
 }))
 vi.mock('../contexts/ToastContext', () => ({ useToastContext: () => ({ showToast: ui.showToast }) }))
 vi.mock('../contexts/ConfirmDialogContext', () => ({ useConfirmDialog: () => ui.confirmDialog }))
+// The bid's own schedule of values is read through the Cover Letter's doors; here it has none, so the window offers the company's splits.
+vi.mock('../lib/aiaBidScheduleIo', () => ({ loadBidScheduleForJob: async () => null }))
 vi.mock('../lib/bids/gcPacketOutcome', () => ({
   setGcPacketOutcome: async (args: unknown) => {
     db.outcomeCalls.push(args)
@@ -161,6 +164,33 @@ function mount(over: Partial<JobFormImportArgs> = {}) {
 
 const toasts = () => ui.showToast.mock.calls.map((c) => c[0] as string)
 
+/**
+ * Answer the carry window when it opens (punch list #397). Until then one two-button question asked
+ * "Start the job at $X?": `one` is its Yes, `zero` its No. Returns what the window was asked.
+ */
+async function answerCarry(result: { current: JobFormImport }, answer: BidCarryAnswer): Promise<BidCarryAsk> {
+  await vi.waitFor(() => expect(result.current.bidCarryAsk).not.toBeNull())
+  const ask = result.current.bidCarryAsk!
+  await act(async () => {
+    result.current.answerBidCarry(answer)
+    await Promise.resolve()
+  })
+  return ask
+}
+
+/** A bid import that meets the carry window: start it, answer, and wait for the import to finish. */
+async function importAnswering(result: { current: JobFormImport }, answer: BidCarryAnswer, ...args: Parameters<JobFormImport['applyPrefillFromBid']>): Promise<BidCarryAsk> {
+  let done!: Promise<void>
+  act(() => {
+    done = result.current.applyPrefillFromBid(...args)
+  })
+  const ask = await answerCarry(result, answer)
+  await act(async () => {
+    await done
+  })
+  return ask
+}
+
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
@@ -245,10 +275,10 @@ describe('useJobFormImport — a bid', () => {
 
   it('an agreed value is offered; Yes makes it the first line item and writes nothing on the bid', async () => {
     db.singles.bids = { data: bidRow({ agreed_value: '15000' }), error: null }
-    ui.confirmDialog.mockResolvedValueOnce(true)
     const { result, held, spies } = mount()
-    await act(() => result.current.applyPrefillFromBid('bid-1'))
-    expect(ui.confirmDialog.mock.calls[0]?.[0]).toMatchObject({ title: 'Start the job at $15,000.00?', cancelLabel: 'Start at $0' })
+    const ask = await importAnswering(result, { choice: 'one' }, 'bid-1')
+    expect(ask).toMatchObject({ carryValue: 15_000, agreedValue: 15_000, bid: { bid_number: '482', project_name: 'Oak Ridge' }, schedule: null })
+    expect(ui.confirmDialog).not.toHaveBeenCalled()
     expect(held.fixtures).toHaveLength(1)
     expect(held.fixtures[0]).toMatchObject({ name: 'Bid price', count: 1, line_unit_price: 15_000, line_description: 'B482 · Oak Ridge — agreed value', invoice_id: null })
     expect(typeof held.fixtures[0]?.id).toBe('string')
@@ -260,10 +290,9 @@ describe('useJobFormImport — a bid', () => {
     db.singles.bids = { data: bidRow(), error: null }
     db.lists.bid_versions = { data: [versionRow('v1', null)], error: null }
     db.lists.bid_version_sends = { data: [sendRow('v1', 12_000)], error: null }
-    ui.confirmDialog.mockResolvedValueOnce(true)
     const { result, held } = mount()
-    await act(() => result.current.applyPrefillFromBid('bid-1'))
-    expect(ui.confirmDialog.mock.calls[0]?.[0].message).toContain("That's what Own GC was sent on B482 · Oak Ridge.")
+    const ask = await importAnswering(result, { choice: 'one' }, 'bid-1')
+    expect(ask).toMatchObject({ carryValue: 12_000, agreedValue: null, gcName: 'Own GC' })
     expect(held.fixtures[0]).toMatchObject({ line_unit_price: 12_000, line_description: 'B482 · Oak Ridge — as sent' })
     expect(db.updates).toEqual([{ table: 'bids', patch: { agreed_value: 12_000 }, filters: ['eq', 'id', 'bid-1', 'is', 'agreed_value', null] }])
   })
@@ -272,12 +301,40 @@ describe('useJobFormImport — a bid', () => {
     db.singles.bids = { data: bidRow(), error: null }
     db.lists.bid_versions = { data: [versionRow('v1', null)], error: null }
     db.lists.bid_version_sends = { data: [sendRow('v1', 12_000)], error: null }
-    ui.confirmDialog.mockResolvedValueOnce(false)
     const { result, spies } = mount()
-    await act(() => result.current.applyPrefillFromBid('bid-1'))
+    await importAnswering(result, { choice: 'zero' }, 'bid-1')
     expect(spies.setFixtures).not.toHaveBeenCalled()
     expect(db.updates).toEqual([])
     expect(spies.setBidId).toHaveBeenCalledWith('bid-1')
+  })
+
+  it('punch list #397: as stages lays the stage lines in, every one Any time, and records the figure on a bid with none', async () => {
+    db.singles.bids = { data: bidRow({ customers: { name: 'Own GC', address: null, contact_info: null, date_met: null, customer_type: 'residential' } }), error: null }
+    db.lists.bid_versions = { data: [versionRow('v1', null)], error: null }
+    db.lists.bid_version_sends = { data: [sendRow('v1', 12_000)], error: null }
+    const { result, held, spies } = mount()
+    const lines = [
+      { name: 'Rough In', count: 1 as const, line_unit_price: 4800, line_description: 'B482 · Oak Ridge — 40% of what was sent', invoice_id: null, stage_kind: 'any' as const },
+      { name: 'Top Out', count: 1 as const, line_unit_price: 4800, line_description: 'B482 · Oak Ridge — 40% of what was sent', invoice_id: null, stage_kind: 'any' as const },
+      { name: 'Trim Set', count: 1 as const, line_unit_price: 2400, line_description: 'B482 · Oak Ridge — 20% of what was sent', invoice_id: null, stage_kind: 'any' as const },
+    ]
+    const ask = await importAnswering(result, { choice: 'stages', lines }, 'bid-1')
+    expect(ask.customerType).toBe('residential')
+    expect(held.fixtures.map((f) => [f.name, f.line_unit_price, f.stage_kind])).toEqual([['Rough In', 4800, 'any'], ['Top Out', 4800, 'any'], ['Trim Set', 2400, 'any']])
+    expect(new Set(held.fixtures.map((f) => f.id)).size).toBe(3)
+    expect(db.updates).toEqual([{ table: 'bids', patch: { agreed_value: 12_000 }, filters: ['eq', 'id', 'bid-1', 'is', 'agreed_value', null] }])
+    expect(spies.setBidId).toHaveBeenCalledWith('bid-1')
+  })
+
+  it('punch list #397: Cancel import fills nothing in, writes nothing, and closes a form opened for the import', async () => {
+    db.singles.bids = { data: bidRow({ agreed_value: '15000' }), error: null }
+    const { result, spies } = mount()
+    await importAnswering(result, { choice: 'cancel' }, 'bid-1', undefined, { closeOnCancel: true })
+    expect(spies.setFixtures).not.toHaveBeenCalled()
+    expect(spies.setBidId).not.toHaveBeenCalled()
+    expect(db.updates).toEqual([])
+    expect(toasts()).toContain('Import cancelled. Nothing was filled in.')
+    expect(spies.closeForm).toHaveBeenCalledTimes(1)
   })
 
   it('several GCs and no recorded winner: hands the choice to the picker and fills nothing in', async () => {
@@ -303,11 +360,10 @@ describe('useJobFormImport — a bid', () => {
     db.lists.bid_versions = { data: [versionRow('v1', null, 'lost'), versionRow('v2', 'gc-a', 'won')], error: null }
     db.lists.bid_version_sends = { data: [sendRow('v1', 12_000), sendRow('v2', 11_000)], error: null }
     db.lists.customers = { data: [{ id: 'gc-a', name: 'Acme' }], error: null }
-    ui.confirmDialog.mockResolvedValueOnce(false)
     const { result, spies } = mount()
-    await act(() => result.current.applyPrefillFromBid('bid-1'))
+    const ask = await importAnswering(result, { choice: 'zero' }, 'bid-1')
     expect(spies.setWinningGcPick).not.toHaveBeenCalled()
-    expect(ui.confirmDialog.mock.calls[0]?.[0].title).toBe('Start the job at $11,000.00?')
+    expect(ask).toMatchObject({ carryValue: 11_000, gcName: 'Acme' })
     expect(spies.setLinkedBidGc).toHaveBeenCalledWith({ id: 'gc-a', name: 'Acme' })
     expect(spies.pickGcCustomerId).toHaveBeenCalledWith('gc-a')
   })
@@ -351,12 +407,11 @@ describe('useJobFormImport — a bid', () => {
   it('a forced GC (the picker’s pick) skips the second-conversion check and the packet reads', async () => {
     db.singles.bids = { data: bidRow(), error: null }
     db.lists.jobs_ledger = { data: [{ id: 'job-9', hcp_number: '1042' }], error: null }
-    ui.confirmDialog.mockResolvedValueOnce(true)
     const { result, spies } = mount({ customers: [{ id: 'gc-a', name: 'Acme (cached)' }] as unknown as JobFormImportArgs['customers'] })
-    await act(() => result.current.applyPrefillFromBid('bid-1', { key: 'gc-a', customerId: 'gc-a', name: 'Acme', sentOn: null, value: 9_000, outcome: null, sharedLetter: false }))
+    const ask = await importAnswering(result, { choice: 'one' }, 'bid-1', { key: 'gc-a', customerId: 'gc-a', name: 'Acme', sentOn: null, value: 9_000, outcome: null, sharedLetter: false })
     expect(db.reads).toEqual(['bids:one'])
-    expect(ui.confirmDialog).toHaveBeenCalledTimes(1)
-    expect(ui.confirmDialog.mock.calls[0]?.[0].title).toBe('Start the job at $9,000.00?')
+    expect(ui.confirmDialog).not.toHaveBeenCalled()
+    expect(ask.carryValue).toBe(9_000)
     expect(spies.setLinkedBidGc).toHaveBeenCalledWith({ id: 'gc-a', name: 'Acme (cached)' })
   })
 
@@ -402,7 +457,6 @@ describe('useJobFormImport — the picker’s pick', () => {
   it('records the Won on the bid, tells the page, then imports as that GC', async () => {
     db.singles.bids = { data: bidRow(), error: null }
     db.outcomeResult = { error: null, bidOutcomeSet: 'won', autoLost: ['Own GC'] }
-    ui.confirmDialog.mockResolvedValueOnce(false)
     const heard = vi.fn()
     window.addEventListener('bid-gc-outcome-changed', heard)
     const { result, spies } = mount({ winningGcPick: pick() })
@@ -410,6 +464,7 @@ describe('useJobFormImport — the picker’s pick', () => {
       await result.current.handleWinningGcPick(acme)
       await Promise.resolve()
     })
+    await answerCarry(result, { choice: 'zero' })
     window.removeEventListener('bid-gc-outcome-changed', heard)
     expect(spies.setWinningGcPick).toHaveBeenCalledWith(null)
     expect(db.outcomeCalls).toHaveLength(1)
@@ -422,22 +477,22 @@ describe('useJobFormImport — the picker’s pick', () => {
   it('a refused write is shown, and the import still goes on', async () => {
     db.singles.bids = { data: bidRow(), error: null }
     db.outcomeResult = { error: 'Not allowed', bidOutcomeSet: 'won', autoLost: [] }
-    ui.confirmDialog.mockResolvedValueOnce(false)
     const { result, spies } = mount({ winningGcPick: pick() })
     await act(async () => {
       await result.current.handleWinningGcPick(acme)
     })
+    await answerCarry(result, { choice: 'zero' })
     expect(ui.showToast).toHaveBeenCalledWith('Not allowed', 'error')
     await vi.waitFor(() => expect(spies.setBidId).toHaveBeenCalledWith('bid-1'))
   })
 
   it('records nothing when the outcomes were ambiguous, or for a GC that rode the shared letter', async () => {
     db.singles.bids = { data: bidRow(), error: null }
-    ui.confirmDialog.mockResolvedValue(false)
     const ambiguous = mount({ winningGcPick: pick({ writesWin: false }) })
     await act(async () => {
       await ambiguous.result.current.handleWinningGcPick(acme)
     })
+    await answerCarry(ambiguous.result, { choice: 'zero' })
     expect(db.outcomeCalls).toEqual([])
     cleanup()
     const shared = mount({ winningGcPick: pick() })

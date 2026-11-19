@@ -2,7 +2,7 @@
 name: "Lien desk To do: fold the Public jobs box (the records door is built another way)"
 number: 390
 group: ready
-status: drawn 2026-11-17 in #383's option B · saved as a card the same day · part 2 replaced 2026-11-18 by the owner's new ask and built as v2.7780, the records door a row of the call window · part 1, the fold, not built
+status: drawn 2026-11-17 in #383's option B · saved as a card the same day · part 2 replaced 2026-11-18 by the owner's new ask and built as v2.7780, the records door a row of the call window · part 1, the fold, built 2026-11-18 as v2.7833
 summary: >
   The last two parts of the drawing the owner picked for the Lien desk's To do page (#383, option B). The
   Public jobs box under the lien affidavits is as tall as its rows, 244 px with two jobs, and the drawing
@@ -10,11 +10,11 @@ summary: >
   second line of the title bar, and the drawing put it on the tools row beside § Rules. The owner then
   asked for it inside the call press, and v2.7780 built that, so only the fold is left here. The rest of
   option B is built in PR #8628.
-next: Build part 1, the fold. Part 2 needs nothing more.
+next: The owner looks at the fold on the live desk and says the word to retire the card. Nothing is left to build.
 size: S (one small PR)
 blocker: none. PR #8628 merged 2026-11-18.
 opinion: build — part 1 gives back about 200 px under the chart
-ver: v2.7277 · v2.7311 · v2.7443 · v2.7490 · v2.7526
+ver: v2.7277 · v2.7311 · v2.7443 · v2.7490 · v2.7526 · v2.7780 · v2.7833
 ---
 
 # Lien desk To do: fold the Public jobs box, and put the records door on the tools row (#390)
@@ -186,5 +186,11 @@ tools on the title line, wherever the title line has room for all five.
 
 ## Where it stands
 
-Nothing is built. Both parts are drawn. Both can start once PR #8628 is on main. The owner picked choice 1
-for part 2: the door on the title line on every view.
+Both parts are done, and the card waits on the owner's word to retire it.
+
+- **Part 1, the fold, is v2.7833** (2026-11-18). Both boxes open folded to one line and a press on the line opens
+  them. The folded line's words are in a kernel of their own, `lienBinFold.ts`, and not beside `totalWords`:
+  `lienPublicProperty.ts` has a generated copy in the edge functions, and a change to it would have put every
+  function that imports the copy behind for words none of them reads. On the live desk that day the Board was
+  721 px tall folded and 869 px open at 1,440 wide. The fragment is `docs/recent-features/v2.7833.md`.
+- **Part 2 was replaced and is v2.7780**, the records door as the last row of the window the call press opens.

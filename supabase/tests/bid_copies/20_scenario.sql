@@ -30,7 +30,9 @@ BEGIN
   VALUES (p_bid, '00000000-0000-0000-0000-0000000009e1', '00000000-0000-0000-0000-0000000009e2', '00000000-0000-0000-0000-0000000009a1', p_name);
   INSERT INTO public.bids_count_rows (bid_id, fixture, count, sequence_order) VALUES (p_bid, 'WC-1', 3, 1) RETURNING id INTO wc;
   INSERT INTO public.bids_count_rows (bid_id, fixture, count, sequence_order) VALUES (p_bid, 'LAV-1', 2, 2) RETURNING id INTO lav;
-  INSERT INTO public.bids_count_rows (bid_id, fixture, count, sequence_order) VALUES (p_bid, 'UR-1', 1, 3) RETURNING id INTO ur;
+  -- The Percent row: UR-1 is priced as 40% of what the pipe rows sell for, and a copy carries the rule.
+  INSERT INTO public.bids_count_rows (bid_id, fixture, count, sequence_order, percent_rule)
+  VALUES (p_bid, 'UR-1', 1, 3, '{"pct": 40, "basis": "revenue", "source": {"kind": "pipe"}}'::jsonb) RETURNING id INTO ur;
   IF p_own_price THEN
     INSERT INTO public.price_book_versions (name, service_type_id, bid_id, sort_order) VALUES ('Own price', '00000000-0000-0000-0000-0000000009a1', p_bid, 0) RETURNING id INTO price;
     INSERT INTO public.price_book_entries (version_id, fixture_type_id, total_price, sequence_order) VALUES (price, '00000000-0000-0000-0000-0000000009f1', 1500, 1) RETURNING id INTO entry;
@@ -91,6 +93,11 @@ END $$;
 -- Each row's plan tag (v2.6235): fixture:tag, '-' for none.
 CREATE FUNCTION copt.tags(p_bid uuid, p_version uuid) RETURNS text LANGUAGE sql STABLE AS $$
   SELECT COALESCE(string_agg(fixture || ':' || COALESCE(plan_tag, '-'), ', ' ORDER BY sequence_order, id), '(none)')
+  FROM public.bids_count_rows WHERE bid_id = p_bid AND bid_version_id IS NOT DISTINCT FROM p_version $$;
+-- Each row's percent rule: fixture:40% revenue of kind pipe, '-' for none.
+CREATE FUNCTION copt.rules(p_bid uuid, p_version uuid) RETURNS text LANGUAGE sql STABLE AS $$
+  SELECT COALESCE(string_agg(fixture || ':' || COALESCE((percent_rule ->> 'pct') || '% ' || (percent_rule ->> 'basis') || ' of ' ||
+           COALESCE('kind ' || (percent_rule -> 'source' ->> 'kind'), 'tag ' || (percent_rule -> 'source' ->> 'tag')), '-'), ', ' ORDER BY sequence_order, id), '(none)')
   FROM public.bids_count_rows WHERE bid_id = p_bid AND bid_version_id IS NOT DISTINCT FROM p_version $$;
 -- The robot's read of a bid (v2.6180): one pull, one fixture taken onto the bid's unsplit WC-1, which wears its tag.
 -- The pull tables take no write from authenticated (put_fixtures writes as the service role), so this runs as the owner.
@@ -157,12 +164,27 @@ SELECT copt.robot_read('00000000-0000-0000-0000-0000000009d3');
 CREATE TEMP TABLE want ON COMMIT DROP AS SELECT
   'WC-1 x3, LAV-1 x2, UR-1 x1'::text AS rows,
   'WC-1:WC-1, LAV-1:-, UR-1:-'::text AS tags,
+  'WC-1:-, LAV-1:-, UR-1:40% revenue of kind pipe'::text AS rules,
   'WC-1=41250 Moore Supply alone, LAV-1=18000 Ferguson package 1, UR-1=22000 Ferguson package 1'::text AS costs,
   E'WC-1 entry $1500 [own]\nLAV-1 custom $640 [own]\nUR-1 hidden [own]'::text AS prices;
 SELECT copt.same('the seed: rows', copt.rows('00000000-0000-0000-0000-0000000009d1', NULL), (SELECT rows FROM want));
 SELECT copt.same('the seed: quoted costs', copt.costs('00000000-0000-0000-0000-0000000009d1', NULL), (SELECT costs FROM want));
 SELECT copt.same('the seed: prices', copt.prices('00000000-0000-0000-0000-0000000009d1', NULL), (SELECT prices FROM want));
 SELECT copt.same('the seed: the robot''s tag', copt.tags('00000000-0000-0000-0000-0000000009d1', NULL), (SELECT tags FROM want));
+SELECT copt.same('the seed: the percent rule, written by an estimator', copt.rules('00000000-0000-0000-0000-0000000009d1', NULL), (SELECT rules FROM want));
+-- A rule with no percent, a percent of zero or a basis the Workbench does not know is refused by the table.
+DO $$ DECLARE bad jsonb; refused integer := 0; BEGIN
+  FOREACH bad IN ARRAY ARRAY['{"basis": "revenue", "source": {"kind": "pipe"}}'::jsonb, '{"pct": 0, "basis": "revenue", "source": {"kind": "pipe"}}'::jsonb,
+                             '{"pct": 40, "basis": "profit", "source": {"kind": "pipe"}}'::jsonb, '{"pct": 40, "basis": "cost"}'::jsonb, '"40%"'::jsonb] LOOP
+    BEGIN
+      UPDATE public.bids_count_rows SET percent_rule = bad WHERE bid_id = '00000000-0000-0000-0000-0000000009d1' AND fixture = 'UR-1';
+    EXCEPTION WHEN check_violation THEN refused := refused + 1;
+    END;
+  END LOOP;
+  ASSERT refused = 5, 'five malformed rules refused, got ' || refused;
+  RAISE NOTICE 'ok: a malformed percent rule is refused';
+END $$;
+SELECT copt.same('the refused rules left the row''s rule as it was', copt.rules('00000000-0000-0000-0000-0000000009d1', NULL), (SELECT rules FROM want));
 SELECT copt.same('the seed: the robot''s take', copt.pulls('00000000-0000-0000-0000-0000000009d1'), 'WC-1 -> Copies: versions / unsplit, taken on -');
 
 -- Gap 1 · a new version carries the quoted costs, and a package reverts on its own.
@@ -173,6 +195,7 @@ SELECT copt.same('new version: the source keeps its own', copt.costs('00000000-0
 -- v2.6235 · as an estimator, through RLS: the version is made (20261031010000 refused it, permission denied for
 -- table bid_fixture_pull_rows), the plan tags come along, and the robot's take follows its row into the new version.
 SELECT copt.same('new version: plan tags', copt.tags('00000000-0000-0000-0000-0000000009d1', (SELECT ve FROM v)), (SELECT tags FROM want));
+SELECT copt.same('new version: the percent rule comes along', copt.rules('00000000-0000-0000-0000-0000000009d1', (SELECT ve FROM v)), (SELECT rules FROM want));
 SELECT copt.same('new version: the robot''s take follows its row', copt.pulls('00000000-0000-0000-0000-0000000009d1'), 'WC-1 -> Copies: versions / Value Engineered, taken on Value Engineered');
 DO $$ DECLARE src_lot uuid; new_lot uuid; BEGIN
   SELECT k.lot_group_id INTO src_lot FROM public.bid_count_row_custom_costs k JOIN public.bids_count_rows c ON c.id = k.count_row_id WHERE c.bid_version_id = (SELECT base FROM v) AND c.fixture = 'LAV-1';
@@ -205,6 +228,7 @@ SELECT copt.same('duplicate of a bid with versions: that version''s prices, its 
 SELECT copt.same('duplicate of a bid with versions: that version''s quoted costs', copt.costs((SELECT split_copy FROM d), NULL), (SELECT costs FROM want));
 -- v2.6235 · the plan tags come along; the robot read the first bid, so the copy has no pull of its own.
 SELECT copt.same('duplicate: plan tags', copt.tags((SELECT split_copy FROM d), NULL), (SELECT tags FROM want));
+SELECT copt.same('duplicate: the percent rule comes along', copt.rules((SELECT split_copy FROM d), NULL), (SELECT rules FROM want));
 SELECT copt.same('duplicate: no pull of its own', copt.pulls((SELECT split_copy FROM d)), '(none)');
 
 -- Gap 3 · a duplicate has its own copy of the bid's prices.

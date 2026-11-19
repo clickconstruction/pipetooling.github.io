@@ -11,8 +11,8 @@ summary: >
   days, each day one of three kinds, what it was for, who asked for it and how it went. The hours, card
   charges, photos and History inside its days read as the trip's by themselves, and a trip never changes a
   clock row, a bill or a cost.
-next: The parts owed and in no PR yet: a setting for the 150 miles, Split in two, a combine that carries a trip's job link, and the trip's number in the dev seat's read. Put on a bill left this train for its own card, #391.
-size: L as a train of nine (S · S · M · S · S · S · M · S · S), eight built and the ninth moved to #391; left: the four owed parts, not sized yet
+next: The parts owed and in no PR yet: a setting for the 150 miles, Split in two, and the trip's number in the dev seat's read. The combine carries a trip's job link since v2.7861. Put on a bill left this train for its own card, #391.
+size: L as a train of nine (S · S · M · S · S · S · M · S · S), eight built and the ninth moved to #391; left: the three owed parts, not sized yet
 blocker: None. The six calls each have a default.
 opinion: build — the clock already stamps a place on a punch and the drive to a job, and the Development page already rolls a site's hours by person, so a trip is a reading laid over rows that exist
 ---
@@ -151,5 +151,7 @@ Built 2026-11-17 and 2026-11-18, in its own session. Read on 2026-11-18.
 - **Moved out:** Put on a bill is #391 (closed 2026-11-18, in [the Closed lines](../README.md)).
 - **Added past the plan, on the owner's word:** every trip has a number on its site (*Trip 14*), and a link
   that opens it.
-- **Owed, not in a PR yet:** a setting for the 150 miles, Split in two, a combine that carries a trip's job
-  link, and the trip's number in the dev seat's read.
+- **Owed, not in a PR yet:** a setting for the 150 miles, Split in two, and the trip's number in the dev seat's
+  read.
+- **Built after the train (v2.7861):** the combine carries a trip's job link to the job that is kept. A trip a
+  job holds by itself still goes with its job, and is kept in the deleted-records archive.

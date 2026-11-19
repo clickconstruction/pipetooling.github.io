@@ -2,6 +2,8 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, use
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
+import { gcBillingJobDiscountWords } from '../../lib/jobs/gcBillingJobDiscount'
+import { readTripBillGcJobs } from '../../lib/trips/tripBillLineIo'
 import {
   getBillingStripeModePref,
   setBillingStripeModePref,
@@ -2040,9 +2042,26 @@ export default function SendRecordInvoiceModal({
     if ((billCustomerJobDetails.fixtures ?? []).some((f) => f.line_kind === 'discount')) return null
     return { pct: customerStanding.pct, reason: customerStanding.reason, customerName: (job?.customer_name ?? '').trim() || 'This customer' }
   }, [customerStanding, billCustomerJobDetails, job?.customer_name])
+  // A job billed from the GC desk takes no discount line (v2.7862): one small read when the window opens. A read
+  // that fails or is closed answers no, and the function's own refusal then says so on Apply.
+  const [gcBillingJob, setGcBillingJob] = useState(false)
+  const discountJobId = open ? (job?.id ?? null) : null
+  useEffect(() => {
+    setGcBillingJob(false)
+    if (!discountJobId) return
+    let live = true
+    readTripBillGcJobs([discountJobId]).then(
+      (found) => live && setGcBillingJob(found.some((g) => g.jobId === discountJobId)),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [discountJobId])
   const discountStrip =
     job && billCustomerJobDetails && !shouldBlockBillOnPaidJob({ jobStatus: billCustomerJobDetails.status, allowRebill }) ? (
       <BillCustomerDiscountStrip
+        heldWords={gcBillingJobDiscountWords(gcBillingJob)}
         rows={billCustomerJobDetails.fixtures ?? []}
         scopedIds={discountScopedIds}
         billAmount={Number(billAmountStr) || 0}

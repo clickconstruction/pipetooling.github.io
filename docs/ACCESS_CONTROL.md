@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -244,7 +244,7 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and twenty-three verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-three since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
+The one write path (v2.3722) is one hundred and twenty-five verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-three since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
 one hundred and twenty-one since v2.7687, whose notice numbers are the Lien desk's own update of `sends` on the notice's `job_lien_filings` row under the dev's RLS, no new role and no new policy;
 one hundred and nineteen since v2.7592, whose photo of the spot is the Edit window's own two writes, the picture into the private `task-spot-photos` bucket under `can_write_task_spot_photo` and the task's `spot_photo_path` under the dev's RLS, the file staged first in the dev's own folder of `dev-seat-staging`, no new role and no new policy;
 one hundred and seventeen since v2.7589, whose task place is the Edit window's own update of the place columns on `checklist_items`, or on `checklist_tech_tree_group_tasks` for a task from a roadmap, under the dev's RLS, with the address read from `address_geocodes` and never written, no new role and no new policy;
@@ -282,6 +282,8 @@ never through `view_as`, and training mode blocks them inside the definer.
 Since v2.6792 (punch list #260's seat door) six of the verbs reach the account functions themselves, as the dev's own session, so each function's dev gate decides as it does for the desk: `plan_account` / `apply_account` call `add_worker` (the roster's own RPC — a dev, a master, an assistant or the controller), `invite-user` and `create-user` (dev only: *Create users*), patch `users.name` / `role` / `title` / `phone` under `users_guard_privileged_columns` (a role change is a dev's) and `change-user-email` (dev only);
 `plan_login` / `apply_login` call `create-user` with `user_id`, `send-sign-in-email` and `detach-login` (dev only, the attach and detach doors' own refusals: never a sample, a twin, an archived person or the caller's own login);
 `plan_password_reset` / `apply_password_reset` call `set-user-password` (dev only) or the sign-in page's own `resetPasswordForEmail` with the anon client, one send per address per ten minutes, never on the caller's own account.
+Since v2.7821 two more make one hundred and twenty-five: `plan_pay_setup` / `apply_pay_setup` call `set_pay_config` (payroll access or the service role, which a dev has;
+the function writes its own `pay_admin_events` line), patch `people.start_date` / `end_date`, write `salary_work_schedule_templates` and one more `pay_admin_events` line under the pay desk's own RLS, and call `sync_salary_clock_sessions_for_user_day` and `pay_staff_clear_salary_schedule_by_person_name` as the sheet's Pay & schedule does, with the server's own dev check before all of it and no new gate, role or policy.
 `get_login_state` is a dev's alone (refused through `view_as`): the users and people rows are read under the dev's RLS, and the auth account's stamps — `invited_at`, `confirmation_sent_at`, `email_confirmed_at`, `recovery_sent_at`, `last_sign_in_at`, `banned_until` — are read by id as the service role, picked by name and never a hash: the fourth thing the seat uses the service role for.
 A password an ask carries is never printed back and reaches `dev_mcp_calls` as `(set, not logged)`.
 One verb sits outside that grammar (v2.6187): `mint_twin_setup_code` POSTs `twin-setup` as the dev for a ten-minute, single-use setup code (the function's dev-for-any-twin rule and ten codes per ten minutes;
@@ -904,6 +906,8 @@ a `'public'` answer puts the ticked jobs on the attorney's list through `set_job
 **Is this job on the lien path?**
 (v2.7504, `20261117080000_job_lien_path_answer.sql`): the answer on a job (`jobs_ledger.lien_path_answer`) is written only by `set_job_lien_path_answer`, for the same four roles;
 it asks a reason to take a job off the path and to put it back, and can put the job on the attorney's list through the same flag.
+**A window that has closed** (v2.7801, `LienClosedWindow`): the Board's closed window adds no write and no policy, so its three presses are refused or allowed by the functions they call, *Keep collecting* by `set_job_lien_path_answer`, *Let it go* by `set_job_collections_flag` and `set_job_uncollectible`, *Record it closed* by the insert policy on `job_lien_desk_items`;
+the client draws them live for the lien office alone (`isLienOffice`: dev · master · assistant · controller) and dead with *The office answers this.* for anyone else, who still reads the window.
 The approval guard trigger decides who may approve: `approval_mode = 'leader'` requires the caller to be a **master or dev** (an assistant's update is refused with 42501) — and since v2.5082 (migration `20261010020000`) the same guard decides who may **sign**: a newly set `signed_at` needs `signed_by` with role master or dev, and unless the write is under that signer's own sign-in it must say `signed_on_device_of = auth.uid()` with mode `draw`, so the office can never place his name (`signLienDeskItem`) — or, since v2.5788 (migration `20261023150000`), mode `code`: the leader's own **signing code** (four to six digits, set by himself under Settings → Your account through `set_lien_sign_code`, master / dev only;
 `user_sign_codes` has no policies and no grants, only its five SECURITY DEFINER functions reach it — since v2.5924 `check_lien_sign_code`, the shared checker that owns the counter writes, EXECUTE revoked from clients, which `sign_lien_release_with_code` goes through) typed on the signed-in user's screen and checked by `sign_lien_desk_item_with_code` (callable by the office set, not in training mode;
 five wrong codes lock it fifteen minutes;
@@ -947,6 +951,7 @@ a pen signature recorded from a draft or an awaiting notice approves it in mode 
 the run's **Close N paid notices…** sets `voided_at` and `fields.runClosedPaid` on a live `notice_53_056` item row by row through the items' own update policy;
 the job's History line for a close (`lien_notice_closed_paid`) is written by the SECURITY DEFINER trigger `job_lien_desk_items_closed_paid_to_activity` (`20261115233000`), since `job_activity_events` takes no client insert, and EXECUTE on both of its functions is revoked from clients;
 and `sign_lien_desk_item_with_code` stamps the signer's full name since `20261116110000` (a leader's *Full name and title* up to the first comma, a dev's account name), its callers, its lock and its grant to `authenticated` unchanged.
+The copies window's writes add none either (v2.7846): a *Mailed* tick is one UPDATE of `served_at` and `sends`, and a changed document number is one UPDATE of `recording_number`, each on the filing's own `job_lien_filings` row under that table's update policy, for the office set that already records a mailing.
 
 **Certified mail pieces** (v2.5379, `20261013120000_mail_pieces.sql`, the Docsmit train — [`DOCSMIT_LIEN_RUN_PLAN.md`](./DOCSMIT_LIEN_RUN_PLAN.md)): `mail_pieces` — **read / insert / update** the office (`is_office_staff() OR is_dev() OR is_assistant()`) or the master of the piece's job (`jobs_ledger.master_user_id`);
 **delete** nobody signed in (revoked from `authenticated`);
@@ -1048,6 +1053,10 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   since v2.6852 the phone's box screen prints a box's label and manifest in the tab for every role on the job, where its two presses used to open `/jobs?tab=materials`, which only the office may open.
 - **A site's materials on one screen** (v2.7074, punch list #330): `?site=<development id>` on the On site tab and on Jobs → Materials draws every part across the site's jobs from the rows the desk already read, so the gate above decides it and a job the reader may not touch adds nothing.
   Since v2.7818 the screen's **By person** look, every press and box move on the site by who made it, is offered at the desk's mount to dev, master_technician, assistant and controller alone (`isOfficeRole`), a client gate over rows those roles already read, and the crew's mount never offers it.
+- **Who changed a box** (v2.7825, `20261118140000_on_site_box_changes.sql`): `job_container_changes` is read by the on-site gate on the box's job, as `job_container_names` is, and written by its trigger alone.
+  `on_site_removed_answers`, a part tie or a site price deleted, is read by `on_site_can_tie_parts()` with `on_site_can_read_ties()` and written by its trigger alone.
+- **A watch on one person** (v2.7825, `20261118150000_person_watches.sql`): `person_watches` and `watched_box_opens` are read by devs alone (`is_dev()`), and a dev inserts and updates a watch and never deletes one.
+  `on_site_note_box_open(uuid)` is granted to every signed-in caller, writes only for a caller with a live watch and answers nothing either way, so no caller learns from it whether they are watched.
   The office and a primary reach it through the desk's site row and read the week's missing money, as on the desk;
   a primary and a superintendent get a site row over their jobs on Materials → On site, with no money and the phone screen as each box's door;
   an estimator gets no site row.
@@ -1202,6 +1211,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   A primary reads every trip and may not press, and a crew member on the trip may not either.
   The caller must read the trip (`trips_office()` or `trip_is_mine`) and the job (`can_read_job_activity`), and the job must be one of the trip's jobs, the job that holds the trip or a job of its site.
   It refuses the GC desk's billing job, whose total is not its lines.
+  Since v2.7862 (`docs/migrations/20261118223000_discount_refuses_gc_billing_job.md`) `apply_job_discount` refuses that job too, for every role, and Bill Customer says why in the press's place.
   Since v2.7769 the window leaves that job out, read from `gc_projects` under the GC office door, which the four roles all hold.
   **Open Change orders** on a job held that way is drawn for the GC money team alone (dev, master_technician, controller: `canSeeGcMoney`), since Change orders are theirs, and an assistant is told who writes the change order.
   A training account, a digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
@@ -1213,6 +1223,7 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   A digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
   Putting a trip back is `trip_save` under the trip's own id, under the trips tables' own policies, so no new write exists.
   A trip made again settles its archive rows (`trips_settle_archive`), so the dev's Recently deleted never offers a living trip.
+  Since v2.7860 (`docs/migrations/20261118203000_trip_line_tie.md`) the trip's capture keeps the id of the line it held, and the same trigger ties that line to the trip made again, as a SECURITY DEFINER, only when the line is still there and tied to no trip.
 
 ### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
 

@@ -84,6 +84,15 @@ describe('LienDeskNoticeList', () => {
     expect(p.setCalendarJobFilter).toHaveBeenCalledWith(null)
   })
 
+  it('a filter with words of its own says them: the Board’s Sign door narrows the list to the notices that take the leader’s signature (v2.7853)', () => {
+    const p = draw({ calendarJobFilter: { ymd: '2026-11-22', jobIds: new Set(['job-a', 'job-b']), words: 'Only the notices that take your signature' } })
+    const chip = document.querySelector('[data-testid="lien-desk-calendar-filter"]') as HTMLElement
+    expect(chip.textContent).toContain('Only the notices that take your signature')
+    expect(chip.textContent).not.toContain('from the calendar')
+    fireEvent.click([...chip.querySelectorAll('button')].find((b) => b.textContent === 'show every job') as HTMLButtonElement)
+    expect(p.setCalendarJobFilter).toHaveBeenCalledWith(null)
+  })
+
   it('the Approved pile’s title carries the run’s press for the office', () => {
     const p = draw()
     fireEvent.click(document.querySelector('[data-lien-pile-run]') as HTMLButtonElement)

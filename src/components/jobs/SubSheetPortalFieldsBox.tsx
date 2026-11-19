@@ -16,6 +16,7 @@ import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 import { useReloadDraft } from '../../hooks/useReloadDraft'
 import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../lib/reloadDraft'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { useDrawBillPick, type DrawBillAnswer } from '../../hooks/useDrawBillPick'
 
 /**
  * "Shown on the sub's portal" box — the stage the sheet is at (v2.2767:
@@ -53,6 +54,8 @@ export function SubSheetPortalFieldsBox({
   onStageSaved,
 }: SubSheetPortalFieldsBoxProps) {
   const { showToast } = useToastContext()
+  // v2.7835: which bill the sheet rides on, asked on the move to Waiting on customer.
+  const drawBill = useDrawBillPick()
   const [stage, setStage] = useState<SubSheetStage>('working')
   const [savedStage, setSavedStage] = useState<SubSheetStage>('working')
   const [payableAfter, setPayableAfter] = useState('')
@@ -92,6 +95,8 @@ export function SubSheetPortalFieldsBox({
   })
 
   async function save() {
+    const answer: DrawBillAnswer = stage !== savedStage && stage === 'customer_pay' ? await drawBill.askOnArrival(laborJobId, contractorName ?? '') : { go: true }
+    if (!answer.go) return
     setSaving(true)
     try {
       if (stage !== savedStage) {
@@ -109,6 +114,7 @@ export function SubSheetPortalFieldsBox({
           showToast(`Could not move the stage: ${errMsg}`, 'error')
           return
         }
+        if (stage === 'customer_pay') await drawBill.tieAfterMove(laborJobId, answer)
         setSavedStage(stage)
         onStageSaved?.(stage)
       }
@@ -264,6 +270,7 @@ export function SubSheetPortalFieldsBox({
           </button>
         </div>
       )}
+      {drawBill.host}
     </div>
   )
 }

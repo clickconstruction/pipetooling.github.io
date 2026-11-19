@@ -393,7 +393,7 @@ export function lienFilingsReadReply(lines: ReadonlyArray<LienFilingLine>, show:
     reading: open === 0 ? `${lines.length} filed lien ${lines.length === 1 ? 'affidavit' : 'affidavits'}, and nothing is left on any of them.` : `${lines.length} filed lien ${lines.length === 1 ? 'affidavit' : 'affidavits'}: ${counts.copies_not_served} with copies not served, ${counts.no_saved_copy} with no saved copy, ${counts.no_recording_number} with no recording number, ${counts.served_without_proof} served with a mail receipt still missing.`,
     counts,
     ...(atCap ? { at_cap: `This read hands back the newest ${LIEN_FILINGS_READ_MAX} filed affidavits. Older ones are read with job_id.` } : {}),
-    writes: 'plan_lien_filing adds a scan to a filing already on record (the same recording number, with scan). plan_lien_service records the copies. A recording number is typed on the job’s Lien window.',
+    writes: 'plan_lien_filing adds a scan to a filing already on record (the same recording number, with scan), checks a paper against its record (the same number: it answers on_record with each difference) and puts the right file in place of a wrong saved copy (replace_saved_copy). plan_lien_service records the copies. A recording number is typed on the job’s Lien window.',
     filings: shown,
   }
 }

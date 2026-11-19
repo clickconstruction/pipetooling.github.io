@@ -175,20 +175,22 @@ describe('which shape the pile line takes (v2.7311)', () => {
     expect(lienDeskPileLineFit(720, affidavits)).toBe('right_below')
   })
 
-  it('a part that is not there counts no gap: Monthly notices has no piles, and a line with the tools up on the title line has no span off Monthly notices', () => {
-    const notices = { ...affidavits, piles: 0, right: LIEN_DESK_PILE_LINE_PARTS.gcDoor }
-    expect(lienDeskPileLineNeeds(notices)).toBeCloseTo(411 + 14.4 + 166, 1)
+  it('a part that is not there counts no gap: Monthly notices has no piles, and a line with the tools up on the title line has no span', () => {
+    const notices = { ...affidavits, piles: 0 }
+    expect(lienDeskPileLineNeeds(notices)).toBeCloseTo(411 + 14.4 + 231, 1)
     expect(lienDeskPileLineNeeds({ ...affidavits, right: 0 })).toBeCloseTo(411 + 14.4 + 427, 1)
     expect(lienDeskPileLineFit(865, { ...affidavits, right: 0 })).toBe('one_line')
   })
 
-  it('the fullest line — Monthly notices with the GC door and the four presses in the span — needs 832 px, which is why a 768 px tablet puts the span under the papers', () => {
-    const { papers, right, gap, gcDoor, rightGap, presses } = LIEN_DESK_PILE_LINE_PARTS
-    expect(right).toBeCloseTo(gcDoor + rightGap + presses, 1)
-    expect(lienDeskPileLineNeeds({ papers, piles: 0, right, gap })).toBeCloseTo(832, 1)
-    expect(lienDeskPileLineFit(720, { papers, piles: 0, right, gap })).toBe('right_below')
-    expect(lienDeskPileLineFit(832, { papers, piles: 0, right, gap })).toBe('one_line')
-    expect(lienDeskPileLineFit(831, { papers, piles: 0, right, gap })).toBe('right_below')
+  it('the span at its fullest is the four presses alone since v2.7806, so Monthly notices needs 656.4 px and a 768 px tablet holds it on one line; with Put a GC on notice in the span it needed 832', () => {
+    const { papers, right, gap, presses } = LIEN_DESK_PILE_LINE_PARTS
+    expect(right).toBe(presses)
+    expect(lienDeskPileLineNeeds({ papers, piles: 0, right, gap })).toBeCloseTo(656.4, 1)
+    expect(lienDeskPileLineFit(720, { papers, piles: 0, right, gap })).toBe('one_line')
+    expect(lienDeskPileLineFit(657, { papers, piles: 0, right, gap })).toBe('one_line')
+    expect(lienDeskPileLineFit(656, { papers, piles: 0, right, gap })).toBe('right_below')
+    // The span as it was until v2.7806: the GC door (166), the span's 9.6 px gap and the presses.
+    expect(lienDeskPileLineNeeds({ papers, piles: 0, right: 166 + 9.6 + presses, gap })).toBeCloseTo(832, 1)
   })
 })
 
@@ -227,47 +229,40 @@ describe('the pile line read off the bar (v2.7311)', () => {
   })
 })
 
-describe('the Lien desk title bar on a computer (v2.7213; one line off By paper since v2.7780, when the owner-records door left the bar for the call window)', () => {
+describe('the Lien desk title bar on a computer (v2.7213; one line off By paper since v2.7780, when the owner-records door left the bar for the call window; no Put a GC on notice since v2.7806)', () => {
   /** A bar whose paper tabs lead the second line, as before v2.7789: the title line has no room for them, or the view draws none. */
   const below = { papersFit: 'second_line', piles: false } as const
 
   it('when the line holds the presses, the tools end the title line and the bar has no second line off By paper', () => {
-    for (const gcNotice of [false, true]) {
-      expect(lienDeskTitleBarLayout({ ...below, pileFit: 'one_line', isMobile: false, fit: 'all', paperShown: false, gcNotice })).toEqual({ tools: 'title_line', breakLine: false, rightSpan: false, pileBreak: false, papers: null })
-    }
+    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'one_line', isMobile: false, fit: 'all', paperShown: false })).toEqual({ tools: 'title_line', breakLine: false, rightSpan: false, pileBreak: false, papers: null })
   })
 
-  it('on By paper a line that holds the presses and not the papers keeps a second line for the paper tabs; its right span comes only for Put a GC on notice', () => {
-    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'one_line', isMobile: false, fit: 'all', paperShown: true, gcNotice: false })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: false, pileBreak: false, papers: 'second_line' })
-    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'one_line', isMobile: false, fit: 'all', paperShown: true, gcNotice: true })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: true, pileBreak: false, papers: 'second_line' })
+  it('on By paper a line that holds the presses and not the papers keeps a second line for the paper tabs, with no span at its end: Put a GC on notice left the bar in v2.7806', () => {
+    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'one_line', isMobile: false, fit: 'all', paperShown: true })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: false, pileBreak: false, papers: 'second_line' })
     // The piles change nothing while the papers are under: the second line is there for the papers.
-    expect(lienDeskTitleBarLayout({ papersFit: 'second_line', piles: true, pileFit: 'one_line', isMobile: false, fit: 'all', paperShown: true, gcNotice: false })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: false, pileBreak: false, papers: 'second_line' })
+    expect(lienDeskTitleBarLayout({ papersFit: 'second_line', piles: true, pileFit: 'one_line', isMobile: false, fit: 'all', paperShown: true })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: false, pileBreak: false, papers: 'second_line' })
   })
 
-  it('a pile line too narrow for the piles and the span together breaks before the span, on every shape that draws the span on By paper, and nowhere else', () => {
-    // Put a GC on notice alone in the span, or the whole tool row: the span falls under the piles as one piece.
-    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'right_below', isMobile: false, fit: 'all', paperShown: true, gcNotice: true })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: true, pileBreak: true, papers: 'second_line' })
-    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'right_below', isMobile: false, fit: 'none', paperShown: true, gcNotice: true })).toEqual({ tools: 'second_line', breakLine: true, rightSpan: true, pileBreak: true, papers: 'second_line' })
-    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'right_below', isMobile: false, fit: 'none', paperShown: true, gcNotice: false })).toEqual({ tools: 'second_line', breakLine: true, rightSpan: true, pileBreak: true, papers: 'second_line' })
+  it('a pile line too narrow for the piles and the tool row together breaks before the span, on By paper in a window with no room for the tools up top, and nowhere else', () => {
+    // The whole tool row is the span: it falls under the piles as one piece.
+    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'right_below', isMobile: false, fit: 'none', paperShown: true })).toEqual({ tools: 'second_line', breakLine: true, rightSpan: true, pileBreak: true, papers: 'second_line' })
     // No span, no break; off By paper the tool row is the whole second line and never breaks; a phone never breaks.
-    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'right_below', isMobile: false, fit: 'all', paperShown: true, gcNotice: false }).pileBreak).toBe(false)
-    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'right_below', isMobile: false, fit: 'none', paperShown: false, gcNotice: false }).pileBreak).toBe(false)
-    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'right_below', isMobile: true, fit: 'none', paperShown: true, gcNotice: true }).pileBreak).toBe(false)
+    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'right_below', isMobile: false, fit: 'all', paperShown: true }).pileBreak).toBe(false)
+    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'right_below', isMobile: false, fit: 'none', paperShown: false }).pileBreak).toBe(false)
+    expect(lienDeskTitleBarLayout({ ...below, pileFit: 'right_below', isMobile: true, fit: 'none', paperShown: true }).pileBreak).toBe(false)
   })
 
   it('a narrower line keeps the two steady lines of v2.6569 on every view, the papers leading the second on By paper', () => {
     for (const paperShown of [false, true]) {
-      for (const gcNotice of [false, true]) {
-        expect(lienDeskTitleBarLayout({ ...below, pileFit: 'one_line', isMobile: false, fit: 'none', paperShown, gcNotice })).toEqual({ tools: 'second_line', breakLine: true, rightSpan: true, pileBreak: false, papers: paperShown ? 'second_line' : null })
-      }
+      expect(lienDeskTitleBarLayout({ ...below, pileFit: 'one_line', isMobile: false, fit: 'none', paperShown })).toEqual({ tools: 'second_line', breakLine: true, rightSpan: true, pileBreak: false, papers: paperShown ? 'second_line' : null })
     }
   })
 
-  it('a phone is not changed: the tools are under More whatever the line holds, the break comes with the paper tabs, and the papers are its second row whatever was measured', () => {
+  it('a phone is not changed: the tools are under More whatever the line holds, the break comes with the paper tabs, the span holds the GC picker’s sheet, and the papers are its second row whatever was measured', () => {
     for (const fit of ['all', 'none'] as const) {
       for (const papersFit of ['second_line', 'title_line'] as const) {
-        expect(lienDeskTitleBarLayout({ papersFit, piles: false, pileFit: 'one_line', isMobile: true, fit, paperShown: false, gcNotice: false })).toEqual({ tools: 'more', breakLine: false, rightSpan: true, pileBreak: false, papers: null })
-        expect(lienDeskTitleBarLayout({ papersFit, piles: true, pileFit: 'one_line', isMobile: true, fit, paperShown: true, gcNotice: true })).toEqual({ tools: 'more', breakLine: true, rightSpan: true, pileBreak: false, papers: 'second_line' })
+        expect(lienDeskTitleBarLayout({ papersFit, piles: false, pileFit: 'one_line', isMobile: true, fit, paperShown: false })).toEqual({ tools: 'more', breakLine: false, rightSpan: true, pileBreak: false, papers: null })
+        expect(lienDeskTitleBarLayout({ papersFit, piles: true, pileFit: 'one_line', isMobile: true, fit, paperShown: true })).toEqual({ tools: 'more', breakLine: true, rightSpan: true, pileBreak: false, papers: 'second_line' })
       }
     }
   })
@@ -328,33 +323,32 @@ describe('whether By paper’s paper tabs fit on the title line (v2.7789, the ow
 describe('the title bar with the papers up on the title line (v2.7789)', () => {
   const up = { papersFit: 'title_line', pileFit: 'one_line', isMobile: false, fit: 'all', paperShown: true } as const
 
-  it('Monthly notices: the second line is Put a GC on notice alone, at the right, and a desk with no GC to put on notice is one line', () => {
-    expect(lienDeskTitleBarLayout({ ...up, gcNotice: true, piles: false })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: true, pileBreak: false, papers: 'title_line' })
-    expect(lienDeskTitleBarLayout({ ...up, gcNotice: false, piles: false })).toEqual({ tools: 'title_line', breakLine: false, rightSpan: false, pileBreak: false, papers: 'title_line' })
+  it('Monthly notices is one line: it draws no piles, and Put a GC on notice left the bar in v2.7806', () => {
+    expect(lienDeskTitleBarLayout({ ...up, piles: false })).toEqual({ tools: 'title_line', breakLine: false, rightSpan: false, pileBreak: false, papers: 'title_line' })
   })
 
   it('Lien affidavits and Retainage notices: the second line is the piles, with no span at its end', () => {
-    expect(lienDeskTitleBarLayout({ ...up, gcNotice: false, piles: true })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: false, pileBreak: false, papers: 'title_line' })
+    expect(lienDeskTitleBarLayout({ ...up, piles: true })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: false, pileBreak: false, papers: 'title_line' })
   })
 
-  it('a pile line that cannot hold the piles and the span still breaks before the span', () => {
-    expect(lienDeskTitleBarLayout({ ...up, pileFit: 'right_below', gcNotice: true, piles: true })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: true, pileBreak: true, papers: 'title_line' })
+  it('the line under has no span to break before, whatever the pile line measured', () => {
+    expect(lienDeskTitleBarLayout({ ...up, pileFit: 'right_below', piles: true })).toEqual({ tools: 'title_line', breakLine: true, rightSpan: false, pileBreak: false, papers: 'title_line' })
   })
 
   it('the answer is used only where it can be true: off By paper there are no papers, and a line with no room for the presses keeps them under', () => {
-    expect(lienDeskTitleBarLayout({ ...up, paperShown: false, gcNotice: false, piles: false })).toEqual({ tools: 'title_line', breakLine: false, rightSpan: false, pileBreak: false, papers: null })
-    expect(lienDeskTitleBarLayout({ ...up, fit: 'none', gcNotice: false, piles: true })).toEqual({ tools: 'second_line', breakLine: true, rightSpan: true, pileBreak: false, papers: 'second_line' })
+    expect(lienDeskTitleBarLayout({ ...up, paperShown: false, piles: false })).toEqual({ tools: 'title_line', breakLine: false, rightSpan: false, pileBreak: false, papers: null })
+    expect(lienDeskTitleBarLayout({ ...up, fit: 'none', piles: true })).toEqual({ tools: 'second_line', breakLine: true, rightSpan: true, pileBreak: false, papers: 'second_line' })
   })
 
-  it('the pile line is measured without the papers once they are up: the piles and the GC door alone', () => {
-    const { piles, gcDoor, gap, papers } = LIEN_DESK_PILE_LINE_PARTS
-    const parts: LienDeskPileLineParts = { papers, piles, right: gcDoor, gap }
-    // With the papers on it the line needs 1,032.8 px; without them, 607.4.
-    expect(lienDeskPileLineNeeds(parts)).toBeCloseTo(1032.8, 1)
+  it('the pile line is measured without the papers once they are up: the piles and whatever span is left', () => {
+    const { piles, presses, gap, papers } = LIEN_DESK_PILE_LINE_PARTS
+    const parts: LienDeskPileLineParts = { papers, piles, right: presses, gap }
+    // With the papers on it the line needs 1,097.8 px; without them, 672.4.
+    expect(lienDeskPileLineNeeds(parts)).toBeCloseTo(1097.8, 1)
     expect(lienDeskPileLineFit(800, parts)).toBe('right_below')
     expect(lienDeskPileLineFit(800, parts, 'second_line')).toBe('right_below')
     expect(lienDeskPileLineFit(800, parts, 'title_line')).toBe('one_line')
-    expect(lienDeskPileLineFit(608, parts, 'title_line')).toBe('one_line')
-    expect(lienDeskPileLineFit(607, parts, 'title_line')).toBe('right_below')
+    expect(lienDeskPileLineFit(673, parts, 'title_line')).toBe('one_line')
+    expect(lienDeskPileLineFit(672, parts, 'title_line')).toBe('right_below')
   })
 })
