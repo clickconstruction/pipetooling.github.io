@@ -129,6 +129,7 @@
     "test:pg:lien-closed-paid-activity": "bash scripts/pgtest-lien-closed-paid-activity.sh",
     "test:pg:sub-sheet-stamps": "bash scripts/pgtest-sub-sheet-stamps.sh",
     "test:pg:ar-stripe-cases": "bash scripts/pgtest-ar-stripe-cases.sh",
+    "test:pg:primary-money-desks": "bash scripts/pgtest-primary-money-desks.sh",
     "test:pg:stripe-email-sends-trail": "bash scripts/pgtest-stripe-email-sends-trail.sh",
     "test:pg:contact-for-customer": "bash scripts/pgtest-contact-for-customer.sh",
     "test:pg:messages-tech-send": "bash scripts/pgtest-messages-tech-send.sh",
