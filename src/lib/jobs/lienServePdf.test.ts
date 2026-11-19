@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { PDFDocument, PDFName } from 'pdf-lib'
+import { describe, expect, it, vi } from 'vitest'
+import { PDFDocument, PDFName, PDFPage } from 'pdf-lib'
 import { buildLienServeJobPdf, buildLienServeStackPdf, drawLienMailSheet, inspectLienCopy, type LienServePdfJob } from './lienServePdf'
 import type { LienServeSheet } from './lienServePackets'
 
@@ -22,9 +22,10 @@ const sheet = (rows: number, held = 0): LienServeSheet => ({
   printed: 'Printed November 19, 2026',
   statute: 'Texas Property Code § 53.055',
   stepsHead: 'From the printer to the mail',
-  steps: ['Each envelope takes its letter and the clerk’s stamped copy behind it. They come off the printer in the order below.', 'Mail each envelope by certified mail. Write its number in the last column.', 'In the app, open the Lien desk.'],
-  columns: ['#', 'Job', 'Copy to', 'Name and address on the envelope', 'Pages', 'Mail by', 'Certified mail number'],
-  rows: Array.from({ length: rows }, (_, i) => ({ n: i + 1, job: `22${i} · Sample Job with a long name that wraps`, to: i % 2 ? 'Original contractor' : 'Owner', name: 'Hollow Creek Holdings LLC — Peña & Søn', address: '88 Sample Ridge Rd, Suite 400, Austin, TX 78700', pages: '3', mailBy: i === 0 ? 'Nov 11 · late' : 'Nov 23' })),
+  steps: ['Each envelope takes its letter and the clerk’s stamped copy behind it. They come off the printer in the order below.', 'Mail each envelope by certified mail. Write its number in the boxes under its line.', 'In the app, open the Lien desk.'],
+  columns: ['#', 'Job', 'Copy to', 'Pages', 'Mail by', 'Name and address on the envelope'],
+  numberLabel: 'Certified mail number',
+  rows: Array.from({ length: rows }, (_, i) => ({ n: i + 1, job: `22${i} · Sample Job with a long name that wraps`, to: i % 2 ? 'Original contractor' : 'Owner', name: 'Hollow Creek Holdings LLC — Peña & Søn', address: '88 Sample Ridge Rd, Suite 400, Austin, TX 78700', addressLines: ['88 Sample Ridge Rd, Suite 400', 'Austin, TX 78700'], pages: '3', mailBy: i === 0 ? 'Nov 11 · late' : 'Nov 23' })),
   heldHead: 'Not in this print',
   held: Array.from({ length: held }, (_, i) => ({ job: `23${i} · Held Job`, words: 'Not printed: no stamped copy saved.', act: 'Add the clerk’s stamped scan on the job’s Lien window.' })),
   foot: ['Mail sheet printed November 19, 2026', 'The first letter is the next page'],
@@ -130,5 +131,45 @@ describe('the mail sheet, drawn', () => {
     long.rows[0]!.name = 'Zażółć Ğęślą Holdings 株式会社'
     await drawLienMailSheet(many, long)
     expect(many.getPageCount()).toBeGreaterThan(1)
+  })
+
+  it('draws five boxes for the certified mail number under each envelope’s line, and keeps a long name on one line', async () => {
+    const rects = vi.spyOn(PDFPage.prototype, 'drawRectangle')
+    const words = vi.spyOn(PDFPage.prototype, 'drawText')
+    try {
+      const doc = await PDFDocument.create()
+      const s = sheet(3)
+      s.rows[1]!.name = 'SAMPLE PERSON ALEXANDER & SAMPLE PERSON JOSEPHINE R'
+      s.rows[2]!.addressLines = []
+      await drawLienMailSheet(doc, s)
+      // A number box is 54 points wide and 15 high: five under each of the three envelopes.
+      const boxes = rects.mock.calls.map(([o]) => o!).filter((o) => o.width === 54 && o.height === 15)
+      expect(boxes).toHaveLength(15)
+      // The five of one envelope sit on one line, left to right, and end at the page's right margin.
+      const first = boxes.slice(0, 5)
+      expect(new Set(first.map((o) => o.y)).size).toBe(1)
+      expect(first.map((o) => o.x)).toEqual([...first.map((o) => o.x)].sort((x, y) => Number(x) - Number(y)))
+      expect(Number(first[4]!.x) + 54).toBe(612 - 36)
+      const drawn = words.mock.calls.map(([t, o]) => ({ t, size: o?.size, x: o?.x, y: o?.y }))
+      expect(drawn.filter((d) => d.t === 'CERTIFIED MAIL NUMBER')).toHaveLength(3)
+      // The long name is drawn once, whole, a little smaller, and not cut into lines.
+      const long = drawn.filter((d) => d.t === 'SAMPLE PERSON ALEXANDER & SAMPLE PERSON JOSEPHINE R')
+      expect(long).toHaveLength(1)
+      expect(long[0]!.size).toBeLessThan(8.5)
+      expect(long[0]!.size).toBeGreaterThanOrEqual(7)
+      // The street and the city line are two lines of their own, the city under the street.
+      const street = drawn.find((d) => d.t === '88 Sample Ridge Rd, Suite 400')!
+      const city = drawn.find((d) => d.t === 'Austin, TX 78700')!
+      expect(city.x).toBe(street.x)
+      expect(Number(city.y)).toBeLessThan(Number(street.y))
+      // A row with no split address falls back to the address as typed.
+      expect(drawn.some((d) => d.t === '88 Sample Ridge Rd, Suite 400, Austin, TX 78700')).toBe(true)
+      // The head names the columns in the new order, the name and address last.
+      const head = ['#', 'JOB', 'COPY TO', 'PAGES', 'MAIL BY', 'NAME AND ADDRESS ON THE ENVELOPE'].map((h) => Number(drawn.find((d) => d.t === h)!.x))
+      expect(head).toEqual([...head].sort((x, y) => x - y))
+    } finally {
+      rects.mockRestore()
+      words.mockRestore()
+    }
   })
 })
