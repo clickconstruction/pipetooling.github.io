@@ -50848,6 +50848,7 @@ export type Database = {
           has_template: boolean
           is_salary: boolean
           record_hours_but_salary: boolean
+          salaried_week_hours: number[]
         }[]
       }
       self_schedule_add_block: {

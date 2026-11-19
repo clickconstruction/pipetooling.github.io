@@ -1843,7 +1843,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "seed_default_mercury_category_tags": [{"args":{},"returns":"undefined"}],
   "self_move_schedule_block": [{"args":{"p_block_id":"string","p_time_end":"string","p_time_start":"string","p_work_date":"string"},"returns":"undefined"}],
   "self_remove_schedule_block": [{"args":{"p_block_id":"string"},"returns":"undefined"}],
-  "self_salary_clock_state": [{"args":{},"returns":"{ has_template: boolean is_salary: boolean record_hours_but_salary: boolean }[]"}],
+  "self_salary_clock_state": [{"args":{},"returns":"{ has_template: boolean is_salary: boolean record_hours_but_salary: boolean salaried_week_hours: number[] }[]"}],
   "self_schedule_add_block": [{"args":{"p_job_id":"string","p_join_crew?":"boolean","p_time_end":"string","p_time_start":"string","p_work_date":"string"},"returns":"string"}],
   "sent_copy_stamps": [{"args":{"p_ids":"string[]"},"returns":"{ from_email: string id: string opened_at: string paid_how: string paid_on: string }[]"}],
   "service_apply_agreed_write_down_from_stripe": [{"args":{"p_actor_user_id":"string","p_invoice_id":"string","p_new_amount":"number","p_note":"string","p_stripe_credit_note_id":"string"},"returns":"Json"}],
