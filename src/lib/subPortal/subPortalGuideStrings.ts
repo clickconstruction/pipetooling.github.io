@@ -72,6 +72,7 @@ const EN: GuideContent = {
       facts: [
         { who: 'Us', text: 'Once it passes, we can trigger a draw from the customer under our contract with them, and collect.' },
         { who: 'You', text: 'Nothing to do.' },
+        { who: 'Then', text: 'When the customer pays, your card says so, with the day.' },
         { who: 'Sometimes', text: "Depending on the customer, we can give you a partial payment in advance. Often we can't — the card says so when we can." },
       ],
       caption: "It passed — we can trigger a draw from the customer. Sometimes part can come to you early.",
@@ -168,6 +169,7 @@ const ES: GuideContent = {
       facts: [
         { who: 'Nosotros', text: 'Cuando pasa, podemos solicitar el pago al cliente según nuestro contrato con él, y cobrarlo.' },
         { who: 'Usted', text: 'Nada que hacer.' },
+        { who: 'Después', text: 'Cuando el cliente paga, su tarjeta lo dice, con la fecha.' },
         { who: 'A veces', text: 'Según el cliente, podemos darle un pago parcial por adelantado. Muchas veces no — la tarjeta lo dice cuando sí.' },
       ],
       caption: 'Pasó — podemos solicitar el pago al cliente. A veces una parte le llega antes.',

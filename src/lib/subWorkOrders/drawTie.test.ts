@@ -7,6 +7,7 @@ import {
   drawBillWindowLead,
   drawTieOnArrival,
   drawTieRowWords,
+  subSeesCustomerPaid,
   openDrawBills,
   orderedDrawBills,
   type DrawBill,
@@ -84,8 +85,8 @@ describe('the window’s rows', () => {
   })
 
   it('leads with the sub’s name, or without one', () => {
-    expect(drawBillWindowLead('Harlan Pruitt')).toBe('Harlan Pruitt’s sheet waits on this bill’s payment.')
-    expect(drawBillWindowLead('  ')).toBe('This sheet waits on this bill’s payment.')
+    expect(drawBillWindowLead('Harlan Pruitt')).toBe('Harlan Pruitt’s page will say the customer paid when this bill is paid in full.')
+    expect(drawBillWindowLead('  ')).toBe('The sub’s page will say the customer paid when this bill is paid in full.')
     expect(DRAW_BILL_NONE_LABEL).toBe('No bill')
   })
 })
@@ -112,5 +113,32 @@ describe('the line on the office’s row', () => {
   it('offers the pick on a sheet with no tie', () => {
     expect(drawTieRowWords({ stage: 'customer_pay', drawInvoiceId: null, bills: all })).toEqual({ text: 'No bill tied', tied: false, press: 'Pick the bill this sheet rides on' })
     expect(drawTieRowWords({ stage: 'customer_pay', drawInvoiceId: '  ', bills: all })?.tied).toBe(false)
+  })
+})
+
+describe('what the sub reads once the customer paid, on the office’s row (step 2)', () => {
+  const sees = (over: Partial<Parameters<typeof subSeesCustomerPaid>[0]> = {}) =>
+    subSeesCustomerPaid({ stage: 'customer_pay', customerPaidOn: '2026-11-12', payableAfter: null, payHoldReason: null, todayYmd: '2026-11-13', ...over })
+
+  it('says what their page says, in grey, while the payment is fresh', () => {
+    expect(sees()).toMatchObject({ text: 'Sub sees: Customer paid Nov 12', tone: 'grey' })
+    expect(sees({ todayYmd: '2026-11-12' })?.tone).toBe('grey')
+    expect(sees({ todayYmd: '2026-11-14' })).toMatchObject({ text: 'Sub sees: Customer paid Nov 12', tone: 'grey' })
+  })
+
+  it('turns amber past two days with no pay day, and counts the days', () => {
+    expect(sees({ todayYmd: '2026-11-15' })).toMatchObject({ text: 'Customer paid Nov 12 · not queued, 3 days', tone: 'amber' })
+    expect(sees({ customerPaidOn: '2026-11-09', todayYmd: '2026-11-18' })?.text).toBe('Customer paid Nov 9 · not queued, 9 days')
+  })
+
+  it('stays grey on a held sheet, however long: the hold is the office’s answer', () => {
+    expect(sees({ payHoldReason: 'Insurance certificate ran out', todayYmd: '2026-12-01' })).toMatchObject({ text: 'Sub sees: Customer paid Nov 12 · on hold', tone: 'grey' })
+  })
+
+  it('says nothing once the sheet is queued, before the customer paid, or off the stage', () => {
+    expect(sees({ payableAfter: '2026-11-20' })).toBeNull()
+    expect(sees({ customerPaidOn: null })).toBeNull()
+    expect(sees({ customerPaidOn: '  ' })).toBeNull()
+    expect(sees({ stage: 'walkthrough' })).toBeNull()
   })
 })

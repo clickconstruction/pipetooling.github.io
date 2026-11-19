@@ -319,3 +319,62 @@ describe('SubPortal: papers before a job opens (step 6)', () => {
     expect(screen.getByText(/14 × Top out fixtures/)).toBeTruthy()
   })
 })
+
+describe('SubPortal: the customer paid (punch list #388, step 2)', () => {
+  // The demo's second sheet, moved to Waiting on customer. Every name, day and amount is the fixture's own.
+  const paid = (over: Record<string, unknown>) => ({
+    ...SUB_PORTAL_DEMO_PAYLOAD,
+    sheets: SUB_PORTAL_DEMO_PAYLOAD.sheets.map((s) => (s.id === 'demo-s2' ? { ...s, stage: 'customer_pay', stageChangedOn: '2026-08-28', stageSource: 'office', payableAfter: null, payHoldReason: null, ...over } : s)),
+  })
+  const open = async (payload: unknown) => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => payload })))
+    renderPortal()
+    await waitFor(() => expect(screen.getByText('Work & pay statement')).toBeTruthy())
+  }
+
+  it('a sheet waiting on the customer reads Draw requested, as it did, when the function sends no day', async () => {
+    await open(paid({}))
+    expect(screen.getByText('Draw requested')).toBeTruthy()
+    expect(screen.getByText(/their payment is the last thing between you and this money/)).toBeTruthy()
+    expect(screen.queryByTestId('sub-portal-customer-paid')).toBeNull()
+  })
+
+  it('says the customer paid, with the day and no amount, and that their payment is next', async () => {
+    await open(paid({ customerPaidOn: '2026-09-01' }))
+    expect(screen.getByText('Customer paid Sep 1, 2026')).toBeTruthy()
+    expect(screen.getByTestId('sub-portal-customer-paid').textContent).toBe('The customer paid on Sep 1, 2026. Your payment is next. We will give it a pay run day.')
+    expect(screen.queryByText('Draw requested')).toBeNull()
+    expect(screen.queryByText(/their payment is the last thing between you and this money/)).toBeNull()
+    expect(screen.queryByTestId('sub-portal-customer-paid-hold')).toBeNull()
+  })
+
+  it('reads the same in Spanish', async () => {
+    await open(paid({ customerPaidOn: '2026-09-01' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    expect(screen.getByText('El cliente pagó el 1 sep 2026')).toBeTruthy()
+    expect(screen.getByTestId('sub-portal-customer-paid').textContent).toBe('El cliente pagó el 1 sep 2026. Su pago es el siguiente. Le pondremos su fecha de pago.')
+  })
+
+  it('puts a hold’s reason right under the sentence, and promises no pay run day', async () => {
+    await open(paid({ customerPaidOn: '2026-09-01', payHoldReason: 'Your insurance certificate ran out on Aug 30. Send us the new one and this moves.' }))
+    expect(screen.getByTestId('sub-portal-customer-paid').textContent).toBe('The customer paid on Sep 1, 2026. Your payment is next.')
+    expect(screen.getByTestId('sub-portal-customer-paid-hold').textContent).toBe('On hold: Your insurance certificate ran out on Aug 30. Send us the new one and this moves.')
+    // The reason is said once, under the sentence.
+    expect(screen.getAllByText(/Your insurance certificate ran out on Aug 30/)).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    expect(screen.getByTestId('sub-portal-customer-paid-hold').textContent).toBe('En espera: Your insurance certificate ran out on Aug 30. Send us the new one and this moves.')
+  })
+
+  it('a queued sheet says Queued, as it did, whatever day the customer paid', async () => {
+    await open(paid({ customerPaidOn: '2026-09-01', payableAfter: '2026-09-11' }))
+    expect(screen.queryByTestId('sub-portal-customer-paid')).toBeNull()
+    expect(screen.queryByText(/Customer paid/)).toBeNull()
+    expect(screen.getAllByText(/Queued for the pay run/).length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('a day on a sheet that is not waiting on the customer changes nothing', async () => {
+    await open({ ...SUB_PORTAL_DEMO_PAYLOAD, sheets: SUB_PORTAL_DEMO_PAYLOAD.sheets.map((s) => (s.id === 'demo-s2' ? { ...s, customerPaidOn: '2026-09-01' } : s)) })
+    expect(screen.queryByTestId('sub-portal-customer-paid')).toBeNull()
+    expect(screen.getByText(/You told us the work's done Sep 1, 2026/)).toBeTruthy()
+  })
+})

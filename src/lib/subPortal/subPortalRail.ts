@@ -17,6 +17,17 @@ export function isSubPortalSheetQueued(sheet: Pick<SubPortalSheet, 'stage' | 'pa
   return sheet.stage === 'customer_pay' && (sheet.payableAfter ?? '').trim() !== ''
 }
 
+/**
+ * The day the card says the customer paid (punch list #388, step 2), or null when it says nothing new: the
+ * function sent a day for this sheet's tied bill, the sheet still waits on the customer, and the office has
+ * not queued it. A queued sheet says Queued, since a promised pay day says more than the payment behind it.
+ */
+export function subPortalCustomerPaidDay(sheet: Pick<SubPortalSheet, 'stage' | 'payableAfter' | 'customerPaidOn'>): string | null {
+  if (sheet.stage !== 'customer_pay' || isSubPortalSheetQueued(sheet)) return null
+  const day = (sheet.customerPaidOn ?? '').trim()
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null
+}
+
 export function subPortalRailStep(sheet: Pick<SubPortalSheet, 'stage' | 'payableAfter'>): SubPortalRailStep {
   if (isSubPortalSheetQueued(sheet)) return 3
   switch (sheet.stage) {

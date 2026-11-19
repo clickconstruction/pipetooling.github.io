@@ -85,6 +85,10 @@ export type LaborJob = {
   pay_hold_reason?: string | null
   /** The bill this sheet rides on while it waits on the customer (v2.7835, punch list #388); null for no tie. */
   draw_invoice_id?: string | null
+  /** The day the customer paid that bill in full (v2.7843), by the rule the sub's page reads; null until then. Display only. */
+  customer_paid_on?: string | null
+  /** The bills of a tied sheet's job (v2.7843), read with the ledger so the row can name its bill. Display only. */
+  draw_bills?: Array<{ id: string; status: string | null; sequence_order: number | null; billed_at: string | null; amount: number | null; created_at?: string | null }> | null
   /** Resolved display name of stage_changed_by (office moves only). */
   stage_changed_by_name?: string | null
   /** The sub's own percent from the portal (v2.2931) — evidence for the derived stage (v2.3064). */
