@@ -207,6 +207,8 @@ beforeEach(() => {
 
 // The courtesy notice's io (punch list #249, row 1): the addresses found at once, the send and the record write as the case sets them.
 const courtesyIo = vi.hoisted(() => ({ send: vi.fn(), write: vi.fn() }))
+// The copies window reads each filed lien's stamped scan as it opens (v2.7916): a usual two-page scan here.
+vi.mock('../../lib/jobs/lienStampedCopyIo', () => ({ loadLienSavedCopy: async () => ({ read: { state: 'ok', file: { kind: 'pdf', pages: 2, bytes: 450_000, sha256: 'made-up' } }, bytes: new Uint8Array([1]) }) }))
 vi.mock('../../lib/jobs/lienCourtesyIo', () => ({
   loadCourtesyRecipients: async () => [{ who: 'original_contractor', name: 'Lowbeck Contracting', email: { address: 'office@lowbeck.test', goes: true, reason: '' }, text: { address: '', goes: false, reason: 'no number on the job' }, contactId: null, textChannelId: null }],
   sendCourtesyNotice: (...args: unknown[]) => courtesyIo.send(...args),
@@ -5458,7 +5460,7 @@ describe('LienDesk · Lien affidavits and Retainage notices stack their pile tit
 
 describe('LienDesk · serve the filed liens together (punch list #366)', () => {
   // Two filed affidavits that owe their copies. Every name here is made up.
-  const filed = (id: string, job_id: string) => ({ id, job_id, kind: 'affidavit', months_covered: [], voided_at: null, filed_at: '2026-09-10', serve_due: '2026-09-15', served_at: null, county: 'Guadalupe', recording_number: `2026-${id}`, sends: [], fields: { ownerName: 'Elwick Holdings LLC', ownerAddress: '4 Example Way, Schertz, TX', propertyAddress: '1204 Elwick Rd, Schertz, TX', unpaidAmount: '33500.00', originalContractorName: 'Lowbeck Contracting', originalContractorAddress: '2904 Corporate Cr, Flower Mound, TX', isSub: true }, created_at: '2026-09-10T15:00:00Z' })
+  const filed = (id: string, job_id: string) => ({ id, job_id, kind: 'affidavit', months_covered: [], voided_at: null, filed_at: '2026-09-10', serve_due: '2026-09-15', served_at: null, county: 'Guadalupe', recording_number: `2026-${id}`, sends: [], document_url: `https://drive.google.com/file/d/1SampleStampedScan-${id}/view`, fields: { ownerName: 'Elwick Holdings LLC', ownerAddress: '4 Example Way, Schertz, TX', propertyAddress: '1204 Elwick Rd, Schertz, TX', unpaidAmount: '33500.00', originalContractorName: 'Lowbeck Contracting', originalContractorAddress: '2904 Corporate Cr, Flower Mound, TX', isSub: true }, created_at: '2026-09-10T15:00:00Z' })
   const desk = (jobs: string[]) => {
     const d = data([], [], true)
     d.jobsById = Object.fromEntries(jobs.map((id, i) => [id, { ...d.jobsById.j650!, id, hcp_number: String(650 + i) }]))
@@ -5483,7 +5485,7 @@ describe('LienDesk · serve the filed liens together (punch list #366)', () => {
     fireEvent.click(presses[presses.length - 1]!)
     const win = within(screen.getByTestId('lien-serve-window'))
     expect(win.getByText('2 filed liens owe their copies. The soonest is due Sep 15.')).toBeTruthy()
-    expect(win.getByRole('button', { name: 'Print 2 liens’ copies' })).toBeTruthy()
+    expect(await win.findByRole('button', { name: 'Print 2 liens’ copies' })).toBeTruthy()
     expect(win.getByRole('textbox', { name: 'Job 650, owner, certified mail number' })).toBeTruthy()
     expect(onOpenLienInstruments).not.toHaveBeenCalled()
     // The door said Print, so the window lands on its print half.

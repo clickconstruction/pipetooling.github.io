@@ -37,16 +37,24 @@ describe('lienServeFactsFromFiling', () => {
     expect(facts).toMatchObject({ isSub: true, county: 'Hays', recordingNumber: '2026-0041877', filedYmd: '2026-11-13', letterYmd: '2026-11-16', phone: '(512) 555-0142' })
     expect(facts?.fields.ownerName).toBe('Hollow Creek Holdings LLC')
     expect(facts?.fields.form).toBe('short')
-    expect(lienServeHolds(facts!)).toEqual([])
+    expect(lienServeHolds(facts!, 'drive')).toEqual([])
   })
 
-  it('is null for a row with nothing to copy', () => {
+  it('is null for a row that is not a filed, live affidavit', () => {
     expect(lienServeFactsFromFiling(null, CTX)).toBeNull()
     expect(lienServeFactsFromFiling(filing({ kind: 'notice_53_056' }), CTX)).toBeNull()
     expect(lienServeFactsFromFiling(filing({ filed_at: null }), CTX)).toBeNull()
     expect(lienServeFactsFromFiling(filing({ voided_at: '2026-11-14T10:00:00Z' }), CTX)).toBeNull()
-    expect(lienServeFactsFromFiling(filing({ fields: null }), CTX)).toBeNull()
-    expect(lienServeFactsFromFiling(filing({ fields: [] }), CTX)).toBeNull()
+  })
+
+  it('reads a filed affidavit that keeps no fields with every field blank: its stamped copy still prints', () => {
+    for (const fields of [null, []]) {
+      const facts = lienServeFactsFromFiling(filing({ fields }), CTX)
+      expect(facts).toMatchObject({ county: 'Hays', recordingNumber: '2026-0041877', filedYmd: '2026-11-13' })
+      expect(facts?.fields).toMatchObject({ ownerName: '', propertyAddress: '', unpaidAmount: '' })
+      // The job's own answer stands when the paper keeps none.
+      expect(facts?.isSub).toBe(CTX.isSub)
+    }
   })
 
   it('lets the paper on file say whether there is an original contractor', () => {
@@ -61,6 +69,6 @@ describe('lienServeFactsFromFiling', () => {
     const facts = lienServeFactsFromFiling(filing({ recording_number: '', fields: { ...FIELDS, ownerAddress: undefined, unpaidAmount: 18450 } }), CTX)
     expect(facts?.fields.ownerAddress).toBe('')
     expect(facts?.fields.unpaidAmount).toBe('18450')
-    expect(lienServeHolds(facts!).map((h) => h.key)).toEqual(['no_recording_number', 'no_owner_address'])
+    expect(lienServeHolds(facts!, 'drive').map((h) => h.key)).toEqual(['no_recording_number', 'no_owner_address'])
   })
 })

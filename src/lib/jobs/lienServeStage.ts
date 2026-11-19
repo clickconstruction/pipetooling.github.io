@@ -8,15 +8,19 @@
  * 2026-11-16): **Print the copies to mail** until the copies are printed, then **Enter mail numbers**. A door reads
  * the name of its stage and lands on that half.
  *
- * A lien's copies count as printed once a print of them is filed on its job (`sent_documents`, kind
- * `lien_affidavit_copy`, read by `lienServePrintsIo.ts`), or once a mail number or a receipt is on the filing, which
- * says they went out whoever printed them. A lien the app did not draw (filed by counsel, or recorded by hand) has no
- * copy to print here: the office mails a photocopy, so its doors read **Enter mail numbers** from the start.
+ * A lien's copies count as printed once a print of its stamped copy is filed on its job (`sent_documents`, kind
+ * `lien_affidavit_copy`, whose row says the copy was the stamped scan; read by `lienServePrintsIo.ts`). Since
+ * v2.7916 the copy in the envelope is the clerk's stamped scan, the filing's saved copy. So a lien that has a saved
+ * copy stays on **Print the copies to mail** until that print is filed: a receipt or a mail number on the filing does
+ * not say what was in the envelope, and a print of the old redrawn page does not count. A lien with no saved copy
+ * cannot print here. A mail number or a receipt on it says its copies went out by hand, so its doors read **Enter
+ * mail numbers**; with neither, its door opens the window, where it is held until the scan is added.
  *
  * Pure.
  */
 import { countedLabel } from '../batchWords'
 import { parseLienSends } from './lienSendTracking'
+import { lienCopySource } from './lienStampedCopy'
 
 export type LienServeStage = 'print' | 'record'
 
@@ -26,7 +30,7 @@ export const LIEN_SERVE_STAGE_WORDS: Record<LienServeStage, string> = {
   record: 'Enter mail numbers',
 }
 
-/** The filings whose copies were printed here, as a set, a list, or nothing when the read is not in. */
+/** The filings whose stamped copies were printed here, as a set, a list, or nothing when the read is not in. */
 export type LienServePrinted = ReadonlySet<string> | ReadonlyArray<string> | null | undefined
 
 function has(printed: LienServePrinted, id: string): boolean {
@@ -34,17 +38,10 @@ function has(printed: LienServePrinted, id: string): boolean {
   return printed instanceof Set ? printed.has(id) : (printed as ReadonlyArray<string>).includes(id)
 }
 
-/** Whether the filing keeps the paper the app drew, which is what a copy is printed from (`lienServeHolds`'s *no_paper*). A filing handed in without its `fields` is not judged. */
-function hasPaper(filing: { fields?: unknown }): boolean {
-  if (!('fields' in filing)) return true
-  const f = filing.fields as Record<string, unknown> | null | undefined
-  if (!f || typeof f !== 'object') return false
-  return ['ownerName', 'propertyAddress', 'unpaidAmount'].every((k) => typeof f[k] === 'string' && (f[k] as string).trim() !== '')
-}
-
-/** A filed lien's stage. With the read of the prints not in, a lien with nothing on its filing reads as still to print. */
-export function lienServeStage(filing: { id: string; sends?: unknown; fields?: unknown }, printed: LienServePrinted): LienServeStage {
-  if (has(printed, filing.id) || !hasPaper(filing)) return 'record'
+/** A filed lien's stage. A filing handed in without its `document_url` is read by its numbers and receipts alone. */
+export function lienServeStage(filing: { id: string; sends?: unknown; document_url?: string | null }, printed: LienServePrinted): LienServeStage {
+  if (has(printed, filing.id)) return 'record'
+  if (lienCopySource(filing.document_url).kind !== 'none') return 'print'
   return parseLienSends(filing.sends).some((s) => (s.tracking ?? '').trim() || (s.receipt_url ?? '').trim()) ? 'record' : 'print'
 }
 
@@ -83,8 +80,8 @@ const COPIES: [string, string] = ['lien’s copies', 'liens’ copies']
  * The door to *Filed liens: copies to mail* from the Board's bin and the list's folded row, which stands for every
  * lien in the bin at once. With none printed it reads *Print 9 liens' copies ›*. With every one printed it reads
  * *Enter mail numbers · 12 ›*. With some of each it names both halves and their counts, *Print 1 · Enter mail numbers
- * 10 ›*, so the office that mailed ten still finds its door while one waits to print. A held lien cannot print, is
- * mailed by photocopy and is recorded like the rest, so it counts with the numbers. Null with none.
+ * 10 ›*, so the office that mailed ten still finds its door while one waits to print. A held lien cannot print yet
+ * and is recorded like the rest, so it counts with the numbers. Null with none.
  */
 export function lienServeStageDoorWords(c: { toPrint: number; owed: number }): { label: string; stage: LienServeStage | 'both' } | null {
   if (c.owed <= 0) return null
@@ -95,7 +92,7 @@ export function lienServeStageDoorWords(c: { toPrint: number; owed: number }): {
 }
 
 /** The counts that door reads, from the plan's two lists: a held lien cannot print, so it never keeps the door on print. */
-export function lienServeStageCounts(plan: { ready: ReadonlyArray<{ job: { filing: { id: string; sends?: unknown } } }>; held: ReadonlyArray<unknown> }, printed: LienServePrinted): { toPrint: number; owed: number } {
+export function lienServeStageCounts(plan: { ready: ReadonlyArray<{ job: { filing: { id: string; sends?: unknown; document_url?: string | null } } }>; held: ReadonlyArray<unknown> }, printed: LienServePrinted): { toPrint: number; owed: number } {
   return { toPrint: plan.ready.filter((r) => lienServeStage(r.job.filing, printed) === 'print').length, owed: plan.ready.length + plan.held.length }
 }
 

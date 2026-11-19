@@ -2,7 +2,8 @@
 /**
  * Serve the filed liens (punch list #366, steps 3 and 4): one window prints every filed lien's copies behind a mail
  * sheet, holds what cannot print with its reason, and keeps each mail number, each receipt, each *Mailed* tick and each
- * document number the moment it is added (v2.7846): no press records anything.
+ * document number the moment it is added (v2.7846): no press records anything. The copy in each envelope is the
+ * clerk's stamped scan (v2.7916): the window reads each saved copy as it opens, and nothing stands in for one.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -11,20 +12,11 @@ import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import type { LienServeJob } from '../../lib/jobs/lienServePackets'
 import LienServeWindow from './LienServeWindow'
 
-const prints: string[] = []
-const filed: Array<{ filing: Record<string, unknown>; html: string }> = []
+import type { LienCopyLoaded } from '../../lib/jobs/lienStampedCopyIo'
+import type { LienServePrintResult, printLienServeRun } from '../../lib/jobs/lienServePrintIo'
+import { LIEN_COPY_BROKEN_HOLD, lienCopyUnreadableHold } from '../../lib/jobs/lienStampedCopy'
 
-vi.mock('../../lib/jobsDocuments/printWindow', () => ({
-  openHtmlPrintWindow: (html: string) => {
-    prints.push(html)
-    return true
-  },
-}))
-vi.mock('../../lib/sent/sentCopiesIo', () => ({
-  fileSentCopy: async (filing: Record<string, unknown>, body: { html: string }) => {
-    filed.push({ filing, html: body.html })
-  },
-}))
+vi.mock('../../lib/sent/sentCopiesIo', () => ({ fileSentCopy: async () => true }))
 vi.mock('../../lib/jobs/jobFolderAddFileIo', () => ({ putJobFolderFile: async () => ({ driveFileId: 'made-up', url: 'https://drive.example/made-up' }) }))
 // The trash call a receipt's take-off makes (v2.7743), with the order it came in against the filing's write.
 const order: string[] = []
@@ -38,8 +30,6 @@ vi.mock('../../lib/jobs/jobFolderTrashIo', () => ({
 
 afterEach(() => {
   cleanup()
-  prints.length = 0
-  filed.length = 0
   order.length = 0
   window.localStorage.clear()
 })
@@ -73,7 +63,7 @@ const job = (number: string, over: Record<string, unknown> = {}): LienServeJob =
   jobNumber: number,
   jobLabel: `${number} · Sample Job`,
   isSub: true,
-  filing: { id: `f-${number}`, job_id: `job-${number}`, kind: 'affidavit', fields: FIELDS, county: 'Alder', recording_number: `2026-${number}`, filed_at: '2026-11-13', serve_due: '2026-11-18', served_at: null, voided_at: null, sends: [], ...over } as unknown as JobLienFilingRow,
+  filing: { id: `f-${number}`, job_id: `job-${number}`, kind: 'affidavit', fields: FIELDS, county: 'Alder', recording_number: `2026-${number}`, filed_at: '2026-11-13', serve_due: '2026-11-18', served_at: null, voided_at: null, sends: [], document_url: `https://drive.google.com/file/d/1SampleStampedScan${number}/view`, ...over } as unknown as JobLienFilingRow,
 })
 
 const JOBS = [job('2291'), job('2104', { serve_due: '2026-11-11' }), job('2340', { recording_number: '' })]
@@ -82,10 +72,26 @@ const issuer = { companyName: 'Sample Plumbing LLC', addressText: 'PO Box 100\nM
 /** The filing's sends as a kept proof leaves them: the write's own answer, which the window remembers. */
 const keepFake = () => vi.fn(async (args: { filingId: string; recipient: string; proof: { tracking?: string; receiptUrl?: string } }) => [{ recipient: args.recipient, method: 'certified_mail', tracking: args.proof.tracking ?? '', ...(args.proof.receiptUrl ? { receipt_url: args.proof.receiptUrl } : {}) }])
 
+/** A saved copy as the read finds it: a two-page stamped scan unless the test says otherwise. */
+const scan = (pages = 2, bytes = 450_000): LienCopyLoaded => ({ read: { state: 'ok', file: { kind: 'pdf', pages, bytes, sha256: 'made-up' } }, bytes: new Uint8Array([1, 2, 3]) })
+/** The read of every lien's saved copy, by the scan's file id; a file the test does not name is a usual scan. */
+const readFake = (byFile: Record<string, LienCopyLoaded | Promise<LienCopyLoaded>> = {}) => vi.fn(async (_jobId: string, fileId: string) => byFile[fileId] ?? scan())
+type PrintArgs = Parameters<typeof printLienServeRun>
+/** The print: every lien it was handed went to the printer, unless the test says one was left out. */
+const printFake = (leftOut: Record<string, string> = {}) =>
+  vi.fn(async (run: PrintArgs[0], _bytesOf: PrintArgs[1], _opts: PrintArgs[2]): Promise<LienServePrintResult> => ({
+    how: 'opened',
+    printed: run.ready.filter((r) => !leftOut[r.job.jobNumber]).map((r) => ({ jobId: r.job.jobId, filingId: r.job.filing.id })),
+    notPrinted: run.ready.filter((r) => leftOut[r.job.jobNumber]).map((r) => ({ job: r.job, reason: leftOut[r.job.jobNumber]! })),
+  }))
+
 function open(over: Partial<Parameters<typeof LienServeWindow>[0]> = {}) {
   const props = { jobs: JOBS, todayYmd: '2026-11-16', issuer, onOpenJob: vi.fn(), onChanged: vi.fn(), onClose: vi.fn(), keep: keepFake() as never, mark: vi.fn(async () => []), saveNumber: vi.fn(async () => {}), ...over }
-  renderWithProviders(<LienServeWindow {...props} />)
-  return props
+  // The two fakes keep their own types, so a test can read what they were called with.
+  const readCopy = (over.readCopy ?? readFake()) as ReturnType<typeof readFake>
+  const printRun = (over.printRun ?? printFake()) as ReturnType<typeof printFake>
+  renderWithProviders(<LienServeWindow {...props} readCopy={readCopy} printRun={printRun} />)
+  return { ...props, readCopy, printRun }
 }
 const box = (name: string) => screen.getByRole('checkbox', { name }) as HTMLInputElement
 
@@ -112,11 +118,11 @@ describe('LienServeWindow', () => {
     expect(document.querySelector('[data-landed="yes"]')?.textContent).toBe('2 · After the post office: enter mail numbers')
   })
 
-  it('a print tells the desk which liens’ copies went to the printer', () => {
+  it('a print tells the desk which liens’ copies went to the printer', async () => {
     const onPrinted = vi.fn()
     open({ onPrinted })
-    fireEvent.click(screen.getByRole('button', { name: 'Print 2 liens’ copies · 1 held ▸' }))
-    expect(onPrinted).toHaveBeenCalledWith(['f-2104', 'f-2291'])
+    fireEvent.click(await screen.findByRole('button', { name: 'Print 2 liens’ copies · 1 held ▸' }))
+    await waitFor(() => expect(onPrinted).toHaveBeenCalledWith(['f-2104', 'f-2291']))
   })
 
   it('says how many filed liens owe their copies, the soonest day, and what is late', () => {
@@ -126,17 +132,37 @@ describe('LienServeWindow', () => {
     expect(screen.getByText('5 days late')).toBeTruthy()
   })
 
-  it('prints what is ready behind a mail sheet, files each job’s own papers, and holds the rest with a door', () => {
+  it('reads each saved copy as it opens, and the press waits for them', async () => {
+    let land: (v: LienCopyLoaded) => void = () => {}
+    const slow = new Promise<LienCopyLoaded>((resolve) => {
+      land = resolve
+    })
+    const props = open({ readCopy: readFake({ '1SampleStampedScan2291': slow }) })
+    // One read is still out: the press is dead and says so.
+    const press = await screen.findByRole('button', { name: 'Reading 1 stamped copy…' })
+    expect((press as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(press)
+    expect(props.printRun).not.toHaveBeenCalled()
+    land(scan())
+    expect(((await screen.findByRole('button', { name: 'Print 2 liens’ copies · 1 held ▸' })) as HTMLButtonElement).disabled).toBe(false)
+    // Each ready lien's saved copy is read once, by its job and its file in Drive. A held lien's is not.
+    expect(props.readCopy.mock.calls.map((c) => c.slice(0, 2))).toEqual([['job-2104', '1SampleStampedScan2104'], ['job-2291', '1SampleStampedScan2291']])
+    expect(document.querySelector('[data-lien-serve-doc="2291"] [data-lien-serve-copy-pages]')?.textContent).toBe(' · 2 pages')
+  })
+
+  it('prints what is ready with each lien’s own stamped copy, and holds the rest with a door', async () => {
     const props = open()
-    fireEvent.click(screen.getByRole('button', { name: 'Print 2 liens’ copies · 1 held ▸' }))
-    expect(prints).toHaveLength(1)
-    expect(prints[0]).toContain('data-lien-serve-sheet')
-    expect(prints[0]).toContain('Copies of filed lien affidavits: 4 envelopes')
-    expect(filed.map((f) => [f.filing.kind, f.filing.title, f.filing.how, (f.filing.source as { id: string }).id])).toEqual([
-      ['lien_affidavit_copy', 'Copy of lien affidavit — Job 2104', 'print', 'f-2104'],
-      ['lien_affidavit_copy', 'Copy of lien affidavit — Job 2291', 'print', 'f-2291'],
-    ])
-    expect(filed[0]!.html).not.toContain('data-lien-serve-sheet')
+    fireEvent.click(await screen.findByRole('button', { name: 'Print 2 liens’ copies · 1 held ▸' }))
+    await waitFor(() => expect(props.printRun).toHaveBeenCalledTimes(1))
+    const [run, bytesOf, opts] = props.printRun.mock.calls[0]!
+    expect(run.ready.map((r) => [r.job.jobNumber, r.copy.fileId, r.file.pages, r.envelopes.length])).toEqual([['2104', '1SampleStampedScan2104', 2, 2], ['2291', '1SampleStampedScan2291', 2, 2]])
+    // The bytes the print carries are the ones the read brought.
+    expect(Array.from(bytesOf('f-2291') ?? [])).toEqual([1, 2, 3])
+    expect(opts).toMatchObject({ letter: true, todayYmd: '2026-11-16' })
+    expect(screen.getByText('4 envelopes. A mail sheet prints first and stays in the office. Each print is kept on its job.')).toBeTruthy()
+    expect(document.querySelector('[data-lien-serve-copy-is]')?.textContent).toBe('The copy in each envelope is the clerk’s stamped scan, every page of it. The print opens as one PDF in a new tab.')
+    // The redrawn page's own line is gone with the page.
+    expect(document.body.textContent).not.toContain('Counsel has not said yet that this page counts as the copy')
     const held = within(document.querySelector('[data-lien-serve-held-list]') as HTMLElement)
     expect(held.getByText('2340 · Sample Job')).toBeTruthy()
     expect(held.getByText('no recording number yet.')).toBeTruthy()
@@ -145,6 +171,68 @@ describe('LienServeWindow', () => {
     fireEvent.click(held.getByRole('button', { name: 'Type it on its card ›' }))
     expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Job 2340, document number' }))
     expect(props.onOpenJob).not.toHaveBeenCalled()
+  })
+
+  it('holds a lien with no stamped copy with its reason and its door, and the rest still print', async () => {
+    const props = open({ jobs: [job('2291'), job('2104', { document_url: '' }), job('2400', { document_url: 'https://example.com/scan.pdf' })] })
+    fireEvent.click(await screen.findByRole('button', { name: 'Print 1 lien’s copies · 2 held ▸' }))
+    await waitFor(() => expect(props.printRun).toHaveBeenCalledTimes(1))
+    expect(props.printRun.mock.calls[0]![0].ready.map((r) => r.job.jobNumber)).toEqual(['2291'])
+    const none = document.querySelector('[data-lien-serve-held="no_saved_copy"]') as HTMLElement
+    expect(none.textContent).toContain('2104 · Sample Job')
+    expect(none.textContent).toContain('no stamped copy saved.')
+    expect(none.textContent).toContain('Add the clerk’s stamped scan on the job’s Lien window.')
+    fireEvent.click(within(none).getByRole('button', { name: 'Open the Lien window' }))
+    expect(props.onOpenJob).toHaveBeenCalledWith('job-2104')
+    expect(document.querySelector('[data-lien-serve-held="copy_not_drive"]')?.textContent).toContain('the saved copy is a link the app cannot read.')
+    // Neither was read: there is no file to ask for.
+    expect(props.readCopy).toHaveBeenCalledTimes(1)
+  })
+
+  it('holds a saved copy the app cannot read or cannot print, and says why', async () => {
+    const props = open({
+      jobs: [job('2291'), job('2104'), job('2400')],
+      readCopy: readFake({
+        '1SampleStampedScan2104': { read: { state: 'held', hold: lienCopyUnreadableHold('That file is not in the job’s Drive folder.') }, bytes: null },
+        '1SampleStampedScan2400': { read: { state: 'held', hold: LIEN_COPY_BROKEN_HOLD }, bytes: null },
+      }),
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Print 1 lien’s copies · 2 held ▸' }))
+    await waitFor(() => expect(props.printRun).toHaveBeenCalledTimes(1))
+    expect(props.printRun.mock.calls[0]![0].ready.map((r) => r.job.jobNumber)).toEqual(['2291'])
+    expect(document.querySelector('[data-lien-serve-held="copy_unreadable"]')?.textContent).toContain('the app could not read the saved copy: That file is not in the job’s Drive folder.')
+    expect(document.querySelector('[data-lien-serve-held="copy_broken"]')?.textContent).toContain('the saved copy is a PDF the app cannot open.')
+  })
+
+  it('asks about a saved copy that looks like more than one lien, and prints it on the reader’s word', async () => {
+    const props = open({ jobs: [job('2291'), job('2104')], readCopy: readFake({ '1SampleStampedScan2104': scan(18, 3_900_000) }) })
+    await screen.findByRole('button', { name: 'Print 1 lien’s copies · 1 held ▸' })
+    const ask = document.querySelector('[data-lien-serve-held="copy_several"]') as HTMLElement
+    expect(ask.textContent).toContain('the saved copy has 18 pages, and a stamped lien is usually 2.')
+    expect(within(ask).getByRole('link', { name: 'Open the saved copy ›' }).getAttribute('href')).toBe('https://drive.google.com/file/d/1SampleStampedScan2104/view')
+    fireEvent.click(within(ask).getByRole('button', { name: 'It is this lien alone. Print it' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Print 2 liens’ copies' }))
+    await waitFor(() => expect(props.printRun).toHaveBeenCalledTimes(1))
+    expect(props.printRun.mock.calls[0]![0].ready.map((r) => [r.job.jobNumber, r.file.pages])).toEqual([['2104', 18], ['2291', 2]])
+  })
+
+  it('names a lien the print left out after all, with its reason, and tells the desk of the rest', async () => {
+    const onPrinted = vi.fn()
+    open({ jobs: [job('2291'), job('2104')], onPrinted, printRun: printFake({ '2104': 'its papers could not be put together' }) })
+    fireEvent.click(await screen.findByRole('button', { name: 'Print 2 liens’ copies' }))
+    await waitFor(() => expect(onPrinted).toHaveBeenCalledWith(['f-2291']))
+    const left = document.querySelector('[data-lien-serve-not-printed]') as HTMLElement
+    expect(left.textContent).toContain('1 lien’s copies did not print. It stays here with the reason.')
+    expect(left.textContent).toContain('2104 · Sample Job: its papers could not be put together')
+  })
+
+  it('says so when the browser blocks the new tab, and tells the desk nothing', async () => {
+    const onPrinted = vi.fn()
+    const props = open({ onPrinted, printRun: vi.fn(async (): Promise<LienServePrintResult> => ({ how: 'blocked' })) })
+    fireEvent.click(await screen.findByRole('button', { name: 'Print 2 liens’ copies · 1 held ▸' }))
+    await waitFor(() => expect(props.printRun).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('Popup blocked — allow popups to print.')).toBeTruthy()
+    expect(onPrinted).not.toHaveBeenCalled()
   })
 
   it('a lien held for an address still opens its Lien window', () => {
@@ -391,7 +479,7 @@ describe('LienServeWindow', () => {
   })
 
   it('shows each lien’s document number, county, day filed and stamped lien on its card', () => {
-    open({ jobs: [job('2291', { document_url: 'https://drive.google.com/file/d/made-up-scan/view' }), job('2104')] })
+    open({ jobs: [job('2291', { document_url: 'https://drive.google.com/file/d/made-up-scan/view' }), job('2104', { document_url: '' })] })
     const doc = (n: string) => document.querySelector(`[data-lien-serve-doc="${n}"]`) as HTMLElement
     expect(doc('2291').textContent).toContain('Document no. 2026-2291 · Alder County · filed Nov 13')
     expect(within(doc('2291')).getByRole('link', { name: 'Job 2291, open the stamped lien' }).getAttribute('href')).toBe('https://drive.google.com/file/d/made-up-scan/view')

@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-11-18
+last_updated: 2026-11-19
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -6226,7 +6226,8 @@ Since v2.7883 a copy that keeps a number or a file while its lien has no mailed 
 The press closes the stop's window and opens the place where that is entered, for the office alone: the property record, *Filed liens: copies to mail* at the job's line, or the job's Lien window at the paper's row.
 **Print the copies to mail** and **Enter mail numbers** are the two names of one step, a filed lien's copies under § 53.055, by the stage the copies are at (`lienServeStage.ts`, v2.7798).
 Every door on the desk to that step reads its stage's name and lands on that half: the Board's *Filed · copies to mail* press, the To do row, the band on the job's path, the affidavit pane's footer and the stop window's card.
-A lien's copies count as printed once a print of them is filed on its job, or once a mail number or a receipt is on its filing, and a lien the app did not draw reads **Enter mail numbers** from the start.
+A lien's copies count as printed once a print of its stamped copy is filed on its job (v2.7916, `isStampedPrintSnapshot`): a receipt or a mail number does not say what was in the envelope, and a print of the redrawn page made before v2.7916 does not count.
+A lien with no saved copy cannot print, so a mail number or a receipt on it reads **Enter mail numbers**.
 Since v2.7816 the Lien window's own form for the second half reads the same: its opener is **Enter mail numbers…** (*Record service…* before), its day is *Mailed on*, and its save is **Record the mailing**, then **Save the mail receipts** once the day is on record (`LIEN_SERVE_FORM_WORDS`).
 The names retired from those doors are *Mail the copies*, *Mail N liens' copies ›*, *Mail this copy ›*, *Record the service ›* and *Record service ›*, none of which said whether it opened the print or the record.
 **Landed here** is the light on that place (`landOn.ts`, `[data-landed]`): it is scrolled into view, tinted and ringed for a second and a half, then fades, and under reduced motion a steady outline stands instead.
@@ -6294,6 +6295,8 @@ The title bar's door to the run left every view on a computer in v2.7490, so By 
 a phone keeps the run as the first row of **More**.
 **Filed liens: copies to mail** (v2.7476, punch list #366, `LienServeWindow.tsx`): the window behind *Mail N liens' copies ›* on the Filed · copies to mail bin and its To do rows.
 Its top half prints every filed lien's cover letter and copies by serve-by day and lists what it holds with the reason;
+since v2.7916 the copy in each envelope is the **stamped copy**, the filing's saved copy with every page, read as the window opens (`lienStampedCopy.ts`, `useLienCopyReads.ts`) and printed as one PDF (`lienServePdf.ts`), and the page the app redrew from the filing's fields is gone.
+A lien with no saved copy, or with one the app cannot read or print, is held with its reason and its door, and a saved copy of more than three pages or over 4 MB is asked about before it prints (`lienCopyDoubt`).
 its bottom half takes the day mailed and, for each envelope, the certified mail number and a receipt photo, written as the Lien window's *Enter mail numbers…* form writes them.
 Since v2.7846 everything on it saves by itself and it has no Record press: a tick writes the *Mailed on* day to that lien at once, an untick takes it back, a mail number ticks *Mailed* and a file alone does not (`lienServeNumbers.ts`, `lienServeMailedIo.ts`).
 Since v2.7846 each lien's card shows its **Document number** (the filing's `recording_number`), the county, the day filed and the stamped lien, with **Change** and a check on a typed number (`lienDocNumber.ts`).

@@ -1,9 +1,11 @@
 /**
- * A filed lien affidavit's row as the served copy and its letter read it (punch list #366): the fields the filing
- * keeps, the county, the recording number and the day filed. The copy is drawn from what was filed, never from the
- * job as it stands today, so a name changed since does not change the page that says *as filed*.
+ * A filed lien affidavit's row as its cover letter reads it (punch list #366): the fields the filing keeps, the
+ * county, the recording number and the day filed. The letter states what was filed, never the job as it stands
+ * today. The copy behind the letter is the clerk's stamped scan (`lienStampedCopy.ts`) and reads none of this.
  *
- * Null when the row is not a filed affidavit or keeps no fields: there is nothing to copy. Pure.
+ * Null when the row is not a filed affidavit. A filed affidavit that keeps no fields (recorded by hand, or filed by
+ * counsel) reads with every field blank since v2.7916: its stamped copy still prints, with no letter in front
+ * (`lienServeLetterDrawable`). Pure.
  */
 import type { LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
 import type { LienServeFacts } from '../jobsDocuments/lienServedCopy'
@@ -53,7 +55,7 @@ function storedFields(raw: unknown): LienAffidavitFields | null {
  */
 export function lienServeFactsFromFiling(f: LienServeFiling | null | undefined, ctx: { isSub: boolean; letterYmd: string; phone: string; to?: LienServeFacts['to'] }): LienServeFacts | null {
   if (!f || f.kind !== 'affidavit' || f.voided_at || !f.filed_at) return null
-  const fields = storedFields(f.fields)
+  const fields = storedFields(f.fields) ?? storedFields({})
   if (!fields) return null
   return {
     fields,
