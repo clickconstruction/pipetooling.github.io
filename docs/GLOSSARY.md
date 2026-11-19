@@ -3130,6 +3130,7 @@ Since v2.7859 (punch list #392) the Dashboard's top row carries **Paint a map** 
 The press lands on the job the person is clocked onto, else the stop under way or next today, else the person picks, and a job the press picked can be changed on the start sheet with **Change the job**.
 **The Saved band** (v2.7866, punch list #392) is the green band a painted map's window draws once a save lands in it: *Saved on* the job, what is on the map and who can open it, and on a phone one blue **Text it from my phone…** for whoever may share the map (`PaintedMapSavedBand` over `paintedMapSaved.ts`).
 While the band carries that press **Draw a line** is plain, so the screen has one blue press.
+Since v2.7895 the band's press is the Share sheet's own to the end: the phone picks the link's code and is handed the Messages address inside the press when the server says a link can be made, and the band takes back *The link is ready* once the page is left.
 **Which job is it for?**, the sheet a painter picks a job from (v2.7868, punch list #392), is there because every painted map is on a job: **Today** the day's stops, **Lately** the jobs clocked onto in the last 45 days, then a search of every job (`PaintAMapJobPicker` over `paintedMapJobPicker.ts`).
 It opens first when a map is started with no job, from the start sheet's **Change the job**, and from a map's **Put it on a job…** and **Move it to another job…**.
 A job the person may not paint on, by `on_site_can_touch_job`, is left out of the two lists and is listed grey in the search with its reason.

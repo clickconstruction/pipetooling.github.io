@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', () => ({ supabase: {} }))
-vi.mock('../../lib/paintedMap/paintedMapLinkIo', () => ({ loadPaintedMapLinks: vi.fn(), mintPaintedMapLink: vi.fn(), rememberPaintedMapLink: vi.fn(), rememberedPaintedMapLink: vi.fn(() => null) }))
+vi.mock('../../lib/paintedMap/paintedMapLinkIo', () => ({ loadPaintedMapLinks: vi.fn(), mintPaintedMapLink: vi.fn(), rememberPaintedMapLink: vi.fn(), rememberedPaintedMapLink: vi.fn(() => null), canMakePaintedMapLink: vi.fn(async () => false), pickPaintedMapLinkCode: vi.fn(() => 'pppppppppp'), registerPaintedMapLink: vi.fn() }))
 
 import type { PaintedMapLinkRow } from '../../lib/paintedMap/paintedMapLink'
 import { PaintedMapSavedBand, type PaintedMapSavedBandIo } from './PaintedMapSavedBand'
@@ -29,6 +29,8 @@ const endedLink: PaintedMapLinkRow = { ...openLink, ended_at: '2026-11-18T16:00:
 function makeIo(over: Partial<PaintedMapSavedBandIo> & { kept?: { code: string; endsOn: string | null } | null } = {}) {
   let kept = over.kept ?? null
   const hrefs: string[] = []
+  /** What the band asked to hear when the page is left. A test calls it to leave the page. */
+  const left: Array<() => void> = []
   const io: PaintedMapSavedBandIo = {
     remembered: () => kept,
     remember: vi.fn((_id, link) => {
@@ -40,9 +42,17 @@ function makeIo(over: Partial<PaintedMapSavedBandIo> & { kept?: { code: string; 
       hrefs.push(href)
       return true
     }),
+    // The server from before the question: the band makes the link first, as it always did.
+    canMake: vi.fn(async () => false),
+    pick: vi.fn(() => 'p1ckedc0de'),
+    register: vi.fn(async (_id: string, code: string) => ({ code, endsOn: '2027-02-16' })),
+    onPageLeft: (listener) => {
+      left.push(listener)
+      return () => {}
+    },
     ...over,
   }
-  return { io, hrefs }
+  return { io, hrefs, leavePage: () => left.forEach((l) => l()) }
 }
 
 const band = (io: PaintedMapSavedBandIo, offersText = true) => <PaintedMapSavedBand mapId="m1" mapName="The way in" head="Saved on J2417 · Cedar Hollow 12" under="About 640 ft · 2 places. Anyone on the job can open it." offersText={offersText} origin="https://app.test" io={io} />
@@ -127,5 +137,77 @@ describe('PaintedMapSavedBand', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Text it from my phone…' }))
     await settle()
     expect(screen.getByRole('alert').textContent).toBe('This phone would not open Messages. Copy the link and paste it into a text.')
+  })
+
+  it('with the server\'s word, hands the phone the text inside the press, before the link is back (punch list #394, step 3)', async () => {
+    let land: (v: { code: string; endsOn: string | null }) => void = () => {}
+    const { io, hrefs } = makeIo({ canMake: vi.fn(async () => true), register: vi.fn(() => new Promise<{ code: string; endsOn: string | null }>((resolve) => (land = resolve))) })
+    render(band(io))
+    await settle()
+    expect(document.querySelector('[data-painted-saved-text]')?.getAttribute('data-painted-saved-at-once')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Text it from my phone…' }))
+    // The phone has the address already, with the code this phone picked. The server has not answered yet.
+    expect(io.register).toHaveBeenCalledWith('m1', 'p1ckedc0de')
+    expect(hrefs).toHaveLength(1)
+    expect(decodeURIComponent(hrefs[0]!)).toContain('Open it here: https://app.test/way/p1ckedc0de')
+    expect(io.mint).not.toHaveBeenCalled()
+    await act(async () => land({ code: 'p1ckedc0de', endsOn: '2027-02-16' }))
+    await settle()
+    expect(io.remember).toHaveBeenCalledWith('m1', { code: 'p1ckedc0de', endsOn: '2027-02-16' })
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Text it from my phone…' })).toBeTruthy()
+  })
+
+  it('says not to send the text when the link in it was refused', async () => {
+    const { io } = makeIo({ canMake: vi.fn(async () => true), register: vi.fn(async () => Promise.reject({ message: 'No signal. Check the connection and try again.' })) })
+    render(band(io))
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Text it from my phone…' }))
+    await settle()
+    expect(screen.getByRole('alert').textContent).toBe('No signal. Check the connection and try again. The link in that text will not open. Do not send it.')
+    expect(io.remember).not.toHaveBeenCalled()
+  })
+
+  it('says not to send the text when the server made the link under another code', async () => {
+    const { io } = makeIo({ canMake: vi.fn(async () => true), register: vi.fn(async () => ({ code: 'an0therc0de', endsOn: null })) })
+    render(band(io))
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Text it from my phone…' }))
+    await settle()
+    expect(screen.getByRole('alert').textContent).toBe('The link in that text will not open. Do not send it.')
+  })
+
+  it('takes back The link is ready once the page is left: Messages did open, only later than the wait', async () => {
+    const { io, leavePage } = makeIo({ openMessages: vi.fn(async () => false) })
+    render(band(io))
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Text it from my phone…' }))
+    await settle()
+    expect(document.querySelector('[data-painted-saved-said]')?.textContent).toBe('The link is ready. Press Open Messages.')
+    expect(screen.getByRole('button', { name: 'Open Messages' })).toBeTruthy()
+    act(() => leavePage())
+    expect(document.querySelector('[data-painted-saved-said]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Text it from my phone…' })).toBeTruthy()
+  })
+
+  it('takes back This phone would not open Messages the same way, and leaves another reason alone', async () => {
+    const { io, leavePage } = makeIo({ canMake: vi.fn(async () => true), openMessages: vi.fn(async () => false) })
+    render(band(io))
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Text it from my phone…' }))
+    await settle()
+    expect(screen.getByRole('alert').textContent).toBe('This phone would not open Messages. Copy the link and paste it into a text.')
+    act(() => leavePage())
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('a page left with no hand-off before it changes nothing the band says', async () => {
+    const { io, leavePage } = makeIo({ mint: vi.fn(async () => Promise.reject({ message: 'No signal.' })) })
+    render(band(io))
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Text it from my phone…' }))
+    await settle()
+    act(() => leavePage())
+    expect(screen.getByRole('alert').textContent).toContain('No signal.')
   })
 })

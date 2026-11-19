@@ -266,7 +266,7 @@ the address is known at the moment of the press and nothing waits.
   my phone…** still makes the link first and then opens Messages. On the simulator Messages opened
   with no question, because the link came back fast. The band then read *The link is ready. Press
   Open Messages.* though Messages had opened. That is the false note v2.7863 took out of the
-  sheet, and the band does not yet listen for the page being left. The band can take both: the
+  sheet, and the band did not listen for the page being left. The band took both in v2.7895: the
   sheet's press at once, and its listener.
 - **[#345](../paint-a-map/README.md).** Its rule for copies and its privacy sentences are the list
   above. Nothing on the `/way` page changes.
