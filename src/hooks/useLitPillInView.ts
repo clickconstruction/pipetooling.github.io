@@ -4,19 +4,26 @@ import { scrollLeftToShow } from '../lib/scrollLeftToShow'
 /** How much of the neighbouring pill stays in view beside the lit one, in pixels. */
 export const LIT_PILL_PEEK = 24
 
+/** How a row of tabs marks its lit pill. */
+export const LIT_CURRENT = '[aria-current="true"]'
+/** How a row of toggle presses marks its lit one, as the Permits step strip does. */
+export const LIT_PRESSED = '[aria-pressed="true"]'
+
 /**
  * Keeps the lit pill of a sideways row of pills in view (v2.7878). The row marks its lit pill
- * with `aria-current="true"`. The hook reads where that pill sits and moves the row sideways, and
- * only the row: it sets `scrollLeft` and never calls `scrollIntoView`, which can move the page.
+ * with `aria-current="true"`, or with whatever `litSelector` names (v2.7902, the Permits step
+ * strip, whose presses carry `aria-pressed`). The hook reads where that pill sits and moves the
+ * row sideways, and only the row: it sets `scrollLeft` and never calls `scrollIntoView`, which
+ * can move the page.
  *
  * It runs when the row first draws, when `litKey` changes (the lit pill, and anything that adds or
  * removes a pill) and when the window changes width.
  */
-export function useLitPillInView(rowRef: RefObject<HTMLElement | null>, litKey: string): void {
+export function useLitPillInView(rowRef: RefObject<HTMLElement | null>, litKey: string, litSelector: string = LIT_CURRENT): void {
   useLayoutEffect(() => {
     const show = () => {
       const row = rowRef.current
-      const lit = row?.querySelector<HTMLElement>('[aria-current="true"]')
+      const lit = row?.querySelector<HTMLElement>(litSelector)
       if (!row || !lit) return
       const rowBox = row.getBoundingClientRect()
       const litBox = lit.getBoundingClientRect()
@@ -35,5 +42,5 @@ export function useLitPillInView(rowRef: RefObject<HTMLElement | null>, litKey: 
     show()
     window.addEventListener('resize', show)
     return () => window.removeEventListener('resize', show)
-  }, [rowRef, litKey])
+  }, [rowRef, litKey, litSelector])
 }

@@ -107,4 +107,23 @@ describe('PermitPlaceList, Closed', () => {
     view.rerender(list('closed', rows))
     expect(lit('Has a plumber 1')).toBe('true')
   })
+
+  it('draws a lit chip bold from the first draw, at the chip size (v2.7902)', () => {
+    renderWithProviders(list('closed', [withPlumber('a', '12 KILN LN')]))
+    const on = screen.getByRole('button', { name: 'Has a plumber 1' })
+    const off = screen.getByRole('button', { name: 'Passed 0' })
+    // The whole-font shorthand came last in the style and reset both, so a lit chip drew at weight 400 and 16 px.
+    // The chip now takes the family alone from the page (jsdom drops the shorthand, so the family is the tell).
+    expect(on.style.fontFamily).toBe('inherit')
+    expect(on.style.fontWeight).toBe('600')
+    expect(on.style.fontSize).toBe('0.78rem')
+    expect(off.style.fontWeight).toBe('400')
+    // A press moves the weight with the light, and React has no shorthand to warn about.
+    const warned = vi.spyOn(console, 'error').mockImplementation(() => {})
+    fireEvent.click(off)
+    expect(off.style.fontWeight).toBe('600')
+    expect(on.style.fontWeight).toBe('400')
+    expect(warned).not.toHaveBeenCalled()
+    warned.mockRestore()
+  })
 })

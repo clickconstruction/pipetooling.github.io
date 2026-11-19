@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
@@ -66,6 +66,7 @@ import { notPursuingVerdict, placeCounts, pursueReason, stripCounts, type SkimLi
 import { GoogleSearchPress } from './GoogleSearchPress'
 import { googleAsksForContact } from '../../lib/research/permitPublic'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { LIT_PRESSED, useLitPillInView } from '../../hooks/useLitPillInView'
 
 /**
  * Research (punch list #292): the permit ledger under Prospects. A city's building permits and
@@ -264,6 +265,11 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const strip = useMemo(() => stripCounts(places, onDeck ? skimLive : null), [places, onDeck, skimLive])
   // What someone else passed and nobody has looked at twice. The open deck's own number while it is open.
   const secondLeft = useMemo(() => (view === 'second' && skimLive?.mode === 'second' ? skimLive.left : secondLookCount(allRows, floor, authUserId)), [view, skimLive, allRows, floor, authUserId])
+  // What someone else passed rides on Skim as a grey segment to its right: a phone shows it without a scroll.
+  const secondJoined = !allLoading && showsSecondLookSegment(secondLeft, view === 'second')
+  // On a phone the strip scrolls sideways. The lit step comes into view when the tab opens on it and when it changes (v2.7902).
+  const stepRowRef = useRef<HTMLDivElement>(null)
+  useLitPillInView(stepRowRef, [view, isMobile, phoneSkim, allLoading, secondJoined, city].join(':'), LIT_PRESSED)
   /** An answer was written: the row reads it at once, so the strip and the lists do not wait on a reload. */
   const patchRow = useCallback(
     (permitId: string, patch: AnsweredPatch) => {
@@ -443,7 +449,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         </button>
       </div>
 
-      <div role="group" aria-label="Where the permits are" style={{ display: 'flex', gap: 6, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : undefined, WebkitOverflowScrolling: 'touch', alignItems: 'center', paddingBottom: isMobile ? 2 : 0 }}>
+      <div ref={stepRowRef} role="group" aria-label="Where the permits are" style={{ display: 'flex', gap: 6, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : undefined, WebkitOverflowScrolling: 'touch', alignItems: 'center', paddingBottom: isMobile ? 2 : 0 }}>
         {/* Find a permit: first on the strip, so a phone shows it without a scroll. */}
         <button
           type="button"
@@ -480,8 +486,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
           ] as const
         ).map((step) => {
           const on = view === step.v
-          // What someone else passed rides on Skim as a grey segment to its right: a phone shows it without a scroll.
-          const joined = step.v === 'skim' && !allLoading && showsSecondLookSegment(secondLeft, view === 'second')
+          const joined = step.v === 'skim' && secondJoined
           const chip = (
             <button
               key={step.v}
