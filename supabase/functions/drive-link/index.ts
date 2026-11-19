@@ -25,6 +25,8 @@ import { indexCheck } from '../_shared/fileIndexCheck.ts'
 import { rehomeFiles } from '../_shared/fileIndexRehome.ts'
 import {
   DRIVE_FOLDER_MIME,
+  DRIVE_READ_WORDS,
+  READ_CAP_BYTES,
   STREAM_CAP_BYTES,
   bytesOfBase64,
   contentDisposition,
@@ -58,7 +60,7 @@ import { JOB_PAPERS_LOCK_WORDS, jobsShutToUser } from '../_shared/jobPapersLock.
  *   GET ?t=<link>&raw=1    → the Team only file's bytes, streamed from Drive and never held whole, capped at 50 MB.
  *
  * The office's door, a signed-in member of the office team (dev, master_technician, assistant, controller, estimator),
- * never a digital twin, as gc-drive-access checks. A training account lists and opens, the reads, and changes nothing.
+ * never a digital twin, as gc-drive-access checks. A training account lists, opens and reads a file, the reads, and changes nothing.
  * verify_jwt is off and the check is here.
  *
  *   POST { action: 'list', job }                       → the job's folder in its two halves (`DriveFileRow`s)
@@ -106,6 +108,9 @@ import { JOB_PAPERS_LOCK_WORDS, jobsShutToUser } from '../_shared/jobPapersLock.
  *                                                        to the job's photos named by day, sender and caption (cut 10)
  *   POST { action: 'open', job, driveFileId }            → Drive's own viewer for a file inside the job's folder, for
  *                                                        the office's /files/drive/<id> page → { url }
+ *   POST { action: 'read', job, driveFileId }            → the bytes of a file inside the job's folder, as an octet stream,
+ *                                                        up to 30 MB, for a paper the app prints from the file (a filed
+ *                                                        lien's stamped scan into the copies to mail); a read
  *   POST { action: 'list_company' }                      → the company papers folder's files (the office's setting
  *                                                        `drive_company_folder_id`, Documents → Where files go) → { files,
  *                                                        capped, folder: { id, url } }; 409 while no folder is set
@@ -373,7 +378,7 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   const ask = parseOfficeAsk(body)
   if (!ask) return json({ error: 'That is not an ask this door takes.' }, 400)
   // Training mode reads everything and writes nothing: a list and an open are reads.
-  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'search' && ask.action !== 'search_index' && ask.action !== 'list_company' && ask.action !== 'ocr_probe' && ask.action !== 'embed_probe') return json({ error: 'A training account cannot change Drive.' }, 403)
+  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'read' && ask.action !== 'search' && ask.action !== 'search_index' && ask.action !== 'list_company' && ask.action !== 'ocr_probe' && ask.action !== 'embed_probe') return json({ error: 'A training account cannot change Drive.' }, 403)
   if (ask.action === 'put_company' && !COMPANY_PUT_ROLES.includes(String(who.role))) return json({ error: 'The office puts papers in the company folder.' }, 403)
   // The index answers from our own table: no Drive token for it, so a search costs no token exchange and Google being
   // down costs the floor alone, never the index.
@@ -561,6 +566,36 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   if (ask.action === 'open') {
     if (!(await halfInside(google, folder, ask.driveFileId))) return json({ error: 'That file is not in the job’s Drive folder.' }, 403)
     return json({ url: driveViewUrl(ask.driveFileId) })
+  }
+
+  if (ask.action === 'read') {
+    // The file's own bytes, to the signed-in office reader and for a file inside this job's folder alone: the same
+    // check `open` makes. Passed through as Drive sends them and never held whole.
+    if (!(await halfInside(google, folder, ask.driveFileId))) return json({ error: DRIVE_READ_WORDS.notInFolder, why: 'not_in_folder', retry: false }, 403)
+    const meta = await driveGet<{ mimeType?: string; trashed?: boolean }>(google, `${DRIVE}/files/${encodeURIComponent(ask.driveFileId)}?fields=mimeType,trashed&supportsAllDrives=true`)
+    if (meta.trashed) return json({ error: DRIVE_READ_WORDS.trashed, why: 'trashed', retry: false }, 409)
+    if ((meta.mimeType ?? '').startsWith('application/vnd.google-apps.')) return json({ error: DRIVE_READ_WORDS.noBytes, why: 'no_bytes', retry: false }, 415)
+    const file = await driveMedia(google, ask.driveFileId)
+    if (!file.ok || !file.body) {
+      void file.body?.cancel().catch(() => {})
+      return json({ error: DRIVE_READ_WORDS.unanswered, why: 'unanswered', retry: true }, 502)
+    }
+    const length = Number(file.headers.get('Content-Length') ?? '')
+    if (Number.isFinite(length) && length > READ_CAP_BYTES) {
+      void file.body.cancel().catch(() => {})
+      return json({ error: DRIVE_READ_WORDS.tooBig, why: 'too_big', retry: false }, 413)
+    }
+    // Always an octet stream: the reader tells a PDF from a picture by the file's first bytes, never by a type Drive guessed.
+    return new Response(file.body, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/octet-stream',
+        'Cache-Control': 'private, no-store',
+        'X-Content-Type-Options': 'nosniff',
+        ...(file.headers.get('Content-Length') ? { 'Content-Length': file.headers.get('Content-Length')! } : {}),
+      },
+    })
   }
 
   // ask.action === 'link'
