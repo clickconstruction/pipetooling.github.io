@@ -42,13 +42,15 @@ function bid(over: Partial<NewsBid> = {}): NewsBid {
 }
 
 /** The board's wiring in small: the hook, the strip with the board's outcome window, and one row's chip. */
-function Board({ bids, enabled, onOpen, packetsByBid, onChanged }: { bids: NewsBid[]; enabled: boolean; onOpen: (id: string) => void; packetsByBid?: Record<string, GcPacket[]>; onChanged?: () => void }) {
+function Board({ bids, enabled, onOpen, packetsByBid, onChanged, isMine, othersAlone }: { bids: NewsBid[]; enabled: boolean; onOpen: (id: string) => void; packetsByBid?: Record<string, GcPacket[]>; onChanged?: () => void; isMine?: (bidId: string) => boolean; othersAlone?: boolean }) {
   const permitNews = useBidPermitNews(bids, enabled)
   return (
     <div>
       <BidBoardPermitNews
         news={permitNews.news}
         onOpenBid={onOpen}
+        isMine={isMine}
+        othersAlone={othersAlone}
         renderMarkLost={(bidId, close) => <BidBoardNewsMarkLost bid={{ id: bidId, outcome: null }} packets={packetsByBid?.[bidId]} onChanged={onChanged ?? (() => {})} onClose={close} />}
       />
       {bids.map((b) => (
@@ -185,5 +187,46 @@ describe('permit news on the Bid Board', () => {
     expect(screen.getAllByRole('button', { name: 'Open the bid' })).toHaveLength(4)
     fireEvent.click(screen.getByRole('button', { name: 'See 2 more ›' }))
     expect(screen.getAllByRole('button', { name: 'Open the bid' })).toHaveLength(6)
+  })
+})
+
+// Punch list #401: the strip is the reader's own.
+describe('permit news for its reader', () => {
+  const bids = [
+    bid(),
+    bid({ id: 'b2', bid_number: '501', project_name: 'Pecan Grove Pharmacy', address: '88 Harbor St, San Antonio, TX 78205', bid_date_sent: '2026-02-01' }),
+  ]
+
+  it('lists the reader’s own lines, counts them, and folds everyone else’s behind one quiet line', async () => {
+    renderWithProviders(<Board bids={bids} enabled onOpen={() => {}} isMine={(id) => id === 'b1'} />)
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Permit news on your bids' })).toBeTruthy())
+    expect(screen.getAllByText(/^5\d\d · /).map((e) => e.textContent)).toEqual(['512 · Mill Street Lofts, Building C'])
+    const others = screen.getByTestId('permit-news-others')
+    expect(others.textContent).toContain('Permit news on other people’s bids')
+    expect(others.textContent).toContain('1')
+    // The other person's line, and its Mark lost…, show on the press and fold on the next.
+    expect(screen.queryByText('501 · Pecan Grove Pharmacy')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Mark lost…' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'See them ›' }))
+    expect(screen.getByText('501 · Pecan Grove Pharmacy')).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Mark lost…' })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Hide them' }))
+    expect(screen.queryByText('501 · Pecan Grove Pharmacy')).toBeNull()
+  })
+
+  it('draws no strip for an estimator with no line of their own, though the rows keep their chips', async () => {
+    renderWithProviders(<Board bids={bids} enabled onOpen={() => {}} isMine={() => false} />)
+    await waitFor(() => expect(screen.getByTestId('row-b2').textContent).toBe('Plumbing permit · another name'))
+    expect(screen.queryByRole('region')).toBeNull()
+    expect(screen.queryByTestId('permit-news-others')).toBeNull()
+  })
+
+  it('keeps one quiet line for an office reader with no line of their own', async () => {
+    renderWithProviders(<Board bids={bids} enabled onOpen={() => {}} isMine={() => false} othersAlone />)
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Permit news on other people’s bids' })).toBeTruthy())
+    expect(screen.queryByText('Permit news on your bids')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Open the bid' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'See them ›' }))
+    expect(screen.getAllByRole('button', { name: 'Open the bid' })).toHaveLength(2)
   })
 })

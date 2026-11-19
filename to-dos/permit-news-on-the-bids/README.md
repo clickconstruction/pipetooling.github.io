@@ -1,8 +1,8 @@
 ---
 name: "Permit news on Followup: a red count of your own bids' new lines, each answered in one press"
 number: 401
-group: gated
-status: asked 2026-11-19 with a screenshot of the Bid Board · the live lines counted through the app's own kernel, read only · the board drawn as it is and five ways it could be · the owner then chose Followup with a red count, to verify or ignore · that direction drawn at a desk and a phone, in both themes, with a second look · the owner asked whether it was intuitive, easy and well structured, and a third look redrew the card · PR 1 (the three rules, and the strip as the reader's own) written and tested on its branch, not merged · the owner picks the place on Followup and says go
+group: ready
+status: asked 2026-11-19 with a screenshot of the Bid Board · the live lines counted through the app's own kernel, read only · the board drawn as it is and five ways it could be · the owner then chose Followup with a red count, to verify or ignore · that direction drawn at a desk and a phone, in both themes, with a second look · the owner asked whether it was intuitive, easy and well structured, and a third look redrew the card · the owner said build it · PR 1 (the three rules, and the strip as the reader's own) shipped as v2.7923 · PR 2, the answers, is next
 summary: >
   An estimator asked for the strip Permit news on your bids to move lower on the Bid Board or
   onto Followup. The live lines say the place is the smaller problem: the strip lists every
@@ -14,11 +14,11 @@ summary: >
   press: on a plumber's permit We lost it…, Still waiting or Not our job, and on a building
   permit Got it or Not our job. Three rules in the kernel drop the lines the records can rule out before
   anyone is asked. An answered line rides as a chip on the bid wherever it is chased.
-next: The owner picks the place on Followup (a lens of its own, a band on the Call queue, or a lens Followup opens on) and says whether PR 1 ships now. Calls 1 to 6 below, each with a pick.
+next: PR 2, the answers table with its read and its sorting kernel, then PR 3, the lens and the red count. The owner took the picks under The calls as they stand.
 size: M as a train of four (S · S · M · S), a fifth only if asked
-blocker: The owner's pick of the place, and his go.
-ver: v2.6870 (the strip and the row's chip) · v2.6960 (Mark lost… on a line)
-opinion: build, PR 1 first — three of today's lines offer Mark lost… on a bid for a permit that is on another suite, and that is a wrong press to offer whatever the layout
+blocker: none
+ver: v2.6870 (the strip and the row's chip) · v2.6960 (Mark lost… on a line) · v2.7923 (the three rules, and the strip as the reader's own)
+opinion: build — the owner chose Followup and said go; the rules are in, the answers table is next
 ---
 
 # Permit news on the bids (#401)
@@ -348,10 +348,9 @@ lens.
 
 Each PR ships with its release note, its fragment and the guide's change.
 
-1. **The rules, and yours first (S).** Written and tested on `claude/permit-news-rules`
-   (claimed v2.7923), held for the owner's go. The three rules in the kernel, with a case for
-   each of the eight live shapes. The strip, still on the board, lists the reader's own lines.
-   No migration.
+1. **The rules, and yours first (S). Shipped, v2.7923.** The three rules in the kernel, with a
+   case for each of the eight live shapes. The strip, still on the board, lists the reader's own
+   lines. **This site** says how many permits on another suite it left out. No migration.
 2. **The answers (S).** The migration (`SET lock_timeout`, the four fence calls, its doc), the
    read, the writes, and the kernel that sorts a reader's lines. No screen. Pushed right after
    the merge.

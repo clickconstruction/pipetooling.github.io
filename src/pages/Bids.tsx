@@ -313,6 +313,11 @@ export default function Bids() {
       !!authUser?.id && (bid.account_manager_id === authUser.id || bid.estimator_id === authUser.id || bidsMarkedForMe.has(bid.id)),
     [authUser?.id, bidsMarkedForMe],
   )
+  // Permit news is the reader's own (punch list #401). Every estimator researches permits, so a reader who is not one is the office.
+  const permitNewsReader = useMemo(
+    () => ({ isMine: isMyBid, plumbingServiceTypeId: plumbingServiceTypeIdOf(serviceTypes), office: myRole !== 'estimator' }),
+    [isMyBid, serviceTypes, myRole],
+  )
   // Bid Date Sent: the field, the checklist a new date needs, the note typed with it (hooks/useBidDateSentAttestation).
   const attestation = useBidDateSentAttestation({ serverBidDateSent: editingBid?.bid_date_sent ?? null, userId: authUser?.id ?? null })
   const bidDateSent = attestation.bidDateSent
@@ -1977,6 +1982,7 @@ export default function Bids() {
       {activeTab === 'bid-board' && (
         <BidsBidBoardTab
           showPermitNews={canResearchPermits(myRole)}
+          permitNewsReader={permitNewsReader}
           contactPersonNameById={contactPersonNameById}
           jobAccountStrips={jobAccountStrips}
           onOpenJobAccountsLens={() => selectBidsTab('job-accounts')}

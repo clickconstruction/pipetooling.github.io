@@ -5,6 +5,8 @@ import {
   canonOfStreet,
   leadPermit,
   looksLikeThisJob,
+  onAnotherUnit,
+  permitsOnOtherUnits,
   permitsOnSite,
   plumbingListing,
   plumbingTypeOf,
@@ -12,6 +14,7 @@ import {
   sameSite,
   seenOutOfWords,
   siteSourceLine,
+  unitsOf,
   type BidSite,
   type BidSitePermit,
 } from './bidSite'
@@ -192,6 +195,81 @@ describe('permitsOnSite', () => {
 
   it('finds nothing for a bid that is not a site', () => {
     expect(permitsOnSite(readBidAddress('BLANCO', READ), [permit()])).toEqual([])
+  })
+
+  it('leaves out a permit that names another suite, and says nothing when either side names none', () => {
+    const rows = [
+      permit({ id: 'shell' }),
+      permit({ id: 'ours', project_name: 'Building No: ; Unit No: 255' }),
+      permit({ id: 'next-door', project_name: 'Building No: 1; Unit No: 130' }),
+      permit({ id: 'no-unit', project_name: 'Building No: 1; Unit No: N/A' }),
+      permit({ id: 'in-the-street', address: '4120 MILL ST STE 300' }),
+    ]
+    const suite = site('4120 Mill Street, Suite 255, San Antonio, TX 78215')
+    expect(suite.units).toEqual(['255'])
+    expect(permitsOnSite(suite, rows).map((p) => p.id)).toEqual(['shell', 'ours', 'no-unit'])
+    expect(permitsOnOtherUnits(suite, rows).map((p) => p.id)).toEqual(['next-door', 'in-the-street'])
+    // A bid typed without its suite sits on the whole address: every permit stays.
+    const whole = site('4120 Mill Street, San Antonio, TX 78215')
+    expect(whole.units).toBeNull()
+    expect(permitsOnSite(whole, rows)).toHaveLength(5)
+    expect(permitsOnOtherUnits(whole, rows)).toEqual([])
+  })
+
+  it('counts a permit on another suite once when both feeds carry it', () => {
+    const applied = permit({ id: 'a', permit_number: 'COM-9', stage: 'applied', address: '4120 MILL ST UNIT 300' })
+    const issued = permit({ id: 'b', permit_number: 'COM-9', stage: 'issued', address: '4120 MILL ST UNIT 300' })
+    expect(permitsOnOtherUnits(site('4120 Mill St #255, San Antonio, TX'), [applied, issued]).map((p) => p.id)).toEqual(['b'])
+  })
+})
+
+describe('the suite a line names', () => {
+  it('reads a bid’s suite however it is typed', () => {
+    expect(unitsOf('2014 Stone Ridge Parkway Suite 255')).toEqual(['255'])
+    expect(unitsOf('88 Harbor St, Bldg. 14, Ste. 1410')).toEqual(['1410'])
+    expect(unitsOf('310 Alder Row #4')).toEqual(['4'])
+    expect(unitsOf('310 Alder Row, Unit A')).toEqual(['a'])
+    expect(unitsOf('310 Alder Row Suite #0120')).toEqual(['120'])
+    expect(unitsOf('310 Alder Row Suite 100 & 110')).toEqual(['100', '110'])
+    expect(site('310 Alder Row Suite B San Antonio, TX').units).toEqual(['b'])
+  })
+
+  it('reads a feed’s suite: in the address, or in San Antonio’s project line', () => {
+    expect(unitsOf('6800 WEST GATE BLVD UNIT 143')).toEqual(['143'])
+    expect(unitsOf('2101 E ST ELMO RD BLDG 3 UNIT 347')).toEqual(['347'])
+    expect(unitsOf('3939 S IH 35 STE 214B')).toEqual(['214b'])
+    expect(unitsOf('111 S UNION AVE #123')).toEqual(['123'])
+    expect(unitsOf('Building No: ; Unit No: 101, 102')).toEqual(['101', '102'])
+    expect(unitsOf('Building No: 2; Unit No: 130')).toEqual(['130'])
+  })
+
+  it('reads none where a line names none', () => {
+    expect(unitsOf('4120 MILL ST')).toBeNull()
+    expect(unitsOf('Building No: 1; Unit No: N/A')).toBeNull()
+    expect(unitsOf('Building No: ; Unit No: n/a')).toBeNull()
+    expect(unitsOf('Building No: 3; Unit No: ')).toBeNull()
+    // A building is not a suite, and a floor holds many.
+    expect(unitsOf('2101 E St Elmo Rd Bldg 3')).toBeNull()
+    expect(unitsOf('325 W 6TH ST UNIT FL17')).toBeNull()
+    // A street or a project that only carries the word.
+    expect(unitsOf('1200 Space Center Blvd')).toBeNull()
+    expect(unitsOf('2401 MISSION FLAT PARK RA#2401')).toBeNull()
+    expect(unitsOf(null)).toBeNull()
+  })
+
+  it('takes two suites for different only when both are named and none is shared', () => {
+    expect(onAnotherUnit(['255'], ['130'])).toBe(true)
+    expect(onAnotherUnit(['a'], ['b'])).toBe(true)
+    expect(onAnotherUnit(['255'], ['255'])).toBe(false)
+    expect(onAnotherUnit(['101'], ['101', '102'])).toBe(false)
+    // "214" and "214B" are one door. "214A" and "214B" are two.
+    expect(onAnotherUnit(['214'], ['214b'])).toBe(false)
+    expect(onAnotherUnit(['214a'], ['214b'])).toBe(true)
+    // A run of suites holds the numbers inside it.
+    expect(onAnotherUnit(['100-110'], ['105'])).toBe(false)
+    expect(onAnotherUnit(['100-110'], ['120'])).toBe(true)
+    expect(onAnotherUnit(null, ['130'])).toBe(false)
+    expect(onAnotherUnit(['255'], null)).toBe(false)
   })
 })
 

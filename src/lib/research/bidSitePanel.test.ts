@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { gcJobsView, numbersToAsk, siteCountWords, sitePermitLine, sitePermitLines, sitePermitOrder, siteTiles, stageChip, type GcBid, type SitePermitRow } from './bidSitePanel'
+import { gcJobsView, numbersToAsk, otherSuiteWords, siteCountWords, sitePermitLine, sitePermitLines, sitePermitOrder, siteTiles, stageChip, type GcBid, type SitePermitRow } from './bidSitePanel'
 import { ourNameKeys } from './ourNames'
 
 // Every name, address and number here is made up.
@@ -60,6 +60,9 @@ describe('the site’s list', () => {
   it('counts what we can see on the street', () => {
     expect(siteCountWords(3, '4120 Mill Street')).toBe('3 permits we can see on 4120 Mill Street')
     expect(siteCountWords(1, '4120 Mill Street')).toBe('1 permit we can see on 4120 Mill Street')
+    expect(otherSuiteWords(0)).toBeNull()
+    expect(otherSuiteWords(1)).toBe('1 more permit on this street number names another suite. It is left out.')
+    expect(otherSuiteWords(3)).toBe('3 more permits on this street number name another suite. They are left out.')
   })
 })
 

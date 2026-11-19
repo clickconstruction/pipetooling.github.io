@@ -14,8 +14,10 @@ const NOTHING: { chips: Map<string, Chip>; news: NewsItem[] } = { chips: new Map
  * read are asked once; the chips and the news are worked out here. A failed read, or the read
  * not on the database yet, draws nothing: the board is whole without it. `ourKeys` are the names
  * that are us on a plumbing permit (`useOurPermitNames`); the board passes them in.
+ * `plumbingServiceTypeId` is the Plumbing trade, so a plumbing permit is news on a plumbing bid
+ * only; null leaves the trade unchecked.
  */
-export function useBidPermitNews(bids: readonly NewsBid[], enabled: boolean, ourKeys: OurNameKeys = NO_OUR_KEYS): { chips: Map<string, Chip>; news: NewsItem[] } {
+export function useBidPermitNews(bids: readonly NewsBid[], enabled: boolean, ourKeys: OurNameKeys = NO_OUR_KEYS, plumbingServiceTypeId: string | null = null): { chips: Map<string, Chip>; news: NewsItem[] } {
   const undecided = useMemo(() => (enabled ? bids.filter((b) => b.outcome == null) : []), [bids, enabled])
   const asks = useMemo(() => numbersToAsk(undecided, RESEARCH_CITIES), [undecided])
   // The read runs again only when the set of house numbers changes, not on every reload of the board.
@@ -50,5 +52,5 @@ export function useBidPermitNews(bids: readonly NewsBid[], enabled: boolean, our
     }
   }, [asksKey])
 
-  return useMemo(() => (permits ? bidPermitNews(undecided, permits, RESEARCH_CITIES, todayYmdInAppTz(), ourKeys) : NOTHING), [permits, undecided, ourKeys])
+  return useMemo(() => (permits ? bidPermitNews(undecided, permits, RESEARCH_CITIES, todayYmdInAppTz(), ourKeys, plumbingServiceTypeId) : NOTHING), [permits, undecided, ourKeys, plumbingServiceTypeId])
 }

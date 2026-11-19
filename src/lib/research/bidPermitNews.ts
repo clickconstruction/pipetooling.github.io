@@ -23,6 +23,10 @@ export type NewsBid = {
   outcome: string | null
   bid_date_sent: string | null
   last_contact?: string | null
+  /** When the bid was started. A plumbing permit older than that is not an answer to the bid. Left out, the rule says nothing. */
+  created_at?: string | null
+  /** The bid's trade. A plumbing permit is news on a plumbing bid; left out, the trade is not checked. */
+  service_type_id?: string | null
 }
 
 export type NewsKind = 'plumbing' | 'ours' | 'issued' | 'applied'
@@ -32,7 +36,19 @@ export type NewsItem = { bidId: string; kind: NewsKind; title: string; words: st
 /** How long an issued permit or a new application stays news. A plumbing permit under another name stays while the bid is undecided. */
 export const NEWS_DAYS = 30
 
+/**
+ * A plumbing permit under another name that was there before the bid was started is not an answer
+ * to the bid. For this long before, it is worth knowing while pricing and the row says so quietly.
+ * Older than this it is the address's history, and it stays in the bid's This site list.
+ */
+export const BEFORE_BID_DAYS = 183
+
 const KIND_ORDER: Record<NewsKind, number> = { plumbing: 0, ours: 1, issued: 2, applied: 3 }
+
+/** The quiet chip on a bid whose address had a plumbing permit under another name before the bid was started. It is no news and offers nothing. */
+export function beforeBidChip(day: string, todayYmd: string): Chip {
+  return { words: `Plumbing permit here since ${shortDay(day, todayYmd)}`, tone: 'grey' }
+}
 
 /** The chip on a bid whose address carries a general plumbing permit that lists one of our names. */
 export const OURS_BOARD_CHIP: Chip = { words: 'Plumbing permit · ours', tone: 'green' }
@@ -48,8 +64,21 @@ function agoWords(days: number | null): string | null {
  * The chip on each undecided bid's row and the news above the board. `permitsByCity` is
  * `bid_site_permits`' answer per city. A robot's copy of a bid and a decided bid get neither.
  * `ourKeys` are the names that are us on a plumbing permit; with none, every line reads as before.
+ *
+ * Three rules keep a line off a bid it is not true of (punch list #401). A permit on another suite
+ * is not on the bid's site (`permitsOnSite`). A plumbing permit is read on a plumbing bid only:
+ * `plumbingServiceTypeId` is the Plumbing type, and null leaves the trade unchecked. A plumbing
+ * permit under another name from before the bid was started is no news: a quiet chip for
+ * `BEFORE_BID_DAYS`, nothing after.
  */
-export function bidPermitNews(bids: readonly NewsBid[], permitsByCity: ReadonlyMap<string, readonly SitePermitRow[]>, readCities: readonly string[], todayYmd: string, ourKeys: OurNameKeys = NO_OUR_KEYS): { chips: Map<string, Chip>; news: NewsItem[] } {
+export function bidPermitNews(
+  bids: readonly NewsBid[],
+  permitsByCity: ReadonlyMap<string, readonly SitePermitRow[]>,
+  readCities: readonly string[],
+  todayYmd: string,
+  ourKeys: OurNameKeys = NO_OUR_KEYS,
+  plumbingServiceTypeId: string | null = null,
+): { chips: Map<string, Chip>; news: NewsItem[] } {
   const chips = new Map<string, Chip>()
   const news: NewsItem[] = []
   for (const bid of bids) {
@@ -60,7 +89,9 @@ export function bidPermitNews(bids: readonly NewsBid[], permitsByCity: ReadonlyM
     if (onSite.length === 0) continue
     const lead = leadPermit(bid.project_name, onSite)
     const building = lead && lead.kind === 'building' ? lead : null
-    const general = [...onSite].sort((a, b) => dayOf(b).localeCompare(dayOf(a))).find((p) => plumbingTypeOf(p.permit_type) === 'general') ?? null
+    // A plumbing permit says nothing about who has the electrical work.
+    const plumbingBid = plumbingServiceTypeId == null || bid.service_type_id == null || bid.service_type_id === plumbingServiceTypeId
+    const general = plumbingBid ? ([...onSite].sort((a, b) => dayOf(b).localeCompare(dayOf(a))).find((p) => plumbingTypeOf(p.permit_type) === 'general') ?? null) : null
     const listing = general ? plumbingListing(general, building, ourKeys) : null
     const title = [bid.bid_number?.trim() || null, bid.project_name ?? 'A bid'].filter(Boolean).join(' · ')
     const sent = bid.bid_date_sent != null
@@ -84,24 +115,36 @@ export function bidPermitNews(bids: readonly NewsBid[], permitsByCity: ReadonlyM
         continue
       }
     }
+    /** The quiet chip of a plumbing permit that was there before the bid. A building permit that is news takes the row's chip instead. */
+    let quiet: Chip | null = null
     if (general && listing && !ours && !listing.same && listing.name != null) {
-      chips.set(bid.id, { words: 'Plumbing permit · another name', tone: 'red' })
       const day = dayOf(general)
-      news.push({
-        bidId: bid.id,
-        kind: 'plumbing',
-        title,
-        day,
-        markLost: sent,
-        words: `A general plumbing permit ${general.stage === 'applied' ? 'was applied for' : 'was issued'} on this address${day ? ` ${shortDay(day)}` : ''}. It lists ${listing.name}. ${sent ? 'The bid is not yet won or lost.' : 'The bid is not sent yet.'}`,
-      })
+      // How many days before the bid was started the permit is dated. Null when either day is missing: the rule says nothing.
+      const before = day && bid.created_at ? daysBetween(day, bid.created_at.slice(0, 10)) : null
+      if (before == null || before <= 0) {
+        chips.set(bid.id, { words: 'Plumbing permit · another name', tone: 'red' })
+        news.push({
+          bidId: bid.id,
+          kind: 'plumbing',
+          title,
+          day,
+          markLost: sent,
+          words: `A general plumbing permit ${general.stage === 'applied' ? 'was applied for' : 'was issued'} on this address${day ? ` ${shortDay(day)}` : ''}. It lists ${listing.name}. ${sent ? 'The bid is not yet won or lost.' : 'The bid is not sent yet.'}`,
+        })
+        continue
+      }
+      if (before <= BEFORE_BID_DAYS) quiet = beforeBidChip(day, todayYmd)
+    }
+    if (!building) {
+      if (quiet) chips.set(bid.id, quiet)
       continue
     }
-    if (!building) continue
-    if (!ours) chips.set(bid.id, stageChip(building))
     const day = dayOf(building)
     const age = daysBetween(day || null, todayYmd)
-    if (age == null || age < 0 || age > NEWS_DAYS) continue
+    const fresh = age != null && age >= 0 && age <= NEWS_DAYS
+    if (quiet && !fresh) chips.set(bid.id, quiet)
+    else if (!ours) chips.set(bid.id, stageChip(building))
+    if (!fresh) continue
     if (building.stage === 'issued') {
       const contact = sent ? agoWords(daysBetween(bid.last_contact ? bid.last_contact.slice(0, 10) : null, todayYmd)) : null
       news.push({ bidId: bid.id, kind: 'issued', title, day, markLost: false, words: `The building permit on this address was issued ${shortDay(day)}.${contact ? ` Last contact ${contact}.` : sent ? '' : ' The bid is not sent yet.'}` })
@@ -116,6 +159,21 @@ export function bidPermitNews(bids: readonly NewsBid[], permitsByCity: ReadonlyM
 
 /** "Permit news on your bids". The count sits beside it. */
 export const NEWS_TITLE = 'Permit news on your bids'
+
+/** The strip's second, quiet list: the lines on bids that are not the reader's. */
+export const OTHERS_NEWS_TITLE = 'Permit news on other people’s bids'
+
+/**
+ * The news for one reader (punch list #401): the lines on their own bids, and everyone else's
+ * apart. `isMine` is the board's own answer (you estimate it, you manage it, or it was marked for
+ * you). The order within each list is the kernel's.
+ */
+export function newsForReader(news: readonly NewsItem[], isMine: (bidId: string) => boolean): { mine: NewsItem[]; others: NewsItem[] } {
+  const mine: NewsItem[] = []
+  const others: NewsItem[] = []
+  for (const n of news) (isMine(n.bidId) ? mine : others).push(n)
+  return { mine, others }
+}
 
 /** The second press on a plumbing line of a sent bid. */
 export const MARK_LOST_LABEL = 'Mark lost…'

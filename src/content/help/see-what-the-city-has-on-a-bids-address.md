@@ -2,7 +2,7 @@
 title: see what the city has on a bid's address
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: ours, our permit, our names, names that are us, mark lost, link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
+keywords: ours, our permit, our names, names that are us, mark lost, link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, suite, another suite, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
 where: /bids?tab=bid-board
 order: 122
 ---
@@ -17,7 +17,9 @@ The block is named **This site**. Its first line says what the city has on the a
 
 Three tiles can sit under that line. They show the value the applicant declared, the area on the permit, and your bid. The last tile says your bid as a share of the declared value.
 
-A list follows with every permit we can see on the address. A {{chip:green|Looks like this job}} chip marks a permit whose project name shares a word with your bid. It is a hint. A shared address can carry another tenant's permit, so read the names.
+A list follows with the permits we can see on the address. When your bid's address names a suite, a permit that names a different suite is left out. A line under the list says how many were left out.
+
+A {{chip:green|Looks like this job}} chip marks a permit whose project name shares a word with your bid. It is a hint. A shared address can carry another tenant's permit, so read the names.
 
 Each row says the name the city lists on the permit. That name is the contact the city has. It is not always the builder.
 
@@ -82,9 +84,13 @@ The app never ties a name by itself. It only joins a name that is exactly the sa
 
 ## See permit news on the Bid Board
 
-Open the **Bid Board**. A strip named **Permit news on your bids** sits above the sections when there is news.
+Open the **Bid Board**. A strip named **Permit news on your bids** sits above the sections when one of your bids has news.
+
+A bid is yours when you estimate it or manage it. A bid someone marked for you is yours too.
 
 Each line is one bid that is not yet won or lost. It says what is new on the bid's address. Press {{button:outline|Open the bid}} to open that bid.
+
+News on other people's bids folds behind one line, **Permit news on other people's bids**. Press **See them ›** to read it. An estimator with no news of their own sees no strip. The office still sees that one line.
 
 Four things count as news.
 
@@ -92,6 +98,12 @@ Four things count as news.
 - A building permit was issued in the last 30 days.
 - A general plumbing permit lists a name other than the building permit's contact. This one comes first. It stays until you mark the bid won or lost.
 - A general plumbing permit that lists us was applied for or issued in the last 30 days.
+
+Three rules keep a line off a bid it is not true of.
+
+- The permit names a different suite than your bid. It is another tenant's, so it gives no line and no chip.
+- The plumbing permit was there before the bid was started. It gives no line. For six months before the bid it leaves a grey chip, {{chip:gray|Plumbing permit here since Jul 11}}. An older one stays in **This site** only.
+- The bid is not a plumbing bid. A plumbing permit says nothing about who has the electrical work.
 
 The plumbing line on a sent bid has a second press, {{button:blue|Mark lost…}}. Press it and the board's own window opens under the line.
 
