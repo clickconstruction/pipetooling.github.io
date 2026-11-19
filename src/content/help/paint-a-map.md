@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, lately, near me, find the jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, your last jobs, last job, scheduled, on the team, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -22,19 +22,23 @@ Press {{button:outline|Paint a map}}. The **Paint a map** sheet opens.
 
 The app sets the job when it knows it. Clocked in, that is the job you are clocked onto. Otherwise it is the stop you are at today, or the next one.
 
+With no clock and no stop today, the sheet opens on your last job. That is the newest job you clocked onto or had on your schedule. A line under **For** says which it was, and when.
+
 The sheet names the job under **For**. Press **Change the job** if the app picked the wrong one.
 
-### When the app does not know the job
+### Pick another job
 
-Every painted map is on a job. With no clock and no stop today, **Which job is it for?** opens first.
+Every painted map is on a job. **Change the job** opens **Which job is it for?**. That window also opens first when the app knows no last job for you.
 
+- **Search every job** is the box at the top. Type a number, a name or an address.
 - **Today** lists the jobs on your schedule today.
-- **Lately** lists the jobs you clocked onto in the last few weeks.
-- **Or search every job** finds any other job by its number, name or address.
+- **Your last jobs** lists up to six jobs you were on, the newest first.
+
+A plain day beside a job is the last day you clocked onto it. The word *scheduled* over a day means the job was on your schedule that day. The words *on the team* mean the office put you on the job.
 
 Press a job. The **Paint a map** sheet opens on it.
 
-Standing on the site? Press **Find the jobs near me**. Your phone asks to share where you are. Say yes.
+Standing on the site? Press **Near me** beside the search. Your phone asks to share where you are. Say yes.
 
 **Near you** then lists the closest jobs first, with how far each is. Your phone is read once, on that press.
 
@@ -73,7 +77,7 @@ A map started on a development's page is for every lot. It shows on each job in 
 
 Press the search button at the top of the app and type **paint**. Press **Paint a map**.
 
-**Which job is it for?** opens, as it does from the Dashboard.
+The sheet opens on your last job, as it does from the Dashboard. With a job on your schedule today, **Which job is it for?** opens first.
 
 ### Picking a job with no signal
 

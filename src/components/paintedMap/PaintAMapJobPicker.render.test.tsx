@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
- * Which job is it for? (punch list #392, step 4): today's stops, the jobs clocked onto lately, a
- * search with the jobs a person may not paint on marked, and a read that fails. Every job here is
- * made up.
+ * Which job is it for? (punch list #392, step 4): the search on top, today's stops, Your last jobs
+ * with how the app knows, a search with the jobs a person may not paint on marked, a read that
+ * fails, and the window a desk draws. Every job here is made up.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -30,10 +30,15 @@ const withLocation = (on: boolean) => {
   else delete (navigator as unknown as { geolocation?: unknown }).geolocation
 }
 beforeEach(() => withLocation(true))
+/** The one question the picker asks the screen: is it a desk's width? jsdom cannot say, which is a phone. */
+const setDesk = (desk: boolean) => {
+  window.matchMedia = ((query: string) => ({ matches: desk && query.includes('min-width'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+}
 afterEach(() => {
   cleanup()
   vi.useRealTimers()
   withLocation(false)
+  delete (window as unknown as { matchMedia?: unknown }).matchMedia
 })
 
 const job = (id: string, number: string, name: string): PickerJob => ({ id, number, name, address: `${number} Made Up Road` })
@@ -41,10 +46,12 @@ const cedar = job('j-cedar', 'J2417', 'Cedar Hollow 12')
 const marlowe = job('j-marlowe', 'J2398', 'Marlowe Dental')
 const pinto = job('j-pinto', 'J2431', 'Pinto Ridge 3')
 const tavish = job('j-tavish', 'J2402', 'Tavish repipe')
+const hadley = job('j-hadley', 'J2301', 'Hadley remodel')
+const finch = job('j-finch', 'J2240', 'Finch warehouse')
 
 const LISTS: PickerLists = {
   todayStops: [{ job: cedar, timeStart: '09:30:00', timeEnd: '12:00:00' }],
-  lately: [{ job: marlowe, lastOn: '2026-11-13' }],
+  last: [{ job: marlowe, how: 'clock', day: '2026-11-13' }],
   paintable: new Set([cedar.id, marlowe.id]),
   todayYmd: '2026-11-18',
 }
@@ -68,7 +75,7 @@ function makeIo(over: Partial<PaintAMapJobPickerIo> = {}): PaintAMapJobPickerIo 
 }
 
 describe('PaintAMapJobPicker', () => {
-  it('lists today then lately, and one press on a row picks the job', async () => {
+  it('lists today then your last jobs, and one press on a row picks the job', async () => {
     const io = makeIo()
     const picked: PickerJob[] = []
     render(<PaintAMapJobPicker userId="me" io={io} onPick={(j) => picked.push(j)} onClose={() => {}} />)
@@ -78,8 +85,8 @@ describe('PaintAMapJobPicker', () => {
     expect(io.lists).toHaveBeenCalledWith('me')
     expect(document.querySelector('[data-picker-today]')?.textContent).toContain('J2417 · Cedar Hollow 12')
     expect(document.querySelector('[data-picker-today]')?.textContent).toContain('9:30 AM')
-    expect(document.querySelector('[data-picker-lately]')?.textContent).toContain('J2398 · Marlowe Dental')
-    expect(document.querySelector('[data-picker-lately]')?.textContent).toContain('Friday')
+    expect(document.querySelector('[data-picker-last]')?.textContent).toContain('J2398 · Marlowe Dental')
+    expect(document.querySelector('[data-picker-last]')?.textContent).toContain('Friday')
     fireEvent.click(screen.getByRole('button', { name: /Marlowe Dental/ }))
     expect(picked).toEqual([marlowe])
   })
@@ -92,7 +99,7 @@ describe('PaintAMapJobPicker', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1)
     })
-    fireEvent.change(screen.getByLabelText('Or search every job'), { target: { value: 'ri' } })
+    fireEvent.change(screen.getByLabelText('Search every job'), { target: { value: 'ri' } })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
@@ -111,19 +118,102 @@ describe('PaintAMapJobPicker', () => {
     vi.useFakeTimers()
     const io = makeIo()
     render(<PaintAMapJobPicker userId="me" io={io} onPick={() => {}} onClose={() => {}} />)
-    fireEvent.change(screen.getByLabelText('Or search every job'), { target: { value: 'r' } })
+    fireEvent.change(screen.getByLabelText('Search every job'), { target: { value: 'r' } })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(400)
     })
     expect(io.search).not.toHaveBeenCalled()
   })
 
-  it('with no stop and no clock lately, says so and points at the search', async () => {
-    const io = makeIo({ lists: vi.fn(async () => ({ ...LISTS, todayStops: [], lately: [] })) })
+  it('a person with nothing today and no clock opens on jobs they can press: a scheduled day says so, and the team fills the rest', async () => {
+    const io = makeIo({
+      lists: vi.fn(async () => ({
+        todayStops: [],
+        last: [
+          { job: finch, how: 'team' as const, day: null },
+          { job: hadley, how: 'clock' as const, day: '2026-09-18' },
+          { job: marlowe, how: 'schedule' as const, day: '2026-11-10' },
+        ],
+        paintable: new Set([finch.id, hadley.id, marlowe.id]),
+        todayYmd: '2026-11-19',
+      })),
+    })
+    const picked: PickerJob[] = []
+    render(<PaintAMapJobPicker userId="me" io={io} onPick={(j) => picked.push(j)} onClose={() => {}} />)
+    await settle()
+    expect(screen.getByText('Your last jobs')).toBeTruthy()
+    expect(document.querySelector('[data-picker-today]')).toBeNull()
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
+    const rows = [...document.querySelectorAll('[data-picker-last] [data-picker-row]')] as HTMLButtonElement[]
+    expect(rows.map((r) => r.getAttribute('data-picker-row'))).toEqual(['yes', 'yes', 'yes'])
+    expect(rows.map((r) => r.querySelector('[data-picker-tag]')?.textContent)).toEqual(['scheduledNov 10', 'Sep 18', 'on the team'])
+    expect(rows[0]!.textContent).toContain('J2398 · Marlowe Dental')
+    fireEvent.click(rows[2]!)
+    expect(picked).toEqual([finch])
+  })
+
+  it('a person nobody has put on a job is told so, with the two presses named', async () => {
+    const io = makeIo({ lists: vi.fn(async () => ({ ...LISTS, todayStops: [], last: [] })) })
     render(<PaintAMapJobPicker userId="me" io={io} onPick={() => {}} onClose={() => {}} />)
     await settle()
-    expect(document.querySelector('[data-empty-state]')?.textContent).toContain('Search for the job.')
-    expect(screen.getByLabelText('Or search every job')).toBeTruthy()
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('You have not been on a job yet. Search for the job, or press Near me.')
+    expect(screen.getByLabelText('Search every job')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Near me' })).toBeTruthy()
+  })
+
+  it('names the search alone on a device that gives no location', async () => {
+    withLocation(false)
+    const io = makeIo({ lists: vi.fn(async () => ({ ...LISTS, todayStops: [], last: [] })) })
+    render(<PaintAMapJobPicker userId="me" io={io} onPick={() => {}} onClose={() => {}} />)
+    await settle()
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('You have not been on a job yet. Search for the job above.')
+  })
+
+  it('opens on lists the caller has just read, and reads nothing', async () => {
+    const io = makeIo()
+    render(<PaintAMapJobPicker userId="me" io={io} lists={LISTS} onPick={() => {}} onClose={() => {}} />)
+    expect(screen.queryByText('Reading your jobs…')).toBeNull()
+    expect(document.querySelector('[data-picker-today]')?.textContent).toContain('Cedar Hollow 12')
+    await settle()
+    expect(io.lists).not.toHaveBeenCalled()
+  })
+
+  it('puts the search over the lists, and what it finds takes their place', async () => {
+    vi.useFakeTimers()
+    const io = makeIo()
+    render(<PaintAMapJobPicker userId="me" io={io} lists={LISTS} onPick={() => {}} onClose={() => {}} />)
+    const search = screen.getByLabelText('Search every job')
+    const today = document.querySelector('[data-picker-today]') as HTMLElement
+    // The box comes before the lists in the page, so what is found is drawn under it and over a phone's keyboard.
+    expect(search.compareDocumentPosition(today) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.change(search, { target: { value: 'ri' } })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+    expect(document.querySelector('[data-picker-today]')).toBeNull()
+    expect(document.querySelector('[data-picker-last]')).toBeNull()
+    expect(screen.getByText('Every job')).toBeTruthy()
+    expect(document.querySelectorAll('[data-picker-found] [data-picker-row]')).toHaveLength(2)
+    // Clearing the box brings the lists back.
+    fireEvent.change(search, { target: { value: '' } })
+    expect(document.querySelector('[data-picker-today]')).not.toBeNull()
+  })
+
+  it('is a sheet on a phone with no cursor in the search, and a window at a desk with the cursor in it', async () => {
+    const io = makeIo()
+    const phone = render(<PaintAMapJobPicker userId="me" io={io} lists={LISTS} onPick={() => {}} onClose={() => {}} />)
+    expect(document.querySelector('[data-paint-a-map-job-picker]')?.getAttribute('data-picker-shape')).toBe('sheet')
+    expect((screen.getByLabelText('Search every job') as HTMLInputElement).placeholder).toBe('Search every job')
+    expect(document.activeElement).not.toBe(screen.getByLabelText('Search every job'))
+    phone.unmount()
+    setDesk(true)
+    render(<PaintAMapJobPicker userId="me" io={io} lists={LISTS} onPick={() => {}} onClose={() => {}} />)
+    const scrim = document.querySelector('[data-paint-a-map-job-picker]') as HTMLElement
+    expect(scrim.getAttribute('data-picker-shape')).toBe('window')
+    expect(scrim.style.alignItems).toBe('flex-start')
+    const search = screen.getByLabelText('Search every job') as HTMLInputElement
+    expect(search.placeholder).toBe('Search every job by number, name or address')
+    expect(document.activeElement).toBe(search)
   })
 
   it('leaves out the job a map is already on, and says move in its head', async () => {
@@ -132,7 +222,7 @@ describe('PaintAMapJobPicker', () => {
     await settle()
     expect(screen.getByRole('dialog', { name: 'Move it to another job' })).toBeTruthy()
     expect(document.querySelector('[data-picker-today]')).toBeNull()
-    expect(document.querySelector('[data-picker-lately]')?.textContent).toContain('Marlowe Dental')
+    expect(document.querySelector('[data-picker-last]')?.textContent).toContain('Marlowe Dental')
   })
 
   it('a read that fails draws the retry panel, reads again on Retry, and offers to paint now where allowed', async () => {
@@ -151,7 +241,7 @@ describe('PaintAMapJobPicker', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Paint now and pick the job later' }))
     expect(later).toHaveBeenCalledTimes(1)
     // The search is still there: it may answer when the lists did not.
-    expect(screen.getByLabelText('Or search every job')).toBeTruthy()
+    expect(screen.getByLabelText('Search every job')).toBeTruthy()
     fail = false
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await settle()
@@ -176,14 +266,14 @@ describe('PaintAMapJobPicker', () => {
     expect(closed).toHaveBeenCalledTimes(2)
   })
 
-  it('Find the jobs near me reads the phone once and lists the jobs nearest first, each once', async () => {
+  it('Near me reads the phone once and lists the jobs nearest first, each once', async () => {
     const io = makeIo()
     const picked: PickerJob[] = []
     render(<PaintAMapJobPicker userId="me" io={io} onPick={(j) => picked.push(j)} onClose={() => {}} />)
     await settle()
-    expect(screen.getByText('Your phone will ask to share where you are. It is read once, for this list.')).toBeTruthy()
+    expect(document.querySelector('[data-picker-near-note]')?.textContent).toBe('Near me asks where you are once, for this list.')
     expect(io.locate).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Find the jobs near me' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Near me' }))
     await settle()
     expect(io.locate).toHaveBeenCalledTimes(1)
     expect(io.near).toHaveBeenCalledWith({ lat: 30, lng: -97 })
@@ -194,9 +284,10 @@ describe('PaintAMapJobPicker', () => {
     expect(document.querySelector('[data-picker-near-only]')?.textContent).toBe('Only jobs with an address the app has placed on the map are listed. Search finds the rest.')
     // Cedar Hollow is under Near you now, so Today does not say it again.
     expect(document.querySelector('[data-picker-today]')).toBeNull()
-    expect(document.querySelector('[data-picker-lately]')?.textContent).toContain('Marlowe Dental')
-    // The press is answered: it is not offered twice.
-    expect(screen.queryByRole('button', { name: 'Find the jobs near me' })).toBeNull()
+    expect(document.querySelector('[data-picker-last]')?.textContent).toContain('Marlowe Dental')
+    // The press stays beside the search, for a person who has moved. Its promise is not said twice.
+    expect(screen.getByRole('button', { name: 'Near me' })).toBeTruthy()
+    expect(document.querySelector('[data-picker-near-note]')).toBeNull()
     fireEvent.click(rows[1]!)
     expect(picked).toEqual([tavish])
   })
@@ -211,21 +302,31 @@ describe('PaintAMapJobPicker', () => {
     })
     render(<PaintAMapJobPicker userId="me" io={io} onPick={() => {}} onClose={() => {}} />)
     await settle()
-    fireEvent.click(screen.getByRole('button', { name: 'Find the jobs near me' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Near me' }))
     await settle()
     expect(screen.getByRole('alert').textContent).toBe('Location is off for this app. Allow it in the phone’s settings, or search for the job.')
     expect(io.near).not.toHaveBeenCalled()
     refuse = false
-    fireEvent.click(screen.getByRole('button', { name: 'Find the jobs near me' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Near me' }))
     await settle()
     expect(document.querySelector('[data-picker-near]')).not.toBeNull()
+  })
+
+  it('names no phone in that reason at a desk', async () => {
+    setDesk(true)
+    const io = makeIo({ locate: vi.fn(async () => Promise.reject(new PickerNoFix('refused'))) })
+    render(<PaintAMapJobPicker userId="me" io={io} onPick={() => {}} onClose={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Near me' }))
+    await settle()
+    expect(screen.getByRole('alert').textContent).toBe('Location is off for this app. Allow it in the browser’s settings, or search for the job.')
   })
 
   it('with nothing placed nearby, says so and points at the search', async () => {
     const io = makeIo({ near: vi.fn(async () => ({ nearest: [], jobs: [], paintable: new Set<string>() })) })
     render(<PaintAMapJobPicker userId="me" io={io} onPick={() => {}} onClose={() => {}} />)
     await settle()
-    fireEvent.click(screen.getByRole('button', { name: 'Find the jobs near me' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Near me' }))
     await settle()
     expect(document.querySelector('[data-picker-near]')).toBeNull()
     expect(screen.getByText('No job the app has placed on the map is near you. Search for the job.')).toBeTruthy()
@@ -235,6 +336,6 @@ describe('PaintAMapJobPicker', () => {
     withLocation(false)
     render(<PaintAMapJobPicker userId="me" io={makeIo()} onPick={() => {}} onClose={() => {}} />)
     await settle()
-    expect(screen.queryByRole('button', { name: 'Find the jobs near me' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Near me' })).toBeNull()
   })
 })

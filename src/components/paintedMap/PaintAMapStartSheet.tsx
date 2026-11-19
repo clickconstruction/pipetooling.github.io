@@ -3,9 +3,14 @@
  * opens the map to draw on. Nothing is saved here: the map is made when its first line is.
  *
  * Every map is on a job (punch list #392, step 4). *For* leads the sheet and names the job. Opened
- * with no job, the sheet asks **Which job is it for?** first (`PaintAMapJobPicker`), and the sheet
- * itself is drawn once a job is pressed. A job the app or the painter picked can be changed with
- * **Change the job**. A sheet opened under a job's own address keeps that job.
+ * with no job, the sheet reads the person's jobs once. When they have a last job with a day, the
+ * sheet opens on it with no question and says so under *For* (`pickerGuess`, the owner's word of
+ * 2026-11-19). When they have none, or a job is on today's schedule, it asks **Which job is it
+ * for?** first (`PaintAMapJobPicker`), and the sheet itself is drawn once a job is pressed. A job
+ * the app or the painter picked can be changed with **Change the job**, which opens the same
+ * picker on the lists already read. A sheet opened under a job's own address keeps that job.
+ *
+ * On a phone it is a sheet on the bottom edge, and at a desk a window hung from near the top.
  *
  * One way onto no job is left, for a person with no signal: when the picker's lists cannot be read
  * it offers to paint now and pick the job later.
@@ -17,9 +22,11 @@ import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { PAINTED_MAP_NAME_MAX, PAINTED_MAP_UNNAMED, PAINTED_MAP_WORDS_MAX, cleanPaintedText } from '../../lib/paintedMap/paintedMap'
 import { WALK_ASK_WORDS, WALK_BEFORE_WORDS } from '../../lib/paintedMap/paintedWalkWords'
 import type { PaintedMapHome } from '../../lib/paintedMap/paintedMapDoor'
-import { pickerHome, type PickerJob } from '../../lib/paintedMap/paintedMapJobPicker'
+import { PICKER_WORDS, pickerGuess, pickerGuessWords, pickerHome, pickerSections, type PickerJob } from '../../lib/paintedMap/paintedMapJobPicker'
+import { loadPickerLists, type PickerLists } from '../../lib/paintedMap/paintedMapJobPickerIo'
 import { PAINTED_MAP_SHEET_Z } from '../../lib/windowLayers'
 import { PaintAMapJobPicker } from './PaintAMapJobPicker'
+import { paintedSheetFrame, usePaintedSheetDesk } from './paintedSheetFrame'
 import { PAINT_SWATCH } from './paintedMapLook'
 import type { PaintedMapToStart } from './PaintedMapWindow'
 
@@ -27,6 +34,8 @@ type Props = {
   home: PaintedMapHome
   onStart: (start: PaintedMapToStart) => void
   onClose: () => void
+  /** For a smoke: the read of the person's jobs, made once when the sheet is opened with no job. */
+  loadLists?: (userId: string) => Promise<PickerLists>
 }
 
 /** What a map is usually for: one press names it. */
@@ -41,11 +50,19 @@ const forBox: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.6
 const quietPress: CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontFamily: 'inherit', fontSize: '0.875rem', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2, cursor: 'pointer', minHeight: 40, textAlign: 'left' }
 const newId = (): string => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`)
 
-export function PaintAMapStartSheet({ home: given, onStart, onClose }: Props) {
+export function PaintAMapStartSheet({ home: given, onStart, onClose, loadLists = loadPickerLists }: Props) {
   const { user } = useAuth()
-  // Opened with no job (the Dashboard's press with nothing known, the header's search, the Documents tab): the job is asked first.
+  const userId = user?.id ?? null
+  const desk = usePaintedSheetDesk()
+  // Opened with no job (the Dashboard's press with nothing known, the header's search, the Documents tab): the app guesses the last job, or asks.
   const homeless = !given.jobId && !given.developmentId
   const [picked, setPicked] = useState<PickerJob | null>(null)
+  /** The person's jobs, read once for the guess and handed to the picker so it reads nothing more. */
+  const [lists, setLists] = useState<PickerLists | null>(null)
+  /** Whether the read for the guess is still out. A sheet opened on a job reads nothing. */
+  const [guessing, setGuessing] = useState(homeless && !!userId)
+  /** Under *For* while the job is the app's guess: how the app knows. Gone once the painter picks. */
+  const [guessWords, setGuessWords] = useState<string | null>(null)
   /** The lists could not be read and the painter chose to paint now: the one map that starts on no job. */
   const [later, setLater] = useState(false)
   const [picking, setPicking] = useState(false)
@@ -69,8 +86,34 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [isTopmost, onClose])
 
+  // One read, when the sheet is opened with no job. A read that fails falls to the picker, which reads again and draws its own retry.
+  useEffect(() => {
+    if (!homeless || !userId) return
+    let live = true
+    void loadLists(userId)
+      .then((got) => {
+        if (!live) return
+        setLists(got)
+        const guess = pickerGuess(pickerSections({ todayStops: got.todayStops, last: got.last, todayYmd: got.todayYmd, paintable: got.paintable }))
+        if (guess) {
+          setPicked((had) => had ?? guess.job)
+          setGuessWords(pickerGuessWords(guess, got.todayYmd))
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (live) setGuessing(false)
+      })
+    return () => {
+      live = false
+    }
+  }, [homeless, userId, loadLists])
+
+  const frame = paintedSheetFrame(desk)
+
   const pick = (job: PickerJob) => {
     setPicked(job)
+    setGuessWords(null)
     setLater(false)
     setForSite(false)
     setPicking(false)
@@ -78,8 +121,34 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose }: Props) {
 
   // No job yet: the question comes first, and the sheet is not drawn behind it. Cancel closes everything.
   if (homeless && !picked && !later) {
-    if (!user?.id) return null
-    return <PaintAMapJobPicker userId={user.id} mode="pick" onPick={pick} onClose={onClose} onLater={() => setLater(true)} />
+    if (!userId) return null
+    if (guessing) {
+      // The read for the guess is out. The same head as the sheet, so nothing jumps when it lands.
+      return createPortal(
+        <div
+          data-paint-a-map-reading
+          style={{ ...frame.scrim, zIndex: PAINTED_MAP_SHEET_Z }}
+          onClick={(e) => {
+            e.stopPropagation()
+            onClose()
+          }}
+        >
+          <div role="dialog" aria-modal="true" aria-label="Paint a map" onClick={(e) => e.stopPropagation()} style={frame.sheet}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1rem', borderBottom: '1px solid var(--border)' }}>
+              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Paint a map</h2>
+              <button type="button" onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.9375rem', minHeight: 40, padding: '0 0.25rem' }}>
+                Cancel
+              </button>
+            </div>
+            <p role="status" style={{ margin: 0, padding: '0.85rem 1rem calc(1.2rem + env(safe-area-inset-bottom, 0px))', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              {PICKER_WORDS.reading}
+            </p>
+          </div>
+        </div>,
+        document.fullscreenElement ?? document.body,
+      )
+    }
+    return <PaintAMapJobPicker userId={userId} mode="pick" lists={lists} onPick={pick} onClose={onClose} onLater={() => setLater(true)} />
   }
 
   const both = !!home.jobId && !!home.developmentId
@@ -100,14 +169,15 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose }: Props) {
       {createPortal(
         <div
           data-paint-a-map-start
-          style={{ position: 'fixed', inset: 0, zIndex: PAINTED_MAP_SHEET_Z, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 'env(safe-area-inset-top, 0px) 0 0' }}
+          data-paint-a-map-shape={desk ? 'window' : 'sheet'}
+          style={{ ...frame.scrim, zIndex: PAINTED_MAP_SHEET_Z }}
           onClick={(e) => {
             // The window behind stays: this press closes the sheet alone.
             e.stopPropagation()
             onClose()
           }}
         >
-          <div role="dialog" aria-modal="true" aria-label="Paint a map" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-strong)', width: '100%', maxWidth: 520, maxHeight: '100%', overflowY: 'auto', borderTopLeftRadius: 14, borderTopRightRadius: 14 }}>
+          <div role="dialog" aria-modal="true" aria-label="Paint a map" onClick={(e) => e.stopPropagation()} style={frame.sheet}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.7rem 1rem', borderBottom: '1px solid var(--border)' }}>
               <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Paint a map</h2>
               <button type="button" onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.9375rem', minHeight: 40, padding: '0 0.25rem' }}>
@@ -155,6 +225,11 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose }: Props) {
                     ) : null}
                   </div>
                 )}
+                {guessWords && !later ? (
+                  <span data-paint-a-map-guess style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    {guessWords}
+                  </span>
+                ) : null}
               </div>
               <div style={{ display: 'grid', gap: '0.4rem' }}>
                 <label style={label}>
@@ -198,7 +273,7 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose }: Props) {
         </div>,
         document.fullscreenElement ?? document.body,
       )}
-      {picking && user?.id ? <PaintAMapJobPicker userId={user.id} mode={later ? 'pick' : 'change'} excludeJobId={home.jobId ?? null} onPick={pick} onClose={() => setPicking(false)} /> : null}
+      {picking && userId ? <PaintAMapJobPicker userId={userId} mode={later ? 'pick' : 'change'} excludeJobId={home.jobId ?? null} lists={lists} onPick={pick} onClose={() => setPicking(false)} /> : null}
     </>
   )
 }
