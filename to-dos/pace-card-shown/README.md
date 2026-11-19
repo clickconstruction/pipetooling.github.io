@@ -2,7 +2,7 @@
 name: "The pace card, shown: stages as a rail, fewer words, and presses of its own"
 number: 396
 group: ready
-status: asked 2026-11-18 at the look for #384 · drawn four times with the owner the same day (two bars, three additions, then the stages stood up as a rail) · his word *Build the entire PR train* · PR 1 built as v2.7797, the card's new face · PR 2 built as v2.7803, Ask a master · PR 3a built as v2.7807, the table · PR 3b built as v2.7808, My finish date · PR 3c built as v2.7811, his date on the Projects board
+status: asked 2026-11-18 at the look for #384 · drawn four times with the owner the same day (two bars, three additions, then the stages stood up as a rail) · his word *Build the entire PR train* · PR 1 built as v2.7797, the card's new face · PR 2 built as v2.7803, Ask a master · PR 3a built as v2.7807, the table · PR 3b built as v2.7808, My finish date · PR 3c built as v2.7811, his date on the Projects board · all five PRs merged and live 2026-11-19 · walked live the same day as the Sample superintendent, both new presses pressed for real on the ZZ test project
 summary: >
   The owner looked at the superintendent's pace card on the short Job Mode page and did not like it:
   too many words, not enough showing instead of telling, and nothing to do when the job is on pace.
@@ -13,9 +13,9 @@ summary: >
   never opened. Two presses are new: Ask a master, a question to the master on the job that carries
   the numbers with it, and My finish date, his own word on when the job finishes, which the card
   also asks for two days before the plan's day and when the job falls behind.
-next: The PRs land in order, each on the one before. v2.7807's migration is pushed after its merge, before PR 3b and PR 3c merge. Then the owner's walk on a real project.
+next: The owner's word on the rail's long rows, which the walk found (below). Then the owner's walk with one real superintendent on his own phone, on a real project of his. That walk also carries the three questions punch list #384 left when it was retired.
 size: M as a train of five (M · S · S · M · S)
-blocker: None in the code. PR 3's migration is pushed by hand right after its merge.
+blocker: None. The migration is pushed and every PR is live.
 opinion: build — the card's numbers do not change, only how they are shown, and each new press rides something the app already does or one small table
 ---
 
@@ -164,6 +164,62 @@ Is this the best we can do? Asked of this step:
   asks for it.
 - The office cannot answer on the board. **Ask a master** is the crew's way to ask, and the tagged job note is
   the office's way to answer.
+
+## The walk, 2026-11-19
+
+Walked on main's code against the live database, on a phone-width screen, viewing as the Sample
+superintendent. The pace card draws for a superintendent only, so the dev's own account cannot walk it. A
+working day was held in the browser, because a sample account has no stops. Every press below was a real
+press, and every write went to the ZZ test project, click 1113.
+
+What was pressed, and what came back:
+
+- **Ask a master.** One question, *Is 25% right?*, from its chip. The note posted on the job with the card's
+  numbers on its second line. The card read *Waiting on Sample.*, and still did after a reload.
+- **The master's side.** Viewing as the Sample leader, the question sat under **Tagged job notes** on Jobs
+  with the numbers attached. He typed an answer and pressed **Post**. His tag cleared.
+- **The answer back.** The superintendent's card then read *Sample answered. Open this job to read it.*
+- **Yes** on *Still finishing Fri, Nov 20?* saved the plan's day in one press, and the question left the card.
+- **My finish date.** The window opened on the plan's day with the working day each side. Monday was picked,
+  a reason typed, and saved. The card read *You said Mon, Nov 23.* with the reason after it.
+- **The Projects board**, as the dev: the test project's card carried *Sample says Mon, Nov 23:* and the reason.
+
+One thing was stood in. The question's window offers the masters on the job, and the test project's one
+master is a real person. The people read was answered in the browser so the window offered the Sample leader
+alone. The send itself was the app's own, and a guard in the walk refused any note for anyone else.
+
+Left on the test project, on purpose: two rows of `job_finish_calls` in the Sample superintendent's name
+(the table has no delete), and two job notes, the question and its answer.
+
+The card was also read, with nothing pressed that writes, on two real projects with three stages each. The
+rail drew on both, one from the job's percent and one from the crew's own stage reports.
+
+### What the walk found
+
+- **The rail lists bid lines that are not stages, and their names run long.** The rail takes every bid line
+  that carries hours. On both real projects that brought in lines after the three stages: an added piece of
+  work on one, and on the other a line whose name is a whole paragraph of scope, about fifty words. The open
+  card read 88 and 106 words on those two projects against 48 on the one-stage test project. That is the
+  complaint this card was built to answer. Not fixed yet. It waits on the owner's word on how a long row
+  should read: one line, cut short, is the plain answer.
+- **A stage reported done below one that is not.** One project has its second stage at 100% and its first with
+  no report. The rail marks the first as the stage in hand, above a ticked one. That is what the reports say,
+  so the rail is right, but it reads oddly.
+- **A reason with no full stop ends the line without one.** *You said Mon, Nov 23. Test walk: waiting on the
+  inspector* is what he typed. Small.
+- **Ask a master on a job he cannot open** says the people on the job could not be read. This showed only
+  because the sample account is on no real crew. A superintendent scheduled on his own job reads its people.
+
+Not seen: the says line on the Dashboard's Projects strip, which did not list the test project. A real
+superintendent on his own phone. A phone notice to a real master.
+
+### Still owed: the walk with a real superintendent
+
+Punch list #384 was retired with one thing no card held: no real person is on Short. The office sets one
+superintendent to Short on his People desk. The owner walks the short page and this card with him on his own
+phone, and asks the three questions #384 left: what he looks for first, which part bothers him most, and what
+he would miss if the screen showed only his next stop, **Arrived**, **Leaving** and **Leave report**. On this
+card, ask whether the two thin bars on the folded row need labels.
 
 ## How to verify
 
