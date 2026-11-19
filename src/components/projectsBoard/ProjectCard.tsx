@@ -80,7 +80,8 @@ export function ProjectCardBody({ row, pace, target, events, valueEvents, dollar
   const frozenWords = pace.baseFrozen && !(moved || target) ? ', frozen at award' : ''
   const sourceWords = `${BUDGET_SOURCE_WORDS[moved || target ? 'target' : pace.baseSource]}${frozenWords}`
   return (
-    <div data-testid={big ? 'project-card-big' : 'project-card'} data-tone={line.tone} onClick={openUnlessControl} title={opens ? 'Open this project large' : undefined} style={{ border: big ? 'none' : `1.5px solid ${toneBorder}`, borderRadius: 12, padding: big ? 0 : '0.7rem 0.8rem', display: 'grid', gap: big ? 14 : 8, background: 'var(--surface)', cursor: opens ? 'pointer' : undefined }}>
+    // The one column is `minmax(0, 1fr)`: left at auto it grows to its widest row, and the title's one line is as wide as the job's name, so a long name ran the card's rows past its edge and its ellipsis never drew.
+    <div data-testid={big ? 'project-card-big' : 'project-card'} data-tone={line.tone} onClick={openUnlessControl} title={opens ? 'Open this project large' : undefined} style={{ border: big ? 'none' : `1.5px solid ${toneBorder}`, borderRadius: 12, padding: big ? 0 : '0.7rem 0.8rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: big ? 14 : 8, background: 'var(--surface)', cursor: opens ? 'pointer' : undefined }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
         {opens ? (
           <button type="button" onClick={onExpand} aria-label={`Open ${jobLabel} large`} style={{ fontWeight: 700, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left', background: 'none', border: 'none', padding: 0, color: 'inherit', fontFamily: 'inherit', cursor: 'pointer' }}>{jobLabel}</button>
