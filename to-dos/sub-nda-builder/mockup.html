@@ -12,6 +12,9 @@
   /* Layout: a short header, then two drawn screens side by side (stacked when narrow), then the sample page.
      One state object (S) drives all three, so the GC's summary and the sample are computed from the office's choices.
      Counts come from the PEOPLE rows drawn. Drawn 2026-11-17. Nothing is built. Every name is made up.
+     Rounds 2 and 3, 2026-11-19: four levels (Standard and three above it) in place of Light and Strict, each with a
+     kind of place as its picture. Rounds 4 to 6: the places are the closer fit, the third level is Aggressive,
+     and a level says what it is aligned with. The top draws the settled levels.
      No clause wording is on this page: the sample shows section titles and grey bars only. */
   :root {
     --paper: #eceae4; --ink: #1f2937; --copper: #9a5b2a;
@@ -20,7 +23,7 @@
     --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
     --green: #15803d; --green-tint: #f0fdf4; --amber: #92400e; --amber-tint: #fffbeb; --amber-line: #f0c36d;
     --blue: #1d4ed8; --blue-tint: #eff6ff; --violet: #6d28d9; --violet-tint: #f5f3ff; --violet-line: #c4b5fd;
-    --press: #2563eb; --press-ink: #ffffff; --bar: #d9dde3; --warn: #d97706;
+    --press: #2563eb; --press-ink: #ffffff; --bar: #d9dde3; --warn: #d97706; --top: #b91c1c; --top-tint: #fef2f2; --teal: #0f766e; --teal-tint: #f0fdfa;
     --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --display: "Space Grotesk", Inter, -apple-system, "Segoe UI", sans-serif;
   }
@@ -33,7 +36,7 @@
       --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
       --green: #4ade80; --green-tint: #12301f; --amber: #fcd34d; --amber-tint: #3a2f11; --amber-line: #7a5d14;
       --blue: #93c5fd; --blue-tint: #1e3358; --violet: #c4b5fd; --violet-tint: #2c2350; --violet-line: #5b4bb0;
-      --press: #2563eb; --press-ink: #ffffff; --bar: #4b5563; --warn: #f59e0b;
+      --press: #2563eb; --press-ink: #ffffff; --bar: #4b5563; --warn: #f59e0b; --top: #fca5a5; --top-tint: #3b1a1a; --teal: #5eead4; --teal-tint: #123f3b;
     }
   }
   :root[data-theme="dark"] {
@@ -44,7 +47,7 @@
     --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
     --green: #4ade80; --green-tint: #12301f; --amber: #fcd34d; --amber-tint: #3a2f11; --amber-line: #7a5d14;
     --blue: #93c5fd; --blue-tint: #1e3358; --violet: #c4b5fd; --violet-tint: #2c2350; --violet-line: #5b4bb0;
-    --press: #2563eb; --press-ink: #ffffff; --bar: #4b5563; --warn: #f59e0b;
+    --press: #2563eb; --press-ink: #ffffff; --bar: #4b5563; --warn: #f59e0b; --top: #fca5a5; --top-tint: #3b1a1a; --teal: #5eead4; --teal-tint: #123f3b;
   }
   /* A customer-facing page and a printed page stay light in the app, so these two wrappers pin the light values. */
   .light {
@@ -53,7 +56,7 @@
     --border: #cfd4db; --border-strong: #aab2bd;
     --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
     --green: #15803d; --green-tint: #f0fdf4; --amber: #92400e; --amber-tint: #fffbeb; --amber-line: #f0c36d;
-    --blue: #1d4ed8; --blue-tint: #eff6ff; --violet: #6d28d9; --violet-tint: #f5f3ff; --violet-line: #c4b5fd; --bar: #d9dde3; --warn: #d97706;
+    --blue: #1d4ed8; --blue-tint: #eff6ff; --violet: #6d28d9; --violet-tint: #f5f3ff; --violet-line: #c4b5fd; --bar: #d9dde3; --warn: #d97706; --top: #b91c1c; --top-tint: #fef2f2; --teal: #0f766e; --teal-tint: #f0fdfa;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--font); padding-block: 0 72px;
@@ -84,9 +87,12 @@
   .muted { color: var(--text-muted); font-size: 12.5px; }
 
   .chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .chip.long { white-space: normal; border-radius: 10px; }
   .chip.q { background: var(--bg-muted); color: var(--text-700); }
   .chip.level { background: var(--blue-tint); color: var(--blue); font-size: 12.5px; padding: 2px 10px; }
   .chip.stricter { background: var(--amber-tint); color: var(--amber); }
+  .chip.top { background: var(--top-tint); color: var(--top); }
+  .chip.teal { background: var(--teal-tint); color: var(--teal); }
   .chip.ok { background: var(--green-tint); color: var(--green); }
   .chip.wait { background: var(--bg-muted); color: var(--text-700); }
   .chip.gc { background: var(--violet-tint); color: var(--violet); }
@@ -157,11 +163,13 @@
   .tag.filled { background: var(--blue-tint); color: var(--blue); }
   /* A stepped slider: a scale's choices as stops, lighter on the left. Each stop is also a press. */
   .sl { display: grid; gap: 0; min-width: 0; }
-  .sl input[type="range"] { width: 100%; margin: 6px 0 0; accent-color: var(--press); }
-  .stops { display: flex; gap: 6px; }
-  .stop { flex: 1 1 0; min-width: 0; border: 0; background: none; color: var(--text-muted); font-size: 12.5px; padding: 3px 0; min-height: 30px; text-align: center; }
-  .stop:first-child { text-align: left; }
-  .stop:last-child { text-align: right; }
+  /* The track is drawn here, not by the browser: a browser picks a dark track under an amber or red accent. */
+  .sl input[type="range"] { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 6px; margin: 11px 0 5px; border-radius: 999px; cursor: pointer;
+    background: linear-gradient(to right, var(--tone, var(--press)) 0, var(--tone, var(--press)) var(--fill, 0%), var(--bar) var(--fill, 0%), var(--bar) 100%); }
+  .sl input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--tone, var(--press)); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--tone, var(--press)); }
+  .sl input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--tone, var(--press)); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--tone, var(--press)); }
+  .stops { position: relative; height: 30px; }
+  .stop { position: absolute; top: 0; border: 0; background: none; color: var(--text-muted); font-size: 12.5px; padding: 3px 0; min-height: 30px; white-space: nowrap; }
   .stop[aria-current="true"] { color: var(--text-strong); font-weight: 700; }
   .stop:disabled { opacity: .5; cursor: not-allowed; }
   /* The whole-job slider. On a custom mix the handle leaves the named stops and carries its own tag. */
@@ -169,6 +177,51 @@
   .bubble { position: absolute; top: 0; transform: translateX(-50%); background: var(--text-700); color: var(--surface); font-size: 11.5px; font-weight: 700; border-radius: 6px; padding: 1px 8px; white-space: nowrap; }
   .mean { font-size: 13px; color: var(--text-700); }
   .ends { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  /* The same whole-job slider in each set of words, side by side. */
+  .r2 { margin-top: 26px; display: grid; gap: 8px; }
+  .r2-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; margin-top: 6px; align-items: start; }
+  .cell { display: grid; gap: 8px; min-width: 0; align-content: start; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--bg-page); color: var(--text-base); padding: 12px; }
+  .cell.on { border-color: var(--press); box-shadow: 0 0 0 1px var(--press); }
+  .r2-grid.solo { grid-template-columns: minmax(0, 460px); }
+  .r2-grid.solo .cell.on { border-color: var(--border-strong); box-shadow: none; }
+  .ladder { display: grid; gap: 2px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .ladder .k { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); padding: 0 8px 2px; }
+  .rung { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: center; padding: 6px 8px; border-radius: 8px; font-size: 13px; }
+  .rung.on { background: var(--bg-muted); }
+  .rung b, .rung .pic { display: block; }
+  .rung .pic { color: var(--text-muted); font-size: 12.5px; }
+  .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 18px; }
+  .bars i { display: block; width: 4px; border-radius: 2px; background: var(--bar); }
+  .bars i:nth-child(1) { height: 6px; } .bars i:nth-child(2) { height: 10px; } .bars i:nth-child(3) { height: 14px; } .bars i:nth-child(4) { height: 18px; }
+  /* The flow: set the basis, then one page a topic, the slider at the bottom of every page. The frame keeps
+     one height so the slider stays put while the page above it changes. */
+  .flow { margin-top: 26px; display: grid; gap: 8px; }
+  .flow-frame { max-width: 460px; height: 680px; display: flex; flex-direction: column; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--bg-page); color: var(--text-base); overflow: hidden; }
+  .flow-head { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 14px 12px; display: grid; gap: 6px; }
+  .flow-head .step { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+  .flow-head h3 { margin: 0; font: 700 17px/1.25 var(--display); color: var(--text-strong); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+  .flow-head h3 .chip { font-family: var(--font); }
+  .dots { display: flex; gap: 4px; }
+  .dot { position: relative; flex: 1 1 0; min-width: 0; height: 18px; border: 0; padding: 0; background: none; }
+  .dot::after { content: ''; position: absolute; left: 0; right: 0; top: 6px; height: 6px; border-radius: 999px; background: var(--bar); }
+  .dot.done::after { background: var(--text-muted); }
+  .dot.now::after { background: var(--press); }
+  .dot:disabled { opacity: .4; cursor: not-allowed; }
+  .flow-body { flex: 1 1 auto; overflow-y: auto; padding: 14px; display: grid; gap: 12px; align-content: start; }
+  .flow-foot { background: var(--surface); border-top: 1px solid var(--border); padding: 8px 14px 12px; display: grid; gap: 8px; }
+  .flow-foot .nav { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+  .flow-foot .nav.one { grid-template-columns: minmax(0, 1fr); }
+  .basisline { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+  .ack { display: flex; gap: 10px; align-items: center; font-size: 14px; font-weight: 600; color: var(--text-strong); min-height: 40px; cursor: pointer; }
+  .ack input { width: 18px; height: 18px; margin: 0; accent-color: var(--press); }
+  .breach { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .breach li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 9px; align-items: start; font-size: 13.5px; }
+  .breach li::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--tone, var(--text-muted)); margin-top: 7px; }
+  .fillrow { display: flex; align-items: center; gap: 6px; }
+  .fillrow i { flex: 1 1 0; }
+  .ladder.flat { border-top: 0; padding-top: 0; }
+  .rungbtn { width: 100%; text-align: left; border: 1px solid transparent; background: none; color: inherit; font: inherit; font-size: 13px; cursor: pointer; min-height: 44px; }
+  .rungbtn[aria-pressed="true"] { background: var(--bg-muted); border-color: var(--border); }
   /* The Contract Book */
   .book { margin-top: 26px; display: grid; gap: 8px; }
   .book .screens { margin-top: 6px; }
@@ -193,8 +246,26 @@
   <header class="top">
     <p class="eyebrow">Mock-up · a first drawing, not the final look · nothing is built · every name is made up</p>
     <h1>Sub NDA builder</h1>
-    <p>The Contract Book comes first, then the office's page, the GC's page and the sample. One set of settings drives every view: change one anywhere and the rest follow. Presses work. No clause wording is shown anywhere here.</p>
+    <p>The flow is first: a disclaimer, the basis, a page on the site, then a page a topic. The settled levels are next. Then the Contract Book, the office's page, the GC's page and the sample. One set of settings drives every view: change one anywhere and the rest follow. Presses work. No clause wording is shown anywhere here.</p>
   </header>
+
+  <section class="flow" id="flow" aria-labelledby="cap-flow">
+    <div class="cap" id="cap-flow">New on Nov 19 · The flow, step by step</div>
+    <p class="say">First a disclaimer, with a box to tick. Then the basis: the level this job's paper should express. Then a page on matching the paper to the site. Then seven pages, one for each topic, with the slider at the bottom. Each shows the core clause, what puts a person in breach, and what the site must have. Slide back and forth and the page changes under your thumb. The last page is a review. The flow moves the same settings as every screen below.</p>
+    <div class="flow-frame">
+      <div class="flow-head" id="flow-head"></div>
+      <div class="flow-body" id="flow-body"></div>
+      <div class="flow-foot" id="flow-foot"></div>
+    </div>
+    <p class="muted">The disclaimer, the breach lines, the site lines and the meanings are placeholders. The clause is drawn as grey bars. No clause wording is on this page.</p>
+  </section>
+
+  <section class="r2" aria-labelledby="cap-r2">
+    <div class="cap" id="cap-r2">Settled on Nov 19 · The four levels</div>
+    <p class="say">Four levels named <b>Standard</b>, <b>Elevated</b>, <b>Aggressive</b> and <b>Strict</b>, in place of Light and Strict. Each says the kind of place it is aligned with. This slider is live. It is the same one the office's page draws below.</p>
+    <div class="r2-grid" id="r2"></div>
+    <p class="muted">What a level means on each topic is a placeholder. No real company or person is named.</p>
+  </section>
 
   <section class="book" aria-labelledby="cap-book">
     <div class="cap" id="cap-book">A · The Contract Book, built first (steps 1 and 2)</div>
@@ -219,7 +290,7 @@
               <h3>Clauses, by what puts them in the paper</h3>
               <div id="book-rows"></div>
               <p class="chip ok" style="justify-self:start">Every choice has its wording</p>
-              <p class="muted">A gap would read here in words, and the paper would not go: <i>Photos and video has no wording for Strict.</i></p>
+              <p class="muted">A gap would read here in words, and the paper would not go: <i id="gap-say"></i></p>
             </div>
             <div class="card">
               <h3>A clause's window gains one line</h3>
@@ -229,7 +300,7 @@
                 <div class="onlywhen"><span>Only when</span>
                   <select aria-label="Setting" id="ow-setting"><option>Photos and video</option><option>Phones and devices</option><option>Getting on site</option><option>Talking on site</option><option>Direct enforcement</option><option>In every paper</option></select>
                   <span>is</span>
-                  <select aria-label="Choice" id="ow-choice"><option>Strict</option><option>Light</option></select>
+                  <select aria-label="Choice" id="ow-choice"></select>
                 </div>
                 <div class="btns"><button class="second" type="button">Publish clause</button></div>
               </div>
@@ -258,7 +329,7 @@
   <div class="screens">
     <section class="col" aria-labelledby="cap-office">
       <div class="cap" id="cap-office">1 · The office, before anyone is asked to sign</div>
-      <p class="say">On the job, inside <b>Papers before this job opens</b>. One slider sets the whole job. Under it, every topic has the same slider: <b>Off, Light, Strict</b>. The words under a slider say what that stop means. The GC's proposal waits in violet until the office takes it.</p>
+      <p class="say">On the job, inside <b>Papers before this job opens</b>. One slider sets the whole job. Under it, every topic has the same slider: <b id="stops-say"></b>. The words under a slider say what that stop means. The GC's proposal waits in violet until the office takes it.</p>
       <div class="frame">
         <div class="bar"><span class="job">J2391</span><span class="where">Papers before this job opens › Secrecy on this job</span></div>
         <div class="page">
@@ -286,6 +357,7 @@
               <h3>How strict is this job?</h3>
               <div id="levels"></div>
               <p class="muted" id="level-note"></p>
+              <div class="btns"><button class="second" type="button" id="open-flow">Set it step by step</button></div>
             </div>
 
             <div class="card" id="settings"></div>
@@ -348,35 +420,67 @@
 
 <script>
 (function () {
-  // One made-up job. Every topic is one slider with the same three stops: Off, Light, Strict.
+  // One made-up job. Every topic is one slider with the same stops: Off, then four levels.
   // A stop is one approved wording, or the clause left out. `lock` marks a topic that is in every paper, so it has no Off.
   var GC = 'Northgate Builders', CO = 'Acme Plumbing', JOB = 'J2391';
-  var LV = ['off', 'light', 'strict'], WORD = { off: 'Off', light: 'Light', strict: 'Strict' };
+  var LV = ['off', 'std', 'gov', 'mid', 'strict'], ON = ['std', 'gov', 'mid', 'strict'];
+  var LETTER = { std: 'A', gov: 'B', mid: 'C', strict: 'D' }, POS = { off: 0, std: 25, gov: 50, mid: 75, strict: 100 };
+  // The levels, settled by the owner in five rounds on 2026-11-19: four levels above Off, named Standard,
+  // Elevated, Aggressive and Strict, each saying the kind of place it is aligned with.
+  // Each level is [its name, the line under it, an optional short name for a slider's stop].
+  // NAMES can hold more than one set of words: the top then draws them side by side, and `N` is the set shown below.
+  var NAMES = {
+    yours: { cap: 'The top slider', why: 'Your words, settled on Nov 19.',
+      std: ['Standard', 'Aligned with regular businesses'],
+      gov: ['Elevated', 'Aligned with hospitals, banks and government buildings'],
+      mid: ['Aggressive', 'Aligned with military bases and defense plants'],
+      strict: ['Strict', 'Aligned with private research labs'] }
+  };
+  var N = 'yours';
+  function word(v, set) { return v === 'off' ? 'Off' : NAMES[set || N][v][0]; }
+  function shortWord(v, set) { return v === 'off' ? 'Off' : (NAMES[set || N][v][2] || NAMES[set || N][v][0]); }
+  function picture(v, set) { return NAMES[set || N][v][1]; }
+
+  // What a level means on a topic. Every line here is a placeholder for the owner and counsel to set.
   var TOPICS = [
     { key: 'photos', q: 'Q6', label: 'Photos and video', says: {
       off: 'This paper sets no photo rule. Your usual photo rules apply.',
-      light: 'Work photos only, into ' + CO + '\'s system, then deleted from the phone.',
+      std: 'Work photos only, into ' + CO + '\'s system, then deleted from the phone.',
+      gov: 'Work photos only, and none that show people, screens or signs.',
+      mid: 'Work photos only, taken by the site lead and checked before they leave the site.',
       strict: 'No photos or video at all.' } },
     { key: 'devices', q: 'Q6', label: 'Phones and devices', rule: true, says: {
       off: 'This paper sets no phone rule.',
-      light: 'Phones stay put away in marked areas.',
-      strict: 'Phones stay outside the work area.' } },
+      std: 'Phones stay put away in marked areas.',
+      gov: 'Phones stay put away anywhere on site, except on breaks.',
+      mid: 'Phones are locked up before anyone enters a marked area.',
+      strict: 'No phones or devices past the gate.' } },
     { key: 'access', q: 'Q6', label: 'Getting on site', rule: true, says: {
       off: 'No site rules beyond the paper.',
-      light: 'Badge worn on site. Sign in and out each day.',
+      std: 'Badge worn on site. Sign in and out each day.',
+      gov: 'Badge, sign in and out, and photo ID shown at the door.',
+      mid: 'Badge, sign in and out, and a background check before the first day.',
       strict: 'Badge, sign in and out, a background check before the first day, and an escort in marked areas.' } },
     { key: 'talk', q: 'Q5', label: 'Talking on site', rule: true, says: {
       off: 'No rule about who you talk to on site.',
-      light: 'Talk with the owner\'s staff or tenants only about the work in front of you.',
+      std: 'Talk with the owner\'s staff or tenants only about the work in front of you.',
+      gov: 'Talk about the job only with people working on it.',
+      mid: 'Talk about the job only with people on the job\'s list.',
       strict: 'No talk about the job with the owner\'s staff or tenants. Questions go to the site lead.' } },
-    { key: 'term', q: 'Q8', label: 'How long secrecy lasts', lock: true, blank: { light: '5 years', strict: '10 years' }, says: {
-      light: '5 years after each person\'s last day on the job.',
+    { key: 'term', q: 'Q8', label: 'How long secrecy lasts', lock: true, blank: { std: '3 years', gov: '5 years', mid: '7 years', strict: '10 years' }, says: {
+      std: '3 years after each person\'s last day on the job.',
+      gov: '5 years after each person\'s last day on the job.',
+      mid: '7 years after each person\'s last day on the job.',
       strict: '10 years after each person\'s last day on the job.' } },
-    { key: 'files', q: 'Q9', label: 'Files at the end', lock: true, blank: { light: '10 days', strict: '5 days' }, says: {
-      light: 'Returned or destroyed within 10 days, confirmed in writing.',
-      strict: 'Returned or destroyed within 5 days, confirmed in writing.' } },
-    { key: 'report', q: 'Q10', label: 'Reporting a leak or a legal demand', lock: true, blank: { light: '24 hours', strict: 'the same day' }, says: {
-      light: 'Reported to ' + CO + ' within 24 hours.',
+    { key: 'files', q: 'Q9', label: 'Files at the end', lock: true, blank: { std: '10 days', gov: '7 days', mid: '5 days', strict: '3 days' }, says: {
+      std: 'Returned or destroyed within 10 days, confirmed in writing.',
+      gov: 'Returned or destroyed within 7 days, confirmed in writing.',
+      mid: 'Returned or destroyed within 5 days, confirmed in writing.',
+      strict: 'Returned or destroyed within 3 days, confirmed in writing.' } },
+    { key: 'report', q: 'Q10', label: 'Reporting a leak or a legal demand', lock: true, blank: { std: '3 days', gov: '2 days', mid: '24 hours', strict: 'the same day' }, says: {
+      std: 'Reported to ' + CO + ' within 3 days.',
+      gov: 'Reported to ' + CO + ' within 2 days.',
+      mid: 'Reported to ' + CO + ' within 24 hours.',
       strict: 'Reported to ' + CO + ' the same day.' } }
   ];
   // The paper's sections. `topic` ties a section to a slider. `enforce` ties it to the yes-or-no question.
@@ -400,10 +504,10 @@
   var TOTAL = PEOPLE.reduce(function (n, g) { return n + g.people.length; }, 0);
   var SIGNED = PEOPLE.reduce(function (n, g) { return n + g.signed; }, 0);
 
-  var S = { off: false, share: 'yes', whose: 'ours', enforce: 'yes', t: {}, other: '', roster: 'biz' };
-  TOPICS.forEach(function (x) { S.t[x.key] = 'light'; });
+  var S = { off: false, share: 'yes', whose: 'ours', enforce: 'yes', basis: 'std', t: {}, other: '', roster: 'biz' };
+  TOPICS.forEach(function (x) { S.t[x.key] = 'std'; });
   // What the GC sent from their page. Each part leaves this list when the office takes it.
-  var ASK = { t: { photos: 'strict', access: 'strict', report: 'strict' }, other: 'No work in Building C unless the site lead is present.' };
+  var ASK = { t: { photos: 'strict', access: 'gov', report: 'mid' }, other: 'No work in Building C unless the site lead is present.' };
   var gcOpen = false, gcDraft = null, gcSent = 0, pv = 'paper';
 
   function $(id) { return document.getElementById(id); }
@@ -412,27 +516,35 @@
   function topic(key) { return TOPICS.filter(function (x) { return x.key === key; })[0]; }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
   function count(v) { return TOPICS.filter(function (x) { return S.t[x.key] === v; }).length; }
-  function level() { return count('light') === TOPICS.length ? 'Light' : count('strict') === TOPICS.length ? 'Strict' : 'Custom'; }
-  function mixWords() {
-    return ['strict', 'light', 'off'].filter(function (v) { return count(v) > 0; }).map(function (v) { return count(v) + ' ' + WORD[v]; }).join(', ');
+  // The whole job's level: one of the four when every topic sits on it, else a custom mix.
+  function level() { for (var i = 0; i < ON.length; i++) if (count(ON[i]) === TOPICS.length) return ON[i]; return 'custom'; }
+  function mixWords(set) {
+    return ['strict', 'mid', 'gov', 'std', 'off'].filter(function (v) { return count(v) > 0; }).map(function (v) { return count(v) + ' ' + shortWord(v, set); }).join(', ');
   }
-  function levelChip() { return level() === 'Custom' ? 'Custom mix: ' + mixWords() : level(); }
+  function levelChip(set) { var l = level(); return l === 'custom' ? 'Custom mix: ' + mixWords(set) : word(l, set); }
+  function levelSays(set) {
+    if (S.off) return 'Off. This job requires no secrecy paper.';
+    var l = level();
+    if (l === 'custom') return 'Custom mix: ' + mixWords(set) + '. Sliding back to a named level resets every topic.';
+    return word(l, set) + '. ' + picture(l, set) + '. Every topic is on this level.';
+  }
   function asksLeft() {
     var n = Object.keys(ASK.t).filter(function (k) { return rk(ASK.t[k]) > rk(S.t[k]); }).length;
     return n + (ASK.other ? 1 : 0);
   }
-  function usePreset(v) { TOPICS.forEach(function (x) { S.t[x.key] = v; }); S.off = false; }
-  // Where the whole job sits on the track: Off 0, Light 50, Strict 100. A custom mix sits at its average, never on a stop.
+  function usePreset(v) { TOPICS.forEach(function (x) { S.t[x.key] = v; }); S.off = false; S.basis = v; }
+  // Where the whole job sits on the track. A custom mix sits at its average, never on a named stop.
   function place() {
     if (S.off) return 0;
-    if (level() === 'Light') return 50;
-    if (level() === 'Strict') return 100;
-    var avg = TOPICS.reduce(function (n, x) { return n + rk(S.t[x.key]); }, 0) / TOPICS.length;
-    var at = avg * 50;
-    if (Math.abs(at - 50) < 6) at = avg < 1 ? 44 : 56;
+    var l = level(); if (l !== 'custom') return POS[l];
+    var at = TOPICS.reduce(function (n, x) { return n + rk(S.t[x.key]); }, 0) / TOPICS.length / (LV.length - 1) * 100;
+    [POS.std, POS.gov, POS.mid].forEach(function (p) { if (Math.abs(at - p) < 5) at = at < p ? p - 6 : p + 6; });
     return Math.max(6, Math.min(94, Math.round(at)));
   }
-  function tone(v) { return v === 'strict' ? 'var(--warn)' : v === 'off' ? 'var(--text-muted)' : 'var(--press)'; }
+  function tone(v) { return v === 'strict' ? 'var(--top)' : v === 'mid' ? 'var(--warn)' : v === 'gov' ? 'var(--teal)' : v === 'off' ? 'var(--text-muted)' : 'var(--press)'; }
+  function chipKind(v) { return v === 'strict' ? 'top' : v === 'mid' ? 'stricter' : v === 'gov' ? 'teal' : v === 'std' ? 'level' : 'wait'; }
+  // A range's handle is 16px wide, so a stop's centre sits a little inside the track's ends.
+  function along(p) { return 'calc(' + p + '% + ' + (8 - p * 0.16).toFixed(2) + 'px)'; }
 
   function seg(host, opts, value, onPick) {
     host.textContent = '';
@@ -444,57 +556,97 @@
     });
   }
 
-  // One topic's slider: Off, Light, Strict. A stop left of `floor` cannot be picked, and `why` says so.
-  function slider(host, value, onPick, floor, name, why) {
-    host.textContent = '';
-    var at = rk(value), wrap = el('div', 'sl');
-    var r = el('input'); r.type = 'range'; r.min = 0; r.max = 2; r.step = 1; r.value = at;
-    r.style.accentColor = tone(value);
-    r.setAttribute('aria-label', name); r.setAttribute('aria-valuetext', WORD[value]);
-    r.addEventListener('change', function () { onPick(LV[Math.max(+r.value, floor)]); });
-    wrap.appendChild(r);
+  // The names under a track, each under its own stop. Each name is also a press.
+  function stopsRow(label, isCurrent, isOff, why, onPick) {
     var stops = el('div', 'stops');
     LV.forEach(function (v, i) {
-      var b = el('button', 'stop', WORD[v]); b.type = 'button';
-      if (i === at) b.setAttribute('aria-current', 'true');
-      if (i < floor) { b.disabled = true; b.title = why; }
+      var b = el('button', 'stop', label(v)); b.type = 'button';
+      if (i === 0) b.style.left = '0';
+      else if (i === LV.length - 1) b.style.right = '0';
+      else { b.style.left = along(POS[v]); b.style.transform = 'translateX(-50%)'; }
+      if (isCurrent(v)) b.setAttribute('aria-current', 'true');
+      if (isOff(i)) { b.disabled = true; b.title = why; }
       b.addEventListener('click', function () { onPick(v); });
       stops.appendChild(b);
     });
-    wrap.appendChild(stops); host.appendChild(wrap);
+    return stops;
   }
 
-  // The whole-job slider. On a custom mix the handle leaves the named stops and carries its own tag.
-  function masterSlider(host) {
+  // One topic's slider. A stop left of `floor` cannot be picked, and `why` says so.
+  // `onLive` runs while the handle is dragged, so a page can change under the thumb. `id` lets the caller find it again.
+  function slider(host, value, onPick, floor, name, why, onLive, id) {
     host.textContent = '';
-    var custom = !S.off && level() === 'Custom', at = place();
-    var wrap = el('div', 'sl master');
-    if (custom) { var bub = el('span', 'bubble', 'Custom mix'); bub.style.left = 'calc(' + at + '% + ' + (8 - at * 0.16) + 'px)'; wrap.appendChild(bub); }
-    var r = el('input'); r.type = 'range'; r.min = 0; r.max = 100; r.step = 1; r.value = at;
-    r.setAttribute('aria-label', 'How strict is this job?'); r.setAttribute('aria-valuetext', S.off ? 'Off' : level());
-    r.style.accentColor = custom ? 'var(--text-700)' : S.off ? 'var(--text-muted)' : level() === 'Strict' ? 'var(--warn)' : 'var(--press)';
-    function pick(v) { if (v === 'off') S.off = true; else usePreset(v); draw(); }
-    r.addEventListener('change', function () { var v = +r.value; pick(v < 25 ? 'off' : v < 75 ? 'light' : 'strict'); });
-    wrap.appendChild(r);
-    var stops = el('div', 'stops');
-    LV.forEach(function (v) {
-      var b = el('button', 'stop', WORD[v]); b.type = 'button';
-      if (!custom && (S.off ? v === 'off' : WORD[v] === level())) b.setAttribute('aria-current', 'true');
-      b.addEventListener('click', function () { pick(v); });
-      stops.appendChild(b);
+    var at = rk(value), wrap = el('div', 'sl');
+    var r = el('input'); r.type = 'range'; r.min = 0; r.max = LV.length - 1; r.step = 1; r.value = at;
+    if (id) r.id = id;
+    r.style.setProperty('--tone', tone(value)); r.style.setProperty('--fill', along(POS[value]));
+    r.setAttribute('aria-label', name); r.setAttribute('aria-valuetext', shortWord(value));
+    var stops = stopsRow(function (v) { return shortWord(v); }, function (v) { return v === value; }, function (i) { return i < floor; }, why, onPick);
+    if (onLive) r.addEventListener('input', function () {
+      var nv = LV[Math.max(+r.value, floor)];
+      r.style.setProperty('--tone', tone(nv)); r.style.setProperty('--fill', along(POS[nv])); r.setAttribute('aria-valuetext', shortWord(nv));
+      Array.prototype.forEach.call(stops.children, function (bn, i) { if (LV[i] === nv) bn.setAttribute('aria-current', 'true'); else bn.removeAttribute('aria-current'); });
+      onLive(nv);
     });
-    wrap.appendChild(stops); host.appendChild(wrap);
+    r.addEventListener('change', function () { onPick(LV[Math.max(+r.value, floor)]); var again = id && $(id); if (again) again.focus(); });
+    wrap.appendChild(r); wrap.appendChild(stops);
+    host.appendChild(wrap);
+  }
+
+  // The whole-job slider, in one set of words. On a custom mix the handle leaves the named stops and carries its own tag.
+  function masterSlider(host, set) {
+    host.textContent = '';
+    var l = level(), custom = !S.off && l === 'custom', at = place();
+    var wrap = el('div', 'sl master');
+    if (custom) { var bub = el('span', 'bubble', 'Custom mix'); bub.style.left = along(at); wrap.appendChild(bub); }
+    var r = el('input'); r.type = 'range'; r.min = 0; r.max = 100; r.step = 1; r.value = at;
+    r.setAttribute('aria-label', 'How strict is this job?'); r.setAttribute('aria-valuetext', S.off ? 'Off' : levelChip(set));
+    r.style.setProperty('--tone', custom ? 'var(--text-700)' : S.off ? 'var(--text-muted)' : tone(l)); r.style.setProperty('--fill', along(at));
+    function pick(v) { if (v === 'off') S.off = true; else usePreset(v); draw(); }
+    r.addEventListener('change', function () { var v = +r.value; pick(v < 12.5 ? 'off' : v < 37.5 ? 'std' : v < 62.5 ? 'gov' : v < 87.5 ? 'mid' : 'strict'); });
+    wrap.appendChild(r);
+    wrap.appendChild(stopsRow(function (v) { return shortWord(v, set); }, function (v) { return !custom && (S.off ? v === 'off' : v === l); }, function () { return false; }, '', pick));
+    host.appendChild(wrap);
+  }
+
+  // The same whole-job slider in each set of words, side by side. They move together.
+  function drawRound() {
+    var host = $('r2'); host.textContent = '';
+    var solo = Object.keys(NAMES).length === 1; host.className = 'r2-grid' + (solo ? ' solo' : '');
+    Object.keys(NAMES).forEach(function (set) {
+      var n = NAMES[set], cell = el('div', 'cell' + (set === N ? ' on' : ''));
+      cell.appendChild(el('div', 'cap', n.cap));
+      cell.appendChild(el('p', 'muted', n.why));
+      var card = el('div', 'card');
+      card.appendChild(el('h3', null, 'How strict is this job?'));
+      var m = el('div'); card.appendChild(m); masterSlider(m, set);
+      card.appendChild(el('p', 'mean', levelSays(set)));
+      var lad = el('div', 'ladder');
+      lad.appendChild(el('div', 'k', 'The four levels'));
+      ON.forEach(function (v, i) {
+        var row = el('div', 'rung' + (!S.off && level() === v ? ' on' : ''));
+        row.appendChild(barsFor(v));
+        var tx = el('span'); tx.appendChild(el('b', null, word(v, set))); tx.appendChild(el('span', 'pic', picture(v, set)));
+        row.appendChild(tx); lad.appendChild(row);
+      });
+      card.appendChild(lad); cell.appendChild(card);
+      var use = el('button', set === N ? 'primary' : 'second', set === N ? 'Showing on the screens below' : 'Show these words on the screens below');
+      use.type = 'button'; use.setAttribute('aria-pressed', String(set === N));
+      use.addEventListener('click', function () { N = set; draw(); });
+      if (!solo) cell.appendChild(use);
+      host.appendChild(cell);
+    });
   }
 
   function levelButtons(lv) {
     lv.textContent = '';
-    ['light', 'strict'].forEach(function (v) {
-      var b = el('button', 'opt', WORD[v]); b.type = 'button';
-      b.setAttribute('aria-pressed', String(level() === WORD[v]));
+    ON.forEach(function (v) {
+      var b = el('button', 'opt', shortWord(v)); b.type = 'button';
+      b.setAttribute('aria-pressed', String(level() === v));
       b.addEventListener('click', function () { usePreset(v); draw(); });
       lv.appendChild(b);
     });
-    var c = el('button', 'opt', 'Custom mix'); c.type = 'button'; c.disabled = level() !== 'Custom'; c.setAttribute('aria-pressed', String(level() === 'Custom'));
+    var c = el('button', 'opt', 'Custom mix'); c.type = 'button'; c.disabled = level() !== 'custom'; c.setAttribute('aria-pressed', String(level() === 'custom'));
     lv.appendChild(c);
   }
 
@@ -516,7 +668,7 @@
     row('Who is protected', GC + (S.enforce === 'yes' ? '. You can enforce the paper against a sub directly.' : '. Only ' + CO + ' enforces the paper.'), el('span', 'chip wait', 'From your NDA'));
     TOPICS.forEach(function (x) {
       var v = S.t[x.key];
-      row(x.label, x.says[v], el('span', 'chip ' + (v === 'strict' ? 'stricter' : v === 'light' ? 'level' : 'wait'), WORD[v]));
+      row(x.label, x.says[v], el('span', 'chip ' + chipKind(v), shortWord(v)));
     });
     if (S.other.trim()) row('Other rules for this job', S.other.trim(), el('span', 'chip stricter', 'Typed for this job'));
     host.appendChild(ul);
@@ -533,20 +685,23 @@
       if (!s.topic) return;
       var x = topic(s.topic);
       if (x.blank) rows.appendChild(bookRow(s.n + ' · ' + s.t, 'blank filled from ' + x.label + ': ' + x.blank[S.t[x.key]], 'filled', true));
-      else [['light', 'A'], ['strict', 'B']].forEach(function (w) {
-        rows.appendChild(bookRow(s.n + w[1] + ' · ' + s.t, 'only when ' + x.label + ' is ' + WORD[w[0]], 'picked', S.t[x.key] === w[0]));
+      else ON.forEach(function (v) {
+        rows.appendChild(bookRow(s.n + LETTER[v] + ' · ' + s.t, 'only when ' + x.label + ' is ' + shortWord(v), 'picked', S.t[x.key] === v));
       });
     });
     TOPICS.filter(function (x) { return x.rule; }).forEach(function (x) {
-      rows.appendChild(bookRow('Rule · ' + x.label, 'two wordings, Light and Strict · left out when Off · now ' + WORD[S.t[x.key]], 'picked', S.t[x.key] !== 'off'));
+      rows.appendChild(bookRow('Rule · ' + x.label, 'four wordings, one for each level · left out when Off · now ' + shortWord(S.t[x.key]), 'picked', S.t[x.key] !== 'off'));
     });
     rows.appendChild(bookRow('Other rules for this job', 'only when the office typed some · blank filled with those words', 'filled', !!S.other.trim()));
+    $('gap-say').textContent = 'Photos and video has no wording for ' + shortWord('strict') + '.';
+    var ow = $('ow-choice'); ow.textContent = '';
+    ON.slice().reverse().forEach(function (v) { ow.appendChild(el('option', null, shortWord(v))); });
 
     levelButtons($('pv-levels'));
     var ps = $('pv-set'); ps.textContent = '';
     TOPICS.forEach(function (x) {
       var l = el('label', null, x.label); var sel = el('select'); sel.id = 'pv-' + x.key;
-      LV.forEach(function (v) { if (x.lock && v === 'off') return; var op = el('option', null, WORD[v]); op.value = v; sel.appendChild(op); });
+      LV.forEach(function (v) { if (x.lock && v === 'off') return; var op = el('option', null, shortWord(v)); op.value = v; sel.appendChild(op); });
       sel.value = S.t[x.key];
       sel.addEventListener('change', function () { S.t[x.key] = sel.value; draw(); });
       l.appendChild(sel); ps.appendChild(l);
@@ -566,7 +721,7 @@
       drawSheet('pv-sheet', false);
     } else {
       var box = el('div', 'pv-sum light');
-      box.appendChild(el('span', 'chip level', levelChip())).style.justifySelf = 'start';
+      box.appendChild(el('span', 'chip long level', levelChip())).style.justifySelf = 'start';
       sumList(box);
       box.appendChild(el('p', 'fine', 'The summary is made from the same settings as the paper, so the two cannot disagree. It is not the contract.'));
       body.appendChild(box);
@@ -574,6 +729,7 @@
   }
 
   function drawOffice() {
+    $('stops-say').textContent = LV.map(function (v) { return shortWord(v); }).join(', ');
     seg($('seg-share'), [['yes', 'Yes'], ['consent', 'Only with the GC\'s written consent'], ['no', 'No']], S.share, function (v) { S.share = v; draw(); });
     seg($('seg-whose'), [['ours', 'Ours, built from these settings'], ['theirs', 'Theirs, their PDF made a form']], S.whose, function (v) { S.whose = v; draw(); });
     seg($('seg-enforce'), [['yes', 'Yes'], ['no', 'No']], S.enforce, function (v) { S.enforce = v; draw(); });
@@ -591,9 +747,7 @@
     }
 
     masterSlider($('levels'));
-    $('level-note').textContent = S.off ? 'Off: this job requires no secrecy paper.'
-      : level() === 'Custom' ? 'Custom mix: ' + mixWords() + '. Sliding back to Light or Strict resets every topic.'
-      : level() === 'Strict' ? 'Strict: every topic on its strict setting.' : 'Light: every topic on its light setting.';
+    $('level-note').textContent = levelSays();
 
     var host = $('settings'); host.textContent = '';
     TOPICS.forEach(function (x) {
@@ -603,9 +757,9 @@
       row.appendChild(lab);
       var sg = el('div'); row.appendChild(sg);
       slider(sg, v, function (nv) { S.t[x.key] = nv; draw(); }, x.lock ? 1 : 0, x.label, 'This topic is in every paper');
-      var m = el('p', 'mean'); m.appendChild(el('b', null, WORD[v] + '. ')); m.appendChild(document.createTextNode(x.says[v])); row.appendChild(m);
+      var m = el('p', 'mean'); m.appendChild(el('b', null, shortWord(v) + '. ')); m.appendChild(document.createTextNode(x.says[v])); row.appendChild(m);
       if (ASK.t[x.key] && rk(ASK.t[x.key]) > rk(v)) {
-        var a = el('div', 'asks', 'GC proposes: ' + WORD[ASK.t[x.key]] + ' ');
+        var a = el('div', 'asks', 'GC proposes: ' + shortWord(ASK.t[x.key]) + ' ');
         var t = el('button', 'take', 'Take'); t.type = 'button';
         t.addEventListener('click', function () { S.t[x.key] = ASK.t[x.key]; draw(); });
         a.appendChild(t); row.appendChild(a);
@@ -658,8 +812,9 @@
     var c = el('div', 'card');
     var head = el('div', null); head.style.display = 'flex'; head.style.flexWrap = 'wrap'; head.style.gap = '6px 10px'; head.style.alignItems = 'center';
     head.appendChild(el('h3', null, 'How we bind everyone we bring onto this job'));
-    head.appendChild(el('span', 'chip level', levelChip()));
+    head.appendChild(el('span', 'chip long ' + (level() === 'custom' ? 'level' : chipKind(level())), levelChip()));
     c.appendChild(head);
+    if (level() !== 'custom') c.appendChild(el('p', 'mean', picture(level()) + '.'));
     sumList(c);
     c.appendChild(el('p', 'fine', 'In every paper: everything about the job is secret, including that it exists. No publicity. A sub\'s business answers for its people. The paper never stops disclosure the law requires, lien and bond notices, or permits and inspections.'));
     g.appendChild(c);
@@ -730,7 +885,7 @@
         var x = topic(s.topic), v = S.t[x.key];
         if (x.blank) { kind = 'filled'; how = x.blank[v]; }
         else if (v === 'off') { out = true; }
-        else { kind = 'picked'; how = 'wording ' + (v === 'light' ? 'A' : 'B') + ': ' + WORD[v]; }
+        else { kind = 'picked'; how = 'wording ' + LETTER[v] + ': ' + shortWord(v); }
       }
       var sec = el('div', 'sec'); var t = el('div', 't', s.n + '. ' + s.t + ' ');
       if (out) { t.style.opacity = '.55'; t.appendChild(el('span', 'tag fixed', 'left out · Off')); sec.appendChild(t); wrap.appendChild(sec); return; }
@@ -742,19 +897,302 @@
     var rules = TOPICS.filter(function (x) { return x.rule && S.t[x.key] !== 'off'; });
     if (rules.length || S.other.trim()) {
       var rb = el('div', 'rulebox'); rb.appendChild(el('b', null, 'Rules for this job'));
-      rules.forEach(function (x) { var d = el('div', null, x.label + ' '); d.appendChild(el('span', 'tag picked', 'picked · ' + WORD[S.t[x.key]])); rb.appendChild(d); });
+      rules.forEach(function (x) { var d = el('div', null, x.label + ' '); d.appendChild(el('span', 'tag picked', 'picked · ' + shortWord(S.t[x.key]))); rb.appendChild(d); });
       if (S.other.trim()) { var o = el('div', null, S.other.trim() + ' '); o.appendChild(el('span', 'tag filled', 'typed by the office')); rb.appendChild(o); }
       sh.appendChild(rb);
     }
     sh.appendChild(el('div', 'stamp', (sample ? 'SAMPLE, not for signature' : 'As it would go today') + ' · ' + levelChip() + ' · template revision 4 · each signed copy keeps these settings and the version of every clause'));
   }
 
-  function draw() { drawBook(); drawOffice(); drawGc(); drawSheet('sheet', true); }
+  // The flow (asked 2026-11-19): a disclaimer, the basis, a page on matching the paper to the site, then one page
+  // a topic with its slider at the bottom, then a review. It moves the same S as every other screen.
+  // `F.step` is the page shown. `F.ack` is the tick on the disclaimer, and nothing past it opens without it.
+  var STEPS = ['notice', 'basis', 'site'].concat(TOPICS.map(function (x) { return x.key; }), ['review']);
+  var PAGE = { notice: 'Before you start', basis: 'The basis', site: 'Match the paper to the site', review: 'Review' };
+  var BASIS_AT = STEPS.indexOf('basis'), LAST = STEPS.length - 1;
+  var F = { step: 0, done: false, ack: false };
+  // What a level asks of the site itself, per topic. Placeholders. A topic with no line asks nothing of the site.
+  var NEEDS = {
+    photos: { mid: ['A site lead who checks every photo before it leaves.'], strict: ['Someone on site who watches for cameras.'] },
+    devices: { std: ['Marked areas, with signs.'], gov: ['Someone on site who watches for phones.'], mid: ['Marked areas, with lockers at each door.'], strict: ['A staffed gate, with lockers outside it.'] },
+    access: {
+      std: ['Badges, and someone to issue them.', 'A sign-in sheet at the door.'],
+      gov: ['Badges, and someone to issue them.', 'A staffed door that checks ID.'],
+      mid: ['Badges, and someone to issue them.', 'A staffed door.', 'Someone to run background checks before the first day.'],
+      strict: ['Badges, and someone to issue them.', 'A staffed door.', 'Someone to run background checks before the first day.', 'Escorts free to walk with each person in a marked area.'] },
+    talk: { mid: ['A list of who is on the job, kept current.'], strict: ['A site lead on site to take questions.'] }
+  };
+  function needs(key, v) { return (NEEDS[key] && NEEDS[key][v]) || []; }
+  // What puts a person in breach, per topic and level. Placeholders, like every meaning on this page.
+  var BREACH = {
+    photos: {
+      std: ['Taking a photo that is not of the work.', 'Keeping a work photo on a phone after it is uploaded.', 'Sending or posting a job photo to anyone outside the job.'],
+      gov: ['Taking a photo that is not of the work.', 'Taking a photo that shows people, screens or signs.', 'Keeping a work photo on a phone after it is uploaded.', 'Sending or posting a job photo to anyone outside the job.'],
+      mid: ['Taking any photo, unless you are the site lead.', 'Taking a photo off site before it is checked.', 'Sending or posting a job photo to anyone outside the job.'],
+      strict: ['Taking any photo or video on site.', 'Having a camera out on site.'] },
+    devices: {
+      std: ['Having a phone out in a marked area.'],
+      gov: ['Having a phone out anywhere on site, except on a break.'],
+      mid: ['Carrying a phone into a marked area.', 'Carrying a smart watch or a camera into a marked area.'],
+      strict: ['Carrying a phone or any device past the gate.'] },
+    access: {
+      std: ['Being on site without a badge.', 'Not signing in or out.'],
+      gov: ['Being on site without a badge.', 'Not signing in or out.', 'Coming on site without showing photo ID.'],
+      mid: ['Being on site without a badge.', 'Not signing in or out.', 'Starting work before the background check clears.'],
+      strict: ['Being on site without a badge.', 'Not signing in or out.', 'Starting work before the background check clears.', 'Being in a marked area without an escort.'] },
+    talk: {
+      std: ['Talking with the owner\'s staff or tenants about anything but the work in front of you.'],
+      gov: ['Talking about the job with anyone who is not working on it.'],
+      mid: ['Talking about the job with anyone who is not on the job\'s list.'],
+      strict: ['Talking about the job with the owner\'s staff or tenants at all.', 'Answering a question about the job yourself. It goes to the site lead.'] },
+    term: {
+      std: ['Sharing anything secret about the job within 3 years of your last day.'],
+      gov: ['Sharing anything secret about the job within 5 years of your last day.'],
+      mid: ['Sharing anything secret about the job within 7 years of your last day.'],
+      strict: ['Sharing anything secret about the job within 10 years of your last day.'] },
+    files: {
+      std: ['Keeping any job file more than 10 days after your work ends.', 'Not confirming in writing that the files are gone.'],
+      gov: ['Keeping any job file more than 7 days after your work ends.', 'Not confirming in writing that the files are gone.'],
+      mid: ['Keeping any job file more than 5 days after your work ends.', 'Not confirming in writing that the files are gone.'],
+      strict: ['Keeping any job file more than 3 days after your work ends.', 'Not confirming in writing that the files are gone.'] },
+    report: {
+      std: ['Knowing of a leak or a legal demand and not telling ' + CO + ' within 3 days.'],
+      gov: ['Knowing of a leak or a legal demand and not telling ' + CO + ' within 2 days.'],
+      mid: ['Knowing of a leak or a legal demand and not telling ' + CO + ' within 24 hours.'],
+      strict: ['Knowing of a leak or a legal demand and not telling ' + CO + ' the same day.'] }
+  };
+  function barsFor(v) {
+    var bars = el('span', 'bars');
+    for (var k = 0; k < ON.length; k++) { var bar = el('i'); if (k <= ON.indexOf(v)) bar.style.background = tone(v); bars.appendChild(bar); }
+    return bars;
+  }
+  function secFor(key) { var hit = SECS.filter(function (s) { return s.topic === key; })[0]; return hit ? hit.n + ' · ' + hit.t : 'Rules for this job · ' + topic(key).label; }
+  function flowBlocked() { return S.whose === 'theirs' || S.share === 'no'; }
+  function changedCount() { return TOPICS.filter(function (x) { return S.t[x.key] !== S.basis; }).length; }
+  function stepName(i) { var k = STEPS[i]; return PAGE[k] || topic(k).label; }
+  function shut(i) { return (!F.ack && i > 0) || (S.off && i > BASIS_AT && i < LAST) || (flowBlocked() && i > 0); }
+  function nextStep() { return S.off && F.step === BASIS_AT ? LAST : F.step + 1; }
+  function prevStep() { return S.off && F.step === LAST ? BASIS_AT : F.step - 1; }
+  function go(i) { F.step = Math.max(0, Math.min(LAST, i)); if (shut(F.step)) F.step = 0; F.done = false; drawFlow(); $('flow-body').scrollTop = 0; }
+
+  function flowHead() {
+    var h = $('flow-head'); h.textContent = '';
+    h.appendChild(el('div', 'step', 'Step ' + (F.step + 1) + ' of ' + STEPS.length));
+    var k = STEPS[F.step], t = el('h3', null, stepName(F.step) + ' ');
+    if (!PAGE[k] && !flowBlocked()) {
+      t.appendChild(el('span', 'chip ' + chipKind(S.t[k]), shortWord(S.t[k])));
+      if (topic(k).lock) t.appendChild(el('span', 'chip wait', 'In every paper'));
+    }
+    h.appendChild(t);
+    var dots = el('div', 'dots');
+    STEPS.forEach(function (s, i) {
+      var d = el('button', 'dot' + (i === F.step ? ' now' : i < F.step ? ' done' : '')); d.type = 'button';
+      d.setAttribute('aria-label', 'Step ' + (i + 1) + ': ' + stepName(i)); d.title = stepName(i);
+      if (i === F.step) d.setAttribute('aria-current', 'step');
+      if (shut(i)) d.disabled = true;
+      d.addEventListener('click', function () { go(i); });
+      dots.appendChild(d);
+    });
+    h.appendChild(dots);
+  }
+
+  // The first page. The three points are the owner's, in plain words, for counsel to confirm.
+  function noticePage(b) {
+    var c = el('div', 'card'); c.appendChild(el('h3', null, 'Read this first'));
+    var ul = el('ul', 'breach');
+    ['This tool does not give legal advice.',
+     'Use it with your own attorney present. They represent your interests. This tool does not.',
+     'It is experimental. Use it for trial purposes only.'
+    ].forEach(function (line) { var li = el('li'); li.appendChild(el('span', null, line)); ul.appendChild(li); });
+    c.appendChild(ul);
+    c.appendChild(el('p', 'fine', 'Placeholder words, for an attorney to confirm.'));
+    b.appendChild(c);
+  }
+
+  // After the basis and before the topics: the paper has to match what the site can really enforce.
+  function sitePage(b) {
+    b.appendChild(el('p', 'mean', 'A secrecy paper should match what really happens on this site.'));
+    var c = el('div', 'card'); c.appendChild(el('h3', null, 'Pick only what this site can enforce'));
+    var ul = el('ul', 'breach');
+    ['Some choices need people and equipment on site. Badges need someone to issue and check them. A security gate needs staff on the perimeter every working hour.',
+     'If the site is not set up for a choice, pick a lower level on that page.',
+     'A rule nobody enforces protects nothing. It also puts people in breach of a rule they cannot follow.',
+     'Ask your attorney what an unenforced rule does to the paper.'
+    ].forEach(function (line) { var li = el('li'); li.appendChild(el('span', null, line)); ul.appendChild(li); });
+    c.appendChild(ul); b.appendChild(c);
+
+    var n = el('div', 'card'); n.appendChild(el('h3', null, 'What ' + word(S.basis) + ' asks of this site'));
+    var list = el('div'), any = false;
+    TOPICS.forEach(function (x) {
+      var site = needs(x.key, S.basis); if (!site.length) return; any = true;
+      var row = el('div', 'brow'), left = el('div');
+      left.appendChild(el('div', 'name', x.label)); left.appendChild(el('div', 'muted', site.join(' ')));
+      row.appendChild(left); list.appendChild(row);
+    });
+    if (any) n.appendChild(list); else n.appendChild(el('p', 'muted', 'Nothing beyond the paper itself.'));
+    n.appendChild(el('p', 'fine', 'Each page ahead shows what its level asks of the site. Placeholder words.'));
+    b.appendChild(n);
+  }
+
+  function basisPage(b) {
+    b.appendChild(el('p', 'mean', 'Pick the level this job\'s paper should express. Every page after this one starts on it. You can move any one page up or down.'));
+    var card = el('div', 'card'), lad = el('div', 'ladder flat');
+    lad.appendChild(el('div', 'k', 'The four levels'));
+    ON.forEach(function (v) {
+      var row = el('button', 'rung rungbtn'); row.type = 'button';
+      row.setAttribute('aria-pressed', String(!S.off && S.basis === v));
+      row.appendChild(barsFor(v));
+      var tx = el('span'); tx.appendChild(el('b', null, word(v))); tx.appendChild(el('span', 'pic', picture(v)));
+      row.appendChild(tx);
+      row.addEventListener('click', function () { usePreset(v); draw(); });
+      lad.appendChild(row);
+    });
+    card.appendChild(lad); b.appendChild(card);
+    var n = changedCount();
+    b.appendChild(el('p', 'muted', S.off ? 'Off. This job requires no secrecy paper.'
+      : n ? plural(n, 'page is', 'pages are') + ' off the basis. Picking a level here sets every page back to it.'
+      : 'Every page is on ' + word(S.basis) + '.'));
+  }
+
+  function topicPage(b, x) {
+    var v = S.t[x.key];
+    var top = el('div', 'basisline');
+    top.appendChild(el('span', 'muted', 'Your basis is ' + word(S.basis) + '.'));
+    if (v !== S.basis) {
+      top.appendChild(el('span', 'chip q', 'This page is off the basis'));
+      var back = el('button', 'take', 'Back to ' + shortWord(S.basis)); back.type = 'button';
+      back.addEventListener('click', function () { S.t[x.key] = S.basis; draw(); });
+      top.appendChild(back);
+    }
+    b.appendChild(top);
+    var m = el('p', 'mean'); m.appendChild(el('b', null, shortWord(v) + '. ')); m.appendChild(document.createTextNode(x.says[v])); b.appendChild(m);
+
+    var c = el('div', 'card'); c.appendChild(el('h3', null, 'The core clause'));
+    if (v === 'off') c.appendChild(el('p', 'muted', secFor(x.key) + ' is left out of the paper.'));
+    else {
+      var sec = el('div', 'sec'), tt = el('div', 't', secFor(x.key) + ' ');
+      tt.appendChild(x.blank ? el('span', 'tag filled', 'filled · ' + x.blank[v]) : el('span', 'tag picked', 'picked · wording ' + LETTER[v] + ': ' + shortWord(v)));
+      sec.appendChild(tt);
+      var ln = el('div', 'lines');
+      if (x.blank) {
+        ln.appendChild(el('i')).style.width = '100%';
+        var fr = el('div', 'fillrow'); fr.appendChild(el('i')).style.flex = '0 0 30%';
+        fr.appendChild(el('span', 'tag filled', x.blank[v])); fr.appendChild(el('i')); ln.appendChild(fr);
+      } else {
+        var n = 1 + rk(v);
+        for (var i = 0; i < n; i++) ln.appendChild(el('i')).style.width = (i === n - 1 ? 34 + rk(v) * 13 : 100) + '%';
+      }
+      sec.appendChild(ln); c.appendChild(sec);
+      c.appendChild(el('p', 'fine', 'In the app the approved wording shows here. This mock-up draws it as grey bars.'));
+    }
+    b.appendChild(c);
+
+    var br = el('div', 'card'); br.appendChild(el('h3', null, 'What puts a person in breach'));
+    if (v === 'off') br.appendChild(el('p', 'muted', 'Nothing on this topic. This paper sets no rule here.'));
+    else {
+      var prev = LV[rk(v) - 1], before = prev && prev !== 'off' ? BREACH[x.key][prev] : null;
+      var ul = el('ul', 'breach'); ul.style.setProperty('--tone', tone(v));
+      BREACH[x.key][v].forEach(function (line) {
+        var li = el('li'), sp = el('span', null, line + ' ');
+        if (!x.blank && before && before.indexOf(line) < 0) sp.appendChild(el('span', 'chip ' + chipKind(v), 'New at ' + shortWord(v)));
+        li.appendChild(sp); ul.appendChild(li);
+      });
+      br.appendChild(ul);
+      br.appendChild(el('p', 'fine', 'Placeholder words. An attorney sets what a breach is.'));
+    }
+    b.appendChild(br);
+
+    var site = needs(x.key, v);
+    if (site.length) {
+      var sc = el('div', 'card'); sc.appendChild(el('h3', null, 'What the site must have'));
+      var sl = el('ul', 'breach'); site.forEach(function (line) { var li = el('li'); li.appendChild(el('span', null, line)); sl.appendChild(li); });
+      sc.appendChild(sl);
+      sc.appendChild(el('p', 'fine', 'If this site does not have these, pick a lower level on this page.'));
+      b.appendChild(sc);
+    }
+
+    if (ASK.t[x.key] && rk(ASK.t[x.key]) > rk(v)) {
+      var a = el('div', 'asks', 'GC proposes: ' + shortWord(ASK.t[x.key]) + ' ');
+      var t = el('button', 'take', 'Take'); t.type = 'button';
+      t.addEventListener('click', function () { S.t[x.key] = ASK.t[x.key]; draw(); });
+      a.appendChild(t); b.appendChild(a);
+    }
+  }
+
+  function reviewPage(b) {
+    if (S.off) { b.appendChild(el('div', 'card', 'Off. This job requires no secrecy paper. Nobody is asked to sign.')); return; }
+    var c = el('div', 'card');
+    var head = el('div', 'basisline'); head.appendChild(el('h3', null, 'This job\'s paper')); head.appendChild(el('span', 'chip long ' + (level() === 'custom' ? 'level' : chipKind(level())), levelChip()));
+    c.appendChild(head);
+    var n = changedCount();
+    c.appendChild(el('p', 'mean', 'Your basis is ' + word(S.basis) + '. ' + (n ? plural(n, 'page is', 'pages are') + ' off it.' : 'Every page is on it.')));
+    var list = el('div');
+    TOPICS.forEach(function (x, i) {
+      var v = S.t[x.key], row = el('div', 'brow'), left = el('div');
+      var nm = el('div', 'name', x.label + ' '); nm.appendChild(el('span', 'chip ' + chipKind(v), shortWord(v)));
+      if (v !== S.basis) nm.appendChild(document.createTextNode(' ')), nm.appendChild(el('span', 'chip q', 'Off the basis'));
+      left.appendChild(nm); left.appendChild(el('div', 'muted', x.says[v])); row.appendChild(left);
+      var ch = el('button', 'take', 'Change'); ch.type = 'button'; ch.setAttribute('aria-label', 'Change ' + x.label);
+      ch.addEventListener('click', function () { go(STEPS.indexOf(x.key)); });
+      row.appendChild(ch); list.appendChild(row);
+    });
+    c.appendChild(list); b.appendChild(c);
+  }
+
+  function flowBody() {
+    var b = $('flow-body'); b.textContent = '';
+    if (flowBlocked() && F.step > 0) F.step = 0;
+    if (flowBlocked()) { b.appendChild(el('div', 'card', S.share === 'no' ? 'The upstream NDA does not allow subs on this job. There is no paper to set.' : 'This job uses the GC\'s own form. There is nothing to set here.')); return; }
+    var k = STEPS[F.step];
+    if (k === 'notice') noticePage(b); else if (k === 'basis') basisPage(b); else if (k === 'site') sitePage(b); else if (k === 'review') reviewPage(b); else topicPage(b, topic(k));
+  }
+
+  function flowFoot() {
+    var f = $('flow-foot'); f.textContent = ''; f.hidden = flowBlocked(); if (flowBlocked()) return;
+    var k = STEPS[F.step];
+    if (k === 'notice') {
+      var lab = el('label', 'ack'), box = el('input'); box.type = 'checkbox'; box.id = 'flow-ack'; box.checked = F.ack;
+      box.addEventListener('change', function () { F.ack = box.checked; drawFlow(); $('flow-ack').focus(); });
+      lab.appendChild(box); lab.appendChild(el('span', null, 'I have read this.')); f.appendChild(lab);
+    } else if (k === 'basis') { var m = el('div'); f.appendChild(m); masterSlider(m); }
+    else if (!PAGE[k]) {
+      var x = topic(k), sg = el('div'); f.appendChild(sg);
+      slider(sg, S.t[k], function (nv) { S.t[k] = nv; draw(); }, x.lock ? 1 : 0, x.label, 'This topic is in every paper',
+        function (nv) { S.t[k] = nv; draw(true); }, 'flow-range');
+    }
+    var nav = el('div', 'nav' + (F.step === 0 ? ' one' : ''));
+    if (F.step > 0) { var bk = el('button', 'second', 'Back'); bk.type = 'button'; bk.addEventListener('click', function () { go(prevStep()); }); nav.appendChild(bk); }
+    if (F.step < LAST) {
+      var nx = el('button', 'primary', 'Next: ' + stepName(nextStep())); nx.type = 'button';
+      if (shut(nextStep())) { nx.disabled = true; nx.style.opacity = '.5'; }
+      nx.addEventListener('click', function () { go(nextStep()); }); nav.appendChild(nx);
+    } else {
+      var office = $('confirm'), ok = el('button', 'primary', office.textContent); ok.type = 'button';
+      ok.disabled = office.disabled; if (ok.disabled) ok.style.opacity = '.5';
+      ok.addEventListener('click', function () { office.click(); F.done = true; flowFoot(); });
+      nav.appendChild(ok);
+    }
+    f.appendChild(nav);
+    if (k === 'notice' && !F.ack) f.appendChild(el('p', 'muted', 'Tick the box to go on.'));
+    if (F.step === LAST) f.appendChild(el('p', 'muted', F.done ? $('confirm-note').textContent : S.off ? 'Secrecy is off on ' + JOB + '.' : 'Nothing reaches a signer until this press.'));
+  }
+
+  // `live` is a redraw while a flow slider is being dragged: the slider under the thumb is left alone.
+  function drawFlow(live) {
+    if (shut(F.step)) F.step = S.off && F.ack && !flowBlocked() ? BASIS_AT : 0;
+    flowHead(); flowBody(); if (!live) flowFoot();
+  }
+
+  function draw(live) {
+    if (!S.off && level() !== 'custom') S.basis = level();
+    drawRound(); drawBook(); drawOffice(); drawGc(); drawSheet('sheet', true); drawFlow(live);
+  }
 
   $('other').addEventListener('input', function () { S.other = $('other').value; draw(); });
   $('roster').addEventListener('change', function () { S.roster = $('roster').value; drawGc(); });
   $('see-sample').addEventListener('click', function () { $('sample').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   $('copy-link').addEventListener('click', function () { $('copied').hidden = false; });
+  $('open-flow').addEventListener('click', function () { go(0); $('flow').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
   $('confirm').addEventListener('click', function () {
     $('confirm-note').textContent = 'Required. ' + plural(TOTAL, 'person', 'people') + ' asked to sign. You are first.';
   });
