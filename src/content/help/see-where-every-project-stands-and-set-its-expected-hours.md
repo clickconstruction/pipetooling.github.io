@@ -32,6 +32,7 @@ The worst project comes first. A card with a red edge is behind. A green edge is
 - The blue mark is the work done, with a chip beside it. {{chip:green|+2 d}} means two days ahead. {{chip:red|−3 d}} means three days behind. {{chip:gray|on pace}} means the hours and the work agree.
 - The thin line along the bottom is the money spent. It turns red when the money runs ten points ahead of the work.
 - The bars across the track are the stages. Hover a bar to read the stage's name and the budget to reach it.
+- A line that starts with ✎ is the finish day a superintendent gave on his pace card. It reads who said it, the day, and what is in the way. It does not change the planned finish.
 
 The small symbol at the end of the expected row says where the budget came from. ◆ is the bid. ✎ is a number the office typed. ≈ is assumed from the lines. 🎯 is a target someone set. A project with an award says **frozen at award** after the symbol. Those are the hours the Scoreboard reads, so the card and the score agree.
 
