@@ -3,7 +3,7 @@ import { lienBoardBinCount, lienBoardBinsShown, lienBoardDoorWords, lienBoardHol
 import type { LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { LIEN_BOARD_RETAINAGE_DOOR_HINT, lienBoardRetainageDoor } from '../../lib/jobs/lienBoardRetainageDoor'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
-import { LIEN_BOARD_DAY_LINE_DOOR } from '../../lib/jobs/lienBoardDayLine'
+import { lienBoardDayLineDoorWords, lienBoardDayLinePicked } from '../../lib/jobs/lienBoardDayLine'
 import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 import { lienBoardTileDoorWords, lienBoardTilePicked } from '../../lib/jobs/lienBoardTileDoor'
 
@@ -277,7 +277,7 @@ function Bin({ bin, picked, isMobile, onPick, onChip, pairLit, onHover, onCard, 
   )
 }
 
-function Tile({ tile, isMobile, onTile, picked }: { tile: LienBoardTile; isMobile: boolean; onTile?: (d: LienBoardTileDestination) => void; /** The list under the Board is narrowed to this tile's papers: its press puts the list back. */ picked?: boolean }) {
+function Tile({ tile, isMobile, onTile, picked, linePicked }: { tile: LienBoardTile; isMobile: boolean; onTile?: (d: LienBoardTileDestination) => void; /** The list under the Board is narrowed to this tile's papers: its press puts the list back. */ picked?: boolean; /** The same for the papers the tile's red line counts. */ linePicked?: boolean }) {
   const press = tile.destination && onTile ? () => onTile(tile.destination!) : null
   const linePress = !press && tile.lineDestination && onTile ? () => onTile(tile.lineDestination!) : null
   const inner = (
@@ -288,9 +288,10 @@ function Tile({ tile, isMobile, onTile, picked }: { tile: LienBoardTile; isMobil
         linePress ? (
           // The red line is a press of its own (v2.7371): the list under the Board shows only the papers it counts. It says so in words
           // (the owner's pick of 2026-11-18): the red sentence, then *Show them ›* in the link colour. An underline said it until then.
-          <button type="button" className="lienJobDoor" data-lien-board-tile-line-press={tile.lineDestination?.kind} data-press="yes" onClick={linePress} title="Show only these rows" style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: '0.72rem', lineHeight: 1.3, textAlign: 'left', cursor: 'pointer', borderRadius: 3, minHeight: isMobile ? 32 : undefined }}>
+          // While the list is narrowed to the line's papers the words are the way back, *Show every row ›*, as the second tile's are.
+          <button type="button" className="lienJobDoor" data-lien-board-tile-line-press={tile.lineDestination?.kind} data-press="yes" aria-pressed={Boolean(linePicked)} onClick={linePress} title={linePicked ? 'Show every row again' : 'Show only these rows'} style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: '0.72rem', lineHeight: 1.3, textAlign: 'left', cursor: 'pointer', borderRadius: 3, minHeight: isMobile ? 32 : undefined }}>
             <span data-lien-board-tile-line style={{ color: 'var(--text-red-700)' }}>{tile.line}</span>{' '}
-            <span data-lien-board-tile-line-door style={{ color: 'var(--text-link)', fontWeight: 600, whiteSpace: 'nowrap' }}>{LIEN_BOARD_DAY_LINE_DOOR} ›</span>
+            <span data-lien-board-tile-line-door style={{ color: 'var(--text-link)', fontWeight: 600, whiteSpace: 'nowrap' }}>{lienBoardDayLineDoorWords(linePicked)} ›</span>
           </button>
         ) : (
           <span data-lien-board-tile-line style={{ fontSize: '0.72rem', color: tile.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-muted)', lineHeight: 1.3 }}>{tile.line}</span>
@@ -607,7 +608,7 @@ export default function LienBoard({
     <section ref={boardRef} aria-label="The Board" data-lien-board data-lien-board-layout={layout ? 'stacked' : 'columns'} style={{ position: 'relative', display: 'grid', gap: isMobile ? 10 : 12, padding: isMobile ? '0.6rem 0.75rem 0.4rem' : '0.75rem 1.25rem 0.5rem' }}>
       <div data-lien-board-tiles style={{ display: 'grid', gridTemplateColumns: isMobile || layout ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
         {/* The third tile's press opens the run. On a phone the notices' print stands right under the tiles, the same door twice, so there the tile only reads. */}
-        {board.tiles.map((t) => <Tile key={t.key} tile={t.key === 'in_mail' && phonePrints && prints?.notice ? { ...t, destination: null } : t} isMobile={isMobile} onTile={onTile} picked={lienBoardTilePicked(t, pick)} />)}
+        {board.tiles.map((t) => <Tile key={t.key} tile={t.key === 'in_mail' && phonePrints && prints?.notice ? { ...t, destination: null } : t} isMobile={isMobile} onTile={onTile} picked={lienBoardTilePicked(t, pick)} linePicked={lienBoardDayLinePicked(t, pick)} />)}
       </div>
       {/* A phone keeps its bins folded, so its two prints stand here in one row (v2.7708; stacked, with their lines, since v2.7483). */}
       {/* The row is a grid of equal columns, one a press, so the two share it on every phone: as a wrapping flex row they needed 337 px of a 375 px phone's 335 and the second fell under the first. A press too narrow for its words wraps them inside itself. */}
