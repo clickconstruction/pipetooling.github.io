@@ -2,6 +2,7 @@ import { Fragment, useState, type CSSProperties, type ReactNode } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { groupLienNextUp, lienNextUpNowHead, type LienNextUpGrouped, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { groupLienNextUpByBin, isLienFoldRow, type LienBinFoldRule, type LienBinGroup, type LienRowBin } from '../../lib/jobs/lienNextUpByBin'
+import { lienNextUpNowWords } from '../../lib/jobs/lienNextUpNowWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { lienHeadDay, lienRowLine, type LienHeadDay, type LienRowTag } from '../../lib/jobs/lienRowWords'
 import { lienStepCard, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
@@ -388,6 +389,8 @@ export default function LienDeskNextUp({
   ) : null
   // The parts of Needs you now (v2.7371): one head over them, each part with a smaller one of its own.
   const nowHead = binned ? (binned.now ? { label: binned.now.label, count: binned.now.papers, waiting: null } : null) : lienNextUpNowHead(groups)
+  // By bin the head names what it counts, papers, and says how many more wait under Later (the owner's pick of 2026-11-18).
+  const nowWords = binned ? lienNextUpNowWords(binned.groups) : null
   const firstPart = groups.findIndex((g) => g.part)
   const lastPart = groups.reduce((at, g, i) => (g.part ? i : at), -1)
   const remindOff = Boolean(remind && (remind.dead || remind.busy))
@@ -484,7 +487,8 @@ export default function LienDeskNextUp({
         {nowHead && gi === firstPart ? (
           <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', margin: '0 0 0.5rem', fontSize: '0.72rem' }}>
             <h3 data-lien-next-up-now-head style={{ margin: 0, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-red-600)' }}>
-              {nowHead.label} · {nowHead.count}
+              {nowHead.label} · {nowWords ? nowWords.count : nowHead.count}
+              {nowWords?.later ? <span data-lien-next-up-now-later style={{ marginLeft: 8, fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-muted)' }}>{nowWords.later}</span> : null}
               {nowHead.waiting ? <span data-lien-next-up-now-waiting style={{ marginLeft: 8, fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-muted)' }}>and {nowHead.waiting}</span> : null}
             </h3>
             {dayWords(partsDay)}

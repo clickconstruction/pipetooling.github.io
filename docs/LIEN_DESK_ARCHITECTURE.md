@@ -169,6 +169,7 @@ last_updated: 2026-11-18
 > a row under its bin's head drops the bin's name.
 > A phone keeps `lienPhoneGroups`.
 > The leader's groups and Reminders are `groupLienNextUp`'s, unchanged.
+> Since v2.7899 (the owner's pick of 2026-11-18) the head over the bins' groups reads [`lienNextUpNowWords.ts`](../src/lib/jobs/lienNextUpNowWords.ts): `lienNextUpNowWords` sums the parts' `papers` into *27 papers* and the Later group's into *12 more under Later* (`data-lien-next-up-now-later`), and the tab's `lienNextUpCount` is left as it is, rows the viewer can move.
 
 > **v2.7448 (one name for each step from approval to mailing, and one count of what waits on the leader;
 > the owner's ask of 2026-11-16):** [`lienRunWords.ts`](../src/lib/jobs/lienRunWords.ts) holds the two step names (`LIEN_RUN_STEP`: *Approved · to print* for the `ready` pile, *Approved · to mail* for `printed`), the two presses (`LIEN_RUN_ACT`: *Print and mail*, *Enter mail numbers*), `lienRunActFor`, `lienRunActLabel` (*Print and mail 15*, *Enter mail numbers · 4*), `lienRunWindowTitle` and the sentences a toast ends on (*It now waits to print.*).
