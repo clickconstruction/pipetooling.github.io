@@ -130,26 +130,24 @@ describe('PaintAMapStartSheet', () => {
     expect(screen.getByTestId('job-picker').getAttribute('data-handed')).toBe('yes')
   })
 
-  it('opens on the last job they were at, though they changed another since and one is coming up', async () => {
-    render(
-      <PaintAMapStartSheet
-        home={{ jobId: null, developmentId: null }}
-        loadLists={async () =>
-          withLast({
-            soon: [{ job: cedar, day: '2026-11-20' }],
-            last: [
-              { job: marlowe, how: 'changed', day: '2026-11-18', there: { how: 'schedule', day: '2026-11-10' } },
-              { job: cedar, how: 'changed', day: '2026-11-17' },
-            ],
-          })
-        }
-        onStart={() => {}}
-        onClose={() => {}}
-      />,
-    )
+  const changedSince = [
+    { job: marlowe, how: 'changed' as const, day: '2026-11-18', there: { how: 'schedule' as const, day: '2026-11-10' } },
+    { job: cedar, how: 'changed' as const, day: '2026-11-17' },
+  ]
+
+  it('opens on the last job they were at, though they changed another since', async () => {
+    render(<PaintAMapStartSheet home={{ jobId: null, developmentId: null }} loadLists={async () => withLast({ last: changedSince })} onStart={() => {}} onClose={() => {}} />)
     await settle()
     expect(screen.queryByTestId('job-picker')).toBeNull()
     expect(document.querySelector('[data-paint-a-map-guess]')?.textContent).toBe('The last job on your schedule, Nov 10.')
+  })
+
+  it('opens on the next job on their schedule over the last one, and says so (the owner’s word of 2026-11-19, call 16)', async () => {
+    render(<PaintAMapStartSheet home={{ jobId: null, developmentId: null }} loadLists={async () => withLast({ soon: [{ job: cedar, day: '2026-11-20', timeStart: '07:30:00' }], last: changedSince })} onStart={() => {}} onClose={() => {}} />)
+    await settle()
+    expect(screen.queryByTestId('job-picker')).toBeNull()
+    expect(document.querySelector('[data-paint-a-map-start]')?.textContent).toContain('J2417 · Cedar Hollow 12')
+    expect(document.querySelector('[data-paint-a-map-guess]')?.textContent).toBe('The next job on your schedule, tomorrow.')
   })
 
   it('a read that fails falls to the question, which reads again and draws its own retry', async () => {

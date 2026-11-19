@@ -13,10 +13,10 @@ summary: >
   today's jobs and the jobs they were on lately. After Save, one press opens the phone's own
   Messages with the link written. A map that takes seven presses and two bouts of typing today
   takes four.
-next: Walk it on a real iPhone and a real Android phone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band, together with #394's walk. The owner answers call 11, the two short pages, and call 16, whether the sheet should open on tomorrow's job. Then delete this card.
-size: L as a train of five (S · M · S · L · S), all built, with the changed jobs and Coming up after it (S with one index); left: the walk on two real phones (XS) and calls 11 and 16
-blocker: A real phone in a hand, and the owner's answers to calls 11 and 16.
-ver: v2.7859 · 7866 · 7868 · 7869 · 7915 · 7920
+next: Walk it on a real iPhone and a real Android phone on the live app, with a made-up map: the Dashboard's press, the picker with Find the jobs near me, and Text it from my phone… under the Saved band, together with #394's walk. The owner answers call 11, the two short pages. Then delete this card.
+size: L as a train of five (S · M · S · L · S), all built, with the changed jobs and Coming up after it (S with one index); left: the walk on two real phones (XS) and call 11
+blocker: A real phone in a hand, and the owner's answer to call 11.
+ver: v2.7859 · 7866 · 7868 · 7869 · 7915 · 7920 · 7933
 opinion: built as carded, with two changes said on the card — the phone walk is left, and the picker should never open on an empty list
 ---
 
@@ -277,7 +277,8 @@ no line to say where the map lands, and a wrong guess is a map on the wrong job.
 Asked again of the real window after the build: a row under Coming up says only its day, with no
 word over it, since the heading says how the app knows. *changed* is one word for every kind of
 change, a payment taken as much as a field edited, because the row has room for one. The guess was
-left as it was: a job a person only changed, or has coming up, is never opened with no question.
+left as it was in v2.7920: a job a person only changed, or has coming up, was never opened with no
+question. Call 16 then changed the second half.
 
 What is still weak: a person on no job yet still meets
 a sentence, though it now names the two presses above it. That the search belongs on top on a
@@ -336,6 +337,9 @@ sits, and that is not yet tried on a real phone.
     most use the day before. Leave it: a wrong guess is a map on the wrong job, and tomorrow's job
     is the first row behind **Change the job**. The other choice is to open on the soonest job
     coming up and say *The next job on your schedule, tomorrow.*
+    **The owner picked the other choice: *Open on tomorrow's*. Built, v2.7933.** The sheet opens
+    on the next job on the schedule inside a week, the first stop of its day, and on the last job
+    only when none is coming up.
 
 ## Where it plugs in
 

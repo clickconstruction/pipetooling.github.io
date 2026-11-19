@@ -2,7 +2,7 @@
 title: paint a map of the way in to a job
 category: Field Work
 roles: dev, master_technician, assistant, controller, primary, estimator, superintendent, subcontractor, helpers
-keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
+keywords: paint a map, painted map, map, dashboard, press, change the job, which job, pick a job, today, coming up, tomorrow, your last jobs, last job, next job, scheduled, changed, on the team, office job, search every job, near me, jobs near me, near you, move it to another job, wrong job, saved, saved band, send more, send a photo, text a photo, all places, every place, time, older photos, earlier day, way in, walk, drive, walk it, gps, location, precise location, tracking, follow, screen on, lock, pause, look it over, gate, entrance, where to drive, where to park, delivery, driver, draw a line, draw by hand, corner, magnifying glass, loupe, measure, length, about, wheel, tape, feet, view from above, satellite, streets, directions, job, address, line, place, dot, pin, pins, point of interest, places on this job, job places, on every map, letter, text this place, send a place, copy this place, one spot, kind, mark, hazard, parking, meter, shutoff, cleanout, door, photo, what is where, gate code, share, link, send, customer, driver, text, email, task, way in, code to scan, qr, text it, company number, end a link, no sign-in, show where i am, picture, image, print, pdf, paper, copy, gate guard, kml, gpx, google earth, my maps, file, export, surveyor, engineer, search, find a map, no job, put it on a job, map page, layer, chip, site map, boxes
 where: /jobs
 order: 123
 ---
@@ -24,13 +24,17 @@ The app sets the job when it knows it. Clocked in, that is the job you are clock
 
 The company's office job is never the job the app sets. A day at the office is not a site to paint a way in for.
 
-With no clock and no stop today, the sheet opens on your last job. That is the newest job you clocked onto or had on your schedule in the last two weeks. A line under **For** says which it was, and when.
+With no clock and no stop today, the sheet opens on your next job. That is the first job on your schedule in the next six days. A way in is most use the day before the crew arrives.
+
+With no job coming up, the sheet opens on your last job. That is the newest job you clocked onto or had on your schedule in the last two weeks.
+
+A line under **For** says which job the app picked, and its day.
 
 The sheet names the job under **For**. Press **Change the job** if the app picked the wrong one.
 
 ### Pick another job
 
-Every painted map is on a job. **Change the job** opens **Which job is it for?**. That window also opens first when you were at no job in the last two weeks.
+Every painted map is on a job. **Change the job** opens **Which job is it for?**. That window also opens first when the app has no next job and no last job for you.
 
 - **Search every job** is the box at the top. Type a number, a name or an address.
 - **Today** lists the jobs on your schedule today.
@@ -86,7 +90,7 @@ A map started on a development's page is for every lot. It shows on each job in 
 
 Press the search button at the top of the app and type **paint**. Press **Paint a map**.
 
-The sheet opens on your last job, as it does from the Dashboard. With a job on your schedule today, **Which job is it for?** opens first.
+The sheet opens on your next job or your last, as it does from the Dashboard. With a job on your schedule today, **Which job is it for?** opens first.
 
 ### Picking a job with no signal
 

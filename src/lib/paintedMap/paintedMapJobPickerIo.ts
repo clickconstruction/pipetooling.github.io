@@ -77,7 +77,7 @@ export async function loadPickerLists(userId: string, nowMs: number = Date.now()
       async () =>
         supabase
           .from('job_schedule_blocks')
-          .select('job_id, work_date')
+          .select('job_id, work_date, time_start')
           .eq('assignee_user_id', userId)
           .lte('work_date', pickerDayPlus(todayYmd, PICKER_SOON_DAYS))
           .order('work_date', { ascending: false })
@@ -104,7 +104,7 @@ export async function loadPickerLists(userId: string, nowMs: number = Date.now()
     officeJobId,
     todayJobIds: stopIds,
     clocks: ((sessions ?? []) as Array<{ job_ledger_id: string | null; work_date: string }>).map((r) => ({ jobId: r.job_ledger_id, day: r.work_date })),
-    blocks: ((blocks ?? []) as Array<{ job_id: string | null; work_date: string }>).map((r) => ({ jobId: r.job_id, day: r.work_date })),
+    blocks: ((blocks ?? []) as Array<{ job_id: string | null; work_date: string; time_start: string | null }>).map((r) => ({ jobId: r.job_id, day: r.work_date, time: r.time_start })),
     changes: ((changes ?? []) as Array<{ job_id: string | null; occurred_at: string | null }>).map((r) => ({ jobId: r.job_id, day: dayOf(r.occurred_at) })),
     // A team's day is the day the person joined it. It places the job in the list and is never shown.
     teams: ((teams ?? []) as Array<{ job_id: string | null; created_at: string | null }>).map((r) => ({ jobId: r.job_id, day: dayOf(r.created_at) })),
@@ -117,7 +117,7 @@ export async function loadPickerLists(userId: string, nowMs: number = Date.now()
   const soon: PickerSoon[] = []
   for (const a of ahead) {
     const job = jobFor(a.jobId)
-    if (job) soon.push({ job, day: a.day })
+    if (job) soon.push({ job, day: a.day, timeStart: a.time })
   }
   const last: PickerLast[] = []
   for (const m of order) {
