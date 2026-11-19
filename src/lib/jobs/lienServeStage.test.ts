@@ -4,21 +4,36 @@ import { LIEN_SERVE_FORM_WORDS, LIEN_SERVE_STAGE_WORDS, lienServeFormHead, lienS
 const filing = (id: string, sends: unknown[] = []) => ({ id, sends })
 
 describe('where a filed lien’s copies stand', () => {
-  it('is to print until a print is filed, or a number or a receipt says the copies went out', () => {
+  const SCAN = 'https://drive.google.com/file/d/1SampleStampedScan01/view'
+  const receipt = [{ recipient: 'owner', method: 'certified_mail', tracking: '', receipt_url: 'https://drive.example/r1' }]
+  const number = [{ recipient: 'owner', method: 'certified_mail', tracking: '9507 01' }]
+
+  it('is to print until a print of the stamped copy is filed', () => {
+    expect(lienServeStage({ id: 'f1', sends: [], document_url: SCAN }, [])).toBe('print')
+    expect(lienServeStage({ id: 'f1', sends: [], document_url: SCAN }, ['f1'])).toBe('record')
+    expect(lienServeStage({ id: 'f1', sends: [], document_url: SCAN }, new Set(['f1']))).toBe('record')
+    // Another lien's print is not this one's.
+    expect(lienServeStage({ id: 'f1', sends: [], document_url: SCAN }, ['f2'])).toBe('print')
+  })
+
+  it('does not let a receipt or a mail number hide a lien whose stamped copy was never printed', () => {
+    // The receipt says an envelope went. It does not say the stamped copy was in it.
+    expect(lienServeStage({ id: 'f1', sends: receipt, document_url: SCAN }, [])).toBe('print')
+    expect(lienServeStage({ id: 'f1', sends: number, document_url: SCAN }, null)).toBe('print')
+    expect(lienServeStage({ id: 'f1', sends: receipt, document_url: SCAN }, ['f1'])).toBe('record')
+  })
+
+  it('reads a lien with no saved copy by its numbers and receipts: it cannot print here', () => {
     expect(lienServeStage(filing('f1'), [])).toBe('print')
-    expect(lienServeStage(filing('f1'), ['f1'])).toBe('record')
-    expect(lienServeStage(filing('f1'), new Set(['f1']))).toBe('record')
-    // Printed elsewhere and mailed: a number on the filing says so with no print on file.
-    expect(lienServeStage(filing('f1', [{ recipient: 'owner', method: 'certified_mail', tracking: '9507 01' }]), [])).toBe('record')
-    expect(lienServeStage(filing('f1', [{ recipient: 'owner', method: 'certified_mail', tracking: '', receipt_url: 'https://drive.example/r1' }]), null)).toBe('record')
+    // Mailed by hand: a number on the filing says so with no print on file.
+    expect(lienServeStage(filing('f1', number), [])).toBe('record')
+    expect(lienServeStage({ id: 'f1', sends: receipt, document_url: '  ' }, null)).toBe('record')
     // A send with nothing on it, and a read that is not in, change nothing.
     expect(lienServeStage(filing('f1', [{ recipient: 'owner', method: 'certified_mail', tracking: ' ' }]), undefined)).toBe('print')
-    // Another lien's print is not this one's.
-    expect(lienServeStage(filing('f1'), ['f2'])).toBe('print')
-    // A lien the app did not draw has no copy to print: a photocopy is mailed, so its door is the numbers' from the start.
-    expect(lienServeStage({ id: 'f1', sends: [], fields: null }, [])).toBe('record')
-    expect(lienServeStage({ id: 'f1', sends: [], fields: { ownerName: 'Maple Row LLC', propertyAddress: '12 Elm St', unpaidAmount: '' } }, [])).toBe('record')
-    expect(lienServeStage({ id: 'f1', sends: [], fields: { ownerName: 'Maple Row LLC', propertyAddress: '12 Elm St', unpaidAmount: '900.00' } }, [])).toBe('print')
+  })
+
+  it('reads a lien the app did not draw as any other: its stamped copy prints', () => {
+    expect(lienServeStage({ id: 'f1', sends: [], document_url: SCAN }, [])).toBe('print')
   })
 
   it('names each stage once, the same on every door', () => {

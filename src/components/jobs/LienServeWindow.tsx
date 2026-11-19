@@ -4,10 +4,13 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { filingLetterheadFromIssuer } from '../../lib/jobsDocuments/lienFilingDocuments'
-import { LIEN_SERVE_LETTER_READ_BY_COUNSEL, LIEN_SERVE_WORDS, LIEN_SERVED_COPY_READ_BY_COUNSEL, LIEN_SERVED_COPY_SENT_KIND } from '../../lib/jobsDocuments/lienServedCopy'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
-import { fileSentCopy } from '../../lib/sent/sentCopiesIo'
-import { lienServeBatchPrint, lienServePlan, lienServePlanWords, type LienServeJob } from '../../lib/jobs/lienServePackets'
+import { LIEN_SERVE_LETTER_READ_BY_COUNSEL, LIEN_SERVE_WORDS } from '../../lib/jobsDocuments/lienServedCopy'
+import { lienServePlan, lienServePlanRead, lienServeRunWords, type LienServeJob } from '../../lib/jobs/lienServePackets'
+import { LIEN_SERVE_PRINT_WORDS, printLienServeRun } from '../../lib/jobs/lienServePrintIo'
+import { loadLienSavedCopy } from '../../lib/jobs/lienStampedCopyIo'
+import { LIEN_COPY_WORDS, lienCopyPagesWords } from '../../lib/jobs/lienStampedCopy'
+import { batchOutcomeWords } from '../../lib/batchWords'
+import { useLienCopyReads } from './useLienCopyReads'
 import { LIEN_SERVE_NUMBERS_WORDS, lienMailedNotSavedWords, lienMailedSavedWords, lienServeDraftFor, lienServeDraftWith, lienServeNumberTicks, lienServeTickDay, type LienServeDraft } from '../../lib/jobs/lienServeNumbers'
 import { setLienMailed } from '../../lib/jobs/lienServeMailedIo'
 import { type ServiceCopy, type ServiceCopyDraft } from '../../lib/jobs/lienServiceProof'
@@ -54,6 +57,10 @@ type Props = {
   land?: LienServeLanding | null
   /** The copies of these filings were sent to the printer: the desk's doors to them read *Enter mail numbers* from now on. */
   onPrinted?: (filingIds: string[]) => void
+  /** One saved copy read and looked at as the window opens (`lienStampedCopyIo.ts`); a test hands its own. */
+  readCopy?: typeof loadLienSavedCopy
+  /** The print itself: the run's PDF in a new tab and each lien's papers kept on its job; a test hands its own. */
+  printRun?: typeof printLienServeRun
   /** The door to **Back from the clerk** (v2.7856), for the liens approved and not yet on record as filed: its words, with their count, and its press. Absent draws none. */
   filingsDoor?: { label: string; count: number; onPress: () => void } | null
 }
@@ -86,9 +93,11 @@ type Row = { job: LienServeJob; clock: { chip: string; late: boolean; daysLeft: 
 
 /**
  * Serve the filed liens (punch list #366, steps 3 and 4): one window for every filed lien that owes its copies. The
- * top half prints the stack, the mail sheet first and then each envelope's letter and copy; a lien with no document
- * number or no address is left out with its reason and its door. The bottom half takes the day the copies were
- * mailed, each certified mail number and each receipt.
+ * top half prints the stack, the mail sheet first and then each envelope's letter and the clerk's stamped copy
+ * behind it. The copy is the filing's saved copy, every page of it (v2.7916, `lienStampedCopy.ts`): the window reads
+ * each one as it opens, and a lien with no document number, no address or no stamped copy the app can print is left
+ * out with its reason and its door. The bottom half takes the day the copies were mailed, each certified mail number
+ * and each receipt.
  *
  * Each print is filed on its own job. Nothing here mails anything: the office does, and says so by ticking *Mailed*.
  *
@@ -105,7 +114,7 @@ type Row = { job: LienServeJob; clock: { chip: string; late: boolean; daysLeft: 
  * A lien that leaves the desk's list while the window is open, because its day was just written, stays on screen
  * until the window closes. A mailed lien that still lacks a number or a receipt comes back under the rest next time.
  */
-export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, isMobile, onOpenJob, onChanged, onAddScans, onClose: onCloseProp, keep = keepLienCopyProof, mark = setLienMailed, saveNumber = saveLienDocNumber, docKnown = [], printed, zIndex = 1200, land = null, onPrinted, filingsDoor = null }: Props) {
+export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, isMobile, onOpenJob, onChanged, onAddScans, onClose: onCloseProp, keep = keepLienCopyProof, mark = setLienMailed, saveNumber = saveLienDocNumber, docKnown = [], printed, zIndex = 1200, land = null, onPrinted, filingsDoor = null, readCopy = loadLienSavedCopy, printRun = printLienServeRun }: Props) {
   const isTopmost = useModalStackEntry()
   const scopeRef = useRef<HTMLDivElement | null>(null)
   // The half, or the copy, a door sent the reader to: in view and lit once it is drawn.
@@ -152,13 +161,22 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
     onCloseProp()
   }, [onChanged, onCloseProp])
 
-  const plan = useMemo(() => lienServePlan(jobs, { todayYmd, phone: issuer?.phone ?? '' }), [jobs, todayYmd, issuer?.phone])
-  const words = lienServePlanWords(plan, todayYmd)
+  // What the rows say can print, then what reading each saved copy found: `plan` is what prints now.
+  const base = useMemo(() => lienServePlan(jobs, { todayYmd, phone: issuer?.phone ?? '' }), [jobs, todayYmd, issuer?.phone])
+  const copyAsks = useMemo(() => base.ready.map((r) => ({ filingId: r.job.filing.id, jobId: r.job.jobId, fileId: r.copy.fileId })), [base])
+  const { reads, bytesOf } = useLienCopyReads(copyAsks, readCopy)
+  // The liens whose saved copy a person has looked at and said is that lien alone.
+  const [anyway, setAnyway] = useState<ReadonlySet<string>>(new Set())
+  const plan = useMemo(() => lienServePlanRead(base, reads, anyway), [base, reads, anyway])
+  const words = lienServeRunWords(plan, todayYmd)
+  const [printing, setPrinting] = useState(false)
+  // The liens the last print left out after all, each with its reason.
+  const [notPrinted, setNotPrinted] = useState<Array<{ jobLabel: string; reason: string }>>([])
 
-  // The liens that owe their copies, the soonest day first: a held lien is still mailed, by photocopy, and still recorded.
+  // The liens that owe their copies, the soonest day first: a held lien keeps its card, so its numbers are entered here once its copies go out.
   // Under them, the mailed ones still shown: the desk's, and any that left its list while this window was open.
   const rows = useMemo(() => {
-    const owing: Row[] = [...plan.ready.map((r) => ({ job: r.job, clock: r.clock, envelopes: r.envelopes.map((e) => ({ recipient: e.recipient, name: e.name })), mailedRow: false })), ...plan.held.map((h) => ({ job: h.job, clock: h.clock, envelopes: [] as Array<{ recipient: ServiceCopy; name: string }>, mailedRow: false }))]
+    const owing: Row[] = [...base.ready.map((r) => ({ job: r.job, clock: r.clock, envelopes: r.envelopes.map((e) => ({ recipient: e.recipient, name: e.name })), mailedRow: false })), ...base.held.map((h) => ({ job: h.job, clock: h.clock, envelopes: [] as Array<{ recipient: ServiceCopy; name: string }>, mailedRow: false }))]
     const shown = new Set(owing.map((r) => r.job.filing.id))
     const under: Row[] = []
     for (const job of mailed) {
@@ -177,7 +195,7 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
       seen.current.set(r.job.filing.id, r.job)
     }
     return { owing, under }
-  }, [plan, mailed])
+  }, [base, mailed])
   const allRows = [...rows.owing, ...rows.under]
 
   const draftOf = (job: LienServeJob): LienServeDraft => draftsRef.current[job.filing.id] ?? drafts[job.filing.id] ?? lienServeDraftFor(job)
@@ -201,18 +219,26 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
     return () => document.removeEventListener('keydown', onKey)
   }, [isTopmost, onClose])
 
-  const print = () => {
-    if (words.dead) return
-    const out = lienServeBatchPrint(plan, { letter: letterOn, letterhead: filingLetterheadFromIssuer(issuer), todayYmd })
-    if (!out) return
-    if (!openHtmlPrintWindow(out.html)) {
-      showToast('Popup blocked — allow popups to print.', 'error')
+  const print = async () => {
+    if (words.dead || printing) return
+    setPrinting(true)
+    setNotPrinted([])
+    // The tab opens inside this click. The run's PDF lands in it, and each job keeps its own papers as they printed.
+    const out = await printRun(plan, bytesOf, { letter: letterOn, letterhead: filingLetterheadFromIssuer(issuer), todayYmd })
+    setPrinting(false)
+    if (out.how === 'blocked') {
+      showToast(LIEN_SERVE_PRINT_WORDS.blocked, 'error')
       return
     }
-    // A print counts as a send (docs/SENT_COPIES.md): each job keeps its own papers, never the mail sheet, which is a desk paper.
-    for (const j of out.jobs) void fileSentCopy({ kind: LIEN_SERVED_COPY_SENT_KIND, title: j.title, how: 'print', jobIds: [j.jobId], recipientName: j.recipientName, source: { table: 'job_lien_filings', id: j.filingId } }, { html: j.html })
+    const left = out.notPrinted.map((f) => ({ jobLabel: f.job.jobLabel, reason: f.reason }))
+    setNotPrinted(left)
+    if (out.how === 'failed') {
+      showToast(out.reason, 'error')
+      return
+    }
+    if (left.length > 0) showToast(batchOutcomeWords({ verb: 'print', past: 'printed', done: out.printed.length, failed: left.length, noun: ['lien’s copies', 'liens’ copies'] }).line, 'warning')
     // The desk's doors to these copies read *Enter mail numbers* at once, ahead of the desk's next read.
-    onPrinted?.(out.jobs.map((j) => j.filingId))
+    onPrinted?.(out.printed.map((j) => j.filingId))
   }
 
   /**
@@ -352,6 +378,7 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
     const value = typed[id] ?? number
     const said = numberSaid[id]
     const stamped = normalizeDocumentUrl(job.filing.document_url)
+    const copyRead = reads[id]
     const filed = lienDocFiledWords({ county: job.filing.county, filedYmd: (job.filing.filed_at ?? '').toString().slice(0, 10) })
     return (
       <div data-lien-serve-doc={job.jobNumber} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
@@ -408,6 +435,7 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
               <a href={stamped} target="_blank" rel="noreferrer" aria-label={`Job ${job.jobNumber}, open the stamped lien`} style={{ fontWeight: 600, color: 'var(--text-link)' }}>
                 {LIEN_DOC_NUMBER_WORDS.open} ›
               </a>
+              {copyRead?.state === 'ok' ? <span data-lien-serve-copy-pages> · {lienCopyPagesWords(copyRead.file.pages)}</span> : copyRead?.state === 'reading' ? <span> · {LIEN_COPY_WORDS.reading}</span> : null}
             </>
           ) : (
             LIEN_DOC_NUMBER_WORDS.noStamped
@@ -571,18 +599,38 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
           ) : null}
           <section data-lien-serve-print-part style={{ display: 'grid', gap: '0.4rem', justifyItems: 'start' }}>
             <h3 style={head}>1 · Print the letters and the copies</h3>
-            <button type="button" onClick={print} disabled={words.dead} data-lien-serve-batch-print style={{ ...(words.dead ? dead : press), ...(isMobile ? { minHeight: 44 } : {}) }}>
-              {words.button}
+            <button type="button" onClick={() => void print()} disabled={words.dead || printing} data-lien-serve-batch-print style={{ ...(words.dead || printing ? dead : press), ...(isMobile ? { minHeight: 44 } : {}) }}>
+              {printing ? LIEN_SERVE_PRINT_WORDS.building : words.button}
             </button>
-            {plan.ready.length > 0 ? <div style={small}>{plan.envelopes === 1 ? '1 envelope.' : `${plan.envelopes} envelopes.`} A mail sheet prints first and stays in the office. Each print is kept on its job.</div> : null}
+            {plan.ready.length > 0 ? (
+              <>
+                <div style={small}>{plan.envelopes === 1 ? '1 envelope.' : `${plan.envelopes} envelopes.`} A mail sheet prints first and stays in the office. Each print is kept on its job.</div>
+                <div data-lien-serve-copy-is style={small}>
+                  {LIEN_SERVE_WORDS.copyIs} {LIEN_SERVE_WORDS.opens}
+                </div>
+              </>
+            ) : null}
             {words.foot ? <div style={{ ...small, color: 'var(--text-amber-700)', fontWeight: 600 }}>{words.foot}</div> : null}
+            {notPrinted.length > 0 ? (
+              <div data-lien-serve-not-printed role="alert" style={{ fontSize: '0.78rem', color: 'var(--text-red-700)', display: 'grid', gap: '0.15rem' }}>
+                <strong>{batchOutcomeWords({ verb: 'print', past: 'printed', done: 0, failed: notPrinted.length, noun: ['lien’s copies', 'liens’ copies'] }).head}</strong>
+                {notPrinted.map((f) => (
+                  <span key={f.jobLabel}>
+                    {f.jobLabel}: {f.reason}
+                  </span>
+                ))}
+              </div>
+            ) : null}
             {plan.held.length > 0 ? (
               <ul data-lien-serve-held-list style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.3rem', width: '100%' }}>
                 {plan.held.map((h) => {
                   // A lien held for its number alone takes it on its own card below: no trip to another window.
                   const numberOnly = h.holds.every((x) => x.key === 'no_recording_number')
+                  // A copy that looks like more than one lien: the reader opens it, then says it is this lien alone.
+                  const askOnly = h.holds.every((x) => x.ask)
+                  const savedCopy = normalizeDocumentUrl(h.job.filing.document_url)
                   return (
-                    <li key={h.job.filing.id} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'center', fontSize: '0.78rem', border: '1px solid var(--border)', borderRadius: 6, padding: '0.35rem 0.55rem' }}>
+                    <li key={h.job.filing.id} data-lien-serve-held={h.holds.map((x) => x.key).join(' ')} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'center', fontSize: '0.78rem', border: '1px solid var(--border)', borderRadius: 6, padding: '0.35rem 0.55rem' }}>
                       <span style={{ fontWeight: 700 }}>{h.job.jobLabel}</span>
                       <span style={{ color: 'var(--text-red-700)', fontWeight: 600 }}>{h.holds.map((x) => x.words).join(', ')}.</span>
                       <span style={{ color: 'var(--text-muted)' }}>{[...new Set(h.holds.map((x) => x.act))].join(' ')}</span>
@@ -591,9 +639,26 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
                           Type it on its card ›
                         </button>
                       ) : (
-                        <button type="button" onClick={() => onOpenJob(h.job.jobId)} style={{ ...btn, marginLeft: 'auto', padding: '0.2rem 0.6rem', fontSize: '0.75rem', ...(isMobile ? { minHeight: 44 } : {}) }}>
-                          Open the Lien window
-                        </button>
+                        <span style={{ marginLeft: 'auto', display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          {askOnly && savedCopy ? (
+                            <a href={savedCopy} target="_blank" rel="noreferrer" data-lien-serve-held-open-copy style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)' }}>
+                              {LIEN_COPY_WORDS.open}
+                            </a>
+                          ) : null}
+                          {askOnly ? (
+                            <button type="button" data-lien-serve-held-anyway onClick={() => setAnyway((cur) => new Set([...cur, h.job.filing.id]))} style={{ ...btn, padding: '0.2rem 0.6rem', fontSize: '0.75rem', ...(isMobile ? { minHeight: 44 } : {}) }}>
+                              {LIEN_COPY_WORDS.anyway}
+                            </button>
+                          ) : null}
+                          {onAddScans && h.holds.some((x) => x.key === 'no_saved_copy') ? (
+                            <button type="button" data-lien-serve-held-add-scan onClick={onAddScans} style={{ ...btn, padding: '0.2rem 0.6rem', fontSize: '0.75rem', ...(isMobile ? { minHeight: 44 } : {}) }}>
+                              {LIEN_SCAN_BATCH_WORDS.door}
+                            </button>
+                          ) : null}
+                          <button type="button" onClick={() => onOpenJob(h.job.jobId)} style={{ ...btn, padding: '0.2rem 0.6rem', fontSize: '0.75rem', ...(isMobile ? { minHeight: 44 } : {}) }}>
+                            Open the Lien window
+                          </button>
+                        </span>
                       )}
                     </li>
                   )
@@ -607,7 +672,11 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
                   {LIEN_SERVE_WORDS.letterBox}
                 </label>
                 {letterOn && !LIEN_SERVE_LETTER_READ_BY_COUNSEL ? <div style={{ ...small, color: 'var(--text-amber-700)' }}>{LIEN_SERVE_WORDS.letterUnread}</div> : null}
-                {!LIEN_SERVED_COPY_READ_BY_COUNSEL ? <div style={{ ...small, color: 'var(--text-amber-700)' }}>{LIEN_SERVE_WORDS.copyUnread}</div> : null}
+                {plan.ready.some((r) => !r.letter) ? (
+                  <div data-lien-serve-no-letter style={small}>
+                    {plan.ready.filter((r) => !r.letter).map((r) => r.job.jobLabel).join(', ')}: {LIEN_SERVE_WORDS.noLetter}
+                  </div>
+                ) : null}
               </>
             ) : null}
           </section>
@@ -637,7 +706,7 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
             ) : null}
           </section>
 
-          {/* The clerk's stamped scans for several liens at once (punch list #366): its own window, since a scan is the filing's saved copy and not part of the mailing. */}
+          {/* The clerk's stamped scans for several liens at once (punch list #366): its own window. A scan is the filing's saved copy, and since v2.7916 the copy in each envelope. */}
           {onAddScans ? (
             <section data-lien-serve-scans-part style={{ display: 'grid', gap: '0.35rem', justifyItems: 'start' }}>
               <h3 style={head}>3 · The clerk’s stamped scans</h3>

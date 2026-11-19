@@ -176,25 +176,43 @@ When the liens are on record, press {{button:blue|Print the copies to mail ›}}
 
 A filed lien owes a copy of its affidavit to the owner. A job under a GC owes the original contractor a copy too. Send the copies by the fifth day after the filing.
 
-Press {{button:outline-blue|Print the copies to mail}}. It sits under {{button:red|Enter mail numbers…}} on the affidavit tab. The app prints a cover letter and a copy for each envelope. The owner's letter and copy come first. The original contractor's come next.
+Press {{button:outline-blue|Print the copies to mail}}. It sits under {{button:red|Enter mail numbers…}} on the affidavit tab. Each envelope takes a cover letter and the clerk's stamped copy behind it. The owner's letter and copy come first. The original contractor's come next.
 
 The letter names the county, the day filed, the document number and the amount. It says how to pay and get a release. It makes no threat. The letter goes to the owner's mailing address on the property record today. Untick **Print the cover letter in front of each copy** to mail the copy alone. The copy always prints.
 
-The copy is the affidavit's words as the app kept them at the filing. A box at its top says COPY. The box names the county, the day filed and the document number. The copy does not show the signatures, the notary's seal or the clerk's stamp. The box says so.
+### The copy is the clerk's stamped lien
 
-**Counsel has not read this.** Counsel has not read the letter's words yet. Counsel has not said that this page counts as the copy. A line under the press says both. To be sure today, put a photocopy of the stamped affidavit in each envelope too.
+The copy is the stamped lien saved on the filing. Every page of that file prints, as it was scanned. It shows the clerk's stamp, the signature and the notary's seal. The app draws no copy of its own.
 
-Is the press grey? A line under it says what is missing. A filing with no recording number is held. Type the number in the box under the press. Then press **Save the number**. A missing address is added on the property record or on the GC's customer record. Was the lien filed without this tab? Then the app has no copy to print. Mail a photocopy of the filed affidavit.
+The press reads the saved file first. For a moment it says *Reading the stamped copy…*. Then a line under it says how many pages the stamped copy has.
 
-The print is kept on the job. Find it on the job's Documents tab under *Sent from this job*. Mail each envelope by certified mail. Then press {{button:red|Enter mail numbers…}} and type each number. Each copy has {{button:outline|Add the receipt}} there too.
+The print opens as one PDF in a new tab. The print window opens over it. If it does not, print from that tab.
+
+**Counsel has not read the letter.** Counsel has not read the letter's words yet. A line under the press says so. Untick the letter's box to leave the letter out.
+
+### When the press is grey
+
+A line under the press says what is missing. A filing with no recording number is held. Type the number in the box under the press. Then press **Save the number**. A missing address is added on the property record or on the GC's customer record.
+
+A lien with no stamped lien saved is held too. The line reads *no stamped copy saved*. Add the clerk's scan on the job's Lien window. Nothing prints in its place.
+
+A saved copy the app cannot print is held the same way. The line says why. It may be a link typed by hand, or a file the app could not read. It may be a file that is not a PDF, a JPEG or a PNG. Put the stamped scan in its place as a PDF.
+
+Does the saved copy have more than three pages? The app asks before it prints. A stamped lien is usually two pages, so a longer file may hold other liens. Press **Open the saved copy ›** and look. Is it this lien alone? Press **It is this lien alone. Print it**. Does it hold other liens? Put this lien's own scan in its place first.
+
+Was the lien filed without this tab? Its stamped copy still prints. It prints with no cover letter, since the app holds none of the affidavit's words.
+
+The print is kept on the job, with the same pages the envelopes took. Find it on the job's Documents tab under *Sent from this job*. Mail each envelope by certified mail. Then press {{button:red|Enter mail numbers…}} and type each number. Each copy has {{button:outline|Add the receipt}} there too.
 
 ### Several liens filed together
 
 Open the Lien desk's To do. On the Board, find the bin *Filed · copies to mail*. It holds every filed lien whose copies are not mailed yet. Press the bin's own press. It reads by where the copies stand. While any lien waits to print, it reads like {{button:outline|Print 12 liens’ copies ›}}. Once they are printed, it reads like {{button:outline|Enter mail numbers · 12 ›}}. With some of each it names both, like {{button:outline|Print 1 · Enter mail numbers 10 ›}}. The list under the Board has the same press, on one row for all of them. One window opens, on the half the press named. It is named **Filed liens: copies to mail**.
 
-One filed lien alone has a row of its own. The row reads *Lien filed · mail its copies by* and the day. Its press reads the same two ways. {{button:outline|Print the copies to mail}} opens that job's Lien window at the press of that name. After the print the row reads {{button:outline|Enter mail numbers}}. That press opens **Filed liens: copies to mail** at the job's own line. A lien the app did not draw has no copy to print. Its row reads {{button:outline|Enter mail numbers}} from the start. A row turns red the day before its day. A row past its day says the day the copies were due. Mail them that day and record it.
+One filed lien alone has a row of its own. The row reads *Lien filed · mail its copies by* and the day. Its press reads the same two ways. {{button:outline|Print the copies to mail}} opens that job's Lien window at the press of that name. After the print the row reads {{button:outline|Enter mail numbers}}. That press opens **Filed liens: copies to mail** at the job's own line. A receipt on a lien does not change its row. The row reads **Print the copies to mail** until its stamped copy is printed. A row turns red the day before its day. A row past its day says the day the copies were due. Mail them that day and record it.
 
-The top half prints. Its press counts the liens, like **Print 11 liens’ copies**. A mail sheet prints first. It lists every envelope in order, with a blank for its certified mail number. Keep the mail sheet in the office. A lien that cannot print is listed under the press with its reason. A lien with no document number has {{button:outline|Type it on its card ›}}. Any other has **Open the Lien window**.
+The top half prints. The window reads every lien's stamped copy as it opens. Until then the press reads like **Reading 11 stamped copies…**. Then it counts the liens, like **Print 11 liens’ copies**. A mail sheet prints first. It lists every envelope in order, with its pages and a blank for its certified mail number. Keep the mail sheet in the office. Behind it, each envelope's letter and stamped copy print in that order.
+
+A lien that cannot print is listed under the press with its reason. The rest still print. A lien with no document number has {{button:outline|Type it on its card ›}}. A lien with no stamped lien saved has {{button:outline|Add the stamped scans ›}}. Any other has **Open the Lien window**.
 
 The bottom half takes the mailing. Everything on it saves by itself. There is no record press. A green line over the list says so.
 

@@ -3,31 +3,32 @@
  * why, the five-day clock on each, and the words on the press. The office files liens together, twelve on the day
  * this was asked, so twelve serve clocks start together and the copies go out as one stack.
  *
- * The rule is the desk's: do what is ready, never all or nothing. A filing with no recording number, or with no
- * address to mail to, stays out with its reason, and the rest print. The press takes its words from `batchWords`.
+ * The rule is the desk's: do what is ready, never all or nothing. A filing with no recording number, no address to
+ * mail to or no stamped copy the app can print stays out with its reason, and the rest print. The press takes its
+ * words from `batchWords`.
+ *
+ * The plan is made in two steps since v2.7916, when the copy became the clerk's stamped scan. `lienServePlan` reads
+ * the rows: what is ready as far as the record says. `lienServePlanRead` then takes what reading each saved copy
+ * found (`LienCopyRead`): a copy still being read waits, one the app cannot print is held, one that looks like more
+ * than one lien is held until a person says it is this lien alone.
  *
  * The stack is in envelope order behind one mail sheet: the sheet stays in the office, lists every envelope in the
- * order it comes off the printer, and has a blank for each certified mail number. Pure; the caller prints and files.
+ * order it comes off the printer, and has a blank for each certified mail number. Pure; `lienServePdf.ts` draws the
+ * sheet and the stack and `lienServePrintIo.ts` prints and files.
  */
 import { batchWords, type BatchWords } from '../batchWords'
-import { demandDate } from '../jobsDocuments/demandLetter'
-import { filingDocsPrintHtml, prependToFilingPrintHtml, type FilingDocExtras } from '../jobsDocuments/lienFilingDocuments'
-import { lienServeHolds, lienServePapers, lienServeRecipients, lienServedCopySentTitle, type LienServeFacts, type LienServeHold, type LienServePaper, type LienServeRecipient } from '../jobsDocuments/lienServedCopy'
+import { lienServeHolds, lienServeLetterDrawable, lienServeRecipients, type LienServeFacts, type LienServeHold, type LienServeRecipient } from '../jobsDocuments/lienServedCopy'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import type { JobLienFilingRow } from './lienDeadlines'
-import { LIEN_HELP_STYLES, STRIPE, foot } from './lienHelpSheet'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type JobPropertyOwnerLike } from './lienProperty'
 import { lienServeClock, type LienServeClock } from './lienServeClock'
 import { lienServeFactsFromFiling } from './lienServeFacts'
+import { lienCopyDoubt, lienCopyPagesWords, lienCopySeveralHold, lienCopySource, type LienCopyFile, type LienCopyRead } from './lienStampedCopy'
 
 export { lienServeClock, type LienServeClock } from './lienServeClock'
 
 /** One filed affidavit that has not been served, and what the desk knows of its job. */
 export type LienServeJob = { jobId: string; jobNumber: string; jobLabel: string; filing: JobLienFilingRow; isSub: boolean; to?: LienServeFacts['to'] }
-
-function esc(s: string): string {
-  return (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
 
 /** The desk's own data, as much of it as this reads. */
 export type LienServeDeskData = {
@@ -88,7 +89,16 @@ export function lienServeMailedJobsFromDesk(data: LienServeDeskData, still: (job
   return out.sort((a, b) => String(b.filing.served_at ?? '').localeCompare(String(a.filing.served_at ?? '')) || a.jobLabel.localeCompare(b.jobLabel, undefined, { numeric: true }))
 }
 
-export type LienServeReady = { job: LienServeJob; facts: LienServeFacts; envelopes: LienServeRecipient[]; clock: LienServeClock }
+export type LienServeReady = {
+  job: LienServeJob
+  facts: LienServeFacts
+  envelopes: LienServeRecipient[]
+  clock: LienServeClock
+  /** The filing keeps the words a cover letter states. False prints the stamped copy with no letter in front. */
+  letter: boolean
+  /** The saved copy: the stamped scan's file in Drive. */
+  copy: { fileId: string; url: string }
+}
 export type LienServeHeld = { job: LienServeJob; holds: LienServeHold[]; clock: LienServeClock }
 
 export type LienServePlan = {
@@ -107,7 +117,7 @@ export type LienServePlan = {
 const byClock = (a: { clock: LienServeClock; job: LienServeJob }, b: { clock: LienServeClock; job: LienServeJob }) =>
   (a.clock.serveDue || '9999').localeCompare(b.clock.serveDue || '9999') || a.job.jobNumber.localeCompare(b.job.jobNumber, undefined, { numeric: true })
 
-/** The batch: what prints and what stays, the soonest day first. `phone` is the company's, for each letter's call line. */
+/** The batch as the rows read: what can print and what stays, the soonest day first. `phone` is the company's, for each letter's call line. */
 export function lienServePlan(jobs: ReadonlyArray<LienServeJob>, ctx: { todayYmd: string; phone: string }): LienServePlan {
   const ready: LienServeReady[] = []
   const held: LienServeHeld[] = []
@@ -115,14 +125,11 @@ export function lienServePlan(jobs: ReadonlyArray<LienServeJob>, ctx: { todayYmd
     if (job.filing.served_at) continue
     const facts = lienServeFactsFromFiling(job.filing, { isSub: job.isSub, letterYmd: ctx.todayYmd, phone: ctx.phone, to: job.to })
     const clock = lienServeClock(job.filing.serve_due, ctx.todayYmd)
-    if (!facts) {
-      // A filed affidavit with no fields kept: the app has nothing to copy.
-      if (job.filing.kind === 'affidavit' && job.filing.filed_at && !job.filing.voided_at) held.push({ job, clock, holds: [{ key: 'no_paper', words: 'the app did not draw this affidavit, so it has no copy to print', act: 'Mail a photocopy of the filed affidavit.', door: 'photocopy' }] })
-      continue
-    }
-    const holds = lienServeHolds(facts)
-    if (holds.length > 0) held.push({ job, holds, clock })
-    else ready.push({ job, facts, envelopes: lienServeRecipients(facts), clock })
+    if (!facts) continue
+    const copy = lienCopySource(job.filing.document_url)
+    const holds = lienServeHolds(facts, copy.kind)
+    if (holds.length > 0 || copy.kind !== 'drive') held.push({ job, holds, clock })
+    else ready.push({ job, facts, envelopes: lienServeRecipients(facts), clock, letter: lienServeLetterDrawable(facts.fields), copy: { fileId: copy.fileId, url: copy.url } })
   }
   ready.sort(byClock)
   held.sort(byClock)
@@ -156,6 +163,48 @@ export function lienServePlanWords(plan: Pick<LienServePlan, 'ready' | 'held' | 
   }
 }
 
+/** A filing ready to print with its saved copy read. */
+export type LienServeRunReady = LienServeReady & { file: LienCopyFile }
+
+/** The batch once the saved copies are read: what prints now, what is held, and how many copies are still being read. */
+export type LienServeRun = Omit<LienServePlan, 'ready'> & { ready: LienServeRunReady[]; reading: number }
+
+/**
+ * The plan with what reading each saved copy found. A copy still being read is in neither list and counts in
+ * `reading`. A copy the app cannot print is held with its reason. A copy that looks like more than one lien
+ * (`lienCopyDoubt`) is held until its filing is in `anyway`, the reader's own word after looking.
+ */
+export function lienServePlanRead(plan: LienServePlan, reads: Readonly<Record<string, LienCopyRead | undefined>>, anyway: ReadonlySet<string> = new Set()): LienServeRun {
+  const ready: LienServeRunReady[] = []
+  const held: LienServeHeld[] = [...plan.held]
+  let reading = 0
+  for (const r of plan.ready) {
+    const read = reads[r.job.filing.id]
+    if (!read || read.state === 'reading') {
+      reading += 1
+      continue
+    }
+    if (read.state === 'held') {
+      held.push({ job: r.job, holds: [read.hold], clock: r.clock })
+      continue
+    }
+    const doubt = lienCopyDoubt(read.file)
+    if (doubt && !anyway.has(r.job.filing.id)) held.push({ job: r.job, holds: [lienCopySeveralHold(doubt)], clock: r.clock })
+    else ready.push({ ...r, file: read.file })
+  }
+  held.sort(byClock)
+  return { ...plan, ready, held, reading, envelopes: ready.reduce((n, r) => n + r.envelopes.length, 0) }
+}
+
+/** The press while saved copies are still being read: dead, and it says how many. Otherwise the plan's own words. The lead counts every lien that owes its copies, read or not. */
+export function lienServeRunWords(run: LienServeRun, todayYmd: string): LienServePlanWords {
+  const words = lienServePlanWords(run, todayYmd)
+  const total = run.ready.length + run.held.length + run.reading
+  const lead = lienServePlanWords({ ...run, ready: new Array(run.ready.length + run.reading) as LienServeRunReady[] }, todayYmd).lead
+  if (run.reading > 0) return { button: run.reading === 1 ? 'Reading 1 stamped copy…' : `Reading ${run.reading} stamped copies…`, foot: null, dead: true, lead: total === 0 ? '' : lead, late: words.late }
+  return { ...words, lead }
+}
+
 /** One held filing as a line: "2340 · Ortega Residence: no recording number yet." */
 export function lienServeHeldLine(h: LienServeHeld): string {
   return `${h.job.jobLabel}: ${h.holds.map((x) => x.words).join(', ')}.`
@@ -165,66 +214,68 @@ const TO_SHORT: Record<LienServeRecipient['recipient'], string> = { owner: 'Owne
 
 export const LIEN_SERVE_SHEET_WORDS = {
   tag: 'Mail sheet · keep this page in the office',
+  statute: 'Texas Property Code § 53.055',
+  stepsHead: 'From the printer to the mail',
+  /** The first step with the letters printed, and without. */
+  stackWithLetter: 'Each envelope takes its letter and the clerk’s stamped copy behind it. They come off the printer in the order below.',
+  stackNoLetter: 'Each envelope takes one clerk’s stamped copy. They come off the printer in the order below.',
   steps: [
-    'Each envelope takes its letter and the copy behind it. They come off the printer in the order below.',
     'Mail each envelope by certified mail. Write its number in the last column.',
     'In the app, open the Lien desk. Press Enter mail numbers on Filed · copies to mail, or on the job’s own line. Type the day mailed and each number.',
   ],
+  columns: ['#', 'Job', 'Copy to', 'Name and address on the envelope', 'Pages', 'Mail by', 'Certified mail number'],
   held: 'Not in this print',
 } as const
 
-/**
- * A column of the mail sheet that is no wider than its longest text (the owner’s ask of 2026-11-17, v2.7639): the
- * number, who the copy goes to and the mail-by day. The table lays itself out by its content, so the room these three
- * give up goes to the job, the envelope's name and address, and the blank for the certified mail number.
- */
-const FIT = ' style="width:1%;white-space:nowrap"'
+/** One envelope's line on the mail sheet. */
+export type LienServeSheetRow = { n: number; job: string; to: string; name: string; address: string; pages: string; mailBy: string }
 
-/** The mail sheet: every envelope in the stack's order with a blank for its certified mail number, then what was left out. */
-export function lienServeMailSheetHtml(plan: Pick<LienServePlan, 'ready' | 'held' | 'envelopes'>, opts: { printedOn: string; letter: boolean }): string {
-  let n = 0
-  const rows = plan.ready
-    .map((r) =>
-      r.envelopes
-        .map((e) => {
-          n += 1
-          return `<tr><td${FIT}>${n}</td><td><strong>${esc(r.job.jobLabel)}</strong></td><td${FIT}>${esc(TO_SHORT[e.recipient])}</td><td><strong>${esc(e.name)}</strong><br/>${esc(e.address)}</td><td${FIT}>${esc(r.clock.serveDue ? `${formatYmdMonthDay(r.clock.serveDue)}${r.clock.late ? ' · late' : ''}` : '')}</td><td></td></tr>`
-        })
-        .join(''),
-    )
-    .join('')
-  const left = plan.held.map((h) => `<tr><td></td><td>${esc(h.job.jobLabel)}</td><td colspan="4" class="lien-help-flag">Not printed: ${esc(h.holds.map((x) => x.words).join(', '))}. <span style="font-weight:400">${esc([...new Set(h.holds.map((x) => x.act))].join(' '))}</span></td></tr>`).join('')
-  const count = plan.envelopes
-  return (
-    `<section class="lien-help" data-lien-serve-sheet>` +
-    STRIPE +
-    `<div class="lien-help-band"><div><div class="lien-help-tag">${esc(LIEN_SERVE_SHEET_WORDS.tag)}</div><h2>${esc(count === 1 ? 'Copies of filed lien affidavits: 1 envelope' : `Copies of filed lien affidavits: ${count} envelopes`)}</h2></div><div class="lien-help-small" style="text-align:right">${esc(opts.printedOn ? `Printed ${opts.printedOn}` : '')}<br/>Texas Property Code § 53.055</div></div>` +
-    `<div class="lien-help-box"><h3>From the printer to the mail</h3><ol>${LIEN_SERVE_SHEET_WORDS.steps.map((s) => `<li><span class="lien-help-tick"></span> ${esc(s)}</li>`).join('')}</ol></div>` +
-    `<table class="lien-help-rows" style="table-layout:auto">` +
-    `<tr><th${FIT}>#</th><th style="width:22%">Job</th><th${FIT}>Copy to</th><th>Name and address on the envelope</th><th${FIT}>Mail by</th><th style="width:22%">Certified mail number</th></tr>${rows}` +
-    (left ? `<tr class="lien-help-group"><td colspan="6">${esc(LIEN_SERVE_SHEET_WORDS.held)}</td></tr>${left}` : '') +
-    `</table>` +
-    foot(`Mail sheet${opts.printedOn ? ` printed ${opts.printedOn}` : ''}`, opts.letter ? 'The first letter is the next page' : 'The first copy is the next page') +
-    `</section>`
-  )
+/** The mail sheet as the print draws it (`lienServePdf.ts`): its words, every envelope in the stack's order and what was left out. */
+export type LienServeSheet = {
+  tag: string
+  title: string
+  printed: string
+  statute: string
+  stepsHead: string
+  steps: string[]
+  columns: readonly string[]
+  rows: LienServeSheetRow[]
+  heldHead: string
+  held: Array<{ job: string; words: string; act: string }>
+  foot: [string, string]
 }
 
-/** One job's part of the stack, to file on the job: its papers alone, as they printed. */
-export type LienServeJobPrint = { jobId: string; filingId: string; title: string; recipientName: string; html: string; papers: LienServePaper[] }
-
 /**
- * The whole stack as one print document, and each job's own papers for its file. The mail sheet leads and is not
- * filed: it is a desk paper. Null when nothing is ready.
+ * The mail sheet: every envelope in the stack's order with how many pages it takes and a blank for its certified
+ * mail number, then what was left out with its reason. The pages are the letter's one and the stamped copy's own, so
+ * the office can split the stack without reading it. `notPrinted` adds a lien the run could not put in the stack
+ * after all, with the reason.
  */
-export function lienServeBatchPrint(plan: LienServePlan, opts: { letter: boolean; letterhead?: FilingDocExtras['letterhead']; todayYmd: string }): { html: string; jobs: LienServeJobPrint[] } | null {
-  const jobs: LienServeJobPrint[] = []
-  for (const r of plan.ready) {
-    const papers = lienServePapers(r.facts, { letter: opts.letter, letterhead: opts.letterhead })
-    if (papers.length === 0) continue
-    const title = lienServedCopySentTitle(r.job.jobNumber)
-    jobs.push({ jobId: r.job.jobId, filingId: r.job.filing.id, title, recipientName: r.envelopes[0]?.name ?? '', html: filingDocsPrintHtml(papers, title), papers })
+export function lienServeMailSheet(run: Pick<LienServeRun, 'ready' | 'held'>, opts: { printedOn: string; letter: boolean; notPrinted?: ReadonlyArray<{ job: LienServeJob; reason: string }> }): LienServeSheet {
+  let n = 0
+  const rows: LienServeSheetRow[] = run.ready.flatMap((r) => {
+    const pages = r.file.pages + (opts.letter && r.letter ? 1 : 0)
+    return r.envelopes.map((e) => {
+      n += 1
+      return { n, job: r.job.jobLabel, to: TO_SHORT[e.recipient], name: e.name, address: e.address, pages: lienCopyPagesWords(pages).replace(/ pages?$/, ''), mailBy: r.clock.serveDue ? `${formatYmdMonthDay(r.clock.serveDue)}${r.clock.late ? ' · late' : ''}` : '' }
+    })
+  })
+  const anyLetter = opts.letter && run.ready.some((r) => r.letter)
+  const count = rows.length
+  return {
+    tag: LIEN_SERVE_SHEET_WORDS.tag,
+    title: count === 1 ? 'Copies of filed lien affidavits: 1 envelope' : `Copies of filed lien affidavits: ${count} envelopes`,
+    printed: opts.printedOn ? `Printed ${opts.printedOn}` : '',
+    statute: LIEN_SERVE_SHEET_WORDS.statute,
+    stepsHead: LIEN_SERVE_SHEET_WORDS.stepsHead,
+    steps: [anyLetter ? LIEN_SERVE_SHEET_WORDS.stackWithLetter : LIEN_SERVE_SHEET_WORDS.stackNoLetter, ...LIEN_SERVE_SHEET_WORDS.steps],
+    columns: LIEN_SERVE_SHEET_WORDS.columns,
+    rows,
+    heldHead: LIEN_SERVE_SHEET_WORDS.held,
+    held: [
+      ...run.held.map((h) => ({ job: h.job.jobLabel, words: `Not printed: ${h.holds.map((x) => x.words).join(', ')}.`, act: [...new Set(h.holds.map((x) => x.act))].join(' ') })),
+      ...(opts.notPrinted ?? []).map((f) => ({ job: f.job.jobLabel, words: `Not printed: ${f.reason.trim().replace(/[.\s]+$/, '')}.`, act: 'Print this lien again from the Lien desk.' })),
+    ],
+    foot: [`Mail sheet${opts.printedOn ? ` printed ${opts.printedOn}` : ''}`, anyLetter ? 'The first letter is the next page' : 'The first copy is the next page'],
   }
-  if (jobs.length === 0) return null
-  const stack = filingDocsPrintHtml(jobs.flatMap((j) => j.papers), jobs.length === 1 ? (jobs[0]?.title ?? 'Copies of filed lien affidavits') : `Copies of ${jobs.length} filed lien affidavits`)
-  return { html: prependToFilingPrintHtml(stack, lienServeMailSheetHtml(plan, { printedOn: demandDate(opts.todayYmd), letter: opts.letter }), LIEN_HELP_STYLES), jobs }
 }
