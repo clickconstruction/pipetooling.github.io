@@ -6,6 +6,7 @@ import { subLaborJobBalance } from '../subLaborOutstanding'
 import { vehicleDisplayName } from '../vehicleFleet'
 import type { EndEmploymentFacts, StartEmploymentFacts } from './lifecycleChecklist'
 import type { PersonKey } from './personKey'
+import { salariedWeekOf, type SalariedWeek } from '../salariedEffectiveHours'
 
 /**
  * The reads behind the Person Desk lifecycle flows (PR 2). Every query is one
@@ -13,19 +14,20 @@ import type { PersonKey } from './personKey'
  * table degrades to "unknown" rather than a false "all clear".
  */
 
-export type PayConfigFacts = { exists: boolean; hourlyWage: number | null; officeWage: number | null; isSalary: boolean; recordHoursButSalary: boolean }
+/** `salariedWeek` is the paid hours of each day, Sunday first (v2.7826); 8 h Mon–Fri when left out. */
+export type PayConfigFacts = { exists: boolean; hourlyWage: number | null; officeWage: number | null; isSalary: boolean; recordHoursButSalary: boolean; salariedWeek?: SalariedWeek }
 
 export async function loadPayConfigFacts(payName: string | null): Promise<PayConfigFacts | null> {
   if (!payName) return null
   const { data, error } = await supabase
     .from('people_pay_config')
-    .select('person_name, hourly_wage, office_hourly_wage, is_salary, record_hours_but_salary')
+    .select('person_name, hourly_wage, office_hourly_wage, is_salary, record_hours_but_salary, salaried_week_hours')
     .eq('person_name', payName)
     .maybeSingle()
   if (error) return null
-  const row = data as { hourly_wage: number | null; office_hourly_wage: number | null; is_salary: boolean | null; record_hours_but_salary: boolean | null } | null
+  const row = data as { hourly_wage: number | null; office_hourly_wage: number | null; is_salary: boolean | null; record_hours_but_salary: boolean | null; salaried_week_hours: unknown } | null
   if (!row) return { exists: false, hourlyWage: null, officeWage: null, isSalary: false, recordHoursButSalary: false }
-  return { exists: true, hourlyWage: row.hourly_wage, officeWage: row.office_hourly_wage, isSalary: !!row.is_salary, recordHoursButSalary: !!row.record_hours_but_salary }
+  return { exists: true, hourlyWage: row.hourly_wage, officeWage: row.office_hourly_wage, isSalary: !!row.is_salary, recordHoursButSalary: !!row.record_hours_but_salary, salariedWeek: salariedWeekOf(row) }
 }
 
 export async function loadEndEmploymentFacts(key: PersonKey, endDateYmd: string, todayYmd: string): Promise<EndEmploymentFacts> {
