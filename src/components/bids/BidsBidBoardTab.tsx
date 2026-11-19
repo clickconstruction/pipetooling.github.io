@@ -55,7 +55,7 @@ import { useBidScoreReadiness } from '../../hooks/useBidScoreReadiness'
 import BidDifficultyPriceModal from './BidDifficultyPriceModal'
 import { useDifficultyPrice } from '../../hooks/useDifficultyPrice'
 import { DIFFICULTY_PRICE_WORDS, difficultyCanRate } from '../../lib/bids/difficultyPrice'
-import { bidBoardSearchPlaceholder, bidBoardToolsRowLayout } from '../../lib/bidBoardToolsRow'
+import { bidBoardSearchPlaceholder, bidBoardToolsGroupStyle, bidBoardToolsRowLayout } from '../../lib/bidBoardToolsRow'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { bidSentCounts, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
 import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
@@ -1858,7 +1858,7 @@ export function BidsBidBoardTab({
           right on one line, the search shrinking first. On a phone (`bidBoardToolsRow.ts`) the search takes
           the first line whole — shrunk beside the presses it drew 18 px wide, no search at all — and the
           development filter and the press group share the next line, the group kept to the right. Reply
-          book and Customer review are their icons there. */}
+          book and Customer review are their icons there, and a group wider than its line wraps. */}
       <div style={{ display: 'flex', flexWrap: toolsRow.rowWrap, gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
         <input
           type="text"
@@ -1902,7 +1902,7 @@ export function BidsBidBoardTab({
             </select>
           </label>
         ) : null}
-        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, marginLeft: toolsRow.groupMarginLeft }}>
+        <div data-bid-board-tools-group style={bidBoardToolsGroupStyle(narrowViewport)}>
           <MarkedBidsToggle compact={narrowViewport} />
           <button
             type="button"
