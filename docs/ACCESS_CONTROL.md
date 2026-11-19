@@ -1898,6 +1898,7 @@ Both new tables are RLS-enabled and carry the read-only (training mode) blocks.
 `esign_consents` holds the exact ESIGN / Texas UETA consent words a signer saw (version, language, clause text) plus name, method, time, IP and device, one row per signature from the public signing functions.
 **SELECT**: `is_master_or_dev() OR is_office_or_estimator()` (dev · leaders · assistant · controller · estimator).
 **No client write policy** — only `accept-estimate`, `accept-contract`, `sign-job-contract`, `sign-bid-room` and `submit-sub-portal` insert, with the service role.
+`record_type` is held by `esign_consents_record_type_check`, whose newest restatement must list every kind a function writes (`src/lib/esignConsentKinds.test.ts`, v2.7924).
 Subs, helpers, primaries and superintendents do not read it;
 the signed rows they can already see keep their own `signer_consented_at`.
 
