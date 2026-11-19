@@ -466,7 +466,11 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // panel's own rule (_shared/twinSeat.ts). The plan commits to the fleet, so a twin minted since refuses the apply. It
 // makes no key (mint_twin_setup_code does) and leaves the twin read-only: the rung, a key's revoke and Archive stay
 // presses in the panel. No wrapper RPC, no migration (_shared/devMcpTwin.ts).
-const SERVER_VERSION = '0.105.0'
+// 0.106.0 (v2.7886, punch list #379, the last part the trip record owed the seat): read_trips gives each trip its number on
+// its site (trip_number, the Trip 5 a bill or a text cites), the plan names the number of a trip already kept and
+// of a kept trip its days overlap, and the applied reply says which number the trip is. No new verb, no migration
+// (_shared/devMcpTrips.ts).
+const SERVER_VERSION = '0.106.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -874,7 +878,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'read_trips',
-    description: "A site's trips, or a job's (v2.7670, punch list #379): the trips to a site away from home kept on a development, in the order they went out. Each trip: its id, its first and last day, where it stands (planned, out, back: read from its days and today in the company's calendar, never typed), its days by kind (at the site, on the road, getting ready, a day counted once however many people were on it), its people with their roster row, their login and their own days, what it was for, who asked and how, how it went, billing (inside | extra | ours), the jobs its work goes on, and via and agent_label for one a robot filed. With job_id: the trips a job with no development holds by itself, and the trips whose work goes on that job. Read as you under RLS, so view_as reads what a role sees: the office reads every trip, a person on a trip reads that trip. A trip is a reading over the clock; the hours themselves are the clock's. Nothing is written.",
+    description: "A site's trips, or a job's (v2.7670, punch list #379): the trips to a site away from home kept on a development, in the order they went out. Each trip: its id, its number on its site (trip_number, since v2.7886: the Trip 5 a bill or a text cites, handed out by the database in the order trips are made, never typed and never changed), its first and last day, where it stands (planned, out, back: read from its days and today in the company's calendar, never typed), its days by kind (at the site, on the road, getting ready, a day counted once however many people were on it), its people with their roster row, their login and their own days, what it was for, who asked and how, how it went, billing (inside | extra | ours), the jobs its work goes on, and via and agent_label for one a robot filed. With job_id: the trips a job with no development holds by itself, and the trips whose work goes on that job. Read as you under RLS, so view_as reads what a role sees: the office reads every trip, a person on a trip reads that trip. A trip is a reading over the clock; the hours themselves are the clock's. Nothing is written.",
     inputSchema: { type: 'object', properties: { development_id: { type: 'string', description: 'a developments.id (read_rows on developments by name); or job_id, one of the two' }, job_id: { type: 'string', description: 'a jobs_ledger.id (find_job), in place of development_id' } } },
   },
   {
