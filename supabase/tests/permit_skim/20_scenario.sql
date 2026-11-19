@@ -24,6 +24,23 @@ INSERT INTO public.permits (id, city, source, permit_number, permit_type, kind, 
   ('00000000-0000-0000-0000-0000003020b4', 'Skim City', 'bed', 'RES-1', 'Res New Building Permit', 'building', 'applied', true, 'New house', '9 LARKSPUR CT', '9 larkspur ct', CURRENT_DATE - 3, 'Ridgeway Builders'),
   ('00000000-0000-0000-0000-0000003020c2', 'Skim City', 'bed', 'COM-2', 'Plumbing Permit', 'plumbing', 'issued', false, 'Plumbing', '77 KILN ST', '77 kiln st', CURRENT_DATE - 4, 'Blue Heron Plumbing');
 
+-- San Antonio, where a project's plumbing permit rides the project's number (migration *_permit_plumbing_ties). At
+-- 800 Tower Blvd Ridgeline applied six days ago; another tenant's project has its plumbing permit, a plumber pulled one
+-- of his own, and Ridgeline's old job there has one from last year. At 12 Orchard Way Ridgeline's application was
+-- issued on another number, and the plumbing permit on that number lists another person at Ridgeline.
+INSERT INTO public.permits (id, city, source, permit_number, permit_type, kind, stage, residential, work_type, address, address_key, submitted_on, issued_on, contact, builder_key) VALUES
+  ('00000000-0000-0000-0000-0000003020d1', 'San Antonio', 'bed', 'SA-APP-1', 'Commercial Project Application', 'building', 'applied', false, 'Commercial project', '800 TOWER BLVD', '800 tower blvd', CURRENT_DATE - 6, NULL, 'Nora Vance, Ridgeline Interiors', 'ridgelineinteriors'),
+  ('00000000-0000-0000-0000-0000003020d2', 'San Antonio', 'bed', 'SA-PMT-9', 'Comm Remodel Permit', 'building', 'issued', false, 'Commercial remodel', '800 TOWER BLVD', '800 tower blvd', CURRENT_DATE - 20, NULL, 'Otis Reed, Harbor Fitouts', 'harborfitouts'),
+  ('00000000-0000-0000-0000-0000003020d3', 'San Antonio', 'bed', 'SA-PMT-9', 'Plumbing General Permit', 'plumbing', 'issued', false, 'Plumbing', '800 TOWER BLVD', '800 tower blvd', NULL, CURRENT_DATE - 3, 'Otis Reed, Harbor Fitouts', 'harborfitouts'),
+  ('00000000-0000-0000-0000-0000003020d4', 'San Antonio', 'bed', 'MEP-1', 'Plumbing General Permit', 'plumbing', 'issued', false, 'Plumbing', '800 TOWER BLVD', '800 tower blvd', NULL, CURRENT_DATE - 2, 'Quill Plumbing', 'quillplumbing'),
+  ('00000000-0000-0000-0000-0000003020d5', 'San Antonio', 'bed', 'SA-OLD-1', 'Plumbing General Permit', 'plumbing', 'issued', false, 'Plumbing', '800 TOWER BLVD', '800 tower blvd', NULL, CURRENT_DATE - 300, 'Nora Vance, Ridgeline Interiors', 'ridgelineinteriors'),
+  ('00000000-0000-0000-0000-0000003020d6', 'San Antonio', 'bed', 'SA-APP-2', 'Commercial Project Application', 'building', 'applied', false, 'Commercial project', '12 ORCHARD WAY', '12 orchard way', CURRENT_DATE - 40, NULL, 'Nora Vance, Ridgeline Interiors', 'ridgelineinteriors'),
+  ('00000000-0000-0000-0000-0000003020d7', 'San Antonio', 'bed', 'SA-PMT-2', 'Comm Remodel Permit', 'building', 'issued', false, 'Commercial remodel', '12 ORCHARD WAY', '12 orchard way', CURRENT_DATE - 40, CURRENT_DATE - 10, 'Nora Vance, Ridgeline Interiors', 'ridgelineinteriors'),
+  ('00000000-0000-0000-0000-0000003020d8', 'San Antonio', 'bed', 'SA-PMT-2', 'Plumbing General Permit', 'plumbing', 'issued', false, 'Plumbing', '12 ORCHARD WAY', '12 orchard way', NULL, CURRENT_DATE - 5, 'Ian Holt, Ridgeline Interiors', 'ridgelineinteriors'),
+  -- A city where plumbers pull their own permits: the address is the only tie, and it stands.
+  ('00000000-0000-0000-0000-0000003020e1', 'Elm City', 'bed', 'EC-1', 'Comm Remodel Permit', 'building', 'issued', false, 'Commercial remodel', '4 ELM ST', '4 elm st', CURRENT_DATE - 5, NULL, 'Pat Lime, Lime Build', 'limebuild'),
+  ('00000000-0000-0000-0000-0000003020e2', 'Elm City', 'bed', 'EC-P1', 'Plumbing Permit', 'plumbing', 'issued', false, 'Plumbing', '4 ELM ST', '4 elm st', NULL, CURRENT_DATE - 2, 'Wren Plumbing', 'wrenplumbing');
+
 -- COM-1 arrived three days ago; the rest arrived now.
 UPDATE public.permits SET first_seen_at = now() - interval '3 days' WHERE id = '00000000-0000-0000-0000-0000003020b1';
 
@@ -68,6 +85,23 @@ SELECT ps.same('v2 lists the commercial permits, newest first',
   (SELECT string_agg(permit_number || ':' || COALESCE(builder_key, '-') || ':' || builder_permits || '/' || builder_open || ':' || COALESCE(plumber, 'none'), ' ' ORDER BY filed_on DESC)
    FROM public.research_permits_v2('Skim City', CURRENT_DATE - 30, false)),
   'COM-3:tallpinedevelopment:1/1:none COM-1:ridgewaybuilders:2/1:none COM-2:ridgewaybuilders:2/1:Blue Heron Plumbing');
+
+-- San Antonio: another tenant's plumbing permit and a plumber's own permit at the address close nothing and name
+-- nobody; an application is closed by the plumbing permit on the number it was issued under, which the same company
+-- filed; and that company's own name is never the plumber.
+SELECT ps.same('in San Antonio a plumbing permit counts only on the number or from the same applicant',
+  (SELECT string_agg(permit_number || ':' || builder_permits || '/' || builder_open || ':' || COALESCE(plumber, 'none') || ':' || COALESCE((CURRENT_DATE - plumber_permit_on)::text, 'open'), ' ' ORDER BY filed_on DESC)
+   FROM public.research_permits_v2('San Antonio', CURRENT_DATE - 60, false)),
+  'SA-APP-1:3/1:none:open SA-PMT-2:3/1:none:5 SA-PMT-9:1/0:none:3 SA-APP-2:3/1:none:5');
+SELECT ps.same('and one San Antonio permit waits on a skim', (SELECT waiting::text FROM public.permit_skim_wait('San Antonio')), '1');
+SELECT ps.same('Builders counts the same open permit and names no other tenant as the plumber',
+  (SELECT string_agg(key || ':' || permits || '/' || open || ':' || COALESCE(plumber, 'nobody') || 'x' || plumber_jobs, ' ' ORDER BY key) FROM public.research_builders('San Antonio')),
+  'harborfitouts:1/0:nobodyx0 ridgelineinteriors:3/1:nobodyx0');
+-- Elsewhere a plumber's own permit at the address still closes the job and names him, on both reads.
+SELECT ps.same('where plumbers pull their own permits the address still ties them',
+  (SELECT permit_number || ':' || builder_permits || '/' || builder_open || ':' || COALESCE(plumber, 'none') FROM public.research_permits_v2('Elm City', CURRENT_DATE - 60, false))
+  || ' ' || (SELECT key || ':' || permits || '/' || open || ':' || COALESCE(plumber, 'nobody') || 'x' || plumber_jobs FROM public.research_builders('Elm City')),
+  'EC-1:1/0:Wren Plumbing limebuild:1/0:Wren Plumbingx1');
 
 -- A keep handed to Sam, with its reason code.
 INSERT INTO public.permit_verdicts (permit_id, verdict, reason, reason_code, for_user_id, decided_by, decided_at)
@@ -148,7 +182,7 @@ RESET ROLE;
 SELECT ps.same('both tables carry the read-only fence',
   (SELECT count(DISTINCT tablename)::text FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('builders', 'builder_marks') AND permissive = 'RESTRICTIVE'), '2');
 SELECT ps.same('anon runs none of the new functions',
-  (SELECT count(*)::text FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('research_permits_v2', 'research_builders', 'permit_funnel', 'permit_set_builder_keys', 'permit_skim_wait') AND has_function_privilege('anon', p.oid, 'EXECUTE')), '0');
+  (SELECT count(*)::text FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('research_permits_v2', 'research_builders', 'permit_funnel', 'permit_set_builder_keys', 'permit_skim_wait', 'permit_address_plumbing_counts') AND has_function_privilege('anon', p.oid, 'EXECUTE')), '0');
 
 DO $$ BEGIN RAISE NOTICE 'permit_skim PASSED'; END $$;
 ROLLBACK;

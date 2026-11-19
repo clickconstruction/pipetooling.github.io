@@ -87,14 +87,14 @@ describe('Builders, Our bids', () => {
     draw()
     expect(await screen.findByText('4 priced, 2 won')).toBeTruthy()
     const sheet = await openSheet('Ridgeway Builders of Texas LLC')
-    expect(within(sheet).getByText('Our bids: 4 priced, 2 won, the last on Oct 14. Plumber they use: nobody yet.')).toBeTruthy()
+    expect(within(sheet).getByText('Our bids: 4 priced, 2 won, the last on Oct 14. Plumber they use: not named on the permits.')).toBeTruthy()
     expect(within(sheet).getByText('1 of them is with Ridgeway Builders, tied to this name by a person’s word.')).toBeTruthy()
   })
 
   it('says it on a phone card too', async () => {
     answersIo.loadBuilderAnswersGround.mockResolvedValue(ground([tie()], [bid('b1')]))
     draw(true)
-    expect(await screen.findByText('Our bids: 1 priced, none won · Plumber: nobody yet')).toBeTruthy()
+    expect(await screen.findByText('Our bids: 1 priced, none won · Plumber: not named on the permits')).toBeTruthy()
   })
 
   it('reads the same-name count alone before the answers table is on the database, and draws no section on the sheet', async () => {
