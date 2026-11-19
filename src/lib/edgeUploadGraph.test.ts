@@ -126,6 +126,18 @@ describe('edgeUpload (what a deploy uploads)', () => {
     expect(u.bytes).toBeLessThan(500_000)
   })
 
+  it('the sub portal’s two #388 sample sheets ride with sub-portal alone, so their edit puts no other function behind (v2.7951)', () => {
+    const SUB_SAMPLE = 'supabase/functions/_shared/customerSampleSub.ts'
+    const readers = edgeUploads()
+      .map((row) => row.slug)
+      .filter((slug) => edgeUpload(`supabase/functions/${slug}/index.ts`).via(SUB_SAMPLE) !== null)
+    expect(readers).toEqual(['sub-portal'])
+    // The widely imported fixtures file knows nothing of them.
+    const fixtures = readFileSync('supabase/functions/_shared/customerSampleFixtures.ts', 'utf8')
+    expect(fixtures).not.toContain('usualPayWeeks')
+    expect(fixtures).not.toContain('customerPaidOn')
+  })
+
   it('the legal sample moved whole: the fixtures file re-exports it and keeps none of it', () => {
     const legal = readFileSync('supabase/functions/_shared/customerSampleLegal.ts', 'utf8')
     const fixtures = readFileSync('supabase/functions/_shared/customerSampleFixtures.ts', 'utf8')
