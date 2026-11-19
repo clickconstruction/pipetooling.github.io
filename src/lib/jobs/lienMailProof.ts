@@ -12,6 +12,12 @@
  * after its mailing is recorded, reached by `sent_filing_id`). The filing's own saved copy is listed when it is not
  * one of them, so a link the office typed still shows.
  *
+ * An affidavit's copy is mailed once its day is on record, and not before (v2.7883). A file on the copy said *mailed*
+ * here for two days, so eleven filed liens with a file on every envelope and no day read *Mail proof complete* while
+ * the copies window and the serve-by watch still counted their five days. The copies window had already dropped that
+ * rule (`lienServeNumbers.ts`: a file can be the wrong file, and the day is a legal fact). The chip is complete only
+ * when no copy has anything left to add: the files, an affidavit's day, each mail number and each receipt.
+ *
  * Pure. `lienMailProofIo.ts` reads and writes.
  */
 import { documentLinkWords, normalizeDocumentUrl } from './lienFilingDocumentLink'
@@ -34,7 +40,7 @@ export type LienMailProofEnvelope = {
   receiptUrl: string
   /** A copy that went by post has a receipt to keep. An emailed copy, one handed over and one a mail provider carried do not. */
   wantsReceipt: boolean
-  /** The copy has gone out. False on a filed affidavit whose copies are not mailed yet. */
+  /** The copy has gone out. On a filed affidavit that is its day on record: a number or a file kept ahead of the day does not say so. */
   mailed: boolean
   /** A mail number is owed and not on file: a mailed copy that went by tracked post with none typed, and none coming from a mail provider. */
   wantsNumber: boolean
@@ -49,8 +55,9 @@ export type LienMailProof = {
   /** How many pieces of proof are on file, of how many the paper owes: the files count as one, each posted copy's receipt as one. */
   have: number
   of: number
+  /** Nothing is left to add: every piece is on file, an affidavit's mailed day is on record and no copy owes a mail number. */
   complete: boolean
-  /** *Mail proof: 2 of 3 on file*, or *Mail proof complete*. */
+  /** *Mail proof: 2 of 3 on file*, *Mail proof complete*, or what is missing once every file is in: *Mailed day not recorded*, *Mail number missing*. */
   chip: string
   /** The one thing to add next, as a sentence; null when the proof is complete. */
   next: string | null
@@ -123,8 +130,8 @@ export function lienMailProof(input: LienMailProofInput): LienMailProof | null {
       const s = row(r)
       const tracking = (s?.tracking ?? '').trim()
       const receiptUrl = (s?.receipt_url ?? '').trim()
-      const mailed = served || !!tracking || !!receiptUrl
-      const line = tracking ? `Certified mail ${tracking}` : mailed ? 'Mailed, no number yet' : 'Not mailed yet'
+      const mailed = served
+      const line = !mailed ? (tracking ? `Not mailed yet · certified mail ${tracking}` : 'Not mailed yet') : tracking ? `Certified mail ${tracking}` : 'Mailed, no number yet'
       return { recipient: r, who: who(r), line, tracking, receiptUrl, wantsReceipt: true, mailed, wantsNumber: mailed && !tracking }
     })
   } else {
@@ -137,20 +144,30 @@ export function lienMailProof(input: LienMailProofInput): LienMailProof | null {
   const owed = envelopes.filter((e) => e.wantsReceipt)
   const of = 1 + owed.length
   const have = (files.length > 0 ? 1 : 0) + owed.filter((e) => e.receiptUrl).length
-  const complete = have >= of
+  // An affidavit whose day is not on record: its copies are not mailed, whatever is kept on them.
+  const unmailed = envelopes.find((e) => !e.mailed)
+  const kept = envelopes.some((e) => !e.mailed && (e.tracking || e.receiptUrl))
+  const numberless = envelopes.find((e) => e.mailed && e.wantsNumber)
   const missing = owed.find((e) => !e.receiptUrl)
+  const onFile = have >= of
+  const complete = onFile && !unmailed && !numberless
   const next = complete
     ? null
     : files.length === 0
       ? paper === 'affidavit'
         ? 'Add the stamped scan.'
         : 'Add what was mailed.'
-      : missing && !missing.mailed
-        ? 'Mail the copies. Then add each receipt.'
-        : missing
-          ? `Add the ${SHORT[missing.recipient]}’s receipt.`
-          : null
-  return { paper, filesLabel: paper === 'affidavit' ? LIEN_MAIL_PROOF_WORDS.stamped : LIEN_MAIL_PROOF_WORDS.inEnvelope, files, envelopes, have, of, complete, chip: complete ? LIEN_MAIL_PROOF_WORDS.complete : `Mail proof: ${have} of ${of} on file`, next }
+      : unmailed
+        ? kept
+          ? LIEN_MAIL_PROOF_WORDS.nextDay
+          : 'Mail the copies. Then add each receipt.'
+        : numberless
+          ? `Enter the ${SHORT[numberless.recipient]}’s mail number.`
+          : missing
+            ? `Add the ${SHORT[missing.recipient]}’s receipt.`
+            : null
+  const chip = complete ? LIEN_MAIL_PROOF_WORDS.complete : !onFile ? `Mail proof: ${have} of ${of} on file` : unmailed ? LIEN_MAIL_PROOF_WORDS.dayMissing : LIEN_MAIL_PROOF_WORDS.numberMissing
+  return { paper, filesLabel: paper === 'affidavit' ? LIEN_MAIL_PROOF_WORDS.stamped : LIEN_MAIL_PROOF_WORDS.inEnvelope, files, envelopes, have, of, complete, chip, next }
 }
 
 /** The block's words. Each sentence is one idea, as a first-timer reads it. */
@@ -159,6 +176,11 @@ export const LIEN_MAIL_PROOF_WORDS = {
   inEnvelope: 'In the envelope',
   stamped: 'Stamped by the clerk',
   complete: 'Mail proof complete',
+  /** Every file is in and the affidavit's mailed day is not on record. */
+  dayMissing: 'Mailed day not recorded',
+  /** Every file is in, the copies are mailed, and a copy has no mail number. */
+  numberMissing: 'Mail number missing',
+  nextDay: 'Record the day the copies were mailed.',
   noReceipt: 'No receipt yet',
   receipt: 'Receipt',
   noFile: 'No copy of what was mailed yet',

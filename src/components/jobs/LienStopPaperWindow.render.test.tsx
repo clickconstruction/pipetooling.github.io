@@ -86,9 +86,9 @@ describe('LienStopPaperWindow', () => {
     const order: string[] = []
     const serve = vi.fn(() => order.push('serve'))
     const lienWindow = vi.fn(() => order.push('lien_window'))
-    // A filed affidavit: the owner's copy has its number and no receipt, the contractor's is whole.
-    const proof = lienMailProof({ kind: 'affidavit', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9507 01', sent_on: '2026-11-17' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '9507 02', sent_on: '2026-11-17', receipt_url: 'https://drive.example/r2' }], documentUrl: 'https://drive.example/scan', servedAt: null, hasContractor: true })!
-    const withDoors = (openers: Parameters<typeof lienMailProofDoorPress>[1]) => (): LienStopPaper => ({ pages: [], envelope: null, before: [], act: null, record: { words: 'Filed Nov 16', href: null, proof, proofDoor: lienMailProofDoorPress({ jobId: 'job-1', filingId: 'f-1', paper: 'affidavit', served: false, ownerGap: null }, openers, () => order.push('close')) } })
+    // A filed affidavit, mailed: the owner's copy has its number and no receipt, the contractor's is whole.
+    const proof = lienMailProof({ kind: 'affidavit', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9507 01', sent_on: '2026-11-17' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '9507 02', sent_on: '2026-11-17', receipt_url: 'https://drive.example/r2' }], documentUrl: 'https://drive.example/scan', servedAt: '2026-11-17', hasContractor: true })!
+    const withDoors = (openers: Parameters<typeof lienMailProofDoorPress>[1]) => (): LienStopPaper => ({ pages: [], envelope: null, before: [], act: null, record: { words: 'Filed Nov 16', href: null, proof, proofDoor: lienMailProofDoorPress({ jobId: 'job-1', filingId: 'f-1', paper: 'affidavit', served: true, ownerGap: null }, openers, () => order.push('close')) } })
     render(<LienStopPaperWindow steps={timeline.steps} index={jul} onIndex={() => {}} onClose={() => {}} jobLabel="2291 · Sample Job" paperFor={withDoors({ serve, lien_window: lienWindow })} />)
     const press = screen.getByRole('button', { name: 'Owner of record: Add the receipt' })
     expect(press.textContent).toBe('Add the receipt ›')
@@ -98,9 +98,23 @@ describe('LienStopPaperWindow', () => {
     // The contractor's copy lacks nothing, so its card has no press.
     expect(document.querySelectorAll('[data-lien-mail-proof-door]')).toHaveLength(1)
     fireEvent.click(press)
+    expect(order).toEqual(['close', 'lien_window'])
+    expect(lienWindow).toHaveBeenCalledWith({ jobId: 'job-1', filingId: 'f-1', paper: 'affidavit', recipient: 'owner', lack: 'receipt' })
+    expect(serve).not.toHaveBeenCalled()
+    cleanup()
+    // The same lien with no mailed day on record (v2.7883): the chip is not complete, and each card that keeps a number or a file asks for the day, in the copies window.
+    const early = lienMailProof({ kind: 'affidavit', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '', receipt_url: 'https://drive.example/r1' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '', receipt_url: 'https://drive.example/r2' }], documentUrl: 'https://drive.example/scan', servedAt: null, hasContractor: true })!
+    const earlyPaper = (): LienStopPaper => ({ pages: [], envelope: null, before: [], act: null, record: { words: 'Filed Nov 16', href: null, proof: early, proofDoor: lienMailProofDoorPress({ jobId: 'job-1', filingId: 'f-1', paper: 'affidavit', served: false, ownerGap: null }, { serve, lien_window: lienWindow }, () => order.push('close')) } })
+    order.length = 0
+    render(<LienStopPaperWindow steps={timeline.steps} index={jul} onIndex={() => {}} onClose={() => {}} jobLabel="2291 · Sample Job" paperFor={earlyPaper} />)
+    expect(document.querySelector('[data-lien-mail-proof-chip]')?.getAttribute('data-lien-mail-proof-chip')).toBe('owed')
+    expect(document.querySelector('[data-lien-mail-proof-chip]')?.textContent).toBe('Mailed day not recorded')
+    expect(document.querySelector('[data-lien-mail-proof-next]')?.textContent).toContain('Record the day the copies were mailed.')
+    expect(document.querySelector('[data-lien-mail-proof-envelope="owner"]')?.textContent).toContain('Not mailed yet')
+    expect(document.querySelectorAll('[data-lien-mail-proof-door]')).toHaveLength(2)
+    fireEvent.click(screen.getByRole('button', { name: 'Owner of record: Record the mailing' }))
     expect(order).toEqual(['close', 'serve'])
-    expect(serve).toHaveBeenCalledWith({ jobId: 'job-1', filingId: 'f-1', paper: 'affidavit', recipient: 'owner', lack: 'receipt' })
-    expect(lienWindow).not.toHaveBeenCalled()
+    expect(serve).toHaveBeenCalledWith({ jobId: 'job-1', filingId: 'f-1', paper: 'affidavit', recipient: 'owner', lack: 'mailed' })
     cleanup()
     // A viewer with no place open has no press at all, never a dead one.
     render(<LienStopPaperWindow steps={timeline.steps} index={jul} onIndex={() => {}} onClose={() => {}} jobLabel="2291 · Sample Job" paperFor={withDoors({})} />)

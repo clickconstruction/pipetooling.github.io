@@ -22,7 +22,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { LIEN_SCAN_BATCH_WORDS } from '../../lib/jobs/lienScanBatch'
 import { useLienServeLetterChoice } from './lienHelpSheetChoice'
 import { landOnWhenThere } from '../../lib/landOn'
-import { lienServeLandingSelector, type LienServeLanding } from '../../lib/jobs/lienServeStage'
+import { lienServeLandingFocus, lienServeLandingSelector, type LienServeLanding } from '../../lib/jobs/lienServeStage'
 
 type Props = {
   /** Every filed lien that owes its copies (`lienServeJobsFromDesk`). */
@@ -110,11 +110,11 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
   const scopeRef = useRef<HTMLDivElement | null>(null)
   // The half, or the copy, a door sent the reader to: in view and lit once it is drawn.
   const landAt = land ? lienServeLandingSelector(land) : ''
-  const landCursor = land?.part === 'numbers' && Boolean(land.cursor)
+  const landFocus = land ? lienServeLandingFocus(land) : null
   useEffect(() => {
     if (!landAt) return
-    return landOnWhenThere(() => scopeRef.current?.querySelector<HTMLElement>(landAt), { focus: landCursor ? 'input[type="text"]' : null })
-  }, [landAt, landCursor])
+    return landOnWhenThere(() => scopeRef.current?.querySelector<HTMLElement>(landAt), { focus: landFocus })
+  }, [landAt, landFocus])
   const { showToast } = useToastContext()
   const [letterOn, setLetterOn] = useLienServeLetterChoice()
   const [servedOn, setServedOn] = useState(todayYmd)

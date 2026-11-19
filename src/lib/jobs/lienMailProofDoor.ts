@@ -10,14 +10,18 @@
  * the words of the control it lands on. A card that lacks nothing has no press. A viewer who cannot do the act at any
  * of its places has no press either, never a dead one.
  *
+ * A copy that keeps a number or a file while its lien's mailed day is not on record lacks the day (v2.7883), and its
+ * press reads **Record the mailing ›**. Until then a file alone said *mailed*, and the card asked for a number on a
+ * lien nobody had recorded as mailed.
+ *
  * Pure. The hosts hand in what is on file and where this viewer can act, and open the place (`landOn.ts` scrolls to
  * the spot and lights it).
  */
 import type { LienMailProofCopy, LienMailProofEnvelope, LienMailProofPaper } from './lienMailProof'
-import { LIEN_SERVE_STAGE_WORDS, type LienServeLanding } from './lienServeStage'
+import { LIEN_SERVE_FORM_WORDS, LIEN_SERVE_STAGE_WORDS, type LienServeLanding } from './lienServeStage'
 
-/** What one copy still lacks. */
-export type LienMailProofLack = 'owner' | 'owner_address' | 'print' | 'number' | 'receipt'
+/** What one copy still lacks. `mailed` is the day the lien's copies went out, owed by a copy that already keeps a number or a file. */
+export type LienMailProofLack = 'owner' | 'owner_address' | 'print' | 'mailed' | 'number' | 'receipt'
 
 /**
  * Where a lack is entered: the property record at the owner line, the desk's *Filed liens: copies to mail* window at
@@ -49,13 +53,18 @@ export const LIEN_MAIL_PROOF_DOOR_WORDS: Record<LienMailProofLack, string> = {
   owner: 'Enter the owner of record ›',
   owner_address: 'Enter the owner’s mailing address ›',
   print: `${LIEN_SERVE_STAGE_WORDS.print} ›`,
+  mailed: `${LIEN_SERVE_FORM_WORDS.save} ›`,
   number: 'Enter the mail number ›',
   receipt: 'Add the receipt ›',
 }
 
 /** The one thing a copy lacks, or null when its proof is whole. An emailed or hand-carried copy owes no number and no receipt. */
-export function lienMailProofLack(e: Pick<LienMailProofEnvelope, 'recipient' | 'mailed' | 'wantsNumber' | 'wantsReceipt' | 'receiptUrl'>, facts: Pick<LienMailProofDoorFacts, 'ownerGap' | 'printed'>): LienMailProofLack | null {
-  if (!e.mailed) return e.recipient === 'owner' && facts.ownerGap ? facts.ownerGap : facts.printed ? 'number' : 'print'
+export function lienMailProofLack(e: Pick<LienMailProofEnvelope, 'recipient' | 'mailed' | 'wantsNumber' | 'wantsReceipt' | 'receiptUrl'> & { tracking?: string }, facts: Pick<LienMailProofDoorFacts, 'ownerGap' | 'printed'>): LienMailProofLack | null {
+  if (!e.mailed) {
+    // A number or a file is kept on the copy already: what its lien lacks is the day the copies went out.
+    if ((e.tracking ?? '').trim() || (e.receiptUrl ?? '').trim()) return 'mailed'
+    return e.recipient === 'owner' && facts.ownerGap ? facts.ownerGap : facts.printed ? 'number' : 'print'
+  }
   if (e.wantsNumber) return 'number'
   if (e.wantsReceipt && !e.receiptUrl) return 'receipt'
   return null
@@ -121,14 +130,14 @@ export function lienMailProofWindowTab(paper: LienMailProofPaper): 'affidavit' |
 }
 
 /**
- * Where the Lien window lands. An affidavit's print is its own press, **Print the copies to mail**. Its mail number
- * is entered on the service step (**Enter mail numbers…**, or **Save the mail receipts** once the day is on record).
+ * Where the Lien window lands. An affidavit's print is its own press, **Print the copies to mail**. Its mailed day and
+ * its mail number are entered on the service step (**Enter mail numbers…**, or **Save the mail receipts** once the day is on record).
  * Everything else is on the paper's own row under *Filings on this job*: a notice's number on the row, a receipt on
  * the copy's line in *What went out*.
  */
 export function lienMailProofWindowSpot(l: Pick<LienMailProofLanding, 'paper' | 'lack'>): 'print' | 'service' | 'row' | 'copy' {
   if (l.paper === 'affidavit' && l.lack === 'print') return 'print'
-  if (l.paper === 'affidavit' && l.lack === 'number') return 'service'
+  if (l.paper === 'affidavit' && (l.lack === 'number' || l.lack === 'mailed')) return 'service'
   return l.lack === 'receipt' ? 'copy' : 'row'
 }
 
@@ -144,9 +153,11 @@ export const lienMailProofSelectors = {
   filingCopy: (filingId: string, recipient: LienMailProofCopy) => `[data-lien-filing-row="${filingId}"] [data-lien-mail-proof-envelope="${recipient}"]`,
 }
 
-/** Where a card's landing stands in *Filed liens: copies to mail*: the print half for a print, the copy's own line for the rest. */
+/** Where a card's landing stands in *Filed liens: copies to mail*: the print half for a print, the lien's own row and its *Mailed* box for the day, the copy's own line for the rest. */
 export function lienMailProofServeLanding(l: Pick<LienMailProofLanding, 'jobId' | 'recipient' | 'lack'>): LienServeLanding {
-  return l.lack === 'print' ? { part: 'print' } : { part: 'numbers', jobId: l.jobId, recipient: l.recipient, cursor: l.lack === 'number' }
+  if (l.lack === 'print') return { part: 'print' }
+  if (l.lack === 'mailed') return { part: 'numbers', jobId: l.jobId, tick: true }
+  return { part: 'numbers', jobId: l.jobId, recipient: l.recipient, cursor: l.lack === 'number' }
 }
 
 /** What the landing puts the cursor in: the number's box for a number, the receipt press for a receipt, nothing for a copy still to print. */

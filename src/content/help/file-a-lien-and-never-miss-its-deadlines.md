@@ -204,7 +204,7 @@ Set **Mailed on** to the day the copies went out. Type or scan each certified ma
 
 Did a lien go out with no number yet? Tick **Mailed** yourself. Is a lien ticked that has not gone out? Untick it. The day comes off at once and the numbers and receipts stay. After you tick or untick a box by hand, a number does not change it.
 
-Each envelope has {{button:outline|Add the mail receipt}}. It takes a photo or a PDF of the post office's slip. A receipt alone does not tick **Mailed**. A line under the envelope reads *Kept on this lien.* Close the window and it is still there.
+Each envelope has {{button:outline|Add the mail receipt}}. It takes a photo or a PDF of the post office's slip. A receipt alone does not tick **Mailed**. A line under the envelope reads *Kept on this lien.* Close the window and it is still there. Until you tick **Mailed**, the lien's **What went out** block reads *Not mailed yet* on each copy. Its chip reads *Mail proof complete* only with the day, each number and each receipt on file.
 
 The press asks first when a file does not look like a receipt. A file named with the lien's document number is the lien. So is a file whose name says lien or affidavit. The same file on both envelopes gets the question too. Press **Leave it out** to drop it. Press **It is the mail receipt** when it truly is. Nothing is saved until you answer.
 
