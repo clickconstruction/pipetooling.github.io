@@ -39,4 +39,11 @@ The signature is the same, so nothing that calls it changes. No row is rewritten
 
 ## Applied
 
-Not yet. Pushed with `supabase db push` after the merge.
+2026-11-19, about 01:15 UTC, with `supabase db push --include-all`, after the file landed on `main` (#8793).
+
+- The landed file was compared with the reviewed one first: identical.
+- It applied out of order. Two newer files, `20261118213000` and `20261118223000`, were pushed by their own sessions minutes before. No newer file on `main` names `stage_checklist_kind_of`, so applying this one last overwrote nothing. The dry run named this one file and no other.
+- After the push the live function was asked for the same 40 names: 0 mismatches, against 11 before.
+- `check:migration-drift` after: 1380 local files, 1380 remote versions, fully applied.
+- No types change: the function's signature is as it was.
+- The SQL bed ran for the first time on #8793's CI and passed.
