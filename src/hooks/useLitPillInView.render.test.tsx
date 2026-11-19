@@ -2,7 +2,7 @@
 import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
-import { useLitPillInView } from './useLitPillInView'
+import { LIT_PRESSED, useLitPillInView } from './useLitPillInView'
 
 /**
  * The lit pill comes into view (v2.7878). jsdom lays nothing out, so the row and its pills are
@@ -88,6 +88,27 @@ describe('useLitPillInView', () => {
     layOut(222)
     window.dispatchEvent(new Event('resize'))
     expect(row.scrollLeft).toBe(317)
+  })
+
+  it('reads the lit pill by the mark the row names, as a strip of toggle presses does (v2.7902)', () => {
+    layOut(222)
+    function Presses({ lit }: { lit: string }) {
+      const ref = useRef<HTMLDivElement>(null)
+      useLitPillInView(ref, lit, LIT_PRESSED)
+      return (
+        <div ref={ref} data-testid="row">
+          {Object.keys(PILLS).map((p) => (
+            <button key={p} type="button" aria-pressed={p === lit}>
+              {p}
+            </button>
+          ))}
+        </div>
+      )
+    }
+    const view = render(<Presses lit="Permits" />)
+    expect(view.getByTestId('row').scrollLeft).toBe(317)
+    view.rerender(<Presses lit="Subs" />)
+    expect(view.getByTestId('row').scrollLeft).toBe(242)
   })
 
   it('leaves the row alone when no pill is lit', () => {
