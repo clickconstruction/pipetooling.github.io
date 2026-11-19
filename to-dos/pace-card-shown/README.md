@@ -2,7 +2,7 @@
 name: "The pace card, shown: stages as a rail, fewer words, and presses of its own"
 number: 396
 group: ready
-status: asked 2026-11-18 at the look for #384 · drawn four times with the owner the same day (two bars, three additions, then the stages stood up as a rail) · his word *Build the entire PR train* · PR 1 built as v2.7797, the card's new face · PR 2 built as v2.7803, Ask a master · PR 3a built as v2.7807, the table · PR 3b built as v2.7808, My finish date · PR 3c built as v2.7811, his date on the Projects board · all five PRs merged and live 2026-11-19 · walked live the same day as the Sample superintendent, both new presses pressed for real on the ZZ test project
+status: asked 2026-11-18 at the look for #384 · drawn four times with the owner the same day (two bars, three additions, then the stages stood up as a rail) · his word *Build the entire PR train* · PR 1 built as v2.7797, the card's new face · PR 2 built as v2.7803, Ask a master · PR 3a built as v2.7807, the table · PR 3b built as v2.7808, My finish date · PR 3c built as v2.7811, his date on the Projects board · all five PRs merged and live 2026-11-19 · walked live the same day as the Sample superintendent, both new presses pressed for real on the ZZ test project · the walk's finding fixed as v2.7910 on the owner's word *Yes, fold them*
 summary: >
   The owner looked at the superintendent's pace card on the short Job Mode page and did not like it:
   too many words, not enough showing instead of telling, and nothing to do when the job is on pace.
@@ -13,7 +13,7 @@ summary: >
   never opened. Two presses are new: Ask a master, a question to the master on the job that carries
   the numbers with it, and My finish date, his own word on when the job finishes, which the card
   also asks for two days before the plan's day and when the job falls behind.
-next: The owner's word on the rail's long rows, which the walk found (below). Then the owner's walk with one real superintendent on his own phone, on a real project of his. That walk also carries the three questions punch list #384 left when it was retired.
+next: The owner's walk with one real superintendent on his own phone, on a real project of his. That walk also carries the three questions punch list #384 left when it was retired.
 size: M as a train of five (M · S · S · M · S)
 blocker: None. The migration is pushed and every PR is live.
 opinion: build — the card's numbers do not change, only how they are shown, and each new press rides something the app already does or one small table
@@ -200,8 +200,8 @@ rail drew on both, one from the job's percent and one from the crew's own stage 
   that carries hours. On both real projects that brought in lines after the three stages: an added piece of
   work on one, and on the other a line whose name is a whole paragraph of scope, about fifty words. The open
   card read 88 and 106 words on those two projects against 48 on the one-stage test project. That is the
-  complaint this card was built to answer. Not fixed yet. It waits on the owner's word on how a long row
-  should read: one line, cut short, is the plain answer.
+  complaint this card was built to answer. Fixed as v2.7910, on the owner's word *Yes, fold them*: the stages
+  keep their names, and every other bid line is one last row, **Other work**.
 - **A stage reported done below one that is not.** One project has its second stage at 100% and its first with
   no report. The rail marks the first as the stage in hand, above a ticked one. That is what the reports say,
   so the rail is right, but it reads oddly.

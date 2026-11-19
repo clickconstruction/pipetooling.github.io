@@ -26,6 +26,33 @@ export type PaceRail = {
 
 const clamp = (n: number) => Math.max(0, Math.min(100, n))
 
+/** One piece of the job's labor budget, as the pace reads it: a stage worked in order, or a bid line outside the stages. */
+export type PaceRailPiece = { id: string; name: string; hours: number; pctDone: number | null; kind: 'order' | 'any' | 'other' }
+
+/** A row the rail will draw. `lineIds` are the bid lines behind it: one for a stage, several for the folded row. */
+export type PaceRailStage = { id: string; name: string; hours: number; pctDone: number | null; lineIds: string[] }
+
+/**
+ * The rail's rows from the pace's pieces: the job's stages in order, each by its name, and every other bid line
+ * folded into one last row, *Other work*.
+ *
+ * The live walk of 2026-11-19 found why. The rail drew every bid line that carried hours, and a line that is not
+ * a stage is named by the office for the office: one read as fifty words of scope, another said who paid what.
+ * A crew phone shows neither. The folded row keeps their hours on the rail, so the stages still add to the job.
+ *
+ * Its percent is the lines' own reports weighted by hours, an unreported line reading 0 as an unreported stage
+ * does. With no line reported it has none, and the job's percent is spread over it like any stage.
+ */
+export function paceRailStages(pieces: ReadonlyArray<PaceRailPiece>): PaceRailStage[] {
+  const stages: PaceRailStage[] = pieces.filter((p) => p.kind === 'order').map((p) => ({ id: p.id, name: p.name, hours: p.hours, pctDone: p.pctDone, lineIds: [p.id] }))
+  const rest = pieces.filter((p) => p.kind !== 'order')
+  if (rest.length === 0) return stages
+  const hours = rest.reduce((sum, p) => sum + Math.max(0, p.hours), 0)
+  const reported = rest.filter((p) => p.pctDone != null)
+  const pctDone = reported.length === 0 ? null : hours > 0 ? reported.reduce((sum, p) => sum + clamp(p.pctDone ?? 0) * Math.max(0, p.hours), 0) / hours : reported.reduce((sum, p) => sum + clamp(p.pctDone ?? 0), 0) / rest.length
+  return [...stages, { id: 'other', name: PACE_CARD_WORDS.otherWork, hours, pctDone, lineIds: rest.map((p) => p.id) }]
+}
+
 /**
  * The job's stages as a rail. A stage is done at 100. The first stage that is not done is the one in hand.
  *
@@ -151,6 +178,8 @@ export const PACE_CARD_WORDS = {
   finish: 'Finish',
   atPace: 'At this pace',
   setPct: 'Set the %',
+  /** The rail's one row for every bid line that is not a stage. */
+  otherWork: 'Other work',
   /** The fold that holds what the card used to say: the budget's source, the days, the sign-off and the score. */
   figured: 'How this is figured',
   rowOpen: 'Tap for the pace card.',

@@ -26,7 +26,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { ASK_MASTER_WORDS, askedLine } from '../../lib/jobMode/askMaster'
 import { canTagInJobNotes } from '../../lib/jobs/noteTags'
 import { useJobNoteTags } from '../../hooks/useJobNoteTags'
-import { PACE_CARD_WORDS, paceDayWords, paceDaysLeftWords, paceFinish, paceHours, paceRowNote, paceStageCheck, paceStageRail } from '../../lib/jobMode/paceCard'
+import { PACE_CARD_WORDS, paceDayWords, paceDaysLeftWords, paceFinish, paceHours, paceRailStages, paceRowNote, paceStageCheck, paceStageRail } from '../../lib/jobMode/paceCard'
 import { JobModeShortRow } from './JobModeShortRow'
 import { JOB_MODE_SHORT_WORDS } from '../../lib/jobMode/jobModeShort'
 import { DayDetailsModal } from './DayDetailsModal'
@@ -149,14 +149,22 @@ function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: P
   const border = line.tone === 'ahead' ? '#16a34a' : line.tone === 'behind' ? '#dc2626' : 'var(--border-strong)'
   const headColor = line.tone === 'ahead' ? 'var(--text-green-700)' : line.tone === 'behind' ? 'var(--text-red-700)' : 'var(--text-700)'
   const label = projectLabel(job)
-  const rail = paceStageRail(pace.stages, pace.input.pctDone)
-  // Each stage's checklist on its rail row (punch list #397, PR 5): the rail's rows are the pace's stages in order,
-  // and a stage is its line, so its checklist is found by the line's id. A stage with no question is no press.
+  // The rail's rows: the stages in order by name, and every other bid line as one last row, Other work. A line that
+  // is not a stage is named by the office for the office, and the live walk found a paragraph of scope on a phone.
+  const railStages = paceRailStages(pace.stages.map((s, i) => ({ id: s.id, name: s.name, hours: s.hours, pctDone: s.pctDone, kind: pace.shares[i]?.kind ?? 'order' })))
+  const rail = paceStageRail(railStages, pace.input.pctDone)
+  // Each row's checklist (punch list #397, PR 5): a stage is its line, so its checklist is found by the line's id.
+  // The folded row opens the first of its lines' checklists with a question left, else the first with any. A row
+  // with no question is no press.
   const railChecks = rail
-    ? pace.stages.map((s) => {
-        const row = rows.find((r) => r.fixtureId === s.id) ?? null
-        const check = row ? paceStageCheck(row.state) : null
-        return row && check ? { ...check, onOpen: () => setSheet(row) } : null
+    ? railStages.map((s) => {
+        const found = s.lineIds.flatMap((id) => {
+          const row = rows.find((r) => r.fixtureId === id) ?? null
+          const check = row ? paceStageCheck(row.state) : null
+          return row && check ? [{ row, check }] : []
+        })
+        const pick = found.find((f) => !f.check.ready) ?? found[0] ?? null
+        return pick ? { ...pick.check, onOpen: () => setSheet(pick.row) } : null
       })
     : undefined
   const finish = paceFinish({ plannedFinishYmd: pace.input.plannedFinishYmd, days: line.days, tone: line.tone })

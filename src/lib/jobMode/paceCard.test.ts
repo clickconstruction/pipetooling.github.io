@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PACE_CARD_WORDS, paceDayWords, paceDaysLeftWords, paceFinish, paceHours, paceRowNote, paceStageRail, paceStageCheck, paceStageList } from './paceCard'
+import { PACE_CARD_WORDS, paceDayWords, paceDaysLeftWords, paceFinish, paceHours, paceRailStages, paceRowNote, paceStageRail, paceStageCheck, paceStageList, type PaceRailPiece } from './paceCard'
 import { plainWordsFailures } from '../plainWords'
 
 const four = (pcts: Array<number | null>) => [
@@ -46,6 +46,49 @@ describe('paceStageRail', () => {
     expect(paceStageRail(four([null, null, null, null]), null)!.rows.map((r) => r.state)).toEqual(['now', 'next', 'next', 'next'])
     expect(paceStageRail(four([null, null, null, null]), 100)!.rows.every((r) => r.state === 'done')).toBe(true)
     expect(paceStageRail(four([100, 100, 100, 100]), 100)!.rows.every((r) => r.state === 'done')).toBe(true)
+  })
+})
+
+describe('paceRailStages', () => {
+  const stage = (id: string, name: string, hours: number, pctDone: number | null = null): PaceRailPiece => ({ id, name, hours, pctDone, kind: 'order' })
+  const line = (id: string, name: string, hours: number, pctDone: number | null = null, kind: 'any' | 'other' = 'any'): PaceRailPiece => ({ id, name, hours, pctDone, kind })
+  const scope = 'Install 1 water heater with exterior mounting box. Install 2 showers in the new addition. Repipe 6 fixtures.'
+
+  it('keeps the stages by name and folds every other bid line into one last row', () => {
+    const rows = paceRailStages([stage('r', 'Rough In', 20), stage('t', 'Top Out', 20), stage('s', 'Trim Set', 10), line('a', scope, 12), line('b', 'Trenching (owner paid the sub)', 8)])
+    expect(rows.map((r) => r.name)).toEqual(['Rough In', 'Top Out', 'Trim Set', 'Other work'])
+    expect(rows[3]).toEqual({ id: 'other', name: 'Other work', hours: 20, pctDone: null, lineIds: ['a', 'b'] })
+    expect(rows[0]!.lineIds).toEqual(['r'])
+    // No word of a folded line's name reaches the rail.
+    expect(rows.some((r) => r.name.includes('Install') || r.name.includes('paid'))).toBe(false)
+  })
+
+  it('one line outside the stages is still Other work, never its own name', () => {
+    expect(paceRailStages([stage('r', 'Rough In', 20), line('a', scope, 12)]).map((r) => r.name)).toEqual(['Rough In', 'Other work'])
+    // The board's own folded piece is one too.
+    expect(paceRailStages([stage('r', 'Rough In', 20), line('other', 'Other lines', 5, null, 'other')]).map((r) => r.name)).toEqual(['Rough In', 'Other work'])
+  })
+
+  it('reads the folded row from its lines by their hours, an unreported line as 0', () => {
+    const rows = paceRailStages([stage('r', 'Rough In', 20, 100), line('a', 'A', 30, 100), line('b', 'B', 10)])
+    expect(rows[1]!.pctDone).toBe(75)
+    expect(paceRailStages([stage('r', 'Rough In', 20, 100), line('a', 'A', 30), line('b', 'B', 10)])[1]!.pctDone).toBeNull()
+  })
+
+  it('leaves a job of stages alone, and a job with no stage has no rail', () => {
+    const three = [stage('r', 'Rough In', 20, 100), stage('t', 'Top Out', 20, 50), stage('s', 'Trim Set', 10)]
+    expect(paceRailStages(three).map((r) => [r.id, r.name, r.pctDone])).toEqual([['r', 'Rough In', 100], ['t', 'Top Out', 50], ['s', 'Trim Set', null]])
+    // Two bid lines and no stage fold to one row, which is fewer than two: the card draws its Work bar.
+    expect(paceStageRail(paceRailStages([line('a', scope, 30), line('b', 'B', 10)]), 40)).toBeNull()
+  })
+
+  it('draws the folded row last on the rail, in hand once the stages are done', () => {
+    const rail = paceStageRail(paceRailStages([stage('r', 'Rough In', 20, 100), stage('t', 'Top Out', 20, 100), line('a', scope, 10, 40), line('b', 'B', 10)]), 80)!
+    expect(rail.rows).toEqual([
+      { name: 'Rough In', state: 'done', pct: 100 },
+      { name: 'Top Out', state: 'done', pct: 100 },
+      { name: 'Other work', state: 'now', pct: 20 },
+    ])
   })
 })
 
