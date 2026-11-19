@@ -6,6 +6,7 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
+import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../overheadOfficeJobSettings'
 import type { PaintPressClock, PaintPressJob, PaintPressStop } from './paintedMapPress'
 
 export type PaintPressDay = { clock: PaintPressClock; todayStops: PaintPressStop[] }
@@ -15,7 +16,30 @@ export const PAINT_PRESS_NO_DAY: PaintPressDay = { clock: null, todayStops: [] }
 
 type JobRow = { id?: string | null; hcp_number: string | null; job_name: string | null; job_address: string | null; billing_only?: boolean | null }
 
-const jobOf = (id: string, row: JobRow | null | undefined): PaintPressJob => ({ id, number: row?.hcp_number ?? null, name: row?.job_name ?? null, address: row?.job_address ?? null, billingOnly: row?.billing_only ?? false })
+const jobOf = (id: string, row: JobRow | null | undefined, officeJobId: string | null): PaintPressJob => ({ id, number: row?.hcp_number ?? null, name: row?.job_name ?? null, address: row?.job_address ?? null, billingOnly: row?.billing_only ?? false, office: !!officeJobId && id === officeJobId })
+
+let officeJob: Promise<string | null> | null = null
+
+/**
+ * The company's office job (People → Overhead), which no press lands on and no list offers. One
+ * setting that all but never changes, so it is read once a page. A read that fails is no office
+ * job, and is tried again on the next ask.
+ */
+export function loadPaintOfficeJobId(): Promise<string | null> {
+  if (!officeJob) {
+    const mine = fetchOverheadOfficeJobLedgerIdFromAppSettings().catch(() => {
+      if (officeJob === mine) officeJob = null
+      return null
+    })
+    officeJob = mine
+  }
+  return officeJob
+}
+
+/** For a test: forget the office job read. */
+export function resetPaintOfficeJobIdForTests(): void {
+  officeJob = null
+}
 
 /**
  * Today's stops and the open clock, the same two rows Job Mode's card reads. A job the person is
@@ -24,7 +48,8 @@ const jobOf = (id: string, row: JobRow | null | undefined): PaintPressJob => ({ 
  */
 export async function loadPaintPressDay(userId: string, nowMs: number = Date.now()): Promise<PaintPressDay> {
   const today = denverCalendarDayKey(nowMs)
-  const [blocksRaw, openRaw] = await Promise.all([
+  const [officeJobId, blocksRaw, openRaw] = await Promise.all([
+    loadPaintOfficeJobId(),
     withSupabaseRetry(
       async () =>
         supabase
@@ -54,7 +79,7 @@ export async function loadPaintPressDay(userId: string, nowMs: number = Date.now
   const todayStops: PaintPressStop[] = []
   for (const r of (blocksRaw ?? []) as Array<{ job_id: string | null; time_start: string; time_end: string; jobs_ledger: JobRow | null }>) {
     if (!r?.job_id) continue
-    todayStops.push({ job: jobOf(r.job_id, r.jobs_ledger), timeStart: r.time_start, timeEnd: r.time_end })
+    todayStops.push({ job: jobOf(r.job_id, r.jobs_ledger, officeJobId), timeStart: r.time_start, timeEnd: r.time_end })
   }
 
   const open = (openRaw ?? null) as { id: string; job_ledger_id: string | null; bid_id: string | null } | null
@@ -69,5 +94,5 @@ export async function loadPaintPressDay(userId: string, nowMs: number = Date.now
     'load clocked job',
   )
   // A job the person may not read: still theirs to paint on, named by the sheet as this job.
-  return { clock: { job: jobOf(jobId, (row ?? null) as JobRow | null) }, todayStops }
+  return { clock: { job: jobOf(jobId, (row ?? null) as JobRow | null, officeJobId) }, todayStops }
 }

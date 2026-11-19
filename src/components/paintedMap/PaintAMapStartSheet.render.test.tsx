@@ -123,6 +123,35 @@ describe('PaintAMapStartSheet', () => {
     expect(screen.getByTestId('job-picker').getAttribute('data-mode')).toBe('pick')
   })
 
+  it('asks a person whose only signs are jobs they changed, and hands the picker those jobs', async () => {
+    render(<PaintAMapStartSheet home={{ jobId: null, developmentId: null }} loadLists={async () => withLast({ last: [{ job: cedar, how: 'changed', day: '2026-11-18' }] })} onStart={() => {}} onClose={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('job-picker').getAttribute('data-mode')).toBe('pick')
+    expect(screen.getByTestId('job-picker').getAttribute('data-handed')).toBe('yes')
+  })
+
+  it('opens on the last job they were at, though they changed another since and one is coming up', async () => {
+    render(
+      <PaintAMapStartSheet
+        home={{ jobId: null, developmentId: null }}
+        loadLists={async () =>
+          withLast({
+            soon: [{ job: cedar, day: '2026-11-20' }],
+            last: [
+              { job: marlowe, how: 'changed', day: '2026-11-18', there: { how: 'schedule', day: '2026-11-10' } },
+              { job: cedar, how: 'changed', day: '2026-11-17' },
+            ],
+          })
+        }
+        onStart={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    await settle()
+    expect(screen.queryByTestId('job-picker')).toBeNull()
+    expect(document.querySelector('[data-paint-a-map-guess]')?.textContent).toBe('The last job on your schedule, Nov 10.')
+  })
+
   it('a read that fails falls to the question, which reads again and draws its own retry', async () => {
     render(<PaintAMapStartSheet home={{ jobId: null, developmentId: null }} loadLists={async () => Promise.reject(new TypeError('Failed to fetch'))} onStart={() => {}} onClose={() => {}} />)
     await settle()

@@ -183,10 +183,11 @@ export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null,
     }
   }
 
-  const sections: PickerSections | null = lists ? pickerSections({ todayStops: lists.todayStops, last: lists.last.filter((l) => l.job.id !== excludeJobId), todayYmd: lists.todayYmd, paintable: lists.paintable }) : null
-  // A job already under Near you is not said again under Today or Your last jobs.
+  const sections: PickerSections | null = lists ? pickerSections({ todayStops: lists.todayStops, soon: (lists.soon ?? []).filter((s) => s.job.id !== excludeJobId), last: lists.last.filter((l) => l.job.id !== excludeJobId), todayYmd: lists.todayYmd, paintable: lists.paintable }) : null
+  // A job already under Near you is not said again under Today, Coming up or Your last jobs.
   const nearIds = new Set(near.kind === 'found' ? near.rows.map((r) => r.job.id) : [])
   const today = (sections?.today ?? []).filter((r) => r.job.id !== excludeJobId && !nearIds.has(r.job.id))
+  const soon = (sections?.soon ?? []).filter((r) => !nearIds.has(r.job.id))
   const last = (sections?.last ?? []).filter((r) => !nearIds.has(r.job.id))
   /** A search is typed: what it found takes the lists' place, under the box. */
   const typed = q.trim().length >= 2
@@ -292,6 +293,16 @@ export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null,
                       </div>
                     </>
                   ) : null}
+                  {soon.length > 0 ? (
+                    <>
+                      <div style={secHead}>{W.soon}</div>
+                      <div data-picker-soon style={{ display: 'grid', gap: '0.35rem' }}>
+                        {soon.map((r) => (
+                          <PaintAMapJobRow key={r.job.id} row={r} onPick={onPick} />
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
                   {last.length > 0 ? (
                     <>
                       <div style={secHead}>{W.last}</div>
@@ -302,7 +313,7 @@ export function PaintAMapJobPicker({ userId, mode = 'pick', excludeJobId = null,
                       </div>
                     </>
                   ) : null}
-                  {today.length === 0 && last.length === 0 && near.kind !== 'found' ? <EmptyState compact main={canLocate ? W.noneNear : W.none} /> : null}
+                  {today.length === 0 && soon.length === 0 && last.length === 0 && near.kind !== 'found' ? <EmptyState compact main={canLocate ? W.noneNear : W.none} /> : null}
                 </>
               )}
             </>
