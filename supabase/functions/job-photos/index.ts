@@ -20,6 +20,8 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
  * Who: anyone signed in who may stamp the job's stages, `can_report_stage_progress(job_id)` (the stage progress gate of
  * v2.3192: the office roles, or a field user on the job's team, clocked in on it, or under the sub rule), checked
  * through the caller's own client so RLS and the role table decide. A read, so a training account and a twin read too.
+ * A primary passes that gate on any job, so since v2.7936 (punch list #400) they are also asked for a claim on the
+ * job: `primary_can_read_job_reports(job_id)` or `helper_on_job(job_id)`, the rule the photo notes follow.
  *
  *   POST { action: 'list', job_id }            → { folder: { kind: 'pictures' | 'photos' | 'none', url: string | null },
  *                                                  photos: [{ id, name, mime, bytes, modified, from }], capped, waiting }
@@ -252,6 +254,17 @@ serve(async (req) => {
     // The job's own gate, under the caller's sign-in: the office, or a field user the job is visible to.
     const { data: may, error: gateError } = await mine.rpc('can_report_stage_progress', { p_job_id: ask.jobId })
     if (gateError || may !== true) return json({ error: 'This job is not one you can see.' }, 403)
+    // A primary reads the photos of the jobs they have a claim on (punch list #400, v2.7936): the jobs whose reports
+    // they read, or whose crew or schedule they are on. The gate above says yes to them on any job, because it is
+    // the write gate of a field report, so the read is held here. Anything but a plain yes refuses.
+    const { data: isPrimary } = await mine.rpc('is_primary')
+    if (isPrimary === true) {
+      const [reads, crew] = await Promise.all([
+        mine.rpc('primary_can_read_job_reports', { p_job_id: ask.jobId }),
+        mine.rpc('helper_on_job', { p_job_id: ask.jobId }),
+      ])
+      if (reads.data !== true && crew.data !== true) return json({ error: 'This job is not one you can see.' }, 403)
+    }
 
     const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
     if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 503)

@@ -149,3 +149,4 @@ dashboard-view
 job-finish-calls
 salaried-week
 primary-scope-reports
+primary-scope-job-photos
