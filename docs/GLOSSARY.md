@@ -6483,6 +6483,9 @@ Every kind shares three states, *waiting*, *signed* and *ended*, which the secon
 A draft is never on it, and a signed paper filed over several jobs is one line that names the first job and counts the rest.
 It reads the `agreements_on_file` view, where each table's own row security decides what the reader sees ([`agreementsLedger.ts`](../src/lib/documents/agreementsLedger.ts), [`DocumentsAgreementsTab.tsx`](../src/components/documents/DocumentsAgreementsTab.tsx)).
 It adds a view and renames nothing: *Contract* under a job on the Jobs tab and in the job window, the Customer page's **Agreements** card, People → Contracts and Partnerships → Agreements keep their names.
+Since v2.7932 a staff, sub or partner paper that waits on a signature acts on its own line: **Send again** emails a new signing link through the window People → Contracts uses, and **Copy the signing link** makes a link to text and emails nobody.
+Either one ends the link sent before, and the app says so first.
+A job contract that waits opens its Contract window from the line ([`agreementsActs.ts`](../src/lib/documents/agreementsActs.ts)).
 
 ### Sent copies
 
