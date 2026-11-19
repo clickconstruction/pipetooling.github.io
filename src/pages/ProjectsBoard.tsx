@@ -69,7 +69,7 @@ export default function ProjectsBoard() {
       {focusJob && rows && !rows.some((r) => r.id === focusJob) ? <p data-testid="focus-missing" style={{ ...muted, margin: 0 }}>The job you came from is not on the board. {PROJECT_GATE_WORDS} To bring a Working job here, press Project under Kind on its Edit tab.</p> : null}
       {rows && rows.length === 0 ? <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'data', noun: 'working projects', page: { label: 'Open the Pipeline', tail: 'and set a job Working with its stages.' } }), { to: '/jobs?tab=stages' })} /> : null}
       {cards.length > 0 ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '0.75rem' }} data-testid="project-cards">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))', gap: '0.75rem' }} data-testid="project-cards">
           {cards.map((c) => (
             <ProjectCard
               key={c.row.id}

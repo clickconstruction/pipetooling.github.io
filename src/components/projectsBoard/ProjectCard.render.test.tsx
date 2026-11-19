@@ -156,6 +156,18 @@ describe('ProjectCard', () => {
     expect(day.textContent).toContain('Bought that day')
   })
 
+  it('holds its one column to its own width, so a long job name is cut inside the card', () => {
+    // jsdom draws no layout, so this pins the two styles the cut needs; the widths are measured in e2e/viewport-smoke.spec.ts.
+    const long = { ...row, job_name: 'A made-up job name far too long for one line of its card, with every trade and the month named' }
+    renderWithProviders(<ProjectCard row={long} pace={pace({ hours: 48 })} target={null} events={events} valueEvents={[]} dollars canEdit onSetTarget={noop} onClearTarget={noop} />)
+    // Left at auto, a grid's column grows to its widest row, and the title's one line is as wide as the name.
+    expect(screen.getByTestId('project-card').getAttribute('style')).toContain('grid-template-columns: minmax(0, 1fr)')
+    const title = screen.getByRole('button', { name: /^Open J1044 · A made-up job name/ })
+    expect(title.style.whiteSpace).toBe('nowrap')
+    expect(title.style.textOverflow).toBe('ellipsis')
+    expect(title.style.overflow).toBe('hidden')
+  })
+
   it('keeps the job window\'s door for the office, since a superintendent\'s RLS would not open most jobs', () => {
     renderWithProviders(<ProjectCardBody row={row} pace={pace({ hours: 48 })} target={null} events={events} valueEvents={[]} dollars={false} canEdit={false} onSetTarget={noop} onClearTarget={noop} />)
     expect(screen.queryByText('Job ›')).toBeNull()

@@ -136,7 +136,7 @@ export default function DashboardProjectsStrip() {
       {rows.length === 0 ? (
         <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'data', noun: 'working projects', page: { label: 'Open the Pipeline', tail: 'and set a job Working with its stages.' } }), { to: '/jobs?tab=stages' })} />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '0.75rem', padding: '0 0.75rem 0.75rem' }} data-testid="dashboard-projects-cards">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))', gap: '0.75rem', padding: '0 0.75rem 0.75rem' }} data-testid="dashboard-projects-cards">
           {cards.map((c) => (
             <ProjectCard
               key={c.row.id}
