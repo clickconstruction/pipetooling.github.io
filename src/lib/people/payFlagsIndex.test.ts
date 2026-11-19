@@ -37,6 +37,7 @@ describe('buildPayFlagsIndex (C1 — id-first, name-fallback)', () => {
       isSalary: false,
       recordHoursButSalary: false,
       showInHours: false,
+      salariedWeek: [0, 8, 8, 8, 8, 8, 0],
     })
     expect(idx.get({ name: 'Missing' })).toBeNull()
     expect(idx.isSalaried({ name: 'Missing' })).toBe(false)
@@ -55,6 +56,16 @@ describe('buildPayFlagsIndex (C1 — id-first, name-fallback)', () => {
       isSalary: true,
       recordHoursButSalary: true,
       showInHours: false,
+      salariedWeek: [0, 8, 8, 8, 8, 8, 0],
     })
+  })
+
+  it('carries the set week, and reads one that is not seven hours as the default week', () => {
+    const idx = buildPayFlagsIndex([
+      row({ person_id: 'p1', person_name: 'A', is_salary: true, salaried_week_hours: ['0.00', '6.00', '6.00', '6.00', '6.00', '6.00', '0.00'] }),
+      row({ person_id: 'p2', person_name: 'B', is_salary: true, salaried_week_hours: [6, 6] }),
+    ])
+    expect(idx.get({ personId: 'p1' })?.salariedWeek).toEqual([0, 6, 6, 6, 6, 6, 0])
+    expect(idx.get({ name: 'B' })?.salariedWeek).toEqual([0, 8, 8, 8, 8, 8, 0])
   })
 })

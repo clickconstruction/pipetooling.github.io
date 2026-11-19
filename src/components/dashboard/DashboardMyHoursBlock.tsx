@@ -2,12 +2,13 @@
  * Your hours, inside My Time (design spike): the hours you said you can work in a week, this
  * week against them, and your last eight pay weeks as bars with the 100 percent line. The one
  * press is Set hours or Change, which opens the same window the office uses on People →
- * Utilization. Salaried people read the schedule's hours and have no press.
+ * Utilization. Salaried people read their own set week from pay and have no press.
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { defaultAvailabilityIo, type AvailabilityIo } from '../../lib/people/availabilityIo'
 import { fetchMyUtilization } from '../../lib/people/fetchUtilizationBoard'
-import { hoursOfWords, UTILIZATION_ASSUMED_HOURS, UTILIZATION_LONG_DAY_HOURS, type PersonUtilization } from '../../lib/people/utilization'
+import { hoursOfWords, UTILIZATION_ASSUMED_HOURS, UTILIZATION_LONG_DAY_HOURS, type CanWork, type PersonUtilization } from '../../lib/people/utilization'
+import { SALARIED_DEFAULT_WEEK, salariedWeekHours, salariedWeekWords, type SalariedWeek } from '../../lib/salariedEffectiveHours'
 import { describeWeek } from '../../lib/people/weekAvailability'
 import { AvailableHoursModal } from '../people/AvailableHoursModal'
 import { BAND_FILL } from '../../lib/people/utilizationColors'
@@ -16,30 +17,54 @@ import { UtilizationWeekBars } from '../people/UtilizationWeekBars'
 const MUTED: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 const PRESS: CSSProperties = { padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.78rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
 
-export function DashboardMyHoursBlock({ userId, displayName, role, isSalary, framed = false, io: ioIn }: { userId: string; displayName: string; role: string; isSalary: boolean; /** Job Mode: a card of its own instead of a row inside My Time. */ framed?: boolean; io?: AvailabilityIo }) {
+export function DashboardMyHoursBlock({
+  userId,
+  displayName,
+  role,
+  isSalary,
+  salariedWeek = null,
+  framed = false,
+  io: ioIn,
+}: {
+  userId: string
+  displayName: string
+  role: string
+  isSalary: boolean
+  /** A salaried person's own set week, from the dashboard's salary probe; 8 hours Monday to Friday when missing. */
+  salariedWeek?: SalariedWeek | null
+  /** Job Mode: a card of its own instead of a row inside My Time. */
+  framed?: boolean
+  io?: AvailabilityIo
+}) {
   const io = useMemo(() => ioIn ?? defaultAvailabilityIo(), [ioIn])
   const [row, setRow] = useState<PersonUtilization | null | undefined>(undefined)
   const [open, setOpen] = useState(false)
   const load = useCallback(async () => {
     try {
-      const read = await fetchMyUtilization({ userId, name: displayName, role, isSalary, io })
+      const read = await fetchMyUtilization({ userId, name: displayName, role, isSalary, salariedWeek, io })
       setRow(read.board.people[0] ?? null)
     } catch {
       setRow(null)
     }
-  }, [userId, displayName, role, isSalary, io])
+  }, [userId, displayName, role, isSalary, salariedWeek, io])
   useEffect(() => {
     void load()
   }, [load])
   if (row === undefined) return null
   const current = row?.weeks[row.weeks.length - 1] ?? null
   const last = row?.lastFullWeek ?? null
-  const canWork = row?.canWork ?? { hours: UTILIZATION_ASSUMED_HOURS, source: isSalary ? ('schedule' as const) : ('assumed' as const), setAt: null, setBy: null, days: null }
+  // Nothing recorded and no answer leaves no row: a salaried person still reads their own week, anyone else the assumed one.
+  const ownWeek = isSalary ? (salariedWeek ?? SALARIED_DEFAULT_WEEK) : null
+  const canWork: CanWork =
+    row?.canWork ??
+    (ownWeek
+      ? { hours: salariedWeekHours(ownWeek), source: 'schedule', setAt: null, setBy: null, days: null, salariedWeek: ownWeek }
+      : { hours: UTILIZATION_ASSUMED_HOURS, source: 'assumed', setAt: null, setBy: null, days: null })
   const asked = canWork.source !== 'assumed'
   const weekLine = current && current.workedHours > 0 ? `This week ${hoursOfWords(current.workedHours, current.availableHours)} so far.` : null
   const outside = last?.outsideHours != null && last.outsideHours >= 0.5 ? `, ${last.outsideHours} h outside the hours you drew` : ''
   const lastLine = last && last.workedHours > 0 ? `Last week ${hoursOfWords(last.workedHours, last.availableHours)}${last.pct != null ? `, ${last.pct} percent` : ''}${last.longDays ? `, ${last.longDays} day${last.longDays === 1 ? '' : 's'} over ${UTILIZATION_LONG_DAY_HOURS} hours` : ''}${outside}.` : null
-  const drawnWords = canWork.days ? describeWeek(canWork.days) : null
+  const drawnWords = canWork.days ? describeWeek(canWork.days) : canWork.source === 'schedule' && canWork.salariedWeek ? salariedWeekWords(canWork.salariedWeek) : null
   return (
     <div
       style={
@@ -52,7 +77,7 @@ export function DashboardMyHoursBlock({ userId, displayName, role, isSalary, fra
       <div style={{ display: 'grid', gap: 2, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>
-            {canWork.source === 'schedule' ? `Salaried: the schedule is ${canWork.hours} h a week.` : asked ? `You can work ${canWork.hours} h a week.` : 'How many hours a week can you work?'}
+            {canWork.source === 'schedule' ? `Salaried: your week is ${canWork.hours} h.` : asked ? `You can work ${canWork.hours} h a week.` : 'How many hours a week can you work?'}
           </span>
           {canWork.source !== 'schedule' ? (
             <button type="button" style={PRESS} onClick={() => setOpen(true)}>

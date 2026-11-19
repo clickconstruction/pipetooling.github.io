@@ -110,6 +110,7 @@ import { isDashboardRecentReportsRole } from '../lib/dashboardRecentReports'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
 import { DashboardMyHoursBlock } from '../components/dashboard/DashboardMyHoursBlock'
 import { fetchSelfSalaryClockState } from '../lib/selfSalaryClockState'
+import type { SalariedWeek } from '../lib/salariedEffectiveHours'
 import { fetchHoursDaysCorrectWorkDates } from '../lib/fetchHoursDaysCorrectWorkDates'
 import { resolveReadyToBillBillCustomerTarget } from '../lib/buildReadyToBillDashboardUnits'
 import { isDashboardTeamReadyToBillRole } from '../lib/dashboardTeamAssignedJobRow'
@@ -538,6 +539,8 @@ export default function Dashboard() {
     [userName, authUser],
   )
   const [dashboardSelfIsSalary, setDashboardSelfIsSalary] = useState(false)
+  /** The signed-in person's own set week, from the same probe, for Your hours. */
+  const [dashboardSelfSalariedWeek, setDashboardSelfSalariedWeek] = useState<SalariedWeek | null>(null)
   /** Same rule as ClockInOutButton salaryUiActive: pay is_salary plus salary_work_schedule_templates row. */
   const [dashboardSalaryScheduleClockActive, setDashboardSalaryScheduleClockActive] = useState(false)
   // One id-first probe (self_salary_clock_state RPC, name fallback inside the
@@ -547,6 +550,7 @@ export default function Dashboard() {
     const uid = authUser?.id
     if (!uid) {
       setDashboardSelfIsSalary(false)
+      setDashboardSelfSalariedWeek(null)
       setDashboardSalaryScheduleClockActive(false)
       return
     }
@@ -556,10 +560,12 @@ export default function Dashboard() {
         const state = await fetchSelfSalaryClockState(uid, clockDisplayName ?? null)
         if (cancelled) return
         setDashboardSelfIsSalary(state.isSalary)
+        setDashboardSelfSalariedWeek(state.isSalary ? state.week : null)
         setDashboardSalaryScheduleClockActive(state.isSalary && state.hasTemplate)
       } catch {
         if (!cancelled) {
           setDashboardSelfIsSalary(false)
+          setDashboardSelfSalariedWeek(null)
           setDashboardSalaryScheduleClockActive(false)
         }
       }
@@ -1335,7 +1341,7 @@ export default function Dashboard() {
         {/* Your record (v2.3368): the three things only this person can put right, no money on it. */}
         <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} />
         {/* Your hours (design spike): Job Mode shows no My Time, so the ask and the eight weeks sit here as a card. */}
-        <DashboardMyHoursBlock userId={authUser.id} displayName={clockDisplayName ?? ''} role={role ?? ''} isSalary={dashboardSelfIsSalary} framed />
+        <DashboardMyHoursBlock userId={authUser.id} displayName={clockDisplayName ?? ''} role={role ?? ''} isSalary={dashboardSelfIsSalary} salariedWeek={dashboardSelfSalariedWeek} framed />
         {/* A day the clock missed (v2.4257): Job Mode shows no My Time, so the door sits under the card. */}
         {dashboardSelfIsSalary ? null : <MissedClockInDoor userId={authUser.id} variant="link" />}
         <div style={{ marginTop: '0.75rem' }}>{myScheduleSection}</div>
@@ -1979,6 +1985,7 @@ export default function Dashboard() {
             userId={authUser.id}
             hoursDaysCorrect={hoursDaysCorrectSet}
             disableDayEditor={dashboardSelfIsSalary}
+            salariedWeek={dashboardSelfSalariedWeek}
             onWeekSeconds={setMyTimeWeekSeconds}
           />
         </PhoneFold>

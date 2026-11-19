@@ -9,7 +9,9 @@
 # one transaction that rolls back, reads a new pay row's week, writes the weeks the check must take, tries the shapes
 # it must refuse, and asks salaried_hours_on for each day of a week. It raises on its first failed assertion and ends
 # with "salaried_week PASSED". A second scenario (v2.7840, migration *_salaried_week_in_cost_functions) runs each of
-# the five cost functions once as a dev and ends with "salaried_week costs PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from
+# the five cost functions once as a dev and ends with "salaried_week costs PASSED". A third (v2.7948, migration
+# *_self_salary_clock_state_week) signs in as three people and reads each one's own week off the salary probe, ending
+# with "salaried_week probe PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from
 # scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -17,7 +19,7 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55850}"
 NAME="pgtest-salaried-week"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_salaried_week_hours.sql) $(ls supabase/migrations/*_salaried_week_in_cost_functions.sql)"
+WRITES="$(ls supabase/migrations/*_salaried_week_hours.sql) $(ls supabase/migrations/*_salaried_week_in_cost_functions.sql) $(ls supabase/migrations/*_self_salary_clock_state_week.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -46,5 +48,9 @@ grep -o "ok: .*" <<<"$out"
 # The five cost functions, each run once as a dev (v2.7840).
 out="$(psql_as postgres -f - < supabase/tests/salaried_week/20_cost_functions.sql 2>&1 || true)"
 if ! grep -q "salaried_week costs PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+# Each caller's own week off the salary probe (v2.7948).
+out="$(psql_as postgres -f - < supabase/tests/salaried_week/30_self_clock_state.sql 2>&1 || true)"
+if ! grep -q "salaried_week probe PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "salaried-week bed ok"
