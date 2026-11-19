@@ -337,7 +337,7 @@ last_updated: 2026-11-18
 > **v2.7784 (the view tabs read Date, Paper and Job on a computer, the owner's ask of 2026-11-18 and his pick of three drawn, *Build A*):** [`lienDeskTitleBar.ts`](../src/lib/jobs/lienDeskTitleBar.ts) `lienDeskViewTab(view, { isMobile })` words the three tabs after the title: `words` *Date*, *Paper* and *Job* on a computer, `name` the view's own name (`LIEN_DESK_VIEW_NAMES`: *By date*, *By paper*, *By job*) and `hint` the name and what the view holds.
 > `LienDeskViewTabs` draws the words, carries the name as the tab's `aria-label` where the two differ and the hint as its `title`, so a test, a screen reader and a guide still find the tab by *By paper*.
 > A phone's tabs read the names whole, with no label.
-> `.lienDeskKindTab` in `index.css` is `2px 8px` where it was `2px 10px`, on the view tabs and on By paper's three (a window from 641 to 1,131 px keeps its 7).
+> `.lienDeskKindTab` in `index.css` is `2px 8px` where it was `2px 10px`, on the view tabs and on By paper's three (a window from 641 to 1,131 px keeps its 7, to 1,279 since v2.7874).
 > Measured on the live desk at 1,440 px: the views 305 px with a two-figure count where they were 373 (316 at three figures, `LIEN_DESK_TITLE_LINE_PARTS.views`), the paper tabs 411 where they were 423 (`LIEN_DESK_PILE_LINE_PARTS.papers`).
 
 > **v2.7789 (By paper's paper tabs ride the title line when it has room, the owner's ask of 2026-11-18):** [`lienDeskTitleBar.ts`](../src/lib/jobs/lienDeskTitleBar.ts) `lienDeskPapersFit(width, parts, papers)` answers `title_line` when the measured line holds the way back, the views, the paper tabs and the four presses with a gap between each pair (`lienDeskTitleLineWithPapersNeeds`), and `second_line` otherwise or when the papers have no width.
@@ -350,6 +350,7 @@ last_updated: 2026-11-18
 > A phone is never measured and keeps the papers as its second row.
 > Measured on the live desk: the papers are up from 1,176 px of window with two-figure counts, and also from 1,100 to 1,131, where `index.css` draws the bar tighter;
 > from 1,132 to 1,175 and under 1,100 they lead the second line.
+> Since v2.7874 that band is closed: the tighter bar runs to 1,279 px, so the papers are up from about 1,100 px of window to any width.
 
 > **v2.7806 (Put a GC on notice leaves the title bar for the job's own notice, the owner's words of 2026-11-18, *"I don't think I wanna see it in the header"*, and his pick of three places drawn, *"Build 2"*):** [`lienDeskGcPicker.ts`](../src/lib/jobs/lienDeskGcPicker.ts) `lienGcNoticePress({ office, handed, isMobile, gcId, gcName })` answers the press for a job's GC, or null for a reader who is not the office, a desk handed no run window, a job with no GC and a phone.
 > `LienDeskNoticePane` draws it in the job's heading, after *· GC <name>* and before the address (`data-lien-gc-notice-press`, words *⚠ Put on notice…*, accessible name *Put <GC> on notice…*, hint `LIEN_GC_NOTICE_HINT`), and its press calls `onPutGcOnNotice(gcId)` from the pane's context with no picker between.
@@ -359,6 +360,13 @@ last_updated: 2026-11-18
 > `lienDeskTitleBarLayout` takes no `gcNotice`: on a computer the second line's right span is the tool row, drawn only where the title line has no room for it, so `pileBreak` comes only there and Monthly notices with the papers up is one line.
 > `useLienDeskTitleBarFit` takes no `gcNoticeShown`, and `LIEN_DESK_PILE_LINE_PARTS` has no `gcDoor` or `rightGap`, its `right` the four presses (231).
 > The other doors to the run are unchanged: the Pipeline's tools menu with the board filtered to one GC, the GC's row in Customer review, and `?gcnotice=<customer id>`.
+
+> **v2.7874 (no window puts the paper tabs back under as it widens, the owner's *please take care of* of 2026-11-18):** the tighter bar of `index.css` (an 8 px column gap, 7 px of side padding on a tab, Share as its icon) runs from 641 to 1,279 px of window where it ran to 1,131, and [`lienDeskTitleBar.ts`](../src/lib/jobs/lienDeskTitleBar.ts) names the edge `LIEN_DESK_TIGHT_BAR_MAX_PX`.
+> From 1,132 to 1,175 px the roomier bar's title line had no room for the paper tabs while the tighter bar just under it did, so a window that widened put them back on the second line.
+> `LIEN_DESK_TITLE_LINE_WIDEST` holds each bar's longest title line, measured at 1,279 and 1,280 px with three-figure counts on every tab: the tighter bar needs 1,064 px of its 1,191 px line and the roomier one 1,139 of its 1,192.
+> `lienDeskTitleBar.test.ts` reads `index.css` for the rule at that width and proves both bars hold the papers at the edge between them.
+> The papers' place is still decided by `lienDeskPapersFit` on the measured line and by nothing else.
+> A window from 1,132 to 1,279 px now shows Share as its icon on every view of the desk, its word still the button's name.
 
 > **v2.7311 (the owner-records door ends the pile line, the owner's ask of 2026-11-15):** on a computer *An owner asked for records ›* is the right end of the second line on every view, whatever the title line has room for — on By paper the paper tabs and the piles at the left, *Put a GC on notice…* and the door in the `data-lien-desk-right` span at the right;
 > off By paper the door alone in that span (the owner's answer when asked: yes, every view).
@@ -855,7 +863,7 @@ last_updated: 2026-11-18
 > **v2.4829:** the Lien window's two doors pass their job too (`rulesJob` in `LienInstrumentsModal`: the clock's month, or the day set by hand, `clock.noticeDeadline`).
 
 > **v2.4355 (the title bar on one line):** region A's spacing moved from inline margins to the `lienDeskTitleBar` column gap (`index.css`), the tab buttons to `lienDeskKindTab`, and Share's word to a `lienDeskShareWord` span.
-> A viewport from 641 to 1,131 px closes the gap, narrows the tabs and hides the word, so a desk narrower than 1,100 px keeps one title line.
+> A viewport from 641 to 1,131 px, and to 1,279 since v2.7874, closes the gap, narrows the tabs and hides the word, so a desk narrower than 1,100 px keeps one title line.
 > Since v2.6569 (Grace's screenshot at 1,167, three rows with three alignments) the bar is two steady rows on a computer whose title line has no room for the tools, since v2.7213 (the owner's screenshot at 1,846, two lines 57% and 75% empty) one line in one with room for all five, with a second only on By paper for the paper tabs, the piles and the GC door, and since v2.7277 (the owner's screenshot at about 1,290) the four presses end a line with room for them alone and the door slides under them at the right end of the second line: `lienDeskTitleBarLayout` in [`lienDeskTitleBar.ts`](../src/lib/jobs/lienDeskTitleBar.ts) says where the tools sit, whether the bar breaks and whether the right span is drawn (never empty, or its column gap pushes the tools off the edge), from `lienDeskTitleLineFit` over the line the bar drew (the v2.7277 note above;
 > from v2.7213 to v2.7277 it was a 1,540 px viewport rule, the longest title line the desk can draw, 1,528.6 px rounded up — `LIEN_DESK_TITLE_LINE_PARTS`, the run at 463 px, the four views at 290 since v2.7219, 1,500 before).
 > The tools — § Rules, ☎, ? and Share, and until v2.7780 the owner-records door before them — are `headerTools`, under More on a phone, in a `data-lien-desk-tools` span pushed right on the title line when they fit there (the door among them only when all five do), and inside the second line's right span otherwise, which runs into the bar's right padding (`marginRight: calc(1.25rem − 6.2rem)`) so the tools end under ×;
