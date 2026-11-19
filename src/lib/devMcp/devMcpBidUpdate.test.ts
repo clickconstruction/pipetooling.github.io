@@ -1,12 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
+  AXIS_SOURCES,
   BID_OUTCOMES,
   BID_READ_COLUMNS,
+  BID_STAMP_NOW,
   BID_UPDATE_COLUMNS,
   BID_UPDATE_VERBS,
   BOARD_SECTION_WORDS,
   RIDE_COLUMNS,
+  ROBOT_COLUMNS,
   SENT_STAMP_COLUMNS,
   UNTRACKED_COLUMNS,
   bidLabel,
@@ -14,6 +17,7 @@ import {
   bidUpdateDryRun,
   bidUpdateInput,
   bidUpdateLanded,
+  bidUpdateWritePatch,
   holdsValue,
   isBidUpdateVerb,
   outcomeNoteRow,
@@ -51,7 +55,9 @@ const bid = (over: Record<string, unknown> = {}): BidRow => ({
   id: BID,
   bid_number: '9001',
   updated_at: '2026-11-11T15:00:00+00:00',
+  created_at: '2026-11-01T15:00:00+00:00',
   working_board_archived_at: null,
+  plans_robot_readable: null,
   project_name: 'ZZ TEST seat bid',
   address: null,
   customer_id: GC,
@@ -87,6 +93,10 @@ const bid = (over: Record<string, unknown> = {}): BidRow => ({
   distance_from_office: null,
   robot_opt_out: false,
   notes: null,
+  backtest_axis: null,
+  holdout: false,
+  robot_requested_at: null,
+  robot_requested_by: null,
   ...Object.fromEntries(SENT_STAMP_COLUMNS.map((c) => [c, null])),
   ...over,
 })
@@ -142,7 +152,7 @@ describe('devMcpBidUpdate — held to the app’s own', () => {
     const outside = saved.filter((c) => !(BID_UPDATE_COLUMNS as readonly string[]).includes(c))
     expect(outside.sort()).toEqual(['accepted_alternate_tags', 'bid_number', 'declined_alternate_tags', 'gc_builder_id', 'last_contact'])
     // The three that ride are written by the verb with their driver; the form has no field for the decided day.
-    expect(BID_UPDATE_COLUMNS.filter((c) => !saved.includes(c))).toEqual(['outcome_at'])
+    expect(BID_UPDATE_COLUMNS.filter((c) => !saved.includes(c))).toEqual(['outcome_at', ...ROBOT_COLUMNS])
     for (const c of ['gc_builder_id', 'accepted_alternate_tags', 'declined_alternate_tags']) expect(RIDE_COLUMNS).toContain(c)
   })
   it('holds the outcomes, the checklist stamps, the Board’s headings and the History columns to their sources', () => {
@@ -366,6 +376,146 @@ describe('bidUpdateDryRun — what it refuses', () => {
     expect(r.patch).toEqual({ outcome_at: '2026-07-15T18:00:00.000Z' })
     expect(r.note_line).toBeNull()
     expect(r.after_write.join('\n')).toContain('The decided day (outcome_at) becomes 2026-07-15')
+  })
+})
+
+describe('the three the robots’ queue reads (v2.7928)', () => {
+  const QUEUE = readFileSync('src/components/bids/BidsRobotQueueTab.tsx', 'utf8')
+  const ROBOT_LAYER = readFileSync('src/hooks/useBidRobotLayer.ts', 'utf8')
+  // A name with no ZZ in front: the queue's rule reads a ZZ bid as a robot's own copy.
+  const READY = { project_name: 'Made-up office', plans_link: 'https://drive.example.com/plans', bid_due_date: '2026-12-01' }
+  const dryAt = (set: Record<string, unknown>, w: Partial<BidUpdateWorld> = {}) => {
+    const dry = bidUpdateDryRun(p(set), world(w), TODAY)
+    if (!dry.ok) throw new Error(dry.refused)
+    return dry.reply as { changes: BidChange[]; patch: Record<string, unknown>; after_write: string[]; warnings: string[] }
+  }
+
+  it('are the columns the Queue and the robot icon write, and none of them is Edit Bid’s', () => {
+    expect(ROBOT_COLUMNS).toEqual(['backtest_axis', 'holdout', 'robot_requested_at'])
+    expect(QUEUE).toContain(".from('bids').update({ backtest_axis: axis }).eq('id', bid.id)")
+    expect(QUEUE).toContain(".from('bids').update({ holdout }).eq('id', bid.id)")
+    expect(ROBOT_LAYER).toContain('? { robot_requested_at: new Date().toISOString(), robot_requested_by: authUserId ?? null }')
+    expect(ROBOT_LAYER).toContain(': { robot_requested_at: null, robot_requested_by: null }')
+    expect(RIDE_COLUMNS).toContain('robot_requested_by')
+    for (const c of [...ROBOT_COLUMNS, 'robot_requested_by']) expect(UNTRACKED_COLUMNS.has(c), c).toBe(true)
+  })
+
+  it('takes true or false for the ask and the holdout, text for the axis, and never a time', () => {
+    expect(p({ robot_requested_at: true, holdout: true, backtest_axis: '  small TI ' }).set).toEqual({ robot_requested_at: true, holdout: true, backtest_axis: 'small TI' })
+    expect(p({ robot_requested_at: false, backtest_axis: null }).set).toEqual({ robot_requested_at: null, backtest_axis: null })
+    const bad = (set: Record<string, unknown>): string => {
+      const built = bidUpdateInput('plan_bid_update', { update: { bid_id: BID, set } }, TODAY)
+      if (built.ok) throw new Error('expected a refusal')
+      return built.error
+    }
+    expect(bad({ robot_requested_at: '2026-11-19T10:00:00Z' })).toContain('The time is not yours to give.')
+    expect(bad({ robot_requested_at: 1 })).toContain('robot_requested_at is true')
+    expect(bad({ holdout: null })).toContain('holdout is true or false')
+    expect(bad({ holdout: 'yes' })).toContain('holdout is true or false')
+    expect(bad({ backtest_axis: 'x'.repeat(81) })).toContain('backtest_axis is under 80 characters')
+    expect(bad({ robot_requested_by: DEV })).toContain('robot_requested_by is not a column this verb changes')
+  })
+
+  it('the ask carries a marker for its moment and who asked, and the apply stamps the marker alone', () => {
+    const plan1 = dryAt({ robot_requested_at: true }, { bid: bid(READY) })
+    expect(plan1.changes).toEqual([
+      { column: 'robot_requested_at', before: null, after: BID_STAMP_NOW, why: 'the apply stamps its own moment, as the robot icon stamps its press' },
+      { column: 'robot_requested_by', before: null, after: DEV, rides_with: 'robot_requested_at', why: 'the ask carries who asked, as the robot icon on the Bid Board writes it' },
+    ])
+    expect(plan1.patch).toEqual({ robot_requested_at: BID_STAMP_NOW, robot_requested_by: DEV })
+    expect(plan1.after_write.join('\n')).toContain('It goes to the front of the next robot batch, as the robot icon on the Bid Board puts it')
+    expect(plan1.after_write.join('\n')).toContain('get_shadow_queue on the twin seat says where it stands')
+    expect(plan1.after_write.join('\n')).toContain("The bid's History does not record robot_requested_at, robot_requested_by.")
+    expect(plan1.warnings).toEqual([])
+    expect(bidUpdateWritePatch(plan1.patch, '2026-11-19T10:00:00.000Z')).toEqual({ robot_requested_at: '2026-11-19T10:00:00.000Z', robot_requested_by: DEV })
+    // Only the ask's own column is stamped: a note that reads the same as the marker stays a note.
+    expect(bidUpdateWritePatch({ notes: BID_STAMP_NOW }, '2026-11-19T10:00:00.000Z')).toEqual({ notes: BID_STAMP_NOW })
+    expect(SERVER).toContain("await restRows(session, 'PATCH', 'bids', `id=eq.${bid.id}`, bidUpdateWritePatch(patch, new Date().toISOString()))")
+    expect(SERVER).toContain('const dry = bidUpdateDryRun(p, world, todayYmdInAppTz())')
+  })
+
+  it('the hash holds no clock: the same ask plans the same twice, and the row read back counts as landed', async () => {
+    const payload = p({ robot_requested_at: true })
+    const a = bidUpdateDryRun(payload, world({ bid: bid(READY) }), TODAY)
+    const b = bidUpdateDryRun(payload, world({ bid: bid(READY) }), TODAY)
+    if (!a.ok || !b.ok) throw new Error('expected plans')
+    expect(await planHash('apply_bid_update', payload, b.reply)).toBe(await planHash('plan_bid_update', payload, a.reply))
+    expect(JSON.stringify(a.reply)).not.toMatch(/20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z/)
+    const planned = (a.reply as { changes: BidChange[] }).changes
+    expect(bidUpdateLanded(planned, { id: BID, robot_requested_at: '2026-11-19T10:00:00+00:00', robot_requested_by: DEV })).toEqual({ changes: planned, held: null })
+    expect(bidUpdateLanded(planned, { id: BID, robot_requested_at: null, robot_requested_by: null }).held).toContain('robot_requested_at, robot_requested_by')
+  })
+
+  it('an ask already on the bid is not stamped again, and false withdraws it with who asked', () => {
+    const asked = { bid: bid({ ...READY, robot_requested_at: '2026-11-18T09:00:00+00:00', robot_requested_by: ESTIMATOR }) }
+    expect(refusal({ robot_requested_at: true }, asked)).toContain('already reads that way')
+    const off = dryAt({ robot_requested_at: false }, asked)
+    expect(off.patch).toEqual({ robot_requested_at: null, robot_requested_by: null })
+    expect(off.after_write.join('\n')).toContain('The ask is withdrawn')
+    expect(refusal({ robot_requested_at: false })).toContain('already reads that way')
+    expect(holdsValue('robot_requested_at', '2026-11-18T09:00:00+00:00', BID_STAMP_NOW)).toBe(true)
+    expect(holdsValue('robot_requested_at', null, null)).toBe(true)
+    expect(holdsValue('robot_requested_at', null, true)).toBe(false)
+  })
+
+  it('warns of what would still hold an asked bid, by the queue’s own rule', () => {
+    expect(dryAt({ robot_requested_at: true }).warnings).toEqual(['The rounds would still pass it over: A robot copy, not a bid of ours. The ask stays on the bid until that changes.'])
+    expect(dryAt({ robot_requested_at: true }, { bid: bid({ project_name: 'Made-up office' }) }).warnings).toEqual(['The rounds would still pass it over: No plans on the bid. The ask stays on the bid until that changes.'])
+    expect(dryAt({ robot_requested_at: true }, { bid: bid({ ...READY, robot_opt_out: true }) }).warnings[0]).toContain('Left to a person.')
+    expect(dryAt({ robot_requested_at: true }, { bid: bid({ ...READY, bid_due_date: '2026-09-01' }) }).warnings[0]).toContain('Its due date passed over 30 days ago.')
+    expect(dryAt({ robot_requested_at: true }, { bid: bid({ ...READY, plans_robot_readable: false }) }).warnings[0]).toContain('The robot cannot read the plans link.')
+    // The row is read as it would stand: an opt-out lifted in the same plan holds nothing, and age holds no asked bid.
+    expect(dryAt({ robot_requested_at: true, robot_opt_out: false }, { bid: bid({ ...READY, robot_opt_out: true, created_at: '2026-01-01T00:00:00+00:00' }) }).warnings).toEqual([])
+    // Without today the rule is not run, and nothing is claimed.
+    const blind = bidUpdateDryRun(p({ robot_requested_at: true }), world({ bid: bid({ project_name: 'Made-up office' }) }))
+    if (!blind.ok) throw new Error(blind.refused)
+    expect((blind.reply as { warnings: string[] }).warnings).toEqual([])
+  })
+
+  it('a holdout is said in the twin seat’s own terms, and warned on a bid with no outcome', () => {
+    const open = dryAt({ holdout: true })
+    expect(open.patch).toEqual({ holdout: true })
+    expect(open.after_write.join('\n')).toContain('The robots never practise on a holdout')
+    expect(open.warnings).toEqual(['A holdout is a decided reference kept for the gates, and b9001 ZZ TEST seat bid has no outcome, so no backtest would open it today either way.'])
+    expect(dryAt({ holdout: true }, { bid: bid({ outcome: 'won' }) }).warnings).toEqual([])
+    expect(dryAt({ holdout: false }, { bid: bid({ holdout: true }) }).after_write.join('\n')).toContain('It is released to practice')
+    expect(refusal({ holdout: false })).toContain('already reads that way')
+    expect(readFileSync('supabase/functions/twin-mcp/index.ts', 'utf8')).toContain('is a HOLDOUT reference — reserved for gate measurement, never practice.')
+  })
+
+  it('an axis is grouped as the Queue groups it, and one no run or bid carries is warned with the axes in use', () => {
+    const known = dryAt({ backtest_axis: 'small TI' }, { axes: ['institutional', 'small TI'] })
+    expect(known.patch).toEqual({ backtest_axis: 'small TI' })
+    expect(known.after_write.join('\n')).toContain('group it under "small TI"')
+    expect(known.warnings).toEqual([])
+    expect(dryAt({ backtest_axis: 'small ti' }, { axes: ['institutional', 'small TI'] }).warnings).toEqual(['No run and no other bid carries "small ti", and "small TI" is in use: an axis is matched letter for letter, so this one would start a group of its own.'])
+    expect(dryAt({ backtest_axis: 'warehouse' }, { axes: ['institutional', 'small TI'] }).warnings).toEqual(['No run and no other bid carries "warehouse" yet, so it starts a group of its own. The axes in use: institutional, small TI.'])
+    expect(dryAt({ backtest_axis: 'warehouse' }, { axes: [] }).warnings[0]).toContain('No axis is in use yet.')
+    expect(dryAt({ backtest_axis: 'warehouse' }, { axes: null }).warnings[0]).toContain('The axes in use could not be read')
+    expect(dryAt({ backtest_axis: null }, { bid: bid({ backtest_axis: 'small TI' }) }).after_write.join('\n')).toContain('unclassified group')
+  })
+
+  it('reads the axes in use only when the plan names one, off the three places an axis lives, and survives a refused read', async () => {
+    expect(AXIS_SOURCES.map((x) => `${x.table}.${x.column}`)).toEqual(['twin_run_scores.axis', 'twin_shadow_runs.axis', 'bids.backtest_axis'])
+    for (const src of AXIS_SOURCES) expect(Object.keys(CATALOG_TABLES[src.table]?.columns ?? {}), src.table).toContain(src.column)
+    const asked: string[] = []
+    const reads = (refuse = false): BidReads => ({
+      rows: (table, query) => {
+        asked.push(`${table}?${query}`)
+        if (query.startsWith('select=axis') || query.startsWith('select=backtest_axis')) {
+          if (refuse) return Promise.reject(new Error('403'))
+          return Promise.resolve(table === 'bids' ? [{ backtest_axis: ' small TI ' }, { backtest_axis: 'institutional' }] : table === 'twin_run_scores' ? [{ axis: 'small TI' }, { axis: 'proto/auto-service' }] : [{ axis: '' }])
+        }
+        return Promise.resolve(table === 'bids' ? [bid()] : [])
+      },
+    })
+    const w = await readBidUpdateWorld(reads(), p({ backtest_axis: 'small TI' }), ME)
+    expect(w.axes).toEqual(['institutional', 'proto/auto-service', 'small TI'])
+    expect(asked).toEqual(expect.arrayContaining(['twin_run_scores?select=axis&axis=not.is.null&limit=1000', 'twin_shadow_runs?select=axis&axis=not.is.null&limit=1000', 'bids?select=backtest_axis&backtest_axis=not.is.null&limit=1000']))
+    asked.length = 0
+    expect((await readBidUpdateWorld(reads(), p({ holdout: true }), ME)).axes).toBeNull()
+    expect(asked).toHaveLength(3)
+    expect((await readBidUpdateWorld(reads(true), p({ backtest_axis: 'small TI' }), ME)).axes).toBeNull()
   })
 })
 

@@ -165,7 +165,7 @@ describe('a twin\'s rung from the dev seat (v2.7918)', () => {
       expect(SERVER).toContain(`case '${verb}':`)
     }
     const from = SERVER.indexOf("case 'plan_twin_rung':")
-    const branch = SERVER.slice(from, SERVER.indexOf("case 'plan_pay_setup':", from))
+    const branch = SERVER.slice(from, SERVER.indexOf("case 'plan_calibration_standard':", from))
     expect(branch).toContain("if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)")
     // The twin is found through twinRefQuery alone, which holds the read to is_digital_twin: a person's row is never found.
     expect(branch).toContain("await restGet(session, 'users', `select=${TWIN_RUNG_TWIN_SELECT}&${twinRefQuery(p.twin)}&limit=1`)")
@@ -177,12 +177,12 @@ describe('a twin\'s rung from the dev seat (v2.7918)', () => {
     expect(branch).not.toContain('invokeAsDev(') // nothing is sent to CountTooling or TakeoffTooling
     expect(branch).toContain('if (fresh !== built.planHash) return refused(planMismatch(')
     expect(branch).toContain('const prior = await hooks.priorApply(name, fresh)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.108.0'")
-    expect(SERVER).toContain('Writes are one hundred and thirty-three verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.111.0'")
+    expect(SERVER).toContain('Writes are one hundred and thirty-seven verbs and nothing else')
     expect(SERVER).toContain('plan_twin_rung → apply_twin_rung (a twin moved between the rungs of its safety ladder')
     expect(README).toContain('| `plan_twin_rung(rung)` · `apply_twin_rung(rung, plan_hash)` |')
     expect(README).toContain("one hundred and thirty-three since v2.7918's rung pair")
-    expect(README).toContain('one hundred and thirty-three `plan_` / `apply_` / `revert_` verbs')
+    expect(README).toContain('one hundred and thirty-seven `plan_` / `apply_` / `revert_` verbs')
     expect(EDGE).toContain("v2.7918 (server 0.108.0) — a twin's rung moved from the seat")
   })
 })
