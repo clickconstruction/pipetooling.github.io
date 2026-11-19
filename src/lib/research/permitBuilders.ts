@@ -245,9 +245,14 @@ export function builderCountWords(row: Pick<BuilderRow, 'permits' | 'open'>, rea
   return `${row.permits} permit${row.permits === 1 ? '' : 's'} ${reach ?? 'we can see'}, ${row.open} with no plumber yet`
 }
 
-/** "Blue Heron Plumbing on 2" or "nobody yet". */
-export function plumberUsedWords(row: Pick<BuilderRow, 'plumber' | 'plumber_jobs'>): string {
-  return row.plumber ? `${row.plumber} on ${row.plumber_jobs}` : 'nobody yet'
+/**
+ * "Blue Heron Plumbing on 2", "not named on the permits" or "nobody yet". San Antonio issues a
+ * job's plumbing permit under the applicant's own name, so a builder there has jobs with a plumbing
+ * permit and no plumber the feed can name: that is not "nobody".
+ */
+export function plumberUsedWords(row: Pick<BuilderRow, 'plumber' | 'plumber_jobs' | 'permits' | 'open'>): string {
+  if (row.plumber) return `${row.plumber} on ${row.plumber_jobs}`
+  return row.permits > row.open ? 'not named on the permits' : 'nobody yet'
 }
 
 /**

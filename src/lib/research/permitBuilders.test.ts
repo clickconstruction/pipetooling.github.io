@@ -168,7 +168,9 @@ describe('builders', () => {
     expect(ourBidsWords(builder({ bids: 2, won: 0 }))).toBe('2 priced, none won')
     expect(ourBidsWords(builder({ bids: 0, won: 0 }))).toBe('never')
     expect(plumberUsedWords(builder())).toBe('Blue Heron Plumbing on 2')
-    expect(plumberUsedWords(builder({ plumber: null, plumber_jobs: 0 }))).toBe('nobody yet')
+    expect(plumberUsedWords(builder({ plumber: null, plumber_jobs: 0, permits: 2, open: 2 }))).toBe('nobody yet')
+    // A plumbing permit under the applicant's own name: taken, and the feed cannot say by whom.
+    expect(plumberUsedWords(builder({ plumber: null, plumber_jobs: 0, permits: 4, open: 2 }))).toBe('not named on the permits')
   })
 
   it("says how busy a builder is under the card's Who line", () => {

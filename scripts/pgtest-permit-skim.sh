@@ -8,7 +8,8 @@
 # time, which must change nothing. The probe, inside one transaction that rolls back: the service role alone sets a
 # permit's builder key; research_permits_v2 puts the builder beside each row; a keep shows who it is for; a put-back
 # reads as unanswered on both reads; a pursue takes one of three purposes; a mark needs its reason, the newest wins and
-# none clears it; a builder row is written in the writer's own name; Builders lists each name with its permits, its
+# none clears it; a builder row is written in the writer's own name; in San Antonio a plumbing permit at the address
+# counts only from the same applicant, and elsewhere the address still ties; Builders lists each name with its permits, its
 # plumber and its mark; the count adds up; a helper reads and marks nothing; the fences reached both tables and anon
 # runs none of the new functions. It raises on its first failed assertion and ends with "permit_skim PASSED".
 # PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt. Never
@@ -20,7 +21,7 @@ PORT="${PGTEST_PORT:-55577}"
 NAME="pgtest-permit-skim"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 WRITES="$(ls supabase/migrations/*_permit_skim.sql)"
-LATER="$(ls supabase/migrations/*_permit_history.sql supabase/migrations/*_permit_reads_indexed.sql)"
+LATER="$(ls supabase/migrations/*_permit_history.sql supabase/migrations/*_permit_reads_indexed.sql supabase/migrations/*_permit_plumbing_ties.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
