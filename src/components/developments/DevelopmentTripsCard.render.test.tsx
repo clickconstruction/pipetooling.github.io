@@ -61,7 +61,7 @@ function state(over: Partial<SiteTripsState> = {}): SiteTripsState {
   return {
     records: [lifts], failure: null, miles: 1180.4, sitePoint: { lat: 35, lng: -76.6 }, sitePointKnown: true, shows: true, deleted: [], deletedKnown: true, deletedFailed: false,
     roster: [{ id: 'p-luis', name: 'Luis', userId: 'u-luis' }, { id: 'p-dana', name: 'Dana', userId: null }], punches: [punch], punchesFailed: false, dismissals: [], names: new Map(),
-    askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), dismiss: vi.fn(async () => []), undismiss: vi.fn(async () => undefined), ...over,
+    askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), split: vi.fn(async () => null), dismiss: vi.fn(async () => []), undismiss: vi.fn(async () => undefined), ...over,
   }
 }
 const NO_DAYS: string[] = []
@@ -489,3 +489,52 @@ describe('DevelopmentTripsCard: deleted trips', () => {
     expect(screen.queryByTestId('trips-deleted-fold')).toBeNull()
   })
 })
+
+describe('Split in two (v2.7891)', () => {
+  // Luis out two days, home two, out two more: one trip that was really two.
+  const TWO: TripRecord = { ...lifts, tripNumber: 5, people: [{ personId: 'p-luis', userId: 'u-luis', name: 'Luis', days: { '2026-10-30': 'road', '2026-10-31': 'site', '2026-11-03': 'site', '2026-11-04': 'road' } }] }
+  const ONE_DAY: TripRecord = { ...lifts, people: [{ personId: 'p-luis', userId: 'u-luis', name: 'Luis', days: { '2026-10-31': 'site' } }] }
+  const press = () => screen.getByText('Split in two', { selector: '[data-testid="trip-split"] button' })
+
+  it('an open trip of two days or more offers the press beside Change, and a trip of one day does not', () => {
+    draw(state({ records: [TWO] }))
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    expect(press()).toBeTruthy()
+    cleanup()
+    draw(state({ records: [ONE_DAY] }))
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    expect(screen.getByTestId('trip-open')).toBeTruthy()
+    expect(screen.queryByTestId('trip-split')).toBeNull()
+  })
+
+  it('cuts the trip at the day picked, through the hook, and says both trips by number', async () => {
+    const trips = state({ records: [TWO], split: vi.fn(async () => ({ tripId: 't5', tripNumber: 5, newTripId: 't9', newTripNumber: 9 })) })
+    draw(trips)
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    fireEvent.click(press())
+    expect(screen.getByRole('dialog', { name: 'Split Trip 5 in two' })).toBeTruthy()
+    expect(screen.getByTestId('trip-split-first').textContent).toBe('Trip 5 · Oct 30 to 31Luis · 2 days')
+    expect(screen.getByTestId('trip-split-second').textContent).toBe('A new trip · Nov 3 to 4Luis · 2 days')
+    expect(trips.split).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Split into two trips'))
+    await waitFor(() => expect(trips.split).toHaveBeenCalledWith('t5', '2026-11-03'))
+    expect(await screen.findByText('Split. Trip 5 is Oct 30 to 31, and Trip 9 is Nov 3 to 4.')).toBeTruthy()
+    await waitFor(() => expect(screen.queryByTestId('trip-split-window')).toBeNull())
+    // Nothing else is written: the split is one call.
+    expect(trips.save).not.toHaveBeenCalled()
+    expect(trips.remove).not.toHaveBeenCalled()
+  })
+
+  it('names the reason and keeps the window when the split is refused', async () => {
+    const trips = state({ records: [TWO], split: vi.fn(async () => Promise.reject(new Error('That trip is not here any more. Close this and look again.'))) })
+    draw(trips)
+    fireEvent.click(screen.getByTestId('trip-row-press'))
+    fireEvent.click(press())
+    fireEvent.click(screen.getByText('Split into two trips'))
+    expect(await screen.findByText(/That trip is not here any more\. Close this and look again\./)).toBeTruthy()
+    expect(screen.getByTestId('trip-split-window')).toBeTruthy()
+    // The press is live again for another try.
+    await waitFor(() => expect((screen.getByText('Split into two trips') as HTMLButtonElement).disabled).toBe(false))
+  })
+})
+

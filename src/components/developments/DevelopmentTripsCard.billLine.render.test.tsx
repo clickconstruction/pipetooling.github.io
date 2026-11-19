@@ -58,7 +58,7 @@ function state(over: Partial<SiteTripsState> = {}): SiteTripsState {
   return {
     records: [TRIP], failure: null, miles: 1180.4, sitePoint: { lat: 35, lng: -76.6 }, sitePointKnown: true, shows: true, deleted: [], deletedKnown: true, deletedFailed: false,
     roster: [], punches: [], punchesFailed: false, dismissals: [], names: new Map(),
-    askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), dismiss: vi.fn(async () => []), undismiss: vi.fn(async () => undefined), ...over,
+    askRoster: vi.fn(), reload: vi.fn(), save: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), split: vi.fn(async () => null), dismiss: vi.fn(async () => []), undismiss: vi.fn(async () => undefined), ...over,
   }
 }
 function draw(over: { billIo?: (p: TripBillLinePress) => Promise<TripBillLineReply>; role?: string | null; trips?: SiteTripsState; noDoor?: boolean } = {}) {

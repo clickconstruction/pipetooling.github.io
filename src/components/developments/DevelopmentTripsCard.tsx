@@ -45,6 +45,7 @@ import { ymdFromDateOnlyOrIso } from '../../lib/jobChargesTimeline'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { TRIP_GONE_WORDS, tripHref } from '../../lib/trips/jobTrips'
 import { deletedTripLines, TRIP_DELETE_KEPT_WORDS } from '../../lib/trips/tripDeleted'
+import { TRIP_SPLIT_FAILED_WORDS, tripSplitDoneWords } from '../../lib/trips/tripSplit'
 import { tripAlreadyOnLinesWords, tripDeleteLineWords, tripOnLinesWords, tripSheetLineNote, type TripBillLine, type TripBillLineReply } from '../../lib/trips/tripBillLine'
 import { putTripOnJobLine, TripBillLineRefusal, type TripBillLinePress } from '../../lib/trips/tripBillLineIo'
 import { siteCardCharges, tripCostLines, tripCostsOfTrips, type TripCardsState, type TripLaborState } from '../../lib/trips/tripCost'
@@ -60,6 +61,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import ConfirmDialog from '../ConfirmDialog'
 import { TripBillLineWindow } from '../trips/TripBillLineWindow'
 import { TripSheet, type TripSheetJob } from '../trips/TripSheet'
+import { TripSplitWindow } from '../trips/TripSplitWindow'
 import { Card, type CardFold } from './developmentPageBits'
 import { DevelopmentTripsLook, type TripOpenSignal, type TripsCosts, type TripsHoursState } from './DevelopmentTripsLook'
 
@@ -157,6 +159,7 @@ export function DevelopmentTripsCard({
   const [busy, setBusy] = useState(false)
   /** The trip whose Put on a bill window is open. */
   const [billing, setBilling] = useState<TripRecord | null>(null)
+  const [splitting, setSplitting] = useState<TripRecord | null>(null)
 
   // One trip asked for, by a link or a press: handed to the look, which opens its row. It waits here while the
   // look is folded, and is dropped once the look has opened it.
@@ -304,6 +307,19 @@ export function DevelopmentTripsCard({
       setBusy(false)
     }
   }
+  // Split in two: one call cuts the trip at the day, and the read that follows brings both trips in.
+  const split = async (record: TripRecord, ymd: string) => {
+    setBusy(true)
+    try {
+      const reply = await trips.split(record.id, ymd)
+      setSplitting(null)
+      showToast(tripSplitDoneWords(record, ymd, reply, todayYmd), 'success', 6000)
+    } catch (e) {
+      showToast(formatErrorMessage(e, TRIP_SPLIT_FAILED_WORDS), 'error', 6000)
+    } finally {
+      setBusy(false)
+    }
+  }
   const remove = async (record: TripRecord) => {
     setAsking(null)
     setBusy(true)
@@ -424,6 +440,7 @@ export function DevelopmentTripsCard({
             onAdd={openNew}
             onChange={(record) => setSheet({ record, isNew: false })}
             onDelete={setAsking}
+            onSplit={setSplitting}
             offers={offerLines.lines}
             moreOffersWords={offerLines.more}
             offerBusy={busy}
@@ -450,6 +467,7 @@ export function DevelopmentTripsCard({
       ) : null}
       {sheet ? <TripSheet key={sheet.record.id} record={sheet.record} isNew={sheet.isNew} siteName={siteName} roster={trips.roster} jobs={jobs} todayYmd={todayYmd} busy={busy} lineStaysNote={sheetLineNote} onSave={save} onClose={() => setSheet(null)} /> : null}
       {billing ? <TripBillLineWindow key={billing.id} record={billing} siteName={siteName} jobs={jobs} todayYmd={todayYmd} costWords={billingCost} busy={busy} preview={billIo} onOpenChangeOrders={openChangeOrders} onAdd={putOnBill} onClose={() => setBilling(null)} /> : null}
+      {splitting ? <TripSplitWindow key={splitting.id} record={splitting} todayYmd={todayYmd} onBill={!!lineOf(splitting)} busy={busy} onSplit={(ymd) => void split(splitting, ymd)} onClose={() => setSplitting(null)} /> : null}
       {asking ? (
         <ConfirmDialog
           title={`Delete ${tripNameWords(asking, todayYmd)}?`}
