@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PACE_CARD_WORDS, paceDayWords, paceDaysLeftWords, paceFinish, paceHours, paceRowNote, paceStageRail } from './paceCard'
+import { PACE_CARD_WORDS, paceDayWords, paceDaysLeftWords, paceFinish, paceHours, paceRowNote, paceStageRail, paceStageCheck, paceStageList } from './paceCard'
 import { plainWordsFailures } from '../plainWords'
 
 const four = (pcts: Array<number | null>) => [
@@ -104,5 +104,24 @@ describe('the words', () => {
     for (const words of [PACE_CARD_WORDS.figured, PACE_CARD_WORDS.rowOpen, PACE_CARD_WORDS.fromJob, PACE_CARD_WORDS.noDaysLeft, paceRowNote('2026-11-20'), paceDaysLeftWords(3)!]) {
       expect(plainWordsFailures(words), words).toEqual([])
     }
+  })
+})
+
+describe('the rail’s checklist press and the strip’s stage list (punch list #397, PR 5)', () => {
+  it('says how many are answered, and is nothing for a stage with no question', () => {
+    expect(paceStageCheck({ asked: 3, answered: 1 })).toEqual({ words: '1 of 3 answered', ready: false })
+    expect(paceStageCheck({ asked: 2, answered: 2 })).toEqual({ words: '2 of 2 answered', ready: true })
+    expect(paceStageCheck({ asked: 0, answered: 0 })).toBeNull()
+    expect(paceStageCheck(null)).toBeNull()
+  })
+
+  it('lists each stage with its hours and the crew’s report, or says none was made', () => {
+    expect(paceStageList([{ name: 'Rough In', hours: 23.4, pctDone: 100 }, { name: 'Top Out', hours: 26, pctDone: 39.6 }, { name: 'Trim Set', hours: 19, pctDone: null }])).toEqual([
+      { name: 'Rough In', hours: '23 h', pct: '100%', reported: true },
+      { name: 'Top Out', hours: '26 h', pct: '40%', reported: true },
+      { name: 'Trim Set', hours: '19 h', pct: 'not reported', reported: false },
+    ])
+    expect(PACE_CARD_WORDS.stagesCount(1)).toBe('1 stage')
+    expect(PACE_CARD_WORDS.stagesCount(4)).toBe('4 stages')
   })
 })

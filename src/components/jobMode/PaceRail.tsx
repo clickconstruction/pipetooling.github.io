@@ -18,12 +18,17 @@ const LINK: CSSProperties = { position: 'absolute', left: 10, top: 31, bottom: -
 const SIDE: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }
 const BLUE = '#2563eb'
 
-export function PaceRail({ rail, finish, said, onSetPct }: {
+export function PaceRail({ rail, finish, said, onSetPct, checks }: {
   rail: PaceRailRows
   finish: { planned: string | null; atPace: { words: string; tone: 'ahead' | 'behind' } | null }
   /** His own finish day and what is in the way (My finish date, PR 3), once he has said one. */
   said?: { day: string; why: string | null } | null
   onSetPct: () => void
+  /**
+   * Each row's checklist, in the rail's order (punch list #397, PR 5): a stage with questions is a press that
+   * opens its checklist and says how many are answered. Null for a stage with none, which stays words.
+   */
+  checks?: ReadonlyArray<{ words: string; ready: boolean; onOpen: () => void } | null>
 }) {
   const feet = (finish.planned ? 1 : 0) + (said ? 1 : 0) + (finish.atPace ? 1 : 0)
   return (
@@ -36,10 +41,23 @@ export function PaceRail({ rail, finish, said, onSetPct }: {
             <span aria-hidden="true" style={row.state === 'done' ? { ...DOT, background: BLUE, borderColor: BLUE, color: '#fff' } : row.state === 'now' ? { ...DOT, borderColor: BLUE } : DOT}>
               {row.state === 'done' ? '✓' : row.state === 'now' ? <span style={{ width: 8, height: 8, borderRadius: '50%', background: BLUE }} /> : null}
             </span>
-            <span style={{ minWidth: 0, fontSize: '0.95rem', fontWeight: row.state === 'now' ? 700 : 500, color: row.state === 'next' ? 'var(--text-muted)' : 'var(--text)', overflowWrap: 'anywhere' }}>
-              {row.name}
-              <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{row.state === 'done' ? ', done' : row.state === 'now' ? ', in hand' : ', not started'}</span>
-            </span>
+            {checks?.[i] ? (
+              <button
+                type="button"
+                data-testid="pace-rail-check"
+                onClick={checks[i]!.onOpen}
+                style={{ minWidth: 0, minHeight: PHONE_PRESS_MIN_HEIGHT, padding: 0, border: 'none', background: 'none', textAlign: 'left', font: 'inherit', fontSize: '0.95rem', fontWeight: row.state === 'now' ? 700 : 500, color: row.state === 'next' ? 'var(--text-muted)' : 'var(--text-base)', overflowWrap: 'anywhere', cursor: 'pointer' }}
+              >
+                {row.name}
+                <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{row.state === 'done' ? ', done' : row.state === 'now' ? ', in hand' : ', not started'}. Checklist, </span>
+                <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 400, color: checks[i]!.ready ? 'var(--text-green-700)' : 'var(--text-link)' }}>{checks[i]!.words} ›</span>
+              </button>
+            ) : (
+              <span style={{ minWidth: 0, fontSize: '0.95rem', fontWeight: row.state === 'now' ? 700 : 500, color: row.state === 'next' ? 'var(--text-muted)' : 'var(--text)', overflowWrap: 'anywhere' }}>
+                {row.name}
+                <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{row.state === 'done' ? ', done' : row.state === 'now' ? ', in hand' : ', not started'}</span>
+              </span>
+            )}
             {row.state === 'now' ? (
               <button type="button" data-testid="pace-rail-set-pct" onClick={onSetPct} style={{ minHeight: PHONE_PRESS_MIN_HEIGHT, padding: '0 0.75rem', borderRadius: 8, border: 'none', background: BLUE, color: '#fff', font: 'inherit', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 {row.pct > 0 ? `${row.pct}% · ` : ''}{PACE_CARD_WORDS.setPct}

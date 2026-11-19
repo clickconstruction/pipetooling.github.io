@@ -13,6 +13,8 @@ The top bar carries **Estimates**, **Jobs**, **Schedule**, **Projects**, and **B
 
 ## Your day
 
+Your Dashboard carries a **Projects** bar. It counts the working projects and names the one furthest behind. Press it to open a card for each project. See [see where every project stands](/help/see-where-every-project-stands-and-set-its-expected-hours).
+
 1. **Check the Projects board.** You see the projects you're assigned to. If one is missing, ask the office to add you under **Superintendents:** on its Workflow page. Rows sort with the ones needing a decision first. A red or amber pill tells you what's stuck. See [project status at a glance](/help/see-project-status-at-a-glance).
 
 :::example Reading a project row's attention pills
