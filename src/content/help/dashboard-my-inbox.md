@@ -9,11 +9,11 @@ The My Inbox card on the Dashboard is your personal task inbox. Everything in it
 
 Treat it like email. Work it down to empty.
 
-On a **desktop screen** each item is a compact one-line row. It shows a checkbox, the title, then small chips. A card that happens once shows a ring with its percent instead of the box. A status chip like {{chip:yellow|Reopened · Sun 3:17 PM}} shows the status. Hover it for the reason. A notes chip like {{chip:blue|2 notes}} opens the thread. The quiet **＋ Note** and forward buttons sit at the end of a row. They brighten when you hover the row. The **Overdue** and **Due Today** headers carry a count of what's waiting. On a **phone** you get the big glove-friendly cards described below. Nothing there has changed.
+On a **desktop screen** each item is a compact one-line row. It shows a checkbox, the title, then small chips. A card that happens once shows a ring with its percent instead of the box. A status chip like {{chip:yellow|Reopened · Sun 3:17 PM}} shows the status. Hover it for the reason. A notes chip like {{chip:blue|2 notes}} opens the thread. The quiet **＋ Note** button sits at the end of a row. The office sees a forward button there too. They brighten when you hover the row. The **Overdue** and **Due Today** headers carry a count of what's waiting. On a **phone** you get the big glove-friendly cards described below. Nothing there has changed.
 
 ## What's inside
 
-- **Due Today** holds checklist items scheduled for today. They show as full conversation cards. They have since v2.2193. Checklist → Today draws the same tasks in its own newer card. The big **✓** completes the item. {{button:outline|＋ Add a note}} or {{button:outline|💬 Notes N}} drops the thread down right there. Tapping the **title** opens the task's whole history with a composer. The composer can {{button:outline|✓ Post & complete}}. Write "posts are in the trailer" and close the card in one motion. Status chips like {{chip:yellow|Reopened by …}} and {{chip:blue|Waiting on review}} show on the card itself. The arrow still forwards it to someone else.
+- **Due Today** holds checklist items scheduled for today. They show as full conversation cards. They have since v2.2193. Checklist → Today draws the same tasks in its own newer card. The big **✓** completes the item. {{button:outline|＋ Add a note}} or {{button:outline|💬 Notes N}} drops the thread down right there. Tapping the **title** opens the task's whole history with a composer. The composer can {{button:outline|✓ Post & complete}}. Write "posts are in the trailer" and close the card in one motion. Status chips like {{chip:yellow|Reopened by …}} and {{chip:blue|Waiting on review}} show on the card itself. The office's **fwd** hands it to someone else.
 - **Overdue** holds items past their scheduled date. Each has a day counter:
 
 :::example an overdue item
@@ -29,7 +29,7 @@ Order the water heater for 813 · Relwyn Health {{chip:gray|(T+17)}}
 
 1. Start at **Overdue**. Those are blocking someone.
 2. Check off what's done. {{icon:help|gear}} The item disappears on the next refresh.
-3. Can't action it yourself? The office sees **fwd** at the end of a task. Press it and pick who takes it. The same task moves to that person's inbox. It keeps its notes, its place and its photos. That person gets a message.
+3. Can't action it yourself? The office sees **fwd** at the end of a task due today. An overdue task shows an arrow there. Press either and pick who takes it. The same task moves to that person's inbox. It keeps its notes, its place and its photos. That person gets a message. Not in the office? Use **Hand it on** in the Checklist. [Hand a task to someone else](/help/check-off-my-daily-tasks#hand-a-task-to-someone-else) shows how.
 4. **View all →** opens the full Checklist page when you need history or scheduling.
 
 The **My Inbox** chip on the bottom section bar jumps straight to the card.

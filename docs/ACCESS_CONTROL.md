@@ -3172,7 +3172,7 @@ Imitate lands on `roleHomePath(role)`.
 | **My Bids** (Dashboard collapsible; **My Bids (`n`)** after load) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | Rejected clock sessions (org-wide, review/delete; the Dashboard notice is the pay-approved owner's too since v2.6758, punch list #188 row 33) | ✅ | ✅ If Pay Approved | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Notes to the dev inbox** (Help feedback until v2.7658; it also lists the wrench's notes, punch list #380) on the Teams inbox card and the Checklist review inboxes (`useHelpFeedbackInbox`; the owner or a dev since v2.6758, punch list #188 row 34; `help_feedback` SELECT and UPDATE for `is_master_or_dev()`, `20261109003000_dev_gates_dashboard_checklist.sql`) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **My inbox → Forward** and **Recently completed**, and Checklist → Today's **Forward** and **Upcoming** (office work since v2.6758, punch list #188 row 35, `isOfficeRole`; a dev's alone before) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **My inbox → Forward** and **Recently completed**, and Checklist → Today's **Forward** and **Upcoming** (office work since v2.6758, punch list #188 row 35, `isOfficeRole`; a dev's alone before; the card's Overdue rows drew **Forward** for every role until v2.7965) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 **Header vs Dashboard inbox**: **Subcontractor** and **helpers** share the **header** buttons with office roles via [`headerTaskDispatchEstimatorEligible.ts`](../src/lib/headerTaskDispatchEstimatorEligible.ts) but they **do not** see Dashboard inbox cards unless they have a row in **`dispatch_group_members`** / **`estimator_group_members`** (unusual).
 Sending does not imply inbox access.
