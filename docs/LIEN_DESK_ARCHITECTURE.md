@@ -1441,6 +1441,30 @@ Keep every `data-*` attribute through a move, since the render test finds its no
 
 ---
 
+## The copies packet as a file
+
+`npm run lien:packet` writes the PDF that the press on **Filed liens: copies to mail** would print, so a session can show the packet before anyone prints (v2.7930).
+It is one read-only step from any checkout: `npm run lien:packet -- --out <file.pdf outside the repo>`, then show the file.
+With no `--out` the file goes under the computer's temporary files, and the command prints the path.
+Job numbers after the flags hold the file to those liens, as in `npm run lien:packet -- 2340 2351`.
+A job answers to its HCP number or its Click number.
+`--no-letter` prints the stamped copies alone, `--alone <job numbers>` prints a saved copy the window holds as more than one lien, and `--marks` prints a mark for each page.
+The command says which liens are in the file with their pages, which were held with the reason, and which numbers asked for are not on the list.
+Nothing in it is a second drawing of the print.
+The rows are the desk's own read: `scripts/lien-packet/run.ts` renders `useLienDeskData` unchanged in a jsdom page, signed in as the dev (`scripts/lib/paySession.ts`).
+Each saved copy comes through `loadLienSavedCopy`, and the file is `buildLienServeRun` with `autoPrint: false`.
+`scripts/lien-packet/start.ts` hands in the keys from the main checkout's `.env.local`, as the walk's starter does, so a fresh worktree needs no setup.
+The pure half is [`lienPacketPreview.ts`](../src/lib/jobs/lienPacketPreview.ts): the flags, `pickLienPacketJobs`, `lienPacketOutRefusal`, `lienPacketRequestRefusal`, `lienPacketReport` and `lienPacketPageMarks`.
+The command writes nothing to the database: it never calls `printLienServeRun` or `fileSentCopy`, and every request passes `lienPacketRequestRefusal` first.
+The fence lets a table be read and never written, lets the desk's `list_…` readers be called, and asks `drive-link` for `read` alone.
+A request the fence refuses, or a row read that did not come back, stops the command with no file.
+The file holds customers' names and addresses, so an `--out` inside the repo is refused and the file is written for its owner alone (mode 600).
+The file is today's print: each letter carries today's date and each lien's mail-by day is read against today.
+A file held to some job numbers has a mail sheet of its own, so it is a part of the press's print and not the whole of it.
+The command reads as a fresh browser does: ZZ test jobs are hidden, the letter box stands ticked, and no saved copy is said to be one lien alone.
+To check a build against the window, open the window in the dev server, run `lienPacketPageMarks` over the stack `buildLienServeRun` builds there, and compare with the command's `--marks`.
+On 2026-11-19 the two agreed on all 68 pages of an eleven-lien run.
+
 ## Neighbours (not mapped here)
 
 **Extracted children of this desk**, with sizes at the anchor.
