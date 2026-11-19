@@ -2,7 +2,7 @@
 name: "Where an outside signer lives: a paper names a contact the app already keeps, and says who signs"
 number: 403
 group: waiting
-status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, and call 2, a business and its signer are two things · nothing is built · four calls are left
+status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, and call 3, a sub's business is a company record of its own · the mock-up's sub screens redrawn for call 3 · nothing is built · four calls are left, one of them new
 summary: >
   The app can send a paper to anyone with a link, and it can only file one under a name on the roster.
   A supply house, a vendor, a customer's contact or a sub's business has no record that holds a paper,
@@ -11,10 +11,10 @@ summary: >
   names a contact. Messages already keeps one contact for every customer, every person at a customer,
   every supply house and its reps, every sub and every trade company. The paper points at that contact
   as the party and keeps the signer's name, title and email in its own row. No new list is made, and
-  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. Nothing is built, and four calls are left at the foot.
-next: The owner's four calls that are left, the next being where a sub's business name lives. Then PR 1, the ground, which changes no screen.
-size: L as a train of five (M · S · M · S · S)
-blocker: Call 4. It says who reads an outside party's paper, and PR 1 writes that. Calls 3, 5 and 6 shape later steps.
+  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it. Nothing is built, and four calls are left at the foot.
+next: The owner's four calls that are left, the next being who in the office reads an outside party's paper. Then PR 1, the ground, which changes no screen.
+size: L as a train of six (M · S · M · S · M · M)
+blocker: Call 4. It says who reads an outside party's paper, and PR 1 writes that. Call 7 decides steps 5 and 6. Calls 5 and 6 shape step 3.
 opinion: build option D — one link from the paper to a record the app already keeps for every kind of outside party, with the signer's name and email kept on the paper; it costs one column where the other options cost a new list or a new link per kind
 ---
 
@@ -198,11 +198,19 @@ Card #389 calls this the *Signing for* line. The pick treats them as two things.
   signed and where the link went. The words on the paper are the evidence, so they are frozen there.
 - **What the paper says.** *Lena Park, Branch manager, signing for Tallgrass Supply Co.* The same line is
   on the Agreements list and on the signed record.
-- **A sub.** A sub is a person on the roster and stays one. Their business is one line on their People
-  row, **Signs for**, and each paper freezes it when it is sent. That gives #389 the business name its
-  settled call 4 shows a GC.
-- **What does not fit yet.** A sub's worker who signs for the boss's company. The worker is a person, and
-  the company is only a line on the boss's row. Call 3 is where that is settled.
+- **A sub.** The owner's call 3: a sub's business is a company record of its own, with its workers under
+  it. A sub stays a person on the roster and gains a link to their company. A paper with the business,
+  such as the subcontractor agreement, a W-9 or an insurance certificate, is the company's. A paper a
+  person signs for themselves, such as a job's secrecy paper, stays the person's and says *signing for*
+  their company. That gives #389 the business name its settled call 4 shows a GC, from a record.
+- **A sub's worker.** A worker on the roster links to the same company as their boss. They sign their own
+  papers and the line reads their company. The session's pick for call 3 was one line on the sub's People
+  row, which left this case out. His choice covers it.
+- **Where that company record lives is call 7.** The app already has one: GC mode's trade company
+  (`gc_companies`). It holds a business, its people and what each is emailed, its license, its portal
+  link, and its master agreement, W-9 and insurance as papers (`company_id`). A lead on Prospects → Subs
+  already turns into one (`prospects.converted_gc_company_id`). Nothing ties a roster person to one
+  today, and sending a company's paper is dev only (`GC_TRADE_EMAIL_ROLES`).
 
 ## The pick, and why
 
@@ -237,8 +245,14 @@ Each step is one PR with its release note and fragment. Nothing is built until t
    agreement we sent or signed* is updated.
 4. **The party's own page (S).** A supply house's window lists its papers. The Customer page's
    **Agreements** card lists them beside the job contracts it has today.
-5. **A sub's business (S).** **Signs for** on a sub's People row, frozen onto each paper. This is the
-   *Signing for* line of #389's step 3.
+5. **A sub's company, the ground (M).** Waits on call 7. With the session's pick there, a roster person
+   gains a link to a trade company, and a company can hold people who are on the roster. The office,
+   not only a dev, can send a company's paper. A person's paper freezes *signing for* from that link.
+   This is the *Signing for* line of #389's step 3.
+6. **A sub's company on People (M).** People shows a sub's company with its workers under it, as the
+   mock-up draws: the company's papers once, and each person's own papers on their row. **Send a paper**
+   finds a worker by their name or the company's. No sub has a business on file today, so the office
+   enters each one. There are 24 living subs.
 
 After the train: reminders by email and the signer's copy (#376's leftovers), the company's own signature
 (#389's wider call 4), and the company's own secrecy paper to a vendor (#389's step 8).
@@ -257,11 +271,15 @@ Rendered and looked at again, three things changed.
 Kept as first drawn: one chip for all outside companies, no *add a new company* inside the window, and a
 second line that says who signs in words.
 
+Redrawn a third time on 2026-11-19, for the owner's call 3. The People screen shows a sub's company with
+its workers under it, and the Agreements line for a sub's agreement names the company and who signed.
+That screen was rendered again at both widths and in both themes.
+
 ## How this meets the NDA builder spike
 
 The spike of #389's flow runs in its own session. Its branch was not read here. From the card, it builds
 the builder's screens on made-up data and decides nothing about where a signer lives. It meets this card
-in two places. Its step 3 adds the *Signing for* line, which is step 5 here. Its step 8, the company's own
+in two places. Its step 3 adds the *Signing for* line, which is step 5 here, now fed by a company record. Its step 8, the company's own
 secrecy paper to a vendor or a customer, needs steps 1 to 3 here. Nothing in the spike's direction argues
 against the pick.
 
@@ -291,8 +309,11 @@ against the pick.
 - **PR 3.** On prod with a ZZ Test customer and a made-up supply house: send to a person on file, then to
   a company with no one on file. See both lines under **Outside companies**. Sign one through its link
   with no login. Count the requests after opening the window.
-- **PR 4 and 5.** The supply house's window and the Customer page show the paper. A sub's People row
-  shows **Signs for**, and a paper sent after it carries the line.
+- **PR 4.** The supply house's window and the Customer page show the paper.
+- **PR 5 and 6.** On prod with a ZZ Test sub and a made-up company: link the sub to the company, send the
+  company a paper as the office, and send the sub a paper of their own. The company's paper shows once
+  under the company. The sub's paper carries *signing for* the company. A second ZZ Test worker linked to
+  the same company shows under it.
 
 ## The owner's calls
 
@@ -304,9 +325,11 @@ Each is one question. The session's pick is first.
 2. **Are a business and the person who signs for it two things?** **Settled 2026-11-19: yes.** The
    business is the party, and the signer is a name, a title and an email kept on the paper. He answered
    "Yes, two things". Not taken: one thing, the paper with the person and the business a typed line.
-3. **Where does a sub's business name live?**
-   **One line on the sub's People row, Signs for.** Or every sub's business becomes a company record of
-   its own, with its workers under it.
+3. **Where does a sub's business name live?** **Settled 2026-11-19: every sub's business becomes a
+   company record of its own, with its workers under it.** He answered "Its own company record". The
+   session's pick was one line on the sub's People row, **Signs for**, and he did not take it. His
+   choice is the larger build. It covers a worker who signs for the boss's company, and it puts a
+   company's W-9 and insurance on the company. It raises call 7.
 4. **Who in the office may read an outside party's paper?**
    **The four roles that read staff and sub papers today: dev, master technician, assistant and
    controller.** Or those four and the estimator. Or dev, master technician and controller only.
@@ -316,9 +339,15 @@ Each is one question. The session's pick is first.
 6. **May a paper go to someone who is in no list?**
    **No. The office adds them as a customer, a supply house or a person first.** Or yes, with a typed
    name and email and no record behind them.
+7. **Is a sub's company the same record as a trade company in GC mode?** New on 2026-11-19, from call 3.
+   **Yes. One company record for any business the company subcontracts to, whoever is the GC on the
+   job.** It already holds the people, the papers and a portal. Or a new list for the company's own
+   subs' businesses, kept apart from GC mode.
 
 ## Where it stands
 
 Nothing is built. The map, the counts, the four options and the pick are above. The mock-up draws the
-pick and was redrawn once. The owner settled two calls on 2026-11-19. Call 1: the record lives on the contact.
-Call 2: a business and its signer are two things. Calls 3 to 6 are open. PR 1 waits on call 4.
+pick and was redrawn once. The owner settled three calls on 2026-11-19. Call 1: the record lives on the contact.
+Call 2: a business and its signer are two things. Call 3: a sub's business is a company record of its
+own, which was not the session's pick, and which added call 7. Calls 4 to 7 are open. PR 1 waits on call
+4. Steps 5 and 6 wait on call 7.
