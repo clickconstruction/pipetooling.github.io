@@ -1,7 +1,7 @@
 /**
  * Materials on site: the body of a box's own screen on the phone (punch list #398). Top to bottom: the box's name
  * with **More** beside it, the strips the tab hands in (a take left open, the pin ask), the parts as closed rows
- * with their numbers, four tiles that each carry their own fact, the box's photos and takes, and the tab's own
+ * with their numbers, four tiles that each carry their own fact, the box's photos, its takes, and the tab's own
  * bottom bar. A tap on a part opens its presses under it, one part at a time.
  *
  * It draws and tells; every write and every sheet is the tab's (`TallyOnSiteTab.tsx`). The words and the rules are
@@ -12,7 +12,7 @@ import { EmptyState } from '../EmptyState'
 import { boxKindWords } from '../../lib/materials/editBox'
 import { countWalkKeys } from '../../lib/materials/countWalk'
 import type { Container, ContainerLine } from '../../lib/materials/onSite'
-import { BOX_HISTORY_CAPTION, BOX_MORE_PRESS, PART_HINT, PART_PRESS_WORDS, addTileFact, boxTiles, countTileFact, countTileTitle, noneLeftWords, partPresses, partRowNote, partsCaption, partsOpenByThemselves, photoTileFact, whereTileFact, type PartPress } from '../../lib/materials/boxScreen'
+import { BOX_MORE_PRESS, BOX_PHOTOS_CAPTION, PART_HINT, PART_PRESS_WORDS, addTileFact, boxTiles, countTileFact, countTileTitle, noneLeftWords, partPresses, partRowNote, partsCaption, partsOpenByThemselves, photoTileFact, whereTileFact, type PartPress } from '../../lib/materials/boxScreen'
 import { WHERE_IS_IT_PRESS, whereIsBoxTitle } from '../../lib/materials/whereIsBox'
 import { boxTileFactStyle, boxTileStyle, BOX_PRESS, BOX_PRESS_BLUE } from './boxTileStyle'
 
@@ -57,8 +57,10 @@ export type OnSiteBoxScreenProps = {
   strips?: ReactNode
   /** The Photo tile. The tab draws it, since the press owns the camera: it gets the tile's look and its fact. */
   photoTile: (tile: { style: CSSProperties; factStyle: CSSProperties; fact: string; fresh: boolean }) => ReactNode
-  /** Under the tiles: the box's photos and its takes. Null when it has none. */
-  history?: ReactNode
+  /** Under the tiles: the box's own photos, under the caption **Photos**. Null when it has none. */
+  filed?: ReactNode
+  /** Under the photos: the box's takes, which bring their own heading and draw nothing for a box with none. */
+  takes?: ReactNode
   /** The tab's own bottom bar: Take from this box. */
   footer?: ReactNode
   onBack: () => void
@@ -69,7 +71,7 @@ export type OnSiteBoxScreenProps = {
   onPart: (press: PartPress, line: ContainerLine) => void
 }
 
-export default function OnSiteBoxScreen({ container, lines, stickers, said, now, lastCount, place, pin, photos, after, narrow, strips, photoTile, history, footer, onBack, onMore, onCount, onAddPart, onWhere, onPart }: OnSiteBoxScreenProps) {
+export default function OnSiteBoxScreen({ container, lines, stickers, said, now, lastCount, place, pin, photos, after, narrow, strips, photoTile, filed, takes, footer, onBack, onMore, onCount, onAddPart, onWhere, onPart }: OnSiteBoxScreenProps) {
   const unsorted = container.kind === 'unsorted'
   const openAll = partsOpenByThemselves(container.kind)
   const [openKey, setOpenKey] = useState<string | null>(null)
@@ -168,12 +170,13 @@ export default function OnSiteBoxScreen({ container, lines, stickers, said, now,
         })}
       </div>
 
-      {history ? (
+      {filed ? (
         <>
-          <p style={caption}>{BOX_HISTORY_CAPTION}</p>
-          {history}
+          <p style={caption}>{BOX_PHOTOS_CAPTION}</p>
+          {filed}
         </>
       ) : null}
+      {takes}
 
       {footer}
     </div>

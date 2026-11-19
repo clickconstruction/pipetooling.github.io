@@ -119,15 +119,20 @@ describe('OnSiteBoxScreen', () => {
     expect(acts.onPart).toHaveBeenCalledWith('put-in', expect.objectContaining({ partName: '3 in. PVC tee' }))
   })
 
-  it('draws the strips, the history and the bottom bar the tab hands in, in that order', () => {
-    draw({ strips: <div data-testid="s">a take left open</div>, history: <div data-testid="h">the takes</div>, footer: <div data-testid="f">Take from G12</div> })
+  it('draws the strips, the photos, the takes and the bottom bar the tab hands in, in that order', () => {
+    draw({ strips: <div data-testid="s">a take left open</div>, filed: <div data-testid="p">a filed photo</div>, takes: <div data-testid="h">the takes</div>, footer: <div data-testid="f">Take from G12</div> })
     const all = screen.getByTestId('on-site-box-screen').textContent ?? ''
     expect(all.indexOf('a take left open')).toBeLessThan(all.indexOf('In G12'))
-    expect(all.indexOf('Photos and takes')).toBeGreaterThan(all.indexOf('Where is it?'))
-    expect(all.indexOf('the takes')).toBeGreaterThan(all.indexOf('Photos and takes'))
+    expect(all.indexOf('Photosa filed photo')).toBeGreaterThan(all.indexOf('Where is it?'))
+    expect(all.indexOf('the takes')).toBeGreaterThan(all.indexOf('a filed photo'))
     expect(all.indexOf('Take from G12')).toBeGreaterThan(all.indexOf('the takes'))
+    // Takes bring their own heading: with no photo of its own the box draws no caption over them.
+    cleanup()
+    draw({ takes: <div data-testid="h">the takes</div> })
+    expect(screen.queryByText('Photos')).toBeNull()
+    expect(screen.getByTestId('h')).toBeTruthy()
     cleanup()
     draw()
-    expect(screen.queryByText('Photos and takes')).toBeNull()
+    expect(screen.queryByText('Photos')).toBeNull()
   })
 })

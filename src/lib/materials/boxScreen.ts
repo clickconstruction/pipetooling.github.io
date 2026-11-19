@@ -17,8 +17,8 @@ export const ASK_MORE_PRESS = 'Ask for more'
 export const BOX_MORE_PRESS = 'More'
 /** Under the parts, once: how a part's own presses are reached. */
 export const PART_HINT = 'Tap a part if some are missing, moved or needed.'
-/** Over the photos and the takes of a box. */
-export const BOX_HISTORY_CAPTION = 'Photos and takes'
+/** Over a box's own photos. Its takes come under them with their own heading, `Taken from G12` (`BoxTakes`). */
+export const BOX_PHOTOS_CAPTION = 'Photos'
 
 /** Over the parts: `In G12`. */
 export function partsCaption(label: string): string {
