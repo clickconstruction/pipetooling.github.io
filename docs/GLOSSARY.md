@@ -3803,7 +3803,11 @@ Since v2.7860 a trip made again under its own id is tied to the line it held whe
 **Put back** saves a deleted trip again under its own id through the trip's own save, so it returns with who went, its days and its number, and a job deleted since is left out and said.
 A site whose only trip was deleted still shows its look, and the delete's question says the trip waits under Deleted trips after its minute of Undo.
 **Split in two** (since v2.7891, `lib/trips/tripSplit.ts`, `trip_split`) is the press beside **Change** on an open trip of two days or more: the trip keeps its number and the days before the day picked, and a new trip takes the rest with the next number.
-Each person goes where their days are, a trip on a bill keeps its line while the new trip starts with no billing said, and a split has no undo.
+Each person goes where their days are, a trip on a bill keeps its line while the new trip starts with no billing said, and a split is taken back with **Join with the next**.
+**Join with the next** (since v2.7963, `lib/trips/tripJoin.ts`, `trip_join`) is the press beside **Split in two** on an open trip that has a trip after it on the same site: the two become one trip, which keeps the open trip's number and words and holds everyone and every day from both.
+The next trip is the one that went out next on the same development, or on the same job for a trip with no development, in the look's own order (`trip_next_id`), and the database refuses any other pair.
+Where both trips give one person the same day the open trip's kind stays, an empty billing takes the other's, two different billings and a line on each trip refuse in words, and a line only the next trip holds is tied to the joined trip.
+The trip that went waits under **Deleted trips** marked *Joined into Trip 7* with no **Put back** (`joined_into` on its archive row), its number is not given again, and a join is taken back with **Split in two**.
 Since v2.7861 a job combine carries a trip's job links to the job that is kept (`migrate_job_ledger_costs_and_delete`), where before they went with the job that was deleted.
 Since v2.7884 it also carries a trip the deleted job held by itself: the trip goes to the kept job's development when it is in one, and to the kept job when it is in none.
 A trip that moves home this way keeps its number when the new home never handed that number out, and takes the new home's next number otherwise (`trips_take_number`).

@@ -64,7 +64,7 @@ describe('parseDeletedTrips', () => {
 
   it('reads a thin entry: no name, no day, no people, no jobs', () => {
     const [d] = parseDeletedTrips([{ trip: { id: 't9' } }])
-    expect(d).toMatchObject({ deletedAt: null, deletedByName: null, jobsGone: 0 })
+    expect(d).toMatchObject({ deletedAt: null, deletedByName: null, jobsGone: 0, joinedInto: null })
     expect(d?.record).toMatchObject({ id: 't9', tripNumber: null, people: [], jobIds: [] })
   })
 
@@ -92,8 +92,29 @@ describe('deletedTripLine', () => {
       deleted: 'Deleted Nov 18 by Dana Office',
       kept: 'kept until Feb 16',
       gone: null,
+      joined: null,
       pressLabel: 'Put back Trip 3, Nov 9 to 11',
     })
+  })
+
+  it('says a trip that was joined into another, with where its days are and how the join is taken back', () => {
+    const [d] = parseDeletedTrips([{ ...ITEM, joined_into: { trip_id: 't7', trip_number: 7 } }])
+    expect(d?.joinedInto).toEqual({ tripId: 't7', tripNumber: 7 })
+    expect(deletedTripLine(d!, { todayYmd: TODAY, toYmd })).toMatchObject({
+      deleted: 'Joined into Trip 7 on Nov 18 by Dana Office',
+      joined: 'Its days are on Trip 7. To take the join back, press Split in two on Trip 7.',
+      kept: 'kept until Feb 16',
+    })
+    // A joined trip with no number to name, and one with no day known.
+    const [old] = parseDeletedTrips([{ ...ITEM, joined_into: { trip_id: 't7', trip_number: null } }])
+    expect(deletedTripLine(old!, { todayYmd: TODAY, toYmd })).toMatchObject({ deleted: 'Joined into another trip on Nov 18 by Dana Office', joined: 'Its days are on that trip. To take the join back, press Split in two on that trip.' })
+    expect(deletedTripLine({ ...d!, deletedAt: null, deletedByName: null }, { todayYmd: TODAY, toYmd }).deleted).toBe('Joined into Trip 7')
+  })
+
+  it('reads a trip somebody deleted as joined into none', () => {
+    expect(parseDeletedTrips([ITEM])[0]?.joinedInto).toBeNull()
+    expect(parseDeletedTrips([{ ...ITEM, joined_into: null }])[0]?.joinedInto).toBeNull()
+    expect(parseDeletedTrips([{ ...ITEM, joined_into: { trip_number: 7 } }])[0]?.joinedInto).toBeNull()
   })
 
   it('keeps a trip the days the archive does', () => {

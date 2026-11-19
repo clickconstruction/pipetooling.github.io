@@ -1244,12 +1244,20 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - **Split in two** (v2.7891, `docs/migrations/20261119010000_trip_split.md`): **`trip_split(trip, from_day, dry_run)`** cuts a trip at a day into two, for the trips office: dev, master_technician, assistant, controller, primary.
   It is a SECURITY INVOKER that writes through `trip_save` twice in one call, so the trips tables' own policies refuse a training account, a digital twin and an archived caller, and a person on the trip who is not in the office cannot split it.
   The press is drawn for the reader who can change the trip.
+- **Join with the next** (v2.7963, `docs/migrations/20261119180000_trip_join.md`): **`trip_join(trip, next_trip, dry_run)`** makes a trip and the trip that went out next on the same home one trip, for the trips office: dev, master_technician, assistant, controller, primary.
+  It is a SECURITY INVOKER that writes through `trip_save` and deletes the next trip in one call, so the trips tables' own policies refuse a training account, a digital twin and an archived caller, and a person on the trip who is not in the office cannot join it.
+  **`trip_join_line(trip, next_trip, move)`** is the one definer step: it reads what the two trips hold of a job's lines and ties a line only the next trip holds to the joined trip, for the trips office and only for a trip and its next trip, and it refuses a training account that asks for the move, a digital twin and an archived caller itself.
+  A primary, who cannot put a trip on a bill, can join two trips and so carry a line's tie from one to the other.
+  No price, bill or total changes when a tie is carried.
+  **`trip_next_id(trip)`** is a SECURITY INVOKER read under the caller's own policies.
 - **Deleted trips** (v2.7800, `docs/migrations/20261118100000_trips_deleted.md`): a deleted trip is kept in `deleted_records_archive`, its row, its people and its jobs under the trip's id.
   The people and the jobs are kept only when the trip itself went, so a save that rewrites them and a deleted job that takes its link leave nothing.
   **`trip_deleted_list(site)`**, a SECURITY DEFINER, reads a site's deleted trips that nothing has put back, for the trips office alone: dev, master_technician, assistant, controller and primary.
   A person who was on the trip reads no deleted one, and the archive table itself stays dev-only.
   A digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.
   Putting a trip back is `trip_save` under the trip's own id, under the trips tables' own policies, so no new write exists.
+  Since v2.7963 the list names the trip a deleted one was joined into (`joined_into`), and the fold draws no **Put back** for it.
+  The save itself refuses nothing more for a joined trip.
   A trip made again settles its archive rows (`trips_settle_archive`), so the dev's Recently deleted never offers a living trip.
   Since v2.7860 (`docs/migrations/20261118203000_trip_line_tie.md`) the trip's capture keeps the id of the line it held, and the same trigger ties that line to the trip made again, as a SECURITY DEFINER, only when the line is still there and tied to no trip.
 - **How far is far** (v2.7888): `app_settings` `trips_far_miles_v1`, the miles from the shop that make a site a trip from home, is read by every signed-in user, as `app_settings` is, and set by a dev alone under the table's own dev policy.
