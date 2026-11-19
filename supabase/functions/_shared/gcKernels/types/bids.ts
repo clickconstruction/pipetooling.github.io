@@ -129,6 +129,7 @@ export type BidCountRow = {
   id: string
   kind: string | null
   page: string | null
+  percent_rule: Json | null
   plan_tag: string | null
   sequence_order: number
   source_shares: Json | null

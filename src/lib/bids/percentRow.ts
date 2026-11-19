@@ -174,6 +174,8 @@ export type PercentWindowValue = {
   sourceKey: string
   /** Keep following the rows; off = the number alone, a plain typed price. */
   follow: boolean
+  /** The row picked from the list when the window puts a number on a row already here (the calculator's Put on a row…). */
+  rowId?: string | null
 }
 
 export type PercentWindowPreview = {
@@ -206,10 +208,13 @@ export function percentWindowPreview(args: {
   self: PercentGridRow | null
   value: PercentWindowValue
   fixedRevenue?: number | null
+  /** The window puts a number on a row already here: a row must be picked, and no name is typed. */
+  pickRow?: boolean
 }): PercentWindowPreview {
   const { rows, value } = args
   const name = value.name.trim()
-  const self = args.self ?? (name === '' ? null : (rows.find((r) => r.name.trim().toLowerCase() === name.toLowerCase()) ?? null))
+  const picked = value.rowId ? (rows.find((r) => r.id === value.rowId) ?? null) : null
+  const self = args.self ?? picked ?? (name === '' ? null : (rows.find((r) => r.name.trim().toLowerCase() === name.toLowerCase()) ?? null))
   const pct = parsePercent(value.pct)
   const source = percentSourceFromKey(value.sourceKey)
   const rule = pct != null && source ? { pct, basis: value.basis, source } : null
@@ -223,11 +228,14 @@ export function percentWindowPreview(args: {
       : fromRule
   const ruleToSave = value.follow ? rule : null
   const bidRevenueBefore = round2(rows.reduce((s, r) => s + r.revenue, 0))
-  const bidRevenueAfter = round2(bidRevenueBefore - (self?.revenue ?? 0) + (answer?.revenue ?? 0))
+  // Until there is an answer nothing would change: a row already on the bid keeps its price in the bid's total.
+  const bidRevenueAfter = answer ? round2(bidRevenueBefore - (self?.revenue ?? 0) + answer.revenue) : bidRevenueBefore
   const hold =
-    name === ''
-      ? 'Name the row first.'
-      : answer == null
+    args.pickRow && !self
+      ? 'Pick the row first.'
+      : name === '' && !self
+        ? 'Name the row first.'
+        : answer == null
           ? pct == null
             ? 'Type a percent above 0.'
             : 'Pick the rows it is a percent of.'
@@ -277,6 +285,8 @@ export function percentWindowStart(args: {
   self: PercentGridRow | null
   last: PercentRowLast | null
   from?: { pct: number | null; basis: PercentBasis | null; sourceKey: string | null } | null
+  /** The window opens to put a number on a row already here: no name, no row picked yet. */
+  pickRow?: boolean
 }): PercentWindowValue {
   const { rows, self, last, from } = args
   const options = percentSourceOptions(rows, self?.id ?? null)
@@ -288,13 +298,14 @@ export function percentWindowStart(args: {
   }
   if (from) {
     return {
-      name: self?.name ?? last?.name ?? 'Connections',
+      name: self?.name ?? (args.pickRow ? '' : (last?.name ?? 'Connections')),
       kind: self?.kind ?? last?.kind ?? 'fitting',
       pct: from.pct != null ? percentWords(from.pct) : '',
       basis: from.basis ?? 'revenue',
       sourceKey: has(from.sourceKey) ? from.sourceKey : firstKey,
       // A number with no rule behind it can only be typed once.
       follow: from.pct != null && has(from.sourceKey),
+      rowId: null,
     }
   }
   if (self) return { name: self.name, kind: self.kind, pct: last && has(last.sourceKey) ? last.pct : '', basis: last?.basis ?? 'revenue', sourceKey: has(last?.sourceKey) ? last!.sourceKey : firstKey, follow: true }

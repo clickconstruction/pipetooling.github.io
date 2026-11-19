@@ -21,8 +21,12 @@ import { rowKindOf } from '../../lib/bids/rowKinds'
 import { allRowTags, withKind, withTag, withoutTag } from '../../lib/bids/rowMarksEdits'
 import { usePricingRowMarks } from '../../hooks/usePricingRowMarks'
 import { usePercentRows } from '../../hooks/usePercentRows'
-import { percentRowAnswer, percentRuleChip, percentRuleWords, percentWindowStart } from '../../lib/bids/percentRow'
+import { percentRowAnswer, percentRuleChip, percentRuleWords, percentSourceOptions, percentWindowStart } from '../../lib/bids/percentRow'
 import { PercentRowWindow, PercentRuleChipMark } from './PercentRowWindow'
+import { setPricingTapeSink, usePricingTapeOpen, type TapeAnswer, type TapeSendTo } from '../../lib/bids/pricingTapeBridge'
+import { tapeLineForGroup, tapeLineForRow } from '../../lib/bids/tapeDrag'
+import { COMPOSITION_LABELS } from '../../lib/bids/pricingComposition'
+import { TapeDragGrip } from './TapeDragGrip'
 import { costEstimateLaborRowHours } from '../../lib/bidPricingRowCalculations'
 import { workbenchEffectiveRows, workbenchEffectiveTotals } from '../../lib/bids/workbenchEffectiveRows'
 import { parseSplitDollars, rowPriceSplit } from '../../lib/bids/rowPriceSplit'
@@ -2227,6 +2231,23 @@ export function BidsPricingTab({
     },
     reloadRows: reloadPricingForBid,
   })
+  // The Pricing Tape sends its answer here while a bid's numbers are on screen: Put on a row… and Make a new row… open
+  // the Percent row window with it (`lib/bids/pricingTapeBridge.ts`). The calculator is drawn by the page, beside the tab.
+  const tapeSendRef = useRef<(answer: TapeAnswer, to: TapeSendTo) => void>(() => {})
+  tapeSendRef.current = (answer, to) => {
+    if (!guardPriceRowsWrite()) return
+    const from = { revenue: answer.value, pct: answer.rule?.pct ?? null, basis: answer.rule?.basis ?? null, sourceKey: answer.rule?.sourceKey ?? null, words: answer.words }
+    if (to === 'row') percentRows.openPickRow(from)
+    else percentRows.openNew(from)
+  }
+  // While the calculator is unfolded, each grid row and each Kind breakdown line wears a grip that drags it there.
+  const tapeOpen = usePricingTapeOpen()
+  const tapeMaySend = derivedNow != null
+  useEffect(() => {
+    if (!tapeMaySend) return
+    setPricingTapeSink({ send: (answer, to) => tapeSendRef.current(answer, to) })
+    return () => setPricingTapeSink(null)
+  }, [tapeMaySend])
   // #357 PR 4: the GC's rating as cost lines, pinned on the bid; written once the numbers are settled (`ready`).
   // #357 PR 6: the bid's own picks (the site), priced with the GC's rating into the same lines.
   const bidOwnPicks = useBidDifficultyPicks(selectedBidForPricing?.id ?? null)
@@ -3439,7 +3460,12 @@ export function BidsPricingTab({
                                   transition: 'background 400ms ease',
                                 }}
                               >
-                                <td style={{ padding: '0.35rem 0.4rem 0.35rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
+                                <td style={{ padding: '0.35rem 0.4rem 0.35rem 0.7rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
+                                  {(() => {
+                                    // The grip that drags this row's numbers onto the calculator, while it is unfolded.
+                                    const g = tapeOpen ? percentRows.gridRows?.find((x) => x.id === r.countRow.id) : null
+                                    return g ? <TapeDragGrip line={tapeLineForRow(g)} /> : null
+                                  })()}
                                   <button
                                     type="button"
                                     onClick={(e) => {
@@ -3927,6 +3953,16 @@ export function BidsPricingTab({
                     <KindBreakdownCard
                       rows={eff.map((r) => ({ id: r.countRow.id, name: r.countRow.fixture ?? '', count: r.count, cost: r.cost, revenue: r.effRevenue, kind: rowKindOf(r.countRow.fixture ?? '', rowMarks[r.countRow.id]?.kind).kind }))}
                       marginColor={mColor}
+                      gripFor={
+                        tapeOpen && percentRows.gridRows
+                          ? (kind) => {
+                              // The line's numbers as a rule would read them: saved prices, and no row with a rule of its own.
+                              const grid = percentRows.gridRows ?? []
+                              const option = percentSourceOptions(grid, null).find((o) => o.key === `kind:${kind}`)
+                              return option ? <TapeDragGrip line={tapeLineForGroup(option, grid, COMPOSITION_LABELS[kind].unit)} /> : null
+                            }
+                          : undefined
+                      }
                     />
                     {/* #128: the same card by the estimator's own tags. */}
                     <TagBreakdownCard
@@ -4127,11 +4163,12 @@ export function BidsPricingTab({
             const self = target.rowId ? (percentRows.gridRows.find((g) => g.id === target.rowId) ?? null) : null
             return (
               <PercentRowWindow
-                key={`${target.rowId ?? 'new'}:${target.from?.words ?? ''}`}
+                key={`${target.rowId ?? (target.pickRow ? 'pick' : 'new')}:${target.from?.words ?? ''}`}
                 rows={percentRows.gridRows}
                 self={self}
-                start={percentWindowStart({ rows: percentRows.gridRows, self, last: percentRows.last, from: target.from })}
+                start={percentWindowStart({ rows: percentRows.gridRows, self, last: percentRows.last, from: target.from, pickRow: target.pickRow })}
                 from={target.from}
+                pickRow={target.pickRow}
                 sent={!!selectedBidForPricing?.bid_date_sent}
                 narrow={narrowViewport640}
                 busy={percentRows.busy}

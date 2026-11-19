@@ -394,7 +394,9 @@ Open the map and press {{button:outline|Share}}. The press shows for whoever pai
 
 The first press makes the link. You do not make one first.
 
-Your phone may not open Messages by itself. The sheet then says the link is ready. Press {{button:blue|Open Messages}}.
+Messages opens the moment you press. On a weak signal the sheet may say the link is ready first. Then press {{button:blue|Open Messages}}.
+
+The sheet tells you if the link in a text will not open. Do not send that text. Press the blue press again.
 
 At a desk there is no **Text it from my phone…**. {{button:blue|Copy the link}} leads there.
 

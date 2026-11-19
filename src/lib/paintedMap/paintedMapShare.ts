@@ -83,6 +83,8 @@ export const PAINTED_MAP_SHARE_SHEET_WORDS = {
   /** The phone made the link and then would not open another app that long after the press. */
   ready: 'The link is ready. Press Open Messages.',
   readyAnother: 'The link is ready. Press Send it another way… again.',
+  /** The phone was handed a text, and the link in it was then refused or lost: said after the reason. */
+  textLinkDead: 'The link in that text will not open. Do not send it.',
   /** The second press, with the link already made, opened nothing either. */
   noMessages: 'This phone would not open Messages. Copy the link and paste it into a text.',
   noShareSheet: 'This phone would not open its share sheet. Copy the link.',

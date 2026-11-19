@@ -263,6 +263,8 @@ A superintendent on a project sees one more card on Job Mode, above the job's de
 - Press {{button:blue|Set the %}} on the stage in hand to say how far along the work is. The window takes a number for each stage.
 - The **Hours** bar shows the hours in against the budget. It turns red when the job is behind.
 - When the job is behind, a row under **Finish** reads **At this pace** with the day this pace lands on. Press {{button:outline|Open the checklist}} to answer the stage's open questions.
+- Press **My finish date** to say when you think the job finishes. Pick a day and say what is in the way. Your day shows on the card as **You said**. It does not change the planned finish or your score.
+- Two days before that day the card asks *Still finishing?* with the day. Press **Yes**, or press **Pick a day** to change it.
 - Press **Ask a master** to send a question to the master on the job. The percent, the hours and the finish day go with it. The card then says who your question waits on. See [tag a teammate](/help/tag-a-teammate-in-a-job-note) for where the answer shows.
 - Press **How this is figured** for the rest. It holds the strip with the days the crew worked and where the budget came from. It also holds the office's sign-off and your score this month.
 - Inside it, tap a day on the strip to read who clocked and for how long. The day also shows the report.

@@ -23,6 +23,8 @@ export type ActKind = MovementReason | 'box_moved' | 'box_retired' | 'box_brough
 export type BoxChange = { id: string; containerId: string; what: 'retired' | 'brought_back' | 'kind' | 'where' | 'said'; oldValue: string; newValue: string; byName: string; at: string }
 /** A box renamed (`job_container_names`). */
 export type BoxRename = { id: string; containerId: string; oldLabel: string; newLabel: string; byName: string; at: string }
+/** A dev's live answer to a press (`job_movement_answers`): taken back, or marked as not allowed. */
+export type PressAnswer = { id: string; movementId: string; answer: 'taken_back' | 'marked'; why: string; byName: string; at: string }
 /** A part tie or a site price someone took off (`on_site_removed_answers`), with the words of the row as it stood. */
 export type RemovedAnswer = { id: string; answer: 'tie' | 'price'; jobId: string | null; words: string; byName: string; at: string }
 export type ActLook = 'count_changed' | 'no_source' | 'no_note'
@@ -54,6 +56,8 @@ export type PersonAct = {
   who: string
   personKey: string
   looks: ActLook[]
+  /** The live answer on the press, or null. A press taken back is in no sum and is drawn struck through. */
+  answer: PressAnswer | null
 }
 
 export type ActPerson = { key: string; name: string; acts: number; lastAt: string }
@@ -68,6 +72,9 @@ export type SiteActsInput = {
   boxChanges?: ReadonlyArray<BoxChange>
   boxRenames?: ReadonlyArray<BoxRename>
   removedAnswers?: ReadonlyArray<RemovedAnswer>
+  /** The live answers to presses, and the ledger rows taken back, which the ledger's own read leaves out. */
+  answers?: ReadonlyArray<PressAnswer>
+  takenBack?: ReadonlyArray<Movement>
 }
 
 /** The chip on an act worth a look, and the title that says why. */
@@ -163,17 +170,23 @@ export function sitePersonActs(input: SiteActsInput, dayOf: (iso: string) => str
     }
   }
 
+  const answerOf = new Map((input.answers ?? []).map((a) => [a.movementId, a]))
+  const standing = new Set(input.movements.map((m) => m.id))
   const acts: PersonAct[] = []
-  for (const m of input.movements) {
+  // The rows that stand, then the rows taken back: the same words, in no sum and with no chip.
+  const ledger: Array<[Movement, boolean]> = [...input.movements.map((m): [Movement, boolean] => [m, false]), ...(input.takenBack ?? []).filter((m) => !standing.has(m.id)).map((m): [Movement, boolean] => [m, true])]
+  for (const [m, struck] of ledger) {
     const who = m.byName.trim() || NO_NAME
     const looks: ActLook[] = []
-    const count = counts.get(m.id)
+    const count = struck ? undefined : counts.get(m.id)
     if (count && !count.first && count.expected !== m.quantity) looks.push('count_changed')
-    if (m.reason === 'delivered' && !(m.source ?? '').trim() && addedOnTop.has(m.id)) looks.push('no_source')
-    if ((m.reason === 'taken' || m.reason === 'used') && !m.note.trim()) looks.push('no_note')
+    if (!struck && m.reason === 'delivered' && !(m.source ?? '').trim() && addedOnTop.has(m.id)) looks.push('no_source')
+    if (!struck && (m.reason === 'taken' || m.reason === 'used') && !m.note.trim()) looks.push('no_note')
     const qty =
       m.reason === 'counted'
-        ? `${n(count?.expected ?? 0)} → ${n(m.quantity)}`
+        ? struck || !count
+          ? n(m.quantity)
+          : `${n(count.expected)} → ${n(m.quantity)}`
         : m.reason === 'delivered'
           ? `+${n(m.quantity)}`
           : m.reason === 'moved'
@@ -191,7 +204,7 @@ export function sitePersonActs(input: SiteActsInput, dayOf: (iso: string) => str
       what: REASON_WORDS[m.reason].past,
       part: m.partName,
       qty,
-      pieces: m.reason === 'taken' || m.reason === 'used' ? m.quantity : 0,
+      pieces: !struck && (m.reason === 'taken' || m.reason === 'used') ? m.quantity : 0,
       boxIds: [m.fromContainerId, m.toContainerId].filter((id): id is string => Boolean(id)),
       boxId: m.fromContainerId ?? m.toContainerId,
       where,
@@ -201,6 +214,7 @@ export function sitePersonActs(input: SiteActsInput, dayOf: (iso: string) => str
       who,
       personKey: personKeyOf(who),
       looks,
+      answer: answerOf.get(m.id) ?? null,
     })
   }
   for (const mv of input.containerMoves) {
@@ -226,10 +240,11 @@ export function sitePersonActs(input: SiteActsInput, dayOf: (iso: string) => str
       who,
       personKey: personKeyOf(who),
       looks: [],
+      answer: null,
     })
   }
   // The trail: changes to a box that are not ledger rows, and answers taken off.
-  const blank = { part: null, qty: '', pieces: 0, note: '', looks: [] as ActLook[] }
+  const blank = { part: null, qty: '', pieces: 0, note: '', looks: [] as ActLook[], answer: null }
   const boxAct = (id: string, at: string, byName: string, containerId: string, kind: ActKind, what: string, note: string): PersonAct => {
     const who = byName.trim() || NO_NAME
     const c = box.get(containerId)
@@ -270,18 +285,20 @@ export function filterActs(acts: ReadonlyArray<PersonAct>, f: ActFilter): Person
 }
 
 /** The four figures over the list, for the acts shown. */
-export function actTiles(acts: ReadonlyArray<PersonAct>): { presses: number; days: number; pieces: number; boxes: number; look: number } {
+export function actTiles(acts: ReadonlyArray<PersonAct>): { presses: number; days: number; pieces: number; boxes: number; look: number; markedPieces: number } {
   const boxes = new Set<string>()
   const days = new Set<string>()
   let pieces = 0
   let look = 0
+  let markedPieces = 0
   for (const a of acts) {
     for (const id of a.boxIds) boxes.add(id)
     days.add(a.day)
     pieces += a.pieces
+    if (a.answer?.answer === 'marked') markedPieces += a.pieces
     if (a.looks.length > 0) look += 1
   }
-  return { presses: acts.length, days: days.size, pieces, boxes: boxes.size, look }
+  return { presses: acts.length, days: days.size, pieces, boxes: boxes.size, look, markedPieces }
 }
 
 /** The acts grouped by day, in the order they came: newest day first when the acts are newest first. */

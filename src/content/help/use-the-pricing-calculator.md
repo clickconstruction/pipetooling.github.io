@@ -2,7 +2,7 @@
 title: use the pricing tape calculator
 category: Bids & Estimating
 roles: dev, master_technician, assistant, estimator, primary
-keywords: calculator, pricing, tape, ledger, history, notes, paste, clipboard, sum, bids, margin, math
+keywords: calculator, pricing, tape, ledger, history, notes, paste, clipboard, sum, bids, margin, math, put on a row, make a new row, send the answer, percent row, drag a row, drag a line, which number, grip
 ---
 On **Bids → Pricing** on a desktop, a small calculator icon floats in the bottom-right corner. You click it and the **Pricing Tape** unfolds, a calculator with a paper-tape history.
 
@@ -42,8 +42,38 @@ With the calculator armed, you paste with **⌘V**. There are no buttons. Pastin
 - **A column of prices** from a spreadsheet or submittal sums into one tape line. Every number it used is printed, so a stray grab is visible, never silent. Part codes like "WH-1" are ignored. Accounting negatives like *"(617.97)"* subtract.
 - **Copy out**: you click the big result and it shows {{chip:green|Copied ✓}}. Then you paste it wherever it goes next.
 
+## Drag a line of the bid in
+
+While the calculator is open, every row of the table shows a small grip of six dots. Each line of the **Kind breakdown** card shows one too.
+
+1. Drag a grip onto the calculator. The tape's place reads *Drop the line here*.
+2. Let go. The calculator asks **Which number?** and shows each number the line has.
+3. Press one, like {{button:outline|Revenue $6,200.00}}. The number lands on the display with its name.
+4. Do the math. Type `× .4 =` for 40 percent.
+
+The tape prints the name in the line, like *Pipe revenue × 0.4*. A number the line does not have is grey, with the reason in its hover. **Never mind** closes the question.
+
+A **Kind breakdown** line stands for a group of rows. The group's revenue or cost times one number is a rule. {{button:blue|Make a new row…}} then opens the window with that rule in it, and the new row follows the group. A count, or one row's number, is sent as a plain number.
+
+## Send the answer to a Pricing row
+
+Two buttons sit under the display while a bid is open on Pricing.
+
+- {{button:outline|Put on a row…}} sets a row already on the bid to the number.
+- {{button:blue|Make a new row…}} adds a row priced at the number.
+
+Each button opens the **Percent row** window with the number in it. The window draws the row at its top, as the table will show it. The window's button says what it will do, like {{button:blue|Set LAV to $900.00}}. Nothing changes on the bid until you press that button.
+
+**Put on a row…** lists the bid's rows. Pick one. The number becomes the row's whole price, spread over the row's count.
+
+**Make a new row…** asks for a name. The new row lands at the end of the table with a count of 1.
+
+A number below zero cannot be a price, so both buttons go grey. A sent bid shows its lock message in place of the window.
+
+[Price a bid with the Workbench](/help/price-a-bid-with-the-workbench#price-a-row-as-a-percent-of-other-rows) covers the window.
+
 ## Notes
 
 - The calculator works like a desk adding machine: strictly left to right, so `2 + 3 × 4` is 20.
 - The calculator appears only on the Pricing tab, on screens wide enough to give it a corner. Phones have their own calculator a swipe away.
-- The tape is yours alone, per device. The tape isn't shared with the team. The tape never touches the bid itself.
+- The tape is yours alone, per device. The tape isn't shared with the team. The tape touches the bid only when you send a number and press the window's button.

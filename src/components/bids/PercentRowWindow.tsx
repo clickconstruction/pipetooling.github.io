@@ -43,6 +43,7 @@ export function PercentRowWindow({
   self: openedOn,
   start,
   from,
+  pickRow,
   sent,
   narrow,
   busy,
@@ -57,6 +58,8 @@ export function PercentRowWindow({
   start: PercentWindowValue
   /** A calculator answer the window was sent; null from ＋ Percent row. */
   from: PercentWindowFrom | null
+  /** The window puts the number on a row already on the bid (the calculator's Put on a row…): a list of rows stands where the name box does. */
+  pickRow?: boolean
   /** The bid is sent: a price is set once and does not follow. */
   sent: boolean
   narrow: boolean
@@ -68,14 +71,15 @@ export function PercentRowWindow({
   const [value, setValue] = useState<PercentWindowValue>(start)
   const patch = (p: Partial<PercentWindowValue>) => setValue((v) => ({ ...v, ...p }))
   // The cursor starts in the first box still to fill: the percent when the name is in, as on a first use.
+  // Put on a row… starts in its list of rows.
   const pctRef = useRef<HTMLInputElement | null>(null)
-  const startInPercent = start.pct.trim() === '' && (openedOn != null || start.name.trim() !== '')
+  const startInPercent = !pickRow && start.pct.trim() === '' && (openedOn != null || start.name.trim() !== '')
   useEffect(() => {
     if (!startInPercent) return
     const id = window.setTimeout(() => pctRef.current?.focus(), 0)
     return () => window.clearTimeout(id)
   }, [startInPercent])
-  const preview = percentWindowPreview({ rows, self: openedOn, value, fixedRevenue: from?.revenue ?? null })
+  const preview = percentWindowPreview({ rows, self: openedOn, value, fixedRevenue: from?.revenue ?? null, pickRow })
   const self = preview.target
   const options = percentSourceOptions(rows, self?.id ?? null)
   const picked = options.find((o) => o.key === value.sourceKey) ?? null
@@ -197,7 +201,31 @@ export function PercentRowWindow({
           {narrow ? revenueLine : null}
         </div>
 
-        {openedOn ? null : (
+        {openedOn ? null : pickRow ? (
+          <div>
+            <label style={label} htmlFor="percent-row-pick">
+              Row
+            </label>
+            <select
+              id="percent-row-pick"
+              autoFocus
+              value={value.rowId ?? ''}
+              onChange={(e) => {
+                const chosen = rows.find((r) => r.id === e.target.value) ?? null
+                patch({ rowId: chosen?.id ?? null, name: chosen?.name ?? '' })
+              }}
+              style={{ ...field, width: '100%' }}
+            >
+              <option value="">Pick a row on this bid…</option>
+              {rows.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                  {r.priced ? ` · now $${formatCurrency(r.revenue)}` : ' · not priced yet'}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
           <div>
             <label style={label} htmlFor="percent-row-name">
               Name

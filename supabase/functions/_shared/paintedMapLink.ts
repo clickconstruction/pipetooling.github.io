@@ -79,6 +79,8 @@ export const PAINTED_MAP_LINK_WORDS = {
   training: 'This is a training account, so no link was made.',
   empty: 'This map has nothing on it yet. Draw a line or add a place first.',
   tooMany: 'This map has too many links open. End one first.',
+  /** The phone's own code is already another link's: one chance in 10^14, or a code somebody else holds. */
+  taken: 'That link could not be made. Press again for a new one.',
   /** The page asked for the map with no name, or one that is not a name. */
   needsName: 'Type your name to open the map.',
   /** The page sent no device id, or one of the wrong shape. A page that cannot keep one makes one a visit. */

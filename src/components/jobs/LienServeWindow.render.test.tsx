@@ -335,6 +335,18 @@ describe('LienServeWindow', () => {
     expect(box('Job 2291, mailed').checked).toBe(false)
   })
 
+  it('has a door to Back from the clerk while approved liens are not on record as filed, and none otherwise', () => {
+    const onPress = vi.fn()
+    open({ filingsDoor: { label: 'Enter document numbers · 3 ›', count: 3, onPress } })
+    const door = document.querySelector('[data-lien-serve-filings-door]') as HTMLElement
+    expect(door.textContent).toContain('3 approved liens are not on record as filed yet.')
+    fireEvent.click(within(door).getByRole('button', { name: 'Enter document numbers · 3 ›' }))
+    expect(onPress).toHaveBeenCalledTimes(1)
+    cleanup()
+    open()
+    expect(document.querySelector('[data-lien-serve-filings-door]')).toBeNull()
+  })
+
   it('names the receipt for the post office: Add the mail receipt, and the number on the mail receipt', () => {
     open()
     const owner = document.querySelector('[data-lien-serve-row="2291"] [data-lien-serve-envelope="owner"]') as HTMLElement

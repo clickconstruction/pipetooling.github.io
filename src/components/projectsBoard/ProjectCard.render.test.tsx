@@ -60,6 +60,19 @@ describe('ProjectCard', () => {
     expect(screen.getByText('Job ›').getAttribute('href')).toBe('/jobs?edit=job-1')
   })
 
+  it('reads what the crew said about the finish: each person’s newest word, and none when nobody said (punch list #396)', () => {
+    const says = [
+      { userId: 'sam', userName: 'Sam Reyes', finishOn: '2026-11-20', planWas: '2026-11-20', why: null, createdAt: '2026-11-16T15:00:00Z' },
+      { userId: 'sam', userName: 'Sam Reyes', finishOn: '2026-11-23', planWas: '2026-11-20', why: 'waiting on the inspector', createdAt: '2026-11-18T15:00:00Z' },
+      { userId: 'lee', userName: 'Lee Park', finishOn: '2026-11-24', planWas: '2026-11-20', why: null, createdAt: '2026-11-17T15:00:00Z' },
+    ]
+    const { unmount } = renderWithProviders(<ProjectCard row={row} pace={pace({ hours: 48 })} target={null} events={events} valueEvents={[]} dollars={false} canEdit={false} onSetTarget={noop} onClearTarget={noop} says={says} />)
+    expect(screen.getAllByTestId('project-says').map((l) => l.textContent)).toEqual(['✎ Sam says Mon, Nov 23: waiting on the inspector', '✎ Lee says Tue, Nov 24.'])
+    unmount()
+    renderWithProviders(<ProjectCard row={row} pace={pace({ hours: 48 })} target={null} events={events} valueEvents={[]} dollars={false} canEdit={false} onSetTarget={noop} onClearTarget={noop} />)
+    expect(screen.queryByTestId('project-says')).toBeNull()
+  })
+
   it('opens the reason box once the handle moved, keeps only with a reason, and puts it back', async () => {
     const onSetTarget = vi.fn(() => Promise.resolve(true))
     renderWithProviders(<ProjectCard row={row} pace={pace({ hours: 48 })} target={null} events={events} valueEvents={[]} dollars canEdit onSetTarget={onSetTarget} onClearTarget={noop} />)

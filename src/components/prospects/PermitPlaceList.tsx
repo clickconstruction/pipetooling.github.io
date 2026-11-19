@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
@@ -6,14 +6,17 @@ import { leadDoor, shortDay, type PermitLeadDeck, type ResearchPermitRow, type V
 import { mayKeepFromClosed } from '../../lib/research/permitHistory'
 import { ResearchMapCard } from './ResearchMapCard'
 import {
+  CLOSED_CHIPS,
   CLOSED_WORDS,
   PURSUE_FOR_WORDS,
   builderNameOfPermit,
   closedChipCounts,
+  closedEmptyWords,
   closedRows,
   keptByWords,
   keptChipCounts,
   keptRows,
+  openingClosedWhy,
   pursuingRows,
   tookPlumberSinceKept,
   type ClosedWhy,
@@ -49,7 +52,6 @@ const KEPT_CHIPS: Array<{ key: KeptShowing; words: string }> = [
   { key: 'nobody', words: 'Nobody’s yet' },
   { key: 'again', words: 'Look again today' },
 ]
-const CLOSED_CHIPS: ClosedWhy[] = ['passed', 'plumber', 'not_pursuing']
 
 function Mark({ row }: { row: ResearchPermitRow }) {
   if (row.builder_mark === 'good') return <span style={pill('green')}>Good</span>
@@ -87,6 +89,7 @@ export function PermitPlaceList({
   onPutBack,
   onKeep,
   onSkim,
+  onInvestigating,
   isMobile = false,
   leadDecks,
 }: {
@@ -105,12 +108,16 @@ export function PermitPlaceList({
   onKeep?: (row: ResearchPermitRow) => void
   /** Back to the skim, for the press an empty list offers. */
   onSkim: () => void
+  /** To Investigating, for an empty list that a drop from there fills. The skim when the caller gives none. */
+  onInvestigating?: () => void
   isMobile?: boolean
   /** The deck each pursued permit's lead sits on, by the lead's id, for its door. */
   leadDecks?: Record<string, PermitLeadDeck>
 }) {
   const [keptShowing, setKeptShowing] = useState<KeptShowing>('everyone')
-  const [closedWhy, setClosedWhy] = useState<ClosedWhy>('passed')
+  // The Closed chip in hand, or null while Closed has none: it then opens on the first chip that
+  // holds a permit (v2.7878), never on an empty Passed beside a full Has a plumber.
+  const [heldWhy, setHeldWhy] = useState<ClosedWhy | null>(null)
   const [search, setSearch] = useState('')
   // Closed can be read as a list or as a map: every permit on the chip, however old, as a pin.
   const [closedMap, setClosedMap] = useState(false)
@@ -118,6 +125,14 @@ export function PermitPlaceList({
 
   const keptCounts = useMemo(() => keptChipCounts(rows, floor, me, todayYmd), [rows, floor, me, todayYmd])
   const closedCounts = useMemo(() => closedChipCounts(rows, floor), [rows, floor])
+  const closedWhy = heldWhy ?? openingClosedWhy(closedCounts)
+  // While Closed is on screen its chip holds still: emptying it with Put back must not jump to
+  // another. Away from Closed, a chip left empty is let go, so Closed opens on one that holds rows.
+  useEffect(() => {
+    if (place === 'closed') {
+      if (heldWhy === null) setHeldWhy(closedWhy)
+    } else if (heldWhy !== null && closedCounts[heldWhy] === 0) setHeldWhy(null)
+  }, [place, heldWhy, closedWhy, closedCounts])
   const list = useMemo(() => {
     if (place === 'kept') return keptRows(rows, floor, keptShowing, me, todayYmd)
     if (place === 'pursuing') return pursuingRows(rows, floor)
@@ -136,7 +151,9 @@ export function PermitPlaceList({
       )
     }
     if (place === 'pursuing') return <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'pursued permits', control: 'Pursue on a permit you are investigating' }), { onPress: onSkim })} compact />
-    return <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'closed permits', query: search }), { onPress: () => setSearch('') })} compact />
+    const { words, door } = closedEmptyWords(closedWhy, search)
+    const onPress = door === 'search' ? () => setSearch('') : door === 'investigating' ? (onInvestigating ?? onSkim) : onSkim
+    return <EmptyState {...emptyWordsWithPress(words, { onPress })} compact />
   }
 
   return (
@@ -161,7 +178,7 @@ export function PermitPlaceList({
         <>
           <div role="group" aria-label="Why closed" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '10px 14px 6px' }}>
             {CLOSED_CHIPS.map((w) => (
-              <button key={w} type="button" aria-pressed={closedWhy === w} onClick={() => setClosedWhy(w)} style={chip(closedWhy === w)}>
+              <button key={w} type="button" aria-pressed={closedWhy === w} onClick={() => setHeldWhy(w)} style={chip(closedWhy === w)}>
                 {CLOSED_WORDS[w]} {closedCounts[w]}
               </button>
             ))}

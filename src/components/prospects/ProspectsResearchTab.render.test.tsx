@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { useLocation } from 'react-router-dom'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
-import { ymdPlusDays, type ResearchPermitRow } from '../../lib/research/permitResearch'
+import { shortDay, ymdPlusDays, type ResearchPermitRow } from '../../lib/research/permitResearch'
 import { reachDay } from '../../lib/research/permitReach'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
@@ -30,6 +30,7 @@ const io = vi.hoisted(() => ({
   saveBuilder: vi.fn(),
   loadPermitsOfBuilder: vi.fn(),
   loadPermitFunnel: vi.fn(),
+  loadNewestPermitDay: vi.fn(),
 }))
 vi.mock('../../lib/research/permitResearchIo', () => io)
 const siteIo = vi.hoisted(() => ({ loadAllNameAnswers: vi.fn(), loadCustomerNames: vi.fn(), loadRecentBidsWithCustomer: vi.fn(), loadPermitsByHouseNumber: vi.fn(), recordNameAnswer: vi.fn() }))
@@ -146,6 +147,8 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     io.saveBuilder.mockReset().mockResolvedValue(undefined)
     io.loadPermitsOfBuilder.mockReset().mockResolvedValue([])
     io.loadPermitFunnel.mockReset().mockResolvedValue(null)
+    // No newest day is read unless a test says so: the picker's rows are the names alone.
+    io.loadNewestPermitDay.mockReset().mockResolvedValue(null)
     io.loadContactHistory.mockReset().mockResolvedValue(new Map([['ridgewaybuilders', { key: 'ridgewaybuilders', bids: 5, won: 3, last_bid_on: '2026-09-01', on_deck: false }]]))
   })
   afterEach(() => {
@@ -830,6 +833,50 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
       expect(screen.getByText('their next jobs 3')).toBeTruthy()
       fireEvent.click(screen.getByRole('button', { name: 'Builders' }))
       await waitFor(() => expect(screen.getByText(/Builders opens once tonight’s database change is in/)).toBeTruthy())
+    })
+  })
+
+  describe('the city picker marks a city that has gone quiet (v2.7880)', () => {
+    const today = todayYmdInAppTz()
+    const daysBack: Record<string, number> = { 'San Antonio': 5, Austin: 2, 'New Braunfels': 15, 'San Marcos': 1, Seguin: 1 }
+    const newestOf = (city: string) => ymdPlusDays(today, -(daysBack[city] ?? 0))
+
+    it('names the quiet city and the day it stopped, and each moving city with its newest day', async () => {
+      io.loadNewestPermitDay.mockImplementation(async (city: string) => newestOf(city))
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      const picker = (await screen.findByLabelText('City')) as HTMLSelectElement
+      await waitFor(() => expect(within(picker).getByRole('option', { name: `New Braunfels · quiet since ${shortDay(newestOf('New Braunfels'), today)}` })).toBeTruthy())
+      await waitFor(() => expect(within(picker).getByRole('option', { name: `Seguin · newest ${shortDay(newestOf('Seguin'), today)}` })).toBeTruthy())
+      // Five days back is San Antonio's weekly rhythm, never quiet.
+      expect(within(picker).getByRole('option', { name: `San Antonio · newest ${shortDay(newestOf('San Antonio'), today)}` })).toBeTruthy()
+      expect(within(picker).queryAllByRole('option', { name: /quiet/ })).toHaveLength(1)
+      // The values are still the cities' names, so the address and the remembered city are unchanged.
+      expect([...picker.options].map((o) => o.value)).toEqual(['San Antonio', 'Austin', 'New Braunfels', 'San Marcos', 'Seguin'])
+      // On the quiet city the picker says why on hover.
+      fireEvent.change(picker, { target: { value: 'New Braunfels' } })
+      await waitFor(() => expect(picker.title).toBe(`New Braunfels has published nothing since ${shortDay(newestOf('New Braunfels'), today)}. Our pull ran and found nothing newer.`))
+    })
+
+    it('never calls a city quiet when our own pull stopped', async () => {
+      io.loadNewestPermitDay.mockImplementation(async (city: string) => newestOf(city))
+      io.loadLatestPull.mockImplementation(async (city: string) => (city === 'New Braunfels' ? { ranAt: new Date().toISOString(), error: 'the feed answered 500' } : { ranAt: new Date().toISOString(), error: null }))
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      const picker = (await screen.findByLabelText('City')) as HTMLSelectElement
+      await waitFor(() => expect(within(picker).getByRole('option', { name: `New Braunfels · newest ${shortDay(newestOf('New Braunfels'), today)}` })).toBeTruthy())
+      await waitFor(() => expect(within(picker).getByRole('option', { name: /^Seguin · newest/ })).toBeTruthy())
+      expect(within(picker).queryAllByRole('option', { name: /quiet/ })).toHaveLength(0)
+    })
+
+    it('keeps a city whose day cannot be read as its name alone, and still marks the rest', async () => {
+      io.loadNewestPermitDay.mockImplementation(async (city: string) => {
+        if (city === 'Austin') throw new Error('Could not read the newest permit day: timeout')
+        return newestOf(city)
+      })
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      const picker = (await screen.findByLabelText('City')) as HTMLSelectElement
+      await waitFor(() => expect(within(picker).getByRole('option', { name: /^Seguin · newest/ })).toBeTruthy())
+      expect(within(picker).getByRole('option', { name: 'Austin' })).toBeTruthy()
+      expect(within(picker).getByRole('option', { name: /^New Braunfels · quiet since/ })).toBeTruthy()
     })
   })
 })

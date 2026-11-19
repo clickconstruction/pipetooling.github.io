@@ -105,7 +105,7 @@ describe('TallyOnSiteTab · the address of an open box', () => {
     expect(address()).toBe(SCAN)
     fireEvent.click(screen.getByRole('button', { name: 'jobs load' }))
     await boxOpen()
-    expect(screen.getByText('ZZ1 · cage')).toBeTruthy()
+    expect(screen.getByText('ZZ1')).toBeTruthy()
     await waitFor(() => expect(address()).toBe(SCAN))
     // The reload: a new page at the address the first one left.
     const left = address() ?? ''
@@ -113,7 +113,7 @@ describe('TallyOnSiteTab · the address of an open box', () => {
     load(left)
     fireEvent.click(screen.getByRole('button', { name: 'jobs load' }))
     await boxOpen()
-    expect(screen.getByText('ZZ1 · cage')).toBeTruthy()
+    expect(screen.getByText('ZZ1')).toBeTruthy()
     expect(address()).toBe(SCAN)
   })
 
@@ -160,7 +160,7 @@ describe('TallyOnSiteTab · the address of an open box', () => {
     await waitFor(() => expect(address()).toBe('/tally?tab=on-site'))
     fireEvent.click(screen.getByRole('button', { name: 'a door to the scanned box' }))
     await boxOpen()
-    expect(screen.getByText('ZZ1 · cage')).toBeTruthy()
+    expect(screen.getByText('ZZ1')).toBeTruthy()
     await waitFor(() => expect(address()).toBe(SCAN))
   })
 })

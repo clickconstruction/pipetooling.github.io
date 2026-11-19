@@ -1,5 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
+import { useFinishCallsForJobs } from '../../hooks/useFinishCallsForJobs'
 import { useAuth } from '../../hooks/useAuth'
 import { useProjectsBoard } from '../../hooks/useProjectsBoard'
 import { canSetExpectedHours, paceCounts, projectLabel, worstWords } from '../../lib/jobs/projectsBoard'
@@ -54,6 +55,9 @@ export default function DashboardProjectsStrip() {
   // Closed, the strip reads the one server read and no day's detail, so the Dashboard stays quick.
   const board = useProjectsBoard({ dayDetail: open })
   const { rows, cards, targets, loading, failure, reload } = board
+  // What the crew said about each job's finish, for the cards (punch list #396).
+  const finishIds = useMemo(() => cards.map((c) => c.row.id), [cards])
+  const finishByJob = useFinishCallsForJobs(finishIds)
   const canEdit = canSetExpectedHours(role)
   const counts = useMemo(() => paceCounts(cards.map((c) => c.line)), [cards])
   const worst = cards[0] && cards[0].line.tone === 'behind' ? cards[0] : null
@@ -145,6 +149,7 @@ export default function DashboardProjectsStrip() {
               canEdit={canEdit}
               onSetTarget={(hours, from, why) => targets.setTarget(c.row.id, hours, from, why)}
               onClearTarget={() => targets.clearTarget(c.row.id)}
+              says={finishByJob.get(c.row.id)}
             />
           ))}
         </div>

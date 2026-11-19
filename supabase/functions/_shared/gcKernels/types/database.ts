@@ -1180,6 +1180,7 @@ export type Database = {
           id: string
           kind: string | null
           page: string | null
+          percent_rule: Json | null
           plan_tag: string | null
           sequence_order: number
           source_shares: Json | null
@@ -1199,6 +1200,7 @@ export type Database = {
           id?: string
           kind?: string | null
           page?: string | null
+          percent_rule?: Json | null
           plan_tag?: string | null
           sequence_order?: number
           source_shares?: Json | null
@@ -1218,6 +1220,7 @@ export type Database = {
           id?: string
           kind?: string | null
           page?: string | null
+          percent_rule?: Json | null
           plan_tag?: string | null
           sequence_order?: number
           source_shares?: Json | null
@@ -8573,6 +8576,7 @@ export type Database = {
           created_at: string | null
           distance_miles: number | null
           done_at: string | null
+          draw_invoice_id: string | null
           id: string
           invoice_link: string | null
           job_date: string | null
@@ -8603,6 +8607,7 @@ export type Database = {
           created_at?: string | null
           distance_miles?: number | null
           done_at?: string | null
+          draw_invoice_id?: string | null
           id?: string
           invoice_link?: string | null
           job_date?: string | null
@@ -8633,6 +8638,7 @@ export type Database = {
           created_at?: string | null
           distance_miles?: number | null
           done_at?: string | null
+          draw_invoice_id?: string | null
           id?: string
           invoice_link?: string | null
           job_date?: string | null
@@ -8658,6 +8664,13 @@ export type Database = {
           step_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "people_labor_jobs_draw_invoice_id_fkey"
+            columns: ["draw_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "people_labor_jobs_job_ledger_id_fkey"
             columns: ["job_ledger_id"]
@@ -10669,6 +10682,7 @@ export type Database = {
           person_id: string
           person_name: string
           record_hours_but_salary: boolean
+          salaried_week_hours: number[]
           show_in_hours: boolean
         }[]
       }

@@ -214,6 +214,12 @@ describe('the window', () => {
     expect(p.target?.id).toBe('conn')
   })
 
+  it('until a percent is typed the bid reads as it stands, with the row\'s old price still in it', () => {
+    const typed = connections({ rule: null, priced: true, unitPrice: 2000, revenue: 2000 })
+    const p = percentWindowPreview({ rows: [...BID, typed], self: typed, value: value({ pct: '' }) })
+    expect(p).toMatchObject({ answer: null, bidRevenueBefore: 17200, bidRevenueAfter: 17200, hold: 'Type a percent above 0.' })
+  })
+
   it('a name typed for a new row that is already on the bid sets that row, whatever its letters\' case', () => {
     const typed = connections({ rule: null, priced: true, unitPrice: 2000, revenue: 2000 })
     const p = percentWindowPreview({ rows: [...BID, typed], self: null, value: value({ name: ' connections ' }) })
@@ -229,6 +235,23 @@ describe('the window', () => {
     expect(p.answer).toMatchObject({ revenue: 1234.57, unitPrice: 1234.57 })
     // On again, the rule decides and the sent number is set aside.
     expect(percentWindowPreview({ rows: BID, self: null, value: value(), fixedRevenue: 1234.567 }).label).toBe('Add Connections at $2,480.00')
+  })
+})
+
+describe('the window, putting a number on a row already here', () => {
+  const value = (over: Partial<PercentWindowValue> = {}): PercentWindowValue => ({ name: '', kind: 'fitting', pct: '', basis: 'revenue', sourceKey: 'kind:pipe', follow: false, rowId: null, ...over })
+
+  it('holds the press until a row is picked, then sets that row to the number sent', () => {
+    expect(percentWindowPreview({ rows: BID, self: null, value: value(), fixedRevenue: 900, pickRow: true })).toMatchObject({ hold: 'Pick the row first.', target: null })
+    const p = percentWindowPreview({ rows: BID, self: null, value: value({ rowId: 'lav' }), fixedRevenue: 900, pickRow: true })
+    expect(p).toMatchObject({ hold: null, label: 'Set LAV to $900.00', ruleToSave: null, bidRevenueBefore: 15200, bidRevenueAfter: 12100 })
+    // $900.00 over two lavatories.
+    expect(p.answer).toMatchObject({ revenue: 900, unitPrice: 450 })
+    expect(p.target?.id).toBe('lav')
+  })
+
+  it('opens with no name and no row, and Keep following off for a plain number', () => {
+    expect(percentWindowStart({ rows: BID, self: null, last: null, from: { pct: null, basis: null, sourceKey: null }, pickRow: true })).toEqual({ name: '', kind: 'fitting', pct: '', basis: 'revenue', sourceKey: 'kind:pipe', follow: false, rowId: null })
   })
 })
 

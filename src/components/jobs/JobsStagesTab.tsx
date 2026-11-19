@@ -279,7 +279,7 @@ import { StagesCrewModal } from './StagesCrewModal'
 import { SessionNotesOpenerContext } from './sessionNotesOpenerContext'
 import type { SessionNotesJobIdentity } from '../../lib/jobs/sessionNotesSearch'
 import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
-import { describeKeptReadAge } from '../../lib/keptRead'
+import { BoardSnapshotAgeChip } from './BoardSnapshotAgeChip'
 import { NON_PAID_SCOPES } from '../../lib/jobs/boardScopes'
 import { fetchLeanJobIdsByNumber, fetchLeanJobSearchIds } from '../../lib/jobs/leanJobSearch'
 import { fetchJobsLedgerWithDetailsForStages } from '../../lib/fetchJobsLedgerWithDetailsForStages'
@@ -467,27 +467,6 @@ const billedHeaderActionStyle = (disabled: boolean): CSSProperties => ({
   whiteSpace: 'nowrap',
 })
 
-
-/** v2.3610: the age of the remembered board, beside *Updating jobs…* while it is on screen. */
-function BoardSnapshotAgeChip({ savedAt }: { savedAt: number }) {
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        marginLeft: '0.4rem',
-        padding: '0.05rem 0.5rem',
-        borderRadius: 999,
-        fontSize: '0.72rem',
-        background: 'var(--bg-amber-100)',
-        border: '1px solid var(--border-amber)',
-        color: 'var(--text-amber-800)',
-        verticalAlign: 'middle',
-      }}
-    >
-      board from {describeKeptReadAge(savedAt, Date.now())}
-    </span>
-  )
-}
 
 const STAGES_PHONE_OVERVIEW_KEY = 'jobs-stages-phone-overview-open'
 

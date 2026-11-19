@@ -56,6 +56,8 @@ import { PermitPlaceList } from './PermitPlaceList'
 import { PermitCloseOutSheet, type PermitCloseOut } from './PermitCloseOutSheet'
 import { PermitBuilders } from './PermitBuilders'
 import { PermitCountStrip } from './PermitCountStrip'
+import { usePermitCityQuiet } from '../../hooks/usePermitCityQuiet'
+import { cityPickerTitle, cityPickerWords, isQuiet } from '../../lib/research/permitQuiet'
 import { keepFromPassedReason } from '../../lib/research/permitHistory'
 import { readLastCity, writeLastCity } from '../../lib/research/permitCityDoors'
 import { permitsLinkForView, readPermitsLink } from '../../lib/research/permitsLink'
@@ -170,6 +172,12 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
   const [saving, setSaving] = useState(false)
   const [decideError, setDecideError] = useState<string | null>(null)
   const [pulling, setPulling] = useState(false)
+  // The picker's marks (v2.7880): each city's newest permit day, and the city that has gone quiet. They wait for the lists, as the count does.
+  const [quietKey, setQuietKey] = useState(0)
+  const quietByCity = usePermitCityQuiet(!allLoading, todayYmd, quietKey)
+  const cityIsQuiet = isQuiet(quietByCity[city])
+  const quietSelect: CSSProperties = cityIsQuiet ? { border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' } : {}
+  const cityOptionStyle: CSSProperties = { background: 'var(--surface)', color: 'var(--text)' }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -361,6 +369,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
       showToast(stopped ? `The pull kept ${kept} rows and stopped on ${stopped.source}: ${stopped.error}` : `Pulled ${kept} rows from the feed.`, stopped ? 'warning' : 'success')
       void loadPull()
       await reloadLists()
+      setQuietKey((k) => k + 1)
     } catch (e) {
       showToast(formatErrorMessage(e), 'error')
     } finally {
@@ -384,10 +393,10 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         <span style={{ fontWeight: 600, fontSize: '1rem' }}>Permits</span>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <span className="sr-only" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>City</span>
-          <select aria-label="City" value={city} onChange={(e) => setCity(e.target.value)} style={selectStyle}>
+          <select aria-label="City" title={cityPickerTitle(city, quietByCity[city], todayYmd)} value={city} onChange={(e) => setCity(e.target.value)} style={{ ...selectStyle, ...quietSelect }}>
             {RESEARCH_CITIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
+              <option key={c} value={c} style={cityOptionStyle}>
+                {cityPickerWords(c, quietByCity[c], todayYmd)}
               </option>
             ))}
           </select>
@@ -451,10 +460,10 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         </button>
         {/* On a phone a deck hides the filter row, so the city rides on the strip as a chip. */}
         {phoneSkim && (
-          <select aria-label="City" value={city} onChange={(e) => setCity(e.target.value)} style={{ background: 'var(--bg-200)', color: 'var(--text-strong)', border: 0, borderRadius: 999, padding: '6px 8px', fontSize: '0.8125rem', minHeight: 36, flex: '0 0 auto', maxWidth: 150 }}>
+          <select aria-label="City" value={city} onChange={(e) => setCity(e.target.value)} style={{ background: cityIsQuiet ? 'var(--bg-amber-tint)' : 'var(--bg-200)', color: cityIsQuiet ? 'var(--text-amber-800)' : 'var(--text-strong)', border: 0, borderRadius: 999, padding: '6px 8px', fontSize: '0.8125rem', minHeight: 36, flex: '0 0 auto', maxWidth: cityIsQuiet ? 260 : 150 }}>
             {RESEARCH_CITIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
+              <option key={c} value={c} style={cityOptionStyle}>
+                {cityPickerWords(c, quietByCity[c], todayYmd, true)}
               </option>
             ))}
           </select>
@@ -551,13 +560,13 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
         ) : allLoading ? (
           <div style={mutedStyle}>Reading the permits…</div>
         ) : (
-          <PermitPlaceList place={view} rows={allRows} floor={floor} me={authUserId} todayYmd={todayYmd} researchers={researchers} busyId={busyId} onOpen={setDigRow} onHandTo={handTo} onPutBack={putBack} onKeep={keepFromPassed} onSkim={() => setView('skim')} isMobile={isMobile} leadDecks={leadDecks} />
+          <PermitPlaceList place={view} rows={allRows} floor={floor} me={authUserId} todayYmd={todayYmd} researchers={researchers} busyId={busyId} onOpen={setDigRow} onHandTo={handTo} onPutBack={putBack} onKeep={keepFromPassed} onSkim={() => setView('skim')} onInvestigating={() => setView('kept')} isMobile={isMobile} leadDecks={leadDecks} />
         ))}
 
       {view === 'builders' && <PermitBuilders city={city} authUserId={authUserId} todayYmd={todayYmd} isMobile={isMobile} onChanged={() => void loadAll()} />}
 
       {/* The month's count is a third heavy read: it waits for the lists, so the card is never held up by it. */}
-      {!wide && !allLoading && <PermitCountStrip city={city} todayYmd={todayYmd} refreshKey={countKey} />}
+      {!wide && !allLoading && <PermitCountStrip city={city} todayYmd={todayYmd} refreshKey={countKey} isMobile={isMobile} />}
 
       {wide && !loading && !error && visible.length === 0 && emptyState()}
 

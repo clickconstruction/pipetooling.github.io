@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { landOnWhenThere } from '../../lib/landOn'
 import { lienMailProofLandingFocus, lienMailProofSelectors, lienMailProofWindowSpot, type LienMailProofLanding } from '../../lib/jobs/lienMailProofDoor'
-import { LIEN_SERVE_FORM_WORDS, lienMailingSavedWords, lienServeFormHead } from '../../lib/jobs/lienServeStage'
+import { LIEN_SERVE_FORM_WORDS, lienServeFormHead } from '../../lib/jobs/lienServeStage'
 import { cleanStoredAddress } from '../../lib/displayAddress'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
@@ -51,7 +51,7 @@ import { LIEN_ONE_OFF_INK_WORDS, lienNoticeOneOffPlan, lienOneOffFiledHtml, lien
 import { supabase } from '../../lib/supabase'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
-import { EMPTY_SERVICE_COPY, LIEN_CLERK_PAGE_NOTE, LIEN_SERVICE_PROOF_WORDS, heldServiceWords, noticeSendsWithReceipts, serviceCopyDraft, serviceProofLines, serviceProofMissing, serviceSends, type ServiceCopyDraft } from '../../lib/jobs/lienServiceProof'
+import { EMPTY_SERVICE_COPY, LIEN_CLERK_PAGE_NOTE, LIEN_SERVICE_PROOF_WORDS, heldServiceWords, noticeSendsWithReceipts, serviceCopyDraft, serviceProofLines, serviceSavedWords, serviceSends, type ServiceCopyDraft } from '../../lib/jobs/lienServiceProof'
 import { LienReceiptPhotoPress } from './LienReceiptPhotoPress'
 import { keepLienCopyProof } from '../../lib/jobs/lienReceiptKeepIo'
 import LienFilingMailProof from './LienFilingMailProof'
@@ -856,7 +856,7 @@ export default function LienFilingTabs({
         () => supabase.from('job_lien_filings').update({ served_at: serviceDate || null, sends: JSON.parse(JSON.stringify(sends)) }).eq('id', filedAffidavit.id),
         'record lien service',
       )
-      showToast(lienMailingSavedWords(serviceProofMissing(sends, isSub)), 'success')
+      showToast(serviceSavedWords(sends, isSub), 'success')
       setRecordStep(null)
       onChanged()
     } catch (e) {

@@ -80,3 +80,5 @@ ALTER TABLE public.people_labor_jobs DROP COLUMN IF EXISTS draw_invoice_id;
 ```
 
 The client reads the column by itself and treats a refused read as no ties, so the screens stand without it.
+
+**Applied** to prod by 2026-11-18: the dev seat's `check_migration_ledger` read 1,380 versions applied against 1,381 local files, this version among them and `20261118190000` alone still to push (read in the docs pass after #8710).

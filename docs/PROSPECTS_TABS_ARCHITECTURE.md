@@ -83,7 +83,7 @@ activeTab: 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity' (Pro
 stage:     'screen' | 'interview' | 'tryout' | 'hire' | 'review'          (TeamProspectsTab 806; HiringStage in lib/hiring/sharedHiringTab.ts)
 ```
 
-The top row (1284–1305) draws five pills: **Customers**, **Jobs to GC** and **Subs** (one per `PROSPECT_KINDS`, each sets `kind` through `setKindTab`, 1287–1291), then **Hiring** (1293) and **Permits** (1298). The second row (1307–1366) shows under the three lanes only: **Follow Up**, **Board** (Subs only), **Prospect List**, **Convert** (Customers only, 1332–1343), **Activity** (dev and assistant-like, 1344–1355), and the **New Prospect** button (1356–1364).
+The top row (1290–1311) draws five pills: **Customers**, **Jobs to GC** and **Subs** (one per `PROSPECT_KINDS`, each sets `kind` through `setKindTab`, 1293–1297), then **Hiring** (1299) and **Permits** (1304). The pills scroll sideways beside the title on a phone; the lit one carries `aria-current` and [`useLitPillInView`](../src/hooks/useLitPillInView.ts) moves the row, never the page, to show it. The second row (1307–1366) shows under the three lanes only: **Follow Up**, **Board** (Subs only), **Prospect List**, **Convert** (Customers only, 1332–1343), **Activity** (dev and assistant-like, 1344–1355), and the **New Prospect** button (1356–1364).
 
 | Tab | Shows on | Owns |
 |---|---|---|
@@ -363,12 +363,12 @@ One `?tab=` param selects the top tab and the sub-tab together, and `?kind=` sel
 
 - **Render location:** page 1372: `<ProspectsResearchTab authUserId={authUser.id} />`. The key was `research` until v2.6787, and the old key still opens the tab and is rewritten.
 - **In the parent:** `canResearch` (110), the `?tab=` branch 278–295, `openResearchTab` 429–438 (it drops the tab's own address keys through `permitsLinkCleared`, so the tab's name opens on Skim), and the estimator's landing (322).
-- **What the tab owns, all of it outside this file:** [`ProspectsResearchTab.tsx`](../src/components/prospects/ProspectsResearchTab.tsx) (805 lines, 30-odd states) and its children (`PermitSkimDeck`, `PermitSkimLook`, `PermitSkimGoogleStill`, `PermitPlaceList`, `PermitBuilders`, `PermitBuildingSheet`, `WhoPulledItSheet`, `PermitDecideSheet`, `PermitCloseOutSheet`, `PermitFindPanel`, `PermitCountStrip`, `PermitLookAlikes`, `ResearchMapCard`, `BuilderNameTies`, `GoogleSearchPress`), over the kernels in `src/lib/research/`.
+- **What the tab owns, all of it outside this file:** [`ProspectsResearchTab.tsx`](../src/components/prospects/ProspectsResearchTab.tsx) (814 lines, 30-odd states) and its children (`PermitSkimDeck`, `PermitSkimLook`, `PermitSkimGoogleStill`, `PermitPlaceList`, `PermitBuilders`, `PermitBuildingSheet`, `WhoPulledItSheet`, `PermitDecideSheet`, `PermitCloseOutSheet`, `PermitFindPanel`, `PermitCountStrip`, `PermitLookAlikes`, `ResearchMapCard`, `BuilderNameTies`, `GoogleSearchPress`), over the kernels in `src/lib/research/`.
   - Its views: Skim, Investigating, Pursuing, Closed, the second look, Find, Builders, the ledger and the map.
   - Its four verdicts (`VERDICT_WORDS`): **Pursue**, **Investigate**, **Pass**, **Has a plumber**. Pursue makes a lead on the Customers deck or on Jobs to GC (`approachFromPermit`: a `prospects` row, and a `prospect_jobs` row for a lead), which is the tab's one write into this page's tables.
-  - Its cities come from `RESEARCH_CITIES`; the feeds are read by the edge functions `permit-pull` and `permit-lookup`.
+  - Its cities come from `RESEARCH_CITIES`; the feeds are read by the edge functions `permit-pull` and `permit-lookup`. The city picker's rows come from `usePermitCityQuiet` over `permitQuiet.ts`: each city's newest permit day, or *quiet since* that day.
   - Its address keys (`view=builders`, `looks=1`, `city=`) are read and written through `src/lib/research/permitsLink.ts`.
-- **Extraction status:** **Done.** `PROJECT_DOCUMENTATION.md` §17 holds the tab's flows. At 805 lines it is under the map threshold; it gets its own map if it passes 1,500.
+- **Extraction status:** **Done.** `PROJECT_DOCUMENTATION.md` §17 holds the tab's flows. At 814 lines it is under the map threshold; it gets its own map if it passes 1,500.
 
 ## TeamProspectsTab sub-decomposition
 

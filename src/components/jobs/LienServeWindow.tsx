@@ -54,6 +54,8 @@ type Props = {
   land?: LienServeLanding | null
   /** The copies of these filings were sent to the printer: the desk's doors to them read *Enter mail numbers* from now on. */
   onPrinted?: (filingIds: string[]) => void
+  /** The door to **Back from the clerk** (v2.7856), for the liens approved and not yet on record as filed: its words, with their count, and its press. Absent draws none. */
+  filingsDoor?: { label: string; count: number; onPress: () => void } | null
 }
 
 const head: CSSProperties = { margin: 0, fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -103,7 +105,7 @@ type Row = { job: LienServeJob; clock: { chip: string; late: boolean; daysLeft: 
  * A lien that leaves the desk's list while the window is open, because its day was just written, stays on screen
  * until the window closes. A mailed lien that still lacks a number or a receipt comes back under the rest next time.
  */
-export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, isMobile, onOpenJob, onChanged, onAddScans, onClose: onCloseProp, keep = keepLienCopyProof, mark = setLienMailed, saveNumber = saveLienDocNumber, docKnown = [], printed, zIndex = 1200, land = null, onPrinted }: Props) {
+export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, isMobile, onOpenJob, onChanged, onAddScans, onClose: onCloseProp, keep = keepLienCopyProof, mark = setLienMailed, saveNumber = saveLienDocNumber, docKnown = [], printed, zIndex = 1200, land = null, onPrinted, filingsDoor = null }: Props) {
   const isTopmost = useModalStackEntry()
   const scopeRef = useRef<HTMLDivElement | null>(null)
   // The half, or the copy, a door sent the reader to: in view and lit once it is drawn.
@@ -559,6 +561,14 @@ export default function LienServeWindow({ jobs, mailed = [], todayYmd, issuer, i
         </div>
 
         <div style={{ overflowY: 'auto', padding: '0.9rem 1.1rem', display: 'grid', gap: '1.1rem' }}>
+          {filingsDoor ? (
+            <div data-lien-serve-filings-door style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'center', fontSize: '0.78rem', border: '1px solid var(--border)', borderRadius: 6, padding: '0.4rem 0.6rem' }}>
+              <span style={{ fontWeight: 600 }}>{filingsDoor.count === 1 ? '1 approved lien is' : `${filingsDoor.count} approved liens are`} not on record as filed yet.</span>
+              <button type="button" onClick={filingsDoor.onPress} style={{ ...btn, marginLeft: 'auto', padding: '0.2rem 0.6rem', fontSize: '0.75rem', border: '1px solid #2563eb', color: 'var(--text-link)', ...(isMobile ? { minHeight: 44 } : {}) }}>
+                {filingsDoor.label}
+              </button>
+            </div>
+          ) : null}
           <section data-lien-serve-print-part style={{ display: 'grid', gap: '0.4rem', justifyItems: 'start' }}>
             <h3 style={head}>1 · Print the letters and the copies</h3>
             <button type="button" onClick={print} disabled={words.dead} data-lien-serve-batch-print style={{ ...(words.dead ? dead : press), ...(isMobile ? { minHeight: 44 } : {}) }}>

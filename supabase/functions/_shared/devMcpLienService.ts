@@ -1,7 +1,7 @@
 // The copies of a filed lien affidavit recorded as mailed, and what is left on the filed liens, from the dev seat
 // (punch list #366's seat door, the PR after plan_lien_filing).
 //
-// plan_lien_service → apply_lien_service is Record service… on the job's Lien window and the Lien desk's Mail the
+// plan_lien_service → apply_lien_service is Enter mail numbers… on the job's Lien window and the Lien desk's own
 // copies window (src/components/jobs/LienFilingTabs.tsx → recordService; src/lib/jobs/lienServeNumbersIo.ts →
 // recordLienServices): one update of the filed affidavit's row, the day on served_at and, through the form's own
 // kernel (lienServiceProof.ts → serviceSends), a send for each copy that has a certified mail number or a receipt
@@ -163,7 +163,7 @@ export async function readLienServiceWorld(reads: LienServiceReads, p: LienServi
 
 /**
  * Whether an original contractor gets a copy: the filing's own answer when its paper keeps one (the short form's
- * `isSub`), else whether the job sits under a GC. The Mail the copies window's rule (`lienServeHasContractor`).
+ * `isSub`), else whether the job sits under a GC. The copies window's rule (`lienServeHasContractor`).
  */
 export function lienServiceHasContractor(filing: Pick<LienServiceFiling, 'fields'>, job: Pick<LienServiceJob, 'gc_customer_id'>): boolean {
   const kept = obj(filing.fields)?.isSub

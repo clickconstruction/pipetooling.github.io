@@ -2,7 +2,7 @@
 name: "The pace card, shown: stages as a rail, fewer words, and presses of its own"
 number: 396
 group: ready
-status: asked 2026-11-18 at the look for #384 · drawn four times with the owner the same day (two bars, three additions, then the stages stood up as a rail) · his word *Build the entire PR train* · PR 1 built as v2.7797, the card's new face · PR 2 built as v2.7803, Ask a master
+status: asked 2026-11-18 at the look for #384 · drawn four times with the owner the same day (two bars, three additions, then the stages stood up as a rail) · his word *Build the entire PR train* · PR 1 built as v2.7797, the card's new face · PR 2 built as v2.7803, Ask a master · PR 3a built as v2.7807, the table · PR 3b built as v2.7808, My finish date · PR 3c built as v2.7811, his date on the Projects board
 summary: >
   The owner looked at the superintendent's pace card on the short Job Mode page and did not like it:
   too many words, not enough showing instead of telling, and nothing to do when the job is on pace.
@@ -13,8 +13,8 @@ summary: >
   never opened. Two presses are new: Ask a master, a question to the master on the job that carries
   the numbers with it, and My finish date, his own word on when the job finishes, which the card
   also asks for two days before the plan's day and when the job falls behind.
-next: PR 3, My finish date, with its migration and the push.
-size: M as a train of three (M · S · M)
+next: The PRs land in order, each on the one before. v2.7807's migration is pushed after its merge, before PR 3b and PR 3c merge. Then the owner's walk on a real project.
+size: M as a train of five (M · S · S · M · S)
 blocker: None in the code. PR 3's migration is pushed by hand right after its merge.
 opinion: build — the card's numbers do not change, only how they are shown, and each new press rides something the app already does or one small table
 ---
@@ -125,11 +125,45 @@ Is this the best we can do? Asked of this step:
   on the card itself would need the note's text beside its tag, which the tag read does not carry.
 - A real send was not made at the build. It posts to a real person.
 
-### PR 3 · My finish date (M)
+### PR 3 · My finish date (M) · built as v2.7807 (the table) and v2.7808 (the press)
 
 His own finish day and what is in the way, kept in one small table. The rail's foot shows it beside the
-plan's day. Two days before the plan's finish, or when the job falls behind, the card asks *Still finishing
-Fri, Nov 20?* with **Yes** and **Pick a day**. The office reads his date on the Projects board.
+plan's day. Two days before the day in force, or when the job falls behind, the card asks *Still finishing
+Fri, Nov 20?* with **Yes** and **Pick a day**.
+
+It became two PRs, the repo's way for a new table: 3a is the migration with its SQL bed, pushed by hand after
+its merge, and 3b is the client. A third, 3c, puts his date in front of the office on the Projects board.
+
+What building it found:
+
+- **A table, not a note.** A finish date posted as a job note needs no migration. But the card draws his day
+  beside the plan's, the board shows it to the office, and a one-tap **Yes** would fill a job's feed with notes.
+- **Sayings are never changed.** A new day is a new row, so the office sees what he said and when.
+- **The day in force** is his own last word when he has one, else the plan. The quick picks and the question
+  both follow it.
+- **The question is once a day.** A saying made today is the day's answer, so **Yes** quiets it until tomorrow.
+- **A failed read takes nothing away.** His day is an addition to a card that is whole.
+
+Is this the best we can do? Asked of this step:
+
+- The question first asked on every day the job was behind. Once he has given a later day that is noise, so
+  it now asks a man who is behind only until he has said a day, and after that only near his own day.
+- After the day has passed there is no **Yes** to give. The box says the day has passed and offers **Pick a
+  day** alone.
+- The quick picks step over Saturday and Sunday. A crew that works a Saturday uses **Another day**.
+
+### PR 3c · his date on the Projects board (S) · built as v2.7811
+
+One line on a project's card for the office: who says which day, and what is in the way. Each person's
+newest word, on the board page and on the Dashboard's Projects strip, from one read for all the cards.
+
+Is this the best we can do? Asked of this step:
+
+- The line does not say when he said it. A day said three weeks ago reads the same as one said this morning.
+  The window's history is in the table, and a *said Tuesday* on the line is a small follow-up if the office
+  asks for it.
+- The office cannot answer on the board. **Ask a master** is the crew's way to ask, and the tagged job note is
+  the office's way to answer.
 
 ## How to verify
 
