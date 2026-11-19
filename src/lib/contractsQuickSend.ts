@@ -211,3 +211,27 @@ export function quickSendPlan(input: {
 export function quickSendPlanWrites(plan: QuickSendPlan): plan is Extract<QuickSendPlan, { kind: 'fill' | 'insert' }> {
   return plan.kind === 'fill' || plan.kind === 'insert'
 }
+
+/** The words when a paper has nothing anywhere to sign: the pick opens nothing. */
+export function quickSendNoContentWords(documentName: string): string {
+  return `No signable content found for “${documentName}” — add contract text to its Contract Book entry first.`
+}
+
+/**
+ * A quick-send pick, decided: the person's copy to reuse, if any, and what Send will do. One rule for every screen
+ * that sends one paper to one person (People → Contracts, and Documents → Agreements). Nothing is written here.
+ */
+export function quickSendPickPlan<T extends QuickSendPersonRow>(input: {
+  documentName: string
+  personName: string
+  templateDocuments: readonly QuickSendBookRow[]
+  personDocuments: readonly T[]
+}): { existing: T | null; plan: QuickSendPlan } {
+  const existing = quickSendReusablePersonRow({ documentName: input.documentName, personName: input.personName, personDocuments: input.personDocuments })
+  const plan = quickSendPlan({
+    existing,
+    source: resolveQuickSendSource({ documentName: input.documentName, templateDocuments: input.templateDocuments, personDocuments: input.personDocuments }),
+  })
+  return { existing, plan }
+}
+

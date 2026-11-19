@@ -40,8 +40,8 @@ import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { buildAgreementSummaries } from '../../lib/contractsAgreementsPanel'
 import {
   listQuickAddBookDocuments,
-  quickSendPlan,
-  quickSendReusablePersonRow,
+  quickSendNoContentWords,
+  quickSendPickPlan,
   type QuickSendPlan,
   resolveQuickSendSource,
 } from '../../lib/contractsQuickSend'
@@ -762,23 +762,9 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
    */
   function openQuickSendForPerson(documentName: string, personName: string) {
     setContractsError(null)
-    const existing = quickSendReusablePersonRow({
-      documentName,
-      personName,
-      personDocuments: personContractDocuments,
-    })
-    const plan = quickSendPlan({
-      existing,
-      source: resolveQuickSendSource({
-        documentName,
-        templateDocuments: contractTemplateDocuments,
-        personDocuments: personContractDocuments,
-      }),
-    })
+    const { plan } = quickSendPickPlan({ documentName, personName, templateDocuments: contractTemplateDocuments, personDocuments: personContractDocuments })
     if (plan.kind === 'no-content') {
-      setContractsError(
-        `No signable content found for “${documentName}” — add contract text to its Contract Book entry first.`,
-      )
+      setContractsError(quickSendNoContentWords(documentName))
       return
     }
     setQuickSendDocumentName(null)

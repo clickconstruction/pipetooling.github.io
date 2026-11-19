@@ -121,27 +121,35 @@ export type PersonPaperSendFacts = {
 }
 
 /**
- * Read one paper's send facts: the paper as filed, the person's address from the roster or a login of that name, and
- * the sender. Each table's own row security answers; a paper the caller cannot read throws.
+ * Read a person's send facts by the name their papers are filed under: their address from the roster or a login of
+ * that name, the one roster person the name finds, and the sender. For a paper that is not written yet.
  */
-export async function readPersonPaperSendFacts(documentId: string, currentUserId: string | null | undefined): Promise<PersonPaperSendFacts> {
-  const doc = await withSupabaseRetry<{ person_name: string; document_name: string }>(
-    async () => supabase.from('person_contract_documents').select('person_name, document_name').eq('id', documentId).single(),
-    'read the paper',
-  )
-  const personName = (doc.person_name ?? '').trim()
+export async function readPersonSendFactsByName(personName: string, documentName: string, currentUserId: string | null | undefined): Promise<PersonPaperSendFacts> {
+  const name = personName.trim()
   const [peopleRes, usersRes, meRes] = await Promise.all([
-    supabase.from('people').select('id, name, email').eq('name', personName).is('archived_at', null).limit(5),
-    supabase.from('users').select('id, name, email').eq('name', personName).limit(5),
+    supabase.from('people').select('id, name, email').eq('name', name).is('archived_at', null).limit(5),
+    supabase.from('users').select('id, name, email').eq('name', name).limit(5),
     currentUserId ? supabase.from('users').select('id, name, email').eq('id', currentUserId).maybeSingle() : Promise.resolve({ data: null }),
   ])
   const people = (peopleRes.data ?? []) as SendRosterPerson[]
   const users = (usersRes.data ?? []) as SendRosterUser[]
   const me = meRes.data as SendRosterUser | null
   return {
-    target: { personName, documentName: (doc.document_name ?? '').trim() },
-    initialEmail: rosterEmailForName(personName, people, users),
-    personId: onePersonIdForName(personName, people),
+    target: { personName: name, documentName: documentName.trim() },
+    initialEmail: rosterEmailForName(name, people, users),
+    personId: onePersonIdForName(name, people),
     sender: sendWindowSender(currentUserId, me ? [me] : []),
   }
+}
+
+/**
+ * Read one saved paper's send facts: the paper as filed, then the person's. Each table's own row security answers; a
+ * paper the caller cannot read throws.
+ */
+export async function readPersonPaperSendFacts(documentId: string, currentUserId: string | null | undefined): Promise<PersonPaperSendFacts> {
+  const doc = await withSupabaseRetry<{ person_name: string; document_name: string }>(
+    async () => supabase.from('person_contract_documents').select('person_name, document_name').eq('id', documentId).single(),
+    'read the paper',
+  )
+  return readPersonSendFactsByName(doc.person_name ?? '', doc.document_name ?? '', currentUserId)
 }
