@@ -33,6 +33,7 @@ Every sub sheet sits at one of three stages. The portal draws them as a four-dot
 | {{chip:yellow|Waiting on work}} | "Finish the work, so we can call it in for inspection." |
 | {{chip:purple|Waiting on inspection}} | *"You told us the work's done Sep 4. We've called it in for inspection — a short punch list may come first."* |
 | {{chip:blue|Waiting on customer}} | *"Passed inspection Sep 6. Draw requested from the customer — their payment is the last thing between you and this money…"* |
+| {{chip:blue|Waiting on customer}}, and the customer has five recent payments | One more line: *"This customer usually pays 4 to 6 weeks after we ask."* |
 | {{chip:blue|Waiting on customer}}, and the customer paid the sheet's bill | A green {{chip:green|Customer paid Nov 12, 2026}} chip: *"The customer paid on Nov 12, 2026. Your payment is next. We will give it a pay run day."* |
 | {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with a green {{chip:green|Queued for Friday}} chip: *"Queued for the pay run — the date is right below."* |
 | {{chip:green|Paid}} | The card leaves *Your jobs*. Paid sets itself when the balance hits $0. |
@@ -66,6 +67,18 @@ The sheet's row on **Jobs → Subs → Pay** says which bill it rides on, under 
 Moving the sheet back a stage clears the bill. Deleting the bill clears it too.
 
 The sub does not see which bill the sheet rides on.
+
+## How long the customer usually takes
+
+While a sheet waits on the customer, their page can say how long that customer usually takes.
+
+- **One line under the waiting sentence.** It reads *This customer usually pays 4 to 6 weeks after we ask.*
+- **It is in weeks.** Their page never shows days, an amount or the customer's name.
+- **It needs five payments.** A customer with fewer than five payments in the last 12 months shows no line.
+- **It reads the same payments as *Pays in*.** The weeks are wide enough to hold that range of days.
+- **The customer is whoever the bill goes to.** A bill sent to the builder reads the builder's pace.
+- **Your row says what they read.** Under the rail it reads *Sub sees: usually 4 to 6 weeks*.
+- **The line goes away when the customer pays.** It also goes away once you set a payable-after date.
 
 ## When the customer pays
 

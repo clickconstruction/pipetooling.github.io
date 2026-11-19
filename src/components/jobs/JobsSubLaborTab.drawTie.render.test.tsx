@@ -128,6 +128,29 @@ describe('JobsSubLaborTab · the bill a waiting sheet rides on', () => {
     expect(byTone('grey').some((t) => t.endsWith('· on hold'))).toBe(true)
   })
 
+  it('says the usual pay time the sub reads while the sheet waits, and drops it once the customer paid or it is queued (step 3)', async () => {
+    const today = todayYmdInAppTz()
+    renderWithProviders(
+      <JobsSubLaborTab
+        {...props({
+          laborJobs: [
+            sheet({ id: 'waiting', stage: 'customer_pay', draw_invoice_id: 'b1', usual_pay_weeks: { lo: 4, hi: 6 } }),
+            sheet({ id: 'thin', stage: 'customer_pay', draw_invoice_id: 'b1', usual_pay_weeks: null }),
+            sheet({ id: 'paid', stage: 'customer_pay', draw_invoice_id: 'b1', usual_pay_weeks: { lo: 4, hi: 6 }, customer_paid_on: today }),
+            sheet({ id: 'queued', stage: 'customer_pay', draw_invoice_id: 'b1', usual_pay_weeks: { lo: 4, hi: 6 }, payable_after: today }),
+            sheet({ id: 'earlier', stage: 'walkthrough', usual_pay_weeks: { lo: 4, hi: 6 } }),
+          ],
+        })}
+      />,
+    )
+    await settle()
+    const lines = screen.getAllByTestId('sheet-sub-sees').map((l) => `${l.getAttribute('data-tone')}: ${l.textContent}`)
+    // The waiting sheet's weeks and the paid sheet's day. The thin, the queued and the earlier sheets say nothing.
+    expect(lines).toHaveLength(2)
+    expect(lines).toContain('grey: Sub sees: usually 4 to 6 weeks')
+    expect(lines.some((l) => /^grey: Sub sees: Customer paid /.test(l))).toBe(true)
+  })
+
   it('offers the pick on a waiting sheet with no tie, and reloads the ledger after the save', async () => {
     const onReloadLaborJobs = vi.fn()
     io.loadDrawTieSheet.mockResolvedValue({ sheetId: 'sheet-1', jobId: 'job-1', stage: 'customer_pay', drawInvoiceId: null, bills: BILLS })

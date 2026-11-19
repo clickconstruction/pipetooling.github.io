@@ -13,7 +13,7 @@ import { sheetOwedTo, sheetOwedToChip, TEAM_SHEET_RULE } from '../../lib/subWork
 import { teamSheetPayWhen } from '../../lib/subWorkOrders/sheetStanding'
 import { buildSubLaborPayRun, payRunFilterMatches, sheetPayWhen, PAY_RUN_FILTERS, PAY_RUN_FILTER_HINT, PAY_RUN_FILTER_LABEL, PAY_RUN_SEGMENTS, PAY_RUN_SEGMENT_LABEL, type PayRunFilter, type PayRunSegment, type PayRunSub, type SheetPayWhen } from '../../lib/subWorkOrders/subLaborPayRun'
 import { SHEET_RAIL_GAP } from '../../lib/subWorkOrders/sheetRailTone'
-import { drawTieRowWords, subSeesCustomerPaid, type DrawBill, type DrawTieRowWords, type SubSeesWords } from '../../lib/subWorkOrders/drawTie'
+import { drawTieRowWords, subSeesCustomerPaid, subSeesUsualPay, type DrawBill, type DrawTieRowWords, type SubSeesWords } from '../../lib/subWorkOrders/drawTie'
 import { useDrawBillPick } from '../../hooks/useDrawBillPick'
 import { sheetPaidInFullWords, sheetPaidLine, sheetPaymentDates } from '../../lib/subWorkOrders/sheetPaymentDates'
 import { normalizePersonNameKey } from '../../lib/personNameKey'
@@ -272,7 +272,10 @@ export default function JobsSubLaborTab({
       // v2.7843: named from the bills the ledger read for this sheet, then from the page's own job when it holds them.
       const drawTie = drawTieRowWords({ stage: job.stage, drawInvoiceId: job.draw_invoice_id ?? null, bills: job.draw_bills ?? (inv as DrawBill[] | null) ?? null })
       // v2.7843: what the sub reads once the customer has paid that bill, and the office's clock on it.
-      const subSees = subSeesCustomerPaid({ stage: job.stage, customerPaidOn: job.customer_paid_on ?? null, payableAfter: job.payable_after ?? null, payHoldReason: job.pay_hold_reason ?? null, todayYmd: today })
+      // v2.7881: while it waits, the usual pay time their page shows under the waiting sentence.
+      const subSees =
+        subSeesCustomerPaid({ stage: job.stage, customerPaidOn: job.customer_paid_on ?? null, payableAfter: job.payable_after ?? null, payHoldReason: job.pay_hold_reason ?? null, todayYmd: today }) ??
+        subSeesUsualPay({ stage: job.stage, customerPaidOn: job.customer_paid_on ?? null, payableAfter: job.payable_after ?? null, usualPayWeeks: job.usual_pay_weeks ?? null })
       return { coverage, rail, next, crew, team, jobId: pipelineJob?.id ?? null, personId, parties, payWhen, stageView, drawTie, subSees }
     },
     [spine, roster.length, today, laborJobAssigneesByJobId, teamRule],

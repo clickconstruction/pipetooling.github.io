@@ -20,7 +20,7 @@ import {
   type SubPortalLang,
   type SubPortalStringKey,
 } from '../lib/subPortal/subPortalI18n'
-import { isSubPortalSheetQueued, subPortalCustomerPaidDay, subPortalRailStep } from '../lib/subPortal/subPortalRail'
+import { isSubPortalSheetQueued, subPortalCustomerPaidDay, subPortalRailStep, subPortalUsualPay } from '../lib/subPortal/subPortalRail'
 import { SUB_PORTAL_FOCUS_PARAM, isSubPortalFocused, parseSubPortalFocus, subPortalFocusDomId, type SubPortalFocus } from '../lib/subPortal/subPortalFocus'
 import { PlansPill, SubPortalGuideButton, SubPortalGuideSheet } from '../components/subPortal/SubPortalGuide'
 import { SubPortalDatePicker } from '../components/subPortal/SubPortalDatePicker'
@@ -922,6 +922,8 @@ function SheetCard({
   // run day is set yet. Queued wins, since a promised day says more than the payment behind it.
   const customerPaid = subPortalCustomerPaidDay({ stage, payableAfter: sheet.payableAfter, customerPaidOn: sheet.customerPaidOn })
   const customerPaidLabel = customerPaid ? formatSubPortalDate(customerPaid, lang) : null
+  // The usual pay time (step 3): one line under the waiting sentence, gone once the customer pays or the sheet is queued.
+  const usualPay = subPortalUsualPay({ stage, payableAfter: sheet.payableAfter, customerPaidOn: sheet.customerPaidOn, usualPayWeeks: sheet.usualPayWeeks })
 
   const payWhenParts: string[] = []
   if (sheet.payableAfter) payWhenParts.push(t('payableAfter', { date: formatSubPortalDate(sheet.payableAfter, lang) }))
@@ -1133,6 +1135,11 @@ function SheetCard({
             sentence
           )}
         </div>
+        {usualPay && ui.kind !== 'done' ? (
+          <div data-testid="sub-portal-usual-pay" style={{ marginTop: 6, fontSize: 12.5, color: MUTED, lineHeight: 1.5 }}>
+            {t(usualPay.key, usualPay.vars)}
+          </div>
+        ) : null}
         {customerPaidLabel && sheet.payHoldReason ? (
           <div data-testid="sub-portal-customer-paid-hold" style={{ marginTop: 6, fontSize: 12.5, color: MUTED, lineHeight: 1.5 }}>
             <strong style={{ color: COPPER }}>{t('payHoldLabel')}</strong> {sheet.payHoldReason}

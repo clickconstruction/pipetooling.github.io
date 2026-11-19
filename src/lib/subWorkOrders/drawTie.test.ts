@@ -8,6 +8,7 @@ import {
   drawTieOnArrival,
   drawTieRowWords,
   subSeesCustomerPaid,
+  subSeesUsualPay,
   openDrawBills,
   orderedDrawBills,
   type DrawBill,
@@ -140,5 +141,24 @@ describe('what the sub reads once the customer paid, on the office’s row (step
     expect(sees({ customerPaidOn: null })).toBeNull()
     expect(sees({ customerPaidOn: '  ' })).toBeNull()
     expect(sees({ stage: 'walkthrough' })).toBeNull()
+  })
+})
+
+describe('what the sub reads about the wait, on the office’s row (step 3)', () => {
+  const sees = (over: Partial<Parameters<typeof subSeesUsualPay>[0]> = {}) =>
+    subSeesUsualPay({ stage: 'customer_pay', customerPaidOn: null, payableAfter: null, usualPayWeeks: { lo: 4, hi: 6 }, ...over })
+
+  it('says the weeks their page says, in grey', () => {
+    expect(sees()).toMatchObject({ text: 'Sub sees: usually 4 to 6 weeks', tone: 'grey' })
+    expect(sees({ usualPayWeeks: { lo: 4, hi: 4 } })?.text).toBe('Sub sees: usually about 4 weeks')
+    expect(sees({ usualPayWeeks: { lo: 0, hi: 1 } })?.text).toBe('Sub sees: usually within a week')
+  })
+
+  it('says nothing when their page says nothing', () => {
+    expect(sees({ usualPayWeeks: null })).toBeNull()
+    expect(sees({ customerPaidOn: '2026-11-12' })).toBeNull()
+    expect(sees({ payableAfter: '2026-11-20' })).toBeNull()
+    expect(sees({ stage: 'walkthrough' })).toBeNull()
+    expect(sees({ stage: null })).toBeNull()
   })
 })
