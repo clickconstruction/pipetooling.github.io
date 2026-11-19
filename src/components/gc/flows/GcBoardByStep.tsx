@@ -90,7 +90,7 @@ function Chip({ line, words, onPress }: { line: BoardLine; words: string; onPres
         fontSize: '0.85rem',
         color: 'inherit',
         cursor: 'pointer',
-        font: 'inherit',
+        fontFamily: 'inherit',
       }}
     >
       {line.name}
@@ -136,7 +136,7 @@ function Press({ step, press, lines, onPress }: { step: FlowStep; press: RowPres
         fontSize: '0.85rem',
         cursor: 'pointer',
         whiteSpace: 'nowrap',
-        font: 'inherit',
+        fontFamily: 'inherit',
       }}
     >
       {press.label}
@@ -304,7 +304,7 @@ export function EveryStepSwitch({ on, onChange }: { on: boolean; onChange: (on: 
         fontWeight: on ? 600 : 400,
         cursor: 'pointer',
         fontSize: '0.8rem',
-        font: 'inherit',
+        fontFamily: 'inherit',
       }}
     >
       Every step

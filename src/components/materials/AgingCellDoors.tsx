@@ -53,7 +53,7 @@ export function AgingMakePaymentDoor({ doors, busy, onMakePayment }: { doors: Ag
       disabled={busy}
       onClick={onMakePayment}
       title="Open this house's Record a payment window and tick the bills the payment covers"
-      style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: 'transparent', color: 'var(--text-teal-700)', border: '1px solid var(--text-teal-700)', borderRadius: 4, cursor: busy ? 'default' : 'pointer', font: 'inherit', opacity: busy ? 0.6 : 1 }}
+      style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: 'transparent', color: 'var(--text-teal-700)', border: '1px solid var(--text-teal-700)', borderRadius: 4, cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit', opacity: busy ? 0.6 : 1 }}
     >
       {busy ? 'Opening…' : 'Record a payment ›'}
     </button>

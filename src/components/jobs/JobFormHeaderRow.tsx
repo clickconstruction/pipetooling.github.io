@@ -286,7 +286,7 @@ export function JobFormHeaderRow({
               border: 'none',
               padding: '0.25rem 0.35rem',
               cursor: 'pointer',
-              font: 'inherit',
+              fontFamily: 'inherit',
               textDecoration: 'underline',
               textUnderlineOffset: '2px',
             }}
@@ -331,7 +331,7 @@ export function JobFormHeaderRow({
               border: 'none',
               padding: '0.25rem 0.35rem',
               cursor: 'pointer',
-              font: 'inherit',
+              fontFamily: 'inherit',
               textDecoration: 'underline',
               textUnderlineOffset: '2px',
             }}

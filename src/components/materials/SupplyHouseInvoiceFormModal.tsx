@@ -347,7 +347,7 @@ export function SupplyHouseInvoiceFormModal({ form, selectedSupplyHouseForDetail
                   markBillTyped('amount', e.target.value)
                 }}
                 required
-                style={{ flex: 1, minWidth: 0, padding: '0.5rem', border: 'none', background: 'transparent', textAlign: 'right', fontVariantNumeric: 'tabular-nums', font: 'inherit', color: 'inherit' }}
+                style={{ flex: 1, minWidth: 0, padding: '0.5rem', border: 'none', background: 'transparent', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontFamily: 'inherit', color: 'inherit' }}
               />
             </div>
           </div>
@@ -439,7 +439,7 @@ export function SupplyHouseInvoiceFormModal({ form, selectedSupplyHouseForDetail
                       markBillTyped('job', j.id)
                       setInvoiceJobSearchText('')
                     }}
-                    style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: already ? 'default' : 'pointer', fontSize: '0.875rem', opacity: already ? 0.5 : 1, font: 'inherit', color: 'inherit' }}
+                    style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: already ? 'default' : 'pointer', fontSize: '0.875rem', opacity: already ? 0.5 : 1, fontFamily: 'inherit', color: 'inherit' }}
                   >
                     <UnifiedSearchResultRow
                       result={{ source: 'job', ...j }}
@@ -563,7 +563,7 @@ export function SupplyHouseInvoiceFormModal({ form, selectedSupplyHouseForDetail
                         <button
                           type="button"
                           onClick={() => setInvoiceMarkOpenedOpen(true)}
-                          style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}
+                          style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit' }}
                         >
                           Mark opened…
                         </button>

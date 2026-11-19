@@ -254,7 +254,7 @@ export function GcCustomerContractSend({
           maxLength={500}
           placeholder="Optional. Kept with the send, for the email once it can go."
           aria-label="Your line, kept with the send"
-          style={{ ...input, width: '100%', boxSizing: 'border-box', resize: 'vertical', font: 'inherit', fontSize: '0.88rem' }}
+          style={{ ...input, width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.88rem' }}
         />
       </label>
         </>

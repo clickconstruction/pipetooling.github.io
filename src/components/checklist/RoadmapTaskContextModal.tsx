@@ -288,7 +288,7 @@ export default function RoadmapTaskContextModal({
                         width: '100%',
                         padding: t.isFocus ? '0.5rem 0.7rem 0.5rem calc(0.85rem - 3px)' : '0.5rem 0.7rem 0.5rem 0.85rem',
                         fontSize: '0.85rem',
-                        font: 'inherit',
+                        fontFamily: 'inherit',
                         textAlign: 'left',
                         cursor: 'pointer',
                         border: 'none',

@@ -477,7 +477,7 @@ function phoneRowTeaser(ctx: StagesRowRenderContext, job: JobWithDetails): React
         e.stopPropagation()
         ctx.onOpenCustomerDoor?.(job)
       }}
-      style={{ ...style, width: '100%', padding: customerIn ? customerInTeaserStyle.padding : 0, border: 'none', background: customerIn ? customerInTeaserStyle.background : 'transparent', font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+      style={{ ...style, width: '100%', padding: customerIn ? customerInTeaserStyle.padding : 0, border: 'none', background: customerIn ? customerInTeaserStyle.background : 'transparent', fontFamily: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer' }}
     >
       {words}
     </button>

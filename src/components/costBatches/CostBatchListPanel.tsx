@@ -25,9 +25,9 @@ import { COST_BATCH_LIST_LIMIT, fetchCostBatchLists, fetchCostBatchOps, fetchJob
 const heading: CSSProperties = { margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-strong)' }
 const quiet: CSSProperties = { margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }
 const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem 0.9rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }
-const smallButton: CSSProperties = { padding: '0.25rem 0.65rem', fontSize: '0.75rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontWeight: 600 }
+const smallButton: CSSProperties = { padding: '0.25rem 0.65rem', fontSize: '0.75rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontFamily: 'inherit', fontWeight: 600 }
 const dangerButton: CSSProperties = { ...smallButton, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', border: '1px solid var(--border-red)' }
-const field: CSSProperties = { padding: '0.35rem 0.5rem', fontSize: '0.8125rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit' }
+const field: CSSProperties = { padding: '0.35rem 0.5rem', fontSize: '0.8125rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', fontFamily: 'inherit' }
 const chip: CSSProperties = { display: 'inline-block', padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700 }
 
 function whenWords(iso: string): string {

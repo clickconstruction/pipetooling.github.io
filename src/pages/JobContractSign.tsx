@@ -405,7 +405,7 @@ export default function JobContractSign() {
                         aria-label={`Initials for line ${i + 1}`}
                         placeholder="Initials"
                         data-testid={`contract-initial-${i}`}
-                        style={{ flex: '0 0 4.2rem', width: '4.2rem', textAlign: 'center', fontWeight: 700, letterSpacing: '0.06em', padding: '0.35rem 0.3rem', borderRadius: 6, border: '1.5px solid var(--border-strong)', font: 'inherit', background: 'var(--surface)', color: 'inherit' }}
+                        style={{ flex: '0 0 4.2rem', width: '4.2rem', textAlign: 'center', fontWeight: 700, letterSpacing: '0.06em', padding: '0.35rem 0.3rem', borderRadius: 6, border: '1.5px solid var(--border-strong)', fontFamily: 'inherit', background: 'var(--surface)', color: 'inherit' }}
                       />
                     )}
                     <span style={{ paddingTop: locked ? '0.2rem' : '0.4rem' }}>{line}</span>

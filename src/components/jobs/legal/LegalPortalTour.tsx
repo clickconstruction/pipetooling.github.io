@@ -11,7 +11,7 @@ import { tourStepWords, type TourStop } from '../../../lib/legal/legalPortalStar
  */
 const RING = 'legalTourRing'
 
-const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 13, fontWeight: 600, padding: '6px 12px', borderRadius: 5, border: `1px solid ${COPPER}`, color: COPPER, background: CARD, cursor: 'pointer', font: 'inherit' }
+const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 13, fontWeight: 600, padding: '6px 12px', borderRadius: 5, border: `1px solid ${COPPER}`, color: COPPER, background: CARD, cursor: 'pointer', fontFamily: 'inherit' }
 const ghost: CSSProperties = { ...btn, borderColor: HAIR, color: MUTED }
 
 export default function LegalPortalTour({ stops, at, onGo }: { stops: ReadonlyArray<TourStop>; at: number; onGo: (index: number | null) => void }) {

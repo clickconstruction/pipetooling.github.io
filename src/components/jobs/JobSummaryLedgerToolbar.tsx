@@ -184,7 +184,7 @@ export default function JobSummaryLedgerToolbar({
                   : `How day-share is figured: ${overheadAllocationLabel(overhead.settings)}. Each day's office cost is shared by the field hours of the following days; open jobs carry a slice per day.`
               }
               aria-expanded={canEditOverheadDials ? dialsOpen : undefined}
-              style={{ ...(overhead.isOverride ? chipRed : chipMuted), cursor: canEditOverheadDials ? 'pointer' : 'default', font: 'inherit', fontSize: '0.75rem' }}
+              style={{ ...(overhead.isOverride ? chipRed : chipMuted), cursor: canEditOverheadDials ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: '0.75rem' }}
             >
               {canEditOverheadDials ? '⚙ ' : ''}
               {overheadAllocationLabel(overhead.settings)}
@@ -324,7 +324,7 @@ export default function JobSummaryLedgerToolbar({
             aria-expanded={windowChipsOpen}
             data-testid="job-summary-window-chips-fold"
             title={windowChipsOpen ? 'Fold the window-wide chips away again' : 'These chips speak for the whole window, not the jobs your search matched. Press to open them'}
-            style={{ ...chipMuted, border: '1px dashed var(--border-strong)', cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}
+            style={{ ...chipMuted, border: '1px dashed var(--border-strong)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}
           >
             {fold.summary} {windowChipsOpen ? '▴' : '▾'}
           </button>

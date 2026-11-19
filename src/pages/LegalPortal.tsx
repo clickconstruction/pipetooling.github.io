@@ -377,7 +377,7 @@ export default function LegalPortal() {
         {payload && panel === 'matters' && payload.intake && !payload.intake.sentAt ? (
           <div data-legal-intake-nudge style={{ fontSize: 12.5, color: MUTED, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4, marginBottom: 12 }}>
             {intakeNudgeWords(short)}{' '}
-            <button type="button" onClick={() => { setStartAt('answers'); setPanel('start') }} style={{ background: 'none', border: 'none', padding: 0, color: COPPER, fontWeight: 600, cursor: 'pointer', font: 'inherit' }}>Answer them on Start here ›</button>
+            <button type="button" onClick={() => { setStartAt('answers'); setPanel('start') }} style={{ background: 'none', border: 'none', padding: 0, color: COPPER, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Answer them on Start here ›</button>
           </div>
         ) : null}
 

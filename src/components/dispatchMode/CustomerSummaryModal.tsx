@@ -116,7 +116,7 @@ const HEADER_DOOR_STYLE: CSSProperties = {
   color: 'var(--text-strong)',
   textDecoration: 'none',
   textAlign: 'center',
-  font: 'inherit',
+  fontFamily: 'inherit',
   lineHeight: 1.2,
 }
 

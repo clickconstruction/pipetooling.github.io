@@ -139,7 +139,7 @@ export function PressChip({ label, color, title, onClick, disabled, testId }: { 
         textUnderlineOffset: 2,
         whiteSpace: 'nowrap',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        font: 'inherit',
+        fontFamily: 'inherit',
         lineHeight: 1.6,
         opacity: disabled ? 0.6 : 1,
       }}

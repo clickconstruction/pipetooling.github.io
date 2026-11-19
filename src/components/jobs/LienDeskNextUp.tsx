@@ -208,7 +208,7 @@ export default function LienDeskNextUp({
           ev.stopPropagation()
           onOpenJob(jobId)
         }}
-        style={{ ...style, border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left', borderRadius: 3, minWidth: 0, maxWidth: '100%', ...(isMobile ? { minHeight: 28 } : null) }}
+        style={{ ...style, border: 'none', background: 'none', padding: 0, margin: 0, fontFamily: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left', borderRadius: 3, minWidth: 0, maxWidth: '100%', ...(isMobile ? { minHeight: 28 } : null) }}
       >
         {markTitle ? markTitle(r.title) : r.title}
       </button>

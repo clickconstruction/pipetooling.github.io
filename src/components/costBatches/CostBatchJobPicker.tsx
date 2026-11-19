@@ -12,7 +12,7 @@ import { EmptyState } from '../EmptyState'
 
 const SEARCH_DEBOUNCE_MS = 250
 
-const field: CSSProperties = { padding: '0.4rem 0.6rem', fontSize: '0.875rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', width: '100%', maxWidth: 480, font: 'inherit' }
+const field: CSSProperties = { padding: '0.4rem 0.6rem', fontSize: '0.875rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', width: '100%', maxWidth: 480, fontFamily: 'inherit' }
 const rowButton: CSSProperties = { display: 'block', width: '100%', textAlign: 'left', padding: '0.4rem 0.6rem', font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-base)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }
 
 export function CostBatchJobPicker({

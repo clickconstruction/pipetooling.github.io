@@ -51,7 +51,7 @@ export function MaterialsMarkupPair({ markupPct, companyMarkupPct, barCost, barC
     borderRadius: 4,
     background: 'var(--surface)',
     color: 'var(--text-base)',
-    font: 'inherit',
+    fontFamily: 'inherit',
   }
 
   const placeholders =

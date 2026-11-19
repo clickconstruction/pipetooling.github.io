@@ -471,7 +471,7 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
         <LegalSettlementPaths paths={paths} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, borderBottom: `1px solid ${HAIR}`, margin: '14px 0 12px', fontSize: 13 }}>
           {firmTabsFor(matter).map((t) => (
-            <button key={t} type="button" onClick={() => onTab(t)} style={{ background: 'none', border: 'none', padding: '6px 12px', color: shownTab === t ? INK : MUTED, borderBottom: shownTab === t ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: shownTab === t ? 700 : 500, cursor: 'pointer', font: 'inherit', fontSize: 13 }}>
+            <button key={t} type="button" onClick={() => onTab(t)} style={{ background: 'none', border: 'none', padding: '6px 12px', color: shownTab === t ? INK : MUTED, borderBottom: shownTab === t ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: shownTab === t ? 700 : 500, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
               {FIRM_TAB_LABELS[t]}
             </button>
           ))}

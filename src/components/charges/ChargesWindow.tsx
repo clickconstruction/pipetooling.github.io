@@ -26,13 +26,13 @@ export type ChargesWindowViewer = { userId: string; role: string | null; canAcce
 
 type Props = { jobId: string; viewer: ChargesWindowViewer; onClose: () => void; onChanged?: () => void; zIndex?: number }
 
-const field: CSSProperties = { padding: '0.35rem 0.5rem', fontSize: '0.875rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit' }
+const field: CSSProperties = { padding: '0.35rem 0.5rem', fontSize: '0.875rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', fontFamily: 'inherit' }
 const label: CSSProperties = { display: 'grid', gap: '0.2rem', fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 600 }
 const quiet: CSSProperties = { margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }
 const btn: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', fontWeight: 600 }
 /** A dead press reads the dead pair, blue or grey alike. */
 const dead: CSSProperties = { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'transparent', cursor: 'not-allowed' }
-const chip: CSSProperties = { padding: '0.15rem 0.45rem', fontSize: '0.8125rem', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit', cursor: 'pointer' }
+const chip: CSSProperties = { padding: '0.15rem 0.45rem', fontSize: '0.8125rem', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-base)', fontFamily: 'inherit', cursor: 'pointer' }
 const th: CSSProperties = { textAlign: 'left', padding: '0.3rem 0.4rem', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }
 const td: CSSProperties = { padding: '0.3rem 0.4rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem', verticalAlign: 'top' }
 const num: CSSProperties = { ...td, textAlign: 'right', whiteSpace: 'nowrap' }

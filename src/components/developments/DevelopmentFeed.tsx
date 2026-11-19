@@ -233,7 +233,7 @@ export function DevelopmentFeed({
           <div style={{ gridColumn: 3, display: 'flex', gap: 6, flexWrap: 'wrap' }} data-testid="photos-line-tiles">
             {lineTiles(line.photos).map((t) =>
               t.kind === 'more' ? (
-                <button key="more" type="button" onClick={() => setPhotoOpen({ line, index: LINE_TILES_SHOWN })} title={`${t.count} more in this batch`} data-testid="photos-line-more" style={{ width: 56, height: 56, borderRadius: 6, border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', color: 'var(--text-link)', fontWeight: 700, cursor: 'pointer', font: 'inherit' }}>
+                <button key="more" type="button" onClick={() => setPhotoOpen({ line, index: LINE_TILES_SHOWN })} title={`${t.count} more in this batch`} data-testid="photos-line-more" style={{ width: 56, height: 56, borderRadius: 6, border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', color: 'var(--text-link)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                   + {t.count}
                 </button>
               ) : (

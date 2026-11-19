@@ -33,7 +33,7 @@ import type { Researcher } from './PermitSkimDeck'
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem' }
 const rowStyle: CSSProperties = { display: 'grid', gap: 3, padding: '11px 14px', borderTop: '1px solid var(--border)', background: 'var(--surface)' }
-const chip = (on: boolean): CSSProperties => ({ padding: '5px 11px', borderRadius: 999, fontSize: '0.78rem', border: `1px solid ${on ? '#2563eb' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text)', fontWeight: on ? 600 : 400, minHeight: 32, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' })
+const chip = (on: boolean): CSSProperties => ({ padding: '5px 11px', borderRadius: 999, fontSize: '0.78rem', border: `1px solid ${on ? '#2563eb' : 'var(--border)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text)', fontWeight: on ? 600 : 400, minHeight: 32, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' })
 const pill = (tone: 'green' | 'grey' | 'amber' | 'red'): CSSProperties => ({
   display: 'inline-block',
   borderRadius: 999,

@@ -962,7 +962,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                                       {split.open.map((m) => {
                                         const d = daysUntil(m.deadline || null, todayYmd)
                                         return (
-                                          <button key={m.key} type="button" onClick={() => openPreview(j.jobId, m.key)} title="Read this job's notice" style={{ ...openMonthChip(d != null && d <= 7 ? 'soon' : 'open'), border: 'none', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }} data-testid="gc-notice-open-month">
+                                          <button key={m.key} type="button" onClick={() => openPreview(j.jobId, m.key)} title="Read this job's notice" style={{ ...openMonthChip(d != null && d <= 7 ? 'soon' : 'open'), border: 'none', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }} data-testid="gc-notice-open-month">
                                             <strong>{workMonthShort(m.key)}</strong>{m.deadline ? <span style={{ fontWeight: 500 }}>by {formatYmdMonthDay(m.deadline)}{d != null ? ` · ${daysLeftWords(d)}` : ''}</span> : null}
                                           </button>
                                         )

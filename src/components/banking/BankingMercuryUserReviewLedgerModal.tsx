@@ -545,7 +545,7 @@ export function BankingMercuryUserReviewLedgerModal({
                               padding: 0,
                               textAlign: 'left',
                               cursor: 'pointer',
-                              font: 'inherit',
+                              fontFamily: 'inherit',
                               textDecoration: 'underline',
                             }}
                           >

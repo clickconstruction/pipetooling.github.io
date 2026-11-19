@@ -147,6 +147,9 @@ jobs:
       - name: A blue press under white words fills with #2563eb
         run: npm run check:press-blue
 
+      - name: A style's size and weight are not reset by the font shorthand
+        run: npm run check:font-shorthand
+
       - name: An error names its reason (fails on added lines only)
         run: npm run check:error-words
 

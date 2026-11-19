@@ -44,7 +44,7 @@ const rowGrid: CSSProperties = { display: 'grid', gridTemplateColumns: '78px min
 const pctBox: CSSProperties = { width: 34, border: 'none', borderBottom: '1px dashed var(--border-strong)', background: 'none', font: 'inherit', fontWeight: 700, fontSize: '0.82rem', textAlign: 'right', padding: '0 1px', color: 'inherit' }
 const readBar: CSSProperties = { position: 'relative', height: 10, borderRadius: 5, overflow: 'hidden', background: 'var(--border)', display: 'flex' }
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem' }
-const chip = (on: boolean): CSSProperties => ({ border: `1px solid ${on ? '#2563eb' : 'var(--border-strong)'}`, background: on ? '#2563eb' : 'var(--surface)', color: on ? '#fff' : 'inherit', borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.74rem', cursor: 'pointer', font: 'inherit' })
+const chip = (on: boolean): CSSProperties => ({ border: `1px solid ${on ? '#2563eb' : 'var(--border-strong)'}`, background: on ? '#2563eb' : 'var(--surface)', color: on ? '#fff' : 'inherit', borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.74rem', cursor: 'pointer', fontFamily: 'inherit' })
 const btn = (primary: boolean, dead: boolean): CSSProperties => ({ padding: '0.4rem 0.9rem', fontSize: '0.82rem', fontWeight: 600, borderRadius: 6, cursor: dead ? 'default' : 'pointer', border: `1px solid ${primary && !dead ? '#2563eb' : 'var(--border-strong)'}`, background: primary && !dead ? '#2563eb' : 'var(--surface)', color: primary && !dead ? '#fff' : dead ? 'var(--text-muted)' : 'inherit' })
 
 const dayLabel = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })

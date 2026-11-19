@@ -86,7 +86,7 @@ function BidCell({ bid, label, estimator, open, unpair, putBackOnBoard, busy, mo
             onClick={unpair}
             title="A window shows what changes first; then it clears the job's bid link and nothing else, and the toast offers Put it back"
             data-testid="unpair"
-            style={{ border: '1px solid var(--border-strong)', background: 'var(--bg-subtle)', borderRadius: 4, padding: '0 6px', fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-700)', cursor: 'pointer', font: 'inherit', lineHeight: 1.6 }}
+            style={{ border: '1px solid var(--border-strong)', background: 'var(--bg-subtle)', borderRadius: 4, padding: '0 6px', fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-700)', cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1.6 }}
           >
             Unpair
           </button>

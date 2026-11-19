@@ -337,7 +337,7 @@ export default function GcStatementMarkSentForm({
         rows={contacted ? 3 : 2}
         placeholder={contacted ? 'Warm — Dave says the check run is the 10th, wants the 868 CO broken out on the next statement.' : 'Note for later — what you sent, what they said (optional)'}
         aria-label={contacted ? 'Temperature answer' : 'Note'}
-        style={{ width: '100%', boxSizing: 'border-box', padding: '0.35rem 0.5rem', fontSize: '0.8125rem', font: 'inherit', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', marginBottom: '0.5rem', resize: 'vertical' }}
+        style={{ width: '100%', boxSizing: 'border-box', padding: '0.35rem 0.5rem', fontSize: '0.8125rem', fontFamily: 'inherit', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', marginBottom: '0.5rem', resize: 'vertical' }}
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
         <span style={{ flex: 1, minWidth: 0, fontSize: '0.72rem', color: 'var(--text-muted)' }}>

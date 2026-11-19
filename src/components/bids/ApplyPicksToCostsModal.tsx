@@ -255,7 +255,7 @@ export function ApplyPicksToCostsModal({
                       }))
                     }
                     aria-label={`Allocated unit materials for ${r.fixture}`}
-                    style={{ ...mono, textAlign: 'right', padding: '0.2rem 0.4rem', border: '1px solid #f59e0b', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }}
+                    style={{ ...mono, textAlign: 'right', padding: '0.2rem 0.4rem', border: '1px solid #f59e0b', borderRadius: 4, fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }}
                   />
                 ) : (
                   <span style={{ ...mono, textAlign: 'right', color: 'var(--text-green-700)', fontWeight: 700 }}>{money(r.afterUnitCents)}</span>

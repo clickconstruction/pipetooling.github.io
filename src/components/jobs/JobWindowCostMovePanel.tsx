@@ -26,9 +26,9 @@ import { CostBatchListPanel } from '../costBatches/CostBatchListPanel'
 const wrap: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }
 const h3: CSSProperties = { margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-strong)' }
 const quiet: CSSProperties = { margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }
-const field: CSSProperties = { padding: '0.35rem 0.5rem', fontSize: '0.8125rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit' }
+const field: CSSProperties = { padding: '0.35rem 0.5rem', fontSize: '0.8125rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', fontFamily: 'inherit' }
 const labelStyle: CSSProperties = { fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }
-const button: CSSProperties = { padding: '0.3rem 0.75rem', fontSize: '0.8125rem', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontWeight: 600 }
+const button: CSSProperties = { padding: '0.3rem 0.75rem', fontSize: '0.8125rem', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontFamily: 'inherit', fontWeight: 600 }
 const primaryButton: CSSProperties = { ...button, background: '#2563eb', color: '#ffffff', border: '1px solid transparent' }
 /** The move row stays in view while the dev scrolls a long list (several hundred rows on a catch-all job). */
 const moveBar: CSSProperties = { position: 'sticky', bottom: 0, display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.6rem 0.75rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', boxShadow: '0 -2px 8px rgba(0,0,0,0.06)', zIndex: 1 }

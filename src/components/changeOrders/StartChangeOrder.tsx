@@ -100,7 +100,7 @@ export function StartChangeOrder({ message, contact, io, onDrafted }: StartChang
               <strong>{`Change order ${form.nextNumber} on ${form.jobName}`}</strong>
               <label style={{ display: 'grid', gap: '0.2rem' }}>
                 What changes
-                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={{ ...input, font: 'inherit' }} />
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={{ ...input, fontFamily: 'inherit' }} />
               </label>
               <label style={{ display: 'grid', gap: '0.2rem' }}>
                 Why it changes

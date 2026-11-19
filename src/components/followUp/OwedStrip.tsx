@@ -75,7 +75,7 @@ export function OwedStrip({ person, owed, todayYmd, nowIso, busy, canSettle, onM
         color: value ? 'var(--text-base)' : 'var(--text-link)',
         fontWeight: 600,
         cursor: 'pointer',
-        font: 'inherit',
+        fontFamily: 'inherit',
         padding: '0 0.15rem',
       }}
     >

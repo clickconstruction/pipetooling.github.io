@@ -12,8 +12,8 @@ import { MarkedName } from '../bids/FindNamesSheet'
  * one press: the same company (or works for them), or not them. The app suggests; a person ties.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.45 }
-const primary: CSSProperties = { background: '#2563eb', color: '#fff', border: '1px solid #2563eb', borderRadius: 6, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: 600, minHeight: 34, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }
-const ghost: CSSProperties = { background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: 600, minHeight: 34, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }
+const primary: CSSProperties = { background: '#2563eb', color: '#fff', border: '1px solid #2563eb', borderRadius: 6, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: 600, minHeight: 34, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }
+const ghost: CSSProperties = { background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '6px 12px', fontSize: '0.8125rem', fontWeight: 600, minHeight: 34, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }
 
 export function PermitLookAlikes({ pairs, busy, error, onAnswer }: { pairs: readonly LookAlike[]; busy: boolean; error: string | null; onAnswer: (pair: LookAlike, tie: boolean) => void }) {
   if (pairs.length === 0) return <EmptyState main="Nothing waiting on a look. No name on these permits resembles a customer you have not answered." compact />

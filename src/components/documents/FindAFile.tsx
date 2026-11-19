@@ -141,7 +141,7 @@ export function FindAFile({
                 <h3 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-strong)' }}>{homeWords(g.home)}</h3>
                 {g.home?.kind === 'job' ? (
                   jobModal ? (
-                    <button type="button" style={{ ...linkStyle, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', font: 'inherit', ...small }} onClick={() => jobModal.openJobDetail({ jobId: g.home!.id })}>
+                    <button type="button" style={{ ...linkStyle, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', fontFamily: 'inherit', ...small }} onClick={() => jobModal.openJobDetail({ jobId: g.home!.id })}>
                       {FIND_WORDS.openJob}
                     </button>
                   ) : (
@@ -189,7 +189,7 @@ export function FindAFile({
                       <button
                         type="button"
                         data-open-contract={f.contract.id}
-                        style={{ ...linkStyle, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', font: 'inherit', ...small, justifySelf: 'start' }}
+                        style={{ ...linkStyle, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', fontFamily: 'inherit', ...small, justifySelf: 'start' }}
                         onClick={() => onOpenContract(f.contract!.jobId, f.contract!.id)}
                       >
                         {FIND_WORDS.openContract}

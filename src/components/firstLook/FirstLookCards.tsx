@@ -31,7 +31,7 @@ export const LOOK_CARD_REREAD_MS = 30_000
 const wrap: CSSProperties = { borderBottom: '1px solid var(--border)', background: 'var(--bg-blue-tint)', padding: '0.55rem 0.9rem', display: 'grid', gap: '0.5rem' }
 const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.6rem 0.7rem', display: 'grid', gap: '0.45rem' }
 const head: CSSProperties = { display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.85rem' }
-const press: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.25rem 0.7rem', background: 'var(--surface)', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', font: 'inherit' }
+const press: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.25rem 0.7rem', background: 'var(--surface)', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', fontFamily: 'inherit' }
 const quiet: CSSProperties = { ...press, color: 'var(--text-muted)', fontWeight: 500 }
 
 function OneLook({ contact, cardOf, urls, nowIso, io, doorsIo, onChanged }: { contact: Contact; cardOf: LookCard; urls: Readonly<Record<string, string>>; nowIso: string; io: FirstLookThreadIo; doorsIo?: LeadDoorsIo; onChanged: () => void }) {

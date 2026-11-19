@@ -45,7 +45,7 @@ export function FlowRow({ pills, trailing, role, label, size = 'desk', wordFirst
   const pill: CSSProperties = {
     display: 'inline-flex', alignItems: 'center', gap: phone ? 4 : 5, minHeight: phone ? 40 : 32, padding: phone ? '0 0.55rem' : '0 0.65rem', borderRadius: 999,
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text-strong)',
-    fontSize: phone ? '0.9rem' : '0.95rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, whiteSpace: 'nowrap', cursor: 'pointer', font: 'inherit',
+    fontSize: phone ? '0.9rem' : '0.95rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, whiteSpace: 'nowrap', cursor: 'pointer', fontFamily: 'inherit',
   }
   return (
     <div role={role === 'tabs' ? 'tablist' : 'group'} aria-label={label} style={{ display: 'flex', alignItems: 'center', gap: phone ? 3 : 4, flexWrap: 'wrap', minWidth: 0 }}>

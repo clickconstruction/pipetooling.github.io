@@ -132,7 +132,7 @@ export function StatedNeedEditor({
             type="button"
             onClick={() => void save()}
             disabled={saving || nothingToWrite}
-            style={{ padding: compact ? '0.4rem 0.8rem' : '0.45rem 1rem', border: 'none', borderRadius: 6, background: saving || nothingToWrite ? '#93c5fd' : '#2563eb', color: 'white', fontWeight: 600, cursor: saving || nothingToWrite ? 'not-allowed' : 'pointer', font: 'inherit', fontSize: compact ? '0.8125rem' : '0.875rem' }}
+            style={{ padding: compact ? '0.4rem 0.8rem' : '0.45rem 1rem', border: 'none', borderRadius: 6, background: saving || nothingToWrite ? '#93c5fd' : '#2563eb', color: 'white', fontWeight: 600, cursor: saving || nothingToWrite ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: compact ? '0.8125rem' : '0.875rem' }}
           >
             {saving ? 'Writing…' : STATED_NEED_SAVE_LABEL}
           </button>

@@ -462,7 +462,7 @@ const textareaStyle: CSSProperties = {
   boxSizing: 'border-box',
   padding: '0.5rem 0.6rem',
   fontSize: '0.875rem',
-  font: 'inherit',
+  fontFamily: 'inherit',
   background: 'var(--surface)',
   color: 'var(--text-base)',
   border: '1px solid var(--border-strong)',
