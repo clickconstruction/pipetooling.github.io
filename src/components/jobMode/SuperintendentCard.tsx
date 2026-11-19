@@ -16,6 +16,10 @@ import OfflineRetryPanel from '../OfflineRetryPanel'
 import { PaceStrip } from './PaceStrip'
 import { PaceBar, PaceRail } from './PaceRail'
 import { jobNameWithPlainDates } from '../../lib/jobNameDate'
+import { AskMasterSheet } from './AskMasterSheet'
+import { ASK_MASTER_WORDS, askedLine } from '../../lib/jobMode/askMaster'
+import { canTagInJobNotes } from '../../lib/jobs/noteTags'
+import { useJobNoteTags } from '../../hooks/useJobNoteTags'
 import { PACE_CARD_WORDS, paceDaysLeftWords, paceFinish, paceHours, paceRowNote, paceStageRail } from '../../lib/jobMode/paceCard'
 import { JobModeShortRow } from './JobModeShortRow'
 import { JOB_MODE_SHORT_WORDS } from '../../lib/jobMode/jobModeShort'
@@ -41,12 +45,16 @@ import { StageChecklistSheet } from '../stageChecklists/StageChecklistSheet'
  * the finish sentence, the target, the money, the proof and the month's score, sits behind **How this
  * is figured**. The folded row carries two thin bars and the finish day, so the reading is there
  * before a press. `lib/jobMode/paceCard.ts` works out the rows and the words.
+ *
+ * **Ask a master** (PR 2) opens `AskMasterSheet`: a question to the master on the job, sent as a job note
+ * that tags him, with the card's numbers attached. The card then says who the question waits on, and that
+ * an answer landed. `onAsked` tells the page a note was posted, so the job's feed reads again.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem' }
 
 export type SuperintendentPctJob = { id: string; hcpNumber: string; jobName: string; label: string }
 
-export function SuperintendentCard({ jobId, onSetPct, rev = 0, short = false }: { jobId: string; onSetPct: (job: SuperintendentPctJob) => void; rev?: number; short?: boolean }) {
+export function SuperintendentCard({ jobId, onSetPct, rev = 0, short = false, onAsked }: { jobId: string; onSetPct: (job: SuperintendentPctJob) => void; rev?: number; short?: boolean; onAsked?: () => void }) {
   const [job, setJob] = useState<ProjectBoardJob | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [busy, setBusy] = useState(false)
@@ -73,13 +81,17 @@ export function SuperintendentCard({ jobId, onSetPct, rev = 0, short = false }: 
   }, [jobId, rev, tick])
   if (failure && !job) return <OfflineRetryPanel failure={failure} onRetry={retry} surface="superintendent-line" idempotent busy={busy} />
   if (!job || job.id !== jobId || !isWorkingProject(job)) return null
-  return <SuperintendentLineCard key={job.id} job={job} onSetPct={onSetPct} rev={rev} short={short} />
+  return <SuperintendentLineCard key={job.id} job={job} onSetPct={onSetPct} rev={rev} short={short} onAsked={onAsked} />
 }
 
-function SuperintendentLineCard({ job, onSetPct, rev, short }: { job: ProjectBoardJob; onSetPct: (job: SuperintendentPctJob) => void; rev: number; short: boolean }) {
+function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: ProjectBoardJob; onSetPct: (job: SuperintendentPctJob) => void; rev: number; short: boolean; onAsked?: () => void }) {
   const [paceOpen, setPaceOpen] = useState(false)
   const [figuredOpen, setFiguredOpen] = useState(false)
-  const { user, profileName } = useAuth()
+  const [askOpen, setAskOpen] = useState(false)
+  const { user, profileName, role } = useAuth()
+  // His own question on this job: who it waits on, or that an answer landed.
+  const noteTags = useJobNoteTags(canTagInJobNotes(role) ? job.id : null, rev)
+  const asked = useMemo(() => askedLine([...noteTags.values()].flat(), user?.id, Date.now()), [noteTags, user?.id])
   const checklists = useJobStageChecklists(job.id, undefined, rev)
   const ids = useMemo(() => [job.id], [job.id])
   const targets = useExpectedHours(ids, true)
@@ -168,6 +180,14 @@ function SuperintendentLineCard({ job, onSetPct, rev, short }: { job: ProjectBoa
           ) : null}
         </div>
       ) : null}
+      {canTagInJobNotes(role) ? (
+        <div style={{ display: 'grid', gap: 6 }}>
+          <button type="button" data-testid="pace-ask-master" onClick={() => setAskOpen(true)} style={{ minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+            {ASK_MASTER_WORDS.press}
+          </button>
+          {asked ? <div data-testid="pace-asked" data-waiting={asked.waiting ? '' : undefined} style={{ fontSize: '0.8rem', color: asked.waiting ? 'var(--text-muted)' : 'var(--text-green-700)' }}>{asked.words}</div> : null}
+        </div>
+      ) : null}
       <button type="button" data-testid="pace-figured" aria-expanded={figuredOpen} onClick={() => setFiguredOpen((o) => !o)} style={{ justifySelf: 'start', minHeight: PHONE_PRESS_MIN_HEIGHT, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
         {PACE_CARD_WORDS.figured} {figuredOpen ? '▴' : '▾'}
       </button>
@@ -191,6 +211,7 @@ function SuperintendentLineCard({ job, onSetPct, rev, short }: { job: ProjectBoa
           ) : null}
         </div>
       ) : null}
+      {askOpen ? <AskMasterSheet jobId={job.id} facts={{ pct: pace.input.pctDone, hoursWords: hours?.words ?? null, finishWords: finish.planned, stage: rail?.rows.find((r) => r.state === 'now')?.name ?? null }} onClose={() => setAskOpen(false)} onSent={onAsked} /> : null}
       {day ? <DayDetailsModal jobLabel={label} ymd={day} events={laborEventsOf(job)} valueEvents={valueEventsOf(job)} hoursOnly onClose={() => setDay(null)} /> : null}
       {current ? (
         <StageChecklistSheet

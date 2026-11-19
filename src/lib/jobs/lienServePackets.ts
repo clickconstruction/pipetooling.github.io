@@ -38,6 +38,23 @@ export type LienServeDeskData = {
   gcsById: Readonly<Record<string, { name: string; address: string } | undefined>>
 }
 
+/** One filed affidavit as the copies window reads it: the job, and where its envelopes go today. */
+function serveJobOf(data: LienServeDeskData, jobId: string, filing: JobLienFilingRow): LienServeJob {
+  const job = data.jobsById[jobId]
+  const address = job?.customer_address_id ? (data.addressesById[job.customer_address_id] ?? null) : null
+  const owner = resolveLienProperty(address, data.ownerByJob[jobId] ?? null).owner
+  const gc = job?.gc_customer_id ? data.gcsById[job.gc_customer_id] : undefined
+  const jobNumber = (job?.hcp_number ?? '').trim()
+  return {
+    jobId,
+    jobNumber,
+    jobLabel: [jobNumber, (job?.job_name ?? '').trim()].filter(Boolean).join(' · ') || 'A job',
+    filing,
+    isSub: Boolean(job?.gc_customer_id),
+    to: { owner: { name: lienPropertyOwnerDisplayName(owner), address: (owner.mailingAddress ?? '').trim() }, contractor: gc ? { name: gc.name, address: gc.address } : null },
+  }
+}
+
 /**
  * Every filed, unserved, live affidavit on the desk with where its envelopes go today: the property record's owner
  * (the job's own override first, as every lien paper reads it) and the GC's customer record. No read of its own.
@@ -47,22 +64,28 @@ export function lienServeJobsFromDesk(data: LienServeDeskData): LienServeJob[] {
   for (const [jobId, filings] of Object.entries(data.filingsByJob)) {
     for (const filing of filings) {
       if (filing.kind !== 'affidavit' || !filing.filed_at || filing.served_at || filing.voided_at) continue
-      const job = data.jobsById[jobId]
-      const address = job?.customer_address_id ? (data.addressesById[job.customer_address_id] ?? null) : null
-      const owner = resolveLienProperty(address, data.ownerByJob[jobId] ?? null).owner
-      const gc = job?.gc_customer_id ? data.gcsById[job.gc_customer_id] : undefined
-      const jobNumber = (job?.hcp_number ?? '').trim()
-      out.push({
-        jobId,
-        jobNumber,
-        jobLabel: [jobNumber, (job?.job_name ?? '').trim()].filter(Boolean).join(' · ') || 'A job',
-        filing,
-        isSub: Boolean(job?.gc_customer_id),
-        to: { owner: { name: lienPropertyOwnerDisplayName(owner), address: (owner.mailingAddress ?? '').trim() }, contractor: gc ? { name: gc.name, address: gc.address } : null },
-      })
+      out.push(serveJobOf(data, jobId, filing))
     }
   }
   return out
+}
+
+/**
+ * Every filed affidavit whose mailing day is on record and that `still` says is worth showing (the copies window
+ * hands `lienServeProofMissing`: a copy still lacks its number or its receipt). The *Mailed* tick saves itself since
+ * v2.7846, so a lien ticked on the owner's number would otherwise be gone from the window before the contractor's
+ * number went in. These stand under the liens that owe their copies and are not counted with them.
+ */
+export function lienServeMailedJobsFromDesk(data: LienServeDeskData, still: (job: LienServeJob) => boolean): LienServeJob[] {
+  const out: LienServeJob[] = []
+  for (const [jobId, filings] of Object.entries(data.filingsByJob)) {
+    for (const filing of filings) {
+      if (filing.kind !== 'affidavit' || !filing.filed_at || !filing.served_at || filing.voided_at) continue
+      const job = serveJobOf(data, jobId, filing)
+      if (still(job)) out.push(job)
+    }
+  }
+  return out.sort((a, b) => String(b.filing.served_at ?? '').localeCompare(String(a.filing.served_at ?? '')) || a.jobLabel.localeCompare(b.jobLabel, undefined, { numeric: true }))
 }
 
 export type LienServeReady = { job: LienServeJob; facts: LienServeFacts; envelopes: LienServeRecipient[]; clock: LienServeClock }

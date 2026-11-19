@@ -103,13 +103,18 @@ export const LIEN_RECEIPT_WORDS = {
   notReceipt: 'That file is not a receipt. Add a photo or a PDF.',
   empty: 'That file is empty. Scan the receipt again.',
   failed: 'The receipt was not saved.',
-  /** *Filed liens: copies to mail*, over the list: what is kept and what Record still does. */
+  /** *Filed liens: copies to mail*, over the list: what is kept, now that nothing there waits on a button. */
   keptLead: 'Saved as you go.',
-  keptRest: 'Each receipt and number is kept on its lien the moment you add it. Record sets the day mailed.',
+  keptRest: 'Each receipt, number and tick is kept on its lien the moment you add it. Nothing here waits on a button.',
   /** Under an envelope whose proof is on the filing. */
   kept: 'Kept on this lien.',
-  /** Under an envelope whose proof did not reach the filing. Record still writes it. */
+  /** Under an envelope whose proof did not reach the filing. Leaving the box again tries again. */
   notKept: 'Not kept yet',
+  /** The two answers to a file that may not be a mail receipt (`lienReceiptDoubt`). The first keeps it. */
+  doubtKeep: 'It is the mail receipt',
+  doubtDrop: 'Leave it out',
+  /** After the doubt's own words: the file is still in hand. */
+  doubtNothing: 'Nothing was saved yet.',
 } as const
 
 /** The ask before a receipt's take-off: a Drive file's says where the file goes, any other link's asks alone. */
@@ -120,5 +125,31 @@ export function lienReceiptTakeOffAsk(url: string | null | undefined): string {
 /** Under an envelope whose proof did not reach the filing: the reason, and what still saves it. */
 export function lienReceiptNotKeptWords(reason: string): string {
   const why = reason.trim().replace(/[.\s]+$/, '')
-  return `${LIEN_RECEIPT_WORDS.notKept}${why ? `: ${why}` : ''}. Record saves it with the day.`
+  return `${LIEN_RECEIPT_WORDS.notKept}${why ? `: ${why}` : ''}. Click the box and leave it to try again.`
+}
+
+/** A file that may not be a mail receipt: what it looks like, in words, asked before it is kept. */
+export type LienReceiptDoubt = { kind: 'lien' | 'same'; words: string }
+
+const lettersAndDigits = (s: string): string => (s ?? '').replace(/[^0-9a-z]/gi, '').toLowerCase()
+
+/**
+ * Whether a file picked as a mail receipt looks like something else (the owner's ask of 2026-11-18). Taunya had the
+ * clerk's PDFs, each named with its lien's document number, and the one press on the window that took a PDF was the
+ * receipt's: all twenty-two envelopes of eleven liens took their lien as their receipt, the same file twice a lien.
+ *
+ *  - **lien**: the file's name holds the lien's document number, or says *lien* or *affidavit*.
+ *  - **same**: it is the file the lien's other envelope just took. Each envelope has its own receipt.
+ *
+ * A doubt is a question, never a refusal: a scan can be named anything. A photo off a camera has a name that says
+ * nothing, so it is never doubted. Null when the file reads as a receipt.
+ */
+export function lienReceiptDoubt(file: { name: string; size: number }, ctx: { recordingNumber?: string | null; other?: { name: string; size: number } | null }): LienReceiptDoubt | null {
+  const name = (file.name ?? '').replace(/\.[a-z0-9]+$/i, '')
+  const number = lettersAndDigits(ctx.recordingNumber ?? '')
+  if (number.length >= 6 && lettersAndDigits(name).includes(number)) return { kind: 'lien', words: 'This looks like the lien, not a mail receipt. Its name holds this lien’s document number.' }
+  if (/(^|[^a-z])(lien|affidavit)([^a-z]|$)/i.test(name)) return { kind: 'lien', words: 'This looks like the lien, not a mail receipt. Its name says so.' }
+  const other = ctx.other
+  if (other && other.name === file.name && other.size === file.size) return { kind: 'same', words: 'This is the same file as this lien’s other envelope. Each envelope has its own receipt.' }
+  return null
 }

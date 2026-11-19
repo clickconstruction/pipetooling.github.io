@@ -49,6 +49,12 @@
  * beside the GC's name on its own notice (`lienGcNoticePress` in `lienDeskGcPicker.ts`). The second line's right span
  * is the tool row alone, drawn only where the title line has no room for it, and Monthly notices with the papers up is
  * one line. A phone keeps the picker as a row of More.
+ *
+ * Since v2.7874 (the owner's *"please take care of"* of 2026-11-18, on the band this file's v2.7789 left as measured)
+ * the tighter bar of `index.css` runs to 1,279 px of window where it ran to 1,131 (`LIEN_DESK_TIGHT_BAR_MAX_PX`). From
+ * 1,132 to 1,175 px the roomier bar had no room for the paper tabs on the title line while the tighter one just under
+ * it did, so a window that widened put the papers back on the second line. The tighter bar now holds them from about
+ * 1,100 px to 1,279, and the roomier one from 1,280 up, with three-figure counts on every tab too.
  */
 
 /**
@@ -66,7 +72,7 @@
  * And again on 2026-11-18 (v2.7784), the same way, as *Date*, *Paper* and *Job* with 8 px of side padding: 316 px as
  * *⏱ Lien desk · 888 to do* (315.5; the tab itself 178.8), 304.9 with that day's *35 to do* and 234.8 with the name
  * alone. Until then the three read *By date*, *By paper* and *By job* at 10 px, 383 px with the three-figure count, so
- * the line is 67 px shorter. A window from 641 to 1,131 px draws the tabs at 7 px (`index.css`), 296.9 with *35 to do*.
+ * the line is 67 px shorter. A window from 641 to 1,279 px (1,131 until v2.7874) draws the tabs at 7 px (`index.css`), 296.9 with *35 to do*.
  */
 export const LIEN_DESK_TITLE_LINE_PARTS = { back: 98, views: 316, presses: 231, tools: 231, gap: 14.4, chrome: 88 } as const
 
@@ -81,6 +87,25 @@ export const LIEN_DESK_TITLE_LINE_PARTS = { back: 98, views: 316, presses: 231, 
  * line 6 px over the border; `chrome` is unchanged, since the side padding is still 20 px.
  */
 export const LIEN_DESK_TITLE_BAR_ROW_GAP_PX = 6
+
+/**
+ * The widest window that draws the tighter bar, in px (v2.7874). From 641 px to this, `index.css` closes the bar's
+ * column gap to 8 px, draws a tab's side padding at 7 and shows Share as its icon; a wider window draws the roomier
+ * bar. It was 1,131 until v2.7874. `lienDeskTitleBar.test.ts` holds `index.css` to this number and proves that both
+ * bars hold the paper tabs on the title line at the edge between them, so no window puts them back under as it widens.
+ */
+export const LIEN_DESK_TIGHT_BAR_MAX_PX = 1279
+
+/**
+ * The title line at its longest in each bar, in px, measured on the live desk on 2026-11-18 at 1,279 and 1,280 px of
+ * window with three-figure counts written into the first tab and all three paper tabs: the way back, the views, the
+ * paper tabs, the four presses and the bar's column gap. The tighter bar's Share is its icon, 43 px narrower. With
+ * that day's two-figure counts the tighter bar's views were 297.3 and its paper tabs 403.2.
+ */
+export const LIEN_DESK_TITLE_LINE_WIDEST = {
+  tight: { back: 98, views: 308, papers: 445, presses: 189, gap: 8 },
+  roomy: { back: 98, views: 316, papers: 451, presses: 231, gap: 14.4 },
+} as const
 
 /** The window width the title line needs to hold these parts on one line. */
 export function lienDeskTitleLineNeeds(parts: { back: number; views: number; tools: number; gap: number; chrome: number }): number {

@@ -4,10 +4,11 @@
  * who made it, one person picked from the list with their last press, the acts worth a look
  * wearing their chip and narrowing the list, a box opening from its row, and the two empty states.
  */
-import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { Container, ContainerMove, Movement, MovementReason, Place } from '../../lib/materials/onSite'
+import type { SiteTrail } from '../../lib/materials/sitePeopleTrailIo'
 import SitePeopleView from './SitePeopleView'
 
 afterEach(() => cleanup())
@@ -31,8 +32,11 @@ const moves: ContainerMove[] = [{ id: 'cm1', jobId: 'j1', containerId: 'g22', fr
 const jobs = [{ id: 'j1', label: 'J101 · Rough in' }]
 const boxHref = (jobId: string, boxId: string) => `/jobs?tab=materials&job=${jobId}&box=${boxId}`
 
+const noTrail: SiteTrail = { boxChanges: [], boxRenames: [], removedAnswers: [] }
+const readNothing = async () => noTrail
+
 function draw(over: Partial<Parameters<typeof SitePeopleView>[0]> = {}) {
-  return renderWithProviders(<SitePeopleView jobs={jobs} movements={movements} containerMoves={moves} containers={containers} places={places} boxHref={boxHref} {...over} />)
+  return renderWithProviders(<SitePeopleView siteId="dev1" readTrail={readNothing} jobs={jobs} movements={movements} containerMoves={moves} containers={containers} places={places} boxHref={boxHref} {...over} />)
 }
 
 describe('SitePeopleView', () => {
@@ -85,5 +89,41 @@ describe('SitePeopleView', () => {
     cleanup()
     draw({ movements: [], containerMoves: [], loading: true })
     expect(screen.getByText('Reading the boxes…')).toBeTruthy()
+  })
+
+  it('adds the changes that are not ledger rows once their read answers', async () => {
+    const readTrail = vi.fn(async () => ({
+      boxChanges: [{ id: 'c1', containerId: 'g22', what: 'retired' as const, oldValue: '', newValue: '', byName: 'Sam R.', at: '2026-11-18T13:50:00' }],
+      boxRenames: [{ id: 'n1', containerId: 'g22', oldLabel: 'G2', newLabel: 'G22', byName: 'Dana K.', at: '2026-11-15T09:00:00' }],
+      removedAnswers: [{ id: 'r1', answer: 'price' as const, jobId: 'j1', words: '2 PVC 90, $4.50', byName: 'Sam R.', at: '2026-11-18T08:00:00' }],
+    }))
+    draw({ readTrail })
+    // The picker offers the same words, so the rows are read inside the table.
+    const table = () => within(screen.getByRole('table'))
+    await waitFor(() => expect(table().getByText('Retired a box')).toBeTruthy())
+    expect(table().getByText('Renamed a box')).toBeTruthy()
+    expect(table().getByText('G2 → G22')).toBeTruthy()
+    expect(table().getByText('Removed a price')).toBeTruthy()
+    expect(table().getByText('2 PVC 90, $4.50')).toBeTruthy()
+    expect(readTrail).toHaveBeenCalledWith({ siteId: 'dev1', jobIds: ['j1'], containerIds: ['g22'] })
+    fireEvent.change(screen.getByLabelText('Kind of press'), { target: { value: 'box_retired' } })
+    expect(screen.getByTestId('site-people-tiles').textContent).toContain('1press over 1 day')
+  })
+
+  it('says so when the trail did not load, keeps the presses, and reads again on Try again', async () => {
+    let fail = true
+    const readTrail = vi.fn(async () => {
+      if (fail) throw { message: 'permission denied for table job_container_changes' }
+      return { ...noTrail, boxChanges: [{ id: 'c1', containerId: 'g22', what: 'brought_back' as const, oldValue: '', newValue: '', byName: 'Dana K.', at: '2026-11-18T14:00:00' }] }
+    })
+    draw({ readTrail })
+    const line = await screen.findByTestId('site-people-trail-error')
+    expect(line.textContent).toContain('Box changes and answers taken off are not in this list.')
+    expect(line.textContent).toContain('permission denied for table job_container_changes')
+    expect(screen.getByText('bunker drains')).toBeTruthy()
+    fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(within(screen.getByRole('table')).getByText('Brought a box back')).toBeTruthy())
+    await waitFor(() => expect(screen.queryByTestId('site-people-trail-error')).toBeNull())
   })
 })

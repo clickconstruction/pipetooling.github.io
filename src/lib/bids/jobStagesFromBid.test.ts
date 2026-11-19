@@ -10,6 +10,7 @@ import {
   bringBidStagesLabel,
   bringBidStagesStanding,
   defaultBidStageSplitKey,
+  rowsWithBidStages,
   type BidStageSplit,
   type BringStagesLine,
 } from './jobStagesFromBid'
@@ -273,5 +274,38 @@ describe('bringBidStagesLabel', () => {
   it('names the bid by its number', () => {
     expect(bringBidStagesLabel({ bid_number: '398' })).toBe('Bring B398’s stages')
     expect(bringBidStagesLabel({ bid_number: null })).toBe('Bring the bid’s stages')
+  })
+})
+
+describe('rowsWithBidStages', () => {
+  const row = (id: string, over: Partial<{ line_kind: 'work' | 'discount'; discount_basis_ids: string[] | null }> = {}) => ({ id, ...over })
+  const stages = [row('s1'), row('s2'), row('s3')]
+
+  it('stands the stages where the one line stood and keeps every other row in place', () => {
+    const out = rowsWithBidStages([row('a'), row('line'), row('z')], 'line', stages)
+    expect(out.map((r) => r.id)).toEqual(['a', 's1', 's2', 's3', 'z'])
+  })
+
+  it('points a discount that named the old line at the stages, and leaves one on every row alone', () => {
+    const named = row('d1', { line_kind: 'discount', discount_basis_ids: ['line'] })
+    const every = row('d2', { line_kind: 'discount', discount_basis_ids: null })
+    const out = rowsWithBidStages([row('line'), named, every], 'line', stages)
+    expect(out.find((r) => r.id === 'd1')).toMatchObject({ discount_basis_ids: ['s1', 's2', 's3'] })
+    expect(out.find((r) => r.id === 'd2')).toBe(every)
+  })
+
+  it('changes nothing when the line is gone or there are no stages', () => {
+    const rows = [row('a')]
+    expect(rowsWithBidStages(rows, 'line', stages)).toBe(rows)
+    expect(rowsWithBidStages(rows, 'a', [])).toBe(rows)
+  })
+})
+
+describe('bidStageLines on a job that already exists', () => {
+  it('says what the price is in the line’s own words', () => {
+    const r = bidStageLines({ priceUsd: 9000, split: split('residential'), breakdown: null, settings, bid, agreed: true, figure: BID_CARRY_WORDS.splitFigure })
+    expect(r.lines[0]!.line_description).toBe('B482 · Oak Ridge — 40% of the line it took the place of')
+    expect(BID_CARRY_WORDS.splitTitle('B482')).toBe('Bring B482’s stages onto this job?')
+    expect(BID_CARRY_WORDS.splitSub('Bid price', 9000)).toBe('They take the place of the one line, Bid price, at $9,000.00.')
   })
 })

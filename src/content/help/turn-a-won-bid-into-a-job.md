@@ -6,7 +6,7 @@ keywords: won, win, bid, job, send to dispatch, draft, wanted by, estimator, sch
 order: 72
 ---
 1. Mark the bid **Won**, then press **Open the job**.
-2. If New Job asks its price question, carry the bid price over, or start at $0.
+2. If New Job asks how the price comes over, pick stages, one line, or $0.
 3. Fill in the crew and press **Create Job**. The job is born linked to the bid.
 
 The one sentence: **wherever you mark a bid Won, "Open the job" is right there**. One tap opens New Job with the GC, address, plans and folder filled in.
@@ -30,7 +30,7 @@ B398 · Tune 5 Seguin goes to Southern Pine. Tap Won, then Open the job: New Job
 
 If the letter carried two options, Edit Bid asks on Won: **Which option did they take?** Pick one. It becomes the active version, so the job and the takeoff follow it. The agreed value is that option's sent value plus any alternate they took, an extra section priced on its own. The other option is not marked lost.
 
-The bid may carry a figure: its agreed value, or what the winning GC was sent. Then New Job asks one question before filling anything: **Start the job at $48,200?** {{button:blue|Carry $48,200 over}} puts it on the job as the first line item, *Bid price*. If the bid had no agreed value yet, the figure is recorded there too. {{button:outline|Start at $0}} leaves the Job Total empty. That choice writes nothing on the job or the bid. Either way you can change the number on the job any time.
+The bid may carry a figure: its agreed value, or what the winning GC was sent. Then New Job asks one question before filling anything: **How should $48,200 come onto the job?** **As stages** brings a line for each stage, such as Rough In, Top Out and Trim Set. **As one line** puts the whole figure on one line, *Bid price*. If the bid had no agreed value yet, the figure is recorded there too. **Start at $0** leaves the Job Total empty. That choice writes nothing on the job or the bid. **Cancel import** fills nothing in. You can change the lines on the job any time. See [bring a bid's stages onto its job](/help/bring-a-bids-stages-onto-its-job).
 
 What does **not** come over: the bid's own line items, schedule blocks, crew, dates. The job gets its hours baseline at award. The **Hours baseline at award** block under the header picks the bid's Labor rows when they carry hours. Otherwise it offers the book's assumed hours or a typed figure. See [give a project its hours baseline at award](/help/give-a-project-its-hours-baseline). On a service call from a bid, the box *carry the bid's estimate as the budget* stands in, and it starts ticked.
 

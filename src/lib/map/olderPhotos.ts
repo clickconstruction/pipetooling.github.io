@@ -263,6 +263,23 @@ export function olderPhotoChoices(found: ReadonlyArray<OlderPhotoFound>): OlderP
   })
 }
 
+/** What a screen holds of one walk, with the tile it was walked for. */
+export type OlderPhotosHeld = { key: string | null; found: OlderPhotoFound[]; looking: 'walk' | 'days' | null }
+
+/**
+ * What to show for the tile asked about now (v2.7870).
+ *
+ * A screen learns of a new ask one frame before its walk begins, so for that frame what it holds is
+ * another tile's walk, or none. Read as it stood, that frame said the archive had nothing for a spot
+ * it had not yet looked at. So an ask that what is held does not answer is a walk that is under way:
+ * nothing found yet, and looking.
+ */
+export function olderPhotosForAsk(askKey: string | null, held: OlderPhotosHeld): Pick<OlderPhotosHeld, 'found' | 'looking'> {
+  if (askKey == null) return { found: [], looking: null }
+  if (held.key !== askKey) return { found: [], looking: 'walk' }
+  return { found: held.found, looking: held.looking }
+}
+
 /** Whether every photograph of a finished walk has its day: only such a walk is worth keeping past the visit. */
 export function olderPhotosSettled(found: ReadonlyArray<OlderPhotoFound>): boolean {
   return found.length > 0 && found.every((f) => typeof f.takenYmd === 'string')

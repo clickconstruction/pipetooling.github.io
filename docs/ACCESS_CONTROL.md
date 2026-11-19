@@ -244,7 +244,9 @@ A new policy on their tables that calls another helper grants it to them too.
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
 `dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes.
-The one write path (v2.3722) is one hundred and twenty-five verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-three since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
+The one write path (v2.3722) is one hundred and twenty-seven verbs, fifty-three of them POSTing one of twenty-two named RPCs as the dev, twenty-one of them dev-gated and one the app's own `trip_save` (one hundred and twenty-seven since v2.7823, whose task close is the card's own `task_no_longer_applies` called as the dev, the function's own gate holding (the office or a person the task is given to), with no new role and no new policy;
+one hundred and twenty-five since v2.7821, whose pay setup pair is told further down, where this section says *Since v2.7821*;
+one hundred and twenty-three since v2.7670, whose trip pair saves a trip whole through `trip_save` under `trips_office()` and the dev's RLS, with no new role and no new policy;
 one hundred and twenty-one since v2.7687, whose notice numbers are the Lien desk's own update of `sends` on the notice's `job_lien_filings` row under the dev's RLS, no new role and no new policy;
 one hundred and nineteen since v2.7592, whose photo of the spot is the Edit window's own two writes, the picture into the private `task-spot-photos` bucket under `can_write_task_spot_photo` and the task's `spot_photo_path` under the dev's RLS, the file staged first in the dev's own folder of `dev-seat-staging`, no new role and no new policy;
 one hundred and seventeen since v2.7589, whose task place is the Edit window's own update of the place columns on `checklist_items`, or on `checklist_tech_tree_group_tasks` for a task from a roadmap, under the dev's RLS, with the address read from `address_geocodes` and never written, no new role and no new policy;
@@ -951,6 +953,7 @@ a pen signature recorded from a draft or an awaiting notice approves it in mode 
 the run's **Close N paid notices…** sets `voided_at` and `fields.runClosedPaid` on a live `notice_53_056` item row by row through the items' own update policy;
 the job's History line for a close (`lien_notice_closed_paid`) is written by the SECURITY DEFINER trigger `job_lien_desk_items_closed_paid_to_activity` (`20261115233000`), since `job_activity_events` takes no client insert, and EXECUTE on both of its functions is revoked from clients;
 and `sign_lien_desk_item_with_code` stamps the signer's full name since `20261116110000` (a leader's *Full name and title* up to the first comma, a dev's account name), its callers, its lock and its grant to `authenticated` unchanged.
+The copies window's writes add none either (v2.7846): a *Mailed* tick is one UPDATE of `served_at` and `sends`, and a changed document number is one UPDATE of `recording_number`, each on the filing's own `job_lien_filings` row under that table's update policy, for the office set that already records a mailing.
 
 **Certified mail pieces** (v2.5379, `20261013120000_mail_pieces.sql`, the Docsmit train — [`DOCSMIT_LIEN_RUN_PLAN.md`](./DOCSMIT_LIEN_RUN_PLAN.md)): `mail_pieces` — **read / insert / update** the office (`is_office_staff() OR is_dev() OR is_assistant()`) or the master of the piece's job (`jobs_ledger.master_user_id`);
 **delete** nobody signed in (revoked from `authenticated`);
@@ -1056,6 +1059,8 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
   `on_site_removed_answers`, a part tie or a site price deleted, is read by `on_site_can_tie_parts()` with `on_site_can_read_ties()` and written by its trigger alone.
 - **A watch on one person** (v2.7825, `20261118150000_person_watches.sql`): `person_watches` and `watched_box_opens` are read by devs alone (`is_dev()`), and a dev inserts and updates a watch and never deletes one.
   `on_site_note_box_open(uuid)` is granted to every signed-in caller, writes only for a caller with a live watch and answers nothing either way, so no caller learns from it whether they are watched.
+- **An answer to a press** (v2.7827, `20261118170000_on_site_press_answers.sql`): `job_movement_answers` is read by the office (`on_site_reads_answers()`: dev, master_technician, assistant, controller), a dev inserts one and withdraws one, and nobody deletes one.
+  A row with a live taken-back answer is closed to every signed-in read of `job_material_movements` by the RESTRICTIVE policy `job_material_movements_not_taken_back`, a dev's own read included, and `on_site_taken_back_rows(uuid[])` answers those rows to the office alone.
   The office and a primary reach it through the desk's site row and read the week's missing money, as on the desk;
   a primary and a superintendent get a site row over their jobs on Materials → On site, with no money and the phone screen as each box's door;
   an estimator gets no site row.
@@ -1208,8 +1213,10 @@ the Accounts Receivable modal's 🏦 panel shows to every role that can open the
 - **Put on a bill** (v2.7756, punch list #391, `docs/migrations/20261118060000_trip_bill_line.md`): `jobs_ledger_fixtures.trip_id` is the trip a line came from, and one function sets it.
   **`trip_put_on_job_line(trip, job, amount, name, words, dry_run)`**, a SECURITY DEFINER, writes one work line for a trip marked Extra, the job's total and one History row, for the four roles that may add a discount to a job: dev, master_technician, assistant and controller.
   A primary reads every trip and may not press, and a crew member on the trip may not either.
+  Since v2.7867 the same press sits on a job's Bill tab, in the strip **Extra trips not on a bill**: the strip draws for the five roles that read every trip, on a job in a development, and its press for the same four.
   The caller must read the trip (`trips_office()` or `trip_is_mine`) and the job (`can_read_job_activity`), and the job must be one of the trip's jobs, the job that holds the trip or a job of its site.
   It refuses the GC desk's billing job, whose total is not its lines.
+  Since v2.7862 (`docs/migrations/20261118223000_discount_refuses_gc_billing_job.md`) `apply_job_discount` refuses that job too, for every role, and Bill Customer says why in the press's place.
   Since v2.7769 the window leaves that job out, read from `gc_projects` under the GC office door, which the four roles all hold.
   **Open Change orders** on a job held that way is drawn for the GC money team alone (dev, master_technician, controller: `canSeeGcMoney`), since Change orders are theirs, and an assistant is told who writes the change order.
   A training account, a digital twin and an archived caller are refused by the function itself, because a definer stands behind the tables' fences.

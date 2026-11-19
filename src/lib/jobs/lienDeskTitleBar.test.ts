@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { LIEN_DESK_NAME, LIEN_DESK_PILE_LINE_PARTS, LIEN_DESK_TITLE_LINE_PARTS, LIEN_DESK_VIEW_NAMES, lienDeskFirstTab, lienDeskPapersFit, lienDeskPileLineFit, lienDeskPileLineNeeds, lienDeskTitleBarLayout, lienDeskTitleLineFit, lienDeskTitleLineNeeds, lienDeskTitleLineWithPapersNeeds, lienDeskViewTab, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineParts, type LienDeskTitleLineParts } from './lienDeskTitleBar'
+import { LIEN_DESK_NAME, LIEN_DESK_PILE_LINE_PARTS, LIEN_DESK_TIGHT_BAR_MAX_PX, LIEN_DESK_TITLE_LINE_PARTS, LIEN_DESK_TITLE_LINE_WIDEST, LIEN_DESK_VIEW_NAMES, lienDeskFirstTab, lienDeskPapersFit, lienDeskPileLineFit, lienDeskPileLineNeeds, lienDeskTitleBarLayout, lienDeskTitleLineFit, lienDeskTitleLineNeeds, lienDeskTitleLineWithPapersNeeds, lienDeskViewTab, readLienDeskPileLine, readLienDeskTitleLine, type LienDeskPileLineParts, type LienDeskTitleLineParts } from './lienDeskTitleBar'
 
 /**
  * The office's line with the title in the first tab (v2.7465): the views with a two-figure count (305 px, measured
@@ -287,7 +288,7 @@ describe('whether By paper’s paper tabs fit on the title line (v2.7789, the ow
     // A bar's line is the window less the page's 48 px of margin and the bar's 40 of padding.
     expect(lienDeskPapersFit(1440 - 88, line, papers)).toBe('title_line')
     expect(lienDeskPapersFit(1280 - 88, line, papers)).toBe('title_line')
-    // Under 1,132 px the bar draws tighter (`index.css`): the views 297, the papers 405, the presses 189 and an 8 px gap.
+    // Under 1,280 px the bar draws tighter (`index.css`; under 1,132 until v2.7874): the views 297, the papers 405, the presses 189 and an 8 px gap.
     const tight: LienDeskTitleLineParts = { back: 98, views: 297, presses: 189, gap: 8, chrome: 0 }
     expect(lienDeskPapersFit(1024 - 88, tight, 405)).toBe('second_line')
     expect(lienDeskPapersFit(900 - 88, tight, 405)).toBe('second_line')
@@ -317,6 +318,48 @@ describe('whether By paper’s paper tabs fit on the title line (v2.7789, the ow
   it('a bar with no way back counts no gap for it', () => {
     const leader = { ...line, back: 0 }
     expect(lienDeskTitleLineWithPapersNeeds(leader, papers)).toBeCloseTo(305 + 411 + 231 + 28.8, 1)
+  })
+})
+
+describe('no window puts the paper tabs back under as it widens (v2.7874)', () => {
+  /** The page's 24 px margins and the bar's 20 px padding: a window less this is the bar's line. */
+  const chrome = 88
+  const line = (b: { back: number; views: number; presses: number; gap: number }): LienDeskTitleLineParts => ({ back: b.back, views: b.views, presses: b.presses, gap: b.gap, chrome: 0 })
+  const { tight, roomy } = LIEN_DESK_TITLE_LINE_WIDEST
+
+  it('index.css draws the tighter bar up to LIEN_DESK_TIGHT_BAR_MAX_PX, and nowhere else', () => {
+    const css = readFileSync('src/index.css', 'utf8')
+    const rule = `@media (min-width: 641px) and (max-width: ${LIEN_DESK_TIGHT_BAR_MAX_PX}px) {\n  .lienDeskTitleBar { column-gap: 0.5rem; }\n  .lienDeskKindTab { padding: 2px 7px; }\n  .lienDeskShareWord {`
+    expect(css.split(rule)).toHaveLength(2)
+    // One rule tightens the bar: no second media query narrows a tab or closes the gap at another width.
+    expect(css.split('.lienDeskKindTab { padding: 2px 7px; }')).toHaveLength(2)
+    expect(css.split('.lienDeskTitleBar { column-gap:')).toHaveLength(2)
+  })
+
+  it('at the edge between the two bars both hold the papers on the title line, with three-figure counts on every tab', () => {
+    // The widest tighter bar: 1,279 px of window, 1,191 of line. Its longest line needs 1,064.
+    expect(lienDeskTitleLineWithPapersNeeds(line(tight), tight.papers)).toBeCloseTo(1064, 0)
+    expect(lienDeskPapersFit(LIEN_DESK_TIGHT_BAR_MAX_PX - chrome, line(tight), tight.papers)).toBe('title_line')
+    // The narrowest roomier bar: 1,280 px of window, 1,192 of line. Its longest line needs 1,139.2.
+    expect(lienDeskTitleLineWithPapersNeeds(line(roomy), roomy.papers)).toBeCloseTo(1139.2, 1)
+    expect(lienDeskPapersFit(LIEN_DESK_TIGHT_BAR_MAX_PX + 1 - chrome, line(roomy), roomy.papers)).toBe('title_line')
+    // So the roomier bar always has room where it is drawn: 52.8 px to spare at its narrowest and longest.
+    expect(LIEN_DESK_TIGHT_BAR_MAX_PX + 1 - chrome - lienDeskTitleLineWithPapersNeeds(line(roomy), roomy.papers)).toBeCloseTo(52.8, 1)
+  })
+
+  it('inside the tighter bar the papers come up once and stay up: from 1,101 px of window with the day’s counts, and every wider tight window holds them', () => {
+    const today = line({ back: 98, views: 297, presses: 189, gap: 8 })
+    expect(lienDeskPapersFit(1100 - chrome, today, 405)).toBe('second_line')
+    for (let w = 1101; w <= LIEN_DESK_TIGHT_BAR_MAX_PX; w += 1) expect(lienDeskPapersFit(w - chrome, today, 405)).toBe('title_line')
+  })
+
+  it('the band it closes: with the tighter bar ending at 1,131 px, a 1,131 px window held the papers and a 1,132 px one did not, up to 1,176', () => {
+    const tightThen = line({ back: 98, views: 297, presses: 189, gap: 8 })
+    const roomyThen = line({ back: 98, views: 305, presses: 231, gap: 14.4 })
+    expect(lienDeskPapersFit(1131 - chrome, tightThen, 405)).toBe('title_line')
+    expect(lienDeskPapersFit(1132 - chrome, roomyThen, 411)).toBe('second_line')
+    expect(lienDeskPapersFit(1176 - chrome, roomyThen, 411)).toBe('second_line')
+    expect(lienDeskPapersFit(1177 - chrome, roomyThen, 411)).toBe('title_line')
   })
 })
 

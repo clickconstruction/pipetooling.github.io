@@ -39,6 +39,8 @@ type Props = {
   onApply: (plan: BillDiscountPlan) => Promise<void>
   /** Standing discount (v2.3272): the customer's rate, offered as one tap that fills the fields. */
   offer?: { pct: number; reason: DiscountReasonPreset | null; customerName: string } | null
+  /** Why this job takes no discount line (a job billed from the GC desk, v2.7862). Set, the words stand in the press's place. */
+  heldWords?: string | null
 }
 
 const GROUP: React.CSSProperties = { display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', height: 30, background: 'var(--surface)' }
@@ -55,7 +57,7 @@ const INPUT: React.CSSProperties = { boxSizing: 'border-box', padding: '0.3rem 0
  * Bill tab uses, through `apply_job_discount`; the parent re-syncs the amount
  * and the previews. Pure render + a promise to the parent.
  */
-export function BillCustomerDiscountStrip({ rows, scopedIds, billAmount, disabled = false, onApply, offer = null }: Props) {
+export function BillCustomerDiscountStrip({ rows, scopedIds, billAmount, disabled = false, onApply, offer = null, heldWords = null }: Props) {
   const [open, setOpen] = useState(false)
   const [takeOff, setTakeOff] = useState('')
   const [makeIt, setMakeIt] = useState('')
@@ -89,6 +91,15 @@ export function BillCustomerDiscountStrip({ rows, scopedIds, billAmount, disable
     [entry, kernelRows, scopedIds, billAmount, wholeJob, reason],
   )
   const canFlip = scopedIds != null && entry?.mode !== 'total'
+
+  // A job that takes no discount line says why, and offers no press that would be refused.
+  if (heldWords) {
+    return (
+      <p data-testid="bill-discount-held" style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+        {heldWords}
+      </p>
+    )
+  }
 
   if (!open) {
     return (

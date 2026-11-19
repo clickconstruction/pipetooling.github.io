@@ -88,7 +88,9 @@ import { lienPhoneAmounts } from '../../lib/jobs/lienPhoneRows'
 import { useLienPileHeads } from './LienPileHeads'
 import LienBoard, { type LienBoardBinPress } from './LienBoard'
 import { lienScanTargetsFromDesk } from '../../lib/jobs/lienScanBatch'
-import { lienServeJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
+import { lienServeJobsFromDesk, lienServeMailedJobsFromDesk, lienServePlan } from '../../lib/jobs/lienServePackets'
+import { lienServeProofMissing } from '../../lib/jobs/lienServeNumbers'
+import { lienDocKnownFromFilings } from '../../lib/jobs/lienDocNumber'
 import { lienServeStage, lienServeStageCounts, lienServeStageDoorWords, type LienServeLanding } from '../../lib/jobs/lienServeStage'
 import { LienPublicBinView, LienPublicBoardLineView } from './LienPublicBoardParts'
 import { LienOffPathBinView } from './LienOffPathBoardParts'
@@ -148,6 +150,7 @@ import { LienDeskAwaitingFooter, LienDeskHeldFooter, LienDeskPrintedFooter, Lien
 import { LienDeskSentFooter } from './LienDeskSentFooter'
 import LienFilingMailProof from './LienFilingMailProof'
 import { lienMailProof } from '../../lib/jobs/lienMailProof'
+import { lienStopProof } from '../../lib/jobs/lienStopProof'
 import { lienMailProofDoorPress, lienMailProofOwnerGap, lienMailProofServeLanding, type LienMailProofLanding, type LienMailProofOpeners } from '../../lib/jobs/lienMailProofDoor'
 import { useLienCodeSigner } from './useLienCodeSigner'
 import { useLienDeskPayPage } from './useLienDeskPayPage'
@@ -811,6 +814,10 @@ export default function LienDesk({
   )
   // The same filings with where each envelope goes today, for the window that serves them together (punch list #366). No read of its own.
   const serveJobs = useMemo(() => (data ? lienServeJobsFromDesk(data) : []), [data])
+  // The mailed liens that window still shows (v2.7846): its tick saves itself, so a lien ticked on one envelope's number stays until both have a number and a receipt.
+  const serveMailedJobs = useMemo(() => (data ? lienServeMailedJobsFromDesk(data, lienServeProofMissing) : []), [data])
+  // Every filed lien's document number, for the check on one typed in that window (`lienDocNumber.ts`).
+  const docKnown = useMemo(() => (data ? lienDocKnownFromFilings(data.filingsByJob, (jobId) => [(data.jobsById[jobId]?.hcp_number ?? '').trim(), (data.jobsById[jobId]?.job_name ?? '').trim()].filter(Boolean).join(' · ')) : []), [data])
   // Every filed affidavit a scan can go to, for the window that takes several at once (punch list #366). No read of its own.
   const scanTargets = useMemo(() => (data ? lienScanTargetsFromDesk(data) : []), [data])
   // The door to that window, as the Board's bin and the list's folded row say it, named for the stage the copies are at:
@@ -2169,7 +2176,7 @@ export default function LienDesk({
     const asSent = (f: JobLienFilingRow, words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
       const page = filingSnapshotPage(f, { issuer, jobNumber: jobNo })
       // What went out (`lienMailProof.ts`): the mailed files off the notice's own item, and each envelope's receipt.
-      const proof = lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, mailedCopies: data.items.find((it) => it.sent_filing_id === f.id)?.mailed_copies, servedAt: f.served_at, hasContractor: Boolean(selected.gcCustomerId) })
+      const proof = lienStopProof(f, { isSub: Boolean(selected.gcCustomerId), mailedCopies: data.items.find((it) => it.sent_filing_id === f.id)?.mailed_copies })
       const proofDoor = proof ? lienMailProofDoorPress({ jobId, filingId: f.id, paper: proof.paper, served: Boolean(f.served_at), printed: lienServeStage(f, servePrinted) === 'record', ownerGap: lienMailProofOwnerGap({ name: ownerName, mailingAddress: property.owner.mailingAddress }) }, proofOpeners(f.id), () => setStopOpen(null)) : null
       return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof, proofDoor }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
     }
@@ -2762,7 +2769,7 @@ export default function LienDesk({
         }}
       >
         <Share size={isMobile ? 19 : 15} aria-hidden />
-        {/* A desk narrower than 1,100 px shows the icon alone; the word stays the button's name. */}
+        {/* A window under 1,280 px shows the icon alone (under 1,132 until v2.7874, `LIEN_DESK_TIGHT_BAR_MAX_PX`); the word stays the button's name. */}
         {isMobile ? null : <span className="lienDeskShareWord">Share</span>}
       </button>
       {shareOpen && data ? (
@@ -2914,6 +2921,9 @@ export default function LienDesk({
             issuer={issuer}
             windows={windows}
             serveJobs={serveJobs}
+            serveMailedJobs={serveMailedJobs}
+            docKnown={docKnown}
+            servePrinted={servePrinted}
             serveLand={serveLand}
             onServeClosed={() => setServeLand(null)}
             onServePrinted={(ids) => setServePrintedNow((cur) => [...cur, ...ids])}

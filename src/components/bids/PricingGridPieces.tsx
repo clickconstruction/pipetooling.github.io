@@ -4,7 +4,7 @@
  * the tab keeps every state and every write.
  *
  * - `PricingBookMatchBar`: the line above the grid. It names the open price's book, opens the
- *   price book, and fills the rows whose names match a book entry.
+ *   price book, fills the rows whose names match a book entry, and opens the Percent row window.
  * - `PricingRowKindAndTags`: under a row's name, its kind (dashed while it is the app's guess)
  *   and the estimator's tags, with the box that adds one (punch list #128).
  */
@@ -18,6 +18,7 @@ export function PricingBookMatchBar({
   filling,
   onOpenBook,
   onFill,
+  onPercentRow,
 }: {
   /** The open price's name. */
   bookName: string
@@ -27,6 +28,8 @@ export function PricingBookMatchBar({
   filling: boolean
   onOpenBook: () => void
   onFill: () => void
+  /** ＋ Percent row: a row priced as a percent of other rows. Absent where the tab cannot make one. */
+  onPercentRow?: () => void
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.55rem', flexWrap: 'wrap' }}>
@@ -48,6 +51,17 @@ export function PricingBookMatchBar({
       >
         {filling ? 'Filling…' : matchCount === 0 ? '0 unassigned rows match the book' : `Fill ${matchCount} matching from book`}
       </button>
+      {onPercentRow ? (
+        <button
+          type="button"
+          data-tour="percent-row"
+          onClick={onPercentRow}
+          title="Add a row priced as a percent of other rows, such as Connections at a percent of the pipe"
+          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 700, padding: '0.22rem 0.7rem', borderRadius: 6, border: '1.5px solid #2563eb', background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer' }}
+        >
+          ＋ Percent row
+        </button>
+      ) : null}
     </div>
   )
 }

@@ -74,6 +74,8 @@ While a box is open, the Tally's tabs are put away. Tap **‹** to go back to th
 
 **Used** on a part's line still works. It takes parts out with no photo.
 
+The box then shows **Taken from G12**. Each take reads who took what, with its pictures side by side. Tap a picture to open it whole. Everyone on the job sees them.
+
 ## Count a box
 
 A box is due a count after two weeks. Tap {{button:blue|Count this box}} and walk the lines. The walk shows every line that has parts, one at a time. A line marked can't find is in the walk too, even with none left. Your count clears the mark.

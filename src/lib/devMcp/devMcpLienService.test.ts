@@ -35,7 +35,7 @@ import { WRITE_VERBS, isWriteVerb } from '../../../supabase/functions/_shared/de
 import { serviceSends } from '../jobs/lienServiceProof'
 
 const WINDOW = readFileSync('src/components/jobs/LienFilingTabs.tsx', 'utf8')
-const BATCH_IO = readFileSync('src/lib/jobs/lienServeNumbersIo.ts', 'utf8')
+const BATCH_IO = readFileSync('src/lib/jobs/lienServeMailedIo.ts', 'utf8')
 const BATCH = readFileSync('src/lib/jobs/lienServeNumbers.ts', 'utf8')
 const KERNELS = readFileSync('scripts/edge-kernels.mjs', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
@@ -88,9 +88,9 @@ describe('the pair and what it stands on', () => {
     expect(isWriteVerb('read_lien_filings')).toBe(false)
     expect(SERVER).toContain("case 'read_lien_filings': {")
     expect(SERVER).toContain("name: 'read_lien_filings',")
-    expect(Object.keys(WRITE_VERBS)).toHaveLength(125)
-    expect(SERVER).toContain("const SERVER_VERSION = '0.103.0'")
-    expect(SERVER).toContain('Writes are one hundred and twenty-five verbs and nothing else:')
+    expect(Object.keys(WRITE_VERBS)).toHaveLength(127)
+    expect(SERVER).toContain("const SERVER_VERSION = '0.104.0'")
+    expect(SERVER).toContain('Writes are one hundred and twenty-seven verbs and nothing else:')
     expect(SERVER).toContain("await restRows(session, 'PATCH', 'job_lien_filings', target, { served_at: write.servedOn, sends: lienServiceSends(write) }, 'return=representation')")
     expect(README).toContain('`plan_lien_service(service \\| services)` · `apply_lien_service(service, plan_hash)`')
     expect(README).toContain('`read_lien_filings(show?, job_id?)`')
@@ -100,7 +100,8 @@ describe('the pair and what it stands on', () => {
     // The window and the batch: the same two columns, through the same kernel.
     expect(WINDOW).toContain("supabase.from('job_lien_filings').update({ served_at: serviceDate || null, sends: JSON.parse(JSON.stringify(sends)) }).eq('id', filedAffidavit.id)")
     expect(WINDOW).toContain('const sends = serviceSends({ servedOn: serviceDate, owner: ownerProof, contractor: isSub ? ocProof : null })')
-    expect(BATCH_IO).toContain("supabase.from('job_lien_filings').update({ served_at: write.servedOn, sends: JSON.parse(JSON.stringify(write.sends)) }).eq('id', write.filingId)")
+    // The copies window's tick (v2.7846) writes the same two columns, one lien at a time.
+    expect(BATCH_IO).toContain("supabase.from('job_lien_filings').update({ served_at: servedOn, sends: JSON.parse(JSON.stringify(sends)) }).eq('id', filingId)")
     // The batch's rule for who gets a copy: the filing's own answer, then the job's.
     expect(BATCH).toContain("return typeof kept === 'boolean' ? kept : job.isSub")
     expect(KERNELS).toContain("'lib/jobs/lienServiceProof.ts': { values: [], types: [] },")

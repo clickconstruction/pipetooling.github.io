@@ -159,21 +159,21 @@ describe('the words', () => {
 
   it('Today names the spot and the day its photograph was taken, then counts what is older', () => {
     const today = mapTimeToday(FOUND, CHOICES)
-    expect(mapTimeCaption({ spotName: 'Pump house', today, olderCount: 3, shown: null, walking: false })).toBe('Today’s photo of Pump house, taken February 9, 2025. 3 older photos.')
-    expect(mapTimeCaption({ spotName: 'Pump house', today, olderCount: 1, shown: null, walking: false })).toBe('Today’s photo of Pump house, taken February 9, 2025. 1 older photo.')
-    expect(mapTimeCaption({ spotName: 'Pump house', today, olderCount: 0, shown: null, walking: false })).toBe(`Today’s photo of Pump house, taken February 9, 2025. ${MAP_TIME_NO_OLDER_WORDS}`)
+    expect(mapTimeCaption({ spotName: 'Pump house', today, olderCount: 3, shown: null, looking: false })).toBe('Today’s photo of Pump house, taken February 9, 2025. 3 older photos.')
+    expect(mapTimeCaption({ spotName: 'Pump house', today, olderCount: 1, shown: null, looking: false })).toBe('Today’s photo of Pump house, taken February 9, 2025. 1 older photo.')
+    expect(mapTimeCaption({ spotName: 'Pump house', today, olderCount: 0, shown: null, looking: false })).toBe(`Today’s photo of Pump house, taken February 9, 2025. ${MAP_TIME_NO_OLDER_WORDS}`)
   })
 
-  it('Today counts nothing while the walk is still going, and names no day it does not know', () => {
-    expect(mapTimeCaption({ spotName: 'Pump house', today: null, olderCount: 0, shown: null, walking: true })).toBe('Today’s photo of Pump house.')
+  it('Today counts nothing while the archive is still being read, and names no day it does not know', () => {
+    expect(mapTimeCaption({ spotName: 'Pump house', today: null, olderCount: 0, shown: null, looking: true })).toBe('Today’s photo of Pump house.')
     const unknown = olderPhotoChoices([{ release: 900, publishedYmd: '2026-10-29', size: 5 }])
-    expect(mapTimeCaption({ spotName: 'Pump house', today: unknown[0]!, olderCount: 0, shown: null, walking: false })).toBe(`Today’s photo of Pump house. ${MAP_TIME_NO_OLDER_WORDS}`)
+    expect(mapTimeCaption({ spotName: 'Pump house', today: unknown[0]!, olderCount: 0, shown: null, looking: false })).toBe(`Today’s photo of Pump house. ${MAP_TIME_NO_OLDER_WORDS}`)
   })
 
   it('a date says its own sentence, and that the dots are not from that day', () => {
-    expect(mapTimeCaption({ spotName: 'Pump house', today: null, olderCount: 3, shown: of(700), walking: false })).toBe('Photo taken March 20, 2021. The dots are today’s.')
-    expect(mapTimeCaption({ spotName: 'Pump house', today: null, olderCount: 3, shown: of(700), walking: false, dotsWords: 'The pins are as of Sep 1.' })).toBe('Photo taken March 20, 2021. The pins are as of Sep 1.')
+    expect(mapTimeCaption({ spotName: 'Pump house', today: null, olderCount: 3, shown: of(700), looking: false })).toBe('Photo taken March 20, 2021. The dots are today’s.')
+    expect(mapTimeCaption({ spotName: 'Pump house', today: null, olderCount: 3, shown: of(700), looking: false, dotsWords: 'The pins are as of Sep 1.' })).toBe('Photo taken March 20, 2021. The pins are as of Sep 1.')
     // A photograph whose day is not known says only what is true of it.
-    expect(mapTimeCaption({ spotName: 'Pump house', today: null, olderCount: 3, shown: of(500), walking: false })).toBe('Esri published this picture on January 10, 2018. It was taken before that, and the archive did not say when.')
+    expect(mapTimeCaption({ spotName: 'Pump house', today: null, olderCount: 3, shown: of(500), looking: false })).toBe('Esri published this picture on January 10, 2018. It was taken before that, and the archive did not say when.')
   })
 })

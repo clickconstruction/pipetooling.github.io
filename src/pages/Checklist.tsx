@@ -81,6 +81,7 @@ import { TaskModeLookWindow } from '../components/checklist/TaskModeLookWindow'
 import { TaskLookViewAs } from '../components/checklist/TaskLookViewAs'
 import { TaskLookComingUp } from '../components/checklist/TaskLookComingUp'
 import { lookOffersViewAs, lookPressLabel, lookPressTitle } from '../lib/tasks/taskLook'
+import { hasOfficeChecklistTabs, officeTabLandsOnToday } from '../lib/tasks/checklistTabs'
 import { TaskPlacesTeamMapCard, type TaskPlacesTeamPerson } from '../components/checklist/TaskPlacesTeamMapCard'
 import type { MyFix } from '../lib/materials/myLocation'
 
@@ -205,6 +206,15 @@ export default function Checklist() {
       }, { replace: true })
       return
     }
+    // A role with no Review or Manage would see an empty page under its two tabs, so its landing goes to Today.
+    if (officeTabLandsOnToday(tab, role)) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'today')
+        return next
+      }, { replace: true })
+      return
+    }
     if (tab === 'roadmap' && role !== null) {
       if (canSeeRoadmap) {
         // Old bookmark / Dashboard card / help link: the roadmap lives at /roadmap now — same params.
@@ -238,8 +248,7 @@ export default function Checklist() {
     }
   }, [searchParams, role, canSeeRoadmap, taskModeEnabled, navigate, setSearchParams])
 
-  const canManageChecklists =
-    (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && !taskModeEnabled
+  const canManageChecklists = hasOfficeChecklistTabs(role) && !taskModeEnabled
   /** Matches is_dev_or_master_or_assistant() in DB (includes primary) for roadmap structure + staff overrides */
   const canEditTechTree =
     role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'

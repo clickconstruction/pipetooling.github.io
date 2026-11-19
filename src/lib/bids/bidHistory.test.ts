@@ -302,6 +302,14 @@ describe('bidHistoryCaption · PR 5', () => {
     expect(bidHistoryCaption([copy('bid_count_row_custom_prices'), copy('bid_pricing_assignments'), copy('bid_pricing_assignments')])).toBe('Switched the price book, copying 3 prices')
   })
 
+  it('the Percent row reads as what it did: a row added, a rule changed, prices that followed', () => {
+    const p = (over: Partial<BidHistoryRow>) => row({ action: 'percent-row', byApp: false, ...over })
+    expect(bidHistoryCaption([p({ table: 'bids_count_rows', op: 'insert' })])).toBe('Added a percent row')
+    expect(bidHistoryCaption([p({ table: 'bids_count_rows', op: 'update', changed: ['percent_rule'] })])).toBe('Changed a percent rule')
+    expect(bidHistoryCaption([p({ table: 'bid_count_row_custom_prices', op: 'update', countRowId: 'c1' })])).toBe('A percent row followed its rows')
+    expect(bidHistoryCaption([p({ table: 'bid_count_row_custom_prices', op: 'update', countRowId: 'c1' }), p({ table: 'bid_pricing_assignments', op: 'update', countRowId: 'c2' })])).toBe('2 percent rows followed their rows')
+  })
+
   it('a removed row put back names it, and says what hung on it came too', () => {
     const back = (table: string, label: string) => row({ table, op: 'insert', label, action: 'put-back', byApp: false })
     expect(bidHistoryCaption([back('bids_count_rows', 'SUMP')])).toBe('Put back SUMP')

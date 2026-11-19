@@ -436,6 +436,13 @@ export function bidHistoryCaption(rows: ReadonlyArray<BidHistoryRow>): string {
       const priced = new Set(rows.map((r) => r.countRowId ?? r.recordId)).size
       return `Brushed ${priced} ${priced === 1 ? 'price' : 'prices'}`
     }
+    case 'percent-row': {
+      // The Percent row: the row it adds, or the prices the Workbench re-wrote so each rule row follows its rows.
+      if (countRowInserts) return 'Added a percent row'
+      const priced = new Set(rows.filter((r) => r.table !== 'bids_count_rows').map((r) => r.countRowId ?? r.recordId)).size
+      if (priced === 0) return 'Changed a percent rule'
+      return priced === 1 ? 'A percent row followed its rows' : `${priced} percent rows followed their rows`
+    }
     case 'book-switch': {
       // The price book drawer's Use on this bid (PR 5): the bid's pick of a book, and the copy it makes.
       const copied = rows.filter((r) => r.op === 'insert' && (r.table === 'bid_count_row_custom_prices' || r.table === 'bid_pricing_assignments')).length

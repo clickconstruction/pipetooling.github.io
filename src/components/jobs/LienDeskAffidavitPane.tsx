@@ -22,7 +22,7 @@ import { useLienPaneHeads } from './useLienPaneHeads'
 import { lienAffidavitPaneSections, lienAffidavitWindowWords } from '../../lib/jobs/lienAffidavitPaneSections'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
-import { lienMailProof } from '../../lib/jobs/lienMailProof'
+import { lienStopProof } from '../../lib/jobs/lienStopProof'
 import { lienMailProofDoorPress, lienMailProofOwnerGap, type LienMailProofOpeners } from '../../lib/jobs/lienMailProofDoor'
 import { lienServeStage, lienServeStageDoor, type LienServePrinted } from '../../lib/jobs/lienServeStage'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
@@ -295,7 +295,8 @@ export default function LienDeskAffidavitPane({
     const when = (ymd: string | null, iso: string) => formatYmdMonthDay(ymd ?? calendarYmdInAppTzFromIso(iso))
     const asSent = (f: (typeof filings)[number], words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
       const page = filingSnapshotPage(f, { issuer, jobNumber: jobNo })
-      const proof = lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, servedAt: f.served_at })
+      // The one reading the three stop windows share (`lienStopProof.ts`): the contractor's copy counts before it has a record, and a notice lists its mailed files.
+      const proof = lienStopProof(f, { isSub: entry.isSub, mailedCopies: data.items.find((it) => it.sent_filing_id === f.id)?.mailed_copies })
       const proofDoor = proof && proofOpeners ? lienMailProofDoorPress({ jobId: entry.jobId, filingId: f.id, paper: proof.paper, served: Boolean(f.served_at), printed: lienServeStage(f, servePrinted) === 'record', ownerGap: lienMailProofOwnerGap({ name: ownerName, mailingAddress: property.owner.mailingAddress }) }, proofOpeners(f.id), () => setStopOpen(null)) : null
       return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof, proofDoor }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
     }
