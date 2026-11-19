@@ -34,7 +34,8 @@ export type ReportRowState = 'new' | 'opened' | 'done'
  * Roles that see the Recent Reports section (v2 gate lived inline in
  * Dashboard.tsx + three copies inside the section; single definition since the
  * superintendent rollout). `list_reports_with_job_info` already scopes
- * superintendents server-side to their assigned projects' reports.
+ * superintendents server-side to their assigned projects' reports, and a
+ * primary to their own jobs' reports and the ones they wrote.
  */
 export function isDashboardRecentReportsRole(role: string | null | undefined): boolean {
   return (
@@ -45,6 +46,17 @@ export function isDashboardRecentReportsRole(role: string | null | undefined): b
     role === 'primary' ||
     role === 'superintendent'
   )
+}
+
+/**
+ * The line a primary reads over a list of reports, on the Dashboard card and on Jobs, Reports. The database decides
+ * what they read (migration `20261119040000_primary_scope_reports`): a report on a job that names them as account
+ * manager or lists them as superintendent, or one they wrote. Every other role reads the list with no line.
+ */
+export const PRIMARY_REPORTS_SCOPE_LINE = 'You see reports on jobs where you are the account manager or the superintendent, and reports you wrote.'
+
+export function reportsScopeLine(role: string | null | undefined): string | null {
+  return role === 'primary' ? PRIMARY_REPORTS_SCOPE_LINE : null
 }
 
 export function reportRowState(

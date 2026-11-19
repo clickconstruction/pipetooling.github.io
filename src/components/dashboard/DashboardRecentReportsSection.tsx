@@ -13,6 +13,7 @@ import {
   recentReportsNewCount,
   readIdsWithOwnReports,
   reportRowState,
+  reportsScopeLine,
   visibleRecentReports,
   type RecentReportRow,
 } from '../../lib/dashboardRecentReports'
@@ -242,6 +243,8 @@ export function DashboardRecentReportsSection({
   const newCount = recentReportsNewCount(recentReports, readReportIds, doneReportIds)
   const hiddenOpenedCount = openedNotShownCount(recentReports, readReportIds, doneReportIds, sessionOpenedIds)
   const showRecent = isDashboardRecentReportsRole(role)
+  // A primary reads their own jobs' reports alone (the database decides); the line says so over the list.
+  const scopeLine = reportsScopeLine(role)
   const nowMs = Date.now()
 
   return (
@@ -312,6 +315,9 @@ export function DashboardRecentReportsSection({
           </div>
           {recentReportsExpanded && (
             <>
+              {scopeLine ? (
+                <p data-reports-scope style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{scopeLine}</p>
+              ) : null}
               {recentReportsLoading ? (
                 <RecentReportsSkeleton />
               ) : recentReports.length > 0 ? (
@@ -489,7 +495,7 @@ export function DashboardRecentReportsSection({
                   })}
                 </ul>
               ) : (
-                <EmptyState compact {...recentReportsEmptyWords(isReportEnabledOnlyUser)} />
+                <EmptyState compact {...recentReportsEmptyWords(isReportEnabledOnlyUser, role === 'primary')} />
               )}
               {hiddenOpenedCount > 0 || showOpened ? (
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem', paddingTop: '0.25rem' }}>

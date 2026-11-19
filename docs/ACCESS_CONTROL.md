@@ -86,6 +86,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
    scoped via `helpers_service_type_ids` (same semantics as `subcontractor_service_type_ids`)
 6. **estimator** - Bid estimation specialists
 7. **primary** - Materials and job reports specialist, **scoped to their own work since v2.2174–2177**: bids they are estimator/account manager/creator of, estimates they created or on jobs they are Account Man for, jobs they are Account Man for;
+   reports of the jobs they are the account manager of or listed as superintendent on, and the reports they wrote, since v2.7906;
    Jobs page shows the Reports tab only;
    Dashboard with Recent Reports, My Bids and Send task
 8. **superintendent** - Run jobs, manage subcontractors, draft bids (assigned projects only — DB-enforced on every project surface since v2.2836;
@@ -2782,7 +2783,14 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
 - **Jobs**: only jobs where `jobs_ledger.account_manager_user_id` is them (+ all job child tables).
   The Jobs page shows the **Reports tab only** (`Jobs.tsx` `primaryTabs = ['reports']`;
   deep links rewrite).
-  **Reports themselves are not scoped** (D1): `reports` policies untouched, `list_reports_with_job_info` / `search_jobs_for_reports` are SECURITY DEFINER.
+  **Reports are scoped since v2.7906** (the owner's word of 2026-11-19;
+  `20261119040000_primary_scope_reports.sql`, the SQL bed `primary-scope-reports`): a primary reads a report when its job names them as account manager (`primary_can_access_job`) or lists them as superintendent, or when they wrote it.
+  A job lists its superintendent through its project: `project_superintendents`, or `gc_projects.superintendent_user_id`.
+  A report on a project alone opens to that project's listed superintendent, and a report on a bid alone to the bid's own primary (`primary_can_access_bid`).
+  The one predicate is `primary_can_read_report(job, project, bid, author)`, read behind `NOT is_primary()` by the RESTRICTIVE `primary_scope_reports` policy (every direct read, the invoker functions and the realtime feed) and by `list_reports_with_job_info`, `list_reports_for_job_ledger`, `list_reports_for_bid` and the newest-report percent in `list_job_crew_position`, each SECURITY DEFINER.
+  A report's photos follow: `primary_scope_report_photos` on `report_photos` and the `report-photos` bucket's read policy open a primary's own shot or a job whose reports they read (`primary_can_read_job_reports`).
+  `list_my_reports` is the caller's own and is untouched, and so is the New-report job picker (`search_jobs_for_reports`).
+  The two office-picked email streams (`report_email`, `report_digest`) send what the office subscribes a person to and are not filtered by this rule.
 - **Documents**: the page is a ledger view over jobs/estimates/bids, so it inherits the scoping;
   the Jobs tab adds an explicit Account-Man filter.
 - Materials adoption via `master_primaries` is unchanged, but adding materials to a job now requires being its Account Man (the `jobs_ledger_materials` rows are scoped).
@@ -2816,15 +2824,17 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
 - Price history viewing
 
 **Jobs - Reports tab only**:
-- **Reports tab**: View all reports via `list_reports_with_job_info` RPC;
-  SELECT, INSERT, UPDATE on reports (delete restricted to the owner and devs, behind the typed word DELETE since v2.6765).
-  New-report job picker (`search_jobs_for_reports`, SECURITY DEFINER) still offers every job.
+- **Reports tab**: View the reports of their own jobs and the ones they wrote via `list_reports_with_job_info` RPC (v2.7906;
+  a line over the list says so, `reportsScopeLine`);
+  SELECT, INSERT, UPDATE on those reports (delete restricted to the owner and devs, behind the typed word DELETE since v2.6765).
+  New-report job picker (`search_jobs_for_reports`, SECURITY DEFINER) still offers every job, and a report they write on any job stays theirs to read.
 - Billing, Sub Sheet Ledger, Crew P&L hidden (`Jobs.tsx` primary gate;
   `?tab=` deep links rewrite to `reports`)
 - Direct `jobs_ledger` reads (Edit Job, Documents → Jobs) return only Account-Man jobs (v2.2177)
 
 **Dashboard**:
-- Recent Reports section (same as masters);
+- Recent Reports section, listing and counting only the reports the primary reads (v2.7906;
+  the card's counts are the list the database answers);
   **primary** defaults **collapsed** and does **not** auto-expand when reports are unread (**`RECENT_FEATURES`** **v2.494**)
 - **My Bids** section (estimator/account-manager bids);
   title **My Bids (`n`)** after load;
@@ -2993,7 +3003,7 @@ before that, the 3-arg `can_access_project_row` the `projects` policy calls stil
 | **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ assigned only (RLS, v2.2836) |
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ (route dropped v2.2836; since v2.2920 the steps SELECT policy has a primary branch — adopted/shared project via `can_access_project_via_step`, or the step's assignee — so a primary's Dashboard **Assigned Stages** fills, but the route stays off pending a nav decision) | ✅ limited, assigned projects only (RLS, v2.2836) |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
-| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports tab only (`Jobs.tsx` `primaryTabs`); job rows limited to Account-Man jobs (v2.2177) | ✅ Reports + Sub Ledger |
+| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports tab only (`Jobs.tsx` `primaryTabs`); job rows limited to Account-Man jobs (v2.2177), reports to their own jobs' and their own (v2.7906) | ✅ Reports + Sub Ledger |
 | **Dispatch** (`/schedule-dispatch`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ week grid (same `job_schedule_blocks` rules; **+ → Linked copy** / **Linked** crew rows; DnD reassign **solo** legs only) |
 | **Banking** | ✅ full Mercury (Ledger + User Sort + Drag Sort + **Accounting** + **Card Review** (`?tab=card_review`; the old `user_review` key is a read-only alias since v2.2899) + **Category Review** + **Reconciliation** + **Cost batches** (`?tab=cost_batches`, dev-only, v2.6115: every cost batch with Revert; the move itself is made from the job window's Costs tab) + Configuration + sync); RLS SELECT on **`mercury_transactions`** + nicknames; org-wide **`mercury_drag_sort_labels`** / **`mercury_transaction_drag_sort_assignments`** (Drag Sort / Accounting approvals); **`mercury_accounting_label_rules`** / **`mercury_accounting_label_suggestions`** (**Accounting** tab, banking-staff RLS); **Stripe** segment (a dev's and the controller's since v2.6761, punch list #188 row 51; dev-only before): **Invoices** (`jobs_ledger_invoices` + job embed, rows without **`stripe_invoice_id`** highlighted) and **Data** (`stripe_webhook_events` webhook log) | ✅ the staff tabs, without the controller's Ledger and Stripe (`canAccessBanking` = dev / master_technician / controller — [`src/lib/bankingAccess.ts`](../src/lib/bankingAccess.ts), v2.3305) | ❌ **since v2.3305 — Banking is controller and above.** A plain assistant has no gear-menu link, is bounced off `/banking` by the route guard, never sees the label-approvals Needs You card, and the Banking-only data refuses the session (`is_banking_staff()`, the Accounting-tab RPCs, nickname edits, both Mercury edge functions). **Controller ✅**: **User Sort** + **Drag Sort** + **Accounting** + **Card Review** + **Category Review** + **Reconciliation** and, since v2.6761, **Ledger** with its **Configuration** and the **Stripe** segment (no sync); read **`mercury_transactions`** + nicknames; edit `mercury_debit_card_nicknames`; rules/suggestions/approvals per banking-staff policies. Assistants keep the shared Mercury data the Jobs board, Job Parts Tally and AR read (`is_office_staff()` policies + the `mercury_transactions` assistant SELECT) | ❌ | ❌ | ❌ | ❌ |
 
