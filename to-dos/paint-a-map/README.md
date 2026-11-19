@@ -205,8 +205,8 @@ The painted line can carry that number, typed in, and show it in place of its ow
   before. The page must be on https, which it is.
 - **iPhone has two switches.** *Safari Websites* must be allowed, and **Precise Location** must be
   on. With it off the phone hands the page a rough spot with a margin of a mile or more. The app
-  reads that margin and says how to turn the switch on. The exact path on a home-screen app is to
-  be checked on a real phone in step 0.
+  reads that margin and says how to turn the switch on. The line that says the switch is on, the
+  steps for each phone, and what a real phone has still to show are card #402.
 - **iPhone may ask again on another day.** Safari does not always remember a yes for long. A
   nuisance, not a blocker.
 - **Refused:** the person can still draw by hand. Nothing dead-ends.

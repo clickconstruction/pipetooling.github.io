@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Precise Location on the painted map</title>
+<style>
+  /* The app's own tokens (src/index.css), light and dark. */
+  :root, [data-theme='light'] {
+    --surface: #ffffff; --bg-subtle: #f9fafb;
+    --text-strong: #111827; --text-700: #374151; --text-muted: #6b7280;
+    --text-green-700: #15803d; --text-amber-800: #92400e;
+    --border: #cfd4db; --border-strong: #aab2bd; --border-amber: #fcd34d; --bg-amber-tint: #fffbeb;
+    --board: #dfe3e8; --board-text: #1f2937; --board-muted: #4b5563;
+  }
+  [data-theme='dark'] {
+    --surface: #1f2937; --bg-subtle: #18212f;
+    --text-strong: #f9fafb; --text-700: #d1d5db; --text-muted: #9ca3af;
+    --text-green-700: #4ade80; --text-amber-800: #fcd34d;
+    --border: #374151; --border-strong: #4b5563; --border-amber: #92400e; --bg-amber-tint: #3a2f11;
+    --board: #0b1220; --board-text: #e5e7eb; --board-muted: #9ca3af;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--board); color: var(--board-text); font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  code { font-size: 0.85em; }
+  svg { display: block; }
+
+  /* The board: one row a state, today on the left. */
+  .top { padding: 20px 24px 0; max-width: 1180px; }
+  .top h1 { margin: 0 0 4px; font-size: 20px; }
+  .top p { margin: 0 0 6px; font-size: 14px; color: var(--board-muted); max-width: 900px; }
+  .row { padding: 22px 24px 6px; }
+  .row > h2 { margin: 0 0 2px; font-size: 16px; }
+  .row > p { margin: 0 0 12px; font-size: 13px; color: var(--board-muted); max-width: 900px; }
+  .cells { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .cell { display: grid; gap: 8px; justify-items: start; }
+  .cap { font-size: 13px; font-weight: 700; max-width: 375px; }
+  .cap small { display: block; font-weight: 500; color: var(--board-muted); }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-right: 6px; vertical-align: 1px; }
+  .tag.today { background: #e5e7eb; color: #374151; }
+  .tag.pick { background: #7c3aed; color: #fff; }
+
+  /* A phone's width. The map is the view from above, drawn and made up. */
+  .phone { width: 375px; max-width: 100%; background: var(--surface); color: var(--text-strong); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .map { position: relative; height: 230px; background: #5d6b4e; }
+  .map svg { width: 100%; height: 100%; }
+  .pill { position: absolute; left: 8px; right: 8px; bottom: 26px; display: flex; justify-content: center; pointer-events: none; }
+  .pill span { background: rgba(17, 24, 39, 0.84); color: #fff; font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.7rem; border-radius: 999px; text-align: center; }
+  .panel { padding: 12px 14px 16px; display: grid; gap: 0.6rem; font-size: 15px; }
+  .panel h3 { margin: 0; font-size: 1.05rem; }
+
+  /* The walk panel's readout and presses, as PaintedWalkPanel draws them. */
+  .readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.75rem; }
+  .readout .len { font-size: 1.3rem; font-weight: 700; }
+  .readout .far { font-size: 0.875rem; color: var(--text-700); }
+  .chip { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 0.8125rem; font-weight: 700; color: var(--text-green-700); }
+  .chip i { width: 9px; height: 9px; border-radius: 50%; background: #16a34a; }
+  .chip.poor { color: var(--text-amber-800); }
+  .chip.poor i { background: #d97706; }
+  .presses { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .press { font: inherit; font-size: 0.9375rem; font-weight: 600; padding: 0.55rem 0.9rem; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); }
+  .press.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .amber { margin: 0; font-size: 0.875rem; color: var(--text-amber-800); background: var(--bg-amber-tint); border: 1px solid var(--border-amber); border-radius: 8px; padding: 0.55rem 0.7rem; }
+  .amber ul { margin: 0.35rem 0 0; padding-left: 1.1rem; display: grid; gap: 0.2rem; }
+  .muted { margin: 0; font-size: 0.875rem; color: var(--text-muted); }
+  .green { margin: 0; font-size: 0.875rem; color: var(--text-green-700); }
+
+  /* The line, as PreciseLineView draws it. */
+  .pl { margin: 0; display: flex; align-items: center; gap: 0.45rem; }
+  .pl.finding { font-size: 0.875rem; color: var(--text-muted); }
+  .pl.finding i { width: 10px; height: 10px; border-radius: 50%; background: var(--border-strong); flex: none; }
+  .pl.on { font-size: 0.9375rem; color: var(--text-green-700); }
+  .pl.weak { align-items: flex-start; }
+  .pl.weak i { width: 10px; height: 10px; border-radius: 50%; background: #d97706; flex: none; margin-top: 5px; }
+  dl.compare { margin: 0.4rem 0; display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.75rem; background: var(--surface); border: 1px solid var(--border-amber); border-radius: 6px; padding: 0.4rem 0.6rem; color: var(--text-strong); }
+  dl.compare dd { margin: 0; font-weight: 700; }
+  dl.compare dd.on { color: var(--text-green-700); }
+  ol.steps { margin: 0.45rem 0 0; padding-left: 1.25rem; display: grid; gap: 0.2rem; }
+  p.already { margin: 0.45rem 0 0; font-size: 0.8125rem; }
+  .way-sure { margin: 0; display: flex; align-items: center; gap: 0.45rem; font-size: 0.875rem; color: var(--text-700); }
+
+  @media (max-width: 440px) {
+    .top, .row { padding-left: 16px; padding-right: 16px; }
+    .phone { width: calc(100vw - 32px); }
+    .cap { max-width: calc(100vw - 32px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>Precise Location on the painted map (#402)</h1>
+  <p>Each row is one state at a phone's width, today on the left and the pick beside it. Every reading, job and number is made up. Every sentence on a pick was printed by the prototype's kernel, <code>preciseLocation.ts</code>, and every sentence on a today by the code on main.</p>
+  <p>Add <code>?s=walk-on</code> for one row alone (<code>walk-on</code>, <code>walk-weak</code>, <code>walk-rough</code>, <code>place-rough</code>, <code>way</code>, <code>steps</code>) and <code>&amp;theme=dark</code> for the dark theme.</p>
+</div>
+
+<section class="row" id="walk-on">
+  <h2>The walk, a sure reading (4.5 m)</h2>
+  <p>Today a small green chip at the right is the only word, and it never names the switch. The pick says the switch is on, in a line of its own with a tick. Before the first reading the line says it is finding you.</p>
+  <div class="cells">
+    <div class="cell">
+      <div class="cap"><span class="tag today">Today</span>The chip at the right</div>
+      <div class="phone">
+        <div class="map" data-map="sure"></div>
+        <div class="panel">
+          <div class="readout"><span class="len">about 140 ft</span><span class="far">so far · 1 place</span><span class="chip"><i></i>Sure within 15 ft</span></div>
+          <div class="presses"><button class="press">＋ Place</button><button class="press">Pause</button><button class="press">Done</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="cell">
+      <div class="cap"><span class="tag pick">Pick</span>The switch named, in every state</div>
+      <div class="phone">
+        <div class="map" data-map="sure"></div>
+        <div class="panel">
+          <div class="readout"><span class="len">about 140 ft</span><span class="far">so far · 1 place</span></div>
+          <p class="pl on" role="status"><span data-tick></span><span><b>Precise Location is on.</b> Sure within 15 ft.</span></p>
+          <div class="presses"><button class="press">＋ Place</button><button class="press">Pause</button><button class="press">Done</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="cell">
+      <div class="cap"><span class="tag pick">Pick</span>Before the first reading<small>A rough reading under 4 s old reads the same.</small></div>
+      <div class="phone">
+        <div class="map" data-map="start"></div>
+        <div class="panel">
+          <div class="readout"><span class="len">A new line</span><span class="far">start walking</span></div>
+          <p class="pl finding" role="status"><i></i><span><b>Finding you…</b> This takes a few seconds in the open.</span></p>
+          <div class="presses"><button class="press">＋ Place</button><button class="press">Pause</button><button class="press">Done</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="row" id="walk-weak">
+  <h2>The walk, a weak signal (35 m)</h2>
+  <p>Today the chip turns amber and a box says the part is drawn faint. The pick keeps one box. A margin at or under 100 m proves the switch is on, so the line says so and puts the blame on the signal.</p>
+  <div class="cells">
+    <div class="cell">
+      <div class="cap"><span class="tag today">Today</span>An amber chip and a box</div>
+      <div class="phone">
+        <div class="map" data-map="weak"></div>
+        <div class="panel">
+          <div class="readout"><span class="len">about 140 ft</span><span class="far">so far · 1 place</span><span class="chip poor"><i></i>Sure within 120 ft</span></div>
+          <p class="amber" role="status">Only sure within 120 ft here. This part is drawn faint. Fix it by hand when you look the line over.</p>
+          <div class="presses"><button class="press">＋ Place</button><button class="press">Pause</button><button class="press">Done</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="cell">
+      <div class="cap"><span class="tag pick">Pick</span>One box, the switch cleared<small>From 100 m to 1,000 m the lead is only <i>The signal is weak here.</i></small></div>
+      <div class="phone">
+        <div class="map" data-map="weak"></div>
+        <div class="panel">
+          <div class="readout"><span class="len">about 140 ft</span><span class="far">so far · 1 place</span></div>
+          <p class="pl weak amber" role="status"><i></i><span><b>Precise Location is on, but the signal is weak here.</b> Your phone is only sure within 120 ft. This part is drawn faint. Fix it by hand when you look the line over.</span></p>
+          <div class="presses"><button class="press">＋ Place</button><button class="press">Pause</button><button class="press">Done</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="row" id="walk-rough">
+  <h2>The walk, a rough reading held 4 s (3,200 m)</h2>
+  <p>Today the map follows the middle of the rough area at street zoom, so the view is all margin with a dot in it, and the steps cover both kinds of phone. The pick pulls the map back to the whole circle, dashed and with no dot, sets the two numbers side by side and gives the steps for this phone alone.</p>
+  <div class="cells">
+    <div class="cell">
+      <div class="cap"><span class="tag today">Today</span>A dot in a sea of margin</div>
+      <div class="phone">
+        <div class="map" data-map="rough-today"></div>
+        <div class="panel">
+          <div class="amber" role="alert"><b>Your phone is giving a rough location, not where you stand.</b> A line cannot be painted from that.
+            <ul><li>iPhone: Settings, Privacy and Security, Location Services, Safari Websites. Turn on Precise Location.</li><li>Android: press the lock beside the address, Permissions, Location. Turn on Use precise location.</li></ul>
+          </div>
+          <div class="presses"><button class="press">Pause</button><button class="press blue">Draw it by hand instead</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="cell">
+      <div class="cap"><span class="tag pick">Pick</span>The whole circle, the two numbers, this phone's steps<small>Safari on an iPhone. The steps row has the other phones.</small></div>
+      <div class="phone">
+        <div class="map" data-map="rough-pick"><div class="pill"><span>You are somewhere in this circle, 4 miles across.</span></div></div>
+        <div class="panel">
+          <div class="amber" role="alert"><b>Precise Location looks off.</b>
+            <dl class="compare"><dt>Your phone now</dt><dd>within 2 miles</dd><dt>With Precise Location on</dt><dd class="on">within 20 ft</dd></dl>
+            A line cannot be painted from a reading that wide.
+            <ol class="steps"><li>Open the Settings app.</li><li>Tap Privacy &amp; Security, then Location Services.</li><li>Tap Safari Websites.</li><li>Turn on Precise Location.</li><li>Come back to this screen.</li></ol>
+            <p class="already">Already on? Step into the open and wait a moment. The phone may only be hearing a cell tower.</p>
+          </div>
+          <div class="presses"><button class="press">Pause</button><button class="press blue">Draw it by hand instead</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="row" id="place-rough">
+  <h2>Put the dot where I am, a rough reading (3,200 m)</h2>
+  <p>Today the dot jumps to the middle of the rough area, which can be miles from the job, and the panel asks for a drag. The pick leaves the dot where the painter had it and says why. A weak reading keeps today's box, <i>Drag the dot onto the spot.</i></p>
+  <div class="cells">
+    <div class="cell">
+      <div class="cap"><span class="tag today">Today</span>The dot sent miles away</div>
+      <div class="phone">
+        <div class="map" data-map="place-today"></div>
+        <div class="panel">
+          <div class="presses"><button class="press">Put the dot where I am</button></div>
+          <p class="amber" role="status">Your phone is only sure within 10,500 ft. Drag the dot onto the spot.</p>
+        </div>
+      </div>
+    </div>
+    <div class="cell">
+      <div class="cap"><span class="tag pick">Pick</span>The dot stays, and the panel says why</div>
+      <div class="phone">
+        <div class="map" data-map="place-pick"></div>
+        <div class="panel">
+          <div class="presses"><button class="press">Put the dot where I am</button></div>
+          <div class="amber" role="alert"><b>Precise Location looks off.</b>
+            <dl class="compare"><dt>Your phone now</dt><dd>within 2 miles</dd><dt>With Precise Location on</dt><dd class="on">within 20 ft</dd></dl>
+            The dot was not moved. Drag it onto the spot by hand, or turn the switch on and press again.
+            <ol class="steps"><li>Open the Settings app.</li><li>Tap Privacy &amp; Security, then Location Services.</li><li>Tap Safari Websites.</li><li>Turn on Precise Location.</li><li>Come back to this screen.</li></ol>
+            <p class="already">Already on? Step into the open and wait a moment. The phone may only be hearing a cell tower.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="row" id="way">
+  <h2>The shared map at /way, which a stranger reads</h2>
+  <p>Today a rough reading gives a stranger a sure-sounding direction from the middle of a 4-mile area. The pick names the switch only when it looks off, and draws no dot it cannot stand behind. A sure reading keeps today's words with a tick.</p>
+  <div class="cells">
+    <div class="cell">
+      <div class="cap"><span class="tag today">Today</span>Rough: a direction from the wrong spot<small>The dot is at the middle of the area, off this view.</small></div>
+      <div class="phone">
+        <div class="map" data-map="way-line"></div>
+        <div class="panel">
+          <h3>Way in to the yard</h3>
+          <p style="margin:0"><b>The start is 1.9 mi north of you.</b></p>
+          <p class="muted">Your phone is sure within 10,500 ft.</p>
+        </div>
+      </div>
+    </div>
+    <div class="cell">
+      <div class="cap"><span class="tag pick">Pick</span>Sure (4.5 m)</div>
+      <div class="phone">
+        <div class="map" data-map="way-sure"></div>
+        <div class="panel">
+          <h3>Way in to the yard</h3>
+          <p style="margin:0"><b>You are on the painted line.</b></p>
+          <p class="way-sure"><span data-tick></span><span>Your phone is sure within 15 ft.</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="cell">
+      <div class="cap"><span class="tag pick">Pick</span>Weak (35 m)</div>
+      <div class="phone">
+        <div class="map" data-map="way-weak"></div>
+        <div class="panel">
+          <h3>Way in to the yard</h3>
+          <p style="margin:0"><b>You are on the painted line.</b></p>
+          <p class="amber" role="status">The signal is weak here. Your phone is only sure within 120 ft.</p>
+        </div>
+      </div>
+    </div>
+    <div class="cell">
+      <div class="cap"><span class="tag pick">Pick</span>Rough, held 4 s (3,200 m)<small>No dot. The map takes in the circle and the line.</small></div>
+      <div class="phone">
+        <div class="map" data-map="way-rough"></div>
+        <div class="panel">
+          <h3>Way in to the yard</h3>
+          <div class="amber" role="alert"><b>Your phone is only giving the area you are in.</b> It is only sure within 2 miles, so the map cannot show where you stand.
+            <p style="margin:0.45rem 0 0">To see where you stand, turn on Precise Location:</p>
+            <ol class="steps"><li>Open the Settings app.</li><li>Tap Privacy &amp; Security, then Location Services.</li><li>Tap Safari Websites.</li><li>Turn on Precise Location.</li><li>Come back to this screen.</li></ol>
+            <p class="already">Already on? Step into the open and wait a moment. The phone may only be hearing a cell tower.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="row" id="steps">
+  <h2>The steps, for this phone alone</h2>
+  <p>Read from the browser's own name for itself. Safari and an app saved to the Home Screen share one set. A desk, or a phone the page cannot tell, gets one line for each kind of phone and no switch named in the lead.</p>
+  <div class="cells">
+    <div class="cell">
+      <div class="cap">Chrome on an iPhone</div>
+      <div class="phone"><div class="panel">
+        <div class="amber" role="alert"><b>Precise Location looks off.</b>
+          <dl class="compare"><dt>Your phone now</dt><dd>within 2 miles</dd><dt>With Precise Location on</dt><dd class="on">within 20 ft</dd></dl>
+          <ol class="steps"><li>Open the Settings app.</li><li>Tap Privacy &amp; Security, then Location Services.</li><li>Tap Chrome.</li><li>Turn on Precise Location.</li><li>Come back to this screen.</li></ol>
+          <p class="already">Already on? Step into the open and wait a moment. The phone may only be hearing a cell tower.</p>
+        </div>
+      </div></div>
+    </div>
+    <div class="cell">
+      <div class="cap">Android</div>
+      <div class="phone"><div class="panel">
+        <div class="amber" role="alert"><b>Precise location looks off.</b>
+          <dl class="compare"><dt>Your phone now</dt><dd>within 2 miles</dd><dt>With Use precise location on</dt><dd class="on">within 20 ft</dd></dl>
+          <ol class="steps"><li>Press and hold the browser’s icon, then tap App info.</li><li>Tap Permissions, then Location.</li><li>Turn on Use precise location.</li><li>Come back to this screen.</li></ol>
+          <p class="already">Already on? Step into the open and wait a moment. The phone may only be hearing a cell tower.</p>
+        </div>
+      </div></div>
+    </div>
+    <div class="cell">
+      <div class="cap">A desk, or a phone the page cannot tell</div>
+      <div class="phone"><div class="panel">
+        <div class="amber" role="alert"><b>This device only knows the area it is in.</b> It is only sure within 2 miles.
+          <ol class="steps"><li>iPhone: Settings, Privacy &amp; Security, Location Services, Safari Websites. Turn on Precise Location.</li><li>Android: hold the browser’s icon, App info, Permissions, Location. Turn on Use precise location.</li></ol>
+          <p class="already">Already on? Step into the open and wait a moment. The phone may only be hearing a cell tower.</p>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<div style="height: 32px"></div>
+
+<script>
+  // The address picks the theme and, optionally, one row.
+  const q = new URLSearchParams(location.search)
+  document.documentElement.dataset.theme = q.get('theme') === 'dark' ? 'dark' : 'light'
+  const only = q.get('s')
+  if (only) document.querySelectorAll('section.row').forEach((r) => { if (r.id !== only) r.remove() })
+
+  // The tick: the phone is set.
+  const TICK = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" style="flex:none"><circle cx="9" cy="9" r="9" fill="#16a34a"/><path d="M5 9.4l2.6 2.6L13 6.6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  document.querySelectorAll('[data-tick]').forEach((el) => { el.outerHTML = TICK })
+
+  // The view from above, made up. Street scale near the job, or pulled back to take in a rough circle.
+  const PAINT = '#ff5a1f', BLUE = '#2563eb', ROAD = '#cbc5b6'
+  const street = (withJob) =>
+    '<rect x="14" y="16" width="128" height="86" fill="#6c7b59"/><rect x="204" y="14" width="156" height="72" fill="#77825f"/><rect x="232" y="150" width="130" height="68" fill="#55654a"/>' +
+    `<path d="M0 118 H375" stroke="${ROAD}" stroke-width="12"/><path d="M170 0 V230" stroke="${ROAD}" stroke-width="10"/>` +
+    (withJob ? '<rect x="190" y="134" width="44" height="28" fill="#d8d2c3"/>' : '<rect x="40" y="140" width="60" height="40" fill="#8c8f7a"/><rect x="250" y="40" width="70" height="34" fill="#8c8f7a"/>')
+  const line = (faint) =>
+    `<path d="M172 226 L172 128 L198 128 L210 142" fill="none" stroke="${PAINT}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>` +
+    (faint ? `<path d="M210 142 L219 153 L228 160" fill="none" stroke="${PAINT}" stroke-width="4" stroke-opacity=".85" stroke-dasharray="2 9" stroke-linecap="round"/>` : '')
+  const wide = (job) =>
+    `<g stroke="${ROAD}" stroke-width="2.5" fill="none"><path d="M0 58 H375"/><path d="M0 150 H375"/><path d="M64 0 V230"/><path d="M262 0 V230"/><path d="M0 214 L375 26"/></g>` +
+    '<g fill="#8c8f7a"><rect x="76" y="68" width="38" height="28"/><rect x="274" y="160" width="48" height="34"/><rect x="118" y="164" width="34" height="24"/><rect x="300" y="70" width="30" height="22"/></g>' +
+    (job ? `<path d="M148 92 l0 -5 l3 0 l1 2" fill="none" stroke="${PAINT}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` : '')
+  const me = (x, y, r) =>
+    (r ? `<circle cx="${x}" cy="${y}" r="${r}" fill="${BLUE}" fill-opacity=".15" stroke="${BLUE}" stroke-width="1"/>` : '') +
+    `<circle cx="${x}" cy="${y}" r="10" fill="#fff"/><circle cx="${x}" cy="${y}" r="7" fill="${BLUE}"/>`
+  const dashed = `<circle cx="190" cy="112" r="96" fill="${BLUE}" fill-opacity=".18" stroke="${BLUE}" stroke-width="2" stroke-dasharray="6 6"/>`
+  const wash = `<rect width="375" height="230" fill="${BLUE}" fill-opacity=".15"/>`
+  const VIEWS = {
+    start: street(true),
+    sure: street(true) + line(false) + me(210, 142, 9),
+    weak: street(true) + line(true) + me(228, 160, 46),
+    'rough-today': street(false) + wash + me(187, 115, 0),
+    'rough-pick': wide(true) + dashed,
+    'place-today': street(false) + me(187, 115, 0),
+    'place-pick': street(true) + line(false) + me(212, 140, 0),
+    'way-line': street(true) + line(false),
+    'way-sure': street(true) + line(false) + me(172, 176, 9),
+    'way-weak': street(true) + line(false) + me(172, 176, 46),
+    'way-rough': wide(true) + dashed,
+  }
+  document.querySelectorAll('[data-map]').forEach((el) => {
+    el.insertAdjacentHTML('afterbegin', `<svg viewBox="0 0 375 230" preserveAspectRatio="xMidYMid slice" role="img" aria-label="A made-up view from above">${VIEWS[el.dataset.map] ?? ''}</svg>`)
+  })
+</script>
+</body>
+</html>
