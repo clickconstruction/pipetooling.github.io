@@ -2,7 +2,7 @@
 name: "Where an outside signer lives: a paper names a contact the app already keeps, and says who signs"
 number: 403
 group: waiting
-status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1: the record lives on the contact · nothing is built · five calls are left
+status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, and call 2, a business and its signer are two things · nothing is built · four calls are left
 summary: >
   The app can send a paper to anyone with a link, and it can only file one under a name on the roster.
   A supply house, a vendor, a customer's contact or a sub's business has no record that holds a paper,
@@ -11,10 +11,10 @@ summary: >
   names a contact. Messages already keeps one contact for every customer, every person at a customer,
   every supply house and its reps, every sub and every trade company. The paper points at that contact
   as the party and keeps the signer's name, title and email in its own row. No new list is made, and
-  People keeps everything it has. The owner took that pick on 2026-11-19. Nothing is built, and five calls are left at the foot.
-next: The owner's five calls that are left, the next being whether a business and its signer are two things. Then PR 1, the ground, which changes no screen.
+  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. Nothing is built, and four calls are left at the foot.
+next: The owner's four calls that are left, the next being where a sub's business name lives. Then PR 1, the ground, which changes no screen.
 size: L as a train of five (M · S · M · S · S)
-blocker: Calls 2 and 4. Call 2 shapes the signer's columns and call 4 says who reads, and PR 1 writes both. Calls 3, 5 and 6 shape later steps.
+blocker: Call 4. It says who reads an outside party's paper, and PR 1 writes that. Calls 3, 5 and 6 shape later steps.
 opinion: build option D — one link from the paper to a record the app already keeps for every kind of outside party, with the signer's name and email kept on the paper; it costs one column where the other options cost a new list or a new link per kind
 ---
 
@@ -301,9 +301,9 @@ Each is one question. The session's pick is first.
 1. **Where does an outside signer's record live?** **Settled 2026-11-19: on the contact the app already
    keeps (D).** Shown the four options and the mock-up, he answered "On the contact". Not taken: on each
    record with a link per kind (B), a new list of outside parties (A), on People (C).
-2. **Are a business and the person who signs for it two things?**
-   **Yes. The business is the party, and the signer is a name, a title and an email kept on the paper.**
-   Or one thing: the paper is with the person, and the business is a typed line.
+2. **Are a business and the person who signs for it two things?** **Settled 2026-11-19: yes.** The
+   business is the party, and the signer is a name, a title and an email kept on the paper. He answered
+   "Yes, two things". Not taken: one thing, the paper with the person and the business a typed line.
 3. **Where does a sub's business name live?**
    **One line on the sub's People row, Signs for.** Or every sub's business becomes a company record of
    its own, with its workers under it.
@@ -320,5 +320,5 @@ Each is one question. The session's pick is first.
 ## Where it stands
 
 Nothing is built. The map, the counts, the four options and the pick are above. The mock-up draws the
-pick and was redrawn once. The owner settled call 1 on 2026-11-19: the record lives on the contact. Calls
-2 to 6 are open. PR 1 waits on calls 2 and 4.
+pick and was redrawn once. The owner settled two calls on 2026-11-19. Call 1: the record lives on the contact.
+Call 2: a business and its signer are two things. Calls 3 to 6 are open. PR 1 waits on call 4.
