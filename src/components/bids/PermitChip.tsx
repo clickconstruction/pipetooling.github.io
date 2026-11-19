@@ -38,7 +38,7 @@ export function PermitNewsChip({ bidId, news }: { bidId: string; news: PermitNew
         e.stopPropagation()
         news.onOpen(bidId)
       }}
-      style={{ ...chipStyle, ...CHIP_TONES[chip.tone], font: 'inherit', fontSize: '0.72rem', fontWeight: 600, border: '1px solid currentColor', cursor: 'pointer' }}
+      style={{ ...chipStyle, ...CHIP_TONES[chip.tone], fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: 600, border: '1px solid currentColor', cursor: 'pointer' }}
     >
       {chip.words} ›
     </button>
