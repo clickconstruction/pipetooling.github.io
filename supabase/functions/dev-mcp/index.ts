@@ -36,7 +36,7 @@ import { newTaskSend } from '../_shared/gcKernels/lib/tasks/newTaskSend.ts'
 import { readTaskPlaceWorld, taskPlaceAppliedWords, taskPlaceDryRun, taskPlacePatch, type TaskPlacePayload } from '../_shared/devMcpTaskPlace.ts'
 import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
 import { TASK_PHOTO_MIME, TASK_PHOTO_STAGING_BUCKET, TASK_PHOTO_UPLOAD_HOW, TASK_SPOT_PHOTOS_BUCKET, readTaskPhotoWorld, stagedPhotoProblem, taskPhotoAppliedWords, taskPhotoDryRun, taskPhotoStagePath, taskSpotPhotoPath, type TaskPhotoPayload } from '../_shared/devMcpTaskPhoto.ts'
-import { PAY_PERSON_SELECT, PAY_USER_SELECT, payLogRow, paySetupAppliedWords, paySetupDryRun, readPaySetupWorld, resolvePaySetup, setPayConfigArgs, workdayTemplateRow, type PayPersonRow, type PaySetupPayload, type PaySetupReads, type PaySetupStep, type PayUserRow } from '../_shared/devMcpPaySetup.ts'
+import { PAY_PERSON_SELECT, PAY_USER_SELECT, payLogRow, paySetupAppliedWords, paySetupDryRun, readPaySetupWorld, resolvePaySetup, setPayConfigArgs, WORKDAY_TEMPLATE_HOURS, workdayTemplateRow, type PayPersonRow, type PaySetupPayload, type PaySetupReads, type PaySetupStep, type PayUserRow } from '../_shared/devMcpPaySetup.ts'
 import { TASK_CLOSE_RPC, readTaskCloseWorld, taskCloseAppliedWords, taskCloseDryRun, type TaskClosePayload } from '../_shared/devMcpTaskClose.ts'
 import { TRIP_TABLE_COLUMNS, isTripVerb, prepareTripWrite, readTrips, tripAppliedWords, tripArgsForLog, tripPlanWords, type TripPrepared } from '../_shared/devMcpTrips.ts'
 import { PAYMENT_LINK_RPC, PAYMENT_REMOVE_RPC, PAY_ROW_COLS, jobPaymentAppliedWords, jobStatusWords, jobPaymentDryRun, payJobLabel, paymentInsertRow, paymentLine, paymentLinkRpcBody, paymentNoteBody, paymentWordsPatch, readJobPaymentWorld, type JobPaymentPayload, type JobPaymentReads, type PayRow } from '../_shared/devMcpJobPayment.ts'
@@ -437,8 +437,10 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // and after with the reason, which the desk's upsert never did; the dates and the workday start get a line there too.
 // The app keeps no effective date and no wage history, so the plan says what the change reaches back into: the weeks
 // with no pay report that payroll catch-up will show, the crew days job labor re-prices, the pay reports that keep
-// their stored amounts, the clock. A salaried day's length is read in one place (salariedDayHoursOf: 8 hours today, the
-// pay row's own day once that column is on main), and a workday of another length is refused, never stored.
+// their stored amounts, the clock. Since v2.7882 the plan reads the person's salaried week from the pay row
+// (people_pay_config.salaried_week_hours, v2.7826) with the app's own rule, salariedWeekOf, and prices with it: the
+// weekly figure, the payroll credit, the job labor words. The seat does not set the week. The workday template is still
+// one 480-minute block for everyone, so a workday of another length is refused, never stored.
 // plan_account's refusal of pay on a person who exists now names this pair. No wrapper RPC, no migration (_shared/devMcpPaySetup.ts).
 // 0.103.0 (v2.7837, numbered behind v2.7821's 0.102.0; the owner, 2026-11-18, with two clerks' stamped stacks in hand,
 // every lien in them on record already: "help me file them carefully, testing along the way"): plan_lien_filing no
@@ -717,7 +719,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_pay_setup',
-    description: "Dry-run a change to the pay setup of a person who already exists (v2.7821), as People → their sheet → Pay & schedule saves it: pay = { person (a users.id, a people.id, an address or a name), reason (one line, kept on the pay log), and one or more of hourly_wage, office_hourly_wage (a number, or null to clear), is_salary, record_hours_but_salary (also record real punches), start_date, end_date (YYYY-MM-DD or null, the employment dates on the roster row), workday_start (HH:MM, the salaried day's start) }. The app holds a salary as an hourly wage with Salaried on: a flat 8 hours on each weekday today, so a weekly amount is ÷ 40. A person's own day length is not on the pay row yet: workday_hours or workday_end may name the workday's length, and one that is not the person's salaried day is refused, never stored. It keeps no effective date and no wage history, so the plan says what the change reaches back into before anything is written: before and after for each field and what a salaried wage comes to a week; how many weeks have no pay report and how many of them payroll catch-up will show as unreported (every one, with Salaried on and no start date); how many past crew days job labor re-prices, which a start date does not shield; that pay reports already made keep their stored amounts; whether a workday template stands and what changes on the person's clock. Replies with the writes in order and a plan_hash; the plan commits to the pay row, the dates and the template as read, so a save by anyone since refuses the apply. A new person's pay goes with plan_account (new).",
+    description: "Dry-run a change to the pay setup of a person who already exists (v2.7821), as People → their sheet → Pay & schedule saves it: pay = { person (a users.id, a people.id, an address or a name), reason (one line, kept on the pay log), and one or more of hourly_wage, office_hourly_wage (a number, or null to clear), is_salary, record_hours_but_salary (also record real punches), start_date, end_date (YYYY-MM-DD or null, the employment dates on the roster row), workday_start (HH:MM, the salaried day's start) }. The app holds a salary as an hourly wage with Salaried on, paid over the person's salaried week on the pay row (salaried_week_hours: the hours of each day, 8 on Monday to Friday unless it names another), so a weekly amount is ÷ the week's hours, 40 by default. The plan reads the week and prices with it (salaried_week); the seat does not set it. The workday template is one 8-hour block for everyone: workday_hours or workday_end may name its length, and one that is not 8 hours is refused, never stored. It keeps no effective date and no wage history, so the plan says what the change reaches back into before anything is written: before and after for each field and what a salaried wage comes to a week; how many weeks have no pay report and how many of them payroll catch-up will show as unreported (every one, with Salaried on and no start date); how many past crew days job labor re-prices, which a start date does not shield; that pay reports already made keep their stored amounts; whether a workday template stands and what changes on the person's clock. Replies with the writes in order and a plan_hash; the plan commits to the pay row, the dates and the template as read, so a save by anyone since refuses the apply. A new person's pay goes with plan_account (new).",
     inputSchema: { type: 'object', properties: { pay: { type: 'object', description: '{ person, reason, hourly_wage?, office_hourly_wage?, is_salary?, record_hours_but_salary?, start_date?, end_date?, workday_start? }' } }, required: ['pay'] },
   },
   {
@@ -4952,10 +4954,10 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         const t = ops.template
         await run('workday_template', async () => {
           const r = t.kind === 'insert'
-            ? await restRows(session, 'POST', 'salary_work_schedule_templates', 'on_conflict=user_id', workdayTemplateRow(ops.userId!, t.start, APP_CALENDAR_TZ, ops.dayHours), 'resolution=merge-duplicates,return=representation')
+            ? await restRows(session, 'POST', 'salary_work_schedule_templates', 'on_conflict=user_id', workdayTemplateRow(ops.userId!, t.start, APP_CALENDAR_TZ), 'resolution=merge-duplicates,return=representation')
             : await restRows(session, 'PATCH', 'salary_work_schedule_templates', `user_id=eq.${ops.userId}`, { segment_a_start_local: `${t.start}:00` }, 'return=representation')
           const landed = r.ok && rowsOf(r.body) === 1
-          return { ok: landed, words: landed ? `the workday is ${ops.dayHours} hours from ${t.start}.` : `the workday template was not written: ${r.ok ? 'RLS let no row through' : fnWords(r)}` }
+          return { ok: landed, words: landed ? `the workday is ${WORKDAY_TEMPLATE_HOURS} hours from ${t.start}.` : `the workday template was not written: ${r.ok ? 'RLS let no row through' : fnWords(r)}` }
         })
       }
       if (ops.sync && ops.userId) {
