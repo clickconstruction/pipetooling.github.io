@@ -87,14 +87,30 @@ describe('Builders, Our bids', () => {
     draw()
     expect(await screen.findByText('4 priced, 2 won')).toBeTruthy()
     const sheet = await openSheet('Ridgeway Builders of Texas LLC')
-    expect(within(sheet).getByText('Our bids: 4 priced, 2 won, the last on Oct 14. Plumber they use: not named on the permits.')).toBeTruthy()
+    // No builder's permits in this city name a plumber, so the sheet says nothing of one.
+    expect(within(sheet).getByText('Our bids: 4 priced, 2 won, the last on Oct 14.')).toBeTruthy()
     expect(within(sheet).getByText('1 of them is with Ridgeway Builders, tied to this name by a person’s word.')).toBeTruthy()
   })
 
   it('says it on a phone card too', async () => {
     answersIo.loadBuilderAnswersGround.mockResolvedValue(ground([tie()], [bid('b1')]))
     draw(true)
-    expect(await screen.findByText('Our bids: 1 priced, none won · Plumber: not named on the permits')).toBeTruthy()
+    expect(await screen.findByText('Our bids: 1 priced, none won')).toBeTruthy()
+  })
+
+  it('draws the plumber column only where some builder’s permits name a plumber', async () => {
+    // Nobody named: no column on the desk, and the phone card and the sheet say nothing of a plumber.
+    draw()
+    await screen.findByText('Ridgeway Builders of Texas LLC')
+    expect(screen.queryByRole('columnheader', { name: 'Plumber they use' })).toBeNull()
+    expect(screen.queryByText(/not named on the permits/)).toBeNull()
+    cleanup()
+    // One builder's permits name a plumber: the column is back, and the other builder reads not named.
+    research.loadBuilders.mockResolvedValue([builder(), builder({ key: 'tallpine', sample_contact: 'Tall Pine Development', plumber: 'Blue Heron Plumbing', plumber_jobs: 2 })])
+    draw()
+    expect(await screen.findByRole('columnheader', { name: 'Plumber they use' })).toBeTruthy()
+    expect(screen.getByText('Blue Heron Plumbing on 2')).toBeTruthy()
+    expect(screen.getByText('not named on the permits')).toBeTruthy()
   })
 
   it('reads the same-name count alone before the answers table is on the database, and draws no section on the sheet', async () => {

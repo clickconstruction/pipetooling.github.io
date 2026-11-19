@@ -29,6 +29,7 @@ import {
   stripCounts,
   placeOf,
   plumberUsedWords,
+  cityNamesPlumbers,
   pursueReason,
   pursuingRows,
   skimBuilderContext,
@@ -168,6 +169,10 @@ describe('builders', () => {
     expect(ourBidsWords(builder({ bids: 2, won: 0 }))).toBe('2 priced, none won')
     expect(ourBidsWords(builder({ bids: 0, won: 0 }))).toBe('never')
     expect(plumberUsedWords(builder())).toBe('Blue Heron Plumbing on 2')
+    // The column is drawn only where some builder's permits name a plumber.
+    expect(cityNamesPlumbers([builder({ plumber: null, plumber_jobs: 0 }), builder()])).toBe(true)
+    expect(cityNamesPlumbers([builder({ plumber: null, plumber_jobs: 0 }), builder({ plumber: '  ', plumber_jobs: 0 })])).toBe(false)
+    expect(cityNamesPlumbers([])).toBe(false)
     expect(plumberUsedWords(builder({ plumber: null, plumber_jobs: 0, permits: 2, open: 2 }))).toBe('nobody yet')
     // A plumbing permit under the applicant's own name: taken, and the feed cannot say by whom.
     expect(plumberUsedWords(builder({ plumber: null, plumber_jobs: 0, permits: 4, open: 2 }))).toBe('not named on the permits')
