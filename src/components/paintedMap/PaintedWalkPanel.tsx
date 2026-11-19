@@ -7,7 +7,8 @@ import type { CSSProperties } from 'react'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { aboutLengthWords } from '../../lib/paintedMap/paintedMap'
 import { canResumeWalk, walkSure, type WalkState } from '../../lib/paintedMap/paintedWalk'
-import { WALK_CANNOT_STAY_AWAKE_WORDS, WALK_ROUGH_WORDS, walkPausedWords, walkPoorWords, walkRefusalWords, walkSureWords, type WalkRefusal } from '../../lib/paintedMap/paintedWalkWords'
+import { WALK_CANNOT_STAY_AWAKE_WORDS, walkPausedWords, walkRefusalWords, type WalkRefusal } from '../../lib/paintedMap/paintedWalkWords'
+import { PreciseLineView, usePreciseWords } from './PreciseLocationLine'
 
 type Props = {
   state: WalkState
@@ -34,6 +35,7 @@ const amber: CSSProperties = { margin: 0, fontSize: '0.875rem', color: 'var(--te
 
 export function PaintedWalkPanel({ state, refusal, awake, lengthM, placeCount, hasLine, onPlace, onPause, onResume, onTryAgain, onDone, onDrawInstead }: Props) {
   const sure = walkSure(state)
+  const precise = usePreciseWords(state.status === 'painting' ? sure.accuracyM : null)
   const painting = state.status === 'painting'
   const doneStyle = hasLine || placeCount > 0 ? bluePress : deadPress
 
@@ -52,17 +54,10 @@ export function PaintedWalkPanel({ state, refusal, awake, lengthM, placeCount, h
     )
   }
 
-  if (painting && state.rough) {
+  if (painting && precise.state === 'rough') {
     return (
       <div data-painted-walk="rough" style={{ display: 'grid', gap: '0.6rem' }}>
-        <div role="alert" style={amber}>
-          <b>{WALK_ROUGH_WORDS.lead}</b> {WALK_ROUGH_WORDS.tail}
-          <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.1rem', display: 'grid', gap: '0.2rem' }}>
-            {WALK_ROUGH_WORDS.steps.map((s) => (
-              <li key={s}>{s}</li>
-            ))}
-          </ul>
-        </div>
+        <PreciseLineView words={precise} accuracyM={sure.accuracyM} roughNote="A line cannot be painted from a reading that wide." />
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button type="button" style={press} onClick={onPause}>Pause</button>
           <button type="button" style={bluePress} onClick={onDrawInstead}>Draw it by hand instead</button>
@@ -78,12 +73,6 @@ export function PaintedWalkPanel({ state, refusal, awake, lengthM, placeCount, h
         {hasLine ? 'so far' : 'start walking'}
         {placeCount > 0 ? ` · ${placeCount} place${placeCount === 1 ? '' : 's'}` : ''}
       </span>
-      {painting ? (
-        <span data-painted-sure={sure.poor ? 'poor' : 'ok'} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.8125rem', fontWeight: 700, color: sure.poor ? 'var(--text-amber-800)' : sure.accuracyM == null ? 'var(--text-muted)' : 'var(--text-green-700)' }}>
-          <span aria-hidden style={{ width: 9, height: 9, borderRadius: '50%', background: sure.poor ? '#d97706' : sure.accuracyM == null ? 'var(--border-strong)' : '#16a34a' }} />
-          {walkSureWords(sure.accuracyM)}
-        </span>
-      ) : null}
     </div>
   )
 
@@ -91,7 +80,7 @@ export function PaintedWalkPanel({ state, refusal, awake, lengthM, placeCount, h
     return (
       <div data-painted-walk="painting" style={{ display: 'grid', gap: '0.6rem' }}>
         {readout}
-        {sure.poor ? <p role="status" style={amber}>{walkPoorWords(sure.accuracyM)} Fix it by hand when you look the line over.</p> : null}
+        <PreciseLineView words={precise} weakNote="This part is drawn faint. Fix it by hand when you look the line over." />
         {awake === 'cannot' ? <p role="status" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{WALK_CANNOT_STAY_AWAKE_WORDS}</p> : null}
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button type="button" data-painted-walk-place style={press} onClick={onPlace}>＋ Place</button>

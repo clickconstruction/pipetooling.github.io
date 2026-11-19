@@ -19,9 +19,12 @@ import { directionsUrlForPoint } from '../lib/directionsUrl'
 import { lineLengthWords, mapLengthMeters, aboutLengthWords } from '../lib/paintedMap/paintedMap'
 import { PAINTED_MAP_LINK_WORDS, PAINTED_MAP_VISITOR_NAME_MAX, linkEndsWords, paintedMapLinkCode, paintedMapVisitorName, sharedLineForCanvas, sharedPlacesForCanvas } from '../lib/paintedMap/paintedMapLink'
 import { paintedWayIo, type PaintedWayAsk, type PaintedWayIo, type PaintedWayView } from '../lib/paintedMap/paintedMapLinkIo'
-import { WAY_LENGTH_GUIDE_WORDS, WAY_NAME_WORDS, WAY_PRIVACY_WORDS, rememberWayName, wayDeviceId, wayIsSeenWords, wayKeptWords, wayLineUnderWords, wayNearMap, wayNoFixWords, wayOpenedAsWords, wayPointIsDue, wayRememberedName, wayScreenWords, wayWillSeeWords, wayWords } from '../lib/paintedMap/paintedWay'
+import { WAY_FRAME_METERS, WAY_LENGTH_GUIDE_WORDS, WAY_NAME_WORDS, WAY_PRIVACY_WORDS, rememberWayName, wayDeviceId, wayIsSeenWords, wayKeptWords, wayLineUnderWords, wayNearMap, wayNoFixWords, wayOpenedAsWords, wayPointIsDue, wayRememberedName, wayScreenWords, wayWillSeeWords, wayWords } from '../lib/paintedMap/paintedWay'
 import { SAMPLE_PAINTED_WAY, SAMPLE_PAINTED_WAY_COMPANY } from '../lib/paintedMap/paintedWaySample'
 import { PaintedPlaceMark } from '../components/paintedMap/PaintedPlaceMark'
+import { PreciseSteps, Tick, usePreciseWords } from '../components/paintedMap/PreciseLocationLine'
+import { isRoughFix } from '../lib/paintedMap/paintedTrack'
+import { marginWords, roughCircleWords, wayRoughWords } from '../lib/paintedMap/preciseLocation'
 import { PAINT_COLOR } from '../components/paintedMap/paintedMapLook'
 import { CARD, HAIR, INK, MUTED, NOTE_BAND, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
 
@@ -181,6 +184,10 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
   // Near the map, the picture holds the reader and the map together. Across town it stays on the map, and the words say how far.
   const near = useMemo(() => (me ? wayNearMap(me, [...lines.flatMap((l) => l.points), ...places]) : false), [me, lines, places])
   const where = me ? wayWords(me, lines, start) : null
+  // How the reader's phone is doing: sure, a weak signal, or only an area. A rough reading is an area, and is drawn and worded as one.
+  const precise = usePreciseWords(showMe ? (me?.accuracyM ?? null) : null)
+  const rough = !!me && isRoughFix(me.accuracyM)
+  const roughNear = useMemo(() => (me && rough ? wayNearMap(me, [...lines.flatMap((l) => l.points), ...places], WAY_FRAME_METERS + (me.accuracyM ?? 0)) : false), [me, rough, lines, places])
   // Whoever sent the map, for the words that say who sees what. The sample's reader is seen by nobody.
   const sentBy = view.kind === 'open' || view.kind === 'name' ? view.company.name : ''
   const visitor = view.kind === 'open' ? (view.visitor ?? null) : null
@@ -268,7 +275,7 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
             </div>
             <div style={{ marginTop: 12, position: 'relative' }}>
               <Suspense fallback={<p style={{ ...pad, color: MUTED }}>Loading the map…</p>}>
-                <PaintedMapCanvasLazy lines={lines} places={places} height={360} me={me} frameMe={showMe && near} onTilesFailed={() => setMapFailed(true)} onPlaceTap={(id) => document.getElementById(`way-place-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
+                <PaintedMapCanvasLazy lines={lines} places={places} height={360} me={me} frameMe={showMe && (rough ? roughNear : near)} frameMargin={showMe && rough && roughNear} onTilesFailed={() => setMapFailed(true)} onPlaceTap={(id) => document.getElementById(`way-place-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })} />
               </Suspense>
             </div>
             <div style={pad}>
@@ -287,12 +294,26 @@ export default function PaintedWay({ io = paintedWayIo }: { io?: PaintedWayIo })
               {noFix ? <p role="status" style={{ ...tiny, margin: '8px 0 0' }}>{noFix}</p> : null}
               {showMe ? (
                 <div role="status" data-way-where style={{ marginTop: 10, borderRadius: 10, padding: '10px 12px', background: NOTE_BAND, border: `1px solid ${HAIR}` }}>
-                  {where ? (
-                    <>
-                      <b>{where.lead}</b> {where.sure}
-                    </>
-                  ) : (
+                  {!where || precise.state === 'finding' ? (
                     'Finding you…'
+                  ) : precise.state === 'rough' ? (
+                    <div data-way-rough>
+                      <b>{wayRoughWords(me?.accuracyM, precise.kind).lead}</b> {wayRoughWords(me?.accuracyM, precise.kind).tail} {roughNear ? roughCircleWords(me?.accuracyM) : null}
+                      <div style={{ marginTop: 8 }}>{wayRoughWords(me?.accuracyM, precise.kind).ask}</div>
+                      <PreciseSteps kind={precise.kind} />
+                    </div>
+                  ) : (
+                    <>
+                      <b>{where.lead}</b>{' '}
+                      {precise.state === 'weak' ? (
+                        `The signal is weak here. Your phone is only sure ${marginWords(me?.accuracyM)}.`
+                      ) : (
+                        <span data-way-sure style={{ display: 'inline-flex', alignItems: 'center', gap: 6, verticalAlign: 'bottom' }}>
+                          <Tick />
+                          {where.sure}
+                        </span>
+                      )}
+                    </>
                   )}
                   <div style={{ ...tiny, marginTop: 6 }}>{sample ? WAY_PRIVACY_WORDS : wayIsSeenWords(sentBy)}</div>
                 </div>

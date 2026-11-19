@@ -23,8 +23,8 @@ export const WAY_FRAME_METERS = 2000
  * stays on the map and the words say how far the start is: a map zoomed out to hold a reader
  * across town shows neither the line nor where they stand.
  */
-export function wayNearMap(me: PaintedPoint, points: ReadonlyArray<PaintedPoint>): boolean {
-  return points.some((p) => haversineMeters(me, p) <= WAY_FRAME_METERS)
+export function wayNearMap(me: PaintedPoint, points: ReadonlyArray<PaintedPoint>, withinM: number = WAY_FRAME_METERS): boolean {
+  return points.some((p) => haversineMeters(me, p) <= withinM)
 }
 
 /** The reader's dot stays on their phone. Said under it, every time. */

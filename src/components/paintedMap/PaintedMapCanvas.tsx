@@ -34,6 +34,7 @@ import type { MapLayerChoice } from '../../lib/map/googleMapType'
 import { MapTimeRow } from '../map/MapTimeRow'
 import { MapViewControl } from '../map/MapViewControl'
 import { placeMarkHtml, placeMarkSize, placeSaysWords } from '../../lib/paintedMap/paintedPlaceKind'
+import { isRoughFix } from '../../lib/paintedMap/paintedTrack'
 import { boundsOfPoints, lineRuns, metersPerPixel, snapTarget, type PaintedPart, type PaintedPoint, type SnapTarget } from '../../lib/paintedMap/paintedLine'
 
 export type PaintedCanvasLine = { id: string; points: PaintedPoint[]; poorParts: ReadonlyArray<PaintedPart>; how: PaintedLineHow }
@@ -81,6 +82,11 @@ type Props = {
   frameMe?: boolean
   /** Keep the person in view as they move: the map slides to them when they near its edge. For a walk being painted. */
   follow?: boolean
+  /**
+   * Show how sure the phone is, to scale: a rough reading pulls the map back until its whole circle is in the picture
+   * (with `points`, the map's own, when the caller hands them), and the first sure reading after brings it in to the person.
+   */
+  frameMargin?: boolean
   onPlaceTap?: (id: string) => void
   /** A picture, not a control: no drag, no zoom, no buttons. */
   still?: boolean
@@ -239,6 +245,35 @@ function Follow({ me }: { me: PaintedPoint }) {
     const inside = at.x > margin && at.x < size.x - margin && at.y > margin && at.y < size.y - margin
     if (!inside) map.panTo([me.lat, me.lng], { animate: true, duration: 0.4 })
   }, [map, me.lat, me.lng])
+  return null
+}
+
+/**
+ * How sure the phone is, to scale. A rough reading is an area, so the map pulls back until the whole circle shows:
+ * the picture of what the phone knows. The first sure reading, and the first after a rough one, brings the map in to
+ * the person, where the small circle around the dot can be seen. Between those the view is the person's own.
+ */
+function FrameMargin({ me, points }: { me: PaintedPoint & { accuracyM: number | null }; points?: ReadonlyArray<PaintedPoint> }) {
+  const map = useMap()
+  const was = useRef<'none' | 'rough' | 'sure'>('none')
+  const latest = useRef(points)
+  latest.current = points
+  const rough = isRoughFix(me.accuracyM)
+  const radius = rough ? (me.accuracyM as number) : 0
+  const { lat, lng } = me
+  useEffect(() => {
+    if (rough) {
+      was.current = 'rough'
+      const dLat = radius / 111_195
+      const dLng = radius / (111_195 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)))
+      const b = boundsOfPoints([...(latest.current ?? []), { lat: lat - dLat, lng: lng - dLng }, { lat: lat + dLat, lng: lng + dLng }])
+      if (b) map.fitBounds([[b.south, b.west], [b.north, b.east]], { padding: [28, 28], animate: false })
+      return
+    }
+    const before = was.current
+    was.current = 'sure'
+    if (before === 'rough' || (before === 'none' && map.getZoom() < 16)) map.setView([lat, lng], 18, { animate: false })
+  }, [map, rough, radius, lat, lng])
   return null
 }
 
@@ -577,7 +612,7 @@ function GlassSpot({ live, host, children }: { live: Live; host: HTMLElement; ch
   )
 }
 
-export default function PaintedMapCanvas({ lines, places, height, start, draft, dot, flyTo, me, follow, refit, frameMe, onPlaceTap, still, time: timeAsk, onTilesFailed, onGlass, onView }: Props) {
+export default function PaintedMapCanvas({ lines, places, height, start, draft, dot, flyTo, me, follow, frameMargin, refit, frameMe, onPlaceTap, still, time: timeAsk, onTilesFailed, onGlass, onView }: Props) {
   const isMobile = useIsMobile()
   const [layer, setLayer] = useState<MapLayerChoice>('satellite')
   const [live, setLiveState] = useState<Live | null>(null)
@@ -653,13 +688,15 @@ export default function PaintedMapCanvas({ lines, places, height, start, draft, 
         <FlyTo to={flyTo} />
         {onView ? <ViewTracker onView={onView} /> : null}
         {follow && me ? <Follow me={me} /> : null}
+        {frameMargin && me ? <FrameMargin me={me} points={frameMe ? [...lines.flatMap((l) => l.points), ...places] : undefined} /> : null}
         {refit != null ? <Refit token={refit} points={[...lines.flatMap((l) => l.points), ...places]} /> : null}
         {frameMe && me ? <FrameMe me={me} points={[...lines.flatMap((l) => l.points), ...places]} /> : null}
         <Shapes lines={lines} places={places} draftPoints={draftShown} onPlaceTap={draft || dot ? undefined : onPlaceTap} />
         {me ? (
           <>
-            {me.accuracyM != null ? <Circle center={ll(me)} radius={me.accuracyM} pathOptions={{ color: ME_BLUE, weight: 1, fillColor: ME_BLUE, fillOpacity: 0.15 }} interactive={false} /> : null}
-            <Marker position={ll(me)} icon={ME_ICON} interactive={false} title="You" />
+            {me.accuracyM != null ? <Circle center={ll(me)} radius={me.accuracyM} pathOptions={isRoughFix(me.accuracyM) ? { color: ME_BLUE, weight: 2, dashArray: '6 6', fillColor: ME_BLUE, fillOpacity: 0.18 } : { color: ME_BLUE, weight: 1, fillColor: ME_BLUE, fillOpacity: 0.15 }} interactive={false} /> : null}
+            {/* A rough reading is an area, not a spot: the circle is drawn and no dot claims its middle. */}
+            {isRoughFix(me.accuracyM) ? null : <Marker position={ll(me)} icon={ME_ICON} interactive={false} title="You" />}
           </>
         ) : null}
         {draft ? <DraftLayer draft={draft} setLive={setLive} coarse={coarse} /> : null}

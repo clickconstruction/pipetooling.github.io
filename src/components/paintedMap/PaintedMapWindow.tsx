@@ -73,7 +73,8 @@ import {
   type PaintedMapWhole,
 } from '../../lib/paintedMap/paintedMapIo'
 import type { PaintedPoint, SnapTarget } from '../../lib/paintedMap/paintedLine'
-import { clockWords, strokeMarginMeters } from '../../lib/paintedMap/paintedTrack'
+import { clockWords, isRoughFix, strokeMarginMeters } from '../../lib/paintedMap/paintedTrack'
+import { roughCircleWords } from '../../lib/paintedMap/preciseLocation'
 import { walkHasLine, walkPause, walkPaintedMs, walkStrokes, type WalkState, type WalkStroke } from '../../lib/paintedMap/paintedWalk'
 import { lineLengthMeters } from '../../lib/paintedMap/paintedLine'
 import { haversineMeters } from '../../lib/jobTravelEstimate'
@@ -201,6 +202,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const [mapFailed, setMapFailed] = useState(false)
   const [fly, setFly] = useState<PaintedPoint | null>(null)
   const [finding, setFinding] = useState(false)
+  /** The last Put the dot where I am got an area, not a spot: its margin, for the words. */
+  const [roughFix, setRoughFix] = useState<number | null>(null)
   const [measuring, setMeasuring] = useState<{ lineId: string; text: string; how: PaintedMeasuredHow } | null>(null)
   const [renaming, setRenaming] = useState<{ name: string; words: string } | null>(null)
   // A map on no job is found only by its name: its maker or the office can put it on a job.
@@ -531,6 +534,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     setMode(placeReturn === 'review' && added && pending.length === 0 ? 'view' : placeReturn)
     setPlaceReturn('view')
     setPlacing(null)
+    setRoughFix(null)
     setGlass(null)
   }
   const putDotWhereIAm = () => {
@@ -539,6 +543,12 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     requestMyLocation(
       (p) => {
         setFinding(false)
+        // A rough reading is an area. The dot stays where the painter had it, and the panel says why.
+        if (isRoughFix(p.accuracyM)) {
+          setRoughFix(p.accuracyM)
+          return
+        }
+        setRoughFix(null)
         setPlacing((pl) => (pl ? { ...pl, point: { lat: p.lat, lng: p.lng }, fix: p } : pl))
         setFly({ lat: p.lat, lng: p.lng })
       },
@@ -850,8 +860,13 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
           <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: phone ? 'column' : 'row' }}>
             <div style={{ flex: phone ? '1 1 46%' : '1 1 60%', minHeight: phone ? 260 : 420, minWidth: 0, position: 'relative' }}>
               <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
-                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={setPickedPlace} time={mode === 'view' ? { name: title } : null} />
+                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} frameMargin={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={setPickedPlace} time={mode === 'view' ? { name: title } : null} />
               </Suspense>
+              {mode === 'walk' && painting && walkMe && isRoughFix(walkMe.accuracyM) ? (
+                <div data-painted-rough-circle style={{ position: 'absolute', left: 8, right: 8, bottom: 26, zIndex: 600, pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
+                  <span style={{ background: 'rgba(17, 24, 39, 0.84)', color: '#fff', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.7rem', borderRadius: 999, textAlign: 'center' }}>{roughCircleWords(walkMe.accuracyM)}</span>
+                </div>
+              ) : null}
               {mode === 'place' ? (
                 <div style={{ position: 'absolute', left: 8, right: 8, bottom: 26, zIndex: 600, pointerEvents: 'none', display: 'flex', justifyContent: 'center' }}>
                   <span style={{ background: 'rgba(17, 24, 39, 0.84)', color: '#fff', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.7rem', borderRadius: 999, textAlign: 'center' }}>{glass ? 'Lift your finger to set it.' : 'Drag the blue dot onto the spot.'}</span>
@@ -898,6 +913,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                   place={placing.place}
                   photoUrl={placing.place?.photoPath ? (photoUrls.get(placing.place.photoPath) ?? null) : null}
                   accuracyM={placingAccuracy}
+                  roughAccuracyM={roughFix}
                   movedOffReading={!!placing.fix && !placingOnReading}
                   finding={finding}
                   busy={busy}

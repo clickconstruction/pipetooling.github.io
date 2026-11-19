@@ -7,7 +7,9 @@ import { createPortal } from 'react-dom'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { CostBatchJobPicker } from '../costBatches/CostBatchJobPicker'
 import { PAINTED_MAP_NAME_MAX, PAINTED_MAP_UNNAMED, PAINTED_MAP_WORDS_MAX, cleanPaintedText } from '../../lib/paintedMap/paintedMap'
-import { WALK_ASK_WORDS, WALK_BEFORE_WORDS } from '../../lib/paintedMap/paintedWalkWords'
+import { WALK_ASK_WORDS, WALK_BEFORE_WORDS, walkRefusalWords } from '../../lib/paintedMap/paintedWalkWords'
+import { useLocationCheck } from '../../hooks/useLocationCheck'
+import { PreciseLocationLine } from './PreciseLocationLine'
 import type { PaintedMapHome } from '../../lib/paintedMap/paintedMapDoor'
 import { PAINTED_MAP_SHEET_Z } from '../../lib/windowLayers'
 import type { PaintedMapToStart } from './PaintedMapWindow'
@@ -40,6 +42,7 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose }: Props) {
   // A job in a development: the map is for the job unless the painter says it is for the whole site.
   const [forSite, setForSite] = useState(!home.jobId && !!home.developmentId)
   const isTopmost = useModalStackEntry()
+  const located = useLocationCheck()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -156,6 +159,17 @@ export function PaintAMapStartSheet({ home: given, onStart, onClose }: Props) {
                 ))}
               </ul>
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{WALK_ASK_WORDS}</span>
+              <div data-paint-a-map-check-box style={{ display: 'grid', gap: '0.4rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                {located.status === 'checking' || located.status === 'done' ? (
+                  <PreciseLocationLine accuracyM={located.accuracyM} roughNote="A line cannot be painted from a reading that wide." weakNote="Step into the open before you start." />
+                ) : located.status === 'idle' ? null : (
+                  <p role="alert" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>{walkRefusalWords(located.status)}</p>
+                )}
+                <button type="button" data-paint-a-map-check disabled={located.status === 'checking'} onClick={located.check} style={{ ...quietPress, fontWeight: 600, minHeight: 40, color: located.status === 'checking' ? 'var(--text-muted)' : 'var(--text-link)' }}>
+                  {located.status === 'checking' ? 'Checking…' : located.status === 'idle' ? 'Check my location first' : 'Check again'}
+                </button>
+                {located.status === 'idle' ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>It says how sure your phone is, before you walk. Your phone is read for a few seconds and nothing is kept.</span> : null}
+              </div>
             </div>
           ) : null}
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-700)', background: 'var(--bg-muted)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>

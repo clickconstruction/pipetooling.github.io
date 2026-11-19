@@ -12,7 +12,8 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { PAINTED_PLACE_NAME_MAX, PAINTED_PLACE_WORDS_MAX, type PaintedPlace } from '../../lib/paintedMap/paintedMap'
 import { PAINTED_PLACE_KINDS, PLACE_KIND_HINT_WORDS, PLACE_WARN_COLOR, pressPlaceKindChip, type PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
 import { PAINTED_PLACE_NO_CODES_WORDS } from '../../lib/paintedMap/paintedPlacePhoto'
-import { isPoorFix } from '../../lib/paintedMap/paintedTrack'
+import { preciseWords } from '../../lib/paintedMap/preciseLocation'
+import { PreciseLineView, usePhoneKind } from './PreciseLocationLine'
 import { taskPlaceAccuracyWords } from '../../lib/tasks/taskPlace'
 import { PlaceGlyphDrawing } from './PaintedPlaceMark'
 
@@ -26,6 +27,8 @@ type Props = {
   photoUrl: string | null
   /** The phone's margin, while the dot still sits on its reading. Null once the dot was moved by hand. */
   accuracyM: number | null
+  /** The last press got a rough reading: the phone gave an area, and the dot was left where it was. */
+  roughAccuracyM?: number | null
   /** A reading was taken and the dot was then moved off it. */
   movedOffReading: boolean
   finding: boolean
@@ -55,7 +58,7 @@ function handHeld(): boolean {
   }
 }
 
-export function PaintedPlacePanel({ place, photoUrl, accuracyM, movedOffReading, finding, busy, canRemove, onUseWhereIAm, onSave, onRemove, onCancel }: Props) {
+export function PaintedPlacePanel({ place, photoUrl, accuracyM, roughAccuracyM = null, movedOffReading, finding, busy, canRemove, onUseWhereIAm, onSave, onRemove, onCancel }: Props) {
   const [name, setName] = useState(place?.name ?? '')
   const [kind, setKind] = useState<PaintedPlaceKind | null>(place?.kind ?? null)
   const [words, setWords] = useState(place?.words ?? '')
@@ -69,7 +72,7 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, movedOffReading,
   }, [shot])
 
   const sure = taskPlaceAccuracyWords(accuracyM)
-  const poor = isPoorFix(accuracyM)
+  const phone = usePhoneKind()
   const preview = shot?.previewUrl ?? (keepSaved ? photoUrl : null)
   const hasPhoto = Boolean(shot) || keepSaved
   const waiting = busy || shrinking
@@ -174,14 +177,10 @@ export function PaintedPlacePanel({ place, photoUrl, accuracyM, movedOffReading,
         <button type="button" style={finding ? deadPress : press} disabled={finding} onClick={onUseWhereIAm}>
           {finding ? 'Finding you…' : 'Put the dot where I am'}
         </button>
-        {sure && poor ? (
-          <p role="status" data-painted-place-fix="poor" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.45rem 0.6rem' }}>
-            Your phone is only sure {sure}. Drag the dot onto the spot.
-          </p>
+        {roughAccuracyM != null ? (
+          <PreciseLineView words={{ ...preciseWords(roughAccuracyM, phone), kind: phone }} accuracyM={roughAccuracyM} roughNote="The dot was not moved. Drag it onto the spot by hand, or turn the switch on and press again." />
         ) : sure ? (
-          <p role="status" data-painted-place-fix="ok" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-green-700)' }}>
-            Found you. Your phone is sure {sure}.
-          </p>
+          <PreciseLineView words={{ ...preciseWords(accuracyM, phone), kind: phone }} weakNote="Drag the dot onto the spot." />
         ) : movedOffReading ? (
           <p role="status" data-painted-place-fix="moved" style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             You moved the dot. The place is where the dot is now.
