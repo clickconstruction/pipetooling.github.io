@@ -3655,6 +3655,7 @@ A customer flagged **Pays as GC by default** (`customers.gc_pays_by_default`, v2
 judged once per GC pick, never over a saved choice).
 Set in **Edit Job → Edit tab → Bills go to** (shown once the job has a GC that is not the customer row) and on New Job under the GC picker.
 Since v2.3346 every reader follows it: GC Review and `get_gc_statement_email_payload` file a row under a GC only when the GC pays it (else the **Not billed to a GC** bucket), the portals count only what the viewer owes (`billedTo` names the other party), and the terms bar / reliability line / forecast key on the payer.
+Since v2.7956 a paper drawn again from a billed invoice follows it too: `billedInvoiceBillTo` (`src/lib/jobs/billToParty.ts`) sets the Bill to that `buildPhysicalInvoiceDocumentForBilledInvoice` prints, which read the job's customer alone before.
 
 ### Bills also go to (v2.3358)
 Who gets a **copy** of a bill beyond the party it addresses, remembered: a customer contact flagged `customer_contact_persons.gets_bill_copies` is pre-ticked on every bill sent to that customer;
