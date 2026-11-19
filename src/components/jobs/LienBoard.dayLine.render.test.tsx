@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import LienBoard from './LienBoard'
-import { buildLienBoard, type LienBoardInput } from '../../lib/jobs/lienBoard'
+import { buildLienBoard, lienBoardPick, lienBoardRiskPick, type LienBoardInput } from '../../lib/jobs/lienBoard'
 import { lienBoardLatePick } from '../../lib/jobs/lienBoardDayLine'
 import type { LienDeskEntry, LienDeskPile } from '../../lib/jobs/lienDesk'
 
@@ -75,6 +75,32 @@ describe('LienBoard · the red line has its door (the owner’s pick of 2026-11-
     cleanup()
     render(<LienBoard board={board({ notices: [notice('2118', 'printed', { earliestDeadline: '2026-11-20', daysLeft: 5, item: printed('i3') })] })} isMobile={false} columnsOnly onTile={() => {}} />)
     expect(tile().querySelector('[data-lien-board-tile-line]')).toBeNull()
+  })
+
+  it('says Show every row › while the list shows the late papers, and Show them › again under a pressed bin', () => {
+    const b = board()
+    const door = () => tile().querySelector<HTMLElement>('[data-lien-board-tile-line-door]')!
+    const { rerender } = render(<LienBoard board={b} isMobile={false} columnsOnly onTile={() => {}} onPick={() => {}} />)
+    expect(door().textContent).toBe('Show them ›')
+    expect(press()?.getAttribute('aria-pressed')).toBe('false')
+    rerender(<LienBoard board={b} isMobile={false} columnsOnly onTile={() => {}} onPick={() => {}} pick={lienBoardLatePick(b)} shown={2} />)
+    expect(door().textContent).toBe('Show every row ›')
+    expect(press()?.textContent).toBe('2 are past their day. Show every row ›')
+    expect(press()?.getAttribute('aria-pressed')).toBe('true')
+    expect(press()?.getAttribute('title')).toBe('Show every row again')
+    // The press under the bins says the same words.
+    expect(document.querySelector('[data-lien-board-pick-clear]')?.textContent).toBe('Show every row')
+    rerender(<LienBoard board={b} isMobile={false} columnsOnly onTile={() => {}} onPick={() => {}} pick={lienBoardPick(b, ['notice:in_mail'])} shown={3} />)
+    expect(door().textContent).toBe('Show them ›')
+    expect(press()?.getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('does the same for the at-risk line under its own pick', () => {
+    const b = board({ notices: [notice('2104', 'to_draft', { earliestDeadline: '2026-11-16', daysLeft: 1 })] })
+    render(<LienBoard board={b} isMobile={false} columnsOnly onTile={() => {}} onPick={() => {}} pick={lienBoardRiskPick(b)} shown={1} />)
+    expect(press()?.getAttribute('data-lien-board-tile-line-press')).toBe('risk')
+    expect(press()?.textContent).toMatch(/^1 will not make tomorrow as it stands\. Show every row ›$/)
+    expect(press()?.getAttribute('aria-pressed')).toBe('true')
   })
 
   it('is a press a thumb can hit on a phone, and the line under the bins says what the list shows', () => {

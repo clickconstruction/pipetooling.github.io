@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienBoard, lienBoardChipLate, lienBoardLatePhrase, lienBoardPickWords, lienBoardRiskPick, lienBoardRowInPick, type LienBoardInput } from './lienBoard'
-import { LIEN_BOARD_DAY_LINE_DOOR, lienBoardLatePick } from './lienBoardDayLine'
+import { buildLienBoard, lienBoardChipLate, lienBoardLatePhrase, lienBoardLeaderPick, lienBoardPick, lienBoardPickWords, lienBoardRiskPick, lienBoardRowInPick, type LienBoardInput } from './lienBoard'
+import { LIEN_BOARD_DAY_LINE_DOOR, LIEN_BOARD_DAY_LINE_DOOR_PICKED, lienBoardDayLineDoorWords, lienBoardDayLinePicked, lienBoardLatePick } from './lienBoardDayLine'
 import type { LienDeskEntry, LienDeskPile } from './lienDesk'
 import type { LienAffidavitEntry, LienAffidavitPile } from './lienDeskAffidavits'
 
@@ -113,11 +113,59 @@ describe('lienBoardLatePick — what a press on the line narrows the list to', (
     expect(lienBoardRowInPick(pick, { jobId: null, gcId: null, kind: 'notice', jobs: [{ jobId: '2118' }] })).toBe(false)
   })
 
+  it('names the line it came from, as the at-risk pick does', () => {
+    const b = lateBoard()
+    expect(lienBoardLatePick(b).line).toBe('late')
+    expect(lienBoardRiskPick(b).line).toBe('risk')
+    expect(lienBoardPick(b, ['notice:in_mail']).line).toBeUndefined()
+    expect(lienBoardLeaderPick(b, 'Sam').line).toBeUndefined()
+  })
+
   it('is empty with nothing late, and is not the at-risk pick', () => {
     const calm = build({ notices: [notice('2118', 'printed', { earliestDeadline: '2026-11-20', daysLeft: 5, item: printed('i3') })] })
     expect(lienBoardLatePick(calm).count).toBe(0)
     const b = lateBoard()
     expect(lienBoardRiskPick(b).count).toBe(0)
     expect(lienBoardLatePick(b).label).not.toBe(lienBoardRiskPick(b).label)
+  })
+})
+
+describe('the red line’s way back — Show every row while its papers are what the list shows', () => {
+  /** A notice still to send, due tomorrow: at risk, so the tile's line is the at-risk one. */
+  const riskBoard = () => build({ notices: [notice('2104', 'to_draft', { earliestDeadline: '2026-11-16', daysLeft: 1 }), notice('2111', 'printed', { ...LATE, item: printed('i2') })] })
+
+  it('says Show them, and Show every row once pressed, in the words of the press under the bins', () => {
+    expect(lienBoardDayLineDoorWords()).toBe('Show them')
+    expect(lienBoardDayLineDoorWords(false)).toBe(LIEN_BOARD_DAY_LINE_DOOR)
+    expect(lienBoardDayLineDoorWords(true)).toBe('Show every row')
+    expect(LIEN_BOARD_DAY_LINE_DOOR_PICKED).toBe(lienBoardPickWords(lienBoardLatePick(lateBoard()), 3).clear)
+  })
+
+  it('is on for the late line under the late pick, and for the at-risk line under the at-risk pick', () => {
+    const late = lateBoard()
+    expect(late.tiles[0]!.lineDestination).toEqual({ kind: 'late' })
+    expect(lienBoardDayLinePicked(late.tiles[0]!, lienBoardLatePick(late))).toBe(true)
+    const risk = riskBoard()
+    expect(risk.tiles[0]!.lineDestination).toEqual({ kind: 'risk' })
+    expect(lienBoardDayLinePicked(risk.tiles[0]!, lienBoardRiskPick(risk))).toBe(true)
+  })
+
+  it('is off with no pick, under a pressed bin, under the leader’s pick and under the other line’s pick', () => {
+    const late = lateBoard()
+    const tile = late.tiles[0]!
+    expect(lienBoardDayLinePicked(tile, null)).toBe(false)
+    expect(lienBoardDayLinePicked(tile, undefined)).toBe(false)
+    expect(lienBoardDayLinePicked(tile, lienBoardPick(late, ['notice:in_mail']))).toBe(false)
+    expect(lienBoardDayLinePicked(tile, lienBoardLeaderPick(late, 'Sam'))).toBe(false)
+    // A late line's tile under an at-risk pick left over from another board: not its own papers.
+    expect(lienBoardDayLinePicked(tile, lienBoardRiskPick(riskBoard()))).toBe(false)
+  })
+
+  it('is off for every tile whose line is no press', () => {
+    const late = lateBoard()
+    const pick = lienBoardLatePick(late)
+    expect(late.tiles.map((t) => lienBoardDayLinePicked(t, pick))).toEqual([true, false, false, false])
+    const calm = build({ notices: [notice('2118', 'printed', { earliestDeadline: '2026-11-20', daysLeft: 5, item: printed('i3') })] })
+    expect(calm.tiles.some((t) => lienBoardDayLinePicked(t, pick))).toBe(false)
   })
 })
