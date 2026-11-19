@@ -1802,7 +1802,6 @@ export default function Dashboard() {
       <DashboardMyBidsSection
         authUserId={authUser?.id}
         role={role}
-        isMobile={isMobile}
         onContentVisibleChange={setMyBidsDockHasContent}
       />
       <PhoneFold spaced fold={phoneOffice && showRecent} section="dash-reports" userId={authUser?.id} title="Recent reports" headline={recentReportsFoldHeadline(recentReportCounts)}>

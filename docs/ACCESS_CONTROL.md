@@ -2829,7 +2829,7 @@ migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_es
   **primary** defaults **collapsed** and does **not** auto-expand when reports are unread (**`RECENT_FEATURES`** **v2.494**)
 - **My Bids** section (estimator/account-manager bids);
   title **My Bids (`n`)** after load;
-  **primary** defaults **collapsed** (**`RECENT_FEATURES`** **v2.494**)
+  **primary** defaults **collapsed** at every width, a phone included since v2.7905, with **New Bid** beside the heading while folded (**`RECENT_FEATURES`** **v2.494**)
 **Unallocated bank deposits** — **Dashboard** blue banner uses **`canRoleSeeArBankUnallocatedDashboardBanner`** (**dev** + **assistant** only;
 **master_technician** does not — **`RECENT_FEATURES`** **v2.497**).
 **Quickfill** / **`/accounts-receivable`** still use **`canRoleSeeArBankUnallocatedOrgNudge`** (**dev**, **master_technician**, **assistant**;
