@@ -93,4 +93,10 @@ describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
     expect(needsYouDoor({ key: 'in-kind-credit-due' }, { role: 'dev', inKindCreditFirst: { ...first, customerId: null } }, 'dashboard')).toEqual({ kind: 'href', href: '/customers' })
     expect(needsYouDoor({ key: 'in-kind-credit-due' }, { role: 'dev' }, 'dashboard')).toEqual({ kind: 'href', href: '/customers' })
   })
+
+  it('stages-done-not-billed opens the first stage’s job in the Pipeline, and the Pipeline when there is none (punch list #397, PR 7)', () => {
+    expect(needsYouDoor({ key: 'stages-done-not-billed' }, { role: 'assistant', stagesDoneFirstJobId: 'j1' }, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=stages&jobDetail=j1' })
+    expect(needsYouDoor({ key: 'stages-done-not-billed' }, { role: 'assistant', stagesDoneFirstJobId: 'j1' }, 'quickfill')).toEqual({ kind: 'href', href: '/jobs?tab=stages&jobDetail=j1' })
+    expect(needsYouDoor({ key: 'stages-done-not-billed' }, { role: 'assistant' }, 'dashboard')).toEqual({ kind: 'href', href: '/jobs?tab=stages' })
+  })
 })

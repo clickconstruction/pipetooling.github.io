@@ -266,6 +266,20 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ inKindCreditsEnabled: true, inKindCredits: null }))).toEqual([])
   })
 
+  it('a stage at 100% that is not billed (punch list #397, PR 7): one amber billing line, gated by the flag', () => {
+    const row = (name: string, priceUsd: number, jobLabel = '#900 ZZ Test Oak') => ({ fixtureId: name, jobId: 'j1', jobLabel, name, priceUsd })
+    const one = buildNeedsYouItems(inputs({ stagesDoneEnabled: true, stagesDone: { rows: [row('Rough In', 14_400)], usd: 14_400 } }))
+    expect(one.map((i) => i.key)).toEqual(['stages-done-not-billed'])
+    expect(one[0]).toMatchObject({ severity: 'amber', kicker: 'Billing', title: 'A stage reads 100% and is not billed', figure: '$14,400', actionLabel: 'Open the job' })
+    expect(one[0]!.detail).toBe('Rough In on #900 ZZ Test Oak, $14,400. The crew put it at 100%. Open the job to bill it.')
+    const two = buildNeedsYouItems(inputs({ stagesDoneEnabled: true, stagesDone: { rows: [row('Rough In', 14_400), row('Top Out', 9_600)], usd: 24_000 } }))
+    expect(two[0]).toMatchObject({ title: '2 stages read 100% and are not billed', figure: '$24,000' })
+    expect(NEEDS_YOU_RANK['stages-done-not-billed']).toBe(40)
+    expect(buildNeedsYouItems(inputs({ stagesDoneEnabled: false, stagesDone: { rows: [row('Rough In', 14_400)], usd: 14_400 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ stagesDoneEnabled: true, stagesDone: { rows: [], usd: 0 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ stagesDoneEnabled: true, stagesDone: null }))).toEqual([])
+  })
+
   it('working jobs with no kind (punch list #238): one gray hygiene line, gated by the flag', () => {
     const one = buildNeedsYouItems(inputs({ jobKindGapsEnabled: true, jobKindGaps: { count: 1 } }))
     expect(one.map((i) => i.key)).toEqual(['jobs-no-kind'])

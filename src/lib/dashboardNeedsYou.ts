@@ -56,6 +56,7 @@ import { MAIL_SAVED_WORDS, type MailSavedNeed } from './myMail/savedForYou'
 import { STALE_COUNT_DAYS } from './materials/onSite'
 import { nudgeWords } from './research/permitBuilders'
 import { lookAlikeNudgeWords } from './research/lookAlikeWorklist'
+import { STAGES_DONE_ACTION, stagesDoneDetail, stagesDoneTitle, type StagesDone } from './needsYou/stagesDone'
 
 /**
  * Residential build, R8 · 14: the Customers line, built, counted and wired. On since R2 PR 3b (v2.5451), with the
@@ -154,6 +155,7 @@ export type NeedsYouItem = {
     | 'jobs-no-kind'
     | 'in-kind-credit-due'
     | 'projects-no-baseline'
+    | 'stages-done-not-billed'
     | 'receipts-to-chase'
     | 'line-budgets-review'
     | 'materials-count-due'
@@ -294,6 +296,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'in-kind-credit-due': 30,
   // A project with no hours baseline: the Costs tab, the Projects board and the superintendent's line read nothing (punch list #234, PR 1a).
   'projects-no-baseline': 60,
+  // Billing tier: a stage the crew put at 100% that sits on no bill (punch list #397, PR 7). Money earned and not asked for.
+  'stages-done-not-billed': 40,
   // Billing accuracy, a step under the charges themselves: a charge with no paper that no text can ask for (punch list #299).
   'receipts-to-chase': 40,
   // The owner's weekly look at the guesses (punch list #234, PR 1c): a review, not a bill.
@@ -517,6 +521,9 @@ export type NeedsYouInputs = {
   /** Working projects with no hours baseline (punch list #234, PR 1a). */
   baselineGapsEnabled?: boolean
   baselineGaps?: { count: number } | null
+  /** Stages the crew put at 100% that sit on no bill, the most money first (punch list #397, PR 7). */
+  stagesDoneEnabled?: boolean
+  stagesDone?: Pick<StagesDone, 'rows' | 'usd'> | null
   /** Card charges waiting on a receipt the text cannot get, with why (punch list #299, the step after PR 2). */
   receiptChasesEnabled?: boolean
   receiptChases?: { count: number; detail: string } | null
@@ -1180,6 +1187,21 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: "Made before baselines were written at award. Take the bid's estimate or freeze the book's hours, so the Costs tab, the Projects board and the superintendent's line have a number to read against.",
       figure: String(n),
       actionLabel: n === 1 ? 'See it' : 'See them',
+    })
+  }
+
+  // A percent offers a bill and never sends one: the press opens the job (punch list #397, PR 7).
+  if (inputs.stagesDoneEnabled && (inputs.stagesDone?.rows.length ?? 0) > 0) {
+    const d = inputs.stagesDone!
+    const n = d.rows.length
+    items.push({
+      key: 'stages-done-not-billed',
+      severity: 'amber',
+      kicker: 'Billing',
+      title: stagesDoneTitle(n),
+      detail: stagesDoneDetail(d),
+      figure: `$${Math.round(d.usd).toLocaleString('en-US')}`,
+      actionLabel: STAGES_DONE_ACTION,
     })
   }
 
