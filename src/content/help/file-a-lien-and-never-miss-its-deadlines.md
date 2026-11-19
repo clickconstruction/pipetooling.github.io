@@ -1,7 +1,7 @@
 ---
 title: file a lien and never miss its deadlines
 category: Billing & Money
-keywords: mechanic's lien, lien affidavit, notice of claim, 53.056, county clerk, recording number, serve, deadline, filing window, release of lien, homestead
+keywords: void a lien, take back a filing, recorded by mistake, mechanic's lien, lien affidavit, notice of claim, 53.056, county clerk, recording number, serve, deadline, filing window, release of lien, homestead
 roles: dev, master_technician, assistant, controller
 ---
 When a demand letter does not shake the money loose, Texas gives you a lien. But only if the paperwork happens in the right order, on the right dates.
@@ -154,6 +154,8 @@ The paper prints with nothing of the browser on it. It should not show the date 
 
 Was the lien filed without this tab, by counsel or on paper from elsewhere? The gate does not stop the record. Press {{button:outline|Already filed — record it…}} under the gate list. Type the county, the recording number and the day it was filed. The serve-by day and the year to sue count from that day. A hold never hides **Enter mail numbers…** on a lien that is already on file. The press sits under the gate list until the copies are recorded.
 
+Was a filing recorded on the wrong job, or with the wrong day? Open that job's Lien window. Find the record under **Filings on this job**. Press **Void** on it, then **Confirm void**. The lien's paper goes back to the Lien desk by itself. A paper the leader approved is approved again, so nobody asks him twice. The Board shows it in **Ready to file**, or in **Held** when a fact holds it. A paper nobody had approved goes back to a draft. Then record the lien again with the right facts.
+
 ### Several liens back from the clerk
 
 Did a stack of liens come back from the County Clerk together? Record them in one sitting. Open the Lien desk's To do. On the Board, find the bin **Ready to file**. Under its print a line reads *Back from the clerk?* Press {{button:outline|Enter document numbers · 3 ›}} beside it. The press counts the liens in the bin. One window opens. It is named **Back from the clerk: record the filings**.
@@ -166,7 +168,7 @@ Do you have the clerk's PDFs? Press {{button:outline-blue|Choose the stamped lie
 
 One lien can take its file alone. Press **Add the stamped lien** on its line. The file can also follow on a later day.
 
-Was a lien recorded by mistake? Press **Open its Lien window ›** on its line. Find its record in the list of filings there. Press **Void** on it. Then tell your lead. The paper does not go back to **Ready to file** by itself yet.
+Was a lien recorded by mistake? Press **Take it back** on its line. The line asks first. Press **Confirm take back**, or **Keep it** to leave the record alone. A take back voids the filing. The lien goes back to **Ready to file**, and its approval stands. The line opens again, so type the right number there.
 
 When the liens are on record, press {{button:blue|Print the copies to mail ›}}. It opens the window for the next step.
 

@@ -88,7 +88,6 @@ export const LIEN_FILING_BATCH_WORDS = {
   needDay: 'Set the day the liens were filed.',
   noPaper: 'The desk cannot draw this lien’s paper, so it is recorded in its own Lien window.',
   openLien: 'Open its Lien window ›',
-  wrongLien: 'Recorded on the wrong lien? Its Lien window takes it back.',
   none: 'Nothing waiting on a document number.',
   noneNext: 'Every approved lien is on record as filed. Next, each owner and each original contractor gets a copy by certified mail.',
   foot: 'Each lien is saved the moment its number is recorded.',
