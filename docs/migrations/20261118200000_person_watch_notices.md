@@ -7,3 +7,5 @@ A watch tells the people on its list. Ships with the edge function `watch-notify
 - Additive and idempotent. Ends with the four fences.
 
 **Order.** Deploy the function first (`supabase functions deploy watch-notify-dispatch`), then `supabase db push`. Pushed first, the job calls a function that is not there every five minutes and gets a 404 each time until the deploy, which harms nothing and tells nobody.
+
+**Applied** to prod on 2026-11-19 by `scripts/db-push.sh`, after #8788 merged and after the function was deployed. Read back: the table with RLS on, its dev-only select policy and the four fences, and the cron job active on `2-59/5 * * * *`. The job's first run, at 08:47 UTC, got a 200 from the function with `{"watches":0,"sent":0}`: no watch was set, so nothing was sent.

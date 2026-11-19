@@ -12,3 +12,5 @@ Materials on site: an answer to a press. The third PR of the train that reads a 
 Apply: `supabase db push` after the merge. No client gives an answer yet, and with no answer on record the policy closes no row.
 
 Undo, if the policy ever misbehaves: `DROP POLICY job_material_movements_not_taken_back ON public.job_material_movements;` brings every row back into every read at once and loses nothing.
+
+**Applied** to prod on 2026-11-19 by `scripts/db-push.sh`, after #8773 merged. Read back: the `taken_back_at` column, the RESTRICTIVE policy `job_material_movements_not_taken_back`, `job_movement_answers` with its select, insert and update policies and its two triggers, and both functions. No ledger row was taken back and no answer was on record, so the policy closed nothing.
