@@ -1,4 +1,4 @@
-// dev-mcp's plan_price_matrix_request / apply_price_matrix_request (v2.7958 / 0.113.0): the ask a person makes with
+// dev-mcp's plan_price_matrix_request / apply_price_matrix_request (v2.7958 / 0.114.0): the ask a person makes with
 // Price it with the robot on Bids → Pricing (PriceWithRobotModal queueIt), and its Take it back while the ask is still
 // queued (takeBack). The pricing robot works the queue through the twin seat (next_price_matrix … finish_price_matrix);
 // queueing was a person's press and the last step of the pricing loop the seat could not make.

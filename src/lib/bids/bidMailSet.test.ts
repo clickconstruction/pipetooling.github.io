@@ -91,6 +91,53 @@ describe('a signature’s picture is not a file to keep (v2.7556)', () => {
   })
 })
 
+describe('Gmail’s picture of a Drive link is not a file to keep (v2.7954)', () => {
+  // A made-up key: a long run of letters, digits, dashes and underscores, then the size the picture was drawn at.
+  const key = 'Zx9MadeUpKeyForATest_0123456789-abcdefghijKLMNOP'
+  const preview = `${key}=w1200-h630-p.png`
+  it('knows the name: a long key, the size, and a picture’s extension', () => {
+    for (const name of [preview, `${key}=w1200-h630.png`, `${key}=w640-h480-p-k-no.jpg`, `${key}=W1200-H630-P.PNG`, ` ${key}=w1200-h630-rw.webp `]) expect(isInlinePicture({ name }), name).toBe(true)
+  })
+  it('a photo, a screenshot and a paper are still files', () => {
+    const names = [
+      'IMG_1893.jpeg',
+      'Screenshot 2026-05-16 at 10.48.14 AM.png',
+      'image001.pdf',
+      // The size with no key before it, a short word before it, or a name a person typed with a space.
+      '=w1200-h630-p.png',
+      'plan=w1200-h630.png',
+      `site plan ${key}=w1200-h630.png`,
+      // Not a picture, and not at the end of the name.
+      `${key}=w1200-h630-p.pdf`,
+      `${key}=w1200-h630-p.png.pdf`,
+      `${key}=w1200-h630-p`,
+      // The key and no size, or only one side of it.
+      `${key}.png`,
+      `${key}=w1200.png`,
+      `${key}=s220.png`,
+    ]
+    for (const name of names) expect(isInlinePicture({ name }), name).toBe(false)
+  })
+  it('a mail that carries nothing else offers no press', () => {
+    expect(bidMailState([file({ id: 'preview', name: preview })])).toEqual({ kind: 'none' })
+    expect(bidMailState([file({ id: 'preview', name: preview }), file({ id: 'logo', name: 'image001.png' })])).toEqual({ kind: 'none' })
+  })
+  it('beside a real file it is listed and starts unticked', () => {
+    const state = bidMailState([file({ id: 'a' }), file({ id: 'preview', name: preview })])
+    if (state.kind !== 'keep') throw new Error('not a keep')
+    expect(state.ready.map((f) => f.id)).toEqual(['a', 'preview'])
+    expect(bidMailDraft(mail, state.ready, []).picked).toEqual(['a'])
+  })
+  it('the list under Plan sets leaves out a mail that carries only one beside its link', () => {
+    const at = '2026-11-16T15:04:00.000Z'
+    const rows = [
+      { id: 'm1', at, subject: 'Folder', who_text: 'x', message_attachments: [{ kind: 'file', name: preview }, { kind: 'link', name: 'Google Drive' }] },
+      { id: 'm2', at, subject: 'Specs', who_text: 'x', message_attachments: [{ kind: 'file', name: preview }, { kind: 'file', name: 'specs.pdf' }] },
+    ]
+    expect(bidMailLines(rows).map((m) => `${m.id}:${m.files}`)).toEqual(['m2:1'])
+  })
+})
+
 describe('the form, filled from the mail', () => {
   it('names the set from the subject, dates it the mail’s own day, and says who it came from', () => {
     const ready = [file({ id: 'a' }), file({ id: 'b' })]

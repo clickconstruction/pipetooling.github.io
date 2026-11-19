@@ -60,7 +60,8 @@ export function payLineIsNotTheWork(line: string): boolean {
   const s = line.trim()
   if (!s) return true
   if (/\(migrated\)/i.test(s)) return true
-  return /\b(?:paper\s+)?checks?\s+(?:can|may|should)\s+be\s+(?:sent|mailed)|\bmake\s+checks?\s+payable|\bremit\s+(?:payment\s+)?to\b|\bmail\s+(?:your\s+)?(?:check|payment)s?\s+to\b/i.test(s)
+  // "Cheques" is "checks" (v2.7956): a memo that spelled it that way printed the mailing note as the invoice's Scope.
+  return /\b(?:paper\s+)?che(?:ck|que)s?\s+(?:can|may|should)\s+be\s+(?:sent|mailed)|\bmake\s+che(?:ck|que)s?\s+payable|\bremit\s+(?:payment\s+)?to\b|\bmail\s+(?:your\s+)?(?:check|cheque|payment)s?\s+to\b/i.test(s)
 }
 
 /**

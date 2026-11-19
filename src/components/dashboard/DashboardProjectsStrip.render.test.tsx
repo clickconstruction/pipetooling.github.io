@@ -67,6 +67,8 @@ describe('DashboardProjectsStrip', () => {
     fireEvent.click(screen.getByTestId('dashboard-projects-strip'))
     expect(screen.getAllByTestId('project-card')).toHaveLength(3)
     expect(lastDayDetail).toBe(true)
+    // The same floor as the board's grid: a card is never wider than the strip on a phone.
+    expect(screen.getByTestId('dashboard-projects-cards').getAttribute('style')).toContain('minmax(min(340px, 100%), 1fr)')
     expect(screen.getByRole('link', { name: 'Open the board →' }).getAttribute('href')).toBe('/projects-board')
     expect(localStorage.getItem(PROJECTS_STRIP_OPEN_KEY)).toBe('1')
     fireEvent.click(screen.getByRole('button', { name: 'Close ▴' }))

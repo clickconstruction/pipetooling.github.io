@@ -55,7 +55,7 @@ describe('the place verbs are on the allowlist with no wrapper RPC', () => {
       expect(SERVER).toContain(`case '${v}':`)
     }
     expect(planVerbFor('apply_task_place')).toBe('plan_task_place')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.113.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.114.0'")
     expect(SERVER).toContain('plan_task_place → apply_task_place')
     expect(README).toContain('`plan_task_place(place)`')
     // A place set, taken off and set again is a second act: the world refuses a replay, the call log is not asked.

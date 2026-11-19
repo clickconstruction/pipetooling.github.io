@@ -2,7 +2,8 @@
 /**
  * Documents → Agreements, Send a paper: the press reads the Contract Book and offers its papers; a paper with nothing
  * to sign names why and is not a press; a picked paper asks for a person through People's own picker; a picked person
- * opens the Send window on the plan, with nothing written before; and a sent paper tells the list to read again.
+ * opens the Send window on the plan, with nothing written before; and a sent paper tells the list to read again. The
+ * Contract library's Send to… starts it at the person, and the paper step's own door opens the library.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -74,12 +75,12 @@ afterEach(() => cleanup())
 
 describe('AgreementsSendPaper', () => {
   it('reads the Book on the press and offers its papers; one with no words names why and is not a press', async () => {
-    renderWithProviders(<AgreementsSendPaper onSent={() => {}} />)
+    renderWithProviders(<AgreementsSendPaper onSent={() => {}} onOpenLibrary={() => {}} />)
     expect(io.reads).toBe(0)
     fireEvent.click(screen.getByRole('button', { name: 'Send a paper' }))
     const dialog = await screen.findByRole('dialog', { name: 'Send a paper' })
     expect(io.reads).toBe(1)
-    expect(Array.from(dialog.querySelectorAll('button')).map((b) => b.textContent)).toEqual(['×', 'Subcontractor HandbookFrom the Contract Book', 'W-9A form from the Contract Book'])
+    expect(Array.from(dialog.querySelectorAll('button')).map((b) => b.textContent)).toEqual(['×', 'Subcontractor HandbookFrom the Contract Book', 'W-9A form from the Contract Book', 'Contract library'])
     expect(screen.getByTestId('send-paper-no-words').textContent).toBe('Empty shellNo words yet. Write it in the Contract Book first.')
     fireEvent.change(screen.getByLabelText('Find a paper'), { target: { value: 'zebra' } })
     expect(await screen.findByText('No papers match ‘zebra’.')).toBeTruthy()
@@ -89,7 +90,7 @@ describe('AgreementsSendPaper', () => {
 
   it('a paper, then a person with no copy yet: the Send window opens on a plan that writes only at Send', async () => {
     const onSent = vi.fn()
-    renderWithProviders(<AgreementsSendPaper onSent={onSent} />)
+    renderWithProviders(<AgreementsSendPaper onSent={onSent} onOpenLibrary={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: 'Send a paper' }))
     fireEvent.click(await screen.findByRole('button', { name: /^Subcontractor Handbook/ }))
     // People's own picker: who has not had it, and who already has it out.
@@ -103,7 +104,7 @@ describe('AgreementsSendPaper', () => {
   })
 
   it('a person who already has it out is sent the same copy again', async () => {
-    renderWithProviders(<AgreementsSendPaper onSent={() => {}} />)
+    renderWithProviders(<AgreementsSendPaper onSent={() => {}} onOpenLibrary={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: 'Send a paper' }))
     fireEvent.click(await screen.findByRole('button', { name: /^Subcontractor Handbook/ }))
     fireEvent.click(await screen.findByRole('button', { name: /^Priya Nair/ }))
@@ -112,18 +113,29 @@ describe('AgreementsSendPaper', () => {
 
   it('says why when the Book does not read, and opens nothing', async () => {
     io.fail = new Error('permission denied for table contract_template_documents')
-    renderWithProviders(<AgreementsSendPaper onSent={() => {}} />)
+    renderWithProviders(<AgreementsSendPaper onSent={() => {}} onOpenLibrary={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: 'Send a paper' }))
     expect(await screen.findByText('permission denied for table contract_template_documents')).toBeTruthy()
     expect(screen.queryByRole('dialog', { name: 'Send a paper' })).toBeNull()
   })
 
-  it('with no paper in the Book names where one is written', async () => {
+  it('with no paper in the Book names the Contract library, and the press opens it', async () => {
     io.book = []
-    renderWithProviders(<AgreementsSendPaper onSent={() => {}} />)
+    const onOpenLibrary = vi.fn()
+    renderWithProviders(<AgreementsSendPaper onSent={() => {}} onOpenLibrary={onOpenLibrary} />)
     fireEvent.click(screen.getByRole('button', { name: 'Send a paper' }))
     const dialog = await screen.findByRole('dialog', { name: 'Send a paper' })
-    expect(dialog.textContent).toContain('No papers in the Contract Book yet. People is where a paper is written, on Contracts.')
-    expect(screen.getByRole('link', { name: 'People' }).getAttribute('href')).toBe('/people?tab=contracts')
+    expect(dialog.textContent).toContain('No papers in the Contract Book yet. Contract library is where a paper is written.')
+    fireEvent.click(screen.getByRole('button', { name: 'Contract library' }))
+    expect(onOpenLibrary).toHaveBeenCalledTimes(1)
+    // The paper step steps aside for the library.
+    expect(screen.queryByRole('dialog', { name: 'Send a paper' })).toBeNull()
+  })
+
+  it('a paper another door named starts at the person, on a fresh read', async () => {
+    renderWithProviders(<AgreementsSendPaper onSent={() => {}} onOpenLibrary={() => {}} startOn={{ documentName: 'W-9' }} />)
+    expect(await screen.findByRole('dialog', { name: 'Send W-9 to a person' })).toBeTruthy()
+    expect(io.reads).toBe(1)
+    expect(screen.queryByRole('dialog', { name: 'Send a paper' })).toBeNull()
   })
 })

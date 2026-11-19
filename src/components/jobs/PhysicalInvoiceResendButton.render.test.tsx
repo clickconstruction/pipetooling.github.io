@@ -10,8 +10,15 @@ import PhysicalInvoiceResendButton from './PhysicalInvoiceResendButton'
 import { settle } from '../../test/renderSmokeMocks'
 
 const resend = vi.fn(async (_invoice: unknown) => ({ ok: true as const, sentTo: 'owner@site.com' }))
+const readRecipient = vi.fn(
+  async (_invoice: unknown): Promise<{ ok: true; recipient: { party: 'gc'; email: string } } | { ok: false; message: string }> => ({
+    ok: true,
+    recipient: { party: 'gc', email: 'ap@acme.example' },
+  }),
+)
 vi.mock('../../lib/resendPhysicalInvoiceEmail', () => ({
   resendPhysicalInvoiceEmailForBilledInvoice: (invoice: unknown) => resend(invoice),
+  readPaperBillResendRecipient: (invoice: unknown) => readRecipient(invoice),
 }))
 vi.mock('../../contexts/ToastContext', () => ({
   useToastContext: () => ({ showToast: vi.fn() }),
@@ -20,6 +27,7 @@ vi.mock('../../contexts/ToastContext', () => ({
 describe('PhysicalInvoiceResendButton', () => {
   beforeEach(() => {
     resend.mockClear()
+    readRecipient.mockClear()
   })
 
   it('confirms first, names the recipient, then sends the exact invoice and fires onSent', async () => {
@@ -43,5 +51,36 @@ describe('PhysicalInvoiceResendButton', () => {
     fireEvent.click(screen.getByText('Cancel'))
     expect(screen.queryByText('Send email')).toBeNull()
     expect(resend).not.toHaveBeenCalled()
+  })
+  it("a bill that went to the GC reads the GC's billing email when the window opens, names it, and sends (v2.7959)", async () => {
+    render(<PhysicalInvoiceResendButton invoice={{ id: 'inv-3', job_id: 'job-3' }} recipientEmail={null} readRecipient />)
+    await settle()
+    // Nothing is read until the window opens.
+    expect(readRecipient).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Email again — PDF attached'))
+    await waitFor(() => expect(screen.getByText('ap@acme.example')).toBeTruthy())
+    expect(readRecipient).toHaveBeenCalledWith({ id: 'inv-3', job_id: 'job-3' })
+    expect(screen.queryByText('the customer')).toBeNull()
+    fireEvent.click(screen.getByText('Send email'))
+    await waitFor(() => expect(resend).toHaveBeenCalledWith({ id: 'inv-3', job_id: 'job-3' }))
+  })
+
+  it('a GC with no billing email on record gets the reason and where to add it, and no send', async () => {
+    readRecipient.mockResolvedValueOnce({ ok: false, message: 'The GC on this job has no billing email. Add it on Edit Job → GC/Builder → Billing email.' })
+    render(<PhysicalInvoiceResendButton invoice={{ id: 'inv-4', job_id: 'job-4' }} recipientEmail={null} readRecipient />)
+    await settle()
+    fireEvent.click(screen.getByText('Email again — PDF attached'))
+    await waitFor(() => expect(screen.getByText(/The GC on this job has no billing email/)).toBeTruthy())
+    expect(screen.queryByText('Send email')).toBeNull()
+    fireEvent.click(screen.getByText('Close'))
+    expect(resend).not.toHaveBeenCalled()
+  })
+
+  it('a bill to the customer reads nothing: the window names the address it was given, as before', async () => {
+    render(<PhysicalInvoiceResendButton invoice={{ id: 'inv-5', job_id: 'job-5' }} recipientEmail="pat@example.com" />)
+    await settle()
+    fireEvent.click(screen.getByText('Email again — PDF attached'))
+    expect(screen.getByText('pat@example.com')).toBeTruthy()
+    expect(readRecipient).not.toHaveBeenCalled()
   })
 })

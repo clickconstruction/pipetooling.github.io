@@ -77,6 +77,8 @@ describe('ProjectsBoard', () => {
     expect(cards[0]!.dataset.tone).toBe('behind')
     expect(cards[1]!.dataset.tone).toBe('ahead')
     expect(screen.getByText('2 projects')).toBeTruthy()
+    // A phone's column is narrower than a card's 340 px: the floor gives to the room, or the page scrolls sideways.
+    expect(screen.getByTestId('project-cards').getAttribute('style')).toContain('minmax(min(340px, 100%), 1fr)')
   })
 
   it('goes by the job\'s kind, with the guess only for a job whose kind is not set', async () => {

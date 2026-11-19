@@ -249,6 +249,7 @@ door reaches them instead of re-writing them.
 | `plan_clock_sessions` / `apply_clock_sessions` | v2.6437 — shipped | Clock sessions adjusted op by op — times, note, move, approve — through `dev_clock_session_write` (migration `20261103050000`); the typed-hours second look and the approval guard hold inside. |
 | `check_license` · `plan_license` / `apply_license` | v2.6475 — shipped | A teammate's license checked against TDLR's open list and added or updated through `dev_person_license_write` (migration `20261103180000`), in the logbook's words; punch list #255. |
 | `get_hours_statement` · `plan_hours_statement` / `apply_hours_statement` | v2.6414 — shipped | The signed hours statement read, made, sent and filed on a matter through `dev_hours_statement_write` (migration `20261103003000`); punch list #212. |
+| `plan_lien_receipt_off` / `apply_lien_receipt_off` | v2.7909 — shipped | A wrong mail receipt taken off a filed lien affidavit's copy, as *Take off* on the copy's receipt does it. The write is the filing's sends alone and never the day served, and the file goes to Drive's trash. The plan reads what each file on record is. |
 
 **Where the numbers come from** (mapped 2026-09-20): job header, stage, strip, hours and
 activity are RPCs or plain rows; **job money, customer LCV and open balance are client

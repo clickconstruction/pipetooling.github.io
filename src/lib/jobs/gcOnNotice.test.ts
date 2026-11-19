@@ -367,3 +367,52 @@ describe('the conditional release paragraph in the letter (v2.4729)', () => {
     expect(both[both.length - 2]).toBe('You should also know that Reece is owed $130.75.')
   })
 })
+
+describe('a name that ends in a period takes no second one (v2.7957)', () => {
+  const gcName = 'Acme & Assoc.'
+  const us = 'Example Plumbing Co.'
+
+  it("every counsel's letter prints one period after the name, and no other character moves", async () => {
+    const { defaultGcNoticeCoverLetter, paidOutOwnerLetter, letterTwoTemplate } = await import('./gcOnNotice')
+    const letters = (names: { gcName: string; claimantName: string }) => [
+      defaultGcNoticeCoverLetter(names),
+      defaultGcNoticeCoverLetter({ ...names, kind: 'residential' }),
+      defaultGcNoticeCoverLetter({ ...names, kind: 'homestead' }),
+      defaultGcNoticeCoverLetter({ ...names, gcUnresponsive: true }),
+      paidOutOwnerLetter(names),
+      letterTwoTemplate('unresponsive', names),
+    ]
+    const withPeriods = letters({ gcName, claimantName: us })
+    // The same letters under stand-in names with no period: put the real names in, and a sentence that ended on a name ends on its period.
+    const standIn = letters({ gcName: 'ZZGC', claimantName: 'ZZUS' })
+    withPeriods.forEach((t, i) => {
+      expect(t).not.toContain('..')
+      const expected = standIn[i]!.split('ZZGC.').join(gcName).split('ZZGC').join(gcName).split('ZZUS.').join(us).split('ZZUS').join(us)
+      expect(t).toBe(expected)
+    })
+    // The sentences the fault was found on.
+    expect(withPeriods[0]).toContain('working under Acme & Assoc. Acme & Assoc. has not paid us')
+    expect(withPeriods[0]).toContain('before the next payment to Acme & Assoc. We would rather pick up a check')
+    expect(withPeriods[0]).toContain('payable only to Example Plumbing Co. The day it clears')
+    expect(withPeriods[0]).toContain('Without Acme & Assoc.’s written okay')
+  })
+
+  it('a name with no period at its end leaves each letter exactly as it was', async () => {
+    const { defaultGcNoticeCoverLetter } = await import('./gcOnNotice')
+    const t = defaultGcNoticeCoverLetter({ gcName: 'Acme Builders', claimantName: 'Example Plumbing' })
+    expect(t).toContain('working under Acme Builders. Acme Builders has not paid us')
+    expect(t).toContain('before the next payment to Acme Builders. We would rather')
+  })
+
+  it('a letter saved with the doubled period prints with one, and the filled letter has none', async () => {
+    const { counselCoverLetterTemplate, fillCoverLetter } = await import('./gcOnNotice')
+    const saved = 'We work under Acme & Assoc.. Call {{contact}} at {{phone}} before the next payment to Acme & Assoc..'
+    const template = counselCoverLetterTemplate({ stored: saved, gcName, claimantName: us, property: null })
+    expect(template).toBe('We work under Acme & Assoc. Call {{contact}} at {{phone}} before the next payment to Acme & Assoc.')
+    // A saved letter for a name with no period is returned as saved.
+    expect(counselCoverLetterTemplate({ stored: 'Do not pay Acme Builders.', gcName: 'Acme Builders', claimantName: us, property: null })).toBe('Do not pay Acme Builders.')
+    const filled = fillCoverLetter(counselCoverLetterTemplate({ gcName, claimantName: us, property: null }), { property: '100 Example St, Austin, TX', months: 'May 2026', job: '100', amount: '$1,800.00', staleNote: '', contact: 'Jo Example', phone: '(512) 555-0100' })
+    expect(filled).not.toContain('..')
+    expect(filled).not.toContain('{{')
+  })
+})
