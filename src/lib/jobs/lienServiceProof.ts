@@ -139,15 +139,15 @@ export const LIEN_SERVICE_PROOF_WORDS = {
   where: 'The photo goes to the job’s Drive folder, under Sent by us.',
 } as const
 
-/** The toast once the service is saved, by what was typed. */
+/** The toast once the mailing is saved, by what was typed. It read *Service recorded* until v2.7875; the dev seat's reply reads it too. */
 export function serviceSavedWords(sends: ReadonlyArray<LienSendLike>, hasContractor: boolean): string {
   const missing = serviceProofMissing(sends, hasContractor)
-  if (missing === 0) return 'Service recorded with its mail receipts. The serve-by watch is cleared.'
-  return 'Service recorded. The serve-by watch is cleared. Add the mail receipts when you have them.'
+  if (missing === 0) return 'Mailing recorded with its mail receipts. The serve-by watch is cleared.'
+  return 'Mailing recorded. The serve-by watch is cleared. Add the mail receipts when you have them.'
 }
 
 /**
- * Under Record service… on a job whose affidavit is on file while a hold is closed. The hold stops a new paper. It does
+ * Under Enter mail numbers… on a job whose affidavit is on file while a hold is closed. The hold stops a new paper. It does
  * not stop the record of this one's copies, and the serve-by day is still running.
  */
 export function heldServiceWords(serveBy: string): string {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_SERVE_FORM_WORDS, LIEN_SERVE_STAGE_WORDS, lienMailingSavedWords, lienServeFormHead, lienServeLandingSelector, lienServeStage, lienServeStageCounts, lienServeStageDoor, lienServeStageDoorWords } from './lienServeStage'
+import { LIEN_SERVE_FORM_WORDS, LIEN_SERVE_STAGE_WORDS, lienServeFormHead, lienServeLandingSelector, lienServeStage, lienServeStageCounts, lienServeStageDoor, lienServeStageDoorWords } from './lienServeStage'
 
 const filing = (id: string, sends: unknown[] = []) => ({ id, sends })
 
@@ -32,8 +32,6 @@ describe('where a filed lien’s copies stand', () => {
     expect(LIEN_SERVE_FORM_WORDS).toEqual({ opener: 'Enter mail numbers…', title: 'Enter mail numbers', day: 'Mailed on', save: 'Record the mailing', failed: 'Could not record the mailing.' })
     expect(lienServeFormHead('November 23, 2026')).toBe('Enter mail numbers for the filed copies (mail by November 23, 2026)')
     expect(lienServeFormHead(' ')).toBe('Enter mail numbers for the filed copies')
-    expect(lienMailingSavedWords(0)).toBe('Mailing recorded with its mail receipts. The serve-by watch is cleared.')
-    expect(lienMailingSavedWords(1)).toBe('Mailing recorded. The serve-by watch is cleared. Add the mail receipts when you have them.')
   })
 
   it('names the door for many liens by the stage they are at', () => {
