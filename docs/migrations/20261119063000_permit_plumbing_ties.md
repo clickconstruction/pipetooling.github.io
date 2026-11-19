@@ -58,4 +58,4 @@ Counted on 2026-11-19 from every row of `permits` in the five cities, with the o
 
 ## Release order
 
-Merge, then `supabase db push` from a main checkout. `check:calls-ahead` labels the PR *push right after the merge*, because it replaces functions the client calls; the client reads the same names with the same arguments and works before and after the push. Then time the three reads signed in: they took 49 to 68 ms before.
+Merge, then `supabase db push` from a main checkout. The client reads the same names with the same arguments, so it works before and after the push and the order against the client deploy does not matter. Then time the three reads signed in: they took 49 to 68 ms before.
