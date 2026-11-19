@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Permit news on the bids</title>
+<style>
+  /* The app's own tokens (src/index.css), light then dark. */
+  body {
+    --surface: #ffffff; --bg-page: #f0f2f5; --bg-muted: #f3f4f6; --chrome-bg: #fafafa;
+    --text-strong: #111827; --text-700: #374151; --text-muted: #6b7280; --text-link: #2563eb;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-red-tint: #fef2f2; --text-red-700: #b91c1c; --bg-amber-tint: #fffbeb; --text-amber-800: #92400e; --border-amber: #f3d48a;
+    --bg-green-tint: #f0fdf4; --text-green-700: #15803d; --bg-blue-tint: #eff6ff;
+    --board: #dfe3e8; --cap: #1f2937; --cap-small: #4b5563; --mark: #7c3aed;
+  }
+  body[data-theme='dark'] {
+    --surface: #1f2937; --bg-page: #111827; --bg-muted: #374151; --chrome-bg: #0f1623;
+    --text-strong: #f9fafb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-link: #60a5fa;
+    --border: #374151; --border-strong: #4b5563;
+    --bg-red-tint: #3b1a1a; --text-red-700: #f87171; --bg-amber-tint: #3a2f11; --text-amber-800: #fcd34d; --border-amber: #6b5416;
+    --bg-green-tint: #12301f; --text-green-700: #4ade80; --bg-blue-tint: #172a46;
+    --board: #0b1220; --cap: #f3f4f6; --cap-small: #9ca3af; --mark: #a78bfa;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--board); color: var(--text-strong); font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+  button { font-family: inherit; }
+
+  .bar { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 14px; }
+  .bar b { font-size: 15px; }
+  .bar a { color: var(--text-link); text-decoration: none; font-weight: 600; white-space: nowrap; }
+  .bar .sp { margin-left: auto; display: flex; gap: 8px; }
+  .tog { min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-weight: 600; font-size: 14px; cursor: pointer; }
+  .tog[aria-pressed='true'] { background: #2563eb; border-color: #2563eb; color: #fff; }
+
+  .intro { max-width: 900px; padding: 18px 16px 0; font-size: 15px; color: var(--cap); }
+  .intro h1 { font-size: 20px; margin: 0 0 6px; }
+  .intro p { margin: 0 0 8px; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; max-width: 1180px; padding: 6px 16px 0; }
+  .fact { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .fact b { display: block; font-size: 22px; line-height: 1.15; }
+  .fact span { font-size: 13px; color: var(--cap-small); }
+  .band { padding: 26px 16px 4px; scroll-margin-top: 60px; }
+  .band h2 { margin: 0; font-size: 18px; color: var(--cap); }
+  .band p { margin: 4px 0 0; max-width: 900px; font-size: 14.5px; color: var(--cap-small); }
+  .band p b { color: var(--cap); }
+  .pick { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: #15803d; color: #fff; font-size: 12px; font-weight: 700; vertical-align: 2px; }
+  .hers { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: var(--bg-muted); color: var(--cap); font-size: 12px; font-weight: 700; vertical-align: 2px; }
+  .board { display: flex; flex-wrap: wrap; gap: 24px 20px; padding: 14px 16px 6px; align-items: flex-start; }
+  .cell { display: grid; gap: 8px; min-width: 0; }
+  .cap { font-size: 13px; font-weight: 700; color: var(--cap); max-width: 375px; }
+  .cap small { display: block; font-weight: 500; color: var(--cap-small); }
+  .cell.wide .cap { max-width: 1100px; }
+  .notes { max-width: 900px; margin: 6px 16px 0; padding: 12px 16px 12px 34px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 14.5px; color: var(--cap); }
+  .notes li { margin: 0 0 6px; }
+  .tbl { margin: 10px 16px 0; max-width: 1100px; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); font-size: 13.5px; }
+  .tbl th, .tbl td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .tbl th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+  .tbl td.out { color: var(--text-muted); } .tbl td.stay { font-weight: 700; }
+
+  /* The frames: a desk's first screen, 1180 x 700, and a phone's, 375 x 700. */
+  .desk { position: relative; width: 1180px; max-width: 100%; height: 700px; overflow: hidden; background: var(--bg-page); border: 1px solid var(--border-strong); }
+  .phone { position: relative; width: 375px; height: 700px; overflow: hidden; background: var(--bg-page); border: 1px solid var(--border-strong); }
+  .fade { position: absolute; left: 0; right: 0; bottom: 0; height: 26px; background: linear-gradient(transparent, var(--bg-page)); pointer-events: none; }
+  .nav { height: 44px; display: flex; align-items: center; gap: 16px; padding: 0 16px; background: var(--chrome-bg); border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-link); }
+  .nav b { text-decoration: underline; }
+  .nav .dots { margin-left: auto; display: flex; gap: 8px; }
+  .nav .dots i, .ico { width: 26px; height: 26px; border-radius: 6px; background: var(--bg-muted); display: inline-block; flex: none; }
+  .pg { padding: 10px 16px 0; display: grid; gap: 10px; }
+  .phone .pg { padding: 8px 10px 0; gap: 8px; }
+  .above { font-size: 11.5px; color: var(--text-muted); text-align: center; padding: 5px 0; background: var(--chrome-bg); border-bottom: 1px dashed var(--border-strong); }
+  .tabs { display: flex; align-items: center; gap: 14px; font-size: 14px; color: var(--text-700); flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; font-weight: 700; font-size: 13px; }
+  .seg span { padding: 5px 12px; } .seg .on { background: var(--mark); color: #fff; }
+  .seg.sq { border-radius: 6px; } .seg.sq .on { background: var(--bg-blue-tint); color: var(--text-link); }
+  .tab.on { background: #2563eb; color: #fff; font-weight: 700; padding: 6px 10px; }
+  .tab { position: relative; }
+  .cnt { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 700; text-align: center; margin-left: 4px; vertical-align: 1px; }
+  .newbid { margin-left: auto; background: #2563eb; color: #fff; font-weight: 600; padding: 6px 14px; border-radius: 4px; font-size: 13.5px; }
+  .flow { display: flex; gap: 22px; justify-content: center; font-size: 13.5px; color: var(--text-muted); padding-bottom: 8px; border-bottom: 2px solid var(--border); white-space: nowrap; overflow: hidden; }
+  .flow b { color: var(--text-amber-800); }
+  .plans { display: flex; align-items: center; gap: 10px; background: var(--bg-amber-tint); color: var(--text-amber-800); border-radius: 8px; padding: 9px 14px; font-size: 13.5px; }
+  .plans .go { margin-left: auto; background: #2563eb; color: #fff; font-weight: 600; padding: 5px 11px; border-radius: 6px; white-space: nowrap; font-size: 13px; }
+  .tools { display: flex; gap: 8px; align-items: center; }
+  .field { flex: 1; min-width: 0; height: 36px; border-radius: 4px; background: var(--bg-muted); border: 1px solid var(--border); color: var(--text-muted); font-size: 13.5px; display: flex; align-items: center; padding: 0 10px; white-space: nowrap; overflow: hidden; }
+  .tool { height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-radius: 4px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .tool.marked { border-color: var(--mark); color: var(--mark); }
+  .tool.news { border-color: var(--text-red-700); color: var(--text-red-700); background: var(--bg-red-tint); }
+  .tool.sqr { width: 36px; padding: 0; justify-content: center; }
+  .score { border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text-700); background: var(--bg-page); }
+  .score b { font-size: 15px; color: var(--text-strong); margin: 0 6px; }
+
+  /* The strip, as BidBoardPermitNews draws it. */
+  .strip { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 10px 14px; }
+  .strip .h { display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .strip .n { border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 700; background: var(--bg-red-tint); color: var(--text-red-700); }
+  .line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--border); }
+  .line .w { flex: 1 1 260px; min-width: 0; }
+  .line .w strong { font-size: 14px; display: block; }
+  .line .w span { display: block; font-size: 13px; color: var(--text-700); line-height: 1.45; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .press { background: var(--surface); color: var(--text-strong); border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 600; min-height: 34px; display: inline-flex; align-items: center; white-space: nowrap; }
+  .press.blue { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .more { display: block; padding: 8px 0 0; border-top: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text-link); }
+  .strip.one { padding: 8px 14px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+  .strip.one .go { margin-left: auto; color: var(--text-link); font-size: 13px; }
+
+  .pills { display: flex; gap: 6px; align-items: center; font-size: 12.5px; padding: 4px 0 8px; border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; }
+  .pills > b { font-size: 12.5px; margin-right: 2px; }
+  .pill { border: 1px solid var(--border-strong); border-radius: 999px; padding: 3px 10px; background: var(--surface); font-weight: 600; }
+  .pill i { font-style: normal; font-weight: 700; margin-left: 5px; padding: 0 6px; border-radius: 999px; background: var(--bg-muted); font-size: 11px; }
+  .pill.hot i { background: #c2410c; color: #fff; }
+  .pill.news { border-color: var(--text-red-700); color: var(--text-red-700); background: var(--bg-red-tint); }
+  .pill.news i { background: var(--text-red-700); color: var(--surface); }
+  .pill.news.on { background: var(--text-red-700); color: var(--surface); } .pill.news.on i { background: var(--surface); color: var(--text-red-700); }
+  .mapbar { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 7px 12px; font-size: 13px; color: var(--text-muted); }
+  .sec { font-size: 14px; font-weight: 700; margin: 2px 0 -4px; }
+  .showing { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text-700); }
+  .showing a { color: var(--text-link); font-weight: 600; }
+
+  /* A desk row of the board: marks, number, name over GC over chips, bid, due, estimator, links. */
+  .tb { border: 1px solid var(--border); border-radius: 4px; background: var(--bg-page); }
+  .tr { display: grid; grid-template-columns: 130px 64px minmax(0, 1fr) 60px 120px 90px 110px; gap: 10px; align-items: center; padding: 7px 12px; border-top: 1px solid var(--border); font-size: 13px; }
+  .tr.hd { border-top: 0; font-size: 11px; font-weight: 700; color: var(--text-700); padding: 5px 12px; }
+  .marks { display: flex; gap: 5px; justify-content: flex-end; }
+  .marks i { width: 14px; height: 10px; border-radius: 2px; background: var(--border-strong); display: inline-block; }
+  .num { color: var(--text-link); text-decoration: underline; font-weight: 600; }
+  .nm b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nm .gc { display: block; font-size: 12px; color: var(--text-link); }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 3px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 700; white-space: nowrap; max-width: 100%; }
+  .chip.red { background: var(--bg-red-tint); color: var(--text-red-700); }
+  .chip.green { background: var(--bg-green-tint); color: var(--text-green-700); }
+  .chip.grey { background: var(--bg-muted); color: var(--text-700); }
+  .chip.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px solid var(--border-amber); }
+  .chip.press { border: 1px solid currentColor; cursor: pointer; padding: 2px 9px; }
+  .chip.press::after { content: '›'; font-size: 13px; line-height: 1; }
+  .chip.press.open::after { content: '⌄'; }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
+  .due { justify-self: center; text-align: center; border-radius: 8px; padding: 2px 9px; font-size: 11.5px; font-weight: 700; background: var(--bg-muted); color: var(--text-700); line-height: 1.25; }
+  .due small { display: block; font-weight: 500; font-size: 10.5px; color: var(--text-muted); }
+  .due.soon { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .est { text-align: center; font-weight: 700; }
+  .amt { text-align: right; font-weight: 700; }
+  .links { display: flex; gap: 7px; justify-content: flex-end; }
+  .links i { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid var(--border-strong); display: inline-block; }
+  .newsbox { grid-column: 3 / -1; border: 1px solid var(--border-strong); border-left: 3px solid var(--text-red-700); background: var(--surface); border-radius: 8px; padding: 9px 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 0 0 3px; }
+  .newsbox.green { border-left-color: var(--text-green-700); } .newsbox.grey { border-left-color: var(--border-strong); }
+  .newsbox p { margin: 0; flex: 1 1 300px; font-size: 13px; color: var(--text-700); line-height: 1.45; }
+  .newsbox p b { color: var(--text-strong); }
+  .undo { font-size: 13px; color: var(--text-700); } .undo a { color: var(--text-link); font-weight: 600; }
+  .tear { text-align: center; font-size: 12px; color: var(--text-muted); border-top: 1px dashed var(--border-strong); border-bottom: 1px dashed var(--border-strong); padding: 5px 0; background: var(--chrome-bg); }
+
+  /* A phone card of the board. */
+  .card { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 9px 11px; display: grid; gap: 5px; font-size: 13px; }
+  .card .top { display: flex; align-items: center; gap: 8px; }
+  .card .top .due { margin-left: auto; }
+  .card .ttl { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .meta { font-size: 12.5px; color: var(--text-muted); }
+  .card .meta a { color: var(--text-link); }
+  .card .newsbox, .wth .newsbox { grid-column: auto; margin: 2px 0 0; }
+  .phone .tools .tool { padding: 0; width: 38px; justify-content: center; }
+  .phone .strip { padding: 10px 12px; }
+  .phone .line { display: block; }
+  .phone .line .btns { margin-top: 7px; }
+  .phone .pills { overflow: hidden; }
+
+  /* Followup. */
+  .lens { display: flex; gap: 6px; flex-wrap: wrap; font-size: 13px; }
+  .lens span { border: 1px solid var(--border-strong); border-radius: 6px; padding: 5px 10px; background: var(--surface); font-weight: 600; white-space: nowrap; }
+  .lens .on { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .wth { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 12px; display: grid; gap: 7px; font-size: 13px; }
+  .wth .ttl { font-weight: 700; font-size: 14px; } .wth .meta { color: var(--text-muted); font-size: 12.5px; }
+  .wth .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .wth .acts span { border: 1px solid var(--border-strong); border-radius: 6px; padding: 4px 9px; font-weight: 600; font-size: 12.5px; background: var(--surface); }
+  .winloss { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 12px; display: grid; gap: 7px; font-size: 13px; max-width: 520px; }
+  .winloss label { font-weight: 600; } .winloss .opts { display: flex; gap: 14px; color: var(--text-700); }
+  .hint { font-size: 12.5px; color: var(--text-red-700); background: var(--bg-red-tint); border-radius: 6px; padding: 6px 9px; }
+  .needs { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 12px; display: flex; gap: 10px; align-items: center; font-size: 13.5px; max-width: 520px; }
+  .needs small { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+  .needs .press { margin-left: auto; }
+</style>
+</head>
+<body data-theme="light">
+<div class="bar">
+  <b>Permit news on the bids · punch list #401</b>
+  <a href="#now">As it is</a><a href="#a">A · lower</a><a href="#b">B · Followup</a><a href="#c">C · one line</a><a href="#d">D · on the row</a><a href="#second">Second look</a><a href="#pick">The pick</a><a href="#rules">The ten lines</a>
+  <span class="sp"><button class="tog" data-t="light" aria-pressed="true">Light</button><button class="tog" data-t="dark" aria-pressed="false">Dark</button></span>
+</div>
+
+<div class="intro">
+  <h1>Permit news, folded into the bids</h1>
+  <p>An estimator asked for the strip <b>Permit news on your bids</b> to move lower on the Bid Board or onto Followup. The owner asked how the news could sit with the bids, so it is not a blob to skip. Below are the board as it is and five ways it could be. Every frame is drawn at a desk and at a phone. The two presses at the top right switch the theme.</p>
+  <p>Every bid, builder and plumber here is made up. The reader is <b>Dana</b>, an estimator. <b>Marcus</b> is another estimator and <b>Priya</b> works in the office. The mix of lines matches what the live strip held on 2026-11-19: ten lines on the Plumbing board, one of them on the reader's own bid.</p>
+  <p>The map between the pills and the first row is drawn folded so the rows fit a frame. In the app it stands about 500 px tall and has its own Hide.</p>
+</div>
+<div class="facts">
+  <div class="fact"><b>1 of 10</b><span>lines on the asking estimator's own bids. The strip lists everyone's.</span></div>
+  <div class="fact"><b>0</b><span>lines answered in the nine days since it shipped. Mark lost… has never been pressed to an outcome.</span></div>
+  <div class="fact"><b>2 of 7</b><span>“It lists another name” lines that look like the job we bid. The rest: another suite, an older job, site work.</span></div>
+  <div class="fact"><b>478 and 631</b><span>days old, the two oldest permits on it. A plumbing line never ages off.</span></div>
+  <div class="fact"><b>315 px · 666 px</b><span>tall when folded to four lines, at a desk and on a phone 812 px tall.</span></div>
+  <div class="fact"><b>5 of 10</b><span>of the lines' bids are on the board's first rows. The other five sit behind Show all 118.</span></div>
+</div>
+
+<div id="bands"></div>
+
+<script>
+  // ---- Made-up bids. `who` holds the bid. Chips differ per option, so they are passed in.
+  const B = {
+    b681: { n: 'b681', name: 'Marlow Animal Clinic', gc: 'Ridgeway Builders', due: 'Fri 11/20', soon: 1, who: 'Dana' },
+    b672: { n: 'b672', name: 'Ridgeline Surgical and Imaging, Unit A', gc: 'Halvorsen Construction', due: 'Mon 11/23', who: 'Dana' },
+    b679: { n: 'b679', name: 'Sunday Yoga, South Lamar', gc: 'Bluebonnet Contractors', due: 'Thu 11/26', who: 'Priya' },
+    b668: { n: 'b668', name: 'Greenleaf Market #12', gc: 'Tall Pine Construction', due: 'Mon 11/30', who: 'Dana' },
+    b677: { n: 'b677', name: 'Oakmont Auto Parts', gc: 'Mesa Verde Builders', due: 'Wed 12/2', who: 'Marcus' },
+    b655: { n: 'b655', name: 'Copy Stop finish out', gc: 'Ridgeway Builders', amt: '72k', due: 'Wed 11/18', sent: 'sent Wed 11/18', who: 'Priya' },
+    b651: { n: 'b651', name: 'Salt & Ember Kitchen', gc: 'Bluebonnet Contractors', amt: '48k', due: 'Tue 11/17', sent: 'sent Tue 11/17', who: 'Dana' },
+    b640: { n: 'b640', name: 'Tile Gallery Austin', gc: 'Tall Pine Construction', amt: '176k', due: 'Thu 11/12', sent: 'sent Thu 11/12', who: 'Priya' },
+    b641: { n: 'b641', name: 'Barre Loft, Stone Creek, Suite 255', gc: 'Mesa Verde Builders', amt: '51k', due: 'Tue 11/10', sent: 'sent Tue 11/10', who: 'Priya' },
+    b502: { n: 'b502', name: 'Northside High School restrooms', gc: 'Ridgeway Builders', amt: '212k', due: 'Thu 6/4', sent: 'sent Thu 6/4', who: 'Marcus' },
+    b430: { n: 'b430', name: 'Suite 100, Tradewind Drive', gc: 'Halvorsen Construction', amt: '64k', due: 'Fri 4/10', sent: 'sent Fri 4/10', who: 'Marcus' },
+    b495: { n: 'b495', name: 'Walters at Oakmont', gc: 'Tall Pine Construction', amt: '95k', due: 'Fri 5/22', sent: 'sent Fri 5/22', who: 'Marcus' },
+  }
+  // The ten lines of the strip, in its own order and words.
+  const sent = 'The bid is not yet won or lost.'
+  const L = [
+    ['412 · Cedar Ridge Dental, Suite 120', `A general plumbing permit was issued on this address Nov 4. It lists Lone Oak Grease Services. ${sent}`, 1],
+    ['655 · Copy Stop finish out', `A general plumbing permit was issued on this address Nov 2. It lists Tidewell Plumbing & Utility. ${sent}`, 1],
+    ['641 · Barre Loft, Stone Creek, Suite 255', `A general plumbing permit was issued on this address Oct 26. It lists Atlas & Reed Architecture. ${sent}`, 1],
+    ['430 · Suite 100, Tradewind Drive', `A general plumbing permit was issued on this address Sep 29. It lists Blue Heron Plumbing. ${sent}`, 1],
+    ['502 · Northside High School restrooms', `A general plumbing permit was issued on this address Aug 27. It lists Copperline Plumbing. ${sent}`, 1],
+    ['488 · Hillview Family Hospital nursing unit', `A general plumbing permit was issued on this address Jul 29, 2025. It lists Quill & Sons Plumbing. ${sent}`, 1],
+    ['672 · Ridgeline Surgical and Imaging, Unit A', 'A general plumbing permit was issued on this address Feb 26, 2025. It lists Atlas & Reed Architecture. The bid is not sent yet.', 0],
+    ['640 · Tile Gallery Austin', 'The building permit on this address was issued Nov 10.', 0],
+    ['495 · Walters at Oakmont', 'The building permit on this address was issued Oct 29.', 0],
+    ['618 · Greenleaf Dispensary', 'A permit application was filed on this address Nov 3: $410k declared.', 0],
+  ]
+  const line = ([t, w, lost]) => `<div class="line"><div class="w"><strong>${t}</strong><span>${w}</span></div><div class="btns"><span class="press">Open the bid</span>${lost ? '<span class="press blue">Mark lost…</span>' : ''}</div></div>`
+  const strip = (n = 4) => `<div class="strip"><div class="h">Permit news on your bids <span class="n">10</span></div>${L.slice(0, n).map(line).join('')}${n < L.length ? `<span class="more">See ${L.length - n} more ›</span>` : ''}</div>`
+  const stripOne = `<div class="strip one">Permit news on your bids <span class="n">10</span><span class="go">Show ›</span></div>`
+
+  const chip = ([words, tone, press, open]) => `<span class="chip ${tone}${press ? ' press' : ''}${open ? ' open' : ''}">${tone === 'red' && press ? '<i class="dot"></i>' : ''}${words}</span>`
+  const marks = '<span class="marks"><i></i><i></i><i></i><i></i><i></i></span>'
+  const links = '<span class="links"><i></i><i></i><i></i><i></i></span>'
+  const row = (k, chips = [], box = '') => { const b = B[k]; return `<div class="tr">${marks}<span class="num">${b.n}</span><span class="nm"><b>${b.name}</b><span class="gc">${b.gc}</span>${chips.length ? `<span class="chips">${chips.map(chip).join('')}</span>` : ''}</span><span class="amt">${b.amt ?? ''}</span><span class="due${b.soon ? ' soon' : ''}">${b.due}${b.sent ? `<small>${b.sent}</small>` : ''}</span><span class="est">${b.who}</span>${links}${box}</div>` }
+  const thead = '<div class="tr hd"><span></span><span>Bid #</span><span>Project Name<br>GC/Builder</span><span style="text-align:right">Bid</span><span style="text-align:center">Due Date</span><span style="text-align:center">Estimator</span><span style="text-align:right">Links</span></div>'
+  const table = (rows) => `<div class="tb">${thead}${rows.join('')}</div>`
+  const card = (k, chips = [], box = '') => { const b = B[k]; return `<div class="card"><div class="top">${marks}<span class="num">${b.n}</span><span class="due${b.soon ? ' soon' : ''}">${b.due}</span></div><div class="ttl">${b.name}</div>${chips.length ? `<div class="chips" style="margin:0">${chips.map(chip).join('')}</div>` : ''}<div class="meta"><a>${b.gc}</a> · ${b.who} · ${b.amt ?? '—'} · Last contact +</div>${box}</div>` }
+  const box = (tone, words, presses) => `<div class="newsbox ${tone}"><p>${words}</p><div class="btns">${presses.map((p) => `<span class="press${p === 'Mark lost…' ? ' blue' : ''}">${p}</span>`).join('')}</div></div>`
+
+  // ---- The page around the rows.
+  const nav = '<div class="nav"><span>Estimates</span><b>Bids</b><span>Customers</span><span>Permits</span><span>Messages</span><span class="dots"><i></i><i></i><i></i><i></i></span></div>'
+  const tabs = (on = 'board', fu = '') => `<div class="tabs"><span class="seg"><span class="on">Trades</span><span>GC</span></span><span class="seg sq"><span class="on">Plumbing</span><span>Electrical</span><span>HVAC</span></span><span style="width:40px"></span><span class="tab${on === 'board' ? ' on' : ''}">Bid Board</span><span class="tab">Robots</span><span class="tab${on === 'fu' ? ' on' : ''}">Followup${fu}</span><span class="tab">Unsent/Working</span><span class="tab">Bid Costs</span><span class="tab">Estimators</span><span class="newbid">New Bid</span></div>`
+  const flow = '<div class="flow"><b>Counts</b><span>Takeoffs</span><span>Labor</span><b>Pricing</b><b>Cover Letter</b><span>Submittals</span><span>RFI</span><span>Change Order</span><span>Lien Release</span></div>'
+  const plans = '<div class="plans">9 bids are waiting on plans. Put the PDF in each one’s folder and a robot prices each one tonight.<span class="go">Add the plans →</span></div>'
+  const tools = (extra = '') => `<div class="tools"><span class="field">Search (project name, GC/Builder, bid number or address)…</span><span class="tool">All developments ▾</span><span class="tool marked">○ Marked 3</span>${extra}<span class="tool">$ Pricing rules</span><span class="tool">Reply book</span><span class="tool">Customer review</span></div>`
+  const toolsPhone = (extra = '') => `<div class="field" style="flex:none">Search project, GC or bid number…</div><div class="tools" style="justify-content:flex-end"><span class="tool marked">○</span>${extra}<span class="tool">▭</span><span class="tool">$</span><span class="tool">✎</span><span class="tool">☺</span></div>`
+  const score = '<div class="score">Your score <b>3 of 9</b> of your priced bids can be scored · 6 need their Labor tab finished</div>'
+  const pills = (first = '') => `<div class="pills"><b>Plumbing:</b>${first}<span class="pill">Map</span><span class="pill">Unsent<i>22</i></span><span class="pill hot">Pending<i>118</i></span><span class="pill">Won<i>15</i></span><span class="pill">Started<i>28</i></span><span class="pill">Lost<i>132</i></span><span class="pill">Health</span></div>`
+  const mapbar = '<div class="mapbar">▸ Bids on a map (drawn folded)</div>'
+  const sec = (t) => `<div class="sec">▼ ${t}</div>`
+  const above = '<div class="above">↑ the header, the tabs and the plans banner</div>'
+
+  const desk = (inner, on, fu) => `<div class="desk">${nav}<div class="pg">${tabs(on, fu)}${flow}${inner}</div><div class="fade"></div></div>`
+  const phone = (inner) => `<div class="phone">${above}<div class="pg">${inner}</div><div class="fade"></div></div>`
+
+  // Chips as the app draws them today: a mute label.
+  const OLD = { b672: [['Plumbing permit · another name', 'red']], b655: [["Can't be scored", 'amber'], ['Plumbing permit · another name', 'red']], b640: [['Issued Nov 10', 'green']], b641: [['+1 GC', 'grey'], ['Plumbing permit · another name', 'red']] }
+  const unsentOld = () => [row('b681'), row('b672', OLD.b672), row('b679'), row('b668'), row('b677')]
+  const pendingOld = () => [row('b655', OLD.b655), row('b651'), row('b640', OLD.b640), row('b641', OLD.b641)]
+  const cardsOld = () => card('b681') + card('b672', OLD.b672) + card('b679') + card('b668')
+
+  // ---- As it is.
+  const nowDesk = desk(plans + tools() + score + strip(4) + pills() + mapbar + sec('Unsent / Working Bids (22)') + table(unsentOld()))
+  const nowPhone = phone(toolsPhone() + strip(4) + pills())
+
+  // ---- A: lower on the board. The strip heads the sent bids' section.
+  const scrolled = (words) => `<div class="above">↑ ${words}</div>`
+  const aDesk = `<div class="desk">${nav}${scrolled('scrolled about 2,500 px: the tools, the map and the 22 unsent bids')}<div class="pg">${pills()}${table([row('b677')])}${sec('Not yet won or lost (118)')}${strip(4)}${table(pendingOld().slice(0, 2))}</div><div class="fade"></div></div>`
+  const aPhone = phone(toolsPhone() + pills() + sec('Unsent / Working Bids (22)') + cardsOld() + card('b677'))
+
+  // ---- B: a lens on Followup.
+  const lens = (extra) => `<div class="lens"><span>By builder</span><span>Call queue</span><span>By status</span><span>Why we lost</span><span>Waiting to hear</span><span>Job accounts</span><span>Money</span>${extra}</div>`
+  const bDesk = desk(lens('<span class="on">Permit news <i class="cnt" style="font-style:normal">10</i></span>') + strip(6), 'fu', '<i class="cnt" style="font-style:normal">10</i>')
+  const bPhone = phone(`<div class="tabs"><span class="tab">Bid Board</span><span class="tab">Robots</span><span class="tab on">Followup<i class="cnt" style="font-style:normal">10</i></span><span class="tab">Unsent</span></div>` + lens('<span class="on">Permit news 10</span>') + strip(2))
+
+  // ---- C: one line that opens.
+  const cDesk = desk(plans + tools() + score + stripOne + pills() + mapbar + sec('Unsent / Working Bids (22)') + table(unsentOld()) + sec('Not yet won or lost (118)') + table(pendingOld().slice(0, 1)))
+  const cPhone = phone(toolsPhone() + stripOne + pills() + sec('Unsent / Working Bids (22)') + cardsOld())
+
+  // ---- D, first draft: the row's chip is the press, the strip is gone, a count sits beside Marked.
+  const D1 = { b672: [['Plumbing permit · another name', 'red', 1, 1]], b655: [["Can't be scored", 'amber'], ['Plumbing permit · another name', 'red', 1]], b640: [['Issued Nov 10', 'green', 1]], b641: [['+1 GC', 'grey'], ['Plumbing permit · another name', 'red', 1]] }
+  const d1Box = box('red', 'A general plumbing permit was issued on this address <b>Feb 26, 2025</b>. It lists <b>Atlas &amp; Reed Architecture</b>. The bid is not sent yet.', ['Open the bid', 'Not this job'])
+  const d1Tool = '<span class="tool news">Permit news 10</span>'
+  const d1Desk = desk(plans + tools(d1Tool) + score + pills() + mapbar + sec('Unsent / Working Bids (22)') + table([row('b681'), row('b672', D1.b672, d1Box), row('b679'), row('b668'), row('b677')]) + sec('Not yet won or lost (118)') + table([row('b655', D1.b655), row('b651')]))
+  const d1Phone = phone(toolsPhone('<span class="tool news" style="width:auto;padding:0 8px">10</span>') + pills() + sec('Unsent / Working Bids (22)') + card('b681') + card('b672', D1.b672, d1Box) + card('b679') + card('b668'))
+
+  // ---- The pick, after the second look.
+  // Dana: nothing on her bids is news, so nothing is drawn. Two quiet facts stay on other people's rows.
+  const P = { b655: [["Can't be scored", 'amber'], ['Plumbing permit here since Nov 2', 'grey', 1]], b640: [['Building permit issued · Nov 10', 'green', 1]], b641: [['+1 GC', 'grey']] }
+  const pDana = desk(plans + tools() + score + pills() + mapbar + sec('Unsent / Working Bids (22)') + table([row('b681'), row('b672'), row('b679'), row('b668'), row('b677')]))
+  const pQuiet = `<div style="width:1180px;max-width:100%">${table([row('b655', P.b655, box('grey', 'A general plumbing permit was on this address before this bid was started. It was issued <b>Nov 2</b> and lists <b>Tidewell Plumbing &amp; Utility</b>.', ['Open the bid', 'Not this job'])), row('b640', P.b640), row('b641', P.b641)])}</div>`
+  const pDanaPhone = phone(toolsPhone() + pills() + sec('Unsent / Working Bids (22)') + card('b681') + card('b672') + card('b679') + card('b668') + card('b677'))
+  // Marcus: three of his bids have news. The pill is pressed, so the board holds those three.
+  const M = { b502: [['Permit lists Copperline Plumbing · Aug 27', 'red', 1, 1]], b430: [['Permit lists Blue Heron Plumbing · Sep 29', 'red', 1]], b495: [['Building permit issued · Oct 29', 'green', 1]] }
+  const mBox = box('red', 'A general plumbing permit was issued on this address <b>Aug 27</b>. It lists <b>Copperline Plumbing</b>. You sent this bid Jun 4.', ['Open the bid', 'Mark lost…', 'Not this job'])
+  const newsPill = (on) => `<span class="pill news${on ? ' on' : ''}">Permit news<i>3</i></span>`
+  const showing = '<div class="showing">Showing the 3 bids of yours with permit news. <a>Show every bid</a></div>'
+  const pMarcus = desk(plans + tools() + score + pills(newsPill(1)) + showing + table([row('b502', M.b502, mBox), row('b495', M.b495), row('b430', M.b430)]))
+  const afterNot = `<div style="width:560px;max-width:100%"><div class="wth"><div class="ttl">b502 · Northside High School restrooms</div><div class="meta">Ridgeway Builders · $212k · sent Jun 4</div><div class="newsbox grey"><p>Taken off this bid. The permit stays in the bid’s <b>This site</b> list, with who said so.</p><div class="btns"><span class="press">Undo</span></div></div></div></div>`
+  const pMarcusPhone = phone(toolsPhone() + pills(newsPill(1)) + showing + card('b502', M.b502, mBox) + card('b430', M.b430) + card('b495', M.b495))
+  // Where the outcome is already decided.
+  const wth = `<div class="wth"><div class="ttl">b502 · Northside High School restrooms</div><div class="meta">Ridgeway Builders · $212k · sent Jun 4 · last contact 41 days ago</div><div class="chips" style="margin:0">${chip(M.b502[0])}</div>${mBox}<div class="acts"><span>Left message</span><span>Still pending</span><span>Bid tab received</span><span>Rebid / RFQ</span><span>Won</span><span>Lost…</span></div></div>`
+  const winloss = `<div class="winloss"><label>Win / Loss</label><div class="hint">The city lists Copperline Plumbing on a general plumbing permit here, issued Aug 27.</div><div class="opts"><span>◯ Not yet won or lost</span><span>◯ Won</span><span>◯ Lost</span><span>◯ Started or complete</span></div></div>`
+  const needs = `<div class="needs"><span><small>Permits</small>A plumbing permit under another name is on 2 bids you sent.</span><span class="press">See them</span></div>`
+
+  const cell = (id, cap, small, html, wide) => `<div class="cell${wide ? ' wide' : ''}" id="${id}"><div class="cap">${cap}<small>${small}</small></div>${html}</div>`
+  const band = (id, title, words, cells, tag) => `<section><div class="band" id="${id}"><h2>${title}${tag === 'pick' ? '<span class="pick">my pick</span>' : tag ? `<span class="hers">${tag}</span>` : ''}</h2>${words.map((w) => `<p>${w}</p>`).join('')}</div><div class="board">${cells.join('')}</div></section>`
+
+  const BANDS = [
+    band('now', 'As it is', ['The strip sits above the section pills, so it is above every bid. Four lines show and the rest fold behind <b>See 6 more</b>. It lists every person’s bids on the trade, and it does not follow the search, the development or <b>Marked</b>. The same fact is already a chip on the bid’s row, but the chip cannot be pressed.'], [
+      cell('now-desk', 'A desk, the first screen', 'The strip ends where the screen ends. The first bid is under the fold. Dana’s own line is the seventh.', nowDesk, true),
+      cell('now-phone', 'A phone', 'Four lines stand 666 px tall, more than three quarters of the screen.', nowPhone),
+    ]),
+    band('a', 'A · Lower on the board', ['<b>Gains:</b> the bids she is working come straight up, for an hour’s work. <b>Loses:</b> the section it would head starts about 2,500 px down at a desk and farther on a phone, so a real loss is news nobody scrolls to. It is still everyone’s lines, the old ones never leave, and nothing about a line gets easier to answer.'], [
+      cell('a-desk', 'A desk, scrolled down to it', 'The strip heads Not yet won or lost, since nine of its ten lines are sent bids. The first screen is the board with no strip.', aDesk, true),
+      cell('a-phone', 'A phone', 'The cards come first. The strip is many screens down.', aPhone),
+    ], 'her first idea'),
+    band('b', 'B · A lens on Followup', ['<b>Gains:</b> the board is clean, and Followup is where a bid is chased and marked lost. <b>Loses:</b> it is an eighth lens to remember, on a tab she opens less often than the board. The count on the tab never goes down while no line can be answered truthfully. An unsent bid’s line, the one she has today, has nothing to do with following up. The chip on the board’s row stays mute.'], [
+      cell('b-desk', 'A desk', 'Followup carries the count. The list is the strip, moved.', bDesk, true),
+      cell('b-phone', 'A phone', 'The same list, two taps from the board.', bPhone),
+    ], 'her second idea'),
+    band('c', 'C · One line that opens', ['<b>Gains:</b> 315 px becomes 44, the cheapest change here, and nothing is lost that is there today. <b>Loses:</b> a red 10 that never moves is wallpaper within a week. It is still a list away from the rows, still everyone’s, and the stale lines are still under it.'], [
+      cell('c-desk', 'A desk', 'One line with its count. A press opens the list where it is today.', cDesk, true),
+      cell('c-phone', 'A phone', 'The same one line.', cPhone),
+    ]),
+    band('d', 'D · On the bid’s own row, first draft', ['The strip goes. The chip that is already on the row becomes the press, and the window opens under the row with the same words and presses. A third press, <b>Not this job</b>, gives a wrong line a truthful way out. A count beside <b>Marked</b> narrows the board to the bids with news.', '<b>Gains:</b> the news is read where the bid is, and a board with no news gives up no height at all. <b>Loses:</b> see the second look below. This draft still makes Dana clear ten lines by hand, nine of them not hers.'], [
+      cell('d-desk', 'A desk', 'Dana pressed the chip on her unsent bid. The permit is from February 2025 and lists an architect.', d1Desk, true),
+      cell('d-phone', 'A phone', 'The same press on the card. The count is one more icon in a row of five.', d1Phone),
+    ]),
+  ]
+  const SECOND = `<section><div class="band" id="second"><h2>Is this the best we can do?</h2><p>A second look at D, against the ten real lines. Seven things changed.</p></div>
+    <ol class="notes">
+      <li><b>The app can rule out most wrong lines itself.</b> Of the seven “another name” lines, three name a different suite than the bid and one is a job from the year before the bid. A press that asks a person to clear what the app could have known is still a chore. Three rules go into the kernel first. They are in the table at the foot.</li>
+      <li><b>Whose news it is.</b> D counted everyone’s. The count is now the reader’s own bids: the ones they estimate, manage, or were marked for. The chip stays on every row, for whoever reads that row.</li>
+      <li><b>The chip said nothing.</b> “Plumbing permit · another name” has no name and no day. The chip now carries both, so most lines are read without a press.</li>
+      <li><b>The count was in the wrong row.</b> On a phone the tools row is five icons. The count is now the first pill of the sections row, which stays on screen as the board scrolls. It is drawn only when there is news.</li>
+      <li><b>A permit that was there before the bid was started is not a loss.</b> Four of the seven were. Inside six months it is worth knowing while pricing, so it stays as a quiet grey chip, with no Mark lost… and no count. Older than that it is history, and it lives in the bid’s This site list.</li>
+      <li><b>New, then standing.</b> D’s count could only go down by an answer, so a person waiting on a GC’s call would stare at it for a week. A line now counts until its reader has opened it. After that the chip stays on the row until the bid is decided or someone presses Not this job. A building permit’s chip still leaves after 30 days.</li>
+      <li><b>Her Followup idea is right about one thing.</b> The outcome is decided on Followup and in the bid’s window, so the same chip and window sit on a Waiting to hear row and above Win / Loss. The news does not move there. It is repeated there.</li>
+    </ol></section>`
+  const PICK = band('pick', 'The pick · on the row, after the second look', ['<b>Gains:</b> a board with nothing new for its reader shows nothing, which is Dana’s board today. Real news is on the bid’s row with the name and the day, and is answered where it is read. Every line has a truthful way out. <b>Loses:</b> it is the largest build here, about five small pull requests and one new table. News on a bid far down the board is found through the pill, not by scrolling past it.'], [
+    cell('pick-dana', 'Dana’s desk', 'None of her bids has news, so no strip and no pill. Her unsent bid’s old permit, on another suite, is no longer a line.', pDana, true),
+    cell('pick-dana-phone', 'Dana’s phone', 'The cards start under the tools.', pDanaPhone),
+    cell('pick-quiet', 'Farther down Dana’s board, on Priya’s sent bids', 'Facts stay on the row for whoever reads it: a grey chip for a permit that was there before the bid, a green one for a building permit just issued. Barre Loft’s permit was on another suite, so its row has none. None of these counts for Dana.', pQuiet, true),
+    cell('pick-marcus', 'Marcus’s desk, the pill pressed', 'Three of his sent bids have news. The pill holds the board to those three, wherever they sit in the 118. He pressed the first chip.', pMarcus, true),
+    cell('pick-marcus-phone', 'Marcus’s phone', 'The pill leads the sections row. The window opens inside the card.', pMarcusPhone),
+    cell('pick-after', 'After Not this job', 'The chip and the count go, for everyone who reads the bid. Undo stays for a few seconds, and the way back after that is in the bid’s window.', afterNot),
+    cell('pick-wth', 'Followup → Waiting to hear', 'The same chip and window on the row, above the six presses the lens already has.', `<div style="width:560px;max-width:100%">${wth}</div>`),
+    cell('pick-winloss', 'The bid’s window, above Win / Loss', 'One line where the outcome is set.', winloss),
+    cell('pick-needs', 'Dashboard → Needs you, a call for the owner', 'Not in the pick. It would tell a person who has not opened the board.', needs),
+  ], 'pick')
+  const RULES = `<section><div class="band" id="rules"><h2>The ten lines, under the pick</h2><p>The made-up lines above stand for the ten real ones, kind for kind. The right column is what each becomes.</p></div>
+    <table class="tbl"><thead><tr><th>Line today</th><th>What the records say</th><th>Rule</th><th>Under the pick</th></tr></thead><tbody>
+      <tr><td>Cedar Ridge Dental, Suite 120 · lists a grease hauler</td><td>The permit is on Unit 300: another tenant replaced a grease trap.</td><td>Another suite</td><td class="out">No line, no chip</td></tr>
+      <tr><td>Barre Loft, Suite 255 · lists an architect</td><td>The permit is on Unit 130, and was issued ten days before the bid was started.</td><td>Another suite</td><td class="out">No line, no chip</td></tr>
+      <tr><td>Ridgeline Surgical, Unit A · lists an architect · not sent</td><td>The permit is on Unit 310, from February 2025, 20 months before the bid was started.</td><td>Another suite, and long before the bid</td><td class="out">No line, no chip</td></tr>
+      <tr><td>Hillview Family Hospital · lists a plumber</td><td>A shower install in July 2025, nine months before the bid was started.</td><td>Long before the bid</td><td class="out">No line. It stays in the bid’s This site list.</td></tr>
+      <tr><td>Copy Stop finish out · lists a plumber</td><td>Site utility work, issued nine days before the bid was started.</td><td>There before the bid</td><td>A quiet grey chip. No Mark lost…, no count.</td></tr>
+      <tr><td>Suite 100, Tradewind Drive · lists a plumber</td><td>The permit shares the building permit’s number. Issued five months after the bid was sent.</td><td>None</td><td class="stay">News: red chip, Mark lost…</td></tr>
+      <tr><td>Northside High School restrooms · lists a plumber</td><td>A restroom remodel, issued three months after the bid was sent.</td><td>None</td><td class="stay">News: red chip, Mark lost…</td></tr>
+      <tr><td>Tile Gallery Austin · building permit issued</td><td>Issued nine days ago.</td><td>None</td><td class="stay">News for 30 days: green chip</td></tr>
+      <tr><td>Walters at Oakmont · building permit issued</td><td>Issued 21 days ago.</td><td>None</td><td class="stay">News for 30 days: green chip</td></tr>
+      <tr><td>Greenleaf Dispensary · application filed</td><td>Filed 16 days ago.</td><td>None</td><td class="stay">News for 30 days: grey chip</td></tr>
+    </tbody></table>
+    <ol class="notes" style="margin-top:12px">
+      <li>Ten lines become five that count, and each counts only for the person who holds the bid. The asking estimator’s count is zero.</li>
+      <li>An eleventh real line sits on the Electrical board: a plumbing permit on an electrical bid, with Mark lost… on it. A plumbing permit is news on a plumbing bid only.</li>
+      <li>Two of the seven names are architects and one hauls grease. Where the office has already said what a name is, on Permits → Builders, the line can say so. That is the same answer the bid’s window asks for today.</li>
+    </ol></section>`
+
+  document.getElementById('bands').innerHTML = BANDS.join('') + SECOND + PICK + RULES + '<div style="height:60px"></div>'
+  document.querySelectorAll('.tog').forEach((b) => b.addEventListener('click', () => {
+    document.body.dataset.theme = b.dataset.t
+    document.querySelectorAll('.tog').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+  }))
+  const asked = new URLSearchParams(location.search).get('theme')
+  if (asked === 'dark') document.querySelector('.tog[data-t="dark"]').click()
+</script>
+</body>
+</html>
