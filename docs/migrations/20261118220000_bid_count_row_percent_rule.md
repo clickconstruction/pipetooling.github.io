@@ -40,3 +40,5 @@ Nothing changes. The policies on `bids_count_rows` are by row and do not read th
 ## Order
 
 Additive and idempotent. No `CREATE TABLE`, so no fence calls. The lock is an `ALTER TABLE` that adds a nullable column with no default, which rewrites no row, and a check that every existing row passes because its rule is null, under the 3 second timeout. The push can come any time after the merge. The Workbench reads count rows with `select('*')`, so the client that follows is safe on either side of the push.
+
+**Applied** to prod by 2026-11-18: the dev seat's `check_migration_ledger` read 1,380 versions applied against 1,381 local files, this version among them and `20261118190000` alone still to push (read in the docs pass after #8710).
