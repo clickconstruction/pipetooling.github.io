@@ -23,7 +23,7 @@ describe('the Drive pass matcher', () => {
     expect(contractFileStrength('Signed Inspection Report (Mon Jun 29, 2026).pdf')).toBe('no')
     expect(contractFileStrength('Kerrville TX (GEO Report) - signed.pdf')).toBe('no')
     expect(contractFileStrength('Lowbeck Insurance Rider for Subcontractors.pdf')).toBe('no')
-    expect(contractFileStrength('Joeris Subcontract SAMPLE Template 2024.pdf')).toBe('no')
+    expect(contractFileStrength('Jessup Subcontract SAMPLE Template 2024.pdf')).toBe('no')
     expect(contractFileStrength('CLICK PLUMBING - EST. #123 - 105 DORROW RD. - SIGNED (3.27.2026).pdf')).toBe('strong')
   })
 

@@ -121,7 +121,7 @@ describe('get_person_file (the person file from the dev seat)', () => {
   })
 
   it('refuses in words a name that matches two people, a name that matches none and an id nobody wears', async () => {
-    const two = catalogReader({ rows: { people: [{ ...rows().people[0]!, name: 'Pat Doe' }, { ...rows().people[0]!, id: LOGIN, name: 'Pat Dolan' }] } })
+    const two = catalogReader({ rows: { people: [{ ...rows().people[0]!, name: 'Pat Doe' }, { ...rows().people[0]!, id: LOGIN, name: 'Pat Darrow' }] } })
     const out = (await getPersonFile(two, { person: 'pat do' }, dev)) as { refused: string }
     expect(out.refused).toContain('matches 2 people')
     expect(out.refused).toContain(PERSON)

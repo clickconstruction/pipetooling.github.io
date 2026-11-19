@@ -108,7 +108,7 @@ describe('parking a slate (the owner’s call of 2026-10-09)', () => {
     item({ id: 'tye' }),
     aug31('garcia'),
     aug31('livarg'),
-    item({ id: 'sealed-1', shellName: 'ZZ Shadow Patagonia', sealed: true }),
+    item({ id: 'sealed-1', shellName: 'ZZ Shadow Penrose', sealed: true }),
     item({ id: 'done-1', status: 'done' }),
   ]
 

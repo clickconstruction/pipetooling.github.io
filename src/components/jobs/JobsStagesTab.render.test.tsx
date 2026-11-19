@@ -327,7 +327,7 @@ describe('JobsStagesTab render smoke', () => {
 
   it('GC/development filters live in the ⋯ tools menu, not the search bar (v2.1232)', async () => {
     const jobs = [
-      makeJob({ job_name: 'Horton House', gcCustomer: { id: 'gc-1', name: 'D.R. Hollis' } }),
+      makeJob({ job_name: 'Hollis House', gcCustomer: { id: 'gc-1', name: 'D.R. Hollis' } }),
       makeJob({ job_name: 'Other House' }),
     ]
     renderWithProviders(<JobsStagesTab ref={createRef()} {...makeProps({ jobs })} />)
@@ -344,7 +344,7 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.getByLabelText('Filter the Pipeline board by GC/Builder')).toBeTruthy()
     const chip = screen.getByTitle('Filtered by GC/Builder — tap to clear')
     expect(chip.textContent).toContain('D.R. Hollis')
-    expect(screen.getByText('Horton House')).toBeTruthy()
+    expect(screen.getByText('Hollis House')).toBeTruthy()
     expect(screen.queryByText('Other House')).toBeNull()
     // Tapping the chip clears the filter.
     fireEvent.click(chip)
