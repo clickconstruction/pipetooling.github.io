@@ -9,7 +9,7 @@ The Lien desk opens on its To do view. The Board sits across the top of that vie
 
 ## The four tiles
 
-The first tile counts what is due by the next day. It reads like *21 by Monday*, then how many are to file and how many are to send. A red line under it says how many will not make that day as they stand. A paper will not make its day when it has more stages left than working days. Press the red line and the list shows only those papers.
+The first tile counts what is due by the next day. It reads like *21 by Monday*, then how many are to file and how many are to send. A red line under it says how many will not make that day as they stand. A paper will not make its day when it has more stages left than working days. Press the red line and the list shows only those papers. The line ends in *Show them ›*. With no paper at risk, the red line counts the papers past their day. It reads like *6 are past their day. Show them ›*. Press it and the list shows only the rows with a late paper. Press it again and the list is whole.
 
 The second tile counts everything waiting on the leader, by name. Its small line names the two parts, like *1 to approve · 7 to sign*. **To approve** is a paper the office sent for approval. **To sign** is an approved notice with no signature on it yet. Those notices stand in their own bin, *Approved · to sign*. Press the tile and the list shows only those rows.
 

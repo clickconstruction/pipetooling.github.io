@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProp
 import { lienBoardBinCount, lienBoardBinsShown, lienBoardDoorWords, lienBoardHoldWords, lienBoardUnreadWords, type LienBoard as LienBoardModel, type LienBoardArrow, type LienBoardBin, type LienBoardBinKey, type LienBoardChip, type LienBoardPick, type LienBoardTile, type LienBoardTileDestination, type LienBoardUrgency, lienBoardPickWords } from '../../lib/jobs/lienBoard'
 import type { LienBoardPrintSide } from '../../lib/jobs/lienBoardPrints'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { LIEN_BOARD_DAY_LINE_DOOR } from '../../lib/jobs/lienBoardDayLine'
 import { LIEN_BOARD_CARD_WIDTH_PX, lienBoardCardHeight, lienBoardCardPlace, type LienBoardCardPlace, type LienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
 
 /**
@@ -277,9 +278,11 @@ function Tile({ tile, isMobile, onTile }: { tile: LienBoardTile; isMobile: boole
       <span data-lien-board-tile-label style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-700)', lineHeight: 1.25 }}>{tile.label}</span>
       {tile.line ? (
         linePress ? (
-          // The red line is a press of its own (v2.7371): the list under the Board shows only the papers it counts.
-          <button type="button" className="lienJobDoor" data-lien-board-tile-line data-press="yes" onClick={linePress} title="Show only these rows" style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: '0.72rem', color: 'var(--text-red-700)', lineHeight: 1.3, textAlign: 'left', cursor: 'pointer', borderRadius: 3, textDecoration: 'underline', textUnderlineOffset: 3, minHeight: isMobile ? 32 : undefined }}>
-            {tile.line}
+          // The red line is a press of its own (v2.7371): the list under the Board shows only the papers it counts. It says so in words
+          // (the owner's pick of 2026-11-18): the red sentence, then *Show them ›* in the link colour. An underline said it until then.
+          <button type="button" className="lienJobDoor" data-lien-board-tile-line-press={tile.lineDestination?.kind} data-press="yes" onClick={linePress} title="Show only these rows" style={{ border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', fontSize: '0.72rem', lineHeight: 1.3, textAlign: 'left', cursor: 'pointer', borderRadius: 3, minHeight: isMobile ? 32 : undefined }}>
+            <span data-lien-board-tile-line style={{ color: 'var(--text-red-700)' }}>{tile.line}</span>{' '}
+            <span data-lien-board-tile-line-door style={{ color: 'var(--text-link)', fontWeight: 600, whiteSpace: 'nowrap' }}>{LIEN_BOARD_DAY_LINE_DOOR} ›</span>
           </button>
         ) : (
           <span data-lien-board-tile-line style={{ fontSize: '0.72rem', color: tile.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-muted)', lineHeight: 1.3 }}>{tile.line}</span>

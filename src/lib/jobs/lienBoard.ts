@@ -141,12 +141,15 @@ export type LienBoardTile = {
   tone: 'red' | 'amber' | 'violet' | 'quiet'
   /** Where the tile's press goes, or null for a tile that only reads. */
   destination: LienBoardTileDestination | null
-  /** Where the tile's line goes when the line is a press of its own (v2.7371): the day tile's red line narrows the list to the papers it counts. */
+  /** Where the tile's line goes when the line is a press of its own (v2.7371): the day tile's red line narrows the list to the papers it counts, the ones at risk or the ones past their day. */
   lineDestination?: LienBoardTileDestination | null
 }
 
-/** `leader` (v2.7448): every paper that waits on the leader, to approve or to sign, as the second tile counts them. */
-export type LienBoardTileDestination = { kind: 'leader' } | { kind: 'run' } | { kind: 'risk' }
+/**
+ * `leader` (v2.7448): every paper that waits on the leader, to approve or to sign, as the second tile counts them.
+ * `late` (the owner's pick of 2026-11-18): the papers past their day, as the day tile's line counts them when none is at risk.
+ */
+export type LienBoardTileDestination = { kind: 'leader' } | { kind: 'run' } | { kind: 'risk' } | { kind: 'late' }
 
 /** A job in both columns for one reason, cleared by one door: no owner of record, or (v2.7457) an affidavit that waits on its notice alone, beside that notice. */
 export type LienBoardPair = { key: string; jobId: string; reason: 'owner' | 'notice'; destination: LienBoardDestination }
@@ -658,6 +661,19 @@ function open(c: LienBoardChip): boolean {
   return c.stage !== 'sent' && c.stage !== 'filed' && c.stage !== 'served' && c.stage !== 'missed'
 }
 
+/**
+ * A paper past its day that can still move: still to send or file, on a property that takes a paper. The day tile's
+ * *N are past their day* counts these, and a press on that line narrows the list to them (`lienBoardDayLine.ts`).
+ */
+export function lienBoardChipLate(c: LienBoardChip): boolean {
+  return open(c) && !c.publicMark && c.daysLeft != null && c.daysLeft < 0
+}
+
+/** *are past their day*: the day tile's line after its count when no paper is at risk, and the head over the same papers in the list. */
+export function lienBoardLatePhrase(n: number): string {
+  return `${plural(n, 'is', 'are')} past ${plural(n, 'its', 'their')} day`
+}
+
 /** The third tile's words under its figure (v2.7448): what the two bins under it wait for, as the press that opens them says it. */
 export const LIEN_RUN_TILE_LABEL = 'to print and mail'
 
@@ -686,9 +702,9 @@ function tiles(input: LienBoardInput, notices: ReadonlyArray<LienBoardChip>, aff
   const toFile = byDay.filter((c) => c.kind === 'affidavit').length
   const toSend = byDay.filter((c) => c.kind === 'notice').length
   const atRisk = liveChips.filter((c) => c.atRisk).length
-  const late = liveChips.filter((c) => c.daysLeft != null && c.daysLeft < 0).length
+  const late = liveChips.filter(lienBoardChipLate).length
   const dayLabel = [toFile > 0 ? `${toFile} to file` : '', toSend > 0 ? `${toSend} to send` : ''].filter(Boolean).join(' · ')
-  const dayLine = atRisk > 0 && dayWords ? `${atRisk} ${lienBoardRiskPhrase(dayWords, atRisk)}.` : late > 0 ? `${late} ${plural(late, 'is', 'are')} past ${plural(late, 'its', 'their')} day.` : null
+  const dayLine = atRisk > 0 && dayWords ? `${atRisk} ${lienBoardRiskPhrase(dayWords, atRisk)}.` : late > 0 ? `${late} ${lienBoardLatePhrase(late)}.` : null
   const waits = lienBoardLeaderWaits(notices, affidavits)
   const leader = input.leaderName?.trim() || 'the leader'
   const printed = notices.filter((c) => c.pile === 'printed').length
@@ -709,7 +725,8 @@ function tiles(input: LienBoardInput, notices: ReadonlyArray<LienBoardChip>, aff
         line: dayLine,
         tone: atRisk > 0 || late > 0 || soonest ? 'red' : byDay.length > 0 ? 'amber' : 'quiet',
         destination: null,
-        lineDestination: atRisk > 0 && dayWords ? { kind: 'risk' } : null,
+        // The line that shows is a press to its own papers: the ones at risk, or with none at risk the ones past their day.
+        lineDestination: atRisk > 0 && dayWords ? { kind: 'risk' } : late > 0 ? { kind: 'late' } : null,
       },
       {
         key: 'waiting',

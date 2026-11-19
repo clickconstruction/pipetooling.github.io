@@ -24,6 +24,7 @@ import {
   lienBoardSignSplit,
 } from '../../lib/jobs/lienBoard'
 import { lienBoardChipCard } from '../../lib/jobs/lienBoardChipCard'
+import { lienBoardLatePick } from '../../lib/jobs/lienBoardDayLine'
 import type { CourtesyStatus } from '../../lib/jobs/lienCourtesyNotice'
 import { approveLienDeskItem, tellLeaderOfLienAffidavits, tellLeaderOfLienApproval, tellLeaderOfLienSignatures } from '../../lib/jobs/lienDeskIo'
 import { lienDoNowBarParts } from '../../lib/jobs/lienDoNowBar'
@@ -203,9 +204,11 @@ export function useLienDeskBoard({ data, todayYmd, authRole, authUserId, leaderN
   }
   // The day tile's red line, pressed (v2.7371): the list shows only the papers that will not make their day as they stand.
   const [boardRisk, setBoardRisk] = useState(false)
+  // The same line when it reads *N are past their day* (the owner's pick of 2026-11-18): the list shows only the late papers.
+  const [boardLate, setBoardLate] = useState(false)
   // The second tile's press (v2.7448): every paper that waits on the leader, to approve or to sign, as the tile counts them.
   const [boardLeader, setBoardLeader] = useState(false)
-  const boardPick = useMemo(() => (board && boardRisk ? lienBoardRiskPick(board) : board && boardLeader ? lienBoardLeaderPick(board, boardLeaderName) : board && boardBins ? lienBoardPick(board, boardBins) : null), [board, boardBins, boardRisk, boardLeader, boardLeaderName])
+  const boardPick = useMemo(() => (board && boardRisk ? lienBoardRiskPick(board) : board && boardLate ? lienBoardLatePick(board) : board && boardLeader ? lienBoardLeaderPick(board, boardLeaderName) : board && boardBins ? lienBoardPick(board, boardBins) : null), [board, boardBins, boardRisk, boardLate, boardLeader, boardLeaderName])
   // The same rule orders the list (punch list #362, step 2): a row whose paper the Board marks stands first under Needs you now.
   const riskPapers = useMemo(() => (board ? lienBoardRiskPapers(board) : new Map<string, number>()), [board])
   const rowRisk = useCallback((row: LienNextUpRow) => lienBoardRowRisk(riskPapers, row), [riskPapers])
@@ -262,24 +265,35 @@ export function useLienDeskBoard({ data, todayYmd, authRole, authUserId, leaderN
   const pickBoardBins = useCallback((bins: LienBoardBinKey[] | null) => {
     setBoardBins((prev) => (bins && prev && prev.join('|') === bins.join('|') ? null : bins))
     setBoardRisk(false)
+    setBoardLate(false)
     setBoardLeader(false)
     if (bins) setPickBringsRows((n) => n + 1)
   }, [])
   const pickBoardRisk = () => {
     setBoardBins(null)
     setBoardLeader(false)
+    setBoardLate(false)
     setBoardRisk(!boardRisk)
     if (!boardRisk) setPickBringsRows((n) => n + 1)
+  }
+  const pickBoardLate = () => {
+    setBoardBins(null)
+    setBoardLeader(false)
+    setBoardRisk(false)
+    setBoardLate(!boardLate)
+    if (!boardLate) setPickBringsRows((n) => n + 1)
   }
   const pickBoardLeader = () => {
     setBoardBins(null)
     setBoardRisk(false)
+    setBoardLate(false)
     setBoardLeader(!boardLeader)
     if (!boardLeader) setPickBringsRows((n) => n + 1)
   }
   // A tile's press, and the same count's press on the pinned find box (v2.7367): the run, the stage on both columns, or (v2.7371) the red line's papers.
   const openBoardTile = (d: LienBoardTileDestination) => {
     if (d.kind === 'risk') pickBoardRisk()
+    else if (d.kind === 'late') pickBoardLate()
     else if (d.kind === 'leader') pickBoardLeader()
     else if (d.kind === 'run') {
       if (office) onOpenRun()
