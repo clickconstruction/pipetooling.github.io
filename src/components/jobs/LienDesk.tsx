@@ -150,6 +150,7 @@ import { LienDeskAwaitingFooter, LienDeskHeldFooter, LienDeskPrintedFooter, Lien
 import { LienDeskSentFooter } from './LienDeskSentFooter'
 import LienFilingMailProof from './LienFilingMailProof'
 import { lienMailProof } from '../../lib/jobs/lienMailProof'
+import { lienStopProof } from '../../lib/jobs/lienStopProof'
 import { lienMailProofDoorPress, lienMailProofOwnerGap, lienMailProofServeLanding, type LienMailProofLanding, type LienMailProofOpeners } from '../../lib/jobs/lienMailProofDoor'
 import { useLienCodeSigner } from './useLienCodeSigner'
 import { useLienDeskPayPage } from './useLienDeskPayPage'
@@ -2175,7 +2176,7 @@ export default function LienDesk({
     const asSent = (f: JobLienFilingRow, words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
       const page = filingSnapshotPage(f, { issuer, jobNumber: jobNo })
       // What went out (`lienMailProof.ts`): the mailed files off the notice's own item, and each envelope's receipt.
-      const proof = lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, mailedCopies: data.items.find((it) => it.sent_filing_id === f.id)?.mailed_copies, servedAt: f.served_at, hasContractor: Boolean(selected.gcCustomerId) })
+      const proof = lienStopProof(f, { isSub: Boolean(selected.gcCustomerId), mailedCopies: data.items.find((it) => it.sent_filing_id === f.id)?.mailed_copies })
       const proofDoor = proof ? lienMailProofDoorPress({ jobId, filingId: f.id, paper: proof.paper, served: Boolean(f.served_at), printed: lienServeStage(f, servePrinted) === 'record', ownerGap: lienMailProofOwnerGap({ name: ownerName, mailingAddress: property.owner.mailingAddress }) }, proofOpeners(f.id), () => setStopOpen(null)) : null
       return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null, proof, proofDoor }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
     }

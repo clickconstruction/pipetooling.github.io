@@ -77,7 +77,7 @@ import LienFilingTabs from './LienFilingTabs'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage } from '../../lib/jobs/lienStopPaperPages'
-import { lienMailProof } from '../../lib/jobs/lienMailProof'
+import { lienStopProof } from '../../lib/jobs/lienStopProof'
 import { lienMailProofDoorPress, lienMailProofWindowTab, type LienMailProofLanding } from '../../lib/jobs/lienMailProofDoor'
 import { lienServeStage } from '../../lib/jobs/lienServeStage'
 import { readLienCopyPrints } from '../../lib/jobs/lienServePrintsIo'
@@ -932,7 +932,8 @@ export default function LienInstrumentsModal({
     const when = (ymd: string | null, iso: string) => formatYmdMonthDay(ymd ?? calendarYmdInAppTzFromIso(iso))
     const asSent = (f: JobLienFilingRow, words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
       const page = filingSnapshotPage(f, { issuer, jobNumber })
-      const proof = lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, servedAt: f.served_at })
+      // The one reading the three stop windows share (`lienStopProof.ts`): the contractor's copy counts before it has a record.
+      const proof = lienStopProof(f, { isSub })
       // The press on a recipient's card (`lienMailProofDoor.ts`). This window is itself where a copy's lack is entered, so the
       // press closes the stop window and lands on the copy here, for the office alone. The owner's gap is not read: this
       // window has no property record of its own, and its service step names a missing address under its press.
