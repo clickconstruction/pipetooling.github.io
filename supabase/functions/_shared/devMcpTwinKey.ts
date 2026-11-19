@@ -5,7 +5,8 @@
 // twin_credentials stays closed to read_rows: these verbs read it by a fixed column list that never names token_hash,
 // so a key's label, its dates and its state cross the door and nothing that could stand in for the key does.
 // No new RPC and no dry-run wrapper: the dry run is the server's own read of the twin and its keys as the dev, and the
-// plan hash commits to them, so a key revoked or minted since the plan refuses the apply. There is no undo, as in the
+// plan hash commits to them (by id, label and state since v2.7918, never by a usage date, so a robot working between
+// plan and apply does not move it), so a key revoked or minted since the plan refuses the apply. There is no undo, as in the
 // panel: a new key is mint_twin_setup_code. Pure: no network, no env. Tests: src/lib/devMcp/devMcpTwinKey.test.ts.
 
 type Json = Record<string, unknown>
@@ -76,6 +77,21 @@ export function twinKeyFacts(k: TwinKeyRow): Json {
     ...(k.revoked_at ? { revoked_at: k.revoked_at } : {}),
     ...(isLive(k) && k.stopped_at ? { rounds: `stopped since ${k.stopped_at}` } : {}),
   }
+}
+
+/**
+ * A plan's keys as its hash commits to them (v2.7918): each key without the two usage dates. twin-mcp stamps
+ * last_seen_at once a minute while a robot works and twin-login stamps last_used_at at each sign-in, so a hash over
+ * them refused the apply for the key a dev most needs to cut off, the one in use.
+ */
+export function twinKeyCommitment(keys: unknown): unknown {
+  if (!Array.isArray(keys)) return keys ?? null
+  return keys.map((k) => {
+    const o = obj(k)
+    if (!o) return k
+    const { last_used_at: _used, last_seen_at: _seen, ...rest } = o
+    return rest
+  })
 }
 
 const twinFactsOf = (t: TwinKeyTwinRow): Json => ({ id: t.id, email: t.email, name: t.name, kind: t.twin_kind === 'pricer' ? 'pricer' : 'estimator', archived: Boolean(t.archived_at) })
