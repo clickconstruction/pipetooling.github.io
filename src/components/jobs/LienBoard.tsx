@@ -70,6 +70,12 @@ const ARROW = 'var(--border-strong)'
  */
 export const LIEN_BOARD_QUIET_HEAD: CSSProperties = { color: 'var(--text-muted)', fontWeight: 600 }
 
+/**
+ * A column's heading, *Monthly notices* and *Lien affidavits*: the muted grey on both. They were blue and red until the
+ * owner's pick of 2026-11-18, and a red heading over a column read as a late column. Red on the Board is a late day alone.
+ */
+export const LIEN_BOARD_COLUMN_HEAD_COLOR = 'var(--text-muted)'
+
 /** The columns stand side by side from this width; under it they stack and the crossing arrow is not drawn. */
 export const LIEN_BOARD_STACK_UNDER_PX = 760
 
@@ -548,7 +554,8 @@ export default function LienBoard({
       <div data-lien-board-column={kind} style={{ display: 'grid', gap: 10, alignContent: 'start', minWidth: 0 }}>
         {/* No bin stands on the heading line: Held is drawn where its paper stopped (v2.7783) and Missed is the closed end at the column's foot. */}
         <div data-lien-board-heading={kind} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px', minHeight: 24 }}>
-          <h3 style={{ margin: 0, flex: '1 1 auto', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: kind === 'notice' ? 'var(--text-blue-700)' : 'var(--text-red-700)' }}>{title}</h3>
+          {/* Both headings are the muted grey (the owner's pick of 2026-11-18): blue and red until then, and red on the Board now only means late. */}
+          <h3 style={{ margin: 0, flex: '1 1 auto', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: LIEN_BOARD_COLUMN_HEAD_COLOR }}>{title}</h3>
         </div>
         <div data-lien-board-flow={kind} style={{ display: 'grid', gap: 22 }}>
           {flow.map((b) => <Bin key={b.key} bin={b} picked={Boolean(pick?.bins.includes(b.key))} isMobile={isMobile} onPick={onPick} onChip={onChip} pairLit={pairLit} onHover={setPairLit} onCard={cardHandler} press={presses[b.key]} />)}
