@@ -35,7 +35,7 @@ The tabs are switched on a single `activeTab` state (195), typed `BidsTabKey` fr
 'bid-board' | 'robot-board' | 'audits' | 'robot-shadows' | 'robot-queue' | 'robot-scoreboard' | 'robot-console'
 | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'day-book' | 'estimators'
 | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submittals' | 'submission-followup'
-| 'why-we-lost' | 'waiting-to-hear' | 'job-accounts' | 'money' | 'rfi' | 'change-order' | 'lien-release'
+| 'why-we-lost' | 'waiting-to-hear' | 'job-accounts' | 'money' | 'permit-news' | 'rfi' | 'change-order' | 'lien-release'
 ```
 
 ### Header / tab navigation (v2.1331)
@@ -128,6 +128,7 @@ Sizes are `wc -l` @ f423bd6e5. "Own map" = that file's internals are mapped else
 | `waiting-to-hear` | Followup → Waiting to hear | 1915–1930 | `BidsWaitingToHearLens` (1,082) | extracted | — | low | No | Done |
 | `job-accounts` | Followup → Job accounts | 1931–1939 | `BidsJobAccountsLens` (379) | extracted | — (`jobAccountStrips` is `useBidBoardScope`'s) | low | No | Done |
 | `money` | Followup → Money (v2.5651, punch list #129) | after the stamp | `BidsMoneyLens` over `lib/bids/moneyLens.ts` | extracted | — (`moneyStrips` is `useBidBoardScope`'s, one `list_bid_money_strip` read) | low | No | Done |
+| `permit-news` | Followup → Permit news (v2.7941, punch list #401) | after the stamp | `BidsPermitNewsLens` over `lib/research/permitNewsCard.ts` | extracted | `permitNews` (`useBidPermitNews`, one read per city, also the board's chips), `permitNewsInbox`, the red count beside Followup | low | No | Done |
 | `working` | Unsent/Working | 1966–1987 | `BidsWorkingBoard` (898) | extracted | archive confirm + busy id, the three memos (the deep-link id is `useBidsDeepLinks`') | low-med | No | Done |
 | `day-book` | Day book | 1990–1994 | `PeopleDayBookTab` (486, shared with People) | extracted | `dayBookMemoryRef` | low | No | Done |
 | `bid-costs` | Bid Costs | 1997–2010 | `BidsBidCostsTab` (538) | extracted | — | low | reads engine data | Done |
@@ -178,7 +179,7 @@ Sizes are `wc -l` @ f423bd6e5. "Own map" = that file's internals are mapped else
 - **Data:** in `useBidsLoadGates` (called at 963–968) the all-trades effect runs `loadBids(null)` while this tab is active; the reload-on-trade effect skips it. The trade segments grey out on this tab (`bidsTradeSegments`, 1471–1514).
 - **Status:** extracted; the child regrew to 1,524 lines → **[`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md)**.
 
-### Followup lenses — `call-queue` · `why-we-lost` · `waiting-to-hear` · `job-accounts` · `money`
+### Followup lenses — `call-queue` · `why-we-lost` · `waiting-to-hear` · `job-accounts` · `money` · `permit-news`
 
 - **Render location:** lens bar 1862–1885; bodies 1886–1939. Superintendents are bounced off all four plus `submission-followup`, `pricing`, `cover-letter`, `submittals` (`SUPERINTENDENT_OFFICE_BIDS_TABS` in `bidsTabAccess`).
 - **Parent-owned state:** none of their own. They read `peopleBids`, `sentScope`, `gcPacketsByBid`, `lastMethodContactFromEntries` (method entries only, v2.2413), `bidGcRecipientsByBidId`, `roomStatesByBid`, `jobAccountStrips`, `moneyStrips` (v2.5651, one `list_bid_money_strip` read for the board's won bids in `useBidBoardScope`); the Call queue also takes `customerContactPersons` and its reloader (v2.4420); three take `onOpenBuilderCard={applyBuilderReviewDeepLinkFromBid}`.
@@ -404,6 +405,7 @@ graph TD
         WL[why-we-lost]
         WH[waiting-to-hear]
         JA[job-accounts]
+        PN[permit-news]
     end
 
     subgraph engine["Pricing-engine cluster (useBidPricingEngine)"]

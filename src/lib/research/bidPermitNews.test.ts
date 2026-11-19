@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { BEFORE_BID_DAYS, bidPermitNews, newsForReader, type NewsBid } from './bidPermitNews'
+import { anotherNameChip, BEFORE_BID_DAYS, bidPermitNews, permitInbox, permitRefOf, permitShortWords, type NewsBid } from './bidPermitNews'
+import { foldPermitAnswers, type PermitAnswerRow } from './bidPermitAnswers'
 import type { SitePermitRow } from './bidSitePanel'
 
 // Every name, address and number here is made up.
@@ -21,7 +22,7 @@ describe('bidPermitNews', () => {
   it('says an application was filed, with what it declares', () => {
     const { chips, news } = run([bid()], [permit()])
     expect(chips.get('b1')).toEqual({ words: 'Applied Oct 20', tone: 'amber' })
-    expect(news).toEqual([{ bidId: 'b1', kind: 'applied', title: '512 · Mill Street Lofts, Building C', day: '2026-10-20', markLost: false, words: 'A permit application was filed on this address Oct 20: $6.4M declared, 38,000 sq ft.' }])
+    expect(news).toEqual([{ bidId: 'b1', kind: 'applied', title: '512 · Mill Street Lofts, Building C', day: '2026-10-20', markLost: false, words: 'A permit application was filed on this address Oct 20: $6.4M declared, 38,000 sq ft.', city: 'San Antonio', permit: permit(), beside: null, answered: null }])
   })
 
   it('says a building permit was issued, with how long since the last contact on a sent bid', () => {
@@ -43,7 +44,7 @@ describe('bidPermitNews', () => {
   it('leads with a general plumbing permit that lists another name, however old, and marks nothing', () => {
     const plumbing = permit({ id: 'p2', kind: 'plumbing', permit_type: 'Plumbing General Permit', stage: 'issued', issued_on: '2026-08-30', project_name: null, contact: 'Lone Oak Plumbing' })
     const { chips, news } = run([bid({ bid_date_sent: '2026-08-01' }), bid({ id: 'b2', bid_number: '488', project_name: 'Harbor Street Offices', address: '88 Harbor St, San Antonio, TX' })], [permit({ submitted_on: '2026-07-01' }), plumbing, permit({ id: 'p3', address: '88 HARBOR ST', stage: 'issued', issued_on: '2026-11-05', project_name: 'HARBOR OFFICES' })])
-    expect(chips.get('b1')).toEqual({ words: 'Plumbing permit · another name', tone: 'red' })
+    expect(chips.get('b1')).toEqual({ words: 'Permit lists Lone Oak Plumbing · Aug 30', tone: 'red' })
     expect(news.map((n) => n.kind)).toEqual(['plumbing', 'issued'])
     expect(news[0]?.words).toBe('A general plumbing permit was issued on this address Aug 30. It lists Lone Oak Plumbing. The bid is not yet won or lost.')
     expect(run([bid()], [permit(), plumbing]).news[0]?.words).toBe('A general plumbing permit was issued on this address Aug 30. It lists Lone Oak Plumbing. The bid is not sent yet.')
@@ -130,7 +131,7 @@ describe('a line that is not true of the bid', () => {
   it('there before the bid: older than six months it is the address’s history, off the board', () => {
     // A shower install nine months before the bid was started.
     const old = plumbingPermit({ issued_on: '2025-10-18' })
-    expect(read([sentBid()], [old])).toEqual({ chips: new Map(), news: [] })
+    expect(read([sentBid()], [old])).toEqual({ chips: new Map(), news: [], takenOff: [] })
     // The cut-off is a day count, and the day it turns is the first day past it.
     const started = '2026-07-20'
     const dayBefore = (n: number) => new Date(Date.parse(`${started}T00:00:00Z`) - n * 86_400_000).toISOString().slice(0, 10)
@@ -155,20 +156,85 @@ describe('a line that is not true of the bid', () => {
 
   it('the bid’s trade: a plumbing permit is no news on an electrical bid, and the building permit still is', () => {
     const electrical = sentBid({ service_type_id: 'st-electrical' })
-    expect(read([electrical], [plumbingPermit()])).toEqual({ chips: new Map(), news: [] })
+    expect(read([electrical], [plumbingPermit()])).toEqual({ chips: new Map(), news: [], takenOff: [] })
     const both = read([electrical], [permit(), plumbingPermit()])
     expect(both.news.map((n) => [n.kind, n.markLost])).toEqual([['applied', false]])
     // Until the trades load, the trade is not checked.
     expect(bidPermitNews([electrical], new Map([['San Antonio', [plumbingPermit()]]]), READ, TODAY).news.map((n) => n.kind)).toEqual(['plumbing'])
   })
+})
 
-  it('splits the news by reader: your own bids’ lines, and everyone else’s apart', () => {
-    const mineBid = sentBid()
-    const theirs = sentBid({ id: 'b2', bid_number: '488', project_name: 'Harbor Street Offices', address: '88 Harbor St, San Antonio, TX' })
-    const { news } = read([mineBid, theirs], [plumbingPermit(), plumbingPermit({ id: 'p9', permit_number: 'PLB-9', address: '88 HARBOR ST' })])
-    const split = newsForReader(news, (id) => id === 'b1')
-    expect(split.mine.map((n) => n.bidId)).toEqual(['b1'])
-    expect(split.others.map((n) => n.bidId)).toEqual(['b2'])
-    expect(newsForReader(news, () => false)).toEqual({ mine: [], others: news })
+// Punch list #401, PR 2: what a person said of a permit on a bid.
+describe('an answer on a line', () => {
+  const plumbing = permit({ id: 'p2', permit_number: 'PLB-2', kind: 'plumbing', permit_type: 'Plumbing General Permit', stage: 'issued', issued_on: '2026-10-25', project_name: null, contact: 'Lone Oak Plumbing' })
+  const sent = bid({ bid_date_sent: '2026-08-01' })
+  const said = (over: Partial<PermitAnswerRow>): PermitAnswerRow => ({ id: 'a1', bid_id: 'b1', ...permitRefOf('San Antonio', plumbing), answer: 'this_job', answered_by: 'u-marcus', answered_at: '2026-11-08T15:00:00Z', ...over })
+  const read = (bids: NewsBid[], permits: SitePermitRow[], rows: PermitAnswerRow[]) => bidPermitNews(bids, new Map([['San Antonio', permits]]), READ, TODAY, undefined, null, foldPermitAnswers(rows))
+
+  it('names the permit a line is about, and the building permit beside a plumber’s', () => {
+    const { news } = read([sent], [permit(), plumbing], [])
+    expect(news).toHaveLength(1)
+    expect(news[0]).toMatchObject({ kind: 'plumbing', city: 'San Antonio', permit: { permit_number: 'PLB-2' }, beside: { permit_number: 'COM-1' }, answered: null })
+    expect(read([sent], [permit()], []).news[0]).toMatchObject({ kind: 'applied', permit: { permit_number: 'COM-1' }, beside: null })
+  })
+
+  it('this job: the line stays, with its chip, and carries who answered and when', () => {
+    const { chips, news, takenOff } = read([sent], [permit(), plumbing], [said({})])
+    expect(news.map((n) => [n.kind, n.markLost, n.answered])).toEqual([['plumbing', true, { answer: 'this_job', by: 'u-marcus', at: '2026-11-08T15:00:00Z' }]])
+    expect(chips.get('b1')).toEqual({ words: 'Permit lists Lone Oak Plumbing · Oct 25', tone: 'red' })
+    expect(takenOff).toEqual([])
+  })
+
+  it('not this job: the permit is off the bid, and what is left of the address stands', () => {
+    const { chips, news, takenOff } = read([sent], [permit(), plumbing], [said({ answer: 'not_this_job', answered_by: 'u-priya' })])
+    // The building permit's own line and chip, as if the plumber's permit were not there.
+    expect(news.map((n) => n.kind)).toEqual(['applied'])
+    expect(chips.get('b1')).toEqual({ words: 'Applied Oct 20', tone: 'amber' })
+    expect(takenOff).toEqual([{ bidId: 'b1', title: '512 · Mill Street Lofts, Building C', city: 'San Antonio', permit: plumbing, words: 'Plumbing permit listing Lone Oak Plumbing, Oct 25', by: 'u-priya', at: '2026-11-08T15:00:00Z' }])
+    // With nothing else on the address the bid has no chip and no line.
+    const alone = read([sent], [plumbing], [said({ answer: 'not_this_job' })])
+    expect(alone.chips.size).toBe(0)
+    expect(alone.news).toEqual([])
+    expect(alone.takenOff).toHaveLength(1)
+  })
+
+  it('a take-back makes the line new again, and an answer on another bid touches nothing', () => {
+    const back = read([sent], [plumbing], [said({ answer: 'not_this_job' }), said({ id: 'a2', answer: 'taken_back', answered_at: '2026-11-09T15:00:00Z' })])
+    expect(back.news.map((n) => [n.kind, n.answered])).toEqual([['plumbing', null]])
+    expect(back.takenOff).toEqual([])
+    expect(read([sent], [plumbing], [said({ bid_id: 'b9', answer: 'not_this_job' })]).news).toHaveLength(1)
+  })
+
+  it('takes a decided bid’s answers off every list', () => {
+    expect(read([bid({ outcome: 'lost' })], [plumbing], [said({ answer: 'not_this_job' })])).toEqual({ chips: new Map(), news: [], takenOff: [] })
+  })
+
+  it('names the name and the day on the chip, and the name alone when the permit has no day', () => {
+    expect(anotherNameChip('Lone Oak Plumbing', '2026-10-25', TODAY)).toEqual({ words: 'Permit lists Lone Oak Plumbing · Oct 25', tone: 'red' })
+    expect(anotherNameChip('Lone Oak Plumbing', '2025-02-11', TODAY).words).toBe('Permit lists Lone Oak Plumbing · Feb 11, 2025')
+    expect(anotherNameChip('Lone Oak Plumbing', '', TODAY).words).toBe('Permit lists Lone Oak Plumbing')
+  })
+
+  it('says a permit in a few words', () => {
+    expect(permitShortWords(plumbing, TODAY)).toBe('Plumbing permit listing Lone Oak Plumbing, Oct 25')
+    expect(permitShortWords(permit({ ...plumbing, contact: null, issued_on: '2025-02-11' }), TODAY)).toBe('Plumbing permit, Feb 11, 2025')
+    expect(permitShortWords(permit(), TODAY)).toBe('Permit application filed Oct 20')
+    expect(permitShortWords(permit({ stage: 'issued', issued_on: '2026-11-03' }), TODAY)).toBe('Building permit issued Nov 3')
+    expect(permitShortWords(permit({ kind: 'other', permit_type: 'Electrical General Permit', work_type: null, stage: 'issued', issued_on: '2026-11-03' }), TODAY)).toBe('Electrical General, Nov 3')
+  })
+
+  it('sorts the news into an inbox: yours and everyone else’s, new apart from answered', () => {
+    const theirs = bid({ id: 'b2', bid_number: '488', project_name: 'Harbor Street Offices', address: '88 Harbor St, San Antonio, TX', bid_date_sent: '2026-08-01' })
+    const harbor = permit({ ...plumbing, id: 'p9', permit_number: 'PLB-9', address: '88 HARBOR ST' })
+    const harborGas = permit({ ...plumbing, id: 'p8', permit_number: 'PLB-8', address: '88 HARBOR ST', issued_on: '2026-10-01', contact: 'Quill & Sons Plumbing' })
+    const result = read([sent, theirs], [permit(), plumbing, harbor, harborGas], [said({}), said({ id: 'a2', bid_id: 'b2', ...permitRefOf('San Antonio', harbor), answer: 'not_this_job' })])
+    const inbox = permitInbox(result, (id) => id === 'b1')
+    // Yours: the plumber's permit you answered stands, and nothing is new.
+    expect(inbox.mine.fresh).toEqual([])
+    expect(inbox.mine.standing.map((n) => n.bidId)).toEqual(['b1'])
+    expect(inbox.mine.takenOff).toEqual([])
+    // Theirs: the newest plumber's permit was taken off, so the one before it is the line, and it is new.
+    expect(inbox.others.fresh.map((n) => [n.bidId, n.permit.permit_number])).toEqual([['b2', 'PLB-8']])
+    expect(inbox.others.takenOff.map((t) => t.permit.permit_number)).toEqual(['PLB-9'])
   })
 })

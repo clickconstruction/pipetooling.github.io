@@ -55,6 +55,8 @@ import {
   resolveBidLedgerPrefix,
 } from '../../lib/ledgerDisplayPrefixes'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import type { PermitNewsDoors } from '../../lib/research/bidPermitNews'
+import { PermitNewsChip } from './PermitChip'
 import { telHrefFor } from '../../lib/phoneContact'
 
 export type BidsCallQueueTabProps = {
@@ -67,6 +69,8 @@ export type BidsCallQueueTabProps = {
   /** Latest METHOD-entry instant per bid id (contacts only — v2.2413: method-less notes never count as contact). */
   lastContactFromEntries: Record<string, string>
   narrowViewport640: boolean
+  /** Permit news on a bid (punch list #401): the chip beside the bid's name, a door to its line on Followup's Permit news. */
+  permitNews?: PermitNewsDoors
   authUserId: string | null
   onError: (message: string | null) => void
   onReloadBids: () => void
@@ -143,6 +147,7 @@ export function BidsCallQueueTab({
   ledgerPrefixMap,
   lastContactFromEntries,
   narrowViewport640,
+  permitNews,
   authUserId,
   onError,
   onReloadBids,
@@ -541,6 +546,7 @@ export function BidsCallQueueTab({
         <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-strong)' }}>
           {b.label} · {b.project}
         </span>
+        <PermitNewsChip bidId={b.raw.id} news={permitNews} />
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           {b.value > 0 ? `$${formatCurrency(b.value)}` : 'no bid value'}
           {extra}

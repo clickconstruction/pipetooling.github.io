@@ -15,8 +15,8 @@ import type { BidsTabKey } from './bidsTabAccess'
 
 type Role = string | null | undefined
 
-/** `new` — emerald word pill; `count` — amber number pill; `dev` — the boxed DEV mark. */
-export type BidsLensBadgeTone = 'new' | 'count' | 'dev'
+/** `new` — emerald word pill; `count` — amber number pill; `alert` — red number pill, lines waiting on an answer; `dev` — the boxed DEV mark. */
+export type BidsLensBadgeTone = 'new' | 'count' | 'alert' | 'dev'
 
 export type BidsLens = {
   key: BidsTabKey
@@ -83,8 +83,8 @@ export function robotLenses(input: { role: Role; activeTab: string; mirrorCount:
   return lenses
 }
 
-/** Call queue · Old: By builder · By status · Why we lost · Waiting to hear · Job accounts · Money; a superintendent keeps By builder alone. */
-export function followupLenses(input: { role: Role; jobAccountsMissing: number; moneyPastWord?: number }): BidsLens[] {
+/** Call queue · Old: By builder · By status · Why we lost · Waiting to hear · Job accounts · Money · Permit news; a superintendent keeps By builder alone. */
+export function followupLenses(input: { role: Role; jobAccountsMissing: number; moneyPastWord?: number; permitNewsToAnswer?: number }): BidsLens[] {
   if (input.role === 'superintendent') return [{ key: 'builder-review', label: 'By builder' }]
   return [
     { key: 'call-queue', label: 'Call queue', badge: { text: 'new', tone: 'new' } },
@@ -107,6 +107,14 @@ export function followupLenses(input: { role: Role; jobAccountsMissing: number; 
       testId: 'followup-money-tab',
       ...((input.moneyPastWord ?? 0) > 0 ? { badge: { text: String(input.moneyPastWord), tone: 'count' as const } } : {}),
     },
+    // Permit news (punch list #401): what the city filed on the addresses of your bids, with a red count of the lines nobody has answered.
+    {
+      key: 'permit-news',
+      label: 'Permit news',
+      title: 'What the city filed on the addresses of your bids: another name on a plumbing permit first, then building permits and applications, each with one press to answer',
+      testId: 'followup-permit-news-tab',
+      ...((input.permitNewsToAnswer ?? 0) > 0 ? { badge: { text: String(input.permitNewsToAnswer), tone: 'alert' as const } } : {}),
+    },
   ]
 }
 
@@ -128,6 +136,8 @@ export function followupLensCaption(activeTab: string): string {
       return 'Record and review why bids were lost — built for the Friday GC calls.'
     case 'job-accounts':
       return 'Every won job still missing a supply-house account — soonest first parts run first, one email per house.'
+    case 'permit-news':
+      return 'What the city filed on the addresses of your bids. One press answers each.'
     case 'money':
       return 'Every won job with money open — past their word first, then no word, then waiting; the customer\'s last word and the doors to them.'
     default:

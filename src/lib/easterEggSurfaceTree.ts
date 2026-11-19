@@ -69,6 +69,7 @@ export const EGG_BIDS_TABS: { key: string; label: string; section?: 'Followup' }
   { key: 'why-we-lost', label: 'Why we lost', section: 'Followup' },
   { key: 'waiting-to-hear', label: 'Waiting to hear', section: 'Followup' },
   { key: 'job-accounts', label: 'Job accounts', section: 'Followup' },
+  { key: 'permit-news', label: 'Permit news', section: 'Followup' },
   { key: 'working', label: 'Unsent/Working' },
   { key: 'bid-costs', label: 'Bid Costs' },
   { key: 'estimators', label: 'Estimators' },

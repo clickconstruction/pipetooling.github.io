@@ -2,7 +2,7 @@
 title: see what the city has on a bid's address
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: ours, our permit, our names, names that are us, mark lost, link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, suite, another suite, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
+keywords: followup, answer, not our job, still waiting, we lost it, red number, ours, our permit, our names, names that are us, mark lost, link a customer, same company, look alike, compare, find names, who pulled, name on a permit, works for, tied names, suite, another suite, permit news, bid board, permit, permits, bid address, this site, building permit, plumbing permit, declared value, general contractor, gc, jobs you priced, san antonio, city records
 where: /bids?tab=bid-board
 order: 122
 ---
@@ -82,39 +82,54 @@ Nothing fits? Type in the search box. It reaches every name on permits.
 
 The app never ties a name by itself. It only joins a name that is exactly the same.
 
-## See permit news on the Bid Board
+## Answer permit news on Followup
 
-Open the **Bid Board**. A strip named **Permit news on your bids** sits above the sections when one of your bids has news.
+Open **Bids**. A red number beside **Followup** counts the permit news on your bids that nobody has answered. Press the number. It opens **Permit news**, the last lens on Followup.
 
 A bid is yours when you estimate it or manage it. A bid someone marked for you is yours too.
 
-Each line is one bid that is not yet won or lost. It says what is new on the bid's address. Press {{button:outline|Open the bid}} to open that bid.
+Each card is one bid that is not yet won or lost. Read it from the top.
 
-News on other people's bids folds behind one line, **Permit news on other people's bids**. Press **See them ›** to read it. An estimator with no news of their own sees no strip. The office still sees that one line.
+- A tag says what kind of news it is.
+- The bid's number and name come next. Press the number to open the bid.
+- One large line says what the city shows.
+- The next line gives the work in the city's own words and the permit's number.
+- The last line says why the permit looks like your bid. A tick is a match the records show. A question mark is a thing the records do not say.
 
 Four things count as news.
 
-- A permit application was filed in the last 30 days.
-- A building permit was issued in the last 30 days.
-- A general plumbing permit lists a name other than the building permit's contact. This one comes first. It stays until you mark the bid won or lost.
+- A general plumbing permit lists a name other than the building permit's contact. This card comes first.
 - A general plumbing permit that lists us was applied for or issued in the last 30 days.
+- A building permit was issued in the last 30 days.
+- A permit application was filed in the last 30 days.
 
-Three rules keep a line off a bid it is not true of.
+Each card asks one thing and takes one press.
 
-- The permit names a different suite than your bid. It is another tenant's, so it gives no line and no chip.
-- The plumbing permit was there before the bid was started. It gives no line. For six months before the bid it leaves a grey chip, {{chip:gray|Plumbing permit here since Jul 11}}. An older one stays in **This site** only.
+A plumbing permit under another name on a sent bid asks **Did we lose this bid?** It has three answers.
+
+- {{button:outline|We lost it…}} opens the board's own window in the card. For a bid with one GC, type what they said. Then press the reason. A bid sent to more than one GC lists its GCs. Press the state beside a GC's name, then press **lost**. Nothing is saved until you pick.
+- {{button:outline|Still waiting}} keeps the permit on the bid. Nothing about the bid changes.
+- {{button:outline|Not our job}} takes the permit off the bid for everyone. Press it when the permit is another job on the same address.
+
+Every other card takes {{button:outline|Got it}} or {{button:outline|Not our job}}. A building permit on a sent bid also has **Open the Call queue ›**.
+
+An answered card folds to one line. Press **Undo** on that line to take the answer back.
+
+Press **Answered on your bids** to see older answers. Each row says who answered and when. Press **Take back** or **Put back** to undo one.
+
+Press **Everyone's** to read the news on other people's bids. Your answer on their bid counts for them too. The red number counts your own bids only.
+
+Three rules keep a card off a bid it is not true of.
+
+- The permit names a different suite than your bid. It is another tenant's, so it gives no card and no chip.
+- The plumbing permit was there before the bid was started. It gives no card. For six months before the bid it leaves a grey chip, {{chip:gray|Plumbing permit here since Jul 11}}. An older one stays in **This site** only.
 - The bid is not a plumbing bid. A plumbing permit says nothing about who has the electrical work.
 
-The plumbing line on a sent bid has a second press, {{button:blue|Mark lost…}}. Press it and the board's own window opens under the line.
+No card marks a bid for you. Read it, then decide.
 
-- For a bid with one GC, type what they said. Then press the reason.
-- A bid sent to more than one GC lists its GCs. Press the state beside a GC's name, then press **lost**.
+On the **Bid Board**, a bid with a permit on its address carries a chip on its row. It reads {{chip:yellow|Applied Sep 11}} or {{chip:green|Issued Nov 3}}. A red chip matches the first kind of news. It names the name the city lists and the permit's day, like {{chip:red|Permit lists Copperline Plumbing · Aug 27}}. A {{chip:green|Plumbing permit · ours}} chip means the plumbing permit lists one of our own names. A chip stays on the row after its card is answered.
 
-Nothing is saved until you pick. Press **Cancel** or **Close** to leave the bid as it was.
-
-The strip marks nothing for you. Read the line, then decide.
-
-A bid with a permit on its address also carries a chip on its row. It reads {{chip:yellow|Applied Sep 11}} or {{chip:green|Issued Nov 3}}. A {{chip:red|Plumbing permit · another name}} chip matches the third kind of news. A {{chip:green|Plumbing permit · ours}} chip means the plumbing permit lists one of our own names. That chip stays after the news line is gone.
+A chip with an arrow is a press. It opens **Permit news** on that bid's card. The same chip sits beside the bid on a builder's card in the **Call queue** and on **Waiting to hear**. A chip with no arrow has no card. It only says what the city has.
 
 Our own permit never marks a bid won. Mark the bid yourself when you know.
 

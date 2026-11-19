@@ -27,7 +27,8 @@ describe('bidPermitNews: a plumbing permit that is ours', () => {
   it('reads ours, with its own chip and its own news line, and never as another name', () => {
     const { chips, news } = run([bid({ bid_date_sent: '2026-10-01' })], [permit(), plumbing()])
     expect(chips.get('b1')).toEqual({ words: 'Plumbing permit · ours', tone: 'green' })
-    expect(news).toEqual([{ bidId: 'b1', kind: 'ours', title: '512 · Mill Street Lofts, Building C', day: '2026-11-05', markLost: false, words: 'A general plumbing permit that lists us was issued on this address Nov 5, as BLUE HERON PLUMBING. The bid is not yet won or lost.' }])
+    expect(news).toHaveLength(1)
+    expect(news[0]).toMatchObject({ bidId: 'b1', kind: 'ours', title: '512 · Mill Street Lofts, Building C', day: '2026-11-05', markLost: false, words: 'A general plumbing permit that lists us was issued on this address Nov 5, as BLUE HERON PLUMBING. The bid is not yet won or lost.', answered: null })
     expect(news.some((n) => n.kind === 'plumbing')).toBe(false)
   })
 
@@ -58,7 +59,7 @@ describe('bidPermitNews: a plumbing permit that is ours', () => {
 
   it('goes by the newest general plumbing permit: another name after ours still reads another name', () => {
     const { chips, news } = run([bid()], [permit(), plumbing({ issued_on: '2026-06-02' }), plumbing({ id: 'p3', permit_number: 'PLB-2', issued_on: '2026-11-04', contact: 'Lone Oak Plumbing' })])
-    expect(chips.get('b1')).toEqual({ words: 'Plumbing permit · another name', tone: 'red' })
+    expect(chips.get('b1')).toEqual({ words: 'Permit lists Lone Oak Plumbing · Nov 4', tone: 'red' })
     expect(news.map((n) => n.kind)).toEqual(['plumbing'])
   })
 
@@ -80,7 +81,7 @@ describe('bidPermitNews: a plumbing permit that is ours', () => {
     const none = ourNameKeys({ names: [], companyName: null })
     for (const keys of [none, undefined]) {
       const { chips, news } = keys ? run([bid()], [permit(), plumbing()], keys) : bidPermitNews([bid()], new Map([['San Antonio', [permit(), plumbing()]]]), READ, TODAY)
-      expect(chips.get('b1')).toEqual({ words: 'Plumbing permit · another name', tone: 'red' })
+      expect(chips.get('b1')).toEqual({ words: 'Permit lists BLUE HERON PLUMBING · Nov 5', tone: 'red' })
       expect(news[0]).toMatchObject({ kind: 'plumbing', words: 'A general plumbing permit was issued on this address Nov 5. It lists BLUE HERON PLUMBING. The bid is not sent yet.' })
     }
   })

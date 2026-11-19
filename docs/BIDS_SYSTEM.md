@@ -10,7 +10,7 @@ estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
 system_components:
-  - "Board tab strip: Bid Board, Followup (merged Builder Review + Submission & Followup + Why we lost + Waiting to hear lenses), Unsent/Working (kanban), Bid Costs, Estimators"
+  - "Board tab strip: Bid Board, Followup (merged Builder Review + Submission & Followup + Why we lost + Waiting to hear + Permit news lenses), Unsent/Working (kanban), Bid Costs, Estimators"
   - "Workflow/document tabs: Counts, Takeoffs, Labor, Pricing, Cover Letter, RFI, Change Order, Lien Release"
   - "3 Book Systems: Takeoff Book, Labor Book, Price Book (Price Book templates are cloned into bid-scoped Pricings)"
   - "Bid Versions: named per-bid variants (takeoff + pricing facets)"
@@ -140,7 +140,7 @@ The page gate (see the `UserRole` union and the render guard in [`Bids.tsx`](../
 9. **Change Order** - Generate change-order documents (see [Change Order Tab](#change-order-tab))
 10. **Lien Release** - The four § 53.284 waiver forms from a bid, recorded on it, signed by the leader's code
 
-Outside this linear workflow: the **Followup** tab's seven lenses — **By builder** (per-customer call-queue cards), **Call queue** (the calls to make as one list), **By status** (outcome tables), **Why we lost** (loss-reason call mode), **Waiting to hear** (recent pending-bid chase with per-GC recipient expansion, v2.1990/v2.1992/v2.1995), **Job accounts** (the won jobs' supply-house accounts) and **Money** (the won jobs' open money for the job's people, v2.5651) — plus **Unsent/Working** (per-user kanban), **Bid Costs** (dev-only clocked-cost rollup), and **Estimators** (cross-bid clock-time pivot). Multi-GC sends are recorded in **`bid_gc_recipients`** (v2.1994, Edit Bid "Also sent to" row + version-GC sync) and expand the followup queues per GC.
+Outside this linear workflow: the **Followup** tab's eight lenses — **By builder** (per-customer call-queue cards), **Call queue** (the calls to make as one list), **By status** (outcome tables), **Why we lost** (loss-reason call mode), **Waiting to hear** (recent pending-bid chase with per-GC recipient expansion, v2.1990/v2.1992/v2.1995), **Job accounts** (the won jobs' supply-house accounts) **Money** (the won jobs' open money for the job's people, v2.5651) and **Permit news** (what the city filed on the addresses of the reader's undecided bids, answered a card at a time, v2.7941) — plus **Unsent/Working** (per-user kanban), **Bid Costs** (dev-only clocked-cost rollup), and **Estimators** (cross-bid clock-time pivot). Multi-GC sends are recorded in **`bid_gc_recipients`** (v2.1994, Edit Bid "Also sent to" row + version-GC sync) and expand the followup queues per GC.
 
 ---
 

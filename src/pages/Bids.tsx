@@ -103,6 +103,11 @@ import { BidsBuilderReviewTab } from '../components/bids/BidsBuilderReviewTab'
 import { BidsWhyWeLostLens } from '../components/bids/BidsWhyWeLostLens'
 import { BidsCallQueueTab } from '../components/bids/BidsCallQueueTab'
 import { BidsWaitingToHearLens } from '../components/bids/BidsWaitingToHearLens'
+import { BidsPermitNewsLens } from '../components/bids/BidsPermitNewsLens'
+import { BidBoardNewsMarkLost } from '../components/bids/BidBoardNewsMarkLost'
+import { useBidPermitNews } from '../hooks/useBidPermitNews'
+import { useOurPermitNames } from '../hooks/useOurPermitNames'
+import { permitInbox, type PermitNewsDoors } from '../lib/research/bidPermitNews'
 import { BidsMoneyLens } from '../components/bids/BidsMoneyLens'
 import { BidsJobAccountsLens } from '../components/bids/BidsJobAccountsLens'
 import { useBidGcPackets } from '../hooks/useBidGcPackets'
@@ -313,11 +318,6 @@ export default function Bids() {
       !!authUser?.id && (bid.account_manager_id === authUser.id || bid.estimator_id === authUser.id || bidsMarkedForMe.has(bid.id)),
     [authUser?.id, bidsMarkedForMe],
   )
-  // Permit news is the reader's own (punch list #401). Every estimator researches permits, so a reader who is not one is the office.
-  const permitNewsReader = useMemo(
-    () => ({ isMine: isMyBid, plumbingServiceTypeId: plumbingServiceTypeIdOf(serviceTypes), office: myRole !== 'estimator' }),
-    [isMyBid, serviceTypes, myRole],
-  )
   // Bid Date Sent: the field, the checklist a new date needs, the note typed with it (hooks/useBidDateSentAttestation).
   const attestation = useBidDateSentAttestation({ serverBidDateSent: editingBid?.bid_date_sent ?? null, userId: authUser?.id ?? null })
   const bidDateSent = attestation.bidDateSent
@@ -366,6 +366,33 @@ export default function Bids() {
     moneyPastWordCount,
     linkJobToBidFromBoard,
   } = useBidBoardScope({ bids, twinUserIds, selectedServiceTypeId, serviceTypes, gcPacketsByBid, myRole, showToast })
+  // Permit news (punch list #401): one read of the city's permits, for the board's chips and for Followup's
+  // lens with its red count. The count is the reader's own bids' lines that nobody has answered.
+  const canPermits = canResearchPermits(myRole)
+  const ourPermitNames = useOurPermitNames(canPermits)
+  const permitNews = useBidPermitNews(peopleBids, canPermits, ourPermitNames, plumbingServiceTypeIdOf(serviceTypes))
+  const peopleBidById = useMemo(() => new Map(peopleBids.map((b) => [b.id, b])), [peopleBids])
+  const permitNewsInbox = useMemo(
+    () =>
+      permitInbox(permitNews, (bidId) => {
+        const bid = peopleBidById.get(bidId)
+        return bid != null && isMyBid(bid)
+      }),
+    [permitNews, peopleBidById, isMyBid],
+  )
+  const permitNewsToAnswer = permitNewsInbox.mine.fresh.length
+  // The chip on a bid wherever it is chased: a door to its line on the lens, which opens marked on that bid.
+  const [permitNewsFocusBidId, setPermitNewsFocusBidId] = useState<string | null>(null)
+  // The press is set below, once the tab switch it uses is in scope.
+  const openPermitNewsRef = useRef<(bidId: string) => void>(() => {})
+  const permitNewsDoors = useMemo<PermitNewsDoors | undefined>(
+    () => (canPermits ? { chips: permitNews.chips, lineBidIds: new Set(permitNews.news.map((n) => n.bidId)), onOpen: (bidId) => openPermitNewsRef.current(bidId) } : undefined),
+    [canPermits, permitNews],
+  )
+  const permitNewsBids = useMemo(
+    () => new Map(peopleBids.map((b) => [b.id, { id: b.id, bid_number: b.bid_number, project_name: b.project_name, address: b.address, bid_date_sent: b.bid_date_sent, created_at: b.created_at, last_contact: b.last_contact, bid_value: b.bid_value, gcName: b.customers?.name ?? b.bids_gc_builders?.name ?? null }])),
+    [peopleBids],
+  )
   // Who a bid's call-again day asks for (v2.4421): the board prints the name beside the day.
   const contactPersonNameById = useMemo(() => {
     const out: Record<string, string> = {}
@@ -1287,6 +1314,16 @@ export default function Bids() {
       return next
     })
   }
+  // A permit chip pressed on a bid opens Followup's Permit news marked on that bid (punch list #401). The mark leaves with the lens.
+  useEffect(() => {
+    openPermitNewsRef.current = (bidId) => {
+      setPermitNewsFocusBidId(bidId)
+      selectBidsTab('permit-news')
+    }
+  })
+  useEffect(() => {
+    if (activeTab !== 'permit-news') setPermitNewsFocusBidId(null)
+  }, [activeTab])
 
   /** The version bar above Counts, Takeoffs, Pricing and the Cover Letter; the last two also carry the pricing resolve panel. */
   const renderBidVersionPicker = (bid: BidWithBuilder, options?: { withResolvePanel?: boolean }) => {
@@ -1469,6 +1506,7 @@ export default function Bids() {
         </span>
       ) : null}
       {bidsTabOpenFor('builder-review', myRole) && (
+      <span style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
       <button
         type="button"
         data-tabkey="builder-review"
@@ -1485,6 +1523,23 @@ export default function Bids() {
       >
         Followup
       </button>
+      {/* Punch list #401: the reader's own permit news nobody has answered. The number is its own press, into the lens. */}
+      {canPermits && permitNewsToAnswer > 0 ? (
+        <button
+          type="button"
+          data-testid="followup-permit-news-count"
+          onClick={() => {
+            setPermitNewsFocusBidId(null)
+            selectBidsTab('permit-news')
+          }}
+          aria-label={`${permitNewsToAnswer} permit news ${permitNewsToAnswer === 1 ? 'line' : 'lines'} to answer`}
+          title="Permit news to answer on your bids"
+          style={{ font: 'inherit', marginLeft: '-0.3rem', minWidth: '1.15rem', height: '1.15rem', padding: '0 0.3rem', borderRadius: 9999, border: 0, background: '#dc2626', color: 'white', fontSize: '0.68rem', fontWeight: 700, lineHeight: '1.15rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+        >
+          {permitNewsToAnswer > 9 ? '9+' : String(permitNewsToAnswer)}
+        </button>
+      ) : null}
+      </span>
       )}
       {bidsTabOpenFor('working', myRole) && bidsWorkingTabButton}
       {bidsTabOpenFor('bid-costs', myRole) && bidsBidCostsTabButton}
@@ -1981,8 +2036,7 @@ export default function Bids() {
       ) : null}
       {activeTab === 'bid-board' && (
         <BidsBidBoardTab
-          showPermitNews={canResearchPermits(myRole)}
-          permitNewsReader={permitNewsReader}
+          permitNews={permitNewsDoors}
           contactPersonNameById={contactPersonNameById}
           jobAccountStrips={jobAccountStrips}
           onOpenJobAccountsLens={() => selectBidsTab('job-accounts')}
@@ -2048,7 +2102,7 @@ export default function Bids() {
 
       {/* Builder Review Tab */}
       {isFollowupLens(activeTab) && (
-        <BidsLensBar lenses={followupLenses({ role: myRole, jobAccountsMissing: jobAccountsMissingCount, moneyPastWord: moneyPastWordCount })} activeKey={activeTab} onSelect={selectBidsTab}>
+        <BidsLensBar lenses={followupLenses({ role: myRole, jobAccountsMissing: jobAccountsMissingCount, moneyPastWord: moneyPastWordCount, permitNewsToAnswer: canPermits ? permitNewsToAnswer : 0 })} activeKey={activeTab} onSelect={selectBidsTab}>
           {followupNeedsReasonChipShows({ role: myRole, activeTab, lostNeedingReason: lostBidsNeedingReasonCount }) ? (
             <button
               type="button"
@@ -2074,6 +2128,7 @@ export default function Bids() {
       {activeTab === 'call-queue' && (
         <BidsCallQueueTab
           bids={peopleBids}
+          permitNews={permitNewsDoors}
           sentScope={sentScope}
           gcPacketsByBid={gcPacketsByBid}
           ledgerPrefixMap={ledgerPrefixMap}
@@ -2103,6 +2158,7 @@ export default function Bids() {
       {activeTab === 'waiting-to-hear' && (
         <BidsWaitingToHearLens
           bids={peopleBids}
+          permitNews={permitNewsDoors}
           sentScope={sentScope}
           gcPacketsByBid={gcPacketsByBid}
           roomStatesByBid={roomStatesByBid}
@@ -2114,6 +2170,24 @@ export default function Bids() {
           onError={setError}
           onReloadBids={() => { void loadBids() }}
           onOpenBuilderCard={applyBuilderReviewDeepLinkFromBid}
+        />
+      )}
+      {activeTab === 'permit-news' && canPermits && (
+        <BidsPermitNewsLens
+          inbox={permitNewsInbox}
+          bidsById={permitNewsBids}
+          nameOf={(userId) => (userId === authUser?.id ? 'You' : (archiveReasonNames[userId] ?? 'A teammate'))}
+          onOpenBid={(bidId) => {
+            const bid = peopleBidById.get(bidId)
+            if (bid) openEditBid(bid)
+          }}
+          onOpenCallQueue={() => selectBidsTab('call-queue')}
+          renderMarkLost={(bidId, close) => {
+            const bid = peopleBidById.get(bidId)
+            return bid ? <BidBoardNewsMarkLost bid={bid} bidLabel={bidDisplayName(bid)} packets={gcPacketsByBid[bid.id]} gcNoteCounts={gcNoteCounts} roomStates={roomStatesByBid?.[bid.id]} jobLink={jobsByBidId?.get(bid.id) ?? null} onChanged={() => { void loadBids() }} onClose={close} /> : null
+          }}
+          narrow={narrowViewport640}
+          focusBidId={permitNewsFocusBidId}
         />
       )}
       {activeTab === 'job-accounts' && (
