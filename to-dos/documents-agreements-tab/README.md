@@ -2,7 +2,7 @@
 name: "Documents: an Agreements tab, every agreement the app makes in one list"
 number: 376
 group: close
-status: asked 2026-11-17 · the owner took all seven picks and said build the whole train the same day · all five built and live: the rules v2.7604, the view and the read v2.7612, the tab v2.7617, Search v2.7620, GC mode’s three kinds v2.7625 · both migrations pushed 2026-11-17 and 2026-11-18 · checked on the live list in a local build, in the live build’s files, and by role through the dev seat · asked again 2026-11-19 to finish the section so the office manages a paper there · a second train of three: a waiting line acts where it sits v2.7932, send a paper from the tab v2.7937, then the Contract library door · left: the last of that train, and the owner’s own look
+status: asked 2026-11-17 · the owner took all seven picks and said build the whole train the same day · all five built and live: the rules v2.7604, the view and the read v2.7612, the tab v2.7617, Search v2.7620, GC mode’s three kinds v2.7625 · both migrations pushed 2026-11-17 and 2026-11-18 · checked on the live list in a local build, in the live build’s files, and by role through the dev seat · asked again 2026-11-19 to finish the section so the office manages a paper there · a second train of three, all built: a waiting line acts where it sits v2.7932, send a paper from the tab v2.7937, the Contract library door v2.7938 · each walked in a dev preview, the sends on a ZZ Test person only · left: the owner’s own look, and his calls on the four things written under What is left
 summary: >
   The owner looked for agreements on the Documents page and found none. The page has ten tabs and
   none lists agreements. A job's signed paper shows only as a line under its job on the Jobs tab,
@@ -12,10 +12,10 @@ summary: >
   press opens the window that kind already has. The list is one database view over the tables that
   hold agreements, so each table's own row security decides what a reader sees, and nobody reads a
   paper here that they cannot read today. It renames nothing: Contract under a job stays.
-next: The second train’s last PR, the Contract library door. Then the owner opens Documents → Agreements, presses Send a paper and Send again, and types a name on the Search tab. No statement of work and no owner contract send exists yet, so a GC line is proven by the database test until one is sent. Call 7’s card is #377.
+next: The owner opens Documents → Agreements, presses Send a paper, Send again and Contract library, and types a name on the Search tab. Then his calls on What is left. No statement of work and no owner contract send exists yet, so a GC line is proven by the database test until one is sent. Call 7’s card is #377.
 size: M as a train of five (S · M · M · S · S), then M as a second train of three (M · M · S)
 blocker: None.
-ver: v2.7604 · v2.7612 · v2.7617 · v2.7620 · v2.7625 · v2.7932 · v2.7937
+ver: v2.7604 · v2.7612 · v2.7617 · v2.7620 · v2.7625 · v2.7932 · v2.7937 · v2.7938
 opinion: build — the papers exist and the office already reads them in four places; the tab is a read over what is there, with no new table and no change to who can see what
 ---
 
@@ -239,8 +239,28 @@ there is no migration.
    Contract Book, then a person, and opens the same email window. It is People's quick send: the same person
    picker, one rule for the pick (`quickSendPickPlan`), and nothing written until **Send email**. The new line
    then shows on the list. Walked on a ZZ Test person.
-3. **The Contract library from the tab (S).** A door that opens the Contract library window in place, with
-   the role rules it has on People.
+3. **The Contract library from the tab (S), v2.7938.** **Contract library**, beside Send a paper, opens the
+   window People → Contracts opens, in place. The role rules are People's, now one copy both pages call: the
+   owner and a dev delete, the controller and a dev see the Forms tab. **Send to…** on a paper there starts
+   Send a paper at the person. Walked read only.
+
+### What is left
+
+None of these is built. Each waits on the owner's call, and each is sized as its own piece of work.
+
+| What | Today | What it takes | Size |
+|---|---|---|---|
+| **Reminders by email** for a staff or sub paper | Only a prompt on the person's Dashboard. A job contract already gets three reminders, three days apart (`remind-job-contracts`) | The send does not keep the signer's address, so a migration adds it with a reminder count and a last-reminded day. Then a timed function like the job contract's, an email in the catalog, and an off switch on the line. His calls: how many, how far apart, and who may turn them off | M |
+| **A copy to the signer, and a PDF of a plain paper** | Nobody is emailed once a person signs. A form makes a PDF. A paper of plain words or clauses makes none | A PDF of the signed page, kept in storage beside the forms', and an email to the signer with it. It needs the signer's address on the row, the same column as the reminders, so the two ship best together. His calls: whether the office gets a copy too, and whether old signed papers get a PDF | M |
+| **An outside party as a record** | A paper is filed under a person's name, and the picker offers the roster. A vendor or an outside sub with no roster row cannot be picked | A place for outside parties to live, with row security, and a branch of `agreements_on_file` for their papers. His call first: a new kind on People, the customers list, or GC mode's companies. Everything else follows from that | L |
+| **The company's own signature** | Our side signs nowhere, save the office half of a two-party form | Who signs for the company, a signature on file, a countersign step after the other side signs, and both names on the record and the PDF. His calls: who may sign, and whether every paper needs it or only some | M to L |
+
+Smaller things the tab still leaves to People, each S, none asked for yet:
+
+- **Take a waiting paper back.** People deletes a paper that is not signed. The tab has no press for it.
+- **File a signed paper for a person**, and **Enter from paper**. Both stay on People → Contracts.
+- **A waiting paper's name still opens People**, on that paper's own line (v2.7924). The line's two presses cover the
+  chase, so the name was left as the door to everything else about the paper.
 
 ## Left out on purpose
 

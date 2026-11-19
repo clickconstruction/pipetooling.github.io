@@ -63,6 +63,18 @@ vi.mock('../contracts/ContractSendWindow', () => ({
     </div>
   ),
 }))
+// The library door is its own file's to test: here it says it is open, and its button closes it.
+vi.mock('./AgreementsContractLibrary', () => ({
+  AgreementsContractLibrary: (p: { open: boolean; onClose: () => void }) =>
+    p.open ? (
+      <div data-testid="contract-library">
+        open
+        <button type="button" onClick={p.onClose}>
+          fake close
+        </button>
+      </div>
+    ) : null,
+}))
 vi.mock('../../lib/fetchJobWithDetailsById', () => ({
   fetchJobWithDetailsById: async (id: string) => {
     io.jobs.push(id)
@@ -348,11 +360,18 @@ describe('DocumentsAgreementsTab', () => {
     expect(screen.queryByTestId('documents-agreements-doors')).toBeNull()
     // Send a paper belongs to the tab, beside its own box: the Search tab has neither.
     expect(screen.queryByRole('button', { name: 'Send a paper' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Contract library' })).toBeNull()
   })
 
-  it('Send a paper sits beside the find box', async () => {
+  it('Send a paper and Contract library sit beside the find box, and the library opens in place', async () => {
     renderWithProviders(<DocumentsAgreementsTab />)
     await screen.findByTestId('documents-agreements-empty')
-    expect(screen.getByLabelText('Find an agreement').parentElement?.contains(screen.getByRole('button', { name: 'Send a paper' }))).toBe(true)
+    const row = screen.getByLabelText('Find an agreement').parentElement
+    expect(row?.contains(screen.getByRole('button', { name: 'Send a paper' }))).toBe(true)
+    expect(screen.queryByTestId('contract-library')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Contract library' }))
+    expect((await screen.findByTestId('contract-library')).textContent).toContain('open')
+    fireEvent.click(screen.getByRole('button', { name: 'fake close' }))
+    await waitFor(() => expect(screen.queryByTestId('contract-library')).toBeNull())
   })
 })
