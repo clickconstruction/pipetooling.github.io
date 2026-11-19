@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   DRIVE_FOLDER_MIME,
+  DRIVE_READ_WORDS,
+  READ_CAP_BYTES,
   bytesOfBase64,
   LINK_DAYS,
   STREAM_CAP_BYTES,
@@ -185,6 +187,17 @@ describe('the office’s door', () => {
     expect(parseOfficeAsk({ action: 'open', job: { bid_id: PROJECT }, driveFileId: '1BidTabSitework000002' })).toEqual({ action: 'open', job: { bid_id: PROJECT }, driveFileId: '1BidTabSitework000002' })
     expect(parseOfficeAsk({ action: 'delete', job: { project_id: PROJECT } })).toBeNull()
     expect(parseOfficeAsk(null)).toBeNull()
+  })
+
+  it('reads a file’s bytes for the office by its job and its Drive id, and nothing looser', () => {
+    expect(parseOfficeAsk({ action: 'read', job: { jobs_ledger_id: PROJECT }, driveFileId: '1StampedAffidavit00000001' })).toEqual({ action: 'read', job: { jobs_ledger_id: PROJECT }, driveFileId: '1StampedAffidavit00000001' })
+    expect(parseOfficeAsk({ action: 'read', driveFileId: '1StampedAffidavit00000001' })).toBeNull()
+    expect(parseOfficeAsk({ action: 'read', job: { jobs_ledger_id: PROJECT } })).toBeNull()
+    expect(parseOfficeAsk({ action: 'read', job: { jobs_ledger_id: PROJECT }, driveFileId: 'https://drive.google.com/file/d/x/view' })).toBeNull()
+    // A read changes nothing, so a twin is told it cannot read, and a training account may.
+    expect(twinRefusalWords('read')).toBe('A digital twin cannot read Drive.')
+    expect(READ_CAP_BYTES).toBe(30 * 1024 * 1024)
+    expect(DRIVE_READ_WORDS.notInFolder).toBe('That file is not in the job’s Drive folder.')
   })
 
   it('lists the company folder with no job, and puts a file from this computer in it by name', () => {
