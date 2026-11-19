@@ -87,6 +87,7 @@ export function PermitDecideSheet({
             <div style={{ fontSize: '0.875rem' }}>
               Pulled by <strong>{row.contact ?? 'nobody named'}</strong>
               {plumbingOnFile(row) ? <span style={{ color: 'var(--text-muted)' }}> · {row.plumber ? `plumbing permit by ${row.plumber}` : `a plumbing permit on file, ${plumberWords(row).under}`}</span> : <span style={{ color: 'var(--text-green-700)' }}> · no plumber yet</span>}
+              {!plumbingOnFile(row) && plumberWords(row).under && <span style={{ color: 'var(--text-muted)', display: 'block', marginTop: 2 }}>{plumberWords(row).under}</span>}
             </div>
           </div>
           <span style={{ flex: '1 1 auto' }} />

@@ -168,6 +168,13 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
     expect(screen.getByText('warm').getAttribute('title')).toBe('we won 3 of 5 bids with this name')
   })
 
+  it('says under none yet what sits at the address and is not counted', async () => {
+    io.loadResearchPermits.mockResolvedValue([row({ plumbing_nearby: 2, plumbing_nearby_on: '2026-11-04', plumbing_nearby_by: 'Quill Plumbing', plumbing_nearby_what: 'Water heater, suite 210' })])
+    await openLedger()
+    expect(screen.getByText('none yet')).toBeTruthy()
+    expect(screen.getByText(/^at this address, not counted: Quill Plumbing, Nov 4(, 2026)?, and 1 more$/)).toBeTruthy()
+  })
+
   it("Map draws the lens as pins; a pin opens the row's card with its Decide press", async () => {
     await openLedger()
     fireEvent.click(screen.getByRole('button', { name: 'Map' }))
@@ -383,6 +390,12 @@ describe('ProspectsResearchTab (v2.6782, punch list #292)', () => {
   describe('the four places, builders and the count (punch list #302, PR 6 to 8)', () => {
     const kept = () => row({ id: 'k1', address: '77 KILN ST', permit_number: 'COM-2', verdict: 'look', verdict_reason: 'Kept on the skim.', verdict_by: 'u1', verdict_by_name: 'Eve', verdict_at: '2026-11-08T15:00:00Z', builder_key: 'ridgewaybuilders', builder_mark: 'good', builder_mark_reason: 'Pays on time.', builder_mark_by_name: 'Eve', builder_permits: 4, builder_open: 2 })
     const passed = (over: Partial<ResearchPermitRow> = {}) => row({ id: 'c1', address: '60 MILLRACE ROW', permit_number: 'COM-3', contact: 'Tall Pine Development', verdict: 'not_for_us', verdict_reason: 'Passed on the skim: too far.', verdict_reason_code: 'too_far', verdict_by_name: 'Eve', verdict_at: '2026-11-09T15:00:00Z', ...over })
+
+    it('the card says what sits at the address uncounted, with the work it names', async () => {
+      io.loadResearchPermits.mockResolvedValue([row({ plumbing_nearby: 1, plumbing_nearby_on: '2026-11-04', plumbing_nearby_by: 'Quill Plumbing', plumbing_nearby_what: 'Water heater, suite 210' })])
+      renderWithProviders(<ProspectsResearchTab authUserId="u1" />)
+      await waitFor(() => expect(screen.getByText(/^A plumbing permit at this address lists Quill Plumbing, Nov 4(, 2026)?, for Water heater, suite 210\. It is not counted as this job's\.$/)).toBeTruthy())
+    })
 
     it('the strip counts the four places, and the deck shows a mark and hands a keep to a person', async () => {
       io.loadResearchPermits.mockResolvedValue([row({ builder_mark: 'good', builder_mark_reason: 'Pays on time.', builder_mark_by_name: 'Eve', builder_permits: 4, builder_open: 2 }), kept(), passed()])
