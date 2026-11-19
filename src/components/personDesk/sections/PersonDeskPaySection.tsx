@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
@@ -7,6 +7,8 @@ import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../../..
 import { loadPayConfigFacts, type PayConfigFacts } from '../../../lib/people/personDeskFacts'
 import { stintRange, stintRows, type Stint } from '../../../lib/people/employmentStints'
 import { salariedWeekLine } from '../../../lib/people/salariedWeekLine'
+import { WEEK_PRESETS, draftFromFacts, money, paySetupPlan, type PaySetupDraft, type PaySetupFacts } from '../../../lib/people/paySetupEdit'
+import { SALARIED_DEFAULT_WEEK, formatDayHours } from '../../../lib/salariedEffectiveHours'
 import type { PersonDeskViewer } from '../../../lib/people/personDeskGates'
 import type { PersonKey } from '../../../lib/people/personKey'
 import { PersonOffsetFormModal } from '../../pay/PersonOffsetFormModal'
@@ -16,9 +18,11 @@ import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, Desk
 type TimeOffRow = { id: string; start_date: string; end_date: string; kind: string | null; note: string | null }
 type StubRow = { period_start: string; period_end: string; paid_at: string | null }
 
-function money(n: number): string {
-  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
+const FORM_ROW: CSSProperties = { display: 'grid', gridTemplateColumns: '6.5rem minmax(0, 1fr)', gap: '0.6rem', alignItems: 'start', fontSize: '0.8125rem' }
+const FORM_LABEL: CSSProperties = { color: 'var(--text-muted)', paddingTop: '0.3rem' }
+const FORM_HINT: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }
 
 /**
  * Pay & schedule (PR 2): wage / office rate / salaried through the same
@@ -46,8 +50,8 @@ export function PersonDeskPaySection({
   const [timeOff, setTimeOff] = useState<TimeOffRow[]>([])
   const [lastStub, setLastStub] = useState<StubRow | null | undefined>(undefined)
   const [openOffsets, setOpenOffsets] = useState<number | null>(null)
-  const [editWage, setEditWage] = useState<{ wage: string; office: string } | null>(null)
-  const [editDates, setEditDates] = useState<{ start: string; end: string } | null>(null)
+  /** The one pay setup form, open or not (the owner's mockup, 2026-11-18). */
+  const [edit, setEdit] = useState<PaySetupDraft | null>(null)
   const [addTimeOff, setAddTimeOff] = useState<{ start: string; end: string; kind: 'paid' | 'unpaid'; note: string } | null>(null)
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [offsetOpen, setOffsetOpen] = useState(false)
@@ -85,90 +89,65 @@ export function PersonDeskPaySection({
 
   if (!viewer.canAccessPay) return null
 
-  async function upsertPay(patch: Partial<{ hourly_wage: number | null; office_hourly_wage: number | null; is_salary: boolean; record_hours_but_salary: boolean }>) {
-    if (!payName) return
-    const cur = pay ?? { exists: false, hourlyWage: null, officeWage: null, isSalary: false, recordHoursButSalary: false }
-    const full = {
-      person_name: payName,
-      person_id: personId,
-      hourly_wage: patch.hourly_wage !== undefined ? patch.hourly_wage : cur.hourlyWage,
-      office_hourly_wage: patch.office_hourly_wage !== undefined ? patch.office_hourly_wage : cur.officeWage,
-      is_salary: patch.is_salary !== undefined ? patch.is_salary : cur.isSalary,
-      record_hours_but_salary: patch.record_hours_but_salary !== undefined ? patch.record_hours_but_salary : cur.recordHoursButSalary,
-    }
-    const { error } = await supabase.from('people_pay_config').upsert(full, { onConflict: 'person_name' })
-    if (error) throw error
-    const becameSalary = full.is_salary && !cur.isSalary
-    const stoppedSalary = !full.is_salary && cur.isSalary
-    if (becameSalary && userId) {
-      const { error: syncErr } = await syncSalaryClockSessionsForUserDay(userId, todayYmd)
-      if (syncErr) showToast(syncErr, 'error')
-    } else if (stoppedSalary) {
-      const payload = await withSupabaseRetry(async () => supabase.rpc('pay_staff_clear_salary_schedule_by_person_name', { p_person_name: payName.trim() }), 'clear salary schedule')
-      const result = payload as { ok?: boolean; message?: string }
-      if (result?.ok !== true) showToast(result?.message || 'Could not remove the salaried work schedule', 'error')
-    }
-  }
+  /** What is stored, as the form reads it. Null while the pay row is loading. */
+  const facts: PaySetupFacts | null =
+    pay === undefined
+      ? null
+      : {
+          exists: !!pay?.exists,
+          hourlyWage: pay?.hourlyWage ?? null,
+          officeWage: pay?.officeWage ?? null,
+          isSalary: !!pay?.isSalary,
+          recordHoursButSalary: !!pay?.recordHoursButSalary,
+          week: pay?.salariedWeek ?? SALARIED_DEFAULT_WEEK,
+          startDate: dates?.start ?? null,
+          endDate: dates?.end ?? null,
+        }
+  /** What the open form would write, or the one field to fix. */
+  const plan = facts && edit ? paySetupPlan(facts, edit, { todayYmd, lastReportEndYmd: lastStub?.period_end ?? null }) : null
+  const saveDead = busy != null || !plan || !plan.ok || (!plan.payChanged && !plan.datesChanged)
 
-  async function saveWage() {
-    if (!editWage) return
-    const wage = editWage.wage.trim() === '' ? null : Number.parseFloat(editWage.wage)
-    const office = editWage.office.trim() === '' ? null : Number.parseFloat(editWage.office)
-    if ((wage != null && !Number.isFinite(wage)) || (office != null && !Number.isFinite(office))) {
-      showToast('Enter a number', 'warning')
-      return
-    }
-    setBusy('wage')
-    try {
-      await upsertPay({ hourly_wage: wage, office_hourly_wage: office })
-      showToast('Pay saved', 'success')
-      setEditWage(null)
-      onChanged()
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'That did not save'), 'error')
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  async function toggleSalaried(on: boolean) {
-    if (!payName) return
-    if (!on) {
+  /** One save for the whole setup: the dates on the roster row, then the pay row, then the schedule's side step. */
+  async function savePaySetup() {
+    if (!payName || !plan || !plan.ok) return
+    if (plan.stoppedSalaried) {
       const ok = await confirmDialog({
-        message: `Turn off Salaried for ${personKey.displayName}? Past pay reports and approved hours stay. Pay switches to logged hours × wage, today's unapproved auto-sessions are removed, and their workday schedule (template and overrides) is cleared.`,
-        confirmLabel: 'Turn off Salaried',
+        message: `Turn off the set week for ${personKey.displayName}? Past pay reports and approved hours stay. Pay switches to logged hours × wage, today's unapproved auto-sessions are removed, and their workday schedule (template and overrides) is cleared.`,
+        confirmLabel: 'Turn off the set week',
         danger: true,
       })
       if (!ok) return
     }
-    setBusy('salary')
+    setBusy('pay')
+    let datesSaved = false
     try {
-      await upsertPay({ is_salary: on })
-      showToast(on ? 'Salaried — today’s schedule sessions sync in a moment' : 'Salaried turned off', 'success')
+      if (plan.datesChanged && personId) {
+        const { error } = await supabase.from('people').update({ start_date: plan.dates.start, end_date: plan.dates.end }).eq('id', personId)
+        if (error) throw error
+        datesSaved = true
+      }
+      if (plan.payChanged) {
+        const { error } = await supabase.from('people_pay_config').upsert({ person_name: payName, person_id: personId, ...plan.write }, { onConflict: 'person_name' })
+        if (error) throw error
+        if (plan.becameSalaried && userId) {
+          const { error: syncErr } = await syncSalaryClockSessionsForUserDay(userId, todayYmd)
+          if (syncErr) showToast(syncErr, 'error')
+        } else if (plan.stoppedSalaried) {
+          const payload = await withSupabaseRetry(async () => supabase.rpc('pay_staff_clear_salary_schedule_by_person_name', { p_person_name: payName.trim() }), 'clear salary schedule')
+          const result = payload as { ok?: boolean; message?: string }
+          if (result?.ok !== true) showToast(result?.message || 'Could not remove the salaried work schedule', 'error')
+        }
+      }
+      showToast('Pay setup saved', 'success')
+      setEdit(null)
       onChanged()
     } catch (e) {
-      showToast(formatErrorMessage(e, 'That did not save'), 'error')
+      // The dates and the pay row are two writes: say which one landed, and show it.
+      const reason = formatErrorMessage(e, 'That did not save')
+      showToast(datesSaved ? `The dates saved. The pay did not: ${reason}` : reason, 'error')
+      if (datesSaved) onChanged()
     } finally {
       setBusy(null)
-    }
-  }
-
-  async function saveDates() {
-    if (!editDates || !personId) return
-    const start = editDates.start || null
-    const end = editDates.end || null
-    if (start && end && end < start) {
-      showToast('End date must be on or after start date', 'warning')
-      return
-    }
-    setBusy('dates')
-    const { error } = await supabase.from('people').update({ start_date: start, end_date: end }).eq('id', personId)
-    setBusy(null)
-    if (error) showToast(error.message, 'error')
-    else {
-      showToast('Employment dates saved', 'success')
-      setEditDates(null)
-      onChanged()
     }
   }
 
@@ -216,131 +195,219 @@ export function PersonDeskPaySection({
         <DeskEmpty>No pay name yet — an account or roster row gives them one.</DeskEmpty>
       ) : (
         <>
-          <DeskRow
-            label="Wage"
-            actions={
-              canEdit ? (
-                editWage ? (
-                  <>
-                    <button type="button" style={deskBtn(BTN_BLUE, busy === 'wage')} disabled={busy === 'wage'} onClick={() => void saveWage()}>
-                      Save
-                    </button>
-                    <button type="button" style={BTN_QUIET} onClick={() => setEditWage(null)}>
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <button type="button" style={BTN_QUIET} onClick={() => setEditWage({ wage: pay?.hourlyWage != null ? String(pay.hourlyWage) : '', office: pay?.officeWage != null ? String(pay.officeWage) : '' })}>
-                    Edit
-                  </button>
-                )
-              ) : (
-                lock
-              )
-            }
-          >
-            {pay === undefined ? (
+          {facts == null ? (
+            <DeskRow label="Paid">
               <span style={{ color: 'var(--text-muted)' }}>Loading…</span>
-            ) : editWage ? (
-              <>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                  $<input type="number" step="0.01" min="0" value={editWage.wage} onChange={(e) => setEditWage({ ...editWage, wage: e.target.value })} style={{ width: 80, fontSize: '0.8125rem' }} aria-label="Hourly wage" />/h
-                </label>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)' }}>
-                  office $<input type="number" step="0.01" min="0" value={editWage.office} onChange={(e) => setEditWage({ ...editWage, office: e.target.value })} style={{ width: 80, fontSize: '0.8125rem' }} aria-label="Office hourly wage" />/h
-                </label>
-              </>
-            ) : pay == null || !pay.exists ? (
-              <span style={{ color: 'var(--text-amber-800)' }}>No pay setup — Edit to add a wage or turn on Salaried</span>
-            ) : (
-              <>
-                <span style={{ fontWeight: 600 }}>{pay.hourlyWage != null ? `${money(pay.hourlyWage)} / h` : pay.isSalary ? 'Salaried' : 'no wage'}</span>
-                {pay.officeWage != null ? <span style={{ color: 'var(--text-muted)' }}>office {money(pay.officeWage)} / h</span> : null}
-                {weekLine ? (
-                  <span data-salaried-week style={{ color: 'var(--text-muted)' }}>
-                    {weekLine}
-                  </span>
-                ) : null}
-              </>
-            )}
-          </DeskRow>
-          <DeskRow
-            label="Salaried"
-            actions={
-              pay?.isSalary && userId ? (
-                <button type="button" style={BTN_QUIET} onClick={() => setScheduleOpen(true)}>
-                  Workday schedule…
-                </button>
-              ) : null
-            }
-          >
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: canEdit ? 'pointer' : 'default' }}>
-              <input type="checkbox" checked={Boolean(pay?.isSalary)} disabled={!canEdit || busy != null || pay === undefined} onChange={(e) => void toggleSalaried(e.target.checked)} />
-              {pay?.isSalary ? 'Yes — schedule-driven sessions' : 'No — logged hours × wage'}
-            </label>
-            {pay?.isSalary ? (
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: canEdit ? 'pointer' : 'default' }} title="Keep recording real punches alongside the salary">
-                <input
-                  type="checkbox"
-                  checked={Boolean(pay.recordHoursButSalary)}
-                  disabled={!canEdit || busy != null}
-                  onChange={(e) => {
-                    setBusy('rhs')
-                    void upsertPay({ record_hours_but_salary: e.target.checked })
-                      .then(() => onChanged())
-                      .catch((err) => showToast(formatErrorMessage(err, 'That did not save'), 'error'))
-                      .finally(() => setBusy(null))
-                  }}
-                />
-                also record hours
-              </label>
-            ) : null}
-          </DeskRow>
-          <DeskRow
-            label="Employment"
-            actions={
-              canEdit && personId ? (
-                editDates ? (
+            </DeskRow>
+          ) : edit == null ? (
+            <>
+              <DeskRow
+                label="Paid"
+                actions={
+                  canEdit ? (
+                    <button type="button" style={BTN} data-pay-setup-edit onClick={() => setEdit(draftFromFacts(facts))}>
+                      Edit pay setup
+                    </button>
+                  ) : (
+                    lock
+                  )
+                }
+              >
+                {!facts.exists ? (
+                  <span style={{ color: 'var(--text-amber-800)' }}>Pay is not set up. Edit pay setup adds a wage or a set week.</span>
+                ) : facts.isSalary ? (
                   <>
-                    <button type="button" style={deskBtn(BTN_BLUE, busy === 'dates')} disabled={busy === 'dates'} onClick={() => void saveDates()}>
-                      Save
-                    </button>
-                    <button type="button" style={BTN_QUIET} onClick={() => setEditDates(null)}>
-                      Cancel
-                    </button>
+                    <span style={{ fontWeight: 600 }}>A set week</span>
+                    {weekLine ? <span data-salaried-week>{weekLine}</span> : <span style={{ color: 'var(--text-amber-800)' }}>no weekly pay</span>}
+                    {facts.hourlyWage != null ? <span style={{ color: 'var(--text-muted)' }}>{money(facts.hourlyWage)} / h</span> : null}
                   </>
                 ) : (
-                  <button type="button" style={BTN_QUIET} onClick={() => setEditDates({ start: dates?.start ?? '', end: dates?.end ?? '' })}>
-                    Edit dates
-                  </button>
-                )
-              ) : canEdit ? null : (
-                lock
-              )
-            }
-          >
-            {!personId ? (
-              <span style={{ color: 'var(--text-muted)' }}>Dates live on the roster row — create it from the header</span>
-            ) : editDates ? (
-              <>
-                <input type="date" value={editDates.start} onChange={(e) => setEditDates({ ...editDates, start: e.target.value })} style={{ fontSize: '0.8125rem' }} aria-label="Start date" />
-                <span style={{ color: 'var(--text-muted)' }}>→</span>
-                <input type="date" value={editDates.end} onChange={(e) => setEditDates({ ...editDates, end: e.target.value })} style={{ fontSize: '0.8125rem' }} aria-label="End date" />
-              </>
-            ) : (
-              <span style={{ display: 'grid', gap: '0.15rem' }}>
-                <span>
-                  {dates?.start ? fmtDate(dates.start) : <span style={{ color: 'var(--text-muted)' }}>no start date</span>} → {dates?.end ? fmtDate(dates.end) : 'present'}
-                  {dates?.end && dates.end < todayYmd ? <Chip tone="gray">Ended</Chip> : null}
-                </span>
-                {stintRows(stints, todayYmd).map((r) => (
-                  <span key={`${r.kind}-${r.from ?? ''}-${r.to ?? ''}`} style={{ fontSize: '0.75rem', color: r.kind === 'away' ? 'var(--text-faint)' : 'var(--text-muted)', fontStyle: r.kind === 'away' ? 'italic' : undefined }} aria-label={`${stintRange(r)}, ${r.words}`}>
-                    {stintRange(r)} · {r.words}
+                  <>
+                    <span style={{ fontWeight: 600 }}>By the hour</span>
+                    <span>{facts.hourlyWage != null ? `${money(facts.hourlyWage)} / h` : 'no wage'}</span>
+                    {facts.officeWage != null ? <span style={{ color: 'var(--text-muted)' }}>office {money(facts.officeWage)} / h</span> : null}
+                  </>
+                )}
+              </DeskRow>
+              {facts.isSalary ? (
+                <DeskRow
+                  label="Clock"
+                  actions={
+                    userId ? (
+                      <button type="button" style={BTN_QUIET} onClick={() => setScheduleOpen(true)}>
+                        Workday schedule…
+                      </button>
+                    ) : null
+                  }
+                >
+                  <span>{facts.recordHoursButSalary ? 'Still clocks in and out' : 'On the schedule alone'}</span>
+                </DeskRow>
+              ) : null}
+              <DeskRow label="Employment">
+                {!personId ? (
+                  <span style={{ color: 'var(--text-muted)' }}>Dates live on the roster row — create it from the header</span>
+                ) : (
+                  <span style={{ display: 'grid', gap: '0.15rem' }}>
+                    <span>
+                      {dates?.start ? fmtDate(dates.start) : <span style={{ color: 'var(--text-muted)' }}>no start date</span>} → {dates?.end ? fmtDate(dates.end) : 'present'}
+                      {dates?.end && dates.end < todayYmd ? <Chip tone="gray">Ended</Chip> : null}
+                    </span>
+                    {stintRows(stints, todayYmd).map((r) => (
+                      <span key={`${r.kind}-${r.from ?? ''}-${r.to ?? ''}`} style={{ fontSize: '0.75rem', color: r.kind === 'away' ? 'var(--text-faint)' : 'var(--text-muted)', fontStyle: r.kind === 'away' ? 'italic' : undefined }} aria-label={`${stintRange(r)}, ${r.words}`}>
+                        {stintRange(r)} · {r.words}
+                      </span>
+                    ))}
                   </span>
-                ))}
-              </span>
-            )}
-          </DeskRow>
+                )}
+              </DeskRow>
+            </>
+          ) : (
+            <div data-pay-setup-form style={{ display: 'grid', gap: '0.75rem', padding: '0.6rem 0', borderTop: '1px solid var(--border)' }}>
+              <div style={FORM_ROW}>
+                <span style={FORM_LABEL}>Paid</span>
+                <div>
+                  <div role="group" aria-label="How they are paid" style={{ display: 'inline-flex' }}>
+                    {(['hourly', 'salaried'] as const).map((k, i) => (
+                      <button
+                        key={k}
+                        type="button"
+                        aria-pressed={edit.kind === k}
+                        onClick={() => setEdit({ ...edit, kind: k })}
+                        style={{ ...BTN, borderRadius: i === 0 ? '6px 0 0 6px' : '0 6px 6px 0', marginLeft: i === 0 ? 0 : -1, ...(edit.kind === k ? { background: 'var(--bg-blue-tint)', color: 'var(--text-link)', borderColor: 'var(--text-link)', position: 'relative' as const } : {}) }}
+                      >
+                        {k === 'hourly' ? 'By the hour' : 'A set week'}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={FORM_HINT}>{edit.kind === 'salaried' ? 'A set week pays the same each week, whatever the clock says.' : 'By the hour pays the hours logged, at the wage.'}</div>
+                </div>
+              </div>
+
+              {edit.kind === 'hourly' ? (
+                <div style={FORM_ROW}>
+                  <span style={FORM_LABEL}>Wage</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                      $<input type="number" step="0.01" min="0" value={edit.hourlyWage} onChange={(e) => setEdit({ ...edit, hourlyWage: e.target.value })} style={{ width: 84, fontSize: '0.8125rem' }} aria-label="Hourly wage" />/h
+                    </label>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)' }}>
+                      office $<input type="number" step="0.01" min="0" value={edit.officeWage} onChange={(e) => setEdit({ ...edit, officeWage: e.target.value })} style={{ width: 84, fontSize: '0.8125rem' }} aria-label="Office hourly wage" />/h
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={FORM_ROW}>
+                    <span style={FORM_LABEL}>The week</span>
+                    <div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4 }}>
+                        {DAY_NAMES.map((name, i) => {
+                          const off = !(Number(edit.week[i]) > 0)
+                          return (
+                            <label key={name} style={{ display: 'grid', gap: 2, justifyItems: 'center', background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.3rem 0.15rem', opacity: off ? 0.6 : 1 }}>
+                              <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{name}</span>
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                min="0"
+                                max="16"
+                                step="0.25"
+                                value={edit.week[i] ?? ''}
+                                onChange={(e) => setEdit({ ...edit, week: edit.week.map((v, j) => (j === i ? e.target.value : v)) })}
+                                style={{ width: '100%', minWidth: 0, textAlign: 'center', fontSize: '0.8125rem', padding: '0.2rem 0' }}
+                                aria-label={`${DAY_LONG[i]} hours`}
+                              />
+                            </label>
+                          )
+                        })}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                        {WEEK_PRESETS.map((preset) => (
+                          <button key={preset.label} type="button" style={{ ...BTN_QUIET, fontSize: '0.75rem' }} onClick={() => setEdit({ ...edit, week: preset.week.map((h) => String(h)) })}>
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={FORM_ROW}>
+                    <span style={FORM_LABEL}>Weekly pay</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        $<input type="number" step="0.01" min="0" value={edit.weeklyPay} onChange={(e) => setEdit({ ...edit, weeklyPay: e.target.value })} style={{ width: 100, fontSize: '0.8125rem' }} aria-label="Weekly pay" />
+                      </label>
+                      {plan?.ok && plan.comesTo ? <span style={{ color: 'var(--text-muted)' }}>works out to {money(plan.comesTo.wage)} an hour</span> : null}
+                    </div>
+                  </div>
+                  {plan?.ok && plan.comesTo ? (
+                    <div style={FORM_ROW}>
+                      <span style={FORM_LABEL}>Comes to</span>
+                      <div data-pay-setup-comes-to style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 6 }}>
+                        {[
+                          ['Hours a week', `${formatDayHours(plan.comesTo.weekHours)} h`],
+                          ['Wage', `${money(plan.comesTo.wage)} / h`],
+                          ['A Monday on a job', money(plan.comesTo.mondayCost)],
+                        ].map(([label, value]) => (
+                          <div key={label} style={{ background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.4rem 0.55rem' }}>
+                            <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{label}</div>
+                            <div style={{ fontSize: '1rem', fontWeight: 600 }}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  <div style={FORM_ROW}>
+                    <span style={FORM_LABEL}>Clock</span>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <input type="checkbox" checked={edit.recordHours} onChange={(e) => setEdit({ ...edit, recordHours: e.target.checked })} />
+                      Still clocks in and out, so real hours show beside the pay
+                    </label>
+                  </div>
+                </>
+              )}
+
+              <div style={FORM_ROW}>
+                <span style={FORM_LABEL}>Employment</span>
+                {personId ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                    <input type="date" value={edit.startDate} onChange={(e) => setEdit({ ...edit, startDate: e.target.value })} style={{ fontSize: '0.8125rem' }} aria-label="Start date" />
+                    <span style={{ color: 'var(--text-muted)' }}>→</span>
+                    <input type="date" value={edit.endDate} onChange={(e) => setEdit({ ...edit, endDate: e.target.value })} style={{ fontSize: '0.8125rem' }} aria-label="End date" />
+                  </div>
+                ) : (
+                  <span style={{ color: 'var(--text-muted)' }}>Dates live on the roster row — create it from the header</span>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gap: '0.4rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
+                {plan && !plan.ok ? (
+                  <div role="alert" data-pay-setup-error style={{ color: 'var(--text-red-600)', fontSize: '0.8125rem' }}>
+                    {plan.error}
+                  </div>
+                ) : null}
+                {plan?.ok
+                  ? plan.warnings.map((w) => (
+                      <div key={w} data-pay-setup-warning style={{ color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
+                        {w}
+                      </div>
+                    ))
+                  : null}
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                  <span data-pay-setup-summary style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    {plan?.ok ? plan.summary : ''}
+                  </span>
+                  <span style={{ display: 'inline-flex', gap: '0.4rem' }}>
+                    <button type="button" style={BTN_QUIET} onClick={() => setEdit(null)}>
+                      Cancel
+                    </button>
+                    <button type="button" style={deskBtn(BTN_BLUE, saveDead)} disabled={saveDead} onClick={() => void savePaySetup()}>
+                      Save pay setup
+                    </button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
           <DeskRow
             label="Time off"
             actions={
