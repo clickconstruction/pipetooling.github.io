@@ -103,6 +103,7 @@ describe('Checklist → History', () => {
     await screen.findByText('ZZ Sweep the shop')
     await settle()
 
+    expect(screen.getByText(/^REPEATING/).textContent).toBe('REPEATING · 2 tasks · rows start at each task’s creation')
     // Four columns: the days the two repeating tasks had. The one-offs' days mint none (Nov 12 is not there).
     const heads = Array.from(container.querySelectorAll('thead th')).map((th) => th.getAttribute('title')).filter(Boolean)
     expect(heads).toEqual(['2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06'])
@@ -150,17 +151,26 @@ describe('Checklist → History', () => {
     expect(gridRow('ZZ Sweep the shop').rate).toBe('100%')
   })
 
-  it('with one-offs and no repeating task, the grid has no row and one line says so', async () => {
+  it('with one-offs and no repeating task, no grid draws and one line says so, with Show 12 months', async () => {
     // Every repeating row gone: the window holds the three one-offs alone.
     H.deleted = ['s1', 's2', 's3', 's4', 'l1', 'l2']
     const { container } = renderWithProviders(<Checklist />, { route: '/checklist?tab=history' })
     await screen.findByText('ZZ Hang the sign')
     await settle()
 
-    expect(screen.getByText('No repeating tasks in this range.').tagName).toBe('P')
-    // The grid's head still draws, over no row and no day (as the page drew it before the move).
-    expect(container.querySelectorAll('tbody tr')).toHaveLength(0)
-    expect(Array.from(container.querySelectorAll('thead th')).map((th) => th.textContent)).toEqual(['Item', 'rate'])
+    // No table and no REPEATING label over nothing: the line stands where the grid would, over the one-offs.
+    expect(container.querySelector('table')).toBeNull()
+    expect(screen.queryByText(/^REPEATING/)).toBeNull()
+    const line = container.querySelector('[data-empty-state]')!
+    // A wide screen opens on 6 months (the smoke's matchMedia answers no to the phone's width).
+    expect(line.textContent).toBe('No repeating tasks in the last 6 months. Show 12 months')
     expect(screen.getByText(/3 in this window · 1 done · newest first/)).toBeTruthy()
+
+    // The press widens the range to a year, where the line stands alone.
+    fireEvent.click(within(line as HTMLElement).getByRole('button', { name: 'Show 12 months' }))
+    await waitFor(() => expect(container.querySelector('[data-empty-state]')!.textContent).toBe('No repeating tasks in the last 12 months.'))
+    expect(screen.queryByRole('button', { name: 'Show 12 months' })).toBeNull()
+    expect((screen.getByText('Months:').parentElement!.querySelector('select') as HTMLSelectElement).value).toBe('12')
+    expect(container.querySelector('table')).toBeNull()
   })
 })
