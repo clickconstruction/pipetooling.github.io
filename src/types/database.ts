@@ -1649,6 +1649,54 @@ export type Database = {
           },
         ]
       }
+      bid_permit_answers: {
+        Row: {
+          answer: string
+          answered_at: string
+          answered_by: string
+          bid_id: string
+          city: string
+          id: string
+          permit_number: string
+          permit_type: string
+        }
+        Insert: {
+          answer: string
+          answered_at?: string
+          answered_by: string
+          bid_id: string
+          city: string
+          id?: string
+          permit_number: string
+          permit_type?: string
+        }
+        Update: {
+          answer?: string
+          answered_at?: string
+          answered_by?: string
+          bid_id?: string
+          city?: string
+          id?: string
+          permit_number?: string
+          permit_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_permit_answers_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_permit_answers_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_photos: {
         Row: {
           added_at: string | null
@@ -49643,6 +49691,14 @@ export type Database = {
         Returns: undefined
       }
       people_phones_from_accounts: { Args: never; Returns: number }
+      permit_address_plumbing_counts: {
+        Args: {
+          p_building_builder_key: string
+          p_city: string
+          p_plumbing_builder_key: string
+        }
+        Returns: boolean
+      }
       permit_funnel: {
         Args: { p_city: string; p_since: string }
         Returns: Json
@@ -49828,6 +49884,19 @@ export type Database = {
         Returns: boolean
       }
       primary_can_access_job: { Args: { p_job_id: string }; Returns: boolean }
+      primary_can_read_job_reports: {
+        Args: { p_job_id: string }
+        Returns: boolean
+      }
+      primary_can_read_report: {
+        Args: {
+          p_bid_id: string
+          p_created_by: string
+          p_job_ledger_id: string
+          p_project_id: string
+        }
+        Returns: boolean
+      }
       promote_bid_gc: {
         Args: {
           p_bid_id: string
