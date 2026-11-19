@@ -315,6 +315,25 @@ describe('SuperintendentCard', () => {
     expect(screen.getByTestId('checklist-sheet').textContent).toBe('Top Out')
   })
 
+  it('a bid line that is not a stage is folded into one last row, Other work, and its name stays off the card', async () => {
+    const scope = 'Install 1 water heater with exterior mounting box. Install 2 showers in the new addition.'
+    const extra = [
+      { id: 'x1', name: scope, stage_kind: 'any', line_kind: 'fixture', line_unit_price: 6000, count: 1, progress_pct: null, sequence_order: 0 },
+      { id: 'x2', name: 'Trenching (owner paid the sub)', stage_kind: 'any', line_kind: 'fixture', line_unit_price: 3000, count: 1, progress_pct: null, sequence_order: 0 },
+    ]
+    answer = async () => ({ readsWages: false, jobs: [project({ fixtures: [...fixtures, ...extra], revenue: 36000 })] })
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    await waitFor(() => expect(screen.getByTestId('pace-rail')).toBeTruthy())
+    const rows = screen.getAllByTestId('pace-rail-stage')
+    expect(rows.map((r) => r.dataset.state)).toEqual(['done', 'now', 'next', 'next'])
+    expect(rows[3]!.textContent).toContain('Other work')
+    const rail = screen.getByTestId('pace-rail').textContent ?? ''
+    expect(rail).not.toContain('Install 1 water heater')
+    expect(rail).not.toContain('owner paid')
+    // The stages keep their own checklists, found by their own lines.
+    expect(screen.getAllByTestId('pace-rail-check').map((b) => b.textContent)).toEqual(['Rough In, done. Checklist, 2 of 2 answered ›', 'Top Out, in hand. Checklist, 1 of 3 answered ›'])
+  })
+
   it('carries a door to every project (punch list #397 PR 5)', async () => {
     renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
     await waitFor(() => expect(screen.getByTestId('pace-all-projects')).toBeTruthy())
