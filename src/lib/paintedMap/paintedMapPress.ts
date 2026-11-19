@@ -6,7 +6,8 @@
  * The owner's two rules: the press is always there, clocked in or not, and every map is tied to a
  * job with the job easy to pick. So the press lands on a job with no question when the app knows
  * it: the job the person is clocked onto, else the stop that is under way or next on today's
- * schedule. When it knows neither, the person picks.
+ * schedule. When it knows neither, the start sheet opens on the person's last job, or asks
+ * (`pickerGuess` in `paintedMapJobPicker.ts`).
  *
  * A clock on the office, on a bid or on a billing-only job is not a job to paint a map for: the
  * person is at a desk, or the job is a line on a bill with no site of its own.
@@ -79,8 +80,8 @@ export function paintPressJobLabel(job: Pick<PaintPressJob, 'number' | 'name'>):
 
 export const PAINT_PRESS_WORDS = {
   press: 'Paint a map',
-  /** The second line when the person will be asked. */
-  pick: 'You pick the job it is for',
+  /** The second line when the day names no job: the sheet opens on the person's last job, or asks. */
+  pick: 'On your last job, or one you pick',
   /** The second line while the day is being read. It says nothing that could turn out wrong. */
   reading: 'The way in, drawn or walked',
   /** The press's name for a screen reader, with where the map will land. */
