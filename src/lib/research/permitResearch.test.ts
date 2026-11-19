@@ -220,6 +220,36 @@ describe('plumberWords', () => {
     expect(plumberWords(row({ plumber: null, plumber_permit_on: '2026-11-04' }))).toEqual({ kind: 'unnamed', chip: 'on file, no plumber named', under: "pulled under the applicant's own name, Nov 4" })
     expect(plumberWords(row())).toEqual({ kind: 'none', chip: 'none yet', under: null })
   })
+
+  it('says under none yet what sits at the address and is not counted', async () => {
+    const { plumberWords } = await import('./permitResearch')
+    const near = { plumbing_nearby: 3, plumbing_nearby_on: '2026-11-04', plumbing_nearby_by: 'Quill Plumbing', plumbing_nearby_what: 'Water heater, suite 210' }
+    expect(plumberWords(row(near), '2026-11-19')).toEqual({ kind: 'none', chip: 'none yet', under: 'at this address, not counted: Quill Plumbing, Nov 4, and 2 more' })
+    // A row with a plumbing permit of its own never carries the note, whatever the read sent.
+    expect(plumberWords(row({ ...near, plumber_permit_on: '2026-11-06' }), '2026-11-19').under).toBe("pulled under the applicant's own name, Nov 6")
+  })
+})
+
+describe('nearbyPlumbingWords', () => {
+  it('is null when nothing sits at the address, and on a row an older read returned', async () => {
+    const { nearbyPlumbingWords } = await import('./permitResearch')
+    expect(nearbyPlumbingWords(row())).toBeNull()
+    expect(nearbyPlumbingWords(row({ plumbing_nearby: 0 }))).toBeNull()
+    expect(nearbyPlumbingWords(row({ plumbing_nearby: null }), true)).toBeNull()
+  })
+
+  it('names one permit in a cell, and counts the rest', async () => {
+    const { nearbyPlumbingWords } = await import('./permitResearch')
+    expect(nearbyPlumbingWords(row({ plumbing_nearby: 1, plumbing_nearby_on: '2026-11-04', plumbing_nearby_by: 'Quill Plumbing' }), false, '2026-11-19')).toBe('at this address, not counted: Quill Plumbing, Nov 4')
+    expect(nearbyPlumbingWords(row({ plumbing_nearby: 2, plumbing_nearby_on: '2026-11-04', plumbing_nearby_by: null }), false, '2026-11-19')).toBe('at this address, not counted: a plumbing permit, Nov 4, and 1 more')
+  })
+
+  it('says on a card who it lists, when, for what work, and that it is not counted', async () => {
+    const { nearbyPlumbingWords } = await import('./permitResearch')
+    expect(nearbyPlumbingWords(row({ plumbing_nearby: 1, plumbing_nearby_on: '2026-11-04', plumbing_nearby_by: 'Quill Plumbing', plumbing_nearby_what: 'Water heater, suite 210' }), true, '2026-11-19')).toBe("A plumbing permit at this address lists Quill Plumbing, Nov 4, for Water heater, suite 210. It is not counted as this job's.")
+    expect(nearbyPlumbingWords(row({ plumbing_nearby: 2, plumbing_nearby_on: '2026-11-04', plumbing_nearby_by: 'Otis Reed, Harbor Fitouts', plumbing_nearby_what: null }), true, '2026-11-19')).toBe("A plumbing permit at this address lists Otis Reed, Harbor Fitouts, Nov 4. It is not counted as this job's. 1 more is at this address.")
+    expect(nearbyPlumbingWords(row({ plumbing_nearby: 4, plumbing_nearby_on: null, plumbing_nearby_by: null, plumbing_nearby_what: 'Plumbing Gas Permit' }), true, '2026-11-19')).toBe("A plumbing permit at this address is on another number, for Plumbing Gas Permit. It is not counted as this job's. 3 more are at this address.")
+  })
 })
 
 describe('the lead carries the card\'s facts', () => {

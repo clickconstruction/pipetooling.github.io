@@ -42,7 +42,10 @@ async function readEveryRow<T>(fn: string, args: Record<string, unknown>, doing:
 
 export async function loadResearchPermits(city: string, sinceYmd: string, residential: boolean): Promise<ResearchPermitRow[]> {
   const args = { p_city: city, p_since: sinceYmd, p_residential: residential }
-  // The builder and the rest of the verdict ride on v2; the older read stands in until the migration is pushed.
+  // v3 is v2 with what sits at a row's address uncounted; each older read stands in until its migration is pushed.
+  const v3 = await readEveryRow<ResearchPermitRow>('research_permits_v3', args, 'read the permits')
+  if (v3) return v3
+  // The builder and the rest of the verdict ride on v2.
   const v2 = await readEveryRow<ResearchPermitRow>('research_permits_v2', args, 'read the permits')
   if (v2) return v2
   return (await readEveryRow<ResearchPermitRow>('research_permits', args, 'read the permits')) ?? []

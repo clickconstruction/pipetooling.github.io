@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import type { ParcelFacts } from '../../../supabase/functions/_shared/permitLookup'
-import { contactKeys, rowsAboveFloor, type ContactHistory, type ResearchPermitRow, type ValueFloor } from '../../lib/research/permitResearch'
+import { contactKeys, nearbyPlumbingWords, rowsAboveFloor, type ContactHistory, type ResearchPermitRow, type ValueFloor } from '../../lib/research/permitResearch'
 import { BUILDER_KIND_WORDS, builderLine, isBuilderKind, placeCounts, placeOf, skimBuilderContext, type SkimLive } from '../../lib/research/permitBuilders'
 import { googleAsksForContact } from '../../lib/research/permitPublic'
 import {
@@ -485,6 +485,7 @@ export function PermitSkimDeck({
             ) : null}
             <span style={{ ...muted, display: 'block', marginTop: 2 }}>{row.builder_kind === 'files_for_others' ? 'Not who builds it. Read the owner under Property.' : top.hint.detail}</span>
             {builderLine(row, reach) && <span style={{ ...muted, display: 'block', marginTop: 2 }}>{builderLine(row, reach)}</span>}
+            {nearbyPlumbingWords(row, true) && <span style={{ ...muted, display: 'block', marginTop: 2 }}>{nearbyPlumbingWords(row, true)}</span>}
           </span>
           <GoogleSearchPress ask={asks.company ?? asks.person} />
         </div>

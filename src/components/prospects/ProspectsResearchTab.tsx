@@ -591,6 +591,7 @@ export function ProspectsResearchTab({ authUserId }: { authUserId: string }) {
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {plumbingOnFile(selected) ? <span style={chipStyle('grey')}>{plumberWords(selected).chip} · {plumberWords(selected).under}</span> : <span style={chipStyle('green')}>no plumber yet</span>}
+                {!plumbingOnFile(selected) && plumberWords(selected).under && <span style={mutedStyle}>{plumberWords(selected).under}</span>}
                 <HintChip hint={hintFor(selected.contact, history)} />
               </div>
               <div>
