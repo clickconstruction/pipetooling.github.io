@@ -941,7 +941,8 @@ export default function JobTally() {
         margin: '0 auto',
       }}
     >
-      <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+      {/* The title row folds with the tabs while a box is open (punch list #398): the app's bar has Home, and the box's own back press leads to the boxes. */}
+      <div data-testid="tally-title" style={{ marginBottom: '1rem', display: boxOpen ? 'none' : 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
         <Link to="/dashboard" style={{ fontSize: '0.875rem', color: 'var(--text-link)', textDecoration: 'none' }}>
           ← Dashboard
         </Link>
