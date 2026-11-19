@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { CODE_KICKOFF, KICKOFF_CONNECTOR_PLACEHOLDER, PRICING_KICKOFF, ROUNDS_KICKOFF } from '../_shared/twinKickoffs.ts'
+import { CODE_KICKOFF, PRICING_KICKOFF, ROUNDS_KICKOFF } from '../_shared/twinKickoffs.ts'
+import { fillTwinKickoff } from '../_shared/twinKickoffFill.ts'
 import { twinMcpConnectorUrl } from '../_shared/twinConnectorUrl.ts'
 import { formatTwinMcpKey } from '../_shared/mcpKeyPrefixes.ts'
 import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
@@ -9,6 +10,8 @@ import { refuseArchivedCaller } from '../_shared/refuseArchivedCaller.ts'
 // v1.1.0 (v2.4231): the bid robot's redeem hands back the Claude Code kickoff and says so
 // (`kickoff_for: 'code'`), so the command tells the person to paste it into a Code session;
 // the pricing robot keeps its chat kickoff (`kickoff_for: 'chat'`).
+// v2.7903: the kickoff names the twin the key belongs to. The docs are written for each kind's first seat, and a key
+// for Twin Estimator 4 used to open by telling its session it was twin-estimator-1 (_shared/twinKickoffFill.ts).
 //
 // The one-time setup for a robot on Claude Desktop used to be three hand steps: issue a
 // key, paste it into a Terminal command, quit and reopen Desktop. This function collapses
@@ -97,9 +100,10 @@ function connectorNameFor(kind: TwinKind): string {
   return kind === 'pricer' ? 'twin-pricer-mcp' : 'twin-mcp'
 }
 
-function kickoffFor(kind: TwinKind, connectorUrl: string, rounds = false): string {
+/** The kickoff for the twin a key belongs to: its kind's document, naming that twin's own seat (v2.7903). */
+function kickoffFor(kind: TwinKind, connectorUrl: string, twinEmail: string, rounds = false): string {
   const doc = kind === 'pricer' ? PRICING_KICKOFF : rounds ? ROUNDS_KICKOFF : CODE_KICKOFF
-  return doc.split(KICKOFF_CONNECTOR_PLACEHOLDER).join(connectorUrl)
+  return fillTwinKickoff(doc, { connectorUrl, kind, twinEmail })
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -245,7 +249,7 @@ serve(async (req) => {
         label: claimed.label,
         connector_url: connectorUrl,
         connector_name: connectorName,
-        kickoff: kickoffFor(kind, connectorUrl, rounds),
+        kickoff: kickoffFor(kind, connectorUrl, twin.email, rounds),
         kickoff_for: rounds ? 'rounds' : kickoffHarness(kind),
         check_call: kind === 'pricer' ? `call get_pricing_guide on ${connectorName}` : `call get_brief on ${connectorName}`,
       })
