@@ -16,7 +16,7 @@ The email must be on the bid. The guide [save an email to a job from your own ma
 
 The email must carry a file. An email with no file has no press. That email is already on the bid's history.
 
-A logo in the sender's signature does not count as a file. An email that carries only that has no press. Beside a real file the logo is listed with its tick off.
+A logo in the sender's signature does not count as a file. Nor does the small picture Gmail adds for a Google Drive link. An email that carries only those has no press. Beside a real file each one is listed with its tick off.
 
 ## Keep the files
 

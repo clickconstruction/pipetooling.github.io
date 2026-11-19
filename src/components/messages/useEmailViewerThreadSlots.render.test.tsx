@@ -234,6 +234,16 @@ describe('useEmailViewerThreadSlots: the email viewer’s row', () => {
     expect(document.querySelector('[data-line="m-job-bare"] [data-paper-door]')).toBeNull()
   })
 
+  it('a job’s email with only a Drive link and Gmail’s picture of it gets no paper press (v2.7954)', () => {
+    const pdf = { id: 'f1', name: 'spec-book.pdf', mime: 'application/pdf', size: 1000, kept: 'copy' as const, url: null, icon: 'pdf' as const, paper: null, paperAnswer: null, paperAnsweredBy: null, paperAnsweredAt: null }
+    const preview = { ...pdf, id: 'f2', name: 'Zx9MadeUpKeyForATest_0123456789-abcdefghijKLMNOP=w1200-h630-p.png', mime: 'image/png', icon: 'image' as const }
+    const link = { ...pdf, id: 'f3', name: 'Google Drive', kept: 'link' as const, url: 'https://drive.google.com/drive/folders/made-up-folder-for-a-test', icon: 'link' as const }
+    draw(fakeIo(), [line('m-job-preview', { jobId: 'pipeline:j-579', invitation: null, subject: 'The folder', files: [preview, link] }), line('m-job-both', { jobId: 'pipeline:j-579', invitation: null, subject: 'Spec book', files: [pdf, preview, link] })])
+    expect(document.querySelector('[data-line="m-job-preview"] [data-paper-door]')).toBeNull()
+    // Beside a real file the press shows.
+    expect(document.querySelector('[data-line="m-job-both"] [data-keep-paper] [data-paper-door]')).not.toBeNull()
+  })
+
   it('Open the bid closes the thread and opens the Bid Board on it', () => {
     draw(fakeIo(), [line('m-on-bid', { jobId: 'bid:b-oak' })])
     fireEvent.click(screen.getByRole('button', { name: 'Open the bid' }))
