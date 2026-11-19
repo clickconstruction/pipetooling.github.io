@@ -19,7 +19,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { fetchLiveWatches, fetchWatchedOpens, type PersonWatch, type WatchedOpen } from '../../lib/people/personWatchIo'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import PressAnswerWindow, { AnswerWithdrawWindow, type AnswerOutcome } from './PressAnswerWindow'
-import { ACT_KINDS, LOOK_WORDS, actDays, actPeople, actTiles, countWords, filterActs, openedNotPressed, sitePersonActs, withWatch, type ActKind, type PutBack } from '../../lib/materials/sitePersonActs'
+import { ACT_KINDS, LOOK_WORDS, actDays, actPeople, actStampWords, actTiles, countWords, filterActs, openedNotPressed, sitePersonActs, withWatch, type ActKind, type PutBack } from '../../lib/materials/sitePersonActs'
 
 type Props = {
   /** The site, a development: the scope its part ties and prices stand on. */
@@ -75,9 +75,6 @@ function dayWords(iso: string): string {
 }
 function timeWords(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-}
-function stampWords(iso: string): string {
-  return `${new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}, ${timeWords(iso)}`
 }
 
 export default function SitePeopleView({ siteId, jobs, movements, containerMoves, containers, places, boxHref, loading, readTrail = fetchSiteTrail, canAnswer = false, readAnswers = fetchSiteAnswers, give = giveAnswer, withdraw = withdrawAnswer, onLedgerChanged, putBack, readWatches = fetchLiveWatches, readOpens = fetchWatchedOpens }: Props) {
@@ -251,7 +248,7 @@ export default function SitePeopleView({ siteId, jobs, movements, containerMoves
           {pickedWatch ? 'Outside the process only' : 'Worth a look only'}
         </button>
         {pickedWatch ? <span style={chipAmberSolid} title={pickedWatch.why || undefined} data-testid="site-people-watched">Watched since {new Date(pickedWatch.setAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span> : null}
-        {picked ? <span style={muted} data-testid="site-people-last">{picked.name} · last press {stampWords(picked.lastAt)}</span> : null}
+        {picked ? <span style={muted} data-testid="site-people-last">{picked.name} · last press {actStampWords(picked.lastAt)}</span> : null}
       </div>
 
       {trailError ? (
