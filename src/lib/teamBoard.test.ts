@@ -115,6 +115,12 @@ describe('buildTeamBoard', () => {
     expect(board.jobRows[1]!.cellsByDay['2026-09-03']!.map((c) => c.personName)).toEqual(['Isiah'])
   })
 
+  it('a salaried target is the person\'s own week, a Saturday included', () => {
+    // DAYS runs Sunday Aug 30 to Saturday Sep 5: 0 + 6 + 6 + 6 + 6 + 4 + 2.
+    const b = buildTeamBoard({ days: DAYS, sessions, blocks, labels: LABELS, officeJobId: 'office', payFlags: { Taunya: { is_salary: true, salaried_week_hours: [0, 6, 6, 6, 6, 4, 2] }, Isiah: { is_salary: false } } })
+    expect(b.personRows.find((r) => r.key === 'Taunya')!.target).toBe(30)
+  })
+
   it('builds person rows with pay-config targets', () => {
     const taunya = board.personRows.find((r) => r.key === 'Taunya')!
     expect(taunya.target).toBe(40) // salaried: 5 weekdays × 8

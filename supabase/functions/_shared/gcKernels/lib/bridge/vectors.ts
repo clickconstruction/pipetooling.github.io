@@ -25,7 +25,8 @@
 
 export type VectorPerson = { userId: string; name: string; role: string | null; archived: boolean }
 
-export type VectorWage = { userId: string; fieldWage: number | null; officeWage: number | null; isSalary: boolean }
+/** `week` is a salaried person's paid hours by day, Sunday first; 8 h Mon–Fri when left out. */
+export type VectorWage = { userId: string; fieldWage: number | null; officeWage: number | null; isSalary: boolean; week?: readonly number[] }
 
 export type VectorSession = {
   userId: string

@@ -3,6 +3,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import type { Database } from '../../types/database.ts'
 import { withSupabaseRetry } from '../../utils/errorHandling.ts'
+import { salariedWeekOf } from '../salariedEffectiveHours.ts'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils.ts'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging.ts'
 import type { BridgeData } from './loadBridgeData.ts'
@@ -55,7 +56,7 @@ const norm = (s: string | null | undefined): string => (s ?? '').trim().toLowerC
 
 type UserRow = { id: string; name: string | null; role: string | null; archived_at: string | null }
 type PersonRow = { id: string; name: string | null; account_user_id: string | null }
-type PayRow = { person_id: string | null; person_name: string | null; hourly_wage: number | null; office_hourly_wage: number | null; is_salary: boolean | null }
+type PayRow = { person_id: string | null; person_name: string | null; hourly_wage: number | null; office_hourly_wage: number | null; is_salary: boolean | null; salaried_week_hours?: unknown }
 type SessionRow = { user_id: string; work_date: string; clocked_in_at: string; clocked_out_at: string | null; job_ledger_id: string | null; bid_id: string | null; approved_at: string | null; rejected_at: string | null; revoked_at: string | null }
 type EventRow = { job_id: string | null; event_type: string; actor_user_id: string | null; occurred_at: string; detail: Record<string, unknown> | null }
 type PctRow = { job_id: string | null; changed_by_user_id: string | null; changed_at: string }
@@ -105,7 +106,7 @@ export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data:
   const [userRows, personRows, payRows] = await Promise.all([
     withSupabaseRetry(async () => db.from('users').select('id, name, role, archived_at'), 'vectors users') as Promise<UserRow[] | null>,
     withSupabaseRetry(async () => db.from('people').select('id, name, account_user_id'), 'vectors people') as Promise<PersonRow[] | null>,
-    withSupabaseRetry(async () => db.from('people_pay_config').select('person_id, person_name, hourly_wage, office_hourly_wage, is_salary'), 'vectors pay config') as Promise<PayRow[] | null>,
+    withSupabaseRetry(async () => db.from('people_pay_config').select('person_id, person_name, hourly_wage, office_hourly_wage, is_salary, salaried_week_hours'), 'vectors pay config') as Promise<PayRow[] | null>,
   ])
   const people: VectorPerson[] = (userRows ?? []).map((u) => ({ userId: u.id, name: (u.name ?? '').trim() || 'Unnamed', role: u.role, archived: !!u.archived_at }))
   const userIdByPersonId = new Map<string, string>()
@@ -118,7 +119,7 @@ export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data:
     const userId = (r.person_id && userIdByPersonId.get(r.person_id)) || userIdByName.get(norm(r.person_name)) || null
     if (!userId || seen.has(userId)) continue
     seen.add(userId)
-    wages.push({ userId, fieldWage: r.hourly_wage == null ? null : Number(r.hourly_wage), officeWage: r.office_hourly_wage == null ? null : Number(r.office_hourly_wage), isSalary: !!r.is_salary })
+    wages.push({ userId, fieldWage: r.hourly_wage == null ? null : Number(r.hourly_wage), officeWage: r.office_hourly_wage == null ? null : Number(r.office_hourly_wage), isSalary: !!r.is_salary, week: salariedWeekOf(r) })
   }
 
   const sessions = await loadVectorSessions(db, windowStart, todayYmd, officeJobLedgerId, zzTestJobIds)

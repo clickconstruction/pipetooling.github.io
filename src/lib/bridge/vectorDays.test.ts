@@ -175,6 +175,13 @@ describe('buildVectorDayCells', () => {
     expect(cells.get('u-abraham')?.get('2026-09-03')).toMatchObject({ officeBidHours: 4, officeLaborUsd: 160, contributionUsd: null })
   })
 
+  it("a salaried person's flat day is their own week's: a shorter day, and a Saturday that pays", () => {
+    const own = wages.map((w) => (w.userId === 'u-kevin' ? { ...w, week: [0, 6, 6, 6, 6, 6, 5] } : w))
+    const cells = buildVectorDayCells({ ...base, wages: own, mode: 'approved', sessions: [field('u-kevin', '2026-09-02', 10, 'j-good'), field('u-kevin', '2026-09-05', 4, 'j-good')] })
+    expect(cells.get('u-kevin')?.get('2026-09-02')?.laborUsd).toBe(6 * 34)
+    expect(cells.get('u-kevin')?.get('2026-09-05')?.laborUsd).toBe(5 * 34)
+  })
+
   it("a salaried person's field day costs the flat workday whatever the clock says, and a weekend day costs nothing", () => {
     const cells = buildVectorDayCells({ ...base, mode: 'approved', sessions: [field('u-kevin', '2026-09-02', 10, 'j-good'), field('u-kevin', '2026-09-05', 4, 'j-good')] })
     const weekday = cells.get('u-kevin')?.get('2026-09-02')
