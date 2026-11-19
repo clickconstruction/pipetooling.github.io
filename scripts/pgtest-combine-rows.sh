@@ -13,7 +13,7 @@
 # a line and its stage window; a combine refused three times in turn (a work order, an open agreement, a pay application
 # on both jobs), each time moving nothing; and a second combine onto a target that holds every merge case (places and
 # containers by name, Messages links and holds, watchers, supply-house accounts and words, Team board marks, the hours
-# target, plans, the promised date, the claim correction, Lien desk items, legal matter links), with the money and legal
+# target, plans, the promised date, the claim correction, Lien desk items, legal matter links, a trip's job links), with the money and legal
 # rows moved and the let-go caches gone. It writes down each thing lost and raises at the end with the
 # whole list, so one run says everything; it ends with "combine_rows PASSED". PGTEST_KEEP=1 leaves the container up.
 # Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never

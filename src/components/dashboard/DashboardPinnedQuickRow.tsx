@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { LIEN_DESK_PATH } from '../../lib/lien/lienDeskRoute'
 import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import { needsYouDoorWords } from '../../lib/dashboard/phoneFolds'
+import { PaintAMapPress } from '../paintedMap/PaintAMapPress'
 import { canSeeWaitingOnLeader } from '../../lib/dashboard/waitingOnLeader'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
 import DashboardWaitingOnLeaderCard from './DashboardWaitingOnLeaderCard'
@@ -386,6 +387,8 @@ export function DashboardPinnedQuickRow({
           <Link to="/tally?tab=transactions" aria-label={tallyLinkAccessibleName} style={{ minHeight: 36, display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)' }}>
             Tally{(tallyUnlinkedCount ?? 0) > 0 ? ` · ${tallyUnlinkedCount}` : ''}
           </Link>
+          {/* Paint a map (punch list #392): the third quiet link, always there. */}
+          <PaintAMapPress userId={authUserId} role={role} shape="link" />
         </div>
       </div>
       ) : (
@@ -396,8 +399,13 @@ export function DashboardPinnedQuickRow({
           <>
             <div style={{ flex: 1, minWidth: 0 }}>{clockSlot}</div>
             <JobReportSquareButton onClick={() => setNewReportModalOpen(true)} />
+            {/* Paint a map (punch list #392): a square after Job Report, at a desk and on a leader's phone. */}
+            <PaintAMapPress userId={authUserId} role={role} shape="square" />
           </>
-        ) : hideJobReport ? null : (
+        ) : hideJobReport ? (
+          // Job Mode: the slot the Job Report button left empty (punch list #189) holds Paint a map, with the job it lands on.
+          <PaintAMapPress userId={authUserId} role={role} shape="wide" />
+        ) : (
           <button
             type="button"
             onClick={() => setNewReportModalOpen(true)}

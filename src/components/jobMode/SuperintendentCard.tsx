@@ -14,6 +14,13 @@ import type { JobStageChecklist } from '../../lib/jobs/stageChecklist'
 import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { PaceStrip } from './PaceStrip'
+import { PaceBar, PaceRail } from './PaceRail'
+import { jobNameWithPlainDates } from '../../lib/jobNameDate'
+import { AskMasterSheet } from './AskMasterSheet'
+import { ASK_MASTER_WORDS, askedLine } from '../../lib/jobMode/askMaster'
+import { canTagInJobNotes } from '../../lib/jobs/noteTags'
+import { useJobNoteTags } from '../../hooks/useJobNoteTags'
+import { PACE_CARD_WORDS, paceDaysLeftWords, paceFinish, paceHours, paceRowNote, paceStageRail } from '../../lib/jobMode/paceCard'
 import { JobModeShortRow } from './JobModeShortRow'
 import { JOB_MODE_SHORT_WORDS } from '../../lib/jobMode/jobModeShort'
 import { DayDetailsModal } from './DayDetailsModal'
@@ -30,13 +37,24 @@ import { StageChecklistSheet } from '../stageChecklists/StageChecklistSheet'
  * for a job that is a project; otherwise the card says nothing.
  *
  * `short` (punch list #384, the short Job Mode page): the card sits behind its own headline as one
- * row, ahead or behind in one line. A press opens the card as it is, with a press to fold it again.
+ * row, ahead or behind in one line. A press opens the card, with a press to fold it again.
+ *
+ * Shown, not told (punch list #396): the card's face is the headline, the job's stages top to bottom
+ * as a rail that ends in the finish day (`PaceRail`), the hours used as one bar, and **Set the %** on
+ * the stage in hand. Everything the card used to say, the budget's source, the strip with its days,
+ * the finish sentence, the target, the money, the proof and the month's score, sits behind **How this
+ * is figured**. The folded row carries two thin bars and the finish day, so the reading is there
+ * before a press. `lib/jobMode/paceCard.ts` works out the rows and the words.
+ *
+ * **Ask a master** (PR 2) opens `AskMasterSheet`: a question to the master on the job, sent as a job note
+ * that tags him, with the card's numbers attached. The card then says who the question waits on, and that
+ * an answer landed. `onAsked` tells the page a note was posted, so the job's feed reads again.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.78rem' }
 
 export type SuperintendentPctJob = { id: string; hcpNumber: string; jobName: string; label: string }
 
-export function SuperintendentCard({ jobId, onSetPct, rev = 0, short = false }: { jobId: string; onSetPct: (job: SuperintendentPctJob) => void; rev?: number; short?: boolean }) {
+export function SuperintendentCard({ jobId, onSetPct, rev = 0, short = false, onAsked }: { jobId: string; onSetPct: (job: SuperintendentPctJob) => void; rev?: number; short?: boolean; onAsked?: () => void }) {
   const [job, setJob] = useState<ProjectBoardJob | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [busy, setBusy] = useState(false)
@@ -63,12 +81,17 @@ export function SuperintendentCard({ jobId, onSetPct, rev = 0, short = false }: 
   }, [jobId, rev, tick])
   if (failure && !job) return <OfflineRetryPanel failure={failure} onRetry={retry} surface="superintendent-line" idempotent busy={busy} />
   if (!job || job.id !== jobId || !isWorkingProject(job)) return null
-  return <SuperintendentLineCard key={job.id} job={job} onSetPct={onSetPct} rev={rev} short={short} />
+  return <SuperintendentLineCard key={job.id} job={job} onSetPct={onSetPct} rev={rev} short={short} onAsked={onAsked} />
 }
 
-function SuperintendentLineCard({ job, onSetPct, rev, short }: { job: ProjectBoardJob; onSetPct: (job: SuperintendentPctJob) => void; rev: number; short: boolean }) {
+function SuperintendentLineCard({ job, onSetPct, rev, short, onAsked }: { job: ProjectBoardJob; onSetPct: (job: SuperintendentPctJob) => void; rev: number; short: boolean; onAsked?: () => void }) {
   const [paceOpen, setPaceOpen] = useState(false)
-  const { user, profileName } = useAuth()
+  const [figuredOpen, setFiguredOpen] = useState(false)
+  const [askOpen, setAskOpen] = useState(false)
+  const { user, profileName, role } = useAuth()
+  // His own question on this job: who it waits on, or that an answer landed.
+  const noteTags = useJobNoteTags(canTagInJobNotes(role) ? job.id : null, rev)
+  const asked = useMemo(() => askedLine([...noteTags.values()].flat(), user?.id, Date.now()), [noteTags, user?.id])
   const checklists = useJobStageChecklists(job.id, undefined, rev)
   const ids = useMemo(() => [job.id], [job.id])
   const targets = useExpectedHours(ids, true)
@@ -94,48 +117,101 @@ function SuperintendentLineCard({ job, onSetPct, rev, short }: { job: ProjectBoa
   const border = line.tone === 'ahead' ? '#16a34a' : line.tone === 'behind' ? '#dc2626' : 'var(--border-strong)'
   const headColor = line.tone === 'ahead' ? 'var(--text-green-700)' : line.tone === 'behind' ? 'var(--text-red-700)' : 'var(--text-700)'
   const label = projectLabel(job)
-  // The short page: the headline alone, as a row. The hooks above still read, so the open card draws at once.
+  const rail = paceStageRail(pace.stages, pace.input.pctDone)
+  const finish = paceFinish({ plannedFinishYmd: pace.input.plannedFinishYmd, days: line.days, tone: line.tone })
+  const hours = paceHours({ hoursUsed: pace.input.hoursUsed, subHours: pace.input.subHours ?? null, hoursBudget: pace.input.hoursBudget })
+  const daysLeft = paceDaysLeftWords(line.daysLeft)
+  const hoursColor = line.tone === 'behind' || hours?.over ? '#dc2626' : '#f59e0b'
+  const setPct = () => onSetPct({ id: job.id, hcpNumber: projectNumber(job), jobName: job.job_name ?? '', label })
+  // The short page: the headline as a row, with the two thin bars and the finish day. The hooks above still read,
+  // so the open card draws at once.
   if (short && !paceOpen) {
-    return <JobModeShortRow testId="superintendent-line-short" title={line.headline} note={JOB_MODE_SHORT_WORDS.pace.open} tone={line.tone === 'ahead' || line.tone === 'behind' ? line.tone : undefined} expanded={false} onPress={() => setPaceOpen(true)} />
+    return (
+      <JobModeShortRow
+        testId="superintendent-line-short"
+        title={line.headline}
+        note={paceRowNote(pace.input.plannedFinishYmd)}
+        tone={line.tone === 'ahead' || line.tone === 'behind' ? line.tone : undefined}
+        expanded={false}
+        onPress={() => setPaceOpen(true)}
+        picture={
+          line.tone === 'early' ? null : (
+            <>
+              <PaceBar testId="pace-row-work" fillPct={line.donePct} color="#2563eb" thin />
+              {hours ? <PaceBar testId="pace-row-hours" fillPct={hours.fillPct} color={hoursColor} thin /> : null}
+            </>
+          )
+        }
+      />
+    )
   }
   return (
-    <div data-testid="superintendent-line" data-tone={line.tone} style={{ border: `2px solid ${border}`, borderRadius: 12, padding: '0.7rem 0.8rem', display: 'grid', gap: 8, background: 'var(--surface)', minWidth: 0 }}>
-      <div style={muted}>{label} · {line.hoursWords}</div>
-      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: headColor }}>{line.headline}</div>
+    <div data-testid="superintendent-line" data-tone={line.tone} style={{ border: `2px solid ${border}`, borderRadius: 12, padding: '0.7rem 0.8rem', display: 'grid', gap: 10, background: 'var(--surface)', minWidth: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: headColor }}>{line.headline}</div>
+        {daysLeft ? <div style={muted} data-testid="pace-days-left">{daysLeft}</div> : null}
+      </div>
       {short ? (
         <button type="button" data-testid="superintendent-line-fold" aria-expanded onClick={() => setPaceOpen(false)} style={{ justifySelf: 'start', minHeight: PHONE_PRESS_MIN_HEIGHT, padding: '0 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-link)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
           {JOB_MODE_SHORT_WORDS.pace.fold}
         </button>
       ) : null}
-      <PaceStrip line={line} hoursBudget={Math.max(pace.budgetEdge, used)} targetHours={pace.input.hoursBudget} days={pace.input.laborDays ?? []} stages={pace.stages} stageWords={pace.stages.length <= 4} onDay={setDay} />
-      {/* The strip's legend carries the money; the words stay for a plan that exists, a target that was set, and money that leads. */}
-      {line.finishWords.startsWith('Planned') ? <div style={{ fontSize: '0.8rem' }}>{line.finishWords}</div> : null}
-      {line.targetLine ? <div style={{ fontSize: '0.78rem', color: 'var(--text-700)', background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.3rem 0.45rem' }} data-testid="superintendent-target">🎯 {line.targetLine}</div> : null}
-      {line.money?.leads ? <div style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }} data-testid="superintendent-money">{line.money.words}</div> : null}
-      {targets.error ? <div style={muted}>{targets.error}</div> : null}
-      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: 6 }}>{line.proofWords}</div>
-      {myScore ? (
-        <div style={{ fontSize: '0.8rem', background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.35rem 0.5rem' }} data-testid="superintendent-score">
-          {myScore.jobs.length > 0
-            ? `Scored this month: ${hoursUnderWords(myScore.hoursUnder)}${daysWords(myScore.daysVsPlan) ? ` · ${daysWords(myScore.daysVsPlan)}` : ''}${bonusWords(myScore.bonusUsd, scores.read?.sharePct ?? 10) ? ` · bonus ${bonusWords(myScore.bonusUsd, scores.read?.sharePct ?? 10)}` : ''}`
-            : `Not scored yet this month: ${myScore.held[0]?.why ?? 'waiting on the office’s sign-off'}.`}
+      {rail ? (
+        <PaceRail rail={rail} finish={finish} onSetPct={setPct} />
+      ) : (
+        <PaceBar testId="pace-work" label={PACE_CARD_WORDS.work} words={`${Math.round(line.donePct)}%`} fillPct={line.donePct} color="#2563eb" />
+      )}
+      {hours ? <PaceBar testId="pace-hours" label={PACE_CARD_WORDS.hours} words={hours.words} fillPct={hours.fillPct} color={hoursColor} /> : null}
+      {/* A job with no stages to list has no rail to end in the finish day, so the day is said in words. */}
+      {!rail && finish.planned ? <div style={{ fontSize: '0.85rem' }} data-testid="pace-finish-words">{PACE_CARD_WORDS.finish} {finish.planned}{finish.atPace ? `. ${PACE_CARD_WORDS.atPace}, ${finish.atPace.words}.` : '.'}</div> : null}
+      {line.move ? <div style={{ fontSize: '0.85rem' }}>{line.move.why}</div> : null}
+      {/* The stage in hand carries Set the % on the rail. With no rail, or when the line asks for a move, the press is here too. */}
+      {!rail || (line.move && nextStage) ? (
+        <div style={{ display: 'flex', gap: 8 }}>
+          {!rail ? (
+            <button type="button" onClick={setPct} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+              {PACE_CARD_WORDS.setPct}
+            </button>
+          ) : null}
+          {line.move && nextStage ? (
+            <button type="button" onClick={() => setSheet(nextStage)} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', cursor: 'pointer' }}>
+              Open the checklist
+            </button>
+          ) : null}
         </div>
       ) : null}
-      {line.move ? (
-        <>
-          <div style={{ fontSize: '0.85rem' }}>{line.move.why}</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" onClick={() => onSetPct({ id: job.id, hcpNumber: projectNumber(job), jobName: job.job_name ?? '', label })} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
-              Set the %
-            </button>
-            {nextStage ? (
-              <button type="button" onClick={() => setSheet(nextStage)} style={{ flex: 1, minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', cursor: 'pointer' }}>
-                Open the checklist
-              </button>
-            ) : null}
-          </div>
-        </>
+      {canTagInJobNotes(role) ? (
+        <div style={{ display: 'grid', gap: 6 }}>
+          <button type="button" data-testid="pace-ask-master" onClick={() => setAskOpen(true)} style={{ minHeight: PHONE_PRESS_MIN_HEIGHT, borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+            {ASK_MASTER_WORDS.press}
+          </button>
+          {asked ? <div data-testid="pace-asked" data-waiting={asked.waiting ? '' : undefined} style={{ fontSize: '0.8rem', color: asked.waiting ? 'var(--text-muted)' : 'var(--text-green-700)' }}>{asked.words}</div> : null}
+        </div>
       ) : null}
+      <button type="button" data-testid="pace-figured" aria-expanded={figuredOpen} onClick={() => setFiguredOpen((o) => !o)} style={{ justifySelf: 'start', minHeight: PHONE_PRESS_MIN_HEIGHT, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}>
+        {PACE_CARD_WORDS.figured} {figuredOpen ? '▴' : '▾'}
+      </button>
+      {figuredOpen ? (
+        <div data-testid="pace-figured-body" style={{ display: 'grid', gap: 8, minWidth: 0 }}>
+          <div style={muted}>{jobNameWithPlainDates(label)} · {line.hoursWords}</div>
+          {rail?.from === 'job' ? <div style={muted}>{PACE_CARD_WORDS.fromJob}</div> : null}
+          <PaceStrip line={line} hoursBudget={Math.max(pace.budgetEdge, used)} targetHours={pace.input.hoursBudget} days={pace.input.laborDays ?? []} stages={pace.stages} stageWords={pace.stages.length <= 4} onDay={setDay} />
+          {/* The strip's legend carries the money; the words stay for a plan that exists, a target that was set, and money that leads. */}
+          {line.finishWords.startsWith('Planned') ? <div style={{ fontSize: '0.8rem' }}>{line.finishWords}</div> : null}
+          {line.targetLine ? <div style={{ fontSize: '0.78rem', color: 'var(--text-700)', background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.3rem 0.45rem' }} data-testid="superintendent-target">🎯 {line.targetLine}</div> : null}
+          {line.money?.leads ? <div style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }} data-testid="superintendent-money">{line.money.words}</div> : null}
+          {targets.error ? <div style={muted}>{targets.error}</div> : null}
+          <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: 6 }}>{line.proofWords}</div>
+          {myScore ? (
+            <div style={{ fontSize: '0.8rem', background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.35rem 0.5rem' }} data-testid="superintendent-score">
+              {myScore.jobs.length > 0
+                ? `Scored this month: ${hoursUnderWords(myScore.hoursUnder)}${daysWords(myScore.daysVsPlan) ? ` · ${daysWords(myScore.daysVsPlan)}` : ''}${bonusWords(myScore.bonusUsd, scores.read?.sharePct ?? 10) ? ` · bonus ${bonusWords(myScore.bonusUsd, scores.read?.sharePct ?? 10)}` : ''}`
+                : `Not scored yet this month: ${myScore.held[0]?.why ?? 'waiting on the office’s sign-off'}.`}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {askOpen ? <AskMasterSheet jobId={job.id} facts={{ pct: pace.input.pctDone, hoursWords: hours?.words ?? null, finishWords: finish.planned, stage: rail?.rows.find((r) => r.state === 'now')?.name ?? null }} onClose={() => setAskOpen(false)} onSent={onAsked} /> : null}
       {day ? <DayDetailsModal jobLabel={label} ymd={day} events={laborEventsOf(job)} valueEvents={valueEventsOf(job)} hoursOnly onClose={() => setDay(null)} /> : null}
       {current ? (
         <StageChecklistSheet

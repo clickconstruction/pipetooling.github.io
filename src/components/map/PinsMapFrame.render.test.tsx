@@ -322,7 +322,7 @@ describe('Time', () => {
     expect(caption()).toBe('Photo taken November 30, 2020. The dots are today’s.')
   })
 
-  it('says it is looking, names a photograph before its day is known, and counts once the walk is over', async () => {
+  it('says it is looking, names a photograph before its day is known, and counts only once every day is in', async () => {
     let hand: WalkOpts | null = null
     let finish: (found: unknown[]) => void = () => {}
     walk.fn = (_spot, opts) => {
@@ -340,7 +340,8 @@ describe('Time', () => {
     })
     expect(dates()).toEqual([['Before Mar 2022', 'false']])
     expect(screen.getByRole('status').textContent).toBe('Finding the days the photos were taken…')
-    expect(caption()).toBe('Today’s photo of Pump house. 1 older photo.')
+    // No count yet: two stops taken on one day are one photograph, so the number can still fall.
+    expect(caption()).toBe('Today’s photo of Pump house.')
     await act(async () => { finish(FOUND.slice(0, 2)) })
     expect(screen.queryByRole('status')).toBeNull()
     expect(caption()).toBe('Today’s photo of Pump house, taken February 9, 2025. 1 older photo.')

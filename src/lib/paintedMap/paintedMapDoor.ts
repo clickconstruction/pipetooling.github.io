@@ -21,6 +21,11 @@ export type PaintedMapHome = {
   address?: string | null
   /** The same thing for a caller that already knows the point. */
   center?: PaintedPoint | null
+  /**
+   * The job is the app's pick, not the painter's (the Dashboard's press, punch list #392): the start sheet offers
+   * **Change the job**. Left out, a job the sheet was opened on stays, as under a job's own address.
+   */
+  canChangeJob?: boolean
 }
 
 /**

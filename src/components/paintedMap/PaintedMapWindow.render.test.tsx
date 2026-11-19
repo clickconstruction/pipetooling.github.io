@@ -5,7 +5,7 @@
  * length typed in, and lets its maker or the office change it.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { PaintedLine, PaintedMap } from '../../lib/paintedMap/paintedMap'
 import type { PaintedMapWhole } from '../../lib/paintedMap/paintedMapIo'
 import type { PaintedCanvasDraft } from './PaintedMapCanvas'
@@ -87,12 +87,12 @@ vi.mock('./PaintedMapCanvas', async () => {
   }
 })
 
-/** The job search, stood in for: one press picks a made-up job. */
-vi.mock('../costBatches/CostBatchJobPicker', () => ({
-  CostBatchJobPicker: (props: { title: string; onPick: (job: { id: string }) => void }) => (
-    <div data-testid="job-picker">
-      {props.title}
+/** The picker, stood in for: it says how it was opened, and one press picks a made-up job. */
+vi.mock('./PaintAMapJobPicker', () => ({
+  PaintAMapJobPicker: (props: { mode?: string; excludeJobId?: string | null; onPick: (job: { id: string }) => void; onClose: () => void }) => (
+    <div data-testid="job-picker" data-mode={props.mode} data-exclude={props.excludeJobId ?? ''}>
       <button type="button" onClick={() => props.onPick({ id: 'j9' })}>pick J900</button>
+      <button type="button" onClick={props.onClose}>cancel the picker</button>
     </div>
   ),
 }))
@@ -106,6 +106,21 @@ vi.mock('./PaintedMapShareSheet', () => ({
     </div>
   ),
 }))
+
+/** The Saved band, stood in for: it says its words and whether it carries the text press. */
+vi.mock('./PaintedMapSavedBand', () => ({
+  PaintedMapSavedBand: (props: { mapId: string; head: string; under: string; offersText: boolean }) => (
+    <div data-testid="saved-band" data-offers-text={props.offersText ? 'yes' : 'no'}>
+      {props.head}|{props.under}
+    </div>
+  ),
+}))
+/** Whether this is a phone, where the person's own Messages can be opened. Left null, the device itself answers, as the place-sending cases need. */
+const device = vi.hoisted(() => ({ phone: null as boolean | null }))
+vi.mock('../../lib/quo/dial', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/quo/dial')>('../../lib/quo/dial')
+  return { ...actual, isPhoneDevice: (...args: Parameters<typeof actual.isPhoneDevice>) => device.phone ?? actual.isPhoneDevice(...args) }
+})
 
 import { onPaintedMapAsk, type PaintedMapAsk } from '../../lib/paintedMap/paintedMapDoor'
 import { PaintedMapWindow } from './PaintedMapWindow'
@@ -125,6 +140,7 @@ afterEach(() => {
   geo.asked = 0
   opened.length = 0
   auth.value = { user: { id: 'me' }, role: 'helpers' }
+  device.phone = null
 })
 
 const names = () => io.calls.map((c) => c.fn)
@@ -168,6 +184,33 @@ describe('a new map', () => {
     // Back on the map, with its line listed.
     await screen.findByRole('button', { name: 'Draw a line' })
     expect(document.querySelectorAll('[data-painted-line]')).toHaveLength(1)
+  })
+
+  it('after Save the map, says it was saved on the job and offers the text press on a phone (punch list #392)', async () => {
+    device.phone = true
+    render(<PaintedMapWindow ask={{ start }} onClose={() => {}} />)
+    // Nothing is saved yet, so nothing says saved.
+    expect(screen.queryByTestId('saved-band')).toBeNull()
+    const add = await screen.findByRole('button', { name: 'add a corner' })
+    fireEvent.click(add)
+    fireEvent.click(add)
+    fireEvent.click(screen.getByRole('button', { name: 'Save the map' }))
+    const band = await screen.findByTestId('saved-band')
+    expect(band.textContent).toBe('Saved on Lot 14|About 490 ft. Anyone on the job can open it.')
+    expect(band.getAttribute('data-offers-text')).toBe('yes')
+    // One blue press on the screen: Draw a line gives way to the band's.
+    expect((screen.getByRole('button', { name: 'Draw a line' }) as HTMLElement).style.background).not.toBe('rgb(37, 99, 235)')
+  })
+
+  it('at a desk the band says saved with no text press, and Draw a line stays the blue press', async () => {
+    render(<PaintedMapWindow ask={{ start }} onClose={() => {}} />)
+    const add = await screen.findByRole('button', { name: 'add a corner' })
+    fireEvent.click(add)
+    fireEvent.click(add)
+    fireEvent.click(screen.getByRole('button', { name: 'Save the map' }))
+    const band = await screen.findByTestId('saved-band')
+    expect(band.getAttribute('data-offers-text')).toBe('no')
+    expect((screen.getByRole('button', { name: 'Draw a line' }) as HTMLElement).style.background).toBe('rgb(37, 99, 235)')
   })
 
   it('takes a step back with Undo', async () => {
@@ -366,6 +409,54 @@ describe('a map on no job', () => {
     await screen.findByRole('heading', { name: 'The way in for deliveries' })
     expect(document.querySelector('[data-painted-no-home]')).toBeNull()
   })
+
+  it('asks which job in the picker, as a first pick', async () => {
+    io.whole = { map: LOOSE, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Put it on a job…' }))
+    expect(screen.getByTestId('job-picker').getAttribute('data-mode')).toBe('pick')
+    fireEvent.click(screen.getByRole('button', { name: 'cancel the picker' }))
+    expect(screen.queryByTestId('job-picker')).toBeNull()
+    expect(names()).not.toContain('putPaintedMapOnJob')
+  })
+})
+
+describe('a map on the wrong job (punch list #392)', () => {
+  it('is moved to another job by whoever painted it, and the picker leaves its own job out', async () => {
+    io.whole = { map: { ...MAP, createdBy: 'me' }, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Move it to another job…' }))
+    const picker = screen.getByTestId('job-picker')
+    expect(picker.getAttribute('data-mode')).toBe('move')
+    expect(picker.getAttribute('data-exclude')).toBe('j1')
+    fireEvent.click(screen.getByRole('button', { name: 'pick J900' }))
+    await waitFor(() => expect(io.calls.find((c) => c.fn === 'putPaintedMapOnJob')?.args).toEqual(['m1', 'j9']))
+    await waitFor(() => expect(screen.queryByTestId('job-picker')).toBeNull())
+  })
+
+  it('says why a move was refused, on the map and not under the picker', async () => {
+    io.whole = { map: { ...MAP, createdBy: 'me' }, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Move it to another job…' }))
+    io.refuse = 'The map was not put on the job.'
+    fireEvent.click(screen.getByRole('button', { name: 'pick J900' }))
+    expect(await screen.findByText('The map was not put on the job.')).toBeTruthy()
+    expect(screen.queryByTestId('job-picker')).toBeNull()
+  })
+
+  it('is not offered on someone else\'s map to a teammate who is not the office', async () => {
+    io.whole = { map: MAP, lines: [LINE()], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'The way in for deliveries' })
+    expect(screen.queryByRole('button', { name: 'Move it to another job…' })).toBeNull()
+  })
+
+  it('is not offered on a map that is for every lot', async () => {
+    io.whole = { map: { ...MAP, jobId: null, developmentId: 'd1', createdBy: 'me' }, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'The way in for deliveries' })
+    expect(screen.queryByRole('button', { name: 'Move it to another job…' })).toBeNull()
+  })
 })
 
 describe('sharing a map', () => {
@@ -421,6 +512,32 @@ describe('places on a map', () => {
     expect(row.textContent).toContain('Meter')
     expect(row.textContent).toContain('placed by hand')
     expect(names()).not.toContain('uploadPaintedPlacePhoto')
+  })
+
+  it('a map that is only opened has no Saved band, and a place added to it brings one (punch list #392)', async () => {
+    device.phone = true
+    io.whole = { map: { ...MAP, createdBy: 'me' }, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    expect(screen.queryByTestId('saved-band')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Gate' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
+    const band = await screen.findByTestId('saved-band')
+    // The job's words are not known for a map opened later.
+    expect(band.textContent).toContain('Saved on its job|')
+    expect(band.textContent).toContain('1 place. Anyone on the job can open it.')
+    expect(band.getAttribute('data-offers-text')).toBe('yes')
+  })
+
+  it('someone else\'s map says saved to a teammate who added a place, with no text press', async () => {
+    device.phone = true
+    io.whole = { map: MAP, lines: [LINE()], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Gate' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add this place' }))
+    const band = await screen.findByTestId('saved-band')
+    expect(band.getAttribute('data-offers-text')).toBe('no')
   })
 
   it('keeps the phone\'s margin only while the dot sits on the reading', async () => {
@@ -705,7 +822,7 @@ describe('a job\'s own list of places (#393)', () => {
       expect(io.jobReads).toEqual([{ jobId: 'j1' }])
       expect(section.querySelector('h3')?.textContent).toBe('On this job')
       const rows = [...section.querySelectorAll('[data-painted-job-place-row]')]
-      expect(rows.map((r) => r.textContent)).toEqual(['ATruck gateCopy this place', 'BThe slabCopy this place', 'COpen trenchKeep the truck off it.Copy this place'])
+      expect(rows.map((r) => r.textContent)).toEqual(['ATruck gateCopy this placeSend more…', 'BThe slabCopy this placeSend more…', 'COpen trenchKeep the truck off it.Copy this placeSend more…'])
       expect(rows.map((r) => (r.querySelector('[data-place-mark]') as HTMLElement).getAttribute('data-place-mark'))).toEqual(['gate', 'plain', 'hazard'])
       // The plain one's ring is dashed, so it is not taken for the map's own place 1.
       expect((rows[1]!.querySelector('[data-place-mark]') as HTMLElement).style.borderStyle).toBe('dashed')
@@ -714,8 +831,13 @@ describe('a job\'s own list of places (#393)', () => {
       expect((await placeRow()).textContent).toContain('Laydown yard')
       expect(dot('1').getAttribute('data-dot-job')).toBe('no')
       expect([dot('A'), dot('B'), dot('C')].map((d) => d.getAttribute('data-dot-job'))).toEqual(['yes', 'yes', 'yes'])
-      // Nothing here changes a place of the job's: a row can be sent, and the one other press opens the list.
-      expect([...section.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Copy this place', 'Copy this place', 'Copy this place', 'Open Places on this job'])
+      // Nothing here changes a place of the job's: a row can be sent, alone or with more, and the one other press opens the list.
+      expect([...section.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Copy this place', 'Send more…', 'Copy this place', 'Send more…', 'Copy this place', 'Send more…', 'Open Places on this job'])
+      // Send more… from a place of the job's offers the job's places and never this map: its link does not carry them (v2.7844).
+      fireEvent.click(rows[0]!.querySelector('[data-place-send-more]') as HTMLElement)
+      expect([...document.querySelectorAll('[data-send-more]')].map((el) => el.textContent)).toEqual(['All 3 places on this jobCopies 3 map pins'])
+      fireEvent.click(within(screen.getByRole('dialog', { name: 'Send more: Truck gate' })).getByRole('button', { name: 'Close' }))
+      expect(document.querySelector('[data-place-send-more-sheet]')).toBeNull()
       fireEvent.click(screen.getByRole('button', { name: 'Open Places on this job' }))
       expect(closed).toBe(1)
       await waitFor(() => expect(asks).toEqual([{ kind: 'open', mapId: 'list', address: '1 Made Up Road' }]))
@@ -806,4 +928,81 @@ describe('one place, sent to someone (#393)', () => {
     // A name that says its kind is not said twice.
     expect(decodeURIComponent(href.slice('sms:?&body='.length))).toBe('Truck gate.\nhttps://www.google.com/maps/search/?api=1&query=29.500000,-98.200000')
   }))
+})
+
+describe('Send more…, from a place\'s row (v2.7844)', () => {
+  const at = (id: string, name: string, photoPath: string | null = null) => ({ id, mapId: 'm1', name, words: '', lat: 29.5, lng: -98.2, accuracyM: null, photoPath, kind: null, setBy: 'dana', setAt: `2026-11-13T15:0${id.slice(1)}:00Z` })
+  const ways = () => [...document.querySelectorAll('[data-send-more]')].map((el) => el.textContent)
+  const openMore = (row: Element) => fireEvent.click(row.querySelector('[data-place-send-more]') as HTMLElement)
+
+  it('is not drawn on a map\'s one place for someone who may not share the map', async () => {
+    // Dana painted it and I am not the office: I can send the place, and there is nothing more of mine to send.
+    io.whole = { map: MAP, lines: [LINE()], places: [at('p1', 'Truck gate')] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    const row = await placeRow()
+    expect(screen.queryByRole('button', { name: 'Share' })).toBeNull()
+    expect(row.querySelector('[data-place-share="copy"]')).not.toBeNull()
+    expect(row.querySelector('[data-place-send-more]')).toBeNull()
+  })
+
+  it('offers every place of the map to anyone who can see them, and the map only to whoever may share it', async () => {
+    io.whole = { map: MAP, lines: [LINE()], places: [at('p1', 'Truck gate'), at('p2', 'The slab')] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    const row = await placeRow()
+    openMore(row)
+    expect(ways()).toEqual(['Both places on this mapCopies 2 map pins'])
+  })
+
+  it('opens the map\'s own Share from The whole map, for its maker', async () => {
+    auth.value = { user: { id: 'dana' }, role: 'helpers' }
+    io.whole = { map: MAP, lines: [LINE()], places: [at('p1', 'Truck gate'), at('p2', 'The slab')] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    const row = await placeRow()
+    openMore(row)
+    expect(ways()).toEqual(['Both places on this mapCopies 2 map pins', 'The whole mapWith its lines and photos. They give their name first.'])
+    expect(screen.queryByTestId('share-sheet')).toBeNull()
+    fireEvent.click(document.querySelector('[data-send-more="map"]') as HTMLElement)
+    expect(document.querySelector('[data-place-send-more-sheet]')).toBeNull()
+    expect(screen.getByTestId('share-sheet').textContent).toContain('share:m1:The way in for deliveries')
+  })
+
+  it('never offers this map from a place of the job\'s, even to the map\'s maker: its link does not carry that place', async () => {
+    const LIST: PaintedMap = { id: 'list', name: 'Places on this job', words: '', jobId: 'j1', developmentId: null, jobList: true, createdBy: 'dana', createdAt: '2026-11-18T15:00:00Z' }
+    auth.value = { user: { id: 'dana' }, role: 'helpers' }
+    io.whole = { map: MAP, lines: [LINE()], places: [at('p1', 'Laydown yard')] }
+    io.jobWholes = [{ map: MAP, lines: [], places: [] }, { map: LIST, lines: [], places: [at('p2', 'Truck gate'), at('p3', 'The slab')].map((p) => ({ ...p, mapId: 'list' })) }]
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    const jobRow = await waitFor(() => {
+      const el = document.querySelector('[data-painted-job-place-row]')
+      expect(el).not.toBeNull()
+      return el as HTMLElement
+    })
+    // Dana may share this map: her own place's row offers it.
+    expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy()
+    openMore(await placeRow())
+    expect(ways()).toEqual(['The whole mapWith its lines and photos. They give their name first.'])
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Send more: Laydown yard' })).getByRole('button', { name: 'Close' }))
+    openMore(jobRow)
+    expect(ways()).toEqual(['Both places on this jobCopies 2 map pins'])
+  })
+
+  it('says a place\'s photo stays behind, and at a desk offers no way to carry it', async () => {
+    io.whole = { map: MAP, lines: [], places: [at('p1', 'Truck gate', 'm1/gate.jpg')] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    const row = await placeRow()
+    expect(row.querySelector('[data-place-no-photo]')?.textContent).toBe('A copy carries the spot, not the photo.')
+    expect(row.querySelector('[data-place-send-more]')).toBeNull()
+  })
+
+  it('on the job\'s own list, names the places as the job\'s and the map as a list', async () => {
+    const LIST: PaintedMap = { id: 'list', name: 'Places on this job', words: '', jobId: 'j1', developmentId: null, jobList: true, createdBy: 'dana', createdAt: '2026-11-18T15:00:00Z' }
+    auth.value = { user: { id: 'dana' }, role: 'helpers' }
+    const places = [at('p1', 'Truck gate'), at('p2', 'The slab'), at('p3', 'Open trench')].map((p) => ({ ...p, mapId: 'list' }))
+    io.whole = { map: LIST, lines: [], places }
+    io.jobWholes = [{ map: LIST, lines: [], places }]
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} onClose={() => {}} />)
+    const row = await placeRow()
+    openMore(row)
+    expect(ways()).toEqual(['All 3 places on this jobCopies 3 map pins', 'The whole listWith its photos. They give their name first.'])
+  })
 })

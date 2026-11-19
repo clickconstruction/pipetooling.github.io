@@ -6,6 +6,7 @@
 # line starting with # is a comment.
 gc-schedule
 bid-changes
+stage-kind
 ar-unbanked-checks
 ar-stripe-cases
 gc-building
@@ -18,9 +19,11 @@ gc-back-charges
 lien-claim
 lien-hand-day
 lien-bill-months
+lien-closed-days
 customer-sends-trail
 lien-closed-paid-activity
 sub-sheet-stamps
+sub-sheet-draw-invoice
 gc-papers
 gc-trade-sign-sow
 revenue-riders
@@ -139,3 +142,4 @@ job-papers-lock
 job-papers-lists
 dashboard-view
 job-finish-calls
+salaried-week

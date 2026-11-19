@@ -16,7 +16,7 @@
 import { formatUsdNoCents } from './jobFormatting'
 import { lienMonthDayWords } from './lienMonthLine'
 import { lienDayLeftWords } from './lienRowWords'
-import { lienBoardDoorWords, lienBoardHeldWords, lienBoardStagesLeft, lienBoardWorkingDaysLeft, type LienBoard, type LienBoardChip, type LienBoardKind, type LienBoardUrgency } from './lienBoard'
+import { lienBoardDoorWords, lienBoardHeldWords, lienBoardUnreadBinWords, lienBoardStagesLeft, lienBoardWorkingDaysLeft, type LienBoard, type LienBoardChip, type LienBoardKind, type LienBoardUrgency } from './lienBoard'
 
 export type LienBoardChipFacts = {
   todayYmd: string
@@ -86,7 +86,7 @@ export function lienBoardChipCard(chip: LienBoardChip, board: Pick<LienBoard, 'n
     customer: customer || null,
     gc: gc && gc.toLowerCase() !== customer.toLowerCase() ? gc : null,
     paper: PAPER[chip.kind],
-    stage: chip.held ? lienBoardHeldWords(binLabel(board, chip)) : binLabel(board, chip),
+    stage: chip.held ? lienBoardHeldWords(binLabel(board, chip)) : chip.unread ? lienBoardUnreadBinWords(binLabel(board, chip)) : binLabel(board, chip),
     detail: detail || null,
     day,
     urgency: chip.urgency,

@@ -17,7 +17,14 @@
  */
 import { partKey, REASON_WORDS, reasonSides, type Container, type ContainerMove, type Movement, type MovementReason, type Place } from './onSite'
 
-export type ActKind = MovementReason | 'box_moved'
+export type ActKind = MovementReason | 'box_moved' | 'box_retired' | 'box_brought_back' | 'box_changed' | 'box_renamed' | 'answer_removed'
+
+/** A box retired, brought back, or its kind, where line or words changed (`job_container_changes`). */
+export type BoxChange = { id: string; containerId: string; what: 'retired' | 'brought_back' | 'kind' | 'where' | 'said'; oldValue: string; newValue: string; byName: string; at: string }
+/** A box renamed (`job_container_names`). */
+export type BoxRename = { id: string; containerId: string; oldLabel: string; newLabel: string; byName: string; at: string }
+/** A part tie or a site price someone took off (`on_site_removed_answers`), with the words of the row as it stood. */
+export type RemovedAnswer = { id: string; answer: 'tie' | 'price'; jobId: string | null; words: string; byName: string; at: string }
 export type ActLook = 'count_changed' | 'no_source' | 'no_note'
 
 export type PersonAct = {
@@ -57,6 +64,10 @@ export type SiteActsInput = {
   containerMoves: ReadonlyArray<ContainerMove>
   containers: ReadonlyArray<Container>
   places: ReadonlyArray<Place>
+  /** The trail of changes that are not ledger rows. Each is left out until its read answers. */
+  boxChanges?: ReadonlyArray<BoxChange>
+  boxRenames?: ReadonlyArray<BoxRename>
+  removedAnswers?: ReadonlyArray<RemovedAnswer>
 }
 
 /** The chip on an act worth a look, and the title that says why. */
@@ -67,6 +78,16 @@ export const LOOK_WORDS: Record<ActLook, { chip: string; why: string }> = {
 }
 
 export const BOX_MOVED_WORDS = 'Moved a box'
+/** The words of an act that is not a ledger row. */
+export const BOX_ACT_WORDS = {
+  box_retired: 'Retired a box',
+  box_brought_back: 'Brought a box back',
+  box_changed: 'Changed a box',
+  box_renamed: 'Renamed a box',
+  answer_removed_tie: 'Undid a join',
+  answer_removed_price: 'Removed a price',
+} as const
+const CHANGE_FIELD: Record<'kind' | 'where' | 'said', string> = { kind: 'kind', where: 'where', said: 'words' }
 const NO_NAME = 'No name on the row'
 const MINUS = '−'
 
@@ -98,6 +119,11 @@ export const ACT_KINDS: ReadonlyArray<{ kind: ActKind; words: string }> = [
   { kind: 'cannot_find', words: REASON_WORDS.cannot_find.past },
   { kind: 'damaged', words: REASON_WORDS.damaged.past },
   { kind: 'box_moved', words: BOX_MOVED_WORDS },
+  { kind: 'box_retired', words: BOX_ACT_WORDS.box_retired },
+  { kind: 'box_brought_back', words: BOX_ACT_WORDS.box_brought_back },
+  { kind: 'box_changed', words: BOX_ACT_WORDS.box_changed },
+  { kind: 'box_renamed', words: BOX_ACT_WORDS.box_renamed },
+  { kind: 'answer_removed', words: 'Answer taken off' },
 ]
 
 /** Every act on the site, newest first. */
@@ -202,6 +228,24 @@ export function sitePersonActs(input: SiteActsInput, dayOf: (iso: string) => str
       looks: [],
     })
   }
+  // The trail: changes to a box that are not ledger rows, and answers taken off.
+  const blank = { part: null, qty: '', pieces: 0, note: '', looks: [] as ActLook[] }
+  const boxAct = (id: string, at: string, byName: string, containerId: string, kind: ActKind, what: string, note: string): PersonAct => {
+    const who = byName.trim() || NO_NAME
+    const c = box.get(containerId)
+    return { ...blank, id, at, day: dayOf(at), kind, what, note, boxIds: [containerId], boxId: c ? containerId : null, where: boxWords(containerId), jobId: c?.jobId ?? '', jobLabel: c ? jobLabel.get(c.jobId) ?? '' : '', who, personKey: personKeyOf(who) }
+  }
+  const said = (v: string) => (v.trim() ? v.trim() : 'nothing')
+  for (const ch of input.boxChanges ?? []) {
+    if (ch.what === 'retired') acts.push(boxAct(ch.id, ch.at, ch.byName, ch.containerId, 'box_retired', BOX_ACT_WORDS.box_retired, ''))
+    else if (ch.what === 'brought_back') acts.push(boxAct(ch.id, ch.at, ch.byName, ch.containerId, 'box_brought_back', BOX_ACT_WORDS.box_brought_back, ''))
+    else acts.push(boxAct(ch.id, ch.at, ch.byName, ch.containerId, 'box_changed', BOX_ACT_WORDS.box_changed, `${CHANGE_FIELD[ch.what]}: ${said(ch.oldValue)} \u2192 ${said(ch.newValue)}`))
+  }
+  for (const r of input.boxRenames ?? []) acts.push(boxAct(r.id, r.at, r.byName, r.containerId, 'box_renamed', BOX_ACT_WORDS.box_renamed, `${r.oldLabel} \u2192 ${r.newLabel}`))
+  for (const r of input.removedAnswers ?? []) {
+    const who = r.byName.trim() || NO_NAME
+    acts.push({ ...blank, id: r.id, at: r.at, day: dayOf(r.at), kind: 'answer_removed', what: r.answer === 'tie' ? BOX_ACT_WORDS.answer_removed_tie : BOX_ACT_WORDS.answer_removed_price, part: r.words, boxIds: [], boxId: null, where: '', jobId: r.jobId ?? '', jobLabel: r.jobId ? jobLabel.get(r.jobId) ?? '' : '', who, personKey: personKeyOf(who) })
+  }
   return acts.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
 }
 
@@ -254,4 +298,34 @@ export function actDays(acts: ReadonlyArray<PersonAct>): Array<{ day: string; ac
 /** A count with its noun: 1 press, 12 presses. */
 export function countWords(count: number, one: string, many: string): string {
   return `${n(count)} ${count === 1 ? one : many}`
+}
+
+/**
+ * Why an act is outside the process for a person the office is watching, or null when it is inside. A
+ * watched person may take, use and return with a note, move parts between boxes and move a box. A count,
+ * a part added, a box retired, brought back, changed or renamed, and an answer taken off are the office's.
+ * The view applies this to a watched person alone; for everyone else the three chips of `looks` stand.
+ */
+export function outsideProcess(act: Pick<PersonAct, 'kind' | 'note'>): string | null {
+  switch (act.kind) {
+    case 'counted':
+      return 'a count is the office\u2019s'
+    case 'delivered':
+      return 'adding a part is the office\u2019s'
+    case 'box_retired':
+      return 'retired a box'
+    case 'box_brought_back':
+      return 'brought a box back'
+    case 'box_changed':
+      return 'changed a box'
+    case 'box_renamed':
+      return 'renamed a box'
+    case 'answer_removed':
+      return 'took an answer off'
+    case 'taken':
+    case 'used':
+      return act.note.trim() ? null : 'no note'
+    default:
+      return null
+  }
 }

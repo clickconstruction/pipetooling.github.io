@@ -109,7 +109,8 @@ function olderCountWords(n: number): string {
  *
  * With a date on show it is that photograph's own sentence, and what on the map is not from that
  * day. With Today on show it names the spot and the day today's photograph was taken, which is
- * rarely today, and once the walk is over it counts what is older.
+ * rarely today, and once the looking is over it counts what is older. It does not count sooner: two
+ * stops taken on one day are one photograph, so the number falls as the days come in (v2.7870).
  */
 export function mapTimeCaption(args: {
   spotName: string
@@ -117,14 +118,14 @@ export function mapTimeCaption(args: {
   olderCount: number
   /** The date on show. Nothing is Today. */
   shown: OlderPhotoChoice | null
-  /** The walk is still meeting photographs. */
-  walking: boolean
+  /** The archive is still being read: photographs are being met, or their days found. */
+  looking: boolean
   /** What on the map is not from the photograph's day: `The dots are today’s.` */
   dotsWords?: string
 }): string {
-  const { spotName, today, olderCount, shown, walking, dotsWords = MAP_TIME_DOTS_WORDS } = args
+  const { spotName, today, olderCount, shown, looking, dotsWords = MAP_TIME_DOTS_WORDS } = args
   if (shown) return shown.taken && dotsWords ? `${shown.caption} ${dotsWords}` : shown.caption
   const taken = today?.taken ? `, taken ${olderPhotoLongDay(today.ymd)}` : ''
   const lead = `Today’s photo of ${spotName}${taken}.`
-  return walking ? lead : `${lead} ${olderCountWords(olderCount)}`
+  return looking ? lead : `${lead} ${olderCountWords(olderCount)}`
 }

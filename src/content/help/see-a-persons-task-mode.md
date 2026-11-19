@@ -91,7 +91,7 @@ A dev sees one more line beside the phone, under **What this look does not show*
 To press something as Dana, {{button:outline|View as Dana}}. That signs you in as Dana, and the app records it.
 :::
 
-Press {{button:outline|View as Dana}} and the app asks first. Say yes and you are signed in as Dana on this page. Press **Exit** at the top to come back as yourself.
+Press {{button:outline|View as Dana}} and the app asks first. Say yes and you are signed in as Dana. You land on Dana's **Today**. Press **Exit** at the top to come back to Review as yourself.
 
 The line does not show on your own card. It does not show for another dev, or for a person with no login.
 

@@ -3,11 +3,11 @@ import type { GcPacket } from './gcPackets'
 import {
   bidImportAccountMan,
   bidImportCarry,
-  bidImportCarryQuestion,
   bidImportEffectiveGc,
   bidImportFirstLine,
   bidImportGcOptions,
   bidImportLabel,
+  bidImportWhoseFigure,
   bidImportWinWrite,
   decideBidImportGc,
   type BidImportGcOption,
@@ -121,26 +121,19 @@ describe('bidImportCarry', () => {
   })
 })
 
-describe('bidImportCarryQuestion / bidImportFirstLine', () => {
-  it('an agreed value: says whose figure it is, and Yes records nothing on the bid', () => {
-    expect(bidImportCarryQuestion({ carryValue: 15_000, agreedValue: 15_000, bid, gcName: 'Acme' })).toEqual({
-      title: 'Start the job at $15,000.00?',
-      message: "That's B482 · Oak Ridge's agreed value. Yes puts it on the job as the first line item; No starts the job at $0 and writes nothing.",
-      confirmLabel: 'Carry $15,000.00 over',
-      cancelLabel: 'Start at $0',
-    })
+describe('bidImportWhoseFigure / bidImportFirstLine', () => {
+  it('an agreed value is the bid’s own figure', () => {
+    expect(bidImportWhoseFigure({ agreedValue: 15_000, bid, gcName: 'Acme' })).toBe('B482 · Oak Ridge’s agreed value')
     expect(bidImportFirstLine({ carryValue: 15_000, agreedValue: 15_000, bid })).toEqual({ name: 'Bid price', count: 1, line_unit_price: 15_000, line_description: 'B482 · Oak Ridge — agreed value', invoice_id: null })
   })
 
-  it('a sent value: names the GC, and Yes records it on the bid', () => {
-    const q = bidImportCarryQuestion({ carryValue: 12_000, agreedValue: null, bid, gcName: ' Acme ' })
-    expect(q.message).toBe("That's what Acme was sent on B482 · Oak Ridge. Yes puts it on the job as the first line item and records it on the bid as the agreed value; No starts the job at $0 and writes nothing.")
+  it('a sent value names the GC it was sent to', () => {
+    expect(bidImportWhoseFigure({ agreedValue: null, bid, gcName: ' Acme ' })).toBe('what Acme was sent on B482 · Oak Ridge')
     expect(bidImportFirstLine({ carryValue: 12_000, agreedValue: null, bid }).line_description).toBe('B482 · Oak Ridge — as sent')
   })
 
   it('falls back to "the GC" and "the bid"', () => {
-    const q = bidImportCarryQuestion({ carryValue: 500, agreedValue: null, bid: { bid_number: null, project_name: null }, gcName: null })
-    expect(q.message).toContain("That's what the GC was sent on the bid.")
+    expect(bidImportWhoseFigure({ agreedValue: null, bid: { bid_number: null, project_name: null }, gcName: null })).toBe('what the GC was sent on the bid')
   })
 })
 

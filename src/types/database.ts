@@ -20191,9 +20191,11 @@ export type Database = {
           height: number
           id: string
           job_id: string
+          kind: string | null
           refile_due_at: string | null
           status: string
           storage_path: string | null
+          take_id: string | null
           taken_at: string
           width: number
           words: string
@@ -20210,9 +20212,11 @@ export type Database = {
           height?: number
           id?: string
           job_id: string
+          kind?: string | null
           refile_due_at?: string | null
           status?: string
           storage_path?: string | null
+          take_id?: string | null
           taken_at?: string
           width?: number
           words?: string
@@ -20229,9 +20233,11 @@ export type Database = {
           height?: number
           id?: string
           job_id?: string
+          kind?: string | null
           refile_due_at?: string | null
           status?: string
           storage_path?: string | null
+          take_id?: string | null
           taken_at?: string
           width?: number
           words?: string
@@ -22159,6 +22165,7 @@ export type Database = {
           reason: string
           recorded_at: string | null
           source: string | null
+          take_id: string | null
           to_container_id: string | null
         }
         Insert: {
@@ -22177,6 +22184,7 @@ export type Database = {
           reason: string
           recorded_at?: string | null
           source?: string | null
+          take_id?: string | null
           to_container_id?: string | null
         }
         Update: {
@@ -22195,6 +22203,7 @@ export type Database = {
           reason?: string
           recorded_at?: string | null
           source?: string | null
+          take_id?: string | null
           to_container_id?: string | null
         }
         Relationships: [
@@ -31662,6 +31671,7 @@ export type Database = {
           person_id: string | null
           person_name: string
           record_hours_but_salary: boolean
+          salaried_week_hours: number[]
           show_in_hours: boolean
           vehicle_arrangement: string
           vehicle_rate_override: number | null
@@ -31673,6 +31683,7 @@ export type Database = {
           person_id?: string | null
           person_name: string
           record_hours_but_salary?: boolean
+          salaried_week_hours?: number[]
           show_in_hours?: boolean
           vehicle_arrangement?: string
           vehicle_rate_override?: number | null
@@ -31684,6 +31695,7 @@ export type Database = {
           person_id?: string | null
           person_name?: string
           record_hours_but_salary?: boolean
+          salaried_week_hours?: number[]
           show_in_hours?: boolean
           vehicle_arrangement?: string
           vehicle_rate_override?: number | null
@@ -50110,6 +50122,11 @@ export type Database = {
         }
         Returns: string
       }
+      salaried_hours_on: {
+        Args: { p_day: string; p_week: number[] }
+        Returns: number
+      }
+      salaried_week_hours_ok: { Args: { p_week: number[] }; Returns: boolean }
       salary_schedule_staff_or_self_target: {
         Args: { p_target_user_id: string }
         Returns: boolean

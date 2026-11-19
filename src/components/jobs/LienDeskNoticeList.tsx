@@ -93,8 +93,9 @@ export function LienDeskNoticeList({
   findHits: ReadonlyMap<string, LienFindFact[]>
   alsoSent: ReadonlyArray<CallerOwnerHit>
   /** A day pressed on the calendar narrows the list to its jobs. */
-  calendarJobFilter: { ymd: string; jobIds: ReadonlySet<string> } | null
-  setCalendarJobFilter: Dispatch<SetStateAction<{ ymd: string; jobIds: ReadonlySet<string> } | null>>
+  /** The jobs the list is narrowed to: the calendar's *Draft the N*, or (`words`, v2.7853) the Board's *Sign N notices ›*, which says its own words on the chip. */
+  calendarJobFilter: { ymd: string; jobIds: ReadonlySet<string>; words?: string } | null
+  setCalendarJobFilter: Dispatch<SetStateAction<{ ymd: string; jobIds: ReadonlySet<string>; words?: string } | null>>
   /** Sent's lens: only the notices with a tracked envelope. */
   deliveriesOnly: boolean
   setDeliveriesOnly: Dispatch<SetStateAction<boolean>>
@@ -134,7 +135,7 @@ export function LienDeskNoticeList({
       {calendarJobFilter ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.5rem 0.9rem 0', fontSize: '0.75rem' }} data-testid="lien-desk-calendar-filter">
           <span style={{ padding: '2px 8px', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontWeight: 700 }}>
-            {calendarJobFilter.jobIds.size} {calendarJobFilter.jobIds.size === 1 ? 'job' : 'jobs'} from the calendar · by {formatYmdMonthDay(calendarJobFilter.ymd)}
+            {calendarJobFilter.words ?? `${calendarJobFilter.jobIds.size} ${calendarJobFilter.jobIds.size === 1 ? 'job' : 'jobs'} from the calendar · by ${formatYmdMonthDay(calendarJobFilter.ymd)}`}
           </span>
           <button type="button" onClick={() => setCalendarJobFilter(null)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>
             show every job

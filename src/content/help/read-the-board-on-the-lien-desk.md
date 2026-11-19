@@ -27,7 +27,7 @@ The right column is the lien affidavits. Its first two bins are **Needs the prop
 
 One arrow crosses from Sent on the left to Waiting on its notice on the right. The notice on record is the affidavit's gate. When the notice is mailed and recorded, the affidavit moves down to **To send for Master approval**. On a phone the columns stand one over the other and that arrow is not drawn.
 
-A bin with a blue left edge has something to do now. Its press is beside its name. Each bin's count sits at its right. A bin with no paper is one quiet line with a zero.
+A bin with a blue left edge has something to do now. Its press is beside its name. Each bin's count sits at its right. A bin with no paper is one quiet line with a zero. An empty bin's name and zero are grey.
 
 ## What a chip's colour means
 
@@ -41,6 +41,8 @@ A chip is a job's number. Its colour says how soon its day is.
 A chip with a red mark after its number will not make its day as it stands. It has more stages to pass than working days left.
 
 A chip with a dashed edge and a ‖ mark is held. Its colour still says how soon its day is. [Held papers](#held-papers-and-retainage) says where it stands.
+
+A chip with a dashed edge and a ○ mark is an affidavit nobody has read yet. Press it to open the paper and read it.
 
 A job that needs its owner stands in both columns. Point at either chip and both light up. One press on the owner clears both.
 
@@ -68,7 +70,9 @@ Every chip is a press to the right place for its stage. Point at a chip to read 
 - A chip in *Approved · to sign* opens the notice, where it is signed.
 - A chip in *Approved · to print* or *Approved · to mail* opens the run on that envelope.
 - A chip in **Ready to file** opens the affidavit.
+- A line under the bin's print reads *Back from the clerk?* Its press reads like {{button:outline|Enter document numbers · 3 ›}}. It opens one window that records every filed lien. See [Several liens back from the clerk](/help/file-a-lien-and-never-miss-its-deadlines#several-liens-back-from-the-clerk).
 - A chip in *Filed · copies to mail* or *Served* opens the job's Lien window.
+- A chip in a closed bin opens the window that asks what to do. See [A window that has closed](#a-window-that-has-closed).
 
 A paper opened from a chip is a step of its own in the browser. Press Back and the desk returns to To do with the Board in view. The property record and the run open over the Board. Close them and the Board is where it was.
 
@@ -78,7 +82,7 @@ The same press sits on the job number of every To do row. It also sits on the nu
 
 Some bins carry a press on the same line as the bin's name. The press acts on the papers in that bin. Nothing stands between the tiles and the bins. Only the lien office sees these presses.
 
-On *Approved · to sign* the office's press reads like {{button:outline|Remind Malachi of 7 papers ›}}. It tells the leader they wait. The desk asks first. The leader's own press there reads like {{button:blue|Sign 7 notices ›}}. It opens the approved notices, and he signs each on its own pane.
+On *Approved · to sign* the office's press reads like {{button:outline|Remind Malachi of 7 papers ›}}. The reminder tells the leader they wait. The desk asks first. The leader's own press there reads like {{button:blue|Sign 3 notices ›}}. The Sign press counts only the notices on the jobs he leads. The Sign press opens those notices, and he signs each on its own pane. A line under the bin's name says how many wait on another leader. A leader who leads none of them sees the office's press.
 
 On *Approved · to print* the press reads like {{button:blue|Print and mail 8 notices}}. The count is the bin's own count. Press it and the run opens on every approved notice, for every GC.
 
@@ -86,7 +90,7 @@ On *Approved · to mail* the press reads like {{button:outline|Enter mail number
 
 On **Ready to file** the press reads like {{button:blue|Print 10 for notarization}}. It prints the stack right there. You stay on **To do**. An approved paper that a fact holds stands in the bin too, after the ones that print. It has a dashed edge and a ‖ mark. The print leaves it out, and so does the bin's count. A paper on the earlier form has no mark, and the print leaves it out too. A line under the bin's name counts those, like *1 on the earlier form*. Press **See it ›** to open them. The help sheet and the notice records print in front of the stack. The bin says nothing of that while it is so. If someone changed those pages on this computer, a second line says so, like *Prints without the help sheet*. Press **Put it back ›** and the usual pages print again. You tick those pages on the affidavits list, over its rows.
 
-On the affidavits' **To send for Master approval** the press reads like {{button:outline|Send 5 for approval ›}}. It opens the affidavits list at that pile. One press there sends every paper someone has read.
+On the affidavits' **To send for Master approval** the press reads like {{button:outline|Send 5 for approval ›}}. It opens the affidavits list at that pile. One press there sends every paper someone has read. The bin's count is the same number. A paper nobody has read stands after those, with a dashed edge and a ○ mark. The send leaves it out, and so does the count. Press its chip to open it and read it.
 
 On *Filed · copies to mail* the press reads like {{button:outline|Print 10 liens' copies ›}}. It opens the window that prints each lien's copies. Once they are printed it reads like {{button:outline|Enter mail numbers · 10 ›}}. Then it opens the same window on the mail numbers.
 
@@ -174,7 +178,41 @@ This bin sits under **Served**. The last day to file the lien passed and no fili
 
 A paper leaves the closed bin by itself when its dates change. Record a filing that was made in time and the paper moves to *Filed · copies to mail*. Set a later last day of work and the paper goes back into the flow. A notice also leaves once someone records its months closed.
 
+A job whose lien day passed stays in its bin until someone answers it. It does not drop off after a week. It leaves when it is answered or paid.
+
 The app counts the days. It does not judge the law. Ask the attorney when a date is not clear.
+
+### Answer a closed paper
+
+Press a chip in a closed bin. A window opens on that job. {{button:outline|Answer 2 ›}} on the bin's title line opens the same window on the first job. The window says what closed and on which day. It also says where that day is counted from.
+
+When the lien day has passed, the window gives three answers.
+
+:::steps
+
+1. **The date is wrong.** {{button:outline|Set the last day of work ›}} opens the job where that day is set. A later day puts the paper back in the flow. *Record the filing ›* is for a lien that was filed in time and never recorded.
+2. **Keep collecting.** {{button:blue|Keep collecting 4127}} takes the job off the Lien desk and keeps it in Collections. A billed job that is not in Collections goes there. Nothing is filed or deleted.
+3. **Let it go.** {{button:outline|Mark 4127 Uncollectible}} asks once more. Then it marks the job Uncollectible, as the Pipeline does.
+
+:::
+
+Type a note first when you have one. The note is kept on the job with your name and the day.
+
+When one month's notice window closed, the lien day is still ahead. The window gives three other answers.
+
+:::steps
+
+1. **Send a late notice.** {{button:blue|Draft the late notice ›}} opens the notice for that month. A late notice still counts while the lien day is ahead.
+2. **The date is wrong.** {{button:outline|Set the last day of work ›}} opens the job where that day is set.
+3. **Record it closed.** The press writes down that no notice goes for that month. The job stays on the Lien desk for its lien day.
+
+:::
+
+A closed month never asks you to let the job go. The lien office answers these windows. Anyone else can read them.
+
+With more than one job in the bin, the window counts them, like *1 of 2*. Each answer shows the next job. *Next ›* passes a job over for now.
+
+A job that keeps collecting is listed under [A job that is off the lien path](#a-job-that-is-off-the-lien-path). **Put it back…** there undoes the answer.
 
 ## Public property
 
@@ -184,7 +222,11 @@ A mechanic's lien does not attach to public property. Some owners read as a city
 - One amber line sits over the bins, like *2 jobs sit on public property and are still on the lien path*. The line gives the money those jobs owe.
 - {{button:outline|Review them ›}} opens one window for each property in turn. The window asks whether to take the property off the lien path.
 
-A property answered public leaves the bins. The property's jobs sit in their own bin under the affidavits, {{chip:gray|Public jobs · bond claim}}. Each row gives the job, its money, the GC and what already went out. {{chip:yellow|get the bond}} shows while nobody knows if there is a payment bond. The row also says whether the job is with the attorney. A job not billed yet cannot go on the attorney's list, and the row says so.
+A property answered public leaves the bins. The property's jobs sit in their own bin under the affidavits, {{chip:gray|Public jobs · bond claim}}.
+
+The bin opens folded to one line, so the Board stays short. The line gives the number of jobs and the money they still owe. An amber count, like *1 to get the bond*, shows how many jobs still need the bond looked up. Press {{button:outline|Show ▾}} to open the bin, and {{button:outline|Hide ▴}} to fold it again.
+
+Open, each row gives the job, its money, the GC and what already went out. {{chip:yellow|get the bond}} shows while nobody knows if there is a payment bond. The row also says whether the job is with the attorney. A job not billed yet cannot go on the attorney's list, and the row says so.
 
 **Put a job back on the lien path…** at the foot of the bin puts a property back. Say why, and its jobs return to the bins. [A public property](/help/file-a-lien-and-never-miss-its-deadlines#a-public-property) has the window's steps.
 
@@ -192,7 +234,9 @@ A property answered public leaves the bins. The property's jobs sit in their own
 
 Some money has no lien behind it. A trip charge to pick up a check is one case. The lien office can take that one job off the lien path, with a reason.
 
-Such a job leaves the bins. It sits in its own bin under the affidavits, {{chip:gray|Off the lien path}}. Each row gives the job, its money, the GC, who took it off and the day. The reason sits on its own line.
+Such a job leaves the bins. It sits in its own bin under the affidavits, {{chip:gray|Off the lien path}}. This bin opens folded to one line too, with the number of jobs and their money. Press {{button:outline|Show ▾}} to open it.
+
+Open, each row gives the job, its money, the GC, who took it off and the day. The reason sits on its own line.
 
 {{button:outline|Put it back…}} on a row puts that job back. Say why, and the job returns to the bins with its papers.
 

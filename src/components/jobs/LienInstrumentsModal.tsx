@@ -77,7 +77,7 @@ import LienFilingTabs from './LienFilingTabs'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage } from '../../lib/jobs/lienStopPaperPages'
-import { lienMailProof } from '../../lib/jobs/lienMailProof'
+import { lienStopProof } from '../../lib/jobs/lienStopProof'
 import { lienMailProofDoorPress, lienMailProofWindowTab, type LienMailProofLanding } from '../../lib/jobs/lienMailProofDoor'
 import { lienServeStage } from '../../lib/jobs/lienServeStage'
 import { readLienCopyPrints } from '../../lib/jobs/lienServePrintsIo'
@@ -932,7 +932,8 @@ export default function LienInstrumentsModal({
     const when = (ymd: string | null, iso: string) => formatYmdMonthDay(ymd ?? calendarYmdInAppTzFromIso(iso))
     const asSent = (f: JobLienFilingRow, words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
       const page = filingSnapshotPage(f, { issuer, jobNumber })
-      const proof = lienMailProof({ kind: f.kind, sends: f.sends, documentUrl: f.document_url, documentNote: f.document_note, servedAt: f.served_at })
+      // The one reading the three stop windows share (`lienStopProof.ts`): the contractor's copy counts before it has a record.
+      const proof = lienStopProof(f, { isSub })
       // The press on a recipient's card (`lienMailProofDoor.ts`). This window is itself where a copy's lack is entered, so the
       // press closes the stop window and lands on the copy here, for the office alone. The owner's gap is not read: this
       // window has no property record of its own, and its service step names a missing address under its press.
@@ -1185,7 +1186,10 @@ export default function LienInstrumentsModal({
   )
 
   // The next step, named (punch list #82): the timeline's own Next on the path, with the one door that goes there.
-  const nextStep = timeline ? lienWindowNextStep(timeline.next, timeline.waitingOn) : null
+  // The filed lien whose copies are owed, and where they stand (`lienServeStage.ts`): the next step's press reads that stage and lands on its half.
+  const unservedLien = filings.find((f) => f.id === unservedLienId) ?? null
+  const serveStageNow = unservedLien ? lienServeStage(unservedLien, servePrinted) : null
+  const nextStep = timeline ? lienWindowNextStep(timeline.next, timeline.waitingOn, serveStageNow) : null
   const nextDoor = nextStep?.button?.door ?? null
   const nextStepButton =
     nextStep?.button && nextDoor && (nextDoor.to === 'tab' || onOpenLienDesk) ? (
@@ -1193,8 +1197,11 @@ export default function LienInstrumentsModal({
         type="button"
         data-lien-window-next-step-button
         onClick={() => {
-          if (nextDoor.to === 'tab') setActiveTab(nextDoor.tab)
-          else if (job) onOpenLienDesk?.(job.id, nextDoor.kind)
+          if (nextDoor.to === 'tab') {
+            setActiveTab(nextDoor.tab)
+            // The copies' step lands on the half its name says: the print press, or the form at the owner's number.
+            if (timeline?.next.kind === 'serve' && job && unservedLien && serveStageNow) setLand({ jobId: job.id, filingId: unservedLien.id, paper: 'affidavit', recipient: 'owner', lack: serveStageNow === 'print' ? 'print' : 'number', at: Date.now() })
+          } else if (job) onOpenLienDesk?.(job.id, nextDoor.kind)
         }}
         style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', ...(isMobile ? { width: '100%', padding: '9px 14px' } : {}) }}
       >

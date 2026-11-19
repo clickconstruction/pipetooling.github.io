@@ -22,6 +22,11 @@ const MASTER = 'eeeeeeee-2222-4222-8222-222222222222'
 const ITEM = 'dddddddd-2222-4222-8222-222222222222'
 const ITEM_B = 'dddddddd-3333-4333-8333-333333333333'
 const BASE = 'http://127.0.0.1:9'
+/** The Drive id the fake door gives a file it takes: long enough to read as one. */
+const NEW_FILE = '1newNewNewNewNewNewNewNewNew'
+const NEW_URL = `https://drive.google.com/file/d/${NEW_FILE}/view`
+const OLD_FILE = '1oldOldOldOldOldOldOldOldOld'
+const OLD_URL = `https://drive.google.com/file/d/${OLD_FILE}/view`
 
 /** The fake world: the tables the REST door reads and writes, the call log, the bucket and drive-link's calls. */
 const world = {
@@ -36,6 +41,7 @@ const world = {
   refuseInsert: false,
   refuseDrive: false,
   refuseLink: false,
+  refuseTrash: false,
   afterInsert: null as (() => void) | null,
   nextId: 1,
 }
@@ -100,8 +106,12 @@ async function fakeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
   if (path === '/functions/v1/drive-link') {
     if (world.refuseDrive) return json({ error: 'The folder could not be opened.' }, 502)
     const body = JSON.parse(String(init?.body)) as Row
+    if (body.action === 'trash') {
+      world.drive.push(body)
+      return world.refuseTrash ? json({ error: 'A lien record still uses it.', why: 'in_use', retry: false }, 409) : json({ trashed: true, name: 'old.pdf', url: `https://drive.google.com/file/d/${String(body.driveFileId)}/view` })
+    }
     world.drive.push({ ...body, base64: `(${String(body.base64).length} characters)` })
-    return json({ driveFileId: 'drv1', url: 'https://drive.google.com/file/d/drv1/view' })
+    return json({ driveFileId: NEW_FILE, url: `https://drive.google.com/file/d/${NEW_FILE}/view` })
   }
   throw new Error(`fake fetch: no route for ${method} ${path}`)
 }
@@ -203,6 +213,7 @@ beforeEach(async () => {
   world.refuseInsert = false
   world.refuseDrive = false
   world.refuseLink = false
+  world.refuseTrash = false
   world.afterInsert = null
   world.nextId = 1
 })
@@ -284,7 +295,7 @@ describe('apply_lien_filing — one filing', () => {
     world.staged[stagePath()] = PDF
     const out = await call('apply_lien_filing', { filing: f, plan_hash: hash })
     expect(out.isError).toBe(false)
-    expect(out.body).toMatchObject({ ok: true, filing_id: 'new-1', wrote: 'the filing', serve_by: '2026-11-23', saved_copy: 'https://drive.google.com/file/d/drv1/view', desk_item: 'marked sent' })
+    expect(out.body).toMatchObject({ ok: true, filing_id: 'new-1', wrote: 'the filing', serve_by: '2026-11-23', saved_copy: NEW_URL, desk_item: 'marked sent' })
     // drive-link's put, the scan press's own landing and name.
     expect(world.drive).toEqual([{ action: 'put', job: { jobs_ledger_id: JOB }, name: `Lien affidavit, Job 2291, ${LIEN_CLERK_SCAN_NOTE}, 2026-11-16.pdf`, mime: 'application/pdf', where: 'sent', base64: '(16 characters)' }])
     // The row first, then the desk's item, then the scan's link: a Drive door that fails never leaves a file with no filing.
@@ -293,7 +304,7 @@ describe('apply_lien_filing — one filing', () => {
     expect(insert!.body).toMatchObject({ job_id: JOB, created_by: DEV, kind: 'affidavit', amount: 4180, county: 'Marlow', recording_number: '20260222921', filed_at: '2026-11-16', serve_due: '2026-11-23' })
     expect(Object.keys(insert!.body as Row).sort()).toEqual(['amount', 'county', 'created_by', 'fields', 'filed_at', 'job_id', 'kind', 'recording_number', 'serve_due'])
     expect(patch).toMatchObject({ method: 'PATCH', table: 'job_lien_desk_items', query: `id=eq.${ITEM}&kind=eq.affidavit&status=eq.approved&select=id`, body: { status: 'sent', sent_filing_id: 'new-1' } })
-    expect(link).toEqual({ method: 'PATCH', table: 'job_lien_filings', query: 'id=eq.new-1&document_url=eq.&select=id', body: { document_url: 'https://drive.google.com/file/d/drv1/view', document_note: LIEN_CLERK_SCAN_NOTE } })
+    expect(link).toEqual({ method: 'PATCH', table: 'job_lien_filings', query: 'id=eq.new-1&document_url=eq.&select=id', body: { document_url: NEW_URL, document_note: LIEN_CLERK_SCAN_NOTE } })
     expect(world.writes).toHaveLength(3)
     expect(world.removed).toEqual([stagePath()])
     expect(world.tables.job_lien_desk_items!.find((i) => i.id === ITEM)).toMatchObject({ status: 'sent', sent_filing_id: 'new-1' })
@@ -309,7 +320,8 @@ describe('apply_lien_filing — one filing', () => {
     world.staged[stagePath()] = PDF
     const again = await call('apply_lien_filing', { filing: f, plan_hash: hash })
     expect(again.isError).toBe(true)
-    expect(again.text).toContain('an affidavit is already on file for this job')
+    expect(again.text).toContain('JP2291: instrument 20260222921 is on record, filed 2026-11-16 in Marlow County')
+    expect(again.text).toContain('There is nothing to apply.')
     expect(world.writes).toHaveLength(3)
     expect(world.drive).toHaveLength(1)
     expect(world.tables.job_lien_desk_items!.find((i) => i.id === ITEM_B)).toMatchObject({ status: 'approved' })
@@ -364,7 +376,7 @@ describe('apply_lien_filing — one filing', () => {
     const entry = (again.body!.entries as Row[])[0]!
     expect(entry).toMatchObject({ status: 'ready', mode: 'attach_scan' })
     const added = await call('apply_lien_filing', { filing: f, plan_hash: String(entry.plan_hash) })
-    expect(added.body).toMatchObject({ ok: true, filing_id: 'new-1', saved_copy: 'https://drive.google.com/file/d/drv1/view' })
+    expect(added.body).toMatchObject({ ok: true, filing_id: 'new-1', saved_copy: NEW_URL })
     expect(world.tables.job_lien_filings!.filter((r) => r.kind === 'affidavit')).toHaveLength(1)
   })
 
@@ -375,19 +387,19 @@ describe('apply_lien_filing — one filing', () => {
     const out = await call('apply_lien_filing', { filing: f, plan_hash: hash })
     expect(out.isError).toBe(false)
     expect(out.body).toMatchObject({ ok: true, filing_id: 'new-1', saved_copy: null })
-    expect(String(out.body!.saved_copy_not_added)).toContain('saved_copy: { link: "https://drive.google.com/file/d/drv1/view" }')
+    expect(String(out.body!.saved_copy_not_added)).toContain(`saved_copy: { link: "${NEW_URL}" }`)
     // The file landed, so the staged copy is gone and the same apply is spent.
     expect(world.removed).toEqual([stagePath()])
     world.refuseLink = false
     const spent = await call('apply_lien_filing', { filing: f, plan_hash: hash })
     expect(spent.isError).toBe(true)
-    const linkOnly = filing({ scan: undefined, saved_copy: { link: 'https://drive.google.com/file/d/drv1/view' } })
+    const linkOnly = filing({ scan: undefined, saved_copy: { link: NEW_URL } })
     const again = await call('plan_lien_filing', { filing: linkOnly })
     const entry = (again.body!.entries as Row[])[0]!
     expect(entry).toMatchObject({ status: 'ready', mode: 'attach_link' })
     expect(entry).not.toHaveProperty('upload')
     const added = await call('apply_lien_filing', { filing: linkOnly, plan_hash: String(entry.plan_hash) })
-    expect(added.body).toMatchObject({ ok: true, filing_id: 'new-1', wrote: 'the link, as the saved copy of the filing on record', saved_copy: 'https://drive.google.com/file/d/drv1/view' })
+    expect(added.body).toMatchObject({ ok: true, filing_id: 'new-1', wrote: 'the link, as the saved copy of the filing on record', saved_copy: NEW_URL })
     expect(world.drive).toHaveLength(1)
     expect(world.tables.job_lien_filings!.find((r) => r.id === 'new-1')).toMatchObject({ document_note: LIEN_CLERK_SCAN_NOTE })
   })
@@ -442,6 +454,101 @@ describe('apply_lien_filing — one filing', () => {
     world.staged[stagePath()] = PDF
     const out = await call('apply_lien_filing', { filing: f, plan_hash: hash })
     expect(out.body).toMatchObject({ ok: true, filing_id: 'on-file', wrote: 'the scan, as the saved copy of the filing on record' })
-    expect(world.writes).toEqual([{ method: 'PATCH', table: 'job_lien_filings', query: 'id=eq.on-file&document_url=eq.&select=id', body: { document_url: 'https://drive.google.com/file/d/drv1/view', document_note: LIEN_CLERK_SCAN_NOTE } }])
+    expect(world.writes).toEqual([{ method: 'PATCH', table: 'job_lien_filings', query: 'id=eq.on-file&document_url=eq.&select=id', body: { document_url: NEW_URL, document_note: LIEN_CLERK_SCAN_NOTE } }])
+  })
+})
+
+describe('a paper already on record (v2.7837)', () => {
+  const FIELDS = { isSub: true, workMonthsWords: 'September 2026', noticesSentWords: 'certified mail on October 9, 2026', propertyAddress: '14 Maple Ct, Marlow, TX 78000', legalDescription: 'LOT 4 BLK 7', ownerName: 'Pat Sample', unpaidAmount: '4180.00' }
+  const onFile = (over: Row = {}): Row => ({ id: 'on-file', job_id: JOB, kind: 'affidavit', months_covered: [], sends: [], filed_at: '2026-11-16', recording_number: '2026 0222921', county: 'Marlow', document_url: OLD_URL, document_note: LIEN_CLERK_SCAN_NOTE, serve_due: '2026-11-23', served_at: null, voided_at: null, created_at: '2026-11-16T17:00:00Z', amount: 4180, fields: FIELDS, ...over })
+  const REPLACE = { replace_saved_copy: true, replace_because: 'The copy on record is the whole stack, not this lien’s two pages.' }
+  beforeEach(() => {
+    world.tables.job_lien_filings!.push(onFile())
+    world.tables.job_lien_desk_items!.find((i) => i.id === ITEM)!.status = 'sent'
+  })
+
+  it('a plan checks the paper against the record, signs nothing and writes nothing', async () => {
+    const august = filing({ paper_states: { claim: 4180, months: ['2026-08'], notice_sent_on: ['2026-10-09'], property_address: '14 Maple Ct, Marlow, TX 78000', owner: 'Pat Sample' } })
+    const birch = filing({ job_id: JOB_B, recording_number: '20260222922', scan: { name: 'birch.pdf', size_bytes: 9, sha256: 'd'.repeat(64) }, paper_states: { claim: 4180, months: ['2026-09'], notice_sent_on: ['2026-10-09'] }, matched_because: 'The paper names 22 Birch Ln and swears $4,180.00.' })
+    const out = await call('plan_lien_filing', { filings: [august, birch] })
+    expect(out.isError).toBe(false)
+    expect(out.body!.filings).toBe('2 filings: 1 ready, 1 already on record (1 whose record and paper differ).')
+    const [checked] = out.body!.entries as Row[]
+    expect(checked).toMatchObject({ entry: 1, status: 'on_record', mode: 'check', agrees: false, differences: [{ what: 'months', paper: 'August 2026', record: 'September 2026' }] })
+    expect(checked).not.toHaveProperty('plan_hash')
+    expect(checked).not.toHaveProperty('upload')
+    // No Drive key in this world: the saved copy's file is named as not read, and the check stands.
+    expect((checked!.saved_copy_file as Row).unread).toContain('Drive is not set up')
+    expect(world.writes).toEqual([])
+    expect(world.signed).toEqual([`${STAGE}${'d'.repeat(32)}.pdf`])
+    expect(world.drive).toEqual([])
+  })
+
+  it('an entry on record cannot be applied, whatever hash is sent', async () => {
+    const out = await call('apply_lien_filing', { filing: filing(), plan_hash: 'b'.repeat(64) })
+    expect(out.isError).toBe(true)
+    expect(out.text).toContain('its record says what the paper says. There is nothing to apply.')
+    expect(world.writes).toEqual([])
+    expect(world.drive).toEqual([])
+  })
+
+  it('a replace files the new scan, sets it on the filing that still carries the old copy, and sends the old file to Drive’s trash', async () => {
+    const f = filing(REPLACE)
+    const plan = await call('plan_lien_filing', { filing: f })
+    const entry = (plan.body!.entries as Row[])[0]!
+    expect(entry).toMatchObject({ status: 'ready', mode: 'replace_scan', replaces: OLD_URL, agrees: true })
+    expect(entry.upload).toMatchObject({ upload_expires_in: '2 hours' })
+    world.staged[stagePath()] = PDF
+    const out = await call('apply_lien_filing', { filing: f, plan_hash: String(entry.plan_hash) })
+    expect(out.isError).toBe(false)
+    expect(out.body).toMatchObject({ ok: true, filing_id: 'on-file', wrote: 'the scan, in place of the saved copy the filing carried', saved_copy: NEW_URL, old_copy: { was: OLD_URL, now: 'in Drive’s trash, where Drive keeps it 30 days' } })
+    // One write: the link, held to the copy the plan read.
+    expect(world.writes).toEqual([{ method: 'PATCH', table: 'job_lien_filings', query: `id=eq.on-file&document_url=eq.${encodeURIComponent(OLD_URL)}&select=id`, body: { document_url: NEW_URL, document_note: LIEN_CLERK_SCAN_NOTE } }])
+    // The put first, the trash last: the old file leaves only once the filing names the new one.
+    expect(world.drive.map((d) => d.action)).toEqual(['put', 'trash'])
+    expect(world.drive[1]).toEqual({ action: 'trash', job: { jobs_ledger_id: JOB }, driveFileId: OLD_FILE })
+    expect(world.removed).toEqual([stagePath()])
+    expect(lastLog()!.args).toMatchObject({ filing: { replace_saved_copy: true, replace_because: REPLACE.replace_because } })
+    expect(world.tables.job_lien_filings!.filter((r) => r.kind === 'affidavit')).toHaveLength(1)
+  })
+
+  it('a copy that changed since the plan is left as it is, and the old file is never trashed', async () => {
+    const f = filing(REPLACE)
+    const plan = await call('plan_lien_filing', { filing: f })
+    const hash = String((plan.body!.entries as Row[])[0]!.plan_hash)
+    world.staged[stagePath()] = PDF
+    // Someone changes the saved copy while the staged scan is being read: the hash matched, the held write does not.
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/storage/v1/object/authenticated/')) world.tables.job_lien_filings!.find((r) => r.id === 'on-file')!.document_url = 'https://drive.google.com/file/d/1otherOtherOtherOtherOther/view'
+      return fakeFetch(input, init)
+    }) as typeof fetch
+    const out = await call('apply_lien_filing', { filing: f, plan_hash: hash })
+    globalThis.fetch = real
+    expect(out.body).toMatchObject({ ok: true, saved_copy: 'https://drive.google.com/file/d/1otherOtherOtherOtherOther/view' })
+    expect(String(out.body!.saved_copy_not_added)).toContain('the filing no longer carried the copy the plan read')
+    expect(out.body).not.toHaveProperty('old_copy')
+    expect(world.drive.map((d) => d.action)).toEqual(['put'])
+  })
+
+  it('a file the trash door leaves is named with the door’s reason, and the replace stands', async () => {
+    const f = filing(REPLACE)
+    const plan = await call('plan_lien_filing', { filing: f })
+    world.staged[stagePath()] = PDF
+    world.refuseTrash = true
+    const out = await call('apply_lien_filing', { filing: f, plan_hash: String((plan.body!.entries as Row[])[0]!.plan_hash) })
+    expect(out.body).toMatchObject({ ok: true, saved_copy: NEW_URL, old_copy: { was: OLD_URL, now: 'left where it is: A lien record still uses it.' } })
+  })
+
+  it('a Drive door that refuses the new file changes nothing, and the same apply can be sent again', async () => {
+    const f = filing(REPLACE)
+    const plan = await call('plan_lien_filing', { filing: f })
+    world.staged[stagePath()] = PDF
+    world.refuseDrive = true
+    const out = await call('apply_lien_filing', { filing: f, plan_hash: String((plan.body!.entries as Row[])[0]!.plan_hash) })
+    expect(out.isError).toBe(true)
+    expect(out.text).toContain('the scan was not put in place of the saved copy')
+    expect(world.writes).toEqual([])
+    expect(world.tables.job_lien_filings!.find((r) => r.id === 'on-file')).toMatchObject({ document_url: OLD_URL })
   })
 })

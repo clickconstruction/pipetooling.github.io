@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { loginAsUser } from '../../lib/loginAsUser'
-import { lookViewAsConfirm, lookViewAsFailed, lookViewAsLabel, lookViewAsLead, lookViewAsTail } from '../../lib/tasks/taskLook'
+import { lookViewAsConfirm, lookViewAsFailed, lookViewAsLabel, lookViewAsLanding, lookViewAsLead, lookViewAsTail } from '../../lib/tasks/taskLook'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
@@ -21,8 +21,8 @@ export function TaskLookViewAs({ personName, email, role }: { personName: string
     if (!ok) return
     setBusy(true)
     try {
-      // Lands on this page as them. A role that has no Review is sent to its own Today, which is the screen in the look.
-      await loginAsUser({ email, role })
+      // Lands on their Today, the screen in the look. Exit returns to this page.
+      await loginAsUser({ email, role }, lookViewAsLanding(window.location.origin))
     } catch (e) {
       showToast(formatErrorMessage(e, lookViewAsFailed(personName)), 'error')
       setBusy(false)

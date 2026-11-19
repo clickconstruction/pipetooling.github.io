@@ -16,6 +16,7 @@
  * larger figure, so no part is hidden.
  */
 
+import { SALARIED_DEFAULT_WEEK, formatDayHours, salariedUniformDayHours, salariedWeekHours, type SalariedWeek } from '../salariedEffectiveHours'
 import { draftPayrollRowCashDue } from '../draftPayrollPreviewCost'
 import { formatCurrency } from '../format'
 import { isPayStubFullyPaid, remainingPayStubBalance } from '../payStubPayments'
@@ -94,8 +95,14 @@ export type DraftPayrollBars = {
   period: DraftPayrollPeriodBar
 }
 
-/** The short chip on a salaried row; the long words and the hover come from the approvals queue. */
-export const SALARY_FLAT_HOURS_SHORT_CHIP = 'salary 8h'
+/**
+ * The short chip on a salaried row, from the person's own week: *salary 8h* or *salary 6h* when every paid day is
+ * that long, *salary 36h wk* when the days differ. The long words and the hover come from the approvals queue.
+ */
+export function salaryFlatHoursShortChip(week: SalariedWeek = SALARIED_DEFAULT_WEEK): string {
+  const day = salariedUniformDayHours(week)
+  return day != null ? `salary ${formatDayHours(day)}h` : `salary ${formatDayHours(salariedWeekHours(week))}h wk`
+}
 export const ESTIMATE_CHIP = 'est.'
 export const ESTIMATE_CHIP_TITLE = 'An estimate from the hours and the wage. No report exists yet, so nothing is fixed.'
 

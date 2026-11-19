@@ -10,6 +10,7 @@ import { lienNothingBilledWords, type LienClaimBill } from '../../lib/jobs/lienC
 import { claimDeltaWords, correctionNeedsLook, correctionSetWords, type CorrectedClaim, type LienClaimCorrection } from '../../lib/jobs/lienClaimCorrection'
 import { clearLienClaimCorrection, lookLienClaimCorrection, saveLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { LIEN_NOTICE_POLICIES, type LienDeskEntry, type LienDeskPile, type LienNoticePolicy } from '../../lib/jobs/lienDesk'
+import { lienGcNoticePress } from '../../lib/jobs/lienDeskGcPicker'
 import { LIEN_APPROVE_NO_MAIL_BY, LIEN_GC_GATE_NO_ADDRESS, lienFootBlockedSentence, lienGateMonthLine, lienGateShortWords, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey, type LienGateVerdict, type LienSentGatesFold } from '../../lib/jobs/lienDeskGates'
 import { shortDay as footShortDay } from '../../lib/jobs/lienFootChip'
 import { lienDeskJobLabel as jobLabel } from '../../lib/jobs/lienJobLabel'
@@ -72,6 +73,8 @@ export type LienNoticePaneContext = {
   onChanged: () => void
   onOpenEditJob: (jobId: string, focus?: "property-record" | "gc" | "lien-contract") => void
   onOpenJob: ((jobId: string) => void) | undefined
+  /** Put a GC on notice (v2.7806): the run window for a GC, opened by the press beside the GC's name on the job's heading. */
+  onPutGcOnNotice: ((gcId: string) => void) | undefined
   onCalendarChanged: ((what: "promise" | "kind" | "last_work") => void) | undefined
   isMobile: boolean
   leader: boolean
@@ -192,10 +195,12 @@ export type LienNoticePaneContext = {
  * editor needs.
  */
 export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
-  const { data, todayYmd, authUserId, authName, onChanged, onOpenEditJob, onOpenJob, onCalendarChanged, isMobile, leader, office, setCheckedMonths, coverNote, setCoverNote, housesInLetter, setHousesInLetter, releaseId, setByHandOpen, rulePick, setRulePick, detailsOpen, setDetailsOpen, busy, run, touchDraft, editing, setEditing, paperRef, editInputRef, payEditing, setPayEditing, payPaperRef, payInputRef, claimOpenSignal, paneScrolled, setPaneScrolled, stripRef, paneRef, activeGate, pickGate, kindOpen, setKindOpen, kindBusy, setNoticeFootHome, entries, suppliers, selected, job, gc, address, property, ownerName, stopOpen, setStopOpen, pickKind, promise, gcHasPriorNotice, wm, item, storedDraft, months, monthsList, openBalance, supplierJob, correction, lastSentAt, claimed, wordingDiff, wordingEditedBy, wordingLocked, paneSignature, signClearedLine, docHtml, onPaperClick, commitEdit, claimNumber, noticeRelease, releaseHtml, coverHtml, payPage, claimBills, unbilled, billFromHere, billWhy, payChangedCount, payHtml, onPayPaperClick, commitPayEdit, pageTotal, noticePageNumber, noteMissed, gcOpenTotal, toggleRelease, partedBandNode, saveRule, openPreview, counts, relightPages, pageLabel, monthCards, monthGrid, gates, gateVerdict, gateByKey, gatesFold, timeline, stopPaperFor, footInPane, stripChips, pressStripChip, stripChipStyle, simpleApprove, bandAct, onBandAct, paneHead, goToSection, relightPane } = ctx
+  const { data, todayYmd, authUserId, authName, onChanged, onOpenEditJob, onOpenJob, onPutGcOnNotice, onCalendarChanged, isMobile, leader, office, setCheckedMonths, coverNote, setCoverNote, housesInLetter, setHousesInLetter, releaseId, setByHandOpen, rulePick, setRulePick, detailsOpen, setDetailsOpen, busy, run, touchDraft, editing, setEditing, paperRef, editInputRef, payEditing, setPayEditing, payPaperRef, payInputRef, claimOpenSignal, paneScrolled, setPaneScrolled, stripRef, paneRef, activeGate, pickGate, kindOpen, setKindOpen, kindBusy, setNoticeFootHome, entries, suppliers, selected, job, gc, address, property, ownerName, stopOpen, setStopOpen, pickKind, promise, gcHasPriorNotice, wm, item, storedDraft, months, monthsList, openBalance, supplierJob, correction, lastSentAt, claimed, wordingDiff, wordingEditedBy, wordingLocked, paneSignature, signClearedLine, docHtml, onPaperClick, commitEdit, claimNumber, noticeRelease, releaseHtml, coverHtml, payPage, claimBills, unbilled, billFromHere, billWhy, payChangedCount, payHtml, onPayPaperClick, commitPayEdit, pageTotal, noticePageNumber, noteMissed, gcOpenTotal, toggleRelease, partedBandNode, saveRule, openPreview, counts, relightPages, pageLabel, monthCards, monthGrid, gates, gateVerdict, gateByKey, gatesFold, timeline, stopPaperFor, footInPane, stripChips, pressStripChip, stripChipStyle, simpleApprove, bandAct, onBandAct, paneHead, goToSection, relightPane } = ctx
   // The last day's window, opened from under the timeline's LAST WORK stop (v2.7684). It closes when another job is picked.
   const [lastWorkOpen, setLastWorkOpen] = useState(false)
   const selectedJobId = selected?.jobId ?? null
+  // The press beside the GC's name (v2.7806): the office's, on a computer, on a job with a GC, when the desk was handed the run window.
+  const gcPress = lienGcNoticePress({ office, handed: !!onPutGcOnNotice, isMobile, gcId: selected?.gcCustomerId, gcName: gc?.name })
   useEffect(() => setLastWorkOpen(false), [selectedJobId])
   const lastWorkSaved = () => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())
   // What the window weighs a typed day against: the job's label, its months with hours, the months a notice or the affidavit already names.
@@ -260,9 +265,20 @@ export function LienDeskNoticePane({ ctx }: { ctx: LienNoticePaneContext }) {
             the attorney’s letter · {letterTwoKindLabel(storedDraft.letterTwo.kind)}{storedDraft.letterTwo.afterSentAt ? ` · after the ${formatYmdMonthDay(calendarYmdInAppTzFromIso(storedDraft.letterTwo.afterSentAt))} packet` : ''}
           </span>
         ) : null}
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-          {gc?.name ? `· GC ${gc.name}` : '· no GC'} {job?.job_address ? `· ${job.job_address}` : ''}
-        </span>
+        {gcPress ? (
+          <>
+            {/* The GC's run opens from the job (v2.7806, the owner's pick: "Build 2"): the press sits beside the GC's name, where the title bar's door was a picker of every GC. */}
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>· GC {gc?.name}</span>
+            <button type="button" data-lien-gc-notice-press={gcPress.gcId} aria-label={gcPress.name} title={gcPress.hint} onClick={() => onPutGcOnNotice?.(gcPress.gcId)} style={{ alignSelf: 'center', padding: '1px 8px', border: '1px solid var(--border-amber)', borderRadius: 9999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}>
+              <span aria-hidden="true">⚠ </span>{gcPress.words}
+            </button>
+            {job?.job_address ? <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>· {job.job_address}</span> : null}
+          </>
+        ) : (
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+            {gc?.name ? `· GC ${gc.name}` : '· no GC'} {job?.job_address ? `· ${job.job_address}` : ''}
+          </span>
+        )}
         {/* Steps · Windows on the title line (v2.7317): the owner's ask, out of the timeline box's corner. */}
         {!isMobile && timeline ? <span style={{ marginLeft: 'auto', alignSelf: 'center' }}><LienTimelineViewSwitch /></span> : null}
       </div>

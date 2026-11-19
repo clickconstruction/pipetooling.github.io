@@ -2,8 +2,9 @@
 /**
  * v2.4077: the Workflow page's steps engine (data half) as a hook. Pins the seam — the load
  * (project and workflow together, then the steps, the viewer's subscriptions and the last 100
- * actions); a subcontractor's filtered read and its access error; the workflow found, created,
- * or adopted after a lost insert race, and one find-or-create per project at a time; line items
+ * actions); a subcontractor's filtered read and its access error; the workflow found on open and
+ * never made by one (punch list #397 PR 1: only a press makes it), created or adopted after a lost
+ * insert race by the press, and one find-or-create per project at a time; line items
  * for the roles that see them, an RLS refusal swallowed; refreshSteps forcing a re-read; and the
  * lifecycle runner (updates in order, the first failure stops it, then the action rows). Since
  * v2.5108 a load that leaves nothing to draw (a failed first steps read, a subcontractor with no
@@ -49,6 +50,9 @@ const eqOf = (steps: Step[], col: string) => steps.find((s) => s.method === 'eq'
 const ok = (data: unknown): Res => ({ data, error: null })
 const fail = (message: string, code?: string): Res => ({ data: null, error: { message, code } })
 const reads = (table: string) => queries.filter((q) => q.table === table && has(q.steps, 'select') && !has(q.steps, 'insert'))
+const workflowInserts = () => queries.filter((q) => q.table === 'project_workflows' && has(q.steps, 'insert'))
+/** Every call that would change a row, whatever the table. */
+const writes = () => queries.filter((q) => ['insert', 'update', 'delete', 'upsert'].some((m) => has(q.steps, m)))
 
 const stepRows = [
   { id: 's1', workflow_id: 'w1', name: 'Rough', sequence_order: 1, status: 'completed', assigned_to_name: 'Sam Sub' },
@@ -56,7 +60,7 @@ const stepRows = [
   { id: 's3', workflow_id: 'w1', name: 'Trim', sequence_order: 3, status: 'pending', assigned_to_name: null },
 ]
 
-type Opts = { workflows?: unknown[]; insertFails?: boolean; lineItems?: Res; updateFailsFor?: string; stepsReadFails?: boolean }
+type Opts = { workflows?: unknown[]; insertFails?: boolean; insertRefused?: boolean; gc?: boolean; lineItems?: Res; updateFailsFor?: string; stepsReadFails?: boolean }
 function world(opts: Opts = {}) {
   let workflows = opts.workflows ?? [{ id: 'w1', project_id: 'p1' }]
   route = (table, steps) => {
@@ -66,6 +70,8 @@ function world(opts: Opts = {}) {
         return ok(single ? { id: 'p1', name: 'Elm Street' } : [{ id: 'p1', name: 'Elm Street' }])
       case 'project_workflows':
         if (has(steps, 'insert')) {
+          // A refusal as PostgREST answers it: a plain object with a code, never an Error.
+          if (opts.insertRefused) return fail('new row violates row-level security policy for table "project_workflows"', '42501')
           if (opts.insertFails) {
             workflows = [{ id: 'w-raced', project_id: 'p1' }]
             return fail('duplicate key')
@@ -95,6 +101,7 @@ function world(opts: Opts = {}) {
         return opts.lineItems ?? ok([{ id: 'li1', step_id: 's1', amount: 10 }, { id: 'li2', step_id: 's2', amount: 20 }])
       case 'gc_projects':
         // Not a GC project (v2.4846): maybeSingle() answers null when no row matches.
+        if (opts.gc) return ok(has(steps, 'maybeSingle') ? { project_id: 'p1' } : [{ project_id: 'p1' }])
         return ok(has(steps, 'maybeSingle') ? null : [])
       case 'users':
         return ok({ name: 'Pat Office', email: 'pat@example.test' })
@@ -113,6 +120,7 @@ function Probe({ role, name = 'Pat Office' }: { role: WorkflowViewerRole | null;
         {latest.loading ? 'loading' : `wf:${latest.workflow?.id ?? '-'} steps:${latest.steps.map((s) => s.id).join(',') || '-'} items:${Object.keys(latest.lineItems).sort().join(',') || '-'} error:${latest.error ?? '-'}`}
       </div>
       <div data-testid="load">{`load:${latest.loadError ?? '-'}`}</div>
+      <div data-testid="gc">{`gc:${latest.gcProjectId ?? '-'}`}</div>
     </>
   )
 }
@@ -186,19 +194,93 @@ describe('useWorkflowStepsEngine', () => {
     expect(screen.getByTestId('e').textContent).toMatch(/error:-$/)
   })
 
-  it('creates the project’s workflow when there is none, named after the project', async () => {
+  it('opening a project with no workflow makes none: the open only reads (punch list #397 PR 1)', async () => {
     world({ workflows: [] })
     renderWithProviders(<Probe role="dev" />)
-    await screen.findByText(/^wf:w-new /)
-    const insert = queries.find((q) => q.table === 'project_workflows' && has(q.steps, 'insert'))!
-    expect(insert.steps[0]).toEqual({ method: 'insert', args: [{ project_id: 'p1', name: 'Elm Street workflow', status: 'draft' }] })
+    await screen.findByText(/^wf:- steps:- /)
+    await settle()
+    await new Promise((r) => setTimeout(r, 80))
+    expect(writes()).toEqual([])
+    expect(screen.getByTestId('load').textContent).toBe('load:-')
+    expect(reads('project_workflows').length).toBeGreaterThan(0)
   })
 
-  it('adopts the workflow another caller created when its own insert loses the race', async () => {
+  it('a re-read on a project with no workflow makes none either', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    world({ workflows: [] })
+    renderWithProviders(<Probe role="dev" />)
+    await screen.findByText(/^wf:- /)
+    await act(async () => {
+      expect(await latest.refreshSteps()).toBe('No workflow ID')
+    })
+    expect(writes()).toEqual([])
+  })
+
+  it('Start a workflow makes the project’s workflow, named after the project, then reads its steps', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    world({ workflows: [] })
+    renderWithProviders(<Probe role="dev" />)
+    await screen.findByText(/^wf:- /)
+    await settle()
+    await act(async () => {
+      await latest.startWorkflow()
+    })
+    await screen.findByText(/^wf:w-new steps:s1,s2,s3 /)
+    expect(workflowInserts()).toHaveLength(1)
+    expect(workflowInserts()[0]!.steps[0]).toEqual({ method: 'insert', args: [{ project_id: 'p1', name: 'Elm Street workflow', status: 'draft' }] })
+    expect(latest.startingWorkflow).toBe(false)
+  })
+
+  it('two presses at once make one workflow', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    world({ workflows: [] })
+    renderWithProviders(<Probe role="dev" />)
+    await screen.findByText(/^wf:- /)
+    await settle()
+    await act(async () => {
+      await Promise.all([latest.startWorkflow(), latest.startWorkflow(), latest.ensureWorkflow('p1')])
+    })
+    await screen.findByText(/^wf:w-new /)
+    expect(workflowInserts()).toHaveLength(1)
+  })
+
+  it('adopts the workflow another caller created when the press’s own insert loses the race', async () => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     world({ workflows: [], insertFails: true })
     renderWithProviders(<Probe role="dev" />)
+    await screen.findByText(/^wf:- /)
+    await act(async () => {
+      await latest.startWorkflow()
+    })
     await screen.findByText(/^wf:w-raced /)
+    expect(latest.error).toBeNull()
+  })
+
+  it('a refused insert names its reason in error, and the page it was pressed on stays', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    world({ workflows: [], insertRefused: true })
+    renderWithProviders(<Probe role="dev" />)
+    await screen.findByText(/^wf:- /)
+    await act(async () => {
+      await latest.startWorkflow()
+    })
+    expect(latest.workflow).toBeNull()
+    expect(latest.loadError).toBeNull()
+    // The caller's sentence leads and the class's own words follow: never the bare fallback alone.
+    expect(latest.error).toMatch(/^The workflow could not be started\. \S/)
+    expect(latest.error).not.toBe('The workflow could not be started.')
+    expect(latest.startingWorkflow).toBe(false)
+  })
+
+  it('a GC project gets none, on open or on a press (v2.4846)', async () => {
+    world({ workflows: [], gc: true })
+    renderWithProviders(<Probe role="dev" />)
+    await screen.findByText('gc:p1')
+    await act(async () => {
+      expect(await latest.ensureWorkflow('p1')).toBeNull()
+    })
+    expect(writes()).toEqual([])
   })
 
   it('runs one find-or-create per project at a time', async () => {

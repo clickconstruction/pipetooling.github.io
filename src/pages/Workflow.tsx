@@ -48,6 +48,9 @@ import { StepFormModal } from '../components/workflow/StepFormModal'
 import { WorkflowErrorBanner } from '../components/workflow/WorkflowErrorBanner'
 import type { PersonContactInfo } from '../components/workflow/PersonDisplayWithContact'
 import { PersonContactModal } from '../components/workflow/PersonContactModal'
+import { EmptyState } from '../components/EmptyState'
+import { emptyWordsWithPress } from '../lib/emptyWords'
+import { canStartWorkflow, noWorkflowWords } from '../lib/workflow/workflowStart'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import type { Database } from '../types/database'
 
@@ -75,6 +78,8 @@ export default function Workflow() {
     setError,
     lineItems,
     ensureWorkflow,
+    startWorkflow,
+    startingWorkflow,
     gcProjectId,
     loadProject,
     loadLineItemsForSteps,
@@ -655,7 +660,10 @@ export default function Workflow() {
       </div>
     )
   }
-  if (!project || !workflow) return <p>Project or workflow not found.</p>
+  if (!project) return <p>Project or workflow not found.</p>
+  // No workflow yet (punch list #397 PR 1): opening the page made none. The roles whose insert
+  // the database takes get the press that makes it; every other role reads that there is none.
+  const noWorkflow = noWorkflowWords(canStartWorkflow(userRole), startingWorkflow)
 
   return (
     <div className="workflow">
@@ -722,9 +730,11 @@ export default function Workflow() {
                     {oldStagesCollapsed ? 'Show Old Steps' : 'Hide Old Steps'}
                   </button>
                 )}
-                <button type="button" onClick={() => openAddStep()} className="wf-btn-primary" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  Add step
-                </button>
+                {workflow && (
+                  <button type="button" onClick={() => openAddStep()} className="wf-btn-primary" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    Add step
+                  </button>
+                )}
               </span>
             )}
           </div>
@@ -766,8 +776,12 @@ export default function Workflow() {
         )}
       </div>
 
+      {!workflow && (
+        <EmptyState {...emptyWordsWithPress(noWorkflow, { onPress: () => void startWorkflow() })} />
+      )}
+
       {/* Projections + Ledger - Summary bar and unified table */}
-      {(canEditProjections || canManageStages) && (
+      {workflow && (canEditProjections || canManageStages) && (
         <WorkflowFinancialsPanel
           projections={projections}
           steps={steps}
@@ -780,7 +794,7 @@ export default function Workflow() {
         />
       )}
 
-      <WorkflowStagesList
+      {workflow && <WorkflowStagesList
         engine={engine}
         writes={stepWrites}
         projections={projectionsApi}
@@ -812,7 +826,7 @@ export default function Workflow() {
         loadInvoiceDetails={loadInvoiceDetails}
         availablePOs={availablePOs}
         availableInvoices={availableInvoices}
-      />
+      />}
 
       {stepForm.open && (
         <StepFormModal

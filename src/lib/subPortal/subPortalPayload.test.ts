@@ -52,3 +52,19 @@ describe('parseSubPortalPayload (v2.3605 payment traces)', () => {
     expect(parseSubPortalPayload(base)!.paymentTraces).toEqual([])
   })
 })
+
+describe('parseSubPortalPayload (punch list #388: the day the customer paid)', () => {
+  const sheetsOf = (sheets: unknown[]) => parseSubPortalPayload({ subName: 'Danny', totals: { earned: 1, paid: 0, open: 1 }, sheets, offers: [] })!.sheets
+
+  it('keeps a day, and is absent for an older function', () => {
+    const [paid, plain] = sheetsOf([{ id: 's1', items: [], stage: 'customer_pay', customerPaidOn: '2026-11-12' }, { id: 's2', items: [], stage: 'customer_pay' }])
+    expect(paid!.customerPaidOn).toBe('2026-11-12')
+    expect('customerPaidOn' in plain!).toBe(false)
+  })
+
+  it('drops anything that is not a day', () => {
+    for (const bad of ['Nov 12', '2026-11-12T00:00:00Z', 20261112, true, null, { day: '2026-11-12' }]) {
+      expect('customerPaidOn' in sheetsOf([{ id: 's1', items: [], customerPaidOn: bad }])[0]!).toBe(false)
+    }
+  })
+})

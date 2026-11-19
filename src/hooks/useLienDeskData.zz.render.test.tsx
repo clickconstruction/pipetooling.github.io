@@ -22,6 +22,8 @@ const RPC: Record<string, unknown[]> = {
     { job_id: 'Z', retainage_held: 100, contract_ended_on: null, contract_ended_how: null, deadline: null, noticed: false, open_balance: 100, customer_id: 'c1', gc_customer_id: 'gc-1', property_kind: 'commercial', has_owner: true },
   ],
 }
+// A reader that answers an error instead of rows, by name: PostgREST's answer for a function that is not there yet.
+const RPC_REFUSED: Record<string, { code: string; message: string }> = {}
 const job = (id: string, name: string, customer: string) => ({ id, hcp_number: id, click_number: null, job_name: name, customer_name: customer, gc_customer_id: 'gc-1', revenue: 500, payments_made: 0 })
 const TABLES: Record<string, unknown[]> = {
   job_lien_desk_items: [
@@ -40,7 +42,7 @@ vi.mock('../lib/supabase', () => ({
       chain.then = (resolve: (v: unknown) => void) => resolve({ data: TABLES[table] ?? [], error: null })
       return chain
     },
-    rpc: (name: string) => Promise.resolve({ data: RPC[name] ?? [], error: null }),
+    rpc: (name: string) => Promise.resolve(RPC_REFUSED[name] ? { data: null, error: RPC_REFUSED[name] } : { data: RPC[name] ?? [], error: null }),
   },
 }))
 vi.mock('../utils/errorHandling', () => ({
@@ -420,3 +422,63 @@ describe('useLienDeskData · a job a person took off the lien path leaves at the
   })
 })
 
+describe('useLienDeskData · a lien day that passed with nothing filed stays until someone answers it (v2.7817)', () => {
+  /** Job C's lien day passed 55 days before the test's 2026-10-09; the windows reader stopped listing it after seven. */
+  const closedDay = (jobId: string, over: Record<string, unknown> = {}) => ({ job_id: jobId, last_month: '2026-04', deadline: '2026-08-15', is_sub: true, noticed: true, filed: false, open_balance: 900, customer_id: 'c1', gc_customer_id: 'gc-1', property_kind: 'commercial', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null, month_source: 'hours', ...over })
+  const withClosed = async (rows: unknown[], opts: { light?: boolean; hideZzTestJobs?: boolean; jobs?: unknown[] } = {}) => {
+    const jobsLedger = TABLES.jobs_ledger!
+    RPC.list_lien_closed_days = rows
+    TABLES.jobs_ledger = [...jobsLedger, { ...job('C', 'Cedar Hollow Clinic', 'Ann Lee'), status: 'billed', revenue: 900 }, ...(opts.jobs ?? [])]
+    try {
+      const { result } = renderHook(() => useLienDeskData(true, '2026-10-09', { light: opts.light ?? false, hideZzTestJobs: opts.hideZzTestJobs ?? false }))
+      await waitFor(() => expect(result.current.data).not.toBeNull())
+      return result.current.data!
+    } finally {
+      delete RPC.list_lien_closed_days
+      TABLES.jobs_ledger = jobsLedger
+    }
+  }
+
+  it('the closed day is an affidavit row after the windows rows, its job is read, and it stands in Missed', async () => {
+    const data = await withClosed([closedDay('C')])
+    expect(data.affidavitRows.map((r) => r.job_id)).toEqual(['Y', 'C'])
+    expect(data.jobsById.C).toMatchObject({ job_name: 'Cedar Hollow Clinic' })
+    const entry = data.affidavits.entries.find((e) => e.jobId === 'C')!
+    expect(entry).toMatchObject({ pile: 'missed', daysLeft: -55, deadline: '2026-08-15', openBalance: 900 })
+    expect(data.affidavits.counts.missed).toBe(1)
+    // The job the windows reader lists reads as it did.
+    expect(data.affidavits.entries.find((e) => e.jobId === 'Y')!.pile).not.toBe('missed')
+  })
+
+  it('the Dashboard’s light read carries it too, so its strip and the Board count the same papers', async () => {
+    const data = await withClosed([closedDay('C')], { light: true })
+    expect(data.affidavits.piles.missed.map((e) => e.jobId)).toEqual(['C'])
+  })
+
+  it('before the migration is pushed the reader is not there: the desk reads as before, with no closed day', async () => {
+    RPC_REFUSED.list_lien_closed_days = { code: 'PGRST202', message: 'Could not find the function public.list_lien_closed_days without parameters in the schema cache' }
+    try {
+      const data = await withClosed([closedDay('C')])
+      expect(data.affidavitRows.map((r) => r.job_id)).toEqual(['Y'])
+      expect(data.affidavits.counts.missed).toBe(0)
+      expect(data.rows.map((r) => r.job_id).sort()).toEqual(['A', 'Z'])
+    } finally {
+      delete RPC_REFUSED.list_lien_closed_days
+    }
+  })
+
+  it('a job both readers name is listed once, by its windows row', async () => {
+    const data = await withClosed([closedDay('Y'), closedDay('C')])
+    expect(data.affidavitRows.map((r) => r.job_id)).toEqual(['Y', 'C'])
+    expect(data.affidavitRows.find((r) => r.job_id === 'Y')).toMatchObject({ deadline: '2026-10-15', open_balance: 300 })
+  })
+
+  it('it leaves the way every job leaves the desk: a hidden ZZ test job, a job an in-kind deal pays, a job off the lien path', async () => {
+    const zz = await withClosed([closedDay('C'), closedDay('T')], { hideZzTestJobs: true, jobs: [{ ...job('T', 'ZZ TEST closed day', 'Ann Lee'), status: 'billed' }] })
+    expect(zz.affidavits.piles.missed.map((e) => e.jobId)).toEqual(['C'])
+    const more = [{ ...job('K', 'Kiln Road', 'Ann Lee'), status: 'billed', in_kind_arrangement_id: 'deal-1' }, { ...job('P', 'Parrow Court', 'Ann Lee'), status: 'billed', lien_path_answer: 'off_path', lien_path_reason: 'No lien right here.' }]
+    const off = await withClosed([closedDay('C'), closedDay('K'), closedDay('P')], { jobs: more })
+    expect(off.affidavits.piles.missed.map((e) => e.jobId)).toEqual(['C'])
+    expect(off.offPathJobs!.map((j) => j.jobId)).toEqual(['P'])
+  })
+})

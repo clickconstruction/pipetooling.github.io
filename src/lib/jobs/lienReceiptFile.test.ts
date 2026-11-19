@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_RECEIPT_WORDS, lienCopyProofChanged, lienReceiptFileName, lienReceiptIsPdf, lienReceiptNotKeptWords, lienReceiptProblem, lienReceiptTakeOffAsk, lienSendsWithProof } from './lienReceiptFile'
+import { lienReceiptDoubt, LIEN_RECEIPT_WORDS, lienCopyProofChanged, lienReceiptFileName, lienReceiptIsPdf, lienReceiptNotKeptWords, lienReceiptProblem, lienReceiptTakeOffAsk, lienSendsWithProof } from './lienReceiptFile'
 import { keepLienCopyProof, type LienReceiptKeepIo } from './lienReceiptKeepIo'
 
 const MB = 1024 * 1024
@@ -63,8 +63,8 @@ describe('one copy’s proof merged into the filing’s sends', () => {
   })
 
   it('words a write that did not reach the filing, with what still saves it', () => {
-    expect(lienReceiptNotKeptWords('The network dropped.')).toBe('Not kept yet: The network dropped. Record saves it with the day.')
-    expect(lienReceiptNotKeptWords('')).toBe('Not kept yet. Record saves it with the day.')
+    expect(lienReceiptNotKeptWords('The network dropped.')).toBe('Not kept yet: The network dropped. Click the box and leave it to try again.')
+    expect(lienReceiptNotKeptWords('')).toBe('Not kept yet. Click the box and leave it to try again.')
   })
 })
 
@@ -92,5 +92,33 @@ describe('lienReceiptTakeOffAsk (v2.7743)', () => {
     expect(LIEN_RECEIPT_WORDS.takeOffAsk).toBe(lienReceiptTakeOffAsk('https://drive.google.com/open?id=made-up-file-01'))
     expect(lienReceiptTakeOffAsk('https://example.com/receipt.pdf')).toBe('Take this receipt off?')
     expect(lienReceiptTakeOffAsk('')).toBe('Take this receipt off?')
+  })
+})
+
+describe('lienReceiptDoubt', () => {
+  // Every name and number here is made up.
+  const pdf = (name: string, size = 470000) => ({ name, size })
+
+  it('questions a file whose name holds the lien’s document number, however it is spaced', () => {
+    expect(lienReceiptDoubt(pdf('J9004 Lien (20260229004).pdf'), { recordingNumber: '20260229004' })).toEqual({ kind: 'lien', words: 'This looks like the lien, not a mail receipt. Its name holds this lien’s document number.' })
+    expect(lienReceiptDoubt(pdf('2026-0229-004 stamped.pdf'), { recordingNumber: ' 2026 0229 004 ' })?.kind).toBe('lien')
+  })
+
+  it('questions a file whose name says lien or affidavit', () => {
+    expect(lienReceiptDoubt(pdf('J9004 Lien.pdf'), {})).toEqual({ kind: 'lien', words: 'This looks like the lien, not a mail receipt. Its name says so.' })
+    expect(lienReceiptDoubt(pdf('affidavit_9004.PDF'), { recordingNumber: '' })?.kind).toBe('lien')
+    // A word that only holds the letters is not the word.
+    expect(lienReceiptDoubt(pdf('client receipt.pdf'), {})).toBeNull()
+  })
+
+  it('questions the file the lien’s other envelope just took', () => {
+    expect(lienReceiptDoubt(pdf('scan 12.pdf'), { other: pdf('scan 12.pdf') })).toEqual({ kind: 'same', words: 'This is the same file as this lien’s other envelope. Each envelope has its own receipt.' })
+    expect(lienReceiptDoubt(pdf('scan 12.pdf'), { other: pdf('scan 12.pdf', 9) })).toBeNull()
+  })
+
+  it('lets a receipt through: a camera’s name, a short number, another lien’s number', () => {
+    expect(lienReceiptDoubt(pdf('IMG_4410.jpg'), { recordingNumber: '20260229004' })).toBeNull()
+    expect(lienReceiptDoubt(pdf('receipt 4410.pdf'), { recordingNumber: '4410' })).toBeNull()
+    expect(lienReceiptDoubt(pdf('20260229005.pdf'), { recordingNumber: '20260229004', other: null })).toBeNull()
   })
 })
