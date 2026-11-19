@@ -3786,6 +3786,8 @@ Since v2.7860 a trip made again under its own id is tied to the line it held whe
 **Deleted trips** is the fold under the Trips look's rows since v2.7804, on the ground of v2.7800 (`lib/trips/tripDeleted.ts`, `trip_deleted_list`): a deleted trip is kept 90 days in the deleted-records archive, and its line says who deleted it and until when it is kept.
 **Put back** saves a deleted trip again under its own id through the trip's own save, so it returns with who went, its days and its number, and a job deleted since is left out and said.
 A site whose only trip was deleted still shows its look, and the delete's question says the trip waits under Deleted trips after its minute of Undo.
+**Split in two** (since v2.7891, `lib/trips/tripSplit.ts`, `trip_split`) is the press beside **Change** on an open trip of two days or more: the trip keeps its number and the days before the day picked, and a new trip takes the rest with the next number.
+Each person goes where their days are, a trip on a bill keeps its line while the new trip starts with no billing said, and a split has no undo.
 Since v2.7861 a job combine carries a trip's job links to the job that is kept (`migrate_job_ledger_costs_and_delete`), where before they went with the job that was deleted.
 Since v2.7884 it also carries a trip the deleted job held by itself: the trip goes to the kept job's development when it is in one, and to the kept job when it is in none.
 A trip that moves home this way keeps its number when the new home never handed that number out, and takes the new home's next number otherwise (`trips_take_number`).

@@ -9,7 +9,8 @@ import type { TripDismissalInsert, TripDismissalRow } from '../lib/trips/tripOff
 import type { DeletedTrip } from '../lib/trips/tripDeleted'
 import { milesFromShop, tripsLookShows, TRIP_FAR_MILES_DEFAULT } from '../lib/trips/tripPlace'
 import type { TripRecord, TripRosterPerson } from '../lib/trips/tripRecord'
-import { deleteTrip, deleteTripDismissals, insertTripDismissals, readDeletedTrips, readSiteDismissals, readSitePunches, readSiteTrips, readTripFarMiles, readTripRoster, saveTrip } from '../lib/trips/tripsIo'
+import { parseTripSplitReply, type TripSplitReply } from '../lib/trips/tripSplit'
+import { deleteTrip, deleteTripDismissals, insertTripDismissals, readDeletedTrips, readSiteDismissals, readSitePunches, readSiteTrips, readTripFarMiles, readTripRoster, saveTrip, splitTrip } from '../lib/trips/tripsIo'
 import { useAddressGeocodeCoords } from './useAddressGeocodeCoords'
 
 /**
@@ -40,6 +41,8 @@ export type SiteTripsIo = {
   /** Saves the trip whole; hands back the number the database gave it, when the reply names one. */
   save: (record: TripRecord) => Promise<number | null | void>
   remove: (id: string) => Promise<void>
+  /** Split a trip in two at a day; hands back the function's reply as it came. Absent, the screen cannot split. */
+  split?: (id: string, fromDay: string) => Promise<unknown>
   dismiss: (rows: ReadonlyArray<TripDismissalInsert>) => Promise<TripDismissalRow[]>
   undismiss: (ids: ReadonlyArray<string>) => Promise<void>
 }
@@ -59,6 +62,7 @@ export const supabaseSiteTripsIo: SiteTripsIo = {
   readNames: (userIds) => readUserNames(userIds),
   save: saveTrip,
   remove: deleteTrip,
+  split: splitTrip,
   dismiss: insertTripDismissals,
   undismiss: deleteTripDismissals,
 }
@@ -96,6 +100,8 @@ export type SiteTripsState = {
   reload: () => void
   save: (record: TripRecord) => Promise<void>
   remove: (id: string) => Promise<void>
+  /** Split a trip in two at a day, then read the site's trips again. Null when the reply names no second trip. */
+  split: (id: string, fromDay: string) => Promise<TripSplitReply | null>
   /** Remember Not a trip, one row a person; the rows come back with their ids. */
   dismiss: (rows: ReadonlyArray<TripDismissalInsert>) => Promise<TripDismissalRow[]>
   /** Take a Not a trip back by its rows' ids. */
@@ -258,6 +264,16 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
     },
     [io, reload],
   )
+  const split = useCallback(
+    async (id: string, fromDay: string) => {
+      if (!io.split) throw new Error('This screen cannot split a trip.')
+      const reply = parseTripSplitReply(await io.split(id, fromDay))
+      // Two trips now stand where one did: the site's trips are read again, and the new one arrives with its number.
+      reload()
+      return reply
+    },
+    [io, reload],
+  )
 
   const dismiss = useCallback(
     async (rows: ReadonlyArray<TripDismissalInsert>) => {
@@ -277,5 +293,5 @@ export function useSiteTrips({ developmentId, jobIds, address, enabled, io = sup
 
   const punches = punchRead && punchRead.key === punchKey ? punchRead : null
   const dismissals = dismissRead && dismissRead.key === dismissKey ? dismissRead.rows : null
-  return { records, failure, miles, sitePoint, sitePointKnown, shows, deleted, deletedKnown, deletedFailed: !!deletedNow?.failed, roster, punches: punches?.rows ?? (punchKey ? null : []), punchesFailed: !!punches?.failed, dismissals, names, askRoster, reload, save, remove, dismiss, undismiss }
+  return { records, failure, miles, sitePoint, sitePointKnown, shows, deleted, deletedKnown, deletedFailed: !!deletedNow?.failed, roster, punches: punches?.rows ?? (punchKey ? null : []), punchesFailed: !!punches?.failed, dismissals, names, askRoster, reload, save, remove, split, dismiss, undismiss }
 }

@@ -26,6 +26,9 @@
  * press's place, and its billing chip says where its money stands, read from the line and the bill that took
  * it (`lib/trips/tripBillLine.ts`). The look is handed the lines; with none handed, a trip says its own word.
  *
+ * Split in two (v2.7891): an open trip of two days or more shows **Split in two** beside **Change**, to the reader
+ * who can write. The press opens the page's window (`TripSplitWindow`); the rules are `lib/trips/tripSplit.ts`.
+ *
  * Deleted trips: under the rows, a fold for the reader who can write, closed until pressed. Each deleted trip says
  * who deleted it and until when it is kept, with **Put back**, which saves it again (`lib/trips/tripDeleted.ts`).
  */
@@ -37,6 +40,7 @@ import { TRIP_COST_CAP, TRIP_COST_WHO, tripCostLines, type TripCardsState, type 
 import { tripEvidenceChips, type TripEvidence, type TripEvidenceChip } from '../../lib/trips/tripEvidence'
 import { TRIP_HOUR_BUCKET_LABEL, type TripHourBucket } from '../../lib/trips/tripHours'
 import { tripRowAnchor } from '../../lib/trips/jobTrips'
+import { canSplitTrip, TRIP_SPLIT_LABEL, TRIP_SPLIT_PRESS_TITLE } from '../../lib/trips/tripSplit'
 import { TRIP_DELETED_FAILED_WORDS, TRIP_DELETED_FOLD_LABEL, TRIP_DELETED_NOTE, TRIP_PUT_BACK_LABEL, type DeletedTripLine } from '../../lib/trips/tripDeleted'
 import { TRIP_PUT_ON_BILL_LABEL, tripBillStanding, tripPutOnBillShows, type TripBillLine, type TripBillStanding } from '../../lib/trips/tripBillLine'
 import { TRIP_BILLING_WORDS, type TripRecord } from '../../lib/trips/tripRecord'
@@ -100,6 +104,7 @@ export function DevelopmentTripsLook({
   onAdd,
   onChange,
   onDelete,
+  onSplit,
   offers = [],
   moreOffersWords = null,
   offerBusy = false,
@@ -136,6 +141,8 @@ export function DevelopmentTripsLook({
   onAdd: () => void
   onChange: (record: TripRecord) => void
   onDelete: (record: TripRecord) => void
+  /** **Split in two**: open the window on this trip. Absent, the press is not drawn. A trip of one day never shows it. */
+  onSplit?: (record: TripRecord) => void
   /** Runs of punches at the site that no trip covers, oldest first. Drawn only for a reader who can write, once the hours are read, on a site with a point. */
   offers?: ReadonlyArray<TripOfferLine>
   /** The quiet line under the offers when more wait behind them. */
@@ -440,7 +447,7 @@ export function DevelopmentTripsLook({
                     ) : null}
                   </div>
                 </button>
-                {open ? <OpenTrip row={row} billStanding={billStanding} onPutOnBill={showsPutOnBill ? () => onPutOnBill?.(row.record) : undefined} onOpenBillLine={billLine && onOpenBillLine ? () => onOpenBillLine(row.record, billLine) : undefined} evidence={evidence?.get(row.id) ?? null} costLines={costs && row.standing !== 'planned' ? tripCostLines(costs.byTrip.get(row.id), costs) : null} phone={phone} jobLabel={jobLabel} canWrite={canWrite} hoursState={hoursState} onChange={() => onChange(row.record)} onDelete={() => onDelete(row.record)} onCopyLink={onCopyLink ? () => onCopyLink(row.record) : undefined} /> : null}
+                {open ? <OpenTrip row={row} billStanding={billStanding} onPutOnBill={showsPutOnBill ? () => onPutOnBill?.(row.record) : undefined} onOpenBillLine={billLine && onOpenBillLine ? () => onOpenBillLine(row.record, billLine) : undefined} evidence={evidence?.get(row.id) ?? null} costLines={costs && row.standing !== 'planned' ? tripCostLines(costs.byTrip.get(row.id), costs) : null} phone={phone} jobLabel={jobLabel} canWrite={canWrite} hoursState={hoursState} onChange={() => onChange(row.record)} onDelete={() => onDelete(row.record)} onSplit={onSplit && canSplitTrip(row.record) ? () => onSplit(row.record) : undefined} onCopyLink={onCopyLink ? () => onCopyLink(row.record) : undefined} /> : null}
               </div>
             )
           })}
@@ -500,7 +507,7 @@ const KIND_ROWS: ReadonlyArray<{ bucket: Exclude<TripHourBucket, 'home' | 'noPla
 ]
 
 /** One trip, open in place: what was typed on the left, what is counted from the clock on the right. */
-function OpenTrip({ row, billStanding, onPutOnBill, onOpenBillLine, evidence, costLines, phone, jobLabel, canWrite, hoursState, onChange, onDelete, onCopyLink }: { row: TripLookRow; /** Where the trip's money stands, read from its line; null when its own billing word says everything. */ billStanding: TripBillStanding | null; /** **Put on a bill**; absent when the press does not show on this trip. */ onPutOnBill?: () => void; /** The door to the trip's line; absent when it holds none. */ onOpenBillLine?: () => void; evidence: TripEvidence | null; /** What it cost, for a dev or a controller; null for everyone else and for a trip that has not gone out. */ costLines: ReadonlyArray<TripCostLine> | null; phone: boolean; jobLabel: (jobId: string) => string | null; canWrite: boolean; hoursState: TripsHoursState; onChange: () => void; onDelete: () => void; /** Copies the link that opens this trip; shown to everyone who sees the look. */ onCopyLink?: () => void }) {
+function OpenTrip({ row, billStanding, onPutOnBill, onOpenBillLine, evidence, costLines, phone, jobLabel, canWrite, hoursState, onChange, onDelete, onSplit, onCopyLink }: { row: TripLookRow; /** Where the trip's money stands, read from its line; null when its own billing word says everything. */ billStanding: TripBillStanding | null; /** **Put on a bill**; absent when the press does not show on this trip. */ onPutOnBill?: () => void; /** The door to the trip's line; absent when it holds none. */ onOpenBillLine?: () => void; evidence: TripEvidence | null; /** What it cost, for a dev or a controller; null for everyone else and for a trip that has not gone out. */ costLines: ReadonlyArray<TripCostLine> | null; phone: boolean; jobLabel: (jobId: string) => string | null; canWrite: boolean; hoursState: TripsHoursState; onChange: () => void; onDelete: () => void; /** **Split in two**; absent on a trip of one day and for a reader who cannot write. */ onSplit?: () => void; /** Copies the link that opens this trip; shown to everyone who sees the look. */ onCopyLink?: () => void }) {
   const r = row.record
   const h = row.hours
   const cell = { padding: '5px 8px', borderTop: '1px solid var(--border)', verticalAlign: 'top' } as const
@@ -521,6 +528,13 @@ function OpenTrip({ row, billStanding, onPutOnBill, onOpenBillLine, evidence, co
               <SmallButton onClick={onChange} title="Change who went, the days, what for and the rest">
                 Change
               </SmallButton>
+            ) : null}
+            {canWrite && onSplit ? (
+              <span data-testid="trip-split">
+                <SmallButton onClick={onSplit} title={TRIP_SPLIT_PRESS_TITLE}>
+                  {TRIP_SPLIT_LABEL}
+                </SmallButton>
+              </span>
             ) : null}
             {/* One trip, one line: the press shows until the trip holds a line, and the door to the line takes its place. */}
             {onPutOnBill ? (

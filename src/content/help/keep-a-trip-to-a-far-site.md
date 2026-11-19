@@ -2,7 +2,7 @@
 title: keep a trip to a site away from home
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: trip, trips, extra trips not on a bill, bill tab trips, add a trip from a job, deleted trips, put back, put a trip back, undo a deleted trip, restore a trip, put on a bill, bill a trip, a trip's line, extra trip, bill the 1 picked, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log, trip number, number, trip 1, trip 5, copy link, link to a trip, open a trip
+keywords: trip, trips, extra trips not on a bill, bill tab trips, add a trip from a job, split in two, split a trip, a trip that was two, deleted trips, put back, put a trip back, undo a deleted trip, restore a trip, put on a bill, bill a trip, a trip's line, extra trip, bill the 1 picked, out of state, away from home, travel, mobilization, site visit, days at the site, on the road, getting ready, at home for the site, no place on the punch, hours at the site, far site, development, who asked, extra, inside the price, painted days, planned, out now, back, looks like a trip, make it a trip, not a trip, what shows it, punches at the site, stamps, trips on this job, job window, clock line, tag, plans by date, trips lane, what it cost, trip cost, card and bank charges in the days, scoreboard, cut by trip, print the trip log, trip log, trip number, number, trip 1, trip 5, copy link, link to a trip, open a trip
 order: 76
 ---
 A trip is one going out to a site away from home and coming back. You keep it on the site's Development page, apart from the hours on its jobs.
@@ -205,6 +205,28 @@ After that minute the trip waits under **Deleted trips** for 90 days.
 Deleting a trip changes no clock row, no bill and no cost.
 
 A trip on a job's lines leaves its line on the job. **Undo** puts the trip back and ties it to that line again.
+
+## Split a trip that was really two
+
+Sometimes one trip is really two. The crew went home in the middle and came back.
+
+1. Open the trip.
+2. Press {{button:outline|Split in two}}.
+3. Pick the day the second trip starts. A day that follows days at home says so.
+4. Read the two trips the window shows.
+5. Press {{button:blue|Split into two trips}}.
+
+The first trip keeps its number and the days before that day. The second is a new trip with the next number.
+
+Each person goes where their days are. A person with days on both sides is on both trips.
+
+Both trips keep what it was for, who asked, how it went and the jobs. No clock row, bill or cost changes.
+
+A trip on a job's lines keeps its line. The new trip then starts with no billing said.
+
+A split has no undo. To take one back, delete the new trip. Then add its days to the first trip with {{button:outline|Change}}.
+
+A trip of one day has no **Split in two**.
 
 ## Put a deleted trip back
 
@@ -448,4 +470,4 @@ A browser can block the print window. The look then says so beside the link. All
 
 ## Who can do this
 
-The office, the leaders and the controller read and change every trip. The same people can put a trip on a bill. Everyone who reads every trip sees **Deleted trips** and can put a trip back. A primary reads every trip and cannot put one on a bill. The crew starts its own trip in Job Mode, as [start a trip from your phone](/help/start-a-trip-from-your-phone) shows. The related guide is [see everything on a development in one place](/help/see-everything-on-a-development).
+The office, the leaders and the controller read and change every trip. The same people can put a trip on a bill. Everyone who reads every trip sees **Deleted trips** and can put a trip back. The same people can split a trip in two. A primary reads every trip and cannot put one on a bill. The crew starts its own trip in Job Mode, as [start a trip from your phone](/help/start-a-trip-from-your-phone) shows. The related guide is [see everything on a development in one place](/help/see-everything-on-a-development).
