@@ -840,7 +840,8 @@ Read-only training mode and the twin write fence apply.
 `job_test_reports` (hydrostatic / pinpoint / gas) follows the job's own children: **read** dev · master · assistant-like · primary;
 **insert / update** dev · master · assistant-like;
 **delete** the same set and only while `status = 'draft'` — a sent report is a record.
-Every policy also requires `can_reach_job_for_test_report(job_id)` (the `jobs_ledger_fixtures` job predicate: master own, dev, primary, adoption either way, `assistants_share_master`).
+Every policy also requires `can_reach_job_for_test_report(job_id)` (the `jobs_ledger_fixtures` job predicate: master own, dev, adoption either way, `assistants_share_master`, and a primary on the jobs they account-manage: since v2.7926, punch list #400, the primary leg asks `primary_can_access_job`, `20261119103000_primary_test_papers.sql`, the SQL bed `primary-test-papers`;
+before it any primary read every job's paper and its PDF).
 The Stages door (`TestReportModal`) and Settings → Jobs, bills and liens → Test reports (the certifier and the paper's text, `app_settings.test_report_settings_v1`) show to dev / master / assistant-like.
 **Send** (v2.3301, `send-test-report`): Bearer JWT, the row is read and stamped through the caller's own client, so the same UPDATE policy decides who may send;
 the stored PDF lives in the private `job-test-reports` bucket;
