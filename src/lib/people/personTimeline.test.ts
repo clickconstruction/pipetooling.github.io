@@ -4,6 +4,7 @@ import {
   contractRecordDoor,
   contractSignedHow,
   countPersonTimeline,
+  engagementLines,
   filterPersonTimeline,
   groupPersonTimelineByMonth,
   monthLabelOf,
@@ -232,6 +233,35 @@ describe('buildPersonTimeline · one line per thing on record, on the day it is 
     expect(archived.find((l) => l.key === 'employment:p1:archived')!.ymd).toBe('2026-10-16')
     const ahead = buildPersonTimeline(input({ person: { id: 'p1', name: 'Pat Doe', start_date: '2026-12-01', end_date: null, archived_at: null } }))
     expect(ahead.find((l) => l.key === 'employment:p1:start')!.lane).toBe('planned')
+  })
+
+  it('standing: each stretch draws the day it began, a change says both sides in one line, and a last day draws only when nothing follows', () => {
+    const stretch = (id: string, kind: string, from: string, to: string | null, over: Record<string, unknown> = {}) => ({ id, kind, started_on: from, ended_on: to, source: 'contract', source_ref: '', note: '', withdrawn_at: null, ...over })
+    const rows = [
+      stretch('g2', 'employee', '2026-06-01', '2026-08-31', { source: 'payroll', source_ref: 'the June pay run', note: 'Moved onto payroll.' }),
+      stretch('g1', 'subcontractor', '2026-02-01', '2026-05-31'),
+      stretch('g3', 'subcontractor', '2026-10-01', null, { source: 'owner' }),
+      stretch('g9', 'employee', '2026-01-01', '2026-01-15', { withdrawn_at: '2026-03-01T12:00:00Z' }),
+    ]
+    const lines = engagementLines(rows, TODAY)
+    // g1 began; g2 began the day after g1 ended, so the change is one line and g1 draws no last day; g2 ended with a gap; g3 runs.
+    expect(lines.map((l) => [l.key, l.ymd, l.kindWords])).toEqual([
+      ['employment:standing:g1:start', '2026-02-01', 'standing'],
+      ['employment:standing:g2:start', '2026-06-01', 'standing changed'],
+      ['employment:standing:g2:end', '2026-08-31', 'standing ended'],
+      ['employment:standing:g3:start', '2026-10-01', 'standing'],
+    ])
+    expect(lines[0]).toMatchObject({ source: 'employment', lane: 'did', state: 'live', what: 'Subcontractor from this day.', notes: 'By a signed paper.', ref: { table: 'person_engagements', id: 'g1' }, door: null })
+    expect(lines[1]).toMatchObject({ what: 'Employee from this day. Subcontractor until the day before.', notes: 'By how they were paid: the June pay run. Moved onto payroll.' })
+    expect(lines[2]).toMatchObject({ what: 'Last day as an employee.', notes: '' })
+    expect(lines[3]).toMatchObject({ notes: "By the owner's statement." })
+    // A stretch that starts ahead of today is planned, and the Timeline draws the lines under Employment.
+    expect(engagementLines([stretch('g4', 'employee', '2027-01-04', null)], TODAY)[0]).toMatchObject({ lane: 'planned', state: 'ahead' })
+    const drawn = buildPersonTimeline(input({ engagements: rows }))
+    expect(drawn.filter((l) => l.ref.table === 'person_engagements')).toHaveLength(4)
+    expect(countPersonTimeline(drawn).bySource.employment).toBe(countPersonTimeline(buildPersonTimeline(input())).bySource.employment + 4)
+    // An older caller hands no stretches over and draws none.
+    expect(buildPersonTimeline(input()).some((l) => l.ref.table === 'person_engagements')).toBe(false)
   })
 
   it('newest day first; the same day falls to the newest written; nothing without a day', () => {

@@ -1,4 +1,5 @@
 import { calendarYmdInAppTzFromIso } from './appTimeZone.ts'
+import { engagementKindWords, engagementSourceWords, liveEngagements, type Engagement, type PersonEngagementRow } from './personEngagements.ts'
 
 /**
  * The person file's Timeline: one dated line of everything on record about a person, built the
@@ -170,6 +171,8 @@ export type PersonTimelineInput = {
   writeups: ReadonlyArray<PersonTimelineWriteup>
   ncns: ReadonlyArray<PersonTimelineNcns>
   excuses: ReadonlyArray<PersonTimelineExcuse>
+  /** Punch list #315, upgrade 4b: the person's standing over time (`person_engagements`); left out by an older caller, which draws none. */
+  engagements?: ReadonlyArray<PersonEngagementRow>
   /** users.id → display name, for the `created_by` / `filled_by` columns. */
   namesById: Readonly<Record<string, string>>
 }
@@ -645,6 +648,10 @@ export function buildPersonTimeline(input: PersonTimelineInput): PersonTimelineL
     }
   }
 
+  // Punch list #315, upgrade 4b: each change of standing, under Employment. A stretch draws the day it began; one that
+  // ended draws its last day too, unless the next stretch began the day after, where the one line says both.
+  for (const l of engagementLines(input.engagements ?? [], today)) out.push(l)
+
   out.sort((a, b) => {
     if (a.ymd !== b.ymd) return a.ymd < b.ymd ? 1 : -1
     const la = a.loggedAt ?? ''
@@ -762,6 +769,44 @@ export function personFileFacts(input: PersonTimelineInput, lines: ReadonlyArray
     ncns90: input.ncns.filter((n) => n.work_date >= ninetyAgo).length,
     lastYmd: past[0]?.ymd ?? null,
   }
+}
+
+/**
+ * The Timeline's lines for a person's standing over time (punch list #315, upgrade 4b): one a stretch on its first
+ * day, saying what they were from that day and where the fact comes from, and one on a closed stretch's last day
+ * when nothing follows it the next morning. A withdrawn stretch draws nothing (`liveEngagements`).
+ */
+export function engagementLines(rows: ReadonlyArray<PersonEngagementRow>, today: string): PersonTimelineLine[] {
+  const out: PersonTimelineLine[] = []
+  const stretches = liveEngagements(rows)
+  const line = (e: Engagement, part: 'start' | 'end', ymd: string, kindWords: string, what: string, notes: string): PersonTimelineLine => ({
+    key: `employment:standing:${e.id}:${part}`,
+    lane: ymd > today ? 'planned' : 'did',
+    source: 'employment',
+    ymd,
+    loggedAt: null,
+    kindWords,
+    what,
+    notes,
+    byName: '',
+    state: ymd > today ? 'ahead' : 'live',
+    ref: { table: 'person_engagements', id: e.id },
+    door: null,
+    attachmentIds: [],
+  })
+  stretches.forEach((e, at) => {
+    const before = at > 0 ? stretches[at - 1]! : null
+    const after = at < stretches.length - 1 ? stretches[at + 1]! : null
+    const changed = before !== null && before.endedOn !== null && ymdShift(before.endedOn, 1) === e.startedOn
+    const source = engagementSourceWords(e.source)
+    const from = `${source.charAt(0).toUpperCase()}${source.slice(1)}${e.sourceRef.trim() ? `: ${e.sourceRef.trim()}` : ''}.`
+    const notes = e.note.trim() ? `${from} ${e.note.trim()}` : from
+    const what = changed && before ? `${engagementKindWords(e.kind)} from this day. ${engagementKindWords(before.kind)} until the day before.` : `${engagementKindWords(e.kind)} from this day.`
+    out.push(line(e, 'start', e.startedOn, changed ? 'standing changed' : 'standing', what, notes))
+    const followed = after !== null && e.endedOn !== null && ymdShift(e.endedOn, 1) === after.startedOn
+    if (e.endedOn !== null && !followed) out.push(line(e, 'end', e.endedOn, 'standing ended', `Last day as ${e.kind === 'employee' ? 'an employee' : 'a subcontractor'}.`, ''))
+  })
+  return out
 }
 
 /** `ymd` moved by `days` on the calendar, with no clock involved. */
