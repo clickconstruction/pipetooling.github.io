@@ -10,6 +10,7 @@ import SubPortalGlobeButton from './SubPortalGlobeButton'
 import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
 import { appendNoteLine, backNoteLine, benchNoteLine, compareSubsForBench, subBenchStatus, type SubBenchStatus } from '../../lib/people/subBench'
 import { useAuth } from '../../hooks/useAuth'
+import { isOfficeRole } from '../../lib/doorRoles'
 import { SubDocumentAddForm } from './SubDocumentAddForm'
 import { FinishedDateInput } from '../FinishedDateInput'
 import { SUB_DOCUMENT_TYPE_LABEL, suggestedRetype } from '../../lib/people/subDocumentDraft'
@@ -491,8 +492,9 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
       onByDate={() => openLedgerFor(personId)}
       onPay={canAct ? openPay : undefined}
       onBackcharge={canAct ? openBackcharge : undefined}
-      onStatement={() => setPapers({ key: `id:${personId}`, name, open: { kind: 'statement' } })}
-      onWorkStatement={(sheetId) => setPapers({ key: `id:${personId}`, name, open: { kind: 'work', sheetId } })}
+      // Punch list #350: the papers are the office's who see sub pay. Anyone else gets no paper press here.
+      onStatement={isOfficeRole(role) ? () => setPapers({ key: `id:${personId}`, name, open: { kind: 'statement' } }) : undefined}
+      onWorkStatement={isOfficeRole(role) ? (sheetId) => setPapers({ key: `id:${personId}`, name, open: { kind: 'work', sheetId } }) : undefined}
       onClose={onClose}
     />
   )

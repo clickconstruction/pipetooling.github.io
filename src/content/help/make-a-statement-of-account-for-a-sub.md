@@ -24,6 +24,8 @@ The window opens on the paper you asked for. The chips at the top switch to anot
 
 **Work statement…** takes the place of **Print** on a sheet that is one person's. A sheet two people share keeps **Print**, and so does a crew sheet.
 
+The paper presses are for a dev, a master technician, an assistant and a controller. A superintendent sees **Print** on every sheet.
+
 ## Pick the period
 
 A statement of account covers a period. Five chips set it.

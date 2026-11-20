@@ -65,6 +65,8 @@ import { SKY_UNDER_WORDS } from '../../lib/skyUnderWords'
 import { SUB_PAY_FROM_CREDIT, subPayMethodWords } from '../../lib/subWorkOrders/subPaymentWindow'
 import { creditNoteWords } from '../../lib/subWorkOrders/subSending'
 import { SubPapersWindow } from './SubPapersWindowConnected'
+import { useAuth } from '../../hooks/useAuth'
+import { isOfficeRole } from '../../lib/doorRoles'
 import type { SubPapersOpen } from './SubPapersWindow'
 import { OverToCreditWindow } from './SubSendingRepairWindows'
 import { overToCreditPlan, type OverToCreditPlan } from '../../lib/subWorkOrders/subSendingRepair'
@@ -173,6 +175,10 @@ export default function JobsSubLaborTab({
   const [lienWaiverFor, setLienWaiverFor] = useState<LienWaiverSendTarget | null>(null)
   /** Punch list #350: the papers window, opened on a sub's statement of account, a sheet's work statement or a payment's record. */
   const [papers, setPapers] = useState<{ key: string; name: string; open: SubPapersOpen } | null>(null)
+  // The papers are the office's who see sub pay, as the register and the send function hold them. Anyone else who reaches
+  // this view, a superintendent, gets no paper press, and a sheet's ⋯ menu keeps Print.
+  const { role } = useAuth()
+  const makesPapers = isOfficeRole(role)
   // Taunya's rule of 2026-11-15: a sheet that names one teammate and no sub is owed to that teammate.
   const teamRule = TEAM_SHEET_RULE
   /** Punch list #347's residue: a sheet paid past its total, about to become a credit. */
@@ -656,7 +662,7 @@ export default function JobsSubLaborTab({
                           </Link>
                         ) : null}
                         {/* Punch list #350: the statement of account, as a paper to hand the sub. */}
-                        {sub?.personId && !sub.crew ? (
+                        {sub?.personId && !sub.crew && makesPapers ? (
                           <button type="button" data-testid={`sublabor-statement-${sub.personId}`} onClick={() => setPapers({ key: `id:${sub.personId}`, name: sub.name, open: { kind: 'statement' } })} style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.12rem 0.55rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                             Statement of account…
                           </button>
@@ -686,7 +692,7 @@ export default function JobsSubLaborTab({
                 const body = g.rows.flatMap((r) => {
                   const { job, totalCost, paid, backcharges, balance, rail, next, coverage, jobId, personId, parties, payWhen, stageView, paidLine, paidInFull, drawTie, subSees } = r
                   // Punch list #350: whose paper this sheet makes. One person's sheet (a sub's, or a teammate's own) and nobody else's.
-                  const papersOf = !r.crew && parties.contractors.length === 1 && parties.contractors[0]!.id ? { key: `id:${parties.contractors[0]!.id}`, name: parties.contractors[0]!.name } : null
+                  const papersOf = makesPapers && !r.crew && parties.contractors.length === 1 && parties.contractors[0]!.id ? { key: `id:${parties.contractors[0]!.id}`, name: parties.contractors[0]!.name } : null
                   const jobRate = job.labor_rate ?? 0
                   const dateInputValue = job.job_date ?? (job.created_at ? calendarYmdInAppTzFromIso(job.created_at) : '')
                   const expanded = expandedSubLaborJobIds.has(job.id)
