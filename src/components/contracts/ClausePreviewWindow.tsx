@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ClauseBook } from '../../lib/contracts/approval'
 import { assemblePaper } from '../../lib/contracts/assemble'
+import { choiceOf, resolvedFields, startPicks, type PaperPicks } from '../../lib/contracts/paperSettings'
 import type { PreviewCompany } from '../../lib/contracts/clausesIo'
 import { ClausePaper } from './ClausePaper'
 import { ClauseField, ClauseWindow } from './ClauseWindow'
@@ -30,7 +31,13 @@ export function ClausePreviewWindow({
   const [companyId, setCompanyId] = useState(withTrades[0]?.id ?? '')
   const [lang, setLang] = useState<'en' | 'es'>('en')
   const company = as ?? withTrades.find((c) => c.id === companyId) ?? null
-  const paper = assemblePaper(book.paper, book.clauses, { company: company?.name ?? 'the company', trades: company?.trades ?? [], job: null, lang })
+  // A paper built from settings (#389) is put together for a mix of picks, and for the blanks typed for one job.
+  const def = book.paper.settingsDef ?? null
+  const [picks, setPicks] = useState<PaperPicks>(() => (def ? startPicks(def) : {}))
+  const [typed, setTyped] = useState<Record<string, string>>({})
+  const filled = def ? resolvedFields(def, picks, null, lang) : {}
+  const level = def?.levels.find((l) => def.settings.every((s) => l.picks[s.key] === picks[s.key])) ?? null
+  const paper = assemblePaper(book.paper, book.clauses, { company: company?.name ?? 'the company', trades: company?.trades ?? [], job: null, lang, ...(def ? { picks, fields: typed } : {}) })
 
   return (
     <ClauseWindow label={`${book.paper.title}, put together per trade`} title={`${book.paper.title}, put together per trade`} lede="The clauses for everyone, then the exhibit for the company's trades." width={720} onClose={onClose}>
@@ -62,6 +69,41 @@ export function ClausePreviewWindow({
           ))}
         </div>
       </div>
+      {def && (
+        <div data-clause-preview-settings style={{ display: 'grid', gap: '0.5rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.7rem' }}>
+          {def.levels.length > 0 && (
+            <div role="group" aria-label="Level" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              {def.levels.map((l) => (
+                <button key={l.key} type="button" aria-pressed={level?.key === l.key} onClick={() => setPicks({ ...startPicks(def), ...l.picks })} style={{ ...clauseButtonStyle, ...(level?.key === l.key ? { background: 'var(--bg-blue-tint)', borderColor: '#2563eb' } : {}) }}>
+                  {l.label}
+                </button>
+              ))}
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{level ? level.alignedWith : 'A mix of its own'}</span>
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.45rem' }}>
+            {def.settings.map((s) => (
+              <ClauseField key={s.key} label={s.label}>
+                <select aria-label={s.label} value={picks[s.key] ?? ''} onChange={(e) => setPicks((now) => ({ ...now, [s.key]: e.target.value }))} style={clauseInputStyle}>
+                  {!choiceOf(def, s.key, picks[s.key]) && <option value="">Pick one</option>}
+                  {s.choices.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </ClauseField>
+            ))}
+            {def.fields
+              .filter((f) => !(f.key in filled))
+              .map((f) => (
+                <ClauseField key={f.key} label={`${f.label}, typed for one job`}>
+                  <input aria-label={`${f.label}, typed for one job`} value={typed[f.key] ?? ''} onChange={(e) => setTyped((now) => ({ ...now, [f.key]: e.target.value }))} style={clauseInputStyle} />
+                </ClauseField>
+              ))}
+          </div>
+        </div>
+      )}
       {paper.problem && (
         <div role="status" style={{ color: 'var(--text-amber-800)', fontSize: '0.85rem' }}>
           {paper.problem}

@@ -451,6 +451,8 @@ Each lane adds to its own line below, never to the paragraph above, so two lanes
   a signed copy's `clause_versions` is frozen once written.
   The screens (v2.5285): Settings → **Contracts and clauses** (`settings-clauses`) shows to `GC_CLAUSE_EDIT_TEAM` (`settingsGroups.ts`), where Approve and Decline draw for `GC_CLAUSE_APPROVE_TEAM` only, and the Dashboard's **Contracts** Needs you line (`contract-clauses`, `useClauseNeeds`) reads for a dev or a controller only.
   A statement of work's paper is picked by a dev (`gc_set_sow_paper`, the board-write team until award's door) and our contract's by the money team (`gc_set_owner_contract_paper`), each refusing in words once the copy is signed (v2.5309, `20261013000000_gc_clause_papers.sql`).
+  A paper's settings list and its read mark are a dev's or the controller's (v2.8014 and v2.8019, `set_paper_settings`, `mark_paper_read`): **Settings list** and **Mark revision N as read by an attorney** draw for `GC_CLAUSE_APPROVE_TEAM` only, each function refuses an archived account, a digital twin and a training account itself, and nobody signed in writes `settings_def`, the read mark or `revision` by hand (`contract_paper_settings_guard`).
+  A clause's Only when is part of its change, so the office proposes it and an approver publishes it, as its words.
 
 - **Messages (cut 5's morning reminders):** the owner or a dev sets a step Off, Offers or Sends (`messages_nudge_app_sends_v1`, `'offer'` or `true`, v2.5595;
   `master_or_dev_update_messages_nudge_app_sends`), on each step of Settings → Flows and since v2.5720 on Phone and texts' **Reminders the app offers** card (drawn for the owner and a dev only;

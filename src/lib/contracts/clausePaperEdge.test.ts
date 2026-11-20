@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PAPER_CHANGED, clauseBetween, clauseFreeze, clausePaperFor, clausePaperOf, clausePaperPair, readClausePaper, readClausePaperPair, readSignedClauses, type ClauseAdmin } from '../../../supabase/functions/_shared/clausePaper'
+import { PAPER_CHANGED, SETTINGS_PAPER_BARE, isSettingsPaperBare, clauseBetween, clauseFreeze, clausePaperFor, clausePaperOf, clausePaperPair, readClausePaper, readClausePaperPair, readSignedClauses, type ClauseAdmin } from '../../../supabase/functions/_shared/clausePaper'
 import { plainWordsFailures } from '../plainWords'
 
 /**
@@ -21,11 +21,19 @@ const PAPER = {
 function fakeAdmin(over: { company?: { name: string; trades: string[] } | null; companyError?: boolean; paper?: unknown; paperFor?: (args: Record<string, unknown>) => unknown; rpcError?: boolean; clauseRows?: number; gateError?: boolean } = {}) {
   const calls: { fn: string; args: Record<string, unknown> }[] = []
   const reads: string[] = []
+  const paperReads: string[] = []
   const admin: ClauseAdmin = {
     from: (table) => ({
       select: (columns) => ({
         eq: (_column, value) => ({
           maybeSingle: () => {
+            // The settings check (#389) reads the library document first. It is counted apart, so `reads` stays the
+            // clause reads the older cases name.
+            if (table === 'contract_template_documents') {
+              paperReads.push(`${columns}:${value}`)
+              const o = over as { settingsDef?: unknown; paperRowError?: boolean }
+              return Promise.resolve(o.paperRowError ? { data: null, error: { message: 'no' } } : { data: { settings_def: o.settingsDef ?? null }, error: null })
+            }
             reads.push(`${table}:${columns}:${value}`)
             return Promise.resolve(over.companyError ? { data: null, error: { message: 'no' } } : { data: over.company ?? null, error: null })
           },
@@ -43,7 +51,7 @@ function fakeAdmin(over: { company?: { name: string; trades: string[] } | null; 
       return Promise.resolve(over.rpcError ? { data: null, error: { message: 'no' } } : { data: paper, error: null })
     },
   }
-  return { admin, calls, reads }
+  return { admin, calls, reads, paperReads }
 }
 
 const DOC = { applied_contract_template_document_id: 'doc-msa', company_id: 'co-hillside', form_template_id: null }
@@ -83,6 +91,45 @@ describe('clausePaperFor', () => {
     await expect(clausePaperFor(fakeAdmin({ gateError: true }).admin, DOC, 'en')).rejects.toThrow()
     await expect(clausePaperFor(fakeAdmin({ rpcError: true }).admin, DOC, 'en')).rejects.toThrow()
     await expect(clausePaperFor(fakeAdmin({ companyError: true }).admin, DOC, 'en')).rejects.toThrow()
+  })
+})
+
+/** A paper built from settings (punch list #389) goes only with a job's settings, which nothing carries yet. */
+describe('a paper built from settings', () => {
+  const LIST = { settings: [{ key: 'photos', label: 'Photos and video', choices: [] }] }
+  const withList = (more: Record<string, unknown> = {}) => fakeAdmin({ ...more, settingsDef: LIST } as never)
+
+  it('is refused by name, never answered as null, before a clause is read', async () => {
+    const { admin, calls, reads, paperReads } = withList()
+    await expect(clausePaperFor(admin, DOC, 'en')).rejects.toThrow(SETTINGS_PAPER_BARE)
+    expect(paperReads).toEqual(['settings_def:doc-msa'])
+    expect(reads).toEqual([])
+    expect(calls).toEqual([])
+  })
+
+  it('is refused with no clause on it, and as a form, where a null would sign the body', async () => {
+    await expect(clausePaperFor(withList({ clauseRows: 0 }).admin, DOC, 'en')).rejects.toThrow(SETTINGS_PAPER_BARE)
+    await expect(clausePaperFor(withList().admin, { ...DOC, form_template_id: 'form-w9' }, 'en')).rejects.toThrow(SETTINGS_PAPER_BARE)
+  })
+
+  it('is refused in a portal too, in both languages', async () => {
+    const target = { paperId: 'doc-sow', trades: ['Electrical'], betweenName: 'Sample Electric Co.' }
+    await expect(clausePaperOf(withList().admin, target, 'en')).rejects.toThrow(SETTINGS_PAPER_BARE)
+    await expect(clausePaperPair(withList().admin, target)).rejects.toThrow(SETTINGS_PAPER_BARE)
+  })
+
+  it('tells that refusal from a read that failed', async () => {
+    const bare = await clausePaperFor(withList().admin, DOC, 'en').catch((e: unknown) => e)
+    const failed = await clausePaperFor(fakeAdmin({ paperRowError: true } as never).admin, DOC, 'en').catch((e: unknown) => e)
+    expect(isSettingsPaperBare(bare)).toBe(true)
+    expect(isSettingsPaperBare(failed)).toBe(false)
+    expect(failed).toBeInstanceOf(Error)
+  })
+
+  it('reads an ordinary paper as before, after the one small check', async () => {
+    const { admin, paperReads } = fakeAdmin()
+    expect(await clausePaperFor(admin, { ...DOC, company_id: null }, 'en')).toEqual({ ...PAPER, between: null })
+    expect(paperReads).toEqual(['settings_def:doc-msa'])
   })
 })
 

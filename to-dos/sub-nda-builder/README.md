@@ -510,6 +510,13 @@ Sizes for this card's own steps are the train's above.
 
 ## Where it stands
 
+**Step 1 is built** (v2.8014, the migration and the kernel; v2.8019, the screens). A Book entry takes a
+settings list, a clause takes an *Only when* and a place, the preview puts the paper together for any
+mix, a revision can be marked as read by an attorney, and a paper built from settings is refused
+everywhere a copy could be made or signed until a job carries its settings. The clause screens are
+`SettingsClausesTab.tsx` and `src/components/contracts/`, not `SettingsContractsTab.tsx` as *What exists
+today* says. No clause wording was written, and the only settings paper is a ZZ test entry.
+
 Nothing of the builder is shipped. The owner settled four calls on 2026-11-17 and liked the idea. He
 liked sliders and did not love either drawing of them, so the look was the first thing to review. That
 review began on 2026-11-19 and settled the four levels, their names, their places and how a place is

@@ -88,7 +88,7 @@ describe('editClause: the two paths', () => {
 
   it('adds a new clause after the last one, as version 1, with its trades cleaned', () => {
     const book = published(editClause(BOOK, { kind: 'new', en: ' Paving: a proof roll before the base course. ', es: '', scope: [' Paving ', 'paving', 'Sitework'] }, ROBERT, ctx(idsFrom('clause'))))
-    expect(book.clauses.slice(-1)[0]).toEqual({ id: 'clause-1', order: 9, en: 'Paving: a proof roll before the base course.', es: '', scope: ['Paving', 'Sitework'], v: 1, retiredAt: null, retiredBy: null })
+    expect(book.clauses.slice(-1)[0]).toEqual({ id: 'clause-1', order: 9, en: 'Paving: a proof roll before the base course.', es: '', scope: ['Paving', 'Sitework'], v: 1, retiredAt: null, retiredBy: null, slot: null, when: null })
     expect(book.paper.revision).toBe(2)
   })
 

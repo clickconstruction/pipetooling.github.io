@@ -23,6 +23,8 @@ vi.mock('../../lib/contracts/clausesIo', () => ({
   loadClauseNeeds: vi.fn(),
   tellClauseApprovers: vi.fn(),
   tellClauseEditor: vi.fn(),
+  markPaperRead: vi.fn(),
+  savePaperSettings: vi.fn(),
 }))
 
 import { approveClauseProposal, declineClauseProposal, loadClauseLibrary, saveClauseChange, tellClauseApprovers, tellClauseEditor } from '../../lib/contracts/clausesIo'

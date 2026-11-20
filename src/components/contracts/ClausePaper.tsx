@@ -1,6 +1,9 @@
 import { exhibitHeading, versionLine } from '../../lib/contracts/assemble'
 import type { ClausePaperView } from '../../lib/contracts/clauseSign'
 
+/** A clause keeps the line breaks it was written with (#389): a rule a line reads as lines, not as one run. */
+const KEEPS_ITS_LINES = { whiteSpace: 'pre-line' } as const
+
 /** What a clause paper needs to draw: an assembled paper, or a signed copy's frozen one. */
 export type { ClausePaperView } from '../../lib/contracts/clauseSign'
 
@@ -26,7 +29,7 @@ export function ClausePaper({ paper, showTitle = true }: { paper: ClausePaperVie
       </div>
       <ol data-clause-base style={{ margin: 0, paddingLeft: '1.4rem', display: 'grid', gap: '0.35rem' }}>
         {paper.clauses.map((c) => (
-          <li key={c.id} value={c.n}>
+          <li key={c.id} value={c.n} style={KEEPS_ITS_LINES}>
             {c.text}
           </li>
         ))}
@@ -38,7 +41,7 @@ export function ClausePaper({ paper, showTitle = true }: { paper: ClausePaperVie
           </div>
           <ol data-clause-exhibit start={paper.exhibit[0]?.n ?? paper.clauses.length + 1} style={{ margin: 0, paddingLeft: '1.4rem', display: 'grid', gap: '0.35rem' }}>
             {paper.exhibit.map((c) => (
-              <li key={c.id} value={c.n}>
+              <li key={c.id} value={c.n} style={KEEPS_ITS_LINES}>
                 {c.text}
               </li>
             ))}

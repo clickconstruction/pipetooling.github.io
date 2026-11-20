@@ -293,13 +293,44 @@ export function signedCopyOf(paper: AssembledPaper, signedAt: string): SignedCop
 /** One trade's exhibit in Settings: the clauses numbered as that trade's paper numbers them. */
 export interface SettingsExhibit {
   trade: string
-  rows: { clause: Clause; n: number }[]
+  rows: SettingsRow[]
+}
+
+/**
+ * A clause's row in Settings. On a paper built from settings, the wordings of one place share its number and take a
+ * letter each, 5A and 5B, since only one of them is in a job's paper.
+ */
+export interface SettingsRow {
+  clause: Clause
+  n: number
+  letter?: string
+}
+
+/** Clauses numbered by place: each place one number, a place's wordings lettered in their own order. */
+function numberedByPlace(list: readonly Clause[], from: number): SettingsRow[] {
+  const out: SettingsRow[] = []
+  const wordings = new Map<string, number>()
+  let n = from - 1
+  let last: string | null = null
+  for (const clause of list) {
+    const slot = clause.slot ?? null
+    if (slot == null || slot !== last) n += 1
+    last = slot
+    if (slot == null) {
+      out.push({ clause, n })
+      continue
+    }
+    const k = wordings.get(slot) ?? 0
+    wordings.set(slot, k + 1)
+    out.push({ clause, n, letter: String.fromCharCode(65 + (k % 26)) })
+  }
+  return out
 }
 
 /** A paper's card in Settings → Contracts and clauses. */
 export interface SettingsView {
   /** The clauses for everyone, numbered as every paper numbers them. */
-  base: { clause: Clause; n: number }[]
+  base: SettingsRow[]
   /** One exhibit per trade any clause names, A to Z. A clause for two trades shows under both. */
   exhibits: SettingsExhibit[]
   /** Retired clauses, newest first, kept for the signed copies that carry them. */
@@ -311,22 +342,24 @@ export interface SettingsView {
  * exhibit clause the number it has on that trade's paper.
  */
 export function settingsView(clauses: readonly Clause[]): SettingsView {
-  const live = liveClauses(clauses)
-  const base = live.filter(isBaseClause)
+  const live = byPlace(liveClauses(clauses))
+  const base = numberedByPlace(live.filter(isBaseClause), 1)
+  const baseEnd = base[base.length - 1]?.n ?? 0
   const spelled = new Map<string, string>()
   for (const c of live) for (const t of clauseTrades(c)) if (!spelled.has(tradeKey(t))) spelled.set(tradeKey(t), t.trim())
   const exhibits = [...spelled.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, trade]) => ({
       trade,
-      rows: live
-        .filter((c) => clauseTrades(c).some((t) => tradeKey(t) === key))
-        .map((clause, i) => ({ clause, n: base.length + 1 + i })),
+      rows: numberedByPlace(
+        live.filter((c) => clauseTrades(c).some((t) => tradeKey(t) === key)),
+        baseEnd + 1,
+      ),
     }))
   const retired = clauses
     .filter((c) => c.retiredAt != null)
     .sort((a, b) => (b.retiredAt ?? '').localeCompare(a.retiredAt ?? '') || byOrder(a, b))
-  return { base: base.map((clause, i) => ({ clause, n: i + 1 })), exhibits, retired }
+  return { base, exhibits, retired }
 }
 
 /**
@@ -336,10 +369,10 @@ export function settingsView(clauses: readonly Clause[]): SettingsView {
 export function clauseLabel(clauses: readonly Clause[], clauseId: string): string {
   const view = settingsView(clauses)
   const inBase = view.base.find((r) => r.clause.id === clauseId)
-  if (inBase) return `clause ${inBase.n}`
-  const on = view.exhibits.flatMap((x) => x.rows.filter((r) => r.clause.id === clauseId).map((r) => ({ trade: x.trade, n: r.n })))
+  if (inBase) return `clause ${inBase.n}${inBase.letter ?? ''}`
+  const on = view.exhibits.flatMap((x) => x.rows.filter((r) => r.clause.id === clauseId).map((r) => ({ trade: x.trade, n: r.n, letter: r.letter ?? '' })))
   const first = on[0]
-  if (on.length === 1 && first) return `clause ${first.n} on the ${first.trade} exhibit`
+  if (on.length === 1 && first) return `clause ${first.n}${first.letter} on the ${first.trade} exhibit`
   if (on.length > 1) return `a clause on the ${andList(on.map((x) => x.trade))} exhibits`
   return 'a retired clause'
 }

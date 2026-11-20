@@ -9,12 +9,13 @@ import { checkSupabaseError, withSupabaseRetry, type SupabaseClientResult } from
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_CLAUSE_APPROVE_TEAM, canApproveClause } from '../gc/access'
 import { clauseNeeds, type ClauseChange, type ClauseNeedRow } from './approval'
+import { settingsDefJson, type SettingsDef } from './paperSettings'
 import { approverNames, clausePaperCards, paperChoices, scopeToRow, type ClauseLibraryRows, type ClauseRow, type PaperChoice, type PaperRow, type ProposalRow, type TemplateRow } from './clauseRows'
 
-const PAPER_COLUMNS = 'id, document_name, template_id, form_template_id, sequence_order, revision, published_at'
-const CLAUSE_COLUMNS = 'id, paper_id, sequence_order, text_en, text_es, scope, version, published_by_name, published_at, retired_at, retired_by_name'
+const PAPER_COLUMNS = 'id, document_name, template_id, form_template_id, sequence_order, revision, published_at, settings_def, read_revision, read_by_name, read_on'
+const CLAUSE_COLUMNS = 'id, paper_id, sequence_order, text_en, text_es, scope, slot, when_opts, version, published_by_name, published_at, retired_at, retired_by_name'
 const PROPOSAL_COLUMNS =
-  'id, paper_id, kind, clause_id, base_v, text_en, text_es, scope, by_user_id, by_name, why, state, decided_by_name, decided_at, decline_why, result_v, paper_revision, created_at'
+  'id, paper_id, kind, clause_id, base_v, text_en, text_es, scope, slot, when_opts, by_user_id, by_name, why, state, decided_by_name, decided_at, decline_why, result_v, paper_revision, created_at'
 
 /** A company the preview can assemble a paper for. */
 export interface PreviewCompany {
@@ -92,10 +93,27 @@ export async function saveClauseChange(paperId: string, change: ClauseChange, wh
           p_text_es: change.es,
           p_scope: scopeToRow(change.scope),
           p_why: why,
+          // Left out for a clause in every paper, in a place of its own: the function's own defaults.
+          ...(change.when ? { p_when_opts: change.when } : {}),
+          ...(change.slot ? { p_slot: change.slot } : {}),
         }
   const res = await supabase.rpc('edit_clause' as never, args as never)
   checkSupabaseError(res, 'change a clause')
   return res.data as unknown as ClauseWriteResult
+}
+
+/** A controller or a dev sets a paper's settings list, or takes it away with null (`set_paper_settings`). */
+export async function savePaperSettings(paperId: string, def: SettingsDef | null): Promise<{ revision: number }> {
+  const res = await supabase.rpc('set_paper_settings' as never, { p_paper_id: paperId, p_def: def ? settingsDefJson(def) : null } as never)
+  checkSupabaseError(res, 'save the settings list')
+  return res.data as unknown as { revision: number }
+}
+
+/** A controller or a dev marks the paper's revision as read by an attorney (`mark_paper_read`). `on` is a calendar day. */
+export async function markPaperRead(paperId: string, name: string, on: string): Promise<{ revision: number }> {
+  const res = await supabase.rpc('mark_paper_read' as never, { p_paper_id: paperId, p_name: name, p_on: on } as never)
+  checkSupabaseError(res, 'mark the paper as read')
+  return res.data as unknown as { revision: number }
 }
 
 /** A controller or a dev approves a waiting change. */

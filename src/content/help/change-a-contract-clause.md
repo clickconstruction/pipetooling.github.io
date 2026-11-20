@@ -2,7 +2,7 @@
 title: change a contract clause
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: clause, clauses, contract, contracts and clauses, exhibit, trade exhibit, master agreement, statement of work, approve, decline, version, retire, signed copy, preview per trade, push, email, notification
+keywords: clause, clauses, contract, contracts and clauses, settings list, setting, choice, only when, built from settings, blank, level, read by an attorney, revision, preview with settings, exhibit, trade exhibit, master agreement, statement of work, approve, decline, version, retire, signed copy, preview per trade, push, email, notification
 where: /settings?tab=settings-clauses
 order: 99
 ---
@@ -64,6 +64,62 @@ Your own changes go out as soon as you save them. They show on the clause's hist
 3. Pick **English** or **Spanish**.
 
 The preview shows the clauses for everyone. Then it shows the exhibit for that company's trades, then the version.
+
+## Build a paper from settings
+
+Some papers change with the job. A settings list says what can change. Only a controller or a dev sets one.
+
+1. Press {{button:outline|Settings list}} on the paper's card.
+2. Type a setting's name under **A new setting** and press **Add a setting**.
+3. Add its choices, the loosest first. Use the arrows to move one.
+4. Type what the summary says for each choice.
+5. Tick the box on a choice that leaves the topic out of the paper.
+6. Press {{button:blue|Save the settings list}}.
+
+The window lists what is missing while the list cannot be saved. No clause wording goes in a settings list.
+
+A blank is a word a clause holds in braces. Add one under **Blanks a clause may hold**. A choice can fill it.
+
+A level is one pick for every setting. Add one under **Levels**.
+
+## Tie a clause to a choice
+
+On a paper with a settings list, a clause's window has one more line.
+
+1. Press {{button:outline|Edit}} on the clause.
+2. Under **Only when**, pick the setting.
+3. Pick the choice that puts the clause in the paper.
+4. Under **For the other choices**, say where the clause sits.
+5. Publish it or send it for approval.
+
+- **No other wording** leaves the clause out for every other choice.
+- **Another wording of clause 2** makes it one of that place's wordings.
+- **The first wording of a new place** starts a place that needs a wording for each choice.
+
+The wordings of one place share a number on the card. They read 2A and 2B.
+
+The card says {{chip:gray|Every choice has its wording}} when nothing is missing. A gap reads there in words, and it stops the paper.
+
+## Mark a revision as read by an attorney
+
+This part is for a controller or a dev.
+
+1. Press **Mark revision 4 as read by an attorney** on the paper's card.
+2. Type the attorney's name.
+3. Pick the day it was read.
+4. Press the blue button.
+
+The mark belongs to that revision. Any later change makes the paper unread again.
+
+## Preview a paper built from settings
+
+1. Press {{button:outline|Preview with settings}} on the paper's card.
+2. Press a level, or pick a choice for each setting.
+3. Type a value for a blank that no choice fills.
+
+The paper changes as you pick. A line above it says what stops the paper, in words.
+
+A paper built from settings goes to nobody yet. It will go from a job, with the job's settings.
 
 ## What a signed copy keeps
 
