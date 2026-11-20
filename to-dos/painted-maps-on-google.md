@@ -2,7 +2,7 @@
 name: "Painted maps on a Google map"
 number: 387
 group: ready
-status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · Grace's word to build 2026-11-19 (*Please build*), which is not the billing look · step 1, the kernel, built the same day (v2.7979, #8974), with no screen changed · Google's terms read at that step, and a sixth call added from them · the Google canvas's doors to Leaflet moved to one place and mended the same day (v2.7981, #8975) · step 2, a Google canvas for looking, built the same day (v2.7990) and proved in a headless browser against Google's own script, held unmerged for the owner's read of the billing console
+status: asked 2026-11-17 · read the same day · the owner picked it to build first, then parked it on the punch list the same evening · Grace's word to build 2026-11-19 (*Please build*), which is not the billing look · step 1, the kernel, built the same day (v2.7979, #8974), with no screen changed · Google's terms read at that step, and a sixth call added from them · the Google canvas's doors to Leaflet moved to one place and mended the same day (v2.7981, #8975) · step 2, a Google canvas for looking, built the same day (v2.7990, #8984) and proved in a headless browser against Google's own script, held as a draft for the owner's read of the billing console
 summary: >
   The owner wants to paint and read a painted map over Google's map, not the map it draws on today.
   Today *From above* is Esri's photograph and *Streets* is OpenStreetMap, both on Leaflet. The app
@@ -123,7 +123,7 @@ Since v2.7814 it is also the canvas **Time** draws on (punch list #395): the pho
 2. **A Google canvas for looking** (M). Lines, places, the person's dot, the first view and refit.
    Mounted in the painting window when nothing is being drawn, with the Leaflet canvas as the fall
    back. Guide `paint-a-map`, release note, fragment, the Glossary's entry amended.
-   Built 2026-11-19 (v2.7990), and not merged before the owner's read of the billing console.
+   Built 2026-11-19 (v2.7990, #8984, a draft), and not merged before the owner's read of the billing console.
    One thing differs from the line above: a window that has left Google's map to draw or to place keeps the Leaflet canvas until it closes, so a new line stays on the photograph it was drawn over.
    Google bills by the map made, and the canvas keeps one map for the whole visit, so going to Time and back or opening a second painted map makes no new one.
 3. **Drawing by hand on Google** (L). Corners, the held press, the catch, the magnifying glass and
