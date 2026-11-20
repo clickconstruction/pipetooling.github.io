@@ -565,9 +565,10 @@ work (14:05 CST). The second-longest stall on record, after 08-19.
   no `SUPABASE_DB_PASSWORD`, each failed with `unexpected login role status
   544 … Connection terminated due to connection timeout`, and at 20:15 psql on
   the session pooler got `FATAL: Failed to connect to database: {:error,
-  :timeout}` in 5s (the 08-24 wording). The listed pair came later:
-  `EAUTHQUERY` from about 20:19 to 20:23, then `ECIRCUITBREAKER` from 20:22:40
-  to at least 20:26:15. status.supabase.com: "All Systems Operational".
+  :timeout}` in 5s (the 08-24 wording). The listed pair came later, as the
+  other two sessions saw them: `EAUTHQUERY` from about 20:19 to 20:23:30, and
+  `ECIRCUITBREAKER` from 20:22:40 on one and 20:23:44 on the other, to at least
+  20:26:15. status.supabase.com: "All Systems Operational".
 - **Step 2**: one `monitoring.health_checks` gap **20:05:01 → 20:29:00
   (1,438s)**. The 20:05:01 sample is the onset caught in the act: sampler
   **3,749.7ms** (8–35ms in the minutes before), 84 conns, 11 `active` with NULL
@@ -575,8 +576,11 @@ work (14:05 CST). The second-longest stall on record, after 08-19.
   hours). The 20:05 cron batch took 7–11s a job and succeeded; then no cron row
   until 20:29, with no failed rows: the silent gap.
 - **Leading indicator, fifteen minutes and not ninety**: the sampler read
-  288ms at 19:50:00 with 41 backends `active`, 202ms at 19:54 and 193ms at
-  20:03, against 7–35ms in the minutes between.
+  288ms at 19:50:00 with 41 backends `active` (34 with no wait event, 7 on
+  `Client`) and 9 `idle in transaction`, 202ms at 19:54:00 and 193ms at 20:03,
+  against 7–35ms in the minutes between. The 19:54:00 sample, the last before
+  the 19:55:02 restart, shows 3 backends `active` on an `LWLock`, the only
+  `LWLock` row over 1 in the ninety minutes before the stall.
 - **Ended by a restart nobody asked for.** The log reads `database system was
   interrupted; last known up at 2026-11-20 20:01:13 UTC` → `not properly shut
   down; automatic recovery in progress` → `starting PostgreSQL 17.6` at
