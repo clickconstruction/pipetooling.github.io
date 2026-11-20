@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest'
+import { plainWordsFailures } from './plainWords'
 import {
+  PEOPLE_WEEK_FOLD_OVER,
+  PEOPLE_WEEK_SHEET_WORDS,
   cardLine,
+  glancePerson,
   jobLine,
+  peopleWeekAboutWords,
   peopleWeekChainWords,
   peopleWeekChains,
+  peopleWeekGlance,
   peopleWeekHeadline,
+  peopleWeekPickList,
+  peopleWeekStartWords,
   peopleWeekSubject,
   personLine,
   planPeopleWeekEdit,
@@ -74,5 +82,70 @@ describe('the chains', () => {
     expect(planPeopleWeekEdit({ userId: 'me', peopleUserIds: [], desiredWeekdays: [1], desiredTimeHm: '06:00', current: null })).toEqual({ ok: false, error: 'Pick at least one person.' })
     const stop = planPeopleWeekEdit({ userId: 'me', peopleUserIds: ['a', 'b'], desiredWeekdays: [], desiredTimeHm: current.timeHm, current })
     expect(stop.ok && stop.cancelIds).toEqual(['r1'])
+  })
+})
+
+describe('the sheet’s picture and words (v2.8041)', () => {
+  it('draws the email’s own lines about one made-up person, for the week just finished', () => {
+    const g = peopleWeekGlance('2026-11-20')
+    expect(g.subject).toBe('Your people’s week · Nov 9 to 15')
+    expect(g.name).toBe('Mateo')
+    expect(g.line).toBe('2 cards done · 1 moved · 4 photos')
+    expect(g.groups).toEqual([
+      { label: 'Cards', line: 'Hang the shelves · 25 → 75 · 2 of 3 lines' },
+      { label: 'Roadmap', line: 'Hang the shelves · Farm 1 › Containers · 75%' },
+      { label: 'Jobs', line: '1105 · Morris Park · 65% done · 3 days' },
+    ])
+  })
+  it('says nothing the email does not: every line and label of the picture is in the email about that person', () => {
+    const g = peopleWeekGlance('2026-11-20')
+    const html = renderPeopleWeekHtml({ week_start: '2026-11-09', week_end: '2026-11-15', people: [glancePerson()] }, 'https://x')
+    const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    for (const words of [g.subject, g.name, g.line, ...g.groups.flatMap((x) => [x.label, x.line])]) expect(html).toContain(esc(words))
+    // The five things the old paragraph listed, each shown once: cards moved or finished, lines ticked, photos, roadmap, jobs.
+    const all = [g.line, ...g.groups.map((x) => x.line)].join(' | ')
+    for (const shown of ['cards done', 'moved', 'photos', 'of 3 lines', 'Farm 1 ›', '3 days']) expect(all).toContain(shown)
+  })
+  it('names the first press whole: an email, every week, the day and the time', () => {
+    expect(peopleWeekStartWords([1], '06:00')).toBe('Email me every Monday at 6:00 AM')
+    expect(peopleWeekStartWords([4, 1], '13:30')).toBe('Email me every Mon and Thu at 1:30 PM')
+    expect(peopleWeekStartWords([0, 1], '06:00')).toBe('Email me every Mon and Sun at 6:00 AM')
+    expect(peopleWeekStartWords([1, 3, 5], '06:00')).toBe('Email me 3 days a week at 6:00 AM')
+    expect(peopleWeekStartWords([0, 1, 2, 3, 4, 5, 6], '06:00')).toBe('Email me every day at 6:00 AM')
+    expect(peopleWeekStartWords([1, 1], '')).toBe('Email me every Monday')
+    expect(peopleWeekStartWords([], '06:00')).toBe('Pick a day')
+  })
+  it('says the cap only when it is reached', () => {
+    expect(peopleWeekAboutWords(3)).toBe('About these people')
+    expect(peopleWeekAboutWords(50)).toBe('About these people, 50 at most')
+  })
+  it('keeps the sheet’s words plain', () => {
+    const words = [...Object.values(PEOPLE_WEEK_SHEET_WORDS), peopleWeekAboutWords(3), peopleWeekAboutWords(50), peopleWeekStartWords([1], '06:00'), peopleWeekStartWords([1, 4], '06:00'), peopleWeekStartWords([1, 3, 5], '06:00')]
+    for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
+  })
+
+  const many = Array.from({ length: 25 }, (_, i) => ({ id: `p${i}`, name: `Person ${String(i).padStart(2, '0')}` }))
+  it('leads with the people picked and folds the rest of a long list behind a count', () => {
+    expect(many.length).toBeGreaterThan(PEOPLE_WEEK_FOLD_OVER)
+    const folded = peopleWeekPickList({ people: many, lead: ['p20', 'p3'], filter: '', unfolded: false })
+    expect(folded.shown.map((p) => p.id)).toEqual(['p3', 'p20'])
+    expect(folded.more).toBe(23)
+    expect(folded.findBox).toBe(false)
+    const open = peopleWeekPickList({ people: many, lead: ['p20', 'p3'], filter: '', unfolded: true })
+    expect(open.shown.slice(0, 3).map((p) => p.id)).toEqual(['p3', 'p20', 'p0'])
+    expect(open.shown).toHaveLength(25)
+    expect(open.more).toBe(0)
+    expect(open.findBox).toBe(true)
+  })
+  it('shows a short list whole, and a long one whole when nobody is picked yet or everyone is', () => {
+    const few = many.slice(0, 10)
+    expect(peopleWeekPickList({ people: few, lead: ['p9'], filter: '', unfolded: false })).toEqual({ shown: [few[9], ...few.slice(0, 9)], more: 0, findBox: false })
+    expect(peopleWeekPickList({ people: many, lead: [], filter: '', unfolded: false }).shown).toHaveLength(25)
+    expect(peopleWeekPickList({ people: many, lead: many.map((p) => p.id), filter: '', unfolded: false }).more).toBe(0)
+  })
+  it('finds across the whole list, picked or not, folded or not', () => {
+    const found = peopleWeekPickList({ people: many, lead: ['p3'], filter: ' person 2 ', unfolded: false })
+    expect(found.shown.map((p) => p.id)).toEqual(['p20', 'p21', 'p22', 'p23', 'p24'])
+    expect(found.more).toBe(0)
   })
 })

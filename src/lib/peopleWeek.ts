@@ -5,7 +5,7 @@
  * round's own kernel with the people riding along) and the sample Settings → What the team sees draws.
  */
 import { groupStatementRoundChains, planStatementRoundChainEdit, type StatementRoundChainGroup } from './statementRoundEmail'
-import type { PeopleWeekPayload } from '../../supabase/functions/_shared/peopleWeekEmail'
+import { cardLine, jobLine, peopleWeekSubject, personLine, roadmapLine, type PeopleWeekPayload, type PeopleWeekPerson } from '../../supabase/functions/_shared/peopleWeekEmail'
 
 export {
   cardLine,
@@ -109,6 +109,97 @@ export function timeWords(hm: string): string {
   const suffix = h >= 12 ? 'PM' : 'AM'
   const h12 = h % 12 === 0 ? 12 : h % 12
   return `${h12}:${m[2]} ${suffix}`
+}
+
+const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+/**
+ * *Email me every Monday at 6:00 AM*: the sheet's first press, said whole, so the press itself says it is an email,
+ * that it comes every week, and on which day and at what time (v2.8041). Two days read short, three or more as a count.
+ */
+export function peopleWeekStartWords(weekdays: readonly number[], timeHm: string): string {
+  const days = Array.from(new Set(weekdays.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))).sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
+  const at = /^\d{1,2}:\d{2}$/.test(timeHm) ? ` at ${timeWords(timeHm)}` : ''
+  if (days.length === 0) return 'Pick a day'
+  if (days.length === 7) return `Email me every day${at}`
+  if (days.length === 1) return `Email me every ${WEEKDAYS[days[0]!]}${at}`
+  if (days.length === 2) return `Email me every ${SHORT_DAYS[days[0]!]} and ${SHORT_DAYS[days[1]!]}${at}`
+  return `Email me ${days.length} days a week${at}`
+}
+
+/** The label over the people: the cap is said only once it is reached. */
+export function peopleWeekAboutWords(pickedCount: number, max: number = PEOPLE_WEEK_PEOPLE_MAX): string {
+  return pickedCount >= max ? `About these people, ${max} at most` : 'About these people'
+}
+
+/** The words of the sheet's small presses and labels, one home so the guide and the tests name the same controls. */
+export const PEOPLE_WEEK_SHEET_WORDS = {
+  sample: 'Sample',
+  seeYours: 'See yours now',
+  backToSample: 'Back to the sample',
+  test: 'Email me a test',
+  every: 'Every',
+  at: 'At',
+  zone: 'Central',
+  ownWeek: 'About your own week.',
+} as const
+
+/** A list of more people than this folds the ones not picked behind **＋ N more**. */
+export const PEOPLE_WEEK_FOLD_OVER = 10
+
+/**
+ * The people chips in the order the sheet draws them: the ones picked when the sheet opened first, so nobody hunts a
+ * wall of names for who is in it, then everyone else by name. On a long list everyone else waits behind **＋ N more**
+ * until it is pressed. The order holds while the sheet is open, so a chip never moves from under a finger. A find
+ * reads the whole list.
+ */
+export function peopleWeekPickList<T extends { id: string; name: string }>(input: { people: readonly T[]; lead: readonly string[]; filter: string; unfolded: boolean }): { shown: T[]; more: number; findBox: boolean } {
+  const lead = new Set(input.lead)
+  const first = input.people.filter((p) => lead.has(p.id))
+  const rest = input.people.filter((p) => !lead.has(p.id))
+  const long = input.people.length > PEOPLE_WEEK_FOLD_OVER
+  const q = input.filter.trim().toLowerCase()
+  if (q) return { shown: [...first, ...rest].filter((p) => p.name.toLowerCase().includes(q)), more: 0, findBox: long }
+  if (long && first.length > 0 && rest.length > 0 && !input.unfolded) return { shown: first, more: rest.length, findBox: false }
+  return { shown: [...first, ...rest], more: 0, findBox: long }
+}
+
+export type PeopleWeekGlance = { subject: string; name: string; line: string; groups: { label: string; line: string }[] }
+
+/** The one made-up person on the sheet's picture: every kind of line the email writes, once. */
+export function glancePerson(): PeopleWeekPerson {
+  return {
+    user_id: 'sample-mateo',
+    name: 'Mateo',
+    open: 1,
+    done: 2,
+    moved: 1,
+    photos: 4,
+    cards: [{ title: 'Hang the shelves', from_percent: 25, to_percent: 75, done: false, lines_ticked: 2, lines_total: 3, photos: 0, last_words: null }],
+    roadmap: [{ task_title: 'Hang the shelves', stage_title: 'Containers', roadmap_title: 'Farm 1', percent: 75, done: false }],
+    jobs: [{ hcp_number: '1105', customer_name: 'Morris Park', pct_complete: 65, sessions: 3, reports: 0 }],
+    stuck: [],
+  }
+}
+
+/**
+ * The sheet's picture of the email, in place of a paragraph that described it (v2.8041): the subject for the week
+ * just finished and one made-up person, every line written by the email's own kernel, so the picture cannot say
+ * something the email does not. The labels are the email's own group names.
+ */
+export function peopleWeekGlance(todayYmd: string): PeopleWeekGlance {
+  const { week_start, week_end } = samplePeopleWeekPayload(todayYmd)
+  const x = glancePerson()
+  return {
+    subject: peopleWeekSubject({ week_start, week_end, people: [x] }),
+    name: x.name,
+    line: personLine(x),
+    groups: [
+      { label: 'Cards', line: x.cards.map(cardLine).join(' ') },
+      { label: 'Roadmap', line: x.roadmap.map(roadmapLine).join(' ') },
+      { label: 'Jobs', line: x.jobs.map(jobLine).join(' ') },
+    ],
+  }
 }
 
 /** The sample Settings → What the team sees draws: three people, one week, every group once. */

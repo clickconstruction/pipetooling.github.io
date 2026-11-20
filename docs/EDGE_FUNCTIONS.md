@@ -2018,7 +2018,7 @@ The email (`_shared/gcMoneyMondayEmail.ts`, which What the team sees renders on 
 
 **Endpoint**: `POST /functions/v1/people-week-email` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret`, or the caller's JWT checked in-body for the two modes.
 
-- `{ mode: 'preview', people_user_ids? }`: any live account; the office (`OFFICE`: dev, master_technician, assistant, controller, primary, as `is_dev_or_master_or_assistant()`) gets the people it names, everyone else their own week whatever the list says. Answers `{ subject, html }`: the email as it would go now. **See the email as it would go now** calls it.
+- `{ mode: 'preview', people_user_ids? }`: any live account; the office (`OFFICE`: dev, master_technician, assistant, controller, primary, as `is_dev_or_master_or_assistant()`) gets the people it names, everyone else their own week whatever the list says. Answers `{ subject, html }`: the email as it would go now. **See yours now** calls it.
 - `{ mode: 'test_send', people_user_ids? }`: the same gate; a `[TEST]` copy to the caller's own address only. **Email me a test** calls it.
 - No mode: the cron (`2-57/5`, the :02 lane). It drains due `people_week_email_requests` rows, ten at a time and five tries each, and reads `get_people_week_payload(recipient, people, week_start)` once a row, the week being the previous Monday of the send's Central day. A recipient who is archived or has no email is stamped and skipped. A good send stamps `sent_at` and re-inserts a weekly row +7 days, once.
 

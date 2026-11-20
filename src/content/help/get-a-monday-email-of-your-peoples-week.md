@@ -16,12 +16,15 @@ On the **Dashboard**, the **Your people** card has {{button:outline|✉ Get this
 
 ## Pick the people, the days and the time
 
+The top of the sheet shows a small sample of the email. The person in it is made up.
+
 :::steps
 
-1. Tick each person you want in the email. You can pick up to 50. The list holds our staff and leaves out subcontractor companies.
-2. Pick the days it goes. Monday is picked for you.
-3. Set the time in Central time. It starts at 6:00 AM.
-4. Press {{button:blue|Start it}}.
+1. Look under **About these people**. The people already picked come first, each with a tick.
+2. Press {{button:outline|＋ 20 more}} to see everyone else. The number on it is how many more there are. Tick each person you want. You can pick up to 50. The list holds our staff and leaves out subcontractor companies.
+3. Pick the days under **Every**. Monday is picked for you.
+4. Set the time beside **At**. It is Central time and starts at 6:00 AM.
+5. Press the blue button. It says what it will do, like {{button:blue|Email me every Monday at 6:00 AM}}.
 
 :::
 
@@ -43,10 +46,12 @@ Each person gets their own part. The headline counts the people, the cards done,
 
 ## Check it before it goes
 
-Press {{button:outline|See the email as it would go now}} to read it on the sheet. Press {{button:outline|Email me a test}} to get a copy marked TEST at your own address.
+Press {{button:outline|See yours now}} under the sample. Your own email takes the sample's place. Press {{button:outline|Back to the sample}} to put the sample back.
+
+Press {{button:outline|Email me a test}} to get a copy marked TEST at your own address.
 
 ## Change it or stop it
 
-Open the sheet again. Your people, days and time are shown as they stand. Change them and press {{button:blue|Save the change}}. Untick every day and press {{button:red|Stop it}} to end it.
+Open the sheet again. A blue line at the top says who is in it, the day and the time. Your people, days and time are shown as they stand. Change them and press {{button:blue|Save the change}}. Untick every day and press {{button:red|Stop it}} to end it.
 
 **Settings → My email schedule** shows the next send beside your other emails. The office sees every scheduled send under **Settings → Email streams**.
