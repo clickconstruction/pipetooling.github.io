@@ -11,6 +11,7 @@
  */
 import type { AgreementRow } from './agreementsLedger'
 import { PERSON_PAPER_LINK_DAYS } from '../contracts/personPaperSend'
+import { isPartyAgreementKind } from '../contracts/paperParty'
 
 export const SEND_AGAIN_LABEL = 'Send again'
 export const COPY_SIGNING_LINK_LABEL = 'Copy the signing link'
@@ -20,12 +21,12 @@ function factOf(row: Pick<AgreementRow, 'facts'>, key: string): unknown {
 }
 
 /**
- * Whether a line carries Send again and Copy the signing link: a staff, sub or partner paper that is out and not
- * signed, and that no newer copy replaced. A trade company's paper goes out with its trade email in GC mode, so its
- * line keeps the GC door and carries neither.
+ * Whether a line carries Send again and Copy the signing link: a staff, sub or partner paper, or an outside party's
+ * (punch list #403), that is out and not signed, and that no newer copy replaced. A trade company's `company_id` paper
+ * goes out with its trade email in GC mode, so its line keeps the GC door and carries neither.
  */
 export function agreementCanBeSentAgain(row: Pick<AgreementRow, 'kind' | 'state' | 'facts'>): boolean {
-  if (row.kind !== 'person_agreement' && row.kind !== 'partner_agreement') return false
+  if (row.kind !== 'person_agreement' && row.kind !== 'partner_agreement' && !isPartyAgreementKind(row.kind)) return false
   if (row.state !== 'waiting') return false
   return factOf(row, 'status') === 'sent' && factOf(row, 'replaced') !== true
 }

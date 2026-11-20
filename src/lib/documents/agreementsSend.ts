@@ -27,6 +27,20 @@ export function papersMatching(papers: readonly PickablePaper[], typed: string):
 }
 
 /**
+ * The living roster for **Who is it with?** (punch list #403): each person once, by the name their papers are filed
+ * under, with whether the roster says sub. The same people `sendRosterNames` names.
+ */
+export function sendRoster(roster: ReadonlyArray<Pick<RosterPerson, 'account_kind' | 'is_archived' | 'roster_name' | 'account_name' | 'pay_name' | 'kind'>>): Array<{ name: string; sub: boolean }> {
+  const people = new Map<string, { name: string; sub: boolean }>()
+  for (const r of roster) {
+    if (r.account_kind !== 'person' || r.is_archived) continue
+    const name = (r.roster_name ?? r.account_name ?? r.pay_name ?? '').trim()
+    if (name && !people.has(name.toLowerCase())) people.set(name.toLowerCase(), { name, sub: r.kind === 'sub' })
+  }
+  return [...people.values()].sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/**
  * Who a paper can go to: each living person once, by the name their papers are filed under, A to Z. A twin, a sample
  * account and a tester are not people, and an archived person is not sent a new paper.
  */

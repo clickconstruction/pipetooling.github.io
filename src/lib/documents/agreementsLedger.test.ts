@@ -15,6 +15,8 @@ import {
   agreementCountWords,
   agreementDayWords,
   agreementDoor,
+  agreementNeedsAList,
+  agreementSignerWords,
   agreementFindWords,
   agreementGroup,
   agreementJobTail,
@@ -67,7 +69,7 @@ describe('who sees the tab', () => {
 
 describe('the chips', () => {
   it('opens on every kind and on sent and signed', () => {
-    expect(AGREEMENT_KIND_CHIPS.map((c) => c.label)).toEqual(['All', 'Job contracts', 'Warranties', 'Staff and subs', 'Partners', 'Work orders', 'GC projects'])
+    expect(AGREEMENT_KIND_CHIPS.map((c) => c.label)).toEqual(['All', 'Job contracts', 'Warranties', 'Staff and subs', 'Outside companies', 'Partners', 'Work orders', 'GC projects'])
     expect(AGREEMENT_STATE_CHIPS.map((c) => c.label)).toEqual(['Sent and signed', 'Waiting on a signature', 'Signed', 'Voided or ended'])
     expect(AGREEMENT_KIND_CHIPS[0]?.key).toBe('all')
     expect(AGREEMENT_STATE_CHIPS[0]?.key).toBe('live')
@@ -77,7 +79,9 @@ describe('the chips', () => {
     expect(kindsOfPick('all')).toBeNull()
     expect(kindsOfPick('jobs')).toEqual(['job_contract', 'their_paper'])
     expect(kindsOfPick('warranty')).toEqual(['job_warranty'])
-    expect(kindsOfPick('people')).toEqual(['person_agreement'])
+    // A trade company that is a party sits with the subs; a customer, a supply house and a party on no list are outside.
+    expect(kindsOfPick('people')).toEqual(['person_agreement', 'trade_agreement'])
+    expect(kindsOfPick('outside')).toEqual(['customer_agreement', 'supply_house_agreement', 'outside_agreement'])
     expect(kindsOfPick('partners')).toEqual(['partner_agreement'])
     expect(kindsOfPick('orders')).toEqual(['work_order'])
     expect(kindsOfPick('gc')).toEqual(['owner_contract', 'sow', 'company_agreement'])
@@ -196,6 +200,43 @@ describe('a line', () => {
     expect(agreementTag(row({ kind: 'sow' }))).toEqual({ words: 'Statement of work', group: 'gc' })
     expect(agreementTag(row({ kind: 'company_agreement' }))).toEqual({ words: 'Trade company', group: 'gc' })
     expect(agreementTag(row({ kind: 'something_new' }))).toEqual({ words: 'Agreement', group: 'jobs' })
+  })
+
+  it('tags an outside party’s paper by what the party is, and a party on no list with an outline', () => {
+    expect(agreementTag(row({ kind: 'customer_agreement', facts: { party_kind: 'customer' } }))).toEqual({ words: 'Customer', group: 'outside' })
+    expect(agreementTag(row({ kind: 'supply_house_agreement', facts: { party_kind: 'supply_house' } }))).toEqual({ words: 'Supply house', group: 'outside' })
+    expect(agreementTag(row({ kind: 'trade_agreement', facts: { party_kind: 'trade' } }))).toEqual({ words: 'Trade company', group: 'people' })
+    expect(agreementTag(row({ kind: 'outside_agreement', facts: { party_kind: 'none' } }))).toEqual({ words: 'Not on a list', group: 'outside', plain: true })
+    expect(agreementTag(row({ kind: 'outside_agreement', facts: { party_kind: 'person' } }))).toEqual({ words: 'On the roster', group: 'outside', plain: true })
+    // A row whose facts carry no party still tags by its kind.
+    expect(agreementTag(row({ kind: 'supply_house_agreement', facts: null }))).toEqual({ words: 'Supply house', group: 'outside' })
+  })
+
+  it('says who signs after the party, and never the same name twice', () => {
+    const waiting = { state: 'waiting', with_name: 'Tallgrass Supply Co.', facts: { status: 'sent', signer_name: 'Lena Park', signer_title: 'Branch manager' } }
+    expect(agreementSignerWords(row({ kind: 'supply_house_agreement', ...waiting }))).toBe('Lena Park signs, Branch manager')
+    const signed = { state: 'signed', with_name: 'Ridgeway Builders', facts: { status: 'signed', signer_name: 'Dana Ruiz', signer_title: 'Project manager', signer_printed_name: 'Dana M. Ruiz' } }
+    expect(agreementSignerWords(row({ kind: 'customer_agreement', ...signed }))).toBe('signed by Dana M. Ruiz, Project manager')
+    // A person's own paper: the signer is the person named beside it.
+    expect(agreementSignerWords(row({ kind: 'person_agreement', state: 'waiting', with_name: 'Priya Nair', facts: { status: 'sent', signer_name: 'priya nair' } }))).toBe('')
+    // The owner of a sub that is on the roster by its business name.
+    expect(agreementSignerWords(row({ kind: 'person_agreement', state: 'waiting', with_name: 'Ortega Mechanical', facts: { status: 'sent', signer_name: 'Luis Ortega' } }))).toBe('Luis Ortega signs')
+    // A job's contract keeps who signed in its own facts and says so in its own window: its line is left as it was.
+    expect(agreementSignerWords(row({ kind: 'job_contract', state: 'signed', with_name: 'Harlan Pierce', facts: { status: 'signed', signer_printed_name: 'H. Pierce, by phone' } }))).toBe('')
+    expect(agreementSignerWords(row({ kind: 'work_order', state: 'signed', with_name: 'Ortega Mechanical', facts: { status: 'accepted', signer_printed_name: 'Luis Ortega' } }))).toBe('')
+    // A trade company's own paper says who signed for it.
+    expect(agreementSignerWords(row({ kind: 'company_agreement', state: 'signed', with_name: 'Juniper Mechanical LLC', facts: { status: 'signed', signer_printed_name: 'Marco Ibarra' } }))).toBe('signed by Marco Ibarra')
+    // A paper that kept no signer says nothing, and one that only has what was typed at signing says so once signed.
+    expect(agreementSignerWords(row({ kind: 'person_agreement', state: 'waiting', with_name: 'Priya Nair', facts: { status: 'sent' } }))).toBe('')
+    expect(agreementSignerWords(row({ kind: 'customer_agreement', state: 'signed', with_name: 'Ridgeway Builders', facts: { status: 'signed', signer_printed_name: 'Dana Ruiz' } }))).toBe('signed by Dana Ruiz')
+  })
+
+  it('offers Add to a list only on a party with no record, signed or not', () => {
+    expect(agreementNeedsAList(row({ kind: 'outside_agreement', state: 'waiting', facts: { status: 'sent', party_kind: 'none' } }))).toBe(true)
+    expect(agreementNeedsAList(row({ kind: 'outside_agreement', state: 'signed', facts: { status: 'signed', party_kind: 'none' } }))).toBe(true)
+    expect(agreementNeedsAList(row({ kind: 'outside_agreement', facts: { party_kind: 'person' } }))).toBe(false)
+    expect(agreementNeedsAList(row({ kind: 'customer_agreement', facts: { party_kind: 'customer' } }))).toBe(false)
+    expect(agreementNeedsAList(row({ kind: 'person_agreement', facts: { status: 'sent' } }))).toBe(false)
   })
 
   it('is named by the paper, and a filed paper with no name says how it is kept', () => {
@@ -426,5 +467,12 @@ describe('what a press opens', () => {
     expect(agreementDoor(row({ kind: 'sow', source_id: 's1', job_id: null, facts: { status: 'sent' } }))).toEqual({ kind: 'gc', to: '/gc' })
     expect(agreementDoor(row({ kind: 'company_agreement', source_id: 'm1', job_id: null, facts: { status: 'signed' } }))).toEqual({ kind: 'person-signed', documentId: 'm1' })
     expect(agreementDoor(row({ kind: 'company_agreement', source_id: 'm2', state: 'waiting', job_id: null, facts: { status: 'sent' } }))).toEqual({ kind: 'gc', to: '/gc' })
+  })
+
+  it('an outside party’s paper opens its signed record, and waits with its acts on the line', () => {
+    for (const kind of ['customer_agreement', 'supply_house_agreement', 'trade_agreement', 'outside_agreement']) {
+      expect(agreementDoor(row({ kind, source_id: 'p1', job_id: null, facts: { status: 'signed' } })), kind).toEqual({ kind: 'person-signed', documentId: 'p1' })
+      expect(agreementDoor(row({ kind, source_id: 'p1', state: 'waiting', job_id: null, facts: { status: 'sent' } })), kind).toEqual({ kind: 'none' })
+    }
   })
 })

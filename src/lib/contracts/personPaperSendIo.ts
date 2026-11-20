@@ -8,6 +8,8 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { QuickSendPlan } from '../contractsQuickSend'
 import { onePersonIdForName, rosterEmailForName, sendWindowSender, type PersonPaperSendResult, type SendRosterPerson, type SendRosterUser } from './personPaperSend'
+import { isPartyPaperName } from './paperParty'
+import type { SendWindowParty } from '../documents/paperPartyPick'
 
 export type PersonPaperSendInput = {
   documentId: string
@@ -18,6 +20,8 @@ export type PersonPaperSendInput = {
   signerName?: string
   /** The signer's title. Sent with every email, so a cleared box clears the row's; never sent with a link. */
   signerTitle?: string
+  /** The business a party's signer signs for (punch list #403). Sent only for a party's paper; '' clears it, for a person who signs for themselves. */
+  signingFor?: string
   /** The office's own subject and opening words; blank keeps the email's own. */
   subject?: string
   intro?: string
@@ -43,7 +47,12 @@ export async function sendPersonPaperForSignature(input: PersonPaperSendInput): 
       person_contract_document_id: input.documentId,
       ...(input.mode === 'link'
         ? { mode: 'link' }
-        : { signer_email: (input.signerEmail ?? '').trim(), ...(signerName ? { signer_name: signerName } : {}), ...(input.signerTitle !== undefined ? { signer_title: input.signerTitle.trim() } : {}) }),
+        : {
+            signer_email: (input.signerEmail ?? '').trim(),
+            ...(signerName ? { signer_name: signerName } : {}),
+            ...(input.signerTitle !== undefined ? { signer_title: input.signerTitle.trim() } : {}),
+            ...(input.signingFor !== undefined ? { signing_for: input.signingFor.trim() } : {}),
+          }),
       public_origin: typeof window !== 'undefined' ? window.location.origin : undefined,
       ...(subject ? { email_subject: subject } : {}),
       ...(intro ? { email_intro_plain: intro } : {}),
@@ -65,7 +74,16 @@ export async function sendPersonPaperForSignature(input: PersonPaperSendInput): 
  * The write a quick-send pick deferred: fill the placeholder or insert the unsent row, returning the id the send
  * function needs. Called from Send email only. Throws on failure, and nothing is minted.
  */
-export async function materializeQuickSendRow(pending: { personName: string; documentName: string; plan: Extract<QuickSendPlan, { kind: 'fill' | 'insert' }> }): Promise<string> {
+export async function materializeQuickSendRow(pending: {
+  personName: string
+  documentName: string
+  plan: Extract<QuickSendPlan, { kind: 'fill' | 'insert' }>
+  /**
+   * An outside party's paper (punch list #403): the party's contact and its name as it stands today. `personName` is
+   * then the party's stored name, and the paper is no roster person's.
+   */
+  party?: { contactId: string; name: string }
+}): Promise<string> {
   const { plan } = pending
   const source = plan.source
   if (plan.kind === 'fill') {
@@ -90,6 +108,7 @@ export async function materializeQuickSendRow(pending: { personName: string; doc
         .from('person_contract_documents')
         .insert({
           person_name: pending.personName,
+          ...(pending.party ? { party_contact_id: pending.party.contactId, party_name: pending.party.name } : {}),
           document_name: pending.documentName,
           contract_lineage_id: globalThis.crypto.randomUUID(),
           lineage_version: 1,
@@ -126,6 +145,8 @@ export type PersonPaperSendFacts = {
   /** Who signed for it last time, when the paper kept them: the window opens on these. */
   signerName?: string
   signerTitle?: string
+  /** An outside party's paper (punch list #403): who it is with, as the window shows it. */
+  party?: SendWindowParty
   personId: string | null
   sender: { name: string; email: string } | null
 }
@@ -152,14 +173,35 @@ export async function readPersonSendFactsByName(personName: string, documentName
   }
 }
 
+/** The staff member sending, for a window whose party is on no roster: their own name and address, or null with none. */
+export async function readSenderFacts(currentUserId: string | null | undefined): Promise<{ name: string; email: string } | null> {
+  if (!currentUserId) return null
+  const me = await withSupabaseRetry(async () => supabase.from('users').select('id, name, email').eq('id', currentUserId).maybeSingle(), 'read your own address')
+  return sendWindowSender(currentUserId, me ? [me as SendRosterUser] : [])
+}
+
 /**
  * Read one saved paper's send facts: the paper as filed, then the person's. Each table's own row security answers; a
  * paper the caller cannot read throws.
  */
 export async function readPersonPaperSendFacts(documentId: string, currentUserId: string | null | undefined): Promise<PersonPaperSendFacts> {
   const doc = await readPaperSendRow(documentId)
-  const facts = await readPersonSendFactsByName(doc.person_name ?? '', doc.document_name ?? '', currentUserId)
   const kept = keptSignerOf(doc)
+  if (isPartyPaperName(doc.person_name)) {
+    // A party's paper is filed under a stored name, which is nobody's on the roster: the window opens on who signed for
+    // it and the address it went to, and names the party the paper keeps.
+    const partyName = (doc.party_name ?? '').trim()
+    return {
+      target: { personName: kept.name || partyName, documentName: (doc.document_name ?? '').trim() },
+      initialEmail: kept.email,
+      signerName: kept.name,
+      signerTitle: kept.title,
+      personId: null,
+      sender: await readSenderFacts(currentUserId),
+      party: { name: partyName, unlisted: false, keepWith: null },
+    }
+  }
+  const facts = await readPersonSendFactsByName(doc.person_name ?? '', doc.document_name ?? '', currentUserId)
   // The roster's address opens the window, as before. With none on the roster, the address the paper last went to does.
   return { ...facts, initialEmail: facts.initialEmail || kept.email, signerName: kept.name, signerTitle: kept.title }
 }
@@ -173,9 +215,9 @@ export async function readKeptSigner(documentId: string): Promise<KeptSigner> {
 }
 
 /** What a send reads of a saved paper: who it is filed under, and the signer it kept from its last send. */
-type PaperSendRow = { person_name: string; document_name: string; signer_name: string | null; signer_title: string | null; signer_email: string | null }
-// The signer's three columns join the generated types with the push's types PR; until then the list is a plain string.
-const PAPER_SEND_COLUMNS: string = 'person_name, document_name, signer_name, signer_title, signer_email'
+type PaperSendRow = { person_name: string; document_name: string; signer_name: string | null; signer_title: string | null; signer_email: string | null; party_name: string | null }
+// The signer's columns join the generated types with the push's types PR; until then the list is a plain string.
+const PAPER_SEND_COLUMNS: string = 'person_name, document_name, signer_name, signer_title, signer_email, party_name'
 
 async function readPaperSendRow(documentId: string): Promise<PaperSendRow> {
   const row = await withSupabaseRetry(async () => supabase.from('person_contract_documents').select(PAPER_SEND_COLUMNS).eq('id', documentId).single(), 'read the paper')

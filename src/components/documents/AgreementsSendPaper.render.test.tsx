@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
 /**
  * Documents → Agreements, Send a paper: the press reads the Contract Book and offers its papers; a paper with nothing
- * to sign names why and is not a press; a picked paper asks for a person through People's own picker; a picked person
- * opens the Send window on the plan, with nothing written before; and a sent paper tells the list to read again. The
- * Contract library's Send to… starts it at the person, and the paper step's own door opens the library.
+ * to sign names why and is not a press; a picked paper asks who it is with; a picked person on the roster opens the
+ * Send window on the plan, with nothing written before; and a sent paper tells the list to read again. The Contract
+ * library's Send to… starts it at Who is it with?, and the paper step's own door opens the library.
+ *
+ * Since punch list #403 the second window also finds a supply house, its reps, a customer and the people on file
+ * there, and takes someone on no list. An outside party's paper is written only at Send: its contact is found, a typed
+ * signer is kept with the company when the office says so, and the row is filed under the party's stored name.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -16,7 +20,11 @@ const io = vi.hoisted(() => ({
   book: [] as unknown[],
   personDocuments: [] as unknown[],
   rosterNames: [] as string[],
+  roster: [] as Array<{ name: string; sub: boolean }>,
   facts: [] as string[],
+  /** What a party's send did, in order. */
+  party: [] as string[],
+  customers: [] as Array<{ id: string; name: string }>,
 }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'assistant', user: { id: 'u1' } })
@@ -26,7 +34,27 @@ vi.mock('../../lib/documents/agreementsSendIo', () => ({
   readAgreementsSendBook: async () => {
     io.reads += 1
     if (io.fail) throw io.fail
-    return { book: io.book, personDocuments: io.personDocuments, rosterNames: io.rosterNames }
+    return { book: io.book, personDocuments: io.personDocuments, rosterNames: io.rosterNames, roster: io.roster }
+  },
+}))
+vi.mock('../../lib/documents/paperPartyIo', () => ({
+  readPartyShortLists: async () => ({
+    customerPeople: [{ id: 'cp1', name: 'Dana Ruiz', email: 'dana@ridgeway.example', customerId: 'c1', customerName: 'Ridgeway Builders' }],
+    supplyHouses: [{ id: 'h1', name: 'Tallgrass Supply Co.' }],
+    reps: [{ id: 'r1', name: 'Lena Park', label: 'Branch manager', email: 'lena@tallgrass.example', houseId: 'h1', houseName: 'Tallgrass Supply Co.' }],
+  }),
+  searchPartyCustomers: async () => io.customers,
+  readPartyContact: async (record: { table: string; id: string }) => {
+    io.party.push(`contact ${record.table}:${record.id}`)
+    return '3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d'
+  },
+  makeContactForAddress: async (email: string, name: string) => {
+    io.party.push(`made ${email} as ${name}`)
+    return '9a1b2c3d-0a4d-4e8b-9c6f-1d2e3a4b5c6d'
+  },
+  keepSignerWithBusiness: async (business: { table: string; id: string }, signer: { name: string; email: string }) => {
+    io.party.push(`kept ${signer.name} with ${business.table}:${business.id}`)
+    return { table: 'customer_contact_persons', id: 'cp-new' }
   },
 }))
 vi.mock('../../lib/contracts/personPaperSendIo', () => ({
@@ -34,15 +62,45 @@ vi.mock('../../lib/contracts/personPaperSendIo', () => ({
     io.facts.push(`${personName}|${documentName}`)
     return { target: { personName, documentName }, initialEmail: 'bryce@example.com', personId: null, sender: null }
   },
+  readSenderFacts: async () => ({ name: 'Grace Hale', email: 'grace@example.com' }),
+  materializeQuickSendRow: async (pending: { personName: string; documentName: string; plan: { kind: string }; party?: { contactId: string; name: string } }) => {
+    io.party.push(`wrote ${pending.plan.kind} ${pending.personName} · ${pending.documentName} · ${pending.party?.name}`)
+    return 'party-row'
+  },
 }))
 // The Send window is its own file's to test: here it says what it was opened on, and its button says it sent.
 vi.mock('../contracts/ContractSendWindow', () => ({
-  ContractSendWindow: (p: { again?: boolean; docId: string | null; quickSendPlan?: { kind: string } | null; target: { personName: string; documentName: string } | null; onSent: (s: { docId: string; emailed: boolean; planKind: string | null }) => void }) => (
+  ContractSendWindow: (p: {
+    again?: boolean
+    docId: string | null
+    quickSendPlan?: { kind: string } | null
+    target: { personName: string; documentName: string } | null
+    initialEmail: string
+    initialSignerName?: string
+    initialSignerTitle?: string
+    party?: { name: string; unlisted: boolean; keepWith: string | null } | null
+    preparePartyPaper?: (input: { signerName: string; signerEmail: string; typedCompany: string; keep: boolean }) => Promise<string>
+    onSent: (s: { docId: string; emailed: boolean; planKind: string | null }) => void
+  }) => (
     <div data-testid="send-window">
       {`${p.again ? 'again' : 'first'}|${p.docId}|${p.quickSendPlan?.kind}|${p.target?.personName}|${p.target?.documentName}`}
+      {p.party ? <span data-testid="send-window-party">{`${p.party.name || 'nobody'}|${p.party.unlisted ? 'unlisted' : 'listed'}|keep ${p.party.keepWith ?? 'nobody'}|${p.initialSignerName}|${p.initialSignerTitle}|${p.initialEmail}`}</span> : null}
       <button type="button" onClick={() => p.onSent({ docId: 'new', emailed: true, planKind: p.quickSendPlan?.kind ?? null })}>
         fake send
       </button>
+      {p.preparePartyPaper ? (
+        <button
+          type="button"
+          onClick={() =>
+            void p.preparePartyPaper!({ signerName: p.initialSignerName || 'Wren Castillo', signerEmail: p.initialEmail || 'wren@example.com', typedCompany: p.party?.unlisted ? 'Haddad Engineering' : '', keep: p.party?.keepWith != null }).then((docId) => {
+              io.party.push(`sends ${docId}`)
+              p.onSent({ docId, emailed: true, planKind: null })
+            })
+          }
+        >
+          fake party send
+        </button>
+      ) : null}
     </div>
   ),
 }))
@@ -69,7 +127,13 @@ beforeEach(() => {
   io.book = [bookRow({}), bookRow({ id: 'b2', document_name: 'Empty shell', book_body_html: '' }), bookRow({ id: 'b3', document_name: 'W-9', book_body_html: null, form_template_id: 'f1' })]
   io.personDocuments = [sentCopy]
   io.rosterNames = ['Bryce Tolland', 'Priya Nair']
+  io.roster = [
+    { name: 'Bryce Tolland', sub: true },
+    { name: 'Priya Nair', sub: false },
+  ]
   io.facts = []
+  io.party = []
+  io.customers = []
 })
 afterEach(() => cleanup())
 
@@ -93,9 +157,10 @@ describe('AgreementsSendPaper', () => {
     renderWithProviders(<AgreementsSendPaper onSent={onSent} onOpenLibrary={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: 'Send a paper' }))
     fireEvent.click(await screen.findByRole('button', { name: /^Subcontractor Handbook/ }))
-    // People's own picker: who has not had it, and who already has it out.
-    expect(await screen.findByRole('dialog', { name: 'Send Subcontractor Handbook to a person' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Bryce Tolland' }))
+    // Who is it with? lists the roster with nothing typed, and Someone not in any list last.
+    const picker = await screen.findByRole('dialog', { name: 'Send Subcontractor Handbook: who is it with?' })
+    await waitFor(() => expect(Array.from(picker.querySelectorAll('[data-testid="paper-party-row"]')).map((b) => b.textContent)).toEqual(['Bryce TollandSigns for themselvesSub', 'Priya NairSigns for themselvesStaff', 'Someone not in any listType their name and email next.Not on a list']))
+    fireEvent.click(screen.getByRole('button', { name: /^Bryce Tolland/ }))
     expect((await screen.findByTestId('send-window')).textContent).toContain('first|null|insert|Bryce Tolland|Subcontractor Handbook')
     expect(io.facts).toEqual(['Bryce Tolland|Subcontractor Handbook'])
     fireEvent.click(screen.getByRole('button', { name: 'fake send' }))
@@ -134,8 +199,65 @@ describe('AgreementsSendPaper', () => {
 
   it('a paper another door named starts at the person, on a fresh read', async () => {
     renderWithProviders(<AgreementsSendPaper onSent={() => {}} onOpenLibrary={() => {}} startOn={{ documentName: 'W-9' }} />)
-    expect(await screen.findByRole('dialog', { name: 'Send W-9 to a person' })).toBeTruthy()
+    expect(await screen.findByRole('dialog', { name: 'Send W-9: who is it with?' })).toBeTruthy()
     expect(io.reads).toBe(1)
     expect(screen.queryByRole('dialog', { name: 'Send a paper' })).toBeNull()
+  })
+
+  it('someone who signed the paper is not offered a second copy', async () => {
+    io.personDocuments = [{ ...sentCopy, status: 'signed', signed_at: '2026-11-02' }]
+    renderWithProviders(<AgreementsSendPaper onSent={() => {}} onOpenLibrary={() => {}} startOn={{ documentName: 'Subcontractor Handbook' }} />)
+    const picker = await screen.findByRole('dialog', { name: 'Send Subcontractor Handbook: who is it with?' })
+    await waitFor(() => expect(picker.querySelectorAll('[data-testid="paper-party-row"]').length).toBe(2))
+    expect(screen.queryByRole('button', { name: /^Priya Nair/ })).toBeNull()
+  })
+
+  /** Open the second window on the handbook and press a chip. */
+  const openPicker = async (chip?: string) => {
+    renderWithProviders(<AgreementsSendPaper onSent={() => {}} onOpenLibrary={() => {}} startOn={{ documentName: 'Subcontractor Handbook' }} />)
+    await screen.findByRole('dialog', { name: 'Send Subcontractor Handbook: who is it with?' })
+    if (chip) fireEvent.click(screen.getByRole('button', { name: chip }))
+  }
+
+  it('a rep is picked: the supply house is the party, the rep signs, and nothing is written until Send', async () => {
+    await openPicker('Supply houses')
+    fireEvent.click(await screen.findByRole('button', { name: /^Lena Park/ }))
+    expect((await screen.findByTestId('send-window-party')).textContent).toBe('Tallgrass Supply Co.|listed|keep nobody|Lena Park|Branch manager|lena@tallgrass.example')
+    expect(io.party).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(io.party).toEqual(['contact supply_house_contacts:r1', 'wrote insert party:3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d · Subcontractor Handbook · Tallgrass Supply Co.', 'sends party-row']))
+  })
+
+  it('a company with nobody picked: the typed signer is kept with it, then its contact is found', async () => {
+    io.customers = [{ id: 'c2', name: 'Tallgrass Homes' }]
+    await openPicker()
+    fireEvent.change(screen.getByLabelText('Find a person or a company'), { target: { value: 'tallgrass homes' } })
+    fireEvent.click(await screen.findByRole('button', { name: /^Tallgrass Homes/ }, { timeout: 3000 }))
+    expect((await screen.findByTestId('send-window-party')).textContent).toBe('Tallgrass Homes|listed|keep Tallgrass Homes|||')
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() =>
+      expect(io.party).toEqual([
+        'kept Wren Castillo with customers:c2',
+        'contact customer_contact_persons:cp-new',
+        'wrote insert party:3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d · Subcontractor Handbook · Tallgrass Homes',
+        'sends party-row',
+      ]),
+    )
+  })
+
+  it('someone on no list: their contact is made from the address, and the paper keeps the company typed', async () => {
+    await openPicker()
+    fireEvent.click(await screen.findByRole('button', { name: /^Someone not in any list/ }))
+    expect((await screen.findByTestId('send-window-party')).textContent).toBe('nobody|unlisted|keep nobody|||')
+    fireEvent.click(screen.getByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(io.party).toEqual(['made wren@example.com as Wren Castillo', 'wrote insert party:9a1b2c3d-0a4d-4e8b-9c6f-1d2e3a4b5c6d · Subcontractor Handbook · Haddad Engineering', 'sends party-row']))
+  })
+
+  it('a party that already has the paper out is sent the same copy again, and no second row is written', async () => {
+    io.personDocuments = [{ ...sentCopy, id: 'p-out', person_name: 'party:3f2b7c1e-0a4d-4e8b-9c6f-1d2e3a4b5c6d' }]
+    await openPicker('Supply houses')
+    fireEvent.click(await screen.findByRole('button', { name: /^Lena Park/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'fake party send' }))
+    await waitFor(() => expect(io.party).toEqual(['contact supply_house_contacts:r1', 'sends p-out']))
   })
 })

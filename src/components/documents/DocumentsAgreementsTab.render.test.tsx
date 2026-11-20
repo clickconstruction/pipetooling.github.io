@@ -263,6 +263,28 @@ describe('DocumentsAgreementsTab', () => {
   const signedPaper = () =>
     row({ id: 'person_agreement:d1', kind: 'person_agreement', source_id: 'd1', paper_name: 'Employee handbook', with_name: 'Priya Nair', job_id: null, job_name: null, job_hcp_number: null, facts: { status: 'signed' } })
 
+  it('an outside party’s paper says what the party is and who signs, and one that waits acts on its line', async () => {
+    const off = { job_id: null, job_name: null, job_hcp_number: null, job_click_number: null, job_address: null }
+    io.rows = [
+      row({ id: 'outside_agreement:p4', kind: 'outside_agreement', source_id: 'p4', state: 'waiting', paper_name: 'Mutual secrecy agreement', with_name: 'Haddad Engineering', ...off, at_day: '2026-11-19', facts: { status: 'sent', party_kind: 'none', signer_name: 'Noor Haddad', signer_title: 'Structural engineer' } }),
+      row({ id: 'supply_house_agreement:p1', kind: 'supply_house_agreement', source_id: 'p1', state: 'waiting', paper_name: 'Mutual secrecy agreement', with_name: 'Tallgrass Supply Co.', ...off, at_day: '2026-11-18', facts: { status: 'sent', party_kind: 'supply_house', signer_name: 'Lena Park', signer_title: 'Branch manager' } }),
+      row({ id: 'customer_agreement:p2', kind: 'customer_agreement', source_id: 'p2', state: 'signed', paper_name: 'Site secrecy agreement', with_name: 'Ridgeway Builders', ...off, at_day: '2026-11-17', facts: { status: 'signed', party_kind: 'customer', signer_name: 'Dana Ruiz', signer_title: 'Project manager', signer_printed_name: 'Dana M. Ruiz' } }),
+    ]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    const rows = await lines()
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringMatching(/^Not on a listMutual secrecy agreementWith Haddad Engineering · Noor Haddad signs, Structural engineernever openedSent Nov 19Send againCopy the signing link/),
+      expect.stringMatching(/^Supply houseMutual secrecy agreementWith Tallgrass Supply Co\. · Lena Park signs, Branch managernever openedSent Nov 18Send againCopy the signing link$/),
+      expect.stringMatching(/^CustomerSite secrecy agreementWith Ridgeway Builders · signed by Dana M\. Ruiz, Project managersigned ✓Signed Nov 17$/),
+    ])
+    // A waiting party's paper has no page of its own to open: its name is words. A signed one opens its record.
+    expect(rows[1]?.querySelector('a')).toBeNull()
+    expect(Array.from(rows[2]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Site secrecy agreement'])
+    // The chip that asks for them.
+    fireEvent.click(screen.getByRole('button', { name: 'Outside companies' }))
+    await waitFor(() => expect(io.asks[io.asks.length - 1]).toMatchObject({ kind: 'outside' }))
+  })
+
   it('only a paper that waits carries Send again and Copy the signing link', async () => {
     io.rows = [signedPaper(), waitingPaper()]
     renderWithProviders(<DocumentsAgreementsTab />)

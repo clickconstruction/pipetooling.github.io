@@ -14,7 +14,8 @@ import { ContractFormFill } from '../components/contracts/formFill/ContractFormF
 import { applyPrefill, schemaForParty, type FormPerson, type FormSchema, type FormValues, validateFormValues } from '../lib/forms/formSchema'
 import { partyRegions, type PartyRegion } from '../lib/forms/formParties'
 import { errorsByBox, fillString, type FillLang } from '../lib/forms/formFillState'
-import { esignConsentText } from '../lib/esignConsent'
+import { esignConsentText, type EsignAudience } from '../lib/esignConsent'
+import { paperSaysLine } from '../lib/contracts/paperParty'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -59,6 +60,10 @@ type FormPayload = {
 type LoadPayload = {
   id: string
   person_name: string
+  /** Who signs and for whom, as the office sent it (punch list #403); '' on a paper sent before the signer was kept. */
+  says: string
+  /** Who the signer is to us, for the consent words the ledger keeps. */
+  audience: EsignAudience
   document_name: string
   signing_body_html: string | null
   signing_body_format: string
@@ -162,8 +167,11 @@ export default function ContractAccept() {
             headers: await publicFunctionHeaders(sample),
           },
         )
-        const json = (await res.json()) as Omit<LoadPayload, 'form'> & {
+        const json = (await res.json()) as Omit<LoadPayload, 'form' | 'says'> & {
           form?: FormPayload | null
+          signer_name?: string | null
+          signer_title?: string | null
+          signing_for?: string | null
           code?: string
           error?: unknown
           thank_you_title?: string
@@ -189,6 +197,9 @@ export default function ContractAccept() {
         setPayload({
           id: String(json.id),
           person_name: String(json.person_name ?? ''),
+          // The line shows only when it says more than a name: a title, or the business they sign for.
+          says: json.signer_title || json.signing_for ? paperSaysLine({ name: json.signer_name, title: json.signer_title, signingFor: json.signing_for }) : '',
+          audience: json.audience === 'customer' || json.audience === 'outside' ? json.audience : 'sub',
           document_name: String(json.document_name ?? ''),
           signing_body_html: json.signing_body_html ?? null,
           signing_body_format:
@@ -403,6 +414,11 @@ export default function ContractAccept() {
         <div className="auth-public-landing__signin-box" style={{ maxWidth: 720 }}>
           {sample ? <SampleModeBanner /> : null}
           <h1 style={{ fontSize: '1.35rem', marginTop: 0 }}>{payload.document_name}</h1>
+          {payload.says ? (
+            <p data-testid="contract-accept-says" style={{ margin: '-0.4rem 0 1rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+              {payload.says}
+            </p>
+          ) : null}
 
           {canonical ? (
             <p style={{ marginBottom: '1rem' }}>
@@ -502,7 +518,7 @@ export default function ContractAccept() {
             submitting={submitting}
             onSubmit={(p) => void submitAccept(p)}
             consent={esignConsentText({
-              audience: 'sub',
+              audience: payload.audience,
               lang: payload.form ? formLang : payload.clause_paper ? paperLang : 'en',
               documentNoun: payload.form ? (formLang === 'es' ? 'este formulario' : 'this form') : payload.clause_paper ? CLAUSE_SIGN_WORDS[paperLang].noun : 'this agreement',
             })}

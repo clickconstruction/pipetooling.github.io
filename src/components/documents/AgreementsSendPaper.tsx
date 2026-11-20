@@ -1,20 +1,25 @@
-import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { SEND_A_PAPER_LABEL, papersMatching, sendablePapers } from '../../lib/documents/agreementsSend'
 import { readAgreementsSendBook, type AgreementsSendBook } from '../../lib/documents/agreementsSendIo'
-import { quickSendNoContentWords, quickSendPickPlan, type QuickSendPlan } from '../../lib/contractsQuickSend'
-import { readPersonSendFactsByName, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
+import { quickSendNoContentWords, quickSendPickPlan, quickSendPlanWrites, quickSendRosterSplit, type QuickSendPlan } from '../../lib/contractsQuickSend'
+import { materializeQuickSendRow, readPersonSendFactsByName, readSenderFacts, type PersonPaperSendFacts } from '../../lib/contracts/personPaperSendIo'
+import { partyPaperName } from '../../lib/contracts/paperParty'
+import { partyNameToKeep, sendWindowPartyOfPick, type PartyPick, type PartyRecordTable, type PartySendInput, type SendWindowParty } from '../../lib/documents/paperPartyPick'
+import { keepSignerWithBusiness, makeContactForAddress, readPartyContact } from '../../lib/documents/paperPartyIo'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
-import { ContractQuickSendPicker } from '../people/ContractQuickSendPicker'
+import { PaperPartyPicker } from './PaperPartyPicker'
 
 /**
  * Documents → Agreements, **Send a paper** (punch list #376, the second train): one press that picks a paper from the
- * Contract Book, then a person, and opens the Send for signature window on the pick. It is People → Contracts' quick
- * send on this page: the same person picker, the same plan (`quickSendPickPlan`), the same window and the same sender.
+ * Contract Book, then who it is with, and opens the Send for signature window on the pick. For a person on the roster
+ * it is People → Contracts' quick send on this page: the same plan (`quickSendPickPlan`), the same window and the same
+ * sender. Since punch list #403 the second window is **Who is it with?**: it also finds a customer, a supply house and
+ * the people on file there, and takes someone on no list. An outside party's paper is filed under the party's contact.
  * Nothing is written until **Send email** is pressed, so closing any step leaves nothing behind. Once the email goes,
  * `onSent` lets the list read again and the new line shows on it.
  *
@@ -33,6 +38,8 @@ type Step =
   | { at: 'paper' }
   | { at: 'person'; documentName: string }
   | { at: 'send'; documentName: string; docId: string | null; plan: QuickSendPlan; again: boolean; facts: PersonPaperSendFacts }
+  /** An outside party's paper: nothing is decided until Send email, when its contact is found and its row written. */
+  | { at: 'send-party'; documentName: string; pick: Exclude<PartyPick, { kind: 'roster' }>; party: SendWindowParty; facts: PersonPaperSendFacts }
 
 export function AgreementsSendPaper({
   onSent,
@@ -52,7 +59,21 @@ export function AgreementsSendPaper({
   const [busy, setBusy] = useState<null | 'open' | 'pick'>(null)
   const [typed, setTyped] = useState('')
 
+  /** The person a party's send kept with their company, so a second press of a send that failed keeps nobody twice. */
+  const keptSigner = useRef<{ pick: PartyPick; name: string; email: string; record: { table: PartyRecordTable; id: string } } | null>(null)
+
   const papers = useMemo(() => sendablePapers(data?.book ?? []), [data])
+  /**
+   * The roster as the person step lists it: the people who have not had the paper and the ones it is out with, as
+   * People's picker lists them. Someone who signed it is done, and is not offered a second copy.
+   */
+  const pickDocumentName = step?.at === 'person' ? step.documentName : null
+  const rosterToPick = useMemo(() => {
+    if (!data || pickDocumentName == null) return []
+    const split = quickSendRosterSplit({ documentName: pickDocumentName, rosterNames: data.rosterNames, personDocuments: data.personDocuments })
+    const offered = new Set([...split.needsIt, ...split.resend.map((r) => r.personName)])
+    return data.roster.filter((p) => offered.has(p.name))
+  }, [data, pickDocumentName])
   const shown = useMemo(() => papersMatching(papers, typed), [papers, typed])
 
   // The Book, the papers people hold and the roster are read on the press, so the pick is made on what is true now.
@@ -87,6 +108,57 @@ export function AgreementsSendPaper({
     } finally {
       setBusy(null)
     }
+  }
+
+  // A company or someone on no list was picked: the email window opens on who signs. Nothing is read of the party yet
+  // and nothing is written: its contact is found at Send email.
+  const pickParty = async (documentName: string, pick: Exclude<PartyPick, { kind: 'roster' }>) => {
+    if (busy || !data) return
+    setBusy('pick')
+    try {
+      const sender = await readSenderFacts(user?.id)
+      const signer = pick.kind === 'record' ? pick.signer : null
+      setStep({
+        at: 'send-party',
+        documentName,
+        pick,
+        party: sendWindowPartyOfPick(pick),
+        facts: { target: { personName: signer?.name ?? '', documentName }, initialEmail: signer?.email ?? '', signerName: signer?.name ?? '', signerTitle: signer?.title ?? '', personId: null, sender },
+      })
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Your own address did not read.'), 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /**
+   * What a party's first send writes, right before the email goes: a person kept with the company, the party's contact,
+   * and the paper's row under the party's stored name. A party that already has this paper out gets the same copy again.
+   */
+  const preparePartyPaper = async (documentName: string, pick: Exclude<PartyPick, { kind: 'roster' }>, party: SendWindowParty, input: PartySendInput): Promise<string> => {
+    if (!data) throw new Error('The Contract Book did not read.')
+    let contactId: string
+    if (pick.kind === 'unlisted') {
+      contactId = await makeContactForAddress(input.signerEmail, input.signerName)
+    } else {
+      let record = pick.record
+      if (input.keep && !pick.signer) {
+        // A press that failed after the person was kept tries again on the same person, never a second one.
+        const again = keptSigner.current
+        if (again && again.pick === pick && again.name === input.signerName.trim() && again.email === input.signerEmail.trim()) record = again.record
+        else {
+          record = await keepSignerWithBusiness(pick.business, { name: input.signerName, email: input.signerEmail }, user?.id)
+          keptSigner.current = { pick, name: input.signerName.trim(), email: input.signerEmail.trim(), record }
+        }
+      }
+      contactId = await readPartyContact(record)
+    }
+    const storedName = partyPaperName(contactId)
+    const { plan } = quickSendPickPlan({ documentName, personName: storedName, templateDocuments: data.book, personDocuments: data.personDocuments })
+    if (plan.kind === 'no-content') throw new Error(quickSendNoContentWords(documentName))
+    if (!quickSendPlanWrites(plan)) return plan.docId
+    return materializeQuickSendRow({ personName: storedName, documentName, plan, party: { contactId, name: partyNameToKeep(party, input.typedCompany, input.signerName) } })
   }
 
   const close = () => setStep(null)
@@ -139,7 +211,7 @@ export function AgreementsSendPaper({
                 ×
               </button>
             </div>
-            <p style={{ margin: '0.25rem 0 0.6rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Pick a paper from the Contract Book. You pick the person next.</p>
+            <p style={{ margin: '0.25rem 0 0.6rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Pick a paper from the Contract Book. You pick who it is with next.</p>
             {papers.length === 0 ? (
               <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'data', noun: 'papers in the Contract Book', page: { label: 'Contract library', tail: 'is where a paper is written.' } }), { onPress: toLibrary })} />
             ) : (
@@ -184,14 +256,33 @@ export function AgreementsSendPaper({
         </div>
       ) : null}
       {step?.at === 'person' && data ? (
-        <ContractQuickSendPicker
+        <PaperPartyPicker
           documentName={step.documentName}
-          rosterNames={data.rosterNames}
-          personDocuments={data.personDocuments}
+          roster={rosterToPick}
           busy={busy === 'pick'}
-          onPick={(personName) => void pickPerson(step.documentName, personName)}
+          onPick={(pick) => (pick.kind === 'roster' ? void pickPerson(step.documentName, pick.personName) : void pickParty(step.documentName, pick))}
           onClose={close}
         />
+      ) : null}
+      {step?.at === 'send-party' ? (
+        <Suspense fallback={null}>
+          <ContractSendWindow
+            target={step.facts.target}
+            docId={null}
+            party={step.party}
+            preparePartyPaper={(input) => preparePartyPaper(step.documentName, step.pick, step.party, input)}
+            initialEmail={step.facts.initialEmail}
+            initialSignerName={step.facts.signerName}
+            initialSignerTitle={step.facts.signerTitle}
+            sender={step.facts.sender}
+            personId={null}
+            onClose={close}
+            onSent={() => {
+              setStep(null)
+              onSent()
+            }}
+          />
+        </Suspense>
       ) : null}
       {step?.at === 'send' ? (
         <Suspense fallback={null}>
