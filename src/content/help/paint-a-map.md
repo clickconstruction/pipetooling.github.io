@@ -284,6 +284,8 @@ A line under the press says how that reading did.
 
 When the dot was not moved, drag it onto the spot by hand. Or turn the switch on and press again. [When Precise Location looks off](#when-precise-location-looks-off) has the steps.
 
+Sometimes your phone gives no reading at all. An amber box under the press then says why, and the dot was not moved. Drag the dot onto the spot, or press again.
+
 Never type a gate code or a lock code on a place. Anyone the map is shared with would read it.
 
 :::example What is where, in three places

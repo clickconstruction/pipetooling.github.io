@@ -19,7 +19,7 @@ import { directionsUrlForPoint } from '../../lib/directionsUrl'
 import { isOfficeRole } from '../../lib/doorRoles'
 import { jobBoxOffered } from '../../lib/messages/jobBox'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
-import { requestMyLocation } from '../../lib/materials/myLocation'
+import { requestMyFix, requestMyLocation, type MyFixFailure } from '../../lib/materials/myLocation'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import {
   addCorner,
@@ -227,6 +227,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const [finding, setFinding] = useState(false)
   // The last Put the dot where I am got an area and not a spot (#402): its margin, for the panel's words. The dot was not moved.
   const [roughFix, setRoughFix] = useState<number | null>(null)
+  // The last Put the dot where I am got no reading at all: why, for the panel's words under the press. The dot was not moved.
+  const [noFix, setNoFix] = useState<MyFixFailure | null>(null)
   const [measuring, setMeasuring] = useState<{ lineId: string; text: string; how: PaintedMeasuredHow } | null>(null)
   const [renaming, setRenaming] = useState<{ name: string; words: string } | null>(null)
   // A map on no job is found only by its name: its maker or the office can put it on a job.
@@ -564,14 +566,17 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
     setPlaceReturn('view')
     setPlacing(null)
     setRoughFix(null)
+    setNoFix(null)
     setGlass(null)
   }
   const putDotWhereIAm = () => {
     setFinding(true)
     setError(null)
-    requestMyLocation(
+    // The panel owns the words for no reading: on this screen the dot is dragged, and dragging the map places nothing.
+    requestMyFix(
       (p) => {
         setFinding(false)
+        setNoFix(null)
         // A rough reading is an area. The dot stays where the painter had it, the map stays put, and the panel says why.
         if (!readingMovesDot(p.accuracyM)) {
           setRoughFix(p.accuracyM)
@@ -581,10 +586,11 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
         setPlacing((pl) => (pl ? { ...pl, point: { lat: p.lat, lng: p.lng }, fix: p, live: true } : pl))
         setFly({ lat: p.lat, lng: p.lng })
       },
-      (words) => {
+      (why) => {
         setFinding(false)
+        // The reason is drawn under the press, where the painter is looking, and stands in for the line there.
         setRoughFix(null)
-        setError(words)
+        setNoFix(why)
       },
     )
   }
@@ -971,6 +977,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
                   photoUrl={placing.place?.photoPath ? (photoUrls.get(placing.place.photoPath) ?? null) : null}
                   accuracyM={placing.live ? placingAccuracy : null}
                   roughAccuracyM={roughFix}
+                  noFix={noFix}
                   movedOffReading={!!placing.fix && !placingOnReading}
                   finding={finding}
                   busy={busy}
