@@ -4184,6 +4184,80 @@ describe('LienDesk · a notice that already went out (#35 PR 2)', () => {
       window.matchMedia = before
     }
   })
+
+  // The months card's Record it… opened nothing on two piles and could not be seen from the card on the others (v2.8026,
+  // the live walk of punch list #361; Grace's pick of 2026-11-20: open the step there too).
+  const sentItem = { id: 'r2', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'sent', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: 'f1', sent_at: '2026-09-14T16:00:00Z', printed_at: null, pulled_back_by: null, pulled_back_at: null, mailed_copies: [], created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T16:00:00Z', voided_at: null } as unknown as LienDeskItemRow
+  const sentData = () => {
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sentItem], true)
+    d.filingsByJob = { j650: [{ id: 'f1', job_id: 'j650', kind: 'notice_53_056', filed_on: '2026-09-14', document_url: null, document_note: null, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 0001', sent_on: '2026-09-14' }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 0002', sent_on: '2026-09-14' }], voided_at: null } as never] }
+    return d
+  }
+  const monthsDoor = () => document.querySelector('[data-lien-desk-months] [data-lien-desk-by-hand]') as HTMLButtonElement
+
+  it('on a notice in Sent, the months card’s Record it… opens the step in the footer’s place, and Back brings the sent footer back (v2.8026)', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={sentData()} initialKind="notice" initialJobId="j650" initialPile="sent" />)
+    await settle()
+    await waitFor(() => expect(document.querySelector('[data-lien-mail-proof="notice"]')).not.toBeNull())
+    expect(monthsDoor()).toBeTruthy()
+    fireEvent.click(monthsDoor())
+    await screen.findByTestId('lien-notice-by-hand')
+    // The step stands where the sent footer stood.
+    expect(document.querySelector('[data-lien-mail-proof="notice"]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    expect(screen.queryByTestId('lien-notice-by-hand')).toBeNull()
+    expect(document.querySelector('[data-lien-mail-proof="notice"]')).not.toBeNull()
+  })
+
+  it('on a missed notice with no month still due, Record it… opens the step where the closed-window line stood (v2.8026)', async () => {
+    renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data([row('j650', '2026-05', '2026-09-10', { has_owner: true })], [], true)} initialKind="notice" initialJobId="j650" initialPile="missed" />)
+    await settle()
+    await waitFor(() => expect(document.body.textContent).toContain('with no notice — the lien right on that work is gone.'))
+    fireEvent.click(monthsDoor())
+    await screen.findByTestId('lien-notice-by-hand')
+    expect(document.body.textContent).not.toContain('with no notice — the lien right on that work is gone.')
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    expect(document.body.textContent).toContain('with no notice — the lien right on that work is gone.')
+  })
+
+  it('on a computer the press takes the pane to its last section, where the step is drawn, as the blue head’s press does (v2.8026)', async () => {
+    const scrollTo = vi.fn()
+    const had = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollTo')
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', { value: scrollTo, configurable: true, writable: true })
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} initialKind="notice" initialJobId="j650" />)
+      await settle()
+      const pane = document.querySelector<HTMLElement>('[data-lien-desk-pane]')!
+      expect(document.querySelector('[data-lien-pane-body="sign"]')).not.toBeNull()
+      scrollTo.mockClear()
+      fireEvent.click(monthsDoor())
+      await screen.findByTestId('lien-notice-by-hand')
+      expect(document.querySelector('[data-lien-pane-body="sign"] [data-testid="lien-notice-by-hand"]')).not.toBeNull()
+      expect(scrollTo.mock.contexts).toContain(pane)
+    } finally {
+      if (had) Object.defineProperty(HTMLElement.prototype, 'scrollTo', had)
+      else delete (HTMLElement.prototype as { scrollTo?: unknown }).scrollTo
+    }
+  })
+
+  it('on a phone with the footer folded, the months card’s Record it… opens the footer, so the step’s sheet shows (v2.8026)', async () => {
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      renderWithProviders(<LienDesk {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} layout="stacked" initialKind="notice" initialJobId="j650" onOpenNotice={() => {}} backDoor={<button type="button">← Pipeline</button>} />)
+      await settle()
+      await waitFor(() => expect(document.querySelector('[data-lien-desk-foot-fold]')).not.toBeNull())
+      const fold = () => document.querySelector<HTMLButtonElement>('[data-lien-desk-foot-fold]')!
+      if (fold().getAttribute('aria-expanded') === 'true') fireEvent.click(fold())
+      expect(fold().getAttribute('aria-expanded')).toBe('false')
+      fireEvent.click(monthsDoor())
+      await screen.findByTestId('lien-notice-by-hand')
+      expect(fold().getAttribute('aria-expanded')).toBe('true')
+      expect(document.querySelector('[data-lien-record-sheet="notice_by_hand"]')).not.toBeNull()
+    } finally {
+      window.matchMedia = before
+    }
+  })
 })
 
 describe('LienDesk the attorney’s letter (v2.3760)', () => {

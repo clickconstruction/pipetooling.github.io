@@ -2289,6 +2289,36 @@ export default function LienDesk({
     goTo: goToSection,
     relight: relightPane,
   } = useLienPaneHeads({ paneRef, sections: paneHeads, phone: isMobile, strip: { height: stripH, pinned: paneScrolled, foldPx: STRIP_COLLAPSE_PX, measure: () => stripRef.current?.getBoundingClientRect().height || stripH }, resetKey: selected?.jobId ?? null })
+  // Record it… opens its step in the footer's place, which the press on the months card cannot see (v2.8026, the live walk of punch list #361):
+  // a phone's folded footer opens, so the step's sheet shows, and on a computer the pane goes to its last section, as the blue head's press does.
+  // The step first reads the property's papers in a short box and then grows, and a pane cannot scroll past its end, so the landing is made
+  // again each time the footer grows for a few seconds; a first landing on the short box left the grown step under the window's bottom edge.
+  // A later landing reads this render's `goToSection`, whose strip is pinned by then, so it glides instead of stepping past the fold again.
+  const goToSectionRef = useRef(goToSection)
+  useEffect(() => {
+    goToSectionRef.current = goToSection
+  })
+  useEffect(() => {
+    if (!byHandOpen) return
+    setFootFolded(false)
+    if (!footInPane) return
+    goToSectionRef.current('sign')
+    const home = noticeFootHome
+    if (!home || typeof ResizeObserver === 'undefined') return
+    let last = home.offsetHeight
+    const grows = new ResizeObserver(() => {
+      if (home.offsetHeight === last) return
+      last = home.offsetHeight
+      goToSectionRef.current('sign')
+    })
+    grows.observe(home)
+    const stop = window.setTimeout(() => grows.disconnect(), 4000)
+    return () => {
+      grows.disconnect()
+      window.clearTimeout(stop)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [byHandOpen])
 
   // The scrolled strip's chips (v2.7318, the owner's rule of 2026-11-15 on JP372): only what the reader cannot see from where
   // they are, and every chip a press to the door the gate box already has. The kernel words them; this wires each act.
@@ -2772,13 +2802,18 @@ export default function LienDesk({
     } else if (state === 'held') {
       footer = <LienDeskHeldFooter ctx={footCtx} />
     } else if (state === 'sent') {
-      const sentProof = sentFacts.sentFiling ? lienMailProof({ kind: sentFacts.sentFiling.kind, sends: sentFacts.sentFiling.sends, documentUrl: sentFacts.sentFiling.document_url, documentNote: sentFacts.sentFiling.document_note, mailedCopies: sentFacts.first?.mailed_copies }) : null
-      footProof = sentProof ? { chip: sentProof.chip, complete: sentProof.complete } : null
-      footer = (
-        <LienDeskSentFooter forms={sentForms} facts={sentFacts} signoff={signoff} signoffLine={signoffLine} legalSignoff={legalSignoff} data={data} jobId={selected.jobId} job={job} gc={gc} office={office} busy={busy} run={run} authName={authName} onChanged={onChanged} onOpenOwnerCall={() => setOwnerCallOpen(true)} doors={<>{courtesyUnrecordedBand}{courtesyDoor}{letterTwoDoor}</>} proof={sentFacts.sentFiling ? <LienFilingMailProof filing={sentFacts.sentFiling} item={sentFacts.first ? { itemId: sentFacts.first.id, copies: sentFacts.first.mailed_copies } : null} jobId={selected.jobId} jobNumber={job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''} isMobile={isMobile} canEdit={office} userId={authUserId} todayYmd={todayYmd} onChanged={onChanged} /> : null} />
-      )
+      // The months card's Record it… opens its step here too (v2.8026, Grace's pick of 2026-11-20), in the footer's place, as every other pile draws it.
+      if (byHandPane) footer = byHandPane
+      else {
+        const sentProof = sentFacts.sentFiling ? lienMailProof({ kind: sentFacts.sentFiling.kind, sends: sentFacts.sentFiling.sends, documentUrl: sentFacts.sentFiling.document_url, documentNote: sentFacts.sentFiling.document_note, mailedCopies: sentFacts.first?.mailed_copies }) : null
+        footProof = sentProof ? { chip: sentProof.chip, complete: sentProof.complete } : null
+        footer = (
+          <LienDeskSentFooter forms={sentForms} facts={sentFacts} signoff={signoff} signoffLine={signoffLine} legalSignoff={legalSignoff} data={data} jobId={selected.jobId} job={job} gc={gc} office={office} busy={busy} run={run} authName={authName} onChanged={onChanged} onOpenOwnerCall={() => setOwnerCallOpen(true)} doors={<>{courtesyUnrecordedBand}{courtesyDoor}{letterTwoDoor}</>} proof={sentFacts.sentFiling ? <LienFilingMailProof filing={sentFacts.sentFiling} item={sentFacts.first ? { itemId: sentFacts.first.id, copies: sentFacts.first.mailed_copies } : null} jobId={selected.jobId} jobNumber={job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''} isMobile={isMobile} canEdit={office} userId={authUserId} todayYmd={todayYmd} onChanged={onChanged} /> : null} />
+        )
+      }
     } else if (state === 'missed') {
-      footer = (
+      // A missed month with nothing due: the step stands in for the closed-window line (v2.8026), since a paper that really went by hand for that month is what it records.
+      footer = byHandPane ?? (
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>
           The window closed on {selected.missedMonths.map(workMonthLabel).join(', ')} with no notice — the lien right on that work is gone. {selected.item?.status === 'missed' ? `Skipped: ${parseLienDeskDraftFields(selected.item.fields)?.skipReason ?? ''}` : ''}
         </div>
