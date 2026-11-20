@@ -4465,6 +4465,8 @@ body.my-time-boundary-dragging {
 .lienLedgerTick { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
 .lienLedgerNoteMissed { padding: 1px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-700); font-family: inherit; font-size: 0.7rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .lienLedgerNoteMissed:hover, .lienLedgerNoteMissed:focus-visible { border-color: var(--text-700); }
+/* Who noted a closed window and when: one line at a desk. A class and not an inline style, so the narrow card's rule can let it wrap (v2.8074). */
+.lienLedgerNoted { white-space: nowrap; }
 /* The money, one block under the grid. The claim is the total line: its caption and words at the left, the figure at the
    card's right edge under the ticks that make it, the months the notice names beneath the figure. The bills are the lines
    that add up to it, their OWED on the same edge (`.lienClaimBill`, below). */
@@ -4513,6 +4515,8 @@ body.my-time-boundary-dragging {
   /* A thumb's target: the tick with its word under it. */
   .lienLedgerTick { flex-direction: column; justify-content: center; gap: 2px; min-width: 44px; min-height: 44px; }
   .lienLedgerNoteMissed { padding: 5px 10px; }
+  /* The noted line wraps inside the month's column: on one line a full name ran into the tick's column, and at 320 px under the tick itself. */
+  .lienMonthClosed > .lienLedgerNoted { flex: 0 1 auto; min-width: 0; white-space: normal; }
   /* The total line keeps its two columns; the months it names drop under the claim's own words when they are long. */
   .lienLedgerClaim > .lienLedgerClaimFoot { grid-column: 1 / -1; grid-row: auto; }
 }
