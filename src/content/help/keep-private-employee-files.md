@@ -133,7 +133,7 @@ Does the item already have a number that people use? Type it in the number box. 
 A person's roster row says what they are today. The row does not say what they were last spring. The file keeps that as stretches, one at a time.
 
 1. Open the person's file.
-2. Press the standing on the strip of facts at the top. The press reads *Standing…* when nothing is on file.
+2. Press the standing on the strip of facts at the top. The press reads *Standing…* when nothing is on file. The press reads *Standing not read* when the app could not read the standing, and the window says why.
 3. Press {{button:blue|Record a stretch…}}. Pick employee or subcontractor and set the first day.
 4. Say where the fact comes from. Name the paper or the pay run under *Which one*.
 5. Press {{button:blue|Record the stretch}}.
