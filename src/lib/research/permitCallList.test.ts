@@ -6,6 +6,7 @@ import {
   CALL_WEEK,
   answeredDay,
   answeredWords,
+  backWithNewJob,
   callChipCounts,
   callChips,
   callCountWords,
@@ -24,6 +25,7 @@ import {
   openJobsTail,
   permitRowOfSite,
   pursuePermit,
+  saysItBuilds,
   standingWords,
   trendKnown,
   trendOf,
@@ -43,7 +45,7 @@ function builder(key: string, contact: string, over: Partial<BuilderRow> = {}): 
 
 /** `n` issued permits of one builder on one day. */
 function issued(key: string, day: string, n = 1, over: Partial<MarketPermit> = {}): MarketPermit[] {
-  return Array.from({ length: n }, () => ({ builder_key: key, stage: 'issued', work_type: 'Commercial remodel', submitted_on: null, issued_on: day, declared_value: null, ...over }))
+  return Array.from({ length: n }, () => ({ builder_key: key, stage: 'issued', work_type: 'Commercial remodel', submitted_on: null, issued_on: day, declared_value: null, address_key: null, ...over }))
 }
 
 function row(over: Partial<ResearchPermitRow> = {}): ResearchPermitRow {
@@ -108,7 +110,7 @@ describe('foldCallAnswers', () => {
     expect(answeredDay({ answered_at: '2026-11-20T03:30:00Z' })).toBe('2026-11-19')
     expect(answeredDay({ answered_at: '2026-11-19T15:00:00Z' })).toBe('2026-11-19')
     const late = foldCallAnswers([answer({ answered_at: '2026-11-20T03:30:00Z' })], TODAY).get('ridgewaybuilders') as CallStanding
-    expect(standingWords(late, () => 'Eve', TODAY)).toBe('Not for us. Eve, Nov 19. Off the list until Nov 19, 2027.')
+    expect(standingWords(late, () => 'Eve', TODAY)).toBe('Not for us. Eve, Nov 19. Off the list until Nov 19, 2027, and then until it applies for a new job.')
   })
 
   it('sets the day to look again: a quarter after a pursue, a year after a pass', () => {
@@ -130,6 +132,12 @@ describe('nameReads', () => {
 
   it('reads a design-build contractor as a builder', () => {
     expect(nameReads(builder('a', 'Juniper Design & Construction'))).toBe('builder')
+  })
+
+  it('reads a name with a building word as a builder, though the splitter knows no such company word', () => {
+    // "Constructors" is no company word to `contactParts`, and the name read as a person.
+    expect(nameReads(builder('a', 'Marsh Constructors'))).toBe('builder')
+    expect(nameReads(builder('a', 'Sample Design Build'))).toBe('builder')
   })
 
   it('takes the office’s word over the name', () => {
@@ -207,6 +215,42 @@ describe('valuesReliable', () => {
   })
 })
 
+describe('saysItBuilds', () => {
+  it('leads on a building word, and not on any company word', () => {
+    expect(saysItBuilds(builder('a', 'Ridgeway Builders'))).toBe(true)
+    expect(saysItBuilds(builder('a', 'Aster Ridge Contracting'))).toBe(true)
+    expect(saysItBuilds(builder('a', 'Juniper Design & Construction'))).toBe(true)
+    expect(saysItBuilds(builder('a', 'Nine GCs Company LLC'))).toBe(true)
+    // A company word alone does not lead: a design firm, a trade and an owner all carry one.
+    expect(saysItBuilds(builder('a', 'Tall Pine Development LLC'))).toBe(false)
+    expect(saysItBuilds(builder('a', 'Larkin & Associates, Inc.'))).toBe(false)
+    expect(saysItBuilds(builder('a', 'Shade Sail Group LLC'))).toBe(false)
+    expect(saysItBuilds(builder('a', 'Dana Whitlock'))).toBe(false)
+  })
+
+  it('takes the office’s word over the name', () => {
+    expect(saysItBuilds(builder('a', 'Tall Pine Development LLC', { kind: 'gc' }))).toBe(true)
+    expect(saysItBuilds(builder('a', 'Ridgeway Builders', { kind: 'architect' }))).toBe(false)
+    expect(saysItBuilds(builder('a', 'Ridgeway Builders', { kind: 'owner' }))).toBe(false)
+  })
+})
+
+describe('backWithNewJob', () => {
+  const due = (over: Partial<CallAnswerRow> = {}) => foldCallAnswers([answer({ answer: 'pursue', look_again_on: '2026-11-01', answered_at: '2026-08-03T15:00:00Z', ...over })], TODAY).get('ridgewaybuilders') as CallStanding
+
+  it('offers a name again only with a job open now that it applied for after the answer', () => {
+    expect(backWithNewJob(due(), [{ appliedOn: '2026-10-28' }])).toBe(true)
+    expect(backWithNewJob(due(), [{ appliedOn: '2026-08-03' }, { appliedOn: '2026-07-01' }])).toBe(false)
+    expect(backWithNewJob(due(), [{ appliedOn: null }])).toBe(false)
+    expect(backWithNewJob(due(), [])).toBe(false)
+  })
+
+  it('never offers a name whose day has not come', () => {
+    const off = foldCallAnswers([answer()], TODAY).get('ridgewaybuilders') as CallStanding
+    expect(backWithNewJob(off, [{ appliedOn: '2026-11-19' }])).toBe(false)
+  })
+})
+
 describe('callRows', () => {
   const builders = [
     builder('ridgewaybuilders', 'Ridgeway Builders'),
@@ -261,6 +305,47 @@ describe('callRows', () => {
     expect(list.slice(0, 2).map((r) => [r.key, r.openJobs.length])).toEqual([['ridgewaybuilders', 2], ['juniperhospitalitygroup', 1]])
     // No open job: the builder comes before the busier filer and the busier person.
     expect(list.slice(2).map((r) => [r.key, r.reads])).toEqual([['tallpinedevelopment', 'builder'], ['quillpermits', 'files'], ['danawhitlock', 'person']])
+  })
+
+  it('puts a name with a building word ahead of a company with a job open now', () => {
+    // Juniper Hospitality Group has a job open now and no building word. Aster Ridge Contracting has the word and no open job.
+    const more = [...permits, ...issued('asterridgecontracting', '2026-09-01', 2)]
+    const list = callRows({ ...input, permits: more })
+    expect(list.map((r) => [r.key, r.leads])).toEqual([
+      ['ridgewaybuilders', true],
+      ['asterridgecontracting', true],
+      ['juniperhospitalitygroup', false],
+      ['tallpinedevelopment', false],
+      ['quillpermits', false],
+      ['danawhitlock', false],
+    ])
+  })
+
+  it('counts a job once: an application with its permit, and the buildings of one project', () => {
+    const at = (address_key: string, over: Partial<MarketPermit> = {}): MarketPermit => ({ builder_key: 'tallpinedevelopment', stage: 'issued', work_type: 'New commercial', submitted_on: null, issued_on: '2026-11-01', declared_value: 1_800_000, address_key, ...over })
+    const project: MarketPermit[] = [
+      // One project: the application, which took the permit's issued day, ten buildings and the site work. Twelve rows, one job.
+      at('100 sample pkwy', { stage: 'applied', work_type: 'Commercial project', submitted_on: '2026-08-01' }),
+      ...Array.from({ length: 10 }, () => at('100 sample pkwy')),
+      at('100 sample pkwy', { work_type: 'Commercial site work' }),
+      // Two more jobs of theirs, at other addresses.
+      at('7 elm st', { issued_on: '2026-10-10', declared_value: 300_000 }),
+      at('9 oak st', { issued_on: '2026-06-10', declared_value: 500_000 }),
+    ]
+    const list = callRows({ ...input, permits: project })
+    // Counted as rows this name read 13 in the last ninety days against none, new and busy. It is two against none.
+    expect(list.find((r) => r.key === 'tallpinedevelopment')).toMatchObject({ permits: 3, last90: 2, prior90: 1, trend: null, mostly: 'New commercial' })
+    // Under three jobs a name is not on the list, however many rows it has.
+    expect(callRows({ ...input, permits: project.slice(0, 13) }).map((r) => r.key)).not.toContain('tallpinedevelopment')
+  })
+
+  it('keeps an answered name off after its day until it has a new job', () => {
+    // Pursued Nov 10 and due again Nov 15. The only jobs open now were applied for before the answer.
+    const stale = foldCallAnswers([answer({ answer: 'pursue', look_again_on: '2026-11-15', answered_at: '2026-11-10T15:00:00Z' })], TODAY)
+    expect(stale.get('ridgewaybuilders')?.off).toBe(false)
+    expect(callRows({ ...input, standings: stale }).map((r) => r.key)).not.toContain('ridgewaybuilders')
+    const fresh = [...rows, row({ id: 'p9', submitted_on: '2026-11-12', filed_on: '2026-11-12' })]
+    expect(callRows({ ...input, rows: fresh, standings: stale }).find((r) => r.key === 'ridgewaybuilders')?.earlier?.answer).toBe('pursue')
   })
 
   it('takes an answered name off, and offers it again once its day has come', () => {
@@ -352,9 +437,9 @@ describe('the words', () => {
   })
 
   it('says the counts, the work and our history', () => {
-    expect(callCountWords({ permits: 14, last90: 6, prior90: 2 }, 'in the last year', true)).toBe('14 permits in the last year, 6 in the last 90 days against 2 in the 90 before.')
-    expect(callCountWords({ permits: 4, last90: 4, prior90: 0 }, 'since Aug 27', false)).toBe('4 permits since Aug 27.')
-    expect(callCountWords({ permits: 1, last90: 0, prior90: 0 }, null, false)).toBe('1 permit we can see.')
+    expect(callCountWords({ permits: 14, last90: 6, prior90: 2 }, 'in the last year', true)).toBe('14 jobs in the last year, 6 in the last 90 days against 2 in the 90 before.')
+    expect(callCountWords({ permits: 4, last90: 4, prior90: 0 }, 'since Aug 27', false)).toBe('4 jobs since Aug 27.')
+    expect(callCountWords({ permits: 1, last90: 0, prior90: 0 }, null, false)).toBe('1 job we can see.')
     expect(callWorkWords({ mostly: 'New commercial', typical: { low: 400_000, high: 1_200_000 } })).toBe('Mostly new commercial. Typical job $400k to $1.2M.')
     expect(callWorkWords({ mostly: null, typical: { low: 1_000_000, high: 1_000_000 } })).toBe('Typical job $1M.')
     expect(callWorkWords({ mostly: null, typical: null })).toBeNull()
@@ -367,24 +452,26 @@ describe('the words', () => {
 
   it('says what an empty list means', () => {
     expect(callEmptyWords({ city: 'Seguin', builders: 0, eligible: 0, showing: 'week' })).toBe('Seguin publishes no applicant on its permits, so no builder can be named here.')
-    expect(callEmptyWords({ city: 'Austin', builders: 40, eligible: 0, showing: 'week' })).toBe('Nothing waiting on a call. Every builder with 3 or more permits here is answered.')
+    expect(callEmptyWords({ city: 'Austin', builders: 40, eligible: 0, showing: 'week' })).toBe('Nothing waiting on a call. Every builder with 3 or more jobs here is answered.')
     expect(callEmptyWords({ city: 'Austin', builders: 40, eligible: 9, showing: 'open' })).toBe('Nothing waiting on a call under Has a job open now.')
   })
 
   it('says the order under the list, and what a city’s records leave out', () => {
-    expect(callNoteWords({ city: 'San Antonio', trendKnown: true, hasApplications: true, recordsStart: 'Jan 1, 2025' })).toBe('Names that read as a builder come first, then a job open now, then picking up or new, then never bid.')
+    expect(callNoteWords({ city: 'San Antonio', trendKnown: true, hasApplications: true, recordsStart: 'Jan 1, 2025' })).toBe('A name with a building word comes first, then the other companies. After that a job open now, then picking up or new, then never bid. A job is counted once.')
     expect(callNoteWords({ city: 'Austin', trendKnown: false, hasApplications: false, recordsStart: 'Aug 27' })).toBe(
-      'Names that read as a builder come first, then a job open now, then picking up or new, then never bid. Austin’s records start Aug 27, so nothing here reads as picking up or new yet. Austin shows only issued permits, so no job is open here by the time we see it.',
+      'A name with a building word comes first, then the other companies. After that a job open now, then picking up or new, then never bid. A job is counted once. Austin’s records start Aug 27, so nothing here reads as picking up or new yet. Austin shows only issued permits, so no job is open here by the time we see it.',
     )
   })
 
   it('says what an answer did, and what stands on an answered name', () => {
-    expect(answeredWords('Ridgeway Builders', 'pursue', '2027-02-17', TODAY)).toBe('Ridgeway Builders is off the list while you pursue them. It may be offered again after Feb 17, 2027.')
-    expect(answeredWords('Quill Permits', 'not_for_us', '2027-11-19', TODAY)).toBe('Quill Permits is off the list. It may be offered again after Nov 19, 2027.')
+    expect(answeredWords('Ridgeway Builders', 'pursue', '2027-02-17', TODAY)).toBe('Ridgeway Builders is off the list while you pursue them. It may be offered again after Feb 17, 2027, once it applies for a new job.')
+    expect(answeredWords('Quill Permits', 'not_for_us', '2027-11-19', TODAY)).toBe('Quill Permits is off the list. It may be offered again after Nov 19, 2027, once it applies for a new job.')
     const standing = foldCallAnswers([answer({ reason: 'They file for others' })], TODAY).get('ridgewaybuilders') as CallStanding
-    expect(standingWords(standing, (id) => (id === 'u1' ? 'Eve' : null), TODAY)).toBe('Not for us, They file for others. Eve, Nov 19. Off the list until Nov 19, 2027.')
+    expect(standingWords(standing, (id) => (id === 'u1' ? 'Eve' : null), TODAY)).toBe('Not for us, They file for others. Eve, Nov 19. Off the list until Nov 19, 2027, and then until it applies for a new job.')
     const pursued = foldCallAnswers([answer({ answer: 'pursue', look_again_on: null, answered_by: 'u9' })], TODAY).get('ridgewaybuilders') as CallStanding
     expect(standingWords(pursued, () => null, TODAY)).toBe('Pursuing. someone, Nov 19. Off the list.')
+    const due = foldCallAnswers([answer({ answer: 'pursue', look_again_on: '2026-11-15', answered_at: '2026-08-17T15:00:00Z' })], TODAY).get('ridgewaybuilders') as CallStanding
+    expect(standingWords(due, () => 'Eve', TODAY)).toBe('Pursuing. Eve, Aug 17. Off the list until it applies for a new job.')
   })
 })
 

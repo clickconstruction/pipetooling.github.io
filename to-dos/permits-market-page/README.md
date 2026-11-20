@@ -82,7 +82,7 @@ Needs no research. San Antonio first; the other cities follow the same code.
 
 ### Step two: the call list
 
-**Built, v2.7982** (the answers table) **and v2.7993** ([fragment](../../docs/recent-features/v2.7993.md), which says where the build differs from this plan and why). The order has one more key than the one proposed below: a name that reads as a builder comes first.
+**Built, v2.7982** (the answers table) **and v2.7993** ([fragment](../../docs/recent-features/v2.7993.md), which says where the build differs from this plan and why). The order has one more key than the one proposed below: a name that reads as a builder comes first. Since [v2.8112](../../docs/recent-features/v2.8112.md), on the owner's answers of 2026-11-20, a name with a building word leads, a job is counted once on the list, and an answered name comes back only with a new job.
 
 - **The rows.** Builders with three or more commercial permits in twelve months, never a name marked *Avoid* or said to file for others. Each carries its tags, its jobs applied for with no plumber, and our history with it.
 - **The order.** Proposed, and the builder's to refine before the showing: a job open now first, then picking up or new and busy, then never bid, then the most permits in ninety days. Five show. The reasons are the tags; no number is shown as a score.
@@ -111,6 +111,7 @@ So the built page and the first read agree, and so a hand count can check it.
 
 - **A commercial permit:** a row of `permits` with `kind = 'building'` and not residential. Its day is the issued day, else the submitted day. *Twelve months* is that day within 365 days of today.
 - **A builder:** a commercial permit's `builder_key`. San Marcos and Seguin publish no applicant, so they have none.
+- **A job, on the call list:** one name's commercial permits of one day at one address, counted once (`marketJobs`, v2.8112). An application and its permit are one job, and so are the buildings of one project. The call list counts jobs. Builders, the table of companies and *How much is being built* still count permits.
 - **A company we bid:** every bid made in the last two years, under its customer's name and its GC's name, keyed the way permits are (`research_name_key`). A win is an outcome of won or started. Leave out the catch-all customers a bid portal's bids sit under, and the robot's practice bids. The first read did not leave those out, so the built count will be a little lower. Say so at the showing.
 - **The permits it pulled:** commercial permits in twelve months, in all five cities, under that key or under a name a person tied to the customer.
 - **Picking up:** two or more permits more in the last 90 days than in the 90 before. **New and busy:** three or more in the last 90 days and none in the 90 before. **Slowing:** three or more in the earlier 90 and two or more fewer now.

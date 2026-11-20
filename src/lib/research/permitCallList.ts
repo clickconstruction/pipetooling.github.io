@@ -9,7 +9,7 @@ import { contactParts } from '../../../supabase/functions/_shared/permitLookup'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { plumbingOnFile, shortDay, shortMoney, ymdPlusDays, type ResearchPermitRow } from './permitResearch'
 import { BUILDER_KIND_WORDS, builderName, isBuilderKind, placeOf, type BuilderKind, type BuilderRow } from './permitBuilders'
-import { marketPermitsSince, type MarketPermit } from './permitMarket'
+import { marketJobs, marketPermitsSince, type MarketPermit } from './permitMarket'
 import type { SitePermit } from './permitPublic'
 
 // ---------- the answers ----------
@@ -63,6 +63,19 @@ export function foldCallAnswers(rows: readonly CallAnswerRow[], todayYmd: string
   return out
 }
 
+/**
+ * Whether an answered name whose day has come is offered again (v2.8112, the owner's answer of
+ * 2026-11-20): only with a job open now that it applied for after the answer. A name used to
+ * take its old place back on its day with nothing new to call about, and at five names a week
+ * the list would have started to repeat. In a city whose feed has no applications no job is ever
+ * open, so an answered name there comes back only by Put back.
+ */
+export function backWithNewJob(standing: CallStanding, openJobs: ReadonlyArray<{ appliedOn: string | null }>): boolean {
+  if (standing.off) return false
+  const answered = answeredDay(standing.row)
+  return openJobs.some((j) => j.appliedOn != null && j.appliedOn > answered)
+}
+
 /** The day an answer was given, on the app's calendar: an evening answer is today's, not tomorrow's by the world clock. */
 export function answeredDay(row: Pick<CallAnswerRow, 'answered_at'>): string {
   return calendarYmdInAppTzFromIso(row.answered_at) || row.answered_at.slice(0, 10)
@@ -76,7 +89,7 @@ export const NOT_FOR_US_REASONS = ['They file for others', 'Not our kind of work
 /** What a name reads as before anyone has said what kind of company it is. */
 export type NameReads = 'builder' | 'person' | 'files'
 
-const BUILDS_WORDS = /\b(construction|constructors|contracting|contractors?|builders?|build|building)\b/i
+const BUILDS_WORDS = /\b(construction|constructors|contracting|contractors?|builders?|build|building|gcs?)\b/i
 // "Permit" and "expedit" count anywhere in a name, since a permit runner often writes its name as one word.
 const FILES_WORDS = /permit|expedit|\b(engineers?|engineering|architects?|architecture|design|designs|consult\w*|survey\w*|drafting|planning)\b/i
 
@@ -91,15 +104,30 @@ export function nameReads(row: Pick<BuilderRow, 'key' | 'name' | 'sample_contact
   if (row.kind === 'person') return 'person'
   if (row.kind === 'architect' || row.kind === 'plumber') return 'files'
   const name = builderName(row)
-  if (FILES_WORDS.test(name) && !BUILDS_WORDS.test(name)) return 'files'
-  return contactParts(name).company != null ? 'builder' : 'person'
+  const builds = BUILDS_WORDS.test(name)
+  if (FILES_WORDS.test(name) && !builds) return 'files'
+  // A building word settles it: the splitter knows no "Constructors", and read such a name as a person.
+  return builds || contactParts(name).company != null ? 'builder' : 'person'
+}
+
+/**
+ * Whether a name leads the list (v2.8112, the owner's answer of 2026-11-20): it says it builds.
+ * The name carries a building word, or the office said it is a general contractor. Any company
+ * word used to be enough to come first, and of San Antonio's first twenty about half were design
+ * firms, or trades that hire no plumber. A kind the office gave that is not a general contractor
+ * never leads on the name alone: the office's word is the better reading.
+ */
+export function saysItBuilds(row: Pick<BuilderRow, 'key' | 'name' | 'sample_contact' | 'kind'>): boolean {
+  if (row.kind === 'gc') return true
+  if (isBuilderKind(row.kind)) return false
+  return BUILDS_WORDS.test(builderName(row))
 }
 
 // ---------- the rows ----------
 
 /** How far back each half of the trend looks. */
 export const CALL_TREND_DAYS = 90
-/** A name is on the list from this many commercial permits in twelve months. */
+/** A name is on the list from this many commercial jobs in twelve months. */
 export const CALL_MIN_PERMITS = 3
 /** How many names a week: one person calls them all. */
 export const CALL_WEEK = 5
@@ -172,7 +200,7 @@ export type CallRow = {
   kind: BuilderKind | null
   good: boolean
   reads: NameReads
-  /** Commercial permits in twelve months, in the last ninety days and in the ninety before. */
+  /** Jobs in twelve months, in the last ninety days and in the ninety before. A job is counted once (`marketJobs`). */
   permits: number
   last90: number
   prior90: number
@@ -188,8 +216,10 @@ export type CallRow = {
   typical: { low: number; high: number } | null
   /** The kind of work on half or more of their issued permits. */
   mostly: string | null
-  /** An answer whose day to look again has come: the name is offered again, and says so. */
+  /** An answer whose day to look again has come, on a name with a new job: it is offered again, and says so. */
   earlier: CallStanding | null
+  /** The name says it builds (`saysItBuilds`): it leads the list. */
+  leads: boolean
   builder: BuilderRow
 }
 
@@ -203,11 +233,13 @@ function quarter(sorted: readonly number[], share: number): number {
 /**
  * The call list, in order.
  *
- * On it: a builder with three or more commercial permits in twelve months. Never a name marked
- * Avoid, a name said to file for others, or a name with an answer that still stands.
+ * On it: a builder with three or more commercial jobs in twelve months, a job counted once
+ * (`marketJobs`). Never a name marked Avoid, a name said to file for others, a name with an
+ * answer that still stands, or an answered name with no new job (`backWithNewJob`).
  *
- * The order, with no score: a name that reads as a builder, then a job open now, then picking up
- * or new and busy, then never bid, then the most permits in ninety days.
+ * The order, with no score: a name that says it builds (`saysItBuilds`), then a name that reads
+ * as a company, then a job open now, then picking up or new and busy, then never bid, then the
+ * most jobs in ninety days.
  */
 export function callRows(input: {
   builders: readonly BuilderRow[]
@@ -224,7 +256,7 @@ export function callRows(input: {
   const reliable = valuesReliable(input.permits)
   type Tally = { permits: number; last90: number; prior90: number; values: number[]; work: Map<string, number>; issued: number }
   const tallies = new Map<string, Tally>()
-  for (const p of input.permits) {
+  for (const p of marketJobs(input.permits)) {
     const day = p.issued_on ?? p.submitted_on
     if (!p.builder_key || !day || day < since) continue
     const t = tallies.get(p.builder_key) ?? { permits: 0, last90: 0, prior90: 0, values: [], work: new Map<string, number>(), issued: 0 }
@@ -245,7 +277,8 @@ export function callRows(input: {
     if (!t || t.permits < CALL_MIN_PERMITS) continue
     if (b.mark === 'avoid' || b.kind === 'files_for_others') continue
     const standing = input.standings.get(b.key) ?? null
-    if (standing?.off) continue
+    const openJobs = open.get(b.key) ?? []
+    if (standing && !backWithNewJob(standing, openJobs)) continue
     const values = reliable ? [...t.values].sort((x, y) => x - y) : []
     let mostly: string | null = null
     for (const [work, n] of t.work) if (n * 2 >= t.issued && (mostly == null || n > (t.work.get(mostly) ?? 0))) mostly = work
@@ -259,7 +292,7 @@ export function callRows(input: {
       last90: t.last90,
       prior90: t.prior90,
       trend: known ? trendOf(t.last90, t.prior90) : null,
-      openJobs: open.get(b.key) ?? [],
+      openJobs,
       bids: b.bids,
       won: b.won,
       lastBidOn: b.last_bid_on,
@@ -267,12 +300,14 @@ export function callRows(input: {
       typical: values.length >= 3 ? { low: quarter(values, 0.25), high: quarter(values, 0.75) } : null,
       mostly,
       earlier: standing,
+      leads: saysItBuilds(b),
       builder: b,
     })
   }
   const up = (r: CallRow) => r.trend === 'picking_up' || r.trend === 'new_busy'
   return out.sort(
     (a, b) =>
+      Number(b.leads) - Number(a.leads) ||
       Number(b.reads === 'builder') - Number(a.reads === 'builder') ||
       Number(b.openJobs.length > 0) - Number(a.openJobs.length > 0) ||
       Number(up(b)) - Number(up(a)) ||
@@ -349,9 +384,9 @@ export function callTags(row: CallRow, todayYmd: string): CallTag[] {
   return tags
 }
 
-/** "14 permits in the last year, 6 in the last 90 days against 2 in the 90 before." `reach` is `reachWords`. */
+/** "14 jobs in the last year, 6 in the last 90 days against 2 in the 90 before." `reach` is `reachWords`. */
 export function callCountWords(row: Pick<CallRow, 'permits' | 'last90' | 'prior90'>, reach: string | null, known: boolean): string {
-  const first = `${row.permits} permit${row.permits === 1 ? '' : 's'} ${reach ?? 'we can see'}`
+  const first = `${row.permits} job${row.permits === 1 ? '' : 's'} ${reach ?? 'we can see'}`
   return known ? `${first}, ${row.last90} in the last ${CALL_TREND_DAYS} days against ${row.prior90} in the ${CALL_TREND_DAYS} before.` : `${first}.`
 }
 
@@ -392,7 +427,7 @@ export function callTiles(week: readonly CallRow[]): Array<{ value: string; word
  */
 export function callEmptyWords(input: { city: string; builders: number; eligible: number; showing: CallShowing }): string {
   if (input.builders === 0) return `${input.city} publishes no applicant on its permits, so no builder can be named here.`
-  if (input.eligible === 0) return `Nothing waiting on a call. Every builder with ${CALL_MIN_PERMITS} or more permits here is answered.`
+  if (input.eligible === 0) return `Nothing waiting on a call. Every builder with ${CALL_MIN_PERMITS} or more jobs here is answered.`
   return `Nothing waiting on a call under ${CALL_SHOWING_WORDS[input.showing]}.`
 }
 
@@ -403,7 +438,7 @@ export const CALL_ANSWERS_UNREAD = 'A name already answered may be on this list 
 
 /** The line under the list: what the order is, and what a city's records leave out. */
 export function callNoteWords(input: { city: string; trendKnown: boolean; hasApplications: boolean; recordsStart: string | null }): string {
-  const order = 'Names that read as a builder come first, then a job open now, then picking up or new, then never bid.'
+  const order = 'A name with a building word comes first, then the other companies. After that a job open now, then picking up or new, then never bid. A job is counted once.'
   const short = input.trendKnown ? '' : ` ${input.city}’s records${input.recordsStart ? ` start ${input.recordsStart}` : ' are short'}, so nothing here reads as picking up or new yet.`
   const issued = input.hasApplications ? '' : ` ${input.city} shows only issued permits, so no job is open here by the time we see it.`
   return `${order}${short}${issued}`
@@ -411,7 +446,7 @@ export function callNoteWords(input: { city: string; trendKnown: boolean; hasApp
 
 /** The toast after an answer: what happened and when the name may come back. */
 export function answeredWords(name: string, answer: 'pursue' | 'not_for_us', lookAgain: string, todayYmd: string): string {
-  const back = `It may be offered again after ${shortDay(lookAgain, todayYmd)}.`
+  const back = `It may be offered again after ${shortDay(lookAgain, todayYmd)}, once it applies for a new job.`
   return answer === 'pursue' ? `${name} is off the list while you pursue them. ${back}` : `${name} is off the list. ${back}`
 }
 
@@ -420,7 +455,8 @@ export function standingWords(standing: CallStanding, nameOf: (userId: string) =
   const who = nameOf(standing.row.answered_by) ?? 'someone'
   const said = standing.answer === 'pursue' ? 'Pursuing' : 'Not for us'
   const why = standing.row.reason.trim() ? `, ${standing.row.reason.trim()}` : ''
-  const until = standing.row.look_again_on ? `Off the list until ${shortDay(standing.row.look_again_on, todayYmd)}.` : 'Off the list.'
+  const day = standing.row.look_again_on
+  const until = !day ? 'Off the list.' : day > todayYmd ? `Off the list until ${shortDay(day, todayYmd)}, and then until it applies for a new job.` : 'Off the list until it applies for a new job.'
   return `${said}${why}. ${who}, ${shortDay(answeredDay(standing.row), todayYmd)}. ${until}`
 }
 

@@ -26,7 +26,7 @@ function builder(key: string, contact: string, over: Partial<BuilderRow> = {}): 
   return { key, name: null, sample_contact: contact, kind: null, customer_id: null, mark: null, mark_reason: null, mark_by_name: null, mark_at: null, permits: 0, open: 0, last_permit_on: null, plumber: null, plumber_jobs: 0, bids: 0, won: 0, last_bid_on: null, ...over }
 }
 function issued(key: string, day: string, n = 1): MarketPermit[] {
-  return Array.from({ length: n }, () => ({ builder_key: key, stage: 'issued', work_type: 'Commercial remodel', submitted_on: null, issued_on: day, declared_value: null }))
+  return Array.from({ length: n }, () => ({ builder_key: key, stage: 'issued', work_type: 'Commercial remodel', submitted_on: null, issued_on: day, declared_value: null, address_key: null }))
 }
 function row(over: Partial<ResearchPermitRow> = {}): ResearchPermitRow {
   return {
@@ -63,7 +63,7 @@ function row(over: Partial<ResearchPermitRow> = {}): ResearchPermitRow {
   }
 }
 
-const NAMES = ['Ridgeway Builders', 'Tall Pine Development LLC', 'Juniper Hospitality Group', 'Harbor Fitouts Construction', 'Lime Build Contractors', 'Aster Ridge Contracting', 'Larkspur Builders']
+const NAMES = ['Ridgeway Builders', 'Tall Pine Builders LLC', 'Juniper Hospitality Group', 'Harbor Fitouts Construction', 'Lime Build Contractors', 'Aster Ridge Contracting', 'Larkspur Builders']
 const key = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/llc$/, '')
 const BUILDERS: BuilderRow[] = [...NAMES.map((n) => builder(key(n), n)), builder('quillpermits', 'Quill Permits')].map((b) => (b.key === 'juniperhospitalitygroup' ? { ...b, bids: 4, won: 0, last_bid_on: '2026-06-03' } : b))
 /** Ridgeway picks up (6 against 2); the rest pull 3 to 8 permits in the last ninety days; the permit runner pulls 20. */
@@ -140,13 +140,13 @@ describe('the call list', () => {
     draw()
     expect(screen.getByRole('button', { name: 'This week 5' }).getAttribute('aria-pressed')).toBe('true')
     // The builder with a job open now leads, then the names never bid by their ninety days. The one we bid waits behind them, and the permit runner, the busiest of all, behind every builder.
-    expect(called()).toEqual(['ridgewaybuilders', 'tallpinedevelopment', 'harborfitoutsconstruction', 'limebuildcontractors', 'asterridgecontracting'])
+    expect(called()).toEqual(['ridgewaybuilders', 'tallpinebuilders', 'harborfitoutsconstruction', 'limebuildcontractors', 'asterridgecontracting'])
     const first = document.querySelector('[data-call-row="ridgewaybuilders"]') as HTMLElement
     for (const tag of ['Picking up', 'Never bid', '2 jobs open now']) expect(within(first).getByText(tag)).toBeTruthy()
-    expect(within(first).getByText('8 permits in the last year, 6 in the last 90 days against 2 in the 90 before. Mostly commercial remodel.')).toBeTruthy()
+    expect(within(first).getByText('8 jobs in the last year, 6 in the last 90 days against 2 in the 90 before. Mostly commercial remodel.')).toBeTruthy()
     expect(first.textContent).toContain('Open now: 2100 SAMPLE PKWY, applied Nov 4 · 77 KILN ST, applied Oct 28. They have no plumbing permit yet.')
     expect(screen.getByText(/^3 more wait behind these\./)).toBeTruthy()
-    expect(screen.getByText('Names that read as a builder come first, then a job open now, then picking up or new, then never bid.')).toBeTruthy()
+    expect(screen.getByText('A name with a building word comes first, then the other companies. After that a job open now, then picking up or new, then never bid. A job is counted once.')).toBeTruthy()
     // Our history with a name we bid, on the chip that holds it.
     fireEvent.click(screen.getByRole('button', { name: 'New and busy 7' }))
     const juniper = document.querySelector('[data-call-row="juniperhospitalitygroup"]') as HTMLElement
@@ -179,8 +179,8 @@ describe('the call list', () => {
     draw()
     fireEvent.click(screen.getByRole('button', { name: '77 KILN ST' }))
     expect(onOpenPermit).toHaveBeenCalledWith(expect.objectContaining({ id: 'p2' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Open builder Tall Pine Development LLC' }))
-    expect(onOpenBuilder).toHaveBeenCalledWith(expect.objectContaining({ key: 'tallpinedevelopment' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open builder Tall Pine Builders LLC' }))
+    expect(onOpenBuilder).toHaveBeenCalledWith(expect.objectContaining({ key: 'tallpinebuilders' }))
   })
 
   it('leaves out the chips and the words a city’s records cannot back', () => {
@@ -188,7 +188,7 @@ describe('the call list', () => {
     expect(screen.queryByRole('button', { name: /^Picking up/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /^Has a job open now/ })).toBeNull()
     expect(screen.getByText(/Austin’s records start Aug 27, so nothing here reads as picking up or new yet\./)).toBeTruthy()
-    expect(screen.getAllByText('8 permits since Aug 27. Mostly commercial remodel.').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('8 jobs since Aug 27. Mostly commercial remodel.').length).toBeGreaterThan(0)
   })
 
   it('says why a city has no list, and waits while the year reads', () => {
@@ -237,21 +237,21 @@ describe('answering a name', () => {
     expect(research.approachFromPermit).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }), 'gc', 'u1', {})
     expect(research.recordVerdict).toHaveBeenCalledWith({ permitId: 'p1', verdict: 'approach', reason: 'Pursued for their next jobs.', lookAgainOn: null, prospectId: 'lead-1', userId: 'u1', pursueFor: 'next_jobs', forUserId: 'u1' })
     expect(marketIo.recordCallAnswer).toHaveBeenCalledWith({ builderKey: 'ridgewaybuilders', answer: 'pursue', reason: 'Pursued for their next jobs.', lookAgainOn: '2027-02-17', city: 'San Antonio', prospectId: 'lead-1', permitId: 'p1' })
-    expect(await screen.findByText(/Lead made: Ridgeway Builders, on the Customers deck\. Ridgeway Builders is off the list while you pursue them\. It may be offered again after Feb 17, 2027\./)).toBeTruthy()
+    expect(await screen.findByText(/Lead made: Ridgeway Builders, on the Customers deck\. Ridgeway Builders is off the list while you pursue them\. It may be offered again after Feb 17, 2027, once it applies for a new job\./)).toBeTruthy()
     expect(onAnswered).toHaveBeenCalledTimes(1)
     expect(onChanged).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('reads a builder’s newest permit when the tab holds none of theirs, and writes no verdict on a history row', async () => {
-    research.loadPermitsOfBuilder.mockResolvedValue([{ id: 's9', permit_number: 'COM-BLG-PMT26-00000009', permit_type: 'Comm New Building Permit', kind: 'building', stage: 'issued', work_type: 'New commercial', submitted_on: '2026-01-02', issued_on: '2026-10-01', contact: 'Tall Pine Development LLC', address: '60 MILLRACE ROW', declared_value: 1_800_000 }])
-    research.approachFromPermit.mockResolvedValue({ prospectId: 'lead-2', companyName: 'Tall Pine Development LLC', reused: true, deck: 'gc_lead' })
+    research.loadPermitsOfBuilder.mockResolvedValue([{ id: 's9', permit_number: 'COM-BLG-PMT26-00000009', permit_type: 'Comm New Building Permit', kind: 'building', stage: 'issued', work_type: 'New commercial', submitted_on: '2026-01-02', issued_on: '2026-10-01', contact: 'Tall Pine Builders LLC', address: '60 MILLRACE ROW', declared_value: 1_800_000 }])
+    research.approachFromPermit.mockResolvedValue({ prospectId: 'lead-2', companyName: 'Tall Pine Builders LLC', reused: true, deck: 'gc_lead' })
     draw()
-    fireEvent.click(screen.getByRole('button', { name: 'Pursue Tall Pine Development LLC' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Pursue Tall Pine Builders LLC' }))
     const sheet = await screen.findByRole('dialog')
-    expect(research.loadPermitsOfBuilder).toHaveBeenCalledWith('San Antonio', 'tallpinedevelopment', TODAY)
+    expect(research.loadPermitsOfBuilder).toHaveBeenCalledWith('San Antonio', 'tallpinebuilders', TODAY)
     fireEvent.click(within(sheet).getByRole('button', { name: 'Pursue · hand to me' }))
-    await waitFor(() => expect(marketIo.recordCallAnswer).toHaveBeenCalledWith(expect.objectContaining({ builderKey: 'tallpinedevelopment', answer: 'pursue', prospectId: 'lead-2', permitId: 's9' })))
+    await waitFor(() => expect(marketIo.recordCallAnswer).toHaveBeenCalledWith(expect.objectContaining({ builderKey: 'tallpinebuilders', answer: 'pursue', prospectId: 'lead-2', permitId: 's9' })))
     expect(research.approachFromPermit).toHaveBeenCalledWith(expect.objectContaining({ id: 's9', address: '60 MILLRACE ROW' }), 'gc', 'u1', {})
     expect(research.recordVerdict).not.toHaveBeenCalled()
     expect(onChanged).not.toHaveBeenCalled()
@@ -276,7 +276,7 @@ describe('answering a name', () => {
     fireEvent.click(within(sheet).getByRole('button', { name: 'Too big for us' }))
     fireEvent.click(within(sheet).getByRole('button', { name: 'Not for us · too big for us' }))
     await waitFor(() => expect(marketIo.recordCallAnswer).toHaveBeenCalledWith({ builderKey: 'harborfitoutsconstruction', answer: 'not_for_us', reason: 'Too big for us', lookAgainOn: '2027-11-19', city: 'San Antonio' }))
-    expect(await screen.findByText('Harbor Fitouts Construction is off the list. It may be offered again after Nov 19, 2027.')).toBeTruthy()
+    expect(await screen.findByText('Harbor Fitouts Construction is off the list. It may be offered again after Nov 19, 2027, once it applies for a new job.')).toBeTruthy()
     expect(onAnswered).toHaveBeenCalledTimes(1)
     expect(research.approachFromPermit).not.toHaveBeenCalled()
   })
@@ -295,15 +295,25 @@ describe('answering a name', () => {
   it('brings the next name when one is answered, and puts an answered name back', async () => {
     draw({ answers: [answer({ id: 'a0', builder_key: 'ridgewaybuilders', answer: 'pursue', reason: 'Pursued for this job.', look_again_on: '2027-02-17', answered_by: 'u1' }), answer()] })
     // Ridgeway and Larkspur are off, so the names behind them move up and the one we bid takes the fifth place.
-    expect(called()).toEqual(['tallpinedevelopment', 'harborfitoutsconstruction', 'limebuildcontractors', 'asterridgecontracting', 'juniperhospitalitygroup'])
+    expect(called()).toEqual(['tallpinebuilders', 'harborfitoutsconstruction', 'limebuildcontractors', 'asterridgecontracting', 'juniperhospitalitygroup'])
     fireEvent.click(screen.getByRole('button', { name: /^Answered 2/ }))
     const larkspur = document.querySelector('[data-call-answered="larkspurbuilders"]') as HTMLElement
-    expect(within(larkspur).getByText('Not for us, Too far for us. Sam, Nov 18. Off the list until Nov 19, 2027.')).toBeTruthy()
-    expect(within(document.querySelector('[data-call-answered="ridgewaybuilders"]') as HTMLElement).getByText('Pursuing, Pursued for this job.. You, Nov 18. Off the list until Feb 17, 2027.')).toBeTruthy()
+    expect(within(larkspur).getByText('Not for us, Too far for us. Sam, Nov 18. Off the list until Nov 19, 2027, and then until it applies for a new job.')).toBeTruthy()
+    expect(within(document.querySelector('[data-call-answered="ridgewaybuilders"]') as HTMLElement).getByText('Pursuing, Pursued for this job.. You, Nov 18. Off the list until Feb 17, 2027, and then until it applies for a new job.')).toBeTruthy()
     fireEvent.click(within(larkspur).getByRole('button', { name: 'Put Larkspur Builders back on the list' }))
     await waitFor(() => expect(marketIo.recordCallAnswer).toHaveBeenCalledWith({ builderKey: 'larkspurbuilders', answer: 'back', reason: '', lookAgainOn: null, city: 'San Antonio' }))
     expect(await screen.findByText('Larkspur Builders may be offered on the list again.')).toBeTruthy()
     expect(onAnswered).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a name whose day has come under Answered until it has a new job, with Put back', () => {
+    // Passed on Aug 1 and due again Nov 1. Larkspur has applied for nothing since, so it is not offered again.
+    draw({ answers: [answer({ look_again_on: '2026-11-01', answered_at: '2026-08-01T15:00:00Z' })] })
+    expect(called()).not.toContain('larkspurbuilders')
+    fireEvent.click(screen.getByRole('button', { name: /^Answered 1/ }))
+    const larkspur = document.querySelector('[data-call-answered="larkspurbuilders"]') as HTMLElement
+    expect(within(larkspur).getByText('Not for us, Too far for us. Sam, Aug 1. Off the list until it applies for a new job.')).toBeTruthy()
+    expect(within(larkspur).getByRole('button', { name: 'Put Larkspur Builders back on the list' })).toBeTruthy()
   })
 
   it('draws the three presses in a row under the name on a phone', () => {
