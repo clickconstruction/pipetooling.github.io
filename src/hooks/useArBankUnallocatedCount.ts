@@ -4,13 +4,16 @@ import { BANKING_SORTING_CONFIG_VERSION, resolveBankPaymentsSortingConfigForAr }
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 
+/**
+ * Who may ask for the count: dev, master_technician, assistant and controller, the four roles
+ * `count_mercury_transactions_for_bank_payments` answers. A primary came out of that list in the database
+ * (v2.7931) and out of this one (v2.8030), so their page never fires a call that can only be refused.
+ */
 export function canRoleUseArBankCount(role: string | null): boolean {
-  return (
-    role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
-  )
+  return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 }
 
-/** Dashboard / Quickfill unallocated-deposits banner, `/accounts-receivable` — staff only; `primary` uses Jobs Stages modal + count via {@link canRoleUseArBankCount}. */
+/** Dashboard / Quickfill unallocated-deposits banner, `/accounts-receivable` — the same office roles as {@link canRoleUseArBankCount}. */
 export function canRoleSeeArBankUnallocatedOrgNudge(role: string | null): boolean {
   return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 }

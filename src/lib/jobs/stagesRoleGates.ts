@@ -98,17 +98,19 @@ export function canManageCollections(role: Role): boolean {
 }
 
 /**
- * Office + primary: who may open Accounts Receivable and record payments. Broader than
- * the Pipeline tab gate on purpose (map quirk 6): a primary can use the AR door even
- * though the tab bar never shows them Pipeline.
+ * The office pool: who may open Accounts Receivable and record payments there, and the one gate of the bank
+ * payments window (`BankPaymentsModal`'s `canApply`). Mirrors the four roles the bank payments desk and the
+ * returned-check desk answer in the database: a primary came out of those lists in v2.7931 (punch list #400)
+ * and out of this one in v2.8030, since every read behind the door refuses the role.
  */
 export function canRecordArPayments(role: Role): boolean {
-  return isStagesOfficeRole(role) || role === 'primary'
+  return isStagesOfficeRole(role)
 }
 
 /**
- * Office + primary: the Billed section's expected-payment chips (customer pay speeds).
- * The same set as AR today; named apart because it answers a different question.
+ * Office + primary: the Billed section's expected-payment chips (customer pay speeds). Wider than
+ * Accounts Receivable on purpose: the Bill tab of a primary's own job draws its expected-pay dates from
+ * reads v2.7931 left open to the role.
  */
 export function canSeeBilledExpectedPay(role: Role): boolean {
   return isStagesOfficeRole(role) || role === 'primary'

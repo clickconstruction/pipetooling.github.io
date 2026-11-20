@@ -68,8 +68,10 @@ describe('stagesRoleGates — the matrix', () => {
     admits(canCreateHazmatFee, OFFICE)
     admits(canManageCollections, OFFICE)
   })
-  it('Accounts Receivable and the expected-pay chips admit primary as well (map quirk 6)', () => {
-    admits(canRecordArPayments, [...OFFICE, 'primary'])
+  it('Accounts Receivable is the office pool: the four roles the bank payments desk answers since v2.7931', () => {
+    admits(canRecordArPayments, OFFICE)
+  })
+  it('the expected-pay chips admit primary as well: the Bill tab of their own job reads them', () => {
     admits(canSeeBilledExpectedPay, [...OFFICE, 'primary'])
   })
   it('a returned check reaches the office pool — the set that moves jobs (v2.3795 / v2.3806)', () => {
