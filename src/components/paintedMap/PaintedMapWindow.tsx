@@ -85,11 +85,12 @@ import { readingMovesDot } from '../../lib/paintedMap/paintedPlaceDot'
 import { PAINTED_MAP_SHEET_Z, PAINTED_MAP_WINDOW_Z } from '../../lib/windowLayers'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { PaintedCanvasMe } from '../../lib/paintedMap/marginFrame'
-import type { PaintedCanvasDot, PaintedCanvasDraft, PaintedCanvasPlace } from './PaintedMapCanvas'
+import type { PaintedCanvasDot, PaintedCanvasDraft, PaintedCanvasGoogleAsk, PaintedCanvasPlace } from './PaintedMapCanvas'
 import { PaintAMapJobPicker } from './PaintAMapJobPicker'
 import { PaintedMapShareSheet } from './PaintedMapShareSheet'
 import { PaintedMapSavedBand } from './PaintedMapSavedBand'
 import { paintedMapSavedOffersText, paintedMapSavedWords } from '../../lib/paintedMap/paintedMapSaved'
+import { paintedWindowUse } from '../../lib/paintedMap/paintedMapProvider'
 import { isPhoneDevice } from '../../lib/quo/dial'
 import type { PaintedPlaceKind } from '../../lib/paintedMap/paintedPlaceKind'
 import { PaintedPlaceMark } from './PaintedPlaceMark'
@@ -212,6 +213,8 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   const [viewing, setViewing] = useState<string | null>(null)
   const [pickedPlace, setPickedPlace] = useState<string | null>(null)
   const [sharing, setSharing] = useState(false)
+  // A picture of the map is on the screen, in the Share sheet. It is Esri's photograph (punch list #387).
+  const [pictureUp, setPictureUp] = useState(false)
   // The middle of what the map is showing: where a new dot starts.
   const viewCenter = useRef<PaintedPoint | null>(null)
   const [draft, setDraft] = useState<DraftLine>(() => emptyDraftLine())
@@ -853,6 +856,12 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
   // Where the person is drawn. A rough reading still being waited on draws nothing and moves nothing: the phone has
   // not found them yet. Once it has stayed rough it is an area, the whole circle with no dot in its middle.
   const walkMe: PaintedCanvasMe | null = mode === 'walk' && walkLast && (!walkRough || roughHeld) ? { lat: walkLast.lat, lng: walkLast.lng, accuracyM: walkLast.accuracyM, area: walkRough } : null
+  // Where the canvas is and what it is for, so the rule can say which map is under the painted map (punch list #387).
+  // The use is read from the mode, so a paused walk keeps one map. A window opened to add a place is placing from
+  // the start, while it waits for the map to say where it is looking or for its address to be found.
+  const opensOnPlace = (openOn === 'place' && !openedOn.current) || (placeFirst && !openedOnPlace.current)
+  const canvasUse = paintedWindowUse(mode, opensOnPlace)
+  const canvasGoogle = useMemo<PaintedCanvasGoogleAsk>(() => ({ screen: 'window', use: canvasUse, pictureUp }), [canvasUse, pictureUp])
   const walkLengthM = pending.reduce((sum, s) => sum + s.lengthM, 0) + liveStrokes.reduce((sum, s) => sum + s.lengthM, 0)
 
   return createPortal(
@@ -905,7 +914,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
           <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: phone ? 'column' : 'row' }}>
             <div style={{ flex: phone ? '1 1 46%' : '1 1 60%', minHeight: phone ? 260 : 420, minWidth: 0, position: 'relative' }}>
               <Suspense fallback={<p style={{ margin: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the map…</p>}>
-                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} frameMargin={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={setPickedPlace} time={mode === 'view' ? { name: title } : null} />
+                <PaintedMapCanvasLazy lines={canvasLines} places={canvasPlaces} height="100%" start={center ?? null} draft={canvasDraft} dot={canvasDot} flyTo={fly} me={walkMe} follow={mode === 'walk' && painting} frameMargin={mode === 'walk' && painting} refit={refit} onTilesFailed={() => setMapFailed(true)} onGlass={setGlass} onView={onView} onPlaceTap={setPickedPlace} time={mode === 'view' ? { name: title } : null} google={canvasGoogle} />
               </Suspense>
               {mode === 'walk' && painting && walkMe?.area ? (
                 // The map has pulled back to the whole of what the phone knows. The pill says what the dashed circle is.
@@ -1233,7 +1242,7 @@ export function PaintedMapWindow({ ask, kept = null, address = null, center: giv
       />
     ) : null}
     {homing && map && user?.id ? <PaintAMapJobPicker userId={user.id} mode={map.jobId ? 'move' : 'pick'} excludeJobId={map.jobId} onPick={(job) => void putOnJob(job.id)} onClose={() => setHoming(false)} /> : null}
-    {sharing && map ? <PaintedMapShareSheet mapId={map.id} mapName={map.name} whole={{ map: { id: map.id, name: map.name, words: map.words, jobId: map.jobId }, lines, places }} mayText={jobBoxOffered(role)} jobId={map.jobId} onClose={() => setSharing(false)} /> : null}
+    {sharing && map ? <PaintedMapShareSheet mapId={map.id} mapName={map.name} whole={{ map: { id: map.id, name: map.name, words: map.words, jobId: map.jobId }, lines, places }} mayText={jobBoxOffered(role)} jobId={map.jobId} onPictureShown={setPictureUp} onClose={() => { setSharing(false); setPictureUp(false) }} /> : null}
     {viewing ? (
       <div role="dialog" aria-modal="true" aria-label="The photo of the place" data-painted-photo-view style={{ position: 'fixed', inset: 0, zIndex: PAINTED_MAP_SHEET_Z, background: 'rgba(0,0,0,0.88)', display: 'grid', placeItems: 'center', padding: 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }} onClick={() => setViewing(null)}>
         <img src={viewing} alt="The place" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8 }} />

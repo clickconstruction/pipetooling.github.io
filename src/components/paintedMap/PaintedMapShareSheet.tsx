@@ -27,7 +27,7 @@
  * sent in the press: the box's send window is the confirm (`lib/paintedMap/paintedMapText.ts`).
  */
 import { QRCodeSVG } from 'qrcode.react'
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import ConfirmDialog from '../ConfirmDialog'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
@@ -67,6 +67,11 @@ type Props = {
   textBox?: { load?: (customerId: string) => Promise<Contact>; io?: ReplyIo }
   openMessages?: (href: string) => Promise<boolean>
   copiesIo?: PaintedMapCopiesIo
+  /**
+   * Told when a picture of the map comes onto the screen and when it leaves (punch list #387). The picture is Esri's
+   * photograph, and a map's window that draws on Google takes Google's map down while one shows.
+   */
+  onPictureShown?: (shown: boolean) => void
 }
 
 /** The press that is making the link right now. A copy makes one quietly. */
@@ -93,7 +98,7 @@ const whenOf = (iso: string): string | null => {
 
 const isPhoneHere = (): boolean => typeof navigator !== 'undefined' && isPhoneDevice(navigator.userAgent, navigator.maxTouchPoints)
 
-export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, origin = typeof window !== 'undefined' ? window.location.origin : '', mayText = false, jobId, phone, loadJob = loadPaintedMapTextJob, textBox, openMessages = openPhoneMessages, copiesIo }: Props) {
+export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, origin = typeof window !== 'undefined' ? window.location.origin : '', mayText = false, jobId, phone, loadJob = loadPaintedMapTextJob, textBox, openMessages = openPhoneMessages, copiesIo, onPictureShown }: Props) {
   const isTopmost = useModalStackEntry()
   const [mine, setMine] = useState<{ code: string; endsOn: string | null } | null>(() => rememberedPaintedMapLink(mapId))
   const [links, setLinks] = useState<PaintedMapLinkRow[] | null>(null)
@@ -328,6 +333,14 @@ export function PaintedMapShareSheet({ mapId, mapName, whole = null, onClose, or
   }
 
   const copies = usePaintedMapCopies({ whole, link: url && live ? { url, endsOn: live.endsOn } : null, ensureLink: () => ensureLink('quiet'), ...(copiesIo ? { io: copiesIo } : {}) })
+
+  // Said before the picture is painted and not after, so the picture and a Google map are never on the screen together.
+  const pictureShown = view === 'picture' && !!copies.picture
+  const tellPictureShown = useRef(onPictureShown)
+  tellPictureShown.current = onPictureShown
+  useLayoutEffect(() => {
+    tellPictureShown.current?.(pictureShown)
+  }, [pictureShown])
 
   const picture = async () => {
     if (making) return

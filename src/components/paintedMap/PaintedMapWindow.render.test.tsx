@@ -69,19 +69,20 @@ vi.mock('../../lib/paintedMap/paintedMapIo', () => {
 })
 
 /** The map, stood in for: it says what it draws, and its two presses add a corner to the draft. */
-const canvas = vi.hoisted(() => ({ draft: null as null | PaintedCanvasDraft }))
+const canvas = vi.hoisted(() => ({ draft: null as null | PaintedCanvasDraft, /** Each use the window told the canvas, in order. */ uses: [] as string[] }))
 vi.mock('./PaintedMapCanvas', async () => {
   const { useEffect } = await import('react')
   return {
-    default: function CanvasStub(props: { lines: Array<{ id: string }>; places: Array<{ id: string; number: number; kind?: string | null; letter?: string; fromJob?: boolean }>; draft?: PaintedCanvasDraft | null; dot?: { point: { lat: number; lng: number }; onMove: (p: { lat: number; lng: number }) => void } | null; onView?: (c: { lat: number; lng: number }) => void; onPlaceTap?: (id: string) => void; time?: { name: string } | null }) {
+    default: function CanvasStub(props: { lines: Array<{ id: string }>; places: Array<{ id: string; number: number; kind?: string | null; letter?: string; fromJob?: boolean }>; draft?: PaintedCanvasDraft | null; dot?: { point: { lat: number; lng: number }; onMove: (p: { lat: number; lng: number }) => void } | null; onView?: (c: { lat: number; lng: number }) => void; onPlaceTap?: (id: string) => void; time?: { name: string } | null; google?: { screen: string; use: string; pictureUp?: boolean } | null }) {
       canvas.draft = props.draft ?? null
+      if (props.google && canvas.uses[canvas.uses.length - 1] !== props.google.use) canvas.uses.push(props.google.use)
       const { onView } = props
       // The map says where it is looking once it has settled, as the real one does.
       useEffect(() => {
         onView?.({ lat: 29.55, lng: -98.25 })
       }, [onView])
       return (
-        <div data-testid="canvas" data-time={props.time?.name ?? ''}>
+        <div data-testid="canvas" data-time={props.time?.name ?? ''} data-google-screen={props.google?.screen ?? ''} data-google-use={props.google?.use ?? ''} data-google-picture={props.google?.pictureUp ? 'up' : 'no'}>
           lines:{props.lines.map((l) => l.id).join(',')} corners:{props.draft ? props.draft.points.length : 'none'} dots:{props.places.map((p) => p.number).join(',')} dot:{props.dot ? `${props.dot.point.lat},${props.dot.point.lng}` : 'none'}
           {props.draft ? <button type="button" onClick={() => props.draft!.onAdd({ lat: 29.5 + props.draft!.points.length * 0.001, lng: -98.2 })}>add a corner</button> : null}
           {props.dot ? <button type="button" onClick={() => props.dot!.onMove({ lat: 29.7, lng: -98.4 })}>drag the dot</button> : null}
@@ -104,9 +105,11 @@ vi.mock('./PaintAMapJobPicker', () => ({
 
 /** The share sheet, stood in for: it says which map it was opened for. */
 vi.mock('./PaintedMapShareSheet', () => ({
-  PaintedMapShareSheet: (props: { mapId: string; mapName: string; onClose: () => void }) => (
+  PaintedMapShareSheet: (props: { mapId: string; mapName: string; onClose: () => void; onPictureShown?: (shown: boolean) => void }) => (
     <div data-testid="share-sheet">
       share:{props.mapId}:{props.mapName}
+      <button type="button" onClick={() => props.onPictureShown?.(true)}>show a picture</button>
+      <button type="button" onClick={() => props.onPictureShown?.(false)}>back from the picture</button>
       <button type="button" onClick={props.onClose}>close the sheet</button>
     </div>
   ),
@@ -135,6 +138,7 @@ const LINE = (over: Partial<PaintedLine> = {}): PaintedLine => ({ id: 'l1', mapI
 
 afterEach(() => {
   cleanup()
+  canvas.uses = []
   io.whole = null
   io.calls = []
   io.refuse = null
@@ -311,6 +315,43 @@ describe('a saved map', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Draw a line' }))
     await screen.findByRole('heading', { name: 'Draw it by hand' })
     expect(screen.getByTestId('canvas').getAttribute('data-time')).toBe('')
+  })
+
+  it('tells the canvas where it is and what it is for, so the rule can pick the map under it (punch list #387)', async () => {
+    auth.value = { user: { id: 'me' }, role: 'assistant' }
+    io.whole = { map: MAP, lines: [LINE()], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'The way in for deliveries' })
+    const canvasBox = () => screen.getByTestId('canvas')
+    expect(canvasBox().getAttribute('data-google-screen')).toBe('window')
+    // A saved map opened to be read: the one use Google's map carries today.
+    expect(canvasBox().getAttribute('data-google-use')).toBe('looking')
+    fireEvent.click(screen.getByRole('button', { name: 'Draw a line' }))
+    await screen.findByRole('heading', { name: 'Draw it by hand' })
+    expect(canvasBox().getAttribute('data-google-use')).toBe('drawing')
+  })
+
+  it('says a place is being put down while its dot is on the map (punch list #387)', async () => {
+    auth.value = { user: { id: 'me' }, role: 'assistant' }
+    io.whole = { map: MAP, lines: [LINE()], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Place' }))
+    expect(screen.getByTestId('canvas').getAttribute('data-google-use')).toBe('placing')
+  })
+
+  it('tells the canvas while a picture of the map is on the screen, and stops when the sheet closes (punch list #387)', async () => {
+    io.whole = { map: { ...MAP, createdBy: 'me' }, lines: [LINE({ madeBy: 'me' })], places: [] }
+    render(<PaintedMapWindow ask={{ mapId: 'm1' }} onClose={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Share' }))
+    expect(screen.getByTestId('canvas').getAttribute('data-google-picture')).toBe('no')
+    fireEvent.click(screen.getByRole('button', { name: 'show a picture' }))
+    expect(screen.getByTestId('canvas').getAttribute('data-google-picture')).toBe('up')
+    fireEvent.click(screen.getByRole('button', { name: 'back from the picture' }))
+    expect(screen.getByTestId('canvas').getAttribute('data-google-picture')).toBe('no')
+    // Closed with the picture up: the sheet is gone, and so is the picture.
+    fireEvent.click(screen.getByRole('button', { name: 'show a picture' }))
+    fireEvent.click(screen.getByRole('button', { name: 'close the sheet' }))
+    expect(screen.getByTestId('canvas').getAttribute('data-google-picture')).toBe('no')
   })
 
   it('offers change presses on my own line only, when I am not the office', async () => {
@@ -908,6 +949,17 @@ describe('a job\'s own list of places (#393)', () => {
     // Cancel goes to the list, and the panel does not open by itself a second time.
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.getByRole('heading', { name: 'Places on this job' })).toBeTruthy()
+  })
+
+  it('tells the canvas it is placing from the first moment of a window opened to add a place (punch list #387)', async () => {
+    io.whole = listWhole()
+    render(<PaintedMapWindow ask={{ mapId: 'list' }} openOn="place" onClose={() => {}} />)
+    await screen.findByRole('heading', { name: 'A place on the map' })
+    // Never looking first: Google's map would be made only to be taken down when the panel opens.
+    expect(canvas.uses).toEqual(['placing'])
+    // Once the place is given up the window is reading its map again.
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(canvas.uses).toEqual(['placing', 'looking'])
   })
 
   it('draws the job\'s places on another map of the job: lettered, dashed, and under their own heading', async () => {

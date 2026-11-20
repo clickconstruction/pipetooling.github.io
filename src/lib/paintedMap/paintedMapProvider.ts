@@ -4,7 +4,7 @@
  * decides.
  *
  * The app's one provider rule comes first (`resolveDashboardMapProvider`): Google with a browser key
- * and no failure on this page, Leaflet otherwise. A painted map asks three things more.
+ * and no failure on this page, Leaflet otherwise. A painted map asks four things more.
  *
  * - **The screen.** Google bills by the map opened. The painting window is staff only. The public
  *   page is opened by every outside reader a link reaches, so it waits for the owner's look at the
@@ -14,6 +14,10 @@
  * - **Esri's photograph on the screen.** Time's archive is Esri's, and so is a picture of the map.
  *   Google's terms keep a map that is not Google's away from one that is (3.2.3 (e)), so the Google
  *   canvas is down while either shows and the Leaflet canvas takes its place, as on every Time map.
+ * - **One map while something is made.** A screen that has left Google's map to draw, to place, to
+ *   walk or to make a picture keeps the Leaflet canvas until it closes. The painter then sees a new
+ *   line on the photograph it was drawn over, and going back would open one more map on Google's count.
+ *   Time alone goes back: it is a look at an older day, and leaving it is the map of today again.
  *
  * The Leaflet canvas is never retired. It is the fall back, and it is the canvas Time draws on.
  */
@@ -41,17 +45,16 @@ export type PaintedGoogleReach = {
 }
 
 /**
- * How far it has come today: nowhere. This step is the rule alone, and no screen reads it yet.
+ * How far it has come today: the painting window, for looking. A saved map opened to be read draws
+ * on Google, and so does a kept walk opened to be looked over.
  *
  * Each step of the train adds its own word here, in the change that builds the part.
- * - A Google canvas for looking adds `window` and `looking`, once the owner has read the month's
- *   count of maps opened in the billing console.
  * - Drawing on Google adds `drawing`, `placing` and `walking`. A line drawn by hand over Google's
  *   photograph also waits on a reading of Google's terms on content made from its imagery (3.2.3 (c)).
  * - The public page adds `way`, and never before the billing look says yes. It also needs the frame
  *   that keeps a reader and the line in the picture together.
  */
-export const PAINTED_GOOGLE_REACH: PaintedGoogleReach = { screens: [], uses: [] }
+export const PAINTED_GOOGLE_REACH: PaintedGoogleReach = { screens: ['window'], uses: ['looking'] }
 
 export type PaintedMapProviderAsk = {
   /** The browser key (`googleMapsBrowserKey()`). Empty when the build has none. */
@@ -66,18 +69,38 @@ export type PaintedMapProviderAsk = {
   timeOn?: boolean
   /** A picture of the map is on the screen: the Share sheet is showing one it made. */
   pictureUp?: boolean
+  /** This screen has already left Google's map to make something (`paintedMapKeepsLeaflet`). It keeps the Leaflet canvas until it closes. */
+  keptOnLeaflet?: boolean
+  /** A picture and not a control: no drag, no zoom, no presses. Only the Leaflet canvas draws one. */
+  still?: boolean
 }
 
 /**
  * The map the canvas draws on. Google only when every answer is yes: a key, no failure, a screen and
- * a use within Google's reach, and none of Esri's photographs on the screen.
+ * a use within Google's reach, none of Esri's photographs on the screen, and a screen that has not
+ * already left Google's map to make something.
  */
 export function resolvePaintedMapProvider(ask: PaintedMapProviderAsk, reach: PaintedGoogleReach = PAINTED_GOOGLE_REACH): PaintedMapProvider {
   if (resolveDashboardMapProvider({ key: ask.key, googleFailed: ask.googleFailed }) !== 'google') return 'osm'
   if (!reach.screens.includes(ask.screen)) return 'osm'
   if (!reach.uses.includes(ask.use)) return 'osm'
   if (ask.timeOn === true || ask.pictureUp === true) return 'osm'
+  if (ask.keptOnLeaflet === true || ask.still === true) return 'osm'
   return 'google'
+}
+
+/**
+ * Whether a screen now keeps the Leaflet canvas until it closes. `kept` is what the look before
+ * answered, false when the screen opened.
+ *
+ * It starts keeping when something is made on the Leaflet canvas: a line, a place, a walk, or a
+ * picture of the map. It never lets go. Time is not making, and neither is a map that is on Leaflet
+ * only because Google is out of reach for its screen.
+ */
+export function paintedMapKeepsLeaflet(kept: boolean, now: { provider: PaintedMapProvider; use: PaintedMapUse; pictureUp?: boolean }): boolean {
+  if (kept) return true
+  if (now.provider !== 'osm') return false
+  return now.use !== 'looking' || now.pictureUp === true
 }
 
 /** The painting window's five modes (`PaintedMapWindow`). */
@@ -93,8 +116,13 @@ export type PaintedWindowMode = 'view' | 'draw' | 'place' | 'walk' | 'review'
  *
  * Look it over is looking: the walk's lines wait on the phone and none is being moved. Fixing one of
  * them by hand is drawing.
+ *
+ * `opensOnPlace` is a window opened by a press that adds a place, for the moment before its panel is
+ * up: the map is waiting to say where it is looking, or for its address to be found. It is placing
+ * already. Read as looking, Google's map would be made only to be taken down a moment later.
  */
-export function paintedWindowUse(mode: PaintedWindowMode): PaintedMapUse {
+export function paintedWindowUse(mode: PaintedWindowMode, opensOnPlace: boolean = false): PaintedMapUse {
+  if (opensOnPlace && mode === 'view') return 'placing'
   switch (mode) {
     case 'draw':
       return 'drawing'
