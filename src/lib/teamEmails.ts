@@ -58,6 +58,7 @@ export type TeamSampleEmailId =
   | 'bid_room_activity_staff'
   | 'portal_request_staff'
   | 'contract_for_signature'
+  | 'contract_reminder'
   | 'invitation'
   | 'sign_in'
   | 'task_reminder_fallback'
@@ -452,6 +453,16 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     render: { kind: 'sample', sample: 'contract_for_signature' },
     manage: { tabId: 'settings-contracts', label: 'Contracts & terms' },
     reflects: ['the subcontractor agreement wording'],
+  },
+  {
+    id: 'contract_reminder',
+    label: 'Contract for signature, a reminder',
+    when: { kind: 'once', label: 'Three days after a paper is sent and not signed, up to three times, while paper reminders are on', order: 42.5 },
+    recipients: { roles: ['subcontractor'], decidedBy: 'event', rule: 'The person asked to sign, at the address the send kept.' },
+    sampleSubject: () => 'Reminder: please sign Subcontractor agreement · Click Plumbing and Electrical',
+    render: { kind: 'sample', sample: 'contract_reminder' },
+    manage: { tabId: 'settings-people', label: 'People & teams → Paper reminders by email' },
+    reflects: ['whether paper reminders are on'],
   },
   {
     id: 'test_email',

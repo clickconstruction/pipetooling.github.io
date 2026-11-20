@@ -87,6 +87,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Invite via email', keywords: ['invite user', 'add user', 'new account'], tabId: 'settings-people' },
   { label: 'Merge users', keywords: ['combine users', 'duplicate accounts'], tabId: 'settings-people' },
   { label: 'Superintendent bonus', keywords: ['superintendent bonus', 'labor kept', 'hours saved', 'scoreboard share', 'bonus share'], tabId: 'settings-people', anchorId: 'settings-people-superintendent-bonus' },
+  { label: 'Paper reminders by email', keywords: ['paper reminders', 'remind to sign', 'signature reminder', 'contract reminder', 'unsigned paper'], tabId: 'settings-people', anchorId: 'settings-people-paper-reminders' },
   { label: 'Active accounts', keywords: ['who is active', 'logins'], tabId: 'settings-people' },
   // Punch list #313: which looks and sizes of the card and the footer the team is offered. The owner's card and a dev's.
   { label: 'Card and footer looks', keywords: ['looks', 'card looks', 'footer looks', 'card sizes', 'offer a look', 'approve a look', 'default look', 'navy and orange', 'navy and yellow', 'larger photo', 'larger text', 'business card colours'], tabId: 'settings-people', anchorId: 'settings-card-looks', seenBy: approvesCardLooks },

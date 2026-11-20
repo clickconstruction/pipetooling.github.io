@@ -336,6 +336,17 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Please sign: {{doc}} · Click Plumbing and Electrical — subject/intro editable per send',
   },
   {
+    id: 'contract_reminder',
+    name: 'Contract for signature, reminder',
+    group: 'estimates_contracts',
+    audience: 'team',
+    builtWhere: 'server',
+    sender: 'remind-person-papers',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Reminder: please sign {{doc}} · Click Plumbing and Electrical',
+    variants: ['the last of three says so'],
+  },
+  {
     id: 'estimate_accepted_staff',
     name: 'Estimate accepted (staff notify)',
     group: 'estimates_contracts',

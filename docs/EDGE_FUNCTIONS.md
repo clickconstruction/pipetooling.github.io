@@ -147,6 +147,7 @@ when_to_read:
    - [get-job-contract](#get-job-contract)
    - [sign-job-contract](#sign-job-contract)
    - [remind-job-contracts](#remind-job-contracts)
+   - [remind-person-papers](#remind-person-papers)
    - [close-held-stripe-marks](#close-held-stripe-marks)
    - [remind-bid-followups](#remind-bid-followups)
    - [share-job-contract](#share-job-contract)
@@ -2946,6 +2947,22 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **v2.6398 (the warranty in place of a contract, 2026-11-02)**: the row's `kind` is read and the reminder worded by it (*our warranty is waiting for your initials and signature*, *Price:*).
 
+### remind-person-papers
+
+**Purpose**: Reminders by email for a staff or sub paper that waits on a signature (punch list #376, v2.8013): three, three days apart, as a job contract gets.
+
+**Endpoint**: `POST /functions/v1/remind-person-papers` — `{}`; optional `dry_run: true` (writes nothing, emails nobody, answers `would: [{ id, to, document, nth }]`, switch on or off) and `only_id` (one paper); `X-Cron-Secret` header (or `cron_secret` in the body) must match.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `RESEND_API_KEY`, `APP_ORIGIN`
+
+**Gateway**: `verify_jwt = false`; the cron secret is the credential. Scheduled hourly (`:37`) by pg_cron job `person-paper-reminders` (migration `20261120060000`).
+
+**Behavior**: The switch is `app_settings` `person_paper_reminders_v1`, which ships `'0'`: anything but `'1'` answers `{ skipped: 'off' }` and writes nothing. Otherwise it reads up to 50 `person_contract_documents` rows that are `sent`, `reminders_enabled`, `next_reminder_at <= now()` and `reminder_count < 3`. A row is held, and its `next_reminder_at` cleared, when it is not an agreement filed under a person, kept no address, has nothing to sign, or its person has left the team. Each other row gets a **new signing link** (the link is kept only as a hash, so a reminder makes a new one that works 14 days and ends the one before it), then the signing email's own builder under the subject `Reminder: please sign …` and opening words that say the link is new; the third says it is the last. Then `reminder_count + 1`, `last_reminded_at`, and `next_reminder_at` three days out, or null after the third. An email that fails is named in `failed`, is not counted, and is tried again the next hour. Each reminder is kept as a sent copy under the person (`person_contract`), with no sender. Answers `{ ok, sent, held: [{ id, reason }], failed: [{ id, reason }], due }`.
+
+**Rules**: `_shared/personPaperReminder.ts`, read by this function, by `send-contract-for-signature` (which sets the first reminder on an emailed send only while the switch is on, and stops them when a link is handed over) and by Documents → Agreements.
+
+---
+
 ### remind-bid-followups
 
 > **v2.6217 — through the person's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the hours are read once per run, and the `bid_followup_reminders` row is written either way, so the day reminds once. The answer gains `held`. **Redeploy** once merged.
@@ -3421,6 +3438,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 > **v2.8101 — who may send**: the person path asks `signingCallerRefusal` (`_shared/contractSigningSend.ts`) before it reads the paper. It takes the four roles that write a paper (dev, master_technician, assistant, controller), and never a training account or a digital twin; anyone else gets a 403 in words with `code: 'forbidden'`. The archived check moved up beside it. The company branch keeps its own gate. **Redeploy required.**
 
+> **v2.8013 — reminders by email** (punch list #376): an emailed send of an agreement filed under a person starts `reminder_count` again and sets `next_reminder_at` three days out, only while `app_settings` `person_paper_reminders_v1` is `'1'` and the paper's own `reminders_enabled` is not off. `mode: 'link'` clears `next_reminder_at`: a link handed over ends the emailed one, so the robot stops. Any other paper writes neither column. The function now reads `doc_type` and `reminders_enabled`, so migration `20261120060000` is pushed before it is deployed. Rules: [`_shared/personPaperReminder.ts`](../supabase/functions/_shared/personPaperReminder.ts) → `reminderPatchOnSend`; the timed half is [remind-person-papers](#remind-person-papers).
+>
 > **v2.7995 — an outside party's paper** (punch list #403, step 3): a paper filed under a party's stored name (`party:<contact id>`) goes out through the person path as any other. The email's *For* line and the kept copy's recipient are the person who signs, else the party's frozen name, never the stored name (`paperForWords`, `_shared/paperSigner.ts`). The body may carry `signing_for`, the business the signer signs for, kept with the signer: a body that names none leaves the row's alone, and one sent empty clears it. A person's own paper is unchanged, and the pin test still holds its bytes. **Redeploy required.**
 
 > **v2.7986 — the send keeps the signer** (punch list #403, PR 2 of seven): the person path writes who signs on the paper's own row, in the same update that activates the link, through [`_shared/paperSigner.ts`](../supabase/functions/_shared/paperSigner.ts) (`signerRowPatch`). The body may carry `signer_name` and `signer_title`. An emailed send keeps `signer_email` (the address the link went to), `signer_name` (as posted, else the name the row already keeps, else the person the paper is filed under, never a stored `gc-company:` or `party:` name) and `signer_title` when the body names one: a body with no `signer_title` leaves the row's alone, so an older window never wipes it, and one sent empty clears it. `mode: 'link'` keeps no address and only names a signer the paper never had. The email, its subject, its sender and the sent copy are unchanged (`contractSigningSend.pin.test.ts` still holds them), and the company branch is untouched. The row is read with `signer_name`, so the columns of migration [`20261120010000`](./migrations/20261120010000_paper_party.md) must be on prod first. **Redeploy required.**

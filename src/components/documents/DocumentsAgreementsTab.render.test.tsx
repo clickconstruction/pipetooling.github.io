@@ -25,6 +25,22 @@ const io = vi.hoisted(() => ({
   facts: [] as string[],
   sends: [] as Array<Record<string, unknown>>,
   sendFail: null as null | Error,
+  reminderSwitch: false,
+  reminders: {} as Record<string, Record<string, unknown>>,
+  reminderReads: [] as string[][],
+  reminderWrites: [] as Array<{ id: string; turnOn: boolean }>,
+  reminderFail: null as null | Error,
+}))
+vi.mock('../../lib/contracts/personPaperReminderIo', () => ({
+  NO_PAPER_REMINDERS: { switchOn: false, byId: new Map() },
+  readPaperReminders: async (ids: string[]) => {
+    io.reminderReads.push(ids)
+    return { switchOn: io.reminderSwitch, byId: new Map(Object.entries(io.reminders)) }
+  },
+  writePaperReminderSwitch: async (id: string, turnOn: boolean) => {
+    io.reminderWrites.push({ id, turnOn })
+    if (io.reminderFail) throw io.reminderFail
+  },
 }))
 vi.mock('../../hooks/useAuth', () => {
   const auth = () => ({ role: 'assistant', user: { id: 'u1' } })
@@ -141,6 +157,11 @@ beforeEach(() => {
   io.facts = []
   io.sends = []
   io.sendFail = null
+  io.reminderSwitch = false
+  io.reminders = {}
+  io.reminderReads = []
+  io.reminderWrites = []
+  io.reminderFail = null
 })
 afterEach(() => {
   cleanup()
@@ -324,6 +345,58 @@ describe('DocumentsAgreementsTab', () => {
     const rows = await lines()
     expect(rows[0]?.querySelectorAll('button').length).toBe(1)
     expect(Array.from(rows[1]?.querySelectorAll('button') ?? []).map((b) => b.textContent)).toEqual(['Send again', 'Copy the signing link'])
+  })
+
+  it('a waiting paper says nothing about reminders until one is set, and asks only for the staff and sub papers that wait', async () => {
+    io.rows = [signedPaper(), waitingPaper(), row({ id: 'job_contract:c2', source_id: 'c2', state: 'waiting', facts: { status: 'sent' } })]
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    await waitFor(() => expect(io.reminderReads).toEqual([['d2']]))
+    expect(screen.queryByTestId('documents-agreements-reminders')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Turn reminders off' })).toBeNull()
+  })
+
+  it('a paper with a reminder set counts what went, names the next day, and turns off on its line', async () => {
+    io.rows = [waitingPaper()]
+    io.reminderSwitch = true
+    io.reminders = { d2: { status: 'sent', doc_type: 'agreement', person_name: 'Bryce Tolland', signer_email: 'bryce@example.com', reminders_enabled: true, reminder_count: 1, next_reminder_at: '2026-11-23T18:00:00Z' } }
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    expect((await screen.findByTestId('documents-agreements-reminders')).textContent).toBe('1 of 3 reminders sent · next Nov 23')
+    const before = io.asks.length
+    fireEvent.click(screen.getByRole('button', { name: 'Turn reminders off' }))
+    await waitFor(() => expect(io.reminderWrites).toEqual([{ id: 'd2', turnOn: false }]))
+    expect(await screen.findByText('Reminders are off for this paper. Bryce Tolland gets no more.')).toBeTruthy()
+    await waitFor(() => expect(io.asks.length).toBe(before + 1))
+  })
+
+  it('a paper turned off reads so and turns on again, and a write that fails says why', async () => {
+    io.rows = [waitingPaper()]
+    io.reminderSwitch = true
+    io.reminders = { d2: { status: 'sent', doc_type: 'agreement', person_name: 'Bryce Tolland', signer_email: 'bryce@example.com', reminders_enabled: false, reminder_count: 1, next_reminder_at: null } }
+    io.reminderFail = new Error('The paper is no longer waiting on a signature. Read the list again.')
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    expect((await screen.findByTestId('documents-agreements-reminders')).textContent).toBe('Reminders off · 1 of 3 sent')
+    fireEvent.click(screen.getByRole('button', { name: 'Turn reminders on' }))
+    await waitFor(() => expect(io.reminderWrites).toEqual([{ id: 'd2', turnOn: true }]))
+    expect(await screen.findByText('The paper is no longer waiting on a signature. Read the list again.')).toBeTruthy()
+  })
+
+  it('all three sent reads so with no press, and a paper with no address cannot be turned on', async () => {
+    io.rows = [waitingPaper()]
+    io.reminderSwitch = true
+    io.reminders = { d2: { status: 'sent', doc_type: 'agreement', person_name: 'Bryce Tolland', signer_email: 'bryce@example.com', reminders_enabled: true, reminder_count: 3, next_reminder_at: null } }
+    const view = renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    expect((await screen.findByTestId('documents-agreements-reminders')).textContent).toBe('All 3 reminders sent')
+    expect(screen.queryByRole('button', { name: /Turn reminders/ })).toBeNull()
+    view.unmount()
+    io.reminders = { d2: { status: 'sent', doc_type: 'agreement', person_name: 'Bryce Tolland', signer_email: null, reminders_enabled: true, reminder_count: 0, next_reminder_at: null } }
+    renderWithProviders(<DocumentsAgreementsTab />)
+    await lines()
+    expect((await screen.findByTestId('documents-agreements-reminders')).textContent).toBe('Reminders off')
+    expect(screen.queryByRole('button', { name: /Turn reminders/ })).toBeNull()
   })
 
   it('Send again opens the Send window on that paper, and the list reads again once it is sent', async () => {
