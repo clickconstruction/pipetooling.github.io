@@ -185,6 +185,46 @@ describe('the Schedule look', () => {
     expect(card('trim').querySelector('.scReady')).toBeNull()
   })
 
+  it('a tap on a phone opens the ready bar’s list and leaves it open, and the next press shuts it', async () => {
+    await mount(seeded())
+    await waitFor(() => expect(cards().length).toBe(4))
+    const bar = within(card('top')).getByRole('button', { name: '50% ready, 1 of 2. Press to see what it takes to start.' })
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_000_000)
+    try {
+      // One tap is three events in a row: the finger enters, the press takes focus, then it clicks.
+      fireEvent.mouseEnter(bar)
+      fireEvent.focus(bar)
+      fireEvent.click(bar)
+      expect(document.querySelector('[data-ready-list]')).not.toBeNull()
+      // A later press is its own: it shuts the list.
+      now.mockReturnValue(1_002_000)
+      fireEvent.click(bar)
+      expect(document.querySelector('[data-ready-list]')).toBeNull()
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it('the ready bar’s list is pulled back from the right edge of a narrow screen', async () => {
+    await mount(seeded())
+    await waitFor(() => expect(cards().length).toBe(4))
+    const bar = within(card('top')).getByRole('button', { name: '50% ready, 1 of 2. Press to see what it takes to start.' })
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      // The bar sits mid-line on a 390 px phone, so a 312 px list hung from it would end at 491.
+      return (this.hasAttribute('data-ready-list') ? { left: 179, right: 491, top: 0, bottom: 200, width: 312, height: 200, x: 179, y: 0 } : { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0 }) as DOMRect
+    })
+    const width = vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(390)
+    try {
+      fireEvent.click(bar)
+      const list = document.querySelector('[data-ready-list]') as HTMLElement
+      // 491 less the screen's 390, with 8 px of room: the list moves 109 px left.
+      expect(list.style.left).toBe('-109px')
+    } finally {
+      rect.mockRestore()
+      width.mockRestore()
+    }
+  })
+
   it('the one press opens the stage to its four lines and its lists, and a tick there moves the card', async () => {
     const db = seeded()
     await mount(db)
