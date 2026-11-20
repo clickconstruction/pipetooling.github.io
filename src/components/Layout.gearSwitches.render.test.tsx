@@ -93,9 +93,17 @@ const storedUnder = (prefix: string) =>
     .map((k) => localStorage.getItem(k))
 
 describe('Layout: the gear menu’s sections and switches', () => {
-  beforeEach(() => localStorage.clear())
+  // The app is dark from 20:00 to 4:00 by the clock (`themeSchedule.ts`), and the phone's Dark Mode row is ticked then. CI's
+  // clock is UTC, so from 20:00 UTC the row read *Dark Mode✓* and every run of the suite failed until 4:00. Noon holds the
+  // day: only `Date` is faked, so the timers and promises a render waits on are the real ones.
+  beforeEach(() => {
+    localStorage.clear()
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 10, 20, 12, 0, 0))
+  })
   afterEach(() => {
     cleanup()
+    vi.useRealTimers()
     localStorage.clear()
   })
 
