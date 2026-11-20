@@ -2,7 +2,8 @@
 /**
  * Render smoke for where the way back from View as is drawn (v2.7782, the owner's ask of 2026-11-18).
  * On a phone it is on its own line above the header, outside the header's icon row, with its whole
- * name. At a desk it stays in the row. One press still returns to the page the dev left.
+ * name, and the line itself is the press. At a desk it stays in the row. One press still returns to
+ * the page the dev left.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -98,6 +99,16 @@ describe('Layout: the way back from View as', () => {
     expect(button.style.maxWidth).toBe('')
     expect(button.style.textOverflow).toBe('')
     expect(button.style.whiteSpace).toBe('')
+
+    // The line is the press: a real button that is the strip's only child, with no inline box of its
+    // own. Its padding, border and radius once came from an inline style and made it a tall outlined
+    // button inside the line; the thin band is `.appViewAsStripExit` alone.
+    expect(button.tagName).toBe('BUTTON')
+    expect(button.getAttribute('type')).toBe('button')
+    expect(button.classList.contains('appViewAsStripExit')).toBe(true)
+    expect(button.getAttribute('style')).toBeNull()
+    expect(strip.children).toHaveLength(1)
+    expect(strip.firstElementChild).toBe(button)
   })
 
   it('at a desk stays in the header row, and there is no strip', async () => {
