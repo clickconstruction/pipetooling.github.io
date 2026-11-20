@@ -11,9 +11,12 @@ import { footClearanceCss } from '../../lib/bottomChrome'
 /** The sheet's last row clears the tab bar while one is up, and the home indicator with none (v2.8051). */
 const BOTTOM_INSET = footClearanceCss()
 
+/** Where the sheet stacks. A window opened from a press inside a sheet draws above this, or it opens under the sheet. */
+export const SCHEDULE_SHEET_Z = 1003
+
 export function ScheduleSheet({ title, subtitle, onClose, children }: { title: string; subtitle?: string; onClose: () => void; children: ReactNode }) {
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1003, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', paddingTop: 'var(--app-top-chrome, 0px)' }}>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: SCHEDULE_SHEET_Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div
         role="dialog"
         aria-modal="true"

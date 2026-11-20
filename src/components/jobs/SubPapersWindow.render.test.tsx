@@ -43,6 +43,7 @@ import { paperSheetsFor } from '../../lib/subWorkOrders/subPapersInputs'
 import type { LaborJob, LaborJobPayment } from '../../types/laborJob'
 import { SubPapersWindowView, type SubPapersWindowViewProps } from './SubPapersWindow'
 import { SubPapersWindow } from './SubPapersWindowConnected'
+import { SCHEDULE_SHEET_Z } from '../schedule/ScheduleBlockSheet'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /** The connected window reads today from the clock; a month's statement closes on it. */
@@ -117,6 +118,11 @@ describe('SubPapersWindowView, with what its caller has not handed in left out',
     expect(paper.textContent).toContain('Nov 16, 2026 at 9:30 am')
   })
 
+  it('draws above the phone’s sheet, since People → Subs opens it from a press inside What we owe', () => {
+    mountView()
+    const overlay = screen.getByRole('dialog', { name: 'Papers for Harlan Mechanical' }).parentElement!
+    expect(Number(overlay.style.zIndex)).toBeGreaterThan(SCHEDULE_SHEET_Z)
+  })
   it('offers no payment record, no Send and no Since the last statement until their steps land', () => {
     mountView()
     expect(screen.queryByRole('combobox', { name: 'A payment record' })).toBeNull()
