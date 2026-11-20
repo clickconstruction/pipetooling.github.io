@@ -90,7 +90,7 @@ describe('the error line’s press', () => {
     expect(screen.queryByRole('button', { name: 'Tell the dev' })).toBeNull()
   })
 
-  it('carries no press with Fix Mode off, or with no box mounted', async () => {
+  it('carries no press with the switch off, or with no box mounted', async () => {
     const r = renderWithProviders(
       <>
         <ShowError words="The file is too big to send." />
@@ -160,7 +160,7 @@ describe('a window’s title row', () => {
     expect(screen.getAllByRole('button', { name: 'Tell the dev' })).toHaveLength(1)
   })
 
-  it('carries none with Fix Mode off', async () => {
+  it('carries none with the switch off', async () => {
     phoneWidth(true)
     renderWithProviders(
       <>

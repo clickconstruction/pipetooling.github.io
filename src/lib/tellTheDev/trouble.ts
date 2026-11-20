@@ -28,7 +28,7 @@ export function isLostSignalLine(words: string | null | undefined): boolean {
 
 /**
  * Whether an error line carries the Tell the dev press. Never for a lost signal, never while the
- * browser says it is offline, and never with Fix mode off.
+ * browser says it is offline, and never with the gear menu's switch off.
  */
 export function errorLineOffersNote(args: { words: string; online: boolean; fixMode: boolean }): boolean {
   if (!args.fixMode) return false

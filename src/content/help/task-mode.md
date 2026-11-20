@@ -47,7 +47,7 @@ Job Mode, Dispatch Mode and Task Mode each change the whole app. So only one of 
 - Tap another mode and the app switches to it. The tick moves with it.
 - Turn a mode off and you go back to the mode you had before. A sub who leaves Task Mode is back in Job Mode.
 
-**Pin Mode**, **Fix Mode** and **Dark Mode** are not part of this. Each of those goes on or off by itself.
+**Pin bar**, **Tell the dev** and **Dark Mode** are not part of this. Those three sit under the grey band in the gear menu. Each of those goes on or off by itself.
 
 ## Good to know
 

@@ -30,7 +30,7 @@ last_updated: 2026-11-20
 
 ## What this surface is
 
-The shell is everything around a page. `App.tsx` decides which of **69 `<Route>` elements** (70 since the stamp, the note above) renders and wraps the signed-in tree in **23 providers**. `Layout.tsx` draws the chrome every signed-in user sees: the top nav (different per role), the header toolbar (search, task buttons, Job Mode "Contact:" row), the ⚙ gear menu (mode toggles, secondary pages, sign out, reloads), the phone hamburger or the assistant's phone dock, the Dispatch/Job Mode footers, the Pin Mode footer, the twin/read-only/customer-waiting banners, the impersonation Exit button, and the route `<Outlet>` inside a chunk-error boundary. It also mounts 12 app-wide modal and deep-link components.
+The shell is everything around a page. `App.tsx` decides which of **69 `<Route>` elements** (70 since the stamp, the note above) renders and wraps the signed-in tree in **23 providers**. `Layout.tsx` draws the chrome every signed-in user sees: the top nav (different per role), the header toolbar (search, task buttons, Job Mode "Contact:" row), the ⚙ gear menu (mode toggles, secondary pages, sign out, reloads), the phone hamburger or the assistant's phone dock, the Dispatch/Job Mode footers, the pin bar, the twin/read-only/customer-waiting banners, the impersonation Exit button, and the route `<Outlet>` inside a chunk-error boundary. It also mounts 12 app-wide modal and deep-link components.
 
 | File | Lines | Components | useState | Effects | useMemo | useCallback | useRef | Custom hooks | Last commit | Commits / 90 d |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -45,8 +45,8 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 |---|---|---|
 | Whole render tree | `layoutBody` | 831–2306 (1,476) |
 | Gear button + menu | `!phoneDockActive` branch → `gearOpen` menu | 1286–1977 (692) → 1307–1975 (669) |
-| ↳ six mode-toggle rows (~50 lines each) | Job · Dispatch · PO tab · Task · Pin · Dark (+ "Auto (dark 8pm–4am)" reset) | 1323–1635 (~313) |
-| Pin Mode footer | `authUser?.id && pinModeEnabled && PINNABLE_PATHS…` | 2053–2266 (214; "Pin for" popover 2139–2253) |
+| ↳ six mode-toggle rows (~50 lines each) | Job · Dispatch · PO tab · Task · a grey band · Pin bar · Tell the dev · Dark (the two under the band read Pin Mode and Fix Mode until v2.8043; labels and tips in `gearSwitchWords.ts`) (+ "Auto (dark 8pm–4am)" reset) | 1323–1635 (~313) |
+| Pin bar | `authUser?.id && pinModeEnabled && PINNABLE_PATHS…` | 2053–2266 (214; "Pin for" popover 2139–2253) |
 | Desktop/dropdown nav links | `renderNavLinks` | 641–829 (189) |
 | Phone hamburger | `isMobile` branch | 889–1040 (152) |
 | Header task buttons (6 near-copies) | `showTaskDispatchButton…` ×2 / `showEstimatorInboxButton…` ×2 / `showHeaderTaskChecklistButton…` ×2 | 1068–1176 (~109) |
@@ -137,7 +137,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 | J | Impersonation chrome | `impersonating` 200–202, bfcache/popstate 431–449, `handleBackToMyAccount` 469–485, memos 487–494, Exit button 1979–1995, amber nav 882–883, 356 | ~70 | read by F (nav key), H (View-as gate), N | med | partially extracted (`impersonationSession`, `impersonationUiLabels`); handler duplicated in Settings |
 | K | Banners, overlays, global modal mounts | 834–874, 1998, 2019–2020, 2035, 2292–2303 | ~60 | none (each component self-loads) | low | extracted (mount list inline) |
 | L | Route outlet | `<main>` 2001–2267; outlet part 2001–2034 (`paddingBottom`, `RouteChunkBoundary`, `Suspense`, `Outlet`) | ~35 | Dispatch/Job footer flags | **high** (every page) | inline, stays |
-| M | Pin Mode footer + Pin for someone | footer 2036–2266; state 209–237, 309–314; effects 406–428, 451–467; `PinIcon` 2326–2332 | ~315 | reads `authUser`, `role`, `location`, `pinModeEnabled`, `ledgerPrefixMap`; writes nothing outside itself except the shared click-outside | **low** | inline (kernel `pinnedTabs.ts`) |
+| M | Pin bar + Pin for someone | footer 2036–2266; state 209–237, 309–314; effects 406–428, 451–467; `PinIcon` 2326–2332 | ~315 | reads `authUser`, `role`, `location`, `pinModeEnabled`, `ledgerPrefixMap`; writes nothing outside itself except the shared click-outside | **low** | inline (kernel `pinnedTabs.ts`) |
 | N | Search provider wrapper | return 2313–2323; eligibility 340–341 | ~15 | `isMobile`, `impersonating` | high (remount hazard) | extracted (`HeaderGlobalSearchProvider`), wrapper stays |
 
 ---
@@ -288,7 +288,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 - **Tests:** `RouteLoadingFallback` (4), `chunkLoadRecovery` (25), `RouteChunkBoundary` (7).
 - **Approach:** stays in `Layout`.
 
-### M. Pin Mode footer + Pin for someone
+### M. Pin bar + Pin for someone
 
 - **Render:** 2036–2266. A note on `/dashboard` 2038–2052. The footer on `PINNABLE_PATHS` 2053–2266 has a Pin/Unpin button with an **optimistic** `setPins` flip 2068–2100, then `togglePinned`, dispatching `pipetooling-pins-changed` on failure, plus the dev **Pin for** popover 2139–2253 and message 2254–2264. `PinIcon` 2326–2332.
 - **Owned state (moves with it):** `pins` 211, `pinForUsers`/`pinForUserId`/`pinForMessage`/`pinForSaving`/`pinForOpen` 309–313, `pinForRef` 314. Derived `pinBidId` 214–215 (`?bidId=` on `/bids`), `resolveBidPinLabel` 218–237 (`bids` → "BP352" via `ledgerPrefixMap`). Effects: pins load 406–428 (`migrateLocalPinsToSupabase` then `getPinnedForUserFromSupabase`, reload on `pipetooling-pins-changed` + `focus`) and dev user list 451–467 (`activeUsersQuery`, live accounts only). The pin-for guard refuses paths the target's role cannot open (2206–2212, `isPathAllowedForRole`).

@@ -6,7 +6,7 @@ function memoryStorage(seed: Record<string, string> = {}) {
   return { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v), data }
 }
 
-describe('Fix mode', () => {
+describe('the wrench’s switch (Fix Mode until v2.8043)', () => {
   it('starts on for a signed-in person', () => {
     expect(readFixMode(memoryStorage(), 'u1')).toBe(true)
   })

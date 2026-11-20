@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
@@ -19,6 +19,10 @@ export type PhoneDockModeRow = {
   label: string
   on: boolean
   onToggle: () => void
+  /** `show` for a switch that only shows or hides one thing (the pin bar, the wrench, the dark theme): listed under Show, apart from the modes. */
+  group?: 'show'
+  /** The icon of the thing a switch shows, drawn before its name. */
+  icon?: ReactNode
 }
 
 export type PhoneDockMoreSheetProps = {
@@ -80,7 +84,8 @@ const rowBtn: CSSProperties = {
 }
 
 /**
- * The phone's one menu (punch list #30, PR 1): pages first, then modes, then settings —
+ * The phone's one menu (punch list #30, PR 1): pages first, then modes, then the show-or-hide switches
+ * (v2.8043: the pin bar, Tell the dev's wrench and the dark theme, under their own Show label), then settings —
  * the hamburger, the modes menu and the gear folded into a bottom sheet the thumb can
  * reach. Opened by the dock's More slot, or by a long-press on any slot (then it swaps).
  *
@@ -318,46 +323,56 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
           ) : null
         ) : (
           <>
-            {modes.length > 0 ? (
-              <>
-                <div style={sectionLabel}>Modes</div>
-                <div>
-                  {modes.map((m) => (
-                    <button
-                      key={m.key}
-                      type="button"
-                      role="switch"
-                      aria-checked={m.on}
-                      onClick={() => {
-                        m.onToggle()
-                        onClose()
-                      }}
-                      style={{ ...rowBtn, fontWeight: m.on ? 600 : 400 }}
-                    >
-                      <span>{m.label}</span>
-                      <span
-                        aria-hidden="true"
-                        style={{
-                          display: 'inline-flex',
-                          width: 18,
-                          height: 18,
-                          borderRadius: 4,
-                          border: '1px solid var(--border)',
-                          background: m.on ? '#16a34a' : 'var(--surface)',
-                          color: '#fff',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.75rem',
-                          flexShrink: 0,
+            {(
+              [
+                { label: 'Modes', rows: modes.filter((m) => m.group !== 'show') },
+                { label: 'Show', rows: modes.filter((m) => m.group === 'show') },
+              ] as const
+            ).map((section) =>
+              section.rows.length > 0 ? (
+                <Fragment key={section.label}>
+                  <div style={sectionLabel}>{section.label}</div>
+                  <div>
+                    {section.rows.map((m) => (
+                      <button
+                        key={m.key}
+                        type="button"
+                        role="switch"
+                        aria-checked={m.on}
+                        onClick={() => {
+                          m.onToggle()
+                          onClose()
                         }}
+                        style={{ ...rowBtn, fontWeight: m.on ? 600 : 400 }}
                       >
-                        {m.on ? '✓' : ''}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : null}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                          {m.icon ?? null}
+                          {m.label}
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            display: 'inline-flex',
+                            width: 18,
+                            height: 18,
+                            borderRadius: 4,
+                            border: '1px solid var(--border)',
+                            background: m.on ? '#16a34a' : 'var(--surface)',
+                            color: '#fff',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.75rem',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {m.on ? '✓' : ''}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </Fragment>
+              ) : null,
+            )}
 
             <div style={sectionLabel}>Settings</div>
             <div>

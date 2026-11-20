@@ -1620,9 +1620,9 @@ Job Mode is ahead of Dispatch Mode because Job Mode is a pick made on the device
 Nothing stored is rewritten: a device that held two or three values from before the rule reads by the same order.
 Hook **[`usePageMode(userId, role)`](../src/hooks/usePageMode.ts)** holds the three toggles' own hooks to the kernel and is the one door that switches a mode: the gear menu, the phone bar's Modes rows, the Task Mode strip's Exit and the Dashboard's Job Mode card all go through its `set`.
 Each toggle keeps its storage and its same-tab event, so a screen that listens for one still follows.
-Pin Mode, Fix Mode and Dark Mode are not page modes.
+The pin bar's switch, Tell the dev's switch and Dark Mode are not page modes.
 
-### Tell the dev and Fix Mode (app-wide)
+### Tell the dev and its switch (app-wide)
 **Tell the dev** is the wrench: a note to the dev from the page a person is on, with the page and its state (punch list #380).
 It is the guides' feedback box moved to every page: the same `help_feedback` table, the same row security and the same inbox.
 At a desk the wrench floats bottom left;
@@ -1635,13 +1635,16 @@ The version is the newest release note in the build, on the note from the moment
 A note never carries a picture of the screen.
 A lost signal is never part of a note: the outbox keeps that press, so the no-connection line and a call with no answer are left out (`isLostSignalLine`).
 Two more doors open the same box since v2.7660: a **Tell the dev** press on every error toast, which opens on *Something went wrong* with the error attached and is never drawn for a lost signal (`errorLineOffersNote`), and a wrench in the title row of the shared window on a phone (`ResponsiveModalShell`, `tellTheDevDoor`).
-A door outside the shell shows only while a box is there to answer it (`isTellTheDevListening`: a signed-in person with Fix Mode on).
+A door outside the shell shows only while a box is there to answer it (`isTellTheDevListening`: a signed-in person with the switch on).
 **Your notes** (v2.7663) lists the sender's last six notes under the box, each *Sent*, *Answered* or *Closed* with its day, and the answer the owner or a dev typed at **Answer and close** (`closed_note`).
 The wrench wears a green dot while an answer is unread;
 the gear wears it too while the wrench is one of its rows (v2.7781);
 unread is kept per person per device as the time the box last listed the notes (`myNotes.ts`), and a device that has never sent or listed a note asks for nothing when the shell comes up.
-**Fix Mode** is the gear menu's switch for the wrench, per person per device, on until switched off (`fixMode.ts`, `useFixMode`);
-the phone dock's More sheet lists it with the other modes.
+The gear menu's switch for the wrench is the row **Tell the dev**, with the wrench's icon and a tick, per person per device, on until switched off (`fixMode.ts`, `useFixMode`);
+the row read **Fix Mode** until v2.8043, and the stored key `pt_fix_mode_<user>` keeps the old word so no choice was lost.
+The pin bar's switch is the row **Pin bar** with the pin's icon, **Pin Mode** until v2.8043 and stored as before (`pinModeToggle.ts`), and the strip at the bottom of a pinnable page is the **pin bar** in every word a person reads.
+Neither is a mode, because neither changes the page: a grey band under Task Mode sets the two apart in the gear menu, and the phone dock's More sheet lists them with Dark Mode under **Show**, below **Modes** (`gearSwitchWords.ts`).
+On a narrow phone the gear menu holds two rows named Tell the dev: the press that opens the box is the first row, and the ticked switch sits under the band.
 **Notes to the dev** is the inbox, called Help feedback until v2.7658: the Dashboard's Teams inbox card and the Checklist's review, for the owner or a dev.
 Each note there shows its kind, page and state, with **Open that page** and **Copy as a brief** (`noteBrief`: the note by role, never by name).
 Opens and sends are counted in `ui_nav_clicks` as `tell_the_dev_open` (target the door) and `tell_the_dev_sent` (target the kind).
@@ -3151,7 +3154,7 @@ The person doing a task may add a place it lacks from where they stand (`TaskPla
 **The way in** (punch list #345 step 5, since v2.7342): a place may carry the painted map that leads to it (`painted_map_id` on the task or the roadmap task, written with the place by `taskPlaceColumns`).
 The giver adds it on **Where is it?** with **＋ Add the way in**, from the painted maps that come within a mile of the ring (`waysNearPlace` in `taskPlaceWay.ts`), a place chip that has one wears the paint's stroke and brings it along, and the doer sees the line on the place's picture with **Directions to the start** and **Open the map**;
 whoever reads the task reads the map (→ *Painted map*).
-The word a person reads is **place** and the mark on a map is a **dot**: *pin* is Pin Mode's word for a pinned page, and *location* is where a person is.
+The word a person reads is **place** and the mark on a map is a **dot**: *pin* is the pin bar's word for a pinned page, and *location* is where a person is.
 The train and its calls: `to-dos/task-places/README.md`.
 
 ### Painted map
@@ -7332,7 +7335,7 @@ Stored in localStorage and/or `user_pinned_tabs` table.
 **Management**: Settings → Dashboard Page Pins → Page pins (Clear all, Remove per pin).
 Users add pins via the Layout pin icon when on pinnable pages.
 The Dashboard itself is not pinnable (v2.2902) — it is where pins land;
-with Pin Mode on it shows a one-line note instead of the footer.
+with the pin bar on it shows a one-line note instead of the bar.
 
 **Dev-only pins**: Devs can pin financial totals (Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, Internal Team labor) to masters/devs dashboards via dev-only sections in Settings.
 

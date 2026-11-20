@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense, type CSSProperties } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
@@ -106,7 +106,8 @@ import { PHONE_DOCK_CHANGED_EVENT, readPhoneDockSlotsRaw, resolveDockSlots, swap
 import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
 import { useIsPartner } from '../hooks/useIsPartner'
 import { useOwnLogbookShown } from '../hooks/useOwnLogbookShown'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, Wrench } from 'lucide-react'
+import { PIN_BAR_SWITCH_LABEL, TELL_THE_DEV_SWITCH_LABEL, switchRowAriaLabel, switchRowTip } from '../lib/gearSwitchWords'
 import { TellTheDevHeaderButton, TellTheDevRoot } from './tellTheDev/TellTheDevRoot'
 import { GearAnswerDot, NavRowLinkMenuRows, PeopleNavIcon, TellTheDevMenuRow } from './layout/NavRowMenuRows'
 import { useFixMode } from '../hooks/useFixMode'
@@ -135,6 +136,9 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 })
 
 const IMPERSONATION_KEY = 'impersonation_original'
+/** A gear row's name with its icon: the two show-or-hide switches under the modes. */
+// `nowrap`: the menu is as wide as its longest row, so a name with an icon widens it and never folds under its tick.
+const SWITCH_ROW_NAME: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }
 
 const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
 // The height above and each press's icon are in em, so the type size is part of the size and lives here.
@@ -186,10 +190,10 @@ export default function Layout() {
   const jobModeMenuEligible = canLeaveJobFieldReport(role)
   // Task Mode: checklist-only lens, any role.
   const taskModeActive = taskModeEnabled
-  // Pin Mode (v2.1972): whether the page-bottom pin footer renders. Existing
+  // The pin bar's switch (v2.1972; the row read Pin Mode until v2.8043): whether the page-bottom pin bar renders. Existing
   // pins (Dashboard quick bar, Settings management) work regardless.
   const [pinModeEnabled, setPinModeEnabled] = usePinModeEnabled(authUser?.id ?? null)
-  // Fix Mode (punch list #380): whether the wrench shows. On until this person switches it off here.
+  // Tell the dev's switch (punch list #380; the row read Fix Mode until v2.8043): whether the wrench shows. On until this person switches it off here.
   const [fixModeEnabled, setFixModeEnabled] = useFixMode(authUser?.id ?? null)
   // Assistants and masters get Dispatch Mode ON by default (until they explicitly turn it off).
   // Staff only: every /dispatch-mode* tab is outside the superintendent allowlist, so offering
@@ -358,9 +362,10 @@ export default function Layout() {
           ? [{ key: 'po', label: 'PO tab', on: dispatchModePoEnabled, onToggle: () => writeDispatchModePoEnabled(authUser.id, !dispatchModePoEnabled) }]
           : []),
         { key: 'task', label: 'Task Mode', on: taskModeEnabled, onToggle: () => setTaskModeEnabled(!taskModeEnabled) },
-        { key: 'pin', label: 'Pin Mode', on: pinModeEnabled, onToggle: () => setPinModeEnabled(!pinModeEnabled) },
-        { key: 'fix', label: 'Fix Mode', on: fixModeEnabled, onToggle: () => setFixModeEnabled(!fixModeEnabled) },
-        { key: 'dark', label: 'Dark Mode', on: theme === 'dark', onToggle: () => setThemeOverride(theme === 'dark' ? 'light' : 'dark') },
+        // Not modes: each shows or hides one thing, so the sheet lists them under Show and each wears its thing's icon.
+        { key: 'pin', label: PIN_BAR_SWITCH_LABEL, group: 'show', icon: <PinIcon filled={false} size={18} />, on: pinModeEnabled, onToggle: () => setPinModeEnabled(!pinModeEnabled) },
+        { key: 'fix', label: TELL_THE_DEV_SWITCH_LABEL, group: 'show', icon: <Wrench size={18} strokeWidth={2.25} aria-hidden />, on: fixModeEnabled, onToggle: () => setFixModeEnabled(!fixModeEnabled) },
+        { key: 'dark', label: 'Dark Mode', group: 'show', on: theme === 'dark', onToggle: () => setThemeOverride(theme === 'dark' ? 'light' : 'dark') },
       ]
   const [pinForUsers, setPinForUsers] = useState<Array<{ id: string; name: string; email: string; role: UserRole | null; estimatorProspectsAccess: boolean }>>([])
   const [pinForUserId, setPinForUserId] = useState('')
@@ -1622,6 +1627,10 @@ export default function Layout() {
                     </span>
                   </button>
                 )}
+                {/* The modes end here. The rows under the band change no page: each shows or hides one thing. */}
+                {authUser?.id && (
+                  <div aria-hidden="true" data-testid="gear-switches-band" style={{ height: 7, background: 'var(--bg-muted)', borderBottom: '1px solid var(--chrome-border)' }} />
+                )}
                 {authUser?.id && (
                   <button
                     type="button"
@@ -1629,8 +1638,8 @@ export default function Layout() {
                       setPinModeEnabled(!pinModeEnabled)
                       setGearOpen(false)
                     }}
-                    title={pinModeEnabled ? 'Turn Pin Mode off' : 'Turn Pin Mode on — show the pin footer on pages'}
-                    aria-label="Toggle Pin Mode"
+                    title={switchRowTip('pin', pinModeEnabled)}
+                    aria-label={switchRowAriaLabel('pin')}
                     aria-pressed={pinModeEnabled}
                     style={{
                       display: 'flex',
@@ -1650,7 +1659,10 @@ export default function Layout() {
                       fontWeight: pinModeEnabled ? 600 : 400,
                     }}
                   >
-                    <span>Pin Mode</span>
+                    <span style={SWITCH_ROW_NAME}>
+                      <PinIcon filled={false} size={20} />
+                      {PIN_BAR_SWITCH_LABEL}
+                    </span>
                     <span
                       aria-hidden="true"
                       style={{
@@ -1678,8 +1690,8 @@ export default function Layout() {
                       setFixModeEnabled(!fixModeEnabled)
                       setGearOpen(false)
                     }}
-                    title={fixModeEnabled ? 'Turn Fix Mode off: hide the wrench' : 'Turn Fix Mode on: show the wrench that sends a note to the dev'}
-                    aria-label="Toggle Fix Mode"
+                    title={switchRowTip('fix', fixModeEnabled)}
+                    aria-label={switchRowAriaLabel('fix')}
                     aria-pressed={fixModeEnabled}
                     style={{
                       display: 'flex',
@@ -1699,7 +1711,10 @@ export default function Layout() {
                       fontWeight: fixModeEnabled ? 600 : 400,
                     }}
                   >
-                    <span>Fix Mode</span>
+                    <span style={SWITCH_ROW_NAME}>
+                      <Wrench size={20} strokeWidth={2.25} aria-hidden />
+                      {TELL_THE_DEV_SWITCH_LABEL}
+                    </span>
                     <span
                       aria-hidden="true"
                       style={{
@@ -2167,7 +2182,7 @@ export default function Layout() {
               color: 'var(--text-muted)',
             }}
           >
-            Pin Mode is on. Pins land here on the Dashboard, so the Dashboard itself can't be pinned — open the page you want as a shortcut and its pin footer appears.
+            The pin bar is on. Pins land here on the Dashboard, so the Dashboard itself can't be pinned. Open the page you want as a shortcut and its pin bar shows.
           </div>
         )}
         {authUser?.id && pinModeEnabled && PINNABLE_PATHS.includes(location.pathname as typeof PINNABLE_PATHS[number]) && (
@@ -2449,9 +2464,9 @@ export default function Layout() {
   )
 }
 
-function PinIcon({ filled: _filled }: { filled: boolean }) {
+function PinIcon({ filled: _filled, size = 14 }: { filled: boolean; size?: number }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="14" height="14" fill="currentColor" aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={size} height={size} fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
       <path d="M352 348.4C416.1 333.9 464 276.5 464 208C464 128.5 399.5 64 320 64C240.5 64 176 128.5 176 208C176 276.5 223.9 333.9 288 348.4L288 544C288 561.7 302.3 576 320 576C337.7 576 352 561.7 352 544L352 348.4zM328 160C297.1 160 272 185.1 272 216C272 229.3 261.3 240 248 240C234.7 240 224 229.3 224 216C224 158.6 270.6 112 328 112C341.3 112 352 122.7 352 136C352 149.3 341.3 160 328 160z" />
     </svg>
   )

@@ -11,7 +11,7 @@ describe('a lost signal is not a note', () => {
     expect(isLostSignalLine('')).toBe(false)
   })
 
-  it('offers no press on a lost-signal line, offline, or with Fix mode off', () => {
+  it('offers no press on a lost-signal line, offline, or with the switch off', () => {
     expect(errorLineOffersNote({ words: 'The file is too big to send.', online: true, fixMode: true })).toBe(true)
     expect(errorLineOffersNote({ words: OFFLINE_ERROR_MESSAGE, online: true, fixMode: true })).toBe(false)
     expect(errorLineOffersNote({ words: 'The file is too big to send.', online: false, fixMode: true })).toBe(false)

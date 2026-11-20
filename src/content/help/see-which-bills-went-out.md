@@ -22,9 +22,9 @@ There is a third way in from [Documents](/documents?tab=sent). Press **Sent copi
 
 ## Put a button on your Dashboard
 
-1. Turn on Pin Mode. See [turn on Pin Mode to pin pages](/help/pin-mode).
+1. Turn on the pin bar. See [turn on the pin bar to pin pages](/help/pin-mode).
 2. Open [Bills sent](/bills-sent).
-3. Press {{button:outline|Pin}} in the footer at the bottom of the page.
+3. Press {{button:outline|Pin}} in the pin bar at the bottom of the page.
 
 A **Bills sent** button now sits in the pinned row on your Dashboard. One tap opens the list.
 

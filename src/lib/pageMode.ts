@@ -24,7 +24,7 @@
  * Nothing stored is rewritten on load: a device holding two or three values from before this rule
  * reads by the same order, with no migration.
  *
- * Pin Mode, Fix Mode and Dark Mode are not page modes and stay independent.
+ * The pin bar's switch, Tell the dev's switch and Dark Mode are not page modes and stay independent.
  */
 
 import type { UserRole } from '../hooks/useAuth'

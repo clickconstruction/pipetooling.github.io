@@ -7,7 +7,7 @@ import {
 } from '../lib/pinModeToggle'
 
 /**
- * Reads the per-user Pin Mode flag from localStorage and stays in sync
+ * Reads the per-user pin bar switch (the row read Pin Mode until v2.8043) from localStorage and stays in sync
  * across tabs via the storage event. Mirrors `useTaskModeEnabled`.
  */
 export function usePinModeEnabled(

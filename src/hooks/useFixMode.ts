@@ -10,7 +10,7 @@ function storage(): Storage | null {
 }
 
 /**
- * Fix Mode (punch list #380): whether this person's screens show the wrench. On until they switch
+ * Tell the dev's switch (punch list #380; the row read Fix Mode until v2.8043): whether this person's screens show the wrench. On until they switch
  * it off in the gear menu. Kept per person per device, and in step across tabs (the storage event)
  * and within the tab (`FIX_MODE_CHANGED_EVENT`), as Job Mode is.
  */
