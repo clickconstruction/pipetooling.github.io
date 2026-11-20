@@ -26,6 +26,12 @@ function draw(over: Partial<Parameters<typeof JobModeShortPage>[0]> = {}) {
 }
 
 describe('JobModeShortPage', () => {
+  it('draws the day\'s row first when the Dashboard hands one in, above the strips and the card', () => {
+    const { container } = draw({ row: <div data-testid="row">the day's row</div> })
+    const order = [...container.querySelectorAll('[data-testid]')].map((el) => el.getAttribute('data-testid'))
+    expect(order.slice(0, 3)).toEqual(['row', 'top', 'card'])
+  })
+
   it('draws the strips, the card, what waits, tomorrow and the door, in that order', () => {
     const { container } = draw()
     const order = [...container.querySelectorAll('[data-testid]')].map((n) => n.getAttribute('data-testid'))

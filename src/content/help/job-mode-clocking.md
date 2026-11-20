@@ -127,6 +127,8 @@ Under My Schedule, a Training card lists the courses your role must take. It is 
 
 The office can set a superintendent's **Dashboard view** to **Short**. With Job Mode on, the Dashboard is then about one screen.
 
+- The row of squares sits at the top, the same row as on the long page. See [The row under the header](#the-row-under-the-header).
+- On this page **This week** opens the full Dashboard at **My Time**, where your hours are.
 - The job card's top stays as it is. Your next stop, today's stops and the buttons at the bottom do not move.
 - **Open this job** opens the rest of the card in place. You get the customer, photos, the ticket, checklists, materials on site and job updates.
 - Tap **This job** to fold it away again.
