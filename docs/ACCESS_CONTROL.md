@@ -921,6 +921,8 @@ It is a read alone: the four roles still write, and the estimator has no screen 
 A signed form's PDF still opens through `open-contract-form-pdf` for a dev, the controller and a pay-approved master alone, so the estimator opens none.
 `paper_party_contact` finds a party's contact, and makes one when the record has none, for the four roles that send a paper: a training account and a digital twin find one and never make one.
 `contacts_fold_papers` moves a party's papers when two contacts fold, as a definer that moves nothing for a caller off the office team, a training account, a digital twin or an archived account.
+Since v2.7995 **Who is it with?** sends an outside party's paper as the four roles: it reads customers, the people on file there, supply houses and their reps under their own policies, writes the paper under `person_contract_documents`' own write policy, and a person kept with a company is written under `customer_contact_persons`' or `supply_house_contacts`' own.
+Someone on no list is a contact made through `contact_make_for_channel`, the office team's, and named by the sender.
 
 **Hours statements** (v2.6097, `20261030030000_hours_statements.sql`, punch list #212): `hours_statements` — **read / insert / update / delete** through `can_touch_hours_statement(with_pay)`: a dev or the controller (`is_dev() OR is_controller()`, since v2.6450's `20261103063000_hours_statement_payroll_roles.sql` — the paper is payroll data, Diane's call of 2026-11-02;
 until then a pay-approved master took any row and an assistant one with the pay left off) for any row, and no one else;

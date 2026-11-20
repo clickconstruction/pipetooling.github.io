@@ -16,8 +16,8 @@
 export const ESIGN_CONSENT_VERSION = 2
 
 export type EsignLang = 'en' | 'es'
-/** customer = homeowner / GC on an estimate or job contract (ESIGN consumer wording); sub = a subcontractor or staff signer; gc = the Bid Room (typed or drawn signature, approval wording). */
-export type EsignAudience = 'customer' | 'sub' | 'gc'
+/** customer = homeowner / GC on an estimate or job contract (ESIGN consumer wording); sub = a subcontractor or staff signer; gc = the Bid Room (typed or drawn signature, approval wording); outside = an outside party's signer who is neither a customer nor a sub, such as a supply house's rep (punch list #403), on the sub's wording. */
+export type EsignAudience = 'customer' | 'sub' | 'gc' | 'outside'
 
 export type EsignConsentText = {
   version: number

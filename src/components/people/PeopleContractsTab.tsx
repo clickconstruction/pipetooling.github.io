@@ -58,6 +58,7 @@ import { nobodyMatchesWords, nobodyUnderFilterWords } from '../../lib/people/peo
 import { useToastContext } from '../../contexts/ToastContext'
 import { NO_ARCHIVED_ROSTER, splitNamesByArchived, type ArchivedRoster } from '../../lib/people/rosterPeople'
 import { isCompanyPaperName } from '../../../supabase/functions/_shared/companyPaper'
+import { isPartyPaperName } from '../../lib/contracts/paperParty'
 import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 
 /** Small tinted pill for a document signing state; anything unknown renders as unsent. */
@@ -655,7 +656,9 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       } else setTwoPartyTemplateIds(new Set())
       setPersonContractAssignments((assignmentsRes.data ?? []) as PersonContractAssignment[])
       // A trade partner company's papers (GC mode, B6-b-i) share the table but are no one's here: never listed, never counted.
-      setPersonContractDocuments(((documentsRes.data ?? []) as unknown as PersonContractDocument[]).filter((d) => !isCompanyPaperName(d.person_name)))
+      // A trade company's paper and an outside party's (punch list #403) share the table and are no person's: neither is
+      // listed here. An outside party's shows on Documents → Agreements.
+      setPersonContractDocuments(((documentsRes.data ?? []) as unknown as PersonContractDocument[]).filter((d) => !isCompanyPaperName(d.person_name) && !isPartyPaperName(d.person_name)))
     }
     setContractsLoadedOnce(true)
   }

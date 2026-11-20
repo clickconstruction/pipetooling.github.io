@@ -8,7 +8,7 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { buildContractSigningEmail, clampContractEmailIntro, clampContractEmailSubject } from '../_shared/contractSigningEmail.ts'
 import { personSigningSentCopy, signingDocRefusal, signingRequestRefusal, type SigningRequestBody } from '../_shared/contractSigningSend.ts'
-import { signerRowPatch, type SignerRequestBody } from '../_shared/paperSigner.ts'
+import { paperForWords, signerRowPatch, type SignerRequestBody } from '../_shared/paperSigner.ts'
 import { sendEmailViaResend as sendTradeEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { officeYmd } from '../_shared/bidFollowupReminder.ts'
 import {
@@ -286,7 +286,7 @@ serve(async (req) => {
 
     const { data: row, error: selErr } = await userClient
       .from('person_contract_documents')
-      .select('id, person_name, document_name, status, signing_body_html, canonical_document_url, url, form_template_id, signer_name')
+      .select('id, person_name, document_name, status, signing_body_html, canonical_document_url, url, form_template_id, signer_name, party_name')
       .eq('id', person_contract_document_id)
       .single()
 
@@ -307,6 +307,7 @@ serve(async (req) => {
       url: string | null
       form_template_id: string | null
       signer_name: string | null
+      party_name: string | null
     }
 
     // Signed already, nothing to sign, or a status that is neither unsent nor sent (pinned against main).
@@ -333,6 +334,10 @@ serve(async (req) => {
     if (archivedRefusal) return archivedRefusal
     // The send keeps the signer on the paper's own row (punch list #403): the name, the title and, when the link is
     // emailed, the address it went to. It rides the write that activates the link, so a send either keeps both or neither.
+    const signerPatch = signerRowPatch({ mode, body, signerEmail, row: doc })
+    // Who the email and its kept copy say the paper is for. A person's paper says the person, as before. A party's is
+    // filed under a stored name, so it says who signs.
+    const forWords = paperForWords(doc, signerPatch.signer_name)
     const { data: updatedRows, error: upErr } = await admin
       .from('person_contract_documents')
       .update({
@@ -340,7 +345,7 @@ serve(async (req) => {
         sent_at: new Date().toISOString(),
         public_token_hash: tokenHash,
         public_token_expires_at: expiresAt,
-        ...signerRowPatch({ mode, body, signerEmail, row: doc }),
+        ...signerPatch,
       })
       .eq('id', doc.id)
       .in('status', ['unsent', 'sent'])
@@ -398,7 +403,7 @@ serve(async (req) => {
 
     const mail = buildContractSigningEmail({
       documentName: doc.document_name,
-      personName: doc.person_name,
+      personName: forWords,
       acceptUrl,
       expiresYmd: todayYmdInAppTz(new Date(expiresAt)),
       sentYmd: todayYmdInAppTz(),
@@ -432,7 +437,7 @@ serve(async (req) => {
     // Sent copies (docs/SENT_COPIES.md): the email asking them to sign is kept, under the person.
     if (sent.success) {
       const [filing, copy] = personSigningSentCopy({
-        doc,
+        doc: { id: doc.id, person_name: forWords },
         personId: sentCopyPersonId,
         sentBy: user.id,
         signerEmail,

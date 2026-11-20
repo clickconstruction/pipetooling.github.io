@@ -2,10 +2,10 @@
 title: find an agreement we sent or signed
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature, contract library, contract book, write a paper, packet
+keywords: agreements, agreement, contract, contracts, warranty, their paper, subcontract, signed paper, work order, staff agreement, sub agreement, partner agreement, documents tab, waiting on a signature, voided, find a contract, signed, sent, send again, resend, signing link, copy the link, chase, send a paper, send for signature, contract library, contract book, write a paper, packet, outside company, supply house, vendor, customer, who is it with, not on a list, signer
 where: /documents?tab=agreements
 ---
-The Agreements tab lists every agreement in one place. It holds job contracts, warranties, a GC's own paper, staff and sub agreements, partner agreements and sub work orders.
+The Agreements tab lists every agreement in one place. It holds job contracts, warranties, a GC's own paper, staff and sub agreements, partner agreements and sub work orders. It also holds a paper sent to a customer or a supply house.
 
 The newest is on top. A press opens the window each agreement already has. A paper that waits on a signature can be sent again from its own line. A new paper can be sent from here too.
 
@@ -27,8 +27,12 @@ Each line is one agreement. It starts with a tag that says its kind.
 - **Partner** is a partner's agreement.
 - **Work order** is a sub work order on a job.
 - **Owner contract**, **Statement of work** and **Trade company** are a GC project's papers.
+- **Customer** and **Supply house** are a paper with an outside company.
+- **Not on a list** is a paper sent to someone you typed in.
 
 After the tag comes the paper's name. Under it you see who it is with, then the job as a green link.
+
+A paper with a company also says who signs. It reads *Lena Park signs, Branch manager*. Once signed it reads *signed by Lena Park, Branch manager*.
 
 On the right is where it stands, in the words its own window uses. Then comes the day it was signed, sent or ended.
 
@@ -54,7 +58,7 @@ Search looks at every agreement, voided ones included. Each line still says wher
 
 ## Pick a kind
 
-Press a chip in the first row. **All** shows every kind. The others are **Job contracts**, **Warranties**, **Staff and subs**, **Partners**, **Work orders** and **GC projects**.
+Press a chip in the first row. **All** shows every kind. The others are **Job contracts**, **Warranties**, **Staff and subs**, **Outside companies**, **Partners**, **Work orders** and **GC projects**.
 
 ## See what is waiting
 
@@ -95,13 +99,31 @@ Press **Resend email** there to send it again. **Void & redo** starts it over. *
 
 1. Press **Send a paper**, beside the find box.
 2. Pick the paper. The list is the Contract Book.
-3. Pick the person. People who have signed it are not listed.
-4. Check the address under **Signer email**.
+3. Pick who it is with. People who have signed it are not listed.
+4. Check **Signer name** and the address under **Signer email**.
 5. Press **Send email**.
 
 Nothing is saved until you press **Send email**. The new line then shows at the top of the list.
 
 A person who already has the paper out gets the same copy again. The window says so.
+
+## Send a paper to an outside company
+
+The second window is **Who is it with?** It lists your team and your subs first.
+
+Type a name to find a customer or a supply house. Press **Supply houses** to list every one.
+
+- A person on file at a company signs for that company. Pick them and their name fills in.
+- A company picked alone has no signer yet. You name the signer in the next window.
+- **Someone not in any list** is the last row. You type their name, their email and their company.
+
+The next window shows what the paper will say. It reads *Lena Park, Branch manager, signing for Tallgrass Supply Co.*
+
+One tick keeps a new signer with their company. The next paper then offers them by name.
+
+The app tells you when it already keeps an address you type. The paper then goes to that record.
+
+The new line sits under **Outside companies**. It can be sent again or copied as a link from its line.
 
 A job's contract is not sent here. Send it from its job.
 

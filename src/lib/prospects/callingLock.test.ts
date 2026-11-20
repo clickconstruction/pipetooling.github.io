@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   CALLING_LOCK_TTL_MS,
@@ -65,5 +67,35 @@ describe('callingLockCutoffIso', () => {
 
   it('the default TTL is 30 minutes', () => {
     expect(CALLING_LOCK_TTL_MS).toBe(30 * 60 * 1000)
+  })
+})
+
+/**
+ * The database holds the same clock. The update policy of `prospect_calling_locks` lets a caller take over a row
+ * older than an interval written in SQL, and the client decides "stale" from `CALLING_LOCK_TTL_MS`. If the two
+ * drift, the client either tries a takeover the database refuses or leaves alone a row it could take. This reads
+ * the newest migration that states the policy. The bed `supabase/tests/calling_lock_takeover` tries it for real.
+ */
+describe('the database policy and the client share one TTL', () => {
+  const MIGRATIONS = resolve(__dirname, '../../../supabase/migrations')
+  const POLICY = /CREATE POLICY "[^"]*"\s+ON public\.prospect_calling_locks\s+FOR UPDATE[\s\S]*?;/g
+  const newestPolicy = () => {
+    let found: string | null = null
+    for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()) {
+      const all = [...readFileSync(join(MIGRATIONS, file), 'utf8').matchAll(POLICY)]
+      const last = all[all.length - 1]
+      if (last) found = last[0]
+    }
+    if (!found) throw new Error('no migration states the update policy of prospect_calling_locks')
+    return found
+  }
+
+  it('a row is stale to the policy after the same minutes as to the client', () => {
+    const minutes = [...newestPolicy().matchAll(/locked_at < now\(\) - interval '(\d+) minutes'/g)].map((m) => Number(m[1]))
+    expect(minutes).toEqual([CALLING_LOCK_TTL_MS / 60_000])
+  })
+
+  it('the row written must be the caller’s own', () => {
+    expect(newestPolicy()).toMatch(/WITH CHECK \(user_id = \(SELECT auth\.uid\(\)\)\)/)
   })
 })

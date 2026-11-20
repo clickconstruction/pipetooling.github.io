@@ -7568,6 +7568,9 @@ button.lienBoardTile:hover, button.lienBoardTile:focus-visible { border-color: #
     animation: none;
   }
 }
+/* Send a paper → Who is it with? (punch list #403): a row lights under the pointer and the keyboard. An inline background would win over these, so the row's rest state lives here too. */
+.paper-party-row { background: transparent; }
+.paper-party-row:hover:not(:disabled), .paper-party-row:focus-visible { background: var(--bg-blue-tint); outline: none; }
 
 /* A field of the document builder (punch list #404, step 3): words a person presses and types over, where they are
    read. Its mark says where the words come from: the usual, the job's own, or a blank filled from the job. The page
