@@ -9,7 +9,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../../test/renderSmokeMocks'
 import { PersonFilePanel } from './PersonFilePanel'
-import { addAmendments, withdrawAmendment } from '../../../lib/people/personAmendmentsIo'
+import { addAmendments, loadPersonAmendments, withdrawAmendment } from '../../../lib/people/personAmendmentsIo'
 
 const NARRATIVE = '## 1. Background\n\nJoined in March.\n\n## 2. The spring\n\nTwo trips.\n\n## 3. After\n\nQuiet.'
 const TABLE_ROWS: Record<string, unknown[]> = {
@@ -111,6 +111,35 @@ describe('PersonFilePanel · corrections as links (punch list #315)', () => {
     expect(call?.personId).toBe('p-marcus')
     expect(call?.fromKind).toBe('hr_entry')
     expect(call?.targets).toEqual([{ kind: 'hr_entry', id: 'e1', how: 'completes' }])
+  })
+
+  it('a refused link leaves no pick behind for the next entry (v2.8082)', async () => {
+    vi.mocked(addAmendments).mockResolvedValueOnce({ ok: false, why: 'the link was refused' })
+    renderWithProviders(panel('timeline'))
+    const older = await screen.findByTestId('line-amends-entry:e1')
+    fireEvent.click(within(older).getByRole('button', { name: 'Correct this entry…' }))
+    await screen.findByTestId('composer-amends')
+    fireEvent.change(screen.getByPlaceholderText('What happened. Facts and dates, no guesses.'), { target: { value: 'The gate log also shows the trailer.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add entry' }))
+    await waitFor(() => expect(addAmendments).toHaveBeenCalledTimes(1))
+    // The composer closed on the written entry. Opened again for an unrelated entry, it carries no link.
+    await waitFor(() => expect(screen.queryByPlaceholderText('What happened. Facts and dates, no guesses.')).toBeNull())
+    fireEvent.click(await screen.findByRole('button', { name: '+ Add entry' }))
+    await screen.findByPlaceholderText('What happened. Facts and dates, no guesses.')
+    expect(screen.queryByTestId('composer-amends')).toBeNull()
+  })
+
+  it('a pick does not follow the panel to another person’s file (v2.8082)', async () => {
+    const view = renderWithProviders(panel('timeline'))
+    const older = await screen.findByTestId('line-amends-entry:e1')
+    fireEvent.click(within(older).getByRole('button', { name: 'Correct this entry…' }))
+    await screen.findByTestId('composer-amends')
+    view.rerender(<PersonFilePanel personId="p-other" userId="u-other" personName="Pat Sample" viewer={VIEWER} initialView="timeline" />)
+    // The other file has been read and the composer is drawn again: it is open, and it names no entry to correct.
+    await waitFor(() => expect(loadPersonAmendments).toHaveBeenCalledWith('p-other'))
+    await screen.findByTestId('line-amends-entry:e1')
+    await screen.findByPlaceholderText('What happened. Facts and dates, no guesses.')
+    expect(screen.queryByTestId('composer-amends')).toBeNull()
   })
 
   it('a link is withdrawn with a reason', async () => {
