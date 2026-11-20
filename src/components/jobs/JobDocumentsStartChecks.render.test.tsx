@@ -323,6 +323,24 @@ describe('JobDocumentsStartChecks', () => {
     expect(db.rows.bullets.find((b) => b.words === 'The lift is booked.')).toMatchObject({ waits_on: 'us', reads: 'hand', shown_to_gc: false, wants_photo: false })
   })
 
+  it('a bullet that did not save keeps its words in the box, and one that saved empties it', async () => {
+    const db = seeded()
+    await mount(db)
+    const stage = await openStage('Top Out')
+    const box = () => within(stage).getByLabelText('Add a bullet, in plain words') as HTMLInputElement
+    db.failNext = 'The signal dropped.'
+    fireEvent.change(box(), { target: { value: 'The gate code works for our truck.' } })
+    fireEvent.click(within(stage).getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(db.calls.filter((c) => c === 'addBullets').length).toBe(1))
+    await waitFor(() => expect((within(stage).getByRole('button', { name: 'Add' }) as HTMLButtonElement).disabled).toBe(false))
+    // Nothing was kept, so the words are still there to send again.
+    expect(db.rows.bullets.some((b) => b.words === 'The gate code works for our truck.')).toBe(false)
+    expect(box().value).toBe('The gate code works for our truck.')
+    fireEvent.click(within(stage).getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(db.rows.bullets.some((b) => b.words === 'The gate code works for our truck.')).toBe(true))
+    await waitFor(() => expect(box().value).toBe(''))
+  })
+
   it('moves our days where they sit, keeping the window’s length, and keeps a new day from them beside the old', async () => {
     const db = seeded()
     await mount(db)
