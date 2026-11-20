@@ -6,9 +6,10 @@
 // read (file_index, source hr_attachment or matter_document) is a `file` hit naming the record it hangs on; a text
 // document's bytes are not a second hit. The kernel resolves the person the way get_person_file does, shapes the ask, and names the verb
 // that reads each hit further. Dev-only: another role is refused in words, since the RPC refuses it too.
-import type { Reader } from './devMcpComposites.ts'
+import { readRowsByIds, type Reader } from './devMcpComposites.ts'
 import { resolvePerson } from './devMcpPersonFile.ts'
 import { amendmentDays, readPersonAmendments, seatAmendmentBits, type SeatAmendmentBits } from './devMcpAmendments.ts'
+import { exhibitNoOf } from './devMcpCase.ts'
 
 export type CaseSearchAsk = { person: string; q: unknown; in?: unknown; limit?: unknown }
 export const CASE_SEARCH_SOURCES = ['entries', 'evidence', 'documents', 'summary', 'narrative', 'matter', 'files'] as const
@@ -64,7 +65,18 @@ export async function searchCase(reader: Reader, ask: CaseSearchAsk, who: { role
   const person = resolved.person
   const reply = (await reader.rpc('dev_case_search', { p_person_id: person.id, p_q: input.q, p_in: input.in, p_limit: input.limit })) as RpcReply | null
   const [transcribed, amended] = await Promise.all([transcribedRecords(reader, person.id, reply?.hits ?? []), amendedHits(reader, person.id, reply?.hits ?? [])])
-  const hits = (reply?.hits ?? []).map((h) => ({ ...h, ...(h.source === 'document' ? transcribed.get(h.id) ?? {} : {}), ...(amended.get(`${h.source}:${h.id}`) ?? {}), read_next: readNextFor(h.source) }))
+  // v2.7976 (punch list #315, upgrade 2): the number the file gave each record a hit names, one read by id.
+  const numbers = await exhibitNumbers(reader, reply?.hits ?? [], transcribed)
+  const numberBits = (h: CaseSearchHit): Record<string, number> => {
+    const keyed = (key: string, recordId: string | null | undefined): Record<string, number> => {
+      const n = recordId ? numbers.get(recordId) : undefined
+      return n === undefined ? {} : { [key]: n }
+    }
+    if (h.source === 'evidence') return keyed('exhibit_no', h.id)
+    if (h.source === 'file' && h.record_kind === 'evidence') return keyed('record_exhibit_no', h.record_id)
+    return h.source === 'document' ? keyed('evidence_exhibit_no', transcribed.get(h.id)?.evidence_id) : {}
+  }
+  const hits = (reply?.hits ?? []).map((h) => ({ ...h, ...(h.source === 'document' ? transcribed.get(h.id) ?? {} : {}), ...numberBits(h), ...(amended.get(`${h.source}:${h.id}`) ?? {}), read_next: readNextFor(h.source) }))
   const bySource: Record<string, number> = {}
   for (const h of hits) bySource[h.source] = (bySource[h.source] ?? 0) + 1
   return {
@@ -77,7 +89,7 @@ export async function searchCase(reader: Reader, ask: CaseSearchAsk, who: { role
     shown: hits.length,
     by_source: bySource,
     hits,
-    note: 'Not searched: papers, licenses, write-ups, hours statements, attendance and field reports waiting — read those with get_person_file { source }; get_case_brief\'s manifest counts them. A hit on a document names the section it sits in (section_n is the heading\'s number, when it carries one); the snippet marks the match with « ». A matter document kept as text (a .md or .txt) is searched by section like a named document. A file hit (source file) is a record\'s file the index read — a transcript linked from Drive, a staged .eml or PDF, a matter document\'s PDF or .eml: title is the file\'s name, record_kind / record_id / record_title the evidence record, entry or matter document it hangs on; in: files narrows to them. A file the index has not read is not found (a scan, a kind it does not read, one filed in the last ten minutes): read_file_index_status\'s by_why and records_without_rows say how many wait. A document that transcribes a recording carries evidence_id, evidence_day and evidence_title, the record to cite. An entry or evidence hit that a later one corrected carries standing: corrected, amended_by (the later thing, row as table:id, and its day) and latest_word, the newest correction along the chain: read that before relying on the hit. standing: completed means a later one adds to it; amends is the same link from the newer thing (punch list #315). Counsel-only items are marked, not hidden; a counsel-only matter document\'s row and words are refused to the seat when read on, so the hit is all a session sees of it.',
+    note: 'Not searched: papers, licenses, write-ups, hours statements, attendance and field reports waiting — read those with get_person_file { source }; get_case_brief\'s manifest counts them. A hit on a document names the section it sits in (section_n is the heading\'s number, when it carries one); the snippet marks the match with « ». A matter document kept as text (a .md or .txt) is searched by section like a named document. A file hit (source file) is a record\'s file the index read — a transcript linked from Drive, a staged .eml or PDF, a matter document\'s PDF or .eml: title is the file\'s name, record_kind / record_id / record_title the evidence record, entry or matter document it hangs on; in: files narrows to them. A file the index has not read is not found (a scan, a kind it does not read, one filed in the last ten minutes): read_file_index_status\'s by_why and records_without_rows say how many wait. A document that transcribes a recording carries evidence_id, evidence_day and evidence_title, the record to cite. An entry or evidence hit that a later one corrected carries standing: corrected, amended_by (the later thing, row as table:id, and its day) and latest_word, the newest correction along the chain: read that before relying on the hit. standing: completed means a later one adds to it; amends is the same link from the newer thing (punch list #315). An evidence hit carries exhibit_no once the file has numbered the record: cite it as Ev #N. A file hit names its record\'s number as record_exhibit_no and a transcript\'s document hit as evidence_exhibit_no. Counsel-only items are marked, not hidden; a counsel-only matter document\'s row and words are refused to the seat when read on, so the hit is all a session sees of it.',
   }
 }
 
@@ -105,6 +117,33 @@ async function transcribedRecords(reader: Reader, personId: string, hits: Readon
     }
   } catch {
     // Left as the search answered: the hit still names the document.
+  }
+  return out
+}
+
+/**
+ * v2.7976 (punch list #315, upgrade 2): the exhibit number of every evidence record the hits name: the record itself
+ * (an `evidence` hit), the record a `file` hit hangs on, the record a document hit transcribes. One read by id, joined
+ * here so `dev_case_search` stays as it is. Fail-soft: a refused read leaves the hits as the search answered, and a
+ * record the file has not numbered gains no key.
+ */
+async function exhibitNumbers(reader: Reader, hits: ReadonlyArray<CaseSearchHit>, transcribed: ReadonlyMap<string, CaseSearchEvidence>): Promise<Map<string, number>> {
+  const ids = new Set<string>()
+  for (const h of hits) {
+    if (h.source === 'evidence') ids.add(h.id)
+    else if (h.source === 'file' && h.record_kind === 'evidence' && h.record_id) ids.add(h.record_id)
+  }
+  for (const t of transcribed.values()) ids.add(t.evidence_id)
+  const out = new Map<string, number>()
+  if (ids.size === 0) return out
+  try {
+    const rows = (await readRowsByIds(reader, 'person_file_evidence', 'id,exhibit_no', [...ids])) as { id: string; exhibit_no?: number | null }[]
+    for (const r of rows) {
+      const n = exhibitNoOf(r)
+      if (n !== null) out.set(r.id, n)
+    }
+  } catch {
+    // Left as the search answered.
   }
   return out
 }

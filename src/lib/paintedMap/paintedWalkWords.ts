@@ -3,7 +3,6 @@
  * purpose: this is the first thing in the app that follows a phone, so every line says what is
  * read, when, and what is kept.
  */
-import { taskPlaceAccuracyWords } from '../tasks/taskPlace'
 import { spanWords } from './paintedTrack'
 import type { WalkPause, WalkState } from './paintedWalk'
 
@@ -39,17 +38,12 @@ export function walkThrowAwayWords(mapSaved: boolean): string {
 /** While the screen cannot be held on by the browser. */
 export const WALK_CANNOT_STAY_AWAKE_WORDS = 'This phone cannot hold its own screen on. Touch the screen now and then so it does not lock.'
 
-/** `Sure within 15 ft`, or the words for a phone that has not said. */
-export function walkSureWords(accuracyM: number | null | undefined): string {
-  const sure = taskPlaceAccuracyWords(accuracyM)
-  return sure ? `Sure ${sure}` : 'Finding you…'
-}
-
-/** Over the map while the phone is not sure enough to draw the line as read. */
-export function walkPoorWords(accuracyM: number | null | undefined): string {
-  const sure = taskPlaceAccuracyWords(accuracyM)
-  return sure ? `Only sure ${sure} here. This part is drawn faint.` : 'The phone is not sure here. This part is drawn faint.'
-}
+/**
+ * What the walk does about how sure the phone is, said after the Precise Location line (punch list #402). The line
+ * itself, in every state, is `preciseLocation.ts`. A weak signal still draws, faint. A rough reading draws nothing.
+ */
+export const WALK_WEAK_NOTE_WORDS = 'This part is drawn faint. Fix it by hand when you look the line over.'
+export const WALK_ROUGH_NOTE_WORDS = 'A line cannot be painted from a reading that wide.'
 
 /** Why the painting is paused, and what the person can do about it. */
 export function walkPausedWords(state: Pick<WalkState, 'pausedWhy' | 'gapMs'>): { lead: string; tail: string } {
@@ -62,16 +56,6 @@ export function walkPausedWords(state: Pick<WalkState, 'pausedWhy' | 'gapMs'>): 
   if (why === 'time') return { lead: 'Painting ends by itself after an hour.', tail: 'Look the line over and save it. Paint the rest as a new line.' }
   return { lead: 'Paused.', tail: 'Nothing is being read.' }
 }
-
-/** A rough location: what it means and the two switches that fix it. */
-export const WALK_ROUGH_WORDS = {
-  lead: 'Your phone is giving a rough location, not where you stand.',
-  tail: 'A line cannot be painted from that.',
-  steps: [
-    'iPhone: Settings, Privacy and Security, Location Services, Safari Websites. Turn on Precise Location.',
-    'Android: press the lock beside the address, Permissions, Location. Turn on Use precise location.',
-  ],
-} as const
 
 /** Why no reading came, as the browser reports it. */
 export type WalkRefusal = 'none' | 'refused' | 'failed'

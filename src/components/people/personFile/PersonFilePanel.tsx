@@ -17,6 +17,9 @@ import { addAmendments, loadPersonAmendments, withdrawAmendment } from '../../..
 import { caseItemCounts, exhibitBackfillWords, exhibitBesideTitle, exhibitLabel, exhibitNoFromTitle, type ExhibitBackfillReport, type PersonCaseItem, type PersonCaseLogLine } from '../../../lib/people/personCase'
 import { loadExhibitNumbers, loadPersonCase, runExhibitBackfill } from '../../../lib/people/personCaseIo'
 import { PersonCaseView } from './PersonCaseView'
+import { standingWords, type PersonEngagementRow } from '../../../lib/people/personEngagements'
+import { loadPersonEngagements } from '../../../lib/people/personEngagementsIo'
+import { PersonStandingWindow } from './PersonStandingWindow'
 import { sectionChangedWords, sectionFreshness, sectionFreshnessHeadWords, sectionNeedsALook, sectionNewerWords, type DocRevision } from '../../../lib/people/sectionFreshness'
 import { loadDocRevisions } from '../../../lib/people/sectionFreshnessIo'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
@@ -322,6 +325,10 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
   const [byThemeId, setByThemeId] = useState<string | null>(initialThemeId)
   // v2.6582 (punch list #269 PR 3b): the matter standing on the person, the row alone, for the fact strip's chip.
   const [matterStanding, setMatterStanding] = useState<PersonMatterStanding | null>(null)
+  // Punch list #315, upgrade 4b: the person's standing over time, a source of its own, for the strip's press and the Timeline.
+  const [standingRows, setStandingRows] = useState<PersonEngagementRow[]>([])
+  const [standingHeld, setStandingHeld] = useState<string | null>(null)
+  const [standingOpen, setStandingOpen] = useState(false)
   useEffect(() => {
     if (initialThemeId) setByThemeId(initialThemeId)
   }, [initialThemeId])
@@ -418,6 +425,25 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     void reloadMatter()
   }, [reloadMatter, changeKey])
 
+  const reloadStanding = useCallback(async () => {
+    if (!viewer.isDev || !personId) {
+      setStandingRows([])
+      setStandingHeld(null)
+      return
+    }
+    const r = await loadPersonEngagements(personId)
+    setStandingRows(r.rows)
+    setStandingHeld(r.heldWhy)
+  }, [viewer.isDev, personId])
+
+  useEffect(() => {
+    void reloadStanding()
+  }, [reloadStanding, changeKey])
+
+  useEffect(() => {
+    setStandingOpen(false)
+  }, [personId])
+
   const reloadDocuments = useCallback(async () => {
     if (!viewer.isDev || !personId) {
       setDocuments([])
@@ -452,7 +478,7 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
     setLineMarkKey(null)
   }, [personId])
 
-  const lines = useMemo(() => (sources ? buildPersonTimeline(sources.input) : []), [sources])
+  const lines = useMemo(() => (sources ? buildPersonTimeline({ ...sources.input, engagements: standingRows }) : []), [sources, standingRows])
   const facts = useMemo(() => (sources ? personFileFacts(sources.input, lines) : null), [sources, lines])
   const counts = useMemo(() => countPersonTimeline(lines), [lines])
   const laneFiltered = useMemo(() => filterPersonTimeline(lines, { lane, source }), [lines, lane, source])
@@ -2288,6 +2314,8 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
 
   // The strip's Matter chip (v2.6582): the matter's stage once one stands on the person, a press to the Matter view.
   const matterChip = personMatterChipWords(matterStanding)
+  // The strip's standing press (#315, upgrade 4b): what the person is, or was last, and the door to Standing…
+  const standingChip = viewer.isDev && personId ? standingWords(standingRows) ?? 'Standing…' : null
 
   const heldWords = (sources?.held ?? []).map((h) => `${PERSON_TIMELINE_SOURCES.find((s) => s.source === h.source)?.label ?? h.source} (${h.reason})`)
 
@@ -2343,6 +2371,11 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
               {matterChip}
             </button>
           ) : null}
+          {standingChip ? (
+            <button type="button" onClick={() => setStandingOpen(true)} title="Open the standing" style={chip(FACT_TONE.gray, { cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.72rem', fontWeight: 600 })} data-testid="person-file-standing-chip">
+              {standingChip}
+            </button>
+          ) : null}
           {facts.lastYmd ? <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>last on record {dayWords(facts.lastYmd)}{facts.lastYmd.slice(0, 4) !== todayYmd.slice(0, 4) ? `, ${facts.lastYmd.slice(0, 4)}` : ''}</span> : null}
         </div>
       ) : null}
@@ -2387,6 +2420,9 @@ export function PersonFilePanel({ personId, userId, personName, viewer, changeKe
         </>
       )}
       {evidenceWindow}
+      {standingOpen && personId ? (
+        <PersonStandingWindow personId={personId} personName={personName} rows={standingRows} heldWhy={standingHeld} todayYmd={todayYmd} canWrite={canWrite} onClose={() => setStandingOpen(false)} onChanged={reloadStanding} showToast={showToast} />
+      ) : null}
     </div>
   )
 }

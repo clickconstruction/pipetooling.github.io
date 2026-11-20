@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { WALK_REVIEW_PLACE_WORDS, keptWalkWords, walkNothingLeftWords, walkPausedWords, walkPoorWords, walkRefusalWords, walkSureWords, walkThrowAwayWords } from './paintedWalkWords'
+import { plainWordsFailures } from '../plainWords'
+import { WALK_REVIEW_PLACE_WORDS, WALK_ROUGH_NOTE_WORDS, WALK_WEAK_NOTE_WORDS, keptWalkWords, walkNothingLeftWords, walkPausedWords, walkRefusalWords, walkThrowAwayWords } from './paintedWalkWords'
 
 describe('the words of a walk', () => {
-  it('says how sure the phone is, rounded up', () => {
-    expect(walkSureWords(3.5)).toBe('Sure within 15 ft')
-    expect(walkSureWords(null)).toBe('Finding you…')
-    expect(walkPoorWords(18.2)).toBe('Only sure within 60 ft here. This part is drawn faint.')
-    expect(walkPoorWords(null)).toBe('The phone is not sure here. This part is drawn faint.')
+  it('says what the walk does about a weak signal and a rough reading, after the Precise Location line (#402)', () => {
+    expect(WALK_WEAK_NOTE_WORDS).toBe('This part is drawn faint. Fix it by hand when you look the line over.')
+    expect(WALK_ROUGH_NOTE_WORDS).toBe('A line cannot be painted from a reading that wide.')
+    for (const words of [WALK_WEAK_NOTE_WORDS, WALK_ROUGH_NOTE_WORDS]) expect(plainWordsFailures(words)).toEqual([])
   })
   it('says why a locked screen left a gap, and for how long', () => {
     expect(walkPausedWords({ pausedWhy: 'hidden', gapMs: 120_000 }).lead).toBe('The screen was off for 2 minutes, so the line has a gap.')

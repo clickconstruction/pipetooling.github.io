@@ -197,6 +197,8 @@ describe('get_case_brief and search_case carry the links (0.81.0)', () => {
     person_file_entries: ENTRIES,
     person_file_evidence: EVIDENCE,
     person_file_amendments: LINKS.map((l) => ({ ...l, person_id: PERSON })),
+    person_case_items: [],
+    person_case_log: [],
     person_file_index: [],
     person_document_index: [],
     legal_matters: [],
@@ -247,7 +249,7 @@ describe('get_case_brief and search_case carry the links (0.81.0)', () => {
 
 describe('the server and the docs say it', () => {
   it('0.81.0: the three reads and the write name the links, and no new verb was added', () => {
-    expect(SERVER).toContain("const SERVER_VERSION = '0.117.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.118.0'")
     for (const verb of ['get_person_file', 'get_case_brief', 'search_case']) {
       const at = SERVER.indexOf(`name: '${verb}',`)
       const description = SERVER.slice(at, SERVER.indexOf('inputSchema', at))

@@ -2,10 +2,10 @@
 title: make a statement of account for a sub
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: statement of account, work statement, payment record, paper number, revision, WS number, SA number, PR number, since the last statement, sub statement, pay due report, still open, what we owe a sub, sub papers, pdf, download, print, part payment, partial payment, back-charge, last payments, period, sub labor, reverse invoice, payment receipt, how it adds up, sent copies, paper for a sub
+keywords: statement of account, work statement, payment record, send a paper to a sub, email a sub, send by email, attach, paper number, revision, WS number, SA number, PR number, since the last statement, sub statement, pay due report, still open, what we owe a sub, sub papers, pdf, download, print, part payment, partial payment, back-charge, last payments, period, sub labor, reverse invoice, payment receipt, how it adds up, sent copies, paper for a sub
 order: 34
 ---
-A statement of account is one paper for one sub. The paper lists their work, what was paid and what is still open. You make it as a PDF and hand it to them.
+A statement of account is one paper for one sub. The paper lists their work, what was paid and what is still open. You make it as a PDF, then hand it to them or email it.
 
 A work statement is the same kind of paper for one sheet. A payment record is the paper for one payment. All three read the sheets and payments the Pay view already shows.
 
@@ -18,7 +18,7 @@ The press sits where the sub's row already is.
 - For one sheet, press **⋯** on its row in the Pay view. Then press **Work statement…**.
 - On People → Subs, open a sheet in the block. Then press {{button:outline|Work statement…}} under it.
 - For one payment, open the sheet's row in the Pay view. Then press **Payment record…** beside the payment.
-- Right after you record a payment, press {{button:blue|Payment record…}} in the window that follows.
+- Right after you record a payment, press {{button:blue|Send the payment record…}} in the window that follows.
 
 The window opens on the paper you asked for. The chips at the top switch to another paper for the same person.
 
@@ -70,11 +70,60 @@ Press {{button:outline|Print}} to open the PDF in a new tab, ready to print. Pre
 
 Each print and each download files a copy. You find it on [Documents → Sent copies](/documents?tab=sent), under **Statements and reports**. The copy is filed on the sub and on each job.
 
-This window does not send the paper. Give the sub the printed page, or attach the file to your own message.
+## Send it by email
+
+The blue press at the bottom of the window reads **Send to** and the sub's name. Press it, and the window turns to the send step.
+
+The send step shows everything before anything goes.
+
+- **To** is the sub's name and the email on their roster row. The paper goes to that address and no other.
+- **They will get** is the message as the sub reads it, with each file under it.
+- **When you press Send** lists what the press does.
+
+Then press the blue press under them. The press reads {{button:blue|Send 3 papers by email}} when three files go. The count is always in front of you.
+
+1. Each paper takes its number.
+2. One email goes to the sub with every PDF attached.
+3. A copy of each paper is filed on the sub and on each job.
+
+A green line says how many papers went, and to which address. The press turns into {{button:blue|Done}}. Press {{button:outline|Back to the paper}} to print the paper as well.
+
+The copies are on [Documents → Sent copies](/documents?tab=sent). Each paper has a copy of its own, with the message the sub got.
+
+### Send a payment record right after a payment
+
+Press {{button:blue|Send the payment record…}} in the window that follows [Record payment](/help/pay-a-sub-across-sheets-or-keep-a-credit). The papers window opens on the send step, with that payment's record ready to go.
+
+### Attach more papers to a statement of account
+
+A statement of account can carry other papers in the same email. Two boxes under **Attach** set them, before you press **Send to**.
+
+- **Each open work statement** is ticked to begin with. Each sheet that is still open rides along as its own PDF.
+- **Payment records in the period** adds the record of each payment the statement lists.
+
+The statement names each work statement by its number, so the sub can match the files.
+
+One email carries 12 papers. Past 12, the oldest ride first. A yellow line names the papers left for the next email.
+
+### When the sub has no email
+
+A sub with no email on their roster row cannot be sent a paper. The press goes grey, and a yellow line says so.
+
+Press {{button:outline|Back to the paper}}, then print or download the paper for them. A dev can add an email to the sub's roster row.
+
+### Who can send
+
+A dev, a master technician, an assistant or a controller can send a paper. An account in training cannot send.
+
+### When the email does not go
+
+A red line says why, and nothing is filed. Press the send press again once the reason is fixed.
+
+A statement of account takes a new number each time you make it. One that was numbered for a failed send keeps that number, and the red line names it.
 
 ## How the papers are numbered
 
-A paper takes its number when you make it. Printing and downloading both count as making it. The preview shows no number until then.
+A paper takes its number when you make it. Printing, downloading and sending each count as making it. The preview shows no number until then.
 
 - **A work statement** is numbered for its job, like *WS-2041-1*. The sheet keeps that number for good.
 - **A statement of account** takes the next number each time, like *SA-0007*. Every one you make is a new paper.
@@ -91,7 +140,7 @@ Sometimes a paper cannot be numbered. A paper with no number is not made, and a 
 ## What the papers do not have yet
 
 - **Draft sentences.** A few sentences are boxed and marked §. The boxed sentences are draft wording until our lawyer has read them.
-- **Sending.** The window does not send a paper yet. Sending comes in a later change.
+- **A texted link.** The window sends by email only. A text with a link to the paper is not built yet.
 
 ## When the papers do not add up
 

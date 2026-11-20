@@ -38,6 +38,13 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub', '', true);
   PERFORM set_config('request.jwt.claim.role', '', true);
 END $$;
+-- The service key: no login, the service role. The schedule emails' two reads answer no other caller about someone else.
+CREATE FUNCTION jq.service() RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
+  PERFORM set_config('request.jwt.claim.sub', '', true);
+  PERFORM set_config('request.jwt.claim.role', 'service_role', true);
+END $$;
 CREATE FUNCTION jq.scans(p_rel text) RETURNS bigint LANGUAGE sql AS $$
   SELECT coalesce((SELECT coalesce(seq_scan, 0) + coalesce(idx_scan, 0) FROM pg_stat_xact_user_tables WHERE schemaname = 'public' AND relname = p_rel), 0)
 $$;
@@ -104,7 +111,7 @@ CREATE FUNCTION jq.tally() RETURNS text LANGUAGE sql AS $$
   SELECT coalesce(string_agg(t.hcp_number || ':' || t.job_name || ':' || t.job_address, ', ' ORDER BY t.hcp_number), '')
   FROM public.list_jobs_for_tally() t WHERE t.id IN (jq.id('41'), jq.id('42'))
 $$;
--- The schedule email's read for one recipient today, as the database itself asks it.
+-- The schedule email's read for one recipient today, as the dispatch function asks it (jq.service() first).
 CREATE FUNCTION jq.mail(p_recipient uuid) RETURNS text LANGUAGE sql AS $$
   SELECT coalesce(string_agg(e.job_hcp_number || ':' || coalesce(e.job_name, '-') || ':' || coalesce(e.job_address, '-') || ':' || coalesce(e.note, '-'), ', ' ORDER BY e.job_hcp_number), '')
   FROM public.list_job_schedule_blocks_for_schedule_email(p_recipient, public.app_today()) e WHERE e.job_id = jq.id('41')
@@ -129,8 +136,9 @@ SELECT jq.same('and by its name', jq.found('Cedar'), 'J100:Cedar Bluff Lofts:120
 SELECT jq.same('his assigned jobs name J100 whole', jq.assigned(), 'J100:Cedar Bluff Lofts:1200 Quarry Rd:https://drive.example.test/cedar:Ridgeway Builders');
 SELECT jq.same('his tally jobs name J100 whole', jq.tally(), 'J100:Cedar Bluff Lofts:1200 Quarry Rd');
 RESET ROLE;
-SELECT jq.signed_out();
+SELECT jq.service();
 SELECT jq.same('Hector''s schedule email names the job and its note', jq.mail(jq.id('04')), 'J100:Cedar Bluff Lofts:1200 Quarry Rd:Gate code 4471');
+SELECT jq.signed_out();
 SELECT jq.same('nobody is locked out of anything', public.job_shut_to_user(jq.id('41'), jq.id('04'))::text || '|' || cardinality(public.jobs_shut_to_user(jq.id('04')))::text, 'false|0');
 
 -- 2 · Dana requires a paper on J100. Hector's lists answer J100 with its number alone, and it no longer answers to
@@ -176,9 +184,11 @@ SELECT jq.same('and it answers as the lock''s own question does for each of them
 SELECT jq.signed_out();
 SELECT jq.same('a locked person''s jobs, by name', array_to_string(public.jobs_shut_to_user(jq.id('04')), ',') || '|' || cardinality(public.jobs_shut_to_user(jq.id('01')))::text, jq.id('41')::text || '|0');
 SELECT jq.same('nobody is locked out of the job with no paper', public.job_shut_to_user(jq.id('42'), jq.id('04'))::text, 'false');
+SELECT jq.service();
 SELECT jq.same('Hector''s schedule email keeps the block''s number and blanks the rest', jq.mail(jq.id('04')), 'J100:Papers to sign first:-:-');
 SELECT jq.same('the shared schedule does the same for him', jq.share(jq.id('04')), 'J100:Papers to sign first:-:-');
 SELECT jq.same('Marcus the master''s email still names the job', jq.mail(jq.id('02')), 'J100:Cedar Bluff Lofts:1200 Quarry Rd:Gate code 4471');
+SELECT jq.signed_out();
 
 -- 3 · Signed, the lists name the job again.
 SELECT jq.as_user(jq.id('04'));
@@ -191,7 +201,7 @@ SET LOCAL ROLE authenticated;
 SELECT jq.same('signed, Hector finds J100 by its name again', jq.found('Cedar'), 'J100:Cedar Bluff Lofts:1200 Quarry Rd');
 SELECT jq.same('and his assigned jobs name it whole', jq.assigned(), 'J100:Cedar Bluff Lofts:1200 Quarry Rd:https://drive.example.test/cedar:Ridgeway Builders');
 RESET ROLE;
-SELECT jq.signed_out();
+SELECT jq.service();
 SELECT jq.same('and his schedule email names it', jq.mail(jq.id('04')), 'J100:Cedar Bluff Lofts:1200 Quarry Rd:Gate code 4471');
 
 DO $$ BEGIN RAISE NOTICE 'job_papers_lists PASSED'; END $$;

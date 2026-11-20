@@ -16,6 +16,7 @@
 
 import { ALL_ROWS_MAX, newestFirst, readAllRows, readRowsByIds, type Reader, type Row } from './devMcpComposites.ts'
 import { AMENDMENTS_NOTE, amendmentCounts, amendmentKeyOfRow, readPersonAmendments, seatAmendmentBits, type SeatAmendmentBits } from './devMcpAmendments.ts'
+import { EXHIBIT_NOTE, exhibitBits as exhibitBitsOf, exhibitNoOf, type SeatExhibitBits } from './devMcpCase.ts'
 import type { RowFilter } from './devMcpDoor.ts'
 import { cutText, fitReply, replyChars, type FitStep, type Shortened, type ShortenedBlock } from './devMcpReplyFit.ts'
 import {
@@ -100,7 +101,8 @@ export type PersonFileBriefLine = {
   files?: number
   /** The row behind the line, `table:id`: read_rows on the table with id eq answers it whole. */
   row: string
-} & SeatAmendmentBits
+} & SeatAmendmentBits &
+  SeatExhibitBits
 
 export function briefPersonFileLine(l: PersonTimelineLine, max: number): PersonFileBriefLine {
   const what = cutText(l.what, max)
@@ -129,7 +131,7 @@ type AttachmentRow = PersonEvidenceFile & { entry_id: string | null }
 type DocRow = { kind: string; content: string; updated_at: string; covered_through: string | null; author_label: string | null }
 /** One row of person_document_index (v2.6613): a named document without its text. */
 type DocIndexRow = { id: string; title: string; counsel_only: boolean; author_label: string | null; created_at: string; updated_at: string; archived_at: string | null; chars: number; sections: number }
-type EvidenceRow = { id: string; person_id: string; entry_id: string | null; dated_on: string; title: string; memo: string; created_by: string | null; author_label: string | null; created_at: string; drive_folder_id: string | null; drive_folder_url: string | null; filed_at: string | null; fail_why: string | null; counsel_only?: boolean | null }
+type EvidenceRow = { id: string; person_id: string; entry_id: string | null; dated_on: string; title: string; memo: string; created_by: string | null; author_label: string | null; created_at: string; drive_folder_id: string | null; drive_folder_url: string | null; filed_at: string | null; fail_why: string | null; counsel_only?: boolean | null; exhibit_no?: number | null }
 type WriteupRow = { id: string; template_id: string; status: string; disclosure: string | null; submitted_at: string | null; created_at: string; filled_by_user_id: string | null }
 type ExcuseRow = { id: string; work_date: string; note: string; created_at: string; author: unknown }
 type StatementRow = Omit<PersonTimelineStatement, 'job_label'>
@@ -236,7 +238,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     read<PersonTimelineEntry>('file', isDev, devOnly, every('person_file_entries', 'id,entry_date,content,source,created_by,created_at,author_label', eq('person_id', personId))),
     read<AttachmentRow>('file', isDev, devOnly, every('person_file_attachments', 'id,entry_id,evidence_id,filename,mime_type,size_bytes,storage_path,drive_file_id,drive_url,filed_at,fail_why,created_at,sha256', eq('person_id', personId), 'created_at')),
     read<DocRow>('file', isDev, devOnly, () => reader.rows('person_files', { select: 'kind,content,updated_at,covered_through,author_label', filters: eq('person_id', personId), limit: 10 })),
-    read<EvidenceRow>('evidence', isDev, devOnly, every('person_file_evidence', 'id,person_id,entry_id,dated_on,title,memo,created_by,author_label,created_at,drive_folder_id,drive_folder_url,filed_at,fail_why,counsel_only', eq('person_id', personId), 'dated_on')),
+    read<EvidenceRow>('evidence', isDev, devOnly, every('person_file_evidence', 'id,person_id,entry_id,dated_on,title,memo,created_by,author_label,created_at,drive_folder_id,drive_folder_url,filed_at,fail_why,counsel_only,exhibit_no', eq('person_id', personId), 'dated_on')),
     read<PersonTimelineReport>('report', isDev, devOnly, every('person_reports', 'id,status,occurred_date,created_at,author_name,content,resolution_note,resolved_at,filed_entry_id', eq('subject_person_id', personId), 'occurred_date')),
     read<PersonTimelineContract>('contract', true, '', every('person_contract_documents', CONTRACT_SELECT, eq('person_id', personId))),
     read<PersonTimelineContract>('contract', name !== '', 'needs a name on the roster', every('person_contract_documents', CONTRACT_SELECT, eq('person_name', name))),
@@ -396,9 +398,16 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   let evidenceNewest: number | null = null
   let summaryOut = filter.brief && !filter.docsAsked
   let narrativeOut = filter.brief && !filter.docsAsked
+  // v2.7976 (punch list #315, upgrade 2): an evidence record's line carries the number the file gave the record, as its
+  // row in `evidence` does; a record with no number yet, and every other line, gains nothing.
+  const exhibitOfRecord = new Map(evidenceRows.map((r) => [r.id, exhibitNoOf(r)]))
+  const exhibitBits = (table: string, id: string): SeatExhibitBits => {
+    const n = table === 'person_file_evidence' ? exhibitOfRecord.get(id) ?? null : null
+    return n === null ? {} : { exhibit_no: n }
+  }
   // A line a link touches gains standing, amended_by, amends and latest_word; a line none touches is what the kernel wrote.
-  const drawLine = (l: PersonTimelineLine): (PersonTimelineLine & SeatAmendmentBits) | PersonFileBriefLine => {
-    const bits = amendBits(l.ref.table, l.ref.id)
+  const drawLine = (l: PersonTimelineLine): (PersonTimelineLine & SeatAmendmentBits & SeatExhibitBits) | PersonFileBriefLine => {
+    const bits = { ...exhibitBits(l.ref.table, l.ref.id), ...amendBits(l.ref.table, l.ref.id) }
     return lineChars == null ? { ...l, ...bits } : { ...briefPersonFileLine(l, lineChars), ...bits }
   }
   const monthsShown = () => (monthsKept == null ? monthsWhole : monthsWhole.slice(0, monthsKept))
@@ -411,11 +420,11 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
   const evidenceDrive = (r: EvidenceRow) => evidenceDriveWords({ fail_why: r.fail_why, filed_at: r.filed_at, files: filesByRecord.get(r.id) ?? [] })
   const evidenceWhole = (r: EvidenceRow) => {
     const files = (filesByRecord.get(r.id) ?? []).map((f) => ({ id: f.id, filename: f.filename, mime_type: f.mime_type, size_bytes: f.size_bytes, drive_url: f.drive_url, filed_at: f.filed_at, fail_why: f.fail_why, sha256: f.sha256 ?? null, linked: !f.storage_path && !!f.drive_url }))
-    return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: r.memo, ...(r.counsel_only ? { counsel_only: true } : {}), by: evidenceBy(r), created_at: r.created_at, drive: evidenceDrive(r), drive_folder_url: r.drive_folder_url, files, ...amendBits('person_file_evidence', r.id) }
+    return { id: r.id, ...exhibitBitsOf(r), entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: r.memo, ...(r.counsel_only ? { counsel_only: true } : {}), by: evidenceBy(r), created_at: r.created_at, drive: evidenceDrive(r), drive_folder_url: r.drive_folder_url, files, ...amendBits('person_file_evidence', r.id) }
   }
   const evidenceShort = (r: EvidenceRow, max: number) => {
     const memo = cutText(r.memo, max)
-    return { id: r.id, entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: memo.text, ...(memo.more > 0 ? { more: memo.more } : {}), ...(r.counsel_only ? { counsel_only: true } : {}), by: evidenceBy(r), drive: evidenceDrive(r), files: (filesByRecord.get(r.id) ?? []).length, ...amendBits('person_file_evidence', r.id) }
+    return { id: r.id, ...exhibitBitsOf(r), entry_id: r.entry_id, dated_on: r.dated_on, title: r.title, memo: memo.text, ...(memo.more > 0 ? { more: memo.more } : {}), ...(r.counsel_only ? { counsel_only: true } : {}), by: evidenceBy(r), drive: evidenceDrive(r), files: (filesByRecord.get(r.id) ?? []).length, ...amendBits('person_file_evidence', r.id) }
   }
   const evidenceBlock = () => (evidenceNewest == null ? evidenceSorted : evidenceSorted.slice(0, evidenceNewest)).map((r) => (evidenceChars == null ? evidenceWhole(r) : evidenceShort(r, evidenceChars)))
 
@@ -498,6 +507,8 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
     ahead: aheadBlock(),
     months: monthsBlock(),
     evidence: evidenceBlock(),
+    // v2.7976: what exhibit_no on a record and on its Timeline line means.
+    evidence_note: isDev ? EXHIBIT_NOTE : 'dev only',
     files_before_records: oldFiles,
     docs: docsBlock(),
     documents,
@@ -594,7 +605,7 @@ export async function getPersonFile(reader: Reader, ask: PersonFileAsk, who: Per
 export type PersonFileReply = Exclude<Awaited<ReturnType<typeof getPersonFile>>, { refused: string }>
 /** The same reply when nothing was shortened: every line and every evidence record as the kernel wrote it. */
 export type PersonFileWholeReply = Omit<PersonFileReply, 'ahead' | 'months' | 'evidence'> & {
-  ahead: (PersonTimelineLine & SeatAmendmentBits)[]
-  months: { month: string; label: string; lines: (PersonTimelineLine & SeatAmendmentBits)[] }[]
+  ahead: (PersonTimelineLine & SeatAmendmentBits & SeatExhibitBits)[]
+  months: { month: string; label: string; lines: (PersonTimelineLine & SeatAmendmentBits & SeatExhibitBits)[] }[]
   evidence: Extract<PersonFileReply['evidence'][number], { files: unknown[] }>[]
 }

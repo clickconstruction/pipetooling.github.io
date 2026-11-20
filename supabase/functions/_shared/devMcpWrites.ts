@@ -32,6 +32,7 @@
 import { isPlanPartVerb, planPartInput } from './devMcpPlanSets.ts'
 import { isPersonReportVerb, personReportInput } from './devMcpPersonReport.ts'
 import { isPersonMatterVerb, personMatterInput } from './devMcpPersonMatter.ts'
+import { caseInput, isCaseVerb } from './devMcpCase.ts'
 import { accountInput, isAccountVerb, loginInput, passwordResetInput } from './devMcpAccount.ts'
 import { isTwinVerb, twinInput } from './devMcpTwin.ts'
 import { isTwinKeyVerb, twinKeyCommitment, twinKeyInput } from './devMcpTwinKey.ts'
@@ -132,6 +133,11 @@ export const WRITE_VERBS = {
   // take the named marks off with a reason each; the one door beside the app's Keep press and Take it off….
   plan_theme_review: { rpc: 'dev_theme_review_write', step: 'plan' },
   apply_theme_review: { rpc: 'dev_theme_review_write', step: 'apply' },
+  // v2.7976 / 0.118.0 (punch list #315, upgrade 2, PR 3): a case's open items and its log (dev_case_write, migration
+  // 20261113080000). The database numbers a new item and writes a log line for every change; the dry run performs the
+  // write and unwinds it, so the plan names the number an item would take. The shape is devMcpCase.ts's.
+  plan_case: { rpc: 'dev_case_write', step: 'plan' },
+  apply_case: { rpc: 'dev_case_write', step: 'apply' },
   // v2.6044 / 0.9.0: a History line on a development, kept at the time it happened, as a named robot
   // (dev_history_entry_write inserts development_history_entries with via = mcp).
   plan_history_entry: { rpc: 'dev_history_entry_write', step: 'plan' },
@@ -1176,6 +1182,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     const n = keep.length + takeOff.length
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${n} mark${n === 1 ? '' : 's'}`, planHash }
   }
+  if (isCaseVerb(verb)) {
+    // v2.7976: the shape check is devMcpCase's, said in the door's own limits; the payload it builds is the one hashed and written.
+    const built = caseInput(verb, input)
+    if (!built.ok) return { ok: false, error: built.error }
+    return { ok: true, rpc, step, body: { p: built.p, p_dry_run: step === 'plan' }, dryRunBody: { p: built.p, p_dry_run: true }, target: built.target, planHash }
+  }
   if (verb === 'plan_gap_answer' || verb === 'apply_gap_answer') {
     const gap = obj(input.gap)
     const action = gap && typeof gap.action === 'string' ? gap.action.trim() : 'answer'
@@ -1771,6 +1783,7 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_account') return `Nothing written: this plan was already applied${when}. get_login_state names the account as it reads now; plan again from that for a further change.`
   if (verb === 'apply_login') return `Nothing written: this plan was already applied${when}. get_login_state says whether the login stands and when the email went; plan_password_reset sends a fresh link.`
   if (verb === 'apply_password_reset') return `Nothing written: this plan was already applied${when}. One send per address per ten minutes; get_login_state says whether the last link was used.`
+  if (verb === 'apply_case') return `Nothing written: this plan was already applied on this person's case${when}. The items and the log already read that way: get_case_brief's open_items and log show them. A further change is a new plan from the case as it stands.`
   if (verb === 'apply_theme_review') return `Nothing written: this plan was already applied on those marks${when}. A kept mark reads as kept already and a mark that came off as off already in a new plan; read_rows on legal_theme_marks shows the stamps, and the file's By theme view draws them.`
   if (personDoc) return `Nothing written: this plan was already applied on this person${when}. The document already reads that way: get_person_file (docs: true) shows it. A plan commits to the document's updated_at, so a further change needs a new plan from the fresh text.`
   if (personMatter) return `Nothing written: this plan was already applied on this person${when}. The matter stands: get_person_file and read_rows on legal_matters by person_id show it, and the HR file's Matter view draws it. Write on its matter_id instead.`
