@@ -340,8 +340,13 @@ export default defineConfig({
         // 8 MiB on 2026-11-14 the same way (8,407,622 bytes at 6dc103663, v2.7220's 1,900 new lines, against a
         // cap of 8,388,608; 0419a5517 before it was the last good deploy), and every deploy build failed from
         // 02:20Z, so the cap is 9 MiB: ~0.6 MiB for growth again, and it still trips on a regression like
-        // v2.4655's, until the split. Eleven days took the last MiB, so the split is due before December.
-        maximumFileSizeToCacheInBytes: 9 * 1024 * 1024,
+        // v2.4655's, until the split. Eleven days took the last MiB, so the split is due before December. It crossed
+        // 9 MiB on 2026-11-20 (9,541,170 bytes at 4549014b55 against a cap of 9,437,184; 140fc47e33 before it was
+        // the last good deploy, at 9,432,596, which left 4,588 bytes), and every deploy build failed from 13:37Z,
+        // so the cap is 10 MiB. About 86 kB of that step was not growth: v2.8015's start-check readers import the
+        // permit research list statically, which moved it and what it reads out of a lazy chunk into this one.
+        // Six days took this MiB, so the split is due now.
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         // Help screen recordings ({{gif:…}} tokens) are lazy-loaded media, never precached.
         globIgnores: ['**/help/**', '**/easter-eggs/**', '**/fonts/**', '**/to-dos/**', '**/lensEngine-*.js'],
       },
