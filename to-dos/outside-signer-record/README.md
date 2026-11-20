@@ -2,7 +2,7 @@
 name: "Where an outside signer lives: a paper names a contact the app already keeps, and says who signs"
 number: 403
 group: waiting
-status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, call 4, the office's four roles and the estimator read an outside party's paper, call 7, a sub's company is the trade company record the app already keeps, and call 5, sending stays on both People and Documents · the mock-up's sub screens redrawn for call 3 · nothing is built · two calls are left, and neither holds PR 1
+status: asked 2026-11-19, the owner's yes to a session that lays out the options · read in the code and on prod the same day, counts only · four options weighed and one picked · the mock-up drawn, rendered at desktop and phone width in light and dark, then redrawn after a second look · 2026-11-19 the owner settled call 1, the record lives on the contact, call 2, a business and its signer are two things, call 3, a sub's business is a company record of its own, call 4, the office's four roles and the estimator read an outside party's paper, call 7, a sub's company is the trade company record the app already keeps, call 5, sending stays on both People and Documents, and call 6, a paper may go to a typed name that is added to a list afterwards · the mock-up redrawn for calls 3 and 6 · nothing is built · one call is left, call 8, and it does not hold PR 1
 summary: >
   The app can send a paper to anyone with a link, and it can only file one under a name on the roster.
   A supply house, a vendor, a customer's contact or a sub's business has no record that holds a paper,
@@ -11,10 +11,10 @@ summary: >
   names a contact. Messages already keeps one contact for every customer, every person at a customer,
   every supply house and its reps, every sub and every trade company. The paper points at that contact
   as the party and keeps the signer's name, title and email in its own row. No new list is made, and
-  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it, and that the estimator reads an outside party's paper beside the office's four roles. A sub's company is the trade company record the app already keeps. Sending stays on both People and Documents. Nothing is built, and two calls are left at the foot.
-next: The owner's word to build PR 1, the ground, which no open call holds. Beside it his two calls that are left: 6, which shapes step 3, and 8, which shapes step 4.
-size: L as a train of six (M · S · M · S · M · M)
-blocker: None for PR 1 and PR 2. Call 6 before step 3. Call 8 before step 4.
+  People keeps everything it has. The owner took that pick on 2026-11-19, and that a business and its signer are two things. He also chose that a sub's business becomes a company record with its workers under it, and that the estimator reads an outside party's paper beside the office's four roles. A sub's company is the trade company record the app already keeps. Sending stays on both People and Documents. A paper may go to a typed name with no record, and one press adds them to a list afterwards. Nothing is built, and one call is left at the foot.
+next: The owner's word to build PR 1, the ground, which no open call holds. Beside it his one call that is left: 8, which shapes step 4.
+size: L as a train of seven (M · S · M · S · S · M · M)
+blocker: None for PR 1, PR 2 and step 3. Call 8 before step 4.
 opinion: build option D — one link from the paper to a record the app already keeps for every kind of outside party, with the signer's name and email kept on the paper; it costs one column where the other options cost a new list or a new link per kind
 ---
 
@@ -183,9 +183,9 @@ title and email in its own row, and the business name as it stood on the day it 
   One step more than B.
 - **A later portal.** The customer portal, the sub's page and the trade portal each already know their
   record, and a contact points at it. A supply house has no portal, and a signing link is enough.
-- **Rules out.** A paper to someone who is in no list at all, until the office adds them to one. That is
-  call 6. It also ties papers to a record Messages owns, so a change to how contacts work has to keep
-  papers in mind.
+- **Rules out.** As weighed, a paper to someone who is in no list at all. The owner's call 6 lifts that:
+  a contact can stand with no record behind it, as a number nobody has named does in Messages. It also
+  ties papers to a record Messages owns, so a change to how contacts work has to keep papers in mind.
 
 ## The two layers: a business, and the human who signs for it
 
@@ -199,6 +199,12 @@ Card #389 calls this the *Signing for* line. The pick treats them as two things.
   signed and where the link went. The words on the paper are the evidence, so they are frozen there.
 - **What the paper says.** *Lena Park, Branch manager, signing for Tallgrass Supply Co.* The same line is
   on the Agreements list and on the signed record.
+- **Someone in no list.** The owner's call 6: the office may type a name, an email and a company, and
+  send. That signer is a contact with no record yet, made from the address (`contact_make_for_channel`).
+  **Add to a list** on the paper's line then says what they are: a customer, a supply house, a trade
+  company, or a person at one the app has. It is the act Messages calls *Who is this?* (`name_contact`).
+  The paper points at the contact, so it comes along and nothing is copied. An address the app already
+  knows is named in the window before the send, so no second contact is made.
 - **A sub.** The owner's call 3: a sub's business is a company record of its own, with its workers under
   it. A sub stays a person on the roster and gains a link to their company. A paper with the business,
   such as the subcontractor agreement, a W-9 or an insurance certificate, is the company's. A paper a
@@ -245,8 +251,11 @@ Each step is one PR with its release note and fragment. Nothing is built until t
 2. **The send keeps the signer (S).** `send-contract-for-signature` writes the name, title and address on
    the row for every paper, staff and sub papers too. The Send for signature window gains **Signer name**
    and **Title (optional)**. This is the column the reminders and the signer's copy in #376 wait on.
-3. **Who is it with? (M).** The second window of **Send a paper** searches people and companies, as the
-   mock-up draws. People → Contracts keeps its own send to a person on the roster, untouched (call 5). **Keep … with …** adds the typed person to the customer or the supply house. The
+3. **Who is it with? (M), then Add to a list (S).** Two PRs. The second window of **Send a paper**
+   searches people and companies, as the mock-up draws, and its last row is **Someone not in any list**
+   (call 6). People → Contracts keeps its own send to a person on the roster, untouched (call 5). The
+   second PR puts **Add to a list** on the line of a paper whose party has no record, and on its signed
+   record. **Keep … with …** adds the typed person to the customer or the supply house. The
    Agreements tab gains the **Outside companies** chip and the line's second row. The guide *find an
    agreement we sent or signed* is updated.
 4. **The party's own page (S).** A supply house's window lists its papers. The Customer page's
@@ -282,6 +291,10 @@ Redrawn a third time on 2026-11-19, for the owner's call 3. The People screen sh
 its workers under it, and the Agreements line for a sub's agreement names the company and who signed.
 That screen was rendered again at both widths and in both themes.
 
+Redrawn a fourth time the same day, for his call 6. The window's last row is **Someone not in any list**,
+and a new section draws the typed-in send, its line on Agreements and the **Add to a list** window. It
+replaces the line that sent the office to another page first. Rendered at both widths and in both themes.
+
 ## How this meets the NDA builder spike
 
 The spike of #389's flow ran in its own session and became card #404, the Document builder tab. Its
@@ -314,6 +327,13 @@ against the pick.
 - The estimator's read (call 4) is on the paper's row. A signed form's PDF opens through
   `open-contract-form-pdf`, which checks the role itself, so it needs the same rule or an estimator sees
   the line and cannot open the file.
+- A contact with no record is kind *unknown* today, which Messages reads as a number nobody has named.
+  A typed-in signer has a name. PR 1's bed should prove a named contact with no record is allowed, and
+  that one with no message shows on no Messages lane.
+- `name_contact` folds the contact into the record's own contact when it has one. `contacts_fold_papers`
+  is what carries the paper then, so **Add to a list** rests on PR 1.
+- Until a typed-in party is added to a list, nothing says what kind they are. The estimator's read
+  (call 4) covers them only once they are a customer, a supply house or a trade company.
 - The repo is public. Every fixture, test, note and mock-up uses made-up names.
 
 ## How to verify, once built
@@ -325,7 +345,10 @@ against the pick.
   on it. Nothing else about the send changes.
 - **PR 3.** On prod with a ZZ Test customer and a made-up supply house: send to a person on file, then to
   a company with no one on file. See both lines under **Outside companies**. Sign one through its link
-  with no login. Count the requests after opening the window.
+  with no login. Count the requests after opening the window. Then send to a typed name with a made-up
+  address, see the line read *Not on a list*, press **Add to a list**, pick the ZZ Test customer, and
+  see the same paper on the Customer page. Type an address a contact already holds and see the window
+  name them.
 - **PR 4.** The supply house's window and the Customer page show the paper.
 - **PR 5 and 6.** On prod with a ZZ Test sub and a made-up company: link the sub to the company, send the
   company a paper as the office, and send the sub a paper of their own. The company's paper shows once
@@ -361,9 +384,10 @@ Each is one question. The session's pick is first.
    2026-11-19: both.** He answered "Yes, both". People sends to a person on the roster, as today.
    Documents sends to anyone. An outside company's paper is sent only from Documents or from its own
    page. Not taken: sending moves to Documents alone.
-6. **May a paper go to someone who is in no list?**
-   **No. The office adds them as a customer, a supply house or a person first.** Or yes, with a typed
-   name and email and no record behind them.
+6. **May a paper go to someone who is in no list?** **Settled 2026-11-19: yes, typed in.** His words:
+   "Yes, typed in, But we want to make it easy after the fact to add them to a list." The session's
+   pick was no, add them first. The design for it is in *The two layers* and step 3: the typed signer is
+   a contact with no record, and **Add to a list** names them afterwards with the paper coming along.
 7. **Is a sub's company the same record as a trade company in GC mode?** New on 2026-11-19, from call 3.
    **Settled the same day: yes, one record.** He answered "Yes, one record". One company record for any
    business the company subcontracts to, whoever is the GC on the job. Not taken: a new list for the
@@ -376,9 +400,9 @@ Each is one question. The session's pick is first.
 ## Where it stands
 
 Nothing is built. The map, the counts, the four options and the pick are above. The mock-up draws the
-pick and was redrawn once. The owner settled six calls on 2026-11-19. Call 1: the record lives on the contact.
+pick and was redrawn once. The owner settled seven calls on 2026-11-19. Call 1: the record lives on the contact.
 Call 2: a business and its signer are two things. Call 3: a sub's business is a company record of its
 own, which was not the session's pick, and which added call 7. Call 4: the four roles and the estimator
 read an outside party's paper, which was not the session's pick either, and which added call 8. Call 7:
-a sub's company is the trade company record the app already keeps. Call 5: sending stays on both People and Documents. Calls 6 and 8 are open. No open
+a sub's company is the trade company record the app already keeps. Call 5: sending stays on both People and Documents. Call 6: a paper may go to a typed name, with a press to add them to a list afterwards, which was not the session's pick. Call 8 is open. No open
 call holds PR 1 or PR 2. They wait on his word to build.
