@@ -14,7 +14,7 @@ describe('auditKind', () => {
   it('reads the ZZ convention — Shadow is a live-bid shadow, anything else a backtest', () => {
     expect(auditKind('ZZ Shadow PALVERN WINERY')).toBe('shadow')
     expect(auditKind('  zz shadow x')).toBe('shadow')
-    expect(auditKind('ZZ Twin LIVSTE')).toBe('backtest')
+    expect(auditKind('ZZ Twin LGLBPH')).toBe('backtest')
     expect(auditKind('ZZ Shadowy Name')).toBe('backtest')
     expect(auditKind(null)).toBe('backtest')
   })

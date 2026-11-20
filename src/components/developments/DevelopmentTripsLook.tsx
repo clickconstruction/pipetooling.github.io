@@ -29,8 +29,13 @@
  * Split in two (v2.7891): an open trip of two days or more shows **Split in two** beside **Change**, to the reader
  * who can write. The press opens the page's window (`TripSplitWindow`); the rules are `lib/trips/tripSplit.ts`.
  *
+ * Join with the next (v2.7963): an open trip with a trip after it on the same site shows **Join with the next**
+ * beside **Split in two**, to the reader who can write. The press opens the page's window (`TripJoinWindow`); the
+ * rules are `lib/trips/tripJoin.ts`.
+ *
  * Deleted trips: under the rows, a fold for the reader who can write, closed until pressed. Each deleted trip says
  * who deleted it and until when it is kept, with **Put back**, which saves it again (`lib/trips/tripDeleted.ts`).
+ * A trip that was joined into another says which, and has no **Put back**.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
@@ -41,6 +46,7 @@ import { tripEvidenceChips, type TripEvidence, type TripEvidenceChip } from '../
 import { TRIP_HOUR_BUCKET_LABEL, type TripHourBucket } from '../../lib/trips/tripHours'
 import { tripRowAnchor } from '../../lib/trips/jobTrips'
 import { canSplitTrip, TRIP_SPLIT_LABEL, TRIP_SPLIT_PRESS_TITLE } from '../../lib/trips/tripSplit'
+import { TRIP_JOIN_LABEL, TRIP_JOIN_PRESS_TITLE } from '../../lib/trips/tripJoin'
 import { TRIP_DELETED_FAILED_WORDS, TRIP_DELETED_FOLD_LABEL, TRIP_DELETED_NOTE, TRIP_PUT_BACK_LABEL, type DeletedTripLine } from '../../lib/trips/tripDeleted'
 import { TRIP_PUT_ON_BILL_LABEL, tripBillStanding, tripPutOnBillShows, type TripBillLine, type TripBillStanding } from '../../lib/trips/tripBillLine'
 import { TRIP_BILLING_WORDS, type TripRecord } from '../../lib/trips/tripRecord'
@@ -105,6 +111,8 @@ export function DevelopmentTripsLook({
   onChange,
   onDelete,
   onSplit,
+  onJoin,
+  canJoin,
   offers = [],
   moreOffersWords = null,
   offerBusy = false,
@@ -143,6 +151,10 @@ export function DevelopmentTripsLook({
   onDelete: (record: TripRecord) => void
   /** **Split in two**: open the window on this trip. Absent, the press is not drawn. A trip of one day never shows it. */
   onSplit?: (record: TripRecord) => void
+  /** **Join with the next**: open the window on this trip. Absent, the press is not drawn. */
+  onJoin?: (record: TripRecord) => void
+  /** Whether a trip has a trip after it on the same site. Absent, no trip shows the press. */
+  canJoin?: (record: TripRecord) => boolean
   /** Runs of punches at the site that no trip covers, oldest first. Drawn only for a reader who can write, once the hours are read, on a site with a point. */
   offers?: ReadonlyArray<TripOfferLine>
   /** The quiet line under the offers when more wait behind them. */
@@ -447,7 +459,7 @@ export function DevelopmentTripsLook({
                     ) : null}
                   </div>
                 </button>
-                {open ? <OpenTrip row={row} billStanding={billStanding} onPutOnBill={showsPutOnBill ? () => onPutOnBill?.(row.record) : undefined} onOpenBillLine={billLine && onOpenBillLine ? () => onOpenBillLine(row.record, billLine) : undefined} evidence={evidence?.get(row.id) ?? null} costLines={costs && row.standing !== 'planned' ? tripCostLines(costs.byTrip.get(row.id), costs) : null} phone={phone} jobLabel={jobLabel} canWrite={canWrite} hoursState={hoursState} onChange={() => onChange(row.record)} onDelete={() => onDelete(row.record)} onSplit={onSplit && canSplitTrip(row.record) ? () => onSplit(row.record) : undefined} onCopyLink={onCopyLink ? () => onCopyLink(row.record) : undefined} /> : null}
+                {open ? <OpenTrip row={row} billStanding={billStanding} onPutOnBill={showsPutOnBill ? () => onPutOnBill?.(row.record) : undefined} onOpenBillLine={billLine && onOpenBillLine ? () => onOpenBillLine(row.record, billLine) : undefined} evidence={evidence?.get(row.id) ?? null} costLines={costs && row.standing !== 'planned' ? tripCostLines(costs.byTrip.get(row.id), costs) : null} phone={phone} jobLabel={jobLabel} canWrite={canWrite} hoursState={hoursState} onChange={() => onChange(row.record)} onDelete={() => onDelete(row.record)} onSplit={onSplit && canSplitTrip(row.record) ? () => onSplit(row.record) : undefined} onJoin={onJoin && canJoin?.(row.record) ? () => onJoin(row.record) : undefined} onCopyLink={onCopyLink ? () => onCopyLink(row.record) : undefined} /> : null}
               </div>
             )
           })}
@@ -468,13 +480,22 @@ export function DevelopmentTripsLook({
                     <div style={{ flex: phone ? undefined : '1 1 320px', minWidth: 0 }}>
                       <strong style={{ color: 'var(--text-strong)' }}>{d.name}</strong> <span style={{ color: 'var(--text-700)' }}>· {d.why}</span>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{[d.who || null, d.deleted, d.kept].filter(Boolean).join(' · ')}</div>
-                      {d.gone ? <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)' }}>{d.gone} Put back saves the trip without it.</div> : null}
+                      {d.joined ? (
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-700)' }} data-testid="trips-deleted-joined">
+                          {d.joined}
+                        </div>
+                      ) : d.gone ? (
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)' }}>{d.gone} Put back saves the trip without it.</div>
+                      ) : null}
                     </div>
-                    <span data-testid="trips-deleted-put-back">
-                      <SmallButton onClick={() => onPutBack?.(d.id)} disabled={putBackBusy || !onPutBack} title={`${d.pressLabel}: who went, its days and its number are saved again. No clock row, bill or cost changes.`}>
-                        {TRIP_PUT_BACK_LABEL}
-                      </SmallButton>
-                    </span>
+                    {/* A trip that was joined into another has no Put back: its days are on the joined trip. */}
+                    {d.joined ? null : (
+                      <span data-testid="trips-deleted-put-back">
+                        <SmallButton onClick={() => onPutBack?.(d.id)} disabled={putBackBusy || !onPutBack} title={`${d.pressLabel}: who went, its days and its number are saved again. No clock row, bill or cost changes.`}>
+                          {TRIP_PUT_BACK_LABEL}
+                        </SmallButton>
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -507,7 +528,7 @@ const KIND_ROWS: ReadonlyArray<{ bucket: Exclude<TripHourBucket, 'home' | 'noPla
 ]
 
 /** One trip, open in place: what was typed on the left, what is counted from the clock on the right. */
-function OpenTrip({ row, billStanding, onPutOnBill, onOpenBillLine, evidence, costLines, phone, jobLabel, canWrite, hoursState, onChange, onDelete, onSplit, onCopyLink }: { row: TripLookRow; /** Where the trip's money stands, read from its line; null when its own billing word says everything. */ billStanding: TripBillStanding | null; /** **Put on a bill**; absent when the press does not show on this trip. */ onPutOnBill?: () => void; /** The door to the trip's line; absent when it holds none. */ onOpenBillLine?: () => void; evidence: TripEvidence | null; /** What it cost, for a dev or a controller; null for everyone else and for a trip that has not gone out. */ costLines: ReadonlyArray<TripCostLine> | null; phone: boolean; jobLabel: (jobId: string) => string | null; canWrite: boolean; hoursState: TripsHoursState; onChange: () => void; onDelete: () => void; /** **Split in two**; absent on a trip of one day and for a reader who cannot write. */ onSplit?: () => void; /** Copies the link that opens this trip; shown to everyone who sees the look. */ onCopyLink?: () => void }) {
+function OpenTrip({ row, billStanding, onPutOnBill, onOpenBillLine, evidence, costLines, phone, jobLabel, canWrite, hoursState, onChange, onDelete, onSplit, onJoin, onCopyLink }: { row: TripLookRow; /** Where the trip's money stands, read from its line; null when its own billing word says everything. */ billStanding: TripBillStanding | null; /** **Put on a bill**; absent when the press does not show on this trip. */ onPutOnBill?: () => void; /** The door to the trip's line; absent when it holds none. */ onOpenBillLine?: () => void; evidence: TripEvidence | null; /** What it cost, for a dev or a controller; null for everyone else and for a trip that has not gone out. */ costLines: ReadonlyArray<TripCostLine> | null; phone: boolean; jobLabel: (jobId: string) => string | null; canWrite: boolean; hoursState: TripsHoursState; onChange: () => void; onDelete: () => void; /** **Split in two**; absent on a trip of one day and for a reader who cannot write. */ onSplit?: () => void; /** **Join with the next**; absent on a site's last trip and for a reader who cannot write. */ onJoin?: () => void; /** Copies the link that opens this trip; shown to everyone who sees the look. */ onCopyLink?: () => void }) {
   const r = row.record
   const h = row.hours
   const cell = { padding: '5px 8px', borderTop: '1px solid var(--border)', verticalAlign: 'top' } as const
@@ -533,6 +554,13 @@ function OpenTrip({ row, billStanding, onPutOnBill, onOpenBillLine, evidence, co
               <span data-testid="trip-split">
                 <SmallButton onClick={onSplit} title={TRIP_SPLIT_PRESS_TITLE}>
                   {TRIP_SPLIT_LABEL}
+                </SmallButton>
+              </span>
+            ) : null}
+            {canWrite && onJoin ? (
+              <span data-testid="trip-join">
+                <SmallButton onClick={onJoin} title={TRIP_JOIN_PRESS_TITLE}>
+                  {TRIP_JOIN_LABEL}
                 </SmallButton>
               </span>
             ) : null}

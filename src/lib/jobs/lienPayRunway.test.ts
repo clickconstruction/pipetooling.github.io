@@ -353,7 +353,7 @@ describe('every work month: the notice that counts is the earliest one still owe
   })
 
   it('no property kind: every month on the residential clock, the earlier one (927)', () => {
-    // Job 927, Mike Holmby – Candelaria: worked July through September, no kind on the property record.
+    // Job 927, Mike Holmby – Chilton: worked July through September, no kind on the property record.
     const r = buildLienPayRunway(seguin({ propertyKind: '', lastWorkYmd: '2026-09-09', workMonths: ['2026-07', '2026-08', '2026-09'] }))
     expect(r.kindAssumed).toBe(true)
     expect(r.noticeMonths).toEqual([

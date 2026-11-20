@@ -24,6 +24,7 @@ import { Btn } from '../../gc/gcUi'
 import { chipStyle, mutedSmall } from './myMailStyles'
 import { BidMailSetDoor } from '../../bids/BidMailSetDoor'
 import { MailPaperDoor } from '../../papers/MailPaperDoor'
+import { realFileCount } from '../../../lib/plans/planSetFiles'
 
 const W = MY_MAIL_READER_WORDS
 
@@ -253,7 +254,7 @@ export function MyMailReader({ io, row, address, phone, readKey, done, busy, pro
         </div>
       ) : null}
       <div style={{ padding: '0.8rem 1rem', overflowY: 'auto', display: 'grid', gap: '0.75rem', alignContent: 'start' }}>
-        {row.tagged && row.tagged.kind === 'pipeline' ? <MailPaperDoor jobId={row.tagged.id} jobLabel={row.tagged.num} subject={subject} senderAddress={row.who.address} at={row.at} messageId={lineId ?? row.tagged.messageId} mailFileCount={mail?.fileList.length ?? 0} /> : null}
+        {row.tagged && row.tagged.kind === 'pipeline' ? <MailPaperDoor jobId={row.tagged.id} jobLabel={row.tagged.num} subject={subject} senderAddress={row.who.address} at={row.at} messageId={lineId ?? row.tagged.messageId} mailFileCount={realFileCount(mail?.fileList ?? [])} /> : null}
         {/* A mail on a bid keeps its files as a set of plans (punch list #368); the door reads the line's files itself. */}
         {row.tagged && row.tagged.kind === 'bid' && (lineId ?? row.tagged.messageId) ? (
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }} data-my-mail-bid-set>

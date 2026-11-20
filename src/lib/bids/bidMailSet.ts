@@ -13,6 +13,7 @@ import { nameFromSubject } from '../papers/papers'
 import { fileAgainLabel } from '../plans/planSetFiles'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { sizeWords } from '../messages/lineFiles'
+import { isInlinePicture } from '../messages/inlinePicture'
 import { planSetDateWords, type BidPlanSetRow } from './bidPlanSets'
 
 /** A row of `message_attachments` as the press reads it. The last two columns are optional: a read may leave them out. */
@@ -35,28 +36,8 @@ export function bidMailFiles(rows: ReadonlyArray<BidMailFileRow>): BidMailFile[]
   return rows.filter((r) => r.kind === 'file').map((r) => ({ id: r.id, name: r.name, mime: r.mime, size: r.size_bytes ?? null, copied: Boolean(r.bucket_path), leftWhy: r.left_in_gmail, setId: r.bid_plan_set_id ?? null }))
 }
 
-/** *image001.png*: the picture an email program puts inside the mail's words, most often the logo in a signature. */
-const SIGNATURE_PICTURE = /^image\d{0,4}\.(png|jpe?g|gif|bmp)$/i
-
-/**
- * Gmail's picture of a Google Drive link: a long Google key, the size it was drawn at, and a picture's extension,
- * *<key>=w1200-h630-p.png*. The key is one run of letters, digits, dashes and underscores, so a name a person typed
- * (a space, a short word before the *=*) is still a file.
- */
-const LINK_PREVIEW_PICTURE = /^[\w-]{20,}=w\d{2,5}-h\d{2,5}(-[a-z0-9]{1,8})*\.(png|jpe?g|gif|webp|bmp)$/i
-
-/**
- * A picture an email program put inside the mail's words, by its name alone. Two kinds: the logo in a signature
- * (*image001.png*, v2.7556, found on the first look at real mail: most mail carries one), and the picture Gmail
- * draws of a Drive link beside the link itself (*<key>=w1200-h630-p.png*, v2.7954, found on job mail whose only
- * content was the link). Either sits on the line as a file like any other, and neither is a set of plans or a
- * paper. A mail that carries nothing else offers no press, and beside a real file it starts unticked. A person
- * can still tick it.
- */
-export function isInlinePicture(f: { name: string }): boolean {
-  const name = f.name.trim()
-  return SIGNATURE_PICTURE.test(name) || LINK_PREVIEW_PICTURE.test(name)
-}
+// The rule lives beside the mail's other file rules, so the paper's press reads the same one (`planSetFiles.ts`).
+export { isInlinePicture } from '../messages/inlinePicture'
 
 /**
  * What the mail offers.

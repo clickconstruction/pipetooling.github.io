@@ -154,6 +154,7 @@ describe('useSiteTrips: the site’s deleted trips', () => {
     deletedAt: '2026-11-18T16:20:00.000Z',
     deletedByName: 'Dana Office',
     jobsGone: 0,
+    joinedInto: null,
   })
 
   it('reads them beside the trips, and a site whose only trip was deleted still shows its look', async () => {
@@ -309,3 +310,32 @@ describe('useSiteTrips: Split in two (v2.7891)', () => {
   })
 })
 
+describe('useSiteTrips: Join with the next (v2.7963)', () => {
+  it('joins through the io with both ids, hands back the trip kept and the trip that went, and reads the trips again', async () => {
+    const io = makeIo({ join: vi.fn(async () => ({ dry_run: false, did: 'join', trip_id: 't5', trip_number: 5, gone_trip_id: 't9', gone_trip_number: 9, line: 'none' })) })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.records).toEqual([lifts]))
+    expect(io.readTrips).toHaveBeenCalledTimes(1)
+    let reply: unknown
+    await act(async () => {
+      reply = await result.current.join('t5', 't9')
+    })
+    expect(io.join).toHaveBeenCalledWith('t5', 't9')
+    expect(reply).toEqual({ tripId: 't5', tripNumber: 5, goneTripId: 't9', goneTripNumber: 9, line: 'none' })
+    await waitFor(() => expect(io.readTrips).toHaveBeenCalledTimes(2))
+  })
+
+  it('passes a refusal on with its words, and reads nothing again', async () => {
+    const io = makeIo({ join: vi.fn(async () => Promise.reject(new Error('That is not the next trip on this site any more. Close this and look again.'))) })
+    const { result } = draw(io)
+    await waitFor(() => expect(result.current.records).toEqual([lifts]))
+    await expect(result.current.join('t5', 't9')).rejects.toThrow('That is not the next trip on this site any more.')
+    expect(io.readTrips).toHaveBeenCalledTimes(1)
+  })
+
+  it('says so on a screen that was handed no join', async () => {
+    const { result } = draw(makeIo())
+    await waitFor(() => expect(result.current.records).toEqual([lifts]))
+    await expect(result.current.join('t5', 't9')).rejects.toThrow('This screen cannot join trips.')
+  })
+})

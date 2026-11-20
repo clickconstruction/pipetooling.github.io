@@ -161,6 +161,10 @@
   .phone .win { border-width: 0; box-shadow: none; }
   .person { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-top: 10px; }
   .person .nm { font-weight: 700; color: var(--text-strong); font-size: 15px; }
+  .person.co { box-shadow: inset 3px 0 0 var(--new); }
+  .person.in { background: var(--bg-subtle); margin-top: 8px; padding: 9px 12px; }
+  .person.in .nm { font-size: 14px; }
+  .person.in .doc:first-of-type { margin-top: 6px; }
   .kv { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; font-size: 13px; margin-top: 4px; }
   .kv .k { color: var(--text-muted); min-width: 92px; }
   .kv.fresh { box-shadow: inset 3px 0 0 var(--new); padding-left: 9px; margin-left: -12px; }
@@ -251,10 +255,10 @@
         </div>
         <div class="r"><span class="st waiting">Opened, not signed</span><span class="when">Sent Nov 16</span><span class="quiet">Send again</span><span class="quiet">Copy the signing link</span></div>
       </div>
-      <div class="arow">
+      <div class="arow fresh">
         <div class="l">
-          <div><span class="ktag k-people">Sub</span><span class="ttl">Subcontractor agreement</span></div>
-          <div class="sub"><b>Marco Ibarra</b> · <span class="tag" style="margin-left:0">New</span> signing for Juniper Mechanical LLC</div>
+          <div><span class="ktag k-people">Trade company</span><span class="ttl">Subcontractor agreement</span></div>
+          <div class="sub"><b>Juniper Mechanical LLC</b> · signed by Marco Ibarra, Owner</div>
         </div>
         <div class="r"><span class="st signed">Signed</span><span class="when">Signed Nov 14</span></div>
       </div>
@@ -275,7 +279,7 @@
       <p class="doors">A job with no contract is in the Contract sweep on the <span class="lnk">Pipeline</span>. An accepted estimate is on the <span class="lnk">Estimates</span> tab.</p>
     </div>
   </div>
-  <p class="note"><b>What changed on this screen.</b> One chip, <b>Outside companies</b>. Three lines with a party that is a business. One more phrase on a sub's line, <b>signing for</b>. The presses on a waiting line are the ones the tab has today.</p>
+  <p class="note"><b>What changed on this screen.</b> One chip, <b>Outside companies</b>. Four lines with a party that is a business. A sub's company is a <b>Trade company</b>, the record the app already keeps, and its line shows under <b>Staff and subs</b>, where the office looks for a sub. The presses on a waiting line are the ones the tab has today.</p>
 </section>
 
 <section id="send">
@@ -330,7 +334,7 @@
       </div>
     </div>
   </div>
-  <p class="note"><b>For a person, nothing is added.</b> Pick a sub or a teammate in window 2. Window 3 opens as it does today, with their name filled in. A sub with a business on their People row gets the line <b>signing for Juniper Mechanical LLC</b>.</p>
+  <p class="note"><b>For a person, nothing is added.</b> Pick a sub or a teammate in window 2. Window 3 opens as it does today, with their name filled in. A sub who works under a company is found by either name, and their own paper carries the line <b>signing for Juniper Mechanical LLC</b>.</p>
 </section>
 
 <section id="phone">
@@ -361,8 +365,8 @@
         </div>
         <div class="arow">
           <div class="l">
-            <div><span class="ktag k-people">Sub</span><span class="ttl">Subcontractor agreement</span></div>
-            <div class="sub"><b>Marco Ibarra</b> · signing for Juniper Mechanical LLC</div>
+            <div><span class="ktag k-people">Trade company</span><span class="ttl">Subcontractor agreement</span></div>
+            <div class="sub"><b>Juniper Mechanical LLC</b> · signed by Marco Ibarra, Owner</div>
           </div>
           <div class="r"><span class="st signed">Signed</span><span class="when">Signed Nov 14</span></div>
         </div>
@@ -395,23 +399,36 @@
 
 <section id="people">
   <h2>What People still shows for a sub</h2>
-  <p class="lede">People → Contracts keeps everything it has. A sub's papers stay on the sub. One line is new: the business they sign for.</p>
-  <div class="frame today">
+  <p class="lede">People → Contracts keeps everything it has. The owner's calls 3 and 7 add the sub's company: the trade company record the app already keeps, with its workers under it. The company's papers show once. Each person's own papers stay on their row.</p>
+  <div class="frame">
     <div class="appbar"><span>Dashboard</span><span>Jobs</span><span class="on">People</span><span>Documents</span><span class="as">as the office</span></div>
     <div class="page">
       <div class="tabs"><span class="tab on">Contracts</span><span class="tab">The other People tabs, as today</span></div>
       <div class="findrow"><div class="find">Search by person or contract name…</div><span class="quiet">Contract library</span><span class="quiet">Form Studio</span></div>
-      <div class="person">
-        <div class="nm">Marco Ibarra <span class="ktag k-people" style="margin-left:6px">Sub</span></div>
-        <div class="kv fresh"><span class="k">Signs for</span><b>Juniper Mechanical LLC</b><span class="quiet">Change</span><span class="tag">New</span></div>
-        <div class="doc"><div><span class="nm2">Subcontractor agreement</span><span class="m">Version 2 · signed Nov 14 · signing for Juniper Mechanical LLC</span></div><div><span class="st signed">Signed</span></div></div>
-        <div class="doc"><div><span class="nm2">W-9</span><span class="m">Form · signed Oct 30</span></div><div><span class="st signed">Signed</span></div></div>
-        <div class="doc"><div><span class="nm2">Site secrecy agreement</span><span class="m">Sent Nov 18 · not opened</span></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="st waiting">Sent</span><span class="quiet">Send again</span></div></div>
+      <div class="person co">
+        <div class="nm">Juniper Mechanical LLC <span class="ktag k-people" style="margin-left:6px">Trade company</span><span class="tag">New</span></div>
+        <div class="kv"><span class="k">Workers</span><span style="white-space:nowrap"><b>Marco Ibarra</b>, Owner</span><span style="white-space:nowrap"><b>Dario Vega</b></span></div>
+        <div class="doc"><div><span class="nm2">Subcontractor agreement</span><span class="m">Version 2 · signed Nov 14 by Marco Ibarra, Owner</span></div><div><span class="st signed">Signed</span></div></div>
+        <div class="doc"><div><span class="nm2">W-9</span><span class="m">Form · signed Oct 30 by Marco Ibarra, Owner</span></div><div><span class="st signed">Signed</span></div></div>
         <div class="foot" style="justify-content:flex-start"><span class="press">Send for signature</span><span class="quiet">Enter from paper</span></div>
+
+        <div class="person in">
+          <div class="nm">Marco Ibarra <span class="ktag k-people" style="margin-left:6px">Sub</span></div>
+          <div class="doc"><div><span class="nm2">Site secrecy agreement</span><span class="m">Signed Nov 15 · signing for Juniper Mechanical LLC</span></div><div><span class="st signed">Signed</span></div></div>
+        </div>
+        <div class="person in">
+          <div class="nm">Dario Vega <span class="ktag k-people" style="margin-left:6px">Sub</span></div>
+          <div class="doc"><div><span class="nm2">Site secrecy agreement</span><span class="m">Sent Nov 18 · not opened · signing for Juniper Mechanical LLC</span></div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="st waiting">Sent</span><span class="quiet">Send again</span></div></div>
+        </div>
+      </div>
+      <div class="person">
+        <div class="nm">Priya Shah <span class="ktag k-people" style="margin-left:6px">Staff</span><span class="tag asis">As today</span></div>
+        <div class="doc"><div><span class="nm2">Employee handbook</span><span class="m">Version 3 · signed Nov 10</span></div><div><span class="st signed">Signed</span></div></div>
       </div>
       <p class="doors">The same papers are on <span class="lnk">Documents → Agreements</span>.</p>
     </div>
   </div>
+  <p class="note"><b>What is the company's and what is the person's.</b> The subcontractor agreement and the W-9 are with the business, so they sit on the company. A job's secrecy paper is signed by each person who opens the job, so it sits on the person and says who they sign for. A sub with no company on file shows as they do today.</p>
   <p class="note"><b>Where an outside company's papers show.</b> Tallgrass Supply Co. is not on People, and it does not go there. Its papers are on Documents → Agreements, and on its own supply house window as a short <b>Papers</b> list. A customer's show on the Customer page's <b>Agreements</b> card, which exists today for job contracts.</p>
 </section>
 
@@ -445,7 +462,7 @@
     <li><b>No "Add a new company" in the window.</b> It would make a party that is on no page of the app. The window points to Customers, Supply houses and People, where a record has its other facts.</li>
     <li><b>The line says who signs, in words.</b> A paper with a business needs the human beside it, so the second line reads <b>signed by Dana Ruiz, Project manager</b>.</li>
   </ol>
-  <p class="note"><b>What is still not right.</b> A sub's worker who signs for the boss's company does not fit yet. The worker is a person on People, and the company is only a line on the boss's row. That is decision 2 on the card.</p>
+  <p class="note"><b>Changed by the owner's call 3.</b> The second drawing gave a sub one line on their People row, <b>Signs for</b>. A worker who signs for the boss's company did not fit it. He chose a company record of its own with its workers under it, and the People screen above is redrawn for that. By his call 7 that record is the trade company the app already keeps, so the tag reads <b>Trade company</b>.</p>
 </section>
 
 </div>

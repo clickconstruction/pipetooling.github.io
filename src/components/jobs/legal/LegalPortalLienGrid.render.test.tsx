@@ -33,7 +33,7 @@ const raw: LienBookRaw = {
   ],
   gcs: [
     { id: 'gc-1', name: 'Linmor', lien_notice_policy: null },
-    { id: 'gc-2', name: 'EPC Sparti', lien_notice_policy: null },
+    { id: 'gc-2', name: 'EPC Huxley', lien_notice_policy: null },
   ],
   addresses: [],
   owners: [{ job_id: 'job-310', owner_mode: 'homeowner', owner_name: 'Sam Whitfield', company_name: null, mailing_address: '7 Willow Ct' }],
@@ -104,16 +104,16 @@ describe('LegalPortalLienGrid', () => {
     render(<LegalPortalLienGrid raw={raw} todayYmd={TODAY} companyName="Click" initialShow="all" />)
     const rail = within(screen.getByRole('navigation', { name: 'GCs' }))
     const names = rail.getAllByRole('button').filter((b) => b.hasAttribute('data-legal-lien-gc')).map((b) => b.textContent)
-    expect(names).toEqual(['All GCs3 jobs$24,180', 'Linmor1 job$17,585', 'EPC Sparti1 job$4,800', 'No GC · with the owner1 job$1,795'])
+    expect(names).toEqual(['All GCs3 jobs$24,180', 'Linmor1 job$17,585', 'EPC Huxley1 job$4,800', 'No GC · with the owner1 job$1,795'])
     expect(rail.getByRole('button', { name: /All GCs/ }).getAttribute('aria-pressed')).toBe('true')
     expect(rail.queryByLabelText('Find a GC')).toBeNull()
-    fireEvent.click(rail.getByRole('button', { name: /EPC Sparti/ }))
-    expect(rail.getByRole('button', { name: /EPC Sparti/ }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(rail.getByRole('button', { name: /EPC Huxley/ }))
+    expect(rail.getByRole('button', { name: /EPC Huxley/ }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.queryByText('273 · Dunmere (Linmoor)')).toBeNull()
     expect(screen.getByText('300 · Relwyn Health')).toBeTruthy()
-    expect(screen.getByText(/1 job · \$4,800 open · EPC Sparti/)).toBeTruthy()
+    expect(screen.getByText(/1 job · \$4,800 open · EPC Huxley/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Print the grid/ }))
-    expect(String(vi.mocked(openHtmlPrintWindow).mock.calls[0]?.[0])).toContain('Lien grid — EPC Sparti')
+    expect(String(vi.mocked(openHtmlPrintWindow).mock.calls[0]?.[0])).toContain('Lien grid — EPC Huxley')
     fireEvent.click(rail.getByRole('button', { name: /No GC/ }))
     expect(screen.getByText('310 · Whitfield repipe')).toBeTruthy()
     expect(screen.queryByText('300 · Relwyn Health')).toBeNull()
@@ -122,10 +122,10 @@ describe('LegalPortalLienGrid', () => {
   it('the rail follows Due in 30 days / Upcoming, and a chosen GC that empties falls back to All GCs', () => {
     render(<LegalPortalLienGrid raw={raw} todayYmd={TODAY} companyName="Click" initialShow="all" />)
     const rail = within(screen.getByRole('navigation', { name: 'GCs' }))
-    fireEvent.click(rail.getByRole('button', { name: /EPC Sparti/ }))
+    fireEvent.click(rail.getByRole('button', { name: /EPC Huxley/ }))
     fireEvent.click(screen.getByRole('button', { name: /Due in 30 days/ }))
     // Relwyn's one month is due Nov 16, outside the desk's lead — the entry is left off and the grid shows every due job.
-    expect(rail.queryByRole('button', { name: /EPC Sparti/ })).toBeNull()
+    expect(rail.queryByRole('button', { name: /EPC Huxley/ })).toBeNull()
     expect(rail.getByRole('button', { name: /All GCs/ }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByText('273 · Dunmere (Linmoor)')).toBeTruthy()
     expect(screen.queryByText(/Nothing on the grid/)).toBeNull()

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addPickedFiles, asBuiltFileName, asBuiltPressWords, fileAgainLabel, filedWords, fileHoldWhy, filingWords, heldBehindLine, mailFilesWords, pickedFilesWords, planSetFileKind, splitMailFiles, splitReadyFiles, type MailFilesResult } from './planSetFiles'
+import { addPickedFiles, asBuiltFileName, asBuiltPressWords, fileAgainLabel, filedWords, fileHoldWhy, filingWords, heldBehindLine, mailFilesWords, pickedFilesWords, picturesLeftOutWords, planSetFileKind, realFileCount, splitMailFiles, splitReadyFiles, type MailFilesResult } from './planSetFiles'
 
 const photo = (name: string, size = 2_400_000) => ({ name, size, type: 'image/jpeg' })
 const pdf = (name: string, size = 900_000) => ({ name, size, type: 'application/pdf' })
@@ -76,7 +76,37 @@ describe('a mail’s files', () => {
   it('splits the files we hold a copy of from the ones that stayed in Gmail', () => {
     const kept = { id: 'a1', name: 'spec.pdf', mime: null, copied: true, leftWhy: null }
     const big = { id: 'a2', name: 'full-set.zip', mime: null, copied: false, leftWhy: 'too_big' }
-    expect(splitMailFiles([kept, big])).toEqual({ ready: [kept], left: [big] })
+    expect(splitMailFiles([kept, big])).toEqual({ ready: [kept], left: [big], pictures: [] })
+  })
+
+  // Made-up names in the two shapes real mail carries: a signature's logo and Gmail's picture of a Drive link.
+  const logo = { id: 'p1', name: 'image001.png', mime: 'image/png', copied: true, leftWhy: null }
+  const preview = { id: 'p2', name: 'Zx9MadeUpKeyForATest_0123456789-abcdefghijKLMNOP=w1200-h630-p.png', mime: 'image/png', copied: true, leftWhy: null }
+
+  it('a picture from inside the mail’s words is no file of the paper’s: left out and counted, copied or not (v2.7969)', () => {
+    const spec = { id: 'a1', name: 'spec.pdf', mime: null, copied: true, leftWhy: null }
+    const photo1 = { id: 'a3', name: 'IMG_1893.jpeg', mime: 'image/jpeg', copied: true, leftWhy: null }
+    const split = splitMailFiles([logo, spec, preview, photo1, { ...logo, id: 'p3', name: 'image002.jpg', copied: false, leftWhy: 'not_copied' }])
+    expect(split.ready).toEqual([spec, photo1])
+    expect(split.left).toEqual([])
+    expect(split.pictures.map((f) => f.id)).toEqual(['p1', 'p2', 'p3'])
+    expect(splitMailFiles([logo, preview])).toEqual({ ready: [], left: [], pictures: [logo, preview] })
+  })
+
+  it('counts a mail’s real files, a picture from inside its words not among them', () => {
+    expect(realFileCount([logo, preview])).toBe(0)
+    expect(realFileCount([logo, { name: 'spec.pdf' }, { name: 'IMG_1893.jpeg' }, { name: 'image001.pdf' }])).toBe(3)
+    expect(realFileCount([])).toBe(0)
+  })
+
+  it('says what was left out, after what landed, and stays green', () => {
+    expect(picturesLeftOutWords(1)).toBe('One picture inside the mail’s words was left out, a logo or a link’s preview.')
+    expect(picturesLeftOutWords(3)).toBe('3 pictures inside the mail’s words were left out, logos or link previews.')
+    expect(mailFilesWords({ ...none, landed: 1, pictures: 1 })).toEqual({ words: 'The mail’s file is in the paper’s folder. One picture inside the mail’s words was left out, a logo or a link’s preview.', tone: 'success' })
+    expect(mailFilesWords({ ...none, pictures: 2 })).toEqual({ words: 'The mail had no file to keep. 2 pictures inside the mail’s words were left out, logos or link previews.', tone: 'success' })
+    expect(mailFilesWords({ ...none, linkTyped: true, pictures: 1 }).words).toBe('The mail had no file to keep. The paper holds its link. One picture inside the mail’s words was left out, a logo or a link’s preview.')
+    expect(mailFilesWords({ ...none, landed: 1, pictures: 1, failed: [{ name: 'loads.xlsx', why: 'Drive answered 500' }] }).tone).toBe('warning')
+    expect(mailFilesWords({ ...none, landed: 1, pictures: 0 }).words).toBe('The mail’s file is in the paper’s folder.')
   })
 
   it('no file says only what is true: it holds a link only when someone typed one', () => {

@@ -61,6 +61,17 @@ describe('MyMailReader → the mail door', () => {
     expect(latest().messageId).toBeNull()
   })
 
+  it('counts the mail’s real files for the door, a signature’s logo and a Drive link’s preview not among them (v2.7969)', async () => {
+    const row = mailRow('dale-late', { files: 3, tagged: { ...ELM, messageId: null } })
+    const fileList = [
+      { name: 'image001.png', mime: 'image/png', size: 4_200 },
+      { name: 'elm-ct-spec-sheet.pdf', mime: 'application/pdf', size: 212_000 },
+      { name: 'Zx9MadeUpKeyForATest_0123456789-abcdefghijKLMNOP=w1200-h630-p.png', mime: 'image/png', size: 61_000 },
+    ]
+    await read(row, openedMail(row, { fileList }))
+    await waitFor(() => expect(latest().mailFileCount).toBe(1))
+  })
+
   it('draws no door on a mail tagged to a bid', async () => {
     const row = mailRow('dale-bid', { tagged: { ...CEDAR, messageId: 'm-bid-1' } })
     await read(row, openedMail(row))

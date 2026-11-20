@@ -6,7 +6,7 @@ const now = new Date('2026-09-20T15:00:00Z')
 const base = (): SubmittalNudgeInput => ({
   bids: [
     { bidId: 'b1', bidLabel: 'B398 ZZ Test', outcome: 'won', outcomeAt: '2026-09-10T00:00:00Z', jobId: 'j1' },
-    { bidId: 'b2', bidLabel: 'B403 LIVSTE', outcome: 'won', outcomeAt: '2026-09-18T00:00:00Z', jobId: null },
+    { bidId: 'b2', bidLabel: 'B403 LGLBPH', outcome: 'won', outcomeAt: '2026-09-18T00:00:00Z', jobId: null },
     { bidId: 'b3', bidLabel: 'B375 SkyLab', outcome: 'won', outcomeAt: '2026-08-25T00:00:00Z', jobId: 'j3' },
     { bidId: 'b4', bidLabel: 'B410 Lost', outcome: 'lost', outcomeAt: '2026-09-01T00:00:00Z', jobId: null },
     { bidId: 'b5', bidLabel: 'B411 DLF', outcome: 'won', outcomeAt: '2026-09-13T00:00:00Z', jobId: 'j5' },

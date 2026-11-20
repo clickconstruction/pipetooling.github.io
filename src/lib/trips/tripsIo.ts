@@ -72,6 +72,22 @@ export async function splitTrip(tripId: string, fromDay: string): Promise<unknow
   throw error
 }
 
+/**
+ * Join a trip with the trip that went out next on the same home, through `trip_join` (migration 20261119180000):
+ * the trip keeps its id, its number and its words, everyone and every day from both are on it, and the next trip
+ * goes. One call, so all of it lands or none. Both ids are sent, and the function refuses a second that is not the
+ * next trip, so a stale screen cannot join the wrong pair. What it cannot take it says in plain words (two different
+ * billings, two lines, a pair that is no longer next to each other), so that refusal is thrown as those words alone.
+ * Anything else is thrown as it came. The reply is handed back as it came: `parseTripJoinReply` reads it.
+ */
+export async function joinTrip(tripId: string, nextTripId: string): Promise<unknown> {
+  const { data, error } = await db.rpc('trip_join', { p_trip_id: tripId, p_next_trip_id: nextTripId, p_dry_run: false })
+  if (!error) return data as unknown
+  const refusal = error as { code?: string; message?: string }
+  if (refusal.code === '22023' && refusal.message?.trim()) throw new Error(refusal.message.trim())
+  throw error
+}
+
 /** Delete a trip with its people and its jobs. No clock row, bill or cost hangs on a trip. */
 export async function deleteTrip(id: string): Promise<void> {
   const { error } = await db.from('trips').delete().eq('id', id)

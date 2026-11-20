@@ -132,7 +132,7 @@ SELECT pmv.same('Luis moves his payment between his two jobs', pmv.ask($$public.
 SELECT pmv.same('the payment is on J5', pmv.payment_job('00000000-0000-0000-0000-0000000fad01'), '05');
 SELECT pmv.same('Luis sends J5 back to billed', pmv.ask($$public.update_job_status('00000000-0000-0000-0000-0000000faf05', 'billed')$$), 'ok');
 SELECT pmv.same('J5 is billed', pmv.job_status('00000000-0000-0000-0000-0000000faf05'), 'billed');
-SELECT pmv.same('Luis makes a job from the estimate he wrote', pmv.ask($$public.create_job_from_estimate(p_estimate_id => '00000000-0000-0000-0000-0000000fa101', p_hcp_number => '4191', p_job_name => 'Tison plans repipe', p_fixtures => '[]'::jsonb)$$), 'ok');
+SELECT pmv.same('Luis makes a job from the estimate he wrote', pmv.ask($$public.create_job_from_estimate(p_estimate_id => '00000000-0000-0000-0000-0000000fa101', p_hcp_number => '4191', p_job_name => 'Trask plans repipe', p_fixtures => '[]'::jsonb)$$), 'ok');
 SELECT pmv.same('his estimate is on the new job', pmv.estimate_job('00000000-0000-0000-0000-0000000fa101'), '4191');
 
 -- 4 · The office is untouched.

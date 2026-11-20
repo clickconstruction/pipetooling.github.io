@@ -39,6 +39,8 @@ import { isTwinRungVerb, twinRungInput } from './devMcpTwinRung.ts'
 import { calibrationStandardInput, isCalibrationStandardVerb } from './devMcpCalibrationStandard.ts'
 import { isRobotBookPriceVerb, robotBookPriceInput } from './devMcpRobotBookPrice.ts'
 import { isPriceMatrixVerb, priceMatrixInput } from './devMcpPriceMatrix.ts'
+import { isTwinArchiveVerb, twinArchiveInput } from './devMcpTwinArchive.ts'
+import { isRoundsStopVerb, roundsKeyCommitment, roundsStopInput } from './devMcpRoundsStop.ts'
 import { todayYmdInAppTz as todayYmd } from './appTimeZone.ts'
 import { isJobVerb, jobInput, jobUpdateInput } from './devMcpJobs.ts'
 import { isBillVerb } from './devMcpBill.ts'
@@ -313,6 +315,18 @@ export const WRITE_VERBS = {
   // server's read of the bid, its rows, its price requests and its asks (devMcpPriceMatrix.ts).
   plan_price_matrix_request: { rpc: null, step: 'plan' },
   apply_price_matrix_request: { rpc: null, step: 'apply' },
+  // v2.7970 / 0.115.0: a twin taken out of the fleet and brought back as Archive and Restore on the Digital twins
+  // panel do — its live keys revoked on twin_credentials as the dev, then archive-user as the dev; restore-user for
+  // the way back; no wrapper, so rpc is null — the dry run is the server's read of the twin and its live keys
+  // (devMcpTwinArchive.ts).
+  plan_twin_archive: { rpc: null, step: 'plan' },
+  apply_twin_archive: { rpc: null, step: 'apply' },
+  // v2.7970 / 0.115.0: the rounds stopped on a twin's key and started again as Stop the rounds and Start again on
+  // the Console's Rounds card do — the card's own robot_rounds_stop as the dev, a key a call, after the server's read
+  // of the twin and its live keys; the RPC is the surface's own and no dry-run wrapper, so rpc is null
+  // (devMcpRoundsStop.ts).
+  plan_rounds_stop: { rpc: null, step: 'plan' },
+  apply_rounds_stop: { rpc: null, step: 'apply' },
   // v2.7821 / 0.102.0: the pay setup of a person who exists, as their sheet's Pay & schedule saves it — the wage,
   // Salaried, the employment dates, the salaried workday's start — through set_pay_config as the dev (the audited door:
   // pay_admin_events keeps before and after), the desk's PATCH on people and the Hire form's template row; no wrapper,
@@ -616,6 +630,18 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   if (isJobVerb(verb)) {
     // v2.6790: the shape check is devMcpJobs'; the dry run is the server's read of the customer and the rest, not an RPC's.
     const built = verb === 'plan_job' || verb === 'apply_job' ? jobInput(verb, input) : jobUpdateInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isTwinArchiveVerb(verb)) {
+    // v2.7970: the shape check is devMcpTwinArchive's; the dry run is the server's read of the twin and its live keys.
+    const built = twinArchiveInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
+  }
+  if (isRoundsStopVerb(verb)) {
+    // v2.7970: the shape check is devMcpRoundsStop's; the dry run is the server's read of the twin and its live keys.
+    const built = roundsStopInput(verb, input)
     if (!built.ok) return built
     return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
@@ -1589,6 +1615,11 @@ export function planCommitment(verb: WriteVerb, reply: unknown): unknown {
     // plan commits to each key by its id, label and state and leaves the dates out.
     return { ...rest, revoke: twinKeyCommitment(r.revoke), stays_live: twinKeyCommitment(r.stays_live) }
   }
+  if (verb === 'plan_rounds_stop' || verb === 'apply_rounds_stop') {
+    // v2.7970: a key's last call and what it has in hand move while its robot works, so the plan commits to each
+    // key by its id, label and stop and leaves those two out.
+    return { ...rest, change: roundsKeyCommitment(r.change), already: roundsKeyCommitment(r.already) }
+  }
   return rest
 }
 
@@ -1708,6 +1739,8 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   if (verb === 'apply_submittal_rows' || verb === 'apply_submittal_log') return `Nothing written: this plan was already applied on this bid${when}. get_submittals reads it back; a further change needs a new plan from the bid as it stands.`
   if (job) return `Nothing written: this plan was already applied as job ${prior.target ?? '(unknown)'}${when}. The job exists; find_job and get_job show it. A second job of the same name on the customer needs a new plan with allow_duplicate_name: true.`
   // v2.6792: the account verbs' plans commit to the row as it read, so a landed change hashes differently; this answers the odd replay.
+  if (verb === 'apply_twin_archive') return `Nothing written: this plan was already applied${when}. The twin stands as it left it; plan_twin lists the fleet, and plan_twin_archive says whether it is archived now.`
+  if (verb === 'apply_rounds_stop') return `Nothing written: this plan was already applied${when}. The rounds stand as it set them; read_twin_keys lists each key with its stop.`
   if (verb === 'apply_price_matrix_request') return `Nothing written: this plan was already applied${when}. The ask stands as it left it; plan_price_matrix_request reads where the bid's ask is now.`
   if (verb === 'apply_robot_book_price') return `Nothing written: this plan was already applied${when}. The prices stand as it set them; the twin seat's get_robot_book lists the book, and a further change needs a new plan.`
   if (verb === 'apply_calibration_standard') return `Nothing written: this plan was already applied${when}. The person stands as it named them; plan_calibration_standard names the standards as they stand.`

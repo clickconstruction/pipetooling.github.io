@@ -2,7 +2,7 @@
 name: "Sub NDA builder: a job's secrecy settings make the paper its subs sign"
 number: 389
 group: waiting
-status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day he started a spike of the flow in the app, in its own session · nothing of the builder is shipped
+status: asked 2026-11-17 · thought through, drawn and rendered the same day · the owner settled four calls, liked the idea and the sliders, and did not love how it was drawn · saved here at his word, to review and make calls on later, then build · 2026-11-19 a wider look at the builder, the gate and contracts on Documents, folded in below at his word as *The wider look* · 2026-11-19 his review of the look began: four levels, each beside a kind of place, in place of *Light* and *Strict*, and a step-by-step flow drawn at his ask, with the rest of the look still open · the same day the flow was built as a spike in the app, and he decided where the builder is parked for now: a Document builder tab on Documents, saved as #404 · nothing of the builder is shipped
 summary: >
   On a job where the company owes secrecy to a GC or an owner, the office sets a short page of secrecy
   settings, or the GC proposes them from the portal page they already open. The office confirms. The app
@@ -12,7 +12,7 @@ summary: >
   and downloads a sample: the same paper with made-up names. A GC that requires its own form uses that
   form and the builder steps aside. Later the same engine makes the secrecy papers the company sends for
   itself. No model writes or changes a clause at any point. No attorney has read any wording yet.
-next: The spike of the flow, steered by the owner in its own session. Beside it, a grid of what each of the four levels means on each topic. Then the open calls below, with the seven wider calls in *The wider look*, and the Contract Book step, which waits on nothing else.
+next: The Document builder tab, #404, where the flow is parked apart from any job and is built first. Beside it, a grid of what each of the four levels means on each topic. Then the open calls below, with the seven wider calls in *The wider look*, and the Contract Book step, which waits on nothing else.
 size: L as a train of eight (M · S · M · M · M · M · S · M)
 blocker: The owner's calls on the look. An attorney's read of the clause wording before any real job.
 opinion: your call — the engine is small and sits on what the Contract Book already does; what is open is how the settings are drawn and named, and that is yours to settle before a screen is built
@@ -304,8 +304,9 @@ paper until an entry has a settings list, and the first one is a test entry.
 3. **Settings on the job, the ground (M).** The columns on `job_required_papers`, `job_papers_require`
    accepting a clause-built entry with settings, a function that sets them and locks at the first
    signature, the read-revision rule, the freeze with the hash, and the signature's *Signing for* line.
-4. **The office's settings page (M).** The step-by-step flow lands here. Inside `JobDocumentsRequiredPapers`. This is the first screen the
-   open look decides.
+4. **The office's settings page (M).** The step-by-step flow lands here, reused from the Document
+   builder tab ([#404](../document-builder/README.md)), where it is parked first. Inside
+   `JobDocumentsRequiredPapers`. This is the first screen the open look decides.
 5. **The GC's page, read-only (M).** The Secrecy block, the sample PDF function, the sub businesses.
 6. **The GC proposes (M).** The proposal kind, stricter-only checked on the server, the office's take
    and confirm, the record of who and when.
@@ -509,10 +510,19 @@ liked sliders and did not love either drawing of them, so the look was the first
 review began on 2026-11-19 and settled the four levels, their names, their places and how a place is
 said. He then asked for the step-by-step flow, saw it drawn, and said "I think this is coming together
 to the point we can build it as a spike and then refine from there". A spike of the flow in the app
-began the same day in its own session: real code on made-up data, dev-only, shipped nowhere.
+was built the same day in its own session: real code on made-up data, dev-only, shipped nowhere. It
+is on the branch `spike/document-builder`.
+
+The same day he decided where the builder lives for now: a **Document builder** tab on Documents, for
+a dev only, apart from any job. That is its own card, [#404](../document-builder/README.md), with the
+flow as he shaped it in the spike, a second builder for a job's insurance requirements, and a train of
+ten steps. **#404 is built first.** This card's own train, which ends with a job requiring the paper
+its settings make, comes after it and is untouched by it.
 
 He also asked whether this should become a contract builder long term. The session's answer: yes as a
-direction, since a paper's settings are data, and a call to make once a second paper works.
+direction, since a paper's settings are data, and a call to make once a second paper works. #404's
+second builder has since shown one limit: a job's insurance requirements did not fit levels and topics,
+so that tab holds two kinds of builder.
 
 The calls in *Open: the look* are what is left of the review. After that come the picks the build stands
 on, then step 1. The gate under it is live and unused, and *The wider look* orders what is left around

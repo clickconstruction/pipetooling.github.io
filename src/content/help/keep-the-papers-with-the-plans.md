@@ -75,6 +75,8 @@ Press it. The form opens with the kind, the name, the sender and the day filled 
 
 The mail's files follow the paper. The files land in the paper's own folder under the job's **Plans** folder in Drive. The line under the mail says how many landed.
 
+A logo in the sender's signature is not one of those files. Nor is the small picture Gmail adds for a Google Drive link. Each stays out of the folder. The line says how many were left out.
+
 The line turns amber when a file stayed behind, and it names the file with its reason. A file too big for us to keep stays in Gmail. Press {{button:outline|File 1 file again}} when a file did not land. The file goes into the same paper's folder.
 
 A mail that is not on the job yet cannot bring its files. The form says so. Press {{button:outline|Put it on the job}} first, then keep the paper.
