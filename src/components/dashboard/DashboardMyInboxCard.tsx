@@ -647,7 +647,7 @@ export function DashboardMyInboxCard({
         >
         {(userLoading || showChecklist) && (
         <div style={{ marginBottom: '1rem' }}>
-          <h3 style={{ fontSize: '1.125rem', marginTop: '0.83em', marginBottom: '0.75rem' }}>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
             Due Today
             {!isMobile && todayChecklist.some((i) => !i.completed_at) ? (
               <span style={{ marginLeft: '0.5rem', verticalAlign: '2px', background: 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 999, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700 }}>
@@ -657,7 +657,7 @@ export function DashboardMyInboxCard({
             <Link to="/checklist" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
               View all →
             </Link>
-          </h3>
+          </h2>
           {checklistLoading && todayChecklist.length === 0 ? (
             <ChecklistSkeleton />
           ) : todayChecklist.length > 0 ? (
@@ -731,7 +731,7 @@ export function DashboardMyInboxCard({
       )}
       {(outstandingLoading || outstandingItems.length > 0) && (
         <div style={{ marginBottom: '1rem' }}>
-          <h3 style={{ fontSize: '1.125rem', marginTop: '0.83em', marginBottom: '0.75rem' }}>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
             Overdue
             {!isMobile && outstandingItems.some((i) => !i.completed_at) ? (
               <span style={{ marginLeft: '0.5rem', verticalAlign: '2px', background: 'var(--bg-red-100)', color: 'var(--text-red-700)', borderRadius: 999, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700 }}>
@@ -741,7 +741,7 @@ export function DashboardMyInboxCard({
             <Link to="/checklist?tab=review" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
               View all →
             </Link>
-          </h3>
+          </h2>
           {outstandingLoading && outstandingItems.length === 0 ? (
             <ChecklistSkeleton />
           ) : outstandingItems.length > 0 ? (
