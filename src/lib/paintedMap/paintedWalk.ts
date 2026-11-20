@@ -52,7 +52,7 @@ export type WalkState = {
   gapMs: number | null
 }
 
-/** A reading older than this when it arrives is the phone's memory, not where the person is now. */
+/** A reading older than this when it arrives is the phone's memory, not where the person is now. A rough one is taken all the same: see `walkFix`. */
 export const WALK_STALE_FIX_MS = 10_000
 /** A kept walk nobody saved is thrown away after a day. */
 export const WALK_KEEP_MS = 24 * 60 * 60_000
@@ -83,8 +83,10 @@ function pause(state: WalkState, why: WalkPause, nowMs: number): WalkState {
 /** A reading came off the phone. */
 export function walkFix(state: WalkState, fix: PaintedFix, nowMs: number): WalkState {
   if (state.status !== 'painting') return state
-  if (nowMs - fix.atMs > WALK_STALE_FIX_MS) return state
+  // A rough reading is taken whatever its age. It keeps no point, so an old one cannot be painted into the line, and a
+  // phone handing back an area may stamp its one reading minutes before the page is given it (punch list #402).
   if (isRoughFix(fix.accuracyM)) return { ...state, last: fix, rough: true }
+  if (nowMs - fix.atMs > WALK_STALE_FIX_MS) return state
   const lastKept = state.current[state.current.length - 1] ?? null
   if (!isRealStep(lastKept, fix)) return { ...state, last: fix, rough: false }
   return { ...state, last: fix, rough: false, current: [...state.current, fix], lastStepAtMs: nowMs }

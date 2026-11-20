@@ -60,6 +60,23 @@ describe('painting a walk', () => {
     expect(s.last).toBeNull()
     expect(s.current).toHaveLength(0)
   })
+  it('takes a rough reading the phone stamped long ago: it says Precise Location looks off, and paints nothing', () => {
+    // An iPhone with Precise Location off works its rough spot out only a few times an hour, so the one reading
+    // it hands over can be minutes old. It is still the news the walk's line needs.
+    const now = 10 * 60_000
+    const s = walkFix(startWalk(now), fix(0, 0, now - 5 * 60_000, 3200), now)
+    expect(s.last).toEqual(fix(0, 0, now - 5 * 60_000, 3200))
+    expect(s.rough).toBe(true)
+    expect(s.current).toHaveLength(0)
+    expect(s.lastStepAtMs).toBe(now)
+    expect(walkHasLine(s)).toBe(false)
+    expect(walkSure(s).accuracyM).toBe(3200)
+  })
+  it('still drops a sure reading the phone stamped long ago: it could become a point of the line', () => {
+    const now = 10 * 60_000
+    const start = startWalk(now)
+    for (const accuracyM of [5, 35, 300, 1000, null]) expect(walkFix(start, fix(0, 0, now - 5 * 60_000, accuracyM), now), `${accuracyM}`).toBe(start)
+  })
   it('says how sure the phone is now', () => {
     expect(walkSure(walkFix(startWalk(0), fix(0, 0, 1000, 4), 1000))).toEqual({ accuracyM: 4, poor: false })
     expect(walkSure(walkFix(startWalk(0), fix(0, 0, 1000, 30), 1000))).toEqual({ accuracyM: 30, poor: true })
