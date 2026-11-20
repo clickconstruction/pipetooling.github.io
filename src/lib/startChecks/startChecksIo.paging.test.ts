@@ -72,7 +72,7 @@ describe('readStartCheckRows', () => {
     const rows = await readStartCheckRows(jobIds)
 
     expect(rows.bullets).toHaveLength(1001)
-    expect(rows.bullets.at(-1)!.id).toBe('b-01000')
+    expect(rows.bullets[1000]!.id).toBe('b-01000')
     expect(rows.bullets.map((b) => b.id)).toEqual(bullets.map((b) => b.id))
     expect(bed.ranges.filter((r) => r.table === 'start_check_bullets')).toEqual([
       { table: 'start_check_bullets', from: 0, to: 999 },
