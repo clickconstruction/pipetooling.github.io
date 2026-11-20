@@ -73,9 +73,9 @@ describe('superintendentLine: the money', () => {
   it('outranks the hours when spend leads the work by ten points or more', () => {
     const l = superintendentLine({ ...base, money: { spentUsd: 70, budgetUsd: 100 } })
     expect(l.tone).toBe('behind')
-    expect(l.headline).toBe('Spending 20 points ahead of the work.')
+    expect(l.headline).toBe('Money is ahead of the work.')
     expect(l.money).toMatchObject({ leads: true, wrong: false, spentPct: 70 })
-    expect(l.money?.words).toBe('70% of the money spent at 50% done · 20 points ahead of the work')
+    expect(l.money?.words).toBe('70% of the money spent at 50% done')
   })
 
   it('zeroes the days when the hours read ahead but the money leads', () => {

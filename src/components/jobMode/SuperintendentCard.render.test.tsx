@@ -92,6 +92,16 @@ vi.mock('../../lib/jobMode/finishCallIo', () => ({
     return Promise.resolve()
   },
 }))
+// Still 40% (the owner's walk of 2026-11-20): the same percent, said again today.
+const stillSaid: unknown[] = []
+let stillFails = false
+vi.mock('../../lib/jobMode/paceStillIo', () => ({
+  sayPercentStill: (input: { authUserId: string; jobId: string; pct: number }) => {
+    if (stillFails) return Promise.reject({ message: 'new row violates row-level security policy', code: '42501' })
+    stillSaid.push(input)
+    return Promise.resolve()
+  },
+}))
 vi.mock('./FinishDateSheet', () => ({ FinishDateSheet: ({ plannedYmd, saidYmd }: { plannedYmd: string | null; saidYmd: string | null }) => <div data-testid="finish-date-sheet">{`${plannedYmd}|${saidYmd}`}</div> }))
 vi.mock('../stageChecklists/StageChecklistSheet', () => ({ StageChecklistSheet: ({ stage }: { stage: { name: string } }) => <div data-testid="checklist-sheet">{stage.name}</div> }))
 // The Scoreboard's read: the office's sign-off and the subs' sheet hours ride it onto the card's line (the second walk's slips 3 and 4).
@@ -109,6 +119,65 @@ describe('SuperintendentCard', () => {
     finishReadFails = false
     finishSaved.length = 0
     asked.length = 0
+    stillSaid.length = 0
+    stillFails = false
+    window.localStorage.clear()
+  })
+
+  it('Still 30% says the percent again today: the card then warns in red, in hours, and asks for the finish day', async () => {
+    const onAsked = vi.fn()
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} onAsked={onAsked} />)
+    await screen.findByTestId('superintendent-line')
+    expect(screen.getByTestId('pace-reading').dataset.state).toBe('old')
+    fireEvent.click(screen.getByTestId('pace-still'))
+    await waitFor(() => expect(screen.getByTestId('pace-reading').dataset.state).toBe('over'))
+    expect(stillSaid).toEqual([{ authUserId: SMOKE_AUTH_USER_ID, jobId: 'job-1', pct: 30 }])
+    expect(onAsked).toHaveBeenCalled()
+    expect(screen.getByTestId('pace-reading').dataset.tone).toBe('red')
+    expect(screen.getByTestId('pace-headline').textContent).toBe('Hours are ahead of the work.')
+    // 170 h used, and 30% of 260 h is 78: the gap is 92 hours.
+    expect(screen.getAllByTestId('pace-line').map((l) => l.textContent)).toEqual(['The gap is about 92 hours.', 'At this rate the hours run out before the work does.'])
+    expect(screen.getByTestId('pace-reading').textContent).toContain('More than 30% done?')
+    expect(screen.queryByTestId('pace-still')).toBeNull()
+    expect(screen.getByTestId('pace-pair').textContent).toContain('set today')
+    // The other answer, and its press right under it.
+    expect(screen.getByTestId('superintendent-line').textContent).toContain('If not, say when you will finish.')
+    expect(screen.getByTestId('pace-finish-date')).toBeTruthy()
+  })
+
+  it('a Still press that is refused says why and leaves the question standing', async () => {
+    stillFails = true
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    await screen.findByTestId('superintendent-line')
+    fireEvent.click(screen.getByTestId('pace-still'))
+    await waitFor(() => expect(screen.getByTestId('pace-still').hasAttribute('disabled')).toBe(false))
+    expect(screen.getByTestId('pace-reading').dataset.state).toBe('old')
+  })
+
+  it('money ahead with the hours on track stays calm: one line, and the office watches it', async () => {
+    // 78 h of 260 at 30%: the hours match the work. The money is 95% spent, which reads red on the office's board.
+    answer = async () => ({ readsWages: false, jobs: [project({ labor: [{ ymd: '2026-10-19', who: 'Ana', hours: 39 }, { ymd: '2026-10-20', who: 'Ana', hours: 39 }] })] })
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    const card = await screen.findByTestId('superintendent-line')
+    expect(card.dataset.tone).toBe('behind')
+    expect(screen.getByTestId('pace-reading').dataset.tone).toBe('calm')
+    expect(screen.getByTestId('pace-headline').textContent).toBe('On track.')
+    expect(screen.getByTestId('pace-money-line').textContent).toBe('Money spent is ahead of the work. The office watches that.')
+    expect(card.textContent).not.toMatch(/point/i)
+  })
+
+  it('What is this? opens by itself the first time, and is folded the next', async () => {
+    const first = renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    await screen.findByTestId('superintendent-line')
+    expect(screen.getByTestId('pace-what').getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByTestId('pace-what-body').textContent).toContain('This card compares two things on this job.')
+    first.unmount()
+    renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
+    await screen.findByTestId('superintendent-line')
+    expect(screen.getByTestId('pace-what').getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByTestId('pace-what-body')).toBeNull()
+    fireEvent.click(screen.getByTestId('pace-what'))
+    expect(screen.getByTestId('pace-what-body')).toBeTruthy()
   })
 
   it("reads the office's sign-off as the proof and counts the sub's sheet hours in, as the Scoreboard does (slips 3 and 4)", async () => {
@@ -126,12 +195,13 @@ describe('SuperintendentCard', () => {
     }
     renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
     const card = await screen.findByTestId('superintendent-line')
-    // The face: the headline, the days of hours left, the finish day at the foot of the rail and the hours as one bar.
-    expect(card.textContent).toContain('On pace.')
-    expect(screen.getByTestId('pace-days-left').textContent).toBe('3 days of hours left')
+    // The face: its name, the headline, the two bars, the hours left and the finish day at the foot of the rail.
+    expect(screen.getByTestId('pace-name').textContent).toBe('Job pace')
+    expect(screen.getByTestId('pace-headline').textContent).toBe('On track.')
+    expect(screen.getByTestId('pace-left').textContent).toBe('61 hours left in the budget. About 3 days for this crew.')
     expect(screen.getByTestId('pace-rail-finish').textContent).toContain('Fri, Nov 20')
     expect(screen.queryByTestId('pace-rail-at-pace')).toBeNull()
-    expect(screen.getByTestId('pace-hours').textContent).toContain('9 of 70 h')
+    expect(screen.getByTestId('pace-pair').textContent).toContain('9 of 70 hours')
     // None of the bookkeeping is on the face.
     expect(card.textContent).not.toContain('frozen at award')
     expect(card.textContent).not.toContain('Signed off')
@@ -147,24 +217,37 @@ describe('SuperintendentCard', () => {
     expect(card.textContent).not.toContain('0 h in')
   })
 
-  it('reads the project behind with the money leading, the strip, the proof and the two presses, from the one read', async () => {
+  it('reads the project with hours ahead of the work on an old percent: it asks before it warns, in hours, from the one read', async () => {
     const onSetPct = vi.fn()
     renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={onSetPct} />)
     const card = await screen.findByTestId('superintendent-line')
     expect(asked[0]).toEqual(['job-1'])
-    // 170 h in at 30% on a 260 h track, 95% of the money spent: the money leads by a mile.
+    // 170 h in at 30% on a 260 h track, and 90 of those hours went in after the percent was last said.
+    // The office's line reads behind with the money leading. The crew's card asks about the percent, in amber.
     expect(card.dataset.tone).toBe('behind')
-    expect(screen.getByText('Spending 65 points ahead of the work.')).toBeTruthy()
+    expect(card.dataset.reading).toBe('old')
+    expect(screen.getByTestId('pace-reading').dataset.tone).toBe('amber')
+    expect(screen.getByTestId('pace-headline').textContent).toBe('Is 30% still right?')
+    expect(screen.getAllByTestId('pace-line').map((l) => l.textContent)).toEqual(['The work was last set on Tue, Oct 20. The crew has put in 90 hours since.'])
+    // Money and its points are nowhere on the face.
+    expect(card.textContent).not.toMatch(/point|Spending|money/i)
+    // The two bars on one scale: the work, the hours it accounts for, and the gap. The old percent is drawn broken.
+    expect(screen.getByTestId('pace-pair-hours').dataset.fill).toBe('30')
+    expect(screen.getByTestId('pace-pair-hours').dataset.gap).toBe('35')
+    expect(screen.getByTestId('pace-pair-work').dataset.old).toBe('')
+    expect(screen.getByTestId('pace-pair').textContent).toContain('170 of 260 hours')
     // The rail: each stage by the crew's own number. Rough In is done, Top Out is in hand at 50, Trim Set is next.
     const rail = screen.getByTestId('pace-rail')
     expect(rail.dataset.from).toBe('stages')
     expect(screen.getAllByTestId('pace-rail-stage').map((r) => r.dataset.state)).toEqual(['done', 'now', 'next'])
     // No planned finish on this job, so the rail has no foot.
     expect(screen.queryByTestId('pace-rail-finish')).toBeNull()
-    expect(screen.getByTestId('pace-hours').textContent).toContain('170 of 260 h')
-    // The stage in hand carries the press, with where it stands.
-    const setPct = screen.getByTestId('pace-rail-set-pct')
-    expect(setPct.textContent).toBe('50% · Set the %')
+    // The face carries Set the % beside Still 30%, so the rail's stage reads in hand and carries no press and no number.
+    expect(screen.queryByTestId('pace-rail-set-pct')).toBeNull()
+    expect(rail.textContent).not.toContain('%')
+    expect(screen.getByTestId('pace-still').textContent).toBe('Still 30%')
+    const setPct = screen.getByTestId('pace-set-pct')
+    expect(setPct.textContent).toBe('Set the %')
     fireEvent.click(setPct)
     expect(onSetPct).toHaveBeenCalledWith({ id: 'job-1', hcpNumber: 'J1044', jobName: 'The Lodge', label: 'J1044 · The Lodge' })
     fireEvent.click(screen.getByRole('button', { name: 'Open the checklist' }))
@@ -177,7 +260,7 @@ describe('SuperintendentCard', () => {
     expect(screen.getByTestId('pace-strip')).toBeTruthy()
     expect(screen.getAllByTestId('pace-day')).toHaveLength(2)
     expect(screen.getAllByTestId('pace-stage')).toHaveLength(3)
-    expect(screen.getByTestId('superintendent-money').textContent).toBe('95% of the money spent at 30% done · 65 points ahead of the work')
+    expect(screen.getByTestId('superintendent-money').textContent).toContain('95% of the money spent at 30% done')
     expect(card.textContent).toContain('checklist 3 of 5 ready')
     // And it folds away again.
     fireEvent.click(screen.getByTestId('pace-figured'))
@@ -185,13 +268,16 @@ describe('SuperintendentCard', () => {
   })
 
   it('with no stage reported, the rail spreads the job percent over the stages and says so behind the fold', async () => {
-    // Three stages and 50% for the job: the first is done, and the second is part way, by its share of the hours.
+    // Three stages and 50% for the job: the first is done, and the second is part way, by its share of the price.
     answer = async () => ({ readsWages: false, jobs: [project({ fixtures: fixtures.map((f) => ({ ...f, progress_pct: null })), pct_complete: 50, spentPct: null })] })
     renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} />)
     const card = await screen.findByTestId('superintendent-line')
     expect(screen.getByTestId('pace-rail').dataset.from).toBe('job')
     expect(screen.getAllByTestId('pace-rail-stage').map((r) => r.dataset.state)).toEqual(['done', 'now', 'next'])
-    expect(screen.getByTestId('pace-rail-set-pct').textContent).toMatch(/^\d+% · Set the %$/)
+    // On track, so the face has no loud press: the stage in hand carries a quiet one, with no number of its own.
+    expect(screen.getByTestId('pace-headline').textContent).toBe('On track.')
+    expect(screen.queryByTestId('pace-set-pct')).toBeNull()
+    expect(screen.getByTestId('pace-rail-set-pct').textContent).toBe('Set the %')
     expect(card.textContent).not.toContain('Stages read from the job’s percent.')
     fireEvent.click(screen.getByTestId('pace-figured'))
     expect(card.textContent).toContain('Stages read from the job’s percent.')
@@ -201,7 +287,7 @@ describe('SuperintendentCard', () => {
     renderWithProviders(<SuperintendentCard jobId="job-1" onSetPct={() => {}} short />)
     const row = await screen.findByTestId('superintendent-line-short')
     // Ahead or behind in one line: the project's own headline, and nothing of the card under it.
-    expect(row.textContent).toContain('Spending 65 points ahead of the work.')
+    expect(row.textContent).toContain('Is 30% still right?')
     expect(row.textContent).toContain('Tap for the pace card.')
     expect(row.getAttribute('aria-expanded')).toBe('false')
     // The row carries the picture: the work and the hours as two thin bars (punch list #396).
@@ -214,7 +300,7 @@ describe('SuperintendentCard', () => {
     const card = await screen.findByTestId('superintendent-line')
     expect(card.dataset.tone).toBe('behind')
     expect(screen.getByTestId('pace-rail')).toBeTruthy()
-    expect(screen.getByTestId('pace-rail-set-pct')).toBeTruthy()
+    expect(screen.getByTestId('pace-set-pct')).toBeTruthy()
     fireEvent.click(screen.getByTestId('pace-figured'))
     expect(screen.getByTestId('pace-strip')).toBeTruthy()
     expect(screen.getByTestId('superintendent-money')).toBeTruthy()
